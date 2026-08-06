@@ -1,18 +1,29 @@
-"""State schema and artifact validators for issue-subagent-workflow."""
+"""State schema and shared validators for issue-subagent-workflow."""
 
 from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import tomllib
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-CURRENT_SCHEMA_VERSION = 4
-LEGACY_SCHEMA_VERSION = 3
-PHASES = ("feasibility", "exploration", "planning", "implementation", "validation")
+from issue_task_issue import validate_issue_snapshot
+from issue_task_schema import ARTIFACT_CONTRACTS
+
+CURRENT_SCHEMA_VERSION = 5
+LEGACY_SCHEMA_VERSIONS = (3, 4)
+PHASES = (
+    "feasibility",
+    "exploration",
+    "planning",
+    "implementation",
+    "validation",
+    "packaging",
+)
 NEXT_PHASE = {
     "exploration": "planning",
     "planning": "implementation",
@@ -31,61 +42,13 @@ EFFICIENCY_REQUIRED_FILES = (
     "00-feasibility/feasibility.md",
     "03-implementation/preflight.md",
 )
-REQUIRED_HEADINGS = {
-    "00-feasibility/feasibility.md": (
-        "## Allowed and prohibited changes",
-        "## Required checks and baseline",
-        "## Breaking-change and compatibility impact",
-        "## Acceptance checklist feasibility",
-        "## Constraint conflicts",
-        "## Final feasibility verdict",
-        "## Blocker resolution required",
-    ),
-    "01-exploration/exploration.md": (
-        "## Relevant files and symbols",
-        "## Entry points and execution paths",
-        "## Existing tests and fixtures",
-        "## Unresolved questions",
-        "## Evidence table",
-    ),
-    "02-planning/plan.md": (
-        "## Acceptance checklist mapping",
-        "## Implementation work units and ownership",
-        "## Independent test work unit",
-        "## Validation strategy",
-    ),
-    "03-implementation/implementation.md": (
-        "## Files and symbols changed",
-        "## Behavior implemented",
-        "## Commands and results",
-        "## Handoff",
-    ),
-    "03-implementation/preflight.md": (
-        "## Changed scope",
-        "## Deterministic policy checks",
-        "## Focused checks",
-        "## Canonical required checks",
-        "## Baseline comparison",
-        "## Commands and exact outcomes",
-        "## Final preflight verdict",
-        "## RETURN implementation findings",
-    ),
-    "03-implementation/tests.md": (
-        "## Acceptance-checklist-to-test mapping",
-        "## Tests added or changed",
-        "## Commands and exact outcomes",
-        "## Final test verdict",
-        "## RETURN implementation findings",
-    ),
-    "04-validation/validation.md": (
-        "## Acceptance checklist verification",
-        "## Code evidence",
-        "## Runtime and test evidence",
-        "## Final verdict",
-    ),
-}
+ENFORCED_REQUIRED_FILES = (
+    "issue.json",
+    "02-planning/checks.json",
+    "03-implementation/seal.md",
+)
 VERSIONED_ARTIFACT_RE = re.compile(
-    r"(?:feasibility|exploration|plan|implementation|preflight|tests|validation)"
+    r"(?:feasibility|exploration|plan|implementation|preflight|tests|seal|validation|packaging)"
     r"(?:[-_.](?:v?\d+|final|revised|attempt[-_]?\d+))\.md$",
     re.IGNORECASE,
 )
@@ -99,6 +62,7 @@ TABLE_ROW_RE = re.compile(
     r"(?m)^\|\s*(AC-\d{3})\s*\|\s*((?:\\\||[^|])*)\|"
 )
 TEST_CYCLE_RE = re.compile(r"(?m)^- Test cycle: (\d+)\s*$")
+FINGERPRINT_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 BLOCK_KINDS = (
     "constraint_conflict",
     "external_dependency",
@@ -107,14 +71,17 @@ BLOCK_KINDS = (
 )
 
 
-def normalize_state(state: dict[str, Any]) -> dict[str, Any]:
+def _sha256_text(value: str) -> str:
+    return hashlib.sha256(value.encode()).hexdigest()
+
+
+def normalize_state(state: dict[str, Any], task_dir: Path | None = None) -> dict[str, Any]:
     version = state.get("schema_version")
-    if version == LEGACY_SCHEMA_VERSION:
+    if version == 3:
         phase = state.get("phase")
         status = state.get("status")
         test_cycle = state.get("test_cycle", 0)
         test_verdict = state.get("test_verdict", "")
-        state["schema_version"] = CURRENT_SCHEMA_VERSION
         state.setdefault("feasibility_verdict", "LEGACY")
         state.setdefault(
             "preflight_cycle",
@@ -130,33 +97,65 @@ def normalize_state(state: dict[str, Any]) -> dict[str, Any]:
         state.setdefault("return_review_reason", "")
         state.setdefault("block_kind", "")
         state.setdefault("block_reason", "")
+    if version in LEGACY_SCHEMA_VERSIONS:
+        issue_text = ""
+        if task_dir is not None and (task_dir / "issue.md").is_file():
+            issue_text = (task_dir / "issue.md").read_text(encoding="utf-8")
+        state["schema_version"] = CURRENT_SCHEMA_VERSION
+        state.setdefault("issue_snapshot_sha256", _sha256_text(issue_text))
+        state.setdefault("base_revision", "")
+        state.setdefault("candidate_binding_mode", "LEGACY")
+        state.setdefault("preflight_candidate_sha256", "")
+        state.setdefault("test_candidate_sha256", "")
+        state.setdefault("seal_cycle", 0)
+        state.setdefault("seal_verdict", "")
+        state.setdefault("sealed_candidate_sha256", "")
+        state.setdefault("validation_candidate_sha256", "")
+        state.setdefault("packaging_candidate_sha256", "")
+        state.setdefault("pr_number", 0)
+        state.setdefault("pr_head_sha", "")
+        state.setdefault("remote_checks_verdict", "")
+        state.setdefault("pr_evidence_sha256", "")
     return state
 
 
 def load_state(task_dir: Path) -> dict[str, Any]:
     with (task_dir / "state.toml").open("rb") as handle:
-        return normalize_state(tomllib.load(handle))
+        return normalize_state(tomllib.load(handle), task_dir)
 
 
-def write_state(task_dir: Path, state: dict[str, Any]) -> None:
-    state = normalize_state(state)
+def _render_state(state: dict[str, Any]) -> str:
     ordered_keys = (
         "schema_version",
         "issue_number",
         "issue_url",
         "issue_sha256",
+        "issue_snapshot_sha256",
         "acceptance_checklist_sha256",
         "acceptance_checklist_count",
+        "base_revision",
+        "candidate_binding_mode",
         "attempt",
         "feasibility_verdict",
         "preflight_cycle",
         "preflight_verdict",
+        "preflight_candidate_sha256",
         "test_cycle",
         "test_verdict",
+        "test_candidate_sha256",
+        "seal_cycle",
+        "seal_verdict",
+        "sealed_candidate_sha256",
         "test_return_count",
         "return_review_required",
         "return_review_action",
         "return_review_reason",
+        "validation_candidate_sha256",
+        "packaging_candidate_sha256",
+        "pr_number",
+        "pr_head_sha",
+        "remote_checks_verdict",
+        "pr_evidence_sha256",
         "phase",
         "status",
         "verdict",
@@ -164,8 +163,6 @@ def write_state(task_dir: Path, state: dict[str, Any]) -> None:
         "block_reason",
         "updated_at",
     )
-    state["schema_version"] = CURRENT_SCHEMA_VERSION
-    state["updated_at"] = datetime.now(UTC).isoformat()
     lines: list[str] = []
     for key in ordered_keys:
         value = state[key]
@@ -176,7 +173,17 @@ def write_state(task_dir: Path, state: dict[str, Any]) -> None:
         else:
             rendered = str(value)
         lines.append(f"{key} = {rendered}")
-    (task_dir / "state.toml").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return "\n".join(lines) + "\n"
+
+
+def write_state(task_dir: Path, state: dict[str, Any]) -> None:
+    state = normalize_state(dict(state), task_dir)
+    state["schema_version"] = CURRENT_SCHEMA_VERSION
+    state["updated_at"] = datetime.now(UTC).isoformat()
+    path = task_dir / "state.toml"
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_text(_render_state(state), encoding="utf-8")
+    os.replace(temporary, path)
 
 
 def acceptance_items(task_dir: Path) -> list[tuple[str, str]]:
@@ -214,6 +221,10 @@ def extract_section(text: str, heading: str) -> str:
     return match.group(1).strip()
 
 
+def heading_count(text: str, heading: str) -> int:
+    return len(re.findall(rf"(?m)^{re.escape(heading)}\s*$", text))
+
+
 def unescape_table_cell(text: str) -> str:
     return text.strip().replace(r"\|", "|")
 
@@ -233,15 +244,12 @@ def mapping_table_errors(
     duplicates = sorted({item_id for item_id in row_ids if row_ids.count(item_id) > 1})
     if duplicates:
         errors.append(f"{path.name} has duplicate checklist rows: {', '.join(duplicates)}")
-
     unknown = sorted(set(row_ids) - set(expected_ids))
     if unknown:
         errors.append(f"{path.name} has unknown checklist IDs: {', '.join(unknown)}")
-
     missing = [item_id for item_id in expected_ids if item_id not in row_ids]
     if missing:
         errors.append(f"{path.name} is missing checklist IDs: {', '.join(missing)}")
-
     if row_ids and row_ids != expected_ids:
         errors.append(f"{path.name} checklist rows must preserve Issue order")
 
@@ -269,9 +277,18 @@ def assert_mapping_table(
         raise ValueError("; ".join(errors))
 
 
+def assert_hash_present(path: Path, label: str, expected_hash: str) -> None:
+    pattern = re.compile(rf"(?m)^- {re.escape(label)}: `{re.escape(expected_hash)}`\s*$")
+    if pattern.search(path.read_text(encoding="utf-8")) is None:
+        raise ValueError(f"{path.name} does not record {label}")
+
+
 def assert_checklist_hash_present(path: Path, checklist_hash: str) -> None:
-    if checklist_hash not in path.read_text(encoding="utf-8"):
-        raise ValueError(f"{path.name} does not record the frozen acceptance checklist hash")
+    assert_hash_present(path, "Frozen acceptance checklist SHA-256", checklist_hash)
+
+
+def assert_issue_hash_present(path: Path, issue_hash: str) -> None:
+    assert_hash_present(path, "Frozen issue SHA-256", issue_hash)
 
 
 def assert_artifacts_ready(
@@ -331,9 +348,17 @@ def assert_standalone_value(
         )
 
 
-def assert_nonempty_section(path: Path, heading: str, label: str) -> None:
+def assert_nonempty_section(
+    path: Path,
+    heading: str,
+    label: str,
+    *,
+    allow_none: bool = False,
+) -> None:
     value = extract_section(path.read_text(encoding="utf-8"), heading)
-    if not value or value in {"None", "N/A", "なし"}:
+    if not value:
+        raise ValueError(f"{path.name} must include concrete {label}")
+    if not allow_none and value.strip() in {"None", "N/A", "なし"}:
         raise ValueError(f"{path.name} must include concrete {label}")
 
 
@@ -342,7 +367,7 @@ def feasibility_matrix_errors(
     *,
     require_all_feasible: bool,
 ) -> list[str]:
-    path = task_dir / "00-feasibility/feasibility.md"
+    path = task_dir / ARTIFACT_CONTRACTS["feasibility"].path
     expected_items = acceptance_items(task_dir)
     errors = mapping_table_errors(
         path,
@@ -351,92 +376,119 @@ def feasibility_matrix_errors(
     )
     if errors:
         return errors
-
-    section = extract_section(
-        path.read_text(encoding="utf-8"),
-        "## Acceptance checklist feasibility",
-    )
+    section = extract_section(path.read_text(encoding="utf-8"), "## Acceptance checklist feasibility")
     row_re = re.compile(
         r"(?m)^\|\s*(AC-\d{3})\s*\|\s*((?:\\\||[^|])*)\|\s*"
-        r"(FEASIBLE|BLOCKED|UNKNOWN)\s*\|"
+        r"(FEASIBLE|BLOCKED|UNKNOWN)\s*\|\s*((?:\\\||[^|])*)\|\s*$"
     )
     rows = row_re.findall(section)
     expected_ids = [item_id for item_id, _ in expected_items]
-    row_ids = [item_id for item_id, _, _ in rows]
+    row_ids = [item_id for item_id, _, _, _ in rows]
     if row_ids != expected_ids:
         errors.append(
-            "feasibility checklist must contain one ordered FEASIBLE/BLOCKED/UNKNOWN "
-            "verdict for every AC ID"
+            "feasibility checklist must contain one ordered FEASIBLE/BLOCKED/UNKNOWN verdict for every AC ID"
         )
         return errors
-
-    verdict_by_id = {item_id: verdict for item_id, _, verdict in rows}
-    not_feasible = [
-        item_id for item_id in expected_ids if verdict_by_id[item_id] != "FEASIBLE"
-    ]
+    for item_id, _, _, evidence in rows:
+        if not unescape_table_cell(evidence) or "Replace" in evidence:
+            errors.append(f"feasibility evidence is empty for {item_id}")
+    verdict_by_id = {item_id: verdict for item_id, _, verdict, _ in rows}
+    not_feasible = [item_id for item_id in expected_ids if verdict_by_id[item_id] != "FEASIBLE"]
     if require_all_feasible and not_feasible:
-        errors.append(
-            "every issue checklist item must be FEASIBLE; not feasible: "
-            + ", ".join(not_feasible)
-        )
+        errors.append("every issue checklist item must be FEASIBLE; not feasible: " + ", ".join(not_feasible))
     if not require_all_feasible and not not_feasible:
-        errors.append(
-            "feasibility BLOCKED requires at least one BLOCKED or UNKNOWN checklist item"
-        )
+        errors.append("feasibility BLOCKED requires at least one BLOCKED or UNKNOWN checklist item")
     return errors
 
+
+
+def test_matrix_errors(
+    task_dir: Path,
+    *,
+    require_all_pass: bool,
+) -> list[str]:
+    path = task_dir / ARTIFACT_CONTRACTS["tests"].path
+    expected_items = acceptance_items(task_dir)
+    errors = mapping_table_errors(
+        path,
+        "## Acceptance-checklist-to-test mapping",
+        expected_items,
+    )
+    if errors:
+        return errors
+    section = extract_section(
+        path.read_text(encoding="utf-8"),
+        "## Acceptance-checklist-to-test mapping",
+    )
+    row_re = re.compile(
+        r"(?m)^\|\s*(AC-\d{3})\s*\|\s*((?:\\\||[^|])*)\|\s*"
+        r"((?:\\\||[^|])*)\|\s*(PASS|FAIL|NOT RUN)\s*\|\s*$"
+    )
+    rows = row_re.findall(section)
+    expected_ids = [item_id for item_id, _ in expected_items]
+    row_ids = [item_id for item_id, _, _, _ in rows]
+    if row_ids != expected_ids:
+        errors.append(
+            "test checklist must contain one ordered PASS/FAIL/NOT RUN result for every AC ID"
+        )
+        return errors
+    result_by_id = {item_id: result for item_id, _, _, result in rows}
+    for item_id, _, evidence, _ in rows:
+        normalized = unescape_table_cell(evidence)
+        if not normalized or normalized in {"None", "N/A", "なし"} or "PENDING" in normalized:
+            errors.append(f"test evidence is not substantive for {item_id}")
+    not_passed = [item_id for item_id in expected_ids if result_by_id[item_id] != "PASS"]
+    if require_all_pass and not_passed:
+        errors.append(
+            "Tester PASS requires every AC row PASS; not passed: "
+            + ", ".join(not_passed)
+        )
+    if not require_all_pass and not not_passed:
+        errors.append("Tester RETURN requires at least one FAIL or NOT RUN row")
+    return errors
 
 def validation_matrix_errors(
     task_dir: Path,
     *,
     require_all_pass: bool,
 ) -> list[str]:
-    path = task_dir / "04-validation/validation.md"
+    path = task_dir / ARTIFACT_CONTRACTS["validation"].path
     expected_items = acceptance_items(task_dir)
-    errors = mapping_table_errors(
-        path,
-        "## Acceptance checklist verification",
-        expected_items,
-    )
+    errors = mapping_table_errors(path, "## Acceptance checklist verification", expected_items)
     if errors:
         return errors
-
-    section = extract_section(
-        path.read_text(encoding="utf-8"),
-        "## Acceptance checklist verification",
-    )
-    verdict_row_re = re.compile(
+    section = extract_section(path.read_text(encoding="utf-8"), "## Acceptance checklist verification")
+    row_re = re.compile(
         r"(?m)^\|\s*(AC-\d{3})\s*\|\s*((?:\\\||[^|])*)\|\s*"
-        r"(PASS|FAIL|NOT VERIFIED)\s*\|"
+        r"(PASS|FAIL|NOT VERIFIED)\s*\|\s*((?:\\\||[^|])*)\|\s*$"
     )
-    rows = verdict_row_re.findall(section)
+    rows = row_re.findall(section)
     expected_ids = [item_id for item_id, _ in expected_items]
-    row_ids = [item_id for item_id, _, _ in rows]
+    row_ids = [item_id for item_id, _, _, _ in rows]
     if row_ids != expected_ids:
         errors.append(
-            "validation checklist must contain one ordered PASS/FAIL/NOT VERIFIED "
-            "verdict for every AC ID"
+            "validation checklist must contain one ordered PASS/FAIL/NOT VERIFIED verdict for every AC ID"
         )
         return errors
-
-    verdict_by_id = {item_id: verdict for item_id, _, verdict in rows}
-    not_passed = [
-        item_id for item_id in expected_ids if verdict_by_id[item_id] != "PASS"
-    ]
+    verdict_by_id = {item_id: verdict for item_id, _, verdict, _ in rows}
+    for item_id, _, _, evidence in rows:
+        normalized = unescape_table_cell(evidence)
+        if not normalized or normalized in {"None", "N/A", "なし"} or "Replace" in normalized:
+            errors.append(f"validation evidence is not substantive for {item_id}")
+    not_passed = [item_id for item_id in expected_ids if verdict_by_id[item_id] != "PASS"]
     if require_all_pass and not_passed:
-        errors.append(
-            "every issue checklist item must have verdict PASS; not passed: "
-            + ", ".join(not_passed)
-        )
+        errors.append("every issue checklist item must have verdict PASS; not passed: " + ", ".join(not_passed))
     if not require_all_pass and not not_passed:
-        errors.append(
-            "validation RETURN requires at least one FAIL or NOT VERIFIED checklist item"
-        )
+        errors.append("validation RETURN requires at least one FAIL or NOT VERIFIED checklist item")
     return errors
 
 
+def _valid_fingerprint(value: object, *, allow_empty: bool = True) -> bool:
+    return isinstance(value, str) and ((allow_empty and not value) or bool(FINGERPRINT_RE.fullmatch(value)))
+
+
 def validate_state(task_dir: Path, state: dict[str, Any]) -> list[str]:
-    state = normalize_state(state)
+    state = normalize_state(state, task_dir)
     errors: list[str] = []
     try:
         items = acceptance_items(task_dir)
@@ -449,40 +501,58 @@ def validate_state(task_dir: Path, state: dict[str, Any]) -> list[str]:
         errors.append("state.toml acceptance_checklist_count does not match issue.md")
     if state.get("acceptance_checklist_sha256") != acceptance_digest(items):
         errors.append("state.toml acceptance_checklist_sha256 does not match issue.md")
+    errors.extend(validate_issue_snapshot(task_dir, state))
 
+    mode = state.get("candidate_binding_mode")
+    if mode not in {"ENFORCED", "LEGACY"}:
+        errors.append("state.toml candidate_binding_mode must be ENFORCED or LEGACY")
     feasibility_verdict = state.get("feasibility_verdict")
     if feasibility_verdict not in {"", "PASS", "BLOCKED", "LEGACY"}:
         errors.append("state.toml feasibility_verdict is invalid")
 
-    for field in ("preflight_cycle", "test_cycle", "test_return_count"):
+    for field in ("preflight_cycle", "test_cycle", "seal_cycle", "test_return_count"):
         value = state.get(field)
         if not isinstance(value, int) or value < 0:
             errors.append(f"state.toml {field} must be a non-negative integer")
+    if not isinstance(state.get("pr_number"), int) or int(state.get("pr_number", 0)) < 0:
+        errors.append("state.toml pr_number must be a non-negative integer")
+
+    for field in (
+        "preflight_candidate_sha256",
+        "test_candidate_sha256",
+        "sealed_candidate_sha256",
+        "validation_candidate_sha256",
+        "packaging_candidate_sha256",
+        "pr_evidence_sha256",
+    ):
+        if not _valid_fingerprint(state.get(field)):
+            errors.append(f"state.toml {field} must be empty or a sha256 fingerprint")
 
     preflight_verdict = state.get("preflight_verdict")
+    test_verdict = state.get("test_verdict")
+    seal_verdict = state.get("seal_verdict")
     if preflight_verdict not in {"", "PASS", "RETURN"}:
         errors.append("state.toml preflight_verdict must be empty, PASS, or RETURN")
-    test_verdict = state.get("test_verdict")
     if test_verdict not in {"", "PASS", "RETURN"}:
         errors.append("state.toml test_verdict must be empty, PASS, or RETURN")
+    if seal_verdict not in {"", "PASS", "RETURN"}:
+        errors.append("state.toml seal_verdict must be empty, PASS, or RETURN")
 
     review_required = state.get("return_review_required")
     if not isinstance(review_required, bool):
         errors.append("state.toml return_review_required must be a boolean")
-    review_action = state.get("return_review_action")
-    if review_action not in {"", "implementation", "exploration"}:
+    if state.get("return_review_action") not in {"", "implementation", "exploration"}:
         errors.append("state.toml return_review_action is invalid")
-    review_reason = state.get("return_review_reason")
-    if not isinstance(review_reason, str):
+    if not isinstance(state.get("return_review_reason"), str):
         errors.append("state.toml return_review_reason must be a string")
-    if review_action and not review_reason:
+    if state.get("return_review_action") and not state.get("return_review_reason"):
         errors.append("return_review_action requires return_review_reason")
 
     phase = state.get("phase")
     status = state.get("status")
     if phase not in PHASES:
         errors.append(f"invalid phase: {phase!r}")
-    if status not in {"in_progress", "blocked", "complete"}:
+    if status not in {"in_progress", "blocked", "validated", "complete"}:
         errors.append(f"invalid status: {status!r}")
 
     block_kind = state.get("block_kind")
@@ -500,44 +570,69 @@ def validate_state(task_dir: Path, state: dict[str, Any]) -> list[str]:
     if phase == "feasibility":
         if status == "in_progress" and feasibility_verdict != "":
             errors.append("in-progress feasibility requires an empty feasibility_verdict")
-        if status == "blocked" and feasibility_verdict not in {"", "BLOCKED"}:
-            errors.append("blocked feasibility has an invalid feasibility_verdict")
     elif feasibility_verdict not in {"PASS", "LEGACY"} and status != "blocked":
         errors.append("phases after feasibility require feasibility_verdict PASS")
 
-    test_cycle = state.get("test_cycle")
-    preflight_cycle = state.get("preflight_cycle")
-    if (
-        isinstance(test_cycle, int)
-        and isinstance(preflight_cycle, int)
-        and preflight_cycle > test_cycle + 1
-    ):
-        errors.append("preflight_cycle cannot be more than one ahead of test_cycle")
-    if isinstance(preflight_cycle, int) and preflight_verdict and preflight_cycle == 0:
-        errors.append("a preflight verdict requires preflight_cycle >= 1")
-
     if phase in {"feasibility", "exploration", "planning"}:
-        if test_cycle != 0 or test_verdict != "":
-            errors.append("test_cycle and test_verdict must reset before implementation")
-        if preflight_cycle != 0 or preflight_verdict != "":
-            errors.append("preflight state must reset before implementation")
+        for field in (
+            "preflight_cycle",
+            "test_cycle",
+            "seal_cycle",
+            "test_return_count",
+        ):
+            if state.get(field) != 0:
+                errors.append(f"{field} must reset before implementation")
+        for field in (
+            "preflight_verdict",
+            "test_verdict",
+            "seal_verdict",
+            "preflight_candidate_sha256",
+            "test_candidate_sha256",
+            "sealed_candidate_sha256",
+            "validation_candidate_sha256",
+            "packaging_candidate_sha256",
+        ):
+            if state.get(field) != "":
+                errors.append(f"{field} must reset before implementation")
 
     if review_required:
         if phase != "implementation" or test_verdict != "RETURN":
-            errors.append(
-                "return_review_required is valid only after tester RETURN in implementation"
-            )
-        if state.get("test_return_count", 0) < 2:
-            errors.append("return_review_required requires at least two tester RETURNs")
+            errors.append("return_review_required is valid only after Tester RETURN")
+        if int(state.get("test_return_count", 0)) < 2:
+            errors.append("return_review_required requires at least two Tester RETURNs")
 
-    if phase == "validation" or status == "complete":
-        if not isinstance(test_cycle, int) or test_cycle < 1:
-            errors.append("validation requires at least one completed test cycle")
+    if mode == "ENFORCED":
+        if preflight_verdict and not state.get("preflight_candidate_sha256"):
+            errors.append("a preflight verdict requires preflight_candidate_sha256")
+        if test_verdict and not state.get("test_candidate_sha256"):
+            errors.append("a test verdict requires test_candidate_sha256")
+        if seal_verdict and not state.get("sealed_candidate_sha256"):
+            errors.append("a seal verdict requires sealed_candidate_sha256")
+        if phase in {"validation", "packaging"} or status in {"validated", "complete"}:
+            if test_verdict != "PASS" or seal_verdict != "PASS":
+                errors.append("validation requires Tester PASS and candidate seal PASS")
+            if state.get("test_candidate_sha256") != state.get("sealed_candidate_sha256"):
+                errors.append("Tester and sealed candidate fingerprints must match")
+        if phase == "packaging" or status in {"validated", "complete"}:
+            if state.get("validation_candidate_sha256") != state.get("sealed_candidate_sha256"):
+                errors.append("Validator and sealed candidate fingerprints must match")
+        if status == "validated":
+            if phase != "packaging" or state.get("verdict") != "VALIDATED":
+                errors.append("validated status requires packaging phase and VALIDATED verdict")
+        if status == "complete":
+            if phase != "packaging" or state.get("verdict") != "PASS":
+                errors.append("complete status requires packaging phase and PASS verdict")
+            if state.get("packaging_candidate_sha256") != state.get("validation_candidate_sha256"):
+                errors.append("packaging and Validator candidate fingerprints must match")
+            if int(state.get("pr_number", 0)) < 1 or not state.get("pr_head_sha"):
+                errors.append("complete task requires PR number and head SHA")
+            if state.get("remote_checks_verdict") != "PASS":
+                errors.append("complete task requires remote_checks_verdict PASS")
+            if not state.get("pr_evidence_sha256"):
+                errors.append("complete task requires PR evidence binding")
+    elif phase == "validation" or status == "complete":
         if test_verdict != "PASS":
-            errors.append("validation requires test_verdict = PASS")
-        if feasibility_verdict != "LEGACY":
-            if preflight_verdict != "PASS" or preflight_cycle != test_cycle:
-                errors.append(
-                    "validation requires a matching preflight PASS for the test cycle"
-                )
+            errors.append("legacy validation requires test_verdict PASS")
+        if preflight_verdict != "PASS":
+            errors.append("legacy validation requires preflight_verdict PASS")
     return errors
