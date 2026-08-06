@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import re
 import shutil
@@ -12,21 +11,18 @@ import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, NamedTuple
+from typing import Any
+
+from issue_task_candidate import initial_base_revision
+from issue_task_issue import (
+    AcceptanceItem,
+    escape_table_cell,
+    write_issue_snapshot,
+)
+from issue_task_state import CURRENT_SCHEMA_VERSION
 
 DEFAULT_REPO = "Motoki0705/tennis-lab"
 ISSUE_NUMBER_RE = re.compile(r"(?:^|/issues/)(\d+)(?:$|[/?#])")
-SOURCE_ACCEPTANCE_SECTION_RE = re.compile(
-    r"(?ms)^## Acceptance checklist\s*\n(.*?)(?=^##\s+|\Z)"
-)
-TASK_LIST_RE = re.compile(r"(?m)^\s*[-*+]\s+\[([ xX])\]\s+(.+?)\s*$")
-
-
-class AcceptanceItem(NamedTuple):
-    item_id: str
-    text: str
-    source_checked: bool
-
 
 TEMPLATES = {
     "00-feasibility/feasibility.md": """# Feasibility
@@ -67,7 +63,7 @@ None
 - Attempt: {attempt}
 - Status: PENDING
 
-## Scope and issue interpretation
+## Scope and Issue interpretation
 
 ## Relevant files and symbols
 
@@ -82,6 +78,8 @@ None
 ## Risks and likely impact radius
 
 ## Unresolved questions
+
+None
 
 ## Evidence table
 
@@ -105,9 +103,13 @@ None
 
 ## Planned files and symbols
 
-## Implementation work units and ownership
+## Implementation topology and ownership
 
 ## Independent test work unit
+
+## Canonical verification commands
+
+Define the exact commands in `02-planning/checks.json` and summarize their IDs here.
 
 ## Ordered execution plan
 
@@ -116,6 +118,8 @@ None
 ## Non-goals and prohibited changes
 
 ## Risks, rollback, and open decisions
+
+None
 """,
     "03-implementation/implementation.md": """# Implementation
 
@@ -132,18 +136,25 @@ None
 
 ## Plan deviations and rationale
 
+None
+
 ## Commands and results
 
 ## Known limitations and remaining risks
 
+None
+
 ## Handoff
 """,
-    "03-implementation/preflight.md": """# Preflight
+    "03-implementation/preflight.md": """# Production preflight
 
 - Issue: #{number}
 - Attempt: {attempt}
 - Test cycle: 1
 - Status: PENDING
+- Candidate SHA-256: `PENDING`
+
+## Candidate identity
 
 ## Changed scope
 
@@ -151,17 +162,19 @@ None
 
 ## Focused checks
 
-## Canonical required checks
+## Canonical command results
 
 ## Baseline comparison
 
 ## Commands and exact outcomes
 
-## Final preflight verdict
+## Final production preflight verdict
 
 PENDING
 
 ## RETURN implementation findings
+
+None
 """,
     "03-implementation/tests.md": """# Tests
 
@@ -170,6 +183,9 @@ PENDING
 - Test cycle: 1
 - Status: PENDING
 - Frozen acceptance checklist SHA-256: `{checklist_hash}`
+- Candidate SHA-256: `PENDING`
+
+## Candidate identity
 
 ## Acceptance-checklist-to-test mapping
 
@@ -179,19 +195,55 @@ PENDING
 
 ## Tests added or changed
 
+None
+
 ## Normal, boundary, invalid, and regression cases
+
+## Canonical command results
 
 ## Commands and exact outcomes
 
 ## Failures encountered
 
+None
+
 ## Untested risks and reasons
+
+None
 
 ## Final test verdict
 
 PENDING
 
 ## RETURN implementation findings
+
+None
+""",
+    "03-implementation/seal.md": """# Final candidate seal
+
+- Issue: #{number}
+- Attempt: {attempt}
+- Test cycle: 1
+- Status: PENDING
+- Candidate SHA-256: `PENDING`
+
+## Candidate identity
+
+## Changed-since-test inspection
+
+## Canonical command results
+
+## Complete scope inspection
+
+## Commands and exact outcomes
+
+## Final candidate seal verdict
+
+PENDING
+
+## RETURN implementation findings
+
+None
 """,
     "04-validation/validation.md": """# Validation
 
@@ -200,6 +252,7 @@ PENDING
 - Status: PENDING
 - Frozen issue SHA-256: `{issue_hash}`
 - Frozen acceptance checklist SHA-256: `{checklist_hash}`
+- Candidate SHA-256: `PENDING`
 
 ## Inspection scope and revision
 
@@ -220,8 +273,37 @@ PENDING
 PENDING
 
 ## RETURN exploration questions
+
+None
+""",
+    "05-packaging/packaging.md": """# Packaging
+
+- Issue: #{number}
+- Attempt: {attempt}
+- Status: PENDING
+- Candidate SHA-256: `PENDING`
+- PR number: 0
+- PR head SHA: `PENDING`
+- Remote checks: PENDING
+- PR evidence SHA-256: `PENDING`
+
+## Final candidate binding
+
+## Pull request identity
+
+## Complete paginated diff scope
+
+## Remote required checks
+
+## Packaging evidence
+
+## Final packaging verdict
+
+PENDING
 """,
 }
+
+DEFAULT_CHECKS = {"schema_version": 1, "checks": []}
 
 
 def parse_args() -> argparse.Namespace:
@@ -232,7 +314,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--refresh-issue",
         action="store_true",
-        help="Refresh issue.md and restart at feasibility without replacing later phase files.",
+        help="Refresh the frozen Issue and restart at feasibility.",
     )
     return parser.parse_args()
 
@@ -268,64 +350,9 @@ def run_gh(number: int, repo: str) -> dict[str, Any]:
     return payload
 
 
-def canonical_hash(payload: dict[str, Any]) -> str:
-    canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode()).hexdigest()
-
-
-def extract_acceptance_items(body: str) -> list[AcceptanceItem]:
-    section = SOURCE_ACCEPTANCE_SECTION_RE.search(body)
-    if section is None:
-        raise ValueError(
-            "issue body must contain a `## Acceptance checklist` section with at least "
-            "one Markdown task-list item"
-        )
-    raw_items = TASK_LIST_RE.findall(section.group(1))
-    if not raw_items:
-        raise ValueError(
-            "the `## Acceptance checklist` section must contain at least one item, "
-            "for example `- [ ] observable requirement`"
-        )
-
-    items: list[AcceptanceItem] = []
-    seen_texts: set[str] = set()
-    for index, (mark, raw_text) in enumerate(raw_items, start=1):
-        text = " ".join(raw_text.split())
-        if not text:
-            raise ValueError("issue acceptance checklist cannot contain a blank item")
-        if text in seen_texts:
-            raise ValueError(f"issue acceptance checklist contains duplicate item: {text!r}")
-        seen_texts.add(text)
-        items.append(AcceptanceItem(f"AC-{index:03d}", text, mark.lower() == "x"))
-    return items
-
-
-def acceptance_hash(items: list[AcceptanceItem]) -> str:
-    canonical = json.dumps(
-        [{"id": item.item_id, "text": item.text} for item in items],
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    )
-    return hashlib.sha256(canonical.encode()).hexdigest()
-
-
-def escape_table_cell(text: str) -> str:
-    return text.replace("|", r"\|")
-
-
-def render_acceptance_list(items: list[AcceptanceItem]) -> str:
-    return "\n".join(
-        f"- {item.item_id}: {item.text} (source checkbox: "
-        f"{'checked' if item.source_checked else 'unchecked'})"
-        for item in items
-    )
-
-
 def render_feasibility_rows(items: list[AcceptanceItem]) -> str:
     return "\n".join(
-        f"| {item.item_id} | {escape_table_cell(item.text)} | UNKNOWN | "
-        "Replace this evidence |"
+        f"| {item.item_id} | {escape_table_cell(item.text)} | UNKNOWN | Replace this evidence |"
         for item in items
     )
 
@@ -346,36 +373,8 @@ def render_test_rows(items: list[AcceptanceItem]) -> str:
 
 def render_validation_rows(items: list[AcceptanceItem]) -> str:
     return "\n".join(
-        f"| {item.item_id} | {escape_table_cell(item.text)} | NOT VERIFIED | "
-        "Replace this evidence |"
+        f"| {item.item_id} | {escape_table_cell(item.text)} | NOT VERIFIED | Replace this evidence |"
         for item in items
-    )
-
-
-def render_issue(
-    payload: dict[str, Any],
-    digest: str,
-    checklist_digest: str,
-    items: list[AcceptanceItem],
-) -> str:
-    labels = payload.get("labels") or []
-    label_names = [item.get("name", "") for item in labels if isinstance(item, dict)]
-    body = payload.get("body") or ""
-    return (
-        f"# GitHub Issue #{payload['number']}\n\n"
-        f"- URL: {payload['url']}\n"
-        f"- State: {payload['state']}\n"
-        f"- Upstream updated at: {payload['updatedAt']}\n"
-        f"- Snapshot SHA-256: `{digest}`\n"
-        f"- Acceptance checklist SHA-256: `{checklist_digest}`\n"
-        f"- Acceptance checklist item count: {len(items)}\n"
-        f"- Labels: {', '.join(label_names) if label_names else '(none)'}\n\n"
-        "## Acceptance checklist\n\n"
-        f"{render_acceptance_list(items)}\n\n"
-        "The source checkbox state is metadata only, not proof of implementation. "
-        "The validator must independently verify every item.\n\n"
-        f"## Title\n\n{payload['title']}\n\n"
-        f"## Body\n\n{body}\n"
     )
 
 
@@ -385,25 +384,69 @@ def render_state(
     checklist_digest: str,
     checklist_count: int,
     attempt: int = 1,
+    *,
+    issue_snapshot_digest: str = "",
+    base_revision: str = "",
+    schema_version: int = CURRENT_SCHEMA_VERSION,
 ) -> str:
+    """Render state; schema_version is explicit for migration tests."""
     now = datetime.now(UTC).isoformat()
+    if schema_version == 4:
+        return (
+            "schema_version = 4\n"
+            f"issue_number = {payload['number']}\n"
+            f"issue_url = {json.dumps(payload['url'])}\n"
+            f"issue_sha256 = {json.dumps(digest)}\n"
+            f"acceptance_checklist_sha256 = {json.dumps(checklist_digest)}\n"
+            f"acceptance_checklist_count = {checklist_count}\n"
+            f"attempt = {attempt}\n"
+            'feasibility_verdict = ""\n'
+            "preflight_cycle = 0\n"
+            'preflight_verdict = ""\n'
+            "test_cycle = 0\n"
+            'test_verdict = ""\n'
+            "test_return_count = 0\n"
+            "return_review_required = false\n"
+            'return_review_action = ""\n'
+            'return_review_reason = ""\n'
+            'phase = "feasibility"\n'
+            'status = "in_progress"\n'
+            'verdict = ""\n'
+            'block_kind = ""\n'
+            'block_reason = ""\n'
+            f"updated_at = {json.dumps(now)}\n"
+        )
     return (
-        "schema_version = 4\n"
+        f"schema_version = {CURRENT_SCHEMA_VERSION}\n"
         f"issue_number = {payload['number']}\n"
         f"issue_url = {json.dumps(payload['url'])}\n"
         f"issue_sha256 = {json.dumps(digest)}\n"
+        f"issue_snapshot_sha256 = {json.dumps(issue_snapshot_digest)}\n"
         f"acceptance_checklist_sha256 = {json.dumps(checklist_digest)}\n"
         f"acceptance_checklist_count = {checklist_count}\n"
+        f"base_revision = {json.dumps(base_revision)}\n"
+        'candidate_binding_mode = "ENFORCED"\n'
         f"attempt = {attempt}\n"
         'feasibility_verdict = ""\n'
         "preflight_cycle = 0\n"
         'preflight_verdict = ""\n'
+        'preflight_candidate_sha256 = ""\n'
         "test_cycle = 0\n"
         'test_verdict = ""\n'
+        'test_candidate_sha256 = ""\n'
+        "seal_cycle = 0\n"
+        'seal_verdict = ""\n'
+        'sealed_candidate_sha256 = ""\n'
         "test_return_count = 0\n"
         "return_review_required = false\n"
         'return_review_action = ""\n'
         'return_review_reason = ""\n'
+        'validation_candidate_sha256 = ""\n'
+        'packaging_candidate_sha256 = ""\n'
+        "pr_number = 0\n"
+        'pr_head_sha = ""\n'
+        'remote_checks_verdict = ""\n'
+        'pr_evidence_sha256 = ""\n'
         'phase = "feasibility"\n'
         'status = "in_progress"\n'
         'verdict = ""\n'
@@ -429,38 +472,35 @@ def main() -> int:
     try:
         number = issue_number(args.issue)
         payload = run_gh(number, args.repo)
-        body = payload.get("body") or ""
-        items = extract_acceptance_items(body)
-        digest = canonical_hash(payload)
-        checklist_digest = acceptance_hash(items)
         task_dir = args.root / f"issue-{number}"
         state_path = task_dir / "state.toml"
-
         if task_dir.exists() and not args.refresh_issue:
             raise RuntimeError(
                 f"{task_dir} already exists; use --refresh-issue only when the upstream issue changed"
             )
-
         task_dir.mkdir(parents=True, exist_ok=True)
-        (task_dir / "issue.md").write_text(
-            render_issue(payload, digest, checklist_digest, items),
-            encoding="utf-8",
+        issue_hash, issue_snapshot_hash, checklist_hash, items = write_issue_snapshot(
+            task_dir,
+            payload,
         )
-
-        if args.refresh_issue:
-            attempt = max(existing_attempt(state_path) + 1, 1)
-        else:
-            attempt = 1
+        attempt = max(existing_attempt(state_path) + 1, 1) if args.refresh_issue else 1
         state_path.write_text(
-            render_state(payload, digest, checklist_digest, len(items), attempt),
+            render_state(
+                payload,
+                issue_hash,
+                checklist_hash,
+                len(items),
+                attempt,
+                issue_snapshot_digest=issue_snapshot_hash,
+                base_revision=initial_base_revision(task_dir),
+            ),
             encoding="utf-8",
         )
-
         format_values = {
             "number": number,
             "attempt": attempt,
-            "issue_hash": digest,
-            "checklist_hash": checklist_digest,
+            "issue_hash": issue_hash,
+            "checklist_hash": checklist_hash,
             "feasibility_rows": render_feasibility_rows(items),
             "plan_rows": render_plan_rows(items),
             "test_rows": render_test_rows(items),
@@ -469,10 +509,14 @@ def main() -> int:
         for relative_path, template in TEMPLATES.items():
             path = task_dir / relative_path
             path.parent.mkdir(parents=True, exist_ok=True)
-            should_replace = relative_path == "00-feasibility/feasibility.md"
-            if not path.exists() or should_replace:
+            if not path.exists() or args.refresh_issue or relative_path == "00-feasibility/feasibility.md":
                 path.write_text(template.format(**format_values), encoding="utf-8")
-
+        checks_path = task_dir / "02-planning/checks.json"
+        if not checks_path.exists() or args.refresh_issue:
+            checks_path.write_text(
+                json.dumps(DEFAULT_CHECKS, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
         print(task_dir)
         return 0
     except (OSError, ValueError, RuntimeError, json.JSONDecodeError) as exc:

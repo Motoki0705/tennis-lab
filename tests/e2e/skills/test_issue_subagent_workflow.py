@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-import hashlib
 import importlib.util
 import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 from types import ModuleType
 
@@ -12,583 +14,621 @@ ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS = ROOT / ".agents/skills/issue-subagent-workflow/scripts"
 
 
-def load_module(name: str, path: Path) -> ModuleType:
+def load(name: str) -> ModuleType:
+    path = SCRIPTS / f"{name}.py"
     spec = importlib.util.spec_from_file_location(name, path)
-    assert spec is not None
-    assert spec.loader is not None
+    assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
     spec.loader.exec_module(module)
     return module
 
 
-manage = load_module("manage_issue_task", SCRIPTS / "manage_issue_task.py")
-initializer = load_module("init_issue_task", SCRIPTS / "init_issue_task.py")
+sys.path.insert(0, str(SCRIPTS))
+init = load("init_issue_task")
+manage = load("manage_issue_task")
+candidate = load("issue_task_candidate")
 
 
-def checklist_digest(items: list[tuple[str, str]]) -> str:
-    canonical = json.dumps(
-        [{"id": item_id, "text": text} for item_id, text in items],
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
+def git(root: Path, *args: str) -> str:
+    result = subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True, text=True)
+    return result.stdout.strip()
+
+
+def setup_task(tmp_path: Path) -> tuple[Path, Path]:
+    root = tmp_path / "repo"
+    root.mkdir()
+    git(root, "init")
+    git(root, "config", "user.email", "test@example.com")
+    git(root, "config", "user.name", "Test")
+    (root / "src.txt").write_text("base\n", encoding="utf-8")
+    git(root, "add", ".")
+    git(root, "commit", "-m", "base")
+
+    task = root / ".codex/tasks/issue-1"
+    task.mkdir(parents=True)
+    payload = {
+        "number": 1,
+        "title": "Example",
+        "body": "## Acceptance checklist\n\n- [ ] Observable behavior\n- [ ] Regression is covered\n",
+        "url": "https://github.com/example/repo/issues/1",
+        "state": "OPEN",
+        "labels": [],
+        "updatedAt": "2026-08-06T00:00:00Z",
+    }
+    issue_hash, issue_md_hash, checklist_hash, items = init.write_issue_snapshot(task, payload)
+    (task / "state.toml").write_text(
+        init.render_state(
+            payload,
+            issue_hash,
+            checklist_hash,
+            len(items),
+            issue_snapshot_digest=issue_md_hash,
+            base_revision=git(root, "rev-parse", "HEAD"),
+        ),
+        encoding="utf-8",
     )
-    return hashlib.sha256(canonical.encode()).hexdigest()
+    values = {
+        "number": 1,
+        "attempt": 1,
+        "issue_hash": issue_hash,
+        "checklist_hash": checklist_hash,
+        "feasibility_rows": init.render_feasibility_rows(items),
+        "plan_rows": init.render_plan_rows(items),
+        "test_rows": init.render_test_rows(items),
+        "validation_rows": init.render_validation_rows(items),
+    }
+    for relative, template in init.TEMPLATES.items():
+        path = task / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(template.format(**values), encoding="utf-8")
+    return root, task
 
 
-def write_task(
-    tmp_path: Path,
-    *,
-    phase: str = "implementation",
-    schema_version: int = 4,
-) -> Path:
-    task_dir = tmp_path / "issue-1"
-    for relative in (
-        "00-feasibility",
-        "01-exploration",
-        "02-planning",
-        "03-implementation",
-        "04-validation",
-    ):
-        (task_dir / relative).mkdir(parents=True, exist_ok=True)
+def write_feasibility(task: Path) -> None:
+    state = manage.load_state(task)
+    (task / "00-feasibility/feasibility.md").write_text(
+        f"""# Feasibility
 
-    items = [("AC-001", "Observable behavior"), ("AC-002", "Regression is covered")]
-    digest = checklist_digest(items)
-    (task_dir / "issue.md").write_text(
-        """# GitHub Issue #1
+- Issue: #1
+- Attempt: 1
+- Status: COMPLETE
+- Frozen issue SHA-256: `{state['issue_sha256']}`
+- Frozen acceptance checklist SHA-256: `{state['acceptance_checklist_sha256']}`
 
-## Acceptance checklist
+## Allowed and prohibited changes
+src and tests are allowed.
+## Required checks and baseline
+Canonical Python checks are required.
+## Breaking-change and compatibility impact
+No compatibility is required.
+## Acceptance checklist feasibility
 
-- AC-001: Observable behavior (source checkbox: unchecked)
-- AC-002: Regression is covered (source checkbox: unchecked)
+| ID | Issue checklist item | Verdict | Required change and evidence |
+|---|---|---|---|
+| AC-001 | Observable behavior | FEASIBLE | src change |
+| AC-002 | Regression is covered | FEASIBLE | test change |
 
-The source checkbox state is metadata only.
+## Constraint conflicts
 
-## Title
+None
 
-Example
+## Final feasibility verdict
 
-## Body
+PASS
 
-Example body
+## Blocker resolution required
+
+None
 """,
         encoding="utf-8",
     )
 
-    if schema_version == 3:
-        state_lines = (
-            "schema_version = 3",
-            "issue_number = 1",
-            'issue_url = "https://example.test/issues/1"',
-            'issue_sha256 = "issue"',
-            f'acceptance_checklist_sha256 = "{digest}"',
-            "acceptance_checklist_count = 2",
-            "attempt = 1",
-            "test_cycle = 0",
-            'test_verdict = ""',
-            f'phase = "{phase}"',
-            'status = "in_progress"',
-            'verdict = ""',
-            'updated_at = "2026-08-04T00:00:00+00:00"',
-            "",
-        )
-    else:
-        feasibility_verdict = "" if phase == "feasibility" else "PASS"
-        state_lines = (
-            "schema_version = 4",
-            "issue_number = 1",
-            'issue_url = "https://example.test/issues/1"',
-            'issue_sha256 = "issue"',
-            f'acceptance_checklist_sha256 = "{digest}"',
-            "acceptance_checklist_count = 2",
-            "attempt = 1",
-            f'feasibility_verdict = "{feasibility_verdict}"',
-            "preflight_cycle = 0",
-            'preflight_verdict = ""',
-            "test_cycle = 0",
-            'test_verdict = ""',
-            "test_return_count = 0",
-            "return_review_required = false",
-            'return_review_action = ""',
-            'return_review_reason = ""',
-            f'phase = "{phase}"',
-            'status = "in_progress"',
-            'verdict = ""',
-            'block_kind = ""',
-            'block_reason = ""',
-            'updated_at = "2026-08-04T00:00:00+00:00"',
-            "",
-        )
-    (task_dir / "state.toml").write_text("\n".join(state_lines), encoding="utf-8")
 
-    write_feasibility(task_dir, final_verdict="PASS")
-    (task_dir / "01-exploration/exploration.md").write_text(
+def write_exploration(task: Path) -> None:
+    (task / "01-exploration/exploration.md").write_text(
         """# Exploration
 
 - Issue: #1
 - Attempt: 1
 - Status: COMPLETE
 
+## Scope and Issue interpretation
+Change src and tests.
 ## Relevant files and symbols
-Done
+src.txt
 ## Entry points and execution paths
-Done
+Direct file behavior.
+## Data, configuration, and interface contracts
+Text contract.
 ## Existing tests and fixtures
-Done
+tests.txt
+## Invariants and compatibility constraints
+No compatibility.
+## Risks and likely impact radius
+Local only.
 ## Unresolved questions
 None
 ## Evidence table
-Done
+| Kind | Claim | Evidence |
+|---|---|---|
+| FACT | src exists | src.txt |
 """,
         encoding="utf-8",
     )
-    (task_dir / "02-planning/plan.md").write_text(
+
+
+def write_plan(task: Path) -> None:
+    state = manage.load_state(task)
+    (task / "02-planning/plan.md").write_text(
         f"""# Plan
 
 - Issue: #1
 - Attempt: 1
 - Status: COMPLETE
-- Frozen acceptance checklist SHA-256: `{digest}`
+- Frozen issue SHA-256: `{state['issue_sha256']}`
+- Frozen acceptance checklist SHA-256: `{state['acceptance_checklist_sha256']}`
 
 ## Acceptance checklist mapping
-
 | ID | Issue checklist item | Planned implementation | Validation method |
 |---|---|---|---|
-| AC-001 | Observable behavior | Change | Test |
-| AC-002 | Regression is covered | Change | Test |
-
-## Implementation work units and ownership
-Done
+| AC-001 | Observable behavior | edit src | canonical check |
+| AC-002 | Regression is covered | add tests | canonical check |
+## Planned files and symbols
+src.txt and tests.txt
+## Implementation topology and ownership
+One user-directed Implementer, also the explicit integrator.
 ## Independent test work unit
-Done
+Test Writer may add tests.txt.
+## Canonical verification commands
+`py-ok` is authoritative.
+## Ordered execution plan
+Implement, preflight, tests, seal, validate, package.
 ## Validation strategy
-Done
+Independent Validator.
+## Non-goals and prohibited changes
+No unrelated changes.
+## Risks, rollback, and open decisions
+None
 """,
         encoding="utf-8",
     )
-    format_values = {
-        "number": 1,
-        "attempt": 1,
-        "issue_hash": "issue",
-        "checklist_hash": digest,
-        "feasibility_rows": "",
-        "plan_rows": "",
-        "test_rows": (
-            "| AC-001 | Observable behavior | PENDING | PENDING |\n"
-            "| AC-002 | Regression is covered | PENDING | PENDING |"
-        ),
-        "validation_rows": (
-            "| AC-001 | Observable behavior | NOT VERIFIED | Replace this evidence |\n"
-            "| AC-002 | Regression is covered | NOT VERIFIED | Replace this evidence |"
-        ),
+    manifest = {
+        "schema_version": 1,
+        "checks": [
+            {
+                "id": "py-ok",
+                "argv": [sys.executable, "-c", "raise SystemExit(0)"],
+                "cwd": ".",
+                "env": {},
+                "stages": ["preflight", "test", "seal"],
+                "required": True,
+                "authority": ["AC-001", "AC-002"],
+            }
+        ],
     }
-    for relative in (
-        "03-implementation/implementation.md",
-        "03-implementation/preflight.md",
-        "03-implementation/tests.md",
-        "04-validation/validation.md",
-    ):
-        (task_dir / relative).write_text(
-            initializer.TEMPLATES[relative].format(**format_values),
-            encoding="utf-8",
-        )
-    return task_dir
+    (task / "02-planning/checks.json").write_text(json.dumps(manifest), encoding="utf-8")
 
 
-def write_feasibility(
-    task_dir: Path,
-    *,
-    final_verdict: str,
-    ac2_verdict: str = "FEASIBLE",
-) -> None:
-    state_path = task_dir / "state.toml"
-    digest = ""
-    if state_path.exists():
-        digest = manage.load_state(task_dir)["acceptance_checklist_sha256"]
-    else:
-        digest = checklist_digest(
-            [("AC-001", "Observable behavior"), ("AC-002", "Regression is covered")]
-        )
-    conflicts = "Tests are immutable but encode the removed API." if final_verdict == "BLOCKED" else "None"
-    resolution = "Allow the affected tests to change." if final_verdict == "BLOCKED" else "None"
-    (task_dir / "00-feasibility/feasibility.md").write_text(
-        f"""# Feasibility
+def write_implementation(task: Path, cycle: int) -> None:
+    (task / "03-implementation/implementation.md").write_text(
+        f"""# Implementation
+
+- Issue: #1
+- Attempt: 1
+- Test cycle: {cycle}
+- Status: COMPLETE
+
+## Assigned ownership
+Explicit integrator.
+## Files and symbols changed
+src.txt
+## Behavior implemented
+New behavior.
+## Plan deviations and rationale
+None
+## Commands and results
+Focused checks pass.
+## Known limitations and remaining risks
+None
+## Handoff
+Ready for preflight.
+""",
+        encoding="utf-8",
+    )
+
+
+def write_preflight(task: Path, cycle: int, fp: str) -> None:
+    (task / "03-implementation/preflight.md").write_text(
+        f"""# Production preflight
+
+- Issue: #1
+- Attempt: 1
+- Test cycle: {cycle}
+- Status: COMPLETE
+- Candidate SHA-256: `{fp}`
+
+## Candidate identity
+{fp}
+## Changed scope
+src.txt
+## Deterministic policy checks
+PASS
+## Focused checks
+PASS
+## Canonical command results
+py-ok PASS
+## Baseline comparison
+No regression.
+## Commands and exact outcomes
+See machine result.
+## Final production preflight verdict
+PASS
+## RETURN implementation findings
+None
+""",
+        encoding="utf-8",
+    )
+
+
+def write_tests(task: Path, cycle: int, fp: str) -> None:
+    state = manage.load_state(task)
+    (task / "03-implementation/tests.md").write_text(
+        f"""# Tests
+
+- Issue: #1
+- Attempt: 1
+- Test cycle: {cycle}
+- Status: COMPLETE
+- Frozen acceptance checklist SHA-256: `{state['acceptance_checklist_sha256']}`
+- Candidate SHA-256: `{fp}`
+
+## Candidate identity
+{fp}
+## Acceptance-checklist-to-test mapping
+| ID | Issue checklist item | Test or authoritative evidence | Result |
+|---|---|---|---|
+| AC-001 | Observable behavior | py-ok | PASS |
+| AC-002 | Regression is covered | tests.txt | PASS |
+## Tests added or changed
+tests.txt
+## Normal, boundary, invalid, and regression cases
+Covered.
+## Canonical command results
+py-ok PASS
+## Commands and exact outcomes
+See machine result.
+## Failures encountered
+None
+## Untested risks and reasons
+None
+## Final test verdict
+PASS
+## RETURN implementation findings
+None
+""",
+        encoding="utf-8",
+    )
+
+
+def write_seal(task: Path, cycle: int, fp: str) -> None:
+    (task / "03-implementation/seal.md").write_text(
+        f"""# Final candidate seal
+
+- Issue: #1
+- Attempt: 1
+- Test cycle: {cycle}
+- Status: COMPLETE
+- Candidate SHA-256: `{fp}`
+
+## Candidate identity
+{fp}
+## Changed-since-test inspection
+No changes.
+## Canonical command results
+py-ok PASS
+## Complete scope inspection
+Allowed scope only.
+## Commands and exact outcomes
+See machine result.
+## Final candidate seal verdict
+PASS
+## RETURN implementation findings
+None
+""",
+        encoding="utf-8",
+    )
+
+
+def write_validation(task: Path, fp: str) -> None:
+    state = manage.load_state(task)
+    (task / "04-validation/validation.md").write_text(
+        f"""# Validation
 
 - Issue: #1
 - Attempt: 1
 - Status: COMPLETE
-- Frozen acceptance checklist SHA-256: `{digest}`
+- Frozen issue SHA-256: `{state['issue_sha256']}`
+- Frozen acceptance checklist SHA-256: `{state['acceptance_checklist_sha256']}`
+- Candidate SHA-256: `{fp}`
 
-## Allowed and prohibited changes
-Done
-## Required checks and baseline
-Done
-## Breaking-change and compatibility impact
-Done
-## Acceptance checklist feasibility
-
-| ID | Issue checklist item | Verdict | Required change and evidence |
+## Inspection scope and revision
+Inspected {fp}.
+## Acceptance checklist verification
+| ID | Issue checklist item | Verdict | Evidence |
 |---|---|---|---|
-| AC-001 | Observable behavior | FEASIBLE | src change |
-| AC-002 | Regression is covered | {ac2_verdict} | test contract |
-
-## Constraint conflicts
-
-{conflicts}
-
-## Final feasibility verdict
-
-{final_verdict}
-
-## Blocker resolution required
-
-{resolution}
+| AC-001 | Observable behavior | PASS | src.txt direct inspection |
+| AC-002 | Regression is covered | PASS | tests.txt and py-ok |
+## Code evidence
+src.txt
+## Runtime and test evidence
+py-ok PASS
+## Regression and repository-rule checks
+Scope PASS
+## Final verdict
+PASS
+## RETURN exploration questions
+None
 """,
         encoding="utf-8",
     )
 
 
-def write_implementation_cycle(task_dir: Path, cycle: int, *, attempt: int = 1) -> None:
-    (task_dir / "03-implementation/implementation.md").write_text(
-        f"""# Implementation
-
-- Issue: #1
-- Attempt: {attempt}
-- Test cycle: {cycle}
-- Status: COMPLETE
-
-## Files and symbols changed
-Done
-## Behavior implemented
-Done
-## Commands and results
-Done
-## Handoff
-Done
-""",
-        encoding="utf-8",
-    )
+def advance_to_implementation(root: Path, task: Path) -> None:
+    write_feasibility(task)
+    manage.apply_feasibility_verdict(task, "PASS", kind=None, reason=None)
+    write_exploration(task)
+    manage.transition(task, "planning")
+    write_plan(task)
+    manage.transition(task, "implementation")
+    (root / "src.txt").write_text("changed\n", encoding="utf-8")
 
 
-def write_preflight_cycle(
-    task_dir: Path,
-    cycle: int,
-    verdict: str,
+def advance_to_validation(root: Path, task: Path) -> str:
+    advance_to_implementation(root, task)
+    write_implementation(task, 1)
+    fp = candidate.compute_candidate_fingerprint(task, manage.load_state(task))
+    write_preflight(task, 1, fp)
+    assert manage.run_check(task, "preflight", "py-ok") == 0
+    manage.apply_preflight_verdict(task, "PASS")
+
+    (root / "tests.txt").write_text("new test\n", encoding="utf-8")
+    test_fp = candidate.compute_candidate_fingerprint(task, manage.load_state(task))
+    assert test_fp != fp
+    write_tests(task, 1, test_fp)
+    assert manage.run_check(task, "test", "py-ok") == 0
+    manage.apply_test_verdict(task, "PASS")
+
+    write_seal(task, 1, test_fp)
+    assert manage.run_check(task, "seal", "py-ok") == 0
+    manage.apply_seal_verdict(task, "PASS")
+    manage.transition(task, "validation")
+    return test_fp
+
+
+
+def install_fake_gh(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
     *,
-    attempt: int = 1,
+    head: str,
+    checks_pass: bool,
 ) -> None:
-    findings = "Fix the deterministic production failure." if verdict == "RETURN" else ""
-    (task_dir / "03-implementation/preflight.md").write_text(
-        f"""# Preflight
+    directory = tmp_path / "fake-bin"
+    directory.mkdir(exist_ok=True)
+    script = directory / "gh"
+    script.write_text(
+        """#!/usr/bin/env python3
+import json
+import os
+import sys
 
-- Issue: #1
-- Attempt: {attempt}
-- Test cycle: {cycle}
-- Status: COMPLETE
-
-## Changed scope
-Done
-## Deterministic policy checks
-Done
-## Focused checks
-Done
-## Canonical required checks
-Done
-## Baseline comparison
-Done
-## Commands and exact outcomes
-Done
-## Final preflight verdict
-
-{verdict}
-
-## RETURN implementation findings
-
-{findings}
+head = os.environ["FAKE_PR_HEAD"]
+checks_pass = os.environ["FAKE_CHECKS_PASS"] == "1"
+if sys.argv[1:3] == ["pr", "view"]:
+    conclusion = "SUCCESS" if checks_pass else "FAILURE"
+    print(json.dumps({
+        "number": 706,
+        "url": "https://github.com/example/repo/pull/706",
+        "headRefOid": head,
+        "isDraft": False,
+        "state": "OPEN",
+        "statusCheckRollup": [{
+            "__typename": "CheckRun",
+            "name": "CI",
+            "status": "COMPLETED",
+            "conclusion": conclusion,
+        }],
+    }))
+elif sys.argv[1] == "api":
+    print(json.dumps([[{"filename": "src.txt"}, {"filename": "tests.txt"}]]))
+else:
+    raise SystemExit(2)
 """,
         encoding="utf-8",
     )
+    script.chmod(0o755)
+    monkeypatch.setenv("FAKE_PR_HEAD", head)
+    monkeypatch.setenv("FAKE_CHECKS_PASS", "1" if checks_pass else "0")
+    monkeypatch.setenv("PATH", f"{directory}:{os.environ.get('PATH', '')}")
 
 
-def write_tests_cycle(
-    task_dir: Path,
-    cycle: int,
-    verdict: str,
-    *,
-    attempt: int = 1,
+def test_full_v5_flow_uses_validated_then_complete(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    state = manage.load_state(task_dir)
-    digest = state["acceptance_checklist_sha256"]
-    findings = (
-        "Fix the production branch for the failing regression."
-        if verdict == "RETURN"
-        else ""
-    )
-    result = "FAIL" if verdict == "RETURN" else "PASS"
-    (task_dir / "03-implementation/tests.md").write_text(
-        f"""# Tests
+    root, task = setup_task(tmp_path)
+    fp = advance_to_validation(root, task)
+    write_validation(task, fp)
+    manage.apply_validation_verdict(task, "PASS")
+    state = manage.load_state(task)
+    assert state["phase"] == "packaging"
+    assert state["status"] == "validated"
+    assert state["verdict"] == "VALIDATED"
+
+    git(root, "add", "src.txt", "tests.txt")
+    git(root, "commit", "-m", "candidate")
+    head = git(root, "rev-parse", "HEAD")
+    assert candidate.compute_revision_fingerprint(task, state, head) == fp
+    install_fake_gh(tmp_path, monkeypatch, head=head, checks_pass=True)
+    manage.capture_pr_evidence(task, pr_number=706)
+    state = manage.load_state(task)
+    evidence_digest = state["pr_evidence_sha256"]
+    (task / "05-packaging/packaging.md").write_text(
+        f"""# Packaging
 
 - Issue: #1
-- Attempt: {attempt}
-- Test cycle: {cycle}
+- Attempt: 1
 - Status: COMPLETE
-- Frozen acceptance checklist SHA-256: `{digest}`
+- Candidate SHA-256: `{fp}`
+- PR number: 706
+- PR head SHA: `{head}`
+- Remote checks: PASS
+- PR evidence SHA-256: `{evidence_digest}`
 
-## Acceptance-checklist-to-test mapping
-
-| ID | Issue checklist item | Test or authoritative evidence | Result |
-|---|---|---|---|
-| AC-001 | Observable behavior | test_behavior | PASS |
-| AC-002 | Regression is covered | test_regression | {result} |
-
-## Tests added or changed
-Done
-## Commands and exact outcomes
-Done
-## Final test verdict
-
-{verdict}
-
-## RETURN implementation findings
-
-{findings}
+## Final candidate binding
+Matches Validator candidate.
+## Pull request identity
+PR #706 at {head}.
+## Complete paginated diff scope
+Allowed scope PASS.
+## Remote required checks
+All required checks PASS.
+## Packaging evidence
+Remote inspection recorded.
+## Final packaging verdict
+PASS
 """,
         encoding="utf-8",
     )
+    manage.finalize_pr(task, pr_number=706, head_sha=head)
+    state = manage.load_state(task)
+    assert state["status"] == "complete"
+    assert state["verdict"] == "PASS"
+    assert manage.check(task) == []
 
 
-def pass_preflight(task_dir: Path, cycle: int, *, attempt: int = 1) -> None:
-    write_implementation_cycle(task_dir, cycle, attempt=attempt)
-    write_preflight_cycle(task_dir, cycle, "PASS", attempt=attempt)
-    manage.apply_preflight_verdict(task_dir, "PASS")
+def test_candidate_change_after_tester_pass_requires_retest(tmp_path: Path) -> None:
+    root, task = setup_task(tmp_path)
+    advance_to_implementation(root, task)
+    write_implementation(task, 1)
+    fp = candidate.compute_candidate_fingerprint(task, manage.load_state(task))
+    write_preflight(task, 1, fp)
+    manage.run_check(task, "preflight", "py-ok")
+    manage.apply_preflight_verdict(task, "PASS")
+    write_tests(task, 1, fp)
+    manage.run_check(task, "test", "py-ok")
+    manage.apply_test_verdict(task, "PASS")
+    (root / "src.txt").write_text("changed again\n", encoding="utf-8")
+    new_fp = candidate.compute_candidate_fingerprint(task, manage.load_state(task))
+    write_seal(task, 1, new_fp)
+    with pytest.raises(ValueError, match="rerun the Test Writer"):
+        manage.apply_seal_verdict(task, "PASS")
 
 
-def test_initializer_starts_at_schema_v4_feasibility() -> None:
-    state = initializer.render_state(
-        {"number": 1, "url": "https://example.test/issues/1"},
-        "issue",
-        "checklist",
-        2,
+def test_issue_body_tampering_blocks_transition(tmp_path: Path) -> None:
+    _, task = setup_task(tmp_path)
+    write_feasibility(task)
+    (task / "issue.md").write_text(
+        (task / "issue.md").read_text(encoding="utf-8").replace("Example", "Tampered"),
+        encoding="utf-8",
     )
-    assert "schema_version = 4" in state
-    assert 'phase = "feasibility"' in state
-    assert 'feasibility_verdict = ""' in state
+    with pytest.raises(ValueError, match="issue.md does not exactly match"):
+        manage.apply_feasibility_verdict(task, "PASS", kind=None, reason=None)
 
 
-def test_feasibility_pass_enters_exploration(tmp_path: Path) -> None:
-    task_dir = write_task(tmp_path, phase="feasibility")
-    manage.apply_feasibility_verdict(task_dir, "PASS", kind=None, reason=None)
-
-    state = manage.load_state(task_dir)
-    assert state["phase"] == "exploration"
-    assert state["feasibility_verdict"] == "PASS"
-    assert state["status"] == "in_progress"
-
-
-def test_feasibility_blocked_stops_before_implementation(tmp_path: Path) -> None:
-    task_dir = write_task(tmp_path, phase="feasibility")
-    write_feasibility(task_dir, final_verdict="BLOCKED", ac2_verdict="BLOCKED")
-
-    manage.apply_feasibility_verdict(
-        task_dir,
-        "BLOCKED",
-        kind="constraint_conflict",
-        reason="The required breaking change conflicts with immutable tests.",
-    )
-
-    state = manage.load_state(task_dir)
-    assert state["status"] == "blocked"
-    assert state["verdict"] == "BLOCKED"
-    assert state["block_kind"] == "constraint_conflict"
-    assert manage.check(task_dir) == []
-
-
-def test_preflight_return_does_not_spend_a_test_cycle(tmp_path: Path) -> None:
-    task_dir = write_task(tmp_path)
-    write_implementation_cycle(task_dir, 1)
-    write_preflight_cycle(task_dir, 1, "RETURN")
-
-    manage.apply_preflight_verdict(task_dir, "RETURN")
-    state = manage.load_state(task_dir)
-    assert state["preflight_cycle"] == 1
-    assert state["preflight_verdict"] == "RETURN"
-    assert state["test_cycle"] == 0
-
-    write_tests_cycle(task_dir, 1, "RETURN")
-    with pytest.raises(ValueError, match="preflight-verdict PASS"):
-        manage.apply_test_verdict(task_dir, "RETURN")
-
-
-def test_test_return_reenters_implementer_before_validation(tmp_path: Path) -> None:
-    task_dir = write_task(tmp_path)
-    pass_preflight(task_dir, 1)
-    write_tests_cycle(task_dir, 1, "RETURN")
-
-    manage.apply_test_verdict(task_dir, "RETURN")
-    state = manage.load_state(task_dir)
-    assert state["phase"] == "implementation"
-    assert state["test_cycle"] == 1
-    assert state["test_verdict"] == "RETURN"
-
-    with pytest.raises(ValueError, match="test-verdict PASS"):
-        manage.transition(task_dir, "validation")
-
-    pass_preflight(task_dir, 2)
-    write_tests_cycle(task_dir, 2, "PASS")
-    manage.apply_test_verdict(task_dir, "PASS")
-    manage.transition(task_dir, "validation")
-
-    state = manage.load_state(task_dir)
-    assert state["phase"] == "validation"
-    assert state["test_cycle"] == 2
-    assert state["test_verdict"] == "PASS"
-    assert state["preflight_cycle"] == 2
-    assert state["preflight_verdict"] == "PASS"
-
-
-def test_plan_requires_exact_ordered_mapping_rows(tmp_path: Path) -> None:
-    task_dir = write_task(tmp_path, phase="planning")
-    plan_path = task_dir / "02-planning/plan.md"
-    text = plan_path.read_text(encoding="utf-8")
-    text = text.replace(
-        "| AC-001 | Observable behavior | Change | Test |\n"
-        "| AC-002 | Regression is covered | Change | Test |",
-        "AC-001 and AC-002 are mentioned in prose, but the table is empty.",
-    )
-    plan_path.write_text(text, encoding="utf-8")
-
-    with pytest.raises(ValueError, match="missing checklist IDs"):
-        manage.transition(task_dir, "implementation")
-
-
-def test_return_requires_actionable_findings(tmp_path: Path) -> None:
-    task_dir = write_task(tmp_path)
-    pass_preflight(task_dir, 1)
-    write_tests_cycle(task_dir, 1, "RETURN")
-    tests_path = task_dir / "03-implementation/tests.md"
-    tests_path.write_text(
-        tests_path.read_text(encoding="utf-8").replace(
-            "Fix the production branch for the failing regression.",
-            "",
+def test_transition_runs_artifact_check_automatically(tmp_path: Path) -> None:
+    _, task = setup_task(tmp_path)
+    write_feasibility(task)
+    manage.apply_feasibility_verdict(task, "PASS", kind=None, reason=None)
+    write_exploration(task)
+    path = task / "01-exploration/exploration.md"
+    path.write_text(
+        path.read_text(encoding="utf-8").replace(
+            "## Data, configuration, and interface contracts",
+            "## Combined contracts",
         ),
         encoding="utf-8",
     )
+    with pytest.raises(ValueError, match="Data, configuration"):
+        manage.transition(task, "planning")
 
-    with pytest.raises(ValueError, match="concrete RETURN implementation findings"):
-        manage.apply_test_verdict(task_dir, "RETURN")
+
+def test_changed_canonical_invocation_rejects_old_result(tmp_path: Path) -> None:
+    root, task = setup_task(tmp_path)
+    advance_to_implementation(root, task)
+    write_implementation(task, 1)
+    fp = candidate.compute_candidate_fingerprint(task, manage.load_state(task))
+    write_preflight(task, 1, fp)
+    assert manage.run_check(task, "preflight", "py-ok") == 0
+
+    manifest_path = task / "02-planning/checks.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["checks"][0]["argv"] = [sys.executable, "-c", "raise SystemExit(0)", "changed"]
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="canonical invocation mismatch"):
+        manage.apply_preflight_verdict(task, "PASS")
 
 
-def test_two_tester_returns_require_explicit_review(tmp_path: Path) -> None:
-    task_dir = write_task(tmp_path)
-    for cycle in (1, 2):
-        pass_preflight(task_dir, cycle)
-        write_tests_cycle(task_dir, cycle, "RETURN")
-        manage.apply_test_verdict(task_dir, "RETURN")
-
-    state = manage.load_state(task_dir)
-    assert state["return_review_required"] is True
-    assert state["test_return_count"] == 2
-
-    write_implementation_cycle(task_dir, 3)
-    write_preflight_cycle(task_dir, 3, "PASS")
-    with pytest.raises(ValueError, match="return review is required"):
-        manage.apply_preflight_verdict(task_dir, "PASS")
-
-    manage.apply_return_review(
-        task_dir,
-        "implementation",
-        "Both failures are independent bounded implementation omissions.",
+def test_validation_requires_substantive_evidence(tmp_path: Path) -> None:
+    root, task = setup_task(tmp_path)
+    fp = advance_to_validation(root, task)
+    write_validation(task, fp)
+    path = task / "04-validation/validation.md"
+    path.write_text(
+        path.read_text(encoding="utf-8").replace(
+            "| AC-002 | Regression is covered | PASS | tests.txt and py-ok |",
+            "| AC-002 | Regression is covered | PASS | None |",
+        ),
+        encoding="utf-8",
     )
-    manage.apply_preflight_verdict(task_dir, "PASS")
-    state = manage.load_state(task_dir)
-    assert state["return_review_required"] is False
-    assert state["return_review_action"] == "implementation"
+    with pytest.raises(ValueError, match="evidence is not substantive"):
+        manage.apply_validation_verdict(task, "PASS")
 
 
-def test_return_review_can_restart_formal_exploration(tmp_path: Path) -> None:
-    task_dir = write_task(tmp_path)
-    for cycle in (1, 2):
-        pass_preflight(task_dir, cycle)
-        write_tests_cycle(task_dir, cycle, "RETURN")
-        manage.apply_test_verdict(task_dir, "RETURN")
+def test_finalize_pr_failure_keeps_validated_state_unchanged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, task = setup_task(tmp_path)
+    fp = advance_to_validation(root, task)
+    write_validation(task, fp)
+    manage.apply_validation_verdict(task, "PASS")
 
-    manage.apply_return_review(
-        task_dir,
-        "exploration",
-        "Repeated failures show that the plan omitted a cross-cutting contract.",
-    )
-    state = manage.load_state(task_dir)
-    assert state["phase"] == "exploration"
-    assert state["attempt"] == 2
-    assert state["test_cycle"] == 0
-    assert state["preflight_cycle"] == 0
-    assert state["return_review_action"] == "exploration"
-
-
-def write_validation(task_dir: Path, *, ac2_verdict: str, final_verdict: str) -> None:
-    state = manage.load_state(task_dir)
-    digest = state["acceptance_checklist_sha256"]
-    attempt = state["attempt"]
-    (task_dir / "04-validation/validation.md").write_text(
-        f"""# Validation
+    git(root, "add", "src.txt", "tests.txt")
+    git(root, "commit", "-m", "candidate")
+    head = git(root, "rev-parse", "HEAD")
+    install_fake_gh(tmp_path, monkeypatch, head=head, checks_pass=False)
+    manage.capture_pr_evidence(task, pr_number=706)
+    state = manage.load_state(task)
+    evidence_digest = state["pr_evidence_sha256"]
+    state_before = (task / "state.toml").read_bytes()
+    (task / "05-packaging/packaging.md").write_text(
+        f"""# Packaging
 
 - Issue: #1
-- Attempt: {attempt}
+- Attempt: 1
 - Status: COMPLETE
-- Frozen acceptance checklist SHA-256: `{digest}`
+- Candidate SHA-256: `{fp}`
+- PR number: 706
+- PR head SHA: `{head}`
+- Remote checks: FAIL
+- PR evidence SHA-256: `{evidence_digest}`
 
-## Acceptance checklist verification
-
-| ID | Issue checklist item | Verdict | Evidence |
-|---|---|---|---|
-| AC-001 | Observable behavior | PASS | command |
-| AC-002 | Regression is covered | {ac2_verdict} | command |
-
-## Code evidence
-Done
-## Runtime and test evidence
-Done
-## Final verdict
-
-{final_verdict}
-
-## RETURN exploration questions
-Investigate AC-002.
+## Final candidate binding
+Matches Validator candidate.
+## Pull request identity
+PR #706 at {head}.
+## Complete paginated diff scope
+Allowed scope PASS.
+## Remote required checks
+A required check failed.
+## Packaging evidence
+Remote inspection recorded.
+## Final packaging verdict
+PASS
 """,
         encoding="utf-8",
     )
-
-
-def test_validator_return_requires_a_nonpassing_ac_row(tmp_path: Path) -> None:
-    task_dir = write_task(tmp_path)
-    pass_preflight(task_dir, 1)
-    write_tests_cycle(task_dir, 1, "PASS")
-    manage.apply_test_verdict(task_dir, "PASS")
-    manage.transition(task_dir, "validation")
-
-    write_validation(task_dir, ac2_verdict="PASS", final_verdict="RETURN")
-    with pytest.raises(ValueError, match="requires at least one FAIL or NOT VERIFIED"):
-        manage.apply_validation_verdict(task_dir, "RETURN")
-
-    write_validation(task_dir, ac2_verdict="FAIL", final_verdict="RETURN")
-    manage.apply_validation_verdict(task_dir, "RETURN")
-    state = manage.load_state(task_dir)
-    assert state["phase"] == "exploration"
-    assert state["attempt"] == 2
-    assert state["test_cycle"] == 0
-    assert state["test_verdict"] == ""
-
-
-def test_schema_v3_task_is_normalized_without_retroactive_feasibility(tmp_path: Path) -> None:
-    task_dir = write_task(tmp_path, schema_version=3)
-    state = manage.load_state(task_dir)
-    assert state["schema_version"] == 4
-    assert state["feasibility_verdict"] == "LEGACY"
-
-    pass_preflight(task_dir, 1)
-    write_tests_cycle(task_dir, 1, "PASS")
-    manage.apply_test_verdict(task_dir, "PASS")
-
-    state = manage.load_state(task_dir)
-    assert state["schema_version"] == 4
-    assert state["test_cycle"] == 1
-    assert state["test_verdict"] == "PASS"
+    with pytest.raises(ValueError, match="Remote checks PASS|remote required checks"):
+        manage.finalize_pr(task, pr_number=706, head_sha=head)
+    assert (task / "state.toml").read_bytes() == state_before
