@@ -114,6 +114,14 @@ def _flatten_files(raw: object) -> list[str]:
         if not isinstance(item, dict) or not isinstance(item.get("filename"), str):
             raise ValueError("GitHub PR files response contains an invalid entry")
         files.add(str(item["filename"]))
+        if item.get("status") == "renamed":
+            previous_filename = item.get("previous_filename")
+            if not isinstance(previous_filename, str) or not previous_filename:
+                raise ValueError(
+                    "GitHub PR files response contains a renamed entry without a valid "
+                    "previous_filename"
+                )
+            files.add(previous_filename)
     return sorted(files)
 
 
