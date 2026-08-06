@@ -1,9 +1,7 @@
 {
   "aggregate": {
     "collector_count": 1,
-    "collectors": [
-      "systems"
-    ],
+    "collectors": ["systems"],
     "discovery_count": 1,
     "max_novelty_score": 88,
     "max_relevance_score": 93,
@@ -13,19 +11,15 @@
       "src/synthetic_data_generation/dataset/plcs/components/avatar_control.py",
       "src/synthetic_data_generation/dataset/plcs/rendering/nht.py"
     ],
-    "tasks": [
-      "human_pose",
-      "synthetic_data_generation",
-      "tennis_scene"
-    ]
+    "tasks": ["human_pose", "synthetic_data_generation", "tennis_scene"]
   },
   "curation": {
-    "decision": null,
-    "issue": null,
+    "decision": "reviewed",
+    "issue": 698,
     "paper_node": null,
     "proposal_nodes": [],
-    "reason_ja": null,
-    "reviewed_at": null
+    "reason_ja": "公式全文、project、MIT codeを再確認し、evidence_levelをabstractからfulltext-codeへ訂正した。空間分散MLPによるpose-dependent avatar表現は関連するが、公式学習は人物ごとに長時間を要し、gsplat RGB表現はtennis-labのNHT deferred appearance spaceと直接互換でない。renderer分離を伴う大規模変更を正当化するtennis-domain evidenceが不足するため、reviewedとして保持し正式nodeへの昇格は見送る。",
+    "reviewed_at": "2026-08-07T00:06:06+09:00"
   },
   "discoveries": [
     {
@@ -35,7 +29,7 @@
       "screening": {
         "applicability_ja": "tennis-labのPLCS合成系は、現状GaussianAvatar-styleまたはHUGS-styleの幾何制御でGaussianを変形し、固定されたappearance featureをNHT rendererへ渡している。空間MLP補間を新しいavatar control/backendとして比較すれば、forehand等の大きな関節運動や衣服領域で、固定appearanceの単純変形より姿勢依存の外観を保持できるか検証できる。主な変更候補はavatar_control.pyへの空間MLP制御adapter、plcs/rendering/nht.pyへのavatar backend選択、gaussians.pyでの表現互換性境界の明示である。",
         "candidate_experiment_ja": "baselineは同一人物・同一SMPL-X姿勢列を、現行HUGS-style neighbor blendと固定Gaussian appearanceで描画する構成とする。treatmentは公式MMLPHuman実装で同一人物を学習し、同じheld-out姿勢・カメラ列を描画する。avatar crop上のPSNR、SSIM、LPIPS、隣接frameのwarped LPIPS、FPS、peak GPU memoryを比較する。1 subject・1 seedのpilotでLPIPSが10%以上改善し、warped LPIPSが悪化せず、480p描画が30 FPS以上かつ16 GB GPU内に収まれば3 subjectへ進む。学習が24時間を超える、表現変換で画質が崩壊する、または現行NHT背景との合成に独立rendererが必須でartifact境界を維持できない場合は停止する。",
-        "evidence_level": "abstract",
+        "evidence_level": "fulltext-code",
         "novelty_score": 88,
         "relevance_score": 93,
         "repo_paths": [
@@ -45,28 +39,12 @@
         ],
         "risks_ja": "公式READMEではRTX 3090で約17時間の学習を要し、checkpoint resumeは未実装である。SMPL-X、AvatarReX、ActorsHQ、THuman4.0にはそれぞれ利用条件があり、コードのMIT licenseとは別に管理が必要である。またMMLPHumanのgsplat表現とtennis-labのNHT deferred appearance spaceは直接互換ではなく、現在のcompose_gaussiansはappearance_space_sha256の一致を要求するため、単純連結はできない。独立rendererまたは明示的な変換契約が必要になる。",
         "summary_ja": "SMPL-Xで駆動する全身Gaussian avatarについて、空間的に分散した複数MLPの出力をGaussian位置に基づいて補間し、姿勢・視点に応じた高忠実度表現とリアルタイム描画を両立する手法である。公式実装はgsplatを用い、AvatarReX、ActorsHQ、THuman4.0の学習・新規姿勢／新規視点評価を提供する。",
-        "tasks": [
-          "synthetic_data_generation",
-          "human_pose",
-          "tennis_scene"
-        ]
+        "tasks": ["synthetic_data_generation", "human_pose", "tennis_scene"]
       },
       "sources": [
-        {
-          "checked_at": "2026-08-05T18:20:43+09:00",
-          "kind": "paper",
-          "url": "https://arxiv.org/abs/2504.12909"
-        },
-        {
-          "checked_at": "2026-08-05T18:20:43+09:00",
-          "kind": "code",
-          "url": "https://github.com/1231234zhan/mmlphuman"
-        },
-        {
-          "checked_at": "2026-08-05T18:20:43+09:00",
-          "kind": "project",
-          "url": "https://gapszju.github.io/mmlphuman"
-        }
+        {"checked_at": "2026-08-05T18:20:43+09:00", "kind": "paper", "url": "https://arxiv.org/abs/2504.12909"},
+        {"checked_at": "2026-08-05T18:20:43+09:00", "kind": "code", "url": "https://github.com/1231234zhan/mmlphuman"},
+        {"checked_at": "2026-08-05T18:20:43+09:00", "kind": "project", "url": "https://gapszju.github.io/mmlphuman"}
       ]
     }
   ],
@@ -74,28 +52,13 @@
   "id": "paper-arxiv-2504-12909",
   "last_seen": "2026-08-05T18:20:43+09:00",
   "paper": {
-    "authors": [
-      "Youyi Zhan",
-      "Tianjia Shao",
-      "Yin Yang",
-      "Kun Zhou"
-    ],
-    "identifiers": {
-      "arxiv": "2504.12909",
-      "doi": null,
-      "openreview": null
-    },
+    "authors": ["Youyi Zhan", "Tianjia Shao", "Yin Yang", "Kun Zhou"],
+    "identifiers": {"arxiv": "2504.12909", "doi": null, "openreview": null},
     "title": "Real-time High-fidelity Gaussian Human Avatars with Position-based Interpolation of Spatially Distributed MLPs",
-    "urls": {
-      "code": "https://github.com/1231234zhan/mmlphuman",
-      "dataset": null,
-      "paper": "https://arxiv.org/abs/2504.12909",
-      "primary": "https://arxiv.org/abs/2504.12909",
-      "project": "https://gapszju.github.io/mmlphuman"
-    },
+    "urls": {"code": "https://github.com/1231234zhan/mmlphuman", "dataset": null, "paper": "https://arxiv.org/abs/2504.12909", "primary": "https://arxiv.org/abs/2504.12909", "project": "https://gapszju.github.io/mmlphuman"},
     "venue": null,
     "year": 2025
   },
   "schema_version": 1,
-  "state": "inbox"
+  "state": "reviewed"
 }
