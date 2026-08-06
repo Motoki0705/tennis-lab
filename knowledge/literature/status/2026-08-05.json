@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "date": "2026-08-05",
-  "initialized_at": "2026-08-05T00:05:00+09:00",
+  "initialized_at": null,
   "last_curated_at": "2026-08-07T00:06:06+09:00",
   "generated_at": "2026-08-07T00:06:06+09:00",
   "ingestion": {
