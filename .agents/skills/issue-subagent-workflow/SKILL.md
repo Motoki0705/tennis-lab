@@ -1,86 +1,68 @@
 ---
 name: issue-subagent-workflow
-description: Orchestrate one tennis-lab GitHub Issue through feasibility checking, bounded scouting, formal exploration, parent-authored planning, user-selected implementation topology, deterministic preflight, independent test gating, checklist validation, and an optional persistent /goal loop. Use for issue-driven implementation, fixes, or refactors that need reproducible PASS/RETURN/BLOCKED state transitions; do not use for ad hoc edits without an Issue.
+description: Orchestrate one tennis-lab GitHub Issue through feasibility, evidence-focused exploration, parent-authored planning, user-selected implementation topology, production preflight, independent test authoring, a final candidate seal, Issue-only validation, and PR-bound completion. Use for Issue-driven implementation, fixes, or refactors that require reproducible PASS/RETURN/BLOCKED/VALIDATED state transitions.
 ---
 
 # Issue subagent workflow
 
-Run one Issue through a documented, fail-closed state machine. GitHub is input only: do not write workflow progress to the Issue.
+Run one Issue through the fail-closed state machine in `state.toml`. GitHub is the upstream specification and final delivery surface; do not use Issue comments as workflow storage.
 
-## Start
+## Load only the contracts needed now
 
-1. Confirm the Issue body contains a concrete `## Acceptance checklist`.
-2. Initialize or refresh the frozen snapshot:
-   `python .agents/skills/issue-subagent-workflow/scripts/init_issue_task.py <issue>`
-3. Use `.codex/tasks/issue-<number>/` as the single artifact directory.
-4. Read [workflow](references/workflow.md), [document contracts](references/document-contracts.md), [spawn contracts](references/spawn-contracts.md), [completion hardening](references/completion-hardening.md), and [goal integration](references/goal-integration.md) before delegating.
+Always read [workflow](references/workflow.md) and [document contracts](references/document-contracts.md). Read [spawn contracts](references/spawn-contracts.md) immediately before delegation, [completion hardening](references/completion-hardening.md) before a final seal or PR packaging, and [goal integration](references/goal-integration.md) only when `/goal` is active.
 
-## Feasibility gate
-
-Before broad exploration or production changes, the parent replaces `00-feasibility/feasibility.md` and proves that every AC can be satisfied inside the allowed write scope and required checks.
-
-- Record allowed and prohibited paths, breaking-change requirements, baseline failures, and canonical required checks.
-- Inspect whether existing tests or checks encode behavior the Issue requires removing.
-- If requirements conflict, record `BLOCKED`; do not invent compatibility code, weaken tests, or loop.
+## Initialize
 
 ```bash
 TASK=.codex/tasks/issue-<number>
 MANAGE=.agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py
 
-python $MANAGE artifact-check $TASK feasibility
-python $MANAGE feasibility-verdict $TASK PASS
-
-python $MANAGE feasibility-verdict $TASK BLOCKED \
-  --kind constraint_conflict --reason "<specific conflict>"
+python .agents/skills/issue-subagent-workflow/scripts/init_issue_task.py <issue>
 ```
 
-A blocked task is paused, not complete. Refresh the upstream Issue and reinitialize it after the constraint is resolved.
-
-## Delegation topology and context economy
-
-Parallelism is a default optimization, not a compliance requirement.
-
-- Use multiple agents only for genuinely independent evidence or non-overlapping ownership.
-- An explicit user request for one Implementer or sequential execution is compliant. Record the topology in `plan.md` and preserve all evidence gates.
-- Prefer deterministic repository commands or AST scripts over agents for complete mechanical inventories.
-- Join a wave once with a long or event-driven wait; do not poll unchanged state repeatedly.
-- Keep raw logs in child threads or `logs/`; return compact handoffs.
-- Start a fresh bounded session after a Validator RETURN when a long-running child has accumulated several cycles. Artifacts carry the authority.
+Initialization freezes canonical `issue.json`, renders `issue.md`, records both hashes, creates schema-v5 state, and scaffolds every formal artifact. Refresh the Issue only after the upstream specification changes; refresh restarts feasibility and replaces stale formal artifacts.
 
 ## Required loop
 
-1. Pass feasibility or stop as `BLOCKED`.
-2. Run bounded Scouts when independent semantic questions exist.
-3. Run one authoritative Explorer and have it replace `exploration.md`.
-4. Run `artifact-check ... exploration`; repair formatting before transitioning.
-5. The parent verifies load-bearing claims and replaces `plan.md`, including ownership, any user topology override, exact canonical commands, and validation methods.
-6. Run `artifact-check ... plan`, then transition to implementation.
-7. Run the user-selected Implementer topology and join all work through one artifact integrator.
-8. The integrator replaces `implementation.md` and `preflight.md`, runs deterministic checks in fail-fast order, and runs targeted artifact checks.
-   - Preflight RETURN returns directly to implementation without spending a Test Writer cycle.
-   - Preflight PASS permits one independent Test Writer.
-9. The Test Writer uses the exact canonical commands. A non-canonical command mismatch is corrected and rerun in the same cycle; it is not a Tester RETURN by itself.
-10. Run `artifact-check ... tests`, then apply PASS or RETURN.
-    - First RETURN: repair the bounded findings.
-    - Second RETURN: classify with `return-review` before continuing.
-11. Run one Issue-only Validator. It runs `artifact-check ... validation` before returning.
-12. Apply Validator PASS only after the complete artifact set validates. Then run final `check`, bind the validated content to the final PR diff, and create the PR.
+1. Complete feasibility. A breaking change that cannot satisfy immutable tests or another Issue constraint is `BLOCKED`, not an implementation loop.
+2. Run bounded Scouts only for independent semantic questions, then one authoritative Explorer.
+3. Transition `exploration -> planning`; the mutating command automatically validates `exploration.md`.
+4. The parent writes `plan.md` and machine-readable `02-planning/checks.json`, including exact argv, cwd, environment, stage, and AC authority for every canonical check.
+5. Transition `planning -> implementation`; the command validates both plan and check manifest.
+6. Run the user-selected implementation topology. An explicit request for one Implementer or sequential execution is compliant. Only the parent or an explicitly designated integrator writes shared implementation artifacts.
+7. Run production preflight on the current candidate. Execute canonical checks through `run-check`; `preflight-verdict` validates the artifact, machine results, and candidate fingerprint.
+8. After preflight PASS, run one independent Test Writer. It may add or update allowed tests but may not modify production. `test-verdict` binds its result to the post-test candidate.
+9. Run the final candidate seal without editing source or tests. Re-run seal-stage canonical checks over the complete candidate, inspect scope, then apply `seal-verdict`.
+10. Transition to validation only after Tester PASS and seal PASS. The Validator receives the frozen Issue and sealed candidate identity, not prior narratives.
+11. Validator PASS produces `status = "validated"`, `phase = "packaging"`; it does not complete the task.
+12. Create or update the PR, check out its final head, then run `capture-pr`. The helper queries the real PR metadata, paginates every changed-file page, records remote checks, and binds that evidence to state. Write `packaging.md` with the captured evidence digest and run `finalize-pr`. Only this command sets `status = "complete"`.
 
-## State helper
+## Canonical commands
 
 ```bash
-TASK=.codex/tasks/issue-<number>
-MANAGE=.agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py
-
+python $MANAGE candidate-fingerprint $TASK
+python $MANAGE run-check $TASK <preflight|test|seal> <check-id>
 python $MANAGE artifact-check $TASK <artifact>
 python $MANAGE transition $TASK <planning|implementation|validation>
 python $MANAGE preflight-verdict $TASK <PASS|RETURN>
 python $MANAGE test-verdict $TASK <PASS|RETURN>
+python $MANAGE seal-verdict $TASK <PASS|RETURN>
 python $MANAGE return-review $TASK <implementation|exploration> --reason "<classification>"
-python $MANAGE block $TASK <constraint_conflict|external_dependency|missing_authority|environment> \
-  --reason "<specific blocker>"
+python $MANAGE block $TASK <constraint_conflict|external_dependency|missing_authority|environment> --reason "<blocker>"
 python $MANAGE verdict $TASK <PASS|RETURN>
+python $MANAGE capture-pr $TASK --pr-number <n>
+python $MANAGE finalize-pr $TASK --pr-number <n> --head-sha <40-char-sha>
 python $MANAGE check $TASK
 ```
 
-Do not run Tester and Implementer concurrently. Do not record a test verdict without matching preflight PASS. Do not treat a user-directed single-Implementer topology as noncompliance. Do not open a PR before Validator PASS and final check. Never create `*-v2.md`; Git history is the audit trail.
+Artifact checks are also enforced inside every mutating transition; manual checks are an early feedback tool, not an optional safety boundary.
+
+## Non-negotiable boundaries
+
+- Tester and Implementer never run concurrently.
+- A Test Writer may change tests after production preflight, so final seal is mandatory before validation.
+- Any content change after Tester PASS invalidates the seal; any content change after the seal invalidates validation and packaging.
+- A non-canonical diagnostic failure is not a Tester RETURN. Run the command ID from `checks.json`; the helper records and verifies its normalized invocation.
+- Do not treat a user-directed single-Implementer topology as noncompliance.
+- Do not open or update the delivery PR before Validator PASS unless the user explicitly requires an earlier draft; completion still requires final-head binding.
+- Never create `*-v2.md`; replace the authoritative artifact in place.
