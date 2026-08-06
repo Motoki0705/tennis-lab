@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
-import torch
 
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
 from src.utils.configuration import PathResolver
@@ -44,7 +43,6 @@ class BLCSConfig:
     checkpoint: Path
     source: Literal["execute", "load"]
     device: str
-    allow_device_fallback: bool
     save_result: bool
     output_path: Path
     load_path: Path | None
@@ -70,23 +68,25 @@ class BLCSResult:
     """
 
     ball_3d: NDArray[np.float32]
-    visibility: NDArray[np.bool_] | None = None
+    visibility: NDArray[np.bool_]
 
     def to_dict(self) -> dict:
         """Convert result to JSON-serializable dict."""
         data = {"ball_3d": self.ball_3d.tolist()}
-        if self.visibility is not None:
-            data["visibility"] = self.visibility.tolist()
+        data["visibility"] = self.visibility.tolist()
         return data
 
     @classmethod
     def from_dict(cls, data: dict) -> BLCSResult:
         """Create result from dict."""
+        missing = {"ball_3d", "visibility"} - set(data)
+        if missing:
+            raise ValueError(
+                f"BLCS result is missing required fields: {sorted(missing)}"
+            )
         return cls(
             ball_3d=np.array(data["ball_3d"], dtype=np.float32),
-            visibility=np.array(data["visibility"], dtype=np.bool_)
-            if "visibility" in data
-            else None,
+            visibility=np.array(data["visibility"], dtype=np.bool_),
         )
 
     def save(self, path: str | Path) -> None:
@@ -104,15 +104,12 @@ class BLCSResult:
             errors.append(f"ball_3d shape must be (T, 3), got {self.ball_3d.shape}")
         if not np.isfinite(self.ball_3d).all():
             errors.append("ball_3d contains non-finite values")
-        if self.visibility is not None:
-            if self.visibility.ndim != 1:
-                errors.append(
-                    f"visibility shape must be (T,), got {self.visibility.shape}"
-                )
-            if self.visibility.shape[0] != self.ball_3d.shape[0]:
-                errors.append("visibility length does not match ball_3d length")
-            if not np.isin(self.visibility, [0, 1, False, True]).all():
-                errors.append("visibility must contain only 0 or 1")
+        if self.visibility.ndim != 1:
+            errors.append(f"visibility shape must be (T,), got {self.visibility.shape}")
+        if self.visibility.shape[0] != self.ball_3d.shape[0]:
+            errors.append("visibility length does not match ball_3d length")
+        if not np.isin(self.visibility, [0, 1, False, True]).all():
+            errors.append("visibility must contain only 0 or 1")
         return len(errors) == 0, errors
 
     @classmethod
@@ -157,39 +154,24 @@ class BLCSModule(BasePipelineModule):
             self.checkpoint,
             resolver=self.config.resolver,
             device=self.device,
-            allow_device_fallback=self.config.allow_device_fallback,
         )
-        self._validate_pipeline_checkpoint_profile()
+        if self._predictor.input_profile != "multiview":
+            raise ValueError(
+                "tennis_scene BLCS requires model.io.input_profile='multiview', "
+                f"got {self._predictor.input_profile!r}."
+            )
 
     @property
     def is_loaded(self) -> bool:
         """Check if the model is loaded."""
         return self._predictor is not None
 
-    def _validate_pipeline_checkpoint_profile(self) -> None:
-        """Reject single-view BLCS checkpoints before pipeline tensor assembly."""
-        if self._predictor is None:
-            raise RuntimeError("BLCS predictor is not loaded")
-
-        from src.tasks.blcs.models import BLCSMultiViewAxialModel, BLCSMultiViewModel
-
-        supported = (BLCSMultiViewModel, BLCSMultiViewAxialModel)
-        model = self._predictor.model
-        if not isinstance(model, supported):
-            raise ValueError(
-                "tennis_scene BLCS pipeline requires a multiview BLCS checkpoint "
-                "(model.io.input_profile=multiview) because it passes tensors as "
-                "(B, N, T, 2). "
-                f"Loaded model class {model.__class__.__name__!r} is not supported; "
-                "single-view checkpoints must not be used here."
-            )
-
     def process(
         self,
         ball_uv: NDArray[np.float32],
         court_kp: NDArray[np.float32],
-        ball_vis: NDArray[np.bool_] | None = None,
-        court_vis: NDArray[np.float32] | None = None,
+        ball_vis: NDArray[np.bool_],
+        court_vis: NDArray[np.float32],
     ) -> BLCSResult:
         """Run BLCS inference.
 
@@ -205,8 +187,9 @@ class BLCSModule(BasePipelineModule):
         """
         # Check if we should load from pre-computed result
         if self.config.source == "load":
-            assert self.config.load_path is not None
             load_path = self.config.load_path
+            if load_path is None:
+                raise RuntimeError("Validated load source is missing load_path")
             if load_path.is_file():
                 LOGGER.info(
                     f"Loading BLCS result from {load_path} (skipping inference)"
@@ -220,56 +203,25 @@ class BLCSModule(BasePipelineModule):
         if predictor is None:
             raise RuntimeError("BLCS predictor is not loaded")
 
-        LOGGER.info("Running BLCS ball localization...")
-
-        if ball_uv.ndim != 3 or ball_uv.shape[-1] != 2:
-            raise ValueError(f"ball_uv must have shape (N, T, 2), got {ball_uv.shape}")
-        num_cameras, num_frames = ball_uv.shape[:2]
-
-        if ball_vis is not None:
-            if ball_vis.shape != (num_cameras, num_frames):
-                raise ValueError(
-                    "ball_vis must have shape (N, T), "
-                    f"got {ball_vis.shape} for {(num_cameras, num_frames)}"
-                )
-            effective_vis = ball_vis.astype(np.bool_)
-        else:
-            effective_vis = np.ones((num_cameras, num_frames), dtype=bool)
-
-        if court_kp.ndim != 4 or court_kp.shape[-1] != 2:
+        if ball_uv.ndim != 3:
+            raise ValueError(
+                f"ball_uv must have shape (N, T, 2), got {ball_uv.shape}"
+            )
+        if ball_vis.ndim != 2:
+            raise ValueError(
+                f"ball_vis must have shape (N, T), got {ball_vis.shape}"
+            )
+        if court_kp.ndim != 4:
             raise ValueError(
                 f"court_kp must have shape (N, T, K, 2), got {court_kp.shape}"
             )
-        if court_kp.shape[:2] != (num_cameras, num_frames):
+        if court_vis.ndim != 3:
             raise ValueError(
-                "court_kp leading shape must match ball_uv (N, T), "
-                f"got {court_kp.shape[:2]} and {(num_cameras, num_frames)}"
+                f"court_vis must have shape (N, T, K), got {court_vis.shape}"
             )
-        if court_vis is not None:
-            if court_vis.ndim != 3:
-                raise ValueError(
-                    f"court_vis must have shape (N, T, K), got {court_vis.shape}"
-                )
-            if court_vis.shape[:2] != (num_cameras, num_frames):
-                raise ValueError(
-                    "court_vis leading shape must match ball_uv (N, T), "
-                    f"got {court_vis.shape[:2]} and {(num_cameras, num_frames)}"
-                )
+        LOGGER.info("Running BLCS ball localization...")
 
-        # BLCS models expect batched inputs:
-        # (B, N, T, 2), (B, N, T, K, 2), (B, N, T), and optional court_vis.
-        ball_uv_t = torch.from_numpy(ball_uv).float().unsqueeze(0)
-        court_kp_t = torch.from_numpy(court_kp).float().unsqueeze(0)
-
-        ball_vis_t = torch.from_numpy(effective_vis.astype(np.float32)).unsqueeze(0)
-        # ball_vis controls visible-coordinate vs invisible-token substitution.
-        # ball_mask is only the valid/padding mask for the model input; detector
-        # misses must remain valid frames so BLCS can infer the full trajectory.
-        ball_mask_t = torch.ones_like(ball_vis_t)
-
-        court_vis_t = None
-        if court_vis is not None:
-            court_vis_t = torch.from_numpy(court_vis).float().unsqueeze(0)
+        num_frames = ball_uv.shape[1]
 
         slices = window_slices(
             num_frames, self.config.window_size, self.config.window_overlap
@@ -280,17 +232,14 @@ class BLCSModule(BasePipelineModule):
         )
         position_chunks = []
         for start, end in slices:
-            pred = predictor.predict(
-                ball_uv=ball_uv_t[:, :, start:end],
-                court_kp=court_kp_t[:, :, start:end],
-                ball_vis=ball_vis_t[:, :, start:end],
-                ball_mask=ball_mask_t[:, :, start:end],
-                court_vis=(
-                    court_vis_t[:, :, start:end] if court_vis_t is not None else None
-                ),
+            prediction = predictor.predict_multiview_arrays(
+                ball_uv=ball_uv[:, start:end],
+                court_kp=court_kp[:, start:end],
+                ball_vis=ball_vis[:, start:end],
+                court_vis=court_vis[:, start:end],
                 denormalize=True,
             )
-            win_pos = pred["position"].squeeze(0).cpu().numpy()  # (T_w, 3)
+            win_pos = prediction.position.squeeze(0).cpu().numpy()
             position_chunks.append((start, win_pos))
 
         ball_3d = blend_windows(position_chunks, num_frames).astype(np.float32)
@@ -298,7 +247,7 @@ class BLCSModule(BasePipelineModule):
             raise ValueError(
                 f"BLCS predictor position must have shape (T, 3), got {ball_3d.shape}"
             )
-        output_visibility = np.asarray(effective_vis.any(axis=0), dtype=np.bool_)
+        output_visibility = np.asarray(ball_vis.any(axis=0), dtype=np.bool_)
 
         result = BLCSResult(ball_3d=ball_3d, visibility=output_visibility)
 

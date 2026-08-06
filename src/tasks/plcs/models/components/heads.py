@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import torch
 from torch import Tensor
 
@@ -30,10 +32,7 @@ class PositionHead(MLPHead):
 
     def forward(self, x: Tensor) -> Tensor:
         """Predict position from features."""
-        output = self.mlp(x)
-        if not isinstance(output, Tensor):
-            raise TypeError("PositionHead must return a Tensor.")
-        return output
+        return cast("Tensor", self.mlp(x))
 
 
 class RotationHead(MLPHead):
@@ -58,8 +57,6 @@ class RotationHead(MLPHead):
     def forward(self, x: Tensor) -> Tensor:
         """Predict unit-normalized (cos, sin)."""
         out = self.mlp(x)
-        if not isinstance(out, Tensor):
-            raise TypeError("RotationHead must return a Tensor.")
         return torch.nn.functional.normalize(out, dim=-1)
 
 
@@ -87,7 +84,5 @@ class CanonicalPoseHead(MLPHead):
 
     def forward(self, x: Tensor) -> Tensor:
         """Predict canonical joints with shape ``(..., K, 3)``."""
-        out = self.mlp(x)
-        if not isinstance(out, Tensor):
-            raise TypeError("CanonicalPoseHead must return a Tensor.")
+        out = cast("Tensor", self.mlp(x))
         return out.reshape(*x.shape[:-1], self.num_keypoints, 3)

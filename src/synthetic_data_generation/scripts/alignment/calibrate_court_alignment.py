@@ -257,7 +257,7 @@ def run(cfg: DictConfig) -> StageResult:
         "detector": {
             "checkpoint": str(line_checkpoint),
             "backbone_checkpoint": str(backbone_checkpoint),
-            "short_side": detector.predictor.short_side,
+            "short_side": detector.predictor.adapter.spec.short_side,
             "checkpoint_epoch19_val_dice": float(cfg.checkpoint_val_dice),
             "training_best_val_dice": float(cfg.checkpoint_best_val_dice),
             "localization_error_available": False,

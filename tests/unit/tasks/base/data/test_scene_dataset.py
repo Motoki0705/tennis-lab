@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import warnings
 from pathlib import Path
 
 import numpy as np
@@ -11,6 +10,7 @@ import pytest
 from src.tasks.base.data.scene_dataset import (
     CameraSelection,
     Scene,
+    SceneDataContractError,
     SceneDatasetBase,
     SceneDatasetConfig,
     TemporalWindow,
@@ -59,7 +59,11 @@ def test_scene_metadata_properties() -> None:
     scene = Scene(
         path=Path("/x"),
         data={},
-        meta={"scene_id": 42, "rally_length": "7", "shots": [{"t": 1}, "bad", {"t": 2}]},
+        meta={
+            "scene_id": 42,
+            "rally_length": "7",
+            "shots": [{"t": 1}, "bad", {"t": 2}],
+        },
         num_frames=10,
         num_cameras=1,
     )
@@ -69,7 +73,13 @@ def test_scene_metadata_properties() -> None:
 
 
 def test_scene_metadata_missing_or_invalid() -> None:
-    scene = Scene(path=Path("/x"), data={}, meta={"rally_length": "nope"}, num_frames=3, num_cameras=1)
+    scene = Scene(
+        path=Path("/x"),
+        data={},
+        meta={"rally_length": "nope"},
+        num_frames=3,
+        num_cameras=1,
+    )
     assert scene.scene_id is None
     assert scene.rally_length is None  # invalid int -> None
     assert scene.shots == []
@@ -99,13 +109,25 @@ def test_get_camera_array_copies_and_windows() -> None:
 
 
 def test_get_camera_array_out_of_range() -> None:
-    scene = Scene(path=Path("/x"), data={"cam_0_x": np.zeros((4, 2))}, meta={}, num_frames=4, num_cameras=1)
+    scene = Scene(
+        path=Path("/x"),
+        data={"cam_0_x": np.zeros((4, 2))},
+        meta={},
+        num_frames=4,
+        num_cameras=1,
+    )
     with pytest.raises(ValueError, match="out of range"):
         scene.get_camera_array(1, "x")
 
 
 def test_get_array_scalar_window_raises() -> None:
-    scene = Scene(path=Path("/x"), data={"scalar": np.asarray(3.0)}, meta={}, num_frames=1, num_cameras=1)
+    scene = Scene(
+        path=Path("/x"),
+        data={"scalar": np.asarray(3.0)},
+        meta={},
+        num_frames=1,
+        num_cameras=1,
+    )
     w = TemporalWindow(start=0, end=1, seq_len=1, full_len=1)
     with pytest.raises(ValueError, match="scalar and cannot be temporally sliced"):
         scene.get_array("scalar", window=w)
@@ -277,7 +299,9 @@ def test_dataset_getitem_builds_sample(make_scene_dataset) -> None:
     assert "path" in sample
 
 
-def test_dataset_filters_short_scenes(make_scene_dataset, scene_writer, tmp_path: Path) -> None:
+def test_dataset_filters_short_scenes(
+    make_scene_dataset, scene_writer, tmp_path: Path
+) -> None:
     # seq_len_range min=5 filters out 3-frame scenes.
     root = tmp_path / "mixed"
     scenes_dir = root / "scenes"
@@ -333,23 +357,60 @@ def test_decode_meta_variants(make_scene_dataset) -> None:
     assert ds._decode_meta(123) == {}
 
 
-def test_resolve_num_frames_warns_on_overflow(make_scene_dataset) -> None:
+def test_resolve_num_frames_rejects_overflow(make_scene_dataset) -> None:
     ds = make_scene_dataset(n_scenes=1)
     payload = {"position": np.zeros((5, 3))}
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-        n = ds._resolve_num_frames(path=Path("/x"), meta={"num_frames": 99}, payload=payload)
-    assert n == 5  # clamped to available length
-    assert any("exceeds available length" in str(w.message) for w in caught)
+    with pytest.raises(SceneDataContractError, match="num_frames.*exceeds"):
+        ds._resolve_num_frames(
+            path=Path("/x"), meta={"num_frames": 99}, payload=payload
+        )
 
 
-def test_resolve_num_frames_uses_fallback_when_invalid(make_scene_dataset) -> None:
+@pytest.mark.parametrize("value", [None, 0, -1, True, 1.5, "7"])
+def test_resolve_num_frames_rejects_missing_or_invalid_metadata(
+    make_scene_dataset, value: object
+) -> None:
     ds = make_scene_dataset(n_scenes=1)
     payload = {"position": np.zeros((7, 3))}
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        n = ds._resolve_num_frames(path=Path("/x"), meta={"num_frames": 0}, payload=payload)
-    assert n == 7
+    meta = {} if value is None else {"num_frames": value}
+    with pytest.raises(SceneDataContractError, match="positive int"):
+        ds._resolve_num_frames(path=Path("/x"), meta=meta, payload=payload)
+
+
+def test_resolve_num_frames_accepts_explicit_compatible_metadata(
+    make_scene_dataset,
+) -> None:
+    ds = make_scene_dataset(n_scenes=1)
+    payload = {
+        "position": np.zeros((7, 3)),
+        "ball_pos_world": np.zeros((8, 3)),
+    }
+    assert (
+        ds._resolve_num_frames(path=Path("/x"), meta={"num_frames": 7}, payload=payload)
+        == 7
+    )
+
+
+def test_dataset_construction_rejects_missing_frame_metadata_before_indexing(
+    make_scene_dataset, scene_writer, tmp_path: Path
+) -> None:
+    root = tmp_path / "missing-frame-metadata"
+    scene_path = scene_writer(root / "scenes" / "scene", num_frames=7)
+    (scene_path / "meta.json").write_text("{}", encoding="utf-8")
+    (root / "train.txt").write_text("scene\n", encoding="utf-8")
+    config = SceneDatasetConfig(
+        scene_dir=root,
+        split_file=root / "train.txt",
+        seq_len_range=(1, 7),
+        num_views_range=(1, 1),
+        camera_mode="random",
+        crop_mode="random",
+        min_num_frames=1,
+        min_num_cameras=1,
+    )
+
+    with pytest.raises(SceneDataContractError, match="num_frames.*positive int"):
+        make_scene_dataset(config=config, root=root, n_scenes=0)
 
 
 def test_scene_dataset_config_preserves_explicit_contract() -> None:

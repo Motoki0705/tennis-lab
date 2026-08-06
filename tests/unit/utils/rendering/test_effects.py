@@ -86,7 +86,11 @@ class TestRenderFadingLine3D:
 
     def test_invalid_shape_raises(self, ax3d: Axes3D) -> None:
         with pytest.raises(ValueError, match="positions must have shape"):
-            render_fading_line_3d(ax3d, np.zeros((3, 2)), color="red")
+            render_fading_line_3d(
+                ax3d,
+                np.zeros((3, 2), dtype=np.float32),
+                color="red",
+            )
 
 
 class TestGroundArtists:

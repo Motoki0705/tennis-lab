@@ -11,7 +11,7 @@ from src.tasks.base.data.canonical_tracking import validate_lifecycle_capacity
 from src.tasks.base.data.chunked_datamodule import BaseChunkedDataModule
 from src.tasks.base.data.datamodule import SceneDirectoryDataModule
 from src.tasks.plcs.configuration import PLCSTrainingConfig
-from src.tasks.plcs.data.chunk_manager import ChunkManager
+from src.tasks.plcs.data.chunk_manager import PLCSChunkManager
 from src.tasks.plcs.data.tracking_dataset import (
     PLCSTrackingDataset,
     collate_plcs_tracking_batch,
@@ -45,7 +45,7 @@ class PLCSTrackingDataModule(SceneDirectoryDataModule):
 class ChunkedPLCSTrackingDataModule(BaseChunkedDataModule, PLCSTrackingDataModule):
     """Generate only train scenes on the fly while keeping val/test fixed."""
 
-    def _build_chunk_manager(self) -> ChunkManager:
+    def _build_chunk_manager(self) -> PLCSChunkManager:
         generation_cfg = self.plcs_runtime.raw.generation
         if str(generation_cfg.mode) != "multi_object":
             raise ValueError(
@@ -56,7 +56,7 @@ class ChunkedPLCSTrackingDataModule(BaseChunkedDataModule, PLCSTrackingDataModul
             data_config=self.plcs_runtime.raw.data,
             num_queries=self.plcs_runtime.model.integer("num_queries"),
         )
-        return ChunkManager(
+        return PLCSChunkManager(
             chunks_dir=self.chunks_dir,
             config=self.plcs_runtime.raw,
             scenes_per_chunk=self.scenes_per_chunk,

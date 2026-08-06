@@ -32,7 +32,10 @@ import torch
 from omegaconf import DictConfig
 
 from src.tasks.base.configuration import require_config_mapping, require_config_value
-from src.tasks.base.preview import compose_titled_row, resolve_sample_indices
+from src.tasks.base.visualization.preview import (
+    compose_titled_row,
+    resolve_sample_indices,
+)
 from src.tasks.court_detection.configuration import (
     CourtDataConfig,
     validate_paths_boundary,

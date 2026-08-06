@@ -5,6 +5,7 @@ from torch import Tensor, nn
 
 from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
 from src.tasks.plcs.inference.tracking_predictor import PLCSTrackingPredictor
+from src.tasks.plcs.model_io import PLCSTrackQueryIOAdapter
 
 
 class _FixedTrackingModel(nn.Module):
@@ -16,14 +17,18 @@ class _FixedTrackingModel(nn.Module):
         court_kp: Tensor,
         court_vis: Tensor,
         frame_mask: Tensor,
-        view_mask: Tensor,
+        camera_state_valid: Tensor,
+        spatial_attention_mask: Tensor,
+        temporal_attention_mask: Tensor,
     ) -> dict[str, Tensor]:
         del (
             detection_mask,
             court_kp,
             court_vis,
             frame_mask,
-            view_mask,
+            camera_state_valid,
+            spatial_attention_mask,
+            temporal_attention_mask,
         )
         batch, _, frames = human_kp.shape[:3]
         rotation = torch.tensor([0.0, 1.0], device=human_kp.device)
@@ -38,7 +43,15 @@ class _FixedTrackingModel(nn.Module):
 
 def test_predictor_returns_cpu_lifecycle_and_yaw_outputs() -> None:
     predictor = PLCSTrackingPredictor(
-        model=_FixedTrackingModel(), device=torch.device("cpu")
+        model=_FixedTrackingModel(),
+        adapter=PLCSTrackQueryIOAdapter(
+            model_type=_FixedTrackingModel,
+            num_queries=2,
+            num_court_tokens=14,
+            num_joints=17,
+            mask_invisible_observations=True,
+        ),
+        device=torch.device("cpu"),
     )
     shape = (1, 2, 3, 2)
 

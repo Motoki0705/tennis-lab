@@ -19,7 +19,6 @@ from typing import Any, cast
 import numpy as np
 import pytorch_lightning as pl
 import torch
-import torch.nn.functional as F
 from omegaconf import DictConfig, OmegaConf
 from torch import Tensor
 
@@ -29,7 +28,6 @@ from src.tasks.ball_detection.configuration import (
     DetailedEvaluationConfig,
 )
 from src.tasks.ball_detection.data import build_ball_detection_datamodule
-from src.tasks.ball_detection.models.input_adapter import to_model_input
 from src.tasks.ball_detection.training.lightning_module import (
     BallDetectionLightningModule,
 )
@@ -213,21 +211,13 @@ def _forward_batch(
     images = batch["images"]
     target_heatmaps = batch["heatmaps"]
 
-    model_input = to_model_input(images, module.config.model)
-    logits = module.model(model_input).squeeze(1)
-
-    if logits.shape[-2:] != target_heatmaps.shape[-2:]:
-        batch_size, num_frames = logits.shape[:2]
-        logits_flat = logits.reshape(batch_size * num_frames, 1, *logits.shape[-2:])
-        logits_flat = F.interpolate(
-            logits_flat,
-            size=target_heatmaps.shape[-2:],
-            mode="bilinear",
-            align_corners=False,
-        )
-        logits = logits_flat.reshape(
-            batch_size, num_frames, *target_heatmaps.shape[-2:]
-        )
+    model_io = module.model_io
+    model_call = model_io.prepare_model_call(images)
+    logits = model_io.resized_logits(
+        module.model(*model_call.model_args),
+        model_call,
+        target_size_hw=cast(tuple[int, int], tuple(target_heatmaps.shape[-2:])),
+    )
 
     loss = module.loss_fn(logits, target_heatmaps)
     pred_heatmaps = torch.sigmoid(logits)
@@ -500,10 +490,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
         raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
 
     requested_device = "cuda:0" if int(cfg.run.gpus) > 0 else "cpu"
-    device = resolve_device(
-        requested_device,
-        allow_fallback=bool(cfg.run.allow_device_fallback),
-    )
+    device = resolve_device(requested_device)
     torch.set_float32_matmul_precision(str(cfg.training.matmul_precision))
 
     datamodule = build_ball_detection_datamodule(cfg)

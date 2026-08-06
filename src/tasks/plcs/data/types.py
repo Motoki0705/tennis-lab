@@ -52,7 +52,7 @@ class PLCSSceneMeta:
     initial_yaw: float  # initial yaw angle in radians
     num_cameras_sampled: int  # number of cameras generated for this scene
     num_cameras: int  # number of cameras stored for this scene
-    track_instances: list[dict] | None = None
+    track_instances: list[dict]
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
@@ -67,7 +67,7 @@ class PLCSSceneMeta:
             "initial_yaw": self.initial_yaw,
             "num_cameras_sampled": self.num_cameras_sampled,
             "num_cameras": self.num_cameras,
-            "track_instances": self.track_instances or [],
+            "track_instances": self.track_instances,
         }
 
     @classmethod
@@ -84,5 +84,5 @@ class PLCSSceneMeta:
             initial_yaw=data["initial_yaw"],
             num_cameras_sampled=data["num_cameras_sampled"],
             num_cameras=data["num_cameras"],
-            track_instances=data.get("track_instances", []),
+            track_instances=data["track_instances"],
         )

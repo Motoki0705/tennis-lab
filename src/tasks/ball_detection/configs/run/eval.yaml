@@ -4,4 +4,3 @@ gpus: 1
 checkpoint_path: ball_detection/stunet/logs/version_2/checkpoints/ball-detection-epoch=18.ckpt
 strict: true
 weights_only: false
-allow_device_fallback: false

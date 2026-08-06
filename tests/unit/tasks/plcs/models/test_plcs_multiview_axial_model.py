@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import torch
 
-from src.tasks.plcs.models import PLCSMultiViewAxialModel
+from src.tasks.plcs.model_io.attention_masks import prepare_axial_attention_masks
+from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
 
 
 def test_multiview_axial_model_forward_accepts_single_view() -> None:
@@ -26,13 +27,17 @@ def test_multiview_axial_model_forward_accepts_single_view() -> None:
         num_court_tokens=20,
     ).eval()
 
+    human_mask = torch.ones(2, 1, 4)
+    camera_mask, time_mask = prepare_axial_attention_masks(human_mask)
     with torch.no_grad():
         out = model(
             human_kp=torch.randn(2, 1, 4, 17, 2),
             court_kp=torch.randn(2, 1, 4, 20, 2),
             human_vis=torch.ones(2, 1, 4, 17),
-            human_mask=torch.ones(2, 1, 4),
+            human_mask=human_mask,
             court_vis=torch.ones(2, 1, 4, 20),
+            camera_attention_mask=camera_mask,
+            time_attention_mask=time_mask,
         )
 
     assert out["position"].shape == (2, 4, 3)

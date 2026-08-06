@@ -122,7 +122,7 @@ def _run_candidate(
     start_index: int | None,
 ) -> str:
     document = load_json(document_path)
-    _normalize_document_schema(document)
+    _validate_candidate_document(document)
     if document.get("status") not in {"pseudo_labeled", "annotating"}:
         raise ValueError(
             f"Candidate {document.get('clip_id')} is not ready for annotation; "
@@ -247,10 +247,10 @@ def _mouse_callback(
             height - 1,
         )
     )
-    balls = frame.setdefault("balls", [])
+    balls = cast(list[JSONDict], frame["balls"])
     add_ball = bool(flags & cv2.EVENT_FLAG_SHIFTKEY) or not balls
     if event == cv2.EVENT_LBUTTONDOWN and add_ball:
-        if len(balls) >= state.document.get("max_balls_per_frame", 16):
+        if len(balls) >= int(state.document["max_balls_per_frame"]):
             print("[annotate_youtube_ball] maximum balls per frame reached")
             return
         balls.append(
@@ -276,7 +276,7 @@ def _mouse_callback(
     ball = balls[state.selected_ball_index]
     ball["x"] = original_x
     ball["y"] = original_y
-    if ball.get("state") not in VISIBLE_STATES:
+    if ball["state"] not in VISIBLE_STATES:
         ball["state"] = "visible"
     ball["confidence"] = None
     ball["label_source"] = "manual"
@@ -461,7 +461,7 @@ def frame_completion_error(frame: JSONDict) -> str | None:
     """Validate one reviewed frame."""
     balls = frame.get("balls")
     if balls is None:
-        balls = [frame["ball"]] if "ball" in frame else []
+        return "balls is required"
     if not isinstance(balls, list):
         return "balls must be a list"
     seen_ids: set[str] = set()
@@ -554,7 +554,7 @@ def _remove_selected_ball(state: UiState) -> None:
     removed = balls.pop(index)
     prediction_id = removed.get("prediction_id")
     if prediction_id is not None:
-        rejected = frame.setdefault("rejected_prediction_ids", [])
+        rejected = cast(list[str], frame["rejected_prediction_ids"])
         if prediction_id not in rejected:
             rejected.append(prediction_id)
     state.selected_ball_index = min(index, max(len(balls) - 1, 0))
@@ -722,13 +722,8 @@ def _prediction_candidates(frame: JSONDict) -> list[JSONDict]:
     if isinstance(predictions, dict):
         candidates = predictions.get("candidates", [])
         if isinstance(candidates, list):
-            return candidates
-    prediction = frame.get("prediction")
-    return (
-        [prediction]
-        if isinstance(prediction, dict) and _finite_point(prediction)
-        else []
-    )
+            return cast(list[JSONDict], candidates)
+    raise ValueError("frame.predictions.candidates must be a list.")
 
 
 def _selected_ball(frame: JSONDict, selected_ball_index: int) -> JSONDict | None:
@@ -798,52 +793,38 @@ def _draw_index(
     )
 
 
-def _normalize_document_schema(document: JSONDict) -> None:
-    """Upgrade single-ball candidate documents in memory."""
-    for frame in document.get("frames", []):
-        if "predictions" not in frame:
-            legacy_prediction = frame.get("prediction")
-            candidates = []
-            if isinstance(legacy_prediction, dict) and _finite_point(legacy_prediction):
-                candidates.append(
-                    {
-                        "prediction_id": "p001",
-                        "rank": 1,
-                        "x": legacy_prediction["x"],
-                        "y": legacy_prediction["y"],
-                        "confidence": legacy_prediction.get("confidence"),
-                    }
-                )
-            frame["predictions"] = {
-                "frame_id": frame.get("frame_id"),
-                "method": "legacy_top1",
-                "candidates": candidates,
-                "prediction_count": 1 if candidates else 0,
-            }
-        if "balls" not in frame:
-            legacy_ball = frame.pop("ball", None)
-            if (
-                isinstance(legacy_ball, dict)
-                and legacy_ball.get("state") in VISIBLE_STATES
-                and _finite_point(legacy_ball) is not None
-            ):
-                frame["balls"] = [
-                    {
-                        "ball_id": "b001",
-                        "prediction_id": "p001"
-                        if _prediction_candidates(frame)
-                        else None,
-                        "x": legacy_ball["x"],
-                        "y": legacy_ball["y"],
-                        "state": legacy_ball["state"],
-                        "role": "target",
-                        "confidence": legacy_ball.get("confidence"),
-                        "label_source": legacy_ball.get("label_source", "pseudo"),
-                    }
-                ]
-            else:
-                frame["balls"] = []
-        frame.setdefault("rejected_prediction_ids", [])
+def _validate_candidate_document(document: JSONDict) -> None:
+    """Reject non-canonical candidate documents without schema upgrades."""
+    schema_name = document.get("schema_name")
+    if schema_name != "ball_youtube_candidate_clip_v2":
+        raise ValueError(
+            "Unsupported ball candidate schema; expected "
+            f"'ball_youtube_candidate_clip_v2', got {schema_name!r}."
+        )
+    frames = document.get("frames")
+    if not isinstance(frames, list) or not frames:
+        raise ValueError("Candidate document frames must be a non-empty list.")
+    for index, frame in enumerate(frames):
+        if not isinstance(frame, dict):
+            raise TypeError(f"Candidate frame {index} must be a mapping.")
+        forbidden = sorted({"prediction", "ball"} & set(frame))
+        if forbidden:
+            raise ValueError(
+                f"Candidate frame {index} uses removed field(s): {forbidden}."
+            )
+        predictions = frame.get("predictions")
+        if not isinstance(predictions, dict) or not isinstance(
+            predictions.get("candidates"), list
+        ):
+            raise ValueError(
+                f"Candidate frame {index} requires predictions.candidates."
+            )
+        if not isinstance(frame.get("balls"), list):
+            raise ValueError(f"Candidate frame {index} requires balls as a list.")
+        if not isinstance(frame.get("rejected_prediction_ids"), list):
+            raise ValueError(
+                f"Candidate frame {index} requires rejected_prediction_ids as a list."
+            )
 
 
 def _to_display(

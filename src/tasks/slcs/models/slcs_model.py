@@ -61,9 +61,10 @@ from src.utils.models import (
     CrossAttnBlock,
     CrossAttnBlockConfig,
     RMSNorm,
+    RotaryFrequencyComputer,
     TransformerBlock,
     TransformerBlockConfig,
-    precompute_freqs_cis_nd,
+    validate_rope_dim,
 )
 from src.utils.models.axial_multiview_mixin import AxialMultiViewMixin
 from src.utils.models.embeddings import (
@@ -76,6 +77,51 @@ from src.utils.schema.player import NUM_HUMAN_KP
 
 if TYPE_CHECKING:
     from src.tasks.slcs.configuration import SLCSDataRuntimeConfig, SLCSModelConfig
+
+
+class _DinoCrossUpdate(nn.Module):
+    """Apply one configured visual update and mask samples without evidence."""
+
+    def __init__(self, block: CrossAttnBlock) -> None:
+        super().__init__()
+        self.block = block
+
+    def forward(
+        self,
+        q: Tensor,
+        kv: Tensor,
+        *,
+        attn_mask: Tensor,
+        freqs_q_cis: Tensor,
+        freqs_k_cis: Tensor,
+        batch_has_dino: Tensor,
+    ) -> Tensor:
+        """Compute cross-attention for already validated tensor inputs."""
+        updated = self.block(
+            q,
+            kv,
+            attn_mask=attn_mask,
+            freqs_q_cis=freqs_q_cis,
+            freqs_k_cis=freqs_k_cis,
+        )
+        return torch.where(batch_has_dino[:, None, None], updated, q)
+
+
+class _NoDinoCrossUpdate(nn.Module):
+    """Resolved axial stage that has no configured visual update."""
+
+    def forward(
+        self,
+        q: Tensor,
+        kv: Tensor,
+        *,
+        attn_mask: Tensor,
+        freqs_q_cis: Tensor,
+        freqs_k_cis: Tensor,
+        batch_has_dino: Tensor,
+    ) -> Tensor:
+        """Return the axial result unchanged for this configured stage."""
+        return q
 
 
 class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
@@ -149,7 +195,7 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             )
 
         head_dim = self.hidden_dim // num_heads
-        self._validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
+        validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
         self.head_dim = int(head_dim)
         self.rope_dim = int(rope_dim)
         self.rope_bases = resolve_axial_rope_bases(
@@ -199,23 +245,26 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
                 )
             )
 
-        def cross_layers(depth: int) -> nn.ModuleDict:
-            return nn.ModuleDict(
-                {
-                    str(layer_idx): CrossAttnBlock(
-                        CrossAttnBlockConfig(
-                            dim=self.hidden_dim,
-                            n_heads=num_heads,
-                            ffn_dim=ffn_dim,
-                            head_dim=head_dim,
-                            rope_dim=self.rope_dim,
-                            attn_dropout=dropout,
-                            ffn_type=ffn_type,
+        def cross_layers(depth: int) -> nn.ModuleList:
+            return nn.ModuleList(
+                [
+                    _DinoCrossUpdate(
+                        CrossAttnBlock(
+                            CrossAttnBlockConfig(
+                                dim=self.hidden_dim,
+                                n_heads=num_heads,
+                                ffn_dim=ffn_dim,
+                                head_dim=head_dim,
+                                rope_dim=self.rope_dim,
+                                attn_dropout=dropout,
+                                ffn_type=ffn_type,
+                            )
                         )
                     )
-                    for layer_idx in range(depth)
                     if (layer_idx + 1) % self.dino_cross_attn_every == 0
-                }
+                    else _NoDinoCrossUpdate()
+                    for layer_idx in range(depth)
+                ]
             )
 
         self.entity_layers = nn.ModuleList(
@@ -253,14 +302,14 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         self.rotation_dino_cross_layers = cross_layers(self.num_rotation_layers)
 
         all_shared = self.num_position_layers == 0 and self.num_rotation_layers == 0
-        self.final_norm: RMSNorm | None = (
-            RMSNorm(self.hidden_dim) if all_shared else None
+        self.final_norm: nn.Module = (
+            RMSNorm(self.hidden_dim) if all_shared else nn.Identity()
         )
-        self.position_final_norm: RMSNorm | None = (
-            None if all_shared else RMSNorm(self.hidden_dim)
+        self.position_final_norm: nn.Module = (
+            nn.Identity() if all_shared else RMSNorm(self.hidden_dim)
         )
-        self.rotation_final_norm: RMSNorm | None = (
-            None if all_shared else RMSNorm(self.hidden_dim)
+        self.rotation_final_norm: nn.Module = (
+            nn.Identity() if all_shared else RMSNorm(self.hidden_dim)
         )
 
         # ---- Heads ------------------------------------------------------
@@ -305,13 +354,16 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         # RoPE table over (time, entity-or-visual-stream) positions. Time axis
         # holds positions 1..max_seq_len (mixin convention); the extra entity
         # slot ``num_entities`` is reserved for DINOv3 keys.
-        token_freqs = precompute_freqs_cis_nd(
+        self.token_rope = RotaryFrequencyComputer(
             dim=self.rope_dim,
-            pos=self._build_token_positions(
+            base=self.rope_bases,
+            n_axes=2,
+        )
+        token_freqs = self.token_rope(
+            self._build_token_positions(
                 seq_len=self.max_seq_len,
                 n_cams=self.num_entities + 1,
-            ),
-            base=self.rope_bases,
+            )
         )
         self.register_buffer("token_freqs_cis", token_freqs, persistent=False)
 
@@ -386,28 +438,19 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         court_kp: Tensor,
         court_vis: Tensor,
         frame_mask: Tensor,
-        dino_tokens: Tensor | None = None,
-        dino_frame_idx: Tensor | None = None,
-        dino_valid: Tensor | None = None,
+        entity_attn_mask: Tensor,
+        time_attn_mask: Tensor,
+        dino_tokens: Tensor,
+        dino_frame_idx: Tensor,
+        dino_attn_mask: Tensor,
+        dino_batch_has_evidence: Tensor,
     ) -> dict[str, Tensor]:
         """Run the fusion model on one batch of single-camera windows.
 
         Shapes are documented in :class:`src.tasks.slcs.data.types.SLCSBatch`
         (without the leading batch axis for per-sample tensors).
         """
-        batch_size, seq_len = self._validate_forward_inputs(
-            player_kp=player_kp,
-            player_kp_vis=player_kp_vis,
-            player_valid=player_valid,
-            ball_uv=ball_uv,
-            ball_vis=ball_vis,
-            court_kp=court_kp,
-            court_vis=court_vis,
-            frame_mask=frame_mask,
-            dino_tokens=dino_tokens,
-            dino_frame_idx=dino_frame_idx,
-            dino_valid=dino_valid,
-        )
+        batch_size, _, seq_len = player_kp.shape[:3]
         num_players = self.num_players
         num_entities = self.num_entities
 
@@ -446,18 +489,6 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         x = x + self.entity_embed(entity_ids)[None, :, None, :]
         x = x.permute(0, 2, 1, 3)  # (B, T, E, D)
 
-        # Attention validity: padded frames are masked on the time axis; all
-        # entity slots of a real frame participate (invisible observations are
-        # already represented by the invisible token).
-        token_valid = frame_valid.unsqueeze(-1).expand(
-            batch_size, seq_len, num_entities
-        )
-        entity_axis_valid = token_valid.reshape(batch_size * seq_len, num_entities)
-        time_axis_valid = token_valid.permute(0, 2, 1).reshape(
-            batch_size * num_entities, seq_len
-        )
-        entity_mask, _ = self._build_self_attn_mask(entity_axis_valid)
-        time_mask, _ = self._build_self_attn_mask(time_axis_valid)
         entity_freqs = self._camera_freqs(
             batch_size=batch_size, seq_len=seq_len, n_cams=num_entities
         )
@@ -468,7 +499,8 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         dino_ctx = self._encode_dino(
             dino_tokens=dino_tokens,
             dino_frame_idx=dino_frame_idx,
-            dino_valid=dino_valid,
+            dino_attn_mask=dino_attn_mask,
+            dino_batch_has_evidence=dino_batch_has_evidence,
             batch_size=batch_size,
         )
 
@@ -482,8 +514,8 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             num_entities=num_entities,
             entity_freqs=entity_freqs,
             time_freqs=time_freqs,
-            entity_mask=entity_mask,
-            time_mask=time_mask,
+            entity_mask=entity_attn_mask,
+            time_mask=time_attn_mask,
             dino_ctx=dino_ctx,
         )
         position_x = self._run_axial_trunk(
@@ -496,8 +528,8 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             num_entities=num_entities,
             entity_freqs=entity_freqs,
             time_freqs=time_freqs,
-            entity_mask=entity_mask,
-            time_mask=time_mask,
+            entity_mask=entity_attn_mask,
+            time_mask=time_attn_mask,
             dino_ctx=dino_ctx,
         )
         rotation_x = self._run_axial_trunk(
@@ -510,22 +542,13 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             num_entities=num_entities,
             entity_freqs=entity_freqs,
             time_freqs=time_freqs,
-            entity_mask=entity_mask,
-            time_mask=time_mask,
+            entity_mask=entity_attn_mask,
+            time_mask=time_attn_mask,
             dino_ctx=dino_ctx,
         )
 
-        if self.num_position_layers == 0 and self.num_rotation_layers == 0:
-            # Preserve the original all-shared architecture, including its one
-            # shared final normalization module.
-            assert self.final_norm is not None
-            position_x = self.final_norm(position_x)
-            rotation_x = position_x
-        else:
-            assert self.position_final_norm is not None
-            assert self.rotation_final_norm is not None
-            position_x = self.position_final_norm(position_x)
-            rotation_x = self.rotation_final_norm(rotation_x)
+        position_x = self.position_final_norm(self.final_norm(position_x))
+        rotation_x = self.rotation_final_norm(self.final_norm(rotation_x))
 
         position_player_feat = position_x[:, :, :num_players, :].permute(0, 2, 1, 3)
         rotation_player_feat = rotation_x[:, :, :num_players, :].permute(0, 2, 1, 3)
@@ -555,7 +578,7 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         x: Tensor,
         entity_layers: nn.ModuleList,
         time_layers: nn.ModuleList,
-        dino_cross_layers: nn.ModuleDict,
+        dino_cross_layers: nn.ModuleList,
         *,
         batch_size: int,
         seq_len: int,
@@ -564,11 +587,12 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         time_freqs: Tensor,
         entity_mask: Tensor,
         time_mask: Tensor,
-        dino_ctx: tuple[Tensor, Tensor, Tensor] | None,
+        dino_ctx: tuple[Tensor, Tensor, Tensor, Tensor],
     ) -> Tensor:
         """Run one shared or task-specific axial trunk."""
-        for layer_idx, (entity_layer, time_layer) in enumerate(
-            zip(entity_layers, time_layers, strict=True)
+        kv, dino_attn_mask, k_freqs, batch_has_dino = dino_ctx
+        for entity_layer, time_layer, dino_cross_layer in zip(
+            entity_layers, time_layers, dino_cross_layers, strict=True
         ):
             x_entity = x.reshape(batch_size * seq_len, num_entities, self.hidden_dim)
             x_entity = entity_layer(
@@ -584,167 +608,79 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
                 batch_size, num_entities, seq_len, self.hidden_dim
             ).permute(0, 2, 1, 3)
 
-            layer_key = str(layer_idx)
-            if layer_key in dino_cross_layers and dino_ctx is not None:
-                cross_layer = dino_cross_layers[layer_key]
-                kv, key_valid, k_freqs = dino_ctx
-                q = x.reshape(batch_size, seq_len * num_entities, self.hidden_dim)
-                q_freqs = self._query_freqs(batch_size=batch_size, seq_len=seq_len)
-                q = cross_layer(
-                    q,
-                    kv,
-                    key_valid=key_valid,
-                    freqs_q_cis=q_freqs,
-                    freqs_k_cis=k_freqs,
-                )
-                x = q.reshape(batch_size, seq_len, num_entities, self.hidden_dim)
+            q = x.reshape(batch_size, seq_len * num_entities, self.hidden_dim)
+            q = dino_cross_layer(
+                q,
+                kv,
+                attn_mask=dino_attn_mask,
+                freqs_q_cis=self._query_freqs(
+                    batch_size=batch_size, seq_len=seq_len
+                ),
+                freqs_k_cis=k_freqs,
+                batch_has_dino=batch_has_dino,
+            )
+            x = q.reshape(batch_size, seq_len, num_entities, self.hidden_dim)
         return x
 
     def _clamp_log_b(self, log_b: Tensor) -> Tensor:
         return log_b.clamp(min=self.log_b_min, max=self.log_b_max)
 
     def _query_freqs(self, *, batch_size: int, seq_len: int) -> Tensor:
-        """RoPE frequencies for cross-attention queries, layout ``(B, T*E, r/2)``."""
-        freqs = self.token_freqs_cis[:seq_len, : self.num_entities]  # (T, E, r/2)
+        """Return cross-attention query frequencies with a head broadcast axis."""
+        freqs = self.token_freqs_cis[:seq_len, : self.num_entities]
         expanded: Tensor = (
-            freqs.reshape(seq_len * self.num_entities, self.rope_dim // 2)
+            freqs.reshape(seq_len * self.num_entities, 1, self.rope_dim // 2)
             .unsqueeze(0)
-            .expand(batch_size, seq_len * self.num_entities, self.rope_dim // 2)
+            .expand(
+                batch_size,
+                seq_len * self.num_entities,
+                1,
+                self.rope_dim // 2,
+            )
         )
         return expanded
 
     def _encode_dino(
         self,
         *,
-        dino_tokens: Tensor | None,
-        dino_frame_idx: Tensor | None,
-        dino_valid: Tensor | None,
+        dino_tokens: Tensor,
+        dino_frame_idx: Tensor,
+        dino_attn_mask: Tensor,
+        dino_batch_has_evidence: Tensor,
         batch_size: int,
-    ) -> tuple[Tensor, Tensor, Tensor] | None:
-        """Encode patch tokens into ``(kv, key_valid, k_freqs)`` or ``None``.
-
-        ``None`` means "no visual evidence in this batch": the cross-attention
-        pathway is skipped entirely (explicitly, not silently — the caller
-        decides whether tokens are provided).
-        """
-        if dino_tokens is None:
-            return None
-        assert dino_frame_idx is not None and dino_valid is not None
-        if not bool(dino_valid.any().item()):
-            return None
+    ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
+        """Encode validated patch tokens and build tensor-only validity state."""
 
         num_samples = dino_tokens.shape[1]
         num_patches = self.dino_encoder.num_tokens
         encoded = self.dino_encoder(dino_tokens)  # (B, T_d, S, D)
         kv = encoded.reshape(batch_size, num_samples * num_patches, self.hidden_dim)
 
-        key_valid = (
-            (dino_valid > 0)
-            .unsqueeze(-1)
-            .expand(batch_size, num_samples, num_patches)
-            .reshape(batch_size, num_samples * num_patches)
-        )
+        kv = kv.masked_fill(~dino_batch_has_evidence[:, None, None], 0.0)
 
         # Time-axis RoPE with the *actual* sampled frame indices; the entity
         # axis uses the reserved visual-stream slot. Buffer row f holds the
         # RoPE phase of window frame f (time position f+1, mixin convention),
         # so keys index rows by the raw window-relative frame index.
         time_row = dino_frame_idx.clamp(min=0)
-        freqs = self.token_freqs_cis[time_row, self.num_entities]  # (B, T_d, r/2)
+        freqs = self.token_freqs_cis[time_row, self.num_entities]
         k_freqs = (
             freqs.unsqueeze(2)
-            .expand(batch_size, num_samples, num_patches, self.rope_dim // 2)
-            .reshape(batch_size, num_samples * num_patches, self.rope_dim // 2)
+            .expand(
+                batch_size,
+                num_samples,
+                num_patches,
+                1,
+                self.rope_dim // 2,
+            )
+            .reshape(
+                batch_size,
+                num_samples * num_patches,
+                1,
+                self.rope_dim // 2,
+            )
         )
-        return kv, key_valid, k_freqs
-
-    def _validate_forward_inputs(
-        self,
-        *,
-        player_kp: Tensor,
-        player_kp_vis: Tensor,
-        player_valid: Tensor,
-        ball_uv: Tensor,
-        ball_vis: Tensor,
-        court_kp: Tensor,
-        court_vis: Tensor,
-        frame_mask: Tensor,
-        dino_tokens: Tensor | None,
-        dino_frame_idx: Tensor | None,
-        dino_valid: Tensor | None,
-    ) -> tuple[int, int]:
-        if player_kp.dim() != 5 or player_kp.shape[-2:] != (NUM_HUMAN_KP, 2):
-            raise ValueError(
-                f"player_kp must be (B, P, T, {NUM_HUMAN_KP}, 2), got {tuple(player_kp.shape)}."
-            )
-        batch_size, num_players, seq_len = player_kp.shape[:3]
-        if num_players != self.num_players:
-            raise ValueError(
-                f"player_kp has P={num_players}, model configured for {self.num_players}."
-            )
-        if seq_len > self.max_seq_len:
-            raise ValueError(
-                f"sequence length T={seq_len} exceeds max_seq_len={self.max_seq_len}."
-            )
-        if player_kp_vis.shape != (batch_size, num_players, seq_len, NUM_HUMAN_KP):
-            raise ValueError(
-                f"player_kp_vis must be (B, P, T, {NUM_HUMAN_KP}), "
-                f"got {tuple(player_kp_vis.shape)}."
-            )
-        if player_valid.shape != (batch_size, num_players, seq_len):
-            raise ValueError(
-                f"player_valid must be (B, P, T), got {tuple(player_valid.shape)}."
-            )
-        if ball_uv.shape != (batch_size, seq_len, 2):
-            raise ValueError(f"ball_uv must be (B, T, 2), got {tuple(ball_uv.shape)}.")
-        if ball_vis.shape != (batch_size, seq_len):
-            raise ValueError(f"ball_vis must be (B, T), got {tuple(ball_vis.shape)}.")
-        if court_kp.shape != (batch_size, seq_len, self.num_court_kp, 2):
-            raise ValueError(
-                f"court_kp must be (B, T, {self.num_court_kp}, 2), "
-                f"got {tuple(court_kp.shape)}."
-            )
-        if court_vis.shape != (batch_size, seq_len, self.num_court_kp):
-            raise ValueError(
-                f"court_vis must be (B, T, {self.num_court_kp}), got {tuple(court_vis.shape)}."
-            )
-        if frame_mask.shape != (batch_size, seq_len):
-            raise ValueError(
-                f"frame_mask must be (B, T), got {tuple(frame_mask.shape)}."
-            )
-
-        dino_args = (dino_tokens, dino_frame_idx, dino_valid)
-        provided = [arg is not None for arg in dino_args]
-        if any(provided) and not all(provided):
-            raise ValueError(
-                "dino_tokens, dino_frame_idx and dino_valid must be provided together."
-            )
-        if dino_tokens is not None:
-            assert dino_frame_idx is not None and dino_valid is not None
-            if dino_tokens.dim() != 4 or dino_tokens.shape[0] != batch_size:
-                raise ValueError(
-                    f"dino_tokens must be (B, T_d, S, C), got {tuple(dino_tokens.shape)}."
-                )
-            num_samples = dino_tokens.shape[1]
-            if dino_frame_idx.shape != (batch_size, num_samples):
-                raise ValueError(
-                    f"dino_frame_idx must be (B, T_d), got {tuple(dino_frame_idx.shape)}."
-                )
-            if dino_valid.shape != (batch_size, num_samples):
-                raise ValueError(
-                    f"dino_valid must be (B, T_d), got {tuple(dino_valid.shape)}."
-                )
-            valid_frames = dino_frame_idx[dino_valid > 0]
-            if valid_frames.numel() > 0 and (
-                int(valid_frames.min().item()) < 0
-                or int(valid_frames.max().item()) >= seq_len
-            ):
-                raise ValueError(
-                    "dino_frame_idx of valid samples must lie inside the window "
-                    f"[0, {seq_len}), got range "
-                    f"[{int(valid_frames.min().item())}, {int(valid_frames.max().item())}]."
-                )
-        return batch_size, seq_len
+        return kv, dino_attn_mask, k_freqs, dino_batch_has_evidence
 
 
 __all__ = ["SLCSFusionModel"]

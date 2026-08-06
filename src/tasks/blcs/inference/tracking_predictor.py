@@ -2,36 +2,37 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable, Mapping
 from pathlib import Path
-from typing import Any, ParamSpec, Self, TypeVar, cast
+from typing import Any, Self
 
 import torch
-from torch import Tensor, nn
+from torch import Tensor
 
-from src.tasks.base.inference.grad_mode import no_grad
 from src.tasks.base.inference.predictor import BasePredictor
-from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
+from src.tasks.blcs.model_io import (
+    BLCSTrackQueryPrediction,
+    TrackQueryBoundModelIO,
+    compose_blcs_track_query_model_io,
+)
+from src.tasks.blcs.model_io.checkpoints import load_checkpoint_config
 from src.tasks.blcs.training.tracking_lightning_module import (
     BLCSTrackingLightningModule,
 )
 from src.utils.configuration import PathResolver
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
-_P = ParamSpec("_P")
-_R = TypeVar("_R")
 
-
-def _typed_no_grad(function: Callable[_P, _R]) -> Callable[_P, _R]:
-    decorator: Callable[[Callable[_P, _R]], Callable[_P, _R]] = no_grad
-    return decorator(function)
-
-
-class BLCSTrackingPredictor(BasePredictor):
+class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
     """Predict fixed lifecycle queries from ID-ordered per-camera observations."""
 
-    def __init__(self, model: nn.Module, device: torch.device) -> None:
-        self.model = model.to(device).eval()
+    def __init__(
+        self,
+        model_io: TrackQueryBoundModelIO,
+        device: torch.device,
+    ) -> None:
+        self.model_io = model_io
+        self.model = model_io.model.to(device).eval()
         self.device = device
 
     @classmethod
@@ -41,20 +42,51 @@ class BLCSTrackingPredictor(BasePredictor):
         *,
         resolver: PathResolver,
         device: str | torch.device,
-        allow_device_fallback: bool,
         **kwargs: Any,
     ) -> Self:
-        model, resolved_device = cls._load_single_lightning_checkpoint(
-            checkpoint_path,
+        checkpoints = cls._ensure_checkpoint(checkpoint_path, resolver=resolver)
+        if len(checkpoints) != 1:
+            raise ValueError(
+                f"{cls.__name__} expects exactly one checkpoint, got {len(checkpoints)}."
+            )
+        binding = compose_blcs_track_query_model_io(
+            load_checkpoint_config(checkpoints[0])
+        )
+        lightning_module, resolved_device = cls._load_single_lightning_module(
+            checkpoints[0],
             BLCSTrackingLightningModule,
             resolver=resolver,
             device=device,
-            allow_device_fallback=allow_device_fallback,
+            model_io=binding,
+            strict=True,
+            weights_only=False,
             **kwargs,
         )
-        return cls(model=model, device=resolved_device)
+        return cls(model_io=lightning_module.model_io, device=resolved_device)
 
-    @_typed_no_grad
+    def predict_batch(
+        self,
+        batch: Mapping[str, object],
+        *,
+        denormalize: bool,
+    ) -> BLCSTrackQueryPrediction:
+        """Run one validated tracking call and return its typed decode."""
+        with torch.no_grad():
+            moved = {
+                key: value.to(self.device) if isinstance(value, Tensor) else value
+                for key, value in batch.items()
+            }
+            prediction = self.model_io.run(moved)
+            position = prediction.position
+            if denormalize:
+                position = self._denormalize_coords(position, COURT_COORD_SCALE_XYZ)
+            return BLCSTrackQueryPrediction(
+                position=position.detach().cpu(),
+                presence_logits=prediction.presence_logits.detach().cpu(),
+                presence_probability=prediction.presence_probability.detach().cpu(),
+                presence=prediction.presence.detach().cpu(),
+            )
+
     def predict(
         self,
         *,
@@ -64,10 +96,9 @@ class BLCSTrackingPredictor(BasePredictor):
         court_vis: Tensor,
         frame_mask: Tensor,
         view_mask: Tensor,
-        tracking_metrics: TrackingMetricConfig,
         denormalize: bool,
-    ) -> dict[str, Tensor]:
-        """Return query positions, probabilities, and thresholded presence."""
+    ) -> BLCSTrackQueryPrediction:
+        """Return the adapter's typed query-position/presence decode."""
         inputs = {
             "ball_uv": ball_uv,
             "ball_visible": ball_visible,
@@ -76,23 +107,10 @@ class BLCSTrackingPredictor(BasePredictor):
             "frame_mask": frame_mask,
             "view_mask": view_mask,
         }
-        outputs = cast(
-            dict[str, Tensor],
-            self.model(**{key: value.to(self.device) for key, value in inputs.items()}),
+        return self.predict_batch(
+            inputs,
+            denormalize=denormalize,
         )
-        position = outputs["position"]
-        result = {
-            "position": position,
-            "presence_logits": outputs["presence_logits"],
-        }
-        probability = result["presence_logits"].sigmoid()
-        result["presence_probability"] = probability
-        result["presence"] = probability >= tracking_metrics.presence_threshold
-        if denormalize:
-            result["position_meters"] = self._denormalize_coords(
-                position, COURT_COORD_SCALE_XYZ
-            )
-        return {key: value.detach().cpu() for key, value in result.items()}
 
 
 __all__ = ["BLCSTrackingPredictor"]

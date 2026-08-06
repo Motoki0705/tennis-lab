@@ -69,7 +69,6 @@ class CandidatePredictionConfig:
     aggregation: str
     overwrite: bool
     resolver: PathResolver
-    allow_device_fallback: bool
     subpixel_refine: bool
     strict: bool
     weights_only: bool
@@ -323,12 +322,11 @@ def predict_candidates(
         config.checkpoint,
         resolver=config.resolver,
         device=config.device,
-        allow_device_fallback=config.allow_device_fallback,
         subpixel_refine=config.subpixel_refine,
         strict=config.strict,
         weights_only=config.weights_only,
     )
-    checkpoint_frames = int(cast(Any, predictor.model_config["num_frames"]))
+    checkpoint_frames = predictor.configured_frames
     if checkpoint_frames != config.sequence_length:
         raise ValueError(
             "prediction.sequence_length does not match checkpoint model.num_frames: "
@@ -357,8 +355,8 @@ def predict_candidates(
         for frame, prediction in zip(document["frames"], predictions, strict=True):
             frame["review_status"] = "pending"
             frame["predictions"] = prediction
+            frame["rejected_prediction_ids"] = []
             candidates = prediction["candidates"]
-            frame["prediction"] = candidates[0] if candidates else None
             frame["balls"] = [
                 {
                     "ball_id": f"b{index:03d}",
@@ -372,7 +370,6 @@ def predict_candidates(
                 }
                 for index, candidate in enumerate(candidates, start=1)
             ]
-            frame.pop("ball", None)
         write_jsonl(candidate_path.parent / "predictions.jsonl", predictions)
         save_json_atomic(document, candidate_path)
         print(f"  predicted {document['clip_id']}: {len(predictions)} frames")
@@ -411,8 +408,8 @@ def _predict_candidate(
                 for start in start_chunk
             ]
         )
-        outputs = predictor.predict(batch, return_heatmaps=True)
-        heatmaps = outputs["heatmaps"].to(torch.float32)
+        prediction = predictor.predict(batch)
+        heatmaps = prediction.heatmaps.to(torch.float32)
         if heatmap_sums is None:
             heatmap_sums = torch.zeros(
                 (frame_count, *heatmaps.shape[-2:]),

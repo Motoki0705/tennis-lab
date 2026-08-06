@@ -92,7 +92,6 @@ class BoundaryKind(StrEnum):
     ARGPARSE = "argparse"
     CALLABLE = "callable"
     SUBPROCESS_MODULE = "subprocess-module"
-    VALIDATION_COMMAND = "validation-command"
 
 
 class MigrationCategory(StrEnum):
@@ -446,8 +445,6 @@ def migration_entrypoint_coverage(
 
 
 def _migration_domain(module: str) -> str:
-    if module == "src.configuration_validation":
-        return "base"
     prefixes = (
         ("src.tasks.ball_detection.", "ball_detection"),
         ("src.tasks.court_detection.", "court_detection"),
@@ -464,6 +461,21 @@ def _migration_domain(module: str) -> str:
         if module.startswith(prefix):
             return domain
     raise ValueError(f"Migration site has no configured domain: {module}.")
+
+
+def _migration_record_domain(
+    former_module: str,
+    *,
+    status: MigrationStatus,
+    canonical_symbol: str,
+) -> str:
+    """Resolve a row domain from source or an explicit migrated authority."""
+    try:
+        return _migration_domain(former_module)
+    except ValueError:
+        if status is not MigrationStatus.MIGRATED:
+            raise
+    return _migration_domain(canonical_symbol)
 
 
 def _decode_migration_rows() -> tuple[tuple[object, ...], ...]:
@@ -592,8 +604,6 @@ def _load_migration_records(
         ):
             raise ValueError("Migration ledger row values have invalid types.")
         category = MigrationCategory(raw_category)
-        domain = _migration_domain(raw_module)
-        coverage = migration_entrypoint_coverage(domain, boundaries)
         if strict_values:
             raw_status, raw_authority_kind, raw_symbol, raw_field = strict_values
             if (
@@ -628,6 +638,12 @@ def _load_migration_records(
                 )
             )
             authority_field = None
+        domain = _migration_record_domain(
+            raw_module,
+            status=status,
+            canonical_symbol=canonical_symbol,
+        )
+        coverage = migration_entrypoint_coverage(domain, boundaries)
         records.append(
             MigrationRecord(
                 record_id=raw_id,
@@ -1043,25 +1059,6 @@ def _non_hydra_boundary(
     )
 
 
-def _validation_command(module: str, *, domain: str) -> RuntimeBoundary:
-    return RuntimeBoundary(
-        domain=domain,
-        module=module,
-        callable_name="main",
-        kind=BoundaryKind.VALIDATION_COMMAND,
-        executable_module=True,
-        validator_key=None,
-        validator_callable=None,
-        configuration_authority=None,
-        path_authority=_PATH_AUTHORITY,
-        migration_target="self-validating source-only contract command",
-        required_policy="the command constructs all required invalid fixtures explicitly",
-        optional_policy="no external runtime configuration is accepted",
-        default_authority="source-owned validation fixtures only",
-        precedence_authority="single deterministic validation matrix",
-    )
-
-
 _RUNTIME_BOUNDARIES = (
     _runtime_boundary(
         "synthetic_data_generation",
@@ -1280,12 +1277,6 @@ _RUNTIME_BOUNDARIES = (
         kind=BoundaryKind.CALLABLE,
         executable_module=True,
     ),
-    _validation_command("src.configuration_validation", domain="base"),
-    _validation_command("src.tasks.ball_detection.validation", domain="ball_detection"),
-    _validation_command("src.tasks.blcs.validation", domain="blcs"),
-    _validation_command("src.tasks.plcs.validation_matrix", domain="plcs"),
-    _validation_command("src.utils.configuration.audit", domain="utils"),
-    _validation_command("src.utils.configuration.validation", domain="utils"),
 )
 
 

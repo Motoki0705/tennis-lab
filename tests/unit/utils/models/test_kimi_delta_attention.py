@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
 
 import pytest
@@ -144,7 +145,7 @@ def test_matches_hand_calculated_inclusive_scalar_recurrence() -> None:
     query = torch.tensor([[[[1.0]], [[2.0]]]])
     key = torch.ones_like(query)
     value = torch.tensor([[[[2.0]], [[4.0]]]])
-    log_decay = torch.full_like(query, torch.log(torch.tensor(0.5)))
+    log_decay = torch.full_like(query, math.log(0.5))
     beta = torch.tensor([[[1.0], [0.5]]])
 
     output, state = kimi_delta_attention(query, key, value, log_decay, beta)

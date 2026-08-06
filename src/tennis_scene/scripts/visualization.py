@@ -25,7 +25,7 @@ from src.tennis_scene.configuration import validate_visualization_boundary
 from src.utils.hydra import hydra_main, register_boundary_validator
 
 if TYPE_CHECKING:
-    from src.tennis_scene.io import SceneResult
+    from src.tennis_scene.schema import SceneResult
 
 LOGGER = logging.getLogger(__name__)
 _BOUNDARY = "tennis_scene.visualization"
@@ -59,8 +59,8 @@ def _validate_scene_for_smpl(scene: SceneResult) -> None:
 )
 def main(cfg: DictConfig) -> int:
     """Visualize tennis scene results."""
+    from src.tennis_scene.archive import load_scene_result
     from src.tennis_scene.configuration import parse_visualization_config
-    from src.tennis_scene.io import SceneResult
     from src.tennis_scene.rendering import TennisSceneRenderer
     from src.tennis_scene.rendering.tennis_scene_renderer import TennisSceneStyle
 
@@ -69,7 +69,7 @@ def main(cfg: DictConfig) -> int:
         raise FileNotFoundError(f"Input file not found: {runtime.input_path}")
 
     LOGGER.info(f"Loading scene from {runtime.input_path}")
-    scene = SceneResult.load(runtime.input_path)
+    scene = load_scene_result(runtime.input_path)
 
     LOGGER.info(f"Scene: {scene.num_frames} frames, {scene.fps:.1f} FPS")
     LOGGER.info(f"Resolution: {scene.width}x{scene.height}")

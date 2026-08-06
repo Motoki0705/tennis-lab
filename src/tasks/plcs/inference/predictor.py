@@ -1,41 +1,56 @@
-"""Unified PLCS inference predictor."""
+"""Inference boundary for a once-bound standard PLCS model and I/O adapter."""
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import Any, ParamSpec, Self, TypeVar, cast
+from typing import Any, Self
 
+import numpy as np
 import torch
 from torch import Tensor, nn
 
-from src.tasks.base.inference.grad_mode import no_grad
 from src.tasks.base.inference.predictor import BasePredictor
+from src.tasks.base.model_io import ModelCall, ModelInputContractError
+from src.tasks.plcs.model_io import (
+    PLCSDecodedPrediction,
+    PLCSInputProfile,
+    PLCSModelIOAdapter,
+    PLCSPhysicalPrediction,
+    PLCSPreparedBatch,
+    PLCSStandardBoundModelIO,
+    bind_plcs_model_io,
+)
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.utils.configuration import PathResolver
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
-_P = ParamSpec("_P")
-_R = TypeVar("_R")
-
-
-def _typed_no_grad(function: Callable[_P, _R]) -> Callable[_P, _R]:
-    decorator: Callable[[Callable[_P, _R]], Callable[_P, _R]] = no_grad
-    return decorator(function)
-
 
 class PLCSPredictor(BasePredictor):
-    """Unified PLCS model inference predictor."""
+    """Run standard PLCS inference through its construction-bound adapter."""
 
     def __init__(
         self,
+        *,
         model: nn.Module,
+        adapter: PLCSModelIOAdapter,
         device: torch.device,
     ) -> None:
-        self.model = model.to(device)
+        bound = bind_plcs_model_io(model, adapter)
+        self.model_io: PLCSStandardBoundModelIO = bound
+        self.model = self.model_io.model.to(device).eval()
+        self.io_adapter = adapter
         self.device = device
-        self.model.eval()
         self._norm_scale_xyz = COURT_COORD_SCALE_XYZ
+
+    @property
+    def input_profile(self) -> PLCSInputProfile:
+        """Return the profile fixed by the checkpoint composition."""
+        return self.io_adapter.profile
+
+    def require_input_profile(self, profile: PLCSInputProfile | str) -> None:
+        """Fail before assembly when a consumer needs another input profile."""
+        self.io_adapter.require_profile(profile)
 
     @classmethod
     def load_from_checkpoint(
@@ -44,71 +59,148 @@ class PLCSPredictor(BasePredictor):
         *,
         resolver: PathResolver,
         device: str | torch.device,
-        allow_device_fallback: bool,
         **kwargs: Any,
     ) -> Self:
-        model, resolved_device = cls._load_single_lightning_checkpoint(
+        lightning_module, resolved_device = cls._load_single_lightning_module(
             checkpoint_path,
             PLCSLightningModule,
             resolver=resolver,
             device=device,
-            allow_device_fallback=allow_device_fallback,
+            strict=bool(kwargs.pop("strict", True)),
+            weights_only=bool(kwargs.pop("weights_only", False)),
             **kwargs,
         )
-        return cls(model=model, device=resolved_device)
+        adapter = lightning_module.io_adapter
+        if not isinstance(adapter, PLCSModelIOAdapter):
+            raise ModelInputContractError(
+                "Loaded checkpoint does not contain a standard PLCS I/O adapter."
+            )
+        return cls(
+            model=lightning_module.model,
+            adapter=adapter,
+            device=resolved_device,
+        )
 
-    @_typed_no_grad
+    def _move_call(self, call: ModelCall) -> ModelCall:
+        return ModelCall(
+            args=tuple(
+                value.to(self.device) if isinstance(value, Tensor) else None
+                for value in call.args
+            ),
+            kwargs={
+                key: value.to(self.device) if isinstance(value, Tensor) else None
+                for key, value in call.kwargs.items()
+            },
+        )
+
+    def _run_prepared(self, prepared: PLCSPreparedBatch) -> PLCSDecodedPrediction:
+        moved_call = self._move_call(prepared.call)
+        raw_output = self.model_io.execute_call(moved_call)
+        decoded = self.io_adapter.decode_prepared_output(raw_output, prepared)
+        return PLCSDecodedPrediction(
+            position=decoded.position.detach().cpu(),
+            rotation=decoded.rotation.detach().cpu(),
+            canonical_pose=(
+                decoded.canonical_pose.detach().cpu()
+                if decoded.canonical_pose is not None
+                else None
+            ),
+            auxiliary_position=(
+                decoded.auxiliary_position.detach().cpu()
+                if decoded.auxiliary_position is not None
+                else None
+            ),
+        )
+
     def predict(
         self,
         human_kp: Tensor,
         court_kp: Tensor,
-        human_vis: Tensor | None = None,
-        human_mask: Tensor | None = None,
-        court_vis: Tensor | None = None,
+        human_vis: Tensor,
+        human_mask: Tensor,
+        court_vis: Tensor,
         *,
         denormalize: bool,
     ) -> dict[str, Tensor]:
-        """Predict player 3D position and orientation from caller-provided tensors."""
+        """Validate, invoke, and decode caller-provided model-ready tensors."""
+        with torch.no_grad():
+            prepared = PLCSPreparedBatch(
+                call=self.io_adapter.build_call(
+                    {
+                        "human_kp": human_kp,
+                        "court_kp": court_kp,
+                        "human_vis": human_vis,
+                        "human_mask": human_mask,
+                        "court_vis": court_vis,
+                    }
+                )
+            )
+            decoded = self._run_prepared(prepared)
+            result = {
+                "position": decoded.position,
+                "rotation": decoded.rotation,
+            }
+            if decoded.canonical_pose is not None:
+                result["canonical_pose"] = decoded.canonical_pose
+            if decoded.auxiliary_position is not None:
+                result["auxiliary_position"] = decoded.auxiliary_position
+            if denormalize:
+                result["position_meters"] = self._denormalize_coords(
+                    decoded.position, self._norm_scale_xyz
+                )
+                result["yaw_radians"] = torch.atan2(
+                    decoded.rotation[..., 1], decoded.rotation[..., 0]
+                )
+            return result
 
-        moved = self._to_device(
-            self.device,
-            human_kp,
-            court_kp,
-            human_vis,
-            human_mask,
-            court_vis,
-        )
-        moved_human_kp, moved_court_kp, human_vis, human_mask, court_vis = moved
-        if moved_human_kp is None or moved_court_kp is None:
-            raise AssertionError("Required predictor inputs became None.")
+    def predict_scene(
+        self,
+        scene: object,
+        cameras: Sequence[int],
+    ) -> PLCSDecodedPrediction:
+        """Assemble and predict one loaded PLCS scene through the adapter."""
+        with torch.no_grad():
+            return self._run_prepared(self.io_adapter.prepare_scene(scene, cameras))
 
-        outputs = cast(
-            "dict[str, Tensor]",
-            self.model(
-                human_kp=moved_human_kp,
-                court_kp=moved_court_kp,
+    def predict_multiview_observations(
+        self,
+        *,
+        human_kp: np.ndarray,
+        court_kp: np.ndarray,
+        human_vis: np.ndarray,
+        human_mask: np.ndarray,
+        court_vis: np.ndarray,
+    ) -> PLCSPhysicalPrediction:
+        """Decode explicit NumPy ``(B,V,T,...)`` observations to physical units."""
+        with torch.no_grad():
+            prepared = self.io_adapter.prepare_multiview_observations(
+                human_kp=human_kp,
+                court_kp=court_kp,
                 human_vis=human_vis,
                 human_mask=human_mask,
                 court_vis=court_vis,
-            ),
-        )
-
-        position = outputs["position"]
-        rotation = outputs["rotation"]
-
-        result: dict[str, Tensor] = {
-            "position": position,
-            "rotation": rotation,
-        }
-
-        canonical_pose = outputs.get("canonical_pose")
-        if canonical_pose is not None:
-            result["canonical_pose"] = canonical_pose
-
-        if denormalize:
-            result["position_meters"] = self._denormalize_coords(
-                position, self._norm_scale_xyz
             )
-            result["yaw_radians"] = torch.atan2(rotation[..., 1], rotation[..., 0])
+            decoded = self._run_prepared(prepared)
+            position_meters = self._denormalize_coords(
+                decoded.position, self._norm_scale_xyz
+            ).numpy()
+            yaw_radians = torch.atan2(
+                decoded.rotation[..., 1], decoded.rotation[..., 0]
+            ).numpy()
+            canonical_pose = (
+                decoded.canonical_pose.numpy()
+                if decoded.canonical_pose is not None
+                else None
+            )
+            return PLCSPhysicalPrediction(
+                position_meters=position_meters.astype(np.float32, copy=False),
+                yaw_radians=yaw_radians.astype(np.float32, copy=False),
+                canonical_pose=(
+                    canonical_pose.astype(np.float32, copy=False)
+                    if canonical_pose is not None
+                    else None
+                ),
+            )
 
-        return {k: v.detach().cpu() for k, v in result.items()}
+
+__all__ = ["PLCSPredictor"]

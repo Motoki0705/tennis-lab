@@ -22,54 +22,19 @@ from __future__ import annotations
 
 import sys
 
-import numpy as np
-import torch
-from numpy.typing import NDArray
 from omegaconf import DictConfig
 
 from src.tasks.slcs.configuration import SLCSPrecomputeConfig
-from src.tasks.slcs.data.dino_precompute import FrameEncoder, run_precompute
-from src.utils.data.augmentation import IMAGENET_MEAN, IMAGENET_STD
+from src.tasks.slcs.data.dino_precompute import run_precompute
+from src.tasks.slcs.model_io.factory import create_slcs_frame_token_encoder
 from src.utils.hydra import hydra_main
-from src.utils.models.loading.dinov3 import load_dinov3_backbone
-
-
-def _build_encoder(config: SLCSPrecomputeConfig) -> tuple[FrameEncoder, int, int]:
-    """Load the DINOv3 backbone and wrap it as a FrameEncoder."""
-    device = torch.device(config.device)
-    adapter = load_dinov3_backbone(
-        repository_path=config.repository_path,
-        checkpoint_path=config.checkpoint_path,
-        backbone_name=config.data.pipeline.dino_spec.backbone,
-        strict=config.strict,
-    )
-    adapter = adapter.to(device)
-    adapter.eval()
-
-    mean = torch.tensor(IMAGENET_MEAN, device=device).view(1, 3, 1, 1)
-    std = torch.tensor(IMAGENET_STD, device=device).view(1, 3, 1, 1)
-
-    def encoder(frames: NDArray[np.uint8]) -> NDArray[np.float16]:
-        with torch.no_grad():
-            x = torch.from_numpy(frames).to(device).permute(0, 3, 1, 2).float() / 255.0
-            x = (x - mean) / std
-            tokens = adapter.forward_features(x)["x_norm_patchtokens"]
-            return np.asarray(tokens.to(torch.float16).cpu().numpy(), dtype=np.float16)
-
-    return encoder, adapter.embed_dim, adapter.patch_size
 
 
 def run(config: DictConfig) -> int:
     """Execute precompute; returns a process exit code."""
     runtime = SLCSPrecomputeConfig.from_config(config)
     spec = runtime.data.pipeline.dino_spec
-    encoder, embed_dim, patch_size = _build_encoder(runtime)
-    if embed_dim != spec.embed_dim or patch_size != spec.patch_size:
-        raise ValueError(
-            f"Configured dino spec (embed_dim={spec.embed_dim}, patch_size="
-            f"{spec.patch_size}) does not match the loaded backbone "
-            f"(embed_dim={embed_dim}, patch_size={patch_size})."
-        )
+    encoder = create_slcs_frame_token_encoder(runtime)
 
     report = run_precompute(
         runtime.data.dataset_root,

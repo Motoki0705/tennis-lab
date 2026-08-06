@@ -45,6 +45,12 @@ def test_cannot_instantiate_abstract() -> None:
         BasePredictor()  # type: ignore[abstract]
 
 
+def test_removed_checkpoint_compatibility_loader_is_unavailable() -> None:
+    assert "_load_single_lightning_checkpoint" not in BasePredictor.__dict__
+    with pytest.raises(AttributeError, match="_load_single_lightning_checkpoint"):
+        _ = _Predictor._load_single_lightning_checkpoint  # type: ignore[attr-defined]
+
+
 def test_ensure_checkpoint_accepts_single_path(tmp_path: Path) -> None:
     ckpt = tmp_path / "model.ckpt"
     ckpt.write_text("x")

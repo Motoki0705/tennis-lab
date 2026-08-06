@@ -72,23 +72,23 @@ def evaluate_split(
             dataset[i] for i in range(start, min(start + batch_size, len(dataset)))
         ]
         batch = collate_slcs(samples)
-        outputs = predictor.predict(batch, denormalize=False)
+        outputs, targets = predictor.predict_with_targets(batch)
 
-        frame_mask = batch["frame_mask"] > 0
-        player_mask = (batch["target_player_valid"] > 0) & frame_mask.unsqueeze(1)
-        ball_mask = (batch["target_ball_valid"] > 0) & frame_mask
-        metrics.update(outputs, batch)
+        frame_mask = targets.frame_mask
+        player_mask = targets.player_mask
+        ball_mask = targets.ball_mask
+        metrics.update(outputs, targets)
 
         player_err = (
-            (outputs["player_position"] - batch["target_player_position"]) * scale
+            (outputs.player_position - targets.target_player_position) * scale
         ).norm(dim=-1)
         ang_err = (
-            angular_error(outputs["player_rotation"], batch["target_player_rotation"])
+            angular_error(outputs.player_rotation, targets.target_player_rotation)
             * 180.0
             / math.pi
         )
         ball_err = (
-            (outputs["ball_position"] - batch["target_ball_position"]) * scale
+            (outputs.ball_position - targets.target_ball_position) * scale
         ).norm(dim=-1)
 
         collected["player_pos_error_m"].append(player_err.numpy())
@@ -100,13 +100,13 @@ def evaluate_split(
         collected["player_observed"].append((batch["player_valid"] > 0).numpy())
         collected["ball_observed"].append((batch["ball_vis"] > 0).numpy())
         collected["player_sigma_m"].append(
-            (outputs["player_position_log_b"].exp() * scale_mean).numpy()
+            (outputs.player_position_log_b.exp() * scale_mean).numpy()
         )
         collected["player_rot_sigma_deg"].append(
-            (outputs["player_rotation_log_b"].exp() * 180.0 / math.pi).numpy()
+            (outputs.player_rotation_log_b.exp() * 180.0 / math.pi).numpy()
         )
         collected["ball_sigma_m"].append(
-            (outputs["ball_position_log_b"].exp() * scale_mean).numpy()
+            (outputs.ball_position_log_b.exp() * scale_mean).numpy()
         )
 
     arrays = {key: np.concatenate(chunks, axis=0) for key, chunks in collected.items()}

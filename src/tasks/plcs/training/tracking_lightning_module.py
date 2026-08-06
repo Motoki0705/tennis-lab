@@ -5,83 +5,79 @@ from __future__ import annotations
 from typing import Any, cast
 
 import numpy as np
-import torch
+from torch import Tensor
 
-from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.base.training.tracking_lightning_module import (
+    TrackingLightningModule,
+    TrackingStepResult,
+)
 from src.tasks.plcs.configuration import PLCSTrainingConfig
-from src.tasks.plcs.models import build_plcs_model
+from src.tasks.plcs.model_io import (
+    PLCSTrackingBoundModelIO,
+    PLCSTrackQueryIOAdapter,
+    build_plcs_model_io,
+)
 from src.tasks.plcs.training.tracking_losses import PLCSTrackingLoss
 from src.tasks.plcs.training.tracking_metrics import plcs_tracking_metrics
 
 
-class PLCSTrackingLightningModule(BaseLightningModule):
+class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Tensor]]):
     """Train and evaluate clip-local player slots."""
 
     def __init__(self, config: Any) -> None:
         runtime = PLCSTrainingConfig.from_config(config)
         super().__init__(config)
-        self.model = build_plcs_model(runtime)
+        model_io = build_plcs_model_io(runtime)
+        adapter = model_io.adapter
+        if not isinstance(adapter, PLCSTrackQueryIOAdapter):
+            raise ValueError(
+                "PLCSTrackingLightningModule requires a track-query model-I/O pair."
+            )
+        self.io_adapter = adapter
+        self.model_io = cast(PLCSTrackingBoundModelIO, model_io)
+        self.model = self.model_io.model
         self.criterion = PLCSTrackingLoss(config.loss)
         if runtime.tracking_metrics is None:
             raise ValueError("PLCS tracking requires tracking_metrics configuration.")
         self.tracking_metric_config = runtime.tracking_metrics
 
-    @staticmethod
-    def _model_inputs(batch: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-        keys = (
-            "human_kp",
-            "detection_mask",
-            "court_kp",
-            "court_vis",
-            "frame_mask",
-            "view_mask",
-        )
-        return {key: batch[key] for key in keys}
-
-    def forward(self, batch: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-        return cast(dict[str, torch.Tensor], self.model(**self._model_inputs(batch)))
-
-    def _shared_step(
-        self, batch: dict[str, torch.Tensor], stage: str
-    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
-        prediction = self(batch)
-        losses, assignments = self.criterion(prediction, batch)
-        self.log(
-            f"{stage}/loss", losses["total"], on_step=stage == "train", on_epoch=True
-        )
-        for name, value in losses.items():
-            if name != "total":
-                self.log(f"{stage}/loss_{name}", value, on_step=False, on_epoch=True)
-        if stage != "train":
-            for name, value in plcs_tracking_metrics(
+    def compute_tracking_step(
+        self,
+        batch: dict[str, Tensor],
+        *,
+        compute_metrics: bool,
+    ) -> TrackingStepResult[dict[str, Tensor]]:
+        """Run PLCS model-I/O, matching, loss, and optional metrics."""
+        prepared = self.io_adapter.prepare_training_batch(batch)
+        raw_prediction = self.model_io.execute_call(prepared.call)
+        decoded = self.model_io.decode_output(raw_prediction)
+        prediction = {
+            "position": decoded.position,
+            "rotation": decoded.rotation,
+            "presence_logits": decoded.presence_logits,
+        }
+        loss_inputs, assignments = self.criterion.prepare_inputs(prediction, batch)
+        losses = self.criterion(loss_inputs)
+        metrics = (
+            plcs_tracking_metrics(
                 prediction,
                 batch,
                 assignments,
                 config=self.tracking_metric_config,
-            ).items():
-                self.log(f"{stage}/{name}", value, on_step=False, on_epoch=True)
-        return losses["total"], prediction
+            )
+            if compute_metrics
+            else {}
+        )
+        return TrackingStepResult(
+            losses=losses,
+            metrics=metrics,
+            prediction=prediction,
+        )
 
-    def training_step(
-        self, batch: dict[str, torch.Tensor], batch_idx: int
-    ) -> torch.Tensor:
-        del batch_idx
-        loss, _ = self._shared_step(batch, "train")
-        return loss
-
-    def validation_step(
-        self, batch: dict[str, torch.Tensor], batch_idx: int
-    ) -> dict[str, torch.Tensor]:
-        del batch_idx
-        _, prediction = self._shared_step(batch, "val")
-        return prediction
-
-    def test_step(
-        self, batch: dict[str, torch.Tensor], batch_idx: int
-    ) -> dict[str, torch.Tensor]:
-        del batch_idx
-        _, prediction = self._shared_step(batch, "test")
-        self.collect_test_predictions(batch, prediction)
+    def tracking_prediction_result(
+        self, prediction: dict[str, Tensor]
+    ) -> dict[str, Any]:
+        """Return the canonical PLCS tensor mapping unchanged."""
         return prediction
 
     def test_prediction_payload(
@@ -97,11 +93,3 @@ class PLCSTrackingLightningModule(BaseLightningModule):
             "target_instance_id": self._to_numpy(batch["target_instance_id"]),
             "frame_mask": self._to_numpy(batch["frame_mask"]),
         }
-
-    def on_test_epoch_end(self) -> None:
-        metrics = {
-            key.removeprefix("test/"): float(value.detach().cpu())
-            for key, value in self.trainer.callback_metrics.items()
-            if key.startswith("test/") and isinstance(value, torch.Tensor)
-        }
-        self.save_test_predictions(metrics)

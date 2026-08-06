@@ -35,6 +35,7 @@ register_boundary_validator(_BOUNDARY, validate_pipeline_boundary)
 )
 def main(cfg: DictConfig) -> int:
     """Run the tennis scene reconstruction pipeline."""
+    from src.tennis_scene.archive import save_scene_result
     from src.tennis_scene.configuration import PipelineRuntimeConfig
     from src.tennis_scene.pipeline import TennisSceneOrchestrator
 
@@ -66,7 +67,7 @@ def main(cfg: DictConfig) -> int:
 
     LOGGER.info("Saving results...")
     runtime.output_path.parent.mkdir(parents=True, exist_ok=True)
-    result.save(runtime.output_path)
+    save_scene_result(result, runtime.output_path)
     LOGGER.info(f"Saved: {runtime.output_path}")
 
     LOGGER.info("=" * 60)

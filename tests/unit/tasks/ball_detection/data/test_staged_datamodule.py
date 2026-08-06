@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Sized
 from pathlib import Path
 from typing import Any, cast
 
 import pytest
+import torch
 from hydra import compose, initialize_config_dir
+from torch.utils.data import Dataset
 
 import src.tasks.ball_detection.data.staged_datamodule as staged_module
 from src.tasks.ball_detection.data.components.staged_sampler import (
@@ -15,11 +18,12 @@ from src.tasks.ball_detection.data.components.staged_sampler import (
     accumulation_for,
 )
 from src.tasks.ball_detection.data.staged_datamodule import StagedBallDataModule
+from src.tasks.ball_detection.data.types import BallDetectionSample
 
 _CONFIG_DIR = Path(__file__).resolve().parents[5] / "src/tasks/ball_detection/configs"
 
 
-class _TaggedDataset:
+class _TaggedDataset(Dataset[BallDetectionSample]):
     """Minimal dataset that exposes which staged source/split produced a sample."""
 
     def __init__(self, source: str, split: str, n: int) -> None:
@@ -30,8 +34,16 @@ class _TaggedDataset:
     def __len__(self) -> int:
         return self.n
 
-    def __getitem__(self, index: int | tuple[int, int]) -> dict[str, Any]:
-        return {"source": self.source, "split": self.split, "index": index}
+    def __getitem__(self, index: int | tuple[int, int]) -> BallDetectionSample:
+        return {
+            "images": torch.empty(0),
+            "heatmaps": torch.empty(0),
+            "coords": torch.empty(0),
+            "visibility": torch.empty(0),
+            "original_size": torch.empty(0),
+            "heatmap_size": torch.empty(0),
+            "window_id": f"{self.source}:{self.split}:{index!r}",
+        }
 
 
 class _FakeSourceDataModule:
@@ -105,6 +117,11 @@ def _concat_sources(dataset: Any) -> list[str]:
     return [cast(_TaggedDataset, child).source for child in concat.datasets]
 
 
+def _dataset_length(dataset: Dataset[BallDetectionSample] | None) -> int:
+    assert dataset is not None
+    return len(cast(Sized, dataset))
+
+
 def test_source_splits_gate_web_to_train_only(fake_sources: None) -> None:
     _ = fake_sources
     datamodule = StagedBallDataModule(_config(web_splits=["train"]))
@@ -115,9 +132,9 @@ def test_source_splits_gate_web_to_train_only(fake_sources: None) -> None:
     assert _concat_sources(datamodule.val_dataset) == ["tracknet"]
     assert _concat_sources(datamodule.test_dataset) == ["tracknet"]
     assert datamodule.train_dataset is not None
-    assert datamodule.train_dataset[8]["source"] == "web"
-    assert len(datamodule.val_dataset or []) == 3
-    assert len(datamodule.test_dataset or []) == 2
+    assert datamodule.train_dataset[8]["window_id"].startswith("web:")
+    assert _dataset_length(datamodule.val_dataset) == 3
+    assert _dataset_length(datamodule.test_dataset) == 2
 
 
 def test_fixed_t_distribution_samples_only_t_max(fake_sources: None) -> None:
@@ -128,9 +145,12 @@ def test_fixed_t_distribution_samples_only_t_max(fake_sources: None) -> None:
     datamodule.setup(stage="fit")
 
     loader = datamodule.train_dataloader()
+    assert loader.batch_sampler is not None
     batches = list(loader.batch_sampler)
     expected_accumulate = accumulation_for(effective_batch=8, physical_batch=2)
-    expected_groups = len(datamodule.train_dataset or []) // (2 * expected_accumulate)
+    expected_groups = _dataset_length(datamodule.train_dataset) // (
+        2 * expected_accumulate
+    )
 
     assert datamodule.t_probs == {4: 1.0}
     assert len(batches) == expected_groups * expected_accumulate

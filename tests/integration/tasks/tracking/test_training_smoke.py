@@ -15,6 +15,7 @@ from src.tasks.blcs.data.tracking_datamodule import BLCSTrackingDataModule
 from src.tasks.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter
 from src.tasks.blcs.generate_dataset.scene_generator import BLCSSceneData
 from src.tasks.blcs.generate_dataset.scene_generator import CameraData as BLCSCameraData
+from src.tasks.blcs.model_io import compose_blcs_track_query_model_io
 from src.tasks.blcs.training.tracking_lightning_module import (
     BLCSTrackingLightningModule,
 )
@@ -218,7 +219,14 @@ def test_tracking_task_runs_one_training_and_validation_step(
     assert all(
         torch.equal(value, repeated_val[key]) for key, value in first_val.items()
     )
-    model_inputs = module_class._model_inputs(first_val)
+    if task == "blcs":
+        model_io = compose_blcs_track_query_model_io(config)
+        lightning_module = module_class(config, model_io=model_io)
+    else:
+        lightning_module = module_class(config)
+        model_io = lightning_module.model_io
+    first_batch = next(iter(datamodule.val_dataloader()))
+    model_inputs = model_io.build_call(first_batch).kwargs
     assert {
         "ball_score",
         "ball_candidate_mask",
@@ -242,5 +250,5 @@ def test_tracking_task_runs_one_training_and_validation_step(
         enable_model_summary=False,
         default_root_dir=str(tmp_path),
     )
-    trainer.fit(module_class(config), datamodule=datamodule)
+    trainer.fit(lightning_module, datamodule=datamodule)
     assert trainer.global_step == 1

@@ -69,8 +69,6 @@ class StagedBallDetectionLightningModule(BallDetectionLightningModule):
 
         result = self._compute_supervised_result(batch, "train")
         loss = result["loss"]
-        if not isinstance(loss, Tensor):
-            raise TypeError("Supervised training loss must be a tensor.")
         self.manual_backward(loss / accumulate)
         self._accum_count += 1
 

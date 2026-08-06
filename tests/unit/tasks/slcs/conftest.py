@@ -6,27 +6,27 @@ from pathlib import Path
 
 import pytest
 
-from src.tasks.slcs.data.contract import DatasetIndex
+from src.tasks.slcs.data.annotation import SLCSDataIndex
 from src.tasks.slcs.data.dataset import SLCSDataConfig
 from src.tasks.slcs.data.dino_tokens import DinoTokenSpec
 from src.tasks.slcs.data.quality import QualityConfig
 from src.tasks.slcs.data.splits import generate_recording_splits, save_split_file
-from src.tasks.slcs.data.synthetic import (
-    DEFAULT_TEST_DINO_SPEC,
-    SyntheticDatasetConfig,
-    build_synthetic_dataset,
+from tests.support.tasks.slcs.dataset import (
+    DEFAULT_FIXTURE_DINO_SPEC,
+    SLCSFixtureDatasetConfig,
+    build_slcs_dataset_fixture,
 )
 
 
 @pytest.fixture(scope="session")
-def synthetic_dataset(tmp_path_factory: pytest.TempPathFactory) -> DatasetIndex:
+def synthetic_dataset(tmp_path_factory: pytest.TempPathFactory) -> SLCSDataIndex:
     """A small contract-conformant dataset, built once per test session."""
     root = tmp_path_factory.mktemp("slcs_dataset")
-    return build_synthetic_dataset(root, SyntheticDatasetConfig())
+    return build_slcs_dataset_fixture(root, SLCSFixtureDatasetConfig())
 
 
 @pytest.fixture(scope="session")
-def synthetic_split_file(synthetic_dataset: DatasetIndex) -> Path:
+def synthetic_split_file(synthetic_dataset: SLCSDataIndex) -> Path:
     """Split file covering the synthetic dataset (1 recording per split)."""
     assignments = generate_recording_splits(
         synthetic_dataset, val_ratio=0.34, test_ratio=0.33, seed=0
@@ -38,7 +38,7 @@ def synthetic_split_file(synthetic_dataset: DatasetIndex) -> Path:
 
 @pytest.fixture
 def dino_spec() -> DinoTokenSpec:
-    return DEFAULT_TEST_DINO_SPEC
+    return DEFAULT_FIXTURE_DINO_SPEC
 
 
 @pytest.fixture

@@ -22,12 +22,10 @@ import torch
 from numpy.typing import NDArray
 from torch.utils.data import Dataset
 
-from src.tasks.slcs.data.contract import (
-    ClipManifest,
-    DatasetContractError,
-    DatasetIndex,
+from src.tasks.slcs.data.annotation import (
     IncompleteAnnotationError,
-    load_tennis_scene_annotation,
+    SLCSDataIndex,
+    load_slcs_annotation,
 )
 from src.tasks.slcs.data.dino_tokens import DinoTokenSpec, load_dino_tokens
 from src.tasks.slcs.data.quality import (
@@ -38,6 +36,10 @@ from src.tasks.slcs.data.quality import (
 from src.tasks.slcs.data.splits import load_split_assignments
 from src.tasks.slcs.data.types import SLCSSample, SLCSWindowMeta
 from src.tasks.slcs.data.windows import WindowPlan, plan_windows, select_window_tokens
+from src.tennis_scene.generate_dataset.manifest import (
+    ClipManifest,
+    DatasetManifestError,
+)
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 from src.utils.schema.player import NUM_HUMAN_KP
 
@@ -119,14 +121,14 @@ def _canonical_player_order(
     for p in range(num_players):
         valid = player_label_valid[p]
         if not valid.any():
-            raise DatasetContractError(
+            raise DatasetManifestError(
                 f"{clip_id}: player {p} has no label-valid frame; cannot derive a "
                 "canonical player ordering."
             )
         means[p] = float(player_position[p, valid, 1].mean())
     order = np.argsort(means, kind="stable").astype(np.int64)
     if num_players > 1 and np.any(np.diff(means[order]) == 0.0):
-        raise DatasetContractError(
+        raise DatasetManifestError(
             f"{clip_id}: ambiguous player ordering (equal mean court-Y {means.tolist()})."
         )
     return order
@@ -140,11 +142,11 @@ def _check_visible_uv(
         return
     values = uv[visible]
     if not np.isfinite(values).all():
-        raise DatasetContractError(
+        raise DatasetManifestError(
             f"{context}: visible observations contain non-finite UV."
         )
     if values.min() < -_UV_TOLERANCE or values.max() > 1.0 + _UV_TOLERANCE:
-        raise DatasetContractError(
+        raise DatasetManifestError(
             f"{context}: visible UV outside [{-_UV_TOLERANCE}, {1 + _UV_TOLERANCE}] "
             f"(min={values.min():.3f}, max={values.max():.3f}); expected normalized "
             "[0, 1] coordinates, not pixels."
@@ -158,7 +160,7 @@ def load_clip_arrays(manifest: ClipManifest, *, config: SLCSDataConfig) -> ClipA
     exact same normalization, ordering and quality masks.
     """
     cfg = config
-    scene = load_tennis_scene_annotation(manifest, verify_manifest_digest=True)
+    scene = load_slcs_annotation(manifest, verify_manifest_digest=True)
     clip_id = manifest.clip_id
 
     human_kp_2d = np.asarray(scene.human_kp_2d, dtype=np.float32)
@@ -173,17 +175,17 @@ def load_clip_arrays(manifest: ClipManifest, *, config: SLCSDataConfig) -> ClipA
 
     num_players = player_position.shape[0]
     if num_players != cfg.num_players:
-        raise DatasetContractError(
+        raise DatasetManifestError(
             f"{clip_id}: scene has P={num_players} players, config expects "
             f"{cfg.num_players}."
         )
     if court_kp.shape[2] != cfg.num_court_kp:
-        raise DatasetContractError(
+        raise DatasetManifestError(
             f"{clip_id}: scene court_kp has K={court_kp.shape[2]}, config expects "
             f"{cfg.num_court_kp}."
         )
     if human_kp_2d.shape[3] != NUM_HUMAN_KP:
-        raise DatasetContractError(
+        raise DatasetManifestError(
             f"{clip_id}: human_kp_2d has J={human_kp_2d.shape[3]}, expected {NUM_HUMAN_KP}."
         )
 
@@ -352,7 +354,7 @@ class SLCSWindowDataset(Dataset[SLCSSample]):
         if self.stride <= 0:
             raise ValueError(f"stride must be positive, got {self.stride}.")
 
-        index = DatasetIndex.load(dataset_root)
+        index = SLCSDataIndex.load(dataset_root)
         assignments = load_split_assignments(split_file, index)
 
         self._clips: dict[str, ClipArrays] = {}
@@ -385,7 +387,7 @@ class SLCSWindowDataset(Dataset[SLCSSample]):
             self._plan_clip_windows(clip)
 
         if not self._entries:
-            raise DatasetContractError(
+            raise DatasetManifestError(
                 f"split {split!r} of dataset {dataset_root} yields no windows "
                 f"(report: {self.build_report})."
             )

@@ -12,8 +12,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import torch
+from torch import Tensor
 
-from src.tasks.ball_detection.models import build_ball_detection_model, to_model_input
+from src.tasks.ball_detection.model_io.factory import build_ball_detection_pair
+from src.tasks.base.model_io import BoundModelIO
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -25,8 +27,7 @@ def _image_hw(config: Any) -> tuple[int, int]:
 
 
 def _fits(
-    model: Any,
-    model_cfg: Any,
+    model_io: BoundModelIO[Tensor, Tensor, Tensor],
     batch: int,
     t: int,
     hw: tuple[int, int],
@@ -38,10 +39,11 @@ def _fits(
         frames = torch.randn(
             batch, t, 3, height, width, device=device, requires_grad=False
         )
-        logits = model(to_model_input(frames, model_cfg))
+        call = model_io.build_call(frames)
+        logits = model_io.execute_call(call)
         loss = logits.float().pow(2).mean()
         loss.backward()
-        model.zero_grad(set_to_none=True)
+        model_io.model.zero_grad(set_to_none=True)
         del frames, logits, loss
         if device.type == "cuda":
             torch.cuda.synchronize()
@@ -50,7 +52,7 @@ def _fits(
     except RuntimeError as error:
         if "out of memory" not in str(error).lower():
             raise
-        model.zero_grad(set_to_none=True)
+        model_io.model.zero_grad(set_to_none=True)
         if device.type == "cuda":
             torch.cuda.empty_cache()
         return False
@@ -70,9 +72,8 @@ def probe_batch_size_by_t(
     the largest fitting batch down to leave headroom for optimizer state and
     fragmentation.
     """
-    model_cfg = config.model
-    model = build_ball_detection_model(config).to(device)
-    model.train()
+    model_io = build_ball_detection_pair(config)
+    model_io.model.to(device).train()
     hw = _image_hw(config)
 
     result: dict[int, int] = {}
@@ -81,7 +82,7 @@ def probe_batch_size_by_t(
         cap = max(1, token_budget // t)
         best = 0
         for batch in range(1, cap + 1):
-            if _fits(model, model_cfg, batch, t, hw, device):
+            if _fits(model_io, batch, t, hw, device):
                 best = batch
             else:
                 break
@@ -90,7 +91,7 @@ def probe_batch_size_by_t(
             result[t] = 1
         else:
             result[t] = max(1, int(best * safety))
-    del model
+    del model_io
     if device.type == "cuda":
         torch.cuda.empty_cache()
     return result

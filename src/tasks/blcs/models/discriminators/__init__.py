@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from src.tasks.base.configuration import as_config_mapping, require_config_mapping
-from src.tasks.blcs.models.discriminators.trajectory_discriminator import (
-    BLCSTrajectoryDiscriminator,
+from src.utils.models.architectures import (
+    TransformerSequenceDiscriminator,
+    build_trajectory_discriminator,
 )
-from src.utils.models.architectures import TransformerSequenceDiscriminator
 
 
 def build_blcs_discriminator(config: object) -> TransformerSequenceDiscriminator:
@@ -21,10 +21,25 @@ def build_blcs_discriminator(config: object) -> TransformerSequenceDiscriminator
             "Unknown BLCS discriminator name="
             f"'{disc_name}'. Supported: ['trajectory_transformer']"
         )
-    return BLCSTrajectoryDiscriminator.from_config(config)
+    shared = {
+        key: discriminator[key]
+        for key in (
+            "hidden_dim",
+            "num_layers",
+            "num_heads",
+            "ffn_dim",
+            "dropout",
+            "rope_dim",
+            "rope_theta",
+            "ffn_type",
+            "max_seq_len",
+            "invalid_init_std",
+            "cls_init_std",
+        )
+    }
+    return build_trajectory_discriminator(input_dim=3, disc_cfg=shared)
 
 
 __all__ = [
-    "BLCSTrajectoryDiscriminator",
     "build_blcs_discriminator",
 ]

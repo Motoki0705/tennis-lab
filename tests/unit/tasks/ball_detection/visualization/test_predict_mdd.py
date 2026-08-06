@@ -9,24 +9,49 @@ import torch
 from numpy.typing import NDArray
 
 from src.tasks.ball_detection.inference import BallDetectionPredictor
+from src.tasks.ball_detection.model_io.adapters import BallModelIOAdapter
+from src.tasks.ball_detection.model_io.contracts import (
+    BallInputLayout,
+    BallModelInputSpec,
+)
 from src.tasks.ball_detection.visualization.api.predict import build_mdd_frames
 from src.tasks.ball_detection.visualization.io.clip import ClipSequence
+from src.tasks.base.model_io import bind_model_io
+
+
+class _IdentityBallModel(torch.nn.Identity):
+    in_channels: int
+    num_classes: int
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.in_channels = 3
+        self.num_classes = 1
 
 
 def _build(
     layout: str, *, num_frames: int = 5, h: int = 6, w: int = 8
 ) -> list[NDArray[np.uint8]]:
+    model = _IdentityBallModel()
+    adapter = BallModelIOAdapter(
+        BallModelInputSpec(
+            model_name="test_model",
+            input_mode="rgb",
+            input_layout=cast(BallInputLayout, layout),
+            in_channels=3,
+            num_classes=1,
+            configured_frames=num_frames,
+            image_size_hw=None,
+            minimum_spatial_size=None,
+            mdd_gain=1.0,
+            mdd_offset=0.0,
+        ),
+        expected_model_type=_IdentityBallModel,
+        minimum_frames=1,
+    )
     predictor = BallDetectionPredictor(
-        model=torch.nn.Identity(),
-        device=torch.device("cpu"),
-        model_config={
-            "input_mode": "rgb",
-            "input_layout": layout,
-            "in_channels": 3,
-            "num_frames": num_frames,
-            "mdd_a": 0.2,
-            "mdd_b": 0.15,
-        },
+        bind_model_io(model, adapter),
+        torch.device("cpu"),
         subpixel_refine=False,
     )
     clip = ClipSequence(

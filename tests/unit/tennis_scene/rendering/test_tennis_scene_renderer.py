@@ -14,11 +14,11 @@ import numpy as np
 import pytest
 from mpl_toolkits.mplot3d import Axes3D
 
-from src.tennis_scene.io import SceneResult
 from src.tennis_scene.rendering.tennis_scene_renderer import (
     TennisSceneRenderer,
     TennisSceneStyle,
 )
+from src.tennis_scene.schema import SceneResult
 from src.utils.rendering.camera_view import CameraController
 
 

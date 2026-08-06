@@ -17,19 +17,19 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.tasks.plcs.utils.pose_geometry import world_pose_to_canonical_pose
 from src.utils.configuration import (
     ConfigurationTypeError,
     SemanticConfigurationError,
 )
 from src.utils.geometry.angles import wrapped_angle_diff as _wrapped_angle_diff
+from src.utils.geometry.court_pose import world_pose_to_canonical_pose
 from src.utils.geometry.skeleton import (
     compute_bone_lengths,
     compute_joint_angles,
     compute_torsion_angles,
     compute_torso_twist,
 )
-from src.utils.losses.temporal import smoothness_penalty
+from src.utils.losses.temporal import TemporalSmoothnessPenalty
 from src.utils.schema.player import (
     COCO17_BONE_LENGTH_EDGES as BONE_LENGTH_EDGES,
 )
@@ -178,52 +178,6 @@ class PLCSLossConfig:
                 "torsion_angle_velocity_angle_weights", expected_length=4
             ),
         )
-
-
-# ---------------------------------------------------------------------------
-# Basic losses / metrics
-# ---------------------------------------------------------------------------
-
-
-def position_loss(pred: Tensor, target: Tensor, reduction: str = "mean") -> Tensor:
-    """Compute smooth-L1 position loss.
-
-    Args:
-        pred: Predicted position, shape ``(..., 3)``.
-        target: Target position, shape ``(..., 3)``.
-        reduction: ``'mean'``, ``'sum'``, or ``'none'``.
-
-    Returns:
-        Tensor: Position loss.
-
-    """
-    return nn.functional.smooth_l1_loss(pred, target, reduction=reduction)
-
-
-def rotation_loss(pred: Tensor, target: Tensor, reduction: str = "mean") -> Tensor:
-    """Compute rotation loss for ``(cos, sin)`` yaw representation.
-
-    Uses ``1 - cosine_similarity``. Both prediction and target are normalized
-    for safety.
-
-    Args:
-        pred: Predicted ``(cos, sin)``, shape ``(..., 2)``.
-        target: Target ``(cos, sin)``, shape ``(..., 2)``.
-        reduction: ``'mean'``, ``'sum'``, or ``'none'``.
-
-    Returns:
-        Tensor: Rotation loss.
-
-    """
-    pred_norm = nn.functional.normalize(pred, dim=-1)
-    target_norm = nn.functional.normalize(target, dim=-1)
-    loss = 1.0 - (pred_norm * target_norm).sum(dim=-1)
-
-    if reduction == "mean":
-        return loss.mean()
-    if reduction == "sum":
-        return loss.sum()
-    return loss
 
 
 # ---------------------------------------------------------------------------
@@ -445,6 +399,14 @@ class PLCSLossInputs:
         )
 
 
+@dataclass(frozen=True)
+class PLCSPreparedLossTerms:
+    """Named scalar terms prepared before entering the loss ``forward``."""
+
+    terms: tuple[tuple[str, Tensor, float], ...]
+    zero: Tensor
+
+
 def _masked_frame_mean(per_frame: Tensor, frame_mask: Tensor | None) -> Tensor:
     """Reduce per-frame losses, honoring the padding mask when shapes match."""
     if frame_mask is not None and per_frame.shape == frame_mask.shape:
@@ -494,7 +456,11 @@ def angle_loss_term(inputs: PLCSLossInputs) -> Tensor:
     return _masked_frame_mean(per_frame, inputs.frame_mask)
 
 
-def position_smoothness_loss_term(inputs: PLCSLossInputs) -> Tensor:
+def position_smoothness_loss_term(
+    inputs: PLCSLossInputs,
+    *,
+    penalty: TemporalSmoothnessPenalty,
+) -> Tensor:
     """Temporal jerk prior on predicted player position.
 
     Player pelvis motion is smooth: on the broadcast test split the GT position
@@ -506,19 +472,22 @@ def position_smoothness_loss_term(inputs: PLCSLossInputs) -> Tensor:
     """
     if inputs.pred_position.ndim < 3:
         return inputs.zero
-    return smoothness_penalty(inputs.pred_position, inputs.frame_mask, order=3)
+    frame_mask = inputs.frame_mask
+    if frame_mask is None:
+        frame_mask = torch.ones_like(inputs.pred_position[..., 0], dtype=torch.bool)
+    return cast("Tensor", penalty(inputs.pred_position, frame_mask))
 
 
 def canonical_pose_loss_term(inputs: PLCSLossInputs) -> Tensor:
     """Canonical-pose term: masked smooth-L1 between canonical joint positions."""
     if not inputs.has_canonical:
         return inputs.zero
-    if inputs.pred_canonical_pose is None or inputs.target_canonical_pose is None:
-        raise AssertionError("has_canonical requires both canonical pose tensors.")
+    pred = cast(Tensor, inputs.pred_canonical_pose)
+    target = cast(Tensor, inputs.target_canonical_pose)
 
     per_frame = nn.functional.smooth_l1_loss(
-        inputs.pred_canonical_pose,
-        inputs.target_canonical_pose,
+        pred,
+        target,
         reduction="none",
     ).mean(dim=(-1, -2))
     return _masked_frame_mean(per_frame, inputs.frame_mask)
@@ -531,12 +500,12 @@ def joint_angle_loss_term(inputs: PLCSLossInputs) -> Tensor:
     """
     if not inputs.has_canonical:
         return inputs.zero
-    if inputs.pred_canonical_pose is None or inputs.target_canonical_pose is None:
-        raise AssertionError("has_canonical requires both canonical pose tensors.")
+    pred = cast(Tensor, inputs.pred_canonical_pose)
+    target = cast(Tensor, inputs.target_canonical_pose)
 
     per_frame = joint_angle_loss(
-        inputs.pred_canonical_pose,
-        inputs.target_canonical_pose,
+        pred,
+        target,
         reduction="none",
     )
     return _masked_frame_mean(per_frame, inputs.frame_mask)
@@ -549,12 +518,12 @@ def torsion_angle_loss_term(inputs: PLCSLossInputs) -> Tensor:
     """
     if not inputs.has_canonical:
         return inputs.zero
-    if inputs.pred_canonical_pose is None or inputs.target_canonical_pose is None:
-        raise AssertionError("has_canonical requires both canonical pose tensors.")
+    pred = cast(Tensor, inputs.pred_canonical_pose)
+    target = cast(Tensor, inputs.target_canonical_pose)
 
     per_frame = torsion_angle_loss(
-        inputs.pred_canonical_pose,
-        inputs.target_canonical_pose,
+        pred,
+        target,
         reduction="none",
     )
     return _masked_frame_mean(per_frame, inputs.frame_mask)
@@ -567,12 +536,12 @@ def torso_twist_loss_term(inputs: PLCSLossInputs) -> Tensor:
     """
     if not inputs.has_canonical:
         return inputs.zero
-    if inputs.pred_canonical_pose is None or inputs.target_canonical_pose is None:
-        raise AssertionError("has_canonical requires both canonical pose tensors.")
+    pred = cast(Tensor, inputs.pred_canonical_pose)
+    target = cast(Tensor, inputs.target_canonical_pose)
 
     per_frame = torso_twist_loss(
-        inputs.pred_canonical_pose,
-        inputs.target_canonical_pose,
+        pred,
+        target,
         reduction="none",
     )
     return _masked_frame_mean(per_frame, inputs.frame_mask)
@@ -582,12 +551,12 @@ def bone_length_loss_term(inputs: PLCSLossInputs) -> Tensor:
     """Bone-length consistency term on canonical joints."""
     if not inputs.has_canonical:
         return inputs.zero
-    if inputs.pred_canonical_pose is None or inputs.target_canonical_pose is None:
-        raise AssertionError("has_canonical requires both canonical pose tensors.")
+    pred = cast(Tensor, inputs.pred_canonical_pose)
+    target = cast(Tensor, inputs.target_canonical_pose)
 
     per_frame = bone_length_loss(
-        inputs.pred_canonical_pose,
-        inputs.target_canonical_pose,
+        pred,
+        target,
         reduction="none",
     )
     return _masked_frame_mean(per_frame, inputs.frame_mask)
@@ -621,7 +590,8 @@ def _angle_velocity_loss_term(
         return inputs.zero
     pred = inputs.pred_canonical_pose
     target = inputs.target_canonical_pose
-    assert pred is not None and target is not None
+    pred = cast(Tensor, pred)
+    target = cast(Tensor, target)
     # Need a temporal axis of >= 2 frames: canonical pose is (B, T, J, 3).
     if pred.ndim < 4 or pred.shape[-3] < 2:
         return inputs.zero
@@ -692,7 +662,7 @@ DEFAULT_LOSS_TERMS: dict[str, PLCSLossTerm] = {
     "position": position_loss_term,
     "rotation": rotation_loss_term,
     "angle": angle_loss_term,
-    "position_smoothness": position_smoothness_loss_term,
+    "position_smoothness": cast("PLCSLossTerm", position_smoothness_loss_term),
     "canonical_pose": canonical_pose_loss_term,
     "joint_angle": joint_angle_loss_term,
     "torsion_angle": torsion_angle_loss_term,
@@ -709,8 +679,8 @@ class PLCSLoss(nn.Module):
 
     Each loss term is an independent function with the uniform signature
     ``(PLCSLossInputs) -> Tensor``. The module holds a ``{name: function}``
-    registry and ``forward`` builds the shared :class:`PLCSLossInputs`, calls
-    each term, and accumulates the weight-scaled sum.
+    registry. The boundary-facing :meth:`prepare_inputs` builds the shared
+    :class:`PLCSLossInputs`; ``forward`` only evaluates and combines tensor terms.
 
     Supports both frame-level and sequence-level inputs:
         - Frame-level: ``(B, 3)``, ``(B, 2)``
@@ -734,10 +704,24 @@ class PLCSLoss(nn.Module):
         """
         super().__init__()
         self.config = config
-
-        self.loss_terms: dict[str, PLCSLossTerm] = (
-            dict(DEFAULT_LOSS_TERMS) if loss_terms is None else dict(loss_terms)
+        self.position_smoothness_penalty = TemporalSmoothnessPenalty(
+            order=3,
+            beta=1e-3,
+            axis_weights=(1.0, 1.0, 1.0),
         )
+        self.loss_terms: dict[str, PLCSLossTerm]
+        if loss_terms is None:
+            self.loss_terms = dict(DEFAULT_LOSS_TERMS)
+            self.loss_terms["position_smoothness"] = partial(
+                position_smoothness_loss_term,
+                penalty=self.position_smoothness_penalty,
+            )
+        else:
+            self.loss_terms = dict(loss_terms)
+        self.loss_weights = {
+            name: float(getattr(self.config, f"{name}_weight"))
+            for name in self.loss_terms
+        }
         self._bind_velocity_angle_weights()
 
     def _bind_velocity_angle_weights(self) -> None:
@@ -768,16 +752,16 @@ class PLCSLoss(nn.Module):
 
     def weight_for(self, name: str) -> float:
         """Return the configured weight for a registered loss term."""
-        return float(getattr(self.config, f"{name}_weight"))
+        return self.loss_weights[name]
 
     def _requires_canonical_pose(self) -> bool:
         """Whether any enabled registered term needs canonical pose tensors."""
         return any(
-            name in self.loss_terms and self.weight_for(name) > 0.0
+            name in self.loss_terms and self.loss_weights[name] > 0.0
             for name in CANONICAL_DEPENDENT_TERM_NAMES
         )
 
-    def _build_inputs(
+    def prepare_inputs(
         self,
         pred_position: Tensor,
         pred_rotation: Tensor,
@@ -787,8 +771,8 @@ class PLCSLoss(nn.Module):
         pred_canonical_pose: Tensor | None,
         target_human_kp_3d: Tensor | None,
         human_mask: Tensor | None,
-    ) -> PLCSLossInputs:
-        """Build shared loss inputs and target canonical pose."""
+    ) -> PLCSPreparedLossTerms:
+        """Validate inputs and compute named scalar terms before ``forward``."""
         frame_mask = normalize_padding_mask(human_mask, flatten=False)
 
         canonical_required = self._requires_canonical_pose()
@@ -815,7 +799,7 @@ class PLCSLoss(nn.Module):
                     target_rotation,
                 )
 
-        return PLCSLossInputs(
+        source = PLCSLossInputs(
             pred_position=pred_position,
             pred_rotation=pred_rotation,
             target_position=target_position,
@@ -824,50 +808,22 @@ class PLCSLoss(nn.Module):
             pred_canonical_pose=pred_canonical_pose,
             target_canonical_pose=target_canonical_pose,
         )
-
-    def forward(
-        self,
-        pred_position: Tensor,
-        pred_rotation: Tensor,
-        target_position: Tensor,
-        target_rotation: Tensor,
-        *,
-        pred_canonical_pose: Tensor | None = None,
-        target_human_kp_3d: Tensor | None = None,
-        human_mask: Tensor | None = None,
-    ) -> dict[str, Tensor]:
-        """Compute combined loss by dispatching to each registered term.
-
-        Args:
-            pred_position: Predicted position, ``(B, 3)`` or ``(B, T, 3)``.
-            pred_rotation: Predicted ``(cos, sin)``, ``(B, 2)`` or ``(B, T, 2)``.
-            target_position: Target position.
-            target_rotation: Target ``(cos, sin)``.
-            pred_canonical_pose: Predicted canonical joints, ``(..., J, 3)``.
-            target_human_kp_3d: Target world/court-space 3D human joints.
-            human_mask: Optional validity mask.
-
-        Returns:
-            dict: One entry per registered term plus ``"total"``.
-
-        """
-        inputs = self._build_inputs(
-            pred_position,
-            pred_rotation,
-            target_position,
-            target_rotation,
-            pred_canonical_pose=pred_canonical_pose,
-            target_human_kp_3d=target_human_kp_3d,
-            human_mask=human_mask,
+        return PLCSPreparedLossTerms(
+            terms=tuple(
+                (name, term_fn(source), self.loss_weights[name])
+                for name, term_fn in self.loss_terms.items()
+            ),
+            zero=source.zero,
         )
 
+    def forward(self, inputs: PLCSPreparedLossTerms) -> dict[str, Tensor]:
+        """Combine boundary-prepared scalar terms with configured weights."""
         losses: dict[str, Tensor] = {}
         total = inputs.zero
 
-        for name, term_fn in self.loss_terms.items():
-            value = term_fn(inputs)
+        for name, value, weight in inputs.terms:
             losses[name] = value
-            total = total + self.weight_for(name) * value
+            total = total + weight * value
 
         losses["total"] = total
         return losses

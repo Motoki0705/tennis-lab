@@ -4,25 +4,24 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 import torch
 from torch import Tensor
 
-from src.tasks.ball_detection.models import (
-    build_ball_detection_discriminator,
-    build_ball_detection_model,
-    to_model_input,
-)
+from src.tasks.ball_detection.model_io.adapters import BallModelIOAdapter
+from src.tasks.ball_detection.model_io.contracts import BallTrainingCall
+from src.tasks.ball_detection.model_io.factory import build_ball_detection_pair
+from src.tasks.ball_detection.models import build_ball_detection_discriminator
 from src.tasks.ball_detection.training.metrics import BallDetectionMetrics
 from src.tasks.base.training.gan_training import ManualGANSupportMixin
 from src.tasks.base.training.lightning_module import BaseLightningModule
-from src.tasks.base.training.losses import FocalBCEWithLogitsLoss
-from src.tasks.base.training.qualitative_saving import save_qualitative_clip
-from src.utils.data.heatmaps import (
-    heatmaps_to_soft_argmax,
-    resize_heatmap_sequence,
+from src.tasks.base.training.losses import (
+    FocalBCEWithLogitsLoss,
+    validate_focal_bce_inputs,
 )
+from src.tasks.base.training.qualitative_saving import save_qualitative_clip
+from src.utils.data.heatmaps import heatmaps_to_soft_argmax
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -45,6 +44,17 @@ def _rgb_triplet(values: Any, *, name: str) -> tuple[int, int, int]:
     return int(values[0]), int(values[1]), int(values[2])
 
 
+class BallStepResult(TypedDict):
+    """Typed supervised outputs consumed by shared GAN/staged lifecycles."""
+
+    loss: Tensor
+    metrics: dict[str, Any]
+    pred_heatmaps: Tensor
+    gan_fake: Tensor
+    gan_real: Tensor
+    gan_mask: Tensor
+
+
 class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
     """Lightning module for training ball detection.
 
@@ -61,10 +71,12 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
         loss_cfg = self.config.loss
         metrics_cfg = self.config.metrics
 
-        self.model = build_ball_detection_model(self.config)
+        model_pair = build_ball_detection_pair(self.config)
+        self.model = model_pair.model
+        self.model_io = cast(BallModelIOAdapter, model_pair.adapter)
 
         loss_gamma = float(loss_cfg.gamma)
-        self.loss_fn = FocalBCEWithLogitsLoss(gamma=loss_gamma, validate_shape=True)
+        self.loss_fn = FocalBCEWithLogitsLoss(gamma=loss_gamma)
 
         gan_cfg = self.config.training.gan
         gan_enabled = bool(gan_cfg.enabled)
@@ -79,36 +91,23 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
             _build_metrics(metrics_cfg) for _ in range(3)
         )
 
-    def forward(self, images: Tensor) -> Tensor:
-        """Forward pass through the model.
-
-        Args:
-            images: Input tensor of shape ``(B, C, T, H, W)``.
-
-        Returns:
-            Logits of shape ``(B, 1, T, Hh, Wh)``.
-        """
-        output = self.model(images)
-        if not isinstance(output, Tensor):
-            raise TypeError("Ball detector output must be a tensor.")
-        return output
+    def forward(self, *model_args: Tensor) -> Tensor:
+        """Compute over a model-I/O boundary-prepared argument tuple."""
+        return cast(Tensor, self.model(*model_args))
 
     def _predict_heatmap_logits(
         self, images: Tensor, target_size_hw: tuple[int, int]
     ) -> Tensor:
         """Predict per-frame heatmap logits resized to the target heatmap size."""
-        model_cfg = self.config.model
-        model_input = to_model_input(images, model_cfg)
+        call = self.model_io.prepare_model_call(images)
+        logits = self.model(*call.model_args)
+        return self.model_io.resized_logits(
+            logits,
+            call,
+            target_size_hw=target_size_hw,
+        )
 
-        logits = self.model(model_input)
-
-        # Squeeze channel dim: (B, 1, T, Hh, Wh) -> (B, T, Hh, Wh)
-        logits = logits.squeeze(1)
-
-        # Interpolate if model output size != target heatmap size
-        return resize_heatmap_sequence(logits, target_size_hw)
-
-    def _extract_gt_trajectory(self, batch: dict[str, Tensor]) -> tuple[Tensor, Tensor]:
+    def _extract_gt_trajectory(self, call: BallTrainingCall) -> tuple[Tensor, Tensor]:
         """Extract the primary ball trajectory and its visibility mask.
 
         Returns:
@@ -116,9 +115,9 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
                 - ball_xy: Normalized ``(B, T, 2)`` coordinates in ``(x, y)``.
                 - mask: Boolean ``(B, T)`` mask of frames with a visible ball.
         """
-        coords = batch["coords"]  # (B, T, K, 2) in original image pixels
-        visibility = batch["visibility"]  # (B, T, K)
-        original_size = batch["original_size"]  # (B, 2) as (width, height)
+        coords = call.coords
+        visibility = call.visibility
+        original_size = call.original_size
 
         # Pick the first visible instance per frame (argmax of a 0/1 mask
         # returns the first maximal entry).
@@ -135,25 +134,25 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
         self,
         batch: dict[str, Tensor],
         stage: str,
-    ) -> dict[str, Any]:
+    ) -> BallStepResult:
         """Compute forward pass, supervised loss, metrics, and GAN sequences."""
-        target_heatmaps = batch["heatmaps"]
-        logits = self._predict_heatmap_logits(
-            batch["images"],
-            (int(target_heatmaps.shape[-2]), int(target_heatmaps.shape[-1])),
-        )
+        call = self.model_io.prepare_training_batch(batch)
+        raw_logits = self.model(*call.model_call.model_args)
+        logits = self.model_io.training_logits(raw_logits, call)
+        target_heatmaps = call.target_heatmaps
 
+        validate_focal_bce_inputs(logits, target_heatmaps)
         loss = self.loss_fn(logits, target_heatmaps)
         pred_heatmaps = torch.sigmoid(logits)
 
         self._metric_tracker_for_stage(stage).update(
             pred_heatmaps,
-            batch["coords"],
-            batch["visibility"],
-            batch["original_size"],
+            call.coords,
+            call.visibility,
+            call.original_size,
         )
 
-        gan_real, gan_mask = self._extract_gt_trajectory(batch)
+        gan_real, gan_mask = self._extract_gt_trajectory(call)
         gan_fake = heatmaps_to_soft_argmax(
             logits,
             temperature=self.gan_soft_argmax_temperature,
@@ -278,7 +277,6 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
         device = next(self.parameters()).device
 
         normalize_cfg = dict(self.config.data.augmentation.normalize_imagenet)
-        model_cfg = dict(self.config.model)
         peak_threshold = float(self.config.metrics.peak_threshold)
 
         for batch_idx, batch in enumerate(batches):
@@ -294,7 +292,7 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
                 pred_heatmaps_bthw=pred_heatmaps,
                 peak_threshold=peak_threshold,
                 normalize_cfg=normalize_cfg,
-                model_cfg=model_cfg,
+                model_io=self.model_io,
                 sample_idx=0,
                 clip_label=f"val epoch={epoch} batch={batch_idx}",
             )

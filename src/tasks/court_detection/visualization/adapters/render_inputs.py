@@ -1,23 +1,149 @@
-"""Adapters that convert training batch tensors into renderer inputs.
-
-Used by the training LightningModule to feed raw model outputs into the
-shared ``rendering/`` layer without duplicating image-decoding logic.
-"""
+"""Resolved qualitative render adapters for court model outputs."""
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol
 
 import numpy as np
 import torch
 
+from src.tasks.court_detection.model_io.adapters import (
+    CourtKeypointModelIO,
+    CourtLineModelIO,
+    CourtModelIOAdapter,
+    CourtSegmentationModelIO,
+)
+from src.tasks.court_detection.model_io.contracts import (
+    CourtModelIOError,
+)
 from src.tasks.court_detection.visualization.io.frames import (
     CourtFrame,
     KpFramePrediction,
 )
+from src.tasks.court_detection.visualization.rendering import (
+    CourtRenderStyle,
+    render_kp_frames,
+    render_line_frames,
+    render_seg_frames,
+)
 from src.tasks.court_detection.visualization.rendering.common import (
     denormalize_tensor_to_rgb,
 )
+
+
+class CourtQualitativeRenderer(Protocol):
+    """Render one batch sample under a once-selected court task contract."""
+
+    def render(
+        self,
+        *,
+        batch: dict[str, Any],
+        logits: torch.Tensor,
+        style: CourtRenderStyle,
+        clip_label: str,
+    ) -> list[np.ndarray]:
+        """Decode and render one sample."""
+        ...
+
+
+class _KeypointQualitativeRenderer:
+    def __init__(self, adapter: CourtKeypointModelIO) -> None:
+        self.adapter = adapter
+
+    def render(
+        self,
+        *,
+        batch: dict[str, Any],
+        logits: torch.Tensor,
+        style: CourtRenderStyle,
+        clip_label: str,
+    ) -> list[np.ndarray]:
+        frame = batch_to_court_frame(batch)
+        prediction = self.adapter.decode_prediction(
+            logits[:1],
+            original_size_hw=frame.rgb.shape[:2],
+            subpixel_refine=False,
+        )
+        rendered_prediction = KpFramePrediction(
+            keypoints_px=prediction.keypoints.numpy(),
+            mean_heatmap=torch.sigmoid(prediction.heatmaps).amax(0).numpy(),
+        )
+        rendered: list[np.ndarray] = render_kp_frames(
+            frames=[frame],
+            predictions=[rendered_prediction],
+            style=style,
+            clip_label=clip_label,
+        )
+        return rendered
+
+
+class _SegmentationQualitativeRenderer:
+    def __init__(self, adapter: CourtSegmentationModelIO) -> None:
+        self.adapter = adapter
+
+    def render(
+        self,
+        *,
+        batch: dict[str, Any],
+        logits: torch.Tensor,
+        style: CourtRenderStyle,
+        clip_label: str,
+    ) -> list[np.ndarray]:
+        frame = batch_to_court_frame(batch)
+        prediction = self.adapter.decode_prediction(
+            logits[:1],
+            original_size_hw=frame.rgb.shape[:2],
+            subpixel_refine=False,
+        )
+        rendered: list[np.ndarray] = render_seg_frames(
+            frames=[frame],
+            masks=[prediction.mask.numpy().astype(np.int32)],
+            style=style,
+            clip_label=clip_label,
+        )
+        return rendered
+
+
+class _LineQualitativeRenderer:
+    def __init__(self, adapter: CourtLineModelIO) -> None:
+        self.adapter = adapter
+
+    def render(
+        self,
+        *,
+        batch: dict[str, Any],
+        logits: torch.Tensor,
+        style: CourtRenderStyle,
+        clip_label: str,
+    ) -> list[np.ndarray]:
+        frame = batch_to_court_frame(batch)
+        prediction = self.adapter.decode_prediction(
+            logits[:1],
+            original_size_hw=frame.rgb.shape[:2],
+            subpixel_refine=False,
+        )
+        rendered: list[np.ndarray] = render_line_frames(
+            frames=[frame],
+            probs=[prediction.probability.numpy()],
+            style=style,
+            clip_label=clip_label,
+        )
+        return rendered
+
+
+def build_court_qualitative_renderer(
+    adapter: CourtModelIOAdapter,
+) -> CourtQualitativeRenderer:
+    """Select the matching qualitative decode/render adapter once."""
+    if isinstance(adapter, CourtKeypointModelIO):
+        return _KeypointQualitativeRenderer(adapter)
+    if isinstance(adapter, CourtSegmentationModelIO):
+        return _SegmentationQualitativeRenderer(adapter)
+    if isinstance(adapter, CourtLineModelIO):
+        return _LineQualitativeRenderer(adapter)
+    raise CourtModelIOError(
+        f"No qualitative renderer for adapter {type(adapter).__name__}."
+    )
 
 
 def batch_to_court_frame(
@@ -25,72 +151,20 @@ def batch_to_court_frame(
     *,
     sample_idx: int = 0,
 ) -> CourtFrame:
-    """Extract one sample from a batch dict and return a :class:`CourtFrame`.
-
-    Args:
-        batch: Training batch containing ``"image"`` key with shape
-            ``(B, 3, H, W)`` ImageNet-normalized float tensor.
-        sample_idx: Index of the sample within the batch to use.
-
-    Returns:
-        :class:`CourtFrame` with ``rgb`` as ``(H, W, 3)`` uint8 RGB.
-    """
-    img_tensor = batch["image"][sample_idx]  # (3, H, W)
-    rgb = denormalize_tensor_to_rgb(img_tensor)
+    """Extract one validated normalized image and convert it to RGB."""
+    if "image" not in batch:
+        raise CourtModelIOError("Qualitative batch is missing required field 'image'.")
+    image = batch["image"]
+    if not isinstance(image, torch.Tensor) or image.ndim != 4:
+        raise CourtModelIOError("Qualitative batch image must be a rank-4 Tensor.")
+    if sample_idx < 0 or sample_idx >= image.shape[0]:
+        raise CourtModelIOError("Qualitative sample_idx is outside the batch.")
+    rgb = denormalize_tensor_to_rgb(image[sample_idx])
     return CourtFrame(name=f"sample_{sample_idx:02d}", rgb=rgb)
 
 
-def logits_to_seg_mask(logits: torch.Tensor) -> np.ndarray:
-    """Convert seg logits to a class mask.
-
-    Args:
-        logits: ``(C, H, W)`` float tensor (raw model output, C classes).
-
-    Returns:
-        ``(H, W)`` int NumPy array of class indices.
-    """
-    mask: np.ndarray = logits.argmax(dim=0).cpu().numpy().astype(np.int32)
-    return mask
-
-
-def logits_to_kp_prediction(logits: torch.Tensor) -> KpFramePrediction:
-    """Convert kp logits to a :class:`KpFramePrediction`.
-
-    Args:
-        logits: ``(K, H, W)`` float tensor (raw model output, K keypoints).
-
-    Returns:
-        :class:`KpFramePrediction` with:
-        - ``mean_heatmap``: ``(H, W)`` float ``[0, 1]`` -- max over K channels
-          of the sigmoid-activated heatmap.
-        - ``keypoints_px``: ``(K, 2)`` float array of ``(x, y)`` peak
-          coordinates in pixel space.
-    """
-    prob = torch.sigmoid(logits).cpu()  # (K, H, W)
-
-    # mean heatmap: max over keypoint channels so all peaks are visible
-    mean_heatmap = prob.max(dim=0).values.numpy().astype(np.float32)  # (H, W)
-
-    # peak coordinates per keypoint channel
-    k, h, w = prob.shape
-    flat_indices = prob.reshape(k, -1).argmax(dim=1)  # (K,)
-    ys = (flat_indices // w).numpy().astype(np.float32)
-    xs = (flat_indices % w).numpy().astype(np.float32)
-    keypoints_px = np.stack([xs, ys], axis=1)  # (K, 2) as (x, y)
-
-    return KpFramePrediction(keypoints_px=keypoints_px, mean_heatmap=mean_heatmap)
-
-
-def logits_to_line_prob(logits: torch.Tensor) -> np.ndarray:
-    """Convert line logits to a probability map.
-
-    Args:
-        logits: ``(1, H, W)`` float tensor (raw model output).
-
-    Returns:
-        ``(H, W)`` float NumPy array in ``[0, 1]``.
-    """
-    probability: np.ndarray = (
-        torch.sigmoid(logits).squeeze(0).cpu().numpy().astype(np.float32)
-    )
-    return probability
+__all__ = [
+    "CourtQualitativeRenderer",
+    "batch_to_court_frame",
+    "build_court_qualitative_renderer",
+]

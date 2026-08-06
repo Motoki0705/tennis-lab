@@ -3,21 +3,23 @@
 from __future__ import annotations
 
 import importlib
+from importlib.machinery import PathFinder
 
 import pytest
 
-from src.configuration_contracts import (
-    ADAPTER_CONTRACTS,
-    BOUNDARY_CONTRACTS,
-    SOURCE_CONTRACT_DECLARATIONS,
-)
 from src.utils.configuration import (
+    DEFAULT_AUDIT_INVENTORY,
     ConfigurationAbsencePolicy,
     ConfigurationDefaultPolicy,
     ConfigurationPrecedence,
     ConfigurationTypeError,
     StrictConfigSchema,
     discover_configuration_contracts,
+)
+from src.utils.configuration.catalog import (
+    ADAPTER_CONTRACTS,
+    BOUNDARY_CONTRACTS,
+    SOURCE_CONTRACT_DECLARATIONS,
 )
 from src.utils.paths import PROJECT_ROOT
 
@@ -32,6 +34,20 @@ def test_catalog_has_exact_source_declaration_parity() -> None:
         == ADAPTER_CONTRACTS
     )
     assert all(contract.fields for contract in ADAPTER_CONTRACTS)
+
+
+@pytest.mark.parametrize(
+    "old_module",
+    [
+        "src.configuration_contracts",
+        "src.configuration_validation",
+        "src.utils.configuration.validation",
+    ],
+)
+def test_removed_configuration_modules_do_not_redirect(old_module: str) -> None:
+    parent = PROJECT_ROOT.joinpath(*old_module.split(".")[:-1])
+
+    assert PathFinder.find_spec(old_module, [str(parent)]) is None
 
 
 @pytest.mark.parametrize(
@@ -99,9 +115,15 @@ def test_operation_build_json_is_optional_and_absence_maps_to_none() -> None:
     assert field.absence_policy is ConfigurationAbsencePolicy.OPTIONAL_AS_NONE
 
 
-def test_all_84_runtime_boundaries_expose_truthful_authorities() -> None:
-    assert len(BOUNDARY_CONTRACTS) == 84
-    assert len({contract.boundary_id for contract in BOUNDARY_CONTRACTS}) == 84
+def test_all_inventoried_runtime_boundaries_expose_truthful_authorities() -> None:
+    boundary_ids = {contract.boundary_id for contract in BOUNDARY_CONTRACTS}
+    expected_ids = {
+        f"{boundary.module}:{boundary.callable_name}"
+        for boundary in DEFAULT_AUDIT_INVENTORY.boundaries
+    }
+
+    assert boundary_ids == expected_ids
+    assert len(boundary_ids) == len(BOUNDARY_CONTRACTS)
     for contract in BOUNDARY_CONTRACTS:
         assert contract.validator_callable
         assert contract.authority_symbols

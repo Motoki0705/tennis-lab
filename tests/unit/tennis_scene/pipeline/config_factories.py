@@ -17,6 +17,10 @@ from src.submodules.vendor.gvhmr.vitpose.heatmap_head import ViTPoseHeadConfig
 from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
 from src.tennis_scene.pipeline.components.blcs import BLCSConfig
+from src.tennis_scene.pipeline.components.court_kp import (
+    CourtKPConfig,
+    CourtKPPostprocessConfig,
+)
 from src.tennis_scene.pipeline.components.gvhmr import GVHMRConfig
 from src.tennis_scene.pipeline.components.player_association import (
     PlayerAssociationConfig,
@@ -48,7 +52,6 @@ def make_submodule_runtime(
     """Return the complete typed model-runtime contract used by GVHMR."""
     return SubmoduleRuntimeConfig(
         device="cpu",
-        allow_device_fallback=False,
         tracking=TrackingRuntimeConfig(
             yolo_confidence=0.25,
             bbox_enlarge=1.2,
@@ -88,7 +91,6 @@ def make_ball_config(root: Path) -> BallDetectionConfig:
         normalize_imagenet=False,
         score_threshold=0.1,
         subpixel_refine=False,
-        allow_device_fallback=False,
         checkpoint_strict=True,
         checkpoint_weights_only=False,
         prefetch_batches=1,
@@ -116,12 +118,33 @@ def make_blcs_config(root: Path) -> BLCSConfig:
         checkpoint=resolver.resolve(PathRole.CHECKPOINT, "blcs.ckpt"),
         source="execute",
         device="cpu",
-        allow_device_fallback=False,
         save_result=False,
         output_path=resolver.resolve(PathRole.ARTIFACT, "blcs.json"),
         load_path=None,
         window_size=32,
         window_overlap=8,
+        resolver=resolver,
+    )
+
+
+def make_court_kp_config(root: Path) -> CourtKPConfig:
+    resolver = make_resolver(root)
+    return CourtKPConfig(
+        checkpoint=resolver.resolve(PathRole.CHECKPOINT, "court.ckpt"),
+        source="execute",
+        mode="model",
+        device="cpu",
+        subpixel_refine=False,
+        num_keypoints=14,
+        save_result=False,
+        output_path=resolver.resolve(PathRole.ARTIFACT, "court.json"),
+        load_path=None,
+        postprocess=CourtKPPostprocessConfig(
+            enabled=False,
+            min_score=0.5,
+            ransac_reproj_threshold=3.0,
+            temporal_median_window=5,
+        ),
         resolver=resolver,
     )
 
@@ -132,7 +155,6 @@ def make_plcs_config(root: Path) -> PLCSConfig:
         checkpoint=resolver.resolve(PathRole.CHECKPOINT, "plcs.ckpt"),
         source="execute",
         device="cpu",
-        allow_device_fallback=False,
         save_result=False,
         output_path=resolver.resolve(PathRole.ARTIFACT, "plcs.json"),
         load_path=None,

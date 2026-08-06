@@ -5,7 +5,8 @@ derived analytically from gravity-only projectile motion. When a physics
 simulator is provided, the landing point is then refined iteratively against
 the full physics model (drag/Magnus/wind): the shot is simulated to its first
 bounce, the landing error is measured, and a virtual aim point is shifted by
-that error (shooting method). Net hits raise the elevation and retry.
+that error (shooting method). Net handling belongs only to that explicitly
+enabled refinement contract; gravity-only retry is unsupported.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor
 
-from src.utils.schema.court import HALF_DOUBLES_WIDTH, net_height_at_x
+from src.utils.schema.court import net_height_at_x
 
 if TYPE_CHECKING:
     from src.tasks.blcs.generate_dataset.simulation.ball_physics import BallPhysics
@@ -41,9 +42,7 @@ class TargetedVelocityConfig:
     # Gravity for projectile calculation (m/s²)
     gravity: float
 
-    # Net-hit resampling
-    net_retry_max_attempts: int
-    net_check_max_frames: int
+    # Elevation increment for the explicit full-physics refinement.
     net_elevation_step_deg: float
 
     # Physics-based landing refinement (shooting method). Enabled whenever a
@@ -58,14 +57,6 @@ class TargetedVelocityConfig:
     # Margin (metres) from cell edges when sampling target bounce positions.
     # Keeps refined landings clear of court boundaries despite residual error.
     target_margin_m: float
-
-
-@dataclass(frozen=True)
-class _NetCheckResult:
-    """Result of the short net-only physics check."""
-
-    passed: bool
-    hit_pos: Tensor | None = None
 
 
 @dataclass(frozen=True)
@@ -153,61 +144,12 @@ class TargetedVelocitySampler:
                 spin=spin,
             )
 
-        return self._compute_velocity_with_net_retry(
+        return self._compute_velocity_to_target_once(
             start_pos=start_pos,
             target_pos=target_pos,
             from_side=from_side,
             elevation_rad=elevation_rad,
-            physics=physics,
-            spin=spin,
         )
-
-    def _compute_velocity_with_net_retry(
-        self,
-        start_pos: Tensor,
-        target_pos: Tensor,
-        from_side: str,
-        elevation_rad: float,
-        physics: BallPhysics | None,
-        spin: Tensor | None,
-    ) -> Tensor:
-        """Gravity-only aiming with net-hit elevation retry (legacy path)."""
-        horizontal_dist = float(
-            torch.linalg.norm(target_pos[:2] - start_pos[:2]).item()
-        )
-        elevation_step_rad = math.radians(self.config.net_elevation_step_deg)
-        max_attempts = max(1, self.config.net_retry_max_attempts)
-        last_velocity: Tensor | None = None
-
-        for attempt in range(max_attempts):
-            velocity = self._compute_velocity_to_target_once(
-                start_pos=start_pos,
-                target_pos=target_pos,
-                from_side=from_side,
-                elevation_rad=elevation_rad,
-            )
-            last_velocity = velocity
-
-            net_check = self._check_net_passage(
-                start_pos=start_pos,
-                velocity=velocity,
-                physics=physics,
-                spin=spin,
-            )
-            if net_check.passed:
-                return velocity
-
-            if attempt < max_attempts - 1:
-                elevation_rad = self._raise_elevation_after_net_hit(
-                    elevation_rad=elevation_rad,
-                    hit_pos=net_check.hit_pos,
-                    start_pos=start_pos,
-                    horizontal_dist=horizontal_dist,
-                    default_step_rad=elevation_step_rad,
-                )
-
-        assert last_velocity is not None
-        return last_velocity
 
     def _compute_velocity_with_landing_refinement(
         self,
@@ -296,14 +238,9 @@ class TargetedVelocitySampler:
         if best_velocity is not None:
             return best_velocity
 
-        # All attempts hit the net or never landed: fall back to legacy path.
-        return self._compute_velocity_with_net_retry(
-            start_pos=start_pos,
-            target_pos=target_pos,
-            from_side=from_side,
-            elevation_rad=elevation_rad,
-            physics=physics,
-            spin=spin,
+        raise RuntimeError(
+            "Full-physics targeted-velocity refinement produced no valid landing; "
+            "no gravity-only retry fallback is defined."
         )
 
     def _clamp_virtual_target(self, virtual_target: Tensor, target_side: str) -> Tensor:
@@ -581,83 +518,6 @@ class TargetedVelocitySampler:
             return 0.0
         return math.sqrt(cfg.gravity * horizontal_dist**2 / denominator)
 
-    def _check_net_passage(
-        self,
-        start_pos: Tensor,
-        velocity: Tensor,
-        physics: BallPhysics | None,
-        spin: Tensor | None,
-    ) -> _NetCheckResult:
-        if physics is None:
-            return self._check_net_passage_gravity(start_pos, velocity)
-        return self._check_net_passage_with_physics(
-            start_pos=start_pos,
-            velocity=velocity,
-            spin=spin,
-            physics=physics,
-        )
-
-    def _check_net_passage_gravity(
-        self,
-        start_pos: Tensor,
-        velocity: Tensor,
-    ) -> _NetCheckResult:
-        vy = float(velocity[1].item())
-        if abs(vy) < 1e-6:
-            return _NetCheckResult(passed=False)
-
-        t = -float(start_pos[1].item()) / vy
-        if t <= 0.0:
-            return _NetCheckResult(passed=False)
-
-        x_at_net = float(start_pos[0].item()) + float(velocity[0].item()) * t
-        z_at_net = (
-            float(start_pos[2].item())
-            + float(velocity[2].item()) * t
-            - 0.5 * self.config.gravity * t**2
-        )
-        hit_pos = torch.tensor(
-            [x_at_net, 0.0, z_at_net], device=self.device, dtype=torch.float32
-        )
-        if abs(x_at_net) > HALF_DOUBLES_WIDTH:
-            return _NetCheckResult(passed=True, hit_pos=hit_pos)
-        net_height = self._net_height_at_x(x_at_net)
-        return _NetCheckResult(passed=z_at_net > net_height, hit_pos=hit_pos)
-
-    def _check_net_passage_with_physics(
-        self,
-        start_pos: Tensor,
-        velocity: Tensor,
-        spin: Tensor | None,
-        physics: BallPhysics,
-    ) -> _NetCheckResult:
-        from src.tasks.blcs.generate_dataset.simulation.ball_physics import BallState
-
-        spin_vec = spin if spin is not None else torch.zeros_like(velocity)
-        state = BallState(
-            position=start_pos.clone(),
-            velocity=velocity.clone(),
-            spin=spin_vec.clone(),
-        )
-
-        for _ in range(self.config.net_check_max_frames):
-            prev_pos = state.position.clone()
-            state = physics.step(state)
-
-            hit_net, net_pos = physics.check_net_collision(prev_pos, state.position)
-            if hit_net:
-                return _NetCheckResult(passed=False, hit_pos=net_pos)
-
-            clearance = physics.compute_net_clearance(prev_pos, state.position)
-            if clearance is not None:
-                return _NetCheckResult(passed=clearance > 0.0)
-
-            state, bounced = physics.handle_bounce(state)
-            if bounced:
-                return _NetCheckResult(passed=False)
-
-        return _NetCheckResult(passed=False)
-
     def _raise_elevation_after_net_hit(
         self,
         elevation_rad: float,
@@ -671,7 +531,7 @@ class TargetedVelocitySampler:
 
         x_at_net = float(hit_pos[0].item())
         z_at_net = float(hit_pos[2].item())
-        deficit = self._net_height_at_x(x_at_net) - z_at_net
+        deficit = net_height_at_x(x_at_net) - z_at_net
         if deficit <= 0.0:
             return elevation_rad + default_step_rad
 
@@ -679,6 +539,3 @@ class TargetedVelocitySampler:
         scale_dist = max(dist_to_net, horizontal_dist * 0.25, 1.0)
         deficit_step = math.atan(deficit / scale_dist)
         return elevation_rad + max(default_step_rad, deficit_step)
-
-    def _net_height_at_x(self, x_at_net: float) -> float:
-        return float(net_height_at_x(x_at_net))

@@ -6,7 +6,7 @@ import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
@@ -67,7 +67,6 @@ class BallDetectionConfig:
     normalize_imagenet: bool
     score_threshold: float
     subpixel_refine: bool
-    allow_device_fallback: bool
     checkpoint_strict: bool
     checkpoint_weights_only: bool
     prefetch_batches: int
@@ -221,7 +220,6 @@ class BallDetectionModule(BasePipelineModule):
             self.config.checkpoint,
             resolver=self.config.resolver,
             device=self.config.device,
-            allow_device_fallback=self.config.allow_device_fallback,
             subpixel_refine=self.config.subpixel_refine,
             strict=self.config.checkpoint_strict,
             weights_only=self.config.checkpoint_weights_only,
@@ -257,8 +255,9 @@ class BallDetectionModule(BasePipelineModule):
 
         # Check if we should load from pre-computed result
         if self.config.source == "load":
-            assert self.config.load_path is not None
             load_path = self.config.load_path
+            if load_path is None:
+                raise RuntimeError("Validated load source is missing load_path")
             if load_path.is_file():
                 LOGGER.info(
                     f"Loading ball detection result from {load_path} "
@@ -414,12 +413,7 @@ class BallDetectionModule(BasePipelineModule):
         if self._pipeline is None:
             raise RuntimeError("Ball detection predictor is not loaded.")
 
-        model_config = self._pipeline.model_config
-        sequence_length = cast("int", model_config["num_frames"])
-        if sequence_length <= 0:
-            raise ValueError(
-                f"model.num_frames must be positive, got {sequence_length}"
-            )
+        sequence_length = self._pipeline.configured_frames
         stride = (
             sequence_length
             if self.config.window_stride is None
@@ -462,8 +456,8 @@ class BallDetectionModule(BasePipelineModule):
 
         for batch in prefetched_batches:
             prediction = self._pipeline.predict(batch.tensor)
-            coords = prediction["coords"].numpy().astype(np.float32)
-            scores = prediction["visibility"].numpy().astype(np.float32)
+            coords = prediction.coords.numpy().astype(np.float32)
+            scores = prediction.confidence.numpy().astype(np.float32)
             for window_index, window in enumerate(batch.windows):
                 for time_index, frame_index in enumerate(window.frame_indices):
                     max_frame_index = max(max_frame_index, int(frame_index))

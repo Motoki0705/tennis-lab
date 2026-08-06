@@ -253,7 +253,7 @@ def _export_geometry(
         [_image_world_to_camera(image) for image in registered_images],
         axis=0,
     )
-    camera_to_world = np.linalg.inv(world_to_camera)
+    camera_to_world = np.asarray(np.linalg.inv(world_to_camera), dtype=np.float64)
     points_by_id = reconstruction.points3D
     point_ids = sorted(points_by_id)
     points = np.asarray(

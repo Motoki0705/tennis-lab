@@ -70,8 +70,8 @@ def main(cfg: DictConfig) -> int:
     """Run pseudo annotation generation for selected or pending clips."""
     from src.tennis_scene.configuration import parse_generate_dataset_config
     from src.tennis_scene.generate_dataset import generate_pseudo_annotations
-    from src.tennis_scene.io import SceneResult
     from src.tennis_scene.pipeline import TennisSceneOrchestrator
+    from src.tennis_scene.schema import SceneResult
 
     runtime = parse_generate_dataset_config(cfg)
     pipeline_cfg, pipeline_runtime = _compose_pipeline_config(runtime)

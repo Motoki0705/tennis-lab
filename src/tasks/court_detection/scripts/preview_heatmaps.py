@@ -23,13 +23,13 @@ from omegaconf import DictConfig
 from PIL import Image
 
 from src.tasks.base.configuration import require_config_mapping, require_config_value
-from src.tasks.base.preview import (
+from src.tasks.base.visualization.preview import (
     compose_titled_row as _compose_row,
 )
-from src.tasks.base.preview import (
+from src.tasks.base.visualization.preview import (
     draw_normalized_point as _draw_point,
 )
-from src.tasks.base.preview import (
+from src.tasks.base.visualization.preview import (
     resolve_sample_indices,
 )
 from src.tasks.court_detection.configuration import (

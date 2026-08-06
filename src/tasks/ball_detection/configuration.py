@@ -1479,11 +1479,10 @@ def validate_visualization(config: DictConfig) -> None:
     run = exact_mapping(
         root["run"],
         path="run",
-        required={"output_dir", "device", "allow_device_fallback"},
+        required={"output_dir", "device"},
     )
     typed(run, "output_dir", str, path="run")
     typed(run, "device", str, path="run")
-    typed(run, "allow_device_fallback", bool, path="run")
     metrics = exact_mapping(
         root["metrics"],
         path="metrics",
@@ -1682,7 +1681,6 @@ def validate_eval(config: DictConfig) -> None:
             "checkpoint_path",
             "strict",
             "weights_only",
-            "allow_device_fallback",
         },
     )
     for key in ("output_dir", "checkpoint_path"):
@@ -1693,7 +1691,7 @@ def validate_eval(config: DictConfig) -> None:
         path="run.gpus",
         allow_zero=True,
     )
-    for key in ("strict", "weights_only", "allow_device_fallback"):
+    for key in ("strict", "weights_only"):
         typed(run, key, bool, path="run")
     paths.output(cast(str, run["output_dir"]))
     paths.checkpoint(cast(str, run["checkpoint_path"]))
@@ -2324,7 +2322,6 @@ def validate_youtube_boundary(config: DictConfig) -> None:
             required={
                 "checkpoint",
                 "device",
-                "allow_device_fallback",
                 "sequence_length",
                 "window_stride",
                 "batch_size",
@@ -2348,7 +2345,6 @@ def validate_youtube_boundary(config: DictConfig) -> None:
             fields={
                 "checkpoint": str,
                 "device": str,
-                "allow_device_fallback": bool,
                 "sequence_length": int,
                 "window_stride": int,
                 "batch_size": int,

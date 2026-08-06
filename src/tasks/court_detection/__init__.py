@@ -7,6 +7,6 @@ Provides three tasks:
 * **line** — Court white-line segmentation (binary).
 """
 
-from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
+from src.tasks.court_detection.model_io.factory import build_court_detection_pair
 
-__all__ = ["CourtHierarchicalModel"]
+__all__ = ["build_court_detection_pair"]

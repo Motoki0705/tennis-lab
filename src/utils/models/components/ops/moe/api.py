@@ -1,118 +1,122 @@
+"""Construction-time resolution for MoE dispatch/combine implementations."""
+
 from __future__ import annotations
 
+import math
+from collections.abc import Callable
+from dataclasses import dataclass
+from functools import partial
 from typing import Literal
 
 import torch
 
-from src.utils.configuration import OperationEnvironmentConfig, operation_environment
-from src.utils.models.components.ops.loader import get_moe_cuda_extension
+from src.utils.models.components.ops.loader import require_moe_cuda_extension
 from src.utils.models.components.ops.moe._autograd import (
     cuda_moe_combine,
     cuda_moe_dispatch,
 )
 from src.utils.models.components.ops.moe.reference import (
+    DropPolicy,
     MoEDispatchResult,
-    compute_moe_capacity,
     reference_moe_combine,
     reference_moe_dispatch,
-    validate_moe_routing,
 )
 
-DropPolicy = Literal["none", "capacity"]
+MoEDispatch = Callable[[torch.Tensor, torch.Tensor, torch.Tensor], MoEDispatchResult]
+MoECombine = Callable[[torch.Tensor, MoEDispatchResult], torch.Tensor]
+MoECapacity = Callable[[torch.Tensor], int]
 
 
-def moe_dispatch(
-    tokens: torch.Tensor,
-    expert_indices: torch.Tensor,
-    expert_weights: torch.Tensor,
+@dataclass(frozen=True)
+class MoEOperations:
+    """Fixed dispatch/combine callables selected before tensor execution."""
+
+    dispatch: MoEDispatch
+    combine: MoECombine
+
+
+def resolve_moe_operations(
     *,
+    backend: Literal["reference", "cuda"],
     num_experts: int,
-    capacity_factor: float | None = None,
-    drop_policy: DropPolicy = "none",
-    capacity: int | None = None,
-    use_cuda: bool | None = None,
-) -> MoEDispatchResult:
-    environment = operation_environment()
-    expert_indices, expert_weights = validate_moe_routing(
-        tokens,
-        expert_indices,
-        expert_weights,
-        num_experts=num_experts,
-    )
-    capacity_value = compute_moe_capacity(
-        expert_indices,
+    capacity_factor: float | None,
+    drop_policy: DropPolicy,
+) -> MoEOperations:
+    """Resolve one MoE backend and bind its static configuration."""
+    capacity_for = _resolve_capacity_policy(
         num_experts=num_experts,
         capacity_factor=capacity_factor,
         drop_policy=drop_policy,
-        capacity=capacity,
     )
-    if _should_use_cuda(tokens, use_cuda, environment):
+    if backend == "reference":
+
+        def dispatch_reference(
+            tokens: torch.Tensor,
+            expert_indices: torch.Tensor,
+            expert_weights: torch.Tensor,
+        ) -> MoEDispatchResult:
+            return reference_moe_dispatch(
+                tokens,
+                expert_indices,
+                expert_weights,
+                num_experts=num_experts,
+                capacity=capacity_for(expert_indices),
+            )
+
+        return MoEOperations(
+            dispatch=dispatch_reference,
+            combine=reference_moe_combine,
+        )
+    if backend != "cuda":
+        raise ValueError(f"Unsupported MoE backend: {backend!r}.")
+
+    extension = require_moe_cuda_extension()
+
+    def dispatch_cuda(
+        tokens: torch.Tensor,
+        expert_indices: torch.Tensor,
+        expert_weights: torch.Tensor,
+    ) -> MoEDispatchResult:
         return cuda_moe_dispatch(
             tokens,
             expert_indices,
             expert_weights,
             num_experts=num_experts,
-            capacity=capacity_value,
+            capacity=capacity_for(expert_indices),
+            extension=extension,
         )
-    return reference_moe_dispatch(
-        tokens,
-        expert_indices,
-        expert_weights,
-        num_experts=num_experts,
-        capacity_factor=capacity_factor,
-        drop_policy=drop_policy,
-        capacity=capacity_value,
+
+    return MoEOperations(
+        dispatch=dispatch_cuda,
+        combine=partial(cuda_moe_combine, extension=extension),
     )
 
 
-def moe_combine(
-    expert_outputs: torch.Tensor,
-    dispatch_result: MoEDispatchResult,
+def _resolve_capacity_policy(
     *,
-    use_cuda: bool | None = None,
-) -> torch.Tensor:
-    environment = operation_environment()
-    _validate_combine_inputs(expert_outputs, dispatch_result)
-    if _should_use_cuda(expert_outputs, use_cuda, environment):
-        return cuda_moe_combine(expert_outputs, dispatch_result)
-    return reference_moe_combine(expert_outputs, dispatch_result)
-
-
-def _should_use_cuda(
-    tensor: torch.Tensor,
-    use_cuda: bool | None,
-    environment: OperationEnvironmentConfig,
-) -> bool:
-    force_reference = environment.force_moe_reference
-    if use_cuda is False or force_reference:
-        if use_cuda is True and force_reference:
-            raise RuntimeError("TENNIS_LAB_FORCE_MOE_REFERENCE is set")
-        return False
-    if not tensor.is_cuda:
-        if use_cuda is True:
-            raise RuntimeError("use_cuda=True requires CUDA tensors")
-        return False
-    if get_moe_cuda_extension() is None:
-        if use_cuda is True:
-            raise RuntimeError("MoE CUDA extension is not available")
-        return False
-    return True
-
-
-def _validate_combine_inputs(
-    expert_outputs: torch.Tensor,
-    dispatch_result: MoEDispatchResult,
-) -> None:
-    if expert_outputs.ndim != 3:
+    num_experts: int,
+    capacity_factor: float | None,
+    drop_policy: DropPolicy,
+) -> MoECapacity:
+    if type(num_experts) is not int or num_experts <= 0:
+        raise ValueError(f"num_experts must be a positive int, got {num_experts!r}.")
+    if drop_policy == "none":
+        return lambda expert_indices: expert_indices.numel()
+    if drop_policy != "capacity":
+        raise ValueError(f"Unsupported drop_policy={drop_policy!r}.")
+    if capacity_factor is None or capacity_factor <= 0.0:
         raise ValueError(
-            f"expert_outputs must have shape [num_experts, capacity, hidden], "
-            f"got {tuple(expert_outputs.shape)}"
+            "capacity_factor must be positive when drop_policy='capacity'."
         )
-    if expert_outputs.shape[:2] != dispatch_result.expert_inputs.shape[:2]:
-        raise ValueError(
-            "expert_outputs first two dimensions must match dispatch_result.expert_inputs"
-        )
-    if expert_outputs.device != dispatch_result.expert_indices.device:
-        raise ValueError(
-            "expert_outputs and dispatch_result must be on the same device"
-        )
+
+    def capacity_with_drops(expert_indices: torch.Tensor) -> int:
+        total_assignments = int(expert_indices.numel())
+        if total_assignments == 0:
+            return 0
+        average_assignments = total_assignments / num_experts
+        return max(1, math.ceil(average_assignments * capacity_factor))
+
+    return capacity_with_drops
+
+
+__all__ = ["MoECombine", "MoEDispatch", "MoEOperations", "resolve_moe_operations"]

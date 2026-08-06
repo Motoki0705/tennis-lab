@@ -28,13 +28,18 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import cast
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
+from src.tasks.slcs.model_io.contracts import (
+    SLCSDecodedOutput,
+    SLCSTrainingTargets,
+)
 from src.utils.geometry.angles import wrapped_angle_diff
-from src.utils.losses.temporal import smoothness_penalty
+from src.utils.losses.temporal import TemporalSmoothnessPenalty
 from src.utils.tensor_utils import masked_mean
 
 
@@ -86,16 +91,10 @@ class SLCSLossInputs:
 
 def _weighted_mean(per_frame: Tensor, mask: Tensor, weight: Tensor) -> Tensor:
     """Weighted masked mean; zero when nothing is valid."""
-    if per_frame.shape != mask.shape or per_frame.shape != weight.shape:
-        raise ValueError(
-            f"per-frame loss {tuple(per_frame.shape)}, mask {tuple(mask.shape)} and "
-            f"weight {tuple(weight.shape)} must share the same shape."
-        )
     effective = weight * mask.to(weight.dtype)
     denom = effective.sum()
-    if denom.item() <= 0:
-        return per_frame.new_zeros(())
-    return (per_frame * effective).sum() / denom
+    weighted = (per_frame * effective).sum() / denom.clamp_min(1.0)
+    return torch.where(denom > 0, weighted, per_frame.new_zeros(()))
 
 
 def player_position_loss_term(inputs: SLCSLossInputs) -> Tensor:
@@ -170,7 +169,7 @@ def ball_position_nll_loss_term(inputs: SLCSLossInputs) -> Tensor:
 
 
 def make_player_position_smoothness_term(
-    order: int,
+    penalty: TemporalSmoothnessPenalty,
 ) -> Callable[[SLCSLossInputs], Tensor]:
     """Jerk prior on player positions over all real (non-padded) frames."""
 
@@ -183,20 +182,18 @@ def make_player_position_smoothness_term(
             .expand(batch, players, seq_len)
             .reshape(batch * players, seq_len)
         )
-        return smoothness_penalty(flat, mask, order=order)
+        return cast(Tensor, penalty(flat, mask))
 
     return term
 
 
 def make_ball_position_smoothness_term(
-    order: int,
+    penalty: TemporalSmoothnessPenalty,
 ) -> Callable[[SLCSLossInputs], Tensor]:
     """Jerk prior on the ball trajectory over all real frames."""
 
     def term(inputs: SLCSLossInputs) -> Tensor:
-        return smoothness_penalty(
-            inputs.pred_ball_position, inputs.frame_mask, order=order
-        )
+        return cast(Tensor, penalty(inputs.pred_ball_position, inputs.frame_mask))
 
     return term
 
@@ -220,95 +217,89 @@ class SLCSLoss(nn.Module):
     def __init__(self, config: SLCSLossConfig) -> None:
         super().__init__()
         self.config = config
-        order = int(self.config.smoothness_order)
-        self.loss_terms: dict[str, SLCSLossTerm] = {
-            "player_position": player_position_loss_term,
-            "player_rotation": player_rotation_loss_term,
-            "player_angle": player_angle_loss_term,
-            "ball_position": ball_position_loss_term,
-            "player_position_nll": player_position_nll_loss_term,
-            "player_rotation_nll": player_rotation_nll_loss_term,
-            "ball_position_nll": ball_position_nll_loss_term,
-            "player_position_smoothness": make_player_position_smoothness_term(order),
-            "ball_position_smoothness": make_ball_position_smoothness_term(order),
-            "ground_penetration": ground_penetration_loss_term,
-        }
-        self.loss_weights = {
-            "player_position": config.player_position_weight,
-            "player_rotation": config.player_rotation_weight,
-            "player_angle": config.player_angle_weight,
-            "ball_position": config.ball_position_weight,
-            "player_position_nll": config.player_position_nll_weight,
-            "player_rotation_nll": config.player_rotation_nll_weight,
-            "ball_position_nll": config.ball_position_nll_weight,
-            "player_position_smoothness": config.player_position_smoothness_weight,
-            "ball_position_smoothness": config.ball_position_smoothness_weight,
-            "ground_penetration": config.ground_penetration_weight,
-        }
-
-    def weight_for(self, name: str) -> float:
-        try:
-            return self.loss_weights[name]
-        except KeyError as error:
-            raise KeyError(f"Unknown SLCS loss term {name!r}.") from error
+        self.temporal_smoothness = TemporalSmoothnessPenalty(
+            order=config.smoothness_order,
+            axis_weights=(1.0, 1.0, 1.0),
+        )
+        self.weighted_terms: tuple[tuple[str, SLCSLossTerm, float], ...] = (
+            ("player_position", player_position_loss_term, config.player_position_weight),
+            ("player_rotation", player_rotation_loss_term, config.player_rotation_weight),
+            ("player_angle", player_angle_loss_term, config.player_angle_weight),
+            ("ball_position", ball_position_loss_term, config.ball_position_weight),
+            (
+                "player_position_nll",
+                player_position_nll_loss_term,
+                config.player_position_nll_weight,
+            ),
+            (
+                "player_rotation_nll",
+                player_rotation_nll_loss_term,
+                config.player_rotation_nll_weight,
+            ),
+            (
+                "ball_position_nll",
+                ball_position_nll_loss_term,
+                config.ball_position_nll_weight,
+            ),
+            (
+                "player_position_smoothness",
+                make_player_position_smoothness_term(self.temporal_smoothness),
+                config.player_position_smoothness_weight,
+            ),
+            (
+                "ball_position_smoothness",
+                make_ball_position_smoothness_term(self.temporal_smoothness),
+                config.ball_position_smoothness_weight,
+            ),
+            (
+                "ground_penetration",
+                ground_penetration_loss_term,
+                config.ground_penetration_weight,
+            ),
+        )
 
     def forward(
         self,
-        outputs: dict[str, Tensor],
-        batch: dict[str, Tensor],
+        inputs: SLCSLossInputs,
     ) -> dict[str, Tensor]:
-        """Compute all registered terms from model outputs and an SLCSBatch."""
-        inputs = self.build_inputs(outputs, batch)
+        """Compute registered terms from boundary-validated loss tensors."""
         losses: dict[str, Tensor] = {}
         total = inputs.zero
-        for name, term_fn in self.loss_terms.items():
+        for name, term_fn, weight in self.weighted_terms:
             value = term_fn(inputs)
             losses[name] = value
-            total = total + self.weight_for(name) * value
-        if not bool(torch.isfinite(total)):
-            raise FloatingPointError(
-                f"SLCS loss became non-finite: "
-                f"{ {k: float(v.detach()) for k, v in losses.items()} }"
-            )
+            total = total + weight * value
         losses["total"] = total
         return losses
 
-    @staticmethod
-    def build_inputs(
-        outputs: dict[str, Tensor], batch: dict[str, Tensor]
-    ) -> SLCSLossInputs:
-        """Assemble loss inputs, folding padding into label masks/weights."""
-        frame_mask = batch["frame_mask"] > 0
-        player_mask = (batch["target_player_valid"] > 0) & frame_mask.unsqueeze(1)
-        ball_mask = (batch["target_ball_valid"] > 0) & frame_mask
-        player_weight = batch["target_player_weight"] * player_mask.to(
-            batch["target_player_weight"].dtype
-        )
-        ball_weight = batch["target_ball_weight"] * ball_mask.to(
-            batch["target_ball_weight"].dtype
-        )
-        return SLCSLossInputs(
-            pred_player_position=outputs["player_position"],
-            pred_player_rotation=outputs["player_rotation"],
-            pred_ball_position=outputs["ball_position"],
-            pred_player_position_log_b=outputs["player_position_log_b"],
-            pred_player_rotation_log_b=outputs["player_rotation_log_b"],
-            pred_ball_position_log_b=outputs["ball_position_log_b"],
-            target_player_position=batch["target_player_position"],
-            target_player_rotation=batch["target_player_rotation"],
-            target_ball_position=batch["target_ball_position"],
-            player_mask=player_mask,
-            player_weight=player_weight,
-            ball_mask=ball_mask,
-            ball_weight=ball_weight,
-            frame_mask=frame_mask,
-        )
+
+def build_slcs_loss_inputs(
+    outputs: SLCSDecodedOutput, targets: SLCSTrainingTargets
+) -> SLCSLossInputs:
+    """Assemble the computation-only loss input after adapter decode."""
+    return SLCSLossInputs(
+        pred_player_position=outputs.player_position,
+        pred_player_rotation=outputs.player_rotation,
+        pred_ball_position=outputs.ball_position,
+        pred_player_position_log_b=outputs.player_position_log_b,
+        pred_player_rotation_log_b=outputs.player_rotation_log_b,
+        pred_ball_position_log_b=outputs.ball_position_log_b,
+        target_player_position=targets.target_player_position,
+        target_player_rotation=targets.target_player_rotation,
+        target_ball_position=targets.target_ball_position,
+        player_mask=targets.player_mask,
+        player_weight=targets.player_weight,
+        ball_mask=targets.ball_mask,
+        ball_weight=targets.ball_weight,
+        frame_mask=targets.frame_mask,
+    )
 
 
 __all__ = [
     "SLCSLoss",
     "SLCSLossConfig",
     "SLCSLossInputs",
+    "build_slcs_loss_inputs",
     "ball_position_loss_term",
     "ball_position_nll_loss_term",
     "ground_penetration_loss_term",

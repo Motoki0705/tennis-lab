@@ -21,12 +21,11 @@ import torch.nn as nn
 from torch import Tensor
 
 from src.tasks.blcs.configuration import SingleModelConfig
-from src.tasks.blcs.models.components.heads import Trajectory3DHead, VelocityHead
+from src.tasks.blcs.models.components.heads import build_trajectory_output
 from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    build_self_attn_mask,
     precompute_freqs_cis_nd,
     resolve_rope_bases,
 )
@@ -35,10 +34,6 @@ from src.utils.models.embeddings import (
     CourtKPUVEmbedding,
     InvisibleTokenEmbedding,
 )
-
-# -------------------------
-# Main model (legacy alias preserved)
-# -------------------------
 
 
 class BLCSModel(nn.Module):
@@ -100,7 +95,6 @@ class BLCSModel(nn.Module):
         super().__init__()
         self.hidden_dim = hidden_dim
         self.max_seq_len = max_seq_len
-        self.predict_velocity = predict_velocity
         self.num_court_tokens = int(num_court_tokens)
         self.max_tokens = int(self.num_court_tokens + self.max_seq_len)
 
@@ -148,22 +142,11 @@ class BLCSModel(nn.Module):
         )
         self.final_norm = RMSNorm(hidden_dim)
 
-        self.position_head = Trajectory3DHead(
+        self.output_head = build_trajectory_output(
             input_dim=hidden_dim,
-            hidden_dim=hidden_dim // 2,
-            output_dim=3,
-            num_layers=2,
             dropout=dropout,
+            predict_velocity=predict_velocity,
         )
-        self.velocity_head = None
-        if predict_velocity:
-            self.velocity_head = VelocityHead(
-                input_dim=hidden_dim,
-                hidden_dim=hidden_dim // 2,
-                output_dim=3,
-                num_layers=2,
-                dropout=dropout,
-            )
 
         freqs_cis = precompute_freqs_cis_nd(
             dim=self.rope_dim,
@@ -234,76 +217,41 @@ class BLCSModel(nn.Module):
         self,
         ball_uv: Tensor,
         court_kp: Tensor,
-        ball_vis: Tensor | None = None,
-        ball_mask: Tensor | None = None,
-        court_vis: Tensor | None = None,
+        ball_vis: Tensor,
+        court_vis: Tensor,
+        attention_mask: Tensor,
     ) -> dict[str, Tensor]:
         """Forward pass.
 
         Args:
             ball_uv: Ball 2D positions, shape (B, T, 2).
             court_kp: Court keypoints, shape (B, 40) or (B, 20, 2).
-            ball_vis: Ball visibility flags, shape (B, T). Optional.
-            ball_mask: Ball padding mask, shape (B, T). Optional.
-            court_vis: Court visibility mask, shape (B, 20). Optional.
+            ball_vis: Ball visibility flags, shape (B, T).
+            ball_mask: Ball padding mask, shape (B, T).
+            court_vis: Court visibility mask, shape (B, K).
 
         Returns:
             dict: Dictionary with 'position' (B, T, 3) and optionally 'velocity'.
         """
-        B, T, _ = ball_uv.shape
-
         # Tokenize court and ball
         court_tok = self.court_embed(court_kp, court_vis)  # (B, K, D)
         ball_tok = self.ball_embed(ball_uv, ball_vis)  # (B, T, D)
-        self._validate_court_tokens(court_tok)
-
-        K = court_tok.shape[1]
+        num_court_tokens = court_tok.shape[1]
         x = torch.cat([court_tok, ball_tok], dim=1)  # (B, S, D)
-        S = x.shape[1]
-
-        freqs_cis = self._freqs_for_sequence(x=x, seq_len=S)
-        attn_mask: Tensor | None = None
-        if ball_mask is not None:
-            court_valid = torch.ones(B, K, device=x.device, dtype=torch.bool)
-            ball_valid = ball_mask > 0
-            key_padding_mask = torch.cat([court_valid, ball_valid], dim=1)
-            attn_mask, _ = build_self_attn_mask(key_padding_mask)
-
+        freqs_cis = self.freqs_cis[: x.shape[1]]
         for blk in self.blocks:
             x = blk(
                 x,
                 freqs_cis=freqs_cis,
-                attn_mask=attn_mask,
+                attn_mask=attention_mask,
             )
 
         x = self.final_norm(x)
-        ball_out = x[:, K:, :]  # (B, T, D)
-
-        out: dict[str, Tensor] = {"position": self.position_head(ball_out)}  # (B, T, 3)
-
-        if self.predict_velocity and self.velocity_head is not None:
-            out["velocity"] = self.velocity_head(ball_out)  # (B, T, 3)
-
-        return out
-
-    def _validate_court_tokens(self, court_tokens: Tensor) -> None:
-        if court_tokens.shape[1] != self.num_court_tokens:
-            raise ValueError(
-                f"Expected {self.num_court_tokens} court tokens, got {court_tokens.shape[1]}"
-            )
-
-    def _freqs_for_sequence(self, *, x: Tensor, seq_len: int) -> Tensor:
-        freqs_cis = cast(Tensor, self.freqs_cis)
-        if freqs_cis.shape[0] < seq_len:
-            raise ValueError(
-                f"Sequence length S={seq_len} exceeds cached freqs_cis length {freqs_cis.shape[0]}. "
-                "Increase max_seq_len."
-            )
-        freqs_cis = freqs_cis[:seq_len]
-        if freqs_cis.device != x.device:
-            freqs_cis = freqs_cis.to(x.device)
-        return freqs_cis
+        ball_out = x[:, num_court_tokens:, :]  # (B, T, D)
+        return cast("dict[str, Tensor]", self.output_head(ball_out))
 
     def get_num_params(self) -> int:
         """Get total number of trainable parameters."""
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+    freqs_cis: Tensor

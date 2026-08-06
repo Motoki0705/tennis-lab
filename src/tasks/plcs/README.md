@@ -4,9 +4,13 @@
 
 ## Modules
 
+### configuration
+- **`configuration.py`**: training・analysis・visualization runtime boundary。共有 contract を消費し、generation package は import しない。
+- **`configuration_contracts.py`**: training と standalone generation が共有する path roots と generation component の型付き契約。両 runtime 設定より下位に置き、相互 import を作らない。
+
 ### data/
 - **`dataset.py`**: `SceneDataset`。sceneをcamera-time基準のcanonical sample(`human_kp`/`court_kp`/`position`/`rotation`等)に変換。
-- **`datamodule.py`**: `PLCSDataModule`。`model.io.input_profile`(`frame`/`sequence`/`multiview`)に応じてbatch構築。
+- **`datamodule.py`**: `PLCSDataModule`。model非依存のcanonical `(B,V,T,...)` batchを構築し、profile固有変換は行わない。
 - **`augmentation.py`**: `PLCSObservationAugmentation`。UVノイズ・時間jitter・可視性dropout等8段のパイプライン。
 - **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
 - **`targets.py`**: `build_coco17_world_targets()`。canonical poseまたはAthletePose3DからCOCO17ワールド座標targetを構築。
@@ -15,7 +19,7 @@
 - **`types.py`**: `PLCSBatch`/`PLCSSceneMeta` のバッチ・meta契約。
 
 ### models/
-- **`__init__.py`**: `build_plcs_model(config)`。5種のモデル実装をdispatch。
+- **各model module**: 実装classのcanonical import先。package rootは内部classや旧factoryをre-exportしない。
 - **`plcs_model.py`**: `PLCSModel`。単視点frame向けdecoder-only Transformer(court+playerトークン)。
 - **`plcs_multiview_model.py`**: `PLCSMultiViewModel`。camera×time interleaved RoPEによるmultiview Transformer。
 - **`plcs_multiview_axial_model.py`**: `PLCSMultiViewAxialModel`。camera軸/time軸交互self-attention(共有readout)。
@@ -23,21 +27,28 @@
 - **`plcs_multiview_axial_camtoken_model.py`**: `PLCSMultiViewAxialCamTokenModel`(issue #576)。head別に別camera tokenを読む。
 - **`plcs_track_query_model.py`**: `PLCSTrackQueryModel`。object ID順のcamera pose観測からclip-localな固定query slotで複数playerの位置・rotation・presenceを推定する。
 - **`components/heads.py`**: `PositionHead`/`RotationHead`/`CanonicalPoseHead`。
-- **`discriminators/`**: `PLCSPoseSequenceDiscriminator` と工場関数 `build_plcs_discriminator`。
+- **`discriminators/`**: 共有`TransformerSequenceDiscriminator`を`input_dim=5`で構築するPLCS composition factory。
 
 ### training/
-- **`runner.py`**: `PLCSTrainingRunner`。`data.backend` でdefault/chunked datamoduleを切替。
-- **`lightning_module.py`**: `PLCSLightningModule`。supervised+canonical+MCMCノイズ+GANを統括。
-- **`losses.py`**: `PLCSLoss`/`PLCSLossConfig`。position/rotation/canonical/角速度をプラガブルなレジストリで合算。
+- **`composition.py` / `runner.py`**: validated configからdatamodule/Lightning lifecycleを外部compositionで一度だけ選択する。
+- **`lightning_module.py`**: `PLCSLightningModule`。構築時にmodel-I/O pairを固定し、supervised+canonical+MCMCノイズ+GANを統括。
+- **`losses.py`**: `PLCSLoss`/`PLCSLossConfig`。`prepare_inputs()`で検証・canonical変換し、`forward()`はtensor loss termの合算だけを行う。
 - **`metrics.py`**: `PLCSMetrics`。メートル換算誤差・角度誤差・閾値内accuracyを集計。
 - **`mcmc.py`**: `LangevinNoiseInjector`(issue #519)。rotation headのflat saddle脱出用SGLDノイズ注入。
-- **`tracking_{matching,losses,metrics,lightning_module}.py`**: clip-level Hungarian matchingによるmulti-person tracking学習。
+- **`tracking_{matching,losses,metrics,lightning_module}.py`**: clip-level Hungarian matchingとmulti-person固有loss/metrics/payloadを所有し、Lightning stage lifecycleは`tasks/base/training/tracking_lightning_module.py`へ委譲する。
 
 ### inference/
-- **`predictor.py`**: `PLCSPredictor`。`predict(denormalize=True)` で `position_meters`/`yaw_radians` を返す。
+- **`predictor.py`**: `PLCSPredictor`。checkpointに対応するadapterを保持し、明示的なvisibility/maskを検証してから推論する。統合consumer向け`predict_multiview_observations()`はmeters/yawのtyped NumPy結果を返す。
+- **`tracking_predictor.py`**: track-query専用adapterを保持し、position/rotation/presenceをdecodeする。
+
+### model_io/
+- **`contracts.py`**: frame/sequence/multiview/track-query profile、prepared call、standard/tracking decoded prediction、physical predictionの型付き契約。
+- **`attention_masks.py`**: axial / track-queryのcamera・time・spatial attention maskとempty-row修復をmodel実行前に準備する。
+- **`adapters.py`**: 必須field、dtype、rank、shape、normalized UV、binary mask、view/time capacity、prepared attention tensor、output schemaを`forward`前後の境界で検証するtask-local adapter。
+- **`factory.py`**: model variantとadapterを外部compositionで一度だけ選択し、exact model classのpairを固定する唯一のfactory。
 
 ### generate_dataset/
-- **`config.py`**: `prepare_generation_config()`。パス解決とconfig絶対化。
+- **`config.py`**: standalone generation boundary。共有契約を消費し、run/device/split と生成 worker 用の絶対 path を検証・解決する。
 - **`scene_generator.py`**: `SceneGenerator`。AMASSモーションをコート座標へ変換しマルチカメラ投影してsceneを構築。
 - **`multi_object_scene_generator.py`**: `MultiPersonSceneGenerator`。既存のAMASS/SMPL-H sceneを複数生成し、同一の仮想カメラへ再投影してcanonical multi-person sceneへ合成する。`generation=multi_object` で選択する。
 - **`sampling/motion_sampler.py`**: `MotionSampler`。AMASS/SMPL-Hモーションの重み付きサンプリングとjoint計算。
@@ -46,10 +57,10 @@
 
 ### visualization/
 - **`io/scene.py`**: `SceneBundle`。シーン読込とカメラ選択。
-- **`api/predict.py`**: `predict_scene()`。モデル型に応じてframe/multiview推論を切替。比較描画のcanonical poseは`visualization.canonical_pose_source=gt|prediction`で選択し、既定ではGTを使う。
+- **`api/predict.py`**: `predict_scene()`。predictorに固定されたadapterへscene assembly/decodeを委譲する。比較描画のcanonical poseは`visualization.canonical_pose_source=gt|prediction`で選択し、既定ではGTを使う。
 - **`contracts.py`**: `PoseRenderScene`。renderer向け最小scene契約。
 - **`rendering/scene_renderer.py`**: `PLCSSceneRenderer`。single/multi-personの3D/2D top-down/入力cameraアニメーションとGT・予測比較を描画する。3Dは `src.utils.rendering` の共有プリミティブを利用。style/視点は `visualization.style` / `visualization.view_3d` で設定。
-- **`adapters/`**: predictor入力構築と学習時qualitative描画用変換。
+- **`adapters/`**: typed decoded predictionから学習時qualitative描画入力への変換。
 - **`orchestrator.py`**: `run_visualization()`。visualize/predictモードを統括。
 
 ### scripts/
@@ -57,9 +68,6 @@
 - **`generate_dataset.py`**: 並列合成データ生成エントリポイント。
 - **`visualize.py`**: 可視化エントリポイント。
 - **`analysis/*.py`**: データセット分布・角速度統計・loss dominance・回転誤差サンプル抽出の分析スクリプト群。
-
-### utils/
-- **`pose_geometry.py`**: `src.utils.geometry.court_pose` からのre-export(歴史的importパス維持)。
 
 ### configs/
 - model(frame/multiview/axial系サイズ違い)・data(singleview/multiview/chunked)・loss(canonical段階別)・training(default/GAN/MCMC)・metrics・motion_sources・simulation/camera/paths(生成用)・visualization・run・analysis の各Hydra設定。

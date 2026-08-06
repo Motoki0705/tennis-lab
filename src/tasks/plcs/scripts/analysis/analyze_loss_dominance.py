@@ -127,6 +127,7 @@ def analyze(
     )
     module.eval().to(device)
     model = module.model
+    io_adapter = module.io_adapter
 
     # PLCSLoss is the single source of truth for which terms exist and their
     # weights, so the analysis automatically tracks every registered term
@@ -166,28 +167,30 @@ def analyze(
                 k: v.to(device) if isinstance(v, Tensor) else v
                 for k, v in batch.items()
             }
-            outputs = model(
-                human_kp=batch["human_kp"],
-                court_kp=batch["court_kp"],
-                human_vis=batch.get("human_vis"),
-                human_mask=batch.get("human_mask"),
-                court_vis=batch.get("court_vis"),
+            prepared = io_adapter.prepare_training_batch(batch)
+            raw_output = cast(
+                "dict[str, object]",
+                model(*prepared.call.args, **dict(prepared.call.kwargs)),
             )
-            losses = loss_fn(
-                pred_position=outputs["position"],
-                pred_rotation=outputs["rotation"],
-                target_position=batch["position"],
-                target_rotation=batch["rotation"],
-                pred_canonical_pose=outputs.get("canonical_pose"),
-                target_human_kp_3d=batch.get("human_kp_3d"),
-                human_mask=batch.get("human_mask"),
+            outputs = io_adapter.decode_prepared_output(raw_output, prepared)
+            target_position = cast(Tensor, prepared.target_position)
+            target_rotation = cast(Tensor, prepared.target_rotation)
+            loss_inputs = loss_fn.prepare_inputs(
+                pred_position=outputs.position,
+                pred_rotation=outputs.rotation,
+                target_position=target_position,
+                target_rotation=target_rotation,
+                pred_canonical_pose=outputs.canonical_pose,
+                target_human_kp_3d=prepared.target_human_kp_3d,
+                human_mask=prepared.target_human_mask,
             )
+            losses = loss_fn(loss_inputs)
             metrics.update(
-                outputs["position"],
-                outputs["rotation"],
-                batch["position"],
-                batch["rotation"],
-                human_mask=batch.get("human_mask"),
+                outputs.position,
+                outputs.rotation,
+                target_position,
+                target_rotation,
+                human_mask=prepared.target_human_mask,
             )
 
             count += 1

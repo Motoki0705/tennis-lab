@@ -6,10 +6,13 @@
 
 ### Top-level
 - **`__init__.py`**: data/training/inferenceの共有APIを再export。
-- **`preview.py`**: dataset previewスクリプト共通helper(`resolve_split_file`/`resolve_sample_indices`)。
+
+### model_io/
+- **`contracts.py`**: task-local adapterが実装するtyped `ModelIOAdapter`、immutableな`ModelCall`、model/adapterをcomposition時に一度だけ検証する`bind_model_io()`/`BoundModelIO`。tensor keyやshapeの意味は各taskが所有する。
+- **`tensors.py`**: `TensorSpec`/`require_tensor()`。dtype/rank/fixed dimensionを`forward`前のadapter boundaryで検証する。
 
 ### data/
-- **`scene_dataset.py`**: `SceneDatasetBase`。シーンディレクトリ読込・window/camera選択・`build_sample()`拡張点を持つDataset基底。
+- **`scene_dataset.py`**: `SceneDatasetBase`。シーンディレクトリ読込・window/camera選択・`build_sample()`拡張点を持つDataset基底。`meta.num_frames` は正の整数として必須で、payload長との矛盾は `SceneDataContractError` によりindex作成前に失敗する。
 - **`datamodule.py`**: `SceneDirectoryDataModule`。固定 `scene_dir`+split txt を扱うDataModule基底。
 - **`chunked_datamodule.py`**: `BaseChunkedDataModule`。trainのみバックグラウンド生成chunkに切替え。
 - **`chunk_manager.py`**: `ChunkManager`。chunk生成スレッドのライフサイクル管理。
@@ -26,16 +29,18 @@
 - **`qualitative_callback.py` / `qualitative_saving.py`**: validationサンプルの可視化描画・GIF/画像保存。
 - **`losses.py`**: `FocalBCEWithLogitsLoss`。複数taskで重複していた実装を統合。
 - **`tracking_lifecycle.py`**: active/inactive/birth/death近傍を重み付けするpresence BCE。
+- **`tracking_lightning_module.py`**: BLCS/PLCSに共通するtracking stage dispatch、loss/metric logging、test prediction収集・保存を所有し、task固有adapter/loss/metrics/payloadはhookへ委譲する。
 - **`tracking_metrics.py`**: lifecycle segment単位のbirth/death誤差・presence F1・query再利用・ID switch診断。
 
 ### inference/
-- **`predictor.py`**: `BasePredictor`。checkpoint解決・device解決・共通predict契約(CPU tensor/snake_case)を持つ基底。
+- **`predictor.py`**: genericな`BasePredictor[PredictionT]`。checkpoint/device解決を共有し、predictのdecoded型は選択済みtask adapterが所有する（decoded result内のtensorはCPU）。明示CUDA指定はfallbackせず、availability選択は`auto`だけが行う。
 
 ### generate_dataset/
 - **`parallel_runner.py`**: `run_parallel_scene_generation()`。`ProcessPoolExecutor`(spawn context)による並列シーン生成fan-out。
 - **`timeline_composer.py`**: BLCS/PLCS共通の固定global timelineへsource subclipを配置し、同時存在数とlifecycle metadataを保証。
 
 ### visualization/
+- **`preview.py`**: dataset previewスクリプト共通helper(`resolve_split_file`/`resolve_sample_indices`等)のcanonical owner。
 - **`frames.py`**: 画像ソース読込(`load_rgb_frames`等)。
 - **`gif.py`**: `save_gif()`。共通GIF writer。
 - **`io.py`**: `BaseSceneBundle`/`resolve_cameras()`。カメラ選択解決の共通ロジック。

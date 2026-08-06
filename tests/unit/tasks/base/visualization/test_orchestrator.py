@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+from omegaconf import OmegaConf
 
 from src.tasks.base.configuration import SceneVisualizationConfig
+from src.tasks.base.visualization.orchestrator import (
+    parse_float_triplet,
+    parse_hw,
+    parse_rgb,
+)
 from src.utils.configuration import (
     ConfigurationTypeError,
     MissingConfigurationKeyError,
@@ -17,6 +24,18 @@ from src.utils.configuration import (
 )
 
 pytestmark = pytest.mark.unit
+
+
+def _parse_hw(value: object) -> object:
+    return parse_hw(value, name="value")
+
+
+def _parse_rgb(value: object) -> object:
+    return parse_rgb(value, name="value")
+
+
+def _parse_float_triplet(value: object) -> object:
+    return parse_float_triplet(value, name="value")
 
 
 def _resolver(tmp_path: Path) -> PathResolver:
@@ -52,6 +71,77 @@ def _visualization_config(**overrides: object) -> dict[str, object]:
     }
     config.update(overrides)
     return config
+
+
+def test_triplet_parsers_accept_hydra_list_config_without_weakening_types() -> None:
+    config = OmegaConf.create(
+        {
+            "image_size": [288, 512],
+            "rgb": [12, 34, 255],
+            "normalization": [0.485, 0.456, 0.406],
+        }
+    )
+
+    assert parse_hw(config.image_size, name="image_size") == (288, 512)
+    assert parse_rgb(config.rgb, name="rgb") == (12, 34, 255)
+    assert parse_float_triplet(config.normalization, name="normalization") == (
+        0.485,
+        0.456,
+        0.406,
+    )
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "1,2,3",
+        b"123",
+        bytearray(b"123"),
+        {"first": 1, "second": 2},
+        {1, 2, 3},
+        iter((1, 2, 3)),
+    ],
+)
+@pytest.mark.parametrize(
+    "parser",
+    [_parse_hw, _parse_rgb, _parse_float_triplet],
+)
+def test_triplet_parsers_reject_non_sequence_or_ambiguous_containers(
+    parser: Callable[[object], object],
+    value: object,
+) -> None:
+    with pytest.raises(TypeError, match="non-string sequence"):
+        parser(value)
+
+
+@pytest.mark.parametrize(
+    ("parser", "value"),
+    [
+        (_parse_hw, [1]),
+        (_parse_hw, [1, True]),
+        (_parse_hw, [1, 2.0]),
+        (_parse_rgb, [1, 2]),
+        (_parse_rgb, [1, 2, True]),
+        (_parse_rgb, [1, 2, 3.0]),
+        (_parse_float_triplet, [0.1, 0.2]),
+        (_parse_float_triplet, [0.1, 0.2, True]),
+        (_parse_float_triplet, [0.1, 0.2, "0.3"]),
+    ],
+)
+def test_triplet_parsers_reject_wrong_length_and_non_exact_element_types(
+    parser: Callable[[object], object],
+    value: object,
+) -> None:
+    with pytest.raises(TypeError):
+        parser(value)
+
+
+@pytest.mark.parametrize("rgb", [(-1, 0, 0), (0, 0, 256)])
+def test_rgb_parser_rejects_out_of_range_channels(
+    rgb: tuple[int, int, int],
+) -> None:
+    with pytest.raises(ValueError, match=r"within \[0, 255\]"):
+        parse_rgb(rgb, name="rgb")
 
 
 @pytest.mark.parametrize(

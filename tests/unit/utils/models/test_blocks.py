@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import torch
 
-from src.utils.models import Conv2dWiseWiseBlock, DepthwiseSeparableConv2d
-from src.utils.models.blocks import Conv2dWiseWiseBlock as BlocksWiseWise
-from src.utils.models.blocks import DepthwiseSeparableConv2d as BlocksDWSep
+from src.utils.models.blocks import Conv2dWiseWiseBlock, DepthwiseSeparableConv2d
 
 
 def test_depthwise_separable_conv2d_preserves_spatial_shape() -> None:
@@ -31,6 +29,5 @@ def test_task_modules_use_the_shared_classes_directly() -> None:
         Conv2dWiseWiseBlock as EncoderWiseWise,
     )
 
-    assert DecoderWiseWise is EncoderWiseWise is Conv2dWiseWiseBlock is BlocksWiseWise
+    assert DecoderWiseWise is EncoderWiseWise is Conv2dWiseWiseBlock
     assert BallWiseWise is Conv2dWiseWiseBlock
-    assert DepthwiseSeparableConv2d is BlocksDWSep

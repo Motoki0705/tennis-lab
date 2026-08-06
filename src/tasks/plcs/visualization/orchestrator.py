@@ -14,7 +14,7 @@ from src.tasks.base.visualization.orchestrator import (
     build_scene_runtime_config,
     save_or_show_animation,
 )
-from src.tasks.plcs.configuration import PLCSPathConfig
+from src.tasks.plcs.configuration_contracts import PLCSPathConfig
 from src.tasks.plcs.visualization.api.predict import (
     CanonicalPoseSource,
     predict_scene,

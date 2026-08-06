@@ -157,11 +157,17 @@ class PLCSModel(nn.Module):
                 torch.zeros(1, self.num_register_tokens, hidden_dim)
             )
             nn.init.trunc_normal_(self.register_tokens, std=0.02)
+            self._add_prefix_tokens = self._add_prefix_tokens_with_registers
+        else:
+            self._add_prefix_tokens = self._add_prefix_tokens_without_registers
 
         # Optional KP-ID embeddings
         if self.use_kp_id_embedding:
             self.court_id_embed = nn.Embedding(self.num_court_tokens, hidden_dim)
             self.player_id_embed = nn.Embedding(NUM_HUMAN_KP, hidden_dim)
+            self._apply_keypoint_id_embeddings = self._add_keypoint_id_embeddings
+        else:
+            self._apply_keypoint_id_embeddings = self._keep_keypoint_embeddings
 
         # Transformer blocks
         self.blocks = nn.ModuleList(
@@ -208,6 +214,9 @@ class PLCSModel(nn.Module):
                 dropout=dropout,
                 num_keypoints=NUM_HUMAN_KP,
             )
+            self._decode_cls = self._decode_cls_with_canonical_pose
+        else:
+            self._decode_cls = self._decode_cls_without_canonical_pose
 
         if self.use_rope:
             freqs_cis = precompute_freqs_cis_nd(
@@ -216,6 +225,9 @@ class PLCSModel(nn.Module):
                 base=self.rope_bases,
             )
             self.register_buffer("freqs_cis_body", freqs_cis, persistent=False)
+            self._transformer_freqs = self._transformer_freqs_with_rope
+        else:
+            self._transformer_freqs = self._transformer_freqs_without_rope
 
     @staticmethod
     def _validate_init_args(*, num_register_tokens: int) -> None:
@@ -284,8 +296,8 @@ class PLCSModel(nn.Module):
         self,
         human_kp: Tensor,
         court_kp: Tensor,
-        human_vis: Tensor | None = None,
-        court_vis: Tensor | None = None,
+        human_vis: Tensor,
+        court_vis: Tensor,
     ) -> Tensor:
         """Forward pass.
 
@@ -316,54 +328,76 @@ class PLCSModel(nn.Module):
         court_tok = self.court_embed(court_kp, court_vis)  # (B, K, D)
         player_tok = self.player_embed(human_kp, human_vis)  # (B, 17, D)
 
-        K = court_tok.shape[1]
-
-        if self.use_kp_id_embedding:
-            court_id = self.court_id_embed(
-                torch.arange(K, device=human_kp.device, dtype=torch.long)
-            )[None, :, :]
-            player_id = self.player_id_embed(
-                torch.arange(NUM_HUMAN_KP, device=human_kp.device, dtype=torch.long)
-            )[None, :, :]
-            court_tok = court_tok + court_id
-            player_tok = player_tok + player_id
+        court_tok, player_tok = self._apply_keypoint_id_embeddings(
+            court_tok, player_tok
+        )
 
         return torch.cat([court_tok, player_tok], dim=1)  # (B, 37, D)
 
-    def _add_prefix_tokens(self, token_body: Tensor) -> Tensor:
-        """Add CLS/register prefix tokens to body tokens."""
+    def _add_keypoint_id_embeddings(
+        self, court_tok: Tensor, player_tok: Tensor
+    ) -> tuple[Tensor, Tensor]:
+        court_id = self.court_id_embed(
+            torch.arange(court_tok.shape[1], device=court_tok.device, dtype=torch.long)
+        )[None, :, :]
+        player_id = self.player_id_embed(
+            torch.arange(NUM_HUMAN_KP, device=player_tok.device, dtype=torch.long)
+        )[None, :, :]
+        return court_tok + court_id, player_tok + player_id
+
+    @staticmethod
+    def _keep_keypoint_embeddings(
+        court_tok: Tensor, player_tok: Tensor
+    ) -> tuple[Tensor, Tensor]:
+        return court_tok, player_tok
+
+    def _add_prefix_tokens_with_registers(self, token_body: Tensor) -> Tensor:
         B = token_body.size(0)
         cls = self.cls_token.expand(B, -1, -1)
-        if self.num_register_tokens > 0:
-            reg = self.register_tokens.expand(B, -1, -1)
-            return torch.cat([cls, reg, token_body], dim=1)  # (B, 1+R+37, D)
+        reg = self.register_tokens.expand(B, -1, -1)
+        return torch.cat([cls, reg, token_body], dim=1)
+
+    def _add_prefix_tokens_without_registers(self, token_body: Tensor) -> Tensor:
+        B = token_body.size(0)
+        cls = self.cls_token.expand(B, -1, -1)
         return torch.cat([cls, token_body], dim=1)  # (B, 38, D)
+
+    def _transformer_freqs_with_rope(
+        self, x: Tensor, body_tokens: int
+    ) -> Tensor:
+        prefix_len = x.size(1) - body_tokens
+        freqs_cis_body = cast(Tensor, self.freqs_cis_body)[:body_tokens]
+        prefix_freqs = torch.ones(
+            prefix_len,
+            freqs_cis_body.shape[1],
+            freqs_cis_body.shape[2],
+            device=x.device,
+            dtype=freqs_cis_body.dtype,
+        )
+        return torch.cat([prefix_freqs, freqs_cis_body], dim=0)
+
+    def _transformer_freqs_without_rope(
+        self, x: Tensor, body_tokens: int
+    ) -> Tensor:
+        del body_tokens
+        return torch.ones(
+            x.size(1),
+            1,
+            self.rope_dim // 2,
+            device=x.device,
+            dtype=torch.complex64,
+        )
 
     def _forward_transformer(self, x: Tensor, S_body: int) -> Tensor:
         """Run transformer stack and final normalization."""
-        prefix_len = x.size(1) - S_body
-
-        freqs_cis: Tensor | None = None
-        if self.use_rope:
-            freqs_cis_body = cast(Tensor, self.freqs_cis_body)
-            if S_body > freqs_cis_body.shape[0]:
-                raise ValueError(
-                    f"Sequence length S={S_body} exceeds cached freqs_cis length {freqs_cis_body.shape[0]}. "
-                    "Increase max_tokens."
-                )
-            freqs_cis_body = freqs_cis_body[:S_body]
-            if freqs_cis_body.device != x.device:
-                freqs_cis_body = freqs_cis_body.to(x.device)
-
-            prefix_freqs = torch.ones(
-                prefix_len,
-                freqs_cis_body.shape[1],
-                device=x.device,
-                dtype=freqs_cis_body.dtype,
-            )
-            freqs_cis = torch.cat([prefix_freqs, freqs_cis_body], dim=0)
-
-        attn_mask: Tensor | None = None
+        freqs_cis = self._transformer_freqs(x, S_body)
+        attn_mask = torch.ones(
+            x.size(0),
+            x.size(1),
+            x.size(1),
+            device=x.device,
+            dtype=torch.bool,
+        )
 
         for blk in self.blocks:
             x = blk(
@@ -379,8 +413,8 @@ class PLCSModel(nn.Module):
         self,
         human_kp: Tensor,
         court_kp: Tensor,
-        human_vis: Tensor | None = None,
-        court_vis: Tensor | None = None,
+        human_vis: Tensor,
+        court_vis: Tensor,
     ) -> tuple[Tensor, int]:
         """Encode tokens and return contextualized outputs and player start index."""
         token_body = self._build_body_tokens(
@@ -399,26 +433,20 @@ class PLCSModel(nn.Module):
         self,
         human_kp: Tensor,
         court_kp: Tensor,
-        human_vis: Tensor | None = None,
-        human_mask: Tensor | None = None,
-        court_vis: Tensor | None = None,
+        human_vis: Tensor,
+        human_mask: Tensor,
+        court_vis: Tensor,
     ) -> dict[str, Tensor]:
         """Forward pass for frame model.
 
         Expected shapes:
-        - ``human_kp``: ``(B,17,2)`` or ``(B,34)``
-        - ``court_kp``: ``(B,20,2)`` or ``(B,40)``
-        - ``human_vis``: ``(B,17)``, optional
-        - ``court_vis``: ``(B,20)``, optional
-        - ``human_mask``: ``(B,)`` or ``None`` (unused by frame model)
+        - ``human_kp``: ``(B,17,2)``
+        - ``court_kp``: ``(B,K,2)``
+        - ``human_vis``: ``(B,17)``
+        - ``court_vis``: ``(B,K)``
+        - ``human_mask``: ``(B,)`` (unused by frame model)
         """
-        self._validate_forward_inputs(
-            human_kp=human_kp,
-            court_kp=court_kp,
-            human_vis=human_vis,
-            human_mask=human_mask,
-            court_vis=court_vis,
-        )
+        del human_mask
 
         x, _ = self._encode_tokens(
             human_kp=human_kp,
@@ -430,52 +458,21 @@ class PLCSModel(nn.Module):
         # Extract CLS token
         cls_out = x[:, 0, :]  # (B, D)
 
-        # Apply output heads
-        position = self.position_head(cls_out)  # (B, 3)
-        rotation = self.rotation_head(cls_out)  # (B, 2)
+        return self._decode_cls(cls_out)
 
-        out = {
-            "position": position,
-            "rotation": rotation,
+    def _decode_cls_without_canonical_pose(self, cls_out: Tensor) -> dict[str, Tensor]:
+        return {
+            "position": self.position_head(cls_out),
+            "rotation": self.rotation_head(cls_out),
         }
-        if self.predict_canonical_pose and self.canonical_pose_head is not None:
-            out["canonical_pose"] = self.canonical_pose_head(cls_out)
-        return out
 
-    @staticmethod
-    def _validate_forward_inputs(
-        *,
-        human_kp: Tensor,
-        court_kp: Tensor,
-        human_vis: Tensor | None,
-        human_mask: Tensor | None,
-        court_vis: Tensor | None,
-    ) -> None:
-        if human_kp.dim() not in {2, 3}:
-            raise ValueError(
-                "PLCSModel expects human_kp as (B,17,2) or (B,34), "
-                f"got shape {tuple(human_kp.shape)}"
-            )
-        if court_kp.dim() not in {2, 3}:
-            raise ValueError(
-                "PLCSModel expects court_kp as (B,20,2) or (B,40), "
-                f"got shape {tuple(court_kp.shape)}"
-            )
-        if human_vis is not None and human_vis.dim() != 2:
-            raise ValueError(
-                "PLCSModel expects human_vis as (B,17), "
-                f"got shape {tuple(human_vis.shape)}"
-            )
-        if court_vis is not None and court_vis.dim() != 2:
-            raise ValueError(
-                "PLCSModel expects court_vis as (B,20), "
-                f"got shape {tuple(court_vis.shape)}"
-            )
-        if human_mask is not None and human_mask.dim() != 1:
-            raise ValueError(
-                "PLCSModel expects human_mask as (B,) or None, "
-                f"got shape {tuple(human_mask.shape)}"
-            )
+    def _decode_cls_with_canonical_pose(self, cls_out: Tensor) -> dict[str, Tensor]:
+        head = cast(CanonicalPoseHead, self.canonical_pose_head)
+        return {
+            "position": self.position_head(cls_out),
+            "rotation": self.rotation_head(cls_out),
+            "canonical_pose": head(cls_out),
+        }
 
     def get_num_params(self) -> int:
         """Get total number of trainable parameters."""

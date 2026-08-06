@@ -13,6 +13,7 @@ from src.tasks.base.data.augmentation import BaseObservationAugmentation
 from src.tasks.blcs.data.types import BLCSMultiViewSample
 from src.utils.configuration import (
     MissingConfigurationKeyError,
+    SemanticConfigurationError,
     UnknownConfigurationKeyError,
 )
 from src.utils.data.augmentation import (
@@ -103,6 +104,139 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation[BLCSMultiViewS
             self._require_exact_keys(child, keys, path=f"data.augmentation.{name}")
         super().__init__(config)
         self.preserve_clean_targets = bool(self.config["preserve_clean_targets"])
+        self._uv_scale_activation = self._activation(
+            self.uv_scale_cfg, path="data.augmentation.uv_scale"
+        )
+        self._gaussian_activation = self._activation(
+            self.gaussian_cfg, path="data.augmentation.gaussian_noise"
+        )
+        self._visibility_dropout_activation = self._activation(
+            self.visibility_dropout_cfg,
+            path="data.augmentation.visibility_dropout",
+        )
+        self._temporal_jitter_activation = self._activation(
+            self.temporal_jitter_cfg, path="data.augmentation.temporal_jitter"
+        )
+        self._burst_dropout_activation = self._activation(
+            self.burst_dropout_cfg, path="data.augmentation.burst_dropout"
+        )
+        self._false_positive_activation = self._activation(
+            self.false_positive_cfg, path="data.augmentation.false_positive"
+        )
+        self._edge_degradation_activation = self._activation(
+            self.edge_degradation_cfg, path="data.augmentation.edge_degradation"
+        )
+        self._speed_conditioned_activation = self._activation(
+            self.speed_conditioned_cfg, path="data.augmentation.speed_conditioned"
+        )
+
+        self._uv_scale_range = self._parse_scale_range(self.uv_scale_cfg)
+        self._uv_ball_mix = float(bool(self.uv_scale_cfg["apply_to_ball"]))
+        self._uv_court_mix = float(bool(self.uv_scale_cfg["apply_to_court"]))
+        self._gaussian_ball_std = _float_value(
+            self.gaussian_cfg,
+            "ball_std",
+            path="data.augmentation.gaussian_noise",
+        )
+        self._gaussian_court_std = _float_value(
+            self.gaussian_cfg,
+            "court_std",
+            path="data.augmentation.gaussian_noise",
+        )
+        self._jitter_std = _float_value(
+            self.temporal_jitter_cfg,
+            "jitter_std",
+            path="data.augmentation.temporal_jitter",
+        )
+        self._drift_std = _float_value(
+            self.temporal_jitter_cfg,
+            "drift_std",
+            path="data.augmentation.temporal_jitter",
+        )
+        self._drift_decay = _float_value(
+            self.temporal_jitter_cfg,
+            "drift_decay",
+            path="data.augmentation.temporal_jitter",
+        )
+        self._speed_frame_prob = _float_value(
+            self.speed_conditioned_cfg,
+            "frame_prob",
+            path="data.augmentation.speed_conditioned",
+        )
+        self._speed_threshold = _float_value(
+            self.speed_conditioned_cfg,
+            "speed_threshold",
+            path="data.augmentation.speed_conditioned",
+        )
+        self._speed_lag_range = parse_float_range(
+            self.speed_conditioned_cfg["lag_overshoot_range"],
+            "data.augmentation.speed_conditioned.lag_overshoot_range",
+        )
+        self._speed_noise_std = _float_value(
+            self.speed_conditioned_cfg,
+            "noise_std",
+            path="data.augmentation.speed_conditioned",
+        )
+        self._edge_margin = _float_value(
+            self.edge_degradation_cfg,
+            "edge_margin",
+            path="data.augmentation.edge_degradation",
+        )
+        self._edge_noise_std = _float_value(
+            self.edge_degradation_cfg,
+            "noise_std",
+            path="data.augmentation.edge_degradation",
+        )
+        self._edge_drop_prob = _float_value(
+            self.edge_degradation_cfg,
+            "drop_prob",
+            path="data.augmentation.edge_degradation",
+        )
+        self._edge_clip_out_prob = _float_value(
+            self.edge_degradation_cfg,
+            "clip_out_prob",
+            path="data.augmentation.edge_degradation",
+        )
+        self._visibility_drop_prob = _float_value(
+            self.visibility_dropout_cfg,
+            "drop_prob",
+            path="data.augmentation.visibility_dropout",
+        )
+        self._burst_track_prob = _float_value(
+            self.burst_dropout_cfg,
+            "track_prob",
+            path="data.augmentation.burst_dropout",
+        )
+        self._burst_min_len = _int_value(
+            self.burst_dropout_cfg,
+            "min_len",
+            path="data.augmentation.burst_dropout",
+        )
+        self._burst_max_len = _int_value(
+            self.burst_dropout_cfg,
+            "max_len",
+            path="data.augmentation.burst_dropout",
+        )
+        self._burst_max_bursts = _int_value(
+            self.burst_dropout_cfg,
+            "max_bursts",
+            path="data.augmentation.burst_dropout",
+        )
+        self._false_positive_prob = _float_value(
+            self.false_positive_cfg,
+            "prob_absent",
+            path="data.augmentation.false_positive",
+        )
+        self._after_dropout_prob = _float_value(
+            self.false_positive_cfg,
+            "prob_after_dropout",
+            path="data.augmentation.false_positive",
+        )
+        self._after_dropout_window = _int_value(
+            self.false_positive_cfg,
+            "after_dropout_window",
+            path="data.augmentation.false_positive",
+        )
 
     @staticmethod
     def _require_exact_keys(
@@ -118,6 +252,29 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation[BLCSMultiViewS
             raise UnknownConfigurationKeyError(
                 f"Unknown configuration key(s): {', '.join(f'{path}.{key}' for key in unknown)}."
             )
+
+    @staticmethod
+    def _activation(
+        config: Mapping[str, object], *, path: str
+    ) -> tuple[bool, float]:
+        enabled = cast(
+            "bool", require_config_value(config, "enabled", bool, path=path)
+        )
+        probability = _float_value(config, "prob", path=path)
+        if not 0.0 <= probability <= 1.0:
+            raise SemanticConfigurationError(
+                f"{path}.prob must be within [0, 1]; got {probability}."
+            )
+        return enabled, probability
+
+    @staticmethod
+    def _sample_activation(activation: tuple[bool, float], reference: Tensor) -> bool:
+        enabled, probability = activation
+        if not enabled or probability == 0.0:
+            return False
+        if probability == 1.0:
+            return True
+        return bool(torch.rand((), device=reference.device).item() < probability)
 
     def _uv_scale_config(self) -> dict[str, Any]:
         return dict(
@@ -192,67 +349,54 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation[BLCSMultiViewS
         return out
 
     def _apply_uv_scale(self, sample: BLCSMultiViewSample) -> None:
-        cfg = self.uv_scale_cfg
-        if not self._active(cfg, sample["ball_uv"]):
+        if not self._sample_activation(
+            self._uv_scale_activation, sample["ball_uv"]
+        ):
             return
-        scale_min, scale_max = self._parse_scale_range(cfg)
+        scale_min, scale_max = self._uv_scale_range
         scale = (
             torch.rand((), device=sample["ball_uv"].device).item()
             * (scale_max - scale_min)
             + scale_min
         )
-        if abs(scale - 1.0) < 1e-8:
-            return
-        if bool(cfg["apply_to_ball"]):
-            sample["ball_uv"], sample["ball_vis"] = scale_uv_with_visibility(
-                uv=sample["ball_uv"],
-                visibility=sample["ball_vis"],
-                scale=float(scale),
-            )
-        if bool(cfg["apply_to_court"]):
-            sample["court_kp"], sample["court_vis"] = scale_uv_with_visibility(
-                uv=sample["court_kp"],
-                visibility=sample["court_vis"],
-                scale=float(scale),
-            )
+        ball_scale = 1.0 + self._uv_ball_mix * (scale - 1.0)
+        court_scale = 1.0 + self._uv_court_mix * (scale - 1.0)
+        sample["ball_uv"], sample["ball_vis"] = scale_uv_with_visibility(
+            uv=sample["ball_uv"],
+            visibility=sample["ball_vis"],
+            scale=ball_scale,
+        )
+        sample["court_kp"], sample["court_vis"] = scale_uv_with_visibility(
+            uv=sample["court_kp"],
+            visibility=sample["court_vis"],
+            scale=court_scale,
+        )
 
     def _apply_gaussian_noise(self, sample: BLCSMultiViewSample) -> None:
-        cfg = self.gaussian_cfg
-        if not self._active(cfg, sample["ball_uv"]):
+        if not self._sample_activation(
+            self._gaussian_activation, sample["ball_uv"]
+        ):
             return
-        ball_std = _float_value(
-            cfg, "ball_std", path="data.augmentation.gaussian_noise"
-        )
-        court_std = _float_value(
-            cfg, "court_std", path="data.augmentation.gaussian_noise"
-        )
-        if ball_std > 0:
+        if self._gaussian_ball_std > 0:
             sample["ball_uv"] = add_gaussian_noise(
                 sample["ball_uv"],
-                ball_std,
+                self._gaussian_ball_std,
             ).clamp(0.0, 1.0)
-        if court_std > 0:
+        if self._gaussian_court_std > 0:
             sample["court_kp"] = add_gaussian_noise(
                 sample["court_kp"],
-                court_std,
+                self._gaussian_court_std,
             ).clamp(0.0, 1.0)
 
     def _apply_temporal_jitter(self, ball_uv: Tensor, ball_vis: Tensor) -> Tensor:
-        cfg = self.temporal_jitter_cfg
-        if not self._active(cfg, ball_uv):
+        if not self._sample_activation(self._temporal_jitter_activation, ball_uv):
             return ball_uv
         return add_temporally_correlated_jitter(
             ball_uv,
             ball_vis,
-            jitter_std=_float_value(
-                cfg, "jitter_std", path="data.augmentation.temporal_jitter"
-            ),
-            drift_std=_float_value(
-                cfg, "drift_std", path="data.augmentation.temporal_jitter"
-            ),
-            drift_decay=_float_value(
-                cfg, "drift_decay", path="data.augmentation.temporal_jitter"
-            ),
+            jitter_std=self._jitter_std,
+            drift_std=self._drift_std,
+            drift_decay=self._drift_decay,
         )
 
     def _apply_speed_conditioned(
@@ -260,76 +404,49 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation[BLCSMultiViewS
         ball_uv: Tensor,
         ball_vis: Tensor,
     ) -> tuple[Tensor, Tensor]:
-        cfg = self.speed_conditioned_cfg
-        if not self._active(cfg, ball_uv):
+        if not self._sample_activation(self._speed_conditioned_activation, ball_uv):
             return ball_uv, ball_vis
-        lag_range = parse_float_range(
-            cfg["lag_overshoot_range"],
-            "data.augmentation.speed_conditioned.lag_overshoot_range",
-        )
-        return apply_speed_conditioned_localization_error(
+        result: tuple[Tensor, Tensor] = apply_speed_conditioned_localization_error(
             ball_uv,
             ball_vis,
-            prob=_float_value(
-                cfg, "frame_prob", path="data.augmentation.speed_conditioned"
-            ),
-            speed_threshold=_float_value(
-                cfg, "speed_threshold", path="data.augmentation.speed_conditioned"
-            ),
-            lag_overshoot_range=lag_range,
-            noise_std=_float_value(
-                cfg, "noise_std", path="data.augmentation.speed_conditioned"
-            ),
+            prob=self._speed_frame_prob,
+            speed_threshold=self._speed_threshold,
+            lag_overshoot_range=self._speed_lag_range,
+            noise_std=self._speed_noise_std,
         )
+        return result
 
     def _apply_edge_degradation(
         self,
         ball_uv: Tensor,
         ball_vis: Tensor,
     ) -> tuple[Tensor, Tensor]:
-        cfg = self.edge_degradation_cfg
-        if not self._active(cfg, ball_uv):
+        if not self._sample_activation(self._edge_degradation_activation, ball_uv):
             return ball_uv, ball_vis
-        return apply_edge_aware_degradation(
+        result: tuple[Tensor, Tensor] = apply_edge_aware_degradation(
             ball_uv,
             ball_vis,
-            edge_margin=_float_value(
-                cfg, "edge_margin", path="data.augmentation.edge_degradation"
-            ),
-            noise_std=_float_value(
-                cfg, "noise_std", path="data.augmentation.edge_degradation"
-            ),
-            drop_prob=_float_value(
-                cfg, "drop_prob", path="data.augmentation.edge_degradation"
-            ),
-            clip_out_prob=_float_value(
-                cfg, "clip_out_prob", path="data.augmentation.edge_degradation"
-            ),
+            edge_margin=self._edge_margin,
+            noise_std=self._edge_noise_std,
+            drop_prob=self._edge_drop_prob,
+            clip_out_prob=self._edge_clip_out_prob,
         )
+        return result
 
     def _apply_visibility_dropout(self, ball_vis: Tensor) -> Tensor:
-        cfg = self.visibility_dropout_cfg
-        if not self._active(cfg, ball_vis):
+        if not self._sample_activation(self._visibility_dropout_activation, ball_vis):
             return ball_vis
-        return random_visibility_dropout(
-            ball_vis,
-            _float_value(cfg, "drop_prob", path="data.augmentation.visibility_dropout"),
-        )
+        return random_visibility_dropout(ball_vis, self._visibility_drop_prob)
 
     def _apply_burst_dropout(self, ball_vis: Tensor) -> Tensor:
-        cfg = self.burst_dropout_cfg
-        if not self._active(cfg, ball_vis):
+        if not self._sample_activation(self._burst_dropout_activation, ball_vis):
             return ball_vis
         return apply_burst_visibility_dropout(
             ball_vis,
-            prob=_float_value(
-                cfg, "track_prob", path="data.augmentation.burst_dropout"
-            ),
-            min_len=_int_value(cfg, "min_len", path="data.augmentation.burst_dropout"),
-            max_len=_int_value(cfg, "max_len", path="data.augmentation.burst_dropout"),
-            max_bursts=_int_value(
-                cfg, "max_bursts", path="data.augmentation.burst_dropout"
-            ),
+            prob=self._burst_track_prob,
+            min_len=self._burst_min_len,
+            max_len=self._burst_max_len,
+            max_bursts=self._burst_max_bursts,
         )
 
     def _apply_false_positive(
@@ -339,23 +456,17 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation[BLCSMultiViewS
         *,
         dropped_mask: Tensor,
     ) -> tuple[Tensor, Tensor]:
-        cfg = self.false_positive_cfg
-        if not self._active(cfg, ball_uv):
+        if not self._sample_activation(self._false_positive_activation, ball_uv):
             return ball_uv, ball_vis
-        return inject_false_positive_observations(
+        result: tuple[Tensor, Tensor] = inject_false_positive_observations(
             ball_uv,
             ball_vis,
-            false_positive_prob=_float_value(
-                cfg, "prob_absent", path="data.augmentation.false_positive"
-            ),
+            false_positive_prob=self._false_positive_prob,
             after_dropout_mask=dropped_mask,
-            after_dropout_prob=_float_value(
-                cfg, "prob_after_dropout", path="data.augmentation.false_positive"
-            ),
-            after_dropout_window=_int_value(
-                cfg, "after_dropout_window", path="data.augmentation.false_positive"
-            ),
+            after_dropout_prob=self._after_dropout_prob,
+            after_dropout_window=self._after_dropout_window,
         )
+        return result
 
 
 __all__ = ["BLCSBallObservationAugmentation"]

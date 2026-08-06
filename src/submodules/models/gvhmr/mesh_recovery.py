@@ -11,7 +11,7 @@ from src.submodules.configuration import (
     BundledModelAssetPaths,
     require_absolute_path,
 )
-from src.submodules.models._base import BaseInferenceModel
+from src.submodules.models._base.inference_model import BaseInferenceModel
 from src.submodules.vendor.gvhmr.body_model import make_smplx
 from src.submodules.vendor.gvhmr.pipeline import GvhmrDemoModel, build_gvhmr_demo_model
 from src.submodules.vendor.gvhmr.utils.geo_transform import compute_cam_angvel
@@ -44,6 +44,9 @@ class GvhmrRequest:
     K_fullimg: torch.Tensor | None = None
     R_w2c: torch.Tensor | None = None
 
+    def __post_init__(self) -> None:
+        _validate_gvhmr_request(self)
+
 
 @dataclass(frozen=True)
 class GvhmrResult:
@@ -72,10 +75,9 @@ class GvhmrMeshRecovery(BaseInferenceModel[GvhmrRequest, GvhmrResult]):
         body_models_dir: str | Path,
         *,
         device: str | torch.device,
-        allow_device_fallback: bool,
         bundled_assets: BundledModelAssetPaths,
     ) -> None:
-        super().__init__(device, allow_device_fallback=allow_device_fallback)
+        super().__init__(device)
         self.checkpoint = require_absolute_path(checkpoint, name="GVHMR checkpoint")
         self.body_models_dir = require_absolute_path(
             body_models_dir, name="GVHMR body-model directory"
@@ -100,7 +102,13 @@ class GvhmrMeshRecovery(BaseInferenceModel[GvhmrRequest, GvhmrResult]):
         self._model = None
 
     def _predict_impl(self, request: GvhmrRequest) -> GvhmrResult:
-        assert self._model is not None
+        if self._model is None:
+            raise RuntimeError("GVHMR model did not load before prediction.")
+        # Revalidate immediately before the vendored model boundary.  Frozen
+        # dataclasses prevent field replacement through the public API, but
+        # tensors remain mutable and therefore cannot be trusted solely from
+        # construction-time validation.
+        _validate_gvhmr_request(request)
         num_frames = request.kp2d.shape[0]
 
         K = request.K_fullimg
@@ -133,6 +141,107 @@ class GvhmrMeshRecovery(BaseInferenceModel[GvhmrRequest, GvhmrResult]):
         )
 
 
+def _validate_gvhmr_request(request: GvhmrRequest) -> None:
+    """Validate a mesh request before any vendored GVHMR code is entered."""
+    tensors = {
+        "kp2d": request.kp2d,
+        "bbx_xys": request.bbx_xys,
+        "f_imgseq": request.f_imgseq,
+    }
+    for name, tensor in tensors.items():
+        if not isinstance(tensor, torch.Tensor):
+            raise TypeError(f"GvhmrRequest.{name} must be a torch.Tensor.")
+        if tensor.dtype != torch.float32:
+            raise TypeError(
+                f"GvhmrRequest.{name} must have dtype torch.float32, "
+                f"got {tensor.dtype}."
+            )
+
+    num_frames = request.kp2d.shape[0] if request.kp2d.ndim > 0 else 0
+    expected_shapes = {
+        "kp2d": (num_frames, 17, 3),
+        "bbx_xys": (num_frames, 3),
+        "f_imgseq": (num_frames, 1024),
+    }
+    for name, expected_shape in expected_shapes.items():
+        tensor = tensors[name]
+        if tuple(tensor.shape) != expected_shape:
+            raise ValueError(
+                f"GvhmrRequest.{name} must have shape {expected_shape}, "
+                f"got {tuple(tensor.shape)}."
+            )
+    if num_frames <= 0:
+        raise ValueError("GvhmrRequest must contain at least one frame.")
+
+    reference = request.kp2d
+    for name in ("bbx_xys", "f_imgseq"):
+        tensor = tensors[name]
+        if tensor.device != reference.device:
+            raise ValueError(
+                "GvhmrRequest tensors must share one device; "
+                f"kp2d is on {reference.device} but {name} is on {tensor.device}."
+            )
+    for name, tensor in tensors.items():
+        if not bool(torch.isfinite(tensor).all()):
+            raise ValueError(f"GvhmrRequest.{name} must contain only finite values.")
+    if not bool((request.kp2d[..., 2] >= 0.0).all()):
+        raise ValueError("GvhmrRequest.kp2d confidence values must be non-negative.")
+    if not bool((request.bbx_xys[:, 2] > 0.0).all()):
+        raise ValueError("GvhmrRequest.bbx_xys sizes must be positive.")
+
+    for name, value in {"width": request.width, "height": request.height}.items():
+        if type(value) is not int:
+            raise TypeError(f"GvhmrRequest.{name} must be an integer.")
+        if value <= 0:
+            raise ValueError(f"GvhmrRequest.{name} must be positive, got {value}.")
+    if type(request.static_cam) is not bool:
+        raise TypeError("GvhmrRequest.static_cam must be a bool.")
+
+    if request.K_fullimg is not None:
+        _validate_optional_camera_tensor(
+            request.K_fullimg,
+            name="K_fullimg",
+            expected_shape=(3, 3),
+            reference=reference,
+        )
+        if not bool((request.K_fullimg.diagonal()[:2] > 0.0).all()):
+            raise ValueError("GvhmrRequest.K_fullimg focal lengths must be positive.")
+    if request.R_w2c is not None:
+        _validate_optional_camera_tensor(
+            request.R_w2c,
+            name="R_w2c",
+            expected_shape=(num_frames, 3, 3),
+            reference=reference,
+        )
+
+
+def _validate_optional_camera_tensor(
+    tensor: torch.Tensor,
+    *,
+    name: str,
+    expected_shape: tuple[int, ...],
+    reference: torch.Tensor,
+) -> None:
+    if not isinstance(tensor, torch.Tensor):
+        raise TypeError(f"GvhmrRequest.{name} must be a torch.Tensor.")
+    if tuple(tensor.shape) != expected_shape:
+        raise ValueError(
+            f"GvhmrRequest.{name} must have shape {expected_shape}, "
+            f"got {tuple(tensor.shape)}."
+        )
+    if tensor.dtype != reference.dtype:
+        raise TypeError(
+            f"GvhmrRequest.{name} must have dtype {reference.dtype}, "
+            f"got {tensor.dtype}."
+        )
+    if tensor.device != reference.device:
+        raise ValueError(
+            f"GvhmrRequest.{name} must be on {reference.device}, got {tensor.device}."
+        )
+    if not bool(torch.isfinite(tensor).all()):
+        raise ValueError(f"GvhmrRequest.{name} must contain only finite values.")
+
+
 class SmplVertexReconstructor:
     """Reconstruct SMPL vertices ``(F, 6890, 3)`` from GVHMR SMPL-X params.
 
@@ -146,17 +255,11 @@ class SmplVertexReconstructor:
         body_models_dir: str | Path,
         *,
         device: str | torch.device,
-        allow_device_fallback: bool,
         bundled_assets: BundledModelAssetPaths,
     ) -> None:
         from src.utils.device import resolve_device
 
-        if type(allow_device_fallback) is not bool:
-            raise TypeError("allow_device_fallback must be a bool.")
-        self._device = resolve_device(
-            device,
-            allow_fallback=allow_device_fallback,
-        )
+        self._device = resolve_device(device)
         self._body_models_dir = require_absolute_path(
             body_models_dir, name="SMPL-X body-model directory"
         )
@@ -182,14 +285,17 @@ class SmplVertexReconstructor:
             weights_only=False,
         )
         if not isinstance(smplx2smpl, torch.Tensor):
-            smplx2smpl = torch.as_tensor(smplx2smpl)
+            raise TypeError(
+                "Bundled SMPL-X to SMPL conversion asset must contain a tensor."
+            )
         self._smplx2smpl = smplx2smpl.to(device=self._device, dtype=torch.float32)
 
     def reconstruct(self, smpl_params: dict[str, torch.Tensor]) -> torch.Tensor:
         """SMPL-X params (each ``(F, C)``) -> SMPL vertices ``(F, 6890, 3)``, CPU."""
         with torch.no_grad():
             self._ensure_loaded()
-            assert self._smplx is not None and self._smplx2smpl is not None
+            if self._smplx is None or self._smplx2smpl is None:
+                raise RuntimeError("SMPL vertex assets did not load before reconstruction.")
             params = {k: v.to(self._device) for k, v in smpl_params.items()}
             smplx_out = self._smplx(**params)
             vertices = torch.stack(

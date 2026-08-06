@@ -23,11 +23,6 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-from src.utils.models.transformer_utils import (
-    build_self_attn_mask,
-    validate_rope_dim,
-)
-
 
 class AxialMultiViewMixin:
     """Helper methods shared by axial multi-view PLCS/BLCS models."""
@@ -35,19 +30,6 @@ class AxialMultiViewMixin:
     # Provided by the consuming model.
     rope_dim: int
     token_freqs_cis: Tensor
-
-    @staticmethod
-    def _validate_rope_dim(*, rope_dim: int, head_dim: int) -> None:
-        validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
-
-    @staticmethod
-    def _build_self_attn_mask(valid: Tensor) -> tuple[Tensor, Tensor]:
-        """Build self-attention mask from valid mask.
-
-        Delegates to :func:`src.utils.models.build_self_attn_mask`.
-        See that function for full documentation.
-        """
-        return build_self_attn_mask(valid)
 
     @staticmethod
     def _build_token_positions(*, seq_len: int, n_cams: int) -> Tensor:
@@ -69,20 +51,22 @@ class AxialMultiViewMixin:
                 batch_size,
                 seq_len,
                 n_cams,
+                1,
                 self.rope_dim // 2,
             )
-            .reshape(batch_size * seq_len, n_cams, self.rope_dim // 2)
+            .reshape(batch_size * seq_len, n_cams, 1, self.rope_dim // 2)
         )
 
     def _time_freqs(self, *, batch_size: int, seq_len: int, n_cams: int) -> Tensor:
-        freqs = self.token_freqs_cis[:seq_len, :n_cams].permute(1, 0, 2)
+        freqs = self.token_freqs_cis[:seq_len, :n_cams].permute(1, 0, 2, 3)
         return (
             freqs.unsqueeze(0)
             .expand(
                 batch_size,
                 n_cams,
                 seq_len,
+                1,
                 self.rope_dim // 2,
             )
-            .reshape(batch_size * n_cams, seq_len, self.rope_dim // 2)
+            .reshape(batch_size * n_cams, seq_len, 1, self.rope_dim // 2)
         )

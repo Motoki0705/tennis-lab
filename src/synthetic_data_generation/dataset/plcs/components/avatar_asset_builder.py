@@ -162,17 +162,17 @@ def _relative_joint_transforms(
     global_orient: torch.Tensor,
 ) -> torch.Tensor:
     frame_count = body_pose.shape[1]
-    defaults = model.other_default_pose.expand(1, frame_count, -1)
+    defaults = model.get_buffer("other_default_pose").expand(1, frame_count, -1)
     full_pose = torch.cat((global_orient, body_pose, defaults), dim=-1)
     rotations = axis_angle_to_matrix(full_pose.reshape(1, frame_count, 55, 3))
     joints = model.get_skeleton(betas)
-    live = batch_rigid_transform_v2(rotations, joints, model.parents)[1]
+    live = batch_rigid_transform_v2(rotations, joints, model.get_buffer("parents"))[1]
 
     canonical_pose = torch.cat(
         (
             torch.zeros((1, 1, 3)),
             torch.zeros((1, 1, 63)),
-            model.other_default_pose.expand(1, 1, -1),
+            model.get_buffer("other_default_pose").expand(1, 1, -1),
         ),
         dim=-1,
     )
@@ -180,9 +180,9 @@ def _relative_joint_transforms(
     canonical = batch_rigid_transform_v2(
         canonical_rotations,
         model.get_skeleton(betas[:, :1]),
-        model.parents,
+        model.get_buffer("parents"),
     )[1]
-    return live @ torch.linalg.inv(canonical)
+    return torch.matmul(live, torch.linalg.inv(canonical))
 
 
 def _save_tensor_set(
@@ -281,7 +281,7 @@ def main() -> None:
     asset = build_surface_gaussian_asset(
         canonical_vertices.numpy(),
         faces=np.asarray(model.faces),
-        vertex_joint_weights=model.lbs_weights.numpy(),
+        vertex_joint_weights=model.get_buffer("lbs_weights").numpy(),
         gaussian_count=args.gaussian_count,
         seed=SEED,
     )

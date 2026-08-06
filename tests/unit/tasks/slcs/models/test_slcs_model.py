@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
+from torch import nn
 
 from src.tasks.slcs.models.slcs_model import SLCSFusionModel
 
@@ -52,9 +52,18 @@ def _inputs() -> dict[str, torch.Tensor]:
         "court_kp": torch.rand(batch, frames, court_kp, 2),
         "court_vis": torch.ones(batch, frames, court_kp),
         "frame_mask": torch.ones(batch, frames, dtype=torch.bool),
+        "entity_attn_mask": torch.ones(
+            batch * frames, players + 1, players + 1, dtype=torch.bool
+        ),
+        "time_attn_mask": torch.ones(
+            batch * (players + 1), frames, frames, dtype=torch.bool
+        ),
         "dino_tokens": torch.rand(batch, 2, 12, 8),
         "dino_frame_idx": torch.tensor([[0, 7], [0, 7]]),
-        "dino_valid": torch.ones(batch, 2, dtype=torch.bool),
+        "dino_attn_mask": torch.ones(
+            batch, frames * (players + 1), 2 * 12, dtype=torch.bool
+        ),
+        "dino_batch_has_evidence": torch.ones(batch, dtype=torch.bool),
     }
 
 
@@ -70,26 +79,13 @@ def test_forward_shapes_and_finite_rotation_pairs() -> None:
     assert (torch.linalg.vector_norm(output["player_rotation"], dim=-1) > 0).all()
 
 
-def test_sparse_dino_inputs_are_all_or_none() -> None:
-    model = _model(num_shared_layers=1)
-    inputs = _inputs()
-    inputs.pop("dino_frame_idx")
-    with pytest.raises(ValueError, match="provided together"):
-        model(**inputs)
-
-
 def test_fully_split_trunks_isolate_position_and_rotation_gradients() -> None:
     model = _model(
         num_shared_layers=0,
         num_position_layers=1,
         num_rotation_layers=1,
     )
-    inputs = _inputs()
-    inputs.pop("dino_tokens")
-    inputs.pop("dino_frame_idx")
-    inputs.pop("dino_valid")
-
-    model(**inputs)["player_position"].sum().backward()
+    model(**_inputs())["player_position"].sum().backward()
 
     assert any(
         parameter.grad is not None for parameter in model.position_entity_layers.parameters()
@@ -109,6 +105,19 @@ def test_all_shared_configuration_has_no_task_trunk_parameters() -> None:
     assert len(model.entity_layers) == 2
     assert len(model.position_entity_layers) == 0
     assert len(model.rotation_entity_layers) == 0
-    assert model.final_norm is not None
-    assert model.position_final_norm is None
-    assert model.rotation_final_norm is None
+    assert not isinstance(model.final_norm, nn.Identity)
+    assert isinstance(model.position_final_norm, nn.Identity)
+    assert isinstance(model.rotation_final_norm, nn.Identity)
+
+
+def test_batch_without_valid_dino_is_a_tensor_only_no_evidence_path() -> None:
+    model = _model(num_shared_layers=1)
+    inputs = _inputs()
+    inputs["dino_tokens"].zero_()
+    inputs["dino_attn_mask"].zero_()
+    inputs["dino_attn_mask"][:, :, 0] = True
+    inputs["dino_batch_has_evidence"].zero_()
+
+    output = model(**inputs)
+
+    assert torch.isfinite(output["player_position"]).all()

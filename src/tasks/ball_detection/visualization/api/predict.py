@@ -9,7 +9,6 @@ import numpy as np
 import torch
 
 from src.tasks.ball_detection.inference import BallDetectionPredictor
-from src.tasks.ball_detection.models.input_adapter import to_model_input
 from src.tasks.ball_detection.visualization.adapters.predict_inputs import (
     build_window_starts,
     iter_window_batches,
@@ -57,8 +56,8 @@ def predict_clip(
         sequence_length=sequence_length,
         batch_size=inference_batch_size,
     ):
-        outputs = predictor.predict(batch, return_heatmaps=True)
-        batch_heatmaps = outputs["heatmaps"].to(torch.float32)
+        prediction = predictor.predict(batch)
+        batch_heatmaps = prediction.heatmaps.to(torch.float32)
 
         if heatmap_sum is None:
             heatmap_sum = torch.zeros(
@@ -103,19 +102,8 @@ def build_mdd_frames(
     red=darken). Computed from the same preprocessed images the predictor
     consumes to stay faithful to the model input.
     """
-    # Force channels-first (bcthw) so ``features[0, c]`` selects the two MDD
-    # channels over all T frames regardless of the model's own input layout.
-    # ``btchw`` models would otherwise yield (1, T, 2, H, W) and collapse the
-    # panel to 2 "frames".
-    mdd_config = {
-        **predictor.model_config,
-        "input_mode": "mdd",
-        "in_channels": 2,
-        "input_layout": "bcthw",
-    }
     with torch.no_grad():
-        # (1, T, 3, H, W) -> (1, 2, T, H, W)
-        features = to_model_input(clip.model_images.unsqueeze(0), mdd_config)
+        features = predictor.adapter.mdd_features(clip.model_images.unsqueeze(0))
     brighten = features[0, 0].clamp(0.0, 1.0).cpu().numpy()
     darken = features[0, 1].clamp(0.0, 1.0).cpu().numpy()
 

@@ -35,7 +35,7 @@ def load_scene_bundle(
 
     Args:
         scene_path: Path to scene npz file.
-        camera: Fallback single camera index.
+        camera: Default single camera index when no camera list is selected.
         cameras: Optional explicit camera list.
 
     Returns:
@@ -43,7 +43,9 @@ def load_scene_bundle(
     """
     scene = load_scene(scene_path)
     gt_positions = scene["ball_pos_world"]
-    fps = float(scene["meta"].get("fps_out", 30.0))
+    if "fps_out" not in scene["meta"]:
+        raise ValueError("BLCS scene meta.fps_out is required for visualization.")
+    fps = float(scene["meta"]["fps_out"])
 
     selected_cameras = resolve_cameras(
         int(scene["num_cameras"]),

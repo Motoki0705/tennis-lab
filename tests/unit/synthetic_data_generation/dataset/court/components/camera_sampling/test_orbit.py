@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TypedDict
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -13,6 +15,14 @@ from src.synthetic_data_generation.dataset.court.components.camera_sampling.orbi
     sample_orbit_families,
 )
 from src.synthetic_data_generation.scene_contract import SceneCamera
+
+
+class _OrbitSamplingKwargs(TypedDict):
+    cameras: tuple[SceneCamera, ...]
+    layout: MultiCourtLayout
+    support_points_scene: NDArray[np.float64]
+    seed: int
+    samples_per_orbit: int
 
 
 def test_family_derivation_contains_nested_circles_ellipses_and_targets(
@@ -46,7 +56,7 @@ def test_sampling_is_deterministic_bold_and_keeps_partial_supervision(
     two_court_layout: MultiCourtLayout,
     support_points_scene: NDArray[np.float64],
 ) -> None:
-    kwargs = {
+    kwargs: _OrbitSamplingKwargs = {
         "cameras": captured_cameras,
         "layout": two_court_layout,
         "support_points_scene": support_points_scene,

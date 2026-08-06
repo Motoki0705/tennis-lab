@@ -42,7 +42,7 @@ from src.tasks.plcs.training.losses import (
     compute_torsion_angles,
     compute_torso_twist,
 )
-from src.tasks.plcs.utils.pose_geometry import world_pose_to_canonical_pose
+from src.utils.geometry.court_pose import world_pose_to_canonical_pose
 from src.utils.hydra import hydra_main
 from src.utils.io import save_json
 from src.utils.schema.player import COCO17_JOINT_ANGLE_TRIPLETS as JOINT_ANGLE_TRIPLETS

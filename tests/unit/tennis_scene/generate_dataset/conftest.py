@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from src.tennis_scene.generate_dataset.manifest import register_exported_clip
-from src.tennis_scene.io import SceneResult
+from src.tennis_scene.schema import SceneResult
 from src.utils.io import save_json_atomic
 
 
