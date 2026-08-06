@@ -1,9 +1,7 @@
 {
   "aggregate": {
     "collector_count": 1,
-    "collectors": [
-      "perception"
-    ],
+    "collectors": ["perception"],
     "discovery_count": 1,
     "max_novelty_score": 82,
     "max_relevance_score": 87,
@@ -13,17 +11,15 @@
       "src/tasks/plcs/data/tracking_dataset.py",
       "src/tasks/plcs/inference/tracking_predictor.py"
     ],
-    "tasks": [
-      "multi_object_tracking"
-    ]
+    "tasks": ["multi_object_tracking"]
   },
   "curation": {
-    "decision": null,
-    "issue": null,
-    "paper_node": null,
+    "decision": "promoted",
+    "issue": 710,
+    "paper_node": "paper-doi-10-1109-cvprw67362-2025-00601",
     "proposal_nodes": [],
-    "reason_ja": null,
-    "reviewed_at": null
+    "reason_ja": "CVPRW公式本文、arXiv全文、MIT codeを確認した。bbox IoU associationへmask cueを無条件追加せず、mask confidenceとbbox内外比率で利用を規制する設計は、PLCS前段のframewise detection orderingへtraining-freeに適用できる。SportsMOTでの大幅改善はtennisへの保証ではなく、mask drift、入力schema拡張、旧依存環境を制約として昇格する。",
+    "reviewed_at": "2026-08-07T00:06:06+09:00"
   },
   "discoveries": [
     {
@@ -31,8 +27,8 @@
       "discovered_at": "2026-08-06T01:21:28+09:00",
       "schedule_run_id": "perception-20260806T012128+0900-mcb7e4",
       "screening": {
-        "applicability_ja": "現行PLCS trackingはhuman_kpのP軸をscene object ID順に固定しており、実映像で生じるframe間の検出順変化やID association誤りを入力契約の外に置いている。McByteを学習時のclip-level Hungarian matchingへ移植するのではなく、PLCSTrackingPredictorへ渡す前段のper-camera association adapterとして評価する。tracking_dataset.pyで非oracleなframewise検出順、bbox、RGBまたはmask参照を保持し、tracking_predictor.pyで安定したP順へ再配置した後、既存PLCSTrackQueryModelは固定する。効果はtracking_metrics.pyのsegment_id_switches、position_error、presence_f1で測定できる。",
-        "candidate_experiment_ja": "固定した実tennis検証clipと同一のhuman detector出力を使い、baselineをbbox IoU+Hungarianによるframewise ordering、変更条件をMcByteのregulated mask cue付きorderingとする。両条件から同じ固定PLCS checkpointへhuman_kpを渡し、segment_id_switches、position_error、presence_f1、処理時間、peak GPU memoryを比較する。合格条件はsegment_id_switchesを25%以上削減し、position_error悪化を5%以内、presence_f1低下を1 point以内、処理時間をbaselineの3倍以内に保つこと。1000 frame時点でID switch改善が無い、16GB GPUでOOM、またはmask欠落率が20%を超えた場合は停止する。",
+        "applicability_ja": "現行PLCS trackingはframe間の検出順変化やID association誤りを入力契約の外に置く。McByteをper-camera association adapterとして評価し、安定したP順へ再配置後に既存PLCS modelを固定して比較できる。",
+        "candidate_experiment_ja": "同一human detector出力でbbox IoU+Hungarian orderingとregulated mask cue orderingを比較し、segment_id_switches、position_error、presence_f1、時間、GPU memoryを測る。ID switch 25%以上削減、position error悪化5%以内、presence F1低下1 point以内、時間3倍以内を合格条件とする。",
         "evidence_level": "fulltext-code",
         "novelty_score": 82,
         "relevance_score": 87,
@@ -41,36 +37,16 @@
           "src/tasks/plcs/inference/tracking_predictor.py",
           "src/tasks/base/training/tracking_metrics.py"
         ],
-        "risks_ja": "現行PLCS契約はkeypointとdetection_maskだけでbbox・RGB・segmentation maskを保持しないため、入力schemaの拡張が必要である。公式codeはMITだが初期academic releaseで数値評価手順が未公開であり、Python 3.9、PyTorch 1.12.1、CUDA 11.6、YOLOX、SAM、Cutieに依存する。高解像度mask伝播はGPU memoryを消費し、小さくblurしたtennis playerではmask driftが起こり得る。論文のsports評価は主にbasketball、volleyball、footballで、tennisへのdomain transferは未検証である。",
-        "score_breakdown": {
-          "adoption_feasibility": 5,
-          "evidence_quality": 18,
-          "experiment_quality": 15,
-          "repo_fit": 19,
-          "task_fit": 30
-        },
-        "summary_ja": "McByteは、ByteTrack型のIoU・Hungarian associationに、各trackletへ割り当てて時間伝播したsegmentation maskを補助cueとして加えるtraining-freeなsports MOT手法である。mask confidence、maskがbbox内を占める比率mf、mask全体がbboxに収まる比率mcで利用を規制し、曖昧または孤立した候補だけassociation costを補正する。さらにORBによるcamera motion compensationを併用する。論文では同一検出器のbaseline比でSportsMOT validationのHOTAを69.0から83.9、IDF1を77.9から83.6へ改善し、DanceTrack、SoccerNet-tracking 2022、MOT17でも評価している。",
-        "tasks": [
-          "multi_object_tracking"
-        ],
+        "risks_ja": "現行PLCS契約はbbox・RGB・segmentation maskを保持せずschema拡張が必要である。公式codeは旧PyTorch/CUDA、YOLOX、SAM、Cutieに依存する。小さくblurしたtennis playerではmask driftとGPU memory増加が起こり得る。",
+        "score_breakdown": {"adoption_feasibility": 5, "evidence_quality": 18, "experiment_quality": 15, "repo_fit": 19, "task_fit": 30},
+        "summary_ja": "ByteTrack型associationへtracklet maskを補助cueとして加え、mask confidenceとbbox内外比率で利用を規制するtraining-free sports MOT手法である。SportsMOT validationでHOTA 69.0から83.9、IDF1 77.9から83.6を報告する。",
+        "tasks": ["multi_object_tracking"],
         "topic": "multi_object_tracking"
       },
       "sources": [
-        {
-          "checked_at": "2026-08-06T01:21:28+09:00",
-          "kind": "paper",
-          "url": "https://arxiv.org/pdf/2506.01373"
-        },
-        {
-          "checked_at": "2026-08-06T01:21:28+09:00",
-          "kind": "publisher",
-          "url": "https://openaccess.thecvf.com/content/CVPR2025W/CVSPORTS/html/Stanczyk_No_Train_Yet_Gain_Towards_Generic_Multi-Object_Tracking_in_Sports_CVPRW_2025_paper.html"
-        },
-        {
-          "checked_at": "2026-08-06T01:21:28+09:00",
-          "kind": "code",
-          "url": "https://github.com/tstanczyk95/McByte"
-        }
+        {"checked_at": "2026-08-06T01:21:28+09:00", "kind": "paper", "url": "https://arxiv.org/pdf/2506.01373"},
+        {"checked_at": "2026-08-06T01:21:28+09:00", "kind": "publisher", "url": "https://openaccess.thecvf.com/content/CVPR2025W/CVSPORTS/html/Stanczyk_No_Train_Yet_Gain_Towards_Generic_Multi-Object_Tracking_in_Sports_CVPRW_2025_paper.html"},
+        {"checked_at": "2026-08-06T01:21:28+09:00", "kind": "code", "url": "https://github.com/tstanczyk95/McByte"}
       ]
     }
   ],
@@ -78,27 +54,13 @@
   "id": "paper-doi-10-1109-cvprw67362-2025-00601",
   "last_seen": "2026-08-06T01:21:28+09:00",
   "paper": {
-    "authors": [
-      "Tomasz Stanczyk",
-      "Seongro Yoon",
-      "Francois Bremond"
-    ],
-    "identifiers": {
-      "arxiv": "2506.01373",
-      "doi": "10.1109/cvprw67362.2025.00601",
-      "openreview": null
-    },
+    "authors": ["Tomasz Stanczyk", "Seongro Yoon", "Francois Bremond"],
+    "identifiers": {"arxiv": "2506.01373", "doi": "10.1109/cvprw67362.2025.00601", "openreview": null},
     "title": "No Train Yet Gain: Towards Generic Multi-Object Tracking in Sports and Beyond",
-    "urls": {
-      "code": "https://github.com/tstanczyk95/McByte",
-      "dataset": null,
-      "paper": "https://arxiv.org/pdf/2506.01373",
-      "primary": "https://openaccess.thecvf.com/content/CVPR2025W/CVSPORTS/html/Stanczyk_No_Train_Yet_Gain_Towards_Generic_Multi-Object_Tracking_in_Sports_CVPRW_2025_paper.html",
-      "project": null
-    },
+    "urls": {"code": "https://github.com/tstanczyk95/McByte", "dataset": null, "paper": "https://arxiv.org/pdf/2506.01373", "primary": "https://openaccess.thecvf.com/content/CVPR2025W/CVSPORTS/html/Stanczyk_No_Train_Yet_Gain_Towards_Generic_Multi-Object_Tracking_in_Sports_CVPRW_2025_paper.html", "project": null},
     "venue": "CVPR Workshops 2025",
     "year": 2025
   },
   "schema_version": 1,
-  "state": "inbox"
+  "state": "promoted"
 }
