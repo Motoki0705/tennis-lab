@@ -1,9 +1,7 @@
 {
   "aggregate": {
     "collector_count": 1,
-    "collectors": [
-      "perception"
-    ],
+    "collectors": ["perception"],
     "discovery_count": 1,
     "max_novelty_score": 88,
     "max_relevance_score": 85,
@@ -13,17 +11,15 @@
       "src/tennis_scene/configs/pipeline.yaml",
       "src/tennis_scene/pipeline/components/gvhmr.py"
     ],
-    "tasks": [
-      "human_pose"
-    ]
+    "tasks": ["human_pose"]
   },
   "curation": {
-    "decision": null,
-    "issue": null,
-    "paper_node": null,
-    "proposal_nodes": [],
-    "reason_ja": null,
-    "reviewed_at": null
+    "decision": "promoted",
+    "issue": 710,
+    "paper_node": "paper-arxiv-2601-15200",
+    "proposal_nodes": ["proposal-plcs-pmpose-adapter"],
+    "reason_ja": "公式全文、project、GPL-3.0 code、pretrained weights、OCHuman-Pose dataを確認した。PMPoseがbbox条件を維持してjoint presence、visibility、expected OKSを出力する点は、現行ViTPose adapterとhuman_kp_vis契約を比較する明確な導入点になる。まずbbox-only adapterだけを固定pipelineで比較し、SAM反復は分離できるため昇格する。遠景small instance、GPL依存、MMPose/MMCV環境衝突を制約とする。",
+    "reviewed_at": "2026-08-07T00:06:06+09:00"
   },
   "discoveries": [
     {
@@ -31,8 +27,8 @@
       "discovered_at": "2026-08-06T02:19:00+09:00",
       "schedule_run_id": "perception-20260806T021900+0900-bmpv2f3",
       "screening": {
-        "applicability_ja": "現行のGVHMR前処理はDINOまたはYOLOとBoT-SORTで得たtrack bboxをViTPose-Hへ渡し、COCO-17の(x, y, confidence)をGVHMRとPLCSへ供給する。まずViTPosePose2Dと同じPose2DRequest/Pose2DResult契約を維持するPMPose adapterを追加し、tracker、HMR2、GVHMR、PLCS checkpointを固定したままbbox-only PMPoseを比較できる。PMPoseのkeypoint presenceとvisibilityは、現在単一confidenceをhuman_kp_visへ格納して閾値0.15で二値化している経路を、画像外jointとoccluded jointを区別する契約へ拡張する導入点になる。mask条件付けとBMP反復は、bbox-onlyの最小比較で改善が確認された後に、固定instance maskを追加する第二段階として評価する。",
-        "candidate_experiment_ja": "固定baselineを現行DINO+BoT-SORT bbox、ViTPose-H、HMR2、GVHMR、PLCS checkpointとし、変更条件は同じbboxを受けるPMPose-B adapterだけにする。実tennis映像からCOCO-17を手動付与した最低300 frameを、near、far(bbox短辺100px未満)、motion blur、部分occlusion、人物重なりに層別化し、OKS AP、bbox対角で正規化したwrist/ankle error、visibility Brier score、GVHMR 2D reprojection error、PLCS position errorと速度外れ値、FPS、peak VRAMを比較する。合格条件は全体OKS APが2.0以上、occlusionまたは重なりsubsetが3.0以上改善し、far subsetのAP低下が1.0以内、PLCS position error悪化が2%以内、処理時間がbaselineの2倍以内、16GB GPU内であることとする。100 annotated frame時点でocclusion subsetの改善が0以下、far subsetが2 AP以上悪化、dependencyを隔離できない、またはOOMする場合はfull BMP/mask段階へ進まず停止する。",
+        "applicability_ja": "ViTPosePose2Dと同じrequest/result contractを維持するPMPose adapterを追加し、tracker、HMR2、GVHMR、PLCS checkpointを固定してbbox-only PMPoseを比較できる。presenceとvisibilityは画像外jointとoccluded jointを区別する契約拡張になる。",
+        "candidate_experiment_ja": "同じbboxをViTPose-HとPMPose-Bへ入力し、手動COCO17付き300 frameでOKS AP、wrist/ankle error、visibility Brier score、GVHMR reprojection、PLCS position/velocity、FPS、VRAMを比較する。全体AP +2、occlusion subset +3、PLCS悪化2%以内、時間2倍以内を合格条件とする。",
         "evidence_level": "fulltext-code-data",
         "novelty_score": 88,
         "relevance_score": 85,
@@ -41,41 +37,17 @@
           "src/tennis_scene/pipeline/components/gvhmr.py",
           "src/tennis_scene/configs/pipeline.yaml"
         ],
-        "risks_ja": "主な改善対象は人物同士が強く重なるcrowded sceneであり、通常のsingle tennisでは選手間重なりが少なくdomain gainが限定され得る。遠方選手はbboxが100px未満になりやすく、論文自身もsmall instanceではmask refinementが不適で、BMPv2+がCOCO上でBMPv2より悪化する場合を報告する。公式実装はGPL-3.0で、MITのtennis-labへ直接vendorすると配布licenseへ影響し得るため、隔離したreference runnerまたは論文仕様からの独立adapterが必要である。実装はMMPose fork、MMCV、MMDetection、SAM 2.1、PyTorch 2.1.2/CUDA 12.1系へ依存し、現行単一環境との衝突リスクが高い。公開APIの説明にはMaskPose時のpresence/visibilityがdummyである旨も残っているため、PMPose checkpointで実出力を契約テストする必要がある。OCHuman-Poseはannotationのみで、画像は元OCHumanから別途取得し利用条件を確認する必要がある。",
-        "score_breakdown": {
-          "adoption_feasibility": 4,
-          "evidence_quality": 20,
-          "experiment_quality": 14,
-          "repo_fit": 23,
-          "task_fit": 24
-        },
-        "summary_ja": "BBoxMaskPose v2は、person detector、確率的かつinstance-mask条件付きのtop-down 2D pose estimatorであるPMPose、pose-guided SAM-pose2segを相互条件付けループで反復する。PMPoseはCOCO-17 keypointに加えてjoint presence、visibility、expected OKSを予測し、重なった人物間のlimb混同と画像外jointの誤配置を抑える。RTMDet-Lの同一bbox条件で、PMPose-BはViTPose*-Bに対しOCHuman-Pose test APを76.1から80.0へ改善し、COCO val APは77.3対76.9でほぼ維持した。完全なBMPv2+はOCHuman testで55.8 AP、OCHuman-Pose testで86.8 APを報告する。公式code、pretrained weights、および欠落人物のCOCO-17 annotationを補ったOCHuman-Pose評価datasetが公開されている。",
-        "tasks": [
-          "human_pose"
-        ],
+        "risks_ja": "改善対象はcrowded sceneで通常tennisへのgainは限定され得る。far playerはsmall instanceでmask refinementが不適な場合がある。公式実装はGPL-3.0、MMPose fork、MMCV、MMDetection、SAM 2.1、旧PyTorch/CUDAへ依存し、現行環境と衝突し得る。",
+        "score_breakdown": {"adoption_feasibility": 4, "evidence_quality": 20, "experiment_quality": 14, "repo_fit": 23, "task_fit": 24},
+        "summary_ja": "BBoxMaskPose v2はperson detector、確率的mask-conditioned PMPose、pose-guided segmentationを相互条件付けする。PMPoseはkeypointに加えてpresence、visibility、expected OKSを予測し、OCHuman-PoseでViTPose系baselineよりAP改善を報告する。",
+        "tasks": ["human_pose"],
         "topic": "human_pose_2d"
       },
       "sources": [
-        {
-          "checked_at": "2026-08-06T02:19:00+09:00",
-          "kind": "paper",
-          "url": "https://arxiv.org/pdf/2601.15200"
-        },
-        {
-          "checked_at": "2026-08-06T02:19:00+09:00",
-          "kind": "project",
-          "url": "https://mirapurkrabek.github.io/BBox-Mask-Pose/"
-        },
-        {
-          "checked_at": "2026-08-06T02:19:00+09:00",
-          "kind": "code",
-          "url": "https://github.com/MiraPurkrabek/BBoxMaskPose"
-        },
-        {
-          "checked_at": "2026-08-06T02:19:00+09:00",
-          "kind": "dataset",
-          "url": "https://huggingface.co/datasets/vrg-prague/OCHuman-Pose"
-        }
+        {"checked_at": "2026-08-06T02:19:00+09:00", "kind": "paper", "url": "https://arxiv.org/pdf/2601.15200"},
+        {"checked_at": "2026-08-06T02:19:00+09:00", "kind": "project", "url": "https://mirapurkrabek.github.io/BBox-Mask-Pose/"},
+        {"checked_at": "2026-08-06T02:19:00+09:00", "kind": "code", "url": "https://github.com/MiraPurkrabek/BBoxMaskPose"},
+        {"checked_at": "2026-08-06T02:19:00+09:00", "kind": "dataset", "url": "https://huggingface.co/datasets/vrg-prague/OCHuman-Pose"}
       ]
     }
   ],
@@ -83,27 +55,13 @@
   "id": "paper-arxiv-2601-15200",
   "last_seen": "2026-08-06T02:19:00+09:00",
   "paper": {
-    "authors": [
-      "Miroslav Purkrabek",
-      "Constantin Kolomiiets",
-      "Jiri Matas"
-    ],
-    "identifiers": {
-      "arxiv": "2601.15200",
-      "doi": null,
-      "openreview": null
-    },
+    "authors": ["Miroslav Purkrabek", "Constantin Kolomiiets", "Jiri Matas"],
+    "identifiers": {"arxiv": "2601.15200", "doi": null, "openreview": null},
     "title": "BBoxMaskPose v2: Expanding Mutual Conditioning to 3D",
-    "urls": {
-      "code": "https://github.com/MiraPurkrabek/BBoxMaskPose",
-      "dataset": "https://huggingface.co/datasets/vrg-prague/OCHuman-Pose",
-      "paper": "https://arxiv.org/pdf/2601.15200",
-      "primary": "https://arxiv.org/abs/2601.15200",
-      "project": "https://mirapurkrabek.github.io/BBox-Mask-Pose/"
-    },
+    "urls": {"code": "https://github.com/MiraPurkrabek/BBoxMaskPose", "dataset": "https://huggingface.co/datasets/vrg-prague/OCHuman-Pose", "paper": "https://arxiv.org/pdf/2601.15200", "primary": "https://arxiv.org/abs/2601.15200", "project": "https://mirapurkrabek.github.io/BBox-Mask-Pose/"},
     "venue": null,
     "year": 2026
   },
   "schema_version": 1,
-  "state": "inbox"
+  "state": "promoted"
 }
