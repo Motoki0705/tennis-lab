@@ -8,7 +8,9 @@ Production preflight binds the candidate before independent test authoring. The 
 
 ## Candidate and PR binding
 
-Preflight, Tester, seal, Validator, and packaging fingerprints are separate state fields. Validation requires the sealed candidate. Packaging requires the validated candidate. `capture-pr` first queries the real PR through `gh`, stores all paginated changed files and the status-check rollup in `pr-evidence.json`, and binds its digest to state. `finalize-pr` then runs from the final checked-out PR head and verifies:
+Preflight, Tester, seal, Validator, and packaging fingerprints are separate state fields. Validation requires the sealed candidate; packaging requires the validated candidate.
+
+After Validator PASS, create or update the delivery PR and let the final-head checks complete. Then check out the exact PR head and run `capture-pr`. It queries the real PR through `gh`, stores all paginated changed files and the complete status-check rollup in `pr-evidence.json`, and binds the evidence digest to state. `finalize-pr` verifies:
 
 1. local HEAD equals the supplied PR head;
 2. the revision's content fingerprint equals the validated candidate;
