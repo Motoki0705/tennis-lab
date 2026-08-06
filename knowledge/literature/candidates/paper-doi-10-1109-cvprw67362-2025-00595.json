@@ -1,0 +1,112 @@
+{
+  "aggregate": {
+    "collector_count": 1,
+    "collectors": [
+      "geometry"
+    ],
+    "discovery_count": 1,
+    "max_novelty_score": 78,
+    "max_relevance_score": 86,
+    "mean_relevance_score": 86.0,
+    "repo_paths": [
+      "src/tasks/blcs/data/dataset.py",
+      "src/tasks/blcs/models/components/differentiable_projection.py",
+      "src/tasks/blcs/training/metrics.py",
+      "src/tennis_scene/generate_dataset/README.md"
+    ],
+    "tasks": [
+      "blcs",
+      "tennis_scene"
+    ]
+  },
+  "curation": {
+    "decision": null,
+    "issue": null,
+    "paper_node": null,
+    "proposal_nodes": [],
+    "reason_ja": null,
+    "reviewed_at": null
+  },
+  "discoveries": [
+    {
+      "collector_id": "geometry",
+      "discovered_at": "2026-08-07T00:19:41+09:00",
+      "schedule_run_id": "geometry-20260807T001941+0900-snv3d86",
+      "screening": {
+        "applicability_ja": "現行BLCS datasetはcamera R/C/f/cx/cy/w/hと2D ball UVを保持し、DifferentiableProjectionは予測3DからUVへの順投影だけを実装しているため、学習モデルに依存しない逆三角測量baselineと疑似ラベル品質指標が不足している。本論文のpairwise triangulation、再投影誤差filter、parallax条件をdataset前処理へ追加し、accepted pair数・再投影誤差・視差をサンプルmetaへ保存できる。tennis_sceneの実クリップ生成系ではカメラ較正契約確定後の疑似3D注釈生成baselineとして接続し、BLCSモデルとの差分を明確に評価できる。",
+        "candidate_experiment_ja": "固定済みBLCS synthetic test splitと現行checkpointをbaselineにし、同一のball_uvとcamera parameterから全camera pairをDLT三角測量し、再投影誤差閾値と最小parallaxでrejectした後にrobust集約する。metricはmean_position_error_m、z_error_m、p90 position error、accepted-frame coverage、median reprojection errorとする。合格条件はcoverage 70%以上、mean error 0.20m以下、p90 0.60m以下、かつaccepted frame上で現行checkpointよりz_errorが悪化しないこと。coverage 50%未満、p90 1.0m超、またはNaN・behind-camera率1%超で停止し、gate通過前は学習lossや標準pipelineへ導入しない。",
+        "evidence_level": "fulltext",
+        "novelty_score": 78,
+        "relevance_score": 86,
+        "repo_paths": [
+          "src/tasks/blcs/data/dataset.py",
+          "src/tasks/blcs/models/components/differentiable_projection.py",
+          "src/tasks/blcs/training/metrics.py",
+          "src/tennis_scene/generate_dataset/README.md"
+        ],
+        "risks_ja": "サッカーからテニスへのcourt寸法・撮影距離・ボール速度のdomain gapがある。SoccerNet-v3Dは非時系列中心で、ISSIAおよびSoccerNet由来データには別途利用条件がある。公式repositoryはGPL-2.0で、公開時点ではデータ生成pipeline本体が未公開のため再実装が必要である。低視差、同期ずれ、較正誤差は低い再投影誤差でも誤った3Dを生成し得るほか、現行pinhole投影はlens distortionを扱わない。",
+        "score_breakdown": {
+          "adoption_feasibility": 6,
+          "evidence_quality": 14,
+          "experiment_quality": 14,
+          "repo_fit": 23,
+          "task_fit": 29
+        },
+        "summary_ja": "同期・較正済みのスポーツ中継リプレイから複数視点の2Dボール中心を組み合わせ、ペアごとの三角測量、再投影誤差による外れ値除去、低視差への対処を通じて3Dボールラベルを生成する。SoccerNet-v3Dでは4,051フレーム、ISSIA-3Dでは10,544画像を整備し、3D整合性を用いたbbox最適化でIoUを0.57から0.66、サイズ誤差を19.01%から7.27%へ改善した。SoccerNet-v3D上の単眼3D推定baselineは平均絶対誤差4.2mであり、2D検出誤差と較正誤差が3D位置へ大きく増幅されることも分析している。",
+        "tasks": [
+          "blcs",
+          "tennis_scene"
+        ],
+        "topic": "ball_3d"
+      },
+      "sources": [
+        {
+          "checked_at": "2026-08-07T00:19:41+09:00",
+          "kind": "paper",
+          "url": "https://arxiv.org/html/2504.10106"
+        },
+        {
+          "checked_at": "2026-08-07T00:19:41+09:00",
+          "kind": "publisher",
+          "url": "https://openaccess.thecvf.com/content/CVPR2025W/CVSPORTS/html/Gutierrez-Perez_SoccerNet-v3D_Leveraging_Sports_Broadcast_Replays_for_3D_Scene_Understanding_CVPRW_2025_paper.html"
+        },
+        {
+          "checked_at": "2026-08-07T00:19:41+09:00",
+          "kind": "project",
+          "url": "https://github.com/mguti97/SoccerNet-v3D"
+        },
+        {
+          "checked_at": "2026-08-07T00:19:41+09:00",
+          "kind": "dataset",
+          "url": "https://github.com/mguti97/SoccerNet-v3D/releases/tag/v1.0.0"
+        }
+      ]
+    }
+  ],
+  "first_seen": "2026-08-07T00:19:41+09:00",
+  "id": "paper-doi-10-1109-cvprw67362-2025-00595",
+  "last_seen": "2026-08-07T00:19:41+09:00",
+  "paper": {
+    "authors": [
+      "Marc Gutiérrez-Pérez",
+      "Antonio Agudo"
+    ],
+    "identifiers": {
+      "arxiv": "2504.10106",
+      "doi": "10.1109/cvprw67362.2025.00595",
+      "openreview": null
+    },
+    "title": "SoccerNet-v3D: Leveraging Sports Broadcast Replays for 3D Scene Understanding",
+    "urls": {
+      "code": null,
+      "dataset": "https://github.com/mguti97/SoccerNet-v3D/releases/tag/v1.0.0",
+      "paper": "https://arxiv.org/html/2504.10106",
+      "primary": "https://openaccess.thecvf.com/content/CVPR2025W/CVSPORTS/html/Gutierrez-Perez_SoccerNet-v3D_Leveraging_Sports_Broadcast_Replays_for_3D_Scene_Understanding_CVPRW_2025_paper.html",
+      "project": "https://github.com/mguti97/SoccerNet-v3D"
+    },
+    "venue": "CVPR Workshops (CVsports)",
+    "year": 2025
+  },
+  "schema_version": 1,
+  "state": "inbox"
+}
