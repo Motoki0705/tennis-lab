@@ -9,15 +9,18 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from copy import deepcopy
+from functools import partial
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import cast
 
+import yaml
 from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig, OmegaConf, open_dict
 
 from src.submodules.configuration import GvhmrDemoConfig
-from src.synthetic_data_generation.config_validation import (
-    run_validation_matrix as run_synthetic_matrix,
+from src.synthetic_data_generation.pipeline.config import (
+    ScenePipelineConfig,
 )
 from src.tasks.ball_detection.validation import (
     run_negative_matrix as run_ball_matrix,
@@ -113,6 +116,35 @@ def _submodule_mapping(config: DictConfig) -> Mapping[str, object]:
     return cast(Mapping[str, object], value)
 
 
+def _run_synthetic_matrix() -> tuple[str, ...]:
+    canonical_path = (
+        PROJECT_ROOT / "src/synthetic_data_generation/configs/pipeline/scene.yaml"
+    )
+    ScenePipelineConfig.load(canonical_path, PROJECT_ROOT)
+    raw = yaml.safe_load(canonical_path.read_text())
+    if not isinstance(raw, dict):
+        raise TypeError("Synthetic scene config must be a mapping")
+    completed = ["synthetic-scene:canonical"]
+    mutations = {
+        "unknown-key": lambda value: value.__setitem__("legacy_fallback", True),
+        "missing-roots": lambda value: value.__delitem__("roots"),
+        "wrong-seed-type": lambda value: value.__setitem__("seed", "17"),
+    }
+    with TemporaryDirectory(prefix="tennis-scene-config-") as directory:
+        for name, mutate in mutations.items():
+            candidate = deepcopy(raw)
+            mutate(candidate)
+            path = Path(directory) / f"{name}.yaml"
+            path.write_text(yaml.safe_dump(candidate, sort_keys=False))
+            completed.append(
+                _reject(
+                    f"synthetic-scene:{name}",
+                    partial(ScenePipelineConfig.load, path, PROJECT_ROOT),
+                )
+            )
+    return tuple(completed)
+
+
 def run_cross_domain_matrix() -> tuple[str, ...]:
     """Run canonical and negative validation for every migrated domain."""
     completed = list(run_ball_matrix())
@@ -120,7 +152,7 @@ def run_cross_domain_matrix() -> tuple[str, ...]:
     completed.append("blcs:root-negative-matrix")
     run_plcs_matrix()
     completed.append("plcs:negative-matrix")
-    completed.extend(run_synthetic_matrix())
+    completed.extend(_run_synthetic_matrix())
 
     task_root = PROJECT_ROOT / "src/tasks"
     court = _compose(task_root / "court_detection/configs", "train")

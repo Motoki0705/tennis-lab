@@ -77,6 +77,9 @@ namespaces = false
     "configs/*/*.yaml",
     "configs/*/*/*.yaml",
     "configs/*/*/*.txt",
+    "*.md",
+    "evidence/*.json",
+    "schemas/*.json",
 ]
 
 [tool.ruff]

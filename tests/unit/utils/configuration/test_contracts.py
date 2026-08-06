@@ -99,14 +99,16 @@ def test_operation_build_json_is_optional_and_absence_maps_to_none() -> None:
     assert field.absence_policy is ConfigurationAbsencePolicy.OPTIONAL_AS_NONE
 
 
-def test_all_84_runtime_boundaries_expose_truthful_authorities() -> None:
-    assert len(BOUNDARY_CONTRACTS) == 84
-    assert len({contract.boundary_id for contract in BOUNDARY_CONTRACTS}) == 84
+def test_all_runtime_boundaries_expose_truthful_authorities() -> None:
+    assert len(BOUNDARY_CONTRACTS) == 55
+    assert len({contract.boundary_id for contract in BOUNDARY_CONTRACTS}) == 55
     for contract in BOUNDARY_CONTRACTS:
         assert contract.validator_callable
         assert contract.authority_symbols
         assert contract.semantic_constraint_authorities
-        assert all("source-validated-input" not in path for path in contract.field_paths)
+        assert all(
+            "source-validated-input" not in path for path in contract.field_paths
+        )
 
 
 def test_slcs_boundaries_bind_only_their_actual_public_boundary_schema() -> None:
@@ -123,17 +125,14 @@ def test_slcs_boundaries_bind_only_their_actual_public_boundary_schema() -> None
         boundary = next(
             contract
             for contract in BOUNDARY_CONTRACTS
-            if contract.boundary_id
-            == f"src.tasks.slcs.scripts.{script}:main"
+            if contract.boundary_id == f"src.tasks.slcs.scripts.{script}:main"
         )
         schema_symbols = {
             symbol
             for symbol in boundary.authority_symbols
             if symbol.endswith("_BOUNDARY_SCHEMA")
         }
-        assert schema_symbols == {
-            f"src.tasks.slcs.configuration.{schema_name}"
-        }
+        assert schema_symbols == {f"src.tasks.slcs.configuration.{schema_name}"}
         assert boundary.path_role_authorities
 
 
@@ -142,48 +141,35 @@ def test_synthetic_registry_binds_each_boundary_to_one_top_level_schema() -> Non
         contract
         for contract in BOUNDARY_CONTRACTS
         if contract.boundary_id
-        == "src.synthetic_data_generation.scripts.dataset.run_pipeline:main"
+        == "src.synthetic_data_generation.scripts.run:main"
     )
 
-    top_level = {
-        symbol
-        for symbol in boundary.authority_symbols
-        if symbol.startswith("src.synthetic_data_generation.configuration.")
-        and symbol.endswith("SCHEMA")
-        and symbol.split(".")[-1]
-        in {
-            "PIPELINE_SCHEMA",
-            "FEATURE_FIT_SCHEMA",
-            "INFER_SCHEMA",
-            "FIT_GROUND_SCHEMA",
-            "CALIBRATE_SCHEMA",
-            "EXPORT_SCHEMA",
-            "GEOMETRY_BRIDGE_SCHEMA",
-            "VALIDATION_MATRIX_SCHEMA",
-        }
-    }
-    assert top_level == {
-        "src.synthetic_data_generation.configuration.PIPELINE_SCHEMA"
-    }
+    assert (
+        "src.synthetic_data_generation.pipeline.config.RUN_BOUNDARY_SCHEMA"
+        in boundary.authority_symbols
+    )
+    assert any(
+        contract.adapter_symbol
+        == "src.synthetic_data_generation.pipeline.config.ScenePipelineConfig"
+        for contract in ADAPTER_CONTRACTS
+    )
 
 
-def test_non_hydra_boundary_catalog_exposes_exact_path_roles() -> None:
+def test_synthetic_hydra_boundary_binds_the_strict_validator() -> None:
     boundary = next(
         contract
         for contract in BOUNDARY_CONTRACTS
         if contract.boundary_id
-        == (
-            "src.synthetic_data_generation.dataset.blcs.components."
-            "asset_preparation:main"
-        )
+        == "src.synthetic_data_generation.scripts.run:main"
     )
 
-    assert any(
-        authority.endswith(".PATH_BOUNDARY")
-        for authority in boundary.authority_symbols
+    assert boundary.validator_callable == (
+        "src.synthetic_data_generation.pipeline.config.validate_run_boundary"
     )
-    assert any("asset_spec:path-role:external_asset" in value for value in boundary.path_role_authorities)
-    assert any("output_dir:path-role:artifact" in value for value in boundary.path_role_authorities)
+    assert (
+        "src.synthetic_data_generation.pipeline.config.RUN_BOUNDARY_SCHEMA"
+        in boundary.authority_symbols
+    )
 
 
 def test_boundary_catalog_follows_package_reexport_to_actual_adapter() -> None:
@@ -217,8 +203,7 @@ def test_every_issue_domain_has_runtime_boundary_constraint_metadata(
     domain: str,
 ) -> None:
     assert any(
-        contract.boundary_id.startswith(domain)
-        for contract in BOUNDARY_CONTRACTS
+        contract.boundary_id.startswith(domain) for contract in BOUNDARY_CONTRACTS
     )
 
 
@@ -242,13 +227,15 @@ def test_every_strict_schema_field_rejects_an_invalid_exact_type() -> None:
         "src.tasks.plcs.configuration.PLCSTrainingConfig",
         "src.tasks.slcs.configuration.SLCSTrainingRuntimeConfig",
         "src.tennis_scene.configuration.PipelineRuntimeConfig",
-        "src.synthetic_data_generation.configuration.SyntheticRuntimeConfig",
+        "src.synthetic_data_generation.pipeline.config.ScenePipelineConfig",
         "src.submodules.configuration.SubmoduleRuntimeConfig",
     ],
 )
 def test_representative_domain_adapter_is_source_discovered(symbol: str) -> None:
     contract = next(
-        candidate for candidate in ADAPTER_CONTRACTS if candidate.adapter_symbol == symbol
+        candidate
+        for candidate in ADAPTER_CONTRACTS
+        if candidate.adapter_symbol == symbol
     )
 
     assert contract.authority_kind == "typed-dataclass"

@@ -1,0 +1,43 @@
+schema: tennis_scene_pipeline_config_v1
+seed: 42
+
+roots:
+  project_root: .
+  data_root: data
+  checkpoint_root: ckpt
+  artifact_root: third_party/nht/artifacts
+  output_root: outputs
+  cache_root: .cache
+  external_asset_root: third_party
+
+nht:
+  reconstruct_command: [nht-reconstruct]
+  render_command: [nht-render]
+  config: null
+  working_directory: null
+  environment: {}
+
+alignment:
+  minimum_ground_points: 100
+  minimum_ground_support_fraction: 0.01
+  minimum_positive_camera_fraction: 0.90
+  holdout_fraction: 0.20
+  evidence:
+    mode: image_achromatic
+    maximum_views: 40
+    maximum_image_size: 640
+    maximum_pixels_per_view: 50000
+    minimum_line_brightness: 0.55
+    maximum_line_saturation: 0.30
+    minimum_local_contrast: 0.08
+    minimum_projected_pixels_per_view: 20
+    raster_size: 512
+    optimizer_iterations: 60
+    optimizer_population_size: 12
+    minimum_fit_template_score: 0.08
+    line_inlier_distance_m: 0.50
+    minimum_holdout_view_fraction: 0.50
+    minimum_holdout_inlier_fraction: 0.15
+
+datasets:
+  samples_per_domain: 4

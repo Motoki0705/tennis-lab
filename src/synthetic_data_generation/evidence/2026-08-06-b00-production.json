@@ -1,0 +1,179 @@
+{
+  "schema": "tennis_scene_production_evidence_v1",
+  "recorded_at_utc": "2026-08-06T04:56:33Z",
+  "scene_id": "B00",
+  "input": {
+    "repository": "Motoki0705/neural-harmonic-textures",
+    "path": "data/tennis_court.mp4"
+  },
+  "workspace": "data/synthetic_data_generation/scenes/B00",
+  "initial_command": [
+    ".venv/bin/python",
+    "-m",
+    "src.synthetic_data_generation.scripts.run",
+    "--scene-id",
+    "B00",
+    "--input-video",
+    "../neural-harmonic-textures/data/tennis_court.mp4",
+    "--config",
+    "data/synthetic_data_generation/b00-local.yaml",
+    "--from-stage",
+    "ingest",
+    "--target",
+    "court",
+    "--target",
+    "blcs",
+    "--target",
+    "plcs"
+  ],
+  "replay_command": [
+    ".venv/bin/python",
+    "-m",
+    "src.synthetic_data_generation.scripts.run",
+    "scene_id=B00",
+    "input_video=neural-harmonic-textures/data/tennis_court.mp4",
+    "pipeline_config=data/synthetic_data_generation/b00-local.yaml",
+    "from_stage=ingest",
+    "targets=[court,blcs,plcs]"
+  ],
+  "final_status": "completed",
+  "stages": {
+    "ingest": {
+      "status": "completed",
+      "attempts": 1
+    },
+    "reconstruction": {
+      "status": "completed",
+      "attempts": 3
+    },
+    "alignment": {
+      "status": "completed",
+      "attempts": 4
+    },
+    "court_dataset": {
+      "status": "completed",
+      "attempts": 4
+    },
+    "blcs_dataset": {
+      "status": "completed",
+      "attempts": 4
+    },
+    "plcs_dataset": {
+      "status": "completed",
+      "attempts": 3
+    },
+    "report": {
+      "status": "completed",
+      "attempts": 5
+    }
+  },
+  "reconstruction": {
+    "frame_count": 74,
+    "selected_candidate": "aliked-lightglue",
+    "candidates": {
+      "sift-incremental": {
+        "accepted": true,
+        "registered_images": 72,
+        "supported_registered_images": 72,
+        "sparse_points": 12014,
+        "median_track_length": 2.0,
+        "p95_reprojection_error_px": 2.1600044115603323,
+        "elapsed_seconds": 180.29334990889765
+      },
+      "aliked-lightglue": {
+        "accepted": true,
+        "registered_images": 74,
+        "supported_registered_images": 74,
+        "sparse_points": 19886,
+        "median_track_length": 3.0,
+        "p95_reprojection_error_px": 2.2414067094892998,
+        "elapsed_seconds": 160.18745907000266
+      }
+    },
+    "nht_training": {
+      "status": "completed",
+      "attempts": 3,
+      "effective_seed": 42,
+      "max_steps": 500,
+      "psnr": 15.500094413757324,
+      "ssim": 0.6067327857017517,
+      "lpips_alex": 0.6408347487449646,
+      "gaussian_count": 19886,
+      "finite_metrics": true
+    },
+    "standard_export": {
+      "status": "completed",
+      "camera_count": 74,
+      "point_count": 19886,
+      "semantic_report_valid": true
+    }
+  },
+  "alignment": {
+    "status": "accepted",
+    "ground_support_points": 696,
+    "ground_support_fraction": 0.03499949713366187,
+    "positive_camera_fraction": 1.0,
+    "fit_template_score": 0.7576232009122569,
+    "fit_evaluable_views": 5,
+    "fit_accepted_views": 5,
+    "fit_weighted_inlier_fraction": 0.4507163700892498,
+    "holdout_evaluable_views": 2,
+    "holdout_accepted_views": 2,
+    "holdout_weighted_inlier_fraction": 0.39609598640505783,
+    "all_gates_passed": true
+  },
+  "datasets": {
+    "court": {
+      "sample_count": 4,
+      "camera_ids": [
+        "frame_000007",
+        "frame_000025",
+        "frame_000045",
+        "frame_000072"
+      ]
+    },
+    "blcs": {
+      "sample_count": 4,
+      "visible_instance_pixels": [49, 50, 52, 50]
+    },
+    "plcs": {
+      "sample_count": 4,
+      "visible_instance_pixels": [3077, 3666, 3121, 3761],
+      "both_player_instances_present": true
+    },
+    "report_domains": ["court", "blcs", "plcs"]
+  },
+  "reruns": [
+    {
+      "from_stage": "alignment",
+      "result": "completed",
+      "verified": [
+        "NHT reconstruction outputs and attempts were preserved",
+        "alignment and requested descendants were unpublished before execution",
+        "alignment and requested descendants were republished after validation"
+      ]
+    },
+    {
+      "from_stage": "reconstruction",
+      "nht_from_stage": "sfm",
+      "result": "completed",
+      "verified": [
+        "NHT sfm and descendants were unpublished before execution",
+        "tennis-lab reconstruction and every descendant were unpublished before execution",
+        "all NHT and tennis-lab descendants were replaced and completed"
+      ]
+    },
+    {
+      "from_stage": "reconstruction",
+      "nht_from_stage": "nht_training",
+      "queue_job": "1785992127180187728_430589_issue695_b00_nht_training.job",
+      "result": "completed",
+      "verified": [
+        "NHT sfm and sfm_selection attempt 2 were preserved",
+        "NHT nht_training, export, and report were replaced",
+        "tennis-lab reconstruction and every descendant were replaced",
+        "all final stage statuses are completed"
+      ]
+    }
+  ]
+}

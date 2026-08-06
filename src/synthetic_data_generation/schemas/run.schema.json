@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tennis-lab/scene-pipeline-run.schema.json",
+  "title": "Canonical mutable tennis scene run",
+  "type": "object",
+  "required": [
+    "schema",
+    "scene_id",
+    "status",
+    "source_video",
+    "resolved_config",
+    "seed",
+    "requested_from_stage",
+    "nht_from_stage",
+    "targets",
+    "created_at_utc",
+    "updated_at_utc",
+    "stages"
+  ],
+  "properties": {
+    "schema": {"const": "tennis_scene_pipeline_run_v1"},
+    "scene_id": {"type": "string", "minLength": 1, "pattern": "^[^/\\\\]+$"},
+    "status": {"enum": ["pending", "running", "completed", "failed"]},
+    "source_video": {"type": ["string", "null"]},
+    "resolved_config": {"const": "resolved-config.yaml"},
+    "seed": {"type": ["integer", "null"], "minimum": 0},
+    "requested_from_stage": {"anyOf": [{"$ref": "#/$defs/stage"}, {"type": "null"}]},
+    "nht_from_stage": {"type": ["string", "null"]},
+    "targets": {"type": "array", "uniqueItems": true, "items": {"enum": ["court", "blcs", "plcs"]}},
+    "created_at_utc": {"type": "string", "format": "date-time"},
+    "updated_at_utc": {"type": "string", "format": "date-time"},
+    "stages": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ingest", "reconstruction", "alignment", "court_dataset", "blcs_dataset", "plcs_dataset", "report"],
+      "properties": {
+        "ingest": {"$ref": "#/$defs/record"},
+        "reconstruction": {"$ref": "#/$defs/record"},
+        "alignment": {"$ref": "#/$defs/record"},
+        "court_dataset": {"$ref": "#/$defs/record"},
+        "blcs_dataset": {"$ref": "#/$defs/record"},
+        "plcs_dataset": {"$ref": "#/$defs/record"},
+        "report": {"$ref": "#/$defs/record"}
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "stage": {"enum": ["ingest", "reconstruction", "alignment", "court_dataset", "blcs_dataset", "plcs_dataset", "report"]},
+    "record": {
+      "type": "object",
+      "required": ["status", "attempts", "output", "external_run", "summary", "error", "started_at_utc", "finished_at_utc"],
+      "properties": {
+        "status": {"enum": ["pending", "running", "completed", "failed", "invalidated"]},
+        "attempts": {"type": "integer", "minimum": 0},
+        "output": {"type": "string"},
+        "external_run": {"type": ["string", "null"]},
+        "summary": {"type": ["object", "null"]},
+        "error": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": ["category", "message"],
+              "properties": {
+                "category": {"enum": ["process_interrupted", "process_signal", "stage_failure"]},
+                "message": {"type": "string"}
+              },
+              "additionalProperties": false
+            },
+            {"type": "null"}
+          ]
+        },
+        "started_at_utc": {"type": ["string", "null"], "format": "date-time"},
+        "finished_at_utc": {"type": ["string", "null"], "format": "date-time"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

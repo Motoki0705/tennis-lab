@@ -1,0 +1,13 @@
+scene_id: ???
+input_video: null
+pipeline_config: src/synthetic_data_generation/configs/pipeline/scene.yaml
+from_stage: ingest
+targets: [court, blcs, plcs]
+nht_from_stage: frames
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,outputs,synthetic_data_generation/hydra}
+  output_subdir: null
+  job:
+    chdir: false

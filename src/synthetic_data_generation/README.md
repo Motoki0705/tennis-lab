@@ -1,106 +1,147 @@
-# Path-driven synthetic-data generation
+# Scene-based synthetic-data generation
 
-This package builds synthetic datasets from configured filesystem paths. It is
-not a release-acceptance or artifact-lineage system: downstream stages consume
-the paths written to one shared manifest, and measured quality is descriptive
-output rather than permission to continue.
-
-## Directory ownership
+The production entry point owns one mutable workspace per `scene_id` and runs
+the following typed DAG:
 
 ```text
-synthetic_data_generation/
-├── alignment/       # Court/scene geometry and fitting libraries
-├── composition/     # Gaussian composition libraries
-├── dataset/         # Generic path manifest, execution, and domain algorithms
-├── rendering/       # Renderer adapters and runtime path helpers
-├── visualization/   # Generic path/metrics/render summaries
-├── scripts/         # User-facing executable entry points
-└── configs/         # Hydra configuration for those entry points
+ingest → reconstruction (NHT subprocess) → alignment
+                                           ├─ court_dataset
+                                           ├─ blcs_dataset
+                                           └─ plcs_dataset
+                                                    ↓
+                                                  report
 ```
 
-Domain algorithms under `dataset/{blcs,plcs,court}` remain reusable libraries.
-The pipeline itself is generic and does not select a domain, experiment, phase,
-or release cycle.
+SfM and NHT training are owned by `neural-harmonic-textures`. This package does
+not import its Python modules or inspect COLMAP/checkpoint internals. It invokes
+the configured `nht-reconstruct` command, validates the standard scene export,
+and invokes `nht-render` for observed-camera RGB, alpha, and depth.
 
-## Path convention
+## Canonical workspace
 
-The default config provides an automatic flow with no manual artifact moving:
+The configured data root and `scene_id=B00` resolve to exactly:
 
 ```text
-third_party/nht/data/
-    alignment-observations.json
-    render-jobs.json
-    prepared renderer inputs and references
-             │
-             ▼
-third_party/nht/artifacts/synthetic-data/
-    alignment-metrics.json
-    dataset-plan.json
-    render-manifest.json
-    quality-metrics.json
-             │
-             ├──► data/synthetic_data_generation/       final dataset files
-             └──► outputs/synthetic_data_generation/    run logs and HTML summary
+data/synthetic_data_generation/scenes/B00/
+├── run.json
+├── resolved-config.yaml
+├── source/
+│   ├── video.mp4
+│   └── metadata.json
+├── reconstruction/                 # NHT-owned workspace
+│   ├── run.json
+│   └── export/
+│       ├── scene.json
+│       ├── cameras.json
+│       ├── points_scene.npy
+│       ├── images/
+│       └── model/
+├── alignment/
+│   ├── ground-line-map.npz
+│   ├── ground-line-preview.png
+│   ├── court-geometry.json
+│   ├── alignment.json
+│   └── diagnostics/fit-holdout.json
+├── datasets/
+│   ├── court/dataset.json
+│   ├── blcs/dataset.json
+│   └── plcs/dataset.json
+├── report/index.html
+└── logs/<stage>/attempt-<n>.log
 ```
 
-Every path can be overridden in
-`configs/dataset/pipeline.yaml` or with a Hydra override. Relative paths are
-resolved once against `project_root`, then stored as absolute paths in
-`path-manifest.json`.
+Paths never contain timestamps, hashes, fingerprints, or Git commits. The
+single top-level `run.json` records the current stage statuses, attempts,
+fixed outputs, summaries, errors, seed, request, and the nested NHT run path.
 
-## Inputs
+## Run from a video
 
-`alignment-observations.json` contains numeric residuals:
-
-```json
-{
-  "residuals": [0.02, -0.01, 0.03]
-}
-```
-
-`render-jobs.json` contains named path mappings. `input` and `reference` are
-relative to `source_root`; `output` is relative to `dataset_root` unless an
-absolute path is configured.
-
-```json
-{
-  "jobs": [
-    {
-      "name": "sample-0001",
-      "input": "prepared/sample-0001.bin",
-      "output": "renders/sample-0001.bin",
-      "reference": "references/sample-0001.bin",
-      "arguments": []
-    }
-  ]
-}
-```
-
-Set `renderer.command` to a shell-free argv list. Tokens may use `{input}`,
-`{output}`, `{reference}`, `{source_root}`, `{artifact_root}`, or
-`{dataset_root}`. An empty command copies prepared render inputs to their
-configured final paths, which is useful when rendering happened in an external
-batch.
-
-## Running
-
-Write only the path manifest:
+Configure roots and the two independent commands in
+`configs/pipeline/scene.yaml`, then run:
 
 ```bash
-.venv/bin/python -m \
-  src.synthetic_data_generation.scripts.dataset.run_pipeline
+.venv/bin/python -m src.synthetic_data_generation.scripts.run \
+  scene_id=B00 \
+  input_video=relative/to/external_asset_root/tennis.mp4 \
+  pipeline_config=src/synthetic_data_generation/configs/pipeline/scene.yaml \
+  from_stage=ingest \
+  'targets=[court,blcs,plcs]'
 ```
 
-Run alignment metrics, planning, rendering, quality metrics, and visualization:
+The input video is copied into the scene workspace. Later stages never depend
+on its original external path. Hydra owns invocation composition; the strict
+runtime adapter resolves `pipeline_config` against the project root and
+`input_video` against the selected pipeline config's `external_asset_root`.
+
+## Rerun and invalidation
+
+Rerun alignment and all requested descendants while preserving source and NHT:
 
 ```bash
-.venv/bin/python -m \
-  src.synthetic_data_generation.scripts.dataset.run_pipeline execute=true
+.venv/bin/python -m src.synthetic_data_generation.scripts.run \
+  scene_id=B00 \
+  from_stage=alignment \
+  'targets=[court,blcs,plcs]'
 ```
 
-Metrics are always written, including poor values. A run stops only for a
-missing configured input, malformed JSON, an invalid input shape, a renderer
-failure, or a renderer that does not produce its configured output.
+Rerun NHT from SfM and replace every downstream result:
 
-The generated HTML summary is generic: it reads the shared manifest and its
-configured artifacts, with no hard-coded experiment or cycle paths.
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.run \
+  scene_id=B00 \
+  from_stage=reconstruction \
+  nht_from_stage=sfm \
+  'targets=[court,blcs,plcs]'
+```
+
+Before a stage starts, its canonical output and all DAG descendants are
+unpublished. Stage work is published from `.staging` only after semantic
+validation. A failure remains `failed` in `run.json`; stale outputs are not
+restored or reported as completed. A live per-scene lock rejects concurrent
+writes, while a dead lock and a `running` record are recovered on the next run.
+
+Configuration changes also choose the earliest affected stage automatically:
+NHT settings invalidate reconstruction; alignment or seed settings invalidate
+alignment; dataset settings invalidate the common alignment descendant path.
+
+## Contracts
+
+- NHT input boundary: workspace `source/video.mp4`, `scene_id`, NHT config, and
+  the fixed `reconstruction/` workspace.
+- NHT output boundary: `nht_standard_scene_v1`,
+  `nht_standard_cameras_v1`, finite `points_scene.npy`, images, and model.
+- Coordinate boundary: NHT canonical scene space to court metres through
+  `alignment/scene_from_court` and its inverse.
+- Alignment boundary: fit views produce a ground-projected achromatic court-line
+  raster and one metric ITF template; disjoint holdout views evaluate the fixed
+  transform. A holdout view enters the accepted-view denominator only when the
+  aligned target-court ROI contains enough projected evidence; at least one
+  independently held-out view must be evaluable. Ground support, camera-side,
+  template-score, held-out view, and held-out line-inlier gates must all pass
+  before datasets can start. The
+  `sparse_control` evidence mode is explicit and reserved for CPU orchestration
+  tests; the production config uses `image_achromatic`.
+- Renderer boundary: independent `nht-render`, returning
+  `nht_render_result_v1` RGB/alpha/depth records. Every requested camera ID,
+  relative path, resolution, float32 shape, finite value and numeric range is
+  checked before a dataset is published.
+- Domain boundary: fixed `dataset.json` plus sample renders and labels beneath
+  each of `datasets/court`, `datasets/blcs`, and `datasets/plcs`. BLCS and PLCS
+  add deterministic procedural ball/player layers to the standard NHT
+  background and publish uint8 instance masks; labels and rendered arrays use
+  the same court-to-scene transform and camera projection. Camera sampling
+  requires the domain target points to be in-frame, and production refuses to
+  publish an empty instance mask.
+
+These are semantic contracts. SHA-256 identity, content fingerprints, Git
+revision checks, clean-worktree checks, immutable publication, and overwrite
+refusal are not part of this production pipeline.
+
+## Production evidence
+
+The checked-in [B00 production evidence](evidence/2026-08-06-b00-production.json)
+records the real `data/tennis_court.mp4` run, accepted SfM and alignment metrics,
+all three generated domain datasets, and the observed invalidation behavior for
+alignment, SfM, and NHT-training reruns. The evidence contains repository-
+relative paths and replayable command arguments; machine-local model and tool
+paths remain in the generated workspace manifests only.

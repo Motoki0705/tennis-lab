@@ -386,9 +386,7 @@ class _Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_BinOp(self, node: ast.BinOp) -> None:
-        configured_path = _contains_configuration_route(
-            node, self.mapping_names[-1]
-        )
+        configured_path = _contains_configuration_route(node, self.mapping_names[-1])
         if isinstance(node.op, ast.Div):
             if _looks_like_path_join(node, self.path_names[-1]):
                 self._record(node, AuditRule.PATH_JOIN)
@@ -505,6 +503,8 @@ _RUNTIME_PATH_SEGMENTS = (
     "external/",
     "build/",
 )
+
+
 def _looks_like_runtime_path_literal(value: str) -> bool:
     normalized = value.strip().replace("\\", "/").lower()
     if (
@@ -558,7 +558,9 @@ def _path_annotation(annotation: ast.expr | None) -> bool:
 
 
 def _assigned_names(statement: ast.Assign | ast.AnnAssign) -> tuple[str, ...]:
-    targets = statement.targets if isinstance(statement, ast.Assign) else (statement.target,)
+    targets = (
+        statement.targets if isinstance(statement, ast.Assign) else (statement.target,)
+    )
     return tuple(
         ast.unparse(target)
         for target in targets
@@ -612,9 +614,10 @@ def _call_returns_mapping(node: ast.AST, mapping_names: set[str]) -> bool:
             for argument in configuration_arguments
         )
     if name == "cast" and len(node.args) >= 2:
-        return "mapping" in ast.unparse(node.args[0]).lower() or "dict" in ast.unparse(
-            node.args[0]
-        ).lower()
+        return (
+            "mapping" in ast.unparse(node.args[0]).lower()
+            or "dict" in ast.unparse(node.args[0]).lower()
+        )
     return False
 
 
@@ -710,9 +713,12 @@ def _iterates_verified_path(node: ast.AST, path_names: set[str]) -> bool:
 
 def _contains_path_route(node: ast.AST, path_names: set[str]) -> bool:
     return any(
-        isinstance(child, ast.Name) and child.id in path_names
-        or isinstance(child, ast.Attribute) and ast.unparse(child) in path_names
-        or isinstance(child, ast.Call) and _call_returns_path(child, path_names)
+        isinstance(child, ast.Name)
+        and child.id in path_names
+        or isinstance(child, ast.Attribute)
+        and ast.unparse(child) in path_names
+        or isinstance(child, ast.Call)
+        and _call_returns_path(child, path_names)
         for child in ast.walk(node)
     )
 
@@ -727,33 +733,39 @@ def _semantic_names(
 ) -> tuple[set[str], set[str]]:
     """Infer validated mappings and typed paths without relying on local names."""
     mapping_names = set() if initial_mappings is None else set(initial_mappings)
-    mapping_names.update({
-        argument.arg
-        for argument in arguments
-        if (
-            "config" in _annotation_name(argument.annotation)
-            and "schema" not in _annotation_name(argument.annotation)
-        )
-        or argument.arg.lower() in {"cfg", "config"}
-        or argument.arg.lower().endswith(("_cfg", "_config"))
-        or (
-            _mapping_annotation(argument.annotation)
-            and any(
-                token in callable_name
-                for token in (
-                    "config",
-                    "mapping",
-                    "boundary",
-                    "schema",
-                    "validate",
+    mapping_names.update(
+        {
+            argument.arg
+            for argument in arguments
+            if (
+                "config" in _annotation_name(argument.annotation)
+                and "schema" not in _annotation_name(argument.annotation)
+            )
+            or argument.arg.lower() in {"cfg", "config"}
+            or argument.arg.lower().endswith(("_cfg", "_config"))
+            or (
+                _mapping_annotation(argument.annotation)
+                and any(
+                    token in callable_name
+                    for token in (
+                        "config",
+                        "mapping",
+                        "boundary",
+                        "schema",
+                        "validate",
+                    )
                 )
             )
-        )
-    })
+        }
+    )
     path_names = set() if initial_paths is None else set(initial_paths)
-    path_names.update({
-        argument.arg for argument in arguments if _path_annotation(argument.annotation)
-    })
+    path_names.update(
+        {
+            argument.arg
+            for argument in arguments
+            if _path_annotation(argument.annotation)
+        }
+    )
     scoped_nodes = _scope_nodes(body)
     for call in (
         child
@@ -762,7 +774,9 @@ def _semantic_names(
         and isinstance(child.func, ast.Attribute)
         and child.func.attr == "__init__"
     ):
-        if any(_is_configuration_route(argument, mapping_names) for argument in call.args):
+        if any(
+            _is_configuration_route(argument, mapping_names) for argument in call.args
+        ):
             mapping_names.add("self.config")
     for statement in scoped_nodes:
         if isinstance(statement, ast.AnnAssign):
@@ -796,10 +810,9 @@ def _semantic_names(
             if value is None:
                 continue
             names = _assigned_names(statement)
-            if (
-                _contains_configuration_route(value, mapping_names)
-                or _call_returns_mapping(value, mapping_names)
-            ):
+            if _contains_configuration_route(
+                value, mapping_names
+            ) or _call_returns_mapping(value, mapping_names):
                 before = len(mapping_names)
                 mapping_names.update(names)
                 changed |= len(mapping_names) != before
@@ -1233,7 +1246,6 @@ def _non_hydra_validator_declarations(
 _SELF_VALIDATING_COMMANDS = frozenset(
     {
         "src.configuration_validation",
-        "src.synthetic_data_generation.config_validation",
         "src.tasks.ball_detection.validation",
         "src.tasks.blcs.validation",
         "src.tasks.plcs.validation_matrix",
@@ -1390,23 +1402,6 @@ def discover_runtime_boundaries(
                             sorted(subprocess_invokers.get(module, ()))
                         ),
                     )
-
-        if module == "src.synthetic_data_generation.scripts.alignment.geometry_bridge":
-            provider = functions.get("provider_main")
-            if provider is not None:
-                discovered[(module, "provider_main")] = DiscoveredRuntimeBoundary(
-                    module=module,
-                    callable_name="provider_main",
-                    kind=BoundaryKind.CALLABLE,
-                    executable_module=executable,
-                    validator_key="synthetic.geometry_bridge",
-                    validator_callable=(
-                        "src.utils.configuration.paths.NonHydraPathBoundary.validate"
-                    ),
-                    subprocess_invokers=tuple(
-                        sorted(subprocess_invokers.get(module, ()))
-                    ),
-                )
 
         for statement in tree.body:
             if not isinstance(statement, (ast.Assign, ast.AnnAssign)):
@@ -1584,11 +1579,15 @@ def regenerate_migration_rows(
         ):
             continue
         source_expression = _route_source_expression(record.former_route)
-        if source_expression is not None and (
-            record.former_module,
-            record.former_qualified_name,
-            source_expression,
-        ) in source_expressions:
+        if (
+            source_expression is not None
+            and (
+                record.former_module,
+                record.former_qualified_name,
+                source_expression,
+            )
+            in source_expressions
+        ):
             continue
         if (
             route_key in current_route_keys
@@ -1640,7 +1639,9 @@ def regenerate_exemption_rows(
     of being auto-exempted. Reviewed additions must identify an exact current
     site and stable reason code; stale or duplicate approvals fail closed.
     """
-    old_by_key = {_exemption_key(item): item for item in DEFAULT_AUDIT_INVENTORY.exemptions}
+    old_by_key = {
+        _exemption_key(item): item for item in DEFAULT_AUDIT_INVENTORY.exemptions
+    }
     approved_by_key = {_exemption_key(item): item for item in approved_exemptions}
     if len(approved_by_key) != len(approved_exemptions):
         raise ValueError("Approved audit exemptions must have unique exact identities.")
@@ -1776,7 +1777,11 @@ def regenerate_exemption_rows(
             "Approved audit exemptions do not match current findings: "
             f"{unused_approvals!r}."
         )
-    return unique_rows, tuple(generated[key] for key in sorted(generated)), tuple(unresolved)
+    return (
+        unique_rows,
+        tuple(generated[key] for key in sorted(generated)),
+        tuple(unresolved),
+    )
 
 
 def _encoded_payload(rows: Sequence[Sequence[object]]) -> tuple[str, str]:
@@ -1792,7 +1797,9 @@ def _encoded_payload(rows: Sequence[Sequence[object]]) -> tuple[str, str]:
 
 
 def _payload_literal(payload: str) -> str:
-    chunks = tuple(payload[index : index + 100] for index in range(0, len(payload), 100))
+    chunks = tuple(
+        payload[index : index + 100] for index in range(0, len(payload), 100)
+    )
     return "(\n" + "\n".join(f"    {chunk!r}" for chunk in chunks) + "\n)"
 
 
@@ -1957,7 +1964,7 @@ def _replacement_boundary_symbol(domain: str) -> str:
         "plcs": "src.tasks.plcs.configuration.PLCSModelConfig",
         "slcs": "src.tasks.slcs.configuration.SLCSTrainingRuntimeConfig",
         "submodules": "src.submodules.configuration.GvhmrDemoConfig",
-        "synthetic_data_generation": "src.synthetic_data_generation.configuration.validate_config",
+        "synthetic_data_generation": "src.synthetic_data_generation.pipeline.config.ScenePipelineConfig.load",
         "tennis_scene": "src.tennis_scene.configuration.PipelineRuntimeConfig",
         "utils": "src.utils.configuration.schema.StrictConfigSchema",
     }
@@ -2410,18 +2417,18 @@ def _inspect_migrations(
                     "path authority must be the shared PathResolver.resolve callable",
                 )
             )
-        if (
-            record.status in {MigrationStatus.LIVE, MigrationStatus.EXEMPTED}
-        ):
+        if record.status in {MigrationStatus.LIVE, MigrationStatus.EXEMPTED}:
             expected_kind, expected_symbol, expected_field = _live_route_authority(
                 record.former_module,
                 record.former_qualified_name,
                 record.category,
                 record.former_route,
             )
-            if record.authority_kind is not expected_kind or (
-                record.canonical_symbol != expected_symbol
-            ) or record.authority_field != expected_field:
+            if (
+                record.authority_kind is not expected_kind
+                or (record.canonical_symbol != expected_symbol)
+                or record.authority_field != expected_field
+            ):
                 issues.append(
                     MigrationAuditIssue(
                         record.record_id,

@@ -391,7 +391,7 @@ _CONFIGURATION_AUTHORITIES: Mapping[str, str] = {
     "plcs": "src.tasks.plcs.configuration.PLCSModelConfig",
     "slcs": "src.tasks.slcs.configuration.SLCSTrainingRuntimeConfig",
     "submodules": "src.submodules.configuration.GvhmrDemoConfig",
-    "synthetic_data_generation": "src.synthetic_data_generation.configuration.validate_config",
+    "synthetic_data_generation": "src.synthetic_data_generation.pipeline.config.ScenePipelineConfig.load",
     "tennis_scene": "src.tennis_scene.configuration.PipelineRuntimeConfig",
     "utils": "src.utils.configuration.schema.StrictConfigSchema",
 }
@@ -781,14 +781,7 @@ EXPECTED_AUDIT_RULES = tuple(AuditRule)
 
 
 _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
-    "src.synthetic_data_generation.scripts.alignment.calibrate_court_alignment": "synthetic.alignment.calibrate_court_alignment",
-    "src.synthetic_data_generation.scripts.alignment.export_scene_provider": "synthetic.alignment.export_scene_provider",
-    "src.synthetic_data_generation.scripts.alignment.fit_ground_courts": "synthetic.alignment.fit_ground_courts",
-    "src.synthetic_data_generation.scripts.alignment.infer_ground_line_map": "synthetic.alignment.infer_ground_line_map",
-    "src.synthetic_data_generation.scripts.alignment.geometry_bridge": "synthetic.alignment.geometry_bridge",
-    "src.synthetic_data_generation.scripts.validate_configuration": "synthetic.validation_matrix",
-    "src.synthetic_data_generation.scripts.dataset.fit_blcs_features": "synthetic.dataset.blcs.feature_fit",
-    "src.synthetic_data_generation.scripts.dataset.run_pipeline": "synthetic.dataset.pipeline",
+    "src.synthetic_data_generation.scripts.run": "synthetic.scene_pipeline",
     "src.tasks.ball_detection.scripts.analyze_web_bbox_ratio": "ball.web_tool",
     "src.tasks.ball_detection.scripts.convert_web_dataset": "ball.web_tool",
     "src.tasks.ball_detection.scripts.eval": "ball.eval",
@@ -840,13 +833,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
 }
 
 _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
-    **{
-        module: (
-            f"src.synthetic_data_generation.configuration._boundary_validator({key!r})"
-        )
-        for module, key in _BOUNDARY_VALIDATOR_KEYS.items()
-        if module.startswith("src.synthetic_data_generation.")
-    },
+    "src.synthetic_data_generation.scripts.run": "src.synthetic_data_generation.pipeline.config.validate_run_boundary",
     "src.tasks.ball_detection.scripts.analyze_web_bbox_ratio": "src.tasks.ball_detection.configuration.validate_web_tool",
     "src.tasks.ball_detection.scripts.convert_web_dataset": "src.tasks.ball_detection.configuration.validate_web_tool",
     "src.tasks.ball_detection.scripts.eval": "src.tasks.ball_detection.configuration.validate_eval",
@@ -924,125 +911,6 @@ def _runtime_boundary(
     )
 
 
-_NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
-    "src.synthetic_data_generation.scripts.alignment.geometry_bridge": (
-        "synthetic.geometry_bridge",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.alignment.scene_provider.geometry_bridge": (
-        "synthetic.geometry_bridge",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.dataset.blcs.components.asset_preparation": (
-        "synthetic.blcs.asset_preparation",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.dataset.blcs.components.calibration_import": (
-        "synthetic.blcs.calibration_import",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.dataset.blcs.components.feature_fit_fixture": (
-        "synthetic.blcs.feature_fit_fixture",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.dataset.blcs.components.procedural_ball_asset_builder": (
-        "synthetic.blcs.procedural_ball_asset_builder",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.dataset.blcs.rendering.feature_fit": (
-        "synthetic.blcs.feature_fit",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.dataset.blcs.rendering.nht": (
-        "synthetic.blcs.nht_render",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.dataset.court.components.camera_sampling.orbit_plan": (
-        "synthetic.court.orbit_plan",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.dataset.court.components.camera_sampling.support_probe": (
-        "synthetic.court.support_probe",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.dataset.court.rendering.nht": (
-        "synthetic.court.nht_render",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.dataset.court.rendering.orbit_preview": (
-        "synthetic.court.orbit_preview",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.dataset.court.visualization.camera_support": (
-        "synthetic.court.camera_support",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.dataset.court.visualization.dataset_preview": (
-        "synthetic.court.dataset_preview",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.dataset.plcs.components.avatar_asset_builder": (
-        "synthetic.plcs.avatar_asset_builder",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.dataset.plcs.components.scene_plan_builder": (
-        "synthetic.plcs.scene_plan_builder",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.dataset.plcs.rendering.avatar_fit": (
-        "synthetic.plcs.avatar_fit",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.dataset.plcs.rendering.nht": (
-        "synthetic.plcs.nht_render",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.dataset.plcs.visualization.avatar_control_comparison": (
-        "synthetic.plcs.avatar_control_comparison",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.dataset.plcs.visualization.dataset_preview": (
-        "synthetic.plcs.dataset_preview",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.rendering.nht.composition_smoke": (
-        "synthetic.nht.composition_smoke",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.synthetic_data_generation.rendering.nht.runtime_probe": (
-        "synthetic.nht.runtime_probe",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-}
-
-
-def _non_hydra_boundary(
-    module: str,
-    callable_name: str,
-    *,
-    kind: BoundaryKind = BoundaryKind.ARGPARSE,
-    domain: str = "synthetic_data_generation",
-    executable_module: bool = False,
-) -> RuntimeBoundary:
-    validator_key, validator_callable = _NON_HYDRA_BOUNDARY_BINDINGS[module]
-    return RuntimeBoundary(
-        domain=domain,
-        module=module,
-        callable_name=callable_name,
-        kind=kind,
-        executable_module=executable_module,
-        validator_key=validator_key,
-        validator_callable=validator_callable,
-        configuration_authority=validator_callable,
-        path_authority=validator_callable,
-        migration_target="validated typed runtime contract before side effects",
-        required_policy="all declared path arguments are present",
-        optional_policy="optional non-path values use an explicit typed contract",
-        default_authority="caller-owned explicit values only; no boundary fallback",
-        precedence_authority="one role/direction declaration per explicit path",
-    )
-
-
 def _validation_command(module: str, *, domain: str) -> RuntimeBoundary:
     return RuntimeBoundary(
         domain=domain,
@@ -1065,36 +933,7 @@ def _validation_command(module: str, *, domain: str) -> RuntimeBoundary:
 _RUNTIME_BOUNDARIES = (
     _runtime_boundary(
         "synthetic_data_generation",
-        "src.synthetic_data_generation.scripts.alignment.geometry_bridge",
-        callable_name="hydra_cli",
-    ),
-    _runtime_boundary(
-        "synthetic_data_generation",
-        "src.synthetic_data_generation.scripts.alignment.calibrate_court_alignment",
-    ),
-    _runtime_boundary(
-        "synthetic_data_generation",
-        "src.synthetic_data_generation.scripts.alignment.export_scene_provider",
-    ),
-    _runtime_boundary(
-        "synthetic_data_generation",
-        "src.synthetic_data_generation.scripts.alignment.fit_ground_courts",
-    ),
-    _runtime_boundary(
-        "synthetic_data_generation",
-        "src.synthetic_data_generation.scripts.alignment.infer_ground_line_map",
-    ),
-    _runtime_boundary(
-        "synthetic_data_generation",
-        "src.synthetic_data_generation.scripts.dataset.fit_blcs_features",
-    ),
-    _runtime_boundary(
-        "synthetic_data_generation",
-        "src.synthetic_data_generation.scripts.dataset.run_pipeline",
-    ),
-    _runtime_boundary(
-        "synthetic_data_generation",
-        "src.synthetic_data_generation.scripts.validate_configuration",
+        "src.synthetic_data_generation.scripts.run",
     ),
     _runtime_boundary(
         "ball_detection", "src.tasks.ball_detection.scripts.analyze_web_bbox_ratio"
@@ -1189,97 +1028,6 @@ _RUNTIME_BOUNDARIES = (
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.visualization"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.visualize_tasks"),
     _runtime_boundary("submodules", "src.submodules.scripts.demo_gvhmr"),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.dataset.blcs.components.asset_preparation",
-        "main",
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.dataset.blcs.components.calibration_import",
-        "main",
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.dataset.blcs.components.feature_fit_fixture",
-        "main",
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.dataset.blcs.components.procedural_ball_asset_builder",
-        "main",
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.dataset.blcs.rendering.feature_fit",
-        "main",
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.dataset.blcs.rendering.nht",
-        "main",
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.dataset.court.components.camera_sampling.orbit_plan",
-        "main",
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.dataset.court.components.camera_sampling.support_probe",
-        "main",
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.dataset.court.rendering.nht",
-        "main",
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.dataset.court.rendering.orbit_preview",
-        "main",
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.dataset.court.visualization.camera_support",
-        "main",
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.dataset.court.visualization.dataset_preview",
-        "main",
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.dataset.plcs.components.avatar_asset_builder",
-        "main",
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.dataset.plcs.components.scene_plan_builder",
-        "main",
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.dataset.plcs.rendering.avatar_fit",
-        "main",
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.dataset.plcs.rendering.nht",
-        "main",
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.dataset.plcs.visualization.avatar_control_comparison",
-        "main",
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.dataset.plcs.visualization.dataset_preview",
-        "main",
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.rendering.nht.composition_smoke",
-        "main",
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.rendering.nht.runtime_probe",
-        "main",
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.alignment.scene_provider.geometry_bridge",
-        "run_geometry_bridge",
-        kind=BoundaryKind.CALLABLE,
-    ),
-    _non_hydra_boundary(
-        "src.synthetic_data_generation.scripts.alignment.geometry_bridge",
-        "provider_main",
-        kind=BoundaryKind.CALLABLE,
-        executable_module=True,
-    ),
     _validation_command("src.configuration_validation", domain="base"),
     _validation_command("src.tasks.ball_detection.validation", domain="ball_detection"),
     _validation_command("src.tasks.blcs.validation", domain="blcs"),
