@@ -1,9 +1,7 @@
 {
   "aggregate": {
     "collector_count": 1,
-    "collectors": [
-      "systems"
-    ],
+    "collectors": ["systems"],
     "discovery_count": 1,
     "max_novelty_score": 94,
     "max_relevance_score": 94,
@@ -14,18 +12,15 @@
       "src/synthetic_data_generation/dataset/plcs/rendering/nht.py",
       "src/tennis_scene/pipeline/components/gvhmr.py"
     ],
-    "tasks": [
-      "human_pose",
-      "synthetic_data_generation"
-    ]
+    "tasks": ["human_pose", "synthetic_data_generation"]
   },
   "curation": {
-    "decision": null,
-    "issue": null,
-    "paper_node": null,
-    "proposal_nodes": [],
-    "reason_ja": null,
-    "reviewed_at": null
+    "decision": "promoted",
+    "issue": 710,
+    "paper_node": "paper-arxiv-2605-21001",
+    "proposal_nodes": ["proposal-plcs-body-anchored-avatar-layers"],
+    "reason_ja": "CVPRW公式全文、project、MIT codeを確認した。face index、barycentric coordinate、正のnormal offset、semantic layerによってbody penetrationとlayer orderを表現上制約する核は、現行avatar_controlのsurface embeddingを明示的なmulti-layer contractへ拡張する最小仮説に落とせる。NHT appearance非互換、multi-view segmentation/SMPL-X依存、外観品質とのtrade-offを制約として昇格する。",
+    "reviewed_at": "2026-08-07T00:06:06+09:00"
   },
   "discoveries": [
     {
@@ -33,8 +28,8 @@
       "discovered_at": "2026-08-06T01:18:08+09:00",
       "schedule_run_id": "systems-20260806T011808+0900-dama6f1",
       "screening": {
-        "applicability_ja": "現行avatar_control.pyはface_indicesとbarycentric_coordinatesを保持してposed mesh上へ点を埋め込めるが、点はtriangle surface上に固定され、正のnormal offset、semantic garment layer、layer orderを契約化していない。composition/contracts.pyも人物を単一movable GaussianAssetとして扱い、PLCS NHT rendererは人物pose assetを一括composeする。DAMAの核だけを取り込み、face index・barycentric coordinates・positive normal offset・relative orientation・semantic layer ID・layer orderを持つbody-anchored layer contractを追加し、GVHMR/SMPL body verticesとnormalsから各frameのGaussian geometryを生成することで、既存NHT appearance featureを維持したまま衣服層のbody penetrationとpose時driftを抑制できる。renderer側ではlayer別instance contributionを出力し、synthetic PLCS dataへgarment maskとocclusion labelを追加できる。",
-        "candidate_experiment_ja": "baselineは、同一の3 player asset・Gaussian count・NHT appearance payload・100-frameのserve/forehand/lateral motionについて、現行のmonolithic assetとembed_points_on_posed_meshまたはHUGS-style controlで生成したrenderとする。treatmentではskin/upper/lowerの固定semantic splitを与え、Gaussian位置だけをface-bound barycentric coordinates、softplusで正値化したnormal offset、明示的layer orderで更新し、appearance、camera、motion、renderer設定を固定する。held-out 2 cameraでbody penetration rate/depth、layer-order violation率、temporal mask IoU、LPIPS、render FPS、peak VRAMを比較する。3 asset平均でpenetration rateが2%以下、depthが1 mm以下、layer-order violationが1%以下となり、baseline比でmask IoU低下0.02以内、LPIPS悪化0.01以内、frame time 1.2倍以内なら次段階のmulti-view reconstruction adapterへ進む。いずれかのassetでNHT appearance contractが維持できない、mask IoUが0.05以上低下、offsetが衣服厚の上限へ20%以上張り付く、または16 GB GPUでOOMする場合は停止する。",
+        "applicability_ja": "現行avatar_controlはface indexとbarycentric coordinateで点をposed meshへ埋め込めるが、positive normal offset、semantic garment layer、layer orderを契約化していない。DAMAのgeometry parameterizationだけを導入し、NHT appearanceを固定した比較が可能である。",
+        "candidate_experiment_ja": "同一3 assets、Gaussian count、appearance、100-frame motionで現行monolithic controlとbody-anchored layer controlを比較し、penetration rate/depth、layer-order violation、temporal mask IoU、LPIPS、FPS、VRAMを測る。",
         "evidence_level": "fulltext-code",
         "novelty_score": 94,
         "relevance_score": 94,
@@ -44,42 +39,17 @@
           "src/synthetic_data_generation/dataset/plcs/rendering/nht.py",
           "src/tennis_scene/pipeline/components/gvhmr.py"
         ],
-        "risks_ja": "論文と公式codeはRGB 2DGSを前提とし、現行NHTの48次元deferred featureとappearance_space_sha256契約へそのまま連結できないため、初期検証ではgeometry parameterizationだけを移植する必要がある。DAMAはcalibrated multi-view RGB、garment segmentation、fitted SMPL-Xを要求し、tennis映像の遠景、motion blur、racket occlusion、loose sportswearではmaskとbody fitの誤差が増える。正のoffsetはpenetrationを減らす一方で外観を歪め得て、論文でも通常2DGSよりPSNRが低い。full reconstructionはA100でsubject当たり約10〜15分で、dataset生成規模では前処理costが大きい。codeはMITだが、4D-DRESS、SMPL-X、AMASSの利用条件は別管理であり、学習素材や生成assetの再配布可否を個別確認する必要がある。",
-        "score_breakdown": {
-          "adoption_feasibility": 7,
-          "evidence_quality": 18,
-          "experiment_quality": 14,
-          "repo_fit": 25,
-          "task_fit": 30
-        },
-        "summary_ja": "DAMAは、multi-view RGB、衣服別segmentation mask、fitted SMPL-Xから、skin・hair・upper・lower・outerなどを分離したmulti-layer 2D Gaussian avatarを再構成する。各Gaussian meanを、割り当てたSMPL-X face上のbarycentric coordinatesと厳密に正の法線offsetへ分解し、横方向driftとbody penetrationを表現上禁止する。さらにface adjacency上の小さな誤label連結成分を補正し、各layerをmasked RGBで独立最適化する。4D-DRESS全82 scanではChamfer distance 19.88 mm、penetration rate 1.46%、penetration depth 0.32 mmを報告し、garment transfer、任意layer order、SMPL-X animation、simulation-ready mesh化を実演している。一方、full-avatar PSNRは30.15で通常2DGSの35.21を下回り、外観精度とのtrade-offがある。",
-        "tasks": [
-          "synthetic_data_generation",
-          "human_pose"
-        ],
+        "risks_ja": "原手法はRGB 2DGS、calibrated multi-view、garment segmentation、fitted SMPL-Xを前提とし、NHT deferred featureへ直接接続できない。positive offsetはpenetrationを減らす一方で外観を歪め得る。4D-DRESS、SMPL-X、AMASSの利用条件はcodeのMITとは別管理である。",
+        "score_breakdown": {"adoption_feasibility": 7, "evidence_quality": 18, "experiment_quality": 14, "repo_fit": 25, "task_fit": 30},
+        "summary_ja": "skin・hair・upper・lower等を分離したmulti-layer 2D Gaussian avatarを、SMPL-X face上のbarycentric coordinateと正のnormal offsetでbodyへ固定し、横方向driftとbody penetrationを表現上抑える。",
+        "tasks": ["synthetic_data_generation", "human_pose"],
         "topic": "avatar_rendering"
       },
       "sources": [
-        {
-          "checked_at": "2026-08-06T01:18:08+09:00",
-          "kind": "paper",
-          "url": "https://openaccess.thecvf.com/content/CVPR2026W/PhysHuman/html/Eskandar_DAMA_Disentangled_Body-Anchored_Gaussians_for_Controllable_Multi-Layered_Avatars_CVPRW_2026_paper.html"
-        },
-        {
-          "checked_at": "2026-08-06T01:18:08+09:00",
-          "kind": "paper",
-          "url": "https://arxiv.org/abs/2605.21001"
-        },
-        {
-          "checked_at": "2026-08-06T01:18:08+09:00",
-          "kind": "project",
-          "url": "https://danieleskandar.github.io/dama/"
-        },
-        {
-          "checked_at": "2026-08-06T01:18:08+09:00",
-          "kind": "code",
-          "url": "https://github.com/danieleskandar/DAMA-code"
-        }
+        {"checked_at": "2026-08-06T01:18:08+09:00", "kind": "paper", "url": "https://openaccess.thecvf.com/content/CVPR2026W/PhysHuman/html/Eskandar_DAMA_Disentangled_Body-Anchored_Gaussians_for_Controllable_Multi-Layered_Avatars_CVPRW_2026_paper.html"},
+        {"checked_at": "2026-08-06T01:18:08+09:00", "kind": "paper", "url": "https://arxiv.org/abs/2605.21001"},
+        {"checked_at": "2026-08-06T01:18:08+09:00", "kind": "project", "url": "https://danieleskandar.github.io/dama/"},
+        {"checked_at": "2026-08-06T01:18:08+09:00", "kind": "code", "url": "https://github.com/danieleskandar/DAMA-code"}
       ]
     }
   ],
@@ -87,28 +57,13 @@
   "id": "paper-arxiv-2605-21001",
   "last_seen": "2026-08-06T01:18:08+09:00",
   "paper": {
-    "authors": [
-      "Daniel Eskandar",
-      "Berna Kabadayi",
-      "Garvita Tiwari",
-      "Gerard Pons-Moll"
-    ],
-    "identifiers": {
-      "arxiv": "2605.21001",
-      "doi": null,
-      "openreview": "J5VMAFJmho"
-    },
+    "authors": ["Daniel Eskandar", "Berna Kabadayi", "Garvita Tiwari", "Gerard Pons-Moll"],
+    "identifiers": {"arxiv": "2605.21001", "doi": null, "openreview": "J5VMAFJmho"},
     "title": "DAMA: Disentangled Body-Anchored Gaussians for Controllable Multi-Layered Avatars",
-    "urls": {
-      "code": "https://github.com/danieleskandar/DAMA-code",
-      "dataset": null,
-      "paper": "https://arxiv.org/pdf/2605.21001",
-      "primary": "https://openaccess.thecvf.com/content/CVPR2026W/PhysHuman/html/Eskandar_DAMA_Disentangled_Body-Anchored_Gaussians_for_Controllable_Multi-Layered_Avatars_CVPRW_2026_paper.html",
-      "project": "https://danieleskandar.github.io/dama/"
-    },
+    "urls": {"code": "https://github.com/danieleskandar/DAMA-code", "dataset": null, "paper": "https://arxiv.org/pdf/2605.21001", "primary": "https://openaccess.thecvf.com/content/CVPR2026W/PhysHuman/html/Eskandar_DAMA_Disentangled_Body-Anchored_Gaussians_for_Controllable_Multi-Layered_Avatars_CVPRW_2026_paper.html", "project": "https://danieleskandar.github.io/dama/"},
     "venue": "CVPR 2026 Workshops (PhysHuman)",
     "year": 2026
   },
   "schema_version": 1,
-  "state": "inbox"
+  "state": "promoted"
 }
