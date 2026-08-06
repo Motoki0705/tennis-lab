@@ -186,6 +186,7 @@ def _source_module_name(path: Path) -> str:
 def _deleted_repository_modules() -> frozenset[str]:
     paths = _git_paths(
         "diff",
+        "--no-renames",
         "--diff-filter=D",
         "--name-only",
         BASE_REVISION,
