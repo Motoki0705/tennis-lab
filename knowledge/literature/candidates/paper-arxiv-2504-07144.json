@@ -1,9 +1,7 @@
 {
   "aggregate": {
     "collector_count": 1,
-    "collectors": [
-      "systems"
-    ],
+    "collectors": ["systems"],
     "discovery_count": 1,
     "max_novelty_score": 88,
     "max_relevance_score": 91,
@@ -14,18 +12,15 @@
       "src/synthetic_data_generation/dataset/plcs/rendering/nht.py",
       "src/tennis_scene/pipeline/components/gvhmr.py"
     ],
-    "tasks": [
-      "human_pose",
-      "synthetic_data_generation"
-    ]
+    "tasks": ["human_pose", "synthetic_data_generation"]
   },
   "curation": {
-    "decision": null,
-    "issue": null,
+    "decision": "reviewed",
+    "issue": 698,
     "paper_node": null,
     "proposal_nodes": [],
-    "reason_ja": null,
-    "reviewed_at": null
+    "reason_ja": "公式全文、project、codeを確認した。少数視点から未見人物Gaussianをfeed-forward生成する主張はPLCS synthetic identity diversityに関連するが、公式学習条件は大規模multi-view人物datasetとSMPL-Xを要求し、現行NHT deferred appearance contractへ直接接続できない。root LICENSEも確認できず、tennis遠景・motion blur・racket occlusionへの転移証拠もないため、内容はreviewedとして保持し正式nodeへの昇格は見送る。",
+    "reviewed_at": "2026-08-07T00:06:06+09:00"
   },
   "discoveries": [
     {
@@ -46,27 +41,12 @@
         ],
         "risks_ja": "学習再現には少なくとも16台のcalibrated camera、per-frame segmentation、SMPL-X付きの大規模人物datasetとH100級計算が必要で、公式checkpointのdomainは遠景のtennis、motion blur、racket occlusionと異なる。GIGAは各frameを独立処理するため時間的一貫性が未解決で、SMPL-Xでは髪やloose clothingの非剛体変形を十分扱えず、tracking誤差にも依存する。単眼時は別frameからaverage textureを作る事前calibrationが必要で、未観測背面のpose依存外観が弱い。公式code repositoryのrootではLICENSEファイルを確認できず、SMPL-Xと各datasetの利用条件も別途確認が必要である。またGIGAのRGB Gaussianは、48次元deferred featureと同一appearance hashを要求する現行NHT asset contractへ直接composeできない。",
         "summary_ja": "GIGAは、1〜4視点のRGB入力と追跡済みSMPL-X body templateから、未見人物のtexel-aligned 3D Gaussian群をfeed-forward生成する汎化型human rendering手法である。外観textureとcanonical position mapを別encoderで処理し、pose cross-attentionで条件付けしたMultiHeadUNetがRGB、回転・scale・opacity、pose依存offsetを予測し、linear blend skinningで駆動する。大規模multi-view人物データで学習し、未見identityのnovel-view renderingで既存の汎化手法よりPSNR、SSIM、LPIPSを改善したと報告する。",
-        "tasks": [
-          "synthetic_data_generation",
-          "human_pose"
-        ]
+        "tasks": ["synthetic_data_generation", "human_pose"]
       },
       "sources": [
-        {
-          "checked_at": "2026-08-05T15:46:33+09:00",
-          "kind": "paper",
-          "url": "https://arxiv.org/abs/2504.07144"
-        },
-        {
-          "checked_at": "2026-08-05T15:46:33+09:00",
-          "kind": "project",
-          "url": "https://vcai.mpi-inf.mpg.de/projects/GIGA/"
-        },
-        {
-          "checked_at": "2026-08-05T15:46:33+09:00",
-          "kind": "code",
-          "url": "https://github.com/antonzub99/giga"
-        }
+        {"checked_at": "2026-08-05T15:46:33+09:00", "kind": "paper", "url": "https://arxiv.org/abs/2504.07144"},
+        {"checked_at": "2026-08-05T15:46:33+09:00", "kind": "project", "url": "https://vcai.mpi-inf.mpg.de/projects/GIGA/"},
+        {"checked_at": "2026-08-05T15:46:33+09:00", "kind": "code", "url": "https://github.com/antonzub99/giga"}
       ]
     }
   ],
@@ -74,30 +54,13 @@
   "id": "paper-arxiv-2504-07144",
   "last_seen": "2026-08-05T15:46:33+09:00",
   "paper": {
-    "authors": [
-      "Anton Zubekhin",
-      "Heming Zhu",
-      "Paulo Gotardo",
-      "Thabo Beeler",
-      "Marc Habermann",
-      "Christian Theobalt"
-    ],
-    "identifiers": {
-      "arxiv": "2504.07144",
-      "doi": null,
-      "openreview": null
-    },
+    "authors": ["Anton Zubekhin", "Heming Zhu", "Paulo Gotardo", "Thabo Beeler", "Marc Habermann", "Christian Theobalt"],
+    "identifiers": {"arxiv": "2504.07144", "doi": null, "openreview": null},
     "title": "GIGA: Generalizable Sparse Image-Driven Gaussian Humans",
-    "urls": {
-      "code": "https://github.com/antonzub99/giga",
-      "dataset": null,
-      "paper": "https://arxiv.org/pdf/2504.07144",
-      "primary": "https://arxiv.org/abs/2504.07144",
-      "project": "https://vcai.mpi-inf.mpg.de/projects/GIGA/"
-    },
+    "urls": {"code": "https://github.com/antonzub99/giga", "dataset": null, "paper": "https://arxiv.org/pdf/2504.07144", "primary": "https://arxiv.org/abs/2504.07144", "project": "https://vcai.mpi-inf.mpg.de/projects/GIGA/"},
     "venue": "2026 International Conference on 3D Vision (3DV)",
     "year": 2026
   },
   "schema_version": 1,
-  "state": "inbox"
+  "state": "reviewed"
 }
