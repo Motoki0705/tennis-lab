@@ -1,270 +1,268 @@
-"""Strict git-worktree and file operations exposed through MCP tools."""
+"""Exact-revision workspaces used only for isolated execution and validation."""
 
 from __future__ import annotations
 
+import os
 import re
+import secrets
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-_WORKTREE_NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
-_GIT_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$")
+from src.automation.chatgpt_mcp.storage import SqliteStore
+
+_WORKSPACE_ID = re.compile(r"^rev-[a-f0-9]{16}$")
+_GIT_BRANCH = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$")
+_GIT_SHA = re.compile(r"^[0-9a-f]{40}$")
 
 
 class WorkspaceError(RuntimeError):
-    """Raised when an operation would escape or corrupt an allowed worktree."""
+    """Raised when a remote revision cannot be prepared or verified safely."""
+
+
+@dataclass(frozen=True)
+class RevisionWorkspace:
+    """One detached, exact-SHA source workspace owned by the MCP gateway."""
+
+    workspace_id: str
+    path: Path
+    branch: str
+    revision: str
+
+    def public_dict(self) -> dict[str, str]:
+        """Return the non-secret fields exposed through MCP."""
+
+        return {
+            "workspace_id": self.workspace_id,
+            "branch": self.branch,
+            "revision": self.revision,
+        }
 
 
 def _run_git(
     workspace: Path,
     arguments: list[str],
     *,
-    input_text: str | None = None,
+    timeout: int = 120,
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["git", "-C", str(workspace), *arguments],
-        input=input_text,
         text=True,
         capture_output=True,
         check=False,
-        timeout=120,
+        timeout=timeout,
     )
 
 
-def _validate_git_name(value: str, label: str) -> str:
+def _checked_git(
+    workspace: Path,
+    arguments: list[str],
+    *,
+    message: str,
+    timeout: int = 120,
+) -> str:
+    result = _run_git(workspace, arguments, timeout=timeout)
+    if result.returncode != 0:
+        raise WorkspaceError(result.stderr.strip() or result.stdout.strip() or message)
+    return result.stdout.strip()
+
+
+def _validate_branch(value: str) -> str:
+    branch = value.strip()
     if (
-        not _GIT_NAME.fullmatch(value)
-        or ".." in value
-        or "//" in value
-        or "@{" in value
-        or value.endswith("/")
+        not _GIT_BRANCH.fullmatch(branch)
+        or ".." in branch
+        or "//" in branch
+        or "@{" in branch
+        or branch.endswith("/")
+        or branch.startswith("-")
     ):
-        raise WorkspaceError(f"invalid {label}: {value!r}")
-    return value
+        raise WorkspaceError(f"invalid remote branch: {value!r}")
+    return branch
+
+
+def _validate_revision(value: str) -> str:
+    revision = value.strip().lower()
+    if not _GIT_SHA.fullmatch(revision):
+        raise WorkspaceError("expected_sha must be a full 40-character commit SHA")
+    return revision
+
+
+def _validate_workspace_id(value: str) -> str:
+    workspace_id = value.strip()
+    if not _WORKSPACE_ID.fullmatch(workspace_id):
+        raise WorkspaceError(f"invalid revision workspace id: {value!r}")
+    return workspace_id
 
 
 class WorkspaceManager:
-    """Operate only on git worktrees located below one configured repository."""
+    """Fetch exact origin revisions and expose only opaque execution workspace IDs."""
 
-    def __init__(self, repo_root: Path) -> None:
-        self.repo_root = repo_root.resolve()
-
-    def resolve_workspace(self, value: str) -> Path:
-        candidate = Path(value)
-        if not candidate.is_absolute():
-            candidate = self.repo_root / candidate
-        resolved = candidate.resolve()
-        if not resolved.is_relative_to(self.repo_root):
-            raise WorkspaceError("workspace must stay inside TENNIS_MCP_REPO_ROOT")
-        result = _run_git(resolved, ["rev-parse", "--show-toplevel"])
-        if result.returncode != 0:
-            raise WorkspaceError(f"not a git worktree: {resolved}")
-        top_level = Path(result.stdout.strip()).resolve()
-        if top_level != resolved:
-            raise WorkspaceError(f"workspace must name its git root: {top_level}")
-        return resolved
-
-    def resolve_file(self, workspace: Path, relative_path: str) -> Path:
-        requested = Path(relative_path)
-        if requested.is_absolute():
-            raise WorkspaceError("file path must be relative to the worktree")
-        resolved = (workspace / requested).resolve()
-        if not resolved.is_relative_to(workspace):
-            raise WorkspaceError("file path escapes the worktree")
-        return resolved
-
-    def create_worktree(
+    def __init__(
         self,
-        *,
-        name: str,
-        branch: str,
-        base_ref: str = "origin/main",
-    ) -> dict[str, str]:
-        if not _WORKTREE_NAME.fullmatch(name):
-            raise WorkspaceError(
-                "worktree name must use lowercase letters, digits, and hyphens"
-            )
-        branch = _validate_git_name(branch, "branch")
-        base_ref = _validate_git_name(base_ref, "base ref")
-        target = self.repo_root / ".chatgpt" / "worktrees" / name
-        if target.exists():
-            raise WorkspaceError(f"worktree path already exists: {target}")
-        target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        repo_root: Path,
+        state_dir: Path,
+        store: SqliteStore,
+    ) -> None:
+        self.repo_root = repo_root.resolve()
+        self.state_dir = state_dir.resolve()
+        self.store = store
+        self.workspace_root = self.repo_root / ".chatgpt" / "revisions"
 
+    def prepare_revision(self, *, branch: str, expected_sha: str) -> dict[str, str]:
+        """Fetch one origin branch and create a detached worktree at an exact SHA."""
+
+        checked_branch = _validate_branch(branch)
+        checked_sha = _validate_revision(expected_sha)
+        self.workspace_root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        os.chmod(self.workspace_root, 0o700)
+
+        remote_ref = f"refs/remotes/origin/{checked_branch}"
+        refspec = f"+refs/heads/{checked_branch}:{remote_ref}"
+        _checked_git(
+            self.repo_root,
+            ["fetch", "--no-tags", "origin", refspec],
+            message="git fetch failed",
+            timeout=300,
+        )
+        fetched_sha = _checked_git(
+            self.repo_root,
+            ["rev-parse", f"{remote_ref}^{{commit}}"],
+            message="fetched branch did not resolve to a commit",
+        ).lower()
+        if fetched_sha != checked_sha:
+            raise WorkspaceError(
+                "remote revision mismatch: "
+                f"origin/{checked_branch} is {fetched_sha}, expected {checked_sha}"
+            )
+
+        workspace_id = f"rev-{secrets.token_hex(8)}"
+        target = (self.workspace_root / workspace_id).resolve()
+        if not target.is_relative_to(self.workspace_root.resolve()):
+            raise WorkspaceError("revision workspace escaped its configured root")
         result = _run_git(
             self.repo_root,
-            ["worktree", "add", "-b", branch, str(target), base_ref],
+            ["worktree", "add", "--detach", str(target), checked_sha],
+            timeout=300,
         )
         if result.returncode != 0:
             raise WorkspaceError(result.stderr.strip() or "git worktree add failed")
-        return {"workspace": str(target), "branch": branch, "base_ref": base_ref}
 
-    def list_files(
+        workspace = RevisionWorkspace(
+            workspace_id=workspace_id,
+            path=target,
+            branch=checked_branch,
+            revision=checked_sha,
+        )
+        try:
+            self._verify_materialized_workspace(workspace)
+        except BaseException:
+            _run_git(
+                self.repo_root,
+                ["worktree", "remove", "--force", str(target)],
+                timeout=120,
+            )
+            raise
+
+        self.store.put(
+            "revision_workspaces",
+            workspace_id,
+            {
+                "workspace_id": workspace_id,
+                "path": str(target),
+                "branch": checked_branch,
+                "revision": checked_sha,
+            },
+        )
+        return workspace.public_dict()
+
+    def get_revision(self, workspace_id: str) -> RevisionWorkspace:
+        """Resolve an opaque workspace ID and revalidate its immutable identity."""
+
+        checked_id = _validate_workspace_id(workspace_id)
+        payload = self.store.get("revision_workspaces", checked_id)
+        if payload is None:
+            raise WorkspaceError("revision workspace was not found")
+        path = Path(str(payload["path"])).resolve()
+        root = self.workspace_root.resolve()
+        if not path.is_relative_to(root) or path.parent != root:
+            raise WorkspaceError("stored revision workspace escaped its configured root")
+        workspace = RevisionWorkspace(
+            workspace_id=checked_id,
+            path=path,
+            branch=_validate_branch(str(payload["branch"])),
+            revision=_validate_revision(str(payload["revision"])),
+        )
+        self._verify_materialized_workspace(workspace)
+        return workspace
+
+    def assert_execution_ready(
         self,
-        workspace_value: str,
         *,
-        path: str = ".",
-        limit: int = 500,
-    ) -> dict[str, Any]:
-        if not 1 <= limit <= 2000:
-            raise WorkspaceError("limit must be between 1 and 2000")
-        workspace = self.resolve_workspace(workspace_value)
-        base = self.resolve_file(workspace, path)
-        if not base.exists() or not base.is_dir():
-            raise WorkspaceError(f"directory does not exist: {path}")
-        files: list[str] = []
-        for candidate in sorted(base.rglob("*")):
-            if candidate.is_file() and ".git" not in candidate.parts:
-                files.append(str(candidate.relative_to(workspace)))
-                if len(files) >= limit:
-                    break
-        return {
-            "workspace": str(workspace),
-            "files": files,
-            "truncated": len(files) == limit,
-        }
+        workspace_id: str,
+        expected_sha: str,
+    ) -> RevisionWorkspace:
+        """Require exact SHA binding and a clean source tree before every execution."""
 
-    def read_file(
-        self,
-        workspace_value: str,
-        relative_path: str,
-        *,
-        start_line: int = 1,
-        max_lines: int = 400,
-    ) -> dict[str, Any]:
-        if start_line < 1 or not 1 <= max_lines <= 1000:
-            raise WorkspaceError("invalid line range")
-        workspace = self.resolve_workspace(workspace_value)
-        path = self.resolve_file(workspace, relative_path)
-        if not path.is_file():
-            raise WorkspaceError(f"file does not exist: {relative_path}")
-        if path.stat().st_size > 4 * 1024 * 1024:
-            raise WorkspaceError("read_file refuses files larger than 4 MiB")
-        lines = path.read_text(encoding="utf-8").splitlines()
-        selected = lines[start_line - 1 : start_line - 1 + max_lines]
-        numbered = "\n".join(
-            f"{number}: {line}"
-            for number, line in enumerate(selected, start=start_line)
+        checked_sha = _validate_revision(expected_sha)
+        workspace = self.get_revision(workspace_id)
+        if workspace.revision != checked_sha:
+            raise WorkspaceError(
+                "workspace revision does not match expected_sha: "
+                f"{workspace.revision} != {checked_sha}"
+            )
+        status = _checked_git(
+            workspace.path,
+            ["status", "--porcelain", "--untracked-files=no"],
+            message="git status failed",
+        )
+        if status:
+            raise WorkspaceError(
+                "revision workspace contains tracked changes; prepare a new workspace"
+            )
+        return workspace
+
+    def describe_revision(self, workspace_id: str) -> dict[str, Any]:
+        """Return exact revision identity and tracked-clean status without file access."""
+
+        workspace = self.get_revision(workspace_id)
+        status = _checked_git(
+            workspace.path,
+            ["status", "--porcelain", "--untracked-files=no"],
+            message="git status failed",
         )
         return {
-            "path": relative_path,
-            "start_line": start_line,
-            "end_line": start_line + len(selected) - 1,
-            "total_lines": len(lines),
-            "text": numbered,
+            **workspace.public_dict(),
+            "tracked_clean": not bool(status),
         }
 
-    def search_code(
-        self,
-        workspace_value: str,
-        query: str,
-        *,
-        glob: str | None = None,
-        max_results: int = 200,
-    ) -> dict[str, Any]:
-        if not query or len(query) > 500:
-            raise WorkspaceError("query must contain 1-500 characters")
-        if not 1 <= max_results <= 1000:
-            raise WorkspaceError("max_results must be between 1 and 1000")
-        workspace = self.resolve_workspace(workspace_value)
-        arguments = ["rg", "--line-number", "--color", "never", "--", query]
-        if glob:
-            if len(glob) > 200:
-                raise WorkspaceError("glob is too long")
-            arguments = [
-                "rg",
-                "--line-number",
-                "--color",
-                "never",
-                "--glob",
-                glob,
-                "--",
-                query,
-            ]
-        result = subprocess.run(
-            arguments,
-            cwd=workspace,
-            text=True,
-            capture_output=True,
-            check=False,
-            timeout=60,
+    def _verify_materialized_workspace(self, workspace: RevisionWorkspace) -> None:
+        if not workspace.path.is_dir():
+            raise WorkspaceError("revision workspace directory is missing")
+        top_level = _checked_git(
+            workspace.path,
+            ["rev-parse", "--show-toplevel"],
+            message="path is not a git worktree",
         )
-        if result.returncode not in {0, 1}:
-            raise WorkspaceError(result.stderr.strip() or "rg failed")
-        lines = result.stdout.splitlines()
-        return {
-            "query": query,
-            "matches": lines[:max_results],
-            "truncated": len(lines) > max_results,
-        }
-
-    def apply_patch(self, workspace_value: str, patch: str) -> dict[str, Any]:
-        if not patch.strip() or len(patch.encode("utf-8")) > 1024 * 1024:
-            raise WorkspaceError("patch must contain 1 byte to 1 MiB")
-        workspace = self.resolve_workspace(workspace_value)
-        check = _run_git(
-            workspace,
-            ["apply", "--check", "--whitespace=nowarn", "-"],
-            input_text=patch,
-        )
-        if check.returncode != 0:
-            raise WorkspaceError(check.stderr.strip() or "patch check failed")
-        applied = _run_git(
-            workspace,
-            ["apply", "--whitespace=nowarn", "-"],
-            input_text=patch,
-        )
-        if applied.returncode != 0:
-            raise WorkspaceError(applied.stderr.strip() or "patch apply failed")
-        return self.git_status(workspace_value)
-
-    def git_status(self, workspace_value: str) -> dict[str, Any]:
-        workspace = self.resolve_workspace(workspace_value)
-        status = _run_git(workspace, ["status", "--short", "--branch"])
-        if status.returncode != 0:
-            raise WorkspaceError(status.stderr.strip())
-        return {"workspace": str(workspace), "status": status.stdout.rstrip()}
-
-    def git_diff(self, workspace_value: str, *, staged: bool = False) -> dict[str, Any]:
-        workspace = self.resolve_workspace(workspace_value)
-        arguments = ["diff", "--no-ext-diff", "--stat"]
-        if staged:
-            arguments.append("--cached")
-        stat = _run_git(workspace, arguments)
-        diff_arguments = ["diff", "--no-ext-diff"]
-        if staged:
-            diff_arguments.append("--cached")
-        diff = _run_git(workspace, diff_arguments)
-        if stat.returncode != 0 or diff.returncode != 0:
-            raise WorkspaceError((stat.stderr or diff.stderr).strip())
-        output = diff.stdout
-        truncated = len(output) > 200_000
-        return {
-            "workspace": str(workspace),
-            "stat": stat.stdout.rstrip(),
-            "diff": output[:200_000],
-            "truncated": truncated,
-        }
-
-    def commit(self, workspace_value: str, message: str) -> dict[str, str]:
-        if not message.strip() or len(message) > 500:
-            raise WorkspaceError("commit message must contain 1-500 characters")
-        workspace = self.resolve_workspace(workspace_value)
-        add = _run_git(workspace, ["add", "--all"])
-        if add.returncode != 0:
-            raise WorkspaceError(add.stderr.strip())
-        commit = _run_git(workspace, ["commit", "-m", message])
-        if commit.returncode != 0:
-            raise WorkspaceError(commit.stderr.strip() or commit.stdout.strip())
-        revision = _run_git(workspace, ["rev-parse", "HEAD"])
-        return {"workspace": str(workspace), "commit": revision.stdout.strip()}
-
-    def push(self, workspace_value: str) -> dict[str, str]:
-        workspace = self.resolve_workspace(workspace_value)
-        branch_result = _run_git(workspace, ["branch", "--show-current"])
-        branch = branch_result.stdout.strip()
-        _validate_git_name(branch, "branch")
-        push = _run_git(workspace, ["push", "--set-upstream", "origin", branch])
-        if push.returncode != 0:
-            raise WorkspaceError(push.stderr.strip() or push.stdout.strip())
-        return {"workspace": str(workspace), "branch": branch, "remote": "origin"}
+        if Path(top_level).resolve() != workspace.path:
+            raise WorkspaceError("revision workspace must name its exact git root")
+        head = _checked_git(
+            workspace.path,
+            ["rev-parse", "HEAD^{commit}"],
+            message="revision workspace HEAD is unavailable",
+        ).lower()
+        if head != workspace.revision:
+            raise WorkspaceError(
+                f"revision workspace moved from {workspace.revision} to {head}"
+            )
+        git_pointer = workspace.path / ".git"
+        if git_pointer.is_symlink() or not git_pointer.is_file():
+            raise WorkspaceError("revision workspace .git pointer is not a regular file")
+        first_line = git_pointer.read_text(encoding="utf-8").splitlines()[0]
+        if not first_line.startswith("gitdir: "):
+            raise WorkspaceError("revision workspace .git pointer is malformed")
+        git_dir = Path(first_line.removeprefix("gitdir: ")).resolve()
+        common_worktrees = (self.repo_root / ".git" / "worktrees").resolve()
+        if not git_dir.is_relative_to(common_worktrees):
+            raise WorkspaceError("revision workspace git metadata is outside the repository")
