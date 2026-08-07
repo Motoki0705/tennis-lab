@@ -5,7 +5,7 @@
   "last_curated_at": "2026-08-07T00:06:06+09:00",
   "generated_at": "2026-08-07T00:06:06+09:00",
   "quota_mode": "historical_backfill",
-  "quota_note": "The 12 candidates were accepted on 2026-08-05 before the quota-hardening changes in PR #694 became the active ingestion contract. They are retained as a one-time historical migration; this exception must not be applied to later dates.",
+  "quota_note": "The 12 candidates were accepted on 2026-08-05 before the quota-hardening changes in PR #694 became the active ingestion contract. They are retained as a one-time historical migration; collector and topic counts preserve the pre-topic status snapshot, and this exception must not be applied to later dates.",
   "ingestion": {
     "accepted_candidates": 12,
     "daily_limit": 6,
