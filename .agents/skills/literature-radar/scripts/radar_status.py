@@ -122,6 +122,30 @@ def _quota_errors(
     return errors
 
 
+def _declared_quota_errors(
+    *,
+    name: str,
+    actual: object,
+    configured_limit: int,
+) -> list[str]:
+    if not isinstance(actual, dict):
+        return [f"{name} must be an object"]
+    accepted = actual.get("accepted")
+    if (
+        not isinstance(accepted, int)
+        or isinstance(accepted, bool)
+        or accepted < 0
+    ):
+        return [f"{name}.accepted must be a non-negative integer"]
+    return _quota_errors(
+        name=name,
+        actual=actual,
+        expected_accepted=accepted,
+        configured_limit=configured_limit,
+        mode="historical_backfill",
+    )
+
+
 def validate_status(
     path: Path,
     records: list[dict[str, Any]],
@@ -225,13 +249,6 @@ def validate_status(
                 )
             )
 
-    # Pre-hardening records did not require screening.topic. A documented
-    # historical backfill therefore cannot reconstruct topic counts from the
-    # canonical records. The status snapshot remains the migration evidence;
-    # current dates continue through the strict branch below.
-    if mode == "historical_backfill":
-        return errors
-
     topic_limit = int(settings["max_candidates_per_topic_per_day"])
     expected_topics = {
         str(topic)
@@ -241,21 +258,38 @@ def validate_status(
     topics = ingestion.get("topics")
     if not isinstance(topics, dict):
         errors.append(f"{path}: topics must be an object")
-    else:
-        if set(topics) != expected_topics:
-            errors.append(f"{path}: topic keys must be {sorted(expected_topics)}")
+        return errors
+    if set(topics) != expected_topics:
+        errors.append(f"{path}: topic keys must be {sorted(expected_topics)}")
+
+    # Pre-hardening records did not require screening.topic. A documented
+    # historical backfill cannot reconstruct topic counts from canonical
+    # records, but its declared snapshot must still use the configured keys,
+    # limits and remaining-count arithmetic.
+    if mode == "historical_backfill":
         for topic in sorted(expected_topics):
-            count = sum(topic in record_topics(record) for record in same_day)
             errors.extend(
                 f"{path}: {error}"
-                for error in _quota_errors(
+                for error in _declared_quota_errors(
                     name=f"topics.{topic}",
                     actual=topics.get(topic),
-                    expected_accepted=count,
                     configured_limit=topic_limit,
-                    mode=mode,
                 )
             )
+        return errors
+
+    for topic in sorted(expected_topics):
+        count = sum(topic in record_topics(record) for record in same_day)
+        errors.extend(
+            f"{path}: {error}"
+            for error in _quota_errors(
+                name=f"topics.{topic}",
+                actual=topics.get(topic),
+                expected_accepted=count,
+                configured_limit=topic_limit,
+                mode=mode,
+            )
+        )
     return errors
 
 
