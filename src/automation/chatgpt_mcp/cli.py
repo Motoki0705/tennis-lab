@@ -1,0 +1,278 @@
+"""Command-line lifecycle for the ChatGPT WSL MCP gateway."""
+
+from __future__ import annotations
+
+import argparse
+import getpass
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+from src.automation.chatgpt_mcp.secure_tunnel import SecureTunnelManager
+from src.automation.chatgpt_mcp.server import run_gateway
+from src.automation.chatgpt_mcp.settings import GatewaySettings
+from src.automation.chatgpt_mcp.tunnel import QuickTunnel
+
+
+def _state_dir() -> Path:
+    value = os.environ.get(
+        "TENNIS_MCP_STATE_DIR",
+        str(Path.home() / ".local/state/tennis-lab-chatgpt-mcp"),
+    )
+    path = Path(value).expanduser()
+    if not path.is_absolute():
+        raise ValueError("TENNIS_MCP_STATE_DIR must be absolute")
+    path.mkdir(mode=0o700, parents=True, exist_ok=True)
+    os.chmod(path, 0o700)
+    return path.resolve()
+
+
+def serve(public_base_url: str) -> None:
+    """Serve behind an already configured HTTPS reverse proxy."""
+
+    settings = GatewaySettings.from_env(public_base_url=public_base_url)
+    settings.ensure_state()
+    settings.public_url_path.write_text(settings.resource_url + "\n", encoding="utf-8")
+    os.chmod(settings.public_url_path, 0o600)
+    run_gateway(settings)
+
+
+def serve_public() -> None:
+    """Create a temporary public HTTPS origin and serve until interrupted."""
+
+    state_dir = _state_dir()
+    local_port = int(os.environ.get("TENNIS_MCP_PORT", "8765"))
+    cloudflared = Path(
+        os.environ.get(
+            "TENNIS_MCP_CLOUDFLARED",
+            "/home/kamimura/.local/bin/cloudflared",
+        )
+    ).expanduser()
+    tunnel = QuickTunnel(
+        cloudflared_path=cloudflared.resolve(),
+        local_port=local_port,
+        log_path=state_dir / "cloudflared.log",
+    )
+    try:
+        public_base_url = tunnel.start()
+        settings = GatewaySettings.from_env(public_base_url=public_base_url)
+        settings.ensure_state()
+        settings.public_url_path.write_text(
+            settings.resource_url + "\n", encoding="utf-8"
+        )
+        os.chmod(settings.public_url_path, 0o600)
+        print(f"ChatGPT MCP URL: {settings.resource_url}", flush=True)
+        run_gateway(settings)
+    finally:
+        tunnel.stop()
+
+
+def serve_private() -> None:
+    """Serve only on WSL loopback for the OpenAI Secure MCP Tunnel client."""
+
+    settings = GatewaySettings.from_env(require_public_base_url=False)
+    if settings.host != "127.0.0.1":
+        raise ValueError("serve-private requires TENNIS_MCP_HOST=127.0.0.1")
+    settings.ensure_state()
+    run_gateway(settings, authenticated=False)
+
+
+def _git_root() -> Path:
+    result = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=10,
+    )
+    if result.returncode != 0:
+        raise RuntimeError("install-user-service must run from the MCP git worktree")
+    return Path(result.stdout.strip()).resolve()
+
+
+def install_user_service(*, start: bool) -> Path:
+    """Install a user-level systemd unit without requiring sudo."""
+
+    source_root = _git_root()
+    repo_root = Path(
+        os.environ.get("TENNIS_MCP_REPO_ROOT", "/home/kamimura/projects/tennis-lab")
+    ).resolve()
+    state_dir = _state_dir()
+    service_dir = Path.home() / ".config/systemd/user"
+    service_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    service_path = service_dir / "tennis-lab-chatgpt-mcp.service"
+    unit = f"""[Unit]
+Description=Authenticated ChatGPT MCP gateway for tennis-lab WSL
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory={source_root}
+Environment=TENNIS_MCP_REPO_ROOT={repo_root}
+Environment=TENNIS_MCP_STATE_DIR={state_dir}
+ExecStart={sys.executable} -m src.automation.chatgpt_mcp serve-public
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target
+"""
+    service_path.write_text(unit, encoding="utf-8")
+    os.chmod(service_path, 0o600)
+    subprocess.run(["systemctl", "--user", "daemon-reload"], check=True, timeout=30)
+    if start:
+        subprocess.run(
+            [
+                "systemctl",
+                "--user",
+                "enable",
+                "--now",
+                "tennis-lab-chatgpt-mcp.service",
+            ],
+            check=True,
+            timeout=30,
+        )
+    return service_path
+
+
+def _secure_tunnel_manager() -> SecureTunnelManager:
+    settings = GatewaySettings.from_env(require_public_base_url=False)
+    return SecureTunnelManager(
+        settings,
+        source_root=_git_root(),
+        python_executable=Path(sys.executable),
+    )
+
+
+def _read_runtime_api_key(key_file: Path | None) -> str:
+    if key_file is not None:
+        resolved = key_file.expanduser().resolve()
+        if not resolved.is_file():
+            raise ValueError(f"runtime API key file does not exist: {resolved}")
+        return resolved.read_text(encoding="utf-8").strip()
+    if not sys.stdin.isatty():
+        raise ValueError(
+            "interactive input is unavailable; pass --runtime-key-file instead"
+        )
+    return getpass.getpass("OpenAI tunnel runtime API key (input hidden): ").strip()
+
+
+def configure_secure_tunnel(
+    *, tunnel_id: str, runtime_key_file: Path | None, start: bool
+) -> str:
+    """Persist a tunnel ID/key, install services, and optionally start them."""
+
+    manager = _secure_tunnel_manager()
+    runtime_api_key = _read_runtime_api_key(runtime_key_file)
+    profile_path = manager.configure(
+        tunnel_id=tunnel_id, runtime_api_key=runtime_api_key
+    )
+    manager.install_user_services()
+    if start:
+        manager.start()
+    return "\n".join(
+        [
+            f"Tunnel ID: {tunnel_id.strip()}",
+            f"Profile: {profile_path}",
+            "Connection: Tunnel",
+            "Authentication: None (access is controlled by the OpenAI tunnel)",
+            f"Services started: {'yes' if start else 'no'}",
+        ]
+    )
+
+
+def show_secure_connection() -> str:
+    """Return the stable identifier and ChatGPT plugin fields."""
+
+    manager = _secure_tunnel_manager()
+    tunnel_id_path = manager.settings.secure_tunnel_id_path
+    if not tunnel_id_path.is_file():
+        raise RuntimeError("secure tunnel has not been configured yet")
+    return "\n".join(
+        [
+            "Name: tennis-lab WSL",
+            "Description: Private code, CUDA, and training access to tennis-lab WSL",
+            "Connection: Tunnel",
+            f"Tunnel ID: {tunnel_id_path.read_text(encoding='utf-8').strip()}",
+            "Authentication: None",
+        ]
+    )
+
+
+def show_connection() -> str:
+    """Return the exact fields needed by the ChatGPT plugin form."""
+
+    state_dir = _state_dir()
+    url_path = state_dir / "public-url"
+    secret_path = state_dir / "owner-secret"
+    if not url_path.is_file() or not secret_path.is_file():
+        raise RuntimeError("gateway has not started yet")
+    return "\n".join(
+        [
+            "Name: tennis-lab WSL",
+            "Description: Authenticated code, CUDA, and training access to tennis-lab WSL",
+            f"Server URL: {url_path.read_text(encoding='utf-8').strip()}",
+            "Authentication: OAuth",
+            f"Owner secret: {secret_path.read_text(encoding='utf-8').strip()}",
+        ]
+    )
+
+
+def main() -> int:
+    """Dispatch gateway lifecycle subcommands."""
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    serve_parser = subparsers.add_parser("serve")
+    serve_parser.add_argument("--public-base-url", required=True)
+    subparsers.add_parser("serve-public")
+    subparsers.add_parser("serve-private")
+
+    install_parser = subparsers.add_parser("install-user-service")
+    install_parser.add_argument("--start", action="store_true")
+    subparsers.add_parser("show-connection")
+
+    secure_parser = subparsers.add_parser("configure-secure-tunnel")
+    secure_parser.add_argument("--tunnel-id", required=True)
+    secure_parser.add_argument("--runtime-key-file", type=Path)
+    secure_parser.add_argument("--start", action="store_true")
+    subparsers.add_parser("show-secure-connection")
+    subparsers.add_parser("doctor-secure-tunnel")
+
+    arguments = parser.parse_args()
+    if arguments.command == "serve":
+        serve(arguments.public_base_url)
+    elif arguments.command == "serve-public":
+        serve_public()
+    elif arguments.command == "serve-private":
+        serve_private()
+    elif arguments.command == "install-user-service":
+        path = install_user_service(start=arguments.start)
+        print(path)
+    elif arguments.command == "show-connection":
+        print(show_connection())
+    elif arguments.command == "configure-secure-tunnel":
+        print(
+            configure_secure_tunnel(
+                tunnel_id=arguments.tunnel_id,
+                runtime_key_file=arguments.runtime_key_file,
+                start=arguments.start,
+            )
+        )
+    elif arguments.command == "show-secure-connection":
+        print(show_secure_connection())
+    elif arguments.command == "doctor-secure-tunnel":
+        result = _secure_tunnel_manager().doctor()
+        if result.stdout:
+            print(result.stdout.rstrip())
+        if result.stderr:
+            print(result.stderr.rstrip(), file=sys.stderr)
+        return result.returncode
+    return 0
