@@ -130,10 +130,17 @@ Mutating commands invoke targeted artifact checks internally:
 
 Calling `artifact-check` manually provides earlier feedback but cannot bypass these checks.
 
-## Context and retry discipline
+## Context, communication, and retry discipline
 
 - Prefer deterministic inventory scripts over agents for mechanical scans.
-- Join a wave once with a long or event-driven wait; do not repeatedly poll unchanged state.
-- Keep raw output in child threads or `logs/`; parent handoffs contain status, changed files/evidence, exact command IDs, outcomes, and unresolved risks.
+- Every `spawn_agent` call uses `fork_turns = "none"` exactly. Numeric or inherited turns invalidate the child handoff; respawn it fresh. For Test Writers and Validators this is an independence failure, not a cosmetic deviation.
+- Supply child context through frozen artifacts, artifact paths, AC IDs, explicit ownership, and focused failure bundles. Never use parent-turn inheritance as an implicit context channel.
+- Every child assignment ends with the exact `Communication mode: terminal-only.` footer in `spawn-contracts.md`. Custom agent instructions enforce the same boundary.
+- Child agents do not stream commentary, milestones, percentage updates, or command-in-progress messages. Before their single terminal handoff, they may contact the parent only for missing authority, ownership collision, or an unresolvable in-scope blocker.
+- Do independent parent work before waiting. Then call `wait_agent` with `timeout_ms = 3_600_000` when supported, otherwise the maximum accepted timeout.
+- The timeout is an upper bound, not a polling interval. `wait_agent` may wake on any child communication. Treat only `FINAL_ANSWER` as completion; silently resume the long wait after any nonterminal message that is not an allowed escalation.
+- Do not pair waiting with repeated `list_agents`, short-timeout polling, or `send_message` requests for status.
+- Join each completed child once. Keep raw output in child threads or `logs/`; parent handoffs contain terminal status, changed files/evidence, exact command IDs, outcomes, and unresolved risks.
+- Aggregate user-visible status at phase boundaries instead of relaying each child event.
 - After Validator RETURN, start fresh bounded Explorer and Implementer sessions by default. The artifacts, not a long chat thread, carry state.
-- Retry prompts contain only affected AC IDs, the new failure bundle, authorized ownership, and artifact paths.
+- Retry prompts contain only affected AC IDs, the new failure bundle, authorized ownership, artifact paths, and the mandatory terminal-only footer.
