@@ -1,6 +1,8 @@
 # Spawn contracts
 
-Use `fork_turns = "none"` with custom agent types and a unique lowercase `task_name`. Parallelism is optional when the user explicitly requests one Implementer or sequential execution.
+Use `fork_turns = "none"` exactly with custom agent types and a unique lowercase `task_name`. Numeric values, inherited turn windows, `all`, and omission are noncompliant. This applies to initial work, retries, post-compaction work, packaging repairs, Test Writers, Validators, and bounded Validator child exploration. Pass required context through frozen artifacts, explicit paths, AC IDs, ownership, and focused failure bundles instead of inherited parent turns. Parallelism is optional when the user explicitly requests one Implementer or sequential execution.
+
+If any child was spawned with `fork_turns` other than `"none"`, do not accept its handoff or verdict. Stop or discard that child and respawn a fresh replacement with the same bounded assignment. This is especially mandatory for Test Writer and Validator independence.
 
 ## Mandatory assignment footer
 
@@ -39,7 +41,7 @@ Spawn only after production preflight PASS. It reads the frozen Issue, plan, `ch
 
 ## Validator
 
-Spawn only after final-seal PASS. Give it the frozen Issue, sealed candidate fingerprint, and validation artifact path—no plan, implementation, test narrative, prior validation, or expected verdict. It independently inspects the current revision and complete diff, writes one exact AC matrix, runs `artifact-check ... validation`, and owns the final PASS/RETURN.
+Spawn only after final-seal PASS. Give it the frozen Issue and sealed candidate identity, not prior narratives. The assignment may name the validation artifact path and canonical helper path, but it must not include plan, implementation, test narrative, prior validation, or an expected verdict. It independently inspects the current revision and complete diff, writes one exact AC matrix, runs `artifact-check ... validation`, and owns the final PASS/RETURN.
 
 Bounded child Explorers may collect direct evidence for explicit AC IDs, but they do not decide the verdict.
 
