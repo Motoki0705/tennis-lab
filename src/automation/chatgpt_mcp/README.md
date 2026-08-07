@@ -26,7 +26,7 @@ application, branch creation, commit, or push tools.
   connection to OpenAI.
 - Remote checkout is fixed to `origin` and requires an exact 40-character SHA.
 - Tool callers receive an opaque workspace ID rather than a filesystem path.
-- Every execution revalidates the registered SHA and tracked-clean source tree.
+- Every execution revalidates the registered SHA and completely clean source tree.
 - A source worktree is mounted read-only as `/source`.
 - Each job receives a fresh private copy at `/workspace`; changes cannot flow
   back into the source worktree or canonical checkout.
@@ -39,8 +39,9 @@ application, branch creation, commit, or push tools.
   concurrent containers.
 - All GPU work is serialized through `.training_queue`.
 - Runtime API keys and profiles are stored below the private state directory
-  with mode `0600`; raw commands are represented in durable metadata only by a
-  SHA-256 digest.
+  with mode `0600`; raw commands are absent from Docker metadata and represented in durable
+  metadata only by a SHA-256 digest; private command/spec files are deleted
+  after handoff.
 - Returned logs redact common OpenAI, GitHub, and bearer-token forms.
 
 The MCP host process still needs access to the Docker daemon and to the fixed

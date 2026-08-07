@@ -141,13 +141,14 @@ def test_install_services_keeps_secret_out_of_units_and_starts_both(
     assert "--profile-file" in tunnel_unit
     assert f"Requires={PRIVATE_SERVICE_NAME}" in tunnel_unit
     assert runtime_key not in private_unit + tunnel_unit
-    assert commands[0] == [
-        "systemd-analyze",
-        "--user",
-        "verify",
-        str(paths.private_service),
-        str(paths.tunnel_service),
-    ]
+    verify_command = commands[0]
+    assert verify_command[:3] == ["systemd-analyze", "--user", "verify"]
+    private_candidate = Path(verify_command[3])
+    tunnel_candidate = Path(verify_command[4])
+    assert private_candidate.name == PRIVATE_SERVICE_NAME
+    assert tunnel_candidate.name == TUNNEL_SERVICE_NAME
+    assert private_candidate.parent == tunnel_candidate.parent
+    assert private_candidate.parent != paths.private_service.parent
     assert commands[1] == ["systemctl", "--user", "daemon-reload"]
     assert commands[2] == [
         "systemctl",
@@ -168,7 +169,7 @@ def test_install_services_keeps_secret_out_of_units_and_starts_both(
     ]
 
 
-def test_install_services_rejects_invalid_systemd_units(
+def test_install_services_rejects_invalid_systemd_units_without_replacing_active_files(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     manager = _manager(tmp_path)
@@ -176,11 +177,21 @@ def test_install_services_rejects_invalid_systemd_units(
     manager.settings.secure_tunnel_profile_path.write_text(
         "config_version: 1\n", encoding="utf-8"
     )
+    manager.service_dir.mkdir(parents=True)
+    manager.private_service_path.write_text(
+        "old private unit\n", encoding="utf-8"
+    )
+    manager.tunnel_service_path.write_text(
+        "old tunnel unit\n", encoding="utf-8"
+    )
 
     def fake_run(
         command: list[str], **kwargs: object
     ) -> subprocess.CompletedProcess[str]:
         assert command[:3] == ["systemd-analyze", "--user", "verify"]
+        assert Path(command[3]).name == PRIVATE_SERVICE_NAME
+        assert Path(command[4]).name == TUNNEL_SERVICE_NAME
+        assert Path(command[3]).parent != manager.service_dir
         return subprocess.CompletedProcess(command, 1, "", "invalid unit")
 
     monkeypatch.setattr(
@@ -190,6 +201,12 @@ def test_install_services_rejects_invalid_systemd_units(
     with pytest.raises(SecureTunnelError, match="systemd unit verification failed"):
         manager.install_user_services()
 
+    assert manager.private_service_path.read_text(encoding="utf-8") == (
+        "old private unit\n"
+    )
+    assert manager.tunnel_service_path.read_text(encoding="utf-8") == (
+        "old tunnel unit\n"
+    )
 
 def test_start_rejects_service_that_did_not_become_active(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
