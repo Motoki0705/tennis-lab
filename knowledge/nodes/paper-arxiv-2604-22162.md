@@ -1,7 +1,7 @@
 ---
 id: paper-arxiv-2604-22162
 type: paper
-title: SAMIDARE: Advanced Tracking-by-Segmentation for Dense Scenarios
+title: "SAMIDARE: Advanced Tracking-by-Segmentation for Dense Scenarios"
 curator: chatgpt-schedule
 date: 2026-08-07
 status: reviewed
