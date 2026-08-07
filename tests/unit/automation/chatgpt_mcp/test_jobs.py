@@ -47,9 +47,6 @@ def _settings(tmp_path: Path) -> tuple[GatewaySettings, StubWorkspaces]:
     (repo / ".venv/bin").mkdir(parents=True)
     uv_root = tmp_path / "uv-python"
     uv_root.mkdir()
-    source = repo / ".chatgpt/revisions" / _WORKSPACE_ID
-    source.mkdir(parents=True)
-    (source / "example.py").write_text("print('ok')\n", encoding="utf-8")
     settings = GatewaySettings(
         repo_root=repo,
         state_dir=tmp_path / "state",
@@ -57,6 +54,9 @@ def _settings(tmp_path: Path) -> tuple[GatewaySettings, StubWorkspaces]:
         uv_python_root=uv_root,
     )
     settings.ensure_state()
+    source = settings.revision_workspace_dir / _WORKSPACE_ID
+    source.mkdir(parents=True)
+    (source / "example.py").write_text("print('ok')\n", encoding="utf-8")
     return settings, StubWorkspaces(source)
 
 
