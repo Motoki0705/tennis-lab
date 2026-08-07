@@ -49,17 +49,24 @@ def test_custom_agents_enforce_terminal_only_parent_communication() -> None:
             assert sentinel in instructions, filename
 
 
-def test_workflow_requires_terminal_only_spawn_and_event_driven_waiting() -> None:
+def test_workflow_requires_fresh_terminal_only_event_driven_delegation() -> None:
     skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
     spawn_contracts = (SKILL_DIR / "references/spawn-contracts.md").read_text(
         encoding="utf-8"
     )
     workflow = (SKILL_DIR / "references/workflow.md").read_text(encoding="utf-8")
 
+    assert 'Every `spawn_agent` call must set `fork_turns = "none"` exactly' in skill
+    assert "A Validator spawned with inherited parent turns is not independent" in skill
     assert "exact terminal-only footer" in skill
     assert "timeout_ms = 3_600_000" in skill
+
+    assert "Numeric values, inherited turn windows, `all`, and omission are noncompliant" in spawn_contracts
+    assert "do not accept its handoff or verdict" in spawn_contracts
     assert "Treat only `FINAL_ANSWER` as completion." in spawn_contracts
     assert "Do not use shorter waits as polling intervals" in spawn_contracts
+
+    assert 'Every `spawn_agent` call uses `fork_turns = "none"` exactly' in workflow
     assert "Do not pair waiting with repeated `list_agents`" in workflow
 
     for sentinel in TERMINAL_ONLY_SENTINELS:
