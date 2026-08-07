@@ -1,8 +1,9 @@
-"""Small SQLite persistence layer for OAuth and durable job metadata."""
+"""Small SQLite persistence layer for OAuth and durable execution metadata."""
 
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import time
 from pathlib import Path
@@ -14,18 +15,25 @@ _TABLES = {
     "authorization_codes",
     "access_tokens",
     "refresh_tokens",
+    "revision_workspaces",
     "jobs",
     "training_jobs",
 }
 
 
 class SqliteStore:
-    """Persist JSON records using hashed opaque identifiers as keys."""
+    """Persist JSON records using fixed tables and opaque record identifiers."""
 
     def __init__(self, path: Path) -> None:
         self.path = path
         self.path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        os.chmod(self.path.parent, 0o700)
         self._initialize()
+        os.chmod(self.path, 0o600)
+        for suffix in ("-wal", "-shm"):
+            sidecar = Path(f"{self.path}{suffix}")
+            if sidecar.exists():
+                os.chmod(sidecar, 0o600)
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.path, timeout=30.0)
