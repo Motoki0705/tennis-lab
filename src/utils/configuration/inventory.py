@@ -383,6 +383,7 @@ class AuditInventory:
 
 
 _CONFIGURATION_AUTHORITIES: Mapping[str, str] = {
+    "automation": "src.automation.chatgpt_mcp.settings.GatewaySettings",
     "ball_detection": "src.tasks.ball_detection.configuration.validate_training",
     "base": "src.tasks.base.configuration.TrainingRuntimeConfig",
     "blcs": "src.tasks.blcs.configuration.validate_training_boundary",
@@ -446,6 +447,7 @@ def migration_entrypoint_coverage(
 
 def _migration_domain(module: str) -> str:
     prefixes = (
+        ("src.automation.", "automation"),
         ("src.tasks.ball_detection.", "ball_detection"),
         ("src.tasks.court_detection.", "court_detection"),
         ("src.tasks.blcs.", "blcs"),
@@ -941,6 +943,10 @@ def _runtime_boundary(
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
+    "src.automation.chatgpt_mcp.cli": (
+        "automation.chatgpt_mcp",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.synthetic_data_generation.scripts.alignment.geometry_bridge": (
         "synthetic.geometry_bridge",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -1060,6 +1066,11 @@ def _non_hydra_boundary(
 
 
 _RUNTIME_BOUNDARIES = (
+    _non_hydra_boundary(
+        "src.automation.chatgpt_mcp.cli",
+        "main",
+        domain="automation",
+    ),
     _runtime_boundary(
         "synthetic_data_generation",
         "src.synthetic_data_generation.scripts.alignment.geometry_bridge",

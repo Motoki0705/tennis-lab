@@ -9,10 +9,41 @@ import subprocess
 import sys
 from pathlib import Path
 
+from src.automation.chatgpt_mcp.sandbox_exec import run_from_spec
 from src.automation.chatgpt_mcp.secure_tunnel import SecureTunnelManager
 from src.automation.chatgpt_mcp.server import run_gateway
 from src.automation.chatgpt_mcp.settings import GatewaySettings
 from src.automation.chatgpt_mcp.tunnel import QuickTunnel
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
+    RuntimePathRoots,
+)
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="automation.chatgpt_mcp",
+    fields=(
+        BoundaryPathField(
+            "repo_root",
+            PathRole.PROJECT,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+            allow_role_root=True,
+        ),
+        BoundaryPathField(
+            "state_dir",
+            PathRole.ARTIFACT,
+            PathDirection.OUTPUT,
+            PathKind.DIRECTORY,
+            allow_role_root=True,
+        ),
+    ),
+)
 
 
 def _state_dir() -> Path:
@@ -245,8 +276,32 @@ def main() -> int:
     secure_parser.add_argument("--start", action="store_true")
     subparsers.add_parser("show-secure-connection")
     subparsers.add_parser("doctor-secure-tunnel")
+    sandbox_parser = subparsers.add_parser("sandbox-exec", help=argparse.SUPPRESS)
+    sandbox_parser.add_argument("--spec", type=Path, required=True)
 
     arguments = parser.parse_args()
+    boundary_settings = GatewaySettings.from_env(
+        public_base_url=(
+            arguments.public_base_url if arguments.command == "serve" else None
+        ),
+        require_public_base_url=arguments.command == "serve",
+    )
+    roots = RuntimePathRoots(
+        project_root=boundary_settings.repo_root,
+        data_root=boundary_settings.repo_root,
+        checkpoint_root=boundary_settings.repo_root,
+        artifact_root=boundary_settings.state_dir,
+        output_root=boundary_settings.state_dir,
+        cache_root=boundary_settings.state_dir,
+        external_asset_root=boundary_settings.repo_root,
+    )
+    PATH_BOUNDARY.validate(
+        {
+            "repo_root": boundary_settings.repo_root,
+            "state_dir": boundary_settings.state_dir,
+        },
+        resolver=PathResolver(roots),
+    )
     if arguments.command == "serve":
         serve(arguments.public_base_url)
     elif arguments.command == "serve-public":
@@ -274,5 +329,8 @@ def main() -> int:
             print(result.stdout.rstrip())
         if result.stderr:
             print(result.stderr.rstrip(), file=sys.stderr)
-        return result.returncode
+        return 0 if result.returncode == 0 else 1
+    elif arguments.command == "sandbox-exec":
+        exit_code: int = run_from_spec(arguments.spec)
+        return exit_code
     return 0
