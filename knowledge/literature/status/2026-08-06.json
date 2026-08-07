@@ -4,6 +4,8 @@
   "initialized_at": null,
   "last_curated_at": "2026-08-07T00:06:06+09:00",
   "generated_at": "2026-08-07T00:06:06+09:00",
+  "quota_mode": "enforced",
+  "quota_note": null,
   "ingestion": {
     "accepted_candidates": 5,
     "daily_limit": 6,
