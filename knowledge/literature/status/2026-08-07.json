@@ -2,20 +2,22 @@
   "schema_version": 1,
   "date": "2026-08-07",
   "initialized_at": "2026-08-07T00:06:06+09:00",
-  "last_curated_at": "2026-08-07T00:32:45+09:00",
-  "generated_at": "2026-08-07T00:32:45+09:00",
+  "last_curated_at": "2026-08-07T12:53:11+09:00",
+  "generated_at": "2026-08-07T12:53:11+09:00",
+  "quota_mode": "enforced",
+  "quota_note": null,
   "ingestion": {
-    "accepted_candidates": 2,
+    "accepted_candidates": 3,
     "daily_limit": 6,
-    "open_candidates": 1,
+    "open_candidates": 0,
     "open_limit": 30,
     "collectors": {
       "geometry": {"accepted": 1, "limit": 2, "remaining": 1},
       "perception": {"accepted": 1, "limit": 2, "remaining": 1},
-      "systems": {"accepted": 0, "limit": 2, "remaining": 2}
+      "systems": {"accepted": 1, "limit": 2, "remaining": 1}
     },
     "topics": {
-      "avatar_rendering": {"accepted": 0, "limit": 1, "remaining": 1},
+      "avatar_rendering": {"accepted": 1, "limit": 1, "remaining": 0},
       "ball_3d": {"accepted": 1, "limit": 1, "remaining": 0},
       "ball_detection": {"accepted": 1, "limit": 1, "remaining": 0},
       "court_detection": {"accepted": 0, "limit": 1, "remaining": 1},
