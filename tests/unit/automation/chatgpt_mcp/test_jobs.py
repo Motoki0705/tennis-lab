@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import stat
 import subprocess
 from pathlib import Path
 
@@ -60,18 +61,22 @@ def _settings(tmp_path: Path) -> tuple[GatewaySettings, StubWorkspaces]:
     return settings, StubWorkspaces(source)
 
 
+def _spec(*, job_id: str = "job-0123456789abcdef", use_gpu: bool = False) -> SandboxSpec:
+    return SandboxSpec(
+        job_id=job_id,
+        command="python -m pytest --disable-warnings",
+        workspace_id=_WORKSPACE_ID,
+        expected_sha=_REVISION,
+        use_gpu=use_gpu,
+        timeout_seconds=60,
+    )
+
+
 def test_sandbox_mounts_only_read_only_source_and_private_job_copy(
     tmp_path: Path,
 ) -> None:
     settings, workspaces = _settings(tmp_path)
-    spec = SandboxSpec(
-        job_id="job-0123456789abcdef",
-        command="python -m pytest",
-        workspace_id=_WORKSPACE_ID,
-        expected_sha=_REVISION,
-        use_gpu=False,
-        timeout_seconds=60,
-    )
+    spec = _spec()
 
     command = DockerSandbox(settings, workspaces).command(spec, detached=True)
     joined = " ".join(command)
@@ -80,6 +85,7 @@ def test_sandbox_mounts_only_read_only_source_and_private_job_copy(
         for index, value in enumerate(command)
         if value == "--mount"
     ]
+    command_path = settings.sandbox_jobs_dir / spec.job_id / "command"
 
     assert "--network none" in joined
     assert "--read-only" in command
@@ -92,28 +98,41 @@ def test_sandbox_mounts_only_read_only_source_and_private_job_copy(
     assert any("dst=/source,readonly" in mount for mount in mounts)
     assert any("dst=/workspace" in mount and "readonly" not in mount for mount in mounts)
     assert any("dst=/source/.git,readonly" in mount for mount in mounts)
+    assert any("dst=/run/tennis-mcp-command,readonly" in mount for mount in mounts)
     assert not any(
         mount.startswith(f"type=bind,src={settings.repo_root},") for mount in mounts
     )
-    assert command[-1] == spec.command
+    assert spec.command not in joined
+    assert command_path.read_text(encoding="utf-8") == spec.command
+    assert stat.S_IMODE(command_path.stat().st_mode) == 0o600
+
+
+def test_started_container_does_not_retain_host_command_file(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    settings, workspaces = _settings(tmp_path)
+    sandbox = DockerSandbox(settings, workspaces)
+    spec = _spec()
+
+    monkeypatch.setattr(
+        "src.automation.chatgpt_mcp.jobs.subprocess.run",
+        lambda command, **kwargs: subprocess.CompletedProcess(command, 0, "container-id\n", ""),
+    )
+
+    assert sandbox.start(spec) == "container-id"
+    assert not (settings.sandbox_jobs_dir / spec.job_id / "command").exists()
 
 
 def test_gpu_flag_is_available_only_to_queue_specs(tmp_path: Path) -> None:
     settings, workspaces = _settings(tmp_path)
-    spec = SandboxSpec(
-        job_id="train-0123456789abcdef",
-        command="python -c 'import torch; print(torch.cuda.is_available())'",
-        workspace_id=_WORKSPACE_ID,
-        expected_sha=_REVISION,
-        use_gpu=True,
-        timeout_seconds=60,
-    )
+    spec = _spec(job_id="train-0123456789abcdef", use_gpu=True)
 
     command = DockerSandbox(settings, workspaces).command(spec, detached=False)
 
     assert "--gpus" in command
     assert command[command.index("--gpus") + 1] == "all"
     assert command[command.index("--network") + 1] == "none"
+    assert spec.command not in " ".join(command)
 
 
 def test_direct_commands_are_cpu_only_and_time_bounded(tmp_path: Path) -> None:
@@ -150,10 +169,11 @@ def test_training_queue_uses_generated_safe_metadata_and_isolated_bootstrap(
         return subprocess.CompletedProcess(command, 0, stdout, "")
 
     monkeypatch.setattr("src.automation.chatgpt_mcp.jobs.subprocess.run", fake_run)
+    user_command = "python -c 'print(1)'"
 
     result = manager.enqueue(
         name="private-training",
-        command="python -c 'print(1)'",
+        command=user_command,
         workspace_id=_WORKSPACE_ID,
         expected_sha=_REVISION,
         issue=716,
@@ -173,6 +193,7 @@ def test_training_queue_uses_generated_safe_metadata_and_isolated_bootstrap(
     assert " -I " in runner
     assert "src.automation.chatgpt_mcp.sandbox_exec" in runner
     assert "TENNIS_MCP_PUBLIC_BASE_URL" not in runner
+    assert user_command not in runner
     assert spec["workspace_id"] == _WORKSPACE_ID
     assert spec["expected_sha"] == _REVISION
     assert spec["use_gpu"] is True
