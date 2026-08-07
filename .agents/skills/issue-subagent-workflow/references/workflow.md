@@ -133,6 +133,8 @@ Calling `artifact-check` manually provides earlier feedback but cannot bypass th
 ## Context, communication, and retry discipline
 
 - Prefer deterministic inventory scripts over agents for mechanical scans.
+- Every `spawn_agent` call uses `fork_turns = "none"` exactly. Numeric or inherited turns invalidate the child handoff; respawn it fresh. For Test Writers and Validators this is an independence failure, not a cosmetic deviation.
+- Supply child context through frozen artifacts, artifact paths, AC IDs, explicit ownership, and focused failure bundles. Never use parent-turn inheritance as an implicit context channel.
 - Every child assignment ends with the exact `Communication mode: terminal-only.` footer in `spawn-contracts.md`. Custom agent instructions enforce the same boundary.
 - Child agents do not stream commentary, milestones, percentage updates, or command-in-progress messages. Before their single terminal handoff, they may contact the parent only for missing authority, ownership collision, or an unresolvable in-scope blocker.
 - Do independent parent work before waiting. Then call `wait_agent` with `timeout_ms = 3_600_000` when supported, otherwise the maximum accepted timeout.
