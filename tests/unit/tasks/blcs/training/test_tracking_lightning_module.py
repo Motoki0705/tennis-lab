@@ -8,24 +8,21 @@ from src.tasks.blcs.training.tracking_lightning_module import (
 )
 
 
-def test_migrate_legacy_group_embedding_checkpoint_keys() -> None:
-    weight = torch.randn(3, 2)
-    state_dict = {
-        "model.group_encoder.proj.layers.0.weight": weight,
-        "model.position_head.weight": torch.randn(3, 4),
+def _module_without_runtime() -> BLCSTrackingLightningModule:
+    return object.__new__(BLCSTrackingLightningModule)
+
+
+def test_checkpoint_rejects_deleted_group_encoder_contract() -> None:
+    checkpoint = {
+        "state_dict": {
+            "model.group_encoder.proj.layers.0.weight": torch.randn(3, 2),
+        }
     }
 
-    BLCSTrackingLightningModule._migrate_legacy_group_embedding_keys(state_dict)
-
-    assert "model.group_encoder.proj.layers.0.weight" not in state_dict
-    assert state_dict["model.group_embed.proj.layers.0.weight"] is weight
+    with pytest.raises(RuntimeError, match="deleted model.group_encoder"):
+        _module_without_runtime().on_load_checkpoint(checkpoint)
 
 
-def test_migrate_legacy_group_embedding_rejects_key_collisions() -> None:
-    state_dict = {
-        "model.group_encoder.proj.layers.0.weight": torch.randn(3, 2),
-        "model.group_embed.proj.layers.0.weight": torch.randn(3, 2),
-    }
-
-    with pytest.raises(RuntimeError, match="both legacy group_encoder"):
-        BLCSTrackingLightningModule._migrate_legacy_group_embedding_keys(state_dict)
+def test_checkpoint_requires_explicit_state_dict_mapping() -> None:
+    with pytest.raises(TypeError, match="state_dict mapping"):
+        _module_without_runtime().on_load_checkpoint({})

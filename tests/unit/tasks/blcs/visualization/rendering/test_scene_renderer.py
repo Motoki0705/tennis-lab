@@ -5,20 +5,12 @@ from __future__ import annotations
 import numpy as np
 
 from src.tasks.blcs.visualization.rendering.scene_renderer import (
+    bounce_frames_from_events,
     extract_ball_events,
     extract_ball_track_events,
-    resolve_bounce_frames,
     split_ball_tracks,
 )
 from src.utils.rendering.ball_renderer import BallEventType
-
-
-def _bouncy_trajectory(num_frames: int = 20) -> np.ndarray:
-    """Trajectory with a clear detectable ground bounce at frame 10."""
-    positions: np.ndarray = np.zeros((num_frames, 3), dtype=np.float32)
-    positions[:, 0] = np.linspace(-2.0, 2.0, num_frames)
-    positions[:, 2] = np.abs(np.linspace(-1.0, 1.0, num_frames))
-    return positions
 
 
 class TestExtractBallEvents:
@@ -60,34 +52,25 @@ class TestExtractBallEvents:
         assert extract_ball_events({}) == []
 
 
-class TestResolveBounceFrames:
+class TestBounceFramesFromEvents:
     def test_prefers_event_metadata_over_detection(self) -> None:
-        positions = _bouncy_trajectory()
         events = extract_ball_events(
             {"shots": [{"shot_index": 0, "t_start": 0, "t_bounce1": 3}]}
         )
 
-        frames = resolve_bounce_frames(positions, events)
+        frames = bounce_frames_from_events(events)
 
         # Only the metadata bounce is reported, never the detected one too.
         assert frames.tolist() == [3]
 
-    def test_falls_back_to_detection_without_events(self) -> None:
-        positions = _bouncy_trajectory()
-
-        frames = resolve_bounce_frames(positions, None)
-
-        assert frames.tolist() == [10]
-
-    def test_falls_back_when_events_carry_no_bounces(self) -> None:
-        positions = _bouncy_trajectory()
+    def test_events_without_bounces_remain_empty(self) -> None:
         events = extract_ball_events(
             {"shots": [{"shot_index": 0, "t_start": 0, "t_net": 4}]}
         )
 
-        frames = resolve_bounce_frames(positions, events)
+        frames = bounce_frames_from_events(events)
 
-        assert frames.tolist() == [10]
+        assert frames.tolist() == []
 
 
 class TestMultiBallSceneHelpers:

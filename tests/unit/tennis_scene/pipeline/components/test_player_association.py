@@ -8,12 +8,12 @@ from pathlib import Path
 import numpy as np
 
 from src.tennis_scene.pipeline.components import player_association as module_under_test
-from src.tennis_scene.pipeline.components.gvhmr import GVHMRResult
 from src.tennis_scene.pipeline.components.player_association import (
     PlayerAssociationModule,
     PlayerAssociationResult,
     PlayerAssociationSegment,
 )
+from src.tennis_scene.pipeline.model_io.gvhmr import GVHMRResult
 from src.utils.video import VideoInfo
 from tests.unit.tennis_scene.pipeline.config_factories import (
     make_player_association_config,

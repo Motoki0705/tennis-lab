@@ -148,7 +148,7 @@ def compute_bone_lengths(
     b_idx = [e[1] for e in edges]
 
     bone_vec = pose[..., a_idx, :] - pose[..., b_idx, :]
-    return bone_vec.norm(dim=-1).clamp_min(eps)
+    return torch.clamp_min(torch.linalg.vector_norm(bone_vec, dim=-1), eps)
 
 
 __all__ = [

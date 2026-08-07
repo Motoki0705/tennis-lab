@@ -11,6 +11,7 @@ from typing import ClassVar, TypeAlias, cast
 
 from omegaconf import DictConfig, OmegaConf
 
+import src.tasks.plcs.configuration_contracts as configuration_contracts
 from src.tasks.base.configuration import (
     ChunkDataConfig,
     SceneVisualizationConfig,
@@ -30,11 +31,10 @@ from src.utils.configuration import (
     MissingConfigurationKeyError,
     PathResolver,
     PathRole,
-    RuntimePathRoots,
     SemanticConfigurationError,
     UnknownConfigurationKeyError,
 )
-from src.utils.device import resolve_device
+from src.utils.device import DeviceSelectionError, resolve_device
 from src.utils.hydra import register_boundary_validator
 from src.utils.paths import PROJECT_ROOT
 from src.utils.rendering.camera_view import CameraController
@@ -43,19 +43,6 @@ from src.utils.schema.player import NUM_HUMAN_KP
 PLCSValue: TypeAlias = (
     str | int | float | bool | None | tuple[object, ...] | Mapping[str, object]
 )
-
-_ROOT_KEYS = frozenset(
-    {
-        "project_root",
-        "data_root",
-        "checkpoint_root",
-        "artifact_root",
-        "output_root",
-        "cache_root",
-        "external_asset_root",
-    }
-)
-
 
 def _plain(value: object, *, path: str) -> Mapping[str, object]:
     if isinstance(value, DictConfig):
@@ -182,37 +169,12 @@ def _resolved_device(value: object, *, path: str, nullable: bool = False) -> str
     if not requested.strip():
         raise SemanticConfigurationError(f"{path} must not be empty.")
     try:
-        device = resolve_device(
-            requested,
-            allow_fallback=requested == "auto",
-        )
-    except (RuntimeError, ValueError) as error:
+        device = resolve_device(requested)
+    except DeviceSelectionError as error:
         raise SemanticConfigurationError(
             f"{path} is not an available device: {requested!r}."
         ) from error
     return str(device)
-
-
-@dataclass(frozen=True, slots=True)
-class PLCSPathConfig:
-    """Seven shared runtime roots for PLCS boundaries."""
-
-    resolver: PathResolver
-
-    @classmethod
-    def from_config(cls, value: object) -> PLCSPathConfig:
-        root = _plain(value, path="configuration")
-        paths = _exact(
-            require_config_mapping(root, "paths", path="configuration"),
-            path="paths",
-            required=_ROOT_KEYS,
-            allowed=_ROOT_KEYS,
-        )
-        roots = RuntimePathRoots.from_mapping(
-            {key: paths[key] for key in _ROOT_KEYS}, repository_root=PROJECT_ROOT
-        )
-        resolver = PathResolver(roots)
-        return cls(resolver=resolver)
 
 
 _MODEL_COMMON = {
@@ -635,7 +597,8 @@ class PLCSDataConfig:
             allowed.update({"mode", "num_court_kp"})
             if model.input_profile == "multiview":
                 allowed.add("min_cameras")
-            if model.input_profile == "frame":
+            configured_mode = _string(initial, "mode", path="data")
+            if model.input_profile == "frame" and configured_mode == "frame":
                 allowed.discard("seq_stride")
             else:
                 allowed.add("seq_stride")
@@ -785,7 +748,7 @@ class PLCSTrainingConfig:
     """Complete typed PLCS training boundary."""
 
     shared: TrainingRuntimeConfig
-    paths: PLCSPathConfig
+    paths: configuration_contracts.PLCSPathConfig
     model: PLCSModelConfig
     data: PLCSDataConfig
     tracking_metrics: TrackingMetricConfig | None
@@ -828,7 +791,7 @@ class PLCSTrainingConfig:
                 "simulation",
             },
         )
-        paths = PLCSPathConfig.from_config(value)
+        paths = configuration_contracts.PLCSPathConfig.from_config(value)
         model = PLCSModelConfig.from_mapping(
             require_config_mapping(root, "model", path="configuration")
         )
@@ -922,13 +885,10 @@ class PLCSTrainingConfig:
             _string(external_assets, "smplh_model_path", path="external_assets"),
         )
         if data.backend == "chunked":
-            from src.tasks.plcs.generate_dataset.config import (
-                resolve_generation_paths,
-                validate_generation_components,
+            generation_components = (
+                configuration_contracts.PLCSGenerationComponents.from_config(root)
             )
-
-            generation_mode = validate_generation_components(root)
-            resolve_generation_paths(value)
+            generation_mode = generation_components.mode
             if model.name == "plcs_track_query":
                 if generation_mode != "multi_object":
                     raise SemanticConfigurationError(
@@ -1158,7 +1118,7 @@ def _validate_visualization_boundary(config: DictConfig) -> None:
         required={"visualization", "run", "paths"},
         allowed={"visualization", "run", "paths"},
     )
-    resolver = PLCSPathConfig.from_config(config).resolver
+    resolver = configuration_contracts.PLCSPathConfig.from_config(config).resolver
     visualization_fields = {
         "mode",
         "scene_path",
@@ -1225,7 +1185,7 @@ def _validate_script_boundary(
         required=required_sections,
         allowed=required_sections,
     )
-    resolver = PLCSPathConfig.from_config(config).resolver
+    resolver = configuration_contracts.PLCSPathConfig.from_config(config).resolver
     if "data" in root:
         data_fields = {
             "backend",
@@ -1614,7 +1574,7 @@ class PLCSPreviewRuntimeConfig:
                 }
             },
         )
-        resolver = PLCSPathConfig.from_config(config).resolver
+        resolver = configuration_contracts.PLCSPathConfig.from_config(config).resolver
         return cls(
             resolver=resolver,
             scene_dir=resolver.resolve(PathRole.DATA, str(config.data.scene_dir)),
@@ -1653,7 +1613,7 @@ class PLCSAnalysisRuntimeConfig:
                 "run": {"output_dir", "seed"},
             },
         )
-        resolver = PLCSPathConfig.from_config(config).resolver
+        resolver = configuration_contracts.PLCSPathConfig.from_config(config).resolver
         output_dir = resolver.resolve(cls.OUTPUT_ROLE, str(config.run.output_dir))
         return cls(
             resolver=resolver,
@@ -1693,7 +1653,7 @@ class PLCSAnalysisRuntimeConfig:
                 "plots": {"enabled", "dpi"},
             },
         )
-        resolver = PLCSPathConfig.from_config(config).resolver
+        resolver = configuration_contracts.PLCSPathConfig.from_config(config).resolver
         return cls(
             resolver=resolver,
             output_dir=resolver.resolve(cls.OUTPUT_ROLE, str(config.run.output_dir)),
@@ -1732,7 +1692,7 @@ class PLCSAnalysisRuntimeConfig:
                 "run": {"checkpoint", "hparams", "output_dir", "seed"},
             },
         )
-        resolver = PLCSPathConfig.from_config(config).resolver
+        resolver = configuration_contracts.PLCSPathConfig.from_config(config).resolver
         output_relative = str(config.run.output_dir)
         plot_filename = config.analysis.plot_filename
         loss_config = config.analysis.loss_config
@@ -1812,7 +1772,7 @@ class PLCSAnalysisRuntimeConfig:
                 },
             },
         )
-        resolver = PLCSPathConfig.from_config(config).resolver
+        resolver = configuration_contracts.PLCSPathConfig.from_config(config).resolver
         output_relative = str(config.run.output_dir)
         scene_relative = str(config.run.scene_dir)
         return cls(
@@ -1898,7 +1858,6 @@ __all__ = [
     "PLCSAnalysisRuntimeConfig",
     "PLCSDataConfig",
     "PLCSModelConfig",
-    "PLCSPathConfig",
     "PLCSPreviewRuntimeConfig",
     "PLCSTrainingConfig",
     "validate_augmentation",

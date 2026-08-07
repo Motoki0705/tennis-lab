@@ -27,7 +27,10 @@ class _TinyAttention(nn.Module):
         self.norm = nn.LayerNorm(dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.proj(self.qkv(self.norm(x))[..., : self.proj.in_features])
+        return cast(
+            torch.Tensor,
+            self.proj(self.qkv(self.norm(x))[..., : self.proj.in_features]),
+        )
 
 
 class _TinyBackbone(nn.Module):
@@ -143,8 +146,11 @@ class TestLoRALinear:
 
     def test_rejects_non_linear(self) -> None:
         with pytest.raises(TypeError, match="nn.Linear"):
-            LoRALinear(  # type: ignore[arg-type]
-                nn.Conv2d(3, 3, 1), rank=2, alpha=4.0, dropout=0.0
+            LoRALinear(
+                cast(nn.Linear, nn.Conv2d(3, 3, 1)),
+                rank=2,
+                alpha=4.0,
+                dropout=0.0,
             )
 
 

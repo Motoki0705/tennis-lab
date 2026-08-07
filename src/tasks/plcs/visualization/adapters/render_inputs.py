@@ -15,8 +15,9 @@ from typing import Any
 import numpy as np
 import torch
 
-from src.tasks.plcs.utils.pose_geometry import world_pose_to_canonical_pose
+from src.tasks.plcs.model_io import PLCSDecodedPrediction
 from src.tasks.plcs.visualization.contracts import PoseRenderScene
+from src.utils.geometry.court_pose import world_pose_to_canonical_pose
 from src.utils.tensor_utils import to_numpy
 
 
@@ -40,7 +41,7 @@ def _ensure_time_dim(arr: np.ndarray, ndim_without_time: int) -> np.ndarray:
 
 def batch_to_pose_render_scenes(
     batch: dict[str, Any],
-    output: dict[str, Any],
+    output: PLCSDecodedPrediction,
     *,
     sample_idx: int = 0,
 ) -> tuple[PoseRenderScene, PoseRenderScene]:
@@ -103,15 +104,15 @@ def batch_to_pose_render_scenes(
     )
 
     # ---- Pred --------------------------------------------------------------
-    pred_pos_raw = _to_numpy(output["position"])[sample_idx]  # ([T], 3)
-    pred_rot_raw = _to_numpy(output["rotation"])[sample_idx]  # ([T], 2)
+    pred_pos_raw = _to_numpy(output.position)[sample_idx]  # ([T], 3)
+    pred_rot_raw = _to_numpy(output.rotation)[sample_idx]  # ([T], 2)
 
     pred_pos = _ensure_time_dim(pred_pos_raw, ndim_without_time=1)  # (T, 3)
     pred_rot = _ensure_time_dim(pred_rot_raw, ndim_without_time=1)  # (T, 2)
     T_pred = pred_pos.shape[0]
 
     pred_canonical: np.ndarray | None = None
-    canonical_pose_out = output.get("canonical_pose")
+    canonical_pose_out = output.canonical_pose
     if canonical_pose_out is not None:
         cp = _to_numpy(canonical_pose_out)[sample_idx]  # ([T], J, 3)
         pred_canonical = _ensure_time_dim(cp, ndim_without_time=2)  # (T, J, 3)

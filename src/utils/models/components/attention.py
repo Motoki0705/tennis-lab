@@ -9,66 +9,12 @@ from torch import Tensor, nn
 from src.utils.models.components.rope import apply_rotary_emb
 
 
-def _normalize_attn_mask(
-    attn_mask: torch.Tensor,
-    *,
-    q_len: int,
-    k_len: int,
-    device: torch.device,
-    dtype: torch.dtype,
-) -> torch.Tensor:
-    """
-    Normalizes a user-provided mask into a float additive mask broadcastable to (B, H, q_len, k_len).
-
-    Accepts:
-      - (q_len, k_len)
-      - (B, q_len, k_len)
-      - (B, 1, q_len, k_len)
-      - (B, H, q_len, k_len)
-
-    For bool masks: SDPA semantics are used (True=KEEP, False=MASK).
-    """
-    if attn_mask.device != device:
-        attn_mask = attn_mask.to(device)
-
-    if attn_mask.dtype == torch.bool:
-        # SDPA expects True=KEEP; convert to additive float.
-        keep = attn_mask
-        add = torch.zeros_like(keep, dtype=dtype)
-        add = add.masked_fill(~keep, torch.finfo(dtype).min)
-        attn_mask = add
-    else:
-        attn_mask = attn_mask.to(dtype)
-
-    if attn_mask.dim() == 2:
-        if attn_mask.shape != (q_len, k_len):
-            raise ValueError(
-                f"attn_mask shape must be {(q_len, k_len)}, got {tuple(attn_mask.shape)}"
-            )
-        attn_mask = attn_mask[None, None, :, :]  # (1,1,q,k)
-    elif attn_mask.dim() == 3:
-        if attn_mask.shape[1:] != (q_len, k_len):
-            raise ValueError(
-                f"attn_mask shape must be (B,{q_len},{k_len}), got {tuple(attn_mask.shape)}"
-            )
-        attn_mask = attn_mask[:, None, :, :]  # (B,1,q,k)
-    elif attn_mask.dim() == 4:
-        if attn_mask.shape[-2:] != (q_len, k_len):
-            raise ValueError(
-                f"attn_mask last dims must be ({q_len},{k_len}), got {tuple(attn_mask.shape)}"
-            )
-        # keep as-is; should be broadcastable to (B,H,q,k)
-    else:
-        raise ValueError(f"Unsupported attn_mask rank: {attn_mask.dim()}")
-
-    return attn_mask
-
-
 class MultiHeadSelfAttention(nn.Module):
     """
     Pure PyTorch Multi-Head Self-Attention using SDPA.
 
-    Supports optional RoPE (freqs_cis) applied to first `rope_dim` of head_dim.
+    Applies boundary-prepared RoPE frequencies to the first ``rope_dim`` of
+    ``head_dim`` and consumes a boundary-prepared boolean keep-mask.
 
     Args:
         dim: model dimension
@@ -89,8 +35,8 @@ class MultiHeadSelfAttention(nn.Module):
         bias: bool,
     ) -> None:
         super().__init__()
-        if rope_dim % 2 != 0:
-            raise ValueError(f"rope_dim must be even, got {rope_dim}")
+        if rope_dim <= 0 or rope_dim % 2 != 0:
+            raise ValueError(f"rope_dim must be positive and even, got {rope_dim}")
         if rope_dim > head_dim:
             raise ValueError(f"rope_dim={rope_dim} cannot exceed head_dim={head_dim}")
 
@@ -114,12 +60,10 @@ class MultiHeadSelfAttention(nn.Module):
     def _apply_rope(
         self, q: torch.Tensor, k: torch.Tensor, freqs_cis: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        if self.rope_dim == 0:
-            return q, k
         q_pe, q_rest = q[..., : self.rope_dim], q[..., self.rope_dim :]
         k_pe, k_rest = k[..., : self.rope_dim], k[..., self.rope_dim :]
-        q_pe = apply_rotary_emb(q_pe, freqs_cis, interleaved=True)
-        k_pe = apply_rotary_emb(k_pe, freqs_cis, interleaved=True)
+        q_pe = apply_rotary_emb(q_pe, freqs_cis)
+        k_pe = apply_rotary_emb(k_pe, freqs_cis)
         q = torch.cat([q_pe, q_rest], dim=-1)
         k = torch.cat([k_pe, k_rest], dim=-1)
         return q, k
@@ -128,15 +72,14 @@ class MultiHeadSelfAttention(nn.Module):
         self,
         x: torch.Tensor,
         *,
-        freqs_cis: torch.Tensor | None = None,
-        attn_mask: torch.Tensor | None = None,
+        freqs_cis: torch.Tensor,
+        attn_mask: torch.Tensor,
     ) -> torch.Tensor:
         """
         Args:
             x: (B, T, dim)
-            freqs_cis: complex cis frequencies for RoPE. Supports `(T, rope_dim//2)`
-                or batched `(B, T, rope_dim//2)`.
-            attn_mask: optional user mask; see module docstring
+            freqs_cis: complex cis frequencies with a singleton head axis.
+            attn_mask: prepared ``(B, T, T)`` boolean keep-mask.
 
         Returns:
             (B, T, dim)
@@ -145,32 +88,18 @@ class MultiHeadSelfAttention(nn.Module):
         qkv = self.wqkv(x)
         q, k, v = self._shape_qkv(qkv)
 
-        if freqs_cis is not None:
-            q, k = self._apply_rope(q, k, freqs_cis)
-
-        k_len = q_len
+        q, k = self._apply_rope(q, k, freqs_cis)
 
         # SDPA expects (B, H, L, D)
         q_ = q.transpose(1, 2)  # (B, H, q_len, D)
         k_ = k.transpose(1, 2)  # (B, H, k_len, D)
         v_ = v.transpose(1, 2)  # (B, H, k_len, D)
 
-        sdpa_mask: torch.Tensor | None = None
-
-        if attn_mask is not None:
-            sdpa_mask = _normalize_attn_mask(
-                attn_mask,
-                q_len=q_len,
-                k_len=k_len,
-                device=x.device,
-                dtype=x.dtype,
-            )
-
         out = F.scaled_dot_product_attention(
             q_,
             k_,
             v_,
-            attn_mask=sdpa_mask,
+            attn_mask=attn_mask[:, None, :, :],
             dropout_p=self.attn_dropout if self.training else 0.0,
             is_causal=False,
         )
@@ -211,14 +140,15 @@ class GroupedQuerySelfAttention(nn.Module):
             raise ValueError(
                 f"n_heads={n_heads} must be divisible by n_kv_heads={n_kv_heads}"
             )
-        if rope_dim % 2 != 0:
-            raise ValueError(f"rope_dim must be even, got {rope_dim}")
+        if rope_dim <= 0 or rope_dim % 2 != 0:
+            raise ValueError(f"rope_dim must be positive and even, got {rope_dim}")
         if rope_dim > head_dim:
             raise ValueError(f"rope_dim={rope_dim} cannot exceed head_dim={head_dim}")
 
         self.dim = int(dim)
         self.n_heads = int(n_heads)
         self.n_kv_heads = int(n_kv_heads)
+        self.enable_gqa = self.n_kv_heads != self.n_heads
         self.head_dim = int(head_dim)
         self.rope_dim = int(rope_dim)
         self.attn_dropout = float(attn_dropout)
@@ -242,12 +172,10 @@ class GroupedQuerySelfAttention(nn.Module):
         key: torch.Tensor,
         freqs_cis: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        if self.rope_dim == 0:
-            return query, key
         query_pe, query_rest = query[..., : self.rope_dim], query[..., self.rope_dim :]
         key_pe, key_rest = key[..., : self.rope_dim], key[..., self.rope_dim :]
-        query_pe = apply_rotary_emb(query_pe, freqs_cis, interleaved=True)
-        key_pe = apply_rotary_emb(key_pe, freqs_cis, interleaved=True)
+        query_pe = apply_rotary_emb(query_pe, freqs_cis)
+        key_pe = apply_rotary_emb(key_pe, freqs_cis)
         query = torch.cat([query_pe, query_rest], dim=-1)
         key = torch.cat([key_pe, key_rest], dim=-1)
         return query, key
@@ -256,15 +184,14 @@ class GroupedQuerySelfAttention(nn.Module):
         self,
         x: torch.Tensor,
         *,
-        freqs_cis: torch.Tensor | None = None,
-        attn_mask: torch.Tensor | None = None,
+        freqs_cis: torch.Tensor,
+        attn_mask: torch.Tensor,
     ) -> torch.Tensor:
         """
         Args:
             x: (B, T, dim)
-            freqs_cis: complex cis frequencies for RoPE. Supports `(T, rope_dim//2)`
-                or batched `(B, T, rope_dim//2)`.
-            attn_mask: optional user mask; see module docstring
+            freqs_cis: complex cis frequencies with a singleton head axis.
+            attn_mask: prepared ``(B, T, T)`` boolean keep-mask.
 
         Returns:
             (B, T, dim)
@@ -274,32 +201,20 @@ class GroupedQuerySelfAttention(nn.Module):
         key = self._shape_kv(self.wk(x))
         value = self._shape_kv(self.wv(x))
 
-        if freqs_cis is not None:
-            query, key = self._apply_rope(query, key, freqs_cis)
+        query, key = self._apply_rope(query, key, freqs_cis)
 
-        k_len = q_len
         query = query.transpose(1, 2)
         key = key.transpose(1, 2)
         value = value.transpose(1, 2)
-
-        sdpa_mask: torch.Tensor | None = None
-        if attn_mask is not None:
-            sdpa_mask = _normalize_attn_mask(
-                attn_mask,
-                q_len=q_len,
-                k_len=k_len,
-                device=x.device,
-                dtype=x.dtype,
-            )
 
         out = F.scaled_dot_product_attention(
             query,
             key,
             value,
-            attn_mask=sdpa_mask,
+            attn_mask=attn_mask[:, None, :, :],
             dropout_p=self.attn_dropout if self.training else 0.0,
             is_causal=False,
-            enable_gqa=self.n_kv_heads != self.n_heads,
+            enable_gqa=self.enable_gqa,
         )
         out = (
             out.transpose(1, 2)
@@ -313,7 +228,8 @@ class MultiHeadCrossAttention(nn.Module):
     """
     Pure PyTorch Multi-Head Cross-Attention using SDPA.
 
-    Supports optional 1D RoPE for query and key streams independently.
+    Consumes boundary-prepared 1D RoPE frequencies and keep-masks for the query
+    and key streams.
     """
 
     def __init__(
@@ -327,8 +243,8 @@ class MultiHeadCrossAttention(nn.Module):
         bias: bool,
     ) -> None:
         super().__init__()
-        if rope_dim % 2 != 0:
-            raise ValueError(f"rope_dim must be even, got {rope_dim}")
+        if rope_dim <= 0 or rope_dim % 2 != 0:
+            raise ValueError(f"rope_dim must be positive and even, got {rope_dim}")
         if rope_dim > head_dim:
             raise ValueError(f"rope_dim={rope_dim} cannot exceed head_dim={head_dim}")
 
@@ -350,27 +266,10 @@ class MultiHeadCrossAttention(nn.Module):
     def _apply_rope(
         self,
         x: torch.Tensor,
-        freqs_cis: torch.Tensor | None,
+        freqs_cis: torch.Tensor,
     ) -> torch.Tensor:
-        if freqs_cis is None or self.rope_dim == 0:
-            return x
-        if freqs_cis.ndim == 2:
-            if freqs_cis.size(0) != x.size(1):
-                raise ValueError(
-                    f"freqs_cis length mismatch: freqs_cis.T={freqs_cis.size(0)} vs x.T={x.size(1)}"
-                )
-        elif freqs_cis.ndim == 3:
-            if freqs_cis.shape[:2] != x.shape[:2]:
-                raise ValueError(
-                    "freqs_cis batch/length mismatch: "
-                    f"freqs={tuple(freqs_cis.shape[:2])} vs x={tuple(x.shape[:2])}"
-                )
-        else:
-            raise ValueError(
-                f"freqs_cis must have rank 2 or 3, got shape {tuple(freqs_cis.shape)}"
-            )
         x_pe, x_rest = x[..., : self.rope_dim], x[..., self.rope_dim :]
-        x_pe = apply_rotary_emb(x_pe, freqs_cis, interleaved=True)
+        x_pe = apply_rotary_emb(x_pe, freqs_cis)
         return torch.cat([x_pe, x_rest], dim=-1)
 
     def forward(
@@ -378,19 +277,17 @@ class MultiHeadCrossAttention(nn.Module):
         q_in: torch.Tensor,
         kv_in: torch.Tensor,
         *,
-        freqs_q_cis: torch.Tensor | None = None,
-        freqs_k_cis: torch.Tensor | None = None,
-        attn_mask: torch.Tensor | None = None,
+        freqs_q_cis: torch.Tensor,
+        freqs_k_cis: torch.Tensor,
+        attn_mask: torch.Tensor,
     ) -> torch.Tensor:
         """
         Args:
             q_in: query tokens (B, Q, D)
             kv_in: key/value tokens (B, K, D)
-            freqs_q_cis: complex cis frequencies for query RoPE. Supports
-                `(Q, rope_dim//2)` or batched `(B, Q, rope_dim//2)`.
-            freqs_k_cis: complex cis frequencies for key RoPE. Supports
-                `(K, rope_dim//2)` or batched `(B, K, rope_dim//2)`.
-            attn_mask: optional mask broadcastable to (B, H, Q, K)
+            freqs_q_cis: prepared complex query frequencies.
+            freqs_k_cis: prepared complex key frequencies.
+            attn_mask: prepared ``(B, Q, K)`` boolean keep-mask.
 
         Returns:
             (B, Q, D)
@@ -409,21 +306,11 @@ class MultiHeadCrossAttention(nn.Module):
         k_ = k.transpose(1, 2)  # (B, H, K, D)
         v_ = v.transpose(1, 2)  # (B, H, K, D)
 
-        sdpa_mask: torch.Tensor | None = None
-        if attn_mask is not None:
-            sdpa_mask = _normalize_attn_mask(
-                attn_mask,
-                q_len=q_len,
-                k_len=k_len,
-                device=q_in.device,
-                dtype=q_in.dtype,
-            )
-
         out = F.scaled_dot_product_attention(
             q_,
             k_,
             v_,
-            attn_mask=sdpa_mask,
+            attn_mask=attn_mask[:, None, :, :],
             dropout_p=self.attn_dropout if self.training else 0.0,
             is_causal=False,
         )

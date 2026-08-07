@@ -13,7 +13,7 @@ gradients over the group and then steps once.
 from __future__ import annotations
 
 import bisect
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence, Sized
 from typing import cast
 
 import numpy as np
@@ -148,16 +148,14 @@ class ConcatVariableTDataset(Dataset[BallDetectionSample]):
         self.cumulative: list[int] = []
         total = 0
         for dataset in self.datasets:
-            total += len(dataset)
+            total += len(cast(Sized, dataset))
             self.cumulative.append(total)
         self._total = total
 
     def __len__(self) -> int:
         return self._total
 
-    def __getitem__(
-        self, index: int | tuple[int, int]
-    ) -> BallDetectionSample:
+    def __getitem__(self, index: int | tuple[int, int]) -> BallDetectionSample:
         if isinstance(index, tuple):
             global_index, num_frames = int(index[0]), int(index[1])
         else:
@@ -167,8 +165,8 @@ class ConcatVariableTDataset(Dataset[BallDetectionSample]):
         local_index = global_index - offset
         dataset = self.datasets[dataset_index]
         if num_frames is None:
-            return cast(BallDetectionSample, dataset[local_index])
-        return cast(BallDetectionSample, dataset[(local_index, num_frames)])
+            return dataset[local_index]
+        return dataset[(local_index, num_frames)]
 
 
 class FixedTDataset(Dataset[BallDetectionSample]):
@@ -179,10 +177,10 @@ class FixedTDataset(Dataset[BallDetectionSample]):
         self.num_frames = int(num_frames)
 
     def __len__(self) -> int:
-        return len(self.base)
+        return len(cast(Sized, self.base))
 
     def __getitem__(self, index: int) -> BallDetectionSample:
-        return cast(BallDetectionSample, self.base[(int(index), self.num_frames)])
+        return self.base[(int(index), self.num_frames)]
 
 
 __all__ = [

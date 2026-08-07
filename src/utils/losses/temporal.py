@@ -24,7 +24,7 @@ Design notes
 
 Choice of order
 ---------------
-``smoothness_penalty`` defaults to the **third** difference (jerk). Penalizing
+``TemporalSmoothnessPenalty(order=3)`` penalizes the **third** difference (jerk).
 jerk enforces piecewise-*constant acceleration* — exactly ballistic free flight
 (``a = -g``) for the ball and smooth locomotion for the player — without biasing
 the real, non-zero acceleration of gravity, aerodynamic drag, or a running
@@ -35,13 +35,12 @@ player toward zero (which an acceleration penalty would). Sparse impulses
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 
 import torch
 import torch.nn.functional as F
-from torch import Tensor
-
-from src.utils.tensor_utils import masked_mean
+from torch import Tensor, nn
 
 
 def finite_difference(x: Tensor, order: int) -> Tensor:
@@ -55,74 +54,86 @@ def finite_difference(x: Tensor, order: int) -> Tensor:
         Tensor of shape ``(B, T - order, ...)``. The value at output index ``i``
         depends on input frames ``i .. i + order`` (``order + 1`` frames).
     """
-    if order < 1:
-        raise ValueError(f"order must be >= 1, got {order}")
-    for _ in range(order):
-        x = x[:, 1:] - x[:, :-1]
-    return x
+    if type(order) is not int or order < 1:
+        raise ValueError(f"order must be a positive int, got {order!r}.")
+    return torch.diff(x, n=order, dim=1)
 
 
 def _consecutive_and(mask: Tensor, width: int) -> Tensor:
     """AND of ``width`` consecutive frame-validity flags along ``dim=1``.
 
     Args:
-        mask: Frame validity mask, shape ``(B, T)`` (any dtype; ``> 0`` is valid).
+        mask: Boundary-prepared boolean frame-validity mask, shape ``(B, T)``.
         width: Number of consecutive frames that must all be valid.
 
     Returns:
         Boolean mask of shape ``(B, T - width + 1)``; entry ``i`` is ``True`` iff
         frames ``i .. i + width - 1`` are all valid.
     """
-    valid = mask > 0
-    length = valid.shape[1]
-    out = valid[:, : length - width + 1]
+    length = mask.shape[1]
+    out = mask[:, : length - width + 1]
     for offset in range(1, width):
-        out = out & valid[:, offset : length - width + 1 + offset]
+        out = out & mask[:, offset : length - width + 1 + offset]
     return out
 
 
-def smoothness_penalty(
-    pred: Tensor,
-    mask: Tensor | None = None,
-    *,
-    order: int = 3,
-    beta: float = 1e-3,
-    axis_weights: Sequence[float] | None = None,
-) -> Tensor:
-    """Robust penalty on the ``order``-th finite difference of a sequence.
+class TemporalSmoothnessPenalty(nn.Module):
+    """Constructor-prepared robust temporal-difference penalty.
 
-    With ``order=3`` (default) this penalizes jerk, i.e. encourages piecewise
-    constant acceleration without biasing gravity / drag / locomotion.
-
-    Args:
-        pred: Predicted normalized positions, shape ``(B, T, C)``.
-        mask: Optional per-frame validity mask, shape ``(B, T)``.
-        order: Finite-difference order (``3`` = jerk, ``2`` = acceleration).
-        beta: Smooth-L1 transition point; small values keep sparse spikes
-            (bounces, direction changes) in the robust linear regime.
-        axis_weights: Optional per-channel weights, length ``C``.
-
-    Returns:
-        Scalar smoothness loss (``0`` when the sequence is too short).
+    Static option validation and axis-weight conversion happen once during
+    construction. ``forward`` accepts only the validated prediction and mask
+    tensors and performs no Python value conversion or option selection.
     """
-    if pred.shape[1] <= order:
-        return pred.new_zeros(())
-    diff = finite_difference(pred, order)  # (B, T - order, C)
-    per = F.smooth_l1_loss(diff, torch.zeros_like(diff), beta=beta, reduction="none")
-    if axis_weights is not None:
-        weights = torch.as_tensor(axis_weights, device=per.device, dtype=per.dtype)
-        if weights.numel() != per.shape[-1]:
+
+    def __init__(
+        self,
+        *,
+        order: int,
+        axis_weights: Sequence[float],
+        beta: float = 1e-3,
+    ) -> None:
+        super().__init__()
+        if type(order) is not int or order < 1:
+            raise ValueError(f"order must be a positive int, got {order!r}.")
+        if not math.isfinite(beta) or beta <= 0.0:
+            raise ValueError(f"beta must be finite and positive, got {beta!r}.")
+        weights = tuple(float(weight) for weight in axis_weights)
+        if not weights:
+            raise ValueError("axis_weights must be non-empty.")
+        if any(not math.isfinite(weight) or weight < 0.0 for weight in weights):
             raise ValueError(
-                f"axis_weights must have length {per.shape[-1]}, got {weights.numel()}"
+                "axis_weights must contain only finite non-negative values."
             )
-        per = per * weights.view(*([1] * (per.ndim - 1)), -1)
-    if mask is None:
-        return per.mean()
-    window_mask = _consecutive_and(mask, order + 1)  # (B, T - order)
-    return masked_mean(per, window_mask.to(per.dtype), denom_min=1.0)
+        self.order = order
+        self.window_width = order + 1
+        self.beta = float(beta)
+        self.axis_weights: Tensor
+        self.register_buffer(
+            "axis_weights",
+            torch.tensor(weights, dtype=torch.float32).view(1, 1, -1),
+            persistent=False,
+        )
+
+    def forward(self, prediction: Tensor, valid_mask: Tensor) -> Tensor:
+        """Compute the penalty from boundary-validated ``(B,T,C)`` tensors."""
+        difference = torch.diff(prediction, n=self.order, dim=1)
+        per_value = F.smooth_l1_loss(
+            difference,
+            torch.zeros_like(difference),
+            beta=self.beta,
+            reduction="none",
+        )
+        weighted = per_value * self.axis_weights
+        window_mask = _consecutive_and(valid_mask, self.window_width)
+        expanded_mask = window_mask.unsqueeze(-1).expand_as(weighted)
+        return weighted.masked_fill(
+            ~expanded_mask, 0.0
+        ).sum() / expanded_mask.sum().clamp_min(1)
 
 
-def ballistic_second_difference(gravity: float, dt: float, height_scale: float) -> float:
+def ballistic_second_difference(
+    gravity: float, dt: float, height_scale: float
+) -> float:
     """Target per-frame second difference of *normalized* height in free fall.
 
     In court coordinates height is ``+z`` and the ball obeys ``a_z = -g`` during
@@ -145,13 +156,7 @@ def ballistic_second_difference(gravity: float, dt: float, height_scale: float) 
     return -gravity * dt * dt / height_scale
 
 
-def ballistic_gravity_penalty(
-    pred_height: Tensor,
-    mask: Tensor | None = None,
-    *,
-    target_second_difference: float,
-    beta: float = 5e-3,
-) -> Tensor:
+class BallisticGravityPenalty(nn.Module):
     """Pin the vertical curvature of a trajectory to the ballistic value.
 
     Penalizes the deviation of the per-frame second difference of normalized
@@ -165,22 +170,40 @@ def ballistic_gravity_penalty(
     The robust (Smooth-L1) reduction keeps sparse bounce impulses, where the true
     second difference is far from ``-g``, from dominating the free-flight signal.
 
-    Args:
-        pred_height: Predicted normalized height, shape ``(B, T)``.
-        mask: Optional per-frame validity mask, shape ``(B, T)``.
-        target_second_difference: Expected normalized second difference in free
-            flight (negative).
-        beta: Smooth-L1 transition point.
-
-    Returns:
-        Scalar gravity-consistency loss (``0`` when the sequence is too short).
+    The target and robust-loss option are validated and stored at construction,
+    leaving ``forward`` as tensor-only loss computation.
     """
-    if pred_height.shape[1] <= 2:
-        return pred_height.new_zeros(())
-    accel = finite_difference(pred_height.unsqueeze(-1), 2).squeeze(-1)  # (B, T - 2)
-    resid = accel - target_second_difference
-    per = F.smooth_l1_loss(resid, torch.zeros_like(resid), beta=beta, reduction="none")
-    if mask is None:
-        return per.mean()
-    window_mask = _consecutive_and(mask, 3)  # (B, T - 2)
-    return masked_mean(per, window_mask.to(per.dtype), denom_min=1.0)
+
+    def __init__(
+        self,
+        *,
+        target_second_difference: float,
+        beta: float = 5e-3,
+    ) -> None:
+        super().__init__()
+        if not math.isfinite(target_second_difference):
+            raise ValueError("target_second_difference must be finite.")
+        if not math.isfinite(beta) or beta <= 0.0:
+            raise ValueError(f"beta must be finite and positive, got {beta!r}.")
+        self.beta = float(beta)
+        self.target_second_difference: Tensor
+        self.register_buffer(
+            "target_second_difference",
+            torch.tensor(float(target_second_difference), dtype=torch.float32),
+            persistent=False,
+        )
+
+    def forward(self, pred_height: Tensor, valid_mask: Tensor) -> Tensor:
+        """Compute gravity consistency from validated ``(B,T)`` tensors."""
+        acceleration = torch.diff(pred_height, n=2, dim=1)
+        residual = acceleration - self.target_second_difference
+        per_value = F.smooth_l1_loss(
+            residual,
+            torch.zeros_like(residual),
+            beta=self.beta,
+            reduction="none",
+        )
+        window_mask = _consecutive_and(valid_mask, 3)
+        return per_value.masked_fill(
+            ~window_mask, 0.0
+        ).sum() / window_mask.sum().clamp_min(1)

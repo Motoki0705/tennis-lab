@@ -103,7 +103,6 @@ def _run(cfg: DictConfig) -> int:
         checkpoint=config.assets.gvhmr_checkpoint,
         body_models_dir=config.assets.body_models_dir,
         device=config.runtime.device,
-        allow_device_fallback=config.runtime.allow_device_fallback,
         bundled_assets=config.assets.bundled,
     )
     mesh_model.load()
@@ -112,7 +111,6 @@ def _run(cfg: DictConfig) -> int:
     tracker = YoloPersonTracker(
         checkpoint=config.assets.yolo_checkpoint,
         device=config.runtime.device,
-        allow_device_fallback=config.runtime.allow_device_fallback,
         confidence=config.runtime.tracking.yolo_confidence,
     )
     track_result = tracker.predict(
@@ -129,7 +127,6 @@ def _run(cfg: DictConfig) -> int:
     pose_model = ViTPosePose2D(
         checkpoint=config.assets.vitpose_checkpoint,
         device=config.runtime.device,
-        allow_device_fallback=config.runtime.allow_device_fallback,
         flip_test=config.runtime.vitpose.flip_test,
         batch_size=config.runtime.vitpose.batch_size,
         head_config=config.runtime.vitpose.head,
@@ -137,14 +134,12 @@ def _run(cfg: DictConfig) -> int:
     feature_model = Hmr2FeatureExtractor(
         checkpoint=config.assets.hmr2_checkpoint,
         device=config.runtime.device,
-        allow_device_fallback=config.runtime.allow_device_fallback,
         batch_size=config.runtime.hmr2.batch_size,
         mean_params_path=config.assets.bundled.hmr2_mean_params,
     )
     reconstructor = SmplVertexReconstructor(
         body_models_dir=config.assets.body_models_dir,
         device=config.runtime.device,
-        allow_device_fallback=config.runtime.allow_device_fallback,
         bundled_assets=config.assets.bundled,
     )
 

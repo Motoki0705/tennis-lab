@@ -39,33 +39,6 @@ class DINOv3BackboneAdapter(nn.Module):
         self.embed_dim = embed_dim
         self.patch_size = patch_size
 
-    def forward_features(self, inputs: torch.Tensor) -> dict[str, torch.Tensor]:
-        """Return normalized patch tokens with shape ``(B, N, C)``."""
-        outputs = cast(Any, self.module).forward_features(inputs)
-        if not isinstance(outputs, Mapping):
-            raise TypeError("DINOv3 forward_features must return a mapping.")
-        try:
-            patch_tokens = outputs["x_norm_patchtokens"]
-        except KeyError as exc:
-            raise KeyError(
-                "DINOv3 forward_features is missing required x_norm_patchtokens."
-            ) from exc
-        if not isinstance(patch_tokens, torch.Tensor):
-            raise TypeError(
-                "DINOv3 forward_features did not return tensor patch tokens."
-            )
-        if patch_tokens.ndim != 3:
-            raise ValueError(
-                "DINOv3 patch tokens must have shape (B, N, C), "
-                f"got {tuple(patch_tokens.shape)}."
-            )
-        if patch_tokens.shape[-1] != self.embed_dim:
-            raise ValueError(
-                "DINOv3 patch-token width does not match embed_dim: "
-                f"{patch_tokens.shape[-1]} != {self.embed_dim}."
-            )
-        return {"x_norm_patchtokens": patch_tokens}
-
     def transformer_blocks(self) -> tuple[nn.Module, ...]:
         """Return the backbone transformer blocks used by ``last_n_blocks``."""
         blocks = getattr(self.module, "blocks", None)
@@ -75,6 +48,46 @@ class DINOv3BackboneAdapter(nn.Module):
                 "when train_mode='last_n_blocks'."
             )
         return tuple(blocks)
+
+
+def require_dinov3_patch_tokens(
+    outputs: object,
+    *,
+    expected_batch_size: int,
+    expected_embed_dim: int,
+    expected_num_tokens: int | None = None,
+    context: str = "DINOv3 forward_features",
+) -> torch.Tensor:
+    """Decode and validate dynamic DINO output at an explicit model-I/O boundary."""
+    if not isinstance(outputs, Mapping):
+        raise TypeError(f"{context} must return a mapping.")
+    try:
+        patch_tokens = outputs["x_norm_patchtokens"]
+    except KeyError as error:
+        raise KeyError(f"{context} is missing required x_norm_patchtokens.") from error
+    if not isinstance(patch_tokens, torch.Tensor):
+        raise TypeError(f"{context} x_norm_patchtokens must be a tensor.")
+    if patch_tokens.ndim != 3:
+        raise ValueError(
+            f"{context} patch tokens must have shape (B, N, C), "
+            f"got {tuple(patch_tokens.shape)}."
+        )
+    if patch_tokens.shape[0] != expected_batch_size:
+        raise ValueError(
+            f"{context} batch size {patch_tokens.shape[0]} does not match "
+            f"expected {expected_batch_size}."
+        )
+    if expected_num_tokens is not None and patch_tokens.shape[1] != expected_num_tokens:
+        raise ValueError(
+            f"{context} token count {patch_tokens.shape[1]} does not match "
+            f"expected {expected_num_tokens}."
+        )
+    if patch_tokens.shape[2] != expected_embed_dim:
+        raise ValueError(
+            f"{context} embedding width {patch_tokens.shape[2]} does not match "
+            f"expected {expected_embed_dim}."
+        )
+    return patch_tokens
 
 
 def load_dinov3_backbone(
@@ -131,13 +144,14 @@ def apply_dinov3_lora(
     if not lora.enabled:
         raise ValueError("apply_dinov3_lora requires an enabled LoRAConfig.")
     backbone.requires_grad_(False)
-    return apply_lora(
+    wrapped: list[str] = apply_lora(
         backbone.module,
         rank=lora.rank,
         alpha=lora.alpha,
         dropout=lora.dropout,
         target_modules=lora.target_modules,
     )
+    return wrapped
 
 
 def configure_dinov3_trainability(
@@ -195,4 +209,5 @@ __all__ = [
     "apply_dinov3_lora",
     "configure_dinov3_trainability",
     "load_dinov3_backbone",
+    "require_dinov3_patch_tokens",
 ]

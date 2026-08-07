@@ -7,7 +7,7 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol, cast
 
 import cv2
 import numpy as np
@@ -52,7 +52,7 @@ def publish_ground_line_map_artifact(
     )
     try:
         arrays_path = temporary_dir / "arrays.npz"
-        np.savez_compressed(arrays_path, **arrays)
+        _savez_compressed(arrays_path, **arrays)
         preview_path = temporary_dir / "aggregate_evidence.png"
         preview = _render_ground_line_preview(
             np.asarray(arrays["evidence_sum"], dtype=np.float32),
@@ -244,3 +244,10 @@ def _file_record(path: Path) -> dict[str, Any]:
         "sha256": sha256_file(path),
         "size_bytes": path.stat().st_size,
     }
+
+
+class _SavezCompressed(Protocol):
+    def __call__(self, file: Path, **arrays: NDArray[Any]) -> None: ...
+
+
+_savez_compressed = cast(_SavezCompressed, np.savez_compressed)

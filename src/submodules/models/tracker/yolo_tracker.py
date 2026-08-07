@@ -8,7 +8,7 @@ import torch
 from tqdm import tqdm
 
 from src.submodules.configuration import require_absolute_path
-from src.submodules.models._base import BaseInferenceModel
+from src.submodules.models._base.inference_model import BaseInferenceModel
 from src.submodules.models.tracker.common import (
     TrackRequest,
     TrackResult,
@@ -25,10 +25,9 @@ class YoloPersonTracker(BaseInferenceModel[TrackRequest, TrackResult]):
         checkpoint: str | Path,
         *,
         device: str | torch.device,
-        allow_device_fallback: bool,
         confidence: float,
     ) -> None:
-        super().__init__(device, allow_device_fallback=allow_device_fallback)
+        super().__init__(device)
         if type(confidence) is not float:
             raise TypeError("confidence must be a float.")
         if not 0.0 < confidence <= 1.0:
@@ -56,7 +55,8 @@ class YoloPersonTracker(BaseInferenceModel[TrackRequest, TrackResult]):
 
     def _track(self, video_path: str, num_frames: int) -> list[list[dict]]:
         """Frame-by-frame YOLO tracking; returns per-frame detection dicts."""
-        assert self._yolo is not None
+        if self._yolo is None:
+            raise RuntimeError("YOLO model did not load before tracking.")
         results = self._yolo.track(  # type: ignore[attr-defined]
             video_path,
             device=self._device,

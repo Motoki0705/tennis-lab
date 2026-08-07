@@ -19,8 +19,8 @@ from src.tasks.ball_detection.evaluation import (
     EvaluationPipeline,
     load_evaluation_manifest,
 )
-from src.tasks.ball_detection.evaluation.adapters import resolve_evaluation_device
 from src.tasks.ball_detection.evaluation.evaluator import DefaultJobEvaluator
+from src.tasks.ball_detection.model_io.evaluation import resolve_evaluation_device
 from src.utils.hydra import hydra_main
 
 

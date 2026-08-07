@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TypedDict
+
 import numpy as np
 import pytest
 from numpy.typing import NDArray
@@ -16,6 +18,16 @@ from src.synthetic_data_generation.scene_contract import (
     SimilarityTransform,
 )
 from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
+
+
+class _NovelViewSamplingKwargs(TypedDict):
+    cameras: tuple[SceneCamera, ...]
+    court_from_scene: SimilarityTransform
+    court_keypoints_court: NDArray[np.float32]
+    support_points_scene: NDArray[np.float64]
+    seed: int
+    proposals_per_anchor: int
+    max_views: int
 
 
 def _look_at(
@@ -64,7 +76,7 @@ def test_same_seed_is_exact_and_all_selected_views_pass_gates() -> None:
         rotation=(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0),
         translation=(0.0, 0.0, 0.0),
     )
-    kwargs = {
+    kwargs: _NovelViewSamplingKwargs = {
         "cameras": cameras,
         "court_from_scene": identity,
         "court_keypoints_court": court_keypoints_3d(STANDARD_COURT_CONFIG).numpy(),

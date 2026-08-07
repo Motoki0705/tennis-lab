@@ -15,10 +15,6 @@ from torch import Tensor
 from torch.utils.data import DataLoader, SequentialSampler
 
 from src.tasks.ball_detection.data import build_ball_detection_datamodule
-from src.tasks.ball_detection.evaluation.adapters import (
-    BallPredictionAdapter,
-    LightningBallPredictionAdapter,
-)
 from src.tasks.ball_detection.evaluation.configuration import (
     build_evaluation_config,
     read_checkpoint_config,
@@ -35,6 +31,8 @@ from src.tasks.ball_detection.evaluation.dataset_provenance import (
     sha256_file,
 )
 from src.tasks.ball_detection.evaluation.metrics import StratifiedBallMetrics
+from src.tasks.ball_detection.model_io.contracts import BallHeatmapPredictor
+from src.tasks.ball_detection.model_io.evaluation import LightningBallHeatmapPredictor
 
 
 class JobEvaluator(Protocol):
@@ -60,7 +58,7 @@ class DefaultJobEvaluator:
         self._checkpoint_configs: dict[Path, DictConfig] = {}
         self._checkpoint_hashes: dict[Path, str] = {}
         self._adapter_key: tuple[Path, bool, bool] | None = None
-        self._adapter: LightningBallPredictionAdapter | None = None
+        self._adapter: LightningBallHeatmapPredictor | None = None
 
     def evaluate(
         self,
@@ -126,13 +124,13 @@ class DefaultJobEvaluator:
     def _prediction_adapter(
         self,
         model: ModelSpec,
-    ) -> LightningBallPredictionAdapter:
+    ) -> LightningBallHeatmapPredictor:
         key = (model.checkpoint, model.strict, model.weights_only)
         if self._adapter is None or self._adapter_key != key:
             self._adapter = None
             if self.device.type == "cuda":
                 torch.cuda.empty_cache()
-            self._adapter = LightningBallPredictionAdapter.load(
+            self._adapter = LightningBallHeatmapPredictor.load(
                 model.checkpoint,
                 device=self.device,
                 strict=model.strict,
@@ -164,7 +162,7 @@ def build_evaluation_dataloader(
 
 def evaluate_dataloader(
     *,
-    adapter: BallPredictionAdapter,
+    adapter: BallHeatmapPredictor,
     dataloader: DataLoader[Any],
     data_config: Any,
     split: str,
@@ -253,18 +251,19 @@ def evaluate_dataloader(
 
 
 def _predict_batch(
-    adapter: BallPredictionAdapter,
+    adapter: BallHeatmapPredictor,
     batch: dict[str, Any],
 ) -> Tensor:
     images = _tensor(batch, "images")
     target_heatmaps = _tensor(batch, "heatmaps")
-    return adapter.predict_heatmaps(
+    prediction: Tensor = adapter.predict_heatmaps(
         images,
         target_size_hw=(
             int(target_heatmaps.shape[-2]),
             int(target_heatmaps.shape[-1]),
         ),
     )
+    return prediction
 
 
 def _tensor(batch: dict[str, Any], key: str) -> Tensor:

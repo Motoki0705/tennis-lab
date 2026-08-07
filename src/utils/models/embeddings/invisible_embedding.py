@@ -26,11 +26,3 @@ class InvisibleTokenEmbedding(nn.Module):
             Tensor of shape (D,).
         """
         return self.token
-
-
-if __name__ == "__main__":
-    torch.manual_seed(0)
-    emb = InvisibleTokenEmbedding(dim=16)
-    tok = emb()
-    assert tok.shape == (16,)
-    print("InvisibleTokenEmbedding smoke ok")

@@ -22,16 +22,16 @@ import cv2
 import numpy as np
 from numpy.typing import NDArray
 
-from src.tasks.slcs.data.contract import (
-    ClipManifest,
-    DatasetContractError,
-    DatasetIndex,
-)
+from src.tasks.slcs.data.annotation import SLCSDataIndex
 from src.tasks.slcs.data.dino_tokens import (
     DinoTokenSpec,
     has_dino_tokens,
     sample_frame_indices,
     write_dino_tokens,
+)
+from src.tennis_scene.generate_dataset.manifest import (
+    ClipManifest,
+    DatasetManifestError,
 )
 from src.utils.video.reader import OpenCVVideoFrameReader
 
@@ -67,7 +67,7 @@ def read_frames_at(
     """
     wanted = {int(i) for i in frame_indices}
     if len(wanted) != len(frame_indices):
-        raise DatasetContractError(
+        raise DatasetManifestError(
             f"frame_indices contain duplicates: {frame_indices}."
         )
     frames: dict[int, NDArray[np.uint8]] = {}
@@ -85,7 +85,7 @@ def read_frames_at(
             break
     missing = sorted(wanted - set(frames))
     if missing:
-        raise DatasetContractError(
+        raise DatasetManifestError(
             f"{video_path}: could not decode frames {missing} "
             f"(video shorter than the manifest claims?)."
         )
@@ -117,9 +117,13 @@ def precompute_clip_tokens(
         chunks: list[NDArray[np.float16]] = []
         for start in range(0, frames.shape[0], batch_size):
             chunk = encoder(frames[start : start + batch_size])
-            chunk = np.asarray(chunk, dtype=np.float16)
+            if not isinstance(chunk, np.ndarray) or chunk.dtype != np.float16:
+                raise DatasetManifestError(
+                    "encoder must return a float16 numpy token array, got "
+                    f"{type(chunk).__name__} dtype={getattr(chunk, 'dtype', None)}."
+                )
             if chunk.ndim != 3 or chunk.shape[1:] != (spec.num_tokens, spec.embed_dim):
-                raise DatasetContractError(
+                raise DatasetManifestError(
                     f"encoder returned shape {chunk.shape}; expected "
                     f"(B, {spec.num_tokens}, {spec.embed_dim})."
                 )
@@ -146,7 +150,7 @@ def run_precompute(
     generator: dict[str, object] | None = None,
 ) -> PrecomputeReport:
     """Precompute tokens for every clip in the dataset index."""
-    index = DatasetIndex.load(dataset_root)
+    index = SLCSDataIndex.load(dataset_root)
     report = PrecomputeReport()
     for ref in index.clips:
         clip_dir = index.clip_dir(ref)

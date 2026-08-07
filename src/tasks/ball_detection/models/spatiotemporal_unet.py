@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import torch
 import torch.nn as nn
 
 from src.tasks.ball_detection.configuration import validate_model
-from src.tasks.ball_detection.models.input_adapter import resolve_model_in_channels
+from src.tasks.ball_detection.model_io.adapters import build_ball_model_input_spec
 from src.utils.models.blocks import Conv2dWiseWiseBlock
 from src.utils.tensor_utils import flatten_time_to_batch, restore_time_from_batch
 
@@ -34,10 +34,7 @@ class Conv3dBlock(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Apply the 3D convolution stack."""
-        output = self.conv3d_2(self.conv3d_1(x))
-        if not isinstance(output, torch.Tensor):
-            raise TypeError("Conv3dBlock must return a tensor.")
-        return output
+        return cast(torch.Tensor, self.conv3d_2(self.conv3d_1(x)))
 
 
 class EncoderBlock(nn.Module):
@@ -148,14 +145,12 @@ class SpatioTemporalUNet(nn.Module):
         """Create the model from a composed Hydra config."""
         model_cfg = validate_model(config)
         return cls(
-            in_channels=resolve_model_in_channels(model_cfg),
+            in_channels=build_ball_model_input_spec(config).in_channels,
             num_classes=int(model_cfg["num_classes"]),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Run the spatio-temporal U-Net."""
-        self._validate_forward_input(x)
-
         x = self.stem(x)
         s3d_1, s2d_1 = self.enc1(x)
         x = self.pool(s3d_1)
@@ -170,29 +165,7 @@ class SpatioTemporalUNet(nn.Module):
         x = self.dec2(x, s3d_2, s2d_2)
         x = self.upsample(x)
         x = self.dec1(x, s3d_1, s2d_1)
-        output = self.final_conv(x)
-        if not isinstance(output, torch.Tensor):
-            raise TypeError(
-                "SpatioTemporalUNet final convolution must return a tensor."
-            )
-        return output
-
-    def _validate_forward_input(self, x: torch.Tensor) -> None:
-        if x.ndim != 5:
-            raise ValueError(
-                "SpatioTemporalUNet expects input with shape (B, C, T, H, W), "
-                f"got ndim={x.ndim}."
-            )
-        if x.shape[1] != self.in_channels:
-            raise ValueError(
-                f"Expected {self.in_channels} input channels but received {x.shape[1]}."
-            )
-        if x.shape[2] < 8:
-            raise ValueError(
-                "SpatioTemporalUNet expects at least 8 frames because the temporal axis "
-                "is pooled three times. "
-                f"Received T={x.shape[2]}."
-            )
+        return cast(torch.Tensor, self.final_conv(x))
 
 
 __all__ = ["SpatioTemporalUNet"]

@@ -44,7 +44,7 @@ class RuntimeConfig:
     clip_dir: Path
     checkpoint: Path
     save: Path
-    device: str
+    device: torch.device
     fps: float
     window_stride: int
     inference_batch_size: int
@@ -61,7 +61,6 @@ class RuntimeConfig:
     draw: DrawStyle
     layout: LayoutStyle
     resolver: PathResolver
-    allow_device_fallback: bool
     subpixel_refine: bool
     strict: bool
     weights_only: bool
@@ -162,7 +161,6 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
             panel_label_height=int(layout_cfg.panel_label_height),
         ),
         resolver=paths.resolver,
-        allow_device_fallback=bool(run.allow_device_fallback),
         subpixel_refine=bool(metrics_cfg.subpixel_refine),
         strict=bool(vis.strict),
         weights_only=bool(vis.weights_only),
@@ -193,7 +191,6 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         cfg.checkpoint,
         resolver=cfg.resolver,
         device=cfg.device,
-        allow_device_fallback=cfg.allow_device_fallback,
         subpixel_refine=cfg.subpixel_refine,
         strict=cfg.strict,
         weights_only=cfg.weights_only,

@@ -95,7 +95,7 @@ def generate_gaussian_heatmap(
         size_hw=size_hw,
         centers_xy=center_xy,
         sigma_ratio=sigma_ratio,
-        visibility=visible,
+        visibility=torch.as_tensor(visible, dtype=torch.bool, device=device),
         dtype=dtype,
         device=device,
     )

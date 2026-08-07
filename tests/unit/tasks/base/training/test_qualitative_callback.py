@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 import pytest
+import pytorch_lightning as pl
 import torch
 
 from src.tasks.base.training.qualitative_callback import (
@@ -82,21 +85,25 @@ class _Trainer:
         self.sanity_checking = sanity
 
 
+def _as_lightning_trainer(trainer: _Trainer) -> pl.Trainer:
+    return cast(pl.Trainer, trainer)
+
+
 def test_should_log_respects_enabled_flag() -> None:
     cb = _callback(enabled=False)
-    assert cb._should_log(_Trainer()) is False
+    assert cb._should_log(_as_lightning_trainer(_Trainer())) is False
 
 
 def test_should_log_skips_sanity_check() -> None:
     cb = _callback(enabled=True)
-    assert cb._should_log(_Trainer(sanity=True)) is False
+    assert cb._should_log(_as_lightning_trainer(_Trainer(sanity=True))) is False
 
 
 def test_should_log_every_n_epochs() -> None:
     cb = _callback(enabled=True, every_n_epochs=3)
-    assert cb._should_log(_Trainer(enabled_epoch=0)) is True
-    assert cb._should_log(_Trainer(enabled_epoch=3)) is True
-    assert cb._should_log(_Trainer(enabled_epoch=1)) is False
+    assert cb._should_log(_as_lightning_trainer(_Trainer(enabled_epoch=0))) is True
+    assert cb._should_log(_as_lightning_trainer(_Trainer(enabled_epoch=3))) is True
+    assert cb._should_log(_as_lightning_trainer(_Trainer(enabled_epoch=1))) is False
 
 
 def test_detach_to_cpu_recurses_structures() -> None:

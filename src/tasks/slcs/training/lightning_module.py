@@ -2,32 +2,26 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any, cast
 
 import numpy as np
-import torch
 from omegaconf import DictConfig
 from torch import Tensor
 
+from src.tasks.base.model_io import BoundModelIO
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.slcs.configuration import SLCSTrainingRuntimeConfig
-from src.tasks.slcs.models import build_slcs_model
-from src.tasks.slcs.training.losses import SLCSLoss
-from src.tasks.slcs.training.metrics import SLCSMetrics
-
-_FORWARD_KEYS = (
-    "player_kp",
-    "player_kp_vis",
-    "player_valid",
-    "ball_uv",
-    "ball_vis",
-    "court_kp",
-    "court_vis",
-    "frame_mask",
-    "dino_tokens",
-    "dino_frame_idx",
-    "dino_valid",
+from src.tasks.slcs.model_io import (
+    SLCSDecodedOutput,
+    SLCSModelIOAdapter,
+    SLCSRawOutput,
+    SLCSTrainingTargets,
 )
+from src.tasks.slcs.model_io.factory import create_slcs_model_io
+from src.tasks.slcs.models.slcs_model import SLCSFusionModel
+from src.tasks.slcs.training.losses import SLCSLoss, build_slcs_loss_inputs
+from src.tasks.slcs.training.metrics import SLCSMetrics
 
 
 class SLCSLightningModule(BaseLightningModule):
@@ -41,7 +35,14 @@ class SLCSLightningModule(BaseLightningModule):
         )
         super().__init__(runtime.raw)
         self.max_epochs = runtime.training.trainer.max_epochs
-        self.model = build_slcs_model(runtime.model, runtime.data)
+        self.model: SLCSFusionModel
+        self.model_adapter: SLCSModelIOAdapter
+        self.model_io: BoundModelIO[
+            Mapping[str, object], SLCSRawOutput, SLCSDecodedOutput
+        ]
+        self.model, self.model_adapter, self.model_io = create_slcs_model_io(
+            runtime.model, runtime.data
+        )
         self.loss_fn = SLCSLoss(runtime.loss)
         self._metrics = {
             "train": SLCSMetrics(),
@@ -51,19 +52,16 @@ class SLCSLightningModule(BaseLightningModule):
 
     # ------------------------------------------------------------------
 
-    def forward_batch(self, batch: dict[str, Tensor]) -> dict[str, Tensor]:
-        """Run the model on an SLCSBatch dict."""
-        missing = [k for k in _FORWARD_KEYS if k not in batch]
-        if missing:
-            raise KeyError(f"SLCS batch is missing forward keys: {missing}.")
-        kwargs = {k: batch[k] for k in _FORWARD_KEYS}
-        outputs: dict[str, Tensor] = self.model(**kwargs)
-        return outputs
+    def forward_batch(self, batch: dict[str, Tensor]) -> SLCSDecodedOutput:
+        """Validate, execute, and decode one collated SLCS batch."""
+        return self.model_io.run(batch)
 
     def _step(self, batch: dict[str, Tensor], stage: str) -> Tensor:
-        outputs = self.forward_batch(batch)
-        losses = self.loss_fn(outputs, batch)
-        batch_metrics = self._metrics[stage].update(outputs, batch)
+        call = self.model_io.build_call(batch)
+        targets = self.model_adapter.build_training_targets(batch)
+        outputs = self.model_io.decode_output(self.model_io.execute_call(call))
+        losses = self.loss_fn(build_slcs_loss_inputs(outputs, targets))
+        batch_metrics = self._metrics[stage].update(outputs, targets)
 
         batch_size = int(batch["frame_mask"].shape[0])
         on_step = stage == "train"
@@ -95,7 +93,9 @@ class SLCSLightningModule(BaseLightningModule):
                 batch_size=batch_size,
             )
         if stage == "test":
-            self.collect_test_predictions(batch, {"outputs": outputs})
+            self.collect_test_predictions(
+                batch, {"outputs": outputs, "targets": targets}
+            )
         return cast(Tensor, losses["total"])
 
     def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:
@@ -137,30 +137,23 @@ class SLCSLightningModule(BaseLightningModule):
     def test_prediction_payload(
         self, batch: Any, result: dict[str, Any]
     ) -> dict[str, np.ndarray]:
-        outputs = result["outputs"]
+        outputs = cast(SLCSDecodedOutput, result["outputs"])
+        targets = cast(SLCSTrainingTargets, result["targets"])
         payload_keys = {
-            "pred_player_position": outputs["player_position"],
-            "pred_player_rotation": outputs["player_rotation"],
-            "pred_player_position_log_b": outputs["player_position_log_b"],
-            "pred_player_rotation_log_b": outputs["player_rotation_log_b"],
-            "pred_ball_position": outputs["ball_position"],
-            "pred_ball_position_log_b": outputs["ball_position_log_b"],
-            "target_player_position": batch["target_player_position"],
-            "target_player_rotation": batch["target_player_rotation"],
-            "target_player_valid": batch["target_player_valid"],
-            "target_ball_position": batch["target_ball_position"],
-            "target_ball_valid": batch["target_ball_valid"],
-            "frame_mask": batch["frame_mask"],
+            "pred_player_position": outputs.player_position,
+            "pred_player_rotation": outputs.player_rotation,
+            "pred_player_position_log_b": outputs.player_position_log_b,
+            "pred_player_rotation_log_b": outputs.player_rotation_log_b,
+            "pred_ball_position": outputs.ball_position,
+            "pred_ball_position_log_b": outputs.ball_position_log_b,
+            "target_player_position": targets.target_player_position,
+            "target_player_rotation": targets.target_player_rotation,
+            "target_player_valid": targets.player_mask,
+            "target_ball_position": targets.target_ball_position,
+            "target_ball_valid": targets.ball_mask,
+            "frame_mask": targets.frame_mask,
         }
         return {k: self._to_numpy(v) for k, v in payload_keys.items()}
-
-    # Keep val metrics deterministic when dino tokens are float16-derived.
-    def on_after_batch_transfer(
-        self, batch: dict[str, Tensor], dataloader_idx: int
-    ) -> dict[str, Tensor]:
-        if "dino_tokens" in batch and batch["dino_tokens"].dtype != torch.float32:
-            batch["dino_tokens"] = batch["dino_tokens"].float()
-        return batch
 
 
 __all__ = ["SLCSLightningModule"]

@@ -14,11 +14,8 @@ Fixed camera assumption:
 - GVHMR provides local SMPL only
 - PLCS position and yaw are applied to SMPL mesh
 
-The pipeline uses an orchestration pattern with modular components
-in `src.tennis_scene.pipeline`.
+The pipeline uses an orchestration pattern with modular components in
+``src.tennis_scene.pipeline``. Import schemas, archive functions, and the
+composition root from their owning modules; this package does not mirror those
+APIs under additional names.
 """
-
-from src.tennis_scene.io import SceneResult
-from src.tennis_scene.pipeline import TennisSceneOrchestrator
-
-__all__ = ["SceneResult", "TennisSceneOrchestrator"]

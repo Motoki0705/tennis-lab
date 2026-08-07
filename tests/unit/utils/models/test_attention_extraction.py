@@ -8,6 +8,8 @@ consume the captured maps.
 
 from __future__ import annotations
 
+from typing import cast
+
 import networkx as nx  # type: ignore[import-untyped]
 import numpy as np
 import pytest
@@ -41,7 +43,7 @@ class _FakeSelfAttention(nn.Module):
         query, key, value = (t.transpose(1, 2) for t in torch.unbind(qkv, 2))
         attended = F.scaled_dot_product_attention(query, key, value)
         attended = attended.transpose(1, 2).reshape(batch, tokens, channels)
-        return self.proj(attended)
+        return cast(Tensor, self.proj(attended))
 
 
 class _FakeViT(nn.Module):
@@ -54,8 +56,15 @@ class _FakeViT(nn.Module):
 
     def forward_features(self, x: Tensor) -> Tensor:
         for block in self.blocks:
-            x = x + block["attn"](x)
+            module_dict = cast(nn.ModuleDict, block)
+            attention = cast(_FakeSelfAttention, module_dict["attn"])
+            x = x + attention(x)
         return x
+
+
+def _attention_at(model: _FakeViT, index: int) -> _FakeSelfAttention:
+    block = cast(nn.ModuleDict, model.blocks[index])
+    return cast(_FakeSelfAttention, block["attn"])
 
 
 def _manual_probs(attn: _FakeSelfAttention, x: Tensor) -> Tensor:
@@ -65,7 +74,7 @@ def _manual_probs(attn: _FakeSelfAttention, x: Tensor) -> Tensor:
     )
     query, key, _ = (t.transpose(1, 2) for t in torch.unbind(qkv, 2))
     scores = (query.float() @ key.float().transpose(-2, -1)) * attn.scale
-    return scores.softmax(dim=-1)
+    return cast(Tensor, scores.softmax(dim=-1))
 
 
 class TestDiscovery:
@@ -109,7 +118,7 @@ class TestExtractor:
         x = torch.randn(1, 6, 16)
         with AttentionExtractor(model) as extractor:
             model.forward_features(x)
-        expected = _manual_probs(model.blocks[0]["attn"], x)
+        expected = _manual_probs(_attention_at(model, 0), x)
         assert torch.allclose(extractor.attentions[0], expected, atol=1e-6)
 
     def test_fuse_heads_averages_over_heads(self) -> None:
@@ -121,7 +130,7 @@ class TestExtractor:
 
     def test_hooks_removed_on_exit(self) -> None:
         model = _FakeViT().eval()
-        attn = model.blocks[0]["attn"]
+        attn = _attention_at(model, 0)
         with AttentionExtractor(model):
             assert attn._forward_pre_hooks
         assert not attn._forward_pre_hooks

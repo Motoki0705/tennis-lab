@@ -145,7 +145,7 @@ def build_centered_affine_matrix(
 
 def invert_homogeneous_matrix(matrix: npt.ArrayLike) -> npt.NDArray[np.float64]:
     """Invert a 2x3 or 3x3 affine matrix and return a 3x3 matrix."""
-    return np.linalg.inv(_as_homogeneous_matrix(matrix))
+    return np.asarray(np.linalg.inv(_as_homogeneous_matrix(matrix)), dtype=np.float64)
 
 
 def to_cv2_affine(

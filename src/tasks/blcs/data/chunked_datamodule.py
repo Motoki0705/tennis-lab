@@ -7,11 +7,12 @@ datasets loaded from ``data/blcs/``.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from src.tasks.base.data.chunked_datamodule import BaseChunkedDataModule
 from src.tasks.blcs.data.chunk_manager import ChunkManager
-from src.tasks.blcs.data.datamodule import BLCSDataModule
+from src.tasks.blcs.data.datamodule import BLCSDataModuleHooks
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -19,7 +20,7 @@ if TYPE_CHECKING:
     from src.tasks.blcs.generate_dataset.scene_generator import GeneratorConfig
 
 
-class ChunkedBLCSDataModule(BaseChunkedDataModule, BLCSDataModule):
+class ChunkedBLCSDataModule(BLCSDataModuleHooks, BaseChunkedDataModule):
     """DataModule that swaps train chunks generated in the background.
 
     Val/test splits are loaded once from the fixed ``scene_dir``.
@@ -30,7 +31,9 @@ class ChunkedBLCSDataModule(BaseChunkedDataModule, BLCSDataModule):
         config: DictConfig,
         *,
         generator_config: GeneratorConfig,
+        collate_fn: Callable[..., Any],
     ) -> None:
+        self._collate_fn = collate_fn
         super().__init__(config)
         self.generator_config = generator_config
 

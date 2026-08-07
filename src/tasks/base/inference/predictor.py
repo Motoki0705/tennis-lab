@@ -5,16 +5,18 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 import torch
-from torch import Tensor, nn
+from torch import Tensor
 
 from src.utils.configuration import PathResolver, PathRole
 from src.utils.device import resolve_device
 
+PredictionT_co = TypeVar("PredictionT_co", covariant=True)
 
-class BasePredictor(ABC):
+
+class BasePredictor(ABC, Generic[PredictionT_co]):
     """Abstract base class for inference predictors.
 
     All predictors implement ``predict``. Checkpoint factories remain
@@ -34,58 +36,18 @@ class BasePredictor(ABC):
     device: torch.device
 
     @abstractmethod
-    def predict(self, *args: Any, **kwargs: Any) -> dict[str, Tensor]:
+    def predict(self, *args: Any, **kwargs: Any) -> PredictionT_co:
         """Run batch inference.
 
-        Input/output formats vary by implementation.
-        See subclass documentation for details.
+        Input and decoded output types are owned by the task's selected model
+        I/O adapter. Tensor fields in decoded results must be on CPU; callers
+        do not perform device transfer or model-specific key decoding.
 
         Returns:
-            Dictionary of inference results. All predictors must follow this contract:
-
-            **Return Type Contract:**
-            - All values MUST be `torch.Tensor` (not numpy arrays)
-            - All tensors MUST be on CPU (callers should not handle device transfers)
-            - Batch dimension MUST be preserved in outputs
-
-            **Key Naming Contract:**
-            - Use snake_case for all keys
-            - Use descriptive names matching the semantic meaning
-            - Suffix denormalized/physical units (e.g., `_meters`, `_radians`)
-            - Common keys across tasks:
-              - `position`: 3D position in normalized or world coordinates
-              - `position_meters`: 3D position in meters (denormalized)
-              - `velocity`: Velocity vector
-              - `rotation`: Rotation representation (e.g., sin/cos, quaternion)
-              - `yaw_radians`: Yaw angle in radians
-              - `keypoints`: 2D/3D keypoint coordinates
-              - `visibility`: Visibility flags/probabilities
-              - `heatmaps`: Spatial probability maps
-
-            Implementation-specific keys are allowed but should follow the naming convention.
+            The task-specific decoded prediction type ``PredictionT_co``.
 
         """
         ...
-
-    @staticmethod
-    def _resolve_device(
-        device: str | torch.device,
-        *,
-        allow_fallback: bool,
-    ) -> torch.device:
-        """Resolve device string to torch.device with optional CUDA fallback.
-
-        Args:
-            device: Device string or torch.device.
-            allow_fallback: If True, fall back to CPU when CUDA is unavailable.
-
-        Returns:
-            Resolved torch.device.
-
-        Raises:
-            RuntimeError: If CUDA is requested but unavailable and fallback is disabled.
-        """
-        return resolve_device(device, allow_fallback=allow_fallback)
 
     @staticmethod
     def _ensure_checkpoint(
@@ -129,7 +91,6 @@ class BasePredictor(ABC):
         *,
         resolver: PathResolver,
         device: str | torch.device,
-        allow_device_fallback: bool,
         **kwargs: Any,
     ) -> tuple[Any, torch.device]:
         """Load a single Lightning checkpoint and return the Lightning module.
@@ -159,58 +120,13 @@ class BasePredictor(ABC):
                 f"{cls.__name__} expects a single checkpoint, "
                 f"got {len(checkpoints)} checkpoints."
             )
-        resolved_device = cls._resolve_device(
-            device, allow_fallback=allow_device_fallback
-        )
+        resolved_device = resolve_device(device)
         lightning_module = lightning_module_cls.load_from_checkpoint(
             checkpoints[0],
             map_location=resolved_device,
             **kwargs,
         )
         return lightning_module, resolved_device
-
-    @classmethod
-    def _load_single_lightning_checkpoint(
-        cls,
-        checkpoint_path: str | Path | Iterable[str | Path],
-        lightning_module_cls: Any,
-        *,
-        resolver: PathResolver,
-        device: str | torch.device,
-        allow_device_fallback: bool,
-        **kwargs: Any,
-    ) -> tuple[nn.Module, torch.device]:
-        """Load a single Lightning checkpoint and return its inner model.
-
-        Same as :meth:`_load_single_lightning_module` but returns the inner
-        ``.model`` and applies the strict/weights_only defaults shared across
-        task predictors.
-
-        Args:
-            checkpoint_path: Path or iterable of paths to checkpoint files.
-            lightning_module_cls: LightningModule class with
-                ``load_from_checkpoint``.
-            device: Inference device.
-            **kwargs: Forwarded to ``load_from_checkpoint``. ``strict`` and
-                ``weights_only`` are popped (defaulting to False).
-
-        Returns:
-            Tuple of (inner ``nn.Module``, resolved ``torch.device``).
-
-        Raises:
-            ValueError: If not exactly one checkpoint is provided.
-        """
-        lightning_module, resolved_device = cls._load_single_lightning_module(
-            checkpoint_path,
-            lightning_module_cls,
-            resolver=resolver,
-            device=device,
-            allow_device_fallback=allow_device_fallback,
-            strict=bool(kwargs.pop("strict", False)),
-            weights_only=bool(kwargs.pop("weights_only", False)),
-            **kwargs,
-        )
-        return lightning_module.model, resolved_device
 
     def _denormalize_coords(self, coords: Tensor, scale_xyz: Iterable[float]) -> Tensor:
         """Scale normalized coordinates to physical units."""
@@ -237,3 +153,6 @@ class BasePredictor(ABC):
         for tensor in tensors:
             moved.append(tensor.to(device) if tensor is not None else None)
         return tuple(moved)
+
+
+__all__ = ["BasePredictor", "PredictionT_co"]

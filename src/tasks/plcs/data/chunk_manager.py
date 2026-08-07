@@ -63,8 +63,8 @@ class _PLCSChunkGenerator:
         return start_index
 
 
-class ChunkManager(BaseChunkManager):
-    """PLCS-compatible wrapper around the shared chunk manager."""
+class PLCSChunkManager(BaseChunkManager):
+    """Compose the shared chunk lifecycle with PLCS scene generation."""
 
     def __init__(
         self,
@@ -94,4 +94,4 @@ class ChunkManager(BaseChunkManager):
         )
 
 
-__all__ = ["ChunkManager"]
+__all__ = ["PLCSChunkManager"]

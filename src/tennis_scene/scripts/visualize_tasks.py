@@ -34,6 +34,7 @@ from typing import TYPE_CHECKING, cast
 import numpy as np
 from omegaconf import DictConfig
 
+from src.tennis_scene.archive import load_scene_result
 from src.tennis_scene.configuration import validate_visualize_tasks_boundary
 from src.utils.hydra import hydra_main, register_boundary_validator
 from src.utils.schema.player import COCO17_SKELETON
@@ -41,6 +42,8 @@ from src.utils.schema.player import COCO17_SKELETON
 if TYPE_CHECKING:
     import cv2
     from numpy.typing import NDArray
+
+    from src.tennis_scene.schema import SceneResult
 
 LOGGER = logging.getLogger(__name__)
 _BOUNDARY = "tennis_scene.visualize_tasks"
@@ -74,11 +77,18 @@ def _denorm(uv: NDArray[np.float32], width: int, height: int) -> NDArray[np.floa
     return out
 
 
-def _load_run(scene_path: Path) -> dict[str, NDArray]:
-    """Load canonical non-pickle SceneResult arrays."""
+def _load_run(scene_path: Path) -> SceneResult:
+    """Load a canonical SceneResult archive and its mandatory metadata."""
     if not scene_path.is_file():
         raise FileNotFoundError(f"SceneResult npz not found: {scene_path}")
-    return dict(np.load(scene_path, allow_pickle=False))
+    return load_scene_result(scene_path)
+
+
+def _require_array(scene: SceneResult, field: str) -> NDArray:
+    value = getattr(scene, field)
+    if not isinstance(value, np.ndarray):
+        raise ValueError(f"SceneResult field {field!r} is required for visualization")
+    return value
 
 
 def _read_frames(video_path: Path, num_frames: int) -> list[NDArray[np.uint8]]:
@@ -115,7 +125,7 @@ def _open_writer(path: Path, fps: float, width: int, height: int) -> cv2.VideoWr
 
 def _render_ball_detection(
     frames: list[NDArray[np.uint8]],
-    data: dict[str, NDArray],
+    scene: SceneResult,
     out_path: Path,
     *,
     fps: float,
@@ -125,8 +135,8 @@ def _render_ball_detection(
     import cv2
 
     h, w = frames[0].shape[:2]
-    ball_uv = _denorm(np.asarray(data["ball_uv"])[0], w, h)  # (T, 2)
-    vis = np.asarray(data["ball_vis"])[0].astype(bool)  # (T,)
+    ball_uv = _denorm(_require_array(scene, "ball_uv")[0], w, h)  # (T, 2)
+    vis = _require_array(scene, "ball_vis")[0].astype(bool)  # (T,)
 
     writer = _open_writer(out_path, fps, w, h)
     for t in frame_range:
@@ -160,7 +170,7 @@ def _render_ball_detection(
 
 def _render_court_kp(
     frames: list[NDArray[np.uint8]],
-    data: dict[str, NDArray],
+    scene: SceneResult,
     out_path: Path,
     *,
     fps: float,
@@ -169,8 +179,8 @@ def _render_court_kp(
     import cv2
 
     h, w = frames[0].shape[:2]
-    kp = _denorm(np.asarray(data["court_kp"])[0], w, h)  # (T, K, 2)
-    vis = np.asarray(data["court_vis"])[0]  # (T, K)
+    kp = _denorm(scene.court_kp[0], w, h)  # (T, K, 2)
+    vis = scene.court_vis[0]  # (T, K)
     num_kp = kp.shape[1]
 
     writer = _open_writer(out_path, fps, w, h)
@@ -208,7 +218,7 @@ def _render_court_kp(
 
 def _render_gvhmr_pose(
     frames: list[NDArray[np.uint8]],
-    data: dict[str, NDArray],
+    scene: SceneResult,
     out_path: Path,
     *,
     fps: float,
@@ -219,9 +229,11 @@ def _render_gvhmr_pose(
 
     h, w = frames[0].shape[:2]
     # human_kp_2d: (P, C, T, 17, 2) normalized; single camera -> C index 0.
-    kp = _denorm(np.asarray(data["human_kp_2d"])[:, 0], w, h)  # (P, T, 17, 2)
-    conf = np.asarray(data["human_kp_vis"])[:, 0]  # (P, T, 17)
-    track_ids = [int(v) for v in np.asarray(data["player_track_ids"]).tolist()]
+    kp = _denorm(_require_array(scene, "human_kp_2d")[:, 0], w, h)
+    conf = _require_array(scene, "human_kp_vis")[:, 0]  # (P, T, 17)
+    track_ids = [
+        int(v) for v in _require_array(scene, "player_track_ids").tolist()
+    ]
     num_players = kp.shape[0]
 
     writer = _open_writer(out_path, fps, w, h)
@@ -279,7 +291,7 @@ def _court_limits() -> tuple[float, float, float, float]:
 
 
 def _render_plcs(
-    data: dict[str, NDArray],
+    scene: SceneResult,
     out_path: Path,
     *,
     fps: float,
@@ -292,9 +304,11 @@ def _render_plcs(
 
     from src.utils.rendering.court_renderer import CourtRenderer
 
-    pos = np.asarray(data["player_position"])  # (P, T, 3)
-    yaw = np.asarray(data["player_yaw"])  # (P, T)
-    track_ids = [int(v) for v in np.asarray(data["player_track_ids"]).tolist()]
+    pos = scene.player_position  # (P, T, 3)
+    yaw = scene.player_yaw  # (P, T)
+    track_ids = [
+        int(v) for v in _require_array(scene, "player_track_ids").tolist()
+    ]
     num_players = pos.shape[0]
 
     court = CourtRenderer()
@@ -347,7 +361,7 @@ def _render_plcs(
 
 
 def _render_blcs(
-    data: dict[str, NDArray],
+    scene: SceneResult,
     out_path: Path,
     *,
     fps: float,
@@ -360,7 +374,7 @@ def _render_blcs(
 
     from src.utils.rendering.court_renderer import CourtRenderer
 
-    ball = np.asarray(data["ball_3d"])  # (T, 3)
+    ball = _require_array(scene, "ball_3d")  # (T, 3)
     finite = np.isfinite(ball).all(axis=-1)
 
     court = CourtRenderer()
@@ -447,10 +461,10 @@ def main(cfg: DictConfig) -> int:
 
     runtime = parse_visualize_tasks_config(cfg)
     tasks = list(runtime.tasks)
-    data = _load_run(runtime.scene_path)
+    scene = _load_run(runtime.scene_path)
     video_path = runtime.video_paths[0]
-    num_frames = int(np.asarray(data["num_frames"]))
-    fps = runtime.fps if runtime.fps is not None else float(np.asarray(data["fps"]))
+    num_frames = scene.num_frames
+    fps = runtime.fps if runtime.fps is not None else scene.fps
 
     start = runtime.start_frame
     end = runtime.end_frame if runtime.end_frame is not None else num_frames
@@ -473,7 +487,7 @@ def main(cfg: DictConfig) -> int:
         if "ball_detection" in tasks:
             _render_ball_detection(
                 frames,
-                data,
+                scene,
                 output_dir / "ball_detection_viz.mp4",
                 fps=fps,
                 frame_range=frame_range,
@@ -482,7 +496,7 @@ def main(cfg: DictConfig) -> int:
         if "court_kp" in tasks:
             _render_court_kp(
                 frames,
-                data,
+                scene,
                 output_dir / "court_kp_viz.mp4",
                 fps=fps,
                 frame_range=frame_range,
@@ -490,7 +504,7 @@ def main(cfg: DictConfig) -> int:
         if "gvhmr" in tasks:
             _render_gvhmr_pose(
                 frames,
-                data,
+                scene,
                 output_dir / "gvhmr_viz.mp4",
                 fps=fps,
                 frame_range=frame_range,
@@ -499,7 +513,7 @@ def main(cfg: DictConfig) -> int:
 
     if "plcs" in tasks:
         _render_plcs(
-            data,
+            scene,
             output_dir / "plcs_viz.mp4",
             fps=fps,
             frame_range=frame_range,
@@ -508,7 +522,7 @@ def main(cfg: DictConfig) -> int:
         )
     if "blcs" in tasks:
         _render_blcs(
-            data,
+            scene,
             output_dir / "blcs_viz.mp4",
             fps=fps,
             frame_range=frame_range,

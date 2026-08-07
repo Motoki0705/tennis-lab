@@ -19,6 +19,8 @@ from src.utils.video import OpenCVVideoFrameReader, probe_video_info, read_video
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+    from src.tasks.court_detection.inference.predictor import CourtKeypointPredictor
+
 LOGGER = logging.getLogger(__name__)
 
 NUM_COURT_KEYPOINTS = 14
@@ -53,7 +55,6 @@ class CourtKPConfig:
     source: Literal["execute", "load"]
     mode: Literal["model", "manual_ui"]
     device: str
-    allow_device_fallback: bool
     subpixel_refine: bool
     num_keypoints: int
     save_result: bool
@@ -92,21 +93,22 @@ class CourtKPResult:
     @classmethod
     def from_dict(cls, data: dict) -> CourtKPResult:
         """Create result from dict."""
+        missing = {"keypoints", "visibility", "frame_indices"} - set(data)
+        if missing:
+            raise ValueError(
+                f"CourtKP result is missing required fields: {sorted(missing)}"
+            )
         keypoints = np.array(data["keypoints"], dtype=np.float32)
-        if "visibility" in data:
-            visibility = np.array(data["visibility"], dtype=np.float32)
-        else:
-            visibility = np.ones(keypoints.shape[:3], dtype=np.float32)
-        if "frame_indices" in data:
-            frame_indices = np.array(data["frame_indices"], dtype=np.int32)
-        else:
-            frame_indices = np.arange(keypoints.shape[1], dtype=np.int32)
+        visibility = np.array(data["visibility"], dtype=np.float32)
+        frame_indices = np.array(data["frame_indices"], dtype=np.int32)
         diagnostics = data.get("diagnostics")
+        if diagnostics is not None and not isinstance(diagnostics, dict):
+            raise TypeError("CourtKP result diagnostics must be an object when present")
         return cls(
             keypoints=keypoints,
             visibility=visibility,
             frame_indices=frame_indices,
-            diagnostics=diagnostics if isinstance(diagnostics, dict) else None,
+            diagnostics=diagnostics,
         )
 
     def save(self, path: str | Path) -> None:
@@ -188,7 +190,7 @@ class CourtKPModule(BasePipelineModule):
             raise ValueError(
                 f"num_keypoints must be positive, got {self.num_keypoints}"
             )
-        self._predictor: Any | None = None
+        self._predictor: CourtKeypointPredictor | None = None
         self._manual_keypoints: NDArray[np.float32] | None = None
         self._manual_needs_normalization = False
 
@@ -207,7 +209,6 @@ class CourtKPModule(BasePipelineModule):
             self.checkpoint,
             resolver=self.config.resolver,
             device=self.device,
-            allow_device_fallback=self.config.allow_device_fallback,
             subpixel_refine=self.config.subpixel_refine,
         )
 
@@ -315,8 +316,9 @@ class CourtKPModule(BasePipelineModule):
             raise ValueError("video_paths must contain at least one video")
 
         if self.config.source == "load":
-            assert self.config.load_path is not None
             load_path = self.config.load_path
+            if load_path is None:
+                raise RuntimeError("Validated load source is missing load_path")
             if not load_path.is_file():
                 raise FileNotFoundError(f"CourtKP artifact not found: {load_path}")
             LOGGER.info(f"Loading CourtKP result from {load_path}")
@@ -548,21 +550,9 @@ class CourtKPModule(BasePipelineModule):
         """Run the loaded model on one RGB frame and return pixel KPs + scores."""
         if self._predictor is None:
             raise RuntimeError("Court KP predictor is not loaded.")
-        pred = self._predictor.predict(frame_rgb)
-
-        raw_keypoints = pred["keypoints"]
-        if hasattr(raw_keypoints, "detach"):
-            raw_keypoints = raw_keypoints.detach().cpu().numpy()
-        elif hasattr(raw_keypoints, "numpy"):
-            raw_keypoints = raw_keypoints.numpy()
-        keypoints = np.asarray(raw_keypoints, dtype=np.float32)
-
-        raw_scores = pred["scores"]
-        if hasattr(raw_scores, "detach"):
-            raw_scores = raw_scores.detach().cpu().numpy()
-        elif hasattr(raw_scores, "numpy"):
-            raw_scores = raw_scores.numpy()
-        scores = np.asarray(raw_scores, dtype=np.float32)
+        prediction = self._predictor.predict(frame_rgb)
+        keypoints = prediction.keypoints.numpy().astype(np.float32)
+        scores = prediction.scores.numpy().astype(np.float32)
 
         if keypoints.shape != (self.num_keypoints, 2):
             raise ValueError(

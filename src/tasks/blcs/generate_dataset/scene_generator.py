@@ -91,8 +91,8 @@ class BLCSSceneData:
     court_config_dict: dict  # serialized CourtConfig (sampled values)
 
     # Present for multi-object scenes. Object arrays then use shape [T, O, ...].
+    num_balls: int
     ball_present: Tensor | None = None
-    num_balls: int = 1
     track_instances: list[dict] = field(default_factory=list)
 
 
@@ -270,6 +270,7 @@ class BLCSSceneGenerator:
             court_config_dict={
                 "net_post_offset_x": court_config.net_post_offset_x,
             },
+            num_balls=1,
         )
 
     def generate(

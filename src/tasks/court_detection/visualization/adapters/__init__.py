@@ -4,16 +4,14 @@ from src.tasks.court_detection.visualization.adapters.predict_inputs import (
     to_predictor_input,
 )
 from src.tasks.court_detection.visualization.adapters.render_inputs import (
+    CourtQualitativeRenderer,
     batch_to_court_frame,
-    logits_to_kp_prediction,
-    logits_to_line_prob,
-    logits_to_seg_mask,
+    build_court_qualitative_renderer,
 )
 
 __all__ = [
+    "CourtQualitativeRenderer",
     "batch_to_court_frame",
-    "logits_to_kp_prediction",
-    "logits_to_line_prob",
-    "logits_to_seg_mask",
+    "build_court_qualitative_renderer",
     "to_predictor_input",
 ]

@@ -47,7 +47,7 @@ def compute_speeds(
     if num_frames < 2:
         return speeds.astype(np.float32)
 
-    valid = np.isfinite(arr).all(axis=1)
+    valid: NDArray[np.bool_] = np.asarray(np.isfinite(arr).all(axis=1), dtype=np.bool_)
     for t in range(num_frames):
         prev_ok = t - 1 >= 0 and valid[t - 1]
         next_ok = t + 1 < num_frames and valid[t + 1]
@@ -103,7 +103,7 @@ def detect_bounces(
         raise ValueError(f"min_separation must be >= 1, got {min_separation}")
 
     z = arr[:, 2]
-    valid = np.isfinite(arr).all(axis=1)
+    valid: NDArray[np.bool_] = np.asarray(np.isfinite(arr).all(axis=1), dtype=np.bool_)
 
     candidates: list[int] = []
     for t in range(1, arr.shape[0] - 1):

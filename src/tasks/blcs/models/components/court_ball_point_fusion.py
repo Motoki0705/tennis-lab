@@ -10,10 +10,9 @@ from torch import Tensor, nn
 from src.tasks.blcs.configuration import PointFusionConfig
 from src.utils.models import (
     RMSNorm,
+    RotaryFrequencyComputer,
     TransformerBlock,
     TransformerBlockConfig,
-    build_self_attn_mask,
-    precompute_freqs_cis_nd,
 )
 from src.utils.models.embeddings import InvisibleTokenEmbedding
 from src.utils.models.embeddings.projection import CoordinateProjection
@@ -78,6 +77,11 @@ class CourtBallPointFusion(nn.Module):
         self.blocks = nn.ModuleList(
             [TransformerBlock(block_config) for _ in range(self.num_layers)]
         )
+        self.rope_frequency_computer = RotaryFrequencyComputer(
+            dim=self.rope_dim,
+            base=10000.0,
+            n_axes=2,
+        )
         self.output_norm = RMSNorm(self.token_dim)
         self.output_projection = nn.Linear(self.token_dim, int(output_dim))
 
@@ -89,8 +93,6 @@ class CourtBallPointFusion(nn.Module):
         device: torch.device,
     ) -> Tensor:
         """Return two-axis coordinates for serial court-then-ball tokens."""
-        if num_court_points <= 0 or num_ball_points <= 0:
-            raise ValueError("court and ball token counts must be positive.")
         court = torch.zeros(num_court_points, 2, device=device, dtype=torch.long)
         court[:, 0] = torch.arange(num_court_points, device=device)
         ball = torch.zeros(num_ball_points, 2, device=device, dtype=torch.long)
@@ -104,32 +106,11 @@ class CourtBallPointFusion(nn.Module):
         court_visible: Tensor,
         ball_uv: Tensor,
         ball_visible: Tensor,
-        context_valid: Tensor,
-        mask_invisible_ball: bool,
+        ball_state_valid: Tensor,
+        attention_mask: Tensor,
     ) -> Tensor:
         """Return fused ball tokens shaped ``(..., P, output_dim)``."""
-        if court_kp.shape[-2:] != (self.num_court_points, 2):
-            raise ValueError(
-                "court_kp must end in "
-                f"({self.num_court_points}, 2), got {tuple(court_kp.shape)}."
-            )
-        if ball_uv.ndim < 2 or ball_uv.shape[-1] != 2:
-            raise ValueError("ball_uv must have shape (..., P, 2).")
-        if court_kp.shape[:-2] != ball_uv.shape[:-2]:
-            raise ValueError("court_kp and ball_uv must share leading dimensions.")
-        if court_visible.shape != court_kp.shape[:-1]:
-            raise ValueError("court_visible must match court_kp without XY.")
-        if ball_visible.shape != ball_uv.shape[:-1]:
-            raise ValueError("ball_visible must match ball_uv without XY.")
-        if context_valid.shape != ball_uv.shape[:-2]:
-            raise ValueError("context_valid must match court/ball leading dimensions.")
-
-        court_visible = court_visible.bool()
-        ball_visible = ball_visible.bool()
-        context_valid = context_valid.bool()
-        num_ball_points = int(ball_uv.shape[-2])
-        if num_ball_points <= 0:
-            raise ValueError("At least one ball token is required.")
+        num_ball_points = ball_uv.shape[-2]
 
         safe_court = court_kp.masked_fill(~court_visible.unsqueeze(-1), 0.0)
         safe_ball = ball_uv.masked_fill(~ball_visible.unsqueeze(-1), 0.0)
@@ -148,28 +129,14 @@ class CourtBallPointFusion(nn.Module):
         ball_tokens = ball_tokens + self.token_type_embedding[1]
         tokens = torch.cat((court_tokens, ball_tokens), dim=-2)
 
-        court_key_valid = court_visible & context_valid.unsqueeze(-1)
-        ball_context_valid = context_valid.unsqueeze(-1).expand_as(ball_visible)
-        ball_key_valid = (
-            ball_context_valid & ball_visible
-            if mask_invisible_ball
-            else ball_context_valid
-        )
-        token_valid = torch.cat((court_key_valid, ball_key_valid), dim=-1)
-
         sequence_length = self.num_court_points + num_ball_points
         flat_tokens = tokens.reshape(-1, sequence_length, self.token_dim)
-        flat_valid = token_valid.reshape(-1, sequence_length)
-        attention_mask, _ = build_self_attn_mask(flat_valid)
         rope_coordinates = self.build_rope_coordinates(
             num_court_points=self.num_court_points,
             num_ball_points=num_ball_points,
             device=ball_uv.device,
         )
-        frequencies = precompute_freqs_cis_nd(
-            dim=self.rope_dim,
-            pos=rope_coordinates,
-        )
+        frequencies = self.rope_frequency_computer(rope_coordinates)
         for block in self.blocks:
             flat_tokens = block(
                 flat_tokens,
@@ -179,11 +146,6 @@ class CourtBallPointFusion(nn.Module):
 
         fused_ball = flat_tokens[:, self.num_court_points :]
         fused_ball = fused_ball.reshape(*ball_uv.shape[:-1], self.token_dim)
-        ball_state_valid = (
-            ball_context_valid & ball_visible
-            if mask_invisible_ball
-            else ball_context_valid
-        )
         fused_ball = self.output_projection(self.output_norm(fused_ball))
         return cast(Tensor, fused_ball * ball_state_valid.unsqueeze(-1))
 

@@ -13,6 +13,7 @@ from src.tasks.plcs.training.losses import (
     PLCSLossInputs,
     position_smoothness_loss_term,
 )
+from src.utils.losses.temporal import TemporalSmoothnessPenalty
 
 
 def _loss_config() -> PLCSLossConfig:
@@ -46,6 +47,17 @@ def _inputs(pred_position: torch.Tensor, mask: torch.Tensor | None) -> PLCSLossI
     )
 
 
+def _position_smoothness(inputs: PLCSLossInputs) -> torch.Tensor:
+    return position_smoothness_loss_term(
+        inputs,
+        penalty=TemporalSmoothnessPenalty(
+            order=3,
+            beta=1e-3,
+            axis_weights=(1.0, 1.0, 1.0),
+        ),
+    )
+
+
 def test_registered_term_is_off_when_composed_weight_is_zero() -> None:
     assert "position_smoothness" in DEFAULT_LOSS_TERMS
     config = _loss_config()
@@ -63,15 +75,17 @@ def test_from_dict_parses_weight() -> None:
 def test_frame_level_input_is_noop() -> None:
     # (B, 3): no temporal axis -> term must be a no-op, not misread coords as time.
     pred = torch.randn(5, 3)
-    assert position_smoothness_loss_term(_inputs(pred, None)).item() == 0.0
+    assert _position_smoothness(_inputs(pred, None)).item() == 0.0
 
 
 def test_jitter_penalized_more_than_smooth() -> None:
     torch.manual_seed(0)
     t = torch.linspace(0, 1, 40).view(1, 40, 1).repeat(1, 1, 3)
-    mask = torch.ones(1, 40)
-    smooth = position_smoothness_loss_term(_inputs(t, mask))
-    jittery = position_smoothness_loss_term(_inputs(t + 0.02 * torch.randn(1, 40, 3), mask))
+    mask = torch.ones(1, 40, dtype=torch.bool)
+    smooth = _position_smoothness(_inputs(t, mask))
+    jittery = _position_smoothness(
+        _inputs(t + 0.02 * torch.randn(1, 40, 3), mask)
+    )
     assert jittery > 10 * smooth
 
 
@@ -86,12 +100,35 @@ def test_contributes_to_total_via_forward() -> None:
     loss_fn = PLCSLoss(config=cfg)
     pred_pos = torch.randn(1, 20, 3)
     pred_rot = torch.randn(1, 20, 2)
-    losses = loss_fn(
+    inputs = loss_fn.prepare_inputs(
         pred_position=pred_pos,
         pred_rotation=pred_rot,
         target_position=pred_pos,
         target_rotation=pred_rot,
+        pred_canonical_pose=None,
+        target_human_kp_3d=None,
         human_mask=torch.ones(1, 20),
     )
+    losses = loss_fn(inputs)
     assert losses["position_smoothness"] > 0
     torch.testing.assert_close(losses["total"], 4.0 * losses["position_smoothness"])
+
+
+def test_forward_combines_only_prepared_terms_without_registry_dispatch() -> None:
+    loss_fn = PLCSLoss(config=_loss_config())
+    pred_pos = torch.randn(1, 5, 3)
+    pred_rot = torch.randn(1, 5, 2)
+    prepared = loss_fn.prepare_inputs(
+        pred_position=pred_pos,
+        pred_rotation=pred_rot,
+        target_position=pred_pos,
+        target_rotation=pred_rot,
+        pred_canonical_pose=None,
+        target_human_kp_3d=None,
+        human_mask=torch.ones(1, 5),
+    )
+    loss_fn.loss_terms.clear()
+
+    losses = loss_fn(prepared)
+
+    assert torch.isfinite(losses["total"])

@@ -5,7 +5,7 @@
 ## Modules
 
 ### (root)
-- **`__init__.py`**: 3タスク(`kp`/`seg`/`line`)の定義と `CourtHierarchicalModel` の re-export。
+- **`__init__.py`**: 検証済みmodel+task adapterを返す `build_court_detection_pair` のパッケージ入口。
 
 ### data/
 - **`datamodule.py`**: `CourtDetectionDataModule`。`task` に応じてdataset/collateを切替え8の倍数へパディング。
@@ -15,21 +15,26 @@
 - **`augmentation.py`**: `build_seg_transforms()`/`build_kp_transforms()`。task別augmentationパイプライン。
 
 ### models/
-- **`__init__.py`**: `build_court_detection_model(config)`。task-model num_classes整合性を検証する工場関数。
+- **`__init__.py`**: `CourtHierarchicalModel` とencoder/decoder実装の公開面。
 - **`hierarchical_model.py`**: `CourtHierarchicalModel`。encoder→decoder→1x1convの既定アーキテクチャ。
-- **`encoders.py`**: `CourtDefaultEncoder`/`CourtDINOv3Encoder`。CNN特徴またはDINOv3中間トークンを4段階特徴として返す。
+- **`encoders.py`**: `CourtDefaultEncoder`/`CourtDINOv3Encoder`。既定CNN encoderと、model I/O境界から呼び出すDINOv3 backboneの構築情報を提供。
 - **`decoder.py`**: `CourtFPNDecoder`/`CourtUNetDecoder`/`CourtDPTDecoder`。
 
+### model_io/
+- **`contracts.py`**: kp/seg/lineの入力・学習batch・typed prediction契約。
+- **`adapters.py`**: forward前にImageNet正規化済みfloat32 RGBの有限値・値域を検証し、task固有loss・prediction decodeを担当。DINOv3ではraw中間token応答の検証と4段階feature mapへの変換もこの境界で完了する。
+- **`factory.py`**: task-model channel整合性を検証し、model+adapterとDINOv3 backboneのfrozen/trainable実行経路を構築時にbind。
+- **`images.py`**: 3predictor共通のuint8 RGB検証・resize・ImageNet正規化境界。
+
 ### training/
-- **`lightning_module.py`**: `CourtDetectionLightningModule`。task別に損失・メトリクス・予測保存形式を切替。
-- **`losses.py`**: `DiceLoss`/`BinaryDiceLoss`(`FocalBCEWithLogitsLoss` は base から re-export)。
+- **`lightning_module.py`**: `CourtDetectionLightningModule`。選択済みadapterへ入力/loss/output decodeを委譲。
+- **`losses.py`**: task-localな `DiceLoss`/`BinaryDiceLoss`。
 - **`metrics.py`**: `CourtDetectionMetrics`。task別に mIoU/mean_dist/Dice を算出。
 - **`runner.py`**: `CourtDetectionTrainingRunner`。薄いアダプタ。
 
 ### inference/
-- **`predictor.py`**: `CourtKeypointPredictor`。heatmap argmaxを元画像座標のkeypointへ復元。
-- **`mask_predictor.py`**: `CourtSegPredictor`/`CourtLinePredictor`。dense prediction共通テンプレート。
-- **`preprocess.py`**: `preprocess_court_image()`。3predictor共通の前処理。
+- **`predictor.py`**: `CourtKeypointPredictor`。`CourtKeypointPrediction(keypoints, scores, heatmaps)` を返す。
+- **`mask_predictor.py`**: task別の `CourtSegPredictor`/`CourtLinePredictor`。typed dense predictionを返す。
 
 ### evaluation/
 - **`homography_quality.py`**: 14点アノテーションへRANSACホモグラフィーを当て、inlier被覆・再投影誤差・可視率・占有率・地上視点の射影歪みを評価。
@@ -37,9 +42,9 @@
 - **`pipeline.py`**: `data_train.json`互換JSONを厳密に読み、複数データセットの採否manifestと補正済み14点JSONを出力。
 
 ### visualization/
-- **`orchestrator.py`**: task別にpredict→render→GIF保存を統括。
+- **`orchestrator.py`**: 選択済みtask pipelineの共通render APIからGIF保存を統括。
 - **`adapters/`**: predictor入力変換と学習時qualitative描画用変換。
-- **`api/predict.py`**: `predict_kp/seg/line()`。
+- **`api/predict.py`**: factoryでkp/seg/line pipelineを一度だけ選択し、分岐なしのframe loopを提供。
 - **`io/frames.py`**: `CourtFrame`/`load_court_frames()`。
 - **`rendering/`**: task別2パネル描画(`kp_renderer`/`seg_renderer`/`line_renderer`)と共通style(`common.py`)。
 

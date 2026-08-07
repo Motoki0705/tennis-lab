@@ -177,5 +177,9 @@ def load_scene(filepath: str | Path) -> dict:
     ball_present_path = scene_dir / "ball_present.npy"
     if ball_present_path.exists():
         result["ball_present"] = np.load(ball_present_path)
-    result["num_balls"] = int(scalars.get("num_balls", 1))
+    if "num_balls" not in scalars:
+        raise ValueError(
+            "BLCS scene is incompatible: required scalar num_balls is missing."
+        )
+    result["num_balls"] = int(scalars["num_balls"])
     return result

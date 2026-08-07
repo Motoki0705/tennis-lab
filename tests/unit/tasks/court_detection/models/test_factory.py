@@ -2,24 +2,28 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import torch.nn as nn
+import torch
 from hydra import compose, initialize_config_dir
 
-from src.tasks.court_detection.models import build_court_detection_model
+from src.tasks.court_detection.model_io.adapters import CourtKeypointModelIO
+from src.tasks.court_detection.model_io.factory import build_court_detection_pair
+from src.tasks.court_detection.models.encoders import CourtDINOv3Encoder
 from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
 
 _CONFIG_DIR = Path(__file__).resolve().parents[5] / "src/tasks/court_detection/configs"
 
 
-class DummyModel(nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
-
-
 def test_dinov3_dpt_can_build_for_keypoint_heatmaps(monkeypatch) -> None:
-    expected = DummyModel()
+    expected = object.__new__(CourtHierarchicalModel)
+    torch.nn.Module.__init__(expected)
+    expected.in_channels = 3
+    expected.num_classes = 14
+    encoder = object.__new__(CourtDINOv3Encoder)
+    torch.nn.Module.__init__(encoder)
+    expected.encoder = encoder
 
-    def fake_from_config(config: object) -> DummyModel:
+    def fake_from_config(config: object) -> CourtHierarchicalModel:
+        _ = config
         return expected
 
     monkeypatch.setattr(CourtHierarchicalModel, "from_config", fake_from_config)
@@ -34,6 +38,7 @@ def test_dinov3_dpt_can_build_for_keypoint_heatmaps(monkeypatch) -> None:
             ],
         )
 
-    model = build_court_detection_model(config)
+    pair = build_court_detection_pair(config)
 
-    assert model is expected
+    assert pair.model is expected
+    assert isinstance(pair.adapter, CourtKeypointModelIO)

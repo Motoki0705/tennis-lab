@@ -30,11 +30,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal, cast
 
-import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.tasks.plcs.models.components.heads import PositionHead
+from src.tasks.plcs.models.components.heads import CanonicalPoseHead, PositionHead
 from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
 from src.utils.models import (
     RMSNorm,
@@ -157,6 +156,24 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
                 num_layers=2,
                 dropout=dropout,
             )
+        self._pose_branch_input = (
+            self._detach_pose_branch if self.detach_pose_branch else self._share_pose_branch
+        )
+        self._canonical_feature = (
+            self._rotation_canonical_feature
+            if self.canonical_on_rotation_branch
+            else self._pose_canonical_feature
+        )
+        output_profile = (
+            self.predict_canonical_pose,
+            self.aux_position_on_rotation_branch,
+        )
+        self._decode_split_outputs = {
+            (False, False): self._decode_split_outputs_basic,
+            (True, False): self._decode_split_outputs_with_canonical_pose,
+            (False, True): self._decode_split_outputs_with_auxiliary_position,
+            (True, True): self._decode_split_outputs_with_all_heads,
+        }[output_profile]
 
     @classmethod
     def from_config(
@@ -224,34 +241,19 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
         self,
         human_kp: Tensor,
         court_kp: Tensor,
-        human_vis: Tensor | None = None,
-        human_mask: Tensor | None = None,
-        court_vis: Tensor | None = None,
+        human_vis: Tensor,
+        human_mask: Tensor,
+        court_vis: Tensor,
+        camera_attention_mask: Tensor,
+        time_attention_mask: Tensor,
     ) -> dict[str, Tensor]:
         """Forward pass with shared encoder + separate rotation/pose trunks."""
-        batch_size, n_cams, seq_len_in = self._validate_forward_inputs(
-            human_kp=human_kp,
-            court_kp=court_kp,
-            human_vis=human_vis,
-            human_mask=human_mask,
-            court_vis=court_vis,
-        )
+        batch_size, n_cams, seq_len_in = human_kp.shape[:3]
 
-        if human_vis is not None:
-            human_kp = human_kp * (human_vis > 0).unsqueeze(-1).to(dtype=human_kp.dtype)
-        if court_vis is not None:
-            court_kp = court_kp * (court_vis > 0).unsqueeze(-1).to(dtype=court_kp.dtype)
+        human_kp = human_kp * (human_vis > 0).unsqueeze(-1).to(dtype=human_kp.dtype)
+        court_kp = court_kp * (court_vis > 0).unsqueeze(-1).to(dtype=court_kp.dtype)
 
-        if human_mask is not None:
-            token_valid = human_mask > 0
-        else:
-            token_valid = torch.ones(
-                batch_size,
-                n_cams,
-                seq_len_in,
-                dtype=torch.bool,
-                device=human_kp.device,
-            )
+        token_valid = human_mask > 0
 
         court_flat = court_kp.reshape(
             batch_size * n_cams * seq_len_in, self.num_court_tokens, 2
@@ -264,13 +266,6 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
             .permute(0, 2, 1, 3)
         )
 
-        token_valid_t = token_valid.permute(0, 2, 1)
-        camera_valid = token_valid_t.reshape(batch_size * seq_len_in, n_cams)
-        time_valid = token_valid_t.permute(0, 2, 1).reshape(
-            batch_size * n_cams, seq_len_in
-        )
-        camera_mask, _ = self._build_self_attn_mask(camera_valid)
-        time_mask, _ = self._build_self_attn_mask(time_valid)
         camera_freqs = self._camera_freqs(
             batch_size=batch_size, seq_len=seq_len_in, n_cams=n_cams
         )
@@ -288,8 +283,8 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
             n_cams=n_cams,
             camera_freqs=camera_freqs,
             time_freqs=time_freqs,
-            camera_mask=camera_mask,
-            time_mask=time_mask,
+            camera_mask=camera_attention_mask,
+            time_mask=time_attention_mask,
         )
         x_rot = self._run_axial_stack(
             x,
@@ -300,10 +295,10 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
             n_cams=n_cams,
             camera_freqs=camera_freqs,
             time_freqs=time_freqs,
-            camera_mask=camera_mask,
-            time_mask=time_mask,
+            camera_mask=camera_attention_mask,
+            time_mask=time_attention_mask,
         )
-        pose_input = x.detach() if self.detach_pose_branch else x
+        pose_input = self._pose_branch_input(x)
         x_pose = self._run_axial_stack(
             pose_input,
             self.pose_camera_layers,
@@ -313,22 +308,63 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
             n_cams=n_cams,
             camera_freqs=camera_freqs,
             time_freqs=time_freqs,
-            camera_mask=camera_mask,
-            time_mask=time_mask,
+            camera_mask=camera_attention_mask,
+            time_mask=time_attention_mask,
         )
 
         rot_feat = self.rot_final_norm(x_rot[:, :, 0, :])
         pose_feat = self.pose_final_norm(x_pose[:, :, 0, :])
 
-        out = {
+        return self._decode_split_outputs(rot_feat, pose_feat)
+
+    def _decode_split_outputs_basic(
+        self, rot_feat: Tensor, pose_feat: Tensor
+    ) -> dict[str, Tensor]:
+        return {
             "position": self.position_head(pose_feat),
             "rotation": self.rotation_head(rot_feat),
         }
-        if self.predict_canonical_pose and self.canonical_pose_head is not None:
-            canonical_feat = (
-                rot_feat if self.canonical_on_rotation_branch else pose_feat
-            )
-            out["canonical_pose"] = self.canonical_pose_head(canonical_feat)
-        if self.aux_position_head is not None:
-            out["aux_position"] = self.aux_position_head(rot_feat)
-        return out
+
+    def _decode_split_outputs_with_canonical_pose(
+        self, rot_feat: Tensor, pose_feat: Tensor
+    ) -> dict[str, Tensor]:
+        output = self._decode_split_outputs_basic(rot_feat, pose_feat)
+        canonical_head = cast(CanonicalPoseHead, self.canonical_pose_head)
+        output["canonical_pose"] = canonical_head(
+            self._canonical_feature(rot_feat, pose_feat)
+        )
+        return output
+
+    def _decode_split_outputs_with_auxiliary_position(
+        self, rot_feat: Tensor, pose_feat: Tensor
+    ) -> dict[str, Tensor]:
+        output = self._decode_split_outputs_basic(rot_feat, pose_feat)
+        auxiliary_head = cast(PositionHead, self.aux_position_head)
+        output["aux_position"] = auxiliary_head(rot_feat)
+        return output
+
+    def _decode_split_outputs_with_all_heads(
+        self, rot_feat: Tensor, pose_feat: Tensor
+    ) -> dict[str, Tensor]:
+        output = self._decode_split_outputs_with_canonical_pose(rot_feat, pose_feat)
+        auxiliary_head = cast(PositionHead, self.aux_position_head)
+        output["aux_position"] = auxiliary_head(rot_feat)
+        return output
+
+    @staticmethod
+    def _detach_pose_branch(x: Tensor) -> Tensor:
+        return x.detach()
+
+    @staticmethod
+    def _share_pose_branch(x: Tensor) -> Tensor:
+        return x
+
+    @staticmethod
+    def _rotation_canonical_feature(rot_feat: Tensor, pose_feat: Tensor) -> Tensor:
+        del pose_feat
+        return rot_feat
+
+    @staticmethod
+    def _pose_canonical_feature(rot_feat: Tensor, pose_feat: Tensor) -> Tensor:
+        del rot_feat
+        return pose_feat

@@ -31,7 +31,6 @@ workflow:
   prediction:
     checkpoint: ball_detection/stunet/logs/version_2/checkpoints/last.ckpt
     device: cuda
-    allow_device_fallback: false
     sequence_length: 8
     window_stride: 1
     batch_size: 4

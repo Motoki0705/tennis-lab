@@ -1,29 +1,42 @@
 from __future__ import annotations
 
+from typing import cast
+
 import torch
 from torch import Tensor, nn
 
-from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
+from src.tasks.base.model_io import bind_model_io
+from src.tasks.blcs.data.tracking_types import BLCSTrackingPrediction
 from src.tasks.blcs.inference.tracking_predictor import BLCSTrackingPredictor
+from src.tasks.blcs.model_io import TrackQueryBoundModelIO, TrackQueryModelIOAdapter
+from src.tasks.blcs.models import BLCSTrackQueryModel
 
 
-class _FixedTrackingModel(nn.Module):
+class _FixedTrackingModel(BLCSTrackQueryModel):
+    def __init__(self) -> None:
+        nn.Module.__init__(self)
+
     def forward(
         self,
-        *,
         ball_uv: Tensor,
         ball_visible: Tensor,
         court_kp: Tensor,
         court_vis: Tensor,
         frame_mask: Tensor,
-        view_mask: Tensor,
-    ) -> dict[str, Tensor]:
+        observation_state_valid: Tensor,
+        spatial_attention_mask: Tensor,
+        temporal_attention_mask: Tensor,
+        point_attention_mask: Tensor,
+    ) -> BLCSTrackingPrediction:
         del (
             ball_visible,
             court_kp,
             court_vis,
             frame_mask,
-            view_mask,
+            observation_state_valid,
+            spatial_attention_mask,
+            temporal_attention_mask,
+            point_attention_mask,
         )
         batch, _, frames = ball_uv.shape[:3]
         return {
@@ -35,8 +48,21 @@ class _FixedTrackingModel(nn.Module):
 
 
 def test_predictor_returns_cpu_query_presence_and_positions() -> None:
+    binding = cast(
+        "TrackQueryBoundModelIO",
+        bind_model_io(
+            _FixedTrackingModel(),
+            TrackQueryModelIOAdapter(
+                num_court_tokens=14,
+                num_queries=2,
+                presence_threshold=0.5,
+                mask_invisible_observations=True,
+            ),
+        ),
+    )
     predictor = BLCSTrackingPredictor(
-        model=_FixedTrackingModel(), device=torch.device("cpu")
+        model_io=binding,
+        device=torch.device("cpu"),
     )
     shape = (1, 2, 3, 2)
 
@@ -47,14 +73,13 @@ def test_predictor_returns_cpu_query_presence_and_positions() -> None:
         court_vis=torch.ones(1, 2, 3, 14, dtype=torch.bool),
         frame_mask=torch.ones(1, 3, dtype=torch.bool),
         view_mask=torch.ones(1, 2, dtype=torch.bool),
-        tracking_metrics=TrackingMetricConfig(
-            presence_threshold=0.5,
-            duplicate_distance=0.05,
-        ),
         denormalize=False,
     )
 
-    assert result["position"].shape == (1, 3, 2, 3)
-    assert not result["presence"][..., 0].any()
-    assert result["presence"][..., 1].all()
-    assert all(value.device.type == "cpu" for value in result.values())
+    assert result.position.shape == (1, 3, 2, 3)
+    assert not result.presence[..., 0].any()
+    assert result.presence[..., 1].all()
+    assert result.position.device.type == "cpu"
+    assert result.presence_logits.device.type == "cpu"
+    assert result.presence_probability.device.type == "cpu"
+    assert result.presence.device.type == "cpu"

@@ -16,7 +16,7 @@ from numpy.typing import NDArray
 from torchvision.transforms import functional as transform_functional
 
 from src.submodules.configuration import require_absolute_path
-from src.submodules.models._base import BaseInferenceModel
+from src.submodules.models._base.inference_model import BaseInferenceModel
 
 COCO_PERSON_CLASS_ID = 1
 _DINO_MODELS_PACKAGE = "_tennis_lab_third_party_dino_models"
@@ -48,12 +48,11 @@ class DinoPersonDetector(
         repository: str | Path,
         *,
         device: str | torch.device,
-        allow_device_fallback: bool,
         confidence: float,
         short_side: int,
         max_long_side: int,
     ) -> None:
-        super().__init__(device, allow_device_fallback=allow_device_fallback)
+        super().__init__(device)
         if type(confidence) is not float:
             raise TypeError("confidence must be a float.")
         if type(short_side) is not int or type(max_long_side) is not int:
@@ -119,7 +118,8 @@ class DinoPersonDetector(
             raise TypeError(
                 f"frame_bgr must have dtype uint8, got {request.frame_bgr.dtype}"
             )
-        assert self._model is not None
+        if self._model is None:
+            raise RuntimeError("DINO model did not load before prediction.")
         height, width = request.frame_bgr.shape[:2]
         image = _preprocess_frame(
             request.frame_bgr,

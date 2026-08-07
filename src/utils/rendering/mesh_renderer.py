@@ -18,7 +18,7 @@ Example:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import cv2
 import numpy as np
@@ -88,7 +88,7 @@ class MeshRenderer:
         # Headlight along +z (camera view axis); |cos| makes it winding-agnostic.
         cos_theta = np.abs(normals[:, 2])
         intensity = self.style.ambient + self.style.diffuse * cos_theta  # (F,)
-        return intensity[:, None] * np.asarray(color, dtype=np.float32)[None, :]
+        return cast("NDArray[np.float32]", intensity[:, None] * np.asarray(color, dtype=np.float32)[None, :])
 
     def render_overlay(
         self,

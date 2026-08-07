@@ -32,25 +32,17 @@ class CoordinateProjection(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         """Project coordinate features into the model embedding space."""
-        return self.layers(x)
+        projected: Tensor = self.layers(x)
+        return projected
 
 
 def apply_visibility_mask(
     feat: Tensor,
-    visible: Tensor | None,
+    visible: Tensor,
     invisible_token: InvisibleTokenEmbedding,
 ) -> Tensor:
-    """Replace invisible elements with the shared invisible token."""
-    if visible is None:
-        return feat
-
-    mask = visible if visible.dtype == torch.bool else visible > 0
-    if mask.dim() == feat.dim() - 1:
-        mask = mask.unsqueeze(-1)
-    if mask.dim() != feat.dim():
-        raise ValueError(
-            f"Visibility mask rank {mask.dim()} is incompatible with feature rank {feat.dim()}.",
-        )
+    """Replace non-visible elements using a boundary-validated mask tensor."""
+    mask = (visible > 0).unsqueeze(-1)
 
     inv = invisible_token().to(dtype=feat.dtype, device=feat.device)
     inv = inv.view(*([1] * (feat.dim() - 1)), -1).expand_as(feat)

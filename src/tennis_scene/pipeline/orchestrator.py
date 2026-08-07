@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from src.tennis_scene.io import SceneResult
 from src.tennis_scene.pipeline.components.ball_detection import (
     BallDetectionModule,
 )
@@ -25,6 +25,12 @@ from src.tennis_scene.pipeline.dependency_graph import (
     Stage,
     build_default_dependency_graph,
 )
+from src.tennis_scene.pipeline.model_io.gvhmr import (
+    GVHMRChain,
+    GVHMRResult,
+    build_gvhmr_chain,
+)
+from src.tennis_scene.schema import SceneResult
 from src.utils.configuration import PathResolver, PathRole
 from src.utils.video import probe_video_info
 
@@ -32,7 +38,6 @@ if TYPE_CHECKING:
     from omegaconf import DictConfig
 
     from src.tennis_scene.configuration import PipelineRuntimeConfig
-    from src.tennis_scene.pipeline.components.gvhmr import GVHMRResult
     from src.tennis_scene.pipeline.components.player_association import (
         PlayerAssociationApplied,
         PlayerAssociationResult,
@@ -49,6 +54,7 @@ class TennisSceneOrchestrator:
         self,
         court_kp_module: CourtKPModule,
         gvhmr_config: GVHMRConfig | None,
+        gvhmr_chain: GVHMRChain | None,
         player_association_module: PlayerAssociationModule,
         ball_detection_module: BallDetectionModule | None,
         plcs_module: PLCSModule,
@@ -59,6 +65,7 @@ class TennisSceneOrchestrator:
     ) -> None:
         self.court_kp_module = court_kp_module
         self.gvhmr_config = gvhmr_config
+        self.gvhmr_chain = gvhmr_chain
         self.player_association_module = player_association_module
         self.ball_detection_module = ball_detection_module
         self.plcs_module = plcs_module
@@ -76,9 +83,17 @@ class TennisSceneOrchestrator:
         resolution = graph.resolve_from_enabled(cfg.enabled)
         for line in graph.format_resolution_messages(resolution):
             LOGGER.info(line)
+        gvhmr_enabled = Stage.GVHMR in resolution.enabled_set
+        gvhmr_config = cfg.gvhmr if gvhmr_enabled else None
+        gvhmr_chain = (
+            build_gvhmr_chain(cfg.gvhmr)
+            if gvhmr_enabled and cfg.gvhmr.source == "execute"
+            else None
+        )
         return cls(
             court_kp_module=CourtKPModule(cfg.court_kp),
-            gvhmr_config=cfg.gvhmr if Stage.GVHMR in resolution.enabled_set else None,
+            gvhmr_config=gvhmr_config,
+            gvhmr_chain=gvhmr_chain,
             player_association_module=PlayerAssociationModule(cfg.player_association),
             ball_detection_module=(
                 BallDetectionModule(cfg.ball_detection)
@@ -146,24 +161,12 @@ class TennisSceneOrchestrator:
 
         LOGGER.info(f"Running GVHMR in-process for camera {camera_index}...")
         module = GVHMRModule(
-            GVHMRConfig(
-                gvhmr_checkpoint=self.gvhmr_config.gvhmr_checkpoint,
-                source=self.gvhmr_config.source,
-                detector=self.gvhmr_config.detector,
-                yolo_checkpoint=self.gvhmr_config.yolo_checkpoint,
-                dino_checkpoint=self.gvhmr_config.dino_checkpoint,
-                dino_repository=self.gvhmr_config.dino_repository,
-                vitpose_checkpoint=self.gvhmr_config.vitpose_checkpoint,
-                hmr2_checkpoint=self.gvhmr_config.hmr2_checkpoint,
-                body_models_dir=self.gvhmr_config.body_models_dir,
-                bundled_assets=self.gvhmr_config.bundled_assets,
-                runtime=self.gvhmr_config.runtime,
-                track_selection=self.gvhmr_config.track_selection,
-                num_tracks=self.gvhmr_config.num_tracks,
-                save_result=self.gvhmr_config.save_result,
+            replace(
+                self.gvhmr_config,
                 output_path=output_path,
                 load_path=load_path,
-            )
+            ),
+            self.gvhmr_chain,
         )
         return module.process(video_path, max_frames=max_frames)
 
@@ -381,7 +384,3 @@ class TennisSceneOrchestrator:
             association=association_result,
         )
         return association_result, aligned_players
-
-
-if __name__ == "__main__":
-    print("TennisSceneOrchestrator: pipeline orchestration module")

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import torch
 import torch.nn as nn
@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from torchvision.ops import StochasticDepth
 
 from src.tasks.ball_detection.configuration import validate_model
-from src.tasks.ball_detection.models.input_adapter import resolve_model_in_channels
+from src.tasks.ball_detection.model_io.adapters import build_ball_model_input_spec
 from src.utils.tensor_utils import flatten_time_to_batch, restore_time_from_batch
 
 if TYPE_CHECKING:
@@ -66,10 +66,7 @@ class ConvNeXtBlock(nn.Module):
         x = self.act(x)
         x = self.pwconv2(x)
         x = x.permute(0, 3, 1, 2)
-        dropped = self.drop_path(x)
-        if not isinstance(dropped, torch.Tensor):
-            raise TypeError("ConvNeXt drop-path output must be a tensor.")
-        return residual + dropped
+        return residual + cast(torch.Tensor, self.drop_path(x))
 
 
 class Conv2dBlock(nn.Module):
@@ -96,10 +93,7 @@ class Conv2dBlock(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Apply the ConvNeXt blocks without changing shape."""
-        output = self.blocks(x)
-        if not isinstance(output, torch.Tensor):
-            raise TypeError("ConvNeXt block stack must return a tensor.")
-        return output
+        return cast(torch.Tensor, self.blocks(x))
 
 
 class Conv3dBlock(nn.Module):
@@ -136,10 +130,7 @@ class Conv3dBlock(nn.Module):
         x = self.act(x)
         x = self.temporal_conv(self.temporal_norm(x))
         x = self.act(x)
-        dropped = self.drop_path(x)
-        if not isinstance(dropped, torch.Tensor):
-            raise TypeError("Conv3d drop-path output must be a tensor.")
-        return residual + dropped
+        return residual + cast(torch.Tensor, self.drop_path(x))
 
 
 class StemLayer(nn.Module):
@@ -252,10 +243,7 @@ class BottleneckBlock(nn.Module):
         x_2d, batch_size, timesteps = flatten_time_to_batch(x)
         x_2d = self.block_2d(x_2d)
         x = restore_time_from_batch(x_2d, batch_size, timesteps)
-        output = self.block_3d(x)
-        if not isinstance(output, torch.Tensor):
-            raise TypeError("ConvNeXt bottleneck must return a tensor.")
-        return output
+        return cast(torch.Tensor, self.block_3d(x))
 
 
 class DecoderBlock(nn.Module):
@@ -405,7 +393,7 @@ class ConvNeXtUNet(nn.Module):
         """Create the model from a composed Hydra config."""
         model_cfg = validate_model(config)
         return cls(
-            in_channels=resolve_model_in_channels(model_cfg),
+            in_channels=build_ball_model_input_spec(config).in_channels,
             num_classes=int(model_cfg["num_classes"]),
             dims=tuple(int(dim) for dim in model_cfg["dims"]),
             depth=int(model_cfg["depth"]),
@@ -414,19 +402,16 @@ class ConvNeXtUNet(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Run the ConvNeXt spatio-temporal U-Net."""
-        self._validate_forward_input(x)
-
         skip_3d_features: list[torch.Tensor] = []
         skip_2d_features: list[torch.Tensor] = []
 
         x = self.downsampling_layers[0](x)
-        for stage_index, encoder_layer in enumerate(self.encoder_layers):
+        for stage_index, encoder_layer in enumerate(self.encoder_layers[:-1]):
             x, skip_2d = encoder_layer(x)
-            if stage_index == len(self.encoder_layers) - 1:
-                break
             skip_3d_features.append(x)
             skip_2d_features.append(skip_2d)
             x = self.downsampling_layers[stage_index + 1](x)
+        x, _ = self.encoder_layers[-1](x)
 
         x = self.bottleneck(x)
         for upsampling_layer, decoder_layer, skip_3d, skip_2d in zip(
@@ -439,40 +424,13 @@ class ConvNeXtUNet(nn.Module):
             x = upsampling_layer(x, size=skip_3d.shape[-3:])
             x = decoder_layer(x, skip_3d, skip_2d)
 
-        output = self.final_conv(self.final_norm(x))
-        if not isinstance(output, torch.Tensor):
-            raise TypeError("ConvNeXtUNet final convolution must return a tensor.")
-        return output
-
-    def _validate_forward_input(self, x: torch.Tensor) -> None:
-        if x.ndim != 5:
-            raise ValueError(
-                "ConvNeXtUNet expects input with shape (B, C, T, H, W), "
-                f"got ndim={x.ndim}."
-            )
-        if x.shape[1] != self.in_channels:
-            raise ValueError(
-                f"Expected {self.in_channels} input channels but received {x.shape[1]}."
-            )
-        if x.shape[2] <= 0:
-            raise ValueError("ConvNeXtUNet expects at least one frame.")
-
-        minimum_spatial_size = 4 * 2 ** (len(self.dims) - 1)
-        if x.shape[3] < minimum_spatial_size or x.shape[4] < minimum_spatial_size:
-            raise ValueError(
-                "Input height and width must be at least "
-                f"{minimum_spatial_size} for dims={self.dims}, "
-                f"got H={x.shape[3]}, W={x.shape[4]}."
-            )
+        return cast(torch.Tensor, self.final_conv(self.final_norm(x)))
 
 
 def _build_drop_path(drop_path_prob: float) -> nn.Module:
     if drop_path_prob <= 0.0:
         return nn.Identity()
-    module = StochasticDepth(drop_path_prob, mode="row")
-    if not isinstance(module, nn.Module):
-        raise TypeError("StochasticDepth must be an nn.Module.")
-    return module
+    return cast(nn.Module, StochasticDepth(drop_path_prob, mode="row"))
 
 
 def _validate_dim(dim: int) -> None:

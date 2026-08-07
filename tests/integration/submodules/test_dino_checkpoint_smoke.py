@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 import torch
 
-from src.submodules.models.dino import DinoPersonDetector, PersonDetectionRequest
+from src.submodules.models import DinoPersonDetector, PersonDetectionRequest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 CHECKPOINT = PROJECT_ROOT / "ckpt/dino/checkpoint0029_4scale_swin.pth"
@@ -25,7 +25,6 @@ def test_dino_checkpoint_loads_strictly_and_runs_one_frame() -> None:
         checkpoint=CHECKPOINT,
         repository=REPOSITORY,
         device="cuda",
-        allow_device_fallback=False,
         confidence=0.35,
         short_side=800,
         max_long_side=1333,

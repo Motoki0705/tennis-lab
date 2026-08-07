@@ -18,49 +18,34 @@ from torch import Tensor
 from src.tasks.ball_detection.data.components.augmentation import (
     denormalize_tensor_images_imagenet,
 )
-from src.tasks.ball_detection.models.input_adapter import to_model_input
+from src.tasks.ball_detection.model_io.adapters import BallModelIOAdapter
 from src.utils.data.augmentation import tensor_images_to_uint8_rgb
 from src.utils.data.heatmaps import heatmaps_to_argmax
 
 
 def build_mdd_frames_from_images(
     images_btchw: Tensor,
-    model_cfg: dict[str, Any] | None = None,
+    model_io: BallModelIOAdapter,
 ) -> list[np.ndarray]:
     """Compute per-frame MDD RGB visualisation from a ``(B, T, C, H, W)`` tensor.
 
-    MDD channels (brighten / darken) are derived from the same ``to_model_input``
-    path used during actual inference so the visualisation faithfully reflects
-    what the model sees.  When the model is configured in ``rgb`` input mode the
-    function falls back to black MDD frames so the caller does not need to branch.
+    MDD channels are derived by the same canonical model-I/O adapter used for
+    inference.
 
     Args:
         images_btchw: ``(B, T, C, H, W)`` float tensor in ImageNet-normalised space
             *before* any mode conversion.  The function uses only ``B=sample_idx``
             slice via the caller (see :func:`build_render_animation_inputs`).
-        model_cfg: Model config dict (passed to ``to_model_input``).  When ``None``
-            or ``input_mode`` is ``"rgb"``, black placeholder frames are returned.
+        model_io: The selected canonical ball model-I/O adapter.
 
     Returns:
         List of T ``(H, W, 3)`` uint8 RGB arrays.
     """
-    if model_cfg is None:
-        raise ValueError("model_cfg is required for render input adaptation.")
-    cfg = model_cfg
-    input_mode = str(cfg["input_mode"]).strip().lower()
-
-    t_frames = images_btchw.shape[1]
     h = images_btchw.shape[3]
     w = images_btchw.shape[4]
 
-    if input_mode != "mdd":
-        # Return black placeholders – renderer will still show the panel correctly.
-        return [np.zeros((h, w, 3), dtype=np.uint8) for _ in range(t_frames)]
-
-    mdd_cfg = {**cfg, "input_mode": "mdd", "in_channels": 2}
     with torch.no_grad():
-        # features: (B, 2, T, H, W)
-        features = to_model_input(images_btchw, mdd_cfg)
+        features = model_io.mdd_features(images_btchw)
 
     # Use the first sample in the batch.
     brighten = features[0, 0].clamp(0.0, 1.0).cpu().numpy()  # (T, H, W)
@@ -81,7 +66,7 @@ def build_render_animation_inputs(
     pred_heatmaps_bthw: Tensor,
     peak_threshold: float,
     normalize_cfg: dict[str, Any] | None = None,
-    model_cfg: dict[str, Any] | None = None,
+    model_io: BallModelIOAdapter,
     sample_idx: int = 0,
     clip_label: str = "train",
 ) -> dict[str, Any]:
@@ -98,7 +83,7 @@ def build_render_animation_inputs(
         normalize_cfg: Dict with ``enabled``, ``mean``, ``std`` keys (from
             ``data.augmentation.normalize_imagenet`` config section).  Used to
             undo ImageNet normalisation before converting to uint8.
-        model_cfg: Passed to :func:`build_mdd_frames_from_images`.
+        model_io: Bound adapter used for canonical MDD construction.
         sample_idx: Which element of the batch to visualise (default 0).
         clip_label: Human-readable label placed in the rendered header.
 
@@ -109,7 +94,7 @@ def build_render_animation_inputs(
     if normalize_cfg is None:
         raise ValueError("normalize_cfg is required for render input adaptation.")
     cfg = normalize_cfg
-    b, t, c, h, w = images_btchw.shape
+    _, t, _, h, w = images_btchw.shape
 
     # ------------------------------------------------------------------ images
     frames_tensor = images_btchw[sample_idx].detach().cpu()  # (T, C, H, W)
@@ -150,7 +135,7 @@ def build_render_animation_inputs(
     # --------------------------------------------------------------- MDD frames
     mdd_frames_rgb = build_mdd_frames_from_images(
         images_btchw[sample_idx : sample_idx + 1],  # keep batch dim → (1, T, C, H, W)
-        model_cfg=model_cfg,
+        model_io=model_io,
     )
 
     # --------------------------------------------------------------- frame names

@@ -53,7 +53,7 @@ from src.utils.rendering.theme import (
     apply_figure_theme,
     resolve_theme,
 )
-from src.utils.rendering.trajectory_analysis import compute_speeds, detect_bounces
+from src.utils.rendering.trajectory_analysis import compute_speeds
 from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 
 if TYPE_CHECKING:
@@ -132,43 +132,37 @@ def extract_ball_events(meta: dict[str, Any]) -> list[BallEvent]:
     return events
 
 
-def resolve_bounce_frames(
-    positions: NDArray[np.float32],
-    events: list[BallEvent] | None,
-) -> NDArray[np.int64]:
-    """Bounce frame indices for a trajectory, preferring event metadata.
-
-    Bounce events from scene metadata are authoritative; only when the event
-    list carries no bounces does this fall back to detecting them from the
-    trajectory, so the same bounce is never reported twice.
-    """
-    if events:
-        frames = sorted(
-            e.frame_idx for e in events if e.event_type is BallEventType.BOUNCE
-        )
-        if frames:
-            return np.asarray(frames, dtype=np.int64)
-    logger.info("No bounce events in metadata; falling back to detect_bounces().")
-    return detect_bounces(positions)
+def bounce_frames_from_events(events: list[BallEvent]) -> NDArray[np.int64]:
+    """Return authoritative bounce indices from explicit event metadata."""
+    frames = sorted(
+        event.frame_idx
+        for event in events
+        if event.event_type is BallEventType.BOUNCE
+    )
+    return np.asarray(frames, dtype=np.int64)
 
 
 def split_ball_tracks(scene: dict[str, Any]) -> list[NDArray[np.float32]]:
     """Return active ``(T, 3)`` trajectories from a single/multi-ball scene."""
     positions = np.asarray(scene["ball_pos_world"], dtype=np.float32)
+    if "num_balls" not in scene:
+        raise ValueError("scene.num_balls is required for trajectory rendering.")
+    raw_num_balls = scene["num_balls"]
+    if type(raw_num_balls) is not int:
+        raise TypeError("scene.num_balls must be exactly int.")
+    num_balls = raw_num_balls
     if positions.ndim == 2:
         if positions.shape[1] != 3:
             raise ValueError(
                 f"Expected ball positions shaped (T, 3), got {positions.shape}."
             )
+        if num_balls != 1:
+            raise ValueError("A (T,3) trajectory requires scene.num_balls == 1.")
         return [positions]
     if positions.ndim != 3 or positions.shape[2] != 3:
         raise ValueError(
             f"Expected ball positions shaped (T, Q, 3), got {positions.shape}."
         )
-    raw_num_balls = scene["num_balls"] if "num_balls" in scene else positions.shape[1]
-    if type(raw_num_balls) is not int:
-        raise TypeError("scene.num_balls must be exactly int when present.")
-    num_balls = raw_num_balls
     if not 1 <= num_balls <= positions.shape[1]:
         raise ValueError(
             f"num_balls must be within [1, {positions.shape[1]}], got {num_balls}."
@@ -411,7 +405,7 @@ class BLCSSceneRenderer:
             if ball_uv.ndim == 2
             else [
                 ball_uv[:, index]
-                for index in range(int(scene.get("num_balls", ball_uv.shape[1])))
+                for index in range(int(scene["num_balls"]))
             ]
         )
         visibility_tracks = (
@@ -646,11 +640,10 @@ class BLCSSceneRenderer:
 
         if view == "3d":
             bounce_frames = [
-                resolve_bounce_frames(
-                    positions,
+                bounce_frames_from_events(
                     extract_ball_track_events(scene["meta"], index),
                 )
-                for index, positions in enumerate(tracks)
+                for index, _positions in enumerate(tracks)
             ]
             speeds = (
                 [compute_speeds(positions, fps) for positions in tracks]
@@ -823,7 +816,7 @@ class BLCSSceneRenderer:
         fps: float = 30.0,
         figsize: tuple[float, float] = (10, 8),
         title: str = "GT vs Prediction",
-        events: list[BallEvent] | None = None,
+        events: list[BallEvent],
     ) -> FuncAnimation | None:
         """Create animation comparing GT and predicted trajectories.
 
@@ -834,8 +827,8 @@ class BLCSSceneRenderer:
             fps: Frames per second.
             figsize: Figure size.
             title: Title prefix for the animation.
-            events: GT ball events from scene metadata; bounce rings prefer
-                these over trajectory-based detection (3D view only).
+            events: Authoritative GT ball events from scene metadata used for
+                bounce rings in the 3D view.
 
         Returns:
             FuncAnimation object, or None if view is invalid.
@@ -849,7 +842,7 @@ class BLCSSceneRenderer:
         if view == "3d":
             # Bounce rings mark GT bounces only; a second ring set from the
             # prediction would double-mark the same physical bounce.
-            bounce_frames = resolve_bounce_frames(gt_positions, events)
+            bounce_frames = bounce_frames_from_events(events)
 
             fig = plt.figure(figsize=figsize)
             apply_figure_theme(fig, self.theme)

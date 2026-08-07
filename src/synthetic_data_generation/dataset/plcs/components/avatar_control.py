@@ -137,7 +137,7 @@ class NeighborBlend:
     """Deterministic template-vertex neighbors and their explicit weights."""
 
     indices: IntArray
-    weights: FloatArray
+    weights: NDArray[np.float32] | FloatArray
 
     def __post_init__(self) -> None:
         indices = _integer_array(self.indices, name="indices", ndim=2)

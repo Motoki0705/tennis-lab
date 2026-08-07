@@ -14,7 +14,14 @@ from src.tasks.base.training.gan_training import ManualGANSupportMixin
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_saving import save_qualitative_animation
 from src.tasks.plcs.configuration import PLCSTrainingConfig
-from src.tasks.plcs.models import build_plcs_discriminator, build_plcs_model
+from src.tasks.plcs.model_io import (
+    PLCSDecodedPrediction,
+    PLCSModelIOAdapter,
+    PLCSPreparedBatch,
+    PLCSStandardBoundModelIO,
+    build_plcs_model_io,
+)
+from src.tasks.plcs.models.discriminators import build_plcs_discriminator
 from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
 from src.tasks.plcs.training.mcmc import LangevinNoiseInjector, MCMCConfig
 from src.tasks.plcs.training.metrics import PLCSMetrics
@@ -39,8 +46,20 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         super().__init__(config)
         self.plcs_runtime = runtime
 
-        self.model: nn.Module = build_plcs_model(runtime)
-        self.predict_canonical_pose = runtime.model.boolean("predict_canonical_pose")
+        model_io = build_plcs_model_io(runtime)
+        adapter = model_io.adapter
+        if not isinstance(adapter, PLCSModelIOAdapter):
+            raise ValueError(
+                "PLCSLightningModule requires a standard PLCS model-I/O pair."
+            )
+        self.io_adapter = adapter
+        self.model_io = cast(PLCSStandardBoundModelIO, model_io)
+        self.model: nn.Module = self.model_io.model
+        self._add_auxiliary_supervision = (
+            self._add_position_auxiliary_supervision
+            if self.io_adapter.predict_auxiliary_position
+            else self._keep_primary_supervision
+        )
 
         root = runtime.raw
         loss_cfg = PLCSLossConfig.from_dict(dict(root.loss))
@@ -92,15 +111,12 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             rotation = rotation.unsqueeze(1)
         return torch.cat([position, rotation], dim=-1)
 
-    def _forward_from_batch(self, batch: dict[str, Tensor]) -> dict[str, Tensor]:
-        result: dict[str, Tensor] = self.model(
-            human_kp=batch["human_kp"],
-            court_kp=batch["court_kp"],
-            human_vis=batch.get("human_vis"),
-            human_mask=batch.get("human_mask"),
-            court_vis=batch.get("court_vis"),
-        )
-        return result
+    def _forward_from_batch(
+        self, batch: dict[str, Tensor]
+    ) -> tuple[PLCSDecodedPrediction, PLCSPreparedBatch]:
+        prepared = self.io_adapter.prepare_training_batch(batch)
+        raw_output = self.model_io.execute_call(prepared.call)
+        return self.io_adapter.decode_prepared_output(raw_output, prepared), prepared
 
     def _metric_tracker_for_stage(self, stage: str) -> PLCSMetrics:
         if stage == "train":
@@ -141,42 +157,35 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         batch: dict[str, Tensor],
         stage: str,
     ) -> dict[str, Any]:
-        outputs = self._forward_from_batch(batch)
-        human_mask = batch.get("human_mask")
+        outputs, prepared = self._forward_from_batch(batch)
+        target_position = cast(Tensor, prepared.target_position)
+        target_rotation = cast(Tensor, prepared.target_rotation)
+        human_mask = prepared.target_human_mask
         frame_mask = normalize_padding_mask(human_mask, flatten=False)
 
-        losses = self.loss_fn(
-            pred_position=outputs["position"],
-            pred_rotation=outputs["rotation"],
-            target_position=batch["position"],
-            target_rotation=batch["rotation"],
-            pred_canonical_pose=outputs.get("canonical_pose"),
-            target_human_kp_3d=batch.get("human_kp_3d"),
+        loss_inputs = self.loss_fn.prepare_inputs(
+            pred_position=outputs.position,
+            pred_rotation=outputs.rotation,
+            target_position=target_position,
+            target_rotation=target_rotation,
+            pred_canonical_pose=outputs.canonical_pose,
+            target_human_kp_3d=prepared.target_human_kp_3d,
             human_mask=human_mask,
         )
+        losses = self.loss_fn(loss_inputs)
 
-        # Auxiliary supervision head for representation learning on the rotation
-        # trunk. The aux_position head (the ex10 / split-model ingredient) teaches
-        # the rotation trunk the multiview triangulation that rotation depends on,
-        # while the dedicated pose trunk still produces the precise position.
-        # Each entry maps an output key -> (target batch key, loss kind, weight).
-        aux_specs = (("aux_position", "position", "position", "position"),)
-        for out_key, target_key, kind, weight_name in aux_specs:
-            if out_key not in outputs:
-                continue
-            aux_value = self._aux_loss(
-                outputs[out_key], batch[target_key], kind, frame_mask
-            )
-            losses[out_key] = aux_value
-            losses["total"] = (
-                losses["total"] + self.loss_fn.weight_for(weight_name) * aux_value
-            )
+        losses = self._add_auxiliary_supervision(
+            losses,
+            outputs,
+            target_position,
+            frame_mask,
+        )
 
         metrics = self._metric_tracker_for_stage(stage).update(
-            outputs["position"],
-            outputs["rotation"],
-            batch["position"],
-            batch["rotation"],
+            outputs.position,
+            outputs.rotation,
+            target_position,
+            target_rotation,
             human_mask=human_mask,
         )
 
@@ -187,10 +196,41 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
                 **{f"loss_{k}": float(v.item()) for k, v in losses.items()},
             },
             "outputs": outputs,
-            "gan_fake": self._pose_sequence(outputs["position"], outputs["rotation"]),
-            "gan_real": self._pose_sequence(batch["position"], batch["rotation"]),
+            "prepared": prepared,
+            "gan_fake": self._pose_sequence(outputs.position, outputs.rotation),
+            "gan_real": self._pose_sequence(target_position, target_rotation),
             "gan_mask": frame_mask,
         }
+
+    @staticmethod
+    def _keep_primary_supervision(
+        losses: dict[str, Tensor],
+        outputs: PLCSDecodedPrediction,
+        target_position: Tensor,
+        frame_mask: Tensor | None,
+    ) -> dict[str, Tensor]:
+        del outputs, target_position, frame_mask
+        return losses
+
+    def _add_position_auxiliary_supervision(
+        self,
+        losses: dict[str, Tensor],
+        outputs: PLCSDecodedPrediction,
+        target_position: Tensor,
+        frame_mask: Tensor | None,
+    ) -> dict[str, Tensor]:
+        auxiliary_position = cast(Tensor, outputs.auxiliary_position)
+        aux_value = self._aux_loss(
+            auxiliary_position,
+            target_position,
+            "position",
+            frame_mask,
+        )
+        losses["aux_position"] = aux_value
+        losses["total"] = (
+            losses["total"] + self.loss_fn.weight_for("position") * aux_value
+        )
+        return losses
 
     def _log_stage_metrics(
         self, stage: str, loss: Tensor, metrics: dict[str, Any]
@@ -215,12 +255,13 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         self, batch: dict[str, Tensor], result: dict[str, Any]
     ) -> dict[str, Any]:
         """Position/rotation predictions + targets to persist for the test split."""
-        outputs = result["outputs"]
+        outputs = cast(PLCSDecodedPrediction, result["outputs"])
+        prepared = cast(PLCSPreparedBatch, result["prepared"])
         payload: dict[str, Any] = {
-            "pred_position": outputs["position"],
-            "pred_rotation": outputs["rotation"],
-            "target_position": batch["position"],
-            "target_rotation": batch["rotation"],
+            "pred_position": outputs.position,
+            "pred_rotation": outputs.rotation,
+            "target_position": prepared.target_position,
+            "target_rotation": prepared.target_rotation,
         }
         mask = result.get("gan_mask")
         if mask is not None:
@@ -300,17 +341,29 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
             try:
                 with torch.no_grad():
-                    out = self._forward_from_batch(batch_dev)
+                    out, _ = self._forward_from_batch(batch_dev)
 
                 # Build CPU-side scenes (adapter handles .cpu() internally)
                 batch_cpu = {
                     k: v.cpu() if isinstance(v, Tensor) else v for k, v in batch.items()
                 }
-                out_cpu = {
-                    k: v.cpu() if isinstance(v, Tensor) else v for k, v in out.items()
-                }
                 gt_scene, pred_scene = batch_to_pose_render_scenes(
-                    batch_cpu, out_cpu, sample_idx=0
+                    batch_cpu,
+                    PLCSDecodedPrediction(
+                        position=out.position.cpu(),
+                        rotation=out.rotation.cpu(),
+                        canonical_pose=(
+                            out.canonical_pose.cpu()
+                            if out.canonical_pose is not None
+                            else None
+                        ),
+                        auxiliary_position=(
+                            out.auxiliary_position.cpu()
+                            if out.auxiliary_position is not None
+                            else None
+                        ),
+                    ),
+                    sample_idx=0,
                 )
 
                 # Choose view: 3d only when both scenes have canonical pose data

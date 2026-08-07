@@ -239,7 +239,6 @@ SUBMODULE_RUNTIME_SCHEMA = StrictConfigSchema(
     name="submodules.runtime",
     fields={
         "device": ConfigField.of(str),
-        "allow_device_fallback": ConfigField.of(bool),
         "tracking": ConfigField.mapping(_TRACKING_RUNTIME_SCHEMA),
         "dino_detector": ConfigField.mapping(_DINO_RUNTIME_SCHEMA),
         "vitpose": ConfigField.mapping(_VITPOSE_RUNTIME_SCHEMA),
@@ -309,7 +308,6 @@ class SubmoduleRuntimeConfig:
     """Single typed runtime contract shared by submodule entrypoints."""
 
     device: str
-    allow_device_fallback: bool
     tracking: TrackingRuntimeConfig
     dino_detector: DinoDetectorRuntimeConfig
     vitpose: ViTPoseRuntimeConfig
@@ -341,7 +339,6 @@ class SubmoduleRuntimeConfig:
                 ) from error
         return cls(
             device=device,
-            allow_device_fallback=cast(bool, validated["allow_device_fallback"]),
             tracking=TrackingRuntimeConfig(
                 yolo_confidence=cast(float, tracking["yolo_confidence"]),
                 bbox_enlarge=cast(float, tracking["bbox_enlarge"]),

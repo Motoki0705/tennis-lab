@@ -10,7 +10,9 @@ from src.utils.geometry.affine import build_centered_affine_matrix, transform_po
 
 def test_ball_affine_matches_shared_matrix_for_visible_coordinates() -> None:
     height, width = 80, 120
-    frames = [np.zeros((height, width, 3), dtype=np.float32)]
+    frames: list[np.ndarray] = [
+        np.zeros((height, width, 3), dtype=np.float32)
+    ]
     coords = [[(70.0, 30.0), (0.0, 0.0)]]
     visibility = [[1.0, 0.0]]
     cfg = {

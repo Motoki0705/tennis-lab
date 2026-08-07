@@ -6,22 +6,28 @@ from pathlib import Path
 
 import torch
 
+from src.tasks.base.model_io import bind_model_io
 from src.tasks.slcs.data.dataset import SLCSDataConfig, SLCSWindowDataset, collate_slcs
 from src.tasks.slcs.data.quality import QualityConfig
 from src.tasks.slcs.data.splits import generate_recording_splits, save_split_file
-from src.tasks.slcs.data.synthetic import (
-    DEFAULT_TEST_DINO_SPEC,
-    SyntheticDatasetConfig,
-    build_synthetic_dataset,
-)
+from src.tasks.slcs.model_io import SLCSModelIOAdapter, SLCSModelIOSpec
 from src.tasks.slcs.models.slcs_model import SLCSFusionModel
-from src.tasks.slcs.training.losses import SLCSLoss, SLCSLossConfig
+from src.tasks.slcs.training.losses import (
+    SLCSLoss,
+    SLCSLossConfig,
+    build_slcs_loss_inputs,
+)
+from tests.support.tasks.slcs.dataset import (
+    DEFAULT_FIXTURE_DINO_SPEC,
+    SLCSFixtureDatasetConfig,
+    build_slcs_dataset_fixture,
+)
 
 
 def test_dataset_model_loss_backward_smoke(tmp_path: Path) -> None:
-    index = build_synthetic_dataset(
+    index = build_slcs_dataset_fixture(
         tmp_path / "dataset",
-        SyntheticDatasetConfig(recordings=("recording",), num_frames=8),
+        SLCSFixtureDatasetConfig(recordings=("recording",), num_frames=8),
     )
     split_file = index.root / "splits.json"
     assignments = generate_recording_splits(index, val_ratio=0.0, test_ratio=0.0, seed=0)
@@ -40,7 +46,7 @@ def test_dataset_model_loss_backward_smoke(tmp_path: Path) -> None:
             require_dino=True,
             cache_dino_tokens=True,
             on_incomplete="error",
-            dino_spec=DEFAULT_TEST_DINO_SPEC,
+            dino_spec=DEFAULT_FIXTURE_DINO_SPEC,
             quality=QualityConfig(
                 min_player_confidence=0.3,
                 min_ball_cameras=1,
@@ -75,24 +81,23 @@ def test_dataset_model_loss_backward_smoke(tmp_path: Path) -> None:
         log_b_min=-6.0,
         log_b_max=3.0,
     )
-    prediction = model(
-        **{
-            key: batch[key]
-            for key in (
-                "player_kp",
-                "player_kp_vis",
-                "player_valid",
-                "ball_uv",
-                "ball_vis",
-                "court_kp",
-                "court_vis",
-                "frame_mask",
-                "dino_tokens",
-                "dino_frame_idx",
-                "dino_valid",
-            )
-        }
+    adapter = SLCSModelIOAdapter(
+        SLCSModelIOSpec(
+            num_players=2,
+            num_court_kp=14,
+            max_seq_len=8,
+            dino_num_tokens=12,
+            dino_encoded_num_tokens=12,
+            dino_embed_dim=8,
+            log_b_min=-6.0,
+            log_b_max=3.0,
+        )
     )
+    adapter.validate_model(model)
+    model_io = bind_model_io(model, adapter)
+    call = model_io.build_call(batch)
+    targets = adapter.build_training_targets(batch)
+    prediction = model_io.decode_output(model_io.execute_call(call))
     terms = SLCSLoss(
         SLCSLossConfig(
             player_position_weight=1.0,
@@ -107,7 +112,7 @@ def test_dataset_model_loss_backward_smoke(tmp_path: Path) -> None:
             ground_penetration_weight=1.0,
             smoothness_order=3,
         )
-    )(prediction, batch)
+    )(build_slcs_loss_inputs(prediction, targets))
     loss = terms["total"]
     assert torch.isfinite(loss)
     assert terms

@@ -6,6 +6,8 @@ they stay fast and do not require the vendored DINOv3 weights.
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 from torch import nn
 
@@ -17,15 +19,25 @@ from src.utils.models.loading.dinov3 import (
 from src.utils.models.lora import LoRAConfig, LoRALinear
 
 
+class _FakeAttention(nn.Module):
+    def __init__(self, dim: int) -> None:
+        super().__init__()
+        self.qkv: nn.Module = nn.Linear(dim, dim * 3)
+        self.proj: nn.Module = nn.Linear(dim, dim)
+
+
+class _FakeMLP(nn.Module):
+    def __init__(self, dim: int) -> None:
+        super().__init__()
+        self.fc1: nn.Module = nn.Linear(dim, dim * 2)
+        self.fc2: nn.Module = nn.Linear(dim * 2, dim)
+
+
 class _FakeBlock(nn.Module):
     def __init__(self, dim: int) -> None:
         super().__init__()
-        self.attn = nn.Module()
-        self.attn.qkv = nn.Linear(dim, dim * 3)
-        self.attn.proj = nn.Linear(dim, dim)
-        self.mlp = nn.Module()
-        self.mlp.fc1 = nn.Linear(dim, dim * 2)
-        self.mlp.fc2 = nn.Linear(dim * 2, dim)
+        self.attn = _FakeAttention(dim)
+        self.mlp = _FakeMLP(dim)
 
 
 class _FakeDINOv3(nn.Module):
@@ -41,6 +53,11 @@ class _FakeDINOv3(nn.Module):
 
 def _make_adapter(dim: int = 16, depth: int = 2) -> DINOv3BackboneAdapter:
     return DINOv3BackboneAdapter(_FakeDINOv3(dim=dim, depth=depth))
+
+
+def _block_at(adapter: DINOv3BackboneAdapter, index: int) -> _FakeBlock:
+    backbone = cast(_FakeDINOv3, adapter.module)
+    return cast(_FakeBlock, backbone.blocks[index])
 
 
 class TestApplyDINOv3LoRA:
@@ -70,8 +87,8 @@ class TestApplyDINOv3LoRA:
             ),
         )
         assert len(wrapped) == 2 * 4  # 2 blocks * 4 target linears
-        assert isinstance(adapter.module.blocks[0].attn.qkv, LoRALinear)
-        assert isinstance(adapter.module.blocks[0].mlp.fc2, LoRALinear)
+        assert isinstance(_block_at(adapter, 0).attn.qkv, LoRALinear)
+        assert isinstance(_block_at(adapter, 0).mlp.fc2, LoRALinear)
 
         trainable = {name for name, p in adapter.named_parameters() if p.requires_grad}
         assert trainable
@@ -93,7 +110,7 @@ class TestConfigureTrainabilityWithLoRA:
                 target_modules=("qkv",),
             ),
         )
-        assert isinstance(adapter.module.blocks[0].attn.qkv, LoRALinear)
+        assert isinstance(_block_at(adapter, 0).attn.qkv, LoRALinear)
         trainable = {name for name, p in adapter.named_parameters() if p.requires_grad}
         assert trainable == {
             "module.blocks.0.attn.qkv.lora_a",
@@ -114,5 +131,5 @@ class TestConfigureTrainabilityWithLoRA:
                 target_modules=(),
             ),
         )
-        assert not isinstance(adapter.module.blocks[0].attn.qkv, LoRALinear)
+        assert not isinstance(_block_at(adapter, 0).attn.qkv, LoRALinear)
         assert all(p.requires_grad for p in adapter.parameters())

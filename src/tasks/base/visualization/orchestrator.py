@@ -8,7 +8,7 @@ device resolution, Hydra camera-selection parsing, and animation save/show.
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence, Set
+from collections.abc import Mapping, Sequence, Set
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -26,7 +26,7 @@ from src.tasks.base.visualization.style import (
     parse_view_3d,
 )
 from src.utils.configuration import PathResolver, RuntimePathRoots
-from src.utils.device import resolve_device as _resolve_torch_device
+from src.utils.device import resolve_device
 from src.utils.paths import PROJECT_ROOT
 from src.utils.rendering.camera_view import CameraController
 
@@ -56,22 +56,9 @@ class BaseVisualizationRuntimeConfig:
     view_3d: CameraController
 
 
-def resolve_device(device: str) -> str:
-    """Resolve ``auto`` device selection.
-
-    Delegates the ``auto`` resolution to :func:`src.utils.device.resolve_device`;
-    explicit device strings are passed through unchanged (no CPU fallback).
-    """
-    if device == "auto":
-        return str(_resolve_torch_device("auto"))
-    return device
-
-
 def parse_hw(value: object, *, name: str) -> tuple[int, int]:
     """Parse a length-2 ``(height, width)`` int pair from a Hydra config value."""
-    if type(value) not in (list, tuple):
-        raise TypeError(f"{name} must be exactly list or tuple.")
-    sequence = cast("Sequence[object]", value)
+    sequence = _require_non_string_sequence(value, name=name)
     if len(sequence) != 2 or any(type(item) is not int for item in sequence):
         raise TypeError(f"{name} must contain exactly two int values.")
     return cast("int", sequence[0]), cast("int", sequence[1])
@@ -79,9 +66,7 @@ def parse_hw(value: object, *, name: str) -> tuple[int, int]:
 
 def parse_rgb(value: object, *, name: str) -> tuple[int, int, int]:
     """Parse a length-3 RGB int triple from a Hydra config value."""
-    if type(value) not in (list, tuple):
-        raise TypeError(f"{name} must be exactly list or tuple.")
-    sequence = cast("Sequence[object]", value)
+    sequence = _require_non_string_sequence(value, name=name)
     if len(sequence) != 3 or any(type(item) is not int for item in sequence):
         raise TypeError(f"{name} must contain exactly three int values.")
     rgb = cast("tuple[int, int, int]", tuple(sequence))
@@ -92,9 +77,7 @@ def parse_rgb(value: object, *, name: str) -> tuple[int, int, int]:
 
 def parse_float_triplet(value: object, *, name: str) -> tuple[float, float, float]:
     """Parse a length-3 float triple from a Hydra config value."""
-    if type(value) not in (list, tuple):
-        raise TypeError(f"{name} must be exactly list or tuple.")
-    sequence = cast("Sequence[object]", value)
+    sequence = _require_non_string_sequence(value, name=name)
     if len(sequence) != 3 or any(type(item) not in (float, int) for item in sequence):
         raise TypeError(f"{name} must contain exactly three numeric values.")
     return (
@@ -102,6 +85,12 @@ def parse_float_triplet(value: object, *, name: str) -> tuple[float, float, floa
         float(cast("float | int", sequence[1])),
         float(cast("float | int", sequence[2])),
     )
+
+
+def _require_non_string_sequence(value: object, *, name: str) -> Sequence[object]:
+    if isinstance(value, (str, bytes, bytearray, Mapping)) or not isinstance(value, Sequence):
+        raise TypeError(f"{name} must be a non-string sequence.")
+    return cast("Sequence[object]", value)
 
 
 def save_or_show_animation(
@@ -148,7 +137,7 @@ def build_scene_runtime_config(
         mode=common.mode,
         scene_path=common.scene_path,
         checkpoint=common.checkpoint,
-        device=resolve_device(common.device),
+        device=str(resolve_device(common.device)),
         animation_view=common.animation_view,
         fps=common.fps,
         save=common.save,

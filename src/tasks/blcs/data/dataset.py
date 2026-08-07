@@ -15,7 +15,7 @@ from src.tasks.base.data.scene_dataset import (
     SceneDatasetConfig,
 )
 from src.tasks.blcs.data.augmentation import BLCSBallObservationAugmentation
-from src.tasks.blcs.data.types import BLCSBatch, BLCSMultiViewBatch, BLCSMultiViewSample
+from src.tasks.blcs.data.types import BLCSMultiViewBatch, BLCSMultiViewSample
 
 
 class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
@@ -336,53 +336,3 @@ def collate_multiview_trajectories(
         collated["ball_uv_target"] = torch.stack(ball_uv_target_batch, dim=0)
         collated["ball_vis_target"] = torch.stack(ball_vis_target_batch, dim=0)
     return cast("BLCSMultiViewBatch", collated)
-
-
-def adapt_batch_for_model_profile(
-    batch: BLCSMultiViewBatch,
-    *,
-    input_profile: str,
-) -> BLCSBatch | BLCSMultiViewBatch:
-    """Adapt canonical BLCS batch ``(B,N,T,...)`` to model input profile."""
-    _, n, _ = batch["ball_uv"].shape[:3]
-    if n <= 0:
-        raise ValueError("Expected at least one camera view in batch.")
-
-    if input_profile == "multiview":
-        return batch
-    if input_profile == "single":
-        adapted = {
-            "ball_uv": batch["ball_uv"][:, 0],
-            "ball_vis": batch["ball_vis"][:, 0],
-            "ball_mask": batch["ball_mask"][:, 0],
-            "court_kp": batch["court_kp"][:, 0, 0],
-            "court_vis": batch["court_vis"][:, 0, 0],
-            "position_3d": batch["position_3d"],
-            "velocity_3d": batch["velocity_3d"],
-            "seq_len": batch["seq_len"],
-            "camera_R": batch["camera_R"][:, :1],
-            "camera_C": batch["camera_C"][:, :1],
-            "camera_f": batch["camera_f"][:, :1],
-            "camera_cx": batch["camera_cx"][:, :1],
-            "camera_cy": batch["camera_cy"][:, :1],
-            "camera_w": batch["camera_w"][:, :1],
-            "camera_h": batch["camera_h"][:, :1],
-        }
-        if "ball_uv_target" in batch and "ball_vis_target" in batch:
-            adapted["ball_uv_target"] = batch["ball_uv_target"][:, :1]
-            adapted["ball_vis_target"] = batch["ball_vis_target"][:, :1]
-        return cast("BLCSBatch", adapted)
-    raise ValueError(
-        "Unknown model input profile: "
-        f"{input_profile}. Supported: ['single', 'multiview']"
-    )
-
-
-def collate_and_adapt_blcs_batch(
-    batch: list[BLCSMultiViewSample],
-    *,
-    input_profile: str,
-) -> BLCSBatch | BLCSMultiViewBatch:
-    """Collate canonical BLCS samples and adapt to model input profile."""
-    collated = collate_multiview_trajectories(batch)
-    return adapt_batch_for_model_profile(collated, input_profile=input_profile)

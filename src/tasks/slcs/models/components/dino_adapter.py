@@ -91,6 +91,17 @@ class DinoTokenEncoder(nn.Module):
         self.grid_w = self.input_grid_w // self.downsample_factor
         self.num_input_tokens = self.input_grid_h * self.input_grid_w
         self.num_tokens = self.grid_h * self.grid_w
+        self.spatial_downsample: nn.Module = (
+            _BilinearPatchDownsample(
+                input_dim=self.input_dim,
+                input_grid_h=self.input_grid_h,
+                input_grid_w=self.input_grid_w,
+                output_grid_h=self.grid_h,
+                output_grid_w=self.grid_w,
+            )
+            if self.downsample_factor > 1
+            else nn.Identity()
+        )
 
         self.proj = nn.Linear(self.input_dim, self.dim)
         self.norm = RMSNorm(self.dim)
@@ -102,54 +113,65 @@ class DinoTokenEncoder(nn.Module):
 
     def forward(self, tokens: Tensor) -> Tensor:
         """Encode ``(B,T_d,H*W,C_in)`` into the reduced patch grid."""
-        if tokens.dim() != 4:
-            raise ValueError(
-                f"DinoTokenEncoder expects (B, T_d, S, C), got shape {tuple(tokens.shape)}."
-            )
-        if tokens.shape[2] != self.num_input_tokens:
-            raise ValueError(
-                f"token count S={tokens.shape[2]} does not match the configured grid "
-                f"{self.input_grid_h}x{self.input_grid_w}={self.num_input_tokens}."
-            )
-        if tokens.shape[3] != self.input_dim:
-            raise ValueError(
-                f"token width C={tokens.shape[3]} does not match configured "
-                f"input_dim={self.input_dim}."
-            )
-        batch_size, num_samples = tokens.shape[:2]
-        if self.downsample_factor > 1:
-            # Interpolate in the original DINO feature space. Projection after
-            # reduction keeps the requested spatial compression independent of
-            # the learned channel compression.
-            tokens = tokens.reshape(
-                batch_size,
-                num_samples,
-                self.input_grid_h,
-                self.input_grid_w,
-                self.input_dim,
-            )
-            tokens = tokens.permute(0, 1, 4, 2, 3).reshape(
-                batch_size * num_samples,
-                self.input_dim,
-                self.input_grid_h,
-                self.input_grid_w,
-            )
-            tokens = F.interpolate(
-                tokens,
-                size=(self.grid_h, self.grid_w),
-                mode="bilinear",
-                align_corners=False,
-            )
-            tokens = tokens.reshape(
-                batch_size, num_samples, self.input_dim, self.grid_h, self.grid_w
-            ).permute(0, 1, 3, 4, 2)
-            tokens = tokens.reshape(
-                batch_size, num_samples, self.num_tokens, self.input_dim
-            )
-
+        tokens = self.spatial_downsample(tokens)
         x = self.norm(self.proj(tokens))
         spatial_pos = cast(Tensor, self.spatial_pos)
         return cast(Tensor, x + spatial_pos.to(dtype=x.dtype)[None, None, :, :])
+
+
+class _BilinearPatchDownsample(nn.Module):
+    """Resolved spatial reduction in the original DINO feature space."""
+
+    def __init__(
+        self,
+        *,
+        input_dim: int,
+        input_grid_h: int,
+        input_grid_w: int,
+        output_grid_h: int,
+        output_grid_w: int,
+    ) -> None:
+        super().__init__()
+        self.input_dim = input_dim
+        self.input_grid_h = input_grid_h
+        self.input_grid_w = input_grid_w
+        self.output_grid_h = output_grid_h
+        self.output_grid_w = output_grid_w
+        self.output_tokens = output_grid_h * output_grid_w
+
+    def forward(self, tokens: Tensor) -> Tensor:
+        """Bilinearly reduce ``(B,T_d,H*W,C)`` to the configured grid."""
+        batch_size, num_samples = tokens.shape[:2]
+        grid = tokens.reshape(
+            batch_size,
+            num_samples,
+            self.input_grid_h,
+            self.input_grid_w,
+            self.input_dim,
+        )
+        grid = grid.permute(0, 1, 4, 2, 3).reshape(
+            batch_size * num_samples,
+            self.input_dim,
+            self.input_grid_h,
+            self.input_grid_w,
+        )
+        grid = F.interpolate(
+            grid,
+            size=(self.output_grid_h, self.output_grid_w),
+            mode="bilinear",
+            align_corners=False,
+        )
+        return (
+            grid.reshape(
+                batch_size,
+                num_samples,
+                self.input_dim,
+                self.output_grid_h,
+                self.output_grid_w,
+            )
+            .permute(0, 1, 3, 4, 2)
+            .reshape(batch_size, num_samples, self.output_tokens, self.input_dim)
+        )
 
 
 __all__ = ["DinoTokenEncoder", "sincos_position_embedding_2d"]

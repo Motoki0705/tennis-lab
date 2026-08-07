@@ -4,23 +4,27 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any, Protocol, cast
 
 import pytest
+import torch
 from omegaconf import OmegaConf
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
 from src.tasks.base.training.runner import BaseTrainingRunner
 from src.utils.configuration import PathContractError
+from src.utils.device import DeviceSelectionError
+
+
+class _TrainerWithDataloaderReload(Protocol):
+    reload_dataloaders_every_n_epochs: int
 
 
 def test_build_trainer_forwards_dataloader_reload_interval(
     make_training_config: Any,
 ) -> None:
     config = OmegaConf.create(
-        make_training_config(
-            trainer={"reload_dataloaders_every_n_epochs": 1}
-        )
+        make_training_config(trainer={"reload_dataloaders_every_n_epochs": 1})
     )
 
     trainer = BaseTrainingRunner().build_trainer(
@@ -29,7 +33,41 @@ def test_build_trainer_forwards_dataloader_reload_interval(
         logger=cast(Any, False),
     )
 
-    assert trainer.reload_dataloaders_every_n_epochs == 1
+    inspected_trainer = cast(_TrainerWithDataloaderReload, trainer)
+    assert inspected_trainer.reload_dataloaders_every_n_epochs == 1
+
+
+def test_select_devices_rejects_unavailable_positive_gpu_request(
+    make_training_config: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = OmegaConf.create(make_training_config(run={"gpus": 1}))
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+
+    with pytest.raises(DeviceSelectionError, match="explicitly requests GPU"):
+        BaseTrainingRunner().select_devices(config)
+
+
+def test_build_trainer_rejects_unavailable_gpu_before_trainer_construction(
+    make_training_config: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = OmegaConf.create(make_training_config(run={"gpus": 1}))
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+    constructions: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        "src.tasks.base.training.runner.pl.Trainer",
+        lambda **kwargs: constructions.append(kwargs),
+    )
+
+    with pytest.raises(DeviceSelectionError, match="explicitly requests GPU"):
+        BaseTrainingRunner().build_trainer(
+            config,
+            callbacks=[],
+            logger=cast(Any, False),
+        )
+
+    assert constructions == []
 
 
 def test_build_callbacks_forwards_explicit_early_stopping_timing(

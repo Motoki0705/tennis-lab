@@ -21,9 +21,9 @@ from src.tasks.plcs.models.components.heads import (
 )
 from src.utils.models import (
     RMSNorm,
+    RotaryFrequencyComputer,
     TransformerBlock,
     TransformerBlockConfig,
-    precompute_freqs_cis_nd,
     resolve_rope_bases,
 )
 from src.utils.models.embeddings import (
@@ -117,6 +117,11 @@ class PLCSMultiViewModel(nn.Module):
                 for _ in range(num_layers)
             ]
         )
+        self.rope_frequency_computer = RotaryFrequencyComputer(
+            dim=self.rope_dim,
+            base=self.rope_bases,
+            n_axes=3,
+        )
         self.final_norm = RMSNorm(hidden_dim)
 
         self.position_head = PositionHead(
@@ -141,6 +146,9 @@ class PLCSMultiViewModel(nn.Module):
                 dropout=dropout,
                 num_keypoints=NUM_HUMAN_KP,
             )
+            self._decode_features = self._decode_features_with_canonical_pose
+        else:
+            self._decode_features = self._decode_features_without_canonical_pose
 
     @staticmethod
     def _validate_init_args(*, rope_dim: int) -> None:
@@ -216,9 +224,9 @@ class PLCSMultiViewModel(nn.Module):
         self,
         human_kp: Tensor,
         court_kp: Tensor,
-        human_vis: Tensor | None = None,
-        human_mask: Tensor | None = None,
-        court_vis: Tensor | None = None,
+        human_vis: Tensor,
+        human_mask: Tensor,
+        court_vis: Tensor,
     ) -> dict[str, Tensor]:
         """Forward pass.
 
@@ -252,31 +260,19 @@ class PLCSMultiViewModel(nn.Module):
                 - position: (B, T, 3)
                 - rotation: (B, T, 2)
         """
-        B, N, T = self._validate_forward_inputs(
-            human_kp=human_kp,
-            court_kp=court_kp,
-            human_vis=human_vis,
-            human_mask=human_mask,
-            court_vis=court_vis,
-        )
+        B, N, T = human_kp.shape[:3]
         device = human_kp.device
 
-        if human_mask is not None:
-            token_mask = human_mask > 0
-            view_valid = token_mask.any(dim=2)
-            seq_valid = token_mask.any(dim=1)
-        else:
-            view_valid = torch.ones(B, N, dtype=torch.bool, device=device)
-            seq_valid = torch.ones(B, T, dtype=torch.bool, device=device)
+        token_mask = human_mask > 0
+        view_valid = token_mask.any(dim=2)
+        seq_valid = token_mask.any(dim=1)
 
         # court is camera-level (use first frame per camera)
         court_scene = court_kp[:, :, 0, :, :]  # (B,N,K,2)
         K = court_scene.shape[2]
         court_scene_flat = court_scene.reshape(B * N, K, 2)
 
-        court_vis_scene: Tensor | None = None
-        if court_vis is not None:
-            court_vis_scene = court_vis[:, :, 0, :].reshape(B * N, K)
+        court_vis_scene = court_vis[:, :, 0, :].reshape(B * N, K)
 
         court_tok = self.court_embed(court_scene_flat, court_vis_scene)
         court_tok = court_tok.view(B, N, K, self.hidden_dim)
@@ -284,9 +280,7 @@ class PLCSMultiViewModel(nn.Module):
         # player tokens per (camera,time,kp)
         human_flat = human_kp.reshape(B * N * T, NUM_HUMAN_KP, 2)
 
-        human_vis_flat: Tensor | None = None
-        if human_vis is not None:
-            human_vis_flat = human_vis.reshape(B * N * T, NUM_HUMAN_KP)
+        human_vis_flat = human_vis.reshape(B * N * T, NUM_HUMAN_KP)
 
         player_tok = self.player_embed(human_flat, human_vis_flat)
         player_tok = player_tok.view(B, N, T, NUM_HUMAN_KP, self.hidden_dim)
@@ -328,11 +322,7 @@ class PLCSMultiViewModel(nn.Module):
             seq_len=T,
             device=device,
         )
-        freqs_cis = precompute_freqs_cis_nd(
-            dim=self.rope_dim,
-            pos=positions_3d,
-            base=self.rope_bases,
-        )
+        freqs_cis = self.rope_frequency_computer(positions_3d)
 
         for blk in self.blocks:
             x = blk(
@@ -373,73 +363,35 @@ class PLCSMultiViewModel(nn.Module):
         po_flat = po_agg.reshape(B * T, self.hidden_dim)
         ro_flat = ro_agg.reshape(B * T, self.hidden_dim)
 
-        position = self.position_head(po_flat).view(B, T, 3)
-        rotation = self.rotation_head(ro_flat).view(B, T, 2)
         pose_latent = 0.5 * (po_agg + ro_agg)
 
-        out = {
-            "position": position,
-            "rotation": rotation,
-        }
-        if self.predict_canonical_pose and self.canonical_pose_head is not None:
-            out["canonical_pose"] = self.canonical_pose_head(pose_latent)
-        return out
+        return self._decode_features(po_flat, ro_flat, pose_latent, B, T)
 
-    def _validate_forward_inputs(
+    def _decode_features_without_canonical_pose(
         self,
-        *,
-        human_kp: Tensor,
-        court_kp: Tensor,
-        human_vis: Tensor | None,
-        human_mask: Tensor | None,
-        court_vis: Tensor | None,
-    ) -> tuple[int, int, int]:
-        if human_kp.dim() != 5:
-            raise ValueError(
-                "PLCSMultiViewModel expects human_kp as (B,N,T,17,2), "
-                f"got shape {tuple(human_kp.shape)}"
-            )
-        if court_kp.dim() != 5:
-            raise ValueError(
-                "PLCSMultiViewModel expects court_kp as "
-                f"(B,N,T,{self.num_court_tokens},2), "
-                f"got shape {tuple(court_kp.shape)}"
-            )
-        if court_kp.shape[-2] != self.num_court_tokens:
-            raise ValueError(
-                f"Expected court_kp with K={self.num_court_tokens}, got K={court_kp.shape[-2]}."
-            )
-        if human_vis is not None and human_vis.dim() != 4:
-            raise ValueError(
-                "PLCSMultiViewModel expects human_vis as (B,N,T,17), "
-                f"got shape {tuple(human_vis.shape)}"
-            )
-        if court_vis is not None and court_vis.dim() != 4:
-            raise ValueError(
-                "PLCSMultiViewModel expects court_vis as "
-                f"(B,N,T,{self.num_court_tokens}), "
-                f"got shape {tuple(court_vis.shape)}"
-            )
-        if court_vis is not None and court_vis.shape[-1] != self.num_court_tokens:
-            raise ValueError(
-                f"Expected court_vis with K={self.num_court_tokens}, got K={court_vis.shape[-1]}."
-            )
+        po_flat: Tensor,
+        ro_flat: Tensor,
+        pose_latent: Tensor,
+        batch_size: int,
+        seq_len: int,
+    ) -> dict[str, Tensor]:
+        del pose_latent
+        return {
+            "position": self.position_head(po_flat).view(batch_size, seq_len, 3),
+            "rotation": self.rotation_head(ro_flat).view(batch_size, seq_len, 2),
+        }
 
-        batch_size, n_cams, seq_len = human_kp.shape[:3]
-        if self.max_views < n_cams:
-            raise ValueError(
-                f"Number of views N={n_cams} exceeds max_views={self.max_views}."
-            )
-        if self.max_seq_len < seq_len:
-            raise ValueError(
-                f"Sequence length T={seq_len} exceeds max_seq_len={self.max_seq_len}."
-            )
-
-        if human_mask is not None and (
-            human_mask.dim() != 3 or human_mask.shape != (batch_size, n_cams, seq_len)
-        ):
-            raise ValueError(
-                "human_mask for multiview models must be (B,N,T), "
-                f"got {tuple(human_mask.shape)}"
-            )
-        return batch_size, n_cams, seq_len
+    def _decode_features_with_canonical_pose(
+        self,
+        po_flat: Tensor,
+        ro_flat: Tensor,
+        pose_latent: Tensor,
+        batch_size: int,
+        seq_len: int,
+    ) -> dict[str, Tensor]:
+        head = cast(CanonicalPoseHead, self.canonical_pose_head)
+        return {
+            "position": self.position_head(po_flat).view(batch_size, seq_len, 3),
+            "rotation": self.rotation_head(ro_flat).view(batch_size, seq_len, 2),
+            "canonical_pose": head(pose_latent),
+        }

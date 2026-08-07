@@ -13,6 +13,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 
 from src.tasks.base.configuration import BaseTrainingConfig
 from src.tasks.base.training.gan_loss import LSGANLoss
+from src.utils.models.architectures import prepare_sequence_discriminator_inputs
 
 
 class ManualGANTrainingStrategy:
@@ -163,14 +164,33 @@ class ManualGANTrainingStrategy:
         result = module._compute_supervised_result(batch, stage)
         generator_optimizer, discriminator_optimizer = self._manual_optimizers(module)
 
-        mask = result.get("gan_mask")
+        mask = result["gan_mask"]
         fake_sequence = result["gan_fake"]
         real_sequence = result["gan_real"]
 
+        real_discriminator_inputs = prepare_sequence_discriminator_inputs(
+            module.discriminator,
+            real_sequence,
+            mask=mask,
+        )
+        fake_discriminator_inputs = prepare_sequence_discriminator_inputs(
+            module.discriminator,
+            fake_sequence,
+            mask=mask,
+        )
+
         module.toggle_optimizer(discriminator_optimizer)
         discriminator_optimizer.zero_grad()
-        real_logits = module.discriminator(real_sequence, mask=mask)
-        fake_logits = module.discriminator(fake_sequence.detach(), mask=mask)
+        real_logits = module.discriminator(
+            real_discriminator_inputs.sequence,
+            token_mask=real_discriminator_inputs.token_mask,
+            attention_mask=real_discriminator_inputs.attention_mask,
+        )
+        fake_logits = module.discriminator(
+            fake_discriminator_inputs.sequence.detach(),
+            token_mask=fake_discriminator_inputs.token_mask,
+            attention_mask=fake_discriminator_inputs.attention_mask,
+        )
         discriminator_loss = module.gan_loss_fn.discriminator_loss(
             real_logits, fake_logits
         )
@@ -185,7 +205,11 @@ class ManualGANTrainingStrategy:
 
         module.toggle_optimizer(generator_optimizer)
         generator_optimizer.zero_grad()
-        fake_logits_for_generator = module.discriminator(fake_sequence, mask=mask)
+        fake_logits_for_generator = module.discriminator(
+            fake_discriminator_inputs.sequence,
+            token_mask=fake_discriminator_inputs.token_mask,
+            attention_mask=fake_discriminator_inputs.attention_mask,
+        )
         gan_loss = module.gan_loss_fn.generator_loss(fake_logits_for_generator)
         hybrid_loss = result["loss"] + self.current_weight * gan_loss
         module.manual_backward(hybrid_loss)

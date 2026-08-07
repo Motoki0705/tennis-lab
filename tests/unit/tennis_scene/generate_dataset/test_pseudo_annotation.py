@@ -5,10 +5,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
+from src.tennis_scene.archive import load_scene_result
 from src.tennis_scene.generate_dataset.pseudo_annotation import (
     generate_pseudo_annotations,
 )
-from src.tennis_scene.io import SceneResult
+from src.tennis_scene.schema import SceneResult
 from src.utils.io import load_json
 
 
@@ -37,7 +38,7 @@ def test_generate_publishes_complete_annotation_and_then_skips(
     annotation = load_json(first[0].annotation_path)
     assert annotation["clip_id"] == "match-001/clip_000"
     assert annotation["arrays"]["ball_3d"]["shape"] == [3, 3]
-    loaded = SceneResult.load(first[0].annotation_path.parent / "scene.npz")
+    loaded = load_scene_result(first[0].annotation_path.parent / "scene.npz")
     assert loaded.metadata["dataset_clip_id"] == "match-001/clip_000"
 
     second = generate_pseudo_annotations(

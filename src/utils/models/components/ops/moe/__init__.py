@@ -1,16 +1,17 @@
-from src.utils.models.components.ops.moe.api import moe_combine, moe_dispatch
+from src.utils.models.components.ops.moe.api import (
+    MoECombine,
+    MoEDispatch,
+    MoEOperations,
+    resolve_moe_operations,
+)
 from src.utils.models.components.ops.moe.reference import (
     MoEDispatchResult,
-    compute_moe_capacity,
-    reference_moe_combine,
-    reference_moe_dispatch,
 )
 
 __all__ = [
+    "MoECombine",
+    "MoEDispatch",
     "MoEDispatchResult",
-    "compute_moe_capacity",
-    "moe_combine",
-    "moe_dispatch",
-    "reference_moe_combine",
-    "reference_moe_dispatch",
+    "MoEOperations",
+    "resolve_moe_operations",
 ]

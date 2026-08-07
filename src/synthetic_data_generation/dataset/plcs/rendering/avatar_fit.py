@@ -230,10 +230,10 @@ def _target_features(means: torch.Tensor, feature_dim: int) -> torch.Tensor:
 
 
 def _image(array: torch.Tensor) -> np.ndarray:
-    return cast(
-        np.ndarray,
-        (array.detach().cpu().clamp(0.0, 1.0).numpy() * 255.0).round().astype(np.uint8),
-    )
+    rounded = (array.detach().cpu().clamp(0.0, 1.0).numpy() * 255.0).round()
+    image: np.ndarray = np.asarray(rounded, dtype=np.uint8)
+
+    return image
 
 
 def _save_tensor_set(

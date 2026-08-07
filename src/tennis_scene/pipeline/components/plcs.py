@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
-import torch
 
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
 from src.utils.configuration import PathResolver
@@ -47,7 +46,6 @@ class PLCSConfig:
     checkpoint: Path
     source: Literal["execute", "load"]
     device: str
-    allow_device_fallback: bool
     save_result: bool
     output_path: Path
     load_path: Path | None
@@ -75,25 +73,27 @@ class PLCSResult:
 
     position: NDArray[np.float32]
     yaw: NDArray[np.float32]
-    track_ids: NDArray[np.int32] | None = None
+    track_ids: NDArray[np.int32]
 
     def to_dict(self) -> dict:
         result = {
             "position": self.position.tolist(),
             "yaw": self.yaw.tolist(),
         }
-        if self.track_ids is not None:
-            result["track_ids"] = self.track_ids.tolist()
+        result["track_ids"] = self.track_ids.tolist()
         return result
 
     @classmethod
     def from_dict(cls, data: dict) -> PLCSResult:
+        missing = {"position", "yaw", "track_ids"} - set(data)
+        if missing:
+            raise ValueError(
+                f"PLCS result is missing required fields: {sorted(missing)}"
+            )
         position = np.array(data["position"], dtype=np.float32)
         yaw = np.array(data["yaw"], dtype=np.float32)
 
-        track_ids = data.get("track_ids")
-        if track_ids is not None:
-            track_ids = np.array(track_ids, dtype=np.int32)
+        track_ids = np.array(data["track_ids"], dtype=np.int32)
 
         return cls(position=position, yaw=yaw, track_ids=track_ids)
 
@@ -118,13 +118,10 @@ class PLCSResult:
         ):
             errors.append("position and yaw shapes are inconsistent on (P, T)")
 
-        if self.track_ids is not None:
-            if self.track_ids.ndim != 1:
-                errors.append(
-                    f"track_ids shape must be (P,), got {self.track_ids.shape}"
-                )
-            elif self.track_ids.shape[0] != self.position.shape[0]:
-                errors.append("track_ids length does not match player count")
+        if self.track_ids.ndim != 1:
+            errors.append(f"track_ids shape must be (P,), got {self.track_ids.shape}")
+        elif self.track_ids.shape[0] != self.position.shape[0]:
+            errors.append("track_ids length does not match player count")
 
         if not np.isfinite(self.position).all():
             errors.append("position contains non-finite values")
@@ -158,49 +155,20 @@ class PLCSModule(BasePipelineModule):
             self.checkpoint,
             resolver=self.config.resolver,
             device=self.device,
-            allow_device_fallback=self.config.allow_device_fallback,
         )
-        self._validate_pipeline_checkpoint_profile()
+        self._predictor.require_input_profile("multiview")
 
     @property
     def is_loaded(self) -> bool:
         return self._predictor is not None
 
-    def _validate_pipeline_checkpoint_profile(self) -> None:
-        """Reject single-view PLCS checkpoints before pipeline tensor assembly."""
-        if self._predictor is None:
-            raise RuntimeError("PLCS predictor is not loaded")
-
-        from src.tasks.plcs.models import (
-            PLCSMultiViewAxialCamTokenModel,
-            PLCSMultiViewAxialModel,
-            PLCSMultiViewAxialSplitModel,
-            PLCSMultiViewModel,
-        )
-
-        supported = (
-            PLCSMultiViewModel,
-            PLCSMultiViewAxialModel,
-            PLCSMultiViewAxialSplitModel,
-            PLCSMultiViewAxialCamTokenModel,
-        )
-        model = self._predictor.model
-        if not isinstance(model, supported):
-            raise ValueError(
-                "tennis_scene PLCS pipeline requires a multiview PLCS checkpoint "
-                "(model.io.input_profile=multiview) because it passes tensors as "
-                "(P, N, T, 17, 2). "
-                f"Loaded model class {model.__class__.__name__!r} is not supported; "
-                "frame/sequence single-view checkpoints must not be used here."
-            )
-
     def process(
         self,
         human_kp_2d: NDArray[np.float32],
         court_kp: NDArray[np.float32],
-        human_kp_vis: NDArray[np.float32] | None = None,
-        court_vis: NDArray[np.float32] | None = None,
-        track_ids: NDArray[np.int32] | None = None,
+        human_kp_vis: NDArray[np.float32],
+        court_vis: NDArray[np.float32],
+        track_ids: NDArray[np.int32],
     ) -> PLCSResult:
         """Run PLCS inference.
 
@@ -209,14 +177,15 @@ class PLCSModule(BasePipelineModule):
             court_kp: Court keypoints, shape (N, T, K, 2), normalized [0, 1].
             human_kp_vis: Human keypoint visibility, shape (P, N, T, 17).
             court_vis: Court keypoint visibility, shape (N, T, K).
-            track_ids: Optional track IDs aligned with P.
+            track_ids: Track IDs aligned with P.
 
         Returns:
             PLCSResult with position/yaw in (P, T, ...).
         """
         if self.config.source == "load":
-            assert self.config.load_path is not None
             load_path = self.config.load_path
+            if load_path is None:
+                raise RuntimeError("Validated load source is missing load_path")
             if load_path.is_file():
                 LOGGER.info(
                     f"Loading PLCS result from {load_path} (skipping inference)"
@@ -230,81 +199,43 @@ class PLCSModule(BasePipelineModule):
         if predictor is None:
             raise RuntimeError("PLCS predictor is not loaded")
 
-        if human_kp_2d.ndim != 5 or human_kp_2d.shape[3:] != (17, 2):
+        if human_kp_2d.ndim != 5:
             raise ValueError(
-                f"human_kp_2d shape must be (P, N, T, 17, 2), got {human_kp_2d.shape}"
+                "human_kp_2d must have shape (P, N, T, 17, 2), "
+                f"got {human_kp_2d.shape}"
             )
-
+        if human_kp_vis.ndim != 4:
+            raise ValueError(
+                "human_kp_vis must have shape (P, N, T, 17), "
+                f"got {human_kp_vis.shape}"
+            )
+        if court_kp.ndim != 4:
+            raise ValueError(
+                f"court_kp must have shape (N, T, K, 2), got {court_kp.shape}"
+            )
+        if court_vis.ndim != 3:
+            raise ValueError(
+                f"court_vis must have shape (N, T, K), got {court_vis.shape}"
+            )
         num_players, num_cameras, num_frames = human_kp_2d.shape[:3]
-        if human_kp_vis is not None and human_kp_vis.shape != (
-            num_players,
-            num_cameras,
-            num_frames,
-            17,
-        ):
+        if track_ids.shape != (num_players,):
             raise ValueError(
-                f"human_kp_vis shape must match (P, N, T, 17), got {human_kp_vis.shape}"
+                f"track_ids must have shape ({num_players},), got {track_ids.shape}"
             )
-
-        if track_ids is None:
-            track_ids = np.arange(num_players, dtype=np.int32)
 
         LOGGER.info(
             "Running PLCS player localization for "
             f"{num_players} players and {num_cameras} cameras..."
         )
 
-        if court_kp.ndim != 4 or court_kp.shape[-1] != 2:
-            raise ValueError(
-                f"court_kp must have shape (N, T, K, 2), got {court_kp.shape}"
-            )
-        if court_kp.shape[:2] != (num_cameras, num_frames):
-            raise ValueError(
-                "court_kp leading shape must match human_kp_2d (N, T), "
-                f"got {court_kp.shape[:2]} and {(num_cameras, num_frames)}"
-            )
-        court_kp_t = (
-            torch.from_numpy(court_kp)
-            .float()
-            .unsqueeze(0)
-            .expand(num_players, *court_kp.shape)
+        binary_vis = human_kp_vis >= self.config.human_vis_threshold
+        dropped = float((human_kp_vis > 0).mean() - binary_vis.mean())
+        LOGGER.info(
+            "Thresholded human keypoint confidence at "
+            f"{self.config.human_vis_threshold} (dropped {dropped:.1%} of joints)"
         )
-
-        court_vis_batch = None
-        if court_vis is not None:
-            if court_vis.ndim != 3:
-                raise ValueError(
-                    f"court_vis must have shape (N, T, K), got {court_vis.shape}"
-                )
-            if court_vis.shape[:2] != (num_cameras, num_frames):
-                raise ValueError(
-                    "court_vis leading shape must match human_kp_2d (N, T), "
-                    f"got {court_vis.shape[:2]} and {(num_cameras, num_frames)}"
-                )
-            court_vis_batch = (
-                torch.from_numpy(court_vis)
-                .float()
-                .unsqueeze(0)
-                .expand(num_players, *court_vis.shape)
-            )
-
-        human_kp_t = torch.from_numpy(human_kp_2d).float()
-        human_vis_t = None
-        if human_kp_vis is not None:
-            # Real detectors emit continuous confidences; training visibility
-            # is binary, so threshold before the model's (vis > 0) masking.
-            binary_vis = (human_kp_vis >= self.config.human_vis_threshold).astype(
-                np.float32
-            )
-            dropped = float((human_kp_vis > 0).mean() - binary_vis.mean())
-            LOGGER.info(
-                "Thresholded human keypoint confidence at "
-                f"{self.config.human_vis_threshold} (dropped {dropped:.1%} of joints)"
-            )
-            human_vis_t = torch.from_numpy(binary_vis)
-        human_mask_t = torch.ones(
-            (num_players, num_cameras, num_frames),
-            dtype=torch.float32,
+        human_mask = np.ones(
+            (num_players, num_cameras, num_frames), dtype=np.bool_
         )
 
         slices = window_slices(
@@ -317,22 +248,15 @@ class PLCSModule(BasePipelineModule):
         position_chunks: list[tuple[int, NDArray[np.float64]]] = []
         yaw_vec_chunks: list[tuple[int, NDArray[np.float64]]] = []
         for start, end in slices:
-            pred = predictor.predict(
-                human_kp=human_kp_t[:, :, start:end],
-                court_kp=court_kp_t[:, :, start:end],
-                human_vis=(
-                    human_vis_t[:, :, start:end] if human_vis_t is not None else None
-                ),
-                human_mask=human_mask_t[:, :, start:end],
-                court_vis=(
-                    court_vis_batch[:, :, start:end]
-                    if court_vis_batch is not None
-                    else None
-                ),
-                denormalize=True,
+            prediction = predictor.predict_multiview_observations(
+                human_kp=human_kp_2d[:, :, start:end],
+                court_kp=court_kp[:, start:end],
+                human_vis=binary_vis[:, :, start:end],
+                human_mask=human_mask[:, :, start:end],
+                court_vis=court_vis[:, start:end],
             )
-            win_pos = pred["position_meters"].numpy()  # (P, T_w, 3)
-            win_yaw = pred["yaw_radians"].numpy()  # (P, T_w)
+            win_pos = prediction.position_meters
+            win_yaw = prediction.yaw_radians
             position_chunks.append((start, win_pos.transpose(1, 0, 2)))
             yaw_vec = np.stack([np.sin(win_yaw), np.cos(win_yaw)], axis=-1)
             yaw_vec_chunks.append((start, yaw_vec.transpose(1, 0, 2)))
@@ -366,7 +290,3 @@ class PLCSModule(BasePipelineModule):
             result.save(self.config.output_path)
 
         return result
-
-
-if __name__ == "__main__":
-    print("PLCSModule: 3D player localization module")

@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from omegaconf import OmegaConf
+from omegaconf import DictConfig, OmegaConf
 
 from src.tasks.base.training.runner import BaseTrainingRunner
 
 
-def _config(*, fast_dev_run: bool, test_after_fit: bool) -> OmegaConf:
+def _config(*, fast_dev_run: bool, test_after_fit: bool) -> DictConfig:
     return OmegaConf.create(
         {
             "run": {

@@ -24,13 +24,13 @@ from src.tasks.ball_detection import configuration as _configuration  # noqa: F4
 from src.tasks.ball_detection.configuration import BallRuntimePaths
 from src.tasks.ball_detection.data import build_ball_detection_datamodule
 from src.tasks.ball_detection.data.tracknet_datamodule import TrackNetDataModule
-from src.tasks.base.preview import (
+from src.tasks.base.visualization.preview import (
     compose_titled_row as _compose_row,
 )
-from src.tasks.base.preview import (
+from src.tasks.base.visualization.preview import (
     draw_normalized_point as _draw_point,
 )
-from src.tasks.base.preview import (
+from src.tasks.base.visualization.preview import (
     resolve_sample_indices,
     resolve_split_file,
 )

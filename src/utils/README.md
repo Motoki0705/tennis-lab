@@ -8,12 +8,18 @@
 
 ### Top-level
 - **`paths.py`**: `PROJECT_ROOT` と `resolve_project_path()`。repo ルート基準のパス解決が必要なときに見る。
-- **`device.py`**: `resolve_device()` と `select_accelerator()`。`"auto"` を含む `torch.device` 解決や Lightning 用 `(accelerator, devices)` 判定をまとめている。
+- **`device.py`**: strictな `resolve_device()` と `select_accelerator()`。availabilityに応じた選択は`"auto"`だけが行い、明示CUDA/GPU要求を満たせない場合は`DeviceSelectionError`でmodel/Trainer構築前に失敗する。
 - **`seeding.py`**: `seed_everything()` と `make_sample_rng()`。軽量な RNG 初期化や dataloader worker-aware なサンプル単位 RNG を扱う。
 - **`io.py`**: ディレクトリ作成、JSON/JSONL の読み書き、atomic write、相対パス化、UTC timestamp 生成、拡張子フォールバック付きファイル探索 `find_existing_file()`。スクリプトやメタデータ保存まわりで最初に見る。
 - **`commands.py`**: `subprocess.run(..., check=True)` の薄い共通ラッパー `run_command()`。
 - **`hydra.py`**: 型付き `hydra_main()`。CLI エントリポイントで `hydra.main` の型回避を再実装しないための共通化先。
 - **`tensor_utils.py`**: `clone_tensor_dict()`、`to_numpy()`、`masked_mean()`、`normalize_padding_mask()`、`flatten_time_to_batch()`/`restore_time_from_batch()`。テンソル辞書の複製、NumPy 変換、mask 付き集約、(B,C,T,H,W)↔(B·T,C,H,W) の変形。
+
+### `configuration/`
+- **`paths.py` / `schema.py` / `contracts.py`**: `PathRole`・`PathResolver`・`RuntimePathRoots`、strict schema、typed adapter inspection の正本。設定値や path role の暗黙補完は行わない。
+- **`discovery.py`**: runtime boundary を source-only に列挙する下位 discovery の唯一の実装。`catalog.py` と `audit.py` はこの module を一方向に参照する。
+- **`catalog.py`**: source declaration と runtime boundary を結び付けた inspectable contract catalog の唯一の import path。
+- **`audit.py` / `inventory.py`**: repository-owned source の configuration/path route と runtime boundary を検査する library API。運用 entrypoint は root の `scripts/audit_configuration.py` のみ。
 
 ### `data/`
 - **`heatmaps.py`**: Gaussian heatmap 生成と、argmax / soft-argmax / peaks / pixel coordinates への復号、`resize_heatmap_sequence()` による (B,T,H,W) の bilinear リサイズ。
@@ -68,11 +74,12 @@
 - **`youtube.py`**: YouTube ダウンロード済み動画の探索、ダウンロード、H.264 向け encoder args、transcode。
 
 ### `models/`
-- **`components/`**: Transformer の基本部品。attention、RoPE、FFN、MoE、norm、`TransformerBlock`、`CrossAttnBlock` がここにある。
-- **`components/ops/`**: MoE と time-local attention の CUDA / reference 実装、autograd bridge、extension loader/build。カスタム op まわりを見る場所。
-- **`embeddings/`**: court / player / ball の埋め込みとgroup token系の構成要素。`CourtBallGroupEmbedding` / `CourtPlayerGroupEmbedding`はcourtとobject観測を1 object = 1 tokenへ写像し、呼び出し側のobject ID順を変えずにtoken軸へ保持する。
-- **`loading/`**: DINOv3 backbone 読み込み、LoRA 適用、trainability 切り替え。
-- **`architectures/`**: 現状は `TransformerSequenceDiscriminator` を配置。
+- **`__init__.py`**: `__all__`に列挙した高頻度model primitiveのcanonical public API。列挙外の専門APIは責務別sub-packageが公開元となる。
+- **`components/`**: Transformer の基本部品。attention、RoPE、FFN、MoE、norm、`TransformerBlock`、`CrossAttnBlock` がここにある。attention forwardはboundaryで検証済みのsame-device `(B,Q,K)` maskと、`RotaryFrequencyComputer`がconstructor時に固定した`(...,T,1,D/2)` complex RoPEだけを受け取り、rank/dtype/device補完や実装選択を行わない。
+- **`components/ops/`**: MoE と time-local attention の CUDA / reference 実装、autograd bridge、extension loader/build。MoE backend/capacity policyは`MoELayer` constructorで固定し、time-localは`layout` boundaryがempty-row policyを含むmaskを準備した後、`resolve_time_local_attention()`がbackendとwindow radiusをtensor実行前に一度だけ固定する。
+- **`embeddings/`**: court / player / ball の埋め込みとgroup token系の構成要素。`CourtBallGroupEmbedding` / `CourtPlayerGroupEmbedding`はcourtとobject観測を1 object = 1 tokenへ写像し、呼び出し側のobject ID順を変えずにtoken軸へ保持する。入力はadapterで検証済みの構造化shape（court/playerは末尾`(K,2)`、ballは末尾`2`、visibilityはleading shape）に統一し、flattened旧variantやrank補完は受け付けない。
+- **`loading/`**: DINOv3 backbone 読み込み、LoRA 適用、trainability 切り替え。dynamic `forward_features` responseはmodel forward内で検査せず、外部model-I/O boundaryの`require_dinov3_patch_tokens()`が型・key・shapeを検証する。
+- **`architectures/`**: 現状は `TransformerSequenceDiscriminator` を配置。共有GAN lifecycleは`prepare_sequence_discriminator_inputs()`で`(B,T,F)`入力を検証し、CLSを含むattention mask policyをforward前に一度だけ準備する。
 - **`blocks.py`**: `DepthwiseSeparableConv2d` と `Conv2dWiseWiseBlock`。CNN 系の共通ブロック。
 - **`heads.py`**: `MLPHead`。
 - **`lora.py`**: 汎用 LoRA 実装と trainable parameter 制御。

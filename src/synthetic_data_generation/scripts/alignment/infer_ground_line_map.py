@@ -285,7 +285,7 @@ def run(cfg: DictConfig) -> StageResult:
         / "src/synthetic_data_generation/configs/alignment/infer_ground_line_map.yaml",
         repo_root / "src/synthetic_data_generation/alignment/scene_provider/bundle.py",
         repo_root / "src/tasks/court_detection/inference/mask_predictor.py",
-        repo_root / "src/tasks/court_detection/inference/preprocess.py",
+        repo_root / "src/tasks/court_detection/model_io/images.py",
     )
     artifact_payload = {
         "schema": GROUND_LINE_MAP_SCHEMA,
@@ -322,7 +322,7 @@ def run(cfg: DictConfig) -> StageResult:
                 root=repo_root,
             ),
             "backbone_override": "explicit configured local path",
-            "short_side": detector.predictor.short_side,
+            "short_side": detector.predictor.adapter.spec.short_side,
             "resize_alignment": 8,
             "input_color_space": "srgb8-rgb",
             "normalization": "ImageNet mean/std",
