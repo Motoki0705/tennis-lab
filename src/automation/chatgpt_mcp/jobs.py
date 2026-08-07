@@ -317,7 +317,8 @@ class TrainingQueueManager:
             [
                 sys.executable,
                 "-m",
-                "src.automation.chatgpt_mcp.sandbox_exec",
+                "src.automation.chatgpt_mcp",
+                "sandbox-exec",
                 "--spec",
                 str(spec_path),
             ]

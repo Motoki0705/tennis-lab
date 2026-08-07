@@ -136,4 +136,4 @@ def test_private_tunnel_training_runner_does_not_require_public_url(
     runner = queue_commands[0][3]
     assert result["status"] == "queued"
     assert "TENNIS_MCP_PUBLIC_BASE_URL" not in runner
-    assert "src.automation.chatgpt_mcp.sandbox_exec" in runner
+    assert "src.automation.chatgpt_mcp sandbox-exec" in runner
