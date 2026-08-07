@@ -36,7 +36,10 @@ jobs:
           uv run --locked python \
             .agents/skills/knowledge-control/scripts/kg_validate.py
           uv run --locked python \
-            .agents/skills/literature-radar/scripts/radar_ingest.py \
+            .agents/skills/literature-radar/scripts/radar_hardening.py \
+            validate --repo-root .
+          uv run --locked python \
+            .agents/skills/literature-radar/scripts/radar_status.py \
             validate --repo-root .
 
   knowledge-webui:
