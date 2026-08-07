@@ -225,6 +225,13 @@ def validate_status(
                 )
             )
 
+    # Pre-hardening records did not require screening.topic. A documented
+    # historical backfill therefore cannot reconstruct topic counts from the
+    # canonical records. The status snapshot remains the migration evidence;
+    # current dates continue through the strict branch below.
+    if mode == "historical_backfill":
+        return errors
+
     topic_limit = int(settings["max_candidates_per_topic_per_day"])
     expected_topics = {
         str(topic)
