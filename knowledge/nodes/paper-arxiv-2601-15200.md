@@ -1,7 +1,7 @@
 ---
 id: paper-arxiv-2601-15200
 type: paper
-title: BBoxMaskPose v2: Expanding Mutual Conditioning to 3D
+title: "BBoxMaskPose v2: Expanding Mutual Conditioning to 3D"
 curator: chatgpt-schedule
 date: 2026-08-07
 status: reviewed
