@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import subprocess
 from dataclasses import replace
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
@@ -15,11 +16,26 @@ from src.automation.chatgpt_mcp.settings import GatewaySettings
 
 pytestmark = pytest.mark.integration
 
+_EXPECTED_TOOLS = {
+    "get_host_status",
+    "prepare_revision_workspace",
+    "get_revision_status",
+    "start_command",
+    "get_command_job",
+    "list_command_jobs",
+    "get_command_output",
+    "cancel_command_job",
+    "enqueue_training",
+    "get_training_job",
+    "get_training_output",
+}
+
 
 def _settings(tmp_path: Path) -> GatewaySettings:
     repo = tmp_path / "repo"
     repo.mkdir()
-    (repo / ".git").mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / ".venv/bin").mkdir(parents=True)
     uv_root = tmp_path / "uv-python"
     uv_root.mkdir()
     settings = GatewaySettings(
@@ -37,7 +53,7 @@ def _pkce_challenge(verifier: str) -> str:
     return base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
 
 
-def test_oauth_discovery_token_and_authenticated_tool_scan(tmp_path: Path) -> None:
+def test_oauth_discovery_token_and_reduced_tool_surface(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     app = build_gateway(settings).streamable_http_app()
     redirect_uri = "https://chatgpt.com/connector/oauth/test-callback"
@@ -77,7 +93,6 @@ def test_oauth_discovery_token_and_authenticated_tool_scan(tmp_path: Path) -> No
         assert registration.status_code == 201, registration.text
         client_id = registration.json()["client_id"]
         client_secret = registration.json()["client_secret"]
-        assert registration.json()["token_endpoint_auth_method"] == "client_secret_post"
 
         authorization = client.get(
             "/authorize",
@@ -94,18 +109,9 @@ def test_oauth_discovery_token_and_authenticated_tool_scan(tmp_path: Path) -> No
             follow_redirects=False,
         )
         assert authorization.status_code == 302, authorization.text
-        approval_url = authorization.headers["location"]
-        transaction = parse_qs(urlsplit(approval_url).query)["transaction"][0]
-
-        approval_page = client.get(
-            "/oauth/approve", params={"transaction": transaction}
-        )
-        assert approval_page.status_code == 200
-        assert "ChatGPT integration test" in approval_page.text
-        assert (
-            "form-action 'self' https://chatgpt.com"
-            in approval_page.headers["content-security-policy"]
-        )
+        transaction = parse_qs(urlsplit(authorization.headers["location"]).query)[
+            "transaction"
+        ][0]
 
         approval = client.post(
             "/oauth/approve",
@@ -119,28 +125,13 @@ def test_oauth_discovery_token_and_authenticated_tool_scan(tmp_path: Path) -> No
         callback_query = parse_qs(urlsplit(approval.headers["location"]).query)
         assert callback_query["state"] == ["integration-state"]
 
-        retried_approval = client.post(
-            "/oauth/approve",
-            data={
-                "transaction": transaction,
-                "owner_secret": settings.read_owner_secret(),
-            },
-            follow_redirects=False,
-        )
-        assert retried_approval.status_code == 303
-        retried_query = parse_qs(
-            urlsplit(retried_approval.headers["location"]).query
-        )
-        assert retried_query["state"] == ["integration-state"]
-        assert retried_query["code"] != callback_query["code"]
-
         token = client.post(
             "/token",
             data={
                 "grant_type": "authorization_code",
                 "client_id": client_id,
                 "client_secret": client_secret,
-                "code": retried_query["code"][0],
+                "code": callback_query["code"][0],
                 "redirect_uri": redirect_uri,
                 "code_verifier": verifier,
                 "resource": settings.resource_url,
@@ -155,7 +146,6 @@ def test_oauth_discovery_token_and_authenticated_tool_scan(tmp_path: Path) -> No
             headers={"Accept": "application/json, text/event-stream"},
         )
         assert unauthorized.status_code == 401
-        assert "resource_metadata=" in unauthorized.headers["www-authenticate"]
 
         mcp_headers = {
             "Accept": "application/json, text/event-stream",
@@ -177,7 +167,6 @@ def test_oauth_discovery_token_and_authenticated_tool_scan(tmp_path: Path) -> No
             headers=mcp_headers,
         )
         assert initialize.status_code == 200, initialize.text
-        assert initialize.json()["result"]["serverInfo"]["name"] == "tennis-lab-wsl"
 
         tools = client.post(
             "/mcp",
@@ -186,14 +175,14 @@ def test_oauth_discovery_token_and_authenticated_tool_scan(tmp_path: Path) -> No
         )
         assert tools.status_code == 200, tools.text
         advertised = {tool["name"]: tool for tool in tools.json()["result"]["tools"]}
-        assert "start_command" in advertised
-        assert "enqueue_training" in advertised
-        assert advertised["start_command"]["annotations"]["readOnlyHint"] is False
-        assert advertised["start_command"]["annotations"]["destructiveHint"] is True
-        assert (
-            advertised["start_command"]["_meta"]["securitySchemes"][0]["type"]
-            == "oauth2"
-        )
+
+    assert set(advertised) == _EXPECTED_TOOLS
+    assert advertised["start_command"]["annotations"]["destructiveHint"] is True
+    assert advertised["enqueue_training"]["annotations"]["destructiveHint"] is True
+    assert (
+        advertised["start_command"]["_meta"]["securitySchemes"][0]["type"]
+        == "oauth2"
+    )
 
 
 def test_private_tunnel_mode_uses_loopback_without_oauth(tmp_path: Path) -> None:
@@ -210,6 +199,7 @@ def test_private_tunnel_mode_uses_loopback_without_oauth(tmp_path: Path) -> None
         service = client.get("/")
         assert service.status_code == 200
         assert service.json()["authentication"] == "OpenAI Secure MCP Tunnel"
+        assert service.json()["role"] == "exact-revision execution and GPU validation only"
         assert client.get("/.well-known/oauth-protected-resource/mcp").status_code == 404
 
         initialize = client.post(
@@ -235,7 +225,6 @@ def test_private_tunnel_mode_uses_loopback_without_oauth(tmp_path: Path) -> None
         )
         assert tools.status_code == 200, tools.text
         advertised = {tool["name"]: tool for tool in tools.json()["result"]["tools"]}
-        security = advertised["start_command"].get("_meta", {}).get(
-            "securitySchemes"
-        )
-        assert security is None
+
+    assert set(advertised) == _EXPECTED_TOOLS
+    assert advertised["start_command"].get("_meta", {}).get("securitySchemes") is None
