@@ -1,7 +1,7 @@
 ---
 id: paper-arxiv-2605-21001
 type: paper
-title: DAMA: Disentangled Body-Anchored Gaussians for Controllable Multi-Layered Avatars
+title: "DAMA: Disentangled Body-Anchored Gaussians for Controllable Multi-Layered Avatars"
 curator: chatgpt-schedule
 date: 2026-08-07
 status: reviewed
