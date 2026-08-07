@@ -1,123 +1,151 @@
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 
+import pytest
 from pytest import MonkeyPatch
 
 from src.automation.chatgpt_mcp.jobs import (
     DockerSandbox,
+    JobError,
+    JobManager,
     SandboxSpec,
     TrainingQueueManager,
+    _redact_secrets,
 )
 from src.automation.chatgpt_mcp.settings import GatewaySettings
 from src.automation.chatgpt_mcp.storage import SqliteStore
+from src.automation.chatgpt_mcp.workspace import RevisionWorkspace
+
+_REVISION = "1" * 40
+_WORKSPACE_ID = "rev-0123456789abcdef"
 
 
-def _settings(tmp_path: Path) -> GatewaySettings:
+class StubWorkspaces:
+    def __init__(self, source: Path) -> None:
+        self.source = source
+
+    def assert_execution_ready(
+        self, *, workspace_id: str, expected_sha: str
+    ) -> RevisionWorkspace:
+        assert workspace_id == _WORKSPACE_ID
+        assert expected_sha == _REVISION
+        return RevisionWorkspace(
+            workspace_id=workspace_id,
+            path=self.source,
+            branch="feature/test",
+            revision=expected_sha,
+        )
+
+
+def _settings(tmp_path: Path) -> tuple[GatewaySettings, StubWorkspaces]:
     repo = tmp_path / "repo"
     repo.mkdir()
     subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / ".venv/bin").mkdir(parents=True)
     uv_root = tmp_path / "uv-python"
     uv_root.mkdir()
-    return GatewaySettings(
+    source = repo / ".chatgpt/revisions" / _WORKSPACE_ID
+    source.mkdir(parents=True)
+    (source / "example.py").write_text("print('ok')\n", encoding="utf-8")
+    settings = GatewaySettings(
         repo_root=repo,
         state_dir=tmp_path / "state",
-        public_base_url="https://mcp.example.test",
+        public_base_url=None,
         uv_python_root=uv_root,
     )
+    settings.ensure_state()
+    return settings, StubWorkspaces(source)
 
 
-def test_sandbox_command_mounts_only_repo_and_uv_runtime(tmp_path: Path) -> None:
-    settings = _settings(tmp_path)
+def test_sandbox_mounts_only_read_only_source_and_private_job_copy(
+    tmp_path: Path,
+) -> None:
+    settings, workspaces = _settings(tmp_path)
     spec = SandboxSpec(
         job_id="job-0123456789abcdef",
         command="python -m pytest",
-        workspace=str(settings.repo_root),
-        use_gpu=True,
-        network_access=False,
+        workspace_id=_WORKSPACE_ID,
+        expected_sha=_REVISION,
+        use_gpu=False,
         timeout_seconds=60,
     )
 
-    command = DockerSandbox(settings).command(spec, detached=True)
+    command = DockerSandbox(settings, workspaces).command(spec, detached=True)
     joined = " ".join(command)
-    assert "--gpus all" in joined
+    mounts = [
+        command[index + 1]
+        for index, value in enumerate(command)
+        if value == "--mount"
+    ]
+
     assert "--network none" in joined
+    assert "--read-only" in command
     assert "--cap-drop ALL" in joined
+    assert "--security-opt no-new-privileges" in joined
+    assert "--pull never" in joined
+    assert "--gpus all" not in joined
     assert "/var/run/docker.sock" not in joined
-    assert str(settings.repo_root) in joined
-    volumes = [
-        command[index + 1] for index, value in enumerate(command) if value == "--volume"
-    ]
-    assert volumes == [
-        f"{settings.repo_root}:{settings.repo_root}",
-        f"{settings.uv_python_root}:{settings.uv_python_root}:ro",
-    ]
-    assert spec.command == command[-1]
+    assert "/mnt/c" not in joined
+    assert any("dst=/source,readonly" in mount for mount in mounts)
+    assert any("dst=/workspace" in mount and "readonly" not in mount for mount in mounts)
+    assert any("dst=/source/.git,readonly" in mount for mount in mounts)
+    assert not any(
+        mount.startswith(f"type=bind,src={settings.repo_root},") for mount in mounts
+    )
+    assert command[-1] == spec.command
 
 
-def test_training_status_preserves_queue_result(
+def test_gpu_flag_is_available_only_to_queue_specs(tmp_path: Path) -> None:
+    settings, workspaces = _settings(tmp_path)
+    spec = SandboxSpec(
+        job_id="train-0123456789abcdef",
+        command="python -c 'import torch; print(torch.cuda.is_available())'",
+        workspace_id=_WORKSPACE_ID,
+        expected_sha=_REVISION,
+        use_gpu=True,
+        timeout_seconds=60,
+    )
+
+    command = DockerSandbox(settings, workspaces).command(spec, detached=False)
+
+    assert "--gpus" in command
+    assert command[command.index("--gpus") + 1] == "all"
+    assert command[command.index("--network") + 1] == "none"
+
+
+def test_direct_commands_are_cpu_only_and_time_bounded(tmp_path: Path) -> None:
+    settings, workspaces = _settings(tmp_path)
+    manager = JobManager(
+        settings,
+        SqliteStore(settings.database_path),
+        workspaces,
+    )
+
+    with pytest.raises(JobError, match="direct commands are limited"):
+        manager.start(
+            command="sleep 3600",
+            workspace_id=_WORKSPACE_ID,
+            expected_sha=_REVISION,
+            timeout_seconds=1801,
+        )
+
+
+def test_training_queue_uses_generated_safe_metadata_and_isolated_bootstrap(
     tmp_path: Path, monkeypatch: MonkeyPatch
 ) -> None:
-    settings = _settings(tmp_path)
-    store = SqliteStore(settings.state_dir / "gateway.sqlite3")
-    manager = TrainingQueueManager(settings, store)
-    queue_file = "123_cuda-smoke.job"
-    (manager.queue_dir / "done").mkdir(parents=True)
-    (manager.queue_dir / "done" / queue_file).touch()
-    store.put(
-        "training_jobs",
-        "train-0123456789abcdef",
-        {
-            "job_id": "train-0123456789abcdef",
-            "queue_file": queue_file,
-        },
-    )
-    monkeypatch.setattr(
-        manager.sandbox,
-        "inspect",
-        lambda _job_id: {
-            "status": "exited",
-            "running": False,
-            "exit_code": 0,
-            "started_at": "start",
-            "finished_at": "finish",
-            "error": None,
-        },
-    )
-
-    result = manager.status("train-0123456789abcdef")
-
-    assert result["status"] == "succeeded"
-    assert result["container_status"] == "exited"
-    assert result["exit_code"] == 0
-
-
-def test_private_tunnel_training_runner_does_not_require_public_url(
-    tmp_path: Path, monkeypatch: MonkeyPatch
-) -> None:
-    original = _settings(tmp_path)
-    settings = GatewaySettings(
-        repo_root=original.repo_root,
-        state_dir=original.state_dir,
-        public_base_url=None,
-        uv_python_root=original.uv_python_root,
-    )
-    settings.ensure_state()
-    manager = TrainingQueueManager(
-        settings, SqliteStore(settings.state_dir / "gateway.sqlite3")
-    )
-    queue_commands: list[list[str]] = []
-    monkeypatch.setattr(
-        manager.sandbox.workspaces,
-        "resolve_workspace",
-        lambda _workspace: settings.repo_root,
-    )
+    settings, workspaces = _settings(tmp_path)
+    store = SqliteStore(settings.database_path)
+    manager = TrainingQueueManager(settings, store, workspaces)
+    queue_commands: list[tuple[list[str], Path]] = []
 
     def fake_run(
         command: list[str], **kwargs: object
     ) -> subprocess.CompletedProcess[str]:
-        queue_commands.append(command)
+        cwd = Path(str(kwargs["cwd"]))
+        queue_commands.append((command, cwd))
         stdout = "queued: 123_private-training.job\n" if "add" in command else ""
         return subprocess.CompletedProcess(command, 0, stdout, "")
 
@@ -126,14 +154,36 @@ def test_private_tunnel_training_runner_does_not_require_public_url(
     result = manager.enqueue(
         name="private-training",
         command="python -c 'print(1)'",
-        workspace=str(settings.repo_root),
-        issue=None,
-        session="pytest",
-        network_access=False,
+        workspace_id=_WORKSPACE_ID,
+        expected_sha=_REVISION,
+        issue=716,
         timeout_seconds=60,
     )
 
-    runner = queue_commands[0][3]
+    add_command, add_cwd = queue_commands[0]
+    runner = add_command[3]
+    session = add_command[add_command.index("--session") + 1]
+    spec_path = next(settings.job_specs_dir.glob("train-*.json"))
+    spec = json.loads(spec_path.read_text(encoding="utf-8"))
+
     assert result["status"] == "queued"
+    assert add_cwd == workspaces.source
+    assert session.startswith("train-")
+    assert "\n" not in session and "\r" not in session
+    assert " -I " in runner
+    assert "src.automation.chatgpt_mcp.sandbox_exec" in runner
     assert "TENNIS_MCP_PUBLIC_BASE_URL" not in runner
-    assert "src.automation.chatgpt_mcp sandbox-exec" in runner
+    assert spec["workspace_id"] == _WORKSPACE_ID
+    assert spec["expected_sha"] == _REVISION
+    assert spec["use_gpu"] is True
+    assert "network_access" not in spec
+
+
+def test_secret_redaction_covers_common_runtime_tokens() -> None:
+    value = "token sk-example_12345678901234567890 and Bearer abcdefghijklmnop"
+
+    redacted = _redact_secrets(value)
+
+    assert "sk-example" not in redacted
+    assert "abcdefghijklmnop" not in redacted
+    assert redacted.count("[REDACTED]") == 2
