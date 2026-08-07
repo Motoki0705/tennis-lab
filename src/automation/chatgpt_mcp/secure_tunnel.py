@@ -7,6 +7,7 @@ import os
 import re
 import secrets
 import subprocess
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -202,32 +203,50 @@ class SecureTunnelManager:
             )
         self.service_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
         os.chmod(self.service_dir, 0o700)
-        self.private_service_path.write_text(
-            self._private_service_unit(), encoding="utf-8"
-        )
-        self.tunnel_service_path.write_text(
-            self._tunnel_service_unit(), encoding="utf-8"
-        )
+        with tempfile.TemporaryDirectory(
+            prefix=".tennis-lab-mcp-units-",
+            dir=self.service_dir,
+        ) as temporary_directory:
+            candidate_dir = Path(temporary_directory)
+            private_candidate = candidate_dir / PRIVATE_SERVICE_NAME
+            tunnel_candidate = candidate_dir / TUNNEL_SERVICE_NAME
+            private_candidate.write_text(
+                self._private_service_unit(), encoding="utf-8"
+            )
+            tunnel_candidate.write_text(
+                self._tunnel_service_unit(), encoding="utf-8"
+            )
+            os.chmod(private_candidate, 0o600)
+            os.chmod(tunnel_candidate, 0o600)
+            verification = subprocess.run(
+                [
+                    "systemd-analyze",
+                    "--user",
+                    "verify",
+                    str(private_candidate),
+                    str(tunnel_candidate),
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=30,
+            )
+            if verification.returncode != 0:
+                detail = (
+                    verification.stderr.strip()
+                    or verification.stdout.strip()
+                )
+                raise SecureTunnelError(
+                    f"systemd unit verification failed: {detail}"
+                )
+            os.replace(private_candidate, self.private_service_path)
+            os.replace(tunnel_candidate, self.tunnel_service_path)
         os.chmod(self.private_service_path, 0o600)
         os.chmod(self.tunnel_service_path, 0o600)
-        verification = subprocess.run(
-            [
-                "systemd-analyze",
-                "--user",
-                "verify",
-                str(self.private_service_path),
-                str(self.tunnel_service_path),
-            ],
-            text=True,
-            capture_output=True,
-            check=False,
-            timeout=30,
-        )
-        if verification.returncode != 0:
-            detail = verification.stderr.strip() or verification.stdout.strip()
-            raise SecureTunnelError(f"systemd unit verification failed: {detail}")
         subprocess.run(
-            ["systemctl", "--user", "daemon-reload"], check=True, timeout=30
+            ["systemctl", "--user", "daemon-reload"],
+            check=True,
+            timeout=30,
         )
         return self.paths()
 
