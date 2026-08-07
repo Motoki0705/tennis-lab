@@ -1,0 +1,73 @@
+name: PR716 security finalization (pull request)
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.head_ref == 'feat/chatgpt-wsl-mcp' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v6
+        with:
+          ref: feat/chatgpt-wsl-mcp
+          fetch-depth: 0
+          submodules: false
+
+      - name: Set up uv and Python 3.11
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+
+      - name: Execute reviewed finalization script
+        run: |
+          uv run --locked python - <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          workflow = Path(".github/workflows/pr716-finalize.yml").read_text(
+              encoding="utf-8"
+          )
+          start = "          uv run --locked python - <<'PY'\n"
+          end = "\n          PY\n\n      - name: Run focused security and MCP checks"
+          if start not in workflow or end not in workflow:
+              raise SystemExit("could not extract reviewed finalization script")
+          script = textwrap.dedent(workflow.split(start, 1)[1].split(end, 1)[0])
+          exec(compile(script, "pr716-finalize", "exec"), {"__name__": "__main__"})
+          PY
+
+      - name: Run focused security and MCP checks
+        run: |
+          uv run --locked ruff check \
+            src/automation/chatgpt_mcp \
+            tests/unit/automation/chatgpt_mcp \
+            tests/integration/chatgpt_mcp
+          uv run --locked mypy src/automation/chatgpt_mcp
+          uv run --locked pytest -q \
+            tests/unit/automation/chatgpt_mcp \
+            tests/integration/chatgpt_mcp \
+            tests/unit/utils/configuration/test_inventory.py
+
+      - name: Commit finalized implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -f \
+            .github/workflows/pr716-finalize.yml \
+            .github/workflows/pr716-finalize-pr.yml \
+            .github/pr716-finalize-trigger \
+            tests/unit/automation/chatgpt_mcp/test_inventory_diagnostic.py
+          git add \
+            src/automation/chatgpt_mcp \
+            src/utils/configuration/exemption_data.py \
+            src/utils/configuration/migration_data.py \
+            tests/unit/automation/chatgpt_mcp \
+            tests/integration/chatgpt_mcp
+          git diff --cached --check
+          git commit -m "security(automation): constrain WSL MCP to execution plane"
+          git push origin HEAD:feat/chatgpt-wsl-mcp
