@@ -102,13 +102,18 @@ class WorkspaceManager:
     def __init__(
         self,
         repo_root: Path,
-        state_dir: Path,
+        revision_root: Path,
         store: SqliteStore,
     ) -> None:
         self.repo_root = repo_root.resolve()
-        self.state_dir = state_dir.resolve()
+        self.workspace_root = revision_root.resolve()
+        if self.workspace_root == self.repo_root or self.workspace_root.is_relative_to(
+            self.repo_root
+        ):
+            raise WorkspaceError(
+                "revision workspace storage must be outside the canonical repository"
+            )
         self.store = store
-        self.workspace_root = self.state_dir / "revisions"
 
     def prepare_revision(self, *, branch: str, expected_sha: str) -> dict[str, str]:
         """Fetch one origin branch and create a detached worktree at an exact SHA."""
@@ -122,7 +127,14 @@ class WorkspaceManager:
         refspec = f"+refs/heads/{checked_branch}:{remote_ref}"
         _checked_git(
             self.repo_root,
-            ["fetch", "--no-tags", "origin", refspec],
+            [
+                "fetch",
+                "--force",
+                "--no-tags",
+                "--no-recurse-submodules",
+                "origin",
+                refspec,
+            ],
             message="git fetch failed",
             timeout=300,
         )
@@ -139,7 +151,7 @@ class WorkspaceManager:
 
         workspace_id = f"rev-{secrets.token_hex(8)}"
         target = (self.workspace_root / workspace_id).resolve()
-        if not target.is_relative_to(self.workspace_root.resolve()):
+        if not target.is_relative_to(self.workspace_root) or target.parent != self.workspace_root:
             raise WorkspaceError("revision workspace escaped its configured root")
         result = _run_git(
             self.repo_root,
@@ -148,6 +160,7 @@ class WorkspaceManager:
         )
         if result.returncode != 0:
             raise WorkspaceError(result.stderr.strip() or "git worktree add failed")
+        os.chmod(target, 0o700)
 
         workspace = RevisionWorkspace(
             workspace_id=workspace_id,
@@ -185,8 +198,7 @@ class WorkspaceManager:
         if payload is None:
             raise WorkspaceError("revision workspace was not found")
         path = Path(str(payload["path"])).resolve()
-        root = self.workspace_root.resolve()
-        if not path.is_relative_to(root) or path.parent != root:
+        if not path.is_relative_to(self.workspace_root) or path.parent != self.workspace_root:
             raise WorkspaceError("stored revision workspace escaped its configured root")
         workspace = RevisionWorkspace(
             workspace_id=checked_id,
@@ -203,7 +215,7 @@ class WorkspaceManager:
         workspace_id: str,
         expected_sha: str,
     ) -> RevisionWorkspace:
-        """Require exact SHA binding and a clean source tree before every execution."""
+        """Require exact SHA binding and a completely clean source before execution."""
 
         checked_sha = _validate_revision(expected_sha)
         workspace = self.get_revision(workspace_id)
@@ -214,27 +226,27 @@ class WorkspaceManager:
             )
         status = _checked_git(
             workspace.path,
-            ["status", "--porcelain", "--untracked-files=no"],
+            ["status", "--porcelain=v1", "--untracked-files=all"],
             message="git status failed",
         )
         if status:
             raise WorkspaceError(
-                "revision workspace contains tracked changes; prepare a new workspace"
+                "revision workspace contains changes; prepare a new workspace"
             )
         return workspace
 
     def describe_revision(self, workspace_id: str) -> dict[str, Any]:
-        """Return exact revision identity and tracked-clean status without file access."""
+        """Return exact revision identity and clean state without reading source files."""
 
         workspace = self.get_revision(workspace_id)
         status = _checked_git(
             workspace.path,
-            ["status", "--porcelain", "--untracked-files=no"],
+            ["status", "--porcelain=v1", "--untracked-files=all"],
             message="git status failed",
         )
         return {
             **workspace.public_dict(),
-            "tracked_clean": not bool(status),
+            "clean": not bool(status),
         }
 
     def _verify_materialized_workspace(self, workspace: RevisionWorkspace) -> None:
@@ -263,6 +275,12 @@ class WorkspaceManager:
         if not first_line.startswith("gitdir: "):
             raise WorkspaceError("revision workspace .git pointer is malformed")
         git_dir = Path(first_line.removeprefix("gitdir: ")).resolve()
-        common_worktrees = (self.repo_root / ".git" / "worktrees").resolve()
-        if not git_dir.is_relative_to(common_worktrees):
+        worktree_metadata_root = Path(
+            _checked_git(
+                self.repo_root,
+                ["rev-parse", "--path-format=absolute", "--git-path", "worktrees"],
+                message="repository worktree metadata path is unavailable",
+            )
+        ).resolve()
+        if not git_dir.is_relative_to(worktree_metadata_root):
             raise WorkspaceError("revision workspace git metadata is outside the repository")
