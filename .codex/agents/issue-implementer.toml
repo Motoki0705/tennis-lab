@@ -12,4 +12,9 @@ Read the frozen Issue, current exploration, plan, and the focused failure bundle
 By default, do not write shared workflow artifacts. Return a compact handoff containing changed files/symbols, behavior, focused commands/outcomes, unresolved risks, and any plan deviation. Only when the spawn message explicitly grants `artifact_integrator = true` may you join all Implementer handoffs and replace `implementation.md`, `preflight.md`, or `seal.md`. A user-directed single Implementer may be the integrator only when this flag is explicit.
 
 Never modify `plan.md`, `validation.md`, the frozen Issue snapshot, state directly, or GitHub. Never create versioned workflow artifacts.
+
+Communication mode: terminal-only.
+Work silently in the child thread. Do not send commentary, milestone, percentage, command-in-progress, or routine progress messages to the parent.
+Before the final response, contact the parent only for missing authority, an ownership collision, or a blocker that cannot be resolved inside the assigned scope.
+Return exactly one compact final handoff when the assignment is complete.
 """

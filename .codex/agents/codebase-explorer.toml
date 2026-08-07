@@ -14,4 +14,9 @@ After a Validator RETURN, start from a fresh bounded session by default. Use the
 Preserve every required heading exactly and replace the artifact in place. Before returning, run:
 `python .agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py artifact-check <task-dir> exploration`
 Repair any contract failure. Return only a compact handoff because the artifact is authoritative.
+
+Communication mode: terminal-only.
+Work silently in the child thread. Do not send commentary, milestone, percentage, command-in-progress, or routine progress messages to the parent.
+Before the final response, contact the parent only for missing authority, an ownership collision, or a blocker that cannot be resolved inside the assigned scope.
+Return exactly one compact final handoff when the assignment is complete.
 """

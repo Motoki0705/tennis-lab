@@ -1,6 +1,23 @@
 # Spawn contracts
 
-Use `fork_turns = "none"` with custom agent types and a unique lowercase `task_name`. Parallelism is optional when the user explicitly requests one Implementer or sequential execution.
+Use `fork_turns = "none"` exactly with custom agent types and a unique lowercase `task_name`. Numeric values, inherited turn windows, `all`, and omission are noncompliant. This applies to initial work, retries, post-compaction work, packaging repairs, Test Writers, Validators, and bounded Validator child exploration. Pass required context through frozen artifacts, explicit paths, AC IDs, ownership, and focused failure bundles instead of inherited parent turns. Parallelism is optional when the user explicitly requests one Implementer or sequential execution.
+
+If any child was spawned with `fork_turns` other than `"none"`, do not accept its handoff or verdict. Stop or discard that child and respawn a fresh replacement with the same bounded assignment. This is especially mandatory for Test Writer and Validator independence.
+
+## Mandatory assignment footer
+
+Append this exact footer to every `spawn_agent` assignment, including retries and bounded Validator child exploration:
+
+```text
+Communication mode: terminal-only.
+Work silently in the child thread. Do not send commentary, milestone, percentage, command-in-progress, or routine progress messages to the parent.
+Before the final response, contact the parent only for missing authority, an ownership collision, or a blocker that cannot be resolved inside the assigned scope.
+Return exactly one compact final handoff when the assignment is complete.
+```
+
+Do not weaken or paraphrase the footer. Custom agent `developer_instructions` repeat the same contract so the policy is versioned and testable; the assignment footer remains mandatory because it sets the cadence for the concrete child turn.
+
+An allowed pre-terminal escalation must identify the exact authority needed, conflicting owner/path, or unresolved blocker and stop. Newly discovered evidence, completed substeps, test output, elapsed time, and estimated completion are not escalation reasons; keep them in the child thread, task logs, or authoritative artifact.
 
 ## Scout
 
@@ -24,10 +41,14 @@ Spawn only after production preflight PASS. It reads the frozen Issue, plan, `ch
 
 ## Validator
 
-Spawn only after final-seal PASS. Give it the frozen Issue, sealed candidate fingerprint, and validation artifact path—no plan, implementation, test narrative, prior validation, or expected verdict. It independently inspects the current revision and complete diff, writes one exact AC matrix, runs `artifact-check ... validation`, and owns the final PASS/RETURN.
+Spawn only after final-seal PASS. Give it the frozen Issue and sealed candidate identity, not prior narratives. The assignment may name the validation artifact path and canonical helper path, but it must not include plan, implementation, test narrative, prior validation, or an expected verdict. It independently inspects the current revision and complete diff, writes one exact AC matrix, runs `artifact-check ... validation`, and owns the final PASS/RETURN.
 
 Bounded child Explorers may collect direct evidence for explicit AC IDs, but they do not decide the verdict.
 
 ## Waiting and context
 
-Join a complete wave once. Use a long/event-driven wait where available. Do not send progress messages unless scope, ownership, or evidence changed. Raw logs stay in child threads or task logs; parent summaries stay compact.
+Do independent parent work before waiting. Then join the active wave with one event-driven `wait_agent` call using `timeout_ms = 3_600_000` when supported, otherwise the maximum accepted timeout. Do not use shorter waits as polling intervals and do not call `list_agents` merely to check unchanged state.
+
+`wait_agent` can return when any child communicates, so a one-hour timeout alone does not guarantee a one-hour sleep. Treat only `FINAL_ANSWER` as completion. For any nonterminal message that is not an allowed escalation, do not reply or summarize it; resume the same long wait immediately.
+
+Join each completed child once. Raw logs and intermediate evidence stay in child threads or task logs. Parent summaries contain only terminal status, changed files or evidence, exact command IDs and outcomes, unresolved risks, and the next state transition.

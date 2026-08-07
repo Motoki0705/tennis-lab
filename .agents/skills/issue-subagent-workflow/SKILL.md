@@ -37,6 +37,16 @@ Initialization freezes canonical `issue.json`, renders `issue.md`, records both 
 11. Validator PASS produces `status = "validated"`, `phase = "packaging"`; it does not complete the task.
 12. Create or update the PR, check out its final head, then run `capture-pr`. The helper queries the real PR metadata, paginates every changed-file page, records remote checks, and binds that evidence to state. Write `packaging.md` with the captured evidence digest and run `finalize-pr`. Only this command sets `status = "complete"`.
 
+## Delegation communication and waiting
+
+Every `spawn_agent` call must set `fork_turns = "none"` exactly, including retries, post-compaction work, packaging repairs, Test Writers, Validators, and bounded Validator children. Never use a numeric or inherited turn window as a shortcut for writing a focused assignment. Required context travels through frozen artifacts, explicit artifact paths, AC IDs, ownership, and the concrete failure bundle. A Validator spawned with inherited parent turns is not independent and must be replaced before its verdict is accepted.
+
+Every `spawn_agent` assignment must end with the exact terminal-only footer from [spawn contracts](references/spawn-contracts.md), even when the selected custom agent already contains the same policy. The duplicate boundary is intentional: the versioned agent config is auditable, while the assignment-level footer overrides generic progress-update defaults for that concrete child turn.
+
+Child agents work silently and return exactly one compact terminal handoff. Before that handoff they may interrupt the parent only for missing authority, an ownership collision, or a blocker that cannot be resolved inside the assigned scope. New evidence, completed milestones, commands in progress, and percentage updates stay in the child thread or formal artifact.
+
+After spawning a wave, do independent parent work first, then call `wait_agent` once with `timeout_ms = 3_600_000` when supported, otherwise the maximum accepted timeout. The timeout is an upper bound, not a polling cadence: `wait_agent` may wake for any child message. A nonterminal message is not completion; unless it is an allowed escalation, do not answer it, do not call `list_agents`, and immediately resume the same long wait. Aggregate user-visible status at workflow phase boundaries instead of forwarding child chatter.
+
 ## Canonical commands
 
 ```bash
@@ -66,3 +76,5 @@ Artifact checks are also enforced inside every mutating transition; manual check
 - Do not treat a user-directed single-Implementer topology as noncompliance.
 - Do not open or update the delivery PR before Validator PASS unless the user explicitly requires an earlier draft; completion still requires final-head binding.
 - Never create `*-v2.md`; replace the authoritative artifact in place.
+- Never use routine child progress messages as a substitute for artifacts, terminal handoffs, or state transitions.
+- Never accept a child verdict produced from `fork_turns` other than `"none"`.
