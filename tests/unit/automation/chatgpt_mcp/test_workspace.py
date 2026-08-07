@@ -55,9 +55,10 @@ def test_prepare_revision_fetches_exact_sha_into_detached_worktree(
     assert prepared["revision"] == revision
     assert prepared["branch"] == "main"
     assert workspace.path.parent == manager.workspace_root
+    assert not workspace.path.is_relative_to(manager.repo_root)
     assert _run("git", "rev-parse", "HEAD", cwd=workspace.path) == revision
     assert _run("git", "branch", "--show-current", cwd=workspace.path) == ""
-    assert manager.describe_revision(workspace.workspace_id)["tracked_clean"] is True
+    assert manager.describe_revision(workspace.workspace_id)["clean"] is True
 
 
 def test_prepare_revision_rejects_remote_sha_mismatch(tmp_path: Path) -> None:
@@ -83,9 +84,22 @@ def test_execution_requires_registered_id_exact_sha_and_clean_source(
 
     workspace = manager.get_revision(workspace_id)
     (workspace.path / "example.txt").write_text("modified\n", encoding="utf-8")
-    with pytest.raises(WorkspaceError, match="tracked changes"):
+    with pytest.raises(WorkspaceError, match="contains changes"):
         manager.assert_execution_ready(
             workspace_id=workspace_id,
+            expected_sha=revision,
+        )
+
+
+def test_execution_rejects_untracked_source_files(tmp_path: Path) -> None:
+    manager, revision = _manager(tmp_path)
+    prepared = manager.prepare_revision(branch="main", expected_sha=revision)
+    workspace = manager.get_revision(prepared["workspace_id"])
+    (workspace.path / "untracked.py").write_text("raise RuntimeError\n", encoding="utf-8")
+
+    with pytest.raises(WorkspaceError, match="contains changes"):
+        manager.assert_execution_ready(
+            workspace_id=workspace.workspace_id,
             expected_sha=revision,
         )
 
