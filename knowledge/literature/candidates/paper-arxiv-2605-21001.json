@@ -1,0 +1,69 @@
+{
+  "aggregate": {
+    "collector_count": 1,
+    "collectors": ["systems"],
+    "discovery_count": 1,
+    "max_novelty_score": 94,
+    "max_relevance_score": 94,
+    "mean_relevance_score": 94.0,
+    "repo_paths": [
+      "src/synthetic_data_generation/composition/contracts.py",
+      "src/synthetic_data_generation/dataset/plcs/components/avatar_control.py",
+      "src/synthetic_data_generation/dataset/plcs/rendering/nht.py",
+      "src/tennis_scene/pipeline/components/gvhmr.py"
+    ],
+    "tasks": ["human_pose", "synthetic_data_generation"]
+  },
+  "curation": {
+    "decision": "promoted",
+    "issue": 710,
+    "paper_node": "paper-arxiv-2605-21001",
+    "proposal_nodes": ["proposal-plcs-body-anchored-avatar-layers"],
+    "reason_ja": "CVPRW公式全文、project、MIT codeを確認した。face index、barycentric coordinate、正のnormal offset、semantic layerによってbody penetrationとlayer orderを表現上制約する核は、現行avatar_controlのsurface embeddingを明示的なmulti-layer contractへ拡張する最小仮説に落とせる。NHT appearance非互換、multi-view segmentation/SMPL-X依存、外観品質とのtrade-offを制約として昇格する。",
+    "reviewed_at": "2026-08-07T00:06:06+09:00"
+  },
+  "discoveries": [
+    {
+      "collector_id": "systems",
+      "discovered_at": "2026-08-06T01:18:08+09:00",
+      "schedule_run_id": "systems-20260806T011808+0900-dama6f1",
+      "screening": {
+        "applicability_ja": "現行avatar_controlはface indexとbarycentric coordinateで点をposed meshへ埋め込めるが、positive normal offset、semantic garment layer、layer orderを契約化していない。DAMAのgeometry parameterizationだけを導入し、NHT appearanceを固定した比較が可能である。",
+        "candidate_experiment_ja": "同一3 assets、Gaussian count、appearance、100-frame motionで現行monolithic controlとbody-anchored layer controlを比較し、penetration rate/depth、layer-order violation、temporal mask IoU、LPIPS、FPS、VRAMを測る。",
+        "evidence_level": "fulltext-code",
+        "novelty_score": 94,
+        "relevance_score": 94,
+        "repo_paths": [
+          "src/synthetic_data_generation/dataset/plcs/components/avatar_control.py",
+          "src/synthetic_data_generation/composition/contracts.py",
+          "src/synthetic_data_generation/dataset/plcs/rendering/nht.py",
+          "src/tennis_scene/pipeline/components/gvhmr.py"
+        ],
+        "risks_ja": "原手法はRGB 2DGS、calibrated multi-view、garment segmentation、fitted SMPL-Xを前提とし、NHT deferred featureへ直接接続できない。positive offsetはpenetrationを減らす一方で外観を歪め得る。4D-DRESS、SMPL-X、AMASSの利用条件はcodeのMITとは別管理である。",
+        "score_breakdown": {"adoption_feasibility": 7, "evidence_quality": 18, "experiment_quality": 14, "repo_fit": 25, "task_fit": 30},
+        "summary_ja": "skin・hair・upper・lower等を分離したmulti-layer 2D Gaussian avatarを、SMPL-X face上のbarycentric coordinateと正のnormal offsetでbodyへ固定し、横方向driftとbody penetrationを表現上抑える。",
+        "tasks": ["synthetic_data_generation", "human_pose"],
+        "topic": "avatar_rendering"
+      },
+      "sources": [
+        {"checked_at": "2026-08-06T01:18:08+09:00", "kind": "paper", "url": "https://openaccess.thecvf.com/content/CVPR2026W/PhysHuman/html/Eskandar_DAMA_Disentangled_Body-Anchored_Gaussians_for_Controllable_Multi-Layered_Avatars_CVPRW_2026_paper.html"},
+        {"checked_at": "2026-08-06T01:18:08+09:00", "kind": "paper", "url": "https://arxiv.org/abs/2605.21001"},
+        {"checked_at": "2026-08-06T01:18:08+09:00", "kind": "project", "url": "https://danieleskandar.github.io/dama/"},
+        {"checked_at": "2026-08-06T01:18:08+09:00", "kind": "code", "url": "https://github.com/danieleskandar/DAMA-code"}
+      ]
+    }
+  ],
+  "first_seen": "2026-08-06T01:18:08+09:00",
+  "id": "paper-arxiv-2605-21001",
+  "last_seen": "2026-08-06T01:18:08+09:00",
+  "paper": {
+    "authors": ["Daniel Eskandar", "Berna Kabadayi", "Garvita Tiwari", "Gerard Pons-Moll"],
+    "identifiers": {"arxiv": "2605.21001", "doi": null, "openreview": "J5VMAFJmho"},
+    "title": "DAMA: Disentangled Body-Anchored Gaussians for Controllable Multi-Layered Avatars",
+    "urls": {"code": "https://github.com/danieleskandar/DAMA-code", "dataset": null, "paper": "https://arxiv.org/pdf/2605.21001", "primary": "https://openaccess.thecvf.com/content/CVPR2026W/PhysHuman/html/Eskandar_DAMA_Disentangled_Body-Anchored_Gaussians_for_Controllable_Multi-Layered_Avatars_CVPRW_2026_paper.html", "project": "https://danieleskandar.github.io/dama/"},
+    "venue": "CVPR 2026 Workshops (PhysHuman)",
+    "year": 2026
+  },
+  "schema_version": 1,
+  "state": "promoted"
+}

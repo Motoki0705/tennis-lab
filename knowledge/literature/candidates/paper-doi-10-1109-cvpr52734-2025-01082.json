@@ -1,0 +1,68 @@
+{
+  "aggregate": {
+    "collector_count": 1,
+    "collectors": ["geometry"],
+    "discovery_count": 1,
+    "max_novelty_score": 86,
+    "max_relevance_score": 84,
+    "mean_relevance_score": 84.0,
+    "repo_paths": [
+      "src/tasks/plcs/data/tracking_augmentation.py",
+      "src/tasks/plcs/models/plcs_track_query_model.py",
+      "src/tasks/plcs/training/tracking_metrics.py",
+      "src/utils/models/embeddings/group_tokens.py"
+    ],
+    "tasks": ["plcs"]
+  },
+  "curation": {
+    "decision": "reviewed",
+    "issue": 710,
+    "paper_node": null,
+    "proposal_nodes": [],
+    "reason_ja": "CVPR公式全文とprojectを確認した。MV-SSMは既知projection matrix、RGB feature、3D joint supervision、differentiable triangulationを前提とする一方、現行PLCS trackingは2D keypointとcourt evidenceからposition/yaw/presenceを推定しcamera projection matrixを入力しない。公式再利用codeも確認できず、PSS全体の移植根拠が弱いためreviewedとして保持し正式nodeへの昇格は見送る。",
+    "reviewed_at": "2026-08-07T00:06:06+09:00"
+  },
+  "discoveries": [
+    {
+      "collector_id": "geometry",
+      "discovered_at": "2026-08-06T01:21:00+09:00",
+      "schedule_run_id": "geometry-20260806T012100+0900-mvssm-a41f",
+      "screening": {
+        "applicability_ja": "17関節を個別token化し、関節軸の双方向SSMで融合後に既存人物tokenへ集約する軽量ablationは検討可能だが、原手法のprojective attentionとtriangulationは現行PLCS契約と一致しない。",
+        "candidate_experiment_ja": "現行PLCSTrackQueryModelをbaselineに、関節軸forward/reverse SSMを1層追加し、position error、angular error、presence F1、ID switch、時間、memoryを3 seedsで比較する。",
+        "evidence_level": "fulltext",
+        "novelty_score": 86,
+        "relevance_score": 84,
+        "repo_paths": [
+          "src/tasks/plcs/models/plcs_track_query_model.py",
+          "src/utils/models/embeddings/group_tokens.py",
+          "src/tasks/plcs/data/tracking_augmentation.py",
+          "src/tasks/plcs/training/tracking_metrics.py"
+        ],
+        "risks_ja": "公式codeを確認できず再現コストが高い。Mamba系依存、scan kernel互換性、関節順序感度、合成から実映像へのdomain gapがある。原論文のprojection-aware構成を除いた軽量ablationは別仮説であり、論文性能を期待できない。",
+        "score_breakdown": {"adoption_feasibility": 6, "evidence_quality": 14, "experiment_quality": 14, "repo_fit": 21, "task_fit": 29},
+        "summary_ja": "MV-SSMはProjective State Space blockとGrid Token-guided Bidirectional Scanningを用い、画像特徴と人物関節tokenを更新して2D residualとconfidenceを推定し、微分可能三角測量で3D poseを復元する。",
+        "tasks": ["plcs"],
+        "topic": "player_3d"
+      },
+      "sources": [
+        {"checked_at": "2026-08-06T01:21:00+09:00", "kind": "publisher", "url": "https://openaccess.thecvf.com/content/CVPR2025/html/Chharia_MV-SSM_Multi-View_State_Space_Modeling_for_3D_Human_Pose_Estimation_CVPR_2025_paper.html"},
+        {"checked_at": "2026-08-06T01:21:00+09:00", "kind": "paper", "url": "https://arxiv.org/abs/2509.00649"},
+        {"checked_at": "2026-08-06T01:21:00+09:00", "kind": "project", "url": "https://aviralchharia.github.io/MV-SSM/"}
+      ]
+    }
+  ],
+  "first_seen": "2026-08-06T01:21:00+09:00",
+  "id": "paper-doi-10-1109-cvpr52734-2025-01082",
+  "last_seen": "2026-08-06T01:21:00+09:00",
+  "paper": {
+    "authors": ["Aviral Chharia", "Wenbo Gou", "Haoye Dong"],
+    "identifiers": {"arxiv": "2509.00649", "doi": "10.1109/cvpr52734.2025.01082", "openreview": null},
+    "title": "MV-SSM: Multi-View State Space Modeling for 3D Human Pose Estimation",
+    "urls": {"code": null, "dataset": null, "paper": "https://arxiv.org/abs/2509.00649", "primary": "https://openaccess.thecvf.com/content/CVPR2025/html/Chharia_MV-SSM_Multi-View_State_Space_Modeling_for_3D_Human_Pose_Estimation_CVPR_2025_paper.html", "project": "https://aviralchharia.github.io/MV-SSM/"},
+    "venue": "CVPR 2025",
+    "year": 2025
+  },
+  "schema_version": 1,
+  "state": "reviewed"
+}
