@@ -43,9 +43,13 @@ def _append_query(url: str, values: dict[str, str | None]) -> str:
 
 def _is_allowed_redirect_uri(uri: str, *, allow_localhost: bool) -> bool:
     parsed = urlsplit(uri)
-    if parsed.fragment:
+    if parsed.fragment or parsed.username is not None or parsed.password is not None:
         return False
-    if parsed.scheme == "https" and parsed.hostname == "chatgpt.com":
+    if (
+        parsed.scheme == "https"
+        and parsed.hostname == "chatgpt.com"
+        and parsed.port in {None, 443}
+    ):
         return parsed.path.startswith("/connector/oauth/") or (
             parsed.path == "/connector_platform_oauth_redirect"
         )
@@ -166,13 +170,13 @@ class OwnerOAuthProvider(
         )
 
     def approve_authorization(self, transaction_id: str, owner_secret: str) -> str:
-        """Approve a pending request and return the validated client callback URL."""
+        """Consume one pending request and return its validated client callback URL."""
 
         if not secrets.compare_digest(owner_secret, self._owner_secret):
             raise PermissionError("owner secret did not match")
-        payload = self.store.get("pending_authorizations", transaction_id)
+        payload = self.store.pop("pending_authorizations", transaction_id)
         if payload is None:
-            raise ValueError("authorization request is missing or expired")
+            raise ValueError("authorization request is missing, expired, or already used")
 
         params = AuthorizationParams.model_validate(payload["params"])
         client_id = str(payload["client_id"])
@@ -314,9 +318,13 @@ class OwnerOAuthProvider(
         resource = str(payload.get("resource") or "")
         if resource != self.settings.resource_url:
             raise TokenError("invalid_grant", "refresh token resource mismatch")
+        original_scopes = set(str(value) for value in payload.get("scopes", []))
+        requested_scopes = set(scopes) if scopes else original_scopes
+        if not requested_scopes.issubset(original_scopes):
+            raise TokenError("invalid_scope", "refresh scope exceeds the original grant")
         return self._issue_token_pair(
             client_id=str(client.client_id),
-            scopes=scopes,
+            scopes=sorted(requested_scopes),
             resource=resource,
             subject=refresh_token.subject or "owner",
         )
