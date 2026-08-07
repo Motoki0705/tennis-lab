@@ -108,7 +108,7 @@ class WorkspaceManager:
         self.repo_root = repo_root.resolve()
         self.state_dir = state_dir.resolve()
         self.store = store
-        self.workspace_root = self.repo_root / ".chatgpt" / "revisions"
+        self.workspace_root = self.state_dir / "revisions"
 
     def prepare_revision(self, *, branch: str, expected_sha: str) -> dict[str, str]:
         """Fetch one origin branch and create a detached worktree at an exact SHA."""
