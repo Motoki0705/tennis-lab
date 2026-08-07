@@ -132,7 +132,7 @@ class GatewaySettings:
 
     @property
     def revision_workspace_dir(self) -> Path:
-        return self.repo_root / ".chatgpt" / "revisions"
+        return self.state_dir / "revisions"
 
     @property
     def secure_tunnel_dir(self) -> Path:
@@ -193,6 +193,7 @@ class GatewaySettings:
             self.state_dir,
             self.job_specs_dir,
             self.sandbox_jobs_dir,
+            self.revision_workspace_dir,
         ):
             directory.mkdir(mode=0o700, parents=True, exist_ok=True)
             os.chmod(directory, 0o700)
