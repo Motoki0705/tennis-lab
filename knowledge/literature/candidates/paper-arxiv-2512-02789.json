@@ -19,12 +19,14 @@
     ]
   },
   "curation": {
-    "decision": null,
-    "issue": null,
-    "paper_node": null,
-    "proposal_nodes": [],
-    "reason_ja": null,
-    "reviewed_at": null
+    "decision": "promoted",
+    "issue": 711,
+    "paper_node": "paper-arxiv-2512-02789",
+    "proposal_nodes": [
+      "proposal-ball-rstr-refinement-head"
+    ],
+    "reason_ja": "公式全文と公式SDKを確認した。現行tennis-labはMDD相当の入力を既に実装している一方、R-STR型の残差時空間refinement headを持たないため、データ・backbone・lossを固定した最小比較へ落とせる。公式SDKはproprietaryでweightと社内datasetも非公開なので、codeを取り込まず論文仕様から独立実装する条件で正式paper nodeへ昇格する。",
+    "reviewed_at": "2026-08-07T12:53:11+09:00"
   },
   "discoveries": [
     {
@@ -99,5 +101,5 @@
     "year": 2025
   },
   "schema_version": 1,
-  "state": "inbox"
+  "state": "promoted"
 }
