@@ -102,11 +102,16 @@ class WorkspaceManager:
     def __init__(
         self,
         repo_root: Path,
-        revision_root: Path,
+        state_or_revision_root: Path,
         store: SqliteStore,
     ) -> None:
         self.repo_root = repo_root.resolve()
-        self.workspace_root = revision_root.resolve()
+        configured_root = state_or_revision_root.resolve()
+        self.workspace_root = (
+            configured_root
+            if configured_root.name == "revisions"
+            else (configured_root / "revisions").resolve()
+        )
         if self.workspace_root == self.repo_root or self.workspace_root.is_relative_to(
             self.repo_root
         ):
