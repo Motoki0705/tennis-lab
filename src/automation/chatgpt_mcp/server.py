@@ -1,4 +1,4 @@
-"""MCP server composition, authenticated tools, and owner approval UI."""
+"""MCP server for exact-revision execution, CUDA, and training observation."""
 
 from __future__ import annotations
 
@@ -115,7 +115,7 @@ def _approval_page(
   <h1>ChatGPTからWSLへの接続を承認</h1>
   <p>クライアント: <strong>{safe_client}</strong></p>
   <p>権限: <code>{safe_scopes}</code></p>
-  <p>この接続はコード変更、sandbox process、GPU学習を起動できます。</p>
+  <p>この接続は固定revisionのsandbox実行とGPU学習を起動できます。</p>
   {error_html}
   <form method="post" action="/oauth/approve" autocomplete="off">
     <input type="hidden" name="transaction" value="{safe_transaction}">
@@ -161,7 +161,7 @@ def _run_probe(arguments: list[str], *, timeout: int = 10) -> dict[str, Any]:
 def _register_oauth_approval_routes(
     server: FastMCP, oauth: OwnerOAuthProvider
 ) -> None:
-    """Attach the browser approval flow used only by public OAuth mode."""
+    """Attach the browser approval flow used only by legacy public OAuth mode."""
 
     limiter = ApprovalRateLimiter()
 
@@ -217,17 +217,19 @@ def _register_oauth_approval_routes(
 def build_gateway(
     settings: GatewaySettings, *, authenticated: bool = True
 ) -> FastMCP:
-    """Build either the public OAuth server or private tunnel server."""
+    """Build the public OAuth server or private Secure Tunnel server."""
 
     settings.ensure_state()
     store = SqliteStore(settings.database_path)
-    workspaces = WorkspaceManager(settings.repo_root)
-    jobs = JobManager(settings, store)
-    training = TrainingQueueManager(settings, store)
+    workspaces = WorkspaceManager(settings.repo_root, settings.state_dir, store)
+    jobs = JobManager(settings, store, workspaces)
+    training = TrainingQueueManager(settings, store, workspaces)
     instructions = (
-        "Operate only in a dedicated git worktree. Inspect before editing, review the diff, "
-        "and run relevant tests. All ordinary commands run in an isolated Docker sandbox. "
-        "All learning/training must use enqueue_training, which writes to .training_queue."
+        "GitHub MCP exclusively owns repository exploration, editing, branches, commits, "
+        "pushes, issues, and pull requests. This WSL MCP may only fetch an origin branch "
+        "at a caller-supplied exact SHA, execute an ephemeral copied snapshot without "
+        "network access, queue GPU work, and return runtime status or logs. Never use this "
+        "server to implement or persist source changes."
     )
     oauth: OwnerOAuthProvider | None = None
     if authenticated:
@@ -297,6 +299,7 @@ def build_gateway(
         return JSONResponse(
             {
                 "service": "tennis-lab-wsl-mcp",
+                "role": "exact-revision execution and GPU validation only",
                 "mcp": (
                     settings.resource_url
                     if authenticated
@@ -320,8 +323,8 @@ def build_gateway(
         _register_oauth_approval_routes(server, oauth)
 
     @server.tool(
-        title="Get WSL host status",
-        description="Check the configured repository, Docker sandbox, GPU, and local training queue before work.",
+        title="Get WSL execution host status",
+        description="Check Docker, the NVIDIA GPU, and the serial training queue before validation work.",
         annotations=_annotations(
             read_only=True, destructive=False, idempotent=True, open_world=False
         ),
@@ -363,129 +366,59 @@ def build_gateway(
         }
 
     @server.tool(
-        title="Create an isolated worktree",
-        description="Create a new git branch and linked worktree below .chatgpt/worktrees before editing code.",
+        title="Prepare an exact remote revision",
+        description=(
+            "Fetch one branch from the fixed origin remote, require its full SHA to match, "
+            "and create a detached source worktree for execution. This never creates or "
+            "pushes a branch."
+        ),
         annotations=_annotations(
-            read_only=False, destructive=False, idempotent=False, open_world=False
+            read_only=False, destructive=False, idempotent=False, open_world=True
         ),
         meta=security_meta,
     )
-    def create_workspace(
-        name: str, branch: str, base_ref: str = "origin/main"
-    ) -> dict[str, str]:
-        return workspaces.create_worktree(name=name, branch=branch, base_ref=base_ref)
+    def prepare_revision_workspace(branch: str, expected_sha: str) -> dict[str, str]:
+        return workspaces.prepare_revision(branch=branch, expected_sha=expected_sha)
 
     @server.tool(
-        title="List workspace files",
-        description="List files under a directory in one validated git worktree.",
-        annotations=_annotations(
-            read_only=True, destructive=False, idempotent=True, open_world=False
-        ),
-        meta=security_meta,
-    )
-    def list_workspace_files(
-        workspace: str, path: str = ".", limit: int = 500
-    ) -> dict[str, Any]:
-        return workspaces.list_files(workspace, path=path, limit=limit)
-
-    @server.tool(
-        title="Read a workspace file",
-        description="Read a bounded line range from a UTF-8 file inside a validated git worktree.",
+        title="Get exact revision status",
+        description="Return the registered branch, exact SHA, and tracked-clean state without reading source files.",
         annotations=_annotations(
             read_only=True, destructive=False, idempotent=True, open_world=False
         ),
         meta=security_meta,
     )
-    def read_workspace_file(
-        workspace: str,
-        path: str,
-        start_line: int = 1,
-        max_lines: int = 400,
-    ) -> dict[str, Any]:
-        return workspaces.read_file(
-            workspace, path, start_line=start_line, max_lines=max_lines
-        )
+    def get_revision_status(workspace_id: str) -> dict[str, Any]:
+        return workspaces.describe_revision(workspace_id)
 
     @server.tool(
-        title="Search workspace code",
-        description="Search text with ripgrep inside a validated worktree; query is passed as data, not shell syntax.",
-        annotations=_annotations(
-            read_only=True, destructive=False, idempotent=True, open_world=False
+        title="Start an isolated CPU validation command",
+        description=(
+            "Run pytest, ruff, mypy, or another bounded CPU validation command against an "
+            "ephemeral copy of an exact revision. Network, Git metadata, host credentials, "
+            "and persistent source modification are unavailable."
         ),
-        meta=security_meta,
-    )
-    def search_workspace_code(
-        workspace: str,
-        query: str,
-        glob: str | None = None,
-        max_results: int = 200,
-    ) -> dict[str, Any]:
-        return workspaces.search_code(
-            workspace, query, glob=glob, max_results=max_results
-        )
-
-    @server.tool(
-        title="Apply a git patch",
-        description="Validate with git apply --check, then apply a unified patch inside one worktree.",
         annotations=_annotations(
             read_only=False, destructive=True, idempotent=False, open_world=False
         ),
         meta=security_meta,
     )
-    def apply_workspace_patch(workspace: str, patch: str) -> dict[str, Any]:
-        return workspaces.apply_patch(workspace, patch)
-
-    @server.tool(
-        title="Get git status",
-        description="Return concise status for a validated worktree.",
-        annotations=_annotations(
-            read_only=True, destructive=False, idempotent=True, open_world=False
-        ),
-        meta=security_meta,
-    )
-    def get_workspace_status(workspace: str) -> dict[str, Any]:
-        return workspaces.git_status(workspace)
-
-    @server.tool(
-        title="Get git diff",
-        description="Return a bounded git diff and stat for review before tests or commit.",
-        annotations=_annotations(
-            read_only=True, destructive=False, idempotent=True, open_world=False
-        ),
-        meta=security_meta,
-    )
-    def get_workspace_diff(workspace: str, staged: bool = False) -> dict[str, Any]:
-        return workspaces.git_diff(workspace, staged=staged)
-
-    @server.tool(
-        title="Start sandboxed command",
-        description=(
-            "Start an arbitrary shell command in a Docker sandbox. Only the tennis-lab repository is mounted; "
-            "host credentials, Docker socket, Windows mounts, and other home files are absent."
-        ),
-        annotations=_annotations(
-            read_only=False, destructive=True, idempotent=False, open_world=True
-        ),
-        meta=security_meta,
-    )
     def start_command(
         command: str,
-        workspace: str,
-        use_gpu: bool = False,
-        network_access: bool = False,
-        timeout_seconds: int = 3600,
+        workspace_id: str,
+        expected_sha: str,
+        timeout_seconds: int = 900,
     ) -> dict[str, Any]:
         return jobs.start(
             command=command,
-            workspace=workspace,
-            use_gpu=use_gpu,
-            network_access=network_access,
+            workspace_id=workspace_id,
+            expected_sha=expected_sha,
             timeout_seconds=timeout_seconds,
         )
 
     @server.tool(
         title="Get command job",
-        description="Inspect status and exit code for one sandboxed command job.",
+        description="Inspect status and exit code for one isolated validation job.",
         annotations=_annotations(
             read_only=True, destructive=False, idempotent=True, open_world=False
         ),
@@ -496,7 +429,7 @@ def build_gateway(
 
     @server.tool(
         title="List command jobs",
-        description="List recent sandboxed command jobs and their current states.",
+        description="List recent isolated validation jobs and their states.",
         annotations=_annotations(
             read_only=True, destructive=False, idempotent=True, open_world=False
         ),
@@ -506,8 +439,8 @@ def build_gateway(
         return jobs.list(limit=limit)
 
     @server.tool(
-        title="Read command job output",
-        description="Read bounded trailing output from one sandboxed command job.",
+        title="Read command output",
+        description="Read bounded, secret-redacted output from one validation container.",
         annotations=_annotations(
             read_only=True, destructive=False, idempotent=True, open_world=False
         ),
@@ -518,7 +451,7 @@ def build_gateway(
 
     @server.tool(
         title="Cancel command job",
-        description="Stop a running sandbox container for one command job.",
+        description="Stop one running validation container.",
         annotations=_annotations(
             read_only=False, destructive=True, idempotent=True, open_world=False
         ),
@@ -529,38 +462,37 @@ def build_gateway(
         return {"job_id": job_id, "status": "stopped"}
 
     @server.tool(
-        title="Enqueue GPU training",
+        title="Enqueue exact-revision GPU work",
         description=(
-            "Queue one GPU learning or experiment command through the repository .training_queue FIFO. "
-            "The command itself runs in the same isolated Docker sandbox."
+            "Queue one CUDA experiment or training command through `.training_queue`. "
+            "All GPU execution is serialized, network-disabled, and bound to the supplied "
+            "full commit SHA."
         ),
         annotations=_annotations(
-            read_only=False, destructive=False, idempotent=False, open_world=True
+            read_only=False, destructive=True, idempotent=False, open_world=False
         ),
         meta=security_meta,
     )
     def enqueue_training(
         name: str,
         command: str,
-        workspace: str,
-        session: str,
+        workspace_id: str,
+        expected_sha: str,
         issue: int | None = None,
-        network_access: bool = False,
         timeout_seconds: int = 86_400,
     ) -> dict[str, Any]:
         return training.enqueue(
             name=name,
             command=command,
-            workspace=workspace,
+            workspace_id=workspace_id,
+            expected_sha=expected_sha,
             issue=issue,
-            session=session,
-            network_access=network_access,
             timeout_seconds=timeout_seconds,
         )
 
     @server.tool(
         title="Get training job",
-        description="Inspect queue and container status for a previously enqueued training job.",
+        description="Inspect queue and container status for one GPU job.",
         annotations=_annotations(
             read_only=True, destructive=False, idempotent=True, open_world=False
         ),
@@ -570,8 +502,8 @@ def build_gateway(
         return training.status(job_id)
 
     @server.tool(
-        title="Read training log",
-        description="Read bounded trailing output from the repository training queue log.",
+        title="Read training output",
+        description="Read bounded, secret-redacted output from the serial training queue.",
         annotations=_annotations(
             read_only=True, destructive=False, idempotent=True, open_world=False
         ),
@@ -580,33 +512,11 @@ def build_gateway(
     def get_training_output(job_id: str, tail: int = 400) -> dict[str, str]:
         return {"job_id": job_id, "output": training.logs(job_id, tail=tail)}
 
-    @server.tool(
-        title="Commit workspace changes",
-        description="Stage all changes in one worktree and create a local git commit after review and tests.",
-        annotations=_annotations(
-            read_only=False, destructive=True, idempotent=False, open_world=False
-        ),
-        meta=security_meta,
-    )
-    def commit_workspace(workspace: str, message: str) -> dict[str, str]:
-        return workspaces.commit(workspace, message)
-
-    @server.tool(
-        title="Push workspace branch",
-        description="Push the current worktree branch to origin using host-managed git credentials.",
-        annotations=_annotations(
-            read_only=False, destructive=False, idempotent=True, open_world=True
-        ),
-        meta=security_meta,
-    )
-    def push_workspace_branch(workspace: str) -> dict[str, str]:
-        return workspaces.push(workspace)
-
     return server
 
 
 def run_gateway(settings: GatewaySettings, *, authenticated: bool = True) -> None:
-    """Start the Streamable HTTP gateway on the configured loopback listener."""
+    """Start the Streamable HTTP gateway on the configured listener."""
 
     build_gateway(settings, authenticated=authenticated).run(
         transport="streamable-http"
