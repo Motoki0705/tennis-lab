@@ -1,0 +1,66 @@
+{
+  "aggregate": {
+    "collector_count": 1,
+    "collectors": ["systems"],
+    "discovery_count": 1,
+    "max_novelty_score": 88,
+    "max_relevance_score": 91,
+    "mean_relevance_score": 91.0,
+    "repo_paths": [
+      "src/synthetic_data_generation/dataset/execution.py",
+      "src/synthetic_data_generation/dataset/plcs/components/avatar_control.py",
+      "src/synthetic_data_generation/dataset/plcs/rendering/nht.py",
+      "src/tennis_scene/pipeline/components/gvhmr.py"
+    ],
+    "tasks": ["human_pose", "synthetic_data_generation"]
+  },
+  "curation": {
+    "decision": "reviewed",
+    "issue": 698,
+    "paper_node": null,
+    "proposal_nodes": [],
+    "reason_ja": "公式全文、project、codeを確認した。少数視点から未見人物Gaussianをfeed-forward生成する主張はPLCS synthetic identity diversityに関連するが、公式学習条件は大規模multi-view人物datasetとSMPL-Xを要求し、現行NHT deferred appearance contractへ直接接続できない。root LICENSEも確認できず、tennis遠景・motion blur・racket occlusionへの転移証拠もないため、内容はreviewedとして保持し正式nodeへの昇格は見送る。",
+    "reviewed_at": "2026-08-07T00:06:06+09:00"
+  },
+  "discoveries": [
+    {
+      "collector_id": "systems",
+      "discovered_at": "2026-08-05T15:46:33+09:00",
+      "schedule_run_id": "systems-20260805T154633+0900-giga7f2",
+      "screening": {
+        "applicability_ja": "現行のavatar_control.pyとPLCS NHT rendererは、既に用意された人物別Gaussian pose assetをGaussianAvatar/HUGS型の幾何規則で駆動する一方、少数視点から未見playerのidentity asset自体を生成しない。GIGAの公式checkpointを凍結した外部renderer adapterを追加し、gvhmr.py由来のbody pose・shapeをSMPL-X入力へ変換してcalibration viewsからplayer Gaussianを生成すれば、人物ごとの長時間最適化を避けつつsynthetic datasetのidentity diversityを増やせる。初期導入ではGIGAのRGB GaussianをNHT共有appearance spaceへ直接連結せず、GIGA側rasterizerのRGB・maskをpath-driven dataset pipelineへ受け渡す。",
+        "candidate_experiment_ja": "baselineは同一playerについて現行のGaussianAvatar/HUGS制御とPLCS NHT rendererで生成した人物asset、変更条件は公式GIGA checkpointを凍結し、同じ4方向calibration viewsと同じSMPL-X trajectoryからGIGA renderを生成する。held-out 2 camera×100 framesでforeground PSNR、SSIM、LPIPS、mask IoU、1 frame当たりwall time、peak VRAM、処理失敗率を比較する。LPIPSがbaseline比10%以上改善し、mask IoU低下が0.02以下、処理失敗率が5%未満なら次段階へ進む。SMPL-X・座標変換失敗が5%を超える、OOMする、またはLPIPS改善がなければ停止する。",
+        "evidence_level": "fulltext-code",
+        "novelty_score": 88,
+        "relevance_score": 91,
+        "repo_paths": [
+          "src/synthetic_data_generation/dataset/plcs/components/avatar_control.py",
+          "src/synthetic_data_generation/dataset/plcs/rendering/nht.py",
+          "src/synthetic_data_generation/dataset/execution.py",
+          "src/tennis_scene/pipeline/components/gvhmr.py"
+        ],
+        "risks_ja": "学習再現には少なくとも16台のcalibrated camera、per-frame segmentation、SMPL-X付きの大規模人物datasetとH100級計算が必要で、公式checkpointのdomainは遠景のtennis、motion blur、racket occlusionと異なる。GIGAは各frameを独立処理するため時間的一貫性が未解決で、SMPL-Xでは髪やloose clothingの非剛体変形を十分扱えず、tracking誤差にも依存する。単眼時は別frameからaverage textureを作る事前calibrationが必要で、未観測背面のpose依存外観が弱い。公式code repositoryのrootではLICENSEファイルを確認できず、SMPL-Xと各datasetの利用条件も別途確認が必要である。またGIGAのRGB Gaussianは、48次元deferred featureと同一appearance hashを要求する現行NHT asset contractへ直接composeできない。",
+        "summary_ja": "GIGAは、1〜4視点のRGB入力と追跡済みSMPL-X body templateから、未見人物のtexel-aligned 3D Gaussian群をfeed-forward生成する汎化型human rendering手法である。外観textureとcanonical position mapを別encoderで処理し、pose cross-attentionで条件付けしたMultiHeadUNetがRGB、回転・scale・opacity、pose依存offsetを予測し、linear blend skinningで駆動する。大規模multi-view人物データで学習し、未見identityのnovel-view renderingで既存の汎化手法よりPSNR、SSIM、LPIPSを改善したと報告する。",
+        "tasks": ["synthetic_data_generation", "human_pose"]
+      },
+      "sources": [
+        {"checked_at": "2026-08-05T15:46:33+09:00", "kind": "paper", "url": "https://arxiv.org/abs/2504.07144"},
+        {"checked_at": "2026-08-05T15:46:33+09:00", "kind": "project", "url": "https://vcai.mpi-inf.mpg.de/projects/GIGA/"},
+        {"checked_at": "2026-08-05T15:46:33+09:00", "kind": "code", "url": "https://github.com/antonzub99/giga"}
+      ]
+    }
+  ],
+  "first_seen": "2026-08-05T15:46:33+09:00",
+  "id": "paper-arxiv-2504-07144",
+  "last_seen": "2026-08-05T15:46:33+09:00",
+  "paper": {
+    "authors": ["Anton Zubekhin", "Heming Zhu", "Paulo Gotardo", "Thabo Beeler", "Marc Habermann", "Christian Theobalt"],
+    "identifiers": {"arxiv": "2504.07144", "doi": null, "openreview": null},
+    "title": "GIGA: Generalizable Sparse Image-Driven Gaussian Humans",
+    "urls": {"code": "https://github.com/antonzub99/giga", "dataset": null, "paper": "https://arxiv.org/pdf/2504.07144", "primary": "https://arxiv.org/abs/2504.07144", "project": "https://vcai.mpi-inf.mpg.de/projects/GIGA/"},
+    "venue": "2026 International Conference on 3D Vision (3DV)",
+    "year": 2026
+  },
+  "schema_version": 1,
+  "state": "reviewed"
+}

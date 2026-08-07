@@ -1,0 +1,63 @@
+{
+  "aggregate": {
+    "collector_count": 1,
+    "collectors": ["perception"],
+    "discovery_count": 1,
+    "max_novelty_score": 90,
+    "max_relevance_score": 94,
+    "mean_relevance_score": 94.0,
+    "repo_paths": [
+      "src/submodules/models/tracker/common.py",
+      "src/submodules/models/tracker/yolo_tracker.py",
+      "src/tennis_scene/pipeline/components/player_association.py"
+    ],
+    "tasks": ["multi_object_tracking"]
+  },
+  "curation": {
+    "decision": "promoted",
+    "issue": 698,
+    "paper_node": "paper-arxiv-2604-22162",
+    "proposal_nodes": [],
+    "reason_ja": "CVPRW公式本文と公式codeを確認した。選択的mask memory更新、密度依存再生成、track状態別associationによるHOTA +2.5、IDF1 +4.2の報告は、tennis-labの遮蔽・frame-out時のID維持に直接関係する。通常2選手のtennisへの転移とSAM2の計算負荷、明示license未確認を制約として分離し、paper nodeへ昇格する。",
+    "reviewed_at": "2026-08-07T00:06:06+09:00"
+  },
+  "discoveries": [
+    {
+      "collector_id": "perception",
+      "discovered_at": "2026-08-05T17:22:56+09:00",
+      "schedule_run_id": "perception-20260805T172256+0900-sam26",
+      "screening": {
+        "applicability_ja": "現行YoloPersonTrackerはtrack IDを受け取り、面積順選択、欠損補間、平滑化を行うが、遮蔽中のmask memory管理やtrack状態別associationを持たない。SAMIDAREの選択的更新とstate-aware associationをtracker層へ導入すれば、選手交差・周辺人物との近接・frame-out復帰時のID switchを抑えられる可能性がある。",
+        "candidate_experiment_ja": "baselineを現行YoloPersonTracker、変更系を同一YOLO人物検出にSAMIDAREの選択的mask memory更新とstate-aware associationを追加したtrackerとする。固定clip群でIDF1、HOTA、ID switch、FPS、GPU memoryを比較し、IDF1 +2 point以上、ID switch減少、資源2倍以内を合格条件とする。",
+        "evidence_level": "fulltext-code",
+        "novelty_score": 90,
+        "relevance_score": 94,
+        "repo_paths": [
+          "src/submodules/models/tracker/yolo_tracker.py",
+          "src/submodules/models/tracker/common.py",
+          "src/tennis_scene/pipeline/components/player_association.py"
+        ],
+        "risks_ja": "公式実装はSAM2とYOLOX checkpointに依存し、GPUメモリと遅延が増える。主評価は多数選手が密集するSportsMOTであり、通常2選手のtennisへ改善量が転移する保証はない。公開repositoryに明示LICENSEを確認できず、mask誤生成が誤IDを長く保持する可能性がある。",
+        "summary_ja": "SAMIDAREはSAM2MOTを基盤に、密度に応じたmask再生成、信頼frameだけを用いる選択的memory更新、状態を考慮したassociationと新規track初期化を導入する。SportsMOT validationで基盤法に対しHOTA +2.5、IDF1 +4.2を報告する。",
+        "tasks": ["multi_object_tracking"]
+      },
+      "sources": [
+        {"checked_at": "2026-08-05T17:22:56+09:00", "kind": "paper", "url": "https://openaccess.thecvf.com/content/CVPR2026W/CVsports/html/Hirano_SAMIDARE_Advanced_Tracking-by-Segmentation_for_Dense_Scenarios_CVPRW_2026_paper.html"},
+        {"checked_at": "2026-08-05T17:22:56+09:00", "kind": "code", "url": "https://github.com/ZabuZabuZabu/SAMIDARE"}
+      ]
+    }
+  ],
+  "first_seen": "2026-08-05T17:22:56+09:00",
+  "id": "paper-arxiv-2604-22162",
+  "last_seen": "2026-08-05T17:22:56+09:00",
+  "paper": {
+    "authors": ["Shozaburo Hirano", "Norimichi Ukita"],
+    "identifiers": {"arxiv": "2604.22162", "doi": null, "openreview": null},
+    "title": "SAMIDARE: Advanced Tracking-by-Segmentation for Dense Scenarios",
+    "urls": {"code": "https://github.com/ZabuZabuZabu/SAMIDARE", "dataset": null, "paper": "https://arxiv.org/abs/2604.22162", "primary": "https://openaccess.thecvf.com/content/CVPR2026W/CVsports/html/Hirano_SAMIDARE_Advanced_Tracking-by-Segmentation_for_Dense_Scenarios_CVPRW_2026_paper.html", "project": null},
+    "venue": "CVPR Workshops (CVSports)",
+    "year": 2026
+  },
+  "schema_version": 1,
+  "state": "promoted"
+}
