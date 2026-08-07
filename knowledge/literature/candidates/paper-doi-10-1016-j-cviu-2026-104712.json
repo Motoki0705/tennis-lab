@@ -1,0 +1,66 @@
+{
+  "aggregate": {
+    "collector_count": 1,
+    "collectors": ["perception"],
+    "discovery_count": 1,
+    "max_novelty_score": 89,
+    "max_relevance_score": 95,
+    "mean_relevance_score": 95.0,
+    "repo_paths": [
+      "src/tasks/court_detection/evaluation/homography_quality.py",
+      "src/tasks/court_detection/evaluation/image_evidence.py",
+      "src/tasks/court_detection/geometry/postprocess.py",
+      "src/tasks/court_detection/inference/mask_predictor.py"
+    ],
+    "tasks": ["court_detection"]
+  },
+  "curation": {
+    "decision": "promoted",
+    "issue": 698,
+    "paper_node": "paper-doi-10-1016-j-cviu-2026-104712",
+    "proposal_nodes": ["proposal-court-pnl-line-refinement"],
+    "reason_ja": "出版社版、arXiv全文、公式GPL-2.0 codeを確認した。点と線を共同最適化するPnL refinementは、現行court detectionがline evidenceを採否指標に留めている点へ直接対応し、既存8自由度homographyの後段だけを変更する最小実験に分離できる。サッカーからテニスへのdomain差とGPL codeの直接取り込みリスクを明記して昇格する。",
+    "reviewed_at": "2026-08-07T00:06:06+09:00"
+  },
+  "discoveries": [
+    {
+      "collector_id": "perception",
+      "discovered_at": "2026-08-05T18:20:45+09:00",
+      "schedule_run_id": "perception-20260805T182045+0900-pnl7c2",
+      "screening": {
+        "applicability_ja": "現行court detectionは14 keypointにRANSAC homographyを当て、line_edge_supportを推定後の採否指標としてのみ使う。line maskから抽出した線分を加え、点再投影誤差とcourt line距離を共同最小化すれば、部分遮蔽や低confidence keypoint時に線情報を推定へ直接反映できる。",
+        "candidate_experiment_ja": "固定200 frameでpoint-only RANSAC/refitと、同じ初期homographyへline residualを加える8自由度refinementを比較する。median keypoint error、normalized RMS、line_edge_support、geometry_valid率、追加時間を測り、point error 10%以上低下、line support +0.05、valid率低下2 point以内、追加50 ms以内を合格条件とする。",
+        "evidence_level": "fulltext-code",
+        "novelty_score": 89,
+        "relevance_score": 95,
+        "repo_paths": [
+          "src/tasks/court_detection/geometry/postprocess.py",
+          "src/tasks/court_detection/evaluation/homography_quality.py",
+          "src/tasks/court_detection/evaluation/image_evidence.py",
+          "src/tasks/court_detection/inference/mask_predictor.py"
+        ],
+        "risks_ja": "検出器とfield modelはサッカー向けで、テニスの細い白線・ネット・遮蔽へ直接転移しない。誤線分は非線形最適化を局所解へ導く。公式codeはGPL-2.0であり、直接取り込みはcopyleft影響を確認し、必要なら論文記述に基づく独立実装とする。",
+        "summary_ja": "keypointとline extremityから初期camera/homographyを推定し、点再投影誤差とfield line距離を同時に最小化するPnL refinementを適用する。複数sports field registration benchmarkで精度とfull-field成功率の改善を報告し、公式codeとcheckpointを公開する。",
+        "tasks": ["court_detection"]
+      },
+      "sources": [
+        {"checked_at": "2026-08-05T18:20:45+09:00", "kind": "publisher", "url": "https://doi.org/10.1016/j.cviu.2026.104712"},
+        {"checked_at": "2026-08-05T18:20:45+09:00", "kind": "paper", "url": "https://arxiv.org/abs/2404.08401"},
+        {"checked_at": "2026-08-05T18:20:45+09:00", "kind": "code", "url": "https://github.com/mguti97/PnLCalib"}
+      ]
+    }
+  ],
+  "first_seen": "2026-08-05T18:20:45+09:00",
+  "id": "paper-doi-10-1016-j-cviu-2026-104712",
+  "last_seen": "2026-08-05T18:20:45+09:00",
+  "paper": {
+    "authors": ["Marc Gutiérrez-Pérez", "Antonio Agudo"],
+    "identifiers": {"arxiv": "2404.08401", "doi": "10.1016/j.cviu.2026.104712", "openreview": null},
+    "title": "PnLCalib: Sports Field Registration via Points and Lines Optimization",
+    "urls": {"code": "https://github.com/mguti97/PnLCalib", "dataset": null, "paper": "https://arxiv.org/abs/2404.08401", "primary": "https://doi.org/10.1016/j.cviu.2026.104712", "project": null},
+    "venue": "Computer Vision and Image Understanding",
+    "year": 2026
+  },
+  "schema_version": 1,
+  "state": "promoted"
+}

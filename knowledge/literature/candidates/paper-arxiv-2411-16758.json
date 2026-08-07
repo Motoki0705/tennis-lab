@@ -1,0 +1,66 @@
+{
+  "aggregate": {
+    "collector_count": 1,
+    "collectors": ["systems"],
+    "discovery_count": 1,
+    "max_novelty_score": 92,
+    "max_relevance_score": 93,
+    "mean_relevance_score": 93.0,
+    "repo_paths": [
+      "src/synthetic_data_generation/dataset/execution.py",
+      "src/synthetic_data_generation/dataset/plcs/components/avatar_control.py",
+      "src/synthetic_data_generation/dataset/plcs/rendering/nht.py",
+      "src/tennis_scene/pipeline/components/gvhmr.py"
+    ],
+    "tasks": ["human_pose", "synthetic_data_generation"]
+  },
+  "curation": {
+    "decision": "promoted",
+    "issue": 698,
+    "paper_node": "paper-arxiv-2411-16758",
+    "proposal_nodes": ["proposal-plcs-subframe-motion-blur-avatar"],
+    "reason_ja": "公式全文、公式code、BlurZJU/BS-Human data公開先を確認した。candidate titleを一次情報に基づき『Bundle Adjusted Gaussian Avatars Deblurring』へ訂正した。露光内のsub-frame motionと平均renderによるblur formationは、現行PLCS synthetic rendererの単一pose rasterizationという明確な欠落へ対応し、label生成を保持した最小アブレーションへ落とせるため昇格する。code/data/SMPLの利用条件とmulti-player tennisへのdomain gapは制約として分離する。",
+    "reviewed_at": "2026-08-07T00:06:06+09:00"
+  },
+  "discoveries": [
+    {
+      "collector_id": "systems",
+      "discovered_at": "2026-08-05T17:19:02+09:00",
+      "schedule_run_id": "systems-20260805T171902+0900-mad9c4",
+      "screening": {
+        "applicability_ja": "現行のPLCS NHT rendererはframeごとに単一のpose_indicesとscene_from_assetを選び、1回のrasterizationでRGB・depth・instance maskを生成するため、露光中の連続運動とmotion blurを表現しない。avatar_control.pyへ隣接frameのSMPL transformからsub-frame joint trajectoryを生成する明示的な補間contractを追加し、rendering/nht.pyで同一Gaussian assetを複数sub-frameへ変形・renderしてRGBを平均すれば、blur-awareなPLCS synthetic dataと対応するsharp middle-frame labelを同時生成できる。",
+        "candidate_experiment_ja": "baselineは現行PLCS NHT rendererで各frameを1 pose・1 rasterizationで生成する。treatmentは前後frameのscene_from_assetを5 sub-frameのB-splineで補間し、各sub-frameのRGBを平均する一方、depth・mask・3D pose labelは中央sub-frameを保存する。露光時間1/120、1/60、1/30秒でLPIPS・SSIM、optical-flow分布、人物mask IoU、wall time、peak VRAMを比較し、LPIPS 10%以上改善、mask IoU低下0.02以下、追加時間6倍以内、VRAM増加2 GB以下を合格条件とする。",
+        "evidence_level": "fulltext-code-data",
+        "novelty_score": 92,
+        "relevance_score": 93,
+        "repo_paths": [
+          "src/synthetic_data_generation/dataset/plcs/components/avatar_control.py",
+          "src/synthetic_data_generation/dataset/plcs/rendering/nht.py",
+          "src/synthetic_data_generation/dataset/execution.py",
+          "src/tennis_scene/pipeline/components/gvhmr.py"
+        ],
+        "risks_ja": "論文と公式実装は単一人物、calibrated multi-view、粗いSMPL初期値を前提とし、複数player、racket、屋外背景、camera motion blur、rolling shutterは対象外である。sub-frame数に比例してrasterization時間とVRAMが増える。BlurZJU、BS-Human、SMPLの利用条件を個別確認する必要がある。",
+        "summary_ja": "動体ぶれを含むマルチビュー人物映像から、鮮明でアニメーション可能な3D Gaussian avatarと露光中の人体運動を同時推定する。正準GaussianをSMPL/LBSで複数の露光内時刻へ変形し、各sharp renderの平均を観測blur frameとして再構成する。露光内関節軌道はB-splineで表現し、pose residualと時間連続性正則化を併用する。",
+        "tasks": ["synthetic_data_generation", "human_pose"]
+      },
+      "sources": [
+        {"checked_at": "2026-08-05T17:19:02+09:00", "kind": "paper", "url": "https://arxiv.org/abs/2411.16758"},
+        {"checked_at": "2026-08-05T17:19:02+09:00", "kind": "code", "url": "https://github.com/MyNiuuu/MAD-Avatar"},
+        {"checked_at": "2026-08-05T17:19:02+09:00", "kind": "dataset", "url": "https://drive.google.com/file/d/1FXFILsI3WjxVL5ercZUHnSatL9dAbEib/view?usp=sharing"}
+      ]
+    }
+  ],
+  "first_seen": "2026-08-05T17:19:02+09:00",
+  "id": "paper-arxiv-2411-16758",
+  "last_seen": "2026-08-05T17:19:02+09:00",
+  "paper": {
+    "authors": ["Muyao Niu", "Yifan Zhan", "Qingtian Zhu", "Zhuoxiao Li", "Wei Wang", "Zhihang Zhong", "Xiao Sun", "Yinqiang Zheng"],
+    "identifiers": {"arxiv": "2411.16758", "doi": null, "openreview": null},
+    "title": "Bundle Adjusted Gaussian Avatars Deblurring",
+    "urls": {"code": "https://github.com/MyNiuuu/MAD-Avatar", "dataset": "https://drive.google.com/file/d/1FXFILsI3WjxVL5ercZUHnSatL9dAbEib/view?usp=sharing", "paper": "https://arxiv.org/pdf/2411.16758", "primary": "https://arxiv.org/abs/2411.16758", "project": null},
+    "venue": "CVPR 2026",
+    "year": 2026
+  },
+  "schema_version": 1,
+  "state": "promoted"
+}
