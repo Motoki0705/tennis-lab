@@ -20,6 +20,7 @@ jobs:
   ingest:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+
     steps:
       - name: Checkout collector queue branch
         uses: actions/checkout@v6
@@ -50,70 +51,103 @@ jobs:
           echo "count=1" >> "$GITHUB_OUTPUT"
           echo "collector=${GITHUB_REF_NAME##*/}" >> "$GITHUB_OUTPUT"
 
-      - name: Resolve target daily branch
+      - name: Load trusted scripts from main and resolve target date
         if: steps.inputs.outputs.count != '0'
         id: target
         shell: bash
+        env:
+          COLLECTOR: ${{ steps.inputs.outputs.collector }}
         run: |
           set -euo pipefail
+          git fetch origin \
+            '+refs/heads/main:refs/remotes/origin/main' \
+            '+refs/heads/automation/literature-radar/*:refs/remotes/origin/automation/literature-radar/*'
+          git switch --detach refs/remotes/origin/main
+          mkdir -p /tmp/literature-radar-scripts
+          cp .agents/skills/literature-radar/scripts/radar_ingest.py \
+            /tmp/literature-radar-scripts/
+          cp .agents/skills/literature-radar/scripts/radar_hardening.py \
+            /tmp/literature-radar-scripts/
+          cp .agents/skills/literature-radar/scripts/radar_status.py \
+            /tmp/literature-radar-scripts/
           input="$(head -n 1 /tmp/literature-radar-input-list)"
           date="$(
-            python3 .agents/skills/literature-radar/scripts/radar_hardening.py \
+            python3 /tmp/literature-radar-scripts/radar_hardening.py \
               date "$input" --repo-root . \
-              --expected-collector "${{ steps.inputs.outputs.collector }}"
+              --expected-collector "$COLLECTOR"
           )"
           echo "date=$date" >> "$GITHUB_OUTPUT"
           echo "branch=automation/literature-radar/$date" >> "$GITHUB_OUTPUT"
 
-      - name: Checkout target daily branch and deduplication refs
+      - name: Ensure target daily branch exists
         if: steps.inputs.outputs.count != '0'
         shell: bash
         env:
           DAILY_BRANCH: ${{ steps.target.outputs.branch }}
         run: |
           set -euo pipefail
-          git fetch origin \
-            '+refs/heads/automation/literature-radar/*:refs/remotes/origin/automation/literature-radar/*'
-          if ! git show-ref --verify --quiet "refs/remotes/origin/$DAILY_BRANCH"; then
-            echo "Daily branch $DAILY_BRANCH does not exist." >&2
-            echo "Run daily curator initialization first." >&2
-            exit 1
+          if git show-ref --verify --quiet "refs/remotes/origin/$DAILY_BRANCH"; then
+            exit 0
           fi
-          git switch --detach "refs/remotes/origin/$DAILY_BRANCH"
+          if ! git push origin \
+            "refs/remotes/origin/main:refs/heads/$DAILY_BRANCH"; then
+            echo "Daily branch creation raced with another writer; refetching." >&2
+          fi
+          git fetch origin \
+            "+refs/heads/$DAILY_BRANCH:refs/remotes/origin/$DAILY_BRANCH"
 
-      - name: Validate, canonicalize and ingest
-        if: steps.inputs.outputs.count != '0'
-        shell: bash
-        run: |
-          set -euo pipefail
-          mapfile -t inputs < /tmp/literature-radar-input-list
-          python3 .agents/skills/literature-radar/scripts/radar_hardening.py ingest \
-            "${inputs[@]}" \
-            --repo-root . \
-            --dedup-ref-prefix refs/remotes/origin/automation/literature-radar \
-            --expected-collector "${{ steps.inputs.outputs.collector }}" \
-            --update-digest \
-            --update-status
-          python3 .agents/skills/literature-radar/scripts/radar_hardening.py \
-            validate --repo-root .
-
-      - name: Commit canonical knowledge changes
+      - name: Ingest and publish with optimistic retry
         if: steps.inputs.outputs.count != '0'
         shell: bash
         env:
+          COLLECTOR: ${{ steps.inputs.outputs.collector }}
           DAILY_BRANCH: ${{ steps.target.outputs.branch }}
           RADAR_DATE: ${{ steps.target.outputs.date }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            knowledge/literature/candidates \
-            knowledge/literature/digests \
-            knowledge/literature/status
-          if git diff --cached --quiet; then
-            echo "No canonical knowledge change after deduplication/quota checks."
-            exit 0
-          fi
-          git commit -m "docs(knowledge): ingest $RADAR_DATE literature candidate"
-          git push origin "HEAD:$DAILY_BRANCH"
+          input="$(head -n 1 /tmp/literature-radar-input-list)"
+
+          for attempt in 1 2 3; do
+            echo "Literature ingest publish attempt $attempt/3"
+            git fetch origin \
+              "+refs/heads/$DAILY_BRANCH:refs/remotes/origin/$DAILY_BRANCH" \
+              '+refs/heads/automation/literature-radar/*:refs/remotes/origin/automation/literature-radar/*'
+            git switch --detach "refs/remotes/origin/$DAILY_BRANCH"
+            git reset --hard "refs/remotes/origin/$DAILY_BRANCH"
+
+            python3 /tmp/literature-radar-scripts/radar_hardening.py ingest \
+              "$input" \
+              --repo-root . \
+              --dedup-ref-prefix refs/remotes/origin/automation/literature-radar \
+              --expected-collector "$COLLECTOR" \
+              --update-digest \
+              --update-status
+            python3 /tmp/literature-radar-scripts/radar_status.py normalize \
+              --repo-root . --date "$RADAR_DATE"
+            python3 /tmp/literature-radar-scripts/radar_hardening.py \
+              validate --repo-root .
+            python3 /tmp/literature-radar-scripts/radar_status.py \
+              validate --repo-root .
+
+            git add \
+              knowledge/literature/candidates \
+              knowledge/literature/digests \
+              knowledge/literature/status
+            if git diff --cached --quiet; then
+              echo "No canonical knowledge change after deduplication or quota checks."
+              exit 0
+            fi
+
+            git commit -m "docs(knowledge): ingest $RADAR_DATE literature candidate"
+            if git push origin "HEAD:refs/heads/$DAILY_BRANCH"; then
+              exit 0
+            fi
+
+            if (( attempt == 3 )); then
+              echo "Failed to publish after three optimistic retries." >&2
+              exit 1
+            fi
+            echo "Daily branch advanced concurrently; rebuilding from its latest head." >&2
+          done
