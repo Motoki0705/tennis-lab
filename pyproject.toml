@@ -47,6 +47,7 @@ dependencies = [
     "requests>=2.34.2",
     "vllm>=0.26.0",
     "lap>=0.5.12",
+    "mcp>=1.28.1,<2",
 ]
 
 [dependency-groups]
@@ -242,6 +243,12 @@ module = [
     "src.synthetic_data_generation.scripts.*",
     "experiments.*.scripts.*",
 ]
+disallow_untyped_decorators = false
+
+# The MCP SDK's FastMCP.tool decorator is typed during normal analysis, but
+# appears untyped when the pre-commit hook intentionally skips imported bodies.
+[[tool.mypy.overrides]]
+module = ["src.automation.chatgpt_mcp.server"]
 disallow_untyped_decorators = false
 
 [[tool.mypy.overrides]]

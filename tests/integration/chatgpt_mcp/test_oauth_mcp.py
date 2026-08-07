@@ -1,0 +1,241 @@
+from __future__ import annotations
+
+import base64
+import hashlib
+from dataclasses import replace
+from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
+
+import pytest
+from mcp.types import LATEST_PROTOCOL_VERSION
+from starlette.testclient import TestClient
+
+from src.automation.chatgpt_mcp.server import build_gateway
+from src.automation.chatgpt_mcp.settings import GatewaySettings
+
+pytestmark = pytest.mark.integration
+
+
+def _settings(tmp_path: Path) -> GatewaySettings:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / ".git").mkdir()
+    uv_root = tmp_path / "uv-python"
+    uv_root.mkdir()
+    settings = GatewaySettings(
+        repo_root=repo,
+        state_dir=tmp_path / "state",
+        public_base_url="https://mcp.example.test",
+        uv_python_root=uv_root,
+    )
+    settings.ensure_state()
+    return settings
+
+
+def _pkce_challenge(verifier: str) -> str:
+    digest = hashlib.sha256(verifier.encode("utf-8")).digest()
+    return base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
+
+
+def test_oauth_discovery_token_and_authenticated_tool_scan(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    app = build_gateway(settings).streamable_http_app()
+    redirect_uri = "https://chatgpt.com/connector/oauth/test-callback"
+    verifier = "v" * 64
+
+    with TestClient(app, base_url="https://mcp.example.test") as client:
+        health = client.get("/healthz")
+        assert health.status_code == 200
+
+        resource_metadata = client.get("/.well-known/oauth-protected-resource/mcp")
+        assert resource_metadata.status_code == 200
+        assert resource_metadata.json()["resource"] == settings.resource_url
+        authorization_servers = resource_metadata.json()["authorization_servers"]
+        assert [value.rstrip("/") for value in authorization_servers] == [
+            settings.public_base_url
+        ]
+
+        authorization_metadata = client.get("/.well-known/oauth-authorization-server")
+        assert authorization_metadata.status_code == 200
+        assert authorization_metadata.json()["registration_endpoint"].endswith(
+            "/register"
+        )
+        assert (
+            "S256" in authorization_metadata.json()["code_challenge_methods_supported"]
+        )
+
+        registration = client.post(
+            "/register",
+            json={
+                "redirect_uris": [redirect_uri],
+                "grant_types": ["authorization_code", "refresh_token"],
+                "response_types": ["code"],
+                "scope": "wsl:read wsl:write",
+                "client_name": "ChatGPT integration test",
+            },
+        )
+        assert registration.status_code == 201, registration.text
+        client_id = registration.json()["client_id"]
+        client_secret = registration.json()["client_secret"]
+        assert registration.json()["token_endpoint_auth_method"] == "client_secret_post"
+
+        authorization = client.get(
+            "/authorize",
+            params={
+                "response_type": "code",
+                "client_id": client_id,
+                "redirect_uri": redirect_uri,
+                "scope": "wsl:read wsl:write",
+                "state": "integration-state",
+                "code_challenge": _pkce_challenge(verifier),
+                "code_challenge_method": "S256",
+                "resource": settings.resource_url,
+            },
+            follow_redirects=False,
+        )
+        assert authorization.status_code == 302, authorization.text
+        approval_url = authorization.headers["location"]
+        transaction = parse_qs(urlsplit(approval_url).query)["transaction"][0]
+
+        approval_page = client.get(
+            "/oauth/approve", params={"transaction": transaction}
+        )
+        assert approval_page.status_code == 200
+        assert "ChatGPT integration test" in approval_page.text
+        assert (
+            "form-action 'self' https://chatgpt.com"
+            in approval_page.headers["content-security-policy"]
+        )
+
+        approval = client.post(
+            "/oauth/approve",
+            data={
+                "transaction": transaction,
+                "owner_secret": settings.read_owner_secret(),
+            },
+            follow_redirects=False,
+        )
+        assert approval.status_code == 303
+        callback_query = parse_qs(urlsplit(approval.headers["location"]).query)
+        assert callback_query["state"] == ["integration-state"]
+
+        retried_approval = client.post(
+            "/oauth/approve",
+            data={
+                "transaction": transaction,
+                "owner_secret": settings.read_owner_secret(),
+            },
+            follow_redirects=False,
+        )
+        assert retried_approval.status_code == 303
+        retried_query = parse_qs(
+            urlsplit(retried_approval.headers["location"]).query
+        )
+        assert retried_query["state"] == ["integration-state"]
+        assert retried_query["code"] != callback_query["code"]
+
+        token = client.post(
+            "/token",
+            data={
+                "grant_type": "authorization_code",
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "code": retried_query["code"][0],
+                "redirect_uri": redirect_uri,
+                "code_verifier": verifier,
+                "resource": settings.resource_url,
+            },
+        )
+        assert token.status_code == 200, token.text
+        access_token = token.json()["access_token"]
+
+        unauthorized = client.post(
+            "/mcp",
+            json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+            headers={"Accept": "application/json, text/event-stream"},
+        )
+        assert unauthorized.status_code == 401
+        assert "resource_metadata=" in unauthorized.headers["www-authenticate"]
+
+        mcp_headers = {
+            "Accept": "application/json, text/event-stream",
+            "Authorization": f"Bearer {access_token}",
+            "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
+        }
+        initialize = client.post(
+            "/mcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": LATEST_PROTOCOL_VERSION,
+                    "capabilities": {},
+                    "clientInfo": {"name": "pytest", "version": "1"},
+                },
+            },
+            headers=mcp_headers,
+        )
+        assert initialize.status_code == 200, initialize.text
+        assert initialize.json()["result"]["serverInfo"]["name"] == "tennis-lab-wsl"
+
+        tools = client.post(
+            "/mcp",
+            json={"jsonrpc": "2.0", "id": 3, "method": "tools/list"},
+            headers=mcp_headers,
+        )
+        assert tools.status_code == 200, tools.text
+        advertised = {tool["name"]: tool for tool in tools.json()["result"]["tools"]}
+        assert "start_command" in advertised
+        assert "enqueue_training" in advertised
+        assert advertised["start_command"]["annotations"]["readOnlyHint"] is False
+        assert advertised["start_command"]["annotations"]["destructiveHint"] is True
+        assert (
+            advertised["start_command"]["_meta"]["securitySchemes"][0]["type"]
+            == "oauth2"
+        )
+
+
+def test_private_tunnel_mode_uses_loopback_without_oauth(tmp_path: Path) -> None:
+    settings = replace(
+        _settings(tmp_path), public_base_url=None, host="127.0.0.1", port=8767
+    )
+    app = build_gateway(settings, authenticated=False).streamable_http_app()
+    headers = {
+        "Accept": "application/json, text/event-stream",
+        "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
+    }
+
+    with TestClient(app, base_url="http://127.0.0.1:8767") as client:
+        service = client.get("/")
+        assert service.status_code == 200
+        assert service.json()["authentication"] == "OpenAI Secure MCP Tunnel"
+        assert client.get("/.well-known/oauth-protected-resource/mcp").status_code == 404
+
+        initialize = client.post(
+            "/mcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": LATEST_PROTOCOL_VERSION,
+                    "capabilities": {},
+                    "clientInfo": {"name": "tunnel-test", "version": "1"},
+                },
+            },
+            headers=headers,
+        )
+        assert initialize.status_code == 200, initialize.text
+
+        tools = client.post(
+            "/mcp",
+            json={"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+            headers=headers,
+        )
+        assert tools.status_code == 200, tools.text
+        advertised = {tool["name"]: tool for tool in tools.json()["result"]["tools"]}
+        security = advertised["start_command"].get("_meta", {}).get(
+            "securitySchemes"
+        )
+        assert security is None
