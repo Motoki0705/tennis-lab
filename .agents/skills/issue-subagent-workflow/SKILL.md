@@ -39,6 +39,8 @@ Initialization freezes canonical `issue.json`, renders `issue.md`, records both 
 
 ## Delegation communication and waiting
 
+Every `spawn_agent` call must set `fork_turns = "none"` exactly, including retries, post-compaction work, packaging repairs, Test Writers, Validators, and bounded Validator children. Never use a numeric or inherited turn window as a shortcut for writing a focused assignment. Required context travels through frozen artifacts, explicit artifact paths, AC IDs, ownership, and the concrete failure bundle. A Validator spawned with inherited parent turns is not independent and must be replaced before its verdict is accepted.
+
 Every `spawn_agent` assignment must end with the exact terminal-only footer from [spawn contracts](references/spawn-contracts.md), even when the selected custom agent already contains the same policy. The duplicate boundary is intentional: the versioned agent config is auditable, while the assignment-level footer overrides generic progress-update defaults for that concrete child turn.
 
 Child agents work silently and return exactly one compact terminal handoff. Before that handoff they may interrupt the parent only for missing authority, an ownership collision, or a blocker that cannot be resolved inside the assigned scope. New evidence, completed milestones, commands in progress, and percentage updates stay in the child thread or formal artifact.
@@ -75,3 +77,4 @@ Artifact checks are also enforced inside every mutating transition; manual check
 - Do not open or update the delivery PR before Validator PASS unless the user explicitly requires an earlier draft; completion still requires final-head binding.
 - Never create `*-v2.md`; replace the authoritative artifact in place.
 - Never use routine child progress messages as a substitute for artifacts, terminal handoffs, or state transitions.
+- Never accept a child verdict produced from `fork_turns` other than `"none"`.
