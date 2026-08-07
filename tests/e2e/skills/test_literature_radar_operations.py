@@ -211,6 +211,40 @@ def test_historical_backfill_preserves_pre_topic_snapshot(
     assert status_guard.validate_repository(repo) == []
 
 
+def test_historical_backfill_validates_declared_topic_arithmetic(
+    tmp_path: Path,
+) -> None:
+    repo = make_repo(tmp_path)
+    config = status_guard.load_config(repo)
+    for index in range(1, 7):
+        candidate = record(index)
+        candidate["discoveries"][0]["screening"].pop("topic")
+        write_json(
+            repo
+            / "knowledge/literature/candidates"
+            / f"paper-arxiv-2608-{index:05d}.json",
+            candidate,
+        )
+    status = status_payload(
+        config,
+        accepted=6,
+        mode="historical_backfill",
+        note="Collected before topic quota hardening was merged.",
+    )
+    status["ingestion"]["topics"]["ball_3d"]["remaining"] = 1
+    write_json(
+        repo / "knowledge/literature/status/2026-08-05.json",
+        status,
+    )
+
+    errors = status_guard.validate_repository(repo)
+
+    assert any(
+        "topics.ball_3d.remaining must be 0" in item
+        for item in errors
+    )
+
+
 def test_normalize_adds_explicit_default_policy(tmp_path: Path) -> None:
     repo = make_repo(tmp_path)
     config = status_guard.load_config(repo)
