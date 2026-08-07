@@ -5,7 +5,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
-from mcp.server.auth.provider import AuthorizationParams
+from mcp.server.auth.provider import AuthorizationParams, TokenError
 from mcp.shared.auth import OAuthClientInformationFull
 from pydantic import AnyUrl
 
@@ -40,20 +40,26 @@ def _client() -> OAuthClientInformationFull:
     )
 
 
-def test_owner_oauth_round_trip_and_refresh_rotation(tmp_path: Path) -> None:
-    settings = _settings(tmp_path)
-    provider = OwnerOAuthProvider(settings, SqliteStore(settings.database_path))
-    client = _client()
-    asyncio.run(provider.register_client(client))
+def _authorization_params(client: OAuthClientInformationFull, resource: str) -> AuthorizationParams:
     assert client.redirect_uris is not None
-    params = AuthorizationParams(
+    return AuthorizationParams(
         state="state-value",
         scopes=oauth_scopes(),
         code_challenge="challenge-value",
         redirect_uri=client.redirect_uris[0],
         redirect_uri_provided_explicitly=True,
-        resource=settings.resource_url,
+        resource=resource,
     )
+
+
+def test_owner_oauth_round_trip_one_time_approval_and_refresh_rotation(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    provider = OwnerOAuthProvider(settings, SqliteStore(settings.database_path))
+    client = _client()
+    asyncio.run(provider.register_client(client))
+    params = _authorization_params(client, settings.resource_url)
 
     approval_url = asyncio.run(provider.authorize(client, params))
     transaction = parse_qs(urlsplit(approval_url).query)["transaction"][0]
@@ -65,16 +71,10 @@ def test_owner_oauth_round_trip_and_refresh_rotation(tmp_path: Path) -> None:
     code_value = callback_query["code"][0]
     assert callback_query["state"] == ["state-value"]
 
-    retry_callback = provider.approve_authorization(
-        transaction, settings.read_owner_secret()
-    )
-    retry_query = parse_qs(urlsplit(retry_callback).query)
-    assert retry_query["code"][0] != code_value
-    assert retry_query["state"] == ["state-value"]
+    with pytest.raises(ValueError, match="already used"):
+        provider.approve_authorization(transaction, settings.read_owner_secret())
 
-    code = asyncio.run(
-        provider.load_authorization_code(client, retry_query["code"][0])
-    )
+    code = asyncio.run(provider.load_authorization_code(client, code_value))
     assert code is not None
     token_pair = asyncio.run(provider.exchange_authorization_code(client, code))
     access = asyncio.run(provider.verify_token(token_pair.access_token))
@@ -95,11 +95,54 @@ def test_owner_oauth_round_trip_and_refresh_rotation(tmp_path: Path) -> None:
     )
 
 
+def test_refresh_scope_cannot_exceed_original_grant(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    provider = OwnerOAuthProvider(settings, SqliteStore(settings.database_path))
+    client = _client()
+    asyncio.run(provider.register_client(client))
+    approval_url = asyncio.run(
+        provider.authorize(client, _authorization_params(client, settings.resource_url))
+    )
+    transaction = parse_qs(urlsplit(approval_url).query)["transaction"][0]
+    callback = provider.approve_authorization(transaction, settings.read_owner_secret())
+    code_value = parse_qs(urlsplit(callback).query)["code"][0]
+    code = asyncio.run(provider.load_authorization_code(client, code_value))
+    assert code is not None
+    token_pair = asyncio.run(provider.exchange_authorization_code(client, code))
+    assert token_pair.refresh_token is not None
+    refresh = asyncio.run(provider.load_refresh_token(client, token_pair.refresh_token))
+    assert refresh is not None
+
+    with pytest.raises(TokenError, match="exceeds the original grant"):
+        asyncio.run(
+            provider.exchange_refresh_token(
+                client,
+                refresh,
+                [*oauth_scopes(), "admin"],
+            )
+        )
+
+
 def test_registration_rejects_non_chatgpt_redirect(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     provider = OwnerOAuthProvider(settings, SqliteStore(settings.database_path))
     client = _client().model_copy(
         update={"redirect_uris": [AnyUrl("https://attacker.example/callback")]}
+    )
+
+    with pytest.raises(Exception, match="redirect URIs"):
+        asyncio.run(provider.register_client(client))
+
+
+def test_registration_rejects_non_default_chatgpt_port(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    provider = OwnerOAuthProvider(settings, SqliteStore(settings.database_path))
+    client = _client().model_copy(
+        update={
+            "redirect_uris": [
+                AnyUrl("https://chatgpt.com:444/connector/oauth/test-callback")
+            ]
+        }
     )
 
     with pytest.raises(Exception, match="redirect URIs"):
