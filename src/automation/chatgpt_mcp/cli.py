@@ -1,4 +1,4 @@
-"""Command-line lifecycle for the ChatGPT WSL MCP gateway."""
+"""Command-line lifecycle for the ChatGPT WSL MCP execution gateway."""
 
 from __future__ import annotations
 
@@ -118,23 +118,33 @@ def _git_root() -> Path:
         timeout=10,
     )
     if result.returncode != 0:
-        raise RuntimeError("install-user-service must run from the MCP git worktree")
+        raise RuntimeError("command must run from a tennis-lab git checkout")
     return Path(result.stdout.strip()).resolve()
 
 
-def install_user_service(*, start: bool) -> Path:
-    """Install a user-level systemd unit without requiring sudo."""
-
+def _require_canonical_source(settings: GatewaySettings) -> Path:
     source_root = _git_root()
-    repo_root = Path(
-        os.environ.get("TENNIS_MCP_REPO_ROOT", "/home/kamimura/projects/tennis-lab")
-    ).resolve()
+    if source_root != settings.repo_root:
+        raise RuntimeError(
+            "persistent MCP services must be installed from the canonical repository root "
+            f"{settings.repo_root}, not from worktree {source_root}. Merge the PR, update "
+            "main, then rerun this command from the canonical checkout."
+        )
+    return source_root
+
+
+def install_user_service(*, start: bool) -> Path:
+    """Install the legacy public service from the canonical checkout only."""
+
+    settings = GatewaySettings.from_env(require_public_base_url=False)
+    source_root = _require_canonical_source(settings)
+    repo_root = settings.repo_root
     state_dir = _state_dir()
     service_dir = Path.home() / ".config/systemd/user"
     service_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     service_path = service_dir / "tennis-lab-chatgpt-mcp.service"
     unit = f"""[Unit]
-Description=Authenticated ChatGPT MCP gateway for tennis-lab WSL
+Description=Authenticated ChatGPT MCP execution gateway for tennis-lab WSL
 After=network-online.target docker.service
 Wants=network-online.target
 
@@ -172,11 +182,14 @@ WantedBy=default.target
     return service_path
 
 
-def _secure_tunnel_manager() -> SecureTunnelManager:
+def _secure_tunnel_manager(*, require_canonical_source: bool = False) -> SecureTunnelManager:
     settings = GatewaySettings.from_env(require_public_base_url=False)
+    source_root = (
+        _require_canonical_source(settings) if require_canonical_source else _git_root()
+    )
     return SecureTunnelManager(
         settings,
-        source_root=_git_root(),
+        source_root=source_root,
         python_executable=Path(sys.executable),
     )
 
@@ -197,9 +210,9 @@ def _read_runtime_api_key(key_file: Path | None) -> str:
 def configure_secure_tunnel(
     *, tunnel_id: str, runtime_key_file: Path | None, start: bool
 ) -> str:
-    """Persist a tunnel ID/key, install services, and optionally start them."""
+    """Persist a tunnel ID/key and install services from canonical main."""
 
-    manager = _secure_tunnel_manager()
+    manager = _secure_tunnel_manager(require_canonical_source=True)
     runtime_api_key = _read_runtime_api_key(runtime_key_file)
     profile_path = manager.configure(
         tunnel_id=tunnel_id, runtime_api_key=runtime_api_key
@@ -228,7 +241,7 @@ def show_secure_connection() -> str:
     return "\n".join(
         [
             "Name: tennis-lab WSL",
-            "Description: Private code, CUDA, and training access to tennis-lab WSL",
+            "Description: Exact-revision validation, CUDA, and training on tennis-lab WSL",
             "Connection: Tunnel",
             f"Tunnel ID: {tunnel_id_path.read_text(encoding='utf-8').strip()}",
             "Authentication: None",
@@ -237,7 +250,7 @@ def show_secure_connection() -> str:
 
 
 def show_connection() -> str:
-    """Return the exact fields needed by the ChatGPT plugin form."""
+    """Return the exact fields needed by the legacy public plugin form."""
 
     state_dir = _state_dir()
     url_path = state_dir / "public-url"
@@ -247,7 +260,7 @@ def show_connection() -> str:
     return "\n".join(
         [
             "Name: tennis-lab WSL",
-            "Description: Authenticated code, CUDA, and training access to tennis-lab WSL",
+            "Description: Exact-revision validation, CUDA, and training on tennis-lab WSL",
             f"Server URL: {url_path.read_text(encoding='utf-8').strip()}",
             "Authentication: OAuth",
             f"Owner secret: {secret_path.read_text(encoding='utf-8').strip()}",
