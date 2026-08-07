@@ -28,11 +28,28 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager
 from types import TracebackType
+from typing import Protocol, cast
 
 import torch
 from torch import Tensor, nn
 
 AttentionPredicate = Callable[[nn.Module], bool]
+
+
+class _QKVProjection(Protocol):
+    in_features: int
+
+    def __call__(self, hidden: Tensor) -> Tensor: ...
+
+
+class _ReconstructableAttention(Protocol):
+    qkv: _QKVProjection
+    num_heads: int
+    scale: float
+
+    def apply_rope(
+        self, query: Tensor, key: Tensor, rope: object
+    ) -> tuple[Tensor, Tensor]: ...
 
 
 def is_sdpa_self_attention(module: nn.Module) -> bool:
@@ -161,19 +178,22 @@ class AttentionExtractor(AbstractContextManager["AttentionExtractor"]):
         self, mod: nn.Module, hidden: Tensor, rope: object
     ) -> Tensor:
         with torch.no_grad():
-            qkv = mod.qkv(hidden)
+            attention = cast(_ReconstructableAttention, mod)
+            qkv = attention.qkv(hidden)
             batch, tokens, _ = qkv.shape
-            in_features = mod.qkv.in_features
-            num_heads = mod.num_heads
+            in_features = attention.qkv.in_features
+            num_heads = attention.num_heads
             head_dim = in_features // num_heads
             qkv = qkv.reshape(batch, tokens, 3, num_heads, head_dim)
             query, key, _value = torch.unbind(qkv, 2)
             query = query.transpose(1, 2)
             key = key.transpose(1, 2)
             if rope is not None and hasattr(mod, "apply_rope"):
-                query, key = mod.apply_rope(query, key, rope)
+                query, key = attention.apply_rope(query, key, rope)
             # float32 matmul mirrors SDPA's internal accumulation precision.
-            scores = (query.float() @ key.float().transpose(-2, -1)) * mod.scale
+            scores = (
+                query.float() @ key.float().transpose(-2, -1)
+            ) * attention.scale
             probs = scores.softmax(dim=-1)
             if self._fuse_heads:
                 probs = probs.mean(dim=1)

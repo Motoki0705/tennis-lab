@@ -8,7 +8,8 @@ import torch
 from omegaconf import OmegaConf
 
 from src.tasks.plcs.configuration import PLCSModelConfig
-from src.tasks.plcs.models import PLCSTrackQueryModel
+from src.tasks.plcs.model_io.attention_masks import prepare_tracking_attention_masks
+from src.tasks.plcs.models.plcs_track_query_model import PLCSTrackQueryModel
 from src.utils.models.embeddings import CourtPlayerGroupEmbedding
 
 
@@ -24,6 +25,34 @@ def _model(*, mask_invisible: bool = True) -> PLCSTrackQueryModel:
     model = PLCSTrackQueryModel(config)
     model.eval()
     return model
+
+
+def _forward(
+    model: PLCSTrackQueryModel,
+    inputs: dict[str, torch.Tensor],
+    *,
+    mask_invisible: bool = True,
+) -> dict[str, torch.Tensor]:
+    camera_valid, spatial_mask, temporal_mask = prepare_tracking_attention_masks(
+        detection_mask=inputs["detection_mask"],
+        frame_mask=inputs["frame_mask"],
+        view_mask=inputs["view_mask"],
+        num_queries=model.num_queries,
+        mask_invisible_observations=mask_invisible,
+    )
+    return cast(
+        "dict[str, torch.Tensor]",
+        model(
+            human_kp=inputs["human_kp"],
+            detection_mask=inputs["detection_mask"],
+            court_kp=inputs["court_kp"],
+            court_vis=inputs["court_vis"],
+            frame_mask=inputs["frame_mask"],
+            camera_state_valid=camera_valid,
+            spatial_attention_mask=spatial_mask,
+            temporal_attention_mask=temporal_mask,
+        ),
+    )
 
 
 def test_player_role_coordinates_share_role_within_id_ordered_object_axis() -> None:
@@ -71,24 +100,11 @@ def test_masked_detection_coordinates_do_not_affect_predictions() -> None:
     changed["human_kp"][:, 1, :, 1] = torch.nan
 
     with torch.no_grad():
-        output = model(**inputs)
-        changed_output = model(**changed)
+        output = _forward(model, inputs)
+        changed_output = _forward(model, changed)
 
     for key in output:
         torch.testing.assert_close(output[key], changed_output[key])
-
-
-def test_model_rejects_incomplete_court_annotation() -> None:
-    model = _model()
-    with pytest.raises(ValueError, match="all 14 annotated UV points"):
-        model(
-            human_kp=torch.zeros(1, 1, 1, 1, 17, 2),
-            detection_mask=torch.ones(1, 1, 1, 1, dtype=torch.bool),
-            court_kp=torch.zeros(1, 1, 1, 13, 2),
-            court_vis=torch.ones(1, 1, 1, 13, dtype=torch.bool),
-            frame_mask=torch.ones(1, 1, dtype=torch.bool),
-            view_mask=torch.ones(1, 1, dtype=torch.bool),
-        )
 
 
 @pytest.mark.parametrize(
@@ -103,13 +119,17 @@ def test_invisible_token_memory_ablation_controls_gradient(
     model = _model(mask_invisible=mask_invisible)
     model.train()
     detection_mask = torch.tensor([[[[True, False]]]])
-    output = model(
-        human_kp=torch.rand(1, 1, 1, 2, 17, 2),
-        detection_mask=detection_mask,
-        court_kp=torch.rand(1, 1, 1, 14, 2),
-        court_vis=torch.ones(1, 1, 1, 14, dtype=torch.bool),
-        frame_mask=torch.ones(1, 1, dtype=torch.bool),
-        view_mask=torch.ones(1, 1, dtype=torch.bool),
+    output = _forward(
+        model,
+        {
+            "human_kp": torch.rand(1, 1, 1, 2, 17, 2),
+            "detection_mask": detection_mask,
+            "court_kp": torch.rand(1, 1, 1, 14, 2),
+            "court_vis": torch.ones(1, 1, 1, 14, dtype=torch.bool),
+            "frame_mask": torch.ones(1, 1, dtype=torch.bool),
+            "view_mask": torch.ones(1, 1, dtype=torch.bool),
+        },
+        mask_invisible=mask_invisible,
     )
     loss = (
         output["position"].square().sum()

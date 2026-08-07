@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any, Literal, TypeAlias, cast
+from typing import Literal, TypeAlias, cast
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from src.tasks.court_detection.configuration import CourtEncoderConfig
 from src.utils.models.blocks import Conv2dWiseWiseBlock
@@ -27,6 +26,7 @@ class CourtDefaultEncoder(nn.Module):
     """Default native encoder extracted from the original court U-Net."""
 
     feature_channels = (64, 128, 256, 512)
+    requires_prepared_features = False
 
     def __init__(self, in_channels: int) -> None:
         super().__init__()
@@ -54,8 +54,6 @@ class CourtDefaultEncoder(nn.Module):
     def forward(
         self, x: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        self._validate_forward_input(x)
-
         x = self.stem(x)
 
         feat1 = self.enc1(x)
@@ -70,20 +68,11 @@ class CourtDefaultEncoder(nn.Module):
         feat4 = self.bottleneck_2(self.bottleneck_1(x))
         return (feat1, feat2, feat3, feat4)
 
-    def _validate_forward_input(self, x: torch.Tensor) -> None:
-        if x.ndim != 4:
-            raise ValueError(
-                "CourtDefaultEncoder expects input with shape (B, C, H, W), "
-                f"got ndim={x.ndim}."
-            )
-        if x.shape[1] != self.in_channels:
-            raise ValueError(
-                f"Expected {self.in_channels} input channels but received {x.shape[1]}."
-            )
-
 
 class CourtDINOv3Encoder(nn.Module):
     """DINOv3 ViT encoder that exposes DPT-style multi-layer feature maps."""
+
+    requires_prepared_features = True
 
     def __init__(
         self,
@@ -139,6 +128,19 @@ class CourtDINOv3Encoder(nn.Module):
         self.patch_size = self.backbone.patch_size
         self.feature_channels = tuple([self.backbone.embed_dim] * 4)
         self.out_indices = tuple(out_indices)
+        get_intermediate_layers = getattr(
+            self.backbone.module,
+            "get_intermediate_layers",
+            None,
+        )
+        if not callable(get_intermediate_layers):
+            raise TypeError(
+                "DINOv3 backbone must expose get_intermediate_layers for DPT decoding."
+            )
+        self._get_intermediate_layers = cast(
+            Callable[..., tuple[torch.Tensor, ...]],
+            get_intermediate_layers,
+        )
 
     @staticmethod
     def _validate_init_args(
@@ -160,122 +162,6 @@ class CourtDINOv3Encoder(nn.Module):
         if self.train_mode == "frozen" and not self.lora_enabled:
             self.backbone.eval()
         return self
-
-    def forward(
-        self,
-        x: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        self._validate_forward_input(x)
-        padded_x = self._pad_to_patch_grid(x)
-        patch_height = padded_x.shape[-2] // self.patch_size
-        patch_width = padded_x.shape[-1] // self.patch_size
-        tokens = self._extract_intermediate_tokens(padded_x)
-        expected_tokens = patch_height * patch_width
-
-        feature_maps = []
-        for level_tokens in tokens:
-            if level_tokens.shape[1] != expected_tokens:
-                raise RuntimeError(
-                    "DINOv3 patch-token count does not match the input grid: "
-                    f"expected {expected_tokens}, got {level_tokens.shape[1]}."
-                )
-            feature_maps.append(
-                level_tokens.transpose(1, 2).reshape(
-                    padded_x.shape[0],
-                    level_tokens.shape[-1],
-                    patch_height,
-                    patch_width,
-                )
-            )
-        return cast(
-            tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor],
-            tuple(feature_maps),
-        )
-
-    def _extract_intermediate_tokens(self, x: torch.Tensor) -> tuple[torch.Tensor, ...]:
-        if self.train_mode == "frozen" and not self.lora_enabled:
-            with torch.no_grad():
-                return self._call_get_intermediate_layers(x)
-        return self._call_get_intermediate_layers(x)
-
-    def _pad_to_patch_grid(self, x: torch.Tensor) -> torch.Tensor:
-        pad_h = (-x.shape[-2]) % self.patch_size
-        pad_w = (-x.shape[-1]) % self.patch_size
-        if pad_h == 0 and pad_w == 0:
-            return x
-        return F.pad(x, (0, pad_w, 0, pad_h), mode="replicate")
-
-    def _call_get_intermediate_layers(
-        self, x: torch.Tensor
-    ) -> tuple[torch.Tensor, ...]:
-        get_intermediate_layers = getattr(
-            self.backbone.module,
-            "get_intermediate_layers",
-            None,
-        )
-        if not callable(get_intermediate_layers):
-            raise TypeError(
-                "DINOv3 backbone must expose get_intermediate_layers for DPT decoding."
-            )
-
-        outputs = get_intermediate_layers(
-            x,
-            n=self.out_indices,
-            reshape=False,
-            return_class_token=False,
-            norm=True,
-        )
-        if not isinstance(outputs, (tuple, list)):
-            raise TypeError("get_intermediate_layers must return a tuple/list.")
-        if len(outputs) != 4:
-            raise ValueError(
-                "get_intermediate_layers must return exactly four tensors, "
-                f"got {len(outputs)}."
-            )
-        tokens = tuple(
-            self._normalize_intermediate_output(output) for output in outputs
-        )
-        for token in tokens:
-            if token.ndim != 3:
-                raise ValueError(
-                    "DINOv3 intermediate tokens must have shape (B, N, C), "
-                    f"got {tuple(token.shape)}."
-                )
-            if token.shape[-1] != self.backbone.embed_dim:
-                raise ValueError(
-                    "DINOv3 intermediate width does not match embed_dim: "
-                    f"{token.shape[-1]} != {self.backbone.embed_dim}."
-                )
-        return tokens
-
-    @staticmethod
-    def _normalize_intermediate_output(output: Any) -> torch.Tensor:
-        if isinstance(output, torch.Tensor):
-            return output
-        if (
-            isinstance(output, (tuple, list))
-            and output
-            and isinstance(output[0], torch.Tensor)
-        ):
-            return output[0]
-        raise TypeError(
-            "Each DINOv3 intermediate output must be a tensor or a tuple/list "
-            "whose first item is a tensor."
-        )
-
-    def _validate_forward_input(self, x: torch.Tensor) -> None:
-        if x.ndim != 4:
-            raise ValueError(
-                "CourtDINOv3Encoder expects input with shape (B, C, H, W), "
-                f"got ndim={x.ndim}."
-            )
-        if x.shape[1] != self.in_channels:
-            raise ValueError(
-                f"Expected {self.in_channels} input channels but received {x.shape[1]}."
-            )
-        if min(x.shape[-2:]) <= 0:
-            raise ValueError("Input height and width must be positive.")
-
 
 def _build_dinov3_encoder(
     *, in_channels: int, config: CourtEncoderConfig

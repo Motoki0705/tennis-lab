@@ -31,7 +31,10 @@ from src.tasks.ball_detection.data.components.augmentation import (
 )
 from src.tasks.ball_detection.data.tracknet_datamodule import TrackNetDataModule
 from src.tasks.ball_detection.data.types import BallDetectionSample, ClipWindow
-from src.tasks.base.preview import resolve_sample_indices, resolve_split_file
+from src.tasks.base.visualization.preview import (
+    resolve_sample_indices,
+    resolve_split_file,
+)
 from src.utils.hydra import hydra_main
 from src.utils.io import save_json
 

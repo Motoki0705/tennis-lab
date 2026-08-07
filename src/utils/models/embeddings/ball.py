@@ -29,12 +29,12 @@ class BallUVEmbedding(nn.Module):
         self.proj = CoordinateProjection(input_dim=2, dim=int(dim))
         self.invisible_token = invisible_token
 
-    def forward(self, ball_uv: Tensor, ball_vis: Tensor | None = None) -> Tensor:
+    def forward(self, ball_uv: Tensor, ball_vis: Tensor) -> Tensor:
         """Embed 2D ball positions.
 
         Args:
             ball_uv: Ball UV positions, shape (B, T, 2).
-            ball_vis: Visibility/observation mask, shape (B, T). Optional.
+            ball_vis: Visibility/observation mask, shape (B, T).
 
         Returns:
             Tensor: Embedded tokens, shape (B, T, D).
@@ -61,12 +61,12 @@ class Ball3DEmbedding(nn.Module):
         self.proj = CoordinateProjection(input_dim=3, dim=int(dim))
         self.invisible_token = invisible_token
 
-    def forward(self, ball_pos: Tensor, ball_vis: Tensor | None = None) -> Tensor:
+    def forward(self, ball_pos: Tensor, ball_vis: Tensor) -> Tensor:
         """Embed 3D ball positions.
 
         Args:
             ball_pos: Ball positions, shape (B, T, 3).
-            ball_vis: Visibility/observation mask, shape (B, T). Optional.
+            ball_vis: Visibility/observation mask, shape (B, T).
 
         Returns:
             Tensor: Embedded tokens, shape (B, T, D).

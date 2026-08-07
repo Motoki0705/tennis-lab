@@ -215,8 +215,20 @@ def test_seg_affine_matches_shared_matrix_warp() -> None:
         shear_degrees=(shear, shear), shear_mode="torchvision",
     )
     coeffs = to_pil_affine_coefficients(invert_homogeneous_matrix(matrix))
-    expected_img = img.transform(img.size, Image.AFFINE, coeffs, Image.BILINEAR, fillcolor=0)
-    expected_mask = mask.transform(mask.size, Image.AFFINE, coeffs, Image.NEAREST, fillcolor=0)
+    expected_img = img.transform(
+        img.size,
+        Image.Transform.AFFINE,
+        coeffs,
+        Image.Resampling.BILINEAR,
+        fillcolor=0,
+    )
+    expected_mask = mask.transform(
+        mask.size,
+        Image.Transform.AFFINE,
+        coeffs,
+        Image.Resampling.NEAREST,
+        fillcolor=0,
+    )
 
     np.testing.assert_array_equal(np.array(out_img), np.array(expected_img))
     np.testing.assert_array_equal(np.array(out_mask), np.array(expected_mask))

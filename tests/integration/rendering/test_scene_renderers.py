@@ -108,7 +108,13 @@ def _blcs_scene(num_frames: int = _NUM_FRAMES) -> dict[str, Any]:
         "num_frames": num_frames,
         "shots": [{"shot_index": 0, "t_start": 0, "t_bounce1": num_frames // 2}],
     }
-    return {"ball_pos_world": positions, "meta": meta, "num_cameras": 0, "cameras": []}
+    return {
+        "ball_pos_world": positions,
+        "num_balls": 1,
+        "meta": meta,
+        "num_cameras": 0,
+        "cameras": [],
+    }
 
 
 def _multi_ball_blcs_scene(num_frames: int = _NUM_FRAMES) -> dict[str, Any]:
@@ -192,7 +198,7 @@ class TestBLCSSceneRenderer:
         renderer = BLCSSceneRenderer(style=_style("dark"))
 
         anim = renderer.create_comparison_animation(
-            gt, pred, view="3d", fps=_FPS, events=None
+            gt, pred, view="3d", fps=_FPS, events=[]
         )
 
         assert anim is not None
@@ -259,8 +265,8 @@ class TestTennisSceneRenderer:
         tmp_path: Path,
         tennis_scene_assets: tuple[Path, Path],
     ) -> None:
-        from src.tennis_scene.io import SceneResult
         from src.tennis_scene.rendering import TennisSceneRenderer, TennisSceneStyle
+        from src.tennis_scene.schema import SceneResult
 
         num_frames = 4
         ball_3d: np.ndarray = np.zeros((num_frames, 3), dtype=np.float32)

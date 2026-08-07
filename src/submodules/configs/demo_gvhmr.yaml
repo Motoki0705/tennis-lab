@@ -41,7 +41,6 @@ max_frames: null
 # Runtime defaults are selected here and required explicitly by every model wrapper.
 runtime:
   device: auto
-  allow_device_fallback: false
   tracking:
     yolo_confidence: 0.5
     bbox_enlarge: 1.2

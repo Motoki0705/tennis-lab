@@ -5,7 +5,8 @@ from __future__ import annotations
 import torch
 from omegaconf import OmegaConf
 
-from src.tasks.blcs.models import build_blcs_model
+from src.tasks.base.model_io import ModelCall
+from src.tasks.blcs.model_io import compose_blcs_trajectory_model_io
 
 
 def _config(*, max_num_cameras: int, max_seq_len: int) -> dict[str, object]:
@@ -39,27 +40,30 @@ def _config(*, max_num_cameras: int, max_seq_len: int) -> dict[str, object]:
 
 def test_multiview_axial_model_forward_accepts_single_view() -> None:
     torch.manual_seed(0)
-    model = build_blcs_model(
+    binding = compose_blcs_trajectory_model_io(
         OmegaConf.create(_config(max_num_cameras=1, max_seq_len=4))
-    ).eval()
+    )
+    binding.model.eval()
+    inputs = {
+        "ball_uv": torch.rand(2, 1, 4, 2),
+        "court_kp": torch.rand(2, 1, 4, 20, 2),
+        "ball_vis": torch.ones(2, 1, 4),
+        "ball_mask": torch.ones(2, 1, 4),
+        "court_vis": torch.ones(2, 1, 4, 20),
+    }
 
     with torch.no_grad():
-        out = model(
-            ball_uv=torch.randn(2, 1, 4, 2),
-            court_kp=torch.randn(2, 1, 4, 20, 2),
-            ball_vis=torch.ones(2, 1, 4),
-            ball_mask=torch.ones(2, 1, 4),
-            court_vis=torch.ones(2, 1, 4, 20),
-        )
+        out = binding.execute_call(binding.build_call(inputs))
 
     assert out["position"].shape == (2, 4, 3)
 
 
 def test_multiview_axial_model_masks_invisible_court_coordinates() -> None:
     torch.manual_seed(1)
-    model = build_blcs_model(
+    binding = compose_blcs_trajectory_model_io(
         OmegaConf.create(_config(max_num_cameras=2, max_seq_len=3))
-    ).eval()
+    )
+    binding.model.eval()
     inputs = {
         "ball_uv": torch.rand(1, 2, 3, 2),
         "court_kp": torch.rand(1, 2, 3, 20, 2),
@@ -72,7 +76,10 @@ def test_multiview_axial_model_masks_invisible_court_coordinates() -> None:
     changed["court_kp"][:, 1, :, 4] = torch.nan
 
     with torch.no_grad():
-        output = model(**inputs)
-        changed_output = model(**changed)
+        prepared = binding.build_call(inputs)
+        output = binding.execute_call(prepared)
+        changed_call = dict(prepared.kwargs)
+        changed_call["court_kp"] = changed["court_kp"]
+        changed_output = binding.execute_call(ModelCall(kwargs=changed_call))
 
     torch.testing.assert_close(output["position"], changed_output["position"])

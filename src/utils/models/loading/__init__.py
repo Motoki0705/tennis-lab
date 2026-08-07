@@ -7,6 +7,7 @@ from src.utils.models.loading.dinov3 import (
     apply_dinov3_lora,
     configure_dinov3_trainability,
     load_dinov3_backbone,
+    require_dinov3_patch_tokens,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "apply_dinov3_lora",
     "configure_dinov3_trainability",
     "load_dinov3_backbone",
+    "require_dinov3_patch_tokens",
 ]

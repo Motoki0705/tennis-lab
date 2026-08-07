@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import pytest
+import torch
+from torch.utils.data import Dataset
 
 from src.tasks.ball_detection.data.components.staged_sampler import (
     ConcatVariableTDataset,
@@ -11,6 +13,7 @@ from src.tasks.ball_detection.data.components.staged_sampler import (
     accumulation_for,
     linear_decreasing_t_probs,
 )
+from src.tasks.ball_detection.data.types import BallDetectionSample
 
 
 class TestLinearDecreasingTProbs:
@@ -36,7 +39,7 @@ class TestAccumulationFor:
         assert accumulation_for(8, 100) == 1
 
 
-class _RangeDataset:
+class _RangeDataset(Dataset[BallDetectionSample]):
     """Minimal dataset that echoes the (index, T) it was asked for."""
 
     def __init__(self, n: int, tag: str) -> None:
@@ -46,8 +49,16 @@ class _RangeDataset:
     def __len__(self) -> int:
         return self.n
 
-    def __getitem__(self, index):  # type: ignore[no-untyped-def]
-        return (self.tag, index)
+    def __getitem__(self, index: int | tuple[int, int]) -> BallDetectionSample:
+        return {
+            "images": torch.empty(0),
+            "heatmaps": torch.empty(0),
+            "coords": torch.empty(0),
+            "visibility": torch.empty(0),
+            "original_size": torch.empty(0),
+            "heatmap_size": torch.empty(0),
+            "window_id": f"{self.tag}:{index!r}",
+        }
 
 
 class TestVariableTBatchSampler:
@@ -139,17 +150,17 @@ class TestConcatVariableTDataset:
         concat = ConcatVariableTDataset([_RangeDataset(5, "a"), _RangeDataset(3, "b")])
         assert len(concat) == 8
         # global 4 -> last of dataset "a" at local 4
-        assert concat[(4, 3)] == ("a", (4, 3))
+        assert concat[(4, 3)]["window_id"] == "a:(4, 3)"
         # global 5 -> first of dataset "b" at local 0
-        assert concat[(5, 7)] == ("b", (0, 7))
+        assert concat[(5, 7)]["window_id"] == "b:(0, 7)"
 
     def test_routes_bare_int_index(self) -> None:
         concat = ConcatVariableTDataset([_RangeDataset(2, "a"), _RangeDataset(2, "b")])
-        assert concat[3] == ("b", 1)
+        assert concat[3]["window_id"] == "b:1"
 
 
 class TestFixedTDataset:
     def test_forwards_fixed_num_frames(self) -> None:
         view = FixedTDataset(_RangeDataset(4, "a"), num_frames=1)
         assert len(view) == 4
-        assert view[2] == ("a", (2, 1))
+        assert view[2]["window_id"] == "a:(2, 1)"

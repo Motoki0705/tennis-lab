@@ -12,25 +12,23 @@
 ### generate_dataset/
 構造化クリップのうち未処理分へパイプラインを適用し、BLCS/PLCS用観測と3D出力を含む `SceneResult` を監査可能な疑似アノテーションとして追加する。詳細は `generate_dataset/README.md`。
 
-### io.py
-- **`SceneResult`**: パイプライン共有スキーマ(`court_kp`/`player_position`/`player_yaw`/`smpl_*`/`ball_*`等)。
-- **`save()`/`load()`**: `.npz`+`*.metadata.json`サイドカーで保存、pickle混入legacy形式は警告付きフォールバック。
+### schema.py / archive.py
+- **`schema.SceneResult`**: パイプライン共有スキーマ(`court_kp`/`player_position`/`player_yaw`/`smpl_*`/`ball_*`等)の唯一の定義。
+- **`archive.save_scene_result()` / `load_scene_result()`**: `.npz` と必須 `*.metadata.json` サイドカーを明示的に保存・読込する唯一のarchive I/O。sidecar欠落・非object metadataはエラーにし、旧module/methodへ転送しない。
 
 ### pipeline/
 - **`orchestrator.py`**: `TennisSceneOrchestrator`。全stageの構築・同期検証・実行・`SceneResult`組み立てを統括。
 - **`dependency_graph.py`**: `PipelineDependencyGraph`。stage依存(`PLCS<-COURT_KP,GVHMR`等)の解決・循環検出。
+- **`model_io/gvhmr.py`**: GVHMR chainの型付きrequest/result、検証adapter、composition factoryの唯一の定義。factoryがDINO/YOLOを一度だけ選択してsubmodule chainを構築し、adapterがvideo metadata・track・keypoints・boxes・features・SMPL keysを各model境界の前で検証する。
 - **`components/court_kp.py`**: `CourtKPModule`。手動UIまたはモデル推論でコートkeypointを取得。
-- **`components/gvhmr.py`**: `GVHMRModule`。`src/submodules/models` の GVHMR チェーン（DINO person検出→BoT-SORT→ViTPose→HMR2→GVHMR）を同一プロセスで実行しSMPL/2D poseを取得。既定は`gvhmr.detector=dino`かつ`track_selection=auto`で、track選択UIは開かない。YOLOは明示override時だけ利用する。
+- **`components/gvhmr.py`**: `GVHMRModule`。composition rootから解決済みのGVHMR chainを受け取り、typed requestを渡すか保存済みresultを読む。model class、detector variant、tensor layout、raw output keyを認識しない。
 - **`components/player_association.py`**: `PlayerAssociationModule`。カメラ間player対応付け(手動UI)を正準player軸へ整列。
-- **`components/plcs.py`**: `PLCSModule`。`court_kp`をplayer数へexpandしPLCS predictorへ渡す。
+- **`components/plcs.py`**: `PLCSModule`。task-owned multiview I/O adapterを持つpredictorへ観測を渡し、typed predictionをwindow集約する。
 - **`components/ball_detection.py`**: `BallDetectionModule`。スライディングウィンドウ推論とオーバーラップ集約。
-- **`components/blcs.py`**: `BLCSModule`。複数カメラのball観測から3D軌道を推定。
+- **`components/blcs.py`**: `BLCSModule`。task-owned multiview I/O adapterを持つpredictorへ観測を渡し、typed predictionから3D軌道を集約する。
 
 ### rendering/
 - **`tennis_scene_renderer.py`**: `TennisSceneRenderer`。SMPL/skeleton表示によるコート上3D可視化・動画保存。3D表示範囲はコート座標系に固定する。カメラ・テーマ・レイヤ規約・HUD・ミニマップなどの描画プリミティブは `src.utils.rendering`(`camera_view`/`theme`/`layers`/`hud`/`minimap`/`effects`)を直接利用し、ここには `SceneResult` 固有の変換(SMPL→コート座標、HUD行の選択、ミニマップ配列抽出)だけを持つ。
-
-### utils/
-- **`transforms.py`**: `src.utils.geometry` からのthin re-export(このパイプライン内からは未使用)。
 
 ### scripts/
 - **`run_pipeline.py`**: パイプライン実行エントリポイント。結果を `.npz` に保存。

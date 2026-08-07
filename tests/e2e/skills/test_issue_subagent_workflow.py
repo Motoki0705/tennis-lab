@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 from types import ModuleType
+from typing import cast
 
 import pytest
 
@@ -35,13 +36,19 @@ def git(root: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
-def setup_task(tmp_path: Path) -> tuple[Path, Path]:
+def setup_task(
+    tmp_path: Path,
+    *,
+    extra_base_files: tuple[str, ...] = (),
+) -> tuple[Path, Path]:
     root = tmp_path / "repo"
     root.mkdir()
     git(root, "init")
     git(root, "config", "user.email", "test@example.com")
     git(root, "config", "user.name", "Test")
     (root / "src.txt").write_text("base\n", encoding="utf-8")
+    for relative in extra_base_files:
+        (root / relative).write_text("base\n", encoding="utf-8")
     git(root, "add", ".")
     git(root, "commit", "-m", "base")
 
@@ -384,8 +391,15 @@ def advance_to_implementation(root: Path, task: Path) -> None:
     (root / "src.txt").write_text("changed\n", encoding="utf-8")
 
 
-def advance_to_validation(root: Path, task: Path) -> str:
+def advance_to_validation(
+    root: Path,
+    task: Path,
+    *,
+    renames: tuple[tuple[str, str], ...] = (),
+) -> str:
     advance_to_implementation(root, task)
+    for source, destination in renames:
+        git(root, "mv", source, destination)
     write_implementation(task, 1)
     fp = candidate.compute_candidate_fingerprint(task, manage.load_state(task))
     write_preflight(task, 1, fp)
@@ -393,7 +407,10 @@ def advance_to_validation(root: Path, task: Path) -> str:
     manage.apply_preflight_verdict(task, "PASS")
 
     (root / "tests.txt").write_text("new test\n", encoding="utf-8")
-    test_fp = candidate.compute_candidate_fingerprint(task, manage.load_state(task))
+    test_fp = cast(
+        str,
+        candidate.compute_candidate_fingerprint(task, manage.load_state(task)),
+    )
     assert test_fp != fp
     write_tests(task, 1, test_fp)
     assert manage.run_check(task, "test", "py-ok") == 0
@@ -413,6 +430,7 @@ def install_fake_gh(
     *,
     head: str,
     checks_pass: bool,
+    files_payload: object | None = None,
 ) -> None:
     directory = tmp_path / "fake-bin"
     directory.mkdir(exist_ok=True)
@@ -425,6 +443,7 @@ import sys
 
 head = os.environ["FAKE_PR_HEAD"]
 checks_pass = os.environ["FAKE_CHECKS_PASS"] == "1"
+files_payload = json.loads(os.environ["FAKE_PR_FILES"])
 if sys.argv[1:3] == ["pr", "view"]:
     conclusion = "SUCCESS" if checks_pass else "FAILURE"
     print(json.dumps({
@@ -441,7 +460,7 @@ if sys.argv[1:3] == ["pr", "view"]:
         }],
     }))
 elif sys.argv[1] == "api":
-    print(json.dumps([[{"filename": "src.txt"}, {"filename": "tests.txt"}]]))
+    print(json.dumps(files_payload))
 else:
     raise SystemExit(2)
 """,
@@ -450,6 +469,14 @@ else:
     script.chmod(0o755)
     monkeypatch.setenv("FAKE_PR_HEAD", head)
     monkeypatch.setenv("FAKE_CHECKS_PASS", "1" if checks_pass else "0")
+    monkeypatch.setenv(
+        "FAKE_PR_FILES",
+        json.dumps(
+            files_payload
+            if files_payload is not None
+            else [[{"filename": "src.txt"}, {"filename": "tests.txt"}]]
+        ),
+    )
     monkeypatch.setenv("PATH", f"{directory}:{os.environ.get('PATH', '')}")
 
 
@@ -505,6 +532,194 @@ PASS
     assert state["status"] == "complete"
     assert state["verdict"] == "PASS"
     assert manage.check(task) == []
+
+
+def test_capture_and_finalize_reconcile_renamed_files_with_no_renames_revision(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, task = setup_task(
+        tmp_path,
+        extra_base_files=("src-second.txt", "src-third.txt"),
+    )
+    fp = advance_to_validation(
+        root,
+        task,
+        renames=(
+            ("src.txt", "renamed.txt"),
+            ("src-second.txt", "renamed-second.txt"),
+            ("src-third.txt", "renamed-third.txt"),
+        ),
+    )
+    write_validation(task, fp)
+    manage.apply_validation_verdict(task, "PASS")
+
+    git(root, "add", "-A")
+    git(root, "commit", "-m", "renamed candidate")
+    head = git(root, "rev-parse", "HEAD")
+    state = manage.load_state(task)
+    revision_files = candidate.revision_changed_paths(task, state, head)
+    assert revision_files == [
+        "renamed-second.txt",
+        "renamed-third.txt",
+        "renamed.txt",
+        "src-second.txt",
+        "src-third.txt",
+        "src.txt",
+        "tests.txt",
+    ]
+    install_fake_gh(
+        tmp_path,
+        monkeypatch,
+        head=head,
+        checks_pass=True,
+        files_payload=[
+            [
+                {
+                    "filename": "renamed.txt",
+                    "previous_filename": "src.txt",
+                    "status": "renamed",
+                },
+                {
+                    "filename": "renamed-second.txt",
+                    "previous_filename": "src-second.txt",
+                    "status": "renamed",
+                },
+            ],
+            [
+                {
+                    "filename": "renamed-third.txt",
+                    "previous_filename": "src-third.txt",
+                    "status": "renamed",
+                },
+                {"filename": "tests.txt", "status": "added"},
+            ],
+        ],
+    )
+
+    manage.capture_pr_evidence(task, pr_number=706)
+    state = manage.load_state(task)
+    evidence = json.loads(
+        (task / "05-packaging/pr-evidence.json").read_text(encoding="utf-8")
+    )
+    assert evidence["files"] == revision_files
+    evidence_digest = state["pr_evidence_sha256"]
+    (task / "05-packaging/packaging.md").write_text(
+        f"""# Packaging
+
+- Issue: #1
+- Attempt: 1
+- Status: COMPLETE
+- Candidate SHA-256: `{fp}`
+- PR number: 706
+- PR head SHA: `{head}`
+- Remote checks: PASS
+- PR evidence SHA-256: `{evidence_digest}`
+
+## Final candidate binding
+Matches Validator candidate.
+## Pull request identity
+PR #706 at {head}.
+## Complete paginated diff scope
+Both old and new rename paths match the no-renames revision inventory.
+## Remote required checks
+All required checks PASS.
+## Packaging evidence
+Two paginated file pages recorded.
+## Final packaging verdict
+PASS
+""",
+        encoding="utf-8",
+    )
+    manage.finalize_pr(task, pr_number=706, head_sha=head)
+    state = manage.load_state(task)
+    assert state["status"] == "complete"
+    assert state["verdict"] == "PASS"
+    assert manage.check(task) == []
+
+
+@pytest.mark.parametrize(
+    "renamed_entry",
+    [
+        {"filename": "src.txt", "status": "renamed"},
+        {"filename": "src.txt", "status": "renamed", "previous_filename": None},
+        {"filename": "src.txt", "status": "renamed", "previous_filename": 7},
+        {"filename": "src.txt", "status": "renamed", "previous_filename": ""},
+    ],
+)
+def test_capture_rejects_renamed_file_without_valid_previous_filename(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    renamed_entry: dict[str, object],
+) -> None:
+    root, task = setup_task(tmp_path)
+    fp = advance_to_validation(root, task)
+    write_validation(task, fp)
+    manage.apply_validation_verdict(task, "PASS")
+
+    git(root, "add", "src.txt", "tests.txt")
+    git(root, "commit", "-m", "candidate")
+    head = git(root, "rev-parse", "HEAD")
+    install_fake_gh(
+        tmp_path,
+        monkeypatch,
+        head=head,
+        checks_pass=True,
+        files_payload=[
+            [
+                renamed_entry,
+                {"filename": "tests.txt", "status": "added"},
+            ]
+        ],
+    )
+    state_before = (task / "state.toml").read_bytes()
+
+    with pytest.raises(ValueError, match="valid previous_filename"):
+        manage.capture_pr_evidence(task, pr_number=706)
+    assert (task / "state.toml").read_bytes() == state_before
+    assert not (task / "05-packaging/pr-evidence.json").exists()
+
+
+def test_capture_rejects_valid_renamed_inventory_mismatch_without_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root, task = setup_task(tmp_path)
+    fp = advance_to_validation(
+        root,
+        task,
+        renames=(("src.txt", "renamed.txt"),),
+    )
+    write_validation(task, fp)
+    manage.apply_validation_verdict(task, "PASS")
+
+    git(root, "add", "-A")
+    git(root, "commit", "-m", "renamed candidate")
+    head = git(root, "rev-parse", "HEAD")
+    install_fake_gh(
+        tmp_path,
+        monkeypatch,
+        head=head,
+        checks_pass=True,
+        files_payload=[
+            [
+                {
+                    "filename": "renamed.txt",
+                    "previous_filename": "different-old-name.txt",
+                    "status": "renamed",
+                },
+                {"filename": "tests.txt", "status": "added"},
+            ]
+        ],
+    )
+    state_before = (task / "state.toml").read_bytes()
+
+    with pytest.raises(
+        ValueError,
+        match="complete paginated PR file list differs from the validated revision",
+    ):
+        manage.capture_pr_evidence(task, pr_number=706)
+    assert (task / "state.toml").read_bytes() == state_before
+    assert not (task / "05-packaging/pr-evidence.json").exists()
 
 
 def test_candidate_change_after_tester_pass_requires_retest(tmp_path: Path) -> None:

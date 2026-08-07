@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal, cast
 
-import torch
 import torch.nn as nn
 from torch import Tensor
 
@@ -19,6 +18,7 @@ from src.utils.models import (
     TransformerBlockConfig,
     precompute_freqs_cis_nd,
     resolve_axial_rope_bases,
+    validate_rope_dim,
 )
 from src.utils.models.axial_multiview_mixin import AxialMultiViewMixin
 from src.utils.models.embeddings import (
@@ -69,7 +69,7 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         )
 
         head_dim = self.hidden_dim // num_heads
-        self._validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
+        validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
 
         self.head_dim = int(head_dim)
         self.rope_dim = int(rope_dim)
@@ -151,6 +151,9 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 dropout=dropout,
                 num_keypoints=NUM_HUMAN_KP,
             )
+            self._decode_readouts = self._decode_readouts_with_canonical_pose
+        else:
+            self._decode_readouts = self._decode_readouts_without_canonical_pose
 
         token_freqs = precompute_freqs_cis_nd(
             dim=self.rope_dim,
@@ -208,34 +211,19 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         self,
         human_kp: Tensor,
         court_kp: Tensor,
-        human_vis: Tensor | None = None,
-        human_mask: Tensor | None = None,
-        court_vis: Tensor | None = None,
+        human_vis: Tensor,
+        human_mask: Tensor,
+        court_vis: Tensor,
+        camera_attention_mask: Tensor,
+        time_attention_mask: Tensor,
     ) -> dict[str, Tensor]:
         """Forward pass for multiview PLCS inputs."""
-        batch_size, n_cams, seq_len_in = self._validate_forward_inputs(
-            human_kp=human_kp,
-            court_kp=court_kp,
-            human_vis=human_vis,
-            human_mask=human_mask,
-            court_vis=court_vis,
-        )
+        batch_size, n_cams, seq_len_in = human_kp.shape[:3]
 
-        if human_vis is not None:
-            human_kp = human_kp * (human_vis > 0).unsqueeze(-1).to(dtype=human_kp.dtype)
-        if court_vis is not None:
-            court_kp = court_kp * (court_vis > 0).unsqueeze(-1).to(dtype=court_kp.dtype)
+        human_kp = human_kp * (human_vis > 0).unsqueeze(-1).to(dtype=human_kp.dtype)
+        court_kp = court_kp * (court_vis > 0).unsqueeze(-1).to(dtype=court_kp.dtype)
 
-        if human_mask is not None:
-            token_valid = human_mask > 0
-        else:
-            token_valid = torch.ones(
-                batch_size,
-                n_cams,
-                seq_len_in,
-                dtype=torch.bool,
-                device=human_kp.device,
-            )
+        token_valid = human_mask > 0
 
         court_flat = court_kp.reshape(
             batch_size * n_cams * seq_len_in, self.num_court_tokens, 2
@@ -253,13 +241,6 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             .permute(0, 2, 1, 3)
         )
 
-        token_valid_t = token_valid.permute(0, 2, 1)
-        camera_valid = token_valid_t.reshape(batch_size * seq_len_in, n_cams)
-        time_valid = token_valid_t.permute(0, 2, 1).reshape(
-            batch_size * n_cams, seq_len_in
-        )
-        camera_mask, _ = self._build_self_attn_mask(camera_valid)
-        time_mask, _ = self._build_self_attn_mask(time_valid)
         camera_freqs = self._camera_freqs(
             batch_size=batch_size,
             seq_len=seq_len_in,
@@ -280,7 +261,7 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             x_camera = camera_layer(
                 x_camera,
                 freqs_cis=camera_freqs,
-                attn_mask=camera_mask,
+                attn_mask=camera_attention_mask,
             )
             x = x_camera.reshape(batch_size, seq_len_in, n_cams, self.hidden_dim)
 
@@ -290,7 +271,7 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             x_time = time_layer(
                 x_time,
                 freqs_cis=time_freqs,
-                attn_mask=time_mask,
+                attn_mask=time_attention_mask,
             )
             x = x_time.reshape(batch_size, n_cams, seq_len_in, self.hidden_dim).permute(
                 0, 2, 1, 3
@@ -299,69 +280,22 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         x = x[:, :, 0, :]
         x = self.final_norm(x)
 
-        out = {
-            "position": self.position_head(x),
-            "rotation": self.rotation_head(x),
+        return self._decode_readouts(x, x)
+
+    def _decode_readouts_without_canonical_pose(
+        self, pose_features: Tensor, rotation_features: Tensor
+    ) -> dict[str, Tensor]:
+        return {
+            "position": self.position_head(pose_features),
+            "rotation": self.rotation_head(rotation_features),
         }
-        if self.predict_canonical_pose and self.canonical_pose_head is not None:
-            out["canonical_pose"] = self.canonical_pose_head(x)
-        return out
 
-    def _validate_forward_inputs(
-        self,
-        *,
-        human_kp: Tensor,
-        court_kp: Tensor,
-        human_vis: Tensor | None,
-        human_mask: Tensor | None,
-        court_vis: Tensor | None,
-    ) -> tuple[int, int, int]:
-        if human_kp.dim() != 5:
-            raise ValueError(
-                "PLCSMultiViewAxialModel expects human_kp as (B,N,T,17,2), "
-                f"got shape {tuple(human_kp.shape)}"
-            )
-        if court_kp.dim() != 5:
-            raise ValueError(
-                "PLCSMultiViewAxialModel expects court_kp as "
-                f"(B,N,T,{self.num_court_tokens},2), "
-                f"got shape {tuple(court_kp.shape)}"
-            )
-        if court_kp.shape[-2] != self.num_court_tokens:
-            raise ValueError(
-                f"Expected court_kp with K={self.num_court_tokens}, got K={court_kp.shape[-2]}."
-            )
-        if human_vis is not None and human_vis.dim() != 4:
-            raise ValueError(
-                "PLCSMultiViewAxialModel expects human_vis as (B,N,T,17), "
-                f"got shape {tuple(human_vis.shape)}"
-            )
-        if court_vis is not None and court_vis.dim() != 4:
-            raise ValueError(
-                "PLCSMultiViewAxialModel expects court_vis as "
-                f"(B,N,T,{self.num_court_tokens}), "
-                f"got shape {tuple(court_vis.shape)}"
-            )
-        if court_vis is not None and court_vis.shape[-1] != self.num_court_tokens:
-            raise ValueError(
-                f"Expected court_vis with K={self.num_court_tokens}, got K={court_vis.shape[-1]}."
-            )
-
-        batch_size, n_cams, seq_len_in = human_kp.shape[:3]
-        if n_cams > self.max_views:
-            raise ValueError(
-                f"Number of views N={n_cams} exceeds max_views={self.max_views}."
-            )
-        if seq_len_in > self.max_seq_len:
-            raise ValueError(
-                f"Sequence length T={seq_len_in} exceeds max_seq_len={self.max_seq_len}."
-            )
-        if human_mask is not None and (
-            human_mask.dim() != 3
-            or human_mask.shape != (batch_size, n_cams, seq_len_in)
-        ):
-            raise ValueError(
-                "human_mask for multiview models must be (B,N,T), "
-                f"got {tuple(human_mask.shape)}"
-            )
-        return batch_size, n_cams, seq_len_in
+    def _decode_readouts_with_canonical_pose(
+        self, pose_features: Tensor, rotation_features: Tensor
+    ) -> dict[str, Tensor]:
+        head = cast(CanonicalPoseHead, self.canonical_pose_head)
+        return {
+            "position": self.position_head(pose_features),
+            "rotation": self.rotation_head(rotation_features),
+            "canonical_pose": head(rotation_features),
+        }

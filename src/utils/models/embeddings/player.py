@@ -9,7 +9,6 @@ from src.utils.models.embeddings.projection import (
     CoordinateProjection,
     apply_visibility_mask,
 )
-from src.utils.schema.player import NUM_HUMAN_KP
 
 
 class PlayerKPUVEmbedding(nn.Module):
@@ -30,19 +29,15 @@ class PlayerKPUVEmbedding(nn.Module):
         self.proj = CoordinateProjection(input_dim=2, dim=int(dim))
         self.invisible_token = invisible_token
 
-    def forward(self, human_kp: Tensor, human_vis: Tensor | None = None) -> Tensor:
+    def forward(self, human_kp: Tensor, human_vis: Tensor) -> Tensor:
         """Embed human keypoints.
 
         Args:
-            human_kp: Human keypoints, shape (B, 34) or (B, 17, 2).
-            human_vis: Visibility flags, shape (B, 17). Optional.
+            human_kp: Human keypoints, shape (B, 17, 2).
+            human_vis: Visibility flags, shape (B, 17).
 
         Returns:
             Tensor: Embedded tokens, shape (B, NUM_HUMAN_KP, D).
         """
-        batch_size = int(human_kp.shape[0])
-        if human_kp.dim() == 2:
-            human_kp = human_kp.reshape(batch_size, NUM_HUMAN_KP, 2)
-
         feat = self.proj(human_kp)
         return apply_visibility_mask(feat, human_vis, self.invisible_token)

@@ -1238,7 +1238,7 @@ def parse_generation_run(config: object) -> tuple[GenerationRunConfig, PathResol
     resolver = build_path_resolver(config)
     requested_device = cast("str", _value(run, "device", str, path="run"))
     try:
-        device = str(resolve_device(requested_device, allow_fallback=False))
+        device = str(resolve_device(requested_device))
     except (RuntimeError, ValueError) as error:
         raise SemanticConfigurationError(
             f"run.device is not an available device: {requested_device!r}."
@@ -1355,8 +1355,6 @@ def validate_generator_sections(
             "lob_probability",
             "max_ballistic_apex_height_m",
             "gravity",
-            "net_retry_max_attempts",
-            "net_check_max_frames",
             "net_elevation_step_deg",
             "landing_refine_enabled",
             "landing_refine_max_iters",
@@ -1642,8 +1640,6 @@ def validate_generator_sections(
             **{
                 key: int
                 for key in (
-                    "net_retry_max_attempts",
-                    "net_check_max_frames",
                     "landing_refine_max_iters",
                     "landing_sim_max_frames",
                 )
@@ -1670,8 +1666,6 @@ def validate_generator_sections(
     for key in ("max_ballistic_apex_height_m", "gravity"):
         _positive(cast("float", targeted_velocity[key]), path=f"targeted_velocity.{key}")
     for key in (
-        "net_retry_max_attempts",
-        "net_check_max_frames",
         "landing_sim_max_frames",
     ):
         if cast("int", targeted_velocity[key]) <= 0:

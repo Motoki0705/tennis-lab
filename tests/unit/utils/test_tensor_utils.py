@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TypedDict
+
 import numpy as np
 import pytest
 import torch
@@ -14,9 +16,14 @@ from src.utils.tensor_utils import (
 )
 
 
+class _CloneSample(TypedDict):
+    x: torch.Tensor
+    name: str
+
+
 class TestCloneTensorDict:
     def test_tensors_are_cloned(self) -> None:
-        original = {"x": torch.ones(3), "name": "ball"}
+        original: _CloneSample = {"x": torch.ones(3), "name": "ball"}
         cloned = clone_tensor_dict(original)
         cloned["x"][0] = 99.0
         assert original["x"][0] == 1.0  # original untouched
@@ -87,6 +94,7 @@ class TestNormalizePaddingMask:
     def test_1d_and_2d_passthrough(self) -> None:
         mask = torch.tensor([[1, 0], [0, 1]])
         out = normalize_padding_mask(mask)
+        assert out is not None
         assert out.dtype == torch.bool
         assert out.tolist() == [[True, False], [False, True]]
 
@@ -94,6 +102,7 @@ class TestNormalizePaddingMask:
         # (B=1, N=2, T=3) -> any over N
         mask = torch.tensor([[[1, 0, 0], [0, 0, 1]]])
         out = normalize_padding_mask(mask)
+        assert out is not None
         assert out.shape == (1, 3)
         assert out.tolist() == [[True, False, True]]
 
@@ -101,12 +110,14 @@ class TestNormalizePaddingMask:
         mask = torch.zeros(2, 3, 4, 5)
         mask[0, 0, 1, 0] = 1
         out = normalize_padding_mask(mask)
+        assert out is not None
         assert out.shape == (2, 4)
         assert bool(out[0, 1])
 
     def test_flatten(self) -> None:
         mask = torch.tensor([[1, 0], [1, 1]])
         out = normalize_padding_mask(mask, flatten=True)
+        assert out is not None
         assert out.shape == (4,)
 
     def test_invalid_rank_raises(self) -> None:

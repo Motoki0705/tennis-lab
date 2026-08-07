@@ -6,9 +6,7 @@ lob_probability: 0.25
 max_ballistic_apex_height_m: 8.0
 gravity: ${physics.gravity}
 
-# Net-hit resampling. Each attempt simulates only until net crossing/hit.
-net_retry_max_attempts: 12
-net_check_max_frames: 600
+# Net-hit adjustment within the explicitly enabled full-physics refinement.
 net_elevation_step_deg: 2.0
 
 # Physics-based landing refinement (shooting method). Compensates

@@ -16,18 +16,12 @@ from src.tasks.court_detection.configuration import (
     CourtRenderConfig,
     validate_paths_boundary,
 )
+from src.tasks.court_detection.model_io.contracts import CourtTask
 from src.tasks.court_detection.visualization.api.predict import (
-    predict_kp,
-    predict_line,
-    predict_seg,
+    build_court_visualization_pipeline,
 )
 from src.tasks.court_detection.visualization.io.frames import load_court_frames
-from src.tasks.court_detection.visualization.rendering import (
-    CourtRenderStyle,
-    render_kp_frames,
-    render_line_frames,
-    render_seg_frames,
-)
+from src.tasks.court_detection.visualization.rendering import CourtRenderStyle
 from src.utils.configuration import (
     MissingConfigurationKeyError,
     PathResolver,
@@ -57,7 +51,6 @@ class RuntimeConfig:
     checkpoint: str
     save: Path
     device: str
-    allow_device_fallback: bool
     resolver: PathResolver
     fps: float
     max_frames: int | None
@@ -74,7 +67,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     )
     vis = require_config_mapping(root, "visualization", path="configuration")
     run = require_config_mapping(root, "run", path="configuration")
-    _require_exact(run, {"output_dir", "device", "allow_device_fallback"}, path="run")
+    _require_exact(run, {"output_dir", "device"}, path="run")
     _require_exact(
         vis,
         {
@@ -131,9 +124,6 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         checkpoint=checkpoint,
         save=save_path,
         device=str(require_config_value(run, "device", str, path="run")),
-        allow_device_fallback=cast(
-            "bool", require_config_value(run, "allow_device_fallback", bool, path="run")
-        ),
         resolver=resolver,
         fps=fps,
         max_frames=max_frames,
@@ -172,48 +162,17 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         logger.info("Save path: %s", cfg.save)
         return 0
 
-    if cfg.task == "kp":
-        predictions = predict_kp(
-            checkpoint_path=cfg.checkpoint,
-            device=cfg.device,
-            resolver=cfg.resolver,
-            allow_device_fallback=cfg.allow_device_fallback,
-            frames=frames,
-        )
-        rendered = render_kp_frames(
-            frames=frames,
-            predictions=predictions,
-            style=cfg.style,
-            clip_label=cfg.clip_label,
-        )
-    elif cfg.task == "seg":
-        masks = predict_seg(
-            checkpoint_path=cfg.checkpoint,
-            device=cfg.device,
-            resolver=cfg.resolver,
-            allow_device_fallback=cfg.allow_device_fallback,
-            frames=frames,
-        )
-        rendered = render_seg_frames(
-            frames=frames,
-            masks=masks,
-            style=cfg.style,
-            clip_label=cfg.clip_label,
-        )
-    else:  # line
-        probs = predict_line(
-            checkpoint_path=cfg.checkpoint,
-            device=cfg.device,
-            resolver=cfg.resolver,
-            allow_device_fallback=cfg.allow_device_fallback,
-            frames=frames,
-        )
-        rendered = render_line_frames(
-            frames=frames,
-            probs=probs,
-            style=cfg.style,
-            clip_label=cfg.clip_label,
-        )
+    pipeline = build_court_visualization_pipeline(
+        cast(CourtTask, cfg.task),
+        checkpoint_path=cfg.checkpoint,
+        device=cfg.device,
+        resolver=cfg.resolver,
+    )
+    rendered = pipeline.render(
+        frames,
+        style=cfg.style,
+        clip_label=cfg.clip_label,
+    )
 
     save_gif(frames_rgb=rendered, path=cfg.save, fps=cfg.fps, loop=cfg.gif_loop)
     logger.info("Saved %s visualization to %s", cfg.task, cfg.save)

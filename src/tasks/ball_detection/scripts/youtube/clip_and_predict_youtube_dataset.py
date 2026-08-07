@@ -100,7 +100,6 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
                 aggregation=str(prediction.aggregation),
                 overwrite=bool(prediction.overwrite),
                 resolver=runtime_paths.resolver,
-                allow_device_fallback=bool(prediction.allow_device_fallback),
                 subpixel_refine=bool(prediction.subpixel_refine),
                 strict=bool(prediction.strict),
                 weights_only=bool(prediction.weights_only),

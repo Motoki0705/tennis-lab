@@ -10,7 +10,7 @@ import torch
 from tqdm import tqdm
 
 from src.submodules.configuration import require_absolute_path
-from src.submodules.models._base import BaseInferenceModel
+from src.submodules.models._base.inference_model import BaseInferenceModel
 from src.submodules.vendor.gvhmr.hmr2.preproc import get_batch
 from src.submodules.vendor.gvhmr.vitpose import build_vitpose_huge
 from src.submodules.vendor.gvhmr.vitpose.flip_utils import flip_heatmap_coco17
@@ -47,12 +47,11 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest, Pose2DResult]):
         checkpoint: str | Path,
         *,
         device: str | torch.device,
-        allow_device_fallback: bool,
         flip_test: bool,
         batch_size: int,
         head_config: ViTPoseHeadConfig,
     ) -> None:
-        super().__init__(device, allow_device_fallback=allow_device_fallback)
+        super().__init__(device)
         if type(flip_test) is not bool:
             raise TypeError("flip_test must be a bool.")
         if type(batch_size) is not int:
@@ -83,7 +82,8 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest, Pose2DResult]):
         self._pose = None
 
     def _predict_impl(self, request: Pose2DRequest) -> Pose2DResult:
-        assert self._pose is not None
+        if self._pose is None:
+            raise RuntimeError("ViTPose model did not load before prediction.")
         imgs, bbx_xys = get_batch(str(request.video_path), request.bbx_xys, img_ds=0.5)
 
         num_frames = imgs.shape[0]

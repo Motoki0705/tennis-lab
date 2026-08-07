@@ -9,8 +9,8 @@ import numpy as np
 import pytest
 
 import src.tennis_scene.pipeline.orchestrator as orchestrator_module
-from src.tennis_scene.pipeline.components.gvhmr import GVHMRResult
 from src.tennis_scene.pipeline.dependency_graph import ResolutionResult, Stage
+from src.tennis_scene.pipeline.model_io.gvhmr import GVHMRResult
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
 from tests.unit.tennis_scene.pipeline.config_factories import (
     make_gvhmr_config,
@@ -34,6 +34,7 @@ def _make_orchestrator(tmp_path: Path) -> TennisSceneOrchestrator:
             output_path=tmp_path / "gvhmr_result.json",
             load_path=tmp_path / "gvhmr_result.json",
         ),
+        gvhmr_chain=None,
         player_association_module=cast(Any, object()),
         ball_detection_module=None,
         plcs_module=cast(Any, object()),
@@ -61,8 +62,9 @@ def test_run_gvhmr_invokes_module_in_process_with_camera_paths(
     )
 
     class FakeGVHMRModule:
-        def __init__(self, config: Any) -> None:
+        def __init__(self, config: Any, chain: Any) -> None:
             self.config = config
+            assert chain is None
 
         def process(self, video_path: str | Path, max_frames: int | None = None) -> Any:
             calls.append((self.config, Path(video_path), max_frames))

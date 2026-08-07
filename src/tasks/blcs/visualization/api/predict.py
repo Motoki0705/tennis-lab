@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
 from src.tasks.blcs.inference.predictor import BLCSPredictor
-from src.tasks.blcs.visualization.adapters.predict_inputs import PredictorInputs
 from src.utils.configuration import PathResolver, PathRole
 
 logger = logging.getLogger(__name__)
@@ -18,14 +19,16 @@ def predict_positions(
     checkpoint_path: str | Path,
     resolver: PathResolver,
     device: str,
-    inputs: PredictorInputs,
+    scene: Mapping[str, Any],
+    cameras: list[int],
 ) -> np.ndarray:
     """Run BLCS prediction and return denormalized 3D positions.
 
     Args:
         checkpoint_path: Path to BLCS checkpoint.
         device: Inference device (``cpu``/``cuda``/``auto``-resolved value).
-        inputs: Predictor tensors prepared from scene cameras.
+        scene: Canonical BLCS scene mapping.
+        cameras: Explicit selected camera indices.
 
     Returns:
         Predicted positions as ``(T, 3)`` numpy array in meters.
@@ -36,17 +39,13 @@ def predict_positions(
         ),
         resolver=resolver,
         device=device,
-        allow_device_fallback=False,
     )
     logger.info(f"Model loaded successfully on {device}.")
-    outputs = predictor.predict(
-        ball_uv=inputs.ball_uv,
-        court_kp=inputs.court_kp,
-        ball_vis=inputs.ball_vis,
-        ball_mask=inputs.ball_mask,
-        court_vis=inputs.court_vis,
+    prediction = predictor.predict_scene(
+        scene,
+        cameras,
         denormalize=True,
     )
     logger.info("  [Inference] Running prediction...")
-    position: np.ndarray = outputs["position"].squeeze(0).cpu().numpy()
+    position: np.ndarray = prediction.position.squeeze(0).numpy()
     return position

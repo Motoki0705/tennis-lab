@@ -30,7 +30,11 @@ def ax2d() -> Iterator[Axes]:
 class TestMinimapRenderer:
     def test_draws_dots_trail_and_events(self, ax2d: Axes) -> None:
         trail = np.stack(
-            [np.linspace(-1.0, 1.0, 5), np.linspace(-8.0, -6.0, 5)], axis=-1
+            [
+                np.linspace(-1.0, 1.0, 5, dtype=np.float32),
+                np.linspace(-8.0, -6.0, 5, dtype=np.float32),
+            ],
+            axis=-1,
         )
         MinimapRenderer().render(
             ax2d,

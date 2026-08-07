@@ -13,6 +13,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          fetch-depth: 0
           submodules: false
 
       - name: Set up uv and Python 3.11

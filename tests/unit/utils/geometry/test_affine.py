@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 from torchvision.transforms.functional import _get_inverse_affine_matrix
 
@@ -31,7 +33,7 @@ def _torchvision_forward_matrix(
         [[inv[0], inv[1], inv[2]], [inv[3], inv[4], inv[5]], [0.0, 0.0, 1.0]],
         dtype=np.float64,
     )
-    return np.linalg.inv(inverse_matrix)
+    return cast(np.ndarray, np.linalg.inv(inverse_matrix))
 
 
 def test_centered_affine_matches_torchvision_single_shear_forward_matrix() -> None:

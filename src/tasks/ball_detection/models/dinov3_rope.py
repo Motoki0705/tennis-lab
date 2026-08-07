@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
@@ -14,9 +14,9 @@ from torch.utils.checkpoint import checkpoint
 from src.tasks.ball_detection.configuration import BallRuntimePaths, validate_model
 from src.utils.models.components import (
     RMSNorm,
+    RotaryFrequencyComputer,
     TransformerBlock,
     TransformerBlockConfig,
-    precompute_freqs_cis_nd,
 )
 from src.utils.models.loading import (
     DINOv3BackboneAdapter,
@@ -30,6 +30,42 @@ if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
+DecoderBlockExecutor = Callable[
+    [nn.Module, torch.Tensor, torch.Tensor, torch.Tensor],
+    torch.Tensor,
+]
+
+
+def _run_decoder_block(
+    block: nn.Module,
+    tokens: torch.Tensor,
+    freqs_cis: torch.Tensor,
+    attn_mask: torch.Tensor,
+) -> torch.Tensor:
+    return cast(
+        torch.Tensor,
+        block(tokens, freqs_cis=freqs_cis, attn_mask=attn_mask),
+    )
+
+
+def _checkpoint_decoder_block(
+    block: nn.Module,
+    tokens: torch.Tensor,
+    freqs_cis: torch.Tensor,
+    attn_mask: torch.Tensor,
+) -> torch.Tensor:
+    return cast(
+        torch.Tensor,
+        checkpoint(
+            block,
+            tokens,
+            freqs_cis=freqs_cis,
+            attn_mask=attn_mask,
+            use_reentrant=False,
+        ),
+    )
+
+
 def build_spatiotemporal_positions(
     *,
     num_frames: int,
@@ -38,8 +74,6 @@ def build_spatiotemporal_positions(
     device: torch.device | None = None,
 ) -> torch.Tensor:
     """Build row-major integer ``(time, y, x)`` coordinates for flattened tokens."""
-    if min(num_frames, patch_height, patch_width) <= 0:
-        raise ValueError("num_frames, patch_height, and patch_width must be positive.")
     time = torch.arange(num_frames, device=device, dtype=torch.long)
     y_coord = torch.arange(patch_height, device=device, dtype=torch.long)
     x_coord = torch.arange(patch_width, device=device, dtype=torch.long)
@@ -92,14 +126,7 @@ class FrameSharedHeatmapHead(nn.Module):
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
         """Map ``(B*T, C, Hp, Wp)`` patch grids to dense frame logits."""
-        if features.ndim != 4:
-            raise ValueError(
-                f"Heatmap head expects (B*T, C, Hp, Wp), got {tuple(features.shape)}."
-            )
-        output = self.network(features)
-        if not isinstance(output, torch.Tensor):
-            raise TypeError("FrameSharedHeatmapHead must return a tensor.")
-        return output
+        return cast(torch.Tensor, self.network(features))
 
 
 class DINOv3RoPEBallDetector(nn.Module):
@@ -164,7 +191,7 @@ class DINOv3RoPEBallDetector(nn.Module):
             backbone_lora is not None and backbone_lora.enabled
         )
         self.decoder_gradient_checkpointing = bool(decoder_gradient_checkpointing)
-        self.decoder_rope_base = decoder_rope_base
+        self._decoder_block_executor: DecoderBlockExecutor = _run_decoder_block
 
         self.backbone = backbone or load_dinov3_backbone(
             repository_path=repository_path,
@@ -205,6 +232,12 @@ class DINOv3RoPEBallDetector(nn.Module):
         self.decoder = nn.ModuleList(
             TransformerBlock(block_config) for _ in range(decoder_layers)
         )
+        self.decoder_rope_dim = decoder_rope_dim
+        self.decoder_rope = RotaryFrequencyComputer(
+            dim=decoder_rope_dim,
+            base=decoder_rope_base,
+            n_axes=3,
+        )
         self.decoder_norm = RMSNorm(decoder_dim)
         self.heatmap_head = FrameSharedHeatmapHead(
             in_channels=decoder_dim,
@@ -212,6 +245,7 @@ class DINOv3RoPEBallDetector(nn.Module):
             out_channels=self.num_classes,
             min_channels=head_min_channels,
         )
+        self.train(self.training)
 
     @staticmethod
     def _validate_init_args(
@@ -307,64 +341,42 @@ class DINOv3RoPEBallDetector(nn.Module):
         )
 
     def train(self, mode: bool = True) -> DINOv3RoPEBallDetector:
-        """Keep a frozen backbone deterministic while training the decoder."""
+        """Resolve train/eval execution once when module mode changes."""
         super().train(mode)
         if self.backbone_train_mode == "frozen" and not self.backbone_lora_enabled:
             self.backbone.eval()
+        self._decoder_block_executor = (
+            _checkpoint_decoder_block
+            if self.decoder_gradient_checkpointing and mode
+            else _run_decoder_block
+        )
         return self
 
-    def forward(self, frames: torch.Tensor) -> torch.Tensor:
-        """Return logits ``(B, C, T, H, W)`` from ``(B, T, 3, H, W)`` frames."""
-        self._validate_forward_input(frames)
-        batch_size, num_frames, channels, height, width = frames.shape
+    def forward(
+        self,
+        frames: torch.Tensor,
+        patch_tokens: torch.Tensor,
+        freqs_cis: torch.Tensor,
+        attn_mask: torch.Tensor,
+    ) -> torch.Tensor:
+        """Decode boundary-prepared DINO tokens into dense ball logits."""
+        batch_size, num_frames, _channels, height, width = frames.shape
         patch_height = height // self.patch_size
         patch_width = width // self.patch_size
-
-        flat_frames = frames.reshape(
-            batch_size * num_frames,
-            channels,
-            height,
-            width,
-        )
-        patch_tokens = self._extract_patch_tokens(flat_frames)
         expected_tokens = patch_height * patch_width
-        if patch_tokens.shape[1] != expected_tokens:
-            raise RuntimeError(
-                "DINOv3 patch-token count does not match the input grid: "
-                f"expected {expected_tokens}, got {patch_tokens.shape[1]}."
-            )
-
         tokens = patch_tokens.reshape(
             batch_size,
             num_frames * expected_tokens,
             self.backbone.embed_dim,
         )
         tokens = self.token_dropout(self.token_projection(tokens))
-        positions = build_spatiotemporal_positions(
-            num_frames=num_frames,
-            patch_height=patch_height,
-            patch_width=patch_width,
-            device=frames.device,
-        )
-        first_block = self.decoder[0]
-        if not isinstance(first_block, TransformerBlock):
-            raise TypeError("DINOv3 decoder must contain TransformerBlock modules.")
-        rope_dim = first_block.attn.rope_dim
-        freqs_cis = precompute_freqs_cis_nd(
-            dim=rope_dim,
-            pos=positions,
-            base=self.decoder_rope_base,
-        )
         for block in self.decoder:
-            if self.decoder_gradient_checkpointing and self.training:
-                tokens = checkpoint(
-                    block,
-                    tokens,
-                    freqs_cis=freqs_cis,
-                    use_reentrant=False,
-                )
-            else:
-                tokens = block(tokens, freqs_cis=freqs_cis)
+            tokens = self._decoder_block_executor(
+                block,
+                tokens,
+                freqs_cis,
+                attn_mask,
+            )
         tokens = self.decoder_norm(tokens)
 
         patch_grids = (
@@ -384,11 +396,6 @@ class DINOv3RoPEBallDetector(nn.Module):
             )
         )
         frame_logits = self.heatmap_head(patch_grids)
-        if frame_logits.shape[-2:] != (height, width):
-            raise RuntimeError(
-                "Heatmap head output size does not match the input size: "
-                f"{tuple(frame_logits.shape[-2:])} != {(height, width)}."
-            )
         output = (
             frame_logits.reshape(
                 batch_size,
@@ -400,35 +407,7 @@ class DINOv3RoPEBallDetector(nn.Module):
             .permute(0, 2, 1, 3, 4)
             .contiguous()
         )
-        if not isinstance(output, torch.Tensor):
-            raise TypeError("DINOv3 heatmap output must be a tensor.")
-        return output
-
-    def _extract_patch_tokens(self, flat_frames: torch.Tensor) -> torch.Tensor:
-        if self.backbone_train_mode == "frozen" and not self.backbone_lora_enabled:
-            with torch.no_grad():
-                features = self.backbone.forward_features(flat_frames)
-        else:
-            features = self.backbone.forward_features(flat_frames)
-        tokens = features["x_norm_patchtokens"]
-        if not isinstance(tokens, torch.Tensor):
-            raise TypeError("DINOv3 x_norm_patchtokens must be a tensor.")
-        return tokens
-
-    def _validate_forward_input(self, frames: torch.Tensor) -> None:
-        if frames.ndim != 5:
-            raise ValueError(
-                "DINOv3RoPEBallDetector expects (B, T, C, H, W), "
-                f"got {tuple(frames.shape)}."
-            )
-        if frames.shape[2] != self.in_channels:
-            raise ValueError(
-                f"Expected {self.in_channels} channels, got {frames.shape[2]}."
-            )
-        if tuple(frames.shape[-2:]) != self.image_size:
-            raise ValueError(
-                f"Expected image_size={self.image_size}, got {tuple(frames.shape[-2:])}."
-            )
+        return cast(torch.Tensor, output)
 
 
 def _parse_pair(value: Sequence[int], *, name: str) -> tuple[int, int]:

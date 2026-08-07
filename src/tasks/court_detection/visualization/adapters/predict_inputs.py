@@ -9,13 +9,16 @@ from __future__ import annotations
 
 import numpy as np
 
+from src.tasks.court_detection.model_io.contracts import CourtModelIOError
 from src.tasks.court_detection.visualization.io.frames import CourtFrame
 
 
 def to_predictor_input(frame: CourtFrame) -> np.ndarray:
     """Convert a loaded frame into the predictor input array."""
     rgb = frame.rgb
-    if rgb.dtype != np.uint8:
-        rgb = rgb.astype(np.uint8)
+    if rgb.ndim != 3 or rgb.shape[2] != 3 or rgb.dtype != np.uint8:
+        raise CourtModelIOError(
+            "Visualization frames must have shape (H, W, 3) and dtype uint8."
+        )
     contiguous: np.ndarray = np.ascontiguousarray(rgb)
     return contiguous

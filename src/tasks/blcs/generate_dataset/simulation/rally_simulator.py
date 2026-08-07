@@ -560,6 +560,9 @@ class RallySimulator:
 
         Returns:
             Frame index for return hit (sim fps).
+
+        A requested late return without a recorded second bounce uses the
+        bounded post-first-bounce timing window defined for that case.
         """
         cfg = self.rally_config
         max_idx = len(trajectory_sim) - 1
@@ -584,7 +587,7 @@ class RallySimulator:
                     else min(t_bounce2_sim + 240, max_idx)
                 )
             else:
-                # No 2nd bounce -> fallback to normal timing
+                # Explicit late-return contract when a second bounce is absent.
                 start = max(0, t_bounce1_sim)
                 estimated_b2 = t_bounce1_sim + 240 if t_bounce1_sim >= 0 else max_idx
                 end = min(estimated_b2, max_idx)

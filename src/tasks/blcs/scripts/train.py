@@ -23,7 +23,7 @@ from omegaconf import DictConfig
 
 from src.tasks.base.configuration import TrainingRuntimeConfig
 from src.tasks.blcs.configuration import validate_training_boundary
-from src.tasks.blcs.generate_dataset.config import build_generator_config
+from src.tasks.blcs.model_io.training import optional_standard_generator_config
 from src.tasks.blcs.training.runner import BLCSTrainingRunner
 from src.utils.hydra import hydra_main
 from src.utils.paths import PROJECT_ROOT
@@ -38,11 +38,8 @@ from src.utils.paths import PROJECT_ROOT
 def main(config: DictConfig) -> None:
     """Hydra entry point."""
     TrainingRuntimeConfig.from_config(config, repository_root=PROJECT_ROOT)
-    model = validate_training_boundary(config)
-    generator_config = None
-    is_tracking = model.name == "blcs_track_query"
-    if str(config.data.backend) == "chunked" and not is_tracking:
-        generator_config = build_generator_config(config)
+    validate_training_boundary(config)
+    generator_config = optional_standard_generator_config(config)
     runner = BLCSTrainingRunner(generator_config=generator_config)
     runner.run(config)
 

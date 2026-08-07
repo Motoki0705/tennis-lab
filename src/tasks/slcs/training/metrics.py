@@ -20,6 +20,7 @@ import math
 import torch
 from torch import Tensor
 
+from src.tasks.slcs.model_io import SLCSDecodedOutput, SLCSTrainingTargets
 from src.utils.geometry.angles import angular_error
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
@@ -57,34 +58,33 @@ class SLCSMetrics:
 
     def update(
         self,
-        outputs: dict[str, Tensor],
-        batch: dict[str, Tensor],
+        outputs: SLCSDecodedOutput,
+        targets: SLCSTrainingTargets,
     ) -> dict[str, float]:
         """Accumulate one batch; returns current-batch means for logging."""
-        frame_mask = batch["frame_mask"] > 0
-        player_mask = (batch["target_player_valid"] > 0) & frame_mask.unsqueeze(1)
-        ball_mask = (batch["target_ball_valid"] > 0) & frame_mask
+        player_mask = targets.player_mask
+        ball_mask = targets.ball_mask
 
-        scale = self._scale.to(outputs["player_position"].device)
+        scale = self._scale.to(outputs.player_position.device)
 
         result: dict[str, float] = {}
         if bool(player_mask.any()):
-            pred_pos = outputs["player_position"][player_mask] * scale
-            target_pos = batch["target_player_position"][player_mask] * scale
+            pred_pos = outputs.player_position[player_mask] * scale
+            target_pos = targets.target_player_position[player_mask] * scale
             pos_err = (pred_pos - target_pos).norm(dim=-1)
             ang_err_deg = (
                 angular_error(
-                    outputs["player_rotation"][player_mask],
-                    batch["target_player_rotation"][player_mask],
+                    outputs.player_rotation[player_mask],
+                    targets.target_player_rotation[player_mask],
                 )
                 * 180.0
                 / math.pi
             )
             pos_b = (
-                outputs["player_position_log_b"][player_mask].exp() * self._scale_mean
+                outputs.player_position_log_b[player_mask].exp() * self._scale_mean
             )
             rot_b = (
-                outputs["player_rotation_log_b"][player_mask].exp() * 180.0 / math.pi
+                outputs.player_rotation_log_b[player_mask].exp() * 180.0 / math.pi
             )
             self._player_pos_errors.append(pos_err.detach().cpu())
             self._player_ang_errors.append(ang_err_deg.detach().cpu())
@@ -93,10 +93,10 @@ class SLCSMetrics:
             result["player_position_error_m"] = float(pos_err.mean().item())
             result["player_angular_error_deg"] = float(ang_err_deg.mean().item())
         if bool(ball_mask.any()):
-            pred_ball = outputs["ball_position"][ball_mask] * scale
-            target_ball = batch["target_ball_position"][ball_mask] * scale
+            pred_ball = outputs.ball_position[ball_mask] * scale
+            target_ball = targets.target_ball_position[ball_mask] * scale
             ball_err = (pred_ball - target_ball).norm(dim=-1)
-            ball_b = outputs["ball_position_log_b"][ball_mask].exp() * self._scale_mean
+            ball_b = outputs.ball_position_log_b[ball_mask].exp() * self._scale_mean
             self._ball_pos_errors.append(ball_err.detach().cpu())
             self._ball_pos_b.append(ball_b.detach().cpu())
             result["ball_position_error_m"] = float(ball_err.mean().item())

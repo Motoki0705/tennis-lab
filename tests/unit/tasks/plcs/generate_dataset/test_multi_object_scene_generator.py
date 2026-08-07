@@ -149,6 +149,7 @@ class _MotionSceneStub:
             rotation=rotation,
             canonical_pose_3d=skeleton,
             cameras=cameras,
+            num_persons=1,
             human_kp_3d=world,
         )
 
@@ -181,9 +182,10 @@ def test_multi_person_uses_motion_scenes_and_canonical_writer(tmp_path) -> None:
     assert "bbox" not in sample
     assert 1 <= int(sample["target_slot_mask"].sum()) <= 2
     assert set(sample["target_instance_id"].unique().tolist()) == {-1, 0, 1}
+    missing_count = int((~sample["target_presence"]).sum().item())
     assert torch.equal(
         sample["target_rotation"][~sample["target_presence"]],
-        torch.tensor([1.0, 0.0]).expand((~sample["target_presence"]).sum(), 2),
+        torch.tensor([1.0, 0.0]).expand(missing_count, 2),
     )
     detection_ids = sample["detection_gt_index"][0]
     for object_id in range(2):

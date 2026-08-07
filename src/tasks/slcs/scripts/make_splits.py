@@ -24,12 +24,13 @@ from collections import Counter
 from omegaconf import DictConfig
 
 from src.tasks.slcs.configuration import SLCSSplitConfig
-from src.tasks.slcs.data.contract import DatasetContractError, DatasetIndex
+from src.tasks.slcs.data.annotation import SLCSDataIndex
 from src.tasks.slcs.data.splits import (
     generate_overfit_splits,
     generate_recording_splits,
     save_split_file,
 )
+from src.tennis_scene.generate_dataset.manifest import DatasetManifestError
 from src.utils.hydra import hydra_main
 
 
@@ -38,12 +39,12 @@ def run(config: DictConfig) -> None:
     runtime = SLCSSplitConfig.from_config(config)
     split_file = runtime.data.split_file
     if split_file.exists() and not runtime.overwrite:
-        raise DatasetContractError(
+        raise DatasetManifestError(
             f"split file already exists: {split_file}. Set splits.overwrite=true "
             "to regenerate (this changes train/val/test membership)."
         )
 
-    index = DatasetIndex.load(runtime.data.dataset_root)
+    index = SLCSDataIndex.load(runtime.data.dataset_root)
     assignments = (
         generate_overfit_splits(index)
         if runtime.overfit

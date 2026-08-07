@@ -12,7 +12,6 @@ metadata/scalar files. Arrays are loaded via ``numpy.load`` with
 from __future__ import annotations
 
 import json
-import warnings
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,6 +24,10 @@ from src.tasks.base.configuration import as_config_mapping, require_config_mappi
 from src.utils.data.scene_io import load_scene_payload
 
 SampleT = TypeVar("SampleT")
+
+
+class SceneDataContractError(ValueError):
+    """Raised when persisted scene metadata contradicts the scene payload."""
 
 
 @dataclass(frozen=True)
@@ -368,7 +371,8 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
                 return {}
         return dict(meta_raw) if isinstance(meta_raw, dict) else {}
 
-    def _fallback_num_frames_from_payload(self, payload: dict[str, Any]) -> int:
+    def _temporal_payload_lengths(self, payload: dict[str, Any]) -> dict[str, int]:
+        lengths: dict[str, int] = {}
         for key in (
             "ball_pos_norm",
             "ball_pos_world",
@@ -380,9 +384,9 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
             if value is None:
                 continue
             arr = np.asarray(value)
-            if arr.ndim >= 1 and int(arr.shape[0]) > 0:
-                return int(arr.shape[0])
-        return 0
+            if arr.ndim >= 1:
+                lengths[key] = int(arr.shape[0])
+        return lengths
 
     def _resolve_num_frames(
         self,
@@ -391,31 +395,25 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
         meta: dict[str, Any],
         payload: dict[str, Any],
     ) -> int:
-        fallback = self._fallback_num_frames_from_payload(payload)
         meta_num_raw = meta.get("num_frames")
-        meta_num: int | None = None
-        if meta_num_raw is not None:
-            try:
-                meta_num = int(meta_num_raw)
-            except (TypeError, ValueError):
-                meta_num = None
-
-        if meta_num is None or meta_num <= 0:
-            warnings.warn(
-                f"{path}: invalid meta['num_frames']={meta_num_raw!r}; using fallback={fallback}",
-                stacklevel=2,
+        if type(meta_num_raw) is not int or meta_num_raw <= 0:
+            raise SceneDataContractError(
+                f"{path}: meta['num_frames'] must be a positive int; "
+                f"got {meta_num_raw!r}."
             )
-            return fallback
-
-        if fallback > 0 and meta_num > fallback:
-            warnings.warn(
-                f"{path}: meta['num_frames']={meta_num} exceeds available length {fallback}; "
-                "using fallback",
-                stacklevel=2,
+        lengths = self._temporal_payload_lengths(payload)
+        incompatible = {
+            key: length for key, length in lengths.items() if length < meta_num_raw
+        }
+        if incompatible:
+            details = ", ".join(
+                f"{key}={length}" for key, length in sorted(incompatible.items())
             )
-            return fallback
-
-        return meta_num
+            raise SceneDataContractError(
+                f"{path}: meta['num_frames']={meta_num_raw} exceeds temporal "
+                f"payload length(s): {details}."
+            )
+        return meta_num_raw
 
     def _extract_scene_header(self, path: Path) -> SceneHeader:
         """Extract a lightweight header from a scene directory.
@@ -436,7 +434,7 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
         return SceneHeader(
             path=path,
             meta=dict(meta),
-            num_frames=max(0, int(num_frames)),
+            num_frames=num_frames,
             num_cameras=max(0, int(num_cameras)),
         )
 

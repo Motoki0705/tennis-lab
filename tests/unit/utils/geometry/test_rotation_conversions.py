@@ -1,6 +1,7 @@
 """Tests for src/utils/geometry/rotation_conversions.py."""
 
 import math
+from typing import cast
 
 import pytest
 import torch
@@ -29,7 +30,7 @@ def random_rotation_matrices(batch: int, seed: int = 0) -> torch.Tensor:
     q = q * sign[:, None, :]
     det = torch.linalg.det(q)
     q[:, :, 0] = q[:, :, 0] * det[:, None]
-    return q
+    return cast(torch.Tensor, q)
 
 
 class TestKnownValues:

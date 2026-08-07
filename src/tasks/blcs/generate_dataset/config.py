@@ -117,8 +117,6 @@ def build_generator_config(cfg: DictConfig) -> GeneratorConfig:
             cfg.targeted_velocity.max_ballistic_apex_height_m
         ),
         gravity=float(cfg.targeted_velocity.gravity),
-        net_retry_max_attempts=int(cfg.targeted_velocity.net_retry_max_attempts),
-        net_check_max_frames=int(cfg.targeted_velocity.net_check_max_frames),
         net_elevation_step_deg=float(cfg.targeted_velocity.net_elevation_step_deg),
         landing_refine_enabled=bool(cfg.targeted_velocity.landing_refine_enabled),
         landing_refine_max_iters=int(cfg.targeted_velocity.landing_refine_max_iters),

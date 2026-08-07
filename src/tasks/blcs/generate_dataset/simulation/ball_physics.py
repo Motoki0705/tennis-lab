@@ -396,7 +396,7 @@ class BallPhysics:
         if abs(x_at_net) > HALF_DOUBLES_WIDTH:
             return float("inf")
 
-        net_height = self._net_height_at_x(x_at_net)
+        net_height = net_height_at_x(x_at_net)
         return float(z_at_net - net_height)
 
     def apply_net_collision(
@@ -452,12 +452,12 @@ class BallPhysics:
             return None
 
         cord_r = max(float(self.config.net_cord_radius), 1e-4)
-        net_height = self._net_height_at_x(x_at_net)
+        net_height = net_height_at_x(x_at_net)
         mesh_top = net_height - cord_r
         yy = y_at_net / half_t
         cap_term = max(0.0, 1.0 - yy * yy)
         cap_top = mesh_top + cord_r * math.sqrt(cap_term)
-        return cap_top
+        return float(cap_top)
 
     def _net_surface_normal(
         self,
@@ -475,17 +475,19 @@ class BallPhysics:
 
         half_t = max(float(self.config.net_half_thickness), 1e-4)
         cord_r = max(float(self.config.net_cord_radius), 1e-4)
-        net_height = self._net_height_at_x(x_at_net)
+        net_height = net_height_at_x(x_at_net)
         mesh_top = net_height - cord_r
 
         vy = float(incoming_velocity[1].item())
-        y_fallback = -1.0 if vy >= 0.0 else 1.0
+        incoming_side_y = -1.0 if vy >= 0.0 else 1.0
 
         device = incoming_velocity.device
         dtype = incoming_velocity.dtype
 
         if z_at_net <= mesh_top:
-            normal = torch.tensor([0.0, y_fallback, 0.0], device=device, dtype=dtype)
+            normal = torch.tensor(
+                [0.0, incoming_side_y, 0.0], device=device, dtype=dtype
+            )
             return normal, False
 
         # Cord cap (upper half-ellipse): F(y,z)= (y/half_t)^2 + ((z-mesh_top)/cord_r)^2 - 1
@@ -495,18 +497,14 @@ class BallPhysics:
         ny = dFy
         nz = dFz
         if abs(ny) < 1e-8 and abs(nz) < 1e-8:
-            ny = y_fallback
+            ny = incoming_side_y
             nz = 0.0
         elif abs(ny) < 1e-8:
-            ny = 0.15 * y_fallback
+            ny = 0.15 * incoming_side_y
 
         normal = torch.tensor([0.0, ny, nz], device=device, dtype=dtype)
         normal = normal / (normal.norm() + 1e-8)
         return normal, True
-
-    def _net_height_at_x(self, x_at_net: float) -> float:
-        """Get net height at a given x position (metres)."""
-        return float(net_height_at_x(x_at_net))
 
     def check_fence_collision(
         self,

@@ -186,8 +186,10 @@ class CellManager:
         if x > self._xd:
             return 7  # Ad Side Out
 
-        # Fallback (should not happen with well-formed positions)
-        return 8
+        raise ValueError(
+            "Position does not lie on the requested canonical court side: "
+            f"x={x}, y={y}."
+        )
 
     # ------------------------------------------------------------------
     # Cell -> Bounds mapping

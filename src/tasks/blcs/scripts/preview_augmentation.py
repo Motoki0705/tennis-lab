@@ -32,7 +32,7 @@ import numpy as np
 import torch
 from omegaconf import DictConfig
 
-from src.tasks.base.preview import (
+from src.tasks.base.visualization.preview import (
     enable_all_augmentation_blocks,
     resolve_sample_indices,
 )

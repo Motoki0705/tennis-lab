@@ -28,7 +28,3 @@ class BasePipelineModule(ABC):
     def process(self, *args: Any, **kwargs: Any) -> Any:
         """Process input data and return results."""
         pass
-
-
-if __name__ == "__main__":
-    print("BasePipelineModule: abstract base class for pipeline modules")

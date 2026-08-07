@@ -18,7 +18,7 @@ from src.utils.video import read_video_frame
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from src.tennis_scene.pipeline.components.gvhmr import GVHMRResult
+    from src.tennis_scene.pipeline.model_io.gvhmr import GVHMRResult
     from src.utils.video import VideoInfo
 
 LOGGER = logging.getLogger(__name__)
@@ -248,8 +248,9 @@ class PlayerAssociationModule(BasePipelineModule):
         camera_ids = [str(camera_id) for camera_id in camera_ids]
 
         if self.config.source == "load":
-            assert self.config.load_path is not None
             load_path = self.config.load_path
+            if load_path is None:
+                raise RuntimeError("Validated load source is missing load_path")
             if not load_path.is_file():
                 raise FileNotFoundError(
                     f"Player association artifact not found: {load_path}"
@@ -522,9 +523,7 @@ class PlayerAssociationModule(BasePipelineModule):
                         segment=segment,
                         camera_index=camera_index,
                         local_player_index=local_player_index,
-                        track_id=result.track_ids[local_player_index]
-                        if result.track_ids is not None
-                        else local_player_index,
+                        track_id=result.track_ids[local_player_index],
                     ),
                 )
             cv2.putText(
@@ -693,14 +692,9 @@ def apply_player_association(
         )
         smpl_betas[player_index] = reference_result.smpl_betas[reference_local_player]
 
-    track_ids_by_camera = []
-    for result in gvhmr_results:
-        if result.track_ids is not None:
-            track_ids_by_camera.append(result.track_ids.astype(np.int32))
-        else:
-            track_ids_by_camera.append(
-                np.arange(result.human_kp_2d.shape[0], dtype=np.int32)
-            )
+    track_ids_by_camera = [
+        result.track_ids.astype(np.int32) for result in gvhmr_results
+    ]
 
     return PlayerAssociationApplied(
         human_kp_2d=human_kp_2d,
@@ -712,7 +706,3 @@ def apply_player_association(
         track_ids=track_ids,
         track_ids_by_camera=track_ids_by_camera,
     )
-
-
-if __name__ == "__main__":
-    print("PlayerAssociationModule: manual player association module")

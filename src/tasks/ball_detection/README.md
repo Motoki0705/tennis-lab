@@ -5,16 +5,20 @@
 ## Modules
 
 ### (ルート)
-- **`__init__.py`**: `build_ball_detection_model` を re-export するパッケージ入口。
+- **`__init__.py`**: 検証済みmodel+adapterを返す `build_ball_detection_pair` のパッケージ入口。
 
 ### models/
-- **`__init__.py`**: `build_ball_detection_model(config)` が `model.name` (`stunet`/`conv_next_unet`/`dinov3_rope`) からモデルを構築。
+- **`__init__.py`**: model実装とdiscriminator factoryの公開面。
 - **`spatiotemporal_unet.py`**: `SpatioTemporalUNet`。`(B,C,T,H,W)→(B,1,T,H/2,W/2)`、`T>=8` 必須の時空間 U-Net。
 - **`conv_next_unet.py`**: `ConvNeXtUNet`。ConvNeXt ブロックベースの spatio-temporal U-Net(`T>=1` で動作)。
-- **`dinov3_rope.py`**: `DINOv3RoPEBallDetector`。DINOv3 backbone + 3軸RoPE decoder による RGB専用ヒートマップ検出器。
-- **`input_adapter.py`**: `images` を `input_mode`(`rgb`/`mdd`)・`input_layout` に応じてモデル入力へ変換。
+- **`dinov3_rope.py`**: `DINOv3RoPEBallDetector`。model I/O境界で準備済みのDINOv3 patch token・RoPE周波数・attention maskを3軸RoPE decoderで処理するRGB専用ヒートマップ検出器。
 - **`discriminators/__init__.py`**: `build_ball_detection_discriminator(config)` の工場関数。
-- **`discriminators/trajectory_discriminator.py`**: `BallTrajectoryDiscriminator`。2D軌道用の GAN discriminator。
+
+### model_io/
+- **`contracts.py`**: RGB入力、model call、学習batch、typed predictionの契約。
+- **`adapters.py`**: forward前にfloat32・有限値・`[0, 1]`を含む入力契約を検証し、RGB/MDD・layout変換とloss/output decodeを担当。DINOv3ではraw backbone応答の検証、patch token decode、RoPE周波数とattention maskの生成もこの境界で完了する。
+- **`factory.py`**: `model.name` (`stunet`/`conv_next_unet`/`dinov3_rope`) からmodel+adapterを一度だけ選択し、DINOv3 backboneのfrozen/trainable実行経路も構築時にbind。
+- **`evaluation.py`**: checkpointから検証済みpairを読み、評価loopへprobability heatmapを提供。
 
 ### data/
 - **`__init__.py`**: `build_ball_detection_datamodule(config)`。`data.source` からDataModuleを選択。
@@ -32,7 +36,6 @@
 
 ### training/
 - **`lightning_module.py`**: `BallDetectionLightningModule`。Focal損失によるヒートマップ学習、GAN併用可。
-- **`losses.py`**: 実体は空。旧実装は `src.tasks.base.training.losses` へ移設済み。
 - **`metrics.py`**: `BallDetectionMetrics`。ハンガリアン対応付けによる `precision`/`recall`/`f1`/`mean_distance_px`。
 - **`runner.py`**: `BallDetectionTrainingRunner`。datamodule/lightning_module構築の薄いアダプタ。
 - **`staged_calibration.py`**: `probe_batch_size_by_t()`。`T` ごとのOOM較正でバッチサイズを決定。
@@ -40,13 +43,12 @@
 - **`staged_runner.py`**: `StagedBallDetectionTrainingRunner`。フェーズ間のOOM較正とweightのみ引き継ぎを制御。
 
 ### inference/
-- **`predictor.py`**: `BallDetectionPredictor`。checkpointから `coords`/`visibility`/(任意)`heatmaps` を推論。
+- **`predictor.py`**: `BallDetectionPredictor`。checkpointのadapterを維持し、CPU上の `BallPrediction(coords, confidence, heatmaps)` を返す。
 
 ### evaluation/
 - **`contracts.py`**: 評価マニフェスト(`ball_detection_evaluation_manifest_v1`)の型付き契約。
 - **`configuration.py`**: checkpoint設定読み出しとモデル名整合性検証。
 - **`dataset_provenance.py`**: データセットの provenance(ハッシュ・ソース)記録。
-- **`adapters.py`**: 任意モデルをヒートマップ契約へ適合させる `BallPredictionAdapter`。
 - **`metrics.py`**: `StratifiedBallMetrics`。全体/データソース別のメトリクス追跡。
 - **`evaluator.py`**: 1 job(checkpoint×dataset×split) を評価する `DefaultJobEvaluator`。
 - **`reporting.py`**: `summary.json`/`comparison.csv`/`comparison.md` を生成。

@@ -12,11 +12,9 @@ from src.tasks.plcs.configuration import PLCSModelConfig
 from src.tasks.plcs.data.tracking_types import PLCSTrackingPrediction
 from src.utils.models import (
     RMSNorm,
+    RotaryFrequencyComputer,
     TransformerBlock,
     TransformerBlockConfig,
-    build_self_attn_mask,
-    precompute_freqs_cis,
-    precompute_freqs_cis_nd,
 )
 from src.utils.models.embeddings import (
     CourtPlayerGroupEmbedding,
@@ -35,15 +33,13 @@ class PLCSTrackQueryModel(nn.Module):
         self.num_stages = config.integer("num_stages")
         self.num_joints = config.integer("num_joints")
         self.role_rope_enabled = config.boolean("role_rope_enabled")
-        self.mask_invisible_observations = config.boolean("mask_invisible_observations")
         head_dim = self.hidden_dim // self.num_heads
         self.rope_dim = config.integer("rope_dim")
-        if self.hidden_dim % self.num_heads != 0:
-            raise ValueError("hidden_dim must be divisible by num_heads.")
-        if self.rope_dim > head_dim or self.rope_dim % 2:
-            raise ValueError(
-                "rope_dim must be even and no larger than the attention head dim."
-            )
+        self._select_rope_coordinates = (
+            self._role_rope_coordinates
+            if self.role_rope_enabled
+            else self._camera_time_rope_coordinates
+        )
         self.num_court_tokens = 14
         self.invisible_token = InvisibleTokenEmbedding(
             dim=self.hidden_dim,
@@ -74,6 +70,16 @@ class PLCSTrackQueryModel(nn.Module):
         )
         self.temporal_blocks = nn.ModuleList(
             [TransformerBlock(block_config) for _ in range(self.num_stages)]
+        )
+        self.spatial_frequency_computer = RotaryFrequencyComputer(
+            dim=self.rope_dim,
+            base=10000.0,
+            n_axes=3,
+        )
+        self.temporal_frequency_computer = RotaryFrequencyComputer(
+            dim=self.rope_dim,
+            base=10000.0,
+            n_axes=1,
         )
         self.output_norm = RMSNorm(self.hidden_dim)
         self.position_head = nn.Linear(self.hidden_dim, 3)
@@ -118,38 +124,15 @@ class PLCSTrackQueryModel(nn.Module):
         court_kp: torch.Tensor,
         court_vis: torch.Tensor,
         frame_mask: torch.Tensor,
-        view_mask: torch.Tensor,
+        camera_state_valid: torch.Tensor,
+        spatial_attention_mask: torch.Tensor,
+        temporal_attention_mask: torch.Tensor,
     ) -> PLCSTrackingPrediction:
         batch_size, num_views, num_frames, num_detections, num_joints, _ = (
             human_kp.shape
         )
-        if num_joints != self.num_joints:
-            raise ValueError(f"Expected {self.num_joints} joints, got {num_joints}.")
-        if detection_mask.shape != human_kp.shape[:-2]:
-            raise ValueError(
-                "detection_mask must match human_kp through its detection axis, got "
-                f"detection_mask={tuple(detection_mask.shape)} and "
-                f"human_kp={tuple(human_kp.shape)}."
-            )
-        observation_padding_valid = (
-            view_mask[:, :, None, None] & frame_mask[:, None, :, None]
-        ).expand(-1, -1, -1, num_detections)
-        detection_mask = detection_mask.bool()
-        if court_kp.shape[:3] != (batch_size, num_views, num_frames):
-            raise ValueError("court_kp leading dimensions must match human_kp (B,V,T).")
-        if court_kp.shape[3:] != (self.num_court_tokens, 2):
-            raise ValueError(
-                "court_kp must contain all 14 annotated UV points; "
-                f"got shape {tuple(court_kp.shape)}."
-            )
-        if court_vis.shape != court_kp.shape[:-1]:
-            raise ValueError(
-                "court_vis must match court_kp without its UV axis, got "
-                f"court_vis={tuple(court_vis.shape)} and "
-                f"court_kp={tuple(court_kp.shape)}."
-            )
-        court_visible = court_vis if court_vis.dtype == torch.bool else court_vis > 0
-        masked_court = court_kp.masked_fill(~court_visible.unsqueeze(-1), 0.0)
+        del num_joints
+        masked_court = court_kp.masked_fill(~court_vis.unsqueeze(-1), 0.0)
         court_for_detections = masked_court.unsqueeze(3).expand(
             -1, -1, -1, num_detections, -1, -1
         )
@@ -173,11 +156,6 @@ class PLCSTrackQueryModel(nn.Module):
             num_views * num_detections,
             self.hidden_dim,
         )
-        camera_padding_valid = observation_padding_valid.permute(0, 2, 1, 3)
-        camera_attention_valid = camera_padding_valid.clone()
-        if self.mask_invisible_observations:
-            camera_attention_valid &= detection_mask.permute(0, 2, 1, 3)
-        camera_state_valid = camera_attention_valid
         camera_tokens = camera_tokens * camera_state_valid.reshape(
             batch_size, num_frames, -1
         ).unsqueeze(-1)
@@ -194,35 +172,17 @@ class PLCSTrackQueryModel(nn.Module):
             num_queries=self.num_queries,
             device=human_kp.device,
         )
-        rope_coordinates = coordinates
-        if not self.role_rope_enabled:
-            rope_coordinates = coordinates.clone()
-            rope_coordinates[..., 2] = 0
-        spatial_freqs = precompute_freqs_cis_nd(dim=self.rope_dim, pos=rope_coordinates)
-        temporal_freqs = precompute_freqs_cis(
-            dim=self.rope_dim, seqlen=num_frames, device=human_kp.device
+        rope_coordinates = self._select_rope_coordinates(coordinates)
+        spatial_freqs = self.spatial_frequency_computer(rope_coordinates)
+        temporal_freqs = self.temporal_frequency_computer(
+            torch.arange(num_frames, device=human_kp.device).unsqueeze(-1)
         )
-        slot_padding_valid = frame_mask[:, :, None].expand(-1, -1, self.num_queries)
-        spatial_valid = torch.cat(
-            [
-                slot_padding_valid,
-                camera_attention_valid.reshape(batch_size, num_frames, -1),
-            ],
-            dim=2,
-        ).flatten(0, 1)
-        spatial_mask, _ = build_self_attn_mask(spatial_valid)
-        temporal_valid = (
-            frame_mask[:, None]
-            .expand(-1, self.num_queries, -1)
-            .reshape(batch_size * self.num_queries, num_frames)
-        )
-        temporal_mask, _ = build_self_attn_mask(temporal_valid)
         for spatial_block, temporal_block in zip(
             self.spatial_blocks, self.temporal_blocks, strict=True
         ):
             tokens = torch.cat([slots, camera_tokens], dim=2).flatten(0, 1)
             tokens = spatial_block(
-                tokens, freqs_cis=spatial_freqs, attn_mask=spatial_mask
+                tokens, freqs_cis=spatial_freqs, attn_mask=spatial_attention_mask
             ).view(batch_size, num_frames, -1, self.hidden_dim)
             slots = tokens[:, :, : self.num_queries] * frame_mask[:, :, None, None]
             camera_tokens = tokens[
@@ -232,7 +192,7 @@ class PLCSTrackQueryModel(nn.Module):
                 batch_size * self.num_queries, num_frames, self.hidden_dim
             )
             temporal = temporal_block(
-                temporal, freqs_cis=temporal_freqs, attn_mask=temporal_mask
+                temporal, freqs_cis=temporal_freqs, attn_mask=temporal_attention_mask
             )
             slots = (
                 temporal.view(
@@ -247,3 +207,13 @@ class PLCSTrackQueryModel(nn.Module):
             "rotation": F.normalize(self.rotation_head(slots), dim=-1),
             "presence_logits": self.presence_head(slots).squeeze(-1),
         }
+
+    @staticmethod
+    def _role_rope_coordinates(coordinates: torch.Tensor) -> torch.Tensor:
+        return coordinates
+
+    @staticmethod
+    def _camera_time_rope_coordinates(coordinates: torch.Tensor) -> torch.Tensor:
+        selected = coordinates.clone()
+        selected[..., 2] = 0
+        return selected

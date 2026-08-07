@@ -11,6 +11,7 @@ from collections.abc import Sequence
 from typing import TypeAlias
 
 import torch
+from torch import nn
 
 RopeBaseLike: TypeAlias = float | Sequence[float] | torch.Tensor
 
@@ -32,10 +33,54 @@ def _normalize_rope_bases(
     if base_tensor.numel() == 1:
         base_tensor = base_tensor.expand(n_axes)
     if base_tensor.numel() != n_axes:
-        raise ValueError(f"Expected {n_axes} RoPE bases, got {base_tensor.numel()}")
-    if (base_tensor <= 0).any():
-        raise ValueError("RoPE bases must be positive.")
+        raise ValueError(
+            f"RoPE base must contain one value or {n_axes} axis values, "
+            f"got {base_tensor.numel()}."
+        )
+    if not torch.isfinite(base_tensor).all() or (base_tensor <= 0).any():
+        raise ValueError("RoPE bases must be finite and positive.")
     return base_tensor
+
+
+class RotaryFrequencyComputer(nn.Module):
+    """Constructor-prepared interleaved N-D rotary frequencies.
+
+    Base representation and axis assignment are resolved once in ``__init__``.
+    ``forward`` accepts only boundary-validated position tensors and returns
+    frequencies already shaped for broadcasting over the attention head axis.
+    """
+
+    def __init__(self, *, dim: int, base: RopeBaseLike, n_axes: int) -> None:
+        super().__init__()
+        if type(dim) is not int or dim <= 0 or dim % 2 != 0:
+            raise ValueError(f"dim must be a positive even int, got {dim!r}.")
+        if type(n_axes) is not int or n_axes <= 0:
+            raise ValueError(f"n_axes must be a positive int, got {n_axes!r}.")
+
+        half_dim = dim // 2
+        pair_indices = torch.arange(half_dim, dtype=torch.float32)
+        axis_indices = torch.arange(half_dim, dtype=torch.long) % n_axes
+        bases = _normalize_rope_bases(
+            base,
+            n_axes=n_axes,
+            device=torch.device("cpu"),
+            dtype=torch.float32,
+        )
+        base_per_pair = bases[axis_indices]
+        inverse_frequencies = 1.0 / (base_per_pair ** ((2.0 * pair_indices) / dim))
+        self.n_axes = n_axes
+        self.axis_indices: torch.Tensor
+        self.inverse_frequencies: torch.Tensor
+        self.register_buffer("axis_indices", axis_indices, persistent=False)
+        self.register_buffer(
+            "inverse_frequencies", inverse_frequencies, persistent=False
+        )
+
+    def forward(self, positions: torch.Tensor) -> torch.Tensor:
+        """Return complex freqs for validated ``(..., T, n_axes)`` positions."""
+        interleaved_positions = positions[..., self.axis_indices]
+        angles = interleaved_positions * self.inverse_frequencies
+        return torch.polar(torch.ones_like(angles), angles).unsqueeze(-2)
 
 
 def precompute_freqs_cis(
@@ -45,11 +90,12 @@ def precompute_freqs_cis(
     base: RopeBaseLike = 10000.0,
     device: torch.device | None = None,
 ) -> torch.Tensor:
-    """Precompute complex cis frequencies for standard 1D RoPE."""
-    if seqlen < 0:
-        raise ValueError(f"seqlen must be non-negative, got {seqlen}")
+    """Prepare static standard 1D RoPE frequencies outside model execution."""
     positions = torch.arange(seqlen, device=device, dtype=torch.long).unsqueeze(-1)
-    return precompute_freqs_cis_nd(dim=dim, pos=positions, base=base)
+    computer = RotaryFrequencyComputer(dim=dim, base=base, n_axes=1).to(
+        device=positions.device
+    )
+    return computer.forward(positions)
 
 
 def precompute_freqs_cis_nd(
@@ -57,104 +103,21 @@ def precompute_freqs_cis_nd(
     pos: torch.Tensor,
     base: RopeBaseLike = 10000.0,
 ) -> torch.Tensor:
-    """Precompute complex cis frequencies for interleaved N-dimensional MROPE."""
-    if dim % 2 != 0:
-        raise ValueError(f"RoPE dim must be even, got {dim}")
-
-    if pos.ndim == 0:
-        raise ValueError("pos must have at least one dimension.")
-    if pos.ndim == 1:
-        pos = pos.unsqueeze(-1)
-    if pos.size(-1) <= 0:
-        raise ValueError(f"pos must have a positive axis dimension, got shape {tuple(pos.shape)}")
-
-    device = pos.device
-    dtype = torch.float32
-    half_dim = dim // 2
-    n_axes = int(pos.size(-1))
-
-    pair_indices = torch.arange(half_dim, device=device, dtype=dtype)
-    axis_indices = torch.arange(half_dim, device=device) % n_axes
-    base_tensor = _normalize_rope_bases(base, n_axes=n_axes, device=device, dtype=dtype)
-    base_per_pair = base_tensor[axis_indices]
-
-    # Each axis receives rotary pairs cyclically across the full spectrum.
-    inv_freq = 1.0 / (base_per_pair ** ((2.0 * pair_indices) / dim))
-
-    pos_interleaved = pos.to(dtype)[..., axis_indices]
-    angles = pos_interleaved * inv_freq
-    return torch.polar(torch.ones_like(angles), angles)
-
-
-def _reshape_freqs_cis_for_broadcast(
-    x_complex: torch.Tensor,
-    freqs_cis: torch.Tensor,
-) -> torch.Tensor:
-    if freqs_cis.shape[-1] != x_complex.shape[-1]:
-        raise ValueError(
-            "RoPE frequency dim mismatch: "
-            f"freqs={freqs_cis.shape[-1]} vs x={x_complex.shape[-1]}"
-        )
-
-    if x_complex.ndim == 3:
-        if freqs_cis.ndim == 2:
-            if freqs_cis.shape[0] != x_complex.shape[1]:
-                raise ValueError(
-                    f"RoPE length mismatch: freqs.T={freqs_cis.shape[0]} vs x.T={x_complex.shape[1]}"
-                )
-            return freqs_cis.view(1, x_complex.shape[1], x_complex.shape[2])
-        if freqs_cis.ndim == 3:
-            if freqs_cis.shape[:2] != x_complex.shape[:2]:
-                raise ValueError(
-                    "RoPE batch/length mismatch: "
-                    f"freqs={tuple(freqs_cis.shape[:2])} vs x={tuple(x_complex.shape[:2])}"
-                )
-            return freqs_cis
-    elif x_complex.ndim == 4:
-        if freqs_cis.ndim == 2:
-            if freqs_cis.shape[0] != x_complex.shape[1]:
-                raise ValueError(
-                    f"RoPE length mismatch: freqs.T={freqs_cis.shape[0]} vs x.T={x_complex.shape[1]}"
-                )
-            return freqs_cis.view(1, x_complex.shape[1], 1, x_complex.shape[3])
-        if freqs_cis.ndim == 3:
-            if freqs_cis.shape[:2] != x_complex.shape[:2]:
-                raise ValueError(
-                    "RoPE batch/length mismatch: "
-                    f"freqs={tuple(freqs_cis.shape[:2])} vs x={tuple(x_complex.shape[:2])}"
-                )
-            return freqs_cis.view(x_complex.shape[0], x_complex.shape[1], 1, x_complex.shape[3])
-
-    raise ValueError(
-        "Unsupported RoPE broadcast combination: "
-        f"x_complex.shape={tuple(x_complex.shape)}, freqs_cis.shape={tuple(freqs_cis.shape)}"
-    )
+    """Prepare N-D frequencies at a construction or data boundary."""
+    computer = RotaryFrequencyComputer(
+        dim=dim,
+        base=base,
+        n_axes=int(pos.shape[-1]),
+    ).to(device=pos.device)
+    return computer.forward(pos)
 
 
 def apply_rotary_emb(
     x: torch.Tensor,
     freqs_cis: torch.Tensor,
-    interleaved: bool = True,
 ) -> torch.Tensor:
-    """Apply rotary embeddings to `(B, T, D)` or `(B, T, H, D)` tensors."""
-    if x.ndim not in {3, 4}:
-        raise ValueError(f"Unsupported input rank for RoPE: {x.ndim}")
-    if x.size(-1) % 2 != 0:
-        raise ValueError(f"RoPE expects an even dim, got {x.size(-1)}")
-
+    """Apply interleaved RoPE to prepared ``(B,T,H,D)`` tensors/frequencies."""
     dtype = x.dtype
-    shape = x.shape
-    x_work = x
-
-    if not interleaved:
-        x_work = x_work.view(*shape[:-1], 2, -1).transpose(-1, -2).contiguous()
-
-    x_complex = torch.view_as_complex(x_work.float().view(*x_work.shape[:-1], -1, 2))
-    freqs_cis = _reshape_freqs_cis_for_broadcast(x_complex, freqs_cis.to(device=x.device))
-
+    x_complex = torch.view_as_complex(x.float().view(*x.shape[:-1], -1, 2))
     y = torch.view_as_real(x_complex * freqs_cis).flatten(-2)
-
-    if not interleaved:
-        y = y.view(*shape[:-1], 2, -1).transpose(-1, -2).contiguous().view(*shape)
-
     return y.to(dtype)

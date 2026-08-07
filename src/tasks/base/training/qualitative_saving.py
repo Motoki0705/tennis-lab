@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 from PIL import Image
@@ -121,10 +121,10 @@ def save_qualitative_animation(
 
 
 def _to_uint8_rgb(frame: np.ndarray) -> np.ndarray:
-    arr = np.asarray(frame)
+    arr: np.ndarray = np.asarray(frame)
     if arr.dtype != np.uint8:
         arr = np.clip(arr, 0, 255).astype(np.uint8)
-    return cast("np.ndarray", arr)
+    return arr
 
 
 def _add_image(tb_writer: Any | None, tag: str, frame_rgb: np.ndarray, global_step: int) -> None:

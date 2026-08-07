@@ -26,20 +26,33 @@ src/submodules/
 └── configs/           # scripts 用 Hydra config
 ```
 
-## 共通インターフェース（`models/_base`）
+## 共通インターフェース（`models`）
 
-すべてのモデルは `BaseInferenceModel[RequestT, ResultT]` を実装します。
+下流のcanonical importは`src.submodules.models`だけです。`models/_base`や各
+model family packageは内部実装であり、同じsymbolを再exportしません。すべての
+モデルは `BaseInferenceModel[RequestT, ResultT]` を実装します。
 
 - 構築は軽量（重みは触らない）。`load()` は冪等、`unload()` で解放。
 - `predict(request) -> result` は自動 load + `torch.no_grad` 込み。
+- deviceは`"auto"`のみavailabilityに応じて選択し、明示したCUDAが利用できない場合はmodel構築前にエラーにする。CPUへの暗黙fallbackは持たない。
+- `GvhmrRequest`は`(F,17,3)` keypoints、`(F,3)` boxes、`(F,1024)` features、frame/device/dtypeと正の画像・bbox寸法を構築時とvendor entry直前に検証する。
 - request / result はモデルごとの frozen dataclass。
 
 ```python
 from src.submodules.models import DinoPersonTracker, TrackRequest
 
-tracker = DinoPersonTracker(device="auto")
-tracks = tracker.predict(TrackRequest(video_path="video.mp4", num_tracks=2))
-bbx_xys = tracks.bbx_xys(tracks.track_ids[0])  # 下流モデルの入力形式
+tracker = DinoPersonTracker(
+    checkpoint="/absolute/path/to/dino.pth",
+    repository="/absolute/path/to/third_party/DINO",
+    device="cuda",
+    confidence=0.35,
+    short_side=800,
+    max_long_side=1333,
+)
+tracks = tracker.predict(
+    TrackRequest(video_path="video.mp4", num_tracks=2, interactive=False)
+)
+bbx_xys = tracks.bbx_xys(tracks.track_ids[0], base_enlarge=1.2)
 ```
 
 ## デモ

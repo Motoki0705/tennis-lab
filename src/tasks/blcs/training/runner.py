@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytorch_lightning as pl
@@ -10,11 +9,10 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.tasks.base.configuration import TrainingRuntimeConfig
 from src.tasks.base.training.runner import BaseTrainingRunner
-from src.tasks.blcs.configuration import parse_model_config, validate_training_boundary
-from src.tasks.blcs.data.datamodule import BLCSDataModule
-from src.tasks.blcs.training.lightning_module import BLCSLightningModule
-from src.tasks.blcs.training.tracking_lightning_module import (
-    BLCSTrackingLightningModule,
+from src.tasks.blcs.configuration import validate_training_boundary
+from src.tasks.blcs.model_io.training import (
+    BLCSTrainingComposition,
+    compose_blcs_training,
 )
 
 if TYPE_CHECKING:
@@ -29,44 +27,19 @@ class BLCSTrainingRunner(BaseTrainingRunner):
 
     def __init__(self, *, generator_config: GeneratorConfig | None = None) -> None:
         self.generator_config = generator_config
+        self._composition: BLCSTrainingComposition | None = None
 
-    def build_datamodule(self, config: Any) -> pl.LightningDataModule:
-        """Build unified BLCS data module."""
-        model = parse_model_config(config)
-        tracking = model.name == "blcs_track_query"
-        backend = str(config.data.backend)
-        if tracking:
-            from src.tasks.blcs.data.tracking_datamodule import (
-                BLCSTrackingDataModule,
-                ChunkedBLCSTrackingDataModule,
-            )
-
-            if backend == "default":
-                return BLCSTrackingDataModule(config)
-            if backend == "chunked":
-                return ChunkedBLCSTrackingDataModule(config)
-            raise ValueError(
-                f"Unsupported tracking data.backend='{backend}'. "
-                "Supported: ['default', 'chunked']"
-            )
-        if backend == "chunked":
-            from src.tasks.blcs.data.chunked_datamodule import ChunkedBLCSDataModule
-
-            if self.generator_config is None:
-                raise RuntimeError(
-                    "generator_config is required for data.backend=chunked. "
-                    "Use src.tasks.blcs.scripts.train with a chunked data config."
-                )
-            return ChunkedBLCSDataModule(
+    def _runtime(self, config: Any) -> BLCSTrainingComposition:
+        if self._composition is None:
+            self._composition = compose_blcs_training(
                 config,
                 generator_config=self.generator_config,
             )
-        elif backend == "default":
-            return BLCSDataModule(config)
-        else:
-            raise ValueError(
-                f"Unsupported data.backend='{backend}'. Supported: ['default', 'chunked']"
-            )
+        return self._composition
+
+    def build_datamodule(self, config: Any) -> pl.LightningDataModule:
+        """Build unified BLCS data module."""
+        return self._runtime(config).datamodule
 
     def build_lightning_module(
         self,
@@ -76,9 +49,7 @@ class BLCSTrainingRunner(BaseTrainingRunner):
         steps_per_epoch: int | None = None,
     ) -> pl.LightningModule:
         """Build BLCS lightning module."""
-        if parse_model_config(config).name == "blcs_track_query":
-            return BLCSTrackingLightningModule(config)
-        return BLCSLightningModule(config)
+        return self._runtime(config).lightning_module
 
     def callbacks_extra(
         self,
@@ -97,11 +68,6 @@ class BLCSTrainingRunner(BaseTrainingRunner):
 
             extras.append(ChunkRotationCallback())
         return list(extras)
-
-    def dry_run_postprocess(self, batch: Any, output_dir: Path) -> None:
-        """Log model parameters after dry run batch loading."""
-        # Model parameter logging is handled in build_lightning_module
-        pass
 
     def validate_runtime_config(self, config: Any) -> TrainingRuntimeConfig:
         """Validate shared and BLCS-specific contracts before runner side effects."""

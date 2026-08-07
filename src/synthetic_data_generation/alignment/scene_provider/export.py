@@ -728,7 +728,7 @@ def _transform_cameras(
     transformed = np.einsum("nij,ki->nkj", cameras, matrix)
     scaling = np.linalg.norm(transformed[:, 0, :3], axis=1)
     transformed[:, :3, :3] = transformed[:, :3, :3] / scaling[:, None, None]
-    return transformed
+    return cast("NDArray[np.float64]", transformed)
 
 
 def _prepare_camera_models(
@@ -785,8 +785,8 @@ def _prepare_camera_models(
             intrinsics=np.asarray(undistorted_intrinsics, dtype=np.float64),
             width=roi[2],
             height=roi[3],
-            map_x=map_x,
-            map_y=map_y,
+            map_x=np.asarray(map_x, dtype=np.float32),
+            map_y=np.asarray(map_y, dtype=np.float32),
             roi_xywh=(roi[0], roi[1], roi[2], roi[3]),
         )
     return prepared

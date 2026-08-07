@@ -36,15 +36,8 @@ class BaseInferenceModel(ABC, Generic[RequestT, ResultT]):
     def __init__(
         self,
         device: str | torch.device,
-        *,
-        allow_device_fallback: bool,
     ) -> None:
-        if type(allow_device_fallback) is not bool:
-            raise TypeError("allow_device_fallback must be a bool.")
-        self._device = resolve_device(
-            device,
-            allow_fallback=allow_device_fallback,
-        )
+        self._device = resolve_device(device)
         self._loaded = False
 
     @property
@@ -78,9 +71,6 @@ class BaseInferenceModel(ABC, Generic[RequestT, ResultT]):
         self.load()
         with torch.no_grad():
             return self._predict_impl(request)
-
-    def __call__(self, request: RequestT) -> ResultT:
-        return self.predict(request)
 
     @abstractmethod
     def _load_impl(self) -> None:

@@ -2,14 +2,36 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+from pathlib import Path
+
 import numpy as np
+import pytest
+import torch
 from numpy.typing import NDArray
 
+import src.tennis_scene.pipeline.components.ball_detection as ball_component
+from src.tasks.ball_detection.model_io import BallPrediction
 from src.tennis_scene.pipeline.components.ball_detection import (
     BallDetectionModule,
     BallDetectionResult,
 )
+from src.utils.video import FramePacket
 from tests.unit.tennis_scene.pipeline.config_factories import make_ball_config
+
+
+class _TypedBallPredictor:
+    configured_frames = 2
+
+    def predict(self, images: torch.Tensor) -> BallPrediction:
+        batch_size = images.shape[0]
+        coords = torch.tensor([[[0.1, 0.2], [0.3, 0.4]]], dtype=torch.float32)
+        confidence = torch.tensor([[0.6, 0.8]], dtype=torch.float32)
+        return BallPrediction(
+            coords=coords.repeat(batch_size, 1, 1),
+            confidence=confidence.repeat(batch_size, 1),
+            heatmaps=torch.zeros((batch_size, 2, 2, 3)),
+        )
 
 
 def test_trajectory_gate_zeroes_rejected_pipeline_frames(tmp_path) -> None:
@@ -45,3 +67,30 @@ def test_trajectory_gate_zeroes_rejected_pipeline_frames(tmp_path) -> None:
     is_valid, errors = gated.validate()
     assert is_valid
     assert errors == []
+
+
+def test_predict_video_consumes_typed_task_prediction(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    packets: list[FramePacket] = [
+        FramePacket(
+            index=index,
+            frame=np.zeros((4, 6, 3), dtype=np.uint8),
+            original_size=(6, 4),
+        )
+        for index in range(2)
+    ]
+    monkeypatch.setattr(
+        ball_component,
+        "OpenCVVideoFrameReader",
+        lambda _path, *, max_frames: packets[:max_frames],
+    )
+    config = replace(make_ball_config(tmp_path), image_size=(4, 6))
+    module = BallDetectionModule(config)
+    module._pipeline = _TypedBallPredictor()  # type: ignore[assignment]
+
+    coords, confidence = module._predict_video(Path("unused.mp4"), max_frames=2)
+
+    np.testing.assert_allclose(coords, [[0.1, 0.2], [0.3, 0.4]])
+    np.testing.assert_allclose(confidence, [0.6, 0.8])
