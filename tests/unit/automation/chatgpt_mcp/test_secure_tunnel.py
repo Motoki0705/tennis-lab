@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import stat
 import subprocess
 from pathlib import Path
@@ -20,10 +21,13 @@ def _manager(tmp_path: Path) -> SecureTunnelManager:
     repo = tmp_path / "repo"
     repo.mkdir()
     (repo / ".git").mkdir()
-    source = tmp_path / "source"
+    source = tmp_path / "source directory"
     source.mkdir()
-    executable = tmp_path / "python"
-    executable.touch(mode=0o700)
+    executable_target = tmp_path / "python-runtime"
+    executable_target.touch(mode=0o700)
+    executable = tmp_path / ".venv/bin/python"
+    executable.parent.mkdir(parents=True)
+    executable.symlink_to(executable_target)
     tunnel_client = tmp_path / "tunnel-client"
     tunnel_client.touch(mode=0o700)
     settings = GatewaySettings(
@@ -114,6 +118,14 @@ def test_install_services_keeps_secret_out_of_units_and_starts_both(
     monkeypatch.setattr(
         "src.automation.chatgpt_mcp.secure_tunnel.subprocess.run", fake_run
     )
+    ready_urls: list[tuple[str, str]] = []
+
+    def fake_wait_for_http(
+        url: str, *, service_name: str
+    ) -> None:
+        ready_urls.append((url, service_name))
+
+    monkeypatch.setattr(manager, "_wait_for_http", fake_wait_for_http)
 
     paths = manager.install_user_services()
     manager.start()
@@ -121,17 +133,158 @@ def test_install_services_keeps_secret_out_of_units_and_starts_both(
     private_unit = paths.private_service.read_text(encoding="utf-8")
     tunnel_unit = paths.tunnel_service.read_text(encoding="utf-8")
     assert "serve-private" in private_unit
+    assert f"WorkingDirectory={tmp_path}/source\\x20directory" in private_unit
+    assert 'WorkingDirectory="' not in private_unit
+    assert f'ExecStart="{tmp_path}/.venv/bin/python"' in private_unit
     assert "TENNIS_MCP_HOST=127.0.0.1" in private_unit
     assert "TENNIS_MCP_PORT=8767" in private_unit
     assert "--profile-file" in tunnel_unit
     assert f"Requires={PRIVATE_SERVICE_NAME}" in tunnel_unit
     assert runtime_key not in private_unit + tunnel_unit
-    assert commands[0] == ["systemctl", "--user", "daemon-reload"]
-    assert commands[1] == [
+    assert commands[0] == [
+        "systemd-analyze",
+        "--user",
+        "verify",
+        str(paths.private_service),
+        str(paths.tunnel_service),
+    ]
+    assert commands[1] == ["systemctl", "--user", "daemon-reload"]
+    assert commands[2] == [
         "systemctl",
         "--user",
         "enable",
-        "--now",
         PRIVATE_SERVICE_NAME,
         TUNNEL_SERVICE_NAME,
     ]
+    assert commands[3:] == [
+        ["systemctl", "--user", "restart", PRIVATE_SERVICE_NAME],
+        ["systemctl", "--user", "restart", TUNNEL_SERVICE_NAME],
+        ["systemctl", "--user", "is-active", PRIVATE_SERVICE_NAME],
+        ["systemctl", "--user", "is-active", TUNNEL_SERVICE_NAME],
+    ]
+    assert ready_urls == [
+        ("http://127.0.0.1:8767/healthz", PRIVATE_SERVICE_NAME),
+        ("http://127.0.0.1:8768/readyz", TUNNEL_SERVICE_NAME),
+    ]
+
+
+def test_install_services_rejects_invalid_systemd_units(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manager = _manager(tmp_path)
+    manager.settings.secure_tunnel_profile_dir.mkdir(parents=True)
+    manager.settings.secure_tunnel_profile_path.write_text(
+        "config_version: 1\n", encoding="utf-8"
+    )
+
+    def fake_run(
+        command: list[str], **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        assert command[:3] == ["systemd-analyze", "--user", "verify"]
+        return subprocess.CompletedProcess(command, 1, "", "invalid unit")
+
+    monkeypatch.setattr(
+        "src.automation.chatgpt_mcp.secure_tunnel.subprocess.run", fake_run
+    )
+
+    with pytest.raises(SecureTunnelError, match="systemd unit verification failed"):
+        manager.install_user_services()
+
+
+def test_start_rejects_service_that_did_not_become_active(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manager = _manager(tmp_path)
+    commands: list[list[str]] = []
+
+    def fake_run(
+        command: list[str], **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        commands.append(command)
+        if command[-2:] == ["is-active", PRIVATE_SERVICE_NAME]:
+            return subprocess.CompletedProcess(command, 3, "inactive\n", "")
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(
+        "src.automation.chatgpt_mcp.secure_tunnel.subprocess.run", fake_run
+    )
+    monkeypatch.setattr(manager, "_wait_for_http", lambda *args, **kwargs: None)
+
+    with pytest.raises(SecureTunnelError, match="did not become active: inactive"):
+        manager.start()
+
+    assert commands[-1] == [
+        "systemctl",
+        "--user",
+        "is-active",
+        PRIVATE_SERVICE_NAME,
+    ]
+
+
+def test_doctor_accepts_missing_oauth_metadata_for_no_auth_profile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manager = _manager(tmp_path)
+    manager.settings.secure_tunnel_profile_dir.mkdir(parents=True)
+    manager.settings.secure_tunnel_profile_path.write_text(
+        "config_version: 1\n", encoding="utf-8"
+    )
+    doctor_payload = {
+        "result": "fail",
+        "failed_checks": ["oauth_metadata"],
+        "checks": [
+            {"id": "mcp_server_reachable", "status": "PASS"},
+            {"id": "oauth_metadata", "status": "FAIL", "summary": "HTTP 404"},
+        ],
+    }
+    commands: list[list[str]] = []
+
+    def fake_run(
+        command: list[str], **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        commands.append(command)
+        return subprocess.CompletedProcess(command, 1, json.dumps(doctor_payload), "")
+
+    monkeypatch.setattr(
+        "src.automation.chatgpt_mcp.secure_tunnel.subprocess.run", fake_run
+    )
+
+    result = manager.doctor()
+
+    normalized = json.loads(result.stdout)
+    assert result.returncode == 0
+    assert normalized["result"] == "pass"
+    assert normalized["failed_checks"] == []
+    assert normalized["checks"][1]["status"] == "SKIP"
+    assert commands[0][commands[0].index("--health.listen-addr") + 1] == (
+        "127.0.0.1:0"
+    )
+
+
+def test_doctor_preserves_unexpected_failures(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manager = _manager(tmp_path)
+    manager.settings.secure_tunnel_profile_dir.mkdir(parents=True)
+    manager.settings.secure_tunnel_profile_path.write_text(
+        "config_version: 1\n", encoding="utf-8"
+    )
+    doctor_payload = {
+        "result": "fail",
+        "failed_checks": ["mcp_server_reachable"],
+        "checks": [{"id": "mcp_server_reachable", "status": "FAIL"}],
+    }
+
+    def fake_run(
+        command: list[str], **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(command, 1, json.dumps(doctor_payload), "")
+
+    monkeypatch.setattr(
+        "src.automation.chatgpt_mcp.secure_tunnel.subprocess.run", fake_run
+    )
+
+    result = manager.doctor()
+
+    assert result.returncode == 1
+    assert json.loads(result.stdout) == doctor_payload

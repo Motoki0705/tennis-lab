@@ -50,6 +50,11 @@ stored with mode `0600`, and systemd receives only a `file:` reference:
 .venv/bin/python -m src.automation.chatgpt_mcp doctor-secure-tunnel
 ```
 
+The doctor uses an ephemeral diagnostic port when the service is already
+running. Missing OAuth metadata is reported as an explicit `SKIP` because the
+loopback MCP intentionally uses no authentication and the Secure Tunnel is the
+access-control boundary. Every other failed check remains fatal.
+
 For non-interactive setup, put only the runtime key in a private file and pass
 `--runtime-key-file /absolute/path/to/key`. The setup copies it into the MCP
 state directory; the source file is not managed or deleted.
