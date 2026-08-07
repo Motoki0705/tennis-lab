@@ -173,27 +173,35 @@ def test_enforced_status_rejects_quota_overflow(tmp_path: Path) -> None:
 
     errors = status_guard.validate_repository(repo)
 
-    assert any("collectors.geometry exceeds enforced quota" in item for item in errors)
-    assert any("topics.ball_3d exceeds enforced quota" in item for item in errors)
+    assert any(
+        "collectors.geometry exceeds enforced quota" in item
+        for item in errors
+    )
+    assert any(
+        "topics.ball_3d exceeds enforced quota" in item
+        for item in errors
+    )
 
 
-def test_historical_backfill_requires_note_and_preserves_counts(
+def test_historical_backfill_preserves_pre_topic_snapshot(
     tmp_path: Path,
 ) -> None:
     repo = make_repo(tmp_path)
     config = status_guard.load_config(repo)
     for index in range(1, 7):
+        candidate = record(index)
+        candidate["discoveries"][0]["screening"].pop("topic")
         write_json(
             repo
             / "knowledge/literature/candidates"
             / f"paper-arxiv-2608-{index:05d}.json",
-            record(index),
+            candidate,
         )
     status = status_payload(
         config,
         accepted=6,
         mode="historical_backfill",
-        note="Collected before quota hardening was merged.",
+        note="Collected before topic quota hardening was merged.",
     )
     write_json(
         repo / "knowledge/literature/status/2026-08-05.json",
