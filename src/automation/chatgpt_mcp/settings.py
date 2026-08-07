@@ -33,7 +33,7 @@ def normalize_public_base_url(value: str) -> str:
 
 @dataclass(frozen=True)
 class GatewaySettings:
-    """Validated settings shared by OAuth, MCP tools, and the tunnel launcher."""
+    """Validated settings shared by OAuth, execution jobs, and tunnel launchers."""
 
     repo_root: Path
     state_dir: Path
@@ -127,6 +127,14 @@ class GatewaySettings:
         return f"{self.public_base_url}/mcp"
 
     @property
+    def venv_root(self) -> Path:
+        return self.repo_root / ".venv"
+
+    @property
+    def revision_workspace_dir(self) -> Path:
+        return self.repo_root / ".chatgpt" / "revisions"
+
+    @property
     def secure_tunnel_dir(self) -> Path:
         return self.state_dir / "secure-tunnel"
 
@@ -170,13 +178,24 @@ class GatewaySettings:
     def job_specs_dir(self) -> Path:
         return self.state_dir / "training-specs"
 
-    def ensure_state(self) -> None:
-        """Create private state directories and a high-entropy owner secret."""
+    @property
+    def sandbox_jobs_dir(self) -> Path:
+        return self.state_dir / "sandboxes"
 
-        self.state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-        os.chmod(self.state_dir, 0o700)
-        self.job_specs_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-        os.chmod(self.job_specs_dir, 0o700)
+    @property
+    def git_mask_path(self) -> Path:
+        return self.state_dir / "masked-git-metadata"
+
+    def ensure_state(self) -> None:
+        """Create private state directories and high-entropy local secrets."""
+
+        for directory in (
+            self.state_dir,
+            self.job_specs_dir,
+            self.sandbox_jobs_dir,
+        ):
+            directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+            os.chmod(directory, 0o700)
 
         try:
             descriptor = os.open(
@@ -190,6 +209,16 @@ class GatewaySettings:
             with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
                 stream.write(secrets.token_urlsafe(32))
                 stream.write("\n")
+
+        if not self.git_mask_path.exists():
+            descriptor = os.open(
+                self.git_mask_path,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                0o400,
+            )
+            with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+                stream.write("git metadata is intentionally unavailable in MCP sandboxes\n")
+        os.chmod(self.git_mask_path, 0o400)
 
     def read_owner_secret(self) -> str:
         """Read the local owner secret without exposing it through MCP tools."""
