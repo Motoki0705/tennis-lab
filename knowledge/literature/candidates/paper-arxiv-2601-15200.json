@@ -1,0 +1,67 @@
+{
+  "aggregate": {
+    "collector_count": 1,
+    "collectors": ["perception"],
+    "discovery_count": 1,
+    "max_novelty_score": 88,
+    "max_relevance_score": 85,
+    "mean_relevance_score": 85.0,
+    "repo_paths": [
+      "src/submodules/models/vitpose/pose2d.py",
+      "src/tennis_scene/configs/pipeline.yaml",
+      "src/tennis_scene/pipeline/components/gvhmr.py"
+    ],
+    "tasks": ["human_pose"]
+  },
+  "curation": {
+    "decision": "promoted",
+    "issue": 710,
+    "paper_node": "paper-arxiv-2601-15200",
+    "proposal_nodes": ["proposal-plcs-pmpose-adapter"],
+    "reason_ja": "公式全文、project、GPL-3.0 code、pretrained weights、OCHuman-Pose dataを確認した。PMPoseがbbox条件を維持してjoint presence、visibility、expected OKSを出力する点は、現行ViTPose adapterとhuman_kp_vis契約を比較する明確な導入点になる。まずbbox-only adapterだけを固定pipelineで比較し、SAM反復は分離できるため昇格する。遠景small instance、GPL依存、MMPose/MMCV環境衝突を制約とする。",
+    "reviewed_at": "2026-08-07T00:06:06+09:00"
+  },
+  "discoveries": [
+    {
+      "collector_id": "perception",
+      "discovered_at": "2026-08-06T02:19:00+09:00",
+      "schedule_run_id": "perception-20260806T021900+0900-bmpv2f3",
+      "screening": {
+        "applicability_ja": "ViTPosePose2Dと同じrequest/result contractを維持するPMPose adapterを追加し、tracker、HMR2、GVHMR、PLCS checkpointを固定してbbox-only PMPoseを比較できる。presenceとvisibilityは画像外jointとoccluded jointを区別する契約拡張になる。",
+        "candidate_experiment_ja": "同じbboxをViTPose-HとPMPose-Bへ入力し、手動COCO17付き300 frameでOKS AP、wrist/ankle error、visibility Brier score、GVHMR reprojection、PLCS position/velocity、FPS、VRAMを比較する。全体AP +2、occlusion subset +3、PLCS悪化2%以内、時間2倍以内を合格条件とする。",
+        "evidence_level": "fulltext-code-data",
+        "novelty_score": 88,
+        "relevance_score": 85,
+        "repo_paths": [
+          "src/submodules/models/vitpose/pose2d.py",
+          "src/tennis_scene/pipeline/components/gvhmr.py",
+          "src/tennis_scene/configs/pipeline.yaml"
+        ],
+        "risks_ja": "改善対象はcrowded sceneで通常tennisへのgainは限定され得る。far playerはsmall instanceでmask refinementが不適な場合がある。公式実装はGPL-3.0、MMPose fork、MMCV、MMDetection、SAM 2.1、旧PyTorch/CUDAへ依存し、現行環境と衝突し得る。",
+        "score_breakdown": {"adoption_feasibility": 4, "evidence_quality": 20, "experiment_quality": 14, "repo_fit": 23, "task_fit": 24},
+        "summary_ja": "BBoxMaskPose v2はperson detector、確率的mask-conditioned PMPose、pose-guided segmentationを相互条件付けする。PMPoseはkeypointに加えてpresence、visibility、expected OKSを予測し、OCHuman-PoseでViTPose系baselineよりAP改善を報告する。",
+        "tasks": ["human_pose"],
+        "topic": "human_pose_2d"
+      },
+      "sources": [
+        {"checked_at": "2026-08-06T02:19:00+09:00", "kind": "paper", "url": "https://arxiv.org/pdf/2601.15200"},
+        {"checked_at": "2026-08-06T02:19:00+09:00", "kind": "project", "url": "https://mirapurkrabek.github.io/BBox-Mask-Pose/"},
+        {"checked_at": "2026-08-06T02:19:00+09:00", "kind": "code", "url": "https://github.com/MiraPurkrabek/BBoxMaskPose"},
+        {"checked_at": "2026-08-06T02:19:00+09:00", "kind": "dataset", "url": "https://huggingface.co/datasets/vrg-prague/OCHuman-Pose"}
+      ]
+    }
+  ],
+  "first_seen": "2026-08-06T02:19:00+09:00",
+  "id": "paper-arxiv-2601-15200",
+  "last_seen": "2026-08-06T02:19:00+09:00",
+  "paper": {
+    "authors": ["Miroslav Purkrabek", "Constantin Kolomiiets", "Jiri Matas"],
+    "identifiers": {"arxiv": "2601.15200", "doi": null, "openreview": null},
+    "title": "BBoxMaskPose v2: Expanding Mutual Conditioning to 3D",
+    "urls": {"code": "https://github.com/MiraPurkrabek/BBoxMaskPose", "dataset": "https://huggingface.co/datasets/vrg-prague/OCHuman-Pose", "paper": "https://arxiv.org/pdf/2601.15200", "primary": "https://arxiv.org/abs/2601.15200", "project": "https://mirapurkrabek.github.io/BBox-Mask-Pose/"},
+    "venue": null,
+    "year": 2026
+  },
+  "schema_version": 1,
+  "state": "promoted"
+}
