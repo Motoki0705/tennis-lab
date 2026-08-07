@@ -17,13 +17,14 @@ import time
 from pathlib import Path
 from typing import Any, Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from src.automation.chatgpt_mcp.settings import GatewaySettings
 from src.automation.chatgpt_mcp.storage import SqliteStore
 from src.automation.chatgpt_mcp.workspace import RevisionWorkspace, WorkspaceManager
 
 _JOB_ID = re.compile(r"^[a-z0-9][a-z0-9-]{7,63}$")
+_WORKSPACE_ID = re.compile(r"^rev-[a-f0-9]{16}$")
 _SHA = re.compile(r"^[0-9a-f]{40}$")
 _TRAINING_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
 _QUEUE_FILE = re.compile(r"^[A-Za-z0-9._-]{1,240}\.job$")
@@ -31,7 +32,8 @@ _DIRECT_COMMAND_MAX_SECONDS = 30 * 60
 _MAX_CONCURRENT_DIRECT_JOBS = 2
 _JOB_METADATA_TTL_SECONDS = 30 * 24 * 3600
 _TRAINING_METADATA_TTL_SECONDS = 90 * 24 * 3600
-_RUNTIME_ROOT = Path(__file__).resolve().parents[3]
+_COMMAND_FILE_NAME = "command"
+_COMMAND_MOUNT_PATH = "/run/tennis-mcp-command"
 
 _SECRET_PATTERNS = (
     re.compile(r"\bsk-[A-Za-z0-9_-]{16,}\b"),
@@ -59,10 +61,19 @@ class SandboxSpec(BaseModel):
 
     job_id: str = Field(pattern=_JOB_ID.pattern)
     command: str = Field(min_length=1, max_length=100_000)
-    workspace_id: str
+    workspace_id: str = Field(pattern=_WORKSPACE_ID.pattern)
     expected_sha: str = Field(pattern=_SHA.pattern)
     use_gpu: bool = False
     timeout_seconds: int = Field(default=900, ge=1, le=7 * 24 * 3600)
+
+    @field_validator("command")
+    @classmethod
+    def reject_nul_command(cls, value: str) -> str:
+        """Reject the one byte that cannot be represented in a shell command."""
+
+        if "\x00" in value:
+            raise ValueError("command may not contain NUL")
+        return value
 
 
 def _redact_secrets(value: str) -> str:
@@ -86,6 +97,23 @@ def _safe_mount(path: Path, target: str, *, read_only: bool) -> str:
     return value
 
 
+def _write_private_file(path: Path, value: str) -> None:
+    descriptor = os.open(
+        path,
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+        0o600,
+    )
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(value)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.chmod(path, 0o600)
+    except BaseException:
+        path.unlink(missing_ok=True)
+        raise
+
+
 class DockerSandbox:
     """Run one copied revision without host credentials, Git metadata, or network."""
 
@@ -102,7 +130,7 @@ class DockerSandbox:
             raise JobError(f"invalid job id: {job_id}")
         return f"tennis-lab-mcp-{job_id}"
 
-    def _job_directories(self, job_id: str) -> tuple[Path, Path, Path]:
+    def _job_directories(self, job_id: str) -> tuple[Path, Path, Path, Path]:
         job_root = (self.settings.sandbox_jobs_dir / job_id).resolve()
         sandbox_root = self.settings.sandbox_jobs_dir.resolve()
         if not job_root.is_relative_to(sandbox_root) or job_root.parent != sandbox_root:
@@ -111,24 +139,33 @@ class DockerSandbox:
             raise JobError(f"sandbox directory already exists for {job_id}")
         workspace_copy = job_root / "workspace"
         artifacts = job_root / "artifacts"
+        command_path = job_root / _COMMAND_FILE_NAME
         workspace_copy.mkdir(mode=0o700, parents=True)
         artifacts.mkdir(mode=0o700)
         os.chmod(job_root, 0o700)
         os.chmod(workspace_copy, 0o700)
         os.chmod(artifacts, 0o700)
-        return job_root, workspace_copy, artifacts
+        return job_root, workspace_copy, artifacts, command_path
+
+    def _command_file(self, job_id: str) -> Path:
+        return self.settings.sandbox_jobs_dir / job_id / _COMMAND_FILE_NAME
 
     def command(self, spec: SandboxSpec, *, detached: bool) -> list[str]:
+        """Materialize a private command file and return secret-free Docker argv."""
+
         source = self.workspaces.assert_execution_ready(
             workspace_id=spec.workspace_id,
             expected_sha=spec.expected_sha,
         )
         self.settings.ensure_state()
         if not self.settings.venv_root.is_dir():
-            raise JobError(f"repository virtual environment is missing: {self.settings.venv_root}")
+            raise JobError(
+                f"repository virtual environment is missing: {self.settings.venv_root}"
+            )
         if not self.settings.uv_python_root.is_dir():
             raise JobError(f"uv Python runtime is missing: {self.settings.uv_python_root}")
-        _, workspace_copy, artifacts = self._job_directories(spec.job_id)
+        _, workspace_copy, artifacts, command_path = self._job_directories(spec.job_id)
+        _write_private_file(command_path, spec.command)
 
         wrapper = (
             "set -euo pipefail; "
@@ -136,8 +173,9 @@ class DockerSandbox:
             "cp -a /source/. /workspace/; "
             "rm -rf /workspace/.git; "
             "cd /workspace; "
-            f"exec /usr/bin/timeout --signal=TERM --kill-after=30s {spec.timeout_seconds} "
-            '/bin/bash -lc "$1"'
+            f"command=\"$(cat {_COMMAND_MOUNT_PATH})\"; "
+            f"exec /usr/bin/timeout --signal=TERM --kill-after=30s "
+            f"{spec.timeout_seconds} /bin/bash -lc \"$command\""
         )
         arguments = [
             "docker",
@@ -201,6 +239,8 @@ class DockerSandbox:
             "--mount",
             _safe_mount(artifacts, "/artifacts", read_only=False),
             "--mount",
+            _safe_mount(command_path, _COMMAND_MOUNT_PATH, read_only=True),
+            "--mount",
             _safe_mount(
                 self.settings.venv_root,
                 str(self.settings.venv_root),
@@ -225,30 +265,38 @@ class DockerSandbox:
                 "/bin/bash",
                 "-lc",
                 wrapper,
-                "tennis-mcp",
-                spec.command,
             ]
         )
         return arguments
 
     def start(self, spec: SandboxSpec) -> str:
-        result = subprocess.run(
-            self.command(spec, detached=True),
-            text=True,
-            capture_output=True,
-            check=False,
-            timeout=120,
-        )
+        arguments = self.command(spec, detached=True)
+        command_path = self._command_file(spec.job_id)
+        try:
+            result = subprocess.run(
+                arguments,
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=120,
+            )
+        finally:
+            command_path.unlink(missing_ok=True)
         if result.returncode != 0:
             raise JobError(_redact_secrets(result.stderr.strip()) or "docker run failed")
         return result.stdout.strip()
 
     def run_foreground(self, spec: SandboxSpec) -> int:
-        process = subprocess.run(
-            self.command(spec, detached=False),
-            check=False,
-            timeout=spec.timeout_seconds + 180,
-        )
+        arguments = self.command(spec, detached=False)
+        command_path = self._command_file(spec.job_id)
+        try:
+            process = subprocess.run(
+                arguments,
+                check=False,
+                timeout=spec.timeout_seconds + 180,
+            )
+        finally:
+            command_path.unlink(missing_ok=True)
         return process.returncode
 
     def inspect(self, job_id: str) -> dict[str, Any]:
@@ -442,12 +490,11 @@ class TrainingQueueManager:
             timeout_seconds=timeout_seconds,
         )
         spec_path = self.settings.job_specs_dir / f"{job_id}.json"
-        spec_path.write_text(spec.model_dump_json(indent=2) + "\n", encoding="utf-8")
-        os.chmod(spec_path, 0o600)
+        _write_private_file(spec_path, spec.model_dump_json(indent=2) + "\n")
 
         bootstrap = (
             "import sys; from pathlib import Path; "
-            f"sys.path.insert(0, {str(_RUNTIME_ROOT)!r}); "
+            f"sys.path.insert(0, {str(self.settings.repo_root)!r}); "
             "from src.automation.chatgpt_mcp.sandbox_exec import run_from_spec; "
             "raise SystemExit(run_from_spec(Path(sys.argv[1])))"
         )
@@ -494,13 +541,10 @@ class TrainingQueueManager:
                 or "training queue admission failed"
             )
         queue_file = queued.stdout.strip().removeprefix("queued: ")
-        if (
-            not _QUEUE_FILE.fullmatch(queue_file)
-            or Path(queue_file).name != queue_file
-        ):
+        if not _QUEUE_FILE.fullmatch(queue_file) or Path(queue_file).name != queue_file:
             spec_path.unlink(missing_ok=True)
             raise JobError(
-                f"unexpected training queue response: "
+                "unexpected training queue response: "
                 f"{_redact_secrets(queued.stdout.strip())}"
             )
 
@@ -603,7 +647,14 @@ def execute_sandbox_spec(settings: GatewaySettings, spec_path: Path) -> int:
     file_stat = resolved.stat()
     if file_stat.st_uid != os.getuid() or stat.S_IMODE(file_stat.st_mode) & 0o077:
         raise JobError("sandbox spec ownership or permissions are unsafe")
-    spec = SandboxSpec.model_validate_json(resolved.read_text(encoding="utf-8"))
-    store = SqliteStore(settings.database_path)
-    workspaces = WorkspaceManager(settings.repo_root, settings.state_dir, store)
-    return DockerSandbox(settings, workspaces).run_foreground(spec)
+    try:
+        spec = SandboxSpec.model_validate_json(resolved.read_text(encoding="utf-8"))
+        store = SqliteStore(settings.database_path)
+        workspaces = WorkspaceManager(
+            settings.repo_root,
+            settings.revision_workspace_dir,
+            store,
+        )
+        return DockerSandbox(settings, workspaces).run_foreground(spec)
+    finally:
+        resolved.unlink(missing_ok=True)
