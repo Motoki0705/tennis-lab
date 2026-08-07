@@ -10,6 +10,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from types import SimpleNamespace
 from typing import cast
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
@@ -116,7 +117,11 @@ class SecureTunnelManager:
     ) -> None:
         self.settings = settings
         self.source_root = source_root.resolve()
-        self.python_executable = python_executable.expanduser().absolute()
+        if not python_executable.is_absolute():
+            raise SecureTunnelError(
+                f"python executable path must be absolute: {python_executable}"
+            )
+        self.python_executable = python_executable
         self.service_dir = (
             service_dir or Path.home() / ".config/systemd/user"
         ).resolve()
@@ -185,7 +190,8 @@ class SecureTunnelManager:
                 "tunnel-client did not create the expected tennis-lab profile"
             )
         os.chmod(self.settings.secure_tunnel_profile_path, 0o600)
-        return cast(Path, self.settings.secure_tunnel_profile_path)
+        profile_path: Path = self.settings.secure_tunnel_profile_path
+        return profile_path
 
     def install_user_services(self) -> SecureTunnelPaths:
         """Install private MCP and tunnel-client units without starting them."""
@@ -378,41 +384,74 @@ def _normalize_no_auth_doctor_result(
     if result.returncode == 0:
         return result
     try:
-        parsed: object = json.loads(result.stdout)
+        parsed: object = json.loads(
+            result.stdout,
+            object_hook=_namespace_object_hook,
+        )
     except (json.JSONDecodeError, TypeError):
         return result
-    if not isinstance(parsed, dict):
+    if not isinstance(parsed, SimpleNamespace):
         return result
-    payload = cast(dict[str, object], parsed)
-    if payload.get("failed_checks") != ["oauth_metadata"]:
+    payload = parsed
+    try:
+        failed_checks: object = payload.failed_checks
+        checks_value: object = payload.checks
+    except AttributeError:
         return result
-    checks_value = payload.get("checks")
+    if failed_checks != ["oauth_metadata"]:
+        return result
     if not isinstance(checks_value, list):
         return result
-    oauth_check: dict[str, object] | None = None
+    oauth_check: SimpleNamespace | None = None
     for check_value in checks_value:
-        if isinstance(check_value, dict) and check_value.get("id") == "oauth_metadata":
-            oauth_check = cast(dict[str, object], check_value)
+        if not isinstance(check_value, SimpleNamespace):
+            continue
+        try:
+            check_id: object = check_value.id
+        except AttributeError:
+            continue
+        if check_id == "oauth_metadata":
+            oauth_check = check_value
             break
-    if oauth_check is None or oauth_check.get("status") != "FAIL":
+    if oauth_check is None:
+        return result
+    try:
+        oauth_status: object = oauth_check.status
+    except AttributeError:
+        return result
+    if oauth_status != "FAIL":
         return result
 
-    payload["result"] = "pass"
-    payload["failed_checks"] = []
-    oauth_check["status"] = "SKIP"
-    oauth_check["summary"] = (
+    payload.result = "pass"
+    payload.failed_checks = []
+    oauth_check.status = "SKIP"
+    oauth_check.summary = (
         "not required: the loopback MCP intentionally uses no authentication; "
         "OpenAI Secure Tunnel controls access"
     )
-    oauth_check["why"] = (
+    oauth_check.why = (
         "The sample_mcp_remote_no_auth profile terminates access control at the "
         "OpenAI tunnel, so the private loopback endpoint must not advertise OAuth."
     )
-    oauth_check["next"] = []
-    normalized_stdout = json.dumps(payload, indent=2) + "\n"
+    oauth_check.next = []
+    normalized_stdout = json.dumps(
+        payload,
+        default=_namespace_to_mapping,
+        indent=2,
+    ) + "\n"
     return subprocess.CompletedProcess(
         result.args,
         0,
         normalized_stdout,
         result.stderr,
     )
+
+
+def _namespace_object_hook(values: dict[str, object]) -> SimpleNamespace:
+    return SimpleNamespace(**values)
+
+
+def _namespace_to_mapping(value: object) -> dict[str, object]:
+    if not isinstance(value, SimpleNamespace):
+        raise TypeError(f"cannot serialize doctor value: {type(value).__name__}")
+    return cast(dict[str, object], vars(value))
