@@ -333,7 +333,6 @@ def validate_standard_scene_export(scene_path: str | Path) -> StandardSceneExpor
         renderer["runtime_config"],
         name="renderer.runtime_config",
     )
-    _validate_runtime_config(runtime_config_path)
 
     _mapping(scene["sfm_summary"], name="scene.sfm_summary")
     _mapping(scene["nht_training_summary"], name="scene.nht_training_summary")
@@ -487,114 +486,6 @@ def _parse_camera(
     )
 
 
-def _validate_runtime_config(path: Path) -> None:
-    raw = _mapping(
-        _load_json(path),
-        keys={
-            "schema",
-            "camera_model",
-            "pose_opt",
-            "primitive_type",
-            "antialiased",
-            "packed",
-            "tile_size",
-            "with_ut",
-            "with_eval3d",
-            "post_processing",
-            "near_plane",
-            "far_plane",
-            "deferred_opt_feature_dim",
-            "deferred_opt_enable_view_encoding",
-            "deferred_opt_view_encoding_type",
-            "deferred_mlp_hidden_dim",
-            "deferred_mlp_num_layers",
-            "deferred_opt_sh_degree",
-            "deferred_opt_sh_scale",
-            "deferred_opt_fourier_num_freqs",
-            "deferred_opt_center_ray_encoding",
-            "deferred_decode_activation",
-        },
-        name="renderer.runtime_config",
-    )
-    _expect(raw["schema"], "nht_runtime_config_v1", name="runtime.schema")
-    _expect(raw["camera_model"], "pinhole", name="runtime.camera_model")
-    if raw["pose_opt"] is not False:
-        raise ValueError("runtime.pose_opt must be false.")
-    if raw["post_processing"] is not None:
-        raise ValueError("runtime.post_processing must be null.")
-    _expect(raw["primitive_type"], "3dgs", name="runtime.primitive_type")
-    _boolean(raw["antialiased"], name="runtime.antialiased")
-    _boolean(raw["packed"], name="runtime.packed")
-    _integer(raw["tile_size"], name="runtime.tile_size", minimum=1)
-    with_ut = _boolean(raw["with_ut"], name="runtime.with_ut")
-    with_eval3d = _boolean(raw["with_eval3d"], name="runtime.with_eval3d")
-    if with_ut and not with_eval3d:
-        raise ValueError("runtime.with_ut requires runtime.with_eval3d.")
-    _integer(
-        raw["deferred_opt_feature_dim"],
-        name="runtime.deferred_opt_feature_dim",
-        minimum=1,
-    )
-    _boolean(
-        raw["deferred_opt_enable_view_encoding"],
-        name="runtime.deferred_opt_enable_view_encoding",
-    )
-    view_encoding = _expect_string(
-        raw["deferred_opt_view_encoding_type"],
-        name="runtime.deferred_opt_view_encoding_type",
-    )
-    if view_encoding not in {"sh", "fourier"}:
-        raise ValueError(
-            "runtime.deferred_opt_view_encoding_type must be 'sh' or 'fourier'."
-        )
-    _integer(
-        raw["deferred_mlp_hidden_dim"],
-        name="runtime.deferred_mlp_hidden_dim",
-        minimum=1,
-    )
-    _integer(
-        raw["deferred_mlp_num_layers"],
-        name="runtime.deferred_mlp_num_layers",
-        minimum=1,
-    )
-    _integer(
-        raw["deferred_opt_sh_degree"],
-        name="runtime.deferred_opt_sh_degree",
-        minimum=0,
-    )
-    _number(
-        raw["deferred_opt_sh_scale"],
-        name="runtime.deferred_opt_sh_scale",
-        minimum=0.0,
-        exclusive=True,
-    )
-    _integer(
-        raw["deferred_opt_fourier_num_freqs"],
-        name="runtime.deferred_opt_fourier_num_freqs",
-        minimum=1,
-    )
-    _boolean(
-        raw["deferred_opt_center_ray_encoding"],
-        name="runtime.deferred_opt_center_ray_encoding",
-    )
-    decode_activation = _expect_string(
-        raw["deferred_decode_activation"],
-        name="runtime.deferred_decode_activation",
-    )
-    if decode_activation not in {"sigmoid", "relu_clamp"}:
-        raise ValueError(
-            "runtime.deferred_decode_activation must be 'sigmoid' or 'relu_clamp'."
-        )
-    near = _number(
-        raw["near_plane"], name="runtime.near_plane", minimum=0.0, exclusive=True
-    )
-    far = _number(
-        raw["far_plane"], name="runtime.far_plane", minimum=0.0, exclusive=True
-    )
-    if near >= far:
-        raise ValueError("runtime near_plane must be smaller than far_plane.")
-
-
 def _resolve_model_file(
     export_root: Path,
     model_root: Path,
@@ -696,12 +587,6 @@ def _expect_sequence(value: object, expected: tuple[object, ...], *, name: str) 
 def _expect_string(value: object, *, name: str) -> str:
     if not isinstance(value, str) or not value or value != value.strip():
         raise TypeError(f"{name} must be a non-empty trimmed string.")
-    return value
-
-
-def _boolean(value: object, *, name: str) -> bool:
-    if type(value) is not bool:
-        raise TypeError(f"{name} must be a boolean.")
     return value
 
 

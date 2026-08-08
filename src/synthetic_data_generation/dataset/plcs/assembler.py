@@ -1,4 +1,4 @@
-"""Exact compact PLCS chunk/label inventory validation and assembly."""
+"""Exact multi-scene compact PLCS inventory validation and assembly."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from src.synthetic_data_generation.dataset.contracts import (
 from src.synthetic_data_generation.dataset.plcs.timeline import (
     PLCSFrameEntry,
     PLCSGlobalTimeline,
+    PLCSSceneInventory,
 )
 from src.synthetic_data_generation.dataset.runtime import (
     ChunkReader,
@@ -27,19 +28,55 @@ from src.tasks.base.generate_dataset.continuity import (
     validate_frame_continuity,
 )
 
-PLCS_DATASET_SCHEMA = "tennis_plcs_compact_dataset_v2"
-PLCS_FRAME_LABEL_SCHEMA = "tennis_plcs_frame_label_v2"
+PLCS_DATASET_SCHEMA = "tennis_plcs_compact_dataset_v3"
+PLCS_FRAME_LABEL_SCHEMA = "tennis_plcs_frame_label_v3"
+
+
+@dataclass(frozen=True, slots=True)
+class PLCSSceneAssemblyInput:
+    """Attempt-local compact chunks for one intact logical scene."""
+
+    timeline: PLCSGlobalTimeline
+    split: str
+    rig: SampledCameraRig
+    chunk_readers: tuple[ChunkReader, ...]
+    attempt_token: str
+
+    def __post_init__(self) -> None:
+        if self.split not in {"train", "validation", "test"}:
+            raise ValueError("PLCS scene assembly split is unsupported.")
+        if self.rig.court_instance_id != self.timeline.target_court.court_instance_id:
+            raise ValueError("PLCS logical scene camera and timeline courts disagree.")
+        if not self.chunk_readers:
+            raise ValueError("PLCS logical scene requires compact chunk readers.")
+        if not self.attempt_token.strip():
+            raise ValueError("PLCS logical scene attempt token must be non-empty.")
+
+
+@dataclass(frozen=True, slots=True)
+class PLCSSceneAssemblyResult:
+    """Validated inventory evidence for one complete logical scene."""
+
+    scene_id: str
+    continuity: FrameContinuityReport
+    sample_count: int
+    chunk_count: int
 
 
 @dataclass(frozen=True, slots=True)
 class PLCSAssemblyResult:
-    """Validated canonical compact output and continuity evidence."""
+    """Validated canonical multi-scene output and aggregate evidence."""
 
     manifest: DatasetManifest
     manifest_path: Path
-    continuity: FrameContinuityReport
+    scenes: tuple[PLCSSceneAssemblyResult, ...]
     sample_count: int
     chunk_count: int
+
+    @property
+    def continuity_record_count(self) -> int:
+        """Return all per-scene frame/track/camera continuity records."""
+        return sum(scene.continuity.record_count for scene in self.scenes)
 
 
 def build_frame_label(
@@ -113,15 +150,13 @@ def _object_label(
 def assemble_plcs_dataset(
     *,
     staging_directory: Path,
-    timeline: PLCSGlobalTimeline,
-    rig: SampledCameraRig,
-    chunk_readers: tuple[ChunkReader, ...],
-    attempt_token: str,
+    inventory: PLCSSceneInventory,
+    scene_inputs: tuple[PLCSSceneAssemblyInput, ...],
     chunk_size: int,
     diagnostics: tuple[str, ...],
     seed: int,
 ) -> PLCSAssemblyResult:
-    """Validate compact chunks once as a complete global frame-camera stream."""
+    """Validate and publish every logical scene without splitting its timeline."""
     if staging_directory.name != "staging" or not staging_directory.is_dir():
         raise ValueError(
             "PLCS assembly requires the runner-provided staging directory."
@@ -133,16 +168,155 @@ def assemble_plcs_dataset(
         raise FileNotFoundError(
             "PLCS compact dataset requires one shared background store."
         )
-    camera_ids = tuple(camera.scene_camera.camera_id for camera in rig.cameras)
+    by_scene = {value.timeline.scene_id: value for value in scene_inputs}
+    expected_scene_ids = tuple(
+        logical.timeline.scene_id for logical in inventory.scenes
+    )
+    if len(by_scene) != len(scene_inputs) or set(by_scene) != set(expected_scene_ids):
+        raise ValueError(
+            "PLCS assembly inputs must cover every logical scene exactly once."
+        )
+
+    aggregate_offset = 0
+    scene_results: list[PLCSSceneAssemblyResult] = []
+    logical_metadata: list[dict[str, object]] = []
+    storage_scenes: list[dict[str, object]] = []
+    for logical in inventory.scenes:
+        value = by_scene[logical.timeline.scene_id]
+        if value.timeline is not logical.timeline or value.split != logical.split:
+            raise ValueError("PLCS assembly input disagrees with its scene inventory.")
+        result = _validate_scene(value, chunk_size=chunk_size, seed=seed)
+        scene_results.append(result)
+        timeline = value.timeline
+        frame_indices = tuple(range(timeline.frame_count))
+        local_inventory = FrameInventory(
+            source_count=timeline.frame_count,
+            planned_indices=frame_indices,
+            rendered_indices=frame_indices,
+            labelled_indices=frame_indices,
+        )
+        logical_metadata.append(
+            {
+                "scene_id": timeline.scene_id,
+                "split": value.split,
+                "aggregate_frame_offset": aggregate_offset,
+                "frame_inventory": local_inventory.to_dict(),
+                "mode": timeline.mode,
+                "target_court": timeline.target_court.to_dict(),
+                "camera_profile": value.rig.profile,
+                "cameras": [camera.to_metadata() for camera in value.rig.cameras],
+                "motion_sources": [
+                    track.clip.metadata() for track in timeline.tracks
+                ],
+                "tracks": [
+                    {
+                        "object_id": track.object_id,
+                        "instance_id": track.instance_id,
+                        "asset_id": track.asset_id,
+                        "start_frame": track.start_frame,
+                        "stop_frame": track.stop_frame,
+                        "anchor_position_court_m": list(
+                            track.anchor_position_court_m
+                        ),
+                        "yaw_radians": track.yaw_radians,
+                    }
+                    for track in timeline.tracks
+                ],
+                "continuity": {
+                    "frame_count": result.continuity.frame_count,
+                    "chunk_count": result.continuity.chunk_count,
+                    "track_count": result.continuity.track_count,
+                    "camera_count": result.continuity.camera_count,
+                    "record_count": result.continuity.record_count,
+                },
+            }
+        )
+        storage_scenes.append(
+            {
+                "scene_id": timeline.scene_id,
+                "chunks": [
+                    str(reader.directory.relative_to(staging_directory))
+                    for reader in value.chunk_readers
+                ],
+                "attempt_token": value.attempt_token,
+                "sample_order": "scene-frame-then-configured-camera",
+            }
+        )
+        aggregate_offset += timeline.frame_count
+
+    aggregate_indices = tuple(range(aggregate_offset))
+    frame_inventory = FrameInventory(
+        source_count=aggregate_offset,
+        planned_indices=aggregate_indices,
+        rendered_indices=aggregate_indices,
+        labelled_indices=aggregate_indices,
+    )
+    manifest = DatasetManifest(
+        scene_id=inventory.dataset_scene_id,
+        domain=DatasetDomain.PLCS,
+        schema=PLCS_DATASET_SCHEMA,
+        frame_inventory=frame_inventory,
+        target_courts=inventory.target_courts,
+        metadata={
+            "seed": seed,
+            "logical_scene_count": inventory.scene_count,
+            "aggregate_global_frame_count": inventory.aggregate_global_frame_count,
+            "aggregate_source_frame_count": inventory.aggregate_source_frame_count,
+            "required_motion_categories": sorted(
+                inventory.required_motion_categories
+            ),
+            "accepted_court_instance_ids": list(
+                inventory.accepted_court_instance_ids
+            ),
+            "logical_scenes": logical_metadata,
+        },
+        diagnostics=diagnostics,
+    )
+    manifest_path = staging_directory / "dataset.json"
+    payload = {
+        "schema": manifest.schema,
+        "scene_id": manifest.scene_id,
+        "domain": manifest.domain.value,
+        "frame_inventory": manifest.frame_inventory.to_dict(),
+        "target_courts": [court.to_dict() for court in manifest.target_courts],
+        "metadata": manifest.metadata,
+        "diagnostics": list(manifest.diagnostics),
+        "storage": {
+            "layout": "shared-background-plus-per-scene-foreground-delta",
+            "background_store": "backgrounds",
+            "scenes": storage_scenes,
+        },
+    }
+    manifest_path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return PLCSAssemblyResult(
+        manifest=manifest,
+        manifest_path=manifest_path,
+        scenes=tuple(scene_results),
+        sample_count=sum(result.sample_count for result in scene_results),
+        chunk_count=sum(result.chunk_count for result in scene_results),
+    )
+
+
+def _validate_scene(
+    value: PLCSSceneAssemblyInput,
+    *,
+    chunk_size: int,
+    seed: int,
+) -> PLCSSceneAssemblyResult:
+    timeline = value.timeline
+    camera_ids = tuple(
+        camera.scene_camera.camera_id for camera in value.rig.cameras
+    )
     validated = FinalDatasetAssembler(
         frame_count=timeline.frame_count,
         camera_ids=camera_ids,
-        attempt_token=attempt_token,
-    ).validate(chunk_readers)
+        attempt_token=value.attempt_token,
+    ).validate(value.chunk_readers)
     continuity_records: list[TimelineFrameRecord] = []
-    rendered_frames: set[int] = set()
-    labelled_frames: set[int] = set()
-    for _chunk, reader in zip(validated, chunk_readers, strict=True):
+    for _chunk, reader in zip(validated, value.chunk_readers, strict=True):
         deltas = reader.deltas()
         metadata = reader.metadata()
         for delta, label in zip(deltas, metadata, strict=True):
@@ -150,7 +324,7 @@ def assemble_plcs_dataset(
             camera_index = camera_ids.index(delta.key.camera_id)
             expected_label = build_frame_label(
                 timeline=timeline,
-                rig=rig,
+                rig=value.rig,
                 frame_index=frame_index,
                 camera_index=camera_index,
                 visibility=delta.visible_instance_counts,
@@ -160,8 +334,6 @@ def assemble_plcs_dataset(
                 raise ValueError(
                     "PLCS compact label semantics disagree with its delta."
                 )
-            rendered_frames.add(frame_index)
-            labelled_frames.add(frame_index)
             raw_objects = expected_label["objects"]
             if not isinstance(raw_objects, Sequence) or isinstance(
                 raw_objects, (str, bytes)
@@ -190,74 +362,8 @@ def assemble_plcs_dataset(
         continuity_records,
         frame_count=timeline.frame_count,
     )
-    frame_indices = tuple(range(timeline.frame_count))
-    inventory = FrameInventory(
-        source_count=timeline.frame_count,
-        planned_indices=frame_indices,
-        rendered_indices=tuple(sorted(rendered_frames)),
-        labelled_indices=tuple(sorted(labelled_frames)),
-    )
-    manifest = DatasetManifest(
+    return PLCSSceneAssemblyResult(
         scene_id=timeline.scene_id,
-        domain=DatasetDomain.PLCS,
-        schema=PLCS_DATASET_SCHEMA,
-        frame_inventory=inventory,
-        target_courts=(timeline.target_court,),
-        metadata={
-            "mode": timeline.mode,
-            "seed": seed,
-            "camera_profile": rig.profile,
-            "cameras": [camera.to_metadata() for camera in rig.cameras],
-            "motion_sources": [track.clip.metadata() for track in timeline.tracks],
-            "tracks": [
-                {
-                    "object_id": track.object_id,
-                    "instance_id": track.instance_id,
-                    "asset_id": track.asset_id,
-                    "start_frame": track.start_frame,
-                    "stop_frame": track.stop_frame,
-                    "anchor_position_court_m": list(track.anchor_position_court_m),
-                    "yaw_radians": track.yaw_radians,
-                }
-                for track in timeline.tracks
-            ],
-            "continuity": {
-                "frame_count": continuity.frame_count,
-                "chunk_count": continuity.chunk_count,
-                "track_count": continuity.track_count,
-                "camera_count": continuity.camera_count,
-                "record_count": continuity.record_count,
-            },
-        },
-        diagnostics=diagnostics,
-    )
-    manifest_path = staging_directory / "dataset.json"
-    payload = {
-        "schema": manifest.schema,
-        "scene_id": manifest.scene_id,
-        "domain": manifest.domain.value,
-        "frame_inventory": manifest.frame_inventory.to_dict(),
-        "target_courts": [court.to_dict() for court in manifest.target_courts],
-        "metadata": manifest.metadata,
-        "diagnostics": list(manifest.diagnostics),
-        "storage": {
-            "layout": "shared-background-plus-foreground-delta",
-            "background_store": "backgrounds",
-            "chunks": [
-                str(reader.directory.relative_to(staging_directory))
-                for reader in chunk_readers
-            ],
-            "attempt_token": attempt_token,
-            "sample_order": "global-frame-then-configured-camera",
-        },
-    }
-    manifest_path.write_text(
-        json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
-    return PLCSAssemblyResult(
-        manifest=manifest,
-        manifest_path=manifest_path,
         continuity=continuity,
         sample_count=timeline.frame_count * len(camera_ids),
         chunk_count=len(validated),
@@ -268,6 +374,8 @@ __all__ = [
     "PLCS_DATASET_SCHEMA",
     "PLCS_FRAME_LABEL_SCHEMA",
     "PLCSAssemblyResult",
+    "PLCSSceneAssemblyInput",
+    "PLCSSceneAssemblyResult",
     "assemble_plcs_dataset",
     "build_frame_label",
 ]

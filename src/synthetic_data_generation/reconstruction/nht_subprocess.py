@@ -7,15 +7,11 @@ import subprocess
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from src.synthetic_data_generation.reconstruction.contracts import (
     ReconstructionCommandRequest,
-)
-from src.synthetic_data_generation.reconstruction.runtime_config import (
-    NHTTrainingRuntime,
-    resolved_nht_runtime_config,
-    write_nht_runtime_config,
 )
 from src.synthetic_data_generation.reconstruction.scene_export import (
     StandardSceneExport,
@@ -38,10 +34,11 @@ def run_nht_reconstruction(
     """Run ``nht-reconstruct`` as argv and validate only its public files."""
     if timeout_seconds is not None and timeout_seconds <= 0.0:
         raise ValueError("timeout_seconds must be positive when provided.")
+    public_environment = _public_environment(environment)
     child_environment = None
-    if environment is not None:
+    if public_environment:
         child_environment = dict(os.environ)
-        child_environment.update(environment)
+        child_environment.update(public_environment)
     subprocess.run(
         list(request.argv()),
         check=True,
@@ -65,34 +62,34 @@ def run_nht_reconstruction(
 class NHTReconstructionHandler:
     """Canonical scene-pipeline handler backed only by the NHT command boundary."""
 
-    config_path: Path
     executable: str | Path
-    training_runtime: NHTTrainingRuntime
     environment: Mapping[str, str]
     timeout_seconds: float
+
+    def __post_init__(self) -> None:
+        if self.timeout_seconds <= 0.0:
+            raise ValueError("NHT reconstruction timeout_seconds must be positive.")
+        object.__setattr__(
+            self,
+            "environment",
+            MappingProxyType(_public_environment(self.environment)),
+        )
 
     def _command_request(
         self,
         context: StageExecutionContext,
-        *,
-        config_path: Path,
     ) -> ReconstructionCommandRequest:
         source_video = context.owner_path.parent / "source" / "video.mp4"
         return ReconstructionCommandRequest(
             scene_id=context.request.scene_id,
             input_video=source_video,
             workspace=context.owner_path,
-            config_path=config_path,
             executable=self.executable,
         )
 
     def preflight(self, context: StageExecutionContext) -> None:
         """Validate fixed paths and command inputs before execution."""
-        self._command_request(context, config_path=self.config_path)
-        resolved_nht_runtime_config(
-            self.config_path,
-            runtime=self.training_runtime,
-        )
+        self._command_request(context)
 
     def execute(self, context: StageExecutionContext) -> StageExecutionSummary:
         """Execute NHT and summarize its semantically validated public export."""
@@ -100,13 +97,8 @@ class NHTReconstructionHandler:
             StageExecutionSummary,
         )
 
-        input_config = write_nht_runtime_config(
-            self.config_path,
-            context.owner_path / "input-config.yaml",
-            runtime=self.training_runtime,
-        )
         scene = run_nht_reconstruction(
-            self._command_request(context, config_path=input_config),
+            self._command_request(context),
             environment=self.environment,
             timeout_seconds=self.timeout_seconds,
         )
@@ -124,14 +116,32 @@ class NHTReconstructionHandler:
         scene = validate_standard_scene_export(
             context.owner_path / "export" / "scene.json"
         )
-        resolved_nht_runtime_config(
-            context.owner_path / "input-config.yaml",
-            runtime=self.training_runtime,
-        )
         if scene.scene_id != context.request.scene_id:
             raise ValueError(
                 "Validated reconstruction export belongs to another scene."
             )
+
+
+def _public_environment(
+    environment: Mapping[str, str] | None,
+) -> dict[str, str]:
+    if environment is None:
+        return {}
+    unknown = sorted(set(environment) - {"CUDA_VISIBLE_DEVICES"})
+    if unknown:
+        raise ValueError(
+            "nht-reconstruct environment contains unsupported private key(s): "
+            + ", ".join(unknown)
+            + "."
+        )
+    result: dict[str, str] = {}
+    for key, value in environment.items():
+        if not isinstance(value, str) or not value or value != value.strip():
+            raise ValueError(
+                f"nht-reconstruct environment {key} must be a trimmed non-empty string."
+            )
+        result[key] = value
+    return result
 
 
 __all__ = ["NHTReconstructionHandler", "run_nht_reconstruction"]

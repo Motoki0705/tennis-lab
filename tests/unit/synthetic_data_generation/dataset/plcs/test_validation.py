@@ -49,7 +49,7 @@ def test_logical_reader_reconstructs_shared_background_plus_delta(
         encoding="utf-8",
     )
     writer = ChunkWriter(
-        root / "chunks",
+        root / "scenes" / "B00" / "chunks",
         attempt_token="B00-plcs",
         camera_ids=("camera-0",),
         width=3,
@@ -88,21 +88,44 @@ def test_logical_reader_reconstructs_shared_background_plus_delta(
                 "domain": "plcs",
                 "frame_inventory": {},
                 "target_courts": [],
-                "metadata": {"cameras": [{"camera": camera.to_dict()}]},
+                "metadata": {
+                    "logical_scenes": [
+                        {
+                            "scene_id": "B00",
+                            "cameras": [
+                                {
+                                    "slot_id": "camera-0",
+                                    "court_local_center_m": [0.0, 0.0, 1.0],
+                                    "court_local_look_at_m": [0.0, 1.0, 1.0],
+                                    "hfov_degrees": 60.0,
+                                    "camera": camera.to_dict(),
+                                }
+                            ],
+                        }
+                    ]
+                },
                 "diagnostics": [],
                 "storage": {
-                    "layout": "shared-background-plus-foreground-delta",
+                    "layout": "shared-background-plus-per-scene-foreground-delta",
                     "background_store": "backgrounds",
-                    "chunks": [str(written.directory.relative_to(root))],
-                    "attempt_token": "B00-plcs",
-                    "sample_order": "global-frame-then-configured-camera",
+                    "scenes": [
+                        {
+                            "scene_id": "B00",
+                            "chunks": [str(written.directory.relative_to(root))],
+                            "attempt_token": "B00-plcs",
+                            "sample_order": "scene-frame-then-configured-camera",
+                        }
+                    ],
                 },
             }
         ),
         encoding="utf-8",
     )
+    (root / "diagnostics").mkdir()
 
-    sample = PLCSCompactDatasetReader(root).logical_sample(0, "camera-0")
+    sample = PLCSCompactDatasetReader(root).logical_sample(
+        "B00", 0, "camera-0"
+    )
 
     assert sample.instance_ids[1, 1] == 3
     np.testing.assert_array_equal(sample.rgb[1, 1], (1.0, 0.0, 0.0))

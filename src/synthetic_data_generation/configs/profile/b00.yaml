@@ -3,6 +3,6 @@ profile: b00-production
 
 request:
   scene_id: B00
-  source_video: neural-harmonic-textures/data/tennis_court.mp4
+  source_video: tennis-lab/data/tennis_court.mp4
   targets: [court, blcs, plcs]
   from_stage: ingest

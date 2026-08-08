@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import math
+import re
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from typing import TypeAlias, cast
 
@@ -32,6 +34,7 @@ _SMPLH_TO_COURT = np.asarray(
     ),
     dtype=np.float64,
 )
+_PORTABLE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,7 +77,7 @@ class PLCSObjectTrack:
     @property
     def stop_frame(self) -> int:
         """Return the exclusive global end of this unsliced source clip."""
-        return self.start_frame + self.clip.frame_count
+        return self.start_frame + int(self.clip.frame_count)
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,8 +143,8 @@ class PLCSGlobalTimeline:
     frames: tuple[PLCSGlobalFrame, ...]
 
     def __post_init__(self) -> None:
-        if not self.scene_id.strip() or self.scene_id != self.scene_id.strip():
-            raise ValueError("scene_id must be a non-empty trimmed string.")
+        if _PORTABLE_ID.fullmatch(self.scene_id) is None:
+            raise ValueError("scene_id must be a portable identifier.")
         if not self.tracks or not self.frames:
             raise ValueError("A PLCS timeline requires tracks and global frames.")
         if tuple(frame.frame_index for frame in self.frames) != tuple(
@@ -235,6 +238,160 @@ class PLCSGlobalTimeline:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class PLCSLogicalScene:
+    """One complete compositor timeline assigned wholly to one target court."""
+
+    split: str
+    timeline: PLCSGlobalTimeline
+
+    def __post_init__(self) -> None:
+        if self.split not in {"train", "validation", "test"}:
+            raise ValueError("PLCS logical-scene split is unsupported.")
+        if not isinstance(self.timeline, PLCSGlobalTimeline):
+            raise TypeError("PLCS logical scene requires a global timeline.")
+
+
+@dataclass(frozen=True, slots=True)
+class PLCSSceneInventory:
+    """Balanced collection of intact logical scenes for one dataset workspace."""
+
+    dataset_scene_id: str
+    scenes: tuple[PLCSLogicalScene, ...]
+    accepted_court_instance_ids: tuple[str, ...]
+    required_motion_categories: frozenset[str]
+
+    def __post_init__(self) -> None:
+        if (
+            not self.dataset_scene_id.strip()
+            or self.dataset_scene_id != self.dataset_scene_id.strip()
+        ):
+            raise ValueError("dataset_scene_id must be a non-empty trimmed string.")
+        scenes = tuple(self.scenes)
+        accepted = tuple(self.accepted_court_instance_ids)
+        if not scenes:
+            raise ValueError("PLCS scene inventory must contain logical scenes.")
+        scene_ids = tuple(scene.timeline.scene_id for scene in scenes)
+        if len(scene_ids) != len(set(scene_ids)):
+            raise ValueError("PLCS logical scene IDs must be unique.")
+        if (
+            not accepted
+            or len(accepted) != len(set(accepted))
+            or any(not value.strip() for value in accepted)
+        ):
+            raise ValueError("Accepted PLCS court IDs must be non-empty and unique.")
+        if len(scenes) < len(accepted):
+            raise ValueError(
+                "PLCS logical scene inventory cannot cover every accepted court."
+            )
+        required = frozenset(self.required_motion_categories)
+        if not required or any(not value.strip() for value in required):
+            raise ValueError("Required PLCS motion categories must be explicit.")
+
+        expected_signature = _track_inventory_signature(scenes[0].timeline)
+        for scene in scenes:
+            if _track_inventory_signature(scene.timeline) != expected_signature:
+                raise ValueError(
+                    "Every PLCS logical scene must retain the same complete source "
+                    "motion inventory."
+                )
+            categories = {
+                track.clip.category.value for track in scene.timeline.tracks
+            }
+            if categories != required:
+                raise ValueError(
+                    "PLCS logical scene motion categories differ from the required "
+                    "complete inventory."
+                )
+
+        accepted_set = set(accepted)
+        court_counts = Counter(
+            scene.timeline.target_court.court_instance_id for scene in scenes
+        )
+        unknown = set(court_counts).difference(accepted_set)
+        if unknown:
+            raise ValueError(
+                f"PLCS logical scenes reference unknown courts: {sorted(unknown)}."
+            )
+        if set(court_counts) != accepted_set:
+            missing = sorted(accepted_set.difference(court_counts))
+            raise ValueError(
+                f"PLCS logical scenes do not use every accepted court: {missing}."
+            )
+        values = [court_counts[court_id] for court_id in accepted]
+        if max(values) - min(values) > 1:
+            raise ValueError("PLCS logical-scene court count difference exceeds one.")
+
+        split_counts: dict[str, Counter[str]] = defaultdict(Counter)
+        for scene in scenes:
+            split_counts[scene.split][
+                scene.timeline.target_court.court_instance_id
+            ] += 1
+        for split, counts in split_counts.items():
+            split_values = [counts[court_id] for court_id in accepted]
+            if max(split_values) - min(split_values) > 1:
+                raise ValueError(
+                    f"PLCS logical-scene court assignment is imbalanced in {split!r}."
+                )
+
+        object.__setattr__(self, "scenes", scenes)
+        object.__setattr__(self, "accepted_court_instance_ids", accepted)
+        object.__setattr__(self, "required_motion_categories", required)
+
+    @property
+    def scene_count(self) -> int:
+        """Return the number of complete logical timelines."""
+        return len(self.scenes)
+
+    @property
+    def aggregate_global_frame_count(self) -> int:
+        """Return the exact sum of complete per-scene compositor frames."""
+        return sum(scene.timeline.frame_count for scene in self.scenes)
+
+    @property
+    def aggregate_source_frame_count(self) -> int:
+        """Return every retained source-motion frame across all logical scenes."""
+        return sum(
+            track.clip.frame_count
+            for scene in self.scenes
+            for track in scene.timeline.tracks
+        )
+
+    @property
+    def target_courts(self) -> tuple[TargetCourtBinding, ...]:
+        """Return one canonical binding for every accepted court in layout order."""
+        by_id: dict[str, TargetCourtBinding] = {}
+        for scene in self.scenes:
+            binding = scene.timeline.target_court
+            previous = by_id.setdefault(binding.court_instance_id, binding)
+            if previous != binding:
+                raise ValueError(
+                    "PLCS logical scenes disagree on one court's canonical binding."
+                )
+        return tuple(by_id[court_id] for court_id in self.accepted_court_instance_ids)
+
+
+def _track_inventory_signature(
+    timeline: PLCSGlobalTimeline,
+) -> tuple[tuple[object, ...], ...]:
+    return tuple(
+        (
+            track.object_id,
+            track.instance_id,
+            track.asset_id,
+            track.clip.source_path,
+            track.clip.category.value,
+            track.clip.gender,
+            track.clip.fps,
+            track.clip.frame_count,
+            track.start_frame,
+            track.anchor_position_court_m,
+            track.yaw_radians,
+        )
+        for track in timeline.tracks
+    )
+
+
 def build_global_timeline(
     *,
     scene_id: str,
@@ -319,6 +476,8 @@ __all__ = [
     "PLCSFrameEntry",
     "PLCSGlobalFrame",
     "PLCSGlobalTimeline",
+    "PLCSLogicalScene",
     "PLCSObjectTrack",
+    "PLCSSceneInventory",
     "build_global_timeline",
 ]

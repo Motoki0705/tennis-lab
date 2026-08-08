@@ -123,7 +123,7 @@ def test_b00_video_to_report_meets_all_quantitative_and_motion_gates() -> None:
     assert blcs.performance.background_cache_misses == 18
     assert blcs.performance.cuda_peak_bytes > 0
     assert plcs_performance.nht_invocations == 1
-    assert plcs_performance.background_cache_misses == 6
+    assert plcs_performance.background_cache_misses == 12
     assert plcs_performance.cuda_peak_bytes > 0
 
     assert scene.scene_id == "B00"
@@ -185,17 +185,79 @@ def test_b00_video_to_report_meets_all_quantitative_and_motion_gates() -> None:
         for name in ("source", "planned", "rendered", "labelled")
     ]
     assert len(set(counts)) == 1
+    assert counts[0] == 2234
+    plcs_metadata = _mapping(plcs_manifest["metadata"], name="plcs.metadata")
+    assert _integer(
+        plcs_metadata["logical_scene_count"], name="plcs.logical_scene_count"
+    ) == len(alignment.layout.courts)
+    logical_scene_manifests = tuple(
+        _mapping(scene_manifest, name=f"plcs.metadata.logical_scenes[{index}]")
+        for index, scene_manifest in enumerate(
+            _sequence(
+                plcs_metadata["logical_scenes"],
+                name="plcs.metadata.logical_scenes",
+            )
+        )
+    )
+    assert {manifest["scene_id"] for manifest in logical_scene_manifests} == {
+        "B00",
+        "B00-plcs-002",
+    }
+    assert all(
+        _mapping(manifest["frame_inventory"], name="logical_scene.frame_inventory")
+        == {
+            "source": 1117,
+            "planned": 1117,
+            "rendered": 1117,
+            "labelled": 1117,
+            "first_frame": 0,
+            "last_frame": 1116,
+        }
+        for manifest in logical_scene_manifests
+    )
     plcs_diagnostics = _json(
         root / "datasets/plcs/diagnostics/motion-camera-court.json"
     )
     assert plcs_diagnostics["amass_compatible"] is True
-    camera_distribution = _mapping(
-        plcs_diagnostics["camera_distribution"], name="plcs.camera_distribution"
+    assert _integer(
+        plcs_diagnostics["logical_scene_count"],
+        name="plcs.diagnostics.logical_scene_count",
+    ) == 2
+    logical_scene_diagnostics = tuple(
+        _mapping(scene_diagnostics, name=f"plcs.logical_scenes[{index}]")
+        for index, scene_diagnostics in enumerate(
+            _sequence(
+                plcs_diagnostics["logical_scenes"],
+                name="plcs.logical_scenes",
+            )
+        )
     )
-    assert camera_distribution["profile"] == "default"
-    assert _integer(camera_distribution["camera_count"], name="plcs.camera_count") == 6
+    assert all(
+        _integer(scene_diagnostics["global_frame_count"], name="global_frame_count")
+        == 1117
+        for scene_diagnostics in logical_scene_diagnostics
+    )
+    for scene_diagnostics in logical_scene_diagnostics:
+        camera_distribution = _mapping(
+            scene_diagnostics["camera_distribution"],
+            name="plcs.logical_scene.camera_distribution",
+        )
+        assert camera_distribution["profile"] == "default"
+        assert (
+            _integer(camera_distribution["camera_count"], name="plcs.camera_count")
+            == 6
+        )
     court_balance = _mapping(
         plcs_diagnostics["court_balance"], name="plcs.court_balance"
+    )
+    assert set(
+        _mapping(court_balance["counts"], name="plcs.court_balance.counts")
+    ) == {court.court_instance_id for court in alignment.layout.courts}
+    assert all(
+        _integer(count, name=f"plcs.court_balance.counts.{court_id}") == 1
+        for court_id, count in _mapping(
+            court_balance["counts"], name="plcs.court_balance.counts"
+        ).items()
     )
     assert (
         _integer(

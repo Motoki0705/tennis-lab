@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import astuple
+from pathlib import Path
 
 import pytest
 from hydra import compose, initialize_config_dir
@@ -78,7 +79,7 @@ def test_b00_quantitative_and_full_timeline_values_are_config_owned() -> None:
         runtime.plcs.performance.maximum_background_cache_misses,
         runtime.plcs.performance.maximum_published_fraction_of_dense_reference,
         runtime.plcs.performance.maximum_batch_frames,
-    ) == (5_400.0, 1, 6, 0.25, 32)
+    ) == (5_400.0, 1, 12, 0.25, 32)
     assert {
         runtime.court.performance.execution_device,
         runtime.blcs.performance.execution_device,
@@ -233,7 +234,10 @@ def test_blcs_and_plcs_production_inputs_are_typed_and_have_no_frame_subset() ->
     assert runtime.plcs.smplh_model_root == (
         runtime.resolver.roots.external_asset_root / "tennis-lab/data/smplh"
     ).resolve()
-    assert runtime.plcs.scene_splits == {"B00": "train"}
+    assert runtime.plcs.scene_splits == {
+        "B00": "train",
+        "B00-plcs-002": "train",
+    }
     assert tuple(item.category.value for item in runtime.plcs.objects) == (
         "running",
         "walking",
@@ -304,16 +308,68 @@ def test_source_video_cannot_escape_external_asset_root() -> None:
         ScenePipelineConfiguration.from_config(config)
 
 
-def test_renderer_must_share_the_explicit_cuda_training_environment() -> None:
+@pytest.mark.parametrize(
+    "private_key",
+    ["repository_root", "reconstruction_config_path", "training_runtime"],
+)
+def test_private_nht_configuration_keys_fail_closed(private_key: str) -> None:
     config = _compose()
-    OmegaConf.update(
-        config,
-        "nht.render_executable",
-        "neural-harmonic-textures/.venv/bin/nht-render",
-        merge=False,
-    )
+    with open_dict(config.nht):
+        config.nht[private_key] = "forbidden"
 
-    with pytest.raises(PathContractError, match="same CUDA virtual environment"):
+    with pytest.raises(ConfigurationError, match="Unknown configuration key"):
+        ScenePipelineConfiguration.from_config(config)
+
+
+def test_private_nht_python_environment_fails_closed() -> None:
+    config = _compose()
+    with open_dict(config.nht.environment):
+        config.nht.environment.PYTHONPATH = "/private/provider/modules"
+
+    with pytest.raises(ConfigurationError, match="environment.PYTHONPATH"):
+        ScenePipelineConfiguration.from_config(config)
+
+
+@pytest.mark.parametrize(
+    ("key", "basename"),
+    [
+        ("reconstruct_executable", "nht-reconstruct"),
+        ("render_executable", "nht-render"),
+    ],
+)
+def test_nht_commands_accept_installed_absolute_public_executables(
+    tmp_path: Path,
+    key: str,
+    basename: str,
+) -> None:
+    executable = tmp_path / "bin" / basename
+    executable.parent.mkdir()
+    executable.write_text("#!/bin/sh\n", encoding="utf-8")
+    executable.chmod(0o755)
+    config = _compose()
+    OmegaConf.update(config, f"nht.{key}", str(executable.resolve()), merge=False)
+
+    runtime = ScenePipelineConfiguration.from_config(config)
+
+    assert getattr(runtime.nht, key) == executable.resolve()
+
+
+@pytest.mark.parametrize(
+    ("key", "invalid"),
+    [
+        ("reconstruct_executable", "python"),
+        ("reconstruct_executable", "simple_trainer_nht.py"),
+        ("render_executable", "provider/bin/nht-render"),
+    ],
+)
+def test_nht_commands_reject_private_or_relative_executables(
+    key: str,
+    invalid: str,
+) -> None:
+    config = _compose()
+    OmegaConf.update(config, f"nht.{key}", invalid, merge=False)
+
+    with pytest.raises(ConfigurationError, match="absolute path"):
         ScenePipelineConfiguration.from_config(config)
 
 

@@ -14,6 +14,7 @@ accad_root: tennis-lab/data/ACCAD
 split: train
 scene_splits:
   B00: train
+  B00-plcs-002: train
 objects:
   - category: running
     start_frame: 0
@@ -58,10 +59,10 @@ render_timeout_seconds: ${nht.render_timeout_seconds}
 
 performance:
   maximum_wall_seconds: 5400.0
-  maximum_published_bytes: 42949672960
+  maximum_published_bytes: 85899345920
   maximum_published_fraction_of_dense_reference: 0.25
   maximum_nht_invocations: 1
-  maximum_background_cache_misses: 6
+  maximum_background_cache_misses: 12
   maximum_complete_array_scans_per_sample: 1
   maximum_batch_frames: 32
   execution_device: cuda:0

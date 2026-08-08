@@ -19,6 +19,7 @@ DIAGNOSTIC_FILES: tuple[str, ...] = (
     "splits.json",
     "parameter-table.json",
     "semantic-visibility.json",
+    "semantic-manifest.json",
     "performance.json",
     "summary.txt",
 )

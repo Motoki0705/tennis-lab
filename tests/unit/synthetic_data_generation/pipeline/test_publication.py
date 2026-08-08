@@ -68,6 +68,29 @@ def test_publish_replaces_complete_inventory_and_removes_transaction(
     assert not staging.exists()
 
 
+def test_publish_removes_stale_outputs_from_a_superseded_schema(
+    tmp_path: Path,
+) -> None:
+    workspace = _workspace(tmp_path)
+    spec = canonical_registry().spec(StageName.COURT_DATASET)
+    publisher = StagePublisher(workspace, spec)
+    publisher.owner.mkdir(parents=True)
+    stale = publisher.owner / "legacy-chunks"
+    stale.mkdir()
+    (stale / "stale.json").write_text("stale", encoding="utf-8")
+    staging = publisher.prepare()
+    for name in ("dataset.json", "samples", "diagnostics"):
+        _write_output(staging, name, "current")
+
+    publisher.publish()
+
+    assert not stale.exists()
+    assert all(
+        _payload(publisher.owner, name) == "current"
+        for name in ("dataset.json", "samples", "diagnostics")
+    )
+
+
 def test_prepare_rolls_back_sigterm_interrupted_publication(tmp_path: Path) -> None:
     workspace = _workspace(tmp_path)
     spec = canonical_registry().spec(StageName.COURT_DATASET)

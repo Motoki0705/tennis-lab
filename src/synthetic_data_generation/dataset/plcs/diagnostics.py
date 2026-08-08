@@ -1,65 +1,80 @@
-"""Machine-readable and human PLCS motion/camera/court diagnostics."""
+"""Machine-readable and human multi-scene PLCS diagnostics."""
 
 from __future__ import annotations
 
 import json
-from collections import Counter
+from collections import Counter, defaultdict
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Protocol
 
 import numpy as np
 
-from src.synthetic_data_generation.dataset.plcs.composition import PreparedAvatar
-from src.synthetic_data_generation.dataset.plcs.timeline import PLCSGlobalTimeline
+from src.synthetic_data_generation.dataset.plcs.timeline import PLCSSceneInventory
 from src.tasks.base.generate_dataset.camera_profiles import SampledCameraRig
-from src.tasks.base.generate_dataset.court_assignment import CourtAssignment
+
+
+class DiagnosticAvatar(Protocol):
+    """Prepared-avatar evidence consumed without constraining test devices."""
+
+    @property
+    def surface_asset(self) -> object:
+        """Return an object exposing ``gaussian_count``."""
+
+    @property
+    def articulation(self) -> object:
+        """Return an object exposing ``to_dict``."""
 
 
 def write_plcs_diagnostics(
     *,
     staging_directory: Path,
-    timeline: PLCSGlobalTimeline,
-    rig: SampledCameraRig,
-    avatars: dict[str, PreparedAvatar],
-    assignments: tuple[CourtAssignment, ...],
-    court_instance_ids: tuple[str, ...],
+    inventory: PLCSSceneInventory,
+    rigs: Mapping[str, SampledCameraRig],
+    avatars: Mapping[str, DiagnosticAvatar],
     clip_load_count: int,
     model_load_count: int,
     execution_device: str,
+    allow_test_cpu_oracle: bool = False,
 ) -> tuple[str, ...]:
-    """Persist all required motion, frame, camera, and court-balance evidence."""
-    if set(avatars) != {track.object_id for track in timeline.tracks}:
-        raise ValueError("Diagnostic avatars differ from the PLCS timeline.")
-    selected_source_count = len({track.clip.source_path for track in timeline.tracks})
-    selected_gender_count = len({track.clip.gender for track in timeline.tracks})
+    """Persist complete motion, frame, camera, and court-balance evidence."""
+    reference = inventory.scenes[0].timeline
+    expected_object_ids = {track.object_id for track in reference.tracks}
+    if set(avatars) != expected_object_ids:
+        raise ValueError("Diagnostic avatars differ from the PLCS source inventory.")
+    if set(rigs) != {
+        scene.timeline.scene_id for scene in inventory.scenes
+    }:
+        raise ValueError("Diagnostic camera rigs differ from PLCS logical scenes.")
+    selected_source_count = len(
+        {track.clip.source_path for track in reference.tracks}
+    )
+    selected_gender_count = len({track.clip.gender for track in reference.tracks})
     if clip_load_count != selected_source_count:
         raise ValueError("PLCS stage did not load each selected source exactly once.")
     if model_load_count != selected_gender_count:
         raise ValueError(
             "PLCS stage did not load each selected gender model exactly once."
         )
-    if not execution_device.startswith("cuda"):
+    if execution_device == "test-cpu-oracle":
+        if not allow_test_cpu_oracle:
+            raise ValueError("PLCS test CPU diagnostics require explicit injection.")
+    elif not execution_device.startswith("cuda"):
         raise ValueError("PLCS production diagnostics require a CUDA execution device.")
+
     diagnostics = staging_directory / "diagnostics"
     diagnostics.mkdir(parents=True, exist_ok=True)
-    if not court_instance_ids or len(court_instance_ids) != len(
-        set(court_instance_ids)
-    ):
-        raise ValueError("Diagnostic court_instance_ids must be non-empty and unique.")
-    counts = Counter(item.court_instance_id for item in assignments)
-    unknown_courts = set(counts).difference(court_instance_ids)
-    if unknown_courts:
-        raise ValueError(
-            f"Court assignments reference unknown courts: {sorted(unknown_courts)}."
-        )
-    court_count_values = [counts.get(court_id, 0) for court_id in court_instance_ids]
-    balance_difference = (
-        max(court_count_values) - min(court_count_values) if court_count_values else 0
-    )
     motion_records = []
-    for track in timeline.tracks:
+    for track in reference.tracks:
         avatar = avatars[track.object_id]
         root = track.clip.root_translation_m.astype(np.float64, copy=False)
         root_relative = root - root[:1]
+        surface = avatar.surface_asset
+        articulation = avatar.articulation
+        gaussian_count = getattr(surface, "gaussian_count", None)
+        to_dict = getattr(articulation, "to_dict", None)
+        if not isinstance(gaussian_count, int) or not callable(to_dict):
+            raise TypeError("Diagnostic avatar evidence is incomplete.")
         motion_records.append(
             {
                 **track.clip.metadata(),
@@ -67,27 +82,61 @@ def write_plcs_diagnostics(
                 "root_translation_min_m": root.min(axis=0).tolist(),
                 "root_translation_max_m": root.max(axis=0).tolist(),
                 "root_relative_extent_m": np.ptp(root_relative, axis=0).tolist(),
-                "articulation": avatar.articulation.to_dict(),
-                "gaussian_count": avatar.surface_asset.gaussian_count,
+                "articulation": to_dict(),
+                "gaussian_count": gaussian_count,
+            }
+        )
+
+    court_counts = Counter(
+        scene.timeline.target_court.court_instance_id for scene in inventory.scenes
+    )
+    per_split: dict[str, Counter[str]] = defaultdict(Counter)
+    for scene in inventory.scenes:
+        per_split[scene.split][scene.timeline.target_court.court_instance_id] += 1
+    court_values = [
+        court_counts[court_id] for court_id in inventory.accepted_court_instance_ids
+    ]
+    logical_scenes = []
+    for scene in inventory.scenes:
+        timeline = scene.timeline
+        rig = rigs[timeline.scene_id]
+        if rig.court_instance_id != timeline.target_court.court_instance_id:
+            raise ValueError("Diagnostic camera rig and logical-scene court disagree.")
+        logical_scenes.append(
+            {
+                "scene_id": timeline.scene_id,
+                "split": scene.split,
+                "mode": timeline.mode,
+                "global_frame_count": timeline.frame_count,
+                "source_frame_counts": {
+                    track.object_id: track.clip.frame_count
+                    for track in timeline.tracks
+                },
+                "motion_categories": [
+                    track.clip.category.value for track in timeline.tracks
+                ],
+                "target_court": timeline.target_court.to_dict(),
+                "camera_distribution": {
+                    "profile": rig.profile,
+                    "camera_count": len(rig.cameras),
+                    "camera_ids": [
+                        camera.scene_camera.camera_id for camera in rig.cameras
+                    ],
+                    "sampled_parameters": [
+                        camera.to_metadata() for camera in rig.cameras
+                    ],
+                },
             }
         )
     machine = {
-        "schema": "tennis_plcs_diagnostics_v2",
-        "scene_id": timeline.scene_id,
-        "mode": timeline.mode,
+        "schema": "tennis_plcs_diagnostics_v3",
+        "scene_id": inventory.dataset_scene_id,
         "amass_compatible": True,
-        "global_frame_count": timeline.frame_count,
-        "source_frame_counts": {
-            track.object_id: track.clip.frame_count for track in timeline.tracks
-        },
+        "logical_scene_count": inventory.scene_count,
+        "aggregate_global_frame_count": inventory.aggregate_global_frame_count,
+        "aggregate_source_frame_count": inventory.aggregate_source_frame_count,
         "motion": motion_records,
-        "camera_distribution": {
-            "profile": rig.profile,
-            "camera_count": len(rig.cameras),
-            "camera_ids": [camera.scene_camera.camera_id for camera in rig.cameras],
-            "sampled_parameters": [camera.to_metadata() for camera in rig.cameras],
-        },
-        "target_court": timeline.target_court.to_dict(),
+        "logical_scenes": logical_scenes,
         "stage_cache": {
             "clip_load_count": clip_load_count,
             "selected_source_count": selected_source_count,
@@ -96,12 +145,22 @@ def write_plcs_diagnostics(
             "execution_device": execution_device,
         },
         "court_balance": {
-            "scene_count": len(assignments),
+            "scene_count": inventory.scene_count,
+            "accepted_court_instance_ids": list(
+                inventory.accepted_court_instance_ids
+            ),
             "counts": {
-                court_id: counts.get(court_id, 0)
-                for court_id in sorted(court_instance_ids)
+                court_id: court_counts[court_id]
+                for court_id in inventory.accepted_court_instance_ids
             },
-            "maximum_count_difference": balance_difference,
+            "maximum_count_difference": max(court_values) - min(court_values),
+            "per_split_counts": {
+                split: {
+                    court_id: counts[court_id]
+                    for court_id in inventory.accepted_court_instance_ids
+                }
+                for split, counts in sorted(per_split.items())
+            },
         },
     }
     machine_path = diagnostics / "motion-camera-court.json"
@@ -111,17 +170,27 @@ def write_plcs_diagnostics(
     )
     summary_lines = [
         "PLCS production diagnostics",
-        f"scene: {timeline.scene_id}",
-        f"mode: {timeline.mode}",
-        f"global frames: {timeline.frame_count}",
-        f"camera profile/count: {rig.profile}/{len(rig.cameras)}",
-        f"target court: {timeline.target_court.court_instance_id}",
-        f"court maximum count difference: {balance_difference}",
+        f"scene: {inventory.dataset_scene_id}",
+        f"logical scenes: {inventory.scene_count}",
+        f"aggregate global frames: {inventory.aggregate_global_frame_count}",
+        f"aggregate source frames: {inventory.aggregate_source_frame_count}",
+        f"accepted courts: {', '.join(inventory.accepted_court_instance_ids)}",
+        f"court maximum count difference: {max(court_values) - min(court_values)}",
         f"clip/model loads: {clip_load_count}/{model_load_count}",
         f"execution device: {execution_device}",
     ]
+    for scene in inventory.scenes:
+        summary_lines.append(
+            "logical scene "
+            f"{scene.timeline.scene_id}: {scene.timeline.frame_count} frames; "
+            f"split={scene.split}; "
+            f"court={scene.timeline.target_court.court_instance_id}; "
+            f"cameras={len(rigs[scene.timeline.scene_id].cameras)}"
+        )
     for record in motion_records:
         articulation = record["articulation"]
+        if not isinstance(articulation, dict):
+            raise TypeError("Articulation diagnostic must be a mapping.")
         summary_lines.append(
             "motion "
             f"{record['object_id']}: {record['category']} {record['frame_count']} frames; "
@@ -136,4 +205,4 @@ def write_plcs_diagnostics(
     )
 
 
-__all__ = ["write_plcs_diagnostics"]
+__all__ = ["DiagnosticAvatar", "write_plcs_diagnostics"]

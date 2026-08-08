@@ -51,10 +51,10 @@ the public schema, files, camera IDs, arrays, coordinate conventions, proper
 rotations, intrinsics, shape, dtype, and finite values. It does not import NHT
 Python internals or read COLMAP/checkpoint internals.
 
-The configured `nht-render` entrypoint must be installed in the same CUDA
-virtual environment as `nht.training_runtime.python`; that environment owns
-PyTorch and the NHT gsplat runtime. The typed boundary rejects a renderer from
-a different environment instead of falling back to the SfM command environment.
+The configured `nht-reconstruct` and `nht-render` entrypoints are installed
+public commands. Their package environment owns PyTorch, gsplat, trainer
+selection, and provider defaults; tennis-lab neither locates nor configures
+those internals and fails closed when either public command is unavailable.
 
 Alignment uses measured court-line evidence with disjoint fit and holdout
 partitions. Only accepted results publish a `MultiCourtLayout` containing every

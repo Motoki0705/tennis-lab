@@ -24,35 +24,7 @@ def _write_valid_export(root: Path) -> tuple[dict[str, object], dict[str, object
     Image.new("RGB", (16, 12)).save(root / "images/frame_000000.jpg")
     (root / "model/ckpts").mkdir(parents=True)
     (root / "model/ckpts/model.pt").write_bytes(b"checkpoint")
-    (root / "model/runtime-config.json").write_text(
-        json.dumps(
-            {
-                "schema": "nht_runtime_config_v1",
-                "camera_model": "pinhole",
-                "pose_opt": False,
-                "primitive_type": "3dgs",
-                "antialiased": False,
-                "packed": False,
-                "tile_size": 16,
-                "with_ut": True,
-                "with_eval3d": True,
-                "near_plane": 0.01,
-                "far_plane": 100.0,
-                "deferred_opt_feature_dim": 48,
-                "deferred_opt_enable_view_encoding": True,
-                "deferred_opt_view_encoding_type": "sh",
-                "deferred_mlp_hidden_dim": 128,
-                "deferred_mlp_num_layers": 3,
-                "deferred_opt_sh_degree": 3,
-                "deferred_opt_sh_scale": 3.0,
-                "deferred_opt_fourier_num_freqs": 4,
-                "deferred_opt_center_ray_encoding": False,
-                "deferred_decode_activation": "sigmoid",
-                "post_processing": None,
-            }
-        ),
-        encoding="utf-8",
-    )
+    (root / "model/runtime-config.json").write_bytes(b"opaque provider data")
     np.save(
         root / "points_scene.npy",
         np.asarray([[0.0, 0.0, 0.0, 1.0, 0.5, 0.0]], dtype=np.float32),
@@ -171,6 +143,10 @@ def test_validates_complete_standard_export(tmp_path: Path) -> None:
     assert export.cameras[0].image_path == str(
         (tmp_path / "images/frame_000000.jpg").resolve()
     )
+    assert export.checkpoint_path == (tmp_path / "model/ckpts/model.pt").resolve()
+    assert export.runtime_config_path == (
+        tmp_path / "model/runtime-config.json"
+    ).resolve()
 
 
 @pytest.mark.parametrize(
@@ -220,51 +196,26 @@ def test_rejects_structural_geometry_and_file_violations(
         validate_standard_scene_export(tmp_path / "scene.json")
 
 
-def test_rejects_point_dtype_and_nonfinite_values(tmp_path: Path) -> None:
+def test_rejects_point_dtype(tmp_path: Path) -> None:
     _write_valid_export(tmp_path)
     np.save(tmp_path / "points_scene.npy", np.zeros((1, 6), dtype=np.float64))
     with pytest.raises(TypeError, match="dtype float32"):
         validate_standard_scene_export(tmp_path / "scene.json")
 
 
-@pytest.mark.parametrize(
-    ("key", "value", "match"),
-    [
-        ("tile_size", 0, "runtime.tile_size"),
-        ("antialiased", 1, "runtime.antialiased"),
-        ("deferred_opt_view_encoding_type", "unknown", "view_encoding_type"),
-        ("deferred_decode_activation", "unknown", "decode_activation"),
-        ("deferred_opt_sh_scale", float("inf"), "finite"),
-    ],
-)
-def test_rejects_invalid_public_renderer_runtime_fields(
-    tmp_path: Path,
-    key: str,
-    value: object,
-    match: str,
-) -> None:
+def test_provider_runtime_and_checkpoint_contents_are_opaque(tmp_path: Path) -> None:
     _write_valid_export(tmp_path)
-    runtime_path = tmp_path / "model/runtime-config.json"
-    runtime = json.loads(runtime_path.read_text(encoding="utf-8"))
-    runtime[key] = value
-    _write_payload(runtime_path, runtime)
+    (tmp_path / "model/runtime-config.json").write_bytes(b"\x00private-config\xff")
+    (tmp_path / "model/ckpts/model.pt").write_bytes(b"\x00private-checkpoint\xff")
 
-    with pytest.raises((TypeError, ValueError), match=match):
-        validate_standard_scene_export(tmp_path / "scene.json")
+    export = validate_standard_scene_export(tmp_path / "scene.json")
+
+    assert export.runtime_config_path.name == "runtime-config.json"
+    assert export.checkpoint_path.name == "model.pt"
 
 
-def test_rejects_unsatisfied_public_renderer_runtime_dependency(
-    tmp_path: Path,
-) -> None:
+def test_rejects_nonfinite_point_values(tmp_path: Path) -> None:
     _write_valid_export(tmp_path)
-    runtime_path = tmp_path / "model/runtime-config.json"
-    runtime = json.loads(runtime_path.read_text(encoding="utf-8"))
-    runtime["with_eval3d"] = False
-    _write_payload(runtime_path, runtime)
-
-    with pytest.raises(ValueError, match="with_ut requires"):
-        validate_standard_scene_export(tmp_path / "scene.json")
-
     points: NDArray[np.float32] = np.zeros((1, 6), dtype=np.float32)
     points[0, 0] = np.nan
     np.save(tmp_path / "points_scene.npy", points)
