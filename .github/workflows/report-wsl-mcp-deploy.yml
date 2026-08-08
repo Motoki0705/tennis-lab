@@ -5,6 +5,7 @@ on:
     workflows:
       - Deploy WSL MCP
     types:
+      - requested
       - completed
 
 permissions:
@@ -17,12 +18,14 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Report deployment result to PR 723
+      - name: Report deployment run to PR 723
         env:
           GH_TOKEN: ${{ github.token }}
+          EVENT_ACTION: ${{ github.event.action }}
           RUN_ID: ${{ github.event.workflow_run.id }}
           RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
           RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          STATUS: ${{ github.event.workflow_run.status }}
           CONCLUSION: ${{ github.event.workflow_run.conclusion }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           HTML_URL: ${{ github.event.workflow_run.html_url }}
@@ -31,14 +34,15 @@ jobs:
           set -euo pipefail
           body="$(cat <<EOF
           <!-- wsl-mcp-deploy-report -->
-          ## Deploy WSL MCP result
+          ## Deploy WSL MCP ${EVENT_ACTION}
 
-          - conclusion: \`${CONCLUSION}\`
+          - status: \`${STATUS}\`
+          - conclusion: \`${CONCLUSION:-pending}\`
           - run: \`${RUN_ID}\` (#${RUN_NUMBER}, attempt ${RUN_ATTEMPT})
           - head SHA: \`${HEAD_SHA}\`
           - run URL: ${HTML_URL}
 
-          This report intentionally contains no service logs or credentials. Use the run ID to inspect the failed job through the GitHub Actions API/MCP.
+          This report intentionally contains no service logs or credentials. Use the run ID to inspect the job through the GitHub Actions API/MCP.
           EOF
           )"
           payload="$(printf '%s' "$body" | python3 -c 'import json, sys; print(json.dumps({"body": sys.stdin.read()}))')"
