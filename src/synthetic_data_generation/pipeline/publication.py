@@ -7,7 +7,7 @@ import os
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from src.synthetic_data_generation.pipeline.contracts import StageSpec
 from src.synthetic_data_generation.pipeline.workspace import SceneWorkspace
@@ -26,12 +26,14 @@ class StagePublisher:
     @property
     def owner(self) -> Path:
         """Return the fixed owner directory."""
-        return cast(Path, self.workspace.owner_path(self.spec))
+        owner: Path = self.workspace.owner_path(self.spec)
+        return owner
 
     @property
     def staging(self) -> Path:
         """Return the fixed staging directory for the current attempt."""
-        return cast(Path, self.workspace.staging_path(self.spec))
+        staging: Path = self.workspace.staging_path(self.spec)
+        return staging
 
     def prepare(self) -> Path:
         """Clear stale attempt-local staging and create a fresh directory."""
