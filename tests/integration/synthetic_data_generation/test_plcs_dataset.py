@@ -27,6 +27,10 @@ from src.synthetic_data_generation.dataset.plcs.timeline import (
     build_global_timeline,
 )
 from src.synthetic_data_generation.scene_contract import RigidTransform
+from src.tasks.base.generate_dataset.continuity import (
+    TimelineFrameRecord,
+    validate_frame_continuity,
+)
 from src.tasks.plcs.generate_dataset.sampling.motion_sampler import (
     ACCADMotionLibrary,
     MotionCategory,
@@ -39,6 +43,28 @@ _ACCAD = Path(
 )
 _SMPLH = Path("/home/kamimura/projects/tennis-lab/data/smplh")
 _ACCAD_ROOT = Path("/home/kamimura/projects/tennis-lab/data/ACCAD")
+
+
+def test_continuity_rejects_a_missing_terminal_track_camera_label() -> None:
+    records = tuple(
+        TimelineFrameRecord(
+            frame_index=frame,
+            chunk_index=frame // 2,
+            track_id=track,
+            present=True,
+            source_frame_index=frame,
+            camera_id=camera,
+            label_id=f"{track}-{camera}-{frame}",
+            court_instance_id="court-0",
+        )
+        for track in ("player-001", "player-002")
+        for camera in ("camera-0", "camera-1")
+        for frame in range(5)
+        if (track, camera, frame) != ("player-002", "camera-1", 4)
+    )
+
+    with pytest.raises(ValueError, match="coverage mismatch"):
+        validate_frame_continuity(records, frame_count=5)
 
 
 @pytest.mark.local_data

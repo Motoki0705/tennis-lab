@@ -78,6 +78,36 @@ def test_runner_rejects_private_subprocess_environment(tmp_path: Path) -> None:
         )
 
 
+def test_runner_rejects_command_success_without_public_run_manifest(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = _request(tmp_path)
+    validation_called = False
+
+    def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        del kwargs
+        request.workspace.mkdir(parents=True)
+        return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+
+    def unexpected_validation(_path: Path) -> StandardSceneExport:
+        nonlocal validation_called
+        validation_called = True
+        raise AssertionError("scene validation must follow the public run manifest gate")
+
+    monkeypatch.setattr(nht_subprocess.subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        nht_subprocess,
+        "validate_standard_scene_export",
+        unexpected_validation,
+    )
+
+    with pytest.raises(FileNotFoundError, match="fixed run.json"):
+        nht_subprocess.run_nht_reconstruction(request)
+
+    assert validation_called is False
+
+
 def test_runner_uses_shell_free_subprocess_and_validates_export(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
