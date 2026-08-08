@@ -1,0 +1,265 @@
+name: WSL MCP project sandbox deployment
+
+on:
+  push:
+    branches:
+      - feat/wsl-mcp-project-sandbox
+    paths:
+      - .github/wsl-mcp-project-sandbox-deploy-trigger
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: wsl-mcp-project-sandbox-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.actor == 'Motoki0705'
+    runs-on: [self-hosted, linux, x64, local-gpu, cuda, wsl2, tennis-lab]
+    timeout-minutes: 60
+    env:
+      PROJECT_ROOT: /home/kamimura/projects/tennis-lab
+      TENNIS_MCP_REPO_ROOT: /home/kamimura/projects/tennis-lab
+      TENNIS_MCP_STATE_DIR: /home/kamimura/.local/state/tennis-lab-chatgpt-mcp
+      TENNIS_MCP_RUNTIME_ROOT: /home/kamimura/.local/share/tennis-lab-chatgpt-mcp
+      TENNIS_MCP_REMOTE_URL: https://github.com/Motoki0705/tennis-lab.git
+      TENNIS_MCP_UV_PYTHON_ROOT: /home/kamimura/.local/share/uv/python
+      TENNIS_MCP_UV: /home/kamimura/.local/bin/uv
+      TENNIS_MCP_GPU_LOCK_FILE: /var/lib/tennis-lab-actions/gpu.lock
+      TENNIS_MCP_HOST: 127.0.0.1
+      TENNIS_MCP_PORT: "8767"
+    steps:
+      - name: Checkout exact deployment revision
+        uses: actions/checkout@v6
+        with:
+          ref: feat/wsl-mcp-project-sandbox
+          fetch-depth: 0
+          submodules: false
+
+      - name: Establish user-systemd environment
+        run: |
+          echo "XDG_RUNTIME_DIR=/run/user/$(id -u)" >> "$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus" >> "$GITHUB_ENV"
+
+      - name: Verify deployment prerequisites
+        run: |
+          set -euo pipefail
+          test -x "$PROJECT_ROOT/.venv/bin/python"
+          test -x "$TENNIS_MCP_UV"
+          test -x /home/kamimura/.local/bin/tunnel-client
+          test -s "$TENNIS_MCP_STATE_DIR/secure-tunnel/runtime-api-key"
+          test -s "$TENNIS_MCP_STATE_DIR/secure-tunnel/profiles/tennis-lab.yaml"
+          docker info >/dev/null
+          nvidia-smi --query-gpu=name --format=csv,noheader
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=no)"
+
+      - name: Run focused implementation checks on WSL
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          PYTHON="$PROJECT_ROOT/.venv/bin/python"
+          "$PYTHON" -m ruff check \
+            src/automation/chatgpt_mcp \
+            tests/unit/automation/chatgpt_mcp \
+            tests/integration/chatgpt_mcp
+          "$PYTHON" -m mypy src/automation/chatgpt_mcp
+          "$PYTHON" -m pytest -q \
+            tests/unit/automation/chatgpt_mcp \
+            tests/integration/chatgpt_mcp \
+            tests/unit/utils/configuration/test_inventory.py
+
+      - name: Install external runtime and restart Secure Tunnel services
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          "$PROJECT_ROOT/.venv/bin/python" -m src.automation.chatgpt_mcp deploy-runtime \
+            --source-root "$GITHUB_WORKSPACE" \
+            --expected-sha "$GITHUB_SHA" \
+            --start
+
+      - name: Verify local service readiness
+        run: |
+          set -euo pipefail
+          systemctl --user is-active tennis-lab-chatgpt-mcp-private.service
+          systemctl --user is-active tennis-lab-chatgpt-secure-tunnel.service
+          systemd-analyze --user verify \
+            "$HOME/.config/systemd/user/tennis-lab-chatgpt-mcp-private.service" \
+            "$HOME/.config/systemd/user/tennis-lab-chatgpt-training-worker.service" \
+            "$HOME/.config/systemd/user/tennis-lab-chatgpt-secure-tunnel.service"
+          curl --fail --silent http://127.0.0.1:8767/healthz
+          curl --fail --silent http://127.0.0.1:8768/readyz
+          readlink -f "$TENNIS_MCP_RUNTIME_ROOT/current"
+          grep -F "$TENNIS_MCP_RUNTIME_ROOT" \
+            "$HOME/.config/systemd/user/tennis-lab-chatgpt-mcp-private.service"
+          ! grep -F "$PROJECT_ROOT/.venv/bin/python" \
+            "$HOME/.config/systemd/user/tennis-lab-chatgpt-mcp-private.service"
+
+      - name: Exercise deployed MCP, RW project, CPU command, and CUDA FIFO
+        env:
+          DEPLOY_BRANCH: feat/wsl-mcp-project-sandbox
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          RUNTIME_PYTHON="$TENNIS_MCP_RUNTIME_ROOT/current/venv/bin/python"
+          "$RUNTIME_PYTHON" - <<'PY'
+          from __future__ import annotations
+
+          import asyncio
+          import json
+          import os
+          import time
+          from typing import Any
+
+          from mcp import ClientSession
+          from mcp.client.streamable_http import streamable_http_client
+
+
+          def payload(result: Any) -> Any:
+              structured = getattr(result, "structuredContent", None)
+              if structured is not None:
+                  return structured
+              for item in getattr(result, "content", []):
+                  text = getattr(item, "text", None)
+                  if text:
+                      try:
+                          return json.loads(text)
+                      except json.JSONDecodeError:
+                          continue
+              raise RuntimeError(f"tool result has no JSON payload: {result!r}")
+
+
+          async def wait_command(session: ClientSession, job_id: str) -> dict[str, Any]:
+              deadline = time.monotonic() + 600
+              while time.monotonic() < deadline:
+                  state = payload(await session.call_tool("get_command_job", {"job_id": job_id}))
+                  if not state.get("running", False):
+                      return state
+                  await asyncio.sleep(2)
+              raise TimeoutError(f"command job {job_id} did not finish")
+
+
+          async def wait_training(session: ClientSession, job_id: str) -> dict[str, Any]:
+              deadline = time.monotonic() + 900
+              while time.monotonic() < deadline:
+                  state = payload(await session.call_tool("get_training_job", {"job_id": job_id}))
+                  if state.get("status") in {"succeeded", "failed"}:
+                      return state
+                  await asyncio.sleep(2)
+              raise TimeoutError(f"training job {job_id} did not finish")
+
+
+          async def main() -> None:
+              branch = os.environ["DEPLOY_BRANCH"]
+              revision = os.environ["DEPLOY_SHA"]
+              async with streamable_http_client("http://127.0.0.1:8767/mcp") as transport:
+                  read_stream, write_stream = transport[0], transport[1]
+                  async with ClientSession(read_stream, write_stream) as session:
+                      await session.initialize()
+                      tools = await session.list_tools()
+                      names = {tool.name for tool in tools.tools}
+                      expected = {
+                          "get_host_status",
+                          "prepare_revision_workspace",
+                          "get_revision_status",
+                          "start_command",
+                          "get_command_job",
+                          "list_command_jobs",
+                          "get_command_output",
+                          "cancel_command_job",
+                          "enqueue_training",
+                          "get_training_job",
+                          "get_training_output",
+                      }
+                      assert names == expected, names
+
+                      host = payload(await session.call_tool("get_host_status", {}))
+                      assert host["project_access"] == "read-write inside every sandbox"
+                      assert host["network_access"] == "disabled"
+                      assert host["control_plane"]["outside_project"] is True
+
+                      prepared = payload(
+                          await session.call_tool(
+                              "prepare_revision_workspace",
+                              {"branch": branch, "expected_sha": revision},
+                          )
+                      )
+                      workspace_id = prepared["workspace_id"]
+
+                      command = payload(
+                          await session.call_tool(
+                              "start_command",
+                              {
+                                  "workspace_id": workspace_id,
+                                  "expected_sha": revision,
+                                  "timeout_seconds": 600,
+                                  "working_directory": ".",
+                                  "command": (
+                                      "set -euo pipefail; "
+                                      "test -d data; test -d outputs; test -d ckpt; "
+                                      "test ! -e /var/run/docker.sock; test ! -e /mnt/c; "
+                                      "test ! -e /home/kamimura/.local/state/tennis-lab-chatgpt-mcp; "
+                                      "test -d /project/.git; "
+                                      "test -z \"$(find /project/.git -mindepth 1 -maxdepth 1 -print -quit)\"; "
+                                      "printf '%s\\n' 'rw-project-ok' > outputs/mcp-project-sandbox-smoke.txt; "
+                                      "python -m pytest -q tests/unit/automation/chatgpt_mcp/test_settings.py"
+                                  ),
+                              },
+                          )
+                      )
+                      command_state = await wait_command(session, command["job_id"])
+                      output = payload(
+                          await session.call_tool(
+                              "get_command_output",
+                              {"job_id": command["job_id"], "tail": 500},
+                          )
+                      )
+                      assert command_state["exit_code"] == 0, output
+
+                      training = payload(
+                          await session.call_tool(
+                              "enqueue_training",
+                              {
+                                  "name": "project-sandbox-cuda-smoke",
+                                  "workspace_id": workspace_id,
+                                  "expected_sha": revision,
+                                  "working_directory": ".",
+                                  "timeout_seconds": 300,
+                                  "command": (
+                                      "python -c \"import pathlib, torch; "
+                                      "assert torch.cuda.is_available(); "
+                                      "name=torch.cuda.get_device_name(0); "
+                                      "pathlib.Path('outputs/mcp-project-sandbox-cuda.txt').write_text(name+'\\n'); "
+                                      "print(name)\""
+                                  ),
+                              },
+                          )
+                      )
+                      training_state = await wait_training(session, training["job_id"])
+                      training_output = payload(
+                          await session.call_tool(
+                              "get_training_output",
+                              {"job_id": training["job_id"], "tail": 500},
+                          )
+                      )
+                      assert training_state["status"] == "succeeded", training_output
+                      assert "NVIDIA" in training_output["output"]
+
+          asyncio.run(main())
+          PY
+          test "$(cat "$PROJECT_ROOT/outputs/mcp-project-sandbox-smoke.txt")" = "rw-project-ok"
+          grep -F "NVIDIA" "$PROJECT_ROOT/outputs/mcp-project-sandbox-cuda.txt"
+          rm -f \
+            "$PROJECT_ROOT/outputs/mcp-project-sandbox-smoke.txt" \
+            "$PROJECT_ROOT/outputs/mcp-project-sandbox-cuda.txt"
+
+      - name: Report deployment result on PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment 717 --repo Motoki0705/tennis-lab --body "External WSL deployment succeeded for \`$GITHUB_SHA\`: systemd runtime is outside \`tennis-lab\`, Secure Tunnel services are ready, the deployed MCP passed exact-revision CPU/RW-boundary validation, and the trusted FIFO completed an RTX CUDA smoke test."
