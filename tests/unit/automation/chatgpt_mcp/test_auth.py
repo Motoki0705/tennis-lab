@@ -40,7 +40,9 @@ def _client() -> OAuthClientInformationFull:
     )
 
 
-def _authorization_params(client: OAuthClientInformationFull, resource: str) -> AuthorizationParams:
+def _authorization_params(
+    client: OAuthClientInformationFull, resource: str
+) -> AuthorizationParams:
     assert client.redirect_uris is not None
     return AuthorizationParams(
         state="state-value",

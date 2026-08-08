@@ -1,14 +1,13 @@
-"""MCP server for exact-revision execution, CUDA, and training observation."""
+"""MCP server for project-bounded local execution and GPU training."""
 
 from __future__ import annotations
 
 import html
-import os
 import shutil
 import subprocess
 import time
 from collections import defaultdict, deque
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlsplit
 
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
@@ -115,7 +114,7 @@ def _approval_page(
   <h1>ChatGPTからWSLへの接続を承認</h1>
   <p>クライアント: <strong>{safe_client}</strong></p>
   <p>権限: <code>{safe_scopes}</code></p>
-  <p>この接続は固定revisionのsandbox実行とGPU学習を起動できます。</p>
+  <p>この接続はtennis-lab内で任意コマンドとGPU学習を起動できます。</p>
   {error_html}
   <form method="post" action="/oauth/approve" autocomplete="off">
     <input type="hidden" name="transaction" value="{safe_transaction}">
@@ -158,9 +157,7 @@ def _run_probe(arguments: list[str], *, timeout: int = 10) -> dict[str, Any]:
     }
 
 
-def _register_oauth_approval_routes(
-    server: FastMCP, oauth: OwnerOAuthProvider
-) -> None:
+def _register_oauth_approval_routes(server: FastMCP, oauth: OwnerOAuthProvider) -> None:
     """Attach the browser approval flow used only by legacy public OAuth mode."""
 
     limiter = ApprovalRateLimiter()
@@ -214,23 +211,29 @@ def _register_oauth_approval_routes(
         return RedirectResponse(redirect_url, status_code=303)
 
 
-def build_gateway(
-    settings: GatewaySettings, *, authenticated: bool = True
-) -> FastMCP:
+def build_gateway(settings: GatewaySettings, *, authenticated: bool = True) -> FastMCP:
     """Build the public OAuth server or private Secure Tunnel server."""
 
     settings.ensure_state()
     store = SqliteStore(settings.database_path)
-    workspaces = WorkspaceManager(settings.repo_root, settings.state_dir, store)
+    workspaces = WorkspaceManager(
+        settings.trusted_git_dir,
+        settings.revision_workspace_dir,
+        store,
+    )
     jobs = JobManager(settings, store, workspaces)
     training = TrainingQueueManager(settings, store, workspaces)
     instructions = (
-        "GitHub MCP exclusively owns repository exploration, editing, branches, commits, "
-        "pushes, issues, and pull requests. This WSL MCP may only fetch an origin branch "
-        "at a caller-supplied exact SHA, execute an ephemeral copied snapshot without "
-        "network access, queue GPU work, and return runtime status or logs. Never use this "
-        "server to implement or persist source changes."
+        "GitHub MCP exclusively owns repository exploration, source implementation, "
+        "branches, commits, pushes, issues, and pull requests. This WSL MCP is the "
+        "execution plane. It may fetch one origin branch at an exact SHA and run arbitrary "
+        "network-disabled commands inside Docker. /workspace is a private copy of that "
+        "revision. /tennis-lab exposes the entire local project read-write, including data, "
+        "outputs, checkpoints, artifacts, and caches; all of it may be destroyed. MCP "
+        "runtime, trusted venv, tunnel credentials, Git mirror, queue runner, systemd, "
+        "Docker socket, Windows mounts, and the rest of the host remain unavailable."
     )
+
     oauth: OwnerOAuthProvider | None = None
     if authenticated:
         if settings.public_base_url is None:
@@ -299,7 +302,7 @@ def build_gateway(
         return JSONResponse(
             {
                 "service": "tennis-lab-wsl-mcp",
-                "role": "exact-revision execution and GPU validation only",
+                "role": "arbitrary tennis-lab execution, validation, and GPU training",
                 "mcp": (
                     settings.resource_url
                     if authenticated
@@ -317,14 +320,25 @@ def build_gateway(
     @server.custom_route("/healthz", methods=["GET"])
     async def health(request: Request) -> Response:
         del request
-        return JSONResponse({"status": "ok"}, headers={"Cache-Control": "no-store"})
+        version = (
+            settings.runtime_version_path.read_text(encoding="utf-8").strip()
+            if settings.runtime_version_path.is_file()
+            else "uninstalled"
+        )
+        return JSONResponse(
+            {"status": "ok", "runtime_revision": version},
+            headers={"Cache-Control": "no-store"},
+        )
 
     if oauth is not None:
         _register_oauth_approval_routes(server, oauth)
 
     @server.tool(
         title="Get WSL execution host status",
-        description="Check Docker, the NVIDIA GPU, and the serial training queue before validation work.",
+        description=(
+            "Check Docker, NVIDIA GPU, external trusted runtime, Git mirror, and "
+            "serial training queue."
+        ),
         annotations=_annotations(
             read_only=True, destructive=False, idempotent=True, open_world=False
         ),
@@ -332,25 +346,42 @@ def build_gateway(
     )
     def get_host_status() -> dict[str, Any]:
         nvidia_smi = shutil.which("nvidia-smi") or "/usr/lib/wsl/lib/nvidia-smi"
-        queue_script = (
-            settings.repo_root
-            / ".agents/skills/training-queue/scripts/training_queue.sh"
-        )
-        queue_environment = {
-            **dict(os.environ),
-            "TRAINING_QUEUE_DIR": str(settings.repo_root / ".training_queue"),
-        }
-        queue = subprocess.run(
-            ["bash", str(queue_script), "status"],
-            cwd=settings.repo_root,
-            env=queue_environment,
-            text=True,
-            capture_output=True,
-            check=False,
-            timeout=10,
-        )
+        if settings.trusted_queue_script.is_file():
+            queue = subprocess.run(
+                ["bash", str(settings.trusted_queue_script), "status"],
+                cwd=settings.control_dir,
+                env={
+                    "PATH": "/usr/bin:/bin",
+                    "HOME": str(settings.runtime_home),
+                    "TRAINING_QUEUE_DIR": str(settings.trusted_queue_dir),
+                    "TRAINING_QUEUE_LOCK_FILE": str(settings.gpu_lock_file),
+                    "TRAINING_QUEUE_PYTHON": str(
+                        settings.runtime_venv_root / "bin/python"
+                    ),
+                },
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=10,
+            )
+            queue_result = {
+                "ok": queue.returncode == 0,
+                "output": (queue.stdout or queue.stderr).strip()[:20_000],
+            }
+        else:
+            queue_result = {
+                "ok": False,
+                "output": f"trusted queue runner missing: {settings.trusted_queue_script}",
+            }
         return {
-            "repo_root": str(settings.repo_root),
+            "project_root": str(settings.repo_root),
+            "runtime_revision": (
+                settings.runtime_version_path.read_text(encoding="utf-8").strip()
+                if settings.runtime_version_path.is_file()
+                else None
+            ),
+            "trusted_runtime": settings.runtime_current_dir.is_dir(),
+            "trusted_git_mirror": settings.trusted_git_dir.is_dir(),
             "gpu": _run_probe(
                 [
                     nvidia_smi,
@@ -359,18 +390,30 @@ def build_gateway(
                 ]
             ),
             "docker": _run_probe(["docker", "info", "--format", "{{.ServerVersion}}"]),
-            "training_queue": {
-                "ok": queue.returncode == 0,
-                "output": (queue.stdout or queue.stderr).strip()[:20_000],
-            },
+            "training_queue": queue_result,
+            "gpu_lock_file": str(settings.gpu_lock_file),
         }
+
+    @server.tool(
+        title="Describe execution roots and security boundary",
+        description=(
+            "Show where commands run, which project roots persist, and which host "
+            "resources remain unavailable."
+        ),
+        annotations=_annotations(
+            read_only=True, destructive=False, idempotent=True, open_world=False
+        ),
+        meta=security_meta,
+    )
+    def get_execution_layout() -> dict[str, Any]:
+        return jobs.sandbox.execution_layout()
 
     @server.tool(
         title="Prepare an exact remote revision",
         description=(
-            "Fetch one branch from the fixed origin remote, require its full SHA to match, "
-            "and create a detached source worktree for execution. This never creates or "
-            "pushes a branch."
+            "Fetch one branch through the external trusted Git mirror, require its "
+            "full SHA to match, and create a detached source worktree. No branch is "
+            "created or pushed."
         ),
         annotations=_annotations(
             read_only=False, destructive=False, idempotent=False, open_world=True
@@ -382,7 +425,10 @@ def build_gateway(
 
     @server.tool(
         title="Get exact revision status",
-        description="Return the registered branch, exact SHA, and tracked-clean state without reading source files.",
+        description=(
+            "Return the registered branch, exact SHA, clean state, and available "
+            "execution roots without reading project files."
+        ),
         annotations=_annotations(
             read_only=True, destructive=False, idempotent=True, open_world=False
         ),
@@ -392,11 +438,12 @@ def build_gateway(
         return workspaces.describe_revision(workspace_id)
 
     @server.tool(
-        title="Start an isolated CPU validation command",
+        title="Start a flexible isolated CPU command",
         description=(
-            "Run pytest, ruff, mypy, or another bounded CPU validation command against an "
-            "ephemeral copy of an exact revision. Network, Git metadata, host credentials, "
-            "and persistent source modification are unavailable."
+            "Run any network-disabled CPU shell command. Use execution_root=revision "
+            "for exact code with persistent project data roots, or project for the "
+            "entire local tennis-lab tree read-write. The command cannot reach the "
+            "control plane, Docker socket, Windows mounts, or host credentials."
         ),
         annotations=_annotations(
             read_only=False, destructive=True, idempotent=False, open_world=False
@@ -407,18 +454,22 @@ def build_gateway(
         command: str,
         workspace_id: str,
         expected_sha: str,
+        execution_root: Literal["revision", "project"] = "revision",
+        working_directory: str = ".",
         timeout_seconds: int = 900,
     ) -> dict[str, Any]:
         return jobs.start(
             command=command,
             workspace_id=workspace_id,
             expected_sha=expected_sha,
+            execution_root=execution_root,
+            working_directory=working_directory,
             timeout_seconds=timeout_seconds,
         )
 
     @server.tool(
         title="Get command job",
-        description="Inspect status and exit code for one isolated validation job.",
+        description="Inspect status and exit code for one CPU command container.",
         annotations=_annotations(
             read_only=True, destructive=False, idempotent=True, open_world=False
         ),
@@ -429,7 +480,7 @@ def build_gateway(
 
     @server.tool(
         title="List command jobs",
-        description="List recent isolated validation jobs and their states.",
+        description="List recent CPU command jobs and their current states.",
         annotations=_annotations(
             read_only=True, destructive=False, idempotent=True, open_world=False
         ),
@@ -440,7 +491,7 @@ def build_gateway(
 
     @server.tool(
         title="Read command output",
-        description="Read bounded, secret-redacted output from one validation container.",
+        description="Read bounded, secret-redacted output from one command container.",
         annotations=_annotations(
             read_only=True, destructive=False, idempotent=True, open_world=False
         ),
@@ -451,22 +502,21 @@ def build_gateway(
 
     @server.tool(
         title="Cancel command job",
-        description="Stop one running validation container.",
+        description="Stop one running CPU command container.",
         annotations=_annotations(
             read_only=False, destructive=True, idempotent=True, open_world=False
         ),
         meta=security_meta,
     )
     def cancel_command_job(job_id: str) -> dict[str, str]:
-        jobs.sandbox.stop(job_id)
-        return {"job_id": job_id, "status": "stopped"}
+        return jobs.cancel(job_id)
 
     @server.tool(
-        title="Enqueue exact-revision GPU work",
+        title="Enqueue flexible GPU or long-running work",
         description=(
-            "Queue one CUDA experiment or training command through `.training_queue`. "
-            "All GPU execution is serialized, network-disabled, and bound to the supplied "
-            "full commit SHA."
+            "Queue any network-disabled CUDA experiment, local-data validation, "
+            "dataset generation, evaluation, or training command through the trusted "
+            "serial queue. Both revision and full-project read-write roots are available."
         ),
         annotations=_annotations(
             read_only=False, destructive=True, idempotent=False, open_world=False
@@ -478,6 +528,8 @@ def build_gateway(
         command: str,
         workspace_id: str,
         expected_sha: str,
+        execution_root: Literal["revision", "project"] = "revision",
+        working_directory: str = ".",
         issue: int | None = None,
         timeout_seconds: int = 86_400,
     ) -> dict[str, Any]:
@@ -486,13 +538,15 @@ def build_gateway(
             command=command,
             workspace_id=workspace_id,
             expected_sha=expected_sha,
+            execution_root=execution_root,
+            working_directory=working_directory,
             issue=issue,
             timeout_seconds=timeout_seconds,
         )
 
     @server.tool(
         title="Get training job",
-        description="Inspect queue and container status for one GPU job.",
+        description="Inspect queue and container status for one GPU or long-running job.",
         annotations=_annotations(
             read_only=True, destructive=False, idempotent=True, open_world=False
         ),
@@ -502,8 +556,19 @@ def build_gateway(
         return training.status(job_id)
 
     @server.tool(
+        title="List training jobs",
+        description="List recent serial GPU and long-running jobs.",
+        annotations=_annotations(
+            read_only=True, destructive=False, idempotent=True, open_world=False
+        ),
+        meta=security_meta,
+    )
+    def list_training_jobs(limit: int = 50) -> list[dict[str, Any]]:
+        return training.list(limit=limit)
+
+    @server.tool(
         title="Read training output",
-        description="Read bounded, secret-redacted output from the serial training queue.",
+        description="Read bounded, secret-redacted output from the trusted serial queue.",
         annotations=_annotations(
             read_only=True, destructive=False, idempotent=True, open_world=False
         ),
@@ -511,6 +576,19 @@ def build_gateway(
     )
     def get_training_output(job_id: str, tail: int = 400) -> dict[str, str]:
         return {"job_id": job_id, "output": training.logs(job_id, tail=tail)}
+
+    @server.tool(
+        title="Cancel training job",
+        description=(
+            "Cancel a queued job or request termination of its running GPU container."
+        ),
+        annotations=_annotations(
+            read_only=False, destructive=True, idempotent=True, open_world=False
+        ),
+        meta=security_meta,
+    )
+    def cancel_training_job(job_id: str) -> dict[str, str]:
+        return training.cancel(job_id)
 
     return server
 
