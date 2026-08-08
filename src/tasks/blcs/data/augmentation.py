@@ -299,7 +299,7 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation[BLCSMultiViewS
         if not self.enabled:
             return sample
 
-        out = clone_tensor_dict(sample)
+        out: BLCSMultiViewSample = clone_tensor_dict(sample)
         ball_uv = out["ball_uv"]
         ball_vis = out["ball_vis"]
         if self.preserve_clean_targets:
