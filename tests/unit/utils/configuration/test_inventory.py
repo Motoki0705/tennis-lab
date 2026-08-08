@@ -218,7 +218,10 @@ def test_regeneration_discovers_semantic_mapping_and_path_routes() -> None:
         ("src.tasks.slcs.configuration", "raw['window_size']"),
         ("src.tasks.base.configuration", "mapping[key]"),
         ("src.utils.io", "Path(path)"),
-        ("src.tasks.base.data.dataset_writer", "Path(output_dir)"),
+        (
+            "src.synthetic_data_generation.dataset.blcs.assembler",
+            "output_directory / 'dataset.json'",
+        ),
     )
     for module, route_fragment in expected:
         assert any(
