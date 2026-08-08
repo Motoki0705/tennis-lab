@@ -1,0 +1,57 @@
+name: Add WSL MCP deploy status
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/scripts/add_wsl_mcp_deploy_status.py"
+      - ".github/workflows/add-wsl-mcp-deploy-status.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout writable feature branch
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: fix/wsl-mcp-deploy-status
+          fetch-depth: 0
+          submodules: false
+
+      - name: Set up uv and Python 3.11
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          python-version: "3.11"
+
+      - name: Apply reviewed patch
+        run: python3 .github/scripts/add_wsl_mcp_deploy_status.py
+
+      - name: Format and test deployment contract
+        run: |
+          uv run --locked ruff format \
+            .github/scripts/add_wsl_mcp_deploy_status.py \
+            tests/unit/automation/chatgpt_mcp/test_deploy_workflow.py
+          uv run --locked ruff check \
+            .github/scripts/add_wsl_mcp_deploy_status.py \
+            tests/unit/automation/chatgpt_mcp/test_deploy_workflow.py
+          uv run --locked pytest -q \
+            tests/unit/automation/chatgpt_mcp/test_deploy_workflow.py
+
+      - name: Commit observable deployment workflow
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm \
+            .github/scripts/add_wsl_mcp_deploy_status.py \
+            .github/workflows/add-wsl-mcp-deploy-status.yml
+          git add -A
+          git diff --cached --check
+          git commit -m "ci(automation): publish WSL MCP deployment status"
+          git push origin HEAD:fix/wsl-mcp-deploy-status
