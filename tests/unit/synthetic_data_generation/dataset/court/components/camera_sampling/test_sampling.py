@@ -8,10 +8,12 @@ from src.synthetic_data_generation.dataset.court.components.camera_sampling.samp
 from src.synthetic_data_generation.dataset.court.contracts import (
     OrbitCenter,
     OrbitCenterKind,
+    OrbitCoverageObjective,
     OrbitCurveMode,
     OrbitSamplingMode,
     OrbitSamplingPolicy,
     OrbitShape,
+    OrbitStableField,
     OrbitTrajectorySpec,
 )
 from src.synthetic_data_generation.scene_contract import RigidTransform
@@ -50,8 +52,8 @@ def test_uniform_3d_arc_length_bounds_closed_step() -> None:
         minimum_sample_count=24,
         sample_count_multiple=8,
         seed=7,
-        stable_field_order=("shape",),
-        coverage_objective=("trajectory_group",),
+        stable_field_order=(OrbitStableField.SHAPE,),
+        coverage_objective=(OrbitCoverageObjective.TRAJECTORY_GROUP,),
         proposal_budget=3_000,
         minimum_trajectory_groups=24,
         minimum_accepted_frames=2_000,

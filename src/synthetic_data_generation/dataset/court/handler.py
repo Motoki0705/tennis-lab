@@ -151,10 +151,17 @@ def _upstream_paths(context: StageExecutionContext) -> tuple[Path, Path]:
 
 
 def _require_staging(context: StageExecutionContext) -> None:
-    expected = context.owner_path / "staging"
+    if context.stage.name is not StageName.COURT_DATASET:
+        raise ValueError("CourtDatasetStageHandler received a non-Court stage context.")
+    expected = (
+        context.owner_path.parents[1]
+        / ".transactions"
+        / context.stage.name.value
+        / "snapshot"
+    )
     if context.staging_path != expected:
         raise ValueError(
-            f"Court handler requires the fixed staging path {expected}, "
+            f"Court handler requires the workspace transaction snapshot {expected}, "
             f"got {context.staging_path}."
         )
     if not context.staging_path.is_dir() or context.staging_path.is_symlink():

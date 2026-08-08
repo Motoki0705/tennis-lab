@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
 
 import numpy as np
 import pytest
@@ -16,6 +17,7 @@ from src.synthetic_data_generation.dataset.court.assembler import (
     _validate_renderer_visibility_payload,
 )
 from src.synthetic_data_generation.dataset.court.contracts import (
+    CourtDatasetPlan,
     DatasetSplit,
     PlannedCourtSample,
 )
@@ -65,11 +67,16 @@ def _rendered(root: Path, sample: PlannedCourtSample) -> CourtRenderedSample:
     )
 
 
+def _inventory_plan(*samples: PlannedCourtSample) -> CourtDatasetPlan:
+    """Provide the exact plan surface exercised by the private inventory gate."""
+    return cast(CourtDatasetPlan, SimpleNamespace(samples=samples))
+
+
 def test_render_inventory_rejects_missing_duplicate_and_overlapping_results(
     tmp_path: Path,
 ) -> None:
     sample = _sample()
-    plan = SimpleNamespace(samples=(sample,))
+    plan = _inventory_plan(sample)
     rendered = _rendered(tmp_path, sample)
 
     with pytest.raises(ValueError, match="partition mismatch.*missing"):
@@ -100,7 +107,7 @@ def test_render_inventory_rejects_missing_duplicate_and_overlapping_results(
 
 def test_render_inventory_rejects_renderer_metadata_drift(tmp_path: Path) -> None:
     expected = _sample()
-    plan = SimpleNamespace(samples=(expected,))
+    plan = _inventory_plan(expected)
     changed = replace(expected, split=DatasetSplit.VALIDATION)
     rendered = _rendered(tmp_path, changed)
 
@@ -127,7 +134,7 @@ def test_render_inventory_accepts_exact_renderer_or_rejection_partition(
             image_path="generated/sample-000001.png",
         ),
     )
-    plan = SimpleNamespace(samples=(rendered_sample, rejected_sample))
+    plan = _inventory_plan(rendered_sample, rejected_sample)
     rendered = _rendered(tmp_path, rendered_sample)
 
     _validate_render_inventory(

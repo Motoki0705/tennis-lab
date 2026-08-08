@@ -27,9 +27,12 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     DatasetSplit,
     OrbitCenter,
     OrbitCoverageMode,
+    OrbitCoverageObjective,
     OrbitPathSamples,
     OrbitSamplingPolicy,
+    OrbitStableField,
     OrbitTargetKind,
+    OrbitTargetMode,
     OrbitTrajectorySpec,
     OrbitViewSpec,
     PlannedCourtSample,
@@ -51,6 +54,30 @@ class SelectedTrajectory:
     trajectory: OrbitTrajectorySpec
     center: OrbitCenter
     path: OrbitPathSamples
+
+
+_OBJECTIVE_FIELDS: Mapping[
+    OrbitCoverageObjective,
+    tuple[OrbitStableField, ...],
+] = {
+    # Path footprint controls framing coverage before a renderer is invoked.
+    OrbitCoverageObjective.COVERAGE_MODE: (
+        OrbitStableField.SHAPE,
+        OrbitStableField.RADIUS_SCALE,
+        OrbitStableField.AXIS_RATIO,
+        OrbitStableField.ORIENTATION_DEGREES,
+    ),
+    # Centre/elevation are the pre-render geometric visibility authorities.
+    OrbitCoverageObjective.SEMANTIC_VISIBILITY: (
+        OrbitStableField.CENTER_KIND,
+        OrbitStableField.BASE_HEIGHT_M,
+    ),
+    # Vertical profile distinguishes the motion of one camera-centre path.
+    OrbitCoverageObjective.TRAJECTORY_GROUP: (
+        OrbitStableField.VERTICAL_MODULATION_M,
+        OrbitStableField.CURVE_MODE,
+    ),
+}
 
 
 def build_court_dataset_plan(
@@ -85,9 +112,14 @@ def build_court_dataset_plan(
         seed=policy.seed,
     )
     shard_by_group = assign_group_shards(
-        tuple(item.trajectory.trajectory_group_id for item in selected),
+        {
+            item.trajectory.trajectory_group_id: len(item.path.theta_radians)
+            * (2 if index == 0 else 1)
+            for index, item in enumerate(selected)
+        },
         shard_count=policy.shard_count,
         seed=policy.seed,
+        maximum_shard_samples=configuration.performance.maximum_batch_frames,
     )
     assignments = assign_court_targets_for_groups(
         selected,
@@ -131,6 +163,20 @@ def build_court_dataset_plan(
             )
         )
         paths_by_group[group_id] = selected_item.path
+    generated_target_modes = {
+        view.target_mode for group in groups for view in group.views
+    }
+    if generated_target_modes != set(configuration.view.target_modes):
+        raise ValueError(
+            "Court view generation did not consume configured targets exactly."
+        )
+    generated_coverage_modes = {
+        view.coverage_mode for group in groups for view in group.views
+    }
+    if generated_coverage_modes != set(configuration.view.coverage_modes):
+        raise ValueError(
+            "Court view generation did not consume configured coverage modes exactly."
+        )
     groups.sort(key=lambda item: item.trajectory_group_id)
     samples = _plan_samples(
         groups=groups,
@@ -179,7 +225,12 @@ def select_budgeted_coverage(
     centers: Sequence[OrbitCenter],
     policy: OrbitSamplingPolicy,
 ) -> tuple[SelectedTrajectory, ...]:
-    """Greedily maximize typed-field coverage within one explicit frame budget."""
+    """Maximize ordered typed token families within one explicit frame budget.
+
+    Each configured objective contributes a lexicographic ``(novelty, balance)``
+    score in declared order. Stable typed fields, the explicit seed, and the
+    canonical semantic identity then resolve ties deterministically.
+    """
     candidate_tuple = tuple(candidates)
     if not candidate_tuple:
         raise ValueError("Trajectory candidate inventory must not be empty.")
@@ -193,6 +244,10 @@ def select_budgeted_coverage(
         candidate_tuple
     ):
         raise ValueError("Duplicate typed trajectory candidates are forbidden.")
+    if len(candidate_tuple) < policy.minimum_trajectory_groups:
+        raise ValueError(
+            "Candidate inventory cannot satisfy minimum trajectory groups."
+        )
     center_by_key = {center.key(): center for center in centers}
     if len(center_by_key) != len(tuple(centers)):
         raise ValueError("Resolved orbit centres must be unique.")
@@ -213,19 +268,46 @@ def select_budgeted_coverage(
             )
         )
     all_tokens = set().union(
-        *(_coverage_tokens(item.trajectory, policy.stable_field_order) for item in resolved)
+        *(
+            _objective_tokens(item.trajectory, policy.coverage_objective)
+            for item in resolved
+        )
     )
     required_proposals = math.ceil(
         policy.minimum_accepted_frames / policy.minimum_accepted_fraction
     )
-    rng = random.Random(policy.seed)
-    tie_break = {
-        item.trajectory.trajectory_group_id: rng.random() for item in resolved
+    canonical_order = sorted(resolved, key=_canonical_candidate_identity)
+    stable_order = sorted(
+        resolved,
+        key=lambda item: (
+            tuple(
+                repr(trajectory_field_value(item.trajectory, field))
+                for field in policy.stable_field_order
+            ),
+            _canonical_candidate_identity(item),
+        ),
+    )
+    stable_rank = {
+        item.trajectory.trajectory_group_id: len(stable_order) - rank
+        for rank, item in enumerate(stable_order)
+    }
+    seeded_order = list(canonical_order)
+    random.Random(policy.seed).shuffle(seeded_order)
+    seeded_rank = {
+        item.trajectory.trajectory_group_id: rank
+        for rank, item in enumerate(seeded_order, start=1)
+    }
+    canonical_rank = {
+        item.trajectory.trajectory_group_id: len(canonical_order) - rank
+        for rank, item in enumerate(canonical_order)
     }
     remaining = list(resolved)
     selected: list[SelectedTrajectory] = []
-    covered: set[tuple[str, object]] = set()
-    token_counts: Counter[tuple[str, object]] = Counter()
+    covered: set[tuple[OrbitCoverageObjective, OrbitStableField, object]] = set()
+    token_counts: Counter[
+        tuple[OrbitCoverageObjective, OrbitStableField, object]
+    ] = Counter()
+    stable_token_counts: Counter[tuple[OrbitStableField, object]] = Counter()
     proposal_count = 0
     while remaining:
         requirements_met = (
@@ -261,25 +343,49 @@ def select_budgeted_coverage(
         if not feasible:
             break
 
-        def score(entry: tuple[SelectedTrajectory, int]) -> tuple[float, ...]:
-            item, cost = entry
-            tokens = _coverage_tokens(item.trajectory, policy.stable_field_order)
-            new_count = len(tokens - covered)
-            balance = -sum(token_counts[token] for token in tokens)
-            efficiency = new_count / cost
-            return (
-                float(new_count),
-                float(balance),
-                efficiency,
-                tie_break[item.trajectory.trajectory_group_id],
+        def score(entry: tuple[SelectedTrajectory, int]) -> tuple[int, ...]:
+            item, _cost = entry
+            trajectory = item.trajectory
+            parts: list[int] = []
+            for objective in policy.coverage_objective:
+                family_tokens = _objective_tokens(trajectory, (objective,))
+                parts.extend(
+                    (
+                        len(family_tokens - covered),
+                        -sum(token_counts[token] for token in family_tokens),
+                    )
+                )
+            for field in policy.stable_field_order:
+                stable_token = (field, trajectory_field_value(trajectory, field))
+                parts.extend(
+                    (
+                        int(stable_token_counts[stable_token] == 0),
+                        -stable_token_counts[stable_token],
+                    )
+                )
+            group_id = trajectory.trajectory_group_id
+            parts.extend(
+                (
+                    stable_rank[group_id],
+                    seeded_rank[group_id],
+                    canonical_rank[group_id],
+                )
             )
+            return tuple(parts)
 
         chosen, cost = max(feasible, key=score)
         selected.append(chosen)
         proposal_count += cost
-        tokens = _coverage_tokens(chosen.trajectory, policy.stable_field_order)
+        tokens = _objective_tokens(
+            chosen.trajectory,
+            policy.coverage_objective,
+        )
         covered.update(tokens)
         token_counts.update(tokens)
+        stable_token_counts.update(
+            (field, trajectory_field_value(chosen.trajectory, field))
+            for field in policy.stable_field_order
+        )
         remaining.remove(chosen)
     if len(selected) < policy.minimum_trajectory_groups:
         raise ValueError(
@@ -299,20 +405,20 @@ def select_budgeted_coverage(
     return tuple(selected)
 
 
-def _coverage_tokens(
+def _objective_tokens(
     candidate: OrbitTrajectorySpec,
-    field_order: Sequence[str],
-) -> set[tuple[str, object]]:
-    tokens = {
-        (field, trajectory_field_value(candidate, field)) for field in field_order
+    objectives: Sequence[OrbitCoverageObjective],
+) -> set[tuple[OrbitCoverageObjective, OrbitStableField, object]]:
+    return {
+        (objective, field, trajectory_field_value(candidate, field))
+        for objective in objectives
+        for field in _OBJECTIVE_FIELDS[objective]
     }
-    tokens.add(
-        (
-            "resolved_center",
-            (candidate.center_kind.value, candidate.center_court_instance_id),
-        )
-    )
-    return tokens
+
+
+def _canonical_candidate_identity(item: SelectedTrajectory) -> str:
+    """Return a canonical semantic identity independent of input sequence order."""
+    return repr(item.trajectory.semantic_key())
 
 
 def assign_group_disjoint_splits(
@@ -352,23 +458,73 @@ def assign_group_disjoint_splits(
 
 
 def assign_group_shards(
-    group_ids: Sequence[str],
+    group_sample_counts: Mapping[str, int],
     *,
     shard_count: int,
     seed: int,
+    maximum_shard_samples: int,
 ) -> dict[str, str]:
-    """Deterministically assign whole trajectory groups to render shards."""
-    identifiers = tuple(group_ids)
-    if not identifiers or len(identifiers) != len(set(identifiers)):
-        raise ValueError("group_ids must be non-empty and unique.")
+    """Deterministically balance whole groups within the render batch limit."""
+    identifiers = tuple(group_sample_counts)
+    if not identifiers or any(
+        not isinstance(group_id, str) or not group_id
+        for group_id in identifiers
+    ):
+        raise ValueError("group_sample_counts must use non-empty group IDs.")
+    if any(
+        isinstance(count, bool) or not isinstance(count, int) or count <= 0
+        for count in group_sample_counts.values()
+    ):
+        raise ValueError("group sample counts must be positive integers.")
     if isinstance(shard_count, bool) or not 1 <= shard_count <= len(identifiers):
         raise ValueError("shard_count must lie in [1, group_count].")
-    shuffled = sorted(identifiers)
-    random.Random(seed + 1).shuffle(shuffled)
-    return {
-        group_id: f"shard-{index % shard_count:03d}"
-        for index, group_id in enumerate(shuffled)
+    if (
+        isinstance(maximum_shard_samples, bool)
+        or not isinstance(maximum_shard_samples, int)
+        or maximum_shard_samples <= 0
+    ):
+        raise ValueError("maximum_shard_samples must be a positive integer.")
+    if sum(group_sample_counts.values()) > shard_count * maximum_shard_samples:
+        raise ValueError("Group sample inventory exceeds the aggregate shard budget.")
+    if max(group_sample_counts.values()) > maximum_shard_samples:
+        raise ValueError("A trajectory group exceeds the per-shard sample budget.")
+
+    seeded_groups = sorted(identifiers)
+    random.Random(seed + 1).shuffle(seeded_groups)
+    group_rank = {group_id: rank for rank, group_id in enumerate(seeded_groups)}
+    ordered_groups = sorted(
+        identifiers,
+        key=lambda group_id: (
+            -group_sample_counts[group_id],
+            group_rank[group_id],
+            group_id,
+        ),
+    )
+    seeded_shards = list(range(shard_count))
+    random.Random(seed + 2).shuffle(seeded_shards)
+    shard_rank = {
+        shard_index: rank for rank, shard_index in enumerate(seeded_shards)
     }
+    shard_loads = [0] * shard_count
+    assigned: dict[str, str] = {}
+    for group_id in ordered_groups:
+        count = group_sample_counts[group_id]
+        feasible = [
+            shard_index
+            for shard_index, load in enumerate(shard_loads)
+            if load + count <= maximum_shard_samples
+        ]
+        if not feasible:
+            raise ValueError(
+                "Whole trajectory groups cannot satisfy the per-shard sample budget."
+            )
+        shard_index = min(
+            feasible,
+            key=lambda index: (shard_loads[index], shard_rank[index], index),
+        )
+        shard_loads[shard_index] += count
+        assigned[group_id] = f"shard-{shard_index:03d}"
+    return assigned
 
 
 def assign_court_targets_for_groups(
@@ -498,12 +654,11 @@ def _views_for_group(
     target_court_instance_id: str,
     configuration: CourtDatasetConfiguration,
 ) -> tuple[OrbitViewSpec, ...]:
-    coverage_modes = tuple(OrbitCoverageMode(value) for value in configuration.view.coverage_modes)
+    coverage_modes = configuration.view.coverage_modes
     coverage = coverage_modes[group_index % len(coverage_modes)]
-    configured_target = configuration.view.target_modes[
+    primary_target = configuration.view.target_modes[
         group_index % len(configuration.view.target_modes)
     ]
-    target_mode = "center" if configured_target == "court_center" else configured_target
     low_hfov, high_hfov = configuration.view.hfov_degrees
     hfov_by_coverage = {
         OrbitCoverageMode.FULL: high_hfov,
@@ -511,43 +666,55 @@ def _views_for_group(
         OrbitCoverageMode.PARTIAL: low_hfov,
     }
     low_height, high_height = configuration.view.look_at_height_m
-    court_view = OrbitViewSpec(
-        view_id=f"view-{group_index:05d}-court",
-        target_kind=OrbitTargetKind.COURT,
-        target_court_instance_id=target_court_instance_id,
-        target_mode=target_mode,
-        coverage_mode=coverage,
-        look_at_height_m=(low_height if group_index % 2 == 0 else high_height),
-        hfov_degrees=hfov_by_coverage[coverage],
-    )
-    if group_index != 0:
-        if group_index % 2 == 0:
-            return (court_view,)
-        return (
-            OrbitViewSpec(
-                view_id=f"view-{group_index:05d}-complex",
-                target_kind=OrbitTargetKind.COMPLEX,
-                target_court_instance_id=None,
-                target_mode="center",
-                coverage_mode=coverage,
-                look_at_height_m=(
-                    low_height if group_index % 2 == 0 else high_height
-                ),
-                hfov_degrees=hfov_by_coverage[coverage],
-            ),
+    targets: tuple[OrbitTargetMode, ...] = (primary_target,)
+    if group_index == 0:
+        variant = next(
+            target
+            for target in configuration.view.target_modes
+            if target.target_kind is not primary_target.target_kind
         )
-    complex_view = OrbitViewSpec(
-        view_id=f"view-{group_index:05d}-complex",
-        target_kind=OrbitTargetKind.COMPLEX,
-        target_court_instance_id=None,
-        target_mode="center",
-        coverage_mode=OrbitCoverageMode.NEAR_FULL,
-        look_at_height_m=high_height,
-        hfov_degrees=hfov_by_coverage[OrbitCoverageMode.NEAR_FULL],
+        targets = (primary_target, variant)
+    views = tuple(
+        _view_for_target(
+            group_index=group_index,
+            target=target,
+            target_court_instance_id=target_court_instance_id,
+            coverage=coverage,
+            look_at_height_m=(
+                low_height if (group_index + target_index) % 2 == 0 else high_height
+            ),
+            hfov_degrees=hfov_by_coverage[coverage],
+        )
+        for target_index, target in enumerate(targets)
     )
-    if group_id != court_view.view_id:
-        return court_view, complex_view
-    raise ValueError("Opaque group and view IDs unexpectedly collide.")
+    if group_id in {view.view_id for view in views}:
+        raise ValueError("Opaque group and view IDs unexpectedly collide.")
+    return views
+
+
+def _view_for_target(
+    *,
+    group_index: int,
+    target: OrbitTargetMode,
+    target_court_instance_id: str,
+    coverage: OrbitCoverageMode,
+    look_at_height_m: float,
+    hfov_degrees: float,
+) -> OrbitViewSpec:
+    """Materialize exactly one configured typed target without a fallback."""
+    return OrbitViewSpec(
+        view_id=f"view-{group_index:05d}-{target.value}",
+        target_kind=target.target_kind,
+        target_court_instance_id=(
+            target_court_instance_id
+            if target.target_kind is OrbitTargetKind.COURT
+            else None
+        ),
+        target_mode=target,
+        coverage_mode=coverage,
+        look_at_height_m=look_at_height_m,
+        hfov_degrees=hfov_degrees,
+    )
 
 
 def _plan_samples(
@@ -635,9 +802,9 @@ def _target_scene(
     assert view.target_court_instance_id is not None
     court = layout.court(view.target_court_instance_id)
     y = {
-        "center": 0.0,
-        "near_baseline": -HALF_LENGTH,
-        "far_baseline": HALF_LENGTH,
+        OrbitTargetMode.COURT_CENTER: 0.0,
+        OrbitTargetMode.NEAR_BASELINE: -HALF_LENGTH,
+        OrbitTargetMode.FAR_BASELINE: HALF_LENGTH,
     }[view.target_mode]
     local = np.asarray(((0.0, y, view.look_at_height_m),), dtype=np.float64)
     transformed = court.scene_from_court.apply(local)
