@@ -42,6 +42,22 @@ jobs:
           uv run --locked python \
             .github/scripts/wsl_mcp_project_sandbox_finalize.py inventory
 
+      - name: Diagnose runtime boundary inventory
+        run: |
+          uv run --locked python - <<'PY'
+          from pathlib import Path
+          from src.utils.configuration.audit import inspect_source
+
+          report = inspect_source(Path("src").resolve())
+          print("BOUNDARY_ISSUES")
+          for issue in report.boundary_issues:
+              print(f"{issue.boundary_id}: {issue.reason}")
+          print("DISCOVERED_AUTOMATION_BOUNDARIES")
+          for boundary in report.discovered_boundaries:
+              if boundary.module.startswith("src.automation.chatgpt_mcp"):
+                  print(repr(boundary))
+          PY
+
       - name: Run focused quality and security checks
         run: |
           uv run --locked ruff check \
