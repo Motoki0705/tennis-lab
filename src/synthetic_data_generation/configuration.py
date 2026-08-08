@@ -11,8 +11,9 @@ import math
 import os
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Literal, TypeVar, cast
 
 from omegaconf import DictConfig, OmegaConf
 
@@ -41,6 +42,16 @@ from src.synthetic_data_generation.dataset.blcs.contracts import (
 )
 from src.synthetic_data_generation.dataset.blcs.source import (
     BLCSTrajectorySourceSettings,
+)
+from src.synthetic_data_generation.dataset.court.contracts import (
+    OrbitCenterKind,
+    OrbitCoverageMode,
+    OrbitCoverageObjective,
+    OrbitCurveMode,
+    OrbitSamplingMode,
+    OrbitShape,
+    OrbitStableField,
+    OrbitTargetMode,
 )
 from src.synthetic_data_generation.dataset.plcs.rendering.contracts import (
     PLCSForegroundCompositor,
@@ -111,6 +122,7 @@ _PLCS_METADATA_FIELDS = _COURT_METADATA_FIELDS | frozenset(
 )
 
 ConfigMapping = Mapping[str, object]
+EnumT = TypeVar("EnumT", bound=StrEnum)
 
 
 def _mapping(value: object, *, path: str) -> ConfigMapping:
@@ -224,6 +236,42 @@ def _text_sequence(
     if len(result) != len(set(result)):
         raise SemanticConfigurationError(f"{path}.{key} must not contain duplicates.")
     return result
+
+
+def _enum_sequence(
+    mapping: ConfigMapping,
+    key: str,
+    *,
+    path: str,
+    enum_type: type[EnumT],
+) -> tuple[EnumT, ...]:
+    """Parse a non-empty unique sequence against one finite vocabulary."""
+    values = _text_sequence(mapping, key, path=path)
+    try:
+        return tuple(enum_type(value) for value in values)
+    except ValueError as error:
+        allowed = ", ".join(member.value for member in enum_type)
+        raise SemanticConfigurationError(
+            f"{path}.{key} contains an unknown value; allowed values are [{allowed}]."
+        ) from error
+
+
+def _enum_value(
+    mapping: ConfigMapping,
+    key: str,
+    *,
+    path: str,
+    enum_type: type[EnumT],
+) -> EnumT:
+    """Parse one scalar against a finite typed vocabulary."""
+    value = _text(mapping, key, path=path)
+    try:
+        return enum_type(value)
+    except ValueError as error:
+        allowed = ", ".join(member.value for member in enum_type)
+        raise SemanticConfigurationError(
+            f"{path}.{key} contains an unknown value; allowed values are [{allowed}]."
+        ) from error
 
 
 def _number_sequence(
@@ -908,14 +956,14 @@ class AlignmentConfiguration:
 class CourtTrajectoryPolicy:
     """Typed trajectory-family policy independent of view and sampling."""
 
-    shapes: tuple[str, ...]
+    shapes: tuple[OrbitShape, ...]
     axis_ratios: tuple[float, ...]
     orientations_degrees: tuple[float, ...]
-    center_kinds: tuple[str, ...]
+    center_kinds: tuple[OrbitCenterKind, ...]
     captured_offset_scale_range: tuple[float, float]
     base_heights_m: tuple[float, ...]
     vertical_modulations_m: tuple[float, ...]
-    curve_modes: tuple[str, ...]
+    curve_modes: tuple[OrbitCurveMode, ...]
 
     @classmethod
     def from_mapping(cls, value: object) -> CourtTrajectoryPolicy:
@@ -935,12 +983,22 @@ class CourtTrajectoryPolicy:
         )
         path = "dataset.court.trajectory"
         result = cls(
-            shapes=_text_sequence(raw, "shapes", path=path),
+            shapes=_enum_sequence(
+                raw,
+                "shapes",
+                path=path,
+                enum_type=OrbitShape,
+            ),
             axis_ratios=_number_sequence(raw, "axis_ratios", path=path),
             orientations_degrees=_number_sequence(
                 raw, "orientations_degrees", path=path, minimum_length=3
             ),
-            center_kinds=_text_sequence(raw, "center_kinds", path=path),
+            center_kinds=_enum_sequence(
+                raw,
+                "center_kinds",
+                path=path,
+                enum_type=OrbitCenterKind,
+            ),
             captured_offset_scale_range=_ordered_range(
                 raw, "captured_offset_scale_range", path=path, positive=True
             ),
@@ -948,9 +1006,14 @@ class CourtTrajectoryPolicy:
             vertical_modulations_m=_number_sequence(
                 raw, "vertical_modulations_m", path=path
             ),
-            curve_modes=_text_sequence(raw, "curve_modes", path=path),
+            curve_modes=_enum_sequence(
+                raw,
+                "curve_modes",
+                path=path,
+                enum_type=OrbitCurveMode,
+            ),
         )
-        if set(result.shapes) != {"circle", "ellipse"}:
+        if set(result.shapes) != set(OrbitShape):
             raise SemanticConfigurationError("Court trajectory shapes must be circle and ellipse.")
         if 1.0 not in result.axis_ratios or not any(ratio <= 0.8 for ratio in result.axis_ratios):
             raise SemanticConfigurationError(
@@ -960,7 +1023,7 @@ class CourtTrajectoryPolicy:
             raise SemanticConfigurationError("Court trajectory axis ratios must be within (0, 1].")
         if not {0.0, 45.0, 90.0}.issubset(result.orientations_degrees):
             raise SemanticConfigurationError("Court orientations must include 0, 45, and 90 degrees.")
-        if set(result.center_kinds) != {"complex", "court"}:
+        if set(result.center_kinds) != set(OrbitCenterKind):
             raise SemanticConfigurationError("Court center kinds must be complex and court.")
         if len(set(result.base_heights_m)) < 3 or min(result.base_heights_m) <= 0.0:
             raise SemanticConfigurationError("Court base heights require three positive levels.")
@@ -968,7 +1031,7 @@ class CourtTrajectoryPolicy:
             value > 0.0 for value in result.vertical_modulations_m
         ):
             raise SemanticConfigurationError("Court vertical modulation requires a positive value.")
-        if "sinusoidal_height" not in result.curve_modes:
+        if set(result.curve_modes) != set(OrbitCurveMode):
             raise SemanticConfigurationError("Court trajectories require a smooth non-planar mode.")
         return result
 
@@ -977,8 +1040,8 @@ class CourtTrajectoryPolicy:
 class CourtViewPolicy:
     """Typed camera-target and coverage policy."""
 
-    target_modes: tuple[str, ...]
-    coverage_modes: tuple[str, ...]
+    target_modes: tuple[OrbitTargetMode, ...]
+    coverage_modes: tuple[OrbitCoverageMode, ...]
     look_at_height_m: tuple[float, float]
     hfov_degrees: tuple[float, float]
 
@@ -991,12 +1054,26 @@ class CourtViewPolicy:
         )
         path = "dataset.court.view"
         result = cls(
-            target_modes=_text_sequence(raw, "target_modes", path=path),
-            coverage_modes=_text_sequence(raw, "coverage_modes", path=path),
+            target_modes=_enum_sequence(
+                raw,
+                "target_modes",
+                path=path,
+                enum_type=OrbitTargetMode,
+            ),
+            coverage_modes=_enum_sequence(
+                raw,
+                "coverage_modes",
+                path=path,
+                enum_type=OrbitCoverageMode,
+            ),
             look_at_height_m=_ordered_range(raw, "look_at_height_m", path=path, positive=False),
             hfov_degrees=_ordered_range(raw, "hfov_degrees", path=path, positive=True),
         )
-        if set(result.coverage_modes) != {"full", "near_full", "partial"}:
+        if set(result.target_modes) != set(OrbitTargetMode):
+            raise SemanticConfigurationError(
+                "Court target modes must include complex/court center and both baselines."
+            )
+        if set(result.coverage_modes) != set(OrbitCoverageMode):
             raise SemanticConfigurationError(
                 "Court coverage modes must be full, near_full, and partial."
             )
@@ -1011,9 +1088,10 @@ class CourtViewPolicy:
 class CourtSamplingPolicy:
     """Deterministic coverage selection, budget, split, and release gates."""
 
+    mode: OrbitSamplingMode
     seed: int
-    stable_field_order: tuple[str, ...]
-    coverage_objective: tuple[str, ...]
+    stable_field_order: tuple[OrbitStableField, ...]
+    coverage_objective: tuple[OrbitCoverageObjective, ...]
     proposal_budget: int
     minimum_trajectory_groups: int
     minimum_accepted_frames: int
@@ -1030,6 +1108,7 @@ class CourtSamplingPolicy:
             value,
             path="dataset.court.sampling",
             keys={
+                "mode",
                 "seed",
                 "stable_field_order",
                 "coverage_objective",
@@ -1046,9 +1125,25 @@ class CourtSamplingPolicy:
         )
         path = "dataset.court.sampling"
         result = cls(
+            mode=_enum_value(
+                raw,
+                "mode",
+                path=path,
+                enum_type=OrbitSamplingMode,
+            ),
             seed=_integer(raw, "seed", path=path, minimum=0),
-            stable_field_order=_text_sequence(raw, "stable_field_order", path=path),
-            coverage_objective=_text_sequence(raw, "coverage_objective", path=path),
+            stable_field_order=_enum_sequence(
+                raw,
+                "stable_field_order",
+                path=path,
+                enum_type=OrbitStableField,
+            ),
+            coverage_objective=_enum_sequence(
+                raw,
+                "coverage_objective",
+                path=path,
+                enum_type=OrbitCoverageObjective,
+            ),
             proposal_budget=_integer(raw, "proposal_budget", path=path, minimum=1),
             minimum_trajectory_groups=_integer(
                 raw, "minimum_trajectory_groups", path=path, minimum=1
@@ -1063,6 +1158,14 @@ class CourtSamplingPolicy:
             test_fraction=_number(raw, "test_fraction", path=path),
             shard_group_count=_integer(raw, "shard_group_count", path=path, minimum=1),
         )
+        if set(result.stable_field_order) != set(OrbitStableField):
+            raise SemanticConfigurationError(
+                "Court stable_field_order must list every typed trajectory field exactly once."
+            )
+        if set(result.coverage_objective) != set(OrbitCoverageObjective):
+            raise SemanticConfigurationError(
+                "Court coverage_objective must list every objective token family exactly once."
+            )
         if result.proposal_budget != 4_800:
             raise SemanticConfigurationError("B00 Court proposal_budget must be exactly 4,800.")
         if result.minimum_trajectory_groups < 24:

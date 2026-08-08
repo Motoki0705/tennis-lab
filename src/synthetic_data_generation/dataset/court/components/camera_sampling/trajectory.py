@@ -14,6 +14,7 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     OrbitCenterKind,
     OrbitCurveMode,
     OrbitShape,
+    OrbitStableField,
     OrbitTrajectorySpec,
 )
 from src.synthetic_data_generation.scene_contract import (
@@ -109,16 +110,22 @@ def generate_trajectory_candidates(
     centers: Sequence[OrbitCenter],
     *,
     seed: int,
-    stable_field_order: Sequence[str],
+    stable_field_order: Sequence[OrbitStableField],
 ) -> tuple[OrbitTrajectorySpec, ...]:
     """Generate a finite typed candidate inventory in explicit stable order."""
     if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
         raise ValueError("seed must be a non-negative integer.")
-    center_tuple = tuple(centers)
-    if not center_tuple:
+    all_centers = tuple(centers)
+    if not all_centers:
         raise ValueError("centers must not be empty.")
-    if len({center.key() for center in center_tuple}) != len(center_tuple):
+    if len({center.key() for center in all_centers}) != len(all_centers):
         raise ValueError("Orbit centre candidates must be unique.")
+    configured_center_kinds = set(policy.center_kinds)
+    center_tuple = tuple(
+        center for center in all_centers if center.center_kind in configured_center_kinds
+    )
+    if {center.center_kind for center in center_tuple} != configured_center_kinds:
+        raise ValueError("Resolved centres do not cover every configured center kind.")
     radius_scales = tuple(
         float(value)
         for value in np.linspace(
@@ -127,32 +134,42 @@ def generate_trajectory_candidates(
             num=3,
         )
     )
-    shape_ratios: tuple[tuple[OrbitShape, float], ...] = (
-        (OrbitShape.CIRCLE, 1.0),
-        *tuple(
-            (OrbitShape.ELLIPSE, ratio)
-            for ratio in policy.axis_ratios
-            if ratio <= 0.8
-        ),
-    )
+    shape_ratios: list[tuple[OrbitShape, float]] = []
+    for shape in policy.shapes:
+        if shape is OrbitShape.CIRCLE:
+            shape_ratios.append((shape, 1.0))
+        elif shape is OrbitShape.ELLIPSE:
+            ellipse_ratios = tuple(
+                ratio for ratio in policy.axis_ratios if ratio <= 0.8
+            )
+            if not ellipse_ratios:
+                raise ValueError("Ellipse configuration produced no valid axis ratio.")
+            shape_ratios.extend((shape, ratio) for ratio in ellipse_ratios)
+        else:  # pragma: no cover - finite enum construction makes this unreachable
+            raise ValueError(f"Unsupported configured orbit shape: {shape!r}.")
     vertical_profiles: list[tuple[OrbitCurveMode, float, int, float]] = []
-    if OrbitCurveMode.PLANAR.value in policy.curve_modes:
-        vertical_profiles.append((OrbitCurveMode.PLANAR, 0.0, 0, 0.0))
     positive_amplitudes = tuple(
         value for value in policy.vertical_modulations_m if value > 0.0
     )
-    if OrbitCurveMode.SINUSOIDAL_HEIGHT.value in policy.curve_modes:
-        for index, amplitude in enumerate(positive_amplitudes):
-            vertical_profiles.append(
-                (
-                    OrbitCurveMode.SINUSOIDAL_HEIGHT,
-                    amplitude,
-                    1 + index % 2,
-                    (seed % 8 + index) * math.pi / 4.0,
+    for curve_mode in policy.curve_modes:
+        if curve_mode is OrbitCurveMode.PLANAR:
+            vertical_profiles.append((curve_mode, 0.0, 0, 0.0))
+        elif curve_mode is OrbitCurveMode.SINUSOIDAL_HEIGHT:
+            for index, amplitude in enumerate(positive_amplitudes):
+                vertical_profiles.append(
+                    (
+                        curve_mode,
+                        amplitude,
+                        1 + index % 2,
+                        (seed % 8 + index) * math.pi / 4.0,
+                    )
                 )
-            )
+        else:  # pragma: no cover - finite enum construction makes this unreachable
+            raise ValueError(f"Unsupported configured curve mode: {curve_mode!r}.")
     if not vertical_profiles:
         raise ValueError("Trajectory policy produced no valid vertical profiles.")
+    if {profile[0] for profile in vertical_profiles} != set(policy.curve_modes):
+        raise ValueError("Trajectory generation omitted a configured curve mode.")
 
     raw: list[OrbitTrajectorySpec] = []
     for center in center_tuple:
@@ -183,6 +200,16 @@ def generate_trajectory_candidates(
                             )
     if len({candidate.semantic_key() for candidate in raw}) != len(raw):
         raise ValueError("Trajectory policy generated duplicate typed candidates.")
+    if {candidate.shape for candidate in raw} != set(policy.shapes):
+        raise ValueError("Trajectory generation did not consume configured shapes exactly.")
+    if {candidate.center_kind for candidate in raw} != set(policy.center_kinds):
+        raise ValueError(
+            "Trajectory generation did not consume configured center kinds exactly."
+        )
+    if {candidate.curve_mode for candidate in raw} != set(policy.curve_modes):
+        raise ValueError(
+            "Trajectory generation did not consume configured curve modes exactly."
+        )
     ordered = sorted(
         raw,
         key=lambda candidate: _stable_key(candidate, stable_field_order),
@@ -199,24 +226,24 @@ def generate_trajectory_candidates(
 
 def trajectory_field_value(
     candidate: OrbitTrajectorySpec,
-    field: str,
+    field: OrbitStableField,
 ) -> object:
     """Read one declared typed selector field without parsing an ID."""
-    values: dict[str, object] = {
-        "shape": candidate.shape.value,
-        "center_kind": (
+    values: dict[OrbitStableField, object] = {
+        OrbitStableField.SHAPE: candidate.shape.value,
+        OrbitStableField.CENTER_KIND: (
             candidate.center_kind.value,
             candidate.center_court_instance_id,
         ),
-        "axis_ratio": candidate.axis_ratio,
-        "orientation_degrees": round(
+        OrbitStableField.RADIUS_SCALE: candidate.radius_scale,
+        OrbitStableField.AXIS_RATIO: candidate.axis_ratio,
+        OrbitStableField.ORIENTATION_DEGREES: round(
             math.degrees(candidate.orientation_radians) % 360.0,
             9,
         ),
-        "base_height_m": candidate.base_height_m,
-        "vertical_modulation_m": candidate.vertical_amplitude_m,
-        "curve_mode": candidate.curve_mode.value,
-        "target_mode": "path_only",
+        OrbitStableField.BASE_HEIGHT_M: candidate.base_height_m,
+        OrbitStableField.VERTICAL_MODULATION_M: candidate.vertical_amplitude_m,
+        OrbitStableField.CURVE_MODE: candidate.curve_mode.value,
     }
     try:
         return values[field]
@@ -226,7 +253,7 @@ def trajectory_field_value(
 
 def _stable_key(
     candidate: OrbitTrajectorySpec,
-    field_order: Sequence[str],
+    field_order: Sequence[OrbitStableField],
 ) -> tuple[str, ...]:
     values = tuple(repr(trajectory_field_value(candidate, field)) for field in field_order)
     return (*values, repr(candidate.semantic_key()))

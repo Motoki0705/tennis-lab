@@ -12,13 +12,27 @@ from src.synthetic_data_generation.dataset.blcs.rendering import BLCSNHTRenderer
 from src.synthetic_data_generation.dataset.blcs.source import (
     PhysicsBLCSTrajectoryProvider,
 )
+from src.synthetic_data_generation.dataset.court.contracts import (
+    OrbitCenterKind,
+    OrbitCoverageMode,
+    OrbitCoverageObjective,
+    OrbitCurveMode,
+    OrbitSamplingMode,
+    OrbitShape,
+    OrbitStableField,
+    OrbitTargetMode,
+)
 from src.synthetic_data_generation.dataset.plcs.handler import PLCSStageParameters
 from src.synthetic_data_generation.dataset.plcs.rendering import NHTPLCSRenderer
 from src.synthetic_data_generation.reconstruction import NHTReconstructionHandler
 from src.synthetic_data_generation.rendering.nht import NHTRenderClient
 from src.synthetic_data_generation.scene_contract import CourtInstance, RigidTransform
 from src.tasks.base.generate_dataset.camera_profiles import sample_camera_rig
-from src.utils.configuration import PathRole
+from src.utils.configuration import (
+    PathRole,
+    SemanticConfigurationError,
+    UnknownConfigurationKeyError,
+)
 from src.utils.paths import PROJECT_ROOT
 
 _CONFIG_ROOT = PROJECT_ROOT / "src/synthetic_data_generation/configs"
@@ -49,6 +63,42 @@ def test_broadcast_profile_composes_exactly_two_shared_camera_slots() -> None:
     assert runtime.camera.profile == "broadcast"
     assert runtime.camera.expected_camera_count == 2
     assert len(runtime.camera.slots) == 2
+
+
+def test_court_modes_and_objectives_compose_as_finite_typed_vocabularies() -> None:
+    court = _compose().court
+
+    assert set(court.trajectory.shapes) == set(OrbitShape)
+    assert set(court.trajectory.center_kinds) == set(OrbitCenterKind)
+    assert set(court.trajectory.curve_modes) == set(OrbitCurveMode)
+    assert set(court.view.target_modes) == set(OrbitTargetMode)
+    assert set(court.view.coverage_modes) == set(OrbitCoverageMode)
+    assert court.sampling.mode is OrbitSamplingMode.UNIFORM_ARC_LENGTH
+    assert set(court.sampling.stable_field_order) == set(OrbitStableField)
+    assert set(court.sampling.coverage_objective) == set(OrbitCoverageObjective)
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        "dataset.court.trajectory.shapes=[circle,unknown_shape]",
+        "dataset.court.trajectory.center_kinds=[complex,unknown_center]",
+        "dataset.court.trajectory.curve_modes=[planar,unknown_curve]",
+        "dataset.court.view.target_modes=[court_center,unknown_target]",
+        "dataset.court.view.coverage_modes=[full,unknown_coverage]",
+        "dataset.court.sampling.mode=unknown_sampling",
+        "dataset.court.sampling.stable_field_order=[shape,unknown_field]",
+        "dataset.court.sampling.coverage_objective=[coverage_mode,unknown_objective]",
+    ],
+)
+def test_unknown_court_modes_fail_at_configuration_boundary(override: str) -> None:
+    with pytest.raises(SemanticConfigurationError, match="unknown value"):
+        _compose(override)
+
+
+def test_unknown_court_key_fails_at_configuration_boundary() -> None:
+    with pytest.raises(UnknownConfigurationKeyError, match="unknown_key"):
+        _compose("+dataset.court.trajectory.unknown_key=true")
 
 
 def test_public_nht_commands_are_installed_names_without_provider_knowledge() -> None:

@@ -7,14 +7,16 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Self
+from typing import TYPE_CHECKING, Self
 
 import numpy as np
 from numpy.typing import NDArray
 
-from src.synthetic_data_generation.configuration import CourtSamplingPolicy
 from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
 from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
+
+if TYPE_CHECKING:
+    from src.synthetic_data_generation.configuration import CourtSamplingPolicy
 
 COURT_DATASET_SCHEMA = "canonical_court_dataset_v1"
 COURT_PLAN_SCHEMA = "canonical_court_orbit_plan_v1"
@@ -49,6 +51,22 @@ class OrbitTargetKind(StrEnum):
     COURT = "court"
 
 
+class OrbitTargetMode(StrEnum):
+    """Finite configured look-at targets, including their owning frame."""
+
+    COMPLEX_CENTER = "complex_center"
+    COURT_CENTER = "court_center"
+    NEAR_BASELINE = "near_baseline"
+    FAR_BASELINE = "far_baseline"
+
+    @property
+    def target_kind(self) -> OrbitTargetKind:
+        """Return the coordinate-frame authority for this target."""
+        if self is OrbitTargetMode.COMPLEX_CENTER:
+            return OrbitTargetKind.COMPLEX
+        return OrbitTargetKind.COURT
+
+
 class OrbitCoverageMode(StrEnum):
     """Requested framing diversity carried independently of trajectory geometry."""
 
@@ -69,6 +87,27 @@ class OrbitSamplingMode(StrEnum):
     """The sole production sampling algorithm."""
 
     UNIFORM_ARC_LENGTH = "uniform_arc_length"
+
+
+class OrbitStableField(StrEnum):
+    """Finite typed fields used for canonical candidate ordering."""
+
+    SHAPE = "shape"
+    CENTER_KIND = "center_kind"
+    RADIUS_SCALE = "radius_scale"
+    AXIS_RATIO = "axis_ratio"
+    ORIENTATION_DEGREES = "orientation_degrees"
+    BASE_HEIGHT_M = "base_height_m"
+    VERTICAL_MODULATION_M = "vertical_modulation_m"
+    CURVE_MODE = "curve_mode"
+
+
+class OrbitCoverageObjective(StrEnum):
+    """Ordered token families available to the greedy coverage selector."""
+
+    COVERAGE_MODE = "coverage_mode"
+    SEMANTIC_VISIBILITY = "semantic_visibility"
+    TRAJECTORY_GROUP = "trajectory_group"
 
 
 def _finite(value: object, *, name: str) -> float:
@@ -121,6 +160,27 @@ def _finite_vector(value: Sequence[object], *, size: int, name: str) -> tuple[fl
     if isinstance(value, (str, bytes)) or len(value) != size:
         raise ValueError(f"{name} must contain exactly {size} numeric values.")
     return tuple(_finite(item, name=name) for item in value)
+
+
+def _required_sequence(value: object, *, name: str) -> tuple[object, ...]:
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+        raise TypeError(f"{name} must be a non-string sequence.")
+    return tuple(value)
+
+
+def _enum_text_sequence(
+    value: object,
+    *,
+    enum_type: type[StrEnum],
+    name: str,
+) -> tuple[str, ...]:
+    values = _required_sequence(value, name=name)
+    texts = tuple(_text(item, name=name) for item in values)
+    if not texts or len(texts) != len(set(texts)):
+        raise ValueError(f"{name} must be non-empty and unique.")
+    for text in texts:
+        enum_type(text)
+    return texts
 
 
 @dataclass(frozen=True, slots=True)
@@ -296,7 +356,7 @@ class OrbitViewSpec:
     view_id: str
     target_kind: OrbitTargetKind
     target_court_instance_id: str | None
-    target_mode: str
+    target_mode: OrbitTargetMode
     coverage_mode: OrbitCoverageMode
     look_at_height_m: float
     hfov_degrees: float
@@ -313,11 +373,13 @@ class OrbitViewSpec:
             raise ValueError(
                 "target_court_instance_id is required exactly for court targets."
             )
-        target_mode = _text(self.target_mode, name="target_mode")
-        if target_mode not in {"center", "near_baseline", "far_baseline"}:
-            raise ValueError(f"Unknown target_mode: {target_mode!r}.")
-        if self.target_kind is OrbitTargetKind.COMPLEX and target_mode != "center":
-            raise ValueError("A complex target supports only target_mode='center'.")
+        if not isinstance(self.target_mode, OrbitTargetMode):
+            raise TypeError("target_mode must be an OrbitTargetMode.")
+        if self.target_mode.target_kind is not self.target_kind:
+            raise ValueError(
+                f"Target mode {self.target_mode.value!r} requires "
+                f"target_kind={self.target_mode.target_kind.value!r}."
+            )
         if not isinstance(self.coverage_mode, OrbitCoverageMode):
             raise TypeError("coverage_mode must be an OrbitCoverageMode.")
         height = _finite(self.look_at_height_m, name="look_at_height_m")
@@ -326,7 +388,6 @@ class OrbitViewSpec:
             raise ValueError("look_at_height_m must be non-negative.")
         if not 0.0 < hfov < 180.0:
             raise ValueError("hfov_degrees must lie in (0, 180).")
-        object.__setattr__(self, "target_mode", target_mode)
         object.__setattr__(self, "look_at_height_m", height)
         object.__setattr__(self, "hfov_degrees", hfov)
 
@@ -347,7 +408,7 @@ class OrbitViewSpec:
             "view_id": self.view_id,
             "target_kind": self.target_kind.value,
             "target_court_instance_id": self.target_court_instance_id,
-            "target_mode": self.target_mode,
+            "target_mode": self.target_mode.value,
             "coverage_mode": self.coverage_mode.value,
             "look_at_height_m": self.look_at_height_m,
             "hfov_degrees": self.hfov_degrees,
@@ -373,7 +434,9 @@ class OrbitViewSpec:
                 raw["target_court_instance_id"],
                 name="target_court_instance_id",
             ),
-            target_mode=_text(raw["target_mode"], name="target_mode"),
+            target_mode=OrbitTargetMode(
+                _text(raw["target_mode"], name="target_mode")
+            ),
             coverage_mode=OrbitCoverageMode(
                 _text(raw["coverage_mode"], name="coverage_mode")
             ),
@@ -393,8 +456,8 @@ class OrbitSamplingPolicy:
     minimum_sample_count: int
     sample_count_multiple: int
     seed: int
-    stable_field_order: tuple[str, ...]
-    coverage_objective: tuple[str, ...]
+    stable_field_order: tuple[OrbitStableField, ...]
+    coverage_objective: tuple[OrbitCoverageObjective, ...]
     proposal_budget: int
     minimum_trajectory_groups: int
     minimum_accepted_frames: int
@@ -437,30 +500,24 @@ class OrbitSamplingPolicy:
             raise ValueError("max_arc_step_m must lie in (0, 1.05].")
         if minimum_samples % multiple != 0:
             raise ValueError("minimum_sample_count must be divisible by sample_count_multiple.")
-        if not self.stable_field_order or len(self.stable_field_order) != len(
-            set(self.stable_field_order)
+        if (
+            not self.stable_field_order
+            or any(
+                not isinstance(field, OrbitStableField)
+                for field in self.stable_field_order
+            )
+            or len(self.stable_field_order) != len(set(self.stable_field_order))
         ):
             raise ValueError("stable_field_order must be non-empty and unique.")
-        known_fields = {
-            "shape",
-            "center_kind",
-            "axis_ratio",
-            "orientation_degrees",
-            "base_height_m",
-            "vertical_modulation_m",
-            "curve_mode",
-            "target_mode",
-        }
-        unknown_fields = set(self.stable_field_order) - known_fields
-        if unknown_fields:
-            raise ValueError(f"Unknown stable trajectory fields: {sorted(unknown_fields)}.")
-        known_objectives = {
-            "coverage_mode",
-            "semantic_visibility",
-            "trajectory_group",
-        }
-        if not self.coverage_objective or set(self.coverage_objective) - known_objectives:
-            raise ValueError("coverage_objective contains an unknown objective.")
+        if (
+            not self.coverage_objective
+            or any(
+                not isinstance(objective, OrbitCoverageObjective)
+                for objective in self.coverage_objective
+            )
+            or len(self.coverage_objective) != len(set(self.coverage_objective))
+        ):
+            raise ValueError("coverage_objective must be non-empty, typed, and unique.")
         if budget > 5_000:
             raise ValueError("proposal_budget must not exceed 5,000.")
         if minimum_groups < 24:
@@ -508,7 +565,7 @@ class OrbitSamplingPolicy:
         )
         minimum_samples = int(math.ceil(max(8, minimum_groups) / shard_count)) * shard_count
         return cls(
-            mode=OrbitSamplingMode.UNIFORM_ARC_LENGTH,
+            mode=value.mode,
             max_arc_step_m=_finite(
                 value.maximum_adjacent_step_m,
                 name="maximum_adjacent_step_m",
@@ -544,6 +601,91 @@ class OrbitSamplingPolicy:
             shard_count=shard_count,
         )
 
+    @classmethod
+    def from_mapping(cls, value: object) -> Self:
+        """Parse a persisted sampling policy with exact keys and finite enums."""
+        keys = {
+            "mode",
+            "max_arc_step_m",
+            "minimum_sample_count",
+            "sample_count_multiple",
+            "seed",
+            "stable_field_order",
+            "coverage_objective",
+            "proposal_budget",
+            "minimum_trajectory_groups",
+            "minimum_accepted_frames",
+            "minimum_accepted_fraction",
+            "split_fractions",
+            "shard_count",
+        }
+        raw = _strict(value, keys=keys, name="orbit sampling policy")
+        stable_fields = _enum_text_sequence(
+            raw["stable_field_order"],
+            enum_type=OrbitStableField,
+            name="stable_field_order",
+        )
+        objectives = _enum_text_sequence(
+            raw["coverage_objective"],
+            enum_type=OrbitCoverageObjective,
+            name="coverage_objective",
+        )
+        split_fractions = _finite_vector(
+            _required_sequence(raw["split_fractions"], name="split_fractions"),
+            size=3,
+            name="split_fractions",
+        )
+        return cls(
+            mode=OrbitSamplingMode(_text(raw["mode"], name="mode")),
+            max_arc_step_m=_finite(raw["max_arc_step_m"], name="max_arc_step_m"),
+            minimum_sample_count=_integer(
+                raw["minimum_sample_count"],
+                name="minimum_sample_count",
+                minimum=8,
+            ),
+            sample_count_multiple=_integer(
+                raw["sample_count_multiple"],
+                name="sample_count_multiple",
+                minimum=1,
+            ),
+            seed=_integer(raw["seed"], name="seed", minimum=0),
+            stable_field_order=tuple(
+                OrbitStableField(field) for field in stable_fields
+            ),
+            coverage_objective=tuple(
+                OrbitCoverageObjective(objective) for objective in objectives
+            ),
+            proposal_budget=_integer(
+                raw["proposal_budget"],
+                name="proposal_budget",
+                minimum=1,
+            ),
+            minimum_trajectory_groups=_integer(
+                raw["minimum_trajectory_groups"],
+                name="minimum_trajectory_groups",
+                minimum=1,
+            ),
+            minimum_accepted_frames=_integer(
+                raw["minimum_accepted_frames"],
+                name="minimum_accepted_frames",
+                minimum=1,
+            ),
+            minimum_accepted_fraction=_finite(
+                raw["minimum_accepted_fraction"],
+                name="minimum_accepted_fraction",
+            ),
+            split_fractions=(
+                split_fractions[0],
+                split_fractions[1],
+                split_fractions[2],
+            ),
+            shard_count=_integer(
+                raw["shard_count"],
+                name="shard_count",
+                minimum=1,
+            ),
+        )
+
     def to_dict(self) -> dict[str, object]:
         """Return all resolved values used by planning and release gates."""
         return {
@@ -552,8 +694,10 @@ class OrbitSamplingPolicy:
             "minimum_sample_count": self.minimum_sample_count,
             "sample_count_multiple": self.sample_count_multiple,
             "seed": self.seed,
-            "stable_field_order": list(self.stable_field_order),
-            "coverage_objective": list(self.coverage_objective),
+            "stable_field_order": [field.value for field in self.stable_field_order],
+            "coverage_objective": [
+                objective.value for objective in self.coverage_objective
+            ],
             "proposal_budget": self.proposal_budget,
             "minimum_trajectory_groups": self.minimum_trajectory_groups,
             "minimum_accepted_frames": self.minimum_accepted_frames,
@@ -899,13 +1043,16 @@ __all__ = [
     "DatasetSplit",
     "OrbitCenter",
     "OrbitCenterKind",
+    "OrbitCoverageObjective",
     "OrbitCoverageMode",
     "OrbitCurveMode",
     "OrbitPathSamples",
     "OrbitSamplingMode",
     "OrbitSamplingPolicy",
     "OrbitShape",
+    "OrbitStableField",
     "OrbitTargetKind",
+    "OrbitTargetMode",
     "OrbitTrajectorySpec",
     "OrbitViewSpec",
     "PlannedCourtSample",
