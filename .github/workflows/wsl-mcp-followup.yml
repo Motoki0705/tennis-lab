@@ -5,6 +5,13 @@ on:
     branches: [feat/wsl-mcp-project-sandbox]
     paths:
       - ".github/workflows/wsl-mcp-followup.yml"
+      - ".github/scripts/wsl_mcp_followup.py"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/wsl-mcp-followup.yml"
+      - ".github/scripts/wsl_mcp_followup.py"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,6 +22,9 @@ concurrency:
 
 jobs:
   harden:
+    if: >-
+      ${{ github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
@@ -55,12 +65,15 @@ jobs:
             tests/unit/utils/configuration/test_inventory.py
 
       - name: Commit hardened implementation
+        if: github.event_name != 'pull_request'
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm .github/scripts/wsl_mcp_followup.py
+          git rm \
+            .github/scripts/wsl_mcp_followup.py \
+            .github/workflows/wsl-mcp-followup.yml
           git add -A
           git diff --cached --check
           git commit -m "fix(automation): harden project-bounded WSL execution"
-          git push origin HEAD:feat/wsl-mcp-project-sandbox
+          git push --force-with-lease origin HEAD:feat/wsl-mcp-project-sandbox
