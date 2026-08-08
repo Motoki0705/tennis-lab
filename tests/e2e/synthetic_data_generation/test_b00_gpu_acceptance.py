@@ -8,10 +8,12 @@ from pathlib import Path
 
 import pytest
 import torch
+from hydra import compose, initialize_config_dir
 
 from src.synthetic_data_generation.alignment.validation import (
     validate_alignment_outputs,
 )
+from src.synthetic_data_generation.configuration import ScenePipelineConfiguration
 from src.synthetic_data_generation.dataset.blcs.assembler import (
     validate_blcs_dataset,
 )
@@ -24,6 +26,7 @@ from src.synthetic_data_generation.dataset.court.components.labels import (
 from src.synthetic_data_generation.dataset.plcs.validation import (
     validate_plcs_dataset,
 )
+from src.synthetic_data_generation.dataset.runtime import DatasetPerformanceMetrics
 from src.synthetic_data_generation.reconstruction.scene_export import (
     validate_standard_scene_export,
 )
@@ -99,6 +102,29 @@ def test_b00_video_to_report_meets_all_quantitative_and_motion_gates() -> None:
     court = validate_court_dataset(root / "datasets/court")
     blcs = validate_blcs_dataset(root / "datasets/blcs")
     plcs = validate_plcs_dataset(root / "datasets/plcs")
+    with initialize_config_dir(
+        version_base="1.3",
+        config_dir=str(
+            PROJECT_ROOT / "src/synthetic_data_generation/configs"
+        ),
+    ):
+        runtime = ScenePipelineConfiguration.from_config(
+            compose(config_name="run_scene_pipeline")
+        )
+
+    assert court.performance.budget == runtime.court.performance
+    court.performance.metrics.validate_budget(runtime.court.performance)
+    blcs.performance.validate_budget(runtime.blcs.performance)
+    plcs_performance = DatasetPerformanceMetrics.from_dict(
+        _json(root / "datasets/plcs/diagnostics/performance.json")
+    )
+    plcs_performance.validate_budget(runtime.plcs.performance)
+    assert blcs.performance.nht_invocations == 3
+    assert blcs.performance.background_cache_misses == 18
+    assert blcs.performance.cuda_peak_bytes > 0
+    assert plcs_performance.nht_invocations == 1
+    assert plcs_performance.background_cache_misses == 6
+    assert plcs_performance.cuda_peak_bytes > 0
 
     assert scene.scene_id == "B00"
     assert len(scene.cameras) >= 12
