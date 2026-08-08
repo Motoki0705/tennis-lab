@@ -248,11 +248,16 @@ jobs:
                       "test ! -e /mnt/c; "
                       "test ! -e /tennis-lab/.git/HEAD; "
                       "test ! -e /workspace/.git; "
-                      "test ! -e /home/kamimura/.local/share/tennis-lab-chatgpt-mcp; "
-                      "test ! -e /home/kamimura/.local/state/tennis-lab-chatgpt-mcp; "
+                      "test -r /home/kamimura/.local/share/tennis-lab-chatgpt-mcp/venv/bin/python; "
+                      "test ! -w /home/kamimura/.local/share/tennis-lab-chatgpt-mcp/venv; "
+                      "test ! -e /home/kamimura/.local/share/tennis-lab-chatgpt-mcp/current; "
+                      "test ! -e /home/kamimura/.local/share/tennis-lab-chatgpt-mcp/repository.git; "
+                      "test ! -e /home/kamimura/.local/share/tennis-lab-chatgpt-mcp/bin/training_queue.sh; "
+                      "test ! -e /home/kamimura/.local/state/tennis-lab-chatgpt-mcp/secure-tunnel/runtime-api-key; "
                       "mkdir -p artifacts/mcp-deploy-smoke; "
                       "printf ok > artifacts/mcp-deploy-smoke/ok; "
-                      "test -f /tennis-lab/artifacts/mcp-deploy-smoke/ok"
+                      "test -f /tennis-lab/artifacts/mcp-deploy-smoke/ok; "
+                      "rm -rf artifacts/mcp-deploy-smoke"
                   ),
               },
           )
