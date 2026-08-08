@@ -74,6 +74,7 @@ def test_ensure_state_creates_stable_private_runtime_state() -> None:
         assert len(first) >= 32
         assert stat.S_IMODE(settings.owner_secret_path.stat().st_mode) == 0o600
         assert stat.S_IMODE(settings.state_dir.stat().st_mode) == 0o700
+        assert settings.gpu_lock_file == Path("/var/lib/tennis-lab-actions/gpu.lock")
         assert stat.S_IMODE(settings.job_specs_dir.stat().st_mode) == 0o700
         assert stat.S_IMODE(settings.sandbox_jobs_dir.stat().st_mode) == 0o700
         assert stat.S_IMODE(settings.revision_workspace_dir.stat().st_mode) == 0o700

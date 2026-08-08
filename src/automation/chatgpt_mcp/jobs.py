@@ -28,7 +28,9 @@ _SHA = re.compile(r"^[0-9a-f]{40}$")
 _TRAINING_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
 _QUEUE_FILE = re.compile(r"^[A-Za-z0-9._-]{1,240}\.job$")
 _DIRECT_COMMAND_MAX_SECONDS = 24 * 3600
-_MAX_CONCURRENT_DIRECT_JOBS = 4
+_MAX_CONCURRENT_DIRECT_JOBS = 2
+_DIRECT_MEMORY_GB = 24
+_QUEUED_MEMORY_GB = 48
 _JOB_METADATA_TTL_SECONDS = 30 * 24 * 3600
 _TRAINING_METADATA_TTL_SECONDS = 90 * 24 * 3600
 _COMMAND_FILE_NAME = "command"
@@ -177,6 +179,8 @@ class DockerSandbox:
             "gpu": "available only through the serial training queue",
             "direct_timeout_max_seconds": _DIRECT_COMMAND_MAX_SECONDS,
             "direct_concurrency": _MAX_CONCURRENT_DIRECT_JOBS,
+            "direct_memory_limit_gb": _DIRECT_MEMORY_GB,
+            "queued_memory_limit_gb": _QUEUED_MEMORY_GB,
             "persistent_roots": list(_PERSISTENT_PROJECT_ROOTS),
             "host_boundaries": [
                 "Docker socket is not mounted",
@@ -281,12 +285,13 @@ class DockerSandbox:
             "ALL",
             "--security-opt",
             "no-new-privileges",
+            "--init",
             "--pids-limit",
             "4096",
             "--memory",
-            "48g",
+            f"{_QUEUED_MEMORY_GB if spec.use_gpu else _DIRECT_MEMORY_GB}g",
             "--shm-size",
-            "8g",
+            "8g" if spec.use_gpu else "4g",
             "--network",
             "none",
             "--ipc",
@@ -598,9 +603,10 @@ class TrainingQueueManager:
 
     def _queue_environment(self) -> dict[str, str]:
         return {
-            "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
-            "HOME": str(self.settings.control_dir),
+            "PATH": "/usr/bin:/bin",
+            "HOME": str(self.settings.runtime_home),
             "TRAINING_QUEUE_DIR": str(self.queue_dir),
+            "TRAINING_QUEUE_LOCK_FILE": str(self.settings.gpu_lock_file),
             "TRAINING_QUEUE_PYTHON": str(
                 self.settings.runtime_venv_root / "bin/python"
             ),

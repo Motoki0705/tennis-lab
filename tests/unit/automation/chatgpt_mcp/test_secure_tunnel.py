@@ -133,6 +133,9 @@ def test_install_services_keeps_secret_out_of_units_and_starts_both(
     assert f'ExecStart="{tmp_path}/.venv/bin/python"' in private_unit
     assert "TENNIS_MCP_HOST=127.0.0.1" in private_unit
     assert "TENNIS_MCP_PORT=8767" in private_unit
+    assert f"HOME={manager.settings.runtime_home}" in private_unit
+    assert "PYTHONNOUSERSITE=1" in private_unit
+    assert f"TENNIS_MCP_GPU_LOCK_FILE={manager.settings.gpu_lock_file}" in private_unit
     assert f"PYTHONPATH={tmp_path}/source directory" in private_unit
     assert f"TENNIS_MCP_CONTROL_DIR={tmp_path}/control" in private_unit
     assert (

@@ -12,10 +12,10 @@ _DEFAULT_PROJECT_ROOT = Path("/home/kamimura/projects/tennis-lab")
 _DEFAULT_STATE_DIR = Path.home() / ".local/state/tennis-lab-chatgpt-mcp"
 _DEFAULT_CONTROL_DIR = Path.home() / ".local/share/tennis-lab-chatgpt-mcp"
 _DEFAULT_ORIGIN_URL = "https://github.com/Motoki0705/tennis-lab.git"
+_DEFAULT_GPU_LOCK_FILE = Path("/var/lib/tennis-lab-actions/gpu.lock")
 _ALLOWED_ORIGIN_URLS = {
     _DEFAULT_ORIGIN_URL,
     "https://github.com/Motoki0705/tennis-lab",
-    "git@github.com:Motoki0705/tennis-lab.git",
 }
 
 
@@ -70,6 +70,7 @@ class GatewaySettings:
     public_base_url: str | None
     control_dir: Path = _DEFAULT_CONTROL_DIR
     origin_url: str = _DEFAULT_ORIGIN_URL
+    gpu_lock_file: Path = _DEFAULT_GPU_LOCK_FILE
     host: str = "127.0.0.1"
     port: int = 8765
     docker_image: str = "nvidia/cuda:13.0.0-base-ubuntu24.04"
@@ -84,6 +85,14 @@ class GatewaySettings:
         repo_root = self.repo_root.resolve()
         state_dir = self.state_dir.resolve()
         control_dir = self.control_dir.resolve()
+        gpu_lock_file = self.gpu_lock_file.expanduser()
+        if not gpu_lock_file.is_absolute():
+            raise ValueError("MCP GPU lock file must be an absolute path")
+        gpu_lock_file = gpu_lock_file.resolve()
+        object.__setattr__(self, "repo_root", repo_root)
+        object.__setattr__(self, "state_dir", state_dir)
+        object.__setattr__(self, "control_dir", control_dir)
+        object.__setattr__(self, "gpu_lock_file", gpu_lock_file)
         if state_dir == repo_root or state_dir.is_relative_to(repo_root):
             raise ValueError(
                 "MCP state must be outside the destructible tennis-lab tree"
@@ -94,6 +103,8 @@ class GatewaySettings:
             )
         if state_dir == control_dir:
             raise ValueError("MCP state and control directories must be distinct")
+        if gpu_lock_file == repo_root or gpu_lock_file.is_relative_to(repo_root):
+            raise ValueError("MCP GPU lock must be outside the destructible project")
         if not 1024 <= self.port <= 65535:
             raise ValueError("MCP port must be between 1024 and 65535")
 
@@ -144,6 +155,13 @@ class GatewaySettings:
                 "/home/kamimura/.local/share/uv/python",
             )
         ).expanduser()
+        gpu_lock_file = _absolute_path(
+            os.environ.get(
+                "TENNIS_MCP_GPU_LOCK_FILE",
+                str(_DEFAULT_GPU_LOCK_FILE),
+            ),
+            "TENNIS_MCP_GPU_LOCK_FILE",
+        )
 
         return cls(
             repo_root=repo_root,
@@ -155,6 +173,7 @@ class GatewaySettings:
             origin_url=normalize_origin_url(
                 os.environ.get("TENNIS_MCP_ORIGIN_URL", _DEFAULT_ORIGIN_URL)
             ),
+            gpu_lock_file=gpu_lock_file,
             host=os.environ.get("TENNIS_MCP_HOST", "127.0.0.1"),
             port=port,
             docker_image=os.environ.get(
@@ -193,6 +212,14 @@ class GatewaySettings:
     @property
     def runtime_releases_dir(self) -> Path:
         return self.control_dir / "releases"
+
+    @property
+    def runtime_venvs_dir(self) -> Path:
+        return self.control_dir / "venvs"
+
+    @property
+    def runtime_home(self) -> Path:
+        return self.control_dir / "runtime-home"
 
     @property
     def runtime_current_dir(self) -> Path:
@@ -335,7 +362,9 @@ class GatewaySettings:
         for directory in (
             self.control_dir,
             self.runtime_releases_dir,
+            self.runtime_venvs_dir,
             self.runtime_bin_dir,
+            self.runtime_home,
             self.trusted_git_home,
         ):
             directory.mkdir(mode=0o700, parents=True, exist_ok=True)

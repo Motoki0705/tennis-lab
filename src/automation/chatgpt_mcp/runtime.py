@@ -15,6 +15,20 @@ from src.automation.chatgpt_mcp.settings import GatewaySettings
 _SHA = re.compile(r"^[0-9a-f]{40}$")
 
 
+def _validated_sha(value: str) -> str:
+    revision = value.strip().lower()
+    if not _SHA.fullmatch(revision):
+        raise RuntimeInstallError("expected_sha must be a full 40-character commit SHA")
+    return revision
+
+
+def _origin_identity(value: str) -> str:
+    normalized = value.strip().rstrip("/")
+    if normalized.endswith(".git"):
+        normalized = normalized[:-4]
+    return normalized
+
+
 class RuntimeInstallError(RuntimeError):
     """Raised when the trusted MCP runtime cannot be installed atomically."""
 
@@ -81,10 +95,23 @@ class RuntimeInstaller:
     def __init__(self, settings: GatewaySettings) -> None:
         self.settings = settings
 
-    def install(self, source_root: Path) -> RuntimeInstallResult:
-        """Install one exact source revision and atomically activate it."""
+    def install(self, source_root: Path, *, expected_sha: str) -> RuntimeInstallResult:
+        """Install one clean reviewed checkout at the explicitly expected revision."""
 
+        checked_sha = _validated_sha(expected_sha)
         source = source_root.expanduser().resolve()
+        protected_roots = (
+            self.settings.repo_root,
+            self.settings.state_dir,
+            self.settings.control_dir,
+        )
+        if any(
+            source == root or source.is_relative_to(root) for root in protected_roots
+        ):
+            raise RuntimeInstallError(
+                "deployment source must be a separate clean reviewed checkout outside "
+                "tennis-lab, MCP state, and the MCP control plane"
+            )
         package = source / "src/automation/chatgpt_mcp"
         queue_script = (
             source / ".agents/skills/training-queue/scripts/training_queue.sh"
@@ -94,19 +121,58 @@ class RuntimeInstaller:
                 f"source root is not a complete tennis-lab checkout: {source}"
             )
 
+        git_prefix = [
+            "git",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-c",
+            "core.fsmonitor=false",
+            "-C",
+            str(source),
+        ]
         revision = _checked(
-            ["git", "-C", str(source), "rev-parse", "HEAD^{commit}"],
+            [*git_prefix, "rev-parse", "HEAD^{commit}"],
             message="source revision is unavailable",
         ).lower()
-        if not _SHA.fullmatch(revision):
-            raise RuntimeInstallError("source revision is not a full commit SHA")
+        if revision != checked_sha:
+            raise RuntimeInstallError(
+                f"deployment source is {revision}, expected {checked_sha}"
+            )
+        status = _checked(
+            [*git_prefix, "status", "--porcelain=v1", "--untracked-files=all"],
+            message="deployment source status is unavailable",
+        )
+        if status:
+            raise RuntimeInstallError("deployment source must be completely clean")
+        source_origin = _checked(
+            [*git_prefix, "remote", "get-url", "origin"],
+            message="deployment source origin is unavailable",
+        )
+        if _origin_identity(source_origin) != _origin_identity(
+            self.settings.origin_url
+        ):
+            raise RuntimeInstallError(
+                "deployment source origin does not match the fixed tennis-lab origin"
+            )
 
         self.settings.ensure_state()
         self.settings.ensure_control_directories()
         python_executable = self._install_venv()
+        self._ensure_trusted_mirror()
+        _checked(
+            [
+                "git",
+                "--git-dir",
+                str(self.settings.trusted_git_dir),
+                "cat-file",
+                "-e",
+                f"{checked_sha}^{{commit}}",
+            ],
+            env=self._git_environment(),
+            message="expected deployment revision is absent from the trusted mirror",
+        )
         release_dir = self._install_release(source, revision)
         installed_queue = self._install_queue_runner(source)
-        self._ensure_trusted_mirror()
         self._activate_release(release_dir, revision)
 
         return RuntimeInstallResult(
@@ -222,7 +288,7 @@ class RuntimeInstaller:
 
     def _git_environment(self) -> dict[str, str]:
         environment = {
-            "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
+            "PATH": "/usr/bin:/bin",
             "HOME": str(self.settings.trusted_git_home),
             "GIT_CONFIG_NOSYSTEM": "1",
             "GIT_CONFIG_GLOBAL": "/dev/null",

@@ -1,7 +1,7 @@
 # tennis-lab ChatGPT WSL MCP
 
 This gateway gives ChatGPT a broad execution plane inside `tennis-lab` while
-keeping the host control plane outside the project. GitHub MCP remains the
+keeping its host control plane outside the project. GitHub MCP remains the
 repository control plane.
 
 ## Responsibility split
@@ -11,54 +11,28 @@ creation, source implementation, commits, pushes, and remote state.
 
 WSL MCP owns runtime work only:
 
-- fetch one `origin` branch through an external trusted bare mirror;
+- fetch one fixed `origin` branch through an external trusted bare mirror;
 - bind every job to a caller-supplied full commit SHA;
 - run arbitrary network-disabled shell commands in Docker;
 - expose the complete local `tennis-lab` project read-write for real data,
   generated chunks, outputs, checkpoints, artifacts, caches, and experiments;
-- serialize CUDA and long-running work through the external training queue;
+- serialize CUDA and long-running work through the external training queue and
+  the same host GPU lock used by local GitHub Actions;
 - return job state and secret-redacted output.
 
 It does not expose MCP tools for source browsing, patching, committing, or
 pushing. A shell command can nevertheless modify or delete anything below the
 local `tennis-lab` directory. That destruction is explicitly inside the threat
-model and cannot affect GitHub unless GitHub MCP separately pushes a change.
+model and cannot affect GitHub unless GitHub MCP separately persists a change.
 
 ## Security boundary
 
-The destructible zone is the complete project root:
-
-```text
-/home/kamimura/projects/tennis-lab
-├── src/
-├── tests/
-├── data/
-├── outputs/
-├── ckpt/
-├── artifacts/
-├── .cache/
-├── third_party/
-└── any other project content
-```
-
-The trusted control plane is installed outside it:
-
-```text
-~/.local/share/tennis-lab-chatgpt-mcp/
-├── current -> releases/<full SHA>
-├── releases/
-├── venv/
-├── repository.git/
-└── bin/training_queue.sh
-
-~/.local/state/tennis-lab-chatgpt-mcp/
-├── secure-tunnel/
-├── revisions/
-├── sandboxes/
-├── training-specs/
-├── training-queue/
-└── gateway.sqlite3
-```
+The destructible zone is the complete project root, including `src/`, `tests/`,
+`data/`, `outputs/`, `ckpt/`, `artifacts/`, `.cache/`, `third_party/`, and all
+other project content. The trusted runtime, versioned venv, tunnel credentials,
+Git mirror, queue runner, systemd units, and durable MCP state live under
+`~/.local/share/tennis-lab-chatgpt-mcp/` and
+`~/.local/state/tennis-lab-chatgpt-mcp/`, outside that tree.
 
 The container receives:
 
@@ -74,9 +48,18 @@ The container receives:
 - a read-only container root filesystem, all capabilities dropped,
   `no-new-privileges`, private IPC, PID and memory limits, and a bounded timeout.
 
-The host executes only external trusted runtime code and the external copied
-queue runner. It never imports or executes Python or shell code from the
-read-write project tree.
+The host service imports only the external trusted runtime. Runtime promotion is
+accepted only from a separate, completely clean checkout at an explicitly
+supplied full SHA whose `origin` matches `Motoki0705/tennis-lab`; the canonical
+read-write project cannot be promoted into the control plane.
+
+Because all project files are readable, commands can intentionally print project
+data into MCP logs. Never place API keys, SSH keys, personal credentials, or
+other secrets anywhere below `tennis-lab`. Treat the local project as untrusted
+after arbitrary execution and do not run its Python or shell code directly on
+the host until it has been restored or reviewed. Disk exhaustion and kernel or
+Docker vulnerabilities remain residual host risks; keep backups for valuable
+data and outputs.
 
 ## MCP tools
 
@@ -96,27 +79,23 @@ read-write project tree.
 14. `cancel_training_job`
 
 `start_command` accepts any CPU shell command, a relative working directory,
-and one of two roots:
+and one of two roots. `execution_root="revision"` uses exact code with persistent
+project data/output/checkpoint roots linked in. `execution_root="project"` uses
+the complete current local project tree. Direct jobs may run for up to 24 hours;
+at most two run concurrently and each is limited to 24 GiB. GPU or heavier work
+uses `enqueue_training`, is serialized, and receives 48 GiB.
 
-- `execution_root="revision"`: exact source revision with persistent project
-  data/output/checkpoint roots linked in;
-- `execution_root="project"`: the complete current local project tree.
-
-Direct jobs may run for up to 24 hours and at most four run concurrently. GPU
-or longer work must use `enqueue_training`; the queue serializes it.
-
-Network access is intentionally unavailable. Downloading dependencies or data
-must be performed through a separately reviewed workflow, not an arbitrary MCP
-command.
+Network access is intentionally unavailable. Downloads must use a separately
+reviewed workflow rather than an arbitrary MCP command.
 
 ## Typical flow
 
 1. GitHub MCP implements and pushes a branch.
 2. GitHub MCP obtains its full head SHA.
 3. WSL MCP calls `prepare_revision_workspace(branch, expected_sha)`.
-4. WSL MCP runs CPU checks or real-data inspection with `start_command`.
-5. WSL MCP submits CUDA, dataset generation, evaluation, or training with
-   `enqueue_training`.
+4. WSL MCP runs CPU tests, real-data validation, generation, or inspection with
+   `start_command`.
+5. WSL MCP submits CUDA, evaluation, or training with `enqueue_training`.
 6. GitHub MCP alone persists source changes to the remote branch.
 
 Examples:
@@ -133,17 +112,6 @@ start_command(
 ```
 
 ```text
-start_command(
-  workspace_id="rev-...",
-  expected_sha="<40 chars>",
-  execution_root="project",
-  working_directory="data",
-  timeout_seconds=1800,
-  command="du -sh . && find . -maxdepth 3 -type f | head"
-)
-```
-
-```text
 enqueue_training(
   name="blcs-tracking-chunked",
   workspace_id="rev-...",
@@ -155,35 +123,19 @@ enqueue_training(
 )
 ```
 
-## Trusted runtime deployment
+## Trusted deployment
 
-The project `.venv` is moved to the trusted control directory and replaced by
-a symlink, preserving `.venv/bin/python` for normal local use. A reviewed source
-revision is copied into a versioned external release and atomically activated.
-The trusted bare mirror and external queue runner are also initialized.
+The supported deployment route is the self-hosted **Deploy WSL MCP** workflow.
+It checks out the reviewed `main` revision into the Actions workspace, provisions
+a lockfile-keyed venv outside `tennis-lab`, requires an exact clean SHA and fixed
+origin, atomically installs the external runtime, reuses the stored Tunnel ID and
+runtime key, restarts both services, and verifies MCP discovery, real project
+read-write access, host isolation, CPU tests, CUDA, and the serial queue.
 
-Manual deployment:
-
-```bash
-cd /home/kamimura/projects/tennis-lab
-git switch main
-git pull --ff-only
-
-.venv/bin/python -m src.automation.chatgpt_mcp configure-secure-tunnel \
-  --source-root /home/kamimura/projects/tennis-lab \
-  --tunnel-id tunnel_0123456789abcdef0123456789abcdef \
-  --reuse-existing-key \
-  --start
-```
-
-For the first installation, omit `--reuse-existing-key`; the runtime API key is
-requested through a hidden prompt.
-
-The repository also contains a self-hosted `Deploy WSL MCP` workflow. After a
-reviewed MCP change reaches `main`, the local WSL runner installs that exact
-commit, reuses the already stored Tunnel ID and runtime key, restarts both
-services, and verifies health, doctor output, tool discovery, Docker isolation,
-CPU execution, CUDA, and the external training queue.
+Do not run `configure-secure-tunnel --source-root
+/home/kamimura/projects/tennis-lab`; the canonical project is intentionally
+rejected as a deployment source. Manual recovery requires a separate clean
+checkout and both `--source-root` and `--expected-sha`.
 
 Connector settings remain:
 
@@ -193,15 +145,8 @@ Tunnel: tennis-lab WSL
 Authentication: None
 ```
 
-Stable services:
-
-- `tennis-lab-chatgpt-mcp-private.service`
-- `tennis-lab-chatgpt-secure-tunnel.service`
-
-Endpoints:
-
-- private MCP: `http://127.0.0.1:8767/mcp`
-- tunnel readiness: `http://127.0.0.1:8768/readyz`
-
-The legacy OAuth-protected Cloudflare Quick Tunnel may remain during migration
-but should be disabled after Secure Tunnel verification succeeds.
+Stable services are `tennis-lab-chatgpt-mcp-private.service` and
+`tennis-lab-chatgpt-secure-tunnel.service`. The private MCP endpoint is
+`http://127.0.0.1:8767/mcp`; tunnel readiness is
+`http://127.0.0.1:8768/readyz`. Keep the legacy Quick Tunnel until an actual
+ChatGPT Secure Tunnel call succeeds, then disable it.

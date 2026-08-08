@@ -120,14 +120,18 @@ def _git_root() -> Path:
 
 
 def _source_root(value: Path | None) -> Path:
-    return _git_root() if value is None else value.expanduser().resolve()
+    if value is None:
+        raise ValueError("--source-root is required for trusted runtime deployment")
+    return value.expanduser().resolve()
 
 
-def install_runtime(source_root: Path | None) -> dict[str, str]:
+def install_runtime(source_root: Path | None, expected_sha: str) -> dict[str, str]:
     """Install the trusted control plane from one reviewed checkout."""
 
     settings = GatewaySettings.from_env(require_public_base_url=False)
-    result = RuntimeInstaller(settings).install(_source_root(source_root))
+    result = RuntimeInstaller(settings).install(
+        _source_root(source_root), expected_sha=expected_sha
+    )
     return result.public_dict()
 
 
@@ -174,12 +178,15 @@ def configure_secure_tunnel(
     runtime_key_file: Path | None,
     reuse_existing_key: bool,
     source_root: Path | None,
+    expected_sha: str,
     start: bool,
 ) -> str:
     """Install the external runtime, persist tunnel credentials, and deploy services."""
 
     settings = GatewaySettings.from_env(require_public_base_url=False)
-    runtime = RuntimeInstaller(settings).install(_source_root(source_root))
+    runtime = RuntimeInstaller(settings).install(
+        _source_root(source_root), expected_sha=expected_sha
+    )
     runtime_api_key = _read_runtime_api_key(
         settings,
         runtime_key_file,
@@ -206,11 +213,15 @@ def configure_secure_tunnel(
     )
 
 
-def install_user_service(*, source_root: Path | None, start: bool) -> Path:
+def install_user_service(
+    *, source_root: Path | None, expected_sha: str, start: bool
+) -> Path:
     """Install the legacy public Quick Tunnel service from the trusted runtime."""
 
     settings = GatewaySettings.from_env(require_public_base_url=False)
-    RuntimeInstaller(settings).install(_source_root(source_root))
+    RuntimeInstaller(settings).install(
+        _source_root(source_root), expected_sha=expected_sha
+    )
     service_dir = Path.home() / ".config/systemd/user"
     service_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     service_path = service_dir / "tennis-lab-chatgpt-mcp.service"
@@ -317,10 +328,12 @@ def main() -> int:
     subparsers.add_parser("serve-private")
 
     runtime_parser = subparsers.add_parser("install-runtime")
-    runtime_parser.add_argument("--source-root", type=Path)
+    runtime_parser.add_argument("--source-root", type=Path, required=True)
+    runtime_parser.add_argument("--expected-sha", required=True)
 
     install_parser = subparsers.add_parser("install-user-service")
-    install_parser.add_argument("--source-root", type=Path)
+    install_parser.add_argument("--source-root", type=Path, required=True)
+    install_parser.add_argument("--expected-sha", required=True)
     install_parser.add_argument("--start", action="store_true")
     subparsers.add_parser("show-connection")
 
@@ -328,7 +341,8 @@ def main() -> int:
     secure_parser.add_argument("--tunnel-id", required=True)
     secure_parser.add_argument("--runtime-key-file", type=Path)
     secure_parser.add_argument("--reuse-existing-key", action="store_true")
-    secure_parser.add_argument("--source-root", type=Path)
+    secure_parser.add_argument("--source-root", type=Path, required=True)
+    secure_parser.add_argument("--expected-sha", required=True)
     secure_parser.add_argument("--start", action="store_true")
     subparsers.add_parser("show-secure-connection")
     subparsers.add_parser("doctor-secure-tunnel")
@@ -367,10 +381,16 @@ def main() -> int:
     elif arguments.command == "serve-private":
         serve_private()
     elif arguments.command == "install-runtime":
-        print(json.dumps(install_runtime(arguments.source_root), indent=2))
+        print(
+            json.dumps(
+                install_runtime(arguments.source_root, arguments.expected_sha),
+                indent=2,
+            )
+        )
     elif arguments.command == "install-user-service":
         path = install_user_service(
             source_root=arguments.source_root,
+            expected_sha=arguments.expected_sha,
             start=arguments.start,
         )
         print(path)
@@ -383,6 +403,7 @@ def main() -> int:
                 runtime_key_file=arguments.runtime_key_file,
                 reuse_existing_key=arguments.reuse_existing_key,
                 source_root=arguments.source_root,
+                expected_sha=arguments.expected_sha,
                 start=arguments.start,
             )
         )

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import html
-import os
 import shutil
 import subprocess
 import time
@@ -352,9 +351,10 @@ def build_gateway(settings: GatewaySettings, *, authenticated: bool = True) -> F
                 ["bash", str(settings.trusted_queue_script), "status"],
                 cwd=settings.control_dir,
                 env={
-                    "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
-                    "HOME": str(settings.control_dir),
+                    "PATH": "/usr/bin:/bin",
+                    "HOME": str(settings.runtime_home),
                     "TRAINING_QUEUE_DIR": str(settings.trusted_queue_dir),
+                    "TRAINING_QUEUE_LOCK_FILE": str(settings.gpu_lock_file),
                     "TRAINING_QUEUE_PYTHON": str(
                         settings.runtime_venv_root / "bin/python"
                     ),
@@ -391,6 +391,7 @@ def build_gateway(settings: GatewaySettings, *, authenticated: bool = True) -> F
             ),
             "docker": _run_probe(["docker", "info", "--format", "{{.ServerVersion}}"]),
             "training_queue": queue_result,
+            "gpu_lock_file": str(settings.gpu_lock_file),
         }
 
     @server.tool(

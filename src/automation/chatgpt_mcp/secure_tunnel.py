@@ -349,10 +349,17 @@ Wants=network-online.target
 Type=simple
 WorkingDirectory={_unit_path_value(self.source_root)}
 Environment="PYTHONPATH={self.source_root}"
+Environment="HOME={self.settings.runtime_home}"
+Environment="PATH=/usr/bin:/bin:/usr/lib/wsl/lib"
+Environment="PYTHONNOUSERSITE=1"
+Environment="PYTHONDONTWRITEBYTECODE=1"
+Environment="GIT_CONFIG_NOSYSTEM=1"
+Environment="GIT_CONFIG_GLOBAL=/dev/null"
 Environment="TENNIS_MCP_REPO_ROOT={self.settings.repo_root}"
 Environment="TENNIS_MCP_STATE_DIR={self.settings.state_dir}"
 Environment="TENNIS_MCP_CONTROL_DIR={self.settings.control_dir}"
 Environment="TENNIS_MCP_ORIGIN_URL={self.settings.origin_url}"
+Environment="TENNIS_MCP_GPU_LOCK_FILE={self.settings.gpu_lock_file}"
 Environment="TENNIS_MCP_HOST=127.0.0.1"
 Environment="TENNIS_MCP_PORT={PRIVATE_MCP_PORT}"
 ExecStart={_unit_value(self.python_executable)} -m src.automation.chatgpt_mcp serve-private

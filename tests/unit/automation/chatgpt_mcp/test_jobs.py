@@ -109,6 +109,9 @@ def test_sandbox_exposes_full_project_rw_but_keeps_control_plane_unmounted(
     assert "--cap-drop ALL" in joined
     assert "--security-opt no-new-privileges" in joined
     assert "--pull never" in joined
+    assert "--init" in command
+    assert command[command.index("--memory") + 1] == "24g"
+    assert command[command.index("--shm-size") + 1] == "4g"
     assert "--gpus all" not in joined
     assert "/var/run/docker.sock" not in joined
     assert "/mnt/c" not in joined
@@ -183,6 +186,8 @@ def test_gpu_flag_is_available_to_queue_specs_without_network(tmp_path: Path) ->
     command = DockerSandbox(settings, workspaces).command(spec, detached=False)
 
     assert command[command.index("--gpus") + 1] == "all"
+    assert command[command.index("--memory") + 1] == "48g"
+    assert command[command.index("--shm-size") + 1] == "8g"
     assert command[command.index("--network") + 1] == "none"
     assert spec.command not in " ".join(command)
 
@@ -258,6 +263,11 @@ def test_training_queue_uses_external_runner_and_safe_private_spec(
     assert spec["use_gpu"] is True
     assert spec["execution_root"] == "project"
     assert spec["working_directory"] == "src/tasks"
+    add_environment = queue_commands[0][0]
+    assert add_environment[0] == "bash"
+    assert manager._queue_environment()["TRAINING_QUEUE_LOCK_FILE"] == str(
+        settings.gpu_lock_file
+    )
 
 
 def test_cancel_queued_training_moves_only_external_queue_job(
@@ -302,6 +312,9 @@ def test_execution_layout_documents_destructive_project_boundary(
     assert layout["project_root"] == "/tennis-lab"
     assert "read-write" in layout["project_access"]
     assert layout["network"] == "disabled"
+    assert layout["direct_memory_limit_gb"] == 24
+    assert layout["queued_memory_limit_gb"] == 48
+    assert layout["direct_concurrency"] == 2
     assert "Docker socket is not mounted" in layout["host_boundaries"]
 
 
