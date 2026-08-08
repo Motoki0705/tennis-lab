@@ -67,6 +67,51 @@ def test_continuity_rejects_a_missing_terminal_track_camera_label() -> None:
         validate_frame_continuity(records, frame_count=5)
 
 
+@pytest.mark.parametrize(
+    ("missing_track", "missing_camera", "missing_frame"),
+    [
+        ("player-001", "camera-1", 4),
+        ("player-002", "camera-0", 0),
+    ],
+)
+def test_continuity_requires_explicit_terminal_absence_for_each_track_camera(
+    missing_track: str,
+    missing_camera: str,
+    missing_frame: int,
+) -> None:
+    source_frames = {
+        "player-001": (0, 1, 2, None, None),
+        "player-002": (None, None, 0, 1, 2),
+    }
+    complete = tuple(
+        TimelineFrameRecord(
+            frame_index=frame,
+            chunk_index=frame // 2,
+            track_id=track,
+            present=source_frame is not None,
+            source_frame_index=source_frame,
+            camera_id=camera,
+            label_id=f"{track}-{camera}-{frame}",
+            court_instance_id="court-0",
+        )
+        for track, mappings in source_frames.items()
+        for camera in ("camera-0", "camera-1")
+        for frame, source_frame in enumerate(mappings)
+    )
+
+    report = validate_frame_continuity(complete, frame_count=5)
+
+    assert report.record_count == 2 * 2 * 5
+    incomplete = tuple(
+        record
+        for record in complete
+        if (record.track_id, record.camera_id, record.frame_index)
+        != (missing_track, missing_camera, missing_frame)
+    )
+    with pytest.raises(ValueError, match="Track/camera timeline coverage mismatch"):
+        validate_frame_continuity(incomplete, frame_count=5)
+
+
 @pytest.mark.local_data
 def test_full_real_accad_timeline_is_articulated_and_composable() -> None:
     if not _ACCAD.is_file() or not _SMPLH.is_dir():
