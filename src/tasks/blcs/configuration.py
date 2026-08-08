@@ -11,17 +11,16 @@ from typing import Any, Literal, TypeAlias, cast
 from omegaconf import DictConfig
 
 from src.tasks.base.configuration import (
-    SceneVisualizationConfig,
     TrainingRuntimeConfig,
     as_config_mapping,
     require_config_mapping,
 )
+from src.tasks.base.generate_dataset.camera_profiles import CameraProfileConfig
 from src.tasks.base.generate_dataset.timeline_composer import TimelineConfig
 from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
 from src.tasks.base.visualization.style import (
     SceneStyleConfig,
     parse_scene_style,
-    parse_view_3d,
 )
 from src.utils.configuration import (
     ConfigurationTypeError,
@@ -32,7 +31,6 @@ from src.utils.configuration import (
     SemanticConfigurationError,
     UnknownConfigurationKeyError,
 )
-from src.utils.device import resolve_device
 from src.utils.hydra import register_boundary_validator
 from src.utils.paths import PROJECT_ROOT
 
@@ -801,17 +799,6 @@ def parse_model_config(config: object) -> BLCSModelConfig:
 
 
 @dataclass(frozen=True, slots=True)
-class GenerationRunConfig:
-    output_dir: Path
-    seed: int
-    device: str
-    num_workers: int
-    chunksize: int
-    train_ratio: float
-    val_ratio: float
-
-
-@dataclass(frozen=True, slots=True)
 class PreviewConfig:
     output_dir: Path
     scene_dir: Path
@@ -1206,75 +1193,6 @@ def parse_preview_config(config: object) -> PreviewConfig:
     return result
 
 
-def parse_generation_run(config: object) -> tuple[GenerationRunConfig, PathResolver]:
-    """Validate generation run fields and resolve its data output."""
-    root = as_config_mapping(config, path="configuration")
-    _exact(
-        root,
-        {
-            "paths",
-            "generation",
-            "physics",
-            "rally",
-            "camera",
-            "targeted_velocity",
-            "generator",
-            "run",
-        },
-        path="configuration",
-    )
-    validate_generator_sections(config)
-    run = require_config_mapping(root, "run", path="configuration")
-    keys = {
-        "output_dir",
-        "seed",
-        "device",
-        "num_workers",
-        "chunksize",
-        "train_ratio",
-        "val_ratio",
-    }
-    _exact(run, keys, path="run")
-    resolver = build_path_resolver(config)
-    requested_device = cast("str", _value(run, "device", str, path="run"))
-    try:
-        device = str(resolve_device(requested_device))
-    except (RuntimeError, ValueError) as error:
-        raise SemanticConfigurationError(
-            f"run.device is not an available device: {requested_device!r}."
-        ) from error
-    result = GenerationRunConfig(
-        output_dir=resolver.resolve(
-            PathRole.DATA, cast("str", _value(run, "output_dir", str, path="run"))
-        ),
-        seed=cast("int", _value(run, "seed", int, path="run")),
-        device=device,
-        num_workers=cast("int", _value(run, "num_workers", int, path="run")),
-        chunksize=cast("int", _value(run, "chunksize", int, path="run")),
-        train_ratio=float(
-            cast("float | int", _value(run, "train_ratio", (float, int), path="run"))
-        ),
-        val_ratio=float(
-            cast("float | int", _value(run, "val_ratio", (float, int), path="run"))
-        ),
-    )
-    _probability(result.train_ratio, path="run.train_ratio")
-    _probability(result.val_ratio, path="run.val_ratio")
-    if (
-        result.num_workers < 1
-        or result.chunksize < 1
-        or result.train_ratio + result.val_ratio > 1
-    ):
-        raise SemanticConfigurationError(
-            "Invalid BLCS generation worker count or split ratios."
-        )
-    if result.device != "cpu":
-        raise SemanticConfigurationError(
-            "run.device must resolve to 'cpu' for parallel BLCS generation."
-        )
-    return result, resolver
-
-
 def validate_generator_sections(
     config: object, *, include_generation: bool = True
 ) -> None:
@@ -1328,26 +1246,10 @@ def validate_generator_sections(
             "out_court_target_probability",
         },
         "camera": {
-            "layout",
-            "z_min",
-            "z_max",
-            "hfov_deg",
+            "profile",
             "image_size",
-            "fixed_look_at",
-            "fixed_baseline_clear_extra",
-            "fixed_position_noise_radius",
-            "fixed_look_at_xy_radius",
-            "broadcast_setback",
-            "broadcast_height",
-            "broadcast_hfov_deg",
-            "broadcast_look_at_y",
-            "broadcast_look_at_height",
-            "broadcast_position_noise_radius",
-            "broadcast_look_at_xy_radius",
-            "broadcast_hfov_jitter_deg",
-            "broadcast_setback_range",
-            "broadcast_height_range",
-            "broadcast_court_width_frac_range",
+            "expected_camera_count",
+            "slots",
         },
         "targeted_velocity": {
             "drive_elevation_range_deg",
@@ -1528,97 +1430,10 @@ def validate_generator_sections(
     )
 
     camera = sections["camera"]
-    _validate_types(
-        camera,
-        {
-            "layout": str,
-            **{
-                key: float
-                for key in (
-                    "z_min",
-                    "z_max",
-                    "hfov_deg",
-                    "fixed_baseline_clear_extra",
-                    "fixed_position_noise_radius",
-                    "fixed_look_at_xy_radius",
-                    "broadcast_setback",
-                    "broadcast_height",
-                    "broadcast_hfov_deg",
-                    "broadcast_look_at_y",
-                    "broadcast_look_at_height",
-                    "broadcast_position_noise_radius",
-                    "broadcast_look_at_xy_radius",
-                    "broadcast_hfov_jitter_deg",
-                )
-            },
-            "image_size": list,
-            "fixed_look_at": list,
-            "broadcast_setback_range": (list, type(None)),
-            "broadcast_height_range": (list, type(None)),
-            "broadcast_court_width_frac_range": (list, type(None)),
-        },
-        path="camera",
-    )
-    _int_sequence(camera["image_size"], path="camera.image_size")
-    if len(cast("Sequence[object]", camera["image_size"])) != 2:
-        raise SemanticConfigurationError("camera.image_size must contain two values.")
-    _numeric_sequence(camera["fixed_look_at"], path="camera.fixed_look_at", length=3)
-    if camera["layout"] not in {"fixed", "broadcast"}:
-        raise SemanticConfigurationError(
-            "camera.layout must be 'fixed' or 'broadcast'."
-        )
-    image_size = _int_sequence(camera["image_size"], path="camera.image_size")
-    if any(value <= 0 for value in image_size):
-        raise SemanticConfigurationError("camera.image_size values must be positive.")
-    z_min = cast("float", camera["z_min"])
-    z_max = cast("float", camera["z_max"])
-    if z_min <= 0.0 or z_max < z_min:
-        raise SemanticConfigurationError(
-            "camera z range must satisfy 0 < z_min <= z_max."
-        )
-    for key in ("hfov_deg", "broadcast_hfov_deg"):
-        value = _finite(cast("float", camera[key]), path=f"camera.{key}")
-        if not 0.0 < value < 180.0:
-            raise SemanticConfigurationError(f"camera.{key} must be within (0, 180).")
-    for key in (
-        "fixed_baseline_clear_extra",
-        "fixed_position_noise_radius",
-        "fixed_look_at_xy_radius",
-        "broadcast_setback",
-        "broadcast_position_noise_radius",
-        "broadcast_look_at_xy_radius",
-        "broadcast_hfov_jitter_deg",
-        "broadcast_look_at_height",
-    ):
-        _non_negative(cast("float", camera[key]), path=f"camera.{key}")
-    _positive(cast("float", camera["broadcast_height"]), path="camera.broadcast_height")
-    jitter = cast("float", camera["broadcast_hfov_jitter_deg"])
-    broadcast_hfov = cast("float", camera["broadcast_hfov_deg"])
-    if broadcast_hfov - jitter <= 0.0 or broadcast_hfov + jitter >= 180.0:
-        raise SemanticConfigurationError(
-            "camera.broadcast_hfov_jitter_deg must keep every sampled HFOV in (0, 180)."
-        )
-    for key in (
-        "broadcast_setback_range",
-        "broadcast_height_range",
-        "broadcast_court_width_frac_range",
-    ):
-        range_value = camera[key]
-        if range_value is not None:
-            _ordered_range(
-                range_value,
-                path=f"camera.{key}",
-                positive=True,
-                upper_bound=(1.0 if key == "broadcast_court_width_frac_range" else None),
-            )
-    if (
-        camera["broadcast_court_width_frac_range"] is not None
-        and jitter != 0.0
-    ):
-        raise SemanticConfigurationError(
-            "camera.broadcast_court_width_frac_range and non-zero "
-            "camera.broadcast_hfov_jitter_deg are mutually exclusive."
-        )
+    try:
+        CameraProfileConfig.from_mapping(camera)
+    except (TypeError, ValueError) as error:
+        raise SemanticConfigurationError(f"Invalid canonical camera profile: {error}") from error
 
     targeted_velocity = sections["targeted_velocity"]
     targeted_ranges = ("drive_elevation_range_deg", "lob_elevation_range_deg")
@@ -1800,15 +1615,6 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
         }
         data = require_config_mapping(root, "data", path="configuration")
         backend = cast("str", _value(data, "backend", str, path="data"))
-        if backend == "chunked":
-            allowed |= {
-                "generation",
-                "physics",
-                "rally",
-                "camera",
-                "targeted_velocity",
-                "generator",
-            }
     else:
         allowed = {
             "paths",
@@ -1848,63 +1654,6 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
         )
     else:
         data_keys.add("num_court_kp")
-    if backend == "chunked":
-        data_keys |= {"generator_device", "chunk"}
-        _value(data, "generator_device", str, path="data")
-        chunk = require_config_mapping(data, "chunk", path="data")
-        _exact(
-            chunk,
-            {
-                "scenes_per_chunk",
-                "epochs_per_chunk",
-                "prefetch_chunks",
-                "chunks_dir",
-                "generation_workers",
-                "generation_chunksize",
-            },
-            path="data.chunk",
-        )
-        _validate_types(
-            chunk,
-            {
-                "scenes_per_chunk": int,
-                "epochs_per_chunk": int,
-                "prefetch_chunks": int,
-                "chunks_dir": str,
-                "generation_workers": int,
-                "generation_chunksize": int,
-            },
-            path="data.chunk",
-        )
-        for key in (
-            "scenes_per_chunk",
-            "epochs_per_chunk",
-            "prefetch_chunks",
-            "generation_workers",
-            "generation_chunksize",
-        ):
-            if cast("int", chunk[key]) <= 0:
-                raise SemanticConfigurationError(f"data.chunk.{key} must be positive.")
-        validate_generator_sections(
-            config, include_generation=model.name == "blcs_track_query"
-        )
-        if model.name == "blcs_track_query":
-            generation = require_config_mapping(root, "generation", path="configuration")
-            if generation["mode"] != "multi_object":
-                raise SemanticConfigurationError(
-                    "Chunked BLCS tracking requires generation.mode='multi_object'."
-                )
-            timeline = require_config_mapping(generation, "timeline", path="generation")
-            if cast("int", timeline["max_concurrent"]) > model.num_queries:
-                raise SemanticConfigurationError(
-                    "generation.timeline.max_concurrent cannot exceed model.num_queries."
-                )
-            lifecycle_gap = cast("int", lifecycle["min_reuse_gap_frames"])
-            if cast("int", timeline["min_reuse_gap_frames"]) < lifecycle_gap:
-                raise SemanticConfigurationError(
-                    "generation.timeline.min_reuse_gap_frames cannot be smaller than "
-                    "data.lifecycle.min_reuse_gap_frames."
-                )
     _exact(data, data_keys, path="data")
     _validate_types(
         data,
@@ -1921,8 +1670,8 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
         },
         path="data",
     )
-    if backend not in {"default", "chunked"}:
-        raise SemanticConfigurationError("data.backend must be 'default' or 'chunked'.")
+    if backend != "default":
+        raise SemanticConfigurationError("data.backend must be 'default'.")
     if data["camera_mode"] not in {"random", "first"}:
         raise SemanticConfigurationError(
             "data.camera_mode must be 'random' or 'first'."
@@ -2228,38 +1977,6 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
     return model
 
 
-def validate_visualization_boundary(config: object) -> None:
-    """Validate the complete BLCS visualization contract before scene I/O."""
-    root = as_config_mapping(config, path="configuration")
-    _exact(root, {"paths", "visualization"}, path="configuration")
-    visualization = require_config_mapping(root, "visualization", path="configuration")
-    common = SceneVisualizationConfig.from_mapping(
-        visualization,
-        resolver=build_path_resolver(config),
-        extension_keys=frozenset(),
-    )
-    parse_scene_style(
-        require_config_mapping(visualization, "style", path="visualization")
-    )
-    parse_view_3d(
-        require_config_mapping(visualization, "view_3d", path="visualization")
-    )
-    if common.mode not in {"visualize", "predict"}:
-        raise SemanticConfigurationError(
-            "visualization.mode must be 'visualize' or 'predict'."
-        )
-    if common.animation_view not in {"2d", "3d"}:
-        raise SemanticConfigurationError(
-            "visualization.animation_view must be '2d' or '3d'."
-        )
-    if common.fps is None:
-        raise SemanticConfigurationError("visualization.fps must be an explicit value.")
-    if common.mode == "predict" and common.checkpoint is None:
-        raise SemanticConfigurationError(
-            "visualization.checkpoint is required when mode='predict'."
-        )
-
-
 def validate_api_boundary(config: object) -> None:
     """Validate API server and canonical simulator config before app creation."""
     root = as_config_mapping(config, path="configuration")
@@ -2286,11 +2003,6 @@ def validate_api_boundary(config: object) -> None:
         raise SemanticConfigurationError("server.port must be in [1, 65535].")
 
 
-def validate_generation_boundary(config: object) -> None:
-    """Validate dataset-generation configuration before filesystem writes."""
-    parse_generation_run(config)
-
-
 def validate_preview_boundary(config: object) -> None:
     """Validate augmentation-preview configuration before dataset I/O."""
     parse_preview_config(config)
@@ -2301,8 +2013,6 @@ def _validate_training_for_hydra(config: DictConfig) -> None:
 
 
 register_boundary_validator("blcs.train", _validate_training_for_hydra)
-register_boundary_validator("blcs.visualize", validate_visualization_boundary)
-register_boundary_validator("blcs.generate_dataset", validate_generation_boundary)
 register_boundary_validator("blcs.preview_augmentation", validate_preview_boundary)
 register_boundary_validator("blcs.api_server", validate_api_boundary)
 
@@ -2378,9 +2088,7 @@ def run_negative_matrix() -> None:
     config_dir = str((Path(__file__).parent / "configs").resolve())
     with initialize_config_dir(config_dir=config_dir, version_base="1.3"):
         training = compose(config_name="train")
-        gan_training = compose(config_name="train_chunked_gan")
-        generation = compose(config_name="generate_dataset")
-        visualization = compose(config_name="visualize")
+        gan_training = compose(config_name="train", overrides=["training=gan_base"])
 
     nested_trainer_typo = deepcopy(training)
     with open_dict(nested_trainer_typo.training.trainer):
@@ -2410,49 +2118,9 @@ def run_negative_matrix() -> None:
         "must be false when GAN is enabled",
     )
 
-    unsupported_generation_device = deepcopy(generation)
-    unsupported_generation_device.run.device = "cuda"
-    expect_failure(
-        "unsupported-generation-device",
-        lambda: parse_generation_run(unsupported_generation_device),
-        SemanticConfigurationError,
-        "run.device",
-    )
-
-    visualization_unknown = deepcopy(visualization)
-    with open_dict(visualization_unknown.visualization):
-        visualization_unknown.visualization["__unknown__"] = 1
-    expect_failure(
-        "visualization-unknown",
-        lambda: validate_visualization_boundary(visualization_unknown),
-        UnknownConfigurationKeyError,
-        "visualization.__unknown__",
-    )
-
-    visualization_wrong_type = deepcopy(visualization)
-    visualization_wrong_type.visualization.style.show_shadow = "true"
-    expect_failure(
-        "visualization-style-wrong-type",
-        lambda: validate_visualization_boundary(visualization_wrong_type),
-        ConfigurationTypeError,
-        "visualization.style.show_shadow",
-    )
-
-    removed_run_device = deepcopy(visualization)
-    with open_dict(removed_run_device):
-        removed_run_device["run"] = {"device": "cpu"}
-    expect_failure(
-        "removed-visualization-run-device",
-        lambda: validate_visualization_boundary(removed_run_device),
-        UnknownConfigurationKeyError,
-        "configuration.run",
-    )
-
-
 __all__ = [
     "AxialModelConfig",
     "BLCSModelConfig",
-    "GenerationRunConfig",
     "MultiViewModelConfig",
     "PointFusionConfig",
     "PreviewConfig",
@@ -2460,7 +2128,6 @@ __all__ = [
     "SingleModelConfig",
     "TrackQueryModelConfig",
     "build_path_resolver",
-    "parse_generation_run",
     "parse_model_config",
     "parse_preview_config",
     "parse_qualitative_rendering",
@@ -2468,5 +2135,4 @@ __all__ = [
     "validate_api_boundary",
     "validate_generator_sections",
     "validate_training_boundary",
-    "validate_visualization_boundary",
 ]

@@ -23,11 +23,29 @@ from src.utils.configuration.audit import (
     regenerate_migration_rows,
     write_generated_inventory_data,
 )
+from src.utils.configuration.inventory import EXPECTED_RUNTIME_BOUNDARIES
 from src.utils.configuration.source_oracle import (
     OracleCategory,
     inspect_raw_source,
 )
 from src.utils.paths import PROJECT_ROOT
+
+
+def test_synthetic_inventory_has_only_the_canonical_scene_cli() -> None:
+    boundaries = tuple(
+        boundary
+        for boundary in EXPECTED_RUNTIME_BOUNDARIES
+        if boundary.domain == "synthetic_data_generation"
+    )
+
+    assert len(boundaries) == 1
+    assert boundaries[0].module == (
+        "src.synthetic_data_generation.scripts.run_scene_pipeline"
+    )
+    assert boundaries[0].validator_key == "synthetic.scene_pipeline"
+    assert boundaries[0].validator_callable == (
+        "src.synthetic_data_generation.configuration.validate_scene_pipeline_boundary"
+    )
 
 
 def test_inventory_contains_disjoint_truthful_route_states() -> None:

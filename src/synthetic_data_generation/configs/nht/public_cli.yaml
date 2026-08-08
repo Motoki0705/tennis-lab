@@ -1,0 +1,12 @@
+repository_root: neural-harmonic-textures
+reconstruction_config_path: configs/production.yaml
+reconstruct_executable: .venv/bin/nht-reconstruct
+render_executable: gaussian-splating/third_party/neural-harmonic-textures/.venv/bin/nht-render
+training_runtime:
+  python: gaussian-splating/third_party/neural-harmonic-textures/.venv/bin/python
+  trainer: gaussian-splating/third_party/neural-harmonic-textures/gsplat/examples/simple_trainer_nht.py
+environment:
+  CUDA_VISIBLE_DEVICES: "0"
+  PYTHONPATH: ${tennis_lab_path:project}/third_party/nht
+reconstruction_timeout_seconds: 86400.0
+render_timeout_seconds: 3600.0

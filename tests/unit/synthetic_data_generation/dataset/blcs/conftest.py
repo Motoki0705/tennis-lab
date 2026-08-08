@@ -1,84 +1,154 @@
-"""Shared local Gaussian fixtures for 3DGS-native BLCS unit tests."""
+"""Focused fixtures for canonical BLCS domain tests."""
 
 from __future__ import annotations
 
-import hashlib
-from pathlib import Path
-
+import numpy as np
 import pytest
+from numpy.typing import NDArray
 
-from src.synthetic_data_generation.composition.contracts import (
-    ASSET_COORDINATE_FRAME,
-    GAUSSIAN_ASSET_SCHEMA,
-    METRE_UNIT,
-    NHT_APPEARANCE_MODEL,
-    NHT_TENSOR_ENCODING,
+from src.synthetic_data_generation.composition import (
     GaussianAsset,
+    GaussianAssetRole,
+    GaussianCoordinates,
 )
-from src.synthetic_data_generation.dataset.blcs.artifacts.asset_registry import (
-    BallAssetEntry,
-    BallAssetRegistry,
+from src.synthetic_data_generation.dataset.blcs.contracts import (
+    BLCSCompositionAssets,
+    BLCSTrack,
+    BLCSTrajectory,
 )
-from src.synthetic_data_generation.scene_contract import ArtifactRef
+from src.synthetic_data_generation.scene_contract import (
+    CourtInstance,
+    MultiCourtLayout,
+    RigidTransform,
+)
+from src.tasks.base.generate_dataset.camera_profiles import CameraProfileConfig
 
 
-def _local_artifact(path: Path, artifact_id: str, payload: bytes) -> ArtifactRef:
-    path.write_bytes(payload)
-    return ArtifactRef(
-        artifact_id=artifact_id,
-        uri=path.resolve().as_uri(),
-        sha256=hashlib.sha256(payload).hexdigest(),
-        size_bytes=len(payload),
+@pytest.fixture
+def blcs_assets() -> BLCSCompositionAssets:
+    """Return compatible semantic background and ball assets."""
+    return BLCSCompositionAssets(
+        background=GaussianAsset(
+            asset_id="background",
+            asset_class="court",
+            role=GaussianAssetRole.BACKGROUND,
+            coordinates=GaussianCoordinates.scene(),
+            gaussian_count=100,
+            feature_dim=8,
+            floating_dtype="float32",
+            appearance_model="nht-deferred",
+            appearance_space="test-space",
+        ),
+        ball=GaussianAsset(
+            asset_id="ball-surface",
+            asset_class="ball",
+            role=GaussianAssetRole.MOVABLE,
+            coordinates=GaussianCoordinates.asset_local_metres(),
+            gaussian_count=12,
+            feature_dim=8,
+            floating_dtype="float32",
+            appearance_model="nht-deferred",
+            appearance_space="test-space",
+        ),
+        ball_radius_m=0.0335,
     )
 
 
 @pytest.fixture
-def ball_registry(tmp_path: Path) -> BallAssetRegistry:
-    """Return two verified local variants in one explicit appearance space."""
-    appearance = _local_artifact(
-        tmp_path / "appearance.pt",
-        "shared-appearance",
-        b"shared frozen NHT appearance",
-    )
-    appearance_space = hashlib.sha256(b"appearance-space-v1").hexdigest()
-    entries = []
-    for index, variant_id in enumerate(("ball-felt-green", "ball-felt-yellow")):
-        tensors = _local_artifact(
-            tmp_path / f"{variant_id}.pt",
-            f"{variant_id}-tensors",
-            f"metric gaussian tensor {index}".encode(),
-        )
-        provenance = _local_artifact(
-            tmp_path / f"{variant_id}-source.bin",
-            f"{variant_id}-source",
-            f"user asset source {index}".encode(),
-        )
-        asset = GaussianAsset(
-            schema=GAUSSIAN_ASSET_SCHEMA,
-            asset_id=variant_id,
-            asset_class="tennis-ball",
-            role="movable",
-            coordinate_frame=ASSET_COORDINATE_FRAME,
-            unit=METRE_UNIT,
-            metres_per_unit=1.0,
-            gaussian_count=64 + index,
-            feature_dim=48,
-            tensor_encoding=NHT_TENSOR_ENCODING,
-            tensors=tensors,
-            appearance_model=NHT_APPEARANCE_MODEL,
-            appearance_space_sha256=appearance_space,
-            appearance_payload=appearance,
-            provenance=(provenance,),
-        )
-        entries.append(
-            BallAssetEntry(
-                variant_id=variant_id,
-                asset=asset,
-                nominal_diameter_m=0.067,
+def two_court_layout() -> MultiCourtLayout:
+    """Return two translated accepted courts with reciprocal transforms."""
+    courts = []
+    for index, translation_x in enumerate((0.0, 30.0)):
+        matrix = np.eye(4, dtype=np.float64)
+        matrix[0, 3] = translation_x
+        scene_from_court = RigidTransform.from_matrix(matrix)
+        courts.append(
+            CourtInstance(
+                court_instance_id=f"court-{index}",
+                candidate_id=f"candidate-{index}",
+                scene_from_court=scene_from_court,
+                court_from_scene=scene_from_court.inverse(),
+                fit_status="accepted",
+                fit_metrics={"error": 0.1},
+                holdout_status="accepted",
+                holdout_metrics={"error": 0.2},
             )
         )
-    return BallAssetRegistry.create(
-        registry_id="unit-ball-assets",
-        appearance_space_sha256=appearance_space,
-        entries=entries,
+    return MultiCourtLayout(
+        courts=tuple(courts),
+        complex_bounds_scene=(-20.0, -30.0, -2.0, 50.0, 30.0, 20.0),
+        primary_court_instance_id="court-0",
     )
+
+
+@pytest.fixture
+def default_camera_profile() -> CameraProfileConfig:
+    """Return a small six-camera profile whose values all come from config."""
+    slots = []
+    positions = (
+        (-8.0, -12.0, 5.0),
+        (8.0, -12.0, 5.0),
+        (-8.0, 12.0, 5.0),
+        (8.0, 12.0, 5.0),
+        (0.0, -14.0, 7.0),
+        (0.0, 14.0, 7.0),
+    )
+    for index, (x, y, z) in enumerate(positions):
+        slots.append(
+            {
+                "slot_id": f"slot-{index}",
+                "position_x_m": [x, x],
+                "position_y_m": [y, y],
+                "height_m": [z, z],
+                "look_at_x_m": [0.0, 0.0],
+                "look_at_y_m": [0.0, 0.0],
+                "look_at_height_m": [0.5, 0.5],
+                "hfov_degrees": [60.0, 60.0],
+            }
+        )
+    return CameraProfileConfig.from_mapping(
+        {
+            "profile": "default",
+            "image_size": [32, 24],
+            "expected_camera_count": 6,
+            "slots": slots,
+        }
+    )
+
+
+def make_trajectory(
+    trajectory_id: str,
+    *,
+    frame_count: int = 5,
+    split: str = "train",
+) -> BLCSTrajectory:
+    """Build one smooth, fully present source trajectory."""
+    positions: NDArray[np.float64] = np.zeros(
+        (frame_count, 1, 3), dtype=np.float64
+    )
+    positions[:, 0, 0] = np.linspace(-1.0, 1.0, frame_count)
+    positions[:, 0, 2] = 1.5
+    velocities = np.gradient(positions, axis=0)
+    present: NDArray[np.bool_] = np.ones((frame_count, 1), dtype=np.bool_)
+    return BLCSTrajectory(
+        trajectory_id=trajectory_id,
+        split=split,
+        fps=30.0,
+        positions_court_m=positions,
+        velocities_court_mps=velocities,
+        present=present,
+        tracks=(
+            BLCSTrack(
+                object_id="ball-001",
+                source_trajectory_id=trajectory_id,
+                source_frame_indices=tuple(range(frame_count)),
+            ),
+        ),
+        source_metadata={"physics": "test"},
+    )
+
+
+@pytest.fixture
+def blcs_trajectory_factory():
+    """Return the focused trajectory constructor."""
+    return make_trajectory

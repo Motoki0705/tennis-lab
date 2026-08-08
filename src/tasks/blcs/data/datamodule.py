@@ -13,7 +13,7 @@ from src.tasks.blcs.data.dataset import BallTrajectoryDataset
 
 
 class BLCSDataModuleHooks:
-    """Task-local dataset/collate hooks shared by fixed and chunked loaders."""
+    """Task-local dataset and collate hooks for fixed-path loading."""
 
     config: object
     _collate_fn: Callable[..., Any]

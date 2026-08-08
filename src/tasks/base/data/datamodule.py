@@ -87,8 +87,8 @@ class SceneDirectoryDataModule(pl.LightningDataModule):
         if not self.scene_dir.exists():
             raise RuntimeError(
                 f"Scene directory not found: {self.scene_dir}. "
-                f"Run {self._dataset_name()}.scripts.generate_dataset "
-                "to create the dataset."
+                "Run the canonical synthetic scene pipeline for "
+                f"target={self._dataset_name()} to create the dataset."
             )
 
         if stage == "fit" or stage is None:

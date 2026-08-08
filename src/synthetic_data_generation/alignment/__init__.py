@@ -1,1 +1,85 @@
-"""Court-to-scene alignment components and immutable artifacts."""
+"""Fixed-path semantic court alignment with independent holdout acceptance."""
+
+from src.synthetic_data_generation.alignment.contracts import (
+    AlignmentAcceptancePolicy,
+    AlignmentEvidence,
+    AlignmentEvidenceDiagnostics,
+    AlignmentPartitions,
+    AlignmentResult,
+    AlignmentStatus,
+    CameraLineDiagnostics,
+    CandidateAlignment,
+    CandidateEvidence,
+    CandidateScaleDiagnostics,
+    CorrespondenceSet,
+    MeasuredCameraLines,
+    MetricSceneAdapter,
+    PartitionAssessment,
+    PartitionMetrics,
+    PartitionThresholds,
+)
+from src.synthetic_data_generation.alignment.evidence_source import (
+    LineProbabilityDetector,
+    MeasuredAlignmentEvidenceSource,
+    ProductionAlignmentEvidenceSource,
+    ProductionCourtLineDetector,
+    create_production_alignment_handler,
+)
+from src.synthetic_data_generation.alignment.handler import (
+    AlignmentEvidenceSource,
+    AlignmentStageHandler,
+    SceneExportLoader,
+)
+from src.synthetic_data_generation.alignment.settings import (
+    AlignmentEvidenceSettings,
+    CorrespondenceSettings,
+    CourtCandidateFitSettings,
+    CourtLineArchitectureSettings,
+    CourtLineModelSettings,
+    GroundPlaneSettings,
+    LineProjectionSettings,
+)
+from src.synthetic_data_generation.alignment.validation import (
+    load_accepted_layout,
+    load_alignment_result,
+    validate_court_transform_binding,
+    validate_projection_equivalence,
+)
+
+__all__ = [
+    "AlignmentAcceptancePolicy",
+    "AlignmentEvidence",
+    "AlignmentEvidenceDiagnostics",
+    "AlignmentEvidenceSettings",
+    "AlignmentEvidenceSource",
+    "AlignmentPartitions",
+    "AlignmentResult",
+    "AlignmentStageHandler",
+    "AlignmentStatus",
+    "CandidateAlignment",
+    "CandidateEvidence",
+    "CandidateScaleDiagnostics",
+    "CameraLineDiagnostics",
+    "CorrespondenceSettings",
+    "CorrespondenceSet",
+    "CourtCandidateFitSettings",
+    "CourtLineArchitectureSettings",
+    "CourtLineModelSettings",
+    "GroundPlaneSettings",
+    "LineProbabilityDetector",
+    "LineProjectionSettings",
+    "MeasuredAlignmentEvidenceSource",
+    "MeasuredCameraLines",
+    "MetricSceneAdapter",
+    "PartitionAssessment",
+    "PartitionMetrics",
+    "PartitionThresholds",
+    "ProductionAlignmentEvidenceSource",
+    "ProductionCourtLineDetector",
+    "SceneExportLoader",
+    "load_accepted_layout",
+    "load_alignment_result",
+    "validate_court_transform_binding",
+    "validate_projection_equivalence",
+    "create_production_alignment_handler",
+]

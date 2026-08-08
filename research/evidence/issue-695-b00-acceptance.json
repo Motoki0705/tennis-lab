@@ -1,0 +1,140 @@
+{
+  "schema": "issue_695_b00_acceptance_v1",
+  "issue": 695,
+  "scene_id": "B00",
+  "source_video": "data/tennis_court.mp4",
+  "pipeline": {
+    "stage_statuses": {
+      "ingest": "completed",
+      "reconstruction": "completed",
+      "alignment": "completed",
+      "court_dataset": "completed",
+      "blcs_dataset": "completed",
+      "plcs_dataset": "completed",
+      "report": "completed"
+    },
+    "report_exists": true
+  },
+  "reconstruction": {
+    "camera_count": 491,
+    "point_count": 217204
+  },
+  "alignment": {
+    "accepted_court_count": 2,
+    "evaluated_court_count": 2,
+    "fit_camera_count": 16,
+    "holdout_camera_count": 8,
+    "fit_holdout_disjoint": true,
+    "all_transforms_reciprocal": true
+  },
+  "court": {
+    "trajectory_group_count": 24,
+    "proposal_count": 3048,
+    "accepted_frame_count": 2996,
+    "rejected_frame_count": 52,
+    "accepted_fraction": 0.9829396325459318,
+    "maximum_adjacent_step_m": 1.0485804756313692,
+    "split_leakage_count": 0,
+    "court_group_counts": {
+      "court-000": 12,
+      "court-001": 12
+    },
+    "coverage_counts": {
+      "full": 938,
+      "near_full": 1380,
+      "partial": 3211,
+      "sparse": 390,
+      "none": 73
+    },
+    "renderer_visible_points_by_class": {
+      "doubles_left": 5956,
+      "doubles_right": 7083,
+      "singles_left": 6278,
+      "singles_right": 7203,
+      "service_left": 7605,
+      "service_right": 8667,
+      "service_t": 8609
+    },
+    "performance": {
+      "wall_seconds": 1101.7040220310446,
+      "cpu_seconds": 74.16383048099999,
+      "external_nht_boundary_wall_seconds": 992.8124144237954,
+      "execution_device": "cuda:0",
+      "nht_invocations": 8,
+      "maximum_shard_sample_count": 427,
+      "complete_array_scans": 2996,
+      "published_bytes": 32321273123
+    }
+  },
+  "blcs": {
+    "frame_inventory": {
+      "source": 3072,
+      "planned": 3072,
+      "rendered": 3072,
+      "labelled": 3072,
+      "first_frame": 0,
+      "last_frame": 3071
+    },
+    "trajectory_count": 3,
+    "camera_count_per_trajectory": 6,
+    "sample_count": 18432,
+    "court_counts": {
+      "court-000": 2,
+      "court-001": 1
+    },
+    "court_count_difference": 1,
+    "performance": {
+      "wall_seconds": 75.79909341293387,
+      "cpu_seconds": 53.32378173299999,
+      "execution_device": "cuda:0",
+      "cuda_peak_bytes": 406323712,
+      "nht_invocations": 3,
+      "background_cache_misses": 18,
+      "dense_reference_bytes": 187904819200,
+      "published_bytes": 484821899
+    }
+  },
+  "plcs": {
+    "frame_inventory": {
+      "source": 1117,
+      "planned": 1117,
+      "rendered": 1117,
+      "labelled": 1117,
+      "first_frame": 0,
+      "last_frame": 1116
+    },
+    "motion_categories": [
+      "general",
+      "running",
+      "walking"
+    ],
+    "source_frame_counts": {
+      "player-001": 356,
+      "player-002": 997,
+      "player-003": 238
+    },
+    "all_frames_deformed": true,
+    "running_walking_regions_move": true,
+    "motion_method": "SMPL-H Gaussian LBS on CUDA",
+    "camera_count": 6,
+    "court_counts": {
+      "court-000": 1,
+      "court-001": 0
+    },
+    "court_count_difference": 1,
+    "performance": {
+      "wall_seconds": 193.84048169199377,
+      "cpu_seconds": 180.843740981,
+      "execution_device": "cuda:0",
+      "cuda_peak_bytes": 446197760,
+      "nht_invocations": 1,
+      "background_cache_misses": 6,
+      "dense_reference_bytes": 148237516800,
+      "published_bytes": 402824520
+    }
+  },
+  "camera_profiles": {
+    "default": 6,
+    "broadcast": 2
+  }
+}

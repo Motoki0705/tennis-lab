@@ -1,4 +1,4 @@
-"""Repository-wide architecture policy checks for Issue #691."""
+"""Repository-wide architecture policy checks after the canonical scene migration."""
 
 from __future__ import annotations
 
@@ -58,34 +58,35 @@ PROHIBITED_SYMBOLS = frozenset(
         "_sort_tracks",
     }
 )
-ALLOWED_SYNTHETIC_EDITS: frozenset[str] = frozenset(
-    {
-        "src/synthetic_data_generation/alignment/components/inference/line_detector.py",
-        "src/synthetic_data_generation/alignment/artifacts/ground_line_map.py",
-        "src/synthetic_data_generation/alignment/components/ground/plane.py",
-        "src/synthetic_data_generation/alignment/scene_provider/export.py",
-        "src/synthetic_data_generation/alignment/scene_provider/geometry_bridge.py",
-        "src/synthetic_data_generation/scripts/alignment/calibrate_court_alignment.py",
-        "src/synthetic_data_generation/scripts/alignment/infer_ground_line_map.py",
-        "src/synthetic_data_generation/dataset/blcs/components/feature_fit_fixture.py",
-        "src/synthetic_data_generation/dataset/blcs/components/procedural_ball_asset_builder.py",
-        "src/synthetic_data_generation/dataset/plcs/components/avatar_asset_builder.py",
-        "src/synthetic_data_generation/dataset/plcs/components/avatar_control.py",
-        "src/synthetic_data_generation/dataset/plcs/rendering/avatar_fit.py",
-    }
+ISSUE_695_REMOVAL_PREFIXES = (
+    "src.synthetic_data_generation.",
+    "src.tasks.base.data.chunk",
+    "src.tasks.base.training.chunk_rotation_callback",
+    "src.tasks.blcs.data.chunk",
+    "src.tasks.blcs.generate_dataset.io",
+    "src.tasks.blcs.generate_dataset.utils",
+    "src.tasks.blcs.scripts.generate_dataset",
+    "src.tasks.blcs.scripts.visualize",
+    "src.tasks.blcs.visualization.api",
+    "src.tasks.blcs.visualization.io",
+    "src.tasks.blcs.visualization.orchestrator",
+    "src.tasks.plcs.data.chunk",
+    "src.tasks.plcs.generate_dataset.config",
+    "src.tasks.plcs.generate_dataset.io",
+    "src.tasks.plcs.generate_dataset.multi_object_scene_generator",
+    "src.tasks.plcs.generate_dataset.scene_generator",
+    "src.tasks.plcs.generate_dataset.utils",
+    "src.tasks.plcs.scripts.analysis.visualize_rotation_error_samples",
+    "src.tasks.plcs.scripts.generate_dataset",
+    "src.tasks.plcs.scripts.visualize",
+    "src.tasks.plcs.visualization.api",
+    "src.tasks.plcs.visualization.io",
+    "src.tasks.plcs.visualization.orchestrator",
 )
 COURT_LINE_PREPROCESSING_CONSUMERS = {
-    "src/synthetic_data_generation/alignment/components/inference/line_detector.py": (
+    "src/synthetic_data_generation/alignment/evidence_source.py": (
         "predictor.adapter.spec.short_side",
         "predictor.short_side",
-    ),
-    "src/synthetic_data_generation/scripts/alignment/calibrate_court_alignment.py": (
-        "detector.predictor.adapter.spec.short_side",
-        "detector.predictor.short_side",
-    ),
-    "src/synthetic_data_generation/scripts/alignment/infer_ground_line_map.py": (
-        "detector.predictor.adapter.spec.short_side",
-        "detector.predictor.short_side",
     ),
 }
 COMPATIBILITY_RETENTION_PATTERN = re.compile(
@@ -446,11 +447,11 @@ def test_branch_contains_configuration_contract_merge() -> None:
     assert completed.returncode == 0
 
 
-def test_reserved_and_vendor_scopes_are_unchanged() -> None:
-    assert not _changed_or_untracked_paths("third_party")
+def test_reserved_vendor_scope_contains_only_the_public_nht_gitlink() -> None:
+    assert _changed_or_untracked_paths("third_party") == {"third_party/nht"}
+    mode = _git_paths("ls-files", "-s", "--", "third_party/nht")
+    assert len(mode) == 1 and mode[0].startswith("160000 ")
     assert not _changed_or_untracked_paths("src/submodules/vendor")
-    synthetic_edits = _changed_or_untracked_paths("src/synthetic_data_generation")
-    assert synthetic_edits <= ALLOWED_SYNTHETIC_EDITS
 
 
 def test_court_line_preprocessing_size_has_one_public_surface() -> None:
@@ -820,7 +821,15 @@ def test_transitive_forward_inventory_crosses_repository_modules() -> None:
 
 
 def test_removed_modules_have_no_forwarding_path_or_owned_reference() -> None:
-    assert _deleted_repository_modules() == frozenset(REMOVED_MODULES)
+    deleted = _deleted_repository_modules()
+    original = frozenset(REMOVED_MODULES)
+    assert original <= deleted
+    unexpected = {
+        module
+        for module in deleted - original
+        if not module.startswith(ISSUE_695_REMOVAL_PREFIXES)
+    }
+    assert not unexpected, f"deletions outside the canonical migration: {unexpected}"
 
     missing = [module for module in REMOVED_MODULES if _module_path(module) is not None]
     assert not missing, f"removed modules still exist: {missing}"

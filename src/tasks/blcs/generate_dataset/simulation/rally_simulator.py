@@ -27,6 +27,9 @@ from src.tasks.blcs.generate_dataset.simulation.cell_manager import (
     CellManager,
     ShotCategory,
 )
+from src.tasks.blcs.generate_dataset.simulation.errors import (
+    FullPhysicsReturnTimingError,
+)
 from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
     TargetedVelocityConfig,
     TargetedVelocitySampler,
@@ -948,9 +951,16 @@ class RallySimulator:
             # --- Setup next shot ---
             rally_count += 1
             current_side = target_side
-            current_cell = self.cell_manager.position_to_cell_id(
-                ball_pos_at_return, target_side
-            )
+            try:
+                current_cell = self.cell_manager.position_to_cell_id(
+                    ball_pos_at_return, target_side
+                )
+            except ValueError as error:
+                raise FullPhysicsReturnTimingError(
+                    "Sampled return time lies outside the returning player's "
+                    f"court side: return_type={return_type!r}, "
+                    f"target_side={target_side!r}, frame={t_return_sim}."
+                ) from error
 
             # Sample target and initial state for next shot (no retry)
             target_cell = self._sample_target_cell()

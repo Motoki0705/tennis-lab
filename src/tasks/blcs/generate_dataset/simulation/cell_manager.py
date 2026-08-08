@@ -348,6 +348,11 @@ class CellManager:
         if bounce_pos is None:
             return ShotCategory.DIRECT_FENCE, None
 
+        y = float(bounce_pos[1].item())
+        is_target_side = y > 0.0 if target_side == "far" else y < 0.0
+        if not is_target_side:
+            return ShotCategory.OUT_COURT, None
+
         to_cell = self.position_to_cell_id(bounce_pos, target_side)
 
         if self.is_in_court(to_cell):

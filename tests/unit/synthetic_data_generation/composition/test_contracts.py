@@ -1,185 +1,256 @@
-"""Tests for strict Gaussian asset and scene-composition manifests."""
+"""Tests for semantic Gaussian asset and scene-composition contracts."""
 
 from __future__ import annotations
 
 from dataclasses import replace
-from pathlib import Path
-from typing import Literal
 
+import numpy as np
 import pytest
 
 from src.synthetic_data_generation.composition.contracts import (
-    ASSET_COORDINATE_FRAME,
     GAUSSIAN_ASSET_SCHEMA,
-    METRE_UNIT,
-    NHT_APPEARANCE_MODEL,
-    NHT_TENSOR_ENCODING,
-    SCENE_COORDINATE_FRAME,
-    SCENE_UNIT,
+    GAUSSIAN_SCENE_SCHEMA,
     GaussianAsset,
+    GaussianAssetRole,
+    GaussianCoordinates,
+    GaussianDeformationKind,
+    GaussianForegroundComposition,
+    GaussianFrame,
     GaussianInstance,
     GaussianSceneComposition,
-    load_gaussian_scene_manifest,
-    write_gaussian_scene_manifest,
+    GaussianSceneObject,
+    GaussianTransform,
 )
-from src.synthetic_data_generation.scene_contract import (
-    ArtifactRef,
-    SimilarityTransform,
-)
-
-
-def _artifact(artifact_id: str, digest: str) -> ArtifactRef:
-    return ArtifactRef(
-        artifact_id=artifact_id,
-        uri=f"artifact://composition-test/{artifact_id}",
-        sha256=digest * 64,
-        size_bytes=123,
-    )
+from src.synthetic_data_generation.scene_contract import RigidTransform
 
 
 def _asset(
     *,
     asset_id: str,
-    role: Literal["background", "movable"],
-    appearance_digest: str = "a" * 64,
+    role: GaussianAssetRole,
+    appearance_space: str = "b00-deferred-space",
 ) -> GaussianAsset:
-    is_background = role == "background"
+    is_background = role == GaussianAssetRole.BACKGROUND
     return GaussianAsset(
-        schema=GAUSSIAN_ASSET_SCHEMA,
         asset_id=asset_id,
-        asset_class="court" if is_background else "ball",
+        asset_class="court" if is_background else "player",
         role=role,
-        coordinate_frame=(
-            SCENE_COORDINATE_FRAME if is_background else ASSET_COORDINATE_FRAME
+        coordinates=(
+            GaussianCoordinates.scene()
+            if is_background
+            else GaussianCoordinates.asset_local_metres()
         ),
-        unit=SCENE_UNIT if is_background else METRE_UNIT,
-        metres_per_unit=None if is_background else 1.0,
         gaussian_count=100 if is_background else 20,
         feature_dim=48,
-        tensor_encoding=NHT_TENSOR_ENCODING,
-        tensors=_artifact(f"{asset_id}-tensors", "b"),
-        appearance_model=NHT_APPEARANCE_MODEL,
-        appearance_space_sha256=appearance_digest,
-        appearance_payload=_artifact(f"{asset_id}-appearance", "c"),
-        provenance=(_artifact(f"{asset_id}-source", "d"),),
+        floating_dtype="float32",
+        appearance_model="nht-deferred",
+        appearance_space=appearance_space,
+    )
+
+
+def _translation(x: float, y: float, z: float) -> GaussianTransform:
+    matrix = np.eye(4, dtype=np.float64)
+    matrix[:3, 3] = (x, y, z)
+    return GaussianTransform(
+        scale=0.25,
+        rigid=RigidTransform.from_matrix(matrix),
     )
 
 
 def _composition() -> GaussianSceneComposition:
-    return GaussianSceneComposition.create(
-        composition_id="composition-0001",
-        scene_source=_artifact("scene-source", "e"),
-        background=_asset(asset_id="background", role="background"),
-        instances=(
-            GaussianInstance(
+    return GaussianSceneComposition(
+        scene_id="b00",
+        composition_id="plcs-main",
+        background=_asset(
+            asset_id="background",
+            role=GaussianAssetRole.BACKGROUND,
+        ),
+        assets=(
+            _asset(asset_id="player-surface", role=GaussianAssetRole.MOVABLE),
+        ),
+        objects=(
+            GaussianSceneObject(
+                object_id="player-07",
                 instance_id=7,
-                asset=_asset(asset_id="ball-red", role="movable"),
-                scene_from_asset=SimilarityTransform(
-                    scale=0.25,
-                    rotation=(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0),
-                    translation=(1.0, 2.0, 3.0),
+                asset_id="player-surface",
+                deformation_kind=GaussianDeformationKind.ARTICULATED,
+            ),
+        ),
+        frames=(
+            GaussianFrame(
+                frame_index=0,
+                instances=(
+                    GaussianInstance(
+                        object_id="player-07",
+                        source_frame_index=13,
+                        scene_from_asset=_translation(1.0, 2.0, 3.0),
+                    ),
+                ),
+            ),
+            GaussianFrame(
+                frame_index=1,
+                instances=(
+                    GaussianInstance(
+                        object_id="player-07",
+                        source_frame_index=14,
+                        scene_from_asset=_translation(1.1, 2.0, 3.0),
+                    ),
                 ),
             ),
         ),
-        renderer_backend="nht-gsplat",
-        renderer_commit="1" * 40,
     )
 
 
-def test_composition_round_trip_is_fingerprinted_and_refuses_overwrite(
-    tmp_path: Path,
-) -> None:
+def test_semantic_composition_round_trip_has_no_artifact_identity_fields() -> None:
     composition = _composition()
-    path = tmp_path / "composition.json"
 
-    write_gaussian_scene_manifest(path, composition)
-    loaded = load_gaussian_scene_manifest(path)
+    payload = composition.to_dict()
+    loaded = GaussianSceneComposition.from_dict(payload)
 
     assert loaded == composition
-    assert loaded.composition_fingerprint == composition.composition_fingerprint
-    with pytest.raises(FileExistsError, match="Refusing to overwrite"):
-        write_gaussian_scene_manifest(path, composition)
+    assert payload["schema"] == GAUSSIAN_SCENE_SCHEMA
+    assert payload["background"]["schema"] == GAUSSIAN_ASSET_SCHEMA  # type: ignore[index]
+    serialized = repr(payload).lower()
+    for forbidden in ("sha256", "fingerprint", "renderer_commit", "provenance"):
+        assert forbidden not in serialized
 
 
-def test_composition_rejects_independent_nht_appearance_spaces() -> None:
-    composition = _composition()
-    mismatched_asset = _asset(
-        asset_id="ball-independent",
-        role="movable",
-        appearance_digest="f" * 64,
-    )
-
-    with pytest.raises(ValueError, match="share one exact appearance space"):
-        GaussianSceneComposition.create(
-            composition_id="mismatched-appearance",
-            scene_source=composition.scene_source,
-            background=composition.background,
-            instances=(
-                GaussianInstance(
-                    instance_id=1,
-                    asset=mismatched_asset,
-                    scene_from_asset=composition.instances[0].scene_from_asset,
+def test_foreground_composition_is_strictly_articulated_and_background_free() -> None:
+    asset = _asset(asset_id="player-surface", role=GaussianAssetRole.MOVABLE)
+    transform = _translation(0.0, 0.0, 0.0)
+    foreground = GaussianForegroundComposition(
+        scene_id="b00",
+        composition_id="plcs-foreground",
+        assets=(asset,),
+        objects=(
+            GaussianSceneObject("left-player", 7, asset.asset_id, GaussianDeformationKind.ARTICULATED),
+            GaussianSceneObject("right-player", 8, asset.asset_id, GaussianDeformationKind.ARTICULATED),
+        ),
+        frames=(
+            GaussianFrame(
+                0,
+                (
+                    GaussianInstance("left-player", 0, transform),
+                    GaussianInstance("right-player", 10, transform),
                 ),
             ),
-            renderer_backend=composition.renderer_backend,
-            renderer_commit=composition.renderer_commit,
+            GaussianFrame(
+                1,
+                (
+                    GaussianInstance("left-player", 1, transform),
+                    GaussianInstance("right-player", 11, transform),
+                ),
+            ),
+        ),
+    )
+
+    payload = foreground.to_dict()
+    assert "background" not in payload
+    assert GaussianForegroundComposition.from_dict(payload) == foreground
+    assert {item.instance_id for item in foreground.objects} == {7, 8}
+    with pytest.raises(ValueError, match="declared articulated"):
+        replace(
+            foreground,
+            objects=(
+                replace(
+                    foreground.objects[0],
+                    deformation_kind=GaussianDeformationKind.RIGID,
+                ),
+                foreground.objects[1],
+            ),
         )
 
 
-def test_composition_fingerprint_is_independent_of_publication_uri() -> None:
+def test_composition_rejects_incompatible_appearance_without_hashes() -> None:
     composition = _composition()
-    relocated_background = replace(
-        composition.background,
-        tensors=replace(
-            composition.background.tensors,
-            uri="artifact://relocated/background",
-        ),
-        appearance_payload=replace(
-            composition.background.appearance_payload,
-            uri="artifact://relocated/appearance",
-        ),
+    mismatched = replace(
+        composition.assets[0],
+        appearance_space="independently-trained-space",
     )
-    original_instance = composition.instances[0]
-    relocated_instance = replace(
-        original_instance,
-        asset=replace(
-            original_instance.asset,
-            tensors=replace(
-                original_instance.asset.tensors,
-                uri="artifact://relocated/asset",
+
+    with pytest.raises(ValueError, match="different appearance space"):
+        replace(composition, assets=(mismatched,))
+
+
+def test_asset_contract_requires_explicit_coordinate_convention_and_dtype() -> None:
+    movable = _asset(asset_id="ball", role=GaussianAssetRole.MOVABLE)
+
+    with pytest.raises(ValueError, match="movable assets must use"):
+        replace(movable, coordinates=GaussianCoordinates.scene())
+    with pytest.raises(ValueError, match="floating_dtype"):
+        replace(movable, floating_dtype="float16")  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="deformation_kind"):
+        GaussianSceneObject(
+            object_id="player",
+            instance_id=1,
+            asset_id=movable.asset_id,
+            deformation_kind="unknown",  # type: ignore[arg-type]
+        )
+
+
+def test_composition_enforces_unique_object_identity_and_complete_frames() -> None:
+    composition = _composition()
+    duplicate = replace(
+        composition.objects[0],
+        object_id="player-08",
+    )
+
+    with pytest.raises(ValueError, match="instance ids contains duplicates"):
+        replace(composition, objects=(*composition.objects, duplicate))
+    with pytest.raises(ValueError, match="exactly equal 0..T-1"):
+        replace(
+            composition,
+            frames=(composition.frames[0], replace(composition.frames[1], frame_index=2)),
+        )
+    with pytest.raises(ValueError, match="source frames must be consecutive"):
+        replace(
+            composition,
+            frames=(
+                composition.frames[0],
+                replace(
+                    composition.frames[1],
+                    instances=(
+                        replace(
+                            composition.frames[1].instances[0],
+                            source_frame_index=15,
+                        ),
+                    ),
+                ),
             ),
-            appearance_payload=replace(
-                original_instance.asset.appearance_payload,
-                uri="artifact://relocated/appearance",
-            ),
+        )
+
+
+def test_composition_supports_background_only_court_frames() -> None:
+    composition = GaussianSceneComposition(
+        scene_id="b00",
+        composition_id="court-frame",
+        background=_asset(
+            asset_id="background",
+            role=GaussianAssetRole.BACKGROUND,
         ),
+        assets=(),
+        objects=(),
+        frames=(GaussianFrame(frame_index=0, instances=()),),
     )
 
-    relocated = GaussianSceneComposition.create(
-        composition_id=composition.composition_id,
-        scene_source=replace(
-            composition.scene_source,
-            uri="artifact://relocated/scene",
-        ),
-        background=relocated_background,
-        instances=(relocated_instance,),
-        renderer_backend=composition.renderer_backend,
-        renderer_commit=composition.renderer_commit,
-    )
-
-    assert relocated.composition_fingerprint == composition.composition_fingerprint
+    assert composition.frame(0).instances == ()
+    with pytest.raises(KeyError, match="Unknown Gaussian frame"):
+        composition.frame(1)
 
 
-def test_asset_contract_requires_metric_movable_coordinates() -> None:
-    movable = _asset(asset_id="ball", role="movable")
+def test_transform_rejects_nonpositive_scale_and_improper_rotation() -> None:
+    with pytest.raises(ValueError, match="finite and positive"):
+        GaussianTransform(scale=0.0, rigid=RigidTransform.identity())
 
-    with pytest.raises(ValueError, match="expressed directly in metres"):
-        replace(movable, metres_per_unit=0.01)
+    reflection = np.eye(4, dtype=np.float64)
+    reflection[0, 0] = -1.0
+    with pytest.raises(ValueError, match="proper rotation"):
+        RigidTransform.from_matrix(reflection)
 
 
-def test_composition_parser_rejects_unknown_fields() -> None:
+def test_composition_parser_rejects_unknown_fields_without_compatibility() -> None:
     payload = _composition().to_dict()
-    payload["silent_fallback"] = True
+    payload["composition_fingerprint"] = "legacy"
 
-    with pytest.raises(ValueError, match="extra=.*silent_fallback"):
+    with pytest.raises(ValueError, match="extra=.*composition_fingerprint"):
         GaussianSceneComposition.from_dict(payload)

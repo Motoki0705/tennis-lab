@@ -8,11 +8,6 @@ from typing import TypeAlias
 import numpy as np
 from numpy.typing import NDArray
 
-from src.synthetic_data_generation.dataset.plcs.components.avatar_control import (
-    apply_joint_linear_blend_skinning,
-    interpolate_face_attributes,
-)
-
 FloatArray: TypeAlias = NDArray[np.float64]
 IntArray: TypeAlias = NDArray[np.int64]
 
@@ -79,25 +74,6 @@ def _rotation_matrices_to_quaternions(matrices: FloatArray) -> FloatArray:
         quaternion /= np.linalg.norm(quaternion)
         quaternions[index] = quaternion if quaternion[0] >= 0.0 else -quaternion
     return quaternions.reshape(*matrices.shape[:-2], 4)
-
-
-def _quaternions_to_rotation_matrices(quaternions: FloatArray) -> FloatArray:
-    normalized = quaternions / np.linalg.norm(quaternions, axis=-1, keepdims=True)
-    w, x, y, z = np.moveaxis(normalized, -1, 0)
-    return np.stack(
-        (
-            1.0 - 2.0 * (y * y + z * z),
-            2.0 * (x * y - z * w),
-            2.0 * (x * z + y * w),
-            2.0 * (x * y + z * w),
-            1.0 - 2.0 * (x * x + z * z),
-            2.0 * (y * z - x * w),
-            2.0 * (x * z - y * w),
-            2.0 * (y * z + x * w),
-            1.0 - 2.0 * (x * x + y * y),
-        ),
-        axis=-1,
-    ).reshape(*quaternions.shape[:-1], 3, 3)
 
 
 @dataclass(frozen=True)
@@ -183,42 +159,6 @@ class AvatarGaussianAsset:
         return int(self.means_m.shape[0])
 
 
-@dataclass(frozen=True)
-class DeformedAvatarGaussians:
-    """Per-frame Gaussian geometry after SMPL control."""
-
-    means_m: FloatArray
-    quaternions_wxyz: FloatArray
-    log_scales_m: FloatArray
-
-    def __post_init__(self) -> None:
-        means = _float_array(self.means_m, name="means_m", ndim=3)
-        quaternions = _float_array(
-            self.quaternions_wxyz,
-            name="quaternions_wxyz",
-            ndim=3,
-        )
-        scales = _float_array(self.log_scales_m, name="log_scales_m", ndim=3)
-        if means.shape[-1] != 3 or quaternions.shape != (*means.shape[:-1], 4):
-            raise ValueError("Deformed means/quaternions have incompatible shapes.")
-        if scales.shape != means.shape:
-            raise ValueError("Deformed scales must match means [T,N,3].")
-        if not np.allclose(
-            np.linalg.norm(quaternions, axis=-1),
-            1.0,
-            atol=1.0e-7,
-            rtol=0.0,
-        ):
-            raise ValueError("Deformed quaternions must be normalized.")
-        object.__setattr__(self, "means_m", _readonly_float(means))
-        object.__setattr__(
-            self,
-            "quaternions_wxyz",
-            _readonly_float(quaternions),
-        )
-        object.__setattr__(self, "log_scales_m", _readonly_float(scales))
-
-
 def build_surface_gaussian_asset(
     canonical_vertices_m: object,
     *,
@@ -295,11 +235,10 @@ def build_surface_gaussian_asset(
     )
     selected_triangles = triangles[selected]
     means = np.einsum("nk,nkd->nd", barycentric, selected_triangles)
-    point_weights = interpolate_face_attributes(
-        joint_weights,
-        faces=face_array,
-        face_indices=selected,
-        barycentric_coordinates=barycentric,
+    point_weights = np.einsum(
+        "nk,nkj->nj",
+        barycentric,
+        joint_weights[face_array[selected]],
     )
 
     tangents = edges_a[selected]
@@ -335,57 +274,4 @@ def build_surface_gaussian_asset(
         point_joint_weights=point_weights,
         face_indices=selected,
         barycentric_coordinates=barycentric,
-    )
-
-
-def deform_avatar_gaussians(
-    asset: AvatarGaussianAsset,
-    *,
-    joint_transforms: object,
-    translations_m: object | None = None,
-) -> DeformedAvatarGaussians:
-    """Apply SMPL LBS and push each Gaussian covariance through its blend."""
-    transforms = _float_array(
-        joint_transforms,
-        name="joint_transforms",
-        ndim=4,
-    )
-    if transforms.shape[1] != asset.point_joint_weights.shape[1]:
-        raise ValueError("joint_transforms and asset joint counts differ.")
-    means = apply_joint_linear_blend_skinning(
-        asset.means_m,
-        point_joint_weights=asset.point_joint_weights,
-        joint_transforms=transforms,
-        translations_m=translations_m,
-    )
-    blended_linear = np.einsum(
-        "nj,tjkl->tnkl",
-        asset.point_joint_weights,
-        transforms,
-    )[..., :3, :3]
-    canonical_rotations = _quaternions_to_rotation_matrices(asset.quaternions_wxyz)
-    canonical_variances = np.exp(2.0 * asset.log_scales_m)
-    canonical_covariances = np.einsum(
-        "nij,nj,nkj->nik",
-        canonical_rotations,
-        canonical_variances,
-        canonical_rotations,
-    )
-    deformed_covariances = np.einsum(
-        "tnij,njk,tnlk->tnil",
-        blended_linear,
-        canonical_covariances,
-        blended_linear,
-    )
-    eigenvalues, eigenvectors = np.linalg.eigh(deformed_covariances)
-    if np.any(eigenvalues <= 0.0) or not np.isfinite(eigenvalues).all():
-        raise ValueError("Deformation produced a non-positive Gaussian covariance.")
-    determinants = np.linalg.det(eigenvectors)
-    eigenvectors[determinants < 0.0, :, -1] *= -1.0
-    quaternions = _rotation_matrices_to_quaternions(eigenvectors)
-    log_scales = 0.5 * np.log(eigenvalues)
-    return DeformedAvatarGaussians(
-        means_m=means,
-        quaternions_wxyz=quaternions,
-        log_scales_m=log_scales,
     )

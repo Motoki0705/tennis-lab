@@ -1,373 +1,332 @@
-"""Strict semantic and role-aware Synthetic configuration tests."""
+"""Strict canonical scene-pipeline configuration contracts."""
 
 from __future__ import annotations
 
-import hashlib
-import json
-import math
-from pathlib import Path
+from copy import deepcopy
+from dataclasses import astuple
 
 import pytest
 from hydra import compose, initialize_config_dir
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, open_dict
 
+from src.synthetic_data_generation.alignment.contracts import AlignmentAcceptancePolicy
+from src.synthetic_data_generation.alignment.settings import AlignmentEvidenceSettings
 from src.synthetic_data_generation.configuration import (
-    SYNTHETIC_PATH_ROLE_MAP,
-    non_hydra_path_resolver,
-    validate_config,
+    SCENE_PIPELINE_SCHEMA,
+    ScenePipelineConfiguration,
 )
-from src.utils.configuration import (
-    ConfigurationError,
-    PathContractError,
-    PathRole,
+from src.synthetic_data_generation.dataset.blcs.source import (
+    BLCSTrajectorySourceSettings,
 )
+from src.synthetic_data_generation.pipeline.contracts import DatasetTarget, StageName
+from src.tasks.base.generate_dataset.timeline_composer import TimelineConfig
+from src.tasks.blcs.generate_dataset.scene_generator import GeneratorConfig
+from src.utils.configuration import ConfigurationError, PathContractError
 from src.utils.paths import PROJECT_ROOT
 
 _CONFIG_ROOT = PROJECT_ROOT / "src/synthetic_data_generation/configs"
 
+pytestmark = pytest.mark.local_data
 
-def _compose(name: str) -> DictConfig:
+
+def _compose(*overrides: str) -> DictConfig:
     with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_ROOT)):
-        return compose(config_name=name)
+        return compose(config_name="run_scene_pipeline", overrides=list(overrides))
 
 
-@pytest.mark.parametrize(
-    ("boundary", "config_name"),
-    [
-        ("synthetic.dataset.pipeline", "dataset/pipeline"),
-        ("synthetic.dataset.blcs.feature_fit", "dataset/blcs_feature_fit"),
-        (
-            "synthetic.alignment.infer_ground_line_map",
-            "alignment/infer_ground_line_map",
-        ),
-        (
-            "synthetic.alignment.fit_ground_courts",
-            "alignment/fit_ground_courts",
-        ),
-        (
-            "synthetic.alignment.calibrate_court_alignment",
-            "alignment/calibrate_court_alignment",
-        ),
-        (
-            "synthetic.alignment.export_scene_provider",
-            "alignment/export_scene_provider",
-        ),
-        (
-            "synthetic.alignment.geometry_bridge",
-            "alignment/geometry_bridge",
-        ),
-    ],
-)
-def test_every_hydra_boundary_prevalidates_declared_paths(
-    boundary: str,
-    config_name: str,
-) -> None:
-    runtime = validate_config(boundary, _compose(config_name))
+def test_b00_configuration_is_the_canonical_scene_request() -> None:
+    runtime = ScenePipelineConfiguration.from_config(_compose())
 
-    assert runtime.path_roles == SYNTHETIC_PATH_ROLE_MAP[boundary]
-    assert set(runtime.resolved_paths) == set(runtime.path_roles)
-    assert all(path.is_absolute() for path in runtime.resolved_paths.values())
+    assert runtime.profile == "b00-production"
+    assert runtime.request.scene_id == "B00"
+    assert runtime.request.config_schema == SCENE_PIPELINE_SCHEMA
+    assert runtime.request.from_stage is StageName.INGEST
+    assert runtime.request.targets == frozenset(DatasetTarget)
+    assert runtime.workspace.root == (
+        PROJECT_ROOT / "data/synthetic_data_generation/scenes/B00"
+    ).resolve()
+    assert "B01" not in runtime.workspace.root.parts
+    assert "B02" not in runtime.workspace.root.parts
 
 
-def test_runtime_path_rejects_a_different_role() -> None:
-    runtime = validate_config(
-        "synthetic.dataset.blcs.feature_fit",
-        _compose("dataset/blcs_feature_fit"),
+def test_b00_quantitative_and_full_timeline_values_are_config_owned() -> None:
+    runtime = ScenePipelineConfiguration.from_config(_compose())
+
+    assert runtime.court.sampling.proposal_budget == 4_800
+    assert runtime.court.sampling.minimum_trajectory_groups >= 24
+    assert runtime.court.sampling.minimum_accepted_frames >= 2_000
+    assert runtime.court.sampling.maximum_adjacent_step_m <= 1.05
+    assert runtime.blcs.timeline.frame_selection == "all_source_frames"
+    assert runtime.plcs.timeline.frame_selection == "all_source_frames"
+    assert runtime.blcs.timeline.chunk_size_frames not in {5, 12, 64}
+    assert runtime.plcs.timeline.chunk_size_frames not in {5, 12, 64}
+    assert (
+        runtime.court.performance.maximum_wall_seconds,
+        runtime.court.performance.maximum_nht_invocations,
+        runtime.court.performance.maximum_complete_array_scans_per_sample,
+    ) == (1_800.0, 8, 2)
+    assert (
+        runtime.blcs.performance.maximum_wall_seconds,
+        runtime.blcs.performance.maximum_nht_invocations,
+        runtime.blcs.performance.maximum_background_cache_misses,
+        runtime.blcs.performance.maximum_published_fraction_of_dense_reference,
+        runtime.blcs.performance.maximum_batch_frames,
+    ) == (3_600.0, 3, 18, 0.2, 64)
+    assert (
+        runtime.plcs.performance.maximum_wall_seconds,
+        runtime.plcs.performance.maximum_nht_invocations,
+        runtime.plcs.performance.maximum_background_cache_misses,
+        runtime.plcs.performance.maximum_published_fraction_of_dense_reference,
+        runtime.plcs.performance.maximum_batch_frames,
+    ) == (5_400.0, 1, 6, 0.25, 32)
+    assert {
+        runtime.court.performance.execution_device,
+        runtime.blcs.performance.execution_device,
+        runtime.plcs.performance.execution_device,
+    } == {"cuda:0"}
+
+
+def test_b00_alignment_evidence_and_acceptance_are_complete_typed_values() -> None:
+    runtime = ScenePipelineConfiguration.from_config(_compose())
+    alignment = runtime.alignment
+    evidence = alignment.evidence
+
+    assert isinstance(evidence, AlignmentEvidenceSettings)
+    assert isinstance(alignment.acceptance, AlignmentAcceptancePolicy)
+    assert alignment.acceptance.holdout.minimum_camera_count == 3
+    assert alignment.acceptance.holdout.minimum_correspondence_count == 80
+    assert (
+        evidence.seed,
+        evidence.fit_fraction,
+        evidence.holdout_fraction,
+        evidence.minimum_fit_cameras,
+        evidence.minimum_holdout_cameras,
+        evidence.maximum_cameras,
+    ) == (42, 2.0 / 3.0, 1.0 / 3.0, 8, 4, 24)
+    assert evidence.line_model.checkpoint_path == (
+        runtime.resolver.roots.checkpoint_root
+        / "court_detection/line/court-detection-epoch19.ckpt"
+    ).resolve()
+    assert evidence.line_model.backbone_repository_path == (
+        runtime.resolver.roots.external_asset_root / "tennis-lab/third_party/dinov3"
+    ).resolve()
+    assert evidence.line_model.backbone_checkpoint_path == (
+        runtime.resolver.roots.external_asset_root
+        / "tennis-lab/third_party/dinov3/checkpoints/"
+        "dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+    ).resolve()
+    assert (
+        evidence.line_model.device,
+        evidence.line_model.expected_short_side,
+        evidence.line_model.probability_threshold,
+        evidence.line_model.maximum_selected_pixels_per_camera,
+    ) == ("cuda:0", 256, 0.5, 50_000)
+    architecture = evidence.line_model.architecture
+    assert architecture.backbone_name == "dinov3_vitb16"
+    assert architecture.backbone_strict is True
+    assert architecture.backbone_train_mode == "frozen"
+    assert architecture.backbone_last_n_blocks == 0
+    assert architecture.backbone_out_indices == (2, 5, 8, 11)
+    assert architecture.backbone_layer_mode == "uniform"
+    assert architecture.lora_enabled is True
+    assert (
+        architecture.lora_rank,
+        architecture.lora_alpha,
+        architecture.lora_dropout,
+        architecture.lora_target_modules,
+    ) == (8, 16.0, 0.0, ("qkv", "proj", "fc1", "fc2"))
+    assert architecture.decoder_channels == 256
+    assert architecture.decoder_reassemble_factors == (4.0, 2.0, 1.0, 0.5)
+    assert (
+        architecture.line_bce_weight,
+        architecture.line_dice_weight,
+        architecture.line_positive_weight,
+    ) == (1.0, 1.0, 8.0)
+    assert astuple(evidence.ground_plane) == (
+        0.01,
+        0.5,
+        0.08,
+        0.30,
+        0.005,
+        0.035,
+        0.006,
+        0.008,
+        1000,
+        20_000,
+        3,
+        500,
+        1000,
+        0.97,
+        1.0,
+        0.01,
+    )
+    assert astuple(evidence.projection) == (0.05, 3.0, 0.05, 20)
+    assert astuple(evidence.candidate_fit) == (
+        2,
+        6.0,
+        0.055,
+        0.085,
+        -1.5708,
+        1.5708,
+        0.5,
+        0.02,
+        0.2,
+        0.3,
+        12.0,
+        100.0,
+        30,
+        8,
+        1.0e-5,
+        100_000,
+        0.3,
+    )
+    assert astuple(evidence.correspondences) == (0.25, 200, 3)
+    assert astuple(alignment.acceptance.fit) == (
+        6,
+        100,
+        0.3,
+        0.9,
+        0.3,
+        0.3,
+    )
+    assert astuple(alignment.acceptance.holdout) == (
+        3,
+        80,
+        0.3,
+        0.9,
+        0.3,
+        0.3,
     )
 
-    with pytest.raises(PathContractError, match="declared as external_asset"):
-        runtime.path(PathRole.DATA, "source")
 
+def test_blcs_and_plcs_production_inputs_are_typed_and_have_no_frame_subset() -> None:
+    runtime = ScenePipelineConfiguration.from_config(_compose())
 
-def test_export_uses_narrow_assets_and_a_separate_system_executable() -> None:
-    runtime = validate_config(
-        "synthetic.alignment.export_scene_provider",
-        _compose("alignment/export_scene_provider"),
+    assert isinstance(runtime.blcs.trajectory_source, BLCSTrajectorySourceSettings)
+    assert isinstance(runtime.blcs.trajectory_source.timeline, TimelineConfig)
+    assert isinstance(runtime.blcs.generator, GeneratorConfig)
+    assert runtime.blcs.trajectory_source.scene_count == 3
+    assert runtime.blcs.trajectory_source.maximum_physics_attempts_per_object == 64
+    assert runtime.blcs.trajectory_source.split_scene_counts == {
+        "train": 1,
+        "validation": 1,
+        "test": 1,
+    }
+    assert runtime.blcs.trajectory_source.timeline.num_frames == 1024
+    assert runtime.blcs.assets.background.role.value == "background"
+    assert runtime.blcs.assets.ball.role.value == "movable"
+    assert runtime.blcs.assets.ball.asset_class == "ball"
+    assert (
+        runtime.blcs.assets.ball.appearance_model
+        == runtime.blcs.assets.background.appearance_model
     )
-
-    assert runtime.resolver.roots.external_asset_root == Path(
-        "/home/kamimura/projects"
+    assert (
+        runtime.blcs.assets.ball.appearance_space
+        == runtime.blcs.assets.background.appearance_space
     )
-    asset_scope = runtime.path(PathRole.EXTERNAL_ASSET, "external_asset_scope")
-    assert asset_scope == Path("/home/kamimura/projects/gaussian-splating")
-    assert runtime.path(PathRole.EXTERNAL_ASSET, "dataset_root").is_relative_to(
-        asset_scope
+    assert runtime.blcs.assets.ball_radius_m == 0.0335
+    assert runtime.blcs.render_timeout_seconds == runtime.nht.render_timeout_seconds
+
+    assert runtime.plcs.accad_root == (
+        runtime.resolver.roots.external_asset_root / "tennis-lab/data/ACCAD"
+    ).resolve()
+    assert runtime.plcs.smplh_model_root == (
+        runtime.resolver.roots.external_asset_root / "tennis-lab/data/smplh"
+    ).resolve()
+    assert runtime.plcs.scene_splits == {"B00": "train"}
+    assert tuple(item.category.value for item in runtime.plcs.objects) == (
+        "running",
+        "walking",
+        "general",
     )
-    executable = runtime.system_executable("geometry_executable")
-    assert executable.root == Path("/usr/bin")
-    assert executable.path == Path("/usr/bin/python3.12")
-    assert "geometry_executable" not in runtime.path_roles
-
-
-def _temporary_executable_config(
-    tmp_path: Path,
-    *,
-    executable: bool = True,
-) -> tuple[dict[str, str], Path]:
-    root = (tmp_path / "system-bin").resolve()
-    root.mkdir()
-    path = root / "geometry-python"
-    path.write_bytes(b"#!/bin/sh\nexit 0\n")
-    path.chmod(0o755 if executable else 0o644)
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    return {"root": str(root), "path": path.name, "sha256": digest}, path
-
-
-def test_export_accepts_a_pinned_executable_beneath_its_system_root(
-    tmp_path: Path,
-) -> None:
-    value, path = _temporary_executable_config(tmp_path)
-    config = _compose("alignment/export_scene_provider")
-    OmegaConf.update(config, "geometry_executable", value, merge=False)
-
-    runtime = validate_config("synthetic.alignment.export_scene_provider", config)
-
-    assert runtime.system_executable("geometry_executable").verify() == path
-
-
-def test_export_rejects_filesystem_root_as_external_asset_authority(
-    tmp_path: Path,
-) -> None:
-    config = _compose("alignment/export_scene_provider")
-    OmegaConf.update(config, "roots.external_asset_root", "/", merge=False)
-    OmegaConf.update(config, "roots.data_root", str(tmp_path / "data"), merge=False)
-
-    with pytest.raises(PathContractError, match="filesystem root"):
-        validate_config("synthetic.alignment.export_scene_provider", config)
-
-    assert not (tmp_path / "data").exists()
-
-
-def test_export_rejects_filesystem_root_as_system_executable_authority(
-    tmp_path: Path,
-) -> None:
-    config = _compose("alignment/export_scene_provider")
-    OmegaConf.update(config, "geometry_executable.root", "/", merge=False)
-    OmegaConf.update(config, "roots.data_root", str(tmp_path / "data"), merge=False)
-
-    with pytest.raises(PathContractError, match="filesystem root"):
-        validate_config("synthetic.alignment.export_scene_provider", config)
-
-    assert not (tmp_path / "data").exists()
-
-
-def test_export_rejects_an_executable_symlink_that_escapes_its_root(
-    tmp_path: Path,
-) -> None:
-    system_root = (tmp_path / "system-bin").resolve()
-    system_root.mkdir()
-    outside = tmp_path / "outside-python"
-    outside.write_bytes(b"#!/bin/sh\nexit 0\n")
-    outside.chmod(0o755)
-    (system_root / "geometry-python").symlink_to(outside)
-    config = _compose("alignment/export_scene_provider")
-    OmegaConf.update(
-        config,
-        "geometry_executable",
-        {
-            "root": str(system_root),
-            "path": "geometry-python",
-            "sha256": hashlib.sha256(outside.read_bytes()).hexdigest(),
-        },
-        merge=False,
-    )
-
-    with pytest.raises(PathContractError, match="outside its declared root"):
-        validate_config("synthetic.alignment.export_scene_provider", config)
-
-
-def test_export_rejects_a_directory_as_the_system_executable(tmp_path: Path) -> None:
-    system_root = (tmp_path / "system-bin").resolve()
-    system_root.mkdir()
-    (system_root / "geometry-python").mkdir()
-    config = _compose("alignment/export_scene_provider")
-    OmegaConf.update(
-        config,
-        "geometry_executable",
-        {
-            "root": str(system_root),
-            "path": "geometry-python",
-            "sha256": "0" * 64,
-        },
-        merge=False,
-    )
-
-    with pytest.raises(PathContractError, match="not a regular file"):
-        validate_config("synthetic.alignment.export_scene_provider", config)
-
-
-def test_export_rejects_a_non_executable_system_file(tmp_path: Path) -> None:
-    value, _ = _temporary_executable_config(tmp_path, executable=False)
-    config = _compose("alignment/export_scene_provider")
-    OmegaConf.update(config, "geometry_executable", value, merge=False)
-
-    with pytest.raises(PathContractError, match="not executable"):
-        validate_config("synthetic.alignment.export_scene_provider", config)
-
-
-def test_export_rejects_a_system_executable_digest_mismatch(tmp_path: Path) -> None:
-    value, _ = _temporary_executable_config(tmp_path)
-    value["sha256"] = "0" * 64
-    config = _compose("alignment/export_scene_provider")
-    OmegaConf.update(config, "geometry_executable", value, merge=False)
-
-    with pytest.raises(PathContractError, match="SHA-256 mismatch"):
-        validate_config("synthetic.alignment.export_scene_provider", config)
-
-
-def test_export_rejects_external_assets_outside_the_declared_root_before_output(
-    tmp_path: Path,
-) -> None:
-    executable, _ = _temporary_executable_config(tmp_path)
-    config = _compose("alignment/export_scene_provider")
-    OmegaConf.update(config, "geometry_executable", executable, merge=False)
-    OmegaConf.update(
-        config,
-        "roots.external_asset_root",
-        str((tmp_path / "external").resolve()),
-        merge=False,
-    )
-    OmegaConf.update(config, "dataset_root", "../outside", merge=False)
-    OmegaConf.update(config, "roots.data_root", str(tmp_path / "data"), merge=False)
-
-    with pytest.raises(PathContractError, match="escapes"):
-        validate_config("synthetic.alignment.export_scene_provider", config)
-
-    assert not (tmp_path / "data").exists()
-
-
-def test_export_rejects_a_sibling_project_inside_the_role_root(
-    tmp_path: Path,
-) -> None:
-    executable, _ = _temporary_executable_config(tmp_path)
-    config = _compose("alignment/export_scene_provider")
-    OmegaConf.update(config, "geometry_executable", executable, merge=False)
-    OmegaConf.update(config, "dataset_root", "other-project/dataset", merge=False)
-    OmegaConf.update(config, "roots.data_root", str(tmp_path / "data"), merge=False)
-
-    with pytest.raises(PathContractError, match="outside the export asset scope"):
-        validate_config("synthetic.alignment.export_scene_provider", config)
-
-    assert not (tmp_path / "data").exists()
-
-
-@pytest.mark.parametrize(
-    ("boundary", "config_name", "key", "invalid"),
-    [
-        (
-            "synthetic.dataset.pipeline",
-            "dataset/pipeline",
-            "renderer.command",
-            ["renderer", "{ouptut}"],
-        ),
-        (
-            "synthetic.dataset.blcs.feature_fit",
-            "dataset/blcs_feature_fit",
-            "feature_lr",
-            math.nan,
-        ),
-        (
-            "synthetic.dataset.blcs.feature_fit",
-            "dataset/blcs_feature_fit",
-            "target_appearance_space_sha256",
-            "ABC",
-        ),
-        (
-            "synthetic.alignment.infer_ground_line_map",
-            "alignment/infer_ground_line_map",
-            "ground_plane.min_camera_height",
-            0.5,
-        ),
-        (
-            "synthetic.alignment.infer_ground_line_map",
-            "alignment/infer_ground_line_map",
-            "line_projection.probability_threshold",
-            1.5,
-        ),
-        (
-            "synthetic.alignment.fit_ground_courts",
-            "alignment/fit_ground_courts",
-            "fit.proposal_fraction",
-            0.5,
-        ),
-        (
-            "synthetic.alignment.fit_ground_courts",
-            "alignment/fit_ground_courts",
-            "fit.max_scale_scene_per_metre",
-            0.01,
-        ),
-        (
-            "synthetic.alignment.calibrate_court_alignment",
-            "alignment/calibrate_court_alignment",
-            "checkpoint_best_val_dice",
-            0.1,
-        ),
-        (
-            "synthetic.alignment.calibrate_court_alignment",
-            "alignment/calibrate_court_alignment",
-            "local_refit.scale_relative_tolerance",
-            1.0,
-        ),
-        (
-            "synthetic.alignment.calibrate_court_alignment",
-            "alignment/calibrate_court_alignment",
-            "metric_thresholds.minimum_accepted_view_fraction",
-            1.1,
-        ),
-        (
-            "synthetic.alignment.export_scene_provider",
-            "alignment/export_scene_provider",
-            "factor",
-            0,
-        ),
-        (
-            "synthetic.alignment.export_scene_provider",
-            "alignment/export_scene_provider",
-            "expectations.camera_array_sha256",
-            "invalid",
-        ),
-    ],
-)
-def test_semantically_invalid_values_fail_at_the_hydra_boundary(
-    boundary: str,
-    config_name: str,
-    key: str,
-    invalid: object,
-) -> None:
-    config = _compose(config_name)
-    OmegaConf.update(config, key, invalid, merge=False)
-
-    with pytest.raises(ConfigurationError):
-        validate_config(boundary, config)
+    assert runtime.plcs.gaussian_count == 2048
+    assert runtime.plcs.smplh_batch_size == 32
+    assert runtime.plcs.device == "cuda:0"
+    assert runtime.plcs.appearance.source == "palette"
+    assert runtime.plcs.appearance.assignment == "object_index_modulo_palette"
+    assert runtime.plcs.appearance.gaussian_fill == "uniform"
+    assert runtime.plcs.appearance.appearance_model == "rgb"
+    assert runtime.plcs.appearance.appearance_space == "linear_rgb"
+    assert len(runtime.plcs.appearance.colors) == 6
+    assert runtime.plcs.appearance.color_for_object(6) == runtime.plcs.appearance.colors[0]
+    assert runtime.plcs.render_timeout_seconds == runtime.nht.render_timeout_seconds
 
 
 @pytest.mark.parametrize(
     ("key", "invalid"),
     [
-        ("paths.dataset_root", "../outside"),
-        ("paths.dataset_root", "/tmp/outside"),
-        ("paths.dataset_root", "data/duplicated-root"),
-        ("renderer.working_directory", "third_party/nht"),
+        ("request.targets", []),
+        ("request.targets", ["court", "unknown"]),
+        ("request.from_stage", "legacy_pipeline"),
+        ("pipeline.config_schema", "legacy"),
+        ("pipeline.preflight_before_invalidation", False),
+        ("camera.slots.0.hfov_degrees", [0.0, 20.0]),
+        ("dataset.court.sampling.proposal_budget", 5_001),
+        ("dataset.court.sampling.minimum_trajectory_groups", 23),
+        ("dataset.court.trajectory.axis_ratios", [1.0, 0.9]),
+        ("dataset.blcs.timeline.frame_selection", "first_64"),
+        ("dataset.plcs.require_articulated_motion", False),
+        ("nht.reconstruction_timeout_seconds", 0.0),
+        ("alignment.evidence.holdout_fraction", 0.0),
+        ("alignment.evidence.maximum_cameras", 11),
+        ("dataset.blcs.trajectory_source.timeline.min_tracks", 1),
+        ("dataset.blcs.generator.physics.gravity", "9.81"),
+        ("dataset.plcs.appearance.appearance_space", "srgb"),
+        ("dataset.plcs.foreground_rasterizer.maximum_alpha", 1.0),
+        ("dataset.court.performance.maximum_complete_array_scans_per_sample", 0),
+        ("dataset.blcs.performance.execution_device", ""),
+        ("dataset.blcs.performance.maximum_published_fraction_of_dense_reference", 1.1),
+        ("dataset.plcs.performance.maximum_nht_invocations", 2),
     ],
 )
-def test_pipeline_rejects_escape_absolute_and_root_prefixed_paths(
-    key: str,
-    invalid: str,
-) -> None:
-    config = _compose("dataset/pipeline")
+def test_invalid_values_fail_closed(key: str, invalid: object) -> None:
+    config = _compose()
     OmegaConf.update(config, key, invalid, merge=False)
 
+    with pytest.raises((ConfigurationError, TypeError, ValueError)):
+        ScenePipelineConfiguration.from_config(config)
+
+
+def test_unknown_keys_fail_before_runtime_path_creation() -> None:
+    config = deepcopy(_compose())
+    with open_dict(config):
+        config.pipeline.commit = "forbidden"
+
+    with pytest.raises(ConfigurationError, match="Unknown configuration key"):
+        ScenePipelineConfiguration.from_config(config)
+
+
+def test_source_video_cannot_escape_external_asset_root() -> None:
+    config = _compose()
+    OmegaConf.update(config, "request.source_video", "../outside.mp4", merge=False)
+
     with pytest.raises(PathContractError):
-        validate_config("synthetic.dataset.pipeline", config)
+        ScenePipelineConfiguration.from_config(config)
 
 
-def test_non_hydra_roots_require_all_seven_absolute_values(tmp_path: Path) -> None:
-    root = tmp_path.resolve()
-    roots = {
-        f"{role.value}_root": str(root / role.value) for role in PathRole
-    }
-    roots["project_root"] = str(root / "project")
-    roots["cache_root"] = "relative-cache"
+def test_renderer_must_share_the_explicit_cuda_training_environment() -> None:
+    config = _compose()
+    OmegaConf.update(
+        config,
+        "nht.render_executable",
+        "neural-harmonic-textures/.venv/bin/nht-render",
+        merge=False,
+    )
 
-    with pytest.raises(ValueError, match="cache_root must be an absolute"):
-        non_hydra_path_resolver(json.dumps(roots))
+    with pytest.raises(PathContractError, match="same CUDA virtual environment"):
+        ScenePipelineConfiguration.from_config(config)
+
+
+def test_nested_unknown_keys_fail_closed() -> None:
+    config = OmegaConf.to_container(_compose(), resolve=True)
+    assert isinstance(config, dict)
+    alignment = config["alignment"]
+    assert isinstance(alignment, dict)
+    evidence = alignment["evidence"]
+    assert isinstance(evidence, dict)
+    candidate = evidence["candidate_fit"]
+    assert isinstance(candidate, dict)
+    candidate["fingerprint"] = "forbidden"
+
+    with pytest.raises(ConfigurationError, match="Unknown configuration key"):
+        ScenePipelineConfiguration.from_config(config)

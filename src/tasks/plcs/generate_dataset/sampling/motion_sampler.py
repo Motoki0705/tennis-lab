@@ -1,371 +1,395 @@
-"""Motion sampler for AMASS/ACCAD dataset.
-
-This module provides functionality to sample motion sequences from AMASS
-dataset and compute 3D joint positions using SMPL-H model.
-"""
+"""Lossless typed AMASS/ACCAD motion clips for PLCS production sampling."""
 
 from __future__ import annotations
 
 import random
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, TypeAlias, cast
 
 import numpy as np
-import torch
+from numpy.typing import NDArray
 
-if TYPE_CHECKING:
-    from omegaconf import DictConfig
-
-
-@dataclass
-class MotionSequence:
-    """Container for a single motion sequence."""
-
-    # Source information
-    source_path: str
-    category: str
-    gender: str
-    fps: float
-
-    # Raw AMASS data
-    poses: np.ndarray  # (T, 156)
-    trans: np.ndarray  # (T, 3)
-    betas: np.ndarray  # (num_betas,)
-
-    # Computed 3D joints (set after SMPL-H forward)
-    joints_3d: np.ndarray | None = None  # (T, J, 3)
-
-    # Frame info
-    num_frames: int = field(init=False)
-
-    def __post_init__(self) -> None:
-        """Compute derived fields."""
-        self.num_frames = self.poses.shape[0]
+FloatArray: TypeAlias = NDArray[np.floating[Any]]
 
 
-@dataclass
-class MotionSourceConfig:
-    """Configuration for a motion source category."""
+class MotionCategory(StrEnum):
+    """The production motion-source categories required by PLCS."""
 
-    paths: list[str]
-    weight: float
+    RUNNING = "running"
+    WALKING = "walking"
+    GENERAL = "general"
 
 
-class MotionSampler:
-    """Sample motion sequences from AMASS dataset.
+_POSE_WIDTH = 156
+_BODY_SLICE = slice(3, 66)
+_RIGHT_HAND_SLICE = slice(66, 111)
+_LEFT_HAND_SLICE = slice(111, 156)
 
-    This class handles:
-    - Loading motion sequences from configured paths
-    - Category-based weighted sampling
-    - Computing 3D joints using SMPL-H model
+
+def _readonly_float_array(
+    value: object,
+    *,
+    name: str,
+    shape_tail: tuple[int, ...],
+) -> FloatArray:
+    array = np.asarray(value)
+    if array.dtype not in (np.dtype(np.float32), np.dtype(np.float64)):
+        raise TypeError(f"{name} must use float32 or float64, got {array.dtype}.")
+    if array.ndim != len(shape_tail) + 1 or tuple(array.shape[1:]) != shape_tail:
+        expected = ("T", *shape_tail)
+        raise ValueError(f"{name} must have shape {expected}, got {array.shape}.")
+    if not np.isfinite(array).all():
+        raise ValueError(f"{name} contains NaN or infinity.")
+    result = np.ascontiguousarray(array).copy()
+    result.setflags(write=False)
+    return cast(FloatArray, result)
+
+
+def _readonly_betas(value: object) -> FloatArray:
+    array = np.asarray(value)
+    if array.dtype not in (np.dtype(np.float32), np.dtype(np.float64)):
+        raise TypeError(f"betas must use float32 or float64, got {array.dtype}.")
+    if array.ndim != 1 or array.size == 0:
+        raise ValueError("betas must be a non-empty one-dimensional array.")
+    if not np.isfinite(array).all():
+        raise ValueError("betas contains NaN or infinity.")
+    result = np.ascontiguousarray(array).copy()
+    result.setflags(write=False)
+    return cast(FloatArray, result)
+
+
+def _trimmed(value: object, *, name: str) -> str:
+    if not isinstance(value, str) or not value.strip() or value != value.strip():
+        raise ValueError(f"{name} must be a non-empty trimmed string.")
+    return value
+
+
+@dataclass(frozen=True, slots=True)
+class PLCSMotionClip:
+    """Every source frame and SMPL-H component from one AMASS archive.
+
+    The component arrays retain the source floating dtype and frame order.  No
+    resampling, truncation, normalization, or pose repair is performed here.
     """
 
-    def __init__(
-        self,
-        config: DictConfig,
-        smplh_model_path: Path | str,
-        device: str | torch.device = "cpu",
-    ) -> None:
-        """Initialize the motion sampler.
+    source_path: str
+    category: MotionCategory
+    gender: str
+    fps: float
+    body_pose_axis_angle: FloatArray
+    global_orient_axis_angle: FloatArray
+    left_hand_pose_axis_angle: FloatArray
+    right_hand_pose_axis_angle: FloatArray
+    root_translation_m: FloatArray
+    betas: FloatArray
+    frame_count: int = field(init=False)
 
-        Args:
-            config: Configuration with motion_sources settings.
-            smplh_model_path: Path to SMPL-H model directory.
-            device: Device for SMPL-H computation.
-
-        """
-        self.config = config
-        self.smplh_model_path = Path(smplh_model_path)
-        self.device = torch.device(device)
-
-        # Parse motion sources from config
-        self._motion_sources: dict[str, MotionSourceConfig] = {}
-        self._parse_motion_sources()
-
-        # Index available motion files
-        self._motion_files: dict[str, list[Path]] = {}
-        self._index_motion_files()
-
-        # SMPL-H models (loaded on demand)
-        self._smplh_models: dict[str, Any] = {}
-
-    def _parse_motion_sources(self) -> None:
-        """Parse motion source configuration."""
-        sources_cfg = self.config.motion_sources
-
-        for category, cfg in sources_cfg.items():
-            self._motion_sources[category] = MotionSourceConfig(
-                paths=[str(path) for path in cfg.paths],
-                weight=float(cfg.weight),
-            )
-
-    def _index_motion_files(self) -> None:
-        """Index all available motion files by category."""
-        for category, source_cfg in self._motion_sources.items():
-            files = []
-            for path_str in source_cfg.paths:
-                path = Path(path_str)
-                if path.is_file() and path.suffix == ".npz":
-                    files.append(path)
-                elif path.is_dir():
-                    # Find all *_poses.npz files recursively
-                    files.extend(path.rglob("*_poses.npz"))
-            self._motion_files[category] = files
-
-        # Log statistics
-        total_files = sum(len(f) for f in self._motion_files.values())
-        print(f"MotionSampler: indexed {total_files} motion files")
-        for cat, files in self._motion_files.items():
-            print(f"  - {cat}: {len(files)} files")
-
-    def _get_smplh_model(self, gender: str) -> Any:
-        """Get or create SMPL-H model for given gender.
-
-        Args:
-            gender: Gender string ('male', 'female', 'neutral').
-
-        Returns:
-            SMPL-H model instance.
-
-        """
-        gender_lower = gender.lower()
-        if gender_lower not in self._smplh_models:
-            try:
-                import smplx  # type: ignore[import-untyped]
-
-                model = smplx.create(
-                    model_path=str(self.smplh_model_path.parent),
-                    model_type="smplh",
-                    gender=gender_lower,
-                    num_betas=16,
-                    use_pca=False,
-                    ext="pkl",
-                )
-                model = model.to(self.device)
-                model.eval()
-                self._smplh_models[gender_lower] = model
-            except Exception as e:
-                raise RuntimeError(
-                    f"Failed to load SMPL-H model for gender '{gender}': {e}"
-                ) from e
-
-        return self._smplh_models[gender_lower]
-
-    def _infer_category_from_path(self, path: Path) -> str:
-        """Infer motion category from file path.
-
-        Args:
-            path: Path to motion file.
-
-        Returns:
-            Inferred category string.
-
-        """
-        # Extract category from folder name (e.g., Female1Running_c3d -> Running)
-        parent_name = path.parent.name
-        # Common patterns: Female1Running_c3d, Male2Walking_c3d, etc.
-        for keyword in ["Running", "Walking", "General", "Jump", "Stand"]:
-            if keyword.lower() in parent_name.lower():
-                return keyword.lower()
-        return "general"
-
-    def sample_motion(
-        self,
-        category: str | None = None,
-        max_frames: int | None = None,
-    ) -> MotionSequence:
-        """Sample a random motion sequence.
-
-        Args:
-            category: Specific category to sample from. If None, uses weighted sampling.
-            max_frames: Maximum number of frames to load. If None, loads all.
-
-        Returns:
-            MotionSequence with loaded data.
-
-        """
-        # Select category
-        if category is not None:
-            if category not in self._motion_files:
-                raise ValueError(f"Unknown category: {category}")
-            selected_category = category
-        else:
-            # Weighted random selection
-            categories = list(self._motion_sources.keys())
-            weights = [self._motion_sources[c].weight for c in categories]
-            # Filter out categories with no files
-            valid = [
-                (c, w)
-                for c, w in zip(categories, weights, strict=True)
-                if self._motion_files.get(c)
-            ]
-            if not valid:
-                raise RuntimeError("No motion files available")
-            valid_categories, valid_weights = zip(*valid, strict=True)
-            selected_category = random.choices(
-                valid_categories, weights=valid_weights, k=1
-            )[0]
-
-        # Select random file from category
-        files = self._motion_files[selected_category]
-        if not files:
-            raise RuntimeError(f"No files in category '{selected_category}'")
-        selected_file = random.choice(files)
-
-        # Load motion data
-        return self.load_motion(selected_file, max_frames=max_frames)
-
-    def load_motion(
-        self,
-        path: Path | str,
-        max_frames: int | None = None,
-    ) -> MotionSequence:
-        """Load a specific motion file.
-
-        Args:
-            path: Path to AMASS npz file.
-            max_frames: Maximum frames to load.
-
-        Returns:
-            MotionSequence with loaded data.
-
-        """
-        path = Path(path)
-        data = np.load(path, allow_pickle=True)
-
-        poses = data["poses"].astype(np.float32)
-        trans = data["trans"].astype(np.float32)
-        betas = data["betas"].astype(np.float32)
-
-        # Handle gender
-        gender_raw = data["gender"]
-        if isinstance(gender_raw, np.ndarray):
-            gender = str(gender_raw.item())
-        else:
-            gender = str(gender_raw)
-        # Clean up gender string (e.g., "b'female'" -> "female")
-        gender = gender.strip("b'\"").lower()
-
-        if "mocap_framerate" not in data:
+    def __post_init__(self) -> None:
+        source_path = _trimmed(self.source_path, name="source_path")
+        if not Path(source_path).is_absolute():
+            raise ValueError("source_path must be an absolute path.")
+        try:
+            category = MotionCategory(self.category)
+        except ValueError as error:
             raise ValueError(
-                f"Motion archive {path} is missing required mocap_framerate metadata."
+                "category must be running, walking, or general."
+            ) from error
+        gender = _trimmed(self.gender, name="gender").lower()
+        if gender not in {"female", "male", "neutral"}:
+            raise ValueError("gender must be female, male, or neutral.")
+        if isinstance(self.fps, bool) or not isinstance(self.fps, (int, float)):
+            raise TypeError("fps must be numeric.")
+        fps = float(self.fps)
+        if not np.isfinite(fps) or fps <= 0.0:
+            raise ValueError("fps must be finite and positive.")
+
+        body = _readonly_float_array(
+            self.body_pose_axis_angle,
+            name="body_pose_axis_angle",
+            shape_tail=(63,),
+        )
+        global_orient = _readonly_float_array(
+            self.global_orient_axis_angle,
+            name="global_orient_axis_angle",
+            shape_tail=(3,),
+        )
+        left_hand = _readonly_float_array(
+            self.left_hand_pose_axis_angle,
+            name="left_hand_pose_axis_angle",
+            shape_tail=(45,),
+        )
+        right_hand = _readonly_float_array(
+            self.right_hand_pose_axis_angle,
+            name="right_hand_pose_axis_angle",
+            shape_tail=(45,),
+        )
+        translation = _readonly_float_array(
+            self.root_translation_m,
+            name="root_translation_m",
+            shape_tail=(3,),
+        )
+        frame_count = int(body.shape[0])
+        if frame_count == 0:
+            raise ValueError("A PLCS motion clip must contain at least one frame.")
+        arrays = (global_orient, left_hand, right_hand, translation)
+        if any(int(array.shape[0]) != frame_count for array in arrays):
+            raise ValueError("All pose and translation arrays must have the same T.")
+        dtypes = {
+            body.dtype,
+            global_orient.dtype,
+            left_hand.dtype,
+            right_hand.dtype,
+            translation.dtype,
+        }
+        if len(dtypes) != 1:
+            raise TypeError(
+                "All per-frame source arrays must retain one floating dtype."
             )
-        fps = float(data["mocap_framerate"].item())
 
-        # Truncate if needed
-        if max_frames is not None and poses.shape[0] > max_frames:
-            poses = poses[:max_frames]
-            trans = trans[:max_frames]
+        object.__setattr__(self, "source_path", source_path)
+        object.__setattr__(self, "category", category)
+        object.__setattr__(self, "gender", gender)
+        object.__setattr__(self, "fps", fps)
+        object.__setattr__(self, "body_pose_axis_angle", body)
+        object.__setattr__(self, "global_orient_axis_angle", global_orient)
+        object.__setattr__(self, "left_hand_pose_axis_angle", left_hand)
+        object.__setattr__(self, "right_hand_pose_axis_angle", right_hand)
+        object.__setattr__(self, "root_translation_m", translation)
+        object.__setattr__(self, "betas", _readonly_betas(self.betas))
+        object.__setattr__(self, "frame_count", frame_count)
 
-        category = self._infer_category_from_path(path)
-
-        return MotionSequence(
-            source_path=str(path),
-            category=category,
+    @classmethod
+    def from_amass_arrays(
+        cls,
+        *,
+        source_path: str | Path,
+        category: MotionCategory | str,
+        gender: str,
+        fps: float,
+        poses: object,
+        trans: object,
+        betas: object,
+    ) -> PLCSMotionClip:
+        """Split one untouched AMASS pose matrix into the SMPL-H components."""
+        pose_array = _readonly_float_array(
+            poses,
+            name="poses",
+            shape_tail=(_POSE_WIDTH,),
+        )
+        translation = _readonly_float_array(
+            trans,
+            name="trans",
+            shape_tail=(3,),
+        )
+        if pose_array.shape[0] != translation.shape[0]:
+            raise ValueError("AMASS poses and trans must contain the same T.")
+        try:
+            typed_category = MotionCategory(category)
+        except ValueError as error:
+            raise ValueError(
+                "category must be running, walking, or general."
+            ) from error
+        clip = cls(
+            source_path=str(Path(source_path).resolve()),
+            category=typed_category,
             gender=gender,
             fps=fps,
-            poses=poses,
-            trans=trans,
-            betas=betas,
+            body_pose_axis_angle=pose_array[:, _BODY_SLICE],
+            global_orient_axis_angle=pose_array[:, :3],
+            left_hand_pose_axis_angle=pose_array[:, _LEFT_HAND_SLICE],
+            right_hand_pose_axis_angle=pose_array[:, _RIGHT_HAND_SLICE],
+            root_translation_m=translation,
+            betas=cast(FloatArray, np.asarray(betas)),
+        )
+        reconstructed = clip.full_pose_axis_angle()
+        if reconstructed.dtype != pose_array.dtype or not np.array_equal(
+            reconstructed,
+            pose_array,
+        ):
+            raise RuntimeError("AMASS pose component split was not lossless.")
+        return clip
+
+    def full_pose_axis_angle(self) -> FloatArray:
+        """Reconstruct the exact 156-value AMASS/SMPL-H pose rows."""
+        result = np.concatenate(
+            (
+                self.global_orient_axis_angle,
+                self.body_pose_axis_angle,
+                self.right_hand_pose_axis_angle,
+                self.left_hand_pose_axis_angle,
+            ),
+            axis=1,
+        )
+        result.setflags(write=False)
+        return result
+
+    def metadata(self) -> dict[str, object]:
+        """Return source provenance without an artifact identity digest."""
+        return {
+            "source_path": self.source_path,
+            "category": self.category.value,
+            "gender": self.gender,
+            "native_fps": self.fps,
+            "frame_count": self.frame_count,
+            "pose_dtype": str(self.body_pose_axis_angle.dtype),
+            "beta_count": int(self.betas.shape[0]),
+        }
+
+
+def infer_accad_category(path: Path) -> MotionCategory:
+    """Classify one ACCAD path into the explicit production vocabulary."""
+    text = "/".join(part.lower() for part in path.parts)
+    if "running" in text or "sprint" in text or "run " in text:
+        return MotionCategory.RUNNING
+    if "walking" in text or "walk" in text:
+        return MotionCategory.WALKING
+    return MotionCategory.GENERAL
+
+
+def load_amass_motion_clip(
+    path: str | Path,
+    *,
+    category: MotionCategory | str | None = None,
+) -> PLCSMotionClip:
+    """Load one full AMASS archive without pickle or frame selection."""
+    source = Path(path).resolve()
+    if source.suffix != ".npz" or not source.is_file():
+        raise FileNotFoundError(f"AMASS motion archive does not exist: {source}")
+    with np.load(source, allow_pickle=False) as archive:
+        required = {"poses", "trans", "betas", "gender", "mocap_framerate"}
+        missing = required.difference(archive.files)
+        if missing:
+            raise ValueError(f"AMASS archive is missing fields: {sorted(missing)}.")
+        raw_gender = archive["gender"]
+        if raw_gender.ndim != 0:
+            raise ValueError("AMASS gender must be a scalar.")
+        gender_value = raw_gender.item()
+        if isinstance(gender_value, bytes):
+            gender = gender_value.decode("utf-8")
+        else:
+            gender = str(gender_value)
+        raw_fps = archive["mocap_framerate"]
+        if raw_fps.ndim != 0:
+            raise ValueError("AMASS mocap_framerate must be a scalar.")
+        return PLCSMotionClip.from_amass_arrays(
+            source_path=source,
+            category=infer_accad_category(source) if category is None else category,
+            gender=gender,
+            fps=float(raw_fps.item()),
+            poses=archive["poses"],
+            trans=archive["trans"],
+            betas=archive["betas"],
         )
 
-    def compute_joints_3d(
-        self,
-        motion: MotionSequence,
-        batch_size: int = 64,
-    ) -> np.ndarray:
-        """Compute 3D joints using SMPL-H model.
 
-        Args:
-            motion: Motion sequence with poses and betas.
-            batch_size: Batch size for SMPL-H forward pass.
+@dataclass(frozen=True, slots=True)
+class ACCADMotionLibrary:
+    """Deterministic category-indexed ACCAD source inventory."""
 
-        Returns:
-            3D joint positions, shape (T, J, 3).
+    files_by_category: Mapping[MotionCategory, tuple[Path, ...]]
 
+    def __post_init__(self) -> None:
+        expected = set(MotionCategory)
+        if set(self.files_by_category) != expected:
+            raise ValueError(
+                "ACCAD library must explicitly index running, walking, and general."
+            )
+        normalized: dict[MotionCategory, tuple[Path, ...]] = {}
+        for category in MotionCategory:
+            files = tuple(
+                sorted(
+                    Path(path).resolve() for path in self.files_by_category[category]
+                )
+            )
+            if not files:
+                raise ValueError(
+                    f"ACCAD category {category.value!r} has no motion files."
+                )
+            if len(files) != len(set(files)):
+                raise ValueError(
+                    f"ACCAD category {category.value!r} contains duplicates."
+                )
+            invalid = [
+                str(path)
+                for path in files
+                if path.suffix != ".npz" or not path.is_file()
+            ]
+            if invalid:
+                raise FileNotFoundError(f"Invalid ACCAD motion files: {invalid}.")
+            normalized[category] = files
+        object.__setattr__(self, "files_by_category", normalized)
+
+    @classmethod
+    def from_root(cls, root: str | Path) -> ACCADMotionLibrary:
+        """Index every ACCAD ``*_poses.npz`` once in stable path order."""
+        directory = Path(root).resolve()
+        if not directory.is_dir():
+            raise FileNotFoundError(f"ACCAD root does not exist: {directory}")
+        grouped: dict[MotionCategory, list[Path]] = {
+            category: [] for category in MotionCategory
+        }
+        for path in sorted(directory.rglob("*_poses.npz")):
+            grouped[infer_accad_category(path)].append(path.resolve())
+        return cls(
+            files_by_category={
+                category: tuple(paths) for category, paths in grouped.items()
+            }
+        )
+
+    @classmethod
+    def from_category_paths(
+        cls,
+        paths: Mapping[MotionCategory | str, Sequence[str | Path]],
+    ) -> ACCADMotionLibrary:
+        """Build an explicit config-selected category inventory."""
+        grouped: dict[MotionCategory, tuple[Path, ...]] = {}
+        for key, values in paths.items():
+            category = MotionCategory(key)
+            expanded: list[Path] = []
+            for value in values:
+                candidate = Path(value).resolve()
+                if candidate.is_file():
+                    expanded.append(candidate)
+                elif candidate.is_dir():
+                    expanded.extend(sorted(candidate.rglob("*_poses.npz")))
+                else:
+                    raise FileNotFoundError(
+                        f"Configured ACCAD source does not exist: {candidate}"
+                    )
+            grouped[category] = tuple(expanded)
+        return cls(files_by_category=grouped)
+
+    def select(self, category: MotionCategory | str, *, seed: int) -> PLCSMotionClip:
+        """Select one full clip deterministically, with no cross-category fallback."""
+        typed_category = MotionCategory(category)
+        return load_amass_motion_clip(
+            self.select_path(typed_category, seed=seed),
+            category=typed_category,
+        )
+
+    def select_path(self, category: MotionCategory | str, *, seed: int) -> Path:
+        """Resolve a source deterministically without loading its archive.
+
+        Stage owners use this split boundary to cache an exact source across
+        preflight and execution.  Selection never opens an NPZ and therefore
+        cannot accidentally double the measured clip-load count.
         """
-        model = self._get_smplh_model(motion.gender)
+        if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
+            raise ValueError("seed must be a non-negative integer.")
+        typed_category = MotionCategory(category)
+        files = self.files_by_category[typed_category]
+        return files[
+            random.Random(f"{seed}:{typed_category.value}").randrange(len(files))
+        ]
 
-        T = motion.num_frames
-        poses = motion.poses
-        trans = motion.trans
-        betas = motion.betas
 
-        # Split poses into components
-        # poses: (T, 156) = 52 joints * 3 axis-angle
-        aa = poses.reshape(T, 52, 3)
-        global_orient = aa[:, 0]  # (T, 3)
-        body_pose = aa[:, 1:22].reshape(T, -1)  # (T, 63)
-        left_hand_pose = aa[:, 37:52].reshape(T, -1)  # (T, 45)
-        right_hand_pose = aa[:, 22:37].reshape(T, -1)  # (T, 45)
-
-        # Prepare betas (truncate to model's num_betas)
-        model_num_betas = int(model.num_betas)
-        num_betas = min(betas.shape[0], model_num_betas)
-        betas_truncated = betas[:num_betas]
-
-        # Process in batches
-        all_joints = []
-
-        with torch.no_grad():
-            for start in range(0, T, batch_size):
-                end = min(start + batch_size, T)
-                batch_t = end - start
-
-                # Convert to tensors
-                global_orient_t = torch.from_numpy(global_orient[start:end]).to(
-                    self.device
-                )
-                body_pose_t = torch.from_numpy(body_pose[start:end]).to(self.device)
-                left_hand_t = torch.from_numpy(left_hand_pose[start:end]).to(
-                    self.device
-                )
-                right_hand_t = torch.from_numpy(right_hand_pose[start:end]).to(
-                    self.device
-                )
-                transl_t = torch.from_numpy(trans[start:end]).to(self.device)
-                betas_t = (
-                    torch.from_numpy(betas_truncated[None, :])
-                    .to(self.device)
-                    .repeat(batch_t, 1)
-                )
-
-                output = cast(Any, model)(
-                    betas=betas_t,
-                    global_orient=global_orient_t,
-                    body_pose=body_pose_t,
-                    left_hand_pose=left_hand_t,
-                    right_hand_pose=right_hand_t,
-                    transl=transl_t,
-                    return_verts=False,
-                )
-
-                joints = output.joints.cpu().numpy()  # (batch_t, J, 3)
-                all_joints.append(joints)
-
-        joints_3d = np.concatenate(all_joints, axis=0)  # (T, J, 3)
-        motion.joints_3d = joints_3d
-
-        return cast(np.ndarray, joints_3d)
-
-    def get_available_categories(self) -> list[str]:
-        """Get list of available motion categories.
-
-        Returns:
-            List of category names with available files.
-
-        """
-        return [c for c, files in self._motion_files.items() if files]
-
-    def get_category_file_count(self, category: str) -> int:
-        """Get number of files in a category.
-
-        Args:
-            category: Category name.
-
-        Returns:
-            Number of motion files.
-
-        """
-        return len(self._motion_files.get(category, []))
+__all__ = [
+    "ACCADMotionLibrary",
+    "MotionCategory",
+    "PLCSMotionClip",
+    "infer_accad_category",
+    "load_amass_motion_clip",
+]
