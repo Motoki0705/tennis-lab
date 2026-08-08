@@ -95,6 +95,13 @@ def test_committed_b00_evidence_is_complete_and_meets_quantitative_gates() -> No
         _integer(value, name=f"renderer_visible_points_by_class.{name}") > 0
         for name, value in visible_points.items()
     )
+    court_performance = _mapping(court["performance"], name="court.performance")
+    assert _number(court_performance["wall_seconds"], name="court.wall_seconds") <= 1800
+    assert _integer(court_performance["nht_invocations"], name="court.nht_invocations") <= 8
+    assert (
+        _integer(court_performance["published_bytes"], name="court.published_bytes")
+        <= 35 * 1024**3
+    )
 
     for domain in ("blcs", "plcs"):
         domain_evidence = _mapping(evidence[domain], name=domain)
@@ -119,6 +126,19 @@ def test_committed_b00_evidence_is_complete_and_meets_quantitative_gates() -> No
             )
             <= 1
         )
+    blcs_performance = _mapping(
+        _mapping(evidence["blcs"], name="blcs")["performance"],
+        name="blcs.performance",
+    )
+    assert _number(blcs_performance["wall_seconds"], name="blcs.wall_seconds") <= 3600
+    assert _integer(blcs_performance["nht_invocations"], name="blcs.nht_invocations") == 3
+    assert _integer(blcs_performance["background_cache_misses"], name="blcs.cache_misses") == 18
+    assert blcs_performance["execution_device"] == "cuda:0"
+    assert _integer(
+        blcs_performance["published_bytes"], name="blcs.published_bytes"
+    ) / _integer(
+        blcs_performance["dense_reference_bytes"], name="blcs.dense_reference_bytes"
+    ) <= 0.2
     plcs = _mapping(evidence["plcs"], name="plcs")
     assert plcs["motion_categories"] == [
         "general",
@@ -127,6 +147,16 @@ def test_committed_b00_evidence_is_complete_and_meets_quantitative_gates() -> No
     ]
     assert plcs["all_frames_deformed"] is True
     assert plcs["running_walking_regions_move"] is True
+    plcs_performance = _mapping(plcs["performance"], name="plcs.performance")
+    assert _number(plcs_performance["wall_seconds"], name="plcs.wall_seconds") <= 5400
+    assert _integer(plcs_performance["nht_invocations"], name="plcs.nht_invocations") == 1
+    assert _integer(plcs_performance["background_cache_misses"], name="plcs.cache_misses") == 6
+    assert plcs_performance["execution_device"] == "cuda:0"
+    assert _integer(
+        plcs_performance["published_bytes"], name="plcs.published_bytes"
+    ) / _integer(
+        plcs_performance["dense_reference_bytes"], name="plcs.dense_reference_bytes"
+    ) <= 0.25
     assert evidence["camera_profiles"] == {"default": 6, "broadcast": 2}
 
 
