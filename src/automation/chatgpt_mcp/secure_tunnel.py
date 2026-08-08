@@ -210,12 +210,8 @@ class SecureTunnelManager:
             candidate_dir = Path(temporary_directory)
             private_candidate = candidate_dir / PRIVATE_SERVICE_NAME
             tunnel_candidate = candidate_dir / TUNNEL_SERVICE_NAME
-            private_candidate.write_text(
-                self._private_service_unit(), encoding="utf-8"
-            )
-            tunnel_candidate.write_text(
-                self._tunnel_service_unit(), encoding="utf-8"
-            )
+            private_candidate.write_text(self._private_service_unit(), encoding="utf-8")
+            tunnel_candidate.write_text(self._tunnel_service_unit(), encoding="utf-8")
             os.chmod(private_candidate, 0o600)
             os.chmod(tunnel_candidate, 0o600)
             verification = subprocess.run(
@@ -232,13 +228,8 @@ class SecureTunnelManager:
                 timeout=30,
             )
             if verification.returncode != 0:
-                detail = (
-                    verification.stderr.strip()
-                    or verification.stdout.strip()
-                )
-                raise SecureTunnelError(
-                    f"systemd unit verification failed: {detail}"
-                )
+                detail = verification.stderr.strip() or verification.stdout.strip()
+                raise SecureTunnelError(f"systemd unit verification failed: {detail}")
             os.replace(private_candidate, self.private_service_path)
             os.replace(tunnel_candidate, self.tunnel_service_path)
         os.chmod(self.private_service_path, 0o600)
@@ -357,8 +348,18 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory={_unit_path_value(self.source_root)}
+Environment="PYTHONPATH={self.source_root}"
+Environment="HOME={self.settings.runtime_home}"
+Environment="PATH=/usr/bin:/bin:/usr/lib/wsl/lib"
+Environment="PYTHONNOUSERSITE=1"
+Environment="PYTHONDONTWRITEBYTECODE=1"
+Environment="GIT_CONFIG_NOSYSTEM=1"
+Environment="GIT_CONFIG_GLOBAL=/dev/null"
 Environment="TENNIS_MCP_REPO_ROOT={self.settings.repo_root}"
 Environment="TENNIS_MCP_STATE_DIR={self.settings.state_dir}"
+Environment="TENNIS_MCP_CONTROL_DIR={self.settings.control_dir}"
+Environment="TENNIS_MCP_ORIGIN_URL={self.settings.origin_url}"
+Environment="TENNIS_MCP_GPU_LOCK_FILE={self.settings.gpu_lock_file}"
 Environment="TENNIS_MCP_HOST=127.0.0.1"
 Environment="TENNIS_MCP_PORT={PRIVATE_MCP_PORT}"
 ExecStart={_unit_value(self.python_executable)} -m src.automation.chatgpt_mcp serve-private
@@ -453,11 +454,14 @@ def _normalize_no_auth_doctor_result(
         "OpenAI tunnel, so the private loopback endpoint must not advertise OAuth."
     )
     oauth_check.next = []
-    normalized_stdout = json.dumps(
-        payload,
-        default=_namespace_to_mapping,
-        indent=2,
-    ) + "\n"
+    normalized_stdout = (
+        json.dumps(
+            payload,
+            default=_namespace_to_mapping,
+            indent=2,
+        )
+        + "\n"
+    )
     return subprocess.CompletedProcess(
         result.args,
         0,

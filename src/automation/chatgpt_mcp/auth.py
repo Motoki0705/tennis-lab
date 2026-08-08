@@ -176,7 +176,9 @@ class OwnerOAuthProvider(
             raise PermissionError("owner secret did not match")
         payload = self.store.pop("pending_authorizations", transaction_id)
         if payload is None:
-            raise ValueError("authorization request is missing, expired, or already used")
+            raise ValueError(
+                "authorization request is missing, expired, or already used"
+            )
 
         params = AuthorizationParams.model_validate(payload["params"])
         client_id = str(payload["client_id"])
@@ -321,7 +323,9 @@ class OwnerOAuthProvider(
         original_scopes = set(str(value) for value in payload.get("scopes", []))
         requested_scopes = set(scopes) if scopes else original_scopes
         if not requested_scopes.issubset(original_scopes):
-            raise TokenError("invalid_scope", "refresh scope exceeds the original grant")
+            raise TokenError(
+                "invalid_scope", "refresh scope exceeds the original grant"
+            )
         return self._issue_token_pair(
             client_id=str(client.client_id),
             scopes=sorted(requested_scopes),

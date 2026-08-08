@@ -33,6 +33,7 @@ def _manager(tmp_path: Path) -> SecureTunnelManager:
     settings = GatewaySettings(
         repo_root=repo,
         state_dir=tmp_path / "state",
+        control_dir=tmp_path / "control",
         public_base_url=None,
         tunnel_client_path=tunnel_client,
     )
@@ -89,12 +90,8 @@ def test_configure_writes_private_files_and_uses_file_secret_reference(
     assert "file:" in profile.read_text(encoding="utf-8")
     assert runtime_key not in profile.read_text(encoding="utf-8")
     assert stat.S_IMODE(profile.stat().st_mode) == 0o600
-    assert (
-        stat.S_IMODE(manager.settings.secure_tunnel_key_path.stat().st_mode) == 0o600
-    )
-    assert (
-        stat.S_IMODE(manager.settings.secure_tunnel_dir.stat().st_mode) == 0o700
-    )
+    assert stat.S_IMODE(manager.settings.secure_tunnel_key_path.stat().st_mode) == 0o600
+    assert stat.S_IMODE(manager.settings.secure_tunnel_dir.stat().st_mode) == 0o700
 
 
 def test_install_services_keeps_secret_out_of_units_and_starts_both(
@@ -120,9 +117,7 @@ def test_install_services_keeps_secret_out_of_units_and_starts_both(
     )
     ready_urls: list[tuple[str, str]] = []
 
-    def fake_wait_for_http(
-        url: str, *, service_name: str
-    ) -> None:
+    def fake_wait_for_http(url: str, *, service_name: str) -> None:
         ready_urls.append((url, service_name))
 
     monkeypatch.setattr(manager, "_wait_for_http", fake_wait_for_http)
@@ -138,6 +133,15 @@ def test_install_services_keeps_secret_out_of_units_and_starts_both(
     assert f'ExecStart="{tmp_path}/.venv/bin/python"' in private_unit
     assert "TENNIS_MCP_HOST=127.0.0.1" in private_unit
     assert "TENNIS_MCP_PORT=8767" in private_unit
+    assert f"HOME={manager.settings.runtime_home}" in private_unit
+    assert "PYTHONNOUSERSITE=1" in private_unit
+    assert f"TENNIS_MCP_GPU_LOCK_FILE={manager.settings.gpu_lock_file}" in private_unit
+    assert f"PYTHONPATH={tmp_path}/source directory" in private_unit
+    assert f"TENNIS_MCP_CONTROL_DIR={tmp_path}/control" in private_unit
+    assert (
+        "TENNIS_MCP_ORIGIN_URL=https://github.com/Motoki0705/tennis-lab.git"
+        in private_unit
+    )
     assert "--profile-file" in tunnel_unit
     assert f"Requires={PRIVATE_SERVICE_NAME}" in tunnel_unit
     assert runtime_key not in private_unit + tunnel_unit
@@ -178,12 +182,8 @@ def test_install_services_rejects_invalid_systemd_units_without_replacing_active
         "config_version: 1\n", encoding="utf-8"
     )
     manager.service_dir.mkdir(parents=True)
-    manager.private_service_path.write_text(
-        "old private unit\n", encoding="utf-8"
-    )
-    manager.tunnel_service_path.write_text(
-        "old tunnel unit\n", encoding="utf-8"
-    )
+    manager.private_service_path.write_text("old private unit\n", encoding="utf-8")
+    manager.tunnel_service_path.write_text("old tunnel unit\n", encoding="utf-8")
 
     def fake_run(
         command: list[str], **kwargs: object
@@ -207,6 +207,7 @@ def test_install_services_rejects_invalid_systemd_units_without_replacing_active
     assert manager.tunnel_service_path.read_text(encoding="utf-8") == (
         "old tunnel unit\n"
     )
+
 
 def test_start_rejects_service_that_did_not_become_active(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -273,9 +274,7 @@ def test_doctor_accepts_missing_oauth_metadata_for_no_auth_profile(
     assert normalized["result"] == "pass"
     assert normalized["failed_checks"] == []
     assert normalized["checks"][1]["status"] == "SKIP"
-    assert commands[0][commands[0].index("--health.listen-addr") + 1] == (
-        "127.0.0.1:0"
-    )
+    assert commands[0][commands[0].index("--health.listen-addr") + 1] == ("127.0.0.1:0")
 
 
 def test_doctor_preserves_unexpected_failures(

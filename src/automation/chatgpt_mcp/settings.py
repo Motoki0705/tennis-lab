@@ -8,6 +8,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
+_DEFAULT_PROJECT_ROOT = Path("/home/kamimura/projects/tennis-lab")
+_DEFAULT_STATE_DIR = Path.home() / ".local/state/tennis-lab-chatgpt-mcp"
+_DEFAULT_CONTROL_DIR = Path.home() / ".local/share/tennis-lab-chatgpt-mcp"
+_DEFAULT_ORIGIN_URL = "https://github.com/Motoki0705/tennis-lab.git"
+_DEFAULT_GPU_LOCK_FILE = Path("/var/lib/tennis-lab-actions/gpu.lock")
+_ALLOWED_ORIGIN_URLS = {
+    _DEFAULT_ORIGIN_URL,
+    "https://github.com/Motoki0705/tennis-lab",
+}
+
 
 def _required_absolute_directory(value: str, name: str) -> Path:
     path = Path(value).expanduser()
@@ -17,6 +27,13 @@ def _required_absolute_directory(value: str, name: str) -> Path:
     if not resolved.is_dir():
         raise ValueError(f"{name} does not exist or is not a directory: {resolved}")
     return resolved
+
+
+def _absolute_path(value: str, name: str) -> Path:
+    path = Path(value).expanduser()
+    if not path.is_absolute():
+        raise ValueError(f"{name} must be an absolute path: {path}")
+    return path.resolve()
 
 
 def normalize_public_base_url(value: str) -> str:
@@ -31,13 +48,29 @@ def normalize_public_base_url(value: str) -> str:
     return normalized
 
 
+def normalize_origin_url(value: str) -> str:
+    """Restrict the trusted mirror to the tennis-lab origin."""
+
+    normalized = value.strip().rstrip("/")
+    if normalized == "https://github.com/Motoki0705/tennis-lab":
+        normalized = _DEFAULT_ORIGIN_URL
+    if normalized not in _ALLOWED_ORIGIN_URLS:
+        raise ValueError(
+            "TENNIS_MCP_ORIGIN_URL must name Motoki0705/tennis-lab on GitHub"
+        )
+    return normalized
+
+
 @dataclass(frozen=True)
 class GatewaySettings:
-    """Validated settings shared by OAuth, execution jobs, and tunnel launchers."""
+    """Validated settings shared by auth, execution jobs, and tunnel launchers."""
 
     repo_root: Path
     state_dir: Path
     public_base_url: str | None
+    control_dir: Path = _DEFAULT_CONTROL_DIR
+    origin_url: str = _DEFAULT_ORIGIN_URL
+    gpu_lock_file: Path = _DEFAULT_GPU_LOCK_FILE
     host: str = "127.0.0.1"
     port: int = 8765
     docker_image: str = "nvidia/cuda:13.0.0-base-ubuntu24.04"
@@ -48,6 +81,33 @@ class GatewaySettings:
     refresh_token_ttl_seconds: int = 30 * 24 * 3600
     authorization_ttl_seconds: int = 300
 
+    def __post_init__(self) -> None:
+        repo_root = self.repo_root.resolve()
+        state_dir = self.state_dir.resolve()
+        control_dir = self.control_dir.resolve()
+        gpu_lock_file = self.gpu_lock_file.expanduser()
+        if not gpu_lock_file.is_absolute():
+            raise ValueError("MCP GPU lock file must be an absolute path")
+        gpu_lock_file = gpu_lock_file.resolve()
+        object.__setattr__(self, "repo_root", repo_root)
+        object.__setattr__(self, "state_dir", state_dir)
+        object.__setattr__(self, "control_dir", control_dir)
+        object.__setattr__(self, "gpu_lock_file", gpu_lock_file)
+        if state_dir == repo_root or state_dir.is_relative_to(repo_root):
+            raise ValueError(
+                "MCP state must be outside the destructible tennis-lab tree"
+            )
+        if control_dir == repo_root or control_dir.is_relative_to(repo_root):
+            raise ValueError(
+                "MCP control plane must be outside the destructible tennis-lab tree"
+            )
+        if state_dir == control_dir:
+            raise ValueError("MCP state and control directories must be distinct")
+        if gpu_lock_file == repo_root or gpu_lock_file.is_relative_to(repo_root):
+            raise ValueError("MCP GPU lock must be outside the destructible project")
+        if not 1024 <= self.port <= 65535:
+            raise ValueError("MCP port must be between 1024 and 65535")
+
     @classmethod
     def from_env(
         cls,
@@ -55,33 +115,28 @@ class GatewaySettings:
         public_base_url: str | None = None,
         require_public_base_url: bool = True,
     ) -> GatewaySettings:
-        """Load settings from explicit `TENNIS_MCP_*` environment variables."""
+        """Load settings from explicit ``TENNIS_MCP_*`` environment variables."""
 
         repo_root = _required_absolute_directory(
-            os.environ.get(
-                "TENNIS_MCP_REPO_ROOT", "/home/kamimura/projects/tennis-lab"
-            ),
+            os.environ.get("TENNIS_MCP_REPO_ROOT", str(_DEFAULT_PROJECT_ROOT)),
             "TENNIS_MCP_REPO_ROOT",
         )
         if not (repo_root / ".git").exists():
             raise ValueError(f"TENNIS_MCP_REPO_ROOT is not a git checkout: {repo_root}")
 
-        state_value = os.environ.get(
+        state_dir = _absolute_path(
+            os.environ.get("TENNIS_MCP_STATE_DIR", str(_DEFAULT_STATE_DIR)),
             "TENNIS_MCP_STATE_DIR",
-            str(Path.home() / ".local/state/tennis-lab-chatgpt-mcp"),
         )
-        state_dir = Path(state_value).expanduser()
-        if not state_dir.is_absolute():
-            raise ValueError("TENNIS_MCP_STATE_DIR must be an absolute path")
-
+        control_dir = _absolute_path(
+            os.environ.get("TENNIS_MCP_CONTROL_DIR", str(_DEFAULT_CONTROL_DIR)),
+            "TENNIS_MCP_CONTROL_DIR",
+        )
         base_value = public_base_url or os.environ.get("TENNIS_MCP_PUBLIC_BASE_URL")
         if not base_value and require_public_base_url:
             raise ValueError("TENNIS_MCP_PUBLIC_BASE_URL is required")
 
         port = int(os.environ.get("TENNIS_MCP_PORT", "8765"))
-        if not 1024 <= port <= 65535:
-            raise ValueError("TENNIS_MCP_PORT must be between 1024 and 65535")
-
         cloudflared = Path(
             os.environ.get(
                 "TENNIS_MCP_CLOUDFLARED",
@@ -100,13 +155,25 @@ class GatewaySettings:
                 "/home/kamimura/.local/share/uv/python",
             )
         ).expanduser()
+        gpu_lock_file = _absolute_path(
+            os.environ.get(
+                "TENNIS_MCP_GPU_LOCK_FILE",
+                str(_DEFAULT_GPU_LOCK_FILE),
+            ),
+            "TENNIS_MCP_GPU_LOCK_FILE",
+        )
 
         return cls(
             repo_root=repo_root,
-            state_dir=state_dir.resolve(),
+            state_dir=state_dir,
             public_base_url=(
                 normalize_public_base_url(base_value) if base_value else None
             ),
+            control_dir=control_dir,
+            origin_url=normalize_origin_url(
+                os.environ.get("TENNIS_MCP_ORIGIN_URL", _DEFAULT_ORIGIN_URL)
+            ),
+            gpu_lock_file=gpu_lock_file,
             host=os.environ.get("TENNIS_MCP_HOST", "127.0.0.1"),
             port=port,
             docker_image=os.environ.get(
@@ -127,8 +194,60 @@ class GatewaySettings:
         return f"{self.public_base_url}/mcp"
 
     @property
-    def venv_root(self) -> Path:
+    def project_venv_link(self) -> Path:
         return self.repo_root / ".venv"
+
+    @property
+    def runtime_venv_root(self) -> Path:
+        return self.control_dir / "venv"
+
+    @property
+    def venv_root(self) -> Path:
+        """Return the trusted venv after deployment, or the bootstrap venv before it."""
+
+        if self.runtime_venv_root.is_dir():
+            return self.runtime_venv_root
+        return self.project_venv_link
+
+    @property
+    def runtime_releases_dir(self) -> Path:
+        return self.control_dir / "releases"
+
+    @property
+    def runtime_venvs_dir(self) -> Path:
+        return self.control_dir / "venvs"
+
+    @property
+    def runtime_home(self) -> Path:
+        return self.control_dir / "runtime-home"
+
+    @property
+    def runtime_current_dir(self) -> Path:
+        return self.control_dir / "current"
+
+    @property
+    def runtime_bin_dir(self) -> Path:
+        return self.control_dir / "bin"
+
+    @property
+    def runtime_version_path(self) -> Path:
+        return self.control_dir / "runtime-version"
+
+    @property
+    def trusted_git_dir(self) -> Path:
+        return self.control_dir / "repository.git"
+
+    @property
+    def trusted_git_home(self) -> Path:
+        return self.control_dir / "git-home"
+
+    @property
+    def trusted_queue_script(self) -> Path:
+        return self.runtime_bin_dir / "training_queue.sh"
+
+    @property
+    def trusted_queue_dir(self) -> Path:
+        return self.state_dir / "training-queue"
 
     @property
     def revision_workspace_dir(self) -> Path:
@@ -183,8 +302,18 @@ class GatewaySettings:
         return self.state_dir / "sandboxes"
 
     @property
+    def git_file_mask_path(self) -> Path:
+        return self.state_dir / "masked-git-file"
+
+    @property
+    def git_dir_mask_path(self) -> Path:
+        return self.state_dir / "masked-git-directory"
+
+    @property
     def git_mask_path(self) -> Path:
-        return self.state_dir / "masked-git-metadata"
+        """Compatibility alias for the exact-revision worktree ``.git`` file mask."""
+
+        return self.git_file_mask_path
 
     def ensure_state(self) -> None:
         """Create private state directories and high-entropy local secrets."""
@@ -194,6 +323,7 @@ class GatewaySettings:
             self.job_specs_dir,
             self.sandbox_jobs_dir,
             self.revision_workspace_dir,
+            self.trusted_queue_dir,
         ):
             directory.mkdir(mode=0o700, parents=True, exist_ok=True)
             os.chmod(directory, 0o700)
@@ -201,7 +331,7 @@ class GatewaySettings:
         try:
             descriptor = os.open(
                 self.owner_secret_path,
-                os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
                 0o600,
             )
         except FileExistsError:
@@ -211,15 +341,34 @@ class GatewaySettings:
                 stream.write(secrets.token_urlsafe(32))
                 stream.write("\n")
 
-        if not self.git_mask_path.exists():
+        if not self.git_file_mask_path.exists():
             descriptor = os.open(
-                self.git_mask_path,
-                os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                self.git_file_mask_path,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
                 0o400,
             )
             with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
-                stream.write("git metadata is intentionally unavailable in MCP sandboxes\n")
-        os.chmod(self.git_mask_path, 0o400)
+                stream.write(
+                    "git metadata is intentionally unavailable in MCP sandboxes\n"
+                )
+        os.chmod(self.git_file_mask_path, 0o400)
+
+        self.git_dir_mask_path.mkdir(mode=0o500, parents=True, exist_ok=True)
+        os.chmod(self.git_dir_mask_path, 0o500)
+
+    def ensure_control_directories(self) -> None:
+        """Create owner-only trusted control-plane directories."""
+
+        for directory in (
+            self.control_dir,
+            self.runtime_releases_dir,
+            self.runtime_venvs_dir,
+            self.runtime_bin_dir,
+            self.runtime_home,
+            self.trusted_git_home,
+        ):
+            directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+            os.chmod(directory, 0o700)
 
     def read_owner_secret(self) -> str:
         """Read the local owner secret without exposing it through MCP tools."""
