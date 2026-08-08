@@ -44,9 +44,13 @@ jobs:
       - name: Apply reviewed hardening
         run: python3 .github/scripts/wsl_mcp_followup.py apply
 
-      - name: Format and regenerate inventory
+      - name: Format, lint-fix, and regenerate inventory
         run: |
           uv run --locked ruff format \
+            src/automation/chatgpt_mcp \
+            tests/unit/automation/chatgpt_mcp \
+            tests/integration/chatgpt_mcp
+          uv run --locked ruff check --fix \
             src/automation/chatgpt_mcp \
             tests/unit/automation/chatgpt_mcp \
             tests/integration/chatgpt_mcp
