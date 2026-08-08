@@ -43,6 +43,7 @@ from src.synthetic_data_generation.configuration import (
     PLCSDatasetConfiguration,
 )
 from src.synthetic_data_generation.dataset.blcs.contracts import (
+    BLCS_DATASET_SCHEMA,
     BLCSTrack,
     BLCSTrajectory,
 )
@@ -70,7 +71,10 @@ from src.synthetic_data_generation.dataset.plcs.assembler import PLCS_DATASET_SC
 from src.synthetic_data_generation.dataset.plcs.components.avatar_asset import (
     AvatarGaussianAsset,
 )
-from src.synthetic_data_generation.dataset.plcs.composition import AvatarAppearance
+from src.synthetic_data_generation.dataset.plcs.composition import (
+    AvatarAppearance,
+    PLCSAvatarFrameTensors,
+)
 from src.synthetic_data_generation.dataset.plcs.execution import PLCSPreparedAvatar
 from src.synthetic_data_generation.dataset.plcs.handler import PLCSStageHandler
 from src.synthetic_data_generation.dataset.plcs.rendering import (
@@ -84,6 +88,7 @@ from src.synthetic_data_generation.dataset.runtime import (
     sparse_delta_from_composite,
 )
 from src.synthetic_data_generation.pipeline import (
+    CanonicalStageHandlers,
     DatasetTarget,
     IngestStageHandler,
     ReportStageHandler,
@@ -94,7 +99,6 @@ from src.synthetic_data_generation.pipeline import (
     StageStatus,
     canonical_registry,
 )
-from src.synthetic_data_generation.pipeline.contracts import StageHandler
 from src.synthetic_data_generation.reconstruction import NHTReconstructionHandler
 from src.synthetic_data_generation.reconstruction.scene_export import (
     StandardSceneExport,
@@ -242,14 +246,14 @@ class _CPUAvatar:
     def frame_tensors_batch(
         self,
         source_frame_indices: tuple[int, ...],
-    ) -> dict[int, GaussianTensorSet]:
-        result = {}
+    ) -> dict[int, PLCSAvatarFrameTensors]:
+        result: dict[int, PLCSAvatarFrameTensors] = {}
         count = self.semantic_asset.gaussian_count
         for frame_index in source_frame_indices:
             means = torch.zeros((count, 3), dtype=torch.float32)
             means[:, 2] = 1.0
             means[-1, 0] = 0.08 + 0.04 * frame_index
-            result[frame_index] = GaussianTensorSet(
+            gaussians = GaussianTensorSet(
                 means=means,
                 quaternions_wxyz=torch.tensor(
                     ((1.0, 0.0, 0.0, 0.0),) * count,
@@ -264,6 +268,15 @@ class _CPUAvatar:
                 coordinates=GaussianCoordinates.asset_local_metres(),
                 appearance_model=self.semantic_asset.appearance_model,
                 appearance_space=self.semantic_asset.appearance_space,
+            )
+            joints = torch.zeros((52, 3), dtype=torch.float32)
+            joints[:, 0] = torch.linspace(-0.2, 0.2, 52)
+            joints[:, 1] = torch.linspace(-0.1, 0.1, 52)
+            joints[:, 2] = 1.0
+            joints[1:, 0] += 0.01 * frame_index
+            result[frame_index] = PLCSAvatarFrameTensors(
+                gaussians=gaussians,
+                joints_m=joints,
             )
         return result
 
@@ -404,7 +417,7 @@ def test_real_domain_handlers_publish_and_recover_through_fake_nht_only(
     fixture = _Fixture.create(tmp_path)
 
     first = fixture.runner(rgb_value=0.1)
-    _assert_real_handler_composition(first.handlers)
+    _assert_real_handler_composition(first)
     first_manifest = first.run(fixture.request(from_stage=StageName.INGEST))
 
     assert all(
@@ -480,12 +493,14 @@ def test_real_domain_handlers_publish_and_recover_through_fake_nht_only(
     assert failed_stages["plcs_dataset"]["status"] == "failed"
     assert failed_stages["report"]["status"] == "invalidated"
     plcs_root = first.workspace.root / "datasets/plcs"
-    assert not (plcs_root / "dataset.json").exists()
-    assert not (plcs_root / "backgrounds").exists()
-    assert not (plcs_root / "scenes").exists()
+    assert (plcs_root / "dataset.json").is_file()
+    assert (plcs_root / "backgrounds").is_dir()
+    assert (plcs_root / "scenes").is_dir()
+    assert _first_rgb_value(plcs_root) == pytest.approx(0.3)
     assert not (plcs_root / "chunks").exists()
     assert not (plcs_root / "staging").exists()
     assert not tuple(plcs_root.rglob("partial.tmp"))
+    assert not tuple(first.workspace.transaction_root.rglob("partial.tmp"))
     assert not (first.workspace.root / "report/report.json").exists()
 
     retry = fixture.runner(rgb_value=0.4)
@@ -617,15 +632,15 @@ class _Fixture:
             parameters=self.plcs_configuration.build_stage_parameters(seed=695),
             execution_backend=self.plcs_backend,
         )
-        handlers: dict[str, StageHandler] = {
-            "ingest": IngestStageHandler(),
-            "nht_reconstruction": NHTReconstructionHandler(
+        handlers = CanonicalStageHandlers(
+            ingest=IngestStageHandler(),
+            reconstruction=NHTReconstructionHandler(
                 executable=self.reconstruct_executable,
                 environment={},
                 timeout_seconds=180.0,
             ),
-            "alignment": self.alignment,
-            "court_dataset": CourtDatasetStageHandler(
+            alignment=self.alignment,
+            court_dataset=CourtDatasetStageHandler(
                 configuration=self.court_configuration,
                 profile="train",
                 renderer=CourtNHTRenderer(
@@ -635,7 +650,7 @@ class _Fixture:
                     timeout_seconds=180.0,
                 ),
             ),
-            "blcs_dataset": BLCSDatasetStageHandler(
+            blcs_dataset=BLCSDatasetStageHandler(
                 workspace=self.workspace,
                 configuration=self.blcs_configuration,
                 camera_configuration=self.camera_configuration,
@@ -655,8 +670,8 @@ class _Fixture:
                     test_cpu_oracle=_BLCSCPUOracle(),
                 ),
             ),
-            "plcs_dataset": plcs_handler,
-            "report": ReportStageHandler(
+            plcs_dataset=plcs_handler,
+            report=ReportStageHandler(
                 alignment_directory=self.workspace.root / "alignment",
                 dataset_manifests={
                     target: self.workspace.root
@@ -666,11 +681,10 @@ class _Fixture:
                     for target in DatasetTarget
                 },
             ),
-        }
+        )
         return ScenePipelineRunner(
             workspace=self.workspace,
-            registry=canonical_registry(),
-            handlers=handlers,
+            registry=canonical_registry(handlers),
             resolved_config_yaml=(
                 "schema: canonical_scene_pipeline_v1\n"
                 "request:\n"
@@ -680,26 +694,24 @@ class _Fixture:
         )
 
 
-def _assert_real_handler_composition(handlers: Mapping[str, StageHandler]) -> None:
-    assert isinstance(handlers["ingest"], IngestStageHandler)
-    assert isinstance(handlers["nht_reconstruction"], NHTReconstructionHandler)
-    assert isinstance(handlers["alignment"], AlignmentStageHandler)
-    assert isinstance(handlers["court_dataset"], CourtDatasetStageHandler)
-    assert isinstance(handlers["blcs_dataset"], BLCSDatasetStageHandler)
-    assert isinstance(handlers["plcs_dataset"], PLCSStageHandler)
-    assert isinstance(handlers["report"], ReportStageHandler)
-    assert isinstance(
-        cast(CourtDatasetStageHandler, handlers["court_dataset"]).renderer,
-        CourtNHTRenderer,
-    )
-    assert isinstance(
-        cast(BLCSDatasetStageHandler, handlers["blcs_dataset"]).renderer,
-        BLCSNHTRenderer,
-    )
-    assert isinstance(
-        handlers["plcs_dataset"].renderer,
-        NHTPLCSRenderer,
-    )
+def _assert_real_handler_composition(runner: ScenePipelineRunner) -> None:
+    ingest = runner.registry.definition(StageName.INGEST).handler
+    reconstruction = runner.registry.definition(StageName.RECONSTRUCTION).handler
+    alignment = runner.registry.definition(StageName.ALIGNMENT).handler
+    court = runner.registry.definition(StageName.COURT_DATASET).handler
+    blcs = runner.registry.definition(StageName.BLCS_DATASET).handler
+    plcs = runner.registry.definition(StageName.PLCS_DATASET).handler
+    report = runner.registry.definition(StageName.REPORT).handler
+    assert isinstance(ingest, IngestStageHandler)
+    assert isinstance(reconstruction, NHTReconstructionHandler)
+    assert isinstance(alignment, AlignmentStageHandler)
+    assert isinstance(court, CourtDatasetStageHandler)
+    assert isinstance(blcs, BLCSDatasetStageHandler)
+    assert isinstance(plcs, PLCSStageHandler)
+    assert isinstance(report, ReportStageHandler)
+    assert isinstance(court.renderer, CourtNHTRenderer)
+    assert isinstance(blcs.renderer, BLCSNHTRenderer)
+    assert isinstance(plcs.renderer, NHTPLCSRenderer)
 
 
 def _assert_published_domains(
@@ -713,7 +725,7 @@ def _assert_published_domains(
             "diagnostics/semantic-manifest.json",
         ),
         DatasetTarget.BLCS: (
-            "canonical_blcs_compact_dataset_v1",
+            BLCS_DATASET_SCHEMA,
             "diagnostics/metrics.json",
         ),
         DatasetTarget.PLCS: (
@@ -944,7 +956,7 @@ def _avatar_surface(count: int) -> AvatarGaussianAsset:
 
 def _write_motion_library(root: Path) -> tuple[ACCADMotionLibrary, Path]:
     root.mkdir(parents=True)
-    paths = {}
+    paths: dict[MotionCategory | str, tuple[Path, ...]] = {}
     for index, category in enumerate(MotionCategory):
         path = root / f"{category.value}_poses.npz"
         poses: NDArray[np.float32] = np.zeros((2, 156), dtype=np.float32)
@@ -1222,7 +1234,8 @@ args = parser.parse_args()
 scene = json.loads(Path(args.scene).read_text(encoding="utf-8"))
 request = json.loads(Path(args.cameras).read_text(encoding="utf-8")) if args.cameras else {{"cameras": []}}
 output = Path(args.output)
-domain = next((parts for parts in ("court", "blcs", "plcs") if f"/datasets/{{parts}}/" in output.as_posix()), "unknown")
+output_path = output.as_posix()
+domain = next((parts for parts in ("court", "blcs", "plcs") if f"/datasets/{{parts}}/" in output_path or f"/.transactions/{{parts}}_dataset/" in output_path), "unknown")
 failure = os.environ.get("FAKE_NHT_FAIL_DOMAIN", "") == domain
 with Path({str(log_path)!r}).open("a", encoding="utf-8") as handle:
     handle.write(json.dumps({{"command": "nht-render", "domain": domain, "failure": failure}}, sort_keys=True) + "\\n")
