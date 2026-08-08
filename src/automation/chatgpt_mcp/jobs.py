@@ -1,4 +1,4 @@
-"""Durable, exact-revision Docker jobs and `.training_queue` admission."""
+"""Flexible tennis-lab execution inside a host-bounded Docker sandbox."""
 
 from __future__ import annotations
 
@@ -11,11 +11,10 @@ import secrets
 import shlex
 import stat
 import subprocess
-import sys
 import threading
 import time
-from pathlib import Path
-from typing import Any, Protocol
+from pathlib import Path, PurePosixPath
+from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -28,12 +27,24 @@ _WORKSPACE_ID = re.compile(r"^rev-[a-f0-9]{16}$")
 _SHA = re.compile(r"^[0-9a-f]{40}$")
 _TRAINING_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
 _QUEUE_FILE = re.compile(r"^[A-Za-z0-9._-]{1,240}\.job$")
-_DIRECT_COMMAND_MAX_SECONDS = 30 * 60
-_MAX_CONCURRENT_DIRECT_JOBS = 2
+_DIRECT_COMMAND_MAX_SECONDS = 24 * 3600
+_MAX_CONCURRENT_DIRECT_JOBS = 4
 _JOB_METADATA_TTL_SECONDS = 30 * 24 * 3600
 _TRAINING_METADATA_TTL_SECONDS = 90 * 24 * 3600
 _COMMAND_FILE_NAME = "command"
 _COMMAND_MOUNT_PATH = "/run/tennis-mcp-command"
+_PROJECT_MOUNT_PATH = "/tennis-lab"
+_REVISION_MOUNT_PATH = "/workspace"
+_PERSISTENT_PROJECT_ROOTS = (
+    "data",
+    "outputs",
+    "ckpt",
+    "checkpoints",
+    "artifacts",
+    ".cache",
+    "third_party",
+    ".training_queue",
+)
 
 _SECRET_PATTERNS = (
     re.compile(r"\bsk-[A-Za-z0-9_-]{16,}\b"),
@@ -43,12 +54,10 @@ _SECRET_PATTERNS = (
 
 
 class ExecutionWorkspaceResolver(Protocol):
-    """Minimal exact-revision resolver required by the execution plane."""
-
     def assert_execution_ready(
         self, *, workspace_id: str, expected_sha: str
     ) -> RevisionWorkspace:
-        """Return a clean source workspace bound to the supplied SHA."""
+        """Return a clean trusted source workspace bound to the supplied SHA."""
         ...
 
 
@@ -56,24 +65,44 @@ class JobError(RuntimeError):
     """Raised for invalid job state or a failed sandbox operation."""
 
 
+def _normalize_working_directory(value: str) -> str:
+    if "\x00" in value or "\\" in value:
+        raise ValueError("working_directory must be a relative POSIX path")
+    stripped = value.strip()
+    if stripped in {"", "."}:
+        return "."
+    path = PurePosixPath(stripped)
+    if path.is_absolute() or ".." in path.parts:
+        raise ValueError("working_directory may not escape the selected execution root")
+    normalized = str(path)
+    if len(normalized) > 500:
+        raise ValueError("working_directory is too long")
+    return normalized
+
+
 class SandboxSpec(BaseModel):
-    """Private execution contract for one exact, immutable source revision."""
+    """Private contract for one command inside a project-bounded container."""
 
     job_id: str = Field(pattern=_JOB_ID.pattern)
-    command: str = Field(min_length=1, max_length=100_000)
+    command: str = Field(min_length=1, max_length=200_000)
     workspace_id: str = Field(pattern=_WORKSPACE_ID.pattern)
     expected_sha: str = Field(pattern=_SHA.pattern)
+    execution_root: Literal["revision", "project"] = "revision"
+    working_directory: str = "."
     use_gpu: bool = False
     timeout_seconds: int = Field(default=900, ge=1, le=7 * 24 * 3600)
 
     @field_validator("command")
     @classmethod
     def reject_nul_command(cls, value: str) -> str:
-        """Reject the one byte that cannot be represented in a shell command."""
-
         if "\x00" in value:
             raise ValueError("command may not contain NUL")
         return value
+
+    @field_validator("working_directory")
+    @classmethod
+    def validate_working_directory(cls, value: str) -> str:
+        return _normalize_working_directory(value)
 
 
 def _redact_secrets(value: str) -> str:
@@ -87,11 +116,19 @@ def _command_digest(command: str) -> str:
     return hashlib.sha256(command.encode("utf-8")).hexdigest()
 
 
-def _safe_mount(path: Path, target: str, *, read_only: bool) -> str:
+def _safe_mount(
+    path: Path,
+    target: str,
+    *,
+    read_only: bool,
+    recursive: bool = True,
+) -> str:
     source = path.resolve()
     if "," in str(source) or "," in target:
         raise JobError("Docker bind mount paths may not contain commas")
     value = f"type=bind,src={source},dst={target}"
+    if not recursive:
+        value += ",bind-recursive=disabled"
     if read_only:
         value += ",readonly"
     return value
@@ -115,7 +152,7 @@ def _write_private_file(path: Path, value: str) -> None:
 
 
 class DockerSandbox:
-    """Run one copied revision without host credentials, Git metadata, or network."""
+    """Expose all of tennis-lab RW while keeping the host control plane outside."""
 
     def __init__(
         self,
@@ -124,6 +161,31 @@ class DockerSandbox:
     ) -> None:
         self.settings = settings
         self.workspaces = workspaces
+
+    def execution_layout(self) -> dict[str, Any]:
+        return {
+            "revision_root": _REVISION_MOUNT_PATH,
+            "project_root": _PROJECT_MOUNT_PATH,
+            "default_root": "revision",
+            "project_access": "read-write; all files below tennis-lab are destructible",
+            "revision_access": (
+                "private read-write copy of the exact remote revision; standard data, "
+                "output, checkpoint, artifact, cache, third_party, and queue roots link "
+                "to the read-write project tree"
+            ),
+            "network": "disabled",
+            "gpu": "available only through the serial training queue",
+            "direct_timeout_max_seconds": _DIRECT_COMMAND_MAX_SECONDS,
+            "direct_concurrency": _MAX_CONCURRENT_DIRECT_JOBS,
+            "persistent_roots": list(_PERSISTENT_PROJECT_ROOTS),
+            "host_boundaries": [
+                "Docker socket is not mounted",
+                "Windows /mnt/c is not mounted",
+                "Git metadata is masked",
+                "MCP runtime, venv, tunnel credentials, trusted Git mirror, queue runner, "
+                "and systemd units remain outside tennis-lab",
+            ],
+        }
 
     def container_name(self, job_id: str) -> str:
         if not _JOB_ID.fullmatch(job_id):
@@ -150,6 +212,38 @@ class DockerSandbox:
     def _command_file(self, job_id: str) -> Path:
         return self.settings.sandbox_jobs_dir / job_id / _COMMAND_FILE_NAME
 
+    def _wrapper(self, spec: SandboxSpec) -> str:
+        selected_root = (
+            _REVISION_MOUNT_PATH
+            if spec.execution_root == "revision"
+            else _PROJECT_MOUNT_PATH
+        )
+        roots = " ".join(shlex.quote(root) for root in _PERSISTENT_PROJECT_ROOTS)
+        working_directory = shlex.quote(spec.working_directory)
+        venv = shlex.quote(str(self.settings.runtime_venv_root))
+        return (
+            "set -euo pipefail; "
+            "mkdir -p /tmp/tennis-mcp-home /workspace /artifacts/repro; "
+            "cp -a /source/. /workspace/; "
+            "rm -rf /workspace/.git /workspace/.venv; "
+            f"ln -s {venv} /workspace/.venv; "
+            f"for name in {roots}; do "
+            'project_path="/tennis-lab/$name"; '
+            'if [ ! -e "$project_path" ] && [ ! -L "$project_path" ]; then '
+            'mkdir -p "$project_path"; fi; '
+            'if [ ! -d "$project_path" ]; then '
+            'echo "persistent project root is not a directory: $project_path" >&2; '
+            "exit 64; fi; "
+            'rm -rf "/workspace/$name"; '
+            'ln -s "$project_path" "/workspace/$name"; '
+            "done; "
+            f"cd {shlex.quote(selected_root)}; "
+            f"cd -- {working_directory}; "
+            f'command="$(cat {_COMMAND_MOUNT_PATH})"; '
+            "exec /usr/bin/timeout --signal=TERM --kill-after=30s "
+            f'{spec.timeout_seconds} /bin/bash -lc "$command"'
+        )
+
     def command(self, spec: SandboxSpec, *, detached: bool) -> list[str]:
         """Materialize a private command file and return secret-free Docker argv."""
 
@@ -158,25 +252,18 @@ class DockerSandbox:
             expected_sha=spec.expected_sha,
         )
         self.settings.ensure_state()
-        if not self.settings.venv_root.is_dir():
+        if not self.settings.runtime_venv_root.is_dir():
             raise JobError(
-                f"repository virtual environment is missing: {self.settings.venv_root}"
+                f"trusted runtime virtual environment is missing: "
+                f"{self.settings.runtime_venv_root}"
             )
         if not self.settings.uv_python_root.is_dir():
-            raise JobError(f"uv Python runtime is missing: {self.settings.uv_python_root}")
+            raise JobError(
+                f"uv Python runtime is missing: {self.settings.uv_python_root}"
+            )
         _, workspace_copy, artifacts, command_path = self._job_directories(spec.job_id)
         _write_private_file(command_path, spec.command)
 
-        wrapper = (
-            "set -euo pipefail; "
-            "mkdir -p /tmp/tennis-mcp-home /workspace /artifacts/repro; "
-            "cp -a /source/. /workspace/; "
-            "rm -rf /workspace/.git; "
-            "cd /workspace; "
-            f"command=\"$(cat {_COMMAND_MOUNT_PATH})\"; "
-            f"exec /usr/bin/timeout --signal=TERM --kill-after=30s "
-            f"{spec.timeout_seconds} /bin/bash -lc \"$command\""
-        )
         arguments = [
             "docker",
             "run",
@@ -186,6 +273,8 @@ class DockerSandbox:
             "tennis-lab.mcp=true",
             "--label",
             f"tennis-lab.revision={spec.expected_sha}",
+            "--label",
+            f"tennis-lab.execution-root={spec.execution_root}",
             "--user",
             f"{os.getuid()}:{os.getgid()}",
             "--cap-drop",
@@ -206,11 +295,23 @@ class DockerSandbox:
             "--pull",
             "never",
             "--workdir",
-            "/workspace",
+            _REVISION_MOUNT_PATH,
             "--tmpfs",
             "/tmp:rw,nosuid,nodev,size=8g,mode=1777",
             "--env",
             "HOME=/tmp/tennis-mcp-home",
+            "--env",
+            "TMPDIR=/tmp",
+            "--env",
+            "XDG_CACHE_HOME=/tennis-lab/.cache",
+            "--env",
+            "HF_HOME=/tennis-lab/.cache/huggingface",
+            "--env",
+            "TORCH_HOME=/tennis-lab/.cache/torch",
+            "--env",
+            "MPLCONFIGDIR=/tennis-lab/.cache/matplotlib",
+            "--env",
+            "WANDB_DIR=/tennis-lab/outputs/wandb",
             "--env",
             "PYTHONUNBUFFERED=1",
             "--env",
@@ -222,10 +323,10 @@ class DockerSandbox:
             "--env",
             "GIT_CONFIG_GLOBAL=/dev/null",
             "--env",
-            f"VIRTUAL_ENV={self.settings.venv_root}",
+            f"VIRTUAL_ENV={self.settings.runtime_venv_root}",
             "--env",
             (
-                f"PATH={self.settings.venv_root / 'bin'}:"
+                f"PATH={self.settings.runtime_venv_root / 'bin'}:"
                 "/usr/local/bin:/usr/bin:/bin"
             ),
             "--env",
@@ -235,15 +336,22 @@ class DockerSandbox:
             "--mount",
             _safe_mount(source.path, "/source", read_only=True),
             "--mount",
-            _safe_mount(workspace_copy, "/workspace", read_only=False),
+            _safe_mount(workspace_copy, _REVISION_MOUNT_PATH, read_only=False),
+            "--mount",
+            _safe_mount(
+                self.settings.repo_root,
+                _PROJECT_MOUNT_PATH,
+                read_only=False,
+                recursive=False,
+            ),
             "--mount",
             _safe_mount(artifacts, "/artifacts", read_only=False),
             "--mount",
             _safe_mount(command_path, _COMMAND_MOUNT_PATH, read_only=True),
             "--mount",
             _safe_mount(
-                self.settings.venv_root,
-                str(self.settings.venv_root),
+                self.settings.runtime_venv_root,
+                str(self.settings.runtime_venv_root),
                 read_only=True,
             ),
             "--mount",
@@ -253,7 +361,17 @@ class DockerSandbox:
                 read_only=True,
             ),
             "--mount",
-            _safe_mount(self.settings.git_mask_path, "/source/.git", read_only=True),
+            _safe_mount(
+                self.settings.git_file_mask_path,
+                "/source/.git",
+                read_only=True,
+            ),
+            "--mount",
+            _safe_mount(
+                self.settings.git_dir_mask_path,
+                f"{_PROJECT_MOUNT_PATH}/.git",
+                read_only=True,
+            ),
         ]
         if detached:
             arguments.append("--detach")
@@ -264,7 +382,7 @@ class DockerSandbox:
                 self.settings.docker_image,
                 "/bin/bash",
                 "-lc",
-                wrapper,
+                self._wrapper(spec),
             ]
         )
         return arguments
@@ -283,7 +401,9 @@ class DockerSandbox:
         finally:
             command_path.unlink(missing_ok=True)
         if result.returncode != 0:
-            raise JobError(_redact_secrets(result.stderr.strip()) or "docker run failed")
+            raise JobError(
+                _redact_secrets(result.stderr.strip()) or "docker run failed"
+            )
         return result.stdout.strip()
 
     def run_foreground(self, spec: SandboxSpec) -> int:
@@ -331,10 +451,15 @@ class DockerSandbox:
             timeout=30,
         )
         if result.returncode != 0:
-            raise JobError(_redact_secrets(result.stderr.strip()) or "docker logs failed")
+            raise JobError(
+                _redact_secrets(result.stderr.strip()) or "docker logs failed"
+            )
         return _redact_secrets((result.stdout + result.stderr)[-200_000:])
 
     def stop(self, job_id: str) -> None:
+        state = self.inspect(job_id)
+        if not state["running"]:
+            return
         result = subprocess.run(
             ["docker", "stop", "--time", "10", self.container_name(job_id)],
             text=True,
@@ -343,11 +468,13 @@ class DockerSandbox:
             timeout=30,
         )
         if result.returncode != 0:
-            raise JobError(_redact_secrets(result.stderr.strip()) or "docker stop failed")
+            raise JobError(
+                _redact_secrets(result.stderr.strip()) or "docker stop failed"
+            )
 
 
 class JobManager:
-    """Create and observe bounded, CPU-only direct validation jobs."""
+    """Create and observe flexible CPU-only project sandbox jobs."""
 
     def __init__(
         self,
@@ -379,12 +506,14 @@ class JobManager:
         command: str,
         workspace_id: str,
         expected_sha: str,
+        execution_root: Literal["revision", "project"],
+        working_directory: str,
         timeout_seconds: int,
     ) -> dict[str, Any]:
         if timeout_seconds > _DIRECT_COMMAND_MAX_SECONDS:
             raise JobError(
                 f"direct commands are limited to {_DIRECT_COMMAND_MAX_SECONDS} seconds; "
-                "use enqueue_training for GPU or long-running work"
+                "use enqueue_training for GPU or longer work"
             )
         job_id = self.new_job_id()
         spec = SandboxSpec(
@@ -392,17 +521,23 @@ class JobManager:
             command=command,
             workspace_id=workspace_id,
             expected_sha=expected_sha.lower(),
+            execution_root=execution_root,
+            working_directory=working_directory,
             use_gpu=False,
             timeout_seconds=timeout_seconds,
         )
         with self._admission_lock:
             if self._running_direct_jobs() >= _MAX_CONCURRENT_DIRECT_JOBS:
-                raise JobError("the maximum number of concurrent direct jobs is running")
+                raise JobError(
+                    "the maximum number of concurrent direct jobs is running"
+                )
             container_id = self.sandbox.start(spec)
         payload = {
             "job_id": job_id,
             "workspace_id": workspace_id,
             "revision": spec.expected_sha,
+            "execution_root": spec.execution_root,
+            "working_directory": spec.working_directory,
             "container_id": container_id,
             "command_sha256": _command_digest(command),
             "created_at": time.time(),
@@ -413,7 +548,12 @@ class JobManager:
             payload,
             expires_at=time.time() + _JOB_METADATA_TTL_SECONDS,
         )
-        return {"job_id": job_id, "status": "running", "revision": spec.expected_sha}
+        return {
+            "job_id": job_id,
+            "status": "running",
+            "revision": spec.expected_sha,
+            "execution_root": spec.execution_root,
+        }
 
     def get(self, job_id: str) -> dict[str, Any]:
         payload = self.store.get("jobs", job_id)
@@ -433,9 +573,15 @@ class JobManager:
             summaries.append({**payload, **state})
         return summaries
 
+    def cancel(self, job_id: str) -> dict[str, str]:
+        if self.store.get("jobs", job_id) is None:
+            raise JobError("job id was not found")
+        self.sandbox.stop(job_id)
+        return {"job_id": job_id, "status": "stopped"}
+
 
 class TrainingQueueManager:
-    """Queue all GPU experiments through the repository's serial training queue."""
+    """Queue every GPU command through an external trusted serial queue runner."""
 
     def __init__(
         self,
@@ -447,16 +593,18 @@ class TrainingQueueManager:
         self.store = store
         self.workspaces = workspaces
         self.sandbox = DockerSandbox(settings, workspaces)
-        self.queue_script = (
-            settings.repo_root
-            / ".agents/skills/training-queue/scripts/training_queue.sh"
-        )
-        self.queue_dir = settings.repo_root / ".training_queue"
+        self.queue_script = settings.trusted_queue_script
+        self.queue_dir = settings.trusted_queue_dir
 
     def _queue_environment(self) -> dict[str, str]:
-        environment = os.environ.copy()
-        environment["TRAINING_QUEUE_DIR"] = str(self.queue_dir)
-        return environment
+        return {
+            "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
+            "HOME": str(self.settings.control_dir),
+            "TRAINING_QUEUE_DIR": str(self.queue_dir),
+            "TRAINING_QUEUE_PYTHON": str(
+                self.settings.runtime_venv_root / "bin/python"
+            ),
+        }
 
     def enqueue(
         self,
@@ -465,9 +613,13 @@ class TrainingQueueManager:
         command: str,
         workspace_id: str,
         expected_sha: str,
+        execution_root: Literal["revision", "project"],
+        working_directory: str,
         issue: int | None,
         timeout_seconds: int,
     ) -> dict[str, Any]:
+        if not self.queue_script.is_file():
+            raise JobError(f"trusted queue runner is missing: {self.queue_script}")
         if not _TRAINING_NAME.fullmatch(name):
             raise JobError(
                 "training name must start with an alphanumeric character and use "
@@ -486,15 +638,18 @@ class TrainingQueueManager:
             command=command,
             workspace_id=workspace_id,
             expected_sha=expected_sha.lower(),
+            execution_root=execution_root,
+            working_directory=working_directory,
             use_gpu=True,
             timeout_seconds=timeout_seconds,
         )
         spec_path = self.settings.job_specs_dir / f"{job_id}.json"
         _write_private_file(spec_path, spec.model_dump_json(indent=2) + "\n")
 
+        runtime_root = self.settings.runtime_current_dir
         bootstrap = (
             "import sys; from pathlib import Path; "
-            f"sys.path.insert(0, {str(self.settings.repo_root)!r}); "
+            f"sys.path.insert(0, {str(runtime_root)!r}); "
             "from src.automation.chatgpt_mcp.sandbox_exec import run_from_spec; "
             "raise SystemExit(run_from_spec(Path(sys.argv[1])))"
         )
@@ -502,9 +657,11 @@ class TrainingQueueManager:
             "env",
             f"TENNIS_MCP_REPO_ROOT={self.settings.repo_root}",
             f"TENNIS_MCP_STATE_DIR={self.settings.state_dir}",
+            f"TENNIS_MCP_CONTROL_DIR={self.settings.control_dir}",
+            f"TENNIS_MCP_ORIGIN_URL={self.settings.origin_url}",
             f"TENNIS_MCP_DOCKER_IMAGE={self.settings.docker_image}",
             f"TENNIS_MCP_UV_PYTHON_ROOT={self.settings.uv_python_root}",
-            sys.executable,
+            str(self.settings.runtime_venv_root / "bin/python"),
             "-I",
             "-c",
             bootstrap,
@@ -554,6 +711,8 @@ class TrainingQueueManager:
             "issue": issue,
             "workspace_id": workspace_id,
             "revision": spec.expected_sha,
+            "execution_root": spec.execution_root,
+            "working_directory": spec.working_directory,
             "queue_file": queue_file,
             "command_sha256": _command_digest(command),
             "created_at": time.time(),
@@ -570,12 +729,13 @@ class TrainingQueueManager:
             "queue_file": queue_file,
             "status": "queued",
             "revision": spec.expected_sha,
+            "execution_root": spec.execution_root,
         }
 
     def _start_worker(self) -> None:
         result = subprocess.run(
             ["bash", str(self.queue_script), "start", "--idle-timeout", "30"],
-            cwd=self.settings.repo_root,
+            cwd=self.settings.control_dir,
             env=self._queue_environment(),
             text=True,
             capture_output=True,
@@ -589,19 +749,22 @@ class TrainingQueueManager:
                 or "training queue worker failed to start"
             )
 
+    def _queue_locations(self, queue_file: str) -> dict[str, Path]:
+        return {
+            "queued": self.queue_dir / "jobs" / queue_file,
+            "running": self.queue_dir / "running" / queue_file,
+            "succeeded": self.queue_dir / "done" / queue_file,
+            "failed": self.queue_dir / "failed" / queue_file,
+            "cancelled": self.queue_dir / "cancelled" / queue_file,
+        }
+
     def status(self, job_id: str) -> dict[str, Any]:
         payload = self.store.get("training_jobs", job_id)
         if payload is None:
             raise JobError("training job id was not found")
         queue_file = str(payload["queue_file"])
-        locations = {
-            "queued": self.queue_dir / "jobs" / queue_file,
-            "running": self.queue_dir / "running" / queue_file,
-            "succeeded": self.queue_dir / "done" / queue_file,
-            "failed": self.queue_dir / "failed" / queue_file,
-        }
         queue_status = "unknown"
-        for candidate_status, path in locations.items():
+        for candidate_status, path in self._queue_locations(queue_file).items():
             if path.exists():
                 queue_status = candidate_status
                 break
@@ -621,7 +784,43 @@ class TrainingQueueManager:
                 )
         return result
 
+    def list(self, *, limit: int = 50) -> list[dict[str, Any]]:
+        return [
+            self.status(str(payload["job_id"]))
+            for payload in self.store.list("training_jobs", limit=limit)
+        ]
+
+    def cancel(self, job_id: str) -> dict[str, str]:
+        payload = self.store.get("training_jobs", job_id)
+        if payload is None:
+            raise JobError("training job id was not found")
+        queue_file = str(payload["queue_file"])
+        locations = self._queue_locations(queue_file)
+        cancelled_dir = locations["cancelled"].parent
+        cancelled_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+
+        if locations["queued"].is_file():
+            os.replace(locations["queued"], locations["cancelled"])
+            (self.settings.job_specs_dir / f"{job_id}.json").unlink(missing_ok=True)
+            payload["cancelled_at"] = time.time()
+            self.store.put(
+                "training_jobs",
+                job_id,
+                payload,
+                expires_at=time.time() + _TRAINING_METADATA_TTL_SECONDS,
+            )
+            return {"job_id": job_id, "status": "cancelled"}
+
+        if locations["running"].is_file():
+            with contextlib.suppress(JobError):
+                self.sandbox.stop(job_id)
+            return {"job_id": job_id, "status": "cancellation-requested"}
+
+        return {"job_id": job_id, "status": self.status(job_id)["status"]}
+
     def logs(self, job_id: str, *, tail: int = 400) -> str:
+        if not 1 <= tail <= 5000:
+            raise JobError("tail must be between 1 and 5000")
         payload = self.store.get("training_jobs", job_id)
         if payload is None:
             raise JobError("training job id was not found")
@@ -634,7 +833,7 @@ class TrainingQueueManager:
 
 
 def execute_sandbox_spec(settings: GatewaySettings, spec_path: Path) -> int:
-    """Execute one owner-only spec through the exact-revision Docker sandbox."""
+    """Execute one owner-only spec through the project-bounded Docker sandbox."""
 
     resolved = spec_path.resolve()
     specs_root = settings.job_specs_dir.resolve()
@@ -651,7 +850,7 @@ def execute_sandbox_spec(settings: GatewaySettings, spec_path: Path) -> int:
         spec = SandboxSpec.model_validate_json(resolved.read_text(encoding="utf-8"))
         store = SqliteStore(settings.database_path)
         workspaces = WorkspaceManager(
-            settings.repo_root,
+            settings.trusted_git_dir,
             settings.revision_workspace_dir,
             store,
         )

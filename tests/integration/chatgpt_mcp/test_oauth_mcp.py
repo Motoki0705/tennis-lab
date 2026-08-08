@@ -18,6 +18,7 @@ pytestmark = pytest.mark.integration
 
 _EXPECTED_TOOLS = {
     "get_host_status",
+    "get_execution_layout",
     "prepare_revision_workspace",
     "get_revision_status",
     "start_command",
@@ -27,7 +28,9 @@ _EXPECTED_TOOLS = {
     "cancel_command_job",
     "enqueue_training",
     "get_training_job",
+    "list_training_jobs",
     "get_training_output",
+    "cancel_training_job",
 }
 
 
@@ -35,12 +38,16 @@ def _settings(tmp_path: Path) -> GatewaySettings:
     repo = tmp_path / "repo"
     repo.mkdir()
     subprocess.run(["git", "init", "-q", str(repo)], check=True)
-    (repo / ".venv/bin").mkdir(parents=True)
+    control = tmp_path / "control"
+    (control / "venv/bin").mkdir(parents=True)
+    (control / "current").mkdir()
+    (control / "repository.git").mkdir()
     uv_root = tmp_path / "uv-python"
     uv_root.mkdir()
     settings = GatewaySettings(
         repo_root=repo,
         state_dir=tmp_path / "state",
+        control_dir=control,
         public_base_url="https://mcp.example.test",
         uv_python_root=uv_root,
     )
@@ -180,8 +187,7 @@ def test_oauth_discovery_token_and_reduced_tool_surface(tmp_path: Path) -> None:
     assert advertised["start_command"]["annotations"]["destructiveHint"] is True
     assert advertised["enqueue_training"]["annotations"]["destructiveHint"] is True
     assert (
-        advertised["start_command"]["_meta"]["securitySchemes"][0]["type"]
-        == "oauth2"
+        advertised["start_command"]["_meta"]["securitySchemes"][0]["type"] == "oauth2"
     )
 
 
@@ -199,8 +205,12 @@ def test_private_tunnel_mode_uses_loopback_without_oauth(tmp_path: Path) -> None
         service = client.get("/")
         assert service.status_code == 200
         assert service.json()["authentication"] == "OpenAI Secure MCP Tunnel"
-        assert service.json()["role"] == "exact-revision execution and GPU validation only"
-        assert client.get("/.well-known/oauth-protected-resource/mcp").status_code == 404
+        assert service.json()["role"] == (
+            "arbitrary tennis-lab execution, validation, and GPU training"
+        )
+        assert (
+            client.get("/.well-known/oauth-protected-resource/mcp").status_code == 404
+        )
 
         initialize = client.post(
             "/mcp",
