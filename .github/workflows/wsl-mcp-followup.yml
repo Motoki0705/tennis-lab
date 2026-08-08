@@ -1,8 +1,8 @@
 name: WSL MCP final hardening
 
 on:
-  push:
-    branches: [feat/wsl-mcp-project-sandbox]
+  pull_request:
+    branches: [main]
     paths:
       - ".github/workflows/wsl-mcp-followup.yml"
       - ".github/scripts/wsl_mcp_followup.py"
@@ -11,17 +11,14 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  group: wsl-mcp-project-sandbox-followup-push
-  cancel-in-progress: false
-
 jobs:
   harden:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     steps:
-      - name: Checkout feature branch
+      - name: Checkout writable feature branch
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: feat/wsl-mcp-project-sandbox
@@ -71,4 +68,4 @@ jobs:
           git add -A
           git diff --cached --check
           git commit -m "fix(automation): harden project-bounded WSL execution"
-          git push --force-with-lease origin HEAD:feat/wsl-mcp-project-sandbox
+          git push origin HEAD:feat/wsl-mcp-project-sandbox
