@@ -44,7 +44,6 @@ __all__ = [
     "BaseRunConfig",
     "BaseTrainingConfig",
     "CheckpointConfig",
-    "ChunkDataConfig",
     "EarlyStoppingConfig",
     "GANConfig",
     "GANTransitionConfig",
@@ -130,16 +129,6 @@ _GAN_KEYS = frozenset(
 )
 _GAN_TRANSITION_KEYS = frozenset({"start_epoch"})
 _BASE_DATA_KEYS = frozenset({"scene_dir", "batch_size", "num_workers", "pin_memory"})
-_CHUNK_DATA_KEYS = frozenset({"chunk", "generator_device"})
-_CHUNK_KEYS = frozenset(
-    {
-        "scenes_per_chunk",
-        "epochs_per_chunk",
-        "prefetch_chunks",
-        "chunks_dir",
-        "generation_workers",
-    }
-)
 _TRAINER_PRECISIONS = frozenset(
     {
         "transformer-engine",
@@ -1234,94 +1223,6 @@ class BaseDataConfig:
         )
         _positive(result.batch_size, path="data.batch_size")
         _positive(result.num_workers, path="data.num_workers", allow_zero=True)
-        return result
-
-
-@dataclass(frozen=True, slots=True)
-class ChunkDataConfig:
-    """Shared generated-chunk settings, with an artifact-root derived directory."""
-
-    scenes_per_chunk: int
-    epochs_per_chunk: int
-    prefetch_chunks: int
-    chunks_dir: Path
-    generation_workers: int
-    generator_device: str
-
-    @classmethod
-    def from_validated_task_mapping(
-        cls,
-        value: object,
-        *,
-        resolver: PathResolver,
-    ) -> ChunkDataConfig:
-        """Parse the closed chunk projection of an exact task data mapping."""
-        task_data = as_config_mapping(value, path="data")
-        shared = dict(
-            _project_required_mapping(
-                task_data,
-                path="data",
-                keys=_CHUNK_DATA_KEYS,
-            )
-        )
-        shared["chunk"] = _project_required_mapping(
-            require_config_mapping(task_data, "chunk", path="data"),
-            path="data.chunk",
-            keys=_CHUNK_KEYS,
-        )
-        return cls.from_mapping(shared, resolver=resolver)
-
-    @classmethod
-    def from_mapping(cls, value: object, *, resolver: PathResolver) -> ChunkDataConfig:
-        data = exact_config_mapping(
-            value,
-            path="data",
-            required_keys=_CHUNK_DATA_KEYS,
-        )
-        chunk = exact_config_mapping(
-            require_config_mapping(data, "chunk", path="data"),
-            path="data.chunk",
-            required_keys=_CHUNK_KEYS,
-        )
-        chunks_dir = cast(
-            "str", require_config_value(chunk, "chunks_dir", str, path="data.chunk")
-        )
-        result = cls(
-            scenes_per_chunk=cast(
-                "int",
-                require_config_value(chunk, "scenes_per_chunk", int, path="data.chunk"),
-            ),
-            epochs_per_chunk=cast(
-                "int",
-                require_config_value(chunk, "epochs_per_chunk", int, path="data.chunk"),
-            ),
-            prefetch_chunks=cast(
-                "int",
-                require_config_value(chunk, "prefetch_chunks", int, path="data.chunk"),
-            ),
-            chunks_dir=resolver.resolve(PathRole.ARTIFACT, chunks_dir),
-            generation_workers=cast(
-                "int",
-                require_config_value(
-                    chunk, "generation_workers", int, path="data.chunk"
-                ),
-            ),
-            generator_device=cast(
-                "str", require_config_value(data, "generator_device", str, path="data")
-            ),
-        )
-        for field_name, field_value in (
-            ("scenes_per_chunk", result.scenes_per_chunk),
-            ("epochs_per_chunk", result.epochs_per_chunk),
-            ("generation_workers", result.generation_workers),
-        ):
-            _positive(field_value, path=f"data.chunk.{field_name}")
-        _positive(
-            result.prefetch_chunks,
-            path="data.chunk.prefetch_chunks",
-            allow_zero=True,
-        )
-        _non_empty(result.generator_device, path="data.generator_device")
         return result
 
 

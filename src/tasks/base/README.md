@@ -14,8 +14,6 @@
 ### data/
 - **`scene_dataset.py`**: `SceneDatasetBase`。シーンディレクトリ読込・window/camera選択・`build_sample()`拡張点を持つDataset基底。`meta.num_frames` は正の整数として必須で、payload長との矛盾は `SceneDataContractError` によりindex作成前に失敗する。
 - **`datamodule.py`**: `SceneDirectoryDataModule`。固定 `scene_dir`+split txt を扱うDataModule基底。
-- **`chunked_datamodule.py`**: `BaseChunkedDataModule`。trainのみバックグラウンド生成chunkに切替え。
-- **`chunk_manager.py`**: `ChunkManager`。chunk生成スレッドのライフサイクル管理。
 - **`dataset_writer.py`**: `BaseDatasetWriter`。npy+jsonシーン書き出しの共通実装。
 - **`augmentation.py`**: `BaseObservationAugmentation`。augmentation config解析・dispatchガードの共通部分。
 - **`canonical_tracking.py`**: tracking sceneのclip/view選択と可変 `(V,T,D)` paddingを担う共通Dataset基盤。
@@ -24,7 +22,6 @@
 ### training/
 - **`lightning_module.py`**: `BaseLightningModule`。optimizer/scheduler構築とqualitative/test予測保存の拡張点。
 - **`runner.py`**: `BaseTrainingRunner`。configをsingle source of truthとする学習実行の共通フロー。
-- **`chunk_rotation_callback.py`**: `ChunkRotationCallback`。epoch終端でchunked datamoduleを回転。
 - **`gan_training.py` / `gan_loss.py` / `gan_transition_callback.py`**: 手動最適化ベースのGAN学習共通実装(`LSGANLoss`含む)。
 - **`qualitative_callback.py` / `qualitative_saving.py`**: validationサンプルの可視化描画・GIF/画像保存。
 - **`losses.py`**: `FocalBCEWithLogitsLoss`。複数taskで重複していた実装を統合。

@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 import pytorch_lightning as pl
-from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.tasks.base.training.runner import BaseTrainingRunner
 from src.tasks.plcs.configuration import PLCSTrainingConfig
@@ -33,22 +32,3 @@ class PLCSTrainingRunner(BaseTrainingRunner):
         steps_per_epoch: int | None = None,
     ) -> pl.LightningModule:
         return build_plcs_lightning_module(config)
-
-    def callbacks_extra(
-        self,
-        config: Any,
-        datamodule: pl.LightningDataModule,
-        logger: TensorBoardLogger,
-    ) -> list[Any]:
-        extras: list[Any] = super().callbacks_extra(config, datamodule, logger)
-
-        runtime = PLCSTrainingConfig.from_config(config)
-        if runtime.data.backend != "chunked":
-            return extras
-
-        from src.tasks.base.training.chunk_rotation_callback import (
-            ChunkRotationCallback,
-        )
-
-        extras.append(ChunkRotationCallback())
-        return extras

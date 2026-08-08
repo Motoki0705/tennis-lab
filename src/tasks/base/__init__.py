@@ -4,17 +4,12 @@ from src.tasks.base.configuration import (
     BaseDataConfig,
     BaseRunConfig,
     BaseTrainingConfig,
-    ChunkDataConfig,
     SceneVisualizationConfig,
     TrainingRuntimeConfig,
 )
 from src.tasks.base.data import (
     BaseDatasetWriter,
     CameraSelection,
-    ChunkGenerator,
-    ChunkInfo,
-    ChunkManager,
-    ChunkState,
     Scene,
     SceneDataContractError,
     SceneDatasetBase,
@@ -25,7 +20,6 @@ from src.tasks.base.data import (
 from src.tasks.base.inference.predictor import BasePredictor
 from src.tasks.base.training import (
     BaseLightningModule,
-    ChunkRotationCallback,
     TrackingMetricConfig,
 )
 
@@ -37,12 +31,6 @@ __all__ = [
     "BaseRunConfig",
     "BaseTrainingConfig",
     "CameraSelection",
-    "ChunkGenerator",
-    "ChunkInfo",
-    "ChunkManager",
-    "ChunkRotationCallback",
-    "ChunkState",
-    "ChunkDataConfig",
     "Scene",
     "SceneDataContractError",
     "SceneDatasetBase",

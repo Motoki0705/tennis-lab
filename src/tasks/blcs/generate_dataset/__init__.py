@@ -1,10 +1,8 @@
-"""BLCS dataset generation package.
+"""BLCS physics-source package for the canonical scene pipeline.
 
 This package contains the modular implementation of BLCS synthetic dataset generation:
 - physics-based shot simulation
 - distribution-controlled sampling
 - camera sampling + projection
-- scene serialization + split/meta writing
-
-The Hydra CLI entrypoint is `src/tasks/blcs/scripts/generate_dataset.py`.
+- explicit full-timeline scene contracts consumed by synthetic_data_generation
 """

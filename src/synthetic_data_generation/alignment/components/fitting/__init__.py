@@ -1,1 +1,0 @@
-"""Metric court fitting components."""

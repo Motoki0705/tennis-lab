@@ -1,0 +1,6 @@
+config_schema: canonical_scene_pipeline_v1
+seed: 695
+preflight_before_invalidation: true
+invalidate_descendants: true
+atomic_fixed_path_publication: true
+write_resolved_config: true

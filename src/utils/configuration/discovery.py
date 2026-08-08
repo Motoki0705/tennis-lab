@@ -414,23 +414,6 @@ def discover_runtime_boundaries(
                         ),
                     )
 
-        if module == "src.synthetic_data_generation.scripts.alignment.geometry_bridge":
-            provider = functions.get("provider_main")
-            if provider is not None:
-                discovered[(module, "provider_main")] = DiscoveredRuntimeBoundary(
-                    module=module,
-                    callable_name="provider_main",
-                    kind=BoundaryKind.CALLABLE,
-                    executable_module=executable,
-                    validator_key="synthetic.geometry_bridge",
-                    validator_callable=(
-                        "src.utils.configuration.paths.NonHydraPathBoundary.validate"
-                    ),
-                    subprocess_invokers=tuple(
-                        sorted(subprocess_invokers.get(module, ()))
-                    ),
-                )
-
         for statement in tree.body:
             if not isinstance(statement, (ast.Assign, ast.AnnAssign)):
                 continue

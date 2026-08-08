@@ -1,1 +1,53 @@
-"""3D Gaussian asset contracts and native scene-composition primitives."""
+"""Semantic Gaussian assets, timelines, and tensor composition operations."""
+
+from src.synthetic_data_generation.composition.contracts import (
+    GaussianAsset,
+    GaussianAssetRole,
+    GaussianCoordinates,
+    GaussianDeformationKind,
+    GaussianForegroundComposition,
+    GaussianFrame,
+    GaussianInstance,
+    GaussianSceneComposition,
+    GaussianSceneObject,
+    GaussianTransform,
+)
+from src.synthetic_data_generation.composition.gaussians import (
+    GaussianDeformationReport,
+    GaussianTensorSet,
+    assign_instance_id,
+    compose_foreground_frame_gaussians,
+    compose_foreground_gaussians,
+    compose_frame_gaussians,
+    compose_gaussians,
+    gaussian_covariances,
+    transform_gaussians,
+    validate_articulated_deformation,
+    validate_asset_tensors,
+    validate_identified_asset_tensors,
+)
+
+__all__ = [
+    "GaussianAsset",
+    "GaussianAssetRole",
+    "GaussianCoordinates",
+    "GaussianDeformationKind",
+    "GaussianDeformationReport",
+    "GaussianFrame",
+    "GaussianForegroundComposition",
+    "GaussianInstance",
+    "GaussianSceneComposition",
+    "GaussianSceneObject",
+    "GaussianTensorSet",
+    "GaussianTransform",
+    "assign_instance_id",
+    "compose_foreground_frame_gaussians",
+    "compose_foreground_gaussians",
+    "compose_frame_gaussians",
+    "compose_gaussians",
+    "gaussian_covariances",
+    "transform_gaussians",
+    "validate_articulated_deformation",
+    "validate_asset_tensors",
+    "validate_identified_asset_tensors",
+]

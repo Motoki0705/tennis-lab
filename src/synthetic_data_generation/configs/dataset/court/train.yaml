@@ -1,0 +1,56 @@
+trajectory:
+  shapes: [circle, ellipse]
+  axis_ratios: [1.0, 0.8, 0.65]
+  orientations_degrees: [0.0, 45.0, 90.0]
+  center_kinds: [complex, court]
+  captured_offset_scale_range: [0.85, 1.2]
+  base_heights_m: [1.5, 2.25, 3.0]
+  vertical_modulations_m: [0.0, 0.25, 0.5]
+  curve_modes: [planar, sinusoidal_height]
+
+view:
+  target_modes: [court_center, near_baseline, far_baseline]
+  coverage_modes: [full, near_full, partial]
+  look_at_height_m: [0.0, 1.5]
+  hfov_degrees: [35.0, 75.0]
+
+sampling:
+  seed: 695
+  stable_field_order:
+    - shape
+    - center_kind
+    - axis_ratio
+    - orientation_degrees
+    - base_height_m
+    - vertical_modulation_m
+    - curve_mode
+    - target_mode
+  coverage_objective: [coverage_mode, semantic_visibility, trajectory_group]
+  proposal_budget: 4800
+  minimum_trajectory_groups: 24
+  minimum_accepted_frames: 2000
+  maximum_adjacent_step_m: 1.05
+  minimum_accepted_fraction: 0.9
+  train_fraction: 0.8
+  validation_fraction: 0.1
+  test_fraction: 0.1
+  shard_group_count: 8
+
+performance:
+  maximum_wall_seconds: 1800.0
+  maximum_published_bytes: 37580963840
+  maximum_published_fraction_of_dense_reference: 1.0
+  maximum_nht_invocations: 8
+  maximum_background_cache_misses: 1
+  maximum_complete_array_scans_per_sample: 2
+  maximum_batch_frames: 600
+  execution_device: cuda:0
+  require_cuda: true
+
+metadata_fields:
+  - target_court
+  - candidate_id
+  - transform
+  - camera_profile
+  - camera_parameters
+  - seed

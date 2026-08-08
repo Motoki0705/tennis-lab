@@ -1,7 +1,0 @@
-output_dir: plcs
-seed: 42
-device: cpu
-num_workers: 8
-train_ratio: 0.8
-val_ratio: 0.1
-test_ratio: 0.1

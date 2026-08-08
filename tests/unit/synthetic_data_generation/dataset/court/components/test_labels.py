@@ -1,138 +1,86 @@
-"""Tests for seven-class, instance-aware multi-peak court labels."""
-
 from __future__ import annotations
 
 import numpy as np
-import pytest
 from numpy.typing import NDArray
 
-from src.synthetic_data_generation.dataset.court.artifacts.layout import (
-    MultiCourtLayout,
-)
 from src.synthetic_data_generation.dataset.court.components.labels import (
-    PHYSICAL_TO_SYMMETRIC_CLASS,
-    build_seven_channel_heatmaps,
-    decode_heatmap_atlas_u16,
-    encode_heatmap_atlas_u16,
-    project_multi_court,
-    rescale_projection,
+    SEMANTIC_CLASS_NAMES,
+    attach_renderer_visibility,
+    project_court_semantics,
 )
-from src.synthetic_data_generation.scene_contract import SceneCamera
-from tests.unit.synthetic_data_generation.dataset.court.conftest import make_camera
+from src.synthetic_data_generation.scene_contract import (
+    MultiCourtLayout,
+    RigidTransform,
+    SceneCamera,
+)
 
 
-def test_physical_line_points_form_seven_unordered_pairs() -> None:
-    counts = np.bincount(PHYSICAL_TO_SYMMETRIC_CLASS, minlength=7)
-    np.testing.assert_array_equal(counts, np.full(7, 2))
-
-
-def test_two_courts_merge_four_peaks_per_class_without_instance_channels(
-    two_court_layout: MultiCourtLayout,
-) -> None:
-    camera = make_camera("camera_0", (7.5, -42.0, 22.0))
-    projection = project_multi_court(camera, two_court_layout)
-    assert len(projection.courts) == 2
-    assert all(
-        len(value.points) == 2 for court in projection.courts for value in court.classes
+def _camera() -> SceneCamera:
+    center = np.asarray((0.0, -30.0, 12.0), dtype=np.float64)
+    target: NDArray[np.float64] = np.zeros(3, dtype=np.float64)
+    forward = target - center
+    forward /= np.linalg.norm(forward)
+    right = np.cross(forward, np.asarray((0.0, 0.0, 1.0)))
+    right /= np.linalg.norm(right)
+    down = np.cross(forward, right)
+    matrix = np.eye(4, dtype=np.float64)
+    matrix[:3, :3] = np.column_stack((right, down, forward))
+    matrix[:3, 3] = center
+    return SceneCamera(
+        camera_id="render-camera",
+        source_frame_index=0,
+        width=640,
+        height=480,
+        intrinsics=(500.0, 0.0, 319.5, 0.0, 500.0, 239.5, 0.0, 0.0, 1.0),
+        camera_to_scene=RigidTransform.from_matrix(matrix),
+        image_path="generated/render-camera.png",
     )
-    assert all(court.in_frame_point_count == 14 for court in projection.courts)
 
-    heatmaps = build_seven_channel_heatmaps(
+
+def test_renderer_visibility_exposes_all_seven_classes(
+    multi_court_layout: MultiCourtLayout,
+) -> None:
+    projection = project_court_semantics(_camera(), multi_court_layout)
+    alpha: NDArray[np.float32] = np.zeros((480, 640, 1), dtype=np.float32)
+    depth: NDArray[np.float32] = np.zeros((480, 640, 1), dtype=np.float32)
+    for court in projection.courts:
+        for semantic_class in court.classes:
+            for point in semantic_class.points:
+                if point.in_frame:
+                    x = int(round(point.uv[0]))
+                    y = int(round(point.uv[1]))
+                    alpha[y, x, 0] = 1.0
+                    depth[y, x, 0] = point.camera_depth_m
+    visible = attach_renderer_visibility(
         projection,
-        sigma_px=1.5,
-        require_renderer_visibility=False,
+        alpha=alpha,
+        depth=depth,
+        sample_radius_px=0,
+    )
+    assert visible.visible_class_names == SEMANTIC_CLASS_NAMES
+    assert visible.visible_point_count > 0
+    assert all(court.coverage_mode in {"full", "near_full", "partial"} for court in visible.courts)
+
+
+def test_renderer_visibility_requires_alpha_and_positive_depth(
+    multi_court_layout: MultiCourtLayout,
+) -> None:
+    projection = project_court_semantics(_camera(), multi_court_layout)
+    alpha: NDArray[np.float32] = np.ones((480, 640, 1), dtype=np.float32)
+    depth: NDArray[np.float32] = np.ones((480, 640, 1), dtype=np.float32)
+
+    supported = attach_renderer_visibility(projection, alpha=alpha, depth=depth)
+    without_alpha = attach_renderer_visibility(
+        projection,
+        alpha=np.zeros_like(alpha),
+        depth=depth,
+    )
+    without_depth = attach_renderer_visibility(
+        projection,
+        alpha=alpha,
+        depth=np.zeros_like(depth),
     )
 
-    assert heatmaps.shape == (7, camera.height, camera.width)
-    for class_id in range(7):
-        projected_points = [
-            point
-            for court in projection.courts
-            for point in court.classes[class_id].points
-        ]
-        assert len(projected_points) == 4
-        for point in projected_points:
-            x = int(round(point.uv[0]))
-            y = int(round(point.uv[1]))
-            assert heatmaps[class_id, y, x] >= 0.85
-
-
-def test_renderer_visibility_is_never_silently_invented(
-    two_court_layout: MultiCourtLayout,
-) -> None:
-    camera = make_camera("camera_0", (7.5, -42.0, 22.0))
-    projection = project_multi_court(camera, two_court_layout)
-
-    with pytest.raises(ValueError, match="remains unevaluated"):
-        build_seven_channel_heatmaps(
-            projection,
-            sigma_px=2.0,
-            require_renderer_visibility=True,
-        )
-
-
-def test_partial_court_is_a_first_class_coverage_bucket(
-    two_court_layout: MultiCourtLayout,
-) -> None:
-    camera: SceneCamera = make_camera(
-        "camera_0",
-        (7.5, -25.0, 3.0),
-        target=(0.0, 5.0, 0.0),
-    )
-    projection = project_multi_court(camera, two_court_layout)
-
-    assert any(
-        court.coverage_bucket in {"partial", "near_full"} for court in projection.courts
-    )
-
-
-def test_rescale_projection_preserves_semantics(
-    two_court_layout: MultiCourtLayout,
-) -> None:
-    camera = make_camera("camera_0", (7.5, -42.0, 22.0))
-    projection = project_multi_court(camera, two_court_layout)
-    resized = rescale_projection(projection, width=40, height=30)
-
-    assert (resized.width, resized.height) == (40, 30)
-    assert [court.court_instance_id for court in resized.courts] == [
-        court.court_instance_id for court in projection.courts
-    ]
-    original = projection.courts[0].classes[0].points[0]
-    scaled = resized.courts[0].classes[0].points[0]
-    assert scaled.uv == pytest.approx(
-        (
-            original.uv[0] * 40 / projection.width,
-            original.uv[1] * 30 / projection.height,
-        )
-    )
-    assert scaled.xyz_scene == original.xyz_scene
-    assert scaled.visible is original.visible
-
-
-def test_heatmap_atlas_round_trip_is_bounded_and_seven_channel() -> None:
-    heatmaps: NDArray[np.float32] = np.zeros((7, 5, 6), dtype=np.float32)
-    for channel in range(7):
-        heatmaps[channel, channel % 5, channel % 6] = (channel + 1) / 7
-
-    atlas = encode_heatmap_atlas_u16(heatmaps)
-    decoded = decode_heatmap_atlas_u16(atlas)
-
-    assert atlas.dtype == np.uint16
-    assert atlas.shape == (5, 42)
-    assert decoded.shape == heatmaps.shape
-    np.testing.assert_allclose(decoded, heatmaps, atol=1.0 / 65535.0, rtol=0.0)
-
-
-@pytest.mark.parametrize(
-    "heatmaps",
-    (
-        np.zeros((6, 5, 6), dtype=np.float32),
-        np.full((7, 5, 6), np.nan, dtype=np.float32),
-        np.full((7, 5, 6), 1.1, dtype=np.float32),
-    ),
-)
-def test_heatmap_atlas_rejects_invalid_targets(
-    heatmaps: np.ndarray,
-) -> None:
-    with pytest.raises(ValueError):
-        encode_heatmap_atlas_u16(heatmaps)
+    assert supported.visible_point_count > 0
+    assert without_alpha.visible_point_count == 0
+    assert without_depth.visible_point_count == 0
