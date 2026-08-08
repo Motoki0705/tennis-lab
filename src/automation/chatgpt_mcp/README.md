@@ -87,7 +87,9 @@ at most two run concurrently and each is limited to 24 GiB. GPU or heavier work
 uses `enqueue_training`, is serialized, and receives 48 GiB.
 
 Network access is intentionally unavailable. Downloads must use a separately
-reviewed workflow rather than an arbitrary MCP command.
+reviewed workflow rather than an arbitrary MCP command. The checked-in
+configuration audit inventory is regenerated after MCP source changes and
+verified by CI before merge.
 
 ## Typical flow
 
