@@ -48,7 +48,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm \
+          git rm -f \
             .github/scripts/add_wsl_mcp_deploy_status.py \
             .github/workflows/add-wsl-mcp-deploy-status.yml
           git add -A
