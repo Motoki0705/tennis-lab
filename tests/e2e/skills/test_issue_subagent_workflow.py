@@ -309,12 +309,20 @@ None
     )
 
 
-def write_tests(task: Path, cycle: int, fp: str) -> None:
+def write_tests(
+    task: Path,
+    cycle: int,
+    fp: str,
+    *,
+    final_verdict: str = "PASS",
+) -> None:
     state = manage.load_state(task)
-    rows = "\n".join(
-        f"| {item_id} | {text} | canonical evidence | PASS |"
-        for item_id, text in task_acceptance_items(task)
-    )
+    rows: list[str] = []
+    for item_id, text in task_acceptance_items(task):
+        result = "FAIL" if final_verdict == "RETURN" and item_id == "AC-001" else "PASS"
+        rows.append(f"| {item_id} | {text} | canonical evidence | {result} |")
+    rendered_rows = "\n".join(rows)
+    return_findings = "Concrete implementation defect" if final_verdict == "RETURN" else "None"
     (task / "03-implementation/tests.md").write_text(
         f"""# Tests
 
@@ -330,7 +338,7 @@ def write_tests(task: Path, cycle: int, fp: str) -> None:
 ## Acceptance-checklist-to-test mapping
 | ID | Issue checklist item | Test or authoritative evidence | Result |
 |---|---|---|---|
-{rows}
+{rendered_rows}
 ## Tests added or changed
 tests.txt
 ## Normal, boundary, invalid, and regression cases
@@ -344,9 +352,9 @@ None
 ## Untested risks and reasons
 None
 ## Final test verdict
-PASS
+{final_verdict}
 ## RETURN implementation findings
-None
+{return_findings}
 """,
         encoding="utf-8",
     )
@@ -1065,6 +1073,63 @@ def test_candidate_change_after_tester_pass_requires_retest(tmp_path: Path) -> N
     write_seal(task, 1, new_fp)
     with pytest.raises(ValueError, match="rerun the Test Writer"):
         manage.apply_seal_verdict(task, "PASS")
+
+
+def test_renewed_preflight_clears_prior_return_before_next_tester_pass(
+    tmp_path: Path,
+) -> None:
+    root, task = setup_task(tmp_path)
+    advance_to_implementation(root, task)
+    write_implementation(task, 1)
+    preflight_fp = candidate.compute_candidate_fingerprint(task, manage.load_state(task))
+    write_preflight(task, 1, preflight_fp)
+    assert manage.run_check(task, "preflight", "py-ok") == 0
+    manage.apply_preflight_verdict(task, "PASS")
+
+    (root / "tests.txt").write_text("returning test\n", encoding="utf-8")
+    first_test_fp = candidate.compute_candidate_fingerprint(task, manage.load_state(task))
+    write_tests(task, 1, first_test_fp, final_verdict="RETURN")
+    assert manage.run_check(task, "test", "py-ok") == 0
+    manage.apply_test_verdict(task, "RETURN")
+    returned_state = manage.load_state(task)
+    assert returned_state["test_cycle"] == 1
+    assert returned_state["test_verdict"] == "RETURN"
+    assert returned_state["test_candidate_sha256"] == first_test_fp
+    assert returned_state["test_return_count"] == 1
+
+    (root / "src.txt").write_text("repaired after tester return\n", encoding="utf-8")
+    write_implementation(task, 2)
+    repaired_fp = candidate.compute_candidate_fingerprint(task, manage.load_state(task))
+    write_preflight(task, 2, repaired_fp)
+    assert manage.run_check(task, "preflight", "py-ok") == 0
+    manage.apply_preflight_verdict(task, "PASS")
+
+    persisted_state = (task / "state.toml").read_text(encoding="utf-8")
+    assert 'test_verdict = ""' in persisted_state
+    assert 'test_candidate_sha256 = ""' in persisted_state
+    assert "test_return_count = 1" in persisted_state
+    fresh_cycle = manage.load_state(task)
+    assert fresh_cycle["preflight_cycle"] == 2
+    assert fresh_cycle["preflight_verdict"] == "PASS"
+    assert fresh_cycle["test_cycle"] == 1
+    assert fresh_cycle["test_verdict"] == ""
+    assert fresh_cycle["test_candidate_sha256"] == ""
+    assert fresh_cycle["test_return_count"] == 1
+    assert fresh_cycle["seal_cycle"] == 0
+    assert fresh_cycle["seal_verdict"] == ""
+    assert fresh_cycle["sealed_candidate_sha256"] == ""
+    assert fresh_cycle["validation_candidate_sha256"] == ""
+    assert manage._state.validate_state(task, fresh_cycle) == []
+
+    write_tests(task, 2, repaired_fp)
+    assert manage.run_check(task, "test", "py-ok") == 0
+    manage.apply_test_verdict(task, "PASS")
+    passed_state = manage.load_state(task)
+    assert passed_state["test_cycle"] == 2
+    assert passed_state["test_verdict"] == "PASS"
+    assert passed_state["test_candidate_sha256"] == repaired_fp
+    assert passed_state["test_return_count"] == 0
+    assert manage._state.validate_state(task, passed_state) == []
 
 
 def test_issue_body_tampering_blocks_transition(tmp_path: Path) -> None:
