@@ -123,7 +123,7 @@ def regenerate_inventory() -> None:
         AuditRule.PROCESS_CWD,
         AuditRule.HYDRA_RUN_DIRECTORY,
     }
-    approvals = []
+    approvals_by_identity = {}
     for finding in unresolved:
         if finding.rule not in path_rules:
             reason_code = "strict-schema"
@@ -131,20 +131,25 @@ def regenerate_inventory() -> None:
             reason_code = "code-or-artifact-location"
         else:
             reason_code = "persisted-layout"
-        approvals.append(
-            AuditExemption.classified(
-                module=finding.module,
-                qualified_name=finding.qualified_name,
-                line=finding.line,
-                rule=finding.rule,
-                reason_code=reason_code,
-            )
+        identity = (
+            finding.module,
+            finding.qualified_name,
+            finding.line,
+            finding.rule,
         )
+        approvals_by_identity[identity] = AuditExemption.classified(
+            module=finding.module,
+            qualified_name=finding.qualified_name,
+            line=finding.line,
+            rule=finding.rule,
+            reason_code=reason_code,
+        )
+    approvals = tuple(approvals_by_identity.values())
 
     migration_count, exemption_count = write_generated_inventory_data(
         source_root,
         source_revision="wsl-mcp-project-sandbox-v1",
-        approved_exemptions=tuple(approvals),
+        approved_exemptions=approvals,
     )
     print(
         f"generated inventory: migrations={migration_count} "
