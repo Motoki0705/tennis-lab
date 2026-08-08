@@ -11,6 +11,7 @@ on:
       - ".github/workflows/deploy-wsl-mcp.yml"
       - "pyproject.toml"
       - "uv.lock"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -26,11 +27,12 @@ jobs:
           vars.LOCAL_GPU_ACTIONS_ENABLED == 'true' }}
     environment: local-gpu
     runs-on: [self-hosted, linux, x64, local-gpu, cuda, wsl2, tennis-lab]
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       PROJECT_ROOT: /home/kamimura/projects/tennis-lab
       MCP_STATE_DIR: /home/kamimura/.local/state/tennis-lab-chatgpt-mcp
       MCP_CONTROL_DIR: /home/kamimura/.local/share/tennis-lab-chatgpt-mcp
+      GPU_LOCK_FILE: /var/lib/tennis-lab-actions/gpu.lock
 
     steps:
       - name: Checkout reviewed main revision
@@ -52,20 +54,18 @@ jobs:
 
           tunnel_id_file="$MCP_STATE_DIR/secure-tunnel/tunnel-id"
           runtime_key_file="$MCP_STATE_DIR/secure-tunnel/runtime-api-key"
-
           test -s "$tunnel_id_file"
           test -s "$runtime_key_file"
+
           mkdir -p "$MCP_CONTROL_DIR/venvs"
-          venv_key="$(sha256sum "$GITHUB_WORKSPACE/uv.lock" | awk '{print $1}')"
+          venv_key="$(cat pyproject.toml uv.lock | sha256sum | awk '{print $1}')"
           venv_target="$MCP_CONTROL_DIR/venvs/$venv_key"
           if [[ ! -x "$venv_target/bin/python" ]]; then
             rm -rf "$venv_target"
-            (
-              cd "$GITHUB_WORKSPACE"
-              UV_PROJECT_ENVIRONMENT="$venv_target" \
-                uv sync --locked --no-install-project
-            )
+            UV_PROJECT_ENVIRONMENT="$venv_target" \
+              uv sync --locked --no-install-project
           fi
+
           venv_link="$MCP_CONTROL_DIR/venv"
           if [[ -e "$venv_link" && ! -L "$venv_link" ]]; then
             rm -rf "$venv_link"
@@ -82,14 +82,16 @@ jobs:
           TENNIS_MCP_REPO_ROOT="$PROJECT_ROOT" \
           TENNIS_MCP_STATE_DIR="$MCP_STATE_DIR" \
           TENNIS_MCP_CONTROL_DIR="$MCP_CONTROL_DIR" \
+          TENNIS_MCP_GPU_LOCK_FILE="$GPU_LOCK_FILE" \
             "$bootstrap_python" -m src.automation.chatgpt_mcp \
               configure-secure-tunnel \
               --source-root "$GITHUB_WORKSPACE" \
+              --expected-sha "$GITHUB_SHA" \
               --tunnel-id "$tunnel_id" \
               --reuse-existing-key \
               --start
 
-      - name: Verify services and local MCP protocol
+      - name: Verify services, MCP protocol, project RW, CPU, CUDA, and queue
         shell: bash
         run: |
           set -euo pipefail
@@ -99,9 +101,12 @@ jobs:
           export TENNIS_MCP_REPO_ROOT="$PROJECT_ROOT"
           export TENNIS_MCP_STATE_DIR="$MCP_STATE_DIR"
           export TENNIS_MCP_CONTROL_DIR="$MCP_CONTROL_DIR"
+          export TENNIS_MCP_GPU_LOCK_FILE="$GPU_LOCK_FILE"
 
           test -x "$trusted_python"
           test "$(cat "$MCP_CONTROL_DIR/runtime-version")" = "$GITHUB_SHA"
+          test -L "$PROJECT_ROOT/.venv"
+          test "$(readlink -f "$PROJECT_ROOT/.venv")" = "$(readlink -f "$MCP_CONTROL_DIR/venv")"
           systemctl --user is-active tennis-lab-chatgpt-mcp-private.service
           systemctl --user is-active tennis-lab-chatgpt-secure-tunnel.service
           curl --fail --silent http://127.0.0.1:8767/healthz
@@ -156,15 +161,28 @@ jobs:
                   raise RuntimeError(result)
               structured = result.get("structuredContent")
               if isinstance(structured, dict):
-                  if "result" in structured:
-                      return structured["result"]
-                  return structured
+                  return structured.get("result", structured)
               content = result.get("content", [])
               if content and isinstance(content[0], dict):
                   text = content[0].get("text")
                   if isinstance(text, str):
                       return json.loads(text)
               raise RuntimeError(f"unrecognized MCP tool result: {result!r}")
+
+          def wait_command(job_id: str, *, seconds: int) -> dict[str, object]:
+              for _ in range(seconds):
+                  state = tool("get_command_job", {"job_id": job_id})
+                  if not state["running"]:
+                      if state["exit_code"] != 0:
+                          raise SystemExit(
+                              tool(
+                                  "get_command_output",
+                                  {"job_id": job_id, "tail": 1000},
+                              )
+                          )
+                      return state
+                  time.sleep(1)
+              raise SystemExit(f"command job timed out: {job_id}")
 
           rpc(
               "initialize",
@@ -195,6 +213,19 @@ jobs:
           if names != expected:
               raise SystemExit(f"unexpected MCP tools: {sorted(names)}")
 
+          host = tool("get_host_status", {})
+          if not host["docker"]["ok"] or not host["gpu"]["ok"]:
+              raise SystemExit(f"host preflight failed: {host!r}")
+          layout = tool("get_execution_layout", {})
+          if layout["network"] != "disabled":
+              raise SystemExit(f"network unexpectedly enabled: {layout!r}")
+          if layout["direct_concurrency"] != 2:
+              raise SystemExit(f"unexpected direct concurrency: {layout!r}")
+          if layout["direct_memory_limit_gb"] != 24:
+              raise SystemExit(f"unexpected direct memory limit: {layout!r}")
+          if layout["queued_memory_limit_gb"] != 48:
+              raise SystemExit(f"unexpected queued memory limit: {layout!r}")
+
           revision = os.environ["GITHUB_SHA"]
           prepared = tool(
               "prepare_revision_workspace",
@@ -202,7 +233,7 @@ jobs:
           )
           workspace_id = prepared["workspace_id"]
 
-          cpu = tool(
+          boundary = tool(
               "start_command",
               {
                   "workspace_id": workspace_id,
@@ -211,30 +242,38 @@ jobs:
                   "working_directory": ".",
                   "timeout_seconds": 300,
                   "command": (
-                      "set -e; "
+                      "set -euo pipefail; "
                       "test -w /tennis-lab; "
                       "test ! -e /var/run/docker.sock; "
                       "test ! -e /mnt/c; "
                       "test ! -e /tennis-lab/.git/HEAD; "
-                      "test -d data; test -d outputs; test -d ckpt; "
-                      "python -c \"from pathlib import Path; "
-                      "p=Path('artifacts/mcp-deploy-smoke'); "
-                      "p.mkdir(parents=True, exist_ok=True); "
-                      "(p/'ok').write_text('ok')\""
+                      "test ! -e /workspace/.git; "
+                      "test ! -e /home/kamimura/.local/share/tennis-lab-chatgpt-mcp; "
+                      "test ! -e /home/kamimura/.local/state/tennis-lab-chatgpt-mcp; "
+                      "mkdir -p artifacts/mcp-deploy-smoke; "
+                      "printf ok > artifacts/mcp-deploy-smoke/ok; "
+                      "test -f /tennis-lab/artifacts/mcp-deploy-smoke/ok"
                   ),
               },
           )
-          for _ in range(120):
-              state = tool("get_command_job", {"job_id": cpu["job_id"]})
-              if not state["running"]:
-                  if state["exit_code"] != 0:
-                      raise SystemExit(
-                          tool("get_command_output", {"job_id": cpu["job_id"], "tail": 500})
-                      )
-                  break
-              time.sleep(1)
-          else:
-              raise SystemExit("CPU deployment smoke timed out")
+          wait_command(boundary["job_id"], seconds=300)
+
+          tests = tool(
+              "start_command",
+              {
+                  "workspace_id": workspace_id,
+                  "expected_sha": revision,
+                  "execution_root": "revision",
+                  "working_directory": ".",
+                  "timeout_seconds": 1200,
+                  "command": (
+                      "python -m pytest -q "
+                      "tests/unit/automation/chatgpt_mcp "
+                      "tests/integration/chatgpt_mcp"
+                  ),
+              },
+          )
+          wait_command(tests["job_id"], seconds=1200)
 
           gpu = tool(
               "enqueue_training",
@@ -252,25 +291,16 @@ jobs:
                   ),
               },
           )
-          for _ in range(360):
+          for _ in range(600):
               state = tool("get_training_job", {"job_id": gpu["job_id"]})
               if state["status"] in {"succeeded", "failed", "cancelled"}:
-                  if state["status"] != "succeeded" or state.get("exit_code") not in {None, 0}:
-                      raise SystemExit(
-                          tool(
-                              "get_training_output",
-                              {"job_id": gpu["job_id"], "tail": 500},
-                          )
-                      )
-                  print(
-                      json.dumps(
-                          tool(
-                              "get_training_output",
-                              {"job_id": gpu["job_id"], "tail": 100},
-                          ),
-                          ensure_ascii=False,
-                      )
+                  output = tool(
+                      "get_training_output",
+                      {"job_id": gpu["job_id"], "tail": 1000},
                   )
+                  if state["status"] != "succeeded" or state.get("exit_code") not in {None, 0}:
+                      raise SystemExit(output)
+                  print(json.dumps(output, ensure_ascii=False))
                   break
               time.sleep(1)
           else:
