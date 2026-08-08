@@ -1,0 +1,1 @@
+run repository-wide tests, deploy exact external runtime, and validate MCP CPU/CUDA paths
