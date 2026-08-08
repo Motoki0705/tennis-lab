@@ -35,6 +35,27 @@ def test_semantic_manifest_is_recomputed_exactly_from_dataset_semantics() -> Non
         require_equal_court_semantic_manifests(manifest, mutated)
 
 
+def test_semantic_manifest_rejects_renderer_semantic_and_operational_mutations() -> None:
+    dataset = _dataset()
+    manifest = build_court_semantic_manifest(dataset)
+
+    mutated_dataset = copy.deepcopy(dataset)
+    sample = mutated_dataset["samples"]
+    assert isinstance(sample, list)
+    camera = sample[0]["camera"]
+    assert isinstance(camera, dict)
+    transform = camera["camera_to_scene"]
+    assert isinstance(transform, list)
+    transform[3] = 0.25
+    with pytest.raises(ValueError, match="semantic manifest disagrees"):
+        validate_court_semantic_manifest(mutated_dataset, manifest)
+
+    mutated_manifest = copy.deepcopy(manifest)
+    mutated_manifest["wall_seconds"] = 1.0
+    with pytest.raises(ValueError, match="operational field"):
+        validate_court_semantic_manifest(dataset, mutated_manifest)
+
+
 def _dataset() -> dict[str, object]:
     projection = _projection()
     camera = {
