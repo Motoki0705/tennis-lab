@@ -84,7 +84,6 @@ def _standard_adapter(
         model_type=model_type,
         profile=profile,
         num_court_tokens=num_court_tokens,
-        camera_index=runtime.data.adapter_camera_index,
         output_rank=output_rank,
         predict_canonical_pose=runtime.model.boolean("predict_canonical_pose"),
         predict_auxiliary_position=(
@@ -96,9 +95,7 @@ def _standard_adapter(
             runtime.model.integer("max_views") if "max_views" in values else None
         ),
         max_sequence_length=(
-            runtime.model.integer("max_seq_len")
-            if "max_seq_len" in values
-            else None
+            runtime.model.integer("max_seq_len") if "max_seq_len" in values else None
         ),
         min_views=min_views,
     )

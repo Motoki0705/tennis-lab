@@ -6,10 +6,12 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from numpy.typing import NDArray
 
 from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
 from src.synthetic_data_generation.dataset.plcs.assembler import (
     PLCSSceneAssemblyInput,
+    PLCSSupervisionArrays,
     assemble_plcs_dataset,
     build_frame_label,
 )
@@ -194,12 +196,41 @@ def _scene_input(
             metadata=labels,
         )
     )
+    frame_count = timeline.frame_count
+    camera_count = len(rig.cameras)
+    object_count = len(timeline.tracks)
+    present: NDArray[np.bool_] = np.ones((frame_count, object_count), dtype=np.bool_)
+    rotation: NDArray[np.float32] = np.zeros(
+        (frame_count, object_count, 2), dtype=np.float32
+    )
+    rotation[..., 0] = 1.0
     return PLCSSceneAssemblyInput(
         timeline=timeline,
         split=scene.split,
         rig=rig,
         chunk_readers=(reader,),
         attempt_token=attempt_token,
+        supervision=PLCSSupervisionArrays(
+            human_kp=np.zeros(
+                (frame_count, camera_count, object_count, 17, 2), dtype=np.float32
+            ),
+            human_vis=np.zeros(
+                (frame_count, camera_count, object_count, 17), dtype=np.bool_
+            ),
+            court_kp=np.zeros((frame_count, camera_count, 20, 2), dtype=np.float32),
+            court_vis=np.zeros((frame_count, camera_count, 20), dtype=np.bool_),
+            human_mask=np.broadcast_to(
+                present[:, None, :], (frame_count, camera_count, object_count)
+            ).copy(),
+            position=np.zeros((frame_count, object_count, 3), dtype=np.float32),
+            position_court_m=np.zeros((frame_count, object_count, 3), dtype=np.float32),
+            rotation=rotation,
+            present=present,
+            human_kp_3d=np.zeros((frame_count, object_count, 17, 3), dtype=np.float32),
+            canonical_pose_3d=np.zeros(
+                (frame_count, object_count, 52, 3), dtype=np.float32
+            ),
+        ),
     )
 
 
@@ -217,7 +248,7 @@ def _inventory(tmp_path: Path) -> PLCSSceneInventory:
 
 
 def test_assembler_publishes_exact_aggregate_scene_inventory(tmp_path: Path) -> None:
-    staging = tmp_path / "datasets" / "plcs" / "staging"
+    staging = tmp_path / ".transactions" / "plcs_dataset" / "snapshot"
     (staging / "backgrounds").mkdir(parents=True)
     inventory = _inventory(tmp_path)
     inputs = tuple(_scene_input(staging, scene) for scene in inventory.scenes)
@@ -237,13 +268,14 @@ def test_assembler_publishes_exact_aggregate_scene_inventory(tmp_path: Path) -> 
     assert result.chunk_count == 2
     assert [scene.continuity.frame_count for scene in result.scenes] == [2, 2]
     assert result.manifest.metadata["aggregate_source_frame_count"] == 12
-    assert [
-        binding.court_instance_id for binding in result.manifest.target_courts
-    ] == ["court-001", "court-002"]
+    assert [binding.court_instance_id for binding in result.manifest.target_courts] == [
+        "court-001",
+        "court-002",
+    ]
 
 
 def test_assembler_rejects_incomplete_per_scene_global_timeline(tmp_path: Path) -> None:
-    staging = tmp_path / "datasets" / "plcs" / "staging"
+    staging = tmp_path / ".transactions" / "plcs_dataset" / "snapshot"
     (staging / "backgrounds").mkdir(parents=True)
     inventory = _inventory(tmp_path)
     first, second = inventory.scenes
@@ -333,7 +365,7 @@ def test_complete_multiscene_dataset_passes_strict_publication_validation(
         validate_plcs_dataset,
     )
 
-    staging = tmp_path / "datasets" / "plcs" / "staging"
+    staging = tmp_path / ".transactions" / "plcs_dataset" / "snapshot"
     (staging / "backgrounds").mkdir(parents=True)
     inventory = _inventory(tmp_path)
     inputs = tuple(_scene_input(staging, scene) for scene in inventory.scenes)
@@ -342,7 +374,9 @@ def test_complete_multiscene_dataset_passes_strict_publication_validation(
         staging_directory=staging,
         inventory=inventory,
         rigs={value.timeline.scene_id: value.rig for value in inputs},
-        avatars={track.object_id: _Avatar() for track in inventory.scenes[0].timeline.tracks},
+        avatars={
+            track.object_id: _Avatar() for track in inventory.scenes[0].timeline.tracks
+        },
         clip_load_count=3,
         model_load_count=1,
         execution_device="test-cpu-oracle",

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import replace
 from typing import cast
 
@@ -30,9 +30,7 @@ from src.tasks.plcs.model_io.contracts import (
 from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
 from src.utils.schema.player import NUM_HUMAN_KP
 
-_FLOAT_DTYPES = frozenset(
-    {torch.float16, torch.bfloat16, torch.float32, torch.float64}
-)
+_FLOAT_DTYPES = frozenset({torch.float16, torch.bfloat16, torch.float32, torch.float64})
 _MASK_DTYPES = frozenset(
     {
         torch.bool,
@@ -81,12 +79,13 @@ def _required_output(
     shape: tuple[int | None, ...],
 ) -> Tensor:
     if name not in output:
-        raise ModelOutputContractError(f"Required PLCS model output {name!r} is missing.")
+        raise ModelOutputContractError(
+            f"Required PLCS model output {name!r} is missing."
+        )
     value = output[name]
     if not isinstance(value, Tensor):
         raise ModelOutputContractError(
-            f"PLCS model output {name!r} must be a Tensor, got "
-            f"{type(value).__name__}."
+            f"PLCS model output {name!r} must be a Tensor, got {type(value).__name__}."
         )
     try:
         TensorSpec(shape=shape, dtypes=_FLOAT_DTYPES).validate(name, value)
@@ -108,7 +107,6 @@ class PLCSModelIOAdapter:
         model_type: type[nn.Module],
         profile: PLCSInputProfile,
         num_court_tokens: int,
-        camera_index: int,
         output_rank: int,
         predict_canonical_pose: bool,
         predict_auxiliary_position: bool,
@@ -118,14 +116,9 @@ class PLCSModelIOAdapter:
     ) -> None:
         if profile is PLCSInputProfile.TRACK_QUERY:
             raise ValueError("Use PLCSTrackQueryIOAdapter for track-query models.")
-        if num_court_tokens <= 0 or camera_index < 0 or min_views <= 0:
-            raise ValueError(
-                "num_court_tokens/min_views must be positive and camera_index "
-                "must be non-negative."
-            )
-        expected_output_rank = (
-            3 if profile is PLCSInputProfile.MULTIVIEW else 2
-        )
+        if num_court_tokens <= 0 or min_views <= 0:
+            raise ValueError("num_court_tokens and min_views must be positive.")
+        expected_output_rank = 3 if profile is PLCSInputProfile.MULTIVIEW else 2
         if output_rank != expected_output_rank:
             raise ValueError(
                 f"PLCS {profile.value!r} profile requires output_rank="
@@ -134,15 +127,12 @@ class PLCSModelIOAdapter:
         if max_views is not None and max_views <= 0:
             raise ValueError("max_views must be positive when configured.")
         if max_sequence_length is not None and max_sequence_length <= 0:
-            raise ValueError(
-                "max_sequence_length must be positive when configured."
-            )
+            raise ValueError("max_sequence_length must be positive when configured.")
         if max_views is not None and min_views > max_views:
             raise ValueError("min_views cannot exceed max_views.")
         self._model_type = model_type
         self.profile = profile
         self.num_court_tokens = num_court_tokens
-        self.camera_index = camera_index
         self.output_rank = output_rank
         self.predict_canonical_pose = predict_canonical_pose
         self.predict_auxiliary_position = predict_auxiliary_position
@@ -240,7 +230,10 @@ class PLCSModelIOAdapter:
                     f"PLCS input has {views} views, exceeding max_views="
                     f"{self.max_views}."
                 )
-            if self.max_sequence_length is not None and frames > self.max_sequence_length:
+            if (
+                self.max_sequence_length is not None
+                and frames > self.max_sequence_length
+            ):
                 raise ModelInputContractError(
                     f"PLCS input has {frames} frames, exceeding max_seq_len="
                     f"{self.max_sequence_length}."
@@ -274,9 +267,7 @@ class PLCSModelIOAdapter:
             )
         return ModelCall(kwargs=kwargs)
 
-    def prepare_training_batch(
-        self, batch: Mapping[str, object]
-    ) -> PLCSPreparedBatch:
+    def prepare_training_batch(self, batch: Mapping[str, object]) -> PLCSPreparedBatch:
         """Validate a canonical ``(B,V,T,...)`` batch and select its profile."""
         human_kp = require_tensor(
             batch,
@@ -358,46 +349,33 @@ class PLCSModelIOAdapter:
                 target_human_kp_3d=target_human_kp_3d,
                 target_human_mask=human_mask,
             )
-        if self.camera_index >= views:
-            raise ModelInputContractError(
-                f"adapter_camera_index={self.camera_index} is out of range for "
-                f"a batch with {views} views."
-            )
         if self.profile is PLCSInputProfile.FRAME and frames != 1:
             raise ModelInputContractError(
                 f"Frame-profile PLCS requires exactly one frame, got {frames}."
             )
 
         ready = {
-            "human_kp": human_kp[:, self.camera_index].reshape(
-                batch_size * frames, NUM_HUMAN_KP, 2
-            ),
-            "court_kp": court_kp[:, self.camera_index].reshape(
+            "human_kp": human_kp[:, 0].reshape(batch_size * frames, NUM_HUMAN_KP, 2),
+            "court_kp": court_kp[:, 0].reshape(
                 batch_size * frames, self.num_court_tokens, 2
             ),
-            "human_vis": human_vis[:, self.camera_index].reshape(
-                batch_size * frames, NUM_HUMAN_KP
-            ),
-            "human_mask": human_mask[:, self.camera_index].reshape(
-                batch_size * frames
-            ),
-            "court_vis": court_vis[:, self.camera_index].reshape(
+            "human_vis": human_vis[:, 0].reshape(batch_size * frames, NUM_HUMAN_KP),
+            "human_mask": human_mask[:, 0].reshape(batch_size * frames),
+            "court_vis": court_vis[:, 0].reshape(
                 batch_size * frames, self.num_court_tokens
             ),
         }
         sequence_shape = (
-            (batch_size, frames)
-            if self.profile is PLCSInputProfile.SEQUENCE
-            else None
+            (batch_size, frames) if self.profile is PLCSInputProfile.SEQUENCE else None
         )
         if self.profile is PLCSInputProfile.FRAME:
             target_position = target_position[:, 0]
             target_rotation = target_rotation[:, 0]
             if target_human_kp_3d is not None:
                 target_human_kp_3d = target_human_kp_3d[:, 0]
-            target_human_mask = human_mask[:, self.camera_index, 0]
+            target_human_mask = human_mask[:, 0, 0]
         else:
-            target_human_mask = human_mask[:, self.camera_index]
+            target_human_mask = human_mask[:, 0]
         return PLCSPreparedBatch(
             call=self.build_call(ready),
             sequence_shape=sequence_shape,
@@ -430,9 +408,7 @@ class PLCSModelIOAdapter:
         _binary_mask("human_mask", batch["human_mask"])
         _binary_mask("court_vis", batch["court_vis"])
 
-    def decode_output(
-        self, output: Mapping[str, object]
-    ) -> PLCSDecodedPrediction:
+    def decode_output(self, output: Mapping[str, object]) -> PLCSDecodedPrediction:
         """Validate output keys, tensors, ranks, and cross-output shape semantics."""
         if not isinstance(output, Mapping):
             raise ModelOutputContractError(
@@ -508,73 +484,6 @@ class PLCSModelIOAdapter:
             auxiliary_position=restore(decoded.auxiliary_position),
         )
 
-    def prepare_scene(
-        self,
-        scene: object,
-        cameras: Sequence[int],
-    ) -> PLCSPreparedBatch:
-        """Build a validated frame/sequence/multiview call from a loaded scene."""
-        if not cameras:
-            raise ModelInputContractError("At least one PLCS camera is required.")
-        scene_cameras = getattr(scene, "cameras", None)
-        if not isinstance(scene_cameras, Sequence):
-            raise ModelInputContractError("PLCS scene must expose a cameras sequence.")
-        if any(index < 0 or index >= len(scene_cameras) for index in cameras):
-            raise ModelInputContractError("PLCS camera selection is out of range.")
-
-        if self.profile is PLCSInputProfile.MULTIVIEW:
-            selected = list(cameras)
-        else:
-            selected = [cameras[0]]
-        human = np.stack(
-            [np.asarray(scene_cameras[index].human_kp_uv) for index in selected],
-            axis=0,
-        )
-        court = np.stack(
-            [np.asarray(scene_cameras[index].court_kp_uv) for index in selected],
-            axis=0,
-        )
-        human_vis = np.stack(
-            [
-                np.asarray(scene_cameras[index].human_kp_visible, dtype=np.bool_)
-                for index in selected
-            ],
-            axis=0,
-        )
-        court_vis = np.stack(
-            [
-                np.asarray(scene_cameras[index].court_kp_visible, dtype=np.bool_)
-                for index in selected
-            ],
-            axis=0,
-        )
-        frames = human.shape[1]
-        ready = {
-            "human_kp": torch.as_tensor(human, dtype=torch.float32).unsqueeze(0),
-            "court_kp": torch.as_tensor(court, dtype=torch.float32).unsqueeze(0),
-            "human_vis": torch.as_tensor(human_vis, dtype=torch.bool).unsqueeze(0),
-            "human_mask": torch.ones((1, len(selected), frames), dtype=torch.bool),
-            "court_vis": torch.as_tensor(court_vis, dtype=torch.bool).unsqueeze(0),
-        }
-        if self.profile is PLCSInputProfile.MULTIVIEW:
-            return PLCSPreparedBatch(call=self.build_call(ready))
-        flattened = {
-            "human_kp": ready["human_kp"][:, 0].reshape(
-                frames, NUM_HUMAN_KP, 2
-            ),
-            "court_kp": ready["court_kp"][:, 0].reshape(
-                frames, self.num_court_tokens, 2
-            ),
-            "human_vis": ready["human_vis"][:, 0].reshape(frames, NUM_HUMAN_KP),
-            "human_mask": ready["human_mask"][:, 0].reshape(frames),
-            "court_vis": ready["court_vis"][:, 0].reshape(
-                frames, self.num_court_tokens
-            ),
-        }
-        return PLCSPreparedBatch(
-            call=self.build_call(flattened), sequence_shape=(1, frames)
-        )
-
     def prepare_multiview_observations(
         self,
         *,
@@ -587,16 +496,12 @@ class PLCSModelIOAdapter:
         """Convert explicit NumPy multiview observations at the task boundary."""
         self.require_profile(PLCSInputProfile.MULTIVIEW)
         if human_kp.ndim != 5:
-            raise ModelInputContractError(
-                "human_kp must have shape (B,V,T,17,2)."
-            )
+            raise ModelInputContractError("human_kp must have shape (B,V,T,17,2).")
         batch_size, views, frames = human_kp.shape[:3]
         if court_kp.ndim == 4:
             court_kp = np.broadcast_to(court_kp[None], (batch_size, *court_kp.shape))
         if court_vis.ndim == 3:
-            court_vis = np.broadcast_to(
-                court_vis[None], (batch_size, *court_vis.shape)
-            )
+            court_vis = np.broadcast_to(court_vis[None], (batch_size, *court_vis.shape))
         expected_human_vis = (batch_size, views, frames, NUM_HUMAN_KP)
         expected_human_mask = (batch_size, views, frames)
         expected_court = (batch_size, views, frames, self.num_court_tokens, 2)
@@ -693,16 +598,12 @@ class PLCSTrackQueryIOAdapter:
         frame_mask = require_tensor(
             batch,
             "frame_mask",
-            spec=TensorSpec(
-                shape=(None, None), dtypes=frozenset({torch.bool})
-            ),
+            spec=TensorSpec(shape=(None, None), dtypes=frozenset({torch.bool})),
         )
         view_mask = require_tensor(
             batch,
             "view_mask",
-            spec=TensorSpec(
-                shape=(None, None), dtypes=frozenset({torch.bool})
-            ),
+            spec=TensorSpec(shape=(None, None), dtypes=frozenset({torch.bool})),
         )
         batch_size, views, frames, detections = human_kp.shape[:4]
         if min(batch_size, views, frames, detections) == 0:
@@ -714,9 +615,7 @@ class PLCSTrackQueryIOAdapter:
                 "detection_mask must match human_kp through its detection axis."
             )
         if court_kp.shape[:3] != (batch_size, views, frames):
-            raise ModelInputContractError(
-                "court_kp must share human_kp (B,V,T) axes."
-            )
+            raise ModelInputContractError("court_kp must share human_kp (B,V,T) axes.")
         if court_vis.shape != court_kp.shape[:-1]:
             raise ModelInputContractError(
                 "court_vis must match court_kp without its UV axis."
@@ -754,25 +653,19 @@ class PLCSTrackQueryIOAdapter:
             }
         )
 
-    def prepare_training_batch(
-        self, batch: Mapping[str, object]
-    ) -> PLCSPreparedBatch:
+    def prepare_training_batch(self, batch: Mapping[str, object]) -> PLCSPreparedBatch:
         call = self.build_call(batch)
         human_kp = cast(Tensor, call.kwargs["human_kp"])
         batch_size, _, frames = human_kp.shape[:3]
         target_position = require_tensor(
             batch,
             "target_position",
-            spec=TensorSpec(
-                shape=(batch_size, frames, None, 3), dtypes=_FLOAT_DTYPES
-            ),
+            spec=TensorSpec(shape=(batch_size, frames, None, 3), dtypes=_FLOAT_DTYPES),
         )
         target_rotation = require_tensor(
             batch,
             "target_rotation",
-            spec=TensorSpec(
-                shape=(batch_size, frames, None, 2), dtypes=_FLOAT_DTYPES
-            ),
+            spec=TensorSpec(shape=(batch_size, frames, None, 2), dtypes=_FLOAT_DTYPES),
         )
         target_presence = require_tensor(
             batch,
@@ -785,9 +678,7 @@ class PLCSTrackQueryIOAdapter:
         target_slot_mask = require_tensor(
             batch,
             "target_slot_mask",
-            spec=TensorSpec(
-                shape=(batch_size, None), dtypes=frozenset({torch.bool})
-            ),
+            spec=TensorSpec(shape=(batch_size, None), dtypes=frozenset({torch.bool})),
         )
         target_instance_id = require_tensor(
             batch,

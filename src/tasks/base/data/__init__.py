@@ -1,23 +1,5 @@
-"""Base data abstractions shared across tasks."""
+"""Canonical task-data utilities with no legacy scene-file compatibility."""
 
-from src.tasks.base.data.dataset_writer import BaseDatasetWriter
-from src.tasks.base.data.scene_dataset import (
-    CameraSelection,
-    Scene,
-    SceneDataContractError,
-    SceneDatasetBase,
-    SceneDatasetConfig,
-    SceneHeader,
-    TemporalWindow,
-)
+from src.tasks.base.data.canonical_dataset import CanonicalDataset
 
-__all__ = [
-    "BaseDatasetWriter",
-    "CameraSelection",
-    "Scene",
-    "SceneDataContractError",
-    "SceneDatasetBase",
-    "SceneHeader",
-    "SceneDatasetConfig",
-    "TemporalWindow",
-]
+__all__ = ["CanonicalDataset"]

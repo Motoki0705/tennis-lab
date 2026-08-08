@@ -109,9 +109,7 @@ def test_staged_manifest_rejects_missing_accepted_court(tmp_path: Path) -> None:
     (staging / "dataset.json").write_text(
         json.dumps(
             {
-                "metadata": {
-                    "accepted_court_instance_ids": ["court-000"]
-                },
+                "metadata": {"accepted_court_instance_ids": ["court-000"]},
                 "target_courts": [binding.to_dict()],
             }
         ),

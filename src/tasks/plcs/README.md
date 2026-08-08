@@ -15,7 +15,7 @@
 - **`targets.py`**: `build_coco17_world_targets()`。canonical poseまたはAthletePose3DからCOCO17ワールド座標targetを構築。
 - **`tracking_dataset.py` / `tracking_datamodule.py`**: 固定pathのsceneを読み、object観測をscene object IDの昇順で保持したまま、物理trackをlifecycle slotへpackingするDataset/DataModule。
 - **`tracking_augmentation.py`**: object列を並べ替えず、clean GTを保持したまま観測だけへpose noise/dropout/false-positiveを適用するshape adapter。
-- **`types.py`**: `PLCSBatch`/`PLCSSceneMeta` のバッチ・meta契約。
+- **`types.py`**: `PLCSBatch` のモデル入力契約。dataset provenanceはcanonical manifestだけが所有する。
 
 ### models/
 - **各model module**: 実装classのcanonical import先。package rootは内部classや旧factoryをre-exportしない。

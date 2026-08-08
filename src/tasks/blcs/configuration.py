@@ -170,13 +170,9 @@ def _ordered_range(
     if positive and lo <= 0.0:
         raise SemanticConfigurationError(f"{path} values must be positive.")
     if lower_bound is not None and lo < lower_bound:
-        raise SemanticConfigurationError(
-            f"{path} values must be >= {lower_bound}."
-        )
+        raise SemanticConfigurationError(f"{path} values must be >= {lower_bound}.")
     if upper_bound is not None and hi > upper_bound:
-        raise SemanticConfigurationError(
-            f"{path} values must be <= {upper_bound}."
-        )
+        raise SemanticConfigurationError(f"{path} values must be <= {upper_bound}.")
     return lo, hi
 
 
@@ -801,7 +797,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
 @dataclass(frozen=True, slots=True)
 class PreviewConfig:
     output_dir: Path
-    scene_dir: Path
+    dataset_dir: Path
     split: str
     sample_indices: tuple[int, ...]
     max_samples: int
@@ -1156,8 +1152,8 @@ def parse_preview_config(config: object) -> PreviewConfig:
             PathRole.OUTPUT,
             cast("str", _value(preview, "output_dir", str, path="preview")),
         ),
-        scene_dir=resolver.resolve(
-            PathRole.DATA, cast("str", _value(data, "scene_dir", str, path="data"))
+        dataset_dir=resolver.resolve(
+            PathRole.DATA, cast("str", _value(data, "dataset_dir", str, path="data"))
         ),
         split=cast("str", _value(preview, "split", str, path="preview")),
         sample_indices=_int_sequence(
@@ -1323,9 +1319,7 @@ def validate_generator_sections(
         physics["gravity_range"], path="physics.gravity_range", positive=True
     )
     for key in ("k_drag_range", "k_magnus_range", "mu_range", "wind_speed_range"):
-        _ordered_range(
-            physics[key], path=f"physics.{key}", lower_bound=0.0
-        )
+        _ordered_range(physics[key], path=f"physics.{key}", lower_bound=0.0)
     _ordered_range(
         physics["e_z_range"],
         path="physics.e_z_range",
@@ -1413,14 +1407,17 @@ def validate_generator_sections(
     )
     for key in probability_keys:
         _probability(cast("float", rally[key]), path=f"rally.{key}")
-    if sum(
-        cast("float", rally[key])
-        for key in (
-            "volley_probability",
-            "normal_return_probability",
-            "late_return_probability",
+    if (
+        sum(
+            cast("float", rally[key])
+            for key in (
+                "volley_probability",
+                "normal_return_probability",
+                "late_return_probability",
+            )
         )
-    ) <= 0.0:
+        <= 0.0
+    ):
         raise SemanticConfigurationError(
             "At least one rally return-type probability must be positive."
         )
@@ -1433,7 +1430,9 @@ def validate_generator_sections(
     try:
         CameraProfileConfig.from_mapping(camera)
     except (TypeError, ValueError) as error:
-        raise SemanticConfigurationError(f"Invalid canonical camera profile: {error}") from error
+        raise SemanticConfigurationError(
+            f"Invalid canonical camera profile: {error}"
+        ) from error
 
     targeted_velocity = sections["targeted_velocity"]
     targeted_ranges = ("drive_elevation_range_deg", "lob_elevation_range_deg")
@@ -1479,16 +1478,17 @@ def validate_generator_sections(
         path="targeted_velocity.lob_probability",
     )
     for key in ("max_ballistic_apex_height_m", "gravity"):
-        _positive(cast("float", targeted_velocity[key]), path=f"targeted_velocity.{key}")
-    for key in (
-        "landing_sim_max_frames",
-    ):
+        _positive(
+            cast("float", targeted_velocity[key]), path=f"targeted_velocity.{key}"
+        )
+    for key in ("landing_sim_max_frames",):
         if cast("int", targeted_velocity[key]) <= 0:
-            raise SemanticConfigurationError(f"targeted_velocity.{key} must be positive.")
+            raise SemanticConfigurationError(
+                f"targeted_velocity.{key} must be positive."
+            )
     refine_iters = cast("int", targeted_velocity["landing_refine_max_iters"])
     if refine_iters < 0 or (
-        cast("bool", targeted_velocity["landing_refine_enabled"])
-        and refine_iters == 0
+        cast("bool", targeted_velocity["landing_refine_enabled"]) and refine_iters == 0
     ):
         raise SemanticConfigurationError(
             "targeted_velocity.landing_refine_max_iters must be non-negative and "
@@ -1498,7 +1498,9 @@ def validate_generator_sections(
         "net_elevation_step_deg",
         "landing_refine_tolerance_m",
     ):
-        _positive(cast("float", targeted_velocity[key]), path=f"targeted_velocity.{key}")
+        _positive(
+            cast("float", targeted_velocity[key]), path=f"targeted_velocity.{key}"
+        )
     _non_negative(
         cast("float", targeted_velocity["target_margin_m"]),
         path="targeted_velocity.target_margin_m",
@@ -1635,12 +1637,10 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
     backend = cast("str", _value(data, "backend", str, path="data"))
     data_keys = {
         "backend",
-        "scene_dir",
+        "dataset_dir",
         "batch_size",
         "num_workers",
         "pin_memory",
-        "camera_mode",
-        "num_views_range",
         "seq_len_range",
         "augmentation",
     }
@@ -1659,12 +1659,10 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
         data,
         {
             "backend": str,
-            "scene_dir": str,
+            "dataset_dir": str,
             "batch_size": int,
             "num_workers": int,
             "pin_memory": bool,
-            "camera_mode": str,
-            "num_views_range": list,
             "seq_len_range": list,
             "augmentation": dict,
         },
@@ -1672,22 +1670,10 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
     )
     if backend != "default":
         raise SemanticConfigurationError("data.backend must be 'default'.")
-    if data["camera_mode"] not in {"random", "first"}:
-        raise SemanticConfigurationError(
-            "data.camera_mode must be 'random' or 'first'."
-        )
-    num_views_range = _int_sequence(
-        data["num_views_range"], path="data.num_views_range"
-    )
     seq_len_range = _int_sequence(data["seq_len_range"], path="data.seq_len_range")
-    if len(num_views_range) != 2 or len(seq_len_range) != 2:
-        raise SemanticConfigurationError(
-            "data.num_views_range and data.seq_len_range must contain two values."
-        )
-    for name, values in (
-        ("num_views_range", num_views_range),
-        ("seq_len_range", seq_len_range),
-    ):
+    if len(seq_len_range) != 2:
+        raise SemanticConfigurationError("data.seq_len_range must contain two values.")
+    for name, values in (("seq_len_range", seq_len_range),):
         if values[0] <= 0 or values[1] < values[0]:
             raise SemanticConfigurationError(
                 f"data.{name} must be a positive ordered range."
@@ -1704,17 +1690,6 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
     ):
         raise SemanticConfigurationError(
             "data.seq_len_range cannot exceed model.max_seq_len."
-        )
-    if (
-        isinstance(model, (MultiViewModelConfig, AxialModelConfig))
-        and num_views_range[1] > model.max_num_cameras
-    ):
-        raise SemanticConfigurationError(
-            "data.num_views_range cannot exceed model.max_num_cameras."
-        )
-    if isinstance(model, SingleModelConfig) and num_views_range != (1, 1):
-        raise SemanticConfigurationError(
-            "Single-view BLCS models require data.num_views_range=[1, 1]."
         )
     if model.name == "blcs_track_query":
         _validate_types(
@@ -1947,7 +1922,9 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
                 "loss.position_axis_weights values must be positive."
             )
         if cast("int", loss["transition_radius"]) < 0:
-            raise SemanticConfigurationError("loss.transition_radius must be non-negative.")
+            raise SemanticConfigurationError(
+                "loss.transition_radius must be non-negative."
+            )
         if (
             cast("float", loss["match_position_weight"]) == 0.0
             and cast("float", loss["match_presence_weight"]) == 0.0
@@ -2013,7 +1990,6 @@ def _validate_training_for_hydra(config: DictConfig) -> None:
 
 
 register_boundary_validator("blcs.train", _validate_training_for_hydra)
-register_boundary_validator("blcs.preview_augmentation", validate_preview_boundary)
 register_boundary_validator("blcs.api_server", validate_api_boundary)
 
 
@@ -2118,18 +2094,17 @@ def run_negative_matrix() -> None:
         "must be false when GAN is enabled",
     )
 
+
 __all__ = [
     "AxialModelConfig",
     "BLCSModelConfig",
     "MultiViewModelConfig",
     "PointFusionConfig",
-    "PreviewConfig",
     "QualitativeRenderingConfig",
     "SingleModelConfig",
     "TrackQueryModelConfig",
     "build_path_resolver",
     "parse_model_config",
-    "parse_preview_config",
     "parse_qualitative_rendering",
     "run_negative_matrix",
     "validate_api_boundary",

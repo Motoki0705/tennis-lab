@@ -23,9 +23,7 @@ from src.tasks.blcs.training.tracking_losses import BLCSTrackingLoss
 from src.tasks.blcs.training.tracking_metrics import blcs_tracking_metrics
 
 
-class BLCSTrackingLightningModule(
-    TrackingLightningModule[BLCSTrackQueryPrediction]
-):
+class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPrediction]):
     """Train and evaluate multi-ball clip-local slots."""
 
     def __init__(

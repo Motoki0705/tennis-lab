@@ -32,13 +32,11 @@ def prepare_tracking_attention_masks(
 ) -> tuple[Tensor, Tensor, Tensor]:
     """Prepare tracking observation state and spatial/time attention masks."""
     batch_size, num_views, num_frames, num_detections = detection_mask.shape
-    context_valid = (
-        view_mask[:, :, None, None] & frame_mask[:, None, :, None]
-    ).expand(-1, -1, -1, num_detections)
+    context_valid = (view_mask[:, :, None, None] & frame_mask[:, None, :, None]).expand(
+        -1, -1, -1, num_detections
+    )
     camera_valid = (
-        context_valid & detection_mask
-        if mask_invisible_observations
-        else context_valid
+        context_valid & detection_mask if mask_invisible_observations else context_valid
     ).permute(0, 2, 1, 3)
     slot_valid = frame_mask[:, :, None].expand(-1, -1, num_queries)
     spatial_valid = torch.cat(

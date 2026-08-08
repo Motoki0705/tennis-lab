@@ -105,9 +105,7 @@ def test_fused_frame_composition_is_exactly_generic_composition_equivalent() -> 
     )
     local = GaussianTensorSet(
         means=torch.tensor(((0.1, 0.2, 0.3), (-0.2, 0.4, 0.1))),
-        quaternions_wxyz=torch.tensor(
-            ((1.0, 0.0, 0.0, 0.0), (1.0, 0.0, 0.0, 0.0))
-        ),
+        quaternions_wxyz=torch.tensor(((1.0, 0.0, 0.0, 0.0), (1.0, 0.0, 0.0, 0.0))),
         log_scales=torch.log(torch.full((2, 3), 0.05)),
         opacity_logits=torch.tensor((2.0, 3.0)),
         features=torch.tensor(((1.0, 0.0, 0.0), (0.0, 1.0, 0.0))),

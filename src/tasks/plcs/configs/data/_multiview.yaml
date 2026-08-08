@@ -1,4 +1,2 @@
-min_cameras: 2
-camera_mode: random
-num_views_range: [3, 5]
+# All generated cameras are loaded in manifest order.
 batch_size: 4

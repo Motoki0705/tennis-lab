@@ -221,9 +221,7 @@ def test_scene_inventory_keeps_each_global_timeline_intact_and_uses_every_court(
     inventory = PLCSSceneInventory(
         dataset_scene_id="B00",
         scenes=(
-            _logical_scene(
-                "B00", split="train", binding_index=1, tracks=tracks
-            ),
+            _logical_scene("B00", split="train", binding_index=1, tracks=tracks),
             _logical_scene(
                 "B00-plcs-002", split="train", binding_index=2, tracks=tracks
             ),
@@ -240,9 +238,11 @@ def test_scene_inventory_keeps_each_global_timeline_intact_and_uses_every_court(
     ] == ["court-001", "court-002"]
     for scene in inventory.scenes:
         assert scene.timeline.frame_count == 7
-        assert {
-            track.clip.category.value for track in scene.timeline.tracks
-        } == {"running", "walking", "general"}
+        assert {track.clip.category.value for track in scene.timeline.tracks} == {
+            "running",
+            "walking",
+            "general",
+        }
         for track_index, track in enumerate(scene.timeline.tracks):
             assert [
                 frame.entries[track_index].source_frame_index
@@ -260,14 +260,10 @@ def test_scene_inventory_rejects_too_few_scenes_for_accepted_courts(
         PLCSSceneInventory(
             dataset_scene_id="B00",
             scenes=(
-                _logical_scene(
-                    "B00", split="train", binding_index=1, tracks=tracks
-                ),
+                _logical_scene("B00", split="train", binding_index=1, tracks=tracks),
             ),
             accepted_court_instance_ids=("court-001", "court-002"),
-            required_motion_categories=frozenset(
-                {"running", "walking", "general"}
-            ),
+            required_motion_categories=frozenset({"running", "walking", "general"}),
         )
 
 
@@ -278,9 +274,7 @@ def test_scene_inventory_rejects_missing_accepted_court(tmp_path: Path) -> None:
         PLCSSceneInventory(
             dataset_scene_id="B00",
             scenes=(
-                _logical_scene(
-                    "B00", split="train", binding_index=1, tracks=tracks
-                ),
+                _logical_scene("B00", split="train", binding_index=1, tracks=tracks),
                 _logical_scene(
                     "B00-plcs-002",
                     split="train",
@@ -289,9 +283,7 @@ def test_scene_inventory_rejects_missing_accepted_court(tmp_path: Path) -> None:
                 ),
             ),
             accepted_court_instance_ids=("court-001", "court-002"),
-            required_motion_categories=frozenset(
-                {"running", "walking", "general"}
-            ),
+            required_motion_categories=frozenset({"running", "walking", "general"}),
         )
 
 
@@ -302,9 +294,7 @@ def test_scene_inventory_rejects_court_count_imbalance(tmp_path: Path) -> None:
         PLCSSceneInventory(
             dataset_scene_id="B00",
             scenes=(
-                _logical_scene(
-                    "B00", split="train", binding_index=1, tracks=tracks
-                ),
+                _logical_scene("B00", split="train", binding_index=1, tracks=tracks),
                 _logical_scene(
                     "B00-plcs-002",
                     split="train",
@@ -325,9 +315,7 @@ def test_scene_inventory_rejects_court_count_imbalance(tmp_path: Path) -> None:
                 ),
             ),
             accepted_court_instance_ids=("court-001", "court-002"),
-            required_motion_categories=frozenset(
-                {"running", "walking", "general"}
-            ),
+            required_motion_categories=frozenset({"running", "walking", "general"}),
         )
 
 
@@ -338,9 +326,7 @@ def test_scene_inventory_rejects_per_split_court_imbalance(tmp_path: Path) -> No
         PLCSSceneInventory(
             dataset_scene_id="B00",
             scenes=(
-                _logical_scene(
-                    "B00", split="train", binding_index=1, tracks=tracks
-                ),
+                _logical_scene("B00", split="train", binding_index=1, tracks=tracks),
                 _logical_scene(
                     "B00-plcs-002",
                     split="train",
@@ -361,7 +347,5 @@ def test_scene_inventory_rejects_per_split_court_imbalance(tmp_path: Path) -> No
                 ),
             ),
             accepted_court_instance_ids=("court-001", "court-002"),
-            required_motion_categories=frozenset(
-                {"running", "walking", "general"}
-            ),
+            required_motion_categories=frozenset({"running", "walking", "general"}),
         )

@@ -190,18 +190,28 @@ class PLCSForegroundCompositor:
                 -1
             ).index_select(0, pixel_indices) * (1.0 - selected_foreground_alpha)
             selected_depth = foreground_depth.reshape(-1).index_select(0, pixel_indices)
-            integer_payload = torch.stack(
-                (pixel_indices, visible_ids),
-                dim=1,
-            ).to(dtype=torch.int32).cpu().numpy()
-            floating_payload = torch.cat(
-                (
-                    selected_rgb,
-                    selected_alpha[:, None],
-                    selected_depth[:, None],
-                ),
-                dim=1,
-            ).to(dtype=torch.float32).cpu().numpy()
+            integer_payload = (
+                torch.stack(
+                    (pixel_indices, visible_ids),
+                    dim=1,
+                )
+                .to(dtype=torch.int32)
+                .cpu()
+                .numpy()
+            )
+            floating_payload = (
+                torch.cat(
+                    (
+                        selected_rgb,
+                        selected_alpha[:, None],
+                        selected_depth[:, None],
+                    ),
+                    dim=1,
+                )
+                .to(dtype=torch.float32)
+                .cpu()
+                .numpy()
+            )
         instance_ids = integer_payload[:, 1]
         actual_ids, actual_counts = np.unique(instance_ids, return_counts=True)
         visible_counts = {instance_id: 0 for instance_id in expected_instance_ids}
@@ -302,9 +312,7 @@ def _render_plcs_tensors(
     ) / denominator[:, None, None].square()
     covariances_pixel = jacobian @ covariances_camera @ jacobian.transpose(-1, -2)
     identity = torch.eye(2, dtype=dtype, device=device)
-    covariances_pixel = (
-        covariances_pixel + rasterizer.minimum_pixel_variance * identity
-    )
+    covariances_pixel = covariances_pixel + rasterizer.minimum_pixel_variance * identity
     if not bool(torch.isfinite(pixels).all()) or not bool(
         torch.isfinite(covariances_pixel).all()
     ):
@@ -363,16 +371,12 @@ def _tile_candidate_indices_vectorized(
         .numpy()
     )
     ordered_indices = order.detach().cpu().numpy().astype(np.int64, copy=False)
-    x_min = np.maximum(0, np.floor(geometry[:, 0] - geometry[:, 2])).astype(
-        np.int64
-    )
+    x_min = np.maximum(0, np.floor(geometry[:, 0] - geometry[:, 2])).astype(np.int64)
     x_max = np.minimum(
         width,
         np.ceil(geometry[:, 0] + geometry[:, 2]).astype(np.int64) + 1,
     )
-    y_min = np.maximum(0, np.floor(geometry[:, 1] - geometry[:, 2])).astype(
-        np.int64
-    )
+    y_min = np.maximum(0, np.floor(geometry[:, 1] - geometry[:, 2])).astype(np.int64)
     y_max = np.minimum(
         height,
         np.ceil(geometry[:, 1] + geometry[:, 2]).astype(np.int64) + 1,
@@ -397,8 +401,7 @@ def _tile_candidate_indices_vectorized(
     )
     pair_offsets = np.arange(int(pair_counts.sum()), dtype=np.int64) - pair_starts
     tile_x = (
-        tile_x_min[gaussian_positions]
-        + pair_offsets % tile_x_count[gaussian_positions]
+        tile_x_min[gaussian_positions] + pair_offsets % tile_x_count[gaussian_positions]
     )
     tile_y = (
         tile_y_min[gaussian_positions]

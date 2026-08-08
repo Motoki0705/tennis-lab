@@ -93,9 +93,7 @@ class MultiBallSceneGenerator:
             raise ValueError(
                 "maximum_physics_attempts_per_object must be a positive integer."
             )
-        self.maximum_physics_attempts_per_object = (
-            maximum_physics_attempts_per_object
-        )
+        self.maximum_physics_attempts_per_object = maximum_physics_attempts_per_object
         self.composer = TimelineComposer(self.timeline, rng=rng)
 
     def _generate_ball(

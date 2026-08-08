@@ -73,6 +73,22 @@ class AvatarAppearance:
 
 
 @dataclass(frozen=True, slots=True)
+class PLCSAvatarFrameTensors:
+    """One validated articulated frame used by rendering and supervision."""
+
+    gaussians: GaussianTensorSet
+    joints_m: Tensor
+
+    def __post_init__(self) -> None:
+        if self.joints_m.shape != (52, 3):
+            raise ValueError("PLCS SMPL-H joints must have shape [52, 3].")
+        if self.joints_m.dtype != torch.float32:
+            raise TypeError("PLCS SMPL-H joints must use float32.")
+        if not bool(torch.isfinite(self.joints_m).all()):
+            raise ValueError("PLCS SMPL-H joints contain NaN or infinity.")
+
+
+@dataclass(frozen=True, slots=True)
 class PreparedAvatar:
     """Stage-scoped device buffers for one complete source clip."""
 
@@ -109,7 +125,7 @@ class PreparedAvatar:
     def frame_tensors_batch(
         self,
         source_frame_indices: tuple[int, ...],
-    ) -> dict[int, GaussianTensorSet]:
+    ) -> dict[int, PLCSAvatarFrameTensors]:
         """Deform one bounded batch and retain it only for its current chunk."""
         batch = skin_gaussian_batch(
             self.device_model,
@@ -118,20 +134,23 @@ class PreparedAvatar:
             source_frame_indices=source_frame_indices,
         )
         return {
-            frame_index: GaussianTensorSet(
-                means=batch.means_m[index],
-                quaternions_wxyz=batch.quaternions_wxyz[index],
-                log_scales=batch.log_scales_m[index],
-                opacity_logits=self.device_asset.opacity_logits,
-                features=self.appearance.features,
-                instance_ids=torch.zeros(
-                    self.device_asset.gaussian_count,
-                    dtype=torch.int64,
-                    device=self.device_model.device,
+            frame_index: PLCSAvatarFrameTensors(
+                gaussians=GaussianTensorSet(
+                    means=batch.means_m[index],
+                    quaternions_wxyz=batch.quaternions_wxyz[index],
+                    log_scales=batch.log_scales_m[index],
+                    opacity_logits=self.device_asset.opacity_logits,
+                    features=self.appearance.features,
+                    instance_ids=torch.zeros(
+                        self.device_asset.gaussian_count,
+                        dtype=torch.int64,
+                        device=self.device_model.device,
+                    ),
+                    coordinates=GaussianCoordinates.asset_local_metres(),
+                    appearance_model=self.appearance.appearance_model,
+                    appearance_space=self.appearance.appearance_space,
                 ),
-                coordinates=GaussianCoordinates.asset_local_metres(),
-                appearance_model=self.appearance.appearance_model,
-                appearance_space=self.appearance.appearance_space,
+                joints_m=batch.joints_m[index],
             )
             for index, frame_index in enumerate(source_frame_indices)
         }

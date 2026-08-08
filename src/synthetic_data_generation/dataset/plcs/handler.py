@@ -11,23 +11,23 @@ from typing import Protocol
 
 import numpy as np
 import torch
+from numpy.typing import NDArray
 
 from src.synthetic_data_generation.alignment.validation import (
     validate_alignment_outputs,
     validate_court_transform_binding,
 )
-from src.synthetic_data_generation.composition.gaussians import (
-    GaussianTensorSet,
-)
 from src.synthetic_data_generation.configuration import PLCSDatasetConfiguration
 from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
 from src.synthetic_data_generation.dataset.plcs.assembler import (
     PLCSSceneAssemblyInput,
+    PLCSSupervisionArrays,
     assemble_plcs_dataset,
     build_frame_label,
 )
 from src.synthetic_data_generation.dataset.plcs.composition import (
     AvatarAppearance,
+    PLCSAvatarFrameTensors,
     compose_prevalidated_frame_gaussians,
 )
 from src.synthetic_data_generation.dataset.plcs.diagnostics import (
@@ -40,6 +40,7 @@ from src.synthetic_data_generation.dataset.plcs.execution import (
 )
 from src.synthetic_data_generation.dataset.plcs.rendering.nht import NHTPLCSRenderer
 from src.synthetic_data_generation.dataset.plcs.timeline import (
+    PLCSGlobalTimeline,
     PLCSLogicalScene,
     PLCSObjectTrack,
     PLCSSceneInventory,
@@ -72,11 +73,17 @@ from src.tasks.base.generate_dataset.court_assignment import (
     CourtAssignment,
     assign_courts_balanced,
 )
+from src.tasks.plcs.data.targets import smplh_joints_to_coco17
 from src.tasks.plcs.generate_dataset.sampling.motion_sampler import (
     ACCADMotionLibrary,
     MotionCategory,
     PLCSMotionClip,
     load_amass_motion_clip,
+)
+from src.utils.schema.court import (
+    COURT_COORD_SCALE_XYZ,
+    STANDARD_COURT_CONFIG,
+    court_keypoints_3d,
 )
 
 
@@ -144,8 +151,7 @@ class PLCSStageParameters:
         if not self.split.strip() or not self.scene_splits or not self.objects:
             raise ValueError("PLCS split, scene_splits, and objects must be explicit.")
         if any(
-            not scene_id.strip()
-            or split not in {"train", "validation", "test"}
+            not scene_id.strip() or split not in {"train", "validation", "test"}
             for scene_id, split in self.scene_splits.items()
         ):
             raise ValueError("PLCS scene_splits contains an invalid scene or split.")
@@ -315,18 +321,14 @@ class PLCSStageHandler:
             assignments=assignments,
             layout=layout,
             tracks=tracks,
-            required_motion_categories=frozenset(
-                self.configuration.motion_categories
-            ),
+            required_motion_categories=frozenset(self.configuration.motion_categories),
         )
         rigs = self._sample_scene_rigs(inventory=inventory, layout=layout)
         unique_cameras = _unique_inventory_cameras(
             inventory=inventory,
             rigs=rigs,
         )
-        resolutions = {
-            (camera.width, camera.height) for camera in unique_cameras
-        }
+        resolutions = {(camera.width, camera.height) for camera in unique_cameras}
         if len(resolutions) != 1:
             raise ValueError("PLCS compact chunks require one configured resolution.")
         width, height = next(iter(resolutions))
@@ -372,7 +374,7 @@ class PLCSStageHandler:
                 width=width,
                 height=height,
             )
-        readers_by_scene = self._render_logical_scenes(
+        readers_by_scene, supervision_by_scene = self._render_logical_scenes(
             inventory=inventory,
             rigs=rigs,
             avatars=avatars,
@@ -388,10 +390,18 @@ class PLCSStageHandler:
                     rig=rigs[timeline.scene_id],
                     chunk_readers=readers_by_scene[timeline.scene_id],
                     attempt_token=attempt_tokens[timeline.scene_id],
+                    supervision=supervision_by_scene[timeline.scene_id],
                 )
             )
 
-        transient_generated_bytes = directory_size_bytes(paths.staging_directory)
+        supervision_bytes = sum(
+            np.asarray(getattr(arrays, name)).nbytes
+            for arrays in supervision_by_scene.values()
+            for name in PLCSSupervisionArrays.__dataclass_fields__
+        )
+        transient_generated_bytes = (
+            directory_size_bytes(paths.staging_directory) + supervision_bytes
+        )
         _discard_background_working_files(paths.staging_directory)
         diagnostic_paths = write_plcs_diagnostics(
             staging_directory=paths.staging_directory,
@@ -589,9 +599,7 @@ class PLCSStageHandler:
                         atol=1.0e-6,
                     )
                 rigs_by_court[binding.court_instance_id] = rig
-            result[logical.timeline.scene_id] = rigs_by_court[
-                binding.court_instance_id
-            ]
+            result[logical.timeline.scene_id] = rigs_by_court[binding.court_instance_id]
         return result
 
     def _render_logical_scenes(
@@ -602,7 +610,10 @@ class PLCSStageHandler:
         avatars: Mapping[str, PLCSPreparedAvatar],
         writers: Mapping[str, ChunkWriter],
         chunk_size: int,
-    ) -> dict[str, tuple[ChunkReader, ...]]:
+    ) -> tuple[
+        dict[str, tuple[ChunkReader, ...]],
+        dict[str, PLCSSupervisionArrays],
+    ]:
         """Render all courts together while evaluating each source batch once."""
         reference = inventory.scenes[0].timeline
         scene_ids = tuple(scene.timeline.scene_id for scene in inventory.scenes)
@@ -617,6 +628,17 @@ class PLCSStageHandler:
             )
             for logical in inventory.scenes
         }
+        supervision = {
+            logical.timeline.scene_id: _empty_supervision(
+                frame_count=logical.timeline.frame_count,
+                camera_count=len(rigs[logical.timeline.scene_id].cameras),
+                object_count=len(logical.timeline.tracks),
+            )
+            for logical in inventory.scenes
+        }
+        court_points = (
+            court_keypoints_3d(STANDARD_COURT_CONFIG).numpy().astype(np.float64)
+        )
         for logical in inventory.scenes[1:]:
             timeline = logical.timeline
             if timeline.frame_count != reference.frame_count or tuple(
@@ -656,7 +678,7 @@ class PLCSStageHandler:
                     batch_start + self.parameters.smplh_batch_size,
                     chunk_stop,
                 )
-                frame_tensors: dict[str, dict[int, GaussianTensorSet]] = {}
+                frame_tensors: dict[str, dict[int, PLCSAvatarFrameTensors]] = {}
                 for track in reference.tracks:
                     source_indices = tuple(
                         frame_index - track.start_frame
@@ -681,7 +703,7 @@ class PLCSStageHandler:
                         object_tensors = {
                             entry.object_id: frame_tensors[entry.object_id][
                                 int(entry.source_frame_index)
-                            ]
+                            ].gaussians
                             for entry in frame.entries
                             if entry.present and entry.source_frame_index is not None
                         }
@@ -689,6 +711,14 @@ class PLCSStageHandler:
                             compositions[scene_id],
                             frame_index=frame_index,
                             object_tensors=object_tensors,
+                        )
+                        _write_frame_supervision(
+                            supervision[scene_id],
+                            timeline=timeline,
+                            rig=rig,
+                            frame_index=frame_index,
+                            frame_tensors=frame_tensors,
+                            court_points_court_m=court_points,
                         )
                         for camera_index, sampled in enumerate(rig.cameras):
                             delta, visibility = self.execution_backend.compose_delta(
@@ -719,9 +749,138 @@ class PLCSStageHandler:
                         )
                     )
                 )
-        return {
-            scene_id: tuple(readers) for scene_id, readers in chunk_readers.items()
-        }
+        return (
+            {scene_id: tuple(readers) for scene_id, readers in chunk_readers.items()},
+            supervision,
+        )
+
+
+def _empty_supervision(
+    *, frame_count: int, camera_count: int, object_count: int
+) -> PLCSSupervisionArrays:
+    """Allocate one exact dense semantic store with explicit inactive fills."""
+    rotation: NDArray[np.float32] = np.zeros(
+        (frame_count, object_count, 2), dtype=np.float32
+    )
+    rotation[..., 0] = 1.0
+    return PLCSSupervisionArrays(
+        human_kp=np.zeros(
+            (frame_count, camera_count, object_count, 17, 2), dtype=np.float32
+        ),
+        human_vis=np.zeros(
+            (frame_count, camera_count, object_count, 17), dtype=np.bool_
+        ),
+        court_kp=np.zeros((frame_count, camera_count, 20, 2), dtype=np.float32),
+        court_vis=np.zeros((frame_count, camera_count, 20), dtype=np.bool_),
+        human_mask=np.zeros((frame_count, camera_count, object_count), dtype=np.bool_),
+        position=np.zeros((frame_count, object_count, 3), dtype=np.float32),
+        position_court_m=np.zeros((frame_count, object_count, 3), dtype=np.float32),
+        rotation=rotation,
+        present=np.zeros((frame_count, object_count), dtype=np.bool_),
+        human_kp_3d=np.zeros((frame_count, object_count, 17, 3), dtype=np.float32),
+        canonical_pose_3d=np.zeros(
+            (frame_count, object_count, 52, 3), dtype=np.float32
+        ),
+    )
+
+
+def _write_frame_supervision(
+    output: PLCSSupervisionArrays,
+    *,
+    timeline: PLCSGlobalTimeline,
+    rig: SampledCameraRig,
+    frame_index: int,
+    frame_tensors: Mapping[str, Mapping[int, PLCSAvatarFrameTensors]],
+    court_points_court_m: np.ndarray,
+) -> None:
+    """Project validated SMPL-H joints and court geometry through generated cameras."""
+    frame = timeline.frames[frame_index]
+    court_from_scene = timeline.target_court.scene_from_court.inverse()
+    scene_court = timeline.target_court.scene_from_court.apply(court_points_court_m)
+    scale = np.asarray(COURT_COORD_SCALE_XYZ, dtype=np.float32)
+    present_joints: dict[int, np.ndarray] = {}
+    for object_index, (track, entry) in enumerate(
+        zip(timeline.tracks, frame.entries, strict=True)
+    ):
+        if track.object_id != entry.object_id:
+            raise ValueError("PLCS frame entry order differs from its track authority.")
+        if not entry.present:
+            continue
+        if entry.source_frame_index is None or entry.scene_from_asset is None:
+            raise ValueError("Present PLCS entry lacks source/transform provenance.")
+        local = (
+            frame_tensors[entry.object_id][entry.source_frame_index]
+            .joints_m.detach()
+            .cpu()
+            .numpy()
+            .astype(np.float32, copy=False)
+        )
+        output.canonical_pose_3d[frame_index, object_index] = local
+        joints_scene = entry.scene_from_asset.rigid.apply(
+            local * entry.scene_from_asset.scale
+        ).astype(np.float32)
+        joints_court = court_from_scene.apply(joints_scene).astype(np.float32)
+        coco = smplh_joints_to_coco17(joints_court[None], track.yaw_radians)[0]
+        output.present[frame_index, object_index] = True
+        output.human_mask[frame_index, :, object_index] = True
+        output.position_court_m[frame_index, object_index] = joints_court[0]
+        output.position[frame_index, object_index] = joints_court[0] / scale
+        output.rotation[frame_index, object_index] = (
+            np.cos(track.yaw_radians),
+            np.sin(track.yaw_radians),
+        )
+        output.human_kp_3d[frame_index, object_index] = coco
+        present_joints[object_index] = timeline.target_court.scene_from_court.apply(
+            coco
+        )
+
+    for camera_index, sampled in enumerate(rig.cameras):
+        camera = sampled.scene_camera
+        court_pixels, court_depth = camera.project_scene_points(scene_court)
+        court_visible = _inside_image(
+            court_pixels, court_depth, width=camera.width, height=camera.height
+        )
+        output.court_kp[frame_index, camera_index] = _normalize_pixels(
+            court_pixels, width=camera.width, height=camera.height
+        )
+        output.court_kp[frame_index, camera_index, ~court_visible] = 0.0
+        output.court_vis[frame_index, camera_index] = court_visible
+        for object_index, joints_scene in present_joints.items():
+            pixels, depth = camera.project_scene_points(joints_scene)
+            visible = _inside_image(
+                pixels, depth, width=camera.width, height=camera.height
+            )
+            output.human_kp[frame_index, camera_index, object_index] = (
+                _normalize_pixels(pixels, width=camera.width, height=camera.height)
+            )
+            output.human_kp[frame_index, camera_index, object_index, ~visible] = 0.0
+            output.human_vis[frame_index, camera_index, object_index] = visible
+
+
+def _inside_image(
+    pixels: np.ndarray,
+    depth: np.ndarray,
+    *,
+    width: int,
+    height: int,
+) -> NDArray[np.bool_]:
+    return np.asarray(
+        (depth > 0.0)
+        & (pixels[..., 0] >= 0.0)
+        & (pixels[..., 0] < width)
+        & (pixels[..., 1] >= 0.0)
+        & (pixels[..., 1] < height),
+        dtype=np.bool_,
+    )
+
+
+def _normalize_pixels(
+    pixels: np.ndarray, *, width: int, height: int
+) -> NDArray[np.float32]:
+    result: NDArray[np.float32] = pixels.astype(np.float32, copy=True)
+    result[..., 0] /= width
+    result[..., 1] /= height
+    return result
 
 
 @dataclass(frozen=True, slots=True)

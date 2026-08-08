@@ -2,171 +2,86 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import numpy as np
 import torch
 from torch import Tensor
 
-from src.tasks.base.data.scene_dataset import (
-    Scene,
-    SceneDatasetBase,
-    SceneDatasetConfig,
+from src.synthetic_data_generation.dataset.plcs.validation import (
+    PLCSCompactDatasetReader,
+    PLCSTrackIndex,
 )
+from src.tasks.base.data.canonical_dataset import CanonicalDataset
 from src.tasks.plcs.data.augmentation import PLCSObservationAugmentation
-from src.tasks.plcs.data.targets import build_coco17_world_targets
 from src.tasks.plcs.data.types import PLCSBatch
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
-    """Unified PLCS dataset – scene-level indexing.
-
-    Returns per-sample tensors with camera-time ordering:
-    - human_kp: (N, T, 17, 2)
-    - court_kp: (N, T, 20, 2)
-    - human_vis: (N, T, 17)
-    - court_vis: (N, T, 20)
-    - human_mask: (N, T)
-    - position: (T, 3)
-    - rotation: (T, 2)
-    """
+class SceneDataset(CanonicalDataset[dict[str, Tensor]]):
+    """Materialize one person interval across every generated camera."""
 
     def __init__(
         self,
         *,
-        scene_dir: str | Path,
-        split_file: str | Path,
+        dataset_dir: str | Path,
+        split: str,
         config: DictConfig,
         augment: bool = True,
+        rng: np.random.Generator | None = None,
     ) -> None:
-        self.hydra_cfg = config
-        self.augment = augment
-        data_cfg = self._resolve_data_cfg(self.hydra_cfg)
-        self._configure_task(data_cfg)
-        super().__init__(
-            config=self._build_scene_dataset_config(
-                scene_dir=scene_dir,
-                split_file=split_file,
-                data_cfg=data_cfg,
-            )
-        )
+        super().__init__(config=config, augment=augment, rng=rng)
+        self.reader = PLCSCompactDatasetReader(Path(dataset_dir))
+        self.index: tuple[PLCSTrackIndex, ...] = self.reader.split_tracks(split)
+        if not self.index:
+            raise ValueError(f"Canonical PLCS split {split!r} is empty.")
+        num_court_kp = self.data_config["num_court_kp"]
+        if not isinstance(num_court_kp, int):
+            raise TypeError("data.num_court_kp must be an integer.")
+        self.num_court_kp = num_court_kp
+        if not 1 <= self.num_court_kp <= 20:
+            raise ValueError("data.num_court_kp must be within [1, 20].")
+        augmentation = self.data_config["augmentation"]
+        if not isinstance(augmentation, Mapping):
+            raise TypeError("data.augmentation must be a mapping.")
+        self.augmentation = PLCSObservationAugmentation(augmentation)
 
-    # -- Composed-method hooks ------------------------------------------
+    def __len__(self) -> int:
+        return len(self.index)
 
-    def _configure_task(self, data_cfg: dict) -> None:
-        from omegaconf import DictConfig
-
-        self.camera_mode_plcs = str(data_cfg["camera_mode"])
-        self.is_multiview = str(data_cfg["mode"]) in {
-            "multiview",
-            "multiview_sequence",
-        }
-
-        r = data_cfg["num_views_range"]
-        self._plcs_num_views_range: tuple[int, int] = (int(r[0]), int(r[1]))
-        r = data_cfg["seq_len_range"]
-        self._plcs_seq_len_range: tuple[int, int] = (int(r[0]), int(r[1]))
-
-        augmentation_cfg = data_cfg["augmentation"]
-        if not isinstance(augmentation_cfg, (dict, DictConfig)):
-            raise ValueError("data.augmentation must be a mapping-like config.")
-        self.augmentation = PLCSObservationAugmentation(augmentation_cfg)
-        # Number of court keypoints to use (first N from the canonical order)
-        self.num_court_kp = int(data_cfg["num_court_kp"])
-
-    def _build_scene_dataset_config(
-        self,
-        *,
-        scene_dir: str | Path,
-        split_file: str | Path,
-        data_cfg: dict,
-    ) -> SceneDatasetConfig:
-        return SceneDatasetConfig(
-            scene_dir=Path(scene_dir),
-            split_file=Path(split_file),
-            seq_len_range=self._plcs_seq_len_range,
-            num_views_range=self._plcs_num_views_range,
-            camera_mode=self.camera_mode_plcs,
-            crop_mode=("random" if self.augment else "center"),
-            min_num_frames=self._plcs_seq_len_range[0],
-            min_num_cameras=self._plcs_num_views_range[0],
-        )
-
-    def build_sample(self, scene: Scene) -> dict[str, Tensor]:
-        cams = self.select_cameras(
-            scene,
-            num_views_range=self._plcs_num_views_range,
-            camera_mode=self.camera_mode_plcs,
-        )
-        # Resolve effective frame count from arrays
-        pos_len = int(scene.data["position"].shape[0])
-        rot_len = int(scene.data["rotation"].shape[0])
-        primary_len = int(scene.get_camera_array(cams.primary, "human_kp_uv").shape[0])
-        full_len = scene.effective_num_frames(primary_len, pos_len, rot_len)
-        window = self.select_window(scene, full_len=full_len)
-
-        human_kp_list: list[Tensor] = []
-        court_kp_list: list[Tensor] = []
-        human_vis_list: list[Tensor] = []
-        court_vis_list: list[Tensor] = []
-
-        for cam_idx in cams.indices:
-            human_kp = torch.from_numpy(
-                scene.get_camera_array(cam_idx, "human_kp_uv", window=window)
-            ).float()
-            court_kp = torch.from_numpy(
-                scene.get_camera_array(cam_idx, "court_kp_uv", window=window)
-            ).float()
-            human_vis = torch.from_numpy(
-                scene.get_camera_array(cam_idx, "human_kp_visible", window=window)
-            ).float()
-            court_vis = torch.from_numpy(
-                scene.get_camera_array(cam_idx, "court_kp_visible", window=window)
-            ).float()
-            court_kp = court_kp[..., : self.num_court_kp, :]
-            court_vis = court_vis[..., : self.num_court_kp]
-
-            human_kp = human_kp * human_vis.unsqueeze(-1)
-            court_kp = court_kp * court_vis.unsqueeze(-1)
-
-            human_kp_list.append(human_kp)
-            court_kp_list.append(court_kp)
-            human_vis_list.append(human_vis)
-            court_vis_list.append(court_vis)
-
-        position = torch.from_numpy(scene.get_array("position", window=window)).float()
-        rotation = torch.from_numpy(scene.get_array("rotation", window=window)).float()
-
+    def __getitem__(self, item: int) -> dict[str, Tensor]:
+        track = self.index[item]
+        scene = self.reader.materialize_all_views(track.scene_id).supervision
+        local_window = self.contiguous_window(track.stop_frame - track.start_frame)
+        start = track.start_frame + int(local_window.start or 0)
+        stop = track.start_frame + int(local_window.stop or 0)
+        frames = slice(start, stop)
+        person = track.object_index
         sample: dict[str, Tensor] = {
-            "human_kp": torch.stack(human_kp_list, dim=0),
-            "court_kp": torch.stack(court_kp_list, dim=0),
-            "human_vis": torch.stack(human_vis_list, dim=0),
-            "court_vis": torch.stack(court_vis_list, dim=0),
-            "human_mask": torch.ones(
-                len(cams.indices),
-                window.seq_len,
-                dtype=torch.float32,
+            "human_kp": torch.from_numpy(scene.human_kp[frames, :, person]).permute(
+                1, 0, 2, 3
             ),
-            "position": position,
-            "rotation": rotation,
+            "court_kp": torch.from_numpy(
+                scene.court_kp[frames, :, : self.num_court_kp]
+            ).permute(1, 0, 2, 3),
+            "human_vis": torch.from_numpy(scene.human_vis[frames, :, person]).permute(
+                1, 0, 2
+            ),
+            "court_vis": torch.from_numpy(
+                scene.court_vis[frames, :, : self.num_court_kp]
+            ).permute(1, 0, 2),
+            "human_mask": torch.from_numpy(scene.human_mask[frames, :, person]).permute(
+                1, 0
+            ),
+            "position": torch.from_numpy(scene.position[frames, person]),
+            "rotation": torch.from_numpy(scene.rotation[frames, person]),
+            "human_kp_3d": torch.from_numpy(scene.human_kp_3d[frames, person]),
         }
-
-        # Build COCO17 world targets from raw NPZ data
-        # scene.data["meta"] is a raw numpy scalar (JSON string); use scene.meta
-        # (already parsed dict) so build_coco17_world_targets gets a plain dict.
-        payload_for_targets = {**scene.data, "meta": scene.meta}
-        human_kp_3d = build_coco17_world_targets(payload_for_targets)
-        sample["human_kp_3d"] = torch.from_numpy(human_kp_3d[window.sl].copy()).float()
-
-        return sample
-
-    def augment_sample(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
-        if not self.augment:
-            return sample
-        return self.augmentation.forward(sample)
+        return self.augmentation.forward(sample) if self.augment else sample
 
 
 def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, Tensor]:

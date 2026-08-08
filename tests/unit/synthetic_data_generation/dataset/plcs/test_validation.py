@@ -22,7 +22,7 @@ from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCa
 def test_logical_reader_reconstructs_shared_background_plus_delta(
     tmp_path: Path,
 ) -> None:
-    root = tmp_path / "plcs"
+    root = tmp_path / "datasets" / "plcs"
     background = root / "backgrounds" / "camera-0"
     background.mkdir(parents=True)
     np.save(background / "rgb.npy", np.zeros((2, 3, 3), dtype=np.float32))
@@ -80,18 +80,60 @@ def test_logical_reader_reconstructs_shared_background_plus_delta(
         camera_to_scene=RigidTransform.identity(),
         image_path="request-only",
     )
+    supervision = root / "scenes" / "B00" / "supervision.npz"
+    np.savez(
+        supervision,
+        human_kp=np.zeros((1, 1, 1, 17, 2), dtype=np.float32),
+        human_vis=np.zeros((1, 1, 1, 17), dtype=np.bool_),
+        court_kp=np.zeros((1, 1, 20, 2), dtype=np.float32),
+        court_vis=np.zeros((1, 1, 20), dtype=np.bool_),
+        human_mask=np.ones((1, 1, 1), dtype=np.bool_),
+        position=np.zeros((1, 1, 3), dtype=np.float32),
+        position_court_m=np.zeros((1, 1, 3), dtype=np.float32),
+        rotation=np.asarray([[[1.0, 0.0]]], dtype=np.float32),
+        present=np.ones((1, 1), dtype=np.bool_),
+        human_kp_3d=np.zeros((1, 1, 17, 3), dtype=np.float32),
+        canonical_pose_3d=np.zeros((1, 1, 52, 3), dtype=np.float32),
+    )
     (root / "dataset.json").write_text(
         json.dumps(
             {
                 "schema": PLCS_DATASET_SCHEMA,
                 "scene_id": "B00",
                 "domain": "plcs",
-                "frame_inventory": {},
+                "frame_inventory": {
+                    "source": 1,
+                    "planned": 1,
+                    "rendered": 1,
+                    "labelled": 1,
+                    "first_frame": 0,
+                    "last_frame": 0,
+                },
                 "target_courts": [],
                 "metadata": {
                     "logical_scenes": [
                         {
                             "scene_id": "B00",
+                            "split": "train",
+                            "frame_inventory": {
+                                "source": 1,
+                                "planned": 1,
+                                "rendered": 1,
+                                "labelled": 1,
+                                "first_frame": 0,
+                                "last_frame": 0,
+                            },
+                            "tracks": [
+                                {
+                                    "object_id": "player-001",
+                                    "instance_id": 1,
+                                    "asset_id": "avatar-001",
+                                    "start_frame": 0,
+                                    "stop_frame": 1,
+                                    "anchor_position_court_m": [0.0, 0.0, 0.0],
+                                    "yaw_radians": 0.0,
+                                }
+                            ],
                             "cameras": [
                                 {
                                     "slot_id": "camera-0",
@@ -114,6 +156,9 @@ def test_logical_reader_reconstructs_shared_background_plus_delta(
                             "chunks": [str(written.directory.relative_to(root))],
                             "attempt_token": "B00-plcs",
                             "sample_order": "scene-frame-then-configured-camera",
+                            "supervision": "scenes/B00/supervision.npz",
+                            "camera_ids": ["camera-0"],
+                            "object_ids": ["player-001"],
                         }
                     ],
                 },
@@ -123,11 +168,13 @@ def test_logical_reader_reconstructs_shared_background_plus_delta(
     )
     (root / "diagnostics").mkdir()
 
-    sample = PLCSCompactDatasetReader(root).logical_sample(
-        "B00", 0, "camera-0"
-    )
+    reader = PLCSCompactDatasetReader(root)
+    sample = reader.logical_sample("B00", 0, "camera-0")
+    all_views = reader.materialize_all_views("B00")
 
     assert sample.instance_ids[1, 1] == 3
     np.testing.assert_array_equal(sample.rgb[1, 1], (1.0, 0.0, 0.0))
     assert sample.depth[1, 1, 0] == 2.0
     assert sample.depth[0, 0, 0] == 5.0
+    assert all_views.index.camera_ids == ("camera-0",)
+    assert all_views.supervision.human_kp.shape == (1, 1, 1, 17, 2)

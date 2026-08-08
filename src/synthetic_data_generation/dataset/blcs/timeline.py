@@ -33,6 +33,7 @@ from src.tasks.base.generate_dataset.camera_profiles import (
     sample_camera_rig,
 )
 from src.tasks.base.generate_dataset.court_assignment import assign_courts_balanced
+from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +51,8 @@ class BLCSTrajectoryPlan:
     camera_uv: NDArray[np.float64]
     camera_depth: NDArray[np.float64]
     geometric_visible: NDArray[np.bool_]
+    court_uv: NDArray[np.float64]
+    court_visible: NDArray[np.bool_]
 
     def __post_init__(self) -> None:
         if self.global_frame_offset < 0:
@@ -71,8 +74,12 @@ class BLCSTrajectoryPlan:
         uv = _finite_array(self.camera_uv, name="camera_uv")
         depth = _finite_array(self.camera_depth, name="camera_depth")
         visible = np.asarray(self.geometric_visible)
+        court_uv = _finite_array(self.court_uv, name="court_uv")
+        court_visible = np.asarray(self.court_visible)
         if visible.dtype != np.bool_:
             raise TypeError("geometric_visible must use bool dtype.")
+        if court_visible.dtype != np.bool_:
+            raise TypeError("court_visible must use bool dtype.")
         visible = np.array(visible, dtype=np.bool_, order="C", copy=True)
         expected_position_shape = (
             self.source.frame_count,
@@ -105,12 +112,20 @@ class BLCSTrajectoryPlan:
             raise ValueError(
                 "A geometrically visible BLCS object needs positive depth."
             )
-        for array in (positions, uv, depth, visible):
+        if court_uv.shape != (camera_count, 20, 2) or court_visible.shape != (
+            camera_count,
+            20,
+        ):
+            raise ValueError("BLCS court projection has the wrong shape.")
+        court_visible = np.array(court_visible, dtype=np.bool_, order="C", copy=True)
+        for array in (positions, uv, depth, visible, court_uv, court_visible):
             array.setflags(write=False)
         object.__setattr__(self, "positions_scene", positions)
         object.__setattr__(self, "camera_uv", uv)
         object.__setattr__(self, "camera_depth", depth)
         object.__setattr__(self, "geometric_visible", visible)
+        object.__setattr__(self, "court_uv", court_uv)
+        object.__setattr__(self, "court_visible", court_visible)
 
     @property
     def global_frame_indices(self) -> tuple[int, ...]:
@@ -194,6 +209,22 @@ def build_blcs_plans(
             present=source.present,
             camera_rig=camera_rig,
         )
+        court_points = (
+            court_keypoints_3d(STANDARD_COURT_CONFIG).numpy().astype(np.float64)
+        )
+        court_scene = court.scene_from_court.apply(court_points)
+        court_uv_rows = []
+        court_visible_rows = []
+        for sampled in camera_rig.cameras:
+            pixels, court_depth = sampled.scene_camera.project_scene_points(court_scene)
+            court_uv_rows.append(pixels)
+            court_visible_rows.append(
+                (court_depth > 0.0)
+                & (pixels[:, 0] >= 0.0)
+                & (pixels[:, 0] < sampled.scene_camera.width)
+                & (pixels[:, 1] >= 0.0)
+                & (pixels[:, 1] < sampled.scene_camera.height)
+            )
         chunks = tuple(
             BLCSChunk(
                 chunk_index=chunk_index,
@@ -221,6 +252,8 @@ def build_blcs_plans(
                 camera_uv=uv,
                 camera_depth=depth,
                 geometric_visible=visible,
+                court_uv=np.stack(court_uv_rows),
+                court_visible=np.stack(court_visible_rows),
             )
         )
         global_offset += source.frame_count

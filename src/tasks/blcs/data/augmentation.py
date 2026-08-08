@@ -254,12 +254,8 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation[BLCSMultiViewS
             )
 
     @staticmethod
-    def _activation(
-        config: Mapping[str, object], *, path: str
-    ) -> tuple[bool, float]:
-        enabled = cast(
-            "bool", require_config_value(config, "enabled", bool, path=path)
-        )
+    def _activation(config: Mapping[str, object], *, path: str) -> tuple[bool, float]:
+        enabled = cast("bool", require_config_value(config, "enabled", bool, path=path))
         probability = _float_value(config, "prob", path=path)
         if not 0.0 <= probability <= 1.0:
             raise SemanticConfigurationError(
@@ -346,12 +342,10 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation[BLCSMultiViewS
 
         out["ball_uv"] = out["ball_uv"].clamp(0.0, 1.0)
         out["court_kp"] = out["court_kp"].clamp(0.0, 1.0)
-        return out
+        return cast(BLCSMultiViewSample, out)
 
     def _apply_uv_scale(self, sample: BLCSMultiViewSample) -> None:
-        if not self._sample_activation(
-            self._uv_scale_activation, sample["ball_uv"]
-        ):
+        if not self._sample_activation(self._uv_scale_activation, sample["ball_uv"]):
             return
         scale_min, scale_max = self._uv_scale_range
         scale = (
@@ -373,9 +367,7 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation[BLCSMultiViewS
         )
 
     def _apply_gaussian_noise(self, sample: BLCSMultiViewSample) -> None:
-        if not self._sample_activation(
-            self._gaussian_activation, sample["ball_uv"]
-        ):
+        if not self._sample_activation(self._gaussian_activation, sample["ball_uv"]):
             return
         if self._gaussian_ball_std > 0:
             sample["ball_uv"] = add_gaussian_noise(
