@@ -1,8 +1,8 @@
 {
-  "schema": "issue_695_b00_acceptance_v1",
+  "schema": "issue_695_b00_acceptance_v2",
   "issue": 695,
   "scene_id": "B00",
-  "source_video": "data/tennis_court.mp4",
+  "source_video": "tennis-lab/data/tennis_court.mp4",
   "pipeline": {
     "stage_statuses": {
       "ingest": "completed",
@@ -17,7 +17,7 @@
   },
   "reconstruction": {
     "camera_count": 491,
-    "point_count": 217204
+    "point_count": 217755
   },
   "alignment": {
     "accepted_court_count": 2,
@@ -29,41 +29,46 @@
   },
   "court": {
     "trajectory_group_count": 24,
-    "proposal_count": 3048,
-    "accepted_frame_count": 2996,
-    "rejected_frame_count": 52,
-    "accepted_fraction": 0.9829396325459318,
-    "maximum_adjacent_step_m": 1.0485804756313692,
+    "proposal_count": 3008,
+    "accepted_frame_count": 2958,
+    "rejected_frame_count": 50,
+    "accepted_fraction": 0.9833776595744681,
+    "maximum_adjacent_step_m": 1.0490646496363742,
     "split_leakage_count": 0,
     "court_group_counts": {
       "court-000": 12,
       "court-001": 12
     },
     "coverage_counts": {
-      "full": 938,
-      "near_full": 1380,
-      "partial": 3211,
-      "sparse": 390,
-      "none": 73
+      "full": 933,
+      "near_full": 1368,
+      "partial": 3147,
+      "sparse": 399,
+      "none": 69
     },
     "renderer_visible_points_by_class": {
-      "doubles_left": 5956,
-      "doubles_right": 7083,
-      "singles_left": 6278,
-      "singles_right": 7203,
-      "service_left": 7605,
-      "service_right": 8667,
-      "service_t": 8609
+      "doubles_left": 5901,
+      "doubles_right": 6965,
+      "singles_left": 6215,
+      "singles_right": 7084,
+      "service_left": 7570,
+      "service_right": 8563,
+      "service_t": 8499
+    },
+    "semantic_manifest": {
+      "schema": "court_renderer_semantic_manifest_v1",
+      "accepted_sample_count": 2958,
+      "rejected_sample_count": 50
     },
     "performance": {
-      "wall_seconds": 1101.7040220310446,
-      "cpu_seconds": 74.16383048099999,
-      "external_nht_boundary_wall_seconds": 992.8124144237954,
+      "wall_seconds": 1109.2792232830543,
+      "cpu_seconds": 66.082384272,
+      "external_nht_boundary_wall_seconds": 1004.895678563742,
       "execution_device": "cuda:0",
       "nht_invocations": 8,
       "maximum_shard_sample_count": 427,
-      "complete_array_scans": 2996,
-      "published_bytes": 32321273123
+      "complete_array_scans": 2958,
+      "published_bytes": 31995242017
     }
   },
   "blcs": {
@@ -84,24 +89,43 @@
     },
     "court_count_difference": 1,
     "performance": {
-      "wall_seconds": 75.79909341293387,
-      "cpu_seconds": 53.32378173299999,
+      "wall_seconds": 74.34790343395434,
+      "cpu_seconds": 50.70607076900001,
       "execution_device": "cuda:0",
-      "cuda_peak_bytes": 406323712,
+      "cuda_peak_bytes": 22202880,
       "nht_invocations": 3,
       "background_cache_misses": 18,
       "dense_reference_bytes": 187904819200,
-      "published_bytes": 484821899
+      "published_bytes": 484713135
     }
   },
   "plcs": {
     "frame_inventory": {
-      "source": 1117,
-      "planned": 1117,
-      "rendered": 1117,
-      "labelled": 1117,
+      "source": 2234,
+      "planned": 2234,
+      "rendered": 2234,
+      "labelled": 2234,
       "first_frame": 0,
-      "last_frame": 1116
+      "last_frame": 2233
+    },
+    "logical_scene_count": 2,
+    "per_scene_frame_inventory": {
+      "B00": {
+        "source": 1117,
+        "planned": 1117,
+        "rendered": 1117,
+        "labelled": 1117,
+        "first_frame": 0,
+        "last_frame": 1116
+      },
+      "B00-plcs-002": {
+        "source": 1117,
+        "planned": 1117,
+        "rendered": 1117,
+        "labelled": 1117,
+        "first_frame": 0,
+        "last_frame": 1116
+      }
     },
     "motion_categories": [
       "general",
@@ -116,21 +140,22 @@
     "all_frames_deformed": true,
     "running_walking_regions_move": true,
     "motion_method": "SMPL-H Gaussian LBS on CUDA",
-    "camera_count": 6,
+    "camera_count_per_scene": 6,
+    "camera_count": 12,
     "court_counts": {
       "court-000": 1,
-      "court-001": 0
+      "court-001": 1
     },
-    "court_count_difference": 1,
+    "court_count_difference": 0,
     "performance": {
-      "wall_seconds": 193.84048169199377,
-      "cpu_seconds": 180.843740981,
+      "wall_seconds": 279.706133967964,
+      "cpu_seconds": 247.536806132,
       "execution_device": "cuda:0",
-      "cuda_peak_bytes": 446197760,
+      "cuda_peak_bytes": 556757504,
       "nht_invocations": 1,
-      "background_cache_misses": 6,
-      "dense_reference_bytes": 148237516800,
-      "published_bytes": 402824520
+      "background_cache_misses": 12,
+      "dense_reference_bytes": 296475033600,
+      "published_bytes": 845181107
     }
   },
   "camera_profiles": {

@@ -19,7 +19,6 @@ class ReconstructionCommandRequest:
     scene_id: str
     input_video: Path
     workspace: Path
-    config_path: Path
     executable: str | Path = NHT_RECONSTRUCT_COMMAND
 
     def __post_init__(self) -> None:
@@ -30,7 +29,6 @@ class ReconstructionCommandRequest:
         for name, path in (
             ("input_video", self.input_video),
             ("workspace", self.workspace),
-            ("config_path", self.config_path),
         ):
             if not isinstance(path, Path):
                 raise TypeError(f"{name} must be a pathlib.Path.")
@@ -40,8 +38,6 @@ class ReconstructionCommandRequest:
             raise FileNotFoundError(
                 f"NHT input video does not exist: {self.input_video}"
             )
-        if not self.config_path.is_file():
-            raise FileNotFoundError(f"NHT config does not exist: {self.config_path}")
         if (
             self.workspace.name != "reconstruction"
             or self.workspace.parent.name != self.scene_id
@@ -79,8 +75,6 @@ class ReconstructionCommandRequest:
             str(self.input_video),
             "--workspace",
             str(self.workspace),
-            "--config",
-            str(self.config_path),
         )
 
 

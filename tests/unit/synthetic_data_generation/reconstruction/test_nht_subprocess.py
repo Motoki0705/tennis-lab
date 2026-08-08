@@ -20,13 +20,10 @@ def _request(tmp_path: Path) -> ReconstructionCommandRequest:
     source = scene_root / "source/video.mp4"
     source.parent.mkdir(parents=True)
     source.write_bytes(b"video")
-    config = tmp_path / "nht-production.yaml"
-    config.write_text("seed: 1\n", encoding="utf-8")
     return ReconstructionCommandRequest(
         scene_id="B00",
         input_video=source,
         workspace=scene_root / "reconstruction",
-        config_path=config,
     )
 
 
@@ -41,9 +38,8 @@ def test_request_builds_fixed_public_command(tmp_path: Path) -> None:
         str(request.input_video),
         "--workspace",
         str(request.workspace),
-        "--config",
-        str(request.config_path),
     )
+    assert "--config" not in request.argv()
     assert request.scene_path == request.workspace / "export/scene.json"
 
 
@@ -54,7 +50,31 @@ def test_request_rejects_noncanonical_workspace(tmp_path: Path) -> None:
             scene_id=request.scene_id,
             input_video=request.input_video,
             workspace=tmp_path / "runs/attempt-1",
-            config_path=request.config_path,
+        )
+
+
+def test_request_accepts_an_installed_absolute_public_command(tmp_path: Path) -> None:
+    command = tmp_path / "bin/nht-reconstruct"
+    command.parent.mkdir()
+    command.write_text("#!/bin/sh\n", encoding="utf-8")
+    command.chmod(0o755)
+    request = _request(tmp_path)
+
+    absolute_request = ReconstructionCommandRequest(
+        scene_id=request.scene_id,
+        input_video=request.input_video,
+        workspace=request.workspace,
+        executable=command.resolve(),
+    )
+
+    assert absolute_request.argv()[0] == str(command.resolve())
+
+
+def test_runner_rejects_private_subprocess_environment(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="unsupported private key"):
+        nht_subprocess.run_nht_reconstruction(
+            _request(tmp_path),
+            environment={"PYTHONPATH": "/provider/private/modules"},
         )
 
 

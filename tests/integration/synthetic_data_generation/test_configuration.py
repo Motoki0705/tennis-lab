@@ -24,7 +24,6 @@ from src.utils.paths import PROJECT_ROOT
 _CONFIG_ROOT = PROJECT_ROOT / "src/synthetic_data_generation/configs"
 _NHT_ENVIRONMENT = {
     "CUDA_VISIBLE_DEVICES": "0",
-    "PYTHONPATH": str((PROJECT_ROOT / "third_party/nht").resolve()),
 }
 
 pytestmark = pytest.mark.local_data
@@ -52,34 +51,19 @@ def test_broadcast_profile_composes_exactly_two_shared_camera_slots() -> None:
     assert len(runtime.camera.slots) == 2
 
 
-def test_public_nht_commands_are_paths_without_identity_gates() -> None:
+def test_public_nht_commands_are_installed_names_without_provider_knowledge() -> None:
     runtime = _compose()
 
-    assert runtime.nht.reconstruct_executable.name == "nht-reconstruct"
-    assert runtime.nht.render_executable.name == "nht-render"
-    assert runtime.nht.reconstruct_executable.is_relative_to(runtime.nht.repository_root)
-    assert not runtime.nht.render_executable.is_relative_to(runtime.nht.repository_root)
-    assert runtime.nht.reconstruction_config_path == (
-        runtime.nht.repository_root / "configs/production.yaml"
-    ).resolve()
-    assert runtime.nht.training_runtime.python == (
-        runtime.resolver.roots.external_asset_root
-        / "gaussian-splating/third_party/neural-harmonic-textures/.venv/bin/python"
-    )
-    assert runtime.nht.training_runtime.trainer == (
-        runtime.resolver.roots.external_asset_root
-        / "gaussian-splating/third_party/neural-harmonic-textures/gsplat/examples/"
-        "simple_trainer_nht.py"
-    ).resolve()
-    assert (
-        runtime.nht.render_executable.parent
-        == runtime.nht.training_runtime.python.parent
-    )
+    assert runtime.nht.reconstruct_executable == "nht-reconstruct"
+    assert runtime.nht.render_executable == "nht-render"
     assert runtime.nht.environment == _NHT_ENVIRONMENT
     assert runtime.nht.reconstruction_timeout_seconds == 86_400.0
     assert runtime.nht.render_timeout_seconds == 3_600.0
     assert not hasattr(runtime.nht, "sha256")
     assert not hasattr(runtime.nht, "commit")
+    assert not hasattr(runtime.nht, "repository_root")
+    assert not hasattr(runtime.nht, "reconstruction_config_path")
+    assert not hasattr(runtime.nht, "training_runtime")
 
 
 def test_configured_paths_retain_their_declared_runtime_roles() -> None:
@@ -91,10 +75,6 @@ def test_configured_paths_retain_their_declared_runtime_roles() -> None:
         line_model.checkpoint_path,
     ) == line_model.checkpoint_path
     for path in (
-        runtime.nht.repository_root,
-        runtime.nht.reconstruction_config_path,
-        runtime.nht.reconstruct_executable,
-        runtime.nht.render_executable,
         line_model.backbone_repository_path,
         line_model.backbone_checkpoint_path,
         runtime.plcs.accad_root,
@@ -108,9 +88,7 @@ def test_composition_root_can_construct_each_no_default_runtime_input() -> None:
     client = NHTRenderClient()
 
     reconstruction = NHTReconstructionHandler(
-        config_path=runtime.nht.reconstruction_config_path,
         executable=runtime.nht.reconstruct_executable,
-        training_runtime=runtime.nht.training_runtime,
         environment=runtime.nht.environment,
         timeout_seconds=runtime.nht.reconstruction_timeout_seconds,
     )
@@ -138,6 +116,12 @@ def test_composition_root_can_construct_each_no_default_runtime_input() -> None:
     parameters = runtime.plcs.build_stage_parameters(seed=runtime.stages.seed)
     assert isinstance(parameters, PLCSStageParameters)
     assert len(parameters.objects) == 3
+    assert parameters.scene_splits == {
+        "B00": "train",
+        "B00-plcs-002": "train",
+    }
+    assert runtime.plcs.performance.maximum_background_cache_misses == 12
+    assert runtime.plcs.performance.maximum_nht_invocations == 1
     plcs_renderer = NHTPLCSRenderer(
         client=client,
         compositor=runtime.plcs.foreground_compositor,

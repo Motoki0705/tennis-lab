@@ -35,6 +35,6 @@ def test_registry_derives_all_alignment_descendants(tmp_path) -> None:
     assert registry.spec(StageName.PLCS_DATASET).required_outputs == (
         Path("dataset.json"),
         Path("backgrounds"),
-        Path("chunks"),
+        Path("scenes"),
         Path("diagnostics"),
     )

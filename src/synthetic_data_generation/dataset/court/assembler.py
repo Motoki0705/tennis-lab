@@ -12,6 +12,7 @@ from pathlib import Path, PurePosixPath
 from typing import cast
 
 import numpy as np
+from numpy.typing import NDArray
 from PIL import Image, UnidentifiedImageError
 
 from src.synthetic_data_generation.alignment.contracts import MetricSceneAdapter
@@ -37,6 +38,11 @@ from src.synthetic_data_generation.dataset.court.diagnostics import (
 from src.synthetic_data_generation.dataset.court.performance import (
     CourtPerformanceEvidence,
 )
+from src.synthetic_data_generation.dataset.court.semantic_manifest import (
+    COURT_SEMANTIC_MANIFEST_PATH,
+    build_court_semantic_manifest,
+    validate_court_semantic_manifest,
+)
 from src.synthetic_data_generation.dataset.court.shards import (
     CourtRenderedSample,
     CourtRenderResult,
@@ -52,6 +58,7 @@ from src.synthetic_data_generation.rendering.nht import NHTRenderArrays
 from src.synthetic_data_generation.scene_contract import (
     MultiCourtLayout,
     RigidTransform,
+    SceneCamera,
 )
 from src.utils.io import load_json, save_json_atomic
 
@@ -192,6 +199,8 @@ def assemble_court_dataset(
                 "shard_id": sample.shard_id,
                 "width": sample.camera.width,
                 "height": sample.camera.height,
+                "camera": sample.camera.to_dict(),
+                "projection": evaluated_item.projection.to_dict(),
                 "directory": relative_directory,
                 "rgb": f"{relative_directory}/rgb.npy",
                 "rgb_preview": f"{relative_directory}/rgb.png",
@@ -207,23 +216,25 @@ def assemble_court_dataset(
     post_render_rejected = tuple(item for item in evaluated if not item.accepted)
     planned_by_id = {sample.sample_id: sample for sample in plan.samples}
     rejected_records = [
-        {
-            "sample_index": planned_by_id[sample_id].sample_index,
-            "sample_id": sample_id,
-            "trajectory_group_id": planned_by_id[sample_id].trajectory_group_id,
-            "view_id": planned_by_id[sample_id].view_id,
-            "reasons": ["insufficient_pre_render_semantic_coverage"],
-        }
+        _rejected_record(
+            planned_by_id[sample_id],
+            group=group_by_id[planned_by_id[sample_id].trajectory_group_id],
+            projection=projection_by_id[sample_id],
+            profile=plan.profile,
+            metadata_fields=configuration.metadata_fields,
+            reasons=("insufficient_pre_render_semantic_coverage",),
+        )
         for sample_id in render_result.pre_render_rejected_sample_ids
     ]
     rejected_records.extend(
-        {
-            "sample_index": item.rendered.sample.sample_index,
-            "sample_id": item.rendered.sample.sample_id,
-            "trajectory_group_id": item.rendered.sample.trajectory_group_id,
-            "view_id": item.rendered.sample.view_id,
-            "reasons": list(item.rejection_reasons),
-        }
+        _rejected_record(
+            item.rendered.sample,
+            group=group_by_id[item.rendered.sample.trajectory_group_id],
+            projection=item.projection,
+            profile=plan.profile,
+            metadata_fields=configuration.metadata_fields,
+            reasons=item.rejection_reasons,
+        )
         for item in post_render_rejected
     )
     rejected_records.sort(key=lambda item: cast(int, item["sample_index"]))
@@ -283,6 +294,11 @@ def assemble_court_dataset(
         "diagnostics": list(diagnostic_paths),
     }
     save_json_atomic(manifest, staging_root / "dataset.json")
+    semantic_manifest = build_court_semantic_manifest(manifest)
+    save_json_atomic(
+        semantic_manifest,
+        staging_root / COURT_SEMANTIC_MANIFEST_PATH,
+    )
     _write_performance_evidence(
         staging_root,
         timer=performance_timer,
@@ -466,6 +482,48 @@ def _sample_metadata(
     return {field: available[field] for field in metadata_fields}
 
 
+def _rejected_record(
+    sample: PlannedCourtSample,
+    *,
+    group: TrajectoryGroupPlan,
+    projection: MultiCourtProjection,
+    profile: str,
+    metadata_fields: Sequence[str],
+    reasons: Sequence[str],
+) -> dict[str, object]:
+    """Retain complete stable semantics for a rejected renderer proposal."""
+    reason_tuple = tuple(reasons)
+    if not reason_tuple or any(
+        not isinstance(reason, str) or not reason or reason != reason.strip()
+        for reason in reason_tuple
+    ):
+        raise ValueError("Rejected Court samples require explicit semantic reasons.")
+    if projection.camera_id != sample.sample_id:
+        raise ValueError("Rejected Court projection disagrees with the planned sample.")
+    return {
+        "sample_index": sample.sample_index,
+        "sample_id": sample.sample_id,
+        "trajectory_group_id": sample.trajectory_group_id,
+        "trajectory_id": sample.trajectory_id,
+        "view_id": sample.view_id,
+        "trajectory_frame_index": sample.trajectory_frame_index,
+        "split": sample.split.value,
+        "shard_id": sample.shard_id,
+        "width": sample.camera.width,
+        "height": sample.camera.height,
+        "camera": sample.camera.to_dict(),
+        "projection": projection.to_dict(),
+        "metadata": _sample_metadata(
+            sample,
+            group=group,
+            view_id=sample.view_id,
+            profile=profile,
+            metadata_fields=metadata_fields,
+        ),
+        "reasons": list(reason_tuple),
+    }
+
+
 def _metrics(
     plan: CourtDatasetPlan,
     *,
@@ -618,6 +676,10 @@ def validate_court_dataset(
     _require_finite_json(raw, name="dataset")
     if raw["schema"] != COURT_DATASET_SCHEMA or raw["status"] != "completed":
         raise ValueError("Court dataset schema/status is invalid.")
+    validate_court_semantic_manifest(
+        raw,
+        load_json(_contained_file(root, COURT_SEMANTIC_MANIFEST_PATH)),
+    )
     groups = _mapping_sequence(raw["trajectory_groups"], name="trajectory_groups")
     samples = _mapping_sequence(raw["samples"], name="samples")
     rejected = _mapping_sequence(raw["rejected_samples"], name="rejected_samples")
@@ -633,7 +695,10 @@ def validate_court_dataset(
     split_by_group = {
         group_id: group["split"] for group_id, group in zip(group_ids, groups, strict=True)
     }
+    group_by_id = dict(zip(group_ids, groups, strict=True))
     accepted_ids: set[str] = set()
+    rejected_ids: set[str] = set()
+    proposal_indices: set[int] = set()
     accepted_by_group: Counter[str] = Counter()
     split_counts: Counter[str] = Counter()
     metadata_fields = raw["metadata_fields"]
@@ -645,12 +710,33 @@ def validate_court_dataset(
         "sample_index",
         "sample_id",
         "trajectory_group_id",
+        "trajectory_id",
         "view_id",
+        "trajectory_frame_index",
+        "split",
+        "shard_id",
+        "width",
+        "height",
+        "camera",
+        "projection",
+        "metadata",
         "reasons",
     }
     for record in rejected:
         if set(record) != rejected_keys or not isinstance(record.get("reasons"), list):
             raise ValueError("Rejected Court sample record schema is invalid.")
+        sample_id, sample_index = _validate_semantic_sample_record(
+            record,
+            group_by_id=group_by_id,
+            metadata_fields=metadata_fields,
+            profile=raw["profile"],
+        )
+        if sample_id in rejected_ids:
+            raise ValueError(f"Duplicate rejected Court sample ID: {sample_id}.")
+        rejected_ids.add(sample_id)
+        if sample_index in proposal_indices:
+            raise ValueError(f"Duplicate Court proposal index: {sample_index}.")
+        proposal_indices.add(sample_index)
     for record in samples:
         expected_sample_keys = {
             "sample_index",
@@ -663,6 +749,8 @@ def validate_court_dataset(
             "shard_id",
             "width",
             "height",
+            "camera",
+            "projection",
             "directory",
             "rgb",
             "rgb_preview",
@@ -677,21 +765,26 @@ def validate_court_dataset(
             raise ValueError("Court sample record contains missing or unexpected fields.")
         if record["depth_coordinate_space"] != "metric_scene_metres":
             raise ValueError("Court sample depth must use metric scene metres.")
-        sample_id = record.get("sample_id")
+        sample_id, sample_index = _validate_semantic_sample_record(
+            record,
+            group_by_id=group_by_id,
+            metadata_fields=metadata_fields,
+            profile=raw["profile"],
+        )
         group_id = record.get("trajectory_group_id")
         split = record.get("split")
-        if not isinstance(sample_id, str) or not isinstance(group_id, str):
+        if not isinstance(group_id, str):
             raise TypeError("Court sample/group IDs must be strings.")
-        if sample_id in accepted_ids:
+        if sample_id in accepted_ids or sample_id in rejected_ids:
             raise ValueError(f"Duplicate Court sample ID: {sample_id}.")
         accepted_ids.add(sample_id)
+        if sample_index in proposal_indices:
+            raise ValueError(f"Duplicate Court proposal index: {sample_index}.")
+        proposal_indices.add(sample_index)
         if group_id not in split_by_group or split_by_group[group_id] != split:
             raise ValueError("Court sample split/group relationship is invalid.")
         accepted_by_group[group_id] += 1
         split_counts[str(split)] += 1
-        metadata = record.get("metadata")
-        if not isinstance(metadata, Mapping) or list(metadata) != metadata_fields:
-            raise ValueError("Court sample metadata does not match metadata_fields.")
         _validate_published_sample(
             root,
             record,
@@ -707,6 +800,8 @@ def validate_court_dataset(
         raise ValueError("Court manifest metrics disagree with sample inventories.")
     if proposal_count != accepted_count + rejected_count or group_count != len(groups):
         raise ValueError("Court proposal/group metrics are inconsistent.")
+    if proposal_indices != set(range(proposal_count)):
+        raise ValueError("Court proposal indices do not cover the full planned inventory.")
     budget = _mapping_integer(policy, "proposal_budget", minimum=1)
     minimum_groups = _mapping_integer(
         policy, "minimum_trajectory_groups", minimum=1
@@ -770,8 +865,36 @@ def validate_court_dataset(
             group.trajectory_group_id for group in expected_plan.groups
         ]:
             raise ValueError("Published Court inventory disagrees with the resolved plan.")
+        if list(groups) != [group.to_dict() for group in expected_plan.groups]:
+            raise ValueError("Published Court trajectory semantics changed after planning.")
         if policy != expected_plan.policy.to_dict():
             raise ValueError("Published Court sampling policy changed after planning.")
+        expected_samples = {
+            sample.sample_id: sample.to_dict() for sample in expected_plan.samples
+        }
+        for record in (*samples, *rejected):
+            sample_id = cast(str, record["sample_id"])
+            try:
+                expected = expected_samples[sample_id]
+            except KeyError as error:
+                raise ValueError(
+                    "Published Court sample is absent from the resolved plan."
+                ) from error
+            for key in (
+                "sample_index",
+                "sample_id",
+                "trajectory_group_id",
+                "trajectory_id",
+                "view_id",
+                "trajectory_frame_index",
+                "split",
+                "shard_id",
+                "camera",
+            ):
+                if record[key] != expected[key]:
+                    raise ValueError(
+                        "Published Court sample semantics changed after planning."
+                    )
     if expected_configuration is not None and metadata_fields != list(
         expected_configuration.metadata_fields
     ):
@@ -797,6 +920,113 @@ def validate_court_dataset(
     )
 
 
+def _validate_semantic_sample_record(
+    record: Mapping[str, object],
+    *,
+    group_by_id: Mapping[str, Mapping[str, object]],
+    metadata_fields: Sequence[str],
+    profile: object,
+) -> tuple[str, int]:
+    """Cross-check embedded sample semantics against its trajectory group."""
+    sample_index = _record_integer(record, "sample_index", minimum=0)
+    trajectory_frame_index = _record_integer(
+        record,
+        "trajectory_frame_index",
+        minimum=0,
+    )
+    width = _record_integer(record, "width", minimum=2)
+    height = _record_integer(record, "height", minimum=2)
+    sample_id = record.get("sample_id")
+    group_id = record.get("trajectory_group_id")
+    trajectory_id = record.get("trajectory_id")
+    view_id = record.get("view_id")
+    split = record.get("split")
+    shard_id = record.get("shard_id")
+    if any(
+        not isinstance(value, str) or not value or value != value.strip()
+        for value in (sample_id, group_id, trajectory_id, view_id, split, shard_id)
+    ):
+        raise TypeError("Court sample semantic identifiers must be trimmed strings.")
+    assert isinstance(sample_id, str)
+    assert isinstance(group_id, str)
+    assert isinstance(trajectory_id, str)
+    assert isinstance(view_id, str)
+    assert isinstance(split, str)
+    assert isinstance(shard_id, str)
+    try:
+        group = group_by_id[group_id]
+    except KeyError as error:
+        raise ValueError("Court sample references an unknown trajectory group.") from error
+    trajectory = group.get("trajectory")
+    views = group.get("views")
+    target = group.get("target_court")
+    if (
+        not isinstance(trajectory, Mapping)
+        or not isinstance(views, list)
+        or not isinstance(target, Mapping)
+    ):
+        raise TypeError("Court trajectory group semantics are incomplete.")
+    view_ids = {
+        view.get("view_id")
+        for view in views
+        if isinstance(view, Mapping)
+    }
+    if (
+        trajectory.get("trajectory_id") != trajectory_id
+        or group.get("split") != split
+        or group.get("shard_id") != shard_id
+        or view_id not in view_ids
+    ):
+        raise ValueError("Court sample semantics disagree with its trajectory group.")
+    sample_count = _mapping_integer(group, "sample_count", minimum=8)
+    if trajectory_frame_index >= sample_count:
+        raise ValueError("Court sample frame index exceeds its trajectory group.")
+
+    camera = SceneCamera.from_dict(record.get("camera"))
+    if (
+        camera.camera_id != sample_id
+        or camera.source_frame_index != sample_index
+        or camera.width != width
+        or camera.height != height
+    ):
+        raise ValueError("Court embedded camera disagrees with sample identity/resolution.")
+    projection = record.get("projection")
+    if not isinstance(projection, Mapping):
+        raise TypeError("Court sample projection must be a mapping.")
+    if (
+        projection.get("camera_id") != sample_id
+        or projection.get("resolution") != [width, height]
+    ):
+        raise ValueError("Court projection disagrees with sample identity/resolution.")
+
+    metadata = record.get("metadata")
+    if not isinstance(metadata, Mapping) or list(metadata) != list(metadata_fields):
+        raise ValueError("Court sample metadata does not match metadata_fields.")
+    if not isinstance(profile, str) or not profile:
+        raise TypeError("Court dataset profile must be a non-empty string.")
+    expected_camera_parameters = {
+        "view_id": view_id,
+        "camera_center_scene_m": camera.camera_to_scene.matrix()[:3, 3].tolist(),
+        "intrinsics": list(camera.intrinsics),
+        "camera_to_scene": camera.camera_to_scene.to_list(),
+    }
+    expected_metadata = {
+        "target_court": target.get("court_instance_id"),
+        "candidate_id": target.get("candidate_id"),
+        "transform": target.get("scene_from_court"),
+        "camera_profile": profile,
+        "camera_parameters": expected_camera_parameters,
+        "seed": target.get("selection_seed"),
+    }
+    if dict(metadata) != {
+        field: expected_metadata[field]
+        for field in metadata_fields
+        if field in expected_metadata
+    } or any(field not in expected_metadata for field in metadata_fields):
+        raise ValueError("Court sample metadata disagrees with canonical semantic sources.")
+    return sample_id, sample_index
+
+
 def _validate_published_sample(
     root: Path,
     record: Mapping[str, object],
@@ -810,6 +1040,7 @@ def _validate_published_sample(
         ("alpha", (height, width, 1), True, False),
         ("depth", (height, width, 1), False, True),
     )
+    loaded_arrays: dict[str, NDArray[np.float32]] = {}
     for field, shape, unit_range, nonnegative in arrays:
         if field not in record:
             raise TypeError(f"Court sample {field} path is missing.")
@@ -829,6 +1060,7 @@ def _validate_published_sample(
         if array.dtype != np.float32 or array.shape != shape:
             raise ValueError(f"Court sample {field} array is semantically invalid.")
         if array_validation is CourtArrayValidationMode.FULL:
+            loaded_arrays[field] = np.asarray(array, dtype=np.float32)
             if not np.isfinite(array).all():
                 raise ValueError(f"Court sample {field} array is semantically invalid.")
             if unit_range and (np.any(array < 0.0) or np.any(array > 1.0)):
@@ -876,9 +1108,93 @@ def _validate_published_sample(
         or label_payload["schema"] != COURT_SAMPLE_SCHEMA
     ):
         raise ValueError("Court sample labels schema is invalid.")
-    if label_payload["sample_id"] != record["sample_id"]:
-        raise ValueError("Court sample labels identity mismatch.")
+    for field in (
+        "sample_index",
+        "sample_id",
+        "trajectory_group_id",
+        "trajectory_id",
+        "view_id",
+        "trajectory_frame_index",
+        "split",
+        "camera",
+        "projection",
+        "metadata",
+    ):
+        if label_payload[field] != record[field]:
+            raise ValueError(f"Court sample labels {field} mismatch.")
     _require_finite_json(label_payload, name="labels")
+    if array_validation is CourtArrayValidationMode.FULL:
+        _validate_renderer_visibility_payload(
+            label_payload["projection"],
+            alpha=loaded_arrays["alpha"],
+            depth=loaded_arrays["depth"],
+        )
+
+
+def _validate_renderer_visibility_payload(
+    value: object,
+    *,
+    alpha: NDArray[np.float32],
+    depth: NDArray[np.float32],
+) -> None:
+    """Recompute every stored visibility bit from published renderer arrays."""
+    if not isinstance(value, Mapping):
+        raise TypeError("Court semantic projection must be a mapping.")
+    courts = value.get("courts")
+    if not isinstance(courts, list):
+        raise TypeError("Court semantic projection courts must be a list.")
+    visible_names: set[str] = set()
+    visible_point_count = 0
+    for court in courts:
+        if not isinstance(court, Mapping) or not isinstance(court.get("classes"), list):
+            raise TypeError("Court semantic projection class inventory is invalid.")
+        for semantic_class in court["classes"]:
+            if not isinstance(semantic_class, Mapping) or not isinstance(
+                semantic_class.get("points"), list
+            ):
+                raise TypeError("Court semantic class point inventory is invalid.")
+            class_name = semantic_class.get("class_name")
+            if not isinstance(class_name, str):
+                raise TypeError("Court semantic class name must be a string.")
+            class_visible = False
+            for point in semantic_class["points"]:
+                if not isinstance(point, Mapping):
+                    raise TypeError("Court semantic point must be a mapping.")
+                in_frame = point.get("in_frame")
+                uv = point.get("uv")
+                if not isinstance(in_frame, bool) or not isinstance(uv, list) or len(uv) != 2:
+                    raise TypeError("Court semantic point visibility inputs are invalid.")
+                visible = False
+                if in_frame:
+                    x = int(round(_json_float(uv[0], name="point.uv")))
+                    y = int(round(_json_float(uv[1], name="point.uv")))
+                    x0 = max(0, x - 1)
+                    x1 = min(alpha.shape[1], x + 2)
+                    y0 = max(0, y - 1)
+                    y1 = min(alpha.shape[0], y + 2)
+                    visible = bool(
+                        np.any(
+                            (alpha[y0:y1, x0:x1, 0] >= 0.01)
+                            & (depth[y0:y1, x0:x1, 0] > 0.0)
+                        )
+                    )
+                if point.get("renderer_visible") is not visible:
+                    raise ValueError(
+                        "Court renderer-visible point disagrees with alpha/depth output."
+                    )
+                class_visible |= visible
+                visible_point_count += int(visible)
+            if semantic_class.get("renderer_visible") is not class_visible:
+                raise ValueError(
+                    "Court renderer-visible class disagrees with its point semantics."
+                )
+            if class_visible:
+                visible_names.add(class_name)
+    if value.get("visible_point_count") != visible_point_count:
+        raise ValueError("Court renderer-visible point summary is inconsistent.")
+    expected_names = [name for name in SEMANTIC_CLASS_NAMES if name in visible_names]
+    if value.get("visible_class_names") != expected_names:
+        raise ValueError("Court renderer-visible class summary is inconsistent.")
 
 
 def _validate_court_balance(groups: Sequence[Mapping[str, object]]) -> None:

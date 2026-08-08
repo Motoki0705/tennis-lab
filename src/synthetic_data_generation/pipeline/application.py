@@ -93,9 +93,7 @@ def build_stage_handlers(
     return {
         "ingest": IngestStageHandler(),
         "nht_reconstruction": NHTReconstructionHandler(
-            config_path=nht.reconstruction_config_path,
             executable=nht.reconstruct_executable,
-            training_runtime=nht.training_runtime,
             environment=dict(nht.environment),
             timeout_seconds=nht.reconstruction_timeout_seconds,
         ),

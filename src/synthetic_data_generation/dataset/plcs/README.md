@@ -5,19 +5,33 @@ of explicitly selected ACCAD/AMASS clips, evaluates the matching licensed
 SMPL-H model, builds an SMPL-H surface Gaussian asset, applies Gaussian LBS at
 every source frame, and rejects motion that is only a rigid root transform.
 
-`timeline.py` creates a complete single- or multi-player compositor interval.
-It retains track presence and source-frame mappings even when clips have
-different start times or lengths. Generated cameras come only from the shared
-config-owned camera profile, and target courts come only from the accepted
-`MultiCourtLayout` plus the shared deterministic balanced assignment.
+`timeline.py` creates a complete single- or multi-player compositor interval
+for every explicitly configured logical scene. Every logical scene retains the
+same full running/walking/general source inventory, track presence, and source
+frame mappings even when clips have different start times or lengths. Logical
+scenes, never individual objects or frames, receive one target-court binding.
+The complete scene inventory must use every accepted court and keep global and
+per-split scene-count spread at most one.
 
-`composition.py` keeps the model, complete source poses, Gaussian shell, and
-current bounded deformation batch on CUDA. `rendering/` converts only generated
-metric camera poses at the public NHT boundary, uploads each validated static
-background once, rasterizes and depth-composites on CUDA, and downloads only
-visible foreground deltas. It never loads NHT checkpoint tensors.
+`execution.py` is the constructor-injected numerical boundary. Its production
+implementation keeps the model, complete source poses, Gaussian shell, and
+current bounded deformation batch on CUDA. The only non-CUDA implementation
+marker is the explicit `test-cpu-oracle` dependency used with a non-production
+test budget; there is no runtime device selection or fallback. `rendering/`
+converts only generated metric camera poses at the public NHT boundary, uploads
+each validated static background once, rasterizes and depth-composites on CUDA,
+and downloads only visible foreground deltas. It never loads NHT checkpoint
+tensors.
 `assembler.py` requires the exact global-frame × generated-camera sample set
 before `dataset.json` is published.
+
+The renderer evaluates each bounded SMPL-H source batch once and reuses that
+validated deformation across the simultaneously produced logical courts. Its
+per-camera hot path keeps immutable camera matrices on CUDA, bins projected
+Gaussians into tiles with an exact stable vectorized implementation, and uses
+two consolidated compact device-to-host payloads per sample. These are only
+execution optimizations: every scene, frame, camera, label, court transform,
+and sparse output remains independently assembled and validated.
 
 The fixed output is:
 
@@ -25,7 +39,7 @@ The fixed output is:
 datasets/plcs/
 ├── dataset.json
 ├── backgrounds/<camera-id>/{rgb,alpha,depth-metric}.npy
-├── chunks/chunk-000000/
+├── scenes/<logical-scene-id>/chunks/chunk-000000/
 │   ├── chunk.json
 │   ├── foreground.npz
 │   └── metadata.json
@@ -35,12 +49,13 @@ datasets/plcs/
     └── summary.txt
 ```
 
-The schema records motion source, source frame, gender, native FPS, target
-court/candidate/transform, camera profile and sampled parameters, seed,
-root/root-relative motion, frame equality, local articulation, and court
-balance, source/model load counts, one NHT rig invocation, background-cache
-misses, CUDA allocation, wall/CPU time, and compact/dense bytes. Frame reduction
-is not a production option; chunk size affects only bounded execution and
-storage batching. The canonical reader reconstructs logical full samples from
-one shared background plus one sparse delta; no full-frame compatibility writer
-or reader exists.
+The aggregate schema records every logical scene, its complete local `0..T-1`
+timeline, split, target court/candidate/transform, cameras, and exact motion
+inventory. Diagnostics validate every accepted court, aggregate and per-split
+balance, aggregate source/global frame counts, source/model load counts, one
+batched NHT background invocation, background-cache misses, CUDA allocation,
+wall/CPU time, and compact/dense bytes. Frame reduction is not a production
+option; chunk size affects only bounded execution and storage batching. The
+canonical reader reconstructs a logical full sample by logical scene ID, local
+frame index, and camera ID from one shared background plus one sparse delta; no
+full-frame compatibility writer or reader exists.

@@ -8,10 +8,12 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
+from numpy.typing import NDArray
 from PIL import Image
 
 from src.synthetic_data_generation.dataset.court.assembler import (
     _validate_render_inventory,
+    _validate_renderer_visibility_payload,
 )
 from src.synthetic_data_generation.dataset.court.contracts import (
     DatasetSplit,
@@ -133,3 +135,48 @@ def test_render_inventory_accepts_exact_renderer_or_rejection_partition(
         (rendered,),
         pre_render_rejected_sample_ids=(rejected_sample.sample_id,),
     )
+
+
+@pytest.mark.parametrize("mutated_field", ["alpha", "depth"])
+def test_renderer_semantic_visibility_rejects_valid_range_array_mutation(
+    mutated_field: str,
+) -> None:
+    projection = {
+        "visible_point_count": 1,
+        "visible_class_names": ["doubles_left"],
+        "courts": [
+            {
+                "classes": [
+                    {
+                        "class_name": "doubles_left",
+                        "renderer_visible": True,
+                        "points": [
+                            {
+                                "uv": [1.0, 1.0],
+                                "in_frame": True,
+                                "renderer_visible": True,
+                            },
+                            {
+                                "uv": [10.0, 10.0],
+                                "in_frame": False,
+                                "renderer_visible": False,
+                            },
+                        ],
+                    }
+                ]
+            }
+        ],
+    }
+    alpha: NDArray[np.float32] = np.ones((3, 4, 1), dtype=np.float32)
+    depth: NDArray[np.float32] = np.ones((3, 4, 1), dtype=np.float32)
+    if mutated_field == "alpha":
+        alpha.fill(0.0)
+    else:
+        depth.fill(0.0)
+
+    with pytest.raises(ValueError, match="renderer-visible point disagrees"):
+        _validate_renderer_visibility_payload(
+            projection,
+            alpha=alpha,
+            depth=depth,
+        )

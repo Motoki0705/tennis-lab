@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 import torch
@@ -11,8 +12,13 @@ from src.synthetic_data_generation.composition.contracts import (
     GaussianAsset,
     GaussianAssetRole,
     GaussianCoordinates,
+    GaussianForegroundComposition,
 )
-from src.synthetic_data_generation.composition.gaussians import GaussianTensorSet
+from src.synthetic_data_generation.composition.gaussians import (
+    GaussianTensorSet,
+    _quaternion_multiply,
+    _rotation_matrix_to_quaternion,
+)
 from src.synthetic_data_generation.dataset.plcs.articulation import (
     MotionArticulationReport,
     articulation_probe_indices,
@@ -131,6 +137,120 @@ class PreparedAvatar:
         }
 
 
+def compose_prevalidated_frame_gaussians(
+    composition: GaussianForegroundComposition,
+    *,
+    frame_index: int,
+    object_tensors: Mapping[str, GaussianTensorSet],
+) -> GaussianTensorSet:
+    """Fuse validated PLCS placement and concatenation into one tensor contract.
+
+    The foreground composition validates stable assets, identities, transforms,
+    and the complete timeline once. Prepared-avatar batches validate their
+    deformation outputs once. This path preserves those checks while avoiding
+    the several short-lived, fully rescanned ``GaussianTensorSet`` objects that
+    the generic composition helper creates for every object on every frame.
+    """
+    frame = composition.frame(frame_index)
+    expected_object_ids = tuple(instance.object_id for instance in frame.instances)
+    if set(object_tensors) != set(expected_object_ids):
+        raise ValueError(
+            f"Foreground frame {frame_index} tensor objects differ from its plan."
+        )
+    if not frame.instances:
+        raise ValueError(
+            f"Foreground frame {frame_index} has no visible object candidates."
+        )
+
+    means: list[Tensor] = []
+    quaternions: list[Tensor] = []
+    log_scales: list[Tensor] = []
+    opacity_logits: list[Tensor] = []
+    features: list[Tensor] = []
+    instance_ids: list[Tensor] = []
+    reference: GaussianTensorSet | None = None
+    for instance in frame.instances:
+        scene_object = composition.scene_object(instance.object_id)
+        asset = composition.asset(scene_object.asset_id)
+        local = object_tensors[instance.object_id]
+        _validate_prepared_local_tensors(local, asset=asset)
+        if bool(torch.count_nonzero(local.instance_ids)):
+            raise ValueError(
+                "PLCS prepared avatar tensors must retain canonical instance ID zero."
+            )
+        if reference is None:
+            reference = local
+        elif (
+            local.means.dtype != reference.means.dtype
+            or local.means.device != reference.means.device
+            or local.feature_dim != reference.feature_dim
+            or local.appearance_model != reference.appearance_model
+            or local.appearance_space != reference.appearance_space
+        ):
+            raise ValueError("PLCS prepared avatar tensor contracts are incompatible.")
+
+        transform = instance.scene_from_asset
+        rotation = torch.as_tensor(
+            transform.rotation,
+            dtype=local.means.dtype,
+            device=local.means.device,
+        ).reshape(3, 3)
+        translation = torch.as_tensor(
+            transform.translation,
+            dtype=local.means.dtype,
+            device=local.means.device,
+        )
+        scale = local.means.new_tensor(transform.scale)
+        transform_quaternion = _rotation_matrix_to_quaternion(rotation)
+        means.append(scale * (local.means @ rotation.T) + translation)
+        quaternions.append(
+            torch.nn.functional.normalize(
+                _quaternion_multiply(
+                    transform_quaternion.expand_as(local.quaternions_wxyz),
+                    local.quaternions_wxyz,
+                ),
+                dim=-1,
+            )
+        )
+        log_scales.append(local.log_scales + torch.log(scale))
+        opacity_logits.append(local.opacity_logits)
+        features.append(local.features)
+        instance_ids.append(
+            torch.full_like(local.instance_ids, scene_object.instance_id)
+        )
+
+    assert reference is not None
+    return GaussianTensorSet(
+        means=torch.cat(means, dim=0),
+        quaternions_wxyz=torch.cat(quaternions, dim=0),
+        log_scales=torch.cat(log_scales, dim=0),
+        opacity_logits=torch.cat(opacity_logits, dim=0),
+        features=torch.cat(features, dim=0),
+        instance_ids=torch.cat(instance_ids, dim=0),
+        coordinates=GaussianCoordinates.scene(),
+        appearance_model=reference.appearance_model,
+        appearance_space=reference.appearance_space,
+    )
+
+
+def _validate_prepared_local_tensors(
+    tensors: GaussianTensorSet,
+    *,
+    asset: GaussianAsset,
+) -> None:
+    if (
+        tensors.gaussian_count != asset.gaussian_count
+        or tensors.feature_dim != asset.feature_dim
+        or tensors.floating_dtype != asset.floating_dtype
+        or tensors.coordinates != asset.coordinates
+        or tensors.appearance_model != asset.appearance_model
+        or tensors.appearance_space != asset.appearance_space
+    ):
+        raise ValueError(
+            f"Prepared PLCS tensors disagree with asset {asset.asset_id!r}."
+        )
+
+
 def prepare_avatar(
     *,
     asset_id: str,
@@ -189,4 +309,9 @@ def prepare_avatar(
     )
 
 
-__all__ = ["AvatarAppearance", "PreparedAvatar", "prepare_avatar"]
+__all__ = [
+    "AvatarAppearance",
+    "PreparedAvatar",
+    "compose_prevalidated_frame_gaussians",
+    "prepare_avatar",
+]

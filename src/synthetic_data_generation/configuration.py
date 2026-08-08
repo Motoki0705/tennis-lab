@@ -52,9 +52,10 @@ from src.synthetic_data_generation.pipeline.contracts import (
     StageName,
 )
 from src.synthetic_data_generation.pipeline.workspace import SceneWorkspace
-from src.synthetic_data_generation.reconstruction.runtime_config import (
-    NHTTrainingRuntime,
+from src.synthetic_data_generation.reconstruction.contracts import (
+    NHT_RECONSTRUCT_COMMAND,
 )
+from src.synthetic_data_generation.rendering.nht.contracts import NHT_RENDER_COMMAND
 from src.tasks.base.generate_dataset.camera_profiles import CameraProfileConfig
 from src.tasks.base.generate_dataset.timeline_composer import TimelineConfig
 from src.tasks.blcs.generate_dataset.scene_generator import GeneratorConfig
@@ -337,13 +338,10 @@ class PipelineStageSettings:
 
 @dataclass(frozen=True, slots=True)
 class NHTCommandPaths:
-    """Resolved public NHT commands and explicit subprocess execution policy."""
+    """Installed public NHT commands and explicit subprocess execution policy."""
 
-    repository_root: Path
-    reconstruction_config_path: Path
-    reconstruct_executable: Path
-    render_executable: Path
-    training_runtime: NHTTrainingRuntime
+    reconstruct_executable: str | Path
+    render_executable: str | Path
     environment: Mapping[str, str]
     reconstruction_timeout_seconds: float
     render_timeout_seconds: float
@@ -352,77 +350,40 @@ class NHTCommandPaths:
     def from_mapping(
         cls,
         value: object,
-        *,
-        resolver: PathResolver,
     ) -> NHTCommandPaths:
         raw = _exact(
             value,
             path="nht",
             keys={
-                "repository_root",
-                "reconstruction_config_path",
                 "reconstruct_executable",
                 "render_executable",
-                "training_runtime",
                 "environment",
                 "reconstruction_timeout_seconds",
                 "render_timeout_seconds",
             },
         )
-        repository = resolver.resolve(
-            PathRole.EXTERNAL_ASSET,
-            _text(raw, "repository_root", path="nht"),
+        reconstruct = _installed_nht_command(
+            raw,
+            key="reconstruct_executable",
+            expected=NHT_RECONSTRUCT_COMMAND,
         )
-        if not repository.is_dir():
-            raise PathContractError(f"NHT repository does not exist: {repository}")
-        reconstruction_config = resolver.resolve_beneath(
-            PathRole.EXTERNAL_ASSET,
-            repository,
-            _text(raw, "reconstruction_config_path", path="nht"),
+        render = _installed_nht_command(
+            raw,
+            key="render_executable",
+            expected=NHT_RENDER_COMMAND,
         )
-        if not reconstruction_config.is_file():
-            raise PathContractError(
-                "nht.reconstruction_config_path is not a file: "
-                f"{reconstruction_config}"
-            )
-        reconstruct = resolver.resolve_beneath(
-            PathRole.EXTERNAL_ASSET,
-            repository,
-            _text(raw, "reconstruct_executable", path="nht"),
-        )
-        render = resolver.resolve(
-            PathRole.EXTERNAL_ASSET,
-            _text(raw, "render_executable", path="nht"),
-        )
-        for name, executable in (
-            ("reconstruct_executable", reconstruct),
-            ("render_executable", render),
-        ):
-            if not executable.is_file() or not os.access(executable, os.X_OK):
-                raise PathContractError(f"nht.{name} is not an executable file: {executable}")
-        training_raw = _exact(
-            raw["training_runtime"],
-            path="nht.training_runtime",
-            keys={"python", "trainer"},
-        )
-        training_python = resolver.resolve_symlink_entry(
-            PathRole.EXTERNAL_ASSET,
-            _text(training_raw, "python", path="nht.training_runtime"),
-        )
-        training_trainer = resolver.resolve(
-            PathRole.EXTERNAL_ASSET,
-            _text(training_raw, "trainer", path="nht.training_runtime"),
-        )
-        training_runtime = NHTTrainingRuntime(
-            python=training_python,
-            trainer=training_trainer,
-        )
-        if render.parent != training_runtime.python.parent:
-            raise PathContractError(
-                "nht.render_executable must use the same CUDA virtual environment "
-                "as nht.training_runtime.python."
-            )
         environment_raw = _mapping(raw["environment"], path="nht.environment")
+        unknown_environment = sorted(
+            set(environment_raw) - {"CUDA_VISIBLE_DEVICES"}
+        )
+        if unknown_environment:
+            raise UnknownConfigurationKeyError(
+                "Unknown NHT public environment key(s): "
+                + ", ".join(
+                    f"nht.environment.{key}" for key in unknown_environment
+                )
+                + "."
+            )
         environment: dict[str, str] = {}
         for key in sorted(environment_raw):
             value = environment_raw[key]
@@ -438,8 +399,6 @@ class NHTCommandPaths:
                     "trimmed non-empty strings."
                 )
             environment[key] = value
-        if not environment:
-            raise SemanticConfigurationError("nht.environment must be explicit and non-empty.")
         reconstruction_timeout = _number(
             raw, "reconstruction_timeout_seconds", path="nht"
         )
@@ -447,15 +406,32 @@ class NHTCommandPaths:
         if min(reconstruction_timeout, render_timeout) <= 0.0:
             raise SemanticConfigurationError("NHT subprocess timeouts must be positive.")
         return cls(
-            repository_root=repository,
-            reconstruction_config_path=reconstruction_config,
             reconstruct_executable=reconstruct,
             render_executable=render,
-            training_runtime=training_runtime,
             environment=environment,
             reconstruction_timeout_seconds=reconstruction_timeout,
             render_timeout_seconds=render_timeout,
         )
+
+
+def _installed_nht_command(
+    mapping: ConfigMapping,
+    *,
+    key: str,
+    expected: str,
+) -> str | Path:
+    """Accept one public command name or an installed absolute executable."""
+    configured = _text(mapping, key, path="nht")
+    if configured == expected:
+        return configured
+    executable = Path(configured)
+    if not executable.is_absolute() or executable.name != expected:
+        raise SemanticConfigurationError(
+            f"nht.{key} must be {expected!r} or an absolute path with that basename."
+        )
+    if not executable.is_file() or not os.access(executable, os.X_OK):
+        raise PathContractError(f"nht.{key} is not an executable file: {executable}")
+    return executable
 
 
 @dataclass(frozen=True, slots=True)
@@ -2327,7 +2303,7 @@ class ScenePipelineConfiguration:
             request=request,
             stages=stages,
             camera=_camera_profile(root["camera"]),
-            nht=NHTCommandPaths.from_mapping(root["nht"], resolver=resolver),
+            nht=NHTCommandPaths.from_mapping(root["nht"]),
             alignment=AlignmentConfiguration.from_mapping(
                 root["alignment"],
                 resolver=resolver,

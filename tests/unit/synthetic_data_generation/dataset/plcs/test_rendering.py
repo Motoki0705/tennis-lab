@@ -14,12 +14,17 @@ from src.synthetic_data_generation.composition.contracts import GaussianCoordina
 from src.synthetic_data_generation.composition.gaussians import GaussianTensorSet
 from src.synthetic_data_generation.dataset.plcs.rendering.contracts import (
     PLCSForegroundCompositor,
+    _render_plcs_tensors,
+    _tile_candidate_indices_vectorized,
 )
 from src.synthetic_data_generation.dataset.plcs.rendering.nht import NHTPLCSRenderer
 from src.synthetic_data_generation.dataset.runtime import (
     BackgroundArrays,
     RenderSession,
     materialize_logical_sample,
+)
+from src.synthetic_data_generation.rendering.foreground import (
+    _tile_candidate_indices,
 )
 from src.synthetic_data_generation.rendering.nht.client import NHTRenderClient
 from src.synthetic_data_generation.rendering.nht.contracts import (
@@ -72,6 +77,77 @@ def _foreground(device: str) -> GaussianTensorSet:
         appearance_model="rgb",
         appearance_space="linear_rgb",
     )
+
+
+def test_vectorized_tile_binning_is_exactly_reference_equivalent() -> None:
+    generator = torch.Generator().manual_seed(695)
+    pixels = torch.empty((6_144, 2), dtype=torch.float32).uniform_(
+        -100.0,
+        1_380.0,
+        generator=generator,
+    )
+    radii = torch.empty((6_144,), dtype=torch.float32).uniform_(
+        0.5,
+        80.0,
+        generator=generator,
+    )
+    depths = torch.randint(
+        0,
+        50,
+        (6_144,),
+        generator=generator,
+    )
+    order = torch.argsort(depths, stable=True)
+
+    expected = _tile_candidate_indices(
+        pixels=pixels,
+        radii=radii,
+        order=order,
+        width=1_280,
+        height=720,
+        tile_size=32,
+    )
+    actual = _tile_candidate_indices_vectorized(
+        pixels=pixels,
+        radii=radii,
+        order=order,
+        width=1_280,
+        height=720,
+        tile_size=32,
+    )
+
+    assert actual == expected
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA required")
+def test_cached_camera_raster_path_is_exactly_reference_equivalent() -> None:
+    compositor = PLCSForegroundCompositor(
+        sigma_extent=3.0,
+        minimum_pixel_variance=0.25,
+        near_plane=1.0e-4,
+        visibility_threshold=1.0e-4,
+        maximum_alpha=0.999,
+    )
+    camera = _camera()
+    foreground = _foreground("cuda:0")
+    device_camera = compositor._device_camera(  # noqa: SLF001
+        camera,
+        device=foreground.means.device,
+    )
+
+    expected = compositor._rasterizer._render_tensors(  # noqa: SLF001
+        camera=camera,
+        gaussians_scene=foreground,
+    )
+    actual = _render_plcs_tensors(
+        rasterizer=compositor._rasterizer,  # noqa: SLF001
+        camera=camera,
+        device_camera=device_camera,
+        gaussians_scene=foreground,
+    )
+
+    for actual_tensor, expected_tensor in zip(actual, expected, strict=True):
+        torch.testing.assert_close(actual_tensor, expected_tensor, rtol=0.0, atol=0.0)
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA required")

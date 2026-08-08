@@ -56,10 +56,10 @@ def test_committed_b00_evidence_is_complete_and_meets_quantitative_gates() -> No
         "plcs",
         "camera_profiles",
     }
-    assert evidence["schema"] == "issue_695_b00_acceptance_v1"
+    assert evidence["schema"] == "issue_695_b00_acceptance_v2"
     assert evidence["issue"] == 695
     assert evidence["scene_id"] == "B00"
-    assert evidence["source_video"] == "data/tennis_court.mp4"
+    assert evidence["source_video"] == "tennis-lab/data/tennis_court.mp4"
     pipeline = _mapping(evidence["pipeline"], name="pipeline")
     stage_statuses = _mapping(
         pipeline["stage_statuses"], name="pipeline.stage_statuses"
@@ -94,6 +94,24 @@ def test_committed_b00_evidence_is_complete_and_meets_quantitative_gates() -> No
     assert all(
         _integer(value, name=f"renderer_visible_points_by_class.{name}") > 0
         for name, value in visible_points.items()
+    )
+    semantic_manifest = _mapping(
+        court["semantic_manifest"], name="court.semantic_manifest"
+    )
+    assert semantic_manifest["schema"] == "court_renderer_semantic_manifest_v1"
+    assert (
+        _integer(
+            semantic_manifest["accepted_sample_count"],
+            name="semantic_manifest.accepted_sample_count",
+        )
+        == court["accepted_frame_count"]
+    )
+    assert (
+        _integer(
+            semantic_manifest["rejected_sample_count"],
+            name="semantic_manifest.rejected_sample_count",
+        )
+        == court["rejected_frame_count"]
     )
     court_performance = _mapping(court["performance"], name="court.performance")
     assert _number(court_performance["wall_seconds"], name="court.wall_seconds") <= 1800
@@ -147,10 +165,23 @@ def test_committed_b00_evidence_is_complete_and_meets_quantitative_gates() -> No
     ]
     assert plcs["all_frames_deformed"] is True
     assert plcs["running_walking_regions_move"] is True
+    assert _integer(plcs["logical_scene_count"], name="plcs.logical_scene_count") == 2
+    per_scene_inventories = _mapping(
+        plcs["per_scene_frame_inventory"], name="plcs.per_scene_frame_inventory"
+    )
+    assert set(per_scene_inventories) == {"B00", "B00-plcs-002"}
+    for scene_id, value in per_scene_inventories.items():
+        inventory = _mapping(value, name=f"plcs.per_scene_frame_inventory.{scene_id}")
+        assert {
+            _integer(inventory[name], name=f"{scene_id}.{name}")
+            for name in ("source", "planned", "rendered", "labelled")
+        } == {1117}
+    assert _integer(plcs["camera_count_per_scene"], name="camera_count_per_scene") == 6
+    assert _integer(plcs["camera_count"], name="plcs.camera_count") == 12
     plcs_performance = _mapping(plcs["performance"], name="plcs.performance")
     assert _number(plcs_performance["wall_seconds"], name="plcs.wall_seconds") <= 5400
     assert _integer(plcs_performance["nht_invocations"], name="plcs.nht_invocations") == 1
-    assert _integer(plcs_performance["background_cache_misses"], name="plcs.cache_misses") == 6
+    assert _integer(plcs_performance["background_cache_misses"], name="plcs.cache_misses") == 12
     assert plcs_performance["execution_device"] == "cuda:0"
     assert _integer(
         plcs_performance["published_bytes"], name="plcs.published_bytes"
@@ -172,5 +203,5 @@ def test_human_summary_is_present_and_identifies_the_same_result() -> None:
     assert "Issue #695 B00 acceptance" in summary
     assert f"Court accepted frames: {court['accepted_frame_count']}" in summary
     assert f"BLCS source frames: {blcs_inventory['source']}" in summary
-    assert f"PLCS global frames: {plcs_inventory['source']}" in summary
+    assert f"PLCS aggregate global frames: {plcs_inventory['source']}" in summary
     assert "SMPL-H Gaussian LBS" in summary

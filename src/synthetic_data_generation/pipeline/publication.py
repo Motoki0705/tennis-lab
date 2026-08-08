@@ -7,7 +7,7 @@ import os
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from src.synthetic_data_generation.pipeline.contracts import StageSpec
 from src.synthetic_data_generation.pipeline.workspace import SceneWorkspace
@@ -26,12 +26,12 @@ class StagePublisher:
     @property
     def owner(self) -> Path:
         """Return the fixed owner directory."""
-        return self.workspace.owner_path(self.spec)
+        return cast(Path, self.workspace.owner_path(self.spec))
 
     @property
     def staging(self) -> Path:
         """Return the fixed staging directory for the current attempt."""
-        return self.workspace.staging_path(self.spec)
+        return cast(Path, self.workspace.staging_path(self.spec))
 
     def prepare(self) -> Path:
         """Clear stale attempt-local staging and create a fresh directory."""
@@ -66,11 +66,11 @@ class StagePublisher:
             raise ValueError(
                 "Interrupted publication must be recovered before a new publish."
             )
-        existing = [
-            name
-            for name in declared
-            if (self.owner / name).exists() or (self.owner / name).is_symlink()
-        ]
+        existing = sorted(
+            path.name
+            for path in self.owner.iterdir()
+            if path.name not in {self.staging.name, ".publication-backup"}
+        )
         backup_root.mkdir(parents=False, exist_ok=False)
         _write_transaction(
             backup_root / _TRANSACTION_FILE,
@@ -78,10 +78,9 @@ class StagePublisher:
             existing=existing,
         )
         try:
-            for name in declared:
+            for name in existing:
                 destination = self.owner / name
-                if destination.exists() or destination.is_symlink():
-                    destination.replace(backup_root / name)
+                destination.replace(backup_root / name)
             for name in declared:
                 (self.staging / name).replace(self.owner / name)
         except BaseException:
@@ -117,7 +116,7 @@ class StagePublisher:
             raise ValueError(
                 f"Publication backup contains unexpected entries: {sorted(unexpected)}."
             )
-        for name in declared:
+        for name in sorted(set(declared) | existing):
             destination = self.owner / name
             saved = backup_root / name
             if name in existing:
@@ -178,7 +177,7 @@ def _read_transaction(
     existing = set(_name_sequence(raw["existing"], name="existing"))
     if set(declared) != expected_declared:
         raise ValueError("Publication transaction declared outputs changed.")
-    if not existing.issubset(expected_declared):
+    if {_TRANSACTION_FILE, "staging", ".publication-backup"} & existing:
         raise ValueError("Publication transaction existing outputs are invalid.")
     return declared, existing
 

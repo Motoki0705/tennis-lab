@@ -104,7 +104,6 @@ def canonical_registry() -> StageRegistry:
             required_outputs=(
                 Path("run.json"),
                 Path("export/scene.json"),
-                Path("input-config.yaml"),
             ),
             publication_mode=PublicationMode.EXTERNAL_ATOMIC,
             handler_key="nht_reconstruction",
@@ -145,7 +144,7 @@ def canonical_registry() -> StageRegistry:
             required_outputs=(
                 Path("dataset.json"),
                 Path("backgrounds"),
-                Path("chunks"),
+                Path("scenes"),
                 Path("diagnostics"),
             ),
             publication_mode=PublicationMode.ATOMIC_OUTPUTS,
