@@ -33,6 +33,9 @@ jobs:
       - name: Materialize reviewed implementation
         run: python3 .github/scripts/wsl_mcp_project_sandbox_finalize.py write
 
+      - name: Apply control-plane hardening patches
+        run: python3 .github/scripts/wsl_mcp_postpatch.py
+
       - name: Format and regenerate configuration inventory
         run: |
           uv run --locked ruff format \
@@ -78,6 +81,7 @@ jobs:
           git rm -rf \
             .github/workflows/wsl-mcp-project-sandbox-finalize.yml \
             .github/scripts/wsl_mcp_project_sandbox_finalize.py \
+            .github/scripts/wsl_mcp_postpatch.py \
             .github/wsl-mcp-bundle
           git add -A
           git diff --cached --check
