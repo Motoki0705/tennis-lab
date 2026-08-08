@@ -11,6 +11,7 @@ from src.synthetic_data_generation.pipeline.contracts import (
     DatasetTarget,
     ScenePipelineRequest,
     StageDefinition,
+    StageExecutionPlan,
     StageExecutionSummary,
     StageHandler,
     StageInput,
@@ -133,6 +134,31 @@ class StageRegistry:
             *(target.stage for target in request.targets),
         }
         return self.ordered(selected)
+
+    def execution_for_request(self, request: ScenePipelineRequest) -> StageExecutionPlan:
+        """Build the sole cursor-aware plan for all runner lifecycle phases."""
+        selected = self.selected_for_request(request)
+        selected_names = {definition.name for definition in selected}
+        if request.from_stage not in selected_names:
+            requested = ", ".join(sorted(target.value for target in request.targets))
+            raise ValueError(
+                f"from_stage {request.from_stage.value!r} is not selected by "
+                f"request targets {{{requested}}}."
+            )
+        cursor = self.definition(request.from_stage)
+        retained_ancestors = self.ordered(
+            selected_names & self._ancestors(request.from_stage)
+        )
+        invalidated = self.descendants(request.from_stage, include_self=True)
+        invalidated_names = {definition.name for definition in invalidated}
+        execution = self.ordered(selected_names & invalidated_names)
+        return StageExecutionPlan(
+            selected=selected,
+            cursor=cursor,
+            retained_ancestors=retained_ancestors,
+            invalidated=invalidated,
+            execution=execution,
+        )
 
     def descendants(
         self,

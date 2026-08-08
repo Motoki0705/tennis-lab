@@ -21,6 +21,10 @@ from src.synthetic_data_generation.dataset.plcs.assembler import (
     PLCS_FRAME_LABEL_SCHEMA,
     PLCSSupervisionArrays,
 )
+from src.synthetic_data_generation.dataset.plcs.production import (
+    PLCSProductionMode,
+    validate_plcs_production_contract,
+)
 from src.synthetic_data_generation.dataset.runtime import (
     ChunkReader,
     DatasetPerformanceMetrics,
@@ -184,8 +188,6 @@ def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
             name="required_motion_categories",
         )
     )
-    if set(required_categories) != {"running", "walking", "general"}:
-        raise ValueError("PLCS required motion categories are incomplete.")
     accepted_courts = tuple(
         _text(value, name="accepted court")
         for value in _array(
@@ -239,6 +241,7 @@ def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
     scene_court_counts: Counter[str] = Counter()
     split_court_counts: dict[str, Counter[str]] = defaultdict(Counter)
     camera_count_per_scene: int | None = None
+    production_mode: PLCSProductionMode | None = None
     for raw_scene in logical_scene_values:
         scene = _object(raw_scene, name="logical scene")
         _keys(
@@ -271,8 +274,11 @@ def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
             raise ValueError("PLCS aggregate logical-scene offsets are discontinuous.")
         local_inventory = FrameInventory.from_dict(scene["frame_inventory"])
         frame_count = local_inventory.source_count
-        if scene["mode"] not in {"single", "multi"}:
-            raise ValueError("PLCS logical scene mode is unsupported.")
+        scene_mode = PLCSProductionMode.from_persisted_timeline_mode(scene["mode"])
+        if production_mode is None:
+            production_mode = scene_mode
+        elif scene_mode is not production_mode:
+            raise ValueError("PLCS logical scenes disagree on production mode.")
         binding = TargetCourtBinding.from_dict(scene["target_court"])
         if binding_by_court.get(binding.court_instance_id) != binding:
             raise ValueError("PLCS logical scene target binding is not canonical.")
@@ -324,6 +330,27 @@ def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
             raise ValueError(
                 "PLCS logical scene does not retain every required motion category."
             )
+        validate_plcs_production_contract(
+            mode=scene_mode,
+            configured_motion_categories=required_categories,
+            object_motion_categories=(str(source["category"]) for source in sources),
+            object_start_frames=(
+                _nonnegative_integer(track["start_frame"], name="start_frame")
+                for track in tracks
+            ),
+        )
+        for source, track in zip(sources, tracks, strict=True):
+            source_count = _positive_integer(
+                source["frame_count"], name="source frame_count"
+            )
+            start_frame = _nonnegative_integer(
+                track["start_frame"], name="start_frame"
+            )
+            stop_frame = _positive_integer(track["stop_frame"], name="stop_frame")
+            if stop_frame - start_frame != source_count:
+                raise ValueError(
+                    "PLCS track interval does not cover every source frame exactly."
+                )
         signature = tuple(
             (
                 source["source_path"],
@@ -464,6 +491,13 @@ def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
         raise ValueError("PLCS aggregate global frame inventory is inexact.")
     if aggregate_source_frames != metadata["aggregate_source_frame_count"]:
         raise ValueError("PLCS aggregate source-motion frame inventory is inexact.")
+    if (
+        production_mode is PLCSProductionMode.SINGLE_OBJECT
+        and aggregate_source_frames != aggregate_offset
+    ):
+        raise ValueError(
+            "PLCS single-object source/planned/rendered/labelled inventory is inexact."
+        )
     if set(scene_court_counts) != set(accepted_courts):
         raise ValueError("PLCS logical scenes do not use every accepted court.")
     court_values = [scene_court_counts[court] for court in accepted_courts]

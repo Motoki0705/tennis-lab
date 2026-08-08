@@ -8,7 +8,7 @@ timeline:
 
 motion_categories: [running, walking, general]
 require_articulated_motion: true
-multi_object_global_timeline: true
+production_mode: multi_object_global_timeline
 
 accad_root: tennis-lab/data/ACCAD
 split: train

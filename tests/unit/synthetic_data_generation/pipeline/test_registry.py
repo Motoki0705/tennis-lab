@@ -94,6 +94,82 @@ def test_registry_binds_complete_lifecycle_inputs_and_derived_descendants(
     )
 
 
+def test_execution_plan_rejects_cursor_outside_explicit_targets(tmp_path: Path) -> None:
+    source = tmp_path / "video.mp4"
+    source.write_bytes(b"video")
+    request = ScenePipelineRequest(
+        scene_id="scene-a",
+        source_video=source,
+        targets=frozenset({DatasetTarget.COURT}),
+        from_stage=StageName.PLCS_DATASET,
+        config_schema="scene_pipeline_v1",
+    )
+
+    with pytest.raises(ValueError, match="not selected by request targets"):
+        canonical_registry(_handlers()).execution_for_request(request)
+
+
+def test_execution_plan_uses_cursor_descendants_for_execution(tmp_path: Path) -> None:
+    source = tmp_path / "video.mp4"
+    source.write_bytes(b"video")
+    request = ScenePipelineRequest(
+        scene_id="scene-a",
+        source_video=source,
+        targets=frozenset(DatasetTarget),
+        from_stage=StageName.COURT_DATASET,
+        config_schema="scene_pipeline_v1",
+    )
+
+    plan = canonical_registry(_handlers()).execution_for_request(request)
+
+    assert tuple(definition.name for definition in plan.retained_ancestors) == (
+        StageName.INGEST,
+        StageName.RECONSTRUCTION,
+        StageName.ALIGNMENT,
+    )
+    assert tuple(definition.name for definition in plan.invalidated) == (
+        StageName.COURT_DATASET,
+        StageName.REPORT,
+    )
+    assert tuple(definition.name for definition in plan.execution) == (
+        StageName.COURT_DATASET,
+        StageName.REPORT,
+    )
+
+
+def test_execution_plan_keeps_unselected_descendants_for_stale_cleanup(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "video.mp4"
+    source.write_bytes(b"video")
+    request = ScenePipelineRequest(
+        scene_id="scene-a",
+        source_video=source,
+        targets=frozenset({DatasetTarget.COURT}),
+        from_stage=StageName.ALIGNMENT,
+        config_schema="scene_pipeline_v1",
+    )
+
+    plan = canonical_registry(_handlers()).execution_for_request(request)
+
+    assert tuple(definition.name for definition in plan.retained_ancestors) == (
+        StageName.INGEST,
+        StageName.RECONSTRUCTION,
+    )
+    assert {definition.name for definition in plan.invalidated} == {
+        StageName.ALIGNMENT,
+        StageName.COURT_DATASET,
+        StageName.BLCS_DATASET,
+        StageName.PLCS_DATASET,
+        StageName.REPORT,
+    }
+    assert tuple(definition.name for definition in plan.execution) == (
+        StageName.ALIGNMENT,
+        StageName.COURT_DATASET,
+        StageName.REPORT,
+    )
+
+
 def test_registry_rejects_duplicate_handler_binding() -> None:
     handlers = _handlers()
     duplicated = replace(handlers, report=handlers.ingest)

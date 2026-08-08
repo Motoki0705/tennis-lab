@@ -23,6 +23,7 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     OrbitTargetMode,
 )
 from src.synthetic_data_generation.dataset.plcs.handler import PLCSStageParameters
+from src.synthetic_data_generation.dataset.plcs.production import PLCSProductionMode
 from src.synthetic_data_generation.dataset.plcs.rendering import NHTPLCSRenderer
 from src.synthetic_data_generation.reconstruction import NHTReconstructionHandler
 from src.synthetic_data_generation.rendering.nht import NHTRenderClient
@@ -165,6 +166,7 @@ def test_composition_root_can_construct_each_no_default_runtime_input() -> None:
 
     parameters = runtime.plcs.build_stage_parameters(seed=runtime.stages.seed)
     assert isinstance(parameters, PLCSStageParameters)
+    assert parameters.production_mode is PLCSProductionMode.MULTI_OBJECT_GLOBAL_TIMELINE
     assert len(parameters.objects) == 3
     assert parameters.scene_splits == {
         "B00": "train",
@@ -180,6 +182,33 @@ def test_composition_root_can_construct_each_no_default_runtime_input() -> None:
         timeout_seconds=runtime.plcs.render_timeout_seconds,
     )
     assert plcs_renderer.compositor is runtime.plcs.foreground_compositor
+
+
+def test_single_object_plcs_config_composes_the_real_production_path() -> None:
+    runtime = _compose("dataset/plcs=single_object")
+    parameters = runtime.plcs.build_stage_parameters(seed=runtime.stages.seed)
+
+    assert runtime.plcs.production_mode is PLCSProductionMode.SINGLE_OBJECT
+    assert runtime.plcs.timeline.frame_selection == "all_source_frames"
+    assert runtime.plcs.require_articulated_motion
+    assert runtime.plcs.performance.require_cuda
+    assert parameters.production_mode is PLCSProductionMode.SINGLE_OBJECT
+    assert len(parameters.objects) == 1
+    assert parameters.objects[0].category.value == "running"
+    assert parameters.objects[0].start_frame == 0
+
+
+def test_unknown_plcs_production_mode_fails_at_configuration_boundary() -> None:
+    with pytest.raises(SemanticConfigurationError, match="production_mode"):
+        _compose("dataset.plcs.production_mode=unknown")
+
+
+def test_single_object_plcs_rejects_nonzero_start_frame() -> None:
+    with pytest.raises(SemanticConfigurationError, match="start_frame=0"):
+        _compose(
+            "dataset/plcs=single_object",
+            "dataset.plcs.objects.0.start_frame=1",
+        )
 
 
 def test_task_local_camera_config_copies_are_removed() -> None:

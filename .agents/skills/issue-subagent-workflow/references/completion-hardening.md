@@ -24,6 +24,18 @@ History-only packaging is allowed when content fingerprint remains identical. An
 
 Validator PASS sets `status = "validated"`, `phase = "packaging"`, `verdict = "VALIDATED"`. The task is not complete yet. Only `finalize-pr` can set `status = "complete"` and `verdict = "PASS"`.
 
+When the enforced checklist contains AC-079, Validator PASS requires AC-001 through AC-078 to be
+`PASS` and AC-079 to be exactly `NOT VERIFIED` with the mandatory packaging-pending evidence
+tokens defined by the validation document contract. Any other `FAIL` or `NOT VERIFIED` blocks
+PASS, and legacy binding remains all-PASS. Validator RETURN still requires an ordinary failing or
+unverified row; packaging-pending evidence does not promote it. The phase-aware AC-079 rule
+authorizes only the validated/packaging transition and is not an early AC-079 PASS.
+
+Before completion, `finalize-pr` also requires the Packaging evidence section to establish AC-079
+using its exact contract tokens. It re-reconciles the captured complete paginated file inventory
+with the final revision, in addition to checking the evidence digest, exact head, candidate
+equality, required remote checks, packaging artifact, and prospective whole-task check.
+
 A packaging failure leaves the task validated so the PR can be corrected without falsifying acceptance evidence. A content-changing correction requires returning to the applicable preflight/Tester/seal gates.
 
 ## Automatic artifact checks

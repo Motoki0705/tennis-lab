@@ -15,6 +15,7 @@ from src.synthetic_data_generation.dataset.plcs.composition import (
     AvatarAppearance,
     prepare_avatar,
 )
+from src.synthetic_data_generation.dataset.plcs.production import PLCSProductionMode
 from src.synthetic_data_generation.dataset.plcs.smplh import (
     load_smplh_model,
     upload_motion_clip,
@@ -140,6 +141,7 @@ def test_full_real_accad_timeline_is_articulated_and_composable() -> None:
     )
     timeline = build_global_timeline(
         scene_id="B00",
+        production_mode=PLCSProductionMode.SINGLE_OBJECT,
         target_court=TargetCourtBinding(
             court_instance_id="court-001",
             candidate_id="candidate-001",
@@ -216,6 +218,9 @@ def test_real_accad_inventory_is_repeated_wholly_per_balanced_logical_scene() ->
             split="train",
             timeline=build_global_timeline(
                 scene_id=scene_id,
+                production_mode=(
+                    PLCSProductionMode.MULTI_OBJECT_GLOBAL_TIMELINE
+                ),
                 target_court=TargetCourtBinding(
                     court_instance_id=f"court-{index:03d}",
                     candidate_id=f"candidate-{index:03d}",

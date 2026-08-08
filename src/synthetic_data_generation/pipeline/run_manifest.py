@@ -129,10 +129,24 @@ class MutableRunManifest:
             raise ValueError("Request source video disagrees with the current scene.")
 
     def begin(self, stage: StageName) -> None:
-        """Move one non-running stage to running and increment its attempt."""
+        """Begin a pending or explicitly retryable stage attempt."""
         record = self.stages[stage]
-        if record.status is StageStatus.RUNNING:
-            raise ValueError(f"Stage {stage.value} is already running.")
+        allowed = {
+            StageStatus.PENDING,
+            StageStatus.FAILED,
+            StageStatus.INVALIDATED,
+            StageStatus.SKIPPED,
+        }
+        if record.status not in allowed:
+            requirement = (
+                "completed stages require explicit invalidation"
+                if record.status is StageStatus.COMPLETED
+                else "only pending, failed, invalidated, or skipped stages may begin"
+            )
+            raise ValueError(
+                f"Stage {stage.value} cannot begin from {record.status.value}; "
+                f"{requirement}."
+            )
         record.status = StageStatus.RUNNING
         record.attempt += 1
         record.summary = {}

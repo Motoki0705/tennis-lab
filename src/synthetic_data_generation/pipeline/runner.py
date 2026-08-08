@@ -13,6 +13,7 @@ from src.synthetic_data_generation.pipeline.contracts import (
     ScenePipelineRequest,
     StageDefinition,
     StageExecutionContext,
+    StageExecutionPlan,
     StageExecutionSummary,
     StageInputKind,
     StageName,
@@ -52,27 +53,12 @@ class ScenePipelineRunner:
         """Run one request, leaving no partial/stale stage marked completed."""
         if request.scene_id != self.workspace.scene_id:
             raise ValueError("Request scene_id disagrees with the resolved workspace.")
-        selected = self.registry.selected_for_request(request)
-        order = self.registry.ordered(set(StageName))
-        positions = {definition.name: index for index, definition in enumerate(order)}
-        start_index = positions[request.from_stage]
-        selected_execution = tuple(
-            definition
-            for definition in selected
-            if positions[definition.name] >= start_index
-        )
-        if not selected_execution:
-            raise ValueError("from_stage is after every selected stage.")
+        plan = self.registry.execution_for_request(request)
 
         manifest = self._load_or_create_manifest(request)
         manifest.assert_request_compatible(request)
-        self._preflight_before_invalidation(
-            request,
-            manifest,
-            selected,
-            selected_execution,
-            start_index,
-        )
+        self._preflight_before_invalidation(request, manifest, plan)
+        self._recover_interrupted_stages(manifest)
 
         self.workspace.root.mkdir(parents=True, exist_ok=True)
         config_path = self.workspace.resolved_config_path
@@ -80,16 +66,12 @@ class ScenePipelineRunner:
         config_staging.write_text(self.resolved_config_yaml, encoding="utf-8")
         config_staging.replace(config_path)
         manifest.targets = sorted(target.value for target in request.targets)
-        invalidated = self.registry.descendants(
-            request.from_stage,
-            include_self=True,
-        )
-        invalidated_names = {definition.name for definition in invalidated}
-        for definition in reversed(invalidated):
+        invalidated_names = {definition.name for definition in plan.invalidated}
+        for definition in reversed(plan.invalidated):
             # The rerun cursor's prior complete owner stays visible until the new
             # validated snapshot atomically replaces it. Descendants are stale and
             # are physically unpublished before any execution starts.
-            if definition.name is not request.from_stage:
+            if definition.name is not plan.cursor.name:
                 definition.invalidate_publication(self.workspace)
             manifest.invalidate(definition.name)
         for target in DatasetTarget:
@@ -97,7 +79,7 @@ class ScenePipelineRunner:
                 manifest.skip(target.stage)
         manifest.save(self.workspace.run_manifest_path)
 
-        for definition in selected_execution:
+        for definition in plan.execution:
             self._execute_stage(request, definition, manifest)
         return manifest
 
@@ -108,7 +90,10 @@ class ScenePipelineRunner:
         path = self.workspace.run_manifest_path
         if not path.exists():
             return MutableRunManifest.create(request)
-        manifest = MutableRunManifest.load(path)
+        return MutableRunManifest.load(path)
+
+    def _recover_interrupted_stages(self, manifest: MutableRunManifest) -> None:
+        """Recover interrupted publication only after request preflight succeeds."""
         recovered = False
         for stage, record in manifest.stages.items():
             if record.status is StageStatus.RUNNING:
@@ -120,21 +105,16 @@ class ScenePipelineRunner:
                 )
                 recovered = True
         if recovered:
-            manifest.save(path)
-        return manifest
+            manifest.save(self.workspace.run_manifest_path)
 
     def _preflight_before_invalidation(
         self,
         request: ScenePipelineRequest,
         manifest: MutableRunManifest,
-        selected: tuple[StageDefinition[StageExecutionSummary], ...],
-        selected_execution: tuple[StageDefinition[StageExecutionSummary], ...],
-        start_index: int,
+        plan: StageExecutionPlan,
     ) -> None:
         """Validate request, retained upstream, config, handler and publication first."""
-        order = self.registry.ordered(set(StageName))
-        selected_names = {definition.name for definition in selected}
-        if request.from_stage is not StageName.INGEST:
+        if plan.cursor.name is not StageName.INGEST:
             if not self.workspace.resolved_config_path.is_file():
                 raise FileNotFoundError("Existing scene is missing resolved-config.yaml.")
             existing_config = self.workspace.resolved_config_path.read_text(encoding="utf-8")
@@ -145,26 +125,23 @@ class ScenePipelineRunner:
                     "Resolved configuration changed; rerun from ingest rather than "
                     "invalidating downstream."
                 )
-        for definition in order[:start_index]:
-            if definition.name not in selected_names:
-                continue
+        for definition in plan.retained_ancestors:
             if manifest.stages[definition.name].status is not StageStatus.COMPLETED:
                 raise ValueError(
                     "Retained upstream stage is not completed: "
                     f"{definition.name.value}."
                 )
             self.workspace.validate_required_outputs(definition)
-        for definition in selected_execution:
-            definition.preflight_publication(self.workspace)
-        start_definition = self.registry.definition(request.from_stage)
-        self._validate_definition_inputs(request, start_definition)
+        self._validate_definition_inputs(request, plan.cursor)
         context = _Context(
             request=request,
-            stage=start_definition,
-            owner_path=self.workspace.owner_path(start_definition),
-            staging_path=self.workspace.staging_path(start_definition),
+            stage=plan.cursor,
+            owner_path=self.workspace.owner_path(plan.cursor),
+            staging_path=self.workspace.staging_path(plan.cursor),
         )
-        start_definition.preflight(context)
+        plan.cursor.preflight(context)
+        for definition in plan.invalidated:
+            definition.preflight_publication(self.workspace)
 
     def _validate_definition_inputs(
         self,

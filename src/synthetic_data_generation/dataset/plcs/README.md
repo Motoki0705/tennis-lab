@@ -5,11 +5,17 @@ of explicitly selected ACCAD/AMASS clips, evaluates the matching licensed
 SMPL-H model, builds an SMPL-H surface Gaussian asset, applies Gaussian LBS at
 every source frame, and rejects motion that is only a rigid root transform.
 
-`timeline.py` creates a complete single- or multi-player compositor interval
-for every explicitly configured logical scene. Every logical scene retains the
-same full running/walking/general source inventory, track presence, and source
-frame mappings even when clips have different start times or lengths. Logical
-scenes, never individual objects or frames, receive one target-court binding.
+`production.py` defines the finite `single_object` and
+`multi_object_global_timeline` production modes. `single_object.yaml` selects
+one real ACCAD category at source frame zero; `production.yaml` remains the
+running/walking/general multi-object B00 authority. Both use the same compact
+v4 schema, CUDA articulated execution, generated cameras, and court binding.
+
+`timeline.py` creates the complete compositor interval for every explicitly
+configured logical scene. Every logical scene retains the same full configured
+source inventory, track presence, and source-frame mappings even when
+multi-object clips have different start times or lengths. Logical scenes,
+never individual objects or frames, receive one target-court binding.
 The complete scene inventory must use every accepted court and keep global and
 per-split scene-count spread at most one.
 

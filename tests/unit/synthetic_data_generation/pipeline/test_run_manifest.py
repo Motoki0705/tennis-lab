@@ -1,5 +1,7 @@
 """Tests for mutable current-state run manifests."""
 
+from pathlib import Path
+
 import pytest
 
 from src.synthetic_data_generation.pipeline import DatasetTarget, StageName
@@ -10,7 +12,7 @@ from src.synthetic_data_generation.pipeline.contracts import (
 from src.synthetic_data_generation.pipeline.run_manifest import MutableRunManifest
 
 
-def _request(tmp_path, *, schema: str = "scene_pipeline_v1") -> ScenePipelineRequest:
+def _request(tmp_path: Path, *, schema: str = "scene_pipeline_v1") -> ScenePipelineRequest:
     source = tmp_path / "video.mp4"
     source.write_bytes(b"video")
     return ScenePipelineRequest(
@@ -22,7 +24,7 @@ def _request(tmp_path, *, schema: str = "scene_pipeline_v1") -> ScenePipelineReq
     )
 
 
-def test_manifest_round_trip_and_transitions(tmp_path) -> None:
+def test_manifest_round_trip_and_transitions(tmp_path: Path) -> None:
     request = _request(tmp_path)
     manifest = MutableRunManifest.create(request)
     path = tmp_path / "run.json"
@@ -40,7 +42,7 @@ def test_manifest_round_trip_and_transitions(tmp_path) -> None:
     assert loaded.stages[StageName.BLCS_DATASET].status is StageStatus.SKIPPED
 
 
-def test_manifest_rejects_incompatible_request_before_mutation(tmp_path) -> None:
+def test_manifest_rejects_incompatible_request_before_mutation(tmp_path: Path) -> None:
     request = _request(tmp_path)
     manifest = MutableRunManifest.create(request)
     incompatible = ScenePipelineRequest(
@@ -53,3 +55,63 @@ def test_manifest_rejects_incompatible_request_before_mutation(tmp_path) -> None
 
     with pytest.raises(ValueError, match="config schema"):
         manifest.assert_request_compatible(incompatible)
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        StageStatus.PENDING,
+        StageStatus.FAILED,
+        StageStatus.INVALIDATED,
+        StageStatus.SKIPPED,
+    ],
+)
+def test_manifest_begin_accepts_only_retryable_states(
+    tmp_path: Path,
+    status: StageStatus,
+) -> None:
+    manifest = MutableRunManifest.create(_request(tmp_path))
+    record = manifest.stages[StageName.INGEST]
+    record.status = status
+    record.attempt = 3
+    record.summary = {"stale": True}
+    record.error = "stale error"
+
+    manifest.begin(StageName.INGEST)
+
+    assert record.status is StageStatus.RUNNING
+    assert record.attempt == 4
+    assert record.summary == {}
+    assert record.error is None
+
+
+@pytest.mark.parametrize("status", [StageStatus.RUNNING, StageStatus.COMPLETED])
+def test_manifest_begin_rejects_non_retryable_states_without_mutation(
+    tmp_path: Path,
+    status: StageStatus,
+) -> None:
+    manifest = MutableRunManifest.create(_request(tmp_path))
+    record = manifest.stages[StageName.INGEST]
+    record.status = status
+    record.attempt = 3
+    record.summary = {"preserved": True}
+    before = record.to_dict()
+
+    with pytest.raises(ValueError, match=f"cannot begin from {status.value}"):
+        manifest.begin(StageName.INGEST)
+
+    assert record.to_dict() == before
+
+
+def test_completed_stage_can_begin_only_after_invalidation(tmp_path: Path) -> None:
+    manifest = MutableRunManifest.create(_request(tmp_path))
+    manifest.begin(StageName.INGEST)
+    manifest.complete(StageName.INGEST, {"frames": 10})
+
+    with pytest.raises(ValueError, match="completed stages require explicit invalidation"):
+        manifest.begin(StageName.INGEST)
+
+    manifest.invalidate(StageName.INGEST)
+    manifest.begin(StageName.INGEST)
+    assert manifest.stages[StageName.INGEST].status is StageStatus.RUNNING
+    assert manifest.stages[StageName.INGEST].attempt == 2

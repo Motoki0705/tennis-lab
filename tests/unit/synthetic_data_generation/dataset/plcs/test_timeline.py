@@ -8,6 +8,7 @@ from numpy.typing import NDArray
 
 from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
 from src.synthetic_data_generation.dataset.plcs.assembler import build_frame_label
+from src.synthetic_data_generation.dataset.plcs.production import PLCSProductionMode
 from src.synthetic_data_generation.dataset.plcs.timeline import (
     PLCSLogicalScene,
     PLCSObjectTrack,
@@ -66,6 +67,7 @@ def test_single_timeline_is_exact_source_interval(tmp_path: Path) -> None:
     )
     timeline = build_global_timeline(
         scene_id="B00",
+        production_mode=PLCSProductionMode.SINGLE_OBJECT,
         target_court=_binding(),
         tracks=(track,),
     )
@@ -85,7 +87,7 @@ def test_multi_timeline_keeps_global_interval_presence_and_source_mapping(
         object_id="player-001",
         instance_id=1,
         asset_id="avatar-001",
-        clip=_clip(tmp_path, "first", 4),
+        clip=_clip(tmp_path, "first", 4, category="running"),
         start_frame=0,
         anchor_position_court_m=(-1.0, -5.0, 0.0),
         yaw_radians=0.0,
@@ -94,15 +96,25 @@ def test_multi_timeline_keeps_global_interval_presence_and_source_mapping(
         object_id="player-002",
         instance_id=2,
         asset_id="avatar-002",
-        clip=_clip(tmp_path, "second", 5),
+        clip=_clip(tmp_path, "second", 5, category="walking"),
         start_frame=2,
         anchor_position_court_m=(1.0, 5.0, 0.0),
         yaw_radians=np.pi,
     )
+    third = PLCSObjectTrack(
+        object_id="player-003",
+        instance_id=3,
+        asset_id="avatar-003",
+        clip=_clip(tmp_path, "third", 3, category="general"),
+        start_frame=1,
+        anchor_position_court_m=(0.0, 0.0, 0.0),
+        yaw_radians=np.pi / 2.0,
+    )
     timeline = build_global_timeline(
         scene_id="B00",
+        production_mode=PLCSProductionMode.MULTI_OBJECT_GLOBAL_TIMELINE,
         target_court=_binding(),
-        tracks=(first, second),
+        tracks=(first, second, third),
     )
 
     assert timeline.mode == "multi"
@@ -208,6 +220,7 @@ def _logical_scene(
         split=split,
         timeline=build_global_timeline(
             scene_id=scene_id,
+            production_mode=PLCSProductionMode.MULTI_OBJECT_GLOBAL_TIMELINE,
             target_court=_binding(binding_index),
             tracks=tracks,
         ),

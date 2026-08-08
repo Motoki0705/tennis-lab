@@ -21,6 +21,10 @@ from src.synthetic_data_generation.composition.contracts import (
     GaussianTransform,
 )
 from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
+from src.synthetic_data_generation.dataset.plcs.production import (
+    PLCSProductionMode,
+    validate_plcs_production_contract,
+)
 from src.synthetic_data_generation.scene_contract import RigidTransform
 from src.tasks.plcs.generate_dataset.sampling.motion_sampler import PLCSMotionClip
 
@@ -138,6 +142,7 @@ class PLCSGlobalTimeline:
     """The entire compositor interval and target-court transform authority."""
 
     scene_id: str
+    production_mode: PLCSProductionMode
     target_court: TargetCourtBinding
     tracks: tuple[PLCSObjectTrack, ...]
     frames: tuple[PLCSGlobalFrame, ...]
@@ -147,6 +152,16 @@ class PLCSGlobalTimeline:
             raise ValueError("scene_id must be a portable identifier.")
         if not self.tracks or not self.frames:
             raise ValueError("A PLCS timeline requires tracks and global frames.")
+        validate_plcs_production_contract(
+            mode=self.production_mode,
+            configured_motion_categories=(
+                track.clip.category.value for track in self.tracks
+            ),
+            object_motion_categories=(
+                track.clip.category.value for track in self.tracks
+            ),
+            object_start_frames=(track.start_frame for track in self.tracks),
+        )
         if tuple(frame.frame_index for frame in self.frames) != tuple(
             range(len(self.frames))
         ):
@@ -187,7 +202,7 @@ class PLCSGlobalTimeline:
 
     @property
     def mode(self) -> str:
-        return "single" if len(self.tracks) == 1 else "multi"
+        return self.production_mode.persisted_timeline_mode
 
     def to_foreground_composition(
         self,
@@ -289,7 +304,12 @@ class PLCSSceneInventory:
             raise ValueError("Required PLCS motion categories must be explicit.")
 
         expected_signature = _track_inventory_signature(scenes[0].timeline)
+        expected_mode = scenes[0].timeline.production_mode
         for scene in scenes:
+            if scene.timeline.production_mode is not expected_mode:
+                raise ValueError(
+                    "Every PLCS logical scene must use one production mode."
+                )
             if _track_inventory_signature(scene.timeline) != expected_signature:
                 raise ValueError(
                     "Every PLCS logical scene must retain the same complete source "
@@ -393,6 +413,7 @@ def _track_inventory_signature(
 def build_global_timeline(
     *,
     scene_id: str,
+    production_mode: PLCSProductionMode,
     target_court: TargetCourtBinding,
     tracks: tuple[PLCSObjectTrack, ...],
 ) -> PLCSGlobalTimeline:
@@ -413,6 +434,7 @@ def build_global_timeline(
         frames.append(PLCSGlobalFrame(frame_index=frame_index, entries=entries))
     return PLCSGlobalTimeline(
         scene_id=scene_id,
+        production_mode=production_mode,
         target_court=target_court,
         tracks=tracks,
         frames=tuple(frames),

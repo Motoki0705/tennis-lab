@@ -351,6 +351,45 @@ class StageDefinition(Generic[SummaryT]):
         self.publication.invalidate(workspace, _as_execution_definition(self))
 
 
+@dataclass(frozen=True, slots=True)
+class StageExecutionPlan:
+    """One graph-derived request plan consumed by every runner lifecycle phase."""
+
+    selected: tuple[StageDefinition[StageExecutionSummary], ...]
+    cursor: StageDefinition[StageExecutionSummary]
+    retained_ancestors: tuple[StageDefinition[StageExecutionSummary], ...]
+    invalidated: tuple[StageDefinition[StageExecutionSummary], ...]
+    execution: tuple[StageDefinition[StageExecutionSummary], ...]
+
+    def __post_init__(self) -> None:
+        inventories = {
+            "selected": self.selected,
+            "retained_ancestors": self.retained_ancestors,
+            "invalidated": self.invalidated,
+            "execution": self.execution,
+        }
+        names: dict[str, set[StageName]] = {}
+        for label, definitions in inventories.items():
+            inventory_names = tuple(definition.name for definition in definitions)
+            if len(inventory_names) != len(set(inventory_names)):
+                raise ValueError(f"Execution plan {label} contains duplicate stages.")
+            names[label] = set(inventory_names)
+        if self.cursor.name not in names["selected"]:
+            raise ValueError("Execution-plan cursor must belong to the selected request stages.")
+        if self.cursor.name not in names["invalidated"]:
+            raise ValueError("Execution-plan cursor must be invalidated before execution.")
+        if self.cursor.name not in names["execution"]:
+            raise ValueError("Execution-plan cursor must belong to the execution stages.")
+        if not names["retained_ancestors"] <= names["selected"]:
+            raise ValueError("Retained ancestors must belong to the selected request stages.")
+        if names["retained_ancestors"] & names["invalidated"]:
+            raise ValueError("Retained ancestors cannot also be invalidated.")
+        if not names["execution"] <= names["selected"]:
+            raise ValueError("Execution stages must belong to the selected request stages.")
+        if not names["execution"] <= names["invalidated"]:
+            raise ValueError("Execution stages must be invalidated before they begin.")
+
+
 def _as_execution_definition(
     definition: StageDefinition[SummaryT],
 ) -> StageDefinition[StageExecutionSummary]:
@@ -389,6 +428,7 @@ __all__ = [
     "ScenePipelineRequest",
     "StageDefinition",
     "StageExecutionContext",
+    "StageExecutionPlan",
     "StageExecutionSummary",
     "StageHandler",
     "StageInput",
