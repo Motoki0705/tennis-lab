@@ -2,11 +2,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-_WORKFLOW = Path(__file__).resolve().parents[4] / ".github/workflows/deploy-wsl-mcp.yml"
+_ROOT = Path(__file__).resolve().parents[4]
+_WORKFLOW = _ROOT / ".github/workflows/deploy-wsl-mcp.yml"
+_STATUS_WORKFLOW = _ROOT / ".github/workflows/publish-wsl-mcp-deploy-status.yml"
 
 
 def _workflow_text() -> str:
     return _WORKFLOW.read_text(encoding="utf-8")
+
+
+def _status_workflow_text() -> str:
+    return _STATUS_WORKFLOW.read_text(encoding="utf-8")
 
 
 def test_deploy_uses_external_exact_revision_control_plane() -> None:
@@ -56,3 +62,22 @@ def test_deploy_runs_cpu_regression_and_serial_cuda_smoke() -> None:
     assert '"enqueue_training"' in text
     assert 'assert torch.cuda.is_available()' in text
     assert 'mcp-deploy-cuda-smoke' in text
+
+
+def test_deploy_status_is_published_by_separate_github_hosted_workflow() -> None:
+    deploy = _workflow_text()
+    status = _status_workflow_text()
+
+    assert "statuses: write" not in deploy
+    assert "workflow_run:" in status
+    assert "- Deploy WSL MCP" in status
+    assert "- requested" in status
+    assert "- completed" in status
+    assert "statuses: write" in status
+    assert "runs-on: ubuntu-24.04" in status
+    assert '"context": "wsl-mcp/deploy"' in status
+    assert 'state = "pending"' in status
+    assert '"success": "success"' in status
+    assert '"failure": "failure"' in status
+    assert "github.event.workflow_run.head_sha" in status
+    assert "github.event.workflow_run.html_url" in status
