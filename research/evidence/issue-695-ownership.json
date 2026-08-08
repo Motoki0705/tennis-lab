@@ -100,6 +100,9 @@
     "src/tasks/plcs/training/mcmc.py": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/training/tracking_metrics.py": "impl_canonical_consumers_attempt3",
     "src/utils/README.md": "parent_integrator",
+    "src/utils/configuration/exemption_data.py": "parent_integrator",
+    "src/utils/configuration/inventory.py": "parent_integrator",
+    "src/utils/configuration/migration_data.py": "parent_integrator",
     "src/utils/data/__init__.py": "parent_integrator",
     "src/utils/data/scene_io.py": "parent_integrator",
     "tests/e2e/development/test_architecture_boundaries.py": "parent_integrator",
@@ -138,7 +141,8 @@
     "tests/unit/tasks/plcs/data/test_types.py": "impl_canonical_consumers_attempt3",
     "tests/unit/tasks/plcs/inference/test_predictor.py": "impl_canonical_consumers_attempt3",
     "tests/unit/tasks/plcs/model_io/test_adapters.py": "impl_canonical_consumers_attempt3",
-    "tests/unit/tasks/plcs/model_io/test_model_profiles.py": "impl_canonical_consumers_attempt3"
+    "tests/unit/tasks/plcs/model_io/test_model_profiles.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/utils/configuration/test_inventory.py": "parent_integrator"
   },
   "ledger": {
     "baseline": "9e0f7f9dbe6dfed4caa35602c6c16dbb31285dde",
@@ -160,6 +164,7 @@
           "src/utils/README.md",
           "src/utils/data/__init__.py",
           "src/utils/data/scene_io.py",
+          "src/utils/configuration/inventory.py",
           "src/utils/configuration/exemption_data.py",
           "src/utils/configuration/migration_data.py",
           "tests/e2e/synthetic_data_generation/test_b00_evidence.py",
@@ -167,6 +172,7 @@
           "tests/e2e/synthetic_data_generation/test_removed_architecture.py",
           "tests/e2e/development/test_architecture_boundaries.py",
           "tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py",
+          "tests/unit/utils/configuration/test_inventory.py",
           "tests/unit/tasks/base/conftest.py"
         ]
       },
@@ -229,7 +235,7 @@
       ]
     }
   },
-  "plan_sha256": "4241eeaf2ba24efb3a483e558414e32089bc096343b0f8a51f0e98d51137cc63",
+  "plan_sha256": "51a3a32cad69d25ee2d0c13906debb0df1b311223861d098143051e8cdcb6b4d",
   "schema_version": 1,
   "status": "PASS"
 }
