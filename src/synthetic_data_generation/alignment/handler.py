@@ -124,10 +124,15 @@ def _scene_json_path(context: StageExecutionContext) -> Path:
 
 
 def _require_exact_staging(context: StageExecutionContext) -> None:
-    expected = context.owner_path / "staging"
+    expected = (
+        context.owner_path.parent
+        / ".transactions"
+        / context.stage.name.value
+        / "snapshot"
+    )
     if context.staging_path != expected:
         raise ValueError(
-            f"Alignment handler requires the provided fixed staging path {expected}, "
+            f"Alignment handler requires the workspace transaction snapshot {expected}, "
             f"got {context.staging_path}."
         )
     if not context.staging_path.is_dir() or context.staging_path.is_symlink():

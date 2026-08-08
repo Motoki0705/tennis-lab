@@ -1,4 +1,4 @@
-"""Composition root for preflight-first canonical scene execution."""
+"""Definition-driven, preflight-first canonical scene execution."""
 
 from __future__ import annotations
 
@@ -10,15 +10,14 @@ import yaml
 
 from src.synthetic_data_generation.pipeline.contracts import (
     DatasetTarget,
-    PublicationMode,
     ScenePipelineRequest,
+    StageDefinition,
     StageExecutionContext,
-    StageHandler,
+    StageExecutionSummary,
+    StageInputKind,
     StageName,
-    StageSpec,
     StageStatus,
 )
-from src.synthetic_data_generation.pipeline.publication import StagePublisher
 from src.synthetic_data_generation.pipeline.registry import StageRegistry
 from src.synthetic_data_generation.pipeline.run_manifest import MutableRunManifest
 from src.synthetic_data_generation.pipeline.workspace import SceneWorkspace
@@ -27,20 +26,19 @@ from src.synthetic_data_generation.pipeline.workspace import SceneWorkspace
 @dataclass(frozen=True, slots=True)
 class _Context(StageExecutionContext):
     request: ScenePipelineRequest
-    stage: StageSpec
+    stage: StageDefinition[StageExecutionSummary]
     owner_path: Path
     staging_path: Path
 
 
 class ScenePipelineRunner:
-    """Execute typed handlers without stage-name conditionals or silent fallback."""
+    """Execute complete typed definitions without handler or publisher switches."""
 
     def __init__(
         self,
         *,
         workspace: SceneWorkspace,
         registry: StageRegistry,
-        handlers: Mapping[str, StageHandler],
         resolved_config_yaml: str,
     ) -> None:
         if not resolved_config_yaml.strip():
@@ -48,7 +46,6 @@ class ScenePipelineRunner:
         _configuration_authority(resolved_config_yaml)
         self.workspace = workspace
         self.registry = registry
-        self.handlers = dict(handlers)
         self.resolved_config_yaml = resolved_config_yaml
 
     def run(self, request: ScenePipelineRequest) -> MutableRunManifest:
@@ -57,36 +54,51 @@ class ScenePipelineRunner:
             raise ValueError("Request scene_id disagrees with the resolved workspace.")
         selected = self.registry.selected_for_request(request)
         order = self.registry.ordered(set(StageName))
-        start_index = order.index(request.from_stage)
+        positions = {definition.name: index for index, definition in enumerate(order)}
+        start_index = positions[request.from_stage]
         selected_execution = tuple(
-            stage for stage in selected if order.index(stage) >= start_index
+            definition
+            for definition in selected
+            if positions[definition.name] >= start_index
         )
         if not selected_execution:
             raise ValueError("from_stage is after every selected stage.")
 
-        self._require_handlers(selected)
         manifest = self._load_or_create_manifest(request)
         manifest.assert_request_compatible(request)
-        self._preflight_before_invalidation(request, manifest, selected, start_index)
+        self._preflight_before_invalidation(
+            request,
+            manifest,
+            selected,
+            selected_execution,
+            start_index,
+        )
 
         self.workspace.root.mkdir(parents=True, exist_ok=True)
         config_path = self.workspace.resolved_config_path
-        config_path.parent.mkdir(parents=True, exist_ok=True)
         config_staging = config_path.with_suffix(config_path.suffix + ".tmp")
         config_staging.write_text(self.resolved_config_yaml, encoding="utf-8")
         config_staging.replace(config_path)
         manifest.targets = sorted(target.value for target in request.targets)
-        invalidated = self.registry.descendants(request.from_stage, include_self=True)
-        for stage in reversed(invalidated):
-            self.workspace.invalidate_outputs(self.registry.spec(stage))
-            manifest.invalidate(stage)
+        invalidated = self.registry.descendants(
+            request.from_stage,
+            include_self=True,
+        )
+        invalidated_names = {definition.name for definition in invalidated}
+        for definition in reversed(invalidated):
+            # The rerun cursor's prior complete owner stays visible until the new
+            # validated snapshot atomically replaces it. Descendants are stale and
+            # are physically unpublished before any execution starts.
+            if definition.name is not request.from_stage:
+                definition.invalidate_publication(self.workspace)
+            manifest.invalidate(definition.name)
         for target in DatasetTarget:
-            if target not in request.targets and target.stage in invalidated:
+            if target not in request.targets and target.stage in invalidated_names:
                 manifest.skip(target.stage)
         manifest.save(self.workspace.run_manifest_path)
 
-        for stage in selected_execution:
-            self._execute_stage(request, stage, manifest)
+        for definition in selected_execution:
+            self._execute_stage(request, definition, manifest)
         return manifest
 
     def _load_or_create_manifest(
@@ -100,36 +112,28 @@ class ScenePipelineRunner:
         recovered = False
         for stage, record in manifest.stages.items():
             if record.status is StageStatus.RUNNING:
-                spec = self.registry.spec(stage)
-                if spec.publication_mode is PublicationMode.ATOMIC_OUTPUTS:
-                    StagePublisher(
-                        self.workspace,
-                        spec,
-                    ).recover_interrupted_publication()
+                self.registry.definition(stage).recover_publication(self.workspace)
                 record.status = StageStatus.FAILED
                 record.summary = {}
-                record.error = "InterruptedError: prior process ended while stage was running"
+                record.error = (
+                    "InterruptedError: prior process ended while stage was running"
+                )
                 recovered = True
         if recovered:
             manifest.save(path)
         return manifest
 
-    def _require_handlers(self, selected: tuple[StageName, ...]) -> None:
-        required = {self.registry.spec(stage).handler_key for stage in selected}
-        missing = sorted(required - set(self.handlers))
-        unexpected = sorted(set(self.handlers) - {spec.handler_key for spec in self.registry.specs.values()})
-        if missing or unexpected:
-            raise ValueError(f"Handler registry mismatch; missing={missing}, unexpected={unexpected}.")
-
     def _preflight_before_invalidation(
         self,
         request: ScenePipelineRequest,
         manifest: MutableRunManifest,
-        selected: tuple[StageName, ...],
+        selected: tuple[StageDefinition[StageExecutionSummary], ...],
+        selected_execution: tuple[StageDefinition[StageExecutionSummary], ...],
         start_index: int,
     ) -> None:
-        """Validate request, retained upstream, config and handler preflight first."""
+        """Validate request, retained upstream, config, handler and publication first."""
         order = self.registry.ordered(set(StageName))
+        selected_names = {definition.name for definition in selected}
         if request.from_stage is not StageName.INGEST:
             if not self.workspace.resolved_config_path.is_file():
                 raise FileNotFoundError("Existing scene is missing resolved-config.yaml.")
@@ -138,58 +142,84 @@ class ScenePipelineRunner:
                 self.resolved_config_yaml
             ):
                 raise ValueError(
-                    "Resolved configuration changed; rerun from ingest rather than invalidating downstream."
+                    "Resolved configuration changed; rerun from ingest rather than "
+                    "invalidating downstream."
                 )
-        for stage in order[:start_index]:
-            if stage not in selected:
+        for definition in order[:start_index]:
+            if definition.name not in selected_names:
                 continue
-            if manifest.stages[stage].status is not StageStatus.COMPLETED:
-                raise ValueError(f"Retained upstream stage is not completed: {stage.value}.")
-            self.workspace.validate_required_outputs(self.registry.spec(stage))
-        start_spec = self.registry.spec(request.from_stage)
+            if manifest.stages[definition.name].status is not StageStatus.COMPLETED:
+                raise ValueError(
+                    "Retained upstream stage is not completed: "
+                    f"{definition.name.value}."
+                )
+            self.workspace.validate_required_outputs(definition)
+        for definition in selected_execution:
+            definition.preflight_publication(self.workspace)
+        start_definition = self.registry.definition(request.from_stage)
+        self._validate_definition_inputs(request, start_definition)
         context = _Context(
             request=request,
-            stage=start_spec,
-            owner_path=self.workspace.owner_path(start_spec),
-            staging_path=self.workspace.staging_path(start_spec),
+            stage=start_definition,
+            owner_path=self.workspace.owner_path(start_definition),
+            staging_path=self.workspace.staging_path(start_definition),
         )
-        self.handlers[start_spec.handler_key].preflight(context)
+        start_definition.preflight(context)
+
+    def _validate_definition_inputs(
+        self,
+        request: ScenePipelineRequest,
+        definition: StageDefinition[StageExecutionSummary],
+    ) -> None:
+        for stage_input in definition.required_inputs:
+            if not stage_input.applies_to(request):
+                continue
+            if stage_input.kind is StageInputKind.SOURCE_VIDEO:
+                if not request.source_video.is_file():
+                    raise FileNotFoundError(
+                        f"Request source video disappeared: {request.source_video}."
+                    )
+            elif stage_input.kind is StageInputKind.RESOLVED_CONFIGURATION:
+                _configuration_authority(self.resolved_config_yaml)
+            elif stage_input.kind is StageInputKind.STAGE_OUTPUT:
+                if stage_input.producer is None or stage_input.relative_path is None:
+                    raise RuntimeError("Invalid stage input escaped registry validation.")
+                self.workspace.validate_stage_input(
+                    self.registry.definition(stage_input.producer),
+                    stage_input.relative_path,
+                )
+            else:  # pragma: no cover - exhaustive StrEnum guard
+                raise ValueError(f"Unknown stage input kind: {stage_input.kind!r}.")
 
     def _execute_stage(
         self,
         request: ScenePipelineRequest,
-        stage: StageName,
+        definition: StageDefinition[StageExecutionSummary],
         manifest: MutableRunManifest,
     ) -> None:
-        spec = self.registry.spec(stage)
-        handler = self.handlers[spec.handler_key]
-        publisher = StagePublisher(self.workspace, spec)
-        staging_path = (
-            publisher.prepare()
-            if spec.publication_mode is PublicationMode.ATOMIC_OUTPUTS
-            else self.workspace.staging_path(spec)
-        )
+        staging_path = definition.prepare_publication(self.workspace)
         context = _Context(
             request=request,
-            stage=spec,
-            owner_path=self.workspace.owner_path(spec),
+            stage=definition,
+            owner_path=self.workspace.owner_path(definition),
             staging_path=staging_path,
         )
-        manifest.begin(stage)
+        manifest.begin(definition.name)
         manifest.save(self.workspace.run_manifest_path)
         try:
-            handler.preflight(context)
-            summary = handler.execute(context)
-            handler.validate(context)
-            if spec.publication_mode is PublicationMode.ATOMIC_OUTPUTS:
-                publisher.publish()
-            self.workspace.validate_required_outputs(spec)
-            manifest.complete(stage, summary.values)
+            self._validate_definition_inputs(request, definition)
+            definition.preflight(context)
+            summary = definition.execute(context)
+            definition.validate(context)
+            publication = definition.publish(self.workspace)
+            if publication.owner_path != context.owner_path:
+                raise ValueError("Publication returned a non-canonical owner path.")
+            self.workspace.validate_required_outputs(definition)
+            manifest.complete(definition.name, summary.values)
             manifest.save(self.workspace.run_manifest_path)
         except BaseException as error:
-            publisher.abandon()
-            self.workspace.invalidate_outputs(spec)
-            manifest.fail(stage, error)
+            definition.abandon_publication(self.workspace)
+            manifest.fail(definition.name, error)
             manifest.save(self.workspace.run_manifest_path)
             raise
 

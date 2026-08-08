@@ -1,45 +1,98 @@
-"""The sole typed stage graph and handler registry definition."""
+"""The sole typed stage-definition inventory and validated graph registry."""
 
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from types import MappingProxyType
 
 from src.synthetic_data_generation.pipeline.contracts import (
-    PublicationMode,
+    DatasetTarget,
     ScenePipelineRequest,
+    StageDefinition,
+    StageExecutionSummary,
+    StageHandler,
+    StageInput,
+    StageInputKind,
     StageName,
-    StageSpec,
+)
+from src.synthetic_data_generation.pipeline.publication import (
+    AtomicDirectoryPublication,
+    ExternalAtomicPublication,
 )
 
 
 @dataclass(frozen=True, slots=True)
-class StageRegistry:
-    """Validated stage definitions with graph-derived ordering and descendants."""
+class CanonicalStageHandlers:
+    """Typed, exhaustive lifecycle bindings for the seven canonical stages."""
 
-    specs: Mapping[StageName, StageSpec]
+    ingest: StageHandler[StageExecutionSummary]
+    reconstruction: StageHandler[StageExecutionSummary]
+    alignment: StageHandler[StageExecutionSummary]
+    court_dataset: StageHandler[StageExecutionSummary]
+    blcs_dataset: StageHandler[StageExecutionSummary]
+    plcs_dataset: StageHandler[StageExecutionSummary]
+    report: StageHandler[StageExecutionSummary]
+
+
+@dataclass(frozen=True, slots=True)
+class StageRegistry:
+    """Validated definitions whose graph relationships are mechanically derived."""
+
+    definitions: Mapping[StageName, StageDefinition[StageExecutionSummary]]
 
     def __post_init__(self) -> None:
-        if set(self.specs) != set(StageName):
-            missing = set(StageName) - set(self.specs)
-            unknown = set(self.specs) - set(StageName)
-            raise ValueError(f"Stage registry mismatch; missing={missing}, unknown={unknown}.")
-        for name, spec in self.specs.items():
-            if spec.name is not name:
-                raise ValueError(f"Stage registry key disagrees with spec: {name.value}.")
-            unknown_dependencies = set(spec.dependencies) - set(self.specs)
+        definitions = dict(self.definitions)
+        object.__setattr__(self, "definitions", MappingProxyType(definitions))
+        if set(definitions) != set(StageName):
+            missing = set(StageName) - set(definitions)
+            unknown = set(definitions) - set(StageName)
+            raise ValueError(
+                f"Stage registry mismatch; missing={missing}, unknown={unknown}."
+            )
+        handler_ids: set[int] = set()
+        for name, definition in definitions.items():
+            if definition.name is not name:
+                raise ValueError(
+                    f"Stage registry key disagrees with definition: {name.value}."
+                )
+            unknown_dependencies = set(definition.dependencies) - set(definitions)
             if unknown_dependencies:
-                raise ValueError(f"Unknown dependencies for {name.value}: {unknown_dependencies}.")
-        self.ordered(set(StageName))
+                raise ValueError(
+                    f"Unknown dependencies for {name.value}: {unknown_dependencies}."
+                )
+            handler_id = id(definition.handler)
+            if handler_id in handler_ids:
+                raise ValueError("One handler instance cannot own multiple stage definitions.")
+            handler_ids.add(handler_id)
+        self._validate_owner_uniqueness()
+        self.ordered_names(set(StageName))
+        self._validate_inputs()
+        for definition in definitions.values():
+            definition._bind_descendants(
+                tuple(
+                    descendant.name
+                    for descendant in self.descendants(
+                        definition.name,
+                        include_self=False,
+                        bind=False,
+                    )
+                )
+            )
 
-    def spec(self, stage: StageName) -> StageSpec:
-        """Return the one definition for ``stage``."""
-        return self.specs[stage]
+    def definition(
+        self,
+        stage: StageName,
+    ) -> StageDefinition[StageExecutionSummary]:
+        """Return the one complete definition for ``stage``."""
+        return self.definitions[stage]
 
-    def ordered(self, selected: Iterable[StageName]) -> tuple[StageName, ...]:
+    def ordered_names(self, selected: Iterable[StageName]) -> tuple[StageName, ...]:
         """Topologically order a selected stage subgraph and reject cycles."""
         selected_set = set(selected)
+        if not selected_set <= set(self.definitions):
+            raise ValueError("Selected stage set contains an unknown stage.")
         result: list[StageName] = []
         visiting: set[StageName] = set()
         visited: set[StageName] = set()
@@ -50,7 +103,7 @@ class StageRegistry:
             if stage in visiting:
                 raise ValueError(f"Cycle in canonical stage graph at {stage.value}.")
             visiting.add(stage)
-            for dependency in self.spec(stage).dependencies:
+            for dependency in self.definition(stage).dependencies:
                 visit(dependency)
             visiting.remove(stage)
             visited.add(stage)
@@ -58,12 +111,20 @@ class StageRegistry:
 
         for stage in StageName:
             visit(stage)
-        if set(result) != selected_set:
-            raise ValueError("Selected stage set contains an unknown stage.")
         return tuple(result)
 
-    def selected_for_request(self, request: ScenePipelineRequest) -> tuple[StageName, ...]:
-        """Return infrastructure, explicit targets, and report only."""
+    def ordered(
+        self,
+        selected: Iterable[StageName],
+    ) -> tuple[StageDefinition[StageExecutionSummary], ...]:
+        """Return selected definitions in canonical topological order."""
+        return tuple(self.definition(stage) for stage in self.ordered_names(selected))
+
+    def selected_for_request(
+        self,
+        request: ScenePipelineRequest,
+    ) -> tuple[StageDefinition[StageExecutionSummary], ...]:
+        """Return infrastructure, explicit targets, and report definitions only."""
         selected = {
             StageName.INGEST,
             StageName.RECONSTRUCTION,
@@ -73,84 +134,184 @@ class StageRegistry:
         }
         return self.ordered(selected)
 
-    def descendants(self, stage: StageName, *, include_self: bool = False) -> tuple[StageName, ...]:
+    def descendants(
+        self,
+        stage: StageName,
+        *,
+        include_self: bool = False,
+        bind: bool = True,
+    ) -> tuple[StageDefinition[StageExecutionSummary], ...]:
         """Derive all transitive descendants from direct dependencies."""
         found: set[StageName] = {stage} if include_self else set()
         frontier = [stage]
         while frontier:
             current = frontier.pop()
-            for candidate, spec in self.specs.items():
-                if current in spec.dependencies and candidate not in found:
+            for candidate, definition in self.definitions.items():
+                if current in definition.dependencies and candidate not in found:
                     found.add(candidate)
                     frontier.append(candidate)
-        return self.ordered(found)
+        definitions = self.ordered(found)
+        if bind:
+            expected = tuple(definition.name for definition in definitions)
+            actual = (
+                (stage, *self.definition(stage).descendants)
+                if include_self
+                else self.definition(stage).descendants
+            )
+            if tuple(actual) != expected:
+                raise RuntimeError("Bound descendant inventory disagrees with the stage graph.")
+        return definitions
+
+    def _validate_owner_uniqueness(self) -> None:
+        definitions = tuple(self.definitions.values())
+        for index, left in enumerate(definitions):
+            for right in definitions[index + 1 :]:
+                if _paths_overlap(
+                    left.owner_relative_path,
+                    right.owner_relative_path,
+                ):
+                    raise ValueError(
+                        "Stage owner collision: "
+                        f"{left.name.value}={left.owner_relative_path}, "
+                        f"{right.name.value}={right.owner_relative_path}."
+                    )
+
+    def _validate_inputs(self) -> None:
+        for definition in self.definitions.values():
+            ancestors = self._ancestors(definition.name)
+            for stage_input in definition.required_inputs:
+                if stage_input.kind is not StageInputKind.STAGE_OUTPUT:
+                    continue
+                producer_name = stage_input.producer
+                relative_path = stage_input.relative_path
+                if producer_name is None or relative_path is None:
+                    raise RuntimeError("Invalid StageInput escaped construction validation.")
+                if producer_name not in self.definitions:
+                    raise ValueError(
+                        f"Stage {definition.name.value} has unknown input producer "
+                        f"{producer_name.value}."
+                    )
+                if producer_name not in ancestors:
+                    raise ValueError(
+                        f"Stage {definition.name.value} input {producer_name.value}/"
+                        f"{relative_path} is not produced by an ancestor."
+                    )
+                outputs = self.definition(producer_name).required_outputs
+                if not any(
+                    relative_path == output or relative_path.is_relative_to(output)
+                    for output in outputs
+                ):
+                    raise ValueError(
+                        f"Stage {definition.name.value} input {producer_name.value}/"
+                        f"{relative_path} is not a declared producer output."
+                    )
+                if (
+                    stage_input.target is not None
+                    and stage_input.target.stage is not producer_name
+                ):
+                    raise ValueError(
+                        "A target-conditional input must reference that target's stage."
+                    )
+
+    def _ancestors(self, stage: StageName) -> set[StageName]:
+        found: set[StageName] = set()
+        frontier = list(self.definition(stage).dependencies)
+        while frontier:
+            current = frontier.pop()
+            if current in found:
+                continue
+            found.add(current)
+            frontier.extend(self.definition(current).dependencies)
+        return found
 
 
-def canonical_registry() -> StageRegistry:
-    """Build the canonical fixed stage graph in one inspectable location."""
-    specs = {
-        StageName.INGEST: StageSpec(
+def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
+    """Bind all graph, path, lifecycle, publication, and summary authority once."""
+    config = StageInput.resolved_configuration()
+    atomic = AtomicDirectoryPublication()
+    external = ExternalAtomicPublication()
+    definitions = {
+        StageName.INGEST: StageDefinition(
             name=StageName.INGEST,
             dependencies=(),
             owner_relative_path=Path("source"),
+            required_inputs=(config, StageInput.source_video()),
             required_outputs=(Path("video.mp4"), Path("metadata.json")),
-            publication_mode=PublicationMode.ATOMIC_OUTPUTS,
-            handler_key="ingest",
+            handler=handlers.ingest,
+            publication=atomic,
+            summary_type=StageExecutionSummary,
         ),
-        StageName.RECONSTRUCTION: StageSpec(
+        StageName.RECONSTRUCTION: StageDefinition(
             name=StageName.RECONSTRUCTION,
             dependencies=(StageName.INGEST,),
             owner_relative_path=Path("reconstruction"),
-            required_outputs=(
-                Path("run.json"),
-                Path("export/scene.json"),
+            required_inputs=(
+                config,
+                StageInput.stage_output(StageName.INGEST, "video.mp4"),
             ),
-            publication_mode=PublicationMode.EXTERNAL_ATOMIC,
-            handler_key="nht_reconstruction",
+            required_outputs=(Path("run.json"), Path("export")),
+            handler=handlers.reconstruction,
+            publication=external,
+            summary_type=StageExecutionSummary,
         ),
-        StageName.ALIGNMENT: StageSpec(
+        StageName.ALIGNMENT: StageDefinition(
             name=StageName.ALIGNMENT,
             dependencies=(StageName.RECONSTRUCTION,),
             owner_relative_path=Path("alignment"),
+            required_inputs=(
+                config,
+                StageInput.stage_output(StageName.RECONSTRUCTION, "export/scene.json"),
+                StageInput.stage_output(StageName.RECONSTRUCTION, "export/cameras.json"),
+                StageInput.stage_output(StageName.RECONSTRUCTION, "export/points_scene.npy"),
+                StageInput.stage_output(StageName.RECONSTRUCTION, "export/images"),
+                StageInput.stage_output(StageName.RECONSTRUCTION, "export/model"),
+            ),
             required_outputs=(
                 Path("ground-line-map.npz"),
                 Path("court-geometry.json"),
                 Path("alignment.json"),
                 Path("diagnostics"),
             ),
-            publication_mode=PublicationMode.ATOMIC_OUTPUTS,
-            handler_key="alignment",
+            handler=handlers.alignment,
+            publication=atomic,
+            summary_type=StageExecutionSummary,
         ),
-        StageName.COURT_DATASET: StageSpec(
+        StageName.COURT_DATASET: StageDefinition(
             name=StageName.COURT_DATASET,
             dependencies=(StageName.ALIGNMENT,),
             owner_relative_path=Path("datasets/court"),
+            required_inputs=_dataset_inputs(config),
             required_outputs=(Path("dataset.json"), Path("samples"), Path("diagnostics")),
-            publication_mode=PublicationMode.ATOMIC_OUTPUTS,
-            handler_key="court_dataset",
+            handler=handlers.court_dataset,
+            publication=atomic,
+            summary_type=StageExecutionSummary,
         ),
-        StageName.BLCS_DATASET: StageSpec(
+        StageName.BLCS_DATASET: StageDefinition(
             name=StageName.BLCS_DATASET,
             dependencies=(StageName.ALIGNMENT,),
             owner_relative_path=Path("datasets/blcs"),
+            required_inputs=_dataset_inputs(config),
             required_outputs=(Path("dataset.json"), Path("samples"), Path("diagnostics")),
-            publication_mode=PublicationMode.ATOMIC_OUTPUTS,
-            handler_key="blcs_dataset",
+            handler=handlers.blcs_dataset,
+            publication=atomic,
+            summary_type=StageExecutionSummary,
         ),
-        StageName.PLCS_DATASET: StageSpec(
+        StageName.PLCS_DATASET: StageDefinition(
             name=StageName.PLCS_DATASET,
             dependencies=(StageName.ALIGNMENT,),
             owner_relative_path=Path("datasets/plcs"),
+            required_inputs=_dataset_inputs(config),
             required_outputs=(
                 Path("dataset.json"),
                 Path("backgrounds"),
                 Path("scenes"),
                 Path("diagnostics"),
             ),
-            publication_mode=PublicationMode.ATOMIC_OUTPUTS,
-            handler_key="plcs_dataset",
+            handler=handlers.plcs_dataset,
+            publication=atomic,
+            summary_type=StageExecutionSummary,
         ),
-        StageName.REPORT: StageSpec(
+        StageName.REPORT: StageDefinition(
             name=StageName.REPORT,
             dependencies=(
                 StageName.COURT_DATASET,
@@ -158,12 +319,45 @@ def canonical_registry() -> StageRegistry:
                 StageName.PLCS_DATASET,
             ),
             owner_relative_path=Path("report"),
+            required_inputs=(
+                config,
+                StageInput.stage_output(StageName.ALIGNMENT, "alignment.json"),
+                StageInput.stage_output(
+                    StageName.COURT_DATASET,
+                    "dataset.json",
+                    target=DatasetTarget.COURT,
+                ),
+                StageInput.stage_output(
+                    StageName.BLCS_DATASET,
+                    "dataset.json",
+                    target=DatasetTarget.BLCS,
+                ),
+                StageInput.stage_output(
+                    StageName.PLCS_DATASET,
+                    "dataset.json",
+                    target=DatasetTarget.PLCS,
+                ),
+            ),
             required_outputs=(Path("index.html"), Path("report.json")),
-            publication_mode=PublicationMode.ATOMIC_OUTPUTS,
-            handler_key="report",
+            handler=handlers.report,
+            publication=atomic,
+            summary_type=StageExecutionSummary,
         ),
     }
-    return StageRegistry(specs)
+    return StageRegistry(definitions)
 
 
-__all__ = ["StageRegistry", "canonical_registry"]
+def _dataset_inputs(config: StageInput) -> tuple[StageInput, ...]:
+    return (
+        config,
+        StageInput.stage_output(StageName.RECONSTRUCTION, "export/scene.json"),
+        StageInput.stage_output(StageName.ALIGNMENT, "alignment.json"),
+        StageInput.stage_output(StageName.ALIGNMENT, "court-geometry.json"),
+    )
+
+
+def _paths_overlap(left: Path, right: Path) -> bool:
+    return left == right or left.is_relative_to(right) or right.is_relative_to(left)
+
+
+__all__ = ["CanonicalStageHandlers", "StageRegistry", "canonical_registry"]
