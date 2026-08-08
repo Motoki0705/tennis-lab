@@ -2,11 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
-_WORKFLOW = (
-    Path(__file__).resolve().parents[4]
-    / ".github/workflows/deploy-wsl-mcp.yml"
-)
+_WORKFLOW = Path(__file__).resolve().parents[4] / ".github/workflows/deploy-wsl-mcp.yml"
 
 
 def _workflow_text() -> str:
