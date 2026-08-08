@@ -1,91 +1,337 @@
 {
+  "candidate_binding": "canonical-run-check-fingerprint",
   "changed_path_owners": {
+    ".agents/skills/issue-subagent-workflow/references/completion-hardening.md": "impl_workflow_deferred_attempt4",
+    ".agents/skills/issue-subagent-workflow/references/document-contracts.md": "impl_workflow_deferred_attempt4",
+    ".agents/skills/issue-subagent-workflow/references/workflow.md": "impl_workflow_deferred_attempt4",
+    ".agents/skills/issue-subagent-workflow/scripts/issue_task_finalization.py": "impl_workflow_deferred_attempt4",
+    ".agents/skills/issue-subagent-workflow/scripts/issue_task_state.py": "impl_workflow_deferred_attempt4",
     "research/evidence/issue-695-b00-acceptance.json": "parent_integrator",
     "research/evidence/issue-695-b00/summary.md": "parent_integrator",
     "research/evidence/issue-695-ownership.json": "parent_integrator",
-    "src/synthetic_data_generation/alignment/handler.py": "impl_stage_atomic_attempt3",
+    "scripts/colab/setup/prepare_generated_dataset.sh": "parent_integrator",
+    "scripts/colab/train/2026-07-02/train_blcs_broadcast.sh": "parent_integrator",
+    "scripts/colab/train/2026-07-02/train_plcs_broadcast.sh": "parent_integrator",
+    "src/synthetic_data_generation/README.md": "parent_integrator",
+    "src/synthetic_data_generation/alignment/__init__.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/artifacts/__init__.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/artifacts/calibration.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/artifacts/common.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/artifacts/court_geometry.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/artifacts/ground_line_map.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/components/__init__.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/components/evaluation/__init__.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/components/evaluation/court_lines.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/components/evidence/__init__.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/components/evidence/collection.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/components/evidence/ground_line_raster.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/components/fitting/__init__.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/components/fitting/court_template.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/components/fitting/evidence_guided.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/components/ground/__init__.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/components/ground/plane.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/components/ground/projection.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/components/inference/__init__.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/components/inference/line_detector.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/components/inputs/__init__.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/components/inputs/view_inputs.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/contracts.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/evaluation.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/evidence_source.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/fitting.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/handler.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/scene_provider/__init__.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/scene_provider/bundle.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/scene_provider/export.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/scene_provider/geometry_bridge.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/settings.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/stage_result.py": "parent_integrator",
+    "src/synthetic_data_generation/alignment/validation.py": "parent_integrator",
+    "src/synthetic_data_generation/composition/__init__.py": "parent_integrator",
+    "src/synthetic_data_generation/composition/contracts.py": "parent_integrator",
+    "src/synthetic_data_generation/composition/gaussians.py": "parent_integrator",
+    "src/synthetic_data_generation/config_validation.py": "parent_integrator",
+    "src/synthetic_data_generation/configs/alignment/calibrate_court_alignment.yaml": "parent_integrator",
+    "src/synthetic_data_generation/configs/alignment/export_scene_provider.yaml": "parent_integrator",
+    "src/synthetic_data_generation/configs/alignment/fit_ground_courts.yaml": "parent_integrator",
+    "src/synthetic_data_generation/configs/alignment/geometry_bridge.yaml": "parent_integrator",
+    "src/synthetic_data_generation/configs/alignment/infer_ground_line_map.yaml": "parent_integrator",
+    "src/synthetic_data_generation/configs/alignment/production.yaml": "parent_integrator",
+    "src/synthetic_data_generation/configs/camera/broadcast.yaml": "parent_integrator",
+    "src/synthetic_data_generation/configs/camera/default.yaml": "parent_integrator",
+    "src/synthetic_data_generation/configs/dataset/blcs/production.yaml": "parent_integrator",
+    "src/synthetic_data_generation/configs/dataset/blcs_feature_fit.yaml": "parent_integrator",
     "src/synthetic_data_generation/configs/dataset/court/train.yaml": "impl_court_objective_attempt3",
-    "src/synthetic_data_generation/configuration.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/configs/dataset/pipeline.yaml": "parent_integrator",
+    "src/synthetic_data_generation/configs/dataset/plcs/production.yaml": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/configs/dataset/plcs/single_object.yaml": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/configs/nht/public_cli.yaml": "parent_integrator",
+    "src/synthetic_data_generation/configs/pipeline/canonical.yaml": "parent_integrator",
+    "src/synthetic_data_generation/configs/profile/b00.yaml": "parent_integrator",
+    "src/synthetic_data_generation/configs/roots/runtime.yaml": "parent_integrator",
+    "src/synthetic_data_generation/configs/run_scene_pipeline.yaml": "parent_integrator",
+    "src/synthetic_data_generation/configs/validate_configuration.yaml": "parent_integrator",
+    "src/synthetic_data_generation/configuration.py": "parent_integrator",
+    "src/synthetic_data_generation/dataset/__init__.py": "parent_integrator",
+    "src/synthetic_data_generation/dataset/algorithms.py": "parent_integrator",
+    "src/synthetic_data_generation/dataset/blcs/__init__.py": "impl_canonical_consumers_attempt3",
+    "src/synthetic_data_generation/dataset/blcs/algorithms.py": "impl_canonical_consumers_attempt3",
+    "src/synthetic_data_generation/dataset/blcs/artifacts/__init__.py": "impl_canonical_consumers_attempt3",
+    "src/synthetic_data_generation/dataset/blcs/artifacts/asset_registry.py": "impl_canonical_consumers_attempt3",
+    "src/synthetic_data_generation/dataset/blcs/artifacts/calibration.py": "impl_canonical_consumers_attempt3",
+    "src/synthetic_data_generation/dataset/blcs/artifacts/scene_plan.py": "impl_canonical_consumers_attempt3",
     "src/synthetic_data_generation/dataset/blcs/assembler.py": "impl_canonical_consumers_attempt3",
+    "src/synthetic_data_generation/dataset/blcs/components/__init__.py": "impl_canonical_consumers_attempt3",
+    "src/synthetic_data_generation/dataset/blcs/components/asset_ingestion.py": "impl_canonical_consumers_attempt3",
+    "src/synthetic_data_generation/dataset/blcs/components/asset_preparation.py": "impl_canonical_consumers_attempt3",
+    "src/synthetic_data_generation/dataset/blcs/components/calibration_import.py": "impl_canonical_consumers_attempt3",
+    "src/synthetic_data_generation/dataset/blcs/components/feature_fit_fixture.py": "impl_canonical_consumers_attempt3",
+    "src/synthetic_data_generation/dataset/blcs/components/procedural_ball.py": "impl_canonical_consumers_attempt3",
+    "src/synthetic_data_generation/dataset/blcs/components/procedural_ball_asset_builder.py": "impl_canonical_consumers_attempt3",
     "src/synthetic_data_generation/dataset/blcs/contracts.py": "impl_canonical_consumers_attempt3",
+    "src/synthetic_data_generation/dataset/blcs/diagnostics.py": "impl_canonical_consumers_attempt3",
     "src/synthetic_data_generation/dataset/blcs/handler.py": "impl_canonical_consumers_attempt3",
+    "src/synthetic_data_generation/dataset/blcs/rendering/__init__.py": "impl_canonical_consumers_attempt3",
+    "src/synthetic_data_generation/dataset/blcs/rendering/feature_fit.py": "impl_canonical_consumers_attempt3",
+    "src/synthetic_data_generation/dataset/blcs/rendering/nht.py": "impl_canonical_consumers_attempt3",
+    "src/synthetic_data_generation/dataset/blcs/source.py": "impl_canonical_consumers_attempt3",
     "src/synthetic_data_generation/dataset/blcs/timeline.py": "impl_canonical_consumers_attempt3",
+    "src/synthetic_data_generation/dataset/contracts.py": "parent_integrator",
+    "src/synthetic_data_generation/dataset/court/__init__.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/algorithms.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/artifacts/__init__.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/artifacts/layout.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/assembler.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/components/__init__.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/components/camera_sampling/__init__.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/components/camera_sampling/orbit.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/components/camera_sampling/orbit_plan.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/components/camera_sampling/sampling.py": "impl_court_objective_attempt3",
     "src/synthetic_data_generation/dataset/court/components/camera_sampling/selection.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/components/camera_sampling/sfm_neighborhood.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/components/camera_sampling/support_probe.py": "impl_court_objective_attempt3",
     "src/synthetic_data_generation/dataset/court/components/camera_sampling/trajectory.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/components/labels.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/components/release.py": "impl_court_objective_attempt3",
     "src/synthetic_data_generation/dataset/court/contracts.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/diagnostics.py": "impl_court_objective_attempt3",
     "src/synthetic_data_generation/dataset/court/handler.py": "impl_court_objective_attempt3",
-    "src/synthetic_data_generation/dataset/plcs/assembler.py": "impl_canonical_consumers_attempt3",
-    "src/synthetic_data_generation/dataset/plcs/composition.py": "impl_canonical_consumers_attempt3",
-    "src/synthetic_data_generation/dataset/plcs/diagnostics.py": "impl_canonical_consumers_attempt3",
-    "src/synthetic_data_generation/dataset/plcs/execution.py": "impl_canonical_consumers_attempt3",
-    "src/synthetic_data_generation/dataset/plcs/handler.py": "impl_canonical_consumers_attempt3",
-    "src/synthetic_data_generation/dataset/plcs/rendering/contracts.py": "impl_canonical_consumers_attempt3",
-    "src/synthetic_data_generation/dataset/plcs/timeline.py": "impl_canonical_consumers_attempt3",
-    "src/synthetic_data_generation/dataset/plcs/validation.py": "impl_canonical_consumers_attempt3",
-    "src/synthetic_data_generation/pipeline/__init__.py": "impl_stage_atomic_attempt3",
-    "src/synthetic_data_generation/pipeline/application.py": "impl_stage_atomic_attempt3",
-    "src/synthetic_data_generation/pipeline/contracts.py": "impl_stage_atomic_attempt3",
-    "src/synthetic_data_generation/pipeline/publication.py": "impl_stage_atomic_attempt3",
-    "src/synthetic_data_generation/pipeline/registry.py": "impl_stage_atomic_attempt3",
-    "src/synthetic_data_generation/pipeline/runner.py": "impl_stage_atomic_attempt3",
-    "src/synthetic_data_generation/pipeline/workspace.py": "impl_stage_atomic_attempt3",
+    "src/synthetic_data_generation/dataset/court/performance.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/rendering/__init__.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/rendering/nht.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/rendering/orbit_preview.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/semantic_manifest.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/shards.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/visualization/__init__.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/visualization/camera_support.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/court/visualization/dataset_preview.py": "impl_court_objective_attempt3",
+    "src/synthetic_data_generation/dataset/execution.py": "parent_integrator",
+    "src/synthetic_data_generation/dataset/pipeline.py": "parent_integrator",
+    "src/synthetic_data_generation/dataset/plcs/README.md": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/__init__.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/algorithms.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/articulation.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/artifacts/__init__.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/artifacts/scene_plan.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/assembler.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/components/avatar_asset.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/components/avatar_asset_builder.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/components/avatar_control.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/components/scene_plan_builder.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/composition.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/diagnostics.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/execution.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/handler.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/production.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/rendering/__init__.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/rendering/avatar_fit.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/rendering/contracts.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/rendering/nht.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/smplh.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/timeline.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/validation.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/visualization/__init__.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/visualization/avatar_control_comparison.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/plcs/visualization/dataset_preview.py": "impl_plcs_single_attempt4",
+    "src/synthetic_data_generation/dataset/runtime.py": "parent_integrator",
+    "src/synthetic_data_generation/pipeline/__init__.py": "impl_lifecycle_attempt4",
+    "src/synthetic_data_generation/pipeline/application.py": "impl_lifecycle_attempt4",
+    "src/synthetic_data_generation/pipeline/contracts.py": "impl_lifecycle_attempt4",
+    "src/synthetic_data_generation/pipeline/handlers.py": "impl_lifecycle_attempt4",
+    "src/synthetic_data_generation/pipeline/publication.py": "impl_lifecycle_attempt4",
+    "src/synthetic_data_generation/pipeline/registry.py": "impl_lifecycle_attempt4",
+    "src/synthetic_data_generation/pipeline/run_manifest.py": "impl_lifecycle_attempt4",
+    "src/synthetic_data_generation/pipeline/runner.py": "impl_lifecycle_attempt4",
+    "src/synthetic_data_generation/pipeline/workspace.py": "impl_lifecycle_attempt4",
+    "src/synthetic_data_generation/reconstruction/__init__.py": "impl_nht_public_attempt2",
+    "src/synthetic_data_generation/reconstruction/contracts.py": "impl_nht_public_attempt2",
+    "src/synthetic_data_generation/reconstruction/nht_subprocess.py": "impl_nht_public_attempt2",
+    "src/synthetic_data_generation/reconstruction/scene_export.py": "impl_nht_public_attempt2",
+    "src/synthetic_data_generation/rendering/foreground.py": "parent_integrator",
+    "src/synthetic_data_generation/rendering/nht/__init__.py": "impl_nht_public_attempt2",
+    "src/synthetic_data_generation/rendering/nht/client.py": "impl_nht_public_attempt2",
+    "src/synthetic_data_generation/rendering/nht/composition_smoke.py": "impl_nht_public_attempt2",
+    "src/synthetic_data_generation/rendering/nht/contracts.py": "impl_nht_public_attempt2",
+    "src/synthetic_data_generation/rendering/nht/depth.py": "impl_nht_public_attempt2",
+    "src/synthetic_data_generation/rendering/nht/runtime_probe.py": "impl_nht_public_attempt2",
+    "src/synthetic_data_generation/scene_contract.py": "parent_integrator",
+    "src/synthetic_data_generation/scripts/alignment/calibrate_court_alignment.py": "parent_integrator",
+    "src/synthetic_data_generation/scripts/alignment/export_scene_provider.py": "parent_integrator",
+    "src/synthetic_data_generation/scripts/alignment/fit_ground_courts.py": "parent_integrator",
+    "src/synthetic_data_generation/scripts/alignment/geometry_bridge.py": "parent_integrator",
+    "src/synthetic_data_generation/scripts/alignment/infer_ground_line_map.py": "parent_integrator",
+    "src/synthetic_data_generation/scripts/dataset/fit_blcs_features.py": "parent_integrator",
+    "src/synthetic_data_generation/scripts/dataset/run_pipeline.py": "parent_integrator",
+    "src/synthetic_data_generation/scripts/run_scene_pipeline.py": "parent_integrator",
+    "src/synthetic_data_generation/scripts/validate_configuration.py": "parent_integrator",
+    "src/synthetic_data_generation/visualization/__init__.py": "parent_integrator",
+    "src/synthetic_data_generation/visualization/summary.py": "parent_integrator",
     "src/tasks/base/README.md": "parent_integrator",
     "src/tasks/base/__init__.py": "parent_integrator",
+    "src/tasks/base/configuration.py": "parent_integrator",
     "src/tasks/base/data/__init__.py": "impl_canonical_consumers_attempt3",
     "src/tasks/base/data/canonical_dataset.py": "impl_canonical_consumers_attempt3",
     "src/tasks/base/data/canonical_tracking.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/base/data/chunk_manager.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/base/data/chunked_datamodule.py": "impl_canonical_consumers_attempt3",
     "src/tasks/base/data/datamodule.py": "impl_canonical_consumers_attempt3",
     "src/tasks/base/data/dataset_writer.py": "impl_canonical_consumers_attempt3",
     "src/tasks/base/data/lifecycle_slots.py": "impl_canonical_consumers_attempt3",
     "src/tasks/base/data/scene_dataset.py": "impl_canonical_consumers_attempt3",
-    "src/tasks/base/generate_dataset/camera_profiles.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/base/generate_dataset/camera_profiles.py": "parent_integrator",
+    "src/tasks/base/generate_dataset/continuity.py": "parent_integrator",
+    "src/tasks/base/generate_dataset/court_assignment.py": "parent_integrator",
+    "src/tasks/base/training/__init__.py": "parent_integrator",
+    "src/tasks/base/training/chunk_rotation_callback.py": "parent_integrator",
     "src/tasks/base/training/lightning_module.py": "parent_integrator",
-    "src/tasks/blcs/README.md": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/README.md": "parent_integrator",
     "src/tasks/blcs/__init__.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/camera/broadcast.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/camera/default.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/data/_chunked.yaml": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/configs/data/_multiview.yaml": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/configs/data/_singleview.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/data/chunked_multiview_sequence_bs16.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/data/chunked_multiview_sequence_bs4.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/data/chunked_multiview_sequence_bs8.yaml": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/configs/data/multiview_sequence.yaml": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/configs/data/singleview_sequence.yaml": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/configs/data/tracking.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/data/tracking_chunked.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/generate_dataset.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/generation/multi_object.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/generation/single_object.yaml": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/configs/preview_augmentation.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/run/generate_dataset.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/train_chunked.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/train_chunked_gan.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/train_tracking_chunked.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/training/chunked.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/training/gan_base.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/training/gan_large.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/training/gan_small.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/visualization/multiview.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/visualization/single.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/configs/visualize.yaml": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/configuration.py": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/data/augmentation.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/data/chunk_manager.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/data/chunked_datamodule.py": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/data/datamodule.py": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/data/dataset.py": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/data/tracking_datamodule.py": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/data/tracking_dataset.py": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/data/types.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/generate_dataset/__init__.py": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/generate_dataset/api_server/__main__.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/generate_dataset/io/__init__.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/generate_dataset/io/dataset_io.py": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/generate_dataset/multi_object_scene_generator.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/generate_dataset/scene_generator.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/generate_dataset/simulation/cell_manager.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/generate_dataset/simulation/errors.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/generate_dataset/simulation/rally_simulator.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/generate_dataset/simulation/targeted_velocity_sampler.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/generate_dataset/utils/__init__.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/generate_dataset/utils/parallel_runner.py": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/inference/predictor.py": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/model_io/adapters.py": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/model_io/attention_masks.py": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/model_io/factory.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/model_io/training.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/scripts/generate_dataset.py": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/scripts/preview_augmentation.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/scripts/train.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/scripts/visualize.py": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/training/lightning_module.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/training/runner.py": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/training/tracking_lightning_module.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/visualization/__init__.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/visualization/api/__init__.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/visualization/api/predict.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/visualization/io/__init__.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/visualization/io/scene.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/blcs/visualization/orchestrator.py": "impl_canonical_consumers_attempt3",
     "src/tasks/blcs/visualization/rendering/scene_renderer.py": "impl_canonical_consumers_attempt3",
-    "src/tasks/plcs/README.md": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/README.md": "parent_integrator",
     "src/tasks/plcs/configs/analyze_angle_velocity.yaml": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/configs/analyze_dataset_distribution.yaml": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/configs/analyze_loss_dominance.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/analyze_rotation_error_samples.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/camera/broadcast.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/camera/default.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/data/_chunked.yaml": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/configs/data/_multiview.yaml": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/configs/data/_singleview.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/data/chunked_multiview_sequence_bs16.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/data/chunked_multiview_sequence_bs32.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/data/chunked_multiview_sequence_bs8.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/data/chunked_singleview_frame.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/data/chunked_singleview_sequence.yaml": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/configs/data/multiview_sequence.yaml": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/configs/data/singleview_frame.yaml": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/configs/data/singleview_sequence.yaml": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/configs/data/tracking.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/data/tracking_chunked.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/generate_dataset.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/generation/multi_object.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/generation/single_object.yaml": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/configs/loss/canonical.yaml": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/configs/loss/canonical_rot_vel.yaml": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/configs/loss/no_canonical.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/motion_sources/default.yaml": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/configs/preview_augmentation.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/run/analyze_rotation_error_samples.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/run/generate_dataset.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/run/generate_dataset_athlete_pose.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/run/visualize.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/train_chunked.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/train_chunked_gan.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/train_tracking_chunked.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/visualization/default.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/visualization/multiview.yaml": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configs/visualize.yaml": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/configuration.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/configuration_contracts.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/data/chunk_manager.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/data/chunked_datamodule.py": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/data/datamodule.py": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/data/dataset.py": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/data/targets.py": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/data/tracking_datamodule.py": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/data/tracking_dataset.py": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/data/types.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/generate_dataset/__init__.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/generate_dataset/config.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/generate_dataset/io/__init__.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/generate_dataset/io/dataset_io.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/generate_dataset/io/scene_loader.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/generate_dataset/multi_object_scene_generator.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/generate_dataset/sampling/__init__.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/generate_dataset/sampling/motion_sampler.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/generate_dataset/scene_generator.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/generate_dataset/utils/__init__.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/generate_dataset/utils/parallel_runner.py": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/inference/predictor.py": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/model_io/adapters.py": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/model_io/attention_masks.py": "impl_canonical_consumers_attempt3",
@@ -95,147 +341,2180 @@
     "src/tasks/plcs/scripts/analysis/analyze_angle_velocity.py": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/scripts/analysis/analyze_dataset_distribution.py": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/scripts/analysis/analyze_loss_dominance.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/scripts/analysis/visualize_rotation_error_samples.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/scripts/generate_dataset.py": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/scripts/preview_augmentation.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/scripts/train.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/scripts/visualize.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/training/composition.py": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/training/losses.py": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/training/mcmc.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/training/runner.py": "impl_canonical_consumers_attempt3",
     "src/tasks/plcs/training/tracking_metrics.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/visualization/__init__.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/visualization/api/__init__.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/visualization/api/predict.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/visualization/io/__init__.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/visualization/io/scene.py": "impl_canonical_consumers_attempt3",
+    "src/tasks/plcs/visualization/orchestrator.py": "impl_canonical_consumers_attempt3",
     "src/utils/README.md": "parent_integrator",
+    "src/utils/configuration/audit.py": "parent_integrator",
+    "src/utils/configuration/catalog.py": "parent_integrator",
+    "src/utils/configuration/discovery.py": "parent_integrator",
     "src/utils/configuration/exemption_data.py": "parent_integrator",
     "src/utils/configuration/inventory.py": "parent_integrator",
     "src/utils/configuration/migration_data.py": "parent_integrator",
+    "src/utils/configuration/paths.py": "parent_integrator",
     "src/utils/data/__init__.py": "parent_integrator",
     "src/utils/data/scene_io.py": "parent_integrator",
     "tests/e2e/development/test_architecture_boundaries.py": "parent_integrator",
+    "tests/e2e/skills/test_issue_subagent_workflow.py": "impl_workflow_deferred_attempt4",
+    "tests/e2e/synthetic_data_generation/test_b00_evidence.py": "parent_integrator",
+    "tests/e2e/synthetic_data_generation/test_b00_gpu_acceptance.py": "parent_integrator",
     "tests/e2e/synthetic_data_generation/test_removed_architecture.py": "parent_integrator",
+    "tests/e2e/synthetic_data_generation/test_run_dataset_pipeline.py": "parent_integrator",
+    "tests/e2e/synthetic_data_generation/test_run_scene_pipeline.py": "parent_integrator",
     "tests/integration/synthetic_data_generation/test_blcs_dataset.py": "impl_canonical_consumers_attempt3",
-    "tests/integration/synthetic_data_generation/test_configuration.py": "impl_court_objective_attempt3",
-    "tests/integration/synthetic_data_generation/test_dataset_performance.py": "impl_stage_atomic_attempt3",
-    "tests/integration/synthetic_data_generation/test_nht_alignment.py": "impl_stage_atomic_attempt3",
-    "tests/integration/synthetic_data_generation/test_plcs_dataset.py": "impl_canonical_consumers_attempt3",
+    "tests/integration/synthetic_data_generation/test_configuration.py": "parent_integrator",
+    "tests/integration/synthetic_data_generation/test_court_dataset.py": "impl_court_objective_attempt3",
+    "tests/integration/synthetic_data_generation/test_cross_domain_cpu.py": "parent_integrator",
+    "tests/integration/synthetic_data_generation/test_dataset_config.py": "parent_integrator",
+    "tests/integration/synthetic_data_generation/test_dataset_performance.py": "parent_integrator",
+    "tests/integration/synthetic_data_generation/test_nht_alignment.py": "impl_nht_public_attempt2",
+    "tests/integration/synthetic_data_generation/test_plcs_dataset.py": "impl_plcs_single_attempt4",
     "tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py": "parent_integrator",
+    "tests/integration/tasks/blcs/test_visualize_config.py": "parent_integrator",
+    "tests/integration/tasks/plcs/test_visualize_config.py": "parent_integrator",
     "tests/integration/tasks/tracking/test_training_smoke.py": "impl_canonical_consumers_attempt3",
-    "tests/unit/synthetic_data_generation/alignment/test_validation.py": "impl_stage_atomic_attempt3",
+    "tests/unit/synthetic_data_generation/alignment/artifacts/test_calibration.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/alignment/artifacts/test_court_geometry.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/alignment/artifacts/test_ground_line_map.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/alignment/components/evaluation/test_court_lines.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/alignment/components/evidence/test_ground_line_raster.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/alignment/components/fitting/test_court_template.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/alignment/components/fitting/test_evidence_guided.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/alignment/components/ground/test_plane.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/alignment/components/ground/test_projection.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/alignment/components/inference/test_line_detector.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/alignment/components/inputs/test_view_inputs.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/alignment/conftest.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/alignment/scene_provider/test_bundle.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/alignment/scene_provider/test_export.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/alignment/scene_provider/test_geometry_bridge.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/alignment/test_contracts.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/alignment/test_evidence_source.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/alignment/test_stage_result.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/alignment/test_validation.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/composition/test_contracts.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/composition/test_gaussians.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/dataset/blcs/artifacts/test_asset_registry.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/synthetic_data_generation/dataset/blcs/artifacts/test_calibration.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/synthetic_data_generation/dataset/blcs/artifacts/test_scene_plan.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/synthetic_data_generation/dataset/blcs/components/test_asset_ingestion.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/synthetic_data_generation/dataset/blcs/components/test_procedural_ball.py": "impl_canonical_consumers_attempt3",
     "tests/unit/synthetic_data_generation/dataset/blcs/conftest.py": "impl_canonical_consumers_attempt3",
     "tests/unit/synthetic_data_generation/dataset/blcs/test_compact_rendering.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/synthetic_data_generation/dataset/blcs/test_contracts.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/synthetic_data_generation/dataset/blcs/test_source.py": "impl_canonical_consumers_attempt3",
     "tests/unit/synthetic_data_generation/dataset/blcs/test_timeline.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/synthetic_data_generation/dataset/court/artifacts/test_layout.py": "impl_court_objective_attempt3",
+    "tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_orbit.py": "impl_court_objective_attempt3",
     "tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_sampling.py": "impl_court_objective_attempt3",
     "tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_selection.py": "impl_court_objective_attempt3",
+    "tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_sfm_neighborhood.py": "impl_court_objective_attempt3",
+    "tests/unit/synthetic_data_generation/dataset/court/components/test_labels.py": "impl_court_objective_attempt3",
+    "tests/unit/synthetic_data_generation/dataset/court/components/test_release.py": "impl_court_objective_attempt3",
+    "tests/unit/synthetic_data_generation/dataset/court/conftest.py": "impl_court_objective_attempt3",
     "tests/unit/synthetic_data_generation/dataset/court/test_assembler.py": "impl_court_objective_attempt3",
     "tests/unit/synthetic_data_generation/dataset/court/test_contracts.py": "impl_court_objective_attempt3",
-    "tests/unit/synthetic_data_generation/dataset/plcs/test_assembler.py": "impl_canonical_consumers_attempt3",
-    "tests/unit/synthetic_data_generation/dataset/plcs/test_composition.py": "impl_canonical_consumers_attempt3",
-    "tests/unit/synthetic_data_generation/dataset/plcs/test_handler.py": "impl_canonical_consumers_attempt3",
-    "tests/unit/synthetic_data_generation/dataset/plcs/test_timeline.py": "impl_canonical_consumers_attempt3",
-    "tests/unit/synthetic_data_generation/dataset/plcs/test_validation.py": "impl_canonical_consumers_attempt3",
-    "tests/unit/synthetic_data_generation/pipeline/test_publication.py": "impl_stage_atomic_attempt3",
-    "tests/unit/synthetic_data_generation/pipeline/test_registry.py": "impl_stage_atomic_attempt3",
-    "tests/unit/synthetic_data_generation/pipeline/test_runner.py": "impl_stage_atomic_attempt3",
+    "tests/unit/synthetic_data_generation/dataset/court/test_metric_scene_boundary.py": "impl_court_objective_attempt3",
+    "tests/unit/synthetic_data_generation/dataset/court/test_performance.py": "impl_court_objective_attempt3",
+    "tests/unit/synthetic_data_generation/dataset/court/test_semantic_manifest.py": "impl_court_objective_attempt3",
+    "tests/unit/synthetic_data_generation/dataset/court/test_shards.py": "impl_court_objective_attempt3",
+    "tests/unit/synthetic_data_generation/dataset/plcs/artifacts/test_scene_plan.py": "impl_plcs_single_attempt4",
+    "tests/unit/synthetic_data_generation/dataset/plcs/components/test_avatar_asset.py": "impl_plcs_single_attempt4",
+    "tests/unit/synthetic_data_generation/dataset/plcs/components/test_avatar_control.py": "impl_plcs_single_attempt4",
+    "tests/unit/synthetic_data_generation/dataset/plcs/test_articulation.py": "impl_plcs_single_attempt4",
+    "tests/unit/synthetic_data_generation/dataset/plcs/test_assembler.py": "impl_plcs_single_attempt4",
+    "tests/unit/synthetic_data_generation/dataset/plcs/test_composition.py": "impl_plcs_single_attempt4",
+    "tests/unit/synthetic_data_generation/dataset/plcs/test_execution.py": "impl_plcs_single_attempt4",
+    "tests/unit/synthetic_data_generation/dataset/plcs/test_handler.py": "impl_plcs_single_attempt4",
+    "tests/unit/synthetic_data_generation/dataset/plcs/test_production.py": "impl_plcs_single_attempt4",
+    "tests/unit/synthetic_data_generation/dataset/plcs/test_rendering.py": "impl_plcs_single_attempt4",
+    "tests/unit/synthetic_data_generation/dataset/plcs/test_smplh.py": "impl_plcs_single_attempt4",
+    "tests/unit/synthetic_data_generation/dataset/plcs/test_timeline.py": "impl_plcs_single_attempt4",
+    "tests/unit/synthetic_data_generation/dataset/plcs/test_validation.py": "impl_plcs_single_attempt4",
+    "tests/unit/synthetic_data_generation/dataset/test_algorithms.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/dataset/test_contracts.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/dataset/test_execution.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/dataset/test_pipeline.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/dataset/test_runtime.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/pipeline/test_handlers.py": "impl_lifecycle_attempt4",
+    "tests/unit/synthetic_data_generation/pipeline/test_publication.py": "impl_lifecycle_attempt4",
+    "tests/unit/synthetic_data_generation/pipeline/test_registry.py": "impl_lifecycle_attempt4",
+    "tests/unit/synthetic_data_generation/pipeline/test_run_manifest.py": "impl_lifecycle_attempt4",
+    "tests/unit/synthetic_data_generation/pipeline/test_runner.py": "impl_lifecycle_attempt4",
+    "tests/unit/synthetic_data_generation/reconstruction/test_nht_subprocess.py": "impl_nht_public_attempt2",
+    "tests/unit/synthetic_data_generation/reconstruction/test_scene_export.py": "impl_nht_public_attempt2",
+    "tests/unit/synthetic_data_generation/rendering/nht/test_client.py": "impl_nht_public_attempt2",
+    "tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py": "impl_nht_public_attempt2",
+    "tests/unit/synthetic_data_generation/rendering/nht/test_depth.py": "impl_nht_public_attempt2",
+    "tests/unit/synthetic_data_generation/rendering/test_foreground.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/test_configuration.py": "parent_integrator",
+    "tests/unit/synthetic_data_generation/test_scene_contract.py": "parent_integrator",
     "tests/unit/tasks/base/conftest.py": "parent_integrator",
     "tests/unit/tasks/base/data/test_canonical_dataset.py": "impl_canonical_consumers_attempt3",
     "tests/unit/tasks/base/data/test_canonical_tracking.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/tasks/base/data/test_chunk_manager.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/tasks/base/data/test_chunked_datamodule.py": "impl_canonical_consumers_attempt3",
     "tests/unit/tasks/base/data/test_datamodule.py": "impl_canonical_consumers_attempt3",
     "tests/unit/tasks/base/data/test_dataset_writer.py": "impl_canonical_consumers_attempt3",
     "tests/unit/tasks/base/data/test_scene_dataset.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/tasks/base/training/test_chunk_rotation_callback.py": "parent_integrator",
     "tests/unit/tasks/blcs/data/test_dataset.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/tasks/blcs/generate_dataset/simulation/test_cell_manager.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/tasks/blcs/generate_dataset/test_multi_object_scene_generator.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/tasks/blcs/visualization/rendering/test_scene_renderer.py": "impl_canonical_consumers_attempt3",
     "tests/unit/tasks/plcs/data/test_dataset.py": "impl_canonical_consumers_attempt3",
     "tests/unit/tasks/plcs/data/test_types.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/tasks/plcs/generate_dataset/io/test_scene_loader.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/tasks/plcs/generate_dataset/sampling/test_motion_sampler.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/tasks/plcs/generate_dataset/test_multi_object_scene_generator.py": "impl_canonical_consumers_attempt3",
     "tests/unit/tasks/plcs/inference/test_predictor.py": "impl_canonical_consumers_attempt3",
     "tests/unit/tasks/plcs/model_io/test_adapters.py": "impl_canonical_consumers_attempt3",
     "tests/unit/tasks/plcs/model_io/test_model_profiles.py": "impl_canonical_consumers_attempt3",
-    "tests/unit/utils/configuration/test_inventory.py": "parent_integrator"
+    "tests/unit/tasks/plcs/model_io/test_removed_compatibility.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/tasks/plcs/models/discriminators/test_factory.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/tasks/plcs/test_configuration.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/tasks/plcs/test_configuration_contracts.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/tasks/plcs/visualization/api/test_predict.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/tasks/plcs/visualization/io/test_scene.py": "impl_canonical_consumers_attempt3",
+    "tests/unit/utils/configuration/test_contracts.py": "parent_integrator",
+    "tests/unit/utils/configuration/test_discovery.py": "parent_integrator",
+    "tests/unit/utils/configuration/test_inventory.py": "parent_integrator",
+    "tests/unit/utils/configuration/test_paths.py": "parent_integrator",
+    "tests/unit/utils/test_hydra.py": "parent_integrator",
+    "third_party/nht": "impl_nht_public_attempt2"
   },
-  "ledger": {
-    "baseline": "9e0f7f9dbe6dfed4caa35602c6c16dbb31285dde",
-    "collision_policy": "stop_and_report_to_parent_integrator",
-    "integrator": "parent_integrator",
-    "owners": [
-      {
-        "name": "parent_integrator",
-        "paths": [
-          ".codex/tasks/issue-695/**",
-          "research/evidence/issue-695-ownership.json",
-          "research/evidence/issue-695-b00-acceptance.json",
-          "research/evidence/issue-695-b00/**",
-          "src/synthetic_data_generation/README.md",
-          "src/synthetic_data_generation/configs/profile/b00.yaml",
-          "src/tasks/base/__init__.py",
-          "src/tasks/base/README.md",
-          "src/tasks/base/training/lightning_module.py",
-          "src/utils/README.md",
-          "src/utils/data/__init__.py",
-          "src/utils/data/scene_io.py",
-          "src/utils/configuration/inventory.py",
-          "src/utils/configuration/exemption_data.py",
-          "src/utils/configuration/migration_data.py",
-          "tests/e2e/synthetic_data_generation/test_b00_evidence.py",
-          "tests/e2e/synthetic_data_generation/test_b00_gpu_acceptance.py",
-          "tests/e2e/synthetic_data_generation/test_removed_architecture.py",
-          "tests/e2e/development/test_architecture_boundaries.py",
-          "tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py",
-          "tests/unit/utils/configuration/test_inventory.py",
-          "tests/unit/tasks/base/conftest.py"
-        ]
-      },
-      {
-        "name": "impl_stage_atomic_attempt3",
-        "paths": [
-          "src/synthetic_data_generation/pipeline/**",
-          "src/synthetic_data_generation/scripts/run_scene_pipeline.py",
-          "src/synthetic_data_generation/alignment/handler.py",
-          "tests/unit/synthetic_data_generation/pipeline/**",
-          "tests/unit/synthetic_data_generation/alignment/test_validation.py",
-          "tests/e2e/synthetic_data_generation/test_run_scene_pipeline.py",
-          "tests/integration/synthetic_data_generation/test_nht_alignment.py",
-          "tests/integration/synthetic_data_generation/test_dataset_performance.py"
-        ]
-      },
-      {
-        "name": "impl_court_objective_attempt3",
-        "paths": [
-          "src/synthetic_data_generation/configuration.py",
-          "src/synthetic_data_generation/configs/dataset/court/**",
-          "src/synthetic_data_generation/dataset/court/**",
-          "tests/unit/synthetic_data_generation/dataset/court/**",
-          "tests/integration/synthetic_data_generation/test_configuration.py",
-          "tests/integration/synthetic_data_generation/test_court_dataset.py"
-        ]
-      },
-      {
-        "name": "impl_canonical_consumers_attempt3",
-        "paths": [
-          "src/tasks/base/data/**",
-          "src/tasks/blcs/**",
-          "src/tasks/plcs/**",
-          "src/tasks/base/generate_dataset/camera_profiles.py",
-          "src/synthetic_data_generation/dataset/blcs/**",
-          "src/synthetic_data_generation/dataset/plcs/**",
-          "tests/unit/tasks/base/data/**",
-          "tests/unit/tasks/blcs/**",
-          "tests/unit/tasks/plcs/**",
-          "tests/unit/synthetic_data_generation/dataset/blcs/**",
-          "tests/unit/synthetic_data_generation/dataset/plcs/**",
-          "tests/integration/synthetic_data_generation/test_blcs_dataset.py",
-          "tests/integration/synthetic_data_generation/test_plcs_dataset.py",
-          "tests/integration/synthetic_data_generation/test_cross_domain_cpu.py",
-          "tests/integration/tasks/tracking/test_training_smoke.py"
-        ]
-      }
-    ],
-    "shared_path_owner": "parent_integrator",
-    "waves": {
-      "A": [
-        "impl_stage_atomic_attempt3"
-      ],
-      "B": [
-        "impl_court_objective_attempt3",
-        "impl_canonical_consumers_attempt3"
-      ],
-      "C": [
-        "parent_integrator"
-      ]
+  "collision_policy": "one final declared owner per frozen-base changed path; exact attempt edit collisions stop and return to the parent integrator",
+  "diff_entries": [
+    {
+      "path": ".agents/skills/issue-subagent-workflow/references/completion-hardening.md",
+      "status": "M"
+    },
+    {
+      "path": ".agents/skills/issue-subagent-workflow/references/document-contracts.md",
+      "status": "M"
+    },
+    {
+      "path": ".agents/skills/issue-subagent-workflow/references/workflow.md",
+      "status": "M"
+    },
+    {
+      "path": ".agents/skills/issue-subagent-workflow/scripts/issue_task_finalization.py",
+      "status": "M"
+    },
+    {
+      "path": ".agents/skills/issue-subagent-workflow/scripts/issue_task_state.py",
+      "status": "M"
+    },
+    {
+      "path": "research/evidence/issue-695-b00-acceptance.json",
+      "status": "A"
+    },
+    {
+      "path": "research/evidence/issue-695-b00/summary.md",
+      "status": "A"
+    },
+    {
+      "path": "research/evidence/issue-695-ownership.json",
+      "status": "A"
+    },
+    {
+      "path": "scripts/colab/setup/prepare_generated_dataset.sh",
+      "status": "D"
+    },
+    {
+      "path": "scripts/colab/train/2026-07-02/train_blcs_broadcast.sh",
+      "status": "D"
+    },
+    {
+      "path": "scripts/colab/train/2026-07-02/train_plcs_broadcast.sh",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/README.md",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/artifacts/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/artifacts/calibration.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/artifacts/common.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/artifacts/court_geometry.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/artifacts/ground_line_map.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/components/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/components/evaluation/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/components/evaluation/court_lines.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/components/evidence/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/components/evidence/collection.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/components/evidence/ground_line_raster.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/components/fitting/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/components/fitting/court_template.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/components/fitting/evidence_guided.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/components/ground/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/components/ground/plane.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/components/ground/projection.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/components/inference/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/components/inference/line_detector.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/components/inputs/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/components/inputs/view_inputs.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/contracts.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/evaluation.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/evidence_source.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/fitting.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/handler.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/scene_provider/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/scene_provider/bundle.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/scene_provider/export.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/scene_provider/geometry_bridge.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/settings.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/stage_result.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/alignment/validation.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/composition/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/composition/contracts.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/composition/gaussians.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/config_validation.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/configs/alignment/calibrate_court_alignment.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/configs/alignment/export_scene_provider.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/configs/alignment/fit_ground_courts.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/configs/alignment/geometry_bridge.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/configs/alignment/infer_ground_line_map.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/configs/alignment/production.yaml",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/configs/camera/broadcast.yaml",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/configs/camera/default.yaml",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/configs/dataset/blcs/production.yaml",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/configs/dataset/blcs_feature_fit.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/configs/dataset/court/train.yaml",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/configs/dataset/pipeline.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/configs/dataset/plcs/production.yaml",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/configs/dataset/plcs/single_object.yaml",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/configs/nht/public_cli.yaml",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/configs/pipeline/canonical.yaml",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/configs/profile/b00.yaml",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/configs/roots/runtime.yaml",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/configs/run_scene_pipeline.yaml",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/configs/validate_configuration.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/configuration.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/algorithms.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/algorithms.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/artifacts/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/artifacts/asset_registry.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/artifacts/calibration.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/artifacts/scene_plan.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/assembler.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/components/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/components/asset_ingestion.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/components/asset_preparation.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/components/calibration_import.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/components/feature_fit_fixture.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/components/procedural_ball.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/components/procedural_ball_asset_builder.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/contracts.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/diagnostics.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/handler.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/rendering/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/rendering/feature_fit.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/rendering/nht.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/source.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/blcs/timeline.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/contracts.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/algorithms.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/artifacts/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/artifacts/layout.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/assembler.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/components/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/components/camera_sampling/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/components/camera_sampling/orbit.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/components/camera_sampling/orbit_plan.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/components/camera_sampling/sampling.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/components/camera_sampling/selection.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/components/camera_sampling/sfm_neighborhood.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/components/camera_sampling/support_probe.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/components/camera_sampling/trajectory.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/components/labels.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/components/release.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/contracts.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/diagnostics.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/handler.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/performance.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/rendering/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/rendering/nht.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/rendering/orbit_preview.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/semantic_manifest.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/shards.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/visualization/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/visualization/camera_support.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/court/visualization/dataset_preview.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/execution.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/pipeline.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/README.md",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/algorithms.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/articulation.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/artifacts/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/artifacts/scene_plan.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/assembler.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/components/avatar_asset.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/components/avatar_asset_builder.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/components/avatar_control.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/components/scene_plan_builder.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/composition.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/diagnostics.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/execution.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/handler.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/production.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/rendering/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/rendering/avatar_fit.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/rendering/contracts.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/rendering/nht.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/smplh.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/timeline.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/validation.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/visualization/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/visualization/avatar_control_comparison.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/plcs/visualization/dataset_preview.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/dataset/runtime.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/pipeline/__init__.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/pipeline/application.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/pipeline/contracts.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/pipeline/handlers.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/pipeline/publication.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/pipeline/registry.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/pipeline/run_manifest.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/pipeline/runner.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/pipeline/workspace.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/reconstruction/__init__.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/reconstruction/contracts.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/reconstruction/nht_subprocess.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/reconstruction/scene_export.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/rendering/foreground.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/rendering/nht/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/rendering/nht/client.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/rendering/nht/composition_smoke.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/rendering/nht/contracts.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/rendering/nht/depth.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/rendering/nht/runtime_probe.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/scene_contract.py",
+      "status": "M"
+    },
+    {
+      "path": "src/synthetic_data_generation/scripts/alignment/calibrate_court_alignment.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/scripts/alignment/export_scene_provider.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/scripts/alignment/fit_ground_courts.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/scripts/alignment/geometry_bridge.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/scripts/alignment/infer_ground_line_map.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/scripts/dataset/fit_blcs_features.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/scripts/dataset/run_pipeline.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/scripts/run_scene_pipeline.py",
+      "status": "A"
+    },
+    {
+      "path": "src/synthetic_data_generation/scripts/validate_configuration.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/visualization/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/synthetic_data_generation/visualization/summary.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/base/README.md",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/base/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/base/configuration.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/base/data/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/base/data/canonical_dataset.py",
+      "status": "A"
+    },
+    {
+      "path": "src/tasks/base/data/canonical_tracking.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/base/data/chunk_manager.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/base/data/chunked_datamodule.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/base/data/datamodule.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/base/data/dataset_writer.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/base/data/lifecycle_slots.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/base/data/scene_dataset.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/base/generate_dataset/camera_profiles.py",
+      "status": "A"
+    },
+    {
+      "path": "src/tasks/base/generate_dataset/continuity.py",
+      "status": "A"
+    },
+    {
+      "path": "src/tasks/base/generate_dataset/court_assignment.py",
+      "status": "A"
+    },
+    {
+      "path": "src/tasks/base/training/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/base/training/chunk_rotation_callback.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/base/training/lightning_module.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/README.md",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/configs/camera/broadcast.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/configs/camera/default.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/configs/data/_chunked.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/configs/data/_multiview.yaml",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/configs/data/_singleview.yaml",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/configs/data/chunked_multiview_sequence_bs16.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/configs/data/chunked_multiview_sequence_bs4.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/configs/data/chunked_multiview_sequence_bs8.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/configs/data/multiview_sequence.yaml",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/configs/data/singleview_sequence.yaml",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/configs/data/tracking.yaml",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/configs/data/tracking_chunked.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/configs/generate_dataset.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/configs/generation/multi_object.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/configs/generation/single_object.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/configs/preview_augmentation.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/configs/run/generate_dataset.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/configs/train_chunked.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/configs/train_chunked_gan.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/configs/train_tracking_chunked.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/configs/training/chunked.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/configs/training/gan_base.yaml",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/configs/training/gan_large.yaml",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/configs/training/gan_small.yaml",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/configs/visualization/multiview.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/configs/visualization/single.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/configs/visualize.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/configuration.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/data/augmentation.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/data/chunk_manager.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/data/chunked_datamodule.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/data/datamodule.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/data/dataset.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/data/tracking_datamodule.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/data/tracking_dataset.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/data/types.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/generate_dataset/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/generate_dataset/api_server/__main__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/generate_dataset/io/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/generate_dataset/io/dataset_io.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/generate_dataset/multi_object_scene_generator.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/generate_dataset/scene_generator.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/generate_dataset/simulation/cell_manager.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/generate_dataset/simulation/errors.py",
+      "status": "A"
+    },
+    {
+      "path": "src/tasks/blcs/generate_dataset/simulation/rally_simulator.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/generate_dataset/simulation/targeted_velocity_sampler.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/generate_dataset/utils/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/generate_dataset/utils/parallel_runner.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/inference/predictor.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/model_io/adapters.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/model_io/attention_masks.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/model_io/factory.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/model_io/training.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/scripts/generate_dataset.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/scripts/preview_augmentation.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/scripts/train.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/scripts/visualize.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/training/lightning_module.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/training/runner.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/training/tracking_lightning_module.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/visualization/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/blcs/visualization/api/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/visualization/api/predict.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/visualization/io/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/visualization/io/scene.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/visualization/orchestrator.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/blcs/visualization/rendering/scene_renderer.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/README.md",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/configs/analyze_angle_velocity.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/analyze_dataset_distribution.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/analyze_loss_dominance.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/analyze_rotation_error_samples.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/camera/broadcast.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/camera/default.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/data/_chunked.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/data/_multiview.yaml",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/configs/data/_singleview.yaml",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/configs/data/chunked_multiview_sequence_bs16.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/data/chunked_multiview_sequence_bs32.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/data/chunked_multiview_sequence_bs8.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/data/chunked_singleview_frame.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/data/chunked_singleview_sequence.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/data/multiview_sequence.yaml",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/configs/data/singleview_frame.yaml",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/configs/data/singleview_sequence.yaml",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/configs/data/tracking.yaml",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/configs/data/tracking_chunked.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/generate_dataset.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/generation/multi_object.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/generation/single_object.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/loss/canonical.yaml",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/configs/loss/canonical_rot_vel.yaml",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/configs/loss/no_canonical.yaml",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/configs/motion_sources/default.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/preview_augmentation.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/run/analyze_rotation_error_samples.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/run/generate_dataset.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/run/generate_dataset_athlete_pose.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/run/visualize.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/train_chunked.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/train_chunked_gan.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/train_tracking_chunked.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/visualization/default.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/visualization/multiview.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configs/visualize.yaml",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/configuration.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/configuration_contracts.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/data/chunk_manager.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/data/chunked_datamodule.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/data/datamodule.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/data/dataset.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/data/targets.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/data/tracking_datamodule.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/data/tracking_dataset.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/data/types.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/generate_dataset/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/generate_dataset/config.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/generate_dataset/io/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/generate_dataset/io/dataset_io.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/generate_dataset/io/scene_loader.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/generate_dataset/multi_object_scene_generator.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/generate_dataset/sampling/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/generate_dataset/sampling/motion_sampler.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/generate_dataset/scene_generator.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/generate_dataset/utils/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/generate_dataset/utils/parallel_runner.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/inference/predictor.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/model_io/adapters.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/model_io/attention_masks.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/model_io/factory.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/models/plcs_model.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/models/plcs_multiview_axial_split_model.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/scripts/analysis/analyze_angle_velocity.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/scripts/analysis/analyze_dataset_distribution.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/scripts/analysis/analyze_loss_dominance.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/scripts/analysis/visualize_rotation_error_samples.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/scripts/generate_dataset.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/scripts/preview_augmentation.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/scripts/train.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/scripts/visualize.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/training/composition.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/training/losses.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/training/mcmc.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/training/runner.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/training/tracking_metrics.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/visualization/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/tasks/plcs/visualization/api/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/visualization/api/predict.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/visualization/io/__init__.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/visualization/io/scene.py",
+      "status": "D"
+    },
+    {
+      "path": "src/tasks/plcs/visualization/orchestrator.py",
+      "status": "D"
+    },
+    {
+      "path": "src/utils/README.md",
+      "status": "M"
+    },
+    {
+      "path": "src/utils/configuration/audit.py",
+      "status": "M"
+    },
+    {
+      "path": "src/utils/configuration/catalog.py",
+      "status": "M"
+    },
+    {
+      "path": "src/utils/configuration/discovery.py",
+      "status": "M"
+    },
+    {
+      "path": "src/utils/configuration/exemption_data.py",
+      "status": "M"
+    },
+    {
+      "path": "src/utils/configuration/inventory.py",
+      "status": "M"
+    },
+    {
+      "path": "src/utils/configuration/migration_data.py",
+      "status": "M"
+    },
+    {
+      "path": "src/utils/configuration/paths.py",
+      "status": "M"
+    },
+    {
+      "path": "src/utils/data/__init__.py",
+      "status": "M"
+    },
+    {
+      "path": "src/utils/data/scene_io.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/e2e/development/test_architecture_boundaries.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/e2e/skills/test_issue_subagent_workflow.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/e2e/synthetic_data_generation/test_b00_evidence.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/e2e/synthetic_data_generation/test_b00_gpu_acceptance.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/e2e/synthetic_data_generation/test_removed_architecture.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/e2e/synthetic_data_generation/test_run_dataset_pipeline.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/e2e/synthetic_data_generation/test_run_scene_pipeline.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/integration/synthetic_data_generation/test_blcs_dataset.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/integration/synthetic_data_generation/test_configuration.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/integration/synthetic_data_generation/test_court_dataset.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/integration/synthetic_data_generation/test_cross_domain_cpu.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/integration/synthetic_data_generation/test_dataset_config.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/integration/synthetic_data_generation/test_dataset_performance.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/integration/synthetic_data_generation/test_nht_alignment.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/integration/synthetic_data_generation/test_plcs_dataset.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/integration/tasks/blcs/test_visualize_config.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/integration/tasks/plcs/test_visualize_config.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/integration/tasks/tracking/test_training_smoke.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/alignment/artifacts/test_calibration.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/alignment/artifacts/test_court_geometry.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/alignment/artifacts/test_ground_line_map.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/alignment/components/evaluation/test_court_lines.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/alignment/components/evidence/test_ground_line_raster.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/alignment/components/fitting/test_court_template.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/alignment/components/fitting/test_evidence_guided.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/alignment/components/ground/test_plane.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/alignment/components/ground/test_projection.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/alignment/components/inference/test_line_detector.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/alignment/components/inputs/test_view_inputs.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/alignment/conftest.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/alignment/scene_provider/test_bundle.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/alignment/scene_provider/test_export.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/alignment/scene_provider/test_geometry_bridge.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/alignment/test_contracts.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/alignment/test_evidence_source.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/alignment/test_stage_result.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/alignment/test_validation.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/composition/test_contracts.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/composition/test_gaussians.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/blcs/artifacts/test_asset_registry.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/blcs/artifacts/test_calibration.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/blcs/artifacts/test_scene_plan.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/blcs/components/test_asset_ingestion.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/blcs/components/test_procedural_ball.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/blcs/conftest.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/blcs/test_compact_rendering.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/blcs/test_contracts.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/blcs/test_source.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/blcs/test_timeline.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/court/artifacts/test_layout.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_orbit.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_sampling.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_selection.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_sfm_neighborhood.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/court/components/test_labels.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/court/components/test_release.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/court/conftest.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/court/test_assembler.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/court/test_contracts.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/court/test_metric_scene_boundary.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/court/test_performance.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/court/test_semantic_manifest.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/court/test_shards.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/plcs/artifacts/test_scene_plan.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/plcs/components/test_avatar_asset.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/plcs/components/test_avatar_control.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/plcs/test_articulation.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/plcs/test_assembler.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/plcs/test_composition.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/plcs/test_execution.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/plcs/test_handler.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/plcs/test_production.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/plcs/test_rendering.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/plcs/test_smplh.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/plcs/test_timeline.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/plcs/test_validation.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/test_algorithms.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/test_contracts.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/test_execution.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/test_pipeline.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/dataset/test_runtime.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/pipeline/test_handlers.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/pipeline/test_publication.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/pipeline/test_registry.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/pipeline/test_run_manifest.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/pipeline/test_runner.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/reconstruction/test_nht_subprocess.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/reconstruction/test_scene_export.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/rendering/nht/test_client.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/rendering/nht/test_depth.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/rendering/test_foreground.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/test_configuration.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/synthetic_data_generation/test_scene_contract.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/tasks/base/conftest.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/tasks/base/data/test_canonical_dataset.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/tasks/base/data/test_canonical_tracking.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/tasks/base/data/test_chunk_manager.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/tasks/base/data/test_chunked_datamodule.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/tasks/base/data/test_datamodule.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/tasks/base/data/test_dataset_writer.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/tasks/base/data/test_scene_dataset.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/tasks/base/training/test_chunk_rotation_callback.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/tasks/blcs/data/test_dataset.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/tasks/blcs/generate_dataset/simulation/test_cell_manager.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/tasks/blcs/generate_dataset/test_multi_object_scene_generator.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/tasks/blcs/visualization/rendering/test_scene_renderer.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/tasks/plcs/data/test_dataset.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/unit/tasks/plcs/data/test_types.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/tasks/plcs/generate_dataset/io/test_scene_loader.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/tasks/plcs/generate_dataset/sampling/test_motion_sampler.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/tasks/plcs/generate_dataset/test_multi_object_scene_generator.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/tasks/plcs/inference/test_predictor.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/tasks/plcs/model_io/test_adapters.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/tasks/plcs/model_io/test_model_profiles.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/tasks/plcs/model_io/test_removed_compatibility.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/tasks/plcs/models/discriminators/test_factory.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/tasks/plcs/test_configuration.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/tasks/plcs/test_configuration_contracts.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/tasks/plcs/visualization/api/test_predict.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/tasks/plcs/visualization/io/test_scene.py",
+      "status": "D"
+    },
+    {
+      "path": "tests/unit/utils/configuration/test_contracts.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/utils/configuration/test_discovery.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/utils/configuration/test_inventory.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/utils/configuration/test_paths.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/unit/utils/test_hydra.py",
+      "status": "M"
+    },
+    {
+      "path": "third_party/nht",
+      "status": "M"
     }
-  },
-  "plan_sha256": "51a3a32cad69d25ee2d0c13906debb0df1b311223861d098143051e8cdcb6b4d",
-  "schema_version": 1,
+  ],
+  "evidence_limit": "This proves complete final-path responsibility and non-overlap, not historical editor identity or timing.",
+  "frozen_base": "10eac3d3c934ca94fccb62ec46a14b684953f2c9",
+  "integrator": "parent_integrator",
+  "owners": [
+    {
+      "integrator": true,
+      "name": "parent_integrator",
+      "scope": "shared composition, configuration, formal integration, complete evidence and delivery"
+    },
+    {
+      "integrator": false,
+      "name": "impl_lifecycle_attempt4",
+      "scope": "typed pipeline DAG, cursor execution plan and run-manifest lifecycle"
+    },
+    {
+      "integrator": false,
+      "name": "impl_plcs_single_attempt4",
+      "scope": "synthetic PLCS production modes, compact v4 publication and focused tests"
+    },
+    {
+      "integrator": false,
+      "name": "impl_workflow_deferred_attempt4",
+      "scope": "AC-079 validation/packaging state contract and workflow tests"
+    },
+    {
+      "integrator": false,
+      "name": "impl_court_objective_attempt3",
+      "scope": "Court trajectory, selection, renderer release and domain tests"
+    },
+    {
+      "integrator": false,
+      "name": "impl_canonical_consumers_attempt3",
+      "scope": "BLCS and task-level canonical BLCS/PLCS consumers"
+    },
+    {
+      "integrator": false,
+      "name": "impl_nht_public_attempt2",
+      "scope": "public NHT reconstruction/render file boundary and gitlink"
+    }
+  ],
+  "schema_version": 2,
   "status": "PASS"
 }
