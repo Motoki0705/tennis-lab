@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Generic, TypeVar, cast
 
 import numpy as np
@@ -28,7 +28,8 @@ class CanonicalDataset(Dataset[SampleT], Generic[SampleT]):
             raise TypeError("Canonical datasets require a data mapping.")
         values = data.get("seq_len_range")
         if (
-            not isinstance(values, list | tuple)
+            not isinstance(values, Sequence)
+            or isinstance(values, str | bytes | bytearray)
             or len(values) != 2
             or any(
                 isinstance(value, bool) or not isinstance(value, int)
