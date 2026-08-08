@@ -1,0 +1,66 @@
+name: WSL MCP project sandbox finalization
+
+on:
+  push:
+    branches: [feat/wsl-mcp-project-sandbox]
+    paths:
+      - ".github/workflows/wsl-mcp-project-sandbox-finalize.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v6
+        with:
+          ref: feat/wsl-mcp-project-sandbox
+          fetch-depth: 0
+          submodules: false
+
+      - name: Set up uv and Python 3.11
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+
+      - name: Materialize reviewed implementation
+        run: python3 .github/scripts/wsl_mcp_project_sandbox_finalize.py write
+
+      - name: Format and regenerate configuration inventory
+        run: |
+          uv run --locked ruff format \
+            src/automation/chatgpt_mcp \
+            tests/unit/automation/chatgpt_mcp \
+            tests/integration/chatgpt_mcp
+          uv run --locked python \
+            .github/scripts/wsl_mcp_project_sandbox_finalize.py inventory
+
+      - name: Run focused quality and security checks
+        run: |
+          uv run --locked ruff check \
+            src/automation/chatgpt_mcp \
+            tests/unit/automation/chatgpt_mcp \
+            tests/integration/chatgpt_mcp
+          uv run --locked mypy src/automation/chatgpt_mcp
+          uv run --locked pytest -q \
+            tests/unit/automation/chatgpt_mcp \
+            tests/integration/chatgpt_mcp \
+            tests/unit/utils/configuration/test_inventory.py
+
+      - name: Commit finalized implementation
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -rf \
+            .github/workflows/wsl-mcp-project-sandbox-finalize.yml \
+            .github/scripts/wsl_mcp_project_sandbox_finalize.py \
+            .github/wsl-mcp-bundle
+          git add -A
+          git diff --cached --check
+          git commit -m "feat(automation): expose project-bounded WSL execution sandbox"
+          git push origin HEAD:feat/wsl-mcp-project-sandbox
