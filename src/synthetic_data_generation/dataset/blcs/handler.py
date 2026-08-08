@@ -236,7 +236,7 @@ class BLCSDatasetStageHandler:
 
     @property
     def _scene_path(self) -> Path:
-        return self.workspace.root / "reconstruction" / "export" / "scene.json"
+        return Path(self.workspace.root) / "reconstruction" / "export" / "scene.json"
 
     def _validate_context(
         self,
@@ -251,7 +251,7 @@ class BLCSDatasetStageHandler:
         expected_owner = self.workspace.root / "datasets" / "blcs"
         if context.owner_path != expected_owner:
             raise ValueError("BLCS stage owner is not the canonical workspace path.")
-        expected_staging = expected_owner / "staging"
+        expected_staging = self.workspace.staging_path(context.stage)
         if context.staging_path != expected_staging:
             raise ValueError(
                 "BLCS stage must use only its fixed attempt-local staging path."

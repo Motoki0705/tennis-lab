@@ -3,11 +3,17 @@
 from __future__ import annotations
 
 from collections import Counter
+from dataclasses import replace
 
 import numpy as np
+import pytest
 
 from src.synthetic_data_generation.dataset.blcs.timeline import build_blcs_plans
-from src.tasks.base.generate_dataset.camera_profiles import CameraProfileConfig
+from src.synthetic_data_generation.scene_contract import RigidTransform
+from src.tasks.base.generate_dataset.camera_profiles import (
+    CameraProfileConfig,
+    assert_projection_equivalent,
+)
 
 
 def test_plans_cover_all_frames_and_balance_all_courts(
@@ -119,3 +125,51 @@ def test_broadcast_authority_produces_exactly_two_config_owned_cameras(
 
     assert plans[0].camera_rig.profile == "broadcast"
     assert len(plans[0].camera_rig.cameras) == 2
+
+
+@pytest.mark.parametrize("corruption", ["translation", "rotation"])
+def test_blcs_camera_binding_rejects_independent_pose_corruption(
+    two_court_layout,
+    default_camera_profile,
+    blcs_assets,
+    blcs_trajectory_factory,
+    corruption: str,
+) -> None:
+    plan = build_blcs_plans(
+        (blcs_trajectory_factory("trajectory-camera-negative"),),
+        dataset_scene_id="B00",
+        layout=two_court_layout,
+        camera_config=default_camera_profile,
+        assets=blcs_assets,
+        seed=19,
+        chunk_size_frames=2,
+    )[0]
+    sampled = plan.camera_rig.cameras[0]
+    matrix = sampled.scene_camera.camera_to_scene.matrix()
+    if corruption == "translation":
+        matrix[0, 3] += 0.25
+    else:
+        angle = 0.1
+        rotation = np.asarray(
+            (
+                (np.cos(angle), -np.sin(angle), 0.0),
+                (np.sin(angle), np.cos(angle), 0.0),
+                (0.0, 0.0, 1.0),
+            )
+        )
+        matrix[:3, :3] = rotation @ matrix[:3, :3]
+    corrupted = replace(
+        sampled,
+        scene_camera=replace(
+            sampled.scene_camera,
+            camera_to_scene=RigidTransform.from_matrix(matrix),
+        ),
+    )
+    court = two_court_layout.court(plan.target_court.court_instance_id)
+    with pytest.raises(ValueError, match="independent court-local authority"):
+        assert_projection_equivalent(
+            corrupted,
+            court,
+            np.asarray(((0.0, 0.0, 0.0),), dtype=np.float64),
+            atol=1.0e-6,
+        )

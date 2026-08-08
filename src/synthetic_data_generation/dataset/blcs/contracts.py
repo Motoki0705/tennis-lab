@@ -14,7 +14,7 @@ from torch import Tensor
 
 from src.synthetic_data_generation.composition import GaussianAsset
 
-BLCS_DATASET_SCHEMA = "canonical_blcs_compact_dataset_v1"
+BLCS_DATASET_SCHEMA = "canonical_blcs_compact_dataset_v2"
 BLCS_SAMPLE_SCHEMA = "canonical_blcs_compact_sample_v1"
 
 _PORTABLE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")

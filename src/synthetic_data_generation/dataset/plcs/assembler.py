@@ -7,6 +7,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
+from numpy.typing import NDArray
+
 from src.synthetic_data_generation.dataset.contracts import (
     DatasetDomain,
     DatasetManifest,
@@ -28,8 +31,72 @@ from src.tasks.base.generate_dataset.continuity import (
     validate_frame_continuity,
 )
 
-PLCS_DATASET_SCHEMA = "tennis_plcs_compact_dataset_v3"
+PLCS_DATASET_SCHEMA = "tennis_plcs_compact_dataset_v4"
 PLCS_FRAME_LABEL_SCHEMA = "tennis_plcs_frame_label_v3"
+
+
+@dataclass(frozen=True, slots=True)
+class PLCSSupervisionArrays:
+    """Dense semantic authority aligned to one logical scene timeline."""
+
+    human_kp: NDArray[np.float32]
+    human_vis: NDArray[np.bool_]
+    court_kp: NDArray[np.float32]
+    court_vis: NDArray[np.bool_]
+    human_mask: NDArray[np.bool_]
+    position: NDArray[np.float32]
+    position_court_m: NDArray[np.float32]
+    rotation: NDArray[np.float32]
+    present: NDArray[np.bool_]
+    human_kp_3d: NDArray[np.float32]
+    canonical_pose_3d: NDArray[np.float32]
+
+    def validate(
+        self, *, frame_count: int, camera_count: int, object_count: int
+    ) -> None:
+        """Reject any shape, dtype, finiteness, or masking ambiguity."""
+        expected: dict[str, tuple[tuple[int, ...], np.dtype[np.generic]]] = {
+            "human_kp": (
+                (frame_count, camera_count, object_count, 17, 2),
+                np.dtype(np.float32),
+            ),
+            "human_vis": (
+                (frame_count, camera_count, object_count, 17),
+                np.dtype(np.bool_),
+            ),
+            "court_kp": ((frame_count, camera_count, 20, 2), np.dtype(np.float32)),
+            "court_vis": ((frame_count, camera_count, 20), np.dtype(np.bool_)),
+            "human_mask": (
+                (frame_count, camera_count, object_count),
+                np.dtype(np.bool_),
+            ),
+            "position": ((frame_count, object_count, 3), np.dtype(np.float32)),
+            "position_court_m": ((frame_count, object_count, 3), np.dtype(np.float32)),
+            "rotation": ((frame_count, object_count, 2), np.dtype(np.float32)),
+            "present": ((frame_count, object_count), np.dtype(np.bool_)),
+            "human_kp_3d": ((frame_count, object_count, 17, 3), np.dtype(np.float32)),
+            "canonical_pose_3d": (
+                (frame_count, object_count, 52, 3),
+                np.dtype(np.float32),
+            ),
+        }
+        for name, (shape, dtype) in expected.items():
+            value = np.asarray(getattr(self, name))
+            if value.shape != shape or value.dtype != dtype:
+                raise ValueError(f"PLCS supervision {name} has an invalid contract.")
+            if np.issubdtype(dtype, np.floating) and not np.isfinite(value).all():
+                raise ValueError(f"PLCS supervision {name} contains NaN or infinity.")
+        if not np.array_equal(
+            self.human_mask,
+            np.broadcast_to(self.present[:, None, :], self.human_mask.shape),
+        ):
+            raise ValueError(
+                "PLCS human_mask must exactly replicate physical presence."
+            )
+        if np.any(self.human_vis & ~self.human_mask[..., None]):
+            raise ValueError("Absent PLCS objects cannot have visible joints.")
+        if np.any(self.human_kp[~self.human_vis] != 0.0):
+            raise ValueError("Invisible PLCS keypoints must be explicitly zero.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,6 +108,7 @@ class PLCSSceneAssemblyInput:
     rig: SampledCameraRig
     chunk_readers: tuple[ChunkReader, ...]
     attempt_token: str
+    supervision: PLCSSupervisionArrays
 
     def __post_init__(self) -> None:
         if self.split not in {"train", "validation", "test"}:
@@ -51,6 +119,11 @@ class PLCSSceneAssemblyInput:
             raise ValueError("PLCS logical scene requires compact chunk readers.")
         if not self.attempt_token.strip():
             raise ValueError("PLCS logical scene attempt token must be non-empty.")
+        self.supervision.validate(
+            frame_count=self.timeline.frame_count,
+            camera_count=len(self.rig.cameras),
+            object_count=len(self.timeline.tracks),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -157,7 +230,12 @@ def assemble_plcs_dataset(
     seed: int,
 ) -> PLCSAssemblyResult:
     """Validate and publish every logical scene without splitting its timeline."""
-    if staging_directory.name != "staging" or not staging_directory.is_dir():
+    if (
+        staging_directory.name != "snapshot"
+        or staging_directory.parent.name != "plcs_dataset"
+        or staging_directory.parent.parent.name != ".transactions"
+        or not staging_directory.is_dir()
+    ):
         raise ValueError(
             "PLCS assembly requires the runner-provided staging directory."
         )
@@ -205,9 +283,7 @@ def assemble_plcs_dataset(
                 "target_court": timeline.target_court.to_dict(),
                 "camera_profile": value.rig.profile,
                 "cameras": [camera.to_metadata() for camera in value.rig.cameras],
-                "motion_sources": [
-                    track.clip.metadata() for track in timeline.tracks
-                ],
+                "motion_sources": [track.clip.metadata() for track in timeline.tracks],
                 "tracks": [
                     {
                         "object_id": track.object_id,
@@ -215,9 +291,7 @@ def assemble_plcs_dataset(
                         "asset_id": track.asset_id,
                         "start_frame": track.start_frame,
                         "stop_frame": track.stop_frame,
-                        "anchor_position_court_m": list(
-                            track.anchor_position_court_m
-                        ),
+                        "anchor_position_court_m": list(track.anchor_position_court_m),
                         "yaw_radians": track.yaw_radians,
                     }
                     for track in timeline.tracks
@@ -240,7 +314,24 @@ def assemble_plcs_dataset(
                 ],
                 "attempt_token": value.attempt_token,
                 "sample_order": "scene-frame-then-configured-camera",
+                "supervision": (
+                    Path("scenes") / timeline.scene_id / "supervision.npz"
+                ).as_posix(),
+                "camera_ids": [
+                    camera.scene_camera.camera_id for camera in value.rig.cameras
+                ],
+                "object_ids": [track.object_id for track in timeline.tracks],
             }
+        )
+        supervision_path = (
+            staging_directory / "scenes" / timeline.scene_id / "supervision.npz"
+        )
+        np.savez(
+            supervision_path,
+            **{
+                name: getattr(value.supervision, name)
+                for name in PLCSSupervisionArrays.__dataclass_fields__
+            },
         )
         aggregate_offset += timeline.frame_count
 
@@ -262,12 +353,8 @@ def assemble_plcs_dataset(
             "logical_scene_count": inventory.scene_count,
             "aggregate_global_frame_count": inventory.aggregate_global_frame_count,
             "aggregate_source_frame_count": inventory.aggregate_source_frame_count,
-            "required_motion_categories": sorted(
-                inventory.required_motion_categories
-            ),
-            "accepted_court_instance_ids": list(
-                inventory.accepted_court_instance_ids
-            ),
+            "required_motion_categories": sorted(inventory.required_motion_categories),
+            "accepted_court_instance_ids": list(inventory.accepted_court_instance_ids),
             "logical_scenes": logical_metadata,
         },
         diagnostics=diagnostics,
@@ -307,9 +394,7 @@ def _validate_scene(
     seed: int,
 ) -> PLCSSceneAssemblyResult:
     timeline = value.timeline
-    camera_ids = tuple(
-        camera.scene_camera.camera_id for camera in value.rig.cameras
-    )
+    camera_ids = tuple(camera.scene_camera.camera_id for camera in value.rig.cameras)
     validated = FinalDatasetAssembler(
         frame_count=timeline.frame_count,
         camera_ids=camera_ids,
@@ -376,6 +461,7 @@ __all__ = [
     "PLCSAssemblyResult",
     "PLCSSceneAssemblyInput",
     "PLCSSceneAssemblyResult",
+    "PLCSSupervisionArrays",
     "assemble_plcs_dataset",
     "build_frame_label",
 ]

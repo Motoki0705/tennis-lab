@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 backend: default
-scene_dir: blcs/multi_object_lifecycle_v2
+dataset_dir: synthetic_data_generation/scenes/B00/datasets/blcs
 batch_size: 8
 num_workers: 4
 pin_memory: true

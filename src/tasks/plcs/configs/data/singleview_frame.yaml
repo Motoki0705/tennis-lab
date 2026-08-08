@@ -4,8 +4,7 @@ defaults:
   - _self_
 
 backend: default
-scene_dir: plcs
-adapter_camera_index: 0
+dataset_dir: synthetic_data_generation/scenes/B00/datasets/plcs
 num_court_kp: 20
 
 num_workers: 4

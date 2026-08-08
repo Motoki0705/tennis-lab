@@ -44,7 +44,7 @@ from src.synthetic_data_generation.dataset.runtime import (
     directory_size_bytes,
     materialize_logical_sample,
 )
-from src.synthetic_data_generation.scene_contract import RigidTransform
+from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
 from src.tasks.base.generate_dataset.continuity import (
     FrameContinuityReport,
     TimelineFrameRecord,
@@ -142,6 +142,50 @@ class BLCSLogicalSample:
     semantic_arrays: Mapping[str, NDArray[np.generic]]
 
 
+@dataclass(frozen=True, slots=True)
+class BLCSTrackIndex:
+    """One strict active interval within a canonical trajectory."""
+
+    trajectory_id: str
+    split: str
+    object_id: str
+    object_index: int
+    start_frame: int
+    stop_frame: int
+
+
+@dataclass(frozen=True, slots=True)
+class BLCSTrajectoryIndex:
+    """Manifest-authoritative complete trajectory index."""
+
+    trajectory_id: str
+    split: str
+    frame_count: int
+    camera_ids: tuple[str, ...]
+    tracks: tuple[BLCSTrackIndex, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class BLCSAllViewTrajectory:
+    """Dense semantic tensors for every generated view and source frame."""
+
+    index: BLCSTrajectoryIndex
+    ball_uv: NDArray[np.float32]
+    ball_visible: NDArray[np.bool_]
+    court_kp: NDArray[np.float32]
+    court_visible: NDArray[np.bool_]
+    positions_court_m: NDArray[np.float32]
+    velocities_court_mps: NDArray[np.float32]
+    present: NDArray[np.bool_]
+    camera_R: NDArray[np.float32]
+    camera_C: NDArray[np.float32]
+    camera_f: NDArray[np.float32]
+    camera_cx: NDArray[np.float32]
+    camera_cy: NDArray[np.float32]
+    camera_w: NDArray[np.float32]
+    camera_h: NDArray[np.float32]
+
+
 class BLCSCompactDatasetReader:
     """Strict current-schema reader with cached backgrounds and chunk payloads."""
 
@@ -158,6 +202,188 @@ class BLCSCompactDatasetReader:
         }
         self._backgrounds: dict[Path, SharedBackgroundStore] = {}
         self._chunks: dict[Path, ChunkReader] = {}
+        payload = _mapping(
+            _load_json(output_directory / "dataset.json"),
+            keys=_DATASET_KEYS,
+            name="BLCS dataset",
+        )
+        self._trajectory_records = {
+            _string(record["trajectory_id"], name="trajectory_id"): record
+            for value in _list(payload["trajectories"], name="trajectories")
+            for record in (_mapping(value, keys=_TRAJECTORY_KEYS, name="trajectory"),)
+        }
+        self.trajectories = tuple(
+            self._build_trajectory_index(record)
+            for record in self._trajectory_records.values()
+        )
+        self.tracks = tuple(
+            track for trajectory in self.trajectories for track in trajectory.tracks
+        )
+
+    def split_trajectories(self, split: str) -> tuple[BLCSTrajectoryIndex, ...]:
+        """Return manifest-ordered trajectories for exactly one split."""
+        canonical = "validation" if split == "val" else split
+        if canonical not in {"train", "validation", "test"}:
+            raise ValueError("BLCS split must be train, validation/val, or test.")
+        return tuple(value for value in self.trajectories if value.split == canonical)
+
+    def split_tracks(self, split: str) -> tuple[BLCSTrackIndex, ...]:
+        """Return manifest-ordered object intervals for exactly one split."""
+        selected = {value.trajectory_id for value in self.split_trajectories(split)}
+        return tuple(value for value in self.tracks if value.trajectory_id in selected)
+
+    def materialize_all_views(self, trajectory_id: str) -> BLCSAllViewTrajectory:
+        """Load every generated camera and every source frame without selection."""
+        try:
+            record = self._trajectory_records[trajectory_id]
+        except KeyError as error:
+            raise KeyError(f"Unknown BLCS trajectory: {trajectory_id!r}.") from error
+        plan = _mapping(
+            _load_json(
+                _contained_file(
+                    self.output_directory,
+                    _string(record["plan_json"], name="plan_json"),
+                )
+            ),
+            keys=_PLAN_KEYS,
+            name="BLCS plan",
+        )
+        archive_path = _contained_file(
+            self.output_directory, _string(record["plan_npz"], name="plan_npz")
+        )
+        with np.load(archive_path, allow_pickle=False) as archive:
+            arrays = {name: np.asarray(archive[name]) for name in archive.files}
+        cameras = tuple(
+            SceneCamera.from_dict(
+                _mapping(
+                    item,
+                    keys={
+                        "slot_id",
+                        "court_local_center_m",
+                        "court_local_look_at_m",
+                        "hfov_degrees",
+                        "camera",
+                    },
+                    name="planned camera",
+                )["camera"]
+            )
+            for item in _list(plan["cameras"], name="cameras")
+        )
+        binding = TargetCourtBinding.from_dict(plan["target_court"])
+        camera_to_court = tuple(
+            binding.scene_from_court.inverse().matrix()
+            @ camera.camera_to_scene.matrix()
+            for camera in cameras
+        )
+        widths = np.asarray([camera.width for camera in cameras], dtype=np.float64)
+        heights = np.asarray([camera.height for camera in cameras], dtype=np.float64)
+        uv = arrays["camera_uv"].transpose(1, 0, 2, 3).copy()
+        uv[..., 0] /= widths[:, None, None]
+        uv[..., 1] /= heights[:, None, None]
+        court_uv = arrays["court_uv"].copy()
+        court_uv[..., 0] /= widths[:, None]
+        court_uv[..., 1] /= heights[:, None]
+        index = next(
+            value for value in self.trajectories if value.trajectory_id == trajectory_id
+        )
+        rendered_visible = self._rendered_visibility(index)
+        return BLCSAllViewTrajectory(
+            index=index,
+            ball_uv=uv.astype(np.float32),
+            ball_visible=(rendered_visible & arrays["present"][None]),
+            court_kp=court_uv.astype(np.float32),
+            court_visible=arrays["court_visible"].astype(np.bool_),
+            positions_court_m=arrays["positions_court_m"].astype(np.float32),
+            velocities_court_mps=arrays["velocities_court_mps"].astype(np.float32),
+            present=arrays["present"].astype(np.bool_),
+            camera_R=np.stack([value[:3, :3].T for value in camera_to_court]).astype(
+                np.float32
+            ),
+            camera_C=np.stack([value[:3, 3] for value in camera_to_court]).astype(
+                np.float32
+            ),
+            camera_f=np.asarray(
+                [camera.intrinsics[0] for camera in cameras], dtype=np.float32
+            ),
+            camera_cx=np.asarray(
+                [camera.intrinsics[2] for camera in cameras], dtype=np.float32
+            ),
+            camera_cy=np.asarray(
+                [camera.intrinsics[5] for camera in cameras], dtype=np.float32
+            ),
+            camera_w=widths.astype(np.float32),
+            camera_h=heights.astype(np.float32),
+        )
+
+    def _rendered_visibility(self, index: BLCSTrajectoryIndex) -> NDArray[np.bool_]:
+        """Load compact renderer visibility without materializing RGB/depth arrays."""
+        result: NDArray[np.bool_] = np.zeros(
+            (len(index.camera_ids), index.frame_count, len(index.tracks)),
+            dtype=np.bool_,
+        )
+        for camera_index, camera_id in enumerate(index.camera_ids):
+            for frame_index in range(index.frame_count):
+                record = self._records[(index.trajectory_id, frame_index, camera_id)]
+                chunk_path = _contained_directory(
+                    self.output_directory, record.foreground_chunk
+                )
+                reader = self._chunks.setdefault(chunk_path, ChunkReader(chunk_path))
+                metadata = reader.metadata()[record.chunk_sample_index]
+                visible = _semantic_arrays(metadata)["rendered_visible"]
+                if visible.shape != (len(index.tracks),):
+                    raise ValueError(
+                        "BLCS rendered visibility disagrees with its track axis."
+                    )
+                result[camera_index, frame_index] = visible
+        return result
+
+    def _build_trajectory_index(
+        self, record: Mapping[str, object]
+    ) -> BLCSTrajectoryIndex:
+        plan = _mapping(
+            _load_json(
+                _contained_file(
+                    self.output_directory,
+                    _string(record["plan_json"], name="plan_json"),
+                )
+            ),
+            keys=_PLAN_KEYS,
+            name="BLCS plan",
+        )
+        trajectory_id = _string(record["trajectory_id"], name="trajectory_id")
+        split = _string(record["split"], name="split")
+        if split not in {"train", "validation", "test"}:
+            raise ValueError("BLCS trajectory split is unsupported.")
+        frame_count = _integer(record["source_frame_count"], name="frame_count")
+        camera_ids = tuple(
+            _string(value, name="camera_id")
+            for value in _list(record["camera_ids"], name="camera_ids")
+        )
+        mappings, object_ids, _ = _plan_tracks(plan["tracks"], frame_count=frame_count)
+        tracks = []
+        for object_index, (object_id, mapping) in enumerate(
+            zip(object_ids, mappings, strict=True)
+        ):
+            active = tuple(
+                index for index, value in enumerate(mapping) if value is not None
+            )
+            tracks.append(
+                BLCSTrackIndex(
+                    trajectory_id=trajectory_id,
+                    split=split,
+                    object_id=object_id,
+                    object_index=object_index,
+                    start_frame=active[0],
+                    stop_frame=active[-1] + 1,
+                )
+            )
+        return BLCSTrajectoryIndex(
+            trajectory_id=trajectory_id,
+            split=split,
+            frame_count=frame_count,
+            camera_ids=camera_ids,
+            tracks=tuple(tracks),
+        )
 
     def materialize(
         self,
@@ -213,8 +439,14 @@ def assemble_blcs_dataset(
         raise ValueError("BLCS assembly requires at least one resolved plan.")
     if not isinstance(metric_adapter, MetricSceneAdapter):
         raise TypeError("BLCS assembly requires the accepted MetricSceneAdapter.")
-    if output_directory.is_symlink() or not output_directory.is_dir():
-        raise ValueError("BLCS output must be the ordinary stage staging directory.")
+    if (
+        output_directory.name != "snapshot"
+        or output_directory.parent.name != "blcs_dataset"
+        or output_directory.parent.parent.name != ".transactions"
+        or output_directory.is_symlink()
+        or not output_directory.is_dir()
+    ):
+        raise ValueError("BLCS output must be its transaction snapshot directory.")
     samples_root = output_directory / "samples"
     if samples_root != render_attempt.trajectories[0].directory.parent:
         raise ValueError("BLCS render attempt is outside the canonical samples root.")
@@ -250,6 +482,8 @@ def assemble_blcs_dataset(
             camera_uv=plan.camera_uv,
             camera_depth=plan.camera_depth,
             geometric_visible=plan.geometric_visible,
+            court_uv=plan.court_uv,
+            court_visible=plan.court_visible,
         )
         camera_ids = tuple(
             camera.scene_camera.camera_id for camera in plan.camera_rig.cameras
@@ -456,8 +690,22 @@ def assemble_blcs_dataset(
 
 def validate_blcs_dataset(output_directory: Path) -> BLCSAssemblyResult:
     """Perform the sole final streaming validation pass over compact chunks."""
-    if output_directory.is_symlink() or not output_directory.is_dir():
-        raise ValueError("BLCS dataset must be an ordinary directory.")
+    is_owner = (
+        output_directory.name == "blcs" and output_directory.parent.name == "datasets"
+    )
+    is_transaction = (
+        output_directory.name == "snapshot"
+        and output_directory.parent.name == "blcs_dataset"
+        and output_directory.parent.parent.name == ".transactions"
+    )
+    if (
+        not (is_owner or is_transaction)
+        or output_directory.is_symlink()
+        or not output_directory.is_dir()
+    ):
+        raise ValueError(
+            "BLCS dataset must be its canonical owner or transaction snapshot."
+        )
     if set(path.name for path in output_directory.iterdir()) != {
         "dataset.json",
         "samples",
@@ -1081,6 +1329,8 @@ def _validated_plan_arrays(
         "camera_uv",
         "camera_depth",
         "geometric_visible",
+        "court_uv",
+        "court_visible",
     }
     if set(archive.files) != expected_keys:
         raise ValueError("BLCS plan array inventory is invalid.")
@@ -1110,6 +1360,8 @@ def _validated_plan_arrays(
             (frame_count, camera_count, object_count),
             np.dtype(np.bool_),
         ),
+        "court_uv": ((camera_count, 20, 2), np.dtype(np.float64)),
+        "court_visible": ((camera_count, 20), np.dtype(np.bool_)),
     }
     for name, (shape, dtype) in expected.items():
         if result[name].shape != shape or result[name].dtype != dtype:
@@ -1406,9 +1658,12 @@ def _float_tuple(value: object, *, name: str) -> tuple[float, ...]:
 
 
 __all__ = [
+    "BLCSAllViewTrajectory",
     "BLCSAssemblyResult",
     "BLCSCompactDatasetReader",
     "BLCSLogicalSample",
+    "BLCSTrackIndex",
+    "BLCSTrajectoryIndex",
     "MEASURED_DENSE_REFERENCE_BYTES",
     "assemble_blcs_dataset",
     "validate_blcs_dataset",

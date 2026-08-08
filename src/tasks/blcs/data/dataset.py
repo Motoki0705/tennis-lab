@@ -2,180 +2,101 @@
 
 from __future__ import annotations
 
-import json
+from collections.abc import Mapping
 from pathlib import Path
 from typing import cast
 
+import numpy as np
 import torch
 from torch import Tensor
 
-from src.tasks.base.data.scene_dataset import (
-    Scene,
-    SceneDatasetBase,
-    SceneDatasetConfig,
+from src.synthetic_data_generation.dataset.blcs.assembler import (
+    BLCSCompactDatasetReader,
+    BLCSTrackIndex,
 )
+from src.tasks.base.data.canonical_dataset import CanonicalDataset
 from src.tasks.blcs.data.augmentation import BLCSBallObservationAugmentation
 from src.tasks.blcs.data.types import BLCSMultiViewBatch, BLCSMultiViewSample
+from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 
-class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
-    """Unified BLCS dataset that always returns canonical multiview samples.
-
-    The canonical sample format keeps camera and temporal dimensions:
-    - ball_uv: (N, T, 2)
-    - ball_vis: (N, T)
-    - ball_mask: (N, T)
-    - court_kp: (N, T, 20, 2)
-    - court_vis: (N, T, 20)
-    - position_3d: (T, 3)
-    - velocity_3d: (T, 3)
-    """
+class BallTrajectoryDataset(CanonicalDataset[BLCSMultiViewSample]):
+    """Materialize one canonical object interval with every generated camera."""
 
     def __init__(
         self,
         *,
-        scene_dir: str | Path,
-        split_file: str | Path,
+        dataset_dir: str | Path,
+        split: str,
         config: object,
         augment: bool = True,
+        rng: np.random.Generator | None = None,
     ) -> None:
-        self.hydra_cfg = config
-        self.augment = augment
-        data_cfg = self._resolve_data_cfg(self.hydra_cfg)
-        self._configure_task(data_cfg)
-        super().__init__(
-            config=self._build_scene_dataset_config(
-                scene_dir=scene_dir,
-                split_file=split_file,
-                data_cfg=data_cfg,
-            )
+        super().__init__(config=config, augment=augment, rng=rng)
+        self.reader = BLCSCompactDatasetReader(Path(dataset_dir))
+        self.index: tuple[BLCSTrackIndex, ...] = self.reader.split_tracks(split)
+        if not self.index:
+            raise ValueError(f"Canonical BLCS split {split!r} is empty.")
+        num_court_kp = self.data_config["num_court_kp"]
+        if not isinstance(num_court_kp, int):
+            raise TypeError("data.num_court_kp must be an integer.")
+        self.num_court_kp = num_court_kp
+        if not 1 <= self.num_court_kp <= 20:
+            raise ValueError("data.num_court_kp must be within [1, 20].")
+        augmentation = self.data_config["augmentation"]
+        if not isinstance(augmentation, Mapping):
+            raise TypeError("data.augmentation must be a mapping.")
+        self.augmentation_pipeline = BLCSBallObservationAugmentation(augmentation)
+        self._scale = torch.tensor(COURT_COORD_SCALE_XYZ, dtype=torch.float32)
+
+    def __len__(self) -> int:
+        return len(self.index)
+
+    def __getitem__(self, item: int) -> BLCSMultiViewSample:
+        track = self.index[item]
+        trajectory = self.reader.materialize_all_views(track.trajectory_id)
+        window = self.contiguous_window(track.stop_frame - track.start_frame)
+        start = track.start_frame + int(window.start or 0)
+        stop = track.start_frame + int(window.stop or 0)
+        frames = slice(start, stop)
+        object_index = track.object_index
+        ball_uv = torch.from_numpy(trajectory.ball_uv[:, frames, object_index])
+        ball_vis = torch.from_numpy(
+            trajectory.ball_visible[:, frames, object_index]
+        ).float()
+        sequence_length = stop - start
+        court_kp = torch.from_numpy(trajectory.court_kp[:, : self.num_court_kp])[
+            :, None
+        ].expand(-1, sequence_length, -1, -1)
+        court_vis = (
+            torch.from_numpy(trajectory.court_visible[:, : self.num_court_kp])
+            .float()[:, None]
+            .expand(-1, sequence_length, -1)
         )
-
-    # -- Composed-method hooks ------------------------------------------
-
-    def _configure_task(self, data_cfg: dict) -> None:
-        # Multiview ranges
-        self.seq_len_range = self._parse_int_range(data_cfg, "seq_len_range")
-        self.num_views_range = self._parse_int_range(data_cfg, "num_views_range")
-        self.camera_mode = self._parse_camera_mode(data_cfg)
-
-        # Number of court keypoints to use (first N from the canonical order)
-        self.num_court_kp = int(data_cfg["num_court_kp"])
-
-        # Augmentation pipeline
-        aug_cfg = data_cfg["augmentation"]
-        self.augmentation_pipeline = BLCSBallObservationAugmentation(aug_cfg)
-
-    def _build_scene_dataset_config(
-        self,
-        *,
-        scene_dir: str | Path,
-        split_file: str | Path,
-        data_cfg: dict,
-    ) -> SceneDatasetConfig:
-        return SceneDatasetConfig(
-            scene_dir=Path(scene_dir),
-            split_file=Path(split_file),
-            seq_len_range=self.seq_len_range,
-            num_views_range=self.num_views_range,
-            camera_mode=self.camera_mode,
-            crop_mode=("random" if self.augment else "center"),
-            min_num_frames=self.seq_len_range[0],
-            min_num_cameras=self.num_views_range[0],
-        )
-
-    def build_sample(self, scene: Scene) -> BLCSMultiViewSample:
-        cams = self.select_cameras(
-            scene, num_views_range=self.num_views_range, camera_mode=self.camera_mode
-        )
-        # Use camera trajectory length to guard against metadata drift.
-        primary_len = int(scene.get_camera_array(cams.primary, "ball_uv").shape[0])
-        pos_len = int(scene.data["ball_pos_norm"].shape[0])
-        vel_len = int(scene.data["ball_vel_world"].shape[0])
-        full_len = scene.effective_num_frames(primary_len, pos_len, vel_len)
-        window = self.select_window(scene, full_len=full_len)
-        ball_uv_list: list[Tensor] = []
-        ball_vis_list: list[Tensor] = []
-        court_kp_list: list[Tensor] = []
-        court_vis_list: list[Tensor] = []
-        cam_R_list: list[Tensor] = []
-        cam_C_list: list[Tensor] = []
-        cam_f_list: list[Tensor] = []
-        cam_cx_list: list[Tensor] = []
-        cam_cy_list: list[Tensor] = []
-        cam_w_list: list[Tensor] = []
-        cam_h_list: list[Tensor] = []
-
-        for cam_idx in cams.indices:
-            ball_uv = torch.from_numpy(
-                scene.get_camera_array(cam_idx, "ball_uv", window=window)
-            ).float()
-            ball_vis = torch.from_numpy(
-                scene.get_camera_array(cam_idx, "ball_visible", window=window)
-            ).float()
-            court_kp = torch.from_numpy(
-                scene.get_camera_array(cam_idx, "court_kp_uv")
-            ).float()
-            court_vis = torch.from_numpy(
-                scene.get_camera_array(cam_idx, "court_kp_visible")
-            ).float()
-            court_kp = court_kp[: self.num_court_kp]
-            court_vis = court_vis[: self.num_court_kp]
-
-            court_kp_expanded = court_kp.unsqueeze(0).expand(window.seq_len, -1, -1)
-            court_vis_expanded = court_vis.unsqueeze(0).expand(window.seq_len, -1)
-
-            ball_uv_list.append(ball_uv)
-            ball_vis_list.append(ball_vis)
-            court_kp_list.append(court_kp_expanded)
-            court_vis_list.append(court_vis_expanded)
-
-            # Load camera parameters from scene payload
-            params_key = f"cam_{cam_idx}_params"
-            raw = scene.data[params_key]
-            cam_params = raw if isinstance(raw, dict) else json.loads(str(raw))
-            # Normalise key: generators may store centre as "C" or "center"
-            cam_R_list.append(torch.tensor(cam_params["R"], dtype=torch.float32))
-            cam_C_list.append(torch.tensor(cam_params["C"], dtype=torch.float32))
-            cam_f_list.append(torch.tensor(cam_params["f"], dtype=torch.float32))
-            cam_cx_list.append(torch.tensor(cam_params["cx"], dtype=torch.float32))
-            cam_cy_list.append(torch.tensor(cam_params["cy"], dtype=torch.float32))
-            cam_w_list.append(torch.tensor(float(cam_params["w"]), dtype=torch.float32))
-            cam_h_list.append(torch.tensor(float(cam_params["h"]), dtype=torch.float32))
-
         sample: BLCSMultiViewSample = {
-            "ball_uv": torch.stack(ball_uv_list, dim=0),
-            "ball_vis": torch.stack(ball_vis_list, dim=0),
-            "ball_mask": torch.ones(
-                len(cams.indices), window.seq_len, dtype=torch.float32
-            ),
-            "court_kp": torch.stack(court_kp_list, dim=0),
-            "court_vis": torch.stack(court_vis_list, dim=0),
+            "ball_uv": ball_uv,
+            "ball_vis": ball_vis,
+            "ball_mask": torch.ones_like(ball_vis),
+            "court_kp": court_kp,
+            "court_vis": court_vis,
             "position_3d": torch.from_numpy(
-                scene.get_array("ball_pos_norm", window=window)
-            ).float(),
+                trajectory.positions_court_m[frames, object_index]
+            )
+            / self._scale,
             "velocity_3d": torch.from_numpy(
-                scene.get_array("ball_vel_world", window=window)
-            ).float(),
-            "seq_len": torch.tensor(window.seq_len, dtype=torch.long),
-            "camera_R": torch.stack(cam_R_list, dim=0),
-            "camera_C": torch.stack(cam_C_list, dim=0),
-            "camera_f": torch.stack(cam_f_list, dim=0),
-            "camera_cx": torch.stack(cam_cx_list, dim=0),
-            "camera_cy": torch.stack(cam_cy_list, dim=0),
-            "camera_w": torch.stack(cam_w_list, dim=0),
-            "camera_h": torch.stack(cam_h_list, dim=0),
+                trajectory.velocities_court_mps[frames, object_index]
+            ),
+            "seq_len": torch.tensor(sequence_length, dtype=torch.long),
+            "camera_R": torch.from_numpy(trajectory.camera_R),
+            "camera_C": torch.from_numpy(trajectory.camera_C),
+            "camera_f": torch.from_numpy(trajectory.camera_f),
+            "camera_cx": torch.from_numpy(trajectory.camera_cx),
+            "camera_cy": torch.from_numpy(trajectory.camera_cy),
+            "camera_w": torch.from_numpy(trajectory.camera_w),
+            "camera_h": torch.from_numpy(trajectory.camera_h),
         }
-        return sample
-
-    def _apply_augmentation_multiview(
-        self, sample: BLCSMultiViewSample
-    ) -> BLCSMultiViewSample:
-        return self.augmentation_pipeline.forward(sample)
-
-    def augment_sample(self, sample: BLCSMultiViewSample) -> BLCSMultiViewSample:
         if self.augment:
-            return self._apply_augmentation_multiview(sample)
+            return self.augmentation_pipeline.forward(sample)
         return sample
 
 

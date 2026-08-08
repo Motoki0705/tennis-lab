@@ -1,13 +1,12 @@
-"""DataModule for canonical fixed-path multi-person PLCS data."""
+"""Canonical compact PLCS tracking data module."""
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
-from torch.utils.data import Dataset
+import pytorch_lightning as pl
+from torch.utils.data import DataLoader
 
-from src.tasks.base.data.datamodule import SceneDirectoryDataModule
 from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.data.tracking_dataset import (
     PLCSTrackingDataset,
@@ -15,28 +14,61 @@ from src.tasks.plcs.data.tracking_dataset import (
 )
 
 
-class PLCSTrackingDataModule(SceneDirectoryDataModule):
-    """Read fixed train/val/test multi-person scenes from disk."""
+class PLCSTrackingDataModule(pl.LightningDataModule):
+    """Build lifecycle samples directly from canonical manifest splits."""
 
     def __init__(self, config: object) -> None:
-        self.plcs_runtime = PLCSTrainingConfig.from_config(config)
-        super().__init__(config)
+        super().__init__()
+        self.runtime = PLCSTrainingConfig.from_config(config)
+        self.train_dataset: PLCSTrackingDataset | None = None
+        self.val_dataset: PLCSTrackingDataset | None = None
+        self.test_dataset: PLCSTrackingDataset | None = None
 
-    def _build_collate_fn(self) -> Any:
-        return collate_plcs_tracking_batch
+    def setup(self, stage: str | None = None) -> None:
+        directory = self.runtime.data.dataset_dir
+        config = self.runtime.raw
+        if stage in {None, "fit"}:
+            self.train_dataset = PLCSTrackingDataset(
+                dataset_dir=directory, split="train", config=config, augment=True
+            )
+            self.val_dataset = PLCSTrackingDataset(
+                dataset_dir=directory,
+                split="validation",
+                config=config,
+                augment=False,
+            )
+        if stage in {None, "test"}:
+            self.test_dataset = PLCSTrackingDataset(
+                dataset_dir=directory, split="test", config=config, augment=False
+            )
 
-    def _build_dataset(
-        self, scene_dir: Path, split_file: str, augment: bool
-    ) -> Dataset:
-        return PLCSTrackingDataset(
-            scene_dir=scene_dir,
-            split_file=split_file,
-            config=self.plcs_runtime.raw,
-            augment=augment,
+    def _loader(
+        self, dataset: PLCSTrackingDataset, *, shuffle: bool
+    ) -> DataLoader[Any]:
+        data = self.runtime.data
+        return DataLoader(
+            dataset,
+            batch_size=data.batch_size,
+            shuffle=shuffle,
+            num_workers=data.num_workers,
+            pin_memory=data.pin_memory,
+            collate_fn=collate_plcs_tracking_batch,
         )
 
-    def _dataset_name(self) -> str:
-        return "plcs"
+    def train_dataloader(self) -> DataLoader[Any]:
+        if self.train_dataset is None:
+            raise RuntimeError("PLCSTrackingDataModule.setup('fit') must run first.")
+        return self._loader(self.train_dataset, shuffle=True)
+
+    def val_dataloader(self) -> DataLoader[Any]:
+        if self.val_dataset is None:
+            raise RuntimeError("PLCSTrackingDataModule.setup('fit') must run first.")
+        return self._loader(self.val_dataset, shuffle=False)
+
+    def test_dataloader(self) -> DataLoader[Any]:
+        if self.test_dataset is None:
+            raise RuntimeError("PLCSTrackingDataModule.setup('test') must run first.")
+        return self._loader(self.test_dataset, shuffle=False)
 
 
 __all__ = ["PLCSTrackingDataModule"]

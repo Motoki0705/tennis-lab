@@ -124,9 +124,7 @@ def test_full_real_accad_timeline_is_articulated_and_composable() -> None:
     device_model = upload_smplh_model(model, device=device)
     device_clip = upload_motion_clip(clip, model, device=device)
     appearance = AvatarAppearance(
-        features=torch.full(
-            (64, 3), 0.5, dtype=torch.float32, device=device
-        ),
+        features=torch.full((64, 3), 0.5, dtype=torch.float32, device=device),
         appearance_model="rgb",
         appearance_space="linear_rgb",
     )
@@ -168,19 +166,20 @@ def test_full_real_accad_timeline_is_articulated_and_composable() -> None:
     assert avatar.articulation.frame_count == clip.frame_count
     assert avatar.articulation.gaussian_nonrigid_residual_m > 0.01
     tensors = avatar.frame_tensors_batch((0, clip.frame_count - 1))
-    assert all(value.means.device.type == "cuda" for value in tensors.values())
+    assert all(
+        value.gaussians.means.device.type == "cuda" for value in tensors.values()
+    )
+    assert all(value.joints_m.shape == (52, 3) for value in tensors.values())
     first = compose_foreground_frame_gaussians(
         composition,
         frame_index=0,
-        object_tensors={
-            "player-001": assign_instance_id(tensors[0], 1)
-        },
+        object_tensors={"player-001": assign_instance_id(tensors[0].gaussians, 1)},
     )
     last = compose_foreground_frame_gaussians(
         composition,
         frame_index=clip.frame_count - 1,
         object_tensors={
-            "player-001": assign_instance_id(tensors[clip.frame_count - 1], 1)
+            "player-001": assign_instance_id(tensors[clip.frame_count - 1].gaussians, 1)
         },
     )
     assert first.gaussian_count == 64 == last.gaussian_count

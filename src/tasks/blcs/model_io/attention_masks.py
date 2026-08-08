@@ -102,13 +102,11 @@ def prepare_tracking_attention_masks(
 ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     """Prepare track-query state, spatial/time, and point-fusion masks."""
     batch_size, num_views, num_frames, num_detections = ball_visible.shape
-    context_valid = (
-        view_mask[:, :, None, None] & frame_mask[:, None, :, None]
-    ).expand(-1, -1, -1, num_detections)
+    context_valid = (view_mask[:, :, None, None] & frame_mask[:, None, :, None]).expand(
+        -1, -1, -1, num_detections
+    )
     observation_valid = (
-        context_valid & ball_visible
-        if mask_invisible_observations
-        else context_valid
+        context_valid & ball_visible if mask_invisible_observations else context_valid
     )
     observation_state_valid = observation_valid.permute(0, 2, 1, 3)
 
@@ -153,9 +151,7 @@ def prepare_point_attention_mask(
     )
     court_key_valid = court_visible & context_valid.unsqueeze(-1)
     point_valid = torch.cat((court_key_valid, ball_state_valid), dim=-1)
-    point_mask, _ = build_self_attn_mask(
-        point_valid.reshape(-1, point_valid.shape[-1])
-    )
+    point_mask, _ = build_self_attn_mask(point_valid.reshape(-1, point_valid.shape[-1]))
     return ball_state_valid, point_mask
 
 

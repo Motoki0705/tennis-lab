@@ -19,10 +19,19 @@ from src.utils.projection.camera_projector import make_look_at_camera
 
 
 def _range(value: object, *, name: str) -> tuple[float, float]:
-    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or len(value) != 2:
+    if (
+        not isinstance(value, Sequence)
+        or isinstance(value, (str, bytes))
+        or len(value) != 2
+    ):
         raise TypeError(f"{name} must contain exactly two numeric values.")
     low, high = value
-    if isinstance(low, bool) or isinstance(high, bool) or not isinstance(low, (int, float)) or not isinstance(high, (int, float)):
+    if (
+        isinstance(low, bool)
+        or isinstance(high, bool)
+        or not isinstance(low, (int, float))
+        or not isinstance(high, (int, float))
+    ):
         raise TypeError(f"{name} must contain exactly two numeric values.")
     result = (float(low), float(high))
     if not all(math.isfinite(item) for item in result) or result[0] > result[1]:
@@ -106,11 +115,24 @@ class CameraProfileConfig:
         if profile not in {"default", "broadcast"}:
             raise ValueError("camera profile must be exactly 'default' or 'broadcast'.")
         image_size = raw["image_size"]
-        if not isinstance(image_size, Sequence) or isinstance(image_size, (str, bytes)) or len(image_size) != 2:
+        if (
+            not isinstance(image_size, Sequence)
+            or isinstance(image_size, (str, bytes))
+            or len(image_size) != 2
+        ):
             raise TypeError("camera image_size must contain width and height.")
         width, height = image_size
-        if isinstance(width, bool) or isinstance(height, bool) or not isinstance(width, int) or not isinstance(height, int) or width <= 1 or height <= 1:
-            raise ValueError("camera image_size values must be integers greater than one.")
+        if (
+            isinstance(width, bool)
+            or isinstance(height, bool)
+            or not isinstance(width, int)
+            or not isinstance(height, int)
+            or width <= 1
+            or height <= 1
+        ):
+            raise ValueError(
+                "camera image_size values must be integers greater than one."
+            )
         expected = raw["expected_camera_count"]
         if isinstance(expected, bool) or not isinstance(expected, int) or expected <= 0:
             raise ValueError("expected_camera_count must be a positive integer.")
@@ -248,9 +270,44 @@ def assert_projection_equivalent(
     """Prove court-local and scene-space projection are numerically equivalent."""
     if atol <= 0.0 or not math.isfinite(atol):
         raise ValueError("Projection tolerance must be finite and positive.")
+    local = make_look_at_camera(
+        sampled.court_local_center_m,
+        look_at=sampled.court_local_look_at_m,
+        image_size=(sampled.scene_camera.width, sampled.scene_camera.height),
+        hfov_deg=sampled.hfov_degrees,
+    )
+    expected_intrinsics = np.asarray(
+        (
+            local.f,
+            0.0,
+            local.cx,
+            0.0,
+            local.f,
+            local.cy,
+            0.0,
+            0.0,
+            1.0,
+        ),
+        dtype=np.float64,
+    )
+    actual_intrinsics = np.asarray(sampled.scene_camera.intrinsics, dtype=np.float64)
+    if not np.allclose(actual_intrinsics, expected_intrinsics, atol=atol, rtol=0.0):
+        raise ValueError("Generated camera intrinsics disagree with local authority.")
+    camera_to_court = np.eye(4, dtype=np.float64)
+    camera_to_court[:3, :3] = local.R.detach().cpu().numpy().astype(np.float64).T
+    camera_to_court[:3, 3] = local.C.detach().cpu().numpy().astype(np.float64)
+    expected_camera_to_scene = court.scene_from_court.matrix() @ camera_to_court
+    if not np.allclose(
+        sampled.scene_camera.camera_to_scene.matrix(),
+        expected_camera_to_scene,
+        atol=atol,
+        rtol=0.0,
+    ):
+        raise ValueError(
+            "Generated scene camera disagrees with independent court-local authority."
+        )
     scene_points = court.scene_from_court.apply(points_court)
     scene_pixels, _ = sampled.scene_camera.project_scene_points(scene_points)
-    camera_to_court = court.court_from_scene.matrix() @ sampled.scene_camera.camera_to_scene.matrix()
     local_camera = SceneCamera(
         camera_id=sampled.scene_camera.camera_id,
         source_frame_index=0,

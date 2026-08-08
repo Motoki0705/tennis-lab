@@ -5,10 +5,12 @@ from __future__ import annotations
 import json
 from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
 import numpy as np
+from numpy.typing import NDArray
 
 from src.synthetic_data_generation.dataset.contracts import (
     FrameInventory,
@@ -17,6 +19,7 @@ from src.synthetic_data_generation.dataset.contracts import (
 from src.synthetic_data_generation.dataset.plcs.assembler import (
     PLCS_DATASET_SCHEMA,
     PLCS_FRAME_LABEL_SCHEMA,
+    PLCSSupervisionArrays,
 )
 from src.synthetic_data_generation.dataset.runtime import (
     ChunkReader,
@@ -33,6 +36,38 @@ from src.tasks.base.generate_dataset.continuity import (
     validate_frame_continuity,
 )
 from src.utils.projection.camera_projector import make_look_at_camera
+
+
+@dataclass(frozen=True, slots=True)
+class PLCSTrackIndex:
+    """One manifest-authoritative person interval."""
+
+    scene_id: str
+    split: str
+    object_id: str
+    object_index: int
+    start_frame: int
+    stop_frame: int
+
+
+@dataclass(frozen=True, slots=True)
+class PLCSSceneIndex:
+    """One complete logical scene and its generated view inventory."""
+
+    scene_id: str
+    split: str
+    frame_count: int
+    camera_ids: tuple[str, ...]
+    object_ids: tuple[str, ...]
+    tracks: tuple[PLCSTrackIndex, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class PLCSAllViewScene:
+    """All-view dense supervision for a complete source timeline."""
+
+    index: PLCSSceneIndex
+    supervision: PLCSSupervisionArrays
 
 
 class PLCSCompactDatasetReader:
@@ -52,31 +87,57 @@ class PLCSCompactDatasetReader:
         if set(logical_scenes) != set(storage_scenes):
             raise ValueError("PLCS reader scene metadata and storage differ.")
         self.cameras: dict[str, tuple[SceneCamera, ...]] = {}
-        self._index: dict[
-            tuple[str, RenderSampleKey], tuple[ChunkReader, int]
-        ] = {}
+        self._logical_scenes = logical_scenes
+        self._storage_scenes = storage_scenes
+        self._index: dict[tuple[str, RenderSampleKey], tuple[ChunkReader, int]] = {}
         for scene_id, scene in logical_scenes.items():
             cameras = _scene_cameras(scene)
             self.cameras[scene_id] = cameras
             record = storage_scenes[scene_id]
             readers = tuple(
-                ChunkReader(
-                    directory / _relative_path(value, name="scene chunk")
-                )
+                ChunkReader(directory / _relative_path(value, name="scene chunk"))
                 for value in _array(record["chunks"], name="scene chunks")
             )
-            attempt_token = _text(
-                record["attempt_token"], name="attempt_token"
-            )
+            attempt_token = _text(record["attempt_token"], name="attempt_token")
             for reader in readers:
-                validated = reader.validate(
-                    expected_attempt_token=attempt_token
-                )
+                validated = reader.validate(expected_attempt_token=attempt_token)
                 for ordinal, key in enumerate(validated.keys):
                     compound = (scene_id, key)
                     if compound in self._index:
                         raise ValueError(f"Duplicate compact PLCS sample: {compound}.")
                     self._index[compound] = (reader, ordinal)
+        self.scenes = tuple(
+            _scene_index(scene_id, scene, storage_scenes[scene_id])
+            for scene_id, scene in logical_scenes.items()
+        )
+        self.tracks = tuple(track for scene in self.scenes for track in scene.tracks)
+
+    def split_scenes(self, split: str) -> tuple[PLCSSceneIndex, ...]:
+        """Return complete logical scenes for one manifest split."""
+        canonical = "validation" if split == "val" else split
+        if canonical not in {"train", "validation", "test"}:
+            raise ValueError("PLCS split must be train, validation/val, or test.")
+        return tuple(scene for scene in self.scenes if scene.split == canonical)
+
+    def split_tracks(self, split: str) -> tuple[PLCSTrackIndex, ...]:
+        """Return stable track intervals for one manifest split."""
+        selected = {scene.scene_id for scene in self.split_scenes(split)}
+        return tuple(track for track in self.tracks if track.scene_id in selected)
+
+    def materialize_all_views(self, scene_id: str) -> PLCSAllViewScene:
+        """Load every generated camera and every global frame without selection."""
+        try:
+            index = next(scene for scene in self.scenes if scene.scene_id == scene_id)
+        except StopIteration as error:
+            raise KeyError(f"Unknown PLCS logical scene: {scene_id!r}.") from error
+        arrays = _supervision_arrays(
+            self.directory,
+            self._storage_scenes[scene_id],
+            frame_count=index.frame_count,
+            camera_count=len(index.camera_ids),
+            object_count=len(index.object_ids),
+        )
+        return PLCSAllViewScene(index=index, supervision=arrays)
 
     def logical_sample(
         self,
@@ -165,8 +226,7 @@ def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
         raise ValueError("PLCS logical-scene metadata and storage IDs differ.")
 
     backgrounds = SharedBackgroundStore(
-        directory
-        / _relative_path(storage["background_store"], name="background_store")
+        directory / _relative_path(storage["background_store"], name="background_store")
     )
     backgrounds.validate_all()
     expected_background_ids: list[str] = []
@@ -301,6 +361,31 @@ def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
         )
 
         record = storage_scenes[logical_scene_id]
+        supervision = _supervision_arrays(
+            directory,
+            record,
+            frame_count=frame_count,
+            camera_count=len(cameras),
+            object_count=len(tracks),
+        )
+        if tuple(_array(record["camera_ids"], name="camera_ids")) != tuple(
+            camera.camera_id for camera in cameras
+        ) or tuple(_array(record["object_ids"], name="object_ids")) != tuple(
+            _text(track["object_id"], name="object_id") for track in tracks
+        ):
+            raise ValueError("PLCS supervision axis identities are inconsistent.")
+        expected_presence: NDArray[np.bool_] = np.zeros(
+            (frame_count, len(tracks)), dtype=np.bool_
+        )
+        for object_index, track in enumerate(tracks):
+            expected_presence[
+                _nonnegative_integer(
+                    track["start_frame"], name="start_frame"
+                ) : _positive_integer(track["stop_frame"], name="stop_frame"),
+                object_index,
+            ] = True
+        if not np.array_equal(supervision.present, expected_presence):
+            raise ValueError("PLCS supervision omits or invents lifecycle frames.")
         readers = tuple(
             ChunkReader(directory / _relative_path(value, name="scene chunk"))
             for value in _array(record["chunks"], name="scene chunks")
@@ -317,9 +402,7 @@ def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
         for chunk_index, (_chunk, reader) in enumerate(
             zip(validated, readers, strict=True)
         ):
-            for delta, label in zip(
-                reader.deltas(), reader.metadata(), strict=True
-            ):
+            for delta, label in zip(reader.deltas(), reader.metadata(), strict=True):
                 _validate_label(
                     label,
                     scene_id=logical_scene_id,
@@ -359,9 +442,7 @@ def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
             continuity_records,
             frame_count=frame_count,
         )
-        persisted_continuity = _object(
-            scene["continuity"], name="continuity"
-        )
+        persisted_continuity = _object(scene["continuity"], name="continuity")
         expected_continuity = {
             "frame_count": continuity.frame_count,
             "chunk_count": continuity.chunk_count,
@@ -376,9 +457,10 @@ def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
 
     if tuple(expected_background_ids) != backgrounds.camera_ids:
         raise ValueError("PLCS background store differs from accepted-court cameras.")
-    if aggregate_offset != frame_inventory.source_count or aggregate_offset != metadata[
-        "aggregate_global_frame_count"
-    ]:
+    if (
+        aggregate_offset != frame_inventory.source_count
+        or aggregate_offset != metadata["aggregate_global_frame_count"]
+    ):
         raise ValueError("PLCS aggregate global frame inventory is inexact.")
     if aggregate_source_frames != metadata["aggregate_source_frame_count"]:
         raise ValueError("PLCS aggregate source-motion frame inventory is inexact.")
@@ -482,18 +564,13 @@ def _validate_diagnostics(
         dataset_scenes, diagnostic_scenes, strict=True
     ):
         dataset_scene = _object(dataset_value, name="dataset logical scene")
-        diagnostic_scene = _object(
-            diagnostic_value, name="diagnostic logical scene"
-        )
+        diagnostic_scene = _object(diagnostic_value, name="diagnostic logical scene")
         sources = tuple(
             _motion_source(value)
-            for value in _array(
-                dataset_scene["motion_sources"], name="motion_sources"
-            )
+            for value in _array(dataset_scene["motion_sources"], name="motion_sources")
         )
         tracks = tuple(
-            _track(value)
-            for value in _array(dataset_scene["tracks"], name="tracks")
+            _track(value) for value in _array(dataset_scene["tracks"], name="tracks")
         )
         cameras = _scene_cameras(dataset_scene)
         camera_distribution = _object(
@@ -511,22 +588,18 @@ def _validate_diagnostics(
             or diagnostic_scene.get("split") != dataset_scene["split"]
             or diagnostic_scene.get("mode") != dataset_scene["mode"]
             or diagnostic_scene.get("global_frame_count")
-            != _object(
-                dataset_scene["frame_inventory"], name="frame_inventory"
-            )["source"]
-            or diagnostic_scene.get("source_frame_counts")
-            != expected_source_counts
+            != _object(dataset_scene["frame_inventory"], name="frame_inventory")[
+                "source"
+            ]
+            or diagnostic_scene.get("source_frame_counts") != expected_source_counts
             or diagnostic_scene.get("motion_categories")
             != [source["category"] for source in sources]
-            or diagnostic_scene.get("target_court")
-            != dataset_scene["target_court"]
-            or camera_distribution.get("profile")
-            != dataset_scene["camera_profile"]
+            or diagnostic_scene.get("target_court") != dataset_scene["target_court"]
+            or camera_distribution.get("profile") != dataset_scene["camera_profile"]
             or camera_distribution.get("camera_count") != len(cameras)
             or camera_distribution.get("camera_ids")
             != [camera.camera_id for camera in cameras]
-            or camera_distribution.get("sampled_parameters")
-            != dataset_scene["cameras"]
+            or camera_distribution.get("sampled_parameters") != dataset_scene["cameras"]
         ):
             raise ValueError(
                 "PLCS logical-scene diagnostics disagree with published metadata."
@@ -546,16 +619,12 @@ def _validate_diagnostics(
     ):
         raise ValueError("PLCS diagnostic court counts disagree with logical scenes.")
     expected_split_counts = {
-        split: {
-            court: counts[court] for court in sorted(scene_court_counts)
-        }
+        split: {court: counts[court] for court in sorted(scene_court_counts)}
         for split, counts in sorted(split_court_counts.items())
     }
     if court_balance.get("per_split_counts") != expected_split_counts:
         raise ValueError("PLCS diagnostic split balance disagrees with logical scenes.")
-    summary = (directory / "diagnostics" / "summary.txt").read_text(
-        encoding="utf-8"
-    )
+    summary = (directory / "diagnostics" / "summary.txt").read_text(encoding="utf-8")
     if (
         "PLCS production diagnostics" not in summary
         or f"logical scenes: {logical_scene_count}" not in summary
@@ -565,15 +634,25 @@ def _validate_diagnostics(
 
 
 def _manifest(directory: Path) -> Mapping[str, object]:
+    is_owner = directory.name == "plcs" and directory.parent.name == "datasets"
+    is_transaction = (
+        directory.name == "snapshot"
+        and directory.parent.name == "plcs_dataset"
+        and directory.parent.parent.name == ".transactions"
+    )
     if (
-        directory.name not in {"plcs", "staging"}
+        not (is_owner or is_transaction)
         or not directory.is_dir()
         or directory.is_symlink()
     ):
-        raise ValueError("PLCS validation requires a canonical plcs or staging directory.")
+        raise ValueError(
+            "PLCS validation requires its canonical owner or transaction snapshot."
+        )
     top_level = {path.name for path in directory.iterdir()}
     if top_level != {"dataset.json", "backgrounds", "scenes", "diagnostics"}:
-        raise ValueError("PLCS dataset contains stale or non-canonical top-level paths.")
+        raise ValueError(
+            "PLCS dataset contains stale or non-canonical top-level paths."
+        )
     manifest = _object(_load_json(directory / "dataset.json"), name="dataset.json")
     _keys(
         manifest,
@@ -617,7 +696,15 @@ def _storage_scene_map(
         record = _object(value, name="storage scene")
         _keys(
             record,
-            {"scene_id", "chunks", "attempt_token", "sample_order"},
+            {
+                "scene_id",
+                "chunks",
+                "attempt_token",
+                "sample_order",
+                "supervision",
+                "camera_ids",
+                "object_ids",
+            },
             name="storage scene",
         )
         scene_id = _text(record["scene_id"], name="storage scene_id")
@@ -626,6 +713,80 @@ def _storage_scene_map(
         result[scene_id] = record
     if not result:
         raise ValueError("PLCS storage scene inventory must not be empty.")
+    return result
+
+
+def _scene_index(
+    scene_id: str,
+    scene: Mapping[str, object],
+    storage: Mapping[str, object],
+) -> PLCSSceneIndex:
+    split = _text(scene["split"], name="split")
+    if split not in {"train", "validation", "test"}:
+        raise ValueError("PLCS logical scene split is unsupported.")
+    inventory = FrameInventory.from_dict(scene["frame_inventory"])
+    tracks_raw = tuple(
+        _track(value) for value in _array(scene["tracks"], name="tracks")
+    )
+    object_ids = tuple(
+        _text(track["object_id"], name="object_id") for track in tracks_raw
+    )
+    camera_ids = tuple(
+        _text(value, name="camera_id")
+        for value in _array(storage["camera_ids"], name="camera_ids")
+    )
+    persisted_object_ids = tuple(
+        _text(value, name="object_id")
+        for value in _array(storage["object_ids"], name="object_ids")
+    )
+    if persisted_object_ids != object_ids:
+        raise ValueError("PLCS supervision object order differs from manifest tracks.")
+    tracks = tuple(
+        PLCSTrackIndex(
+            scene_id=scene_id,
+            split=split,
+            object_id=object_id,
+            object_index=object_index,
+            start_frame=_nonnegative_integer(track["start_frame"], name="start_frame"),
+            stop_frame=_positive_integer(track["stop_frame"], name="stop_frame"),
+        )
+        for object_index, (object_id, track) in enumerate(
+            zip(object_ids, tracks_raw, strict=True)
+        )
+    )
+    return PLCSSceneIndex(
+        scene_id=scene_id,
+        split=split,
+        frame_count=inventory.source_count,
+        camera_ids=camera_ids,
+        object_ids=object_ids,
+        tracks=tracks,
+    )
+
+
+def _supervision_arrays(
+    directory: Path,
+    record: Mapping[str, object],
+    *,
+    frame_count: int,
+    camera_count: int,
+    object_count: int,
+) -> PLCSSupervisionArrays:
+    relative = _relative_path(record["supervision"], name="supervision")
+    path = directory / relative
+    if not path.is_file() or path.is_symlink():
+        raise FileNotFoundError(f"PLCS supervision store is missing: {path}")
+    expected_names = tuple(PLCSSupervisionArrays.__dataclass_fields__)
+    with np.load(path, allow_pickle=False) as archive:
+        if set(archive.files) != set(expected_names):
+            raise ValueError("PLCS supervision array inventory is invalid.")
+        values = {name: np.asarray(archive[name]) for name in expected_names}
+    result = PLCSSupervisionArrays(**values)
+    result.validate(
+        frame_count=frame_count,
+        camera_count=camera_count,
+        object_count=object_count,
+    )
     return result
 
 
@@ -660,9 +821,7 @@ def _validate_camera_binding(
     records = _array(scene["cameras"], name="cameras")
     for index, (value, camera) in enumerate(zip(records, cameras, strict=True)):
         record = _object(value, name=f"cameras[{index}]")
-        center_raw = _array(
-            record["court_local_center_m"], name="court_local_center_m"
-        )
+        center_raw = _array(record["court_local_center_m"], name="court_local_center_m")
         look_at_raw = _array(
             record["court_local_look_at_m"], name="court_local_look_at_m"
         )
@@ -677,12 +836,8 @@ def _validate_camera_binding(
             hfov_deg=_positive_number(record["hfov_degrees"], name="hfov_degrees"),
         )
         camera_to_court = np.eye(4, dtype=np.float64)
-        camera_to_court[:3, :3] = (
-            local.R.detach().cpu().numpy().astype(np.float64).T
-        )
-        camera_to_court[:3, 3] = (
-            local.C.detach().cpu().numpy().astype(np.float64)
-        )
+        camera_to_court[:3, :3] = local.R.detach().cpu().numpy().astype(np.float64).T
+        camera_to_court[:3, 3] = local.C.detach().cpu().numpy().astype(np.float64)
         expected = binding.scene_from_court.matrix() @ camera_to_court
         if not np.allclose(
             camera.camera_to_scene.matrix(),
@@ -789,7 +944,9 @@ def _validate_label(
         or label["camera_profile"] != camera_profile
         or label["camera_parameters"] != camera_metadata
     ):
-        raise ValueError("PLCS compact label identity/binding disagrees with its delta.")
+        raise ValueError(
+            "PLCS compact label identity/binding disagrees with its delta."
+        )
     objects = _array(label["objects"], name="objects")
     if len(objects) != len(tracks):
         raise ValueError("PLCS label must retain every declared track.")
@@ -828,7 +985,9 @@ def _validate_label(
             or record["gender"] != source["gender"]
             or record["native_fps"] != source["native_fps"]
         ):
-            raise ValueError("PLCS object label differs from its motion/track inventory.")
+            raise ValueError(
+                "PLCS object label differs from its motion/track inventory."
+            )
         start = cast(int, track["start_frame"])
         stop = cast(int, track["stop_frame"])
         expected_source = (
@@ -837,9 +996,10 @@ def _validate_label(
         present = record["present"]
         if not isinstance(present, bool):
             raise TypeError("PLCS object present must be boolean.")
-        if present != (expected_source is not None) or record[
-            "source_frame_index"
-        ] != expected_source:
+        if (
+            present != (expected_source is not None)
+            or record["source_frame_index"] != expected_source
+        ):
             raise ValueError("PLCS object presence/source mapping is incomplete.")
         count = _nonnegative_integer(
             record["visible_pixel_count"], name="visible_pixel_count"
@@ -922,4 +1082,10 @@ def _positive_integer(value: object, *, name: str) -> int:
     return result
 
 
-__all__ = ["PLCSCompactDatasetReader", "validate_plcs_dataset"]
+__all__ = [
+    "PLCSAllViewScene",
+    "PLCSCompactDatasetReader",
+    "PLCSSceneIndex",
+    "PLCSTrackIndex",
+    "validate_plcs_dataset",
+]

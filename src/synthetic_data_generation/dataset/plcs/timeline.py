@@ -295,9 +295,7 @@ class PLCSSceneInventory:
                     "Every PLCS logical scene must retain the same complete source "
                     "motion inventory."
                 )
-            categories = {
-                track.clip.category.value for track in scene.timeline.tracks
-            }
+            categories = {track.clip.category.value for track in scene.timeline.tracks}
             if categories != required:
                 raise ValueError(
                     "PLCS logical scene motion categories differ from the required "

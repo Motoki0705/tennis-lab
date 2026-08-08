@@ -18,6 +18,7 @@ from src.synthetic_data_generation.dataset.plcs.components.avatar_asset import (
 )
 from src.synthetic_data_generation.dataset.plcs.composition import (
     AvatarAppearance,
+    PLCSAvatarFrameTensors,
     prepare_avatar,
 )
 from src.synthetic_data_generation.dataset.plcs.rendering.contracts import (
@@ -50,7 +51,7 @@ class PLCSPreparedAvatar(Protocol):
     def frame_tensors_batch(
         self,
         source_frame_indices: tuple[int, ...],
-    ) -> dict[int, GaussianTensorSet]:
+    ) -> dict[int, PLCSAvatarFrameTensors]:
         """Evaluate the requested intact source frames."""
 
 

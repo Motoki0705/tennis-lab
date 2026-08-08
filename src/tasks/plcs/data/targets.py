@@ -15,8 +15,17 @@ from src.utils.schema.court import (
 from src.utils.schema.player import FACE_KEYPOINT_OFFSETS, SMPLH_TO_COCO17_MAPPING
 
 
-def _smplh_to_coco17(joints_3d: np.ndarray, yaw: float | np.ndarray) -> np.ndarray:
-    """Convert SMPL-H joints to COCO17 with synthetic face keypoints."""
+def smplh_joints_to_coco17(
+    joints_3d: np.ndarray, yaw: float | np.ndarray
+) -> np.ndarray:
+    """Strictly convert validated SMPL-H joints to the COCO17 authority."""
+    joints_3d = np.asarray(joints_3d)
+    if joints_3d.dtype != np.float32:
+        raise TypeError("SMPL-H joints must use float32.")
+    if joints_3d.ndim != 3 or joints_3d.shape[1:] != (52, 3):
+        raise ValueError("SMPL-H joints must have shape [T, 52, 3].")
+    if not np.isfinite(joints_3d).all():
+        raise ValueError("SMPL-H joints contain NaN or infinity.")
     T = joints_3d.shape[0]
     coco17 = np.zeros((T, 17, 3), dtype=np.float32)
 
@@ -107,4 +116,7 @@ def build_coco17_world_targets(scene: dict[str, Any]) -> np.ndarray:
     world_smplh[..., 2] = canonical[..., 2] + pelvis_world[:, None, 2]
 
     yaw_for_face = np.arctan2(sin_yaw, cos_yaw).astype(np.float32)
-    return _smplh_to_coco17(world_smplh, yaw_for_face)
+    return smplh_joints_to_coco17(world_smplh, yaw_for_face)
+
+
+__all__ = ["build_coco17_world_targets", "smplh_joints_to_coco17"]

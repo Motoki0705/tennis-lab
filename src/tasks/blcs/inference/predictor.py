@@ -158,17 +158,6 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
         )
         return self.predict_batch(batch, denormalize=denormalize)
 
-    def predict_scene(
-        self,
-        scene: Mapping[str, object],
-        cameras: list[int],
-        *,
-        denormalize: bool,
-    ) -> BLCSTrajectoryPrediction:
-        """Build the selected profile from a scene and return a typed decode."""
-        batch = self.io_adapter.build_inference_batch_from_scene(scene, cameras)
-        return self.predict_batch(batch, denormalize=denormalize)
-
     def predict(
         self,
         ball_uv: Tensor,

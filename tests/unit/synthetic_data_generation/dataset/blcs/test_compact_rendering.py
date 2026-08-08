@@ -237,8 +237,8 @@ def test_compact_attempt_reuses_backgrounds_and_materializes_on_demand(
         maximum_batch_frames=2,
         test_cpu_oracle=_ExplicitCPUOracle(),
     )
-    output = tmp_path / "staging"
-    output.mkdir()
+    output = tmp_path / ".transactions" / "blcs_dataset" / "snapshot"
+    output.mkdir(parents=True)
     scene_path = tmp_path / "reconstruction" / "export" / "scene.json"
     scene_path.parent.mkdir(parents=True)
     scene_path.write_text("{}\n", encoding="utf-8")
@@ -285,7 +285,8 @@ def test_compact_attempt_reuses_backgrounds_and_materializes_on_demand(
     assert not list(output.rglob("shard.json"))
 
     first = validated.sample_records[0]
-    logical = BLCSCompactDatasetReader(output).materialize(
+    reader = BLCSCompactDatasetReader(output)
+    logical = reader.materialize(
         trajectory_id=first.trajectory_id,
         source_frame_index=first.source_frame_index,
         camera_id=first.camera_id,
@@ -294,6 +295,15 @@ def test_compact_attempt_reuses_backgrounds_and_materializes_on_demand(
     assert logical.render.instance_ids.dtype == np.int32
     assert logical.semantic_arrays["ball_uv"].shape == (1, 2)
     assert logical.metadata["target_court"] in {"court-0", "court-1"}
+    all_views = reader.materialize_all_views(first.trajectory_id)
+    assert all_views.ball_uv.shape == (6, 3, 1, 2)
+    assert all_views.court_kp.shape == (6, 20, 2)
+    assert all_views.index.camera_ids == tuple(
+        record.camera_id
+        for record in validated.sample_records
+        if record.trajectory_id == first.trajectory_id
+        and record.source_frame_index == 0
+    )
 
     first_chunk_marker = next(output.rglob("chunk.json"))
     first_chunk_marker.unlink()

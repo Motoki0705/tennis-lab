@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import json
-
-import numpy as np
 import pytest
 import torch
 
@@ -13,21 +10,11 @@ from src.tasks.base.data.canonical_tracking import (
 )
 
 
-def test_dataset_resolves_explicit_scene_split(tmp_path) -> None:
-    scene = tmp_path / "scenes" / "scene_a"
-    scene.mkdir(parents=True)
-    (scene / "meta.json").write_text(json.dumps({"num_frames": 2}))
-    (scene / "scalars.json").write_text(json.dumps({"num_cameras": 1}))
-    np.save(scene / "ball_pos_norm.npy", np.zeros((2, 3), dtype=np.float32))
-    (tmp_path / "train.txt").write_text("scene_a\n")
+def test_dataset_selects_only_contiguous_source_windows() -> None:
     dataset = CanonicalTrackingDataset(
-        scene_dir=tmp_path,
-        split_file="train.txt",
         config={
             "data": {
                 "seq_len_range": [1, 2],
-                "num_views_range": [1, 1],
-                "camera_mode": "first",
                 "lifecycle": {
                     "pack_to_query_slots": True,
                     "min_reuse_gap_frames": 0,
@@ -37,8 +24,7 @@ def test_dataset_resolves_explicit_scene_split(tmp_path) -> None:
             "model": {"num_queries": 1},
         },
     )
-    assert len(dataset) == 1
-    assert dataset.scenes == [tmp_path / "scenes" / "scene_a"]
+    assert dataset.contiguous_window(4) == slice(1, 3)
 
 
 def test_collate_pads_only_declared_time_dimensions() -> None:

@@ -5,7 +5,6 @@ for metadata, ensuring type safety throughout the BLCS pipeline.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import NotRequired, TypedDict
 
 import torch
@@ -97,70 +96,3 @@ class BLCSMultiViewBatch(TypedDict):
     camera_cy: torch.Tensor  # (B, N_max)
     camera_w: torch.Tensor  # (B, N_max)
     camera_h: torch.Tensor  # (B, N_max)
-
-
-@dataclass(frozen=True)
-class BLCSSceneMeta:
-    """Metadata schema for BLCS NPZ scene files (rally-only scene format)."""
-
-    scene_id: str
-    initial_from_cell: int  # Starting cell for first shot (0-8)
-    initial_from_side: str  # "near" or "far"
-
-    rally_length: int  # Number of shots in rally
-    end_reason: str  # Rally termination reason
-    winner_side: str | None  # "near", "far", or None
-
-    shots: list[dict]  # List of BLCSShotEventMeta.to_dict() results
-
-    fps_out: int
-    sim_fps: int
-    num_frames: int
-    num_cameras_sampled: int
-    num_cameras: int
-
-    # Per-scene variation metadata (may be absent in older files)
-    physics_config: dict | None = None
-    court_config: dict | None = None
-    track_instances: list[dict] | None = None
-
-    def to_dict(self) -> dict:
-        """Convert to dictionary for JSON serialization."""
-        return {
-            "scene_id": self.scene_id,
-            "initial_from_cell": self.initial_from_cell,
-            "initial_from_side": self.initial_from_side,
-            "rally_length": self.rally_length,
-            "end_reason": self.end_reason,
-            "winner_side": self.winner_side,
-            "shots": self.shots,
-            "fps_out": self.fps_out,
-            "sim_fps": self.sim_fps,
-            "num_frames": self.num_frames,
-            "num_cameras_sampled": self.num_cameras_sampled,
-            "num_cameras": self.num_cameras,
-            "physics_config": self.physics_config,
-            "court_config": self.court_config,
-            "track_instances": self.track_instances or [],
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict) -> BLCSSceneMeta:
-        """Create instance from dictionary loaded from JSON/NPZ."""
-        return cls(
-            scene_id=data["scene_id"],
-            initial_from_cell=data["initial_from_cell"],
-            initial_from_side=data["initial_from_side"],
-            rally_length=data["rally_length"],
-            end_reason=data["end_reason"],
-            winner_side=data.get("winner_side"),
-            shots=data["shots"],
-            fps_out=data["fps_out"],
-            sim_fps=data["sim_fps"],
-            num_frames=data["num_frames"],
-            num_cameras_sampled=data["num_cameras_sampled"],
-            num_cameras=data["num_cameras"],
-            physics_config=data["physics_config"],
-            court_config=data["court_config"],
-            track_instances=data.get("track_instances", []),
-        )

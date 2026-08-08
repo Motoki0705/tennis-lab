@@ -42,13 +42,9 @@ def write_plcs_diagnostics(
     expected_object_ids = {track.object_id for track in reference.tracks}
     if set(avatars) != expected_object_ids:
         raise ValueError("Diagnostic avatars differ from the PLCS source inventory.")
-    if set(rigs) != {
-        scene.timeline.scene_id for scene in inventory.scenes
-    }:
+    if set(rigs) != {scene.timeline.scene_id for scene in inventory.scenes}:
         raise ValueError("Diagnostic camera rigs differ from PLCS logical scenes.")
-    selected_source_count = len(
-        {track.clip.source_path for track in reference.tracks}
-    )
+    selected_source_count = len({track.clip.source_path for track in reference.tracks})
     selected_gender_count = len({track.clip.gender for track in reference.tracks})
     if clip_load_count != selected_source_count:
         raise ValueError("PLCS stage did not load each selected source exactly once.")
@@ -109,8 +105,7 @@ def write_plcs_diagnostics(
                 "mode": timeline.mode,
                 "global_frame_count": timeline.frame_count,
                 "source_frame_counts": {
-                    track.object_id: track.clip.frame_count
-                    for track in timeline.tracks
+                    track.object_id: track.clip.frame_count for track in timeline.tracks
                 },
                 "motion_categories": [
                     track.clip.category.value for track in timeline.tracks
@@ -146,9 +141,7 @@ def write_plcs_diagnostics(
         },
         "court_balance": {
             "scene_count": inventory.scene_count,
-            "accepted_court_instance_ids": list(
-                inventory.accepted_court_instance_ids
-            ),
+            "accepted_court_instance_ids": list(inventory.accepted_court_instance_ids),
             "counts": {
                 court_id: court_counts[court_id]
                 for court_id in inventory.accepted_court_instance_ids

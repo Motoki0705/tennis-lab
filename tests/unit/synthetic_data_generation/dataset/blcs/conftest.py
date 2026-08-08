@@ -123,9 +123,7 @@ def make_trajectory(
     split: str = "train",
 ) -> BLCSTrajectory:
     """Build one smooth, fully present source trajectory."""
-    positions: NDArray[np.float64] = np.zeros(
-        (frame_count, 1, 3), dtype=np.float64
-    )
+    positions: NDArray[np.float64] = np.zeros((frame_count, 1, 3), dtype=np.float64)
     positions[:, 0, 0] = np.linspace(-1.0, 1.0, frame_count)
     positions[:, 0, 2] = 1.5
     velocities = np.gradient(positions, axis=0)

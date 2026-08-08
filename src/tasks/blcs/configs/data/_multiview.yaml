@@ -1,4 +1,2 @@
-# Multi-camera observation partial.
-camera_mode: random
-num_views_range: [3, 5]
+# All generated cameras are loaded; model adapters select their declared profile.
 batch_size: 4
