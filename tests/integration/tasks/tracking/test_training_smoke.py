@@ -57,8 +57,10 @@ from src.tasks.blcs.data.dataset import (
     BallTrajectoryDataset,
     collate_multiview_trajectories,
 )
+from src.tasks.blcs.data.tracking_dataset import BLCSTrackingDataset
 from src.tasks.blcs.model_io import MultiViewTrajectoryModelIOAdapter
 from src.tasks.plcs.data import PLCSDataModule, SceneDataset
+from src.tasks.plcs.data.tracking_dataset import PLCSTrackingDataset
 from src.tasks.plcs.model_io import (
     PLCSInputProfile,
     PLCSModelIOAdapter,
@@ -68,10 +70,15 @@ from src.utils.paths import PROJECT_ROOT
 _RELATIVE_DATA_ROOT = Path("canonical-consumer") / "datasets"
 
 
-def _compose_task_config(task: str, overrides: Sequence[str]) -> DictConfig:
+def _compose_task_config(
+    task: str,
+    overrides: Sequence[str],
+    *,
+    config_name: str = "train",
+) -> DictConfig:
     config_dir = PROJECT_ROOT / "src" / "tasks" / task / "configs"
     with initialize_config_dir(version_base="1.3", config_dir=str(config_dir)):
-        return compose(config_name="train", overrides=list(overrides))
+        return compose(config_name=config_name, overrides=list(overrides))
 
 
 def _camera_profile() -> CameraProfileConfig:
@@ -542,6 +549,45 @@ def test_canonical_datamodules_retain_all_views_through_model_boundaries(
     )
     assert plcs_prepared.target_human_mask is not None
     assert plcs_prepared.target_human_mask.shape == (1, 2, 2)
+
+    blcs_tracking_config = _compose_task_config(
+        "blcs",
+        (
+            "data.seq_len_range=[2,2]",
+            "data.augmentation.enabled=false",
+        ),
+        config_name="train_tracking",
+    )
+    blcs_tracking = BLCSTrackingDataset(
+        dataset_dir=blcs_root,
+        split="test",
+        config=blcs_tracking_config,
+        augment=False,
+    )[0]
+    assert blcs_tracking["ball_uv"].shape == (2, 2, 1, 2)
+    assert blcs_tracking["view_mask"].tolist() == [True, True]
+    assert blcs_tracking["target_presence"].shape == (2, 4)
+    assert blcs_tracking["target_instance_id"][:, 0].tolist() == [0, 0]
+
+    plcs_tracking_config = _compose_task_config(
+        "plcs",
+        (
+            "data.seq_len_range=[2,2]",
+            "data.augmentation.enabled=false",
+        ),
+        config_name="train_tracking",
+    )
+    plcs_tracking = PLCSTrackingDataset(
+        dataset_dir=plcs_root,
+        split="test",
+        config=plcs_tracking_config,
+        augment=False,
+    )[0]
+    assert plcs_tracking["human_kp"].shape == (2, 2, 1, 17, 2)
+    assert plcs_tracking["view_mask"].tolist() == [True, True]
+    assert plcs_tracking["target_presence"].shape == (2, 4)
+    assert plcs_tracking["target_instance_id"][:, 0].tolist() == [0, 0]
+
     assert set(path.name for path in blcs_root.iterdir()) == {
         "dataset.json",
         "samples",
