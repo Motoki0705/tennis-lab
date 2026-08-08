@@ -12,11 +12,9 @@
 - **`tensors.py`**: `TensorSpec`/`require_tensor()`。dtype/rank/fixed dimensionを`forward`前のadapter boundaryで検証する。
 
 ### data/
-- **`scene_dataset.py`**: `SceneDatasetBase`。シーンディレクトリ読込・window/camera選択・`build_sample()`拡張点を持つDataset基底。`meta.num_frames` は正の整数として必須で、payload長との矛盾は `SceneDataContractError` によりindex作成前に失敗する。
-- **`datamodule.py`**: `SceneDirectoryDataModule`。固定 `scene_dir`+split txt を扱うDataModule基底。
-- **`dataset_writer.py`**: `BaseDatasetWriter`。npy+jsonシーン書き出しの共通実装。
+- **`canonical_dataset.py`**: canonical `dataset.json` のsplit/sample indexを厳密に検証するBLCS/PLCS共通Dataset基盤。旧split txtやper-scene npy/jsonは扱わない。
 - **`augmentation.py`**: `BaseObservationAugmentation`。augmentation config解析・dispatchガードの共通部分。
-- **`canonical_tracking.py`**: tracking sceneのclip/view選択と可変 `(V,T,D)` paddingを担う共通Dataset基盤。
+- **`canonical_tracking.py`**: canonical manifest上のtracking sampleと可変 `(V,T,D)` paddingを担う共通Dataset基盤。
 - **`lifecycle_slots.py`**: birth/death区間をinterval coloringで固定query数へ詰め、death後のslot再利用教師を生成。
 
 ### training/

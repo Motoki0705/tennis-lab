@@ -7,16 +7,7 @@ from src.tasks.base.configuration import (
     SceneVisualizationConfig,
     TrainingRuntimeConfig,
 )
-from src.tasks.base.data import (
-    BaseDatasetWriter,
-    CameraSelection,
-    Scene,
-    SceneDataContractError,
-    SceneDatasetBase,
-    SceneDatasetConfig,
-    SceneHeader,
-    TemporalWindow,
-)
+from src.tasks.base.data import CanonicalDataset
 from src.tasks.base.inference.predictor import BasePredictor
 from src.tasks.base.training import (
     BaseLightningModule,
@@ -25,19 +16,12 @@ from src.tasks.base.training import (
 
 __all__ = [
     "BaseDataConfig",
-    "BaseDatasetWriter",
     "BaseLightningModule",
     "BasePredictor",
     "BaseRunConfig",
     "BaseTrainingConfig",
-    "CameraSelection",
-    "Scene",
-    "SceneDataContractError",
-    "SceneDatasetBase",
-    "SceneHeader",
+    "CanonicalDataset",
     "SceneVisualizationConfig",
-    "SceneDatasetConfig",
-    "TemporalWindow",
     "TrainingRuntimeConfig",
     "TrackingMetricConfig",
 ]

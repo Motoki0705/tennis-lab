@@ -61,11 +61,15 @@ PROHIBITED_SYMBOLS = frozenset(
 ISSUE_695_REMOVAL_PREFIXES = (
     "src.synthetic_data_generation.",
     "src.tasks.base.data.chunk",
+    "src.tasks.base.data.datamodule",
+    "src.tasks.base.data.dataset_writer",
+    "src.tasks.base.data.scene_dataset",
     "src.tasks.base.training.chunk_rotation_callback",
     "src.tasks.blcs.data.chunk",
     "src.tasks.blcs.generate_dataset.io",
     "src.tasks.blcs.generate_dataset.utils",
     "src.tasks.blcs.scripts.generate_dataset",
+    "src.tasks.blcs.scripts.preview_augmentation",
     "src.tasks.blcs.scripts.visualize",
     "src.tasks.blcs.visualization.api",
     "src.tasks.blcs.visualization.io",
@@ -77,11 +81,14 @@ ISSUE_695_REMOVAL_PREFIXES = (
     "src.tasks.plcs.generate_dataset.scene_generator",
     "src.tasks.plcs.generate_dataset.utils",
     "src.tasks.plcs.scripts.analysis.visualize_rotation_error_samples",
+    "src.tasks.plcs.scripts.analysis.analyze_",
     "src.tasks.plcs.scripts.generate_dataset",
+    "src.tasks.plcs.scripts.preview_augmentation",
     "src.tasks.plcs.scripts.visualize",
     "src.tasks.plcs.visualization.api",
     "src.tasks.plcs.visualization.io",
     "src.tasks.plcs.visualization.orchestrator",
+    "src.utils.data.scene_io",
 )
 COURT_LINE_PREPROCESSING_CONSUMERS = {
     "src/synthetic_data_generation/alignment/evidence_source.py": (
