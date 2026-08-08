@@ -47,9 +47,10 @@ def _settings(tmp_path: Path) -> tuple[GatewaySettings, StubWorkspaces]:
     repo.mkdir()
     subprocess.run(["git", "init", "-q", str(repo)], check=True)
     control = tmp_path / "control"
-    venv = control / "venv/bin"
-    venv.mkdir(parents=True)
-    (venv / "python").write_text("", encoding="utf-8")
+    versioned_venv = control / "venvs/test-runtime/bin"
+    versioned_venv.mkdir(parents=True)
+    (versioned_venv / "python").write_text("", encoding="utf-8")
+    (control / "venv").symlink_to("venvs/test-runtime", target_is_directory=True)
     runtime = control / "current"
     (runtime / "src/automation/chatgpt_mcp").mkdir(parents=True)
     queue = control / "bin/training_queue.sh"
@@ -127,7 +128,16 @@ def test_sandbox_exposes_full_project_rw_but_keeps_control_plane_unmounted(
     assert any("dst=/tennis-lab/.git,readonly" in mount for mount in mounts)
     assert any("dst=/run/tennis-mcp-command,readonly" in mount for mount in mounts)
     assert any(
-        f"src={settings.runtime_venv_root}" in mount and "readonly" in mount
+        f"src={settings.runtime_venv_root.resolve()},dst={settings.runtime_venv_root}"
+        in mount
+        and "readonly" in mount
+        for mount in mounts
+    )
+    assert any(
+        f"src={settings.runtime_venv_root.resolve()},"
+        f"dst={settings.runtime_venv_root.resolve()}"
+        in mount
+        and "readonly" in mount
         for mount in mounts
     )
     assert not any(str(settings.control_dir / "current") in mount for mount in mounts)

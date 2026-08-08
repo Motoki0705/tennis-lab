@@ -267,6 +267,7 @@ class DockerSandbox:
             )
         _, workspace_copy, artifacts, command_path = self._job_directories(spec.job_id)
         _write_private_file(command_path, spec.command)
+        resolved_venv_root = self.settings.runtime_venv_root.resolve()
 
         arguments = [
             "docker",
@@ -378,6 +379,17 @@ class DockerSandbox:
                 read_only=True,
             ),
         ]
+        if resolved_venv_root != self.settings.runtime_venv_root:
+            arguments.extend(
+                [
+                    "--mount",
+                    _safe_mount(
+                        resolved_venv_root,
+                        str(resolved_venv_root),
+                        read_only=True,
+                    ),
+                ]
+            )
         if detached:
             arguments.append("--detach")
         if spec.use_gpu:
