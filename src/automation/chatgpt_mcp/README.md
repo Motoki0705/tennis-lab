@@ -41,7 +41,8 @@ The container receives:
 - standard mutable roots in `/workspace` linked to `/tennis-lab`, including
   `data`, `outputs`, `ckpt`, `checkpoints`, `artifacts`, `.cache`,
   `third_party`, and `.training_queue`;
-- the external trusted venv and uv Python runtime read-only;
+- both the stable and versioned paths of the external trusted venv, plus the uv
+  Python runtime, read-only, so Python entry-point shebangs remain executable;
 - no network, Docker socket, `/mnt/c`, host credentials, systemd, tunnel
   credentials, queue runner, trusted Git mirror, or MCP runtime source;
 - masked `.git` metadata for both execution roots;
