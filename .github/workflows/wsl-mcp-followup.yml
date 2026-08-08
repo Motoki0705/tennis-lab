@@ -18,7 +18,7 @@ permissions:
 
 concurrency:
   group: wsl-mcp-project-sandbox-followup
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   harden:
@@ -69,7 +69,6 @@ jobs:
             tests/unit/utils/configuration/test_inventory.py
 
       - name: Commit hardened implementation
-        if: github.event_name != 'pull_request'
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
