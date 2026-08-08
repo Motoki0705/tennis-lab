@@ -84,6 +84,21 @@ def _sha256_text(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
 
+def _normalize_fresh_test_cycle(state: dict[str, Any]) -> None:
+    """Drop a prior Tester verdict once renewed preflight invalidates its candidate."""
+    preflight_cycle = state.get("preflight_cycle")
+    test_cycle = state.get("test_cycle")
+    if (
+        state.get("candidate_binding_mode") == "ENFORCED"
+        and isinstance(preflight_cycle, int)
+        and isinstance(test_cycle, int)
+        and preflight_cycle > test_cycle
+        and not state.get("test_candidate_sha256")
+        and state.get("test_verdict") in {"PASS", "RETURN"}
+    ):
+        state["test_verdict"] = ""
+
+
 def normalize_state(state: dict[str, Any], task_dir: Path | None = None) -> dict[str, Any]:
     version = state.get("schema_version")
     if version == 3:
@@ -125,6 +140,7 @@ def normalize_state(state: dict[str, Any], task_dir: Path | None = None) -> dict
         state.setdefault("pr_head_sha", "")
         state.setdefault("remote_checks_verdict", "")
         state.setdefault("pr_evidence_sha256", "")
+    _normalize_fresh_test_cycle(state)
     return state
 
 
