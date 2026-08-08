@@ -53,7 +53,7 @@ def validate_frame_continuity(
     *,
     frame_count: int,
 ) -> FrameContinuityReport:
-    """Reject missing/duplicate labels and discontinuous source mappings."""
+    """Reject incomplete/duplicate labels and discontinuous source mappings."""
     if frame_count <= 0 or not records:
         raise ValueError("frame_count and records must be non-empty.")
     by_key: dict[tuple[int, str, str], TimelineFrameRecord] = {}
@@ -77,6 +77,14 @@ def validate_frame_continuity(
         by_track_camera[(record.track_id, record.camera_id)].append(record)
     for track_camera_key, sequence in by_track_camera.items():
         sequence.sort(key=lambda item: item.frame_index)
+        sequence_frame_indices = {item.frame_index for item in sequence}
+        if sequence_frame_indices != expected:
+            raise ValueError(
+                "Track/camera timeline coverage mismatch for "
+                f"{track_camera_key}; missing="
+                f"{sorted(expected - sequence_frame_indices)}, unexpected="
+                f"{sorted(sequence_frame_indices - expected)}."
+            )
         courts = {item.court_instance_id for item in sequence}
         if len(courts) != 1:
             raise ValueError(
