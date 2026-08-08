@@ -38,6 +38,10 @@ from src.synthetic_data_generation.dataset.plcs.execution import (
     PLCSExecutionBackend,
     PLCSPreparedAvatar,
 )
+from src.synthetic_data_generation.dataset.plcs.production import (
+    PLCSProductionMode,
+    validate_plcs_production_contract,
+)
 from src.synthetic_data_generation.dataset.plcs.rendering.nht import NHTPLCSRenderer
 from src.synthetic_data_generation.dataset.plcs.timeline import (
     PLCSGlobalTimeline,
@@ -46,6 +50,7 @@ from src.synthetic_data_generation.dataset.plcs.timeline import (
     PLCSSceneInventory,
     build_global_timeline,
 )
+from src.synthetic_data_generation.dataset.plcs.validation import validate_plcs_dataset
 from src.synthetic_data_generation.dataset.runtime import (
     ChunkReader,
     ChunkWriter,
@@ -133,6 +138,7 @@ class PLCSStageParameters:
     """Explicit non-Hydra runtime inputs resolved by the composition root."""
 
     seed: int
+    production_mode: PLCSProductionMode
     split: str
     scene_splits: Mapping[str, str]
     objects: tuple[PLCSObjectRequest, ...]
@@ -148,6 +154,14 @@ class PLCSStageParameters:
             or self.seed < 0
         ):
             raise ValueError("PLCS seed must be a non-negative integer.")
+        validate_plcs_production_contract(
+            mode=self.production_mode,
+            configured_motion_categories=(
+                item.category.value for item in self.objects
+            ),
+            object_motion_categories=(item.category.value for item in self.objects),
+            object_start_frames=(item.start_frame for item in self.objects),
+        )
         if not self.split.strip() or not self.scene_splits or not self.objects:
             raise ValueError("PLCS split, scene_splits, and objects must be explicit.")
         if any(
@@ -249,18 +263,21 @@ class PLCSStageHandler:
             )
         if (
             not self.configuration.require_articulated_motion
-            or not self.configuration.multi_object_global_timeline
             or self.configuration.timeline.frame_selection != "all_source_frames"
         ):
             raise ValueError(
                 "PLCS production configuration must require full articulated timelines."
             )
-        categories = set(self.configuration.motion_categories)
-        requested_categories = {item.category.value for item in self.parameters.objects}
-        if requested_categories != categories:
-            raise ValueError(
-                "PLCS requests must retain every config-authorized motion category."
-            )
+        validate_plcs_production_contract(
+            mode=self.parameters.production_mode,
+            configured_motion_categories=self.configuration.motion_categories,
+            object_motion_categories=(
+                item.category.value for item in self.parameters.objects
+            ),
+            object_start_frames=(
+                item.start_frame for item in self.parameters.objects
+            ),
+        )
         if (
             self.parameters.scene_splits.get(context.request.scene_id)
             != self.parameters.split
@@ -287,10 +304,13 @@ class PLCSStageHandler:
         tracks = self._load_tracks_and_prepare_sources()
         _build_scene_inventory(
             dataset_scene_id=context.request.scene_id,
+            production_mode=self.parameters.production_mode,
             assignments=assignments,
             layout=alignment.layout,
             tracks=tracks,
-            required_motion_categories=frozenset(categories),
+            required_motion_categories=frozenset(
+                self.configuration.motion_categories
+            ),
         )
         self.avatar_appearance_source.preflight(
             gaussian_count=self.parameters.gaussian_count,
@@ -318,6 +338,7 @@ class PLCSStageHandler:
         tracks = self._tracks_from_cache()
         inventory = _build_scene_inventory(
             dataset_scene_id=context.request.scene_id,
+            production_mode=self.parameters.production_mode,
             assignments=assignments,
             layout=layout,
             tracks=tracks,
@@ -504,6 +525,7 @@ class PLCSStageHandler:
             json.loads(performance.read_text(encoding="utf-8"))
         )
         metrics.validate_budget(self.configuration.performance)
+        validate_plcs_dataset(paths.staging_directory)
         alignment = validate_alignment_outputs(paths.alignment_directory)
         _validate_staged_court_inventory(
             paths.staging_directory,
@@ -926,6 +948,7 @@ def _stage_paths(
 def _build_scene_inventory(
     *,
     dataset_scene_id: str,
+    production_mode: PLCSProductionMode,
     assignments: tuple[CourtAssignment, ...],
     layout: MultiCourtLayout,
     tracks: tuple[PLCSObjectTrack, ...],
@@ -945,6 +968,7 @@ def _build_scene_inventory(
                 split=assignment.split,
                 timeline=build_global_timeline(
                     scene_id=assignment.scene_id,
+                    production_mode=production_mode,
                     target_court=binding,
                     tracks=tracks,
                 ),

@@ -53,6 +53,10 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     OrbitStableField,
     OrbitTargetMode,
 )
+from src.synthetic_data_generation.dataset.plcs.production import (
+    PLCSProductionMode,
+    validate_plcs_production_contract,
+)
 from src.synthetic_data_generation.dataset.plcs.rendering.contracts import (
     PLCSForegroundCompositor,
 )
@@ -2132,7 +2136,7 @@ class PLCSDatasetConfiguration:
     timeline: FullFrameChunkPolicy
     motion_categories: tuple[str, ...]
     require_articulated_motion: bool
-    multi_object_global_timeline: bool
+    production_mode: PLCSProductionMode
     accad_root: Path
     split: str
     scene_splits: Mapping[str, str]
@@ -2161,7 +2165,7 @@ class PLCSDatasetConfiguration:
                 "timeline",
                 "motion_categories",
                 "require_articulated_motion",
-                "multi_object_global_timeline",
+                "production_mode",
                 "accad_root",
                 "split",
                 "scene_splits",
@@ -2178,14 +2182,16 @@ class PLCSDatasetConfiguration:
             },
         )
         categories = _text_sequence(raw, "motion_categories", path="dataset.plcs")
-        if set(categories) != {"running", "walking", "general"}:
-            raise SemanticConfigurationError(
-                "dataset.plcs.motion_categories must be running, walking, and general."
+        try:
+            production_mode = PLCSProductionMode(
+                _text(raw, "production_mode", path="dataset.plcs")
             )
+        except ValueError as error:
+            raise SemanticConfigurationError(
+                "dataset.plcs.production_mode is unsupported."
+            ) from error
         articulated = _flag(raw, "require_articulated_motion", path="dataset.plcs")
-        global_timeline = _flag(raw, "multi_object_global_timeline", path="dataset.plcs")
         _require_true(articulated, path="dataset.plcs.require_articulated_motion")
-        _require_true(global_timeline, path="dataset.plcs.multi_object_global_timeline")
         metadata = _text_sequence(raw, "metadata_fields", path="dataset.plcs")
         if not _PLCS_METADATA_FIELDS.issubset(metadata):
             raise SemanticConfigurationError("dataset.plcs.metadata_fields omits required provenance.")
@@ -2210,18 +2216,21 @@ class PLCSDatasetConfiguration:
             _value(raw, "objects", (list, tuple), path="dataset.plcs"),
             path="dataset.plcs.objects",
         )
-        if len(raw_objects) < 2:
-            raise SemanticConfigurationError(
-                "Production PLCS configuration requires multiple object requests."
-            )
         objects = tuple(
             PLCSObjectConfiguration.from_mapping(item, index=index)
             for index, item in enumerate(raw_objects)
         )
-        if {item.category.value for item in objects} != set(categories):
-            raise SemanticConfigurationError(
-                "PLCS objects must explicitly request every configured motion category."
+        try:
+            validate_plcs_production_contract(
+                mode=production_mode,
+                configured_motion_categories=categories,
+                object_motion_categories=(item.category.value for item in objects),
+                object_start_frames=(item.start_frame for item in objects),
             )
+        except (TypeError, ValueError) as error:
+            raise SemanticConfigurationError(
+                f"dataset.plcs production contract is invalid: {error}"
+            ) from error
         raster_path = "dataset.plcs.foreground_rasterizer"
         raster_raw = _exact(
             raw["foreground_rasterizer"],
@@ -2289,7 +2298,7 @@ class PLCSDatasetConfiguration:
             timeline=timeline,
             motion_categories=categories,
             require_articulated_motion=articulated,
-            multi_object_global_timeline=global_timeline,
+            production_mode=production_mode,
             accad_root=resolver.resolve(
                 PathRole.EXTERNAL_ASSET,
                 _text(raw, "accad_root", path="dataset.plcs"),
@@ -2323,6 +2332,7 @@ class PLCSDatasetConfiguration:
 
         return PLCSStageParameters(
             seed=seed,
+            production_mode=self.production_mode,
             split=self.split,
             scene_splits=self.scene_splits,
             objects=tuple(item.to_runtime_request() for item in self.objects),

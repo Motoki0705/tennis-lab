@@ -38,6 +38,16 @@ scouting -> exploration -> planning -> implementation
 
 Preflight RETURN does not spend a Tester cycle. Tester RETURN increments `test_cycle`. Final-seal RETURN stays in implementation; any repair requires a new production preflight and Tester cycle. Validator RETURN increments `attempt`, clears candidate evidence, and returns to formal exploration.
 
+For an enforced checklist that contains AC-079, Validator PASS has one phase-aware exception to
+the otherwise all-PASS matrix while retaining the existing row grammar: AC-001 through AC-078
+must be `PASS`, and AC-079 must be exactly `NOT VERIFIED`. Its Evidence cell must contain all of
+these literal tokens:
+`post-Validator packaging`, `capture-pr`, `captured evidence`, `packaging.md`, `finalize-pr`, and
+`final workflow check`. Any `FAIL` or `NOT VERIFIED` on another AC blocks PASS; AC-079 `PASS`
+before packaging is rejected. Validator RETURN still requires at least one `FAIL` or
+`NOT VERIFIED`, and packaging-pending evidence cannot change RETURN into PASS. Legacy tasks and
+checklists without AC-079 keep the ordinary all-PASS rule.
+
 ## Frozen specification
 
 New tasks use schema v5. Initialization writes:
@@ -126,7 +136,8 @@ Mutating commands invoke targeted artifact checks internally:
 - transition to validation -> all implementation artifacts and sealed candidate
 - Validator verdict -> complete artifact set and sealed candidate
 - capture-pr -> real PR metadata, complete paginated file list, final head, and status-check rollup
-- finalize-pr -> captured evidence digest, packaging, local HEAD, revision content, and remote checks
+- finalize-pr -> captured evidence digest, AC-079 packaging evidence, local HEAD, revision content,
+  a second complete-file reconciliation, remote checks, and a prospective whole-task check
 
 Calling `artifact-check` manually provides earlier feedback but cannot bypass these checks.
 

@@ -45,13 +45,21 @@ Owned by the integrator after Tester PASS. No source or test edits occur while s
 
 ## `04-validation/validation.md`
 
-Owned by one Issue-only Validator. It records the sealed candidate, inspection scope, exactly one ordered PASS/FAIL/NOT VERIFIED row per AC with substantive evidence, code/runtime evidence, repository-rule checks, final verdict, and concrete re-exploration questions on RETURN.
+Owned by one Issue-only Validator. It records the sealed candidate, inspection scope, exactly one ordered verdict row per AC with substantive evidence, code/runtime evidence, repository-rule checks, final verdict, and concrete re-exploration questions on RETURN. The ordinary row verdicts are `PASS`, `FAIL`, and `NOT VERIFIED`.
+
+For enforced validation containing AC-079, final verdict `PASS` uses the existing row grammar:
+AC-001 through AC-078 remain `PASS`, while AC-079 must be exactly `NOT VERIFIED`. The AC-079
+Evidence cell must literally name `post-Validator packaging`,
+`capture-pr`, `captured evidence`, `packaging.md`, `finalize-pr`, and `final workflow check`.
+Any other `FAIL` or `NOT VERIFIED` blocks PASS, and AC-079 may not be marked `PASS` before
+packaging. Validator RETURN retains its ordinary requirement for at least one `FAIL` or
+`NOT VERIFIED`; packaging-pending evidence never changes that final verdict.
 
 ## `05-packaging/pr-evidence.json` and `packaging.md`
 
 `capture-pr` is run after Validator PASS from the checked-out final PR head. It generates `pr-evidence.json` from real GitHub metadata, every paginated changed-file page, and the status-check rollup, then stores the evidence digest in state.
 
-`packaging.md` records the validated candidate, PR number/head, PR-evidence digest, complete diff-scope conclusion, required remote checks, packaging evidence, and PASS. `finalize-pr` verifies the captured evidence, local HEAD, revision content fingerprint, artifact metadata, and prospective complete state before completion.
+`packaging.md` records the validated candidate, PR number/head, PR-evidence digest, complete diff-scope conclusion, required remote checks, packaging evidence, and PASS. For a checklist containing AC-079, its Packaging evidence section must literally name `AC-079`, `capture-pr`, `exact PR head`, `complete paginated files`, `candidate equality`, `required remote checks`, `packaging.md`, `captured evidence`, `finalize-pr`, and `final workflow check`. `finalize-pr` verifies the captured evidence, local HEAD, revision content fingerprint, complete revision file inventory, artifact metadata, and prospective complete state before completion.
 
 ## Machine-result JSON
 

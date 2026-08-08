@@ -68,7 +68,7 @@ canonical scene pipeline は source rally の全frameを保持して global time
 ```bash
 # canonical scene workspaceへBLCS datasetを生成
 .venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
-  scene_id=B00 targets='[blcs]'
+  request.scene_id=B00 request.targets='[blcs]'
 
 # 事前生成データで学習
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking

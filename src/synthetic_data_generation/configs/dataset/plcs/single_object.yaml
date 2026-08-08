@@ -6,9 +6,9 @@ timeline:
   reuse_shards_within_stage_attempt: true
   discard_shards_on_rerun: true
 
-motion_categories: [running, walking, general]
+motion_categories: [running]
 require_articulated_motion: true
-production_mode: multi_object_global_timeline
+production_mode: single_object
 
 accad_root: tennis-lab/data/ACCAD
 split: train
@@ -18,16 +18,8 @@ scene_splits:
 objects:
   - category: running
     start_frame: 0
-    anchor_position_court_m: [-2.0, -5.0, 0.0]
-    yaw_radians: 0.0
-  - category: walking
-    start_frame: 120
-    anchor_position_court_m: [2.0, 5.0, 0.0]
-    yaw_radians: 3.141592653589793
-  - category: general
-    start_frame: 240
     anchor_position_court_m: [0.0, 0.0, 0.0]
-    yaw_radians: 1.5707963267948966
+    yaw_radians: 0.0
 
 smplh_model_root: tennis-lab/data/smplh
 gaussian_count: 2048

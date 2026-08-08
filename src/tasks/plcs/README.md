@@ -67,7 +67,7 @@ canonical scene pipeline は各 ACCAD/AMASS clip の全frameを保持し、multi
 ```bash
 # canonical scene workspaceへPLCS datasetを生成
 .venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
-  scene_id=B00 targets='[plcs]'
+  request.scene_id=B00 request.targets='[plcs]'
 
 # 事前生成データで学習
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking

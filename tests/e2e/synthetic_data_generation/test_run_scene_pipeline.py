@@ -38,7 +38,9 @@ def test_cli_resolves_one_full_b00_request_without_legacy_pipeline_fields() -> N
     assert payload["dataset"]["blcs"]["timeline"]["frame_selection"] == (
         "all_source_frames"
     )
-    assert payload["dataset"]["plcs"]["multi_object_global_timeline"] is True
+    assert payload["dataset"]["plcs"]["production_mode"] == (
+        "multi_object_global_timeline"
+    )
     serialized = completed.stdout
     for forbidden in (
         "artifact_ref",

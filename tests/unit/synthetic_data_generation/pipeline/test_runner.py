@@ -35,12 +35,16 @@ class _FakeHandler:
     fail_preflight: bool = False
     fail_execute: bool = False
     invalid_summary: bool = False
+    preflight_calls: int = 0
+    execute_calls: int = 0
 
     def preflight(self, context: StageExecutionContext) -> None:
+        self.preflight_calls += 1
         if self.fail_preflight:
             raise ValueError(f"preflight failed for {context.stage.name.value}")
 
     def execute(self, context: StageExecutionContext) -> StageExecutionSummary:
+        self.execute_calls += 1
         destination = context.staging_path
         for relative in context.stage.required_outputs:
             path = destination / relative
@@ -92,13 +96,14 @@ def _request(
     tmp_path: Path,
     *,
     from_stage: StageName = StageName.INGEST,
+    targets: frozenset[DatasetTarget] = frozenset({DatasetTarget.COURT}),
 ) -> ScenePipelineRequest:
     source = tmp_path / "source.mp4"
     source.write_bytes(b"video")
     return ScenePipelineRequest(
         scene_id="scene-a",
         source_video=source.resolve(),
-        targets=frozenset({DatasetTarget.COURT}),
+        targets=targets,
         from_stage=from_stage,
         config_schema="scene_pipeline_v1",
     )
@@ -153,6 +158,98 @@ def test_runner_generates_only_explicit_target_and_report(tmp_path: Path) -> Non
     )
     assert persisted["stages"]["report"]["status"] == "completed"
     assert not runner.workspace.transaction_root.exists()
+
+
+def test_incompatible_cursor_is_rejected_without_workspace_mutation(
+    tmp_path: Path,
+) -> None:
+    first_registry, _ = _registry(payload="first")
+    first = _runner(tmp_path, first_registry)
+    first.run(_request(tmp_path))
+    before = {
+        path.relative_to(first.workspace.root): path.read_bytes()
+        for path in first.workspace.root.rglob("*")
+        if path.is_file()
+    }
+    run_json_before = first.workspace.run_manifest_path.read_bytes()
+    court_before = (first.workspace.root / "datasets/court/dataset.json").read_bytes()
+    report_before = (first.workspace.root / "report/report.json").read_bytes()
+    second_registry, handlers = _registry(payload="forbidden")
+    second = _runner(tmp_path, second_registry)
+
+    with pytest.raises(ValueError, match="not selected by request targets"):
+        second.run(_request(tmp_path, from_stage=StageName.PLCS_DATASET))
+
+    after = {
+        path.relative_to(second.workspace.root): path.read_bytes()
+        for path in second.workspace.root.rglob("*")
+        if path.is_file()
+    }
+    assert after == before
+    assert second.workspace.run_manifest_path.read_bytes() == run_json_before
+    assert (second.workspace.root / "datasets/court/dataset.json").read_bytes() == court_before
+    assert (second.workspace.root / "report/report.json").read_bytes() == report_before
+    assert all(handler.preflight_calls == 0 for handler in handlers.values())
+    assert all(handler.execute_calls == 0 for handler in handlers.values())
+
+
+def test_dataset_cursor_does_not_rerun_selected_sibling_datasets(
+    tmp_path: Path,
+) -> None:
+    all_targets = frozenset(DatasetTarget)
+    first_registry, _ = _registry(payload="first")
+    first = _runner(tmp_path, first_registry)
+    first.run(_request(tmp_path, targets=all_targets))
+    blcs = first.workspace.root / "datasets/blcs/dataset.json"
+    plcs = first.workspace.root / "datasets/plcs/dataset.json"
+    second_registry, handlers = _registry(payload="second")
+    second = _runner(tmp_path, second_registry)
+
+    manifest = second.run(
+        _request(
+            tmp_path,
+            from_stage=StageName.COURT_DATASET,
+            targets=all_targets,
+        )
+    )
+
+    assert manifest.stages[StageName.COURT_DATASET].attempt == 2
+    assert manifest.stages[StageName.REPORT].attempt == 2
+    for sibling in (StageName.BLCS_DATASET, StageName.PLCS_DATASET):
+        assert manifest.stages[sibling].status is StageStatus.COMPLETED
+        assert manifest.stages[sibling].attempt == 1
+        assert handlers[sibling].preflight_calls == 0
+        assert handlers[sibling].execute_calls == 0
+    assert blcs.read_text(encoding="utf-8") == "first"
+    assert plcs.read_text(encoding="utf-8") == "first"
+
+
+def test_alignment_subset_rerun_cleans_unselected_stale_descendants(
+    tmp_path: Path,
+) -> None:
+    first_registry, _ = _registry(payload="first")
+    first = _runner(tmp_path, first_registry)
+    first.run(_request(tmp_path, targets=frozenset(DatasetTarget)))
+    second_registry, handlers = _registry(payload="second")
+    second = _runner(tmp_path, second_registry)
+
+    manifest = second.run(
+        _request(
+            tmp_path,
+            from_stage=StageName.ALIGNMENT,
+            targets=frozenset({DatasetTarget.COURT}),
+        )
+    )
+
+    for target in (DatasetTarget.BLCS, DatasetTarget.PLCS):
+        record = manifest.stages[target.stage]
+        assert record.status is StageStatus.SKIPPED
+        assert record.attempt == 1
+        assert handlers[target.stage].execute_calls == 0
+        assert not (second.workspace.root / "datasets" / target.value).exists()
+    assert manifest.stages[StageName.ALIGNMENT].attempt == 2
+    assert manifest.stages[StageName.COURT_DATASET].attempt == 2
+    assert manifest.stages[StageName.REPORT].attempt == 2
 
 
 def test_preflight_failure_does_not_invalidate_completed_outputs(
@@ -312,6 +409,34 @@ def test_failed_fixed_path_rerun_retains_old_complete_owner_until_retry(
 
     assert court_dataset.read_text(encoding="utf-8") == "retry"
     assert not (court_dataset.parent / "partial.tmp").exists()
+
+
+def test_interrupted_cursor_is_recovered_and_retried_after_preflight(
+    tmp_path: Path,
+) -> None:
+    first_registry, _ = _registry(payload="first")
+    first = _runner(tmp_path, first_registry)
+    first.run(_request(tmp_path))
+    persisted = json.loads(
+        first.workspace.run_manifest_path.read_text(encoding="utf-8")
+    )
+    persisted["stages"]["court_dataset"]["status"] = "running"
+    first.workspace.run_manifest_path.write_text(
+        json.dumps(persisted), encoding="utf-8"
+    )
+    second_registry, _ = _registry(payload="second")
+    second = _runner(tmp_path, second_registry)
+
+    manifest = second.run(
+        _request(tmp_path, from_stage=StageName.COURT_DATASET)
+    )
+
+    court = manifest.stages[StageName.COURT_DATASET]
+    assert court.status is StageStatus.COMPLETED
+    assert court.attempt == 2
+    assert (
+        second.workspace.root / "datasets/court/dataset.json"
+    ).read_text(encoding="utf-8") == "second"
 
 
 def test_definition_rejects_handler_summary_type_at_execution(tmp_path: Path) -> None:
