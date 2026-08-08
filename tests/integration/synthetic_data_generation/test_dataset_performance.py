@@ -13,9 +13,8 @@ from src.synthetic_data_generation.dataset.court.handler import CourtDatasetStag
 from src.synthetic_data_generation.dataset.plcs.composition import PreparedAvatar
 from src.synthetic_data_generation.dataset.plcs.handler import PLCSStageHandler
 from src.synthetic_data_generation.pipeline import SceneWorkspace, StageName
-from src.synthetic_data_generation.pipeline.application import build_stage_handlers
+from src.synthetic_data_generation.pipeline.application import build_stage_registry
 from src.synthetic_data_generation.pipeline.publication import StagePublisher
-from src.synthetic_data_generation.pipeline.registry import canonical_registry
 from src.utils.paths import PROJECT_ROOT
 
 _CONFIG_ROOT = PROJECT_ROOT / "src/synthetic_data_generation/configs"
@@ -29,10 +28,10 @@ def _runtime() -> ScenePipelineConfiguration:
 
 def test_composition_root_wires_config_owned_cross_domain_budgets() -> None:
     runtime = _runtime()
-    handlers = build_stage_handlers(runtime)
-    court = handlers["court_dataset"]
-    blcs = handlers["blcs_dataset"]
-    plcs = handlers["plcs_dataset"]
+    registry = build_stage_registry(runtime)
+    court = registry.definition(StageName.COURT_DATASET).handler
+    blcs = registry.definition(StageName.BLCS_DATASET).handler
+    plcs = registry.definition(StageName.PLCS_DATASET).handler
 
     assert isinstance(court, CourtDatasetStageHandler)
     assert isinstance(blcs, BLCSDatasetStageHandler)
@@ -88,14 +87,14 @@ def test_stale_partial_dataset_attempts_are_discarded_for_all_domains(
     tmp_path,
 ) -> None:
     workspace = SceneWorkspace(scene_id="B00", root=tmp_path / "B00")
-    registry = canonical_registry()
+    registry = build_stage_registry(_runtime())
 
     for stage in (
         StageName.COURT_DATASET,
         StageName.BLCS_DATASET,
         StageName.PLCS_DATASET,
     ):
-        publisher = StagePublisher(workspace, registry.spec(stage))
+        publisher = StagePublisher(workspace, registry.definition(stage))
         publisher.staging.mkdir(parents=True)
         (publisher.staging / "partial.bin").write_bytes(b"partial")
 

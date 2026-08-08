@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-
 from src.synthetic_data_generation.alignment import (
     create_production_alignment_handler,
 )
@@ -19,22 +17,26 @@ from src.synthetic_data_generation.dataset.court.handler import (
 from src.synthetic_data_generation.dataset.court.rendering import CourtNHTRenderer
 from src.synthetic_data_generation.dataset.plcs.handler import PLCSStageHandler
 from src.synthetic_data_generation.dataset.plcs.rendering import NHTPLCSRenderer
-from src.synthetic_data_generation.pipeline.contracts import DatasetTarget, StageHandler
+from src.synthetic_data_generation.pipeline.contracts import DatasetTarget
 from src.synthetic_data_generation.pipeline.handlers import (
     IngestStageHandler,
     ReportStageHandler,
 )
-from src.synthetic_data_generation.pipeline.registry import canonical_registry
+from src.synthetic_data_generation.pipeline.registry import (
+    CanonicalStageHandlers,
+    StageRegistry,
+    canonical_registry,
+)
 from src.synthetic_data_generation.pipeline.runner import ScenePipelineRunner
 from src.synthetic_data_generation.reconstruction import NHTReconstructionHandler
 from src.synthetic_data_generation.rendering.nht import NHTRenderClient
 from src.tasks.plcs.generate_dataset.sampling.motion_sampler import ACCADMotionLibrary
 
 
-def build_stage_handlers(
+def build_stage_registry(
     runtime: ScenePipelineConfiguration,
-) -> Mapping[str, StageHandler]:
-    """Bind every typed stage to its one production implementation."""
+) -> StageRegistry:
+    """Bind every modular handler into the exhaustive typed definitions."""
     nht = runtime.nht
     render_environment = dict(nht.environment)
     alignment = create_production_alignment_handler(
@@ -90,22 +92,23 @@ def build_stage_handlers(
         target: runtime.workspace.root / "datasets" / target.value / "dataset.json"
         for target in DatasetTarget
     }
-    return {
-        "ingest": IngestStageHandler(),
-        "nht_reconstruction": NHTReconstructionHandler(
+    handlers = CanonicalStageHandlers(
+        ingest=IngestStageHandler(),
+        reconstruction=NHTReconstructionHandler(
             executable=nht.reconstruct_executable,
             environment=dict(nht.environment),
             timeout_seconds=nht.reconstruction_timeout_seconds,
         ),
-        "alignment": alignment,
-        "court_dataset": court,
-        "blcs_dataset": blcs,
-        "plcs_dataset": plcs,
-        "report": ReportStageHandler(
+        alignment=alignment,
+        court_dataset=court,
+        blcs_dataset=blcs,
+        plcs_dataset=plcs,
+        report=ReportStageHandler(
             alignment_directory=runtime.workspace.root / "alignment",
             dataset_manifests=dataset_manifests,
         ),
-    }
+    )
+    return canonical_registry(handlers)
 
 
 def build_scene_pipeline_runner(
@@ -116,10 +119,9 @@ def build_scene_pipeline_runner(
     """Construct the runner after the Hydra boundary has resolved all values."""
     return ScenePipelineRunner(
         workspace=runtime.workspace,
-        registry=canonical_registry(),
-        handlers=build_stage_handlers(runtime),
+        registry=build_stage_registry(runtime),
         resolved_config_yaml=resolved_config_yaml,
     )
 
 
-__all__ = ["build_scene_pipeline_runner", "build_stage_handlers"]
+__all__ = ["build_scene_pipeline_runner", "build_stage_registry"]

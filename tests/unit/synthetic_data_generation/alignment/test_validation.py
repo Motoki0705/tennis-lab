@@ -26,10 +26,15 @@ from src.synthetic_data_generation.alignment.validation import (
 )
 from src.synthetic_data_generation.pipeline.contracts import (
     DatasetTarget,
-    PublicationMode,
     ScenePipelineRequest,
+    StageDefinition,
+    StageExecutionContext,
+    StageExecutionSummary,
+    StageInput,
     StageName,
-    StageSpec,
+)
+from src.synthetic_data_generation.pipeline.publication import (
+    AtomicDirectoryPublication,
 )
 from src.synthetic_data_generation.reconstruction.scene_export import (
     StandardSceneExport,
@@ -72,7 +77,7 @@ def test_fixed_outputs_round_trip_and_reject_cross_file_tampering(
         arrays = {name: np.asarray(loaded[name]) for name in loaded.files}
     arrays["fit_points_scene"] = arrays["fit_points_scene"].copy()
     arrays["fit_points_scene"][0, 0] += 0.1
-    np.savez_compressed(archive_path, **arrays)
+    np.savez_compressed(archive_path, **arrays)  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="Ground-line evidence"):
         validate_alignment_outputs(staging)
 
@@ -90,7 +95,7 @@ def test_ground_line_archive_rejects_wrong_dtype(
     with np.load(archive_path, allow_pickle=False) as loaded:
         arrays = {name: np.asarray(loaded[name]) for name in loaded.files}
     arrays["fit_points_scene"] = arrays["fit_points_scene"].astype(np.float32)
-    np.savez_compressed(archive_path, **arrays)
+    np.savez_compressed(archive_path, **arrays)  # type: ignore[arg-type]
 
     with pytest.raises(ValueError, match="dtype float64"):
         validate_alignment_outputs(staging)
@@ -169,9 +174,21 @@ class _EvidenceSource:
 @dataclass(frozen=True)
 class _Context:
     request: ScenePipelineRequest
-    stage: StageSpec
+    stage: StageDefinition[StageExecutionSummary]
     owner_path: Path
     staging_path: Path
+
+
+@dataclass(frozen=True)
+class _UnusedLifecycle:
+    def preflight(self, context: StageExecutionContext) -> None:
+        pass
+
+    def execute(self, context: StageExecutionContext) -> StageExecutionSummary:
+        return StageExecutionSummary({})
+
+    def validate(self, context: StageExecutionContext) -> None:
+        pass
 
 
 def test_stage_handler_consumes_fixed_export_and_writes_only_to_staging(
@@ -193,7 +210,7 @@ def test_stage_handler_consumes_fixed_export_and_writes_only_to_staging(
 
     assert source.preflight_calls == 1
     assert summary.values["accepted_court_count"] == 2
-    assert {path.name for path in context.owner_path.iterdir()} == {"staging"}
+    assert not context.owner_path.exists()
     assert (context.staging_path / "alignment.json").is_file()
 
     wrong_context = _Context(
@@ -202,7 +219,7 @@ def test_stage_handler_consumes_fixed_export_and_writes_only_to_staging(
         owner_path=context.owner_path,
         staging_path=tmp_path / "fallback",
     )
-    with pytest.raises(ValueError, match="fixed staging path"):
+    with pytest.raises(ValueError, match="transaction snapshot"):
         handler.execute(wrong_context)
 
 
@@ -252,7 +269,7 @@ def _context(tmp_path: Path) -> _Context:
     video = tmp_path / "source.mp4"
     video.write_bytes(b"video")
     owner = tmp_path / "scene-a" / "alignment"
-    staging = owner / "staging"
+    staging = owner.parent / ".transactions" / "alignment" / "snapshot"
     staging.mkdir(parents=True)
     export = owner.parent / "reconstruction" / "export"
     export.mkdir(parents=True)
@@ -268,22 +285,27 @@ def _context(tmp_path: Path) -> _Context:
         from_stage=StageName.ALIGNMENT,
         config_schema="test-v1",
     )
-    spec = StageSpec(
+    definition = StageDefinition(
         name=StageName.ALIGNMENT,
         dependencies=(StageName.RECONSTRUCTION,),
         owner_relative_path=Path("alignment"),
+        required_inputs=(
+            StageInput.resolved_configuration(),
+            StageInput.stage_output(StageName.RECONSTRUCTION, "export"),
+        ),
         required_outputs=(
             Path("ground-line-map.npz"),
             Path("court-geometry.json"),
             Path("alignment.json"),
             Path("diagnostics"),
         ),
-        publication_mode=PublicationMode.ATOMIC_OUTPUTS,
-        handler_key="alignment",
+        handler=_UnusedLifecycle(),
+        publication=AtomicDirectoryPublication(),
+        summary_type=StageExecutionSummary,
     )
     return _Context(
         request=request,
-        stage=spec,
+        stage=definition,
         owner_path=owner,
         staging_path=staging,
     )
