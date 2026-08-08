@@ -515,6 +515,7 @@ def validate_blcs_dataset(output_directory: Path) -> BLCSAssemblyResult:
         raise ValueError("BLCS target-court inventory contains duplicates.")
     expected_global: list[int] = []
     continuity_records: list[TimelineFrameRecord] = []
+    continuity_reports: list[FrameContinuityReport] = []
     for trajectory in trajectories:
         trajectory_id = _string(trajectory["trajectory_id"], name="trajectory_id")
         frame_count = _integer(
@@ -626,6 +627,7 @@ def validate_blcs_dataset(output_directory: Path) -> BLCSAssemblyResult:
                 )
         trajectory_records = by_trajectory.get(trajectory_id, [])
         expected_records: list[BLCSSampleRecord] = []
+        trajectory_continuity_records: list[TimelineFrameRecord] = []
         camera_index = {camera_id: index for index, camera_id in enumerate(camera_ids)}
         for chunk_index, (chunk_path, reader, validated) in enumerate(
             zip(chunk_paths, chunk_readers, validated_chunks, strict=True)
@@ -665,9 +667,9 @@ def validate_blcs_dataset(output_directory: Path) -> BLCSAssemblyResult:
                 )
                 for object_index, object_id in enumerate(track_ids):
                     source_frame = track_mappings[object_index][key.frame_index]
-                    continuity_records.append(
+                    trajectory_continuity_records.append(
                         TimelineFrameRecord(
-                            frame_index=record.global_frame_index,
+                            frame_index=record.source_frame_index,
                             chunk_index=record.chunk_index,
                             track_id=f"{trajectory_id}-{object_id}",
                             present=source_frame is not None,
@@ -682,6 +684,13 @@ def validate_blcs_dataset(output_directory: Path) -> BLCSAssemblyResult:
                     )
         if trajectory_records != expected_records:
             raise ValueError("BLCS dataset sample records differ from compact chunks.")
+        continuity_reports.append(
+            validate_frame_continuity(
+                trajectory_continuity_records,
+                frame_count=frame_count,
+            )
+        )
+        continuity_records.extend(trajectory_continuity_records)
     source_count = sum(
         _integer(value["source_frame_count"], name="source_frame_count")
         for value in trajectories
@@ -697,7 +706,10 @@ def validate_blcs_dataset(output_directory: Path) -> BLCSAssemblyResult:
     )
     if payload["frame_inventory"] != inventory.to_dict():
         raise ValueError("BLCS dataset frame inventory is inconsistent.")
-    continuity = validate_frame_continuity(continuity_records, frame_count=source_count)
+    continuity = _aggregate_continuity_reports(
+        continuity_reports,
+        records=continuity_records,
+    )
     diagnostics = tuple(
         _string(value, name="diagnostic")
         for value in _list(payload["diagnostics"], name="diagnostics")
@@ -852,29 +864,63 @@ def _continuity(
     records: Sequence[BLCSSampleRecord],
 ) -> FrameContinuityReport:
     plans_by_id = {plan.source.trajectory_id: plan for plan in plans}
-    continuity_records: list[TimelineFrameRecord] = []
+    records_by_trajectory: dict[str, list[BLCSSampleRecord]] = defaultdict(list)
     for record in records:
-        plan = plans_by_id[record.trajectory_id]
-        for object_index, track in enumerate(plan.source.tracks):
-            source_frame = track.source_frame_indices[record.source_frame_index]
-            continuity_records.append(
-                TimelineFrameRecord(
-                    frame_index=record.global_frame_index,
-                    chunk_index=record.chunk_index,
-                    track_id=f"{record.trajectory_id}-{track.object_id}",
-                    present=source_frame is not None,
-                    source_frame_index=source_frame,
-                    camera_id=record.camera_id,
-                    label_id=(
-                        f"{record.trajectory_id}-{record.source_frame_index:06d}-"
-                        f"{record.camera_id}-{object_index + 1:03d}"
-                    ),
-                    court_instance_id=plan.target_court.court_instance_id,
+        if record.trajectory_id not in plans_by_id:
+            raise ValueError("BLCS sample record references an unknown trajectory.")
+        records_by_trajectory[record.trajectory_id].append(record)
+
+    continuity_records: list[TimelineFrameRecord] = []
+    continuity_reports: list[FrameContinuityReport] = []
+    for plan in plans:
+        trajectory_records: list[TimelineFrameRecord] = []
+        for record in records_by_trajectory[plan.source.trajectory_id]:
+            for object_index, track in enumerate(plan.source.tracks):
+                source_frame = track.source_frame_indices[record.source_frame_index]
+                trajectory_records.append(
+                    TimelineFrameRecord(
+                        frame_index=record.source_frame_index,
+                        chunk_index=record.chunk_index,
+                        track_id=f"{record.trajectory_id}-{track.object_id}",
+                        present=source_frame is not None,
+                        source_frame_index=source_frame,
+                        camera_id=record.camera_id,
+                        label_id=(
+                            f"{record.trajectory_id}-{record.source_frame_index:06d}-"
+                            f"{record.camera_id}-{object_index + 1:03d}"
+                        ),
+                        court_instance_id=plan.target_court.court_instance_id,
+                    )
                 )
+        continuity_reports.append(
+            validate_frame_continuity(
+                trajectory_records,
+                frame_count=plan.source.frame_count,
             )
-    return validate_frame_continuity(
-        continuity_records,
-        frame_count=sum(plan.source.frame_count for plan in plans),
+        )
+        continuity_records.extend(trajectory_records)
+    return _aggregate_continuity_reports(
+        continuity_reports,
+        records=continuity_records,
+    )
+
+
+def _aggregate_continuity_reports(
+    reports: Sequence[FrameContinuityReport],
+    *,
+    records: Sequence[TimelineFrameRecord],
+) -> FrameContinuityReport:
+    if not reports or not records:
+        raise ValueError("BLCS continuity aggregation requires validated trajectories.")
+    label_ids = [record.label_id for record in records]
+    if len(label_ids) != len(set(label_ids)):
+        raise ValueError("label_id values must be globally unique.")
+    return FrameContinuityReport(
+        frame_count=sum(report.frame_count for report in reports),
+        chunk_count=len({record.chunk_index for record in records}),
+        track_count=len({record.track_id for record in records}),
+        camera_count=len({record.camera_id for record in records}),
+        record_count=sum(report.record_count for report in reports),
     )
 
 
