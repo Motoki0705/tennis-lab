@@ -26,12 +26,16 @@ from src.synthetic_data_generation.alignment.validation import (
     validate_alignment_outputs,
 )
 from src.synthetic_data_generation.pipeline import (
+    CanonicalStageHandlers,
     DatasetTarget,
     ScenePipelineRequest,
+    StageDefinition,
+    StageExecutionSummary,
     StageName,
+    StageRegistry,
     canonical_registry,
 )
-from src.synthetic_data_generation.pipeline.contracts import StageSpec
+from src.synthetic_data_generation.pipeline.contracts import StageExecutionContext
 from src.synthetic_data_generation.reconstruction.scene_export import (
     StandardSceneExport,
 )
@@ -41,9 +45,39 @@ from src.synthetic_data_generation.scene_contract import RigidTransform
 @dataclass(frozen=True)
 class _Context:
     request: ScenePipelineRequest
-    stage: StageSpec
+    stage: StageDefinition[StageExecutionSummary]
     owner_path: Path
     staging_path: Path
+
+
+@dataclass(frozen=True)
+class _NoopHandler:
+    """Supply an explicit lifecycle binding for definition-only test contexts."""
+
+    stage: StageName
+
+    def preflight(self, context: StageExecutionContext) -> None:
+        pass
+
+    def execute(self, context: StageExecutionContext) -> StageExecutionSummary:
+        return StageExecutionSummary({"stage": self.stage.value})
+
+    def validate(self, context: StageExecutionContext) -> None:
+        pass
+
+
+def _definitions() -> StageRegistry:
+    return canonical_registry(
+        CanonicalStageHandlers(
+            ingest=_NoopHandler(StageName.INGEST),
+            reconstruction=_NoopHandler(StageName.RECONSTRUCTION),
+            alignment=_NoopHandler(StageName.ALIGNMENT),
+            court_dataset=_NoopHandler(StageName.COURT_DATASET),
+            blcs_dataset=_NoopHandler(StageName.BLCS_DATASET),
+            plcs_dataset=_NoopHandler(StageName.PLCS_DATASET),
+            report=_NoopHandler(StageName.REPORT),
+        )
+    )
 
 
 @dataclass
@@ -178,7 +212,7 @@ def _context(tmp_path: Path) -> _Context:
         config_schema="canonical_scene_pipeline_v1",
     )
     owner = tmp_path / "B00/alignment"
-    staging = owner / "staging"
+    staging = owner.parent / ".transactions/alignment/snapshot"
     staging.mkdir(parents=True)
     export = owner.parent / "reconstruction/export"
     (export / "images").mkdir(parents=True)
@@ -187,7 +221,7 @@ def _context(tmp_path: Path) -> _Context:
         (export / name).write_bytes(b"boundary")
     return _Context(
         request=request,
-        stage=canonical_registry().spec(StageName.ALIGNMENT),
+        stage=_definitions().definition(StageName.ALIGNMENT),
         owner_path=owner,
         staging_path=staging,
     )
