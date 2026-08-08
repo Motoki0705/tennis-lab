@@ -342,7 +342,7 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation[BLCSMultiViewS
 
         out["ball_uv"] = out["ball_uv"].clamp(0.0, 1.0)
         out["court_kp"] = out["court_kp"].clamp(0.0, 1.0)
-        return cast(BLCSMultiViewSample, out)
+        return out
 
     def _apply_uv_scale(self, sample: BLCSMultiViewSample) -> None:
         if not self._sample_activation(self._uv_scale_activation, sample["ball_uv"]):
