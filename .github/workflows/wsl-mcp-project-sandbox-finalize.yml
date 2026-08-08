@@ -85,6 +85,7 @@ jobs:
             .github/scripts/wsl_mcp_postpatch.py \
             .github/scripts/wsl_mcp_project_sandbox_postpatch.py \
             .github/wsl-mcp-bundle
+          rm -f .github/workflows/deploy-wsl-mcp.yml
           git add -A
           git diff --cached --check
           git commit -m "feat(automation): expose project-bounded WSL execution sandbox"
