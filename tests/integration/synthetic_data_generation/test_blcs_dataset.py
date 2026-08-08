@@ -44,13 +44,16 @@ from src.synthetic_data_generation.dataset.runtime import (
     sparse_delta_from_composite,
 )
 from src.synthetic_data_generation.pipeline import (
+    CanonicalStageHandlers,
     DatasetTarget,
     ScenePipelineRequest,
     SceneWorkspace,
+    StageDefinition,
+    StageExecutionSummary,
     StageName,
     canonical_registry,
 )
-from src.synthetic_data_generation.pipeline.contracts import StageSpec
+from src.synthetic_data_generation.pipeline.contracts import StageExecutionContext
 from src.synthetic_data_generation.rendering.nht.contracts import (
     NHTRenderArrays,
     NHTRenderCommandRequest,
@@ -68,9 +71,25 @@ from src.tasks.base.generate_dataset.camera_profiles import CameraProfileConfig
 @dataclass(frozen=True)
 class _Context:
     request: ScenePipelineRequest
-    stage: StageSpec
+    stage: StageDefinition[StageExecutionSummary]
     owner_path: Path
     staging_path: Path
+
+
+@dataclass(frozen=True)
+class _NoOpHandler:
+    """Typed unique placeholder for stages outside this focused integration."""
+
+    stage: StageName
+
+    def preflight(self, context: StageExecutionContext) -> None:
+        pass
+
+    def execute(self, context: StageExecutionContext) -> StageExecutionSummary:
+        return StageExecutionSummary({"stage": self.stage.value})
+
+    def validate(self, context: StageExecutionContext) -> None:
+        pass
 
 
 class _FakeNHTClient:
@@ -365,9 +384,6 @@ def test_blcs_stage_carries_all_frames_through_chunks_and_balanced_courts(
     scene_path = workspace.root / "reconstruction" / "export" / "scene.json"
     scene_path.parent.mkdir(parents=True)
     scene_path.write_text("{}\n", encoding="utf-8")
-    owner = workspace.root / "datasets" / "blcs"
-    staging = owner / "staging"
-    staging.mkdir(parents=True)
     source_video = tmp_path / "source.mp4"
     source_video.write_bytes(b"video")
     request = ScenePipelineRequest(
@@ -376,12 +392,6 @@ def test_blcs_stage_carries_all_frames_through_chunks_and_balanced_courts(
         targets=frozenset({DatasetTarget.BLCS}),
         from_stage=StageName.BLCS_DATASET,
         config_schema="canonical_scene_pipeline_v1",
-    )
-    context = _Context(
-        request=request,
-        stage=canonical_registry().spec(StageName.BLCS_DATASET),
-        owner_path=owner,
-        staging_path=staging,
     )
     handler_module = importlib.import_module(
         "src.synthetic_data_generation.dataset.blcs.handler"
@@ -429,6 +439,27 @@ def test_blcs_stage_carries_all_frames_through_chunks_and_balanced_courts(
             tuple(_trajectory(index) for index in range(3))
         ),
         renderer=renderer,
+    )
+    registry = canonical_registry(
+        CanonicalStageHandlers(
+            ingest=_NoOpHandler(StageName.INGEST),
+            reconstruction=_NoOpHandler(StageName.RECONSTRUCTION),
+            alignment=_NoOpHandler(StageName.ALIGNMENT),
+            court_dataset=_NoOpHandler(StageName.COURT_DATASET),
+            blcs_dataset=handler,
+            plcs_dataset=_NoOpHandler(StageName.PLCS_DATASET),
+            report=_NoOpHandler(StageName.REPORT),
+        )
+    )
+    definition = registry.definition(StageName.BLCS_DATASET)
+    owner = workspace.owner_path(definition)
+    staging = workspace.staging_path(definition)
+    staging.mkdir(parents=True)
+    context = _Context(
+        request=request,
+        stage=definition,
+        owner_path=owner,
+        staging_path=staging,
     )
 
     handler.preflight(context)
@@ -506,14 +537,14 @@ def test_blcs_stage_carries_all_frames_through_chunks_and_balanced_courts(
     original_metadata = metadata_path.read_text(encoding="utf-8")
     original_marker = marker_path.read_text(encoding="utf-8")
     corrupted = json.loads(original_metadata)
-    corrupted["records"][first_sample.chunk_sample_index][
-        "target_court"
-    ] = "court-mismatch"
+    corrupted["records"][first_sample.chunk_sample_index]["target_court"] = (
+        "court-mismatch"
+    )
     metadata_path.write_text(json.dumps(corrupted) + "\n", encoding="utf-8")
     marker = json.loads(original_marker)
     marker["byte_count"] = (
-        (chunk / "foreground.npz").stat().st_size + metadata_path.stat().st_size
-    )
+        chunk / "foreground.npz"
+    ).stat().st_size + metadata_path.stat().st_size
     marker_path.write_text(json.dumps(marker) + "\n", encoding="utf-8")
     with pytest.raises(ValueError, match="sample metadata is inconsistent"):
         validate_blcs_dataset(staging)
