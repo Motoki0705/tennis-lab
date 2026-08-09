@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from pathlib import Path
-from typing import Protocol, cast
+from typing import Protocol
 
 import numpy as np
 import torch
@@ -128,7 +127,7 @@ class _PrecomputedDenseTargetBuilder:
             record.dense_target_refs.get(self.kind)
             for record in records
             if record.dense_target_refs.get(self.kind) is None
-            or not cast(Path, record.dense_target_refs[self.kind]).is_file()
+            or not record.dense_target_refs[self.kind].is_file()
         ]
         if missing:
             raise FileNotFoundError(
