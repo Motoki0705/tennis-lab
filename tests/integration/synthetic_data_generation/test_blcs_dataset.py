@@ -37,6 +37,7 @@ from src.synthetic_data_generation.dataset.blcs.rendering.nht import (
     build_blcs_sample_metadata,
 )
 from src.synthetic_data_generation.dataset.blcs.timeline import BLCSTrajectoryPlan
+from src.synthetic_data_generation.dataset.camera_profiles import CameraProfileConfig
 from src.synthetic_data_generation.dataset.runtime import (
     BackgroundArrays,
     ForegroundDeltaBatch,
@@ -65,7 +66,6 @@ from src.synthetic_data_generation.scene_contract import (
     MultiCourtLayout,
     RigidTransform,
 )
-from src.tasks.base.generate_dataset.camera_profiles import CameraProfileConfig
 
 
 @dataclass(frozen=True)

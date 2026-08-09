@@ -89,6 +89,7 @@ def _standard_adapter(
         model_type=_StandardModel,
         profile=profile,
         num_court_tokens=20,
+        camera_index=0,
         output_rank=output_rank,
         predict_canonical_pose=False,
         predict_auxiliary_position=False,

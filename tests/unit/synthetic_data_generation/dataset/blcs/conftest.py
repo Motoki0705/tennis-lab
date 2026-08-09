@@ -16,12 +16,12 @@ from src.synthetic_data_generation.dataset.blcs.contracts import (
     BLCSTrack,
     BLCSTrajectory,
 )
+from src.synthetic_data_generation.dataset.camera_profiles import CameraProfileConfig
 from src.synthetic_data_generation.scene_contract import (
     CourtInstance,
     MultiCourtLayout,
     RigidTransform,
 )
-from src.tasks.base.generate_dataset.camera_profiles import CameraProfileConfig
 
 
 @pytest.fixture

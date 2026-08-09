@@ -4,8 +4,9 @@ defaults:
   - _self_
 # Use with models where model.predict_canonical_pose: true.
 #
-# Why these weights (derived from the issue_430 loss-dominance experiment).
-# Mean raw (unweighted) losses measured were:
+# Why these weights (derived from the loss-dominance analysis on data/plcs
+# test.txt with the issue_430 checkpoint, see scripts/analysis/
+# analyze_loss_dominance.py). Mean raw (unweighted) losses measured were:
 #   rotation       ~0.464   (1 - cos, range 0..2)
 #   canonical_pose ~0.0070  (smooth-L1 on canonical joints, meters)
 #   position       ~0.0038  (smooth-L1 on court-normalized coords)

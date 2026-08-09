@@ -19,9 +19,6 @@ from src.tasks.blcs.generate_dataset.scene_generator import (
     BLCSSceneData,
     CameraData,
 )
-from src.tasks.blcs.generate_dataset.simulation.errors import (
-    FullPhysicsProposalError,
-)
 from src.utils.projection.camera_projector import (
     CameraProjector,
     camera_from_mapping,
@@ -76,7 +73,6 @@ class MultiBallSceneGenerator:
         scene_generator: _BLCSSceneSource,
         *,
         timeline: TimelineConfig | Mapping[str, Any],
-        maximum_physics_attempts_per_object: int,
         rng: random.Random | None = None,
     ) -> None:
         self.scene_generator = scene_generator
@@ -85,61 +81,25 @@ class MultiBallSceneGenerator:
             if isinstance(timeline, TimelineConfig)
             else TimelineConfig.from_mapping(timeline)
         )
-        if (
-            isinstance(maximum_physics_attempts_per_object, bool)
-            or not isinstance(maximum_physics_attempts_per_object, int)
-            or maximum_physics_attempts_per_object <= 0
-        ):
-            raise ValueError(
-                "maximum_physics_attempts_per_object must be a positive integer."
-            )
-        self.maximum_physics_attempts_per_object = maximum_physics_attempts_per_object
         self.composer = TimelineComposer(self.timeline, rng=rng)
 
-    def _generate_ball(
-        self,
-        scene_id: str,
-    ) -> tuple[BLCSSceneData, dict[str, object]]:
-        rejected: list[dict[str, object]] = []
-        for attempt in range(1, self.maximum_physics_attempts_per_object + 1):
-            try:
-                scene = self.scene_generator.generate_scene(
-                    self.scene_generator.sample_from_cell(),
-                    self.scene_generator.sample_side(),
-                    scene_id,
-                )
-            except FullPhysicsProposalError as error:
-                rejected.append(
-                    {
-                        "attempt": attempt,
-                        "error_type": type(error).__name__,
-                        "reason": str(error),
-                    }
-                )
-                continue
-            if scene is None:
-                raise RuntimeError("BLCS physical scene generation returned no scene.")
-            return scene, {
-                "source_scene_id": scene_id,
-                "accepted_attempt": attempt,
-                "maximum_attempts": self.maximum_physics_attempts_per_object,
-                "rejected_attempts": rejected,
-            }
-        raise FullPhysicsProposalError(
-            f"BLCS full-physics proposals exhausted "
-            f"{self.maximum_physics_attempts_per_object} attempts for {scene_id!r}; "
-            f"rejections={rejected}."
+    def _generate_ball(self, scene_id: str) -> BLCSSceneData:
+        scene = self.scene_generator.generate_scene(
+            self.scene_generator.sample_from_cell(),
+            self.scene_generator.sample_side(),
+            scene_id,
         )
+        if scene is None:
+            raise RuntimeError("BLCS physical scene generation returned no scene.")
+        return scene
 
     def generate_scene(self, scene_id: str) -> BLCSSceneData:
         """Generate one fixed-length multi-ball lifecycle scene."""
         num_balls = self.composer.sample_num_tracks()
-        generated = [
+        objects = [
             self._generate_ball(f"{scene_id}_ball_{index:02d}")
             for index in range(num_balls)
         ]
-        objects = [scene for scene, _ in generated]
-        proposal_diagnostics = [diagnostic for _, diagnostic in generated]
         composition = self.composer.compose(
             [scene.scene_id for scene in objects],
             [int(scene.ball_pos_world.shape[0]) for scene in objects],
@@ -209,7 +169,6 @@ class MultiBallSceneGenerator:
         base.track_instances = [
             placement.to_metadata() for placement in composition.placements
         ]
-        base.physics_proposal_diagnostics = proposal_diagnostics
         base.shots = [
             {
                 "track_id": placement.track_id,

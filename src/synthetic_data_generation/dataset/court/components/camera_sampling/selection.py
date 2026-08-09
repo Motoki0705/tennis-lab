@@ -38,12 +38,12 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     PlannedCourtSample,
     TrajectoryGroupPlan,
 )
+from src.synthetic_data_generation.dataset.court_assignment import CourtAssignment
 from src.synthetic_data_generation.scene_contract import (
     MultiCourtLayout,
     RigidTransform,
     SceneCamera,
 )
-from src.tasks.base.generate_dataset.court_assignment import CourtAssignment
 from src.utils.schema.court import HALF_LENGTH
 
 

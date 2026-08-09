@@ -9,11 +9,11 @@ import numpy as np
 import pytest
 
 from src.synthetic_data_generation.dataset.blcs.timeline import build_blcs_plans
-from src.synthetic_data_generation.scene_contract import RigidTransform
-from src.tasks.base.generate_dataset.camera_profiles import (
+from src.synthetic_data_generation.dataset.camera_profiles import (
     CameraProfileConfig,
     assert_projection_equivalent,
 )
+from src.synthetic_data_generation.scene_contract import RigidTransform
 
 
 def test_plans_cover_all_frames_and_balance_all_courts(

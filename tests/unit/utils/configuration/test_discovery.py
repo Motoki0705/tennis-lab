@@ -111,3 +111,16 @@ def test_catalog_does_not_publish_legacy_synthetic_boundaries() -> None:
         PROJECT_ROOT / "src/utils/configuration/discovery.py"
     ).read_text(encoding="utf-8")
     assert "scripts.alignment.geometry_bridge" not in discovery_source
+
+
+def test_catalog_keeps_task_local_generation_boundaries_distinct() -> None:
+    boundary_ids = {contract.boundary_id for contract in catalog.BOUNDARY_CONTRACTS}
+
+    assert {
+        "src.tasks.blcs.scripts.generate_dataset:main",
+        "src.tasks.blcs.scripts.preview_augmentation:main",
+        "src.tasks.blcs.scripts.visualize:main",
+        "src.tasks.plcs.scripts.generate_dataset:main",
+        "src.tasks.plcs.scripts.preview_augmentation:main",
+        "src.tasks.plcs.scripts.visualize:main",
+    } <= boundary_ids

@@ -1,0 +1,37 @@
+defaults:
+  - paths: default
+  - model: track_query
+  - data: tracking_chunked
+  - training: default
+  - loss: tracking
+  - tracking_metrics: default
+  - run: train
+  - generation: multi_object
+  - physics: default
+  - rally: default
+  - camera: default
+  - targeted_velocity: default
+  - generator: default
+  - _self_
+
+training:
+  trainer:
+    max_epochs: 100
+    check_val_every_n_epoch: 5
+    # ChunkRotationCallback swaps train_dataset after every epoch. Lightning
+    # must rebuild its cached DataLoader before the retired chunk is deleted.
+    reload_dataloaders_every_n_epochs: 1
+  checkpoint:
+    monitor: val/loss
+  early_stopping:
+    enabled: false
+  qualitative_logging:
+    enabled: true
+    every_n_epochs: 10
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

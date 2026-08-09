@@ -12,6 +12,10 @@ from typing import cast
 import numpy as np
 from numpy.typing import NDArray
 
+from src.synthetic_data_generation.dataset.continuity import (
+    TimelineFrameRecord,
+    validate_frame_continuity,
+)
 from src.synthetic_data_generation.dataset.contracts import (
     FrameInventory,
     TargetCourtBinding,
@@ -35,10 +39,6 @@ from src.synthetic_data_generation.dataset.runtime import (
     materialize_logical_sample,
 )
 from src.synthetic_data_generation.scene_contract import SceneCamera
-from src.tasks.base.generate_dataset.continuity import (
-    TimelineFrameRecord,
-    validate_frame_continuity,
-)
 from src.utils.projection.camera_projector import make_look_at_camera
 
 

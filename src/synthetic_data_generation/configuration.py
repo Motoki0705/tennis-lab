@@ -43,6 +43,7 @@ from src.synthetic_data_generation.dataset.blcs.contracts import (
 from src.synthetic_data_generation.dataset.blcs.source import (
     BLCSTrajectorySourceSettings,
 )
+from src.synthetic_data_generation.dataset.camera_profiles import CameraProfileConfig
 from src.synthetic_data_generation.dataset.court.contracts import (
     OrbitCenterKind,
     OrbitCoverageMode,
@@ -71,15 +72,12 @@ from src.synthetic_data_generation.reconstruction.contracts import (
     NHT_RECONSTRUCT_COMMAND,
 )
 from src.synthetic_data_generation.rendering.nht.contracts import NHT_RENDER_COMMAND
-from src.tasks.base.generate_dataset.camera_profiles import CameraProfileConfig
-from src.tasks.base.generate_dataset.timeline_composer import TimelineConfig
-from src.tasks.blcs.generate_dataset.scene_generator import GeneratorConfig
-from src.tasks.blcs.generate_dataset.simulation.ball_physics import PhysicsConfig
-from src.tasks.blcs.generate_dataset.simulation.rally_simulator import RallyConfig
-from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
-    TargetedVelocityConfig,
+from src.tasks.blcs.generate_dataset.source_api import (
+    BLCSGeneratorConfiguration,
+    BLCSTimelineSpec,
+    build_blcs_generator_configuration,
 )
-from src.tasks.plcs.generate_dataset.sampling.motion_sampler import MotionCategory
+from src.tasks.plcs.generate_dataset.sampling.motion_source import MotionCategory
 from src.utils.configuration import (
     ConfigurationTypeError,
     MissingConfigurationKeyError,
@@ -92,8 +90,6 @@ from src.utils.configuration import (
 )
 from src.utils.hydra import register_boundary_validator
 from src.utils.paths import PROJECT_ROOT
-from src.utils.projection.camera_projector import CameraConfig
-from src.utils.schema.court import CourtConfig
 
 if TYPE_CHECKING:
     import torch
@@ -103,7 +99,7 @@ if TYPE_CHECKING:
         PLCSObjectRequest,
         PLCSStageParameters,
     )
-    from src.tasks.plcs.generate_dataset.sampling.motion_sampler import PLCSMotionClip
+    from src.tasks.plcs.generate_dataset.sampling.motion_source import PLCSMotionClip
 
 SCENE_PIPELINE_BOUNDARY = "synthetic.scene_pipeline"
 SCENE_PIPELINE_SCHEMA = "canonical_scene_pipeline_v1"
@@ -1360,21 +1356,6 @@ class FullFrameChunkPolicy:
         return result
 
 
-def _fixed_number_tuple(
-    mapping: ConfigMapping,
-    key: str,
-    *,
-    path: str,
-    length: int,
-) -> tuple[float, ...]:
-    values = _number_sequence(mapping, key, path=path, minimum_length=length)
-    if len(values) != length:
-        raise ConfigurationTypeError(
-            f"{path}.{key} must contain exactly {length} numeric values."
-        )
-    return values
-
-
 def _fixed_integer_tuple(
     mapping: ConfigMapping,
     key: str,
@@ -1391,31 +1372,6 @@ def _fixed_integer_tuple(
             f"{path}.{key} must contain exactly {length} integer values."
         )
     return tuple(cast(int, item) for item in values)
-
-
-def _optional_number_pair(
-    mapping: ConfigMapping,
-    key: str,
-    *,
-    path: str,
-) -> tuple[float, float] | None:
-    value = _value(mapping, key, (list, tuple, type(None)), path=path)
-    if value is None:
-        return None
-    values = _sequence(value, path=f"{path}.{key}")
-    if len(values) != 2 or any(type(item) not in (int, float) for item in values):
-        raise ConfigurationTypeError(
-            f"{path}.{key} must be null or contain exactly two numeric values."
-        )
-    result = cast(
-        tuple[float, float],
-        tuple(float(cast("int | float", item)) for item in values),
-    )
-    if any(not math.isfinite(item) for item in result) or result[0] > result[1]:
-        raise SemanticConfigurationError(
-            f"{path}.{key} must be null or a finite ordered range."
-        )
-    return result
 
 
 def _blcs_source_settings(value: object) -> BLCSTrajectorySourceSettings:
@@ -1469,7 +1425,7 @@ def _blcs_source_settings(value: object) -> BLCSTrajectorySourceSettings:
         path=timeline_path,
         length=2,
     )
-    timeline = TimelineConfig(
+    timeline = BLCSTimelineSpec(
         num_frames=_integer(timeline_raw, "num_frames", path=timeline_path, minimum=1),
         min_tracks=_integer(timeline_raw, "min_tracks", path=timeline_path, minimum=1),
         max_tracks=_integer(timeline_raw, "max_tracks", path=timeline_path, minimum=1),
@@ -1508,303 +1464,17 @@ def _blcs_source_settings(value: object) -> BLCSTrajectorySourceSettings:
     )
 
 
-def _blcs_generator_config(value: object) -> GeneratorConfig:
+def _blcs_generator_config(value: object) -> BLCSGeneratorConfiguration:
     path = "dataset.blcs.generator"
     raw = _exact(
         value,
         path=path,
         keys={"physics", "rally", "camera", "targeted_velocity", "court"},
     )
-    physics_path = f"{path}.physics"
-    physics_raw = _exact(
-        raw["physics"],
-        path=physics_path,
-        keys={
-            "gravity",
-            "k_drag",
-            "k_magnus",
-            "e_z",
-            "mu",
-            "alpha_net",
-            "alpha_net_cord",
-            "alpha_fence",
-            "net_half_thickness",
-            "net_cord_radius",
-            "dt",
-            "use_drag",
-            "use_magnus",
-            "wind",
-            "gravity_range",
-            "k_drag_range",
-            "k_magnus_range",
-            "e_z_range",
-            "mu_range",
-            "wind_speed_range",
-            "wind_direction_range_deg",
-        },
-    )
-    physics = PhysicsConfig(
-        gravity=_number(physics_raw, "gravity", path=physics_path),
-        k_drag=_number(physics_raw, "k_drag", path=physics_path),
-        k_magnus=_number(physics_raw, "k_magnus", path=physics_path),
-        e_z=_number(physics_raw, "e_z", path=physics_path),
-        mu=_number(physics_raw, "mu", path=physics_path),
-        alpha_net=_number(physics_raw, "alpha_net", path=physics_path),
-        alpha_net_cord=_number(physics_raw, "alpha_net_cord", path=physics_path),
-        alpha_fence=_number(physics_raw, "alpha_fence", path=physics_path),
-        net_half_thickness=_number(
-            physics_raw, "net_half_thickness", path=physics_path
-        ),
-        net_cord_radius=_number(physics_raw, "net_cord_radius", path=physics_path),
-        dt=_number(physics_raw, "dt", path=physics_path),
-        use_drag=_flag(physics_raw, "use_drag", path=physics_path),
-        use_magnus=_flag(physics_raw, "use_magnus", path=physics_path),
-        wind=cast(
-            tuple[float, float, float],
-            _fixed_number_tuple(physics_raw, "wind", path=physics_path, length=3),
-        ),
-        gravity_range=_optional_number_pair(
-            physics_raw, "gravity_range", path=physics_path
-        ),
-        k_drag_range=_optional_number_pair(
-            physics_raw, "k_drag_range", path=physics_path
-        ),
-        k_magnus_range=_optional_number_pair(
-            physics_raw, "k_magnus_range", path=physics_path
-        ),
-        e_z_range=_optional_number_pair(physics_raw, "e_z_range", path=physics_path),
-        mu_range=_optional_number_pair(physics_raw, "mu_range", path=physics_path),
-        wind_speed_range=_optional_number_pair(
-            physics_raw, "wind_speed_range", path=physics_path
-        ),
-        wind_direction_range_deg=_optional_number_pair(
-            physics_raw, "wind_direction_range_deg", path=physics_path
-        ),
-    )
-    rally_path = f"{path}.rally"
-    rally_raw = _exact(
-        raw["rally"],
-        path=rally_path,
-        keys={
-            "z_range",
-            "spin_x_range",
-            "spin_y_range",
-            "spin_z_range",
-            "max_sim_frames",
-            "output_fps",
-            "sim_fps",
-            "max_rallies",
-            "max_total_frames",
-            "hit_timing_range",
-            "return_z_range",
-            "serve_probability",
-            "serve_z_range",
-            "toss_vz_range",
-            "toss_xy_noise_range",
-            "toss_max_frames",
-            "toss_z0_tolerance",
-            "volley_probability",
-            "normal_return_probability",
-            "late_return_probability",
-            "out_court_target_probability",
-        },
-    )
-
-    def rally_pair(key: str) -> tuple[float, float]:
-        return cast(
-            tuple[float, float],
-            _fixed_number_tuple(rally_raw, key, path=rally_path, length=2),
-        )
-
-    rally = RallyConfig(
-        z_range=rally_pair("z_range"),
-        spin_x_range=rally_pair("spin_x_range"),
-        spin_y_range=rally_pair("spin_y_range"),
-        spin_z_range=rally_pair("spin_z_range"),
-        max_sim_frames=_integer(
-            rally_raw, "max_sim_frames", path=rally_path, minimum=1
-        ),
-        output_fps=_integer(rally_raw, "output_fps", path=rally_path, minimum=1),
-        sim_fps=_integer(rally_raw, "sim_fps", path=rally_path, minimum=1),
-        max_rallies=_integer(rally_raw, "max_rallies", path=rally_path, minimum=1),
-        max_total_frames=_integer(
-            rally_raw, "max_total_frames", path=rally_path, minimum=1
-        ),
-        hit_timing_range=rally_pair("hit_timing_range"),
-        return_z_range=rally_pair("return_z_range"),
-        serve_probability=_number(rally_raw, "serve_probability", path=rally_path),
-        serve_z_range=rally_pair("serve_z_range"),
-        toss_vz_range=rally_pair("toss_vz_range"),
-        toss_xy_noise_range=rally_pair("toss_xy_noise_range"),
-        toss_max_frames=_integer(
-            rally_raw, "toss_max_frames", path=rally_path, minimum=1
-        ),
-        toss_z0_tolerance=_number(
-            rally_raw, "toss_z0_tolerance", path=rally_path
-        ),
-        volley_probability=_number(
-            rally_raw, "volley_probability", path=rally_path
-        ),
-        normal_return_probability=_number(
-            rally_raw, "normal_return_probability", path=rally_path
-        ),
-        late_return_probability=_number(
-            rally_raw, "late_return_probability", path=rally_path
-        ),
-        out_court_target_probability=_number(
-            rally_raw, "out_court_target_probability", path=rally_path
-        ),
-    )
-    camera_path = f"{path}.camera"
-    camera_raw = _exact(
-        raw["camera"],
-        path=camera_path,
-        keys={
-            "z_min",
-            "z_max",
-            "hfov_deg",
-            "image_size",
-            "fixed_look_at",
-            "fixed_baseline_clear_extra",
-            "fixed_position_noise_radius",
-            "fixed_look_at_xy_radius",
-            "layout",
-            "broadcast_setback",
-            "broadcast_height",
-            "broadcast_hfov_deg",
-            "broadcast_look_at_y",
-            "broadcast_look_at_height",
-            "broadcast_position_noise_radius",
-            "broadcast_look_at_xy_radius",
-            "broadcast_hfov_jitter_deg",
-            "broadcast_setback_range",
-            "broadcast_height_range",
-            "broadcast_court_width_frac_range",
-        },
-    )
-    image_size = _fixed_integer_tuple(
-        camera_raw, "image_size", path=camera_path, length=2
-    )
-    camera = CameraConfig(
-        z_min=_number(camera_raw, "z_min", path=camera_path),
-        z_max=_number(camera_raw, "z_max", path=camera_path),
-        hfov_deg=_number(camera_raw, "hfov_deg", path=camera_path),
-        image_size=cast(tuple[int, int], image_size),
-        fixed_look_at=cast(
-            tuple[float, float, float],
-            _fixed_number_tuple(
-                camera_raw, "fixed_look_at", path=camera_path, length=3
-            ),
-        ),
-        fixed_baseline_clear_extra=_number(
-            camera_raw, "fixed_baseline_clear_extra", path=camera_path
-        ),
-        fixed_position_noise_radius=_number(
-            camera_raw, "fixed_position_noise_radius", path=camera_path
-        ),
-        fixed_look_at_xy_radius=_number(
-            camera_raw, "fixed_look_at_xy_radius", path=camera_path
-        ),
-        layout=_text(camera_raw, "layout", path=camera_path),
-        broadcast_setback=_number(camera_raw, "broadcast_setback", path=camera_path),
-        broadcast_height=_number(camera_raw, "broadcast_height", path=camera_path),
-        broadcast_hfov_deg=_number(
-            camera_raw, "broadcast_hfov_deg", path=camera_path
-        ),
-        broadcast_look_at_y=_number(
-            camera_raw, "broadcast_look_at_y", path=camera_path
-        ),
-        broadcast_look_at_height=_number(
-            camera_raw, "broadcast_look_at_height", path=camera_path
-        ),
-        broadcast_position_noise_radius=_number(
-            camera_raw, "broadcast_position_noise_radius", path=camera_path
-        ),
-        broadcast_look_at_xy_radius=_number(
-            camera_raw, "broadcast_look_at_xy_radius", path=camera_path
-        ),
-        broadcast_hfov_jitter_deg=_number(
-            camera_raw, "broadcast_hfov_jitter_deg", path=camera_path
-        ),
-        broadcast_setback_range=_optional_number_pair(
-            camera_raw, "broadcast_setback_range", path=camera_path
-        ),
-        broadcast_height_range=_optional_number_pair(
-            camera_raw, "broadcast_height_range", path=camera_path
-        ),
-        broadcast_court_width_frac_range=_optional_number_pair(
-            camera_raw, "broadcast_court_width_frac_range", path=camera_path
-        ),
-    )
-    target_path = f"{path}.targeted_velocity"
-    target_raw = _exact(
-        raw["targeted_velocity"],
-        path=target_path,
-        keys={
-            "drive_elevation_range_deg",
-            "lob_elevation_range_deg",
-            "lob_probability",
-            "max_ballistic_apex_height_m",
-            "gravity",
-            "net_elevation_step_deg",
-            "landing_refine_enabled",
-            "landing_refine_max_iters",
-            "landing_refine_tolerance_m",
-            "landing_sim_max_frames",
-            "target_margin_m",
-        },
-    )
-
-    def target_pair(key: str) -> tuple[float, float]:
-        return cast(
-            tuple[float, float],
-            _fixed_number_tuple(target_raw, key, path=target_path, length=2),
-        )
-
-    targeted = TargetedVelocityConfig(
-        drive_elevation_range_deg=target_pair("drive_elevation_range_deg"),
-        lob_elevation_range_deg=target_pair("lob_elevation_range_deg"),
-        lob_probability=_number(target_raw, "lob_probability", path=target_path),
-        max_ballistic_apex_height_m=_number(
-            target_raw, "max_ballistic_apex_height_m", path=target_path
-        ),
-        gravity=_number(target_raw, "gravity", path=target_path),
-        net_elevation_step_deg=_number(
-            target_raw, "net_elevation_step_deg", path=target_path
-        ),
-        landing_refine_enabled=_flag(
-            target_raw, "landing_refine_enabled", path=target_path
-        ),
-        landing_refine_max_iters=_integer(
-            target_raw, "landing_refine_max_iters", path=target_path, minimum=1
-        ),
-        landing_refine_tolerance_m=_number(
-            target_raw, "landing_refine_tolerance_m", path=target_path
-        ),
-        landing_sim_max_frames=_integer(
-            target_raw, "landing_sim_max_frames", path=target_path, minimum=1
-        ),
-        target_margin_m=_number(target_raw, "target_margin_m", path=target_path),
-    )
-    court_path = f"{path}.court"
-    court_raw = _exact(
-        raw["court"],
-        path=court_path,
-        keys={"net_post_offset_x", "net_post_offset_x_range"},
-    )
-    court = CourtConfig(
-        net_post_offset_x=_number(court_raw, "net_post_offset_x", path=court_path),
-        net_post_offset_x_range=_optional_number_pair(
-            court_raw, "net_post_offset_x_range", path=court_path
-        ),
-    )
-    return GeneratorConfig(
-        physics=physics,
-        rally=rally,
-        camera=camera,
-        targeted_velocity=targeted,
-        court=court,
-    )
+    try:
+        return build_blcs_generator_configuration(raw)
+    except (TypeError, ValueError) as error:
+        raise SemanticConfigurationError(f"{path}: {error}") from error
 
 
 def _gaussian_asset(value: object, *, path: str) -> GaussianAsset:
@@ -1885,7 +1555,7 @@ class BLCSDatasetConfiguration:
 
     timeline: FullFrameChunkPolicy
     trajectory_source: BLCSTrajectorySourceSettings
-    generator: GeneratorConfig
+    generator: BLCSGeneratorConfiguration
     assets: BLCSCompositionAssets
     render_timeout_seconds: float
     performance: DatasetPerformanceBudget
@@ -2099,7 +1769,7 @@ class LinearRGBPaletteSettings:
         from src.synthetic_data_generation.dataset.plcs.composition import (
             AvatarAppearance,
         )
-        from src.tasks.plcs.generate_dataset.sampling.motion_sampler import (
+        from src.tasks.plcs.generate_dataset.sampling.motion_source import (
             PLCSMotionClip,
         )
 

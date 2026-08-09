@@ -5,6 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import astuple
 from pathlib import Path
+from typing import cast
 
 import pytest
 from hydra import compose, initialize_config_dir
@@ -15,17 +16,22 @@ from src.synthetic_data_generation.alignment.settings import AlignmentEvidenceSe
 from src.synthetic_data_generation.configuration import (
     SCENE_PIPELINE_SCHEMA,
     ScenePipelineConfiguration,
+    _blcs_generator_config,
+    _blcs_source_settings,
 )
 from src.synthetic_data_generation.dataset.blcs.source import (
     BLCSTrajectorySourceSettings,
 )
 from src.synthetic_data_generation.pipeline.contracts import DatasetTarget, StageName
-from src.tasks.base.generate_dataset.timeline_composer import TimelineConfig
-from src.tasks.blcs.generate_dataset.scene_generator import GeneratorConfig
+from src.tasks.blcs.generate_dataset.source_api import (
+    BLCSGeneratorConfiguration,
+    BLCSTimelineSpec,
+)
 from src.utils.configuration import ConfigurationError, PathContractError
 from src.utils.paths import PROJECT_ROOT
 
 _CONFIG_ROOT = PROJECT_ROOT / "src/synthetic_data_generation/configs"
+_BLCS_GENERATOR_RUNTIME_TYPE = cast(type[object], BLCSGeneratorConfiguration)
 
 pytestmark = pytest.mark.local_data
 
@@ -33,6 +39,18 @@ pytestmark = pytest.mark.local_data
 def _compose(*overrides: str) -> DictConfig:
     with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_ROOT)):
         return compose(config_name="run_scene_pipeline", overrides=list(overrides))
+
+
+def test_blcs_configuration_is_parsed_through_public_source_contracts() -> None:
+    config = _compose()
+
+    generator = _blcs_generator_config(config.dataset.blcs.generator)
+    source = _blcs_source_settings(config.dataset.blcs.trajectory_source)
+
+    assert isinstance(generator, _BLCS_GENERATOR_RUNTIME_TYPE)
+    assert isinstance(source.timeline, BLCSTimelineSpec)
+    assert source.timeline.num_frames == 1024
+    assert source.maximum_physics_attempts_per_object == 64
 
 
 def test_b00_configuration_is_the_canonical_scene_request() -> None:
@@ -203,8 +221,8 @@ def test_blcs_and_plcs_production_inputs_are_typed_and_have_no_frame_subset() ->
     runtime = ScenePipelineConfiguration.from_config(_compose())
 
     assert isinstance(runtime.blcs.trajectory_source, BLCSTrajectorySourceSettings)
-    assert isinstance(runtime.blcs.trajectory_source.timeline, TimelineConfig)
-    assert isinstance(runtime.blcs.generator, GeneratorConfig)
+    assert isinstance(runtime.blcs.trajectory_source.timeline, BLCSTimelineSpec)
+    assert isinstance(runtime.blcs.generator, _BLCS_GENERATOR_RUNTIME_TYPE)
     assert runtime.blcs.trajectory_source.scene_count == 3
     assert runtime.blcs.trajectory_source.maximum_physics_attempts_per_object == 64
     assert runtime.blcs.trajectory_source.split_scene_counts == {

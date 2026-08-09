@@ -10,6 +10,12 @@ from pathlib import Path
 import numpy as np
 from numpy.typing import NDArray
 
+from src.synthetic_data_generation.dataset.camera_profiles import SampledCameraRig
+from src.synthetic_data_generation.dataset.continuity import (
+    FrameContinuityReport,
+    TimelineFrameRecord,
+    validate_frame_continuity,
+)
 from src.synthetic_data_generation.dataset.contracts import (
     DatasetDomain,
     DatasetManifest,
@@ -23,12 +29,6 @@ from src.synthetic_data_generation.dataset.plcs.timeline import (
 from src.synthetic_data_generation.dataset.runtime import (
     ChunkReader,
     FinalDatasetAssembler,
-)
-from src.tasks.base.generate_dataset.camera_profiles import SampledCameraRig
-from src.tasks.base.generate_dataset.continuity import (
-    FrameContinuityReport,
-    TimelineFrameRecord,
-    validate_frame_continuity,
 )
 
 PLCS_DATASET_SCHEMA = "tennis_plcs_compact_dataset_v4"

@@ -26,7 +26,7 @@ from src.synthetic_data_generation.dataset.plcs.production import (
     validate_plcs_production_contract,
 )
 from src.synthetic_data_generation.scene_contract import RigidTransform
-from src.tasks.plcs.generate_dataset.sampling.motion_sampler import PLCSMotionClip
+from src.tasks.plcs.generate_dataset.sampling.motion_source import PLCSMotionClip
 
 FloatArray: TypeAlias = NDArray[np.float64]
 
@@ -202,7 +202,7 @@ class PLCSGlobalTimeline:
 
     @property
     def mode(self) -> str:
-        return self.production_mode.persisted_timeline_mode
+        return cast(str, self.production_mode.persisted_timeline_mode)
 
     def to_foreground_composition(
         self,

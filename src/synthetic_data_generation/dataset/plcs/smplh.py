@@ -22,7 +22,7 @@ from src.synthetic_data_generation.dataset.plcs.components.avatar_asset import (
     AvatarGaussianAsset,
     build_surface_gaussian_asset,
 )
-from src.tasks.plcs.generate_dataset.sampling.motion_sampler import PLCSMotionClip
+from src.tasks.plcs.generate_dataset.sampling.motion_source import PLCSMotionClip
 
 FloatArray: TypeAlias = NDArray[np.float64]
 IntArray: TypeAlias = NDArray[np.int64]

@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 import torch
 from torch import Tensor
 
-from src.tasks.base.data.canonical_dataset import CanonicalDataset
 from src.tasks.base.data.lifecycle_slots import (
     LifecycleSlotAssignment,
     pack_lifecycle_slots,
 )
+from src.tasks.base.data.scene_dataset import SceneDatasetBase, SceneDatasetConfig
 
 
 def validate_lifecycle_capacity(
@@ -40,25 +41,25 @@ def validate_lifecycle_capacity(
         )
 
 
-class CanonicalTrackingDataset(CanonicalDataset[dict[str, Tensor]]):
-    """Config-aware lifecycle base for compact canonical task datasets."""
+class CanonicalTrackingDataset(SceneDatasetBase[dict[str, Tensor]]):
+    """Config-aware base for fixed-directory BLCS/PLCS tracking datasets."""
 
     def __init__(
         self,
         *,
+        scene_dir: str | Path,
+        split_file: str | Path,
         config: Any | None = None,
         augment: bool = False,
         rng: np.random.Generator | None = None,
     ) -> None:
         if config is None:
             raise ValueError("CanonicalTrackingDataset requires a validated config.")
-        if not isinstance(config, Mapping):
-            raise TypeError("CanonicalTrackingDataset requires a mapping config.")
         self.hydra_cfg = config
-        data_value = config.get("data")
-        if not isinstance(data_value, Mapping):
-            raise TypeError("CanonicalTrackingDataset requires config.data.")
-        data_cfg = data_value
+        self.augment = augment
+        data_cfg = self._resolve_data_cfg(self.hydra_cfg)
+        seq_len_range = self._parse_int_range(data_cfg, "seq_len_range")
+        num_views_range = self._parse_int_range(data_cfg, "num_views_range")
         lifecycle_cfg = data_cfg["lifecycle"]
         self.pack_to_query_slots = bool(lifecycle_cfg["pack_to_query_slots"])
         self.min_reuse_gap_frames = int(lifecycle_cfg["min_reuse_gap_frames"])
@@ -71,7 +72,19 @@ class CanonicalTrackingDataset(CanonicalDataset[dict[str, Tensor]]):
                 "data.lifecycle.min_reuse_gap_frames must be non-negative."
             )
 
-        super().__init__(config=config, augment=augment, rng=rng)
+        super().__init__(
+            config=SceneDatasetConfig(
+                scene_dir=Path(scene_dir),
+                split_file=Path(split_file),
+                seq_len_range=seq_len_range,
+                num_views_range=num_views_range,
+                camera_mode=self._parse_camera_mode(data_cfg),
+                crop_mode="random" if augment else "center",
+                min_num_frames=1,
+                min_num_cameras=1,
+            ),
+            rng=rng,
+        )
 
     def pack_lifecycle(self, physical_presence: Tensor) -> LifecycleSlotAssignment:
         """Pack a clipped physical-track matrix into model query slots."""

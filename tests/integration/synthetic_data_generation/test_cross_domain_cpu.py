@@ -8,21 +8,23 @@ import numpy as np
 import pytest
 import yaml
 
+from src.synthetic_data_generation.dataset.camera_profiles import (
+    CameraProfileConfig,
+    assert_projection_equivalent,
+    sample_camera_rig,
+)
+from src.synthetic_data_generation.dataset.continuity import (
+    TimelineFrameRecord,
+    validate_frame_continuity,
+)
+from src.synthetic_data_generation.dataset.court_assignment import (
+    assign_courts_balanced,
+)
 from src.synthetic_data_generation.scene_contract import (
     CourtInstance,
     MultiCourtLayout,
     RigidTransform,
 )
-from src.tasks.base.generate_dataset.camera_profiles import (
-    CameraProfileConfig,
-    assert_projection_equivalent,
-    sample_camera_rig,
-)
-from src.tasks.base.generate_dataset.continuity import (
-    TimelineFrameRecord,
-    validate_frame_continuity,
-)
-from src.tasks.base.generate_dataset.court_assignment import assign_courts_balanced
 from src.utils.paths import PROJECT_ROOT
 
 

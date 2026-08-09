@@ -18,9 +18,6 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor
 
-from src.tasks.blcs.generate_dataset.simulation.errors import (
-    FullPhysicsLandingError,
-)
 from src.utils.schema.court import net_height_at_x
 
 if TYPE_CHECKING:
@@ -241,7 +238,7 @@ class TargetedVelocitySampler:
         if best_velocity is not None:
             return best_velocity
 
-        raise FullPhysicsLandingError(
+        raise RuntimeError(
             "Full-physics targeted-velocity refinement produced no valid landing; "
             "no gravity-only retry fallback is defined."
         )

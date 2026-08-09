@@ -30,7 +30,7 @@ from src.synthetic_data_generation.pipeline.registry import (
 from src.synthetic_data_generation.pipeline.runner import ScenePipelineRunner
 from src.synthetic_data_generation.reconstruction import NHTReconstructionHandler
 from src.synthetic_data_generation.rendering.nht import NHTRenderClient
-from src.tasks.plcs.generate_dataset.sampling.motion_sampler import ACCADMotionLibrary
+from src.tasks.plcs.generate_dataset.sampling.motion_source import ACCADMotionLibrary
 
 
 def build_stage_registry(

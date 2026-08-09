@@ -10,6 +10,10 @@ from src.synthetic_data_generation.composition.gaussians import (
     assign_instance_id,
     compose_foreground_frame_gaussians,
 )
+from src.synthetic_data_generation.dataset.continuity import (
+    TimelineFrameRecord,
+    validate_frame_continuity,
+)
 from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
 from src.synthetic_data_generation.dataset.plcs.composition import (
     AvatarAppearance,
@@ -28,11 +32,7 @@ from src.synthetic_data_generation.dataset.plcs.timeline import (
     build_global_timeline,
 )
 from src.synthetic_data_generation.scene_contract import RigidTransform
-from src.tasks.base.generate_dataset.continuity import (
-    TimelineFrameRecord,
-    validate_frame_continuity,
-)
-from src.tasks.plcs.generate_dataset.sampling.motion_sampler import (
+from src.tasks.plcs.generate_dataset.sampling.motion_source import (
     ACCADMotionLibrary,
     MotionCategory,
     load_amass_motion_clip,

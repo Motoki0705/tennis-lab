@@ -40,7 +40,7 @@ from src.synthetic_data_generation.rendering.foreground import (
     RGB_APPEARANCE_MODEL,
     RGB_APPEARANCE_SPACE,
 )
-from src.tasks.plcs.generate_dataset.sampling.motion_sampler import PLCSMotionClip
+from src.tasks.plcs.generate_dataset.sampling.motion_source import PLCSMotionClip
 
 
 @dataclass(frozen=True, slots=True)

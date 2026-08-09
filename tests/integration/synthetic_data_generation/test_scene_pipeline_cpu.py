@@ -55,6 +55,7 @@ from src.synthetic_data_generation.dataset.blcs.rendering.nht import (
     build_blcs_sample_metadata,
 )
 from src.synthetic_data_generation.dataset.blcs.timeline import BLCSTrajectoryPlan
+from src.synthetic_data_generation.dataset.camera_profiles import CameraProfileConfig
 from src.synthetic_data_generation.dataset.court.contracts import (
     COURT_DATASET_SCHEMA,
 )
@@ -105,8 +106,7 @@ from src.synthetic_data_generation.reconstruction.scene_export import (
 )
 from src.synthetic_data_generation.rendering.nht import NHTRenderClient
 from src.synthetic_data_generation.scene_contract import RigidTransform
-from src.tasks.base.generate_dataset.camera_profiles import CameraProfileConfig
-from src.tasks.plcs.generate_dataset.sampling.motion_sampler import (
+from src.tasks.plcs.generate_dataset.sampling.motion_source import (
     ACCADMotionLibrary,
     MotionCategory,
     PLCSMotionClip,

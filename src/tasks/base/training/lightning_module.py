@@ -120,7 +120,7 @@ class BaseLightningModule(pl.LightningModule):
     # Test-split inference saving (issue #533)
     #
     # Instead of keeping bulky checkpoints, we persist the model's predictions
-    # on the canonical manifest's test split. New metrics can then be
+    # on the test split (scenes from ``test.txt``). New metrics can then be
     # recomputed from these arrays without re-running the model, and the
     # checkpoint can be deleted. Task modules override
     # :meth:`test_prediction_payload` to declare which arrays to save.
@@ -151,7 +151,7 @@ class BaseLightningModule(pl.LightningModule):
         self._test_pred_cursor: int = 0
 
     def _scene_ids_for_test_batch(self, batch_size: int) -> list[str]:
-        """Map the current test batch to canonical manifest sample order.
+        """Map the current test batch to scene ids from ``test.txt`` order.
 
         The test loader uses ``shuffle=False, drop_last=False`` (a sequential
         sampler), so a running cursor over ``test_dataset.scenes`` recovers the

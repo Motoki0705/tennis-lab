@@ -362,7 +362,9 @@ class PLCSModel(nn.Module):
         cls = self.cls_token.expand(B, -1, -1)
         return torch.cat([cls, token_body], dim=1)  # (B, 38, D)
 
-    def _transformer_freqs_with_rope(self, x: Tensor, body_tokens: int) -> Tensor:
+    def _transformer_freqs_with_rope(
+        self, x: Tensor, body_tokens: int
+    ) -> Tensor:
         prefix_len = x.size(1) - body_tokens
         freqs_cis_body = cast(Tensor, self.freqs_cis_body)[:body_tokens]
         prefix_freqs = torch.ones(
@@ -374,7 +376,9 @@ class PLCSModel(nn.Module):
         )
         return torch.cat([prefix_freqs, freqs_cis_body], dim=0)
 
-    def _transformer_freqs_without_rope(self, x: Tensor, body_tokens: int) -> Tensor:
+    def _transformer_freqs_without_rope(
+        self, x: Tensor, body_tokens: int
+    ) -> Tensor:
         del body_tokens
         return torch.ones(
             x.size(1),

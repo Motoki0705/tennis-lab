@@ -18,7 +18,17 @@ from src.synthetic_data_generation.alignment.validation import (
     validate_court_transform_binding,
 )
 from src.synthetic_data_generation.configuration import PLCSDatasetConfiguration
+from src.synthetic_data_generation.dataset.camera_profiles import (
+    CameraProfileConfig,
+    SampledCameraRig,
+    assert_projection_equivalent,
+    sample_camera_rig,
+)
 from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
+from src.synthetic_data_generation.dataset.court_assignment import (
+    CourtAssignment,
+    assign_courts_balanced,
+)
 from src.synthetic_data_generation.dataset.plcs.assembler import (
     PLCSSceneAssemblyInput,
     PLCSSupervisionArrays,
@@ -68,18 +78,8 @@ from src.synthetic_data_generation.pipeline.contracts import (
 )
 from src.synthetic_data_generation.pipeline.workspace import SceneWorkspace
 from src.synthetic_data_generation.scene_contract import MultiCourtLayout, SceneCamera
-from src.tasks.base.generate_dataset.camera_profiles import (
-    CameraProfileConfig,
-    SampledCameraRig,
-    assert_projection_equivalent,
-    sample_camera_rig,
-)
-from src.tasks.base.generate_dataset.court_assignment import (
-    CourtAssignment,
-    assign_courts_balanced,
-)
 from src.tasks.plcs.data.targets import smplh_joints_to_coco17
-from src.tasks.plcs.generate_dataset.sampling.motion_sampler import (
+from src.tasks.plcs.generate_dataset.sampling.motion_source import (
     ACCADMotionLibrary,
     MotionCategory,
     PLCSMotionClip,

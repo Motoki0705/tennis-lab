@@ -2,21 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from pathlib import Path
 from typing import Any
 
 import torch
 from torch import Tensor
 
-from src.synthetic_data_generation.dataset.plcs.validation import (
-    PLCSCompactDatasetReader,
-    PLCSSceneIndex,
-)
 from src.tasks.base.data.canonical_tracking import (
     CanonicalTrackingDataset,
     pad_and_stack_tracking_batch,
 )
+from src.tasks.base.data.scene_dataset import Scene
 from src.tasks.plcs.data.tracking_augmentation import (
     PLCSTrackingDetectionAugmentation,
 )
@@ -46,59 +41,93 @@ PLCS_TRACKING_KEYS = (
 class PLCSTrackingDataset(CanonicalTrackingDataset):
     """Load ID-ordered objects, pack lifecycle slots, and corrupt observations."""
 
-    def __init__(
-        self,
-        *,
-        dataset_dir: str | Path,
-        split: str,
-        config: Any,
-        augment: bool = False,
-    ) -> None:
-        super().__init__(config=config, augment=augment)
-        self.reader = PLCSCompactDatasetReader(Path(dataset_dir))
-        self.index: tuple[PLCSSceneIndex, ...] = self.reader.split_scenes(split)
-        if not self.index:
-            raise ValueError(f"Canonical PLCS split {split!r} is empty.")
-        augmentation = self.data_config["augmentation"]
-        if not isinstance(augmentation, Mapping):
-            raise TypeError("data.augmentation must be a mapping.")
-        self.tracking_augmentation = PLCSTrackingDetectionAugmentation(augmentation)
-
-    def __len__(self) -> int:
-        return len(self.index)
-
-    def __getitem__(self, item: int) -> dict[str, Tensor]:
-        index = self.index[item]
-        scene = self.reader.materialize_all_views(index.scene_id).supervision
-        window = self.contiguous_window(index.frame_count)
-        position = torch.from_numpy(scene.position[window])
-        rotation = torch.from_numpy(scene.rotation[window])
-        canonical_pose = torch.from_numpy(scene.canonical_pose_3d[window])
-        world_joints = torch.from_numpy(scene.human_kp_3d[window])
-        physical_presence = torch.from_numpy(scene.present[window])
-        num_frames, num_physical = physical_presence.shape
-        packing = self.pack_lifecycle(physical_presence)
-        human_kp = torch.from_numpy(scene.human_kp[window]).permute(1, 0, 2, 3, 4)
-        human_vis = torch.from_numpy(scene.human_vis[window]).permute(1, 0, 2, 3)
-        court_kp = torch.from_numpy(scene.court_kp[window, :, :14]).permute(1, 0, 2, 3)
-        court_vis = torch.from_numpy(scene.court_vis[window, :, :14]).permute(1, 0, 2)
-        ordered_object_ids = torch.arange(num_physical).expand(num_frames, -1)
-        detection_mask = human_vis.any(-1)
-        detection_index = torch.where(
-            detection_mask,
-            ordered_object_ids[None].expand(human_vis.shape[0], -1, -1),
-            -1,
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        data_cfg = self._resolve_data_cfg(self.hydra_cfg)
+        self.tracking_augmentation = PLCSTrackingDetectionAugmentation(
+            data_cfg["augmentation"]
         )
+
+    def build_sample(self, scene: Scene) -> dict[str, Tensor]:
+        position = torch.from_numpy(scene.get_array("position")).float()
+        rotation = torch.from_numpy(scene.get_array("rotation")).float()
+        canonical_pose = torch.from_numpy(scene.get_array("canonical_pose_3d")).float()
+        world_joints = torch.from_numpy(scene.get_array("human_kp_3d")).float()
+        if position.ndim == 2:
+            position = position[:, None]
+            rotation = rotation[:, None]
+            canonical_pose = canonical_pose[:, None]
+            world_joints = world_joints[:, None]
+        num_frames, num_physical = position.shape[:2]
+        if scene.has_key("person_present"):
+            physical_presence = torch.from_numpy(
+                scene.get_array("person_present")
+            ).bool()
+        else:
+            physical_presence = torch.ones((num_frames, num_physical), dtype=torch.bool)
+        window = self.select_window(scene, full_len=num_frames)
+        cameras = self.select_cameras(scene)
+        position = position[window.sl]
+        rotation = rotation[window.sl]
+        canonical_pose = canonical_pose[window.sl]
+        world_joints = world_joints[window.sl]
+        physical_presence = physical_presence[window.sl]
+        packing = self.pack_lifecycle(physical_presence)
+
+        kp_rows: list[Tensor] = []
+        visible_rows: list[Tensor] = []
+        index_rows: list[Tensor] = []
+        clean_kp_rows: list[Tensor] = []
+        clean_visible_rows: list[Tensor] = []
+        court_rows: list[Tensor] = []
+        court_vis_rows: list[Tensor] = []
+        ordered_object_ids = torch.arange(num_physical).expand(window.seq_len, -1)
+        for camera_index in cameras.indices:
+            keypoints = torch.from_numpy(
+                scene.get_camera_array(camera_index, "human_kp_uv", window=window)
+            ).float()
+            visible = torch.from_numpy(
+                scene.get_camera_array(camera_index, "human_kp_visible", window=window)
+            ).bool()
+            if keypoints.ndim == 3:
+                keypoints = keypoints[:, None]
+                visible = visible[:, None]
+            visible &= physical_presence[..., None]
+            keypoints[~visible] = 0.0
+            clean_kp_rows.append(keypoints.clone())
+            clean_visible_rows.append(visible.clone())
+            detection_mask = visible.any(-1)
+            detection_index = torch.where(detection_mask, ordered_object_ids, -1)
+            kp_rows.append(keypoints)
+            visible_rows.append(visible)
+            index_rows.append(detection_index)
+            court_rows.append(
+                torch.from_numpy(
+                    scene.get_camera_array(camera_index, "court_kp_uv", window=window)[
+                        :, :14
+                    ]
+                ).float()
+            )
+            court_vis_rows.append(
+                torch.from_numpy(
+                    scene.get_camera_array(
+                        camera_index, "court_kp_visible", window=window
+                    )[:, :14]
+                ).bool()
+            )
+
+        human_kp = torch.stack(kp_rows)
+        human_vis = torch.stack(visible_rows)
         rotation_fill = torch.tensor([1.0, 0.0], dtype=rotation.dtype)
         sample = {
             "scene_format_version": torch.tensor(3),
             "human_kp": human_kp,
             "human_vis": human_vis,
-            "detection_mask": detection_mask,
-            "court_kp": court_kp,
-            "court_vis": court_vis,
-            "frame_mask": torch.ones(num_frames, dtype=torch.bool),
-            "view_mask": torch.ones(human_kp.shape[0], dtype=torch.bool),
+            "detection_mask": human_vis.any(-1),
+            "court_kp": torch.stack(court_rows),
+            "court_vis": torch.stack(court_vis_rows),
+            "frame_mask": torch.ones(window.seq_len, dtype=torch.bool),
+            "view_mask": torch.ones(len(cameras.indices), dtype=torch.bool),
             "target_position": packing.pack_tensor(position, physical_presence),
             "target_rotation": packing.pack_tensor(
                 rotation,
@@ -112,28 +141,16 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
             "target_presence": packing.target_presence,
             "target_instance_id": packing.target_instance_id,
             "target_slot_mask": packing.target_presence.any(0),
-            "clean_human_kp": human_kp.clone(),
-            "clean_human_visible": human_vis.clone(),
-            "detection_gt_index": detection_index,
+            "clean_human_kp": torch.stack(clean_kp_rows),
+            "clean_human_visible": torch.stack(clean_visible_rows),
+            "detection_gt_index": torch.stack(index_rows),
         }
-        return self.augment_sample(sample)
+        return sample
 
     def augment_sample(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
         if not self.augment:
             return sample
-        return _tensor_mapping(self.tracking_augmentation(sample))
-
-
-def _tensor_mapping(value: object) -> dict[str, Tensor]:
-    """Validate the dynamically typed augmentation boundary."""
-    if not isinstance(value, dict):
-        raise TypeError("PLCS tracking augmentation must return a dictionary.")
-    result: dict[str, Tensor] = {}
-    for key, tensor in value.items():
-        if not isinstance(key, str) or not isinstance(tensor, Tensor):
-            raise TypeError("PLCS tracking augmentation returned invalid entries.")
-        result[key] = tensor
-    return result
+        return self.tracking_augmentation(sample)
 
 
 def collate_plcs_tracking_batch(

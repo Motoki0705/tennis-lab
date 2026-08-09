@@ -87,7 +87,9 @@ def compose_blcs_model_io(config: object) -> BLCSBoundModelIO:
             max_num_cameras=model_config.max_num_cameras,
             time_window_radius=model_config.time_window_radius,
         )
-        return cast("TrajectoryBoundModelIO", bind_model_io(axial_model, axial_adapter))
+        return cast(
+            "TrajectoryBoundModelIO", bind_model_io(axial_model, axial_adapter)
+        )
     if isinstance(model_config, TrackQueryModelConfig):
         tracking_model = BLCSTrackQueryModel(model_config)
         tracking_adapter = TrackQueryModelIOAdapter(

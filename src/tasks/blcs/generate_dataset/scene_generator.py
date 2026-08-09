@@ -94,7 +94,6 @@ class BLCSSceneData:
     num_balls: int
     ball_present: Tensor | None = None
     track_instances: list[dict] = field(default_factory=list)
-    physics_proposal_diagnostics: list[dict[str, object]] = field(default_factory=list)
 
 
 @dataclass

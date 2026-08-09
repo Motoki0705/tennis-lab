@@ -26,6 +26,11 @@ from src.synthetic_data_generation.dataset.blcs.rendering.nht import (
     build_blcs_sample_metadata,
 )
 from src.synthetic_data_generation.dataset.blcs.timeline import BLCSTrajectoryPlan
+from src.synthetic_data_generation.dataset.continuity import (
+    FrameContinuityReport,
+    TimelineFrameRecord,
+    validate_frame_continuity,
+)
 from src.synthetic_data_generation.dataset.contracts import (
     DatasetDomain,
     DatasetManifest,
@@ -45,11 +50,6 @@ from src.synthetic_data_generation.dataset.runtime import (
     materialize_logical_sample,
 )
 from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
-from src.tasks.base.generate_dataset.continuity import (
-    FrameContinuityReport,
-    TimelineFrameRecord,
-    validate_frame_continuity,
-)
 
 MEASURED_DENSE_REFERENCE_BYTES = 175 * 1024**3
 

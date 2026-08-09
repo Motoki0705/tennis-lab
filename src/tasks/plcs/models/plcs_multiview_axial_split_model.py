@@ -157,9 +157,7 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
                 dropout=dropout,
             )
         self._pose_branch_input = (
-            self._detach_pose_branch
-            if self.detach_pose_branch
-            else self._share_pose_branch
+            self._detach_pose_branch if self.detach_pose_branch else self._share_pose_branch
         )
         self._canonical_feature = (
             self._rotation_canonical_feature

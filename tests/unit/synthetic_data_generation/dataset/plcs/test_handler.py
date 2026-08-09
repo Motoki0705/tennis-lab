@@ -9,6 +9,7 @@ import pytest
 import torch
 
 from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
+from src.synthetic_data_generation.dataset.court_assignment import CourtAssignment
 from src.synthetic_data_generation.dataset.plcs.execution import PLCSExecutionBackend
 from src.synthetic_data_generation.dataset.plcs.handler import (
     PLCSObjectRequest,
@@ -24,8 +25,7 @@ from src.synthetic_data_generation.scene_contract import (
     MultiCourtLayout,
     RigidTransform,
 )
-from src.tasks.base.generate_dataset.court_assignment import CourtAssignment
-from src.tasks.plcs.generate_dataset.sampling.motion_sampler import (
+from src.tasks.plcs.generate_dataset.sampling.motion_source import (
     MotionCategory,
     PLCSMotionClip,
 )
