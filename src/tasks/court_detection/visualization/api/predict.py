@@ -9,12 +9,13 @@ from typing import Protocol
 import numpy as np
 import torch
 
+from src.tasks.court_detection.data.contracts import CourtTargetKind
 from src.tasks.court_detection.inference import (
     CourtKeypointPredictor,
     CourtLinePredictor,
     CourtSegPredictor,
 )
-from src.tasks.court_detection.model_io.contracts import CourtModelIOError, CourtTask
+from src.tasks.court_detection.model_io.contracts import CourtModelIOError
 from src.tasks.court_detection.visualization.adapters.predict_inputs import (
     to_predictor_input,
 )
@@ -34,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 class CourtVisualizationPipeline(Protocol):
-    """Predict and render frames under one checkpoint-selected task."""
+    """Predict and render frames under one checkpoint-selected target head."""
 
     def render(
         self,
@@ -43,7 +44,7 @@ class CourtVisualizationPipeline(Protocol):
         style: CourtRenderStyle,
         clip_label: str,
     ) -> list[np.ndarray]:
-        """Predict and render every frame without task dispatch."""
+        """Predict and render every frame without per-frame head dispatch."""
         ...
 
 
@@ -63,8 +64,8 @@ class _KeypointVisualizationPipeline:
             output = self.predictor.predict(to_predictor_input(frame))
             predictions.append(
                 KpFramePrediction(
-                    keypoints_px=output.keypoints.numpy(),
-                    mean_heatmap=torch.sigmoid(output.heatmaps).mean(0).numpy(),
+                    keypoints_px=output.keypoints[output.valid].numpy(),
+                    mean_heatmap=torch.sigmoid(output.heatmaps).amax(0).numpy(),
                 )
             )
             _log_progress(index, len(frames))
@@ -128,13 +129,13 @@ class _LineVisualizationPipeline:
 
 
 def build_court_visualization_pipeline(
-    task: CourtTask,
+    task: CourtTargetKind,
     *,
     checkpoint_path: str | Path,
     device: str,
     resolver: PathResolver,
 ) -> CourtVisualizationPipeline:
-    """Select and load the exact task pipeline once before the frame loop."""
+    """Select and load the exact target-head pipeline before the frame loop."""
     if task == "kp":
         return _KeypointVisualizationPipeline(
             CourtKeypointPredictor.load_from_checkpoint(
@@ -160,7 +161,7 @@ def build_court_visualization_pipeline(
                 resolver=resolver,
             )
         )
-    raise CourtModelIOError(f"Unsupported court visualization task {task!r}.")
+    raise CourtModelIOError(f"Unsupported Court visualization head {task!r}.")
 
 
 def _log_progress(index: int, total: int) -> None:
