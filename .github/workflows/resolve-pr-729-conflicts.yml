@@ -1,0 +1,207 @@
+name: Resolve PR 729 conflicts
+
+on:
+  push:
+    branches:
+      - feat/issue-695-canonical-scene-pipeline
+
+permissions:
+  contents: write
+
+jobs:
+  resolve:
+    if: ${{ !contains(github.event.head_commit.message, 'merge(main): resolve PR #729') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: Set up uv and Python 3.11
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+
+      - name: Merge main and resolve the audited inventory conflicts
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+
+          set +e
+          git merge --no-commit --no-ff origin/main
+          merge_status=$?
+          set -e
+
+          if [[ $merge_status -eq 0 ]]; then
+            echo "Expected a conflict but the merge completed cleanly; refusing an unreviewed resolution."
+            exit 1
+          fi
+
+          actual_conflicts="$(git diff --name-only --diff-filter=U | LC_ALL=C sort)"
+          expected_conflicts="$(cat <<'EOF' | LC_ALL=C sort
+          src/utils/configuration/audit.py
+          src/utils/configuration/exemption_data.py
+          src/utils/configuration/inventory.py
+          src/utils/configuration/migration_data.py
+          EOF
+          )"
+          if [[ "$actual_conflicts" != "$expected_conflicts" ]]; then
+            echo "Unexpected conflict set."
+            echo "Expected:"
+            printf '%s\n' "$expected_conflicts"
+            echo "Actual:"
+            printf '%s\n' "$actual_conflicts"
+            exit 1
+          fi
+
+          # Keep the PR's canonical scene-pipeline architecture for hand-written
+          # configuration audit code, and use main's newly generated inventory as
+          # the regeneration seed so the secure-tunnel automation domain is retained.
+          git checkout --ours -- \
+            src/utils/configuration/audit.py \
+            src/utils/configuration/inventory.py
+          git checkout --theirs -- \
+            src/utils/configuration/exemption_data.py \
+            src/utils/configuration/migration_data.py
+
+          python - <<'PY'
+          from pathlib import Path
+
+          audit_path = Path("src/utils/configuration/audit.py")
+          audit = audit_path.read_text(encoding="utf-8")
+          audit_needle = '''    replacements = {
+                  "ball_detection": "src.tasks.ball_detection.configuration.validate_training",'''
+          audit_replacement = '''    replacements = {
+                  "automation": "src.automation.chatgpt_mcp.settings.GatewaySettings",
+                  "ball_detection": "src.tasks.ball_detection.configuration.validate_training",'''
+          if audit_needle not in audit:
+              raise SystemExit("audit.py insertion point was not found")
+          audit = audit.replace(audit_needle, audit_replacement, 1)
+          if "validate_scene_pipeline_boundary" not in audit:
+              raise SystemExit("PR synthetic-data validation authority was lost")
+          audit_path.write_text(audit, encoding="utf-8")
+
+          inventory_path = Path("src/utils/configuration/inventory.py")
+          inventory = inventory_path.read_text(encoding="utf-8")
+
+          authority_needle = '''_CONFIGURATION_AUTHORITIES: Mapping[str, str] = {
+                  "ball_detection": "src.tasks.ball_detection.configuration.validate_training",'''
+          authority_replacement = '''_CONFIGURATION_AUTHORITIES: Mapping[str, str] = {
+                  "automation": "src.automation.chatgpt_mcp.settings.GatewaySettings",
+                  "ball_detection": "src.tasks.ball_detection.configuration.validate_training",'''
+          if authority_needle not in inventory:
+              raise SystemExit("configuration-authority insertion point was not found")
+          inventory = inventory.replace(authority_needle, authority_replacement, 1)
+
+          domain_needle = '''    prefixes = (
+                  ("src.tasks.ball_detection.", "ball_detection"),'''
+          domain_replacement = '''    prefixes = (
+                  ("src.automation.", "automation"),
+                  ("src.tasks.ball_detection.", "ball_detection"),'''
+          if domain_needle not in inventory:
+              raise SystemExit("migration-domain insertion point was not found")
+          inventory = inventory.replace(domain_needle, domain_replacement, 1)
+
+          runtime_needle = "\n\n_RUNTIME_BOUNDARIES = (\n"
+          runtime_replacement = '''
+
+          _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
+              "src.automation.chatgpt_mcp.cli": (
+                  "automation.chatgpt_mcp",
+                  "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+              ),
+          }
+
+
+          def _non_hydra_boundary(
+              module: str,
+              callable_name: str,
+              *,
+              kind: BoundaryKind = BoundaryKind.ARGPARSE,
+              domain: str = "synthetic_data_generation",
+              executable_module: bool = False,
+          ) -> RuntimeBoundary:
+              validator_key, validator_callable = _NON_HYDRA_BOUNDARY_BINDINGS[module]
+              return RuntimeBoundary(
+                  domain=domain,
+                  module=module,
+                  callable_name=callable_name,
+                  kind=kind,
+                  executable_module=executable_module,
+                  validator_key=validator_key,
+                  validator_callable=validator_callable,
+                  configuration_authority=validator_callable,
+                  path_authority=validator_callable,
+                  migration_target="validated typed runtime contract before side effects",
+                  required_policy="all declared path arguments are present",
+                  optional_policy="optional non-path values use an explicit typed contract",
+                  default_authority="caller-owned explicit values only; no boundary fallback",
+                  precedence_authority="one role/direction declaration per explicit path",
+              )
+
+
+          _RUNTIME_BOUNDARIES = (
+              _non_hydra_boundary(
+                  "src.automation.chatgpt_mcp.cli",
+                  "main",
+                  domain="automation",
+              ),
+          '''
+          if runtime_needle not in inventory:
+              raise SystemExit("runtime-boundary insertion point was not found")
+          if "src.automation.chatgpt_mcp.cli" in inventory:
+              raise SystemExit("automation runtime boundary unexpectedly already exists")
+          inventory = inventory.replace(runtime_needle, runtime_replacement, 1)
+          if "src.synthetic_data_generation.scripts.run_scene_pipeline" not in inventory:
+              raise SystemExit("PR canonical scene-pipeline boundary was lost")
+          inventory_path.write_text(inventory, encoding="utf-8")
+          PY
+
+          git add \
+            src/utils/configuration/audit.py \
+            src/utils/configuration/inventory.py \
+            src/utils/configuration/exemption_data.py \
+            src/utils/configuration/migration_data.py
+          test -z "$(git diff --name-only --diff-filter=U)"
+
+      - name: Regenerate immutable configuration inventories
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_revision="pr729-main-$(git rev-parse --short=12 origin/main)"
+          uv run --locked python scripts/audit_configuration.py src \
+            --write-generated-data \
+            --source-revision "$source_revision"
+          uv run --locked python scripts/audit_configuration.py src
+
+      - name: Run focused conflict-resolution checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run --locked ruff check \
+            src/utils/configuration/audit.py \
+            src/utils/configuration/inventory.py \
+            src/utils/configuration/exemption_data.py \
+            src/utils/configuration/migration_data.py
+          uv run --locked mypy --follow-imports=skip \
+            src/utils/configuration/audit.py \
+            src/utils/configuration/inventory.py
+          uv run --locked pytest -q -n 0 \
+            tests/e2e/development/test_configuration_audit.py \
+            tests/unit/utils/configuration
+
+      - name: Commit and push resolved merge
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/resolve-pr-729-conflicts.yml
+          git add -A
+          test -z "$(git diff --name-only --diff-filter=U)"
+          git commit -m "merge(main): resolve PR #729 configuration inventory conflicts"
+          git push origin HEAD:feat/issue-695-canonical-scene-pipeline
