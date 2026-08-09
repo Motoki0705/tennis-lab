@@ -46,7 +46,7 @@ jobs:
               count = text.count(before)
               if count != 1:
                   raise SystemExit(
-                      f"expected exactly one repair site in {path}, found {count}"
+                      f"expected exactly one repair site in {path}: {before!r}; found {count}"
                   )
               target.write_text(text.replace(before, after, 1), encoding="utf-8")
 
@@ -90,30 +90,24 @@ jobs:
           configuration = "src/synthetic_data_generation/configuration.py"
           replace_once(
               configuration,
-              '''            accad_root=resolver.resolve(
-                  PathRole.EXTERNAL_ASSET,
-          ''',
-              '''            accad_root=resolver.resolve(
-                  PathRole.DATA,
-          ''',
+              "            accad_root=resolver.resolve(\n"
+              "                PathRole.EXTERNAL_ASSET,\n",
+              "            accad_root=resolver.resolve(\n"
+              "                PathRole.DATA,\n",
           )
           replace_once(
               configuration,
-              '''            smplh_model_root=resolver.resolve(
-                  PathRole.EXTERNAL_ASSET,
-          ''',
-              '''            smplh_model_root=resolver.resolve(
-                  PathRole.DATA,
-          ''',
+              "            smplh_model_root=resolver.resolve(\n"
+              "                PathRole.EXTERNAL_ASSET,\n",
+              "            smplh_model_root=resolver.resolve(\n"
+              "                PathRole.DATA,\n",
           )
           replace_once(
               configuration,
-              '''        source_video = resolver.resolve(
-              PathRole.EXTERNAL_ASSET,
-          ''',
-              '''        source_video = resolver.resolve(
-              PathRole.DATA,
-          ''',
+              "        source_video = resolver.resolve(\n"
+              "            PathRole.EXTERNAL_ASSET,\n",
+              "        source_video = resolver.resolve(\n"
+              "            PathRole.DATA,\n",
           )
 
           performance_test = (
@@ -126,45 +120,41 @@ jobs:
           )
           replace_once(
               performance_test,
-              '''def _runtime() -> ScenePipelineConfiguration:
-              with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_ROOT)):
-                  config = compose(config_name="run_scene_pipeline")
-              return ScenePipelineConfiguration.from_config(config)
-          ''',
-              '''def _runtime(tmp_path: Path) -> ScenePipelineConfiguration:
-              data_root = tmp_path / "data"
-              external_root = tmp_path / "third_party"
-              data_root.mkdir()
-              (data_root / "tennis_court.mp4").write_bytes(b"integration fixture")
-              (data_root / "ACCAD").mkdir()
-              (data_root / "smplh").mkdir()
-              checkpoint = (
-                  external_root
-                  / "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
-              )
-              checkpoint.parent.mkdir(parents=True)
-              checkpoint.write_bytes(b"integration fixture")
-              with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_ROOT)):
-                  config = compose(
-                      config_name="run_scene_pipeline",
-                      overrides=[
-                          f"roots.data_root={data_root.as_posix()}",
-                          f"roots.external_asset_root={external_root.as_posix()}",
-                      ],
-                  )
-              return ScenePipelineConfiguration.from_config(config)
-          ''',
+              "def _runtime() -> ScenePipelineConfiguration:\n"
+              "    with initialize_config_dir(version_base=\"1.3\", config_dir=str(_CONFIG_ROOT)):\n"
+              "        config = compose(config_name=\"run_scene_pipeline\")\n"
+              "    return ScenePipelineConfiguration.from_config(config)\n",
+              "def _runtime(tmp_path: Path) -> ScenePipelineConfiguration:\n"
+              "    data_root = tmp_path / \"data\"\n"
+              "    external_root = tmp_path / \"third_party\"\n"
+              "    data_root.mkdir()\n"
+              "    (data_root / \"tennis_court.mp4\").write_bytes(b\"integration fixture\")\n"
+              "    (data_root / \"ACCAD\").mkdir()\n"
+              "    (data_root / \"smplh\").mkdir()\n"
+              "    checkpoint = (\n"
+              "        external_root\n"
+              "        / \"dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth\"\n"
+              "    )\n"
+              "    checkpoint.parent.mkdir(parents=True)\n"
+              "    checkpoint.write_bytes(b\"integration fixture\")\n"
+              "    with initialize_config_dir(version_base=\"1.3\", config_dir=str(_CONFIG_ROOT)):\n"
+              "        config = compose(\n"
+              "            config_name=\"run_scene_pipeline\",\n"
+              "            overrides=[\n"
+              "                f\"roots.data_root={data_root.as_posix()}\",\n"
+              "                f\"roots.external_asset_root={external_root.as_posix()}\",\n"
+              "            ],\n"
+              "        )\n"
+              "    return ScenePipelineConfiguration.from_config(config)\n",
           )
           replace_once(
               performance_test,
-              '''def test_composition_root_wires_config_owned_cross_domain_budgets() -> None:
-              runtime = _runtime()
-          ''',
-              '''def test_composition_root_wires_config_owned_cross_domain_budgets(
-              tmp_path: Path,
-          ) -> None:
-              runtime = _runtime(tmp_path)
-          ''',
+              "def test_composition_root_wires_config_owned_cross_domain_budgets() -> None:\n"
+              "    runtime = _runtime()\n",
+              "def test_composition_root_wires_config_owned_cross_domain_budgets(\n"
+              "    tmp_path: Path,\n"
+              ") -> None:\n"
+              "    runtime = _runtime(tmp_path)\n",
           )
           replace_once(
               performance_test,
@@ -175,27 +165,25 @@ jobs:
           tracking_test = "tests/integration/tasks/tracking/test_training_smoke.py"
           replace_once(
               tracking_test,
-              '''    blcs_config = _compose_task_config(
-                  "blcs",
-                  (
-                      "~camera",
-          ''',
-              '''    blcs_config = _compose_task_config(
-                  "blcs",
-                  (
-          ''',
+              "    blcs_config = _compose_task_config(\n"
+              "        \"blcs\",\n"
+              "        (\n"
+              "            \"~camera\",\n",
+              "    blcs_config = _compose_task_config(\n"
+              "        \"blcs\",\n"
+              "        (\n",
           )
           replace_once(
               tracking_test,
-              '''            "data.augmentation.enabled=false",
-                  ),
-              )
-              blcs_module = BLCSDataModule''',
-              '''            "data.augmentation.enabled=false",
-                  ),
-                  config_name="train_tracking",
-              )
-              blcs_module = BLCSDataModule''',
+              "            \"data.augmentation.enabled=false\",\n"
+              "        ),\n"
+              "    )\n"
+              "    blcs_module = BLCSDataModule",
+              "            \"data.augmentation.enabled=false\",\n"
+              "        ),\n"
+              "        config_name=\"train_tracking\",\n"
+              "    )\n"
+              "    blcs_module = BLCSDataModule",
           )
           PY
 
