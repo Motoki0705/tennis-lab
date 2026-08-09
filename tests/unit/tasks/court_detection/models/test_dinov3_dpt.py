@@ -1,13 +1,19 @@
+"""Tests for the DINOv3 execution boundary and DPT decoder."""
+
 from __future__ import annotations
 
 import pytest
 import torch
 from torch import nn
 
-from src.tasks.base.model_io import bind_model_io
+from src.tasks.court_detection.configuration import CourtLossConfig
+from src.tasks.court_detection.data.contracts import (
+    CourtTargetBundleSpec,
+    CourtTargetSpec,
+)
 from src.tasks.court_detection.model_io.adapters import (
     CourtDINOv3ExecutionBoundary,
-    CourtKeypointModelIO,
+    CourtModelIOAdapter,
 )
 from src.tasks.court_detection.model_io.contracts import (
     CourtModelIOError,
@@ -57,11 +63,27 @@ class FakeDINOv3(nn.Module):
     ) -> object:
         self.grad_enabled = torch.is_grad_enabled()
         if reshape or return_class_token or not norm:
-            raise AssertionError("CourtDINOv3Encoder must request normalized tokens.")
+            raise AssertionError("DINOv3 must return normalized patch tokens.")
         self.requested_layers = n
         if self.invalid_response:
             return (torch.zeros(1),)
-        return tuple(self.forward_features(inputs)["x_norm_patchtokens"] + idx for idx in n)
+        tokens = self.forward_features(inputs)["x_norm_patchtokens"]
+        return tuple(tokens + index for index in n)
+
+
+def _bundle() -> CourtTargetBundleSpec:
+    return CourtTargetBundleSpec(
+        {
+            "kp": CourtTargetSpec(
+                kind="kp",
+                schema="test_kp",
+                output_channels=7,
+                channel_names=tuple(f"kp_{index}" for index in range(7)),
+                target_dtype=torch.float32,
+                precomputed=False,
+            )
+        }
+    )
 
 
 def _encoder(fake: FakeDINOv3) -> CourtDINOv3Encoder:
@@ -87,10 +109,14 @@ def _encoder(fake: FakeDINOv3) -> CourtDINOv3Encoder:
 
 
 class _CountingCourtDINOModel(CourtHierarchicalModel):
-    def __init__(self, encoder: CourtDINOv3Encoder) -> None:
+    def __init__(
+        self,
+        encoder: CourtDINOv3Encoder,
+        bundle: CourtTargetBundleSpec,
+    ) -> None:
         nn.Module.__init__(self)
         self.in_channels = 3
-        self.num_classes = 14
+        self.target_bundle_spec = bundle
         self.encoder = encoder
         self.calls = 0
 
@@ -101,55 +127,48 @@ class _CountingCourtDINOModel(CourtHierarchicalModel):
         feature_2: torch.Tensor | None = None,
         feature_3: torch.Tensor | None = None,
         feature_4: torch.Tensor | None = None,
-    ) -> torch.Tensor:
+    ) -> dict[str, torch.Tensor]:
         self.calls += 1
-        del feature_1, feature_2, feature_3, feature_4
-        return x.new_zeros(x.shape[0], 14, x.shape[-2], x.shape[-1])
+        assert all(
+            value is not None
+            for value in (feature_1, feature_2, feature_3, feature_4)
+        )
+        return {"kp": x.new_zeros(x.shape[0], 7, x.shape[-2], x.shape[-1])}
 
 
-def _adapter(model: _CountingCourtDINOModel) -> CourtKeypointModelIO:
-    adapter = CourtKeypointModelIO(
+def _adapter(model: _CountingCourtDINOModel) -> CourtModelIOAdapter:
+    bundle = model.target_bundle_spec
+    adapter = CourtModelIOAdapter(
         CourtModelSpec(
-            task="kp",
+            target_bundle=bundle,
             in_channels=3,
-            output_channels=14,
             short_side=32,
             encoder_kind="dinov3",
         ),
-        focal_gamma=2.0,
+        loss_config=CourtLossConfig(
+            seg_ce_weight=1.0,
+            seg_dice_weight=1.0,
+            kp_focal_gamma=2.0,
+            line_bce_weight=1.0,
+            line_dice_weight=1.0,
+            line_pos_weight=1.0,
+        ),
         execution_boundary=CourtDINOv3ExecutionBoundary(frozen_backbone=True),
     )
     adapter.validate_model_pair(model)
     return adapter
 
 
-def test_dinov3_boundary_reassembles_four_intermediate_token_maps() -> None:
+def test_dinov3_boundary_reassembles_four_intermediate_maps() -> None:
     fake = FakeDINOv3()
-    model = _CountingCourtDINOModel(_encoder(fake))
-    adapter = _adapter(model)
-
-    call = adapter.prepare_images(torch.zeros(2, 3, 16, 20))
-    features = call.model_args[1:]
-
-    assert fake.requested_layers == (2, 5, 8, 11)
-    assert fake.grad_enabled is False
-    assert len(features) == 4
-    assert [tuple(feature.shape) for feature in features] == [
-        (2, 8, 4, 5),
-        (2, 8, 4, 5),
-        (2, 8, 4, 5),
-        (2, 8, 4, 5),
-    ]
-
-
-def test_dinov3_boundary_pads_inputs_to_patch_grid() -> None:
-    fake = FakeDINOv3()
-    model = _CountingCourtDINOModel(_encoder(fake))
+    model = _CountingCourtDINOModel(_encoder(fake), _bundle())
     adapter = _adapter(model)
 
     call = adapter.prepare_images(torch.zeros(2, 3, 17, 19))
     features = call.model_args[1:]
 
+    assert fake.requested_layers == (2, 5, 8, 11)
+    assert fake.grad_enabled is False
     assert fake.seen_input_shape == (2, 3, 20, 20)
     assert [tuple(feature.shape) for feature in features] == [
         (2, 8, 5, 5),
@@ -159,21 +178,14 @@ def test_dinov3_boundary_pads_inputs_to_patch_grid() -> None:
     ]
 
 
-def test_invalid_dinov3_response_fails_before_court_model_forward() -> None:
+def test_invalid_dinov3_response_fails_before_model_forward() -> None:
     fake = FakeDINOv3()
     fake.invalid_response = True
-    model = _CountingCourtDINOModel(_encoder(fake))
+    model = _CountingCourtDINOModel(_encoder(fake), _bundle())
     adapter = _adapter(model)
-    pair = bind_model_io(model, adapter)
-    batch = {
-        "image": torch.zeros(1, 3, 16, 20),
-        "heatmap": torch.zeros(1, 14, 16, 20),
-        "keypoints": torch.zeros(1, 14, 2),
-        "kp_visible": torch.ones(1, 14, dtype=torch.bool),
-    }
 
     with pytest.raises(CourtModelIOError, match="return four tensors"):
-        pair.run(batch)
+        adapter.prepare_images(torch.zeros(1, 3, 16, 20))
 
     assert model.calls == 0
 
