@@ -173,8 +173,13 @@ def test_deploy_verifies_tool_surface_and_host_boundary() -> None:
 def test_deploy_runs_cpu_regression_and_serial_cuda_smoke() -> None:
     text = _workflow_text()
 
+    assert 'PYTHONPATH="$GITHUB_WORKSPACE"' in text
+    assert 'TMPDIR=/tmp' in text
+    assert 'PYTEST_DEBUG_TEMPROOT' not in text
+    assert '"$trusted_python" -m pytest -q -n 0' in text
     assert 'tests/unit/automation/chatgpt_mcp' in text
     assert 'tests/integration/chatgpt_mcp' in text
+    assert '"python -m pytest -q "' not in text
     assert '"enqueue_training"' in text
     assert 'assert torch.cuda.is_available()' in text
     assert 'mcp-deploy-cuda-smoke' in text
