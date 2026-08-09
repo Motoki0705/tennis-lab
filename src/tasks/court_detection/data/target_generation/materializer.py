@@ -25,9 +25,9 @@ from src.tasks.court_detection.data.target_generation.segmentation import (
     generate_segmentation_target,
 )
 from src.tasks.court_detection.data.target_generation.store import (
-    CourtDerivedTargetStore,
     LINE_TARGET_SCHEMA,
     SEGMENTATION_TARGET_SCHEMA,
+    CourtDerivedTargetStore,
 )
 
 
@@ -58,8 +58,9 @@ class CourtTargetMaterializer:
     ) -> tuple[CourtMaterializationResult, ...]:
         if not splits or not target_kinds:
             raise ValueError("Court materialization requires splits and dense targets.")
-        if len(set(splits)) != len(splits) or len(set(target_kinds)) != len(
-            target_kinds
+        if (
+            len(set(splits)) != len(splits)
+            or len(set(target_kinds)) != len(target_kinds)
         ):
             raise ValueError("Court materialization selections must be unique.")
         results: list[CourtMaterializationResult] = []
