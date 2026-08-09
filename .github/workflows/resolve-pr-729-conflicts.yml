@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   resolve:
-    if: ${{ !contains(github.event.head_commit.message, 'merge(main): resolve PR #729') }}
+    if: ${{ !contains(github.event.head_commit.message, 'merge(main): resolve PR 729') }}
     runs-on: ubuntu-latest
 
     steps:
@@ -60,9 +60,6 @@ jobs:
             exit 1
           fi
 
-          # Keep the PR's canonical scene-pipeline architecture for hand-written
-          # configuration audit code, and use main's newly generated inventory as
-          # the regeneration seed so the secure-tunnel automation domain is retained.
           git checkout --ours -- \
             src/utils/configuration/audit.py \
             src/utils/configuration/inventory.py
@@ -203,5 +200,5 @@ jobs:
           git rm .github/workflows/resolve-pr-729-conflicts.yml
           git add -A
           test -z "$(git diff --name-only --diff-filter=U)"
-          git commit -m "merge(main): resolve PR #729 configuration inventory conflicts"
+          git commit -m "merge(main): resolve PR 729 configuration inventory conflicts"
           git push origin HEAD:feat/issue-695-canonical-scene-pipeline
