@@ -1,7 +1,8 @@
-"""PyTorch Lightning module for court detection."""
+"""PyTorch Lightning module for composable Court detection."""
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, cast
 
@@ -11,8 +12,15 @@ from torch import Tensor
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_saving import save_qualitative_clip
 from src.tasks.court_detection.configuration import CourtTrainingConfig
+from src.tasks.court_detection.data.contracts import (
+    CourtTargetBundleSpec,
+    CourtTargetKind,
+)
 from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
-from src.tasks.court_detection.model_io.contracts import CourtTrainingResult
+from src.tasks.court_detection.model_io.contracts import (
+    CourtLogits,
+    CourtTrainingResult,
+)
 from src.tasks.court_detection.model_io.factory import build_court_detection_pair
 from src.tasks.court_detection.training.metrics import CourtDetectionMetrics
 from src.tasks.court_detection.visualization.adapters.render_inputs import (
@@ -22,87 +30,117 @@ from src.tasks.court_detection.visualization.adapters.render_inputs import (
 
 
 class CourtDetectionLightningModule(BaseLightningModule):
-    """Unified Lightning module for court detection tasks.
+    """Train one shared Court trunk against any valid non-empty target bundle."""
 
-    Supports three tasks via ``config.data.task``:
-
-    * ``seg`` — Court cell segmentation (CE + Dice, 7 classes).
-    * ``kp``  — Court keypoint heatmap regression (Focal BCE, 14 channels).
-    * ``line`` — Court white-line segmentation (BCE + Dice, 1 channel).
-
-    Inherits optimizer/scheduler logic from
-    :class:`~src.tasks.base.training.lightning_module.BaseLightningModule`.
-    """
-
-    def __init__(self, config: object) -> None:
+    def __init__(
+        self,
+        config: object,
+        *,
+        target_bundle: CourtTargetBundleSpec,
+    ) -> None:
         super().__init__(config)
-        self.save_hyperparameters()
         runtime = CourtTrainingConfig.from_config(config)
+        self.target_bundle = target_bundle
         self.qualitative_fps = runtime.qualitative_fps
         self.qualitative_style = runtime.render_style
 
-        model_pair = build_court_detection_pair(self.config)
+        model_pair = build_court_detection_pair(
+            self.config,
+            target_bundle=target_bundle,
+        )
         self.model = model_pair.model
         self.model_io = cast(CourtModelIOAdapter, model_pair.adapter)
-        self.qualitative_renderer: CourtQualitativeRenderer = (
-            build_court_qualitative_renderer(self.model_io)
-        )
+        self.qualitative_renderers: dict[
+            CourtTargetKind, CourtQualitativeRenderer
+        ] = {
+            kind: build_court_qualitative_renderer(
+                self.model_io,
+                kind=kind,
+            )
+            for kind in target_bundle.kinds
+        }
+        self._stage_metrics: dict[
+            str, dict[CourtTargetKind, CourtDetectionMetrics]
+        ] = {
+            stage: {
+                kind: CourtDetectionMetrics(kind, spec.output_channels)
+                for kind, spec in target_bundle.targets.items()
+            }
+            for stage in ("train", "val", "test")
+        }
 
-        # Metrics
-        self.train_metrics = CourtDetectionMetrics(
-            self.model_io.spec.task, runtime.data.output_channels
-        )
-        self.val_metrics = CourtDetectionMetrics(
-            self.model_io.spec.task, runtime.data.output_channels
-        )
-        self.test_metrics = CourtDetectionMetrics(
-            self.model_io.spec.task, runtime.data.output_channels
-        )
-
-    def forward(self, *model_args: Tensor) -> Tensor:
-        """Compute over a model-I/O boundary-prepared argument tuple."""
-        return cast(Tensor, self.model(*model_args))
+    def forward(self, *model_args: Tensor) -> dict[CourtTargetKind, Tensor]:
+        return cast(dict[CourtTargetKind, Tensor], self.model(*model_args))
 
     def _shared_step(
         self,
-        batch: dict[str, Tensor],
+        batch: Mapping[str, object],
         stage: str,
     ) -> CourtTrainingResult:
-        """Shared computation for train/val/test steps."""
         call = self.model_io.prepare_training_batch(batch)
-        logits = self.model(*call.model_call.model_args)
+        logits = cast(CourtLogits, self.model(*call.model_call.model_args))
         result = self.model_io.training_result(logits, call)
-        self.log(f"{stage}/loss", result.loss, prog_bar=True, sync_dist=True)
+        self.log(
+            f"{stage}/loss",
+            result.loss,
+            prog_bar=True,
+            sync_dist=True,
+        )
+        for kind, loss in result.losses.items():
+            self.log(
+                f"{stage}/loss_{kind}",
+                loss,
+                prog_bar=False,
+                sync_dist=True,
+            )
+        image_size = batch.get("image_size")
+        if not isinstance(image_size, Tensor):
+            raise ValueError("Court batch image_size must be a Tensor.")
+        for kind in self.target_bundle.kinds:
+            self._stage_metrics[stage][kind].update(
+                result.logits[kind],
+                call.targets[kind],
+                image_size=image_size,
+            )
         return result
 
-    def _metric_tracker_for_stage(self, stage: str) -> CourtDetectionMetrics:
-        if stage == "train":
-            return self.train_metrics
-        if stage == "val":
-            return self.val_metrics
-        return self.test_metrics
+    def _flush_stage_metrics(self, stage: str) -> dict[str, float]:
+        flattened: dict[str, float] = {}
+        for kind in self.target_bundle.kinds:
+            tracker = self._stage_metrics[stage][kind]
+            for metric_name, value in tracker.compute().items():
+                name = f"{kind}_{metric_name}"
+                flattened[name] = value
+                self.log(
+                    f"{stage}/{name}",
+                    value,
+                    prog_bar=(
+                        stage == "val"
+                        and metric_name in {"miou", "mean_dist", "dice"}
+                    ),
+                    sync_dist=False,
+                )
+            tracker.reset()
+        return flattened
 
-    def _flush_stage_metrics(self, stage: str) -> None:
-        metrics = self._metric_tracker_for_stage(stage).compute()
-        for name, value in metrics.items():
-            self.log(
-                f"{stage}/{name}",
-                value,
-                prog_bar=(stage == "val" and name in ("miou", "mean_dist", "dice")),
-            )
-        self._metric_tracker_for_stage(stage).reset()
-
-    def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:
-        outputs = self._shared_step(batch, "train")
-        self.train_metrics.update(outputs.logits, batch)
-        return outputs.loss
+    def training_step(
+        self,
+        batch: dict[str, object],
+        batch_idx: int,
+    ) -> Tensor:
+        _ = batch_idx
+        return self._shared_step(batch, "train").loss
 
     def on_train_epoch_end(self) -> None:
         self._flush_stage_metrics("train")
 
-    def validation_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
-        outputs = self._shared_step(batch, "val")
-        self.val_metrics.update(outputs.logits, batch)
+    def validation_step(
+        self,
+        batch: dict[str, object],
+        batch_idx: int,
+    ) -> None:
+        _ = batch_idx
+        self._shared_step(batch, "val")
 
     def on_validation_epoch_end(self) -> None:
         self._flush_stage_metrics("val")
@@ -110,28 +148,47 @@ class CourtDetectionLightningModule(BaseLightningModule):
     def on_test_epoch_start(self) -> None:
         self._reset_test_prediction_buffer()
 
-    def test_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
+    def test_step(
+        self,
+        batch: dict[str, object],
+        batch_idx: int,
+    ) -> None:
         _ = batch_idx
-        outputs = self._shared_step(batch, "test")
-        self.test_metrics.update(outputs.logits, batch)
-        self.collect_test_predictions(batch, {"logits": outputs.logits})
+        result = self._shared_step(batch, "test")
+        self.collect_test_predictions(
+            batch,
+            {"logits": result.logits},
+        )
 
     def on_test_epoch_end(self) -> None:
-        metrics = self.test_metrics.compute()
+        metrics = self._flush_stage_metrics("test")
         saved = self.save_test_predictions(metrics=metrics)
         if saved is not None:
-            print(f"[test] saved test-split predictions -> {saved}")
-        self._flush_stage_metrics("test")
+            print(f"[test] saved Court predictions -> {saved}")
 
     def test_prediction_payload(
-        self, batch: dict[str, Any], result: dict[str, Tensor]
-    ) -> dict[str, Any]:
-        """Persist court predictions from ``data/court/data_val.json``."""
-        return self.model_io.test_payload(batch, result["logits"])
-
-    # ------------------------------------------------------------------
-    # Qualitative validation logging
-    # ------------------------------------------------------------------
+        self,
+        batch: dict[str, object],
+        result: dict[str, object],
+    ) -> dict[str, object]:
+        logits = result.get("logits")
+        if not isinstance(logits, Mapping):
+            raise ValueError("Court test result requires a logits mapping.")
+        decoded = self.model_io.test_payload(batch, cast(CourtLogits, logits))
+        payload: dict[str, object] = {}
+        image_size = decoded.get("image_size")
+        if isinstance(image_size, Tensor):
+            payload["image_size"] = image_size
+        predictions = decoded.get("predictions")
+        if not isinstance(predictions, Mapping):
+            raise ValueError("Court test payload predictions must be a mapping.")
+        for kind, value in predictions.items():
+            if not isinstance(value, Mapping):
+                raise ValueError("Court head test payload must be a mapping.")
+            for name, tensor in value.items():
+                if isinstance(tensor, Tensor):
+                    payload[f"{kind}_{name}"] = tensor
+        return payload
 
     def render_qualitative_samples(
         self,
@@ -142,35 +199,55 @@ class CourtDetectionLightningModule(BaseLightningModule):
         global_step: int,
         epoch: int,
     ) -> None:
-        """Render court detection panels via shared rendering/ layer (pred-only).
-
-        The output adapter and renderer were selected once in ``__init__``.
-        """
+        _ = (outputs, epoch)
         device = next(self.parameters()).device
         style = self.qualitative_style.build()
-
-        for batch_idx, batch in enumerate(batches):
-            moved_batch = {
-                key: value.to(device) if isinstance(value, Tensor) else value
-                for key, value in batch.items()
-            }
+        for batch_index, cpu_batch in enumerate(batches):
+            batch = cast(
+                dict[str, Any],
+                _move_to_device(cpu_batch, device=device),
+            )
             with torch.no_grad():
-                call = self.model_io.prepare_training_batch(moved_batch)
-                logits = self.model(*call.model_call.model_args).cpu()
+                call = self.model_io.prepare_training_batch(batch)
+                logits = cast(
+                    CourtLogits,
+                    self.model(*call.model_call.model_args),
+                )
             self.model_io.validate_logits(logits, call.model_call)
-            frames_rgb = self.qualitative_renderer.render(
-                batch=batch,
-                logits=logits,
-                style=style,
-                clip_label=f"court_{self.model_io.spec.task}",
-            )
+            for kind in self.target_bundle.kinds:
+                frames_rgb = self.qualitative_renderers[kind].render(
+                    batch=batch,
+                    logits=logits[kind].cpu(),
+                    style=style,
+                    clip_label=f"court_{kind}",
+                )
+                save_qualitative_clip(
+                    frames_rgb=frames_rgb,
+                    artifact_dir=artifact_dir,
+                    name=f"court_{kind}_batch{batch_index:02d}",
+                    tb_writer=tb_writer,
+                    tag=(
+                        f"qualitative/court_detection/{kind}/"
+                        f"batch{batch_index:02d}"
+                    ),
+                    global_step=global_step,
+                    fps=self.qualitative_fps,
+                )
 
-            save_qualitative_clip(
-                frames_rgb=frames_rgb,
-                artifact_dir=artifact_dir,
-                name=f"court_batch{batch_idx:02d}",
-                tb_writer=tb_writer,
-                tag=f"qualitative/court_detection/batch{batch_idx:02d}",
-                global_step=global_step,
-                fps=self.qualitative_fps,
-            )
+
+def _move_to_device(value: object, *, device: torch.device) -> object:
+    if isinstance(value, Tensor):
+        return value.to(device)
+    if isinstance(value, Mapping):
+        return {
+            key: _move_to_device(item, device=device)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_move_to_device(item, device=device) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_move_to_device(item, device=device) for item in value)
+    return value
+
+
+__all__ = ["CourtDetectionLightningModule"]
