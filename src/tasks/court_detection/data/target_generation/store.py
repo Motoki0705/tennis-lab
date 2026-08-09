@@ -1,4 +1,4 @@
-"""Deterministic derived-target paths owned by court detection."""
+"""Deterministic derived-target paths owned by Court detection."""
 
 from __future__ import annotations
 
@@ -35,6 +35,12 @@ class CourtDerivedTargetStore:
         relative = Path(*key.parts)
         target = self.root / source_kind / target_schema / relative
         return target.with_suffix(".png")
+
+    @staticmethod
+    def metadata_path(target_path: Path) -> Path:
+        if target_path.suffix.lower() != ".png":
+            raise ValueError("Court derived target metadata requires a PNG path.")
+        return target_path.with_suffix(".json")
 
 
 __all__ = [
