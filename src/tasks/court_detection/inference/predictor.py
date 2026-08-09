@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from pathlib import Path
-from typing import Any, Self, cast
+from typing import Any, Self, TypeAlias, cast
 
 import numpy as np
 import torch
@@ -26,7 +26,7 @@ from src.tasks.court_detection.training.lightning_module import (
 )
 from src.utils.configuration import PathResolver
 
-CourtBoundModelIO = BoundModelIO[
+CourtBoundModelIO: TypeAlias = BoundModelIO[
     Mapping[str, object],
     CourtLogits,
     CourtLogits,
