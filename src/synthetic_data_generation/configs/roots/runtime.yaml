@@ -1,6 +1,6 @@
 project_root: .
 data_root: data
-checkpoint_root: /home/kamimura/projects/tennis-lab/ckpt
+checkpoint_root: ckpt
 artifact_root: artifacts
 output_root: outputs
 cache_root: .cache
