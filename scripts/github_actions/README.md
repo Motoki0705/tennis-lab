@@ -81,12 +81,47 @@ TRAINING_QUEUE_DIR=/var/lib/tennis-lab-actions/training-queue \
   /opt/tennis-lab-actions/bin/training_queue.sh status
 ```
 
+## WSL MCP専用trusted runner
+
+MCPのデプロイは通常の`tennis-actions` GPU runnerでは実行しない。MCPのstate、control
+directory、canonical checkout、`kamimura`のuser systemdを更新する必要があるため、
+`kamimura`として動く専用runnerを使用する。
+
+`gh`がrepository adminとして認証済みのcanonical checkoutで、次を1回実行する。
+登録tokenはpipeだけを通り、ファイルやshell履歴には保存されない。
+
+```bash
+gh api --method POST \
+  repos/Motoki0705/tennis-lab/actions/runners/registration-token \
+  --jq .token \
+  | scripts/github_actions/install_trusted_mcp_deploy_runner.sh \
+      --registration-token-stdin
+```
+
+installerは`trusted-mcp-deploy`ラベルを持つrepository runnerと、次のuser serviceを
+作成して起動する。
+
+```text
+tennis-lab-trusted-mcp-deploy-runner.service
+```
+
+runnerのpre-job hookは、`Motoki0705/tennis-lab`の
+`.github/workflows/deploy-wsl-mcp.yml`、`main`、repository owner、`deploy` job、
+`push`または`workflow_dispatch`がすべて一致する場合だけjobを許可する。不一致のjobは
+checkout前に失敗する。通常のCUDAテストと学習は引き続き隔離された
+`tennis-actions` runnerで実行する。
+
 ## セキュリティ境界
 
 GitHubは、公開リポジトリのself-hosted runnerではforkのPRからホストを侵害されうると
 警告している。このためGPU workflowsには`push`、`pull_request`、
 `pull_request_target` triggerを置かず、ownerチェック、repository variable、
 Environment承認をすべて必須にしている。学習commandへsecretを含めてはならない。
+
+MCP deploy runnerはownerのhomeへ限定的な書き込み権限を持つため、固有labelだけを
+security boundaryとして扱わない。workflow側のowner/main/path条件に加えて、host側の
+pre-job hookでworkflow pathとGitHub contextを再検証する。hookを無効化した状態で
+trusted runnerを起動してはならない。
 
 - [GitHub: Adding self-hosted runners](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners)
 - [GitHub: Secure use reference](https://docs.github.com/en/actions/reference/security/secure-use)
