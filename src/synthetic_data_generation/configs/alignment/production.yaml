@@ -1,0 +1,100 @@
+evidence:
+  seed: 42
+  fit_fraction: 0.6666666666666666
+  holdout_fraction: 0.3333333333333333
+  minimum_fit_cameras: 8
+  minimum_holdout_cameras: 4
+  maximum_cameras: 24
+
+  line_model:
+    checkpoint_path: court_detection/line/court-detection-epoch19.ckpt
+    backbone_repository_path: dinov3
+    backbone_checkpoint_path: dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth
+    device: cuda:0
+    expected_short_side: 256
+    probability_threshold: 0.5
+    maximum_selected_pixels_per_camera: 50000
+    architecture:
+      backbone_name: dinov3_vitb16
+      backbone_strict: true
+      backbone_train_mode: frozen
+      backbone_last_n_blocks: 0
+      backbone_out_indices: [2, 5, 8, 11]
+      backbone_layer_mode: uniform
+      lora_enabled: true
+      lora_rank: 8
+      lora_alpha: 16.0
+      lora_dropout: 0.0
+      lora_target_modules: [qkv, proj, fc1, fc2]
+      decoder_channels: 256
+      decoder_reassemble_factors: [4.0, 2.0, 1.0, 0.5]
+      line_bce_weight: 1.0
+      line_dice_weight: 1.0
+      line_positive_weight: 8.0
+
+  ground_plane:
+    footprint_quantile: 0.01
+    footprint_margin: 0.5
+    minimum_camera_height: 0.08
+    maximum_camera_height: 0.30
+    histogram_bin_width: 0.005
+    candidate_half_width: 0.035
+    ransac_threshold: 0.006
+    refine_threshold: 0.008
+    ransac_iterations: 1000
+    ransac_sample_limit: 20000
+    refine_iterations: 3
+    minimum_candidate_points: 500
+    minimum_support_points: 1000
+    minimum_normal_up_cosine: 0.97
+    minimum_positive_camera_fraction: 1.0
+    support_bounds_quantile: 0.01
+
+  projection:
+    minimum_ray_plane_cosine: 0.05
+    maximum_ray_distance: 3.0
+    bounds_margin: 0.05
+    minimum_projected_points_per_camera: 20
+
+  candidate_fit:
+    candidate_count: 2
+    samples_per_metre: 6.0
+    minimum_nht_scene_units_per_metre: 0.055
+    maximum_nht_scene_units_per_metre: 0.085
+    orientation_minimum_radians: -1.5708
+    orientation_maximum_radians: 1.5708
+    score_distance_metres: 0.5
+    minimum_template_score: 0.02
+    family_orientation_tolerance_radians: 0.2
+    family_scale_relative_tolerance: 0.3
+    minimum_center_separation_metres: 12.0
+    separation_penalty: 100.0
+    optimizer_maximum_iterations: 30
+    optimizer_population_size: 8
+    optimizer_tolerance: 1.0e-5
+    maximum_fit_points: 100000
+    common_scale_relative_tolerance: 0.3
+
+  correspondences:
+    maximum_match_distance_metres: 0.25
+    maximum_correspondences_per_camera: 200
+    minimum_correspondences_per_camera: 3
+
+acceptance:
+  fit:
+    minimum_camera_count: 6
+    minimum_correspondence_count: 100
+    inlier_distance_m: 0.3
+    minimum_inlier_fraction: 0.9
+    maximum_rms_error_m: 0.3
+    maximum_q95_error_m: 0.3
+  holdout:
+    minimum_camera_count: 3
+    minimum_correspondence_count: 80
+    inlier_distance_m: 0.3
+    minimum_inlier_fraction: 0.9
+    maximum_rms_error_m: 0.3
+    maximum_q95_error_m: 0.3
+
+transform_inverse_atol: 1.0e-6
+projection_atol_px: 1.0e-5

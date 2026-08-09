@@ -1,0 +1,20 @@
+profile: broadcast
+image_size: [1280, 720]
+expected_camera_count: 2
+slots:
+  - slot_id: broadcast-near
+    position_x_m: [-1.0, 1.0]
+    position_y_m: [-40.0, -24.0]
+    height_m: [7.0, 15.0]
+    look_at_x_m: [-1.0, 1.0]
+    look_at_y_m: [-2.0, 4.0]
+    look_at_height_m: [0.0, 1.5]
+    hfov_degrees: [24.0, 40.0]
+  - slot_id: broadcast-far
+    position_x_m: [-1.0, 1.0]
+    position_y_m: [24.0, 40.0]
+    height_m: [7.0, 15.0]
+    look_at_x_m: [-1.0, 1.0]
+    look_at_y_m: [-4.0, 2.0]
+    look_at_height_m: [0.0, 1.5]
+    hfov_degrees: [24.0, 40.0]

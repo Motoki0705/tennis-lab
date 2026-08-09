@@ -1,7 +1,7 @@
 project_root: .
 data_root: data
 checkpoint_root: ckpt
-artifact_root: third_party/nht/artifacts
+artifact_root: artifacts
 output_root: outputs
 cache_root: .cache
 external_asset_root: third_party

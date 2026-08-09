@@ -14,6 +14,9 @@ from src.utils.configuration.contracts import (
 from src.utils.paths import PROJECT_ROOT
 
 _SOURCE_ROOT = (PROJECT_ROOT / "src").resolve()
+_CANONICAL_SYNTHETIC_MODULE = (
+    "src.synthetic_data_generation.scripts.run_scene_pipeline"
+)
 SOURCE_CONTRACT_DECLARATIONS = discover_contract_declarations(_SOURCE_ROOT)
 ADAPTER_CONTRACTS = discover_configuration_contracts(_SOURCE_ROOT)
 
@@ -31,7 +34,12 @@ class RuntimeBoundaryContract:
 
 
 def _boundary_contracts() -> tuple[RuntimeBoundaryContract, ...]:
-    discovered = configuration_discovery.discover_runtime_boundaries(_SOURCE_ROOT)
+    discovered = tuple(
+        boundary
+        for boundary in configuration_discovery.discover_runtime_boundaries(_SOURCE_ROOT)
+        if not boundary.module.startswith("src.synthetic_data_generation.")
+        or boundary.module == _CANONICAL_SYNTHETIC_MODULE
+    )
     references = tuple(
         RuntimeBoundaryReference(
             boundary_id=f"{boundary.module}:{boundary.callable_name}",

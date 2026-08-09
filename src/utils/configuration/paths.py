@@ -255,6 +255,38 @@ class PathResolver:
             )
         return resolved
 
+    def resolve_symlink_entry(
+        self,
+        role: PathRole,
+        relative_path: str | Path,
+    ) -> Path:
+        """Resolve a contained entry while preserving its final symlink identity.
+
+        Virtual-environment Python launchers must remain symlink paths so the
+        interpreter discovers that environment's site-packages. Every parent
+        component is still resolved and required to stay beneath the role root;
+        only the final entry is intentionally not dereferenced.
+        """
+        path_part = _validated_child_part(
+            role,
+            relative_path,
+            forbidden_prefixes=self.roots.forbidden_child_prefixes(),
+        )
+        root = self.roots.root(role)
+        lexical_entry = root.joinpath(path_part)
+        resolved_parent = lexical_entry.parent.resolve(strict=False)
+        if not resolved_parent.is_relative_to(root):
+            raise PathContractError(
+                f"Derived {role.value} symlink entry has a parent outside its root: "
+                f"{resolved_parent} (root: {root})."
+            )
+        entry = resolved_parent.joinpath(lexical_entry.name)
+        if entry == root:
+            raise PathContractError(
+                f"Derived {role.value} symlink entry must identify a child."
+            )
+        return entry
+
     def validate(self, role: PathRole, path: Path) -> Path:
         """Validate an already resolved absolute path against its declared root."""
         if not path.is_absolute():

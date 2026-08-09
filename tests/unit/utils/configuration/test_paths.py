@@ -228,6 +228,50 @@ def test_resolve_beneath_rejects_parent_from_another_role(tmp_path: Path) -> Non
         resolver.resolve_beneath(PathRole.DATA, output_parent, "dataset.json")
 
 
+def test_resolve_symlink_entry_preserves_venv_launcher_but_contains_parent(
+    tmp_path: Path,
+) -> None:
+    resolver = PathResolver(
+        RuntimePathRoots.from_mapping(
+            _root_mapping(), repository_root=tmp_path.resolve()
+        )
+    )
+    interpreter = tmp_path / "system/python3"
+    interpreter.parent.mkdir(parents=True)
+    interpreter.write_text("python", encoding="utf-8")
+    launcher = resolver.roots.external_asset_root / "runtime/.venv/bin/python"
+    launcher.parent.mkdir(parents=True)
+    launcher.symlink_to(interpreter)
+
+    resolved = resolver.resolve_symlink_entry(
+        PathRole.EXTERNAL_ASSET,
+        "runtime/.venv/bin/python",
+    )
+
+    assert resolved == launcher
+    assert resolved.is_symlink()
+    assert resolved.resolve() == interpreter
+
+
+def test_resolve_symlink_entry_rejects_parent_symlink_escape(tmp_path: Path) -> None:
+    resolver = PathResolver(
+        RuntimePathRoots.from_mapping(
+            _root_mapping(), repository_root=tmp_path.resolve()
+        )
+    )
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    escaped_parent = resolver.roots.external_asset_root / "escaped"
+    escaped_parent.parent.mkdir(parents=True)
+    escaped_parent.symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(PathContractError, match="parent outside its root"):
+        resolver.resolve_symlink_entry(
+            PathRole.EXTERNAL_ASSET,
+            "escaped/python",
+        )
+
+
 def _non_hydra_boundary_fixture(
     tmp_path: Path,
 ) -> tuple[NonHydraPathBoundary, PathResolver, dict[str, object]]:

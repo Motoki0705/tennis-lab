@@ -1,106 +1,82 @@
-# Path-driven synthetic-data generation
+# Canonical scene dataset pipeline
 
-This package builds synthetic datasets from configured filesystem paths. It is
-not a release-acceptance or artifact-lineage system: downstream stages consume
-the paths written to one shared manifest, and measured quality is descriptive
-output rather than permission to continue.
+This package owns the tennis-lab side of the video-to-dataset workflow. One
+video and one `scene_id` resolve to one mutable workspace. NHT remains an
+independent command that owns reconstruction and rendering; tennis-lab consumes
+only its public standard scene export and render files.
 
-## Directory ownership
+## Run
 
-```text
-synthetic_data_generation/
-├── alignment/       # Court/scene geometry and fitting libraries
-├── composition/     # Gaussian composition libraries
-├── dataset/         # Generic path manifest, execution, and domain algorithms
-├── rendering/       # Renderer adapters and runtime path helpers
-├── visualization/   # Generic path/metrics/render summaries
-├── scripts/         # User-facing executable entry points
-└── configs/         # Hydra configuration for those entry points
-```
-
-Domain algorithms under `dataset/{blcs,plcs,court}` remain reusable libraries.
-The pipeline itself is generic and does not select a domain, experiment, phase,
-or release cycle.
-
-## Path convention
-
-The default config provides an automatic flow with no manual artifact moving:
-
-```text
-third_party/nht/data/
-    alignment-observations.json
-    render-jobs.json
-    prepared renderer inputs and references
-             │
-             ▼
-third_party/nht/artifacts/synthetic-data/
-    alignment-metrics.json
-    dataset-plan.json
-    render-manifest.json
-    quality-metrics.json
-             │
-             ├──► data/synthetic_data_generation/       final dataset files
-             └──► outputs/synthetic_data_generation/    run logs and HTML summary
-```
-
-Every path can be overridden in
-`configs/dataset/pipeline.yaml` or with a Hydra override. Relative paths are
-resolved once against `project_root`, then stored as absolute paths in
-`path-manifest.json`.
-
-## Inputs
-
-`alignment-observations.json` contains numeric residuals:
-
-```json
-{
-  "residuals": [0.02, -0.01, 0.03]
-}
-```
-
-`render-jobs.json` contains named path mappings. `input` and `reference` are
-relative to `source_root`; `output` is relative to `dataset_root` unless an
-absolute path is configured.
-
-```json
-{
-  "jobs": [
-    {
-      "name": "sample-0001",
-      "input": "prepared/sample-0001.bin",
-      "output": "renders/sample-0001.bin",
-      "reference": "references/sample-0001.bin",
-      "arguments": []
-    }
-  ]
-}
-```
-
-Set `renderer.command` to a shell-free argv list. Tokens may use `{input}`,
-`{output}`, `{reference}`, `{source_root}`, `{artifact_root}`, or
-`{dataset_root}`. An empty command copies prepared render inputs to their
-configured final paths, which is useful when rendering happened in an external
-batch.
-
-## Running
-
-Write only the path manifest:
+The sole production entrypoint is:
 
 ```bash
-.venv/bin/python -m \
-  src.synthetic_data_generation.scripts.dataset.run_pipeline
+.venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline
 ```
 
-Run alignment metrics, planning, rendering, quality metrics, and visualization:
+Hydra composition starts at `configs/run_scene_pipeline.yaml`. The typed path
+roots, requested dataset targets, camera profile, NHT commands, alignment gates,
+and domain policies are all explicit config authority. To rerun a valid
+downstream suffix, set `request.from_stage`, for example:
 
 ```bash
-.venv/bin/python -m \
-  src.synthetic_data_generation.scripts.dataset.run_pipeline execute=true
+.venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
+  request.from_stage=alignment
 ```
 
-Metrics are always written, including poor values. A run stops only for a
-missing configured input, malformed JSON, an invalid input shape, a renderer
-failure, or a renderer that does not produce its configured output.
+## Workspace and stages
 
-The generated HTML summary is generic: it reads the shared manifest and its
-configured artifacts, with no hard-coded experiment or cycle paths.
+`SceneWorkspace` resolves the fixed directory
+`data/synthetic_data_generation/scenes/<scene_id>/`. Its single `run.json`
+records `pending`, `running`, `completed`, `failed`, `invalidated`, and `skipped`
+state for this typed DAG:
+
+```text
+ingest → reconstruction → alignment
+                              ├─ court_dataset ─┐
+                              ├─ blcs_dataset  ─┼─ report
+                              └─ plcs_dataset  ─┘
+```
+
+Each stage has one handler and one owner directory. A rerun validates the
+request, retained upstream output, and handler preflight before invalidating the
+selected stage and graph-derived descendants. Stage-local output is published
+to fixed paths only after semantic validation; a failed attempt removes partial
+output and cannot remain `completed`.
+
+## Public reconstruction boundary
+
+`reconstruction/` is the NHT command workspace. tennis-lab invokes
+`nht-reconstruct` and `nht-render` as shell-free subprocess argv, then validates
+the public schema, files, camera IDs, arrays, coordinate conventions, proper
+rotations, intrinsics, shape, dtype, and finite values. It does not import NHT
+Python internals or read COLMAP/checkpoint internals.
+
+The configured `nht-reconstruct` and `nht-render` entrypoints are installed
+public commands. Their package environment owns PyTorch, gsplat, trainer
+selection, and provider defaults; tennis-lab neither locates nor configures
+those internals and fails closed when either public command is unavailable.
+
+Alignment uses measured court-line evidence with disjoint fit and holdout
+partitions. Only accepted results publish a `MultiCourtLayout` containing every
+accepted court, reciprocal metric transforms, complex bounds, and fit/holdout
+metrics.
+
+## Dataset domains
+
+The canonical dataset package owns config-driven camera rigs, balanced target-court
+assignment, and exact cross-chunk timeline continuity. Task packages provide only
+their public domain source contracts.
+
+- Court Detection builds typed 3-D orbit trajectories, deterministic
+  coverage selection, uniform arc-length samples, group-disjoint splits,
+  attempt-local shards, final semantic labels, and quantitative diagnostics.
+- BLCS preserves every source physics frame across multi-object planning,
+  config-owned cameras, balanced court assignment, contiguous chunks, labels,
+  final assembly, and diagnostics.
+- PLCS loads complete ACCAD motion clips, applies SMPL-H and per-frame Gaussian
+  LBS, rejects rigid-only motion, composes the full multi-object global timeline,
+  and publishes motion/camera/court diagnostics.
+
+The canonical package contains no alternate generic path pipeline, legacy
+artifact reader/writer, compatibility conversion, dual-write, fixed-pose
+production path, selected captured-camera path, or identity/hash gate.

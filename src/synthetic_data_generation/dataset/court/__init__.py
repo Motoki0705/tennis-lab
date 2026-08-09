@@ -1,1 +1,1 @@
-"""3DGS-native court-detection dataset components, artifacts, and pipeline."""
+"""Canonical typed Court dataset implementation modules."""

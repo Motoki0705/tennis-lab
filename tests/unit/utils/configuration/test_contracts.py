@@ -159,53 +159,82 @@ def test_slcs_boundaries_bind_only_their_actual_public_boundary_schema() -> None
         assert boundary.path_role_authorities
 
 
-def test_synthetic_registry_binds_each_boundary_to_one_top_level_schema() -> None:
+def test_synthetic_registry_exposes_only_the_canonical_scene_composition_boundary() -> None:
     boundary = next(
         contract
         for contract in BOUNDARY_CONTRACTS
         if contract.boundary_id
-        == "src.synthetic_data_generation.scripts.dataset.run_pipeline:main"
+        == "src.synthetic_data_generation.scripts.run_scene_pipeline:main"
     )
 
-    top_level = {
-        symbol
+    synthetic_boundaries = {
+        contract.boundary_id
+        for contract in BOUNDARY_CONTRACTS
+        if contract.boundary_id.startswith("src.synthetic_data_generation")
+    }
+    assert synthetic_boundaries == {
+        "src.synthetic_data_generation.scripts.run_scene_pipeline:main"
+    }
+    assert (
+        "src.synthetic_data_generation.configuration.ScenePipelineConfiguration"
+        in boundary.authority_symbols
+    )
+
+
+def test_synthetic_boundary_catalog_exposes_exact_canonical_path_roles() -> None:
+    boundary = next(
+        contract
+        for contract in BOUNDARY_CONTRACTS
+        if contract.boundary_id
+        == "src.synthetic_data_generation.scripts.run_scene_pipeline:main"
+    )
+
+    assert any("source_video" in value for value in boundary.path_role_authorities)
+    assert any("path-role:external_asset" in value for value in boundary.path_role_authorities)
+    assert any("path-role:data" in value for value in boundary.path_role_authorities)
+    assert not any("asset_preparation" in value for value in boundary.path_role_authorities)
+
+
+@pytest.mark.parametrize(
+    "boundary_id,task_prefix",
+    [
+        (
+            "src.tasks.blcs.scripts.generate_dataset:main",
+            "src.tasks.blcs.",
+        ),
+        (
+            "src.tasks.blcs.scripts.visualize:main",
+            "src.tasks.blcs.",
+        ),
+        (
+            "src.tasks.plcs.scripts.generate_dataset:main",
+            "src.tasks.plcs.",
+        ),
+        (
+            "src.tasks.plcs.scripts.visualize:main",
+            "src.tasks.plcs.",
+        ),
+    ],
+)
+def test_task_local_boundaries_keep_task_local_configuration_authority(
+    boundary_id: str,
+    task_prefix: str,
+) -> None:
+    boundary = next(
+        contract
+        for contract in BOUNDARY_CONTRACTS
+        if contract.boundary_id == boundary_id
+    )
+
+    assert boundary.authority_symbols
+    assert all(
+        symbol.startswith((task_prefix, "src.tasks.base.", "src.utils.configuration."))
         for symbol in boundary.authority_symbols
-        if symbol.startswith("src.synthetic_data_generation.configuration.")
-        and symbol.endswith("SCHEMA")
-        and symbol.split(".")[-1]
-        in {
-            "PIPELINE_SCHEMA",
-            "FEATURE_FIT_SCHEMA",
-            "INFER_SCHEMA",
-            "FIT_GROUND_SCHEMA",
-            "CALIBRATE_SCHEMA",
-            "EXPORT_SCHEMA",
-            "GEOMETRY_BRIDGE_SCHEMA",
-            "VALIDATION_MATRIX_SCHEMA",
-        }
-    }
-    assert top_level == {
-        "src.synthetic_data_generation.configuration.PIPELINE_SCHEMA"
-    }
-
-
-def test_non_hydra_boundary_catalog_exposes_exact_path_roles() -> None:
-    boundary = next(
-        contract
-        for contract in BOUNDARY_CONTRACTS
-        if contract.boundary_id
-        == (
-            "src.synthetic_data_generation.dataset.blcs.components."
-            "asset_preparation:main"
-        )
     )
-
-    assert any(
-        authority.endswith(".PATH_BOUNDARY")
-        for authority in boundary.authority_symbols
+    assert not any(
+        symbol.startswith("src.synthetic_data_generation.")
+        for symbol in boundary.authority_symbols
     )
-    assert any("asset_spec:path-role:external_asset" in value for value in boundary.path_role_authorities)
-    assert any("output_dir:path-role:artifact" in value for value in boundary.path_role_authorities)
 
 
 def test_boundary_catalog_follows_package_reexport_to_actual_adapter() -> None:
@@ -264,7 +293,7 @@ def test_every_strict_schema_field_rejects_an_invalid_exact_type() -> None:
         "src.tasks.plcs.configuration.PLCSTrainingConfig",
         "src.tasks.slcs.configuration.SLCSTrainingRuntimeConfig",
         "src.tennis_scene.configuration.PipelineRuntimeConfig",
-        "src.synthetic_data_generation.configuration.SyntheticRuntimeConfig",
+        "src.synthetic_data_generation.configuration.ScenePipelineConfiguration",
         "src.submodules.configuration.SubmoduleRuntimeConfig",
     ],
 )

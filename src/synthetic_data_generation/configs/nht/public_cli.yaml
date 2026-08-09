@@ -1,0 +1,6 @@
+reconstruct_executable: nht-reconstruct
+render_executable: nht-render
+environment:
+  CUDA_VISIBLE_DEVICES: "0"
+reconstruction_timeout_seconds: 86400.0
+render_timeout_seconds: 3600.0
