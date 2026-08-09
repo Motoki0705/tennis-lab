@@ -1,27 +1,35 @@
-"""Canonical typed model-I/O API for court detection."""
+"""Canonical typed model-I/O API for Court detection."""
 
 from src.tasks.court_detection.model_io.adapters import (
-    CourtKeypointModelIO,
-    CourtLineModelIO,
+    CourtDINOv3ExecutionBoundary,
+    CourtModelExecutionBoundary,
     CourtModelIOAdapter,
-    CourtSegmentationModelIO,
 )
 from src.tasks.court_detection.model_io.contracts import (
+    CourtDecodedPrediction,
     CourtKeypointPrediction,
     CourtLinePrediction,
+    CourtLogits,
+    CourtModelCall,
     CourtModelIOError,
     CourtModelSpec,
     CourtSegmentationPrediction,
+    CourtTrainingCall,
+    CourtTrainingResult,
 )
 
 __all__ = [
-    "CourtKeypointModelIO",
+    "CourtDINOv3ExecutionBoundary",
+    "CourtDecodedPrediction",
     "CourtKeypointPrediction",
-    "CourtLineModelIO",
     "CourtLinePrediction",
+    "CourtLogits",
+    "CourtModelCall",
+    "CourtModelExecutionBoundary",
     "CourtModelIOAdapter",
     "CourtModelIOError",
     "CourtModelSpec",
-    "CourtSegmentationModelIO",
     "CourtSegmentationPrediction",
+    "CourtTrainingCall",
+    "CourtTrainingResult",
 ]
