@@ -7,6 +7,7 @@ from typing import cast
 
 import cv2
 import numpy as np
+from numpy.typing import NDArray
 
 from src.tasks.court_detection.data.contracts import CourtInstance2D
 from src.tasks.court_detection.geometry import compute_template_to_image_homography
@@ -17,6 +18,9 @@ from src.utils.schema.court import (
     STANDARD_COURT_CONFIG,
     court_keypoints_3d,
 )
+
+Float32Array = NDArray[np.float32]
+UInt8Array = NDArray[np.uint8]
 
 _LINE_WIDTH_METRES = 0.05
 _BASELINE_WIDTH_METRES = 0.10
@@ -30,7 +34,7 @@ class _MetricLine:
 
 
 def _metric_lines() -> tuple[_MetricLine, ...]:
-    points = court_keypoints_3d(STANDARD_COURT_CONFIG)[:14].numpy()[:, :2]
+    points: Float32Array = court_keypoints_3d(STANDARD_COURT_CONFIG)[:14].numpy()[:, :2]
     baseline_pairs = {(0, 1), (2, 3)}
     result: list[_MetricLine] = []
     for first, second in COURT_SKELETON:
@@ -38,8 +42,8 @@ def _metric_lines() -> tuple[_MetricLine, ...]:
             continue
         result.append(
             _MetricLine(
-                tuple(float(value) for value in points[first]),
-                tuple(float(value) for value in points[second]),
+                (float(points[first, 0]), float(points[first, 1])),
+                (float(points[second, 0]), float(points[second, 1])),
                 (
                     _BASELINE_WIDTH_METRES
                     if (first, second) in baseline_pairs
@@ -67,10 +71,10 @@ def _metric_lines() -> tuple[_MetricLine, ...]:
 _METRIC_LINES = _metric_lines()
 
 
-def _ordered_physical_points(instance: CourtInstance2D) -> np.ndarray:
+def _ordered_physical_points(instance: CourtInstance2D) -> Float32Array:
     if set(instance.physical_indices.tolist()) != set(range(14)):
         raise ValueError("Court line generation requires physical points 0..13.")
-    points = np.empty((14, 2), dtype=np.float32)
+    points: Float32Array = np.empty((14, 2), dtype=np.float32)
     for physical, point in zip(
         instance.physical_indices.tolist(),
         instance.points_xy.detach().cpu().numpy(),
@@ -80,20 +84,23 @@ def _ordered_physical_points(instance: CourtInstance2D) -> np.ndarray:
     return points
 
 
-def _segment_quad(line: _MetricLine) -> np.ndarray:
-    start = np.asarray(line.start, dtype=np.float32)
-    end = np.asarray(line.end, dtype=np.float32)
+def _segment_quad(line: _MetricLine) -> Float32Array:
+    start: Float32Array = np.asarray(line.start, dtype=np.float32)
+    end: Float32Array = np.asarray(line.end, dtype=np.float32)
     direction = end - start
     length = float(np.linalg.norm(direction))
     if length < 1.0e-6:
         raise ValueError("Degenerate metric Court line.")
     tangent = direction / length
-    normal = np.asarray([-tangent[1], tangent[0]], dtype=np.float32)
+    normal: Float32Array = np.asarray([-tangent[1], tangent[0]], dtype=np.float32)
     offset = normal * (line.width_m * 0.5)
-    return np.stack(
-        [start - offset, end - offset, end + offset, start + offset],
-        axis=0,
-    ).astype(np.float32)
+    return cast(
+        Float32Array,
+        np.stack(
+            [start - offset, end - offset, end + offset, start + offset],
+            axis=0,
+        ).astype(np.float32),
+    )
 
 
 def generate_line_target(
@@ -101,11 +108,11 @@ def generate_line_target(
     height: int,
     width: int,
     instances: tuple[CourtInstance2D, ...],
-) -> np.ndarray:
+) -> UInt8Array:
     """Render all court instances into one binary uint8 line mask."""
     if height <= 0 or width <= 0 or not instances:
         raise ValueError("Court line generation requires image geometry.")
-    output = np.zeros((height, width), dtype=np.uint8)
+    output: UInt8Array = np.zeros((height, width), dtype=np.uint8)
     for instance in instances:
         homography = compute_template_to_image_homography(
             _ordered_physical_points(instance),
@@ -117,12 +124,13 @@ def generate_line_target(
             )
         for line in _METRIC_LINES:
             projected = cast(
-                np.ndarray,
+                Float32Array,
                 cv2.perspectiveTransform(
                     _segment_quad(line).reshape(1, -1, 2), homography
                 ).reshape(-1, 2),
             )
-            cv2.fillPoly(output, [np.round(projected).astype(np.int32)], 255)
+            polygon = cast(NDArray[np.int32], np.round(projected).astype(np.int32))
+            cv2.fillPoly(output, [polygon], 255)
     return output
 
 
