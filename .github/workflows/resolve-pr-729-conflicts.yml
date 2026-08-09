@@ -95,10 +95,10 @@ jobs:
           inventory = inventory_path.read_text(encoding="utf-8")
 
           authority_needle = '''_CONFIGURATION_AUTHORITIES: Mapping[str, str] = {
-                  "ball_detection": "src.tasks.ball_detection.configuration.validate_training",'''
+              "ball_detection": "src.tasks.ball_detection.configuration.validate_training",'''
           authority_replacement = '''_CONFIGURATION_AUTHORITIES: Mapping[str, str] = {
-                  "automation": "src.automation.chatgpt_mcp.settings.GatewaySettings",
-                  "ball_detection": "src.tasks.ball_detection.configuration.validate_training",'''
+              "automation": "src.automation.chatgpt_mcp.settings.GatewaySettings",
+              "ball_detection": "src.tasks.ball_detection.configuration.validate_training",'''
           if authority_needle not in inventory:
               raise SystemExit("configuration-authority insertion point was not found")
           inventory = inventory.replace(authority_needle, authority_replacement, 1)
@@ -215,6 +215,7 @@ jobs:
         run: |
           set -euo pipefail
           git rm .github/workflows/resolve-pr-729-conflicts.yml
+          git rm .gitattributes
           git add -A
           test -z "$(git diff --name-only --diff-filter=U)"
           git commit -m "merge(main): resolve PR 729 configuration inventory conflicts"
