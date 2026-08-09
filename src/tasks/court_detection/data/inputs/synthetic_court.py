@@ -31,9 +31,9 @@ from src.tasks.court_detection.data.contracts import (
     CourtSourceSplit,
 )
 from src.tasks.court_detection.data.target_generation.store import (
-    CourtDerivedTargetStore,
     LINE_TARGET_SCHEMA,
     SEGMENTATION_TARGET_SCHEMA,
+    CourtDerivedTargetStore,
 )
 
 _SYNTHETIC_KP_SCHEMA = "synthetic_symmetric_kp7"
