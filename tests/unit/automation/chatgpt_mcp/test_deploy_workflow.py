@@ -48,6 +48,8 @@ def test_deploy_uses_external_exact_revision_control_plane() -> None:
     assert '--expected-sha "$GITHUB_SHA"' in text
     assert '--reuse-existing-key' in text
     assert 'TENNIS_MCP_GPU_LOCK_FILE="$GPU_LOCK_FILE"' in text
+    assert 'test -w "$GPU_LOCK_FILE"' in text
+    assert ': >> "$GPU_LOCK_FILE"' in text
     assert 'test "$(cat "$MCP_CONTROL_DIR/runtime-version")" = "$GITHUB_SHA"' in text
 
 
@@ -63,6 +65,9 @@ def test_trusted_deploy_runner_has_local_authorization_and_service_boundaries() 
     assert "ReadWritePaths=$MCP_STATE_DIR" in installer
     assert "ReadWritePaths=$MCP_CONTROL_DIR" in installer
     assert "ReadWritePaths=$PROJECT_ROOT" in installer
+    assert 'GPU_LOCK_FILE="/var/lib/tennis-lab-actions/gpu.lock"' in installer
+    assert "ReadWritePaths=$GPU_LOCK_FILE" in installer
+    assert '[[ ! -w "$GPU_LOCK_FILE" ]]' in installer
     assert "ReadOnlyPaths=$runner_env" in installer
     assert "ReadOnlyPaths=$HOOK_PATH" in installer
     assert "ExecStart=/bin/bash $RUNNER_ROOT/run.sh" in installer

@@ -5,9 +5,11 @@ set -euo pipefail
 
 readonly RUNNER_USER="tennis-actions"
 readonly RUNNER_GROUP="tennis-actions"
+readonly TRUSTED_MCP_USER="kamimura"
 readonly RUNNER_ROOT="/opt/actions-runner"
 readonly TOOL_ROOT="/opt/tennis-lab-actions"
 readonly STATE_ROOT="/var/lib/tennis-lab-actions"
+readonly GPU_LOCK_FILE="$STATE_ROOT/gpu.lock"
 readonly RUNNER_HOME="$STATE_ROOT/home"
 readonly REPOSITORY_URL="https://github.com/Motoki0705/tennis-lab"
 readonly RUNNER_LABELS="local-gpu,cuda,wsl2,tennis-lab"
@@ -16,11 +18,67 @@ readonly SERVICE_PATH="/etc/systemd/system"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPOSITORY_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 RUNNER_NAME="$(hostname)-wsl2-rtx5060ti"
+GPU_LOCK_ONLY=false
+
+usage() {
+  echo "usage: sudo bash $0 [--configure-gpu-lock-only]" >&2
+}
+
+if [ "$#" -gt 1 ]; then
+  usage
+  exit 2
+fi
+if [ "$#" -eq 1 ]; then
+  if [ "$1" != "--configure-gpu-lock-only" ]; then
+    usage
+    exit 2
+  fi
+  GPU_LOCK_ONLY=true
+fi
 
 if [ "${EUID}" -ne 0 ]; then
   echo "Run this installer with sudo." >&2
   echo "  sudo bash scripts/github_actions/install_self_hosted_runner.sh" >&2
   exit 1
+fi
+
+if ! id "$TRUSTED_MCP_USER" >/dev/null 2>&1; then
+  echo "Trusted MCP user is missing: $TRUSTED_MCP_USER" >&2
+  exit 1
+fi
+TRUSTED_MCP_GROUP="$(id -gn "$TRUSTED_MCP_USER")"
+readonly TRUSTED_MCP_GROUP
+
+configure_shared_gpu_lock() {
+  if ! id "$RUNNER_USER" >/dev/null 2>&1; then
+    echo "GPU runner user is missing: $RUNNER_USER" >&2
+    echo "Run the full installer before --configure-gpu-lock-only." >&2
+    exit 1
+  fi
+
+  # The MCP user may traverse STATE_ROOT but cannot list it. All other state
+  # remains mode 0700 and owned by the isolated GPU runner.
+  install -d -o "$RUNNER_USER" -g "$TRUSTED_MCP_GROUP" -m 0710 "$STATE_ROOT"
+  if [ -L "$GPU_LOCK_FILE" ] || { [ -e "$GPU_LOCK_FILE" ] && [ ! -f "$GPU_LOCK_FILE" ]; }; then
+    echo "Shared GPU lock must be a regular file: $GPU_LOCK_FILE" >&2
+    exit 1
+  fi
+  if [ ! -e "$GPU_LOCK_FILE" ]; then
+    install -o "$RUNNER_USER" -g "$TRUSTED_MCP_GROUP" -m 0660 /dev/null \
+      "$GPU_LOCK_FILE"
+  else
+    chown "$RUNNER_USER:$TRUSTED_MCP_GROUP" "$GPU_LOCK_FILE"
+    chmod 0660 "$GPU_LOCK_FILE"
+  fi
+
+  runuser -u "$RUNNER_USER" -- test -w "$GPU_LOCK_FILE"
+  runuser -u "$TRUSTED_MCP_USER" -- test -w "$GPU_LOCK_FILE"
+}
+
+if [ "$GPU_LOCK_ONLY" = true ]; then
+  configure_shared_gpu_lock
+  echo "Shared GPU lock configured: $GPU_LOCK_FILE"
+  exit 0
 fi
 
 for source_dir in "$REPOSITORY_ROOT/data" "$REPOSITORY_ROOT/ckpt"; do
@@ -62,8 +120,8 @@ if ! id "$RUNNER_USER" >/dev/null 2>&1; then
     "$RUNNER_USER"
 fi
 
+configure_shared_gpu_lock
 install -d -o "$RUNNER_USER" -g "$RUNNER_GROUP" -m 0700 \
-  "$STATE_ROOT" \
   "$RUNNER_HOME" \
   "$STATE_ROOT/assets" \
   "$STATE_ROOT/runs" \
@@ -73,10 +131,6 @@ for asset_dir in "$STATE_ROOT/assets/data" "$STATE_ROOT/assets/ckpt"; do
     install -d -o "$RUNNER_USER" -g "$RUNNER_GROUP" -m 0700 "$asset_dir"
   fi
 done
-if [ ! -e "$STATE_ROOT/gpu.lock" ]; then
-  install -o "$RUNNER_USER" -g "$RUNNER_GROUP" -m 0600 /dev/null \
-    "$STATE_ROOT/gpu.lock"
-fi
 install -d -o "$RUNNER_USER" -g "$RUNNER_GROUP" -m 0750 "$RUNNER_ROOT"
 install -d -o root -g root -m 0755 "$TOOL_ROOT/bin"
 
@@ -221,7 +275,7 @@ WorkingDirectory=$STATE_ROOT
 Environment=HOME=$RUNNER_HOME
 Environment=PATH=/usr/local/bin:/usr/bin:/bin:/usr/lib/wsl/lib
 Environment=TRAINING_QUEUE_DIR=$STATE_ROOT/training-queue
-Environment=TRAINING_QUEUE_LOCK_FILE=$STATE_ROOT/gpu.lock
+Environment=TRAINING_QUEUE_LOCK_FILE=$GPU_LOCK_FILE
 ExecStart=$TOOL_ROOT/bin/training_queue.sh serve --idle-timeout 2147483647
 Restart=on-failure
 RestartSec=5
@@ -232,7 +286,7 @@ ProtectHome=true
 ProtectProc=invisible
 ProtectSystem=strict
 ReadOnlyPaths=$STATE_ROOT/assets
-ReadWritePaths=$RUNNER_HOME $STATE_ROOT/runs $STATE_ROOT/training-queue $STATE_ROOT/gpu.lock
+ReadWritePaths=$RUNNER_HOME $STATE_ROOT/runs $STATE_ROOT/training-queue $GPU_LOCK_FILE
 InaccessiblePaths=$inaccessible_paths
 RestrictSUIDSGID=true
 
@@ -291,7 +345,7 @@ ProtectHome=true
 ProtectProc=invisible
 ProtectSystem=strict
 ReadOnlyPaths=$STATE_ROOT/assets
-ReadWritePaths=$RUNNER_ROOT $RUNNER_HOME $STATE_ROOT/runs $STATE_ROOT/training-queue $STATE_ROOT/gpu.lock
+ReadWritePaths=$RUNNER_ROOT $RUNNER_HOME $STATE_ROOT/runs $STATE_ROOT/training-queue $GPU_LOCK_FILE
 InaccessiblePaths=$inaccessible_paths
 RestrictSUIDSGID=true
 EOF

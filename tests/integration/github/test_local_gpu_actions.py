@@ -90,6 +90,7 @@ def test_runner_scripts_parse_and_install_security_boundaries() -> None:
         encoding="utf-8"
     )
     assert 'readonly RUNNER_USER="tennis-actions"' in installer
+    assert 'readonly TRUSTED_MCP_USER="kamimura"' in installer
     assert "ProtectHome=true" in installer
     assert "for mount_path in /mnt/?; do" in installer
     assert "InaccessiblePaths=$inaccessible_paths" in installer
@@ -97,6 +98,11 @@ def test_runner_scripts_parse_and_install_security_boundaries() -> None:
     assert 'mountpoint --quiet "$asset_dir"' in installer
     assert "mount --options remount,bind,ro" in installer
     assert "TRAINING_QUEUE_LOCK_FILE=" in installer
+    assert '-g "$TRUSTED_MCP_GROUP" -m 0710 "$STATE_ROOT"' in installer
+    assert 'chown "$RUNNER_USER:$TRUSTED_MCP_GROUP" "$GPU_LOCK_FILE"' in installer
+    assert 'chmod 0660 "$GPU_LOCK_FILE"' in installer
+    assert 'runuser -u "$RUNNER_USER" -- test -w "$GPU_LOCK_FILE"' in installer
+    assert 'runuser -u "$TRUSTED_MCP_USER" -- test -w "$GPU_LOCK_FILE"' in installer
     assert "sha256sum --check --status" in installer
 
     enqueue = (SCRIPTS / "enqueue_training.sh").read_text(encoding="utf-8")
