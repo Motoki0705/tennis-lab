@@ -12,6 +12,10 @@ from torch import Tensor
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_saving import save_qualitative_clip
 from src.tasks.court_detection.configuration import CourtTrainingConfig
+from src.tasks.court_detection.data.bundle_state import (
+    deserialize_target_bundle,
+    serialize_target_bundle,
+)
 from src.tasks.court_detection.data.contracts import (
     CourtTargetBundleSpec,
     CourtTargetKind,
@@ -36,17 +40,36 @@ class CourtDetectionLightningModule(BaseLightningModule):
         self,
         config: object,
         *,
-        target_bundle: CourtTargetBundleSpec,
+        target_bundle: CourtTargetBundleSpec | None = None,
+        target_bundle_state: Mapping[str, object] | None = None,
     ) -> None:
         super().__init__(config)
         runtime = CourtTrainingConfig.from_config(config)
-        self.target_bundle = target_bundle
+        if target_bundle is None:
+            if target_bundle_state is None:
+                raise ValueError(
+                    "Court Lightning construction requires a target bundle "
+                    "or its checkpoint snapshot."
+                )
+            resolved_bundle = deserialize_target_bundle(target_bundle_state)
+        else:
+            resolved_bundle = target_bundle
+            if (
+                target_bundle_state is not None
+                and deserialize_target_bundle(target_bundle_state) != resolved_bundle
+            ):
+                raise ValueError(
+                    "Court target bundle disagrees with its checkpoint snapshot."
+                )
+        bundle_snapshot = serialize_target_bundle(resolved_bundle)
+        self.save_hyperparameters({"target_bundle_state": bundle_snapshot})
+        self.target_bundle = resolved_bundle
         self.qualitative_fps = runtime.qualitative_fps
         self.qualitative_style = runtime.render_style
 
         model_pair = build_court_detection_pair(
             self.config,
-            target_bundle=target_bundle,
+            target_bundle=resolved_bundle,
         )
         self.model = model_pair.model
         self.model_io = cast(CourtModelIOAdapter, model_pair.adapter)
@@ -57,14 +80,14 @@ class CourtDetectionLightningModule(BaseLightningModule):
                 self.model_io,
                 kind=kind,
             )
-            for kind in target_bundle.kinds
+            for kind in resolved_bundle.kinds
         }
         self._stage_metrics: dict[
             str, dict[CourtTargetKind, CourtDetectionMetrics]
         ] = {
             stage: {
                 kind: CourtDetectionMetrics(kind, spec.output_channels)
-                for kind, spec in target_bundle.targets.items()
+                for kind, spec in resolved_bundle.targets.items()
             }
             for stage in ("train", "val", "test")
         }
