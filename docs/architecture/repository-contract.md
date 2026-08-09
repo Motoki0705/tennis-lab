@@ -92,7 +92,7 @@ vendor codeを呼び出すrepository-owned wrapper、request / result contract�
 
 ### CFG-001 — runtime値と既定値はcomposition-owned
 
-runtimeで選択可能な値、型、必須・任意区分、既定値、値域、排他条件は、canonical Hydra / YAML declarationまたは明示的なschema declarationだけが所有します。同じ既定値をPython constructor、runner、adapter、CLI wrapperへ複製してはなりません。
+runtimeで選択可能な値と既定値は、canonical Hydra / YAML composition declarationだけが所有します。型、必須・任意区分、absence policy、値域、排他条件、field間の意味制約は、対応するstrict schemaまたはtyped adapterが所有します。同じ既定値や意味制約をPython constructor、runner、adapter、CLI wrapperへ複製してはなりません。
 
 code内に置くことができるのは、ユーザー選択肢ではないalgorithm invariantやformat constantです。runtime behaviorを変える値を「内部定数」として隠してはなりません。
 
@@ -145,7 +145,7 @@ catalog、audit、discovery間にback edgeを作らず、下位のdiscoveryへ�
 
 `.get`、`getattr`、mapping lookupなどの構文自体をrepository全体で一律禁止しません。永続dataの明示的なoptional fieldや純粋algorithm用途など、configuration fallbackではない使用は存在し得ます。
 
-ただし、audit findingを除外する場合は、canonical exemption dataに正確なsource位置、finding kind、理由、ownerを持たせます。広いpath単位、曖昧な説明、将来の未知findingまで覆うblanket exemptionを禁止します。
+ただし、audit findingを除外する場合は、canonical exemption dataに正確なmodule、qualified name、line、`AuditRule`、stable reason code / reasonを持たせます。広いpath単位、曖昧な説明、将来の未知findingまで覆うblanket exemptionを禁止します。
 
 ### CFG-007 — generated audit dataの更新をfail-closedにする
 
@@ -169,7 +169,7 @@ runtime path authorityは、次の7 roleへ明示的に分類します。
 - `cache_root`。
 - `external_asset_root`。
 
-`RuntimePathRoots`は7 rootを完全に持ち、各rootをresolved absolute `Path`として検証します。filesystem root自体をruntime authorityとして与えてはなりません。
+`RuntimePathRoots`は7 rootを完全に持ち、各rootをresolved absolute `Path`として検証します。`project_root`のrelative valueは明示されたrepository rootを基準に解決し、他のrelative rootはresolved `project_root`を基準に解決します。filesystem root自体をruntime authorityとして与えてはなりません。
 
 ### PATH-002 — roleはpath文字列から推測しない
 
@@ -375,7 +375,7 @@ repository-owned loss moduleは、matching、registry dispatch、shape validatio
 - zero tensor、空配列、連番ID。
 - guessed default。
 - shapeからの旧schema推定。
--別file / extension / directoryの暗黙探索。
+- 別file / extension / directoryの暗黙探索。
 - geometryからのsemantic event推定。
 
 optionalである場合は、schemaでoptional性とabsence semanticsを明示します。
@@ -540,7 +540,7 @@ architectureに影響する変更は、少なくとも次を確認します。
 - [ ] explicit requestが利用不能な場合に副作用前に失敗する。
 - [ ] negative caseと「失敗前にmodel / side effectが実行されない」testを追加・更新した。
 - [ ] package READMEと本書のimplementation / enforcement mapを更新した。
-- [ ] `scripts/audit_configuration.py src`とrelevantなruff、mypy、pytest、CIが成功した。
+- [ ] `.venv/bin/python scripts/audit_configuration.py src`とrelevantなruff、mypy、pytest、CIが成功した。
 - [ ] 逸脱がある場合、Exception procedureを完了した。
 
 ## 16. Provenance
