@@ -33,7 +33,7 @@ jobs:
           python-version: "3.11"
           enable-cache: true
 
-      - name: Merge main and resolve the audited inventory conflicts
+      - name: Merge main and resolve audited configuration sources
         shell: bash
         run: |
           set -euo pipefail
@@ -45,9 +45,8 @@ jobs:
           git merge --no-commit --no-ff origin/main
           merge_status=$?
           set -e
-
           if [[ $merge_status -eq 0 ]]; then
-            echo "Expected a conflict but the merge completed cleanly; refusing an unreviewed resolution."
+            echo "Expected an audited conflict but merge completed cleanly."
             exit 1
           fi
 
@@ -68,11 +67,13 @@ jobs:
             exit 1
           fi
 
+          # The PR side already classifies the complete synthetic-data migration.
+          # Keep it as the regeneration seed, then add main's automation authority
+          # and regenerate both immutable ledgers from the merged source tree.
           git checkout --ours -- \
             src/utils/configuration/audit.py \
-            src/utils/configuration/inventory.py
-          git checkout --theirs -- \
             src/utils/configuration/exemption_data.py \
+            src/utils/configuration/inventory.py \
             src/utils/configuration/migration_data.py
 
           python - <<'PY'
@@ -89,7 +90,7 @@ jobs:
               raise SystemExit("audit.py insertion point was not found")
           audit = audit.replace(audit_needle, audit_replacement, 1)
           if "validate_scene_pipeline_boundary" not in audit:
-              raise SystemExit("PR synthetic-data validation authority was lost")
+              raise SystemExit("PR scene-pipeline validation authority was lost")
           audit_path.write_text(audit, encoding="utf-8")
 
           inventory_path = Path("src/utils/configuration/inventory.py")
@@ -164,18 +165,18 @@ jobs:
               raise SystemExit("automation runtime boundary unexpectedly already exists")
           inventory = inventory.replace(runtime_needle, runtime_replacement, 1)
           if "src.synthetic_data_generation.scripts.run_scene_pipeline" not in inventory:
-              raise SystemExit("PR canonical scene-pipeline boundary was lost")
+              raise SystemExit("PR canonical scene boundary was lost")
           inventory_path.write_text(inventory, encoding="utf-8")
           PY
 
           git add \
             src/utils/configuration/audit.py \
-            src/utils/configuration/inventory.py \
             src/utils/configuration/exemption_data.py \
+            src/utils/configuration/inventory.py \
             src/utils/configuration/migration_data.py
           test -z "$(git diff --name-only --diff-filter=U)"
 
-      - name: Regenerate and self-audit configuration inventories
+      - name: Regenerate and self-audit immutable inventories
         shell: bash
         run: |
           set -euo pipefail
@@ -229,7 +230,7 @@ jobs:
         shell: bash
         run: |
           gh pr comment 729 --repo Motoki0705/tennis-lab --body \
-            "Conflict resolver PASS. Merged current main, regenerated the configuration inventories, preserved the automation and canonical scene boundaries, and pushed commit $(git rev-parse HEAD). Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            "Conflict resolver PASS. Merged current main, regenerated both immutable configuration inventories from the merged source, preserved automation and canonical scene boundaries, and pushed commit $(git rev-parse HEAD). Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
       - name: Report failure
         if: failure()
