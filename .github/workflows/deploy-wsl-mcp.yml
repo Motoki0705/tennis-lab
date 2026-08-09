@@ -1,0 +1,313 @@
+name: Deploy WSL MCP
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/automation/chatgpt_mcp/**"
+      - "tests/unit/automation/chatgpt_mcp/**"
+      - "tests/integration/chatgpt_mcp/**"
+      - ".github/workflows/deploy-wsl-mcp.yml"
+      - "pyproject.toml"
+      - "uv.lock"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tennis-lab-wsl-mcp-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      ${{ github.actor == github.repository_owner &&
+          vars.LOCAL_GPU_ACTIONS_ENABLED == 'true' }}
+    environment: local-gpu
+    runs-on: [self-hosted, linux, x64, local-gpu, cuda, wsl2, tennis-lab]
+    timeout-minutes: 90
+    env:
+      PROJECT_ROOT: /home/kamimura/projects/tennis-lab
+      MCP_STATE_DIR: /home/kamimura/.local/state/tennis-lab-chatgpt-mcp
+      MCP_CONTROL_DIR: /home/kamimura/.local/share/tennis-lab-chatgpt-mcp
+      GPU_LOCK_FILE: /var/lib/tennis-lab-actions/gpu.lock
+
+    steps:
+      - name: Checkout reviewed main revision
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          clean: true
+          persist-credentials: false
+          submodules: false
+
+      - name: Set up trusted uv bootstrap
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          python-version: "3.11"
+
+      - name: Install external trusted runtime and restart Secure Tunnel
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tunnel_id_file="$MCP_STATE_DIR/secure-tunnel/tunnel-id"
+          runtime_key_file="$MCP_STATE_DIR/secure-tunnel/runtime-api-key"
+          test -s "$tunnel_id_file"
+          test -s "$runtime_key_file"
+
+          mkdir -p "$MCP_CONTROL_DIR/venvs"
+          venv_key="$(cat pyproject.toml uv.lock | sha256sum | awk '{print $1}')"
+          venv_target="$MCP_CONTROL_DIR/venvs/$venv_key"
+          if [[ ! -x "$venv_target/bin/python" ]]; then
+            rm -rf "$venv_target"
+            UV_PROJECT_ENVIRONMENT="$venv_target" \
+              uv sync --locked --no-install-project
+          fi
+
+          venv_link="$MCP_CONTROL_DIR/venv"
+          if [[ -e "$venv_link" && ! -L "$venv_link" ]]; then
+            rm -rf "$venv_link"
+          fi
+          venv_tmp="$MCP_CONTROL_DIR/.venv.${GITHUB_RUN_ID}.tmp"
+          rm -f "$venv_tmp"
+          ln -s "venvs/$venv_key" "$venv_tmp"
+          mv -Tf "$venv_tmp" "$venv_link"
+          bootstrap_python="$venv_link/bin/python"
+          test -x "$bootstrap_python"
+
+          tunnel_id="$(tr -d '\r\n' < "$tunnel_id_file")"
+          PYTHONPATH="$GITHUB_WORKSPACE" \
+          TENNIS_MCP_REPO_ROOT="$PROJECT_ROOT" \
+          TENNIS_MCP_STATE_DIR="$MCP_STATE_DIR" \
+          TENNIS_MCP_CONTROL_DIR="$MCP_CONTROL_DIR" \
+          TENNIS_MCP_GPU_LOCK_FILE="$GPU_LOCK_FILE" \
+            "$bootstrap_python" -m src.automation.chatgpt_mcp \
+              configure-secure-tunnel \
+              --source-root "$GITHUB_WORKSPACE" \
+              --expected-sha "$GITHUB_SHA" \
+              --tunnel-id "$tunnel_id" \
+              --reuse-existing-key \
+              --start
+
+      - name: Verify services, MCP protocol, project RW, CPU, CUDA, and queue
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          trusted_python="$MCP_CONTROL_DIR/venv/bin/python"
+          export PYTHONPATH="$MCP_CONTROL_DIR/current"
+          export TENNIS_MCP_REPO_ROOT="$PROJECT_ROOT"
+          export TENNIS_MCP_STATE_DIR="$MCP_STATE_DIR"
+          export TENNIS_MCP_CONTROL_DIR="$MCP_CONTROL_DIR"
+          export TENNIS_MCP_GPU_LOCK_FILE="$GPU_LOCK_FILE"
+
+          test -x "$trusted_python"
+          test "$(cat "$MCP_CONTROL_DIR/runtime-version")" = "$GITHUB_SHA"
+          test -L "$PROJECT_ROOT/.venv"
+          test "$(readlink -f "$PROJECT_ROOT/.venv")" = "$(readlink -f "$MCP_CONTROL_DIR/venv")"
+          systemctl --user is-active tennis-lab-chatgpt-mcp-private.service
+          systemctl --user is-active tennis-lab-chatgpt-secure-tunnel.service
+          curl --fail --silent http://127.0.0.1:8767/healthz
+          echo
+          curl --fail --silent http://127.0.0.1:8768/readyz
+          echo
+          "$trusted_python" -m src.automation.chatgpt_mcp doctor-secure-tunnel
+
+          "$trusted_python" - <<'PY'
+          from __future__ import annotations
+
+          import json
+          import os
+          import time
+          import urllib.request
+
+          from mcp.types import LATEST_PROTOCOL_VERSION
+
+          endpoint = "http://127.0.0.1:8767/mcp"
+          headers = {
+              "Accept": "application/json, text/event-stream",
+              "Content-Type": "application/json",
+              "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
+          }
+          request_id = 0
+
+          def rpc(method: str, params: dict[str, object] | None = None) -> dict[str, object]:
+              global request_id
+              request_id += 1
+              payload: dict[str, object] = {
+                  "jsonrpc": "2.0",
+                  "id": request_id,
+                  "method": method,
+              }
+              if params is not None:
+                  payload["params"] = params
+              request = urllib.request.Request(
+                  endpoint,
+                  data=json.dumps(payload).encode(),
+                  headers=headers,
+                  method="POST",
+              )
+              with urllib.request.urlopen(request, timeout=60) as response:
+                  document = json.loads(response.read())
+              if "error" in document:
+                  raise RuntimeError(document["error"])
+              return document["result"]
+
+          def tool(name: str, arguments: dict[str, object]) -> object:
+              result = rpc("tools/call", {"name": name, "arguments": arguments})
+              if result.get("isError"):
+                  raise RuntimeError(result)
+              structured = result.get("structuredContent")
+              if isinstance(structured, dict):
+                  return structured.get("result", structured)
+              content = result.get("content", [])
+              if content and isinstance(content[0], dict):
+                  text = content[0].get("text")
+                  if isinstance(text, str):
+                      return json.loads(text)
+              raise RuntimeError(f"unrecognized MCP tool result: {result!r}")
+
+          def wait_command(job_id: str, *, seconds: int) -> dict[str, object]:
+              for _ in range(seconds):
+                  state = tool("get_command_job", {"job_id": job_id})
+                  if not state["running"]:
+                      if state["exit_code"] != 0:
+                          raise SystemExit(
+                              tool(
+                                  "get_command_output",
+                                  {"job_id": job_id, "tail": 1000},
+                              )
+                          )
+                      return state
+                  time.sleep(1)
+              raise SystemExit(f"command job timed out: {job_id}")
+
+          rpc(
+              "initialize",
+              {
+                  "protocolVersion": LATEST_PROTOCOL_VERSION,
+                  "capabilities": {},
+                  "clientInfo": {"name": "deploy-verifier", "version": "1"},
+              },
+          )
+          listed = rpc("tools/list")
+          names = {entry["name"] for entry in listed["tools"]}
+          expected = {
+              "get_host_status",
+              "get_execution_layout",
+              "prepare_revision_workspace",
+              "get_revision_status",
+              "start_command",
+              "get_command_job",
+              "list_command_jobs",
+              "get_command_output",
+              "cancel_command_job",
+              "enqueue_training",
+              "get_training_job",
+              "list_training_jobs",
+              "get_training_output",
+              "cancel_training_job",
+          }
+          if names != expected:
+              raise SystemExit(f"unexpected MCP tools: {sorted(names)}")
+
+          host = tool("get_host_status", {})
+          if not host["docker"]["ok"] or not host["gpu"]["ok"]:
+              raise SystemExit(f"host preflight failed: {host!r}")
+          layout = tool("get_execution_layout", {})
+          if layout["network"] != "disabled":
+              raise SystemExit(f"network unexpectedly enabled: {layout!r}")
+          if layout["direct_concurrency"] != 2:
+              raise SystemExit(f"unexpected direct concurrency: {layout!r}")
+          if layout["direct_memory_limit_gb"] != 24:
+              raise SystemExit(f"unexpected direct memory limit: {layout!r}")
+          if layout["queued_memory_limit_gb"] != 48:
+              raise SystemExit(f"unexpected queued memory limit: {layout!r}")
+
+          revision = os.environ["GITHUB_SHA"]
+          prepared = tool(
+              "prepare_revision_workspace",
+              {"branch": "main", "expected_sha": revision},
+          )
+          workspace_id = prepared["workspace_id"]
+
+          boundary = tool(
+              "start_command",
+              {
+                  "workspace_id": workspace_id,
+                  "expected_sha": revision,
+                  "execution_root": "revision",
+                  "working_directory": ".",
+                  "timeout_seconds": 300,
+                  "command": (
+                      "set -euo pipefail; "
+                      "test -w /tennis-lab; "
+                      "test ! -e /var/run/docker.sock; "
+                      "test ! -e /mnt/c; "
+                      "test ! -e /tennis-lab/.git/HEAD; "
+                      "test ! -e /workspace/.git; "
+                      "test -r /home/kamimura/.local/share/tennis-lab-chatgpt-mcp/venv/bin/python; "
+                      "test ! -w /home/kamimura/.local/share/tennis-lab-chatgpt-mcp/venv; "
+                      "test ! -e /home/kamimura/.local/share/tennis-lab-chatgpt-mcp/current; "
+                      "test ! -e /home/kamimura/.local/share/tennis-lab-chatgpt-mcp/repository.git; "
+                      "test ! -e /home/kamimura/.local/share/tennis-lab-chatgpt-mcp/bin/training_queue.sh; "
+                      "test ! -e /home/kamimura/.local/state/tennis-lab-chatgpt-mcp/secure-tunnel/runtime-api-key; "
+                      "mkdir -p artifacts/mcp-deploy-smoke; "
+                      "printf ok > artifacts/mcp-deploy-smoke/ok; "
+                      "test -f /tennis-lab/artifacts/mcp-deploy-smoke/ok; "
+                      "rm -rf artifacts/mcp-deploy-smoke"
+                  ),
+              },
+          )
+          wait_command(boundary["job_id"], seconds=300)
+
+          tests = tool(
+              "start_command",
+              {
+                  "workspace_id": workspace_id,
+                  "expected_sha": revision,
+                  "execution_root": "revision",
+                  "working_directory": ".",
+                  "timeout_seconds": 1200,
+                  "command": (
+                      "python -m pytest -q "
+                      "tests/unit/automation/chatgpt_mcp "
+                      "tests/integration/chatgpt_mcp"
+                  ),
+              },
+          )
+          wait_command(tests["job_id"], seconds=1200)
+
+          gpu = tool(
+              "enqueue_training",
+              {
+                  "name": "mcp-deploy-cuda-smoke",
+                  "workspace_id": workspace_id,
+                  "expected_sha": revision,
+                  "execution_root": "revision",
+                  "working_directory": ".",
+                  "timeout_seconds": 300,
+                  "command": (
+                      "python -c \"import torch; "
+                      "assert torch.cuda.is_available(); "
+                      "print(torch.cuda.get_device_name(0))\""
+                  ),
+              },
+          )
+          for _ in range(600):
+              state = tool("get_training_job", {"job_id": gpu["job_id"]})
+              if state["status"] in {"succeeded", "failed", "cancelled"}:
+                  output = tool(
+                      "get_training_output",
+                      {"job_id": gpu["job_id"], "tail": 1000},
+                  )
+                  if state["status"] != "succeeded" or state.get("exit_code") not in {None, 0}:
+                      raise SystemExit(output)
+                  print(json.dumps(output, ensure_ascii=False))
+                  break
+              time.sleep(1)
+          else:
+              raise SystemExit("CUDA deployment smoke timed out")
+          PY

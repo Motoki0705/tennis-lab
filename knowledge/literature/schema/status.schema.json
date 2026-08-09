@@ -10,6 +10,8 @@
     "initialized_at",
     "last_curated_at",
     "generated_at",
+    "quota_mode",
+    "quota_note",
     "ingestion"
   ],
   "properties": {
@@ -18,6 +20,13 @@
     "initialized_at": { "type": ["string", "null"], "format": "date-time" },
     "last_curated_at": { "type": ["string", "null"], "format": "date-time" },
     "generated_at": { "type": ["string", "null"], "format": "date-time" },
+    "quota_mode": {
+      "enum": ["enforced", "historical_backfill"]
+    },
+    "quota_note": {
+      "type": ["string", "null"],
+      "minLength": 1
+    },
     "ingestion": {
       "type": "object",
       "additionalProperties": false,
@@ -45,6 +54,20 @@
       }
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "quota_mode": { "const": "historical_backfill" }
+        }
+      },
+      "then": {
+        "properties": {
+          "quota_note": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  ],
   "$defs": {
     "quota": {
       "type": "object",
