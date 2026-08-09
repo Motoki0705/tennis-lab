@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import cast
 
 import torch
 from PIL import Image
@@ -22,9 +21,9 @@ from src.tasks.court_detection.data.contracts import (
     CourtSourceSplit,
 )
 from src.tasks.court_detection.data.target_generation.store import (
-    CourtDerivedTargetStore,
     LINE_TARGET_SCHEMA,
     SEGMENTATION_TARGET_SCHEMA,
+    CourtDerivedTargetStore,
 )
 
 _TCD_KP_SCHEMA = "tennis_court_detector_kp14"
