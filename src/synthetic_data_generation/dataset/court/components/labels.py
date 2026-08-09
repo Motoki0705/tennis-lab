@@ -1,18 +1,17 @@
-"""Build instance-aware symmetric court labels and seven-channel targets."""
+"""Seven-class Court labels with renderer-derived point visibility."""
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, replace
 
 import numpy as np
 from numpy.typing import NDArray
 
-from src.synthetic_data_generation.dataset.court.artifacts.layout import (
-    MultiCourtLayout,
-)
-from src.synthetic_data_generation.scene_contract import SceneCamera
+from src.synthetic_data_generation.scene_contract import MultiCourtLayout, SceneCamera
+from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
 
-SYMMETRIC_KEYPOINT_CLASS_NAMES: tuple[str, ...] = (
+SEMANTIC_CLASS_NAMES: tuple[str, ...] = (
     "doubles_left",
     "doubles_right",
     "singles_left",
@@ -21,23 +20,7 @@ SYMMETRIC_KEYPOINT_CLASS_NAMES: tuple[str, ...] = (
     "service_right",
     "service_t",
 )
-PHYSICAL_TO_SYMMETRIC_CLASS: tuple[int, ...] = (
-    0,
-    1,
-    0,
-    1,
-    2,
-    2,
-    3,
-    3,
-    4,
-    5,
-    4,
-    5,
-    6,
-    6,
-)
-PHYSICAL_INDICES_BY_SYMMETRIC_CLASS: tuple[tuple[int, int], ...] = (
+PHYSICAL_INDICES_BY_CLASS: tuple[tuple[int, int], ...] = (
     (0, 2),
     (1, 3),
     (4, 5),
@@ -46,66 +29,83 @@ PHYSICAL_INDICES_BY_SYMMETRIC_CLASS: tuple[tuple[int, int], ...] = (
     (9, 11),
     (12, 13),
 )
-_LINE_POINT_COUNT = 14
 
 
-@dataclass(frozen=True)
-class SymmetricCourtPoint:
-    """One physical point whose near/far identity is intentionally absent."""
+@dataclass(frozen=True, slots=True)
+class SemanticPoint:
+    """One physical line keypoint belonging to a symmetric semantic class."""
 
+    physical_index: int
     uv: tuple[float, float]
-    depth_scene: float
-    xyz_scene: tuple[float, float, float]
+    camera_depth_m: float
+    scene_xyz_m: tuple[float, float, float]
     in_front: bool
     in_frame: bool
-    visible: bool | None
+    renderer_visible: bool | None
+
+    def to_dict(self) -> dict[str, object]:
+        """Return a JSON-safe label point."""
+        return {
+            "physical_index": self.physical_index,
+            "uv": list(self.uv),
+            "camera_depth_m": self.camera_depth_m,
+            "scene_xyz_m": list(self.scene_xyz_m),
+            "in_front": self.in_front,
+            "in_frame": self.in_frame,
+            "renderer_visible": self.renderer_visible,
+        }
 
 
-@dataclass(frozen=True)
-class SymmetricCourtClass:
-    """Two unordered physical points sharing one semantic class."""
+@dataclass(frozen=True, slots=True)
+class SemanticClass:
+    """Exactly two unordered physical points in one of seven target classes."""
 
     class_id: int
     class_name: str
-    points: tuple[SymmetricCourtPoint, ...]
+    points: tuple[SemanticPoint, SemanticPoint]
 
     def __post_init__(self) -> None:
-        if not 0 <= self.class_id < len(SYMMETRIC_KEYPOINT_CLASS_NAMES):
-            raise ValueError("class_id is outside the seven-class schema.")
-        if self.class_name != SYMMETRIC_KEYPOINT_CLASS_NAMES[self.class_id]:
-            raise ValueError("class_name does not match class_id.")
-        if len(self.points) != 2:
-            raise ValueError("Every symmetric class must retain two physical points.")
+        if not 0 <= self.class_id < len(SEMANTIC_CLASS_NAMES):
+            raise ValueError("class_id is outside the seven-class contract.")
+        if self.class_name != SEMANTIC_CLASS_NAMES[self.class_id]:
+            raise ValueError("class_name disagrees with class_id.")
+
+    @property
+    def renderer_visible(self) -> bool:
+        """Return whether this class has visible supervision in the render."""
+        return any(point.renderer_visible is True for point in self.points)
+
+    def to_dict(self) -> dict[str, object]:
+        """Return the complete two-point semantic class."""
+        return {
+            "class_id": self.class_id,
+            "class_name": self.class_name,
+            "renderer_visible": self.renderer_visible,
+            "points": [point.to_dict() for point in self.points],
+        }
 
 
-@dataclass(frozen=True)
-class CourtInstanceProjection:
-    """Seven unordered point classes for one physical court instance."""
+@dataclass(frozen=True, slots=True)
+class CourtProjection:
+    """Seven semantic classes projected for one accepted court."""
 
     court_instance_id: str
-    classes: tuple[SymmetricCourtClass, ...]
+    classes: tuple[SemanticClass, ...]
 
     def __post_init__(self) -> None:
-        if not self.court_instance_id:
-            raise ValueError("court_instance_id must not be empty.")
+        if not self.court_instance_id.strip():
+            raise ValueError("court_instance_id must be non-empty.")
         if tuple(value.class_id for value in self.classes) != tuple(range(7)):
             raise ValueError("Court classes must be ordered exactly 0..6.")
 
     @property
     def in_frame_point_count(self) -> int:
-        """Return physical line points inside the image."""
+        """Return the number of projected physical points inside the image."""
         return sum(point.in_frame for value in self.classes for point in value.points)
 
     @property
-    def in_frame_class_count(self) -> int:
-        """Return semantic classes with at least one in-frame point."""
-        return sum(
-            any(point.in_frame for point in value.points) for value in self.classes
-        )
-
-    @property
-    def coverage_bucket(self) -> str:
-        """Return a deliberate full/partial supervision bucket."""
+    def coverage_mode(self) -> str:
+        """Classify geometric coverage without inventing renderer visibility."""
         count = self.in_frame_point_count
         if count == 14:
             return "full"
@@ -117,59 +117,88 @@ class CourtInstanceProjection:
             return "sparse"
         return "none"
 
+    def to_dict(self) -> dict[str, object]:
+        """Return complete instance-aware supervision."""
+        return {
+            "court_instance_id": self.court_instance_id,
+            "coverage_mode": self.coverage_mode,
+            "classes": [value.to_dict() for value in self.classes],
+        }
 
-@dataclass(frozen=True)
+
+@dataclass(frozen=True, slots=True)
 class MultiCourtProjection:
-    """Instance annotations plus a model target that deliberately merges them."""
+    """Renderer-visible supervision for all accepted courts and seven classes."""
 
     camera_id: str
     width: int
     height: int
-    courts: tuple[CourtInstanceProjection, ...]
+    courts: tuple[CourtProjection, ...]
 
     def __post_init__(self) -> None:
-        if not self.camera_id:
-            raise ValueError("camera_id must not be empty.")
-        if self.width <= 1 or self.height <= 1:
-            raise ValueError("Projection dimensions must be greater than one.")
-        ids = [court.court_instance_id for court in self.courts]
-        if not ids or len(ids) != len(set(ids)):
-            raise ValueError("Projection court instances must be non-empty and unique.")
+        if not self.camera_id.strip() or self.width <= 1 or self.height <= 1:
+            raise ValueError("Projection requires a camera ID and valid resolution.")
+        court_ids = [court.court_instance_id for court in self.courts]
+        if not court_ids or len(court_ids) != len(set(court_ids)):
+            raise ValueError("Projection court IDs must be non-empty and unique.")
+
+    @property
+    def visible_class_names(self) -> tuple[str, ...]:
+        """Return stable unique class names with renderer-visible supervision."""
+        visible = {
+            value.class_name
+            for court in self.courts
+            for value in court.classes
+            if value.renderer_visible
+        }
+        return tuple(name for name in SEMANTIC_CLASS_NAMES if name in visible)
+
+    @property
+    def visible_point_count(self) -> int:
+        """Return total renderer-visible physical points."""
+        return sum(
+            point.renderer_visible is True
+            for court in self.courts
+            for value in court.classes
+            for point in value.points
+        )
+
+    def to_dict(self) -> dict[str, object]:
+        """Return the canonical seven-class label payload."""
+        return {
+            "camera_id": self.camera_id,
+            "resolution": [self.width, self.height],
+            "coverage_modes": [court.coverage_mode for court in self.courts],
+            "visible_class_names": list(self.visible_class_names),
+            "visible_point_count": self.visible_point_count,
+            "courts": [court.to_dict() for court in self.courts],
+        }
 
 
-def project_multi_court(
+def project_court_semantics(
     camera: SceneCamera,
     layout: MultiCourtLayout,
     *,
-    near_plane_scene: float = 0.01,
+    near_plane_m: float = 0.01,
 ) -> MultiCourtProjection:
-    """Project all physical courts without assigning instance groups to a model."""
-    if not np.isfinite(near_plane_scene) or near_plane_scene <= 0.0:
-        raise ValueError("near_plane_scene must be finite and positive.")
-    camera_to_scene = np.asarray(
-        camera.camera_to_scene,
+    """Project all accepted courts using the canonical camera/transform contract."""
+    if not math.isfinite(near_plane_m) or near_plane_m <= 0.0:
+        raise ValueError("near_plane_m must be positive and finite.")
+    points_court = np.asarray(
+        court_keypoints_3d(STANDARD_COURT_CONFIG)[:14].numpy(),
         dtype=np.float64,
-    ).reshape(4, 4)
-    scene_to_camera = np.linalg.inv(camera_to_scene)
+    )
+    scene_to_camera = camera.camera_to_scene.inverse()
     intrinsics = np.asarray(camera.intrinsics, dtype=np.float64).reshape(3, 3)
-    court_records = []
+    court_records: list[CourtProjection] = []
     for court in layout.courts:
-        points_scene = court.keypoints_scene()[:_LINE_POINT_COUNT]
-        points_camera = (
-            np.column_stack(
-                (points_scene, np.ones(_LINE_POINT_COUNT, dtype=np.float64))
-            )
-            @ scene_to_camera.T
-        )[:, :3]
+        points_scene = court.scene_from_court.apply(points_court)
+        points_camera = scene_to_camera.apply(points_scene)
         depth = points_camera[:, 2]
         homogeneous = points_camera @ intrinsics.T
-        safe_depth = np.where(
-            np.abs(depth) > np.finfo(np.float64).eps,
-            depth,
-            np.nan,
-        )
+        safe_depth = np.where(np.abs(depth) > 1.0e-12, depth, np.nan)
         uv = homogeneous[:, :2] / safe_depth[:, None]
-        in_front = depth > near_plane_scene
+        in_front = depth > near_plane_m
         in_frame = (
             in_front
             & np.isfinite(uv).all(axis=1)
@@ -178,34 +207,36 @@ def project_multi_court(
             & (uv[:, 1] >= 0.0)
             & (uv[:, 1] < camera.height)
         )
-        grouped: list[list[SymmetricCourtPoint]] = [[] for _ in range(7)]
-        for physical_index, class_id in enumerate(PHYSICAL_TO_SYMMETRIC_CLASS):
-            grouped[class_id].append(
-                SymmetricCourtPoint(
+        classes: list[SemanticClass] = []
+        for class_id, physical_indices in enumerate(PHYSICAL_INDICES_BY_CLASS):
+            points_list = [
+                SemanticPoint(
+                    physical_index=physical_index,
                     uv=(float(uv[physical_index, 0]), float(uv[physical_index, 1])),
-                    depth_scene=float(depth[physical_index]),
-                    xyz_scene=(
+                    camera_depth_m=float(depth[physical_index]),
+                    scene_xyz_m=(
                         float(points_scene[physical_index, 0]),
                         float(points_scene[physical_index, 1]),
                         float(points_scene[physical_index, 2]),
                     ),
                     in_front=bool(in_front[physical_index]),
                     in_frame=bool(in_frame[physical_index]),
-                    visible=None,
+                    renderer_visible=None,
+                )
+                for physical_index in physical_indices
+            ]
+            points = (points_list[0], points_list[1])
+            classes.append(
+                SemanticClass(
+                    class_id=class_id,
+                    class_name=SEMANTIC_CLASS_NAMES[class_id],
+                    points=points,
                 )
             )
-        classes = tuple(
-            SymmetricCourtClass(
-                class_id=class_id,
-                class_name=SYMMETRIC_KEYPOINT_CLASS_NAMES[class_id],
-                points=tuple(grouped[class_id]),
-            )
-            for class_id in range(7)
-        )
         court_records.append(
-            CourtInstanceProjection(
+            CourtProjection(
                 court_instance_id=court.court_instance_id,
-                classes=classes,
+                classes=tuple(classes),
             )
         )
     return MultiCourtProjection(
@@ -216,157 +247,106 @@ def project_multi_court(
     )
 
 
-def attach_visibility(
+def attach_renderer_visibility(
     projection: MultiCourtProjection,
-    visibility_by_court: dict[str, tuple[bool, ...]],
+    *,
+    alpha: NDArray[np.floating],
+    depth: NDArray[np.floating],
+    alpha_threshold: float = 0.01,
+    sample_radius_px: int = 1,
 ) -> MultiCourtProjection:
-    """Attach renderer-derived physical visibility without changing class IDs."""
-    expected_ids = {court.court_instance_id for court in projection.courts}
-    if set(visibility_by_court) != expected_ids:
-        raise ValueError("visibility_by_court instance IDs differ from projection.")
-    courts = []
+    """Attach visibility only when NHT alpha and positive depth support the pixel."""
+    alpha_array = np.asarray(alpha)
+    depth_array = np.asarray(depth)
+    expected_shape = (projection.height, projection.width, 1)
+    if alpha_array.dtype != np.float32 or depth_array.dtype != np.float32:
+        raise TypeError("NHT alpha and depth arrays must have dtype float32.")
+    if alpha_array.shape != expected_shape or depth_array.shape != expected_shape:
+        raise ValueError(
+            f"NHT alpha/depth must have shape {expected_shape}; "
+            f"got {alpha_array.shape} and {depth_array.shape}."
+        )
+    if not np.isfinite(alpha_array).all() or not np.isfinite(depth_array).all():
+        raise ValueError("NHT alpha/depth must contain only finite values.")
+    if np.any(alpha_array < 0.0) or np.any(alpha_array > 1.0) or np.any(depth_array < 0.0):
+        raise ValueError("NHT alpha/depth values are outside their semantic ranges.")
+    if not math.isfinite(alpha_threshold) or alpha_threshold < 0.0:
+        raise ValueError("alpha_threshold must be finite and non-negative.")
+    if isinstance(sample_radius_px, bool) or sample_radius_px < 0:
+        raise ValueError("sample_radius_px must be a non-negative integer.")
+
+    return attach_renderer_visibility_from_validated_arrays(
+        projection,
+        alpha=alpha_array,
+        depth=depth_array,
+        alpha_threshold=alpha_threshold,
+        sample_radius_px=sample_radius_px,
+    )
+
+
+def attach_renderer_visibility_from_validated_arrays(
+    projection: MultiCourtProjection,
+    *,
+    alpha: NDArray[np.float32],
+    depth: NDArray[np.float32],
+    alpha_threshold: float = 0.01,
+    sample_radius_px: int = 1,
+) -> MultiCourtProjection:
+    """Sample visibility from arrays already scanned by the Court assembler.
+
+    This explicit entrypoint avoids a second complete finite/range scan during
+    production assembly.  Callers must own and document the preceding strict
+    validation pass; independent consumers should use
+    :func:`attach_renderer_visibility`.
+    """
+    alpha_array = np.asarray(alpha)
+    depth_array = np.asarray(depth)
+    expected_shape = (projection.height, projection.width, 1)
+    if alpha_array.dtype != np.float32 or depth_array.dtype != np.float32:
+        raise TypeError("Validated NHT alpha/depth arrays must have dtype float32.")
+    if alpha_array.shape != expected_shape or depth_array.shape != expected_shape:
+        raise ValueError("Validated NHT alpha/depth shapes changed before visibility.")
+    if not math.isfinite(alpha_threshold) or alpha_threshold < 0.0:
+        raise ValueError("alpha_threshold must be finite and non-negative.")
+    if isinstance(sample_radius_px, bool) or sample_radius_px < 0:
+        raise ValueError("sample_radius_px must be a non-negative integer.")
+
+    courts: list[CourtProjection] = []
     for court in projection.courts:
-        values = visibility_by_court[court.court_instance_id]
-        if len(values) != _LINE_POINT_COUNT:
-            raise ValueError("Each court visibility vector must contain 14 values.")
-        classes = []
-        for class_record in court.classes:
-            point_records = []
-            physical_indices = PHYSICAL_INDICES_BY_SYMMETRIC_CLASS[
-                class_record.class_id
-            ]
-            for point, physical_index in zip(
-                class_record.points,
-                physical_indices,
-                strict=True,
-            ):
-                point_records.append(
-                    replace(point, visible=bool(values[physical_index]))
-                )
-            classes.append(replace(class_record, points=tuple(point_records)))
+        classes: list[SemanticClass] = []
+        for semantic_class in court.classes:
+            points: list[SemanticPoint] = []
+            for point in semantic_class.points:
+                visible = False
+                if point.in_frame:
+                    x = int(round(point.uv[0]))
+                    y = int(round(point.uv[1]))
+                    x0 = max(0, x - sample_radius_px)
+                    x1 = min(projection.width, x + sample_radius_px + 1)
+                    y0 = max(0, y - sample_radius_px)
+                    y1 = min(projection.height, y + sample_radius_px + 1)
+                    local_alpha = alpha_array[y0:y1, x0:x1, 0]
+                    local_depth = depth_array[y0:y1, x0:x1, 0]
+                    visible = bool(
+                        np.any(
+                            (local_alpha >= alpha_threshold)
+                            & (local_depth > 0.0)
+                        )
+                    )
+                points.append(replace(point, renderer_visible=visible))
+            classes.append(replace(semantic_class, points=(points[0], points[1])))
         courts.append(replace(court, classes=tuple(classes)))
     return replace(projection, courts=tuple(courts))
 
 
-def rescale_projection(
-    projection: MultiCourtProjection,
-    *,
-    width: int,
-    height: int,
-) -> MultiCourtProjection:
-    """Rescale pixel coordinates to an explicitly chosen render resolution."""
-    if isinstance(width, bool) or isinstance(height, bool) or width <= 1 or height <= 1:
-        raise ValueError("Projection dimensions must be integers greater than one.")
-    scale_x = width / projection.width
-    scale_y = height / projection.height
-    courts = []
-    for court in projection.courts:
-        classes = []
-        for class_record in court.classes:
-            points = tuple(
-                replace(
-                    point,
-                    uv=(point.uv[0] * scale_x, point.uv[1] * scale_y),
-                )
-                for point in class_record.points
-            )
-            classes.append(replace(class_record, points=points))
-        courts.append(replace(court, classes=tuple(classes)))
-    return replace(
-        projection,
-        width=width,
-        height=height,
-        courts=tuple(courts),
-    )
-
-
-def build_seven_channel_heatmaps(
-    projection: MultiCourtProjection,
-    *,
-    sigma_px: float,
-    require_renderer_visibility: bool,
-) -> NDArray[np.float32]:
-    """Build seven multi-peak heatmaps, merging all court instances by class.
-
-    No court-instance grouping target is emitted. Multiple symmetric physical
-    points and multiple courts contribute peaks to the same channel using
-    pixelwise maximum composition.
-    """
-    if not np.isfinite(sigma_px) or sigma_px <= 0.0:
-        raise ValueError("sigma_px must be finite and positive.")
-    if require_renderer_visibility:
-        unknown = [
-            point
-            for court in projection.courts
-            for value in court.classes
-            for point in value.points
-            if point.in_frame and point.visible is None
-        ]
-        if unknown:
-            raise ValueError("Renderer visibility is required but remains unevaluated.")
-
-    y, x = np.mgrid[0 : projection.height, 0 : projection.width]
-    heatmaps: NDArray[np.float32] = np.zeros(
-        (len(SYMMETRIC_KEYPOINT_CLASS_NAMES), projection.height, projection.width),
-        dtype=np.float32,
-    )
-    denominator = 2.0 * sigma_px * sigma_px
-    for court in projection.courts:
-        for value in court.classes:
-            for point in value.points:
-                include = point.in_frame and (
-                    point.visible is True if require_renderer_visibility else True
-                )
-                if not include:
-                    continue
-                distance_squared = (x - point.uv[0]) ** 2 + (y - point.uv[1]) ** 2
-                peak = np.exp(-distance_squared / denominator).astype(np.float32)
-                np.maximum(heatmaps[value.class_id], peak, out=heatmaps[value.class_id])
-    return heatmaps
-
-
-def encode_heatmap_atlas_u16(
-    heatmaps: NDArray[np.floating],
-) -> NDArray[np.uint16]:
-    """Pack seven float heatmaps into one deterministic lossless PNG atlas."""
-    values = np.asarray(heatmaps)
-    if values.ndim != 3 or values.shape[0] != len(SYMMETRIC_KEYPOINT_CLASS_NAMES):
-        raise ValueError("heatmaps must have shape [7, height, width].")
-    if values.shape[1] <= 1 or values.shape[2] <= 1:
-        raise ValueError("Heatmap dimensions must be greater than one.")
-    if not np.isfinite(values).all() or np.any(values < 0.0) or np.any(values > 1.0):
-        raise ValueError("Heatmaps must be finite and lie in [0, 1].")
-    quantized = np.rint(values * np.iinfo(np.uint16).max).astype(np.uint16)
-    return np.transpose(quantized, (1, 0, 2)).reshape(
-        values.shape[1],
-        values.shape[0] * values.shape[2],
-    )
-
-
-def decode_heatmap_atlas_u16(
-    atlas: NDArray[np.integer],
-    *,
-    channel_count: int = len(SYMMETRIC_KEYPOINT_CLASS_NAMES),
-) -> NDArray[np.float32]:
-    """Decode a horizontal uint16 heatmap atlas back to ``[C,H,W]``."""
-    values = np.asarray(atlas)
-    if values.dtype != np.uint16 or values.ndim != 2:
-        raise ValueError(
-            "Heatmap atlas must be a uint16 [height, channels*width] array."
-        )
-    if (
-        isinstance(channel_count, bool)
-        or channel_count <= 0
-        or values.shape[1] % channel_count != 0
-    ):
-        raise ValueError("Heatmap atlas width must divide by channel_count.")
-    width = values.shape[1] // channel_count
-    decoded = values.reshape(values.shape[0], channel_count, width).transpose(
-        1,
-        0,
-        2,
-    )
-    return np.asarray(
-        decoded,
-        dtype=np.float32,
-    ) / np.float32(np.iinfo(np.uint16).max)
+__all__ = [
+    "CourtProjection",
+    "MultiCourtProjection",
+    "PHYSICAL_INDICES_BY_CLASS",
+    "SEMANTIC_CLASS_NAMES",
+    "SemanticClass",
+    "SemanticPoint",
+    "attach_renderer_visibility",
+    "attach_renderer_visibility_from_validated_arrays",
+    "project_court_semantics",
+]

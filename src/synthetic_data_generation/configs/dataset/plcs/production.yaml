@@ -1,0 +1,79 @@
+timeline:
+  frame_selection: all_source_frames
+  chunk_size_frames: 256
+  require_contiguous_frame_indices: true
+  require_exact_frame_inventory: true
+  reuse_shards_within_stage_attempt: true
+  discard_shards_on_rerun: true
+
+motion_categories: [running, walking, general]
+require_articulated_motion: true
+production_mode: multi_object_global_timeline
+
+accad_root: ACCAD
+split: train
+scene_splits:
+  B00: train
+  B00-plcs-002: train
+objects:
+  - category: running
+    start_frame: 0
+    anchor_position_court_m: [-2.0, -5.0, 0.0]
+    yaw_radians: 0.0
+  - category: walking
+    start_frame: 120
+    anchor_position_court_m: [2.0, 5.0, 0.0]
+    yaw_radians: 3.141592653589793
+  - category: general
+    start_frame: 240
+    anchor_position_court_m: [0.0, 0.0, 0.0]
+    yaw_radians: 1.5707963267948966
+
+smplh_model_root: smplh
+gaussian_count: 2048
+smplh_batch_size: 32
+device: cuda:0
+
+appearance:
+  source: palette
+  assignment: object_index_modulo_palette
+  gaussian_fill: uniform
+  appearance_model: rgb
+  appearance_space: linear_rgb
+  colors:
+    - [0.80, 0.12, 0.08]
+    - [0.08, 0.32, 0.85]
+    - [0.10, 0.70, 0.20]
+    - [0.90, 0.60, 0.08]
+    - [0.55, 0.12, 0.75]
+    - [0.08, 0.70, 0.70]
+
+foreground_rasterizer:
+  sigma_extent: 3.0
+  minimum_pixel_variance: 0.25
+  near_plane: 1.0e-4
+  visibility_threshold: 1.0e-4
+  maximum_alpha: 0.999
+
+render_timeout_seconds: ${nht.render_timeout_seconds}
+
+performance:
+  maximum_wall_seconds: 5400.0
+  maximum_published_bytes: 85899345920
+  maximum_published_fraction_of_dense_reference: 0.25
+  maximum_nht_invocations: 1
+  maximum_background_cache_misses: 12
+  maximum_complete_array_scans_per_sample: 1
+  maximum_batch_frames: 32
+  execution_device: cuda:0
+  require_cuda: true
+
+metadata_fields:
+  - motion_source
+  - source_frame
+  - target_court
+  - candidate_id
+  - transform
+  - camera_profile
+  - camera_parameters
+  - seed

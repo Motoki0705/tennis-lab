@@ -1481,7 +1481,10 @@ def _replacement_boundary_symbol(domain: str) -> str:
         "plcs": "src.tasks.plcs.configuration.PLCSModelConfig",
         "slcs": "src.tasks.slcs.configuration.SLCSTrainingRuntimeConfig",
         "submodules": "src.submodules.configuration.GvhmrDemoConfig",
-        "synthetic_data_generation": "src.synthetic_data_generation.configuration.validate_config",
+        "synthetic_data_generation": (
+            "src.synthetic_data_generation.configuration."
+            "validate_scene_pipeline_boundary"
+        ),
         "tennis_scene": "src.tennis_scene.configuration.PipelineRuntimeConfig",
         "utils": "src.utils.configuration.schema.StrictConfigSchema",
     }

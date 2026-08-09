@@ -1,1 +1,0 @@
-"""Alignment inference adapters."""

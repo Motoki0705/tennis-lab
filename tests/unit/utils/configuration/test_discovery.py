@@ -92,3 +92,35 @@ def test_deleted_inventory_module_uses_its_explicit_canonical_authority() -> Non
         for record in historical
     )
     assert '== "configuration_validation"' not in inventory_source
+
+
+def test_catalog_does_not_publish_legacy_synthetic_boundaries() -> None:
+    synthetic = tuple(
+        contract
+        for contract in catalog.BOUNDARY_CONTRACTS
+        if contract.boundary_id.startswith("src.synthetic_data_generation.")
+    )
+
+    assert all(
+        contract.boundary_id.startswith(
+            "src.synthetic_data_generation.scripts.run_scene_pipeline:"
+        )
+        for contract in synthetic
+    )
+    discovery_source = (
+        PROJECT_ROOT / "src/utils/configuration/discovery.py"
+    ).read_text(encoding="utf-8")
+    assert "scripts.alignment.geometry_bridge" not in discovery_source
+
+
+def test_catalog_keeps_task_local_generation_boundaries_distinct() -> None:
+    boundary_ids = {contract.boundary_id for contract in catalog.BOUNDARY_CONTRACTS}
+
+    assert {
+        "src.tasks.blcs.scripts.generate_dataset:main",
+        "src.tasks.blcs.scripts.preview_augmentation:main",
+        "src.tasks.blcs.scripts.visualize:main",
+        "src.tasks.plcs.scripts.generate_dataset:main",
+        "src.tasks.plcs.scripts.preview_augmentation:main",
+        "src.tasks.plcs.scripts.visualize:main",
+    } <= boundary_ids

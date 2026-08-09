@@ -23,11 +23,68 @@ from src.utils.configuration.audit import (
     regenerate_migration_rows,
     write_generated_inventory_data,
 )
+from src.utils.configuration.inventory import EXPECTED_RUNTIME_BOUNDARIES
 from src.utils.configuration.source_oracle import (
     OracleCategory,
     inspect_raw_source,
 )
 from src.utils.paths import PROJECT_ROOT
+
+
+def test_synthetic_inventory_has_only_the_canonical_scene_cli() -> None:
+    boundaries = tuple(
+        boundary
+        for boundary in EXPECTED_RUNTIME_BOUNDARIES
+        if boundary.domain == "synthetic_data_generation"
+    )
+
+    assert len(boundaries) == 1
+    assert boundaries[0].module == (
+        "src.synthetic_data_generation.scripts.run_scene_pipeline"
+    )
+    assert boundaries[0].validator_key == "synthetic.scene_pipeline"
+    assert boundaries[0].validator_callable == (
+        "src.synthetic_data_generation.configuration.validate_scene_pipeline_boundary"
+    )
+
+
+def test_task_local_generation_and_visualization_boundaries_remain_in_inventory() -> None:
+    boundaries = {
+        boundary.module: boundary
+        for boundary in EXPECTED_RUNTIME_BOUNDARIES
+        if boundary.domain in {"blcs", "plcs"}
+    }
+    expected = {
+        "src.tasks.blcs.scripts.generate_dataset": (
+            "blcs.generate_dataset",
+            "src.tasks.blcs.configuration.validate_generation_boundary",
+        ),
+        "src.tasks.blcs.scripts.preview_augmentation": (
+            "blcs.preview_augmentation",
+            "src.tasks.blcs.configuration.validate_preview_boundary",
+        ),
+        "src.tasks.blcs.scripts.visualize": (
+            "blcs.visualize",
+            "src.tasks.blcs.configuration.validate_visualization_boundary",
+        ),
+        "src.tasks.plcs.scripts.generate_dataset": (
+            "plcs.generate_dataset",
+            "src.tasks.plcs.generate_dataset.config._validate_boundary",
+        ),
+        "src.tasks.plcs.scripts.preview_augmentation": (
+            "plcs.preview_augmentation",
+            "src.tasks.plcs.configuration._validate_preview_boundary",
+        ),
+        "src.tasks.plcs.scripts.visualize": (
+            "plcs.visualize",
+            "src.tasks.plcs.configuration._validate_visualization_boundary",
+        ),
+    }
+
+    for module, (validator_key, validator_callable) in expected.items():
+        boundary = boundaries[module]
+        assert boundary.validator_key == validator_key
+        assert boundary.validator_callable == validator_callable
 
 
 def test_inventory_contains_disjoint_truthful_route_states() -> None:
@@ -200,7 +257,10 @@ def test_regeneration_discovers_semantic_mapping_and_path_routes() -> None:
         ("src.tasks.slcs.configuration", "raw['window_size']"),
         ("src.tasks.base.configuration", "mapping[key]"),
         ("src.utils.io", "Path(path)"),
-        ("src.tasks.base.data.dataset_writer", "Path(output_dir)"),
+        (
+            "src.synthetic_data_generation.dataset.blcs.assembler",
+            "output_directory / 'dataset.json'",
+        ),
     )
     for module, route_fragment in expected:
         assert any(

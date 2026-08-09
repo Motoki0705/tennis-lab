@@ -1,0 +1,19 @@
+# Canonical scene-pipeline composition root. Runtime values live only in config.
+defaults:
+  - roots: runtime
+  - pipeline: canonical
+  - camera: default
+  - dataset/court: train
+  - dataset/blcs: production
+  - dataset/plcs: production
+  - nht: public_cli
+  - alignment: production
+  - profile: b00
+  - _self_
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${roots.output_root},hydra/scene_pipeline}
+  output_subdir: null
+  job:
+    chdir: false

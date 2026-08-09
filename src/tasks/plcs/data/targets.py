@@ -49,6 +49,20 @@ def _smplh_to_coco17(joints_3d: np.ndarray, yaw: float | np.ndarray) -> np.ndarr
     return cast(np.ndarray, coco17)
 
 
+def smplh_joints_to_coco17(
+    joints_3d: np.ndarray, yaw: float | np.ndarray
+) -> np.ndarray:
+    """Convert a validated SMPL-H joint sequence to COCO17 world joints."""
+    joints = np.asarray(joints_3d)
+    if joints.dtype != np.float32:
+        raise TypeError("SMPL-H joints must use float32.")
+    if joints.ndim != 3 or joints.shape[1:] != (52, 3):
+        raise ValueError("SMPL-H joints must have shape [T, 52, 3].")
+    if not np.isfinite(joints).all():
+        raise ValueError("SMPL-H joints contain NaN or infinity.")
+    return _smplh_to_coco17(joints, yaw)
+
+
 def build_coco17_world_targets(scene: dict[str, Any]) -> np.ndarray:
     """Build world/court-coordinate COCO17 targets from a loaded scene.
 
@@ -108,3 +122,6 @@ def build_coco17_world_targets(scene: dict[str, Any]) -> np.ndarray:
 
     yaw_for_face = np.arctan2(sin_yaw, cos_yaw).astype(np.float32)
     return _smplh_to_coco17(world_smplh, yaw_for_face)
+
+
+__all__ = ["build_coco17_world_targets", "smplh_joints_to_coco17"]
