@@ -3,4 +3,4 @@ root: court
 split_mapping:
   train: train
   val: val
-  test: null
+  test: val
