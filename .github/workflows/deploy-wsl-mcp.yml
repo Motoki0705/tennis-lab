@@ -105,6 +105,8 @@ jobs:
           export TENNIS_MCP_GPU_LOCK_FILE="$GPU_LOCK_FILE"
 
           test -x "$trusted_python"
+          test -w "$GPU_LOCK_FILE"
+          : >> "$GPU_LOCK_FILE"
           test "$(cat "$MCP_CONTROL_DIR/runtime-version")" = "$GITHUB_SHA"
           test -L "$PROJECT_ROOT/.venv"
           test "$(readlink -f "$PROJECT_ROOT/.venv")" = "$(readlink -f "$MCP_CONTROL_DIR/venv")"
