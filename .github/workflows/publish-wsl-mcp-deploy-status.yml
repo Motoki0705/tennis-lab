@@ -1,0 +1,74 @@
+name: Publish WSL MCP deployment status
+
+on:
+  workflow_run:
+    workflows:
+      - Deploy WSL MCP
+    types:
+      - requested
+      - completed
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  publish:
+    if: ${{ github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Publish deployment commit status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_ACTION: ${{ github.event.action }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          action = os.environ["EVENT_ACTION"]
+          conclusion = os.environ.get("CONCLUSION", "")
+          if action == "requested":
+              state = "pending"
+              description = "WSL MCP deployment requested"
+          else:
+              state = {
+                  "success": "success",
+                  "failure": "failure",
+              }.get(conclusion, "error")
+              description = f"WSL MCP deployment {conclusion or 'ended'}"
+
+          payload = {
+              "state": state,
+              "context": "wsl-mcp/deploy",
+              "description": description,
+              "target_url": os.environ["RUN_URL"],
+          }
+          request = urllib.request.Request(
+              (
+                  f"{os.environ['GITHUB_API_URL']}/repos/"
+                  f"{os.environ['GITHUB_REPOSITORY']}/statuses/"
+                  f"{os.environ['HEAD_SHA']}"
+              ),
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Accept": "application/vnd.github+json",
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "Content-Type": "application/json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              },
+              method="POST",
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              if response.status != 201:
+                  raise SystemExit(
+                      f"unexpected status API response: {response.status}"
+                  )
+          PY

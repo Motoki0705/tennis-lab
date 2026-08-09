@@ -1473,6 +1473,7 @@ def _live_route_authority(
 def _replacement_boundary_symbol(domain: str) -> str:
     """Return the executable validation authority replacing a former route."""
     replacements = {
+        "automation": "src.automation.chatgpt_mcp.settings.GatewaySettings",
         "ball_detection": "src.tasks.ball_detection.configuration.validate_training",
         "base": "src.tasks.base.configuration.TrainingRuntimeConfig",
         "blcs": "src.tasks.blcs.configuration.validate_training_boundary",
