@@ -1,4 +1,4 @@
-output_dir: court_detection/${data.task}
+output_dir: court_detection/${data.source.kind}
 seed: 42
 gpus: 1
 resume: null
