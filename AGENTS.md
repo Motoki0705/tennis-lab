@@ -27,13 +27,21 @@
 
 ## 開発スタイル
 
+### リポジトリアーキテクチャ契約
+
+`src/**`、`scripts/**`、設定、path、import、module責務、model I/O、実行境界を変更する前に、[Repository Architecture Contract](docs/architecture/repository-contract.md)を読み、遵守すること。この文書を恒久的なarchitecture ruleの単一の正本とする。
+
+- 計画とPRでは、変更に適用されるrule IDとcanonical ownerを特定する。
+- 既存の違反を理由にalias、wrapper、silent fallbackを追加しない。repository-owned consumerを同時に移行するか、契約に従って例外を登録する。
+- package READMEは現在の実装案内であり、契約を上書きしない。
+
 ### テスト
 
 新しくモジュールを実装・改善した際は、**意味のあるテスト**を作成・改善すること。特に `src/utils` や `src/tasks/base` など、下流に強く影響するモジュールでは必須。
 
 ### 静かなフォールバックの禁止
 
-静かなフォールバックはできるだけ避けること。このrepoでは実験的な試みを多数行うため、意図しない動作がまかり通る状況を作らない。特にデータの流れやモデルアーキテクチャには注意を払い、必要に応じて実データを用いた検証を十分に行うこと。挙動が一意に定まるコードを心がける。
+静かなフォールバックは禁止する。必須設定、dependency、data、checkpoint、model I/O contractが不足または不正な場合は、副作用やmodel実行より前のboundaryで明示的に失敗させる。`auto`や代替backendを提供する場合も、選択条件と失敗条件をtyped public contractとして定義する。詳細はRepository Architecture Contractの`CFG-*`、`PATH-*`、`FAIL-*`に従う。
 
 ### 不明点は積極的に質問する
 
@@ -41,14 +49,15 @@
 
 ### モジュラーな構成
 
-実装は常にモジュラーな構成を目指す。
+実装は常にモジュラーな構成を目指す。canonical placementは次を原則とし、詳細はRepository Architecture Contractの`OWN-*`に従う。
 
-- 再利用性が期待できる場合は、積極的に `src/utils` へ切り出す。
-- タスクドメインに閉じたモジュールであれば、該当タスクディレクトリ配下に新しいフォルダを作成し、モジュールの提供場所としてよい。そのような構想が思いつくなら積極的に行うべき。
+- task非依存の汎用責務は `src/utils` に置く。
+- 複数taskで共有するdata、training、inference、visualization等のlifecycle責務は `src/tasks/base` に置く。
+- task domain固有の責務は該当task packageに置く。
 
 ### ドキュメントの二重管理禁止
 
-同じ事柄を2つの場所に記述しない（管理が二重になるため）。
+同じ事柄を2つの場所に記述しない。恒久的なarchitecture ruleは`docs/architecture/repository-contract.md`、各packageの現在の構造・実行方法・public APIは該当READMEを正本とする。
 
 ### READMEを起点とした探索
 
