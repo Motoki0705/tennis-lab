@@ -11,9 +11,9 @@ from src.tasks.court_detection.data.target_generation.segmentation import (
     generate_segmentation_target,
 )
 from src.tasks.court_detection.data.target_generation.store import (
-    CourtDerivedTargetStore,
     LINE_TARGET_SCHEMA,
     SEGMENTATION_TARGET_SCHEMA,
+    CourtDerivedTargetStore,
 )
 
 __all__ = [
