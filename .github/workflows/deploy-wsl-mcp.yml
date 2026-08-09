@@ -23,9 +23,11 @@ concurrency:
 jobs:
   deploy:
     if: >-
-      ${{ github.actor == github.repository_owner &&
+      ${{ github.ref == 'refs/heads/main' &&
+          github.workflow_ref == format('{0}/.github/workflows/deploy-wsl-mcp.yml@refs/heads/main', github.repository) &&
+          github.actor == github.repository_owner &&
           vars.LOCAL_GPU_ACTIONS_ENABLED == 'true' }}
-    runs-on: [self-hosted, linux, x64, local-gpu, cuda, wsl2, tennis-lab]
+    runs-on: [self-hosted, linux, x64, trusted-mcp-deploy]
     timeout-minutes: 90
     env:
       PROJECT_ROOT: /home/kamimura/projects/tennis-lab
