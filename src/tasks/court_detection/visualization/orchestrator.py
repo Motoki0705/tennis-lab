@@ -16,7 +16,7 @@ from src.tasks.court_detection.configuration import (
     CourtRenderConfig,
     validate_paths_boundary,
 )
-from src.tasks.court_detection.model_io.contracts import CourtTask
+from src.tasks.court_detection.data.contracts import CourtTargetKind
 from src.tasks.court_detection.visualization.api.predict import (
     build_court_visualization_pipeline,
 )
@@ -46,7 +46,7 @@ def _integer(value: object) -> int:
 class RuntimeConfig:
     """Resolved runtime settings for court-detection visualization."""
 
-    task: str
+    task: CourtTargetKind
     image_source: str
     checkpoint: str
     save: Path
@@ -83,11 +83,12 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         path="visualization",
     )
 
-    task = str(require_config_value(vis, "task", str, path="visualization"))
-    if task not in _VALID_TASKS:
+    task_raw = str(require_config_value(vis, "task", str, path="visualization"))
+    if task_raw not in _VALID_TASKS:
         raise ValueError(
-            f"visualization.task must be one of {sorted(_VALID_TASKS)}, got {task!r}."
+            f"visualization.task must be one of {sorted(_VALID_TASKS)}, got {task_raw!r}."
         )
+    task = cast(CourtTargetKind, task_raw)
 
     image_source_raw = str(
         require_config_value(vis, "image_source", str, path="visualization")
@@ -163,7 +164,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         return 0
 
     pipeline = build_court_visualization_pipeline(
-        cast(CourtTask, cfg.task),
+        cfg.task,
         checkpoint_path=cfg.checkpoint,
         device=cfg.device,
         resolver=cfg.resolver,
