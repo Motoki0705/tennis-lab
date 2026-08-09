@@ -15,6 +15,17 @@ def _status_workflow_text() -> str:
     return _STATUS_WORKFLOW.read_text(encoding="utf-8")
 
 
+def test_deploy_auto_runs_owner_main_changes_without_environment_approval() -> None:
+    text = _workflow_text()
+
+    assert "push:" in text
+    assert "      - main" in text
+    assert "workflow_dispatch:" in text
+    assert "github.actor == github.repository_owner" in text
+    assert "vars.LOCAL_GPU_ACTIONS_ENABLED == 'true'" in text
+    assert "environment: local-gpu" not in text
+
+
 def test_deploy_uses_external_exact_revision_control_plane() -> None:
     text = _workflow_text()
 
