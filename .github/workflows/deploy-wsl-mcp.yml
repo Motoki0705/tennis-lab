@@ -116,6 +116,15 @@ jobs:
           echo
           "$trusted_python" -m src.automation.chatgpt_mcp doctor-secure-tunnel
 
+          # The control-plane tests invoke host tools such as git and Docker.
+          # Keep them on the dedicated trusted runner instead of expanding the
+          # intentionally minimal MCP execution sandbox.
+          PYTHONPATH="$GITHUB_WORKSPACE" \
+          TMPDIR=/tmp \
+            "$trusted_python" -m pytest -q -n 0 \
+              tests/unit/automation/chatgpt_mcp \
+              tests/integration/chatgpt_mcp
+
           "$trusted_python" - <<'PY'
           from __future__ import annotations
 
@@ -263,23 +272,6 @@ jobs:
               },
           )
           wait_command(boundary["job_id"], seconds=300)
-
-          tests = tool(
-              "start_command",
-              {
-                  "workspace_id": workspace_id,
-                  "expected_sha": revision,
-                  "execution_root": "revision",
-                  "working_directory": ".",
-                  "timeout_seconds": 1200,
-                  "command": (
-                      "python -m pytest -q "
-                      "tests/unit/automation/chatgpt_mcp "
-                      "tests/integration/chatgpt_mcp"
-                  ),
-              },
-          )
-          wait_command(tests["job_id"], seconds=1200)
 
           gpu = tool(
               "enqueue_training",
