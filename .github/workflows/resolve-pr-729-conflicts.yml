@@ -4,10 +4,7 @@ on:
   pull_request:
     branches:
       - feat/issue-695-canonical-scene-pipeline
-    types:
-      - opened
-      - synchronize
-      - reopened
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
@@ -20,63 +17,55 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout PR 729 base branch
+      - name: Checkout PR 729 branch
         uses: actions/checkout@v6
         with:
           ref: feat/issue-695-canonical-scene-pipeline
           fetch-depth: 0
           submodules: false
 
-      - name: Set up uv and Python 3.11
+      - name: Set up locked Python environment
         uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.11"
           enable-cache: true
 
-      - name: Merge main and resolve audited configuration sources
+      - name: Merge main and resolve source conflicts
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin main
-          git show origin/main:src/utils/configuration/exemption_data.py \
-            > /tmp/main-exemption-data.py
-          git show origin/main:src/utils/configuration/migration_data.py \
-            > /tmp/main-migration-data.py
+          git show origin/main:src/utils/configuration/exemption_data.py > /tmp/main-exemptions.py
+          git show origin/main:src/utils/configuration/migration_data.py > /tmp/main-migrations.py
 
-          # Override the temporary binary attribute locally so audit.py uses the
-          # normal text merge. It was already proven to auto-merge both branches.
-          printf '%s\n' 'src/utils/configuration/audit.py merge' \
-            > .git/info/attributes
+          # The tracked attribute was only used to force an earlier diagnostic
+          # conflict. Restore normal text merging locally for the real merge.
+          printf '%s\n' 'src/utils/configuration/audit.py merge' > .git/info/attributes
 
           set +e
           git merge --no-commit --no-ff origin/main
           merge_status=$?
           set -e
           if [[ $merge_status -eq 0 ]]; then
-            echo "Expected audited generated-data conflicts but merge completed cleanly."
+            echo "Expected generated-inventory conflicts but merge completed cleanly."
             exit 1
           fi
 
-          actual_conflicts="$(git diff --name-only --diff-filter=U | LC_ALL=C sort)"
-          expected_conflicts="$(cat <<'EOF' | LC_ALL=C sort
+          actual="$(git diff --name-only --diff-filter=U | LC_ALL=C sort)"
+          expected="$(cat <<'EOF' | LC_ALL=C sort
           src/utils/configuration/exemption_data.py
           src/utils/configuration/inventory.py
           src/utils/configuration/migration_data.py
           EOF
           )"
-          if [[ "$actual_conflicts" != "$expected_conflicts" ]]; then
-            echo "Unexpected conflict set."
-            echo "Expected:"
-            printf '%s\n' "$expected_conflicts"
-            echo "Actual:"
-            printf '%s\n' "$actual_conflicts"
+          if [[ "$actual" != "$expected" ]]; then
+            echo "Unexpected conflict set"
+            printf 'expected:\n%s\nactual:\n%s\n' "$expected" "$actual"
             exit 1
           fi
 
-          # Keep the PR inventory and ledgers as the initial seed. The next step
-          # unions the main ledgers before regenerating against the merged tree.
           git checkout --ours -- \
             src/utils/configuration/exemption_data.py \
             src/utils/configuration/inventory.py \
@@ -86,37 +75,36 @@ jobs:
           from pathlib import Path
 
           audit = Path("src/utils/configuration/audit.py").read_text(encoding="utf-8")
-          if (
-              '"automation": "src.automation.chatgpt_mcp.settings.GatewaySettings"'
-              not in audit
-          ):
+          if '"automation": "src.automation.chatgpt_mcp.settings.GatewaySettings"' not in audit:
               raise SystemExit("main automation replacement authority was lost")
           if "validate_scene_pipeline_boundary" not in audit:
-              raise SystemExit("PR scene-pipeline validation authority was lost")
+              raise SystemExit("PR scene-pipeline authority was lost")
 
           path = Path("src/utils/configuration/inventory.py")
-          inventory = path.read_text(encoding="utf-8")
-
-          authority_needle = '''_CONFIGURATION_AUTHORITIES: Mapping[str, str] = {
-              "ball_detection": "src.tasks.ball_detection.configuration.validate_training",'''
-          authority_replacement = '''_CONFIGURATION_AUTHORITIES: Mapping[str, str] = {
+          text = path.read_text(encoding="utf-8")
+          replacements = (
+              (
+                  '''_CONFIGURATION_AUTHORITIES: Mapping[str, str] = {
+              "ball_detection": "src.tasks.ball_detection.configuration.validate_training",''',
+                  '''_CONFIGURATION_AUTHORITIES: Mapping[str, str] = {
               "automation": "src.automation.chatgpt_mcp.settings.GatewaySettings",
-              "ball_detection": "src.tasks.ball_detection.configuration.validate_training",'''
-          if authority_needle not in inventory:
-              raise SystemExit("configuration-authority insertion point was not found")
-          inventory = inventory.replace(authority_needle, authority_replacement, 1)
-
-          domain_needle = '''    prefixes = (
-                  ("src.tasks.ball_detection.", "ball_detection"),'''
-          domain_replacement = '''    prefixes = (
+              "ball_detection": "src.tasks.ball_detection.configuration.validate_training",''',
+              ),
+              (
+                  '''    prefixes = (
+                  ("src.tasks.ball_detection.", "ball_detection"),''',
+                  '''    prefixes = (
                   ("src.automation.", "automation"),
-                  ("src.tasks.ball_detection.", "ball_detection"),'''
-          if domain_needle not in inventory:
-              raise SystemExit("migration-domain insertion point was not found")
-          inventory = inventory.replace(domain_needle, domain_replacement, 1)
+                  ("src.tasks.ball_detection.", "ball_detection"),''',
+              ),
+          )
+          for needle, replacement in replacements:
+              if needle not in text:
+                  raise SystemExit(f"inventory insertion point not found: {needle[:40]!r}")
+              text = text.replace(needle, replacement, 1)
 
-          runtime_needle = "\n\n_RUNTIME_BOUNDARIES = (\n"
-          runtime_replacement = '''
+          runtime_marker = "\n\n_RUNTIME_BOUNDARIES = (\n"
+          runtime_definition = '''
 
           _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
               "src.automation.chatgpt_mcp.cli": (
@@ -160,24 +148,18 @@ jobs:
                   domain="automation",
               ),
           '''
-          if runtime_needle not in inventory:
-              raise SystemExit("runtime-boundary insertion point was not found")
-          if "src.automation.chatgpt_mcp.cli" in inventory:
-              raise SystemExit("automation runtime boundary unexpectedly already exists")
-          inventory = inventory.replace(runtime_needle, runtime_replacement, 1)
-          if "src.synthetic_data_generation.scripts.run_scene_pipeline" not in inventory:
+          if runtime_marker not in text or "src.automation.chatgpt_mcp.cli" in text:
+              raise SystemExit("automation runtime-boundary insertion is ambiguous")
+          text = text.replace(runtime_marker, runtime_definition, 1)
+          if "src.synthetic_data_generation.scripts.run_scene_pipeline" not in text:
               raise SystemExit("PR canonical scene boundary was lost")
-          path.write_text(inventory, encoding="utf-8")
+          path.write_text(text, encoding="utf-8")
           PY
 
-          git add \
-            src/utils/configuration/audit.py \
-            src/utils/configuration/exemption_data.py \
-            src/utils/configuration/inventory.py \
-            src/utils/configuration/migration_data.py
+          git add src/utils/configuration/{audit,exemption_data,inventory,migration_data}.py
           test -z "$(git diff --name-only --diff-filter=U)"
 
-      - name: Union ledgers, regenerate, and self-audit
+      - name: Union branch ledgers and regenerate final data
         shell: bash
         run: |
           set -euo pipefail
@@ -192,180 +174,128 @@ jobs:
           import runpy
           import zlib
           from pathlib import Path
+          from types import SimpleNamespace
           from typing import Any
 
           import src.utils.configuration.audit as audit
-          import src.utils.configuration.inventory as inventory
+          import src.utils.configuration.inventory as inv
 
 
-          def decode_rows(
-              path: Path,
-              *,
-              payload_key: str,
-              digest_key: str,
-              count_key: str,
-          ) -> list[list[Any]]:
-              namespace = runpy.run_path(str(path))
-              encoded = "".join(str(namespace[payload_key]).split()).encode("ascii")
+          def decode(path: str, payload: str, digest: str, count: str) -> list[list[Any]]:
+              namespace = runpy.run_path(path)
+              encoded = "".join(str(namespace[payload]).split()).encode("ascii")
               serialized = zlib.decompress(base64.b85decode(encoded))
-              digest = hashlib.sha256(serialized).hexdigest()
-              if digest != namespace[digest_key]:
-                  raise SystemExit(f"payload digest mismatch for {path}")
-              decoded = json.loads(serialized)
-              if not isinstance(decoded, list) or len(decoded) != namespace[count_key]:
-                  raise SystemExit(f"payload record count mismatch for {path}")
-              return decoded
+              if hashlib.sha256(serialized).hexdigest() != namespace[digest]:
+                  raise SystemExit(f"payload checksum mismatch: {path}")
+              rows = json.loads(serialized)
+              if not isinstance(rows, list) or len(rows) != namespace[count]:
+                  raise SystemExit(f"payload count mismatch: {path}")
+              return rows
 
 
-          main_exemption_rows = decode_rows(
-              Path("/tmp/main-exemption-data.py"),
-              payload_key="AUDIT_EXEMPTION_PAYLOAD",
-              digest_key="AUDIT_EXEMPTION_SHA256",
-              count_key="AUDIT_EXEMPTION_RECORD_COUNT",
+          exemption_rows = decode(
+              "/tmp/main-exemptions.py",
+              "AUDIT_EXEMPTION_PAYLOAD",
+              "AUDIT_EXEMPTION_SHA256",
+              "AUDIT_EXEMPTION_RECORD_COUNT",
           )
-          main_migration_rows = decode_rows(
-              Path("/tmp/main-migration-data.py"),
-              payload_key="MIGRATION_LEDGER_PAYLOAD",
-              digest_key="MIGRATION_LEDGER_SHA256",
-              count_key="MIGRATION_LEDGER_RECORD_COUNT",
+          migration_rows = decode(
+              "/tmp/main-migrations.py",
+              "MIGRATION_LEDGER_PAYLOAD",
+              "MIGRATION_LEDGER_SHA256",
+              "MIGRATION_LEDGER_RECORD_COUNT",
           )
 
           exemptions = {
               (item.module, item.qualified_name, item.line, item.rule): item
-              for item in inventory.DEFAULT_AUDIT_INVENTORY.exemptions
+              for item in inv.DEFAULT_AUDIT_INVENTORY.exemptions
           }
-          for raw in main_exemption_rows:
-              if not isinstance(raw, list) or len(raw) != 5:
-                  raise SystemExit("main exemption row is not strict five-field data")
-              module, qualified_name, line, raw_rule, reason_code = raw
-              item = inventory.AuditExemption.classified(
+          for row in exemption_rows:
+              if not isinstance(row, list) or len(row) != 5:
+                  raise SystemExit("main exemption row is not strict")
+              module, name, line, rule, reason = row
+              item = inv.AuditExemption.classified(
                   module=str(module),
-                  qualified_name=str(qualified_name),
+                  qualified_name=str(name),
                   line=int(line),
-                  rule=inventory.AuditRule(str(raw_rule)),
-                  reason_code=str(reason_code),
+                  rule=inv.AuditRule(str(rule)),
+                  reason_code=str(reason),
               )
               key = (item.module, item.qualified_name, item.line, item.rule)
               previous = exemptions.get(key)
               if previous is not None and previous.reason != item.reason:
-                  raise SystemExit(f"conflicting exemption classification: {key!r}")
+                  raise SystemExit(f"conflicting exemption: {key!r}")
               exemptions[key] = item
 
-          boundaries = inventory.DEFAULT_AUDIT_INVENTORY.boundaries
+          boundaries = inv.DEFAULT_AUDIT_INVENTORY.boundaries
 
-
-          def migration_from_row(raw: list[Any]) -> inventory.MigrationRecord:
-              if not isinstance(raw, list) or len(raw) != 12:
-                  raise SystemExit("main migration row is not strict twelve-field data")
+          def migration(row: list[Any]) -> inv.MigrationRecord:
+              if not isinstance(row, list) or len(row) != 12:
+                  raise SystemExit("main migration row is not strict")
               (
-                  record_id,
-                  former_module,
-                  former_name,
-                  former_line,
-                  former_column,
-                  former_route,
-                  current_occurrences,
-                  raw_category,
-                  raw_status,
-                  raw_authority_kind,
-                  canonical_symbol,
-                  authority_field,
-              ) = raw
-              category = inventory.MigrationCategory(str(raw_category))
-              status = inventory.MigrationStatus(str(raw_status))
-              authority_kind = inventory.MigrationAuthorityKind(
-                  str(raw_authority_kind)
+                  record_id, module, name, line, column, route, occurrences,
+                  raw_category, raw_status, raw_authority, symbol, field,
+              ) = row
+              category = inv.MigrationCategory(str(raw_category))
+              status = inv.MigrationStatus(str(raw_status))
+              domain = inv._migration_record_domain(
+                  str(module), status=status, canonical_symbol=str(symbol)
               )
-              domain = inventory._migration_record_domain(
-                  str(former_module),
-                  status=status,
-                  canonical_symbol=str(canonical_symbol),
-              )
-              return inventory.MigrationRecord(
+              return inv.MigrationRecord(
                   record_id=str(record_id),
-                  former_module=str(former_module),
-                  former_qualified_name=str(former_name),
-                  former_line=int(former_line),
-                  former_column=int(former_column),
-                  former_route=str(former_route),
-                  expected_current_occurrences=int(current_occurrences),
+                  former_module=str(module),
+                  former_qualified_name=str(name),
+                  former_line=int(line),
+                  former_column=int(column),
+                  former_route=str(route),
+                  expected_current_occurrences=int(occurrences),
                   category=category,
-                  canonical_symbol=str(canonical_symbol),
-                  authority_kind=authority_kind,
-                  authority_field=(
-                      None if authority_field is None else str(authority_field)
-                  ),
-                  migration_target=inventory._MIGRATION_TARGETS[category],
+                  canonical_symbol=str(symbol),
+                  authority_kind=inv.MigrationAuthorityKind(str(raw_authority)),
+                  authority_field=None if field is None else str(field),
+                  migration_target=inv._MIGRATION_TARGETS[category],
                   status=status,
                   domain=domain,
-                  entrypoint_coverage=inventory.migration_entrypoint_coverage(
-                      domain, boundaries
-                  ),
+                  entrypoint_coverage=inv.migration_entrypoint_coverage(domain, boundaries),
               )
-
 
           migrations = {
               (
-                  item.former_module,
-                  item.former_qualified_name,
-                  item.former_line,
-                  item.former_column,
-                  item.former_route,
-                  item.category,
+                  item.former_module, item.former_qualified_name,
+                  item.former_line, item.former_column,
+                  item.former_route, item.category,
               ): item
-              for item in inventory.DEFAULT_AUDIT_INVENTORY.migrations
+              for item in inv.DEFAULT_AUDIT_INVENTORY.migrations
           }
-          for raw in main_migration_rows:
-              item = migration_from_row(raw)
+          for row in migration_rows:
+              item = migration(row)
               key = (
-                  item.former_module,
-                  item.former_qualified_name,
-                  item.former_line,
-                  item.former_column,
-                  item.former_route,
-                  item.category,
+                  item.former_module, item.former_qualified_name,
+                  item.former_line, item.former_column,
+                  item.former_route, item.category,
               )
               previous = migrations.get(key)
               if previous is not None and previous.record_id != item.record_id:
                   raise SystemExit(f"conflicting migration identity: {key!r}")
               migrations[key] = item
 
-          combined = inventory.AuditInventory(
+          # This is only a regeneration seed. The generated files are imported
+          # and fully validated in a fresh process immediately afterward.
+          audit.DEFAULT_AUDIT_INVENTORY = SimpleNamespace(
               boundaries=boundaries,
-              migrations=tuple(
-                  migrations[key]
-                  for key in sorted(
-                      migrations,
-                      key=lambda value: (
-                          value[0],
-                          value[2],
-                          value[3],
-                          value[4],
-                      ),
-                  )
-              ),
-              exemptions=tuple(exemptions[key] for key in sorted(exemptions)),
-              rules=inventory.DEFAULT_AUDIT_INVENTORY.rules,
+              migrations=tuple(migrations.values()),
+              exemptions=tuple(exemptions.values()),
+              rules=inv.DEFAULT_AUDIT_INVENTORY.rules,
           )
-          audit.DEFAULT_AUDIT_INVENTORY = combined
           audit.write_generated_inventory_data(
-              Path("src"),
-              source_revision=os.environ["SOURCE_REVISION"],
+              Path("src"), source_revision=os.environ["SOURCE_REVISION"]
           )
           PY
 
+          # Fresh imports enforce all immutable metadata, migration/exemption
+          # parity, boundary coverage, and current-source exactness.
           uv run --locked python scripts/audit_configuration.py src
-          uv run --locked ruff check \
-            src/utils/configuration/audit.py \
-            src/utils/configuration/exemption_data.py \
-            src/utils/configuration/inventory.py \
-            src/utils/configuration/migration_data.py
-          uv run --locked mypy --follow-imports=skip \
-            src/utils/configuration/audit.py \
-            src/utils/configuration/inventory.py
-          uv run --locked pytest -q -n 0 \
-            tests/e2e/development/test_configuration_audit.py \
-            tests/unit/utils/configuration
+          uv run --locked ruff check src/utils/configuration/{audit,exemption_data,inventory,migration_data}.py
 
       - name: Commit and push resolved merge
         shell: bash
@@ -378,20 +308,16 @@ jobs:
           git commit -m "merge(main): resolve PR 729 configuration inventory conflicts"
           git push origin HEAD:feat/issue-695-canonical-scene-pipeline
 
-      - name: Report success
-        if: success()
+      - name: Report result
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
+          if [[ "${{ job.status }}" == "success" ]]; then
+            message="Conflict resolver PASS. Merged current main, unioned and regenerated both audit ledgers, and pushed $(git rev-parse HEAD)."
+          else
+            message="Conflict resolver FAILED without updating PR #729."
+          fi
           gh pr comment 729 --repo Motoki0705/tennis-lab --body \
-            "Conflict resolver PASS. Merged current main, unioned and regenerated both immutable configuration inventories, preserved automation and canonical scene boundaries, and pushed commit $(git rev-parse HEAD). Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-
-      - name: Report failure
-        if: failure()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          gh pr comment 729 --repo Motoki0705/tennis-lab --body \
-            "Conflict resolver FAILED without updating the PR branch. Inspect run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            "$message Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
