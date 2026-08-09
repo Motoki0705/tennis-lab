@@ -52,7 +52,7 @@ configurationまたはpathに変更を加えた場合、少なくとも次を実
 .venv/bin/python scripts/audit_configuration.py src
 ```
 
-`.get`等の構文自体を機械的に置換するのではなく、configuration fallbackか、明示されたoptional data semanticsかを区別する。audit exemptionが必要な場合は、exact source findingとして理由とownerを登録する。
+`.get`等の構文自体を機械的に置換するのではなく、configuration fallbackか、明示されたoptional data semanticsかを区別する。audit exemptionが必要な場合は、module、qualified name、line、`AuditRule`、stable reason codeを持つexact source findingとして登録する。
 
 ### Model I/Oとcompute hot path
 
