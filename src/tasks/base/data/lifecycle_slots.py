@@ -43,11 +43,9 @@ class LifecycleSlotAssignment:
             *values.shape[2:],
         )
         if isinstance(fill_value, Tensor):
-            output = (
-                fill_value.to(dtype=values.dtype, device=values.device)
-                .expand(output_shape)
-                .clone()
-            )
+            output = fill_value.to(dtype=values.dtype, device=values.device).expand(
+                output_shape
+            ).clone()
         else:
             output = torch.full(
                 output_shape,
@@ -135,10 +133,12 @@ def pack_lifecycle_slots(
         else:
             slot_index = available[0]
         track_to_slot[interval.track_index] = slot_index
-        target_presence[interval.birth_frame : interval.death_frame, slot_index] = True
-        target_instance_id[interval.birth_frame : interval.death_frame, slot_index] = (
-            interval.track_index
-        )
+        target_presence[
+            interval.birth_frame : interval.death_frame, slot_index
+        ] = True
+        target_instance_id[
+            interval.birth_frame : interval.death_frame, slot_index
+        ] = interval.track_index
         slot_death[slot_index] = interval.death_frame
 
     return LifecycleSlotAssignment(

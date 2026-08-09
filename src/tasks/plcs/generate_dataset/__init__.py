@@ -1,6 +1,10 @@
-"""Lossless PLCS motion-source package for the canonical scene pipeline.
+"""PLCS dataset generation package.
 
 This package contains the implementation of synthetic PLCS scene generation:
 - motion sampling (AMASS/SMPL-H)
-- typed full-frame motion clips consumed by synthetic_data_generation
+- player placement on court
+- camera sampling + projection into 2D keypoints
+- scene serialization (npy + json)
+
+The Hydra CLI entrypoint is `src/tasks/plcs/scripts/generate_dataset.py`.
 """

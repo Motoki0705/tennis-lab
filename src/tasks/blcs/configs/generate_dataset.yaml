@@ -1,0 +1,17 @@
+defaults:
+  - paths: default
+  - generation: single_object
+  - physics: default
+  - rally: default
+  - camera: default
+  - targeted_velocity: default
+  - generator: default
+  - run: generate_dataset
+  - _self_
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},hydra/blcs/generate_dataset}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

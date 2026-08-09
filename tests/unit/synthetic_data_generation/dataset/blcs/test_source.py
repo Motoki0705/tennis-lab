@@ -1,37 +1,42 @@
-"""Tests for the deterministic production BLCS physics trajectory source."""
+"""Tests for the canonical adapter over the public BLCS source API."""
 
 from __future__ import annotations
 
-import random
 from collections.abc import Mapping
 from dataclasses import replace
-from types import SimpleNamespace
 
 import numpy as np
+import numpy.typing as npt
 import pytest
-import torch
 
 from src.synthetic_data_generation.dataset.blcs.source import (
     BLCSTrajectorySourceSettings,
     PhysicsBLCSTrajectoryProvider,
 )
-from src.tasks.base.generate_dataset.timeline_composer import TimelineConfig
-from src.tasks.blcs.generate_dataset.scene_generator import GeneratorConfig
+from src.tasks.blcs.generate_dataset.source_api import (
+    BLCSGeneratorConfiguration,
+    BLCSPhysicsProvenance,
+    BLCSPhysicsSourceSettings,
+    BLCSProposalDiagnostic,
+    BLCSSourceScene,
+    BLCSSourceTrack,
+    BLCSTimelineSpec,
+)
 
 
-def _timeline(*, min_tracks: int = 2) -> TimelineConfig:
-    return TimelineConfig(
-        num_frames=4,
-        min_tracks=min_tracks,
-        max_tracks=2,
-        max_concurrent=2,
-        min_reuse_gap_frames=0,
-        start_index_range=(0, 0),
-        min_active_frames=2,
-        overlap_probability=1.0,
-        min_gap_frames=0,
-        max_gap_frames=0,
-    )
+def _timeline_mapping(*, min_tracks: int = 2) -> dict[str, object]:
+    return {
+        "num_frames": 4,
+        "min_tracks": min_tracks,
+        "max_tracks": 2,
+        "max_concurrent": 2,
+        "min_reuse_gap_frames": 0,
+        "start_index_range": [0, 0],
+        "min_active_frames": 2,
+        "overlap_probability": 1.0,
+        "min_gap_frames": 0,
+        "max_gap_frames": 0,
+    }
 
 
 def _settings() -> BLCSTrajectorySourceSettings:
@@ -41,77 +46,91 @@ def _settings() -> BLCSTrajectorySourceSettings:
             "split_scene_counts": {"train": 1, "validation": 1, "test": 1},
             "multi_object": True,
             "maximum_physics_attempts_per_object": 4,
-            "timeline": {
-                "num_frames": 4,
-                "min_tracks": 2,
-                "max_tracks": 2,
-                "max_concurrent": 2,
-                "min_reuse_gap_frames": 0,
-                "start_index_range": [0, 0],
-                "min_active_frames": 2,
-                "overlap_probability": 1.0,
-                "min_gap_frames": 0,
-                "max_gap_frames": 0,
-            },
+            "timeline": _timeline_mapping(),
             "device": "cpu",
         }
     )
 
 
-class _FakeBaseGenerator:
-    def __init__(self, *, config: GeneratorConfig, device: str) -> None:
-        self.config = config
-        self.device = device
+def _source_scene(*, scene_id: str, seed: int, maximum_attempts: int) -> BLCSSourceScene:
+    rng = np.random.default_rng(seed)
+    positions = rng.normal(size=(4, 2, 3)).astype(np.float64)
+    positions[:, :, 2] = np.abs(positions[:, :, 2]) + 0.5
+    velocities = rng.normal(size=(4, 2, 3)).astype(np.float64)
+    present: npt.NDArray[np.bool_] = np.ones((4, 2), dtype=np.bool_)
+    source_ids = tuple(f"{scene_id}-source-{index}" for index in range(2))
+    tracks = tuple(
+        BLCSSourceTrack(
+            object_id=f"ball-{index + 1:03d}",
+            source_trajectory_id=source_id,
+            source_frame_indices=(0, 1, 2, 3),
+        )
+        for index, source_id in enumerate(source_ids)
+    )
+    provenance = tuple(
+        BLCSPhysicsProvenance(
+            source_trajectory_id=source_id,
+            source_frame_count=4,
+            initial_from_cell=index,
+            initial_from_side="near" if index == 0 else "far",
+            rally_length=1,
+            end_reason="double_bounce",
+            winner_side=None,
+            output_fps=30.0,
+            simulation_fps=240.0,
+            physics_parameters={"gravity": 9.81},
+            court_parameters={"net_post_offset_x": 0.914},
+            shot_events=({"shot_index": 0},),
+        )
+        for index, source_id in enumerate(source_ids)
+    )
+    diagnostics = tuple(
+        BLCSProposalDiagnostic(
+            source_trajectory_id=source_id,
+            accepted_attempt=1,
+            maximum_attempts=maximum_attempts,
+            rejected_attempts=(),
+        )
+        for source_id in source_ids
+    )
+    return BLCSSourceScene(
+        scene_id=scene_id,
+        seed=seed,
+        frame_indices=(0, 1, 2, 3),
+        fps=30.0,
+        simulation_fps=240.0,
+        positions_court_m=positions,
+        velocities_court_mps=velocities,
+        present=present,
+        tracks=tracks,
+        physics_provenance=provenance,
+        proposal_diagnostics=diagnostics,
+    )
 
 
-class _FakeMultiGenerator:
+class _FakePublicPhysicsSource:
+    """Public-source-shaped deterministic fixture, not a task generator stub."""
+
     def __init__(
         self,
-        base: _FakeBaseGenerator,
         *,
-        timeline: TimelineConfig,
-        maximum_physics_attempts_per_object: int,
-        rng: random.Random,
+        generator_config: BLCSGeneratorConfiguration,
+        settings: BLCSPhysicsSourceSettings,
     ) -> None:
-        self.base = base
-        self.timeline = timeline
-        self.maximum_physics_attempts_per_object = maximum_physics_attempts_per_object
-        self.rng = rng
+        self.generator_config = generator_config
+        self.settings = settings
 
-    def generate_scene(self, scene_id: str) -> SimpleNamespace:
-        offset = self.rng.random() + random.random() + float(np.random.random())
-        offset += float(torch.rand(()).item())
-        positions = torch.zeros((4, 2, 3), dtype=torch.float32)
-        positions[:, :, 0] = offset
-        positions[:, :, 2] = 1.5
-        present = torch.ones((4, 2), dtype=torch.bool)
-        return SimpleNamespace(
+    @staticmethod
+    def preflight(*, scene_id: str, seed: int) -> None:
+        if not scene_id or seed < 0:
+            raise ValueError("invalid public source request")
+
+    def generate(self, *, scene_id: str, seed: int) -> BLCSSourceScene:
+        self.preflight(scene_id=scene_id, seed=seed)
+        return _source_scene(
             scene_id=scene_id,
-            ball_pos_world=positions,
-            ball_vel_world=torch.zeros_like(positions),
-            ball_present=present,
-            num_balls=2,
-            fps_out=30,
-            track_instances=[
-                {
-                    "track_id": index,
-                    "source_scene_id": f"{scene_id}-source-{index}",
-                    "source_start": 0,
-                    "source_end": 4,
-                    "birth_frame": 0,
-                    "death_frame": 4,
-                }
-                for index in range(2)
-            ],
-            physics_proposal_diagnostics=[
-                {
-                    "source_scene_id": f"{scene_id}-source-{index}",
-                    "accepted_attempt": 1,
-                    "maximum_attempts": self.maximum_physics_attempts_per_object,
-                    "rejected_attempts": [],
-                }
-                for index in range(2)
-            ],
+            seed=seed,
+            maximum_attempts=self.settings.maximum_physics_attempts_per_object,
         )
 
 
@@ -119,12 +138,30 @@ def test_source_settings_fail_closed_on_counts_mode_and_unknown_fields() -> None
     settings = _settings()
 
     assert settings.split_sequence() == ("train", "validation", "test")
+    assert settings.physics_settings() == BLCSPhysicsSourceSettings(
+        timeline=BLCSTimelineSpec.from_mapping(_timeline_mapping()),
+        maximum_physics_attempts_per_object=4,
+        device="cpu",
+    )
     with pytest.raises(ValueError, match="sum exactly"):
         replace(settings, scene_count=4)
     with pytest.raises(ValueError, match="must be multi-object"):
         replace(settings, multi_object=False)
-    with pytest.raises(ValueError, match="multiple objects"):
-        replace(settings, timeline=_timeline(min_tracks=1))
+    with pytest.raises(ValueError, match="at least two tracks"):
+        BLCSTrajectorySourceSettings.from_mapping(
+            {
+                "scene_count": 3,
+                "split_scene_counts": {
+                    "train": 1,
+                    "validation": 1,
+                    "test": 1,
+                },
+                "multi_object": True,
+                "maximum_physics_attempts_per_object": 4,
+                "timeline": _timeline_mapping(min_tracks=1),
+                "device": "cpu",
+            }
+        )
     with pytest.raises(ValueError, match="unknown=.*unexpected"):
         BLCSTrajectorySourceSettings.from_mapping(
             {
@@ -136,29 +173,32 @@ def test_source_settings_fail_closed_on_counts_mode_and_unknown_fields() -> None
                 },
                 "multi_object": True,
                 "maximum_physics_attempts_per_object": 4,
-                "timeline": _timeline(),
+                "timeline": _timeline_mapping(),
                 "device": "cpu",
                 "unexpected": 1,
             }
         )
 
 
-def test_physics_provider_is_seeded_and_preserves_full_multi_object_scenes(
-    monkeypatch,
+def test_provider_uses_only_public_source_and_preserves_every_semantic(
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     source_module = __import__(
         "src.synthetic_data_generation.dataset.blcs.source", fromlist=["source"]
     )
-    monkeypatch.setattr(source_module, "BLCSSceneGenerator", _FakeBaseGenerator)
-    monkeypatch.setattr(source_module, "MultiBallSceneGenerator", _FakeMultiGenerator)
-    generator_config = object.__new__(GeneratorConfig)
+    monkeypatch.setattr(
+        source_module,
+        "BLCSPhysicsTrajectorySource",
+        _FakePublicPhysicsSource,
+    )
     provider = PhysicsBLCSTrajectoryProvider(
-        generator_config=generator_config,
+        generator_config=object.__new__(BLCSGeneratorConfiguration),
         settings=_settings(),
     )
 
+    provider.preflight(scene_id="B00", seed=17)
     first = provider.load(scene_id="B00", seed=17)
-    second = provider.load(scene_id="B00", seed=17)
+    repeated = provider.load(scene_id="B00", seed=17)
     changed = provider.load(scene_id="B00", seed=18)
 
     assert [trajectory.split for trajectory in first] == [
@@ -173,8 +213,16 @@ def test_physics_provider_is_seeded_and_preserves_full_multi_object_scenes(
     ]
     assert all(trajectory.frame_count == 4 for trajectory in first)
     assert all(trajectory.object_count == 2 for trajectory in first)
+    assert all(trajectory.fps == 30.0 for trajectory in first)
+    assert all(trajectory.present.all() for trajectory in first)
     for trajectory in first:
-        proposals = trajectory.source_metadata["physics_proposals"]
+        metadata = trajectory.source_metadata
+        assert metadata["source_frame_count"] == 4
+        assert metadata["fps"] == 30.0
+        assert metadata["simulation_fps"] == 240.0
+        assert metadata["seed"] in {17, 18, 19}
+        assert isinstance(metadata["physics_sources"], list)
+        proposals = metadata["physics_proposals"]
         assert isinstance(proposals, list)
         accepted_attempts: list[int] = []
         for record in proposals:
@@ -183,15 +231,18 @@ def test_physics_provider_is_seeded_and_preserves_full_multi_object_scenes(
             assert isinstance(accepted_attempt, int)
             accepted_attempts.append(accepted_attempt)
         assert accepted_attempts == [1, 1]
-    assert all(
-        trajectory.tracks[0].source_frame_indices == (0, 1, 2, 3)
-        for trajectory in first
-    )
-    for left, right in zip(first, second, strict=True):
-        np.testing.assert_array_equal(
-            left.positions_court_m,
-            right.positions_court_m,
+        assert [track.object_id for track in trajectory.tracks] == [
+            "ball-001",
+            "ball-002",
+        ]
+        assert all(
+            track.source_frame_indices == (0, 1, 2, 3)
+            for track in trajectory.tracks
         )
+    for left, right in zip(first, repeated, strict=True):
+        np.testing.assert_array_equal(left.positions_court_m, right.positions_court_m)
+        np.testing.assert_array_equal(left.present, right.present)
+        assert left.source_metadata == right.source_metadata
     assert not np.array_equal(
         first[0].positions_court_m,
         changed[0].positions_court_m,

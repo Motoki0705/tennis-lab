@@ -153,7 +153,7 @@ def test_save_rejects_non_json_metadata_without_writing(tmp_path: Path) -> None:
     assert not path.with_suffix(".metadata.json").exists()
 
 
-def test_removed_scene_io_and_method_paths_fail_explicitly() -> None:
+def test_removed_tennis_scene_convenience_paths_fail_explicitly() -> None:
     with pytest.raises(ModuleNotFoundError):
         importlib.import_module("src.tennis_scene.io")
     with pytest.raises(ModuleNotFoundError):
@@ -163,3 +163,9 @@ def test_removed_scene_io_and_method_paths_fail_explicitly() -> None:
     assert not hasattr(tennis_scene_package, "SceneResult")
     assert not hasattr(SceneResult, "load")
     assert not hasattr(SceneResult, "save")
+
+
+def test_shared_scene_directory_io_remains_available() -> None:
+    scene_io = importlib.import_module("src.utils.data.scene_io")
+
+    assert callable(scene_io.load_scene_payload)

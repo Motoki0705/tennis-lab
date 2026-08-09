@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any, Self
 
@@ -152,6 +152,15 @@ class PLCSPredictor(BasePredictor):
                     decoded.rotation[..., 1], decoded.rotation[..., 0]
                 )
             return result
+
+    def predict_scene(
+        self,
+        scene: object,
+        cameras: Sequence[int],
+    ) -> PLCSDecodedPrediction:
+        """Assemble and predict one loaded PLCS scene through the adapter."""
+        with torch.no_grad():
+            return self._run_prepared(self.io_adapter.prepare_scene(scene, cameras))
 
     def predict_multiview_observations(
         self,

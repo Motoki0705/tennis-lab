@@ -19,7 +19,7 @@ from src.tasks.blcs.generate_dataset.config import build_generator_config
 from src.utils.hydra import hydra_main
 
 
-@hydra_main(  # type: ignore[untyped-decorator]
+@hydra_main(
     config_path="../../configs",
     config_name="api_server",
     version_base="1.3",

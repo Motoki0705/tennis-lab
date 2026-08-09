@@ -10,8 +10,8 @@ from typing import Protocol
 
 import numpy as np
 
+from src.synthetic_data_generation.dataset.camera_profiles import SampledCameraRig
 from src.synthetic_data_generation.dataset.plcs.timeline import PLCSSceneInventory
-from src.tasks.base.generate_dataset.camera_profiles import SampledCameraRig
 
 
 class DiagnosticAvatar(Protocol):

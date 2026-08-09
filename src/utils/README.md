@@ -24,6 +24,7 @@
 ### `data/`
 - **`heatmaps.py`**: Gaussian heatmap 生成と、argmax / soft-argmax / peaks / pixel coordinates への復号、`resize_heatmap_sequence()` による (B,T,H,W) の bilinear リサイズ。
 - **`augmentation.py`**: keypoint 系 augmentation、visibility dropout、false positive 注入、ImageNet 正規化/逆正規化、`tensor_images_to_uint8_rgb()`、設定値レンジの parse を実装。
+- **`scene_io.py`**: scene ディレクトリの `*.npy`、`scalars.json`、`meta.json` をまとめて読む `load_scene_payload()`。
 - **`splits.py`**: `GroupSplitConfig` と `make_group_split_map()`。group 単位の deterministic な split を作る。
 
 ### `geometry/`

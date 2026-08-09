@@ -12,16 +12,32 @@ from src.tasks.plcs.configuration import PLCSTrainingConfig
 def build_plcs_datamodule(config: Any) -> pl.LightningDataModule:
     """Select the validated data lifecycle outside the training runner."""
     runtime = PLCSTrainingConfig.from_config(config)
-    if runtime.data.backend != "default":
-        raise ValueError("PLCS training requires the canonical fixed-path backend.")
+    backend = runtime.data.backend
     if runtime.model.name == "plcs_track_query":
-        from src.tasks.plcs.data.tracking_datamodule import PLCSTrackingDataModule
+        from src.tasks.plcs.data.tracking_datamodule import (
+            ChunkedPLCSTrackingDataModule,
+            PLCSTrackingDataModule,
+        )
 
-        factory: type[pl.LightningDataModule] = PLCSTrackingDataModule
+        factories: dict[str, type[pl.LightningDataModule]] = {
+            "default": PLCSTrackingDataModule,
+            "chunked": ChunkedPLCSTrackingDataModule,
+        }
     else:
+        from src.tasks.plcs.data.chunked_datamodule import ChunkedPLCSDataModule
         from src.tasks.plcs.data.datamodule import PLCSDataModule
 
-        factory = PLCSDataModule
+        factories = {
+            "default": PLCSDataModule,
+            "chunked": ChunkedPLCSDataModule,
+        }
+    try:
+        factory = factories[backend]
+    except KeyError as error:
+        raise ValueError(
+            f"Unsupported PLCS data.backend={backend!r}; expected one of "
+            f"{sorted(factories)}."
+        ) from error
     return factory(config)
 
 

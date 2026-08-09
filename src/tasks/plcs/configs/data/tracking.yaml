@@ -4,7 +4,8 @@ defaults:
   - _self_
 
 backend: default
-dataset_dir: synthetic_data_generation/scenes/B00/datasets/plcs
+scene_dir: plcs/multi_object_lifecycle_v2
+adapter_camera_index: 0
 batch_size: 8
 num_workers: 4
 pin_memory: true

@@ -1,0 +1,13 @@
+# Chunked backend partial: val/test are fixed from scene_dir while train chunks
+# are generated in the background.
+backend: chunked
+generator_device: cpu
+pin_memory: true
+
+chunk:
+  scenes_per_chunk: 1000
+  epochs_per_chunk: 20
+  prefetch_chunks: 5
+  chunks_dir: blcs/chunks
+  generation_workers: 16  # parallel scene generation workers (must be >= 1)
+  generation_chunksize: 1

@@ -1,0 +1,7 @@
+output_dir: blcs
+seed: 42
+device: cpu
+num_workers: 4
+chunksize: 1
+train_ratio: 0.8
+val_ratio: 0.1

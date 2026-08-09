@@ -24,6 +24,7 @@ from src.synthetic_data_generation.dataset.blcs.contracts import (
 from src.synthetic_data_generation.dataset.blcs.rendering import BLCSNHTRenderer
 from src.synthetic_data_generation.dataset.blcs.source import BLCSTrajectoryProvider
 from src.synthetic_data_generation.dataset.blcs.timeline import build_blcs_plans
+from src.synthetic_data_generation.dataset.camera_profiles import CameraProfileConfig
 from src.synthetic_data_generation.dataset.runtime import PerformanceTimer
 from src.synthetic_data_generation.pipeline.contracts import (
     StageExecutionContext,
@@ -31,7 +32,6 @@ from src.synthetic_data_generation.pipeline.contracts import (
     StageName,
 )
 from src.synthetic_data_generation.pipeline.workspace import SceneWorkspace
-from src.tasks.base.generate_dataset.camera_profiles import CameraProfileConfig
 
 _METADATA_FIELDS = {
     "source_trajectory",

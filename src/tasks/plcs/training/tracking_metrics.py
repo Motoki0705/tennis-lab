@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-from typing import cast
 
 import torch
 import torch.nn.functional as F
@@ -23,14 +22,11 @@ def plcs_tracking_metrics(
     config: TrackingMetricConfig,
 ) -> dict[str, torch.Tensor]:
     """Compute shared lifecycle metrics plus matched angular error."""
-    metrics = cast(
-        dict[str, torch.Tensor],
-        common_lifecycle_tracking_metrics(
-            prediction,
-            batch,
-            assignments,
-            config=config,
-        ),
+    metrics = common_lifecycle_tracking_metrics(
+        prediction,
+        batch,
+        assignments,
+        config=config,
     )
     angular_errors: list[torch.Tensor] = []
     for batch_index, (query_indices, target_indices) in enumerate(assignments):

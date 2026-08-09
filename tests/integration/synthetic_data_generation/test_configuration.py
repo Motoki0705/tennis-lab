@@ -12,6 +12,7 @@ from src.synthetic_data_generation.dataset.blcs.rendering import BLCSNHTRenderer
 from src.synthetic_data_generation.dataset.blcs.source import (
     PhysicsBLCSTrajectoryProvider,
 )
+from src.synthetic_data_generation.dataset.camera_profiles import sample_camera_rig
 from src.synthetic_data_generation.dataset.court.contracts import (
     OrbitCenterKind,
     OrbitCoverageMode,
@@ -28,7 +29,6 @@ from src.synthetic_data_generation.dataset.plcs.rendering import NHTPLCSRenderer
 from src.synthetic_data_generation.reconstruction import NHTReconstructionHandler
 from src.synthetic_data_generation.rendering.nht import NHTRenderClient
 from src.synthetic_data_generation.scene_contract import CourtInstance, RigidTransform
-from src.tasks.base.generate_dataset.camera_profiles import sample_camera_rig
 from src.utils.configuration import (
     PathRole,
     SemanticConfigurationError,
@@ -211,10 +211,17 @@ def test_single_object_plcs_rejects_nonzero_start_frame() -> None:
         )
 
 
-def test_task_local_camera_config_copies_are_removed() -> None:
+def test_task_local_generation_camera_profiles_remain_available() -> None:
+    canonical_root = PROJECT_ROOT / "src/synthetic_data_generation/configs/camera"
+    assert {path.name for path in canonical_root.glob("*.yaml")} == {
+        "broadcast.yaml",
+        "default.yaml",
+    }
     for task in ("blcs", "plcs"):
         camera_root = PROJECT_ROOT / f"src/tasks/{task}/configs/camera"
-        assert not list(camera_root.glob("*.yaml"))
+        profiles = tuple(sorted(camera_root.glob("*.yaml")))
+        assert {path.name for path in profiles} == {"broadcast.yaml", "default.yaml"}
+        assert all(path.is_file() and not path.is_symlink() for path in profiles)
 
 
 def test_camera_sampling_is_deterministic_and_within_composed_slot_bounds() -> None:

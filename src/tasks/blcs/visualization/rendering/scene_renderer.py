@@ -135,7 +135,9 @@ def extract_ball_events(meta: dict[str, Any]) -> list[BallEvent]:
 def bounce_frames_from_events(events: list[BallEvent]) -> NDArray[np.int64]:
     """Return authoritative bounce indices from explicit event metadata."""
     frames = sorted(
-        event.frame_idx for event in events if event.event_type is BallEventType.BOUNCE
+        event.frame_idx
+        for event in events
+        if event.event_type is BallEventType.BOUNCE
     )
     return np.asarray(frames, dtype=np.int64)
 
@@ -401,7 +403,10 @@ class BLCSSceneRenderer:
         uv_tracks = (
             [ball_uv]
             if ball_uv.ndim == 2
-            else [ball_uv[:, index] for index in range(int(scene["num_balls"]))]
+            else [
+                ball_uv[:, index]
+                for index in range(int(scene["num_balls"]))
+            ]
         )
         visibility_tracks = (
             [ball_vis]

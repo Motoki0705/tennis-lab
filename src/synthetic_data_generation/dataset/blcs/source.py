@@ -1,29 +1,24 @@
-"""Deterministic production BLCS trajectory source over the physics generator."""
+"""Canonical adapter for the public BLCS physics-source boundary."""
 
 from __future__ import annotations
 
-import random
-import re
-from collections.abc import Iterator, Mapping, Sequence
-from contextlib import contextmanager
-from dataclasses import dataclass, replace
-from typing import Protocol, Self
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from typing import Protocol, Self, cast
 
-import numpy as np
-import torch
-
-from src.synthetic_data_generation.dataset.blcs.contracts import BLCSTrajectory
-from src.tasks.base.generate_dataset.timeline_composer import TimelineConfig
-from src.tasks.blcs.generate_dataset.multi_object_scene_generator import (
-    MultiBallSceneGenerator,
+from src.synthetic_data_generation.dataset.blcs.contracts import (
+    BLCSTrack,
+    BLCSTrajectory,
 )
-from src.tasks.blcs.generate_dataset.scene_generator import (
-    BLCSSceneGenerator,
-    GeneratorConfig,
+from src.tasks.blcs.generate_dataset.source_api import (
+    BLCSGeneratorConfiguration,
+    BLCSPhysicsSourceSettings,
+    BLCSPhysicsTrajectorySource,
+    BLCSSourceScene,
+    BLCSTimelineSpec,
 )
 
 _SPLITS = ("train", "validation", "test")
-_PORTABLE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
 class BLCSTrajectoryProvider(Protocol):
@@ -38,13 +33,13 @@ class BLCSTrajectoryProvider(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class BLCSTrajectorySourceSettings:
-    """No-default Hydra-facing settings for the production physics source."""
+    """Canonical inventory policy around the task-owned physics source."""
 
     scene_count: int
     split_scene_counts: Mapping[str, int]
     multi_object: bool
     maximum_physics_attempts_per_object: int
-    timeline: TimelineConfig
+    timeline: BLCSTimelineSpec
     device: str
 
     def __post_init__(self) -> None:
@@ -69,38 +64,25 @@ class BLCSTrajectorySourceSettings:
         if sum(counts.values()) != self.scene_count:
             raise ValueError("BLCS split counts must sum exactly to scene_count.")
         if self.multi_object is not True:
-            raise ValueError(
-                "Production BLCS trajectory generation must be multi-object."
-            )
-        if (
-            isinstance(self.maximum_physics_attempts_per_object, bool)
-            or not isinstance(self.maximum_physics_attempts_per_object, int)
-            or self.maximum_physics_attempts_per_object <= 0
-        ):
-            raise ValueError(
-                "maximum_physics_attempts_per_object must be a positive integer."
-            )
-        if not isinstance(self.timeline, TimelineConfig):
-            raise TypeError("BLCS source timeline must be a TimelineConfig.")
-        if self.timeline.min_tracks < 2:
-            raise ValueError("Production BLCS timelines must contain multiple objects.")
-        if not isinstance(self.device, str) or not self.device.strip():
-            raise TypeError("BLCS physics device must be an explicit non-empty string.")
-        device = torch.device(self.device)
-        if device.type != "cpu":
-            raise ValueError(
-                "Canonical BLCS physics generation requires explicit CPU execution."
-            )
+            raise ValueError("Production BLCS trajectory generation must be multi-object.")
+        if not isinstance(self.timeline, BLCSTimelineSpec):
+            raise TypeError("BLCS source timeline must be a BLCSTimelineSpec.")
+        physics_settings = self.physics_settings()
         object.__setattr__(
             self,
             "split_scene_counts",
             {split: counts[split] for split in _SPLITS},
         )
-        object.__setattr__(self, "device", str(device))
+        object.__setattr__(
+            self,
+            "maximum_physics_attempts_per_object",
+            physics_settings.maximum_physics_attempts_per_object,
+        )
+        object.__setattr__(self, "device", physics_settings.device)
 
     @classmethod
     def from_mapping(cls, value: object) -> Self:
-        """Parse Hydra/plain mappings without implicit source settings."""
+        """Parse canonical inventory plus explicit public task-source settings."""
         if not isinstance(value, Mapping):
             raise TypeError("BLCS trajectory source settings must be a mapping.")
         required = {
@@ -118,24 +100,35 @@ class BLCSTrajectorySourceSettings:
                 f"unknown={sorted(set(value) - required)}."
             )
         timeline_value = value["timeline"]
-        if isinstance(timeline_value, TimelineConfig):
-            timeline = timeline_value
-        elif isinstance(timeline_value, Mapping):
-            timeline = TimelineConfig.from_mapping(timeline_value)
-        else:
-            raise TypeError("BLCS source timeline must be a mapping or TimelineConfig.")
+        timeline = (
+            timeline_value
+            if isinstance(timeline_value, BLCSTimelineSpec)
+            else BLCSTimelineSpec.from_mapping(timeline_value)
+        )
         split_counts = value["split_scene_counts"]
         if not isinstance(split_counts, Mapping):
             raise TypeError("BLCS split_scene_counts must be a mapping.")
+        scene_count = value["scene_count"]
+        multi_object = value["multi_object"]
+        maximum_attempts = value["maximum_physics_attempts_per_object"]
+        device = value["device"]
         return cls(
-            scene_count=value["scene_count"],
-            split_scene_counts=split_counts,
-            multi_object=value["multi_object"],
-            maximum_physics_attempts_per_object=value[
-                "maximum_physics_attempts_per_object"
-            ],
+            scene_count=cast(int, scene_count),
+            split_scene_counts=cast(Mapping[str, int], split_counts),
+            multi_object=cast(bool, multi_object),
+            maximum_physics_attempts_per_object=cast(int, maximum_attempts),
             timeline=timeline,
-            device=value["device"],
+            device=cast(str, device),
+        )
+
+    def physics_settings(self) -> BLCSPhysicsSourceSettings:
+        """Return the complete public task-source configuration."""
+        return BLCSPhysicsSourceSettings(
+            timeline=self.timeline,
+            maximum_physics_attempts_per_object=(
+                self.maximum_physics_attempts_per_object
+            ),
+            device=self.device,
         )
 
     def split_sequence(self) -> tuple[str, ...]:
@@ -147,96 +140,86 @@ class BLCSTrajectorySourceSettings:
 
 @dataclass(frozen=True, slots=True)
 class PhysicsBLCSTrajectoryProvider:
-    """Generate deterministic multi-object scenes via the existing BLCS simulator."""
+    """Adapt task-owned public physics scenes into canonical trajectories."""
 
-    generator_config: GeneratorConfig
+    generator_config: BLCSGeneratorConfiguration
     settings: BLCSTrajectorySourceSettings
 
     def __post_init__(self) -> None:
-        if not isinstance(self.generator_config, GeneratorConfig):
-            raise TypeError(
-                "generator_config must be the existing BLCS GeneratorConfig."
-            )
         if not isinstance(self.settings, BLCSTrajectorySourceSettings):
             raise TypeError("settings must be BLCSTrajectorySourceSettings.")
 
+    def _source(self) -> BLCSPhysicsTrajectorySource:
+        return BLCSPhysicsTrajectorySource(
+            generator_config=self.generator_config,
+            settings=self.settings.physics_settings(),
+        )
+
     def preflight(self, *, scene_id: str, seed: int) -> None:
-        """Validate the exact production request without manufacturing a fixture."""
-        _validate_request(scene_id=scene_id, seed=seed)
+        """Validate every deterministic public source request without generation."""
+        source = self._source()
+        for index in range(self.settings.scene_count):
+            source.preflight(
+                scene_id=f"{scene_id}-blcs-{index:06d}",
+                seed=seed + index,
+            )
 
     def load(self, *, scene_id: str, seed: int) -> Sequence[BLCSTrajectory]:
-        """Generate every configured physics scene and preserve its complete timeline."""
-        self.preflight(scene_id=scene_id, seed=seed)
-        trajectories: list[BLCSTrajectory] = []
-        for index, split in enumerate(self.settings.split_sequence()):
-            source_scene_id = f"{scene_id}-blcs-{index:06d}"
-            scene_seed = seed + index
-            with _deterministic_random_state(scene_seed):
-                base = BLCSSceneGenerator(
-                    config=self.generator_config,
-                    device=self.settings.device,
-                )
-                generator = MultiBallSceneGenerator(
-                    base,
-                    timeline=self.settings.timeline,
-                    maximum_physics_attempts_per_object=(
-                        self.settings.maximum_physics_attempts_per_object
-                    ),
-                    rng=random.Random(scene_seed),
-                )
-                scene = generator.generate_scene(source_scene_id)
-            if scene.scene_id != source_scene_id:
-                raise ValueError(
-                    "BLCS physics generator changed the requested scene ID."
-                )
-            trajectory = BLCSTrajectory.from_scene(scene, split=split)
-            trajectory = replace(
-                trajectory,
-                source_metadata={
-                    **trajectory.source_metadata,
-                    "physics_proposals": scene.physics_proposal_diagnostics,
-                },
+        """Generate through the public API and retain each complete source scene."""
+        source = self._source()
+        trajectories = tuple(
+            _adapt_source_scene(
+                source.generate(
+                    scene_id=f"{scene_id}-blcs-{index:06d}",
+                    seed=seed + index,
+                ),
+                split=split,
             )
-            if trajectory.frame_count != int(scene.ball_pos_world.shape[0]):
-                raise ValueError(
-                    "BLCS physics source did not preserve every generated frame."
-                )
-            if trajectory.object_count < 2:
-                raise ValueError(
-                    "Production BLCS physics source returned a single-object scene."
-                )
-            trajectories.append(trajectory)
+            for index, split in enumerate(self.settings.split_sequence())
+        )
         if len(trajectories) != self.settings.scene_count:
-            raise ValueError(
-                "BLCS physics source returned an incomplete scene inventory."
-            )
+            raise ValueError("BLCS physics source returned an incomplete scene inventory.")
         if len({trajectory.trajectory_id for trajectory in trajectories}) != len(
             trajectories
         ):
             raise ValueError("BLCS physics source returned duplicate scene IDs.")
-        return tuple(trajectories)
+        return trajectories
 
 
-def _validate_request(*, scene_id: str, seed: int) -> None:
-    if not isinstance(scene_id, str) or _PORTABLE_ID.fullmatch(scene_id) is None:
-        raise ValueError("BLCS source scene_id must be a portable identifier.")
-    if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
-        raise ValueError("BLCS source seed must be a non-negative integer.")
-
-
-@contextmanager
-def _deterministic_random_state(seed: int) -> Iterator[None]:
-    python_state = random.getstate()
-    numpy_state = np.random.get_state()
-    try:
-        with torch.random.fork_rng(devices=[]):
-            random.seed(seed)
-            np.random.seed(seed % (2**32))
-            torch.manual_seed(seed)
-            yield
-    finally:
-        random.setstate(python_state)
-        np.random.set_state(numpy_state)
+def _adapt_source_scene(
+    scene: BLCSSourceScene,
+    *,
+    split: str,
+) -> BLCSTrajectory:
+    """Adapt one validated task source without dropping any source semantics."""
+    if not isinstance(scene, BLCSSourceScene):
+        raise TypeError("BLCS public source returned an unsupported scene value.")
+    if scene.frame_indices != tuple(range(scene.frame_count)):
+        raise ValueError("BLCS public source omitted or reordered frame identities.")
+    trajectory = BLCSTrajectory(
+        trajectory_id=scene.scene_id,
+        split=split,
+        fps=scene.fps,
+        positions_court_m=scene.positions_court_m,
+        velocities_court_mps=scene.velocities_court_mps,
+        present=scene.present,
+        tracks=tuple(
+            BLCSTrack(
+                object_id=track.object_id,
+                source_trajectory_id=track.source_trajectory_id,
+                source_frame_indices=track.source_frame_indices,
+            )
+            for track in scene.tracks
+        ),
+        source_metadata=scene.to_metadata(),
+    )
+    if trajectory.frame_count != scene.frame_count:
+        raise ValueError("BLCS public source did not preserve every generated frame.")
+    if trajectory.object_count != scene.object_count or trajectory.object_count < 2:
+        raise ValueError("Production BLCS source must preserve every physical object.")
+    if trajectory.fps != scene.fps:
+        raise ValueError("BLCS public source output FPS changed during adaptation.")
+    return trajectory
 
 
 __all__ = [

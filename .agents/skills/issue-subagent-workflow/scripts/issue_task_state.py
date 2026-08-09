@@ -69,34 +69,10 @@ BLOCK_KINDS = (
     "missing_authority",
     "environment",
 )
-PACKAGING_PENDING_AC_ID = "AC-079"
-PACKAGING_PENDING_EVIDENCE_TOKENS = (
-    "post-Validator packaging",
-    "capture-pr",
-    "captured evidence",
-    "packaging.md",
-    "finalize-pr",
-    "final workflow check",
-)
 
 
 def _sha256_text(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
-
-
-def _normalize_fresh_test_cycle(state: dict[str, Any]) -> None:
-    """Drop a prior Tester verdict once renewed preflight invalidates its candidate."""
-    preflight_cycle = state.get("preflight_cycle")
-    test_cycle = state.get("test_cycle")
-    if (
-        state.get("candidate_binding_mode") == "ENFORCED"
-        and isinstance(preflight_cycle, int)
-        and isinstance(test_cycle, int)
-        and preflight_cycle > test_cycle
-        and not state.get("test_candidate_sha256")
-        and state.get("test_verdict") in {"PASS", "RETURN"}
-    ):
-        state["test_verdict"] = ""
 
 
 def normalize_state(state: dict[str, Any], task_dir: Path | None = None) -> dict[str, Any]:
@@ -140,7 +116,6 @@ def normalize_state(state: dict[str, Any], task_dir: Path | None = None) -> dict
         state.setdefault("pr_head_sha", "")
         state.setdefault("remote_checks_verdict", "")
         state.setdefault("pr_evidence_sha256", "")
-    _normalize_fresh_test_cycle(state)
     return state
 
 
@@ -492,68 +467,19 @@ def validation_matrix_errors(
     row_ids = [item_id for item_id, _, _, _ in rows]
     if row_ids != expected_ids:
         errors.append(
-            "validation checklist must contain one ordered PASS/FAIL/NOT VERIFIED "
-            "verdict for every AC ID"
+            "validation checklist must contain one ordered PASS/FAIL/NOT VERIFIED verdict for every AC ID"
         )
         return errors
     verdict_by_id = {item_id: verdict for item_id, _, verdict, _ in rows}
-    evidence_by_id: dict[str, str] = {}
     for item_id, _, _, evidence in rows:
         normalized = unescape_table_cell(evidence)
-        evidence_by_id[item_id] = normalized
         if not normalized or normalized in {"None", "N/A", "なし"} or "Replace" in normalized:
             errors.append(f"validation evidence is not substantive for {item_id}")
-
-    enforced = load_state(task_dir).get("candidate_binding_mode") == "ENFORCED"
-    has_packaging_ac = PACKAGING_PENDING_AC_ID in expected_ids
-    if require_all_pass and enforced and has_packaging_ac:
-        not_passed = [
-            item_id
-            for item_id in expected_ids
-            if item_id != PACKAGING_PENDING_AC_ID
-            and verdict_by_id[item_id] != "PASS"
-        ]
-        if not_passed:
-            errors.append(
-                "Validator PASS requires every pre-packaging AC row PASS; not passed: "
-                + ", ".join(not_passed)
-            )
-        if verdict_by_id[PACKAGING_PENDING_AC_ID] != "NOT VERIFIED":
-            errors.append(
-                f"Validator PASS requires {PACKAGING_PENDING_AC_ID} to be exactly "
-                "NOT VERIFIED until post-Validator packaging"
-            )
-        else:
-            missing_tokens = [
-                token
-                for token in PACKAGING_PENDING_EVIDENCE_TOKENS
-                if token not in evidence_by_id[PACKAGING_PENDING_AC_ID]
-            ]
-            if missing_tokens:
-                errors.append(
-                    f"{PACKAGING_PENDING_AC_ID} NOT VERIFIED evidence must name mandatory "
-                    "post-validation packaging: " + ", ".join(missing_tokens)
-                )
-    elif require_all_pass:
-        not_passed = [
-            item_id for item_id in expected_ids if verdict_by_id[item_id] != "PASS"
-        ]
-        if not_passed:
-            errors.append(
-                "every issue checklist item must have verdict PASS; not passed: "
-                + ", ".join(not_passed)
-            )
-
-    if not require_all_pass:
-        failed = [
-            item_id
-            for item_id in expected_ids
-            if verdict_by_id[item_id] in {"FAIL", "NOT VERIFIED"}
-        ]
-        if not failed:
-            errors.append(
-                "validation RETURN requires at least one FAIL or NOT VERIFIED checklist item"
-            )
+    not_passed = [item_id for item_id in expected_ids if verdict_by_id[item_id] != "PASS"]
+    if require_all_pass and not_passed:
+        errors.append("every issue checklist item must have verdict PASS; not passed: " + ", ".join(not_passed))
+    if not require_all_pass and not not_passed:
+        errors.append("validation RETURN requires at least one FAIL or NOT VERIFIED checklist item")
     return errors
 
 
@@ -687,16 +613,12 @@ def validate_state(task_dir: Path, state: dict[str, Any]) -> list[str]:
                 errors.append("validation requires Tester PASS and candidate seal PASS")
             if state.get("test_candidate_sha256") != state.get("sealed_candidate_sha256"):
                 errors.append("Tester and sealed candidate fingerprints must match")
-        if (
-            phase == "packaging" or status in {"validated", "complete"}
-        ) and state.get("validation_candidate_sha256") != state.get(
-            "sealed_candidate_sha256"
-        ):
-            errors.append("Validator and sealed candidate fingerprints must match")
-        if status == "validated" and (
-            phase != "packaging" or state.get("verdict") != "VALIDATED"
-        ):
-            errors.append("validated status requires packaging phase and VALIDATED verdict")
+        if phase == "packaging" or status in {"validated", "complete"}:
+            if state.get("validation_candidate_sha256") != state.get("sealed_candidate_sha256"):
+                errors.append("Validator and sealed candidate fingerprints must match")
+        if status == "validated":
+            if phase != "packaging" or state.get("verdict") != "VALIDATED":
+                errors.append("validated status requires packaging phase and VALIDATED verdict")
         if status == "complete":
             if phase != "packaging" or state.get("verdict") != "PASS":
                 errors.append("complete status requires packaging phase and PASS verdict")

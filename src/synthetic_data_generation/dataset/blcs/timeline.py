@@ -21,18 +21,20 @@ from src.synthetic_data_generation.dataset.blcs.contracts import (
     BLCSCompositionAssets,
     BLCSTrajectory,
 )
-from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
-from src.synthetic_data_generation.scene_contract import (
-    MultiCourtLayout,
-    RigidTransform,
-)
-from src.tasks.base.generate_dataset.camera_profiles import (
+from src.synthetic_data_generation.dataset.camera_profiles import (
     CameraProfileConfig,
     SampledCameraRig,
     assert_projection_equivalent,
     sample_camera_rig,
 )
-from src.tasks.base.generate_dataset.court_assignment import assign_courts_balanced
+from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
+from src.synthetic_data_generation.dataset.court_assignment import (
+    assign_courts_balanced,
+)
+from src.synthetic_data_generation.scene_contract import (
+    MultiCourtLayout,
+    RigidTransform,
+)
 from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
 
 

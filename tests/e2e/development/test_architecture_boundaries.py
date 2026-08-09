@@ -60,35 +60,28 @@ PROHIBITED_SYMBOLS = frozenset(
 )
 ISSUE_695_REMOVAL_PREFIXES = (
     "src.synthetic_data_generation.",
-    "src.tasks.base.data.chunk",
-    "src.tasks.base.data.datamodule",
-    "src.tasks.base.data.dataset_writer",
-    "src.tasks.base.data.scene_dataset",
-    "src.tasks.base.training.chunk_rotation_callback",
-    "src.tasks.blcs.data.chunk",
-    "src.tasks.blcs.generate_dataset.io",
-    "src.tasks.blcs.generate_dataset.utils",
-    "src.tasks.blcs.scripts.generate_dataset",
-    "src.tasks.blcs.scripts.preview_augmentation",
-    "src.tasks.blcs.scripts.visualize",
-    "src.tasks.blcs.visualization.api",
-    "src.tasks.blcs.visualization.io",
-    "src.tasks.blcs.visualization.orchestrator",
-    "src.tasks.plcs.data.chunk",
-    "src.tasks.plcs.generate_dataset.config",
-    "src.tasks.plcs.generate_dataset.io",
-    "src.tasks.plcs.generate_dataset.multi_object_scene_generator",
-    "src.tasks.plcs.generate_dataset.scene_generator",
-    "src.tasks.plcs.generate_dataset.utils",
-    "src.tasks.plcs.scripts.analysis.visualize_rotation_error_samples",
-    "src.tasks.plcs.scripts.analysis.analyze_",
-    "src.tasks.plcs.scripts.generate_dataset",
-    "src.tasks.plcs.scripts.preview_augmentation",
-    "src.tasks.plcs.scripts.visualize",
-    "src.tasks.plcs.visualization.api",
-    "src.tasks.plcs.visualization.io",
-    "src.tasks.plcs.visualization.orchestrator",
-    "src.utils.data.scene_io",
+)
+SUPPORTED_TASK_LOCAL_MODULES = frozenset(
+    {
+        "src.tasks.base.data.chunk_manager",
+        "src.tasks.base.data.chunked_datamodule",
+        "src.tasks.base.data.dataset_writer",
+        "src.tasks.base.data.scene_dataset",
+        "src.tasks.base.training.chunk_rotation_callback",
+        "src.tasks.blcs.data.chunk_manager",
+        "src.tasks.blcs.generate_dataset.io.dataset_io",
+        "src.tasks.blcs.scripts.generate_dataset",
+        "src.tasks.blcs.scripts.preview_augmentation",
+        "src.tasks.blcs.scripts.visualize",
+        "src.tasks.blcs.visualization.orchestrator",
+        "src.tasks.plcs.data.chunk_manager",
+        "src.tasks.plcs.generate_dataset.io.dataset_io",
+        "src.tasks.plcs.scripts.generate_dataset",
+        "src.tasks.plcs.scripts.preview_augmentation",
+        "src.tasks.plcs.scripts.visualize",
+        "src.tasks.plcs.visualization.orchestrator",
+        "src.utils.data.scene_io",
+    }
 )
 COURT_LINE_PREPROCESSING_CONSUMERS = {
     "src/synthetic_data_generation/alignment/evidence_source.py": (
@@ -201,11 +194,12 @@ def _deleted_repository_modules() -> frozenset[str]:
         "--",
         "src",
     )
-    return frozenset(
+    modules = frozenset(
         _module_name_from_source_path(path)
         for path in paths
         if path.endswith(".py")
     )
+    return frozenset(module for module in modules if _module_path(module) is None)
 
 
 def _source_reference(path: Path, node: ast.AST) -> str:
@@ -851,6 +845,16 @@ def test_removed_modules_have_no_forwarding_path_or_owned_reference() -> None:
             if any(reference in text for reference in references):
                 stale.append(f"{path.relative_to(REPOSITORY_ROOT)}: {module}")
     assert not stale, "stale removed-module references:\n" + "\n".join(stale)
+
+
+def test_task_local_generation_and_chunk_consumers_remain_supported() -> None:
+    missing = sorted(
+        module for module in SUPPORTED_TASK_LOCAL_MODULES if _module_path(module) is None
+    )
+
+    assert not missing, "supported task-local modules are missing:\n" + "\n".join(
+        missing
+    )
 
 
 def test_compatibility_symbols_are_not_defined_or_reexported() -> None:

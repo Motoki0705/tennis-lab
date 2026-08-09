@@ -1,0 +1,33 @@
+mode: visualize  # visualize | predict
+scene_path: plcs/scenes/scene_000001
+camera: 0
+cameras: [0, 1, 2, 3, 4, 5]
+animation_view: 3d  # 3d | 2d_topdown | camera
+fps: 30.0
+save: null
+info: false
+checkpoint: plcs/multiview/logs/version_0/checkpoints/last.ckpt
+device: ${run.device}
+# Canonical pose used for the Prediction skeleton: gt | prediction
+canonical_pose_source: gt
+
+# Shared scene style for animation_view=3d (parsed by
+# src/tasks/base/visualization/style.py; 2D/camera views ignore it).
+style:
+  theme: dark          # light | dark
+  show_shadow: true
+  show_trail: true
+  trail_length: 60
+  show_hud: true
+  show_minimap: true
+
+# Shared 3D viewpoint (src/utils/rendering/camera_view.py). Unrelated to the
+# input-camera selector `camera`/`cameras` above.
+view_3d:
+  preset: broadcast    # broadcast | side | top | corner | behind_far
+  mode: static         # static | orbit | keyframes
+  elev: null
+  azim: null
+  zoom: null
+  orbit_period_s: 10.0
+  keyframes: null

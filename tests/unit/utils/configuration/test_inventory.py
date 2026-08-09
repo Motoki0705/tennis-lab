@@ -48,6 +48,45 @@ def test_synthetic_inventory_has_only_the_canonical_scene_cli() -> None:
     )
 
 
+def test_task_local_generation_and_visualization_boundaries_remain_in_inventory() -> None:
+    boundaries = {
+        boundary.module: boundary
+        for boundary in EXPECTED_RUNTIME_BOUNDARIES
+        if boundary.domain in {"blcs", "plcs"}
+    }
+    expected = {
+        "src.tasks.blcs.scripts.generate_dataset": (
+            "blcs.generate_dataset",
+            "src.tasks.blcs.configuration.validate_generation_boundary",
+        ),
+        "src.tasks.blcs.scripts.preview_augmentation": (
+            "blcs.preview_augmentation",
+            "src.tasks.blcs.configuration.validate_preview_boundary",
+        ),
+        "src.tasks.blcs.scripts.visualize": (
+            "blcs.visualize",
+            "src.tasks.blcs.configuration.validate_visualization_boundary",
+        ),
+        "src.tasks.plcs.scripts.generate_dataset": (
+            "plcs.generate_dataset",
+            "src.tasks.plcs.generate_dataset.config._validate_boundary",
+        ),
+        "src.tasks.plcs.scripts.preview_augmentation": (
+            "plcs.preview_augmentation",
+            "src.tasks.plcs.configuration._validate_preview_boundary",
+        ),
+        "src.tasks.plcs.scripts.visualize": (
+            "plcs.visualize",
+            "src.tasks.plcs.configuration._validate_visualization_boundary",
+        ),
+    }
+
+    for module, (validator_key, validator_callable) in expected.items():
+        boundary = boundaries[module]
+        assert boundary.validator_key == validator_key
+        assert boundary.validator_callable == validator_callable
+
+
 def test_inventory_contains_disjoint_truthful_route_states() -> None:
     counts = Counter(record.status for record in DEFAULT_AUDIT_INVENTORY.migrations)
 

@@ -130,7 +130,9 @@ class PLCSLossConfig:
                     f"loss.{key}: expected list | tuple | None, "
                     f"got {type(value).__name__}."
                 )
-            raw_values: tuple[object, ...] = tuple(cast("Sequence[object]", value))
+            raw_values: tuple[object, ...] = tuple(
+                cast("Sequence[object]", value)
+            )
             if len(raw_values) != expected_length:
                 raise SemanticConfigurationError(
                     f"loss.{key} must contain exactly {expected_length} values."
@@ -165,7 +167,9 @@ class PLCSLossConfig:
             torso_twist_weight=weights["torso_twist_weight"],
             bone_length_weight=weights["bone_length_weight"],
             joint_angle_velocity_weight=weights["joint_angle_velocity_weight"],
-            torsion_angle_velocity_weight=weights["torsion_angle_velocity_weight"],
+            torsion_angle_velocity_weight=weights[
+                "torsion_angle_velocity_weight"
+            ],
             torso_twist_velocity_weight=weights["torso_twist_velocity_weight"],
             joint_angle_velocity_angle_weights=_opt_weights(
                 "joint_angle_velocity_angle_weights", expected_length=12

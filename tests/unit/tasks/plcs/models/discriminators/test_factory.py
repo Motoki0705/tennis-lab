@@ -15,7 +15,7 @@ from src.utils.paths import PROJECT_ROOT
 def test_plcs_factory_uses_shared_transformer_builder_without_task_subclass() -> None:
     config_dir = PROJECT_ROOT / "src/tasks/plcs/configs"
     with initialize_config_dir(version_base="1.3", config_dir=str(config_dir)):
-        config = compose(config_name="train", overrides=["training=gan_base"])
+        config = compose(config_name="train_chunked_gan")
 
     discriminator = build_plcs_discriminator(
         PLCSTrainingConfig.from_config(config)

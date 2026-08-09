@@ -1,72 +1,75 @@
-"""Canonical compact BLCS tracking data module."""
+"""DataModules for pre-generated and chunked multi-ball BLCS data."""
 
 from __future__ import annotations
 
-from typing import Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, cast
 
-import pytorch_lightning as pl
-from torch.utils.data import DataLoader
+from torch.utils.data import Dataset
 
+from src.tasks.base.data.canonical_tracking import validate_lifecycle_capacity
+from src.tasks.base.data.chunked_datamodule import BaseChunkedDataModule
+from src.tasks.base.data.datamodule import SceneDirectoryDataModule
+from src.tasks.blcs.data.chunk_manager import ChunkManager
 from src.tasks.blcs.data.tracking_dataset import (
     BLCSTrackingDataset,
     collate_blcs_tracking_batch,
 )
-from src.utils.paths import PROJECT_ROOT
+from src.tasks.blcs.generate_dataset.config import build_generator_config
+
+if TYPE_CHECKING:
+    from omegaconf import DictConfig
 
 
-class BLCSTrackingDataModule(pl.LightningDataModule):
-    """Build lifecycle batches from canonical manifest splits."""
+class BLCSTrackingDataModule(SceneDirectoryDataModule):
+    """Read fixed train/val/test multi-ball scenes from disk."""
 
-    def __init__(self, config: Any) -> None:
-        super().__init__()
-        self.config = config
-        self.train_dataset: BLCSTrackingDataset | None = None
-        self.val_dataset: BLCSTrackingDataset | None = None
-        self.test_dataset: BLCSTrackingDataset | None = None
+    def _build_collate_fn(self) -> Any:
+        return collate_blcs_tracking_batch
 
-    def setup(self, stage: str | None = None) -> None:
-        directory = PROJECT_ROOT / "data" / str(self.config.data.dataset_dir)
-        if stage in {None, "fit"}:
-            self.train_dataset = BLCSTrackingDataset(
-                dataset_dir=directory, split="train", config=self.config, augment=True
-            )
-            self.val_dataset = BLCSTrackingDataset(
-                dataset_dir=directory,
-                split="validation",
-                config=self.config,
-                augment=False,
-            )
-        if stage in {None, "test"}:
-            self.test_dataset = BLCSTrackingDataset(
-                dataset_dir=directory, split="test", config=self.config, augment=False
-            )
-
-    def _loader(
-        self, dataset: BLCSTrackingDataset, *, shuffle: bool
-    ) -> DataLoader[Any]:
-        return DataLoader(
-            dataset,
-            batch_size=int(self.config.data.batch_size),
-            shuffle=shuffle,
-            num_workers=int(self.config.data.num_workers),
-            pin_memory=bool(self.config.data.pin_memory),
-            collate_fn=collate_blcs_tracking_batch,
+    def _build_dataset(
+        self, scene_dir: Path, split_file: str, augment: bool
+    ) -> Dataset:
+        return BLCSTrackingDataset(
+            scene_dir=scene_dir,
+            split_file=split_file,
+            config=self.config,
+            augment=augment,
         )
 
-    def train_dataloader(self) -> DataLoader[Any]:
-        if self.train_dataset is None:
-            raise RuntimeError("BLCSTrackingDataModule.setup('fit') must run first.")
-        return self._loader(self.train_dataset, shuffle=True)
-
-    def val_dataloader(self) -> DataLoader[Any]:
-        if self.val_dataset is None:
-            raise RuntimeError("BLCSTrackingDataModule.setup('fit') must run first.")
-        return self._loader(self.val_dataset, shuffle=False)
-
-    def test_dataloader(self) -> DataLoader[Any]:
-        if self.test_dataset is None:
-            raise RuntimeError("BLCSTrackingDataModule.setup('test') must run first.")
-        return self._loader(self.test_dataset, shuffle=False)
+    def _dataset_name(self) -> str:
+        return "blcs"
 
 
-__all__ = ["BLCSTrackingDataModule"]
+class ChunkedBLCSTrackingDataModule(BaseChunkedDataModule, BLCSTrackingDataModule):
+    """Generate only train scenes on the fly while keeping val/test fixed."""
+
+    def _build_chunk_manager(self) -> ChunkManager:
+        config: Any = self.config
+        generation_cfg: Any = config.generation
+        if str(generation_cfg.mode) != "multi_object":
+            raise ValueError(
+                "Chunked BLCS tracking requires generation.mode='multi_object'."
+            )
+        timeline_cfg: Any = generation_cfg.timeline
+        validate_lifecycle_capacity(
+            timeline_config=timeline_cfg,
+            data_config=config.data,
+            num_queries=int(config.model.num_queries),
+        )
+        return ChunkManager(
+            chunks_dir=self.chunks_dir,
+            generator_config=build_generator_config(cast("DictConfig", self.config)),
+            scenes_per_chunk=self.scenes_per_chunk,
+            epochs_per_chunk=self.epochs_per_chunk,
+            prefetch_chunks=self.prefetch_chunks,
+            generator_device=self.generator_device,
+            generation_workers=self.generation_workers,
+            generation_chunksize=int(config.data.chunk.generation_chunksize),
+            generation_seed=int(config.run.seed),
+            multi_object=True,
+            timeline_config=timeline_cfg,
+        )
+
+
+__all__ = ["BLCSTrackingDataModule", "ChunkedBLCSTrackingDataModule"]

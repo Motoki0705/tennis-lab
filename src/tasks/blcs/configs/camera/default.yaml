@@ -1,0 +1,24 @@
+# Surveillance-style 6-camera rig (4 fence corners + 2 baseline midpoints).
+layout: fixed
+z_min: 3.0
+z_max: 5.0
+hfov_deg: 60.0
+image_size: [1280, 720]
+fixed_look_at: [0.0, 0.0, 0.0]
+# Additional Y-axis buffer on top of BASELINE_CLEAR.
+fixed_baseline_clear_extra: 0.0
+# Volume-uniform center perturbation radius for each fixed camera (metres).
+fixed_position_noise_radius: 1.5
+# Area-uniform look-at target radius on the z=0 court plane (metres).
+fixed_look_at_xy_radius: 1.0
+broadcast_setback: 20.0
+broadcast_height: 7.0
+broadcast_hfov_deg: 35.0
+broadcast_look_at_y: 0.0
+broadcast_look_at_height: 0.5
+broadcast_position_noise_radius: 1.0
+broadcast_look_at_xy_radius: 1.0
+broadcast_hfov_jitter_deg: 2.0
+broadcast_setback_range: null
+broadcast_height_range: null
+broadcast_court_width_frac_range: null

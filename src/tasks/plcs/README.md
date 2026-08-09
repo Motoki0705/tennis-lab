@@ -1,21 +1,22 @@
 # PLCS
 
-2D の人物 pose とコート keypoint から、コート座標系でのプレイヤー `position`/`rotation`（および任意で canonical 3D pose）を推定するタスクです。lossless AMASS/ACCAD motion source、各モデル、Lightning 学習、推論を提供し、合成 dataset publication は canonical scene pipeline が所有します。
+2D の人物 pose とコート keypoint から、コート座標系でのプレイヤー `position`/`rotation`（および任意で canonical 3D pose）を推定するタスクです。AMASS/SMPL-H モーションと仮想カメラから学習データを合成する generator、frame/sequence/multiview の各モデル、Lightning 学習、推論、可視化までを一貫して提供します。
 
 ## Modules
 
 ### configuration
-- **`configuration.py`**: training・analysis runtime boundary。
-- **`configuration_contracts.py`**: task training が共有する path roots の型付き契約。
+- **`configuration.py`**: training・analysis・visualization runtime boundary。共有 contract を消費し、generation package は import しない。
+- **`configuration_contracts.py`**: training と standalone generation が共有する path roots と generation component の型付き契約。両 runtime 設定より下位に置き、相互 import を作らない。
 
 ### data/
 - **`dataset.py`**: `SceneDataset`。sceneをcamera-time基準のcanonical sample(`human_kp`/`court_kp`/`position`/`rotation`等)に変換。
 - **`datamodule.py`**: `PLCSDataModule`。model非依存のcanonical `(B,V,T,...)` batchを構築し、profile固有変換は行わない。
 - **`augmentation.py`**: `PLCSObservationAugmentation`。UVノイズ・時間jitter・可視性dropout等8段のパイプライン。
+- **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
 - **`targets.py`**: `build_coco17_world_targets()`。canonical poseまたはAthletePose3DからCOCO17ワールド座標targetを構築。
-- **`tracking_dataset.py` / `tracking_datamodule.py`**: 固定pathのsceneを読み、object観測をscene object IDの昇順で保持したまま、物理trackをlifecycle slotへpackingするDataset/DataModule。
+- **`tracking_dataset.py` / `tracking_datamodule.py`**: scene読込後にclip/viewをsampleし、object観測をscene object IDの昇順で保持したまま、物理trackをlifecycle slotへpackingするDataset/DataModule。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成する。val/testは常に`scene_dir`上の固定splitを使う。
 - **`tracking_augmentation.py`**: object列を並べ替えず、clean GTを保持したまま観測だけへpose noise/dropout/false-positiveを適用するshape adapter。
-- **`types.py`**: `PLCSBatch` のモデル入力契約。dataset provenanceはcanonical manifestだけが所有する。
+- **`types.py`**: `PLCSBatch`/`PLCSSceneMeta` のバッチ・meta契約。
 
 ### models/
 - **各model module**: 実装classのcanonical import先。package rootは内部classや旧factoryをre-exportしない。
@@ -46,15 +47,30 @@
 - **`adapters.py`**: 必須field、dtype、rank、shape、normalized UV、binary mask、view/time capacity、prepared attention tensor、output schemaを`forward`前後の境界で検証するtask-local adapter。
 - **`factory.py`**: model variantとadapterを外部compositionで一度だけ選択し、exact model classのpairを固定する唯一のfactory。
 
-### generate_dataset/sampling/
-- **`motion_sampler.py`**: canonical PLCS stage が直接消費する lossless `PLCSMotionClip` と ACCAD/AMASS library。
+### generate_dataset/
+- **`config.py`**: standalone generation boundary。共有契約を消費し、run/device/split と生成 worker 用の絶対 path を検証・解決する。
+- **`scene_generator.py`**: `SceneGenerator`。AMASSモーションをコート座標へ変換しマルチカメラ投影してsceneを構築。
+- **`multi_object_scene_generator.py`**: `MultiPersonSceneGenerator`。既存のAMASS/SMPL-H sceneを複数生成し、同一の仮想カメラへ再投影してcanonical multi-person sceneへ合成する。`generation=multi_object` で選択する。
+- **`sampling/motion_sampler.py`**: `MotionSampler`。AMASS/SMPL-Hモーションの重み付きサンプリングとjoint計算。
+- **`io/dataset_io.py` / `io/scene_loader.py`**: シーンのnpy/json書き出し・読み込み。
+- **`utils/parallel_runner.py`**: CPU専用の並列シーン生成ラッパー。
+
+### visualization/
+- **`io/scene.py`**: `SceneBundle`。シーン読込とカメラ選択。
+- **`api/predict.py`**: `predict_scene()`。predictorに固定されたadapterへscene assembly/decodeを委譲する。比較描画のcanonical poseは`visualization.canonical_pose_source=gt|prediction`で選択し、既定ではGTを使う。
+- **`contracts.py`**: `PoseRenderScene`。renderer向け最小scene契約。
+- **`rendering/scene_renderer.py`**: `PLCSSceneRenderer`。single/multi-personの3D/2D top-down/入力cameraアニメーションとGT・予測比較を描画する。3Dは `src.utils.rendering` の共有プリミティブを利用。style/視点は `visualization.style` / `visualization.view_3d` で設定。
+- **`adapters/`**: typed decoded predictionから学習時qualitative描画入力への変換。
+- **`orchestrator.py`**: `run_visualization()`。visualize/predictモードを統括。
 
 ### scripts/
-- **`train.py`**: 固定path datasetを用いる学習エントリポイント。
-- **`analysis/*.py`**: データセット分布・角速度統計・loss dominanceの分析スクリプト群。
+- **`train.py`**: 学習エントリポイント(chunked/GAN切替可)。
+- **`generate_dataset.py`**: 並列合成データ生成エントリポイント。
+- **`visualize.py`**: 可視化エントリポイント。
+- **`analysis/*.py`**: データセット分布・角速度統計・loss dominance・回転誤差サンプル抽出の分析スクリプト群。
 
 ### configs/
-- model(frame/multiview/axial系サイズ違い)・data・loss(canonical段階別)・training(default/GAN/MCMC)・metrics・paths・analysis の各Hydra設定。
+- model(frame/multiview/axial系サイズ違い)・data(singleview/multiview/chunked)・loss(canonical段階別)・training(default/GAN/MCMC)・metrics・motion_sources・simulation/camera/paths(生成用)・visualization・run・analysis の各Hydra設定。
 
 ## Multi-person tracking
 
@@ -62,14 +78,16 @@
 
 14 court UVはannotation schemaのkeypoint ID順を維持し、`court_vis`で不可視点を0化します。object ID順の各person keypointsとcourtを連結し、BLCSと同じ`src/utils/models/embeddings/group_tokens.py`の共有`CourtPlayerGroupEmbedding`により1 object = 1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*P, D)` です。M-RoPE `(time,camera,role)` のroleはquery=0、court-player group=1です。
 
-canonical scene pipeline は各 ACCAD/AMASS clip の全frameを保持し、multi-object global timelineを固定pathへ transactionally publish します。
+multi-object generatorは1024-frame global timelineに3〜10個のAMASS/SMPL-H source subclipを配置し、query再利用gapを含む同時slot占有数を4以下に保ちます。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
 
 ```bash
-# canonical scene workspaceへPLCS datasetを生成
-.venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
-  request.scene_id=B00 request.targets='[plcs]'
+# 固定train/val/testデータを事前生成
+.venv/bin/python -m src.tasks.plcs.scripts.generate_dataset \
+  generation=multi_object run.output_dir=data/plcs/multi_object
 
 # 事前生成データで学習
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking
 
+# trainだけon-the-fly chunk生成（val/testは上記の固定データ）
+.venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking_chunked
 ```

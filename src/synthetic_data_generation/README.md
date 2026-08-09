@@ -63,6 +63,10 @@ metrics.
 
 ## Dataset domains
 
+The canonical dataset package owns config-driven camera rigs, balanced target-court
+assignment, and exact cross-chunk timeline continuity. Task packages provide only
+their public domain source contracts.
+
 - Court Detection builds typed 3-D orbit trajectories, deterministic
   coverage selection, uniform arc-length samples, group-disjoint splits,
   attempt-local shards, final semantic labels, and quantitative diagnostics.

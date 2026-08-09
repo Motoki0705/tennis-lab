@@ -1,17 +1,19 @@
 # BLCS (Ball Localization in Court System)
 
-2D のボール観測とコート keypoint から、コート座標系の 3D ボール軌道を推定するタスクです。物理 source、学習、推論を提供し、合成 dataset の publication は `src/synthetic_data_generation` の canonical scene pipeline が所有します。
+2D のボール観測とコート keypoint から、コート座標系の 3D ボール軌道を推定するタスクです。合成データ生成（物理シミュレーション + マルチカメラ投影）、学習、推論、可視化までを一貫して提供します。
 
 ## Modules
 
-### generate_dataset/（physics source）
-- **`config.py`**: API server 向けに Hydra 設定を `GeneratorConfig` へ変換。
+### generate_dataset/
+- **`config.py`**: Hydra設定を `GeneratorConfig` に変換する `build_generator_config()`。
 - **`scene_generator.py`**: `BLCSSceneGenerator`。1シーン=1ラリーを物理シミュレーションとマルチカメラ投影で生成。
 - **`multi_object_scene_generator.py`**: `MultiBallSceneGenerator`。既存の物理ラリーを複数生成し、同一の仮想カメラへ再投影してcanonical multi-ball sceneへ合成する。`generation=multi_object` で選択する。
+- **`io/dataset_io.py`**: `BLCSDatasetWriter`/`load_scene()`。シーンのnpy/json入出力。
 - **`simulation/ball_physics.py`**: `PhysicsConfig`/`BallPhysics`。重力・drag・Magnus・バウンド・ネット/フェンス衝突の物理モデル。
 - **`simulation/cell_manager.py`**: `CellManager`。コートを18セルに分割し着地点サンプリング・ショット分類を行う。
 - **`simulation/rally_simulator.py`**: `RallySimulator`。サーブ〜リターンの連鎖でラリー全体を生成する中核モジュール。
 - **`simulation/targeted_velocity_sampler.py`**: `TargetedVelocitySampler`。指定セルへ着地する初速を解析的+shooting methodで算出。
+- **`utils/parallel_runner.py`**: `generate_parallel_scenes()`。CPU専用の並列シーン生成ラッパー。
 - **`api_server/`**: シミュレータ探索用FastAPI(`/cells`/`/court_geometry`/`/simulate_shot`)。
 - **`webui/`**: 上記APIを叩くNext.jsフロントエンド。
 
@@ -20,7 +22,8 @@
 - **`dataset.py`**: `BallTrajectoryDataset`。canonical multiviewサンプルとcanonical collateを提供。
 - **`datamodule.py`**: `BLCSDataModule`。composition rootで選択済みのcollateを受け取り、model variantを認識しない。
 - **`augmentation.py`**: `BLCSBallObservationAugmentation`。detector誤差を模した8段のUVノイズパイプライン。
-- **`tracking_dataset.py` / `tracking_datamodule.py`**: 固定pathのsceneを読み、object観測をscene object IDの昇順で保持したまま、物理trackをlifecycle slotへpackingするDataset/DataModule。
+- **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
+- **`tracking_dataset.py` / `tracking_datamodule.py`**: scene読込後にclip/viewをsampleし、object観測をscene object IDの昇順で保持したまま、物理trackをlifecycle slotへpackingするDataset/DataModule。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成する。val/testは常に`scene_dir`上の固定splitを使う。
 - **`tracking_augmentation.py`**: object列を並べ替えず、clean GTを保持したまま観測だけへdetector noise/dropout/false-positiveを適用するshape adapter。
 
 ### models/
@@ -48,14 +51,22 @@
 - **`tracking_{matching,losses,metrics,lightning_module}.py`**: clip-level Hungarian matching・forward前のloss term準備・multi-ball固有metrics/payloadを所有し、Lightning stage lifecycleは`tasks/base/training/tracking_lightning_module.py`へ委譲する。
 
 ### inference/
-- **`predictor.py`**: `BLCSPredictor`。checkpoint内の必須configからmodel/adapter bindingを厳密に復元し、canonical readerまたは明示的なall-view配列からtyped trajectoryを返す。
+- **`predictor.py`**: `BLCSPredictor`。checkpoint内の必須configからmodel/adapter bindingを厳密に復元し、`predict_scene()` / `predict_multiview_arrays()`でtyped trajectoryを返す。
 - **`tracking_predictor.py`**: `BLCSTrackingPredictor`。track-query bindingによりposition、presence logits/probability/判定を一度だけdecodeする。
 
+### visualization/
+- **`orchestrator.py`**: `run_visualization()`。visualize/predictモードを統括。
+- **`api/predict.py`**: `predict_positions()`。checkpointからメートル単位軌道を返す。
+- **`io/scene.py`**: `SceneBundle`。シーン読込とカメラ選択。
+- **`rendering/scene_renderer.py`**: `BLCSSceneRenderer`。single/multi-ballの3D/2D/カメラ視点アニメーションとGT・予測比較を描画する。3Dは `src.utils.rendering` の共有プリミティブ(テーマ・レイヤ規約・カメラ・フェード軌道・影・バウンスリング・HUD・ミニマップ)を利用。バウンス表示は明示的なscene eventのみを使用し、軌道から意味を推測するfallbackは持たない。style/視点は `visualization.style` / `visualization.view_3d` で設定。
+
 ### scripts/
-- **`train.py`**: 固定path datasetを用いる学習エントリポイント。
+- **`generate_dataset.py`**: 合成データ生成エントリポイント。
+- **`train.py`**: 学習エントリポイント(chunked/GAN切替可)。
+- **`visualize.py`**: 可視化エントリポイント。
 
 ### configs/
-- model(single/multiview/axial・track-queryのサイズ違い)・data・training(default/GAN)・physics/rally/targeted_velocity/generator(source simulation)・metrics・run の各Hydra設定。
+- model(single/multiview/axial・track-queryのサイズ違い)・data(single/multiview/chunked)・training(default/chunked/GAN)・physics/rally/camera/targeted_velocity/generator(データ生成)・metrics・visualization・run の各Hydra設定。
 
 ## Multi-ball tracking
 
@@ -63,14 +74,16 @@
 
 14 court UVはannotation schemaのkeypoint ID順を維持します。`observation_fusion=linear` は`court_vis`で不可視点を0化し、object ID順の各ball UVと連結して共有`CourtBallGroupEmbedding`により1 object = 1 tokenへ写像します。`observation_fusion=point_attention` は各camera/frameについて `[court_0..13, ball_0..P-1]` を32次元tokenへ変換し、court IDとobject ID順のball列を独立軸とする2軸RoPE付きself-attentionで融合します。融合後はball tokenだけをmodel dimへprojectionし、既存の空間・時間attention経路へ渡します。どちらも下流の空間self-attention入力は `(B*T, Q + V*P, D)` です。
 
-canonical scene pipeline は source rally の全frameを保持して global timeline を構成し、固定pathへ transactionally publish します。
+multi-object generatorは1024-frame global timelineに3〜10個のsource rally subclipを配置し、query再利用gapを含む同時slot占有数を4以下に保ちます。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
 
 ```bash
-# canonical scene workspaceへBLCS datasetを生成
-.venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
-  request.scene_id=B00 request.targets='[blcs]'
+# 固定train/val/testデータを事前生成
+.venv/bin/python -m src.tasks.blcs.scripts.generate_dataset \
+  generation=multi_object run.output_dir=data/blcs/multi_object
 
 # 事前生成データで学習
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking
 
+# trainだけon-the-fly chunk生成（val/testは上記の固定データ）
+.venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking_chunked
 ```

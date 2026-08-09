@@ -1,74 +1,70 @@
-"""Canonical compact PLCS tracking data module."""
+"""DataModules for pre-generated and chunked multi-person PLCS data."""
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
-import pytorch_lightning as pl
-from torch.utils.data import DataLoader
+from torch.utils.data import Dataset
 
+from src.tasks.base.data.canonical_tracking import validate_lifecycle_capacity
+from src.tasks.base.data.chunked_datamodule import BaseChunkedDataModule
+from src.tasks.base.data.datamodule import SceneDirectoryDataModule
 from src.tasks.plcs.configuration import PLCSTrainingConfig
+from src.tasks.plcs.data.chunk_manager import PLCSChunkManager
 from src.tasks.plcs.data.tracking_dataset import (
     PLCSTrackingDataset,
     collate_plcs_tracking_batch,
 )
 
 
-class PLCSTrackingDataModule(pl.LightningDataModule):
-    """Build lifecycle samples directly from canonical manifest splits."""
+class PLCSTrackingDataModule(SceneDirectoryDataModule):
+    """Read fixed train/val/test multi-person scenes from disk."""
 
     def __init__(self, config: object) -> None:
-        super().__init__()
-        self.runtime = PLCSTrainingConfig.from_config(config)
-        self.train_dataset: PLCSTrackingDataset | None = None
-        self.val_dataset: PLCSTrackingDataset | None = None
-        self.test_dataset: PLCSTrackingDataset | None = None
+        self.plcs_runtime = PLCSTrainingConfig.from_config(config)
+        super().__init__(config)
 
-    def setup(self, stage: str | None = None) -> None:
-        directory = self.runtime.data.dataset_dir
-        config = self.runtime.raw
-        if stage in {None, "fit"}:
-            self.train_dataset = PLCSTrackingDataset(
-                dataset_dir=directory, split="train", config=config, augment=True
-            )
-            self.val_dataset = PLCSTrackingDataset(
-                dataset_dir=directory,
-                split="validation",
-                config=config,
-                augment=False,
-            )
-        if stage in {None, "test"}:
-            self.test_dataset = PLCSTrackingDataset(
-                dataset_dir=directory, split="test", config=config, augment=False
-            )
+    def _build_collate_fn(self) -> Any:
+        return collate_plcs_tracking_batch
 
-    def _loader(
-        self, dataset: PLCSTrackingDataset, *, shuffle: bool
-    ) -> DataLoader[Any]:
-        data = self.runtime.data
-        return DataLoader(
-            dataset,
-            batch_size=data.batch_size,
-            shuffle=shuffle,
-            num_workers=data.num_workers,
-            pin_memory=data.pin_memory,
-            collate_fn=collate_plcs_tracking_batch,
+    def _build_dataset(
+        self, scene_dir: Path, split_file: str, augment: bool
+    ) -> Dataset:
+        return PLCSTrackingDataset(
+            scene_dir=scene_dir,
+            split_file=split_file,
+            config=self.plcs_runtime.raw,
+            augment=augment,
         )
 
-    def train_dataloader(self) -> DataLoader[Any]:
-        if self.train_dataset is None:
-            raise RuntimeError("PLCSTrackingDataModule.setup('fit') must run first.")
-        return self._loader(self.train_dataset, shuffle=True)
-
-    def val_dataloader(self) -> DataLoader[Any]:
-        if self.val_dataset is None:
-            raise RuntimeError("PLCSTrackingDataModule.setup('fit') must run first.")
-        return self._loader(self.val_dataset, shuffle=False)
-
-    def test_dataloader(self) -> DataLoader[Any]:
-        if self.test_dataset is None:
-            raise RuntimeError("PLCSTrackingDataModule.setup('test') must run first.")
-        return self._loader(self.test_dataset, shuffle=False)
+    def _dataset_name(self) -> str:
+        return "plcs"
 
 
-__all__ = ["PLCSTrackingDataModule"]
+class ChunkedPLCSTrackingDataModule(BaseChunkedDataModule, PLCSTrackingDataModule):
+    """Generate only train scenes on the fly while keeping val/test fixed."""
+
+    def _build_chunk_manager(self) -> PLCSChunkManager:
+        generation_cfg = self.plcs_runtime.raw.generation
+        if str(generation_cfg.mode) != "multi_object":
+            raise ValueError(
+                "Chunked PLCS tracking requires generation.mode='multi_object'."
+            )
+        validate_lifecycle_capacity(
+            timeline_config=generation_cfg.timeline,
+            data_config=self.plcs_runtime.raw.data,
+            num_queries=self.plcs_runtime.model.integer("num_queries"),
+        )
+        return PLCSChunkManager(
+            chunks_dir=self.chunks_dir,
+            config=self.plcs_runtime.raw,
+            scenes_per_chunk=self.scenes_per_chunk,
+            epochs_per_chunk=self.epochs_per_chunk,
+            prefetch_chunks=self.prefetch_chunks,
+            generator_device=self.generator_device,
+            generation_workers=self.generation_workers,
+        )
+
+
+__all__ = ["PLCSTrackingDataModule", "ChunkedPLCSTrackingDataModule"]

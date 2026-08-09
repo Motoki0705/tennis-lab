@@ -1,5 +1,6 @@
 """Base training components."""
 
+from src.tasks.base.training.chunk_rotation_callback import ChunkRotationCallback
 from src.tasks.base.training.gan_loss import LSGANLoss
 from src.tasks.base.training.gan_training import (
     ManualGANSupportMixin,
@@ -14,6 +15,7 @@ from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
 __all__ = [
     "BaseLightningModule",
     "BaseTrainingRunner",
+    "ChunkRotationCallback",
     "GANTransitionCallback",
     "LSGANLoss",
     "ManualGANSupportMixin",

@@ -9,8 +9,8 @@ from pathlib import Path
 
 from src.synthetic_data_generation.dataset.blcs.contracts import BLCSSampleRecord
 from src.synthetic_data_generation.dataset.blcs.timeline import BLCSTrajectoryPlan
+from src.synthetic_data_generation.dataset.continuity import FrameContinuityReport
 from src.synthetic_data_generation.dataset.contracts import FrameInventory
-from src.tasks.base.generate_dataset.continuity import FrameContinuityReport
 
 
 def write_blcs_diagnostics(

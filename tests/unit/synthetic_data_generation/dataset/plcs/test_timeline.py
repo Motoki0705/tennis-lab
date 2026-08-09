@@ -6,6 +6,10 @@ import numpy as np
 import pytest
 from numpy.typing import NDArray
 
+from src.synthetic_data_generation.dataset.camera_profiles import (
+    SampledCamera,
+    SampledCameraRig,
+)
 from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
 from src.synthetic_data_generation.dataset.plcs.assembler import build_frame_label
 from src.synthetic_data_generation.dataset.plcs.production import PLCSProductionMode
@@ -16,11 +20,7 @@ from src.synthetic_data_generation.dataset.plcs.timeline import (
     build_global_timeline,
 )
 from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
-from src.tasks.base.generate_dataset.camera_profiles import (
-    SampledCamera,
-    SampledCameraRig,
-)
-from src.tasks.plcs.generate_dataset.sampling.motion_sampler import PLCSMotionClip
+from src.tasks.plcs.generate_dataset.sampling.motion_source import PLCSMotionClip
 
 
 def _clip(

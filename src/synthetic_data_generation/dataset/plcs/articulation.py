@@ -12,7 +12,7 @@ from src.synthetic_data_generation.dataset.plcs.smplh import (
     SMPLHDeviceClip,
     SMPLHGaussianBatch,
 )
-from src.tasks.plcs.generate_dataset.sampling.motion_sampler import (
+from src.tasks.plcs.generate_dataset.sampling.motion_source import (
     MotionCategory,
     PLCSMotionClip,
 )

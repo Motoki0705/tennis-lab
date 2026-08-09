@@ -3,12 +3,14 @@
 Usage:
     python -m src.tasks.plcs.scripts.train
     python -m src.tasks.plcs.scripts.train run.gpus=0 training.max_epochs=1
-    python -m src.tasks.plcs.scripts.train training=gan_base
+    python -m src.tasks.plcs.scripts.train --config-name train_chunked
+    python -m src.tasks.plcs.scripts.train --config-name train_chunked_gan
     python -m src.tasks.plcs.scripts.train run.dry_run=true
 
 Notes:
     - Configuration is loaded from `src/tasks/plcs/configs/train.yaml`.
     - Experiment configs can be selected with `--config-name`.
+    - Chunked training uses the complete `train_chunked` config boundary.
     - GAN training is selected with a GAN training config.
     - The script uses Hydra for configuration loading.
     - Use `--config-name train_tracking` for multi-person tracking.

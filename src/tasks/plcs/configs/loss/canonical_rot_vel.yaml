@@ -8,8 +8,9 @@
 # canonical pose.
 #
 # Per-angle dominance weights (`*_velocity_angle_weights`) are derived from the
-# #521 GT training analysis (126,760 frame transitions, normalized to mean 1.0).
-# They upweight the most
+# GT training split via
+#   python -m src.tasks.plcs.scripts.analysis.analyze_angle_velocity
+# (126,760 frame transitions, normalized to mean 1.0). They upweight the most
 # dynamic angles so the velocity loss spends its budget where GT motion actually
 # happens rather than on near-static channels:
 #   - joint angles: knees dominate (~2.1x); torso-attachment angles are nearly

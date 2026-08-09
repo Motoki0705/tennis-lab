@@ -55,6 +55,7 @@ def test_yaw_radians_round_trips_dataset_cos_sin_encoding() -> None:
             model_type=_FixedRotationModel,
             profile=PLCSInputProfile.MULTIVIEW,
             num_court_tokens=20,
+            camera_index=0,
             output_rank=3,
             predict_canonical_pose=False,
             predict_auxiliary_position=False,

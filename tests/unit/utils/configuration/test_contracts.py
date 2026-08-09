@@ -195,6 +195,48 @@ def test_synthetic_boundary_catalog_exposes_exact_canonical_path_roles() -> None
     assert not any("asset_preparation" in value for value in boundary.path_role_authorities)
 
 
+@pytest.mark.parametrize(
+    "boundary_id,task_prefix",
+    [
+        (
+            "src.tasks.blcs.scripts.generate_dataset:main",
+            "src.tasks.blcs.",
+        ),
+        (
+            "src.tasks.blcs.scripts.visualize:main",
+            "src.tasks.blcs.",
+        ),
+        (
+            "src.tasks.plcs.scripts.generate_dataset:main",
+            "src.tasks.plcs.",
+        ),
+        (
+            "src.tasks.plcs.scripts.visualize:main",
+            "src.tasks.plcs.",
+        ),
+    ],
+)
+def test_task_local_boundaries_keep_task_local_configuration_authority(
+    boundary_id: str,
+    task_prefix: str,
+) -> None:
+    boundary = next(
+        contract
+        for contract in BOUNDARY_CONTRACTS
+        if contract.boundary_id == boundary_id
+    )
+
+    assert boundary.authority_symbols
+    assert all(
+        symbol.startswith((task_prefix, "src.tasks.base.", "src.utils.configuration."))
+        for symbol in boundary.authority_symbols
+    )
+    assert not any(
+        symbol.startswith("src.synthetic_data_generation.")
+        for symbol in boundary.authority_symbols
+    )
+
+
 def test_boundary_catalog_follows_package_reexport_to_actual_adapter() -> None:
     boundary = next(
         contract

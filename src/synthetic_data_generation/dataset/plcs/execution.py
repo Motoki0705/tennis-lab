@@ -37,7 +37,7 @@ from src.synthetic_data_generation.dataset.runtime import (
     ForegroundDelta,
 )
 from src.synthetic_data_generation.scene_contract import SceneCamera
-from src.tasks.plcs.generate_dataset.sampling.motion_sampler import PLCSMotionClip
+from src.tasks.plcs.generate_dataset.sampling.motion_source import PLCSMotionClip
 
 
 class PLCSPreparedAvatar(Protocol):
@@ -271,11 +271,14 @@ class CUDAPLCSExecutionBackend:
         expected_instance_ids: tuple[int, ...],
     ) -> tuple[ForegroundDelta, dict[int, int]]:
         """Delegate one sparse sample to the CUDA compositor."""
-        return compositor.compose_delta(
-            frame_index=frame_index,
-            camera=camera,
-            gaussians_scene=gaussians_scene,
-            expected_instance_ids=expected_instance_ids,
+        return cast(
+            tuple[ForegroundDelta, dict[int, int]],
+            compositor.compose_delta(
+                frame_index=frame_index,
+                camera=camera,
+                gaussians_scene=gaussians_scene,
+                expected_instance_ids=expected_instance_ids,
+            ),
         )
 
 

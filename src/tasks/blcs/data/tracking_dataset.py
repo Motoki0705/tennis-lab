@@ -2,25 +2,19 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from pathlib import Path
 from typing import Any
 
 import torch
 from torch import Tensor
 
-from src.synthetic_data_generation.dataset.blcs.assembler import (
-    BLCSCompactDatasetReader,
-    BLCSTrajectoryIndex,
-)
 from src.tasks.base.data.canonical_tracking import (
     CanonicalTrackingDataset,
     pad_and_stack_tracking_batch,
 )
+from src.tasks.base.data.scene_dataset import Scene
 from src.tasks.blcs.data.tracking_augmentation import (
     BLCSTrackingCandidateAugmentation,
 )
-from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 BLCS_TRACKING_KEYS = (
     "scene_format_version",
@@ -44,71 +38,103 @@ BLCS_TRACKING_KEYS = (
 class BLCSTrackingDataset(CanonicalTrackingDataset):
     """Load ID-ordered objects, pack lifecycle slots, and corrupt observations."""
 
-    def __init__(
-        self,
-        *,
-        dataset_dir: str | Path,
-        split: str,
-        config: Any,
-        augment: bool = False,
-    ) -> None:
-        super().__init__(config=config, augment=augment)
-        self.reader = BLCSCompactDatasetReader(Path(dataset_dir))
-        self.index: tuple[BLCSTrajectoryIndex, ...] = self.reader.split_trajectories(
-            split
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        data_cfg = self._resolve_data_cfg(self.hydra_cfg)
+        self.tracking_augmentation = BLCSTrackingCandidateAugmentation(
+            data_cfg["augmentation"]
         )
-        if not self.index:
-            raise ValueError(f"Canonical BLCS split {split!r} is empty.")
-        augmentation = self.data_config["augmentation"]
-        if not isinstance(augmentation, Mapping):
-            raise TypeError("data.augmentation must be a mapping.")
-        self.tracking_augmentation = BLCSTrackingCandidateAugmentation(augmentation)
-        self._scale = torch.tensor(COURT_COORD_SCALE_XYZ, dtype=torch.float32)
 
-    def __len__(self) -> int:
-        return len(self.index)
-
-    def __getitem__(self, item: int) -> dict[str, Tensor]:
-        index = self.index[item]
-        trajectory = self.reader.materialize_all_views(index.trajectory_id)
-        window = self.contiguous_window(index.frame_count)
-        position = torch.from_numpy(trajectory.positions_court_m[window]) / self._scale
-        velocity = torch.from_numpy(trajectory.velocities_court_mps[window])
-        physical_presence = torch.from_numpy(trajectory.present[window])
-        num_frames, num_physical = physical_presence.shape
+    def build_sample(self, scene: Scene) -> dict[str, Tensor]:
+        position = torch.from_numpy(scene.get_array("ball_pos_norm")).float()
+        velocity = torch.from_numpy(scene.get_array("ball_vel_world")).float()
+        if position.ndim != 3 or velocity.shape != position.shape:
+            raise ValueError(
+                "Tracking scenes require explicit (T,P,3) position/velocity arrays."
+            )
+        num_frames, num_physical = position.shape[:2]
+        if not scene.has_key("ball_present"):
+            raise ValueError(
+                "Tracking scene is incompatible: required ball_present is missing."
+            )
+        physical_presence = torch.from_numpy(scene.get_array("ball_present")).bool()
+        if physical_presence.shape != (num_frames, num_physical):
+            raise ValueError(
+                "ball_present must match the explicit (T,P) physical object axes."
+            )
+        window = self.select_window(scene, full_len=num_frames)
+        cameras = self.select_cameras(scene)
+        position = position[window.sl]
+        velocity = velocity[window.sl]
+        physical_presence = physical_presence[window.sl]
         packing = self.pack_lifecycle(physical_presence)
-        uv = torch.from_numpy(trajectory.ball_uv[:, window]).clone()
-        visible = torch.from_numpy(trajectory.ball_visible[:, window]).bool()
-        uv[~visible] = 0.0
-        ordered_object_ids = torch.arange(num_physical).expand(num_frames, -1)
-        candidate_index = torch.where(
-            visible, ordered_object_ids[None].expand(visible.shape[0], -1, -1), -1
-        )
-        court = torch.from_numpy(trajectory.court_kp[:, :14])[:, None].expand(
-            -1, num_frames, -1, -1
-        )
-        court_visible = torch.from_numpy(trajectory.court_visible[:, :14])[
-            :, None
-        ].expand(-1, num_frames, -1)
+
+        uv_rows: list[Tensor] = []
+        visible_rows: list[Tensor] = []
+        index_rows: list[Tensor] = []
+        clean_uv_rows: list[Tensor] = []
+        clean_visible_rows: list[Tensor] = []
+        court_rows: list[Tensor] = []
+        court_vis_rows: list[Tensor] = []
+        ordered_object_ids = torch.arange(num_physical).expand(window.seq_len, -1)
+        for camera_index in cameras.indices:
+            uv = torch.from_numpy(
+                scene.get_camera_array(camera_index, "ball_uv", window=window)
+            ).float()
+            visible = torch.from_numpy(
+                scene.get_camera_array(camera_index, "ball_visible", window=window)
+            ).bool()
+            if uv.ndim == 2:
+                uv = uv[:, None]
+                visible = visible[:, None]
+            visible &= physical_presence
+            uv[~physical_presence] = 0.0
+            clean_uv_rows.append(uv.clone())
+            clean_visible_rows.append(visible.clone())
+            candidate_index = torch.where(visible, ordered_object_ids, -1)
+            uv_rows.append(uv)
+            visible_rows.append(visible)
+            index_rows.append(candidate_index)
+
+            court_np = scene.get_camera_array(camera_index, "court_kp_uv")
+            court_visible_np = scene.get_camera_array(camera_index, "court_kp_visible")
+            if court_np.ndim == 2:
+                court = (
+                    torch.from_numpy(court_np[:14])
+                    .float()[None]
+                    .expand(window.seq_len, -1, -1)
+                )
+                court_visible = (
+                    torch.from_numpy(court_visible_np[:14])
+                    .bool()[None]
+                    .expand(window.seq_len, -1)
+                )
+            else:
+                court = torch.from_numpy(court_np[window.sl, :14]).float()
+                court_visible = torch.from_numpy(
+                    court_visible_np[window.sl, :14]
+                ).bool()
+            court_rows.append(court)
+            court_vis_rows.append(court_visible)
 
         sample = {
             "scene_format_version": torch.tensor(3),
-            "ball_uv": uv,
-            "ball_visible": visible,
-            "court_kp": court,
-            "court_vis": court_visible,
-            "frame_mask": torch.ones(num_frames, dtype=torch.bool),
-            "view_mask": torch.ones(uv.shape[0], dtype=torch.bool),
+            "ball_uv": torch.stack(uv_rows),
+            "ball_visible": torch.stack(visible_rows),
+            "court_kp": torch.stack(court_rows),
+            "court_vis": torch.stack(court_vis_rows),
+            "frame_mask": torch.ones(window.seq_len, dtype=torch.bool),
+            "view_mask": torch.ones(len(cameras.indices), dtype=torch.bool),
             "target_position": packing.pack_tensor(position, physical_presence),
             "target_velocity": packing.pack_tensor(velocity, physical_presence),
             "target_presence": packing.target_presence,
             "target_instance_id": packing.target_instance_id,
             "target_slot_mask": packing.target_presence.any(0),
-            "clean_ball_uv": uv.clone(),
-            "clean_ball_visible": visible.clone(),
-            "candidate_gt_index": candidate_index,
+            "clean_ball_uv": torch.stack(clean_uv_rows),
+            "clean_ball_visible": torch.stack(clean_visible_rows),
+            "candidate_gt_index": torch.stack(index_rows),
         }
-        return self.augment_sample(sample)
+        return sample
 
     def augment_sample(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
         if not self.augment:

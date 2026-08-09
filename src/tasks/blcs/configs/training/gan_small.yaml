@@ -1,5 +1,5 @@
 defaults:
-  - default
+  - chunked
   - _gan
   - _self_
 

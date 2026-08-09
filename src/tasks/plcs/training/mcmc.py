@@ -79,7 +79,9 @@ class MCMCConfig:
             )
         for key in {"decay", "target"}:
             if type(data[key]) is not str:
-                raise ConfigurationTypeError(f"training.mcmc.{key} must be exact str.")
+                raise ConfigurationTypeError(
+                    f"training.mcmc.{key} must be exact str."
+                )
         noise_scale = float(data["noise_scale"])
         temperature = float(data["temperature"])
         if not math.isfinite(noise_scale) or noise_scale < 0.0:

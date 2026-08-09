@@ -27,6 +27,7 @@ from src.utils.data.heatmaps import (
     refine_peaks_log_parabolic,
     resize_heatmap_sequence,
 )
+from src.utils.data.scene_io import load_scene_payload
 from src.utils.data.splits import GroupSplitConfig, make_group_split_map
 
 __all__ = [
@@ -45,6 +46,7 @@ __all__ = [
     "heatmaps_to_pixel_coords",
     "heatmaps_to_soft_argmax",
     "inject_false_positive_observations",
+    "load_scene_payload",
     "make_group_split_map",
     "normalize_frames_imagenet",
     "normalize_tensor_images_imagenet",

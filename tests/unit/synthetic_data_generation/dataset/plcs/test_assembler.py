@@ -8,6 +8,10 @@ import numpy as np
 import pytest
 from numpy.typing import NDArray
 
+from src.synthetic_data_generation.dataset.camera_profiles import (
+    SampledCamera,
+    SampledCameraRig,
+)
 from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
 from src.synthetic_data_generation.dataset.plcs.assembler import (
     PLCSSceneAssemblyInput,
@@ -37,11 +41,7 @@ from src.synthetic_data_generation.dataset.runtime import (
     RenderSampleKey,
 )
 from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
-from src.tasks.base.generate_dataset.camera_profiles import (
-    SampledCamera,
-    SampledCameraRig,
-)
-from src.tasks.plcs.generate_dataset.sampling.motion_sampler import PLCSMotionClip
+from src.tasks.plcs.generate_dataset.sampling.motion_source import PLCSMotionClip
 from src.utils.projection.camera_projector import make_look_at_camera
 
 

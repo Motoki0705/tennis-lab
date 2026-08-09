@@ -14,7 +14,7 @@ from src.synthetic_data_generation.dataset.plcs.smplh import (
     upload_motion_clip,
     upload_smplh_model,
 )
-from src.tasks.plcs.generate_dataset.sampling.motion_sampler import PLCSMotionClip
+from src.tasks.plcs.generate_dataset.sampling.motion_source import PLCSMotionClip
 
 _ACCAD = Path(
     "/home/kamimura/projects/tennis-lab/data/ACCAD/"
