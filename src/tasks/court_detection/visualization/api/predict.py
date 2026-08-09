@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Protocol
+from typing import Literal, Protocol, TypeAlias
 
 import numpy as np
 import torch
 
-from src.tasks.court_detection.data.contracts import CourtTargetKind
 from src.tasks.court_detection.inference import (
     CourtKeypointPredictor,
     CourtLinePredictor,
@@ -30,6 +29,8 @@ from src.tasks.court_detection.visualization.rendering import (
     render_seg_frames,
 )
 from src.utils.configuration import PathResolver
+
+CourtTargetHead: TypeAlias = Literal["kp", "seg", "line"]
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +130,7 @@ class _LineVisualizationPipeline:
 
 
 def build_court_visualization_pipeline(
-    task: CourtTargetKind,
+    task: CourtTargetHead,
     *,
     checkpoint_path: str | Path,
     device: str,
