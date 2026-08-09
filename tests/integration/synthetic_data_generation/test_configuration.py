@@ -128,10 +128,10 @@ def test_configured_paths_retain_their_declared_runtime_roles() -> None:
     for path in (
         line_model.backbone_repository_path,
         line_model.backbone_checkpoint_path,
-        runtime.plcs.accad_root,
-        runtime.plcs.smplh_model_root,
     ):
         assert runtime.resolver.validate(PathRole.EXTERNAL_ASSET, path) == path
+    for path in (runtime.plcs.accad_root, runtime.plcs.smplh_model_root):
+        assert runtime.resolver.validate(PathRole.DATA, path) == path
 
 
 def test_composition_root_can_construct_each_no_default_runtime_input() -> None:

@@ -121,7 +121,7 @@ def test_publish_uses_external_transaction_root_and_fixed_owner_reruns(
     assert publisher.owner == workspace.root / "datasets/court"
     assert _snapshot_from_directory_fd(publisher.owner) == ("second",) * 3
     assert not workspace.transaction_root.exists()
-    assert not any("run" in part or "fingerprint" in part for part in publisher.owner.parts)
+    assert publisher.owner.relative_to(workspace.root) == Path("datasets/court")
 
 
 def test_exchange_observers_see_only_one_complete_owner_snapshot(tmp_path: Path) -> None:
