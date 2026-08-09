@@ -1,0 +1,3 @@
+kind: synthetic_court
+workspace_root: synthetic_data_generation/scenes
+scene_ids: [B00]

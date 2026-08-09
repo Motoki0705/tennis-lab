@@ -1,0 +1,4 @@
+derived_target_root: court_detection/derived_targets
+targets:
+  - kind: line
+    target_schema: court_line_binary_v1
