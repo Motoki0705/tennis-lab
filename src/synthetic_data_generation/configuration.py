@@ -2300,14 +2300,14 @@ class PLCSDatasetConfiguration:
             require_articulated_motion=articulated,
             production_mode=production_mode,
             accad_root=resolver.resolve(
-                PathRole.EXTERNAL_ASSET,
+                PathRole.DATA,
                 _text(raw, "accad_root", path="dataset.plcs"),
             ),
             split=split,
             scene_splits=scene_splits,
             objects=objects,
             smplh_model_root=resolver.resolve(
-                PathRole.EXTERNAL_ASSET,
+                PathRole.DATA,
                 _text(raw, "smplh_model_root", path="dataset.plcs"),
             ),
             gaussian_count=_integer(
@@ -2386,7 +2386,7 @@ class ScenePipelineConfiguration:
         if len(targets) != len(set(targets)):
             raise SemanticConfigurationError("request.targets must not contain duplicates.")
         source_video = resolver.resolve(
-            PathRole.EXTERNAL_ASSET,
+            PathRole.DATA,
             _text(request_raw, "source_video", path="request"),
         )
         request = ScenePipelineRequest(

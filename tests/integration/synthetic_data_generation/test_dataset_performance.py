@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import fields
+from pathlib import Path
 
+import numpy as np
 from hydra import compose, initialize_config_dir
 
 from src.synthetic_data_generation.configuration import ScenePipelineConfiguration
@@ -20,14 +22,44 @@ from src.utils.paths import PROJECT_ROOT
 _CONFIG_ROOT = PROJECT_ROOT / "src/synthetic_data_generation/configs"
 
 
-def _runtime() -> ScenePipelineConfiguration:
+def _runtime(tmp_path: Path) -> ScenePipelineConfiguration:
+    data_root = tmp_path / "data"
+    external_root = tmp_path / "third_party"
+    data_root.mkdir()
+    (data_root / "tennis_court.mp4").write_bytes(b"integration fixture")
+    accad_root = data_root / "ACCAD"
+    accad_root.mkdir()
+    for category in ("running", "walking", "general"):
+        np.savez(
+            accad_root / f"{category}_poses.npz",
+            poses=np.zeros((2, 156), dtype=np.float32),
+            trans=np.zeros((2, 3), dtype=np.float32),
+            betas=np.zeros(10, dtype=np.float32),
+            gender=np.asarray("neutral"),
+            mocap_framerate=np.asarray(30.0),
+        )
+    (data_root / "smplh").mkdir()
+    checkpoint = (
+        external_root
+        / "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+    )
+    checkpoint.parent.mkdir(parents=True)
+    checkpoint.write_bytes(b"integration fixture")
     with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_ROOT)):
-        config = compose(config_name="run_scene_pipeline")
+        config = compose(
+            config_name="run_scene_pipeline",
+            overrides=[
+                f"roots.data_root={data_root.as_posix()}",
+                f"roots.external_asset_root={external_root.as_posix()}",
+            ],
+        )
     return ScenePipelineConfiguration.from_config(config)
 
 
-def test_composition_root_wires_config_owned_cross_domain_budgets() -> None:
-    runtime = _runtime()
+def test_composition_root_wires_config_owned_cross_domain_budgets(
+    tmp_path: Path,
+) -> None:
+    runtime = _runtime(tmp_path)
     registry = build_stage_registry(runtime)
     court = registry.definition(StageName.COURT_DATASET).handler
     blcs = registry.definition(StageName.BLCS_DATASET).handler
@@ -87,7 +119,7 @@ def test_stale_partial_dataset_attempts_are_discarded_for_all_domains(
     tmp_path,
 ) -> None:
     workspace = SceneWorkspace(scene_id="B00", root=tmp_path / "B00")
-    registry = build_stage_registry(_runtime())
+    registry = build_stage_registry(_runtime(tmp_path))
 
     for stage in (
         StageName.COURT_DATASET,

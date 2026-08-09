@@ -7,7 +7,6 @@ defaults:
   - run: train
   - physics: default
   - rally: default
-  - camera: default
   - targeted_velocity: default
   - generator: default
   - _self_

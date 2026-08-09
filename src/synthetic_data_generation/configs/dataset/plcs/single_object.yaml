@@ -10,7 +10,7 @@ motion_categories: [running]
 require_articulated_motion: true
 production_mode: single_object
 
-accad_root: tennis-lab/data/ACCAD
+accad_root: ACCAD
 split: train
 scene_splits:
   B00: train
@@ -21,7 +21,7 @@ objects:
     anchor_position_court_m: [0.0, 0.0, 0.0]
     yaw_radians: 0.0
 
-smplh_model_root: tennis-lab/data/smplh
+smplh_model_root: smplh
 gaussian_count: 2048
 smplh_batch_size: 32
 device: cuda:0

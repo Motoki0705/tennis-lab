@@ -109,12 +109,11 @@ def test_b00_alignment_evidence_and_acceptance_are_complete_typed_values() -> No
         / "court_detection/line/court-detection-epoch19.ckpt"
     ).resolve()
     assert evidence.line_model.backbone_repository_path == (
-        runtime.resolver.roots.external_asset_root / "tennis-lab/third_party/dinov3"
+        runtime.resolver.roots.external_asset_root / "dinov3"
     ).resolve()
     assert evidence.line_model.backbone_checkpoint_path == (
         runtime.resolver.roots.external_asset_root
-        / "tennis-lab/third_party/dinov3/checkpoints/"
-        "dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+        / "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
     ).resolve()
     assert (
         evidence.line_model.device,
@@ -229,10 +228,10 @@ def test_blcs_and_plcs_production_inputs_are_typed_and_have_no_frame_subset() ->
     assert runtime.blcs.render_timeout_seconds == runtime.nht.render_timeout_seconds
 
     assert runtime.plcs.accad_root == (
-        runtime.resolver.roots.external_asset_root / "tennis-lab/data/ACCAD"
+        runtime.resolver.roots.data_root / "ACCAD"
     ).resolve()
     assert runtime.plcs.smplh_model_root == (
-        runtime.resolver.roots.external_asset_root / "tennis-lab/data/smplh"
+        runtime.resolver.roots.data_root / "smplh"
     ).resolve()
     assert runtime.plcs.scene_splits == {
         "B00": "train",

@@ -465,7 +465,6 @@ def test_canonical_datamodules_retain_all_views_through_model_boundaries(
     blcs_config = _compose_task_config(
         "blcs",
         (
-            "~camera",
             "model=multiview",
             f"data.dataset_dir={_RELATIVE_DATA_ROOT.as_posix()}/blcs",
             "data.batch_size=1",
