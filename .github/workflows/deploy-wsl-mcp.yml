@@ -25,7 +25,6 @@ jobs:
     if: >-
       ${{ github.actor == github.repository_owner &&
           vars.LOCAL_GPU_ACTIONS_ENABLED == 'true' }}
-    environment: local-gpu
     runs-on: [self-hosted, linux, x64, local-gpu, cuda, wsl2, tennis-lab]
     timeout-minutes: 90
     env:
