@@ -147,6 +147,12 @@ unfixable = []
 # Vendored GVHMR research code is kept close to upstream; style-only rules are
 # relaxed there (pyflakes stays active). See src/submodules/vendor/gvhmr/README.md.
 "src/submodules/vendor/**" = ["B", "SIM", "E731"]
+# This strict boundary module consistently uses explicit forward references,
+# including TYPE_CHECKING-only rendering types; keep that convention local.
+"src/tasks/court_detection/configuration.py" = ["UP037"]
+# str+Enum intentionally retains Enum stringification rather than StrEnum's
+# raw-value __str__ behavior at metadata and diagnostic boundaries.
+"src/tasks/court_detection/data/contracts.py" = ["UP042"]
 
 [tool.ruff.format]
 # Like Black, use double quotes for strings.
@@ -164,8 +170,7 @@ line-ending = "auto"
 # Enable auto-formatting of code examples in docstrings. Markdown,
 # reStructuredText code/literal blocks and doctests are all supported.
 #
-# This is currently disabled by default, but it is planned for this
-# to be opt-out in the future.
+# This is currently disabled by default, but it is planned to be opt-out in the future.
 docstring-code-format = false
 
 # Set the line length limit used when formatting code snippets in
