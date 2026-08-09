@@ -42,6 +42,9 @@ sudoパスワードの後、別の非表示プロンプトでGitHub登録トー�
 - runnerから通常ユーザーのhome、検出したWindowsドライブ（`/mnt/c` など）、
   WSLg mountを見えなくする。WSLのDNSが参照する `/mnt/wsl` は遮断しない。
 - queue学習とCUDAテストを `/var/lib/tennis-lab-actions/gpu.lock` で直列化する。
+- 共有GPU lockだけを`tennis-actions`と`kamimura`の双方から書き込み可能にする。
+  親state directoryは`0710`で`kamimura`には通過権限だけを与え、assets、runs、
+  training queueの内容は引き続き`tennis-actions`専用とする。
 
 WSLのsystemd serviceだけではWSL instance自体を維持できないため、Windowsログオン時に
 WSLへのhandleを保持するTask Scheduler taskも登録する。
@@ -110,6 +113,14 @@ runnerのpre-job hookは、`Motoki0705/tennis-lab`の
 `push`または`workflow_dispatch`がすべて一致する場合だけjobを許可する。不一致のjobは
 checkout前に失敗する。通常のCUDAテストと学習は引き続き隔離された
 `tennis-actions` runnerで実行する。
+
+既存環境で共有GPU lockの権限だけを再設定する場合は、次を実行する。
+
+```bash
+sudo bash scripts/github_actions/install_self_hosted_runner.sh \
+  --configure-gpu-lock-only
+scripts/github_actions/install_trusted_mcp_deploy_runner.sh
+```
 
 ## セキュリティ境界
 
