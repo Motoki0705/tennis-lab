@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import Literal
 
 import torch
 import torch.nn.functional as F
@@ -15,6 +16,7 @@ def generate_gaussian_heatmaps(
     sigma_ratio: float,
     visibility: Tensor | None = None,
     *,
+    point_reduction: Literal["none", "max"] = "none",
     dtype: torch.dtype = torch.float32,
     device: torch.device | str | None = None,
 ) -> Tensor:
@@ -23,27 +25,37 @@ def generate_gaussian_heatmaps(
     Args:
         size_hw: Heatmap size as ``(height, width)``.
         centers_xy: Normalized centers in ``(x, y)`` ordering with shape
-            ``(..., 2)``.
+            ``(..., 2)``. For ``point_reduction="max"``, the final leading
+            dimension is interpreted as the point axis, e.g. ``(C, P, 2)``.
         sigma_ratio: Gaussian sigma as a ratio of the heatmap diagonal.
         visibility: Optional visibility mask broadcastable to ``centers_xy[..., 0]``.
+        point_reduction: ``"none"`` preserves one heatmap per center. ``"max"``
+            reduces the final point axis after applying visibility, yielding
+            multi-peak channels without summing overlapping Gaussians.
         dtype: Output dtype.
         device: Output device.
 
     Returns:
-        Heatmaps with shape ``(..., H, W)``.
+        Heatmaps with shape ``(..., H, W)`` for ``"none"``. ``"max"`` removes
+        the final leading point dimension.
     """
     height, width = _validate_size(size_hw)
     if sigma_ratio <= 0:
         raise ValueError("sigma_ratio must be positive.")
+    if point_reduction not in {"none", "max"}:
+        raise ValueError("point_reduction must be 'none' or 'max'.")
 
     centers = torch.as_tensor(centers_xy, dtype=dtype, device=device)
-    if centers.shape == (2,):
+    scalar_center = centers.shape == (2,)
+    if scalar_center:
         centers = centers.unsqueeze(0)
         squeeze_result = True
     else:
         squeeze_result = False
     if centers.shape[-1] != 2:
         raise ValueError(f"centers_xy must have shape (..., 2), got {tuple(centers.shape)}.")
+    if point_reduction == "max" and scalar_center:
+        raise ValueError("point_reduction='max' requires an explicit point axis.")
 
     yy = torch.linspace(0.0, 1.0, height, dtype=dtype, device=centers.device)
     xx = torch.linspace(0.0, 1.0, width, dtype=dtype, device=centers.device)
@@ -76,6 +88,8 @@ def generate_gaussian_heatmaps(
         valid = visibility_tensor & in_bounds
     heatmaps = heatmaps * valid.view(view_shape).to(dtype=dtype)
 
+    if point_reduction == "max":
+        return heatmaps.amax(dim=-3)
     if squeeze_result:
         return heatmaps.squeeze(0)
     return heatmaps
