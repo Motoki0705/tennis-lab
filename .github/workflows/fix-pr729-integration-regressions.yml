@@ -14,7 +14,7 @@ jobs:
   repair:
     if: ${{ github.head_ref == 'automation/pr729-conflict-run' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     steps:
       - name: Checkout PR 729 branch
@@ -43,9 +43,10 @@ jobs:
           def replace_once(path: str, before: str, after: str) -> None:
               target = Path(path)
               text = target.read_text(encoding="utf-8")
-              if text.count(before) != 1:
+              count = text.count(before)
+              if count != 1:
                   raise SystemExit(
-                      f"expected exactly one repair site in {path}, found {text.count(before)}"
+                      f"expected exactly one repair site in {path}, found {count}"
                   )
               target.write_text(text.replace(before, after, 1), encoding="utf-8")
 
@@ -58,12 +59,22 @@ jobs:
           replace_once(
               "src/synthetic_data_generation/configs/roots/runtime.yaml",
               "external_asset_root: /home/kamimura/projects\n",
-              "external_asset_root: data\n",
+              "external_asset_root: third_party\n",
           )
           replace_once(
               "src/synthetic_data_generation/configs/profile/b00.yaml",
               "  source_video: tennis-lab/data/tennis_court.mp4\n",
               "  source_video: tennis_court.mp4\n",
+          )
+          replace_once(
+              "src/synthetic_data_generation/configs/alignment/production.yaml",
+              "    backbone_repository_path: tennis-lab/third_party/dinov3\n",
+              "    backbone_repository_path: dinov3\n",
+          )
+          replace_once(
+              "src/synthetic_data_generation/configs/alignment/production.yaml",
+              "    backbone_checkpoint_path: tennis-lab/third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth\n",
+              "    backbone_checkpoint_path: dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth\n",
           )
           for path in (
               "src/synthetic_data_generation/configs/dataset/plcs/production.yaml",
@@ -75,36 +86,77 @@ jobs:
                   "smplh_model_root: tennis-lab/data/smplh\n",
                   "smplh_model_root: smplh\n",
               )
+
+          configuration = "src/synthetic_data_generation/configuration.py"
           replace_once(
-              "tests/integration/synthetic_data_generation/test_dataset_performance.py",
+              configuration,
+              '''            accad_root=resolver.resolve(
+                  PathRole.EXTERNAL_ASSET,
+          ''',
+              '''            accad_root=resolver.resolve(
+                  PathRole.DATA,
+          ''',
+          )
+          replace_once(
+              configuration,
+              '''            smplh_model_root=resolver.resolve(
+                  PathRole.EXTERNAL_ASSET,
+          ''',
+              '''            smplh_model_root=resolver.resolve(
+                  PathRole.DATA,
+          ''',
+          )
+          replace_once(
+              configuration,
+              '''        source_video = resolver.resolve(
+              PathRole.EXTERNAL_ASSET,
+          ''',
+              '''        source_video = resolver.resolve(
+              PathRole.DATA,
+          ''',
+          )
+
+          performance_test = (
+              "tests/integration/synthetic_data_generation/test_dataset_performance.py"
+          )
+          replace_once(
+              performance_test,
               "from dataclasses import fields\n\nfrom hydra",
               "from dataclasses import fields\nfrom pathlib import Path\n\nfrom hydra",
           )
           replace_once(
-              "tests/integration/synthetic_data_generation/test_dataset_performance.py",
+              performance_test,
               '''def _runtime() -> ScenePipelineConfiguration:
               with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_ROOT)):
                   config = compose(config_name="run_scene_pipeline")
               return ScenePipelineConfiguration.from_config(config)
           ''',
               '''def _runtime(tmp_path: Path) -> ScenePipelineConfiguration:
-              source_video = tmp_path / "tennis_court.mp4"
-              source_video.write_bytes(b"integration fixture")
-              (tmp_path / "ACCAD").mkdir(exist_ok=True)
-              (tmp_path / "smplh").mkdir(exist_ok=True)
+              data_root = tmp_path / "data"
+              external_root = tmp_path / "third_party"
+              data_root.mkdir()
+              (data_root / "tennis_court.mp4").write_bytes(b"integration fixture")
+              (data_root / "ACCAD").mkdir()
+              (data_root / "smplh").mkdir()
+              checkpoint = (
+                  external_root
+                  / "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+              )
+              checkpoint.parent.mkdir(parents=True)
+              checkpoint.write_bytes(b"integration fixture")
               with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_ROOT)):
                   config = compose(
                       config_name="run_scene_pipeline",
                       overrides=[
-                          f"roots.external_asset_root={tmp_path.as_posix()}",
-                          "request.source_video=tennis_court.mp4",
+                          f"roots.data_root={data_root.as_posix()}",
+                          f"roots.external_asset_root={external_root.as_posix()}",
                       ],
                   )
               return ScenePipelineConfiguration.from_config(config)
           ''',
           )
           replace_once(
-              "tests/integration/synthetic_data_generation/test_dataset_performance.py",
+              performance_test,
               '''def test_composition_root_wires_config_owned_cross_domain_budgets() -> None:
               runtime = _runtime()
           ''',
@@ -115,12 +167,14 @@ jobs:
           ''',
           )
           replace_once(
-              "tests/integration/synthetic_data_generation/test_dataset_performance.py",
+              performance_test,
               "    registry = build_stage_registry(_runtime())\n",
               "    registry = build_stage_registry(_runtime(tmp_path))\n",
           )
+
+          tracking_test = "tests/integration/tasks/tracking/test_training_smoke.py"
           replace_once(
-              "tests/integration/tasks/tracking/test_training_smoke.py",
+              tracking_test,
               '''    blcs_config = _compose_task_config(
                   "blcs",
                   (
@@ -132,7 +186,7 @@ jobs:
           ''',
           )
           replace_once(
-              "tests/integration/tasks/tracking/test_training_smoke.py",
+              tracking_test,
               '''            "data.augmentation.enabled=false",
                   ),
               )
@@ -145,17 +199,29 @@ jobs:
           )
           PY
 
-          if grep -R -n "tennis-lab/data/" src/synthetic_data_generation/configs; then
-            echo "legacy root-prefixed external asset paths remain"
+          if grep -R -n "tennis-lab/" src/synthetic_data_generation/configs; then
+            echo "legacy repository-prefixed synthetic-data paths remain"
             exit 1
           fi
 
-      - name: Verify configuration semantics and focused regressions
+      - name: Regenerate configuration audit ledgers
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_revision="pr729-path-role-repair-$(git rev-parse --short=12 HEAD)"
+          uv run --locked python scripts/audit_configuration.py src \
+            --write-generated-data \
+            --source-revision "$source_revision"
+          uv run --locked python scripts/audit_configuration.py src
+
+      - name: Verify path semantics and focused regressions
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p data/ACCAD data/smplh
+          mkdir -p third_party/dinov3/checkpoints
           : > data/tennis_court.mp4
+          : > third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth
           uv run --locked python - <<'PY'
           from hydra import compose, initialize_config_dir
 
@@ -167,23 +233,37 @@ jobs:
               resolved = ScenePipelineConfiguration.from_config(
                   compose(config_name="run_scene_pipeline")
               )
-          expected = (PROJECT_ROOT / "data/tennis_court.mp4").resolve()
-          if resolved.request.source_video != expected:
-              raise SystemExit(
-                  f"B00 source path changed: {resolved.request.source_video} != {expected}"
-              )
-          if resolved.plcs.accad_root != (PROJECT_ROOT / "data/ACCAD").resolve():
-              raise SystemExit(f"unexpected ACCAD path: {resolved.plcs.accad_root}")
-          if resolved.plcs.smplh_model_root != (PROJECT_ROOT / "data/smplh").resolve():
-              raise SystemExit(
-                  f"unexpected SMPL-H path: {resolved.plcs.smplh_model_root}"
-              )
+          expected = {
+              "source": (PROJECT_ROOT / "data/tennis_court.mp4").resolve(),
+              "accad": (PROJECT_ROOT / "data/ACCAD").resolve(),
+              "smplh": (PROJECT_ROOT / "data/smplh").resolve(),
+              "repo": (PROJECT_ROOT / "third_party/dinov3").resolve(),
+              "backbone": (
+                  PROJECT_ROOT
+                  / "third_party/dinov3/checkpoints/"
+                  "dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+              ).resolve(),
+          }
+          actual = {
+              "source": resolved.request.source_video,
+              "accad": resolved.plcs.accad_root,
+              "smplh": resolved.plcs.smplh_model_root,
+              "repo": resolved.alignment.evidence.line_model.backbone_repository_path,
+              "backbone": resolved.alignment.evidence.line_model.backbone_checkpoint_path,
+          }
+          if actual != expected:
+              raise SystemExit(f"path authority regression: {actual!r} != {expected!r}")
           PY
           rm -f data/tennis_court.mp4
+          rm -f third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth
+
           uv run --locked ruff check \
+            src/synthetic_data_generation/configuration.py \
             tests/unit/synthetic_data_generation/pipeline/test_publication.py \
             tests/integration/synthetic_data_generation/test_dataset_performance.py \
             tests/integration/tasks/tracking/test_training_smoke.py
+          uv run --locked mypy --follow-imports=skip \
+            src/synthetic_data_generation/configuration.py
           uv run --locked pytest -q -n 0 \
             tests/unit/synthetic_data_generation/pipeline/test_publication.py::test_publish_uses_external_transaction_root_and_fixed_owner_reruns \
             tests/integration/synthetic_data_generation/test_dataset_performance.py \
@@ -196,7 +276,7 @@ jobs:
           git rm .github/workflows/fix-pr729-integration-regressions.yml
           git add -A
           git diff --cached --check
-          git commit -m "fix(issue-695): repair post-merge configuration regressions"
+          git commit -m "fix(issue-695): repair post-merge path authority regressions"
           git push origin HEAD:feat/issue-695-canonical-scene-pipeline
 
       - name: Report result
