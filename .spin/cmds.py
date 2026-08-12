@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import shlex
 import shutil
 import subprocess
@@ -14,6 +15,8 @@ from typing import Literal
 import click
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+NHT_ROOT_RELATIVE = Path("third_party/nht")
+NHT_PUBLIC_COMMANDS = ("nht-reconstruct", "nht-render")
 DEFAULT_BASE = "origin/main"
 DEFAULT_LINT_PATHS = ("src", "tests", ".spin")
 DEFAULT_TYPECHECK_PATHS = ("src", "tests", ".spin/cmds.py")
@@ -70,8 +73,7 @@ def _changed_python_files(base: str) -> tuple[str, ...]:
         sorted(
             name
             for name in names
-            if Path(name).suffix in PYTHON_SUFFIXES
-            and (REPO_ROOT / name).is_file()
+            if Path(name).suffix in PYTHON_SUFFIXES and (REPO_ROOT / name).is_file()
         )
     )
 
@@ -125,6 +127,106 @@ def setup(no_hooks: bool) -> None:
     _run(["uv", "sync", "--locked"])
     if not no_hooks:
         _run([sys.executable, "-m", "pre_commit", "install"])
+
+
+def _uv_tool_bin_directory() -> Path | None:
+    result = subprocess.run(
+        ["uv", "tool", "dir", "--bin"],
+        cwd=REPO_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    rendered = result.stdout.strip()
+    return Path(rendered) if rendered else None
+
+
+@click.command("setup-nht")
+@click.option(
+    "--with-sfm-learned",
+    is_flag=True,
+    help="Install the optional HLOC/ALIKED/LightGlue retry backend.",
+)
+def setup_nht(with_sfm_learned: bool) -> None:
+    """Install NHT's public CLIs in an isolated uv tool environment."""
+    relative_root = NHT_ROOT_RELATIVE.as_posix()
+    _run(
+        [
+            "git",
+            "submodule",
+            "update",
+            "--init",
+            "--recursive",
+            "--checkout",
+            relative_root,
+        ]
+    )
+    extras = ["aov"]
+    if with_sfm_learned:
+        extras.append("sfm-learned")
+    package = f"{relative_root}[{','.join(extras)}]"
+    _run(
+        [
+            "uv",
+            "tool",
+            "install",
+            "--force",
+            "--editable",
+            "--with-editable",
+            f"{relative_root}/gsplat",
+            "--torch-backend",
+            "auto",
+            package,
+        ]
+    )
+
+    tool_bin = _uv_tool_bin_directory()
+    if tool_bin is None:
+        raise click.ClickException(
+            "NHT was installed, but `uv tool dir --bin` did not return a directory."
+        )
+    installed_commands = {
+        command: tool_bin / command for command in NHT_PUBLIC_COMMANDS
+    }
+    missing_installed = [
+        command
+        for command, path in installed_commands.items()
+        if not path.is_file() or not os.access(path, os.X_OK)
+    ]
+    if missing_installed:
+        raise click.ClickException(
+            "NHT installation did not publish its required public commands in "
+            f"{tool_bin}: {', '.join(missing_installed)}."
+        )
+
+    missing_from_path = [
+        command for command in NHT_PUBLIC_COMMANDS if shutil.which(command) is None
+    ]
+    if missing_from_path:
+        raise click.ClickException(
+            "NHT was installed, but its public commands are not on PATH: "
+            f"{', '.join(missing_from_path)}. Add {tool_bin} to PATH (or run `uv tool "
+            "update-shell` and restart the shell)."
+        )
+
+    mismatched = []
+    for command, installed in installed_commands.items():
+        discovered = shutil.which(command)
+        if discovered is None:
+            raise RuntimeError("Validated NHT command disappeared from PATH.")
+        if Path(discovered).resolve() != installed.resolve():
+            mismatched.append(f"{command}={discovered}")
+    if mismatched:
+        raise click.ClickException(
+            "PATH resolves NHT commands outside the installed uv tool environment: "
+            f"{', '.join(mismatched)} (expected directory: {tool_bin})."
+        )
+
+    click.echo("NHT public CLI is ready:")
+    for command, installed in installed_commands.items():
+        click.echo(f"  {command}: {installed}")
 
 
 @click.command()
@@ -347,6 +449,16 @@ def _doctor_results() -> list[DoctorResult]:
             _command_check("ffmpeg", required=False, purpose="video e2e tests"),
             _command_check("rclone", required=False, purpose="Google Drive workflows"),
             _command_check("nvidia-smi", required=False, purpose="local CUDA training"),
+            _command_check(
+                "nht-reconstruct",
+                required=False,
+                purpose="synthetic scene reconstruction; run `spin setup-nht`",
+            ),
+            _command_check(
+                "nht-render",
+                required=False,
+                purpose="synthetic dataset rendering; run `spin setup-nht`",
+            ),
         ]
     )
     results.extend(
