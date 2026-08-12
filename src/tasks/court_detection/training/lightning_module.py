@@ -43,7 +43,6 @@ class CourtDetectionLightningModule(BaseLightningModule):
         target_bundle: CourtTargetBundleSpec | None = None,
         target_bundle_state: Mapping[str, object] | None = None,
     ) -> None:
-        super().__init__(config)
         runtime = CourtTrainingConfig.from_config(config)
         if target_bundle is None:
             if target_bundle_state is None:
@@ -62,7 +61,14 @@ class CourtDetectionLightningModule(BaseLightningModule):
                     "Court target bundle disagrees with its checkpoint snapshot."
                 )
         bundle_snapshot = serialize_target_bundle(resolved_bundle)
-        self.save_hyperparameters({"target_bundle_state": bundle_snapshot})
+        super().__init__(
+            config,
+            shared_runtime=runtime.shared,
+            checkpoint_hyperparameters={
+                "config": config,
+                "target_bundle_state": bundle_snapshot,
+            },
+        )
         self.target_bundle = resolved_bundle
         self.qualitative_fps = runtime.qualitative_fps
         self.qualitative_style = runtime.render_style

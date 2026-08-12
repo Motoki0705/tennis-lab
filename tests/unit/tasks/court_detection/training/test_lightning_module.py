@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import copy
+from pathlib import Path
 from typing import cast
 
 import torch
+from hydra import compose, initialize_config_dir
 
 from src.tasks.court_detection.configuration import CourtLossConfig
 from src.tasks.court_detection.data.bundle_state import (
@@ -15,11 +18,15 @@ from src.tasks.court_detection.data.contracts import (
     CourtTargetBundleSpec,
     CourtTargetSpec,
 )
+from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
 from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
 from src.tasks.court_detection.model_io.contracts import CourtModelSpec
 from src.tasks.court_detection.training.lightning_module import (
     CourtDetectionLightningModule,
 )
+from src.tasks.court_detection.training.runner import CourtDetectionTrainingRunner
+
+_CONFIG_DIR = Path(__file__).resolve().parents[5] / "src/tasks/court_detection/configs"
 
 
 def _bundle() -> CourtTargetBundleSpec:
@@ -78,6 +85,29 @@ def test_bundle_snapshot_round_trip_is_order_preserving() -> None:
 
     assert restored == bundle
     assert restored.kinds == ("kp", "seg", "line")
+
+
+def test_runner_build_serializes_resolved_bundle_for_lightning_checkpoint() -> None:
+    bundle = _bundle()
+    datamodule = object.__new__(CourtDetectionDataModule)
+    datamodule.target_bundle_spec = bundle
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(config_name="train", overrides=["data/processing=all"])
+
+    module = CourtDetectionTrainingRunner().build_lightning_module(
+        config,
+        datamodule,
+    )
+
+    assert module.target_bundle is bundle
+    assert deserialize_target_bundle(module.hparams["target_bundle_state"]) == bundle
+    assert module.hparams["config"] is config
+    copy.deepcopy(module.hparams)
+    restored = CourtDetectionLightningModule(
+        module.hparams["config"],
+        target_bundle_state=module.hparams["target_bundle_state"],
+    )
+    assert restored.target_bundle == bundle
 
 
 def test_test_prediction_payload_flattens_every_selected_head() -> None:
