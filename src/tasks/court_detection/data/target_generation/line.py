@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import cast
+from typing import TypeAlias, cast
 
 import cv2
 import numpy as np
@@ -19,8 +19,8 @@ from src.utils.schema.court import (
     court_keypoints_3d,
 )
 
-Float32Array = NDArray[np.float32]
-UInt8Array = NDArray[np.uint8]
+Float32Array: TypeAlias = NDArray[np.float32]
+UInt8Array: TypeAlias = NDArray[np.uint8]
 
 _LINE_WIDTH_METRES = 0.05
 _BASELINE_WIDTH_METRES = 0.10

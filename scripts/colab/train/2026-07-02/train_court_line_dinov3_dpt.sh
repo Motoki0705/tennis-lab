@@ -5,7 +5,7 @@ set -euo pipefail
 # backbone, switchable between the original and the tennis-SSL DINOv3 ViT-B/16
 # weights to measure how much the extra SSL changes downstream accuracy.
 #
-# Uses the unified court-detection pipeline with data=court_line, one output
+# Uses the unified court-detection pipeline with data/processing=line, one output
 # channel, and the line BCE+Dice loss. Checkpoints and early stopping are
 # selected by val/dice (max), the task metric for binary line segmentation.
 #
@@ -44,14 +44,13 @@ OUTPUT_DIR="${OUTPUT_DIR:-/content/drive/MyDrive/tennis_lab/outputs/court_detect
 MAX_EPOCHS="${MAX_EPOCHS:-20}"
 BATCH_SIZE="${BATCH_SIZE:-8}"
 
-CKPT_DIR="${REPO_ROOT}/third_party/dinov3/checkpoints"
 COURT_DATA_DIR="${REPO_ROOT}/data/court"
 case "${VARIANT}" in
     orig)
-        BACKBONE_CKPT="${CKPT_DIR}/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+        BACKBONE_CKPT_REL="dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
         ;;
     ssl)
-        BACKBONE_CKPT="${CKPT_DIR}/dinov3_vitb16_tennis_ssl_merged.pth"
+        BACKBONE_CKPT_REL="dinov3/checkpoints/dinov3_vitb16_tennis_ssl_merged.pth"
         ;;
     *)
         echo "[train_court_line_dinov3_dpt] unknown variant: ${VARIANT}" >&2
@@ -59,6 +58,7 @@ case "${VARIANT}" in
         exit 2
         ;;
 esac
+BACKBONE_CKPT="${REPO_ROOT}/third_party/${BACKBONE_CKPT_REL}"
 
 source "${REPO_ROOT}/scripts/colab/setup/install_deps.sh"
 source "${REPO_ROOT}/scripts/colab/setup/prepare_archive_dataset.sh"
@@ -80,9 +80,9 @@ if [[ "${OUTPUT_DIR}" == /content/drive/* && ! -d /content/drive/MyDrive ]]; the
 fi
 
 if [[ ! -d "${REPO_ROOT}/third_party/dinov3/dinov3" || ! -f "${BACKBONE_CKPT}" \
-      || ! -d "${COURT_DATA_DIR}" || ! -d "${COURT_DATA_DIR}/line_masks" ]]; then
-    echo "[train_court_line_dinov3_dpt] missing DINOv3 assets, court dataset, or line masks" >&2
-    echo "[train_court_line_dinov3_dpt] (need third_party/dinov3, ${BACKBONE_CKPT}, data/court, and data/court/line_masks)." >&2
+      || ! -d "${COURT_DATA_DIR}" ]]; then
+    echo "[train_court_line_dinov3_dpt] missing DINOv3 assets or court dataset" >&2
+    echo "[train_court_line_dinov3_dpt] (need third_party/dinov3, ${BACKBONE_CKPT}, and data/court)." >&2
     echo "[train_court_line_dinov3_dpt] setup completed without producing the required assets." >&2
     exit 1
 fi
@@ -98,22 +98,21 @@ if [[ -f "${LAST_CKPTS[-1]}" ]]; then
 fi
 
 echo "[train_court_line_dinov3_dpt] starting training (extra overrides: ${*:-none})"
+python -m src.tasks.court_detection.scripts.materialize_targets \
+    data/processing=line
 python -m src.tasks.court_detection.scripts.train \
-    data=court_line \
+    data/processing=line \
     "data.augmentation.train_scales=[256]" \
     data.augmentation.val_short_side=256 \
     model/encoder=dinov3 \
     model/decoder=dpt \
-    model.name=dinov3_dpt \
-    model.num_classes=1 \
     training=lora \
-    loss=line \
-    "model.encoder.checkpoint_path=${BACKBONE_CKPT}" \
+    "model.encoder.checkpoint_path=${BACKBONE_CKPT_REL}" \
     "data.batch_size=${BATCH_SIZE}" \
     "training.trainer.max_epochs=${MAX_EPOCHS}" \
-    training.checkpoint.monitor=val/dice \
+    training.checkpoint.monitor=val/line_dice \
     training.checkpoint.mode=max \
-    training.early_stopping.monitor=val/dice \
+    training.early_stopping.monitor=val/line_dice \
     training.early_stopping.mode=max \
     "run.output_dir=${OUTPUT_DIR}" \
     "${RESUME_OVERRIDES[@]}" \

@@ -189,7 +189,7 @@ class CourtModelIOAdapter(nn.Module):
 
     @property
     def model_type(self) -> type[nn.Module]:
-        return CourtHierarchicalModel
+        return cast("type[nn.Module]", CourtHierarchicalModel)
 
     def validate_model_pair(self, model: nn.Module) -> None:
         if not isinstance(model, CourtHierarchicalModel):
@@ -526,7 +526,7 @@ def _tensor(mapping: Mapping[str, object], key: str) -> Tensor:
 
 
 def _mapping_tensor(mapping: Mapping[object, object], key: str) -> Tensor:
-    value = mapping.get(key)
+    value = mapping[key]
     if not isinstance(value, Tensor):
         raise CourtModelIOError(f"Court target field {key!r} must be a Tensor.")
     return value

@@ -84,7 +84,7 @@
 ### どこに何があるか（タスク）
 
 - Ball Detection: 画像上の2Dボール位置（`src/tasks/ball_detection`）
-- Court Detection: 20点コートキーポイント（`src/tasks/court_detection`）
+- Court Detection: 実画像KP14 / synthetic semantic KP7とseg/line（`src/tasks/court_detection`）
 - PLCS: 2Dスケルトン → コート上3Dプレーヤー位置/yaw（`src/tasks/plcs`）
 - BLCS: 2Dボール位置 → コート上3Dボール軌道（`src/tasks/blcs`）
 - GVHMR: 画像列 -> 2Dスケルトン + SMPL (`third_party/GVHMR`)

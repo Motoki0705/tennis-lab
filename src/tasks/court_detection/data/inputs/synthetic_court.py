@@ -129,7 +129,7 @@ class SyntheticCourtInput:
         return values
 
     def load(self, record: CourtSampleRecord) -> CourtRawSample:
-        if record.payload.get("source_schema") != COURT_DATASET_SCHEMA:
+        if record.payload["source_schema"] != COURT_DATASET_SCHEMA:
             raise ValueError("Synthetic Court record belongs to another source schema.")
         labels = self._load_labels(record)
         projection = labels["projection"]
@@ -443,7 +443,7 @@ class SyntheticCourtInput:
     def _boolean(value: object, *, name: str) -> bool:
         if type(value) is not bool:
             raise ValueError(f"Synthetic Court {name} must be boolean.")
-        return cast(bool, value)
+        return value
 
 
 __all__ = ["SyntheticCourtInput"]

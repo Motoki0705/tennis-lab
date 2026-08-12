@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from types import MappingProxyType
 from typing import Literal, TypeAlias
@@ -19,7 +19,7 @@ CourtSourceKind: TypeAlias = Literal["tennis_court_detector", "synthetic_court"]
 CourtSourceSplit: TypeAlias = Literal["train", "val", "test"]
 
 
-class CourtInputCapability(str, Enum):
+class CourtInputCapability(StrEnum):
     """Canonical payloads that an input layer can supply."""
 
     KEYPOINT_CHANNELS = "keypoint_channels"

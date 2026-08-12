@@ -139,7 +139,7 @@ class CourtRenderConfig:
     line_threshold: float
 
     @classmethod
-    def from_mapping(cls, value: object) -> "CourtRenderConfig":
+    def from_mapping(cls, value: object) -> CourtRenderConfig:
         mapping = as_config_mapping(value, path="render_style")
         _exact(mapping, {"draw", "layout"}, path="render_style")
         draw = require_config_mapping(mapping, "draw", path="render_style")
@@ -204,7 +204,7 @@ class CourtRenderConfig:
             )
         return result
 
-    def build(self) -> "CourtRenderStyle":
+    def build(self) -> CourtRenderStyle:
         from src.tasks.base.visualization.layout import PanelStyle
         from src.tasks.court_detection.visualization.rendering import CourtRenderStyle
 
@@ -247,7 +247,7 @@ class CourtAugmentationConfig:
     visibility_max_retries: int
 
     @classmethod
-    def from_mapping(cls, value: object) -> "CourtAugmentationConfig":
+    def from_mapping(cls, value: object) -> CourtAugmentationConfig:
         mapping = as_config_mapping(value, path="data.augmentation")
         keys = {
             "train_scales",
@@ -397,7 +397,7 @@ class TennisCourtDetectorSourceConfig:
     @classmethod
     def from_mapping(
         cls, value: object, *, resolver: PathResolver
-    ) -> "TennisCourtDetectorSourceConfig":
+    ) -> TennisCourtDetectorSourceConfig:
         mapping = as_config_mapping(value, path="data.source")
         _exact(mapping, {"kind", "root", "split_mapping"}, path="data.source")
         if _string(mapping, "kind", path="data.source") != "tennis_court_detector":
@@ -418,7 +418,7 @@ class TennisCourtDetectorSourceConfig:
                 raise SemanticConfigurationError(
                     "TennisCourtDetector split mappings must be train, val, or null."
                 )
-            resolved[cast(CourtSourceSplit, split)] = cast("str | None", value_at_split)
+            resolved[split] = value_at_split
         if resolved["train"] is None or resolved["val"] is None:
             raise SemanticConfigurationError(
                 "TennisCourtDetector train and val mappings must be explicit."
@@ -441,7 +441,7 @@ class SyntheticCourtSourceConfig:
     @classmethod
     def from_mapping(
         cls, value: object, *, resolver: PathResolver
-    ) -> "SyntheticCourtSourceConfig":
+    ) -> SyntheticCourtSourceConfig:
         mapping = as_config_mapping(value, path="data.source")
         _exact(mapping, {"kind", "workspace_root", "scene_ids"}, path="data.source")
         if _string(mapping, "kind", path="data.source") != "synthetic_court":
@@ -449,18 +449,24 @@ class SyntheticCourtSourceConfig:
                 "data.source.kind must be 'synthetic_court'."
             )
         raw_ids = _sequence(mapping, "scene_ids", path="data.source")
-        if not raw_ids or any(
-            type(item) is not str
-            or not item
-            or cast(str, item) != cast(str, item).strip()
-            or "/" in cast(str, item)
-            or "\\" in cast(str, item)
-            for item in raw_ids
-        ):
+        scene_ids_list: list[str] = []
+        for item in raw_ids:
+            if (
+                type(item) is not str
+                or not item
+                or item != item.strip()
+                or "/" in item
+                or "\\" in item
+            ):
+                raise ConfigurationTypeError(
+                    "data.source.scene_ids must contain safe non-empty scene IDs."
+                )
+            scene_ids_list.append(item)
+        if not scene_ids_list:
             raise ConfigurationTypeError(
                 "data.source.scene_ids must contain safe non-empty scene IDs."
             )
-        scene_ids = tuple(cast(str, item) for item in raw_ids)
+        scene_ids = tuple(scene_ids_list)
         if len(set(scene_ids)) != len(scene_ids):
             raise SemanticConfigurationError(
                 "data.source.scene_ids must not contain duplicates."
@@ -499,7 +505,7 @@ class CourtTargetConfig:
     target_schema: str | None
 
     @classmethod
-    def from_mapping(cls, value: object, *, index: int) -> "CourtTargetConfig":
+    def from_mapping(cls, value: object, *, index: int) -> CourtTargetConfig:
         path = f"data.processing.targets[{index}]"
         mapping = as_config_mapping(value, path=path)
         kind = _string(mapping, "kind", path=path)
@@ -535,7 +541,7 @@ class CourtProcessingConfig:
     @classmethod
     def from_mapping(
         cls, value: object, *, resolver: PathResolver
-    ) -> "CourtProcessingConfig":
+    ) -> CourtProcessingConfig:
         mapping = as_config_mapping(value, path="data.processing")
         _exact(
             mapping,
@@ -579,7 +585,7 @@ class CourtDataConfig:
     augmentation: CourtAugmentationConfig
 
     @classmethod
-    def from_mapping(cls, value: object, *, resolver: PathResolver) -> "CourtDataConfig":
+    def from_mapping(cls, value: object, *, resolver: PathResolver) -> CourtDataConfig:
         mapping = as_config_mapping(value, path="data")
         _exact(
             mapping,
@@ -626,7 +632,7 @@ class CourtLoRAConfig:
     target_modules: tuple[str, ...]
 
     @classmethod
-    def from_mapping(cls, value: object) -> "CourtLoRAConfig":
+    def from_mapping(cls, value: object) -> CourtLoRAConfig:
         mapping = as_config_mapping(value, path="model.encoder.lora")
         _exact(
             mapping,
@@ -670,7 +676,7 @@ class CourtEncoderConfig:
     @classmethod
     def from_mapping(
         cls, value: object, *, resolver: PathResolver
-    ) -> "CourtEncoderConfig":
+    ) -> CourtEncoderConfig:
         mapping = as_config_mapping(value, path="model.encoder")
         name = _string(mapping, "name", path="model.encoder")
         if name == "default":
@@ -726,7 +732,7 @@ class CourtEncoderConfig:
                 PathRole.EXTERNAL_ASSET,
                 _string(mapping, "repository_path", path="model.encoder"),
             ),
-            checkpoint_path=resolver.resolve(
+            checkpoint_path=resolver.resolve_symlink_entry(
                 PathRole.EXTERNAL_ASSET,
                 _string(mapping, "checkpoint_path", path="model.encoder"),
             ),
@@ -749,7 +755,7 @@ class CourtDecoderConfig:
     reassemble_factors: tuple[float, ...] | None
 
     @classmethod
-    def from_mapping(cls, value: object) -> "CourtDecoderConfig":
+    def from_mapping(cls, value: object) -> CourtDecoderConfig:
         mapping = as_config_mapping(value, path="model.decoder")
         name = _string(mapping, "name", path="model.decoder")
         expected = (
@@ -806,7 +812,7 @@ class CourtModelConfig:
     @classmethod
     def from_mapping(
         cls, value: object, *, resolver: PathResolver
-    ) -> "CourtModelConfig":
+    ) -> CourtModelConfig:
         mapping = as_config_mapping(value, path="model")
         _exact(
             mapping,
@@ -844,7 +850,7 @@ class CourtLossConfig:
     line_pos_weight: float
 
     @classmethod
-    def from_mapping(cls, value: object) -> "CourtLossConfig":
+    def from_mapping(cls, value: object) -> CourtLossConfig:
         mapping = as_config_mapping(value, path="loss")
         _exact(mapping, {"seg", "kp", "line"}, path="loss")
         seg = require_config_mapping(mapping, "seg", path="loss")
@@ -897,7 +903,7 @@ class CourtTrainingConfig:
     qualitative_fps: int
 
     @classmethod
-    def from_config(cls, value: object) -> "CourtTrainingConfig":
+    def from_config(cls, value: object) -> CourtTrainingConfig:
         config = as_config_mapping(value, path="configuration")
         _exact(
             config,

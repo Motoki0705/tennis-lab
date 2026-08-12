@@ -199,10 +199,10 @@ class CourtDetectionLightningModule(BaseLightningModule):
             raise ValueError("Court test result requires a logits mapping.")
         decoded = self.model_io.test_payload(batch, cast(CourtLogits, logits))
         payload: dict[str, object] = {}
-        image_size = decoded.get("image_size")
+        image_size = decoded["image_size"]
         if isinstance(image_size, Tensor):
             payload["image_size"] = image_size
-        predictions = decoded.get("predictions")
+        predictions = decoded["predictions"]
         if not isinstance(predictions, Mapping):
             raise ValueError("Court test payload predictions must be a mapping.")
         for kind, value in predictions.items():

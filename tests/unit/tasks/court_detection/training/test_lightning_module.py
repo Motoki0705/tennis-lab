@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import torch
 
 from src.tasks.court_detection.configuration import CourtLossConfig
@@ -98,7 +100,7 @@ def test_test_prediction_payload_flattens_every_selected_head() -> None:
     )
 
     assert payload["image_size"] is batch["image_size"]
-    assert payload["kp_keypoints_normalized"].shape == (2, 2, 4, 2)
-    assert payload["kp_scores"].shape == (2, 2, 4)
-    assert payload["seg_mask"].shape == (2, 4, 5)
-    assert payload["line_probability"].shape == (2, 1, 4, 5)
+    assert cast(torch.Tensor, payload["kp_keypoints_normalized"]).shape == (2, 2, 4, 2)
+    assert cast(torch.Tensor, payload["kp_scores"]).shape == (2, 2, 4)
+    assert cast(torch.Tensor, payload["seg_mask"]).shape == (2, 4, 5)
+    assert cast(torch.Tensor, payload["line_probability"]).shape == (2, 1, 4, 5)
