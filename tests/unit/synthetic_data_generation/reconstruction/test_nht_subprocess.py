@@ -5,11 +5,13 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import yaml
 
 from src.synthetic_data_generation.reconstruction import nht_subprocess
 from src.synthetic_data_generation.reconstruction.contracts import (
     NHT_PIPELINE_CONFIG_SCHEMA,
     NHTPipelineConfig,
+    NHTTrainingRuntime,
     ReconstructionCommandRequest,
 )
 from src.synthetic_data_generation.reconstruction.scene_export import (
@@ -37,6 +39,44 @@ def _request(tmp_path: Path) -> ReconstructionCommandRequest:
         workspace=scene_root / "reconstruction",
         pipeline_config=_pipeline_config(tmp_path),
     )
+
+
+def _training_runtime(tmp_path: Path) -> NHTTrainingRuntime:
+    python = tmp_path / "trainer/bin/python"
+    python.parent.mkdir(parents=True)
+    python.write_text("#!/bin/sh\n", encoding="utf-8")
+    python.chmod(0o755)
+    trainer = tmp_path / "trainer/simple_trainer_nht.py"
+    trainer.write_text("# test trainer\n", encoding="utf-8")
+    return NHTTrainingRuntime(
+        python=python.resolve(),
+        trainer=trainer.resolve(),
+    )
+
+
+def test_training_runtime_rejects_missing_python(tmp_path: Path) -> None:
+    trainer = tmp_path / "simple_trainer_nht.py"
+    trainer.write_text("# test trainer\n", encoding="utf-8")
+    runtime = NHTTrainingRuntime(
+        python=(tmp_path / "missing-python").resolve(),
+        trainer=trainer.resolve(),
+    )
+
+    with pytest.raises(FileNotFoundError, match="training Python is unavailable"):
+        runtime.validate()
+
+
+def test_training_runtime_rejects_missing_trainer(tmp_path: Path) -> None:
+    python = tmp_path / "python"
+    python.write_text("#!/bin/sh\n", encoding="utf-8")
+    python.chmod(0o755)
+    runtime = NHTTrainingRuntime(
+        python=python.resolve(),
+        trainer=(tmp_path / "missing-trainer.py").resolve(),
+    )
+
+    with pytest.raises(FileNotFoundError, match="trainer is unavailable"):
+        runtime.validate()
 
 
 def test_request_builds_fixed_public_command(tmp_path: Path) -> None:
@@ -165,10 +205,15 @@ def test_runner_uses_shell_free_subprocess_and_validates_export(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     request = _request(tmp_path)
+    training_runtime = _training_runtime(tmp_path)
     recorded: dict[str, object] = {}
 
     def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
         recorded["argv"] = argv
+        config_path = Path(argv[argv.index("--config") + 1])
+        recorded["effective_config"] = yaml.safe_load(
+            config_path.read_text(encoding="utf-8")
+        )
         recorded.update(kwargs)
         request.workspace.mkdir(parents=True)
         request.run_manifest_path.write_text("{}", encoding="utf-8")
@@ -191,9 +236,24 @@ def test_runner_uses_shell_free_subprocess_and_validates_export(
         nht_subprocess, "validate_standard_scene_export", lambda _path: scene
     )
 
-    result = nht_subprocess.run_nht_reconstruction(request)
+    result = nht_subprocess.run_nht_reconstruction(
+        request,
+        training_runtime=training_runtime,
+    )
 
     assert result is scene
-    assert recorded["argv"] == list(request.argv())
+    argv = recorded["argv"]
+    assert isinstance(argv, list)
+    assert argv[:-1] == list(request.argv())[:-1]
+    assert argv[-1] != str(request.pipeline_config.path)
+    effective_config = recorded["effective_config"]
+    assert isinstance(effective_config, dict)
+    assert effective_config["nht_training"] == {
+        "python": str(training_runtime.python),
+        "trainer": str(training_runtime.trainer),
+    }
+    assert request.pipeline_config.path.read_text(encoding="utf-8") == (
+        f"schema: {NHT_PIPELINE_CONFIG_SCHEMA}\n"
+    )
     assert recorded["shell"] is False
     assert recorded["check"] is True

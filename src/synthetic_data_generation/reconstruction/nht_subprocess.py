@@ -4,14 +4,19 @@ from __future__ import annotations
 
 import os
 import subprocess
-from collections.abc import Mapping
-from dataclasses import dataclass
+import tempfile
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
+from dataclasses import dataclass, replace
 from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
+import yaml
+
 from src.synthetic_data_generation.reconstruction.contracts import (
     NHTPipelineConfig,
+    NHTTrainingRuntime,
     ReconstructionCommandRequest,
 )
 from src.synthetic_data_generation.reconstruction.scene_export import (
@@ -29,6 +34,7 @@ if TYPE_CHECKING:
 def run_nht_reconstruction(
     request: ReconstructionCommandRequest,
     *,
+    training_runtime: NHTTrainingRuntime | None = None,
     environment: Mapping[str, str] | None = None,
     timeout_seconds: float | None = None,
 ) -> StandardSceneExport:
@@ -40,13 +46,14 @@ def run_nht_reconstruction(
     if public_environment:
         child_environment = dict(os.environ)
         child_environment.update(public_environment)
-    subprocess.run(
-        list(request.argv()),
-        check=True,
-        shell=False,
-        timeout=timeout_seconds,
-        env=child_environment,
-    )
+    with _runtime_bound_request(request, training_runtime) as effective_request:
+        subprocess.run(
+            list(effective_request.argv()),
+            check=True,
+            shell=False,
+            timeout=timeout_seconds,
+            env=child_environment,
+        )
     if not request.run_manifest_path.is_file():
         raise FileNotFoundError(
             f"nht-reconstruct completed without its fixed run.json: {request.run_manifest_path}"
@@ -65,6 +72,7 @@ class NHTReconstructionHandler:
 
     executable: str | Path
     pipeline_config: NHTPipelineConfig
+    training_runtime: NHTTrainingRuntime
     environment: Mapping[str, str]
     timeout_seconds: float
 
@@ -73,6 +81,8 @@ class NHTReconstructionHandler:
             raise ValueError("NHT reconstruction timeout_seconds must be positive.")
         if not isinstance(self.pipeline_config, NHTPipelineConfig):
             raise TypeError("pipeline_config must be an NHTPipelineConfig.")
+        if not isinstance(self.training_runtime, NHTTrainingRuntime):
+            raise TypeError("training_runtime must be an NHTTrainingRuntime.")
         self.pipeline_config.validate()
         object.__setattr__(
             self,
@@ -96,6 +106,7 @@ class NHTReconstructionHandler:
     def preflight(self, context: StageExecutionContext) -> None:
         """Validate fixed paths and command inputs before execution."""
         self._command_request(context)
+        self.training_runtime.validate()
 
     def execute(self, context: StageExecutionContext) -> StageExecutionSummary:
         """Execute NHT and summarize its semantically validated public export."""
@@ -105,6 +116,7 @@ class NHTReconstructionHandler:
 
         scene = run_nht_reconstruction(
             self._command_request(context),
+            training_runtime=self.training_runtime,
             environment=self.environment,
             timeout_seconds=self.timeout_seconds,
         )
@@ -115,6 +127,7 @@ class NHTReconstructionHandler:
                 "point_count": scene.point_count,
                 "scene_path": "export/scene.json",
                 "pipeline_config": dict(self.pipeline_config.provenance()),
+                "training_runtime": dict(self.training_runtime.provenance()),
             }
         )
 
@@ -149,6 +162,45 @@ def _public_environment(
             )
         result[key] = value
     return result
+
+
+@contextmanager
+def _runtime_bound_request(
+    request: ReconstructionCommandRequest,
+    runtime: NHTTrainingRuntime | None,
+) -> Iterator[ReconstructionCommandRequest]:
+    """Bind the portable NHT config to one machine-local trainer environment."""
+    if runtime is None:
+        yield request
+        return
+    runtime.validate()
+    loaded: object = yaml.safe_load(
+        request.pipeline_config.path.read_text(encoding="utf-8")
+    )
+    if not isinstance(loaded, Mapping):  # pragma: no cover - validated by contract
+        raise TypeError("NHT pipeline config must contain a mapping.")
+    effective = dict(loaded)
+    training_value = effective.get("nht_training", {})
+    if not isinstance(training_value, Mapping):
+        raise TypeError("NHT pipeline config nht_training must be a mapping.")
+    training = dict(training_value)
+    training.update(
+        {
+            "python": str(runtime.python),
+            "trainer": str(runtime.trainer),
+        }
+    )
+    effective["nht_training"] = training
+    with tempfile.TemporaryDirectory(prefix="tennis-lab-nht-") as directory:
+        path = Path(directory) / "pipeline.yaml"
+        path.write_text(
+            yaml.safe_dump(effective, sort_keys=False),
+            encoding="utf-8",
+        )
+        yield replace(
+            request,
+            pipeline_config=NHTPipelineConfig.load(path.resolve()),
+        )
 
 
 __all__ = ["NHTReconstructionHandler", "run_nht_reconstruction"]

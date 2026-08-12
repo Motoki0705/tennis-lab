@@ -71,6 +71,7 @@ from src.synthetic_data_generation.pipeline.workspace import SceneWorkspace
 from src.synthetic_data_generation.reconstruction.contracts import (
     NHT_RECONSTRUCT_COMMAND,
     NHTPipelineConfig,
+    NHTTrainingRuntime,
 )
 from src.synthetic_data_generation.rendering.nht.contracts import NHT_RENDER_COMMAND
 from src.tasks.blcs.generate_dataset.source_api import (
@@ -392,6 +393,7 @@ class NHTCommandPaths:
     reconstruct_executable: str | Path
     render_executable: str | Path
     pipeline_config: NHTPipelineConfig
+    training_runtime: NHTTrainingRuntime
     environment: Mapping[str, str]
     reconstruction_timeout_seconds: float
     render_timeout_seconds: float
@@ -410,6 +412,8 @@ class NHTCommandPaths:
                 "reconstruct_executable",
                 "render_executable",
                 "pipeline_config_path",
+                "training_python_path",
+                "trainer_path",
                 "environment",
                 "reconstruction_timeout_seconds",
                 "render_timeout_seconds",
@@ -426,6 +430,7 @@ class NHTCommandPaths:
             expected=NHT_RENDER_COMMAND,
         )
         pipeline_config = _nht_pipeline_config(raw, resolver=resolver)
+        training_runtime = _nht_training_runtime(raw, resolver=resolver)
         environment_raw = _mapping(raw["environment"], path="nht.environment")
         unknown_environment = sorted(
             set(environment_raw) - {"CUDA_VISIBLE_DEVICES"}
@@ -463,6 +468,7 @@ class NHTCommandPaths:
             reconstruct_executable=reconstruct,
             render_executable=render,
             pipeline_config=pipeline_config,
+            training_runtime=training_runtime,
             environment=environment,
             reconstruction_timeout_seconds=reconstruction_timeout,
             render_timeout_seconds=render_timeout,
@@ -494,6 +500,22 @@ def _nht_pipeline_config(
         )
     resolved = resolver.resolve(PathRole.EXTERNAL_ASSET, configured)
     return NHTPipelineConfig.load(resolved)
+
+
+def _nht_training_runtime(
+    mapping: ConfigMapping,
+    *,
+    resolver: PathResolver,
+) -> NHTTrainingRuntime:
+    """Resolve the dedicated trainer environment without dereferencing its Python."""
+    configured_python = _text(mapping, "training_python_path", path="nht")
+    python = resolver.resolve_symlink_entry(
+        PathRole.EXTERNAL_ASSET,
+        configured_python,
+    )
+    configured_trainer = _text(mapping, "trainer_path", path="nht")
+    trainer = resolver.resolve(PathRole.EXTERNAL_ASSET, configured_trainer)
+    return NHTTrainingRuntime(python=python, trainer=trainer)
 
 
 def _installed_nht_command(

@@ -8,7 +8,7 @@ import shlex
 import shutil
 import subprocess
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Literal
 
@@ -16,7 +16,21 @@ import click
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 NHT_ROOT_RELATIVE = Path("third_party/nht")
+NHT_TRAINER_VENV_RELATIVE = NHT_ROOT_RELATIVE / ".trainer-venv"
+NHT_TRAINER_PYTHON_RELATIVE = NHT_TRAINER_VENV_RELATIVE / "bin/python"
+NHT_TRAINER_REQUIREMENTS_RELATIVE = NHT_ROOT_RELATIVE / "gsplat/examples/requirements.txt"
+NHT_TRAINER_RELATIVE = NHT_ROOT_RELATIVE / "gsplat/examples/simple_trainer_nht.py"
+NHT_ADAPTER_RELATIVE = NHT_ROOT_RELATIVE / "nht_pipeline/nht_adapter.py"
 NHT_PUBLIC_COMMANDS = ("nht-reconstruct", "nht-render")
+NHT_TOOL_ENVIRONMENT = "nht"
+NHT_PYTHON_VERSION = "3.11"
+NHT_TORCH_VERSION = "2.9.1"
+NHT_TORCHVISION_VERSION = "0.24.1"
+NHT_TORCH_BACKEND = "cu130"
+NHT_TINYCUDANN_REQUIREMENT = (
+    "tinycudann @ git+https://github.com/NVlabs/tiny-cuda-nn/"
+    "@749dd70c5afc5a9dadb85e5652ed65d55e0ba187#subdirectory=bindings/torch"
+)
 DEFAULT_BASE = "origin/main"
 DEFAULT_LINT_PATHS = ("src", "tests", ".spin")
 DEFAULT_TYPECHECK_PATHS = ("src", "tests", ".spin/cmds.py")
@@ -24,9 +38,18 @@ CI_MARKER_EXPRESSION = "not local_data and not cuda"
 PYTHON_SUFFIXES = frozenset({".py", ".pyi"})
 
 
-def _run(command: Sequence[str]) -> None:
+def _run(
+    command: Sequence[str],
+    *,
+    environment: Mapping[str, str] | None = None,
+) -> None:
     click.secho(f"$ {shlex.join(command)}", dim=True)
-    result = subprocess.run(command, cwd=REPO_ROOT, check=False)
+    result = subprocess.run(
+        command,
+        cwd=REPO_ROOT,
+        check=False,
+        env=dict(environment) if environment is not None else None,
+    )
     if result.returncode != 0:
         raise click.exceptions.Exit(result.returncode)
 
@@ -143,6 +166,33 @@ def _uv_tool_bin_directory() -> Path | None:
     return Path(rendered) if rendered else None
 
 
+def _uv_tool_directory() -> Path | None:
+    result = subprocess.run(
+        ["uv", "tool", "dir"],
+        cwd=REPO_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    rendered = result.stdout.strip()
+    return Path(rendered) if rendered else None
+
+
+def _nht_cuda_build_environment() -> Mapping[str, str]:
+    """Expose WSL's CUDA driver import library only while extensions build."""
+    environment = dict(os.environ)
+    wsl_driver_directory = Path("/usr/lib/wsl/lib")
+    if (wsl_driver_directory / "libcuda.so").is_file():
+        current = environment.get("LIBRARY_PATH")
+        entries = [str(wsl_driver_directory)]
+        if current:
+            entries.append(current)
+        environment["LIBRARY_PATH"] = os.pathsep.join(entries)
+    return environment
+
+
 @click.command("setup-nht")
 @click.option(
     "--with-sfm-learned",
@@ -150,7 +200,7 @@ def _uv_tool_bin_directory() -> Path | None:
     help="Install the optional HLOC/ALIKED/LightGlue retry backend.",
 )
 def setup_nht(with_sfm_learned: bool) -> None:
-    """Install NHT's public CLIs in an isolated uv tool environment."""
+    """Install isolated NHT public CLIs and its dedicated trainer runtime."""
     relative_root = NHT_ROOT_RELATIVE.as_posix()
     _run(
         [
@@ -173,12 +223,136 @@ def setup_nht(with_sfm_learned: bool) -> None:
             "tool",
             "install",
             "--force",
+            "--python",
+            NHT_PYTHON_VERSION,
             "--editable",
             "--with-editable",
             f"{relative_root}/gsplat",
+            "--with",
+            f"torch=={NHT_TORCH_VERSION}",
+            "--with",
+            f"torchvision=={NHT_TORCHVISION_VERSION}",
             "--torch-backend",
-            "auto",
+            NHT_TORCH_BACKEND,
             package,
+        ]
+    )
+    tool_directory = _uv_tool_directory()
+    if tool_directory is None:
+        raise click.ClickException(
+            "NHT was installed, but `uv tool dir` did not return a directory."
+        )
+    tool_python = tool_directory / NHT_TOOL_ENVIRONMENT / "bin/python"
+    cuda_build_environment = _nht_cuda_build_environment()
+    _run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            str(tool_python),
+            "setuptools<81",
+        ]
+    )
+    _run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            str(tool_python),
+            "--no-build-isolation",
+            "--no-cache",
+            NHT_TINYCUDANN_REQUIREMENT,
+        ],
+        environment=cuda_build_environment,
+    )
+    _run(
+        [
+            "uv",
+            "run",
+            "--python",
+            str(tool_python),
+            "--no-project",
+            "--",
+            "python",
+            "-c",
+            "from gsplat.nht.deferred_shader import DeferredShaderModule",
+        ]
+    )
+    trainer_python = NHT_TRAINER_PYTHON_RELATIVE.as_posix()
+    _run(
+        [
+            "uv",
+            "venv",
+            "--clear",
+            "--python",
+            NHT_PYTHON_VERSION,
+            NHT_TRAINER_VENV_RELATIVE.as_posix(),
+        ]
+    )
+    _run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            trainer_python,
+            "setuptools<81",
+        ]
+    )
+    _run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            trainer_python,
+            "--torch-backend",
+            NHT_TORCH_BACKEND,
+            f"torch=={NHT_TORCH_VERSION}",
+            f"torchvision=={NHT_TORCHVISION_VERSION}",
+        ]
+    )
+    _run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            trainer_python,
+            "--no-build-isolation",
+            "--no-cache",
+            "--requirements",
+            NHT_TRAINER_REQUIREMENTS_RELATIVE.as_posix(),
+        ],
+        environment=cuda_build_environment,
+    )
+    _run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            trainer_python,
+            "--no-build-isolation",
+            "--no-cache",
+            "--editable",
+            f"{relative_root}/gsplat",
+        ],
+        environment=cuda_build_environment,
+    )
+    _run(
+        [
+            "uv",
+            "run",
+            "--python",
+            trainer_python,
+            "--no-project",
+            NHT_ADAPTER_RELATIVE.as_posix(),
+            "probe",
+            "--trainer",
+            NHT_TRAINER_RELATIVE.as_posix(),
         ]
     )
 
@@ -227,6 +401,7 @@ def setup_nht(with_sfm_learned: bool) -> None:
     click.echo("NHT public CLI is ready:")
     for command, installed in installed_commands.items():
         click.echo(f"  {command}: {installed}")
+    click.echo(f"NHT trainer runtime is ready: {REPO_ROOT / NHT_TRAINER_VENV_RELATIVE}")
 
 
 @click.command()
