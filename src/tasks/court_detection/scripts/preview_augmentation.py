@@ -238,7 +238,7 @@ def _annotate_sample(
 ) -> np.ndarray:
     """Render every selected target over one shared RGB geometry."""
     image = cast("torch.Tensor", sample["image"])
-    rgb = denormalize_tensor_to_rgb(image)
+    rgb: np.ndarray = denormalize_tensor_to_rgb(image)
     targets = cast("Mapping[str, object]", sample["targets"])
     for kind in target_kinds:
         if kind == "kp":
@@ -249,7 +249,7 @@ def _annotate_sample(
             rgb = _overlay_line_mask(rgb, targets[kind], cfg)
         else:  # pragma: no cover - strict configuration rejects this
             raise ValueError(f"Unknown Court target: {kind!r}")
-    return cast("np.ndarray", rgb)
+    return rgb
 
 
 def _overlay_keypoints(rgb: np.ndarray, value: object, cfg: DictConfig) -> np.ndarray:
