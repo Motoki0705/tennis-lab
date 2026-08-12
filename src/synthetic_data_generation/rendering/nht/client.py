@@ -101,7 +101,12 @@ class NHTRenderClient:
         )
         subprocess_wall_seconds = time.perf_counter() - started
         result = _load_render_result(request, scene)
-        loaded_array_bytes = sum(record.arrays.byte_count for record in result.records)
+        loaded_array_bytes = sum(
+            record.validated_array_byte_count for record in result.records
+        )
+        maximum_live_array_bytes = max(
+            record.validated_array_byte_count for record in result.records
+        )
         result._bind_evidence(
             NHTRenderEvidence(
                 invocation_index=invocation_index,
@@ -112,6 +117,10 @@ class NHTRenderClient:
                 array_file_load_count=3 * len(result.records),
                 preview_validation_count=2 * len(result.records),
                 loaded_array_bytes=loaded_array_bytes,
+                maximum_live_array_bytes=maximum_live_array_bytes,
+                retained_array_bytes=sum(
+                    record.retained_array_byte_count for record in result.records
+                ),
                 subprocess_wall_seconds=subprocess_wall_seconds,
             )
         )
@@ -328,6 +337,7 @@ def _load_render_result(
             depth_path=depth_path,
         )
         record._bind_arrays(arrays)
+        del arrays
         records.append(record)
 
     return NHTRenderResult(

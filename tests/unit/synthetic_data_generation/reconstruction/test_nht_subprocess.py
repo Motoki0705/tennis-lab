@@ -8,11 +8,22 @@ import pytest
 
 from src.synthetic_data_generation.reconstruction import nht_subprocess
 from src.synthetic_data_generation.reconstruction.contracts import (
+    NHT_PIPELINE_CONFIG_SCHEMA,
+    NHTPipelineConfig,
     ReconstructionCommandRequest,
 )
 from src.synthetic_data_generation.reconstruction.scene_export import (
     StandardSceneExport,
 )
+
+
+def _pipeline_config(tmp_path: Path) -> NHTPipelineConfig:
+    path = tmp_path / "nht-pipeline.yaml"
+    path.write_text(
+        f"schema: {NHT_PIPELINE_CONFIG_SCHEMA}\n",
+        encoding="utf-8",
+    )
+    return NHTPipelineConfig.load(path.resolve())
 
 
 def _request(tmp_path: Path) -> ReconstructionCommandRequest:
@@ -24,6 +35,7 @@ def _request(tmp_path: Path) -> ReconstructionCommandRequest:
         scene_id="B00",
         input_video=source,
         workspace=scene_root / "reconstruction",
+        pipeline_config=_pipeline_config(tmp_path),
     )
 
 
@@ -38,8 +50,9 @@ def test_request_builds_fixed_public_command(tmp_path: Path) -> None:
         str(request.input_video),
         "--workspace",
         str(request.workspace),
+        "--config",
+        str(request.pipeline_config.path),
     )
-    assert "--config" not in request.argv()
     assert request.scene_path == request.workspace / "export/scene.json"
 
 
@@ -50,6 +63,7 @@ def test_request_rejects_noncanonical_workspace(tmp_path: Path) -> None:
             scene_id=request.scene_id,
             input_video=request.input_video,
             workspace=tmp_path / "runs/attempt-1",
+            pipeline_config=request.pipeline_config,
         )
 
 
@@ -64,10 +78,48 @@ def test_request_accepts_an_installed_absolute_public_command(tmp_path: Path) ->
         scene_id=request.scene_id,
         input_video=request.input_video,
         workspace=request.workspace,
+        pipeline_config=request.pipeline_config,
         executable=command.resolve(),
     )
 
     assert absolute_request.argv()[0] == str(command.resolve())
+
+
+@pytest.mark.parametrize(
+    ("contents", "error"),
+    [
+        ("schema: [\n", "valid YAML"),
+        ("- nht_pipeline_config_v1\n", "string-keyed mapping"),
+        ("schema: legacy_nht_config\n", "schema"),
+        (
+            f"schema: {NHT_PIPELINE_CONFIG_SCHEMA}\nprivate_runtime: true\n",
+            "Unknown NHT pipeline config key",
+        ),
+    ],
+)
+def test_pipeline_config_rejects_invalid_public_envelopes(
+    tmp_path: Path,
+    contents: str,
+    error: str,
+) -> None:
+    path = tmp_path / "invalid.yaml"
+    path.write_text(contents, encoding="utf-8")
+
+    with pytest.raises((TypeError, ValueError), match=error):
+        NHTPipelineConfig.load(path.resolve())
+
+
+def test_request_revalidates_pipeline_config_before_use(tmp_path: Path) -> None:
+    request = _request(tmp_path)
+    request.pipeline_config.path.write_text("schema: invalid\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="schema"):
+        ReconstructionCommandRequest(
+            scene_id=request.scene_id,
+            input_video=request.input_video,
+            workspace=request.workspace,
+            pipeline_config=request.pipeline_config,
+        )
 
 
 def test_runner_rejects_private_subprocess_environment(tmp_path: Path) -> None:

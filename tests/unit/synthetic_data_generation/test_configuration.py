@@ -23,6 +23,7 @@ from src.synthetic_data_generation.dataset.blcs.source import (
     BLCSTrajectorySourceSettings,
 )
 from src.synthetic_data_generation.pipeline.contracts import DatasetTarget, StageName
+from src.synthetic_data_generation.reconstruction import NHT_PIPELINE_CONFIG_SCHEMA
 from src.tasks.blcs.generate_dataset.source_api import (
     BLCSGeneratorConfiguration,
     BLCSTimelineSpec,
@@ -66,6 +67,10 @@ def test_b00_configuration_is_the_canonical_scene_request() -> None:
     ).resolve()
     assert "B01" not in runtime.workspace.root.parts
     assert "B02" not in runtime.workspace.root.parts
+    assert runtime.nht.pipeline_config.path == (
+        runtime.resolver.roots.external_asset_root / "nht/configs/production.yaml"
+    ).resolve()
+    assert runtime.nht.pipeline_config.schema == NHT_PIPELINE_CONFIG_SCHEMA
 
 
 def test_b00_quantitative_and_full_timeline_values_are_config_owned() -> None:
@@ -345,6 +350,81 @@ def test_private_nht_python_environment_fails_closed() -> None:
 
     with pytest.raises(ConfigurationError, match="environment.PYTHONPATH"):
         ScenePipelineConfiguration.from_config(config)
+
+
+def _nht_config_at(root: Path, contents: str) -> Path:
+    path = root / "pipeline.yaml"
+    root.mkdir(parents=True, exist_ok=True)
+    path.write_text(contents, encoding="utf-8")
+    return path
+
+
+def _compose_with_nht_config_root(root: Path) -> DictConfig:
+    config = _compose()
+    data_root = root.parent / "data"
+    data_root.mkdir(exist_ok=True)
+    (data_root / "tennis_court.mp4").write_bytes(b"configuration fixture")
+    backbone = (
+        root
+        / "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+    )
+    backbone.parent.mkdir(parents=True, exist_ok=True)
+    backbone.write_bytes(b"configuration fixture")
+    OmegaConf.update(
+        config,
+        "roots.data_root",
+        str(data_root.resolve()),
+        merge=False,
+    )
+    OmegaConf.update(
+        config,
+        "roots.external_asset_root",
+        str(root.resolve()),
+        merge=False,
+    )
+    OmegaConf.update(config, "nht.pipeline_config_path", "pipeline.yaml", merge=False)
+    return config
+
+
+@pytest.mark.parametrize("kind", ["missing", "directory", "symlink"])
+def test_nht_pipeline_config_path_failures_are_rejected(
+    tmp_path: Path,
+    kind: str,
+) -> None:
+    root = tmp_path / "external"
+    root.mkdir()
+    path = root / "pipeline.yaml"
+    if kind == "directory":
+        path.mkdir()
+    elif kind == "symlink":
+        target = _nht_config_at(
+            tmp_path / "target",
+            f"schema: {NHT_PIPELINE_CONFIG_SCHEMA}\n",
+        )
+        path.symlink_to(target)
+    config = _compose_with_nht_config_root(root)
+
+    with pytest.raises(PathContractError, match="pipeline_config_path"):
+        ScenePipelineConfiguration.from_config(config)
+
+
+@pytest.mark.parametrize(
+    "contents",
+    [
+        "schema: [\n",
+        "schema: legacy_nht_pipeline_config\n",
+        f"schema: {NHT_PIPELINE_CONFIG_SCHEMA}\nprivate_runtime: true\n",
+    ],
+)
+def test_invalid_nht_pipeline_config_fails_at_configuration_boundary(
+    tmp_path: Path,
+    contents: str,
+) -> None:
+    root = tmp_path / "external"
+    _nht_config_at(root, contents)
+
+    with pytest.raises((TypeError, ValueError)):
+        ScenePipelineConfiguration.from_config(_compose_with_nht_config_root(root))
 
 
 @pytest.mark.parametrize(

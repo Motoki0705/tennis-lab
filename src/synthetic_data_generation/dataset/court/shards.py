@@ -1,10 +1,9 @@
 """Attempt-local, trajectory-group-disjoint Court render shards.
 
-The public NHT client performs one complete value scan and exposes the validated
-read-only arrays to fresh shards.  Assembly reuses those arrays; attempt-local
-recovery inspects immutable file identity plus ``.npy`` headers, then performs
-one complete scan only for a reopened shard.  This keeps recovery strict without
-repeatedly reading multi-gigabyte payloads.
+The public NHT client performs one complete value scan while retaining only file
+metadata. Assembly reopens one sample at a time; attempt-local recovery inspects
+immutable file identity plus ``.npy`` headers. This keeps shard inventory strict
+without retaining multi-gigabyte payloads across shards.
 """
 
 from __future__ import annotations
@@ -21,7 +20,7 @@ from src.synthetic_data_generation.dataset.court.components.labels import (
     MultiCourtProjection,
 )
 from src.synthetic_data_generation.dataset.court.contracts import PlannedCourtSample
-from src.synthetic_data_generation.rendering.nht import NHTRenderArrays, NHTRenderRecord
+from src.synthetic_data_generation.rendering.nht import NHTRenderRecord
 from src.utils.io import load_json, save_json_atomic
 
 COURT_SHARD_SCHEMA = "court_render_shard_attempt_v1"
@@ -41,7 +40,6 @@ class CourtRenderedSample:
     alpha_path: Path
     alpha_preview_path: Path
     depth_path: Path
-    validated_arrays: NHTRenderArrays | None = None
 
     @property
     def source_directory(self) -> Path:
@@ -96,6 +94,8 @@ class CourtRenderResult:
     scene_validation_count: int
     preview_validation_count: int
     loaded_array_bytes: int
+    maximum_nht_live_array_bytes: int
+    retained_nht_array_bytes: int
     shard_timings: tuple[CourtShardTiming, ...]
 
     def __post_init__(self) -> None:
@@ -127,6 +127,8 @@ class CourtRenderResult:
             "scene_validation_count",
             "preview_validation_count",
             "loaded_array_bytes",
+            "maximum_nht_live_array_bytes",
+            "retained_nht_array_bytes",
         ):
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
@@ -147,6 +149,15 @@ class CourtRenderResult:
             raise ValueError("Court NHT preview validation evidence is inconsistent.")
         if self.nht_complete_array_scans > 0 and self.loaded_array_bytes <= 0:
             raise ValueError("Court NHT array scan lacks loaded-byte evidence.")
+        if self.nht_invocations == 0:
+            if self.maximum_nht_live_array_bytes != 0:
+                raise ValueError("Reused Court shards cannot report live NHT arrays.")
+        elif not (
+            0 < self.maximum_nht_live_array_bytes <= self.loaded_array_bytes
+        ):
+            raise ValueError("Court maximum live NHT array evidence is inconsistent.")
+        if self.retained_nht_array_bytes != 0:
+            raise ValueError("Court render results must not retain dense NHT arrays.")
         if self.nht_invocations > self.resolved_shard_count:
             raise ValueError("NHT invocation count exceeds resolved Court shards.")
         if self.request_path_count != self.nht_invocations:
@@ -210,6 +221,22 @@ def rendered_from_nht_records(
             raise ValueError("NHT record identity/source disagrees with the Court sample.")
         if (record.width, record.height) != (sample.camera.width, sample.camera.height):
             raise ValueError("NHT record resolution disagrees with the Court camera.")
+        expected_metadata = (
+            (record.rgb_path, (record.height, record.width, 3)),
+            (record.alpha_path, (record.height, record.width, 1)),
+            (record.depth_path, (record.height, record.width, 1)),
+        )
+        if any(
+            metadata.path != path
+            or metadata.shape != shape
+            or metadata.dtype != "float32"
+            for metadata, (path, shape) in zip(
+                record.array_metadata,
+                expected_metadata,
+                strict=True,
+            )
+        ):
+            raise ValueError("NHT record metadata disagrees with the Court sample files.")
         item = CourtRenderedSample(
             sample=sample,
             rgb_path=record.rgb_path,
@@ -217,7 +244,6 @@ def rendered_from_nht_records(
             alpha_path=record.alpha_path,
             alpha_preview_path=record.alpha_preview_path,
             depth_path=record.depth_path,
-            validated_arrays=record.arrays,
         )
         inspect_rendered_sample(item)
         rendered.append(item)

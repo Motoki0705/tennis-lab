@@ -63,7 +63,11 @@ def test_old_files_and_production_entrypoints_are_deleted() -> None:
             "*.py"
         )
     }
-    assert scripts == {"__init__.py", "run_scene_pipeline.py"}
+    assert scripts == {
+        "__init__.py",
+        "run_scene_pipeline.py",
+        "visualize_dataset.py",
+    }
 
 
 def test_no_active_import_targets_a_removed_module() -> None:

@@ -11,6 +11,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from src.synthetic_data_generation.reconstruction.contracts import (
+    NHTPipelineConfig,
     ReconstructionCommandRequest,
 )
 from src.synthetic_data_generation.reconstruction.scene_export import (
@@ -63,12 +64,16 @@ class NHTReconstructionHandler:
     """Canonical scene-pipeline handler backed only by the NHT command boundary."""
 
     executable: str | Path
+    pipeline_config: NHTPipelineConfig
     environment: Mapping[str, str]
     timeout_seconds: float
 
     def __post_init__(self) -> None:
         if self.timeout_seconds <= 0.0:
             raise ValueError("NHT reconstruction timeout_seconds must be positive.")
+        if not isinstance(self.pipeline_config, NHTPipelineConfig):
+            raise TypeError("pipeline_config must be an NHTPipelineConfig.")
+        self.pipeline_config.validate()
         object.__setattr__(
             self,
             "environment",
@@ -84,6 +89,7 @@ class NHTReconstructionHandler:
             scene_id=context.request.scene_id,
             input_video=source_video,
             workspace=context.owner_path,
+            pipeline_config=self.pipeline_config,
             executable=self.executable,
         )
 
@@ -108,6 +114,7 @@ class NHTReconstructionHandler:
                 "camera_count": len(scene.cameras),
                 "point_count": scene.point_count,
                 "scene_path": "export/scene.json",
+                "pipeline_config": dict(self.pipeline_config.provenance()),
             }
         )
 

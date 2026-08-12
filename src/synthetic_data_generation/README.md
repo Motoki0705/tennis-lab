@@ -80,3 +80,56 @@ their public domain source contracts.
 The canonical package contains no alternate generic path pipeline, legacy
 artifact reader/writer, compatibility conversion, dual-write, fixed-pose
 production path, selected captured-camera path, or identity/hash gate.
+
+## Visualize a generated dataset
+
+The production visualizer reads only the published current-schema owner under
+`<scene-root>/datasets/{court,blcs,plcs}`. It validates the current schema and
+the selected view's exact canonical inventory, reconstructs compact BLCS/PLCS
+RGB views from their NHT background and foreground-delta stores, streams frames
+into H.264, and writes a deterministic JSON sidecar beside the MP4. Existing
+output files are never overwritten.
+
+Canonical frames with odd dimensions are preserved and padded by one black pixel
+on the right and/or bottom for H.264 `yuv420p`; the source dimensions and exact
+padding are recorded in the sidecar.
+
+Court selection is one explicit orbit `trajectory_id`. Every accepted view and
+frame for that orbit is encoded in canonical manifest order, with the seven
+semantic court classes and renderer visibility overlaid:
+
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.visualize_dataset \
+  visualization.domain=court \
+  visualization.dataset_root=scenes/<scene_id>/datasets/court \
+  visualization.trajectory_id=<trajectory_id> \
+  visualization.output_video=previews/court-orbit.mp4
+```
+
+BLCS and PLCS selection is one explicit logical scene and generated camera.
+For BLCS the logical scene ID is the canonical trajectory ID. BLCS overlays
+stable ball identity, presence, renderer observation, and a short trajectory;
+PLCS overlays CourtKP20 context plus projected COCO17 skeletons, stable person
+identity, physical presence, and renderer-visible pixel state.
+
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.visualize_dataset \
+  visualization.domain=blcs \
+  visualization.dataset_root=scenes/<scene_id>/datasets/blcs \
+  visualization.logical_scene_id=<trajectory_id> \
+  visualization.camera_id=<camera_id> \
+  visualization.output_video=previews/blcs-view.mp4
+
+.venv/bin/python -m src.synthetic_data_generation.scripts.visualize_dataset \
+  visualization.domain=plcs \
+  visualization.dataset_root=scenes/<scene_id>/datasets/plcs \
+  visualization.logical_scene_id=<logical_scene_id> \
+  visualization.camera_id=<camera_id> \
+  visualization.output_video=previews/plcs-view.mp4
+```
+
+`visualization.fps`, `crf`, and BLCS `history_frames` are explicit Hydra
+settings. Dataset and video paths are resolved strictly beneath `roots.data_root`
+and `roots.output_root`, respectively. IDs are never guessed, camera views are
+never substituted, frame gaps/reordering fail closed, and no compatibility-schema
+fallback exists.

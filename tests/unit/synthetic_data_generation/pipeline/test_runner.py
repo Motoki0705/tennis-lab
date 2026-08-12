@@ -26,12 +26,14 @@ from src.synthetic_data_generation.pipeline.publication import (
     AtomicPublicationUnavailableError,
 )
 from src.synthetic_data_generation.pipeline.registry import StageRegistry
+from src.synthetic_data_generation.pipeline.run_manifest import MutableRunManifest
 from src.utils.configuration import PathResolver, RuntimePathRoots
 
 
 @dataclass
 class _FakeHandler:
     payload: str
+    execution_order: list[StageName] | None = None
     fail_preflight: bool = False
     fail_execute: bool = False
     invalid_summary: bool = False
@@ -45,6 +47,8 @@ class _FakeHandler:
 
     def execute(self, context: StageExecutionContext) -> StageExecutionSummary:
         self.execute_calls += 1
+        if self.execution_order is not None:
+            self.execution_order.append(context.stage.name)
         destination = context.staging_path
         for relative in context.stage.required_outputs:
             path = destination / relative
@@ -112,8 +116,12 @@ def _request(
 def _registry(
     *,
     payload: str,
+    execution_order: list[StageName] | None = None,
 ) -> tuple[StageRegistry, dict[StageName, _FakeHandler]]:
-    by_stage = {stage: _FakeHandler(payload) for stage in StageName}
+    by_stage = {
+        stage: _FakeHandler(payload, execution_order=execution_order)
+        for stage in StageName
+    }
     handlers = CanonicalStageHandlers(
         ingest=by_stage[StageName.INGEST],
         reconstruction=by_stage[StageName.RECONSTRUCTION],
@@ -222,6 +230,155 @@ def test_dataset_cursor_does_not_rerun_selected_sibling_datasets(
         assert handlers[sibling].execute_calls == 0
     assert blcs.read_text(encoding="utf-8") == "first"
     assert plcs.read_text(encoding="utf-8") == "first"
+
+
+def test_blcs_cursor_repairs_invalidated_plcs_before_report(tmp_path: Path) -> None:
+    all_targets = frozenset(DatasetTarget)
+    first_registry, _ = _registry(payload="first")
+    first = _runner(tmp_path, first_registry)
+    first.run(_request(tmp_path, targets=all_targets))
+    manifest = MutableRunManifest.load(first.workspace.run_manifest_path)
+    manifest.stages[StageName.BLCS_DATASET].attempt = 2
+    manifest.invalidate(StageName.PLCS_DATASET)
+    manifest.stages[StageName.PLCS_DATASET].attempt = 0
+    manifest.invalidate(StageName.REPORT)
+    manifest.save(first.workspace.run_manifest_path)
+    first.workspace.invalidate_outputs(
+        first_registry.definition(StageName.PLCS_DATASET)
+    )
+    first.workspace.invalidate_outputs(first_registry.definition(StageName.REPORT))
+    execution_order: list[StageName] = []
+    repair_registry, handlers = _registry(
+        payload="repair",
+        execution_order=execution_order,
+    )
+    repair = _runner(tmp_path, repair_registry)
+
+    repaired = repair.run(
+        _request(
+            tmp_path,
+            from_stage=StageName.BLCS_DATASET,
+            targets=all_targets,
+        )
+    )
+
+    assert execution_order == [
+        StageName.BLCS_DATASET,
+        StageName.PLCS_DATASET,
+        StageName.REPORT,
+    ]
+    assert repaired.stages[StageName.BLCS_DATASET].attempt == 3
+    assert repaired.stages[StageName.PLCS_DATASET].attempt == 1
+    assert repaired.stages[StageName.REPORT].status is StageStatus.COMPLETED
+    assert handlers[StageName.COURT_DATASET].execute_calls == 0
+    assert (
+        repair.workspace.root / "datasets/plcs/dataset.json"
+    ).read_text(encoding="utf-8") == "repair"
+
+
+def test_missing_completed_sibling_publication_is_rebuilt(tmp_path: Path) -> None:
+    targets = frozenset({DatasetTarget.BLCS, DatasetTarget.PLCS})
+    first_registry, _ = _registry(payload="first")
+    first = _runner(tmp_path, first_registry)
+    first.run(_request(tmp_path, targets=targets))
+    missing = first.workspace.root / "datasets/plcs/dataset.json"
+    missing.unlink()
+    execution_order: list[StageName] = []
+    repair_registry, _ = _registry(
+        payload="repair",
+        execution_order=execution_order,
+    )
+
+    repaired = _runner(tmp_path, repair_registry).run(
+        _request(
+            tmp_path,
+            from_stage=StageName.BLCS_DATASET,
+            targets=targets,
+        )
+    )
+
+    assert execution_order == [
+        StageName.BLCS_DATASET,
+        StageName.PLCS_DATASET,
+        StageName.REPORT,
+    ]
+    assert repaired.stages[StageName.PLCS_DATASET].attempt == 2
+    assert missing.read_text(encoding="utf-8") == "repair"
+
+
+def test_stale_completed_descendants_are_rebuilt_from_invalid_prerequisite(
+    tmp_path: Path,
+) -> None:
+    all_targets = frozenset(DatasetTarget)
+    first_registry, _ = _registry(payload="first")
+    first = _runner(tmp_path, first_registry)
+    first.run(_request(tmp_path, targets=all_targets))
+    manifest = MutableRunManifest.load(first.workspace.run_manifest_path)
+    manifest.invalidate(StageName.ALIGNMENT)
+    manifest.save(first.workspace.run_manifest_path)
+    execution_order: list[StageName] = []
+    repair_registry, _ = _registry(
+        payload="repair",
+        execution_order=execution_order,
+    )
+
+    repaired = _runner(tmp_path, repair_registry).run(
+        _request(
+            tmp_path,
+            from_stage=StageName.REPORT,
+            targets=all_targets,
+        )
+    )
+
+    assert execution_order == [
+        StageName.ALIGNMENT,
+        StageName.COURT_DATASET,
+        StageName.BLCS_DATASET,
+        StageName.PLCS_DATASET,
+        StageName.REPORT,
+    ]
+    assert repaired.stages[StageName.INGEST].attempt == 1
+    assert repaired.stages[StageName.RECONSTRUCTION].attempt == 1
+    assert repaired.stages[StageName.ALIGNMENT].attempt == 2
+    assert all(repaired.stages[target.stage].attempt == 2 for target in DatasetTarget)
+
+
+def test_repaired_sibling_failure_keeps_report_invalidated_and_no_partial_output(
+    tmp_path: Path,
+) -> None:
+    targets = frozenset({DatasetTarget.BLCS, DatasetTarget.PLCS})
+    first_registry, _ = _registry(payload="first")
+    first = _runner(tmp_path, first_registry)
+    first.run(_request(tmp_path, targets=targets))
+    manifest = MutableRunManifest.load(first.workspace.run_manifest_path)
+    plcs_record = manifest.stages[StageName.PLCS_DATASET]
+    plcs_record.status = StageStatus.FAILED
+    plcs_record.summary = {}
+    plcs_record.error = "RuntimeError: prior failed PLCS replacement"
+    manifest.invalidate(StageName.REPORT)
+    manifest.save(first.workspace.run_manifest_path)
+    first.workspace.invalidate_outputs(first_registry.definition(StageName.REPORT))
+    repair_registry, handlers = _registry(payload="partial")
+    handlers[StageName.PLCS_DATASET].fail_execute = True
+    repair = _runner(tmp_path, repair_registry)
+
+    with pytest.raises(RuntimeError, match="execute failed for plcs_dataset"):
+        repair.run(
+            _request(
+                tmp_path,
+                from_stage=StageName.BLCS_DATASET,
+                targets=targets,
+            )
+        )
+
+    failed = MutableRunManifest.load(repair.workspace.run_manifest_path)
+    assert failed.stages[StageName.BLCS_DATASET].status is StageStatus.COMPLETED
+    assert failed.stages[StageName.PLCS_DATASET].status is StageStatus.FAILED
+    assert failed.stages[StageName.REPORT].status is StageStatus.INVALIDATED
+    assert (
+        repair.workspace.root / "datasets/plcs/dataset.json"
+    ).read_text(encoding="utf-8") == "first"
+    assert not repair.workspace.transaction_root.exists()
 
 
 def test_alignment_subset_rerun_cleans_unselected_stale_descendants(
