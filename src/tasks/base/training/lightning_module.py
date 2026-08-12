@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Protocol, cast
 
@@ -20,6 +21,7 @@ from torch.optim.lr_scheduler import (
 
 from src.tasks.base.configuration import (
     BaseTrainingConfig,
+    TrainingRuntimeConfig,
     as_config_mapping,
     require_config_mapping,
 )
@@ -64,21 +66,36 @@ class BaseLightningModule(pl.LightningModule):
 
     steps_per_epoch: int | None = None
 
-    def __init__(self, config: Any) -> None:
+    def __init__(
+        self,
+        config: Any,
+        *,
+        shared_runtime: TrainingRuntimeConfig | None = None,
+        checkpoint_hyperparameters: Mapping[str, Any] | None = None,
+    ) -> None:
         super().__init__()
-        self.save_hyperparameters()
-
-        root = as_config_mapping(config, path="configuration")
-        self.config = config
-        self.training_config = BaseTrainingConfig.from_validated_task_mapping(
-            require_config_mapping(root, "training", path="configuration")
-        )
-        self.path_resolver = PathResolver(
-            RuntimePathRoots.from_mapping(
-                require_config_mapping(root, "paths", path="configuration"),
-                repository_root=PROJECT_ROOT,
+        if checkpoint_hyperparameters is None:
+            self.save_hyperparameters(
+                ignore=("checkpoint_hyperparameters", "shared_runtime")
             )
-        )
+        else:
+            self.save_hyperparameters(dict(checkpoint_hyperparameters))
+
+        self.config = config
+        if shared_runtime is None:
+            root = as_config_mapping(config, path="configuration")
+            self.training_config = BaseTrainingConfig.from_validated_task_mapping(
+                require_config_mapping(root, "training", path="configuration")
+            )
+            self.path_resolver = PathResolver(
+                RuntimePathRoots.from_mapping(
+                    require_config_mapping(root, "paths", path="configuration"),
+                    repository_root=PROJECT_ROOT,
+                )
+            )
+        else:
+            self.training_config = shared_runtime.training
+            self.path_resolver = shared_runtime.resolver
 
         optimizer = self.training_config.optimizer
         self.learning_rate = optimizer.learning_rate
@@ -128,7 +145,7 @@ class BaseLightningModule(pl.LightningModule):
 
     def test_prediction_payload(
         self, batch: Any, result: dict[str, Any]
-    ) -> dict[str, np.ndarray]:
+    ) -> dict[str, object]:
         """Return per-sample test arrays to persist, keyed by name.
 
         Each array has shape ``(B, ...)`` (batch first). Override in task
