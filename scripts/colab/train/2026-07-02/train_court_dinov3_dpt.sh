@@ -6,7 +6,7 @@ set -euo pipefail
 # weights to measure how much the extra SSL changes downstream accuracy.
 #
 # Reproduces the established dinov3_dpt court-KP baseline command
-# (data=court_kp, train_scales=[256], training=lora, loss=kp, batch 8) with
+# (data/processing=kp, train_scales=[256], training=lora, batch 8) with
 # max_epochs 20 and the issue #618 recipe on top: checkpoints and early
 # stopping are selected by the task metric val/mean_dist (min) instead of
 # val/loss, which was shown to decouple from the task metric
@@ -47,13 +47,12 @@ OUTPUT_DIR="${OUTPUT_DIR:-/content/drive/MyDrive/tennis_lab/outputs/court_detect
 MAX_EPOCHS="${MAX_EPOCHS:-20}"
 BATCH_SIZE="${BATCH_SIZE:-8}"
 
-CKPT_DIR="${REPO_ROOT}/third_party/dinov3/checkpoints"
 case "${VARIANT}" in
     orig)
-        BACKBONE_CKPT="${CKPT_DIR}/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+        BACKBONE_CKPT_REL="dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
         ;;
     ssl)
-        BACKBONE_CKPT="${CKPT_DIR}/dinov3_vitb16_tennis_ssl_merged.pth"
+        BACKBONE_CKPT_REL="dinov3/checkpoints/dinov3_vitb16_tennis_ssl_merged.pth"
         ;;
     *)
         echo "[train_court_dinov3_dpt] unknown variant: ${VARIANT}" >&2
@@ -61,6 +60,7 @@ case "${VARIANT}" in
         exit 2
         ;;
 esac
+BACKBONE_CKPT="${REPO_ROOT}/third_party/${BACKBONE_CKPT_REL}"
 
 source "${REPO_ROOT}/scripts/colab/setup/install_deps.sh"
 source "${REPO_ROOT}/scripts/colab/setup/prepare_archive_dataset.sh"
@@ -101,21 +101,18 @@ fi
 
 echo "[train_court_dinov3_dpt] starting training (extra overrides: ${*:-none})"
 python -m src.tasks.court_detection.scripts.train \
-    data=court_kp \
+    data/processing=kp \
     "data.augmentation.train_scales=[256]" \
     data.augmentation.val_short_side=256 \
     model/encoder=dinov3 \
     model/decoder=dpt \
-    model.name=dinov3_dpt \
-    model.num_classes=14 \
     training=lora \
-    loss=kp \
-    "model.encoder.checkpoint_path=${BACKBONE_CKPT}" \
+    "model.encoder.checkpoint_path=${BACKBONE_CKPT_REL}" \
     "data.batch_size=${BATCH_SIZE}" \
     "training.trainer.max_epochs=${MAX_EPOCHS}" \
-    training.checkpoint.monitor=val/mean_dist \
+    training.checkpoint.monitor=val/kp_mean_dist \
     training.checkpoint.mode=min \
-    training.early_stopping.monitor=val/mean_dist \
+    training.early_stopping.monitor=val/kp_mean_dist \
     training.early_stopping.mode=min \
     "run.output_dir=${OUTPUT_DIR}" \
     "${RESUME_OVERRIDES[@]}" \

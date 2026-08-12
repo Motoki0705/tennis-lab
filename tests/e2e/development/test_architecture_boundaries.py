@@ -29,6 +29,9 @@ REMOVED_MODULES = (
     "src.tasks.blcs.visualization.adapters.predict_inputs",
     "src.tasks.blcs.visualization.adapters.render_inputs",
     "src.tasks.court_detection.inference.preprocess",
+    "src.tasks.court_detection.data.court_kp_dataset",
+    "src.tasks.court_detection.data.court_line_dataset",
+    "src.tasks.court_detection.data.court_seg_dataset",
     "src.tasks.plcs.utils",
     "src.tasks.plcs.utils.pose_geometry",
     "src.tasks.plcs.models.discriminators.pose_sequence_discriminator",
@@ -49,6 +52,12 @@ PROHIBITED_SYMBOLS = frozenset(
         "DatasetContractError",
         "UnsupportedFormatVersionError",
         "ClipRef",
+        "CourtKPDataset",
+        "CourtSegDataset",
+        "CourtLineDataset",
+        "CourtKeypointModelIO",
+        "CourtSegModelIO",
+        "CourtLineModelIO",
         "_build_track_tensor",
         "_axis_angle_to_matrix",
         "_migrate_legacy_group_embedding_keys",
@@ -487,7 +496,7 @@ def test_court_line_preprocessing_size_has_one_public_surface() -> None:
         }
         assert canonical_surface in attribute_names, (
             f"{relative} must consume CourtModelSpec.short_side through the "
-            "selected CourtLineModelIO adapter"
+            "selected bundle-aware CourtModelIOAdapter"
         )
         assert stale_surface not in attribute_names, (
             f"{relative} still consumes the removed CourtLinePredictor.short_side"

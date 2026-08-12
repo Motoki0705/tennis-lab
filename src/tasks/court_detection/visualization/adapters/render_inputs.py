@@ -83,30 +83,39 @@ class _BundleHeadQualitativeRenderer:
                 keypoints_px=prediction.keypoints[prediction.valid].numpy(),
                 mean_heatmap=torch.sigmoid(prediction.heatmaps).amax(0).numpy(),
             )
-            return render_kp_frames(
-                frames=[frame],
-                predictions=[rendered_prediction],
-                style=style,
-                clip_label=clip_label,
+            return cast(
+                "list[np.ndarray]",
+                render_kp_frames(
+                    frames=[frame],
+                    predictions=[rendered_prediction],
+                    style=style,
+                    clip_label=clip_label,
+                ),
             )
         if self.kind == "seg":
             if not isinstance(prediction, CourtSegmentationPrediction):
                 raise CourtModelIOError(
                     "Court segmentation qualitative decode type changed."
                 )
-            return render_seg_frames(
-                frames=[frame],
-                masks=[prediction.mask.numpy().astype(np.int32)],
-                style=style,
-                clip_label=clip_label,
+            return cast(
+                "list[np.ndarray]",
+                render_seg_frames(
+                    frames=[frame],
+                    masks=[prediction.mask.numpy().astype(np.int32)],
+                    style=style,
+                    clip_label=clip_label,
+                ),
             )
         if not isinstance(prediction, CourtLinePrediction):
             raise CourtModelIOError("Court line qualitative decode type changed.")
-        return render_line_frames(
-            frames=[frame],
-            probs=[prediction.probability.numpy()],
-            style=style,
-            clip_label=clip_label,
+        return cast(
+            "list[np.ndarray]",
+            render_line_frames(
+                frames=[frame],
+                probs=[prediction.probability.numpy()],
+                style=style,
+                clip_label=clip_label,
+            ),
         )
 
     def _max_peaks(self, batch: Mapping[str, object]) -> int:

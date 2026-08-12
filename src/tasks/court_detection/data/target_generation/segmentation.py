@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import cast
+from typing import TypeAlias, cast
 
 import cv2
 import numpy as np
@@ -17,8 +17,8 @@ from src.utils.schema.court import (
     SERVICE_LINE_DISTANCE,
 )
 
-Float32Array = NDArray[np.float32]
-UInt8Array = NDArray[np.uint8]
+Float32Array: TypeAlias = NDArray[np.float32]
+UInt8Array: TypeAlias = NDArray[np.uint8]
 
 _CELL_BOUNDS: dict[int, tuple[float, float, float, float]] = {
     1: (-HALF_SINGLES_WIDTH, 0.0, 0.0, SERVICE_LINE_DISTANCE),

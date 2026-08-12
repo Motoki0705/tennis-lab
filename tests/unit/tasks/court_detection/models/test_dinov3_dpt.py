@@ -9,6 +9,7 @@ from torch import nn
 from src.tasks.court_detection.configuration import CourtLossConfig
 from src.tasks.court_detection.data.contracts import (
     CourtTargetBundleSpec,
+    CourtTargetKind,
     CourtTargetSpec,
 )
 from src.tasks.court_detection.model_io.adapters import (
@@ -127,7 +128,7 @@ class _CountingCourtDINOModel(CourtHierarchicalModel):
         feature_2: torch.Tensor | None = None,
         feature_3: torch.Tensor | None = None,
         feature_4: torch.Tensor | None = None,
-    ) -> dict[str, torch.Tensor]:
+    ) -> dict[CourtTargetKind, torch.Tensor]:
         self.calls += 1
         assert all(
             value is not None

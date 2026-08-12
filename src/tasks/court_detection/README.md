@@ -1,67 +1,49 @@
 # Court Detection
 
-テニス映像からコート構造 (keypoint / segmentation / line) を推定するタスク群です。`data.task` (`kp`/`seg`/`line`) によってデータセット・モデル出力チャネル数・損失・メトリクスが切り替わる統一パイプラインになっています。
+テニス映像から `kp / seg / line` を推定します。データsourceとtarget集合は独立に選択し、単一の `CourtDetectionDataset` / `CourtDetectionDataModule` が任意の非空target subsetを処理します。
 
-## Modules
+## Data composition
 
-### (root)
-- **`__init__.py`**: 検証済みmodel+task adapterを返す `build_court_detection_pair` のパッケージ入口。
+- `data/source=tennis_court_detector`: yastrebksv/TennisCourtDetector由来の実画像とordered KP14。
+- `data/source=synthetic_court`: `canonical_court_dataset_v1` / `canonical_court_sample_v1`をstrictに読み、physical pointを7 semantic multi-peak channelへまとめます。
+- `data/processing=kp|seg|line|kp_seg|kp_line|seg_line|all`: 選択したtargetを同じ幾何変換で生成します。
 
-### data/
-- **`datamodule.py`**: `CourtDetectionDataModule`。`task` に応じてdataset/collateを切替え8の倍数へパディング。
-- **`court_kp_dataset.py`**: `CourtKPDataset`。14点keypointをGaussianヒートマップに変換。
-- **`court_seg_dataset.py`**: `CourtSegDataset`。`masks/{id}.png` を持つサンプルのみ使用。
-- **`court_line_dataset.py`**: `CourtLineDataset`。白線二値maskを読む。
-- **`augmentation.py`**: `build_seg_transforms()`/`build_kp_transforms()`。task別augmentationパイプライン。
+source固有のmanifest・annotation・path解決は `data/inputs/`、target固有の構築は `data/processing/targets.py` が所有します。`data/processing/geometry.py` はRGB、KP、seg、lineに適用する幾何変換をsampleごとに一度だけ決定します。seg/lineはDataset内で生成せず、`data/target_generation/` で事前生成します。
 
-### models/
-- **`__init__.py`**: `CourtHierarchicalModel` とencoder/decoder実装の公開面。
-- **`hierarchical_model.py`**: `CourtHierarchicalModel`。encoder→decoder→1x1convの既定アーキテクチャ。
-- **`encoders.py`**: `CourtDefaultEncoder`/`CourtDINOv3Encoder`。既定CNN encoderと、model I/O境界から呼び出すDINOv3 backboneの構築情報を提供。
-- **`decoder.py`**: `CourtFPNDecoder`/`CourtUNetDecoder`/`CourtDPTDecoder`。
+```bash
+# 両dense targetをsource外のderived storeへ生成
+python -m src.tasks.court_detection.scripts.materialize_targets \
+  data/source=tennis_court_detector data/processing=seg_line
 
-### model_io/
-- **`contracts.py`**: kp/seg/lineの入力・学習batch・typed prediction契約。
-- **`adapters.py`**: forward前にImageNet正規化済みfloat32 RGBの有限値・値域を検証し、task固有loss・prediction decodeを担当。DINOv3ではraw中間token応答の検証と4段階feature mapへの変換もこの境界で完了する。
-- **`factory.py`**: task-model channel整合性を検証し、model+adapterとDINOv3 backboneのfrozen/trainable実行経路を構築時にbind。
-- **`images.py`**: 3predictor共通のuint8 RGB検証・resize・ImageNet正規化境界。
+# synthetic sourceの3-head学習
+python -m src.tasks.court_detection.scripts.train \
+  data/source=synthetic_court data/processing=all
 
-### training/
-- **`lightning_module.py`**: `CourtDetectionLightningModule`。選択済みadapterへ入力/loss/output decodeを委譲。
-- **`losses.py`**: task-localな `DiceLoss`/`BinaryDiceLoss`。
-- **`metrics.py`**: `CourtDetectionMetrics`。task別に mIoU/mean_dist/Dice を算出。
-- **`runner.py`**: `CourtDetectionTrainingRunner`。薄いアダプタ。
+# KP-only DINOv3 + DPT + LoRA
+python -m src.tasks.court_detection.scripts.train \
+  data/source=synthetic_court data/processing=kp \
+  model/encoder=dinov3 model/decoder=dpt training=lora
+```
 
-### inference/
-- **`predictor.py`**: `CourtKeypointPredictor`。`CourtKeypointPrediction(keypoints, scores, heatmaps)` を返す。
-- **`mask_predictor.py`**: task別の `CourtSegPredictor`/`CourtLinePredictor`。typed dense predictionを返す。
+`synthetic_court`の`dataset.json`やsample fileはmaterializationで変更しません。生成物は `data.processing.derived_target_root` 以下へ、source kind・sample key・target schemaを含む安定pathで保存します。
 
-### evaluation/
-- **`homography_quality.py`**: 14点アノテーションへRANSACホモグラフィーを当て、inlier被覆・再投影誤差・可視率・占有率・地上視点の射影歪みを評価。
-- **`image_evidence.py`**: 投影した9本のコートラインに対する画像edge支持率と、色・明度・重複確認用descriptorを算出。
-- **`pipeline.py`**: `data_train.json`互換JSONを厳密に読み、複数データセットの採否manifestと補正済み14点JSONを出力。
+## Model and runtime
 
-### visualization/
-- **`orchestrator.py`**: 選択済みtask pipelineの共通render APIからGIF保存を統括。
-- **`adapters/`**: predictor入力変換と学習時qualitative描画用変換。
-- **`api/predict.py`**: factoryでkp/seg/line pipelineを一度だけ選択し、分岐なしのframe loopを提供。
-- **`io/frames.py`**: `CourtFrame`/`load_court_frames()`。
-- **`rendering/`**: task別2パネル描画(`kp_renderer`/`seg_renderer`/`line_renderer`)と共通style(`common.py`)。
+- `models/hierarchical_model.py`: shared encoder/decoder trunkと、`CourtTargetBundleSpec`から導出したhead群。
+- `model_io/`: bundle全体の入力、loss、typed prediction契約。KP predictionは `[channel, peak, xy]`、score、validityを明示します。
+- `training/`: targetごとのloss/metricを一つのbundleとして集約します。
+- `inference/`: single-head predictorはmulti-head checkpointから対象headを明示選択します。
+- `visualization/`: bundle-awareなprediction/rendering surface。
 
-### scripts/
-- **`train.py`**: 学習エントリポイント。
-- **`visualize.py`**: 2-panel GIF可視化。
-- **`generate_masks.py`**: 14点keypointから6 court cellのsegmentation maskを生成。
-- **`generate_line_masks.py`**: 14点keypointから白線maskを生成。
-- **`preview_heatmaps.py`**: `sigma_ratio` 比較プレビュー。
-- **`prepare_youtube_dataset.py`**: YouTube動画取得〜20点アノテーション雛形生成。
-- **`annotate_youtube_keypoints.py`**: 20点アノテーションUIエントリポイント。
-- **`evaluate_homography_annotations.py`**: Hydra設定の複数JSONを一括してホモグラフィー品質評価。
+設定は `configs/data/default.yaml` をcomposition rootとし、`configs/data/source/` と `configs/data/processing/` を直交してoverrideします。sourceはdirectory内容から自動推測しません。TennisCourtDetectorのtest splitも暗黙fallbackせず、`data.source.split_mapping.test`で明示します。
 
-### generate_dataset/
-- **`annotation_session.py`**: `run_annotation_session()`。CourtKP20の手動/pseudo-labelアノテーションUI本体。
+## Utilities and scripts
 
-### configs/
-- data(task別+augmentation)・model(hierarchical + encoder/decoder)・loss・training(default/lora)・run・visualization の各Hydra設定。DINOv3+DPTは `model/encoder=dinov3 model/decoder=dpt` で選択。
+- `src/utils/data/heatmaps.py`: KP14のsingle-peakとKP7のmulti-peakを共通に扱うdomain-neutral Gaussian heatmap utility。
+- `scripts/materialize_targets.py`: source-neutralなseg/line offline materialization。
+- `scripts/preview_heatmaps.py`: configured sourceのKP channel/visibilityを使うheatmap preview。
+- `scripts/preview_augmentation.py`: 選択target全部を共有geometry上で確認するaugmentation preview。
+- `scripts/train.py`: Hydra学習entry point。
+- `scripts/visualize.py`: checkpointに保存されたtarget bundleを使うprediction visualization。
 
-**注意**: 学習は14点keypointのみ使用する一方YouTubeアノテーションは20点収集しており、変換経路は本ディレクトリ内に見当たらない。`configs/visualization/*.yaml` に `versino_0` というtypoあり。
+YouTube annotation UIは20点を収集しますが、TennisCourtDetector学習契約はordered KP14です。20点annotationからKP14への変換は別の明示的なデータ準備工程を必要とします。

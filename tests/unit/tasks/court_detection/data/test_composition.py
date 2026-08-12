@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from types import MappingProxyType
+from typing import cast
 
 import numpy as np
 import torch
@@ -25,16 +26,20 @@ from src.tasks.court_detection.data.contracts import (
     CourtRawSample,
     CourtSampleMetadata,
     CourtSampleRecord,
+    CourtTargetKind,
     CourtTargetSpec,
     CourtTransformedSample,
 )
+from src.tasks.court_detection.data.inputs.contract import CourtInput
 from src.tasks.court_detection.data.inputs.synthetic_court import SyntheticCourtInput
 from src.tasks.court_detection.data.inputs.tennis_court_detector import (
     TennisCourtDetectorInput,
 )
+from src.tasks.court_detection.data.processing.geometry import CourtProcessingGeometry
 from src.tasks.court_detection.data.processing.pipeline import (
     CourtProcessingPipeline,
 )
+from src.tasks.court_detection.data.processing.targets import CourtTargetBuilder
 from src.tasks.court_detection.data.target_generation.store import (
     CourtDerivedTargetStore,
 )
@@ -318,9 +323,12 @@ def test_processing_pipeline_samples_geometry_once_for_all_targets(tmp_path) -> 
     first = _Builder("kp")
     second = _Builder("line")
     pipeline = CourtProcessingPipeline(
-        input_layer=_Input(),
-        geometry=geometry,
-        target_builders=(first, second),
+        input_layer=cast(CourtInput, _Input()),
+        geometry=cast(CourtProcessingGeometry, geometry),
+        target_builders=cast(
+            "tuple[CourtTargetBuilder, ...]",
+            (first, second),
+        ),
     )
     pipeline.preflight((record,))
 
@@ -329,4 +337,5 @@ def test_processing_pipeline_samples_geometry_once_for_all_targets(tmp_path) -> 
     assert geometry.sample_calls == 1
     assert geometry.apply_calls == 1
     assert first.seen == second.seen
-    assert tuple(result["targets"]) == ("kp", "line")
+    targets = cast("dict[CourtTargetKind, object]", result["targets"])
+    assert tuple(targets) == ("kp", "line")

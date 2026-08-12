@@ -1,4 +1,14 @@
-"""Explicitly precompute selected segmentation/line Court targets."""
+"""Explicitly precompute selected segmentation/line Court targets.
+
+Usage:
+    python -m src.tasks.court_detection.scripts.materialize_targets data/processing=all
+    python -m src.tasks.court_detection.scripts.materialize_targets data/source=synthetic_court data/processing=seg_line
+
+Notes:
+    - Hydra loads configuration from ``src/tasks/court_detection/configs/train.yaml``.
+    - Outputs are written only below ``data.processing.derived_target_root``;
+      neither source dataset is modified.
+"""
 
 from __future__ import annotations
 

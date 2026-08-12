@@ -9,6 +9,7 @@ from torch import nn
 from src.tasks.court_detection.configuration import CourtLossConfig
 from src.tasks.court_detection.data.contracts import (
     CourtTargetBundleSpec,
+    CourtTargetKind,
     CourtTargetSpec,
 )
 from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
@@ -22,8 +23,8 @@ from src.tasks.court_detection.model_io.contracts import (
 from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
 
 
-def _bundle(*kinds: str) -> CourtTargetBundleSpec:
-    specs = {
+def _bundle(*kinds: CourtTargetKind) -> CourtTargetBundleSpec:
+    specs: dict[CourtTargetKind, CourtTargetSpec] = {
         "kp": CourtTargetSpec(
             kind="kp",
             schema="test_kp",
@@ -78,7 +79,7 @@ class _CountingCourtModel(CourtHierarchicalModel):
         feature_2: torch.Tensor | None = None,
         feature_3: torch.Tensor | None = None,
         feature_4: torch.Tensor | None = None,
-    ) -> dict[str, torch.Tensor]:
+    ) -> dict[CourtTargetKind, torch.Tensor]:
         assert all(
             value is None
             for value in (feature_1, feature_2, feature_3, feature_4)

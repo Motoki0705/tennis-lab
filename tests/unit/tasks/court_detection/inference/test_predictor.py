@@ -11,6 +11,7 @@ from src.tasks.base.model_io import bind_model_io
 from src.tasks.court_detection.configuration import CourtLossConfig
 from src.tasks.court_detection.data.contracts import (
     CourtTargetBundleSpec,
+    CourtTargetKind,
     CourtTargetSpec,
 )
 from src.tasks.court_detection.inference.predictor import CourtKeypointPredictor
@@ -54,7 +55,7 @@ class _StaticLogitModel(CourtHierarchicalModel):
         feature_2: torch.Tensor | None = None,
         feature_3: torch.Tensor | None = None,
         feature_4: torch.Tensor | None = None,
-    ) -> dict[str, torch.Tensor]:
+    ) -> dict[CourtTargetKind, torch.Tensor]:
         assert all(
             value is None
             for value in (feature_1, feature_2, feature_3, feature_4)
