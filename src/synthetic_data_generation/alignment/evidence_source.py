@@ -254,14 +254,7 @@ class ProductionCourtLineDetector:
         raw_state = raw.get("state_dict")
         if not isinstance(raw_state, Mapping):
             raise ValueError("Court-line checkpoint has no state_dict mapping.")
-        model_state: dict[str, torch.Tensor] = {}
-        for key, value in raw_state.items():
-            if isinstance(key, str) and key.startswith("model."):
-                if not isinstance(value, torch.Tensor):
-                    raise TypeError(f"Court-line tensor {key!r} is not a Tensor.")
-                model_state[key.removeprefix("model.")] = value
-        if not model_state:
-            raise ValueError("Court-line checkpoint contains no model tensors.")
+        model_state = _line_bundle_model_state(raw_state)
         model.load_state_dict(model_state, strict=True)
         model.eval()
         spec = CourtModelSpec(
@@ -2846,6 +2839,36 @@ def _plain_value(value: object) -> Any:
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
         return [_plain_value(item) for item in value]
     return value
+
+
+def _line_bundle_model_state(
+    raw_state: Mapping[object, object],
+) -> dict[str, torch.Tensor]:
+    """Translate the trained single-line head namespace to its bundle head."""
+    model_state: dict[str, torch.Tensor] = {}
+    for key, value in raw_state.items():
+        if not isinstance(key, str) or not key.startswith("model."):
+            continue
+        if not isinstance(value, torch.Tensor):
+            raise TypeError(f"Court-line tensor {key!r} is not a Tensor.")
+        model_state[key.removeprefix("model.")] = value
+    if not model_state:
+        raise ValueError("Court-line checkpoint contains no model tensors.")
+
+    legacy_head = {"final_conv.weight", "final_conv.bias"}
+    bundle_head = {"heads.line.weight", "heads.line.bias"}
+    legacy_present = legacy_head.intersection(model_state)
+    bundle_present = bundle_head.intersection(model_state)
+    if legacy_present and bundle_present:
+        raise ValueError("Court-line checkpoint mixes legacy and bundle head tensors.")
+    if legacy_present != legacy_head:
+        raise ValueError("Court-line checkpoint has an incomplete legacy line head.")
+    if bundle_present and bundle_present != bundle_head:
+        raise ValueError("Court-line checkpoint has an incomplete bundle line head.")
+    if legacy_present:
+        model_state["heads.line.weight"] = model_state.pop("final_conv.weight")
+        model_state["heads.line.bias"] = model_state.pop("final_conv.bias")
+    return model_state
 
 
 def _validate_embedded_architecture(
