@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import math
+
+import pytest
 import torch
 
 from src.tasks.court_detection.training.metrics import CourtDetectionMetrics
@@ -60,7 +63,10 @@ def test_kp_metric_ignores_invisible_points() -> None:
         image_size=torch.tensor([[16, 16]], dtype=torch.long),
     )
 
-    assert metrics.compute()["mean_dist"] == 0.0
+    assert metrics.compute() == {
+        "mean_dist": 0.0,
+        "mean_dist_normalized": 0.0,
+    }
 
 
 def test_kp_metric_matches_each_visible_point_to_nearest_peak() -> None:
@@ -78,7 +84,58 @@ def test_kp_metric_matches_each_visible_point_to_nearest_peak() -> None:
         image_size=torch.tensor([[16, 16]], dtype=torch.long),
     )
 
-    assert metrics.compute()["mean_dist"] == 2.5
+    values = metrics.compute()
+    assert values["mean_dist"] == 2.5
+    assert values["mean_dist_normalized"] == pytest.approx(
+        2.5 / math.hypot(15.0, 15.0)
+    )
+
+
+def test_kp_metric_missing_prediction_has_unit_normalized_penalty() -> None:
+    metrics = CourtDetectionMetrics("kp", 1)
+    expected = torch.tensor([[[[4.0, 4.0]]]])
+    target = _target(
+        expected,
+        visible=torch.tensor([[[True]]]),
+    )
+
+    metrics.update(
+        torch.full((1, 1, 16, 16), -10.0),
+        target,
+        image_size=torch.tensor([[16, 16]], dtype=torch.long),
+    )
+
+    values = metrics.compute()
+    assert values["mean_dist"] == pytest.approx(math.hypot(15.0, 15.0))
+    assert values["mean_dist_normalized"] == 1.0
+
+
+def test_kp_metric_normalizes_each_sample_by_its_own_image_diagonal() -> None:
+    metrics = CourtDetectionMetrics("kp", 1)
+    predictions = torch.tensor([[[[4.0, 4.0]]], [[[1.0, 1.0]]]])
+    target = {
+        "heatmap": torch.zeros(2, 1, 16, 16),
+        "points_xy": torch.tensor(
+            [
+                [[[7.0 / 15.0, 8.0 / 15.0]]],
+                [[[4.0 / 7.0, 5.0 / 7.0]]],
+            ]
+        ),
+        "point_visible": torch.ones(2, 1, 1, dtype=torch.bool),
+        "physical_indices": torch.zeros(2, 1, 1, dtype=torch.long),
+    }
+
+    metrics.update(
+        _logits_with_peaks(predictions),
+        target,
+        image_size=torch.tensor([[16, 16], [8, 8]], dtype=torch.long),
+    )
+
+    values = metrics.compute()
+    assert values["mean_dist"] == pytest.approx(5.0)
+    assert values["mean_dist_normalized"] == pytest.approx(
+        (5.0 / math.hypot(15.0, 15.0) + 5.0 / math.hypot(7.0, 7.0)) / 2.0
+    )
 
 
 def test_kp_metric_all_invisible_is_zero() -> None:
@@ -95,4 +152,7 @@ def test_kp_metric_all_invisible_is_zero() -> None:
         image_size=torch.tensor([[16, 16]], dtype=torch.long),
     )
 
-    assert metrics.compute()["mean_dist"] == 0.0
+    assert metrics.compute() == {
+        "mean_dist": 0.0,
+        "mean_dist_normalized": 0.0,
+    }

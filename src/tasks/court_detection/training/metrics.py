@@ -104,6 +104,8 @@ class CourtDetectionMetrics:
             )
             target_pixels = points[sample_index] * target_scale
             missing_penalty = float(torch.linalg.vector_norm(target_scale).item())
+            if missing_penalty <= 0.0:
+                raise ValueError("Court KP metric image diagonal must be positive.")
             for channel_index in range(self.output_channels):
                 expected = target_pixels[channel_index][
                     visible[sample_index, channel_index]
@@ -117,13 +119,18 @@ class CourtDetectionMetrics:
                     self._kp_distances.extend(
                         [missing_penalty] * int(expected.shape[0])
                     )
+                    self._kp_normalized_distances.extend(
+                        [1.0] * int(expected.shape[0])
+                    )
                     continue
                 pairwise = torch.cdist(
                     expected.to(dtype=torch.float32).unsqueeze(0),
                     accepted.to(dtype=torch.float32).unsqueeze(0),
                 )[0]
-                self._kp_distances.extend(
-                    pairwise.amin(dim=1).detach().cpu().tolist()
+                nearest = pairwise.amin(dim=1)
+                self._kp_distances.extend(nearest.detach().cpu().tolist())
+                self._kp_normalized_distances.extend(
+                    (nearest / missing_penalty).detach().cpu().tolist()
                 )
 
     def _update_line(
@@ -161,7 +168,13 @@ class CourtDetectionMetrics:
                     sum(self._kp_distances) / len(self._kp_distances)
                     if self._kp_distances
                     else 0.0
-                )
+                ),
+                "mean_dist_normalized": (
+                    sum(self._kp_normalized_distances)
+                    / len(self._kp_normalized_distances)
+                    if self._kp_normalized_distances
+                    else 0.0
+                ),
             }
         return {
             "dice": (
@@ -175,6 +188,7 @@ class CourtDetectionMetrics:
         self._intersection = [0.0] * self.output_channels
         self._union = [0.0] * self.output_channels
         self._kp_distances: list[float] = []
+        self._kp_normalized_distances: list[float] = []
         self._line_dice_sum = 0.0
         self._line_dice_count = 0
 

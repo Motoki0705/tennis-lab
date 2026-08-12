@@ -20,6 +20,20 @@ class _TrainerWithDataloaderReload(Protocol):
     reload_dataloaders_every_n_epochs: int
 
 
+class _RecordingTrainer:
+    def __init__(self) -> None:
+        self.test_calls: list[tuple[object, dict[str, object]]] = []
+
+    def test(self, model: object, **kwargs: object) -> None:
+        self.test_calls.append((model, kwargs))
+
+
+def _checkpoint_enabled_config(make_training_config: Any, **run: bool) -> Any:
+    config = OmegaConf.create(make_training_config(run=run))
+    config.training.checkpoint.enabled = True
+    return config
+
+
 def test_build_trainer_forwards_dataloader_reload_interval(
     make_training_config: Any,
 ) -> None:
@@ -35,6 +49,79 @@ def test_build_trainer_forwards_dataloader_reload_interval(
 
     inspected_trainer = cast(_TrainerWithDataloaderReload, trainer)
     assert inspected_trainer.reload_dataloaders_every_n_epochs == 1
+
+
+def test_test_after_fit_uses_validation_winner_when_checkpointing_enabled(
+    make_training_config: Any,
+) -> None:
+    config = _checkpoint_enabled_config(
+        make_training_config,
+        test_after_fit=True,
+    )
+    runner = BaseTrainingRunner()
+    runtime = runner.validate_runtime_config(config)
+    trainer = _RecordingTrainer()
+    module = object()
+    datamodule = object()
+
+    runner.run_test_after_fit(
+        trainer=cast(Any, trainer),
+        lightning_module=cast(Any, module),
+        datamodule=cast(Any, datamodule),
+        config=config,
+        runtime=runtime,
+    )
+
+    assert trainer.test_calls == [
+        (module, {"datamodule": datamodule, "ckpt_path": "best"})
+    ]
+
+
+def test_test_after_fit_uses_current_weights_when_checkpointing_disabled(
+    make_training_config: Any,
+) -> None:
+    config = OmegaConf.create(make_training_config(run={"test_after_fit": True}))
+    runner = BaseTrainingRunner()
+    runtime = runner.validate_runtime_config(config)
+    trainer = _RecordingTrainer()
+    module = object()
+    datamodule = object()
+
+    runner.run_test_after_fit(
+        trainer=cast(Any, trainer),
+        lightning_module=cast(Any, module),
+        datamodule=cast(Any, datamodule),
+        config=config,
+        runtime=runtime,
+    )
+
+    assert trainer.test_calls == [(module, {"datamodule": datamodule})]
+
+
+@pytest.mark.parametrize(
+    "run",
+    [
+        {"test_after_fit": False, "fast_dev_run": False},
+        {"test_after_fit": True, "fast_dev_run": True},
+    ],
+)
+def test_test_after_fit_preserves_explicit_skip_modes(
+    make_training_config: Any,
+    run: dict[str, bool],
+) -> None:
+    config = _checkpoint_enabled_config(make_training_config, **run)
+    runner = BaseTrainingRunner()
+    trainer = _RecordingTrainer()
+
+    runner.run_test_after_fit(
+        trainer=cast(Any, trainer),
+        lightning_module=cast(Any, object()),
+        datamodule=cast(Any, object()),
+        config=config,
+        runtime=runner.validate_runtime_config(config),
+    )
+
+    assert trainer.test_calls == []
 
 
 def test_select_devices_rejects_unavailable_positive_gpu_request(

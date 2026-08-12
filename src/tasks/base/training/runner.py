@@ -12,7 +12,7 @@ import types
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytorch_lightning as pl
 import torch
@@ -79,8 +79,13 @@ class BaseTrainingRunner:
                 ckpt_path=resume_ckpt,
             )
 
-        if not self.skip_test(config):
-            trainer.test(lightning_module, datamodule=datamodule)
+        self.run_test_after_fit(
+            trainer=trainer,
+            lightning_module=lightning_module,
+            datamodule=datamodule,
+            config=config,
+            runtime=runtime,
+        )
 
         print(f"Training complete. Outputs saved to {output_dir}")
 
@@ -106,11 +111,11 @@ class BaseTrainingRunner:
 
     def prepare_output_dir(self, config: TrainingRuntimeConfig) -> Path:
         """Prepare output directory path."""
-        return config.run.output_dir
+        return cast("Path", config.run.output_dir)
 
     def _gan_enabled(self, config: Any) -> bool:
         runtime = self.validate_runtime_config(config)
-        return runtime.training.gan.enabled
+        return cast("bool", runtime.training.gan.enabled)
 
     def prepare_config(self, config: Any) -> None:
         """Validate task-specific configuration before the run starts.
@@ -226,6 +231,27 @@ class BaseTrainingRunner:
     def skip_test(self, config: Any) -> bool:
         """Check if test phase should be skipped."""
         return bool(config.run.fast_dev_run) or not bool(config.run.test_after_fit)
+
+    def run_test_after_fit(
+        self,
+        *,
+        trainer: pl.Trainer,
+        lightning_module: pl.LightningModule,
+        datamodule: pl.LightningDataModule,
+        config: Any,
+        runtime: TrainingRuntimeConfig,
+    ) -> None:
+        """Test the validation winner when checkpointing is explicitly enabled."""
+        if self.skip_test(config):
+            return
+        if runtime.training.checkpoint.enabled:
+            trainer.test(
+                lightning_module,
+                datamodule=datamodule,
+                ckpt_path="best",
+            )
+            return
+        trainer.test(lightning_module, datamodule=datamodule)
 
     def save_config(self, config: Any, output_dir: Path) -> None:
         """Save resolved config to output directory."""
