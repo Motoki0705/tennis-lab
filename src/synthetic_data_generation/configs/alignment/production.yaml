@@ -4,7 +4,7 @@ evidence:
   holdout_fraction: 0.3333333333333333
   minimum_fit_cameras: 8
   minimum_holdout_cameras: 4
-  maximum_cameras: 24
+  camera_prefix_count: 48
 
   line_model:
     checkpoint_path: court_detection/line/court-detection-epoch19.ckpt
@@ -61,19 +61,25 @@ evidence:
     samples_per_metre: 6.0
     minimum_nht_scene_units_per_metre: 0.055
     maximum_nht_scene_units_per_metre: 0.085
-    orientation_minimum_radians: -1.5708
-    orientation_maximum_radians: 1.5708
+    orientation_minimum_radians: -1.5707963267948966
+    orientation_maximum_radians: 1.5707963267948966
     score_distance_metres: 0.5
     minimum_template_score: 0.02
     family_orientation_tolerance_radians: 0.2
     family_scale_relative_tolerance: 0.3
-    minimum_center_separation_metres: 12.0
-    separation_penalty: 100.0
-    optimizer_maximum_iterations: 30
+    minimum_center_separation_metres: 10.97
+    optimizer_maximum_iterations: 70
     optimizer_population_size: 8
     optimizer_tolerance: 1.0e-5
     maximum_fit_points: 100000
-    common_scale_relative_tolerance: 0.3
+    common_scale_relative_tolerance: 0.07290400972053463
+    scale_bound_margin_relative: 0.01
+    evidence_assignment_distance_metres: 0.35
+    whole_template_inlier_distance_metres: 0.3
+    minimum_whole_template_inlier_fraction: 0.6
+    maximum_whole_template_q95_error_metres: 1.5
+    minimum_semantic_segment_inlier_fraction: 0.5
+    maximum_court_footprint_overlap_fraction: 1.0e-9
 
   correspondences:
     maximum_match_distance_metres: 0.25

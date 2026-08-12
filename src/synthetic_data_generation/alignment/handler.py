@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
 from src.synthetic_data_generation.alignment.contracts import (
     AlignmentAcceptancePolicy,
-    AlignmentEvidence,
+    EvaluatedAlignment,
 )
-from src.synthetic_data_generation.alignment.fitting import fit_alignment
 from src.synthetic_data_generation.alignment.validation import (
     validate_alignment_outputs,
     write_alignment_outputs,
@@ -38,8 +37,8 @@ class AlignmentEvidenceSource(Protocol):
     def preflight(self, scene: StandardSceneExport) -> None:
         """Validate availability/configuration without mutating alignment outputs."""
 
-    def collect(self, scene: StandardSceneExport) -> AlignmentEvidence:
-        """Return explicit fit/holdout evidence without writing stage files."""
+    def collect_evaluated(self, scene: StandardSceneExport) -> EvaluatedAlignment:
+        """Return the immutable result of exactly one fit/holdout evaluation."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,6 +48,12 @@ class AlignmentStageHandler:
     evidence_source: AlignmentEvidenceSource
     policy: AlignmentAcceptancePolicy
     scene_loader: SceneExportLoader = validate_standard_scene_export
+    _evaluations: dict[tuple[str, Path], EvaluatedAlignment] = field(
+        default_factory=dict,
+        init=False,
+        repr=False,
+        compare=False,
+    )
 
     def preflight(self, context: StageExecutionContext) -> None:
         """Validate the canonical NHT export before any pipeline invalidation."""
@@ -70,21 +75,23 @@ class AlignmentStageHandler:
                 f"missing_files={missing_files}, missing_directories={missing_directories}."
             )
         scene = self._load_scene(scene_json, expected_scene_id=context.request.scene_id)
-        self.evidence_source.preflight(scene)
-        evidence = self.evidence_source.collect(scene)
-        if not isinstance(evidence, AlignmentEvidence):
-            raise TypeError("Alignment evidence source returned an unsupported value.")
-        fit_alignment(evidence, policy=self.policy)
+        key = (scene.scene_id, scene.scene_path)
+        if key not in self._evaluations:
+            self.evidence_source.preflight(scene)
+        evaluation = self._evaluation(scene)
+        if evaluation.result.policy != self.policy:
+            raise ValueError("Alignment evidence source used a different policy.")
 
     def execute(self, context: StageExecutionContext) -> StageExecutionSummary:
         """Write only to the runner-provided staging path; never use an alternate path."""
         scene_json = _scene_json_path(context)
         _require_exact_staging(context)
         scene = self._load_scene(scene_json, expected_scene_id=context.request.scene_id)
-        evidence = self.evidence_source.collect(scene)
-        if not isinstance(evidence, AlignmentEvidence):
-            raise TypeError("Alignment evidence source returned an unsupported value.")
-        result = fit_alignment(evidence, policy=self.policy)
+        evaluation = self._evaluation(scene)
+        evidence = evaluation.evidence
+        result = evaluation.result
+        if result.policy != self.policy:
+            raise ValueError("Alignment evidence source used a different policy.")
         write_alignment_outputs(context.staging_path, evidence=evidence, result=result)
         return StageExecutionSummary(
             values={
@@ -110,6 +117,16 @@ class AlignmentStageHandler:
                 f"NHT scene_id {scene.scene_id!r} disagrees with {expected_scene_id!r}."
             )
         return scene
+
+    def _evaluation(self, scene: StandardSceneExport) -> EvaluatedAlignment:
+        key = (scene.scene_id, scene.scene_path)
+        if key in self._evaluations:
+            return self._evaluations[key]
+        evaluation = self.evidence_source.collect_evaluated(scene)
+        if not isinstance(evaluation, EvaluatedAlignment):
+            raise TypeError("Alignment evidence source returned an unsupported value.")
+        self._evaluations[key] = evaluation
+        return evaluation
 
 
 def _scene_json_path(context: StageExecutionContext) -> Path:

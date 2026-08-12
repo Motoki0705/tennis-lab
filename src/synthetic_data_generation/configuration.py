@@ -570,7 +570,7 @@ class AlignmentConfiguration:
                 "holdout_fraction",
                 "minimum_fit_cameras",
                 "minimum_holdout_cameras",
-                "maximum_cameras",
+                "camera_prefix_count",
                 "line_model",
                 "ground_plane",
                 "projection",
@@ -813,12 +813,18 @@ class AlignmentConfiguration:
                 "family_orientation_tolerance_radians",
                 "family_scale_relative_tolerance",
                 "minimum_center_separation_metres",
-                "separation_penalty",
                 "optimizer_maximum_iterations",
                 "optimizer_population_size",
                 "optimizer_tolerance",
                 "maximum_fit_points",
                 "common_scale_relative_tolerance",
+                "scale_bound_margin_relative",
+                "evidence_assignment_distance_metres",
+                "whole_template_inlier_distance_metres",
+                "minimum_whole_template_inlier_fraction",
+                "maximum_whole_template_q95_error_metres",
+                "minimum_semantic_segment_inlier_fraction",
+                "maximum_court_footprint_overlap_fraction",
             },
         )
         candidate = CourtCandidateFitSettings(
@@ -863,9 +869,6 @@ class AlignmentConfiguration:
                 "minimum_center_separation_metres",
                 path=candidate_path,
             ),
-            separation_penalty=_number(
-                candidate_raw, "separation_penalty", path=candidate_path
-            ),
             optimizer_maximum_iterations=_integer(
                 candidate_raw,
                 "optimizer_maximum_iterations",
@@ -887,6 +890,41 @@ class AlignmentConfiguration:
             common_scale_relative_tolerance=_number(
                 candidate_raw,
                 "common_scale_relative_tolerance",
+                path=candidate_path,
+            ),
+            scale_bound_margin_relative=_number(
+                candidate_raw,
+                "scale_bound_margin_relative",
+                path=candidate_path,
+            ),
+            evidence_assignment_distance_metres=_number(
+                candidate_raw,
+                "evidence_assignment_distance_metres",
+                path=candidate_path,
+            ),
+            whole_template_inlier_distance_metres=_number(
+                candidate_raw,
+                "whole_template_inlier_distance_metres",
+                path=candidate_path,
+            ),
+            minimum_whole_template_inlier_fraction=_number(
+                candidate_raw,
+                "minimum_whole_template_inlier_fraction",
+                path=candidate_path,
+            ),
+            maximum_whole_template_q95_error_metres=_number(
+                candidate_raw,
+                "maximum_whole_template_q95_error_metres",
+                path=candidate_path,
+            ),
+            minimum_semantic_segment_inlier_fraction=_number(
+                candidate_raw,
+                "minimum_semantic_segment_inlier_fraction",
+                path=candidate_path,
+            ),
+            maximum_court_footprint_overlap_fraction=_number(
+                candidate_raw,
+                "maximum_court_footprint_overlap_fraction",
                 path=candidate_path,
             ),
         )
@@ -929,7 +967,9 @@ class AlignmentConfiguration:
             minimum_holdout_cameras=_integer(
                 raw, "minimum_holdout_cameras", path=path, minimum=1
             ),
-            maximum_cameras=_integer(raw, "maximum_cameras", path=path, minimum=1),
+            camera_prefix_count=_integer(
+                raw, "camera_prefix_count", path=path, minimum=1
+            ),
             line_model=line_model,
             ground_plane=ground,
             projection=projection,
