@@ -70,6 +70,7 @@ from src.synthetic_data_generation.pipeline.contracts import (
 from src.synthetic_data_generation.pipeline.workspace import SceneWorkspace
 from src.synthetic_data_generation.reconstruction.contracts import (
     NHT_RECONSTRUCT_COMMAND,
+    NHTPipelineConfig,
 )
 from src.synthetic_data_generation.rendering.nht.contracts import NHT_RENDER_COMMAND
 from src.tasks.blcs.generate_dataset.source_api import (
@@ -390,6 +391,7 @@ class NHTCommandPaths:
 
     reconstruct_executable: str | Path
     render_executable: str | Path
+    pipeline_config: NHTPipelineConfig
     environment: Mapping[str, str]
     reconstruction_timeout_seconds: float
     render_timeout_seconds: float
@@ -398,6 +400,8 @@ class NHTCommandPaths:
     def from_mapping(
         cls,
         value: object,
+        *,
+        resolver: PathResolver,
     ) -> NHTCommandPaths:
         raw = _exact(
             value,
@@ -405,6 +409,7 @@ class NHTCommandPaths:
             keys={
                 "reconstruct_executable",
                 "render_executable",
+                "pipeline_config_path",
                 "environment",
                 "reconstruction_timeout_seconds",
                 "render_timeout_seconds",
@@ -420,6 +425,7 @@ class NHTCommandPaths:
             key="render_executable",
             expected=NHT_RENDER_COMMAND,
         )
+        pipeline_config = _nht_pipeline_config(raw, resolver=resolver)
         environment_raw = _mapping(raw["environment"], path="nht.environment")
         unknown_environment = sorted(
             set(environment_raw) - {"CUDA_VISIBLE_DEVICES"}
@@ -456,10 +462,38 @@ class NHTCommandPaths:
         return cls(
             reconstruct_executable=reconstruct,
             render_executable=render,
+            pipeline_config=pipeline_config,
             environment=environment,
             reconstruction_timeout_seconds=reconstruction_timeout,
             render_timeout_seconds=render_timeout,
         )
+
+
+def _nht_pipeline_config(
+    mapping: ConfigMapping,
+    *,
+    resolver: PathResolver,
+) -> NHTPipelineConfig:
+    """Resolve and validate the public NHT config without provider imports."""
+    configured = _text(mapping, "pipeline_config_path", path="nht")
+    lexical_path = resolver.resolve_symlink_entry(
+        PathRole.EXTERNAL_ASSET,
+        configured,
+    )
+    if lexical_path.is_symlink():
+        raise PathContractError(
+            f"nht.pipeline_config_path must not be a symbolic link: {lexical_path}"
+        )
+    if not lexical_path.exists():
+        raise PathContractError(
+            f"nht.pipeline_config_path does not exist: {lexical_path}"
+        )
+    if not lexical_path.is_file():
+        raise PathContractError(
+            f"nht.pipeline_config_path is not a file: {lexical_path}"
+        )
+    resolved = resolver.resolve(PathRole.EXTERNAL_ASSET, configured)
+    return NHTPipelineConfig.load(resolved)
 
 
 def _installed_nht_command(
@@ -2086,7 +2120,7 @@ class ScenePipelineConfiguration:
             request=request,
             stages=stages,
             camera=_camera_profile(root["camera"]),
-            nht=NHTCommandPaths.from_mapping(root["nht"]),
+            nht=NHTCommandPaths.from_mapping(root["nht"], resolver=resolver),
             alignment=AlignmentConfiguration.from_mapping(
                 root["alignment"],
                 resolver=resolver,

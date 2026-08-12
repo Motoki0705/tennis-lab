@@ -105,7 +105,7 @@ def assemble_court_dataset(
     attempt_root: Path,
     performance_timer: PerformanceTimer,
 ) -> CourtAssemblyReport:
-    """Scan staged arrays once, apply gates, and assemble fixed outputs."""
+    """Stream staged samples through gates and assemble fixed outputs."""
     if not staging_root.is_absolute() or not staging_root.is_dir() or staging_root.is_symlink():
         raise ValueError("Court staging_root must be an existing absolute ordinary directory.")
     if not isinstance(render_result, CourtRenderResult):
@@ -306,8 +306,11 @@ def assemble_court_dataset(
         proposal_count=plan.proposal_count,
         accepted_frame_count=len(accepted),
         rejected_frame_count=len(rejected_records),
-        staged_complete_array_scans=sum(
-            item.complete_array_scan_count for item in evaluated
+        accepted_staged_complete_array_scans=sum(
+            item.complete_array_scan_count for item in accepted
+        ),
+        post_render_rejected_staged_complete_array_scans=sum(
+            item.complete_array_scan_count for item in post_render_rejected
         ),
         budget=configuration.performance,
         visible_by_class=visible_by_class,
@@ -368,7 +371,6 @@ def _relocate_rendered_sample(
         alpha_path=destination / "alpha.npy",
         alpha_preview_path=destination / "alpha.png",
         depth_path=destination / "depth.npy",
-        validated_arrays=rendered.validated_arrays,
     )
 
 
@@ -378,17 +380,13 @@ def _evaluate_staged_sample(
     projection: MultiCourtProjection,
     metric_adapter: MetricSceneAdapter,
 ) -> _EvaluatedSample:
-    """Reuse the NHT scan, or scan one recovered payload, then convert depth once."""
+    """Load, evaluate, and release one staged payload before advancing."""
     inspect_rendered_sample(rendered)
-    arrays = rendered.validated_arrays
-    complete_array_scan_count = 0
-    if arrays is None:
-        arrays = NHTRenderArrays(
-            rgb=np.load(rendered.rgb_path, allow_pickle=False),
-            alpha=np.load(rendered.alpha_path, allow_pickle=False),
-            depth=np.load(rendered.depth_path, allow_pickle=False),
-        )
-        complete_array_scan_count = 1
+    arrays = NHTRenderArrays(
+        rgb=np.load(rendered.rgb_path, allow_pickle=False),
+        alpha=np.load(rendered.alpha_path, allow_pickle=False),
+        depth=np.load(rendered.depth_path, allow_pickle=False),
+    )
     visible = attach_renderer_visibility_from_validated_arrays(
         projection,
         alpha=arrays.alpha,
@@ -407,7 +405,7 @@ def _evaluate_staged_sample(
         projection=visible,
         accepted=not reasons,
         rejection_reasons=tuple(reasons),
-        complete_array_scan_count=complete_array_scan_count,
+        complete_array_scan_count=1,
     )
 
 
@@ -575,7 +573,8 @@ def _write_performance_evidence(
     proposal_count: int,
     accepted_frame_count: int,
     rejected_frame_count: int,
-    staged_complete_array_scans: int,
+    accepted_staged_complete_array_scans: int,
+    post_render_rejected_staged_complete_array_scans: int,
     budget: DatasetPerformanceBudget,
     visible_by_class: Mapping[str, int],
 ) -> CourtPerformanceEvidence:
@@ -583,6 +582,25 @@ def _write_performance_evidence(
     wall_seconds, cpu_seconds, peak_rss_bytes = timer.elapsed()
     published_bytes = max(1, directory_size_bytes(root))
     performance_path = root / "diagnostics" / "performance.json"
+    pre_render_rejected_sample_count = len(
+        render_result.pre_render_rejected_sample_ids
+    )
+    renderable_sample_count = proposal_count - pre_render_rejected_sample_count
+    post_render_rejected_sample_count = (
+        rejected_frame_count - pre_render_rejected_sample_count
+    )
+    staged_complete_array_scans = (
+        accepted_staged_complete_array_scans
+        + post_render_rejected_staged_complete_array_scans
+    )
+    fresh_rendered_sample_count = render_result.nht_complete_array_scans
+    reused_rendered_sample_count = (
+        renderable_sample_count - fresh_rendered_sample_count
+    )
+    fresh_run_complete_array_scan_requirement = 2 * renderable_sample_count
+    complete_array_scan_budget_capacity = (
+        budget.maximum_complete_array_scans_per_sample * renderable_sample_count
+    )
     evidence: CourtPerformanceEvidence | None = None
     for _ in range(8):
         metrics = DatasetPerformanceMetrics(
@@ -615,17 +633,35 @@ def _write_performance_evidence(
             accepted_frame_count=accepted_frame_count,
             rejected_frame_count=rejected_frame_count,
             pre_render_checked_sample_count=proposal_count,
-            pre_render_rejected_sample_count=len(
-                render_result.pre_render_rejected_sample_ids
-            ),
+            pre_render_rejected_sample_count=pre_render_rejected_sample_count,
+            renderable_sample_count=renderable_sample_count,
+            post_render_rejected_sample_count=post_render_rejected_sample_count,
             depth_conversion_count=accepted_frame_count,
+            fresh_rendered_sample_count=fresh_rendered_sample_count,
+            reused_rendered_sample_count=reused_rendered_sample_count,
             nht_boundary_complete_array_scans=(
                 render_result.nht_complete_array_scans
             ),
+            accepted_staged_complete_array_scans=(
+                accepted_staged_complete_array_scans
+            ),
+            post_render_rejected_staged_complete_array_scans=(
+                post_render_rejected_staged_complete_array_scans
+            ),
             staged_complete_array_scans=staged_complete_array_scans,
+            fresh_run_complete_array_scan_requirement=(
+                fresh_run_complete_array_scan_requirement
+            ),
+            complete_array_scan_budget_capacity=(
+                complete_array_scan_budget_capacity
+            ),
             scene_validation_count=render_result.scene_validation_count,
             preview_validation_count=render_result.preview_validation_count,
             loaded_array_bytes=render_result.loaded_array_bytes,
+            maximum_nht_live_array_bytes=(
+                render_result.maximum_nht_live_array_bytes
+            ),
+            retained_nht_array_bytes=render_result.retained_nht_array_bytes,
             external_nht_boundary_wall_seconds=(
                 render_result.external_nht_boundary_wall_seconds
             ),

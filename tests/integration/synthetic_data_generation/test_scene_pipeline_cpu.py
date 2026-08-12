@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import subprocess
+import sys
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -100,7 +101,11 @@ from src.synthetic_data_generation.pipeline import (
     StageStatus,
     canonical_registry,
 )
-from src.synthetic_data_generation.reconstruction import NHTReconstructionHandler
+from src.synthetic_data_generation.pipeline.run_manifest import MutableRunManifest
+from src.synthetic_data_generation.reconstruction import (
+    NHTPipelineConfig,
+    NHTReconstructionHandler,
+)
 from src.synthetic_data_generation.reconstruction.scene_export import (
     StandardSceneExport,
 )
@@ -429,6 +434,12 @@ def test_real_domain_handlers_publish_and_recover_through_fake_nht_only(
     )
     _assert_published_domains(first.workspace, rgb_value=0.1)
     assert _reconstruction_generation(first.workspace) == 1
+    assert first_manifest.stages[StageName.RECONSTRUCTION].summary[
+        "pipeline_config"
+    ] == {
+        "path": str(fixture.pipeline_config.path),
+        "schema": "nht_pipeline_config_v1",
+    }
 
     alignment_payload = _json(first.workspace.root / "alignment/alignment.json")
     alignment_payload["stale_attempt"] = True
@@ -459,6 +470,17 @@ def test_real_domain_handlers_publish_and_recover_through_fake_nht_only(
         alignment_manifest.stages[target.stage].attempt == 2
         for target in DatasetTarget
     )
+
+    guarded_rerun = fixture.runner(rgb_value=0.25)
+    fixture.pipeline_config.path.write_text("schema: invalid\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="schema"):
+        guarded_rerun.run(fixture.request(from_stage=StageName.RECONSTRUCTION))
+    fixture.pipeline_config.path.write_text(
+        "schema: nht_pipeline_config_v1\n",
+        encoding="utf-8",
+    )
+    assert _reconstruction_generation(first.workspace) == 1
+    _assert_published_domains(first.workspace, rgb_value=0.2)
 
     reconstruction_run = first.workspace.root / "reconstruction/run.json"
     reconstruction_payload = _json(reconstruction_run)
@@ -521,6 +543,45 @@ def test_real_domain_handlers_publish_and_recover_through_fake_nht_only(
     assert not tuple(first.workspace.root.rglob(".publication-backup"))
     assert not tuple(first.workspace.root.rglob("partial.tmp"))
 
+    interrupted = MutableRunManifest.load(first.workspace.run_manifest_path)
+    interrupted.stages[StageName.BLCS_DATASET].attempt = 2
+    interrupted.invalidate(StageName.PLCS_DATASET)
+    interrupted.stages[StageName.PLCS_DATASET].attempt = 0
+    interrupted.invalidate(StageName.REPORT)
+    interrupted.stages[StageName.REPORT].attempt = 1
+    interrupted.save(first.workspace.run_manifest_path)
+    first.workspace.invalidate_outputs(
+        retry.registry.definition(StageName.PLCS_DATASET)
+    )
+    first.workspace.invalidate_outputs(retry.registry.definition(StageName.REPORT))
+
+    blcs_cursor_repair = fixture.runner(rgb_value=0.45)
+    repaired_manifest = blcs_cursor_repair.run(
+        fixture.request(from_stage=StageName.BLCS_DATASET)
+    )
+
+    assert repaired_manifest.stages[StageName.INGEST].attempt == 1
+    assert repaired_manifest.stages[StageName.RECONSTRUCTION].attempt == 2
+    assert repaired_manifest.stages[StageName.ALIGNMENT].attempt == 3
+    assert repaired_manifest.stages[StageName.COURT_DATASET].attempt == 3
+    assert repaired_manifest.stages[StageName.BLCS_DATASET].attempt == 3
+    assert repaired_manifest.stages[StageName.PLCS_DATASET].attempt == 1
+    assert repaired_manifest.stages[StageName.REPORT].attempt == 2
+    assert all(
+        repaired_manifest.stages[stage].status is StageStatus.COMPLETED
+        for stage in StageName
+    )
+    assert _first_rgb_value(first.workspace.root / "datasets/court") == pytest.approx(
+        0.3
+    )
+    assert _first_rgb_value(first.workspace.root / "datasets/blcs") == pytest.approx(
+        0.45
+    )
+    assert _first_rgb_value(first.workspace.root / "datasets/plcs") == pytest.approx(
+        0.45
+    )
+    assert not tuple(first.workspace.root.rglob("partial.tmp"))
+
     render_calls = [
         json.loads(line)
         for line in fixture.render_log.read_text(encoding="utf-8").splitlines()
@@ -536,8 +597,18 @@ def test_real_domain_handlers_publish_and_recover_through_fake_nht_only(
         for line in fixture.reconstruct_log.read_text(encoding="utf-8").splitlines()
     ]
     assert reconstruct_calls == [
-        {"command": "nht-reconstruct", "generation": 1, "scene_id": "B00"},
-        {"command": "nht-reconstruct", "generation": 2, "scene_id": "B00"},
+        {
+            "command": "nht-reconstruct",
+            "config": str(fixture.pipeline_config.path),
+            "generation": 1,
+            "scene_id": "B00",
+        },
+        {
+            "command": "nht-reconstruct",
+            "config": str(fixture.pipeline_config.path),
+            "generation": 2,
+            "scene_id": "B00",
+        },
     ]
 
 
@@ -545,6 +616,7 @@ def test_real_domain_handlers_publish_and_recover_through_fake_nht_only(
 class _Fixture:
     workspace: SceneWorkspace
     source_video: Path
+    pipeline_config: NHTPipelineConfig
     reconstruct_executable: Path
     render_executable: Path
     reconstruct_log: Path
@@ -563,6 +635,12 @@ class _Fixture:
         workspace = SceneWorkspace.resolve(resolver, "B00")
         source_video = tmp_path / "B00.mp4"
         _write_video(source_video)
+        pipeline_config_path = tmp_path / "nht-pipeline.yaml"
+        pipeline_config_path.write_text(
+            "schema: nht_pipeline_config_v1\n",
+            encoding="utf-8",
+        )
+        pipeline_config = NHTPipelineConfig.load(pipeline_config_path.resolve())
         reconstruct_log = tmp_path / "nht-reconstruct.jsonl"
         render_log = tmp_path / "nht-render.jsonl"
         reconstruct, render = _write_fake_nht_commands(
@@ -576,6 +654,7 @@ class _Fixture:
         return cls(
             workspace=workspace,
             source_video=source_video.resolve(),
+            pipeline_config=pipeline_config,
             reconstruct_executable=reconstruct,
             render_executable=render,
             reconstruct_log=reconstruct_log,
@@ -636,6 +715,7 @@ class _Fixture:
             ingest=IngestStageHandler(),
             reconstruction=NHTReconstructionHandler(
                 executable=self.reconstruct_executable,
+                pipeline_config=self.pipeline_config,
                 environment={},
                 timeout_seconds=180.0,
             ),
@@ -1086,7 +1166,7 @@ def _write_fake_nht_commands(
     render_log: Path,
 ) -> tuple[Path, Path]:
     binary_root.mkdir(parents=True)
-    interpreter = Path.cwd() / ".venv/bin/python"
+    interpreter = Path(sys.executable)
     reconstruct = binary_root / "nht-reconstruct"
     reconstruct.write_text(
         _fake_reconstruct_source(interpreter, reconstruct_log), encoding="utf-8"
@@ -1113,8 +1193,12 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--scene-id", required=True)
 parser.add_argument("--input-video", required=True)
 parser.add_argument("--workspace", required=True)
+parser.add_argument("--config", required=True)
 args = parser.parse_args()
 workspace = Path(args.workspace)
+pipeline_config = Path(args.config)
+if "schema: nht_pipeline_config_v1" not in pipeline_config.read_text(encoding="utf-8"):
+    raise ValueError("fake NHT received an invalid pipeline config")
 workspace.mkdir(parents=True, exist_ok=True)
 log_path = Path({str(log_path)!r})
 generation = len(log_path.read_text(encoding="utf-8").splitlines()) + 1 if log_path.exists() else 1
@@ -1209,7 +1293,7 @@ identity_list = identity.tolist()
 (workspace / "run.json").write_text(json.dumps({{"command": "nht-reconstruct", "generation": generation}}), encoding="utf-8")
 (workspace / "input-config.yaml").write_text("schema: public-fake-nht-v1\\n", encoding="utf-8")
 with log_path.open("a", encoding="utf-8") as handle:
-    handle.write(json.dumps({{"command": "nht-reconstruct", "generation": generation, "scene_id": args.scene_id}}, sort_keys=True) + "\\n")
+    handle.write(json.dumps({{"command": "nht-reconstruct", "config": str(pipeline_config.resolve()), "generation": generation, "scene_id": args.scene_id}}, sort_keys=True) + "\\n")
 '''
 
 

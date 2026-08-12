@@ -353,7 +353,7 @@ class StageDefinition(Generic[SummaryT]):
 
 @dataclass(frozen=True, slots=True)
 class StageExecutionPlan:
-    """One graph-derived request plan consumed by every runner lifecycle phase."""
+    """One graph-derived, publication-aware plan for every runner lifecycle phase."""
 
     selected: tuple[StageDefinition[StageExecutionSummary], ...]
     cursor: StageDefinition[StageExecutionSummary]
@@ -381,9 +381,11 @@ class StageExecutionPlan:
         if self.cursor.name not in names["execution"]:
             raise ValueError("Execution-plan cursor must belong to the execution stages.")
         if not names["retained_ancestors"] <= names["selected"]:
-            raise ValueError("Retained ancestors must belong to the selected request stages.")
+            raise ValueError(
+                "Retained prerequisites must belong to the selected request stages."
+            )
         if names["retained_ancestors"] & names["invalidated"]:
-            raise ValueError("Retained ancestors cannot also be invalidated.")
+            raise ValueError("Retained prerequisites cannot also be invalidated.")
         if not names["execution"] <= names["selected"]:
             raise ValueError("Execution stages must belong to the selected request stages.")
         if not names["execution"] <= names["invalidated"]:

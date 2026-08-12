@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 import math
+import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import cast
@@ -25,6 +26,7 @@ from src.synthetic_data_generation.alignment.contracts import (
     PartitionThresholds,
 )
 from src.synthetic_data_generation.configuration import CourtDatasetConfiguration
+from src.synthetic_data_generation.dataset.court import assembler as court_assembler
 from src.synthetic_data_generation.dataset.court.assembler import (
     assemble_court_dataset,
 )
@@ -32,6 +34,9 @@ from src.synthetic_data_generation.dataset.court.components.camera_sampling.sele
     build_court_dataset_plan,
 )
 from src.synthetic_data_generation.dataset.court.contracts import CourtDatasetPlan
+from src.synthetic_data_generation.dataset.court.performance import (
+    CourtPerformanceEvidence,
+)
 from src.synthetic_data_generation.dataset.court.rendering.nht import CourtNHTRenderer
 from src.synthetic_data_generation.dataset.court.semantic_manifest import (
     COURT_SEMANTIC_MANIFEST_PATH,
@@ -107,6 +112,7 @@ def test_same_seed_public_renderer_runs_publish_equal_semantic_manifests(
         tmp_path / "repeat-a",
         executable=executable,
         rgb_value=0.2,
+        verify_attempt_local_reuse=True,
     )
     second_plan, second_manifest, second_root = _execute_court_render(
         tmp_path / "repeat-b",
@@ -119,8 +125,23 @@ def test_same_seed_public_renderer_runs_publish_equal_semantic_manifests(
     assert first_manifest == second_manifest
     first_dataset = _json_mapping(load_json(first_root / "dataset.json"))
     second_dataset = _json_mapping(load_json(second_root / "dataset.json"))
+    first_performance = CourtPerformanceEvidence.from_dict(
+        load_json(first_root / "diagnostics/performance.json")
+    )
+    second_performance = CourtPerformanceEvidence.from_dict(
+        load_json(second_root / "diagnostics/performance.json")
+    )
     assert first_manifest["trajectory_groups"] == first_dataset["trajectory_groups"]
     assert first_manifest["counts"] == second_manifest["counts"]
+    assert first_performance.post_render_rejected_sample_count > 0
+    assert (
+        first_performance.post_render_rejected_sample_count
+        == second_performance.post_render_rejected_sample_count
+    )
+    assert first_performance.fresh_rendered_sample_count == (
+        first_performance.renderable_sample_count
+    )
+    assert first_performance.retained_nht_array_bytes == 0
     _assert_no_operational_manifest_fields(first_manifest)
 
     first_record = _first_accepted_record(first_dataset)
@@ -209,13 +230,17 @@ def _execute_court_render(
     *,
     executable: Path,
     rgb_value: float,
+    verify_attempt_local_reuse: bool = False,
 ) -> tuple[CourtDatasetPlan, dict[str, object], Path]:
     alignment = _alignment()
     scene_path = _write_standard_scene(workspace, _render_cameras())
     renderer = CourtNHTRenderer(
         executable=executable,
         client=NHTRenderClient(),
-        environment={"FAKE_NHT_RGB_VALUE": str(rgb_value)},
+        environment={
+            "FAKE_NHT_REJECT_FIRST": "1",
+            "FAKE_NHT_RGB_VALUE": str(rgb_value),
+        },
         timeout_seconds=180.0,
     )
     scene = renderer.preflight(scene_path)
@@ -239,7 +264,20 @@ def _execute_court_render(
         attempt_token="repeat-attempt",
         alignment=alignment,
     )
-    assemble_court_dataset(
+    reused_result = None
+    if verify_attempt_local_reuse:
+        reused_result = renderer.render(
+            plan=plan,
+            scene=scene,
+            attempt_root=attempt_root,
+            attempt_token="repeat-attempt",
+            alignment=alignment,
+        )
+        assert reused_result.samples == result.samples
+        assert reused_result.nht_invocations == 0
+        assert reused_result.nht_complete_array_scans == 0
+        assert reused_result.retained_nht_array_bytes == 0
+    report = assemble_court_dataset(
         dataset_root,
         plan=plan,
         layout=alignment.layout,
@@ -249,6 +287,32 @@ def _execute_court_render(
         attempt_root=attempt_root,
         performance_timer=timer,
     )
+    if reused_result is not None:
+        reused_evidence_root = workspace / "reused-performance-evidence"
+        (reused_evidence_root / "diagnostics").mkdir(parents=True)
+        reused_evidence = court_assembler._write_performance_evidence(
+            reused_evidence_root,
+            timer=PerformanceTimer(),
+            render_result=reused_result,
+            proposal_count=report.proposal_count,
+            accepted_frame_count=report.accepted_frame_count,
+            rejected_frame_count=report.rejected_frame_count,
+            accepted_staged_complete_array_scans=report.accepted_frame_count,
+            post_render_rejected_staged_complete_array_scans=(
+                report.performance.post_render_rejected_sample_count
+            ),
+            budget=configuration.performance,
+            visible_by_class=report.performance.visible_points_by_class,
+        )
+        assert reused_evidence.fresh_run_complete_array_scan_requirement == (
+            report.performance.fresh_run_complete_array_scan_requirement
+        )
+        assert reused_evidence.complete_array_scan_budget_capacity == (
+            report.performance.complete_array_scan_budget_capacity
+        )
+        assert reused_evidence.metrics.complete_array_scans < (
+            report.performance.metrics.complete_array_scans
+        )
     manifest = _json_mapping(
         load_json(dataset_root / COURT_SEMANTIC_MANIFEST_PATH)
     )
@@ -479,7 +543,7 @@ def _write_standard_scene(workspace: Path, cameras: tuple[SceneCamera, ...]) -> 
 
 def _write_fake_nht_render(path: Path) -> Path:
     path.parent.mkdir(parents=True)
-    interpreter = Path.cwd() / ".venv/bin/python"
+    interpreter = Path(sys.executable)
     path.write_text(
         f"""#!{interpreter}
 import argparse
@@ -501,16 +565,21 @@ request = json.loads(Path(args.cameras).read_text(encoding="utf-8"))
 output = Path(args.output)
 output.mkdir(parents=True, exist_ok=False)
 rgb_value = float(os.environ["FAKE_NHT_RGB_VALUE"])
+reject_first = os.environ.get("FAKE_NHT_REJECT_FIRST") == "1"
 previews = {{}}
 records = []
-for camera in request["cameras"]:
+for camera_index, camera in enumerate(request["cameras"]):
     camera_id = camera["camera_id"]
     width = camera["width"]
     height = camera["height"]
     frame = output / camera_id
     frame.mkdir()
     np.save(frame / "rgb.npy", np.full((height, width, 3), rgb_value, dtype=np.float32))
-    np.save(frame / "alpha.npy", np.ones((height, width, 1), dtype=np.float32))
+    alpha_value = 0.0 if reject_first and camera_index == 0 else 1.0
+    np.save(
+        frame / "alpha.npy",
+        np.full((height, width, 1), alpha_value, dtype=np.float32),
+    )
     np.save(frame / "depth.npy", np.ones((height, width, 1), dtype=np.float32))
     key = (width, height)
     if key not in previews:
@@ -588,7 +657,11 @@ def _assert_repeat_semantic_mutations_fail(manifest: dict[str, object]) -> None:
 
 def _manifest_sample(manifest: dict[str, object]) -> dict[str, object]:
     samples = cast(list[object], manifest["samples"])
-    return _json_mapping(samples[0])
+    for sample in samples:
+        record = _json_mapping(sample)
+        if record.get("disposition") == "accepted":
+            return record
+    raise AssertionError("Court semantic manifest has no accepted sample.")
 
 
 def _first_accepted_record(dataset: dict[str, object]) -> dict[str, object]:

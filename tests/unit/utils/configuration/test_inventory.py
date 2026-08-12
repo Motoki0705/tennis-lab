@@ -31,21 +31,29 @@ from src.utils.configuration.source_oracle import (
 from src.utils.paths import PROJECT_ROOT
 
 
-def test_synthetic_inventory_has_only_the_canonical_scene_cli() -> None:
-    boundaries = tuple(
-        boundary
+def test_synthetic_inventory_has_only_the_canonical_production_clis() -> None:
+    boundaries = {
+        boundary.module: boundary
         for boundary in EXPECTED_RUNTIME_BOUNDARIES
         if boundary.domain == "synthetic_data_generation"
-    )
+    }
+    expected = {
+        "src.synthetic_data_generation.scripts.run_scene_pipeline": (
+            "synthetic.scene_pipeline",
+            "src.synthetic_data_generation.configuration."
+            "validate_scene_pipeline_boundary",
+        ),
+        "src.synthetic_data_generation.scripts.visualize_dataset": (
+            "synthetic.dataset_visualization",
+            "src.synthetic_data_generation.visualization.configuration."
+            "validate_dataset_visualization_boundary",
+        ),
+    }
 
-    assert len(boundaries) == 1
-    assert boundaries[0].module == (
-        "src.synthetic_data_generation.scripts.run_scene_pipeline"
-    )
-    assert boundaries[0].validator_key == "synthetic.scene_pipeline"
-    assert boundaries[0].validator_callable == (
-        "src.synthetic_data_generation.configuration.validate_scene_pipeline_boundary"
-    )
+    assert set(boundaries) == set(expected)
+    for module, (validator_key, validator_callable) in expected.items():
+        assert boundaries[module].validator_key == validator_key
+        assert boundaries[module].validator_callable == validator_callable
 
 
 def test_task_local_generation_and_visualization_boundaries_remain_in_inventory() -> None:

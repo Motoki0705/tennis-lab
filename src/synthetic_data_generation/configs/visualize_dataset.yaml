@@ -1,0 +1,29 @@
+# Canonical generated-dataset visualization composition root.
+defaults:
+  - roots: runtime
+  - _self_
+
+visualization:
+  # court | blcs | plcs
+  domain: court
+  # Data-root-relative canonical owner: scenes/<scene_id>/datasets/<domain>.
+  dataset_root: ???
+  # Output-root-relative publication path.
+  output_video: synthetic_data_generation/dataset-visualization.mp4
+  # Required only for court.
+  trajectory_id: null
+  # Required only for blcs/plcs.
+  logical_scene_id: null
+  camera_id: null
+  # Explicit playback authority; datasets do not all persist an output fps.
+  fps: 30.0
+  crf: 17
+  # Used only by BLCS; retained in deterministic metadata for every domain.
+  history_frames: 12
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${roots.output_root},hydra/dataset_visualization}
+  output_subdir: null
+  job:
+    chdir: false

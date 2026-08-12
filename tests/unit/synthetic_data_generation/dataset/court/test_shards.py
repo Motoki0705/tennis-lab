@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import fields
 from pathlib import Path
 
 import numpy as np
@@ -112,6 +113,19 @@ def test_shard_inspection_reads_headers_without_repeating_value_scan(
 
     with pytest.raises(ValueError, match="non-finite"):
         validate_rendered_sample(rendered)
+
+
+def test_rendered_sample_inventory_cannot_retain_dense_nht_arrays() -> None:
+    field_names = {field.name for field in fields(CourtRenderedSample)}
+
+    assert "validated_arrays" not in field_names
+    assert {
+        "rgb_path",
+        "rgb_preview_path",
+        "alpha_path",
+        "alpha_preview_path",
+        "depth_path",
+    } <= field_names
 
 
 def test_stale_shard_recovery_is_attempt_root_bounded(tmp_path: Path) -> None:

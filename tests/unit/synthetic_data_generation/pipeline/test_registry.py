@@ -106,7 +106,10 @@ def test_execution_plan_rejects_cursor_outside_explicit_targets(tmp_path: Path) 
     )
 
     with pytest.raises(ValueError, match="not selected by request targets"):
-        canonical_registry(_handlers()).execution_for_request(request)
+        canonical_registry(_handlers()).execution_for_request(
+            request,
+            reusable_stages=(),
+        )
 
 
 def test_execution_plan_uses_cursor_descendants_for_execution(tmp_path: Path) -> None:
@@ -120,12 +123,17 @@ def test_execution_plan_uses_cursor_descendants_for_execution(tmp_path: Path) ->
         config_schema="scene_pipeline_v1",
     )
 
-    plan = canonical_registry(_handlers()).execution_for_request(request)
+    plan = canonical_registry(_handlers()).execution_for_request(
+        request,
+        reusable_stages=StageName,
+    )
 
     assert tuple(definition.name for definition in plan.retained_ancestors) == (
         StageName.INGEST,
         StageName.RECONSTRUCTION,
         StageName.ALIGNMENT,
+        StageName.BLCS_DATASET,
+        StageName.PLCS_DATASET,
     )
     assert tuple(definition.name for definition in plan.invalidated) == (
         StageName.COURT_DATASET,
@@ -150,7 +158,13 @@ def test_execution_plan_keeps_unselected_descendants_for_stale_cleanup(
         config_schema="scene_pipeline_v1",
     )
 
-    plan = canonical_registry(_handlers()).execution_for_request(request)
+    registry = canonical_registry(_handlers())
+    plan = registry.execution_for_request(
+        request,
+        reusable_stages=(
+            definition.name for definition in registry.selected_for_request(request)
+        ),
+    )
 
     assert tuple(definition.name for definition in plan.retained_ancestors) == (
         StageName.INGEST,
@@ -168,6 +182,125 @@ def test_execution_plan_keeps_unselected_descendants_for_stale_cleanup(
         StageName.COURT_DATASET,
         StageName.REPORT,
     )
+
+
+def test_execution_plan_repairs_invalidated_plcs_before_report_from_blcs(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "video.mp4"
+    source.write_bytes(b"video")
+    request = ScenePipelineRequest(
+        scene_id="scene-a",
+        source_video=source,
+        targets=frozenset(DatasetTarget),
+        from_stage=StageName.BLCS_DATASET,
+        config_schema="scene_pipeline_v1",
+    )
+
+    plan = canonical_registry(_handlers()).execution_for_request(
+        request,
+        reusable_stages=(
+            StageName.INGEST,
+            StageName.RECONSTRUCTION,
+            StageName.ALIGNMENT,
+            StageName.COURT_DATASET,
+            StageName.BLCS_DATASET,
+        ),
+    )
+
+    assert tuple(definition.name for definition in plan.execution) == (
+        StageName.BLCS_DATASET,
+        StageName.PLCS_DATASET,
+        StageName.REPORT,
+    )
+    assert tuple(definition.name for definition in plan.retained_ancestors) == (
+        StageName.INGEST,
+        StageName.RECONSTRUCTION,
+        StageName.ALIGNMENT,
+        StageName.COURT_DATASET,
+    )
+
+
+def test_execution_plan_repairs_invalidated_blcs_before_report_from_plcs(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "video.mp4"
+    source.write_bytes(b"video")
+    request = ScenePipelineRequest(
+        scene_id="scene-a",
+        source_video=source,
+        targets=frozenset({DatasetTarget.BLCS, DatasetTarget.PLCS}),
+        from_stage=StageName.PLCS_DATASET,
+        config_schema="scene_pipeline_v1",
+    )
+
+    plan = canonical_registry(_handlers()).execution_for_request(
+        request,
+        reusable_stages=(
+            StageName.INGEST,
+            StageName.RECONSTRUCTION,
+            StageName.ALIGNMENT,
+            StageName.PLCS_DATASET,
+        ),
+    )
+
+    assert tuple(definition.name for definition in plan.execution) == (
+        StageName.BLCS_DATASET,
+        StageName.PLCS_DATASET,
+        StageName.REPORT,
+    )
+
+
+@pytest.mark.parametrize(
+    ("targets", "cursor", "expected_execution"),
+    (
+        (
+            frozenset({DatasetTarget.COURT}),
+            StageName.COURT_DATASET,
+            (StageName.COURT_DATASET, StageName.REPORT),
+        ),
+        (
+            frozenset({DatasetTarget.BLCS}),
+            StageName.BLCS_DATASET,
+            (StageName.BLCS_DATASET, StageName.REPORT),
+        ),
+        (
+            frozenset({DatasetTarget.PLCS}),
+            StageName.PLCS_DATASET,
+            (StageName.PLCS_DATASET, StageName.REPORT),
+        ),
+        (
+            frozenset({DatasetTarget.BLCS, DatasetTarget.PLCS}),
+            StageName.BLCS_DATASET,
+            (StageName.BLCS_DATASET, StageName.REPORT),
+        ),
+    ),
+)
+def test_execution_plan_reuses_valid_target_subset_siblings(
+    tmp_path: Path,
+    targets: frozenset[DatasetTarget],
+    cursor: StageName,
+    expected_execution: tuple[StageName, ...],
+) -> None:
+    source = tmp_path / "video.mp4"
+    source.write_bytes(b"video")
+    request = ScenePipelineRequest(
+        scene_id="scene-a",
+        source_video=source,
+        targets=targets,
+        from_stage=cursor,
+        config_schema="scene_pipeline_v1",
+    )
+    registry = canonical_registry(_handlers())
+
+    plan = registry.execution_for_request(
+        request,
+        reusable_stages=(
+            definition.name for definition in registry.selected_for_request(request)
+        ),
+    )
+
+    assert tuple(definition.name for definition in plan.execution) == expected_execution
 
 
 def test_registry_rejects_duplicate_handler_binding() -> None:

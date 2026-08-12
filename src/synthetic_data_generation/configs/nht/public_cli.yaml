@@ -1,5 +1,6 @@
 reconstruct_executable: nht-reconstruct
 render_executable: nht-render
+pipeline_config_path: nht/configs/production.yaml
 environment:
   CUDA_VISIBLE_DEVICES: "0"
 reconstruction_timeout_seconds: 86400.0
