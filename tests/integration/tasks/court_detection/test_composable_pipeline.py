@@ -340,6 +340,7 @@ def test_datamodule_bound_three_head_forward_loss_backward(
     kp_channels: int,
 ) -> None:
     config = _compose(court_roots, source=source, processing="all")
+    config.loss.kp.positive_weight = 5.0
     _materialize(config)
     datamodule = CourtDetectionDataModule(config)
     datamodule.setup("validate")
@@ -360,5 +361,6 @@ def test_datamodule_bound_three_head_forward_loss_backward(
         "seg": 7,
         "line": 1,
     }
+    assert adapter.kp_loss.positive_weight == 5.0
     assert torch.isfinite(result.loss)
     assert any(parameter.grad is not None for parameter in pair.model.parameters())

@@ -845,6 +845,7 @@ class CourtLossConfig:
     seg_ce_weight: float
     seg_dice_weight: float
     kp_focal_gamma: float
+    kp_positive_weight: float
     line_bce_weight: float
     line_dice_weight: float
     line_pos_weight: float
@@ -857,12 +858,13 @@ class CourtLossConfig:
         kp = require_config_mapping(mapping, "kp", path="loss")
         line = require_config_mapping(mapping, "line", path="loss")
         _exact(seg, {"ce_weight", "dice_weight"}, path="loss.seg")
-        _exact(kp, {"focal_gamma"}, path="loss.kp")
+        _exact(kp, {"focal_gamma", "positive_weight"}, path="loss.kp")
         _exact(line, {"bce_weight", "dice_weight", "pos_weight"}, path="loss.line")
         result = cls(
             seg_ce_weight=_number(seg, "ce_weight", path="loss.seg"),
             seg_dice_weight=_number(seg, "dice_weight", path="loss.seg"),
             kp_focal_gamma=_number(kp, "focal_gamma", path="loss.kp"),
+            kp_positive_weight=_number(kp, "positive_weight", path="loss.kp"),
             line_bce_weight=_number(line, "bce_weight", path="loss.line"),
             line_dice_weight=_number(line, "dice_weight", path="loss.line"),
             line_pos_weight=_number(line, "pos_weight", path="loss.line"),
@@ -882,6 +884,10 @@ class CourtLossConfig:
             )
         if result.line_pos_weight <= 0.0:
             raise SemanticConfigurationError("loss.line.pos_weight must be positive.")
+        if result.kp_positive_weight <= 0.0:
+            raise SemanticConfigurationError(
+                "loss.kp.positive_weight must be positive."
+            )
         if result.seg_ce_weight == 0.0 and result.seg_dice_weight == 0.0:
             raise SemanticConfigurationError(
                 "loss.seg must enable ce_weight or dice_weight."

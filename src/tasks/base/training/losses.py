@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -21,17 +23,28 @@ class FocalBCEWithLogitsLoss(nn.Module):
     ----------
     gamma:
         Focusing parameter. Must be non-negative.
+    positive_weight:
+        Finite positive multiplier for the BCE positive term. A value of 1.0
+        preserves unweighted BCE, including for soft targets.
     """
 
-    def __init__(self, gamma: float = 2.0) -> None:
+    def __init__(self, *, gamma: float, positive_weight: float) -> None:
         super().__init__()
         if gamma < 0:
             raise ValueError("focal loss gamma must be non-negative.")
+        if not math.isfinite(positive_weight) or positive_weight <= 0.0:
+            raise ValueError("focal loss positive_weight must be finite and positive.")
         self.gamma = float(gamma)
+        self.positive_weight = float(positive_weight)
 
     def forward(self, logits: Tensor, targets: Tensor) -> Tensor:
         probs = torch.sigmoid(logits)
-        bce = F.binary_cross_entropy_with_logits(logits, targets, reduction="none")
+        bce = F.binary_cross_entropy_with_logits(
+            logits,
+            targets,
+            pos_weight=logits.new_tensor(self.positive_weight),
+            reduction="none",
+        )
         p_t = probs * targets + (1.0 - probs) * (1.0 - targets)
         return ((1.0 - p_t) ** self.gamma * bce).mean()
 

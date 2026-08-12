@@ -269,6 +269,7 @@ class ProductionCourtLineDetector:
                 seg_ce_weight=1.0,
                 seg_dice_weight=1.0,
                 kp_focal_gamma=2.0,
+                kp_positive_weight=1.0,
                 line_bce_weight=architecture.line_bce_weight,
                 line_dice_weight=architecture.line_dice_weight,
                 line_pos_weight=architecture.line_positive_weight,

@@ -71,6 +71,7 @@ def _adapter(bundle: CourtTargetBundleSpec) -> CourtModelIOAdapter:
             seg_ce_weight=1.0,
             seg_dice_weight=1.0,
             kp_focal_gamma=2.0,
+            kp_positive_weight=1.0,
             line_bce_weight=1.0,
             line_dice_weight=1.0,
             line_pos_weight=1.0,

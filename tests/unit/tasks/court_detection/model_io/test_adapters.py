@@ -53,11 +53,12 @@ def _bundle(*kinds: CourtTargetKind) -> CourtTargetBundleSpec:
     return CourtTargetBundleSpec({kind: specs[kind] for kind in kinds})
 
 
-def _loss_config() -> CourtLossConfig:
+def _loss_config(*, kp_positive_weight: float = 1.0) -> CourtLossConfig:
     return CourtLossConfig(
         seg_ce_weight=1.0,
         seg_dice_weight=1.0,
         kp_focal_gamma=2.0,
+        kp_positive_weight=kp_positive_weight,
         line_bce_weight=1.0,
         line_dice_weight=1.0,
         line_pos_weight=1.0,
@@ -104,6 +105,23 @@ def _adapter(bundle: CourtTargetBundleSpec) -> CourtModelIOAdapter:
             short_side=32,
         ),
         loss_config=_loss_config(),
+    )
+
+
+def _kp_bundle(output_channels: int) -> CourtTargetBundleSpec:
+    return CourtTargetBundleSpec(
+        {
+            "kp": CourtTargetSpec(
+                kind="kp",
+                schema=f"test_kp{output_channels}",
+                output_channels=output_channels,
+                channel_names=tuple(
+                    f"keypoint_{index}" for index in range(output_channels)
+                ),
+                target_dtype=torch.float32,
+                precomputed=False,
+            )
+        }
     )
 
 
@@ -158,6 +176,45 @@ def test_multi_head_training_runs_shared_model_once_and_backpropagates() -> None
     assert set(result.logits) == {"kp", "seg", "line"}
     assert set(result.losses) == {"kp", "seg", "line"}
     assert model.bias.grad is not None
+
+
+@pytest.mark.parametrize("output_channels", [14, 7])
+def test_kp_positive_weight_binds_and_backpropagates_for_both_schemas(
+    output_channels: int,
+) -> None:
+    bundle = _kp_bundle(output_channels)
+    adapter = CourtModelIOAdapter(
+        CourtModelSpec(target_bundle=bundle, in_channels=3, short_side=32),
+        loss_config=_loss_config(kp_positive_weight=5.0),
+    )
+    heatmap = torch.zeros(1, output_channels, 8, 8)
+    heatmap[:, :, 3, 4] = 1.0
+    batch = {
+        "image": torch.zeros(1, 3, 8, 8),
+        "targets": {
+            "kp": {
+                "heatmap": heatmap,
+                "points_xy": torch.zeros(1, output_channels, 1, 2),
+                "point_visible": torch.ones(
+                    1, output_channels, 1, dtype=torch.bool
+                ),
+                "physical_indices": torch.zeros(
+                    1, output_channels, 1, dtype=torch.long
+                ),
+            }
+        },
+        "image_size": torch.tensor([[8, 8]], dtype=torch.long),
+    }
+    logits = torch.zeros(1, output_channels, 8, 8, requires_grad=True)
+
+    call = adapter.prepare_training_batch(batch)
+    result = adapter.training_result({"kp": logits}, call)
+    result.loss.backward()
+
+    assert adapter.kp_loss.positive_weight == 5.0
+    assert set(result.losses) == {"kp"}
+    assert logits.grad is not None
+    assert torch.isfinite(logits.grad).all()
 
 
 def test_output_mapping_must_exactly_match_bundle() -> None:

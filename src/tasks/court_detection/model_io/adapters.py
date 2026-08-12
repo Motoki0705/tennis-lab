@@ -177,7 +177,10 @@ class CourtModelIOAdapter(nn.Module):
             if execution_boundary is None
             else execution_boundary.prepare
         )
-        self.kp_loss = FocalBCEWithLogitsLoss(gamma=loss_config.kp_focal_gamma)
+        self.kp_loss = FocalBCEWithLogitsLoss(
+            gamma=loss_config.kp_focal_gamma,
+            positive_weight=loss_config.kp_positive_weight,
+        )
         self.seg_dice = DiceLoss(
             num_classes=(
                 spec.target_bundle.targets["seg"].output_channels

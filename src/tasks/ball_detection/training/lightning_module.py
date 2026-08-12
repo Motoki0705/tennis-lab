@@ -76,7 +76,10 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
         self.model_io = cast(BallModelIOAdapter, model_pair.adapter)
 
         loss_gamma = float(loss_cfg.gamma)
-        self.loss_fn = FocalBCEWithLogitsLoss(gamma=loss_gamma)
+        self.loss_fn = FocalBCEWithLogitsLoss(
+            gamma=loss_gamma,
+            positive_weight=1.0,
+        )
 
         gan_cfg = self.config.training.gan
         gan_enabled = bool(gan_cfg.enabled)
