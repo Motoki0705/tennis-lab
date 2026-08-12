@@ -42,7 +42,7 @@ def test_generation_output_is_explicitly_data_root_relative() -> None:
     runtime = PLCSGenerationConfig.from_config(_config("generate_dataset"))
 
     assert runtime.OUTPUT_ROLE is PathRole.DATA
-    assert runtime.output_dir == PROJECT_ROOT / "data/plcs"
+    assert runtime.output_dir == (PROJECT_ROOT / "data/plcs").resolve()
 
 
 def test_analysis_output_is_explicitly_output_root_relative() -> None:
@@ -51,7 +51,9 @@ def test_analysis_output_is_explicitly_output_root_relative() -> None:
     )
 
     assert runtime.OUTPUT_ROLE is PathRole.OUTPUT
-    assert runtime.output_dir == PROJECT_ROOT / "outputs/plcs/analysis/angle_velocity"
+    assert runtime.output_dir == (
+        PROJECT_ROOT / "outputs/plcs/analysis/angle_velocity"
+    ).resolve()
     assert runtime.result_path is not None
     assert runtime.result_path.parent == runtime.output_dir
 
