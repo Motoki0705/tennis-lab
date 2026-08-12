@@ -3,6 +3,7 @@ seg:
   dice_weight: 1.0
 kp:
   focal_gamma: 2.0
+  positive_weight: 1.0
 line:
   bce_weight: 1.0
   dice_weight: 1.0
