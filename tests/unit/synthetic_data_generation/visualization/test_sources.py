@@ -20,6 +20,7 @@ from src.synthetic_data_generation.dataset.runtime import (
 from src.synthetic_data_generation.visualization.sources import (
     BLCSVisualizationSource,
     CourtVisualizationSource,
+    PLCSVisualizationSource,
 )
 
 
@@ -149,3 +150,32 @@ def test_blcs_stream_rejects_chunk_replaced_by_a_foreign_attempt(
 
     with pytest.raises(ValueError, match="another stage attempt"):
         next(source.frames())
+
+
+def test_plcs_visualization_rejects_v4_before_reading_any_payload(
+    tmp_path: Path,
+) -> None:
+    for directory in ("backgrounds", "scenes", "diagnostics"):
+        (tmp_path / directory).mkdir()
+    (tmp_path / "dataset.json").write_text(
+        json.dumps(
+            {
+                "schema": "tennis_plcs_compact_dataset_v4",
+                "scene_id": "B00",
+                "domain": "plcs",
+                "frame_inventory": {},
+                "target_courts": [],
+                "metadata": {},
+                "diagnostics": [],
+                "storage": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="Unsupported canonical compact PLCS"):
+        PLCSVisualizationSource(
+            tmp_path,
+            logical_scene_id="B00",
+            camera_id="camera-0",
+        )

@@ -156,7 +156,10 @@ class ScenePipelineRunner:
                 self.workspace.validate_required_outputs(definition)
                 for relative_path in demanded_outputs[definition.name]:
                     self.workspace.validate_stage_input(definition, relative_path)
-            except FileNotFoundError:
+                definition.validate_reusable_publication(
+                    self.workspace.owner_path(definition)
+                )
+            except (OSError, TypeError, ValueError):
                 continue
             reusable.add(definition.name)
         return reusable

@@ -21,6 +21,9 @@ from src.synthetic_data_generation.dataset.contracts import (
     DatasetManifest,
     FrameInventory,
 )
+from src.synthetic_data_generation.dataset.plcs.coordinates import (
+    PLCS_COORDINATE_CONTRACT,
+)
 from src.synthetic_data_generation.dataset.plcs.timeline import (
     PLCSFrameEntry,
     PLCSGlobalTimeline,
@@ -31,7 +34,7 @@ from src.synthetic_data_generation.dataset.runtime import (
     FinalDatasetAssembler,
 )
 
-PLCS_DATASET_SCHEMA = "tennis_plcs_compact_dataset_v4"
+PLCS_DATASET_SCHEMA = "tennis_plcs_compact_dataset_v5"
 PLCS_FRAME_LABEL_SCHEMA = "tennis_plcs_frame_label_v3"
 
 
@@ -289,6 +292,7 @@ def assemble_plcs_dataset(
                         "object_id": track.object_id,
                         "instance_id": track.instance_id,
                         "asset_id": track.asset_id,
+                        "support_plane": track.support_plane.to_dict(),
                         "start_frame": track.start_frame,
                         "stop_frame": track.stop_frame,
                         "anchor_position_court_m": list(track.anchor_position_court_m),
@@ -349,6 +353,7 @@ def assemble_plcs_dataset(
         frame_inventory=frame_inventory,
         target_courts=inventory.target_courts,
         metadata={
+            "coordinate_contract": PLCS_COORDINATE_CONTRACT.to_dict(),
             "seed": seed,
             "logical_scene_count": inventory.scene_count,
             "aggregate_global_frame_count": inventory.aggregate_global_frame_count,

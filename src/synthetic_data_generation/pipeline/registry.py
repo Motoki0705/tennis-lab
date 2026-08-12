@@ -22,6 +22,10 @@ from src.synthetic_data_generation.pipeline.publication import (
     AtomicDirectoryPublication,
     ExternalAtomicPublication,
 )
+from src.synthetic_data_generation.pipeline.reuse import (
+    PLCSV5ReusablePublicationValidator,
+    RequiredOutputsReusablePublicationValidator,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -296,6 +300,8 @@ def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
     config = StageInput.resolved_configuration()
     atomic = AtomicDirectoryPublication()
     external = ExternalAtomicPublication()
+    required_outputs_reuse = RequiredOutputsReusablePublicationValidator()
+    plcs_v5_reuse = PLCSV5ReusablePublicationValidator()
     definitions = {
         StageName.INGEST: StageDefinition(
             name=StageName.INGEST,
@@ -305,6 +311,7 @@ def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
             required_outputs=(Path("video.mp4"), Path("metadata.json")),
             handler=handlers.ingest,
             publication=atomic,
+            reusable_publication_validator=required_outputs_reuse,
             summary_type=StageExecutionSummary,
         ),
         StageName.RECONSTRUCTION: StageDefinition(
@@ -318,6 +325,7 @@ def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
             required_outputs=(Path("run.json"), Path("export")),
             handler=handlers.reconstruction,
             publication=external,
+            reusable_publication_validator=required_outputs_reuse,
             summary_type=StageExecutionSummary,
         ),
         StageName.ALIGNMENT: StageDefinition(
@@ -340,6 +348,7 @@ def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
             ),
             handler=handlers.alignment,
             publication=atomic,
+            reusable_publication_validator=required_outputs_reuse,
             summary_type=StageExecutionSummary,
         ),
         StageName.COURT_DATASET: StageDefinition(
@@ -350,6 +359,7 @@ def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
             required_outputs=(Path("dataset.json"), Path("samples"), Path("diagnostics")),
             handler=handlers.court_dataset,
             publication=atomic,
+            reusable_publication_validator=required_outputs_reuse,
             summary_type=StageExecutionSummary,
         ),
         StageName.BLCS_DATASET: StageDefinition(
@@ -360,6 +370,7 @@ def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
             required_outputs=(Path("dataset.json"), Path("samples"), Path("diagnostics")),
             handler=handlers.blcs_dataset,
             publication=atomic,
+            reusable_publication_validator=required_outputs_reuse,
             summary_type=StageExecutionSummary,
         ),
         StageName.PLCS_DATASET: StageDefinition(
@@ -375,6 +386,7 @@ def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
             ),
             handler=handlers.plcs_dataset,
             publication=atomic,
+            reusable_publication_validator=plcs_v5_reuse,
             summary_type=StageExecutionSummary,
         ),
         StageName.REPORT: StageDefinition(
@@ -407,6 +419,7 @@ def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
             required_outputs=(Path("index.html"), Path("report.json")),
             handler=handlers.report,
             publication=atomic,
+            reusable_publication_validator=required_outputs_reuse,
             summary_type=StageExecutionSummary,
         ),
     }

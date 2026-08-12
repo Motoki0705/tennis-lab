@@ -10,6 +10,9 @@ import torch
 
 from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
 from src.synthetic_data_generation.dataset.court_assignment import CourtAssignment
+from src.synthetic_data_generation.dataset.plcs.coordinates import (
+    PLCSSourceSupportPlane,
+)
 from src.synthetic_data_generation.dataset.plcs.execution import PLCSExecutionBackend
 from src.synthetic_data_generation.dataset.plcs.handler import (
     PLCSObjectRequest,
@@ -128,6 +131,10 @@ def test_handler_builds_one_object_full_source_inventory(tmp_path: Path) -> None
                 instance_id=1,
                 asset_id="avatar-001",
                 clip=clip,
+                support_plane=PLCSSourceSupportPlane.from_surface_minimum(
+                    initial_root_translation_z_m=float(clip.root_translation_m[0, 2]),
+                    support_local_z_m=0.0,
+                ),
                 start_frame=0,
                 anchor_position_court_m=(0.0, 0.0, 0.0),
                 yaw_radians=0.0,

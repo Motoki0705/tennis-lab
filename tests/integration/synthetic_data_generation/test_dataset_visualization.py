@@ -14,6 +14,7 @@ import pytest
 from numpy.typing import NDArray
 
 import src.synthetic_data_generation.visualization.renderer as renderer_module
+from src.synthetic_data_generation.dataset.plcs.assembler import PLCS_DATASET_SCHEMA
 from src.synthetic_data_generation.dataset.runtime import (
     LogicalRenderSample,
     RenderSampleKey,
@@ -168,7 +169,7 @@ class _FakeBLCS:
 
 
 class _FakePLCS:
-    dataset_schema = "tennis_plcs_compact_dataset_v4"
+    dataset_schema = PLCS_DATASET_SCHEMA
     dataset_scene_id = "scene-0"
     width = 128
     height = 96

@@ -149,9 +149,9 @@ identity, physical presence, and renderer-visible pixel state.
 
 .venv/bin/python -m src.synthetic_data_generation.scripts.visualize_dataset \
   visualization.domain=plcs \
-  visualization.dataset_root=scenes/<scene_id>/datasets/plcs \
-  visualization.logical_scene_id=<logical_scene_id> \
-  visualization.camera_id=<camera_id> \
+  visualization.dataset_root=synthetic_data_generation/scenes/B00/datasets/plcs \
+  visualization.logical_scene_id=B00 \
+  visualization.camera_id=court-001-corner-near-left \
   visualization.output_video=previews/plcs-view.mp4
 ```
 

@@ -29,6 +29,10 @@ from src.synthetic_data_generation.dataset.plcs.assembler import (
     PLCS_FRAME_LABEL_SCHEMA,
     PLCSSupervisionArrays,
 )
+from src.synthetic_data_generation.dataset.plcs.coordinates import (
+    PLCSCoordinateContract,
+    PLCSSourceSupportPlane,
+)
 from src.synthetic_data_generation.dataset.runtime import (
     ChunkReader,
     ForegroundDelta,
@@ -671,6 +675,7 @@ class PLCSVisualizationSource:
             manifest.get("metadata"),
             name="PLCS metadata",
             keys={
+                "coordinate_contract",
                 "seed",
                 "logical_scene_count",
                 "aggregate_global_frame_count",
@@ -680,6 +685,7 @@ class PLCSVisualizationSource:
                 "logical_scenes",
             },
         )
+        PLCSCoordinateContract.from_dict(metadata.get("coordinate_contract"))
         logical_scenes = tuple(
             _exact_object(
                 value,
@@ -762,9 +768,24 @@ class PLCSVisualizationSource:
             )
         camera_index = camera_ids.index(camera_id)
         tracks = tuple(
-            _object(value, name="PLCS track")
+            _exact_object(
+                value,
+                name="PLCS track",
+                keys={
+                    "object_id",
+                    "instance_id",
+                    "asset_id",
+                    "support_plane",
+                    "start_frame",
+                    "stop_frame",
+                    "anchor_position_court_m",
+                    "yaw_radians",
+                },
+            )
             for value in _array(logical.get("tracks"), name="PLCS tracks")
         )
+        for track in tracks:
+            PLCSSourceSupportPlane.from_dict(track.get("support_plane"))
         self.object_ids = tuple(
             _text(track.get("object_id"), name="PLCS object_id") for track in tracks
         )

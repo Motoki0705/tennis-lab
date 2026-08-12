@@ -192,7 +192,7 @@ def _runtime_bound_request(
     )
     effective["nht_training"] = training
     with tempfile.TemporaryDirectory(prefix="tennis-lab-nht-") as directory:
-        path = Path(directory) / "pipeline.yaml"
+        path = Path(directory).joinpath("pipeline.yaml")
         path.write_text(
             yaml.safe_dump(effective, sort_keys=False),
             encoding="utf-8",
