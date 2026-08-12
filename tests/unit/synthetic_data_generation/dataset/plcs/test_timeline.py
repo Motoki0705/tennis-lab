@@ -12,6 +12,9 @@ from src.synthetic_data_generation.dataset.camera_profiles import (
 )
 from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
 from src.synthetic_data_generation.dataset.plcs.assembler import build_frame_label
+from src.synthetic_data_generation.dataset.plcs.coordinates import (
+    PLCSSourceSupportPlane,
+)
 from src.synthetic_data_generation.dataset.plcs.production import PLCSProductionMode
 from src.synthetic_data_generation.dataset.plcs.timeline import (
     PLCSLogicalScene,
@@ -54,6 +57,17 @@ def _binding(index: int = 1) -> TargetCourtBinding:
     )
 
 
+def _support(
+    clip: PLCSMotionClip,
+    *,
+    local_min_z_m: float = 0.0,
+) -> PLCSSourceSupportPlane:
+    return PLCSSourceSupportPlane.from_surface_minimum(
+        initial_root_translation_z_m=float(clip.root_translation_m[0, 2]),
+        support_local_z_m=local_min_z_m,
+    )
+
+
 def test_single_timeline_is_exact_source_interval(tmp_path: Path) -> None:
     clip = _clip(tmp_path, "single", 5)
     track = PLCSObjectTrack(
@@ -61,6 +75,7 @@ def test_single_timeline_is_exact_source_interval(tmp_path: Path) -> None:
         instance_id=1,
         asset_id="avatar-001",
         clip=clip,
+        support_plane=_support(clip),
         start_frame=0,
         anchor_position_court_m=(0.0, 0.0, 0.0),
         yaw_radians=0.0,
@@ -83,29 +98,35 @@ def test_single_timeline_is_exact_source_interval(tmp_path: Path) -> None:
 def test_multi_timeline_keeps_global_interval_presence_and_source_mapping(
     tmp_path: Path,
 ) -> None:
+    first_clip = _clip(tmp_path, "first", 4, category="running")
     first = PLCSObjectTrack(
         object_id="player-001",
         instance_id=1,
         asset_id="avatar-001",
-        clip=_clip(tmp_path, "first", 4, category="running"),
+        clip=first_clip,
+        support_plane=_support(first_clip),
         start_frame=0,
         anchor_position_court_m=(-1.0, -5.0, 0.0),
         yaw_radians=0.0,
     )
+    second_clip = _clip(tmp_path, "second", 5, category="walking")
     second = PLCSObjectTrack(
         object_id="player-002",
         instance_id=2,
         asset_id="avatar-002",
-        clip=_clip(tmp_path, "second", 5, category="walking"),
+        clip=second_clip,
+        support_plane=_support(second_clip),
         start_frame=2,
         anchor_position_court_m=(1.0, 5.0, 0.0),
         yaw_radians=np.pi,
     )
+    third_clip = _clip(tmp_path, "third", 3, category="general")
     third = PLCSObjectTrack(
         object_id="player-003",
         instance_id=3,
         asset_id="avatar-003",
-        clip=_clip(tmp_path, "third", 3, category="general"),
+        clip=third_clip,
+        support_plane=_support(third_clip),
         start_frame=1,
         anchor_position_court_m=(0.0, 0.0, 0.0),
         yaw_radians=np.pi / 2.0,
@@ -186,27 +207,118 @@ def test_multi_timeline_keeps_global_interval_presence_and_source_mapping(
     assert objects[1]["visible_pixel_count"] == 0
 
 
-def _complete_tracks(tmp_path: Path) -> tuple[PLCSObjectTrack, ...]:
-    return tuple(
+def test_timeline_uses_yaw_only_and_preserves_source_xyz_and_frame_zero_support(
+    tmp_path: Path,
+) -> None:
+    poses: NDArray[np.float64] = np.zeros((2, 156), dtype=np.float64)
+    translations = np.asarray(
+        ((1.0, -2.0, 0.75), (3.0, -1.0, 1.25)),
+        dtype=np.float64,
+    )
+    clip = PLCSMotionClip.from_amass_arrays(
+        source_path=tmp_path / "axis-isolation.npz",
+        category="general",
+        gender="neutral",
+        fps=30.0,
+        poses=poses,
+        trans=translations,
+        betas=np.zeros(16, dtype=np.float64),
+    )
+    track = PLCSObjectTrack(
+        object_id="player-001",
+        instance_id=1,
+        asset_id="avatar-001",
+        clip=clip,
+        support_plane=_support(clip, local_min_z_m=-0.25),
+        start_frame=0,
+        anchor_position_court_m=(0.5, -0.25, 0.0),
+        yaw_radians=np.pi / 2.0,
+    )
+
+    timeline = build_global_timeline(
+        scene_id="B00",
+        production_mode=PLCSProductionMode.SINGLE_OBJECT,
+        target_court=_binding(),
+        tracks=(track,),
+    )
+
+    frame_zero = timeline.frames[0].entries[0].scene_from_asset
+    frame_one = timeline.frames[1].entries[0].scene_from_asset
+    assert frame_zero is not None
+    assert frame_one is not None
+    expected_yaw = np.asarray(
+        ((0.0, -1.0, 0.0), (1.0, 0.0, 0.0), (0.0, 0.0, 1.0)),
+        dtype=np.float64,
+    )
+    np.testing.assert_allclose(
+        np.asarray(frame_zero.rotation).reshape(3, 3),
+        expected_yaw,
+        atol=1.0e-12,
+        rtol=0.0,
+    )
+    np.testing.assert_allclose(
+        frame_zero.translation,
+        (0.5, -0.25, 0.25),
+        atol=1.0e-12,
+        rtol=0.0,
+    )
+    np.testing.assert_allclose(
+        frame_one.translation,
+        (-0.5, 1.75, 0.75),
+        atol=1.0e-12,
+        rtol=0.0,
+    )
+    assert frame_zero.translation[2] + track.support_plane.support_local_z_m == 0.0
+    assert frame_one.translation[2] - frame_zero.translation[2] == pytest.approx(0.5)
+
+
+def test_track_rejects_support_evidence_from_a_different_initial_height(
+    tmp_path: Path,
+) -> None:
+    clip = _clip(tmp_path, "wrong-support", 2)
+    mismatched = PLCSSourceSupportPlane.from_surface_minimum(
+        initial_root_translation_z_m=1.0,
+        support_local_z_m=-1.0,
+    )
+
+    with pytest.raises(ValueError, match="initial trans.z differs"):
         PLCSObjectTrack(
-            object_id=f"player-{index:03d}",
-            instance_id=index,
-            asset_id=f"avatar-{index:03d}",
-            clip=_clip(
-                tmp_path,
-                category,
-                frame_count,
-                category=category,
-            ),
-            start_frame=start,
+            object_id="player-001",
+            instance_id=1,
+            asset_id="avatar-001",
+            clip=clip,
+            support_plane=mismatched,
+            start_frame=0,
             anchor_position_court_m=(0.0, 0.0, 0.0),
             yaw_radians=0.0,
         )
-        for index, (category, frame_count, start) in enumerate(
-            (("running", 4, 0), ("walking", 5, 2), ("general", 3, 2)),
-            start=1,
+
+
+def _complete_tracks(tmp_path: Path) -> tuple[PLCSObjectTrack, ...]:
+    tracks = []
+    for index, (category, frame_count, start) in enumerate(
+        (("running", 4, 0), ("walking", 5, 2), ("general", 3, 2)),
+        start=1,
+    ):
+        clip = _clip(
+            tmp_path,
+            category,
+            frame_count,
+            category=category,
         )
-    )
+        tracks.append(
+            PLCSObjectTrack(
+                object_id=f"player-{index:03d}",
+                instance_id=index,
+                asset_id=f"avatar-{index:03d}",
+                clip=clip,
+                support_plane=_support(clip),
+                start_frame=start,
+                anchor_position_court_m=(0.0, 0.0, 0.0),
+                yaw_radians=0.0,
+            )
+        )
+    return tuple(tracks)
 
 
 def _logical_scene(

@@ -45,6 +45,9 @@ from src.synthetic_data_generation.pipeline.contracts import (
 from src.synthetic_data_generation.pipeline.publication import (
     AtomicDirectoryPublication,
 )
+from src.synthetic_data_generation.pipeline.reuse import (
+    RequiredOutputsReusablePublicationValidator,
+)
 from src.synthetic_data_generation.reconstruction.scene_export import (
     StandardSceneExport,
 )
@@ -590,6 +593,7 @@ def _context(tmp_path: Path) -> _Context:
         ),
         handler=_UnusedLifecycle(),
         publication=AtomicDirectoryPublication(),
+        reusable_publication_validator=RequiredOutputsReusablePublicationValidator(),
         summary_type=StageExecutionSummary,
     )
     return _Context(

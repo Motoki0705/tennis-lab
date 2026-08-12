@@ -88,6 +88,9 @@ from src.synthetic_data_generation.dataset.plcs.composition import (
     AvatarAppearance,
     PLCSAvatarFrameTensors,
 )
+from src.synthetic_data_generation.dataset.plcs.coordinates import (
+    PLCSSourceSupportPlane,
+)
 from src.synthetic_data_generation.dataset.plcs.execution import PLCSPreparedAvatar
 from src.synthetic_data_generation.dataset.plcs.handler import PLCSStageHandler
 from src.synthetic_data_generation.dataset.plcs.rendering import (
@@ -324,6 +327,18 @@ class _PLCSCPUOracle:
     def prepare_source(self, *, clip: PLCSMotionClip, model: object) -> None:
         if model != {"gender": clip.gender}:
             raise ValueError("PLCS CPU source/model fixture mismatch.")
+
+    def initial_support_plane(
+        self,
+        *,
+        clip: PLCSMotionClip,
+        model: object,
+    ) -> PLCSSourceSupportPlane:
+        self.prepare_source(clip=clip, model=model)
+        return PLCSSourceSupportPlane.from_surface_minimum(
+            initial_root_translation_z_m=float(clip.root_translation_m[0, 2]),
+            support_local_z_m=1.0,
+        )
 
     def prepare_avatar(
         self,
