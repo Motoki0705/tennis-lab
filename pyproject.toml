@@ -333,6 +333,7 @@ package = "src"
 [tool.spin.commands]
 "Environment" = [
     ".spin/cmds.py:setup",
+    ".spin/cmds.py:setup_nht",
     ".spin/cmds.py:doctor",
 ]
 "Quality" = [

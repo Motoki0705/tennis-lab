@@ -5,6 +5,23 @@ video and one `scene_id` resolve to one mutable workspace. NHT remains an
 independent command that owns reconstruction and rendering; tennis-lab consumes
 only its public standard scene export and render files.
 
+## Set up NHT with spin
+
+Before running the pipeline for the first time, or after updating the NHT
+submodule reference, install NHT's public commands with the project development
+CLI:
+
+```bash
+uv run spin setup-nht
+```
+
+This checks out the pinned `third_party/nht` submodule commit and installs NHT
+and its gsplat runtime as an editable, isolated `uv tool`. It does not add them
+to the tennis-lab `.venv`. To install the optional learned SfM retry backend,
+run `uv run spin setup-nht --with-sfm-learned` instead. The command validates
+that `nht-reconstruct` and `nht-render` resolve from the installed tool's bin
+directory and reports the required `PATH` update if they do not.
+
 ## Run
 
 The sole production entrypoint is:
