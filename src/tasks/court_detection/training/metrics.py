@@ -1,125 +1,182 @@
-"""Metrics for court detection training.
-
-* **seg** — Mean IoU across 7 classes.
-* **kp**  — Mean keypoint distance error (in pixels).
-* **line** — Binary Dice score.
-"""
+"""Per-head metrics for composable Court detection training."""
 
 from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import cast
 
 import torch
 from torch import Tensor
 
-from src.utils.data.heatmaps import heatmaps_to_pixel_coords
+from src.tasks.court_detection.data.contracts import CourtTargetKind
+from src.utils.data.heatmaps import heatmaps_to_peaks
 
 
 class CourtDetectionMetrics:
-    """Unified metrics accumulator for court detection tasks.
+    """Accumulate one metric under one resolved target-head contract."""
 
-    Designed to be used per-stage (train/val) with ``update``/``compute``/``reset``.
+    def __init__(self, kind: CourtTargetKind, output_channels: int) -> None:
+        if output_channels <= 0:
+            raise ValueError("Court metric output_channels must be positive.")
+        self.kind = kind
+        self.output_channels = output_channels
+        self.reset()
 
-    Parameters
-    ----------
-    task:
-        One of ``"seg"``, ``"kp"``, ``"line"``.
-    output_channels:
-        Validated number of classes or keypoints for the selected task.
-    """
+    def update(
+        self,
+        logits: Tensor,
+        target: object,
+        *,
+        image_size: Tensor,
+    ) -> None:
+        if logits.ndim != 4 or logits.shape[1] != self.output_channels:
+            raise ValueError("Court metric logits disagree with the target head.")
+        if image_size.shape != (logits.shape[0], 2) or image_size.dtype != torch.long:
+            raise ValueError("Court metric image_size must be int64 [B,2].")
+        if self.kind == "seg":
+            self._update_seg(logits, cast(Tensor, target), image_size=image_size)
+        elif self.kind == "kp":
+            self._update_kp(
+                logits,
+                cast(Mapping[str, Tensor], target),
+                image_size=image_size,
+            )
+        elif self.kind == "line":
+            self._update_line(logits, cast(Tensor, target), image_size=image_size)
+        else:  # pragma: no cover - typed construction rejects this
+            raise ValueError(f"Unsupported Court metric target {self.kind!r}.")
 
-    def __init__(self, task: str, output_channels: int) -> None:
-        self.task = task
+    def _update_seg(
+        self,
+        logits: Tensor,
+        target: Tensor,
+        *,
+        image_size: Tensor,
+    ) -> None:
+        predictions = logits.argmax(dim=1)
+        for sample_index, size in enumerate(image_size.tolist()):
+            height, width = (int(value) for value in size)
+            prediction = predictions[sample_index, :height, :width]
+            labels = target[sample_index, :height, :width]
+            for class_index in range(self.output_channels):
+                predicted = prediction == class_index
+                expected = labels == class_index
+                self._intersection[class_index] += float(
+                    (predicted & expected).sum().item()
+                )
+                self._union[class_index] += float(
+                    (predicted | expected).sum().item()
+                )
 
-        if task == "seg":
-            self.num_classes = output_channels
-            self._intersection: list[Tensor] = []
-            self._union: list[Tensor] = []
-        elif task == "kp":
-            self.num_keypoints = output_channels
-            self._distances: list[Tensor] = []
-        elif task == "line":
-            self._dice_sum: float = 0.0
-            self._dice_count: int = 0
+    def _update_kp(
+        self,
+        logits: Tensor,
+        target: Mapping[str, Tensor],
+        *,
+        image_size: Tensor,
+    ) -> None:
+        points = target["points_xy"]
+        visible = target["point_visible"]
+        if points.ndim != 4 or visible.shape != points.shape[:-1]:
+            raise ValueError("Court KP metric target geometry is invalid.")
+        max_peaks = points.shape[2]
+        coordinates, _, predicted_valid = heatmaps_to_peaks(
+            torch.sigmoid(logits),
+            threshold=0.05,
+            nms_kernel=7,
+            max_peaks=max_peaks,
+        )
+        padded_height, padded_width = logits.shape[-2:]
+        prediction_scale = logits.new_tensor(
+            [
+                float(max(padded_width - 1, 0)),
+                float(max(padded_height - 1, 0)),
+            ]
+        )
+        predicted_pixels = coordinates * prediction_scale
+        for sample_index, size in enumerate(image_size.tolist()):
+            height, width = (int(value) for value in size)
+            target_scale = points.new_tensor(
+                [
+                    float(max(width - 1, 0)),
+                    float(max(height - 1, 0)),
+                ]
+            )
+            target_pixels = points[sample_index] * target_scale
+            missing_penalty = float(torch.linalg.vector_norm(target_scale).item())
+            for channel_index in range(self.output_channels):
+                expected = target_pixels[channel_index][
+                    visible[sample_index, channel_index]
+                ]
+                if expected.numel() == 0:
+                    continue
+                accepted = predicted_pixels[sample_index, channel_index][
+                    predicted_valid[sample_index, channel_index]
+                ]
+                if accepted.numel() == 0:
+                    self._kp_distances.extend(
+                        [missing_penalty] * int(expected.shape[0])
+                    )
+                    continue
+                pairwise = torch.cdist(
+                    expected.to(dtype=torch.float32).unsqueeze(0),
+                    accepted.to(dtype=torch.float32).unsqueeze(0),
+                )[0]
+                self._kp_distances.extend(
+                    pairwise.amin(dim=1).detach().cpu().tolist()
+                )
 
-    def update(self, logits: Tensor, batch: dict[str, Tensor]) -> None:
-        """Accumulate a batch of predictions."""
-        if self.task == "seg":
-            self._update_seg(logits, batch)
-        elif self.task == "kp":
-            self._update_kp(logits, batch)
-        else:
-            self._update_line(logits, batch)
-
-    def _update_seg(self, logits: Tensor, batch: dict[str, Tensor]) -> None:
-        """Compute per-class intersection and union for IoU."""
-        preds = logits.argmax(dim=1)  # (B, H, W)
-        targets = batch["mask"]  # (B, H, W)
-        for c in range(self.num_classes):
-            pred_c = preds == c
-            target_c = targets == c
-            intersection = (pred_c & target_c).sum().float()
-            union = (pred_c | target_c).sum().float()
-            self._intersection.append(intersection.detach().cpu())
-            self._union.append(union.detach().cpu())
-
-    def _update_kp(self, logits: Tensor, batch: dict[str, Tensor]) -> None:
-        """Compute argmax distance to ground truth keypoints.
-
-        Only keypoints marked visible in ``batch["kp_visible"]`` enter the
-        metric: invisible keypoints have blanked heatmap targets, so the
-        argmax of their predicted map carries no meaningful location.
-        """
-        coords_pred = heatmaps_to_pixel_coords(logits)  # (B, K, 2)
-        coords_gt = batch["keypoints"]  # (B, K, 2)
-        dist = torch.norm(coords_pred.cpu() - coords_gt.cpu(), dim=-1)  # (B, K)
-        visible = batch["kp_visible"].cpu().bool()  # (B, K)
-        self._distances.append(dist[visible].detach())
-
-    def _update_line(self, logits: Tensor, batch: dict[str, Tensor]) -> None:
-        """Compute per-batch binary Dice score."""
-        preds = (torch.sigmoid(logits) > 0.5).float()
-        targets = batch["mask"]
-        intersection = (preds * targets).sum()
-        union = preds.sum() + targets.sum()
-        dice = (2.0 * intersection + 1.0) / (union + 1.0)
-        self._dice_sum += dice.item()
-        self._dice_count += 1
+    def _update_line(
+        self,
+        logits: Tensor,
+        target: Tensor,
+        *,
+        image_size: Tensor,
+    ) -> None:
+        predictions = torch.sigmoid(logits) > 0.5
+        expected = target > 0.5
+        for sample_index, size in enumerate(image_size.tolist()):
+            height, width = (int(value) for value in size)
+            prediction = predictions[sample_index, :, :height, :width]
+            label = expected[sample_index, :, :height, :width]
+            intersection = float((prediction & label).sum().item())
+            union = float(prediction.sum().item() + label.sum().item())
+            self._line_dice_sum += (2.0 * intersection + 1.0) / (union + 1.0)
+            self._line_dice_count += 1
 
     def compute(self) -> dict[str, float]:
-        """Compute aggregated metrics."""
-        if self.task == "seg":
-            return self._compute_seg()
-        if self.task == "kp":
-            return self._compute_kp()
-        return self._compute_line()
-
-    def _compute_seg(self) -> dict[str, float]:
-        if not self._intersection:
-            return {"miou": 0.0}
-        intersection = torch.stack(self._intersection).view(-1, self.num_classes).sum(0)
-        union = torch.stack(self._union).view(-1, self.num_classes).sum(0)
-        iou = intersection / (union + 1e-8)
-        return {"miou": iou.mean().item()}
-
-    def _compute_kp(self) -> dict[str, float]:
-        if not self._distances:
-            return {"mean_dist": 0.0}
-        all_dist = torch.cat(self._distances, dim=0)  # flat over visible KPs
-        if all_dist.numel() == 0:
-            return {"mean_dist": 0.0}
-        return {"mean_dist": all_dist.mean().item()}
-
-    def _compute_line(self) -> dict[str, float]:
-        if self._dice_count == 0:
-            return {"dice": 0.0}
-        return {"dice": self._dice_sum / self._dice_count}
+        if self.kind == "seg":
+            values = [
+                intersection / (union + 1.0e-8)
+                for intersection, union in zip(
+                    self._intersection,
+                    self._union,
+                    strict=True,
+                )
+            ]
+            return {"miou": sum(values) / len(values)}
+        if self.kind == "kp":
+            return {
+                "mean_dist": (
+                    sum(self._kp_distances) / len(self._kp_distances)
+                    if self._kp_distances
+                    else 0.0
+                )
+            }
+        return {
+            "dice": (
+                self._line_dice_sum / self._line_dice_count
+                if self._line_dice_count
+                else 0.0
+            )
+        }
 
     def reset(self) -> None:
-        """Reset accumulated state."""
-        if self.task == "seg":
-            self._intersection = []
-            self._union = []
-        elif self.task == "kp":
-            self._distances = []
-        else:
-            self._dice_sum = 0.0
-            self._dice_count = 0
+        self._intersection = [0.0] * self.output_channels
+        self._union = [0.0] * self.output_channels
+        self._kp_distances: list[float] = []
+        self._line_dice_sum = 0.0
+        self._line_dice_count = 0
+
+
+__all__ = ["CourtDetectionMetrics"]

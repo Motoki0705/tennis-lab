@@ -1,5 +1,0 @@
-defaults:
-  - _base
-  - _self_
-
-name: line

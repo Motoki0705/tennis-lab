@@ -1,4 +1,4 @@
-"""Strict typed configuration contracts for every court-detection boundary."""
+"""Strict typed configuration contracts for court-detection training."""
 
 from __future__ import annotations
 
@@ -6,7 +6,8 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, TypeAlias, cast
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Literal, TypeAlias, cast
 
 from omegaconf import DictConfig
 
@@ -31,6 +32,12 @@ if TYPE_CHECKING:
     from src.tasks.court_detection.visualization.rendering import CourtRenderStyle
 
 ConfigMapping: TypeAlias = Mapping[str, object]
+CourtSourceKind: TypeAlias = Literal["tennis_court_detector", "synthetic_court"]
+CourtSourceSplit: TypeAlias = Literal["train", "val", "test"]
+CourtTargetKind: TypeAlias = Literal["kp", "seg", "line"]
+
+SEGMENTATION_TARGET_SCHEMA = "court_cell_segmentation_v1"
+LINE_TARGET_SCHEMA = "court_line_binary_v1"
 
 
 def _exact(mapping: ConfigMapping, keys: set[str], *, path: str) -> None:
@@ -68,19 +75,13 @@ def _integer(mapping: ConfigMapping, key: str, *, path: str) -> int:
 
 def _string(mapping: ConfigMapping, key: str, *, path: str) -> str:
     value = cast("str", require_config_value(mapping, key, str, path=path))
-    if not value:
-        raise SemanticConfigurationError(f"{path}.{key} must not be empty.")
+    if not value or value != value.strip():
+        raise SemanticConfigurationError(f"{path}.{key} must be non-empty and trimmed.")
     return value
 
 
 def _bool(mapping: ConfigMapping, key: str, *, path: str) -> bool:
     return cast("bool", require_config_value(mapping, key, bool, path=path))
-
-
-def _optional_string(mapping: ConfigMapping, key: str, *, path: str) -> str | None:
-    return cast(
-        "str | None", require_config_value(mapping, key, (str, type(None)), path=path)
-    )
 
 
 def _sequence(mapping: ConfigMapping, key: str, *, path: str) -> Sequence[object]:
@@ -138,7 +139,7 @@ class CourtRenderConfig:
     line_threshold: float
 
     @classmethod
-    def from_mapping(cls, value: object) -> CourtRenderConfig:
+    def from_mapping(cls, value: object) -> "CourtRenderConfig":
         mapping = as_config_mapping(value, path="render_style")
         _exact(mapping, {"draw", "layout"}, path="render_style")
         draw = require_config_mapping(mapping, "draw", path="render_style")
@@ -203,8 +204,7 @@ class CourtRenderConfig:
             )
         return result
 
-    def build(self) -> CourtRenderStyle:
-        """Build the renderer object from already validated exact values."""
+    def build(self) -> "CourtRenderStyle":
         from src.tasks.base.visualization.layout import PanelStyle
         from src.tasks.court_detection.visualization.rendering import CourtRenderStyle
 
@@ -247,7 +247,7 @@ class CourtAugmentationConfig:
     visibility_max_retries: int
 
     @classmethod
-    def from_mapping(cls, value: object) -> CourtAugmentationConfig:
+    def from_mapping(cls, value: object) -> "CourtAugmentationConfig":
         mapping = as_config_mapping(value, path="data.augmentation")
         keys = {
             "train_scales",
@@ -371,7 +371,8 @@ class CourtAugmentationConfig:
                 "be non-negative and hue must be in [0, 0.5]."
             )
         if not result.gaussian_blur_kernel or any(
-            kernel <= 0 or kernel % 2 == 0 for kernel in result.gaussian_blur_kernel
+            kernel <= 0 or kernel % 2 == 0
+            for kernel in result.gaussian_blur_kernel
         ):
             raise SemanticConfigurationError(
                 "data.augmentation.gaussian_blur_kernel must contain positive odd values."
@@ -388,120 +389,231 @@ class CourtAugmentationConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class TennisCourtDetectorSourceConfig:
+    kind: Literal["tennis_court_detector"]
+    root: Path
+    split_mapping: Mapping[CourtSourceSplit, str | None]
+
+    @classmethod
+    def from_mapping(
+        cls, value: object, *, resolver: PathResolver
+    ) -> "TennisCourtDetectorSourceConfig":
+        mapping = as_config_mapping(value, path="data.source")
+        _exact(mapping, {"kind", "root", "split_mapping"}, path="data.source")
+        if _string(mapping, "kind", path="data.source") != "tennis_court_detector":
+            raise SemanticConfigurationError(
+                "data.source.kind must be 'tennis_court_detector'."
+            )
+        raw_split = require_config_mapping(mapping, "split_mapping", path="data.source")
+        _exact(raw_split, {"train", "val", "test"}, path="data.source.split_mapping")
+        resolved: dict[CourtSourceSplit, str | None] = {}
+        for split in ("train", "val", "test"):
+            value_at_split = require_config_value(
+                raw_split,
+                split,
+                (str, type(None)),
+                path="data.source.split_mapping",
+            )
+            if value_at_split not in {"train", "val", None}:
+                raise SemanticConfigurationError(
+                    "TennisCourtDetector split mappings must be train, val, or null."
+                )
+            resolved[cast(CourtSourceSplit, split)] = cast("str | None", value_at_split)
+        if resolved["train"] is None or resolved["val"] is None:
+            raise SemanticConfigurationError(
+                "TennisCourtDetector train and val mappings must be explicit."
+            )
+        return cls(
+            kind="tennis_court_detector",
+            root=resolver.resolve(
+                PathRole.DATA, _string(mapping, "root", path="data.source")
+            ),
+            split_mapping=MappingProxyType(resolved),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class SyntheticCourtSourceConfig:
+    kind: Literal["synthetic_court"]
+    workspace_root: Path
+    scene_ids: tuple[str, ...]
+
+    @classmethod
+    def from_mapping(
+        cls, value: object, *, resolver: PathResolver
+    ) -> "SyntheticCourtSourceConfig":
+        mapping = as_config_mapping(value, path="data.source")
+        _exact(mapping, {"kind", "workspace_root", "scene_ids"}, path="data.source")
+        if _string(mapping, "kind", path="data.source") != "synthetic_court":
+            raise SemanticConfigurationError(
+                "data.source.kind must be 'synthetic_court'."
+            )
+        raw_ids = _sequence(mapping, "scene_ids", path="data.source")
+        if not raw_ids or any(
+            type(item) is not str
+            or not item
+            or cast(str, item) != cast(str, item).strip()
+            or "/" in cast(str, item)
+            or "\\" in cast(str, item)
+            for item in raw_ids
+        ):
+            raise ConfigurationTypeError(
+                "data.source.scene_ids must contain safe non-empty scene IDs."
+            )
+        scene_ids = tuple(cast(str, item) for item in raw_ids)
+        if len(set(scene_ids)) != len(scene_ids):
+            raise SemanticConfigurationError(
+                "data.source.scene_ids must not contain duplicates."
+            )
+        return cls(
+            kind="synthetic_court",
+            workspace_root=resolver.resolve(
+                PathRole.DATA,
+                _string(mapping, "workspace_root", path="data.source"),
+            ),
+            scene_ids=scene_ids,
+        )
+
+
+CourtSourceConfig: TypeAlias = (
+    TennisCourtDetectorSourceConfig | SyntheticCourtSourceConfig
+)
+
+
+def _source_config(value: object, *, resolver: PathResolver) -> CourtSourceConfig:
+    mapping = as_config_mapping(value, path="data.source")
+    kind = _string(mapping, "kind", path="data.source")
+    if kind == "tennis_court_detector":
+        return TennisCourtDetectorSourceConfig.from_mapping(mapping, resolver=resolver)
+    if kind == "synthetic_court":
+        return SyntheticCourtSourceConfig.from_mapping(mapping, resolver=resolver)
+    raise SemanticConfigurationError(
+        "data.source.kind must be tennis_court_detector or synthetic_court."
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class CourtTargetConfig:
+    kind: CourtTargetKind
+    sigma_ratio: float | None
+    target_schema: str | None
+
+    @classmethod
+    def from_mapping(cls, value: object, *, index: int) -> "CourtTargetConfig":
+        path = f"data.processing.targets[{index}]"
+        mapping = as_config_mapping(value, path=path)
+        kind = _string(mapping, "kind", path=path)
+        if kind == "kp":
+            _exact(mapping, {"kind", "sigma_ratio"}, path=path)
+            sigma = _number(mapping, "sigma_ratio", path=path)
+            if sigma <= 0.0:
+                raise SemanticConfigurationError(f"{path}.sigma_ratio must be positive.")
+            return cls(kind="kp", sigma_ratio=sigma, target_schema=None)
+        if kind in {"seg", "line"}:
+            _exact(mapping, {"kind", "target_schema"}, path=path)
+            schema = _string(mapping, "target_schema", path=path)
+            expected = (
+                SEGMENTATION_TARGET_SCHEMA if kind == "seg" else LINE_TARGET_SCHEMA
+            )
+            if schema != expected:
+                raise SemanticConfigurationError(
+                    f"{path}.target_schema must be {expected!r}."
+                )
+            return cls(
+                kind=cast(CourtTargetKind, kind),
+                sigma_ratio=None,
+                target_schema=schema,
+            )
+        raise SemanticConfigurationError(f"{path}.kind must be kp, seg, or line.")
+
+
+@dataclass(frozen=True, slots=True)
+class CourtProcessingConfig:
+    derived_target_root: Path
+    targets: tuple[CourtTargetConfig, ...]
+
+    @classmethod
+    def from_mapping(
+        cls, value: object, *, resolver: PathResolver
+    ) -> "CourtProcessingConfig":
+        mapping = as_config_mapping(value, path="data.processing")
+        _exact(
+            mapping,
+            {"derived_target_root", "targets"},
+            path="data.processing",
+        )
+        raw_targets = _sequence(mapping, "targets", path="data.processing")
+        if not raw_targets:
+            raise SemanticConfigurationError(
+                "data.processing.targets must be non-empty."
+            )
+        targets = tuple(
+            CourtTargetConfig.from_mapping(item, index=index)
+            for index, item in enumerate(raw_targets)
+        )
+        kinds = tuple(target.kind for target in targets)
+        if len(set(kinds)) != len(kinds):
+            raise SemanticConfigurationError(
+                "data.processing.targets must not repeat a target kind."
+            )
+        return cls(
+            derived_target_root=resolver.resolve(
+                PathRole.DATA,
+                _string(
+                    mapping,
+                    "derived_target_root",
+                    path="data.processing",
+                ),
+            ),
+            targets=targets,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class CourtDataConfig:
-    task: str
-    data_dir: Path
+    source: CourtSourceConfig
+    processing: CourtProcessingConfig
     batch_size: int
     num_workers: int
     pin_memory: bool
-    output_channels: int
-    sigma_ratio: float | None
-    mask_dir_name: str | None
-    hflip_swap_pairs: tuple[tuple[int, int], ...]
     augmentation: CourtAugmentationConfig
 
     @classmethod
-    def from_mapping(cls, value: object, *, resolver: PathResolver) -> CourtDataConfig:
+    def from_mapping(cls, value: object, *, resolver: PathResolver) -> "CourtDataConfig":
         mapping = as_config_mapping(value, path="data")
-        task = _string(mapping, "task", path="data")
-        common = {
-            "task",
-            "data_dir",
-            "batch_size",
-            "num_workers",
-            "pin_memory",
-            "hflip_swap_pairs",
-            "augmentation",
-        }
-        variants = {
-            "kp": {"output_channels", "sigma_ratio"},
-            "seg": {"output_channels"},
-            "line": {"output_channels", "mask_dir_name"},
-        }
-        if task not in variants:
-            raise SemanticConfigurationError("data.task must be one of: kp, seg, line.")
-        _exact(mapping, common | variants[task], path="data")
-        raw_pairs = _sequence(mapping, "hflip_swap_pairs", path="data")
-        pairs: list[tuple[int, int]] = []
-        paired_indices: set[int] = set()
-        for index, pair in enumerate(raw_pairs):
-            if (
-                not isinstance(pair, Sequence)
-                or isinstance(pair, (str, bytes))
-                or len(pair) != 2
-                or any(type(item) is not int for item in pair)
-            ):
-                raise ConfigurationTypeError(
-                    f"data.hflip_swap_pairs[{index}] must contain two integers."
-                )
-            first, second = cast("int", pair[0]), cast("int", pair[1])
-            if first == second:
-                raise SemanticConfigurationError(
-                    f"data.hflip_swap_pairs[{index}] must contain distinct indices."
-                )
-            if first in paired_indices or second in paired_indices:
-                raise SemanticConfigurationError(
-                    "data.hflip_swap_pairs must not reuse an output index."
-                )
-            paired_indices.update((first, second))
-            pairs.append((first, second))
-        output_channels = _integer(mapping, "output_channels", path="data")
+        _exact(
+            mapping,
+            {
+                "source",
+                "processing",
+                "batch_size",
+                "num_workers",
+                "pin_memory",
+                "augmentation",
+            },
+            path="data",
+        )
         batch_size = _integer(mapping, "batch_size", path="data")
         num_workers = _integer(mapping, "num_workers", path="data")
-        if output_channels <= 0 or batch_size <= 0 or num_workers < 0:
+        if batch_size <= 0 or num_workers < 0:
             raise SemanticConfigurationError(
-                "data channel/batch values must be positive and num_workers non-negative."
-            )
-        expected_channels = {"kp": 14, "seg": 7, "line": 1}[task]
-        if output_channels != expected_channels:
-            raise SemanticConfigurationError(
-                f"data.output_channels must be {expected_channels} for task={task!r}."
-            )
-        if any(
-            index < 0 or index >= output_channels
-            for pair in pairs
-            for index in pair
-        ):
-            raise SemanticConfigurationError(
-                "data.hflip_swap_pairs indices must be within data.output_channels."
-            )
-        sigma = _number(mapping, "sigma_ratio", path="data") if task == "kp" else None
-        if sigma is not None and sigma <= 0:
-            raise SemanticConfigurationError("data.sigma_ratio must be positive.")
-        augmentation = CourtAugmentationConfig.from_mapping(
-            require_config_mapping(mapping, "augmentation", path="data")
-        )
-        if task == "kp" and augmentation.min_visible_kp > output_channels:
-            raise SemanticConfigurationError(
-                "data.augmentation.min_visible_kp must not exceed "
-                "data.output_channels for task='kp'."
-            )
-        mask_dir_name = (
-            _string(mapping, "mask_dir_name", path="data")
-            if task == "line"
-            else None
-        )
-        if mask_dir_name is not None and (
-            mask_dir_name != mask_dir_name.strip()
-            or Path(mask_dir_name).name != mask_dir_name
-            or mask_dir_name in {".", ".."}
-        ):
-            raise SemanticConfigurationError(
-                "data.mask_dir_name must be one non-traversing directory name."
+                "data.batch_size must be positive and data.num_workers non-negative."
             )
         return cls(
-            task=task,
-            data_dir=resolver.resolve(
-                PathRole.DATA, _string(mapping, "data_dir", path="data")
+            source=_source_config(
+                require_config_mapping(mapping, "source", path="data"),
+                resolver=resolver,
+            ),
+            processing=CourtProcessingConfig.from_mapping(
+                require_config_mapping(mapping, "processing", path="data"),
+                resolver=resolver,
             ),
             batch_size=batch_size,
             num_workers=num_workers,
             pin_memory=_bool(mapping, "pin_memory", path="data"),
-            output_channels=output_channels,
-            sigma_ratio=sigma,
-            mask_dir_name=mask_dir_name,
-            hflip_swap_pairs=tuple(pairs),
-            augmentation=augmentation,
+            augmentation=CourtAugmentationConfig.from_mapping(
+                require_config_mapping(mapping, "augmentation", path="data")
+            ),
         )
 
 
@@ -514,7 +626,7 @@ class CourtLoRAConfig:
     target_modules: tuple[str, ...]
 
     @classmethod
-    def from_mapping(cls, value: object) -> CourtLoRAConfig:
+    def from_mapping(cls, value: object) -> "CourtLoRAConfig":
         mapping = as_config_mapping(value, path="model.encoder.lora")
         _exact(
             mapping,
@@ -558,7 +670,7 @@ class CourtEncoderConfig:
     @classmethod
     def from_mapping(
         cls, value: object, *, resolver: PathResolver
-    ) -> CourtEncoderConfig:
+    ) -> "CourtEncoderConfig":
         mapping = as_config_mapping(value, path="model.encoder")
         name = _string(mapping, "name", path="model.encoder")
         if name == "default":
@@ -637,7 +749,7 @@ class CourtDecoderConfig:
     reassemble_factors: tuple[float, ...] | None
 
     @classmethod
-    def from_mapping(cls, value: object) -> CourtDecoderConfig:
+    def from_mapping(cls, value: object) -> "CourtDecoderConfig":
         mapping = as_config_mapping(value, path="model.decoder")
         name = _string(mapping, "name", path="model.decoder")
         expected = (
@@ -688,16 +800,17 @@ class CourtDecoderConfig:
 class CourtModelConfig:
     name: str
     in_channels: int
-    num_classes: int
     encoder: CourtEncoderConfig
     decoder: CourtDecoderConfig
 
     @classmethod
-    def from_mapping(cls, value: object, *, resolver: PathResolver) -> CourtModelConfig:
+    def from_mapping(
+        cls, value: object, *, resolver: PathResolver
+    ) -> "CourtModelConfig":
         mapping = as_config_mapping(value, path="model")
         _exact(
             mapping,
-            {"name", "in_channels", "num_classes", "encoder", "decoder"},
+            {"name", "in_channels", "encoder", "decoder"},
             path="model",
         )
         name = _string(mapping, "name", path="model")
@@ -706,7 +819,6 @@ class CourtModelConfig:
         result = cls(
             name=name,
             in_channels=_integer(mapping, "in_channels", path="model"),
-            num_classes=_integer(mapping, "num_classes", path="model"),
             encoder=CourtEncoderConfig.from_mapping(
                 require_config_mapping(mapping, "encoder", path="model"),
                 resolver=resolver,
@@ -715,8 +827,8 @@ class CourtModelConfig:
                 require_config_mapping(mapping, "decoder", path="model")
             ),
         )
-        if result.in_channels <= 0 or result.num_classes <= 0:
-            raise SemanticConfigurationError("model channel counts must be positive.")
+        if result.in_channels <= 0:
+            raise SemanticConfigurationError("model.in_channels must be positive.")
         if result.decoder.name == "dpt" and result.encoder.name != "dinov3":
             raise SemanticConfigurationError("DPT decoder requires the DINOv3 encoder.")
         return result
@@ -724,63 +836,54 @@ class CourtModelConfig:
 
 @dataclass(frozen=True, slots=True)
 class CourtLossConfig:
-    name: str
-    ce_weight: float
-    dice_weight: float
-    focal_gamma: float
-    bce_weight: float
-    pos_weight: float
+    seg_ce_weight: float
+    seg_dice_weight: float
+    kp_focal_gamma: float
+    line_bce_weight: float
+    line_dice_weight: float
+    line_pos_weight: float
 
     @classmethod
-    def from_mapping(cls, value: object) -> CourtLossConfig:
+    def from_mapping(cls, value: object) -> "CourtLossConfig":
         mapping = as_config_mapping(value, path="loss")
-        _exact(mapping, {"name", "seg", "kp", "line"}, path="loss")
+        _exact(mapping, {"seg", "kp", "line"}, path="loss")
         seg = require_config_mapping(mapping, "seg", path="loss")
         kp = require_config_mapping(mapping, "kp", path="loss")
         line = require_config_mapping(mapping, "line", path="loss")
         _exact(seg, {"ce_weight", "dice_weight"}, path="loss.seg")
         _exact(kp, {"focal_gamma"}, path="loss.kp")
         _exact(line, {"bce_weight", "dice_weight", "pos_weight"}, path="loss.line")
-        name = _string(mapping, "name", path="loss")
-        if name not in {"kp", "seg", "line"}:
-            raise SemanticConfigurationError("loss.name must be kp, seg, or line.")
-        ce_weight = _number(seg, "ce_weight", path="loss.seg")
-        seg_dice_weight = _number(seg, "dice_weight", path="loss.seg")
-        focal_gamma = _number(kp, "focal_gamma", path="loss.kp")
-        bce_weight = _number(line, "bce_weight", path="loss.line")
-        line_dice_weight = _number(line, "dice_weight", path="loss.line")
-        pos_weight = _number(line, "pos_weight", path="loss.line")
+        result = cls(
+            seg_ce_weight=_number(seg, "ce_weight", path="loss.seg"),
+            seg_dice_weight=_number(seg, "dice_weight", path="loss.seg"),
+            kp_focal_gamma=_number(kp, "focal_gamma", path="loss.kp"),
+            line_bce_weight=_number(line, "bce_weight", path="loss.line"),
+            line_dice_weight=_number(line, "dice_weight", path="loss.line"),
+            line_pos_weight=_number(line, "pos_weight", path="loss.line"),
+        )
         if any(
-            weight < 0.0
-            for weight in (
-                ce_weight,
-                seg_dice_weight,
-                focal_gamma,
-                bce_weight,
-                line_dice_weight,
+            value < 0.0
+            for value in (
+                result.seg_ce_weight,
+                result.seg_dice_weight,
+                result.kp_focal_gamma,
+                result.line_bce_weight,
+                result.line_dice_weight,
             )
         ):
             raise SemanticConfigurationError(
-                "Court loss weights and loss.focal_gamma must be non-negative."
+                "Court loss weights and focal gamma must be non-negative."
             )
-        if pos_weight <= 0.0:
+        if result.line_pos_weight <= 0.0:
             raise SemanticConfigurationError("loss.line.pos_weight must be positive.")
-        if name == "seg" and ce_weight == 0.0 and seg_dice_weight == 0.0:
+        if result.seg_ce_weight == 0.0 and result.seg_dice_weight == 0.0:
             raise SemanticConfigurationError(
                 "loss.seg must enable ce_weight or dice_weight."
             )
-        if name == "line" and bce_weight == 0.0 and line_dice_weight == 0.0:
+        if result.line_bce_weight == 0.0 and result.line_dice_weight == 0.0:
             raise SemanticConfigurationError(
                 "loss.line must enable bce_weight or dice_weight."
             )
-        result = cls(
-            name=name,
-            ce_weight=ce_weight,
-            dice_weight=seg_dice_weight if name == "seg" else line_dice_weight,
-            focal_gamma=focal_gamma,
-            bce_weight=bce_weight,
-            pos_weight=pos_weight,
-        )
         return result
 
 
@@ -794,7 +897,7 @@ class CourtTrainingConfig:
     qualitative_fps: int
 
     @classmethod
-    def from_config(cls, value: object) -> CourtTrainingConfig:
+    def from_config(cls, value: object) -> "CourtTrainingConfig":
         config = as_config_mapping(value, path="configuration")
         _exact(
             config,
@@ -905,7 +1008,9 @@ class CourtTrainingConfig:
             training_mapping, "optimizer", path="training"
         )
         if _string(optimizer, "name", path="training.optimizer") != "adamw":
-            raise SemanticConfigurationError("training.optimizer.name must be 'adamw'.")
+            raise SemanticConfigurationError(
+                "training.optimizer.name must be 'adamw'."
+            )
         qualitative = require_config_mapping(
             training_mapping, "qualitative_logging", path="training"
         )
@@ -973,12 +1078,6 @@ class CourtTrainingConfig:
             raise SemanticConfigurationError(
                 "training.qualitative_logging.fps must be positive."
             )
-        if data.task != loss.name:
-            raise SemanticConfigurationError("data.task and loss.name must match.")
-        if data.output_channels != model.num_classes:
-            raise SemanticConfigurationError(
-                "model.num_classes must match the selected data task output channels."
-            )
         if (
             model.encoder.lora is not None
             and model.encoder.lora.enabled
@@ -1017,8 +1116,15 @@ __all__ = [
     "CourtLoRAConfig",
     "CourtLossConfig",
     "CourtModelConfig",
+    "CourtProcessingConfig",
     "CourtRenderConfig",
+    "CourtSourceConfig",
+    "CourtTargetConfig",
     "CourtTrainingConfig",
+    "LINE_TARGET_SCHEMA",
+    "SEGMENTATION_TARGET_SCHEMA",
+    "SyntheticCourtSourceConfig",
+    "TennisCourtDetectorSourceConfig",
     "validate_paths_boundary",
     "validate_train_boundary",
 ]
