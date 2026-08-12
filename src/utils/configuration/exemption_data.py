@@ -1,8 +1,8 @@
 """Generated immutable exact exemptions for non-configuration constructs."""
 
 AUDIT_EXEMPTION_RECORD_COUNT = 571
-AUDIT_EXEMPTION_RECORD_IDS_SHA256 = '57a1821f660588c5997db15ee8af2839b656a99160c906c70e678ec4652306b2'
-AUDIT_EXEMPTION_SHA256 = 'a55e60f5a6950d1181cacea4bdf0fac98d074a7c4d7a305b21f0c69131d60ad6'
+AUDIT_EXEMPTION_RECORD_IDS_SHA256 = 'a4dd0606572113e749b9c2c5d5bb2805e7953d3c0cfa8a3107b8ab2f18681445'
+AUDIT_EXEMPTION_SHA256 = 'd3529e7367fe7504eb41beacd7e697aa91d8ff2836bd9abc1091f9bd729d1ae9'
 AUDIT_EXEMPTION_COUNTS = {'persisted-layout': 342, 'composed-path': 96, 'code-or-artifact-location': 12, 'strict-schema': 41, 'algorithm-optional-value': 6, 'persisted-record': 16, 'algorithm-aggregation': 1, 'persisted-optional-field': 45, 'validation-fixture': 12}
 AUDIT_EXEMPTION_PAYLOAD = (
     'c-qaK>u=*YlED9$eC`-}KY+sl+nKxB!OiS7I*lD177Ia^8CxA$(vniTvw!`uNa|t7PW0fz9~zy=PW?)J7K_E=KmKt?aJEU?raGog'
@@ -61,7 +61,7 @@ AUDIT_EXEMPTION_PAYLOAD = (
     'Mp#Vr0kR9g<>&^m>t_AM*vK`4jm^9*I7&=lBO}-=Q?mxHV~Fb-;s%Deu^FyysD5qV5Z6#SJMzmpuX;xp3yFrw_mYzf=HnSxt<6F5'
     '6gnJWd$w|dtD4{k$_b%zLadq)D6i?c@evCMo@zp<yp%%ar4%afap8jgaJmQ^?)2pTIV>*o9Ir?E3qFTEFlUuBlHVFT;U<n}^vYaE'
     '<HX5}meJRUeV+J3b*%O{tq-rsa0Fi&wy$Lo&qJQoqm)v3ZgNzDYYmGW<*Tz%UxR&|E?nxnsqk@q#JZ3$Tq;LSe(Gz|PluT2`ZSTd'
-    '#FlUh;xSQLPz3Fjlg@8mkySr~FY5t5@7(9(_?tf4mgTu~z1rtc=HtrCx^2klx+(T8*ahmIFkOCwuWew8gC=?X%*kwilVU1re7{wf'
+    '#FlUh;xSQLPz3Fjlg@8mkySr~FY5t5@7(9(_?tf4mgU8Bz1rtc=HtrCx^2klx+(T8*ahmIFkOCwuWew8gC=?X%*kwilVU1re7{wf'
     ')tGUAp;O=s+I?f+;`xoCIC+L{H<*5*)j52WuxW_e6X~Ib&tOxtE!ZCMOe=jo&)3Wg_3~!!M6c$}w7pmJLfyP|?Q>ebBk-|b`oLM`'
     'P?M~S7u<|4?kb1hxh|vAtk<Gmc>_5yl*8rs7|d5d95aPQ$TDPovh^y?$*1KW&cL9e%JSy*?4FbPv+qSlx0c)GFo$j1Gh@<qq>+k>'
     'kYraK^DfV0|2Cd92JV_7!nndic97wH!qu$zHn9EG(p4DuCjhvc=i@3_WI$f!d{`|Kcyc!8>nR)a%Wj6Nr*6zk6Mt!AK9(%|(#HJy'
@@ -77,5 +77,5 @@ AUDIT_EXEMPTION_PAYLOAD = (
     '1qrQ1khaN-vor~tlrCkP6Jy1LEN@qqEAQk=m?}I}DLhgsJXR;%w=9*yZI!|umBL+>!abG3eU-wc^-%b0wyBkF=~UaY3wj-U$|(vi'
     'ZImzU?93xwp1$(Mw=>oEJ6+`Dm@qDq$$84l-Eg4;q@$aWAe75tXXnUxKCNoP(^#?V46CXk4Nhygso*<gNW&G+dSJ~>Yc+|-N~WsC'
     'IT?0KoTmxossWAjX;UB>?f`Kd?Zl<;*!8KQ!-5YN8r(gg%H}?Y?XEczd2?b1!&s8Ru7R--o(J~mOZQ~6#k9Jzl#DVGy3Vr9MAGo_'
-    '3OutyyFA;ltyKLeS&QsW8wfMi|IiWk&;JMLApjZ'
+    '3OutyyFA;ltyKLeS&QsW8wfMi|IiWk&;JKA5da_'
 )
