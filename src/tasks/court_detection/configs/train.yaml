@@ -1,8 +1,8 @@
 defaults:
   - paths: default
-  - data: court_seg
+  - data: default
   - model: hierarchical
-  - loss: seg
+  - loss: default
   - training: default
   - run: train
   - render_style: default
