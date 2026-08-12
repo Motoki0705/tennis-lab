@@ -84,6 +84,35 @@ class NHTPipelineConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class NHTTrainingRuntime:
+    """Dedicated Python runtime used to import and execute the gsplat trainer."""
+
+    python: Path
+    trainer: Path
+
+    def __post_init__(self) -> None:
+        for name, path in (("python", self.python), ("trainer", self.trainer)):
+            if not isinstance(path, Path):
+                raise TypeError(f"NHT training {name} must be a pathlib.Path.")
+            if not path.is_absolute():
+                raise ValueError(f"NHT training {name} must be absolute: {path}")
+
+    def validate(self) -> None:
+        """Fail before NHT starts when the configured trainer runtime is absent."""
+        if not self.python.is_file() or not os.access(self.python, os.X_OK):
+            raise FileNotFoundError(
+                f"NHT training Python is unavailable: {self.python}. "
+                "Run `.venv/bin/python -m spin setup-nht`."
+            )
+        if not self.trainer.is_file():
+            raise FileNotFoundError(f"NHT trainer is unavailable: {self.trainer}")
+
+    def provenance(self) -> Mapping[str, str]:
+        """Return the explicit trainer-runtime authority for run manifests."""
+        return {"python": str(self.python), "trainer": str(self.trainer)}
+
+
+@dataclass(frozen=True, slots=True)
 class ReconstructionCommandRequest:
     """One full reconstruction in the scene's fixed NHT-owned workspace."""
 
@@ -178,5 +207,6 @@ __all__ = [
     "NHT_PIPELINE_CONFIG_SCHEMA",
     "NHT_RECONSTRUCT_COMMAND",
     "NHTPipelineConfig",
+    "NHTTrainingRuntime",
     "ReconstructionCommandRequest",
 ]

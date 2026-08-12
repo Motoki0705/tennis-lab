@@ -49,11 +49,21 @@ def _write_fake_command(path: Path, *, log_path: Path) -> None:
     path.chmod(0o755)
 
 
-def _write_fake_uv(path: Path, *, log_path: Path, tool_bin: Path) -> None:
+def _write_fake_uv(
+    path: Path,
+    *,
+    log_path: Path,
+    tool_bin: Path,
+    tool_directory: Path,
+) -> None:
     path.write_text(
         "#!/bin/sh\n"
         'if [ "$*" = "tool dir --bin" ]; then\n'
         f"  printf '%s\\n' {tool_bin}\n"
+        "  exit 0\n"
+        "fi\n"
+        'if [ "$*" = "tool dir" ]; then\n'
+        f"  printf '%s\\n' {tool_directory}\n"
         "  exit 0\n"
         "fi\n"
         f"printf '%s\\n' \"$0 $*\" >> {log_path}\n",
@@ -62,7 +72,7 @@ def _write_fake_uv(path: Path, *, log_path: Path, tool_bin: Path) -> None:
     path.chmod(0o755)
 
 
-def test_setup_nht_installs_the_pinned_submodule_as_an_isolated_tool(
+def test_setup_nht_builds_isolated_public_tool_and_trainer_runtime(
     tmp_path: Path,
 ) -> None:
     bin_directory = tmp_path / "bin"
@@ -70,7 +80,12 @@ def test_setup_nht_installs_the_pinned_submodule_as_an_isolated_tool(
     log_path = tmp_path / "commands.log"
     for command in ("git", "nht-reconstruct", "nht-render"):
         _write_fake_command(bin_directory / command, log_path=log_path)
-    _write_fake_uv(bin_directory / "uv", log_path=log_path, tool_bin=bin_directory)
+    _write_fake_uv(
+        bin_directory / "uv",
+        log_path=log_path,
+        tool_bin=bin_directory,
+        tool_directory=tmp_path / "tools",
+    )
     environment = {
         **os.environ,
         "PATH": f"{bin_directory}{os.pathsep}{os.environ.get('PATH', '')}",
@@ -83,10 +98,20 @@ def test_setup_nht_installs_the_pinned_submodule_as_an_isolated_tool(
     assert (
         "git submodule update --init --recursive --checkout third_party/nht" in commands
     )
-    assert "uv tool install --force --editable" in commands
+    assert "uv tool install --force --python 3.11 --editable" in commands
+    assert "--python 3.11" in commands
     assert "--with-editable third_party/nht/gsplat" in commands
+    assert "--with torch==2.9.1 --with torchvision==0.24.1" in commands
     assert "third_party/nht[aov]" in commands
+    assert "setuptools<81" in commands
+    assert "tinycudann @ git+https://github.com/NVlabs/tiny-cuda-nn/" in commands
+    assert "from gsplat.nht.deferred_shader import DeferredShaderModule" in commands
+    assert "uv venv --clear --python 3.11 third_party/nht/.trainer-venv" in commands
+    assert "torch==2.9.1 torchvision==0.24.1" in commands
+    assert "third_party/nht/gsplat/examples/requirements.txt" in commands
+    assert "third_party/nht/nht_pipeline/nht_adapter.py probe" in commands
     assert "NHT public CLI is ready" in result.stdout
+    assert "NHT trainer runtime is ready" in result.stdout
 
 
 def test_lint_can_check_an_explicit_path() -> None:

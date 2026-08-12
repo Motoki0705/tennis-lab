@@ -4,6 +4,7 @@ from src.synthetic_data_generation.reconstruction.contracts import (
     NHT_PIPELINE_CONFIG_SCHEMA,
     NHT_RECONSTRUCT_COMMAND,
     NHTPipelineConfig,
+    NHTTrainingRuntime,
     ReconstructionCommandRequest,
 )
 from src.synthetic_data_generation.reconstruction.nht_subprocess import (
@@ -19,6 +20,7 @@ __all__ = [
     "NHT_PIPELINE_CONFIG_SCHEMA",
     "NHT_RECONSTRUCT_COMMAND",
     "NHTPipelineConfig",
+    "NHTTrainingRuntime",
     "NHTReconstructionHandler",
     "ReconstructionCommandRequest",
     "StandardSceneExport",

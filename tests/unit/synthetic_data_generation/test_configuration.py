@@ -77,6 +77,14 @@ def test_b00_configuration_is_the_canonical_scene_request() -> None:
         runtime.resolver.roots.external_asset_root / "nht/configs/production.yaml"
     ).resolve()
     assert runtime.nht.pipeline_config.schema == NHT_PIPELINE_CONFIG_SCHEMA
+    assert runtime.nht.training_runtime.python == (
+        runtime.resolver.roots.external_asset_root
+        / "nht/.trainer-venv/bin/python"
+    )
+    assert runtime.nht.training_runtime.trainer == (
+        runtime.resolver.roots.external_asset_root
+        / "nht/gsplat/examples/simple_trainer_nht.py"
+    ).resolve()
 
 
 def test_b00_quantitative_and_full_timeline_values_are_config_owned() -> None:
@@ -390,7 +398,9 @@ def _compose_with_nht_config_root(root: Path) -> DictConfig:
     config = _compose()
     data_root = root.parent / "data"
     data_root.mkdir(exist_ok=True)
-    (data_root / "tennis_court.mp4").write_bytes(b"configuration fixture")
+    source_video = data_root / "synthetic_data_generation/raw/tennis_court.mp4"
+    source_video.parent.mkdir(parents=True)
+    source_video.write_bytes(b"configuration fixture")
     backbone = (
         root
         / "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"

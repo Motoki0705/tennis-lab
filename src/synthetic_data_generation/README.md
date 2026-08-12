@@ -12,15 +12,22 @@ submodule reference, install NHT's public commands with the project development
 CLI:
 
 ```bash
-uv run spin setup-nht
+.venv/bin/python -m spin setup-nht
 ```
 
 This checks out the pinned `third_party/nht` submodule commit and installs NHT
-and its gsplat runtime as an editable, isolated `uv tool`. It does not add them
-to the tennis-lab `.venv`. To install the optional learned SfM retry backend,
-run `uv run spin setup-nht --with-sfm-learned` instead. The command validates
-that `nht-reconstruct` and `nht-render` resolve from the installed tool's bin
-directory and reports the required `PATH` update if they do not.
+and its public rendering runtime as an editable, isolated `uv tool`. It also
+rebuilds `third_party/nht/.trainer-venv` as the dedicated gsplat example-trainer
+runtime and verifies that the trainer can be imported there. The two NHT
+environments are separate because the public SfM pipeline requires current
+`pycolmap`, while the trainer's dataset loader requires the pinned legacy
+`SceneManager` API. Neither dependency set is added to the tennis-lab `.venv`,
+and an existing unmanaged `third_party/nht/.venv` is not used.
+
+To install the optional learned SfM retry backend, run
+`.venv/bin/python -m spin setup-nht --with-sfm-learned` instead. The command
+validates that `nht-reconstruct` and `nht-render` resolve from the installed
+tool's bin directory and reports the required `PATH` update if they do not.
 
 ## Run
 
@@ -69,9 +76,12 @@ rotations, intrinsics, shape, dtype, and finite values. It does not import NHT
 Python internals or read COLMAP/checkpoint internals.
 
 The configured `nht-reconstruct` and `nht-render` entrypoints are installed
-public commands. Their package environment owns PyTorch, gsplat, trainer
-selection, and provider defaults; tennis-lab neither locates nor configures
-those internals and fails closed when either public command is unavailable.
+public commands. Their package environment owns public-command dependencies and
+rendering. The machine-local trainer Python and trainer entrypoint are explicit
+typed configuration resolved from the pinned NHT submodule, then bound to a
+temporary copy of the public NHT pipeline config for each reconstruction.
+tennis-lab still imports no NHT Python internals and fails closed when a public
+command or the dedicated trainer runtime is unavailable.
 
 Alignment uses measured court-line evidence with disjoint fit and holdout
 partitions. Only accepted results publish a `MultiCourtLayout` containing every

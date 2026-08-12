@@ -116,6 +116,7 @@ from src.synthetic_data_generation.pipeline.run_manifest import MutableRunManife
 from src.synthetic_data_generation.reconstruction import (
     NHTPipelineConfig,
     NHTReconstructionHandler,
+    NHTTrainingRuntime,
 )
 from src.synthetic_data_generation.reconstruction.scene_export import (
     StandardSceneExport,
@@ -600,15 +601,17 @@ def test_real_domain_handlers_publish_and_recover_through_fake_nht_only(
     assert reconstruct_calls == [
         {
             "command": "nht-reconstruct",
-            "config": str(fixture.pipeline_config.path),
             "generation": 1,
             "scene_id": "B00",
+            "trainer": str(fixture.training_runtime.trainer),
+            "training_python": str(fixture.training_runtime.python),
         },
         {
             "command": "nht-reconstruct",
-            "config": str(fixture.pipeline_config.path),
             "generation": 2,
             "scene_id": "B00",
+            "trainer": str(fixture.training_runtime.trainer),
+            "training_python": str(fixture.training_runtime.python),
         },
     ]
 
@@ -618,6 +621,7 @@ class _Fixture:
     workspace: SceneWorkspace
     source_video: Path
     pipeline_config: NHTPipelineConfig
+    training_runtime: NHTTrainingRuntime
     reconstruct_executable: Path
     render_executable: Path
     reconstruct_log: Path
@@ -642,6 +646,16 @@ class _Fixture:
             encoding="utf-8",
         )
         pipeline_config = NHTPipelineConfig.load(pipeline_config_path.resolve())
+        training_python = tmp_path / "trainer/bin/python"
+        training_python.parent.mkdir(parents=True)
+        training_python.write_text("#!/bin/sh\n", encoding="utf-8")
+        training_python.chmod(0o755)
+        trainer = tmp_path / "trainer/simple_trainer_nht.py"
+        trainer.write_text("# test trainer\n", encoding="utf-8")
+        training_runtime = NHTTrainingRuntime(
+            python=training_python.resolve(),
+            trainer=trainer.resolve(),
+        )
         reconstruct_log = tmp_path / "nht-reconstruct.jsonl"
         render_log = tmp_path / "nht-render.jsonl"
         reconstruct, render = _write_fake_nht_commands(
@@ -656,6 +670,7 @@ class _Fixture:
             workspace=workspace,
             source_video=source_video.resolve(),
             pipeline_config=pipeline_config,
+            training_runtime=training_runtime,
             reconstruct_executable=reconstruct,
             render_executable=render,
             reconstruct_log=reconstruct_log,
@@ -720,6 +735,7 @@ class _Fixture:
             reconstruction=NHTReconstructionHandler(
                 executable=self.reconstruct_executable,
                 pipeline_config=self.pipeline_config,
+                training_runtime=self.training_runtime,
                 environment={},
                 timeout_seconds=180.0,
             ),
@@ -1321,6 +1337,7 @@ import shutil
 from pathlib import Path
 
 import numpy as np
+import yaml
 from PIL import Image
 
 parser = argparse.ArgumentParser()
@@ -1331,8 +1348,10 @@ parser.add_argument("--config", required=True)
 args = parser.parse_args()
 workspace = Path(args.workspace)
 pipeline_config = Path(args.config)
-if "schema: nht_pipeline_config_v1" not in pipeline_config.read_text(encoding="utf-8"):
+effective_config = yaml.safe_load(pipeline_config.read_text(encoding="utf-8"))
+if effective_config.get("schema") != "nht_pipeline_config_v1":
     raise ValueError("fake NHT received an invalid pipeline config")
+training_runtime = effective_config.get("nht_training", {{}})
 workspace.mkdir(parents=True, exist_ok=True)
 log_path = Path({str(log_path)!r})
 generation = len(log_path.read_text(encoding="utf-8").splitlines()) + 1 if log_path.exists() else 1
@@ -1427,7 +1446,7 @@ identity_list = identity.tolist()
 (workspace / "run.json").write_text(json.dumps({{"command": "nht-reconstruct", "generation": generation}}), encoding="utf-8")
 (workspace / "input-config.yaml").write_text("schema: public-fake-nht-v1\\n", encoding="utf-8")
 with log_path.open("a", encoding="utf-8") as handle:
-    handle.write(json.dumps({{"command": "nht-reconstruct", "config": str(pipeline_config.resolve()), "generation": generation, "scene_id": args.scene_id}}, sort_keys=True) + "\\n")
+    handle.write(json.dumps({{"command": "nht-reconstruct", "generation": generation, "scene_id": args.scene_id, "trainer": training_runtime.get("trainer"), "training_python": training_runtime.get("python")}}, sort_keys=True) + "\\n")
 """
 
 
