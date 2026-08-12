@@ -11,6 +11,7 @@ from typing import cast
 
 import numpy as np
 import pytest
+import torch
 from numpy.typing import NDArray
 from PIL import Image
 
@@ -33,6 +34,7 @@ from src.synthetic_data_generation.alignment.evidence_source import (
     _fit_court_hypotheses,
     _fixed_camera_selection,
     _GroundPlane,
+    _line_bundle_model_state,
     _maximum_center_tile_width_scene_units,
     _NativeProposal,
     _optimize_court,
@@ -70,6 +72,41 @@ from src.synthetic_data_generation.reconstruction.scene_export import (
     StandardSceneExport,
 )
 from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
+
+
+def test_line_bundle_model_state_migrates_exact_legacy_head_namespace() -> None:
+    weight = torch.ones((1, 2, 1, 1))
+    bias = torch.ones((1,))
+
+    state = _line_bundle_model_state(
+        {
+            "model.encoder.weight": torch.ones((2, 2)),
+            "model.final_conv.weight": weight,
+            "model.final_conv.bias": bias,
+            "bce_loss_fn.pos_weight": torch.ones((1,)),
+        }
+    )
+
+    assert state["heads.line.weight"] is weight
+    assert state["heads.line.bias"] is bias
+    assert "final_conv.weight" not in state
+    assert "final_conv.bias" not in state
+
+
+def test_line_bundle_model_state_rejects_ambiguous_or_incomplete_heads() -> None:
+    tensor = torch.ones((1,))
+
+    with pytest.raises(ValueError, match="incomplete legacy"):
+        _line_bundle_model_state({"model.final_conv.weight": tensor})
+    with pytest.raises(ValueError, match="mixes legacy and bundle"):
+        _line_bundle_model_state(
+            {
+                "model.final_conv.weight": tensor,
+                "model.final_conv.bias": tensor,
+                "model.heads.line.weight": tensor,
+                "model.heads.line.bias": tensor,
+            }
+        )
 
 
 @dataclass
