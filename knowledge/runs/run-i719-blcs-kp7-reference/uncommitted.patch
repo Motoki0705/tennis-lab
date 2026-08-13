@@ -1,0 +1,1545 @@
+diff --git a/knowledge/nodes/run-i719-blcs-kp14.md b/knowledge/nodes/run-i719-blcs-kp14.md
+index f45c561b..7c4725b6 100644
+--- a/knowledge/nodes/run-i719-blcs-kp14.md
++++ b/knowledge/nodes/run-i719-blcs-kp14.md
+@@ -4,44 +4,45 @@ type: run
+ title: i719-blcs-kp14
+ issue: 719
+ provider: codex
+-session: 019ff689-cc3c-7680-b1e1-e95a128bd69b
++session: 019ff6e5-b975-7671-bdd4-f03843734cf5
+ date: '2026-08-13'
+ status: done
+ config:
+   model: track_query_kp14
+ metrics:
+-  loss: 1.092682
+-  loss_position: 0.517474
+-  loss_position_x: 0.284368
+-  loss_position_y: 0.181005
+-  loss_position_z: 1.656625
+-  loss_presence: 0.575208
++  loss: 1.026375
++  loss_position: 0.46969
++  loss_position_x: 0.210457
++  loss_position_y: 0.195029
++  loss_position_z: 1.537476
++  loss_presence: 0.556686
+   loss_smoothness: 0.0
+   loss_gravity: 0.0
+-  position_error: 2.473815
+-  presence_precision: 0.333333
+-  presence_recall: 0.964844
+-  presence_f1: 0.495486
+-  lifecycle_presence_f1: 0.495486
++  position_error: 2.295817
++  presence_precision: 0.373811
++  presence_recall: 0.998047
++  presence_f1: 0.543906
++  lifecycle_presence_f1: 0.543906
+   birth_frame_error: 0.0
+-  death_frame_error: 2.25
++  death_frame_error: 1.5
+   query_reuse_count: 0.0
+   illegal_overlap_count: 0.0
+-  segment_id_switches: 19.0
+-  id_switches: 19.0
++  segment_id_switches: 24.0
++  id_switches: 24.0
+   duplicate_active_tracks: 0.0
+-  missed_gt_frames: 18.0
+-  inactive_query_false_positives: 988.0
+-  position_mae_x_m: 3.655927
+-  position_mae_y_m: 5.962941
+-  position_mae_z_m: 2.218684
+-  y_sign_accuracy: 0.642578
+-  reference_consistency_y_m: 5.962941
+-  reference_positive_position_mae_y_m: 7.130746
+-  reference_negative_position_mae_y_m: 5.573673
+-  reference_oriented_position_mae_y_m: 5.962941
++  missed_gt_frames: 1.0
++  inactive_query_false_positives: 856.0
++  position_mae_x_m: 2.938131
++  position_mae_y_m: 5.89394
++  position_mae_z_m: 2.093181
++  y_sign_accuracy: 0.669922
++  source_frame_position_mae_y_m: 5.89394
++  reference_positive_position_mae_y_m: 7.160789
++  reference_negative_position_mae_y_m: 5.471657
++  reference_oriented_position_mae_y_m: 5.89394
++  reference_consistency_y_m: 3.40625
+ repro:
+-  commit: ffecfc0daf7df8ea96e3be1069b248080a9c4c4e
++  commit: 64c2da16e029acd2202c3b592e31eb9952c916d7
+   branch: feat/issue-719-courtkp7-reference
+   remote: git@github.com:Motoki0705/tennis-lab.git
+   command: PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python
+@@ -53,10 +54,10 @@ repro:
+ artifacts:
+   run_dir: knowledge/runs/run-i719-blcs-kp14
+   predictions: knowledge/runs/run-i719-blcs-kp14/pred_test.npz
+-  log: .training_queue/logs/1786548318416013023_1992456_i719-blcs-kp14.log
+-  output_dir: /home/kamimura/projects/tennis-lab/outputs/issue719/i719-blcs-kp14/logs/version_2
++  log: .training_queue/logs/1786553727507583924_2144317_i719-blcs-kp14.log
++  output_dir: /home/kamimura/projects/tennis-lab/outputs/issue719/i719-blcs-kp14/logs/version_3
+   curves: knowledge/runs/run-i719-blcs-kp14/curves.png
+-  tb_logdir: outputs/issue719/i719-blcs-kp14/logs/version_2
++  tb_logdir: outputs/issue719/i719-blcs-kp14/logs/version_3
+ parents: []
+ relations: []
+ tags:
+@@ -71,24 +72,24 @@ tags:
+ 
+ ### 要約
+ 
+-Issue #719 の ordered-information baseline。seed 719、固定 32/8/8 scene split、T=64、batch 8、3 epoch で完走し、test の `position_mae_y_m=5.962941`、`y_sign_accuracy=0.642578`、`position_error=2.473815`、`lifecycle_presence_f1=0.495486` を得た。
++Issue #719 の ordered-information baseline。seed 719、固定 32/8/8 scene split、T=64、batch 8、3 epoch で完走し、test の `position_mae_y_m=5.893940`、`y_sign_accuracy=0.669922`、`position_error=2.295817`、`lifecycle_presence_f1=0.543906` を得た。
+ 
+ ### アーキテクチャ詳細
+ 
+-`track_query_kp14` は ordered CourtKP14 の point-fusion を使用する。target は KP7 系と同じ reference camera 基準へ反転し、reference role も与えるため、入力点の physical order を既知とした上限比較である。既存の per-time spatial attention と per-query temporal attention は KP7 系と共通である。
++`track_query_kp14` は ordered CourtKP14 の point-fusion を使う。target と reference role は KP7 条件と同じ reference-camera 座標契約に従うため、physical point order を既知とした上限比較である。
+ 
+ ### メトリクスの解釈
+ 
+-Y 符号正解率 0.642578 は BLCS 3 条件で最高だった。一方、X/Y/Z MAE はそれぞれ 3.655927 m / 5.962941 m / 2.218684 m で、短い 3 epoch の limited run として絶対精度は未収束である。`reference_consistency_y_m=5.962941` は source/reference 座標変換後の同じ絶対 Y 誤差を示す。
++Y MAE と Y sign accuracy は refreshed BLCS 3条件中で最良だった。paired reference counterfactual の `reference_consistency_y_m=3.406250` は、通常の target error である `source_frame_position_mae_y_m=5.893940` と分離して測定されている。
+ 
+ ### アーキテクチャ⇄メトリクスの因果考察
+ 
+-観測では ordered physical point 情報を持つ本条件が Y 符号で優位だった。KP14 順序が near/far ambiguity を直接除くためという説明と整合するが、単一 seed・3 epoch だけでは因果を確定できない。
++ordered physical point情報がnear/far ambiguityを直接除く設計と、Y指標の優位は整合する。ただし単一seed・3 epochの観測であり、因果を確定するものではない。
+ 
+ ### 既存実験との比較
+ 
+-同一予算の `run-i719-blcs-kp7-no-reference` に対して Y MAE は 0.621869 m 小さく、Y 符号正解率は 0.251953 高い。`run-i719-blcs-kp7-reference` に対しても Y MAE と Y 符号の双方で良い。
++KP7 no-referenceよりY MAEが0.296168 m小さく、Y sign accuracyが0.031250高い。KP7 referenceに対してはY MAEが1.454248 m小さく、Y sign accuracyが0.236328高い。
+ 
+ ### 次に有効な実験
+ 
+-KP7 reference-conditioned が learned orientation reasoning で KP14 上限へ近づくかを判断するには、学習 epoch と seed を増やし、same/opposite-side reference を明示的に層別した再実験が必要である。
++複数seed・長期学習でもordered baselineの優位が残るかを確認し、KP7 reference側のfailure modeをreference-side strataごとに分解する。
+diff --git a/knowledge/nodes/run-i719-blcs-kp7-no-reference.md b/knowledge/nodes/run-i719-blcs-kp7-no-reference.md
+index 8d89c85c..b03c9f2f 100644
+--- a/knowledge/nodes/run-i719-blcs-kp7-no-reference.md
++++ b/knowledge/nodes/run-i719-blcs-kp7-no-reference.md
+@@ -4,44 +4,45 @@ type: run
+ title: i719-blcs-kp7-no-reference
+ issue: 719
+ provider: codex
+-session: 019ff689-cc3c-7680-b1e1-e95a128bd69b
++session: 019ff6e5-b975-7671-bdd4-f03843734cf5
+ date: '2026-08-13'
+ status: done
+ config:
+   model: track_query_kp7_no_reference
+ metrics:
+-  loss: 1.10802
+-  loss_position: 0.467278
+-  loss_position_x: 0.097273
+-  loss_position_y: 0.24316
+-  loss_position_z: 1.655521
+-  loss_presence: 0.640742
++  loss: 1.109934
++  loss_position: 0.492487
++  loss_position_x: 0.231721
++  loss_position_y: 0.221648
++  loss_position_z: 1.555695
++  loss_presence: 0.617447
+   loss_smoothness: 0.0
+   loss_gravity: 0.0
+-  position_error: 2.3686
+-  presence_precision: 0.25
+-  presence_recall: 1.0
+-  presence_f1: 0.4
+-  lifecycle_presence_f1: 0.4
+-  birth_frame_error: 0.0
++  position_error: 2.361911
++  presence_precision: 0.284507
++  presence_recall: 0.986328
++  presence_f1: 0.441627
++  lifecycle_presence_f1: 0.441627
++  birth_frame_error: 0.875
+   death_frame_error: 0.0
+   query_reuse_count: 0.0
+   illegal_overlap_count: 0.0
+-  segment_id_switches: 18.0
+-  id_switches: 18.0
++  segment_id_switches: 26.0
++  id_switches: 26.0
+   duplicate_active_tracks: 0.0
+-  missed_gt_frames: 0.0
+-  inactive_query_false_positives: 1536.0
+-  position_mae_x_m: 1.762997
+-  position_mae_y_m: 6.58481
+-  position_mae_z_m: 2.21673
+-  y_sign_accuracy: 0.390625
+-  reference_consistency_y_m: 6.58481
+-  reference_positive_position_mae_y_m: 8.983809
+-  reference_negative_position_mae_y_m: 5.785144
+-  reference_oriented_position_mae_y_m: 6.58481
++  missed_gt_frames: 7.0
++  inactive_query_false_positives: 1272.0
++  position_mae_x_m: 2.863918
++  position_mae_y_m: 6.190108
++  position_mae_z_m: 2.102844
++  y_sign_accuracy: 0.638672
++  source_frame_position_mae_y_m: 6.190107
++  reference_positive_position_mae_y_m: 9.145902
++  reference_negative_position_mae_y_m: 5.204843
++  reference_oriented_position_mae_y_m: 6.190107
++  reference_consistency_y_m: 1.265625
+ repro:
+-  commit: ffecfc0daf7df8ea96e3be1069b248080a9c4c4e
++  commit: 64c2da16e029acd2202c3b592e31eb9952c916d7
+   branch: feat/issue-719-courtkp7-reference
+   remote: git@github.com:Motoki0705/tennis-lab.git
+   command: PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python
+@@ -53,10 +54,10 @@ repro:
+ artifacts:
+   run_dir: knowledge/runs/run-i719-blcs-kp7-no-reference
+   predictions: knowledge/runs/run-i719-blcs-kp7-no-reference/pred_test.npz
+-  log: .training_queue/logs/1786548318433326220_1992471_i719-blcs-kp7-no-reference.log
+-  output_dir: /home/kamimura/projects/tennis-lab/outputs/issue719/i719-blcs-kp7-no-reference/logs/version_2
++  log: .training_queue/logs/1786553727587662402_2144353_i719-blcs-kp7-no-reference.log
++  output_dir: /home/kamimura/projects/tennis-lab/outputs/issue719/i719-blcs-kp7-no-reference/logs/version_3
+   curves: knowledge/runs/run-i719-blcs-kp7-no-reference/curves.png
+-  tb_logdir: outputs/issue719/i719-blcs-kp7-no-reference/logs/version_2
++  tb_logdir: outputs/issue719/i719-blcs-kp7-no-reference/logs/version_3
+ parents:
+ - run-i719-blcs-kp14
+ relations:
+@@ -74,24 +75,24 @@ tags:
+ 
+ ### 要約
+ 
+-unordered CourtKP7 を使い、reference role delta だけを無効化した対照条件。seed 719、固定 32/8/8 split、T=64、batch 8、3 epoch で完走し、`position_mae_y_m=6.584810`、`y_sign_accuracy=0.390625`、`position_error=2.368600` を得た。
++unordered CourtKP7を使い、reference value deltaだけを無効化した対照条件。3 epochで `position_mae_y_m=6.190108`、`y_sign_accuracy=0.638672`、`position_error=2.361911` を得た。
+ 
+ ### アーキテクチャ詳細
+ 
+-各 semantic class 内の peak を順序なし集合として object-query cross-attention で集約する。target は他 2 条件と同じ reference camera 基準だが、set aggregation 後の reference/other value-stream delta は加えない。したがって target orientation の情報を入力から直接識別できない対照である。
++semantic class内のpeakを順序なし集合としてobject-query cross-attentionで集約する。target orientationは他条件と同じだが、選択reference viewを示すvalue-stream signalは入力しない。
+ 
+ ### メトリクスの解釈
+ 
+-Y 符号正解率 0.390625 は 3 条件中最低であり、reference signal を持たない ambiguity が現れている。一方、`position_error=2.368600` は KP14 の 2.473815 より小さく、total error と orientation 指標は同じ順位にならない。
++paired `reference_consistency_y_m=1.265625` はBLCS 3条件で最小だが、Y target errorはKP14より0.296168 m大きい。counterfactual reference indexは全sampleで元indexと異なり、通常誤差とは独立に再計算できる。
+ 
+ ### アーキテクチャ⇄メトリクスの因果考察
+ 
+-Y 符号の低下は no-reference 設計と整合する。ただし X MAE が 1.762997 m と KP14 より小さいことから、限られた学習では unordered set encoder の最適化差も total error に混在している可能性がある。
++reference signalなしでもY signが0.638672であるため、固定splitのgeometryやside分布からorientation shortcutを得た可能性がある。paired consistencyの小ささも、reference roleに応答しない対照設計と整合する。
+ 
+ ### 既存実験との比較
+ 
+-KP14 より Y MAE は 0.621869 m 悪化し、Y 符号正解率は 0.251953 低下した。`run-i719-blcs-kp7-reference` と比べると Y 符号は 0.046875 低いが、Y MAE は 0.829947 m 良い。
++KP7 referenceよりY MAEが1.158080 m小さく、Y sign accuracyが0.205078高く、paired Y consistencyも2.828125 m小さい。
+ 
+ ### 次に有効な実験
+ 
+-reference delta の効果を学習不足から分離するため、同じ split で複数 seed・長期学習を行い、reference camera side を均衡化した paired counterfactual 評価を追加する。
++reference sideとview orderを均衡化した複数seedでshortcutを検査し、no-referenceの高い符号正解率が再現するか確認する。
+diff --git a/knowledge/nodes/run-i719-blcs-kp7-reference.md b/knowledge/nodes/run-i719-blcs-kp7-reference.md
+index 39409b34..eaecffc0 100644
+--- a/knowledge/nodes/run-i719-blcs-kp7-reference.md
++++ b/knowledge/nodes/run-i719-blcs-kp7-reference.md
+@@ -4,46 +4,45 @@ type: run
+ title: i719-blcs-kp7-reference
+ issue: 719
+ provider: codex
+-session: 019ff689-cc3c-7680-b1e1-e95a128bd69b
++session: 019ff6e5-b975-7671-bdd4-f03843734cf5
+ date: '2026-08-13'
+ status: done
+ config:
+   model: track_query_kp7_reference
+ metrics:
+-  birth_frame_error: 32.0
+-  court_peak_fusion_latency_ms: 2.725832
+-  court_peak_fusion_peak_memory_mb: 15.262695
+-  death_frame_error: 32.0
+-  duplicate_active_tracks: 0.0
+-  id_switches: 6.0
+-  illegal_overlap_count: 0.0
+-  inactive_query_false_positives: 520.0
+-  lifecycle_presence_f1: 0.397824
+-  loss: 1.112411
+-  loss_gravity: 0.0
+-  loss_position: 0.473949
+-  loss_position_x: 0.205063
+-  loss_position_y: 0.271393
+-  loss_position_z: 1.416834
+-  loss_presence: 0.638461
++  loss: 1.024383
++  loss_position: 0.50035
++  loss_position_x: 0.29285
++  loss_position_y: 0.268764
++  loss_position_z: 1.378522
++  loss_presence: 0.524032
+   loss_smoothness: 0.0
+-  missed_gt_frames: 256.0
+-  position_error: 2.255841
+-  position_mae_x_m: 2.626993
+-  position_mae_y_m: 7.414757
+-  position_mae_z_m: 1.955807
+-  presence_f1: 0.397824
+-  presence_precision: 0.330323
+-  presence_recall: 0.5
++  loss_gravity: 0.0
++  position_error: 2.290416
++  presence_precision: 0.801431
++  presence_recall: 0.875
++  presence_f1: 0.836601
++  lifecycle_presence_f1: 0.836601
++  birth_frame_error: 8.0
++  death_frame_error: 8.0
+   query_reuse_count: 0.0
+-  reference_consistency_y_m: 7.414756
+-  reference_negative_position_mae_y_m: 6.325017
+-  reference_oriented_position_mae_y_m: 7.414756
+-  reference_positive_position_mae_y_m: 10.683975
+-  segment_id_switches: 6.0
+-  y_sign_accuracy: 0.4375
++  illegal_overlap_count: 0.0
++  segment_id_switches: 1.0
++  id_switches: 1.0
++  duplicate_active_tracks: 0.0
++  missed_gt_frames: 64.0
++  inactive_query_false_positives: 111.0
++  position_mae_x_m: 3.642925
++  position_mae_y_m: 7.348188
++  position_mae_z_m: 1.902952
++  y_sign_accuracy: 0.433594
++  source_frame_position_mae_y_m: 7.348188
++  reference_positive_position_mae_y_m: 10.615898
++  reference_negative_position_mae_y_m: 6.258952
++  reference_oriented_position_mae_y_m: 7.348188
++  reference_consistency_y_m: 4.09375
+ repro:
+-  commit: ffecfc0daf7df8ea96e3be1069b248080a9c4c4e
++  commit: 64c2da16e029acd2202c3b592e31eb9952c916d7
+   branch: feat/issue-719-courtkp7-reference
+   remote: git@github.com:Motoki0705/tennis-lab.git
+   command: PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python
+@@ -55,47 +54,13 @@ repro:
+ artifacts:
+   run_dir: knowledge/runs/run-i719-blcs-kp7-reference
+   predictions: knowledge/runs/run-i719-blcs-kp7-reference/pred_test.npz
+-  log: .training_queue/logs/1786548318450903301_1992486_i719-blcs-kp7-reference.log
+-  output_dir: /home/kamimura/projects/tennis-lab/outputs/issue719/i719-blcs-kp7-reference/logs/version_1
+-  curves: knowledge/runs/run-i719-blcs-kp7-reference/curves.png
+-  tb_logdir: outputs/issue719/i719-blcs-kp7-reference/logs/version_1
+-parents:
+-- run-i719-blcs-kp7-no-reference
+-relations:
+-- to: run-i719-blcs-kp7-no-reference
+-  rel: compares
+-- to: run-i719-blcs-kp14
+-  rel: compares
+-tags:
+-- blcs
+-- tracking
+-- court-kp7
+-- reference-conditioned
+-- issue-719
++  log: .training_queue/logs/1786553727659772139_2144373_i719-blcs-kp7-reference.log
++  output_dir: /home/kamimura/projects/tennis-lab/outputs/issue719/i719-blcs-kp7-reference/logs/version_2
++parents: []
++relations: []
++tags: []
+ ---
+ 
+ ## 考察 / Findings
+ 
+-### 要約
+-
+-unordered CourtKP7 の set aggregation 後に、選択された 1 view だけへ reference delta を加えた主条件。3 epoch limited run は完走し、`position_mae_y_m=7.414757`、`y_sign_accuracy=0.437500`、`position_error=2.255841` を得た。C=7/N=4/D=4、B=1/V=3/T=64、bf16-mixed の 10 warmup / 50 repeat では fusion latency 2.725832 ms、peak CUDA memory 15.262695 MB だった。
+-
+-### アーキテクチャ詳細
+-
+-peak feature は normalized UV、score、explicit covariance、relative UV と `E_class` だけを持ち、near/far・peak-index・final type embeddingを持たない。per-detection token `[B,V,T,D,H]` を生成後、reference role を value stream へ broadcast し、既存 track-query spatial/temporal backboneへ渡す。
+-
+-### メトリクスの解釈
+-
+-no-reference より Y 符号正解率は 0.046875 改善した一方、Y MAE は 0.829947 m 悪化した。total `position_error=2.255841` は BLCS 3 条件中最小だが、`lifecycle_presence_f1=0.397824` と Y 指標は KP14 に届かない。
+-
+-### アーキテクチャ⇄メトリクスの因果考察
+-
+-reference delta が符号識別をわずかに助けた可能性はあるが、Y 回帰値の精度改善には至らなかった。reference signal が弱い、3 epoch で set encoder が未収束、または orientation と tracking/presence の同時最適化が競合した可能性があり、現結果だけで一つに特定できない。
+-
+-### 既存実験との比較
+-
+-`run-i719-blcs-kp7-no-reference` に対して total position error は 0.112759 小さく、Y 符号は改善したが Y MAE は悪化した。`run-i719-blcs-kp14` に対して total position error は小さい一方、Y MAE は 1.451816 m 大きく、Y 符号正解率は 0.205078 低い。
+-
+-### 次に有効な実験
+-
+-現 limited evidence は reference-conditioned KP7 の production 採用を支持しない。複数 seed と長期学習、reference-side-balanced sampler、reference delta の勾配量監視を行い、Y MAE と Y 符号の双方が no-reference を上回ることを次の停止条件とする。
++<!-- run `i719-blcs-kp7-reference` の結果と考察を書く。parents/tags も埋め、 主要 metrics は frontmatter と一致させること。 -->
+diff --git a/knowledge/nodes/run-i719-plcs-kp14.md b/knowledge/nodes/run-i719-plcs-kp14.md
+index e88b269a..e7efb37a 100644
+--- a/knowledge/nodes/run-i719-plcs-kp14.md
++++ b/knowledge/nodes/run-i719-plcs-kp14.md
+@@ -4,42 +4,44 @@ type: run
+ title: i719-plcs-kp14
+ issue: 719
+ provider: codex
+-session: 019ff689-cc3c-7680-b1e1-e95a128bd69b
++session: 019ff6e5-b975-7671-bdd4-f03843734cf5
+ date: '2026-08-13'
+ status: done
+ config:
+   model: track_query_kp14
+ metrics:
+-  loss: 1.069985
+-  loss_position: 0.21554
+-  loss_rotation: 0.286143
+-  loss_presence: 0.711373
++  loss: 1.120139
++  loss_position: 0.243619
++  loss_rotation: 0.397805
++  loss_presence: 0.677618
+   loss_track_smoothness: 0.0
+-  position_error: 1.054724
+-  presence_precision: 0.176471
+-  presence_recall: 0.375
+-  presence_f1: 0.24
+-  lifecycle_presence_f1: 0.24
+-  birth_frame_error: 40.0
+-  death_frame_error: 40.0
++  position_error: 1.134778
++  presence_precision: 0.307692
++  presence_recall: 0.5
++  presence_f1: 0.380952
++  lifecycle_presence_f1: 0.380952
++  birth_frame_error: 32.0
++  death_frame_error: 32.0
+   query_reuse_count: 0.0
+   illegal_overlap_count: 0.0
+   segment_id_switches: 0.0
+   id_switches: 0.0
+   duplicate_active_tracks: 0.0
+-  missed_gt_frames: 320.0
+-  inactive_query_false_positives: 896.0
+-  position_mae_x_m: 3.550607
+-  position_mae_y_m: 6.862877
+-  position_mae_z_m: 0.514488
++  missed_gt_frames: 256.0
++  inactive_query_false_positives: 576.0
++  position_mae_x_m: 3.388205
++  position_mae_y_m: 7.104686
++  position_mae_z_m: 0.610223
+   y_sign_accuracy: 0.375
+-  reference_consistency_y_m: 6.862877
+-  reference_consistency_heading_deg: 38.520538
+-  reference_positive_position_mae_y_m: 9.551054
+-  reference_negative_position_mae_y_m: 5.249971
+-  angular_error_deg: 38.520535
++  source_frame_position_mae_y_m: 7.104686
++  source_frame_heading_error_deg: 45.087933
++  reference_positive_position_mae_y_m: 11.006618
++  reference_negative_position_mae_y_m: 4.763526
++  angular_error_deg: 45.087929
++  reference_consistency_y_m: 8.8125
++  reference_consistency_heading_deg: 99.1884
+ repro:
+-  commit: ffecfc0daf7df8ea96e3be1069b248080a9c4c4e
++  commit: 64c2da16e029acd2202c3b592e31eb9952c916d7
+   branch: feat/issue-719-courtkp7-reference
+   remote: git@github.com:Motoki0705/tennis-lab.git
+   command: PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python
+@@ -51,10 +53,10 @@ repro:
+ artifacts:
+   run_dir: knowledge/runs/run-i719-plcs-kp14
+   predictions: knowledge/runs/run-i719-plcs-kp14/pred_test.npz
+-  log: .training_queue/logs/1786548318468427138_1992501_i719-plcs-kp14.log
+-  output_dir: /home/kamimura/projects/tennis-lab/outputs/issue719/i719-plcs-kp14/logs/version_1
++  log: .training_queue/logs/1786553727736504404_2144393_i719-plcs-kp14.log
++  output_dir: /home/kamimura/projects/tennis-lab/outputs/issue719/i719-plcs-kp14/logs/version_2
+   curves: knowledge/runs/run-i719-plcs-kp14/curves.png
+-  tb_logdir: outputs/issue719/i719-plcs-kp14/logs/version_1
++  tb_logdir: outputs/issue719/i719-plcs-kp14/logs/version_2
+ parents: []
+ relations: []
+ tags:
+@@ -69,24 +71,24 @@ tags:
+ 
+ ### 要約
+ 
+-PLCS ordered-information baseline。seed 719、固定 32/8/8 scene split、T=64、batch 8、3 epoch で完走し、`position_mae_y_m=6.862877`、`y_sign_accuracy=0.375000`、`angular_error_deg=38.520535`、`position_error=1.054724` を得た。
++PLCS ordered-information baseline。3 epochで `position_mae_y_m=7.104686`、`y_sign_accuracy=0.375000`、`angular_error_deg=45.087929`、`position_error=1.134778` を得た。
+ 
+ ### アーキテクチャ詳細
+ 
+-`track_query_kp14` は ordered CourtKP14 を用い、KP7 系と同じ reference-oriented position/heading target と reference role を受ける。player-local canonical pose は反転せず、court-space position と heading direction だけを同一 sign で変換する。
++ordered CourtKP14を用い、KP7系と同じreference-oriented position/heading targetとreference roleを受ける。player-local canonical poseは反転せず、court-space positionとheadingだけを同一signで変換する。
+ 
+ ### メトリクスの解釈
+ 
+-heading error 38.520535° は KP7 no-reference と近い一方、Y MAE 6.862877 m と Y 符号正解率 0.375000 は低い。`reference_consistency_heading_deg=38.520538` は source/reference 変換後も同じ angular error が保たれたことを示す。
++paired counterfactualは `reference_consistency_y_m=8.812500`、`reference_consistency_heading_deg=99.188400`。通常のtarget errorは `source_frame_position_mae_y_m=7.104686` と `source_frame_heading_error_deg=45.087933` に分離されている。
+ 
+ ### アーキテクチャ⇄メトリクスの因果考察
+ 
+-ordered court geometry が存在しても、3 epoch の tracking/position/heading 同時学習では Y orientation が十分に学習されなかった。KP14 自体の情報量不足ではなく、短い予算や presence matching の影響である可能性がある。
++ordered geometryが存在しても3 epochのposition/heading同時学習ではorientationが十分に収束せず、reference変更に対する出力整合も低かった。
+ 
+ ### 既存実験との比較
+ 
+-同一予算の `run-i719-plcs-kp7-no-reference` は Y MAE、Y 符号、heading、presence F1 の全てで本 baseline を上回った。`run-i719-plcs-kp7-reference` は total position error は小さいが、heading error は本 baseline より 57.972949°大きい。
++KP7 no-referenceはY MAE、Y sign、heading error、paired consistencyの全てで本baselineを上回る。KP7 referenceはtotal position errorのみ小さいが、Y・heading指標は悪い。
+ 
+ ### 次に有効な実験
+ 
+-KP14 upper baseline が未収束かを確認するため、複数 seed・長期学習で heading loss と position loss の収束曲線を分けて比較する。
++長期学習とpresence matchingの安定化後に、ordered情報上限としてのreference counterfactual整合が改善するか再評価する。
+diff --git a/knowledge/nodes/run-i719-plcs-kp7-no-reference.md b/knowledge/nodes/run-i719-plcs-kp7-no-reference.md
+index 8881d373..249dd913 100644
+--- a/knowledge/nodes/run-i719-plcs-kp7-no-reference.md
++++ b/knowledge/nodes/run-i719-plcs-kp7-no-reference.md
+@@ -4,42 +4,44 @@ type: run
+ title: i719-plcs-kp7-no-reference
+ issue: 719
+ provider: codex
+-session: 019ff689-cc3c-7680-b1e1-e95a128bd69b
++session: 019ff6e5-b975-7671-bdd4-f03843734cf5
+ date: '2026-08-13'
+ status: done
+ config:
+   model: track_query_kp7_no_reference
+ metrics:
+-  loss: 0.88773
+-  loss_position: 0.160362
+-  loss_rotation: 0.256235
+-  loss_presence: 0.59925
++  loss: 0.932461
++  loss_position: 0.165851
++  loss_rotation: 0.16712
++  loss_presence: 0.68305
+   loss_track_smoothness: 0.0
+-  position_error: 0.909621
+-  presence_precision: 0.466667
+-  presence_recall: 0.875
+-  presence_f1: 0.608696
+-  lifecycle_presence_f1: 0.608696
+-  birth_frame_error: 8.0
+-  death_frame_error: 8.0
++  position_error: 0.944179
++  presence_precision: 0.238095
++  presence_recall: 0.625
++  presence_f1: 0.344828
++  lifecycle_presence_f1: 0.344828
++  birth_frame_error: 24.0
++  death_frame_error: 24.0
+   query_reuse_count: 0.0
+   illegal_overlap_count: 0.0
+   segment_id_switches: 0.0
+   id_switches: 0.0
+   duplicate_active_tracks: 0.0
+-  missed_gt_frames: 64.0
+-  inactive_query_false_positives: 512.0
+-  position_mae_x_m: 3.281646
+-  position_mae_y_m: 4.421872
+-  position_mae_z_m: 0.372238
++  missed_gt_frames: 192.0
++  inactive_query_false_positives: 1024.0
++  position_mae_x_m: 3.555042
++  position_mae_y_m: 3.868129
++  position_mae_z_m: 0.289151
+   y_sign_accuracy: 0.75
+-  reference_consistency_y_m: 4.421872
+-  reference_consistency_heading_deg: 36.191475
+-  reference_positive_position_mae_y_m: 6.908279
+-  reference_negative_position_mae_y_m: 2.930027
+-  angular_error_deg: 36.191475
++  source_frame_position_mae_y_m: 3.868129
++  source_frame_heading_error_deg: 29.407087
++  reference_positive_position_mae_y_m: 4.729281
++  reference_negative_position_mae_y_m: 3.351437
++  angular_error_deg: 29.407085
++  reference_consistency_y_m: 3.796875
++  reference_consistency_heading_deg: 45.651726
+ repro:
+-  commit: ffecfc0daf7df8ea96e3be1069b248080a9c4c4e
++  commit: 64c2da16e029acd2202c3b592e31eb9952c916d7
+   branch: feat/issue-719-courtkp7-reference
+   remote: git@github.com:Motoki0705/tennis-lab.git
+   command: PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python
+@@ -51,10 +53,10 @@ repro:
+ artifacts:
+   run_dir: knowledge/runs/run-i719-plcs-kp7-no-reference
+   predictions: knowledge/runs/run-i719-plcs-kp7-no-reference/pred_test.npz
+-  log: .training_queue/logs/1786548318485770089_1992516_i719-plcs-kp7-no-reference.log
+-  output_dir: /home/kamimura/projects/tennis-lab/outputs/issue719/i719-plcs-kp7-no-reference/logs/version_1
++  log: .training_queue/logs/1786553727847511793_2144429_i719-plcs-kp7-no-reference.log
++  output_dir: /home/kamimura/projects/tennis-lab/outputs/issue719/i719-plcs-kp7-no-reference/logs/version_2
+   curves: knowledge/runs/run-i719-plcs-kp7-no-reference/curves.png
+-  tb_logdir: outputs/issue719/i719-plcs-kp7-no-reference/logs/version_1
++  tb_logdir: outputs/issue719/i719-plcs-kp7-no-reference/logs/version_2
+ parents:
+ - run-i719-plcs-kp14
+ relations:
+@@ -72,24 +74,24 @@ tags:
+ 
+ ### 要約
+ 
+-unordered CourtKP7 を使い、reference value-stream delta だけを無効化した PLCS 対照条件。3 epoch で `position_mae_y_m=4.421872`、`y_sign_accuracy=0.750000`、`angular_error_deg=36.191475`、`position_error=0.909621` を得た。
++unordered CourtKP7を使いreference value deltaを無効化したPLCS対照条件。3 epochで `position_mae_y_m=3.868129`、`y_sign_accuracy=0.750000`、`angular_error_deg=29.407085`、`position_error=0.944179` を得た。
+ 
+ ### アーキテクチャ詳細
+ 
+-visibility-aware player anchor と full 2D pose feature を object query とし、CourtKP7 peak set へ cross-attention する。target position/heading は reference camera 基準へ変換済みだが、どの view が reference かを示す learned delta は入力しない。
++visibility-aware player anchorとfull 2D pose featureをobject queryとし、CourtKP7 peak setへcross-attentionする。target position/headingはreference camera基準だが、どのviewがreferenceかを示すlearned deltaは入力しない。
+ 
+ ### メトリクスの解釈
+ 
+-Y 符号正解率 0.75、Y MAE 4.421872 m、heading error 36.191475°、`lifecycle_presence_f1=0.608696` は PLCS 3 条件中すべて最良だった。limited run では no-reference が最も安定した条件である。
++Y MAE、Y sign、heading errorはPLCS 3条件中で最良だった。paired `reference_consistency_y_m=3.796875` と `reference_consistency_heading_deg=45.651726` も他2条件より小さい。
+ 
+ ### アーキテクチャ⇄メトリクスの因果考察
+ 
+-reference signal を持たないにもかかわらず Y 符号が高いため、固定 split の court/object geometry や target side 分布から orientation shortcut を学習した可能性がある。ただし同一 test split の単一 seed だけでは shortcut と偶然を区別できない。
++reference signalなしでY signが高いため、固定splitのcourt/object geometryやtarget-side分布のshortcut、または短期学習の分散が混在した可能性がある。
+ 
+ ### 既存実験との比較
+ 
+-KP14 に対して Y MAE を 2.441005 m、heading error を 2.329060°改善した。`run-i719-plcs-kp7-reference` に対して Y MAE は 1.167312 m、Y 符号は 0.25、heading error は 60.302009°良い。
++KP7 referenceよりY MAEが2.396617 m小さく、Y sign accuracyが0.375000高く、heading errorが69.439167°小さい。
+ 
+ ### 次に有効な実験
+ 
+-view order と reference side を厳密に均衡化した counterfactual test を複数 seed で行い、no-reference の高い Y 符号が再現するかを検証する。
++reference sideとview orderを均衡化した複数seed counterfactual testで、no-referenceの優位がshortcutか再現可能な最適化差かを判定する。
+diff --git a/knowledge/nodes/run-i719-plcs-kp7-reference.md b/knowledge/nodes/run-i719-plcs-kp7-reference.md
+index daec8af8..ebf0af07 100644
+--- a/knowledge/nodes/run-i719-plcs-kp7-reference.md
++++ b/knowledge/nodes/run-i719-plcs-kp7-reference.md
+@@ -4,44 +4,44 @@ type: run
+ title: i719-plcs-kp7-reference
+ issue: 719
+ provider: codex
+-session: 019ff689-cc3c-7680-b1e1-e95a128bd69b
++session: 019ff6e5-b975-7671-bdd4-f03843734cf5
+ date: '2026-08-13'
+ status: done
+ config:
+   model: track_query_kp7_reference
+ metrics:
+-  angular_error_deg: 96.493484
+-  birth_frame_error: 10.125
+-  court_peak_fusion_latency_ms: 2.383974
+-  court_peak_fusion_peak_memory_mb: 15.412109
+-  death_frame_error: 13.625
+-  duplicate_active_tracks: 0.0
+-  id_switches: 26.0
+-  illegal_overlap_count: 0.0
+-  inactive_query_false_positives: 1088.0
+-  lifecycle_presence_f1: 0.4
+-  loss: 1.272214
+-  loss_position: 0.105441
+-  loss_presence: 0.612747
+-  loss_rotation: 1.108052
++  loss: 1.313485
++  loss_position: 0.12523
++  loss_rotation: 1.1385
++  loss_presence: 0.619005
+   loss_track_smoothness: 0.0
+-  missed_gt_frames: 112.0
+-  position_error: 0.753117
+-  position_mae_x_m: 2.220712
+-  position_mae_y_m: 5.589184
+-  position_mae_z_m: 0.176053
+-  presence_f1: 0.4
+-  presence_precision: 0.268817
+-  presence_recall: 0.78125
++  position_error: 0.81152
++  presence_precision: 0.25
++  presence_recall: 0.875
++  presence_f1: 0.388889
++  lifecycle_presence_f1: 0.388889
++  birth_frame_error: 8.0
++  death_frame_error: 8.0
+   query_reuse_count: 0.0
+-  reference_consistency_heading_deg: 96.493484
+-  reference_consistency_y_m: 5.589183
+-  reference_negative_position_mae_y_m: 4.713016
+-  reference_positive_position_mae_y_m: 7.049463
+-  segment_id_switches: 26.0
+-  y_sign_accuracy: 0.5
++  illegal_overlap_count: 0.0
++  segment_id_switches: 0.0
++  id_switches: 0.0
++  duplicate_active_tracks: 0.0
++  missed_gt_frames: 64.0
++  inactive_query_false_positives: 1344.0
++  position_mae_x_m: 2.283655
++  position_mae_y_m: 6.264746
++  position_mae_z_m: 0.201551
++  y_sign_accuracy: 0.375
++  source_frame_position_mae_y_m: 6.264745
++  source_frame_heading_error_deg: 98.846252
++  reference_positive_position_mae_y_m: 8.313441
++  reference_negative_position_mae_y_m: 5.035528
++  angular_error_deg: 98.846252
++  reference_consistency_y_m: 6.3125
++  reference_consistency_heading_deg: 52.187069
+ repro:
+-  commit: ffecfc0daf7df8ea96e3be1069b248080a9c4c4e
++  commit: 64c2da16e029acd2202c3b592e31eb9952c916d7
+   branch: feat/issue-719-courtkp7-reference
+   remote: git@github.com:Motoki0705/tennis-lab.git
+   command: PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python
+@@ -53,47 +53,13 @@ repro:
+ artifacts:
+   run_dir: knowledge/runs/run-i719-plcs-kp7-reference
+   predictions: knowledge/runs/run-i719-plcs-kp7-reference/pred_test.npz
+-  log: .training_queue/logs/1786548318503993127_1992531_i719-plcs-kp7-reference.log
+-  output_dir: /home/kamimura/projects/tennis-lab/outputs/issue719/i719-plcs-kp7-reference/logs/version_1
+-  curves: knowledge/runs/run-i719-plcs-kp7-reference/curves.png
+-  tb_logdir: outputs/issue719/i719-plcs-kp7-reference/logs/version_1
+-parents:
+-- run-i719-plcs-kp7-no-reference
+-relations:
+-- to: run-i719-plcs-kp7-no-reference
+-  rel: compares
+-- to: run-i719-plcs-kp14
+-  rel: compares
+-tags:
+-- plcs
+-- tracking
+-- court-kp7
+-- reference-conditioned
+-- issue-719
++  log: .training_queue/logs/1786553727928827653_2144449_i719-plcs-kp7-reference.log
++  output_dir: /home/kamimura/projects/tennis-lab/outputs/issue719/i719-plcs-kp7-reference/logs/version_2
++parents: []
++relations: []
++tags: []
+ ---
+ 
+ ## 考察 / Findings
+ 
+-### 要約
+-
+-unordered CourtKP7 set token に 1 view だけの reference delta を加えた PLCS 主条件。3 epoch は完走し、`position_mae_y_m=5.589184`、`y_sign_accuracy=0.500000`、`angular_error_deg=96.493484`、`position_error=0.753117` を得た。C=7/N=4/D=4、B=1/V=3/T=64、bf16-mixed、10 warmup / 50 repeat の fusion latency は 2.383974 ms、peak CUDA memory は 15.412109 MB だった。
+-
+-### アーキテクチャ詳細
+-
+-visibility-aware pelvis/pose anchor と full-pose feature を shared unordered CourtKP7 encoderへ入力し、set aggregation 後だけ reference role を加える。最終 token は `[B,V,T,D,H]` のまま既存 spatial/temporal track-query backboneへ入る。near/far、peak index、final type embedding は入力しない。
+-
+-### メトリクスの解釈
+-
+-total position error 0.753117 と X/Z MAE は PLCS 3 条件中最良だが、Y 符号 0.5、Y MAE 5.589184 m、heading error 96.493484°は no-reference より大幅に悪い。`lifecycle_presence_f1=0.4` も no-reference の 0.608696 に届かない。
+-
+-### アーキテクチャ⇄メトリクスの因果考察
+-
+-reference delta は total position の一部軸には有利でも、heading と Y orientation の共同学習を不安定化した可能性がある。特に rotation loss 1.108052 が大きく、3 epoch では role signal と heading target の対応が収束していない。ただし単一 seed のため因果は仮説に留まる。
+-
+-### 既存実験との比較
+-
+-`run-i719-plcs-kp7-no-reference` より total position error は 0.156504 小さいが、Y MAE は 1.167312 m、heading error は 60.302009°悪化した。KP14 より total position error は小さい一方、heading error は 57.972949°悪化した。
+-
+-### 次に有効な実験
+-
+-現 limited evidence は reference-conditioned KP7 の production 採用を支持しない。heading loss warmup、reference-side-balanced sampler、複数 seed・長期学習を行い、Y MAE・Y 符号・heading consistency の全てが no-reference を上回ることを次の合格条件とする。
++<!-- run `i719-plcs-kp7-reference` の結果と考察を書く。parents/tags も埋め、 主要 metrics は frontmatter と一致させること。 -->
+diff --git a/knowledge/runs/run-i719-blcs-kp14/curves.png b/knowledge/runs/run-i719-blcs-kp14/curves.png
+index a00dea97..d3da0f6d 100644
+Binary files a/knowledge/runs/run-i719-blcs-kp14/curves.png and b/knowledge/runs/run-i719-blcs-kp14/curves.png differ
+diff --git a/knowledge/runs/run-i719-blcs-kp14/git_status.txt b/knowledge/runs/run-i719-blcs-kp14/git_status.txt
+index 55dfe7e2..8bb462bc 100644
+--- a/knowledge/runs/run-i719-blcs-kp14/git_status.txt
++++ b/knowledge/runs/run-i719-blcs-kp14/git_status.txt
+@@ -1,3 +1 @@
+ ?? .codex/tasks/
+-?? artifacts/
+-?? assets/repro/
+diff --git a/knowledge/runs/run-i719-blcs-kp14/metrics.json b/knowledge/runs/run-i719-blcs-kp14/metrics.json
+index 32d2f608..76f653bc 100644
+--- a/knowledge/runs/run-i719-blcs-kp14/metrics.json
++++ b/knowledge/runs/run-i719-blcs-kp14/metrics.json
+@@ -1,32 +1,33 @@
+ {
+-  "loss": 1.092682123184204,
+-  "loss_position": 0.5174740552902222,
+-  "loss_position_x": 0.28436779975891113,
+-  "loss_position_y": 0.18100491166114807,
+-  "loss_position_z": 1.6566251516342163,
+-  "loss_presence": 0.5752081274986267,
++  "loss": 1.0263752937316895,
++  "loss_position": 0.4696895480155945,
++  "loss_position_x": 0.21045702695846558,
++  "loss_position_y": 0.19502860307693481,
++  "loss_position_z": 1.5374764204025269,
++  "loss_presence": 0.5566858053207397,
+   "loss_smoothness": 0.0,
+   "loss_gravity": 0.0,
+-  "position_error": 2.4738149642944336,
+-  "presence_precision": 0.3333333432674408,
+-  "presence_recall": 0.96484375,
+-  "presence_f1": 0.49548646807670593,
+-  "lifecycle_presence_f1": 0.49548646807670593,
++  "position_error": 2.2958168983459473,
++  "presence_precision": 0.373811274766922,
++  "presence_recall": 0.998046875,
++  "presence_f1": 0.5439063310623169,
++  "lifecycle_presence_f1": 0.5439063310623169,
+   "birth_frame_error": 0.0,
+-  "death_frame_error": 2.25,
++  "death_frame_error": 1.5,
+   "query_reuse_count": 0.0,
+   "illegal_overlap_count": 0.0,
+-  "segment_id_switches": 19.0,
+-  "id_switches": 19.0,
++  "segment_id_switches": 24.0,
++  "id_switches": 24.0,
+   "duplicate_active_tracks": 0.0,
+-  "missed_gt_frames": 18.0,
+-  "inactive_query_false_positives": 988.0,
+-  "position_mae_x_m": 3.6559267044067383,
+-  "position_mae_y_m": 5.9629411697387695,
+-  "position_mae_z_m": 2.218683958053589,
+-  "y_sign_accuracy": 0.642578125,
+-  "reference_consistency_y_m": 5.9629411697387695,
+-  "reference_positive_position_mae_y_m": 7.130745887756348,
+-  "reference_negative_position_mae_y_m": 5.573673248291016,
+-  "reference_oriented_position_mae_y_m": 5.9629411697387695
++  "missed_gt_frames": 1.0,
++  "inactive_query_false_positives": 856.0,
++  "position_mae_x_m": 2.9381308555603027,
++  "position_mae_y_m": 5.893939971923828,
++  "position_mae_z_m": 2.0931813716888428,
++  "y_sign_accuracy": 0.669921875,
++  "source_frame_position_mae_y_m": 5.893939971923828,
++  "reference_positive_position_mae_y_m": 7.160789489746094,
++  "reference_negative_position_mae_y_m": 5.471656799316406,
++  "reference_oriented_position_mae_y_m": 5.893939971923828,
++  "reference_consistency_y_m": 3.40625
+ }
+\ No newline at end of file
+diff --git a/knowledge/runs/run-i719-blcs-kp14/output_dir.txt b/knowledge/runs/run-i719-blcs-kp14/output_dir.txt
+index cf30c978..b605d49b 100644
+--- a/knowledge/runs/run-i719-blcs-kp14/output_dir.txt
++++ b/knowledge/runs/run-i719-blcs-kp14/output_dir.txt
+@@ -1 +1 @@
+-/home/kamimura/projects/tennis-lab/outputs/issue719/i719-blcs-kp14/logs/version_2/checkpoints
++/home/kamimura/projects/tennis-lab/outputs/issue719/i719-blcs-kp14/logs/version_3/checkpoints
+diff --git a/knowledge/runs/run-i719-blcs-kp14/pred_test.npz b/knowledge/runs/run-i719-blcs-kp14/pred_test.npz
+index dc52ec5e..186d85d0 100644
+Binary files a/knowledge/runs/run-i719-blcs-kp14/pred_test.npz and b/knowledge/runs/run-i719-blcs-kp14/pred_test.npz differ
+diff --git a/knowledge/runs/run-i719-blcs-kp14/repro.sh b/knowledge/runs/run-i719-blcs-kp14/repro.sh
+index f7f10c90..629b9b5e 100755
+--- a/knowledge/runs/run-i719-blcs-kp14/repro.sh
++++ b/knowledge/runs/run-i719-blcs-kp14/repro.sh
+@@ -1,12 +1,12 @@
+ #!/usr/bin/env bash
+ # Auto-generated by training_queue.sh — reproduce run: i719-blcs-kp14
+-# provider=codex session=019ff689-cc3c-7680-b1e1-e95a128bd69b issue=719
++# provider=codex session=019ff6e5-b975-7671-bdd4-f03843734cf5 issue=719
+ set -uo pipefail
+ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-719-courtkp7-reference}"
+ cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
+-echo "[repro] target commit: ffecfc0daf7df8ea96e3be1069b248080a9c4c4e (branch feat/issue-719-courtkp7-reference)"
+-git checkout ffecfc0daf7df8ea96e3be1069b248080a9c4c4e 2>/dev/null || echo "[repro] WARN: checkout ffecfc0daf7df8ea96e3be1069b248080a9c4c4e failed; using current HEAD"
++echo "[repro] target commit: 64c2da16e029acd2202c3b592e31eb9952c916d7 (branch feat/issue-719-courtkp7-reference)"
++git checkout 64c2da16e029acd2202c3b592e31eb9952c916d7 2>/dev/null || echo "[repro] WARN: checkout 64c2da16e029acd2202c3b592e31eb9952c916d7 failed; using current HEAD"
+ PATCH="$SCRIPT_DIR/uncommitted.patch"
+ if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
+ # --- original training command ---
+diff --git a/knowledge/runs/run-i719-blcs-kp14/run.json b/knowledge/runs/run-i719-blcs-kp14/run.json
+index 4b59f42b..f7b18c44 100644
+--- a/knowledge/runs/run-i719-blcs-kp14/run.json
++++ b/knowledge/runs/run-i719-blcs-kp14/run.json
+@@ -1,14 +1,14 @@
+ {
+-  "run_id": "1786548318416013023_1992456_i719-blcs-kp14",
++  "run_id": "1786553727507583924_2144317_i719-blcs-kp14",
+   "name": "i719-blcs-kp14",
+   "command": "PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking model=track_query_kp14 data.scene_dir=issue719/blcs data.seq_len_range='[64,64]' data.num_views_range='[3,5]' data.batch_size=8 data.num_workers=4 training.trainer.max_epochs=3 training.trainer.check_val_every_n_epoch=1 training.warmup_steps=0 training.early_stopping.enabled=false training.qualitative_logging.enabled=false run.seed=719 run.output_dir=issue719/i719-blcs-kp14 run.test_after_fit=true",
+   "provider": "codex",
+-  "session": "019ff689-cc3c-7680-b1e1-e95a128bd69b",
++  "session": "019ff6e5-b975-7671-bdd4-f03843734cf5",
+   "issue": "719",
+-  "commit": "ffecfc0daf7df8ea96e3be1069b248080a9c4c4e",
++  "commit": "64c2da16e029acd2202c3b592e31eb9952c916d7",
+   "branch": "feat/issue-719-courtkp7-reference",
+   "remote": "git@github.com:Motoki0705/tennis-lab.git",
+   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-719-courtkp7-reference",
+   "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-719-courtkp7-reference",
+-  "captured_at": "2026-08-13T00:25:18+09:00"
++  "captured_at": "2026-08-13T15:51:08+09:00"
+ }
+diff --git a/knowledge/runs/run-i719-blcs-kp7-no-reference/curves.png b/knowledge/runs/run-i719-blcs-kp7-no-reference/curves.png
+index cd6645f7..f04332f1 100644
+Binary files a/knowledge/runs/run-i719-blcs-kp7-no-reference/curves.png and b/knowledge/runs/run-i719-blcs-kp7-no-reference/curves.png differ
+diff --git a/knowledge/runs/run-i719-blcs-kp7-no-reference/git_status.txt b/knowledge/runs/run-i719-blcs-kp7-no-reference/git_status.txt
+index 55dfe7e2..8bb462bc 100644
+--- a/knowledge/runs/run-i719-blcs-kp7-no-reference/git_status.txt
++++ b/knowledge/runs/run-i719-blcs-kp7-no-reference/git_status.txt
+@@ -1,3 +1 @@
+ ?? .codex/tasks/
+-?? artifacts/
+-?? assets/repro/
+diff --git a/knowledge/runs/run-i719-blcs-kp7-no-reference/metrics.json b/knowledge/runs/run-i719-blcs-kp7-no-reference/metrics.json
+index f971cba9..820ac233 100644
+--- a/knowledge/runs/run-i719-blcs-kp7-no-reference/metrics.json
++++ b/knowledge/runs/run-i719-blcs-kp7-no-reference/metrics.json
+@@ -1,32 +1,33 @@
+ {
+-  "loss": 1.1080198287963867,
+-  "loss_position": 0.4672776162624359,
+-  "loss_position_x": 0.09727311134338379,
+-  "loss_position_y": 0.2431604266166687,
+-  "loss_position_z": 1.6555209159851074,
+-  "loss_presence": 0.6407422423362732,
++  "loss": 1.109933853149414,
++  "loss_position": 0.49248671531677246,
++  "loss_position_x": 0.23172098398208618,
++  "loss_position_y": 0.2216482013463974,
++  "loss_position_z": 1.5556952953338623,
++  "loss_presence": 0.6174471974372864,
+   "loss_smoothness": 0.0,
+   "loss_gravity": 0.0,
+-  "position_error": 2.3685998916625977,
+-  "presence_precision": 0.25,
+-  "presence_recall": 1.0,
+-  "presence_f1": 0.4000000059604645,
+-  "lifecycle_presence_f1": 0.4000000059604645,
+-  "birth_frame_error": 0.0,
++  "position_error": 2.3619110584259033,
++  "presence_precision": 0.28450703620910645,
++  "presence_recall": 0.986328125,
++  "presence_f1": 0.44162657856941223,
++  "lifecycle_presence_f1": 0.44162657856941223,
++  "birth_frame_error": 0.875,
+   "death_frame_error": 0.0,
+   "query_reuse_count": 0.0,
+   "illegal_overlap_count": 0.0,
+-  "segment_id_switches": 18.0,
+-  "id_switches": 18.0,
++  "segment_id_switches": 26.0,
++  "id_switches": 26.0,
+   "duplicate_active_tracks": 0.0,
+-  "missed_gt_frames": 0.0,
+-  "inactive_query_false_positives": 1536.0,
+-  "position_mae_x_m": 1.7629966735839844,
+-  "position_mae_y_m": 6.584810256958008,
+-  "position_mae_z_m": 2.2167303562164307,
+-  "y_sign_accuracy": 0.390625,
+-  "reference_consistency_y_m": 6.584810256958008,
+-  "reference_positive_position_mae_y_m": 8.983809471130371,
+-  "reference_negative_position_mae_y_m": 5.785143852233887,
+-  "reference_oriented_position_mae_y_m": 6.584810256958008
++  "missed_gt_frames": 7.0,
++  "inactive_query_false_positives": 1272.0,
++  "position_mae_x_m": 2.8639183044433594,
++  "position_mae_y_m": 6.190107822418213,
++  "position_mae_z_m": 2.10284423828125,
++  "y_sign_accuracy": 0.638671875,
++  "source_frame_position_mae_y_m": 6.190107345581055,
++  "reference_positive_position_mae_y_m": 9.145901679992676,
++  "reference_negative_position_mae_y_m": 5.204843044281006,
++  "reference_oriented_position_mae_y_m": 6.190107345581055,
++  "reference_consistency_y_m": 1.265625
+ }
+\ No newline at end of file
+diff --git a/knowledge/runs/run-i719-blcs-kp7-no-reference/output_dir.txt b/knowledge/runs/run-i719-blcs-kp7-no-reference/output_dir.txt
+index 5e1f5612..bfaac4b5 100644
+--- a/knowledge/runs/run-i719-blcs-kp7-no-reference/output_dir.txt
++++ b/knowledge/runs/run-i719-blcs-kp7-no-reference/output_dir.txt
+@@ -1 +1 @@
+-/home/kamimura/projects/tennis-lab/outputs/issue719/i719-blcs-kp7-no-reference/logs/version_2/checkpoints
++/home/kamimura/projects/tennis-lab/outputs/issue719/i719-blcs-kp7-no-reference/logs/version_3/checkpoints
+diff --git a/knowledge/runs/run-i719-blcs-kp7-no-reference/pred_test.npz b/knowledge/runs/run-i719-blcs-kp7-no-reference/pred_test.npz
+index 08b56bb3..deec4554 100644
+Binary files a/knowledge/runs/run-i719-blcs-kp7-no-reference/pred_test.npz and b/knowledge/runs/run-i719-blcs-kp7-no-reference/pred_test.npz differ
+diff --git a/knowledge/runs/run-i719-blcs-kp7-no-reference/repro.sh b/knowledge/runs/run-i719-blcs-kp7-no-reference/repro.sh
+index 20355484..4d38d89b 100755
+--- a/knowledge/runs/run-i719-blcs-kp7-no-reference/repro.sh
++++ b/knowledge/runs/run-i719-blcs-kp7-no-reference/repro.sh
+@@ -1,12 +1,12 @@
+ #!/usr/bin/env bash
+ # Auto-generated by training_queue.sh — reproduce run: i719-blcs-kp7-no-reference
+-# provider=codex session=019ff689-cc3c-7680-b1e1-e95a128bd69b issue=719
++# provider=codex session=019ff6e5-b975-7671-bdd4-f03843734cf5 issue=719
+ set -uo pipefail
+ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-719-courtkp7-reference}"
+ cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
+-echo "[repro] target commit: ffecfc0daf7df8ea96e3be1069b248080a9c4c4e (branch feat/issue-719-courtkp7-reference)"
+-git checkout ffecfc0daf7df8ea96e3be1069b248080a9c4c4e 2>/dev/null || echo "[repro] WARN: checkout ffecfc0daf7df8ea96e3be1069b248080a9c4c4e failed; using current HEAD"
++echo "[repro] target commit: 64c2da16e029acd2202c3b592e31eb9952c916d7 (branch feat/issue-719-courtkp7-reference)"
++git checkout 64c2da16e029acd2202c3b592e31eb9952c916d7 2>/dev/null || echo "[repro] WARN: checkout 64c2da16e029acd2202c3b592e31eb9952c916d7 failed; using current HEAD"
+ PATCH="$SCRIPT_DIR/uncommitted.patch"
+ if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
+ # --- original training command ---
+diff --git a/knowledge/runs/run-i719-blcs-kp7-no-reference/run.json b/knowledge/runs/run-i719-blcs-kp7-no-reference/run.json
+index c27438f3..7f2c9e2b 100644
+--- a/knowledge/runs/run-i719-blcs-kp7-no-reference/run.json
++++ b/knowledge/runs/run-i719-blcs-kp7-no-reference/run.json
+@@ -1,14 +1,14 @@
+ {
+-  "run_id": "1786548318433326220_1992471_i719-blcs-kp7-no-reference",
++  "run_id": "1786553727587662402_2144353_i719-blcs-kp7-no-reference",
+   "name": "i719-blcs-kp7-no-reference",
+   "command": "PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking model=track_query_kp7_no_reference data.scene_dir=issue719/blcs data.seq_len_range='[64,64]' data.num_views_range='[3,5]' data.batch_size=8 data.num_workers=4 training.trainer.max_epochs=3 training.trainer.check_val_every_n_epoch=1 training.warmup_steps=0 training.early_stopping.enabled=false training.qualitative_logging.enabled=false run.seed=719 run.output_dir=issue719/i719-blcs-kp7-no-reference run.test_after_fit=true",
+   "provider": "codex",
+-  "session": "019ff689-cc3c-7680-b1e1-e95a128bd69b",
++  "session": "019ff6e5-b975-7671-bdd4-f03843734cf5",
+   "issue": "719",
+-  "commit": "ffecfc0daf7df8ea96e3be1069b248080a9c4c4e",
++  "commit": "64c2da16e029acd2202c3b592e31eb9952c916d7",
+   "branch": "feat/issue-719-courtkp7-reference",
+   "remote": "git@github.com:Motoki0705/tennis-lab.git",
+   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-719-courtkp7-reference",
+   "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-719-courtkp7-reference",
+-  "captured_at": "2026-08-13T00:25:36+09:00"
++  "captured_at": "2026-08-13T15:51:28+09:00"
+ }
+diff --git a/knowledge/runs/run-i719-blcs-kp7-reference/git_status.txt b/knowledge/runs/run-i719-blcs-kp7-reference/git_status.txt
+index 55dfe7e2..8bb462bc 100644
+--- a/knowledge/runs/run-i719-blcs-kp7-reference/git_status.txt
++++ b/knowledge/runs/run-i719-blcs-kp7-reference/git_status.txt
+@@ -1,3 +1 @@
+ ?? .codex/tasks/
+-?? artifacts/
+-?? assets/repro/
+diff --git a/knowledge/runs/run-i719-blcs-kp7-reference/metrics.json b/knowledge/runs/run-i719-blcs-kp7-reference/metrics.json
+index 8a79f49a..55e58757 100644
+--- a/knowledge/runs/run-i719-blcs-kp7-reference/metrics.json
++++ b/knowledge/runs/run-i719-blcs-kp7-reference/metrics.json
+@@ -1,34 +1,33 @@
+ {
+-  "birth_frame_error": 32.0,
+-  "court_peak_fusion_latency_ms": 2.725832214355469,
+-  "court_peak_fusion_peak_memory_mb": 15.2626953125,
+-  "death_frame_error": 32.0,
+-  "duplicate_active_tracks": 0.0,
+-  "id_switches": 6.0,
+-  "illegal_overlap_count": 0.0,
+-  "inactive_query_false_positives": 520.0,
+-  "lifecycle_presence_f1": 0.39782440662384033,
+-  "loss": 1.1124107837677002,
+-  "loss_gravity": 0.0,
+-  "loss_position": 0.4739493727684021,
+-  "loss_position_x": 0.20506338775157928,
+-  "loss_position_y": 0.27139294147491455,
+-  "loss_position_z": 1.4168343544006348,
+-  "loss_presence": 0.6384614706039429,
++  "loss": 1.0243828296661377,
++  "loss_position": 0.5003503561019897,
++  "loss_position_x": 0.29285046458244324,
++  "loss_position_y": 0.2687641680240631,
++  "loss_position_z": 1.3785223960876465,
++  "loss_presence": 0.5240324139595032,
+   "loss_smoothness": 0.0,
+-  "missed_gt_frames": 256.0,
+-  "position_error": 2.2558412551879883,
+-  "position_mae_x_m": 2.626992702484131,
+-  "position_mae_y_m": 7.414756774902344,
+-  "position_mae_z_m": 1.9558074474334717,
+-  "presence_f1": 0.39782440662384033,
+-  "presence_precision": 0.33032259345054626,
+-  "presence_recall": 0.5,
++  "loss_gravity": 0.0,
++  "position_error": 2.2904162406921387,
++  "presence_precision": 0.8014311194419861,
++  "presence_recall": 0.875,
++  "presence_f1": 0.8366012573242188,
++  "lifecycle_presence_f1": 0.8366012573242188,
++  "birth_frame_error": 8.0,
++  "death_frame_error": 8.0,
+   "query_reuse_count": 0.0,
+-  "reference_consistency_y_m": 7.4147562980651855,
+-  "reference_negative_position_mae_y_m": 6.32501745223999,
+-  "reference_oriented_position_mae_y_m": 7.4147562980651855,
+-  "reference_positive_position_mae_y_m": 10.683975219726562,
+-  "segment_id_switches": 6.0,
+-  "y_sign_accuracy": 0.4375
+-}
++  "illegal_overlap_count": 0.0,
++  "segment_id_switches": 1.0,
++  "id_switches": 1.0,
++  "duplicate_active_tracks": 0.0,
++  "missed_gt_frames": 64.0,
++  "inactive_query_false_positives": 111.0,
++  "position_mae_x_m": 3.6429245471954346,
++  "position_mae_y_m": 7.348188400268555,
++  "position_mae_z_m": 1.9029515981674194,
++  "y_sign_accuracy": 0.43359375,
++  "source_frame_position_mae_y_m": 7.3481879234313965,
++  "reference_positive_position_mae_y_m": 10.615898132324219,
++  "reference_negative_position_mae_y_m": 6.2589521408081055,
++  "reference_oriented_position_mae_y_m": 7.3481879234313965,
++  "reference_consistency_y_m": 4.09375
++}
+\ No newline at end of file
+diff --git a/knowledge/runs/run-i719-blcs-kp7-reference/output_dir.txt b/knowledge/runs/run-i719-blcs-kp7-reference/output_dir.txt
+index 5144945b..f645a2c7 100644
+--- a/knowledge/runs/run-i719-blcs-kp7-reference/output_dir.txt
++++ b/knowledge/runs/run-i719-blcs-kp7-reference/output_dir.txt
+@@ -1 +1 @@
+-/home/kamimura/projects/tennis-lab/outputs/issue719/i719-blcs-kp7-reference/logs/version_1/checkpoints
++/home/kamimura/projects/tennis-lab/outputs/issue719/i719-blcs-kp7-reference/logs/version_2/checkpoints
+diff --git a/knowledge/runs/run-i719-blcs-kp7-reference/pred_test.npz b/knowledge/runs/run-i719-blcs-kp7-reference/pred_test.npz
+index 73b20c42..348daa54 100644
+Binary files a/knowledge/runs/run-i719-blcs-kp7-reference/pred_test.npz and b/knowledge/runs/run-i719-blcs-kp7-reference/pred_test.npz differ
+diff --git a/knowledge/runs/run-i719-blcs-kp7-reference/repro.sh b/knowledge/runs/run-i719-blcs-kp7-reference/repro.sh
+index dc6ce053..f1dd2148 100755
+--- a/knowledge/runs/run-i719-blcs-kp7-reference/repro.sh
++++ b/knowledge/runs/run-i719-blcs-kp7-reference/repro.sh
+@@ -1,12 +1,12 @@
+ #!/usr/bin/env bash
+ # Auto-generated by training_queue.sh — reproduce run: i719-blcs-kp7-reference
+-# provider=codex session=019ff689-cc3c-7680-b1e1-e95a128bd69b issue=719
++# provider=codex session=019ff6e5-b975-7671-bdd4-f03843734cf5 issue=719
+ set -uo pipefail
+ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-719-courtkp7-reference}"
+ cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
+-echo "[repro] target commit: ffecfc0daf7df8ea96e3be1069b248080a9c4c4e (branch feat/issue-719-courtkp7-reference)"
+-git checkout ffecfc0daf7df8ea96e3be1069b248080a9c4c4e 2>/dev/null || echo "[repro] WARN: checkout ffecfc0daf7df8ea96e3be1069b248080a9c4c4e failed; using current HEAD"
++echo "[repro] target commit: 64c2da16e029acd2202c3b592e31eb9952c916d7 (branch feat/issue-719-courtkp7-reference)"
++git checkout 64c2da16e029acd2202c3b592e31eb9952c916d7 2>/dev/null || echo "[repro] WARN: checkout 64c2da16e029acd2202c3b592e31eb9952c916d7 failed; using current HEAD"
+ PATCH="$SCRIPT_DIR/uncommitted.patch"
+ if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
+ # --- original training command ---
+diff --git a/knowledge/runs/run-i719-blcs-kp7-reference/run.json b/knowledge/runs/run-i719-blcs-kp7-reference/run.json
+index 985ad8c7..2505f934 100644
+--- a/knowledge/runs/run-i719-blcs-kp7-reference/run.json
++++ b/knowledge/runs/run-i719-blcs-kp7-reference/run.json
+@@ -1,30 +1,14 @@
+ {
+-  "branch": "feat/issue-719-courtkp7-reference",
+-  "captured_at": "2026-08-13T00:25:53+09:00",
+-  "command": "PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking model=track_query_kp7_reference data.scene_dir=issue719/blcs data.seq_len_range='[64,64]' data.num_views_range='[3,5]' data.batch_size=8 data.num_workers=4 training.trainer.max_epochs=3 training.trainer.check_val_every_n_epoch=1 training.warmup_steps=0 training.early_stopping.enabled=false training.qualitative_logging.enabled=false run.seed=719 run.output_dir=issue719/i719-blcs-kp7-reference run.test_after_fit=true",
+-  "commit": "ffecfc0daf7df8ea96e3be1069b248080a9c4c4e",
+-  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-719-courtkp7-reference",
+-  "issue": "719",
++  "run_id": "1786553727659772139_2144373_i719-blcs-kp7-reference",
+   "name": "i719-blcs-kp7-reference",
++  "command": "PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking model=track_query_kp7_reference data.scene_dir=issue719/blcs data.seq_len_range='[64,64]' data.num_views_range='[3,5]' data.batch_size=8 data.num_workers=4 training.trainer.max_epochs=3 training.trainer.check_val_every_n_epoch=1 training.warmup_steps=0 training.early_stopping.enabled=false training.qualitative_logging.enabled=false run.seed=719 run.output_dir=issue719/i719-blcs-kp7-reference run.test_after_fit=true",
+   "provider": "codex",
++  "session": "019ff6e5-b975-7671-bdd4-f03843734cf5",
++  "issue": "719",
++  "commit": "64c2da16e029acd2202c3b592e31eb9952c916d7",
++  "branch": "feat/issue-719-courtkp7-reference",
+   "remote": "git@github.com:Motoki0705/tennis-lab.git",
++  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-719-courtkp7-reference",
+   "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-719-courtkp7-reference",
+-  "run_id": "1786548318450903301_1992486_i719-blcs-kp7-reference",
+-  "runtime_benchmark": {
+-    "device": "NVIDIA GeForce RTX 5060 Ti",
+-    "precision": "bf16-mixed",
+-    "repeats": 50,
+-    "scope": "KP7TrackObservationFusion+ReferenceViewConditioning",
+-    "shape": {
+-      "B": 1,
+-      "C": 7,
+-      "D": 4,
+-      "H": 64,
+-      "N": 4,
+-      "T": 64,
+-      "V": 3
+-    },
+-    "warmups": 10
+-  },
+-  "session": "019ff689-cc3c-7680-b1e1-e95a128bd69b"
++  "captured_at": "2026-08-13T15:51:43+09:00"
+ }
+diff --git a/knowledge/runs/run-i719-plcs-kp14/curves.png b/knowledge/runs/run-i719-plcs-kp14/curves.png
+index aec145b3..3b8ec8b9 100644
+Binary files a/knowledge/runs/run-i719-plcs-kp14/curves.png and b/knowledge/runs/run-i719-plcs-kp14/curves.png differ
+diff --git a/knowledge/runs/run-i719-plcs-kp14/git_status.txt b/knowledge/runs/run-i719-plcs-kp14/git_status.txt
+index 55dfe7e2..8bb462bc 100644
+--- a/knowledge/runs/run-i719-plcs-kp14/git_status.txt
++++ b/knowledge/runs/run-i719-plcs-kp14/git_status.txt
+@@ -1,3 +1 @@
+ ?? .codex/tasks/
+-?? artifacts/
+-?? assets/repro/
+diff --git a/knowledge/runs/run-i719-plcs-kp14/metrics.json b/knowledge/runs/run-i719-plcs-kp14/metrics.json
+index a2087889..5bc83746 100644
+--- a/knowledge/runs/run-i719-plcs-kp14/metrics.json
++++ b/knowledge/runs/run-i719-plcs-kp14/metrics.json
+@@ -1,30 +1,32 @@
+ {
+-  "loss": 1.0699851512908936,
+-  "loss_position": 0.21554034948349,
+-  "loss_rotation": 0.28614258766174316,
+-  "loss_presence": 0.7113734483718872,
++  "loss": 1.1201391220092773,
++  "loss_position": 0.24361851811408997,
++  "loss_rotation": 0.39780479669570923,
++  "loss_presence": 0.677618145942688,
+   "loss_track_smoothness": 0.0,
+-  "position_error": 1.054723858833313,
+-  "presence_precision": 0.1764705926179886,
+-  "presence_recall": 0.375,
+-  "presence_f1": 0.24000002443790436,
+-  "lifecycle_presence_f1": 0.24000002443790436,
+-  "birth_frame_error": 40.0,
+-  "death_frame_error": 40.0,
++  "position_error": 1.1347782611846924,
++  "presence_precision": 0.3076923191547394,
++  "presence_recall": 0.5,
++  "presence_f1": 0.3809524178504944,
++  "lifecycle_presence_f1": 0.3809524178504944,
++  "birth_frame_error": 32.0,
++  "death_frame_error": 32.0,
+   "query_reuse_count": 0.0,
+   "illegal_overlap_count": 0.0,
+   "segment_id_switches": 0.0,
+   "id_switches": 0.0,
+   "duplicate_active_tracks": 0.0,
+-  "missed_gt_frames": 320.0,
+-  "inactive_query_false_positives": 896.0,
+-  "position_mae_x_m": 3.5506069660186768,
+-  "position_mae_y_m": 6.862877368927002,
+-  "position_mae_z_m": 0.5144883394241333,
++  "missed_gt_frames": 256.0,
++  "inactive_query_false_positives": 576.0,
++  "position_mae_x_m": 3.388204574584961,
++  "position_mae_y_m": 7.104686260223389,
++  "position_mae_z_m": 0.6102229952812195,
+   "y_sign_accuracy": 0.375,
+-  "reference_consistency_y_m": 6.862877368927002,
+-  "reference_consistency_heading_deg": 38.520538330078125,
+-  "reference_positive_position_mae_y_m": 9.551054000854492,
+-  "reference_negative_position_mae_y_m": 5.24997091293335,
+-  "angular_error_deg": 38.52053451538086
++  "source_frame_position_mae_y_m": 7.1046857833862305,
++  "source_frame_heading_error_deg": 45.08793258666992,
++  "reference_positive_position_mae_y_m": 11.00661849975586,
++  "reference_negative_position_mae_y_m": 4.763526439666748,
++  "angular_error_deg": 45.087928771972656,
++  "reference_consistency_y_m": 8.8125,
++  "reference_consistency_heading_deg": 99.18840026855469
+ }
+\ No newline at end of file
+diff --git a/knowledge/runs/run-i719-plcs-kp14/output_dir.txt b/knowledge/runs/run-i719-plcs-kp14/output_dir.txt
+index 6aa34103..7ef1ad53 100644
+--- a/knowledge/runs/run-i719-plcs-kp14/output_dir.txt
++++ b/knowledge/runs/run-i719-plcs-kp14/output_dir.txt
+@@ -1 +1 @@
+-/home/kamimura/projects/tennis-lab/outputs/issue719/i719-plcs-kp14/logs/version_1/checkpoints
++/home/kamimura/projects/tennis-lab/outputs/issue719/i719-plcs-kp14/logs/version_2/checkpoints
+diff --git a/knowledge/runs/run-i719-plcs-kp14/pred_test.npz b/knowledge/runs/run-i719-plcs-kp14/pred_test.npz
+index 796602fb..7eed066b 100644
+Binary files a/knowledge/runs/run-i719-plcs-kp14/pred_test.npz and b/knowledge/runs/run-i719-plcs-kp14/pred_test.npz differ
+diff --git a/knowledge/runs/run-i719-plcs-kp14/repro.sh b/knowledge/runs/run-i719-plcs-kp14/repro.sh
+index 716f053c..aba31988 100755
+--- a/knowledge/runs/run-i719-plcs-kp14/repro.sh
++++ b/knowledge/runs/run-i719-plcs-kp14/repro.sh
+@@ -1,12 +1,12 @@
+ #!/usr/bin/env bash
+ # Auto-generated by training_queue.sh — reproduce run: i719-plcs-kp14
+-# provider=codex session=019ff689-cc3c-7680-b1e1-e95a128bd69b issue=719
++# provider=codex session=019ff6e5-b975-7671-bdd4-f03843734cf5 issue=719
+ set -uo pipefail
+ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-719-courtkp7-reference}"
+ cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
+-echo "[repro] target commit: ffecfc0daf7df8ea96e3be1069b248080a9c4c4e (branch feat/issue-719-courtkp7-reference)"
+-git checkout ffecfc0daf7df8ea96e3be1069b248080a9c4c4e 2>/dev/null || echo "[repro] WARN: checkout ffecfc0daf7df8ea96e3be1069b248080a9c4c4e failed; using current HEAD"
++echo "[repro] target commit: 64c2da16e029acd2202c3b592e31eb9952c916d7 (branch feat/issue-719-courtkp7-reference)"
++git checkout 64c2da16e029acd2202c3b592e31eb9952c916d7 2>/dev/null || echo "[repro] WARN: checkout 64c2da16e029acd2202c3b592e31eb9952c916d7 failed; using current HEAD"
+ PATCH="$SCRIPT_DIR/uncommitted.patch"
+ if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
+ # --- original training command ---
+diff --git a/knowledge/runs/run-i719-plcs-kp14/run.json b/knowledge/runs/run-i719-plcs-kp14/run.json
+index 67afafea..9d9987be 100644
+--- a/knowledge/runs/run-i719-plcs-kp14/run.json
++++ b/knowledge/runs/run-i719-plcs-kp14/run.json
+@@ -1,14 +1,14 @@
+ {
+-  "run_id": "1786548318468427138_1992501_i719-plcs-kp14",
++  "run_id": "1786553727736504404_2144393_i719-plcs-kp14",
+   "name": "i719-plcs-kp14",
+   "command": "PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking model=track_query_kp14 data.scene_dir=issue719/plcs data.seq_len_range='[64,64]' data.num_views_range='[3,5]' data.batch_size=8 data.num_workers=4 training.trainer.max_epochs=3 training.trainer.check_val_every_n_epoch=1 training.warmup_steps=0 training.early_stopping.enabled=false training.qualitative_logging.enabled=false run.seed=719 run.output_dir=issue719/i719-plcs-kp14 run.test_after_fit=true",
+   "provider": "codex",
+-  "session": "019ff689-cc3c-7680-b1e1-e95a128bd69b",
++  "session": "019ff6e5-b975-7671-bdd4-f03843734cf5",
+   "issue": "719",
+-  "commit": "ffecfc0daf7df8ea96e3be1069b248080a9c4c4e",
++  "commit": "64c2da16e029acd2202c3b592e31eb9952c916d7",
+   "branch": "feat/issue-719-courtkp7-reference",
+   "remote": "git@github.com:Motoki0705/tennis-lab.git",
+   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-719-courtkp7-reference",
+   "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-719-courtkp7-reference",
+-  "captured_at": "2026-08-13T00:26:10+09:00"
++  "captured_at": "2026-08-13T15:51:58+09:00"
+ }
+diff --git a/knowledge/runs/run-i719-plcs-kp7-no-reference/curves.png b/knowledge/runs/run-i719-plcs-kp7-no-reference/curves.png
+index 7729ba42..33d1e8f7 100644
+Binary files a/knowledge/runs/run-i719-plcs-kp7-no-reference/curves.png and b/knowledge/runs/run-i719-plcs-kp7-no-reference/curves.png differ
+diff --git a/knowledge/runs/run-i719-plcs-kp7-no-reference/git_status.txt b/knowledge/runs/run-i719-plcs-kp7-no-reference/git_status.txt
+index 55dfe7e2..8bb462bc 100644
+--- a/knowledge/runs/run-i719-plcs-kp7-no-reference/git_status.txt
++++ b/knowledge/runs/run-i719-plcs-kp7-no-reference/git_status.txt
+@@ -1,3 +1 @@
+ ?? .codex/tasks/
+-?? artifacts/
+-?? assets/repro/
+diff --git a/knowledge/runs/run-i719-plcs-kp7-no-reference/metrics.json b/knowledge/runs/run-i719-plcs-kp7-no-reference/metrics.json
+index ffa58d66..f61ce0b3 100644
+--- a/knowledge/runs/run-i719-plcs-kp7-no-reference/metrics.json
++++ b/knowledge/runs/run-i719-plcs-kp7-no-reference/metrics.json
+@@ -1,30 +1,32 @@
+ {
+-  "loss": 0.8877302408218384,
+-  "loss_position": 0.1603623777627945,
+-  "loss_rotation": 0.2562354803085327,
+-  "loss_presence": 0.5992501378059387,
++  "loss": 0.932461142539978,
++  "loss_position": 0.1658514142036438,
++  "loss_rotation": 0.16712021827697754,
++  "loss_presence": 0.6830496191978455,
+   "loss_track_smoothness": 0.0,
+-  "position_error": 0.9096212387084961,
+-  "presence_precision": 0.46666666865348816,
+-  "presence_recall": 0.875,
+-  "presence_f1": 0.6086956262588501,
+-  "lifecycle_presence_f1": 0.6086956262588501,
+-  "birth_frame_error": 8.0,
+-  "death_frame_error": 8.0,
++  "position_error": 0.944178581237793,
++  "presence_precision": 0.2380952388048172,
++  "presence_recall": 0.625,
++  "presence_f1": 0.3448275923728943,
++  "lifecycle_presence_f1": 0.3448275923728943,
++  "birth_frame_error": 24.0,
++  "death_frame_error": 24.0,
+   "query_reuse_count": 0.0,
+   "illegal_overlap_count": 0.0,
+   "segment_id_switches": 0.0,
+   "id_switches": 0.0,
+   "duplicate_active_tracks": 0.0,
+-  "missed_gt_frames": 64.0,
+-  "inactive_query_false_positives": 512.0,
+-  "position_mae_x_m": 3.281646490097046,
+-  "position_mae_y_m": 4.421871662139893,
+-  "position_mae_z_m": 0.3722384572029114,
++  "missed_gt_frames": 192.0,
++  "inactive_query_false_positives": 1024.0,
++  "position_mae_x_m": 3.555041551589966,
++  "position_mae_y_m": 3.868128538131714,
++  "position_mae_z_m": 0.2891514003276825,
+   "y_sign_accuracy": 0.75,
+-  "reference_consistency_y_m": 4.421871662139893,
+-  "reference_consistency_heading_deg": 36.19147491455078,
+-  "reference_positive_position_mae_y_m": 6.9082794189453125,
+-  "reference_negative_position_mae_y_m": 2.9300267696380615,
+-  "angular_error_deg": 36.19147491455078
++  "source_frame_position_mae_y_m": 3.868128538131714,
++  "source_frame_heading_error_deg": 29.407087326049805,
++  "reference_positive_position_mae_y_m": 4.729281425476074,
++  "reference_negative_position_mae_y_m": 3.3514370918273926,
++  "angular_error_deg": 29.407085418701172,
++  "reference_consistency_y_m": 3.796875,
++  "reference_consistency_heading_deg": 45.65172576904297
+ }
+\ No newline at end of file
+diff --git a/knowledge/runs/run-i719-plcs-kp7-no-reference/output_dir.txt b/knowledge/runs/run-i719-plcs-kp7-no-reference/output_dir.txt
+index ba9e19b4..7595eedf 100644
+--- a/knowledge/runs/run-i719-plcs-kp7-no-reference/output_dir.txt
++++ b/knowledge/runs/run-i719-plcs-kp7-no-reference/output_dir.txt
+@@ -1 +1 @@
+-/home/kamimura/projects/tennis-lab/outputs/issue719/i719-plcs-kp7-no-reference/logs/version_1/checkpoints
++/home/kamimura/projects/tennis-lab/outputs/issue719/i719-plcs-kp7-no-reference/logs/version_2/checkpoints
+diff --git a/knowledge/runs/run-i719-plcs-kp7-no-reference/pred_test.npz b/knowledge/runs/run-i719-plcs-kp7-no-reference/pred_test.npz
+index 001f3a73..edd56fe7 100644
+Binary files a/knowledge/runs/run-i719-plcs-kp7-no-reference/pred_test.npz and b/knowledge/runs/run-i719-plcs-kp7-no-reference/pred_test.npz differ
+diff --git a/knowledge/runs/run-i719-plcs-kp7-no-reference/repro.sh b/knowledge/runs/run-i719-plcs-kp7-no-reference/repro.sh
+index 3927fc41..15e27c0a 100755
+--- a/knowledge/runs/run-i719-plcs-kp7-no-reference/repro.sh
++++ b/knowledge/runs/run-i719-plcs-kp7-no-reference/repro.sh
+@@ -1,12 +1,12 @@
+ #!/usr/bin/env bash
+ # Auto-generated by training_queue.sh — reproduce run: i719-plcs-kp7-no-reference
+-# provider=codex session=019ff689-cc3c-7680-b1e1-e95a128bd69b issue=719
++# provider=codex session=019ff6e5-b975-7671-bdd4-f03843734cf5 issue=719
+ set -uo pipefail
+ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-719-courtkp7-reference}"
+ cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
+-echo "[repro] target commit: ffecfc0daf7df8ea96e3be1069b248080a9c4c4e (branch feat/issue-719-courtkp7-reference)"
+-git checkout ffecfc0daf7df8ea96e3be1069b248080a9c4c4e 2>/dev/null || echo "[repro] WARN: checkout ffecfc0daf7df8ea96e3be1069b248080a9c4c4e failed; using current HEAD"
++echo "[repro] target commit: 64c2da16e029acd2202c3b592e31eb9952c916d7 (branch feat/issue-719-courtkp7-reference)"
++git checkout 64c2da16e029acd2202c3b592e31eb9952c916d7 2>/dev/null || echo "[repro] WARN: checkout 64c2da16e029acd2202c3b592e31eb9952c916d7 failed; using current HEAD"
+ PATCH="$SCRIPT_DIR/uncommitted.patch"
+ if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
+ # --- original training command ---
+diff --git a/knowledge/runs/run-i719-plcs-kp7-no-reference/run.json b/knowledge/runs/run-i719-plcs-kp7-no-reference/run.json
+index bc7b1787..5f774225 100644
+--- a/knowledge/runs/run-i719-plcs-kp7-no-reference/run.json
++++ b/knowledge/runs/run-i719-plcs-kp7-no-reference/run.json
+@@ -1,14 +1,14 @@
+ {
+-  "run_id": "1786548318485770089_1992516_i719-plcs-kp7-no-reference",
++  "run_id": "1786553727847511793_2144429_i719-plcs-kp7-no-reference",
+   "name": "i719-plcs-kp7-no-reference",
+   "command": "PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking model=track_query_kp7_no_reference data.scene_dir=issue719/plcs data.seq_len_range='[64,64]' data.num_views_range='[3,5]' data.batch_size=8 data.num_workers=4 training.trainer.max_epochs=3 training.trainer.check_val_every_n_epoch=1 training.warmup_steps=0 training.early_stopping.enabled=false training.qualitative_logging.enabled=false run.seed=719 run.output_dir=issue719/i719-plcs-kp7-no-reference run.test_after_fit=true",
+   "provider": "codex",
+-  "session": "019ff689-cc3c-7680-b1e1-e95a128bd69b",
++  "session": "019ff6e5-b975-7671-bdd4-f03843734cf5",
+   "issue": "719",
+-  "commit": "ffecfc0daf7df8ea96e3be1069b248080a9c4c4e",
++  "commit": "64c2da16e029acd2202c3b592e31eb9952c916d7",
+   "branch": "feat/issue-719-courtkp7-reference",
+   "remote": "git@github.com:Motoki0705/tennis-lab.git",
+   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-719-courtkp7-reference",
+   "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-719-courtkp7-reference",
+-  "captured_at": "2026-08-13T00:28:21+09:00"
++  "captured_at": "2026-08-13T15:52:15+09:00"
+ }
+diff --git a/knowledge/runs/run-i719-plcs-kp7-reference/git_status.txt b/knowledge/runs/run-i719-plcs-kp7-reference/git_status.txt
+index 55dfe7e2..8bb462bc 100644
+--- a/knowledge/runs/run-i719-plcs-kp7-reference/git_status.txt
++++ b/knowledge/runs/run-i719-plcs-kp7-reference/git_status.txt
+@@ -1,3 +1 @@
+ ?? .codex/tasks/
+-?? artifacts/
+-?? assets/repro/
+diff --git a/knowledge/runs/run-i719-plcs-kp7-reference/metrics.json b/knowledge/runs/run-i719-plcs-kp7-reference/metrics.json
+index 14e7c01e..4504b068 100644
+--- a/knowledge/runs/run-i719-plcs-kp7-reference/metrics.json
++++ b/knowledge/runs/run-i719-plcs-kp7-reference/metrics.json
+@@ -1,32 +1,32 @@
+ {
+-  "angular_error_deg": 96.49348449707031,
+-  "birth_frame_error": 10.125,
+-  "court_peak_fusion_latency_ms": 2.3839744567871093,
+-  "court_peak_fusion_peak_memory_mb": 15.412109375,
+-  "death_frame_error": 13.625,
+-  "duplicate_active_tracks": 0.0,
+-  "id_switches": 26.0,
+-  "illegal_overlap_count": 0.0,
+-  "inactive_query_false_positives": 1088.0,
+-  "lifecycle_presence_f1": 0.40000003576278687,
+-  "loss": 1.2722139358520508,
+-  "loss_position": 0.10544134676456451,
+-  "loss_presence": 0.6127467751502991,
+-  "loss_rotation": 1.1080515384674072,
++  "loss": 1.313485026359558,
++  "loss_position": 0.12522953748703003,
++  "loss_rotation": 1.1385003328323364,
++  "loss_presence": 0.6190053224563599,
+   "loss_track_smoothness": 0.0,
+-  "missed_gt_frames": 112.0,
+-  "position_error": 0.7531172633171082,
+-  "position_mae_x_m": 2.2207117080688477,
+-  "position_mae_y_m": 5.589183807373047,
+-  "position_mae_z_m": 0.1760534942150116,
+-  "presence_f1": 0.40000003576278687,
+-  "presence_precision": 0.2688172161579132,
+-  "presence_recall": 0.78125,
++  "position_error": 0.8115200996398926,
++  "presence_precision": 0.25,
++  "presence_recall": 0.875,
++  "presence_f1": 0.3888888955116272,
++  "lifecycle_presence_f1": 0.3888888955116272,
++  "birth_frame_error": 8.0,
++  "death_frame_error": 8.0,
+   "query_reuse_count": 0.0,
+-  "reference_consistency_heading_deg": 96.49348449707031,
+-  "reference_consistency_y_m": 5.589183330535889,
+-  "reference_negative_position_mae_y_m": 4.713016033172607,
+-  "reference_positive_position_mae_y_m": 7.049463272094727,
+-  "segment_id_switches": 26.0,
+-  "y_sign_accuracy": 0.5
+-}
++  "illegal_overlap_count": 0.0,
++  "segment_id_switches": 0.0,
++  "id_switches": 0.0,
++  "duplicate_active_tracks": 0.0,
++  "missed_gt_frames": 64.0,
++  "inactive_query_false_positives": 1344.0,
++  "position_mae_x_m": 2.2836546897888184,
++  "position_mae_y_m": 6.264745712280273,
++  "position_mae_z_m": 0.2015513777732849,
++  "y_sign_accuracy": 0.375,
++  "source_frame_position_mae_y_m": 6.264745235443115,
++  "source_frame_heading_error_deg": 98.84625244140625,
++  "reference_positive_position_mae_y_m": 8.313441276550293,
++  "reference_negative_position_mae_y_m": 5.03552770614624,
++  "angular_error_deg": 98.84625244140625,
++  "reference_consistency_y_m": 6.3125,
++  "reference_consistency_heading_deg": 52.187068939208984
++}
+\ No newline at end of file
+diff --git a/knowledge/runs/run-i719-plcs-kp7-reference/output_dir.txt b/knowledge/runs/run-i719-plcs-kp7-reference/output_dir.txt
+index 4e61003d..e9944ef1 100644
+--- a/knowledge/runs/run-i719-plcs-kp7-reference/output_dir.txt
++++ b/knowledge/runs/run-i719-plcs-kp7-reference/output_dir.txt
+@@ -1 +1 @@
+-/home/kamimura/projects/tennis-lab/outputs/issue719/i719-plcs-kp7-reference/logs/version_1/checkpoints
++/home/kamimura/projects/tennis-lab/outputs/issue719/i719-plcs-kp7-reference/logs/version_2/checkpoints
+diff --git a/knowledge/runs/run-i719-plcs-kp7-reference/pred_test.npz b/knowledge/runs/run-i719-plcs-kp7-reference/pred_test.npz
+index 541eb13b..028f51f0 100644
+Binary files a/knowledge/runs/run-i719-plcs-kp7-reference/pred_test.npz and b/knowledge/runs/run-i719-plcs-kp7-reference/pred_test.npz differ
+diff --git a/knowledge/runs/run-i719-plcs-kp7-reference/repro.sh b/knowledge/runs/run-i719-plcs-kp7-reference/repro.sh
+index ac49e0a8..3cc5159a 100755
+--- a/knowledge/runs/run-i719-plcs-kp7-reference/repro.sh
++++ b/knowledge/runs/run-i719-plcs-kp7-reference/repro.sh
+@@ -1,12 +1,12 @@
+ #!/usr/bin/env bash
+ # Auto-generated by training_queue.sh — reproduce run: i719-plcs-kp7-reference
+-# provider=codex session=019ff689-cc3c-7680-b1e1-e95a128bd69b issue=719
++# provider=codex session=019ff6e5-b975-7671-bdd4-f03843734cf5 issue=719
+ set -uo pipefail
+ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-719-courtkp7-reference}"
+ cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
+-echo "[repro] target commit: ffecfc0daf7df8ea96e3be1069b248080a9c4c4e (branch feat/issue-719-courtkp7-reference)"
+-git checkout ffecfc0daf7df8ea96e3be1069b248080a9c4c4e 2>/dev/null || echo "[repro] WARN: checkout ffecfc0daf7df8ea96e3be1069b248080a9c4c4e failed; using current HEAD"
++echo "[repro] target commit: 64c2da16e029acd2202c3b592e31eb9952c916d7 (branch feat/issue-719-courtkp7-reference)"
++git checkout 64c2da16e029acd2202c3b592e31eb9952c916d7 2>/dev/null || echo "[repro] WARN: checkout 64c2da16e029acd2202c3b592e31eb9952c916d7 failed; using current HEAD"
+ PATCH="$SCRIPT_DIR/uncommitted.patch"
+ if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
+ # --- original training command ---
+diff --git a/knowledge/runs/run-i719-plcs-kp7-reference/run.json b/knowledge/runs/run-i719-plcs-kp7-reference/run.json
+index 1c670283..4258f35c 100644
+--- a/knowledge/runs/run-i719-plcs-kp7-reference/run.json
++++ b/knowledge/runs/run-i719-plcs-kp7-reference/run.json
+@@ -1,31 +1,14 @@
+ {
+-  "branch": "feat/issue-719-courtkp7-reference",
+-  "captured_at": "2026-08-13T00:28:39+09:00",
+-  "command": "PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking model=track_query_kp7_reference data.scene_dir=issue719/plcs data.seq_len_range='[64,64]' data.num_views_range='[3,5]' data.batch_size=8 data.num_workers=4 training.trainer.max_epochs=3 training.trainer.check_val_every_n_epoch=1 training.warmup_steps=0 training.early_stopping.enabled=false training.qualitative_logging.enabled=false run.seed=719 run.output_dir=issue719/i719-plcs-kp7-reference run.test_after_fit=true",
+-  "commit": "ffecfc0daf7df8ea96e3be1069b248080a9c4c4e",
+-  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-719-courtkp7-reference",
+-  "issue": "719",
++  "run_id": "1786553727928827653_2144449_i719-plcs-kp7-reference",
+   "name": "i719-plcs-kp7-reference",
++  "command": "PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking model=track_query_kp7_reference data.scene_dir=issue719/plcs data.seq_len_range='[64,64]' data.num_views_range='[3,5]' data.batch_size=8 data.num_workers=4 training.trainer.max_epochs=3 training.trainer.check_val_every_n_epoch=1 training.warmup_steps=0 training.early_stopping.enabled=false training.qualitative_logging.enabled=false run.seed=719 run.output_dir=issue719/i719-plcs-kp7-reference run.test_after_fit=true",
+   "provider": "codex",
++  "session": "019ff6e5-b975-7671-bdd4-f03843734cf5",
++  "issue": "719",
++  "commit": "64c2da16e029acd2202c3b592e31eb9952c916d7",
++  "branch": "feat/issue-719-courtkp7-reference",
+   "remote": "git@github.com:Motoki0705/tennis-lab.git",
++  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-719-courtkp7-reference",
+   "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-719-courtkp7-reference",
+-  "run_id": "1786548318503993127_1992531_i719-plcs-kp7-reference",
+-  "runtime_benchmark": {
+-    "device": "NVIDIA GeForce RTX 5060 Ti",
+-    "precision": "bf16-mixed",
+-    "repeats": 50,
+-    "scope": "KP7PlayerObservationFusion+ReferenceViewConditioning",
+-    "shape": {
+-      "B": 1,
+-      "C": 7,
+-      "D": 4,
+-      "H": 64,
+-      "J": 17,
+-      "N": 4,
+-      "T": 64,
+-      "V": 3
+-    },
+-    "warmups": 10
+-  },
+-  "session": "019ff689-cc3c-7680-b1e1-e95a128bd69b"
++  "captured_at": "2026-08-13T15:52:31+09:00"
+ }

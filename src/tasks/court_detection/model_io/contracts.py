@@ -58,11 +58,15 @@ class CourtTrainingResult:
 
 @dataclass(frozen=True, slots=True)
 class CourtKeypointPrediction:
-    """Decoded court keypoints in original-image pixels."""
+    """Decoded one- or multi-peak channels in original-image pixels."""
 
-    keypoints: Tensor
-    scores: Tensor
-    heatmaps: Tensor
+    keypoints: Tensor  # [C,P,2]
+    scores: Tensor  # [C,P]
+    valid: Tensor  # [C,P]
+    covariance: Tensor  # [C,P,2,2], original-image pixel coordinates
+    heatmaps: Tensor  # [C,H,W]
+    semantic_class_names: tuple[str, ...] | None = None
+    image_size_hw: tuple[int, int] | None = None
 
 
 @dataclass(frozen=True, slots=True)

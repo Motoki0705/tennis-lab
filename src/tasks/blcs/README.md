@@ -70,9 +70,9 @@
 
 ## Multi-ball tracking
 
-観測座標は `ball_uv (B,V,T,P,2)`、観測有無は `ball_visible (B,V,T,P)` に一本化し、`ball_candidate_mask` は持ちません。`P` 軸は全camera/frameでscene object IDの昇順に固定し、欠損・dropout・false positiveがあっても列を並べ替えません。debug用の `candidate_gt_index` は観測が実object由来ならその列と同じobject ID、そうでなければ`-1`であり、モデルへは渡しません。scoreやvisibility値を数値特徴へ連結せず、不可視objectはlearned invisible tokenへ置換します。`mask_invisible_observations=true` は不可視tokenをattention keyから除外する対照条件、`false` は`frame_mask` / `view_mask`によるpaddingだけを除外し、不可視tokenを更新可能なmemoryとして使う条件です。出力は `position (B,T,Q,3)` と `presence_logits (B,T,Q)` です。教師は `target_position (B,T,Q,3)`、`target_presence (B,T,Q)`、`target_instance_id (B,T,Q)` で、inactive IDは`-1`です。重ならないbirth/death区間を同じtarget columnへ詰めるため、同一queryはdeath後に別instanceへ再利用できます。
+観測座標は `ball_uv (B,V,T,P,2)`、scoreは`ball_score`、観測有無は `ball_visible`、padding済み候補は`candidate_mask`で明示します。`P` 軸は全camera/frameでscene object IDの昇順に固定し、欠損・dropout・false positiveがあっても列を並べ替えません。debug用の `candidate_gt_index` はモデルへ渡しません。不可視objectはlearned invisible tokenへ置換します。reference cameraで全objectが欠損した時だけP-slot 0をcontextとして残し、隠れた追加tokenは作りません。出力は `position (B,T,Q,3)` と `presence_logits (B,T,Q)` です。
 
-14 court UVはannotation schemaのkeypoint ID順を維持します。`observation_fusion=linear` は`court_vis`で不可視点を0化し、object ID順の各ball UVと連結して共有`CourtBallGroupEmbedding`により1 object = 1 tokenへ写像します。`observation_fusion=point_attention` は各camera/frameについて `[court_0..13, ball_0..P-1]` を32次元tokenへ変換し、court IDとobject ID順のball列を独立軸とする2軸RoPE付きself-attentionで融合します。融合後はball tokenだけをmodel dimへprojectionし、既存の空間・時間attention経路へ渡します。どちらも下流の空間self-attention入力は `(B*T, Q + V*P, D)` です。
+`model=track_query_kp7_reference`は`court_peak_{uv,score,covariance,valid} (B,V,T,7,N,...)`をKP14へ戻さず直接使います。class内はunordered set、ball queryはUV/score/visibilityを持ち、set集約後だけreference roleを加えて既存の`Q + V*P`空間attentionとper-query時間attentionへ渡します。`track_query_kp7_no_reference`は同じtarget orientationでreference deltaだけを外し、`track_query_kp14`はordered-information baselineです。reference camera centerからbaseline距離差1 m以上のviewを選び、target position/velocityのYを一意に反映します。
 
 multi-object generatorは1024-frame global timelineに3〜10個のsource rally subclipを配置し、query再利用gapを含む同時slot占有数を4以下に保ちます。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
 
@@ -83,6 +83,10 @@ multi-object generatorは1024-frame global timelineに3〜10個のsource rally s
 
 # 事前生成データで学習
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking
+
+# CourtKP7 reference-conditioned
+.venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking \
+  model=track_query_kp7_reference
 
 # trainだけon-the-fly chunk生成（val/testは上記の固定データ）
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking_chunked

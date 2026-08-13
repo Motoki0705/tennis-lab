@@ -20,6 +20,7 @@ from src.tasks.base.configuration import (
     require_config_mapping,
     require_config_value,
 )
+from src.tasks.base.data.court_peaks import parse_court_observation_profile
 from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
 from src.tasks.base.visualization.style import (
     SceneStyleConfig,
@@ -275,6 +276,8 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "role_rope_enabled",
             "mask_invisible_observations",
             "invisible_init_std",
+            "court_observation_profile",
+            "kp7_camera_rope_enabled",
         }
     ),
 }
@@ -385,6 +388,7 @@ class PLCSModelConfig:
             "detach_pose_branch",
             "role_rope_enabled",
             "mask_invisible_observations",
+            "kp7_camera_rope_enabled",
         } & set(mapping):
             _boolean(mapping, key, path="model")
         if "ffn_type" in mapping:
@@ -393,6 +397,13 @@ class PLCSModelConfig:
                 raise SemanticConfigurationError(
                     "model.ffn_type must be 'swiglu' or 'mlp'."
                 )
+        if "court_observation_profile" in mapping:
+            try:
+                parse_court_observation_profile(
+                    _string(mapping, "court_observation_profile", path="model")
+                )
+            except ValueError as error:
+                raise SemanticConfigurationError(str(error)) from error
         if "num_joints" in mapping and _integer(mapping, "num_joints", path="model") != NUM_HUMAN_KP:
             raise SemanticConfigurationError(
                 f"model.num_joints must equal the canonical COCO joint count ({NUM_HUMAN_KP})."

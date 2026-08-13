@@ -210,6 +210,7 @@ class CourtKPModule(BasePipelineModule):
             resolver=self.config.resolver,
             device=self.device,
             subpixel_refine=self.config.subpixel_refine,
+            max_peaks=1,
         )
 
     @property
@@ -554,17 +555,17 @@ class CourtKPModule(BasePipelineModule):
         keypoints = prediction.keypoints.numpy().astype(np.float32)
         scores = prediction.scores.numpy().astype(np.float32)
 
-        if keypoints.shape != (self.num_keypoints, 2):
+        if keypoints.shape != (self.num_keypoints, 1, 2):
             raise ValueError(
                 f"Predicted court keypoints must have shape "
-                f"({self.num_keypoints}, 2), got {keypoints.shape}."
+                f"({self.num_keypoints}, 1, 2), got {keypoints.shape}."
             )
-        if scores.shape != (self.num_keypoints,):
+        if scores.shape != (self.num_keypoints, 1):
             raise ValueError(
-                f"Predicted court scores must have shape ({self.num_keypoints},), "
+                f"Predicted court scores must have shape ({self.num_keypoints}, 1), "
                 f"got {scores.shape}."
             )
-        return keypoints.astype(np.float32), scores.astype(np.float32)
+        return keypoints[:, 0], scores[:, 0]
 
 
 def _normalize_keypoints(

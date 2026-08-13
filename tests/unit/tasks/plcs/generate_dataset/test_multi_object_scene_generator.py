@@ -76,6 +76,7 @@ def _tracking_config() -> dict[str, object]:
             "augmentation": OmegaConf.load(_AUGMENTATION_CONFIG).augmentation,
         },
         "model": {"num_queries": 2},
+        "run": {"seed": 719},
     }
 
 

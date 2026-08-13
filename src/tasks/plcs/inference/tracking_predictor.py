@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any, Self
 
 import torch
 from torch import Tensor, nn
 
+from src.tasks.base.data.court_peaks import CourtPeakFrame
 from src.tasks.base.inference.predictor import BasePredictor
 from src.tasks.base.model_io import ModelCall, ModelInputContractError
 from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
@@ -74,11 +75,19 @@ class PLCSTrackingPredictor(BasePredictor):
         self,
         *,
         human_kp: Tensor,
+        joint_visibility: Tensor,
+        detection_score: Tensor,
         detection_mask: Tensor,
-        court_kp: Tensor,
-        court_vis: Tensor,
         frame_mask: Tensor,
         view_mask: Tensor,
+        reference_view_index: Tensor,
+        court_kp: Tensor | None = None,
+        court_vis: Tensor | None = None,
+        court_peak_uv: Tensor | None = None,
+        court_peak_score: Tensor | None = None,
+        court_peak_covariance: Tensor | None = None,
+        court_peak_valid: Tensor | None = None,
+        court_peak_frames: Sequence[CourtPeakFrame] | None = None,
         tracking_metrics: TrackingMetricConfig,
         denormalize: bool,
     ) -> dict[str, Tensor]:
@@ -88,11 +97,25 @@ class PLCSTrackingPredictor(BasePredictor):
                 call=self.io_adapter.build_call(
                     {
                         "human_kp": human_kp,
+                        "joint_visibility": joint_visibility,
+                        "detection_score": detection_score,
                         "detection_mask": detection_mask,
-                        "court_kp": court_kp,
-                        "court_vis": court_vis,
                         "frame_mask": frame_mask,
                         "view_mask": view_mask,
+                        "reference_view_index": reference_view_index,
+                        **{
+                            key: value
+                            for key, value in {
+                                "court_kp": court_kp,
+                                "court_vis": court_vis,
+                                "court_peak_uv": court_peak_uv,
+                                "court_peak_score": court_peak_score,
+                                "court_peak_covariance": court_peak_covariance,
+                                "court_peak_valid": court_peak_valid,
+                                "court_peak_frames": court_peak_frames,
+                            }.items()
+                            if value is not None
+                        },
                     }
                 )
             )

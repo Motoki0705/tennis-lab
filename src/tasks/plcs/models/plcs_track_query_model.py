@@ -10,6 +10,12 @@ from torch import nn
 
 from src.tasks.plcs.configuration import PLCSModelConfig
 from src.tasks.plcs.data.tracking_types import PLCSTrackingPrediction
+from src.tasks.plcs.models.components.observation_fusion import (
+    KP7PlayerObservationFusion,
+    KP14PlayerObservationFusion,
+    PlayerObservationFusion,
+    build_player_observation_fusion,
+)
 from src.utils.models import (
     RMSNorm,
     RotaryFrequencyComputer,
@@ -17,8 +23,7 @@ from src.utils.models import (
     TransformerBlockConfig,
 )
 from src.utils.models.embeddings import (
-    CourtPlayerGroupEmbedding,
-    InvisibleTokenEmbedding,
+    ReferenceViewConditioning,
 )
 
 
@@ -40,15 +45,35 @@ class PLCSTrackQueryModel(nn.Module):
             if self.role_rope_enabled
             else self._camera_time_rope_coordinates
         )
-        self.num_court_tokens = 14
-        self.invisible_token = InvisibleTokenEmbedding(
-            dim=self.hidden_dim,
-            init_std=config.number("invisible_init_std"),
+        self.court_observation_profile = config.string("court_observation_profile")
+        self.kp7_camera_rope_enabled = config.boolean("kp7_camera_rope_enabled")
+        self.num_court_tokens = (
+            14 if self.court_observation_profile == "kp14_reference_baseline" else None
         )
-        self.group_embed = CourtPlayerGroupEmbedding(
-            dim=self.hidden_dim,
-            invisible_token=self.invisible_token,
-            num_court_tokens=self.num_court_tokens,
+        self.observation_encoder: PlayerObservationFusion = (
+            build_player_observation_fusion(
+                profile=self.court_observation_profile,
+                hidden_dim=self.hidden_dim,
+                player_feature_dim=self.num_joints * 3 + 1,
+                invisible_init_std=config.number("invisible_init_std"),
+            )
+        )
+        self.invisible_token = self.observation_encoder.invisible_token
+        self.group_embed = (
+            self.observation_encoder.group_embed
+            if isinstance(self.observation_encoder, KP14PlayerObservationFusion)
+            else None
+        )
+        self.kp7_observation_encoder = (
+            self.observation_encoder
+            if isinstance(self.observation_encoder, KP7PlayerObservationFusion)
+            else None
+        )
+        self.reference_conditioning = (
+            ReferenceViewConditioning(self.hidden_dim)
+            if self.court_observation_profile
+            in {"kp14_reference_baseline", "kp7_reference"}
+            else None
         )
         self.slot_embeddings = nn.Parameter(
             torch.randn(self.num_queries, self.hidden_dim) * 0.02
@@ -121,35 +146,42 @@ class PLCSTrackQueryModel(nn.Module):
         self,
         human_kp: torch.Tensor,
         detection_mask: torch.Tensor,
-        court_kp: torch.Tensor,
-        court_vis: torch.Tensor,
         frame_mask: torch.Tensor,
         camera_state_valid: torch.Tensor,
         spatial_attention_mask: torch.Tensor,
         temporal_attention_mask: torch.Tensor,
+        reference_view_mask: torch.Tensor | None = None,
+        court_kp: torch.Tensor | None = None,
+        court_vis: torch.Tensor | None = None,
+        court_peak_uv: torch.Tensor | None = None,
+        court_peak_score: torch.Tensor | None = None,
+        court_peak_covariance: torch.Tensor | None = None,
+        court_peak_valid: torch.Tensor | None = None,
+        player_anchor: torch.Tensor | None = None,
+        player_features: torch.Tensor | None = None,
     ) -> PLCSTrackingPrediction:
         batch_size, num_views, num_frames, num_detections, num_joints, _ = (
             human_kp.shape
         )
         del num_joints
-        masked_court = court_kp.masked_fill(~court_vis.unsqueeze(-1), 0.0)
-        court_for_detections = masked_court.unsqueeze(3).expand(
-            -1, -1, -1, num_detections, -1, -1
+        camera_tokens, _ = self.observation_encoder(
+            human_kp=human_kp,
+            detection_mask=detection_mask,
+            camera_state_valid=camera_state_valid,
+            court_kp=court_kp,
+            court_vis=court_vis,
+            court_peak_uv=court_peak_uv,
+            court_peak_score=court_peak_score,
+            court_peak_covariance=court_peak_covariance,
+            court_peak_valid=court_peak_valid,
+            player_anchor=player_anchor,
+            player_features=player_features,
         )
-        human_for_detections = human_kp.masked_fill(
-            ~detection_mask[..., None, None], 0.0
-        )
-        camera_tokens = self.group_embed(
-            court_for_detections,
-            human_for_detections,
-            detection_mask,
-        ).permute(
-            0,
-            2,
-            1,
-            3,
-            4,
-        )
+        if self.reference_conditioning is not None and reference_view_mask is not None:
+            camera_tokens = self.reference_conditioning(
+                camera_tokens.permute(0, 2, 1, 3, 4),
+                reference_view_mask,
+            ).permute(0, 2, 1, 3, 4)
         camera_tokens = camera_tokens.reshape(
             batch_size,
             num_frames,
@@ -172,6 +204,11 @@ class PLCSTrackQueryModel(nn.Module):
             num_queries=self.num_queries,
             device=human_kp.device,
         )
+        if (
+            self.court_observation_profile != "kp14_reference_baseline"
+            and not self.kp7_camera_rope_enabled
+        ):
+            coordinates[..., 1] = 1
         rope_coordinates = self._select_rope_coordinates(coordinates)
         spatial_freqs = self.spatial_frequency_computer(rope_coordinates)
         temporal_freqs = self.temporal_frequency_computer(

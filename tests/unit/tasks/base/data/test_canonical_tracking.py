@@ -9,6 +9,7 @@ import torch
 from src.tasks.base.data.canonical_tracking import (
     CanonicalTrackingDataset,
     pad_and_stack_tracking_batch,
+    permute_tracking_views,
     validate_lifecycle_capacity,
 )
 
@@ -35,6 +36,7 @@ def test_dataset_resolves_explicit_scene_split(tmp_path) -> None:
                 },
             },
             "model": {"num_queries": 1},
+            "run": {"seed": 0},
         },
     )
     assert len(dataset) == 1
@@ -70,3 +72,20 @@ def test_lifecycle_capacity_rejects_more_concurrent_tracks_than_queries() -> Non
             data_config={"lifecycle": {"min_reuse_gap_frames": 4}},
             num_queries=4,
         )
+
+
+def test_view_permutation_transforms_reference_index_with_every_view_field() -> None:
+    sample = {
+        "observation": torch.tensor([[10.0], [20.0], [30.0]]),
+        "view_mask": torch.tensor([True, True, True]),
+        "reference_view_index": torch.tensor(2),
+    }
+    result = permute_tracking_views(
+        sample,
+        torch.tensor([2, 0, 1]),
+        view_fields=("observation", "view_mask"),
+    )
+    torch.testing.assert_close(
+        result["observation"], torch.tensor([[30.0], [10.0], [20.0]])
+    )
+    assert int(result["reference_view_index"]) == 0

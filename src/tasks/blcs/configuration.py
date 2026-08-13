@@ -16,6 +16,7 @@ from src.tasks.base.configuration import (
     as_config_mapping,
     require_config_mapping,
 )
+from src.tasks.base.data.court_peaks import parse_court_observation_profile
 from src.tasks.base.generate_dataset.timeline_composer import TimelineConfig
 from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
 from src.tasks.base.visualization.style import (
@@ -314,6 +315,10 @@ class TrackQueryModelConfig:
     invisible_init_std: float
     observation_fusion: Literal["linear", "point_attention"]
     point_fusion: PointFusionConfig | None
+    court_observation_profile: Literal[
+        "kp14_reference_baseline", "kp7_no_reference", "kp7_reference"
+    ]
+    kp7_camera_rope_enabled: bool
 
 
 BLCSModelConfig: TypeAlias = (
@@ -692,6 +697,8 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             "mask_invisible_observations",
             "invisible_init_std",
             "observation_fusion",
+            "court_observation_profile",
+            "kp7_camera_rope_enabled",
         }
         fusion_name = cast(
             "str", _value(model, "observation_fusion", str, path="model")
@@ -715,6 +722,8 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 "mask_invisible_observations": bool,
                 "invisible_init_std": (float, int),
                 "observation_fusion": str,
+                "court_observation_profile": str,
+                "kp7_camera_rope_enabled": bool,
             },
             path="model",
         )
@@ -782,6 +791,11 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 "Literal['linear', 'point_attention']", fusion_name
             ),
             point_fusion=point,
+            court_observation_profile=cast(
+                "Literal['kp14_reference_baseline', 'kp7_no_reference', 'kp7_reference']",
+                model["court_observation_profile"],
+            ),
+            kp7_camera_rope_enabled=bool(model["kp7_camera_rope_enabled"]),
         )
         _validate_transformer_dimensions(
             hidden_dim=result.hidden_dim,
@@ -796,6 +810,10 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 "model.num_stages and model.num_queries must be positive."
             )
         _non_negative(result.invisible_init_std, path="model.invisible_init_std")
+        try:
+            parse_court_observation_profile(result.court_observation_profile)
+        except ValueError as error:
+            raise SemanticConfigurationError(str(error)) from error
         return result
     raise SemanticConfigurationError(f"Unsupported model.name={name!r}.")
 

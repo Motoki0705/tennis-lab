@@ -57,6 +57,22 @@ class CanonicalTrackingDataset(SceneDatasetBase[dict[str, Tensor]]):
             raise ValueError("CanonicalTrackingDataset requires a validated config.")
         self.hydra_cfg = config
         self.augment = augment
+        run_cfg = config["run"]
+        raw_seed = run_cfg["seed"]
+        if type(raw_seed) is not int or raw_seed < 0:
+            raise ValueError("run.seed must be a non-negative integer.")
+        self.dataset_seed = raw_seed
+        split_name = Path(split_file).name
+        split_offsets = {"train.txt": 0, "val.txt": 1, "test.txt": 2}
+        if split_name not in split_offsets:
+            raise ValueError(
+                "Canonical tracking split_file must be train.txt, val.txt, or test.txt."
+            )
+        rng = (
+            np.random.default_rng(self.dataset_seed + split_offsets[split_name])
+            if rng is None
+            else rng
+        )
         data_cfg = self._resolve_data_cfg(self.hydra_cfg)
         seq_len_range = self._parse_int_range(data_cfg, "seq_len_range")
         num_views_range = self._parse_int_range(data_cfg, "num_views_range")
@@ -187,4 +203,47 @@ def pad_and_stack_tracking_batch(
     return collated
 
 
-__all__ = ["CanonicalTrackingDataset", "pad_and_stack_tracking_batch"]
+def permute_tracking_views(
+    sample: Mapping[str, Tensor],
+    permutation: Tensor,
+    *,
+    view_fields: Sequence[str],
+) -> dict[str, Tensor]:
+    """Permute declared view-axis fields and transform the reference index."""
+    if permutation.ndim != 1 or permutation.dtype != torch.long:
+        raise TypeError("view permutation must be a rank-1 torch.int64 tensor.")
+    views = int(permutation.numel())
+    if views <= 0 or not torch.equal(
+        permutation.sort().values,
+        torch.arange(views, device=permutation.device),
+    ):
+        raise ValueError("view permutation must contain every view index exactly once.")
+    reference = sample.get("reference_view_index")
+    if not isinstance(reference, Tensor) or reference.ndim != 0:
+        raise ValueError("tracking sample reference_view_index must be a scalar tensor.")
+    old_reference = int(reference.item())
+    if old_reference < 0 or old_reference >= views:
+        raise ValueError("tracking sample reference_view_index is outside the view axis.")
+    inverse = torch.empty_like(permutation)
+    inverse[permutation] = torch.arange(views, device=permutation.device)
+
+    output = dict(sample)
+    for field in view_fields:
+        value = sample.get(field)
+        if not isinstance(value, Tensor):
+            raise ValueError(f"tracking view field {field!r} is missing or non-tensor.")
+        if value.ndim == 0 or value.shape[0] != views:
+            raise ValueError(f"tracking view field {field!r} must start with V={views}.")
+        output[field] = value.index_select(0, permutation.to(value.device))
+    output["reference_view_index"] = inverse[old_reference].to(
+        device=reference.device,
+        dtype=reference.dtype,
+    )
+    return output
+
+
+__all__ = [
+    "CanonicalTrackingDataset",
+    "pad_and_stack_tracking_batch",
+    "permute_tracking_views",
+]

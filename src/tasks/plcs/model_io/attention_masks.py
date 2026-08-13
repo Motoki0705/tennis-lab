@@ -5,6 +5,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
+from src.tasks.base.data.court_peaks import reference_context_validity
 from src.utils.models import build_self_attn_mask
 
 
@@ -27,19 +28,27 @@ def prepare_tracking_attention_masks(
     detection_mask: Tensor,
     frame_mask: Tensor,
     view_mask: Tensor,
+    reference_view_mask: Tensor | None = None,
     num_queries: int,
     mask_invisible_observations: bool,
 ) -> tuple[Tensor, Tensor, Tensor]:
     """Prepare tracking observation state and spatial/time attention masks."""
     batch_size, num_views, num_frames, num_detections = detection_mask.shape
-    context_valid = (
-        view_mask[:, :, None, None] & frame_mask[:, None, :, None]
-    ).expand(-1, -1, -1, num_detections)
-    camera_valid = (
-        context_valid & detection_mask
-        if mask_invisible_observations
-        else context_valid
-    ).permute(0, 2, 1, 3)
+    if reference_view_mask is None:
+        context_valid = view_mask[:, :, None, None] & frame_mask[:, None, :, None]
+        camera_valid = (
+            detection_mask & context_valid
+            if mask_invisible_observations
+            else context_valid.expand_as(detection_mask)
+        ).permute(0, 2, 1, 3)
+    else:
+        camera_valid = reference_context_validity(
+            detection_mask,
+            frame_mask=frame_mask,
+            view_mask=view_mask,
+            reference_mask=reference_view_mask,
+            mask_invisible_observations=mask_invisible_observations,
+        )
     slot_valid = frame_mask[:, :, None].expand(-1, -1, num_queries)
     spatial_valid = torch.cat(
         (

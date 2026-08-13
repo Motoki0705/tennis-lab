@@ -37,6 +37,19 @@ def test_build_trainer_forwards_dataloader_reload_interval(
     assert inspected_trainer.reload_dataloaders_every_n_epochs == 1
 
 
+def test_require_fit_completed_rejects_lightning_interrupt() -> None:
+    trainer = cast(Any, SimpleNamespace(interrupted=True))
+
+    with pytest.raises(RuntimeError, match="fit was interrupted"):
+        BaseTrainingRunner._require_fit_completed(trainer)
+
+
+def test_require_fit_completed_accepts_finished_fit() -> None:
+    trainer = cast(Any, SimpleNamespace(interrupted=False))
+
+    BaseTrainingRunner._require_fit_completed(trainer)
+
+
 def test_select_devices_rejects_unavailable_positive_gpu_request(
     make_training_config: Any,
     monkeypatch: pytest.MonkeyPatch,
@@ -111,6 +124,26 @@ def test_save_config_rejects_output_parent_outside_role_root(
 
     with pytest.raises(PathContractError, match="outside its root"):
         BaseTrainingRunner().save_config(config, tmp_path / "outside")
+
+
+def test_queue_repro_dir_owns_checkpoint_pointer(
+    make_training_config: Any,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = OmegaConf.create(make_training_config())
+    runtime = BaseTrainingRunner().validate_runtime_config(config)
+    queue_root = tmp_path / "queue" / "run-id"
+    checkpoint_dir = runtime.run.output_dir / "logs" / "version_0" / "checkpoints"
+    monkeypatch.setenv("TENNIS_REPRO_DIR", str(queue_root))
+
+    BaseTrainingRunner()._record_ckpt_dir_pointer(
+        checkpoint_dir, runtime.resolver
+    )
+
+    assert (queue_root / "output_dir.txt").read_text().strip() == str(
+        checkpoint_dir.resolve()
+    )
 
 
 def test_build_logger_rejects_output_parent_outside_role_root(

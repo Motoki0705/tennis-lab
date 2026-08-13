@@ -10,6 +10,7 @@ from typing import Any, Generic, TypeVar
 from torch import Tensor
 
 from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.base.training.tracking_benchmark import TrackingFusionBenchmarkResult
 
 PredictionT = TypeVar("PredictionT")
 
@@ -21,6 +22,9 @@ class TrackingStepResult(Generic[PredictionT]):
     losses: Mapping[str, Tensor]
     metrics: Mapping[str, Tensor]
     prediction: PredictionT
+    counterfactual_prediction: PredictionT | None = None
+    counterfactual_reference_view_index: Tensor | None = None
+    counterfactual_orientation_sign: Tensor | None = None
 
 
 class TrackingLightningModule(BaseLightningModule, ABC, Generic[PredictionT]):
@@ -41,9 +45,15 @@ class TrackingLightningModule(BaseLightningModule, ABC, Generic[PredictionT]):
 
     @abstractmethod
     def tracking_prediction_result(
-        self, prediction: PredictionT
+        self, result: TrackingStepResult[PredictionT]
     ) -> dict[str, Any]:
-        """Map a typed prediction to the task's Lightning result contract."""
+        """Map a tracking step, including counterfactuals, to persisted arrays."""
+
+    def benchmark_court_peak_fusion(
+        self,
+    ) -> TrackingFusionBenchmarkResult | None:
+        """Measure the configured KP7 reference fusion, if this task owns one."""
+        return None
 
     def _shared_tracking_step(
         self,
@@ -81,14 +91,14 @@ class TrackingLightningModule(BaseLightningModule, ABC, Generic[PredictionT]):
     ) -> dict[str, Any]:
         del batch_idx
         result = self._shared_tracking_step(batch, "val")
-        return self.tracking_prediction_result(result.prediction)
+        return self.tracking_prediction_result(result)
 
     def test_step(
         self, batch: dict[str, Tensor], batch_idx: int
     ) -> dict[str, Any]:
         del batch_idx
         result = self._shared_tracking_step(batch, "test")
-        output = self.tracking_prediction_result(result.prediction)
+        output = self.tracking_prediction_result(result)
         self.collect_test_predictions(batch, output)
         return output
 
@@ -98,6 +108,9 @@ class TrackingLightningModule(BaseLightningModule, ABC, Generic[PredictionT]):
             for key, value in self.trainer.callback_metrics.items()
             if key.startswith("test/") and isinstance(value, Tensor)
         }
+        benchmark = self.benchmark_court_peak_fusion()
+        if benchmark is not None:
+            metrics.update(benchmark.as_metrics())
         self.save_test_predictions(metrics)
 
 

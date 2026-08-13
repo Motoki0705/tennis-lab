@@ -12,3 +12,7 @@ dropout: 0.0
 role_rope_enabled: true
 mask_invisible_observations: true
 invisible_init_std: 0.02
+court_observation_profile: kp14_reference_baseline
+# KP7 limited ablations erase camera-axis RoPE coordinates explicitly. This
+# preserves view-order invariance while reference/other remains a separate value role.
+kp7_camera_rope_enabled: false

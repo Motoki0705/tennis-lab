@@ -2,6 +2,11 @@
 
 from src.utils.models.embeddings.ball import Ball3DEmbedding, BallUVEmbedding
 from src.utils.models.embeddings.court import CourtKPUVEmbedding
+from src.utils.models.embeddings.court_peak_set import (
+    CourtObjectSetFusion,
+    ReferenceViewConditioning,
+    SymmetricCourtPeakEncoder,
+)
 from src.utils.models.embeddings.group_tokens import (
     CourtBallGroupEmbedding,
     CourtPlayerGroupEmbedding,
@@ -17,4 +22,7 @@ __all__ = [
     "PlayerKPUVEmbedding",
     "BallUVEmbedding",
     "Ball3DEmbedding",
+    "CourtObjectSetFusion",
+    "ReferenceViewConditioning",
+    "SymmetricCourtPeakEncoder",
 ]

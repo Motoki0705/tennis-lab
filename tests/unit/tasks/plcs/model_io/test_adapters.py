@@ -60,6 +60,7 @@ class _TrackingModel(nn.Module):
         camera_state_valid: Tensor,
         spatial_attention_mask: Tensor,
         temporal_attention_mask: Tensor,
+        reference_view_mask: Tensor,
     ) -> dict[str, Tensor]:
         self.forward_calls += 1
         del (
@@ -70,6 +71,7 @@ class _TrackingModel(nn.Module):
             camera_state_valid,
             spatial_attention_mask,
             temporal_attention_mask,
+            reference_view_mask,
         )
         batch_size, _, frames = human_kp.shape[:3]
         return {
@@ -246,15 +248,34 @@ def _tracking_adapter() -> PLCSTrackQueryIOAdapter:
 
 
 def _tracking_batch() -> dict[str, Tensor]:
+    human_kp = torch.rand(1, 2, 3, 2, 17, 2)
+    target_position = torch.rand(1, 3, 2, 3)
+    target_rotation = torch.nn.functional.normalize(
+        torch.rand(1, 3, 2, 2), dim=-1
+    )
+    world_joints = torch.rand(1, 3, 2, 17, 3)
     return {
-        "human_kp": torch.rand(1, 2, 3, 2, 17, 2),
+        "human_kp": human_kp,
+        "joint_visibility": torch.ones(
+            *human_kp.shape[:-1], dtype=torch.bool
+        ),
+        "detection_score": torch.ones(*human_kp.shape[:-2]),
         "detection_mask": torch.ones(1, 2, 3, 2, dtype=torch.bool),
         "court_kp": torch.rand(1, 2, 3, 14, 2),
         "court_vis": torch.ones(1, 2, 3, 14, dtype=torch.bool),
         "frame_mask": torch.ones(1, 3, dtype=torch.bool),
         "view_mask": torch.ones(1, 2, dtype=torch.bool),
-        "target_position": torch.rand(1, 3, 2, 3),
-        "target_rotation": torch.rand(1, 3, 2, 2),
+        "camera_center": torch.tensor(
+            [[[0.0, -20.0, 3.0], [0.0, 20.0, 3.0]]]
+        ),
+        "reference_view_index": torch.zeros(1, dtype=torch.long),
+        "orientation_sign": torch.ones(1),
+        "target_position": target_position,
+        "source_target_position": target_position.clone(),
+        "target_rotation": target_rotation,
+        "source_target_rotation": target_rotation.clone(),
+        "target_human_kp_3d": world_joints,
+        "source_target_human_kp_3d": world_joints.clone(),
         "target_presence": torch.ones(1, 3, 2, dtype=torch.bool),
         "target_slot_mask": torch.ones(1, 2, dtype=torch.bool),
         "target_instance_id": torch.ones(1, 3, 2, dtype=torch.int64),
@@ -273,6 +294,23 @@ def test_tracking_boundary_validates_inputs_targets_and_decodes_required_presenc
         prepared,
     )
     assert decoded.presence_logits.shape == (1, 3, 3)
+
+
+def test_tracking_boundary_rejects_reference_orientation_mismatch() -> None:
+    """Switching to the opposite-side reference must also reflect targets."""
+    batch = _tracking_batch()
+    batch["reference_view_index"] = torch.tensor([1])
+
+    with pytest.raises(ModelInputContractError):
+        _tracking_adapter().prepare_training_batch(batch)
+
+
+def test_tracking_boundary_rejects_ambiguous_reference_at_one_meter_margin() -> None:
+    batch = _tracking_batch()
+    batch["camera_center"] = torch.tensor([[[0.0, 0.499, 0.0], [0.0, 0.5, 0.0]]])
+
+    with pytest.raises(ModelInputContractError, match="orientation-ambiguous"):
+        _tracking_adapter().prepare_training_batch(batch)
 
 
 def test_tracking_boundary_rejects_incomplete_court_and_mask_dtype() -> None:
@@ -339,3 +377,39 @@ def test_tracking_output_rejects_missing_presence() -> None:
     }
     with pytest.raises(ModelOutputContractError, match="presence_logits"):
         _tracking_adapter().decode_output(output)
+
+
+def test_kp7_tracking_input_and_output_contracts_fail_closed() -> None:
+    adapter = PLCSTrackQueryIOAdapter(
+        model_type=_TrackingModel,
+        num_queries=3,
+        num_court_tokens=14,
+        num_joints=17,
+        mask_invisible_observations=True,
+        court_observation_profile="kp7_reference",
+    )
+    batch = _tracking_batch()
+    del batch["court_kp"], batch["court_vis"]
+    batch.update(
+        {
+            "court_peak_uv": torch.zeros(1, 2, 3, 7, 1, 2),
+            "court_peak_score": torch.ones(1, 2, 3, 7, 1),
+            "court_peak_covariance": torch.eye(2)
+            .view(1, 1, 1, 1, 1, 2, 2)
+            .expand(1, 2, 3, 7, 1, 2, 2)
+            .clone(),
+            "court_peak_valid": torch.ones(1, 2, 3, 7, 1, dtype=torch.bool),
+        }
+    )
+    batch["court_peak_covariance"][0, 0, 0, 0, 0, 0, 0] = -1.0
+
+    with pytest.raises(ModelInputContractError, match="positive semidefinite"):
+        adapter.build_call(batch)
+    with pytest.raises(ModelOutputContractError, match="finite"):
+        adapter.decode_output(
+            {
+                "position": torch.zeros(1, 3, 3, 3),
+                "rotation": torch.full((1, 3, 3, 2), float("nan")),
+                "presence_logits": torch.zeros(1, 3, 3),
+            }
+        )

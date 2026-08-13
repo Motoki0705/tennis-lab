@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/issue719/i719-blcs-kp7-no-reference/logs/version_3/checkpoints

@@ -5,6 +5,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
+from src.tasks.base.data.court_peaks import reference_context_validity
 from src.utils.models import build_self_attn_mask
 from src.utils.models.components.ops.time_local import (
     build_local_attention_keep_mask,
@@ -94,23 +95,30 @@ def prepare_axial_attention_masks(
 def prepare_tracking_attention_masks(
     *,
     ball_visible: Tensor,
-    court_visible: Tensor,
+    court_visible: Tensor | None = None,
     frame_mask: Tensor,
     view_mask: Tensor,
+    reference_view_mask: Tensor | None = None,
     num_queries: int,
     mask_invisible_observations: bool,
 ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
-    """Prepare track-query state, spatial/time, and point-fusion masks."""
+    """Prepare track-query state and spatial/time masks with reference context."""
     batch_size, num_views, num_frames, num_detections = ball_visible.shape
-    context_valid = (
-        view_mask[:, :, None, None] & frame_mask[:, None, :, None]
-    ).expand(-1, -1, -1, num_detections)
-    observation_valid = (
-        context_valid & ball_visible
-        if mask_invisible_observations
-        else context_valid
-    )
-    observation_state_valid = observation_valid.permute(0, 2, 1, 3)
+    context_valid = view_mask[:, :, None] & frame_mask[:, None, :]
+    if reference_view_mask is None:
+        observation_state_valid = (
+            ball_visible & context_valid.unsqueeze(-1)
+            if mask_invisible_observations
+            else context_valid.unsqueeze(-1).expand_as(ball_visible)
+        ).permute(0, 2, 1, 3)
+    else:
+        observation_state_valid = reference_context_validity(
+            ball_visible,
+            frame_mask=frame_mask,
+            view_mask=view_mask,
+            reference_mask=reference_view_mask,
+            mask_invisible_observations=mask_invisible_observations,
+        )
 
     slot_valid = frame_mask[:, :, None].expand(-1, -1, num_queries)
     spatial_valid = torch.cat(
@@ -128,12 +136,15 @@ def prepare_tracking_attention_masks(
     )
     temporal_mask, _ = build_self_attn_mask(temporal_valid)
 
-    _, point_mask = prepare_point_attention_mask(
-        ball_visible=ball_visible,
-        court_visible=court_visible,
-        context_valid=context_valid[..., 0],
-        mask_invisible_observations=mask_invisible_observations,
-    )
+    if court_visible is None:
+        point_mask = torch.empty(0, dtype=torch.bool, device=ball_visible.device)
+    else:
+        _, point_mask = prepare_point_attention_mask(
+            ball_visible=ball_visible,
+            court_visible=court_visible,
+            context_valid=context_valid,
+            mask_invisible_observations=mask_invisible_observations,
+        )
     return observation_state_valid, spatial_mask, temporal_mask, point_mask
 
 

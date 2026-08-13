@@ -7,6 +7,7 @@ from typing import Any
 import torch
 from torch import Tensor
 
+from src.tasks.base.training.tracking_benchmark import TrackingFusionBenchmarkResult
 from src.tasks.base.training.tracking_lightning_module import (
     TrackingLightningModule,
     TrackingStepResult,
@@ -32,8 +33,10 @@ class _TrackingModule(TrackingLightningModule[Tensor]):
             prediction=prediction,
         )
 
-    def tracking_prediction_result(self, prediction: Tensor) -> dict[str, Any]:
-        return {"prediction": prediction}
+    def tracking_prediction_result(
+        self, result: TrackingStepResult[Tensor]
+    ) -> dict[str, Any]:
+        return {"prediction": result.prediction}
 
 
 def test_shared_lifecycle_dispatches_metrics_logging_and_test_collection(
@@ -66,3 +69,42 @@ def test_shared_lifecycle_dispatches_metrics_logging_and_test_collection(
     assert "train/quality" not in logged
     assert {"val/quality", "test/quality"}.issubset(logged)
     assert collected == [(batch, test_result)]
+
+
+def test_test_epoch_end_merges_fusion_benchmark_metrics(
+    make_training_config: Any,
+    monkeypatch: Any,
+) -> None:
+    module = _TrackingModule(make_training_config())
+    saved: list[dict[str, float]] = []
+    monkeypatch.setattr(
+        type(module),
+        "trainer",
+        property(
+            lambda self: type(
+                "Trainer",
+                (),
+                {"callback_metrics": {"test/loss": torch.tensor(0.25)}},
+            )()
+        ),
+    )
+    monkeypatch.setattr(
+        module,
+        "benchmark_court_peak_fusion",
+        lambda: TrackingFusionBenchmarkResult(1.5, 2.5),
+    )
+    monkeypatch.setattr(
+        module,
+        "save_test_predictions",
+        lambda metrics: saved.append(metrics),
+    )
+
+    module.on_test_epoch_end()
+
+    assert saved == [
+        {
+            "loss": 0.25,
+            "court_peak_fusion_latency_ms": 1.5,
+            "court_peak_fusion_peak_memory_mb": 2.5,
+        }
+    ]

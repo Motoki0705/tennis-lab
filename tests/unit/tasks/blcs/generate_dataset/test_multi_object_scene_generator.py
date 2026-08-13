@@ -77,6 +77,7 @@ def _tracking_config() -> dict[str, object]:
             "augmentation": OmegaConf.load(_AUGMENTATION_CONFIG).augmentation,
         },
         "model": {"num_queries": 2},
+        "run": {"seed": 719},
     }
 
 
@@ -164,6 +165,9 @@ def test_multi_ball_uses_physical_scenes_and_canonical_writer(tmp_path) -> None:
     assert scene.cameras[0].ball_uv.shape == (12, 2, 2)
     assert len(scene.track_instances) == 2
     assert not scene.cameras[0].ball_visible[~scene.ball_present.numpy()].any()
+    frame_index, object_index = np.argwhere(scene.ball_present.numpy())[0]
+    scene.cameras[0].ball_visible[frame_index, object_index] = False
+    scene.cameras[0].ball_uv[frame_index, object_index] = [-0.5, 1.5]
 
     dataset_root = tmp_path / "dataset"
     writer = BLCSDatasetWriter(dataset_root)
@@ -178,6 +182,11 @@ def test_multi_ball_uses_physical_scenes_and_canonical_writer(tmp_path) -> None:
     )[0]
     assert sample["ball_uv"].shape[:3] == (6, 12, 2)
     assert 1 <= int(sample["target_slot_mask"].sum()) <= 2
+    assert sample["ball_uv"][0, frame_index, object_index].tolist() == [0.0, 0.0]
+    assert sample["clean_ball_uv"][0, frame_index, object_index].tolist() == [
+        0.0,
+        0.0,
+    ]
     assert set(sample["target_instance_id"].unique().tolist()) == {-1, 0, 1}
     assert (sample["target_instance_id"][~sample["target_presence"]] == -1).all()
     candidate_ids = sample["candidate_gt_index"][0]

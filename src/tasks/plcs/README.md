@@ -74,9 +74,9 @@
 
 ## Multi-person tracking
 
-観測座標は `human_kp (B,V,T,P,J,2)` のみで、`P` 軸は全camera/frameでscene object IDの昇順に固定し、欠損・dropout・false positiveがあっても列を並べ替えません。debug用の `detection_gt_index` は観測が実object由来ならその列と同じobject ID、そうでなければ`-1`であり、モデルへは渡しません。bbox・keypoint score/visibilityを数値特徴へ連結せず、`detection_mask (B,V,T,P)` がfalseのpersonはlearned invisible tokenへ置換します。`mask_invisible_observations=true` は不可視tokenをattention keyから除外する対照条件、`false` は`frame_mask` / `view_mask`によるpaddingだけを除外し、不可視tokenを更新可能なmemoryとして使う条件です。欠損joint UVは0にします。出力は `position (B,T,Q,3)`、`rotation (B,T,Q,2)`、`presence_logits (B,T,Q)` です。教師は `target_position`、`target_rotation`、`target_presence`、`target_instance_id` で、inactive rotationはidentity、instance IDは`-1`です。重ならないbirth/death区間を同じtarget columnへ詰めるため、同一queryはdeath後に別instanceへ再利用できます。
+観測座標は `human_kp (B,V,T,P,J,2)`、joint単位の有効性は`joint_visibility`、検出confidenceは`detection_score`、object有無は`detection_mask`で明示します。pelvisが見える時はvisible hip中心、そうでなければ全visible joint中心をanchorとし、visibility-awareなcentered full poseをobject特徴にします。不可視personはlearned invisible tokenへ置換し、reference cameraで全objectが欠損した時だけP-slot 0をcontextとして残します。出力は `position (B,T,Q,3)`、`rotation (B,T,Q,2)`、`presence_logits (B,T,Q)` です。
 
-14 court UVはannotation schemaのkeypoint ID順を維持し、`court_vis`で不可視点を0化します。object ID順の各person keypointsとcourtを連結し、BLCSと同じ`src/utils/models/embeddings/group_tokens.py`の共有`CourtPlayerGroupEmbedding`により1 object = 1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*P, D)` です。M-RoPE `(time,camera,role)` のroleはquery=0、court-player group=1です。
+`model=track_query_kp7_reference`はsemantic CourtKP7 multi-peaksをKP14へ戻さずfull-pose object queryへset集約し、集約後だけreference roleを加えます。`track_query_kp7_no_reference`と`track_query_kp14`は同一split/seed/target orientationのablationです。reference cameraに応じてcourt-space positionとheading `[cos,sin]`、world-space human jointsのYを反映しますが、player-local canonical poseは変更しません。下流の`Q + V*P`空間attentionとper-query時間attentionは共通です。
 
 multi-object generatorは1024-frame global timelineに3〜10個のAMASS/SMPL-H source subclipを配置し、query再利用gapを含む同時slot占有数を4以下に保ちます。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
 
@@ -87,6 +87,10 @@ multi-object generatorは1024-frame global timelineに3〜10個のAMASS/SMPL-H s
 
 # 事前生成データで学習
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking
+
+# CourtKP7 reference-conditioned
+.venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking \
+  model=track_query_kp7_reference
 
 # trainだけon-the-fly chunk生成（val/testは上記の固定データ）
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking_chunked

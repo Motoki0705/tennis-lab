@@ -5,9 +5,13 @@ from src.tasks.plcs.models.components.heads import (
     PositionHead,
     RotationHead,
 )
+from src.tasks.plcs.models.components.observation_fusion import (
+    KP7PlayerObservationFusion,
+)
 
 __all__ = [
     "CanonicalPoseHead",
     "PositionHead",
     "RotationHead",
+    "KP7PlayerObservationFusion",
 ]

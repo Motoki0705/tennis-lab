@@ -125,6 +125,28 @@ COURT_KP_NAMES: tuple[str, ...] = (
 
 COURT_KP_IDX: dict[str, int] = {name: i for i, name in enumerate(COURT_KP_NAMES)}
 
+# CourtKP7 is the shared semantic schema for Court Detection output and
+# tracking-task input.  Each class contains the two unordered physical points
+# listed here; the tuple order does not encode near/far identity.
+COURT_SEMANTIC_CLASS_NAMES: tuple[str, ...] = (
+    "doubles_left",
+    "doubles_right",
+    "singles_left",
+    "singles_right",
+    "service_left",
+    "service_right",
+    "service_t",
+)
+COURT_PHYSICAL_INDICES_BY_SEMANTIC_CLASS: tuple[tuple[int, int], ...] = (
+    (0, 2),
+    (1, 3),
+    (4, 5),
+    (6, 7),
+    (8, 10),
+    (9, 11),
+    (12, 13),
+)
+
 
 def court_keypoints_3d(config: CourtConfig) -> Tensor:
     """Return 20 court keypoints (idx 0..19) as a (20, 3) tensor.
