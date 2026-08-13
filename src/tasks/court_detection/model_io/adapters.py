@@ -368,14 +368,12 @@ class CourtModelIOAdapter(nn.Module):
                     "keypoints_normalized": coords,
                     "scores": scores,
                     "valid": valid,
-                    "heatmaps": value,
                 }
             elif kind == "seg":
-                predictions[kind] = {"mask": value.argmax(dim=1), "logits": value}
+                predictions[kind] = {"mask": value.argmax(dim=1)}
             else:
                 predictions[kind] = {
                     "probability": torch.sigmoid(value),
-                    "logits": value,
                 }
         return {
             "sample_id": batch.get("sample_id"),
