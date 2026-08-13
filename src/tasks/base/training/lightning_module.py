@@ -23,6 +23,7 @@ from src.tasks.base.configuration import (
     as_config_mapping,
     require_config_mapping,
 )
+from src.tasks.base.training.repro import active_queue_repro_dir
 from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
 from src.utils.paths import PROJECT_ROOT
 from src.utils.tensor_utils import to_numpy
@@ -66,7 +67,7 @@ class BaseLightningModule(pl.LightningModule):
 
     def __init__(self, config: Any) -> None:
         super().__init__()
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore=["model_io"])
 
         root = as_config_mapping(config, path="configuration")
         self.config = config
@@ -125,7 +126,6 @@ class BaseLightningModule(pl.LightningModule):
     # checkpoint can be deleted. Task modules override
     # :meth:`test_prediction_payload` to declare which arrays to save.
     # ------------------------------------------------------------------
-
     def test_prediction_payload(
         self, batch: Any, result: dict[str, Any]
     ) -> dict[str, np.ndarray]:
@@ -195,6 +195,9 @@ class BaseLightningModule(pl.LightningModule):
             self._test_pred_arrays[key].append(arr)
 
     def _test_predictions_dir(self) -> Path:
+        queue_repro = active_queue_repro_dir()
+        if queue_repro is not None:
+            return queue_repro / "predictions"
         resolved: Path = self.path_resolver.resolve(
             PathRole.ARTIFACT, "test_predictions"
         )

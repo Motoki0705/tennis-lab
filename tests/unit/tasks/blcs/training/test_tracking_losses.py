@@ -37,12 +37,15 @@ def _fixture() -> tuple[BLCSTrackQueryPrediction, BLCSTrackQueryTrainingBatch]:
     logits = torch.randn(1, 5, 3, requires_grad=True)
     target_position = torch.rand(1, 5, 2, 3)
     target_presence = torch.tensor(
-            [[[1, 0], [1, 1], [1, 1], [0, 1], [0, 0]]], dtype=torch.bool
-        )
+        [[[1, 0], [1, 1], [1, 1], [0, 1], [0, 0]]], dtype=torch.bool
+    )
+    target_velocity = torch.zeros_like(target_position)
     batch = BLCSTrackQueryTrainingBatch(
         call=ModelCall(kwargs={}),
         target_position=target_position,
-        target_velocity=torch.zeros_like(target_position),
+        source_target_position=target_position.clone(),
+        target_velocity=target_velocity,
+        source_target_velocity=target_velocity.clone(),
         target_presence=target_presence,
         target_instance_id=torch.where(
             target_presence,
@@ -51,6 +54,8 @@ def _fixture() -> tuple[BLCSTrackQueryPrediction, BLCSTrackQueryTrainingBatch]:
         ),
         target_slot_mask=torch.ones(1, 2, dtype=torch.bool),
         frame_mask=torch.ones(1, 5, dtype=torch.bool),
+        reference_view_index=torch.zeros(1, dtype=torch.long),
+        orientation_sign=torch.ones(1),
     )
     prediction = _prediction(position, logits)
     return prediction, batch
@@ -72,7 +77,9 @@ def test_loss_is_invariant_to_gt_ball_order() -> None:
     permuted = replace(
         batch,
         target_position=batch.target_position[:, :, permutation],
+        source_target_position=batch.source_target_position[:, :, permutation],
         target_velocity=batch.target_velocity[:, :, permutation],
+        source_target_velocity=batch.source_target_velocity[:, :, permutation],
         target_presence=batch.target_presence[:, :, permutation],
         target_instance_id=batch.target_instance_id[:, :, permutation],
         target_slot_mask=batch.target_slot_mask[:, permutation],
@@ -138,11 +145,15 @@ def test_position_loss_reports_axes_and_uses_configured_balance() -> None:
     batch = BLCSTrackQueryTrainingBatch(
         call=ModelCall(kwargs={}),
         target_position=torch.zeros(1, 1, 1, 3),
+        source_target_position=torch.zeros(1, 1, 1, 3),
         target_velocity=torch.zeros(1, 1, 1, 3),
+        source_target_velocity=torch.zeros(1, 1, 1, 3),
         target_presence=torch.ones(1, 1, 1, dtype=torch.bool),
         target_instance_id=torch.zeros(1, 1, 1, dtype=torch.long),
         target_slot_mask=torch.ones(1, 1, dtype=torch.bool),
         frame_mask=torch.ones(1, 1, dtype=torch.bool),
+        reference_view_index=torch.zeros(1, dtype=torch.long),
+        orientation_sign=torch.ones(1),
     )
 
     losses, _ = _compute(criterion, prediction, batch)

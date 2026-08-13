@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import Any, cast
 
 import pytest
 import torch
@@ -147,6 +148,8 @@ def _model_mapping(name: str) -> dict[str, object]:
             "role_rope_enabled": True,
             "mask_invisible_observations": True,
             "invisible_init_std": 0.02,
+            "court_observation_profile": "kp14_reference_baseline",
+            "kp7_camera_rope_enabled": False,
             "observation_fusion": "linear",
         }
     raise AssertionError(f"Unexpected test model name: {name}")
@@ -286,11 +289,14 @@ def test_track_query_adapter_rejects_semantics_and_decodes_presence_once() -> No
     )
     batch = {
         "ball_uv": torch.zeros(1, 1, 2, 2, 2),
+        "ball_score": torch.ones(1, 1, 2, 2),
         "ball_visible": torch.ones(1, 1, 2, 2, dtype=torch.bool),
+        "candidate_mask": torch.ones(1, 1, 2, 2, dtype=torch.bool),
         "court_kp": torch.zeros(1, 1, 2, 14, 2),
         "court_vis": torch.ones(1, 1, 2, 14, dtype=torch.bool),
         "frame_mask": torch.tensor([[True, False]]),
         "view_mask": torch.ones(1, 1, dtype=torch.bool),
+        "reference_view_index": torch.zeros(1, dtype=torch.long),
     }
     with pytest.raises(ModelInputContractError, match="padded view or frame"):
         adapter.build_call(batch)
@@ -301,6 +307,118 @@ def test_track_query_adapter_rejects_semantics_and_decodes_presence_once() -> No
     )
     assert not prediction.presence[..., 0].any()
     assert prediction.presence[..., 1].all()
+
+
+def test_track_query_training_rejects_reference_orientation_mismatch() -> None:
+    """The declared reference view and oriented targets must be one contract."""
+    adapter = TrackQueryModelIOAdapter(
+        num_court_tokens=14,
+        num_queries=2,
+        presence_threshold=0.5,
+        mask_invisible_observations=True,
+    )
+    source_position = torch.tensor(
+        [[[[0.1, 0.2, 0.3], [0.4, -0.5, 0.6]]]],
+    ).expand(1, 2, 2, 3).clone()
+    source_velocity = torch.tensor(
+        [[[[0.01, 0.02, 0.03], [0.04, -0.05, 0.06]]]],
+    ).expand_as(source_position).clone()
+    batch = {
+        "ball_uv": torch.zeros(1, 2, 2, 2, 2),
+        "ball_score": torch.ones(1, 2, 2, 2),
+        "ball_visible": torch.ones(1, 2, 2, 2, dtype=torch.bool),
+        "candidate_mask": torch.ones(1, 2, 2, 2, dtype=torch.bool),
+        "court_kp": torch.zeros(1, 2, 2, 14, 2),
+        "court_vis": torch.ones(1, 2, 2, 14, dtype=torch.bool),
+        "frame_mask": torch.ones(1, 2, dtype=torch.bool),
+        "view_mask": torch.ones(1, 2, dtype=torch.bool),
+        # View 1 is on the +Y side, so its reference orientation sign is -1.
+        "camera_center": torch.tensor(
+            [[[0.0, -20.0, 3.0], [0.0, 20.0, 3.0]]]
+        ),
+        "reference_view_index": torch.tensor([1]),
+        "orientation_sign": torch.tensor([1.0]),
+        "target_position": source_position.clone(),
+        "source_target_position": source_position,
+        "target_velocity": source_velocity.clone(),
+        "source_target_velocity": source_velocity,
+        "target_presence": torch.ones(1, 2, 2, dtype=torch.bool),
+        "target_instance_id": torch.tensor([[[0, 1], [0, 1]]]),
+        "target_slot_mask": torch.ones(1, 2, dtype=torch.bool),
+    }
+
+    with pytest.raises(ModelInputContractError):
+        adapter.build_training_batch(batch)
+
+
+def test_track_query_training_rejects_ambiguous_reference_at_one_meter_margin() -> None:
+    adapter = TrackQueryModelIOAdapter(
+        num_court_tokens=14,
+        num_queries=2,
+        presence_threshold=0.5,
+        mask_invisible_observations=True,
+    )
+    source_position = torch.zeros(1, 2, 2, 3)
+    source_velocity = torch.zeros_like(source_position)
+    batch = {
+        "ball_uv": torch.zeros(1, 1, 2, 1, 2),
+        "ball_score": torch.ones(1, 1, 2, 1),
+        "ball_visible": torch.ones(1, 1, 2, 1, dtype=torch.bool),
+        "candidate_mask": torch.ones(1, 1, 2, 1, dtype=torch.bool),
+        "court_kp": torch.zeros(1, 1, 2, 14, 2),
+        "court_vis": torch.ones(1, 1, 2, 14, dtype=torch.bool),
+        "frame_mask": torch.ones(1, 2, dtype=torch.bool),
+        "view_mask": torch.ones(1, 1, dtype=torch.bool),
+        "camera_center": torch.tensor([[[0.0, 0.499, 0.0]]]),
+        "reference_view_index": torch.tensor([0]),
+        "orientation_sign": torch.tensor([-1.0]),
+        "target_position": source_position.clone(),
+        "source_target_position": source_position,
+        "target_velocity": source_velocity.clone(),
+        "source_target_velocity": source_velocity,
+        "target_presence": torch.ones(1, 2, 2, dtype=torch.bool),
+        "target_instance_id": torch.zeros(1, 2, 2, dtype=torch.long),
+        "target_slot_mask": torch.ones(1, 2, dtype=torch.bool),
+    }
+
+    with pytest.raises(ModelInputContractError, match="orientation-ambiguous"):
+        adapter.build_training_batch(batch)
+
+
+def test_kp7_track_query_input_and_output_contracts_fail_closed() -> None:
+    adapter = TrackQueryModelIOAdapter(
+        num_court_tokens=14,
+        num_queries=2,
+        presence_threshold=0.5,
+        mask_invisible_observations=True,
+        court_observation_profile="kp7_reference",
+    )
+    batch = {
+        "ball_uv": torch.zeros(1, 2, 2, 2, 2),
+        "ball_score": torch.ones(1, 2, 2, 2),
+        "ball_visible": torch.ones(1, 2, 2, 2, dtype=torch.bool),
+        "candidate_mask": torch.ones(1, 2, 2, 2, dtype=torch.bool),
+        "court_peak_uv": torch.zeros(1, 2, 2, 7, 1, 2),
+        "court_peak_score": torch.ones(1, 2, 2, 7, 1),
+        "court_peak_covariance": torch.eye(2)
+        .view(1, 1, 1, 1, 1, 2, 2)
+        .expand(1, 2, 2, 7, 1, 2, 2),
+        "court_peak_valid": torch.ones(1, 2, 2, 7, 1, dtype=torch.bool),
+        "frame_mask": torch.ones(1, 2, dtype=torch.bool),
+        "view_mask": torch.ones(1, 2, dtype=torch.bool),
+        "reference_view_index": torch.tensor([0]),
+    }
+    batch["court_peak_covariance"][0, 0, 0, 0, 0, 0, 1] = 0.5
+
+    with pytest.raises(ModelInputContractError, match="symmetric"):
+        adapter.build_call(batch)
+    with pytest.raises(ModelOutputContractError, match="finite"):
+        adapter.decode_output(
+            {
+                "position": torch.full((1, 2, 2, 3), float("nan")),
+                "presence_logits": torch.zeros(1, 2, 2),
+            }
+        )
 
 
 @pytest.mark.parametrize(
@@ -327,4 +445,5 @@ def test_composition_root_selects_and_binds_one_matching_adapter(
     binding = compose_blcs_model_io(config)
 
     assert isinstance(binding.adapter, adapter_type)
-    assert isinstance(binding.model, binding.adapter.model_type)
+    typed_adapter = cast("Any", binding.adapter)
+    assert type(binding.model) is typed_adapter.model_type

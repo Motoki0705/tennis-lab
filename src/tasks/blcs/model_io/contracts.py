@@ -52,11 +52,15 @@ class BLCSTrackQueryTrainingBatch:
 
     call: ModelCall
     target_position: Tensor
+    source_target_position: Tensor
     target_velocity: Tensor
+    source_target_velocity: Tensor
     target_presence: Tensor
     target_instance_id: Tensor
     target_slot_mask: Tensor
     frame_mask: Tensor
+    reference_view_index: Tensor
+    orientation_sign: Tensor
 
 
 __all__ = [

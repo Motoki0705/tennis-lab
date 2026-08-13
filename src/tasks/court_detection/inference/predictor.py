@@ -35,16 +35,20 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
         device: torch.device,
         *,
         subpixel_refine: bool,
+        max_peaks: int = 4,
     ) -> None:
         if not isinstance(model_io.adapter, CourtKeypointModelIO):
             raise CourtModelIOError(
                 "CourtKeypointPredictor requires a keypoint model-I/O adapter."
             )
+        if max_peaks <= 0:
+            raise ValueError("Court keypoint max_peaks must be positive.")
         self.model_io = model_io
         self.model = model_io.model
         self.adapter = model_io.adapter
         self.device = device
         self.subpixel_refine = subpixel_refine
+        self.max_peaks = max_peaks
 
         self.adapter.validate_model_pair(self.model)
         self.model.to(self.device)
@@ -58,6 +62,7 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
         resolver: PathResolver,
         device: str | torch.device,
         subpixel_refine: bool,
+        max_peaks: int = 4,
         **kwargs: Any,
     ) -> Self:
         """Load one keypoint checkpoint and preserve its bound adapter."""
@@ -75,13 +80,14 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
             bind_model_io(lightning_module.model, adapter),
             resolved_device,
             subpixel_refine=subpixel_refine,
+            max_peaks=max_peaks,
         )
 
     def predict(
         self,
         image: np.ndarray | Image.Image | Tensor,
     ) -> CourtKeypointPrediction:
-        """Return keypoints, scores, and raw heatmaps on CPU for one image."""
+        """Return multi-peak channels, scores, validity, covariance, and heatmaps."""
         if isinstance(image, Tensor):
             if image.ndim not in {3, 4}:
                 raise CourtModelIOError(
@@ -107,6 +113,7 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
             logits,
             original_size_hw=original_size_hw,
             subpixel_refine=self.subpixel_refine,
+            max_peaks=self.max_peaks,
         )
 
     @property

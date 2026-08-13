@@ -93,10 +93,11 @@ def compose_blcs_model_io(config: object) -> BLCSBoundModelIO:
     if isinstance(model_config, TrackQueryModelConfig):
         tracking_model = BLCSTrackQueryModel(model_config)
         tracking_adapter = TrackQueryModelIOAdapter(
-            num_court_tokens=tracking_model.num_court_tokens,
+            num_court_tokens=14,
             num_queries=model_config.num_queries,
             presence_threshold=_tracking_presence_threshold(config),
             mask_invisible_observations=model_config.mask_invisible_observations,
+            court_observation_profile=model_config.court_observation_profile,
         )
         return cast(
             "TrackQueryBoundModelIO",

@@ -15,8 +15,10 @@ class _TypedCourtPredictor:
     def predict(self, image: np.ndarray) -> CourtKeypointPrediction:
         assert image.shape == (8, 12, 3)
         return CourtKeypointPrediction(
-            keypoints=torch.arange(28, dtype=torch.float32).reshape(14, 2),
-            scores=torch.linspace(0.1, 0.9, 14),
+            keypoints=torch.arange(28, dtype=torch.float32).reshape(14, 1, 2),
+            scores=torch.linspace(0.1, 0.9, 14).unsqueeze(-1),
+            valid=torch.ones(14, 1, dtype=torch.bool),
+            covariance=torch.eye(2).reshape(1, 1, 2, 2).expand(14, 1, 2, 2),
             heatmaps=torch.zeros((14, 2, 3)),
         )
 

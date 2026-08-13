@@ -11,6 +11,16 @@ import torch
 from numpy.typing import NDArray
 from torch import Tensor, nn
 
+from src.tasks.base.data.court_peaks import (
+    CourtObservationProfile,
+    court_peak_batch_from_model_input,
+    parse_court_observation_profile,
+    reference_view_mask,
+)
+from src.tasks.base.data.reference_orientation import (
+    reflect_court_vectors,
+    validate_declared_reference_orientation,
+)
 from src.tasks.base.model_io import (
     ModelCall,
     ModelInputContractError,
@@ -26,6 +36,7 @@ from src.tasks.blcs.data.types import (
 from src.tasks.blcs.model_io.attention_masks import (
     prepare_axial_attention_masks,
     prepare_multiview_attention_masks,
+    prepare_point_attention_mask,
     prepare_single_attention_mask,
     prepare_tracking_attention_masks,
 )
@@ -356,7 +367,7 @@ class SingleTrajectoryModelIOAdapter(TrajectoryModelIOAdapter):
 
     @property
     def model_type(self) -> type[nn.Module]:
-        return BLCSModel
+        return cast("type[nn.Module]", BLCSModel)
 
     def build_call(self, batch: Mapping[str, object]) -> ModelCall:
         ball_uv = require_tensor(batch, "ball_uv", spec=TensorSpec(shape=(None, None, 2), dtypes=FloatDtypes))
@@ -487,7 +498,7 @@ class MultiViewTrajectoryModelIOAdapter(_MultiviewTrajectoryModelIOAdapter):
 
     @property
     def model_type(self) -> type[nn.Module]:
-        return BLCSMultiViewModel
+        return cast("type[nn.Module]", BLCSMultiViewModel)
 
     def _prepare_attention_kwargs(self, ball_mask: Tensor) -> dict[str, Tensor]:
         query_mask, query_state_valid, cross_mask, frame_token_valid = (
@@ -528,7 +539,7 @@ class AxialTrajectoryModelIOAdapter(_MultiviewTrajectoryModelIOAdapter):
 
     @property
     def model_type(self) -> type[nn.Module]:
-        return BLCSMultiViewAxialModel
+        return cast("type[nn.Module]", BLCSMultiViewAxialModel)
 
     def _prepare_attention_kwargs(self, ball_mask: Tensor) -> dict[str, Tensor]:
         camera_mask, time_mask, sliding_mask = prepare_axial_attention_masks(
@@ -554,27 +565,41 @@ class TrackQueryModelIOAdapter:
         num_queries: int,
         presence_threshold: float,
         mask_invisible_observations: bool,
+        court_observation_profile: CourtObservationProfile = "kp14_reference_baseline",
     ) -> None:
         self.num_court_tokens = num_court_tokens
         self.num_queries = num_queries
         self.presence_threshold = presence_threshold
         self.mask_invisible_observations = mask_invisible_observations
+        self.court_observation_profile = parse_court_observation_profile(
+            court_observation_profile
+        )
 
     @property
     def model_type(self) -> type[nn.Module]:
-        return BLCSTrackQueryModel
+        return cast("type[nn.Module]", BLCSTrackQueryModel)
 
     def build_call(self, batch: Mapping[str, object]) -> ModelCall:
         ball_uv = require_tensor(batch, "ball_uv", spec=TensorSpec(shape=(None, None, None, None, 2), dtypes=FloatDtypes))
         ball_visible = require_tensor(batch, "ball_visible", spec=TensorSpec(shape=ball_uv.shape[:-1], dtypes=frozenset({torch.bool})))
+        ball_score = require_tensor(batch, "ball_score", spec=TensorSpec(shape=ball_visible.shape, dtypes=FloatDtypes))
+        candidate_mask = require_tensor(batch, "candidate_mask", spec=TensorSpec(shape=ball_visible.shape, dtypes=frozenset({torch.bool})))
         batch_size, views, frames, detections = ball_uv.shape[:4]
-        court_kp = require_tensor(batch, "court_kp", spec=TensorSpec(shape=(batch_size, views, frames, self.num_court_tokens, 2), dtypes=FloatDtypes))
-        court_vis = require_tensor(batch, "court_vis", spec=TensorSpec(shape=court_kp.shape[:-1], dtypes=frozenset({torch.bool})))
         frame_mask = require_tensor(batch, "frame_mask", spec=TensorSpec(shape=(batch_size, frames), dtypes=frozenset({torch.bool})))
         view_mask = require_tensor(batch, "view_mask", spec=TensorSpec(shape=(batch_size, views), dtypes=frozenset({torch.bool})))
+        reference_index = require_tensor(batch, "reference_view_index", spec=TensorSpec(shape=(batch_size,), dtypes=IndexDtypes))
+        try:
+            reference_mask = reference_view_mask(reference_index, view_mask)
+        except ValueError as error:
+            raise ModelInputContractError(str(error)) from error
         _positive_axes("ball_uv", ball_uv, (0, 1, 2, 3))
         _validate_uv("ball_uv", ball_uv)
-        _validate_uv("court_kp", court_kp)
+        if not bool(torch.isfinite(ball_score).all()) or bool(
+            ((ball_score < 0.0) | (ball_score > 1.0)).any()
+        ):
+            raise ModelInputContractError("ball_score must be finite within [0,1].")
+        if bool((ball_visible & ~candidate_mask).any()):
+            raise ModelInputContractError("ball_visible must be inside candidate_mask.")
         if bool(
             (
                 ball_visible
@@ -584,18 +609,59 @@ class TrackQueryModelIOAdapter:
             raise ModelInputContractError(
                 "ball_visible cannot be true in a padded view or frame."
             )
-        _same_device({"ball_uv": ball_uv, "ball_visible": ball_visible, "court_kp": court_kp, "court_vis": court_vis, "frame_mask": frame_mask, "view_mask": view_mask})
-        observation_state_valid, spatial_mask, temporal_mask, point_mask = (
+        model_tensors = {"ball_uv": ball_uv, "ball_score": ball_score, "ball_visible": ball_visible, "candidate_mask": candidate_mask, "frame_mask": frame_mask, "view_mask": view_mask, "reference_view_index": reference_index}
+        observation_state_valid, spatial_mask, temporal_mask, _ = (
             prepare_tracking_attention_masks(
-                ball_visible=ball_visible,
-                court_visible=court_vis,
+                ball_visible=ball_visible & candidate_mask,
                 frame_mask=frame_mask,
                 view_mask=view_mask,
+                reference_view_mask=reference_mask,
                 num_queries=self.num_queries,
                 mask_invisible_observations=self.mask_invisible_observations,
             )
         )
-        return ModelCall(kwargs={"ball_uv": ball_uv, "ball_visible": ball_visible, "court_kp": court_kp, "court_vis": court_vis, "frame_mask": frame_mask, "observation_state_valid": observation_state_valid, "spatial_attention_mask": spatial_mask, "temporal_attention_mask": temporal_mask, "point_attention_mask": point_mask})
+        kwargs: dict[str, Tensor] = {
+            "ball_uv": ball_uv,
+            "ball_visible": ball_visible,
+            "frame_mask": frame_mask,
+            "observation_state_valid": observation_state_valid,
+            "spatial_attention_mask": spatial_mask,
+            "temporal_attention_mask": temporal_mask,
+            "reference_view_mask": reference_mask,
+        }
+        if self.court_observation_profile == "kp14_reference_baseline":
+            court_kp = require_tensor(batch, "court_kp", spec=TensorSpec(shape=(batch_size, views, frames, self.num_court_tokens, 2), dtypes=FloatDtypes))
+            court_vis = require_tensor(batch, "court_vis", spec=TensorSpec(shape=court_kp.shape[:-1], dtypes=frozenset({torch.bool})))
+            _validate_uv("court_kp", court_kp)
+            context_valid = view_mask[:, :, None] & frame_mask[:, None, :]
+            _, point_mask = prepare_point_attention_mask(
+                ball_visible=ball_visible,
+                court_visible=court_vis,
+                context_valid=context_valid,
+                mask_invisible_observations=self.mask_invisible_observations,
+            )
+            kwargs.update({"court_kp": court_kp, "court_vis": court_vis, "point_attention_mask": point_mask})
+            model_tensors.update({"court_kp": court_kp, "court_vis": court_vis})
+        else:
+            try:
+                peaks = court_peak_batch_from_model_input(
+                    batch,
+                    expected_shape_bvt=(batch_size, views, frames),
+                )
+            except (TypeError, ValueError) as error:
+                raise ModelInputContractError(str(error)) from error
+            court_peak_uv = peaks.uv
+            court_peak_score = peaks.score
+            court_peak_covariance = peaks.covariance
+            court_peak_valid = peaks.valid
+            if court_peak_uv.dtype != ball_uv.dtype:
+                raise ModelInputContractError(
+                    "Court peak floating tensors must match ball_uv dtype."
+                )
+            kwargs.update({"ball_score": ball_score, "court_peak_uv": court_peak_uv, "court_peak_score": court_peak_score, "court_peak_covariance": court_peak_covariance, "court_peak_valid": court_peak_valid})
+            model_tensors.update({"court_peak_uv": court_peak_uv, "court_peak_score": court_peak_score, "court_peak_covariance": court_peak_covariance, "court_peak_valid": court_peak_valid})
+        _same_device(model_tensors)
+        return ModelCall(kwargs=kwargs)
 
     def decode_output(self, output: object) -> BLCSTrackQueryPrediction:
         result = _raw_output(output)
@@ -637,6 +703,14 @@ class TrackQueryModelIOAdapter:
         batch_size, frames = frame_mask.shape
         position = require_tensor(batch, "target_position", spec=TensorSpec(shape=(batch_size, frames, self.num_queries, 3), dtypes=FloatDtypes))
         velocity = require_tensor(batch, "target_velocity", spec=TensorSpec(shape=position.shape, dtypes=FloatDtypes))
+        source_position = require_tensor(batch, "source_target_position", spec=TensorSpec(shape=position.shape, dtypes=FloatDtypes))
+        source_velocity = require_tensor(batch, "source_target_velocity", spec=TensorSpec(shape=velocity.shape, dtypes=FloatDtypes))
+        orientation_sign = require_tensor(batch, "orientation_sign", spec=TensorSpec(shape=(batch_size,), dtypes=FloatDtypes))
+        reference_index = require_tensor(batch, "reference_view_index", spec=TensorSpec(shape=(batch_size,), dtypes=IndexDtypes))
+        ball_uv = cast(Tensor, call.kwargs["ball_uv"])
+        views = ball_uv.shape[1]
+        view_mask = require_tensor(batch, "view_mask", spec=TensorSpec(shape=(batch_size, views), dtypes=frozenset({torch.bool})))
+        camera_center = require_tensor(batch, "camera_center", spec=TensorSpec(shape=(batch_size, views, 3), dtypes=FloatDtypes))
         presence = require_tensor(batch, "target_presence", spec=TensorSpec(shape=position.shape[:-1], dtypes=frozenset({torch.bool})))
         instance_id = require_tensor(batch, "target_instance_id", spec=TensorSpec(shape=presence.shape, dtypes=IndexDtypes))
         slot_mask = require_tensor(batch, "target_slot_mask", spec=TensorSpec(shape=(batch_size, self.num_queries), dtypes=frozenset({torch.bool})))
@@ -644,16 +718,32 @@ class TrackQueryModelIOAdapter:
             raise ModelInputContractError(
                 "target_instance_id must be non-negative exactly where target_presence is true and -1 otherwise."
             )
-        call_ball_uv = cast(Tensor, call.kwargs["ball_uv"])
-        _same_device({"model_ball_uv": call_ball_uv, "target_position": position, "target_velocity": velocity, "target_presence": presence, "target_instance_id": instance_id, "target_slot_mask": slot_mask, "frame_mask": frame_mask})
+        _same_device({"model_ball_uv": ball_uv, "camera_center": camera_center, "target_position": position, "target_velocity": velocity, "target_presence": presence, "target_instance_id": instance_id, "target_slot_mask": slot_mask, "frame_mask": frame_mask})
+        try:
+            validate_declared_reference_orientation(
+                camera_center,
+                view_mask,
+                reference_index,
+                orientation_sign,
+            )
+        except (TypeError, ValueError) as error:
+            raise ModelInputContractError(str(error)) from error
+        if not bool(torch.allclose(position, reflect_court_vectors(source_position, orientation_sign))):
+            raise ModelInputContractError("target_position is inconsistent with reference orientation.")
+        if not bool(torch.allclose(velocity, reflect_court_vectors(source_velocity, orientation_sign))):
+            raise ModelInputContractError("target_velocity is inconsistent with reference orientation.")
         return BLCSTrackQueryTrainingBatch(
             call=call,
             target_position=position,
+            source_target_position=source_position,
             target_velocity=velocity,
+            source_target_velocity=source_velocity,
             target_presence=presence,
             target_instance_id=instance_id,
             target_slot_mask=slot_mask,
             frame_mask=frame_mask,
+            reference_view_index=reference_index,
+            orientation_sign=orientation_sign,
         )
 
 

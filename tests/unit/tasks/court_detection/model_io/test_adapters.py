@@ -227,11 +227,14 @@ def test_keypoint_decode_returns_original_pixel_coordinates() -> None:
         logits,
         original_size_hw=(7, 9),
         subpixel_refine=False,
+        max_peaks=1,
     )
 
     assert isinstance(prediction, CourtKeypointPrediction)
-    torch.testing.assert_close(prediction.keypoints, torch.tensor([[6.0, 4.0]]))
-    assert prediction.scores.shape == (1,)
+    torch.testing.assert_close(prediction.keypoints, torch.tensor([[[6.0, 4.0]]]))
+    assert prediction.scores.shape == prediction.valid.shape == (1, 1)
+    assert prediction.covariance.shape == (1, 1, 2, 2)
+    assert prediction.valid.all()
     assert prediction.heatmaps.shape == (1, 4, 5)
 
 

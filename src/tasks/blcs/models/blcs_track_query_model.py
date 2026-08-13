@@ -8,8 +8,8 @@ from torch import nn
 from src.tasks.blcs.configuration import TrackQueryModelConfig
 from src.tasks.blcs.data.tracking_types import BLCSTrackingPrediction
 from src.tasks.blcs.models.components.observation_fusion import (
-    LinearTrackObservationFusion,
-    PointAttentionTrackObservationFusion,
+    TrackObservationFusion,
+    build_track_observation_fusion,
 )
 from src.utils.models import (
     RMSNorm,
@@ -17,6 +17,7 @@ from src.utils.models import (
     TransformerBlock,
     TransformerBlockConfig,
 )
+from src.utils.models.embeddings import ReferenceViewConditioning
 
 
 class BLCSTrackQueryModel(nn.Module):
@@ -38,35 +39,27 @@ class BLCSTrackQueryModel(nn.Module):
                 "rope_dim must be even and no larger than the attention head dim."
             )
 
-        self.num_court_tokens = 14
-        invisible_init_std = config.invisible_init_std
-        self.observation_encoder: (
-            LinearTrackObservationFusion | PointAttentionTrackObservationFusion
+        self.court_observation_profile = config.court_observation_profile
+        self.kp7_camera_rope_enabled = config.kp7_camera_rope_enabled
+        self.num_court_tokens = (
+            14 if self.court_observation_profile == "kp14_reference_baseline" else None
         )
-        if config.observation_fusion == "linear":
-            self.observation_encoder = LinearTrackObservationFusion(
+        invisible_init_std = config.invisible_init_std
+        self.observation_encoder: TrackObservationFusion = (
+            build_track_observation_fusion(
+                profile=self.court_observation_profile,
+                observation_fusion=config.observation_fusion,
+                point_fusion=config.point_fusion,
                 hidden_dim=self.hidden_dim,
-                num_court_tokens=self.num_court_tokens,
                 invisible_init_std=invisible_init_std,
             )
-        elif config.observation_fusion == "point_attention":
-            point_fusion_config = config.point_fusion
-            if point_fusion_config is None:
-                raise ValueError(
-                    "model.point_fusion is required when observation_fusion="
-                    "'point_attention'."
-                )
-            self.observation_encoder = PointAttentionTrackObservationFusion(
-                hidden_dim=self.hidden_dim,
-                num_court_tokens=self.num_court_tokens,
-                config=point_fusion_config,
-                invisible_init_std=invisible_init_std,
-            )
-        else:
-            raise ValueError(
-                "observation_fusion must be 'linear' or 'point_attention', got "
-                f"{config.observation_fusion!r}."
-            )
+        )
+        self.reference_conditioning = (
+            ReferenceViewConditioning(self.hidden_dim)
+            if self.court_observation_profile
+            in {"kp14_reference_baseline", "kp7_reference"}
+            else None
+        )
         self.slot_embeddings = nn.Parameter(
             torch.randn(self.num_queries, self.hidden_dim) * 0.02
         )
@@ -137,13 +130,19 @@ class BLCSTrackQueryModel(nn.Module):
         self,
         ball_uv: torch.Tensor,
         ball_visible: torch.Tensor,
-        court_kp: torch.Tensor,
-        court_vis: torch.Tensor,
         frame_mask: torch.Tensor,
         observation_state_valid: torch.Tensor,
         spatial_attention_mask: torch.Tensor,
         temporal_attention_mask: torch.Tensor,
-        point_attention_mask: torch.Tensor,
+        reference_view_mask: torch.Tensor | None = None,
+        ball_score: torch.Tensor | None = None,
+        court_kp: torch.Tensor | None = None,
+        court_vis: torch.Tensor | None = None,
+        point_attention_mask: torch.Tensor | None = None,
+        court_peak_uv: torch.Tensor | None = None,
+        court_peak_score: torch.Tensor | None = None,
+        court_peak_covariance: torch.Tensor | None = None,
+        court_peak_valid: torch.Tensor | None = None,
     ) -> BLCSTrackingPrediction:
         """Predict clip-local ball tracks.
 
@@ -151,13 +150,23 @@ class BLCSTrackQueryModel(nn.Module):
         """
         batch_size, num_views, num_frames, num_detections, _ = ball_uv.shape
         camera_tokens, camera_state_valid = self.observation_encoder(
-            court_kp,
-            court_vis,
-            ball_uv,
-            ball_visible,
-            observation_state_valid,
-            point_attention_mask,
+            ball_uv=ball_uv,
+            ball_visible=ball_visible,
+            state_valid=observation_state_valid,
+            ball_score=ball_score,
+            court_kp=court_kp,
+            court_visible=court_vis,
+            point_attention_mask=point_attention_mask,
+            court_peak_uv=court_peak_uv,
+            court_peak_score=court_peak_score,
+            court_peak_covariance=court_peak_covariance,
+            court_peak_valid=court_peak_valid,
         )
+        if self.reference_conditioning is not None and reference_view_mask is not None:
+            camera_tokens = self.reference_conditioning(
+                camera_tokens.permute(0, 2, 1, 3, 4),
+                reference_view_mask,
+            ).permute(0, 2, 1, 3, 4)
         camera_tokens = camera_tokens.reshape(
             batch_size,
             num_frames,
@@ -180,6 +189,11 @@ class BLCSTrackQueryModel(nn.Module):
             num_queries=self.num_queries,
             device=ball_uv.device,
         )
+        if (
+            self.court_observation_profile != "kp14_reference_baseline"
+            and not self.kp7_camera_rope_enabled
+        ):
+            coordinates[..., 1] = 1
         rope_coordinates = coordinates.clone()
         rope_coordinates[..., 2] *= self.role_rope_scale
         spatial_freqs = self.spatial_frequency_computer(rope_coordinates)

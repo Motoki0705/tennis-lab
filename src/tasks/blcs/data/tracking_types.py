@@ -18,13 +18,24 @@ class BLCSTrackingBatch(TypedDict):
 
     scene_format_version: Tensor
     ball_uv: Tensor
+    ball_score: Tensor
     ball_visible: Tensor
+    candidate_mask: Tensor
     court_kp: Tensor
     court_vis: Tensor
+    court_peak_uv: Tensor
+    court_peak_score: Tensor
+    court_peak_covariance: Tensor
+    court_peak_valid: Tensor
     frame_mask: Tensor
     view_mask: Tensor
+    reference_view_index: Tensor
+    orientation_sign: Tensor
+    camera_center: Tensor
     target_position: Tensor
+    source_target_position: Tensor
     target_velocity: Tensor
+    source_target_velocity: Tensor
     target_presence: Tensor
     target_instance_id: Tensor
     target_slot_mask: Tensor

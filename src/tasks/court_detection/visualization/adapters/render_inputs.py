@@ -65,7 +65,7 @@ class _KeypointQualitativeRenderer:
             subpixel_refine=False,
         )
         rendered_prediction = KpFramePrediction(
-            keypoints_px=prediction.keypoints.numpy(),
+            keypoints_px=prediction.keypoints[prediction.valid].numpy(),
             mean_heatmap=torch.sigmoid(prediction.heatmaps).amax(0).numpy(),
         )
         rendered: list[np.ndarray] = render_kp_frames(

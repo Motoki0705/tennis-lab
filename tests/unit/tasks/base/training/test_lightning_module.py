@@ -8,6 +8,7 @@ smoke suite.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TypedDict, cast
 
@@ -33,6 +34,22 @@ class _TinyModule(BaseLightningModule):
     def __init__(self, config: dict[str, object]) -> None:
         super().__init__(config)
         self.lin = nn.Linear(2, 2)
+
+
+@dataclass(frozen=True)
+class _FrozenModelIO:
+    name: str
+
+
+class _ModelIOModule(BaseLightningModule):
+    def __init__(
+        self,
+        config: dict[str, object],
+        *,
+        model_io: _FrozenModelIO,
+    ) -> None:
+        super().__init__(config)
+        self.model_io = model_io
 
 
 class _SchedulerResult(TypedDict):
@@ -157,6 +174,13 @@ def test_concat_padded_low_dim_arrays_concatenated() -> None:
     assert out.tolist() == [1.0, 2.0, 3.0]
 
 
+def test_frozen_model_io_is_not_captured_as_hyperparameter() -> None:
+    module = _ModelIOModule(_config(), model_io=_FrozenModelIO(name="tracking"))
+
+    assert "config" in module.hparams
+    assert "model_io" not in module.hparams
+
+
 # ---------------------------------------------------------------------------
 # _estimate_total_steps
 # ---------------------------------------------------------------------------
@@ -261,6 +285,23 @@ def test_save_test_predictions_writes_npz(tmp_path: Path, monkeypatch) -> None:
     assert loaded["scene_ids"].shape == (3,)
     metrics = (npz_path.parent / "metrics.json").read_text()
     assert "mae" in metrics
+
+
+def test_queue_repro_dir_owns_prediction_bundle(tmp_path: Path, monkeypatch) -> None:
+    class _PredModule(_TinyModule):
+        def test_prediction_payload(self, batch, result):
+            return {"position": result["position"]}
+
+    configured_root = tmp_path / "configured"
+    queue_root = tmp_path / "queue" / "run-id"
+    monkeypatch.setenv("TENNIS_REPRO_DIR", str(queue_root))
+    module = _PredModule(_config(artifact_root=configured_root))
+    module.collect_test_predictions(None, {"position": torch.zeros(1, 2, 3)})
+
+    npz_path = module.save_test_predictions(metrics={"mae": 0.1})
+
+    assert npz_path == queue_root / "predictions" / "pred_test.npz"
+    assert not (configured_root / "test_predictions").exists()
 
 
 def test_save_test_predictions_none_when_empty(tmp_path: Path, monkeypatch) -> None:

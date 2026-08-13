@@ -10,6 +10,17 @@ import numpy as np
 import torch
 from torch import Tensor, nn
 
+from src.tasks.base.data.court_peaks import (
+    CourtObservationProfile,
+    court_peak_batch_from_model_input,
+    parse_court_observation_profile,
+    reference_view_mask,
+)
+from src.tasks.base.data.reference_orientation import (
+    reflect_court_vectors,
+    reflect_heading,
+    validate_declared_reference_orientation,
+)
 from src.tasks.base.model_io import (
     ModelCall,
     ModelInputContractError,
@@ -72,6 +83,37 @@ def _binary_mask(name: str, tensor: Tensor) -> None:
             raise ModelInputContractError(
                 f"{name} must be boolean or contain only explicit 0/1 values."
             )
+
+
+def _prepare_player_geometry(
+    human_kp: Tensor,
+    joint_visibility: Tensor,
+    detection_score: Tensor,
+) -> tuple[Tensor, Tensor]:
+    """Build a visibility-aware player anchor and centered pose descriptor."""
+    weights = joint_visibility.to(dtype=human_kp.dtype)
+    visible_count = weights.sum(dim=-1, keepdim=True)
+    visible_center = (human_kp * weights.unsqueeze(-1)).sum(dim=-2) / (
+        visible_count.clamp_min(1.0)
+    )
+    visible_center = torch.where(
+        visible_count > 0,
+        visible_center,
+        torch.zeros_like(visible_center),
+    )
+
+    hip_weights = weights[..., 11:13]
+    hip_count = hip_weights.sum(dim=-1, keepdim=True)
+    hip_center = (human_kp[..., 11:13, :] * hip_weights.unsqueeze(-1)).sum(
+        dim=-2
+    ) / hip_count.clamp_min(1.0)
+    anchor = torch.where(hip_count > 0, hip_center, visible_center)
+    centered = (human_kp - anchor.unsqueeze(-2)) * weights.unsqueeze(-1)
+    features = torch.cat(
+        [centered.flatten(start_dim=-2), weights, detection_score.unsqueeze(-1)],
+        dim=-1,
+    )
+    return anchor, features
 
 
 def _required_output(
@@ -638,6 +680,7 @@ class PLCSTrackQueryIOAdapter:
         num_court_tokens: int,
         num_joints: int,
         mask_invisible_observations: bool,
+        court_observation_profile: CourtObservationProfile = "kp14_reference_baseline",
     ) -> None:
         self._model_type = model_type
         self.profile = PLCSInputProfile.TRACK_QUERY
@@ -645,6 +688,9 @@ class PLCSTrackQueryIOAdapter:
         self.num_court_tokens = num_court_tokens
         self.num_joints = num_joints
         self.mask_invisible_observations = mask_invisible_observations
+        self.court_observation_profile = parse_court_observation_profile(
+            court_observation_profile
+        )
 
     @property
     def model_type(self) -> type[nn.Module]:
@@ -674,20 +720,20 @@ class PLCSTrackQueryIOAdapter:
                 shape=(None, None, None, None), dtypes=frozenset({torch.bool})
             ),
         )
-        court_kp = require_tensor(
+        joint_visibility = require_tensor(
             batch,
-            "court_kp",
+            "joint_visibility",
             spec=TensorSpec(
-                shape=(None, None, None, self.num_court_tokens, 2),
-                dtypes=_FLOAT_DTYPES,
+                shape=human_kp.shape[:-1],
+                dtypes=frozenset({torch.bool}),
             ),
         )
-        court_vis = require_tensor(
+        detection_score = require_tensor(
             batch,
-            "court_vis",
+            "detection_score",
             spec=TensorSpec(
-                shape=(None, None, None, self.num_court_tokens),
-                dtypes=frozenset({torch.bool}),
+                shape=human_kp.shape[:-2],
+                dtypes=_FLOAT_DTYPES,
             ),
         )
         frame_mask = require_tensor(
@@ -704,6 +750,13 @@ class PLCSTrackQueryIOAdapter:
                 shape=(None, None), dtypes=frozenset({torch.bool})
             ),
         )
+        reference_index = require_tensor(
+            batch,
+            "reference_view_index",
+            spec=TensorSpec(
+                shape=(human_kp.shape[0],), dtypes=frozenset({torch.int64})
+            ),
+        )
         batch_size, views, frames, detections = human_kp.shape[:4]
         if min(batch_size, views, frames, detections) == 0:
             raise ModelInputContractError(
@@ -713,46 +766,101 @@ class PLCSTrackQueryIOAdapter:
             raise ModelInputContractError(
                 "detection_mask must match human_kp through its detection axis."
             )
-        if court_kp.shape[:3] != (batch_size, views, frames):
-            raise ModelInputContractError(
-                "court_kp must share human_kp (B,V,T) axes."
-            )
-        if court_vis.shape != court_kp.shape[:-1]:
-            raise ModelInputContractError(
-                "court_vis must match court_kp without its UV axis."
-            )
         if frame_mask.shape != (batch_size, frames):
             raise ModelInputContractError("frame_mask must have shape (B,T).")
         if view_mask.shape != (batch_size, views):
             raise ModelInputContractError("view_mask must have shape (B,V).")
         _normalized_uv("human_kp", human_kp)
-        _normalized_uv("court_kp", court_kp)
+        _finite("detection_score", detection_score)
+        if bool(((detection_score < 0.0) | (detection_score > 1.0)).any()):
+            raise ModelInputContractError("detection_score must be within [0,1].")
+        if bool((detection_mask & ~joint_visibility.any(dim=-1)).any()):
+            raise ModelInputContractError(
+                "detection_mask cannot be true without a visible joint."
+            )
         valid_observation = view_mask[:, :, None, None] & frame_mask[:, None, :, None]
         if bool((detection_mask & ~valid_observation).any().item()):
             raise ModelInputContractError(
                 "detection_mask cannot be true in a padded view or frame."
             )
+        try:
+            reference_mask = reference_view_mask(reference_index, view_mask)
+        except ValueError as error:
+            raise ModelInputContractError(str(error)) from error
         camera_state_valid, spatial_mask, temporal_mask = (
             prepare_tracking_attention_masks(
                 detection_mask=detection_mask,
                 frame_mask=frame_mask,
                 view_mask=view_mask,
+                reference_view_mask=reference_mask,
                 num_queries=self.num_queries,
                 mask_invisible_observations=self.mask_invisible_observations,
             )
         )
-        return ModelCall(
-            kwargs={
-                "human_kp": human_kp,
-                "detection_mask": detection_mask,
-                "court_kp": court_kp,
-                "court_vis": court_vis,
-                "frame_mask": frame_mask,
-                "camera_state_valid": camera_state_valid,
-                "spatial_attention_mask": spatial_mask,
-                "temporal_attention_mask": temporal_mask,
-            }
-        )
+        kwargs: dict[str, Tensor] = {
+            "human_kp": human_kp,
+            "detection_mask": detection_mask,
+            "frame_mask": frame_mask,
+            "camera_state_valid": camera_state_valid,
+            "spatial_attention_mask": spatial_mask,
+            "temporal_attention_mask": temporal_mask,
+            "reference_view_mask": reference_mask,
+        }
+        if self.court_observation_profile == "kp14_reference_baseline":
+            court_kp = require_tensor(
+                batch,
+                "court_kp",
+                spec=TensorSpec(
+                    shape=(batch_size, views, frames, self.num_court_tokens, 2),
+                    dtypes=_FLOAT_DTYPES,
+                ),
+            )
+            court_vis = require_tensor(
+                batch,
+                "court_vis",
+                spec=TensorSpec(
+                    shape=court_kp.shape[:-1], dtypes=frozenset({torch.bool})
+                ),
+            )
+            _normalized_uv("court_kp", court_kp)
+            kwargs.update({"court_kp": court_kp, "court_vis": court_vis})
+        else:
+            try:
+                peaks = court_peak_batch_from_model_input(
+                    batch,
+                    expected_shape_bvt=(batch_size, views, frames),
+                )
+            except (TypeError, ValueError) as error:
+                raise ModelInputContractError(str(error)) from error
+            court_peak_uv = peaks.uv
+            court_peak_score = peaks.score
+            court_peak_covariance = peaks.covariance
+            court_peak_valid = peaks.valid
+            if court_peak_uv.dtype != human_kp.dtype:
+                raise ModelInputContractError(
+                    "Court peak floating tensors must match human_kp dtype."
+                )
+            player_anchor, player_features = _prepare_player_geometry(
+                human_kp,
+                joint_visibility,
+                detection_score,
+            )
+            kwargs.update(
+                {
+                    "court_peak_uv": court_peak_uv,
+                    "court_peak_score": court_peak_score,
+                    "court_peak_covariance": court_peak_covariance,
+                    "court_peak_valid": court_peak_valid,
+                    "player_anchor": player_anchor,
+                    "player_features": player_features,
+                }
+            )
+        devices = {value.device for value in kwargs.values()}
+        if len(devices) != 1:
+            raise ModelInputContractError(
+                "All PLCS tracking model inputs must share one device."
+            )
+        return ModelCall(kwargs=kwargs)
 
     def prepare_training_batch(
         self, batch: Mapping[str, object]
@@ -772,6 +880,55 @@ class PLCSTrackQueryIOAdapter:
             "target_rotation",
             spec=TensorSpec(
                 shape=(batch_size, frames, None, 2), dtypes=_FLOAT_DTYPES
+            ),
+        )
+        source_target_position = require_tensor(
+            batch,
+            "source_target_position",
+            spec=TensorSpec(shape=target_position.shape, dtypes=_FLOAT_DTYPES),
+        )
+        source_target_rotation = require_tensor(
+            batch,
+            "source_target_rotation",
+            spec=TensorSpec(shape=target_rotation.shape, dtypes=_FLOAT_DTYPES),
+        )
+        target_human_kp_3d = require_tensor(
+            batch,
+            "target_human_kp_3d",
+            spec=TensorSpec(
+                shape=(*target_position.shape[:-1], 17, 3), dtypes=_FLOAT_DTYPES
+            ),
+        )
+        source_target_human_kp_3d = require_tensor(
+            batch,
+            "source_target_human_kp_3d",
+            spec=TensorSpec(shape=target_human_kp_3d.shape, dtypes=_FLOAT_DTYPES),
+        )
+        orientation_sign = require_tensor(
+            batch,
+            "orientation_sign",
+            spec=TensorSpec(shape=(batch_size,), dtypes=_FLOAT_DTYPES),
+        )
+        views = human_kp.shape[1]
+        view_mask = require_tensor(
+            batch,
+            "view_mask",
+            spec=TensorSpec(
+                shape=(batch_size, views), dtypes=frozenset({torch.bool})
+            ),
+        )
+        reference_index = require_tensor(
+            batch,
+            "reference_view_index",
+            spec=TensorSpec(
+                shape=(batch_size,), dtypes=frozenset({torch.int64})
+            ),
+        )
+        camera_center = require_tensor(
+            batch,
+            "camera_center",
+            spec=TensorSpec(
+                shape=(batch_size, views, 3), dtypes=_FLOAT_DTYPES
             ),
         )
         target_presence = require_tensor(
@@ -818,6 +975,44 @@ class PLCSTrackQueryIOAdapter:
             )
         _finite("target_position", target_position)
         _finite("target_rotation", target_rotation)
+        try:
+            validate_declared_reference_orientation(
+                camera_center,
+                view_mask,
+                reference_index,
+                orientation_sign,
+            )
+        except (TypeError, ValueError) as error:
+            raise ModelInputContractError(str(error)) from error
+        if not bool(
+            torch.allclose(
+                target_position,
+                reflect_court_vectors(source_target_position, orientation_sign),
+            )
+        ):
+            raise ModelInputContractError(
+                "target_position is inconsistent with reference orientation."
+            )
+        if not bool(
+            torch.allclose(
+                target_rotation,
+                reflect_heading(source_target_rotation, orientation_sign),
+            )
+        ):
+            raise ModelInputContractError(
+                "target_rotation is inconsistent with reference orientation."
+            )
+        if not bool(
+            torch.allclose(
+                target_human_kp_3d,
+                reflect_court_vectors(
+                    source_target_human_kp_3d, orientation_sign
+                ),
+            )
+        ):
+            raise ModelInputContractError(
+                "target_human_kp_3d is inconsistent with reference orientation."
+            )
         invalid_inactive_ids = (~target_presence) & (target_instance_id != -1)
         if bool(invalid_inactive_ids.any().item()):
             raise ModelInputContractError(

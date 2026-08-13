@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any, Self
 
 import torch
 from torch import Tensor
 
+from src.tasks.base.data.court_peaks import CourtPeakFrame
 from src.tasks.base.inference.predictor import BasePredictor
+from src.tasks.base.model_io import ModelCall
 from src.tasks.blcs.model_io import (
     BLCSTrackQueryPrediction,
     TrackQueryBoundModelIO,
@@ -72,11 +74,20 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
     ) -> BLCSTrackQueryPrediction:
         """Run one validated tracking call and return its typed decode."""
         with torch.no_grad():
-            moved = {
-                key: value.to(self.device) if isinstance(value, Tensor) else value
-                for key, value in batch.items()
-            }
-            prediction = self.model_io.run(moved)
+            call = self.model_io.build_call(batch)
+            moved = ModelCall(
+                args=tuple(
+                    value.to(self.device) if isinstance(value, Tensor) else value
+                    for value in call.args
+                ),
+                kwargs={
+                    key: value.to(self.device) if isinstance(value, Tensor) else value
+                    for key, value in call.kwargs.items()
+                },
+            )
+            prediction = self.model_io.decode_output(
+                self.model_io.execute_call(moved)
+            )
             position = prediction.position
             if denormalize:
                 position = self._denormalize_coords(position, COURT_COORD_SCALE_XYZ)
@@ -91,22 +102,41 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
         self,
         *,
         ball_uv: Tensor,
+        ball_score: Tensor,
         ball_visible: Tensor,
-        court_kp: Tensor,
-        court_vis: Tensor,
+        candidate_mask: Tensor,
         frame_mask: Tensor,
         view_mask: Tensor,
+        reference_view_index: Tensor,
+        court_kp: Tensor | None = None,
+        court_vis: Tensor | None = None,
+        court_peak_uv: Tensor | None = None,
+        court_peak_score: Tensor | None = None,
+        court_peak_covariance: Tensor | None = None,
+        court_peak_valid: Tensor | None = None,
+        court_peak_frames: Sequence[CourtPeakFrame] | None = None,
         denormalize: bool,
     ) -> BLCSTrackQueryPrediction:
         """Return the adapter's typed query-position/presence decode."""
-        inputs = {
+        inputs: dict[str, object] = {
             "ball_uv": ball_uv,
+            "ball_score": ball_score,
             "ball_visible": ball_visible,
-            "court_kp": court_kp,
-            "court_vis": court_vis,
+            "candidate_mask": candidate_mask,
             "frame_mask": frame_mask,
             "view_mask": view_mask,
+            "reference_view_index": reference_view_index,
         }
+        optional = {
+            "court_kp": court_kp,
+            "court_vis": court_vis,
+            "court_peak_uv": court_peak_uv,
+            "court_peak_score": court_peak_score,
+            "court_peak_covariance": court_peak_covariance,
+            "court_peak_valid": court_peak_valid,
+            "court_peak_frames": court_peak_frames,
+        }
+        inputs.update({key: value for key, value in optional.items() if value is not None})
         return self.predict_batch(
             inputs,
             denormalize=denormalize,

@@ -33,7 +33,7 @@
 - **`runner.py`**: `CourtDetectionTrainingRunner`。薄いアダプタ。
 
 ### inference/
-- **`predictor.py`**: `CourtKeypointPredictor`。`CourtKeypointPrediction(keypoints, scores, heatmaps)` を返す。
+- **`predictor.py`**: `CourtKeypointPredictor`。semantic classごとのmulti-peakを `CourtKeypointPrediction(keypoints, scores, valid, covariance, heatmaps)` として返す。covarianceはoriginal-image pixel座標のlocal heatmap momentである。
 - **`mask_predictor.py`**: task別の `CourtSegPredictor`/`CourtLinePredictor`。typed dense predictionを返す。
 
 ### evaluation/

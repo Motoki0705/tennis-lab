@@ -9,26 +9,15 @@ import numpy as np
 from numpy.typing import NDArray
 
 from src.synthetic_data_generation.scene_contract import MultiCourtLayout, SceneCamera
-from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
+from src.utils.schema.court import (
+    COURT_PHYSICAL_INDICES_BY_SEMANTIC_CLASS,
+    COURT_SEMANTIC_CLASS_NAMES,
+    STANDARD_COURT_CONFIG,
+    court_keypoints_3d,
+)
 
-SEMANTIC_CLASS_NAMES: tuple[str, ...] = (
-    "doubles_left",
-    "doubles_right",
-    "singles_left",
-    "singles_right",
-    "service_left",
-    "service_right",
-    "service_t",
-)
-PHYSICAL_INDICES_BY_CLASS: tuple[tuple[int, int], ...] = (
-    (0, 2),
-    (1, 3),
-    (4, 5),
-    (6, 7),
-    (8, 10),
-    (9, 11),
-    (12, 13),
-)
+SEMANTIC_CLASS_NAMES = COURT_SEMANTIC_CLASS_NAMES
+PHYSICAL_INDICES_BY_CLASS = COURT_PHYSICAL_INDICES_BY_SEMANTIC_CLASS
 
 
 @dataclass(frozen=True, slots=True)

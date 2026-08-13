@@ -63,7 +63,7 @@ class _KeypointVisualizationPipeline:
             output = self.predictor.predict(to_predictor_input(frame))
             predictions.append(
                 KpFramePrediction(
-                    keypoints_px=output.keypoints.numpy(),
+                    keypoints_px=output.keypoints[output.valid].numpy(),
                     mean_heatmap=torch.sigmoid(output.heatmaps).mean(0).numpy(),
                 )
             )

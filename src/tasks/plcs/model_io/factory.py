@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TypeAlias, cast, overload
+from typing import TypeAlias, cast
 
 from torch import nn
 
+from src.tasks.base.data.court_peaks import parse_court_observation_profile
 from src.tasks.base.model_io import (
     BoundModelIO,
     ModelAdapterMismatchError,
@@ -42,18 +43,6 @@ PLCSTrackingBoundModelIO: TypeAlias = BoundModelIO[
     Mapping[str, object], PLCSRawOutput, PLCSTrackingDecodedPrediction
 ]
 PLCSBoundModelIO: TypeAlias = PLCSStandardBoundModelIO | PLCSTrackingBoundModelIO
-
-
-@overload
-def bind_plcs_model_io(
-    model: nn.Module, adapter: PLCSModelIOAdapter
-) -> PLCSStandardBoundModelIO: ...
-
-
-@overload
-def bind_plcs_model_io(
-    model: nn.Module, adapter: PLCSTrackQueryIOAdapter
-) -> PLCSTrackingBoundModelIO: ...
 
 
 def bind_plcs_model_io(model: nn.Module, adapter: PLCSAdapter) -> PLCSBoundModelIO:
@@ -186,6 +175,9 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
             num_joints=model_cfg.integer("num_joints"),
             mask_invisible_observations=model_cfg.boolean(
                 "mask_invisible_observations"
+            ),
+            court_observation_profile=parse_court_observation_profile(
+                model_cfg.string("court_observation_profile")
             ),
         )
     else:

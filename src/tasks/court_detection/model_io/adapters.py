@@ -13,6 +13,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
+from src.tasks.base.data.court_peaks import COURT_SEMANTIC_CLASS_NAMES
 from src.tasks.base.model_io import ModelCall
 from src.tasks.base.training.losses import (
     FocalBCEWithLogitsLoss,
@@ -33,7 +34,7 @@ from src.tasks.court_detection.models.encoders import CourtDINOv3Encoder
 from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
 from src.tasks.court_detection.training.losses import BinaryDiceLoss, DiceLoss
 from src.utils.data.heatmaps import (
-    heatmaps_to_argmax,
+    heatmaps_to_peaks,
     heatmaps_to_pixel_coords,
     refine_peaks_log_parabolic,
 )
@@ -196,7 +197,7 @@ class CourtModelIOAdapter(nn.Module, ABC):
     @property
     def model_type(self) -> type[nn.Module]:
         """Return the sole court model class supported by the adapter."""
-        return CourtHierarchicalModel
+        return cast("type[nn.Module]", CourtHierarchicalModel)
 
     def validate_model_pair(self, model: nn.Module) -> None:
         """Reject model/adapter mismatches at composition time."""
@@ -395,20 +396,47 @@ class CourtKeypointModelIO(CourtModelIOAdapter):
         *,
         original_size_hw: tuple[int, int],
         subpixel_refine: bool,
+        max_peaks: int = 4,
     ) -> CourtKeypointPrediction:
         self.validate_logits(logits)
         probabilities = torch.sigmoid(logits)
-        coords, scores = heatmaps_to_argmax(probabilities)
+        coords, scores, valid = heatmaps_to_peaks(
+            probabilities,
+            threshold=0.05,
+            nms_kernel=7,
+            max_peaks=max_peaks,
+        )
         if subpixel_refine:
             coords = refine_peaks_log_parabolic(probabilities, coords)
         original_height, original_width = original_size_hw
         scale = coords.new_tensor(
-            [max(original_width - 1, 0), max(original_height - 1, 0)]
+            [float(max(original_width - 1, 0)), float(max(original_height - 1, 0))]
+        )
+        covariance_scale = coords.new_tensor(
+            [float(max(original_width - 1, 1)), float(max(original_height - 1, 1))]
+        )
+        covariance = _local_peak_covariance(probabilities, coords)
+        covariance = (
+            covariance
+            * covariance_scale.view(1, 1, 2, 1)
+            * covariance_scale.view(1, 1, 1, 2)
+        )
+        keypoints = (coords[0] * scale).masked_fill(~valid[0].unsqueeze(-1), 0.0)
+        covariance = covariance[0].masked_fill(
+            ~valid[0].unsqueeze(-1).unsqueeze(-1), 0.0
         )
         return CourtKeypointPrediction(
-            keypoints=(coords[0] * scale).cpu(),
+            keypoints=keypoints.cpu(),
             scores=scores[0].cpu(),
+            valid=valid[0].cpu(),
+            covariance=covariance.cpu(),
             heatmaps=logits[0].cpu(),
+            semantic_class_names=(
+                COURT_SEMANTIC_CLASS_NAMES
+                if self.spec.output_channels == len(COURT_SEMANTIC_CLASS_NAMES)
+                else None
+            ),
+            image_size_hw=original_size_hw,
         )
 
 
@@ -573,6 +601,47 @@ def _padded_size(logits: Tensor) -> Tensor:
     return logits.new_tensor(
         [logits.shape[-2], logits.shape[-1]], dtype=torch.int64
     ).repeat(logits.shape[0], 1)
+
+
+def _local_peak_covariance(probability: Tensor, coords: Tensor) -> Tensor:
+    """Estimate normalized covariance from 5x5 heatmap local moments."""
+    if probability.ndim != 4 or coords.ndim != 4 or coords.shape[-1] != 2:
+        raise CourtModelIOError(
+            "local covariance requires (B,C,H,W) and (B,C,P,2)."
+        )
+    batch_size, channels, height, width = probability.shape
+    if coords.shape[:2] != (batch_size, channels):
+        raise CourtModelIOError("peak coordinates must share heatmap B/C axes.")
+    center_x = (coords[..., 0] * max(width - 1, 1)).round().long()
+    center_y = (coords[..., 1] * max(height - 1, 1)).round().long()
+    batch_index = torch.arange(batch_size, device=probability.device).view(
+        batch_size, 1, 1
+    )
+    channel_index = torch.arange(channels, device=probability.device).view(
+        1, channels, 1
+    )
+    covariance = probability.new_zeros(*coords.shape[:-1], 2, 2)
+    normalizer = probability.new_zeros(coords.shape[:-1])
+    for y_offset in range(-2, 3):
+        for x_offset in range(-2, 3):
+            sample_x = (center_x + x_offset).clamp(0, width - 1)
+            sample_y = (center_y + y_offset).clamp(0, height - 1)
+            weight = probability[
+                batch_index, channel_index, sample_y, sample_x
+            ]
+            offset = probability.new_tensor(
+                (
+                    x_offset / float(max(width - 1, 1)),
+                    y_offset / float(max(height - 1, 1)),
+                )
+            )
+            covariance += weight[..., None, None] * (
+                offset[:, None] * offset[None, :]
+            )
+            normalizer += weight
+    return covariance / normalizer.clamp_min(
+        torch.finfo(probability.dtype).eps
+    )[..., None, None]
 
 
 def _require_finite(tensor: Tensor, *, name: str) -> None:

@@ -12,7 +12,7 @@ import types
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytorch_lightning as pl
 import torch
@@ -28,6 +28,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.tasks.base.configuration import TrainingRuntimeConfig
 from src.tasks.base.training.qualitative_callback import QualitativeLoggingCallback
+from src.tasks.base.training.repro import active_queue_repro_dir
 from src.utils.configuration import PathResolver, PathRole
 from src.utils.device import select_accelerator
 from src.utils.paths import PROJECT_ROOT
@@ -78,11 +79,21 @@ class BaseTrainingRunner:
                 datamodule=datamodule,
                 ckpt_path=resume_ckpt,
             )
+        self._require_fit_completed(trainer)
 
         if not self.skip_test(config):
             trainer.test(lightning_module, datamodule=datamodule)
 
         print(f"Training complete. Outputs saved to {output_dir}")
+
+    @staticmethod
+    def _require_fit_completed(trainer: pl.Trainer) -> None:
+        """Reject a signal-interrupted fit even when Lightning returns normally."""
+        if trainer.interrupted:
+            raise RuntimeError(
+                "Lightning fit was interrupted before the declared training budget "
+                "completed. The run has no valid completion evidence."
+            )
 
     # ---- abstract methods (must be implemented by subclasses) ----
     def build_datamodule(self, config: Any) -> pl.LightningDataModule:
@@ -106,11 +117,11 @@ class BaseTrainingRunner:
 
     def prepare_output_dir(self, config: TrainingRuntimeConfig) -> Path:
         """Prepare output directory path."""
-        return config.run.output_dir
+        return cast("Path", config.run.output_dir)
 
     def _gan_enabled(self, config: Any) -> bool:
         runtime = self.validate_runtime_config(config)
-        return runtime.training.gan.enabled
+        return cast("bool", runtime.training.gan.enabled)
 
     def prepare_config(self, config: Any) -> None:
         """Validate task-specific configuration before the run starts.
@@ -259,7 +270,9 @@ class BaseTrainingRunner:
         checkpoints once the predictions are saved. Best-effort: never raise, so
         a bookkeeping hiccup cannot abort training.
         """
-        target = resolver.resolve(PathRole.ARTIFACT, "repro")
+        target = active_queue_repro_dir()
+        if target is None:
+            target = resolver.resolve(PathRole.ARTIFACT, "repro")
         target.mkdir(parents=True, exist_ok=True)
         resolved_checkpoint_dir = checkpoint_dir.resolve()
         (target / "output_dir.txt").write_text(

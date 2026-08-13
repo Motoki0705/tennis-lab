@@ -19,7 +19,10 @@
 - **`dataset_writer.py`**: `BaseDatasetWriter`。npy+jsonシーン書き出しの共通実装。
 - **`augmentation.py`**: `BaseObservationAugmentation`。augmentation config解析・dispatchガードの共通部分。
 - **`canonical_tracking.py`**: tracking sceneのclip/view選択と可変 `(V,T,D)` paddingを担う共通Dataset基盤。
+- **`court_peaks.py`**: predictor/datasetのindexed pixel-space KP7 frameをimage sizeで正規化し、欠損・重複を拒否して可変peakを`(B,V,T,7,N,...)`へpaddingする共有境界。KP7 profileの`kp7_camera_rope_enabled=false`はcamera-axis RoPEだけを明示的に消し、reference/other value roleとは別契約としてview順不変性を保つ。
 - **`lifecycle_slots.py`**: birth/death区間をinterval coloringで固定query数へ詰め、death後のslot再利用教師を生成。
+
+Issue #719のlimited ablationはKP7 referenceがno-referenceをY signとY errorの双方で改善しなかったため、production defaultはKP14のままである。測定結果と再評価条件の正本は[BLCS group](../../../knowledge/nodes/group-i719-blcs-reference-ablation.md)と[PLCS group](../../../knowledge/nodes/group-i719-plcs-reference-ablation.md)を参照し、ここでは数値を二重管理しない。
 
 ### training/
 - **`lightning_module.py`**: `BaseLightningModule`。optimizer/scheduler構築とqualitative/test予測保存の拡張点。
@@ -30,6 +33,7 @@
 - **`losses.py`**: `FocalBCEWithLogitsLoss`。複数taskで重複していた実装を統合。
 - **`tracking_lifecycle.py`**: active/inactive/birth/death近傍を重み付けするpresence BCE。
 - **`tracking_lightning_module.py`**: BLCS/PLCSに共通するtracking stage dispatch、loss/metric logging、test prediction収集・保存を所有し、task固有adapter/loss/metrics/payloadはhookへ委譲する。
+- **`tracking_benchmark.py`**: KP7 reference runの実際のtask observation fusionをCUDA上の固定`B=1,V=3,T=64,D=4,C=7,N=4` contract（10 warmup / 50 repeat）で同期計測し、latencyとpeak allocated memoryを共有metrics schemaへ変換する。
 - **`tracking_metrics.py`**: lifecycle segment単位のbirth/death誤差・presence F1・query再利用・ID switch診断。
 
 ### inference/
