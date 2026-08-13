@@ -205,6 +205,9 @@ class CourtDetectionLightningModule(BaseLightningModule):
             raise ValueError("Court test result requires a logits mapping.")
         decoded = self.model_io.test_payload(batch, cast(CourtLogits, logits))
         payload: dict[str, object] = {}
+        sample_ids = decoded["sample_id"]
+        if isinstance(sample_ids, (list, tuple)):
+            payload["sample_id"] = sample_ids
         image_size = decoded["image_size"]
         if isinstance(image_size, Tensor):
             payload["image_size"] = image_size
@@ -217,6 +220,26 @@ class CourtDetectionLightningModule(BaseLightningModule):
             for name, tensor in value.items():
                 if isinstance(tensor, Tensor):
                     payload[f"{kind}_{name}"] = tensor
+
+        targets = batch.get("targets")
+        if not isinstance(targets, Mapping):
+            raise ValueError("Court test batch targets must be a mapping.")
+        for kind in self.target_bundle.kinds:
+            target = targets.get(kind)
+            if kind == "kp":
+                if not isinstance(target, Mapping):
+                    raise ValueError("Court KP test target must be a mapping.")
+                for name in ("points_xy", "point_visible"):
+                    tensor = target.get(name)
+                    if not isinstance(tensor, Tensor):
+                        raise ValueError(
+                            f"Court KP test target {name!r} must be a Tensor."
+                        )
+                    payload[f"kp_target_{name}"] = tensor
+            elif isinstance(target, Tensor):
+                payload[f"{kind}_target"] = target
+            else:
+                raise ValueError(f"Court {kind} test target must be a Tensor.")
         return payload
 
     def render_qualitative_samples(

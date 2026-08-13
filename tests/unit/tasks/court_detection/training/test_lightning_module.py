@@ -115,6 +115,7 @@ def test_test_prediction_payload_flattens_every_selected_head() -> None:
     bundle = _bundle()
     module = object.__new__(CourtDetectionLightningModule)
     torch.nn.Module.__init__(module)
+    module.__dict__["target_bundle"] = bundle
     module.model_io = _adapter(bundle)
     logits = {
         "kp": torch.zeros(2, 2, 4, 5),
@@ -122,7 +123,16 @@ def test_test_prediction_payload_flattens_every_selected_head() -> None:
         "line": torch.zeros(2, 1, 4, 5),
     }
     batch = {
+        "sample_id": ["sample-a", "sample-b"],
         "image_size": torch.tensor([[4, 5], [4, 5]], dtype=torch.long),
+        "targets": {
+            "kp": {
+                "points_xy": torch.zeros(2, 2, 4, 2),
+                "point_visible": torch.ones(2, 2, 4, dtype=torch.bool),
+            },
+            "seg": torch.zeros(2, 4, 5, dtype=torch.long),
+            "line": torch.zeros(2, 1, 4, 5),
+        },
     }
 
     payload = module.test_prediction_payload(
@@ -130,8 +140,13 @@ def test_test_prediction_payload_flattens_every_selected_head() -> None:
         {"logits": logits},
     )
 
+    assert payload["sample_id"] is batch["sample_id"]
     assert payload["image_size"] is batch["image_size"]
     assert cast(torch.Tensor, payload["kp_keypoints_normalized"]).shape == (2, 2, 4, 2)
     assert cast(torch.Tensor, payload["kp_scores"]).shape == (2, 2, 4)
+    assert cast(torch.Tensor, payload["kp_target_points_xy"]).shape == (2, 2, 4, 2)
+    assert cast(torch.Tensor, payload["kp_target_point_visible"]).shape == (2, 2, 4)
     assert cast(torch.Tensor, payload["seg_mask"]).shape == (2, 4, 5)
+    assert cast(torch.Tensor, payload["seg_target"]).shape == (2, 4, 5)
     assert cast(torch.Tensor, payload["line_probability"]).shape == (2, 1, 4, 5)
+    assert cast(torch.Tensor, payload["line_target"]).shape == (2, 1, 4, 5)
