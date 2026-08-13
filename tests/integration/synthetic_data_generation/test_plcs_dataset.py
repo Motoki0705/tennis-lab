@@ -19,9 +19,17 @@ from src.synthetic_data_generation.dataset.plcs.composition import (
     AvatarAppearance,
     prepare_avatar,
 )
+from src.synthetic_data_generation.dataset.plcs.coordinates import (
+    SMPLH_SURFACE_VERTEX_COUNT,
+    PLCSSourceSupportPlane,
+)
 from src.synthetic_data_generation.dataset.plcs.production import PLCSProductionMode
 from src.synthetic_data_generation.dataset.plcs.smplh import (
+    SMPLHDeviceClip,
+    SMPLHDeviceModel,
+    SMPLHModelData,
     load_smplh_model,
+    pose_smplh_surface_batch,
     upload_motion_clip,
     upload_smplh_model,
 )
@@ -35,15 +43,58 @@ from src.synthetic_data_generation.scene_contract import RigidTransform
 from src.tasks.plcs.generate_dataset.sampling.motion_source import (
     ACCADMotionLibrary,
     MotionCategory,
+    PLCSMotionClip,
     load_amass_motion_clip,
 )
 
-_ACCAD = Path(
-    "/home/kamimura/projects/tennis-lab/data/ACCAD/"
-    "Male1Running_c3d/Run C25 - quick side step right_poses.npz"
-)
-_SMPLH = Path("/home/kamimura/projects/tennis-lab/data/smplh")
-_ACCAD_ROOT = Path("/home/kamimura/projects/tennis-lab/data/ACCAD")
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_ACCAD_ROOT = _PROJECT_ROOT / "data" / "ACCAD"
+_ACCAD = _ACCAD_ROOT / "Male1Running_c3d" / "Run C25 - quick side step right_poses.npz"
+_SMPLH = _PROJECT_ROOT / "data" / "smplh"
+
+
+class _RealSupportEvidenceEvaluator:
+    """Reuse CUDA models while deriving exact support for each real clip."""
+
+    def __init__(self, *, device: torch.device) -> None:
+        self.device = device
+        self._models: dict[str, tuple[SMPLHModelData, SMPLHDeviceModel]] = {}
+
+    def prepare(
+        self,
+        clip: PLCSMotionClip,
+    ) -> tuple[
+        SMPLHModelData,
+        SMPLHDeviceModel,
+        SMPLHDeviceClip,
+        PLCSSourceSupportPlane,
+    ]:
+        if clip.gender not in self._models:
+            model = load_smplh_model(_SMPLH, gender=clip.gender)
+            self._models[clip.gender] = (
+                model,
+                upload_smplh_model(model, device=self.device),
+            )
+        model, device_model = self._models[clip.gender]
+        device_clip = upload_motion_clip(clip, model, device=self.device)
+        frame_zero_surface = pose_smplh_surface_batch(
+            device_model,
+            device_clip,
+            source_frame_indices=(0,),
+        )
+        assert frame_zero_surface.shape == (1, SMPLH_SURFACE_VERTEX_COUNT, 3)
+        support_plane = PLCSSourceSupportPlane.from_surface_minimum(
+            initial_root_translation_z_m=float(clip.root_translation_m[0, 2]),
+            support_local_z_m=float(frame_zero_surface[0, :, 2].amin().item()),
+        )
+        return model, device_model, device_clip, support_plane
+
+
+@pytest.fixture(scope="module")
+def real_support_evaluator() -> _RealSupportEvidenceEvaluator:
+    assert _SMPLH.is_dir(), "Licensed SMPL-H assets are required."
+    assert torch.cuda.is_available(), "Real SMPL-H support evidence requires CUDA."
+    return _RealSupportEvidenceEvaluator(device=torch.device("cuda:0"))
 
 
 def test_continuity_rejects_a_missing_terminal_track_camera_label() -> None:
@@ -114,16 +165,16 @@ def test_continuity_requires_explicit_terminal_absence_for_each_track_camera(
 
 
 @pytest.mark.local_data
-def test_full_real_accad_timeline_is_articulated_and_composable() -> None:
-    if not _ACCAD.is_file() or not _SMPLH.is_dir():
-        pytest.skip("Licensed ACCAD/SMPL-H assets are unavailable.")
-    if not torch.cuda.is_available():
-        pytest.skip("PLCS production composition requires CUDA.")
-    device = torch.device("cuda:0")
+@pytest.mark.cuda
+def test_full_real_accad_timeline_is_articulated_and_composable(
+    real_support_evaluator: _RealSupportEvidenceEvaluator,
+) -> None:
+    assert _ACCAD.is_file(), "Licensed ACCAD assets are required."
+    device = real_support_evaluator.device
     clip = load_amass_motion_clip(_ACCAD, category="running")
-    model = load_smplh_model(_SMPLH, gender=clip.gender)
-    device_model = upload_smplh_model(model, device=device)
-    device_clip = upload_motion_clip(clip, model, device=device)
+    model, device_model, device_clip, support_plane = real_support_evaluator.prepare(
+        clip
+    )
     appearance = AvatarAppearance(
         features=torch.full((64, 3), 0.5, dtype=torch.float32, device=device),
         appearance_model="rgb",
@@ -154,6 +205,7 @@ def test_full_real_accad_timeline_is_articulated_and_composable() -> None:
                 instance_id=1,
                 asset_id="avatar-001",
                 clip=clip,
+                support_plane=support_plane,
                 start_frame=0,
                 anchor_position_court_m=(0.0, 0.0, 0.0),
                 yaw_radians=0.0,
@@ -190,27 +242,36 @@ def test_full_real_accad_timeline_is_articulated_and_composable() -> None:
 
 
 @pytest.mark.local_data
-def test_real_accad_inventory_is_repeated_wholly_per_balanced_logical_scene() -> None:
-    if not _ACCAD_ROOT.is_dir():
-        pytest.skip("Licensed ACCAD assets are unavailable.")
+@pytest.mark.cuda
+def test_real_accad_inventory_is_repeated_wholly_per_balanced_logical_scene(
+    real_support_evaluator: _RealSupportEvidenceEvaluator,
+) -> None:
+    assert _ACCAD_ROOT.is_dir(), "Licensed ACCAD assets are required."
     library = ACCADMotionLibrary.from_root(_ACCAD_ROOT)
     requests = (
         (MotionCategory.RUNNING, 0, (-2.0, -5.0, 0.0), 0.0),
         (MotionCategory.WALKING, 120, (2.0, 5.0, 0.0), np.pi),
         (MotionCategory.GENERAL, 240, (0.0, 0.0, 0.0), np.pi / 2.0),
     )
-    tracks = tuple(
-        PLCSObjectTrack(
-            object_id=f"player-{index + 1:03d}",
-            instance_id=index + 1,
-            asset_id=f"avatar-{index + 1:03d}",
-            clip=library.select(category, seed=695 + index),
-            start_frame=start,
-            anchor_position_court_m=anchor,
-            yaw_radians=yaw,
+    tracks = []
+    for index, (category, start, anchor, yaw) in enumerate(requests):
+        clip = library.select(category, seed=695 + index)
+        _model, _device_model, _device_clip, support_plane = (
+            real_support_evaluator.prepare(clip)
         )
-        for index, (category, start, anchor, yaw) in enumerate(requests)
-    )
+        tracks.append(
+            PLCSObjectTrack(
+                object_id=f"player-{index + 1:03d}",
+                instance_id=index + 1,
+                asset_id=f"avatar-{index + 1:03d}",
+                clip=clip,
+                support_plane=support_plane,
+                start_frame=start,
+                anchor_position_court_m=anchor,
+                yaw_radians=yaw,
+            )
+        )
+    track_inventory = tuple(tracks)
     second_transform = np.eye(4, dtype=np.float64)
     second_transform[0, 3] = 30.0
     scenes = tuple(
@@ -218,9 +279,7 @@ def test_real_accad_inventory_is_repeated_wholly_per_balanced_logical_scene() ->
             split="train",
             timeline=build_global_timeline(
                 scene_id=scene_id,
-                production_mode=(
-                    PLCSProductionMode.MULTI_OBJECT_GLOBAL_TIMELINE
-                ),
+                production_mode=(PLCSProductionMode.MULTI_OBJECT_GLOBAL_TIMELINE),
                 target_court=TargetCourtBinding(
                     court_instance_id=f"court-{index:03d}",
                     candidate_id=f"candidate-{index:03d}",
@@ -231,7 +290,7 @@ def test_real_accad_inventory_is_repeated_wholly_per_balanced_logical_scene() ->
                     ),
                     selection_seed=695,
                 ),
-                tracks=tracks,
+                tracks=track_inventory,
             ),
         )
         for index, scene_id in enumerate(("B00", "B00-plcs-002"))
@@ -247,12 +306,12 @@ def test_real_accad_inventory_is_repeated_wholly_per_balanced_logical_scene() ->
     assert inventory.scene_count == 2
     assert inventory.aggregate_global_frame_count == 2 * scenes[0].timeline.frame_count
     assert inventory.aggregate_source_frame_count == 2 * sum(
-        track.clip.frame_count for track in tracks
+        track.clip.frame_count for track in track_inventory
     )
     for scene in inventory.scenes:
         assert tuple(
             track.clip.source_path for track in scene.timeline.tracks
-        ) == tuple(track.clip.source_path for track in tracks)
+        ) == tuple(track.clip.source_path for track in track_inventory)
         assert tuple(frame.frame_index for frame in scene.timeline.frames) == tuple(
             range(scene.timeline.frame_count)
         )

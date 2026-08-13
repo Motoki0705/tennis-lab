@@ -98,11 +98,13 @@ def _require_local_coordinate_assets(cases: tuple[_RealClipCase, ...]) -> None:
         for case in cases
         if not (_SMPLH_ROOT / case.gender / "model.npz").is_file()
     )
-    if missing or not torch.cuda.is_available():
-        pytest.skip(
-            "Licensed fixed ACCAD/SMPL-H assets or CUDA are unavailable: "
-            + ", ".join(missing)
-        )
+    assert not missing, (
+        "Licensed fixed ACCAD/SMPL-H coordinate assets are required: "
+        + ", ".join(missing)
+    )
+    assert torch.cuda.is_available(), (
+        "The required real ACCAD/SMPL-H coordinate regression must run on CUDA."
+    )
 
 
 def _load_clip(case: _RealClipCase) -> PLCSMotionClip:
@@ -194,6 +196,7 @@ def _placed_joint_vectors(
 
 
 @pytest.mark.local_data
+@pytest.mark.cuda
 def test_fixed_standing_clip_is_court_z_up_and_full_surface_supported() -> None:
     _require_local_coordinate_assets((_STANDING,))
 
@@ -241,6 +244,7 @@ def test_fixed_standing_clip_is_court_z_up_and_full_surface_supported() -> None:
 
 
 @pytest.mark.local_data
+@pytest.mark.cuda
 @pytest.mark.parametrize("case", _UPRIGHT_REGRESSIONS, ids=lambda case: case.name)
 def test_fixed_accad_category_clips_remain_upright_after_yaw_only_placement(
     case: _RealClipCase,
