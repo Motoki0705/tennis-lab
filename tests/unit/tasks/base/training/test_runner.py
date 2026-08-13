@@ -74,7 +74,14 @@ def test_test_after_fit_uses_validation_winner_when_checkpointing_enabled(
     )
 
     assert trainer.test_calls == [
-        (module, {"datamodule": datamodule, "ckpt_path": "best"})
+        (
+            module,
+            {
+                "datamodule": datamodule,
+                "ckpt_path": "best",
+                "weights_only": False,
+            },
+        )
     ]
 
 

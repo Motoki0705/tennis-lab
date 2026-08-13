@@ -12,7 +12,7 @@ import types
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import pytorch_lightning as pl
 import torch
@@ -112,11 +112,13 @@ class BaseTrainingRunner:
 
     def prepare_output_dir(self, config: TrainingRuntimeConfig) -> Path:
         """Prepare output directory path."""
-        return cast("Path", config.run.output_dir)
+        output_dir: Path = config.run.output_dir
+        return output_dir
 
     def _gan_enabled(self, config: Any) -> bool:
         runtime = self.validate_runtime_config(config)
-        return cast("bool", runtime.training.gan.enabled)
+        enabled: bool = runtime.training.gan.enabled
+        return enabled
 
     def prepare_config(self, config: Any) -> None:
         """Validate task-specific configuration before the run starts.
@@ -250,6 +252,11 @@ class BaseTrainingRunner:
                 lightning_module,
                 datamodule=datamodule,
                 ckpt_path="best",
+                # ModelCheckpoint files are trusted local Lightning artifacts
+                # and include non-tensor state such as resolved DictConfig
+                # values. PyTorch 2.6 defaults checkpoint loads to
+                # ``weights_only=True``, which rejects that required state.
+                weights_only=False,
             )
             return
         trainer.test(lightning_module, datamodule=datamodule)
