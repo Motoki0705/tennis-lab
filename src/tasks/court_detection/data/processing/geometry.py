@@ -177,17 +177,30 @@ class CourtProcessingGeometry:
             resized_height,
             resized_width,
         )
+        output_width, output_height = resize_short_side_aligned(
+            crop_width,
+            crop_height,
+            short_side,
+        )
         crop_matrix = np.array(
             [[1.0, 0.0, -left], [0.0, 1.0, -top], [0.0, 0.0, 1.0]],
             dtype=np.float64,
         )
-        composed_matrix = crop_matrix @ resize_matrix
+        crop_resize_matrix = np.array(
+            [
+                [output_width / float(crop_width), 0.0, 0.0],
+                [0.0, output_height / float(crop_height), 0.0],
+                [0.0, 0.0, 1.0],
+            ],
+            dtype=np.float64,
+        )
+        composed_matrix = crop_resize_matrix @ crop_matrix @ resize_matrix
 
         flipped = random.random() < self.config.hflip_prob
         if flipped:
             flip = np.array(
                 [
-                    [-1.0, 0.0, float(crop_width - 1)],
+                    [-1.0, 0.0, float(output_width - 1)],
                     [0.0, 1.0, 0.0],
                     [0.0, 0.0, 1.0],
                 ],
@@ -200,17 +213,17 @@ class CourtProcessingGeometry:
         )
         translate_x = random.uniform(
             -self.config.affine_translate[0], self.config.affine_translate[0]
-        ) * crop_width
+        ) * output_width
         translate_y = random.uniform(
             -self.config.affine_translate[1], self.config.affine_translate[1]
-        ) * crop_height
+        ) * output_height
         affine_scale = random.uniform(*self.config.affine_scale)
         shear_degrees = random.uniform(
             -self.config.affine_shear, self.config.affine_shear
         )
         affine = build_centered_affine_matrix(
-            width=crop_width,
-            height=crop_height,
+            width=output_width,
+            height=output_height,
             rotation_degrees=rotation_degrees,
             translate=(translate_x, translate_y),
             scale=affine_scale,
@@ -222,15 +235,15 @@ class CourtProcessingGeometry:
 
         if random.random() < self.config.perspective_prob:
             perspective = self._sample_perspective(
-                width=crop_width,
-                height=crop_height,
+                width=output_width,
+                height=output_height,
             )
             if perspective is not None:
                 composed_matrix = perspective @ composed_matrix
 
         return CourtGeometryPlan(
             matrix=torch.from_numpy(composed_matrix),
-            output_size_hw=(crop_height, crop_width),
+            output_size_hw=(output_height, output_width),
             horizontal_flipped=flipped,
         )
 
