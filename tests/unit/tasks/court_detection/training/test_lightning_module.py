@@ -144,9 +144,13 @@ def test_test_prediction_payload_flattens_every_selected_head() -> None:
     assert payload["image_size"] is batch["image_size"]
     assert cast(torch.Tensor, payload["kp_keypoints_normalized"]).shape == (2, 2, 4, 2)
     assert cast(torch.Tensor, payload["kp_scores"]).shape == (2, 2, 4)
+    assert cast(torch.Tensor, payload["kp_valid"]).shape == (2, 2, 4)
     assert cast(torch.Tensor, payload["kp_target_points_xy"]).shape == (2, 2, 4, 2)
     assert cast(torch.Tensor, payload["kp_target_point_visible"]).shape == (2, 2, 4)
     assert cast(torch.Tensor, payload["seg_mask"]).shape == (2, 4, 5)
     assert cast(torch.Tensor, payload["seg_target"]).shape == (2, 4, 5)
     assert cast(torch.Tensor, payload["line_probability"]).shape == (2, 1, 4, 5)
     assert cast(torch.Tensor, payload["line_target"]).shape == (2, 1, 4, 5)
+    assert "kp_heatmaps" not in payload
+    assert "seg_logits" not in payload
+    assert "line_logits" not in payload
