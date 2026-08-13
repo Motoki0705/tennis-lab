@@ -7,6 +7,7 @@ import random
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
+from typing import cast
 
 import cv2
 import numpy as np
@@ -25,6 +26,7 @@ from src.tasks.court_detection.data.contracts import (
     CourtTransformedSample,
 )
 from src.utils.geometry.affine import build_centered_affine_matrix
+from src.utils.geometry.image_size import resize_short_side_aligned
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,17 +58,26 @@ class CourtProcessingGeometry:
         self.color_jitter = ColorJitter(*config.color_jitter)
 
     def sample(self, raw: CourtRawSample) -> CourtGeometryPlan:
-        """Return one accepted plan; retries only choose that single final plan."""
+        """Return the first accepted plan, or the earliest best-visible plan.
+
+        Retry ties deliberately keep the earlier candidate, making the fallback
+        independent of candidates sampled later with the same visibility count.
+        """
         attempts = self.config.visibility_max_retries if self.is_train else 1
-        fallback: CourtGeometryPlan | None = None
+        required = self._required_visibility(raw)
+        best: CourtGeometryPlan | None = None
+        best_visible = -1
         for _ in range(attempts):
             candidate = self._sample_once(raw.image.size)
-            fallback = candidate
-            if self._has_required_visibility(raw, candidate):
+            visible = self._visible_count(raw, candidate)
+            if visible > best_visible:
+                best = candidate
+                best_visible = visible
+            if visible >= required:
                 return candidate
-        if fallback is None:  # pragma: no cover - positive retry count is validated
+        if best is None:  # pragma: no cover - positive retry count is validated
             raise RuntimeError("Court geometry did not sample a candidate.")
-        return fallback
+        return best
 
     def apply(
         self,
@@ -148,71 +159,78 @@ class CourtProcessingGeometry:
             )
             return CourtGeometryPlan(matrix, (out_height, out_width), False)
 
-        output = random.choice(self.config.train_scales)
-        top, left, crop_height, crop_width = self._random_resized_crop(height, width)
-        crop_resize = np.array(
+        short_side = random.choice(self.config.train_scales)
+        resized_width, resized_height = resize_short_side_aligned(
+            width,
+            height,
+            short_side,
+        )
+        resize_matrix = np.array(
             [
-                [output / float(crop_width), 0.0, -left * output / float(crop_width)],
-                [0.0, output / float(crop_height), -top * output / float(crop_height)],
+                [resized_width / float(width), 0.0, 0.0],
+                [0.0, resized_height / float(height), 0.0],
                 [0.0, 0.0, 1.0],
             ],
             dtype=np.float64,
         )
+        top, left, crop_height, crop_width = self._random_resized_crop(
+            resized_height,
+            resized_width,
+        )
+        crop_matrix = np.array(
+            [[1.0, 0.0, -left], [0.0, 1.0, -top], [0.0, 0.0, 1.0]],
+            dtype=np.float64,
+        )
+        composed_matrix = crop_matrix @ resize_matrix
+
         flipped = random.random() < self.config.hflip_prob
         if flipped:
             flip = np.array(
-                [[-1.0, 0.0, float(output - 1)], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+                [
+                    [-1.0, 0.0, float(crop_width - 1)],
+                    [0.0, 1.0, 0.0],
+                    [0.0, 0.0, 1.0],
+                ],
                 dtype=np.float64,
             )
-            matrix = flip @ crop_resize
-        else:
-            matrix = crop_resize
+            composed_matrix = flip @ composed_matrix
 
+        rotation_degrees = random.uniform(
+            -self.config.affine_degrees, self.config.affine_degrees
+        )
         translate_x = random.uniform(
             -self.config.affine_translate[0], self.config.affine_translate[0]
-        ) * output
+        ) * crop_width
         translate_y = random.uniform(
             -self.config.affine_translate[1], self.config.affine_translate[1]
-        ) * output
+        ) * crop_height
+        affine_scale = random.uniform(*self.config.affine_scale)
+        shear_degrees = random.uniform(
+            -self.config.affine_shear, self.config.affine_shear
+        )
         affine = build_centered_affine_matrix(
-            width=output,
-            height=output,
-            rotation_degrees=random.uniform(
-                -self.config.affine_degrees, self.config.affine_degrees
-            ),
+            width=crop_width,
+            height=crop_height,
+            rotation_degrees=rotation_degrees,
             translate=(translate_x, translate_y),
-            scale=random.uniform(*self.config.affine_scale),
-            shear_degrees=random.uniform(
-                -self.config.affine_shear, self.config.affine_shear
-            ),
+            scale=affine_scale,
+            shear_degrees=(shear_degrees, shear_degrees),
             shear_mode="torchvision",
             dtype=np.float64,
         )
-        matrix = affine @ matrix
+        composed_matrix = affine @ composed_matrix
 
         if random.random() < self.config.perspective_prob:
-            amount = self.config.perspective_distortion * float(output) * 0.5
-            source = np.array(
-                [[0.0, 0.0], [output - 1.0, 0.0], [output - 1.0, output - 1.0], [0.0, output - 1.0]],
-                dtype=np.float32,
+            perspective = self._sample_perspective(
+                width=crop_width,
+                height=crop_height,
             )
-            destination = source + np.array(
-                [
-                    [random.uniform(0.0, amount), random.uniform(0.0, amount)],
-                    [random.uniform(-amount, 0.0), random.uniform(0.0, amount)],
-                    [random.uniform(-amount, 0.0), random.uniform(-amount, 0.0)],
-                    [random.uniform(0.0, amount), random.uniform(-amount, 0.0)],
-                ],
-                dtype=np.float32,
-            )
-            perspective = cv2.getPerspectiveTransform(source, destination).astype(
-                np.float64
-            )
-            matrix = perspective @ matrix
+            if perspective is not None:
+                composed_matrix = perspective @ composed_matrix
 
         return CourtGeometryPlan(
-            matrix=torch.from_numpy(matrix),
-            output_size_hw=(output, output),
+            matrix=torch.from_numpy(composed_matrix),
+            output_size_hw=(crop_height, crop_width),
             horizontal_flipped=flipped,
         )
 
@@ -228,37 +246,60 @@ class CourtProcessingGeometry:
                 top = random.randint(0, height - crop_height)
                 left = random.randint(0, width - crop_width)
                 return top, left, crop_height, crop_width
-        source_ratio = width / float(height)
-        if source_ratio < self.config.crop_ratio[0]:
-            crop_width = width
-            crop_height = int(round(crop_width / self.config.crop_ratio[0]))
-        elif source_ratio > self.config.crop_ratio[1]:
-            crop_height = height
-            crop_width = int(round(crop_height * self.config.crop_ratio[1]))
-        else:
-            crop_height, crop_width = height, width
+        crop_height = min(height, width)
+        crop_width = crop_height
         return (
-            max(0, (height - crop_height) // 2),
-            max(0, (width - crop_width) // 2),
+            (height - crop_height) // 2,
+            (width - crop_width) // 2,
             crop_height,
             crop_width,
         )
 
-    def _has_required_visibility(
-        self, raw: CourtRawSample, plan: CourtGeometryPlan
-    ) -> bool:
+    def _sample_perspective(self, *, width: int, height: int) -> np.ndarray | None:
+        distortion = self.config.perspective_distortion
+        if distortion <= 0.0:
+            return None
+        source = np.array(
+            [
+                [0.0, 0.0],
+                [width - 1.0, 0.0],
+                [width - 1.0, height - 1.0],
+                [0.0, height - 1.0],
+            ],
+            dtype=np.float32,
+        )
+        max_offset = distortion * min(width, height)
+        jitter = np.random.uniform(-max_offset, max_offset, size=(4, 2)).astype(
+            np.float32
+        )
+        destination = source + jitter
+        destination[:, 0] = np.clip(destination[:, 0], 0.0, width - 1.0)
+        destination[:, 1] = np.clip(destination[:, 1], 0.0, height - 1.0)
+        if cv2.contourArea(destination) < 1.0:
+            return None
+        return cast(
+            "np.ndarray[tuple[int, int], np.dtype[np.float64]]",
+            cv2.getPerspectiveTransform(source, destination).astype(np.float64),
+        )
+
+    def _required_visibility(self, raw: CourtRawSample) -> int:
         channels = raw.keypoint_channels
-        if channels is None or self.config.min_visible_kp == 0:
-            return True
+        if channels is None:
+            return 0
+        source_visible = int(channels.point_visible.sum().item())
+        return int(min(self.config.min_visible_kp, source_visible))
+
+    def _visible_count(self, raw: CourtRawSample, plan: CourtGeometryPlan) -> int:
+        channels = raw.keypoint_channels
+        if channels is None:
+            return 0
         transformed = self._transform_channels(
             channels,
             matrix=plan.matrix,
             output_size_hw=plan.output_size_hw,
             horizontal_flipped=plan.horizontal_flipped,
         )
-        source_visible = int(channels.point_visible.sum().item())
-        required = min(self.config.min_visible_kp, source_visible)
-        return int(transformed.point_visible.sum().item()) >= required
+        return int(transformed.point_visible.sum().item())
 
     @staticmethod
     def _transform_points(points: Tensor, matrix: Tensor) -> Tensor:
