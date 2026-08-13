@@ -96,7 +96,7 @@ augmentationをdefaultへ戻し、別の一変数を検証する。
 
 ### 次に有効な実験
 
-view-conditionedな全体layout取り違えへ直接な幾何教師を加えるため、v4をbaselineとして
-`processing=kp`だけを`processing=kp_line`へ変更する。事前にB00全splitのline targetを
-offline materializeし、DPT shared trunkへbinary line補助head/lossを追加する。model、
-augmentation、KP loss、解像度、seedはv4と同一に保つ。
+v4/v5後のgeometry監査で、aspect-ratio保存cropをtrain short-sideへ再正規化しておらず、
+設定上256でもcrop後の短辺が256未満になることが判明した。crop後に短辺256へresizeし、
+縦横比を保存する修正を加えたv6を実行する。v4のdefault augmentation、model、KP loss、
+validation解像度、seedを固定し、train scale contractの修正だけを検証する。
