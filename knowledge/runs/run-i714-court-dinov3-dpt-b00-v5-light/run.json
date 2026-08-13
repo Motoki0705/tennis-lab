@@ -1,0 +1,14 @@
+{
+  "run_id": "1786633891521434968_1068721_i714-court-dinov3-dpt-b00-v5-light",
+  "name": "i714-court-dinov3-dpt-b00-v5-light",
+  "command": "PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.court_detection.scripts.train data/source=synthetic_court data/processing=kp data/augmentation=light model/encoder=dinov3 model/decoder=dpt training=lora loss.kp.positive_weight=1.0 data.batch_size=4 data.num_workers=4 data.augmentation.train_scales='[256]' data.augmentation.val_short_side=512 training.trainer.max_epochs=50 training.checkpoint.monitor=val/kp_mean_dist training.checkpoint.mode=min training.early_stopping.monitor=val/kp_mean_dist training.early_stopping.mode=min training.early_stopping.patience=10 training.qualitative_logging.enabled=false run.seed=714 run.output_dir=issue714/i714-court-dinov3-dpt-b00-v5-light run.test_after_fit=true",
+  "provider": "codex",
+  "session": "019ff617-dfb3-7182-8c2a-1d0705cf3ff0",
+  "issue": "714",
+  "commit": "572df05a0035efe0bd5463e95816151fdfa0ea57",
+  "branch": "feat/issue-714-court-data-composition-v2",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-714-court-data-composition-v2",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-714-court-data-composition-v2",
+  "captured_at": "2026-08-14T00:11:33+09:00"
+}
