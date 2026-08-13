@@ -66,3 +66,9 @@
 ローカルGPUを用いて学習・実験を実行する場合は、**必ず `.agents/skills/training-queue/SKILL.md` を読み、その手順に従って training queue 経由で実行すること**。GPUに対して複数の学習プロセスを直接・同時に起動してはならない。
 
 worktreeで作業している場合でも、queue state はworktree内の `.training_queue/` に作成せず、**元のrepo rootの `.training_queue/` を共有して使用すること**。必要に応じて `TRAINING_QUEUE_DIR` をrepo rootの `.training_queue/` に明示的に設定し、すべてのworktree・agentが同じqueueを参照するようにすること。
+
+### 長期プロセス・サブエージェントの待機
+
+学習、実験、CI、GPU lock、その他の長期プロセスの完了を待つ間は、原則として**何もしない**。待ち時間を利用して別作業を開始したり、ログ、epoch、GPU使用量、プロセス一覧などを短い間隔で繰り返し確認したりしない。完了通知やblocking waitを利用し、通知機構がない場合も利用可能な最長の待機時間を選ぶ。待機がtimeoutした場合は状態を一度だけ確認し、未完了なら再び長時間待機する。
+
+サブエージェントの完了待ちも同様とする。routine progressを要求したり、高頻度にstatus確認やメッセージ送信を行ったりせず、完了通知を待つ。連絡するのは、ユーザーから状況確認を求められた場合、外部状態の変化を一度確認する必要がある場合、または作業継続に必要なblocker／権限／ownership調整がある場合に限る。
