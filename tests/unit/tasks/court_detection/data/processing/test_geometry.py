@@ -80,13 +80,13 @@ def _raw_sample(
     )
 
 
-def test_train_scale_resizes_short_side_before_aspect_preserving_crop() -> None:
+def test_train_crop_is_rescaled_to_configured_short_side() -> None:
     geometry = CourtProcessingGeometry(_config(), is_train=True)
 
     with patch.object(
         geometry,
         "_random_resized_crop",
-        return_value=(0, 0, 32, 64),
+        return_value=(8, 16, 16, 32),
     ) as crop:
         plan = geometry._sample_once((80, 40))
 
@@ -95,10 +95,25 @@ def test_train_scale_resizes_short_side_before_aspect_preserving_crop() -> None:
     torch.testing.assert_close(
         plan.matrix,
         torch.tensor(
-            [[0.8, 0.0, 0.0], [0.0, 0.8, 0.0], [0.0, 0.0, 1.0]],
+            [[1.6, 0.0, -32.0], [0.0, 1.6, -16.0], [0.0, 0.0, 1.0]],
             dtype=torch.float64,
         ),
     )
+
+
+def test_train_crop_preserves_aspect_ratio_at_the_configured_scale() -> None:
+    geometry = CourtProcessingGeometry(_config(), is_train=True)
+
+    with patch.object(
+        geometry,
+        "_random_resized_crop",
+        return_value=(0, 0, 16, 24),
+    ):
+        plan = geometry._sample_once((80, 40))
+
+    assert plan.output_size_hw == (32, 48)
+    assert min(plan.output_size_hw) == 32
+    assert plan.output_size_hw[1] / plan.output_size_hw[0] == 1.5
 
 
 def test_aspect_preserving_train_shapes_are_padded_by_real_collate() -> None:
