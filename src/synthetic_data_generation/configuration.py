@@ -70,6 +70,8 @@ from src.synthetic_data_generation.pipeline.contracts import (
 from src.synthetic_data_generation.pipeline.workspace import SceneWorkspace
 from src.synthetic_data_generation.reconstruction.contracts import (
     NHT_RECONSTRUCT_COMMAND,
+    NHTPipelineConfig,
+    NHTTrainingRuntime,
 )
 from src.synthetic_data_generation.rendering.nht.contracts import NHT_RENDER_COMMAND
 from src.tasks.blcs.generate_dataset.source_api import (
@@ -390,6 +392,8 @@ class NHTCommandPaths:
 
     reconstruct_executable: str | Path
     render_executable: str | Path
+    pipeline_config: NHTPipelineConfig
+    training_runtime: NHTTrainingRuntime
     environment: Mapping[str, str]
     reconstruction_timeout_seconds: float
     render_timeout_seconds: float
@@ -398,6 +402,8 @@ class NHTCommandPaths:
     def from_mapping(
         cls,
         value: object,
+        *,
+        resolver: PathResolver,
     ) -> NHTCommandPaths:
         raw = _exact(
             value,
@@ -405,6 +411,9 @@ class NHTCommandPaths:
             keys={
                 "reconstruct_executable",
                 "render_executable",
+                "pipeline_config_path",
+                "training_python_path",
+                "trainer_path",
                 "environment",
                 "reconstruction_timeout_seconds",
                 "render_timeout_seconds",
@@ -420,6 +429,8 @@ class NHTCommandPaths:
             key="render_executable",
             expected=NHT_RENDER_COMMAND,
         )
+        pipeline_config = _nht_pipeline_config(raw, resolver=resolver)
+        training_runtime = _nht_training_runtime(raw, resolver=resolver)
         environment_raw = _mapping(raw["environment"], path="nht.environment")
         unknown_environment = sorted(
             set(environment_raw) - {"CUDA_VISIBLE_DEVICES"}
@@ -456,10 +467,55 @@ class NHTCommandPaths:
         return cls(
             reconstruct_executable=reconstruct,
             render_executable=render,
+            pipeline_config=pipeline_config,
+            training_runtime=training_runtime,
             environment=environment,
             reconstruction_timeout_seconds=reconstruction_timeout,
             render_timeout_seconds=render_timeout,
         )
+
+
+def _nht_pipeline_config(
+    mapping: ConfigMapping,
+    *,
+    resolver: PathResolver,
+) -> NHTPipelineConfig:
+    """Resolve and validate the public NHT config without provider imports."""
+    configured = _text(mapping, "pipeline_config_path", path="nht")
+    lexical_path = resolver.resolve_symlink_entry(
+        PathRole.EXTERNAL_ASSET,
+        configured,
+    )
+    if lexical_path.is_symlink():
+        raise PathContractError(
+            f"nht.pipeline_config_path must not be a symbolic link: {lexical_path}"
+        )
+    if not lexical_path.exists():
+        raise PathContractError(
+            f"nht.pipeline_config_path does not exist: {lexical_path}"
+        )
+    if not lexical_path.is_file():
+        raise PathContractError(
+            f"nht.pipeline_config_path is not a file: {lexical_path}"
+        )
+    resolved = resolver.resolve(PathRole.EXTERNAL_ASSET, configured)
+    return NHTPipelineConfig.load(resolved)
+
+
+def _nht_training_runtime(
+    mapping: ConfigMapping,
+    *,
+    resolver: PathResolver,
+) -> NHTTrainingRuntime:
+    """Resolve the dedicated trainer environment without dereferencing its Python."""
+    configured_python = _text(mapping, "training_python_path", path="nht")
+    python = resolver.resolve_symlink_entry(
+        PathRole.EXTERNAL_ASSET,
+        configured_python,
+    )
+    configured_trainer = _text(mapping, "trainer_path", path="nht")
+    trainer = resolver.resolve(PathRole.EXTERNAL_ASSET, configured_trainer)
+    return NHTTrainingRuntime(python=python, trainer=trainer)
 
 
 def _installed_nht_command(
@@ -536,7 +592,7 @@ class AlignmentConfiguration:
                 "holdout_fraction",
                 "minimum_fit_cameras",
                 "minimum_holdout_cameras",
-                "maximum_cameras",
+                "camera_prefix_count",
                 "line_model",
                 "ground_plane",
                 "projection",
@@ -779,12 +835,18 @@ class AlignmentConfiguration:
                 "family_orientation_tolerance_radians",
                 "family_scale_relative_tolerance",
                 "minimum_center_separation_metres",
-                "separation_penalty",
                 "optimizer_maximum_iterations",
                 "optimizer_population_size",
                 "optimizer_tolerance",
                 "maximum_fit_points",
                 "common_scale_relative_tolerance",
+                "scale_bound_margin_relative",
+                "evidence_assignment_distance_metres",
+                "whole_template_inlier_distance_metres",
+                "minimum_whole_template_inlier_fraction",
+                "maximum_whole_template_q95_error_metres",
+                "minimum_semantic_segment_inlier_fraction",
+                "maximum_court_footprint_overlap_fraction",
             },
         )
         candidate = CourtCandidateFitSettings(
@@ -829,9 +891,6 @@ class AlignmentConfiguration:
                 "minimum_center_separation_metres",
                 path=candidate_path,
             ),
-            separation_penalty=_number(
-                candidate_raw, "separation_penalty", path=candidate_path
-            ),
             optimizer_maximum_iterations=_integer(
                 candidate_raw,
                 "optimizer_maximum_iterations",
@@ -853,6 +912,41 @@ class AlignmentConfiguration:
             common_scale_relative_tolerance=_number(
                 candidate_raw,
                 "common_scale_relative_tolerance",
+                path=candidate_path,
+            ),
+            scale_bound_margin_relative=_number(
+                candidate_raw,
+                "scale_bound_margin_relative",
+                path=candidate_path,
+            ),
+            evidence_assignment_distance_metres=_number(
+                candidate_raw,
+                "evidence_assignment_distance_metres",
+                path=candidate_path,
+            ),
+            whole_template_inlier_distance_metres=_number(
+                candidate_raw,
+                "whole_template_inlier_distance_metres",
+                path=candidate_path,
+            ),
+            minimum_whole_template_inlier_fraction=_number(
+                candidate_raw,
+                "minimum_whole_template_inlier_fraction",
+                path=candidate_path,
+            ),
+            maximum_whole_template_q95_error_metres=_number(
+                candidate_raw,
+                "maximum_whole_template_q95_error_metres",
+                path=candidate_path,
+            ),
+            minimum_semantic_segment_inlier_fraction=_number(
+                candidate_raw,
+                "minimum_semantic_segment_inlier_fraction",
+                path=candidate_path,
+            ),
+            maximum_court_footprint_overlap_fraction=_number(
+                candidate_raw,
+                "maximum_court_footprint_overlap_fraction",
                 path=candidate_path,
             ),
         )
@@ -895,7 +989,9 @@ class AlignmentConfiguration:
             minimum_holdout_cameras=_integer(
                 raw, "minimum_holdout_cameras", path=path, minimum=1
             ),
-            maximum_cameras=_integer(raw, "maximum_cameras", path=path, minimum=1),
+            camera_prefix_count=_integer(
+                raw, "camera_prefix_count", path=path, minimum=1
+            ),
             line_model=line_model,
             ground_plane=ground,
             projection=projection,
@@ -2086,7 +2182,7 @@ class ScenePipelineConfiguration:
             request=request,
             stages=stages,
             camera=_camera_profile(root["camera"]),
-            nht=NHTCommandPaths.from_mapping(root["nht"]),
+            nht=NHTCommandPaths.from_mapping(root["nht"], resolver=resolver),
             alignment=AlignmentConfiguration.from_mapping(
                 root["alignment"],
                 resolver=resolver,

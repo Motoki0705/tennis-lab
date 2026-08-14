@@ -9,6 +9,7 @@ import pytest
 import torch
 
 from src.tasks.blcs.generate_dataset.simulation.ball_physics import BallPhysics
+from src.tasks.blcs.generate_dataset.simulation.cell_manager import CellManager
 from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
     TargetedVelocityConfig,
     TargetedVelocitySampler,
@@ -93,11 +94,121 @@ def test_full_physics_refinement_fails_when_no_landing_is_available(
         ),
     )
 
-    with pytest.raises(RuntimeError, match="no gravity-only retry fallback"):
+    with pytest.raises(RuntimeError, match="requested-side tolerance"):
         sampler.compute_velocity_to_target(
             torch.tensor([0.0, -12.0, 1.0]),
             torch.tensor([0.0, 12.0, 0.0]),
             from_side="near",
             elevation_deg=20.0,
             physics=Mock(),
+        )
+
+
+@pytest.mark.parametrize(
+    ("from_side", "target", "wrong_side_bounce"),
+    [
+        (
+            "far",
+            (4.50869607925415, -0.6014842391014099, 0.0),
+            (4.6300435066223145, 0.013850942254066467, 0.0),
+        ),
+        (
+            "near",
+            (-4.50869607925415, 0.6014842391014099, 0.0),
+            (-4.6300435066223145, -0.013850942254066467, 0.0),
+        ),
+    ],
+)
+def test_unconverged_near_centre_line_bounce_is_never_returned(
+    monkeypatch: pytest.MonkeyPatch,
+    from_side: str,
+    target: tuple[float, float, float],
+    wrong_side_bounce: tuple[float, float, float],
+) -> None:
+    config = replace(
+        _config(max_ballistic_apex_height_m=8.0),
+        landing_refine_max_iters=1,
+    )
+    sampler = TargetedVelocitySampler(
+        cell_manager=CellManager(),
+        config=config,
+        device="cpu",
+    )
+    candidate = torch.tensor([1.0, 2.0, 3.0])
+    monkeypatch.setattr(
+        sampler,
+        "_compute_velocity_to_target_once",
+        Mock(return_value=candidate),
+    )
+    monkeypatch.setattr(
+        sampler,
+        "_simulate_landing",
+        Mock(
+            return_value=SimpleNamespace(
+                hit_net=False,
+                net_pos=None,
+                bounce_pos=torch.tensor(wrong_side_bounce),
+            )
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="requested-side tolerance"):
+        sampler.compute_velocity_to_target(
+            torch.tensor([0.0, 10.0 if from_side == "far" else -10.0, 1.0]),
+            torch.tensor(target),
+            from_side=from_side,
+            elevation_deg=20.0,
+            physics=Mock(),
+        )
+
+
+def test_refinement_margin_must_exceed_tolerance() -> None:
+    with pytest.raises(ValueError, match="cannot cross a discrete cell boundary"):
+        TargetedVelocitySampler(
+            cell_manager=CellManager(),
+            config=replace(
+                _config(max_ballistic_apex_height_m=8.0),
+                target_margin_m=0.25,
+            ),
+            device="cpu",
+        )
+
+
+def test_sampled_target_clearance_is_checked_before_velocity_construction(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager = CellManager()
+    sampler = TargetedVelocitySampler(
+        cell_manager=manager,
+        config=_config(max_ballistic_apex_height_m=8.0),
+        device="cpu",
+    )
+    monkeypatch.setattr(
+        manager,
+        "sample_bounce_position_in_cell",
+        Mock(return_value=torch.tensor([-1.0, 0.2, 0.0])),
+    )
+
+    with pytest.raises(ValueError, match="cell-boundary clearance"):
+        sampler.sample_velocity_for_target_cell(
+            start_pos=torch.tensor([0.0, -10.0, 1.0]),
+            target_cell=0,
+            target_side="far",
+            from_side="near",
+        )
+
+
+def test_target_side_must_be_opposite_from_side() -> None:
+    sampler = TargetedVelocitySampler(
+        cell_manager=CellManager(),
+        config=_config(max_ballistic_apex_height_m=8.0),
+        device="cpu",
+    )
+
+    with pytest.raises(ValueError, match="target_side must be opposite"):
+        sampler.sample_velocity_for_target_cell(
+            start_pos=torch.tensor([0.0, -10.0, 1.0]),
+            target_cell=0,
+            target_side="near",
+            from_side="near",
         )

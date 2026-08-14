@@ -14,10 +14,15 @@ from src.synthetic_data_generation.dataset.camera_profiles import (
 )
 from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
 from src.synthetic_data_generation.dataset.plcs.assembler import (
+    PLCS_DATASET_SCHEMA,
     PLCSSceneAssemblyInput,
     PLCSSupervisionArrays,
     assemble_plcs_dataset,
     build_frame_label,
+)
+from src.synthetic_data_generation.dataset.plcs.coordinates import (
+    PLCS_COORDINATE_CONTRACT,
+    PLCSSourceSupportPlane,
 )
 from src.synthetic_data_generation.dataset.plcs.diagnostics import (
     write_plcs_diagnostics,
@@ -65,6 +70,10 @@ def _tracks(tmp_path: Path) -> tuple[PLCSObjectTrack, ...]:
                 instance_id=index,
                 asset_id=f"avatar-{index:03d}",
                 clip=clip,
+                support_plane=PLCSSourceSupportPlane.from_surface_minimum(
+                    initial_root_translation_z_m=float(clip.root_translation_m[0, 2]),
+                    support_local_z_m=0.0,
+                ),
                 start_frame=0,
                 anchor_position_court_m=(0.0, 0.0, 0.0),
                 yaw_radians=0.0,
@@ -213,10 +222,7 @@ def _scene_input(
     camera_count = len(rig.cameras)
     object_count = len(timeline.tracks)
     present: NDArray[np.bool_] = np.asarray(
-        [
-            [entry.present for entry in frame.entries]
-            for frame in timeline.frames
-        ],
+        [[entry.present for entry in frame.entries] for frame in timeline.frames],
         dtype=np.bool_,
     )
     rotation: NDArray[np.float32] = np.zeros(
@@ -439,7 +445,7 @@ def test_complete_multiscene_dataset_passes_strict_publication_validation(
     assert result["sample_count"] == 8
 
 
-def test_single_object_all_frames_cross_chunks_and_reopen_compact_v4(
+def test_single_object_all_frames_cross_chunks_and_reopen_compact_v5(
     tmp_path: Path,
 ) -> None:
     from src.synthetic_data_generation.dataset.plcs.validation import (
@@ -465,6 +471,10 @@ def test_single_object_all_frames_cross_chunks_and_reopen_compact_v4(
             instance_id=1,
             asset_id="avatar-001",
             clip=clip,
+            support_plane=PLCSSourceSupportPlane.from_surface_minimum(
+                initial_root_translation_z_m=float(clip.root_translation_m[0, 2]),
+                support_local_z_m=0.0,
+            ),
             start_frame=0,
             anchor_position_court_m=(0.0, 0.0, 0.0),
             yaw_radians=0.0,
@@ -479,9 +489,7 @@ def test_single_object_all_frames_cross_chunks_and_reopen_compact_v4(
                 tracks=tracks,
                 production_mode=PLCSProductionMode.SINGLE_OBJECT,
             )
-            for court_index, scene_id in enumerate(
-                ("B00", "B00-plcs-002"), start=1
-            )
+            for court_index, scene_id in enumerate(("B00", "B00-plcs-002"), start=1)
         ),
         accepted_court_instance_ids=("court-001", "court-002"),
         required_motion_categories=frozenset({"running"}),
@@ -489,8 +497,7 @@ def test_single_object_all_frames_cross_chunks_and_reopen_compact_v4(
     staging = tmp_path / ".transactions" / "plcs_dataset" / "snapshot"
     (staging / "backgrounds").mkdir(parents=True)
     inputs = tuple(
-        _scene_input(staging, scene, storage_chunk_size=2)
-        for scene in inventory.scenes
+        _scene_input(staging, scene, storage_chunk_size=2) for scene in inventory.scenes
     )
     camera_count = _write_background_store(staging, inputs)
     diagnostic_paths = write_plcs_diagnostics(
@@ -538,7 +545,15 @@ def test_single_object_all_frames_cross_chunks_and_reopen_compact_v4(
     boundary = reader.logical_sample("B00", 2, "court-001-camera-0")
     payload = json.loads((staging / "dataset.json").read_text(encoding="utf-8"))
 
-    assert assembly.manifest.schema == "tennis_plcs_compact_dataset_v4"
+    assert assembly.manifest.schema == PLCS_DATASET_SCHEMA
+    assert payload["metadata"]["coordinate_contract"] == (
+        PLCS_COORDINATE_CONTRACT.to_dict()
+    )
+    assert all(
+        track["support_plane"]["schema"] == "plcs_initial_smplh_surface_support_v1"
+        for scene in payload["metadata"]["logical_scenes"]
+        for track in scene["tracks"]
+    )
     assert result["frame_count"] == 2 * frame_count
     assert result["sample_count"] == 2 * frame_count * 2
     assert assembly.chunk_count == 6
@@ -584,8 +599,7 @@ def test_persisted_validator_rejects_mode_cardinality_mismatch(tmp_path: Path) -
         inventory=inventory,
         rigs={value.timeline.scene_id: value.rig for value in inputs},
         avatars={
-            track.object_id: _Avatar()
-            for track in inventory.scenes[0].timeline.tracks
+            track.object_id: _Avatar() for track in inventory.scenes[0].timeline.tracks
         },
         clip_load_count=3,
         model_load_count=1,

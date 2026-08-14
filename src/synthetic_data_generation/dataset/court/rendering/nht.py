@@ -112,6 +112,8 @@ class CourtNHTRenderer:
         scene_validation_count = 0
         preview_validation_count = 0
         loaded_array_bytes = 0
+        maximum_nht_live_array_bytes = 0
+        retained_nht_array_bytes = 0
         for shard_id, samples in shards.items():
             output_directory = attempt_root / "renders" / shard_id
             try:
@@ -167,6 +169,11 @@ class CourtNHTRenderer:
             scene_validation_count += result.evidence.scene_validation_count
             preview_validation_count += result.evidence.preview_validation_count
             loaded_array_bytes += result.evidence.loaded_array_bytes
+            maximum_nht_live_array_bytes = max(
+                maximum_nht_live_array_bytes,
+                result.evidence.maximum_live_array_bytes,
+            )
+            retained_nht_array_bytes += result.evidence.retained_array_bytes
             if result.scene_id != plan.scene_id:
                 raise ValueError("NHT result scene_id disagrees with the Court plan.")
             shard_rendered = rendered_from_nht_records(samples, result.records)
@@ -177,6 +184,7 @@ class CourtNHTRenderer:
                 samples=samples,
             )
             rendered.extend(shard_rendered)
+            del result
         rendered.sort(key=lambda item: item.sample.sample_index)
         if [item.sample.sample_id for item in rendered] != [
             sample.sample_id for sample in renderable_samples
@@ -195,6 +203,8 @@ class CourtNHTRenderer:
             scene_validation_count=scene_validation_count,
             preview_validation_count=preview_validation_count,
             loaded_array_bytes=loaded_array_bytes,
+            maximum_nht_live_array_bytes=maximum_nht_live_array_bytes,
+            retained_nht_array_bytes=retained_nht_array_bytes,
             shard_timings=tuple(timings),
         )
 

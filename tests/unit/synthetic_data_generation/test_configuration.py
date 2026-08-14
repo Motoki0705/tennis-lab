@@ -15,6 +15,7 @@ from src.synthetic_data_generation.alignment.contracts import AlignmentAcceptanc
 from src.synthetic_data_generation.alignment.settings import AlignmentEvidenceSettings
 from src.synthetic_data_generation.configuration import (
     SCENE_PIPELINE_SCHEMA,
+    AlignmentConfiguration,
     ScenePipelineConfiguration,
     _blcs_generator_config,
     _blcs_source_settings,
@@ -23,11 +24,17 @@ from src.synthetic_data_generation.dataset.blcs.source import (
     BLCSTrajectorySourceSettings,
 )
 from src.synthetic_data_generation.pipeline.contracts import DatasetTarget, StageName
+from src.synthetic_data_generation.reconstruction import NHT_PIPELINE_CONFIG_SCHEMA
 from src.tasks.blcs.generate_dataset.source_api import (
     BLCSGeneratorConfiguration,
     BLCSTimelineSpec,
 )
-from src.utils.configuration import ConfigurationError, PathContractError
+from src.utils.configuration import (
+    ConfigurationError,
+    PathContractError,
+    PathResolver,
+    RuntimePathRoots,
+)
 from src.utils.paths import PROJECT_ROOT
 
 _CONFIG_ROOT = PROJECT_ROOT / "src/synthetic_data_generation/configs"
@@ -66,6 +73,18 @@ def test_b00_configuration_is_the_canonical_scene_request() -> None:
     ).resolve()
     assert "B01" not in runtime.workspace.root.parts
     assert "B02" not in runtime.workspace.root.parts
+    assert runtime.nht.pipeline_config.path == (
+        runtime.resolver.roots.external_asset_root / "nht/configs/production.yaml"
+    ).resolve()
+    assert runtime.nht.pipeline_config.schema == NHT_PIPELINE_CONFIG_SCHEMA
+    assert runtime.nht.training_runtime.python == (
+        runtime.resolver.roots.external_asset_root
+        / "nht/.trainer-venv/bin/python"
+    )
+    assert runtime.nht.training_runtime.trainer == (
+        runtime.resolver.roots.external_asset_root
+        / "nht/gsplat/examples/simple_trainer_nht.py"
+    ).resolve()
 
 
 def test_b00_quantitative_and_full_timeline_values_are_config_owned() -> None:
@@ -105,9 +124,23 @@ def test_b00_quantitative_and_full_timeline_values_are_config_owned() -> None:
     } == {"cuda:0"}
 
 
-def test_b00_alignment_evidence_and_acceptance_are_complete_typed_values() -> None:
-    runtime = ScenePipelineConfiguration.from_config(_compose())
-    alignment = runtime.alignment
+def test_production_alignment_evidence_and_acceptance_are_complete_typed_values(
+    tmp_path: Path,
+) -> None:
+    roots = RuntimePathRoots(
+        project_root=(tmp_path / "project").resolve(),
+        data_root=(tmp_path / "data").resolve(),
+        checkpoint_root=(tmp_path / "checkpoint").resolve(),
+        artifact_root=(tmp_path / "artifact").resolve(),
+        output_root=(tmp_path / "output").resolve(),
+        cache_root=(tmp_path / "cache").resolve(),
+        external_asset_root=(tmp_path / "external-assets").resolve(),
+    )
+    resolver = PathResolver(roots)
+    alignment = AlignmentConfiguration.from_mapping(
+        OmegaConf.load(_CONFIG_ROOT / "alignment/production.yaml"),
+        resolver=resolver,
+    )
     evidence = alignment.evidence
 
     assert isinstance(evidence, AlignmentEvidenceSettings)
@@ -120,17 +153,18 @@ def test_b00_alignment_evidence_and_acceptance_are_complete_typed_values() -> No
         evidence.holdout_fraction,
         evidence.minimum_fit_cameras,
         evidence.minimum_holdout_cameras,
-        evidence.maximum_cameras,
-    ) == (42, 2.0 / 3.0, 1.0 / 3.0, 8, 4, 24)
+        evidence.camera_prefix_count,
+    ) == (42, 2.0 / 3.0, 1.0 / 3.0, 8, 4, 48)
+    assert evidence.expected_camera_prefix_count() == 48
     assert evidence.line_model.checkpoint_path == (
-        runtime.resolver.roots.checkpoint_root
+        resolver.roots.checkpoint_root
         / "court_detection/line/court-detection-epoch19.ckpt"
     ).resolve()
     assert evidence.line_model.backbone_repository_path == (
-        runtime.resolver.roots.external_asset_root / "dinov3"
+        resolver.roots.external_asset_root / "dinov3"
     ).resolve()
     assert evidence.line_model.backbone_checkpoint_path == (
-        runtime.resolver.roots.external_asset_root
+        resolver.roots.external_asset_root
         / "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
     ).resolve()
     assert (
@@ -184,19 +218,25 @@ def test_b00_alignment_evidence_and_acceptance_are_complete_typed_values() -> No
         6.0,
         0.055,
         0.085,
-        -1.5708,
-        1.5708,
+        -1.5707963267948966,
+        1.5707963267948966,
         0.5,
         0.02,
         0.2,
         0.3,
-        12.0,
-        100.0,
-        30,
+        10.97,
+        70,
         8,
         1.0e-5,
         100_000,
+        0.07290400972053463,
+        0.01,
+        0.35,
         0.3,
+        0.6,
+        1.5,
+        0.5,
+        1.0e-9,
     )
     assert astuple(evidence.correspondences) == (0.25, 200, 3)
     assert astuple(alignment.acceptance.fit) == (
@@ -289,7 +329,7 @@ def test_blcs_and_plcs_production_inputs_are_typed_and_have_no_frame_subset() ->
         ("dataset.plcs.require_articulated_motion", False),
         ("nht.reconstruction_timeout_seconds", 0.0),
         ("alignment.evidence.holdout_fraction", 0.0),
-        ("alignment.evidence.maximum_cameras", 11),
+        ("alignment.evidence.camera_prefix_count", 11),
         ("dataset.blcs.trajectory_source.timeline.min_tracks", 1),
         ("dataset.blcs.generator.physics.gravity", "9.81"),
         ("dataset.plcs.appearance.appearance_space", "srgb"),
@@ -345,6 +385,83 @@ def test_private_nht_python_environment_fails_closed() -> None:
 
     with pytest.raises(ConfigurationError, match="environment.PYTHONPATH"):
         ScenePipelineConfiguration.from_config(config)
+
+
+def _nht_config_at(root: Path, contents: str) -> Path:
+    path = root / "pipeline.yaml"
+    root.mkdir(parents=True, exist_ok=True)
+    path.write_text(contents, encoding="utf-8")
+    return path
+
+
+def _compose_with_nht_config_root(root: Path) -> DictConfig:
+    config = _compose()
+    data_root = root.parent / "data"
+    data_root.mkdir(exist_ok=True)
+    source_video = data_root / "synthetic_data_generation/raw/tennis_court.mp4"
+    source_video.parent.mkdir(parents=True)
+    source_video.write_bytes(b"configuration fixture")
+    backbone = (
+        root
+        / "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+    )
+    backbone.parent.mkdir(parents=True, exist_ok=True)
+    backbone.write_bytes(b"configuration fixture")
+    OmegaConf.update(
+        config,
+        "roots.data_root",
+        str(data_root.resolve()),
+        merge=False,
+    )
+    OmegaConf.update(
+        config,
+        "roots.external_asset_root",
+        str(root.resolve()),
+        merge=False,
+    )
+    OmegaConf.update(config, "nht.pipeline_config_path", "pipeline.yaml", merge=False)
+    return config
+
+
+@pytest.mark.parametrize("kind", ["missing", "directory", "symlink"])
+def test_nht_pipeline_config_path_failures_are_rejected(
+    tmp_path: Path,
+    kind: str,
+) -> None:
+    root = tmp_path / "external"
+    root.mkdir()
+    path = root / "pipeline.yaml"
+    if kind == "directory":
+        path.mkdir()
+    elif kind == "symlink":
+        target = _nht_config_at(
+            tmp_path / "target",
+            f"schema: {NHT_PIPELINE_CONFIG_SCHEMA}\n",
+        )
+        path.symlink_to(target)
+    config = _compose_with_nht_config_root(root)
+
+    with pytest.raises(PathContractError, match="pipeline_config_path"):
+        ScenePipelineConfiguration.from_config(config)
+
+
+@pytest.mark.parametrize(
+    "contents",
+    [
+        "schema: [\n",
+        "schema: legacy_nht_pipeline_config\n",
+        f"schema: {NHT_PIPELINE_CONFIG_SCHEMA}\nprivate_runtime: true\n",
+    ],
+)
+def test_invalid_nht_pipeline_config_fails_at_configuration_boundary(
+    tmp_path: Path,
+    contents: str,
+) -> None:
+    root = tmp_path / "external"
+    _nht_config_at(root, contents)
+
+    with pytest.raises((TypeError, ValueError)):
+        ScenePipelineConfiguration.from_config(_compose_with_nht_config_root(root))
 
 
 @pytest.mark.parametrize(

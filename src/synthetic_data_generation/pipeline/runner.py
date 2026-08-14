@@ -53,10 +53,14 @@ class ScenePipelineRunner:
         """Run one request, leaving no partial/stale stage marked completed."""
         if request.scene_id != self.workspace.scene_id:
             raise ValueError("Request scene_id disagrees with the resolved workspace.")
-        plan = self.registry.execution_for_request(request)
 
         manifest = self._load_or_create_manifest(request)
         manifest.assert_request_compatible(request)
+        reusable_stages = self._reusable_stages(request, manifest)
+        plan = self.registry.execution_for_request(
+            request,
+            reusable_stages=reusable_stages,
+        )
         self._preflight_before_invalidation(request, manifest, plan)
         self._recover_interrupted_stages(manifest)
 
@@ -67,11 +71,18 @@ class ScenePipelineRunner:
         config_staging.replace(config_path)
         manifest.targets = sorted(target.value for target in request.targets)
         invalidated_names = {definition.name for definition in plan.invalidated}
+        execution_names = {definition.name for definition in plan.execution}
+        replacement_roots = {
+            definition.name
+            for definition in plan.execution
+            if not (set(definition.dependencies) & execution_names)
+        }
+        replacement_roots.add(plan.cursor.name)
         for definition in reversed(plan.invalidated):
-            # The rerun cursor's prior complete owner stays visible until the new
-            # validated snapshot atomically replaces it. Descendants are stale and
-            # are physically unpublished before any execution starts.
-            if definition.name is not plan.cursor.name:
+            # Each independently scheduled replacement root keeps an old complete
+            # owner until atomic publication. Graph descendants are stale and are
+            # physically unpublished before any execution starts.
+            if definition.name not in replacement_roots:
                 definition.invalidate_publication(self.workspace)
             manifest.invalidate(definition.name)
         for target in DatasetTarget:
@@ -107,6 +118,52 @@ class ScenePipelineRunner:
         if recovered:
             manifest.save(self.workspace.run_manifest_path)
 
+    def _reusable_stages(
+        self,
+        request: ScenePipelineRequest,
+        manifest: MutableRunManifest,
+    ) -> set[StageName]:
+        """Return completed publications whose selected dependency closure is valid."""
+        selected = self.registry.selected_for_request(request)
+        selected_names = {definition.name for definition in selected}
+        demanded_outputs: dict[StageName, set[Path]] = {
+            stage: set() for stage in selected_names
+        }
+        for definition in selected:
+            for stage_input in definition.required_inputs:
+                if (
+                    stage_input.kind is StageInputKind.STAGE_OUTPUT
+                    and stage_input.applies_to(request)
+                ):
+                    producer = stage_input.producer
+                    relative_path = stage_input.relative_path
+                    if producer is None or relative_path is None:
+                        raise RuntimeError(
+                            "Invalid stage input escaped registry validation."
+                        )
+                    demanded_outputs[producer].add(relative_path)
+
+        reusable: set[StageName] = set()
+        for definition in selected:
+            record = manifest.stages[definition.name]
+            selected_dependencies = set(definition.dependencies) & selected_names
+            if (
+                record.status is not StageStatus.COMPLETED
+                or not selected_dependencies <= reusable
+            ):
+                continue
+            try:
+                self.workspace.validate_required_outputs(definition)
+                for relative_path in demanded_outputs[definition.name]:
+                    self.workspace.validate_stage_input(definition, relative_path)
+                definition.validate_reusable_publication(
+                    self.workspace.owner_path(definition)
+                )
+            except (OSError, TypeError, ValueError):
+                continue
+            reusable.add(definition.name)
+        return reusable
+
     def _preflight_before_invalidation(
         self,
         request: ScenePipelineRequest,
@@ -128,18 +185,19 @@ class ScenePipelineRunner:
         for definition in plan.retained_ancestors:
             if manifest.stages[definition.name].status is not StageStatus.COMPLETED:
                 raise ValueError(
-                    "Retained upstream stage is not completed: "
+                    "Retained prerequisite stage is not completed: "
                     f"{definition.name.value}."
                 )
             self.workspace.validate_required_outputs(definition)
-        self._validate_definition_inputs(request, plan.cursor)
+        first_execution = plan.execution[0]
+        self._validate_definition_inputs(request, first_execution)
         context = _Context(
             request=request,
-            stage=plan.cursor,
-            owner_path=self.workspace.owner_path(plan.cursor),
-            staging_path=self.workspace.staging_path(plan.cursor),
+            stage=first_execution,
+            owner_path=self.workspace.owner_path(first_execution),
+            staging_path=self.workspace.staging_path(first_execution),
         )
-        plan.cursor.preflight(context)
+        first_execution.preflight(context)
         for definition in plan.invalidated:
             definition.preflight_publication(self.workspace)
 

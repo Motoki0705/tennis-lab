@@ -243,6 +243,14 @@ class StagePublicationStrategy(Protocol):
     ) -> None: ...
 
 
+class ReusablePublicationValidator(Protocol):
+    """One stage's typed semantic gate for an already-completed owner."""
+
+    def validate(self, owner_path: Path) -> None:
+        """Raise when the fixed owner is not safe to reuse."""
+        ...
+
+
 @dataclass(frozen=True, slots=True)
 class StageDefinition(Generic[SummaryT]):
     """The sole typed authority for one stage's graph and full lifecycle."""
@@ -254,6 +262,7 @@ class StageDefinition(Generic[SummaryT]):
     required_outputs: tuple[Path, ...]
     handler: StageHandler[SummaryT]
     publication: StagePublicationStrategy
+    reusable_publication_validator: ReusablePublicationValidator
     summary_type: type[SummaryT]
     _descendants: tuple[StageName, ...] | None = field(
         default=None,
@@ -293,6 +302,12 @@ class StageDefinition(Generic[SummaryT]):
                 raise TypeError(
                     f"Stage {self.name.value} has an incomplete publication strategy."
                 )
+        if not callable(
+            getattr(self.reusable_publication_validator, "validate", None)
+        ):
+            raise TypeError(
+                f"Stage {self.name.value} has no reusable-publication validator."
+            )
         if not issubclass(self.summary_type, StageExecutionSummary):
             raise TypeError("Stage summary_type must derive from StageExecutionSummary.")
 
@@ -350,10 +365,14 @@ class StageDefinition(Generic[SummaryT]):
         """Remove this stage's canonical owner and transaction residue."""
         self.publication.invalidate(workspace, _as_execution_definition(self))
 
+    def validate_reusable_publication(self, owner_path: Path) -> None:
+        """Apply the bound semantic reuse gate to the fixed owner."""
+        self.reusable_publication_validator.validate(owner_path)
+
 
 @dataclass(frozen=True, slots=True)
 class StageExecutionPlan:
-    """One graph-derived request plan consumed by every runner lifecycle phase."""
+    """One graph-derived, publication-aware plan for every runner lifecycle phase."""
 
     selected: tuple[StageDefinition[StageExecutionSummary], ...]
     cursor: StageDefinition[StageExecutionSummary]
@@ -381,9 +400,11 @@ class StageExecutionPlan:
         if self.cursor.name not in names["execution"]:
             raise ValueError("Execution-plan cursor must belong to the execution stages.")
         if not names["retained_ancestors"] <= names["selected"]:
-            raise ValueError("Retained ancestors must belong to the selected request stages.")
+            raise ValueError(
+                "Retained prerequisites must belong to the selected request stages."
+            )
         if names["retained_ancestors"] & names["invalidated"]:
-            raise ValueError("Retained ancestors cannot also be invalidated.")
+            raise ValueError("Retained prerequisites cannot also be invalidated.")
         if not names["execution"] <= names["selected"]:
             raise ValueError("Execution stages must belong to the selected request stages.")
         if not names["execution"] <= names["invalidated"]:
@@ -425,6 +446,7 @@ def _validate_json_value(value: object, *, path: str) -> None:
 
 __all__ = [
     "DatasetTarget",
+    "ReusablePublicationValidator",
     "ScenePipelineRequest",
     "StageDefinition",
     "StageExecutionContext",

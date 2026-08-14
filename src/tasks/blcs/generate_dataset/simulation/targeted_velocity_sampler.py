@@ -55,7 +55,8 @@ class TargetedVelocityConfig:
     landing_sim_max_frames: int
 
     # Margin (metres) from cell edges when sampling target bounce positions.
-    # Keeps refined landings clear of court boundaries despite residual error.
+    # It must exceed the refinement tolerance so every accepted residual stays
+    # strictly inside the same discrete cell.
     target_margin_m: float
 
 
@@ -76,10 +77,9 @@ class _LandingResult:
 class TargetedVelocitySampler:
     """Samples velocity to aim at specific target cells.
 
-    Uses projectile motion approximation (ignoring drag/magnus) to compute a
-    velocity toward a target cell. It does not refine against the final landing
-    point; it only resamples elevation when a short physics check detects a net
-    hit.
+    Uses a gravity-only solution as the initial proposal.  When full physics is
+    supplied, the proposal is refined and returned only after its simulated
+    first bounce satisfies the requested side/cell contract.
     """
 
     def __init__(
@@ -102,6 +102,14 @@ class TargetedVelocitySampler:
         self.device = torch.device(device)
         if self.config.max_ballistic_apex_height_m <= 0.0:
             raise ValueError("max_ballistic_apex_height_m must be positive.")
+        if self.config.landing_refine_enabled and not (
+            self.config.target_margin_m > self.config.landing_refine_tolerance_m
+        ):
+            raise ValueError(
+                "target_margin_m must be greater than "
+                "landing_refine_tolerance_m when refinement is enabled so an "
+                "accepted landing cannot cross a discrete cell boundary."
+            )
 
     def compute_velocity_to_target(
         self,
@@ -132,6 +140,39 @@ class TargetedVelocitySampler:
             Tensor: Velocity [3] in m/s.
 
         """
+        target_side = self._opposing_side(from_side)
+        if not self.cell_manager.is_position_in_cell_grid(target_pos, target_side):
+            raise ValueError(
+                "Target position must lie inside the bounded side opposite from_side: "
+                f"from_side={from_side!r}, target_side={target_side!r}, "
+                f"position={target_pos.tolist()}."
+            )
+        return self._compute_velocity_to_target(
+            start_pos=start_pos,
+            target_pos=target_pos,
+            from_side=from_side,
+            target_side=target_side,
+            target_cell=None,
+            elevation_deg=elevation_deg,
+            profile=profile,
+            physics=physics,
+            spin=spin,
+        )
+
+    def _compute_velocity_to_target(
+        self,
+        *,
+        start_pos: Tensor,
+        target_pos: Tensor,
+        from_side: str,
+        target_side: str,
+        target_cell: int | None,
+        elevation_deg: float | None,
+        profile: str | None,
+        physics: BallPhysics | None,
+        spin: Tensor | None,
+    ) -> Tensor:
+        """Compute a velocity under an already validated side contract."""
         elevation_rad = self._sample_elevation_rad(elevation_deg, profile)
 
         if physics is not None and self.config.landing_refine_enabled:
@@ -139,6 +180,8 @@ class TargetedVelocitySampler:
                 start_pos=start_pos,
                 target_pos=target_pos,
                 from_side=from_side,
+                target_side=target_side,
+                target_cell=target_cell,
                 elevation_rad=elevation_rad,
                 physics=physics,
                 spin=spin,
@@ -156,6 +199,8 @@ class TargetedVelocitySampler:
         start_pos: Tensor,
         target_pos: Tensor,
         from_side: str,
+        target_side: str,
+        target_cell: int | None,
         elevation_rad: float,
         physics: BallPhysics,
         spin: Tensor | None,
@@ -169,10 +214,8 @@ class TargetedVelocitySampler:
         """
         cfg = self.config
         elevation_step_rad = math.radians(cfg.net_elevation_step_deg)
-        target_side = "far" if from_side == "near" else "near"
 
         virtual_target = target_pos.clone()
-        best_velocity: Tensor | None = None
         best_error = float("inf")
         best_virtual: Tensor | None = None
         best_error_vec: Tensor | None = None
@@ -218,10 +261,14 @@ class TargetedVelocitySampler:
 
             if error < best_error:
                 best_error = error
-                best_velocity = velocity
                 best_virtual = virtual_target.clone()
                 best_error_vec = error_vec.clone()
             if error <= cfg.landing_refine_tolerance_m:
+                self._validate_refined_landing(
+                    bounce_pos=landing.bounce_pos,
+                    target_side=target_side,
+                    target_cell=target_cell,
+                )
                 return velocity
 
             if prev_error is not None and error > prev_error:
@@ -235,13 +282,37 @@ class TargetedVelocitySampler:
             virtual_target[:2] = virtual_target[:2] - gain * best_error_vec
             virtual_target = self._clamp_virtual_target(virtual_target, target_side)
 
-        if best_velocity is not None:
-            return best_velocity
-
         raise RuntimeError(
-            "Full-physics targeted-velocity refinement produced no valid landing; "
-            "no gravity-only retry fallback is defined."
+            "Full-physics targeted-velocity refinement produced no valid landing "
+            "within the requested-side tolerance; "
+            f"best_error_m={best_error!r}, "
+            f"tolerance_m={cfg.landing_refine_tolerance_m!r}."
         )
+
+    def _validate_refined_landing(
+        self,
+        *,
+        bounce_pos: Tensor,
+        target_side: str,
+        target_cell: int | None,
+    ) -> None:
+        """Enforce the requested side/cell after full-physics simulation."""
+        if not self.cell_manager.is_position_in_cell_grid(bounce_pos, target_side):
+            raise RuntimeError(
+                "Full-physics landing left the requested canonical half-court grid "
+                "inside the configured acceptance tolerance: "
+                f"target_side={target_side!r}, position={bounce_pos.tolist()}."
+            )
+        if target_cell is None:
+            return
+        actual_cell = self.cell_manager.position_to_cell_id(bounce_pos, target_side)
+        if actual_cell != target_cell:
+            raise RuntimeError(
+                "Full-physics landing crossed a discrete cell boundary inside the "
+                "configured acceptance tolerance: "
+                f"requested={target_cell}, actual={actual_cell}, "
+                f"target_side={target_side!r}, position={bounce_pos.tolist()}."
+            )
 
     def _clamp_virtual_target(self, virtual_target: Tensor, target_side: str) -> Tensor:
         """Keep the virtual aim point on the target side and bounded.
@@ -408,6 +479,7 @@ class TargetedVelocitySampler:
 
         """
         self._validate_cell_id(target_cell)
+        self._validate_opposing_sides(from_side=from_side, target_side=target_side)
 
         # Sample target position within cell (ground level)
         target_pos = self.cell_manager.sample_bounce_position_in_cell(
@@ -416,11 +488,19 @@ class TargetedVelocitySampler:
             device=self.device,
             margin=self.config.target_margin_m,
         )
+        self._validate_sampled_cell_target(
+            target_pos=target_pos,
+            target_cell=target_cell,
+            target_side=target_side,
+        )
 
-        return self.compute_velocity_to_target(
+        return self._compute_velocity_to_target(
             start_pos=start_pos,
             target_pos=target_pos,
             from_side=from_side,
+            target_side=target_side,
+            target_cell=target_cell,
+            elevation_deg=None,
             profile=profile,
             physics=physics,
             spin=spin,
@@ -451,6 +531,7 @@ class TargetedVelocitySampler:
             Velocity [3] in m/s.
         """
         self._validate_cell_id(target_cell)
+        self._validate_opposing_sides(from_side=from_side, target_side=target_side)
 
         target_pos = self.cell_manager.sample_bounce_position_in_cell(
             cell_id=target_cell,
@@ -458,15 +539,73 @@ class TargetedVelocitySampler:
             device=self.device,
             margin=self.config.target_margin_m,
         )
+        self._validate_sampled_cell_target(
+            target_pos=target_pos,
+            target_cell=target_cell,
+            target_side=target_side,
+        )
 
-        return self.compute_velocity_to_target(
+        return self._compute_velocity_to_target(
             start_pos=start_pos,
             target_pos=target_pos,
             from_side=from_side,
+            target_side=target_side,
+            target_cell=target_cell,
+            elevation_deg=None,
             profile="drive",  # Serves use drive (low elevation)
             physics=physics,
             spin=spin,
         )
+
+    def _validate_sampled_cell_target(
+        self,
+        *,
+        target_pos: Tensor,
+        target_cell: int,
+        target_side: str,
+    ) -> None:
+        """Prove that the tolerance ball stays inside one requested cell."""
+        actual_cell = self.cell_manager.position_to_cell_id(target_pos, target_side)
+        if actual_cell != target_cell:
+            raise RuntimeError(
+                "Sampled target does not belong to its requested BLCS cell: "
+                f"requested={target_cell}, actual={actual_cell}, "
+                f"side={target_side!r}, position={target_pos.tolist()}."
+            )
+        if not self.config.landing_refine_enabled:
+            return
+        bounds = self.cell_manager.cell_id_to_bounds(target_cell, target_side)
+        x = float(target_pos[0].item())
+        y = float(target_pos[1].item())
+        boundary_clearance = min(
+            x - bounds.x_min,
+            bounds.x_max - x,
+            y - bounds.y_min,
+            bounds.y_max - y,
+        )
+        if boundary_clearance <= self.config.landing_refine_tolerance_m:
+            raise ValueError(
+                "Sampled BLCS target does not have enough cell-boundary clearance "
+                "for the configured landing tolerance: "
+                f"clearance_m={boundary_clearance!r}, "
+                f"tolerance_m={self.config.landing_refine_tolerance_m!r}."
+            )
+
+    @staticmethod
+    def _opposing_side(from_side: str) -> str:
+        if from_side == "near":
+            return "far"
+        if from_side == "far":
+            return "near"
+        raise ValueError(f"from_side must be 'near' or 'far', got {from_side!r}")
+
+    def _validate_opposing_sides(self, *, from_side: str, target_side: str) -> None:
+        expected = self._opposing_side(from_side)
+        if target_side != expected:
+            raise ValueError(
+                "target_side must be opposite from_side: "
+                f"from_side={from_side!r}, target_side={target_side!r}."
+            )
 
     def _validate_cell_id(self, cell_id: int) -> None:
         from src.tasks.blcs.generate_dataset.simulation.cell_manager import (
@@ -486,9 +625,12 @@ class TargetedVelocitySampler:
         cfg = self.config
 
         if elevation_deg is None:
-            if profile is None:
-                use_lob = torch.rand(1).item() < cfg.lob_probability
-                profile = "lob" if use_lob else "drive"
+            match profile:
+                case None:
+                    use_lob = torch.rand(1).item() < cfg.lob_probability
+                    profile = "lob" if use_lob else "drive"
+                case str():
+                    pass
 
             if profile == "lob":
                 elev_min, elev_max = cfg.lob_elevation_range_deg
