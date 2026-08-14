@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import numpy as np
@@ -12,17 +12,26 @@ import pytest
 from src.synthetic_data_generation.alignment.contracts import (
     AlignmentAcceptancePolicy,
     AlignmentEvidence,
+    CameraEvidencePartition,
+    CameraExclusionReason,
     CandidateEvidence,
     CorrespondenceSet,
+    EvaluatedAlignment,
+    ExcludedCameraDiagnostics,
+    FixedCameraSelectionDiagnostics,
 )
 from src.synthetic_data_generation.alignment.fitting import fit_alignment
 from src.synthetic_data_generation.alignment.handler import AlignmentStageHandler
+from src.synthetic_data_generation.alignment.settings import WholeCourtEvidenceSettings
 from src.synthetic_data_generation.alignment.validation import (
     load_accepted_layout,
     validate_alignment_outputs,
     validate_court_transform_binding,
     validate_projection_equivalence,
     write_alignment_outputs,
+)
+from src.synthetic_data_generation.alignment.whole_court import (
+    sample_court_line_template,
 )
 from src.synthetic_data_generation.pipeline.contracts import (
     DatasetTarget,
@@ -36,10 +45,14 @@ from src.synthetic_data_generation.pipeline.contracts import (
 from src.synthetic_data_generation.pipeline.publication import (
     AtomicDirectoryPublication,
 )
+from src.synthetic_data_generation.pipeline.reuse import (
+    RequiredOutputsReusablePublicationValidator,
+)
 from src.synthetic_data_generation.reconstruction.scene_export import (
     StandardSceneExport,
 )
 from src.synthetic_data_generation.scene_contract import RigidTransform
+from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 
 
 def test_fixed_outputs_round_trip_and_reject_cross_file_tampering(
@@ -101,6 +114,272 @@ def test_ground_line_archive_rejects_wrong_dtype(
         validate_alignment_outputs(staging)
 
 
+def test_current_ground_line_archive_requires_whole_court_policy(
+    tmp_path: Path,
+    alignment_evidence: AlignmentEvidence,
+    alignment_policy: AlignmentAcceptancePolicy,
+) -> None:
+    result = fit_alignment(alignment_evidence, policy=alignment_policy)
+    staging = tmp_path / "alignment" / "staging"
+    staging.mkdir(parents=True)
+    write_alignment_outputs(staging, evidence=alignment_evidence, result=result)
+    archive_path = staging / "ground-line-map.npz"
+    with np.load(archive_path, allow_pickle=False) as loaded:
+        arrays = {name: np.asarray(loaded[name]) for name in loaded.files}
+    del arrays["whole_court_minimum_matches_per_offset_level"]
+    np.savez_compressed(archive_path, **arrays)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="archive keys do not match"):
+        validate_alignment_outputs(staging)
+
+
+def test_excluded_camera_diagnostics_round_trip_and_reject_reason_tampering(
+    tmp_path: Path,
+    alignment_evidence: AlignmentEvidence,
+    alignment_policy: AlignmentAcceptancePolicy,
+) -> None:
+    excluded = ExcludedCameraDiagnostics(
+        camera_id="excluded-holdout",
+        original_partition=CameraEvidencePartition.HOLDOUT,
+        selected_line_pixel_count=17,
+        projected_line_point_count=4,
+        reason=CameraExclusionReason.INSUFFICIENT_PROJECTED_POINTS,
+    )
+    no_lines = ExcludedCameraDiagnostics(
+        camera_id="no-lines-holdout",
+        original_partition=CameraEvidencePartition.HOLDOUT,
+        selected_line_pixel_count=0,
+        projected_line_point_count=0,
+        reason=CameraExclusionReason.NO_DETECTED_LINE_PIXELS,
+    )
+    exclusions = (excluded, no_lines)
+    evidence = replace(
+        alignment_evidence,
+        diagnostics=replace(
+            alignment_evidence.diagnostics,
+            selection=replace(
+                alignment_evidence.diagnostics.selection,
+                requested_camera_count=6,
+                available_camera_count=6,
+                holdout_cameras_per_unit=2,
+                camera_prefix_ids=(
+                    "holdout-0",
+                    "fit-0",
+                    excluded.camera_id,
+                    "holdout-1",
+                    "fit-1",
+                    no_lines.camera_id,
+                ),
+                    holdout_camera_ids=(
+                        "holdout-0",
+                        excluded.camera_id,
+                        "holdout-1",
+                        no_lines.camera_id,
+                    ),
+                    observed_camera_ids=(
+                        "holdout-0",
+                        "fit-0",
+                        "holdout-1",
+                        "fit-1",
+                    ),
+                excluded_cameras=exclusions,
+            ),
+            excluded_cameras=exclusions,
+        ),
+    )
+    result = fit_alignment(evidence, policy=alignment_policy)
+    staging = tmp_path / "alignment"
+    staging.mkdir()
+
+    write_alignment_outputs(staging, evidence=evidence, result=result)
+    validated = validate_alignment_outputs(staging)
+    persisted_evidence = json.loads(
+        (staging / "diagnostics/evidence.json").read_text(encoding="utf-8")
+    )
+
+    assert validated.to_dict() == result.to_dict()
+    assert persisted_evidence["schema"] == "alignment_measured_evidence_v8"
+    assert persisted_evidence["excluded_cameras"] == [
+        item.to_dict() for item in exclusions
+    ]
+
+    archive_path = staging / "ground-line-map.npz"
+    with np.load(archive_path, allow_pickle=False) as loaded:
+        arrays = {name: np.asarray(loaded[name]) for name in loaded.files}
+    arrays["diagnostic_excluded_camera_reasons"][0] = "unclassified"
+    np.savez_compressed(archive_path, **arrays)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="Excluded camera reasons are invalid"):
+        validate_alignment_outputs(staging)
+
+
+def test_fixed_selection_archive_rejects_requested_count_tampering(
+    tmp_path: Path,
+    alignment_evidence: AlignmentEvidence,
+    alignment_policy: AlignmentAcceptancePolicy,
+) -> None:
+    selection = alignment_evidence.diagnostics.selection
+    assert FixedCameraSelectionDiagnostics.from_dict(selection.to_dict()) == selection
+    result = fit_alignment(alignment_evidence, policy=alignment_policy)
+    staging = tmp_path / "alignment"
+    staging.mkdir()
+    write_alignment_outputs(staging, evidence=alignment_evidence, result=result)
+    archive_path = staging / "ground-line-map.npz"
+    with np.load(archive_path, allow_pickle=False) as loaded:
+        arrays = {name: np.asarray(loaded[name]) for name in loaded.files}
+    payload = json.loads(str(arrays["diagnostic_fixed_selection_json"].item()))
+    payload["requested_camera_count"] = 5
+    payload["available_camera_count"] = 5
+    arrays["diagnostic_fixed_selection_json"] = np.asarray(
+        json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    )
+    np.savez_compressed(archive_path, **arrays)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="Requested camera count"):
+        validate_alignment_outputs(staging)
+
+
+def test_fixed_selection_archive_rejects_contiguous_partition_tampering(
+    tmp_path: Path,
+    alignment_evidence: AlignmentEvidence,
+    alignment_policy: AlignmentAcceptancePolicy,
+) -> None:
+    result = fit_alignment(alignment_evidence, policy=alignment_policy)
+    staging = tmp_path / "alignment"
+    staging.mkdir()
+    write_alignment_outputs(staging, evidence=alignment_evidence, result=result)
+    archive_path = staging / "ground-line-map.npz"
+    with np.load(archive_path, allow_pickle=False) as loaded:
+        arrays = {name: np.asarray(loaded[name]) for name in loaded.files}
+    payload = json.loads(str(arrays["diagnostic_fixed_selection_json"].item()))
+    payload["camera_prefix_ids"] = ["c00", "c01", "c02", "c03"]
+    payload["fit_camera_ids"] = ["c00", "c01"]
+    payload["holdout_camera_ids"] = ["c02", "c03"]
+    payload["observed_camera_ids"] = ["c00", "c01", "c02", "c03"]
+    arrays["diagnostic_fixed_selection_json"] = np.asarray(
+        json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    )
+    np.savez_compressed(archive_path, **arrays)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="unit slot rule"):
+        validate_alignment_outputs(staging)
+
+
+def test_whole_court_policy_and_recomputed_metrics_round_trip(
+    tmp_path: Path,
+    alignment_evidence: AlignmentEvidence,
+    alignment_policy: AlignmentAcceptancePolicy,
+) -> None:
+    settings = WholeCourtEvidenceSettings(
+        required_court_count=2,
+        maximum_common_scale_relative_deviation=0.07290400972053463,
+        maximum_center_refit_displacement_metres=(
+            0.07290400972053463 * np.hypot(HALF_DOUBLES_WIDTH, HALF_LENGTH) + 0.3
+        ),
+        minimum_distinct_offset_levels=2,
+        minimum_matches_per_offset_level=3,
+        minimum_level_camera_count=2,
+        minimum_secondary_tangential_span_metres=0.6,
+        minimum_longitudinal_offset_span_metres=8.23,
+        minimum_longitudinal_tangential_span_metres=12.8,
+        minimum_transverse_offset_span_metres=12.8,
+        minimum_transverse_tangential_span_metres=8.23,
+        samples_per_metre=3.0,
+        inlier_distance_metres=0.3,
+        minimum_inlier_fraction=0.9,
+        maximum_q95_error_metres=0.1,
+        minimum_semantic_segment_inlier_fraction=0.8,
+        minimum_center_separation_metres=10.97,
+        maximum_footprint_overlap_fraction=1.0e-9,
+    )
+    template = sample_court_line_template(settings.samples_per_metre)
+    points_court = np.column_stack((template, np.zeros(len(template))))
+    baseline = fit_alignment(alignment_evidence, policy=alignment_policy)
+    measured_metric = np.concatenate(
+        [court.scene_from_court.apply(points_court) for court in baseline.candidates]
+    )
+    measured_nht = alignment_evidence.metric_adapter.nht_from_metric_points(
+        measured_metric
+    )
+    measured_lines = tuple(
+        replace(item, points_nht_scene=measured_nht)
+        for item in alignment_evidence.measured_camera_lines
+    )
+    diagnostics = replace(
+        alignment_evidence.diagnostics,
+        cameras=tuple(
+            replace(item, projected_line_point_count=len(measured_nht))
+            for item in alignment_evidence.diagnostics.cameras
+        ),
+    )
+    candidates = tuple(
+        CandidateEvidence(
+            court_instance_id=source.court_instance_id,
+            candidate_id=source.candidate_id,
+            fit=_exact_correspondences(
+                points_court,
+                scene_from_court=fitted.scene_from_court,
+                camera_ids=alignment_evidence.partitions.fit_camera_ids,
+            ),
+            holdout=_exact_correspondences(
+                points_court,
+                scene_from_court=fitted.scene_from_court,
+                camera_ids=alignment_evidence.partitions.holdout_camera_ids,
+            ),
+        )
+        for source, fitted in zip(
+            alignment_evidence.candidates,
+            baseline.candidates,
+            strict=True,
+        )
+    )
+    evidence = replace(
+        alignment_evidence,
+        candidates=candidates,
+        measured_camera_lines=measured_lines,
+        diagnostics=diagnostics,
+        whole_court_settings=settings,
+    )
+    result = fit_alignment(evidence, policy=alignment_policy)
+    staging = tmp_path / "alignment"
+    staging.mkdir()
+
+    write_alignment_outputs(staging, evidence=evidence, result=result)
+    validated = validate_alignment_outputs(staging)
+    metrics = json.loads(
+        (staging / "diagnostics/candidate-metrics.json").read_text(encoding="utf-8")
+    )
+
+    assert validated.to_dict() == result.to_dict()
+    assert metrics["schema"] == "alignment_candidate_metrics_v6"
+    assert metrics["whole_court"]["required_court_count_check"] is True
+    assert all(
+        candidate["common_scale_refit"]["accepted"]
+        for candidate in metrics["whole_court"]["candidates"]
+    )
+    assert all(
+        candidate["fit"]["identifiability"]["accepted"]
+        and candidate["holdout"]["identifiability"]["accepted"]
+        for candidate in metrics["whole_court"]["candidates"]
+    )
+
+
+def _exact_correspondences(
+    points_court: np.ndarray,
+    *,
+    scene_from_court: RigidTransform,
+    camera_ids: tuple[str, ...],
+) -> CorrespondenceSet:
+    repeated = np.concatenate([points_court for _camera_id in camera_ids])
+    return CorrespondenceSet(
+        points_court=repeated,
+        points_scene=scene_from_court.apply(repeated),
+        camera_ids=tuple(
+            camera_id for camera_id in camera_ids for _point in points_court
+        ),
+    )
+
+
 def test_projection_and_target_binding_share_the_exact_court_transform(
     alignment_evidence: AlignmentEvidence,
     alignment_policy: AlignmentAcceptancePolicy,
@@ -158,17 +437,23 @@ def test_projection_and_target_binding_share_the_exact_court_transform(
 @dataclass
 class _EvidenceSource:
     evidence: AlignmentEvidence
+    policy: AlignmentAcceptancePolicy
     preflight_calls: int = 0
+    evaluation_calls: int = 0
 
     def preflight(self, scene: StandardSceneExport) -> None:
         assert scene.scene_path.name == "scene.json"
         assert scene.scene_id == "scene-a"
         self.preflight_calls += 1
 
-    def collect(self, scene: StandardSceneExport) -> AlignmentEvidence:
+    def collect_evaluated(self, scene: StandardSceneExport) -> EvaluatedAlignment:
         assert scene.scene_path.name == "scene.json"
         assert scene.scene_id == "scene-a"
-        return self.evidence
+        self.evaluation_calls += 1
+        return EvaluatedAlignment(
+            evidence=self.evidence,
+            result=fit_alignment(self.evidence, policy=self.policy),
+        )
 
 
 @dataclass(frozen=True)
@@ -197,7 +482,7 @@ def test_stage_handler_consumes_fixed_export_and_writes_only_to_staging(
     alignment_policy: AlignmentAcceptancePolicy,
 ) -> None:
     context = _context(tmp_path)
-    source = _EvidenceSource(alignment_evidence)
+    source = _EvidenceSource(alignment_evidence, alignment_policy)
     handler = AlignmentStageHandler(
         evidence_source=source,
         policy=alignment_policy,
@@ -205,10 +490,12 @@ def test_stage_handler_consumes_fixed_export_and_writes_only_to_staging(
     )
 
     handler.preflight(context)
+    handler.preflight(context)
     summary = handler.execute(context)
     handler.validate(context)
 
     assert source.preflight_calls == 1
+    assert source.evaluation_calls == 1
     assert summary.values["accepted_court_count"] == 2
     assert not context.owner_path.exists()
     assert (context.staging_path / "alignment.json").is_file()
@@ -239,28 +526,33 @@ def test_stage_handler_leaves_no_outputs_when_holdout_gate_fails(
             camera_ids=first.holdout.camera_ids,
         ),
     )
+    second = alignment_evidence.candidates[1]
+    second_rejected = replace(
+        second,
+        holdout=CorrespondenceSet(
+            points_court=second.holdout.points_court,
+            points_scene=second.holdout.points_scene + 2.0,
+            camera_ids=second.holdout.camera_ids,
+        ),
+    )
     failed_evidence = AlignmentEvidence(
         partitions=alignment_evidence.partitions,
-        candidates=(rejected,),
+        candidates=(rejected, second_rejected),
         measured_camera_lines=alignment_evidence.measured_camera_lines,
         complex_points_scene=alignment_evidence.complex_points_scene,
         primary_candidate_id=None,
         metric_adapter=alignment_evidence.metric_adapter,
-        diagnostics=type(alignment_evidence.diagnostics)(
-            cameras=alignment_evidence.diagnostics.cameras,
-            candidate_scales=(alignment_evidence.diagnostics.candidate_scales[0],),
-            common_nht_scene_units_per_metre=1.0,
-            maximum_relative_scale_deviation=0.0,
-        ),
+        diagnostics=alignment_evidence.diagnostics,
+        whole_court_settings=alignment_evidence.whole_court_settings,
     )
     context = _context(tmp_path)
     handler = AlignmentStageHandler(
-        evidence_source=_EvidenceSource(failed_evidence),
+        evidence_source=_EvidenceSource(failed_evidence, alignment_policy),
         policy=alignment_policy,
         scene_loader=_load_test_scene,
     )
 
-    with pytest.raises(ValueError, match="Holdout acceptance failed"):
+    with pytest.raises(ValueError, match='selected_correspondence_accepted":false'):
         handler.preflight(context)
     assert not any(context.staging_path.iterdir())
 
@@ -301,6 +593,7 @@ def _context(tmp_path: Path) -> _Context:
         ),
         handler=_UnusedLifecycle(),
         publication=AtomicDirectoryPublication(),
+        reusable_publication_validator=RequiredOutputsReusablePublicationValidator(),
         summary_type=StageExecutionSummary,
     )
     return _Context(

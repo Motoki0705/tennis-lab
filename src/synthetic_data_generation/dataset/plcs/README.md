@@ -5,11 +5,17 @@ of explicitly selected ACCAD/AMASS clips, evaluates the matching licensed
 SMPL-H model, builds an SMPL-H surface Gaussian asset, applies Gaussian LBS at
 every source frame, and rejects motion that is only a rigid root transform.
 
+AMASS/ACCAD motion, SMPL-H LBS output, and court placement share a
+right-handed, metre, Z-up coordinate contract. SMPL-H LBS already consumes
+`global_orient`; PLCS adds only configured yaw about court +Z. Each track is
+grounded once from the frame-zero posed full SMPL-H surface minimum, and later
+frames preserve the source vertical motion without re-grounding.
+
 `production.py` defines the finite `single_object` and
 `multi_object_global_timeline` production modes. `single_object.yaml` selects
 one real ACCAD category at source frame zero; `production.yaml` remains the
 running/walking/general multi-object B00 authority. Both use the same compact
-v4 schema, CUDA articulated execution, generated cameras, and court binding.
+v5 schema, CUDA articulated execution, generated cameras, and court binding.
 
 `timeline.py` creates the complete compositor interval for every explicitly
 configured logical scene. Every logical scene retains the same full configured

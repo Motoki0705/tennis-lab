@@ -102,11 +102,23 @@ def test_unknown_court_key_fails_at_configuration_boundary() -> None:
         _compose("+dataset.court.trajectory.unknown_key=true")
 
 
-def test_public_nht_commands_are_installed_names_without_provider_knowledge() -> None:
+def test_public_nht_commands_and_trainer_runtime_are_explicit() -> None:
     runtime = _compose()
 
     assert runtime.nht.reconstruct_executable == "nht-reconstruct"
     assert runtime.nht.render_executable == "nht-render"
+    assert runtime.nht.pipeline_config.path == (
+        runtime.resolver.roots.external_asset_root / "nht/configs/production.yaml"
+    ).resolve()
+    assert runtime.nht.pipeline_config.schema == "nht_pipeline_config_v1"
+    assert runtime.nht.training_runtime.python == (
+        runtime.resolver.roots.external_asset_root
+        / "nht/.trainer-venv/bin/python"
+    )
+    assert runtime.nht.training_runtime.trainer == (
+        runtime.resolver.roots.external_asset_root
+        / "nht/gsplat/examples/simple_trainer_nht.py"
+    ).resolve()
     assert runtime.nht.environment == _NHT_ENVIRONMENT
     assert runtime.nht.reconstruction_timeout_seconds == 86_400.0
     assert runtime.nht.render_timeout_seconds == 3_600.0
@@ -114,13 +126,16 @@ def test_public_nht_commands_are_installed_names_without_provider_knowledge() ->
     assert not hasattr(runtime.nht, "commit")
     assert not hasattr(runtime.nht, "repository_root")
     assert not hasattr(runtime.nht, "reconstruction_config_path")
-    assert not hasattr(runtime.nht, "training_runtime")
 
 
 def test_configured_paths_retain_their_declared_runtime_roles() -> None:
     runtime = _compose()
     line_model = runtime.alignment.evidence.line_model
 
+    assert runtime.resolver.validate(
+        PathRole.EXTERNAL_ASSET,
+        runtime.nht.pipeline_config.path,
+    ) == runtime.nht.pipeline_config.path
     assert runtime.resolver.validate(
         PathRole.CHECKPOINT,
         line_model.checkpoint_path,
@@ -140,6 +155,8 @@ def test_composition_root_can_construct_each_no_default_runtime_input() -> None:
 
     reconstruction = NHTReconstructionHandler(
         executable=runtime.nht.reconstruct_executable,
+        pipeline_config=runtime.nht.pipeline_config,
+        training_runtime=runtime.nht.training_runtime,
         environment=runtime.nht.environment,
         timeout_seconds=runtime.nht.reconstruction_timeout_seconds,
     )

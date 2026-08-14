@@ -22,6 +22,10 @@ from src.synthetic_data_generation.pipeline.publication import (
     AtomicDirectoryPublication,
     ExternalAtomicPublication,
 )
+from src.synthetic_data_generation.pipeline.reuse import (
+    PLCSV5ReusablePublicationValidator,
+    RequiredOutputsReusablePublicationValidator,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,8 +139,13 @@ class StageRegistry:
         }
         return self.ordered(selected)
 
-    def execution_for_request(self, request: ScenePipelineRequest) -> StageExecutionPlan:
-        """Build the sole cursor-aware plan for all runner lifecycle phases."""
+    def execution_for_request(
+        self,
+        request: ScenePipelineRequest,
+        *,
+        reusable_stages: Iterable[StageName],
+    ) -> StageExecutionPlan:
+        """Close a cursor rerun over every unavailable selected prerequisite."""
         selected = self.selected_for_request(request)
         selected_names = {definition.name for definition in selected}
         if request.from_stage not in selected_names:
@@ -145,19 +154,43 @@ class StageRegistry:
                 f"from_stage {request.from_stage.value!r} is not selected by "
                 f"request targets {{{requested}}}."
             )
+        reusable_names = set(reusable_stages)
+        if not reusable_names <= selected_names:
+            raise ValueError("Reusable stages must belong to the selected request stages.")
         cursor = self.definition(request.from_stage)
-        retained_ancestors = self.ordered(
-            selected_names & self._ancestors(request.from_stage)
+        invalidated_names = {
+            definition.name
+            for definition in self.descendants(request.from_stage, include_self=True)
+        }
+        while True:
+            execution_names = selected_names & invalidated_names
+            required_names = self._selected_ancestors(
+                execution_names,
+                selected_names=selected_names,
+            )
+            unavailable_names = required_names - reusable_names - invalidated_names
+            if not unavailable_names:
+                break
+            for unavailable in self.ordered_names(unavailable_names):
+                invalidated_names.update(
+                    definition.name
+                    for definition in self.descendants(unavailable, include_self=True)
+                )
+
+        execution_names = selected_names & invalidated_names
+        required_names = self._selected_ancestors(
+            execution_names,
+            selected_names=selected_names,
         )
-        invalidated = self.descendants(request.from_stage, include_self=True)
-        invalidated_names = {definition.name for definition in invalidated}
-        execution = self.ordered(selected_names & invalidated_names)
+        retained_names = required_names - invalidated_names
+        if not retained_names <= reusable_names:
+            raise RuntimeError("Execution plan retained an unavailable prerequisite.")
         return StageExecutionPlan(
             selected=selected,
             cursor=cursor,
-            retained_ancestors=retained_ancestors,
-            invalidated=invalidated,
-            execution=execution,
+            retained_ancestors=self.ordered(retained_names),
+            invalidated=self.ordered(invalidated_names),
+            execution=self.ordered(execution_names),
         )
 
     def descendants(
@@ -250,12 +283,25 @@ class StageRegistry:
             frontier.extend(self.definition(current).dependencies)
         return found
 
+    def _selected_ancestors(
+        self,
+        stages: Iterable[StageName],
+        *,
+        selected_names: set[StageName],
+    ) -> set[StageName]:
+        found: set[StageName] = set()
+        for stage in stages:
+            found.update(self._ancestors(stage) & selected_names)
+        return found
+
 
 def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
     """Bind all graph, path, lifecycle, publication, and summary authority once."""
     config = StageInput.resolved_configuration()
     atomic = AtomicDirectoryPublication()
     external = ExternalAtomicPublication()
+    required_outputs_reuse = RequiredOutputsReusablePublicationValidator()
+    plcs_v5_reuse = PLCSV5ReusablePublicationValidator()
     definitions = {
         StageName.INGEST: StageDefinition(
             name=StageName.INGEST,
@@ -265,6 +311,7 @@ def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
             required_outputs=(Path("video.mp4"), Path("metadata.json")),
             handler=handlers.ingest,
             publication=atomic,
+            reusable_publication_validator=required_outputs_reuse,
             summary_type=StageExecutionSummary,
         ),
         StageName.RECONSTRUCTION: StageDefinition(
@@ -278,6 +325,7 @@ def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
             required_outputs=(Path("run.json"), Path("export")),
             handler=handlers.reconstruction,
             publication=external,
+            reusable_publication_validator=required_outputs_reuse,
             summary_type=StageExecutionSummary,
         ),
         StageName.ALIGNMENT: StageDefinition(
@@ -300,6 +348,7 @@ def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
             ),
             handler=handlers.alignment,
             publication=atomic,
+            reusable_publication_validator=required_outputs_reuse,
             summary_type=StageExecutionSummary,
         ),
         StageName.COURT_DATASET: StageDefinition(
@@ -310,6 +359,7 @@ def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
             required_outputs=(Path("dataset.json"), Path("samples"), Path("diagnostics")),
             handler=handlers.court_dataset,
             publication=atomic,
+            reusable_publication_validator=required_outputs_reuse,
             summary_type=StageExecutionSummary,
         ),
         StageName.BLCS_DATASET: StageDefinition(
@@ -320,6 +370,7 @@ def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
             required_outputs=(Path("dataset.json"), Path("samples"), Path("diagnostics")),
             handler=handlers.blcs_dataset,
             publication=atomic,
+            reusable_publication_validator=required_outputs_reuse,
             summary_type=StageExecutionSummary,
         ),
         StageName.PLCS_DATASET: StageDefinition(
@@ -335,6 +386,7 @@ def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
             ),
             handler=handlers.plcs_dataset,
             publication=atomic,
+            reusable_publication_validator=plcs_v5_reuse,
             summary_type=StageExecutionSummary,
         ),
         StageName.REPORT: StageDefinition(
@@ -367,6 +419,7 @@ def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
             required_outputs=(Path("index.html"), Path("report.json")),
             handler=handlers.report,
             publication=atomic,
+            reusable_publication_validator=required_outputs_reuse,
             summary_type=StageExecutionSummary,
         ),
     }

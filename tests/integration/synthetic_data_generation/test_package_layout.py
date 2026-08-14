@@ -28,13 +28,23 @@ def test_executable_modules_live_under_scripts() -> None:
     assert all(path.startswith("scripts/") for path in executable_modules)
 
 
-def test_generic_visualization_has_no_cycle_or_domain_paths() -> None:
-    generic_visualization = PROJECT_ROOT / "src/synthetic_data_generation/visualization"
+def test_canonical_visualization_has_no_scene_specific_paths() -> None:
+    visualization = PROJECT_ROOT / "src/synthetic_data_generation/visualization"
+    modules = {
+        path.name for path in visualization.glob("*.py") if path.is_file()
+    }
     source = "\n".join(
-        path.read_text(encoding="utf-8") for path in generic_visualization.rglob("*.py")
+        path.read_text(encoding="utf-8") for path in visualization.rglob("*.py")
     ).lower()
 
+    assert modules == {
+        "__init__.py",
+        "configuration.py",
+        "contracts.py",
+        "overlays.py",
+        "renderer.py",
+        "sources.py",
+    }
     assert "cycle-" not in source
     assert "b00" not in source
-    assert "blcs" not in source
-    assert "plcs" not in source
+    assert all(domain in source for domain in ("court", "blcs", "plcs"))

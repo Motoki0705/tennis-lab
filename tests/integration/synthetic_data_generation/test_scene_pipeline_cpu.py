@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import subprocess
+import sys
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -19,18 +20,29 @@ from omegaconf import OmegaConf
 
 from src.synthetic_data_generation.alignment.contracts import (
     AlignmentAcceptancePolicy,
+    AlignmentEvaluationDiagnostics,
+    AlignmentEvaluationOutcome,
+    AlignmentEvaluationPolicy,
     AlignmentEvidence,
     AlignmentEvidenceDiagnostics,
     AlignmentPartitions,
     CameraLineDiagnostics,
+    CameraOwnershipRule,
+    CameraSelectionPolicy,
     CandidateEvidence,
     CandidateScaleDiagnostics,
     CorrespondenceSet,
+    EvaluatedAlignment,
+    FixedCameraSelectionDiagnostics,
+    LineInferenceDeterminismDiagnostics,
     MeasuredCameraLines,
     MetricSceneAdapter,
     PartitionThresholds,
+    ProposalSearchDiagnostics,
 )
+from src.synthetic_data_generation.alignment.fitting import fit_alignment
 from src.synthetic_data_generation.alignment.handler import AlignmentStageHandler
+from src.synthetic_data_generation.alignment.settings import WholeCourtEvidenceSettings
 from src.synthetic_data_generation.composition import (
     GaussianAsset,
     GaussianAssetRole,
@@ -76,6 +88,9 @@ from src.synthetic_data_generation.dataset.plcs.composition import (
     AvatarAppearance,
     PLCSAvatarFrameTensors,
 )
+from src.synthetic_data_generation.dataset.plcs.coordinates import (
+    PLCSSourceSupportPlane,
+)
 from src.synthetic_data_generation.dataset.plcs.execution import PLCSPreparedAvatar
 from src.synthetic_data_generation.dataset.plcs.handler import PLCSStageHandler
 from src.synthetic_data_generation.dataset.plcs.rendering import (
@@ -100,7 +115,12 @@ from src.synthetic_data_generation.pipeline import (
     StageStatus,
     canonical_registry,
 )
-from src.synthetic_data_generation.reconstruction import NHTReconstructionHandler
+from src.synthetic_data_generation.pipeline.run_manifest import MutableRunManifest
+from src.synthetic_data_generation.reconstruction import (
+    NHTPipelineConfig,
+    NHTReconstructionHandler,
+    NHTTrainingRuntime,
+)
 from src.synthetic_data_generation.reconstruction.scene_export import (
     StandardSceneExport,
 )
@@ -112,19 +132,23 @@ from src.tasks.plcs.generate_dataset.sampling.motion_source import (
     PLCSMotionClip,
 )
 from src.utils.configuration import PathResolver, RuntimePathRoots
+from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 
 
 @dataclass(frozen=True)
 class _EvidenceSource:
     evidence: AlignmentEvidence
+    policy: AlignmentAcceptancePolicy
 
     def preflight(self, scene: StandardSceneExport) -> None:
         if scene.scene_id != "B00":
             raise ValueError("Alignment fixture received the wrong scene.")
 
-    def collect(self, scene: StandardSceneExport) -> AlignmentEvidence:
-        self.preflight(scene)
-        return self.evidence
+    def collect_evaluated(self, scene: StandardSceneExport) -> EvaluatedAlignment:
+        return EvaluatedAlignment(
+            evidence=self.evidence,
+            result=fit_alignment(self.evidence, policy=self.policy),
+        )
 
 
 @dataclass(frozen=True)
@@ -173,13 +197,9 @@ class _BLCSCPUOracle:
                             frame_index, camera_index, object_index
                         ]:
                             continue
-                        centre = plan.camera_uv[
-                            frame_index, camera_index, object_index
-                        ]
+                        centre = plan.camera_uv[frame_index, camera_index, object_index]
                         object_depth = float(
-                            plan.camera_depth[
-                                frame_index, camera_index, object_index
-                            ]
+                            plan.camera_depth[frame_index, camera_index, object_index]
                         )
                         radius = max(
                             1, int(round(focal * ball_radius_m / object_depth))
@@ -207,9 +227,7 @@ class _BLCSCPUOracle:
                         )
                         alpha[y_min:y_max, x_min:x_max, 0][visible] = 1.0
                         local_depth[visible] = object_depth
-                        labels[y_min:y_max, x_min:x_max][visible] = (
-                            object_index + 1
-                        )
+                        labels[y_min:y_max, x_min:x_max][visible] = object_index + 1
                     delta = sparse_delta_from_composite(
                         key=RenderSampleKey(frame_index, camera.camera_id),
                         background=background,
@@ -259,9 +277,7 @@ class _CPUAvatar:
                     ((1.0, 0.0, 0.0, 0.0),) * count,
                     dtype=torch.float32,
                 ),
-                log_scales=torch.full(
-                    (count, 3), math.log(0.05), dtype=torch.float32
-                ),
+                log_scales=torch.full((count, 3), math.log(0.05), dtype=torch.float32),
                 opacity_logits=torch.full((count,), 5.0, dtype=torch.float32),
                 features=self.appearance.features.clone(),
                 instance_ids=torch.zeros(count, dtype=torch.int64),
@@ -311,6 +327,18 @@ class _PLCSCPUOracle:
     def prepare_source(self, *, clip: PLCSMotionClip, model: object) -> None:
         if model != {"gender": clip.gender}:
             raise ValueError("PLCS CPU source/model fixture mismatch.")
+
+    def initial_support_plane(
+        self,
+        *,
+        clip: PLCSMotionClip,
+        model: object,
+    ) -> PLCSSourceSupportPlane:
+        self.prepare_source(clip=clip, model=model)
+        return PLCSSourceSupportPlane.from_surface_minimum(
+            initial_root_translation_z_m=float(clip.root_translation_m[0, 2]),
+            support_local_z_m=1.0,
+        )
 
     def prepare_avatar(
         self,
@@ -380,8 +408,7 @@ class _PLCSCPUOracle:
         if gaussians_scene.means.device.type != "cpu":
             raise ValueError("The explicit PLCS oracle received non-CPU tensors.")
         actual_ids = {
-            int(value)
-            for value in torch.unique(gaussians_scene.instance_ids).tolist()
+            int(value) for value in torch.unique(gaussians_scene.instance_ids).tolist()
         }
         if actual_ids != set(expected_instance_ids):
             raise ValueError("The real PLCS composition changed object identity.")
@@ -429,6 +456,12 @@ def test_real_domain_handlers_publish_and_recover_through_fake_nht_only(
     )
     _assert_published_domains(first.workspace, rgb_value=0.1)
     assert _reconstruction_generation(first.workspace) == 1
+    assert first_manifest.stages[StageName.RECONSTRUCTION].summary[
+        "pipeline_config"
+    ] == {
+        "path": str(fixture.pipeline_config.path),
+        "schema": "nht_pipeline_config_v1",
+    }
 
     alignment_payload = _json(first.workspace.root / "alignment/alignment.json")
     alignment_payload["stale_attempt"] = True
@@ -436,9 +469,7 @@ def test_real_domain_handlers_publish_and_recover_through_fake_nht_only(
         json.dumps(alignment_payload), encoding="utf-8"
     )
     for target in DatasetTarget:
-        dataset_path = (
-            first.workspace.root / "datasets" / target.value / "dataset.json"
-        )
+        dataset_path = first.workspace.root / "datasets" / target.value / "dataset.json"
         dataset_payload = _json(dataset_path)
         dataset_payload["stale_attempt"] = True
         dataset_path.write_text(json.dumps(dataset_payload), encoding="utf-8")
@@ -456,16 +487,24 @@ def test_real_domain_handlers_publish_and_recover_through_fake_nht_only(
     assert alignment_manifest.stages[StageName.RECONSTRUCTION].attempt == 1
     assert alignment_manifest.stages[StageName.ALIGNMENT].attempt == 2
     assert all(
-        alignment_manifest.stages[target.stage].attempt == 2
-        for target in DatasetTarget
+        alignment_manifest.stages[target.stage].attempt == 2 for target in DatasetTarget
     )
+
+    guarded_rerun = fixture.runner(rgb_value=0.25)
+    fixture.pipeline_config.path.write_text("schema: invalid\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="schema"):
+        guarded_rerun.run(fixture.request(from_stage=StageName.RECONSTRUCTION))
+    fixture.pipeline_config.path.write_text(
+        "schema: nht_pipeline_config_v1\n",
+        encoding="utf-8",
+    )
+    assert _reconstruction_generation(first.workspace) == 1
+    _assert_published_domains(first.workspace, rgb_value=0.2)
 
     reconstruction_run = first.workspace.root / "reconstruction/run.json"
     reconstruction_payload = _json(reconstruction_run)
     reconstruction_payload["stale_attempt"] = True
-    reconstruction_run.write_text(
-        json.dumps(reconstruction_payload), encoding="utf-8"
-    )
+    reconstruction_run.write_text(json.dumps(reconstruction_payload), encoding="utf-8")
     reconstruction_rerun = fixture.runner(rgb_value=0.3)
     reconstruction_manifest = reconstruction_rerun.run(
         fixture.request(from_stage=StageName.RECONSTRUCTION)
@@ -521,6 +560,45 @@ def test_real_domain_handlers_publish_and_recover_through_fake_nht_only(
     assert not tuple(first.workspace.root.rglob(".publication-backup"))
     assert not tuple(first.workspace.root.rglob("partial.tmp"))
 
+    interrupted = MutableRunManifest.load(first.workspace.run_manifest_path)
+    interrupted.stages[StageName.BLCS_DATASET].attempt = 2
+    interrupted.invalidate(StageName.PLCS_DATASET)
+    interrupted.stages[StageName.PLCS_DATASET].attempt = 0
+    interrupted.invalidate(StageName.REPORT)
+    interrupted.stages[StageName.REPORT].attempt = 1
+    interrupted.save(first.workspace.run_manifest_path)
+    first.workspace.invalidate_outputs(
+        retry.registry.definition(StageName.PLCS_DATASET)
+    )
+    first.workspace.invalidate_outputs(retry.registry.definition(StageName.REPORT))
+
+    blcs_cursor_repair = fixture.runner(rgb_value=0.45)
+    repaired_manifest = blcs_cursor_repair.run(
+        fixture.request(from_stage=StageName.BLCS_DATASET)
+    )
+
+    assert repaired_manifest.stages[StageName.INGEST].attempt == 1
+    assert repaired_manifest.stages[StageName.RECONSTRUCTION].attempt == 2
+    assert repaired_manifest.stages[StageName.ALIGNMENT].attempt == 3
+    assert repaired_manifest.stages[StageName.COURT_DATASET].attempt == 3
+    assert repaired_manifest.stages[StageName.BLCS_DATASET].attempt == 3
+    assert repaired_manifest.stages[StageName.PLCS_DATASET].attempt == 1
+    assert repaired_manifest.stages[StageName.REPORT].attempt == 2
+    assert all(
+        repaired_manifest.stages[stage].status is StageStatus.COMPLETED
+        for stage in StageName
+    )
+    assert _first_rgb_value(first.workspace.root / "datasets/court") == pytest.approx(
+        0.3
+    )
+    assert _first_rgb_value(first.workspace.root / "datasets/blcs") == pytest.approx(
+        0.45
+    )
+    assert _first_rgb_value(first.workspace.root / "datasets/plcs") == pytest.approx(
+        0.45
+    )
+    assert not tuple(first.workspace.root.rglob("partial.tmp"))
+
     render_calls = [
         json.loads(line)
         for line in fixture.render_log.read_text(encoding="utf-8").splitlines()
@@ -536,8 +614,20 @@ def test_real_domain_handlers_publish_and_recover_through_fake_nht_only(
         for line in fixture.reconstruct_log.read_text(encoding="utf-8").splitlines()
     ]
     assert reconstruct_calls == [
-        {"command": "nht-reconstruct", "generation": 1, "scene_id": "B00"},
-        {"command": "nht-reconstruct", "generation": 2, "scene_id": "B00"},
+        {
+            "command": "nht-reconstruct",
+            "generation": 1,
+            "scene_id": "B00",
+            "trainer": str(fixture.training_runtime.trainer),
+            "training_python": str(fixture.training_runtime.python),
+        },
+        {
+            "command": "nht-reconstruct",
+            "generation": 2,
+            "scene_id": "B00",
+            "trainer": str(fixture.training_runtime.trainer),
+            "training_python": str(fixture.training_runtime.python),
+        },
     ]
 
 
@@ -545,6 +635,8 @@ def test_real_domain_handlers_publish_and_recover_through_fake_nht_only(
 class _Fixture:
     workspace: SceneWorkspace
     source_video: Path
+    pipeline_config: NHTPipelineConfig
+    training_runtime: NHTTrainingRuntime
     reconstruct_executable: Path
     render_executable: Path
     reconstruct_log: Path
@@ -563,6 +655,22 @@ class _Fixture:
         workspace = SceneWorkspace.resolve(resolver, "B00")
         source_video = tmp_path / "B00.mp4"
         _write_video(source_video)
+        pipeline_config_path = tmp_path / "nht-pipeline.yaml"
+        pipeline_config_path.write_text(
+            "schema: nht_pipeline_config_v1\n",
+            encoding="utf-8",
+        )
+        pipeline_config = NHTPipelineConfig.load(pipeline_config_path.resolve())
+        training_python = tmp_path / "trainer/bin/python"
+        training_python.parent.mkdir(parents=True)
+        training_python.write_text("#!/bin/sh\n", encoding="utf-8")
+        training_python.chmod(0o755)
+        trainer = tmp_path / "trainer/simple_trainer_nht.py"
+        trainer.write_text("# test trainer\n", encoding="utf-8")
+        training_runtime = NHTTrainingRuntime(
+            python=training_python.resolve(),
+            trainer=trainer.resolve(),
+        )
         reconstruct_log = tmp_path / "nht-reconstruct.jsonl"
         render_log = tmp_path / "nht-render.jsonl"
         reconstruct, render = _write_fake_nht_commands(
@@ -576,12 +684,17 @@ class _Fixture:
         return cls(
             workspace=workspace,
             source_video=source_video.resolve(),
+            pipeline_config=pipeline_config,
+            training_runtime=training_runtime,
             reconstruct_executable=reconstruct,
             render_executable=render,
             reconstruct_log=reconstruct_log,
             render_log=render_log,
             alignment=AlignmentStageHandler(
-                evidence_source=_EvidenceSource(_alignment_evidence()),
+                evidence_source=_EvidenceSource(
+                    _alignment_evidence(),
+                    _alignment_policy(),
+                ),
                 policy=_alignment_policy(),
             ),
             court_configuration=_court_configuration(),
@@ -636,6 +749,8 @@ class _Fixture:
             ingest=IngestStageHandler(),
             reconstruction=NHTReconstructionHandler(
                 executable=self.reconstruct_executable,
+                pipeline_config=self.pipeline_config,
+                training_runtime=self.training_runtime,
                 environment={},
                 timeout_seconds=180.0,
             ),
@@ -739,9 +854,7 @@ def _assert_published_domains(
         assert payload["schema"] == schema
         if target is DatasetTarget.COURT:
             metrics = cast(dict[str, object], payload["metrics"])
-            court_group_counts = cast(
-                dict[str, object], metrics["court_group_counts"]
-            )
+            court_group_counts = cast(dict[str, object], metrics["court_group_counts"])
             assert set(court_group_counts) == {"court-0", "court-1"}
         else:
             assert payload["domain"] == target.value
@@ -988,39 +1101,31 @@ def _alignment_policy() -> AlignmentAcceptancePolicy:
 
 
 def _alignment_candidate(index: int) -> CandidateEvidence:
-    points = np.asarray(
-        [
-            [-5.0, -10.0, 0.0],
-            [5.0, -10.0, 0.0],
-            [5.0, 10.0, 0.0],
-            [-5.0, 10.0, 0.0],
-            [0.0, -6.0, 0.0],
-            [0.0, 6.0, 0.0],
-        ],
-        dtype=np.float64,
-    )
+    points = _identifiable_alignment_points()
     matrix = np.eye(4, dtype=np.float64)
     matrix[0, 3] = (-8.0, 8.0)[index]
     transform = RigidTransform.from_matrix(matrix)
-    scene_points = transform.apply(points)
+    repeated = np.concatenate((points, points))
+    scene_points = transform.apply(repeated)
     return CandidateEvidence(
         court_instance_id=f"court-{index}",
         candidate_id=f"candidate-{index}",
         fit=CorrespondenceSet(
-            points_court=points,
+            points_court=repeated,
             points_scene=scene_points,
-            camera_ids=("captured-0", "captured-1") * 3,
+            camera_ids=("captured-0",) * len(points) + ("captured-1",) * len(points),
         ),
         holdout=CorrespondenceSet(
-            points_court=points,
+            points_court=repeated,
             points_scene=scene_points,
-            camera_ids=("captured-2", "captured-3") * 3,
+            camera_ids=("captured-2",) * len(points) + ("captured-3",) * len(points),
         ),
     )
 
 
 def _alignment_evidence() -> AlignmentEvidence:
     camera_ids = tuple(f"captured-{index}" for index in range(4))
+    whole_court_settings = _alignment_whole_court_settings()
     return AlignmentEvidence(
         partitions=AlignmentPartitions(
             fit_camera_ids=("captured-0", "captured-1"),
@@ -1057,12 +1162,152 @@ def _alignment_evidence() -> AlignmentEvidence:
                     candidate_id=f"candidate-{index}",
                     nht_scene_units_per_metre=1.0,
                     template_score=0.9 - 0.1 * index,
+                    common_scale_refit_center_displacement_metres=0.0,
+                    maximum_common_scale_refit_center_displacement_metres=(
+                        whole_court_settings.maximum_center_refit_displacement_metres
+                    ),
+                    proposal_orientation_band_minimum_radians=-0.5,
+                    proposal_orientation_band_maximum_radians=0.5,
+                    proposal_residual_point_count_before_suppression=100,
+                    proposal_residual_point_count_after_suppression=50,
+                    native_center_uv=(float(index * 30), 0.0),
+                    native_orientation_radians=0.0,
                 )
                 for index in range(2)
             ),
             common_nht_scene_units_per_metre=1.0,
             maximum_relative_scale_deviation=0.0,
+            selection=FixedCameraSelectionDiagnostics(
+                policy=CameraSelectionPolicy.NESTED_UNIFORM_PREFIX_V1,
+                ownership_rule=(CameraOwnershipRule.FIXED_UNIT_EVEN_HOLDOUT_SLOTS_V1),
+                requested_camera_count=4,
+                available_camera_count=4,
+                candidate_count=2,
+                orientation_family_count=1,
+                fit_cameras_per_unit=1,
+                holdout_cameras_per_unit=1,
+                camera_prefix_ids=(
+                    "captured-0",
+                    "captured-2",
+                    "captured-1",
+                    "captured-3",
+                ),
+                fit_camera_ids=("captured-0", "captured-1"),
+                holdout_camera_ids=("captured-2", "captured-3"),
+                observed_camera_ids=(
+                    "captured-0",
+                    "captured-2",
+                    "captured-1",
+                    "captured-3",
+                ),
+                excluded_cameras=(),
+            ),
+            evaluation=AlignmentEvaluationDiagnostics(
+                policy=(
+                    AlignmentEvaluationPolicy.FIT_SELECT_ONCE_HOLDOUT_EVALUATE_ONCE_V1
+                ),
+                evaluation_index=0,
+                fit_camera_ids=("captured-0", "captured-1"),
+                holdout_camera_ids=("captured-2", "captured-3"),
+                candidate_ids=("candidate-0", "candidate-1"),
+                fit_evaluation_count=1,
+                holdout_evaluation_count=1,
+                outcome=AlignmentEvaluationOutcome.FULL_VALIDATION_PASS,
+            ),
+            determinism=LineInferenceDeterminismDiagnostics(
+                seed=42,
+                device="cpu",
+                model_eval=True,
+                inference_mode=True,
+                deterministic_algorithms=True,
+                deterministic_warn_only=False,
+                cudnn_benchmark=False,
+                cudnn_deterministic=True,
+                cuda_matmul_allow_tf32=False,
+                cudnn_allow_tf32=False,
+                cublas_workspace_config=None,
+                torch_version="test",
+                cuda_version=None,
+                device_name="cpu",
+                cross_hardware_bit_identity_claimed=False,
+            ),
+            proposal_search=ProposalSearchDiagnostics(
+                orientation_band_count=1,
+                center_tile_count=1,
+                maximum_center_tile_width_scene_units=1.0,
+                maximum_complete_branch_count=1,
+                maximum_tile_state_count=2,
+                maximum_residual_state_count=2,
+                residual_state_count=2,
+                residual_tree_build_count=2,
+                explored_tile_state_count=2,
+                geometrically_impossible_tile_state_count=0,
+                feasible_proposal_count_before_deduplication=2,
+                duplicate_proposal_count=0,
+                retained_proposal_count=2,
+                expanded_state_count=2,
+                feasible_complete_state_count=1,
+                selected_orientation_band_indices=(0, 0),
+                selected_center_tile_indices=(0, 0),
+                original_point_count=100,
+                selected_residual_point_count=25,
+                selected_explained_point_count=75,
+                selected_native_score_sum=1.7,
+            ),
+            excluded_cameras=(),
         ),
+        whole_court_settings=whole_court_settings,
+    )
+
+
+def _identifiable_alignment_points() -> NDArray[np.float64]:
+    longitudinal = np.asarray(
+        [
+            (offset, tangential, 0.0)
+            for offset in (-HALF_DOUBLES_WIDTH, HALF_DOUBLES_WIDTH)
+            for tangential in np.linspace(-10.0, 10.0, 41)
+        ],
+        dtype=np.float64,
+    )
+    transverse = np.asarray(
+        [
+            (tangential, offset, 0.0)
+            for offset in (-HALF_LENGTH, HALF_LENGTH)
+            for tangential in np.linspace(-4.63, 4.63, 31)
+        ],
+        dtype=np.float64,
+    )
+    points: NDArray[np.float64] = np.asarray(
+        np.concatenate((longitudinal, transverse)), dtype=np.float64
+    )
+    return points
+
+
+def _alignment_whole_court_settings() -> WholeCourtEvidenceSettings:
+    scale_tolerance = 0.07290400972053462
+    localization_tolerance = 0.3
+    return WholeCourtEvidenceSettings(
+        required_court_count=2,
+        maximum_common_scale_relative_deviation=scale_tolerance,
+        maximum_center_refit_displacement_metres=(
+            scale_tolerance * np.hypot(HALF_DOUBLES_WIDTH, HALF_LENGTH)
+            + localization_tolerance
+        ),
+        minimum_distinct_offset_levels=2,
+        minimum_matches_per_offset_level=3,
+        minimum_level_camera_count=2,
+        minimum_secondary_tangential_span_metres=0.6,
+        minimum_longitudinal_offset_span_metres=8.23,
+        minimum_longitudinal_tangential_span_metres=12.8,
+        minimum_transverse_offset_span_metres=12.8,
+        minimum_transverse_tangential_span_metres=8.23,
+        samples_per_metre=3.0,
+        inlier_distance_metres=localization_tolerance,
+        minimum_inlier_fraction=0.9,
+        maximum_q95_error_metres=0.1,
+        minimum_semantic_segment_inlier_fraction=0.8,
+        minimum_center_separation_metres=10.97,
+        maximum_footprint_overlap_fraction=1.0e-9,
     )
 
 
@@ -1086,7 +1331,7 @@ def _write_fake_nht_commands(
     render_log: Path,
 ) -> tuple[Path, Path]:
     binary_root.mkdir(parents=True)
-    interpreter = Path.cwd() / ".venv/bin/python"
+    interpreter = Path(sys.executable)
     reconstruct = binary_root / "nht-reconstruct"
     reconstruct.write_text(
         _fake_reconstruct_source(interpreter, reconstruct_log), encoding="utf-8"
@@ -1099,7 +1344,7 @@ def _write_fake_nht_commands(
 
 
 def _fake_reconstruct_source(interpreter: Path, log_path: Path) -> str:
-    return f'''#!{interpreter}
+    return f"""#!{interpreter}
 import argparse
 import json
 import math
@@ -1107,14 +1352,21 @@ import shutil
 from pathlib import Path
 
 import numpy as np
+import yaml
 from PIL import Image
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--scene-id", required=True)
 parser.add_argument("--input-video", required=True)
 parser.add_argument("--workspace", required=True)
+parser.add_argument("--config", required=True)
 args = parser.parse_args()
 workspace = Path(args.workspace)
+pipeline_config = Path(args.config)
+effective_config = yaml.safe_load(pipeline_config.read_text(encoding="utf-8"))
+if effective_config.get("schema") != "nht_pipeline_config_v1":
+    raise ValueError("fake NHT received an invalid pipeline config")
+training_runtime = effective_config.get("nht_training", {{}})
 workspace.mkdir(parents=True, exist_ok=True)
 log_path = Path({str(log_path)!r})
 generation = len(log_path.read_text(encoding="utf-8").splitlines()) + 1 if log_path.exists() else 1
@@ -1209,12 +1461,12 @@ identity_list = identity.tolist()
 (workspace / "run.json").write_text(json.dumps({{"command": "nht-reconstruct", "generation": generation}}), encoding="utf-8")
 (workspace / "input-config.yaml").write_text("schema: public-fake-nht-v1\\n", encoding="utf-8")
 with log_path.open("a", encoding="utf-8") as handle:
-    handle.write(json.dumps({{"command": "nht-reconstruct", "generation": generation, "scene_id": args.scene_id}}, sort_keys=True) + "\\n")
-'''
+    handle.write(json.dumps({{"command": "nht-reconstruct", "generation": generation, "scene_id": args.scene_id, "trainer": training_runtime.get("trainer"), "training_python": training_runtime.get("python")}}, sort_keys=True) + "\\n")
+"""
 
 
 def _fake_render_source(interpreter: Path, log_path: Path) -> str:
-    return f'''#!{interpreter}
+    return f"""#!{interpreter}
 import argparse
 import io
 import json
@@ -1283,4 +1535,4 @@ for camera in request["cameras"]:
     "export_validation": {{}},
     "renders": records,
 }}), encoding="utf-8")
-'''
+"""

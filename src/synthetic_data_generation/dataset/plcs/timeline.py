@@ -21,6 +21,9 @@ from src.synthetic_data_generation.composition.contracts import (
     GaussianTransform,
 )
 from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
+from src.synthetic_data_generation.dataset.plcs.coordinates import (
+    PLCSSourceSupportPlane,
+)
 from src.synthetic_data_generation.dataset.plcs.production import (
     PLCSProductionMode,
     validate_plcs_production_contract,
@@ -30,14 +33,6 @@ from src.tasks.plcs.generate_dataset.sampling.motion_source import PLCSMotionCli
 
 FloatArray: TypeAlias = NDArray[np.float64]
 
-_SMPLH_TO_COURT = np.asarray(
-    (
-        (1.0, 0.0, 0.0),
-        (0.0, 0.0, -1.0),
-        (0.0, 1.0, 0.0),
-    ),
-    dtype=np.float64,
-)
 _PORTABLE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
@@ -49,6 +44,7 @@ class PLCSObjectTrack:
     instance_id: int
     asset_id: str
     clip: PLCSMotionClip
+    support_plane: PLCSSourceSupportPlane
     start_frame: int
     anchor_position_court_m: tuple[float, float, float]
     yaw_radians: float
@@ -61,6 +57,17 @@ class PLCSObjectTrack:
             raise ValueError("instance_id must be a positive integer.")
         if isinstance(self.start_frame, bool) or self.start_frame < 0:
             raise ValueError("start_frame must be a non-negative integer.")
+        if not isinstance(self.support_plane, PLCSSourceSupportPlane):
+            raise TypeError("PLCS track requires explicit full-surface support evidence.")
+        if not math.isclose(
+            self.support_plane.initial_root_translation_z_m,
+            float(self.clip.root_translation_m[0, 2]),
+            rel_tol=0.0,
+            abs_tol=1.0e-12,
+        ):
+            raise ValueError(
+                "PLCS support evidence initial trans.z differs from its source clip."
+            )
         anchor = np.asarray(self.anchor_position_court_m, dtype=np.float64)
         if anchor.shape != (3,) or not np.isfinite(anchor).all():
             raise ValueError(
@@ -402,6 +409,7 @@ def _track_inventory_signature(
             track.clip.gender,
             track.clip.fps,
             track.clip.frame_count,
+            tuple(track.support_plane.to_dict().items()),
             track.start_frame,
             track.anchor_position_court_m,
             track.yaw_radians,
@@ -457,8 +465,17 @@ def _frame_entry(
             source_frame_index=None,
             scene_from_asset=None,
         )
+    initial_root = track.clip.root_translation_m[0]
+    support_origin = np.asarray(
+        (
+            initial_root[0],
+            initial_root[1],
+            track.support_plane.support_plane_source_z_m,
+        ),
+        dtype=np.float64,
+    )
     root_relative = (
-        track.clip.root_translation_m[source_index] - track.clip.root_translation_m[0]
+        track.clip.root_translation_m[source_index] - support_origin
     ).astype(np.float64, copy=False)
     yaw = np.asarray(
         (
@@ -468,7 +485,7 @@ def _frame_entry(
         ),
         dtype=np.float64,
     )
-    displacement_court = yaw @ (_SMPLH_TO_COURT @ root_relative)
+    displacement_court = yaw @ root_relative
     anchor = np.asarray(track.anchor_position_court_m, dtype=np.float64)
     position_court = anchor + displacement_court
     if abs(position_court[0]) > 4.115 or abs(position_court[1]) > 11.885:
@@ -476,7 +493,7 @@ def _frame_entry(
             f"Track {track.object_id!r} frame {source_index} leaves the singles court."
         )
     court_from_asset = np.eye(4, dtype=np.float64)
-    court_from_asset[:3, :3] = yaw @ _SMPLH_TO_COURT
+    court_from_asset[:3, :3] = yaw
     court_from_asset[:3, 3] = position_court
     scene_from_asset = target_court.scene_from_court.matrix() @ court_from_asset
     return PLCSFrameEntry(

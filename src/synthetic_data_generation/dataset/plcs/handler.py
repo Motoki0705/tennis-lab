@@ -39,6 +39,10 @@ from src.synthetic_data_generation.dataset.plcs.composition import (
     AvatarAppearance,
     PLCSAvatarFrameTensors,
     compose_prevalidated_frame_gaussians,
+    transform_asset_points,
+)
+from src.synthetic_data_generation.dataset.plcs.coordinates import (
+    PLCSSourceSupportPlane,
 )
 from src.synthetic_data_generation.dataset.plcs.diagnostics import (
     write_plcs_diagnostics,
@@ -194,11 +198,13 @@ class _PLCSStageCache:
 
     clips: dict[str, PLCSMotionClip] = field(default_factory=dict)
     models: dict[str, object] = field(default_factory=dict)
+    support_planes: dict[str, PLCSSourceSupportPlane] = field(default_factory=dict)
     validated_staging: Path | None = None
 
     def reset(self) -> None:
         self.clips.clear()
         self.models.clear()
+        self.support_planes.clear()
         self.validated_staging = None
 
     def clip(
@@ -546,7 +552,22 @@ class PLCSStageHandler:
                 backend=self.execution_backend,
             )
             self.execution_backend.prepare_source(clip=clip, model=model)
-            tracks.append(_object_track(index=index, request=request, clip=clip))
+            if clip.source_path not in self._cache.support_planes:
+                self._cache.support_planes[clip.source_path] = (
+                    self.execution_backend.initial_support_plane(
+                        clip=clip,
+                        model=model,
+                    )
+                )
+            support_plane = self._cache.support_planes[clip.source_path]
+            tracks.append(
+                _object_track(
+                    index=index,
+                    request=request,
+                    clip=clip,
+                    support_plane=support_plane,
+                )
+            )
         return tuple(tracks)
 
     def _tracks_from_cache(self) -> tuple[PLCSObjectTrack, ...]:
@@ -557,7 +578,20 @@ class PLCSStageHandler:
                 request.category,
                 seed=self.parameters.seed + index,
             )
-            tracks.append(_object_track(index=index, request=request, clip=clip))
+            try:
+                support_plane = self._cache.support_planes[clip.source_path]
+            except KeyError as error:
+                raise RuntimeError(
+                    "PLCS execute requires precomputed support provenance."
+                ) from error
+            tracks.append(
+                _object_track(
+                    index=index,
+                    request=request,
+                    clip=clip,
+                    support_plane=support_plane,
+                )
+            )
         return tuple(tracks)
 
     def _prepare_avatars(
@@ -830,17 +864,18 @@ def _write_frame_supervision(
             continue
         if entry.source_frame_index is None or entry.scene_from_asset is None:
             raise ValueError("Present PLCS entry lacks source/transform provenance.")
-        local = (
-            frame_tensors[entry.object_id][entry.source_frame_index]
-            .joints_m.detach()
+        local_tensor = frame_tensors[entry.object_id][
+            entry.source_frame_index
+        ].joints_m
+        local = local_tensor.detach().cpu().numpy().astype(np.float32, copy=False)
+        output.canonical_pose_3d[frame_index, object_index] = local
+        joints_scene = (
+            transform_asset_points(local_tensor, transform=entry.scene_from_asset)
+            .detach()
             .cpu()
             .numpy()
             .astype(np.float32, copy=False)
         )
-        output.canonical_pose_3d[frame_index, object_index] = local
-        joints_scene = entry.scene_from_asset.rigid.apply(
-            local * entry.scene_from_asset.scale
-        ).astype(np.float32)
         joints_court = court_from_scene.apply(joints_scene).astype(np.float32)
         coco = smplh_joints_to_coco17(joints_court[None], track.yaw_radians)[0]
         output.present[frame_index, object_index] = True
@@ -1013,12 +1048,14 @@ def _object_track(
     index: int,
     request: PLCSObjectRequest,
     clip: PLCSMotionClip,
+    support_plane: PLCSSourceSupportPlane,
 ) -> PLCSObjectTrack:
     return PLCSObjectTrack(
         object_id=f"player-{index + 1:03d}",
         instance_id=index + 1,
         asset_id=f"smplh-avatar-{index + 1:03d}",
         clip=clip,
+        support_plane=support_plane,
         start_frame=request.start_frame,
         anchor_position_court_m=request.anchor_position_court_m,
         yaw_radians=request.yaw_radians,

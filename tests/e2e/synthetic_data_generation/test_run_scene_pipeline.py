@@ -28,7 +28,7 @@ def test_cli_resolves_one_full_b00_request_without_legacy_pipeline_fields() -> N
     payload = yaml.safe_load(completed.stdout)
     assert payload["request"] == {
         "scene_id": "B00",
-        "source_video": "tennis_court.mp4",
+        "source_video": "synthetic_data_generation/raw/tennis_court.mp4",
         "targets": ["court", "blcs", "plcs"],
         "from_stage": "ingest",
     }

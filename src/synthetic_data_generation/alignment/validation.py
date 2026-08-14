@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any, Protocol, cast
@@ -12,18 +13,29 @@ from numpy.typing import NDArray
 
 from src.synthetic_data_generation.alignment.contracts import (
     ALIGNMENT_COORDINATE_CONVENTION,
+    AlignmentEvaluationDiagnostics,
     AlignmentEvidence,
     AlignmentEvidenceDiagnostics,
     AlignmentPartitions,
     AlignmentResult,
+    CameraEvidencePartition,
+    CameraExclusionReason,
     CameraLineDiagnostics,
     CandidateEvidence,
     CandidateScaleDiagnostics,
     CorrespondenceSet,
+    ExcludedCameraDiagnostics,
+    FixedCameraSelectionDiagnostics,
+    LineInferenceDeterminismDiagnostics,
     MeasuredCameraLines,
     MetricSceneAdapter,
+    ProposalSearchDiagnostics,
 )
-from src.synthetic_data_generation.alignment.fitting import fit_alignment
+from src.synthetic_data_generation.alignment.fitting import (
+    fit_alignment,
+    whole_court_diagnostics,
+)
+from src.synthetic_data_generation.alignment.settings import WholeCourtEvidenceSettings
 from src.synthetic_data_generation.scene_contract import (
     CourtInstance,
     MultiCourtLayout,
@@ -56,9 +68,44 @@ _GROUND_LINE_KEYS = {
     "nht_scene_units_per_metre",
     "diagnostic_selected_line_pixel_count",
     "diagnostic_projected_line_point_count",
+    "diagnostic_fixed_selection_json",
+    "diagnostic_evaluation_json",
+    "diagnostic_determinism_json",
+    "diagnostic_proposal_search_json",
+    "diagnostic_excluded_camera_ids",
+    "diagnostic_excluded_camera_partitions",
+    "diagnostic_excluded_selected_line_pixel_count",
+    "diagnostic_excluded_projected_line_point_count",
+    "diagnostic_excluded_camera_reasons",
     "diagnostic_candidate_scales",
     "diagnostic_template_scores",
+    "diagnostic_common_scale_refit_center_displacements_metres",
+    "diagnostic_maximum_common_scale_refit_center_displacements_metres",
+    "diagnostic_proposal_orientation_band_minimum_radians",
+    "diagnostic_proposal_orientation_band_maximum_radians",
+    "diagnostic_proposal_residual_point_count_before_suppression",
+    "diagnostic_proposal_residual_point_count_after_suppression",
+    "diagnostic_native_candidate_centers_uv",
+    "diagnostic_native_candidate_orientations_radians",
     "diagnostic_maximum_relative_scale_deviation",
+    "whole_court_required_court_count",
+    "whole_court_maximum_common_scale_relative_deviation",
+    "whole_court_maximum_center_refit_displacement_metres",
+    "whole_court_minimum_distinct_offset_levels",
+    "whole_court_minimum_matches_per_offset_level",
+    "whole_court_minimum_level_camera_count",
+    "whole_court_minimum_secondary_tangential_span_metres",
+    "whole_court_minimum_longitudinal_offset_span_metres",
+    "whole_court_minimum_longitudinal_tangential_span_metres",
+    "whole_court_minimum_transverse_offset_span_metres",
+    "whole_court_minimum_transverse_tangential_span_metres",
+    "whole_court_samples_per_metre",
+    "whole_court_inlier_distance_metres",
+    "whole_court_minimum_inlier_fraction",
+    "whole_court_maximum_q95_error_metres",
+    "whole_court_minimum_semantic_segment_inlier_fraction",
+    "whole_court_minimum_center_separation_metres",
+    "whole_court_maximum_footprint_overlap_fraction",
     "line_camera_index",
     "line_points_nht_scene",
 }
@@ -99,7 +146,10 @@ def write_alignment_outputs(
     _write_json(staging_path / ALIGNMENT_FILE, result.to_dict())
     diagnostics = staging_path / DIAGNOSTICS_DIRECTORY
     diagnostics.mkdir(parents=False, exist_ok=False)
-    _write_json(diagnostics / "candidate-metrics.json", _metrics_payload(result))
+    _write_json(
+        diagnostics / "candidate-metrics.json",
+        _metrics_payload(result, evidence=evidence),
+    )
     _write_json(diagnostics / "evidence.json", evidence.diagnostics.to_dict())
     (diagnostics / "summary.txt").write_text(_human_summary(result), encoding="utf-8")
 
@@ -149,7 +199,7 @@ def validate_alignment_outputs(output_path: Path) -> AlignmentResult:
             "court-geometry.json disagrees with the final alignment result."
         )
     metrics = _load_json_object(diagnostics / "candidate-metrics.json")
-    if metrics != _metrics_payload(result):
+    if metrics != _metrics_payload(result, evidence=evidence):
         raise ValueError("Alignment diagnostics disagree with the final result.")
     evidence_diagnostics = _load_json_object(diagnostics / "evidence.json")
     if evidence_diagnostics != evidence.diagnostics.to_dict():
@@ -315,8 +365,9 @@ def _evidence_archive(evidence: AlignmentEvidence) -> dict[str, NDArray[Any]]:
     line_points_nht_scene = np.concatenate(
         [item.points_nht_scene for item in evidence.measured_camera_lines]
     )
+    whole_court = evidence.whole_court_settings
     return {
-        "schema": np.asarray("semantic_ground_line_correspondences_v2"),
+        "schema": np.asarray("semantic_ground_line_correspondences_v11"),
         "primary_candidate_id": np.asarray(evidence.primary_candidate_id or ""),
         "candidate_ids": np.asarray(
             [candidate.candidate_id for candidate in evidence.candidates], dtype=np.str_
@@ -354,6 +405,63 @@ def _evidence_archive(evidence: AlignmentEvidence) -> dict[str, NDArray[Any]]:
             [item.projected_line_point_count for item in evidence.diagnostics.cameras],
             dtype=np.int64,
         ),
+        "diagnostic_fixed_selection_json": np.asarray(
+            json.dumps(
+                evidence.diagnostics.selection.to_dict(),
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+        ),
+        "diagnostic_evaluation_json": np.asarray(
+            json.dumps(
+                evidence.diagnostics.evaluation.to_dict(),
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+        ),
+        "diagnostic_determinism_json": np.asarray(
+            json.dumps(
+                evidence.diagnostics.determinism.to_dict(),
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+        ),
+        "diagnostic_proposal_search_json": np.asarray(
+            json.dumps(
+                evidence.diagnostics.proposal_search.to_dict(),
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+        ),
+        "diagnostic_excluded_camera_ids": np.asarray(
+            [item.camera_id for item in evidence.diagnostics.excluded_cameras],
+            dtype=np.str_,
+        ),
+        "diagnostic_excluded_camera_partitions": np.asarray(
+            [
+                item.original_partition.value
+                for item in evidence.diagnostics.excluded_cameras
+            ],
+            dtype=np.str_,
+        ),
+        "diagnostic_excluded_selected_line_pixel_count": np.asarray(
+            [
+                item.selected_line_pixel_count
+                for item in evidence.diagnostics.excluded_cameras
+            ],
+            dtype=np.int64,
+        ),
+        "diagnostic_excluded_projected_line_point_count": np.asarray(
+            [
+                item.projected_line_point_count
+                for item in evidence.diagnostics.excluded_cameras
+            ],
+            dtype=np.int64,
+        ),
+        "diagnostic_excluded_camera_reasons": np.asarray(
+            [item.reason.value for item in evidence.diagnostics.excluded_cameras],
+            dtype=np.str_,
+        ),
         "diagnostic_candidate_scales": np.asarray(
             [
                 item.nht_scene_units_per_metre
@@ -365,9 +473,146 @@ def _evidence_archive(evidence: AlignmentEvidence) -> dict[str, NDArray[Any]]:
             [item.template_score for item in evidence.diagnostics.candidate_scales],
             dtype=np.float64,
         ),
+        "diagnostic_common_scale_refit_center_displacements_metres": np.asarray(
+            [
+                item.common_scale_refit_center_displacement_metres
+                for item in evidence.diagnostics.candidate_scales
+            ],
+            dtype=np.float64,
+        ),
+        "diagnostic_maximum_common_scale_refit_center_displacements_metres": (
+            np.asarray(
+                [
+                    item.maximum_common_scale_refit_center_displacement_metres
+                    for item in evidence.diagnostics.candidate_scales
+                ],
+                dtype=np.float64,
+            )
+        ),
+        "diagnostic_proposal_orientation_band_minimum_radians": np.asarray(
+            [
+                item.proposal_orientation_band_minimum_radians
+                for item in evidence.diagnostics.candidate_scales
+            ],
+            dtype=np.float64,
+        ),
+        "diagnostic_proposal_orientation_band_maximum_radians": np.asarray(
+            [
+                item.proposal_orientation_band_maximum_radians
+                for item in evidence.diagnostics.candidate_scales
+            ],
+            dtype=np.float64,
+        ),
+        "diagnostic_proposal_residual_point_count_before_suppression": np.asarray(
+            [
+                item.proposal_residual_point_count_before_suppression
+                for item in evidence.diagnostics.candidate_scales
+            ],
+            dtype=np.int64,
+        ),
+        "diagnostic_proposal_residual_point_count_after_suppression": np.asarray(
+            [
+                item.proposal_residual_point_count_after_suppression
+                for item in evidence.diagnostics.candidate_scales
+            ],
+            dtype=np.int64,
+        ),
+        "diagnostic_native_candidate_centers_uv": np.asarray(
+            [item.native_center_uv for item in evidence.diagnostics.candidate_scales],
+            dtype=np.float64,
+        ),
+        "diagnostic_native_candidate_orientations_radians": np.asarray(
+            [
+                item.native_orientation_radians
+                for item in evidence.diagnostics.candidate_scales
+            ],
+            dtype=np.float64,
+        ),
         "diagnostic_maximum_relative_scale_deviation": np.asarray(
             evidence.diagnostics.maximum_relative_scale_deviation,
             dtype=np.float64,
+        ),
+        "whole_court_required_court_count": np.asarray(
+            whole_court.required_court_count,
+            dtype=np.int64,
+        ),
+        "whole_court_maximum_common_scale_relative_deviation": (
+            _required_policy_float(
+                whole_court,
+                "maximum_common_scale_relative_deviation",
+            )
+        ),
+        "whole_court_maximum_center_refit_displacement_metres": (
+            _required_policy_float(
+                whole_court,
+                "maximum_center_refit_displacement_metres",
+            )
+        ),
+        "whole_court_minimum_distinct_offset_levels": np.asarray(
+            whole_court.minimum_distinct_offset_levels,
+            dtype=np.int64,
+        ),
+        "whole_court_minimum_matches_per_offset_level": np.asarray(
+            whole_court.minimum_matches_per_offset_level,
+            dtype=np.int64,
+        ),
+        "whole_court_minimum_level_camera_count": np.asarray(
+            whole_court.minimum_level_camera_count,
+            dtype=np.int64,
+        ),
+        "whole_court_minimum_secondary_tangential_span_metres": (
+            _required_policy_float(
+                whole_court,
+                "minimum_secondary_tangential_span_metres",
+            )
+        ),
+        "whole_court_minimum_longitudinal_offset_span_metres": (
+            _required_policy_float(
+                whole_court,
+                "minimum_longitudinal_offset_span_metres",
+            )
+        ),
+        "whole_court_minimum_longitudinal_tangential_span_metres": (
+            _required_policy_float(
+                whole_court,
+                "minimum_longitudinal_tangential_span_metres",
+            )
+        ),
+        "whole_court_minimum_transverse_offset_span_metres": (
+            _required_policy_float(
+                whole_court,
+                "minimum_transverse_offset_span_metres",
+            )
+        ),
+        "whole_court_minimum_transverse_tangential_span_metres": (
+            _required_policy_float(
+                whole_court,
+                "minimum_transverse_tangential_span_metres",
+            )
+        ),
+        "whole_court_samples_per_metre": _required_policy_float(
+            whole_court, "samples_per_metre"
+        ),
+        "whole_court_inlier_distance_metres": _required_policy_float(
+            whole_court, "inlier_distance_metres"
+        ),
+        "whole_court_minimum_inlier_fraction": _required_policy_float(
+            whole_court, "minimum_inlier_fraction"
+        ),
+        "whole_court_maximum_q95_error_metres": _required_policy_float(
+            whole_court, "maximum_q95_error_metres"
+        ),
+        "whole_court_minimum_semantic_segment_inlier_fraction": (
+            _required_policy_float(
+                whole_court,
+                "minimum_semantic_segment_inlier_fraction",
+            )
+        ),
+        "whole_court_minimum_center_separation_metres": _required_policy_float(
+            whole_court, "minimum_center_separation_metres"
+        ),
+        "whole_court_maximum_footprint_overlap_fraction": _required_policy_float(
+            whole_court, "maximum_footprint_overlap_fraction"
         ),
     }
 
@@ -383,7 +628,7 @@ def _load_evidence_archive(path: Path) -> AlignmentEvidence:
     if (
         schema.ndim != 0
         or schema.dtype.kind != "U"
-        or str(schema.item()) != "semantic_ground_line_correspondences_v2"
+        or str(schema.item()) != "semantic_ground_line_correspondences_v11"
     ):
         raise ValueError("Unsupported ground-line correspondence schema.")
     primary = arrays["primary_candidate_id"]
@@ -412,6 +657,13 @@ def _load_evidence_archive(path: Path) -> AlignmentEvidence:
         raise ValueError("Ground-line fit and holdout camera IDs overlap.")
     if len(arrays["candidate_ids"]) != len(arrays["court_instance_ids"]):
         raise ValueError("Ground-line candidate and court ID counts differ.")
+    retained_camera_ids = set(arrays["fit_camera_ids"].tolist()) | set(
+        arrays["holdout_camera_ids"].tolist()
+    )
+    _validate_excluded_camera_arrays(
+        arrays,
+        retained_camera_ids=retained_camera_ids,
+    )
     all_camera_count = len(arrays["fit_camera_ids"]) + len(arrays["holdout_camera_ids"])
     candidate_count = len(arrays["candidate_ids"])
     _validate_adapter_and_diagnostics_arrays(
@@ -491,6 +743,26 @@ def _load_evidence_archive(path: Path) -> AlignmentEvidence:
         ),
         nht_scene_units_per_metre=float(arrays["nht_scene_units_per_metre"].item()),
     )
+    excluded_cameras = tuple(
+        ExcludedCameraDiagnostics(
+            camera_id=str(camera_id),
+            original_partition=CameraEvidencePartition(
+                str(arrays["diagnostic_excluded_camera_partitions"][index])
+            ),
+            selected_line_pixel_count=int(
+                arrays["diagnostic_excluded_selected_line_pixel_count"][index]
+            ),
+            projected_line_point_count=int(
+                arrays["diagnostic_excluded_projected_line_point_count"][index]
+            ),
+            reason=CameraExclusionReason(
+                str(arrays["diagnostic_excluded_camera_reasons"][index])
+            ),
+        )
+        for index, camera_id in enumerate(
+            arrays["diagnostic_excluded_camera_ids"].tolist()
+        )
+    )
     diagnostics = AlignmentEvidenceDiagnostics(
         cameras=tuple(
             CameraLineDiagnostics(
@@ -511,6 +783,43 @@ def _load_evidence_archive(path: Path) -> AlignmentEvidence:
                     arrays["diagnostic_candidate_scales"][index]
                 ),
                 template_score=float(arrays["diagnostic_template_scores"][index]),
+                common_scale_refit_center_displacement_metres=float(
+                    arrays["diagnostic_common_scale_refit_center_displacements_metres"][
+                        index
+                    ]
+                ),
+                maximum_common_scale_refit_center_displacement_metres=float(
+                    arrays[
+                        "diagnostic_maximum_common_scale_refit_center_displacements_metres"
+                    ][index]
+                ),
+                proposal_orientation_band_minimum_radians=float(
+                    arrays["diagnostic_proposal_orientation_band_minimum_radians"][
+                        index
+                    ]
+                ),
+                proposal_orientation_band_maximum_radians=float(
+                    arrays["diagnostic_proposal_orientation_band_maximum_radians"][
+                        index
+                    ]
+                ),
+                proposal_residual_point_count_before_suppression=int(
+                    arrays[
+                        "diagnostic_proposal_residual_point_count_before_suppression"
+                    ][index]
+                ),
+                proposal_residual_point_count_after_suppression=int(
+                    arrays[
+                        "diagnostic_proposal_residual_point_count_after_suppression"
+                    ][index]
+                ),
+                native_center_uv=(
+                    float(arrays["diagnostic_native_candidate_centers_uv"][index, 0]),
+                    float(arrays["diagnostic_native_candidate_centers_uv"][index, 1]),
+                ),
+                native_orientation_radians=float(
+                    arrays["diagnostic_native_candidate_orientations_radians"][index]
+                ),
             )
             for index, candidate_id in enumerate(candidate_ids)
         ),
@@ -518,7 +827,21 @@ def _load_evidence_archive(path: Path) -> AlignmentEvidence:
         maximum_relative_scale_deviation=float(
             arrays["diagnostic_maximum_relative_scale_deviation"].item()
         ),
+        selection=FixedCameraSelectionDiagnostics.from_dict(
+            _load_json_scalar(arrays, "diagnostic_fixed_selection_json")
+        ),
+        evaluation=AlignmentEvaluationDiagnostics.from_dict(
+            _load_json_scalar(arrays, "diagnostic_evaluation_json")
+        ),
+        determinism=LineInferenceDeterminismDiagnostics.from_dict(
+            _load_json_scalar(arrays, "diagnostic_determinism_json")
+        ),
+        proposal_search=ProposalSearchDiagnostics.from_dict(
+            _load_json_scalar(arrays, "diagnostic_proposal_search_json")
+        ),
+        excluded_cameras=excluded_cameras,
     )
+    whole_court_settings = _load_whole_court_settings(arrays)
     return AlignmentEvidence(
         partitions=AlignmentPartitions(
             fit_camera_ids=tuple(fit_camera_ids),
@@ -538,6 +861,7 @@ def _load_evidence_archive(path: Path) -> AlignmentEvidence:
         primary_candidate_id=primary_candidate_id,
         metric_adapter=adapter,
         diagnostics=diagnostics,
+        whole_court_settings=whole_court_settings,
     )
 
 
@@ -569,6 +893,65 @@ def _validate_measured_line_arrays(
         np.arange(camera_count, dtype=np.int32),
     ):
         raise ValueError("Every declared camera must retain measured line points.")
+
+
+def _validate_excluded_camera_arrays(
+    arrays: Mapping[str, NDArray[Any]],
+    *,
+    retained_camera_ids: set[str],
+) -> None:
+    ids = arrays["diagnostic_excluded_camera_ids"]
+    partitions = arrays["diagnostic_excluded_camera_partitions"]
+    reasons = arrays["diagnostic_excluded_camera_reasons"]
+    selected_counts = arrays["diagnostic_excluded_selected_line_pixel_count"]
+    projected_counts = arrays["diagnostic_excluded_projected_line_point_count"]
+    if any(
+        array.ndim != 1 or array.dtype.kind != "U"
+        for array in (ids, partitions, reasons)
+    ):
+        raise ValueError("Excluded camera identifiers must be Unicode vectors.")
+    count = len(ids)
+    if partitions.shape != (count,) or reasons.shape != (count,):
+        raise ValueError("Excluded camera diagnostic vector shapes disagree.")
+    if (
+        selected_counts.dtype != np.int64
+        or projected_counts.dtype != np.int64
+        or selected_counts.shape != (count,)
+        or projected_counts.shape != (count,)
+        or np.any(selected_counts < 0)
+        or np.any(projected_counts < 0)
+        or np.any(projected_counts > selected_counts)
+    ):
+        raise ValueError("Excluded camera counts must be consistent int64 vectors.")
+    excluded_ids = [str(item) for item in ids.tolist()]
+    if any(not item for item in excluded_ids) or len(excluded_ids) != len(
+        set(excluded_ids)
+    ):
+        raise ValueError("Excluded camera IDs must be non-empty and unique.")
+    overlap = retained_camera_ids.intersection(excluded_ids)
+    if overlap:
+        raise ValueError(
+            f"Retained and excluded archive camera IDs overlap: {sorted(overlap)}."
+        )
+    allowed_partitions = {item.value for item in CameraEvidencePartition}
+    if set(str(item) for item in partitions.tolist()) - allowed_partitions:
+        raise ValueError("Excluded camera partitions are invalid.")
+    allowed_reasons = {item.value for item in CameraExclusionReason}
+    if set(str(item) for item in reasons.tolist()) - allowed_reasons:
+        raise ValueError("Excluded camera reasons are invalid.")
+
+
+def _load_json_scalar(
+    arrays: Mapping[str, NDArray[Any]],
+    name: str,
+) -> object:
+    encoded = arrays[name]
+    if encoded.ndim != 0 or encoded.dtype.kind != "U":
+        raise ValueError(f"{name} must be one Unicode JSON scalar.")
+    try:
+        return json.loads(str(encoded.item()))
+    except json.JSONDecodeError as error:
+        raise ValueError(f"{name} is not valid JSON.") from error
 
 
 def _validate_adapter_and_diagnostics_arrays(
@@ -623,6 +1006,105 @@ def _validate_adapter_and_diagnostics_arrays(
             raise ValueError(
                 f"{name} must contain one positive float64 value per candidate."
             )
+    refit_names = (
+        "diagnostic_common_scale_refit_center_displacements_metres",
+        "diagnostic_maximum_common_scale_refit_center_displacements_metres",
+    )
+    for name in refit_names:
+        array = arrays[name]
+        if (
+            array.dtype != np.float64
+            or array.shape != (candidate_count,)
+            or not np.isfinite(array).all()
+            or np.any(array < 0.0)
+        ):
+            raise ValueError(
+                f"{name} must contain one non-negative float64 per candidate."
+            )
+    if np.any(
+        arrays["diagnostic_common_scale_refit_center_displacements_metres"]
+        > arrays["diagnostic_maximum_common_scale_refit_center_displacements_metres"]
+        + 1.0e-10
+    ):
+        raise ValueError("A common-scale refit displacement exceeds its maximum.")
+    band_minimum = arrays["diagnostic_proposal_orientation_band_minimum_radians"]
+    band_maximum = arrays["diagnostic_proposal_orientation_band_maximum_radians"]
+    if (
+        band_minimum.dtype != np.float64
+        or band_maximum.dtype != np.float64
+        or band_minimum.shape != (candidate_count,)
+        or band_maximum.shape != (candidate_count,)
+        or not np.isfinite(band_minimum).all()
+        or not np.isfinite(band_maximum).all()
+        or np.any(band_minimum >= band_maximum)
+        or np.any(band_maximum - band_minimum > math.pi / 2.0 + 1.0e-12)
+    ):
+        raise ValueError("Proposal orientation-band diagnostics are invalid.")
+    residual_before = arrays[
+        "diagnostic_proposal_residual_point_count_before_suppression"
+    ]
+    residual_after = arrays[
+        "diagnostic_proposal_residual_point_count_after_suppression"
+    ]
+    if (
+        residual_before.dtype != np.int64
+        or residual_after.dtype != np.int64
+        or residual_before.shape != (candidate_count,)
+        or residual_after.shape != (candidate_count,)
+        or np.any(residual_before < 3)
+        or np.any(residual_after < 0)
+        or np.any(residual_after >= residual_before)
+    ):
+        raise ValueError("Proposal residual-count diagnostics are invalid.")
+    native_centers = arrays["diagnostic_native_candidate_centers_uv"]
+    native_orientations = arrays["diagnostic_native_candidate_orientations_radians"]
+    if (
+        native_centers.dtype != np.float64
+        or native_centers.shape != (candidate_count, 2)
+        or native_orientations.dtype != np.float64
+        or native_orientations.shape != (candidate_count,)
+        or not np.isfinite(native_centers).all()
+        or not np.isfinite(native_orientations).all()
+        or np.any(native_orientations < band_minimum - 1.0e-12)
+        or np.any(native_orientations > band_maximum + 1.0e-12)
+    ):
+        raise ValueError("Native proposal pose diagnostics are invalid.")
+    policy_integer_names = (
+        "whole_court_required_court_count",
+        "whole_court_minimum_distinct_offset_levels",
+        "whole_court_minimum_matches_per_offset_level",
+        "whole_court_minimum_level_camera_count",
+    )
+    policy_integers: list[int] = []
+    for name in policy_integer_names:
+        array = arrays[name]
+        if array.dtype != np.int64 or array.ndim != 0 or int(array.item()) < 1:
+            raise ValueError(f"{name} must be a positive int64 scalar.")
+        policy_integers.append(int(array.item()))
+    policy_names = (
+        "whole_court_maximum_common_scale_relative_deviation",
+        "whole_court_maximum_center_refit_displacement_metres",
+        "whole_court_minimum_longitudinal_offset_span_metres",
+        "whole_court_minimum_longitudinal_tangential_span_metres",
+        "whole_court_minimum_transverse_offset_span_metres",
+        "whole_court_minimum_transverse_tangential_span_metres",
+        "whole_court_minimum_secondary_tangential_span_metres",
+        "whole_court_samples_per_metre",
+        "whole_court_inlier_distance_metres",
+        "whole_court_minimum_inlier_fraction",
+        "whole_court_maximum_q95_error_metres",
+        "whole_court_minimum_semantic_segment_inlier_fraction",
+        "whole_court_minimum_center_separation_metres",
+        "whole_court_maximum_footprint_overlap_fraction",
+    )
+    policy_values = []
+    for name in policy_names:
+        array = arrays[name]
+        if array.dtype != np.float64 or array.ndim != 0:
+            raise ValueError(f"{name} must be a float64 scalar.")
+        policy_values.append(float(array.item()))
+    if not all(np.isfinite(value) for value in policy_values):
+        raise ValueError("Current-schema whole-court policy fields must all be finite.")
 
 
 def _validate_archive_partition(
@@ -692,9 +1174,13 @@ def _court_geometry_payload(result: AlignmentResult) -> dict[str, object]:
     }
 
 
-def _metrics_payload(result: AlignmentResult) -> dict[str, object]:
+def _metrics_payload(
+    result: AlignmentResult,
+    *,
+    evidence: AlignmentEvidence,
+) -> dict[str, object]:
     return {
-        "schema": "alignment_candidate_metrics_v1",
+        "schema": "alignment_candidate_metrics_v6",
         "accepted_court_instance_ids": [
             court.court_instance_id for court in result.layout.courts
         ],
@@ -708,7 +1194,77 @@ def _metrics_payload(result: AlignmentResult) -> dict[str, object]:
             }
             for candidate in result.candidates
         ],
+        "whole_court": whole_court_diagnostics(
+            evidence,
+            candidates=result.candidates,
+            policy=result.policy,
+        ),
     }
+
+
+def _required_policy_float(
+    settings: WholeCourtEvidenceSettings,
+    name: str,
+) -> NDArray[np.float64]:
+    return np.asarray(float(getattr(settings, name)), dtype=np.float64)
+
+
+def _load_whole_court_settings(
+    arrays: Mapping[str, NDArray[Any]],
+) -> WholeCourtEvidenceSettings:
+    required = int(arrays["whole_court_required_court_count"].item())
+    return WholeCourtEvidenceSettings(
+        required_court_count=required,
+        maximum_common_scale_relative_deviation=float(
+            arrays["whole_court_maximum_common_scale_relative_deviation"].item()
+        ),
+        maximum_center_refit_displacement_metres=float(
+            arrays["whole_court_maximum_center_refit_displacement_metres"].item()
+        ),
+        minimum_distinct_offset_levels=int(
+            arrays["whole_court_minimum_distinct_offset_levels"].item()
+        ),
+        minimum_matches_per_offset_level=int(
+            arrays["whole_court_minimum_matches_per_offset_level"].item()
+        ),
+        minimum_level_camera_count=int(
+            arrays["whole_court_minimum_level_camera_count"].item()
+        ),
+        minimum_secondary_tangential_span_metres=float(
+            arrays["whole_court_minimum_secondary_tangential_span_metres"].item()
+        ),
+        minimum_longitudinal_offset_span_metres=float(
+            arrays["whole_court_minimum_longitudinal_offset_span_metres"].item()
+        ),
+        minimum_longitudinal_tangential_span_metres=float(
+            arrays["whole_court_minimum_longitudinal_tangential_span_metres"].item()
+        ),
+        minimum_transverse_offset_span_metres=float(
+            arrays["whole_court_minimum_transverse_offset_span_metres"].item()
+        ),
+        minimum_transverse_tangential_span_metres=float(
+            arrays["whole_court_minimum_transverse_tangential_span_metres"].item()
+        ),
+        samples_per_metre=float(arrays["whole_court_samples_per_metre"].item()),
+        inlier_distance_metres=float(
+            arrays["whole_court_inlier_distance_metres"].item()
+        ),
+        minimum_inlier_fraction=float(
+            arrays["whole_court_minimum_inlier_fraction"].item()
+        ),
+        maximum_q95_error_metres=float(
+            arrays["whole_court_maximum_q95_error_metres"].item()
+        ),
+        minimum_semantic_segment_inlier_fraction=float(
+            arrays["whole_court_minimum_semantic_segment_inlier_fraction"].item()
+        ),
+        minimum_center_separation_metres=float(
+            arrays["whole_court_minimum_center_separation_metres"].item()
+        ),
+        maximum_footprint_overlap_fraction=float(
+            arrays["whole_court_maximum_footprint_overlap_fraction"].item()
+        ),
+    )
 
 
 def _human_summary(result: AlignmentResult) -> str:

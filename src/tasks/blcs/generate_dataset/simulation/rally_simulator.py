@@ -496,9 +496,7 @@ class RallySimulator:
         if bounce_pos is None:
             return True, RallyEndReason.NET_FAULT
 
-        _, y, _ = bounce_pos.tolist()
-        is_target_side = y > 0 if target_side == "far" else y < 0
-        if not is_target_side:
+        if not self.cell_manager.is_position_on_side(bounce_pos, target_side):
             if hit_net_before_bounce:
                 return True, RallyEndReason.NET_FAULT
             return True, RallyEndReason.OWN_SIDE_BOUNCE
@@ -542,6 +540,7 @@ class RallySimulator:
     def _sample_return_timing(
         self,
         return_type: str,
+        target_side: str,
         t_net_sim: int,
         t_bounce1_sim: int,
         t_bounce2_sim: int,
@@ -552,6 +551,7 @@ class RallySimulator:
 
         Args:
             return_type: "volley", "normal", or "late_return".
+            target_side: Canonical side occupied by the returning player.
             t_net_sim: Frame when ball crosses net.
             t_bounce1_sim: First bounce frame.
             t_bounce2_sim: Second bounce frame.
@@ -599,7 +599,22 @@ class RallySimulator:
         if start > end:
             return min(start, max_idx)
 
-        # Sample timing within range
+        # Sample timing within range.  A return belongs to the receiving player
+        # only after the ball is inside that player's bounded canonical half.
+        # This is an exact geometry predicate, not a side tolerance.
+        side_candidates = [
+            i
+            for i in range(start, min(end + 1, max_idx + 1))
+            if self.cell_manager.is_position_in_cell_grid(
+                trajectory_sim[i], target_side
+            )
+        ]
+        if not side_candidates:
+            raise RuntimeError(
+                "Full-physics targeted-velocity refinement produced no valid landing "
+                "return window on the requested canonical court side."
+            )
+
         min_frac, max_frac = cfg.hit_timing_range
         frac = min_frac + torch.rand(1).item() * (max_frac - min_frac)
         t_return = int(start + frac * (end - start))
@@ -607,12 +622,12 @@ class RallySimulator:
         # Prefer z within return_z_range
         z_min, z_max = cfg.return_z_range
         candidates = []
-        for i in range(start, min(end + 1, max_idx + 1)):
+        for i in side_candidates:
             z_val = float(trajectory_sim[i][2].item())
             if z_min <= z_val <= z_max:
                 candidates.append(i)
-        if candidates:
-            t_return = min(candidates, key=lambda i: abs(i - t_return))
+        eligible = candidates if candidates else side_candidates
+        t_return = min(eligible, key=lambda i: abs(i - t_return))
 
         return min(t_return, max_idx)
 
@@ -628,6 +643,14 @@ class RallySimulator:
     ) -> BallState:
         """Sample initial state for return shot (single attempt, no retry)."""
         target_side = "far" if from_side == "near" else "near"
+
+        if not self.cell_manager.is_position_in_cell_grid(
+            ball_pos_at_return, from_side
+        ):
+            raise RuntimeError(
+                "Full-physics targeted-velocity refinement produced no valid landing "
+                "return position on the requested canonical court side."
+            )
 
         position = ball_pos_at_return.clone()
         spin = self._sample_spin()
@@ -856,6 +879,16 @@ class RallySimulator:
             # --- Calculate frame offsets ---
             t_offset = len(all_positions_sim)
             downsample = cfg.sim_fps // cfg.output_fps
+            match shot_result["to_cell"]:
+                case int() as event_to_cell:
+                    pass
+                case None:
+                    event_to_cell = -1
+                case unexpected_to_cell:
+                    raise TypeError(
+                        "Shot classification must provide an integer cell or None, "
+                        f"got {unexpected_to_cell!r}."
+                    )
 
             shot_info = ShotEventInfo(
                 shot_index=rally_count,
@@ -879,9 +912,7 @@ class RallySimulator:
                 bounce2_pos=shot_result["bounce2_pos"],
                 bounce3_pos=shot_result["bounce3_pos"],
                 category=shot_result["category"],
-                to_cell=(
-                    shot_result["to_cell"] if shot_result["to_cell"] is not None else -1
-                ),
+                to_cell=event_to_cell,
                 shot_type=shot_type.value,
                 return_type=return_type,
             )
@@ -906,6 +937,7 @@ class RallySimulator:
             # --- Sample return timing ---
             t_return_sim = self._sample_return_timing(
                 return_type=return_type,
+                target_side=target_side,
                 t_net_sim=shot_result["t_net_sim"],
                 t_bounce1_sim=shot_result["t_bounce1_sim"],
                 t_bounce2_sim=shot_result["t_bounce2_sim"],
