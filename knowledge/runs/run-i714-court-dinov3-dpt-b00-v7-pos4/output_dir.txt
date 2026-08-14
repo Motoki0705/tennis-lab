@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/issue714/i714-court-dinov3-dpt-b00-v7-pos4/logs/version_0/checkpoints
