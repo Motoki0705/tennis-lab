@@ -1,0 +1,84 @@
+name: Temporary Japanese voice-over generation
+
+on:
+  push:
+    branches:
+      - automation/temp-ja-tts-20260817
+    paths:
+      - .github/workflows/temp-ja-tts.yml
+      - .tmp/ja_tts_payload/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out temporary branch
+        uses: actions/checkout@v4
+
+      - name: Verify payload chunks
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/chunk-checksums.txt <<'EOF'
+          41b07871f8880830249abcb98a317e77980b71f5ba5307100a95ec38cddb9e35  .tmp/ja_tts_payload/script.part.00
+          27cd7f5bf75c66e0018f5b674b830882e611a27943cf33c4a4bf61fdde05c056  .tmp/ja_tts_payload/script.part.01
+          3cb90b6bac91fc153ed5e1b31f99c49d1e108b0f6dc508b46b02f9a6e4781784  .tmp/ja_tts_payload/script.part.02
+          5d6d224ee63bd46889d71c9524c2869019a54c4ffd392b58182cd7643e03cee6  .tmp/ja_tts_payload/csv.part.00
+          6fecf595d3ef1ef351cf63fabf1acc46720572457bfba4aa08e5c38258bf72e5  .tmp/ja_tts_payload/csv.part.01
+          d165e902903c37181b1a77884f0d3f6f9fb5348deadb8540282197c7677c9555  .tmp/ja_tts_payload/csv.part.02a
+          b37d45ad4977a3dfecda9b5e848f88a613af469226387a242fb0b353d1b842bc  .tmp/ja_tts_payload/csv.part.02b
+          21cdbed67e03675e5b1a916a68b2f7404dde83552c0addb438ff812dda92b484  .tmp/ja_tts_payload/csv.part.02c
+          2e7df893ff91f9709e3fb4182fdbbd81a90b3c36380a0125c8f8ab4e4576d37b  .tmp/ja_tts_payload/csv.part.02d
+          67b5773b4232587f3dbb3590a92ecb8c1612d9d74a410c95b77ef01f0e5726e7  .tmp/ja_tts_payload/csv.part.03a
+          3d61ed4dd4fdbc184a655f65264d3f77ace6ac7275e950f9242575303cf37246  .tmp/ja_tts_payload/csv.part.03b
+          abf7bc5bb5a804b61b0990ab839590bf35d58fba6b55eb9b1cc5e41cca9069b9  .tmp/ja_tts_payload/csv.part.03c
+          898cc5f76f57429f1886e1105128db5f4c70b5168a22568aeee6e836a8277821  .tmp/ja_tts_payload/csv.part.03d0
+          a3f931685c2f3585ebb4a1ef7e94251b0592d18d7697bb19ef270b1b6621c81e  .tmp/ja_tts_payload/csv.part.03d1
+          959249e499e64c375996897604f7d787866290643251cb3bd8c2db40b3723882  .tmp/ja_tts_payload/csv.part.03d2
+          7de0801ab43e156c7afd09092b18dfa3cfc364d711e1b17242f203b8c1374e19  .tmp/ja_tts_payload/csv.part.03d3
+          EOF
+          sha256sum -c /tmp/chunk-checksums.txt
+
+      - name: Restore and verify generator inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp/ja_tts
+          cat .tmp/ja_tts_payload/script.part.* | base64 --decode > .tmp/ja_tts/generate_voiceover.py
+          cat .tmp/ja_tts_payload/csv.part.* | base64 --decode > .tmp/ja_tts/cross_entropy_ja_tts_segments.csv
+          echo '7e74e1b92948c938400674e63a88858455d49cd8d3e0f38e93e95af586198c23  .tmp/ja_tts/generate_voiceover.py' | sha256sum -c -
+          echo '29e43ba1d5be594fcdd3843417bf4c405d6f833c5b8b852b8c6fbf41e22e8116  .tmp/ja_tts/cross_entropy_ja_tts_segments.csv' | sha256sum -c -
+          python -m py_compile .tmp/ja_tts/generate_voiceover.py
+
+      - name: Install audio dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install 'edge-tts>=7,<8' 'pyopenjtalk-plus==0.4.1.post8' numpy scipy
+
+      - name: Generate and validate timed Japanese voice-over
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd .tmp/ja_tts
+          python generate_voiceover.py
+
+      - name: Upload completed audio
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-entropy-ja-voiceover
+          path: .tmp/ja_tts/out/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 3
