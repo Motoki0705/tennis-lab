@@ -219,7 +219,7 @@ src/utils/models/components/mhc.py
 tests/unit/utils/models/components/test_mhc.py
 ```
 
-必要なら component package export を追加できるが、`block.py`、`cswa.py`、BLCS model/data/config は変更しない。CUDA code は Component 6 の別 ownership である。
+root package exportは変更しない。`src/utils/models/components/__init__.py` と `src/utils/models/__init__.py` はComponent 4またはparent integratorだけが更新する。`block.py`、`cswa.py`、BLCS model/data/configも変更しない。CUDA codeはComponent 6の別ownershipである。
 
 ## 12. Required tests
 
