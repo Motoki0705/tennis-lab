@@ -2,7 +2,7 @@
 
 Issue: [#753](https://github.com/Motoki0705/tennis-lab/issues/753)
 
-このディレクトリは、`BLCSTrackQueryModel` を fixed-width mHC と hybrid CSWA へ更新するための設計正本である。実装時に判断が分かれた場合は、Issue のチェックリスト、本文書、各コンポーネント設計書の順に解釈する。同じ契約を別文書へ複製せず、共通事項は本文書、コンポーネント固有事項は対応する設計書だけで管理する。
+このディレクトリは、`BLCSTrackQueryModel` を fixed-width mHC と hybrid CSWA へ更新するための設計正本である。実装時に判断が分かれた場合は、Issue の Acceptance checklist、本文書、各コンポーネント設計書の順に解釈する。同じ契約を別文書へ複製せず、共通事項は本文書、コンポーネント固有事項は対応する設計書だけで管理する。
 
 ## 1. 固定する設計判断
 
@@ -144,11 +144,25 @@ production component は上表の順に candidate へ統合する。CUDA package
 - architecture/config/checkpoint の非互換を silent migration しない。旧 checkpoint は strict load error とする。
 - performance のために correctness check を弱めない。custom CUDA kernel は reference parity を通過してから dispatch に登録する。
 
-## 7. Agent orchestration と待機
+## 7. Workflow bootstrap、agent orchestration、待機
 
-Issue #753 は `.agents/skills/issue-subagent-workflow` で実行する。全 child は `fork_turns="none"` と mandatory terminal-only footer を使う。spawn 後は parent が独立作業を終えた時点で、利用可能な最大 timeout の blocking wait を一度だけ行う。`list_agents`、短時間 `wait_agent`、status/log/GPU の反復確認、routine progress request は行わない。
+Issue #753 は `.agents/skills/issue-subagent-workflow` で実行する。candidate fingerprint の基準を `main` に固定し、設計書をcandidate scopeへ含めるため、開始順序を次に固定する。
 
-GPU job は `.agents/skills/training-queue/SKILL.md` に従い、全 worktree から repo root の同一 `.training_queue/` を参照する。job 完了待ちも status polling ではなく blocking wait とする。
+```text
+1. cleanなmainをcheckoutする
+2. main上でIssue #753を初期化し、base_revisionをfreezeする
+3. 失敗済み.codex/tasks/issue-753が残る場合だけ--refresh-issueで再生成する
+4. feat/blcs-track-query-cswaをcheckoutする
+5. 本ディレクトリの存在を確認してexploration以降へ進む
+```
+
+upstream Issue 更新後の回復に `--refresh-issue` を使い、frozen `issue.json`、`issue.md`、`state.toml` を手編集しない。feature branch上で先に初期化してdocs commitをbaseline外へ落とさない。
+
+Draft delivery PR はユーザーが明示的に要求した早期PRであり、Validator PASS前から存在してよい。ただしPRの存在やDraft解除を完了根拠にせず、最終headで `capture-pr`、required checks、`finalize-pr`、最終workflow checkまで実行する。
+
+全 child は `fork_turns="none"` と `spawn-contracts.md` のmandatory terminal-only footerを完全一致で使う。spawn 後は parent が独立作業を終えた時点で、利用可能な最大 timeout の blocking wait を一度だけ行う。`list_agents`、短時間 `wait_agent`、status/log/GPU の反復確認、routine progress request は行わない。
+
+GPU job は `.agents/skills/training-queue/SKILL.md` に従い、全 worktree から repo root の同一 `.training_queue/` を参照する。job 完了待ちも status polling ではなく blocking wait とする。CUDA production editsもpackage単位で直列化し、前packageのterminal handoff・統合・CPU checks・queued GPU evidenceが完了するまで次agentをspawnしない。
 
 ## 8. 参考資料
 
