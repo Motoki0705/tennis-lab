@@ -158,7 +158,7 @@ Issue #753 は `.agents/skills/issue-subagent-workflow` で実行する。candid
 
 upstream Issue 更新後の回復に `--refresh-issue` を使い、frozen `issue.json`、`issue.md`、`state.toml` を手編集しない。feature branch上で先に初期化してdocs commitをbaseline外へ落とさない。
 
-Draft delivery PR はユーザーが明示的に要求した早期PRであり、Validator PASS前から存在してよい。ただしPRの存在やDraft解除を完了根拠にせず、最終headで `capture-pr`、required checks、`finalize-pr`、最終workflow checkまで実行する。
+Draft delivery PR #755 はユーザーが明示的に要求した早期PRであり、Validator PASS前から存在してよい。旧design PR #754はsupersededとしてclosed済みで、workflow packagingには使用しない。PR #755の存在やDraft解除を完了根拠にせず、最終headで `capture-pr`、required checks、`finalize-pr`、最終workflow checkまで実行する。
 
 全 child は `fork_turns="none"` と `spawn-contracts.md` のmandatory terminal-only footerを完全一致で使う。spawn 後は parent が独立作業を終えた時点で、利用可能な最大 timeout の blocking wait を一度だけ行う。`list_agents`、短時間 `wait_agent`、status/log/GPU の反復確認、routine progress request は行わない。
 
