@@ -153,7 +153,8 @@ Issue #753 は `.agents/skills/issue-subagent-workflow` で実行する。candid
 2. main上でIssue #753を初期化し、base_revisionをfreezeする
 3. 失敗済み.codex/tasks/issue-753が残る場合だけ--refresh-issueで再生成する
 4. feat/blcs-track-query-cswaをcheckoutする
-5. 本ディレクトリの存在を確認してexploration以降へ進む
+5. frozen base_revisionがHEADのancestorでなければfeatureへ取り込む
+6. 本ディレクトリの存在を確認してexploration以降へ進む
 ```
 
 upstream Issue 更新後の回復に `--refresh-issue` を使い、frozen `issue.json`、`issue.md`、`state.toml` を手編集しない。feature branch上で先に初期化してdocs commitをbaseline外へ落とさない。
