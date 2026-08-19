@@ -71,6 +71,8 @@ def test_dedicated_reviewers_own_only_gate_evidence() -> None:
         payload = load_agent(filename)
         instructions = payload["developer_instructions"]
         assert payload["name"] == name
+        assert payload["model"] == "gpt-5.6-luna"
+        assert payload["model_reasoning_effort"] == "xhigh"
         assert payload["sandbox_mode"] == "workspace-write"
         assert f"only authored Markdown artifact is `{artifact}`" in instructions
         assert results in instructions
@@ -79,6 +81,12 @@ def test_dedicated_reviewers_own_only_gate_evidence() -> None:
         assert f"Do not call `{verdict}`" in instructions
         assert "Do not modify production code" in instructions
         assert "Communication mode: terminal-only." in instructions
+
+
+def test_codebase_scout_uses_medium_effort() -> None:
+    scout = load_agent("codebase-scout.toml")
+    assert scout["model"] == "gpt-5.6-luna"
+    assert scout["model_reasoning_effort"] == "medium"
 
 
 def test_test_writer_and_validator_preserve_independent_gates() -> None:
