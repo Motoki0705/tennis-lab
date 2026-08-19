@@ -52,6 +52,12 @@ def _build_mapping(root: Path) -> dict[str, object]:
         "time_local_kernels": (
             "src/utils/models/components/ops/time_local/csrc/time_local_cuda.cu"
         ),
+        "compressed_time_local_bindings": (
+            "src/utils/models/components/ops/compressed_time_local/bindings.cpp"
+        ),
+        "compressed_time_local_kernels": (
+            "src/utils/models/components/ops/compressed_time_local/kernels.cu"
+        ),
     }
 
 
@@ -77,7 +83,9 @@ def _operation_environment(**overrides: str) -> dict[str, str]:
 )
 def test_boolean_environment_tokens_are_exact(name: str) -> None:
     with pytest.raises(ConfigurationError, match="exactly '0' or '1'"):
-        OperationEnvironmentConfig.from_mapping(_operation_environment(**{name: "true"}))
+        OperationEnvironmentConfig.from_mapping(
+            _operation_environment(**{name: "true"})
+        )
 
 
 def test_operation_environment_rejects_unknown_and_conflicting_inputs() -> None:
@@ -87,8 +95,8 @@ def test_operation_environment_rejects_unknown_and_conflicting_inputs() -> None:
         OperationEnvironmentConfig.from_mapping(
             _operation_environment(
                 **{
-                FORCE_TIME_LOCAL_REFERENCE: "1",
-                USE_TIME_LOCAL_CUDA: "1",
+                    FORCE_TIME_LOCAL_REFERENCE: "1",
+                    USE_TIME_LOCAL_CUDA: "1",
                 }
             )
         )
@@ -144,6 +152,9 @@ def test_dino_build_contract_resolves_all_roles(tmp_path: Path) -> None:
     assert config.destination == tmp_path / ".cache/dino_ops/src"
     assert config.moe_bindings == (
         tmp_path / "src/utils/models/components/ops/moe/csrc/moe.cpp"
+    )
+    assert config.compressed_time_local_kernels == (
+        tmp_path / "src/utils/models/components/ops/compressed_time_local/kernels.cu"
     )
 
 

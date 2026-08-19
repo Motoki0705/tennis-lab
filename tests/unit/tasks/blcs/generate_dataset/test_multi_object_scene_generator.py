@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -156,6 +157,7 @@ def test_multi_ball_uses_physical_scenes_and_canonical_writer(tmp_path) -> None:
     scene = MultiBallSceneGenerator(
         _PhysicalSceneStub(),
         timeline=_timeline(),
+        rng=random.Random(2),
     ).generate_scene("scene_000000")
     assert scene.num_balls == 2
     assert scene.ball_present is not None
@@ -176,15 +178,66 @@ def test_multi_ball_uses_physical_scenes_and_canonical_writer(tmp_path) -> None:
         split_file="train.txt",
         config=_tracking_config(),
     )[0]
-    assert sample["ball_uv"].shape[:3] == (6, 12, 2)
-    assert 1 <= int(sample["target_slot_mask"].sum()) <= 2
-    assert set(sample["target_instance_id"].unique().tolist()) == {-1, 0, 1}
-    assert (sample["target_instance_id"][~sample["target_presence"]] == -1).all()
-    candidate_ids = sample["candidate_gt_index"][0]
-    for object_id in range(2):
-        column_ids = candidate_ids[:, object_id]
-        assert bool(((column_ids == object_id) | (column_ids == -1)).all())
-        assert bool((column_ids == object_id).any())
+    assert sample["ball_uv"].shape == (6, 12, 2, 2)
+    candidate_ids = sample["candidate_gt_index"]
+    candidate_mask = sample["candidate_mask"]
+    assert candidate_ids.shape == candidate_mask.shape == (6, 12, 2)
+    torch.testing.assert_close(candidate_mask, candidate_ids >= 0)
+    torch.testing.assert_close(
+        candidate_ids,
+        candidate_ids[:1].expand_as(candidate_ids),
+    )
+    torch.testing.assert_close(
+        candidate_mask,
+        candidate_mask[:1].expand_as(candidate_mask),
+    )
+    assert not bool((sample["ball_visible"] & ~candidate_mask).any())
+    assert not bool((sample["clean_ball_visible"] & ~candidate_mask).any())
+
+    physical_presence = scene.ball_present[:, : scene.num_balls]
+    view_candidate_ids = candidate_ids[0]
+    candidate_physical_presence = torch.stack(
+        [
+            (view_candidate_ids == object_id).any(dim=1)
+            for object_id in range(scene.num_balls)
+        ],
+        dim=1,
+    )
+    torch.testing.assert_close(candidate_physical_presence, physical_presence)
+
+    target_ids = sample["target_instance_id"]
+    torch.testing.assert_close(sample["target_presence"], target_ids >= 0)
+    torch.testing.assert_close(
+        sample["target_slot_mask"], sample["target_presence"].any(dim=0)
+    )
+    target_physical_presence = torch.stack(
+        [
+            (target_ids == object_id).any(dim=1)
+            for object_id in range(scene.num_balls)
+        ],
+        dim=1,
+    )
+    torch.testing.assert_close(target_physical_presence, physical_presence)
+    assert set(target_ids.unique().tolist()) == {-1, 0, 1}
+
+    active_ids_by_slot = [
+        set(view_candidate_ids[:, slot][candidate_mask[0, :, slot]].tolist())
+        for slot in range(view_candidate_ids.shape[1])
+    ]
+    assert set(range(scene.num_balls)) in active_ids_by_slot
+
+    persisted_uv = torch.from_numpy(np.load(scene_path / "cam_0_ball_uv.npy"))
+    persisted_visible = torch.from_numpy(
+        np.load(scene_path / "cam_0_ball_visible.npy")
+    )
+    safe_candidate_ids = view_candidate_ids.clamp_min(0)
+    expected_uv = persisted_uv.gather(
+        1,
+        safe_candidate_ids.unsqueeze(-1).expand(-1, -1, 2),
+    ).masked_fill(~candidate_mask[0].unsqueeze(-1), 0.0)
+    expected_visible = persisted_visible.gather(1, safe_candidate_ids) & candidate_mask[0]
+    torch.testing.assert_close(sample["clean_ball_uv"][0], expected_uv)
+    torch.testing.assert_close(sample["clean_ball_visible"][0], expected_visible)
 
 
 def test_invalid_ball_cardinality_is_rejected() -> None:

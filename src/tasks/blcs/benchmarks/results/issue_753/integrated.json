@@ -1,0 +1,5684 @@
+{
+  "candidate_identity": {
+    "component_source_sha256": "438c37d635cd3dcab1fcca8d9132072de93fee09d9040a77100fd8139a8858e4",
+    "frozen_base_revision": "bc4577375e7ab14fbac6363f75b60e53add8121d",
+    "git_branch": "feat/blcs-track-query-cswa",
+    "git_commit": "61252b980317a0fba28645cd8b41027582b31a66",
+    "scope": [
+      "src/tasks/blcs/benchmarks/track_query_integrated/__init__.py",
+      "src/tasks/blcs/configs/data/_multiview.yaml",
+      "src/tasks/blcs/configs/data/tracking.yaml",
+      "src/tasks/blcs/configs/data/tracking_chunked.yaml",
+      "src/tasks/blcs/configs/generation/multi_object.yaml",
+      "src/tasks/blcs/configs/model/_track_query.yaml",
+      "src/tasks/blcs/configs/model/track_query_base.yaml",
+      "src/tasks/blcs/configs/model/track_query_large.yaml",
+      "src/tasks/blcs/configs/model/track_query_small.yaml",
+      "src/tasks/blcs/configs/train_tracking.yaml",
+      "src/tasks/blcs/configs/train_tracking_chunked.yaml",
+      "src/tasks/blcs/configuration.py",
+      "src/tasks/blcs/models/blcs_track_query_model.py",
+      "src/tasks/blcs/models/components/track_query_stage.py",
+      "src/utils/models/components/block.py",
+      "src/utils/models/components/compressor.py",
+      "src/utils/models/components/cswa.py",
+      "src/utils/models/components/mhc.py",
+      "src/utils/models/components/ops/compressed_time_local/_autograd.py",
+      "src/utils/models/components/ops/compressed_time_local/api.py",
+      "src/utils/models/components/ops/compressed_time_local/bindings.cpp",
+      "src/utils/models/components/ops/compressed_time_local/kernels.cu",
+      "src/utils/models/components/ops/compressed_time_local/reference.py"
+    ]
+  },
+  "component": "integrated",
+  "decision": {
+    "comparisons": {
+      "configured-inference-base-t512::bfloat16::forward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 103.43957203440368,
+          "B-hybrid-reference": 135.48432709649205,
+          "C-hybrid-cuda": 124.54531399998814
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 620641280,
+          "B-hybrid-reference": 750436864,
+          "C-hybrid-cuda": 2361845760
+        },
+        "speedup_B_vs_A": 0.7634799851110006,
+        "speedup_C_vs_A": 0.8305376469998184,
+        "speedup_C_vs_B": 1.0878315911307987,
+        "status": "measured"
+      },
+      "configured-inference-base-t512::bfloat16::forward-backward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 235.67447706591338,
+          "B-hybrid-reference": 308.16767003852874,
+          "C-hybrid-cuda": 283.6645980132744
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 4089966592,
+          "B-hybrid-reference": 5933826048,
+          "C-hybrid-cuda": 6749652992
+        },
+        "speedup_B_vs_A": 0.764760550762668,
+        "speedup_C_vs_A": 0.8308209015736421,
+        "speedup_C_vs_B": 1.0863804373082457,
+        "status": "measured"
+      },
+      "configured-inference-base-t512::float32::forward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 148.59842299483716,
+          "B-hybrid-reference": 175.81603303551674,
+          "C-hybrid-cuda": 165.68324493709952
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 587934720,
+          "B-hybrid-reference": 679264256,
+          "C-hybrid-cuda": 2318391296
+        },
+        "speedup_B_vs_A": 0.8451926734396212,
+        "speedup_C_vs_A": 0.8968826211199057,
+        "speedup_C_vs_B": 1.0611575908129036,
+        "status": "measured"
+      },
+      "configured-inference-base-t512::float32::forward-backward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 369.253366952762,
+          "B-hybrid-reference": 425.72983109857887,
+          "C-hybrid-cuda": 407.0131230400875
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 5948858368,
+          "B-hybrid-reference": 7643164672,
+          "C-hybrid-cuda": 8540780544
+        },
+        "speedup_B_vs_A": 0.8673420088977989,
+        "speedup_C_vs_A": 0.9072271778234372,
+        "speedup_C_vs_B": 1.045985514960037,
+        "status": "measured"
+      },
+      "configured-inference-large-t512::bfloat16::forward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 150.0810730503872,
+          "B-hybrid-reference": 198.52194690611213,
+          "C-hybrid-cuda": 192.4540139734745
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 867654656,
+          "B-hybrid-reference": 1029863936,
+          "C-hybrid-cuda": 3440984064
+        },
+        "speedup_B_vs_A": 0.7559923494069183,
+        "speedup_C_vs_A": 0.7798282298807887,
+        "speedup_C_vs_B": 1.0315292614965879,
+        "status": "measured"
+      },
+      "configured-inference-large-t512::bfloat16::forward-backward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 350.2991839777678,
+          "B-hybrid-reference": 462.2535388916731,
+          "C-hybrid-cuda": 428.6232820013538
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 6085500928,
+          "B-hybrid-reference": 8853583872,
+          "C-hybrid-cuda": 10080278528
+        },
+        "speedup_B_vs_A": 0.7578074682081748,
+        "speedup_C_vs_A": 0.8172658805236376,
+        "speedup_C_vs_B": 1.0784611062966316,
+        "status": "measured"
+      },
+      "configured-inference-large-t512::float32::forward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 222.436017007567,
+          "B-hybrid-reference": 270.5227470723912,
+          "C-hybrid-cuda": 256.3929440220818
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 746212352,
+          "B-hybrid-reference": 878999552,
+          "C-hybrid-cuda": 3345625088
+        },
+        "speedup_B_vs_A": 0.8222451509707747,
+        "speedup_C_vs_A": 0.8675590424532499,
+        "speedup_C_vs_B": 1.0551099528272998,
+        "status": "measured"
+      },
+      "configured-inference-large-t512::float32::forward-backward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 552.8851260896772,
+          "B-hybrid-reference": 642.9964259732515,
+          "C-hybrid-cuda": 626.112753059715
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 8877705216,
+          "B-hybrid-reference": 11418116096,
+          "C-hybrid-cuda": 12785582080
+        },
+        "speedup_B_vs_A": 0.8598572305480857,
+        "speedup_C_vs_A": 0.8830440258369026,
+        "speedup_C_vs_B": 1.0269658665009274,
+        "status": "measured"
+      },
+      "configured-inference-small-t1024::bfloat16::forward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 118.89383301604539,
+          "B-hybrid-reference": 152.4362120544538,
+          "C-hybrid-cuda": 140.43847401626408
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 341345280,
+          "B-hybrid-reference": 403487232,
+          "C-hybrid-cuda": 780743680
+        },
+        "speedup_B_vs_A": 0.7799579339689556,
+        "speedup_C_vs_A": 0.8465901801402113,
+        "speedup_C_vs_B": 1.0854305639692459,
+        "status": "measured"
+      },
+      "configured-inference-small-t1024::bfloat16::forward-backward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 292.93827898800373,
+          "B-hybrid-reference": 362.15000902302563,
+          "C-hybrid-cuda": 334.4227229245007
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 6273927168,
+          "B-hybrid-reference": 8420516864,
+          "C-hybrid-cuda": 7795571712
+        },
+        "speedup_B_vs_A": 0.8088865710048307,
+        "speedup_C_vs_A": 0.8759520777364685,
+        "speedup_C_vs_B": 1.082910891508962,
+        "status": "measured"
+      },
+      "configured-inference-small-t1024::float32::forward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 166.71334404964,
+          "B-hybrid-reference": 189.31524408981204,
+          "C-hybrid-cuda": 193.73757601715624
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 496346112,
+          "B-hybrid-reference": 515527680,
+          "C-hybrid-cuda": 916032512
+        },
+        "speedup_B_vs_A": 0.8806123608860067,
+        "speedup_C_vs_A": 0.8605111485181216,
+        "speedup_C_vs_B": 0.9771735973048791,
+        "status": "measured"
+      },
+      "configured-inference-small-t1024::float32::forward-backward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 435.99914596416056,
+          "B-hybrid-reference": 487.25508502684534,
+          "C-hybrid-cuda": 459.1767060337588
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 9204365312,
+          "B-hybrid-reference": 11112403968,
+          "C-hybrid-cuda": 10528877568
+        },
+        "speedup_B_vs_A": 0.894806764182131,
+        "speedup_C_vs_A": 0.94952365883322,
+        "speedup_C_vs_B": 1.0611493976591708,
+        "status": "measured"
+      },
+      "configured-training-small-max-t1024::bfloat16::forward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 98.75022200867534,
+          "B-hybrid-reference": 126.83734309393913,
+          "C-hybrid-cuda": 126.50963407941163
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 266476544,
+          "B-hybrid-reference": 369653760,
+          "C-hybrid-cuda": 752405504
+        },
+        "speedup_B_vs_A": 0.7785579514665353,
+        "speedup_C_vs_A": 0.7805747184968429,
+        "speedup_C_vs_B": 1.0025903878144315,
+        "status": "measured"
+      },
+      "configured-training-small-max-t1024::bfloat16::forward-backward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 229.98656309209764,
+          "B-hybrid-reference": 293.8444159226492,
+          "C-hybrid-cuda": 276.9498430425301
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 4203175936,
+          "B-hybrid-reference": 5905436672,
+          "C-hybrid-cuda": 5503182848
+        },
+        "speedup_B_vs_A": 0.7826814144824132,
+        "speedup_C_vs_A": 0.8304267681306449,
+        "speedup_C_vs_B": 1.061002283642835,
+        "status": "measured"
+      },
+      "configured-training-small-max-t1024::float32::forward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 135.2888710098341,
+          "B-hybrid-reference": 151.50619996711612,
+          "C-hybrid-cuda": 146.70150307938457
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 361626624,
+          "B-hybrid-reference": 389772288,
+          "C-hybrid-cuda": 788966400
+        },
+        "speedup_B_vs_A": 0.8929593048944405,
+        "speedup_C_vs_A": 0.9222050774532642,
+        "speedup_C_vs_B": 1.0327515177886868,
+        "status": "measured"
+      },
+      "configured-training-small-max-t1024::float32::forward-backward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 334.43610405083746,
+          "B-hybrid-reference": 376.8092469545081,
+          "C-hybrid-cuda": 358.58028195798397
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 6288198656,
+          "B-hybrid-reference": 7799357440,
+          "C-hybrid-cuda": 7430263808
+        },
+        "speedup_B_vs_A": 0.8875474971855286,
+        "speedup_C_vs_A": 0.9326673017955417,
+        "speedup_C_vs_B": 1.0508364957966654,
+        "status": "measured"
+      },
+      "historic-diagnostic-small-b8-t512::bfloat16::forward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 229.91808992810547,
+          "B-hybrid-reference": 335.87036305107176,
+          "C-hybrid-cuda": 291.01885005366057
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 673889280,
+          "B-hybrid-reference": 1059201024,
+          "C-hybrid-cuda": 1380153344
+        },
+        "speedup_B_vs_A": 0.6845441432804972,
+        "speedup_C_vs_A": 0.7900453523395862,
+        "speedup_C_vs_B": 1.15411892731052,
+        "status": "measured"
+      },
+      "historic-diagnostic-small-b8-t512::bfloat16::forward-backward": {
+        "complete": false,
+        "latency_ms": null,
+        "peak_allocated_bytes": null,
+        "speedup_B_vs_A": null,
+        "speedup_C_vs_A": null,
+        "speedup_C_vs_B": null,
+        "status": {
+          "A-global-only": "ok",
+          "B-hybrid-reference": "unsupported",
+          "C-hybrid-cuda": "unsupported"
+        }
+      },
+      "historic-diagnostic-small-b8-t512::float32::forward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 346.5633050072938,
+          "B-hybrid-reference": 434.63167909067124,
+          "C-hybrid-cuda": 400.2350999508053
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 1153711104,
+          "B-hybrid-reference": 1210695680,
+          "C-hybrid-cuda": 1610151936
+        },
+        "speedup_B_vs_A": 0.7973723998498394,
+        "speedup_C_vs_A": 0.8658993302933488,
+        "speedup_C_vs_B": 1.0859409360750563,
+        "status": "measured"
+      },
+      "historic-diagnostic-small-b8-t512::float32::forward-backward": {
+        "complete": false,
+        "latency_ms": null,
+        "peak_allocated_bytes": null,
+        "speedup_B_vs_A": null,
+        "speedup_C_vs_A": null,
+        "speedup_C_vs_B": null,
+        "status": {
+          "A-global-only": "unsupported",
+          "B-hybrid-reference": "unsupported",
+          "C-hybrid-cuda": "unsupported"
+        }
+      },
+      "long-context-small-t2048::bfloat16::forward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 150.93755698762834,
+          "B-hybrid-reference": 200.01546700950712,
+          "C-hybrid-cuda": 180.15141994692385
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 422853632,
+          "B-hybrid-reference": 616973312,
+          "C-hybrid-cuda": 984331264
+        },
+        "speedup_B_vs_A": 0.7546294256356384,
+        "speedup_C_vs_A": 0.8378371762603787,
+        "speedup_C_vs_B": 1.1102630613094007,
+        "status": "measured"
+      },
+      "long-context-small-t2048::bfloat16::forward-backward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 387.04820396378636,
+          "B-hybrid-reference": 494.17503003496677,
+          "C-hybrid-cuda": 447.78728601522744
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 8541478912,
+          "B-hybrid-reference": 11649991680,
+          "C-hybrid-cuda": 10463198208
+        },
+        "speedup_B_vs_A": 0.7832208841802462,
+        "speedup_C_vs_A": 0.8643572876042408,
+        "speedup_C_vs_B": 1.1035932583806363,
+        "status": "measured"
+      },
+      "long-context-small-t2048::float32::forward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 233.75978390686214,
+          "B-hybrid-reference": 253.1249379971996,
+          "C-hybrid-cuda": 237.54493205342442
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 643431424,
+          "B-hybrid-reference": 680541184,
+          "C-hybrid-cuda": 1079997440
+        },
+        "speedup_B_vs_A": 0.9234956688046608,
+        "speedup_C_vs_A": 0.984065548720227,
+        "speedup_C_vs_B": 1.0655876166630707,
+        "status": "measured"
+      },
+      "long-context-small-t2048::float32::forward-backward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 669.0872589824721,
+          "B-hybrid-reference": 683.553530019708,
+          "C-hybrid-cuda": 643.6366609996185
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 12838014976,
+          "B-hybrid-reference": 15466542080,
+          "C-hybrid-cuda": 14387751936
+        },
+        "speedup_B_vs_A": 0.9788366669149982,
+        "speedup_C_vs_A": 1.0395418712528384,
+        "speedup_C_vs_B": 1.0620177057007527,
+        "status": "measured"
+      },
+      "smoke-small::bfloat16::forward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 92.2938589937985,
+          "B-hybrid-reference": 120.40609493851662,
+          "C-hybrid-cuda": 129.5227409573272
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 127894528,
+          "B-hybrid-reference": 140784640,
+          "C-hybrid-cuda": 540240896
+        },
+        "speedup_B_vs_A": 0.766521487478909,
+        "speedup_C_vs_A": 0.7125687606024783,
+        "speedup_C_vs_B": 0.9296135493162999,
+        "status": "measured"
+      },
+      "smoke-small::bfloat16::forward-backward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 200.03275608178228,
+          "B-hybrid-reference": 244.32321602944285,
+          "C-hybrid-cuda": 244.38587797340006
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 196785664,
+          "B-hybrid-reference": 264579584,
+          "C-hybrid-cuda": 637261312
+        },
+        "speedup_B_vs_A": 0.8187218526858159,
+        "speedup_C_vs_A": 0.8185119276963895,
+        "speedup_C_vs_B": 0.9997435942515303,
+        "status": "measured"
+      },
+      "smoke-small::float32::forward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 86.97242802008986,
+          "B-hybrid-reference": 112.39856900647283,
+          "C-hybrid-cuda": 103.1116460217163
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 92227584,
+          "B-hybrid-reference": 114377216,
+          "C-hybrid-cuda": 513833472
+        },
+        "speedup_B_vs_A": 0.7737859012696263,
+        "speedup_C_vs_A": 0.8434782236118377,
+        "speedup_C_vs_B": 1.0900666737761184,
+        "status": "measured"
+      },
+      "smoke-small::float32::forward-backward": {
+        "complete": true,
+        "latency_ms": {
+          "A-global-only": 190.20632305182517,
+          "B-hybrid-reference": 231.1410470865667,
+          "C-hybrid-cuda": 216.88620990607888
+        },
+        "peak_allocated_bytes": {
+          "A-global-only": 192499200,
+          "B-hybrid-reference": 249221632,
+          "C-hybrid-cuda": 623132160
+        },
+        "speedup_B_vs_A": 0.8229015376078542,
+        "speedup_C_vs_A": 0.8769867071502275,
+        "speedup_C_vs_B": 1.065724958662244,
+        "status": "measured"
+      }
+    },
+    "complete_same_shape_triplets": 26,
+    "reason": "All required smoke and maximum configured-training A/B/C comparisons passed; every optional larger shape is measured or explicitly records OOM/unsupported status.",
+    "status": "PASS"
+  },
+  "environment": {
+    "bfloat16_supported": true,
+    "compute_capability": "12.0",
+    "cuda": "13.0",
+    "device_total_memory_bytes": 17102864384,
+    "gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "python": "3.11.15",
+    "torch": "2.11.0+cu130"
+  },
+  "generated_at_utc": "2026-08-19T14:40:36.245058Z",
+  "issue": 753,
+  "protocol": {
+    "autocast": {
+      "bfloat16": true,
+      "float32": false
+    },
+    "cases": [
+      {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 32,
+        "hidden_dim": 256,
+        "model_profile": "small",
+        "name": "smoke-small",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 1,
+        "object_path_n": 1,
+        "provenance": "correctness smoke with the repository small width",
+        "query_path_n": 4,
+        "spatial_tokens": 8
+      },
+      {
+        "batch_size": 8,
+        "ffn_dim": 704,
+        "frames": 512,
+        "hidden_dim": 256,
+        "model_profile": "small",
+        "name": "historic-diagnostic-small-b8-t512",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 24,
+        "provenance": "historic pre-repair physical-B8/T512 diagnostic; not a configured production training shape",
+        "query_path_n": 32,
+        "spatial_tokens": 16
+      },
+      {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "model_profile": "small",
+        "name": "configured-training-small-max-t1024",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "both tracking data configs physical batch=1; both tracking train roots accumulate_grad_batches=8; effective batch=8; view lower bound=3; maximum configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "model_profile": "small",
+        "name": "configured-inference-small-t1024",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 5,
+        "object_path_n": 5,
+        "provenance": "predictor batch=1, view upper bound=5, generated scene T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 24
+      },
+      {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 2048,
+        "hidden_dim": 256,
+        "model_profile": "small",
+        "name": "long-context-small-t2048",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "required long-context extension beyond configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "model_profile": "base",
+        "name": "configured-inference-base-t512",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository base width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "model_profile": "large",
+        "name": "configured-inference-large-t512",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 12,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository large width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      }
+    ],
+    "compile": false,
+    "dropout": 0.0,
+    "dtypes": [
+      "float32",
+      "bfloat16"
+    ],
+    "iterations": 3,
+    "mask_density": 0.875,
+    "measurements": [
+      "forward",
+      "forward-backward"
+    ],
+    "memory_measurement": {
+      "capacity_invariant": "0 <= peak_allocated_bytes <= peak_reserved_bytes <= environment.device_total_memory_bytes",
+      "metrics": [
+        "peak_allocated_bytes",
+        "peak_reserved_bytes"
+      ],
+      "over_capacity_policy": "unsupported_without_physical_peak_claim",
+      "scope": "process_local_cuda_allocator"
+    },
+    "model_profiles": [
+      {
+        "ffn_dim": 704,
+        "hidden_dim": 256,
+        "name": "small",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "rope_dim": 64,
+        "source_config": "src/tasks/blcs/configs/model/track_query_small.yaml"
+      },
+      {
+        "ffn_dim": 1408,
+        "hidden_dim": 512,
+        "name": "base",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 8,
+        "rope_dim": 64,
+        "source_config": "src/tasks/blcs/configs/model/track_query_base.yaml"
+      },
+      {
+        "ffn_dim": 1408,
+        "hidden_dim": 512,
+        "name": "large",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 12,
+        "rope_dim": 64,
+        "source_config": "src/tasks/blcs/configs/model/track_query_large.yaml"
+      }
+    ],
+    "module_mode": "eval",
+    "parity_scope": "stage outputs and camera/query input gradients",
+    "production_mixed_precision_dtype": "bfloat16",
+    "required_training_admission": {
+      "accumulate_grad_batches": 8,
+      "candidates": [
+        "A-global-only",
+        "B-hybrid-reference",
+        "C-hybrid-cuda"
+      ],
+      "case": "configured-training-small-max-t1024",
+      "configured_sequence_bound": "maximum",
+      "dtype": "bfloat16",
+      "effective_batch_size": 8,
+      "frames": 1024,
+      "measurement": "forward-backward",
+      "model_profile": "small",
+      "num_views": 3,
+      "physical_batch_size": 1
+    },
+    "scope": "full mHC/object-temporal/spatial/query-temporal stage stack",
+    "seed": 753,
+    "synchronize_each_iteration": true,
+    "throughput_definition": "input frames/s = batch_size * frames / median seconds",
+    "tolerances": {
+      "bfloat16": {
+        "atol": 0.065,
+        "rtol": 0.02
+      },
+      "float32": {
+        "atol": 2e-05,
+        "rtol": 0.0002
+      }
+    },
+    "warmup": 1
+  },
+  "restrictions": [
+    "Backends are construction-time explicit; C never falls back to B.",
+    "CUDA CSWA supports float16, bfloat16, and float32, window_radius <= 64, and training attention dropout 0 only.",
+    "The benchmark fixes dropout=0, compile=false, and eval mode for A/B/C; bfloat16 uses CUDA autocast with bfloat16 stage inputs.",
+    "Unavailable and OOM records have no latency, throughput, memory, or parity claims.",
+    "Allocator counters above recorded physical device capacity are classified as unsupported and never retained as successful physical peaks."
+  ],
+  "risks": [
+    "The global stage retained by the C,C,C,G schedule still has quadratic temporal masks and may OOM at long context.",
+    "Integrated backward parity covers stage outputs and input gradients; component evidence separately covers CUDA Q/K/V gradients.",
+    "Latency and memory are device-specific and use three measured iterations after one warmup to keep the full shape matrix reproducible.",
+    "mHC and compressor remain PyTorch after their independent NO-GO gates, so C accelerates only compressed-window attention."
+  ],
+  "runs": [
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "smoke-small",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 86.97242802008986,
+        "p95_ms": 90.20554495509714
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 92227584,
+        "peak_reserved_bytes": 125829120
+      },
+      "model_profile": "small",
+      "parameter_count": 19651628,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 32,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 1,
+        "object_path_n": 1,
+        "provenance": "correctness smoke with the repository small width",
+        "query_path_n": 4,
+        "spatial_tokens": 8
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 367.9326969302074
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "smoke-small",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 190.20632305182517,
+        "p95_ms": 190.62365498393774
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 192499200,
+        "peak_reserved_bytes": 226492416
+      },
+      "model_profile": "small",
+      "parameter_count": 19651628,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 32,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 1,
+        "object_path_n": 1,
+        "provenance": "correctness smoke with the repository small width",
+        "query_path_n": 4,
+        "spatial_tokens": 8
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 168.23836077878977
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "smoke-small",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 112.39856900647283,
+        "p95_ms": 116.52776494156569
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 114377216,
+        "peak_reserved_bytes": 140509184
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 32,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 1,
+        "object_path_n": 1,
+        "provenance": "correctness smoke with the repository small width",
+        "query_path_n": 4,
+        "spatial_tokens": 8
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 284.70113350070477
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "smoke-small",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 231.1410470865667,
+        "p95_ms": 234.70774397719651
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 249221632,
+        "peak_reserved_bytes": 278921216
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 32,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 1,
+        "object_path_n": 1,
+        "provenance": "correctness smoke with the repository small width",
+        "query_path_n": 4,
+        "spatial_tokens": 8
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 138.44360576949103
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "smoke-small",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 103.1116460217163,
+        "p95_ms": 105.052568949759
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 513833472,
+        "peak_reserved_bytes": 622854144
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 2.0372681319713593e-10,
+        "backward_mean_abs_error": 2.376809079412956e-11,
+        "forward_max_abs_error": 1.430511474609375e-06,
+        "forward_mean_abs_error": 1.431096876558513e-07,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 32,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 1,
+        "object_path_n": 1,
+        "provenance": "correctness smoke with the repository small width",
+        "query_path_n": 4,
+        "spatial_tokens": 8
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 310.34321761540394
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "smoke-small",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 216.88620990607888,
+        "p95_ms": 217.67531405203044
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 623132160,
+        "peak_reserved_bytes": 731906048
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 2.0372681319713593e-10,
+        "backward_mean_abs_error": 2.376809079412956e-11,
+        "forward_max_abs_error": 1.430511474609375e-06,
+        "forward_mean_abs_error": 1.431096876558513e-07,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 32,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 1,
+        "object_path_n": 1,
+        "provenance": "correctness smoke with the repository small width",
+        "query_path_n": 4,
+        "spatial_tokens": 8
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 147.5428060357428
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "smoke-small",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 92.2938589937985,
+        "p95_ms": 97.74478897452354
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 127894528,
+        "peak_reserved_bytes": 150994944
+      },
+      "model_profile": "small",
+      "parameter_count": 19651628,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 32,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 1,
+        "object_path_n": 1,
+        "provenance": "correctness smoke with the repository small width",
+        "query_path_n": 4,
+        "spatial_tokens": 8
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 346.7186262322196
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "smoke-small",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 200.03275608178228,
+        "p95_ms": 201.14838203880936
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 196785664,
+        "peak_reserved_bytes": 228589568
+      },
+      "model_profile": "small",
+      "parameter_count": 19651628,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 32,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 1,
+        "object_path_n": 1,
+        "provenance": "correctness smoke with the repository small width",
+        "query_path_n": 4,
+        "spatial_tokens": 8
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 159.97379942571496
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "smoke-small",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 120.40609493851662,
+        "p95_ms": 123.7411400070414
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 140784640,
+        "peak_reserved_bytes": 161480704
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 32,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 1,
+        "object_path_n": 1,
+        "provenance": "correctness smoke with the repository small width",
+        "query_path_n": 4,
+        "spatial_tokens": 8
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 265.76727711616485
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "smoke-small",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 244.32321602944285,
+        "p95_ms": 253.0662399949506
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 264579584,
+        "peak_reserved_bytes": 285212672
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 32,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 1,
+        "object_path_n": 1,
+        "provenance": "correctness smoke with the repository small width",
+        "query_path_n": 4,
+        "spatial_tokens": 8
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 130.97404544701044
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "smoke-small",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 129.5227409573272,
+        "p95_ms": 137.133328942582
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 540240896,
+        "peak_reserved_bytes": 629145600
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 7.62939453125e-06,
+        "backward_mean_abs_error": 7.113478943665541e-07,
+        "forward_max_abs_error": 0.0625,
+        "forward_mean_abs_error": 0.0037507624365389347,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 32,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 1,
+        "object_path_n": 1,
+        "provenance": "correctness smoke with the repository small width",
+        "query_path_n": 4,
+        "spatial_tokens": 8
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 247.06086177208667
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "smoke-small",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 244.38587797340006,
+        "p95_ms": 248.45132499467582
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 637261312,
+        "peak_reserved_bytes": 744488960
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 7.62939453125e-06,
+        "backward_mean_abs_error": 7.113478943665541e-07,
+        "forward_max_abs_error": 0.0625,
+        "forward_mean_abs_error": 0.0037507624365389347,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 32,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 1,
+        "object_path_n": 1,
+        "provenance": "correctness smoke with the repository small width",
+        "query_path_n": 4,
+        "spatial_tokens": 8
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 130.9404629488575
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "historic-diagnostic-small-b8-t512",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 346.5633050072938,
+        "p95_ms": 346.90672799479216
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 1153711104,
+        "peak_reserved_bytes": 1449132032
+      },
+      "model_profile": "small",
+      "parameter_count": 19651628,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 8,
+        "ffn_dim": 704,
+        "frames": 512,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 24,
+        "provenance": "historic pre-repair physical-B8/T512 diagnostic; not a configured production training shape",
+        "query_path_n": 32,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 11818.90852499169
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": false,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "historic-diagnostic-small-b8-t512",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": null,
+      "measurement": "forward-backward",
+      "memory": null,
+      "model_profile": "small",
+      "parameter_count": 19651628,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-run"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 8,
+        "ffn_dim": 704,
+        "frames": 512,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 24,
+        "provenance": "historic pre-repair physical-B8/T512 diagnostic; not a configured production training shape",
+        "query_path_n": 32,
+        "spatial_tokens": 16
+      },
+      "status": "unsupported",
+      "throughput": null,
+      "unavailable_reason": "unsupported physical-memory measurement: process-local CUDA allocator counters allocated=24041180160, reserved=24893194240 exceed recorded physical device capacity=17102864384; no physical peak is claimed",
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "historic-diagnostic-small-b8-t512",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 434.63167909067124,
+        "p95_ms": 434.78883197531104
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 1210695680,
+        "peak_reserved_bytes": 1757413376
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 8,
+        "ffn_dim": 704,
+        "frames": 512,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 24,
+        "provenance": "historic pre-repair physical-B8/T512 diagnostic; not a configured production training shape",
+        "query_path_n": 32,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 9424.071454178349
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": false,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "historic-diagnostic-small-b8-t512",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": null,
+      "measurement": "forward-backward",
+      "memory": null,
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-run"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 8,
+        "ffn_dim": 704,
+        "frames": 512,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 24,
+        "provenance": "historic pre-repair physical-B8/T512 diagnostic; not a configured production training shape",
+        "query_path_n": 32,
+        "spatial_tokens": 16
+      },
+      "status": "unsupported",
+      "throughput": null,
+      "unavailable_reason": "unsupported physical-memory measurement: process-local CUDA allocator counters allocated=30178632704, reserved=31052529664 exceed recorded physical device capacity=17102864384; no physical peak is claimed",
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "historic-diagnostic-small-b8-t512",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 400.2350999508053,
+        "p95_ms": 402.09374495316297
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 1610151936,
+        "peak_reserved_bytes": 2130706432
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 2.2737367544323206e-12,
+        "backward_mean_abs_error": 1.1254008724817348e-13,
+        "forward_max_abs_error": 2.1457672119140625e-06,
+        "forward_mean_abs_error": 1.5714172718617192e-07,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 8,
+        "ffn_dim": 704,
+        "frames": 512,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 24,
+        "provenance": "historic pre-repair physical-B8/T512 diagnostic; not a configured production training shape",
+        "query_path_n": 32,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 10233.984976588654
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": false,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "historic-diagnostic-small-b8-t512",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": null,
+      "measurement": "forward-backward",
+      "memory": null,
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-run"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 8,
+        "ffn_dim": 704,
+        "frames": 512,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 24,
+        "provenance": "historic pre-repair physical-B8/T512 diagnostic; not a configured production training shape",
+        "query_path_n": 32,
+        "spatial_tokens": 16
+      },
+      "status": "unsupported",
+      "throughput": null,
+      "unavailable_reason": "unsupported physical-memory measurement: process-local CUDA allocator counters allocated=27639012352, reserved=28458352640 exceed recorded physical device capacity=17102864384; no physical peak is claimed",
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "historic-diagnostic-small-b8-t512",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 229.91808992810547,
+        "p95_ms": 230.03247997257859
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 673889280,
+        "peak_reserved_bytes": 991952896
+      },
+      "model_profile": "small",
+      "parameter_count": 19651628,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 8,
+        "ffn_dim": 704,
+        "frames": 512,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 24,
+        "provenance": "historic pre-repair physical-B8/T512 diagnostic; not a configured production training shape",
+        "query_path_n": 32,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 17815.040135731833
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "historic-diagnostic-small-b8-t512",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 645.6392270047218,
+        "p95_ms": 647.183128981851
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 16012763136,
+        "peak_reserved_bytes": 16743661568
+      },
+      "model_profile": "small",
+      "parameter_count": 19651628,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 8,
+        "ffn_dim": 704,
+        "frames": 512,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 24,
+        "provenance": "historic pre-repair physical-B8/T512 diagnostic; not a configured production training shape",
+        "query_path_n": 32,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 6344.100278730501
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "historic-diagnostic-small-b8-t512",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 335.87036305107176,
+        "p95_ms": 339.4329260336235
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 1059201024,
+        "peak_reserved_bytes": 1589641216
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 8,
+        "ffn_dim": 704,
+        "frames": 512,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 24,
+        "provenance": "historic pre-repair physical-B8/T512 diagnostic; not a configured production training shape",
+        "query_path_n": 32,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 12195.18138722222
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": false,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "historic-diagnostic-small-b8-t512",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": null,
+      "measurement": "forward-backward",
+      "memory": null,
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-run"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 8,
+        "ffn_dim": 704,
+        "frames": 512,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 24,
+        "provenance": "historic pre-repair physical-B8/T512 diagnostic; not a configured production training shape",
+        "query_path_n": 32,
+        "spatial_tokens": 16
+      },
+      "status": "unsupported",
+      "throughput": null,
+      "unavailable_reason": "unsupported physical-memory measurement: process-local CUDA allocator counters allocated=22703142912, reserved=23483908096 exceed recorded physical device capacity=17102864384; no physical peak is claimed",
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "historic-diagnostic-small-b8-t512",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 291.01885005366057,
+        "p95_ms": 291.03549802675843
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 1380153344,
+        "peak_reserved_bytes": 1667235840
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 8.940696716308594e-08,
+        "backward_mean_abs_error": 2.326661641127714e-09,
+        "forward_max_abs_error": 0.078125,
+        "forward_mean_abs_error": 0.0023164433077909052,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 8,
+        "ffn_dim": 704,
+        "frames": 512,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 24,
+        "provenance": "historic pre-repair physical-B8/T512 diagnostic; not a configured production training shape",
+        "query_path_n": 32,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 14074.689660978125
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": false,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "historic-diagnostic-small-b8-t512",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": null,
+      "measurement": "forward-backward",
+      "memory": null,
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-run"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 8,
+        "ffn_dim": 704,
+        "frames": 512,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 24,
+        "provenance": "historic pre-repair physical-B8/T512 diagnostic; not a configured production training shape",
+        "query_path_n": 32,
+        "spatial_tokens": 16
+      },
+      "status": "unsupported",
+      "throughput": null,
+      "unavailable_reason": "unsupported physical-memory measurement: process-local CUDA allocator counters allocated=19955052544, reserved=20667432960 exceed recorded physical device capacity=17102864384; no physical peak is claimed",
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "configured-training-small-max-t1024",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 135.2888710098341,
+        "p95_ms": 142.32814603019506
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 361626624,
+        "peak_reserved_bytes": 452984832
+      },
+      "model_profile": "small",
+      "parameter_count": 19651628,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "both tracking data configs physical batch=1; both tracking train roots accumulate_grad_batches=8; effective batch=8; view lower bound=3; maximum configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 7568.989173733039
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "configured-training-small-max-t1024",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 334.43610405083746,
+        "p95_ms": 339.01872008573264
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 6288198656,
+        "peak_reserved_bytes": 6559891456
+      },
+      "model_profile": "small",
+      "parameter_count": 19651628,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "both tracking data configs physical batch=1; both tracking train roots accumulate_grad_batches=8; effective batch=8; view lower bound=3; maximum configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 3061.8703770222796
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "configured-training-small-max-t1024",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 151.50619996711612,
+        "p95_ms": 162.4638669891283
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 389772288,
+        "peak_reserved_bytes": 545259520
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "both tracking data configs physical batch=1; both tracking train roots accumulate_grad_batches=8; effective batch=8; view lower bound=3; maximum configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 6758.7993113302
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "configured-training-small-max-t1024",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 376.8092469545081,
+        "p95_ms": 387.57891894783825
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 7799357440,
+        "peak_reserved_bytes": 8023703552
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "both tracking data configs physical batch=1; both tracking train roots accumulate_grad_batches=8; effective batch=8; view lower bound=3; maximum configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 2717.5553898326352
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "configured-training-small-max-t1024",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 146.70150307938457,
+        "p95_ms": 148.40940199792385
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 788966400,
+        "peak_reserved_bytes": 994050048
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 7.503331289626658e-12,
+        "backward_mean_abs_error": 4.44263264956328e-13,
+        "forward_max_abs_error": 2.1457672119140625e-06,
+        "forward_mean_abs_error": 1.5540433651040075e-07,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "both tracking data configs physical batch=1; both tracking train roots accumulate_grad_batches=8; effective batch=8; view lower bound=3; maximum configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 6980.1602472053955
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "configured-training-small-max-t1024",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 358.58028195798397,
+        "p95_ms": 372.2424680599943
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 7430263808,
+        "peak_reserved_bytes": 7713325056
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 7.503331289626658e-12,
+        "backward_mean_abs_error": 4.44263264956328e-13,
+        "forward_max_abs_error": 2.1457672119140625e-06,
+        "forward_mean_abs_error": 1.5540433651040075e-07,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "both tracking data configs physical batch=1; both tracking train roots accumulate_grad_batches=8; effective batch=8; view lower bound=3; maximum configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 2855.706382985067
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "configured-training-small-max-t1024",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 98.75022200867534,
+        "p95_ms": 98.98498700931668
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 266476544,
+        "peak_reserved_bytes": 358612992
+      },
+      "model_profile": "small",
+      "parameter_count": 19651628,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "both tracking data configs physical batch=1; both tracking train roots accumulate_grad_batches=8; effective batch=8; view lower bound=3; maximum configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 10369.596940349564
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "configured-training-small-max-t1024",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 229.98656309209764,
+        "p95_ms": 230.1695019705221
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 4203175936,
+        "peak_reserved_bytes": 4408213504
+      },
+      "model_profile": "small",
+      "parameter_count": 19651628,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "both tracking data configs physical batch=1; both tracking train roots accumulate_grad_batches=8; effective batch=8; view lower bound=3; maximum configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 4452.434030200022
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "configured-training-small-max-t1024",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 126.83734309393913,
+        "p95_ms": 130.27351105120033
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 369653760,
+        "peak_reserved_bytes": 520093696
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "both tracking data configs physical batch=1; both tracking train roots accumulate_grad_batches=8; effective batch=8; view lower bound=3; maximum configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 8073.332151412209
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "configured-training-small-max-t1024",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 293.8444159226492,
+        "p95_ms": 295.0336220674217
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 5905436672,
+        "peak_reserved_bytes": 6102712320
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "both tracking data configs physical batch=1; both tracking train roots accumulate_grad_batches=8; effective batch=8; view lower bound=3; maximum configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 3484.8373646465852
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "configured-training-small-max-t1024",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 126.50963407941163,
+        "p95_ms": 127.90590908844024
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 752405504,
+        "peak_reserved_bytes": 864026624
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 2.682209014892578e-07,
+        "backward_mean_abs_error": 9.093786168534734e-09,
+        "forward_max_abs_error": 0.0703125,
+        "forward_mean_abs_error": 0.002273091988172382,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "both tracking data configs physical batch=1; both tracking train roots accumulate_grad_batches=8; effective batch=8; view lower bound=3; maximum configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 8094.245212639085
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "configured-training-small-max-t1024",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 276.9498430425301,
+        "p95_ms": 277.33984601218253
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 5503182848,
+        "peak_reserved_bytes": 5721030656
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 2.682209014892578e-07,
+        "backward_mean_abs_error": 9.093786168534734e-09,
+        "forward_max_abs_error": 0.0703125,
+        "forward_mean_abs_error": 0.002273091988172382,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "both tracking data configs physical batch=1; both tracking train roots accumulate_grad_batches=8; effective batch=8; view lower bound=3; maximum configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 3697.4204020139064
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "configured-inference-small-t1024",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 166.71334404964,
+        "p95_ms": 166.9536610133946
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 496346112,
+        "peak_reserved_bytes": 648019968
+      },
+      "model_profile": "small",
+      "parameter_count": 19651628,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 5,
+        "object_path_n": 5,
+        "provenance": "predictor batch=1, view upper bound=5, generated scene T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 24
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 6142.279766729994
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "configured-inference-small-t1024",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 435.99914596416056,
+        "p95_ms": 440.29013288673013
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 9204365312,
+        "peak_reserved_bytes": 9416212480
+      },
+      "model_profile": "small",
+      "parameter_count": 19651628,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 5,
+        "object_path_n": 5,
+        "provenance": "predictor batch=1, view upper bound=5, generated scene T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 24
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 2348.62845369925
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "configured-inference-small-t1024",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 189.31524408981204,
+        "p95_ms": 198.94847506657243
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 515527680,
+        "peak_reserved_bytes": 775946240
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 5,
+        "object_path_n": 5,
+        "provenance": "predictor batch=1, view upper bound=5, generated scene T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 24
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 5408.967486602451
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "configured-inference-small-t1024",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 487.25508502684534,
+        "p95_ms": 493.0528940167278
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 11112403968,
+        "peak_reserved_bytes": 11339300864
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 5,
+        "object_path_n": 5,
+        "provenance": "predictor batch=1, view upper bound=5, generated scene T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 24
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 2101.5686269207076
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "configured-inference-small-t1024",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 193.73757601715624,
+        "p95_ms": 200.46518801245838
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 916032512,
+        "peak_reserved_bytes": 1197473792
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 7.275957614183426e-12,
+        "backward_mean_abs_error": 2.892778880296774e-13,
+        "forward_max_abs_error": 1.9073486328125e-06,
+        "forward_mean_abs_error": 1.385140772451147e-07,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 5,
+        "object_path_n": 5,
+        "provenance": "predictor batch=1, view upper bound=5, generated scene T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 24
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 5285.500216588447
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "configured-inference-small-t1024",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 459.1767060337588,
+        "p95_ms": 464.9333819979802
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 10528877568,
+        "peak_reserved_bytes": 10750001152
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 7.275957614183426e-12,
+        "backward_mean_abs_error": 2.892778880296774e-13,
+        "forward_max_abs_error": 1.9073486328125e-06,
+        "forward_mean_abs_error": 1.385140772451147e-07,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 5,
+        "object_path_n": 5,
+        "provenance": "predictor batch=1, view upper bound=5, generated scene T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 24
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 2230.0782825963197
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "configured-inference-small-t1024",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 118.89383301604539,
+        "p95_ms": 119.72753296140581
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 341345280,
+        "peak_reserved_bytes": 450887680
+      },
+      "model_profile": "small",
+      "parameter_count": 19651628,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 5,
+        "object_path_n": 5,
+        "provenance": "predictor batch=1, view upper bound=5, generated scene T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 24
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 8612.725942327097
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "configured-inference-small-t1024",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 292.93827898800373,
+        "p95_ms": 301.1866840533912
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 6273927168,
+        "peak_reserved_bytes": 6490685440
+      },
+      "model_profile": "small",
+      "parameter_count": 19651628,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 5,
+        "object_path_n": 5,
+        "provenance": "predictor batch=1, view upper bound=5, generated scene T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 24
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 3495.616904480873
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "configured-inference-small-t1024",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 152.4362120544538,
+        "p95_ms": 152.67016598954797
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 403487232,
+        "peak_reserved_bytes": 597688320
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 5,
+        "object_path_n": 5,
+        "provenance": "predictor batch=1, view upper bound=5, generated scene T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 24
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 6717.563931818269
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "configured-inference-small-t1024",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 362.15000902302563,
+        "p95_ms": 369.1277989419177
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 8420516864,
+        "peak_reserved_bytes": 8650752000
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 5,
+        "object_path_n": 5,
+        "provenance": "predictor batch=1, view upper bound=5, generated scene T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 24
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 2827.5575714120546
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "configured-inference-small-t1024",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 140.43847401626408,
+        "p95_ms": 143.549477099441
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 780743680,
+        "peak_reserved_bytes": 981467136
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 2.384185791015625e-07,
+        "backward_mean_abs_error": 5.982522625439894e-09,
+        "forward_max_abs_error": 0.078125,
+        "forward_mean_abs_error": 0.001937796245329082,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 5,
+        "object_path_n": 5,
+        "provenance": "predictor batch=1, view upper bound=5, generated scene T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 24
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 7291.449207012967
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "configured-inference-small-t1024",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 334.4227229245007,
+        "p95_ms": 337.6721020322293
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 7795571712,
+        "peak_reserved_bytes": 8004829184
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 2.384185791015625e-07,
+        "backward_mean_abs_error": 5.982522625439894e-09,
+        "forward_max_abs_error": 0.078125,
+        "forward_mean_abs_error": 0.001937796245329082,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 1024,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 5,
+        "object_path_n": 5,
+        "provenance": "predictor batch=1, view upper bound=5, generated scene T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 24
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 3061.9928904507433
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "long-context-small-t2048",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 233.75978390686214,
+        "p95_ms": 235.7968530850485
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 643431424,
+        "peak_reserved_bytes": 807403520
+      },
+      "model_profile": "small",
+      "parameter_count": 19651628,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 2048,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "required long-context extension beyond configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 8761.130617814024
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "long-context-small-t2048",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 669.0872589824721,
+        "p95_ms": 670.9788570879027
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 12838014976,
+        "peak_reserved_bytes": 13413384192
+      },
+      "model_profile": "small",
+      "parameter_count": 19651628,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 2048,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "required long-context extension beyond configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 3060.8862633470812
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "long-context-small-t2048",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 253.1249379971996,
+        "p95_ms": 255.17335906624794
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 680541184,
+        "peak_reserved_bytes": 968884224
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 2048,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "required long-context extension beyond configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 8090.866179383154
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "long-context-small-t2048",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 683.553530019708,
+        "p95_ms": 683.9860680047423
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 15466542080,
+        "peak_reserved_bytes": 16022241280
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 2048,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "required long-context extension beyond configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 2996.1077078205603
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "long-context-small-t2048",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 237.54493205342442,
+        "p95_ms": 238.09758899733424
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 1079997440,
+        "peak_reserved_bytes": 1402994688
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 4.092726157978177e-12,
+        "backward_mean_abs_error": 2.232760553050675e-13,
+        "forward_max_abs_error": 2.384185791015625e-06,
+        "forward_mean_abs_error": 1.551879087458019e-07,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 2048,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "required long-context extension beyond configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 8621.52680882874
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "long-context-small-t2048",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 643.6366609996185,
+        "p95_ms": 645.5487470375374
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 14387751936,
+        "peak_reserved_bytes": 14887682048
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 4.092726157978177e-12,
+        "backward_mean_abs_error": 2.232760553050675e-13,
+        "forward_max_abs_error": 2.384185791015625e-06,
+        "forward_mean_abs_error": 1.551879087458019e-07,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 2048,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "required long-context extension beyond configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 3181.919433891933
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "long-context-small-t2048",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 150.93755698762834,
+        "p95_ms": 151.05449501425028
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 422853632,
+        "peak_reserved_bytes": 599785472
+      },
+      "model_profile": "small",
+      "parameter_count": 19651628,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 2048,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "required long-context extension beyond configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 13568.524897801713
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "long-context-small-t2048",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 387.04820396378636,
+        "p95_ms": 391.19829307310283
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 8541478912,
+        "peak_reserved_bytes": 8883535872
+      },
+      "model_profile": "small",
+      "parameter_count": 19651628,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 2048,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "required long-context extension beyond configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 5291.330586284334
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "long-context-small-t2048",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 200.01546700950712,
+        "p95_ms": 200.93213906511664
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 616973312,
+        "peak_reserved_bytes": 979369984
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 2048,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "required long-context extension beyond configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 10239.208150350965
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "long-context-small-t2048",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 494.17503003496677,
+        "p95_ms": 503.77525005023926
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 11649991680,
+        "peak_reserved_bytes": 12035555328
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 2048,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "required long-context extension beyond configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 4144.2806202795955
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "long-context-small-t2048",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 180.15141994692385,
+        "p95_ms": 182.84350901376456
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 984331264,
+        "peak_reserved_bytes": 1178599424
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 1.1920928955078125e-07,
+        "backward_mean_abs_error": 4.56788429303856e-09,
+        "forward_max_abs_error": 0.09375,
+        "forward_mean_abs_error": 0.0022282368736341596,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 2048,
+        "hidden_dim": 256,
+        "measurement": "forward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "required long-context extension beyond configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 11368.21458639283
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "long-context-small-t2048",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 447.78728601522744,
+        "p95_ms": 449.3626089533791
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 10463198208,
+        "peak_reserved_bytes": 10827595776
+      },
+      "model_profile": "small",
+      "parameter_count": 24443948,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 1.1920928955078125e-07,
+        "backward_mean_abs_error": 4.56788429303856e-09,
+        "forward_max_abs_error": 0.09375,
+        "forward_mean_abs_error": 0.0022282368736341596,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 704,
+        "frames": 2048,
+        "hidden_dim": 256,
+        "measurement": "forward-backward",
+        "num_heads": 4,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "required long-context extension beyond configured T=1024",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 4573.600153378084
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "configured-inference-base-t512",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 148.59842299483716,
+        "p95_ms": 149.00298207066953
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 587934720,
+        "peak_reserved_bytes": 681574400
+      },
+      "model_profile": "base",
+      "parameter_count": 77703212,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository base width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 3445.5278170602705
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "configured-inference-base-t512",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 369.253366952762,
+        "p95_ms": 370.2411049744114
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 5948858368,
+        "peak_reserved_bytes": 6157238272
+      },
+      "model_profile": "base",
+      "parameter_count": 77703212,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward-backward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository base width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 1386.58180486002
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "configured-inference-base-t512",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 175.81603303551674,
+        "p95_ms": 178.43471304513514
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 679264256,
+        "peak_reserved_bytes": 859832320
+      },
+      "model_profile": "base",
+      "parameter_count": 96725036,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository base width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 2912.1348671117526
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "configured-inference-base-t512",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 425.72983109857887,
+        "p95_ms": 435.3450930211693
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 7643164672,
+        "peak_reserved_bytes": 7860125696
+      },
+      "model_profile": "base",
+      "parameter_count": 96725036,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward-backward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository base width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 1202.6406481284255
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "configured-inference-base-t512",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 165.68324493709952,
+        "p95_ms": 172.37217293586582
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 2318391296,
+        "peak_reserved_bytes": 2642411520
+      },
+      "model_profile": "base",
+      "parameter_count": 96725036,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 9.094947017729282e-12,
+        "backward_mean_abs_error": 5.483190399120652e-13,
+        "forward_max_abs_error": 2.384185791015625e-06,
+        "forward_mean_abs_error": 2.022500282805595e-07,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository base width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 3090.2340197065623
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "configured-inference-base-t512",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 407.0131230400875,
+        "p95_ms": 408.81367202382535
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 8540780544,
+        "peak_reserved_bytes": 8829009920
+      },
+      "model_profile": "base",
+      "parameter_count": 96725036,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 9.094947017729282e-12,
+        "backward_mean_abs_error": 5.483190399120652e-13,
+        "forward_max_abs_error": 2.384185791015625e-06,
+        "forward_mean_abs_error": 2.022500282805595e-07,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward-backward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository base width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 1257.9446976444838
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "configured-inference-base-t512",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 103.43957203440368,
+        "p95_ms": 105.0430239411071
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 620641280,
+        "peak_reserved_bytes": 656408576
+      },
+      "model_profile": "base",
+      "parameter_count": 77703212,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository base width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 4949.749790435235
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "configured-inference-base-t512",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 235.67447706591338,
+        "p95_ms": 240.4902899870649
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 4089966592,
+        "peak_reserved_bytes": 4286578688
+      },
+      "model_profile": "base",
+      "parameter_count": 77703212,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward-backward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository base width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 2172.488113156199
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "configured-inference-base-t512",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 135.48432709649205,
+        "p95_ms": 138.23579694144428
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 750436864,
+        "peak_reserved_bytes": 838860800
+      },
+      "model_profile": "base",
+      "parameter_count": 96725036,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository base width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 3779.0348963046713
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "configured-inference-base-t512",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 308.16767003852874,
+        "p95_ms": 329.0443579899147
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 5933826048,
+        "peak_reserved_bytes": 6125780992
+      },
+      "model_profile": "base",
+      "parameter_count": 96725036,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward-backward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository base width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 1661.433205942684
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "configured-inference-base-t512",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 124.54531399998814,
+        "p95_ms": 130.7211290113628
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 2361845760,
+        "peak_reserved_bytes": 2531262464
+      },
+      "model_profile": "base",
+      "parameter_count": 96725036,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 3.2782554626464844e-07,
+        "backward_mean_abs_error": 9.230324060638395e-09,
+        "forward_max_abs_error": 0.078125,
+        "forward_mean_abs_error": 0.0023981804260984063,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository base width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 4110.953544185923
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "configured-inference-base-t512",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 283.6645980132744,
+        "p95_ms": 289.1378110507503
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 6749652992,
+        "peak_reserved_bytes": 6998196224
+      },
+      "model_profile": "base",
+      "parameter_count": 96725036,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 3.2782554626464844e-07,
+        "backward_mean_abs_error": 9.230324060638395e-09,
+        "forward_max_abs_error": 0.078125,
+        "forward_mean_abs_error": 0.0023981804260984063,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward-backward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 8,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository base width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 1804.9485328304536
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "configured-inference-large-t512",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 222.436017007567,
+        "p95_ms": 223.75162702519447
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 746212352,
+        "peak_reserved_bytes": 815792128
+      },
+      "model_profile": "large",
+      "parameter_count": 116482112,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 12,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository large width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 2301.7855061780865
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "configured-inference-large-t512",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 552.8851260896772,
+        "p95_ms": 553.2603709725663
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 8877705216,
+        "peak_reserved_bytes": 9091153920
+      },
+      "model_profile": "large",
+      "parameter_count": 116482112,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward-backward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 12,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository large width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 926.051318510157
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "configured-inference-large-t512",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 270.5227470723912,
+        "p95_ms": 270.71416995022446
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 878999552,
+        "peak_reserved_bytes": 1054867456
+      },
+      "model_profile": "large",
+      "parameter_count": 145014848,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 12,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository large width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 1892.6319710297414
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "configured-inference-large-t512",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 642.9964259732515,
+        "p95_ms": 643.7000830192119
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 11418116096,
+        "peak_reserved_bytes": 11637096448
+      },
+      "model_profile": "large",
+      "parameter_count": 145014848,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward-backward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 12,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository large width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 796.2719220795468
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "configured-inference-large-t512",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 256.3929440220818,
+        "p95_ms": 257.957900990732
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 3345625088,
+        "peak_reserved_bytes": 3688890368
+      },
+      "model_profile": "large",
+      "parameter_count": 145014848,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 1.2732925824820995e-11,
+        "backward_mean_abs_error": 8.507468004809865e-13,
+        "forward_max_abs_error": 2.86102294921875e-06,
+        "forward_mean_abs_error": 2.734380046831575e-07,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 12,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository large width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 1996.9348296726298
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "configured-inference-large-t512",
+      "dtype": "float32",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 626.112753059715,
+        "p95_ms": 630.930860992521
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 12785582080,
+        "peak_reserved_bytes": 13048479744
+      },
+      "model_profile": "large",
+      "parameter_count": 145014848,
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 1.2732925824820995e-11,
+        "backward_mean_abs_error": 8.507468004809865e-13,
+        "forward_max_abs_error": 2.86102294921875e-06,
+        "forward_mean_abs_error": 2.734380046831575e-07,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.0002,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": false,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward-backward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 12,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository large width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 817.7440844287809
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "configured-inference-large-t512",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 150.0810730503872,
+        "p95_ms": 150.44213796500117
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 867654656,
+        "peak_reserved_bytes": 893386752
+      },
+      "model_profile": "large",
+      "parameter_count": 116482112,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 12,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository large width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 3411.489467616643
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "global-only",
+      "available": true,
+      "backend": "dense-pytorch",
+      "candidate": "A-global-only",
+      "case": "configured-inference-large-t512",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 350.2991839777678,
+        "p95_ms": 356.66797403246164
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 6085500928,
+        "peak_reserved_bytes": 6280970240
+      },
+      "model_profile": "large",
+      "parameter_count": 116482112,
+      "parity": {
+        "atol": null,
+        "backward_max_abs_error": null,
+        "backward_mean_abs_error": null,
+        "forward_max_abs_error": null,
+        "forward_mean_abs_error": null,
+        "reference_candidate": null,
+        "rtol": null,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "not-applicable"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward-backward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 12,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository large width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 1461.607743946371
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "configured-inference-large-t512",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 198.52194690611213,
+        "p95_ms": 199.67413996346295
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 1029863936,
+        "peak_reserved_bytes": 1073741824
+      },
+      "model_profile": "large",
+      "parameter_count": 145014848,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 12,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository large width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 2579.059937600463
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "reference",
+      "candidate": "B-hybrid-reference",
+      "case": "configured-inference-large-t512",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 462.2535388916731,
+        "p95_ms": 468.25637796428055
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 8853583872,
+        "peak_reserved_bytes": 9051308032
+      },
+      "model_profile": "large",
+      "parameter_count": 145014848,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "reference_candidate": "self",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward-backward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 12,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository large width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 1107.6172639534616
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "configured-inference-large-t512",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 192.4540139734745,
+        "p95_ms": 208.3658919436857
+      },
+      "measurement": "forward",
+      "memory": {
+        "peak_allocated_bytes": 3440984064,
+        "peak_reserved_bytes": 3766484992
+      },
+      "model_profile": "large",
+      "parameter_count": 145014848,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 4.76837158203125e-07,
+        "backward_mean_abs_error": 1.583187891895932e-08,
+        "forward_max_abs_error": 0.09375,
+        "forward_mean_abs_error": 0.004152617184445262,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 12,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository large width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 2660.3757927884412
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    },
+    {
+      "architecture": "hybrid-CCCG",
+      "available": true,
+      "backend": "cuda",
+      "candidate": "C-hybrid-cuda",
+      "case": "configured-inference-large-t512",
+      "dtype": "bfloat16",
+      "iterations": 3,
+      "latency": {
+        "median_ms": 428.6232820013538,
+        "p95_ms": 437.1282400097698
+      },
+      "measurement": "forward-backward",
+      "memory": {
+        "peak_allocated_bytes": 10080278528,
+        "peak_reserved_bytes": 10378805248
+      },
+      "model_profile": "large",
+      "parameter_count": 145014848,
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 4.76837158203125e-07,
+        "backward_mean_abs_error": 1.583187891895932e-08,
+        "forward_max_abs_error": 0.09375,
+        "forward_mean_abs_error": 0.004152617184445262,
+        "reference_candidate": "B-hybrid-reference",
+        "rtol": 0.02,
+        "scope": "stage outputs and camera/query input gradients",
+        "status": "pass"
+      },
+      "policy": {
+        "autocast": true,
+        "compile": false,
+        "dropout": 0.0,
+        "module_mode": "eval"
+      },
+      "shape": {
+        "batch_size": 1,
+        "ffn_dim": 1408,
+        "frames": 512,
+        "hidden_dim": 512,
+        "measurement": "forward-backward",
+        "num_heads": 8,
+        "num_queries": 4,
+        "num_stages": 12,
+        "num_views": 3,
+        "object_path_n": 3,
+        "provenance": "repository large width at configured T/view lower bounds",
+        "query_path_n": 4,
+        "spatial_tokens": 16
+      },
+      "status": "ok",
+      "throughput": {
+        "unit": "input-frames/s",
+        "value": 1194.5221398364984
+      },
+      "unavailable_reason": null,
+      "warmup": 1
+    }
+  ],
+  "schema_version": 1,
+  "source": {
+    "files": [
+      "src/tasks/blcs/benchmarks/track_query_integrated/__init__.py",
+      "src/tasks/blcs/configs/data/_multiview.yaml",
+      "src/tasks/blcs/configs/data/tracking.yaml",
+      "src/tasks/blcs/configs/data/tracking_chunked.yaml",
+      "src/tasks/blcs/configs/generation/multi_object.yaml",
+      "src/tasks/blcs/configs/model/_track_query.yaml",
+      "src/tasks/blcs/configs/model/track_query_base.yaml",
+      "src/tasks/blcs/configs/model/track_query_large.yaml",
+      "src/tasks/blcs/configs/model/track_query_small.yaml",
+      "src/tasks/blcs/configs/train_tracking.yaml",
+      "src/tasks/blcs/configs/train_tracking_chunked.yaml",
+      "src/tasks/blcs/configuration.py",
+      "src/tasks/blcs/models/blcs_track_query_model.py",
+      "src/tasks/blcs/models/components/track_query_stage.py",
+      "src/utils/models/components/block.py",
+      "src/utils/models/components/compressor.py",
+      "src/utils/models/components/cswa.py",
+      "src/utils/models/components/mhc.py",
+      "src/utils/models/components/ops/compressed_time_local/_autograd.py",
+      "src/utils/models/components/ops/compressed_time_local/api.py",
+      "src/utils/models/components/ops/compressed_time_local/bindings.cpp",
+      "src/utils/models/components/ops/compressed_time_local/kernels.cu",
+      "src/utils/models/components/ops/compressed_time_local/reference.py"
+    ],
+    "fingerprint_sha256": "438c37d635cd3dcab1fcca8d9132072de93fee09d9040a77100fd8139a8858e4",
+    "git_commit": "61252b980317a0fba28645cd8b41027582b31a66"
+  }
+}

@@ -44,6 +44,7 @@ def test_tracking_augmentation_preserves_id_order_without_permutation() -> None:
     sample = {
         "ball_uv": uv.clone(),
         "ball_visible": torch.ones(1, 2, 2, dtype=torch.bool),
+        "candidate_mask": torch.ones(1, 2, 2, dtype=torch.bool),
         "candidate_gt_index": torch.tensor([[[0, 1], [0, 1]]]),
         "court_kp": torch.rand(1, 2, 14, 2),
         "court_vis": torch.ones(1, 2, 14, dtype=torch.bool),
@@ -75,6 +76,7 @@ def test_tracking_noise_changes_coordinates_without_reordering_object_ids() -> N
     sample = {
         "ball_uv": uv.clone(),
         "ball_visible": torch.ones(1, 2, 2, dtype=torch.bool),
+        "candidate_mask": torch.ones(1, 2, 2, dtype=torch.bool),
         "candidate_gt_index": torch.tensor([[[0, 1], [0, 1]]]),
         "court_kp": torch.rand(1, 2, 14, 2),
         "court_vis": torch.ones(1, 2, 14, dtype=torch.bool),
@@ -92,3 +94,24 @@ def test_tracking_noise_changes_coordinates_without_reordering_object_ids() -> N
     )
     torch.testing.assert_close(result["court_kp"], sample["court_kp"])
     torch.testing.assert_close(result["court_vis"], sample["court_vis"])
+
+
+def test_tracking_augmentation_cannot_activate_padding_candidates() -> None:
+    uv = torch.rand(1, 2, 2, 2)
+    sample = {
+        "ball_uv": uv,
+        "ball_visible": torch.tensor([[[True, False], [True, False]]]),
+        "candidate_mask": torch.tensor([[[True, False], [True, False]]]),
+        "candidate_gt_index": torch.tensor([[[3, -1], [3, -1]]]),
+        "court_kp": torch.rand(1, 2, 14, 2),
+        "court_vis": torch.ones(1, 2, 14, dtype=torch.bool),
+    }
+    augmentation = BLCSTrackingCandidateAugmentation(
+        _augmentation_config(enabled=True)
+    )
+
+    result = augmentation(sample)
+
+    assert not result["ball_visible"][..., 1].any()
+    assert not result["ball_uv"][..., 1, :].any()
+    torch.testing.assert_close(result["candidate_mask"], sample["candidate_mask"])

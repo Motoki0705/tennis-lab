@@ -6,8 +6,10 @@ specialized APIs not listed here remain owned by their defining subpackage.
 """
 
 from src.utils.models.components import (
+    CompressedSlidingWindowSelfAttention,
     CrossAttnBlock,
     CrossAttnBlockConfig,
+    CSWAConfig,
     RMSNorm,
     RotaryFrequencyComputer,
     TransformerBlock,
@@ -23,6 +25,8 @@ from src.utils.models.transformer_utils import (
 )
 
 __all__ = [
+    "CSWAConfig",
+    "CompressedSlidingWindowSelfAttention",
     "CrossAttnBlock",
     "CrossAttnBlockConfig",
     "RMSNorm",

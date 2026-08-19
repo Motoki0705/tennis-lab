@@ -356,7 +356,7 @@ class SingleTrajectoryModelIOAdapter(TrajectoryModelIOAdapter):
 
     @property
     def model_type(self) -> type[nn.Module]:
-        return BLCSModel
+        return cast("type[nn.Module]", BLCSModel)
 
     def build_call(self, batch: Mapping[str, object]) -> ModelCall:
         ball_uv = require_tensor(batch, "ball_uv", spec=TensorSpec(shape=(None, None, 2), dtypes=FloatDtypes))
@@ -487,7 +487,7 @@ class MultiViewTrajectoryModelIOAdapter(_MultiviewTrajectoryModelIOAdapter):
 
     @property
     def model_type(self) -> type[nn.Module]:
-        return BLCSMultiViewModel
+        return cast("type[nn.Module]", BLCSMultiViewModel)
 
     def _prepare_attention_kwargs(self, ball_mask: Tensor) -> dict[str, Tensor]:
         query_mask, query_state_valid, cross_mask, frame_token_valid = (
@@ -528,7 +528,7 @@ class AxialTrajectoryModelIOAdapter(_MultiviewTrajectoryModelIOAdapter):
 
     @property
     def model_type(self) -> type[nn.Module]:
-        return BLCSMultiViewAxialModel
+        return cast("type[nn.Module]", BLCSMultiViewAxialModel)
 
     def _prepare_attention_kwargs(self, ball_mask: Tensor) -> dict[str, Tensor]:
         camera_mask, time_mask, sliding_mask = prepare_axial_attention_masks(
@@ -562,12 +562,18 @@ class TrackQueryModelIOAdapter:
 
     @property
     def model_type(self) -> type[nn.Module]:
-        return BLCSTrackQueryModel
+        return cast("type[nn.Module]", BLCSTrackQueryModel)
 
     def build_call(self, batch: Mapping[str, object]) -> ModelCall:
         ball_uv = require_tensor(batch, "ball_uv", spec=TensorSpec(shape=(None, None, None, None, 2), dtypes=FloatDtypes))
         ball_visible = require_tensor(batch, "ball_visible", spec=TensorSpec(shape=ball_uv.shape[:-1], dtypes=frozenset({torch.bool})))
         batch_size, views, frames, detections = ball_uv.shape[:4]
+        if detections != self.num_queries:
+            raise ModelInputContractError(
+                "ball_uv candidate width must equal model.num_queries "
+                f"({detections} != {self.num_queries})."
+            )
+        candidate_mask = require_tensor(batch, "candidate_mask", spec=TensorSpec(shape=ball_uv.shape[:-1], dtypes=frozenset({torch.bool})))
         court_kp = require_tensor(batch, "court_kp", spec=TensorSpec(shape=(batch_size, views, frames, self.num_court_tokens, 2), dtypes=FloatDtypes))
         court_vis = require_tensor(batch, "court_vis", spec=TensorSpec(shape=court_kp.shape[:-1], dtypes=frozenset({torch.bool})))
         frame_mask = require_tensor(batch, "frame_mask", spec=TensorSpec(shape=(batch_size, frames), dtypes=frozenset({torch.bool})))
@@ -575,27 +581,33 @@ class TrackQueryModelIOAdapter:
         _positive_axes("ball_uv", ball_uv, (0, 1, 2, 3))
         _validate_uv("ball_uv", ball_uv)
         _validate_uv("court_kp", court_kp)
-        if bool(
-            (
-                ball_visible
-                & ~(view_mask[:, :, None, None] & frame_mask[:, None, :, None])
-            ).any()
-        ):
+        context_valid = view_mask[:, :, None, None] & frame_mask[:, None, :, None]
+        if bool((ball_visible & ~candidate_mask).any()):
             raise ModelInputContractError(
-                "ball_visible cannot be true in a padded view or frame."
+                "ball_visible can only be true for an assigned candidate."
             )
-        _same_device({"ball_uv": ball_uv, "ball_visible": ball_visible, "court_kp": court_kp, "court_vis": court_vis, "frame_mask": frame_mask, "view_mask": view_mask})
-        observation_state_valid, spatial_mask, temporal_mask, point_mask = (
-            prepare_tracking_attention_masks(
-                ball_visible=ball_visible,
-                court_visible=court_vis,
-                frame_mask=frame_mask,
-                view_mask=view_mask,
-                num_queries=self.num_queries,
-                mask_invisible_observations=self.mask_invisible_observations,
+        if bool((candidate_mask & ~context_valid).any()):
+            raise ModelInputContractError(
+                "candidate_mask cannot be true in a padded view or frame."
             )
+        assigned_in_valid_view = (candidate_mask & context_valid).any(dim=1)
+        unassigned_in_valid_view = ((~candidate_mask) & context_valid).any(dim=1)
+        if bool((assigned_in_valid_view & unassigned_in_valid_view).any()):
+            raise ModelInputContractError(
+                "candidate_mask must carry the same lifecycle assignment across "
+                "all valid views for each batch, frame, and query slot."
+            )
+        _same_device({"ball_uv": ball_uv, "ball_visible": ball_visible, "candidate_mask": candidate_mask, "court_kp": court_kp, "court_vis": court_vis, "frame_mask": frame_mask, "view_mask": view_mask})
+        masks = prepare_tracking_attention_masks(
+            ball_visible=ball_visible,
+            candidate_mask=candidate_mask,
+            court_visible=court_vis,
+            frame_mask=frame_mask,
+            view_mask=view_mask,
+            num_queries=self.num_queries,
+            mask_invisible_observations=self.mask_invisible_observations,
         )
-        return ModelCall(kwargs={"ball_uv": ball_uv, "ball_visible": ball_visible, "court_kp": court_kp, "court_vis": court_vis, "frame_mask": frame_mask, "observation_state_valid": observation_state_valid, "spatial_attention_mask": spatial_mask, "temporal_attention_mask": temporal_mask, "point_attention_mask": point_mask})
+        return ModelCall(kwargs={"ball_uv": ball_uv, "ball_visible": ball_visible, "candidate_mask": candidate_mask, "court_kp": court_kp, "court_vis": court_vis, "frame_mask": frame_mask, "camera_state_valid": masks.camera_state_valid, "spatial_attention_mask": masks.spatial_attention_mask, "object_temporal_state_valid": masks.object_temporal_state_valid, "object_temporal_attention_mask": masks.object_temporal_attention_mask, "query_temporal_state_valid": masks.query_temporal_state_valid, "query_temporal_attention_mask": masks.query_temporal_attention_mask, "point_attention_mask": masks.point_attention_mask})
 
     def decode_output(self, output: object) -> BLCSTrackQueryPrediction:
         result = _raw_output(output)

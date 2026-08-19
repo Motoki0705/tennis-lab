@@ -1,0 +1,206 @@
+{
+  "issue": 753,
+  "orchestrator_session_uuid": "01a01500-a7a5-7310-837f-3dc88acbefc4",
+  "packages": [
+    {
+      "component": "mhc",
+      "owner": {
+        "canonical_agent_task": "/root/issue753_attempt6_6a_evidence",
+        "session_meta": {
+          "byte_scope": "whole-snapshot-exact-first-record-bytes",
+          "record_schema": "codex-rollout-session-meta-jsonl-v1",
+          "sha256": "4782155506681d34ef5194f1219d6bcd3da12e7f07b1a33c642d43b8b922bbd7",
+          "snapshot_path": "src/tasks/blcs/benchmarks/results/issue_753/owner_sessions/6A-01a01a57-615f-7821-8435-596600da31fa.jsonl",
+          "source_origin": "sessions/2026/08/19/rollout-2026-08-19T23-05-29-01a01a57-615f-7821-8435-596600da31fa.jsonl"
+        },
+        "session_uuid": "01a01a57-615f-7821-8435-596600da31fa"
+      },
+      "package_id": "6A",
+      "queue": {
+        "added_at": "2026-08-19T23:06:48+09:00",
+        "command": "CUDA_VISIBLE_DEVICES=0 PYTHONHASHSEED=0 .venv/bin/python -m src.tasks.blcs.benchmarks.track_query_mhc --evidence src/tasks/blcs/benchmarks/results/issue_753/mhc.json --runtime-result \"$TENNIS_REPRO_DIR/attempt6-6a-mhc-runtime.json\" --record-evidence",
+        "cwd": "/home/kamimura/projects/tennis-lab",
+        "done_at": "2026-08-19T23:08:17.103325+09:00",
+        "exit_code": 0,
+        "issue": "753",
+        "job_id": "1787148408946427435_973329_issue753_attempt6_final_6a_mhc_record_01a01a57",
+        "name": "issue753_attempt6_final_6a_mhc_record_01a01a57",
+        "provider": "codex",
+        "records": {
+          "done_job": {
+            "origin": ".training_queue/done/1787148408946427435_973329_issue753_attempt6_final_6a_mhc_record_01a01a57.job",
+            "sha256": "6a249d63cc1838c805fe6fdb2665878f1ff9f11ebcace129b0fe0449c5d43856"
+          },
+          "log": {
+            "origin": ".training_queue/logs/1787148408946427435_973329_issue753_attempt6_final_6a_mhc_record_01a01a57.log",
+            "sha256": "1d5aadf1da8233d2cde882cbb4f5da49d90f8c1c5cd51644734572f8b7d0bebc"
+          },
+          "run_json": {
+            "origin": ".training_queue/repro/1787148408946427435_973329_issue753_attempt6_final_6a_mhc_record_01a01a57/run.json",
+            "sha256": "d9f81bb3a309e0b93e4b969e6949ddc8722d3e3eaae57541c93ed29648fb026e"
+          }
+        },
+        "started_at": "2026-08-19T23:06:56+09:00",
+        "terminal_outcome": "done"
+      },
+      "stable_evidence": {
+        "path": "src/tasks/blcs/benchmarks/results/issue_753/mhc.json",
+        "sha256": "bdc33d5b759cf202cbd3c4c9ec4a67779f83ceb1b98dbb077dd71f5aa34a1814"
+      }
+    },
+    {
+      "component": "compressor",
+      "owner": {
+        "canonical_agent_task": "/root/issue753_attempt6_6b_evidence",
+        "session_meta": {
+          "byte_scope": "whole-snapshot-exact-first-record-bytes",
+          "record_schema": "codex-rollout-session-meta-jsonl-v1",
+          "sha256": "795f0503bc9be52694ac8010739c15613b9abcfdd734420e799c0913abfbe45f",
+          "snapshot_path": "src/tasks/blcs/benchmarks/results/issue_753/owner_sessions/6B-01a01a5b-cfe1-7eb0-9c26-6887eeaafa26.jsonl",
+          "source_origin": "sessions/2026/08/19/rollout-2026-08-19T23-10-19-01a01a5b-cfe1-7eb0-9c26-6887eeaafa26.jsonl"
+        },
+        "session_uuid": "01a01a5b-cfe1-7eb0-9c26-6887eeaafa26"
+      },
+      "package_id": "6B",
+      "queue": {
+        "added_at": "2026-08-19T23:11:35+09:00",
+        "command": "CUDA_VISIBLE_DEVICES=0 PYTHONHASHSEED=0 .venv/bin/python -m src.tasks.blcs.benchmarks.track_query_compressor --evidence src/tasks/blcs/benchmarks/results/issue_753/compressor.json --runtime-result \"$TENNIS_REPRO_DIR/attempt6-6b-compressor-runtime.json\" --record-evidence",
+        "cwd": "/home/kamimura/projects/tennis-lab",
+        "done_at": "2026-08-19T23:12:27.775287+09:00",
+        "exit_code": 0,
+        "issue": "753",
+        "job_id": "1787148695108294297_976702_issue753_attempt6_final_6b_compressor_record_01a01a5b",
+        "name": "issue753_attempt6_final_6b_compressor_record_01a01a5b",
+        "provider": "codex",
+        "records": {
+          "done_job": {
+            "origin": ".training_queue/done/1787148695108294297_976702_issue753_attempt6_final_6b_compressor_record_01a01a5b.job",
+            "sha256": "c6f1b67295654e599e5aab62d74db8805ecb7f0448cb83d60f8aad82650c12a7"
+          },
+          "log": {
+            "origin": ".training_queue/logs/1787148695108294297_976702_issue753_attempt6_final_6b_compressor_record_01a01a5b.log",
+            "sha256": "e984462252a3b67b8810d376f29eb2f3c7986ca990828a92b2f217b9fa1f3df5"
+          },
+          "run_json": {
+            "origin": ".training_queue/repro/1787148695108294297_976702_issue753_attempt6_final_6b_compressor_record_01a01a5b/run.json",
+            "sha256": "1ab0f6e5f0ae0d152433cb9aa82b7c4a9c468a393a98edfce2c2ae393fdb57f4"
+          }
+        },
+        "started_at": "2026-08-19T23:11:51+09:00",
+        "terminal_outcome": "done"
+      },
+      "stable_evidence": {
+        "path": "src/tasks/blcs/benchmarks/results/issue_753/compressor.json",
+        "sha256": "e703b1f98e4f5bd008e59b9da7f94630471287c7ab3cd5b355248319a4baa364"
+      }
+    },
+    {
+      "component": "cswa",
+      "owner": {
+        "canonical_agent_task": "/root/issue753_attempt6_6c_evidence",
+        "session_meta": {
+          "byte_scope": "whole-snapshot-exact-first-record-bytes",
+          "record_schema": "codex-rollout-session-meta-jsonl-v1",
+          "sha256": "59ef92839b49cb19c472618b8d83d5a1ec5f4d63586183345565ebce4777bd2a",
+          "snapshot_path": "src/tasks/blcs/benchmarks/results/issue_753/owner_sessions/6C-01a01a5f-7eb4-70e2-a43e-58d5f96f7e69.jsonl",
+          "source_origin": "sessions/2026/08/19/rollout-2026-08-19T23-14-21-01a01a5f-7eb4-70e2-a43e-58d5f96f7e69.jsonl"
+        },
+        "session_uuid": "01a01a5f-7eb4-70e2-a43e-58d5f96f7e69"
+      },
+      "package_id": "6C",
+      "queue": {
+        "added_at": "2026-08-19T23:15:24+09:00",
+        "command": "CUDA_VISIBLE_DEVICES=0 PYTHONHASHSEED=0 .venv/bin/python -m src.tasks.blcs.benchmarks.track_query_cswa --evidence src/tasks/blcs/benchmarks/results/issue_753/cswa.json --runtime-result \"$TENNIS_REPRO_DIR/attempt6-6c-cswa-runtime.json\" --record-evidence",
+        "cwd": "/home/kamimura/projects/tennis-lab",
+        "done_at": "2026-08-19T23:16:05.539253+09:00",
+        "exit_code": 0,
+        "issue": "753",
+        "job_id": "1787148924861242603_979678_issue753_attempt6_final_6c_cswa_record_01a01a5f",
+        "name": "issue753_attempt6_final_6c_cswa_record_01a01a5f",
+        "provider": "codex",
+        "records": {
+          "done_job": {
+            "origin": ".training_queue/done/1787148924861242603_979678_issue753_attempt6_final_6c_cswa_record_01a01a5f.job",
+            "sha256": "ce32188d36d92ab7408e75cf527c87008f4b4eed1cc13ab478076c058cd0454e"
+          },
+          "log": {
+            "origin": ".training_queue/logs/1787148924861242603_979678_issue753_attempt6_final_6c_cswa_record_01a01a5f.log",
+            "sha256": "2a19dd104da6c4e9661f8e601ef256a6f902d16f2b7b8a21d3d030b3c8c63d51"
+          },
+          "run_json": {
+            "origin": ".training_queue/repro/1787148924861242603_979678_issue753_attempt6_final_6c_cswa_record_01a01a5f/run.json",
+            "sha256": "506a10ddd3073e2b05ff75c97dcbc55f45e9e28f80ab64450f15f45f252988fa"
+          }
+        },
+        "started_at": "2026-08-19T23:15:33+09:00",
+        "terminal_outcome": "done"
+      },
+      "stable_evidence": {
+        "path": "src/tasks/blcs/benchmarks/results/issue_753/cswa.json",
+        "sha256": "67d698751eb8f0ca3aaaea923ed6a254d663bb759c302b13ca075d78223b4986"
+      }
+    },
+    {
+      "component": "integrated",
+      "owner": {
+        "canonical_agent_task": "/root/issue753_attempt6_6d_evidence",
+        "session_meta": {
+          "byte_scope": "whole-snapshot-exact-first-record-bytes",
+          "record_schema": "codex-rollout-session-meta-jsonl-v1",
+          "sha256": "e7d26464453a26fc6390ebde2e891845cd9b0c7b67cfe617ce9da1421688c717",
+          "snapshot_path": "src/tasks/blcs/benchmarks/results/issue_753/owner_sessions/6D-01a01a62-9186-79c1-b493-c24390e04ee9.jsonl",
+          "source_origin": "sessions/2026/08/19/rollout-2026-08-19T23-17-42-01a01a62-9186-79c1-b493-c24390e04ee9.jsonl"
+        },
+        "session_uuid": "01a01a62-9186-79c1-b493-c24390e04ee9"
+      },
+      "package_id": "6D",
+      "queue": {
+        "added_at": "2026-08-19T23:19:39+09:00",
+        "command": "CUDA_VISIBLE_DEVICES=0 PYTHONHASHSEED=0 .venv/bin/python -m src.tasks.blcs.benchmarks.track_query_integrated --evidence src/tasks/blcs/benchmarks/results/issue_753/integrated.json --runtime-result \"$TENNIS_REPRO_DIR/attempt6-6d-integrated-runtime.json\" --record-evidence",
+        "cwd": "/home/kamimura/projects/tennis-lab",
+        "done_at": "2026-08-19T23:40:37.339045+09:00",
+        "exit_code": 0,
+        "issue": "753",
+        "job_id": "1787149179421241555_983051_issue753_attempt6_final_6d_integrated_record_01a01a62",
+        "name": "issue753_attempt6_final_6d_integrated_record_01a01a62",
+        "provider": "codex",
+        "records": {
+          "done_job": {
+            "origin": ".training_queue/done/1787149179421241555_983051_issue753_attempt6_final_6d_integrated_record_01a01a62.job",
+            "sha256": "5dbf4b5221168ad7929c3034db286d89bffb1b0d069271d249f8a28c96dcc7f1"
+          },
+          "log": {
+            "origin": ".training_queue/logs/1787149179421241555_983051_issue753_attempt6_final_6d_integrated_record_01a01a62.log",
+            "sha256": "a834f2a87f056db226405a8c428b1668195a90f3d4588a80191c5764c85cf4f7"
+          },
+          "run_json": {
+            "origin": ".training_queue/repro/1787149179421241555_983051_issue753_attempt6_final_6d_integrated_record_01a01a62/run.json",
+            "sha256": "b24e3418d923f573c5a419cec66954ca53ce62dbbd17d9ce646a4f52198bf00e"
+          }
+        },
+        "started_at": "2026-08-19T23:19:46+09:00",
+        "terminal_outcome": "done"
+      },
+      "stable_evidence": {
+        "path": "src/tasks/blcs/benchmarks/results/issue_753/integrated.json",
+        "sha256": "e874519aecdcdab0249d49da2fb86123defbc29a3086f2b64fc7ed1e39a08f06"
+      }
+    }
+  ],
+  "record_bundle_sha256": "9c42f9994e0c2d6169f58693c7059565743fe9391c6374ba63d4522516a1b5ca",
+  "schema_version": 2,
+  "serial_validation": {
+    "job_ids_strictly_increasing": true,
+    "no_time_overlap": true,
+    "package_order": [
+      "6A",
+      "6B",
+      "6C",
+      "6D"
+    ],
+    "status": "PASS",
+    "unique_child_sessions": true,
+    "unique_owner_tasks": true,
+    "unique_queue_jobs": true
+  }
+}

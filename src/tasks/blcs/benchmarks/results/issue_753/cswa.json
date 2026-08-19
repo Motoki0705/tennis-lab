@@ -1,0 +1,476 @@
+{
+  "component": "cswa",
+  "decision": {
+    "cases": {
+      "long-context-query-path-bfloat16-forward": {
+        "memory_reduced": true,
+        "parity_passed": true,
+        "passed": true,
+        "speedup": 9.257169569310125
+      },
+      "long-context-query-path-bfloat16-forward-backward": {
+        "memory_reduced": true,
+        "parity_passed": true,
+        "passed": true,
+        "speedup": 6.6930011092854835
+      },
+      "long-context-query-path-float32-forward": {
+        "memory_reduced": true,
+        "parity_passed": true,
+        "passed": true,
+        "speedup": 6.632480525622727
+      },
+      "long-context-query-path-float32-forward-backward": {
+        "memory_reduced": true,
+        "parity_passed": true,
+        "passed": true,
+        "speedup": 5.656594884472821
+      }
+    },
+    "optimized_candidate": "cuda",
+    "reason": "Fused compressed-window CUDA passed latency, memory, and dtype gates.",
+    "required_speedup": 1.2,
+    "status": "GO"
+  },
+  "environment": {
+    "compute_capability": "12.0",
+    "cuda": "13.0",
+    "gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "python": "3.11.15",
+    "torch": "2.11.0+cu130"
+  },
+  "generated_at_utc": "2026-08-19T14:16:05.196958Z",
+  "issue": 753,
+  "protocol": {
+    "dtypes": [
+      "float32",
+      "bfloat16"
+    ],
+    "gate": {
+      "dtype_tolerances": {
+        "bfloat16": {
+          "backward_atol": 0.065,
+          "backward_rtol": 0.02,
+          "forward_atol": 0.016,
+          "forward_rtol": 0.016
+        },
+        "float32": {
+          "backward_atol": 2e-05,
+          "backward_rtol": 0.0002,
+          "forward_atol": 1e-05,
+          "forward_rtol": 0.0001
+        }
+      },
+      "minimum_forward_backward_speedup": 1.2,
+      "minimum_forward_speedup": 1.2,
+      "peak_allocated_memory_reduction_each_run": true
+    },
+    "iterations": 5,
+    "mask_density": 0.875,
+    "measurement": [
+      "forward",
+      "forward-backward"
+    ],
+    "parity_cases": [
+      "random",
+      "boundary",
+      "sparse-mask",
+      "all-invalid"
+    ],
+    "production_mixed_precision_dtype": "bfloat16",
+    "prototype_scope": "one-warp-per-query online softmax without [N,H,T,Wc,Dh] K/V gather",
+    "seed": 753,
+    "synchronize_each_iteration": true,
+    "target_shapes": [
+      {
+        "batch_size": 16,
+        "compression_ratio": 4,
+        "head_dim": 64,
+        "heads": 4,
+        "key_length": 512,
+        "mask_density": 0.875,
+        "query_length": 2048,
+        "window_radius": 4,
+        "window_width": 9
+      }
+    ],
+    "warmup": 2
+  },
+  "risks": [
+    "K/V gradients use float32 atomic accumulation and are not bitwise deterministic.",
+    "CUDA supports float16, bfloat16, and float32, window_radius <= 64, and attention dropout 0 only.",
+    "The performance gate covers the long-context query path on the recorded GPU; small-shape launch overhead remains workload dependent."
+  ],
+  "runs": [
+    {
+      "available": true,
+      "candidate": "reference",
+      "case": "long-context-query-path-float32-forward",
+      "dtype": "float32",
+      "implementation": "gather_sdpa_reference",
+      "iterations": 5,
+      "kind": "pytorch_reference",
+      "latency": {
+        "median_ms": 6.598834064789116,
+        "p95_ms": 6.889155018143356
+      },
+      "memory": {
+        "peak_allocated_bytes": 1055467520,
+        "peak_reserved_bytes": 1084227584
+      },
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "rtol": 0.0002,
+        "status": "pass"
+      },
+      "shape": {
+        "batch_size": 16,
+        "compression_ratio": 4,
+        "head_dim": 64,
+        "heads": 4,
+        "includes_backward": 0,
+        "key_length": 512,
+        "mask_density": 0.875,
+        "query_length": 2048,
+        "window_radius": 4,
+        "window_width": 9
+      },
+      "throughput": {
+        "unit": "query-tokens/s",
+        "value": 4965725.714311804
+      },
+      "unavailable_reason": null,
+      "warmup": 2
+    },
+    {
+      "available": true,
+      "candidate": "cuda",
+      "case": "long-context-query-path-float32-forward",
+      "dtype": "float32",
+      "implementation": "handwritten_cuda_online_softmax",
+      "iterations": 5,
+      "kind": "cuda_production",
+      "latency": {
+        "median_ms": 0.994927017018199,
+        "p95_ms": 1.0283199371770024
+      },
+      "memory": {
+        "peak_allocated_bytes": 101491200,
+        "peak_reserved_bytes": 111149056
+      },
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 1.430511474609375e-06,
+        "backward_mean_abs_error": 1.30595680047918e-07,
+        "forward_max_abs_error": 5.960464477539062e-07,
+        "forward_mean_abs_error": 4.674954467986936e-08,
+        "rtol": 0.0002,
+        "status": "pass"
+      },
+      "shape": {
+        "batch_size": 16,
+        "compression_ratio": 4,
+        "head_dim": 64,
+        "heads": 4,
+        "includes_backward": 0,
+        "key_length": 512,
+        "mask_density": 0.875,
+        "query_length": 2048,
+        "window_radius": 4,
+        "window_width": 9
+      },
+      "throughput": {
+        "unit": "query-tokens/s",
+        "value": 32935079.095757045
+      },
+      "unavailable_reason": null,
+      "warmup": 2
+    },
+    {
+      "available": true,
+      "candidate": "reference",
+      "case": "long-context-query-path-float32-forward-backward",
+      "dtype": "float32",
+      "implementation": "gather_sdpa_reference",
+      "iterations": 5,
+      "kind": "pytorch_reference",
+      "latency": {
+        "median_ms": 17.905237968079746,
+        "p95_ms": 18.063305993564427
+      },
+      "memory": {
+        "peak_allocated_bytes": 1163470848,
+        "peak_reserved_bytes": 1184890880
+      },
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "rtol": 0.0002,
+        "status": "pass"
+      },
+      "shape": {
+        "batch_size": 16,
+        "compression_ratio": 4,
+        "head_dim": 64,
+        "heads": 4,
+        "includes_backward": 1,
+        "key_length": 512,
+        "mask_density": 0.875,
+        "query_length": 2048,
+        "window_radius": 4,
+        "window_width": 9
+      },
+      "throughput": {
+        "unit": "query-tokens/s",
+        "value": 1830079.0002577228
+      },
+      "unavailable_reason": null,
+      "warmup": 2
+    },
+    {
+      "available": true,
+      "candidate": "cuda",
+      "case": "long-context-query-path-float32-forward-backward",
+      "dtype": "float32",
+      "implementation": "handwritten_cuda_online_softmax",
+      "iterations": 5,
+      "kind": "cuda_production",
+      "latency": {
+        "median_ms": 3.165373927913606,
+        "p95_ms": 3.365912940353155
+      },
+      "memory": {
+        "peak_allocated_bytes": 235709440,
+        "peak_reserved_bytes": 245366784
+      },
+      "parity": {
+        "atol": 2e-05,
+        "backward_max_abs_error": 1.430511474609375e-06,
+        "backward_mean_abs_error": 1.301746550552707e-07,
+        "forward_max_abs_error": 5.960464477539062e-07,
+        "forward_mean_abs_error": 4.674954467986936e-08,
+        "rtol": 0.0002,
+        "status": "pass"
+      },
+      "shape": {
+        "batch_size": 16,
+        "compression_ratio": 4,
+        "head_dim": 64,
+        "heads": 4,
+        "includes_backward": 1,
+        "key_length": 512,
+        "mask_density": 0.875,
+        "query_length": 2048,
+        "window_radius": 4,
+        "window_width": 9
+      },
+      "throughput": {
+        "unit": "query-tokens/s",
+        "value": 10352015.51103897
+      },
+      "unavailable_reason": null,
+      "warmup": 2
+    },
+    {
+      "available": true,
+      "candidate": "reference",
+      "case": "long-context-query-path-bfloat16-forward",
+      "dtype": "bfloat16",
+      "implementation": "gather_sdpa_reference",
+      "iterations": 5,
+      "kind": "pytorch_reference",
+      "latency": {
+        "median_ms": 9.257224970497191,
+        "p95_ms": 9.320104029029608
+      },
+      "memory": {
+        "peak_allocated_bytes": 1340090368,
+        "peak_reserved_bytes": 1365245952
+      },
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "rtol": 0.02,
+        "status": "pass"
+      },
+      "shape": {
+        "batch_size": 16,
+        "compression_ratio": 4,
+        "head_dim": 64,
+        "heads": 4,
+        "includes_backward": 0,
+        "key_length": 512,
+        "mask_density": 0.875,
+        "query_length": 2048,
+        "window_radius": 4,
+        "window_width": 9
+      },
+      "throughput": {
+        "unit": "query-tokens/s",
+        "value": 3539721.6881335103
+      },
+      "unavailable_reason": null,
+      "warmup": 2
+    },
+    {
+      "available": true,
+      "candidate": "cuda",
+      "case": "long-context-query-path-bfloat16-forward",
+      "dtype": "bfloat16",
+      "implementation": "handwritten_cuda_online_softmax",
+      "iterations": 5,
+      "kind": "cuda_production",
+      "latency": {
+        "median_ms": 1.0000059846788645,
+        "p95_ms": 1.073532970622182
+      },
+      "memory": {
+        "peak_allocated_bytes": 59548160,
+        "peak_reserved_bytes": 77594624
+      },
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 0.0625,
+        "backward_mean_abs_error": 0.0022133812308311462,
+        "forward_max_abs_error": 1.52587890625e-05,
+        "forward_mean_abs_error": 6.113297090770686e-10,
+        "rtol": 0.02,
+        "status": "pass"
+      },
+      "shape": {
+        "batch_size": 16,
+        "compression_ratio": 4,
+        "head_dim": 64,
+        "heads": 4,
+        "includes_backward": 0,
+        "key_length": 512,
+        "mask_density": 0.875,
+        "query_length": 2048,
+        "window_radius": 4,
+        "window_width": 9
+      },
+      "throughput": {
+        "unit": "query-tokens/s",
+        "value": 32767803.89521659
+      },
+      "unavailable_reason": null,
+      "warmup": 2
+    },
+    {
+      "available": true,
+      "candidate": "reference",
+      "case": "long-context-query-path-bfloat16-forward-backward",
+      "dtype": "bfloat16",
+      "implementation": "gather_sdpa_reference",
+      "iterations": 5,
+      "kind": "pytorch_reference",
+      "latency": {
+        "median_ms": 21.773156011477113,
+        "p95_ms": 21.981933037750423
+      },
+      "memory": {
+        "peak_allocated_bytes": 1401300992,
+        "peak_reserved_bytes": 1415577600
+      },
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 0.0,
+        "backward_mean_abs_error": 0.0,
+        "forward_max_abs_error": 0.0,
+        "forward_mean_abs_error": 0.0,
+        "rtol": 0.02,
+        "status": "pass"
+      },
+      "shape": {
+        "batch_size": 16,
+        "compression_ratio": 4,
+        "head_dim": 64,
+        "heads": 4,
+        "includes_backward": 1,
+        "key_length": 512,
+        "mask_density": 0.875,
+        "query_length": 2048,
+        "window_radius": 4,
+        "window_width": 9
+      },
+      "throughput": {
+        "unit": "query-tokens/s",
+        "value": 1504972.4524422302
+      },
+      "unavailable_reason": null,
+      "warmup": 2
+    },
+    {
+      "available": true,
+      "candidate": "cuda",
+      "case": "long-context-query-path-bfloat16-forward-backward",
+      "dtype": "bfloat16",
+      "implementation": "handwritten_cuda_online_softmax",
+      "iterations": 5,
+      "kind": "cuda_production",
+      "latency": {
+        "median_ms": 3.2531230244785547,
+        "p95_ms": 3.4606870030984282
+      },
+      "memory": {
+        "peak_allocated_bytes": 227320832,
+        "peak_reserved_bytes": 262144000
+      },
+      "parity": {
+        "atol": 0.065,
+        "backward_max_abs_error": 0.0625,
+        "backward_mean_abs_error": 0.0022133812308311462,
+        "forward_max_abs_error": 1.52587890625e-05,
+        "forward_mean_abs_error": 6.113297090770686e-10,
+        "rtol": 0.02,
+        "status": "pass"
+      },
+      "shape": {
+        "batch_size": 16,
+        "compression_ratio": 4,
+        "head_dim": 64,
+        "heads": 4,
+        "includes_backward": 1,
+        "key_length": 512,
+        "mask_density": 0.875,
+        "query_length": 2048,
+        "window_radius": 4,
+        "window_width": 9
+      },
+      "throughput": {
+        "unit": "query-tokens/s",
+        "value": 10072782.293639941
+      },
+      "unavailable_reason": null,
+      "warmup": 2
+    }
+  ],
+  "schema_version": 1,
+  "source": {
+    "files": [
+      "src/tasks/blcs/benchmarks/contracts.py",
+      "src/tasks/blcs/benchmarks/track_query_cswa/__init__.py",
+      "src/utils/configuration/operations.py",
+      "src/utils/models/components/ops/build.py",
+      "src/utils/models/components/ops/compressed_time_local/_autograd.py",
+      "src/utils/models/components/ops/compressed_time_local/api.py",
+      "src/utils/models/components/ops/compressed_time_local/bindings.cpp",
+      "src/utils/models/components/ops/compressed_time_local/kernels.cu",
+      "src/utils/models/components/ops/compressed_time_local/layout.py",
+      "src/utils/models/components/ops/compressed_time_local/reference.py",
+      "src/utils/models/components/ops/loader.py"
+    ],
+    "fingerprint_sha256": "25a771916160c656df5b62598d9f4f10182f94cfad3bb11cc8013d3e59c9908e",
+    "git_commit": "61252b980317a0fba28645cd8b41027582b31a66"
+  }
+}

@@ -1,0 +1,36 @@
+#include <torch/extension.h>
+
+#include <cstdint>
+#include <vector>
+
+std::vector<torch::Tensor> compressed_time_local_forward_cuda(
+    torch::Tensor query,
+    torch::Tensor key,
+    torch::Tensor value,
+    torch::Tensor query_valid,
+    torch::Tensor key_valid,
+    int64_t compression_ratio,
+    int64_t window_radius);
+
+std::vector<torch::Tensor> compressed_time_local_backward_cuda(
+    torch::Tensor grad_output,
+    torch::Tensor query,
+    torch::Tensor key,
+    torch::Tensor value,
+    torch::Tensor query_valid,
+    torch::Tensor key_valid,
+    torch::Tensor output,
+    torch::Tensor logsumexp,
+    int64_t compression_ratio,
+    int64_t window_radius);
+
+PYBIND11_MODULE(TORCH_EXTENSION_NAME, module) {
+    module.def(
+        "forward",
+        &compressed_time_local_forward_cuda,
+        "Compressed time-local attention forward (CUDA)");
+    module.def(
+        "backward",
+        &compressed_time_local_backward_cuda,
+        "Compressed time-local attention backward (CUDA)");
+}
