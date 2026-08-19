@@ -12,7 +12,7 @@ feasibility -- BLOCKED ----------------------------------------------> blocked
 scouting -> exploration -> planning -> implementation
                                       ^        |
                                       |        v
-                                      |  production preflight
+                                      |  independent Preflight Reviewer
                                       |     | RETURN
                                       |     ` PASS
                                       |        v
@@ -21,7 +21,7 @@ scouting -> exploration -> planning -> implementation
                                       |     | RETURN #2 -> return-review
                                       |     ` PASS
                                       |        v
-                                      |  final candidate seal
+                                      |  independent Seal Reviewer
                                       |     | RETURN -> repair/new cycle
                                       |     ` PASS
                                       |        v
@@ -36,7 +36,7 @@ scouting -> exploration -> planning -> implementation
                                              complete
 ```
 
-Preflight RETURN does not spend a Tester cycle. Tester RETURN increments `test_cycle`. Final-seal RETURN stays in implementation; any repair requires a new production preflight and Tester cycle. Validator RETURN increments `attempt`, clears candidate evidence, and returns to formal exploration.
+Preflight Reviewer RETURN does not spend a Tester cycle. Test Writer RETURN increments `test_cycle`. Seal Reviewer RETURN stays in implementation; any repair requires a fresh Preflight Reviewer and Test Writer cycle. Validator RETURN increments `attempt`, clears candidate evidence, and returns to formal exploration.
 
 ## Frozen specification
 
@@ -62,7 +62,7 @@ State records distinct bindings:
 - `validation_candidate_sha256`
 - `packaging_candidate_sha256`
 
-Production preflight may precede Test Writer changes. Tester PASS therefore binds a new candidate. Final seal must match the Tester candidate and re-run complete canonical checks. Validation and packaging must match the sealed candidate. A stale artifact or machine-result file is rejected.
+Preflight Reviewer PASS may precede Test Writer changes. Tester PASS therefore binds a new candidate. Seal Reviewer PASS must match the Tester candidate and re-run complete canonical checks. Validation and packaging must match the sealed candidate. A stale artifact or machine-result file is rejected.
 
 ## Canonical command authority
 
@@ -111,7 +111,7 @@ One logical artifact has one path. Formal artifacts are replaced in place. Raw l
 
 Parallelism is a latency optimization, not an acceptance criterion. The parent records the user-selected topology in `plan.md`. One Implementer may execute all work sequentially. This never weakens scope, canonical checks, candidate sealing, Validator independence, or PR-head binding.
 
-Default Implementers do not write shared workflow artifacts. They return compact handoffs. The parent or one explicitly named integrator writes `implementation.md`, `preflight.md`, and `seal.md`. In a one-Implementer topology, the parent may explicitly designate that Implementer as integrator.
+Default Implementers do not write shared workflow artifacts. They return compact handoffs. The parent or one explicitly named implementation integrator writes only `implementation.md`; the independent Preflight Reviewer owns `preflight.md`, and the independent Seal Reviewer owns `seal.md`. In a one-Implementer topology, the parent may explicitly designate that Implementer as the implementation integrator.
 
 ## Automatic artifact gates
 
@@ -133,7 +133,7 @@ Calling `artifact-check` manually provides earlier feedback but cannot bypass th
 ## Context, communication, and retry discipline
 
 - Prefer deterministic inventory scripts over agents for mechanical scans.
-- Every `spawn_agent` call uses `fork_turns = "none"` exactly. Numeric or inherited turns invalidate the child handoff; respawn it fresh. For Test Writers and Validators this is an independence failure, not a cosmetic deviation.
+- Every `spawn_agent` call uses `fork_turns = "none"` exactly. Numeric or inherited turns invalidate the child handoff; respawn it fresh. For Preflight Reviewers, Test Writers, Seal Reviewers, and Validators this is an independence failure, not a cosmetic deviation.
 - Supply child context through frozen artifacts, artifact paths, AC IDs, explicit ownership, and focused failure bundles. Never use parent-turn inheritance as an implicit context channel.
 - Every child assignment ends with the exact `Communication mode: terminal-only.` footer in `spawn-contracts.md`. Custom agent instructions enforce the same boundary.
 - Child agents do not stream commentary, milestones, percentage updates, or command-in-progress messages. Before their single terminal handoff, they may contact the parent only for missing authority, ownership collision, or an unresolvable in-scope blocker.
