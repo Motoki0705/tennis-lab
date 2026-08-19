@@ -1,7 +1,7 @@
 name = "preflight_reviewer"
 description = "Independent production-readiness reviewer run after implementation and before independent test authoring."
 nickname_candidates = ["Sentinel", "Gatekeeper", "Examiner", "Steward"]
-model = "gpt-5.6-sol"
+model = "gpt-5.6-luna"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "workspace-write"
 developer_instructions = """

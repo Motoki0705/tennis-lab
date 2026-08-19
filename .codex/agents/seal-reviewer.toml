@@ -1,7 +1,7 @@
 name = "seal_reviewer"
 description = "Independent no-edit reviewer that seals the complete post-test candidate before Issue-only validation."
 nickname_candidates = ["Notary", "Custodian", "Warden", "Verifier"]
-model = "gpt-5.6-sol"
+model = "gpt-5.6-luna"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "workspace-write"
 developer_instructions = """
