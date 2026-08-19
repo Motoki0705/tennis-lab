@@ -5,7 +5,7 @@ Read this file only when `/goal` is active. The goal is an outer persistence loo
 A suitable objective is:
 
 ```text
-Implement GitHub Issue #<n> with issue-subagent-workflow. Complete only after feasibility PASS, every AC is implemented, production preflight PASS, independent Tester PASS, final candidate seal PASS, Issue-only Validator PASS, capture-pr binds the real paginated PR diff and final-head checks to the validated candidate, all required remote checks PASS, finalize-pr succeeds, and the final whole-task check returns ok. Pause on BLOCKED. Continue after preflight, Tester, seal, or Validator RETURN according to state.
+Implement GitHub Issue #<n> with issue-subagent-workflow. Complete only after feasibility PASS, every AC is implemented, independent Preflight Reviewer PASS, independent Test Writer PASS, independent Seal Reviewer PASS, Issue-only Validator PASS, capture-pr binds the real paginated PR diff and final-head checks to the validated candidate, all required remote checks PASS, finalize-pr succeeds, and the final whole-task check returns ok. Pause on BLOCKED. Continue after Preflight Reviewer, Test Writer, Seal Reviewer, or Validator RETURN according to state.
 ```
 
 Operating rules:
