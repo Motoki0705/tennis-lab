@@ -300,6 +300,22 @@ class PointFusionConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class TrackQueryMHCConfig:
+    coefficient_dim: int
+    sinkhorn_iters: int
+    eps: float
+    residual_identity_bias: float
+    update_scale_init: float
+
+
+@dataclass(frozen=True, slots=True)
+class TrackQueryCSWAConfig:
+    compression_ratio: int
+    window_radius: int
+    backend: Literal["reference", "cuda"]
+
+
+@dataclass(frozen=True, slots=True)
 class TrackQueryModelConfig:
     name: Literal["blcs_track_query"]
     hidden_dim: int
@@ -314,6 +330,8 @@ class TrackQueryModelConfig:
     invisible_init_std: float
     observation_fusion: Literal["linear", "point_attention"]
     point_fusion: PointFusionConfig | None
+    mhc: TrackQueryMHCConfig
+    cswa: TrackQueryCSWAConfig
 
 
 BLCSModelConfig: TypeAlias = (
@@ -692,6 +710,8 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             "mask_invisible_observations",
             "invisible_init_std",
             "observation_fusion",
+            "mhc",
+            "cswa",
         }
         fusion_name = cast(
             "str", _value(model, "observation_fusion", str, path="model")
@@ -766,6 +786,78 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             raise SemanticConfigurationError(
                 "model.observation_fusion must be 'linear' or 'point_attention'."
             )
+        raw_mhc = as_config_mapping(model["mhc"], path="model.mhc")
+        mhc_keys = {
+            "coefficient_dim",
+            "sinkhorn_iters",
+            "eps",
+            "residual_identity_bias",
+            "update_scale_init",
+        }
+        _exact(raw_mhc, mhc_keys, path="model.mhc")
+        _validate_types(
+            raw_mhc,
+            {
+                "coefficient_dim": int,
+                "sinkhorn_iters": int,
+                "eps": (float, int),
+                "residual_identity_bias": (float, int),
+                "update_scale_init": (float, int),
+            },
+            path="model.mhc",
+        )
+        mhc = TrackQueryMHCConfig(
+            coefficient_dim=cast("int", raw_mhc["coefficient_dim"]),
+            sinkhorn_iters=cast("int", raw_mhc["sinkhorn_iters"]),
+            eps=float(cast("float | int", raw_mhc["eps"])),
+            residual_identity_bias=float(
+                cast("float | int", raw_mhc["residual_identity_bias"])
+            ),
+            update_scale_init=float(
+                cast("float | int", raw_mhc["update_scale_init"])
+            ),
+        )
+        if mhc.coefficient_dim <= 0 or mhc.sinkhorn_iters <= 0:
+            raise SemanticConfigurationError(
+                "model.mhc.coefficient_dim and sinkhorn_iters must be positive."
+            )
+        _positive(mhc.eps, path="model.mhc.eps")
+        _non_negative(
+            mhc.residual_identity_bias,
+            path="model.mhc.residual_identity_bias",
+        )
+        _finite(mhc.update_scale_init, path="model.mhc.update_scale_init")
+
+        raw_cswa = as_config_mapping(model["cswa"], path="model.cswa")
+        cswa_keys = {"compression_ratio", "window_radius", "backend"}
+        _exact(raw_cswa, cswa_keys, path="model.cswa")
+        _validate_types(
+            raw_cswa,
+            {
+                "compression_ratio": int,
+                "window_radius": int,
+                "backend": str,
+            },
+            path="model.cswa",
+        )
+        backend = cast("str", raw_cswa["backend"])
+        if backend not in {"reference", "cuda"}:
+            raise SemanticConfigurationError(
+                "model.cswa.backend must be 'reference' or 'cuda'."
+            )
+        cswa = TrackQueryCSWAConfig(
+            compression_ratio=cast("int", raw_cswa["compression_ratio"]),
+            window_radius=cast("int", raw_cswa["window_radius"]),
+            backend=cast("Literal['reference', 'cuda']", backend),
+        )
+        if cswa.compression_ratio < 2:
+            raise SemanticConfigurationError(
+                "model.cswa.compression_ratio must be at least 2."
+            )
+        if cswa.window_radius < 0:
+            raise SemanticConfigurationError(
+                "model.cswa.window_radius must be non-negative."
+            )
         result = TrackQueryModelConfig(
             name="blcs_track_query",
             hidden_dim=int(model["hidden_dim"]),
@@ -782,6 +874,8 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 "Literal['linear', 'point_attention']", fusion_name
             ),
             point_fusion=point,
+            mhc=mhc,
+            cswa=cswa,
         )
         _validate_transformer_dimensions(
             hidden_dim=result.hidden_dim,
@@ -791,9 +885,14 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             dropout=result.dropout,
             path="model",
         )
-        if result.num_stages <= 0 or result.num_queries <= 0:
+        if (
+            result.num_stages <= 0
+            or result.num_stages % 4 != 0
+            or result.num_queries <= 0
+        ):
             raise SemanticConfigurationError(
-                "model.num_stages and model.num_queries must be positive."
+                "model.num_stages must be a positive multiple of 4 and "
+                "model.num_queries must be positive."
             )
         _non_negative(result.invisible_init_std, path="model.invisible_init_std")
         return result
@@ -1977,6 +2076,11 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             },
             path="data.lifecycle",
         )
+        if lifecycle["pack_to_query_slots"] is not True:
+            raise SemanticConfigurationError(
+                "BLCS track-query training requires "
+                "data.lifecycle.pack_to_query_slots=true."
+            )
         if cast("int", lifecycle["min_reuse_gap_frames"]) < 0:
             raise SemanticConfigurationError(
                 "data.lifecycle.min_reuse_gap_frames must be non-negative."
@@ -2458,6 +2562,8 @@ __all__ = [
     "PreviewConfig",
     "QualitativeRenderingConfig",
     "SingleModelConfig",
+    "TrackQueryCSWAConfig",
+    "TrackQueryMHCConfig",
     "TrackQueryModelConfig",
     "build_path_resolver",
     "parse_generation_run",

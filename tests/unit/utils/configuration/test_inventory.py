@@ -14,6 +14,7 @@ from src.utils.configuration import (
     AuditInventory,
     AuditRule,
     MigrationAuthorityKind,
+    MigrationCategory,
     MigrationStatus,
 )
 from src.utils.configuration.audit import (
@@ -177,6 +178,50 @@ def test_checked_in_authorities_and_occurrences_match_source() -> None:
     report = inspect_source((PROJECT_ROOT / "src").resolve())
 
     assert report.passed
+
+
+def test_integrated_tracking_chunked_literal_keeps_reviewed_resolver_authority() -> (
+    None
+):
+    module = "src.tasks.blcs.benchmarks.track_query_integrated.__init__"
+    literal = "src/tasks/blcs/configs/data/tracking_chunked.yaml"
+    exemption = AuditExemption.classified(
+        module=module,
+        qualified_name="<module>",
+        line=48,
+        rule=AuditRule.RUNTIME_PATH_LITERAL,
+        reason_code="code-or-artifact-location",
+    )
+
+    assert exemption in DEFAULT_AUDIT_INVENTORY.exemptions
+    literal_record = next(
+        record
+        for record in DEFAULT_AUDIT_INVENTORY.migrations
+        if record.former_module == module
+        and record.former_qualified_name == "<module>"
+        and record.former_line == 48
+        and record.former_route == f"runtime-path-literal: {literal!r}"
+    )
+    assert literal_record.expected_current_occurrences == 1
+    assert literal_record.category is MigrationCategory.PATH_RESOLUTION
+    assert literal_record.status is MigrationStatus.EXEMPTED
+    assert literal_record.authority_kind is MigrationAuthorityKind.EXECUTION_INPUT
+    assert literal_record.canonical_symbol == module
+
+    resolver_record = next(
+        record
+        for record in DEFAULT_AUDIT_INVENTORY.migrations
+        if record.former_module == "src.tasks.blcs.benchmarks.contracts"
+        and record.former_qualified_name == "source_fingerprint"
+        and record.former_route
+        == "path-construction: resolver.resolve(PathRole.PROJECT, relative_path)"
+    )
+    assert resolver_record.expected_current_occurrences == 1
+    assert resolver_record.status is MigrationStatus.LIVE
+    assert resolver_record.authority_kind is MigrationAuthorityKind.PATH_RESOLVER
+    assert resolver_record.canonical_symbol == (
+        "src.utils.configuration.paths.PathResolver.resolve"
+    )
 
 
 def test_new_source_route_is_reported_as_unrecorded(tmp_path: Path) -> None:

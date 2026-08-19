@@ -1,11 +1,10 @@
-"""Shape adapter for BLCS ID-ordered candidate observation augmentation."""
+"""Shape adapter for fixed-width BLCS candidate observation augmentation."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Any, cast
 
-import torch
 from torch import Tensor
 
 from src.tasks.blcs.data.augmentation import BLCSBallObservationAugmentation
@@ -24,7 +23,7 @@ class BLCSTrackingCandidateAugmentation:
         """Corrupt only candidate/court inputs and preserve clean GT tensors."""
         output: dict[str, Tensor] = clone_tensor_dict(sample)
         views, frames, detections, _ = output["ball_uv"].shape
-        clean_visible = output["ball_visible"].clone()
+        candidate_mask = output["candidate_mask"].bool()
         court_keypoints = output["court_kp"].clone()
         court_visible = output["court_vis"].clone()
         adapted = {
@@ -49,15 +48,14 @@ class BLCSTrackingCandidateAugmentation:
             .permute(0, 2, 1)
             .bool()
         )
+        output["ball_visible"] &= candidate_mask
+        output["ball_uv"] = output["ball_uv"].masked_fill(
+            ~candidate_mask.unsqueeze(-1), 0.0
+        )
         # Court input is geometric projection/manual annotation, not a detector
         # confidence stream.
         output["court_kp"] = court_keypoints
         output["court_vis"] = court_visible
-        output["candidate_gt_index"] = torch.where(
-            output["ball_visible"] & clean_visible,
-            output["candidate_gt_index"],
-            -1,
-        )
         return output
 
     def __call__(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:

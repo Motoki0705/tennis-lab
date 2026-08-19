@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import Any, cast
 
 import pytest
 import torch
@@ -139,7 +140,7 @@ def _model_mapping(name: str) -> dict[str, object]:
             "name": name,
             "hidden_dim": 16,
             "num_heads": 4,
-            "num_stages": 1,
+            "num_stages": 4,
             "ffn_dim": 32,
             "num_queries": 2,
             "rope_dim": 4,
@@ -148,6 +149,18 @@ def _model_mapping(name: str) -> dict[str, object]:
             "mask_invisible_observations": True,
             "invisible_init_std": 0.02,
             "observation_fusion": "linear",
+            "mhc": {
+                "coefficient_dim": 8,
+                "sinkhorn_iters": 5,
+                "eps": 1e-6,
+                "residual_identity_bias": 4.0,
+                "update_scale_init": 0.0,
+            },
+            "cswa": {
+                "compression_ratio": 2,
+                "window_radius": 1,
+                "backend": "reference",
+            },
         }
     raise AssertionError(f"Unexpected test model name: {name}")
 
@@ -287,12 +300,13 @@ def test_track_query_adapter_rejects_semantics_and_decodes_presence_once() -> No
     batch = {
         "ball_uv": torch.zeros(1, 1, 2, 2, 2),
         "ball_visible": torch.ones(1, 1, 2, 2, dtype=torch.bool),
+        "candidate_mask": torch.ones(1, 1, 2, 2, dtype=torch.bool),
         "court_kp": torch.zeros(1, 1, 2, 14, 2),
         "court_vis": torch.ones(1, 1, 2, 14, dtype=torch.bool),
         "frame_mask": torch.tensor([[True, False]]),
         "view_mask": torch.ones(1, 1, dtype=torch.bool),
     }
-    with pytest.raises(ModelInputContractError, match="padded view or frame"):
+    with pytest.raises(ModelInputContractError, match="candidate_mask"):
         adapter.build_call(batch)
 
     logits = torch.tensor([[[-1.0, 1.0]]])
@@ -301,6 +315,213 @@ def test_track_query_adapter_rejects_semantics_and_decodes_presence_once() -> No
     )
     assert not prediction.presence[..., 0].any()
     assert prediction.presence[..., 1].all()
+
+
+def test_track_query_adapter_requires_exact_q_and_mask_implications() -> None:
+    adapter = TrackQueryModelIOAdapter(
+        num_court_tokens=14,
+        num_queries=2,
+        presence_threshold=0.5,
+        mask_invisible_observations=False,
+    )
+    batch = {
+        "ball_uv": torch.zeros(1, 1, 2, 2, 2),
+        "ball_visible": torch.zeros(1, 1, 2, 2, dtype=torch.bool),
+        "candidate_mask": torch.ones(1, 1, 2, 2, dtype=torch.bool),
+        "court_kp": torch.zeros(1, 1, 2, 14, 2),
+        "court_vis": torch.ones(1, 1, 2, 14, dtype=torch.bool),
+        "frame_mask": torch.ones(1, 2, dtype=torch.bool),
+        "view_mask": torch.ones(1, 1, dtype=torch.bool),
+    }
+
+    call = adapter.build_call(batch)
+    camera_valid = call.kwargs["camera_state_valid"]
+    object_raw = call.kwargs["object_temporal_state_valid"]
+    query_raw = call.kwargs["query_temporal_state_valid"]
+    spatial_dense = call.kwargs["spatial_attention_mask"]
+    object_dense = call.kwargs["object_temporal_attention_mask"]
+    query_dense = call.kwargs["query_temporal_attention_mask"]
+    assert isinstance(camera_valid, Tensor)
+    assert isinstance(object_raw, Tensor)
+    assert isinstance(query_raw, Tensor)
+    assert isinstance(spatial_dense, Tensor)
+    assert isinstance(object_dense, Tensor)
+    assert isinstance(query_dense, Tensor)
+    assert camera_valid.shape == (1, 1, 2, 2)
+    assert object_raw.shape == (1, 2)
+    assert query_raw.shape == (2, 2)
+    assert spatial_dense.shape == (2, 4, 4)
+    assert object_dense.shape == (1, 2, 2)
+    assert query_dense.shape == (2, 2, 2)
+    assert camera_valid.all()
+
+    for wrong_width in (1, 3):
+        wrong_width_batch = dict(batch)
+        wrong_width_batch["ball_uv"] = torch.zeros(1, 1, 2, wrong_width, 2)
+        wrong_width_batch["ball_visible"] = torch.zeros(
+            1, 1, 2, wrong_width, dtype=torch.bool
+        )
+        wrong_width_batch["candidate_mask"] = torch.zeros(
+            1, 1, 2, wrong_width, dtype=torch.bool
+        )
+        with pytest.raises(ModelInputContractError, match="model.num_queries"):
+            adapter.build_call(wrong_width_batch)
+
+    inconsistent = dict(batch)
+    inconsistent["ball_visible"] = batch["ball_visible"].clone()
+    inconsistent["candidate_mask"] = batch["candidate_mask"].clone()
+    inconsistent["ball_visible"][0, 0, 0, 1] = True
+    inconsistent["candidate_mask"][0, 0, 0, 1] = False
+    with pytest.raises(ModelInputContractError, match="assigned candidate"):
+        adapter.build_call(inconsistent)
+
+
+def test_track_query_adapter_accepts_shared_cross_view_lifecycle_assignment() -> None:
+    adapter = TrackQueryModelIOAdapter(
+        num_court_tokens=14,
+        num_queries=2,
+        presence_threshold=0.5,
+        mask_invisible_observations=False,
+    )
+    shared_assignment = torch.tensor([True, False])
+    candidate_mask = shared_assignment.reshape(1, 1, 1, 2).expand(1, 2, 1, 2)
+    batch = {
+        "ball_uv": torch.zeros(1, 2, 1, 2, 2),
+        "ball_visible": torch.tensor(
+            [[[[False, False]], [[True, False]]]], dtype=torch.bool
+        ),
+        "candidate_mask": candidate_mask,
+        "court_kp": torch.zeros(1, 2, 1, 14, 2),
+        "court_vis": torch.ones(1, 2, 1, 14, dtype=torch.bool),
+        "frame_mask": torch.ones(1, 1, dtype=torch.bool),
+        "view_mask": torch.ones(1, 2, dtype=torch.bool),
+    }
+
+    call = adapter.build_call(batch)
+    call_candidate_mask = call.kwargs["candidate_mask"]
+    camera_state_valid = call.kwargs["camera_state_valid"]
+
+    assert isinstance(call_candidate_mask, Tensor)
+    assert isinstance(camera_state_valid, Tensor)
+    assert torch.equal(call_candidate_mask, candidate_mask)
+    assert torch.equal(camera_state_valid, candidate_mask)
+
+
+def test_track_query_adapter_checks_lifecycle_per_batch_frame_and_query() -> None:
+    adapter = TrackQueryModelIOAdapter(
+        num_court_tokens=14,
+        num_queries=3,
+        presence_threshold=0.5,
+        mask_invisible_observations=False,
+    )
+    view_mask = torch.tensor([[True, True, False], [False, True, True]])
+    frame_mask = torch.tensor([[True, True], [True, False]])
+    candidate_mask = torch.zeros(2, 3, 2, 3, dtype=torch.bool)
+    candidate_mask[0, :2, 0] = torch.tensor([True, False, True])
+    candidate_mask[0, :2, 1] = torch.tensor([False, True, False])
+    candidate_mask[1, 1:, 0] = torch.tensor([False, True, True])
+    ball_visible = torch.zeros_like(candidate_mask)
+    ball_visible[0, 1, 0, 2] = True
+    ball_visible[1, 2, 0, 1] = True
+    batch = {
+        "ball_uv": torch.zeros(2, 3, 2, 3, 2),
+        "ball_visible": ball_visible,
+        "candidate_mask": candidate_mask,
+        "court_kp": torch.zeros(2, 3, 2, 14, 2),
+        "court_vis": torch.ones(2, 3, 2, 14, dtype=torch.bool),
+        "frame_mask": frame_mask,
+        "view_mask": view_mask,
+    }
+
+    call = adapter.build_call(batch)
+
+    call_candidate_mask = call.kwargs["candidate_mask"]
+    camera_state_valid = call.kwargs["camera_state_valid"]
+    assert isinstance(call_candidate_mask, Tensor)
+    assert isinstance(camera_state_valid, Tensor)
+    assert torch.equal(call_candidate_mask, candidate_mask)
+    assert torch.equal(camera_state_valid, candidate_mask)
+
+
+def test_track_query_adapter_rejects_different_assignments_across_valid_views() -> None:
+    adapter = TrackQueryModelIOAdapter(
+        num_court_tokens=14,
+        num_queries=2,
+        presence_threshold=0.5,
+        mask_invisible_observations=False,
+    )
+    batch = {
+        "ball_uv": torch.zeros(1, 2, 1, 2, 2),
+        "ball_visible": torch.zeros(1, 2, 1, 2, dtype=torch.bool),
+        "candidate_mask": torch.tensor(
+            [[[[True, False]], [[False, True]]]], dtype=torch.bool
+        ),
+        "court_kp": torch.zeros(1, 2, 1, 14, 2),
+        "court_vis": torch.ones(1, 2, 1, 14, dtype=torch.bool),
+        "frame_mask": torch.ones(1, 1, dtype=torch.bool),
+        "view_mask": torch.ones(1, 2, dtype=torch.bool),
+    }
+
+    with pytest.raises(ModelInputContractError, match="same lifecycle assignment"):
+        adapter.build_call(batch)
+
+
+@pytest.mark.parametrize("num_valid_views", [0, 1])
+def test_track_query_adapter_ignores_padded_views_in_lifecycle_comparison(
+    num_valid_views: int,
+) -> None:
+    adapter = TrackQueryModelIOAdapter(
+        num_court_tokens=14,
+        num_queries=2,
+        presence_threshold=0.5,
+        mask_invisible_observations=False,
+    )
+    view_mask = torch.arange(2).unsqueeze(0) < num_valid_views
+    candidate_mask = torch.zeros(1, 2, 1, 2, dtype=torch.bool)
+    if num_valid_views == 1:
+        candidate_mask[0, 0, 0] = torch.tensor([True, False])
+    batch = {
+        "ball_uv": torch.zeros(1, 2, 1, 2, 2),
+        "ball_visible": torch.zeros(1, 2, 1, 2, dtype=torch.bool),
+        "candidate_mask": candidate_mask,
+        "court_kp": torch.zeros(1, 2, 1, 14, 2),
+        "court_vis": torch.ones(1, 2, 1, 14, dtype=torch.bool),
+        "frame_mask": torch.ones(1, 1, dtype=torch.bool),
+        "view_mask": view_mask,
+    }
+
+    call = adapter.build_call(batch)
+    call_candidate_mask = call.kwargs["candidate_mask"]
+
+    assert isinstance(call_candidate_mask, Tensor)
+    assert torch.equal(call_candidate_mask, candidate_mask)
+
+
+def test_track_query_adapter_ignores_padded_frame_in_lifecycle_comparison() -> None:
+    adapter = TrackQueryModelIOAdapter(
+        num_court_tokens=14,
+        num_queries=2,
+        presence_threshold=0.5,
+        mask_invisible_observations=False,
+    )
+    shared_assignment = torch.tensor([True, False])
+    candidate_mask = torch.zeros(1, 2, 2, 2, dtype=torch.bool)
+    candidate_mask[:, :, 0] = shared_assignment
+    batch = {
+        "ball_uv": torch.zeros(1, 2, 2, 2, 2),
+        "ball_visible": torch.zeros(1, 2, 2, 2, dtype=torch.bool),
+        "candidate_mask": candidate_mask,
+        "court_kp": torch.zeros(1, 2, 2, 14, 2),
+        "court_vis": torch.ones(1, 2, 2, 14, dtype=torch.bool),
+        "frame_mask": torch.tensor([[True, False]]),
+        "view_mask": torch.ones(1, 2, dtype=torch.bool),
+    }
+
+    call = adapter.build_call(batch)
+    call_candidate_mask = call.kwargs["candidate_mask"]
+
+    assert isinstance(call_candidate_mask, Tensor)
+    assert torch.equal(call_candidate_mask, candidate_mask)
 
 
 @pytest.mark.parametrize(
@@ -327,4 +548,4 @@ def test_composition_root_selects_and_binds_one_matching_adapter(
     binding = compose_blcs_model_io(config)
 
     assert isinstance(binding.adapter, adapter_type)
-    assert isinstance(binding.model, binding.adapter.model_type)
+    assert isinstance(binding.model, cast("Any", binding.adapter).model_type)

@@ -12,6 +12,10 @@ from src.tasks.base.data.canonical_tracking import (
     pad_and_stack_tracking_batch,
 )
 from src.tasks.base.data.scene_dataset import Scene
+from src.tasks.blcs.data.observation_candidates import (
+    build_fixed_lifecycle_assignment,
+    pack_observation_candidates,
+)
 from src.tasks.blcs.data.tracking_augmentation import (
     BLCSTrackingCandidateAugmentation,
 )
@@ -20,6 +24,7 @@ BLCS_TRACKING_KEYS = (
     "scene_format_version",
     "ball_uv",
     "ball_visible",
+    "candidate_mask",
     "court_kp",
     "court_vis",
     "frame_mask",
@@ -44,8 +49,17 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
         self.tracking_augmentation = BLCSTrackingCandidateAugmentation(
             data_cfg["augmentation"]
         )
+        if self.num_queries is None:
+            raise ValueError("BLCS tracking requires model.num_queries.")
+        if not self.pack_to_query_slots:
+            raise ValueError(
+                "BLCS tracking requires data.lifecycle.pack_to_query_slots=true."
+            )
 
     def build_sample(self, scene: Scene) -> dict[str, Tensor]:
+        if self.num_queries is None:
+            raise RuntimeError("BLCS tracking dataset lost its fixed query width.")
+        num_queries = self.num_queries
         position = torch.from_numpy(scene.get_array("ball_pos_norm")).float()
         velocity = torch.from_numpy(scene.get_array("ball_vel_world")).float()
         if position.ndim != 3 or velocity.shape != position.shape:
@@ -67,16 +81,18 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
         position = position[window.sl]
         velocity = velocity[window.sl]
         physical_presence = physical_presence[window.sl]
-        packing = self.pack_lifecycle(physical_presence)
+        randomize_slots = self.augment and self.randomize_slots_train
+        target_packing = build_fixed_lifecycle_assignment(
+            physical_presence,
+            num_slots=num_queries,
+            min_reuse_gap_frames=self.min_reuse_gap_frames,
+            randomize_slots=randomize_slots,
+        )
 
         uv_rows: list[Tensor] = []
         visible_rows: list[Tensor] = []
-        index_rows: list[Tensor] = []
-        clean_uv_rows: list[Tensor] = []
-        clean_visible_rows: list[Tensor] = []
         court_rows: list[Tensor] = []
         court_vis_rows: list[Tensor] = []
-        ordered_object_ids = torch.arange(num_physical).expand(window.seq_len, -1)
         for camera_index in cameras.indices:
             uv = torch.from_numpy(
                 scene.get_camera_array(camera_index, "ball_uv", window=window)
@@ -89,12 +105,8 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
                 visible = visible[:, None]
             visible &= physical_presence
             uv[~physical_presence] = 0.0
-            clean_uv_rows.append(uv.clone())
-            clean_visible_rows.append(visible.clone())
-            candidate_index = torch.where(visible, ordered_object_ids, -1)
             uv_rows.append(uv)
             visible_rows.append(visible)
-            index_rows.append(candidate_index)
 
             court_np = scene.get_camera_array(camera_index, "court_kp_uv")
             court_visible_np = scene.get_camera_array(camera_index, "court_kp_visible")
@@ -117,22 +129,33 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
             court_rows.append(court)
             court_vis_rows.append(court_visible)
 
+        physical_uv = torch.stack(uv_rows)
+        physical_visible = torch.stack(visible_rows)
+        observations = pack_observation_candidates(
+            ball_uv=physical_uv,
+            ball_visible=physical_visible,
+            physical_presence=physical_presence,
+            num_slots=num_queries,
+            min_reuse_gap_frames=self.min_reuse_gap_frames,
+            randomize_slots=randomize_slots,
+        )
         sample = {
             "scene_format_version": torch.tensor(3),
-            "ball_uv": torch.stack(uv_rows),
-            "ball_visible": torch.stack(visible_rows),
+            "ball_uv": observations.uv,
+            "ball_visible": observations.visible,
+            "candidate_mask": observations.candidate_mask,
             "court_kp": torch.stack(court_rows),
             "court_vis": torch.stack(court_vis_rows),
             "frame_mask": torch.ones(window.seq_len, dtype=torch.bool),
             "view_mask": torch.ones(len(cameras.indices), dtype=torch.bool),
-            "target_position": packing.pack_tensor(position, physical_presence),
-            "target_velocity": packing.pack_tensor(velocity, physical_presence),
-            "target_presence": packing.target_presence,
-            "target_instance_id": packing.target_instance_id,
-            "target_slot_mask": packing.target_presence.any(0),
-            "clean_ball_uv": torch.stack(clean_uv_rows),
-            "clean_ball_visible": torch.stack(clean_visible_rows),
-            "candidate_gt_index": torch.stack(index_rows),
+            "target_position": target_packing.pack_tensor(position, physical_presence),
+            "target_velocity": target_packing.pack_tensor(velocity, physical_presence),
+            "target_presence": target_packing.target_presence,
+            "target_instance_id": target_packing.target_instance_id,
+            "target_slot_mask": target_packing.target_presence.any(0),
+            "clean_ball_uv": observations.uv.clone(),
+            "clean_ball_visible": observations.visible.clone(),
+            "candidate_gt_index": observations.gt_index,
         }
         return sample
 
@@ -146,24 +169,36 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
 def collate_blcs_tracking_batch(
     batch: list[dict[str, Tensor]],
 ) -> dict[str, Tensor]:
-    """Pad variable camera/time/candidate dimensions and stack BLCS scenes."""
+    """Pad only camera/time dimensions and stack exact-width BLCS scenes."""
+    candidate_width = int(batch[0]["ball_uv"].shape[2]) if batch else 0
+    for sample in batch:
+        if (
+            sample["ball_uv"].shape[2] != candidate_width
+            or sample["candidate_mask"].shape[2] != candidate_width
+            or sample["target_position"].shape[1] != candidate_width
+            or sample["target_slot_mask"].shape[0] != candidate_width
+        ):
+            raise ValueError(
+                "Every BLCS tracking sample must already have the same exact "
+                "candidate width before collation."
+            )
     collated: dict[str, Tensor] = pad_and_stack_tracking_batch(
         batch,
         padding_dimensions={
-            "ball_uv": (0, 1, 2),
-            "ball_visible": (0, 1, 2),
+            "ball_uv": (0, 1),
+            "ball_visible": (0, 1),
+            "candidate_mask": (0, 1),
             "court_kp": (0, 1),
             "court_vis": (0, 1),
             "frame_mask": (0,),
             "view_mask": (0,),
-            "target_position": (0, 1),
-            "target_velocity": (0, 1),
-            "target_presence": (0, 1),
-            "target_instance_id": (0, 1),
-            "target_slot_mask": (0,),
-            "clean_ball_uv": (0, 1, 2),
-            "clean_ball_visible": (0, 1, 2),
-            "candidate_gt_index": (0, 1, 2),
+            "target_position": (0,),
+            "target_velocity": (0,),
+            "target_presence": (0,),
+            "target_instance_id": (0,),
+            "clean_ball_uv": (0, 1),
+            "clean_ball_visible": (0, 1),
+            "candidate_gt_index": (0, 1),
         },
         pad_values={
             "target_instance_id": -1,

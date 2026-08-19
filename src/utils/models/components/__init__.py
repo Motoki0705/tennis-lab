@@ -7,6 +7,7 @@ This package provides reusable building blocks used across tasks:
 - RoPE: 1D (`precompute_freqs_cis`) and interleaved N-D (`precompute_freqs_cis_nd`, `apply_rotary_emb`)
 - FFN/MoE: `SwiGLU`, `MLP`, `default_ffn_dim`, `TopKRouter`, `MoELayer`
 - Blocks: `TransformerBlock`, `TransformerBlockConfig`, `CrossAttnBlockConfig`, `CrossAttnBlock`
+- Compressed temporal attention: `CSWAConfig`, `CompressedSlidingWindowSelfAttention`
 
 Note:
 This repository previously had a separate "unified MHA/GQA/MLA" implementation.
@@ -24,6 +25,10 @@ from src.utils.models.components.block import (
     TransformerBlock,
     TransformerBlockConfig,
 )
+from src.utils.models.components.cswa import (
+    CompressedSlidingWindowSelfAttention,
+    CSWAConfig,
+)
 from src.utils.models.components.ffn_layers import MLP, SwiGLU, default_ffn_dim
 from src.utils.models.components.moe import MoEConfig, MoELayer, MoERouting, TopKRouter
 from src.utils.models.components.norm import LayerNorm, RMSNorm
@@ -39,6 +44,8 @@ __all__ = [
     "GroupedQuerySelfAttention",
     "MultiHeadCrossAttention",
     "MultiHeadSelfAttention",
+    "CSWAConfig",
+    "CompressedSlidingWindowSelfAttention",
     # Norm
     "RMSNorm",
     "LayerNorm",

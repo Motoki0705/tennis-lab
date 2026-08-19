@@ -23,14 +23,14 @@
 - **`datamodule.py`**: `BLCSDataModule`。composition rootで選択済みのcollateを受け取り、model variantを認識しない。
 - **`augmentation.py`**: `BLCSBallObservationAugmentation`。detector誤差を模した8段のUVノイズパイプライン。
 - **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
-- **`tracking_dataset.py` / `tracking_datamodule.py`**: scene読込後にclip/viewをsampleし、object観測をscene object IDの昇順で保持したまま、物理trackをlifecycle slotへpackingするDataset/DataModule。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成する。val/testは常に`scene_dir`上の固定splitを使う。
-- **`tracking_augmentation.py`**: object列を並べ替えず、clean GTを保持したまま観測だけへdetector noise/dropout/false-positiveを適用するshape adapter。
+- **`tracking_dataset.py` / `tracking_datamodule.py`**: scene読込後にclip/viewをsampleし、physical observationとtargetを独立したfixed-Q lifecycle slotへpackingするDataset/DataModule。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成する。val/testは常に`scene_dir`上の固定splitを使う。
+- **`tracking_augmentation.py`**: fixed-Q lifecycle列を並べ替えず、candidate maskとclean GTを保持したまま観測だけへdetector noise/dropout/false-positiveを適用するshape adapter。
 
 ### models/
 - **`blcs_model.py`**: `BLCSModel`。single-view用decoder-only Transformer(court+ballトークン)。
 - **`blcs_multiview_model.py`**: `BLCSMultiViewModel`。クエリのcross-attention+時間self-attentionによる反復更新モデル。
 - **`blcs_multiview_axial_model.py`**: `BLCSMultiViewAxialModel`(現行デフォルト)。camera軸/time軸交互self-attention。
-- **`blcs_track_query_model.py`**: `BLCSTrackQueryModel`。object ID順のcamera観測からclip-localな固定query slotで複数ボール軌道とpresenceを推定する。
+- **`blcs_track_query_model.py`**: `BLCSTrackQueryModel`。fixed-Q camera候補へmHC object temporalとhybrid CSWAを適用し、clip-localな固定query slotで複数ボール軌道とpresenceを推定する。
 - **`components/heads.py`**: constructor時に選択されるposition-only / position+velocity出力module。
 - **`components/observation_fusion.py`**: track-query用に選択済みのlinear / point-attention観測融合module。
 - **`components/differentiable_projection.py`**: `DifferentiableProjection`。予測3D位置をカメラへ再投影。
@@ -70,7 +70,11 @@
 
 ## Multi-ball tracking
 
-観測座標は `ball_uv (B,V,T,P,2)`、観測有無は `ball_visible (B,V,T,P)` に一本化し、`ball_candidate_mask` は持ちません。`P` 軸は全camera/frameでscene object IDの昇順に固定し、欠損・dropout・false positiveがあっても列を並べ替えません。debug用の `candidate_gt_index` は観測が実object由来ならその列と同じobject ID、そうでなければ`-1`であり、モデルへは渡しません。scoreやvisibility値を数値特徴へ連結せず、不可視objectはlearned invisible tokenへ置換します。`mask_invisible_observations=true` は不可視tokenをattention keyから除外する対照条件、`false` は`frame_mask` / `view_mask`によるpaddingだけを除外し、不可視tokenを更新可能なmemoryとして使う条件です。出力は `position (B,T,Q,3)` と `presence_logits (B,T,Q)` です。教師は `target_position (B,T,Q,3)`、`target_presence (B,T,Q)`、`target_instance_id (B,T,Q)` で、inactive IDは`-1`です。重ならないbirth/death区間を同じtarget columnへ詰めるため、同一queryはdeath後に別instanceへ再利用できます。
+tracking modelの観測幅は常に `P=Q=model.num_queries` です。Datasetはphysical scene入力を、全viewで同期したlifecycle assignmentにより `ball_uv (B,V,T,Q,2)`、`ball_visible (B,V,T,Q)`、`candidate_mask (B,V,T,Q)` へ変換します。clip全体のphysical object数はQを超えても構いませんが、同時存在数がQを超える入力は切り捨てずrejectします。padding候補は`candidate_mask=false`、実在するが不可視の候補は`candidate_mask=true, ball_visible=false`です。したがって常に`ball_visible => candidate_mask => frame_mask & view_mask`が成立します。target lifecycle assignmentとobservation assignmentは別物であり、trainingではDataLoader workerのTorch RNGから独立にslot permutationをdrawし、evaluationではdeterministicに割り当てます。collateはview/timeだけをpadし、candidate軸はpadしません。
+
+`mask_invisible_observations=true`は不可視candidateをcamera stateから除外し、`false`は割当済み不可視candidateをlearned invisible memoryとして残します。point-attentionも`candidate_mask=false`のpadding候補を除外します。各stageは `mHC object temporal -> global spatial(Q+VQ) -> query temporal` の順で、temporal modeはconstructor時に `CSWA, CSWA, CSWA, Global` のcycleへ固定されます。nested `model.mhc` / `model.cswa` configはunknown/missing/invalid値をrejectし、`model.cswa.backend=cuda`はextensionが利用不能ならreferenceへfallbackせずconstruction時に失敗します。
+
+出力契約は従来どおり `position (B,T,Q,3)` と `presence_logits (B,T,Q)` です。教師は `target_position (B,T,Q,3)`、`target_presence (B,T,Q)`、`target_instance_id (B,T,Q)` で、inactive IDは`-1`です。旧track-query checkpointはarchitectureが異なるためstrict load errorとなり、自動key migrationやmissing parameter補完は行いません。推論のstrict adapterもexact Qを要求し、`BLCSTrackingPredictor.predict()`だけが明示的な`candidate_mask`を伴う`P<Q`入力をQへzero-padします。`P>Q`はrejectします。
 
 14 court UVはannotation schemaのkeypoint ID順を維持します。`observation_fusion=linear` は`court_vis`で不可視点を0化し、object ID順の各ball UVと連結して共有`CourtBallGroupEmbedding`により1 object = 1 tokenへ写像します。`observation_fusion=point_attention` は各camera/frameについて `[court_0..13, ball_0..P-1]` を32次元tokenへ変換し、court IDとobject ID順のball列を独立軸とする2軸RoPE付きself-attentionで融合します。融合後はball tokenだけをmodel dimへprojectionし、既存の空間・時間attention経路へ渡します。どちらも下流の空間self-attention入力は `(B*T, Q + V*P, D)` です。
 

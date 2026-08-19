@@ -943,6 +943,22 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "automation.chatgpt_mcp",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tasks.blcs.benchmarks.track_query_compressor.__main__": (
+        "blcs.track_query_compressor",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.blcs.benchmarks.track_query_cswa.__main__": (
+        "blcs.track_query_cswa",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.blcs.benchmarks.track_query_integrated.__main__": (
+        "blcs.track_query_integrated",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.blcs.benchmarks.track_query_mhc.__main__": (
+        "blcs.track_query_mhc",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
 }
 
 
@@ -978,6 +994,30 @@ _RUNTIME_BOUNDARIES = (
         "src.automation.chatgpt_mcp.cli",
         "main",
         domain="automation",
+    ),
+    _non_hydra_boundary(
+        "src.tasks.blcs.benchmarks.track_query_compressor.__main__",
+        "main",
+        domain="blcs",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tasks.blcs.benchmarks.track_query_cswa.__main__",
+        "main",
+        domain="blcs",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tasks.blcs.benchmarks.track_query_integrated.__main__",
+        "main",
+        domain="blcs",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tasks.blcs.benchmarks.track_query_mhc.__main__",
+        "main",
+        domain="blcs",
+        executable_module=True,
     ),
     _runtime_boundary(
         "synthetic_data_generation",

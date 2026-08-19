@@ -59,7 +59,7 @@ class LinearTrackObservationFusion(nn.Module):
             ball_visible,
         ).permute(0, 2, 1, 3, 4)
         del point_attention_mask
-        return tokens, state_valid
+        return tokens, state_valid.permute(0, 2, 1, 3)
 
 
 class PointAttentionTrackObservationFusion(nn.Module):
@@ -96,10 +96,10 @@ class PointAttentionTrackObservationFusion(nn.Module):
             court_visible=court_visible,
             ball_uv=ball_uv,
             ball_visible=ball_visible,
-            ball_state_valid=state_valid.permute(0, 2, 1, 3),
+            ball_state_valid=state_valid,
             attention_mask=point_attention_mask,
         ).permute(0, 2, 1, 3, 4)
-        return tokens, state_valid
+        return tokens, state_valid.permute(0, 2, 1, 3)
 
 
 __all__ = [
