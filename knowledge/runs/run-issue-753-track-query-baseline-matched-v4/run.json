@@ -1,0 +1,14 @@
+{
+  "run_id": "1787251520739080033_2114469_issue-753-track-query-baseline-matched-v4",
+  "name": "issue-753-track-query-baseline-matched-v4",
+  "command": ".venv/bin/python -m experiments.blcs.issue_753.scripts.train",
+  "provider": "codex",
+  "session": "01a02003-4b40-79c3-abbf-24c54b29c0dc",
+  "issue": "753",
+  "commit": "296310e8e6749079bbbe60ac68329b8adb31b22a",
+  "branch": "feat/blcs-track-query-cswa",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab",
+  "repo_root": "/home/kamimura/projects/tennis-lab",
+  "captured_at": "2026-08-21T03:45:20+09:00"
+}
