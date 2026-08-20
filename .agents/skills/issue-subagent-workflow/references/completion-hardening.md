@@ -4,7 +4,7 @@ These rules are enforced by schema-v5 scripts rather than relying on instruction
 
 ## Test authoring and final seal
 
-Production preflight binds the candidate before independent test authoring. The Test Writer may add or update allowed tests, producing a new candidate fingerprint. After Tester PASS, the integrator performs a no-edit final seal and re-runs complete seal-stage canonical checks. Any content change after Tester PASS rejects seal PASS and requires retesting.
+Preflight Reviewer PASS binds the candidate before independent test authoring. The Test Writer may add or update allowed tests, producing a new candidate fingerprint. After Tester PASS, an independent Seal Reviewer performs the no-edit final seal and re-runs complete seal-stage canonical checks. Any content change after Tester PASS rejects seal PASS and requires a fresh Preflight Reviewer and Test Writer cycle.
 
 ## Candidate and PR binding
 

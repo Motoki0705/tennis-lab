@@ -33,15 +33,15 @@ Written only by the parent or explicit integrator after all Implementer handoffs
 
 ## `03-implementation/preflight.md`
 
-Production preflight records candidate identity, scope, deterministic and focused checks, canonical command results, baseline comparison, exact outcomes, and PASS/RETURN. PASS is bound to `preflight-checks.json` and the current candidate fingerprint.
+Owned by one independent Preflight Reviewer after implementation integration. It records candidate identity, scope, deterministic and focused checks, canonical command results, baseline comparison, exact outcomes, and PASS/RETURN. PASS is bound to `preflight-checks.json` and the current candidate fingerprint. The Reviewer does not edit production or tests; the parent applies the verdict to state.
 
 ## `03-implementation/tests.md`
 
-Owned by one independent Test Writer after production preflight PASS. It records the post-test candidate, exact AC-to-evidence rows, test changes, case coverage, canonical command results, outcomes, failures, untested risks, and PASS/RETURN. It may change allowed tests but never production.
+Owned by one independent Test Writer after Preflight Reviewer PASS. It records the post-test candidate, exact AC-to-evidence rows, test changes, case coverage, canonical command results, outcomes, failures, untested risks, and PASS/RETURN. It may change allowed tests but never production.
 
 ## `03-implementation/seal.md`
 
-Owned by the integrator after Tester PASS. No source or test edits occur while sealing. It records the Tester-candidate identity, changed-since-test inspection, complete scope inspection, seal-stage canonical results, exact outcomes, and PASS/RETURN. Seal PASS is required for validation.
+Owned by one independent Seal Reviewer after Tester PASS. No source or test edits occur while sealing. It records the Tester-candidate identity, changed-since-test inspection, complete scope inspection, seal-stage canonical results, exact outcomes, and PASS/RETURN. The parent applies the verdict to state. Seal PASS is required for validation.
 
 ## `04-validation/validation.md`
 
