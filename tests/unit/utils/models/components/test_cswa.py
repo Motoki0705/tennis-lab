@@ -555,7 +555,7 @@ def test_forward_query_and_executor_output_enable_copy_free_projection_layout() 
     assert output.shape == (2, 7, 8)
 
 
-def test_forward_uses_validated_projected_compressor_seam(
+def test_forward_uses_computation_only_projected_compressor_seam(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     module = CompressedSlidingWindowSelfAttention(_config())
@@ -567,7 +567,7 @@ def test_forward_uses_validated_projected_compressor_seam(
     )
     x = torch.randn(2, 7, 8)
     expected_projection = module._project_query_kv_gate
-    expected_pool = module.compressor.forward_projected
+    expected_pool = module.compressor._pool_projected
     observed_masked: list[Tensor] = []
     observed_projected: list[tuple[Tensor, Tensor, Tensor]] = []
 
@@ -587,7 +587,7 @@ def test_forward_uses_validated_projected_compressor_seam(
         raise AssertionError("CSWA must not run standalone compressor projections")
 
     monkeypatch.setattr(module, "_project_query_kv_gate", capture_projection)
-    monkeypatch.setattr(module.compressor, "forward_projected", capture_projected)
+    monkeypatch.setattr(module.compressor, "_pool_projected", capture_projected)
     monkeypatch.setattr(module.compressor, "forward_masked", reject_standalone)
     monkeypatch.setattr(module.compressor, "forward", reject_standalone)
     module(

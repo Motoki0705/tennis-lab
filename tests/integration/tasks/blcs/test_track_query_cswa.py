@@ -110,6 +110,10 @@ def test_requested_unavailable_cuda_backend_fails_during_model_construction(
         raise RuntimeError("requested CUDA backend is unavailable")
 
     monkeypatch.setattr(
+        "src.utils.models.components.compressor.resolve_token_compressor_pool",
+        lambda *args, **kwargs: object(),
+    )
+    monkeypatch.setattr(
         "src.utils.models.components.cswa.resolve_compressed_time_local_attention",
         unavailable,
     )
