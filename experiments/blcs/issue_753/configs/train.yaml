@@ -1,0 +1,70 @@
+defaults:
+  - paths: default
+  - model: track_query
+  - training: default
+  - loss: tracking
+  - tracking_metrics: default
+  - run: train
+  - _self_
+
+# Make the canonical BLCS config groups available without duplicating them.
+hydra:
+  searchpath:
+    - file://src/tasks/blcs/configs
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
+
+paths:
+  artifact_root: artifacts/issue-753-repro
+
+data:
+  seed: 643648
+  split_sizes:
+    train: 96
+    val: 24
+    test: 24
+  batch_size: 8
+  num_workers: 0
+  pin_memory: true
+  min_frames: 8
+  max_frames: 12
+  min_views: 2
+  max_views: 3
+  min_balls: 1
+  max_balls: 3
+  num_court_keypoints: 14
+  dropout_probability: 0.12
+  false_positive_probability: 0.45
+  uv_noise_std: 0.008
+
+training:
+  learning_rate: 3.0e-4
+  warmup_steps: 0
+  min_lr: 1.0e-6
+  trainer:
+    max_epochs: 5
+    precision: "32-true"
+    log_every_n_steps: 1
+    check_val_every_n_epoch: 1
+    accumulate_grad_batches: 1
+    enable_model_summary: false
+  checkpoint:
+    filename: "issue-753-{epoch:02d}"
+    save_top_k: 1
+  early_stopping:
+    enabled: false
+  qualitative_logging:
+    enabled: false
+
+run:
+  output_dir: blcs/issue-753-baseline-matched
+  seed: 643648
+  gpus: 1
+  resume: null
+  init_weights: null
+  fast_dev_run: false
+  dry_run: false
+  test_after_fit: true
