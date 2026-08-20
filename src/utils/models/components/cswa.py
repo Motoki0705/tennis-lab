@@ -86,12 +86,14 @@ class CSWAConfig:
 
 
 class CompressedSlidingWindowSelfAttention(nn.Module):
-    """Self-attention from raw queries to token-level compressed K/V states.
+    """Self-attention from multi-head queries to one shared compressed KV state.
 
     ``x`` has shape ``[N,T,D]``, ``state_valid`` is boolean ``[N,T]``, and
     ``freqs_cis`` contains caller-prepared query-position RoPE frequencies.
     Compressed-key frequencies are computed separately from the compressor's
-    deterministic block-center positions.
+    deterministic block-center positions.  The reference executor broadcasts
+    the compressor's single KV head across query heads without materializing
+    an expanded KV tensor.
     """
 
     _SUPPORTED_DTYPES = {
@@ -123,7 +125,8 @@ class CompressedSlidingWindowSelfAttention(nn.Module):
                 head_dim=self.head_dim,
                 compression_ratio=self.compression_ratio,
                 overlap=True,
-            )
+            ),
+            backend=self.backend,
         )
         self.wo = nn.Linear(self.n_heads * self.head_dim, self.dim, bias=False)
         self.compressed_frequency_computer = RotaryFrequencyComputer(
@@ -163,6 +166,94 @@ class CompressedSlidingWindowSelfAttention(nn.Module):
         )
         rotated = x_complex * freqs_cis.to(dtype=complex_dtype)
         return torch.view_as_real(rotated).flatten(-2).to(dtype=output_dtype)
+
+    def _apply_configured_rope(self, x: Tensor, freqs_cis: Tensor) -> Tensor:
+        """Rotate the configured prefix without copying a full-head empty tail."""
+        if self.rope_dim == self.head_dim:
+            return self._apply_rope(x, freqs_cis)
+        rotated = self._apply_rope(x[..., : self.rope_dim], freqs_cis)
+        return torch.cat((rotated, x[..., self.rope_dim :]), dim=-1)
+
+    def _project_query_kv_gate(
+        self,
+        masked_x: Tensor,
+    ) -> tuple[Tensor, Tensor, Tensor]:
+        """Project query, raw compressor KV, and raw gates with one GEMM."""
+        query_dim = self.n_heads * self.head_dim
+        compressor_projection_dim = self.compressor.branches * self.compressor.kv_dim
+        projection_layers = (
+            ("wq", self.wq, query_dim, False),
+            ("compressor.w_kv", self.compressor.w_kv, compressor_projection_dim, True),
+            (
+                "compressor.w_gate",
+                self.compressor.w_gate,
+                compressor_projection_dim,
+                True,
+            ),
+        )
+        for name, layer, output_dim, requires_bias in projection_layers:
+            layer_bias = cast(Tensor | None, layer.bias)
+            expected_weight_shape = (output_dim, self.dim)
+            if layer.weight.shape != expected_weight_shape:
+                raise RuntimeError(
+                    f"{name}.weight must have shape {expected_weight_shape}, "
+                    f"got {tuple(layer.weight.shape)}"
+                )
+            if not layer.weight.is_floating_point():
+                raise TypeError(f"{name}.weight must be floating point")
+            if layer.weight.device != masked_x.device:
+                raise ValueError(
+                    f"{name}.weight must be on device {masked_x.device}, "
+                    f"got {layer.weight.device}"
+                )
+            if not requires_bias:
+                if layer_bias is not None:
+                    raise RuntimeError(f"{name} must remain bias-free")
+                continue
+            if layer_bias is None or layer_bias.shape != (output_dim,):
+                actual_shape = None if layer_bias is None else tuple(layer_bias.shape)
+                raise RuntimeError(
+                    f"{name}.bias must have shape {(output_dim,)}, got {actual_shape}"
+                )
+            if not layer_bias.is_floating_point():
+                raise TypeError(f"{name}.bias must be floating point")
+            if layer_bias.device != masked_x.device:
+                raise ValueError(
+                    f"{name}.bias must be on device {masked_x.device}, "
+                    f"got {layer_bias.device}"
+                )
+
+        kv_bias = cast(Tensor | None, self.compressor.w_kv.bias)
+        gate_bias = cast(Tensor | None, self.compressor.w_gate.bias)
+        if kv_bias is None or gate_bias is None:
+            raise RuntimeError("compressor KV and gate projections must retain biases")
+        with torch.autocast(device_type=masked_x.device.type, enabled=False):
+            packed_weight = torch.cat(
+                tuple(
+                    layer.weight.to(dtype=masked_x.dtype)
+                    for _, layer, _, _ in projection_layers
+                ),
+                dim=0,
+            )
+            packed = F.linear(masked_x, packed_weight, None)
+            query, raw_kv, raw_gate = packed.split(
+                (query_dim, compressor_projection_dim, compressor_projection_dim),
+                dim=-1,
+            )
+            raw_kv = raw_kv + kv_bias.to(dtype=masked_x.dtype)
+            raw_gate = raw_gate + gate_bias.to(dtype=masked_x.dtype)
+
+        projected_shape = (
+            masked_x.shape[0],
+            masked_x.shape[1],
+            self.compressor.branches,
+            self.compressor.kv_dim,
+        )
+        return (
+            query,
+            raw_kv.reshape(projected_shape),
+            raw_gate.reshape(projected_shape),
+        )
 
     def validate_inputs(
         self,
@@ -249,22 +340,39 @@ class CompressedSlidingWindowSelfAttention(nn.Module):
         n, query_len, _ = x.shape
         masked_x = torch.where(state_valid.unsqueeze(-1), x, torch.zeros_like(x))
 
-        query = self._project(masked_x, self.wq).reshape(
-            n, query_len, self.n_heads, self.head_dim
-        )
-        query_rope = self._apply_rope(query[..., : self.rope_dim], freqs_cis)
-        query = torch.cat((query_rope, query[..., self.rope_dim :]), dim=-1)
-        query = query.transpose(1, 2)
+        query, raw_kv, raw_gate = self._project_query_kv_gate(masked_x)
+        query = query.reshape(n, query_len, self.n_heads, self.head_dim)
 
-        compressed = self.compressor(masked_x, state_valid)
+        compressed = self.compressor.forward_projected(
+            raw_kv,
+            raw_gate,
+            state_valid,
+        )
         key = compressed.key.transpose(1, 2)
         key_positions = compressed.positions.to(
             device=x.device,
             dtype=self.compressed_frequency_computer.inverse_frequencies.dtype,
         ).unsqueeze(-1)
         key_freqs_cis = self.compressed_frequency_computer(key_positions)
-        key_rope = self._apply_rope(key[..., : self.rope_dim], key_freqs_cis)
-        key = torch.cat((key_rope, key[..., self.rope_dim :]), dim=-1).transpose(1, 2)
+        fuse_rope = (
+            self.backend == "cuda"
+            and self.rope_dim == self.head_dim
+            and not freqs_cis.requires_grad
+            and not key_freqs_cis.requires_grad
+            and freqs_cis.dtype == torch.complex64
+            and key_freqs_cis.dtype == torch.complex64
+        )
+        if fuse_rope:
+            query = query.transpose(1, 2)
+            key = key.transpose(1, 2)
+            rope_kwargs: dict[str, Tensor] = {
+                "query_freqs_cis": freqs_cis,
+                "key_freqs_cis": key_freqs_cis,
+            }
+        else:
+            query = self._apply_configured_rope(query, freqs_cis).transpose(1, 2)
+            key = self._apply_configured_rope(key, key_freqs_cis).transpose(1, 2)
+            rope_kwargs = {}
 
         output = self.executor(
             query,
@@ -274,9 +382,11 @@ class CompressedSlidingWindowSelfAttention(nn.Module):
             key_valid=compressed.state_valid,
             dropout_p=self.attn_dropout,
             training=self.training,
+            **rope_kwargs,
         )
         output = output.transpose(1, 2).reshape(
             n, query_len, self.n_heads * self.head_dim
         )
-        output = self._project(output, self.wo)
-        return torch.where(state_valid.unsqueeze(-1), output, torch.zeros_like(output))
+        # Both executors return exact zero on invalid query rows.  The bias-free
+        # projection preserves those zeros, so no second query mask is needed.
+        return self._project(output, self.wo)

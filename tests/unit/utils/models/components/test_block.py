@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Callable
-from dataclasses import replace
+from dataclasses import fields, replace
 from typing import Literal, cast
 
 import pytest
@@ -219,6 +219,17 @@ def test_added_config_field_preserves_existing_positional_construction() -> None
     assert isinstance(TransformerBlock(cfg).attn, MultiHeadSelfAttention)
 
 
+def test_ffn_recomputation_feature_is_absent() -> None:
+    config_fields = {field.name for field in fields(TransformerBlockConfig)}
+    block = TransformerBlock(_block_config("mha"))
+
+    assert "recompute_ffn" not in config_fields
+    assert not hasattr(block.cfg, "recompute_ffn")
+    assert not hasattr(block, "_ffn_computation")
+    assert not hasattr(block, "_ffn_autograd_required")
+    assert not hasattr(block, "_invoke_ffn")
+
+
 @pytest.mark.parametrize(
     ("cfg", "message"),
     [
@@ -293,9 +304,7 @@ def test_dense_runtime_requires_attn_mask_and_prohibits_state_valid(
         )
 
 
-@pytest.mark.parametrize(
-    ("attention_type", "n_kv_heads"), [("mha", None), ("gqa", 1)]
-)
+@pytest.mark.parametrize(("attention_type", "n_kv_heads"), [("mha", None), ("gqa", 1)])
 @pytest.mark.parametrize("invocation", ["module", "direct", "update"])
 @pytest.mark.parametrize(
     ("case", "message"),
@@ -324,9 +333,7 @@ def test_dense_boundary_rejects_noncanonical_full_masks(
         _invoke_dense_block(block, invocation, x, freqs_cis, attn_mask)
 
 
-@pytest.mark.parametrize(
-    ("attention_type", "n_kv_heads"), [("mha", None), ("gqa", 1)]
-)
+@pytest.mark.parametrize(("attention_type", "n_kv_heads"), [("mha", None), ("gqa", 1)])
 @pytest.mark.parametrize("invocation", ["module", "direct", "update"])
 def test_dense_boundary_accepts_canonical_boolean_full_masks(
     attention_type: DenseAttentionType,
@@ -444,9 +451,7 @@ def test_forward_decorator_preserves_explicit_public_signatures() -> None:
 
     expected_unbound = inspect.signature(unwrapped_forward, follow_wrapped=False)
     assert inspect.signature(wrapped_forward) == expected_unbound
-    assert (
-        inspect.signature(wrapped_forward, follow_wrapped=False) == expected_unbound
-    )
+    assert inspect.signature(wrapped_forward, follow_wrapped=False) == expected_unbound
 
     block = TransformerBlock(_block_config("mha"))
     bound_unwrapped = unwrapped_forward.__get__(block, TransformerBlock)
@@ -480,8 +485,7 @@ def test_public_block_attention_arguments_remain_keyword_only(method_name: str) 
     assert signature.parameters["x"].kind is inspect.Parameter.POSITIONAL_OR_KEYWORD
     for parameter_name in ("freqs_cis", "attn_mask", "state_valid"):
         assert (
-            signature.parameters[parameter_name].kind
-            is inspect.Parameter.KEYWORD_ONLY
+            signature.parameters[parameter_name].kind is inspect.Parameter.KEYWORD_ONLY
         )
 
 
@@ -500,7 +504,8 @@ def test_direct_forward_matches_module_call_values_gradients_and_state(
     direct_block = TransformerBlock(cfg).eval()
     direct_block.load_state_dict(module_block.state_dict(), strict=True)
     initial_state = {
-        name: tensor.detach().clone() for name, tensor in module_block.state_dict().items()
+        name: tensor.detach().clone()
+        for name, tensor in module_block.state_dict().items()
     }
     module_x, freqs_cis, attn_mask = _dense_inputs()
     module_x.requires_grad_()
@@ -531,8 +536,10 @@ def test_direct_forward_matches_module_call_values_gradients_and_state(
         module_gradients, direct_gradients, strict=True
     ):
         torch.testing.assert_close(module_gradient, direct_gradient, atol=0, rtol=0)
-    assert set(module_block.state_dict()) == set(direct_block.state_dict()) == set(
-        initial_state
+    assert (
+        set(module_block.state_dict())
+        == set(direct_block.state_dict())
+        == set(initial_state)
     )
     for name, initial_tensor in initial_state.items():
         torch.testing.assert_close(module_block.state_dict()[name], initial_tensor)

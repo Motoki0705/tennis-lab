@@ -154,9 +154,7 @@ class TransformerBlock(nn.Module):
                 attn_dropout=cfg.attn_dropout,
                 bias=False,
             )
-            self._invoke_attention: _AttentionInvocation = (
-                self._invoke_dense_attention
-            )
+            self._invoke_attention: _AttentionInvocation = self._invoke_dense_attention
             self._validate_attention_arguments: _AttentionArgumentValidator = (
                 self._validate_dense_attention_arguments
             )
@@ -186,9 +184,7 @@ class TransformerBlock(nn.Module):
             self._validate_cswa_config(cfg, cfg.cswa)
             self.attn = CompressedSlidingWindowSelfAttention(cfg.cswa)
             self._invoke_attention = self._invoke_cswa_attention
-            self._validate_attention_arguments = (
-                self._validate_cswa_attention_arguments
-            )
+            self._validate_attention_arguments = self._validate_cswa_attention_arguments
         else:
             raise ValueError(f"Unsupported attention_type={cfg.attention_type}")
 
