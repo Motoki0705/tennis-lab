@@ -1,39 +1,25 @@
 # Completion hardening
 
-These rules are enforced by schema-v5 scripts rather than relying on instruction compliance alone.
+Schema-v5 scripts enforce these invariants.
 
-## Test authoring and final seal
+## Candidate and seal
 
-Preflight Reviewer PASS binds the candidate before independent test authoring. The Test Writer may add or update allowed tests, producing a new candidate fingerprint. After Tester PASS, an independent Seal Reviewer performs the no-edit final seal and re-runs complete seal-stage canonical checks. Any content change after Tester PASS rejects seal PASS and requires a fresh Preflight Reviewer and Test Writer cycle.
+Preflight PASS binds the pre-test candidate; allowed Test Writer edits may create another fingerprint, which Tester PASS binds. The no-edit Seal Reviewer reruns every seal-stage check. Any post-Tester content change rejects the seal and requires fresh Preflight/Test.
 
-## Candidate and PR binding
+Preflight, test, seal, validation, and packaging have separate state bindings. Validation equals the seal; packaging equals the validated candidate. History-only packaging may preserve the content fingerprint; content changes invalidate downstream evidence.
 
-Preflight, Tester, seal, Validator, and packaging fingerprints are separate state fields. Validation requires the sealed candidate; packaging requires the validated candidate.
+## PR-bound completion
 
-After Validator PASS, create or update the delivery PR and let the final-head checks complete. Then check out the exact PR head and run `capture-pr`. It queries the real PR through `gh`, stores all paginated changed files and the complete status-check rollup in `pr-evidence.json`, and binds the evidence digest to state. `finalize-pr` verifies:
+After Validator PASS, create/update the PR, finish final-head checks, check out that head, then `capture-pr`. Through `gh`, it stores real metadata, all paginated files, and the complete status rollup in `pr-evidence.json`, binding its digest to state.
 
-1. local HEAD equals the supplied PR head;
-2. the revision's content fingerprint equals the validated candidate;
-3. the captured complete paginated file list equals the revision diff;
-4. required remote checks in captured evidence are PASS;
-5. `pr-evidence.json`, its state digest, `packaging.md`, and current content agree.
+`finalize-pr` verifies local HEAD=supplied head, revision content=validated candidate, captured files=revision diff, required remote checks=PASS, and agreement among evidence JSON, state digest, `packaging.md`, and current content.
 
-History-only packaging is allowed when content fingerprint remains identical. Any content change invalidates downstream evidence.
+Validator PASS sets `status = "validated"`, `phase = "packaging"`, `verdict = "VALIDATED"`; only `finalize-pr` sets complete/PASS. Packaging failure preserves validated state. Content-changing repair returns to applicable Preflight/Test/Seal gates.
 
-## Two-stage completion
+## Atomicity and command authority
 
-Validator PASS sets `status = "validated"`, `phase = "packaging"`, `verdict = "VALIDATED"`. The task is not complete yet. Only `finalize-pr` can set `status = "complete"` and `verdict = "PASS"`.
+Every mutation first validates state/artifacts. Packaging/completion validate a prospective next state and whole task before atomically replacing `state.toml`; errors preserve prior bytes.
 
-A packaging failure leaves the task validated so the PR can be corrected without falsifying acceptance evidence. A content-changing correction requires returning to the applicable preflight/Tester/seal gates.
+Never reconstruct canonical commands from prose: `run-check` executes the manifest entry and writes results. A broader diagnostic forces RETURN only if it independently proves an AC defect; stale/altered invocations fail mechanically.
 
-## Automatic artifact checks
-
-Every mutating command validates its input artifact and state before writing. Completion and packaging build a prospective next state, validate it, run whole-task checks, and only then atomically replace `state.toml`. An error leaves prior state bytes unchanged.
-
-## Canonical command mismatch
-
-Agents never reconstruct authoritative commands from prose. `run-check` executes the exact manifest entry and generates the result JSON. A broader diagnostic failure may be reported, but it cannot force RETURN unless it independently proves an AC defect. A stale or altered canonical invocation is rejected mechanically.
-
-## User topology and rollover
-
-An explicit user request for one Implementer is compliant. It changes orchestration topology, not evidence gates. After Validator RETURN or several long cycles, use a fresh bounded session even with one Implementer; artifacts carry state more reliably and cheaply than inherited conversation logs.
+A user-directed sole Implementer changes topology, not gates. After Validator RETURN or several long cycles, prefer a fresh bounded session; artifacts carry state more reliably/cheaply than inherited chat.
