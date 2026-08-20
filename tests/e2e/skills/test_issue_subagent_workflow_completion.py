@@ -2,8 +2,14 @@ from __future__ import annotations
 
 import tomllib
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[3]
+
+
+def load_agent(filename: str) -> dict[str, Any]:
+    path = ROOT / ".codex/agents" / filename
+    return tomllib.loads(path.read_text(encoding="utf-8"))
 
 
 def test_user_directed_single_implementer_is_explicitly_compliant() -> None:
@@ -18,21 +24,74 @@ def test_user_directed_single_implementer_is_explicitly_compliant() -> None:
 
 
 def test_default_implementer_does_not_own_shared_artifacts() -> None:
-    path = ROOT / ".codex/agents/issue-implementer.toml"
-    payload = tomllib.loads(path.read_text(encoding="utf-8"))
+    payload = load_agent("issue-implementer.toml")
     instructions = payload["developer_instructions"]
     assert "By default, do not write shared workflow artifacts" in instructions
     assert "artifact_integrator = true" in instructions
-    assert "Only when the spawn message explicitly grants" in instructions
+    assert "replace only `implementation.md`" in instructions
+    assert "Never write `preflight.md` or `seal.md`" in instructions
+
+
+def test_reviewer_sequence_is_explicit() -> None:
+    skill = (
+        ROOT / ".agents/skills/issue-subagent-workflow/SKILL.md"
+    ).read_text(encoding="utf-8")
+    stages = (
+        "run one independent `preflight_reviewer`",
+        "run one independent Test Writer",
+        "run one independent `seal_reviewer`",
+        "The Validator receives",
+    )
+    offsets = [skill.index(stage) for stage in stages]
+    assert offsets == sorted(offsets)
+
+
+def test_dedicated_reviewers_own_only_gate_evidence() -> None:
+    cases = (
+        (
+            "preflight-reviewer.toml",
+            "preflight_reviewer",
+            "preflight.md",
+            "preflight-checks.json",
+            "run-check <task-dir> preflight <check-id>",
+            "artifact-check <task-dir> preflight",
+            "preflight-verdict",
+        ),
+        (
+            "seal-reviewer.toml",
+            "seal_reviewer",
+            "seal.md",
+            "seal-checks.json",
+            "run-check <task-dir> seal <check-id>",
+            "artifact-check <task-dir> seal",
+            "seal-verdict",
+        ),
+    )
+    for filename, name, artifact, results, run_check, artifact_check, verdict in cases:
+        payload = load_agent(filename)
+        instructions = payload["developer_instructions"]
+        assert payload["name"] == name
+        assert payload["model"] == "gpt-5.6-luna"
+        assert payload["model_reasoning_effort"] == "xhigh"
+        assert payload["sandbox_mode"] == "workspace-write"
+        assert f"only authored Markdown artifact is `{artifact}`" in instructions
+        assert results in instructions
+        assert run_check in instructions
+        assert artifact_check in instructions
+        assert f"Do not call `{verdict}`" in instructions
+        assert "Do not modify production code" in instructions
+        assert "Communication mode: terminal-only." in instructions
+
+
+def test_codebase_scout_uses_medium_effort() -> None:
+    scout = load_agent("codebase-scout.toml")
+    assert scout["model"] == "gpt-5.6-luna"
+    assert scout["model_reasoning_effort"] == "medium"
 
 
 def test_test_writer_and_validator_preserve_independent_gates() -> None:
-    tester = tomllib.loads(
-        (ROOT / ".codex/agents/test-writer.toml").read_text(encoding="utf-8")
-    )["developer_instructions"]
-    validator = tomllib.loads(
-        (ROOT / ".codex/agents/issue-validator.toml").read_text(encoding="utf-8")
-    )["developer_instructions"]
+    tester = load_agent("test-writer.toml")["developer_instructions"]
+    validator = load_agent("issue-validator.toml")["developer_instructions"]
     assert "Never modify production code" in tester
     assert "run-check <task-dir> test <check-id>" in tester
     assert "sole task specification" in validator

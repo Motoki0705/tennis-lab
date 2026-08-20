@@ -1,4 +1,16 @@
+background_terminal_max_timeout = 18000000
+
 [agents]
 max_concurrent_threads_per_session = 32
 # Legacy V1 nesting guard. MultiAgentV2 ignores max_depth.
 max_depth = 2
+
+[[hooks.PreToolUse]]
+matcher = "^Bash$"
+
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = '/usr/bin/python3 "$(git rev-parse --show-toplevel)/.codex/hooks/pre_tool_use_large_read.py"'
+async = false
+timeout = 30
+statusMessage = "Checking Bash read size"
