@@ -15,6 +15,7 @@ from src.tasks.blcs.models.components.observation_fusion import (
     LinearTrackObservationFusion,
     PointAttentionTrackObservationFusion,
 )
+from src.tasks.blcs.models.components.track_query_stage import BLCSTrackQueryStage
 from src.utils.configuration import ConfigurationTypeError
 from src.utils.models import TransformerBlock
 from src.utils.models.embeddings import CourtBallGroupEmbedding
@@ -248,26 +249,30 @@ def test_invisible_token_memory_ablation_controls_gradient(
 
 def test_stage_schedule_is_constructor_fixed_cccg_with_matching_modes() -> None:
     model = _model()
+    stages = [cast(BLCSTrackQueryStage, stage) for stage in model.stages]
 
-    assert [stage.is_global for stage in model.stages] == [False, False, False, True]
-    for stage in model.stages:
+    assert [stage.is_global for stage in stages] == [False, False, False, True]
+    for stage in stages:
         expected = "mha" if stage.is_global else "cswa"
         assert stage.object_temporal_block.cfg.attention_type == expected
         assert stage.query_temporal_block.cfg.attention_type == expected
         assert stage.spatial_block.cfg.attention_type == "mha"
+        assert not hasattr(stage.object_temporal_block.cfg, "recompute_ffn")
+        assert not hasattr(stage.query_temporal_block.cfg, "recompute_ffn")
+        assert not hasattr(stage.spatial_block.cfg, "recompute_ffn")
 
 
 def test_object_path_uses_forward_update_and_stage_layouts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     model = _model()
-    stage = model.stages[0]
+    stage = cast(BLCSTrackQueryStage, model.stages[0])
     observed: dict[str, tuple[int, ...]] = {}
     original_update = stage.object_temporal_block.forward_update
 
     def record_update(
         values: torch.Tensor,
-        **kwargs: torch.Tensor | None,
+        **kwargs: torch.Tensor,
     ) -> torch.Tensor:
         observed["object"] = tuple(values.shape)
         return original_update(values, **kwargs)

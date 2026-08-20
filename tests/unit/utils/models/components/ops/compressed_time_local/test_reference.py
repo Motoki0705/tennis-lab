@@ -148,6 +148,74 @@ def test_gather_reference_matches_dense_oracle_backward() -> None:
         )
 
 
+def test_shared_mqa_matches_expanded_dense_oracle_forward_and_backward() -> None:
+    torch.manual_seed(13)
+    query = torch.randn(2, 3, 7, 4, dtype=torch.float64)
+    shared_kv = torch.randn(2, 1, 3, 4, dtype=torch.float64)
+    query_valid = torch.tensor(
+        [
+            [True, True, False, True, True, False, True],
+            [True, False, True, True, False, True, True],
+        ]
+    )
+    key_valid = torch.tensor([[True, True, True], [True, False, True]])
+    actual_query = query.clone().requires_grad_()
+    actual_kv = shared_kv.clone().requires_grad_()
+    oracle_query = query.clone().requires_grad_()
+    oracle_kv = shared_kv.clone().requires_grad_()
+    upstream = torch.randn_like(query)
+
+    actual = reference_compressed_time_local_attention(
+        actual_query,
+        actual_kv,
+        actual_kv,
+        query_valid=query_valid,
+        key_valid=key_valid,
+        compression_ratio=3,
+        window_radius=1,
+    )
+    expanded_oracle_kv = oracle_kv.expand(-1, query.shape[1], -1, -1)
+    expected = _dense_oracle(
+        oracle_query,
+        expanded_oracle_kv,
+        expanded_oracle_kv,
+        query_valid=query_valid,
+        key_valid=key_valid,
+        compression_ratio=3,
+        window_radius=1,
+    )
+    actual_gradients = torch.autograd.grad(
+        (actual * upstream).sum(), (actual_query, actual_kv)
+    )
+    expected_gradients = torch.autograd.grad(
+        (expected * upstream).sum(), (oracle_query, oracle_kv)
+    )
+
+    torch.testing.assert_close(actual, expected, atol=1e-12, rtol=1e-10)
+    for actual_gradient, expected_gradient in zip(
+        actual_gradients, expected_gradients, strict=True
+    ):
+        torch.testing.assert_close(
+            actual_gradient, expected_gradient, atol=1e-12, rtol=1e-10
+        )
+
+
+def test_key_head_count_must_be_one_or_match_query_heads() -> None:
+    query = torch.randn(1, 3, 4, 2)
+    key = torch.randn(1, 2, 2, 2)
+
+    with pytest.raises(ValueError, match="key heads must be 1 or equal query heads"):
+        reference_compressed_time_local_attention(
+            query,
+            key,
+            key,
+            query_valid=torch.ones(1, 4, dtype=torch.bool),
+            key_valid=torch.ones(1, 2, dtype=torch.bool),
+            compression_ratio=2,
+            window_radius=1,
+        )
+
+
 def test_boundary_windows_select_first_middle_and_last_compressed_states() -> None:
     query = torch.zeros(1, 1, 9, 2)
     key = torch.zeros(1, 1, 3, 2)
@@ -337,9 +405,9 @@ def test_dropout_off_is_deterministic_and_training_dropout_is_finite() -> None:
 def test_sdpa_receives_fixed_window_not_dense_query_by_key_matrix(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    query = torch.randn(1, 2, 33, 4)
-    key = torch.randn(1, 2, 9, 4)
-    value = torch.randn(1, 2, 9, 4)
+    query = torch.randn(1, 3, 33, 4)
+    key = torch.randn(1, 1, 9, 4)
+    value = torch.randn(1, 1, 9, 4)
     query_valid = torch.ones(1, 33, dtype=torch.bool)
     key_valid = torch.ones(1, 9, dtype=torch.bool)
     original_sdpa = compressed_reference.F.scaled_dot_product_attention
@@ -379,8 +447,8 @@ def test_sdpa_receives_fixed_window_not_dense_query_by_key_matrix(
 
     assert observed_shapes == [
         (
-            torch.Size([1, 2, 33, 1, 4]),
-            torch.Size([1, 2, 33, 5, 4]),
+            torch.Size([1, 3, 33, 1, 4]),
+            torch.Size([1, 1, 33, 5, 4]),
             torch.Size([1, 1, 33, 1, 5]),
         )
     ]

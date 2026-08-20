@@ -152,7 +152,9 @@ class BLCSTrackQueryModel(nn.Module):
         time_major_valid = cast(Tensor, output[1])
         expected_time_major = state_valid.permute(0, 2, 1, 3)
         if time_major_valid.shape != expected_time_major.shape:
-            raise RuntimeError("observation encoder returned an invalid camera mask shape.")
+            raise RuntimeError(
+                "observation encoder returned an invalid camera mask shape."
+            )
 
     def _block_config(
         self,
@@ -161,9 +163,7 @@ class BLCSTrackQueryModel(nn.Module):
         head_dim: int,
         temporal_cswa: bool,
     ) -> TransformerBlockConfig:
-        attention_type: Literal["mha", "cswa"] = (
-            "cswa" if temporal_cswa else "mha"
-        )
+        attention_type: Literal["mha", "cswa"] = "cswa" if temporal_cswa else "mha"
         cswa_config = (
             CSWAConfig(
                 dim=self.hidden_dim,
@@ -276,9 +276,7 @@ class BLCSTrackQueryModel(nn.Module):
             dtype=torch.long,
         )
         camera_tokens[..., 0] = time.view(1, num_frames, 1, 1)
-        camera = torch.arange(1, num_views + 1, device=device).view(
-            1, 1, num_views, 1
-        )
+        camera = torch.arange(1, num_views + 1, device=device).view(1, 1, num_views, 1)
         camera_tokens[..., 1] = camera
         camera_tokens[..., 2] = 1
         return torch.cat([slot, camera_tokens.flatten(2, 3)], dim=2).flatten(0, 1)

@@ -48,9 +48,10 @@ def _validate_reference_inputs(
             "value shape must equal key shape, got "
             f"{tuple(value.shape)} and {tuple(key.shape)}"
         )
-    if (key_n, key_heads, key_head_dim) != (n, heads, head_dim):
+    if key_n != n or key_head_dim != head_dim or key_heads not in (1, heads):
         raise ValueError(
-            "query and key must have the same batch, head, and head dimensions"
+            "query and key must have the same batch and head dimensions, and "
+            "key heads must be 1 or equal query heads"
         )
     if query_len <= 0 or key_len <= 0 or n <= 0 or heads <= 0 or head_dim <= 0:
         raise ValueError("query and key dimensions must all be positive")
@@ -114,9 +115,10 @@ def reference_compressed_time_local_attention(
     """Attend each query only to a gathered window of compressed K/V.
 
     Query has shape ``[N,H,T,Dh]`` while key and value have shape
-    ``[N,H,Tc,Dh]`` where ``Tc=ceil(T/compression_ratio)``.  The function
-    materializes only ``[N,H,T,Wc,Dh]`` gathered windows, never a dense
-    ``[T,Tc]`` attention score or mask.
+    ``[N,Hkv,Tc,Dh]`` where ``Hkv`` is either ``1`` (multi-query attention) or
+    ``H``, and ``Tc=ceil(T/compression_ratio)``.  The function materializes
+    only gathered KV windows and relies on SDPA broadcasting when ``Hkv=1``;
+    it never copies KV across heads or creates a dense ``[T,Tc]`` score/mask.
 
     Invalid queries return exactly zero.  A valid query with no valid key in
     its compressed window violates the caller/compressor contract and raises.

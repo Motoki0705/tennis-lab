@@ -1,5 +1,7 @@
 #include <torch/extension.h>
 
+#include <c10/util/Optional.h>
+
 #include <cstdint>
 #include <vector>
 
@@ -9,6 +11,8 @@ std::vector<torch::Tensor> compressed_time_local_forward_cuda(
     torch::Tensor value,
     torch::Tensor query_valid,
     torch::Tensor key_valid,
+    c10::optional<torch::Tensor> query_phasors_real,
+    c10::optional<torch::Tensor> key_phasors_real,
     int64_t compression_ratio,
     int64_t window_radius);
 
@@ -19,8 +23,9 @@ std::vector<torch::Tensor> compressed_time_local_backward_cuda(
     torch::Tensor value,
     torch::Tensor query_valid,
     torch::Tensor key_valid,
-    torch::Tensor output,
     torch::Tensor logsumexp,
+    c10::optional<torch::Tensor> query_phasors_real,
+    c10::optional<torch::Tensor> key_phasors_real,
     int64_t compression_ratio,
     int64_t window_radius);
 

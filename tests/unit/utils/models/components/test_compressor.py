@@ -13,7 +13,9 @@ from src.utils.models.components.compressor import (
     CompressedKV,
     TokenLevelCompressorConfig,
     TokenLevelKVCompressor,
-    _build_compression_layout,
+)
+from src.utils.models.components.ops.token_compressor import (
+    build_token_compressor_layout,
 )
 
 
@@ -98,21 +100,14 @@ def _loop_oracle(
 
     compressed = torch.stack(rows, dim=1)
     compressed_valid = torch.stack(valid_rows, dim=1)
-    split = compressed.reshape(
-        n,
-        compressed_length,
-        2,
-        module.n_heads,
-        module.head_dim,
-    )
-    key, value = split.unbind(dim=2)
+    shared_kv = compressed.unsqueeze(1)
     positions = (
         torch.arange(compressed_length, device=x.device, dtype=torch.float32) * ratio
         + (ratio - 1) / 2
     ).clamp_max(float(sequence_length - 1))
     return CompressedKV(
-        key=key.transpose(1, 2),
-        value=value.transpose(1, 2),
+        key=shared_kv,
+        value=shared_kv,
         state_valid=compressed_valid,
         positions=positions,
     )
@@ -152,15 +147,36 @@ def test_config_rejects_invalid_values(
         TokenLevelCompressorConfig(**kwargs)  # type: ignore[arg-type]
 
 
-def test_constructor_requires_typed_config_and_zero_initial_gates() -> None:
+def test_constructor_requires_typed_config_and_uses_head_dim_projection_width() -> None:
     with pytest.raises(TypeError, match="TokenLevelCompressorConfig"):
         TokenLevelKVCompressor(object())  # type: ignore[arg-type]
 
-    module = TokenLevelKVCompressor(_config())
+    module = TokenLevelKVCompressor(
+        _config(dim=12, n_heads=3, head_dim=4, compression_ratio=3)
+    )
 
+    assert module.kv_dim == 4
+    assert module.w_kv.weight.shape == (8, 12)
+    assert module.w_kv.bias.shape == (8,)
+    assert module.w_gate.weight.shape == (8, 12)
+    assert module.w_gate.bias.shape == (8,)
+    assert module.ape.shape == (3, 8)
     assert torch.count_nonzero(module.w_gate.weight) == 0
     assert torch.count_nonzero(module.w_gate.bias) == 0
     assert torch.count_nonzero(module.ape) == 0
+
+
+def test_constructor_rejects_unknown_backend_without_automatic_dispatch() -> None:
+    with pytest.raises(ValueError, match="Unsupported token-compressor backend"):
+        TokenLevelKVCompressor(
+            _config(),
+            backend="automatic",  # type: ignore[arg-type]
+        )
+
+    with pytest.raises(ValueError, match="compression_ratio=4"):
+        TokenLevelKVCompressor(_config(compression_ratio=3), backend="cuda")
+    with pytest.raises(ValueError, match="head_dim=64"):
+        TokenLevelKVCompressor(_config(compression_ratio=4), backend="cuda")
 
 
 @pytest.mark.parametrize(
@@ -233,15 +249,16 @@ def test_ceil_tail_shapes_and_static_positions(
     x = torch.randn(3, sequence_length, 8)
     output = module(x, torch.ones(3, sequence_length, dtype=torch.bool))
 
-    assert output.key.shape == (3, 2, compressed_length, 4)
-    assert output.value.shape == (3, 2, compressed_length, 4)
+    assert output.key.shape == (3, 1, compressed_length, 4)
+    assert output.value.shape == (3, 1, compressed_length, 4)
+    assert output.key is output.value
     assert output.state_valid.shape == (3, compressed_length)
     assert output.positions.dtype == torch.float32
     torch.testing.assert_close(output.positions, torch.tensor(positions))
 
 
 def test_source_layout_covers_first_middle_and_partial_last_blocks() -> None:
-    layout = _build_compression_layout(5, 2, torch.device("cpu"))
+    layout = build_token_compressor_layout(5, 2, torch.device("cpu"))
 
     torch.testing.assert_close(
         layout.source_indices,
@@ -322,6 +339,52 @@ def test_padding_values_do_not_affect_compressed_outputs() -> None:
     torch.testing.assert_close(actual.state_valid, expected.state_valid)
 
 
+def test_validated_masked_and_projected_seams_match_standalone_masking() -> None:
+    module = TokenLevelKVCompressor(_config(compression_ratio=3))
+    x = torch.randn(2, 7, 8)
+    state_valid = torch.tensor(
+        [
+            [True, False, True, True, False, True, True],
+            [False, True, True, False, True, False, True],
+        ]
+    )
+    masked_x = torch.where(state_valid.unsqueeze(-1), x, torch.zeros_like(x))
+    raw_kv = module._project(masked_x, module.w_kv).reshape(2, 7, 2, 4)
+    raw_gate = module._project(masked_x, module.w_gate).reshape(2, 7, 2, 4)
+
+    expected = module(x, state_valid)
+    masked_actual = module.forward_masked(masked_x, state_valid)
+    projected_actual = module.forward_projected(raw_kv, raw_gate, state_valid)
+
+    for actual in (masked_actual, projected_actual):
+        torch.testing.assert_close(actual.key, expected.key)
+        torch.testing.assert_close(actual.value, expected.value)
+        torch.testing.assert_close(actual.state_valid, expected.state_valid)
+        assert actual.key is actual.value
+    with pytest.raises(ValueError, match="state_valid shape"):
+        module.forward_masked(masked_x, state_valid[:, :-1])
+
+
+def test_projected_seam_rejects_invalid_shapes_and_dtypes() -> None:
+    module = TokenLevelKVCompressor(_config(compression_ratio=3))
+    raw_kv = torch.randn(2, 7, 2, 4)
+    raw_gate = torch.randn_like(raw_kv)
+    state_valid = torch.ones(2, 7, dtype=torch.bool)
+
+    with pytest.raises(ValueError, match="raw_kv must have shape"):
+        module.forward_projected(raw_kv.flatten(2), raw_gate, state_valid)
+    with pytest.raises(ValueError, match="raw_gate shape must equal"):
+        module.forward_projected(raw_kv, raw_gate[:, :-1], state_valid)
+    with pytest.raises(TypeError, match="raw_gate dtype must equal"):
+        module.forward_projected(raw_kv, raw_gate.double(), state_valid)
+    with pytest.raises(TypeError, match="raw_kv must use"):
+        module.forward_projected(raw_kv.long(), raw_gate.long(), state_valid)
+    with pytest.raises(ValueError, match="state_valid shape"):
+        module.forward_projected(raw_kv, raw_gate, state_valid[:, :-1])
+    with pytest.raises(TypeError, match="state_valid must have dtype bool"):
+        module.forward_projected(raw_kv, raw_gate, state_valid.float())
+
+
 def test_forward_matches_loop_based_channel_wise_oracle() -> None:
     torch.manual_seed(17)
     module = TokenLevelKVCompressor(_config(compression_ratio=3))
@@ -346,7 +409,7 @@ def test_forward_matches_loop_based_channel_wise_oracle() -> None:
     torch.testing.assert_close(actual.positions, expected.positions)
 
 
-def test_key_value_split_and_head_axis_ordering() -> None:
+def test_two_branch_projection_produces_one_tied_key_value_latent() -> None:
     module = TokenLevelKVCompressor(_config(dim=6, n_heads=2, head_dim=3))
     with torch.no_grad():
         module.w_kv.weight.zero_()
@@ -357,12 +420,10 @@ def test_key_value_split_and_head_axis_ordering() -> None:
 
     torch.testing.assert_close(
         output.key,
-        torch.tensor([[[[0.0, 1.0, 2.0]], [[3.0, 4.0, 5.0]]]]),
+        torch.tensor([[[[0.0, 1.0, 2.0]]]]),
     )
-    torch.testing.assert_close(
-        output.value,
-        torch.tensor([[[[6.0, 7.0, 8.0]], [[9.0, 10.0, 11.0]]]]),
-    )
+    assert output.key is output.value
+    assert output.key.data_ptr() == output.value.data_ptr()
 
 
 def test_non_contiguous_inputs_match_contiguous_inputs() -> None:
@@ -409,15 +470,16 @@ def test_small_double_gradcheck() -> None:
     torch.manual_seed(29)
     module = TokenLevelKVCompressor(
         _config(dim=2, n_heads=1, head_dim=2, compression_ratio=2)
-    ).double()
+    )
+    module.double()
     for parameter in module.parameters():
         parameter.requires_grad_(False)
     x = torch.randn(1, 3, 2, dtype=torch.float64, requires_grad=True)
     state_valid = torch.tensor([[True, False, True]])
 
-    def compress(values: Tensor) -> tuple[Tensor, Tensor]:
-        output = module(values, state_valid)
-        return output.key, output.value
+    def compress(values: Tensor) -> Tensor:
+        output = module.forward(values, state_valid)
+        return output.key
 
     assert torch.autograd.gradcheck(
         compress,
