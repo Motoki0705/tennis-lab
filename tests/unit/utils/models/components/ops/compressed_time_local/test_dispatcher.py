@@ -366,6 +366,7 @@ def test_fake_cuda_public_boundary_is_one_compilable_dispatcher_graph() -> None:
     assert torch.ops.aten.clone.default not in call_targets
 
 
+@pytest.mark.cuda
 def test_fake_cuda_aot_autograd_compiles_first_order_backward() -> None:
     def loss(
         query: Tensor,
@@ -415,6 +416,7 @@ def test_fake_cuda_aot_autograd_compiles_first_order_backward() -> None:
     assert grad_value.shape == value.shape
 
 
+@pytest.mark.cuda
 def test_fake_cuda_fused_rope_aot_compiles_first_order_backward() -> None:
     def loss(
         query: Tensor,

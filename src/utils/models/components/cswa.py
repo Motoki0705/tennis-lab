@@ -182,56 +182,17 @@ class CompressedSlidingWindowSelfAttention(nn.Module):
         query_dim = self.n_heads * self.head_dim
         compressor_projection_dim = self.compressor.branches * self.compressor.kv_dim
         projection_layers = (
-            ("wq", self.wq, query_dim, False),
-            ("compressor.w_kv", self.compressor.w_kv, compressor_projection_dim, True),
-            (
-                "compressor.w_gate",
-                self.compressor.w_gate,
-                compressor_projection_dim,
-                True,
-            ),
+            self.wq,
+            self.compressor.w_kv,
+            self.compressor.w_gate,
         )
-        for name, layer, output_dim, requires_bias in projection_layers:
-            layer_bias = cast(Tensor | None, layer.bias)
-            expected_weight_shape = (output_dim, self.dim)
-            if layer.weight.shape != expected_weight_shape:
-                raise RuntimeError(
-                    f"{name}.weight must have shape {expected_weight_shape}, "
-                    f"got {tuple(layer.weight.shape)}"
-                )
-            if not layer.weight.is_floating_point():
-                raise TypeError(f"{name}.weight must be floating point")
-            if layer.weight.device != masked_x.device:
-                raise ValueError(
-                    f"{name}.weight must be on device {masked_x.device}, "
-                    f"got {layer.weight.device}"
-                )
-            if not requires_bias:
-                if layer_bias is not None:
-                    raise RuntimeError(f"{name} must remain bias-free")
-                continue
-            if layer_bias is None or layer_bias.shape != (output_dim,):
-                actual_shape = None if layer_bias is None else tuple(layer_bias.shape)
-                raise RuntimeError(
-                    f"{name}.bias must have shape {(output_dim,)}, got {actual_shape}"
-                )
-            if not layer_bias.is_floating_point():
-                raise TypeError(f"{name}.bias must be floating point")
-            if layer_bias.device != masked_x.device:
-                raise ValueError(
-                    f"{name}.bias must be on device {masked_x.device}, "
-                    f"got {layer_bias.device}"
-                )
-
-        kv_bias = cast(Tensor | None, self.compressor.w_kv.bias)
-        gate_bias = cast(Tensor | None, self.compressor.w_gate.bias)
-        if kv_bias is None or gate_bias is None:
-            raise RuntimeError("compressor KV and gate projections must retain biases")
+        kv_bias = cast(Tensor, self.compressor.w_kv.bias)
+        gate_bias = cast(Tensor, self.compressor.w_gate.bias)
         with torch.autocast(device_type=masked_x.device.type, enabled=False):
             packed_weight = torch.cat(
                 tuple(
                     layer.weight.to(dtype=masked_x.dtype)
-                    for _, layer, _, _ in projection_layers
+                    for layer in projection_layers
                 ),
                 dim=0,
             )
@@ -254,6 +215,52 @@ class CompressedSlidingWindowSelfAttention(nn.Module):
             raw_kv.reshape(projected_shape),
             raw_gate.reshape(projected_shape),
         )
+
+    def _validate_projection_parameters(self, input_device: torch.device) -> None:
+        """Validate packed-projection invariants at the module-call boundary."""
+        query_dim = self.n_heads * self.head_dim
+        compressor_projection_dim = self.compressor.branches * self.compressor.kv_dim
+        projection_layers = (
+            ("wq", self.wq, query_dim, False),
+            ("compressor.w_kv", self.compressor.w_kv, compressor_projection_dim, True),
+            (
+                "compressor.w_gate",
+                self.compressor.w_gate,
+                compressor_projection_dim,
+                True,
+            ),
+        )
+        for name, layer, output_dim, requires_bias in projection_layers:
+            layer_bias = cast(Tensor | None, layer.bias)
+            expected_weight_shape = (output_dim, self.dim)
+            if layer.weight.shape != expected_weight_shape:
+                raise RuntimeError(
+                    f"{name}.weight must have shape {expected_weight_shape}, "
+                    f"got {tuple(layer.weight.shape)}"
+                )
+            if not layer.weight.is_floating_point():
+                raise TypeError(f"{name}.weight must be floating point")
+            if layer.weight.device != input_device:
+                raise ValueError(
+                    f"{name}.weight must be on device {input_device}, "
+                    f"got {layer.weight.device}"
+                )
+            if not requires_bias:
+                if layer_bias is not None:
+                    raise RuntimeError(f"{name} must remain bias-free")
+                continue
+            if layer_bias is None or layer_bias.shape != (output_dim,):
+                actual_shape = None if layer_bias is None else tuple(layer_bias.shape)
+                raise RuntimeError(
+                    f"{name}.bias must have shape {(output_dim,)}, got {actual_shape}"
+                )
+            if not layer_bias.is_floating_point():
+                raise TypeError(f"{name}.bias must be floating point")
+            if layer_bias.device != input_device:
+                raise ValueError(
+                    f"{name}.bias must be on device {input_device}, "
+                    f"got {layer_bias.device}"
+                )
 
     def validate_inputs(
         self,
@@ -317,6 +324,7 @@ class CompressedSlidingWindowSelfAttention(nn.Module):
             raise ValueError(
                 f"x must be on module device {parameter_device}, got {x.device}"
             )
+        self._validate_projection_parameters(x.device)
 
     def _validate_forward_inputs(
         self,
@@ -343,7 +351,7 @@ class CompressedSlidingWindowSelfAttention(nn.Module):
         query, raw_kv, raw_gate = self._project_query_kv_gate(masked_x)
         query = query.reshape(n, query_len, self.n_heads, self.head_dim)
 
-        compressed = self.compressor.forward_projected(
+        compressed = self.compressor._pool_projected(
             raw_kv,
             raw_gate,
             state_valid,

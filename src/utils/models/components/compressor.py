@@ -295,7 +295,7 @@ class TokenLevelKVCompressor(nn.Module):
             self.branches,
             self.kv_dim,
         )
-        return self.forward_projected(raw_kv, raw_gate, state_valid)
+        return self._pool_projected(raw_kv, raw_gate, state_valid)
 
     def _pool_projected(
         self,
