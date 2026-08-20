@@ -13,16 +13,22 @@ concurrency:
 jobs:
   lint-and-test:
     name: Python / ${{ matrix.lane }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
           - lane: remainder
-            install_ffmpeg: true
+            install_system_dependencies: true
+            pytest_workers: auto
             run_static_checks: true
           - lane: long-tail
-            install_ffmpeg: false
+            install_system_dependencies: false
+            pytest_workers: auto
+            run_static_checks: false
+          - lane: scene-pipeline
+            install_system_dependencies: false
+            pytest_workers: "0"
             run_static_checks: false
     steps:
       - name: Checkout
@@ -36,9 +42,11 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install ffmpeg
-        if: matrix.install_ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Install system dependencies
+        if: matrix.install_system_dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg rclone
 
       - name: Lint
         if: matrix.run_static_checks
@@ -52,31 +60,45 @@ jobs:
       - name: Test ${{ matrix.lane }} lane
         run: |
           mapfile -t test_files < "$RUNNER_TEMP/test-files.txt"
+          parallel_args=(-n "${{ matrix.pytest_workers }}")
+          if [[ "${{ matrix.pytest_workers }}" != "0" ]]; then
+            parallel_args+=(--dist=worksteal)
+          fi
           uv run --locked python -m pytest \
             "${test_files[@]}" \
             -m "not local_data and not cuda" \
             -q \
             --no-cov \
-            --dist=worksteal \
+            "${parallel_args[@]}" \
             --durations=25
 
       - name: Validate formal and staged knowledge
         if: matrix.run_static_checks
-        run: uv run --locked python scripts/check_knowledge.py
+        run: |
+          uv run --locked python \
+            .agents/skills/knowledge-control/scripts/kg_validate.py
+          uv run --locked python \
+            .agents/skills/literature-radar/scripts/radar_hardening.py \
+            validate --repo-root .
+          uv run --locked python \
+            .agents/skills/literature-radar/scripts/radar_status.py \
+            validate --repo-root .
 
   knowledge-webui:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: knowledge/webui
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          submodules: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: "22"
+          node-version: 24
           cache: npm
           cache-dependency-path: knowledge/webui/package-lock.json
 
