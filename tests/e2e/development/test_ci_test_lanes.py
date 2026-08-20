@@ -15,6 +15,9 @@ EXPECTED_LONG_TAIL = {
     "tests/unit/utils/configuration/test_discovery.py",
     "tests/unit/utils/configuration/test_inventory.py",
 }
+EXPECTED_SCENE_PIPELINE = {
+    "tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py"
+}
 
 
 def _run_selector(lane: str) -> tuple[str, ...]:
@@ -38,15 +41,19 @@ def _discover_test_files() -> set[str]:
 
 def test_ci_lanes_partition_every_test_file_exactly_once() -> None:
     long_tail = set(_run_selector("long-tail"))
+    scene_pipeline = set(_run_selector("scene-pipeline"))
     remainder = set(_run_selector("remainder"))
+    specialized = long_tail | scene_pipeline
 
     assert long_tail == EXPECTED_LONG_TAIL
-    assert long_tail.isdisjoint(remainder)
-    assert long_tail | remainder == _discover_test_files()
+    assert scene_pipeline == EXPECTED_SCENE_PIPELINE
+    assert long_tail.isdisjoint(scene_pipeline)
+    assert specialized.isdisjoint(remainder)
+    assert specialized | remainder == _discover_test_files()
 
 
 def test_ci_lane_output_is_sorted_unique_and_repo_relative() -> None:
-    for lane in ("long-tail", "remainder"):
+    for lane in ("long-tail", "remainder", "scene-pipeline"):
         selected = _run_selector(lane)
 
         assert selected
