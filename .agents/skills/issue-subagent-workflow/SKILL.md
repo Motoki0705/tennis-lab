@@ -1,6 +1,6 @@
 ---
 name: issue-subagent-workflow
-description: Orchestrate one tennis-lab GitHub Issue through feasibility, exploration, parent planning, implementation, independent preflight/test/seal, Issue-only validation, and PR-bound completion with reproducible PASS/RETURN/BLOCKED/VALIDATED transitions.
+description: Orchestrate Issue-driven implementation, fixes, or refactors in tennis-lab through feasibility, exploration, parent planning, implementation, independent preflight/test/seal, Issue-only validation, and PR-bound completion with reproducible PASS/RETURN/BLOCKED/VALIDATED transitions.
 ---
 
 # Issue subagent workflow
@@ -27,9 +27,9 @@ This freezes canonical `issue.json`, renders `issue.md`, records both hashes, cr
 4. Execute the selected topology; one Implementer or sequential execution is compliant. Only the parent or explicit implementation integrator writes `implementation.md`.
 5. After integration, run one independent `preflight_reviewer`. It edits only preflight evidence, uses `run-check`, and returns PASS/RETURN; the parent verifies artifact, machine results, and fingerprint before `preflight-verdict`.
 6. After Preflight PASS, run one independent Test Writer. It may change allowed tests, never production; `test-verdict` binds the post-test candidate.
-7. After Tester PASS, run one independent `seal_reviewer` with no source/test edits. It inspects full scope, reruns seal checks, and returns PASS/RETURN; the parent applies `seal-verdict`.
+7. After Tester PASS, run one independent `seal_reviewer` with no source/test edits. It inspects full scope, reruns canonical seal checks, and returns PASS/RETURN; the parent applies `seal-verdict`.
 8. Enter validation only after Tester and Seal PASS. The Validator receives the frozen Issue and sealed candidate identity, not prior narratives.
-9. Validator PASS sets `status = "validated"`, `phase = "packaging"`—not completion. Create/update the PR, check out its final head, run `capture-pr`, write `packaging.md` with the evidence digest, then run `finalize-pr`. `capture-pr` records real PR metadata, all paginated changed files, and remote checks; only `finalize-pr` sets `status = "complete"`.
+9. Validator PASS sets `status = "validated"`, `phase = "packaging"`—not completion. Create/update the PR, check out its final head, run `capture-pr`, write `packaging.md` with the evidence digest, then run `finalize-pr`. `capture-pr` records real PR metadata, all paginated changed files, and remote checks in state; only `finalize-pr` sets `status = "complete"`.
 
 ## Delegation
 
