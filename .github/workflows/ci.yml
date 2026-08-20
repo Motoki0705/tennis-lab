@@ -4,11 +4,26 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint-and-test:
-    runs-on: ubuntu-latest
-
+    name: Python / ${{ matrix.lane }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lane: remainder
+            install_ffmpeg: true
+            run_static_checks: true
+          - lane: long-tail
+            install_ffmpeg: false
+            run_static_checks: false
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -21,44 +36,47 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install system dependencies
-        # ffmpeg is required by video e2e tests; rclone is required by the
-        # local-to-Google-Drive command e2e tests.
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg rclone
+      - name: Install ffmpeg
+        if: matrix.install_ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
 
-      - name: Project checks
-        # `spin ci` is the shared local/CI entry point. This runner is CPU-only
-        # and has no large local datasets, so it excludes those pytest markers.
-        run: uv run --locked spin ci
+      - name: Lint
+        if: matrix.run_static_checks
+        run: uv run --locked spin lint
+
+      - name: Select test lane
+        run: |
+          python3 scripts/ci/select_test_lane.py "${{ matrix.lane }}" > "$RUNNER_TEMP/test-files.txt"
+          test -s "$RUNNER_TEMP/test-files.txt"
+
+      - name: Test ${{ matrix.lane }} lane
+        run: |
+          mapfile -t test_files < "$RUNNER_TEMP/test-files.txt"
+          uv run --locked python -m pytest \
+            "${test_files[@]}" \
+            -m "not local_data and not cuda" \
+            -q \
+            --no-cov \
+            --dist=worksteal \
+            --durations=25
 
       - name: Validate formal and staged knowledge
-        run: |
-          uv run --locked python \
-            .agents/skills/knowledge-control/scripts/kg_validate.py
-          uv run --locked python \
-            .agents/skills/literature-radar/scripts/radar_hardening.py \
-            validate --repo-root .
-          uv run --locked python \
-            .agents/skills/literature-radar/scripts/radar_status.py \
-            validate --repo-root .
+        if: matrix.run_static_checks
+        run: uv run --locked python scripts/check_knowledge.py
 
   knowledge-webui:
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: knowledge/webui
-
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          submodules: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version: "22"
           cache: npm
           cache-dependency-path: knowledge/webui/package-lock.json
 
