@@ -1,12 +1,12 @@
 # Spawn contracts
 
-Use `fork_turns = "none"` exactly with custom agent types and a unique lowercase `task_name`. Numeric values, inherited turn windows, `all`, and omission are noncompliant. This applies to initial work, retries, post-compaction work, packaging repairs, Preflight Reviewers, Test Writers, Seal Reviewers, Validators, and bounded Validator child exploration. Pass required context through frozen artifacts, explicit paths, AC IDs, ownership, and focused failure bundles instead of inherited parent turns. Parallelism is optional when the user explicitly requests one Implementer or sequential execution.
+Use `fork_turns = "none"` exactly, a custom agent type, and unique lowercase `task_name`. Numeric values, inherited turn windows, `all`, and omission are noncompliant for initial/retry/post-compaction work, packaging repairs, all reviewers, Test Writers, Validators, and bounded Validator children. Context comes from frozen artifacts, paths, AC IDs, ownership, and focused failures. Parallelism is optional when the user requests one Implementer/sequential execution.
 
-If any child was spawned with `fork_turns` other than `"none"`, do not accept its handoff or verdict. Stop or discard that child and respawn a fresh replacement with the same bounded assignment. This is especially mandatory for Reviewer, Test Writer, and Validator independence.
+For any other `fork_turns`, do not accept its handoff or verdict: stop/discard the child and respawn the same bounded assignment fresh. This is mandatory for Reviewer, Test Writer, and Validator independence.
 
-## Mandatory assignment footer
+## Mandatory footer
 
-Append this exact footer to every `spawn_agent` assignment, including retries and bounded Validator child exploration:
+Append verbatim to every assignment, including retries and bounded Validator children:
 
 ```text
 Communication mode: terminal-only.
@@ -15,52 +15,26 @@ Before the final response, contact the parent only for missing authority, an own
 Return exactly one compact final handoff when the assignment is complete.
 ```
 
-Do not weaken or paraphrase the footer. Custom agent `developer_instructions` repeat the same contract so the policy is versioned and testable; the assignment footer remains mandatory because it sets the cadence for the concrete child turn.
+Do not weaken/paraphrase it. Custom-agent instructions repeat it for versioned testing; the assignment copy governs the concrete turn. A permitted pre-terminal escalation names the exact missing authority, conflicting owner/path, or unresolved blocker, then stops. Evidence, completed work, output, elapsed time, and estimates stay in the child thread, logs, or artifact.
 
-An allowed pre-terminal escalation must identify the exact authority needed, conflicting owner/path, or unresolved blocker and stop. Newly discovered evidence, completed substeps, test output, elapsed time, and estimated completion are not escalation reasons; keep them in the child thread, task logs, or authoritative artifact.
+## Roles
 
-## Scout
+**Scout.** Read-only; answer one bounded repository question with candidate files/symbols, direct evidence, nearby tests/config, ambiguity, and whether exploration must broaden. Deterministic scripts handle mechanical whole-repository inventories.
 
-One bounded repository question, read-only. Return candidate files/symbols, direct evidence, nearby tests/configuration, ambiguity, and whether formal exploration must broaden. Do not perform mechanical whole-repository inventories that a deterministic script can produce.
+**Explorer.** One authoritative session per attempt: read the frozen Issue, independently verify Scout leads, replace only `exploration.md`, run `artifact-check ... exploration`, return a compact handoff. After Validator RETURN, default fresh.
 
-## Explorer
+**Implementer.** Modify only assigned production or explicitly allowed tests; return a compact handoff. Do not write `implementation.md`, `preflight.md`, `seal.md`, plans, or validation. Record topology/ownership in `plan.md` first. Only a sole/named worker explicitly granted `artifact_integrator = true` may join handoffs and write `implementation.md`; no Implementer owns reviewer artifacts, stage checks, or verdicts. Retry prompts contain only affected ACs, failing command IDs/observations, ownership, and paths—not the full Issue.
 
-One authoritative Explorer per attempt. Read the frozen Issue, independently verify Scout leads, replace only `exploration.md`, run `artifact-check ... exploration`, and return a compact handoff. After Validator RETURN, use a fresh bounded session by default.
+**Preflight Reviewer.** Spawn exactly one `preflight_reviewer` after integration and complete `implementation.md`. It reads frozen Issue, exploration, plan, `checks.json`, implementation, repository guidance, current code, and full diff; writes only `preflight.md` plus canonical `run-check` results/logs; edits neither production nor tests. Run all required preflight checks and `artifact-check ... preflight`, then PASS/RETURN with actionable findings. Parent alone calls `preflight-verdict`; RETURN leads to bounded repair and a fresh Reviewer.
 
-## Implementer
+**Test Writer.** Spawn after Preflight PASS. It reads frozen Issue, plan, `checks.json`, current code/diff, and public behavior—not implementation/preflight narratives. Change only allowed tests; use `run-check`, record post-test fingerprint in `tests.md`, run `artifact-check ... tests`, return PASS/RETURN. Any production edit requires fresh Preflight.
 
-Default Implementers modify only assigned production or explicitly allowed test ownership and return a compact handoff. They do **not** write `implementation.md`, `preflight.md`, `seal.md`, plans, or validation.
+**Seal Reviewer.** Spawn exactly one `seal_reviewer` after Tester PASS. It reads frozen Issue, plan, `checks.json`, state, `tests.md`, repository guidance, current code/full diff—not implementation/preflight narratives—and first proves equality with the Tester PASS fingerprint. Write only `seal.md` plus canonical results/logs; edit neither source nor tests. Inspect full scope/rules, run all seal checks and `artifact-check ... seal`, then PASS/RETURN. Parent alone calls `seal-verdict`; any repair requires fresh Preflight/Test before resealing.
 
-Before spawning, record ownership and topology in `plan.md`. In a one-Implementer topology, or when one worker is explicitly named implementation integrator, the spawn message may grant `artifact_integrator = true`. Only that explicit integrator may join handoffs and write `implementation.md`. No Implementer writes `preflight.md` or `seal.md`, runs Reviewer-stage canonical checks, or owns a Reviewer verdict.
+**Validator.** Spawn only after Seal PASS with frozen Issue and sealed identity, never prior narratives. The assignment may name validation artifact/helper paths, but omits plan, implementation/test narratives, prior validation, and expected verdict. Independently inspect current revision/full diff, write one exact AC matrix, run `artifact-check ... validation`, and own PASS/RETURN. Bounded child Explorers gather evidence for explicit ACs only; they never decide.
 
-Retry messages contain only affected AC IDs, concrete failing command IDs and observations, ownership, and artifact paths. Do not restate the full Issue.
+## Waiting
 
-## Preflight Reviewer
+Do parent work before one event-driven `wait_agent` call with `timeout_ms = 3_600_000` when supported, otherwise the maximum. Do not use shorter waits as polling intervals or call `list_agents` merely to check unchanged state.
 
-Spawn exactly one `preflight_reviewer` after all Implementer work is integrated and `implementation.md` is complete. It reads the frozen Issue, exploration, plan, `checks.json`, implementation artifact, repository guidance, current code, and complete diff. It may write only `preflight.md` plus machine results and logs generated by canonical `run-check` commands; it never edits production or tests.
-
-The Reviewer executes every required preflight-stage check, runs `artifact-check ... preflight`, and returns PASS or RETURN with actionable findings. The parent alone applies `preflight-verdict`. A RETURN goes to a bounded Implementer repair and requires a fresh Preflight Reviewer session.
-
-## Test Writer
-
-Spawn only after Preflight Reviewer PASS. It reads the frozen Issue, plan, `checks.json`, current code/diff, and public behavior; it does not read implementation or preflight narratives. It may change only allowed tests. It executes authorized test-stage checks through `run-check`, writes the post-test candidate fingerprint into `tests.md`, runs `artifact-check ... tests`, and returns PASS or RETURN. Any production edit is a contract violation and requires a fresh Preflight Reviewer.
-
-## Seal Reviewer
-
-Spawn exactly one `seal_reviewer` after Test Writer PASS. It reads the frozen Issue, plan, `checks.json`, state, `tests.md`, repository guidance, current code, and complete diff, but not implementation or preflight narratives. It first proves that the current fingerprint equals the Tester PASS candidate. It may write only `seal.md` plus machine results and logs generated by canonical `run-check` commands; it never edits source or tests.
-
-The Reviewer inspects complete scope and repository-rule compliance, executes every required seal-stage check, runs `artifact-check ... seal`, and returns PASS or RETURN. The parent alone applies `seal-verdict`. Any repair after RETURN requires a fresh Preflight Reviewer and Test Writer cycle before another Seal Reviewer.
-
-## Validator
-
-Spawn only after final-seal PASS. Give it the frozen Issue and sealed candidate identity, not prior narratives. The assignment may name the validation artifact path and canonical helper path, but it must not include plan, implementation, test narrative, prior validation, or an expected verdict. It independently inspects the current revision and complete diff, writes one exact AC matrix, runs `artifact-check ... validation`, and owns the final PASS/RETURN.
-
-Bounded child Explorers may collect direct evidence for explicit AC IDs, but they do not decide the verdict.
-
-## Waiting and context
-
-Do independent parent work before waiting. Then join the active wave with one event-driven `wait_agent` call using `timeout_ms = 3_600_000` when supported, otherwise the maximum accepted timeout. Do not use shorter waits as polling intervals and do not call `list_agents` merely to check unchanged state.
-
-`wait_agent` can return when any child communicates, so a one-hour timeout alone does not guarantee a one-hour sleep. Treat only `FINAL_ANSWER` as completion. For any nonterminal message that is not an allowed escalation, do not reply or summarize it; resume the same long wait immediately.
-
-Join each completed child once. Raw logs and intermediate evidence stay in child threads or task logs. Parent summaries contain only terminal status, changed files or evidence, exact command IDs and outcomes, unresolved risks, and the next state transition.
+Any child message may wake the wait; Treat only `FINAL_ANSWER` as completion. For nonterminal non-escalations, neither reply nor summarize—resume the same wait. Join each child once. Raw evidence stays in child threads/task logs; parent summaries contain terminal status, changed files/evidence, exact command IDs/outcomes, risks, and next transition.
