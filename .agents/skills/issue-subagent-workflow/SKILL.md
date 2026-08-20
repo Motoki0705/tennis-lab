@@ -1,51 +1,43 @@
 ---
 name: issue-subagent-workflow
-description: Orchestrate one tennis-lab GitHub Issue through feasibility, evidence-focused exploration, parent-authored planning, implementation, independent preflight review, independent test authoring, independent candidate sealing, Issue-only validation, and PR-bound completion. Use for Issue-driven implementation, fixes, or refactors that require reproducible PASS/RETURN/BLOCKED/VALIDATED state transitions.
+description: Orchestrate Issue-driven implementation, fixes, or refactors in tennis-lab through feasibility, exploration, parent planning, implementation, independent preflight/test/seal, Issue-only validation, and PR-bound completion with reproducible PASS/RETURN/BLOCKED/VALIDATED transitions.
 ---
 
 # Issue subagent workflow
 
-Run one Issue through the fail-closed state machine in `state.toml`. GitHub is the upstream specification and final delivery surface; do not use Issue comments as workflow storage.
+Drive one Issue through the fail-closed `state.toml` machine. GitHub is the upstream specification and delivery surface; Issue comments are not workflow storage.
 
-## Load only the contracts needed now
-
-Always read [workflow](references/workflow.md) and [document contracts](references/document-contracts.md). Read [spawn contracts](references/spawn-contracts.md) immediately before delegation, [completion hardening](references/completion-hardening.md) before a final seal or PR packaging, and [goal integration](references/goal-integration.md) only when `/goal` is active.
+Always read [workflow](references/workflow.md) and [document contracts](references/document-contracts.md). Read [spawn contracts](references/spawn-contracts.md) immediately before delegation, [completion hardening](references/completion-hardening.md) before sealing/packaging, and [goal integration](references/goal-integration.md) only with `/goal`.
 
 ## Initialize
 
 ```bash
 TASK=.codex/tasks/issue-<number>
 MANAGE=.agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py
-
 python .agents/skills/issue-subagent-workflow/scripts/init_issue_task.py <issue>
 ```
 
-Initialization freezes canonical `issue.json`, renders `issue.md`, records both hashes, creates schema-v5 state, and scaffolds every formal artifact. Refresh the Issue only after the upstream specification changes; refresh restarts feasibility and replaces stale formal artifacts.
+This freezes canonical `issue.json`, renders `issue.md`, records both hashes, creates schema-v5 state, and scaffolds all formal artifacts. Refresh only after the upstream Issue changes; it restarts feasibility and replaces stale artifacts.
 
 ## Required loop
 
-1. Complete feasibility. A breaking change that cannot satisfy immutable tests or another Issue constraint is `BLOCKED`, not an implementation loop.
-2. Run bounded Scouts only for independent semantic questions, then one authoritative Explorer.
-3. Transition `exploration -> planning`; the mutating command automatically validates `exploration.md`.
-4. The parent writes `plan.md` and machine-readable `02-planning/checks.json`, including exact argv, cwd, environment, stage, and AC authority for every canonical check.
-5. Transition `planning -> implementation`; the command validates both plan and check manifest.
-6. Run the user-selected implementation topology. An explicit request for one Implementer or sequential execution is compliant. Only the parent or an explicitly designated implementation integrator writes `implementation.md`.
-7. After implementation is integrated, run one independent `preflight_reviewer` on the current candidate. It may write only preflight evidence, executes canonical checks through `run-check`, and returns PASS or RETURN; the parent applies `preflight-verdict` after validating the artifact, machine results, and candidate fingerprint.
-8. After Preflight Reviewer PASS, run one independent Test Writer. It may add or update allowed tests but may not modify production. `test-verdict` binds its result to the post-test candidate.
-9. After Tester PASS, run one independent `seal_reviewer` without editing source or tests. It re-runs seal-stage canonical checks over the complete candidate, inspects scope, and returns PASS or RETURN; the parent applies `seal-verdict`.
-10. Transition to validation only after Tester PASS and Seal Reviewer PASS. The Validator receives the frozen Issue and sealed candidate identity, not prior narratives.
-11. Validator PASS produces `status = "validated"`, `phase = "packaging"`; it does not complete the task.
-12. Create or update the PR, check out its final head, then run `capture-pr`. The helper queries the real PR metadata, paginates every changed-file page, records remote checks, and binds that evidence to state. Write `packaging.md` with the captured evidence digest and run `finalize-pr`. Only this command sets `status = "complete"`.
+1. Complete feasibility. A breaking change incompatible with immutable tests or another Issue constraint is `BLOCKED`, not an implementation loop.
+2. Use bounded Scouts only for independent semantic questions, then one authoritative Explorer; `transition ... planning` validates `exploration.md`.
+3. The parent writes `plan.md` and `02-planning/checks.json`, whose checks define exact argv, cwd, environment, stages, and AC authority; `transition ... implementation` validates both.
+4. Execute the selected topology; one Implementer or sequential execution is compliant. Only the parent or explicit implementation integrator writes `implementation.md`.
+5. After integration, run one independent `preflight_reviewer`. It edits only preflight evidence, uses `run-check`, and returns PASS/RETURN; the parent verifies artifact, machine results, and fingerprint before `preflight-verdict`.
+6. After Preflight PASS, run one independent Test Writer. It may change allowed tests, never production; `test-verdict` binds the post-test candidate.
+7. After Tester PASS, run one independent `seal_reviewer` with no source/test edits. It inspects full scope, reruns canonical seal checks, and returns PASS/RETURN; the parent applies `seal-verdict`.
+8. Enter validation only after Tester and Seal PASS. The Validator receives the frozen Issue and sealed candidate identity, not prior narratives.
+9. Validator PASS sets `status = "validated"`, `phase = "packaging"`—not completion. Create/update the PR, check out its final head, run `capture-pr`, write `packaging.md` with the evidence digest, then run `finalize-pr`. `capture-pr` records real PR metadata, all paginated changed files, and remote checks in state; only `finalize-pr` sets `status = "complete"`.
 
-## Delegation communication and waiting
+## Delegation
 
-Every `spawn_agent` call must set `fork_turns = "none"` exactly, including retries, post-compaction work, packaging repairs, Preflight Reviewers, Test Writers, Seal Reviewers, Validators, and bounded Validator children. Never use a numeric or inherited turn window as a shortcut for writing a focused assignment. Required context travels through frozen artifacts, explicit artifact paths, AC IDs, ownership, and the concrete failure bundle. A Validator spawned with inherited parent turns is not independent and must be replaced before its verdict is accepted. The same independence rule applies to a Preflight Reviewer, Test Writer, or Seal Reviewer.
+Every `spawn_agent` call must set `fork_turns = "none"` exactly, including retries, post-compaction work, packaging repairs, all reviewers, Test Writers, Validators, and bounded Validator children. Pass context only through frozen artifacts, explicit paths, AC IDs, ownership, and focused failure bundles. A Validator spawned with inherited parent turns is not independent; neither are Preflight Reviewers, Test Writers, or Seal Reviewers—discard and respawn them.
 
-Every `spawn_agent` assignment must end with the exact terminal-only footer from [spawn contracts](references/spawn-contracts.md), even when the selected custom agent already contains the same policy. The duplicate boundary is intentional: the versioned agent config is auditable, while the assignment-level footer overrides generic progress-update defaults for that concrete child turn.
+Every assignment ends with the exact terminal-only footer in [spawn contracts](references/spawn-contracts.md), even if custom-agent instructions repeat it. Children return one compact terminal handoff and may interrupt earlier only for missing authority, ownership collision, or an unresolved in-scope blocker.
 
-Child agents work silently and return exactly one compact terminal handoff. Before that handoff they may interrupt the parent only for missing authority, an ownership collision, or a blocker that cannot be resolved inside the assigned scope. New evidence, completed milestones, commands in progress, and percentage updates stay in the child thread or formal artifact.
-
-After spawning a wave, do independent parent work first, then call `wait_agent` once with `timeout_ms = 3_600_000` when supported, otherwise the maximum accepted timeout. The timeout is an upper bound, not a polling cadence: `wait_agent` may wake for any child message. A nonterminal message is not completion; unless it is an allowed escalation, do not answer it, do not call `list_agents`, and immediately resume the same long wait. Aggregate user-visible status at workflow phase boundaries instead of forwarding child chatter.
+After independent parent work, call `wait_agent` once with `timeout_ms = 3_600_000` when supported, otherwise the maximum. Treat it as an event-driven upper bound: for a nonterminal non-escalation, neither answer nor call `list_agents`; resume the same wait. Update users at phase boundaries.
 
 ## Canonical commands
 
@@ -65,17 +57,13 @@ python $MANAGE finalize-pr $TASK --pr-number <n> --head-sha <40-char-sha>
 python $MANAGE check $TASK
 ```
 
-Artifact checks are also enforced inside every mutating transition; manual checks are an early feedback tool, not an optional safety boundary.
+Mutations enforce artifact checks; manual `artifact-check` is early feedback, never a bypass.
 
-## Non-negotiable boundaries
+## Boundaries
 
-- Implementer, Preflight Reviewer, Test Writer, and Seal Reviewer run sequentially and never concurrently.
-- Implementers never write `preflight.md` or `seal.md`; the dedicated Reviewers own those artifacts and the parent owns verdict state transitions.
-- A Test Writer may change tests after Preflight Reviewer PASS, so independent final sealing is mandatory before validation.
-- Any content change after Tester PASS invalidates the seal; any content change after the seal invalidates validation and packaging.
-- A non-canonical diagnostic failure is not a Tester RETURN. Run the command ID from `checks.json`; the helper records and verifies its normalized invocation.
-- Do not treat a user-directed single-Implementer topology as noncompliance.
-- Do not open or update the delivery PR before Validator PASS unless the user explicitly requires an earlier draft; completion still requires final-head binding.
-- Never create `*-v2.md`; replace the authoritative artifact in place.
-- Never use routine child progress messages as a substitute for artifacts, terminal handoffs, or state transitions.
-- Never accept a child verdict produced from `fork_turns` other than `"none"`.
+- Implementer → Preflight Reviewer → Test Writer → Seal Reviewer is strictly sequential. Implementers never write `preflight.md`/`seal.md`; Reviewers own those artifacts, the parent owns verdict transitions.
+- Test Writer edits make final sealing mandatory. Content changes after Tester PASS invalidate the seal; post-seal changes invalidate validation and packaging.
+- Stage verdicts require canonical `checks.json` IDs. A non-canonical diagnostic failure alone is not Tester RETURN.
+- Single-Implementer execution does not weaken evidence gates. Do not open/update the delivery PR before Validator PASS unless the user explicitly requests an earlier draft; completion still requires final-head binding.
+- Replace authoritative artifacts in place; never create `*-v2.md`.
+- Progress messages never replace artifacts, terminal handoffs, or transitions; never accept a verdict from `fork_turns` other than `"none"`.
