@@ -15,7 +15,7 @@ Before the final response, contact the parent only for missing authority, an own
 Return exactly one compact final handoff when the assignment is complete.
 ```
 
-Do not weaken/paraphrase it. Custom-agent instructions repeat it for versioned testing; the assignment copy governs the concrete turn. A permitted pre-terminal escalation names the exact missing authority, conflicting owner/path, or unresolved blocker, then stops. Evidence, completed work, output, elapsed time, and estimates stay in the child thread, logs, or artifact.
+Do not weaken or paraphrase it. Custom-agent instructions repeat it for versioned, auditable testing; the assignment copy overrides generic cadence for the concrete turn. A permitted pre-terminal escalation names the exact missing authority, conflicting owner/path, or unresolved blocker, then stops. Evidence, milestones, test output, elapsed time, percentages, and estimates stay in the child thread, logs, or artifact.
 
 ## Roles
 
@@ -37,4 +37,4 @@ Do not weaken/paraphrase it. Custom-agent instructions repeat it for versioned t
 
 Do parent work before one event-driven `wait_agent` call with `timeout_ms = 3_600_000` when supported, otherwise the maximum. Do not use shorter waits as polling intervals or call `list_agents` merely to check unchanged state.
 
-Any child message may wake the wait; Treat only `FINAL_ANSWER` as completion. For nonterminal non-escalations, neither reply nor summarize—resume the same wait. Join each child once. Raw evidence stays in child threads/task logs; parent summaries contain terminal status, changed files/evidence, exact command IDs/outcomes, risks, and next transition.
+Any child message may wake the wait. Treat only `FINAL_ANSWER` as completion. For nonterminal non-escalations, neither reply nor summarize—resume the same wait. Join each child once. Raw evidence stays in child threads/task logs; parent summaries contain terminal status, changed files/evidence, exact command IDs/outcomes, risks, and next transition.

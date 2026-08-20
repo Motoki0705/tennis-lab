@@ -48,7 +48,7 @@ Preflight may precede test edits; Tester PASS therefore binds the post-test cand
 
 ## Canonical checks
 
-`02-planning/checks.json` is command authority. Each unique ID fixes `argv`, repository-relative `cwd`, environment additions, authorized `preflight`/`test`/`seal` stages, required/optional status, and AC authority. Only `manage_issue_task.py run-check` may execute it; generated stage JSON/raw logs bind invocation digest, candidate fingerprint, exit code, and verdict. Changed invocation/context/candidate or a missing required check invalidates the stage.
+`02-planning/checks.json` is command authority. Each unique ID fixes `argv`, repository-relative `cwd`, environment additions, authorized `preflight`/`test`/`seal` stages, required/optional status, and AC authority. Only `manage_issue_task.py run-check` may execute it; generated stage JSON/raw logs bind invocation digest, candidate fingerprint, exit code, and verdict. Changed argv/cwd/environment/candidate or a missing required check invalidates the stage.
 
 ## Artifact tree
 
@@ -89,8 +89,8 @@ Parallelism is a latency optimization, not an acceptance criterion. `plan.md` re
 | preflight verdict | implementation + preflight + results + candidate |
 | test verdict | tests + results + candidate |
 | seal verdict | seal + results + Tester-candidate equality |
-| validation transition | all implementation artifacts + seal |
-| Validator verdict | complete artifact set + seal |
+| validation transition | all implementation artifacts + sealed candidate |
+| Validator verdict | complete artifact set + sealed candidate |
 | `capture-pr` | real metadata + all paginated files + final head + status rollup |
 | `finalize-pr` | evidence digest + packaging + local HEAD + revision content + remote checks |
 
