@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-LANES = ("long-tail", "remainder")
+LANES = ("long-tail", "remainder", "scene-pipeline")
 LONG_TAIL_TEST_FILES = frozenset(
     {
         "tests/e2e/development/test_configuration_audit.py",
@@ -17,6 +17,10 @@ LONG_TAIL_TEST_FILES = frozenset(
         "tests/unit/utils/configuration/test_inventory.py",
     }
 )
+SCENE_PIPELINE_TEST_FILES = frozenset(
+    {"tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py"}
+)
+SPECIALIZED_TEST_FILES = LONG_TAIL_TEST_FILES | SCENE_PIPELINE_TEST_FILES
 
 
 def discover_test_files(repo_root: Path = REPO_ROOT) -> tuple[str, ...]:
@@ -49,18 +53,20 @@ def select_test_files(
         raise ValueError(f"Unknown CI test lane {lane!r}; expected one of: {choices}")
 
     all_files = frozenset(discover_test_files(repo_root))
-    missing = sorted(LONG_TAIL_TEST_FILES - all_files)
+    missing = sorted(SPECIALIZED_TEST_FILES - all_files)
     if missing:
         rendered = ", ".join(missing)
         raise FileNotFoundError(
-            f"Configured long-tail test files are unavailable: {rendered}"
+            f"Configured specialized test files are unavailable: {rendered}"
         )
 
-    selected = (
-        LONG_TAIL_TEST_FILES
-        if lane == "long-tail"
-        else all_files - LONG_TAIL_TEST_FILES
-    )
+    if lane == "long-tail":
+        selected = LONG_TAIL_TEST_FILES
+    elif lane == "scene-pipeline":
+        selected = SCENE_PIPELINE_TEST_FILES
+    else:
+        selected = all_files - SPECIALIZED_TEST_FILES
+
     if not selected:
         raise RuntimeError(f"CI test lane {lane!r} is empty")
     return tuple(sorted(selected))
