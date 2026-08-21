@@ -109,7 +109,7 @@ Video
 - `data/`: データセット/入力（大きなデータやモデルはコミットしない）
 - `outputs/`: 学習ログ・チェックポイント・生成物（大きなartifactはコミットしない）
 - `assets/`: README用の軽量デモ素材（GIF/PNGなど）
-- `docs/`: 補助ドキュメント（[BLCS / PLCS / SLCS 入力・マスク契約](docs/blcs-plcs-slcs-input-mask-contracts.md)）
+- `docs/`: 補助ドキュメント
 
 ## 開発
 

@@ -2,8 +2,6 @@
 
 2D のボール観測とコート keypoint から、コート座標系の 3D ボール軌道を推定するタスクです。合成データ生成（物理シミュレーション + マルチカメラ投影）、学習、推論、可視化までを一貫して提供します。
 
-BLCS・PLCS・SLCSを横断する入力shape、マスク極性、派生関係は [入力・マスク契約](../../../docs/blcs-plcs-slcs-input-mask-contracts.md) を参照してください。
-
 ## Modules
 
 ### generate_dataset/
