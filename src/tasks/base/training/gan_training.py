@@ -6,7 +6,7 @@ import math
 from typing import Any, cast
 
 import torch
-from torch import Tensor
+from torch import Tensor, nn
 from torch.nn.utils import clip_grad_norm_, clip_grad_value_
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
@@ -225,7 +225,7 @@ class ManualGANSupportMixin:
 
     gan_enabled: bool
     gan_training: ManualGANTrainingStrategy | None
-    discriminator: Any | None
+    discriminator: nn.Module | None
     gan_loss_fn: LSGANLoss | None
     training_config: BaseTrainingConfig
     max_epochs: int
@@ -246,6 +246,17 @@ class ManualGANSupportMixin:
     optimizers: Any
     lr_schedulers: Any
     _estimate_total_steps: Any
+
+    def additional_compilation_targets(self) -> dict[str, nn.Module]:
+        """Compile the independently invoked discriminator when GAN is active."""
+        if not self.gan_enabled:
+            return {}
+        if not isinstance(self.discriminator, nn.Module):
+            raise RuntimeError(
+                "GAN training requires discriminator to be an nn.Module before "
+                "compile target discovery."
+            )
+        return {"discriminator": self.discriminator}
 
     def _initialize_manual_gan(self, *, discriminator: Any | None) -> None:
         training = self.training_config

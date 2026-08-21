@@ -15,7 +15,10 @@ import torch
 from torch import nn
 
 from src.tasks.base.training.gan_loss import LSGANLoss
-from src.tasks.base.training.gan_training import ManualGANTrainingStrategy
+from src.tasks.base.training.gan_training import (
+    ManualGANSupportMixin,
+    ManualGANTrainingStrategy,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -35,6 +38,23 @@ def test_initial_state() -> None:
     assert s.current_weight == 0.0
     assert s.supervised_only_step_count == 0
     assert s.hybrid_gan_step_count == 0
+
+
+def test_gan_mixin_exposes_discriminator_as_additional_compile_target() -> None:
+    discriminator = nn.Linear(3, 1)
+    mixin = ManualGANSupportMixin()
+    mixin.gan_enabled = True
+    mixin.discriminator = discriminator
+
+    assert mixin.additional_compilation_targets() == {"discriminator": discriminator}
+
+
+def test_gan_mixin_has_no_additional_target_when_disabled() -> None:
+    mixin = ManualGANSupportMixin()
+    mixin.gan_enabled = False
+    mixin.discriminator = None
+
+    assert mixin.additional_compilation_targets() == {}
 
 
 def test_activate_phase_sets_flags() -> None:
