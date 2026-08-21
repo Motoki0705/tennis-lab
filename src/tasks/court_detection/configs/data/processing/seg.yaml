@@ -1,0 +1,4 @@
+derived_target_root: court_detection/derived_targets
+targets:
+  - kind: seg
+    target_schema: court_cell_segmentation_v1
