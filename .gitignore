@@ -152,6 +152,7 @@ Thumbs.db
 # Agent workspace
 agents_workspace/tmp_cache/
 .worktrees/
+.codex-rollout-traces/
 
 # Large files that should be tracked separately
 *.zip
@@ -176,6 +177,7 @@ preprocessed/
 *.bmp
 *.tiff
 *.tif
+!assets/codex_trace/*.png
 !docs/**/*.png
 !docs/**/*.jpg
 !docs/**/*.jpeg
