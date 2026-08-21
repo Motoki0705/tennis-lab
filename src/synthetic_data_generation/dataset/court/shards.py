@@ -17,13 +17,20 @@ import numpy as np
 from PIL import Image, UnidentifiedImageError
 
 from src.synthetic_data_generation.dataset.court.components.labels import (
-    MultiCourtProjection,
+    AMBIGUOUS_CAMERA_RELATIVE_NEAR_FAR_REASON,
+    MultiCourtProjectionAny,
 )
-from src.synthetic_data_generation.dataset.court.contracts import PlannedCourtSample
+from src.synthetic_data_generation.dataset.court.contracts import PlannedCourtSampleAny
+from src.synthetic_data_generation.dataset.court.schema import (
+    COURT_SHARD_SCHEMA_V1,
+    CourtDatasetSchemaVersion,
+    court_schema_for_version,
+    court_schema_from_shard_schema,
+)
 from src.synthetic_data_generation.rendering.nht import NHTRenderRecord
 from src.utils.io import load_json, save_json_atomic
 
-COURT_SHARD_SCHEMA = "court_render_shard_attempt_v1"
+COURT_SHARD_SCHEMA = COURT_SHARD_SCHEMA_V1
 
 
 class StaleCourtShardError(ValueError):
@@ -34,7 +41,7 @@ class StaleCourtShardError(ValueError):
 class CourtRenderedSample:
     """Validated public NHT files bound to one planned sample."""
 
-    sample: PlannedCourtSample
+    sample: PlannedCourtSampleAny
     rgb_path: Path
     rgb_preview_path: Path
     alpha_path: Path
@@ -83,7 +90,7 @@ class CourtRenderResult:
     """Complete Court render output plus measurable public-boundary evidence."""
 
     samples: tuple[CourtRenderedSample, ...]
-    pre_render_projections: tuple[MultiCourtProjection, ...]
+    pre_render_projections: tuple[MultiCourtProjectionAny, ...]
     pre_render_rejected_sample_ids: tuple[str, ...]
     resolved_shard_count: int
     nht_invocations: int
@@ -97,6 +104,7 @@ class CourtRenderResult:
     maximum_nht_live_array_bytes: int
     retained_nht_array_bytes: int
     shard_timings: tuple[CourtShardTiming, ...]
+    pre_render_rejection_reasons: tuple[tuple[str, tuple[str, ...]], ...] = ()
 
     def __post_init__(self) -> None:
         samples = tuple(self.samples)
@@ -111,12 +119,35 @@ class CourtRenderResult:
             raise ValueError("Court pre-render projections contain duplicate cameras.")
         if len(rejected_ids) != len(set(rejected_ids)):
             raise ValueError("Court pre-render rejections contain duplicate cameras.")
-        if set(rendered_ids) & set(rejected_ids) or set(projection_ids) != (
-            set(rendered_ids) | set(rejected_ids)
+        if (
+            set(rendered_ids) & set(rejected_ids)
+            or not set(rendered_ids) <= set(projection_ids)
+            or not set(projection_ids) <= (set(rendered_ids) | set(rejected_ids))
         ):
             raise ValueError(
-                "Court rendered/rejected cameras do not partition pre-render projections."
+                "Court rendered/rejected cameras disagree with pre-render projections."
             )
+        rejection_reason_items = tuple(self.pre_render_rejection_reasons)
+        rejection_reasons = dict(rejection_reason_items)
+        if len(rejection_reasons) != len(rejection_reason_items):
+            raise ValueError("Court pre-render rejection reasons contain duplicates.")
+        if set(rejection_reasons) != set(rejected_ids) or any(
+            not reasons
+            or any(
+                not isinstance(reason, str) or not reason or reason != reason.strip()
+                for reason in reasons
+            )
+            for reasons in rejection_reasons.values()
+        ):
+            raise ValueError("Court pre-render rejection reasons are incomplete.")
+        for sample_id in set(rejected_ids) - set(projection_ids):
+            if not any(
+                reason.startswith(f"{AMBIGUOUS_CAMERA_RELATIVE_NEAR_FAR_REASON}:")
+                for reason in rejection_reasons[sample_id]
+            ):
+                raise ValueError(
+                    "Only camera-relative near/far ambiguity may lack a projection."
+                )
         for name in (
             "resolved_shard_count",
             "nht_invocations",
@@ -142,7 +173,9 @@ class CourtRenderResult:
         if self.nht_complete_array_scans != sum(
             timing.camera_count for timing in timings
         ):
-            raise ValueError("Court NHT array-scan evidence disagrees with shard timings.")
+            raise ValueError(
+                "Court NHT array-scan evidence disagrees with shard timings."
+            )
         if self.scene_validation_count not in {0, 1}:
             raise ValueError("Court NHT scene validation must occur at most once.")
         if self.preview_validation_count != 2 * self.nht_complete_array_scans:
@@ -152,16 +185,16 @@ class CourtRenderResult:
         if self.nht_invocations == 0:
             if self.maximum_nht_live_array_bytes != 0:
                 raise ValueError("Reused Court shards cannot report live NHT arrays.")
-        elif not (
-            0 < self.maximum_nht_live_array_bytes <= self.loaded_array_bytes
-        ):
+        elif not (0 < self.maximum_nht_live_array_bytes <= self.loaded_array_bytes):
             raise ValueError("Court maximum live NHT array evidence is inconsistent.")
         if self.retained_nht_array_bytes != 0:
             raise ValueError("Court render results must not retain dense NHT arrays.")
         if self.nht_invocations > self.resolved_shard_count:
             raise ValueError("NHT invocation count exceeds resolved Court shards.")
         if self.request_path_count != self.nht_invocations:
-            raise ValueError("Every Court NHT invocation must own exactly one request path.")
+            raise ValueError(
+                "Every Court NHT invocation must own exactly one request path."
+            )
         if len(timings) != self.nht_invocations:
             raise ValueError("Court shard timings must cover every NHT invocation.")
         if len({timing.shard_id for timing in timings}) != len(timings):
@@ -170,6 +203,14 @@ class CourtRenderResult:
         object.__setattr__(self, "pre_render_projections", projections)
         object.__setattr__(self, "pre_render_rejected_sample_ids", rejected_ids)
         object.__setattr__(self, "shard_timings", timings)
+        object.__setattr__(
+            self,
+            "pre_render_rejection_reasons",
+            tuple(
+                (sample_id, tuple(rejection_reasons[sample_id]))
+                for sample_id in rejected_ids
+            ),
+        )
 
     @property
     def external_nht_boundary_wall_seconds(self) -> float:
@@ -177,7 +218,7 @@ class CourtRenderResult:
         return float(sum(timing.wall_seconds for timing in self.shard_timings))
 
     @property
-    def projection_by_sample_id(self) -> Mapping[str, MultiCourtProjection]:
+    def projection_by_sample_id(self) -> Mapping[str, MultiCourtProjectionAny]:
         """Return the immutable deterministic pre-render projection inventory."""
         return MappingProxyType(
             {
@@ -186,15 +227,24 @@ class CourtRenderResult:
             }
         )
 
+    @property
+    def pre_render_rejection_reason_by_sample_id(
+        self,
+    ) -> Mapping[str, tuple[str, ...]]:
+        """Return exact explicit reasons for every pre-render rejection."""
+        return MappingProxyType(dict(self.pre_render_rejection_reasons))
+
 
 def group_samples_by_shard(
-    samples: Sequence[PlannedCourtSample],
-) -> dict[str, tuple[PlannedCourtSample, ...]]:
+    samples: Sequence[PlannedCourtSampleAny],
+) -> dict[str, tuple[PlannedCourtSampleAny, ...]]:
     """Group samples while proving each trajectory group belongs to one shard."""
-    result: dict[str, list[PlannedCourtSample]] = {}
+    result: dict[str, list[PlannedCourtSampleAny]] = {}
     shard_by_group: dict[str, str] = {}
     for sample in samples:
-        previous = shard_by_group.setdefault(sample.trajectory_group_id, sample.shard_id)
+        previous = shard_by_group.setdefault(
+            sample.trajectory_group_id, sample.shard_id
+        )
         if previous != sample.shard_id:
             raise ValueError("A trajectory group crosses Court render shards.")
         result.setdefault(sample.shard_id, []).append(sample)
@@ -207,7 +257,7 @@ def group_samples_by_shard(
 
 
 def rendered_from_nht_records(
-    samples: Sequence[PlannedCourtSample],
+    samples: Sequence[PlannedCourtSampleAny],
     records: Sequence[NHTRenderRecord],
 ) -> tuple[CourtRenderedSample, ...]:
     """Bind exact ordered public renderer records to planned samples."""
@@ -218,7 +268,9 @@ def rendered_from_nht_records(
     rendered: list[CourtRenderedSample] = []
     for sample, record in zip(sample_tuple, record_tuple, strict=True):
         if record.camera_id != sample.sample_id or record.request_source != "arbitrary":
-            raise ValueError("NHT record identity/source disagrees with the Court sample.")
+            raise ValueError(
+                "NHT record identity/source disagrees with the Court sample."
+            )
         if (record.width, record.height) != (sample.camera.width, sample.camera.height):
             raise ValueError("NHT record resolution disagrees with the Court camera.")
         expected_metadata = (
@@ -236,7 +288,9 @@ def rendered_from_nht_records(
                 strict=True,
             )
         ):
-            raise ValueError("NHT record metadata disagrees with the Court sample files.")
+            raise ValueError(
+                "NHT record metadata disagrees with the Court sample files."
+            )
         item = CourtRenderedSample(
             sample=sample,
             rgb_path=record.rgb_path,
@@ -266,7 +320,9 @@ def inspect_rendered_sample(value: CourtRenderedSample) -> None:
         raise ValueError("NHT sample directory disagrees with the planned sample ID.")
     for path, filename, shape in specifications:
         if path.name != filename or path.parent != source:
-            raise ValueError("NHT render array path disagrees with its fixed file contract.")
+            raise ValueError(
+                "NHT render array path disagrees with its fixed file contract."
+            )
         if path.is_symlink() or not path.is_file():
             raise FileNotFoundError(f"NHT render array is missing: {path}")
         array = np.load(path, allow_pickle=False, mmap_mode="r")
@@ -308,7 +364,9 @@ def validate_rendered_sample(value: CourtRenderedSample) -> None:
                 size = image.size
                 image.verify()
         except (OSError, UnidentifiedImageError) as error:
-            raise ValueError(f"NHT preview is not a readable image: {preview}") from error
+            raise ValueError(
+                f"NHT preview is not a readable image: {preview}"
+            ) from error
         if size != (value.sample.camera.width, value.sample.camera.height):
             raise ValueError(f"NHT preview resolution mismatch: {preview}")
 
@@ -318,7 +376,8 @@ def write_attempt_shard_marker(
     *,
     attempt_token: str,
     shard_id: str,
-    samples: Sequence[PlannedCourtSample],
+    samples: Sequence[PlannedCourtSampleAny],
+    schema_version: CourtDatasetSchemaVersion = CourtDatasetSchemaVersion.V1,
 ) -> Path:
     """Record only attempt-local reuse semantics after public result validation."""
     if not attempt_token or not shard_id:
@@ -327,13 +386,16 @@ def write_attempt_shard_marker(
     group_ids = sorted({sample.trajectory_group_id for sample in sample_tuple})
     if not sample_tuple or any(sample.shard_id != shard_id for sample in sample_tuple):
         raise ValueError("Shard marker samples disagree with shard_id.")
-    payload = {
-        "schema": COURT_SHARD_SCHEMA,
+    definition = court_schema_for_version(schema_version)
+    payload: dict[str, object] = {
+        "schema": definition.shard_schema,
         "attempt_token": attempt_token,
         "shard_id": shard_id,
         "trajectory_group_ids": group_ids,
         "sample_ids": [sample.sample_id for sample in sample_tuple],
     }
+    if schema_version is CourtDatasetSchemaVersion.V2:
+        payload["dataset_schema"] = definition.dataset_schema
     return Path(save_json_atomic(payload, shard_root / "court-shard.json"))
 
 
@@ -342,7 +404,8 @@ def load_attempt_local_shard(
     *,
     attempt_token: str,
     shard_id: str,
-    samples: Sequence[PlannedCourtSample],
+    samples: Sequence[PlannedCourtSampleAny],
+    schema_version: CourtDatasetSchemaVersion = CourtDatasetSchemaVersion.V1,
 ) -> tuple[CourtRenderedSample, ...] | None:
     """Reuse only a complete shard bearing the exact in-memory attempt token."""
     marker = shard_root / "court-shard.json"
@@ -351,6 +414,7 @@ def load_attempt_local_shard(
     if marker.is_symlink() or not marker.is_file():
         raise ValueError("Court shard marker must be an ordinary file.")
     raw = load_json(marker)
+    definition = court_schema_for_version(schema_version)
     keys = {
         "schema",
         "attempt_token",
@@ -358,10 +422,18 @@ def load_attempt_local_shard(
         "trajectory_group_ids",
         "sample_ids",
     }
+    if schema_version is CourtDatasetSchemaVersion.V2:
+        keys.add("dataset_schema")
     if not isinstance(raw, Mapping) or set(raw) != keys:
         raise ValueError("Court shard marker schema is invalid.")
-    if raw["schema"] != COURT_SHARD_SCHEMA or raw["shard_id"] != shard_id:
+    observed_definition = court_schema_from_shard_schema(raw["schema"])
+    if observed_definition is not definition or raw["shard_id"] != shard_id:
         raise ValueError("Court shard marker schema/shard identity is invalid.")
+    if (
+        schema_version is CourtDatasetSchemaVersion.V2
+        and raw["dataset_schema"] != definition.dataset_schema
+    ):
+        raise ValueError("Court shard marker dataset schema is invalid.")
     if raw["attempt_token"] != attempt_token:
         raise StaleCourtShardError(
             f"Court shard {shard_id} belongs to another stage attempt."
@@ -369,7 +441,10 @@ def load_attempt_local_shard(
     sample_tuple = tuple(samples)
     expected_ids = [sample.sample_id for sample in sample_tuple]
     expected_groups = sorted({sample.trajectory_group_id for sample in sample_tuple})
-    if raw["sample_ids"] != expected_ids or raw["trajectory_group_ids"] != expected_groups:
+    if (
+        raw["sample_ids"] != expected_ids
+        or raw["trajectory_group_ids"] != expected_groups
+    ):
         raise ValueError("Court shard marker disagrees with the resolved plan.")
     rendered: list[CourtRenderedSample] = []
     for sample in sample_tuple:

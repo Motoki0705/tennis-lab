@@ -14,6 +14,10 @@ import pytest
 from numpy.typing import NDArray
 
 import src.synthetic_data_generation.visualization.renderer as renderer_module
+from src.synthetic_data_generation.dataset.court.schema import (
+    COURT_SEMANTIC_CLASS_NAMES_V2,
+    CourtDatasetSchemaVersion,
+)
 from src.synthetic_data_generation.dataset.plcs.assembler import PLCS_DATASET_SCHEMA
 from src.synthetic_data_generation.dataset.runtime import (
     LogicalRenderSample,
@@ -92,6 +96,33 @@ def _court_projection() -> dict[str, object]:
     }
 
 
+def _court_projection_v2() -> dict[str, object]:
+    return {
+        "courts": [
+            {
+                "court_instance_id": "court-0",
+                "coverage_mode": "full",
+                "classes": [
+                    {
+                        "class_id": class_id,
+                        "class_name": name,
+                        "renderer_visible": True,
+                        "points": [
+                            {
+                                "physical_index": class_id,
+                                "uv": [15.0 + class_id * 6.0, 65.0],
+                                "in_frame": True,
+                                "renderer_visible": True,
+                            }
+                        ],
+                    }
+                    for class_id, name in enumerate(COURT_SEMANTIC_CLASS_NAMES_V2)
+                ],
+            }
+        ]
+    }
+
+
 class _FakeCourt:
     dataset_schema = "canonical_court_dataset_v1"
     dataset_scene_id = "scene-0"
@@ -120,6 +151,23 @@ class _FakeCourt:
                 view_id="view-0",
                 trajectory_frame_index=index,
                 projection=_court_projection(),
+            )
+
+
+class _FakeCourtV2(_FakeCourt):
+    dataset_schema = "canonical_court_dataset_v2"
+
+    def frames(self) -> Iterator[CourtSourceFrame]:
+        for index in range(3):
+            rgb: NDArray[np.float32] = np.zeros((96, 128, 3), dtype=np.float32)
+            rgb[..., 0] = 0.1 * index
+            yield CourtSourceFrame(
+                rgb=rgb,
+                sample_id=f"sample-{index}",
+                view_id="view-0",
+                trajectory_frame_index=index,
+                projection=_court_projection_v2(),
+                schema_version=CourtDatasetSchemaVersion.V2,
             )
 
 
@@ -284,6 +332,32 @@ def test_court_orbit_streams_exact_manifest_sequence_to_mp4(
     payload = json.loads(result.metadata_path.read_text(encoding="utf-8"))
     assert payload["source_frame_order"] == list(_FakeCourt.frame_order)
     assert payload["selection"]["trajectory_id"] == "orbit-0"
+
+
+def test_court_v2_singleton_overlay_streams_to_mp4_without_v1_reshaping(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(renderer_module, "CourtVisualizationSource", _FakeCourtV2)
+    output = tmp_path / "court-v2.mp4"
+    request = DatasetVisualizationRequest(
+        domain=DatasetVisualizationDomain.COURT,
+        dataset_root=_root(tmp_path, "court"),
+        output_video=output,
+        trajectory_id="orbit-0",
+        logical_scene_id=None,
+        camera_id=None,
+        fps=12.0,
+        crf=20,
+        history_frames=3,
+    )
+
+    result = visualize_dataset(request)
+
+    assert probe_video_info(output).frame_count == 3
+    payload = json.loads(result.metadata_path.read_text(encoding="utf-8"))
+    assert payload["dataset_schema"] == "canonical_court_dataset_v2"
+    assert payload["frame_count"] == 3
 
 
 def test_odd_canonical_dimensions_are_explicitly_padded_for_yuv420(

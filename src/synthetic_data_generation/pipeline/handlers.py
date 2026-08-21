@@ -21,6 +21,13 @@ from src.synthetic_data_generation.dataset.contracts import (
     FrameInventory,
     TargetCourtBinding,
 )
+from src.synthetic_data_generation.dataset.court.contracts import (
+    ResolvedTargetCourtV2,
+)
+from src.synthetic_data_generation.dataset.court.schema import (
+    CourtDatasetSchemaVersion,
+    court_schema_from_dataset_schema,
+)
 from src.synthetic_data_generation.pipeline.contracts import (
     DatasetTarget,
     StageExecutionContext,
@@ -119,11 +126,17 @@ class ReportStageHandler:
 
     def __post_init__(self) -> None:
         if set(self.dataset_manifests) != set(DatasetTarget):
-            raise ValueError("Report handler requires one manifest path per dataset target.")
+            raise ValueError(
+                "Report handler requires one manifest path per dataset target."
+            )
         if any(path.name != "dataset.json" for path in self.dataset_manifests.values()):
-            raise ValueError("Dataset report inputs must use the fixed dataset.json name.")
+            raise ValueError(
+                "Dataset report inputs must use the fixed dataset.json name."
+            )
         if self.alignment_directory.name != "alignment":
-            raise ValueError("Report alignment input must be the fixed alignment directory.")
+            raise ValueError(
+                "Report alignment input must be the fixed alignment directory."
+            )
 
     def preflight(self, context: StageExecutionContext) -> None:
         """Require accepted alignment and all explicitly requested datasets."""
@@ -150,13 +163,15 @@ class ReportStageHandler:
             for target, summary in sorted(datasets.items())
         )
         document = (
-            "<!doctype html><html><head><meta charset=\"utf-8\">"
+            '<!doctype html><html><head><meta charset="utf-8">'
             "<title>Canonical scene report</title></head><body>"
             f"<h1>{html.escape(context.request.scene_id)}</h1>"
             "<table><thead><tr><th>dataset</th><th>frames</th><th>courts</th>"
             f"</tr></thead><tbody>{rows}</tbody></table></body></html>\n"
         )
-        context.staging_path.joinpath("index.html").write_text(document, encoding="utf-8")
+        context.staging_path.joinpath("index.html").write_text(
+            document, encoding="utf-8"
+        )
         return StageExecutionSummary(
             {
                 "dataset_count": len(datasets),
@@ -172,8 +187,9 @@ class ReportStageHandler:
         if actual != expected:
             raise ValueError("Staged report does not match current canonical datasets.")
         index_path = context.staging_path.joinpath("index.html")
-        if not index_path.is_file() or context.request.scene_id not in index_path.read_text(
-            encoding="utf-8"
+        if (
+            not index_path.is_file()
+            or context.request.scene_id not in index_path.read_text(encoding="utf-8")
         ):
             raise ValueError("Staged HTML report is missing its scene identity.")
 
@@ -194,7 +210,9 @@ class ReportStageHandler:
             for diagnostic in manifest.diagnostics:
                 candidate = path.parent.joinpath(diagnostic).resolve(strict=False)
                 if not candidate.is_relative_to(path.parent.resolve(strict=False)):
-                    raise ValueError(f"Dataset diagnostic escapes its owner: {diagnostic}.")
+                    raise ValueError(
+                        f"Dataset diagnostic escapes its owner: {diagnostic}."
+                    )
                 if not candidate.is_file():
                     raise FileNotFoundError(
                         f"Dataset diagnostic is missing: {candidate}."
@@ -244,7 +262,14 @@ def _validate_domain_manifest(target: DatasetTarget, path: Path) -> DatasetManif
             path.parent,
             array_validation=CourtArrayValidationMode.HEADERS_ONLY,
         )
-        return _court_report_manifest(_read_json(path), report=report)
+        payload = _read_json(path)
+        return _court_report_manifest(
+            payload,
+            report=report,
+            schema_version=court_schema_from_dataset_schema(
+                payload.get("schema")
+            ).version,
+        )
     if target is DatasetTarget.BLCS:
         from src.synthetic_data_generation.dataset.blcs.assembler import (
             validate_blcs_dataset,
@@ -275,19 +300,43 @@ def _court_report_manifest(
     payload: Mapping[str, object],
     *,
     report: CourtAssemblyReport,
+    schema_version: CourtDatasetSchemaVersion | None = None,
 ) -> DatasetManifest:
     """Project the validated Court release into the common report contract."""
-    groups = payload.get("trajectory_groups")
-    if not isinstance(groups, Sequence) or isinstance(groups, (str, bytes)):
-        raise TypeError("Court trajectory_groups must be a sequence.")
+    version = schema_version or CourtDatasetSchemaVersion.V1
     bindings: dict[str, TargetCourtBinding] = {}
-    for group in groups:
-        if not isinstance(group, Mapping) or "target_court" not in group:
-            raise TypeError("Court trajectory group lacks its target-court binding.")
-        binding = TargetCourtBinding.from_dict(group["target_court"])
+    if version is CourtDatasetSchemaVersion.V1:
+        records = payload.get("trajectory_groups")
+        if not isinstance(records, Sequence) or isinstance(records, (str, bytes)):
+            raise TypeError("Court trajectory_groups must be a sequence.")
+        raw_bindings = []
+        for group in records:
+            if not isinstance(group, Mapping) or "target_court" not in group:
+                raise TypeError(
+                    "Court trajectory group lacks its target-court binding."
+                )
+            raw_bindings.append(TargetCourtBinding.from_dict(group["target_court"]))
+    else:
+        accepted = payload.get("samples")
+        rejected = payload.get("rejected_samples")
+        if (
+            not isinstance(accepted, Sequence)
+            or isinstance(accepted, (str, bytes))
+            or not isinstance(rejected, Sequence)
+            or isinstance(rejected, (str, bytes))
+        ):
+            raise TypeError("Court v2 sample inventories must be sequences.")
+        raw_bindings = []
+        for sample in (*accepted, *rejected):
+            if not isinstance(sample, Mapping):
+                raise TypeError("Court v2 sample must be a mapping.")
+            raw_bindings.append(
+                ResolvedTargetCourtV2.from_mapping(sample.get("target_court")).binding
+            )
+    for binding in raw_bindings:
         previous = bindings.setdefault(binding.court_instance_id, binding)
         if previous != binding:
-            raise ValueError("Court trajectory groups disagree on a target-court binding.")
+            raise ValueError("Court records disagree on a target-court binding.")
     diagnostics = payload.get("diagnostics")
     if not isinstance(diagnostics, Sequence) or isinstance(diagnostics, (str, bytes)):
         raise TypeError("Court diagnostics must be a sequence.")

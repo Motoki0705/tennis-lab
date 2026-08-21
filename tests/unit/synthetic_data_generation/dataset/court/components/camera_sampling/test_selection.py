@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
 from src.synthetic_data_generation.alignment.contracts import MetricSceneAdapter
@@ -19,10 +20,16 @@ from src.synthetic_data_generation.dataset.court.components.camera_sampling.traj
     generate_trajectory_candidates,
 )
 from src.synthetic_data_generation.dataset.court.contracts import (
+    CourtDatasetPlan,
+    CourtDatasetPlanV2,
     OrbitCenter,
     OrbitCenterKind,
     OrbitCoverageObjective,
     OrbitSamplingPolicy,
+    TargetCourtResolutionPolicy,
+)
+from src.synthetic_data_generation.dataset.court.schema import (
+    CourtDatasetSchemaVersion,
 )
 from src.synthetic_data_generation.scene_contract import (
     MultiCourtLayout,
@@ -38,6 +45,17 @@ def _configuration() -> CourtDatasetConfiguration:
         ),
         resolve=True,
     )
+    return CourtDatasetConfiguration.from_mapping(raw)
+
+
+def _composed_configuration(selector: str) -> CourtDatasetConfiguration:
+    config_root = Path("src/synthetic_data_generation/configs").resolve()
+    with initialize_config_dir(version_base="1.3", config_dir=str(config_root)):
+        config = compose(
+            config_name="run_scene_pipeline",
+            overrides=[f"dataset/court={selector}"],
+        )
+    raw = OmegaConf.to_container(config.dataset.court, resolve=True)
     return CourtDatasetConfiguration.from_mapping(raw)
 
 
@@ -63,6 +81,7 @@ def test_production_plan_is_budgeted_diverse_group_disjoint_and_deterministic(
         configuration=configuration,
         metric_adapter=identity_metric_adapter,
     )
+    assert isinstance(first, CourtDatasetPlan)
     assert len(first.groups) >= 24
     assert 2_000 <= first.proposal_count <= 4_800
     assert max(group.maximum_adjacent_step_m for group in first.groups) <= 1.05
@@ -84,19 +103,25 @@ def test_production_plan_is_budgeted_diverse_group_disjoint_and_deterministic(
     )
     assert len({group.trajectory.base_height_m for group in first.groups}) >= 3
     assert any(group.trajectory.vertical_amplitude_m > 0.0 for group in first.groups)
-    assert {
-        group.trajectory.curve_mode for group in first.groups
-    } == set(configuration.trajectory.curve_modes)
-    assert {
-        view.target_mode for group in first.groups for view in group.views
-    } == set(configuration.view.target_modes)
+    assert {group.trajectory.curve_mode for group in first.groups} == set(
+        configuration.trajectory.curve_modes
+    )
+    assert {view.target_mode for group in first.groups for view in group.views} == set(
+        configuration.view.target_modes
+    )
     assert {
         view.coverage_mode for group in first.groups for view in group.views
     } == set(configuration.view.coverage_modes)
     variant_group = next(group for group in first.groups if len(group.views) == 2)
     assert len({view.target_kind for view in variant_group.views}) == 2
     assert all(
-        len({sample.split for sample in first.samples if sample.trajectory_group_id == group_id})
+        len(
+            {
+                sample.split
+                for sample in first.samples
+                if sample.trajectory_group_id == group_id
+            }
+        )
         == 1
         for group_id in {sample.trajectory_group_id for sample in first.samples}
     )
@@ -112,6 +137,95 @@ def test_production_plan_is_budgeted_diverse_group_disjoint_and_deterministic(
         or group.trajectory.center_court_instance_id
         == group.target_court.court_instance_id
         for group in first.groups
+    )
+    assert first.to_dict() == second.to_dict()
+
+
+def test_v2_plan_has_singleton_views_and_per_sample_geometric_targets(
+    captured_cameras: tuple[SceneCamera, ...],
+    multi_court_layout: MultiCourtLayout,
+    identity_metric_adapter: MetricSceneAdapter,
+) -> None:
+    configuration = _composed_configuration("v2")
+    first = build_court_dataset_plan(
+        scene_id="B00",
+        profile="v2",
+        cameras=captured_cameras,
+        layout=multi_court_layout,
+        configuration=configuration,
+        metric_adapter=identity_metric_adapter,
+    )
+    second = build_court_dataset_plan(
+        scene_id="B00",
+        profile="v2",
+        cameras=captured_cameras,
+        layout=multi_court_layout,
+        configuration=configuration,
+        metric_adapter=identity_metric_adapter,
+    )
+
+    assert isinstance(first, CourtDatasetPlanV2)
+    assert first.schema_version is CourtDatasetSchemaVersion.V2
+    assert first.to_dict()["schema"] == "canonical_court_orbit_plan_v2"
+    assert all(len(group.views) == 1 for group in first.groups)
+    assert {
+        view.target_mode.value for group in first.groups for view in group.views
+    } == {"court_center"}
+
+    group_by_id = {group.trajectory_group_id: group for group in first.groups}
+    targets_by_group: dict[str, list[str]] = {}
+    court_centres = {
+        court.court_instance_id: court.scene_from_court.apply(
+            np.zeros((1, 3), dtype=np.float64)
+        )[0]
+        for court in multi_court_layout.courts
+    }
+    for sample in first.samples:
+        group = group_by_id[sample.trajectory_group_id]
+        target_id = sample.target_court.binding.court_instance_id
+        targets_by_group.setdefault(group.trajectory_group_id, []).append(target_id)
+        if (
+            group.target_court_policy.mode
+            is TargetCourtResolutionPolicy.TRAJECTORY_CENTER_COURT
+        ):
+            assert target_id == group.trajectory.center_court_instance_id
+        else:
+            distances = {
+                court_id: float(
+                    np.linalg.norm(np.asarray(sample.camera_center_scene_m) - centre)
+                )
+                for court_id, centre in court_centres.items()
+            }
+            minimum = min(distances.values())
+            expected = min(
+                court_id
+                for court_id, distance in distances.items()
+                if distance <= minimum + 1.0e-9
+            )
+            assert target_id == expected
+            assert (
+                sample.target_court.camera_to_court_center_distance_m
+                == pytest.approx(distances[target_id], abs=1.0e-9)
+            )
+
+        view = group.views[0]
+        target_scene = sample.target_court.binding.scene_from_court.apply(
+            np.asarray(((0.0, 0.0, view.look_at_height_m),), dtype=np.float64)
+        )[0]
+        camera_matrix = sample.camera.camera_to_scene.matrix()
+        expected_forward = target_scene - camera_matrix[:3, 3]
+        expected_forward /= np.linalg.norm(expected_forward)
+        np.testing.assert_allclose(
+            camera_matrix[:3, 2], expected_forward, atol=1.0e-9, rtol=0.0
+        )
+
+    complex_group_ids = {
+        group.trajectory_group_id
+        for group in first.groups
+        if group.trajectory.center_kind is OrbitCenterKind.COMPLEX
+    }
+    assert any(
+        len(set(targets_by_group[group_id])) > 1 for group_id in complex_group_ids
     )
     assert first.to_dict() == second.to_dict()
 
@@ -215,15 +329,11 @@ def test_distinct_coverage_objectives_change_greedy_selection_behavior(
     )
     coverage_first = replace(
         policy,
-        coverage_objective=(
-            OrbitCoverageObjective.COVERAGE_MODE,
-        ),
+        coverage_objective=(OrbitCoverageObjective.COVERAGE_MODE,),
     )
     trajectory_first = replace(
         policy,
-        coverage_objective=(
-            OrbitCoverageObjective.TRAJECTORY_GROUP,
-        ),
+        coverage_objective=(OrbitCoverageObjective.TRAJECTORY_GROUP,),
     )
 
     coverage_selected = select_budgeted_coverage(
