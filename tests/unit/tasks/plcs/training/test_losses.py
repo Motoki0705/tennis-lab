@@ -107,7 +107,7 @@ def test_contributes_to_total_via_forward() -> None:
         target_rotation=pred_rot,
         pred_canonical_pose=None,
         target_human_kp_3d=None,
-        human_mask=torch.ones(1, 20),
+        padding_mask=torch.zeros(1, 20, dtype=torch.bool),
     )
     losses = loss_fn(inputs)
     assert losses["position_smoothness"] > 0
@@ -125,7 +125,7 @@ def test_forward_combines_only_prepared_terms_without_registry_dispatch() -> Non
         target_rotation=pred_rot,
         pred_canonical_pose=None,
         target_human_kp_3d=None,
-        human_mask=torch.ones(1, 5),
+        padding_mask=torch.zeros(1, 5, dtype=torch.bool),
     )
     loss_fn.loss_terms.clear()
 

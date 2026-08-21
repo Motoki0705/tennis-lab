@@ -24,7 +24,7 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
     The canonical sample format keeps camera and temporal dimensions:
     - ball_uv: (N, T, 2)
     - ball_vis: (N, T)
-    - ball_mask: (N, T)
+    - padding_mask: (N, T), ``True`` marks padding
     - court_kp: (N, T, 20, 2)
     - court_vis: (N, T, 20)
     - position_3d: (T, 3)
@@ -111,13 +111,13 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
                 scene.get_camera_array(cam_idx, "ball_uv", window=window)
             ).float()
             ball_vis = torch.from_numpy(
-                scene.get_camera_array(cam_idx, "ball_visible", window=window)
+                scene.get_camera_array(cam_idx, "ball_vis", window=window)
             ).float()
             court_kp = torch.from_numpy(
                 scene.get_camera_array(cam_idx, "court_kp_uv")
             ).float()
             court_vis = torch.from_numpy(
-                scene.get_camera_array(cam_idx, "court_kp_visible")
+                scene.get_camera_array(cam_idx, "court_kp_vis")
             ).float()
             court_kp = court_kp[: self.num_court_kp]
             court_vis = court_vis[: self.num_court_kp]
@@ -146,8 +146,8 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
         sample: BLCSMultiViewSample = {
             "ball_uv": torch.stack(ball_uv_list, dim=0),
             "ball_vis": torch.stack(ball_vis_list, dim=0),
-            "ball_mask": torch.ones(
-                len(cams.indices), window.seq_len, dtype=torch.float32
+            "padding_mask": torch.zeros(
+                len(cams.indices), window.seq_len, dtype=torch.bool
             ),
             "court_kp": torch.stack(court_kp_list, dim=0),
             "court_vis": torch.stack(court_vis_list, dim=0),
@@ -171,7 +171,8 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
     def _apply_augmentation_multiview(
         self, sample: BLCSMultiViewSample
     ) -> BLCSMultiViewSample:
-        return self.augmentation_pipeline.forward(sample)
+        augmented: BLCSMultiViewSample = self.augmentation_pipeline.forward(sample)
+        return augmented
 
     def augment_sample(self, sample: BLCSMultiViewSample) -> BLCSMultiViewSample:
         if self.augment:
@@ -193,7 +194,7 @@ def collate_multiview_trajectories(
     ball_vis_batch = []
     ball_uv_target_batch = []
     ball_vis_target_batch = []
-    ball_mask_batch = []
+    padding_mask_batch = []
     court_kp_batch = []
     court_vis_batch = []
     position_3d_batch = []
@@ -220,7 +221,7 @@ def collate_multiview_trajectories(
         ball_vis_target = (
             sample.get("ball_vis_target", ball_vis) if has_clean_targets else None
         )
-        ball_mask = sample["ball_mask"]
+        padding_mask = sample["padding_mask"]
         court_kp = sample["court_kp"]
         court_vis = sample["court_vis"]
         position_3d = sample["position_3d"]
@@ -249,7 +250,9 @@ def collate_multiview_trajectories(
                     [ball_vis_target, torch.zeros(n_views, pad_seq)],
                     dim=1,
                 )
-            ball_mask = torch.cat([ball_mask, torch.zeros(n_views, pad_seq)], dim=1)
+            padding_mask = torch.cat(
+                [padding_mask, torch.ones(n_views, pad_seq, dtype=torch.bool)], dim=1
+            )
             court_kp = torch.cat(
                 [court_kp, torch.zeros(n_views, pad_seq, n_kp, 2)], dim=1
             )
@@ -275,8 +278,12 @@ def collate_multiview_trajectories(
                     [ball_vis_target, torch.zeros(pad_views, max_seq_len)],
                     dim=0,
                 )
-            ball_mask = torch.cat(
-                [ball_mask, torch.zeros(pad_views, max_seq_len)], dim=0
+            padding_mask = torch.cat(
+                [
+                    padding_mask,
+                    torch.ones(pad_views, max_seq_len, dtype=torch.bool),
+                ],
+                dim=0,
             )
             court_kp = torch.cat(
                 [court_kp, torch.zeros(pad_views, max_seq_len, n_kp, 2)], dim=0
@@ -302,7 +309,7 @@ def collate_multiview_trajectories(
             assert ball_vis_target is not None
             ball_uv_target_batch.append(ball_uv_target)
             ball_vis_target_batch.append(ball_vis_target)
-        ball_mask_batch.append(ball_mask)
+        padding_mask_batch.append(padding_mask)
         court_kp_batch.append(court_kp)
         court_vis_batch.append(court_vis)
         position_3d_batch.append(position_3d)
@@ -318,7 +325,7 @@ def collate_multiview_trajectories(
     collated = {
         "ball_uv": torch.stack(ball_uv_batch, dim=0),
         "ball_vis": torch.stack(ball_vis_batch, dim=0),
-        "ball_mask": torch.stack(ball_mask_batch, dim=0),
+        "padding_mask": torch.stack(padding_mask_batch, dim=0),
         "court_kp": torch.stack(court_kp_batch, dim=0),
         "court_vis": torch.stack(court_vis_batch, dim=0),
         "position_3d": torch.stack(position_3d_batch, dim=0),
