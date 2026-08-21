@@ -37,12 +37,10 @@ def _batch() -> dict[str, torch.Tensor]:
     candidate_shape = (1, 2, 4, 2)
     return {
         "ball_uv": torch.rand(*candidate_shape, 2),
-        "ball_visible": torch.ones(candidate_shape, dtype=torch.bool),
-        "candidate_mask": torch.ones(candidate_shape, dtype=torch.bool),
+        "ball_vis": torch.ones(candidate_shape, dtype=torch.bool),
         "court_kp": torch.rand(1, 2, 4, 14, 2),
         "court_vis": torch.ones(1, 2, 4, 14, dtype=torch.bool),
-        "frame_mask": torch.ones(1, 4, dtype=torch.bool),
-        "view_mask": torch.ones(1, 2, dtype=torch.bool),
+        "padding_mask": torch.zeros(1, 2, 4, dtype=torch.bool),
     }
 
 
@@ -92,10 +90,14 @@ def test_hybrid_candidate_state_dict_round_trip_preserves_outputs() -> None:
         source_output = source.execute_call(source.build_call(batch))
         clone_output = clone.execute_call(clone.build_call(batch))
 
-    assert set(source_output) == set(clone_output) == {
-        "position",
-        "presence_logits",
-    }
+    assert (
+        set(source_output)
+        == set(clone_output)
+        == {
+            "position",
+            "presence_logits",
+        }
+    )
     torch.testing.assert_close(clone_output["position"], source_output["position"])
     torch.testing.assert_close(
         clone_output["presence_logits"], source_output["presence_logits"]

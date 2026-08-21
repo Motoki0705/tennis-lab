@@ -11,11 +11,10 @@ from src.tasks.blcs.configuration import TrackQueryModelConfig
 from src.tasks.blcs.data.tracking_types import BLCSTrackingPrediction
 from src.tasks.blcs.models.components.observation_fusion import (
     LinearTrackObservationFusion,
-    PointAttentionTrackObservationFusion,
 )
-from src.tasks.blcs.models.components.track_query_stage import BLCSTrackQueryStage
 from src.utils.models import (
     CSWAConfig,
+    FixedQueryTrackStage,
     RMSNorm,
     RotaryFrequencyComputer,
     TransformerBlock,
@@ -25,6 +24,7 @@ from src.utils.models.components.mhc import (
     ManifoldConstrainedHyperConnection,
     MHCConfig,
 )
+from src.utils.models.multiview_padding import build_fixed_query_padding_masks
 
 
 class BLCSTrackQueryModel(nn.Module):
@@ -51,34 +51,10 @@ class BLCSTrackQueryModel(nn.Module):
             )
 
         self.num_court_tokens = 14
-        self.observation_encoder: (
-            LinearTrackObservationFusion | PointAttentionTrackObservationFusion
-        )
-        if config.observation_fusion == "linear":
-            self.observation_encoder = LinearTrackObservationFusion(
-                hidden_dim=self.hidden_dim,
-                num_court_tokens=self.num_court_tokens,
-                invisible_init_std=config.invisible_init_std,
-            )
-        elif config.observation_fusion == "point_attention":
-            if config.point_fusion is None:
-                raise ValueError(
-                    "model.point_fusion is required when observation_fusion="
-                    "'point_attention'."
-                )
-            self.observation_encoder = PointAttentionTrackObservationFusion(
-                hidden_dim=self.hidden_dim,
-                num_court_tokens=self.num_court_tokens,
-                config=config.point_fusion,
-                invisible_init_std=config.invisible_init_std,
-            )
-        else:
-            raise ValueError(
-                "observation_fusion must be 'linear' or 'point_attention', got "
-                f"{config.observation_fusion!r}."
-            )
-        self.observation_encoder.register_forward_hook(
-            self._validate_observation_output,
+        self.observation_encoder = LinearTrackObservationFusion(
+            hidden_dim=self.hidden_dim,
+            num_court_tokens=self.num_court_tokens,
+            invisible_init_std=config.invisible_init_std,
         )
 
         self.slot_embeddings = nn.Parameter(
@@ -119,42 +95,32 @@ class BLCSTrackQueryModel(nn.Module):
         kwargs: dict[str, object],
     ) -> None:
         ball_uv = cast(Tensor, args[0] if args else kwargs["ball_uv"])
-        ball_visible = cast(
+        ball_vis = cast(
             Tensor,
-            args[1] if len(args) > 1 else kwargs["ball_visible"],
+            args[1] if len(args) > 1 else kwargs["ball_vis"],
         )
-        candidate_mask = cast(
-            Tensor,
-            args[2] if len(args) > 2 else kwargs["candidate_mask"],
+        court_kp = cast(Tensor, args[2] if len(args) > 2 else kwargs["court_kp"])
+        court_vis = cast(Tensor, args[3] if len(args) > 3 else kwargs["court_vis"])
+        padding_mask = cast(
+            Tensor, args[4] if len(args) > 4 else kwargs["padding_mask"]
         )
         if ball_uv.ndim != 5:
             raise ValueError("ball_uv must have shape (B,V,T,Q,2).")
         if ball_uv.shape[3] != self.num_queries:
             raise ValueError("ball_uv candidate width must equal model.num_queries.")
-        if ball_visible.shape != ball_uv.shape[:-1]:
-            raise ValueError("ball_visible must match ball_uv candidate axes.")
-        if candidate_mask.shape != ball_visible.shape:
-            raise ValueError("candidate_mask must match ball_visible.")
-        if bool((ball_visible & ~candidate_mask).any()):
-            raise ValueError("ball_visible implies candidate_mask.")
-
-    @staticmethod
-    def _validate_observation_output(
-        _module: nn.Module,
-        args: tuple[object, ...],
-        output: object,
-    ) -> None:
-        if not isinstance(output, tuple) or len(output) != 2:
-            raise RuntimeError(
-                "observation encoder must return candidate tokens and a camera mask."
-            )
-        state_valid = cast(Tensor, args[4])
-        time_major_valid = cast(Tensor, output[1])
-        expected_time_major = state_valid.permute(0, 2, 1, 3)
-        if time_major_valid.shape != expected_time_major.shape:
-            raise RuntimeError(
-                "observation encoder returned an invalid camera mask shape."
-            )
+        if ball_vis.shape != ball_uv.shape[:-1]:
+            raise ValueError("ball_vis must match ball_uv query axes.")
+        batch_size, num_views, num_frames = ball_uv.shape[:3]
+        if court_kp.shape != (batch_size, num_views, num_frames, 14, 2):
+            raise ValueError("court_kp must have shape (B,V,T,14,2).")
+        if court_vis.shape != court_kp.shape[:-1]:
+            raise ValueError("court_vis must match court_kp without UV.")
+        if padding_mask.shape != (batch_size, num_views, num_frames):
+            raise ValueError("padding_mask must have shape (B,V,T).")
+        if any(
+            tensor.dtype != torch.bool for tensor in (ball_vis, court_vis, padding_mask)
+        ):
+            raise TypeError("ball_vis, court_vis, and padding_mask must be boolean.")
 
     def _block_config(
         self,
@@ -198,7 +164,7 @@ class BLCSTrackQueryModel(nn.Module):
         stage_index: int,
         config: TrackQueryModelConfig,
         head_dim: int,
-    ) -> BLCSTrackQueryStage:
+    ) -> FixedQueryTrackStage:
         temporal_cswa = stage_index % 4 < 3
         temporal_config = self._block_config(
             config=config,
@@ -210,7 +176,7 @@ class BLCSTrackQueryModel(nn.Module):
             head_dim=head_dim,
             temporal_cswa=False,
         )
-        return BLCSTrackQueryStage(
+        return FixedQueryTrackStage(
             stage_index=stage_index,
             mhc=ManifoldConstrainedHyperConnection(
                 MHCConfig(
@@ -284,38 +250,42 @@ class BLCSTrackQueryModel(nn.Module):
     def forward(
         self,
         ball_uv: Tensor,
-        ball_visible: Tensor,
-        candidate_mask: Tensor,
+        ball_vis: Tensor,
         court_kp: Tensor,
         court_vis: Tensor,
-        frame_mask: Tensor,
-        camera_state_valid: Tensor,
-        spatial_attention_mask: Tensor,
-        object_temporal_state_valid: Tensor,
-        object_temporal_attention_mask: Tensor,
-        query_temporal_state_valid: Tensor,
-        query_temporal_attention_mask: Tensor,
-        point_attention_mask: Tensor,
+        padding_mask: Tensor,
     ) -> BLCSTrackingPrediction:
-        """Predict fixed-width clip-local ball tracks from prepared contracts."""
+        """Predict fixed-width tracks; only padding controls attention validity."""
         batch_size, num_views, num_frames, _, _ = ball_uv.shape
-
-        time_major_tokens, time_major_valid = self.observation_encoder(
-            court_kp,
-            court_vis,
-            ball_uv,
-            ball_visible,
-            camera_state_valid,
-            point_attention_mask,
+        masks = build_fixed_query_padding_masks(
+            padding_mask,
+            num_queries=self.num_queries,
         )
-        del time_major_valid
+        context_valid = masks.context_valid
+        effective_ball_uv = ball_uv.masked_fill(
+            ~context_valid.unsqueeze(-1).unsqueeze(-1),
+            0.0,
+        )
+        effective_ball_vis = ball_vis & context_valid.unsqueeze(-1)
+        effective_court_kp = court_kp.masked_fill(
+            ~context_valid.unsqueeze(-1).unsqueeze(-1),
+            0.0,
+        )
+        effective_court_vis = court_vis & context_valid.unsqueeze(-1)
+
+        time_major_tokens = self.observation_encoder(
+            effective_court_kp,
+            effective_court_vis,
+            effective_ball_uv,
+            effective_ball_vis,
+        )
         camera_tokens = time_major_tokens.permute(0, 2, 1, 3, 4)
-        camera_tokens = camera_tokens * camera_state_valid.unsqueeze(-1)
+        camera_tokens = camera_tokens * masks.object_state_valid.unsqueeze(-1)
 
         slots = self.slot_embeddings.view(
             1, 1, self.num_queries, self.hidden_dim
         ).expand(batch_size, num_frames, -1, -1)
-        slots = slots * frame_mask[:, :, None, None]
+        slots = slots * masks.frame_valid[:, :, None, None]
         coordinates = self._build_spatial_coordinates(
             batch_size=batch_size,
             num_frames=num_frames,
@@ -334,21 +304,25 @@ class BLCSTrackQueryModel(nn.Module):
             camera_tokens, slots = stage(
                 camera_tokens,
                 slots,
-                camera_state_valid=camera_state_valid,
-                frame_mask=frame_mask,
-                spatial_attention_mask=spatial_attention_mask,
-                object_temporal_state_valid=object_temporal_state_valid,
-                object_temporal_attention_mask=object_temporal_attention_mask,
-                query_temporal_state_valid=query_temporal_state_valid,
-                query_temporal_attention_mask=query_temporal_attention_mask,
+                object_state_valid=masks.object_state_valid,
+                frame_valid=masks.frame_valid,
+                spatial_attention_keep_mask=masks.spatial_attention_keep_mask,
+                object_temporal_state_valid=masks.object_temporal_state_valid,
+                object_temporal_attention_keep_mask=(
+                    masks.object_temporal_attention_keep_mask
+                ),
+                query_temporal_state_valid=masks.query_temporal_state_valid,
+                query_temporal_attention_keep_mask=(
+                    masks.query_temporal_attention_keep_mask
+                ),
                 spatial_freqs=spatial_freqs,
                 time_freqs=time_freqs,
             )
 
         slots = self.output_norm(slots)
-        position = self.position_head(slots) * frame_mask[:, :, None, None]
+        position = self.position_head(slots) * masks.frame_valid[:, :, None, None]
         presence_logits = self.presence_head(slots).squeeze(-1)
-        presence_logits = presence_logits * frame_mask[:, :, None]
+        presence_logits = presence_logits * masks.frame_valid[:, :, None]
         return {
             "position": position,
             "presence_logits": presence_logits,

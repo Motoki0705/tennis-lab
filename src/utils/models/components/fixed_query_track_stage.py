@@ -1,4 +1,4 @@
-"""One fixed-mode mHC/spatial/temporal BLCS track-query stage."""
+"""Shared fixed-query multi-view tracking stage."""
 
 from __future__ import annotations
 
@@ -7,12 +7,17 @@ from typing import cast
 import torch
 from torch import Tensor, nn
 
-from src.utils.models import TransformerBlock
+from src.utils.models.components.block import TransformerBlock
 from src.utils.models.components.mhc import ManifoldConstrainedHyperConnection
 
 
-class BLCSTrackQueryStage(nn.Module):
-    """Run object temporal, global spatial, then same-mode query temporal work."""
+class FixedQueryTrackStage(nn.Module):
+    """Run object-temporal, global-spatial, then query-temporal attention.
+
+    Temporal attention follows a constructor-fixed ``C,C,C,G`` cycle: stages
+    whose index modulo four is zero through two use CSWA and the fourth uses
+    global MHA. Spatial attention always uses global MHA.
+    """
 
     def __init__(
         self,
@@ -41,9 +46,13 @@ class BLCSTrackQueryStage(nn.Module):
 
         expected_temporal = "mha" if self.is_global else "cswa"
         if object_temporal_block.cfg.attention_type != expected_temporal:
-            raise ValueError("object temporal block does not match the fixed stage mode.")
+            raise ValueError(
+                "object temporal block does not match the fixed stage mode."
+            )
         if query_temporal_block.cfg.attention_type != expected_temporal:
-            raise ValueError("query temporal block does not match the fixed stage mode.")
+            raise ValueError(
+                "query temporal block does not match the fixed stage mode."
+            )
         if spatial_block.cfg.attention_type != "mha":
             raise ValueError("spatial attention must always use global MHA.")
         self.register_forward_pre_hook(
@@ -57,49 +66,49 @@ class BLCSTrackQueryStage(nn.Module):
         args: tuple[object, ...],
         kwargs: dict[str, object],
     ) -> None:
-        camera_tokens = cast(
+        object_tokens = cast(
             Tensor,
-            args[0] if args else kwargs["camera_tokens"],
+            args[0] if args else kwargs["object_tokens"],
         )
-        slots = cast(
+        query_tokens = cast(
             Tensor,
-            args[1] if len(args) > 1 else kwargs["slots"],
+            args[1] if len(args) > 1 else kwargs["query_tokens"],
         )
-        camera_state_valid = cast(Tensor, kwargs["camera_state_valid"])
-        frame_mask = cast(Tensor, kwargs["frame_mask"])
-        if camera_tokens.ndim != 5:
-            raise ValueError("camera_tokens must have shape (B,V,T,Q,D).")
-        batch_size, _, num_frames, num_queries, hidden_dim = camera_tokens.shape
+        object_state_valid = cast(Tensor, kwargs["object_state_valid"])
+        frame_valid = cast(Tensor, kwargs["frame_valid"])
+        if object_tokens.ndim != 5:
+            raise ValueError("object_tokens must have shape (B,V,T,Q,D).")
+        batch_size, _, num_frames, num_queries, hidden_dim = object_tokens.shape
         if (num_queries, hidden_dim) != (self.num_queries, self.hidden_dim):
-            raise ValueError("camera_tokens do not match the constructed Q/D widths.")
-        if slots.shape != (batch_size, num_frames, num_queries, hidden_dim):
-            raise ValueError("slots must have shape (B,T,Q,D).")
-        if camera_state_valid.shape != camera_tokens.shape[:-1]:
-            raise ValueError("camera_state_valid must match camera token axes.")
-        if frame_mask.shape != (batch_size, num_frames):
-            raise ValueError("frame_mask must have shape (B,T).")
+            raise ValueError("object_tokens do not match the constructed Q/D widths.")
+        if query_tokens.shape != (batch_size, num_frames, num_queries, hidden_dim):
+            raise ValueError("query_tokens must have shape (B,T,Q,D).")
+        if object_state_valid.shape != object_tokens.shape[:-1]:
+            raise ValueError("object_state_valid must match object token axes.")
+        if frame_valid.shape != (batch_size, num_frames):
+            raise ValueError("frame_valid must have shape (B,T).")
 
     def forward(
         self,
-        camera_tokens: Tensor,
-        slots: Tensor,
+        object_tokens: Tensor,
+        query_tokens: Tensor,
         *,
-        camera_state_valid: Tensor,
-        frame_mask: Tensor,
-        spatial_attention_mask: Tensor,
+        object_state_valid: Tensor,
+        frame_valid: Tensor,
+        spatial_attention_keep_mask: Tensor,
         object_temporal_state_valid: Tensor,
-        object_temporal_attention_mask: Tensor,
+        object_temporal_attention_keep_mask: Tensor,
         query_temporal_state_valid: Tensor,
-        query_temporal_attention_mask: Tensor,
+        query_temporal_attention_keep_mask: Tensor,
         spatial_freqs: Tensor,
         time_freqs: Tensor,
     ) -> tuple[Tensor, Tensor]:
-        """Return canonical ``[B,V,T,Q,D]`` camera and ``[B,T,Q,D]`` slots."""
+        """Return canonical ``[B,V,T,Q,D]`` objects and ``[B,T,Q,D]`` queries."""
         batch_size, num_views, num_frames, num_queries, hidden_dim = (
-            camera_tokens.shape
+            object_tokens.shape
         )
 
-        projected, mhc_state = self.mhc.pre(camera_tokens, camera_state_valid)
+        projected, mhc_state = self.mhc.pre(object_tokens, object_state_valid)
         object_values = projected.squeeze(-2).reshape(
             batch_size * num_views, num_frames, hidden_dim
         )
@@ -107,7 +116,7 @@ class BLCSTrackQueryStage(nn.Module):
             object_update = self.object_temporal_block.forward_update(
                 object_values,
                 freqs_cis=time_freqs,
-                attn_mask=object_temporal_attention_mask,
+                attn_mask=object_temporal_attention_keep_mask,
             )
         else:
             object_update = self.object_temporal_block.forward_update(
@@ -118,39 +127,39 @@ class BLCSTrackQueryStage(nn.Module):
         object_update = object_update.reshape(
             batch_size, num_views, num_frames, 1, hidden_dim
         )
-        camera_object = self.mhc.post(
+        temporal_objects = self.mhc.post(
             object_update,
-            residual=camera_tokens,
+            residual=object_tokens,
             state=mhc_state,
         )
-        camera_object = camera_object * camera_state_valid.unsqueeze(-1)
+        temporal_objects = temporal_objects * object_state_valid.unsqueeze(-1)
 
-        time_major_camera = camera_object.permute(0, 2, 1, 3, 4)
+        time_major_objects = temporal_objects.permute(0, 2, 1, 3, 4)
         spatial_values = torch.cat(
-            (slots, time_major_camera.flatten(2, 3)),
+            (query_tokens, time_major_objects.flatten(2, 3)),
             dim=2,
         ).flatten(0, 1)
         spatial_values = self.spatial_block(
             spatial_values,
             freqs_cis=spatial_freqs,
-            attn_mask=spatial_attention_mask,
+            attn_mask=spatial_attention_keep_mask,
         ).reshape(batch_size, num_frames, -1, hidden_dim)
-        spatial_slots = spatial_values[:, :, :num_queries]
-        spatial_slots = spatial_slots * frame_mask[:, :, None, None]
-        camera_output = spatial_values[:, :, num_queries:].reshape(
+        spatial_queries = spatial_values[:, :, :num_queries]
+        spatial_queries = spatial_queries * frame_valid[:, :, None, None]
+        object_output = spatial_values[:, :, num_queries:].reshape(
             batch_size, num_frames, num_views, num_queries, hidden_dim
         )
-        camera_output = camera_output.permute(0, 2, 1, 3, 4)
-        camera_output = camera_output * camera_state_valid.unsqueeze(-1)
+        object_output = object_output.permute(0, 2, 1, 3, 4)
+        object_output = object_output * object_state_valid.unsqueeze(-1)
 
-        query_values = spatial_slots.permute(0, 2, 1, 3).reshape(
+        query_values = spatial_queries.permute(0, 2, 1, 3).reshape(
             batch_size * num_queries, num_frames, hidden_dim
         )
         if self.is_global:
             query_values = self.query_temporal_block(
                 query_values,
                 freqs_cis=time_freqs,
-                attn_mask=query_temporal_attention_mask,
+                attn_mask=query_temporal_attention_keep_mask,
             )
         else:
             query_values = self.query_temporal_block(
@@ -161,8 +170,8 @@ class BLCSTrackQueryStage(nn.Module):
         query_output = query_values.reshape(
             batch_size, num_queries, num_frames, hidden_dim
         ).permute(0, 2, 1, 3)
-        query_output = query_output * frame_mask[:, :, None, None]
-        return camera_output, query_output
+        query_output = query_output * frame_valid[:, :, None, None]
+        return object_output, query_output
 
 
-__all__ = ["BLCSTrackQueryStage"]
+__all__ = ["FixedQueryTrackStage"]

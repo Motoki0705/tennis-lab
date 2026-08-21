@@ -2,7 +2,7 @@
 
 Design (documented in the task README):
 
-- **Supervised terms** are masked by ``frame_mask & target_*_valid`` and
+- **Supervised terms** are masked by ``~padding_mask & target_*_valid`` and
   weighted by the per-frame pseudo-label confidence weights produced by the
   data-side quality filter, so unreliable labels contribute proportionally
   less.
@@ -78,11 +78,11 @@ class SLCSLossInputs:
     target_player_position: Tensor  # (B, P, T, 3)
     target_player_rotation: Tensor  # (B, P, T, 2)
     target_ball_position: Tensor  # (B, T, 3)
-    player_mask: Tensor  # (B, P, T) bool: frame_mask & target_player_valid
+    player_mask: Tensor  # (B, P, T) bool: ~padding_mask & target_player_valid
     player_weight: Tensor  # (B, P, T) float
-    ball_mask: Tensor  # (B, T) bool: frame_mask & target_ball_valid
+    ball_mask: Tensor  # (B, T) bool: ~padding_mask & target_ball_valid
     ball_weight: Tensor  # (B, T) float
-    frame_mask: Tensor  # (B, T) bool (padding only; label-independent)
+    padding_mask: Tensor  # (B, T) bool, True for padding
 
     @property
     def zero(self) -> Tensor:
@@ -178,7 +178,8 @@ def make_player_position_smoothness_term(
         batch, players, seq_len, dims = pred.shape
         flat = pred.reshape(batch * players, seq_len, dims)
         mask = (
-            inputs.frame_mask.unsqueeze(1)
+            (~inputs.padding_mask)
+            .unsqueeze(1)
             .expand(batch, players, seq_len)
             .reshape(batch * players, seq_len)
         )
@@ -193,7 +194,7 @@ def make_ball_position_smoothness_term(
     """Jerk prior on the ball trajectory over all real frames."""
 
     def term(inputs: SLCSLossInputs) -> Tensor:
-        return cast(Tensor, penalty(inputs.pred_ball_position, inputs.frame_mask))
+        return cast(Tensor, penalty(inputs.pred_ball_position, ~inputs.padding_mask))
 
     return term
 
@@ -202,9 +203,10 @@ def ground_penetration_loss_term(inputs: SLCSLossInputs) -> Tensor:
     """Hinge on negative normalized height for players and ball (court z=0)."""
     player_pen = nn.functional.relu(-inputs.pred_player_position[..., 2])
     ball_pen = nn.functional.relu(-inputs.pred_ball_position[..., 2])
-    player_mask = inputs.frame_mask.unsqueeze(1).expand_as(player_pen)
+    frame_valid = ~inputs.padding_mask
+    player_mask = frame_valid.unsqueeze(1).expand_as(player_pen)
     player_term = masked_mean(player_pen, player_mask, binarize=True, denom_min=1.0)
-    ball_term = masked_mean(ball_pen, inputs.frame_mask, binarize=True, denom_min=1.0)
+    ball_term = masked_mean(ball_pen, frame_valid, binarize=True, denom_min=1.0)
     return player_term + ball_term
 
 
@@ -222,8 +224,16 @@ class SLCSLoss(nn.Module):
             axis_weights=(1.0, 1.0, 1.0),
         )
         self.weighted_terms: tuple[tuple[str, SLCSLossTerm, float], ...] = (
-            ("player_position", player_position_loss_term, config.player_position_weight),
-            ("player_rotation", player_rotation_loss_term, config.player_rotation_weight),
+            (
+                "player_position",
+                player_position_loss_term,
+                config.player_position_weight,
+            ),
+            (
+                "player_rotation",
+                player_rotation_loss_term,
+                config.player_rotation_weight,
+            ),
             ("player_angle", player_angle_loss_term, config.player_angle_weight),
             ("ball_position", ball_position_loss_term, config.ball_position_weight),
             (
@@ -291,7 +301,7 @@ def build_slcs_loss_inputs(
         player_weight=targets.player_weight,
         ball_mask=targets.ball_mask,
         ball_weight=targets.ball_weight,
-        frame_mask=targets.frame_mask,
+        padding_mask=targets.padding_mask,
     )
 
 

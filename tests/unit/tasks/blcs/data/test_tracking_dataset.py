@@ -10,8 +10,8 @@ import pytest
 import torch
 from hydra import compose, initialize_config_dir
 
+from src.tasks.base.data.lifecycle_slots import build_fixed_lifecycle_assignment
 from src.tasks.blcs.data.observation_candidates import (
-    build_fixed_lifecycle_assignment,
     pack_observation_candidates,
 )
 from src.tasks.blcs.data.tracking_dataset import (
@@ -31,13 +31,13 @@ def test_observations_pack_all_views_to_exact_width_with_lifecycle_reuse() -> No
             [False, False, True],
         ]
     )
-    visible = presence.unsqueeze(0).expand(2, -1, -1).clone()
-    visible[1, 0, 1] = False
+    vis = presence.unsqueeze(0).expand(2, -1, -1).clone()
+    vis[1, 0, 1] = False
     uv = torch.arange(2 * 4 * 3 * 2, dtype=torch.float32).reshape(2, 4, 3, 2)
 
     packed = pack_observation_candidates(
         ball_uv=uv,
-        ball_visible=visible,
+        ball_vis=vis,
         physical_presence=presence,
         num_slots=2,
         min_reuse_gap_frames=0,
@@ -45,13 +45,11 @@ def test_observations_pack_all_views_to_exact_width_with_lifecycle_reuse() -> No
     )
 
     assert packed.uv.shape == (2, 4, 2, 2)
-    assert packed.visible.shape == packed.candidate_mask.shape == (2, 4, 2)
-    torch.testing.assert_close(packed.candidate_mask[0], packed.candidate_mask[1])
+    assert packed.vis.shape == (2, 4, 2)
     torch.testing.assert_close(packed.gt_index[0], packed.gt_index[1])
     assert packed.gt_index[0, 0, 0] == 0
     assert packed.gt_index[0, 2, 0] == 2
-    assert packed.candidate_mask[1, 0, 1]
-    assert not packed.visible[1, 0, 1]
+    assert not packed.vis[1, 0, 1]
 
 
 def test_concurrent_candidate_overflow_is_rejected_without_truncation() -> None:
@@ -60,7 +58,7 @@ def test_concurrent_candidate_overflow_is_rejected_without_truncation() -> None:
     with pytest.raises(ValueError, match="cannot be packed"):
         pack_observation_candidates(
             ball_uv=torch.rand(1, 2, 3, 2),
-            ball_visible=presence.unsqueeze(0),
+            ball_vis=presence.unsqueeze(0),
             physical_presence=presence,
             num_slots=2,
             min_reuse_gap_frames=0,
@@ -76,12 +74,14 @@ def test_training_assignments_use_independent_torch_draws_and_eval_is_stable() -
         num_slots=4,
         min_reuse_gap_frames=0,
         randomize_slots=True,
+        generator=None,
     )
     observation = build_fixed_lifecycle_assignment(
         presence,
         num_slots=4,
         min_reuse_gap_frames=0,
         randomize_slots=True,
+        generator=None,
     )
     assert not torch.equal(target.track_to_slot, observation.track_to_slot)
 
@@ -90,12 +90,14 @@ def test_training_assignments_use_independent_torch_draws_and_eval_is_stable() -
         num_slots=4,
         min_reuse_gap_frames=0,
         randomize_slots=False,
+        generator=None,
     )
     second_eval = build_fixed_lifecycle_assignment(
         presence,
         num_slots=4,
         min_reuse_gap_frames=0,
         randomize_slots=False,
+        generator=None,
     )
     torch.testing.assert_close(first_eval.track_to_slot, second_eval.track_to_slot)
 
@@ -107,9 +109,7 @@ def test_dataset_packs_more_physical_tracks_than_q_with_independent_assignments(
     """Exercise the persisted-scene boundary, not only the packing helper."""
     scene = tmp_path / "scenes" / "scene_000000"
     scene.mkdir(parents=True)
-    (scene / "meta.json").write_text(
-        json.dumps({"num_frames": 4}), encoding="utf-8"
-    )
+    (scene / "meta.json").write_text(json.dumps({"num_frames": 4}), encoding="utf-8")
     (scene / "scalars.json").write_text(
         json.dumps({"num_cameras": 2}), encoding="utf-8"
     )
@@ -129,17 +129,17 @@ def test_dataset_packs_more_physical_tracks_than_q_with_independent_assignments(
     np.save(scene / "ball_vel_world.npy", np.zeros((4, 3, 3), dtype=np.float32))
     for camera_index in range(2):
         uv = np.arange(4 * 3 * 2, dtype=np.float32).reshape(4, 3, 2) / 100.0
-        visible = presence.copy()
+        vis = presence.copy()
         if camera_index == 1:
-            visible[0, 1] = False
+            vis[0, 1] = False
         np.save(scene / f"cam_{camera_index}_ball_uv.npy", uv)
-        np.save(scene / f"cam_{camera_index}_ball_visible.npy", visible)
+        np.save(scene / f"cam_{camera_index}_ball_vis.npy", vis)
         np.save(
             scene / f"cam_{camera_index}_court_kp_uv.npy",
             np.zeros((14, 2), dtype=np.float32),
         )
         np.save(
-            scene / f"cam_{camera_index}_court_kp_visible.npy",
+            scene / f"cam_{camera_index}_court_kp_vis.npy",
             np.ones(14, dtype=np.bool_),
         )
 
@@ -173,37 +173,32 @@ def test_dataset_packs_more_physical_tracks_than_q_with_independent_assignments(
     )[0]
 
     assert sample["ball_uv"].shape == (2, 4, 2, 2)
-    assert sample["candidate_mask"].shape == (2, 4, 2)
-    torch.testing.assert_close(
-        sample["candidate_mask"][0], sample["candidate_mask"][1]
-    )
+    assert sample["ball_vis"].shape == (2, 4, 2)
     assert set(sample["candidate_gt_index"].unique().tolist()) == {-1, 0, 1, 2}
     assert set(sample["target_instance_id"].unique().tolist()) == {-1, 0, 1, 2}
     assert not torch.equal(
         sample["candidate_gt_index"][0], sample["target_instance_id"]
     )
-    assert sample["candidate_mask"][1, 0, 0]
-    assert not sample["ball_visible"][1, 0, 0]
+    assert not sample["ball_vis"][1, 0, 0]
+    assert not sample["padding_mask"].any()
 
 
 def _sample(*, views: int, frames: int, queries: int) -> dict[str, torch.Tensor]:
     candidate_shape = (views, frames, queries)
     return {
-        "scene_format_version": torch.tensor(3),
+        "scene_format_version": torch.tensor(4),
         "ball_uv": torch.zeros(*candidate_shape, 2),
-        "ball_visible": torch.zeros(candidate_shape, dtype=torch.bool),
-        "candidate_mask": torch.zeros(candidate_shape, dtype=torch.bool),
+        "ball_vis": torch.zeros(candidate_shape, dtype=torch.bool),
         "court_kp": torch.zeros(views, frames, 14, 2),
         "court_vis": torch.zeros(views, frames, 14, dtype=torch.bool),
-        "frame_mask": torch.ones(frames, dtype=torch.bool),
-        "view_mask": torch.ones(views, dtype=torch.bool),
+        "padding_mask": torch.zeros(views, frames, dtype=torch.bool),
         "target_position": torch.zeros(frames, queries, 3),
         "target_velocity": torch.zeros(frames, queries, 3),
         "target_presence": torch.zeros(frames, queries, dtype=torch.bool),
         "target_instance_id": torch.full((frames, queries), -1),
         "target_slot_mask": torch.zeros(queries, dtype=torch.bool),
         "clean_ball_uv": torch.zeros(*candidate_shape, 2),
-        "clean_ball_visible": torch.zeros(candidate_shape, dtype=torch.bool),
+        "clean_ball_vis": torch.zeros(candidate_shape, dtype=torch.bool),
         "candidate_gt_index": torch.full(candidate_shape, -1),
     }
 
@@ -213,9 +208,14 @@ def test_collate_pads_view_and_time_but_never_candidate_axis() -> None:
         [_sample(views=1, frames=2, queries=4), _sample(views=2, frames=3, queries=4)]
     )
     assert result["ball_uv"].shape == (2, 2, 3, 4, 2)
-    assert result["candidate_mask"].shape == (2, 2, 3, 4)
+    assert result["padding_mask"].shape == (2, 2, 3)
+    assert result["padding_mask"][0, 0, 2]
+    assert result["padding_mask"][0, 1].all()
 
     with pytest.raises(ValueError, match="exact candidate width"):
         collate_blcs_tracking_batch(
-            [_sample(views=1, frames=2, queries=3), _sample(views=1, frames=2, queries=4)]
+            [
+                _sample(views=1, frames=2, queries=3),
+                _sample(views=1, frames=2, queries=4),
+            ]
         )

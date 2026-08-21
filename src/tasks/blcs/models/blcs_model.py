@@ -22,6 +22,10 @@ from torch import Tensor
 
 from src.tasks.blcs.configuration import SingleModelConfig
 from src.tasks.blcs.models.components.heads import build_trajectory_output
+from src.tasks.blcs.models.components.padding import (
+    build_single_view_padding_masks,
+    mask_trajectory_outputs,
+)
 from src.utils.models import (
     RMSNorm,
     TransformerBlock,
@@ -49,10 +53,10 @@ class BLCSModel(nn.Module):
 
     Input:
         - ball_uv: Ball 2D positions (u, v), shape (B, T, 2)
-        - court_kp: Court 2D keypoints (20 landmarks), shape (B, 40) or (B, 20, 2)
-        - ball_vis: Ball visibility flags, shape (B, T). Optional.
-        - ball_mask: Ball padding mask, shape (B, T). Optional.
-        - court_vis: Court keypoint visibility, shape (B, 20). Optional.
+        - ball_vis: Ball visibility flags, shape (B, T).
+        - court_kp: Court 2D keypoints, shape (B, K, 2).
+        - court_vis: Court keypoint visibility, shape (B, K).
+        - padding_mask: Frame padding mask, shape (B, T), True for padding.
 
     Output:
         - position: Normalized (x, y, z) trajectory, shape (B, T, 3)
@@ -216,24 +220,27 @@ class BLCSModel(nn.Module):
     def forward(
         self,
         ball_uv: Tensor,
-        court_kp: Tensor,
         ball_vis: Tensor,
+        court_kp: Tensor,
         court_vis: Tensor,
-        attention_mask: Tensor,
+        padding_mask: Tensor,
     ) -> dict[str, Tensor]:
         """Forward pass.
 
         Args:
             ball_uv: Ball 2D positions, shape (B, T, 2).
-            court_kp: Court keypoints, shape (B, 40) or (B, 20, 2).
             ball_vis: Ball visibility flags, shape (B, T).
-            ball_mask: Ball padding mask, shape (B, T).
+            court_kp: Court keypoints, shape (B, K, 2).
             court_vis: Court visibility mask, shape (B, K).
+            padding_mask: Frame padding mask, shape (B, T), True for padding.
 
         Returns:
             dict: Dictionary with 'position' (B, T, 3) and optionally 'velocity'.
         """
-        # Tokenize court and ball
+        masks = build_single_view_padding_masks(
+            padding_mask,
+            num_court_tokens=self.num_court_tokens,
+        )
         court_tok = self.court_embed(court_kp, court_vis)  # (B, K, D)
         ball_tok = self.ball_embed(ball_uv, ball_vis)  # (B, T, D)
         num_court_tokens = court_tok.shape[1]
@@ -243,12 +250,13 @@ class BLCSModel(nn.Module):
             x = blk(
                 x,
                 freqs_cis=freqs_cis,
-                attn_mask=attention_mask,
+                attn_mask=masks.attention_keep_mask,
             )
 
         x = self.final_norm(x)
         ball_out = x[:, num_court_tokens:, :]  # (B, T, D)
-        return cast("dict[str, Tensor]", self.output_head(ball_out))
+        outputs = cast("dict[str, Tensor]", self.output_head(ball_out))
+        return mask_trajectory_outputs(outputs, masks.frame_valid)
 
     def get_num_params(self) -> int:
         """Get total number of trainable parameters."""

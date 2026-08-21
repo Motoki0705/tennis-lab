@@ -49,8 +49,8 @@ class CameraData:
     camera_params: dict  # Camera intrinsics/extrinsics
     human_kp_uv: np.ndarray  # (T, 17, 2)
     court_kp_uv: np.ndarray  # (T, 20, 2)
-    human_kp_visible: np.ndarray  # (T, 17)
-    court_kp_visible: np.ndarray  # (T, 20)
+    human_kp_vis: np.ndarray  # (T, 17)
+    court_kp_vis: np.ndarray  # (T, 20)
 
     # Visibility metrics recorded for analysis/debugging.
     human_visibility_ratio: (
@@ -495,8 +495,8 @@ class SceneGenerator:
                 },
                 human_kp_uv=human_uv,
                 court_kp_uv=court_uv,
-                human_kp_visible=human_vis,
-                court_kp_visible=court_vis,
+                human_kp_vis=human_vis,
+                court_kp_vis=court_vis,
                 human_visibility_ratio=human_ratio,
                 court_visibility_count=avg_court,
             )

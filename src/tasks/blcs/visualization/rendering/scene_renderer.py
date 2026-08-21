@@ -135,9 +135,7 @@ def extract_ball_events(meta: dict[str, Any]) -> list[BallEvent]:
 def bounce_frames_from_events(events: list[BallEvent]) -> NDArray[np.int64]:
     """Return authoritative bounce indices from explicit event metadata."""
     frames = sorted(
-        event.frame_idx
-        for event in events
-        if event.event_type is BallEventType.BOUNCE
+        event.frame_idx for event in events if event.event_type is BallEventType.BOUNCE
     )
     return np.asarray(frames, dtype=np.int64)
 
@@ -381,9 +379,9 @@ class BLCSSceneRenderer:
         meta = scene["meta"]
         cam = scene["cameras"][camera_idx]
         ball_uv = cam["ball_uv"]
-        ball_vis = cam["ball_visible"]
+        ball_vis = cam["ball_vis"]
         court_uv = cam["court_kp_uv"]
-        court_vis = cam["court_kp_visible"]
+        court_vis = cam["court_kp_vis"]
 
         # Set up UV coordinate space
         ax.set_facecolor("#1a1a1a")
@@ -403,10 +401,7 @@ class BLCSSceneRenderer:
         uv_tracks = (
             [ball_uv]
             if ball_uv.ndim == 2
-            else [
-                ball_uv[:, index]
-                for index in range(int(scene["num_balls"]))
-            ]
+            else [ball_uv[:, index] for index in range(int(scene["num_balls"]))]
         )
         visibility_tracks = (
             [ball_vis]
@@ -765,7 +760,7 @@ class BLCSSceneRenderer:
 
             fig, ax = plt.subplots(figsize=figsize)
             court_uv = cam["court_kp_uv"]
-            court_vis = cam["court_kp_visible"]
+            court_vis = cam["court_kp_vis"]
             self.court_renderer.render_projected_2d(
                 ax,
                 court_uv,
