@@ -458,9 +458,7 @@ class CourtDataConfig:
                 f"data.output_channels must be {expected_channels} for task={task!r}."
             )
         if any(
-            index < 0 or index >= output_channels
-            for pair in pairs
-            for index in pair
+            index < 0 or index >= output_channels for pair in pairs for index in pair
         ):
             raise SemanticConfigurationError(
                 "data.hflip_swap_pairs indices must be within data.output_channels."
@@ -477,9 +475,7 @@ class CourtDataConfig:
                 "data.output_channels for task='kp'."
             )
         mask_dir_name = (
-            _string(mapping, "mask_dir_name", path="data")
-            if task == "line"
-            else None
+            _string(mapping, "mask_dir_name", path="data") if task == "line" else None
         )
         if mask_dir_name is not None and (
             mask_dir_name != mask_dir_name.strip()
@@ -830,6 +826,7 @@ class CourtTrainingConfig:
                 "min_lr",
                 "steps_per_epoch",
                 "optimizer",
+                "compile",
                 "matmul_precision",
                 "allow_tf32",
                 "checkpoint",
@@ -855,6 +852,7 @@ class CourtTrainingConfig:
                 "benchmark",
             },
             "optimizer": {"name", "betas"},
+            "compile": {"enabled", "backend", "mode", "fullgraph", "dynamic"},
             "checkpoint": {
                 "enabled",
                 "filename",

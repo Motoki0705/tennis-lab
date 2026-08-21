@@ -74,11 +74,10 @@ class PLCSTrackingPredictor(BasePredictor):
         self,
         *,
         human_kp: Tensor,
-        detection_mask: Tensor,
+        human_vis: Tensor,
         court_kp: Tensor,
         court_vis: Tensor,
-        frame_mask: Tensor,
-        view_mask: Tensor,
+        padding_mask: Tensor,
         tracking_metrics: TrackingMetricConfig,
         denormalize: bool,
     ) -> dict[str, Tensor]:
@@ -88,11 +87,10 @@ class PLCSTrackingPredictor(BasePredictor):
                 call=self.io_adapter.build_call(
                     {
                         "human_kp": human_kp,
-                        "detection_mask": detection_mask,
+                        "human_vis": human_vis,
                         "court_kp": court_kp,
                         "court_vis": court_vis,
-                        "frame_mask": frame_mask,
-                        "view_mask": view_mask,
+                        "padding_mask": padding_mask,
                     }
                 )
             )

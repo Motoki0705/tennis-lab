@@ -25,7 +25,6 @@ from src.tasks.plcs.models.discriminators import build_plcs_discriminator
 from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
 from src.tasks.plcs.training.mcmc import LangevinNoiseInjector, MCMCConfig
 from src.tasks.plcs.training.metrics import PLCSMetrics
-from src.utils.tensor_utils import normalize_padding_mask
 
 # Visualization imports are deferred to render_qualitative_samples to avoid
 # a circular import cycle (visualization.api.predict → inference.predictor →
@@ -160,8 +159,14 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         outputs, prepared = self._forward_from_batch(batch)
         target_position = cast(Tensor, prepared.target_position)
         target_rotation = cast(Tensor, prepared.target_rotation)
-        human_mask = prepared.target_human_mask
-        frame_mask = normalize_padding_mask(human_mask, flatten=False)
+        padding_mask = prepared.target_padding_mask
+        frame_mask = None
+        gan_padding_mask = None
+        if padding_mask is not None:
+            gan_padding_mask = (
+                padding_mask.all(dim=1) if padding_mask.ndim == 3 else padding_mask
+            )
+            frame_mask = ~gan_padding_mask
 
         loss_inputs = self.loss_fn.prepare_inputs(
             pred_position=outputs.position,
@@ -170,7 +175,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             target_rotation=target_rotation,
             pred_canonical_pose=outputs.canonical_pose,
             target_human_kp_3d=prepared.target_human_kp_3d,
-            human_mask=human_mask,
+            padding_mask=padding_mask,
         )
         losses = self.loss_fn(loss_inputs)
 
@@ -186,7 +191,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             outputs.rotation,
             target_position,
             target_rotation,
-            human_mask=human_mask,
+            padding_mask=padding_mask,
         )
 
         return {
@@ -199,7 +204,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             "prepared": prepared,
             "gan_fake": self._pose_sequence(outputs.position, outputs.rotation),
             "gan_real": self._pose_sequence(target_position, target_rotation),
-            "gan_mask": frame_mask,
+            "gan_padding_mask": gan_padding_mask,
         }
 
     @staticmethod
@@ -263,9 +268,9 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             "target_position": prepared.target_position,
             "target_rotation": prepared.target_rotation,
         }
-        mask = result.get("gan_mask")
+        mask = result.get("gan_padding_mask")
         if mask is not None:
-            payload["mask"] = mask
+            payload["padding_mask"] = mask
         return payload
 
     def configure_optimizers(self) -> Any:

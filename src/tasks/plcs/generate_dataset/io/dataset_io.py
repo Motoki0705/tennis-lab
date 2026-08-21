@@ -75,11 +75,17 @@ class PLCSDatasetWriter(BaseDatasetWriter):
         for i, cam in enumerate(scene.cameras):
             prefix = f"cam_{i}_"
             arrays[f"{prefix}human_kp_uv"] = cam.human_kp_uv.astype(np.float32)
-            arrays[f"{prefix}human_kp_visible"] = cam.human_kp_visible.astype(bool)
+            arrays[f"{prefix}human_kp_vis"] = cam.human_kp_vis.astype(bool)
             arrays[f"{prefix}human_visibility_ratio"] = np.array(
                 cam.human_visibility_ratio, dtype=np.float32
             )
-            self._append_court_camera_arrays(arrays, scalars, cam, prefix)
+            scalars[f"{prefix}params"] = cam.camera_params
+            arrays[f"{prefix}court_kp_uv"] = cam.court_kp_uv.astype(np.float32)
+            arrays[f"{prefix}court_kp_vis"] = cam.court_kp_vis.astype(bool)
+            arrays[f"{prefix}court_visibility_count"] = np.array(
+                cam.court_visibility_count,
+                dtype=np.float32,
+            )
 
             camera_metas.append(
                 {

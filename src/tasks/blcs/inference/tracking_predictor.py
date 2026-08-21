@@ -15,6 +15,7 @@ from src.tasks.blcs.model_io import (
     TrackQueryBoundModelIO,
     compose_blcs_track_query_model_io,
 )
+from src.tasks.blcs.model_io.adapters import TrackQueryModelIOAdapter
 from src.tasks.blcs.model_io.checkpoints import load_checkpoint_config
 from src.tasks.blcs.training.tracking_lightning_module import (
     BLCSTrackingLightningModule,
@@ -32,6 +33,9 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
         device: torch.device,
     ) -> None:
         self.model_io = model_io
+        if not isinstance(model_io.adapter, TrackQueryModelIOAdapter):
+            raise TypeError("BLCSTrackingPredictor requires TrackQueryModelIOAdapter.")
+        self.num_queries = model_io.adapter.num_queries
         self.model = model_io.model.to(device).eval()
         self.device = device
 
@@ -91,21 +95,46 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
         self,
         *,
         ball_uv: Tensor,
-        ball_visible: Tensor,
+        ball_vis: Tensor,
         court_kp: Tensor,
         court_vis: Tensor,
-        frame_mask: Tensor,
-        view_mask: Tensor,
+        padding_mask: Tensor,
         denormalize: bool,
     ) -> BLCSTrackQueryPrediction:
-        """Return the adapter's typed query-position/presence decode."""
+        """Pad an explicit short candidate set, then run the strict adapter."""
+        if ball_uv.ndim != 5:
+            raise ValueError("ball_uv must have shape (B,V,T,P,2).")
+        if ball_vis.shape != ball_uv.shape[:-1]:
+            raise ValueError("ball_vis must match ball_uv without UV.")
+        candidate_width = int(ball_uv.shape[3])
+        if candidate_width > self.num_queries:
+            raise ValueError(
+                "Inference candidates exceed model.num_queries "
+                f"({candidate_width} > {self.num_queries})."
+            )
+        if candidate_width < self.num_queries:
+            padding_width = self.num_queries - candidate_width
+            uv_padding = torch.zeros(
+                *ball_uv.shape[:3],
+                padding_width,
+                2,
+                dtype=ball_uv.dtype,
+                device=ball_uv.device,
+            )
+            mask_padding = torch.zeros(
+                *ball_vis.shape[:3],
+                padding_width,
+                dtype=torch.bool,
+                device=ball_vis.device,
+            )
+            ball_uv = torch.cat((ball_uv, uv_padding), dim=3)
+            ball_vis = torch.cat((ball_vis, mask_padding), dim=3)
         inputs = {
             "ball_uv": ball_uv,
-            "ball_visible": ball_visible,
+            "ball_vis": ball_vis,
             "court_kp": court_kp,
             "court_vis": court_vis,
-            "frame_mask": frame_mask,
-            "view_mask": view_mask,
+            "padding_mask": padding_mask,
         }
         return self.predict_batch(
             inputs,

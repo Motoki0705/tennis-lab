@@ -35,6 +35,22 @@ DEFAULT_BASE = "origin/main"
 DEFAULT_LINT_PATHS = ("src", "tests", ".spin")
 DEFAULT_TYPECHECK_PATHS = ("src", "tests", ".spin/cmds.py")
 CI_MARKER_EXPRESSION = "not local_data and not cuda"
+CI_LANES = ("remainder", "long-tail", "scene-pipeline")
+CI_LONG_TAIL_TEST_FILES = frozenset(
+    {
+        "tests/e2e/development/test_configuration_audit.py",
+        "tests/unit/synthetic_data_generation/alignment/test_evidence_source.py",
+        "tests/unit/tasks/plcs/test_configuration_contracts.py",
+        "tests/unit/utils/configuration/test_discovery.py",
+        "tests/unit/utils/configuration/test_inventory.py",
+    }
+)
+CI_SCENE_PIPELINE_TEST_FILES = frozenset(
+    {"tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py"}
+)
+CI_SPECIALIZED_TEST_FILES = (
+    CI_LONG_TAIL_TEST_FILES | CI_SCENE_PIPELINE_TEST_FILES
+)
 PYTHON_SUFFIXES = frozenset({".py", ".pyi"})
 
 
@@ -119,6 +135,53 @@ def _run_typecheck(paths: Sequence[str]) -> None:
             *paths,
         ]
     )
+
+
+def _discover_ci_test_files(repo_root: Path = REPO_ROOT) -> tuple[str, ...]:
+    """Return every pytest file using repository-relative POSIX paths."""
+    tests_root = repo_root / "tests"
+    if not tests_root.is_dir():
+        raise FileNotFoundError(f"Tests directory is unavailable: {tests_root}")
+
+    test_files = tuple(
+        sorted(
+            path.relative_to(repo_root).as_posix()
+            for path in tests_root.rglob("*.py")
+            if path.name.startswith("test_") or path.name.endswith("_test.py")
+        )
+    )
+    if not test_files:
+        raise RuntimeError(f"No pytest files were found under {tests_root}")
+    return test_files
+
+
+def _select_ci_test_files(
+    lane: str,
+    repo_root: Path = REPO_ROOT,
+) -> tuple[str, ...]:
+    """Return exactly the test files assigned to one GitHub Actions lane."""
+    if lane not in CI_LANES:
+        choices = ", ".join(CI_LANES)
+        raise ValueError(f"Unknown CI test lane {lane!r}; expected one of: {choices}")
+
+    all_files = frozenset(_discover_ci_test_files(repo_root))
+    missing = sorted(CI_SPECIALIZED_TEST_FILES - all_files)
+    if missing:
+        rendered = ", ".join(missing)
+        raise FileNotFoundError(
+            f"Configured specialized test files are unavailable: {rendered}"
+        )
+
+    if lane == "long-tail":
+        selected = CI_LONG_TAIL_TEST_FILES
+    elif lane == "scene-pipeline":
+        selected = CI_SCENE_PIPELINE_TEST_FILES
+    else:
+        selected = all_files - CI_SPECIALIZED_TEST_FILES
+
+    if not selected:
+        raise RuntimeError(f"CI test lane {lane!r} is empty")
+    return tuple(sorted(selected))
 
 
 def _pytest_command(
@@ -505,15 +568,52 @@ def test(
 
 
 @click.command()
-def ci() -> None:
-    """Run the same repository-wide checks as GitHub Actions."""
-    _run_lint(DEFAULT_LINT_PATHS)
+@click.option(
+    "--lane",
+    type=click.Choice(CI_LANES),
+    help="Run one GitHub Actions test lane instead of the complete suite.",
+)
+@click.option(
+    "--list-tests",
+    is_flag=True,
+    help="Print selected test files without running checks.",
+)
+def ci(lane: str | None, list_tests: bool) -> None:
+    """Run the repository-wide checks used by GitHub Actions."""
+    try:
+        selected = (
+            _discover_ci_test_files()
+            if lane is None
+            else _select_ci_test_files(lane)
+        )
+    except (FileNotFoundError, RuntimeError, ValueError) as error:
+        raise click.ClickException(str(error)) from error
+
+    if list_tests:
+        for test_file in selected:
+            click.echo(test_file)
+        return
+
+    if lane in {None, "remainder"}:
+        _run_lint(DEFAULT_LINT_PATHS)
+
+    parallel_args = (
+        ("-n", "0")
+        if lane == "scene-pipeline"
+        else ("-n", "auto", "--dist=worksteal")
+    )
     _run(
         _pytest_command(
             include_environmental=False,
             coverage=False,
             serial=False,
-            extra_args=("-q", "--no-cov"),
+            extra_args=(
+                *selected,
+                "-q",
+                "--no-cov",
+                *parallel_args,
+                "--durations=25",
+            ),
         )
     )
 

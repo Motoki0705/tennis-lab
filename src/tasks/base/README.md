@@ -22,8 +22,9 @@
 - **`lifecycle_slots.py`**: birth/death区間をinterval coloringで固定query数へ詰め、death後のslot再利用教師を生成。
 
 ### training/
-- **`lightning_module.py`**: `BaseLightningModule`。optimizer/scheduler構築とqualitative/test予測保存の拡張点。
-- **`runner.py`**: `BaseTrainingRunner`。configをsingle source of truthとする学習実行の共通フロー。
+- **`lightning_module.py`**: `BaseLightningModule`。optimizer/scheduler構築、明示的なcompile target契約、qualitative/test予測保存の拡張点。
+- **`compilation.py`**: `compile_modules()`。primary modelやGAN discriminatorなど、名前付きtargetへidentity/state_dictを保つ`nn.Module.compile()`を適用する。重複参照はobject identityで一度だけ処理し、失敗時にeagerへfallbackしない。
+- **`runner.py`**: `BaseTrainingRunner`。configをsingle source of truthとする学習実行の共通フロー。`init_weights`読込後・`Trainer`構築前に全compile targetを処理する。
 - **`chunk_rotation_callback.py`**: `ChunkRotationCallback`。epoch終端でchunked datamoduleを回転。
 - **`gan_training.py` / `gan_loss.py` / `gan_transition_callback.py`**: 手動最適化ベースのGAN学習共通実装(`LSGANLoss`含む)。
 - **`qualitative_callback.py` / `qualitative_saving.py`**: validationサンプルの可視化描画・GIF/画像保存。
@@ -31,6 +32,25 @@
 - **`tracking_lifecycle.py`**: active/inactive/birth/death近傍を重み付けするpresence BCE。
 - **`tracking_lightning_module.py`**: BLCS/PLCSに共通するtracking stage dispatch、loss/metric logging、test prediction収集・保存を所有し、task固有adapter/loss/metrics/payloadはhookへ委譲する。
 - **`tracking_metrics.py`**: lifecycle segment単位のbirth/death誤差・presence F1・query再利用・ID switch診断。
+
+## Training model compilation
+
+全taskのtraining configは次の共有契約を明示し、標準ではcompileを有効にする。
+
+```yaml
+compile:
+  enabled: true
+  backend: inductor
+  mode: default
+  fullgraph: false
+  dynamic: false
+```
+
+`BaseLightningModule.compilation_targets()`は`self.model`をprimary targetとして返す。primary model内で呼ばれる子moduleは個別登録しない。GAN有効時は`ManualGANSupportMixin`が独立して呼ばれる`discriminator`を追加する。将来teacher/studentなどを追加するtaskは`additional_compilation_targets()`で名前付き`nn.Module`を明示する。loss/metricを含む全childの自動探索は禁止する。
+
+標準modeはCUDA Graphsを暗黙に有効化しない`default`とする。`reduce-overhead`と`max-autotune`は明示選択でき、共有Lightning lifecycleがouter batch境界をCUDA Graphsへ通知する。ただしmodel forward内部のgraph breakをまたぐtensor lifetimeはmodel依存であるため、CUDA Graphs modeの互換性は選択したtask/modelで検証する。
+
+`run.dry_run=true`はmodelを構築しないためcompileしない。`run.fast_dev_run=true`は通常どおりcompileする。`run.resume`はin-place compile後も元のstate-dict keyで復元し、`run.init_weights`はweight読込後にcompileする。staged ball detectionのOOM calibrationも同じ設定でprobe modelをcompileする。設定不正、target契約不正、compile失敗は例外として伝播し、暗黙のeager fallbackは行わない。
 
 ### inference/
 - **`predictor.py`**: genericな`BasePredictor[PredictionT]`。checkpoint/device解決を共有し、predictのdecoded型は選択済みtask adapterが所有する（decoded result内のtensorはCPU）。明示CUDA指定はfallbackせず、availability選択は`auto`だけが行う。
