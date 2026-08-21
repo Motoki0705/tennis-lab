@@ -2,6 +2,8 @@
 
 SLCS は Issue #634 の構造化実動画データセットを読み、単眼の player pose、ball UV、court keypoints と、10フレーム間隔の DINOv3 patch tokens を融合して、コート座標系の player/ball 3D 時系列を同時推定するタスクです。BLCS と PLCS を直列接続せず、frame 内の entity attention と entity ごとの temporal attention を交互に適用します。dataset/clip manifest の正本は `src.tennis_scene.generate_dataset.manifest`、scene schema/archive の正本は `src.tennis_scene.{schema,archive}` です。SLCS 固有の completion marker・必須配列検証だけを `data.annotation` が担当し、foreign schema や error を再exportしません。
 
+BLCS・PLCS・SLCSを横断する入力shape、マスク極性、派生関係は [入力・マスク契約](../../../docs/blcs-plcs-slcs-input-mask-contracts.md) を参照してください。
+
 ## 入出力契約
 
 1 sample は1カメラ・1 temporal window です。`P` は player 数、`T` は window 長、`K` は court keypoint 数、`T_d` は window 内の DINO sample 数、`S` は patch 数です。
@@ -17,6 +19,8 @@ SLCS は Issue #634 の構造化実動画データセットを読み、単眼の
 | ball position | `(T,3)` | `COURT_COORD_SCALE_XYZ` で正規化 |
 
 すべての観測は visibility/confidence/valid mask を持ちます。DINOv3 tokens は時間方向には補間せず、実 frame index を RoPE position とする cross-attention で伝播します。空間方向は `model.dino_patch_downsample_factor` により、元のDINO特徴空間でbilinear downsampleしてからモデル幅へ次元圧縮できます。factor 2では16×28の448 patchを8×14の112 patchへ圧縮します。player は疑似ラベルの平均 court-Y により near-side、far-side の順へ明示的に並べ替えます。
+
+windowの公開padding契約は`padding_mask (B,T)`、sparse DINO sample軸は`dino_padding_mask (B,T_d)`で、どちらも`True=padding`です。2つの軸は異なるため単一tensorへ統合しません。旧`frame_mask` / `dino_valid`とcaller生成attention maskはadapterでrejectし、entity/time/DINO attention keep-maskはmodel内部でraw padding maskから生成します。評価用`.npz`も`padding_mask`へ破壊的移行し、旧keyへのfallbackは行いません。
 
 モデルとの接続は `model_io` が唯一の境界です。composition 時に sole model と adapter を一度だけ bind し、adapter が必須 key、dtype、rank、全 shape、mask、normalized UV、DINO token spec・frame index semantic を検証してから immutable model call を作ります。model の raw mapping は同じ adapter が `SLCSDecodedOutput` へ decode するため、Lightning・評価・推論 loop は model 名や output key を認識しません。`nn.Module.forward` は検証済み tensor に対する計算だけを行います。
 
@@ -65,7 +69,7 @@ axial trunkの層数は `model.num_shared_layers`、`model.num_position_layers`�
 ```bash
 .venv/bin/python -m src.tasks.slcs.scripts.predict_clip checkpoint_path=/path/to/model.ckpt
 .venv/bin/python -m src.tasks.slcs.scripts.evaluate checkpoint_path=/path/to/model.ckpt
-.venv/bin/python -m src.tasks.slcs.scripts.analyze_predictions predictions_path=/path/to/predictions.npz
+.venv/bin/python -m src.tasks.slcs.scripts.analyze_predictions analysis.arrays=/path/to/eval_arrays.npz
 ```
 
 評価は player/ball の 3D 誤差、yaw 誤差、速度・加速度・jerk を BLCS/PLCS と比較可能な単位で出力します。解析は誤差分布、時系列誤差、欠損率、uncertainty calibration を保存します。2D overlay は入力観測を描画し、3D prediction の reprojection は calibrated camera が明示された場合だけ行います。

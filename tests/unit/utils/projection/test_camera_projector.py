@@ -158,6 +158,7 @@ class TestCameraProjector:
         assert set(view.camera_params) == {"C", "R", "f", "cx", "cy", "w", "h"}
         assert view.court_kp_vis.shape == (20,)
         assert view.points_uv is not None and view.points_uv.shape == (3, 2)
+        assert view.points_vis is not None and view.points_vis.shape == (3,)
 
     def test_fixed_cameras_deterministic_without_noise(self) -> None:
         config = CameraConfig(

@@ -28,7 +28,7 @@ def test_nonrectangular_padding_builds_raw_validity_and_dense_keep_masks() -> No
 
     context_valid = ~padding_mask
     frame_valid = torch.tensor([[True, False, True]])
-    camera_state_valid = context_valid.unsqueeze(-1).expand(1, 2, 3, 2)
+    object_state_valid = context_valid.unsqueeze(-1).expand(1, 2, 3, 2)
     spatial_valid = torch.tensor(
         [
             [True, True, True, True, False, False],
@@ -46,7 +46,7 @@ def test_nonrectangular_padding_builds_raw_validity_and_dense_keep_masks() -> No
 
     assert torch.equal(masks.context_valid, context_valid)
     assert torch.equal(masks.frame_valid, frame_valid)
-    assert torch.equal(masks.camera_state_valid, camera_state_valid)
+    assert torch.equal(masks.object_state_valid, object_state_valid)
     assert torch.equal(
         masks.spatial_attention_keep_mask,
         _expected_dense_keep_mask(spatial_valid),
@@ -77,7 +77,7 @@ def test_outputs_retain_padding_mask_device_and_boolean_dtype() -> None:
     for value in (
         masks.context_valid,
         masks.frame_valid,
-        masks.camera_state_valid,
+        masks.object_state_valid,
         masks.spatial_attention_keep_mask,
         masks.object_temporal_state_valid,
         masks.object_temporal_attention_keep_mask,

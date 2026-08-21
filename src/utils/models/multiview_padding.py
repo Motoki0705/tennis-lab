@@ -16,7 +16,7 @@ class FixedQueryPaddingMasks:
 
     context_valid: Tensor
     frame_valid: Tensor
-    camera_state_valid: Tensor
+    object_state_valid: Tensor
     spatial_attention_keep_mask: Tensor
     object_temporal_state_valid: Tensor
     object_temporal_attention_keep_mask: Tensor
@@ -65,7 +65,7 @@ def build_fixed_query_padding_masks(
     batch_size, num_views, num_frames = padding_mask.shape
     context_valid = ~padding_mask
     frame_valid = context_valid.any(dim=1)
-    camera_state_valid = context_valid.unsqueeze(-1).expand(
+    object_state_valid = context_valid.unsqueeze(-1).expand(
         batch_size,
         num_views,
         num_frames,
@@ -77,13 +77,13 @@ def build_fixed_query_padding_masks(
         num_frames,
         num_queries,
     )
-    camera_spatial_valid = camera_state_valid.permute(0, 2, 1, 3).reshape(
+    object_spatial_valid = object_state_valid.permute(0, 2, 1, 3).reshape(
         batch_size,
         num_frames,
         num_views * num_queries,
     )
     spatial_valid = torch.cat(
-        (query_spatial_valid, camera_spatial_valid),
+        (query_spatial_valid, object_spatial_valid),
         dim=-1,
     ).flatten(0, 1)
     spatial_attention_keep_mask, _ = build_self_attn_mask(spatial_valid)
@@ -108,7 +108,7 @@ def build_fixed_query_padding_masks(
     return FixedQueryPaddingMasks(
         context_valid=context_valid,
         frame_valid=frame_valid,
-        camera_state_valid=camera_state_valid,
+        object_state_valid=object_state_valid,
         spatial_attention_keep_mask=spatial_attention_keep_mask,
         object_temporal_state_valid=object_temporal_state_valid,
         object_temporal_attention_keep_mask=object_temporal_attention_keep_mask,

@@ -187,7 +187,7 @@ class CameraView:
     court_kp_uv: Tensor
     court_kp_vis: Tensor
     points_uv: Tensor | None
-    points_visible: Tensor | None
+    points_vis: Tensor | None
 
 
 class CameraProjector:
@@ -453,7 +453,7 @@ class CameraProjector:
     ) -> CameraView:
         """Generate a camera view with optional subject projection."""
         court_kp_uv, court_kp_vis = self.project_court_keypoints(camera)
-        points_uv, points_visible = self.project_points_to_uv(points_3d, camera)
+        points_uv, points_vis = self.project_points_to_uv(points_3d, camera)
 
         camera_params = {
             "C": camera.C.tolist(),
@@ -471,5 +471,5 @@ class CameraProjector:
             court_kp_uv=court_kp_uv,
             court_kp_vis=court_kp_vis,
             points_uv=points_uv,
-            points_visible=points_visible,
+            points_vis=points_vis,
         )

@@ -1,18 +1,22 @@
 from __future__ import annotations
 
+import inspect
 from pathlib import Path
 from typing import cast
 
+import pytest
 import torch
 from omegaconf import OmegaConf
 
 from src.tasks.plcs.configuration import PLCSModelConfig
 from src.tasks.plcs.models.plcs_track_query_model import PLCSTrackQueryModel
+from src.utils.models.components.fixed_query_track_stage import FixedQueryTrackStage
 from src.utils.models.embeddings import CourtPlayerGroupEmbedding
 
 
-def _model() -> PLCSTrackQueryModel:
+def _model(*, backend: str = "reference") -> PLCSTrackQueryModel:
     raw = OmegaConf.load(Path("src/tasks/plcs/configs/model/track_query.yaml"))
+    raw.cswa.backend = backend
     config = PLCSModelConfig.from_mapping(
         cast("dict[str, object]", OmegaConf.to_container(raw, resolve=True))
     )
@@ -45,19 +49,63 @@ def test_player_role_coordinates_share_role_within_fixed_query_axis() -> None:
         batch_size=1,
         num_frames=1,
         num_views=2,
-        num_detections=2,
+        num_detections=3,
         num_queries=3,
         device=torch.device("cpu"),
     )
     assert torch.equal(coordinates[0, :3], torch.zeros(3, 3, dtype=torch.long))
     assert torch.equal(
         coordinates[0, 3:],
-        torch.tensor([[0, 1, 1], [0, 1, 1], [0, 2, 1], [0, 2, 1]]),
+        torch.tensor(
+            [
+                [0, 1, 1],
+                [0, 1, 1],
+                [0, 1, 1],
+                [0, 2, 1],
+                [0, 2, 1],
+                [0, 2, 1],
+            ]
+        ),
     )
+
+
+def test_forward_public_contract_has_exactly_five_tensors() -> None:
+    parameters = list(inspect.signature(PLCSTrackQueryModel.forward).parameters)
+    assert parameters == [
+        "self",
+        "human_kp",
+        "human_vis",
+        "court_kp",
+        "court_vis",
+        "padding_mask",
+    ]
 
 
 def test_model_uses_shared_court_player_group_embedding() -> None:
     assert isinstance(_model().group_embed, CourtPlayerGroupEmbedding)
+
+
+def test_model_uses_shared_stages_with_fixed_cswa_global_cycle() -> None:
+    model = _model()
+
+    assert all(isinstance(stage, FixedQueryTrackStage) for stage in model.stages)
+    assert [stage.is_global for stage in model.stages] == [False, False, False, True]
+    assert [
+        stage.object_temporal_block.cfg.attention_type for stage in model.stages
+    ] == [
+        "cswa",
+        "cswa",
+        "cswa",
+        "mha",
+    ]
+    assert [
+        stage.query_temporal_block.cfg.attention_type for stage in model.stages
+    ] == [
+        "cswa",
+        "cswa",
+        "cswa",
+        "mha",
+    ]
 
 
 def test_invisible_joint_coordinates_do_not_affect_predictions() -> None:
@@ -88,6 +136,65 @@ def test_nonpadding_invisible_tokens_receive_gradient() -> None:
     gradient = model.invisible_token.token.grad
     assert gradient is not None
     assert bool(gradient.abs().sum() > 0)
+
+
+def test_visibility_never_changes_object_attention_participation() -> None:
+    model = _model()
+    inputs = _inputs(model)
+    inputs["human_vis"].zero_()
+    observed: dict[str, torch.Tensor] = {}
+
+    def capture_state(
+        _module: torch.nn.Module,
+        args: tuple[object, ...],
+        kwargs: dict[str, object],
+    ) -> None:
+        object_tokens = args[0]
+        object_valid = kwargs["object_state_valid"]
+        assert isinstance(object_tokens, torch.Tensor)
+        assert isinstance(object_valid, torch.Tensor)
+        observed["tokens"] = object_tokens
+        observed["valid"] = object_valid
+
+    hook = model.stages[0].register_forward_pre_hook(capture_state, with_kwargs=True)
+    try:
+        with torch.no_grad():
+            _forward(model, inputs)
+    finally:
+        hook.remove()
+
+    assert observed["tokens"].shape == (1, 2, 3, model.num_queries, model.hidden_dim)
+    assert observed["valid"].all()
+
+
+def test_nonrectangular_padding_is_forwarded_as_object_state_validity() -> None:
+    model = _model()
+    inputs = _inputs(model)
+    inputs["padding_mask"] = torch.tensor(
+        [[[False, True, True], [True, False, True]]]
+    )
+    observed: dict[str, torch.Tensor] = {}
+
+    def capture_state(
+        _module: torch.nn.Module,
+        _args: tuple[object, ...],
+        kwargs: dict[str, object],
+    ) -> None:
+        object_valid = kwargs["object_state_valid"]
+        assert isinstance(object_valid, torch.Tensor)
+        observed["valid"] = object_valid
+
+    hook = model.stages[0].register_forward_pre_hook(capture_state, with_kwargs=True)
+    try:
+        with torch.no_grad():
+            _forward(model, inputs)
+    finally:
+        hook.remove()
+
+    expected = (~inputs["padding_mask"]).unsqueeze(-1).expand(
+        -1, -1, -1, model.num_queries
+    )
+    torch.testing.assert_close(observed["valid"], expected)
 
 
 def test_padded_values_cannot_change_valid_outputs() -> None:
@@ -136,3 +243,34 @@ def test_prediction_is_invariant_to_batch_composition() -> None:
 
     for key in single:
         torch.testing.assert_close(single[key], composed[key][:1])
+
+
+def test_old_track_query_state_dict_is_intentionally_strictly_incompatible() -> None:
+    model = _model()
+    old_state = {
+        "slot_embeddings": model.slot_embeddings.detach().clone(),
+        "spatial_blocks.0.attn_norm.weight": torch.ones(model.hidden_dim),
+    }
+
+    with pytest.raises(RuntimeError, match="spatial_blocks"):
+        model.load_state_dict(old_state, strict=True)
+
+
+def test_requested_unavailable_cuda_backend_does_not_fall_back(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def unavailable(*args: object, **kwargs: object) -> object:
+        del args, kwargs
+        raise RuntimeError("requested CUDA backend is unavailable")
+
+    monkeypatch.setattr(
+        "src.utils.models.components.compressor.resolve_token_compressor_pool",
+        lambda *args, **kwargs: object(),
+    )
+    monkeypatch.setattr(
+        "src.utils.models.components.cswa.resolve_compressed_time_local_attention",
+        unavailable,
+    )
+
+    with pytest.raises(RuntimeError, match="requested CUDA backend is unavailable"):
+        _model(backend="cuda")

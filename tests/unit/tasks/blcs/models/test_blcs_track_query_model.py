@@ -43,7 +43,9 @@ def _config() -> TrackQueryModelConfig:
 
 
 def _model() -> BLCSTrackQueryModel:
-    return BLCSTrackQueryModel(_config()).eval()
+    model = BLCSTrackQueryModel(_config())
+    model.eval()
+    return model
 
 
 def _inputs(*, views: int = 2, frames: int = 3) -> dict[str, torch.Tensor]:
@@ -100,7 +102,7 @@ def test_visibility_never_changes_attention_participation() -> None:
         kwargs: dict[str, object],
     ) -> None:
         del args
-        value = kwargs["camera_state_valid"]
+        value = kwargs["object_state_valid"]
         assert isinstance(value, torch.Tensor)
         observed["valid"] = value
 
@@ -116,27 +118,45 @@ def test_visibility_never_changes_attention_participation() -> None:
 
 def test_padding_isolates_values_and_zeroes_padded_frame_outputs() -> None:
     model = _model()
-    first = _inputs(views=2, frames=3)
-    first["padding_mask"][:, :, -1] = True
-    second = {key: value.clone() for key, value in first.items()}
-    second["ball_uv"][:, :, -1] = 1.0
-    second["court_kp"][:, :, -1] = 1.0
-    second["ball_vis"][:, :, -1] = False
-    second["court_vis"][:, :, -1] = False
+    baseline = _inputs(views=2, frames=3)
+    baseline["padding_mask"][:, 0, 1] = True
+    baseline["padding_mask"][:, :, -1] = True
+    contaminated = {key: value.clone() for key, value in baseline.items()}
+    contaminated["ball_uv"][:, 0, 1:] = torch.nan
+    contaminated["ball_uv"][:, 1, -1] = 1.0e30
+    contaminated["court_kp"][:, 0, 1:] = torch.nan
+    contaminated["court_kp"][:, 1, -1] = -1.0e30
+    captured: dict[str, torch.Tensor] = {}
 
-    with torch.no_grad():
-        output_first = model(**first)
-        output_second = model(**second)
+    def capture_effective_observation_inputs(
+        _module: torch.nn.Module,
+        args: tuple[object, ...],
+    ) -> None:
+        names = ("court_kp", "court_vis", "ball_uv", "ball_vis")
+        for name, value in zip(names, args, strict=True):
+            assert isinstance(value, torch.Tensor)
+            captured[name] = value
 
-    torch.testing.assert_close(
-        output_first["position"][:, :-1], output_second["position"][:, :-1]
+    hook = model.observation_encoder.register_forward_pre_hook(
+        capture_effective_observation_inputs
     )
-    torch.testing.assert_close(
-        output_first["presence_logits"][:, :-1],
-        output_second["presence_logits"][:, :-1],
-    )
-    assert not output_first["position"][:, -1].any()
-    assert not output_first["presence_logits"][:, -1].any()
+
+    try:
+        with torch.no_grad():
+            output_baseline = model(**baseline)
+            output_contaminated = model(**contaminated)
+    finally:
+        hook.remove()
+
+    padding_mask = contaminated["padding_mask"]
+    assert not captured["ball_uv"][padding_mask].any()
+    assert not captured["court_kp"][padding_mask].any()
+    assert not captured["ball_vis"][padding_mask].any()
+    assert not captured["court_vis"][padding_mask].any()
+    for name in ("position", "presence_logits"):
+        assert torch.isfinite(output_contaminated[name]).all()
+        torch.testing.assert_close(output_baseline[name], output_contaminated[name])
+        assert not output_contaminated[name][:, -1].any()
 
 
 def test_nonrectangular_and_all_padding_inputs_remain_finite() -> None:

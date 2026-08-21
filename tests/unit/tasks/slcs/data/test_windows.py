@@ -25,8 +25,8 @@ def test_plan_windows_short_clip_pads() -> None:
     assert len(plans) == 1
     plan = plans[0]
     assert (plan.start, plan.length, plan.pad) == (0, 10, 6)
-    mask = plan.frame_mask()
-    assert mask[:10].all() and not mask[10:].any()
+    padding_mask = plan.padding_mask()
+    assert not padding_mask[:10].any() and padding_mask[10:].all()
     idx = plan.frame_indices()
     assert idx[9] == 9
     assert (idx[10:] == 9).all()  # padded slots repeat the last real frame

@@ -103,21 +103,24 @@ def run(config: DictConfig) -> None:
 
     player_mask = arrays["player_mask"]
     ball_mask = arrays["ball_mask"]
-    frame_mask = arrays["frame_mask"]
+    padding_mask = np.asarray(arrays["padding_mask"], dtype=bool)
+    real_frame_mask = ~padding_mask
 
     player_err = _masked_values(arrays["player_pos_error_m"], player_mask)
     player_ang = _masked_values(arrays["player_ang_error_deg"], player_mask)
     ball_err = _masked_values(arrays["ball_pos_error_m"], ball_mask)
 
     report: dict[str, Any] = {
-        "num_windows": int(frame_mask.shape[0]),
+        "num_windows": int(padding_mask.shape[0]),
         "player_frames": int(player_mask.sum()),
         "ball_frames": int(ball_mask.sum()),
         "label_missing_rate_player": float(
-            1.0 - player_mask.sum() / max(frame_mask.sum() * player_mask.shape[1], 1)
+            1.0
+            - player_mask.sum()
+            / max(real_frame_mask.sum() * player_mask.shape[1], 1)
         ),
         "label_missing_rate_ball": float(
-            1.0 - ball_mask.sum() / max(frame_mask.sum(), 1)
+            1.0 - ball_mask.sum() / max(real_frame_mask.sum(), 1)
         ),
     }
 

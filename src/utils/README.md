@@ -75,7 +75,7 @@
 
 ### `models/`
 - **`__init__.py`**: `__all__`に列挙した高頻度model primitiveのcanonical public API。列挙外の専門APIは責務別sub-packageが公開元となる。
-- **`components/`**: Transformer の基本部品。attention、RoPE、FFN、MoE、norm、`TransformerBlock`、`CrossAttnBlock` がここにある。attention forwardはboundaryで検証済みのsame-device `(B,Q,K)` maskと、`RotaryFrequencyComputer`がconstructor時に固定した`(...,T,1,D/2)` complex RoPEだけを受け取り、rank/dtype/device補完や実装選択を行わない。
+- **`components/`**: Transformer の基本部品。attention、RoPE、FFN、MoE、norm、`TransformerBlock`、`CrossAttnBlock` に加え、fixed-query multi-view modelで共有するmHC object-temporal → global spatial → query-temporalの`FixedQueryTrackStage`がここにある。attention forwardはboundaryで検証済みのsame-device `(B,Q,K)` maskと、`RotaryFrequencyComputer`がconstructor時に固定した`(...,T,1,D/2)` complex RoPEだけを受け取り、rank/dtype/device補完や実装選択を行わない。
 - **`components/ops/`**: MoE と time-local attention の CUDA / reference 実装、autograd bridge、extension loader/build。MoE backend/capacity policyは`MoELayer` constructorで固定し、time-localは`layout` boundaryがempty-row policyを含むmaskを準備した後、`resolve_time_local_attention()`がbackendとwindow radiusをtensor実行前に一度だけ固定する。
 - **`embeddings/`**: court / player / ball の埋め込みとgroup token系の構成要素。`CourtBallGroupEmbedding` / `CourtPlayerGroupEmbedding`はcourtとobject観測を1 object = 1 tokenへ写像し、呼び出し側のobject ID順を変えずにtoken軸へ保持する。入力はadapterで検証済みの構造化shape（court/playerは末尾`(K,2)`、ballは末尾`2`、visibilityはleading shape）に統一し、flattened旧variantやrank補完は受け付けない。
 - **`loading/`**: DINOv3 backbone 読み込み、LoRA 適用、trainability 切り替え。dynamic `forward_features` responseはmodel forward内で検査せず、外部model-I/O boundaryの`require_dinov3_patch_tokens()`が型・key・shapeを検証する。
