@@ -1,4 +1,4 @@
-"""Persistent track-query model for ID-ordered multi-view player observations."""
+"""Fixed-width mHC and hybrid-CSWA PLCS track-query model."""
 
 from __future__ import annotations
 
@@ -6,41 +6,60 @@ from typing import Literal, cast
 
 import torch
 import torch.nn.functional as F
-from torch import nn
+from torch import Tensor, nn
 
 from src.tasks.plcs.configuration import PLCSModelConfig
 from src.tasks.plcs.data.tracking_types import PLCSTrackingPrediction
 from src.utils.models import (
+    CSWAConfig,
     RMSNorm,
     RotaryFrequencyComputer,
     TransformerBlock,
     TransformerBlockConfig,
-    build_fixed_query_padding_masks,
+)
+from src.utils.models.components.fixed_query_track_stage import FixedQueryTrackStage
+from src.utils.models.components.mhc import (
+    ManifoldConstrainedHyperConnection,
+    MHCConfig,
 )
 from src.utils.models.embeddings import (
     CourtPlayerGroupEmbedding,
     InvisibleTokenEmbedding,
 )
+from src.utils.models.multiview_padding import build_fixed_query_padding_masks
 
 
 class PLCSTrackQueryModel(nn.Module):
-    """Alternate unified spatial and per-slot temporal self-attention."""
+    """Predict persistent player queries with a fixed ``C,C,C,G`` cycle."""
 
     def __init__(self, config: PLCSModelConfig) -> None:
         super().__init__()
+        if config.name != "plcs_track_query":
+            raise ValueError("PLCSTrackQueryModel requires plcs_track_query config.")
+        mhc_config = config.track_query_mhc
+        cswa_config = config.track_query_cswa
+        if mhc_config is None or cswa_config is None:
+            raise ValueError("PLCS track-query mhc and cswa config must be validated.")
+
         self.hidden_dim = config.integer("hidden_dim")
         self.num_heads = config.integer("num_heads")
         self.num_queries = config.integer("num_queries")
         self.num_stages = config.integer("num_stages")
         self.num_joints = config.integer("num_joints")
-        self.role_rope_enabled = config.boolean("role_rope_enabled")
+        self.role_rope_scale = int(config.boolean("role_rope_enabled"))
+        if self.num_stages <= 0 or self.num_stages % 4 != 0:
+            raise ValueError("num_stages must be a positive multiple of 4.")
+        if self.num_queries <= 0:
+            raise ValueError("num_queries must be positive.")
+        if self.hidden_dim % self.num_heads != 0:
+            raise ValueError("hidden_dim must be divisible by num_heads.")
         head_dim = self.hidden_dim // self.num_heads
         self.rope_dim = config.integer("rope_dim")
-        self._select_rope_coordinates = (
-            self._role_rope_coordinates
-            if self.role_rope_enabled
-            else self._camera_time_rope_coordinates
-        )
+        if self.rope_dim > head_dim or self.rope_dim % 2:
+            raise ValueError(
+                "rope_dim must be even and no larger than the attention head dim."
+            )
+
         self.num_court_tokens = 14
         self.invisible_token = InvisibleTokenEmbedding(
             dim=self.hidden_dim,
@@ -54,38 +73,161 @@ class PLCSTrackQueryModel(nn.Module):
         self.slot_embeddings = nn.Parameter(
             torch.randn(self.num_queries, self.hidden_dim) * 0.02
         )
-        block_config = TransformerBlockConfig(
-            dim=self.hidden_dim,
-            n_heads=self.num_heads,
-            ffn_dim=config.integer("ffn_dim"),
-            head_dim=head_dim,
-            rope_dim=self.rope_dim,
-            attn_dropout=config.number("dropout"),
-            attention_type="mha",
-            n_kv_heads=None,
-            rope_base=config.number("rope_theta"),
-            ffn_type=cast(Literal["swiglu", "mlp"], config.string("ffn_type")),
+        self.stages = nn.ModuleList(
+            [
+                self._build_stage(
+                    stage_index=stage_index,
+                    config=config,
+                    head_dim=head_dim,
+                )
+                for stage_index in range(self.num_stages)
+            ]
         )
-        self.spatial_blocks = nn.ModuleList(
-            [TransformerBlock(block_config) for _ in range(self.num_stages)]
-        )
-        self.temporal_blocks = nn.ModuleList(
-            [TransformerBlock(block_config) for _ in range(self.num_stages)]
-        )
+        rope_theta = config.number("rope_theta")
         self.spatial_frequency_computer = RotaryFrequencyComputer(
             dim=self.rope_dim,
-            base=10000.0,
+            base=rope_theta,
             n_axes=3,
         )
         self.temporal_frequency_computer = RotaryFrequencyComputer(
             dim=self.rope_dim,
-            base=10000.0,
+            base=rope_theta,
             n_axes=1,
         )
         self.output_norm = RMSNorm(self.hidden_dim)
         self.position_head = nn.Linear(self.hidden_dim, 3)
         self.rotation_head = nn.Linear(self.hidden_dim, 2)
         self.presence_head = nn.Linear(self.hidden_dim, 1)
+        self.register_forward_pre_hook(
+            self._validate_forward_inputs,
+            with_kwargs=True,
+        )
+
+    def _validate_forward_inputs(
+        self,
+        _module: nn.Module,
+        args: tuple[object, ...],
+        kwargs: dict[str, object],
+    ) -> None:
+        human_kp = cast(Tensor, args[0] if args else kwargs["human_kp"])
+        human_vis = cast(
+            Tensor,
+            args[1] if len(args) > 1 else kwargs["human_vis"],
+        )
+        court_kp = cast(Tensor, args[2] if len(args) > 2 else kwargs["court_kp"])
+        court_vis = cast(Tensor, args[3] if len(args) > 3 else kwargs["court_vis"])
+        padding_mask = cast(
+            Tensor, args[4] if len(args) > 4 else kwargs["padding_mask"]
+        )
+        if human_kp.ndim != 6:
+            raise ValueError("human_kp must have shape (B,V,T,Q,J,2).")
+        if human_kp.shape[3:5] != (self.num_queries, self.num_joints):
+            raise ValueError(
+                "human_kp query and joint axes must equal model.num_queries "
+                "and model.num_joints."
+            )
+        if human_kp.shape[-1] != 2:
+            raise ValueError("human_kp coordinates must have width 2.")
+        if human_vis.shape != human_kp.shape[:-1]:
+            raise ValueError("human_vis must match human_kp without UV.")
+        batch_size, num_views, num_frames = human_kp.shape[:3]
+        if court_kp.shape != (
+            batch_size,
+            num_views,
+            num_frames,
+            self.num_court_tokens,
+            2,
+        ):
+            raise ValueError("court_kp must have shape (B,V,T,14,2).")
+        if court_vis.shape != court_kp.shape[:-1]:
+            raise ValueError("court_vis must match court_kp without UV.")
+        if padding_mask.shape != (batch_size, num_views, num_frames):
+            raise ValueError("padding_mask must have shape (B,V,T).")
+        if any(
+            tensor.dtype != torch.bool
+            for tensor in (human_vis, court_vis, padding_mask)
+        ):
+            raise TypeError("human_vis, court_vis, and padding_mask must be boolean.")
+
+    def _block_config(
+        self,
+        *,
+        config: PLCSModelConfig,
+        head_dim: int,
+        temporal_cswa: bool,
+    ) -> TransformerBlockConfig:
+        attention_type: Literal["mha", "cswa"] = "cswa" if temporal_cswa else "mha"
+        track_cswa = config.track_query_cswa
+        if track_cswa is None:
+            raise ValueError("PLCS track-query cswa config must be validated.")
+        cswa = (
+            CSWAConfig(
+                dim=self.hidden_dim,
+                n_heads=self.num_heads,
+                head_dim=head_dim,
+                rope_dim=self.rope_dim,
+                attn_dropout=config.number("dropout"),
+                compression_ratio=track_cswa.compression_ratio,
+                window_radius=track_cswa.window_radius,
+                backend=track_cswa.backend,
+            )
+            if temporal_cswa
+            else None
+        )
+        return TransformerBlockConfig(
+            dim=self.hidden_dim,
+            n_heads=self.num_heads,
+            ffn_dim=config.integer("ffn_dim"),
+            head_dim=head_dim,
+            rope_dim=self.rope_dim,
+            attn_dropout=config.number("dropout"),
+            attention_type=attention_type,
+            n_kv_heads=None,
+            rope_base=config.number("rope_theta"),
+            ffn_type=cast(Literal["swiglu", "mlp"], config.string("ffn_type")),
+            cswa=cswa,
+        )
+
+    def _build_stage(
+        self,
+        *,
+        stage_index: int,
+        config: PLCSModelConfig,
+        head_dim: int,
+    ) -> FixedQueryTrackStage:
+        mhc_config = config.track_query_mhc
+        if mhc_config is None:
+            raise ValueError("PLCS track-query mhc config must be validated.")
+        temporal_cswa = stage_index % 4 < 3
+        temporal_config = self._block_config(
+            config=config,
+            head_dim=head_dim,
+            temporal_cswa=temporal_cswa,
+        )
+        spatial_config = self._block_config(
+            config=config,
+            head_dim=head_dim,
+            temporal_cswa=False,
+        )
+        return FixedQueryTrackStage(
+            stage_index=stage_index,
+            mhc=ManifoldConstrainedHyperConnection(
+                MHCConfig(
+                    dim=self.hidden_dim,
+                    num_streams=self.num_queries,
+                    coefficient_dim=mhc_config.coefficient_dim,
+                    sinkhorn_iters=mhc_config.sinkhorn_iters,
+                    eps=mhc_config.eps,
+                    residual_identity_bias=mhc_config.residual_identity_bias,
+                    update_scale_init=mhc_config.update_scale_init,
+                )
+            ),
+            object_temporal_block=TransformerBlock(temporal_config),
+            spatial_block=TransformerBlock(spatial_config),
+            query_temporal_block=TransformerBlock(temporal_config),
+            hidden_dim=self.hidden_dim,
+            num_queries=self.num_queries,
+        )
 
     @staticmethod
     def build_spatial_coordinates(
@@ -96,146 +238,113 @@ class PLCSTrackQueryModel(nn.Module):
         num_detections: int,
         num_queries: int,
         device: torch.device,
-    ) -> torch.Tensor:
+    ) -> Tensor:
+        """Return ``(B*T,Q+V*Q,3)`` time/camera/role coordinates."""
+        if num_detections != num_queries:
+            raise ValueError("num_detections must equal num_queries.")
         time = torch.arange(num_frames, device=device).view(1, num_frames, 1)
-        slot = torch.zeros(
+        slots = torch.zeros(
             batch_size, num_frames, num_queries, 3, device=device, dtype=torch.long
         )
-        slot[..., 0] = time
-        camera_tokens = torch.zeros(
+        slots[..., 0] = time
+        objects = torch.zeros(
             batch_size,
             num_frames,
             num_views,
-            num_detections,
+            num_queries,
             3,
             device=device,
             dtype=torch.long,
         )
-        camera_tokens[..., 0] = time.view(1, num_frames, 1, 1)
-        camera_tokens[..., 1] = torch.arange(1, num_views + 1, device=device).view(
+        objects[..., 0] = time.view(1, num_frames, 1, 1)
+        objects[..., 1] = torch.arange(1, num_views + 1, device=device).view(
             1, 1, num_views, 1
         )
-        camera_tokens[..., 2] = 1
-        return torch.cat([slot, camera_tokens.flatten(2, 3)], dim=2).flatten(0, 1)
+        objects[..., 2] = 1
+        return torch.cat((slots, objects.flatten(2, 3)), dim=2).flatten(0, 1)
 
     def forward(
         self,
-        human_kp: torch.Tensor,
-        human_vis: torch.Tensor,
-        court_kp: torch.Tensor,
-        court_vis: torch.Tensor,
-        padding_mask: torch.Tensor,
+        human_kp: Tensor,
+        human_vis: Tensor,
+        court_kp: Tensor,
+        court_vis: Tensor,
+        padding_mask: Tensor,
     ) -> PLCSTrackingPrediction:
-        batch_size, num_views, num_frames, num_queries, num_joints, _ = (
-            human_kp.shape
-        )
-        del num_joints
-        if num_queries != self.num_queries:
-            raise ValueError(
-                "human_kp query axis must equal model.num_queries: "
-                f"got {num_queries} and {self.num_queries}."
-            )
+        """Predict fixed-width tracks; only padding controls attention validity."""
+        batch_size, num_views, num_frames = human_kp.shape[:3]
         masks = build_fixed_query_padding_masks(
             padding_mask,
             num_queries=self.num_queries,
         )
-        context_valid = masks.context_valid
-        effective_human_vis = human_vis & context_valid[..., None, None]
-        effective_court_vis = court_vis & context_valid[..., None]
+
+        effective_human_vis = human_vis & masks.context_valid[..., None, None]
+        effective_court_vis = court_vis & masks.context_valid[..., None]
         observation_visible = effective_human_vis.any(dim=-1)
         masked_court = court_kp.masked_fill(~effective_court_vis.unsqueeze(-1), 0.0)
         court_for_queries = masked_court.unsqueeze(3).expand(
-            -1, -1, -1, num_queries, -1, -1
+            -1, -1, -1, self.num_queries, -1, -1
         )
-        masked_human = human_kp.masked_fill(~effective_human_vis.unsqueeze(-1), 0.0)
-        camera_tokens = self.group_embed(
+        masked_human = human_kp.masked_fill(
+            ~effective_human_vis.unsqueeze(-1),
+            0.0,
+        )
+        object_tokens = self.group_embed(
             court_for_queries,
             masked_human,
             observation_visible,
-        ).permute(
-            0,
-            2,
-            1,
-            3,
-            4,
         )
-        camera_tokens = camera_tokens.reshape(
-            batch_size,
-            num_frames,
-            num_views * num_queries,
-            self.hidden_dim,
-        )
-        camera_tokens = camera_tokens * masks.camera_state_valid.permute(
-            0, 2, 1, 3
-        ).reshape(
-            batch_size, num_frames, -1
-        ).unsqueeze(-1)
+        object_tokens = object_tokens * masks.object_state_valid.unsqueeze(-1)
 
-        slots = self.slot_embeddings.view(
+        query_tokens = self.slot_embeddings.view(
             1, 1, self.num_queries, self.hidden_dim
         ).expand(batch_size, num_frames, -1, -1)
-        slots = slots * masks.frame_valid[:, :, None, None]
+        query_tokens = query_tokens * masks.frame_valid[:, :, None, None]
         coordinates = self.build_spatial_coordinates(
             batch_size=batch_size,
             num_frames=num_frames,
             num_views=num_views,
-            num_detections=num_queries,
+            num_detections=self.num_queries,
             num_queries=self.num_queries,
             device=human_kp.device,
         )
-        rope_coordinates = self._select_rope_coordinates(coordinates)
+        rope_coordinates = coordinates.clone()
+        rope_coordinates[..., 2] *= self.role_rope_scale
         spatial_freqs = self.spatial_frequency_computer(rope_coordinates)
-        temporal_freqs = self.temporal_frequency_computer(
+        time_freqs = self.temporal_frequency_computer(
             torch.arange(num_frames, device=human_kp.device).unsqueeze(-1)
         )
-        for spatial_block, temporal_block in zip(
-            self.spatial_blocks, self.temporal_blocks, strict=True
-        ):
-            tokens = torch.cat([slots, camera_tokens], dim=2).flatten(0, 1)
-            tokens = spatial_block(
-                tokens,
-                freqs_cis=spatial_freqs,
-                attn_mask=masks.spatial_attention_keep_mask,
-            ).view(batch_size, num_frames, -1, self.hidden_dim)
-            slots = (
-                tokens[:, :, : self.num_queries]
-                * masks.frame_valid[:, :, None, None]
-            )
-            camera_tokens = tokens[
-                :, :, self.num_queries :
-            ] * masks.camera_state_valid.permute(0, 2, 1, 3).reshape(
-                batch_size, num_frames, -1
-            ).unsqueeze(-1)
-            temporal = slots.permute(0, 2, 1, 3).reshape(
-                batch_size * self.num_queries, num_frames, self.hidden_dim
-            )
-            temporal = temporal_block(
-                temporal,
-                freqs_cis=temporal_freqs,
-                attn_mask=masks.query_temporal_attention_keep_mask,
-            )
-            slots = (
-                temporal.view(
-                    batch_size, self.num_queries, num_frames, self.hidden_dim
-                ).permute(0, 2, 1, 3)
-                * masks.frame_valid[:, :, None, None]
+
+        for stage in self.stages:
+            object_tokens, query_tokens = stage(
+                object_tokens,
+                query_tokens,
+                object_state_valid=masks.object_state_valid,
+                frame_valid=masks.frame_valid,
+                spatial_attention_keep_mask=masks.spatial_attention_keep_mask,
+                object_temporal_state_valid=masks.object_temporal_state_valid,
+                object_temporal_attention_keep_mask=(
+                    masks.object_temporal_attention_keep_mask
+                ),
+                query_temporal_state_valid=masks.query_temporal_state_valid,
+                query_temporal_attention_keep_mask=(
+                    masks.query_temporal_attention_keep_mask
+                ),
+                spatial_freqs=spatial_freqs,
+                time_freqs=time_freqs,
             )
 
-        slots = self.output_norm(slots)
+        query_tokens = self.output_norm(query_tokens)
         output_valid = masks.frame_valid[:, :, None]
+        position = self.position_head(query_tokens) * output_valid.unsqueeze(-1)
+        rotation = F.normalize(self.rotation_head(query_tokens), dim=-1)
+        rotation = rotation * output_valid.unsqueeze(-1)
+        presence_logits = self.presence_head(query_tokens).squeeze(-1) * output_valid
         return {
-            "position": self.position_head(slots) * output_valid.unsqueeze(-1),
-            "rotation": F.normalize(self.rotation_head(slots), dim=-1)
-            * output_valid.unsqueeze(-1),
-            "presence_logits": self.presence_head(slots).squeeze(-1) * output_valid,
+            "position": position,
+            "rotation": rotation,
+            "presence_logits": presence_logits,
         }
 
-    @staticmethod
-    def _role_rope_coordinates(coordinates: torch.Tensor) -> torch.Tensor:
-        return coordinates
 
-    @staticmethod
-    def _camera_time_rope_coordinates(coordinates: torch.Tensor) -> torch.Tensor:
-        selected = coordinates.clone()
-        selected[..., 2] = 0
-        return selected
+__all__ = ["PLCSTrackQueryModel"]

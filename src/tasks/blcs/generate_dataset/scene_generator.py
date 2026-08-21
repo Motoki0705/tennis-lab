@@ -157,10 +157,10 @@ class BLCSSceneGenerator:
 
     def _camera_view_to_data(self, view: CameraView) -> CameraData:
         """Convert CameraView to CameraData with visibility metrics."""
-        if view.points_uv is None or view.points_visible is None:
+        if view.points_uv is None or view.points_vis is None:
             raise ValueError("BLCS camera views must include projected ball points.")
 
-        ball_vis = view.points_visible.numpy()
+        ball_vis = view.points_vis.numpy()
         T = len(ball_vis)
         ball_visibility_ratio = float(ball_vis.sum()) / T if T > 0 else 0.0
 

@@ -12,9 +12,9 @@ from src.tasks.blcs.data.tracking_types import BLCSTrackingPrediction
 from src.tasks.blcs.models.components.observation_fusion import (
     LinearTrackObservationFusion,
 )
-from src.tasks.blcs.models.components.track_query_stage import BLCSTrackQueryStage
 from src.utils.models import (
     CSWAConfig,
+    FixedQueryTrackStage,
     RMSNorm,
     RotaryFrequencyComputer,
     TransformerBlock,
@@ -164,7 +164,7 @@ class BLCSTrackQueryModel(nn.Module):
         stage_index: int,
         config: TrackQueryModelConfig,
         head_dim: int,
-    ) -> BLCSTrackQueryStage:
+    ) -> FixedQueryTrackStage:
         temporal_cswa = stage_index % 4 < 3
         temporal_config = self._block_config(
             config=config,
@@ -176,7 +176,7 @@ class BLCSTrackQueryModel(nn.Module):
             head_dim=head_dim,
             temporal_cswa=False,
         )
-        return BLCSTrackQueryStage(
+        return FixedQueryTrackStage(
             stage_index=stage_index,
             mhc=ManifoldConstrainedHyperConnection(
                 MHCConfig(
@@ -261,15 +261,26 @@ class BLCSTrackQueryModel(nn.Module):
             padding_mask,
             num_queries=self.num_queries,
         )
+        context_valid = masks.context_valid
+        effective_ball_uv = ball_uv.masked_fill(
+            ~context_valid.unsqueeze(-1).unsqueeze(-1),
+            0.0,
+        )
+        effective_ball_vis = ball_vis & context_valid.unsqueeze(-1)
+        effective_court_kp = court_kp.masked_fill(
+            ~context_valid.unsqueeze(-1).unsqueeze(-1),
+            0.0,
+        )
+        effective_court_vis = court_vis & context_valid.unsqueeze(-1)
 
         time_major_tokens = self.observation_encoder(
-            court_kp,
-            court_vis,
-            ball_uv,
-            ball_vis,
+            effective_court_kp,
+            effective_court_vis,
+            effective_ball_uv,
+            effective_ball_vis,
         )
         camera_tokens = time_major_tokens.permute(0, 2, 1, 3, 4)
-        camera_tokens = camera_tokens * masks.camera_state_valid.unsqueeze(-1)
+        camera_tokens = camera_tokens * masks.object_state_valid.unsqueeze(-1)
 
         slots = self.slot_embeddings.view(
             1, 1, self.num_queries, self.hidden_dim
@@ -293,7 +304,7 @@ class BLCSTrackQueryModel(nn.Module):
             camera_tokens, slots = stage(
                 camera_tokens,
                 slots,
-                camera_state_valid=masks.camera_state_valid,
+                object_state_valid=masks.object_state_valid,
                 frame_valid=masks.frame_valid,
                 spatial_attention_keep_mask=masks.spatial_attention_keep_mask,
                 object_temporal_state_valid=masks.object_temporal_state_valid,

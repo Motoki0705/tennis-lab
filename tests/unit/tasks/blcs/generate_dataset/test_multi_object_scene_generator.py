@@ -121,13 +121,13 @@ class _PhysicalSceneStub:
         for camera in projector.cameras():
             view = projector.generate_camera_view(trajectory, camera)
             assert view.points_uv is not None
-            assert view.points_visible is not None
+            assert view.points_vis is not None
             cameras.append(
                 CameraData(
                     camera_params=view.camera_params,
                     ball_uv=view.points_uv.numpy(),
-                    ball_vis=view.points_visible.numpy(),
-                    ball_visibility_ratio=float(view.points_visible.float().mean()),
+                    ball_vis=view.points_vis.numpy(),
+                    ball_visibility_ratio=float(view.points_vis.float().mean()),
                     court_kp_uv=view.court_kp_uv.numpy(),
                     court_kp_vis=view.court_kp_vis.numpy(),
                     court_visibility_count=float(view.court_kp_vis.sum()),
