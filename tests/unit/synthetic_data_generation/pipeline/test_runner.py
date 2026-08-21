@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import cast
 
 import pytest
+import yaml
 
 from src.synthetic_data_generation.dataset.plcs.assembler import PLCS_DATASET_SCHEMA
 from src.synthetic_data_generation.dataset.plcs.coordinates import (
@@ -182,6 +183,40 @@ def _runner(
         workspace=_workspace(tmp_path),
         registry=registry,
         resolved_config_yaml=resolved_config_yaml,
+    )
+
+
+def _court_reuse_config_yaml(
+    *,
+    from_stage: StageName,
+    targets: frozenset[DatasetTarget],
+    court_schema_version: str,
+    nht: dict[str, object],
+    pipeline_seed: int = 695,
+) -> str:
+    """Build the minimal resolved authority used by Court-only reuse tests."""
+    return yaml.safe_dump(
+        {
+            "request": {
+                "from_stage": from_stage.value,
+                "targets": sorted(target.value for target in targets),
+            },
+            "dataset": {
+                "court": {
+                    "schema_version": court_schema_version,
+                    "view": (
+                        "four-targets"
+                        if court_schema_version == "v1"
+                        else "court-center-only"
+                    ),
+                },
+                "blcs": {"schema": "stable-blcs"},
+                "plcs": {"schema": "stable-plcs"},
+            },
+            "nht": nht,
+            "pipeline": {"seed": pipeline_seed},
+        },
+        sort_keys=False,
     )
 
 
@@ -622,6 +657,206 @@ def test_rerun_cursor_can_change_but_production_configuration_cannot(
     assert (changed.workspace.root / "datasets/court/dataset.json").read_text(
         encoding="utf-8"
     ) == "second"
+
+
+def test_court_only_cursor_allows_only_court_config_change_and_reuses_upstream(
+    tmp_path: Path,
+) -> None:
+    all_targets = frozenset(DatasetTarget)
+    first_yaml = _court_reuse_config_yaml(
+        from_stage=StageName.INGEST,
+        targets=all_targets,
+        court_schema_version="v1",
+        nht={"backend": "public-cli"},
+    )
+    court_v2_yaml = _court_reuse_config_yaml(
+        from_stage=StageName.COURT_DATASET,
+        targets=frozenset({DatasetTarget.COURT}),
+        court_schema_version="v2",
+        nht={
+            "backend": "public-cli",
+            "training_python_path": "/runtime/python",
+            "trainer_path": "/runtime/nht/train.py",
+        },
+    )
+    first_registry, _ = _registry(payload="retained")
+    first = _runner(tmp_path, first_registry, resolved_config_yaml=first_yaml)
+    first.run(_request(tmp_path, targets=all_targets))
+    retained_paths = {
+        StageName.RECONSTRUCTION: first.workspace.root
+        / "reconstruction/export/scene.json",
+        StageName.ALIGNMENT: first.workspace.root / "alignment/alignment.json",
+        StageName.BLCS_DATASET: first.workspace.root / "datasets/blcs/dataset.json",
+        StageName.PLCS_DATASET: first.workspace.root / "datasets/plcs/dataset.json",
+    }
+    before = {stage: path.read_bytes() for stage, path in retained_paths.items()}
+
+    second_registry, handlers = _registry(payload="court-v2")
+    second = _runner(tmp_path, second_registry, resolved_config_yaml=court_v2_yaml)
+    second.run(
+        _request(
+            tmp_path,
+            from_stage=StageName.COURT_DATASET,
+            targets=frozenset({DatasetTarget.COURT}),
+        )
+    )
+
+    assert handlers[StageName.COURT_DATASET].execute_calls == 1
+    assert handlers[StageName.REPORT].execute_calls == 1
+    for retained_stage in (
+        StageName.INGEST,
+        StageName.RECONSTRUCTION,
+        StageName.ALIGNMENT,
+        StageName.BLCS_DATASET,
+        StageName.PLCS_DATASET,
+    ):
+        assert handlers[retained_stage].execute_calls == 0
+    assert {
+        stage: path.read_bytes() for stage, path in retained_paths.items()
+    } == before
+    assert (second.workspace.root / "datasets/court/dataset.json").read_text(
+        encoding="utf-8"
+    ) == "court-v2"
+
+    forbidden_yaml = _court_reuse_config_yaml(
+        from_stage=StageName.COURT_DATASET,
+        targets=frozenset({DatasetTarget.COURT}),
+        court_schema_version="v2",
+        nht={
+            "backend": "public-cli",
+            "training_python_path": "/runtime/python",
+            "trainer_path": "/runtime/nht/train.py",
+        },
+        pipeline_seed=696,
+    )
+    forbidden_registry, forbidden_handlers = _registry(payload="forbidden")
+    forbidden = _runner(
+        tmp_path,
+        forbidden_registry,
+        resolved_config_yaml=forbidden_yaml,
+    )
+    with pytest.raises(ValueError, match="Resolved configuration changed"):
+        forbidden.run(
+            _request(
+                tmp_path,
+                from_stage=StageName.COURT_DATASET,
+                targets=frozenset({DatasetTarget.COURT}),
+            )
+        )
+    assert all(handler.execute_calls == 0 for handler in forbidden_handlers.values())
+    assert {
+        stage: path.read_bytes() for stage, path in retained_paths.items()
+    } == before
+
+
+@pytest.mark.parametrize(
+    ("nht", "from_stage", "targets"),
+    (
+        (
+            {
+                "backend": "mutated-cli",
+                "training_python_path": "/runtime/python",
+                "trainer_path": "/runtime/nht/train.py",
+            },
+            StageName.COURT_DATASET,
+            frozenset({DatasetTarget.COURT}),
+        ),
+        (
+            {
+                "training_python_path": "/runtime/python",
+                "trainer_path": "/runtime/nht/train.py",
+            },
+            StageName.COURT_DATASET,
+            frozenset({DatasetTarget.COURT}),
+        ),
+        (
+            {
+                "backend": "public-cli",
+                "training_python_path": "/runtime/python",
+                "trainer_path": "/runtime/nht/train.py",
+                "workspace_path": "/unowned/path",
+            },
+            StageName.COURT_DATASET,
+            frozenset({DatasetTarget.COURT}),
+        ),
+        (
+            {
+                "backend": "public-cli",
+                "training_python_path": " ",
+                "trainer_path": "/runtime/nht/train.py",
+            },
+            StageName.COURT_DATASET,
+            frozenset({DatasetTarget.COURT}),
+        ),
+        (
+            {
+                "backend": "public-cli",
+                "training_python_path": "/runtime/python",
+                "trainer_path": 7,
+            },
+            StageName.COURT_DATASET,
+            frozenset({DatasetTarget.COURT}),
+        ),
+        (
+            {
+                "backend": "public-cli",
+                "training_python_path": "/runtime/python",
+                "trainer_path": "/runtime/nht/train.py",
+            },
+            StageName.ALIGNMENT,
+            frozenset({DatasetTarget.COURT}),
+        ),
+        (
+            {
+                "backend": "public-cli",
+                "training_python_path": "/runtime/python",
+                "trainer_path": "/runtime/nht/train.py",
+            },
+            StageName.COURT_DATASET,
+            frozenset({DatasetTarget.COURT, DatasetTarget.BLCS}),
+        ),
+    ),
+    ids=(
+        "existing-nht-value-mutated",
+        "existing-nht-key-removed",
+        "unrelated-nht-key-added",
+        "added-path-is-blank",
+        "added-path-is-not-a-string",
+        "wrong-cursor",
+        "wrong-target-set",
+    ),
+)
+def test_legacy_nht_path_additions_are_rejected_outside_exact_court_authority(
+    tmp_path: Path,
+    nht: dict[str, object],
+    from_stage: StageName,
+    targets: frozenset[DatasetTarget],
+) -> None:
+    all_targets = frozenset(DatasetTarget)
+    legacy_yaml = _court_reuse_config_yaml(
+        from_stage=StageName.INGEST,
+        targets=all_targets,
+        court_schema_version="v1",
+        nht={"backend": "public-cli"},
+    )
+    first_registry, _ = _registry(payload="retained")
+    first = _runner(tmp_path, first_registry, resolved_config_yaml=legacy_yaml)
+    first.run(_request(tmp_path, targets=all_targets))
+    resolved_config_before = first.workspace.resolved_config_path.read_bytes()
+    requested_yaml = _court_reuse_config_yaml(
+        from_stage=from_stage,
+        targets=targets,
+        court_schema_version="v2",
+        nht=nht,
+    )
+    second_registry, handlers = _registry(payload="forbidden")
+    second = _runner(tmp_path, second_registry, resolved_config_yaml=requested_yaml)
+
+    with pytest.raises(ValueError, match="Resolved configuration changed"):
+        second.run(_request(tmp_path, from_stage=from_stage, targets=targets))
+
+    assert second.workspace.resolved_config_path.read_bytes() == resolved_config_before
+    assert all(handler.execute_calls == 0 for handler in handlers.values())
 
 
 def test_domain_failure_keeps_no_partial_or_completed_output(tmp_path: Path) -> None:

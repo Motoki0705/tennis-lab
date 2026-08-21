@@ -4,16 +4,35 @@ from __future__ import annotations
 
 import copy
 
+import numpy as np
 import pytest
+from numpy.typing import NDArray
 
+from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
 from src.synthetic_data_generation.dataset.court.components.labels import (
     PHYSICAL_INDICES_BY_CLASS,
     SEMANTIC_CLASS_NAMES,
+    attach_renderer_visibility,
+    project_court_semantics_v2,
+)
+from src.synthetic_data_generation.dataset.court.contracts import (
+    ResolvedTargetCourtV2,
+    TargetCourtResolutionPolicy,
+)
+from src.synthetic_data_generation.dataset.court.schema import (
+    COURT_SEMANTIC_CLASS_NAMES_V2,
 )
 from src.synthetic_data_generation.dataset.court.semantic_manifest import (
     build_court_semantic_manifest,
     require_equal_court_semantic_manifests,
     validate_court_semantic_manifest,
+    validate_v2_published_court_geometry,
+)
+from src.synthetic_data_generation.scene_contract import (
+    CourtInstance,
+    MultiCourtLayout,
+    RigidTransform,
+    SceneCamera,
 )
 
 
@@ -35,7 +54,9 @@ def test_semantic_manifest_is_recomputed_exactly_from_dataset_semantics() -> Non
         require_equal_court_semantic_manifests(manifest, mutated)
 
 
-def test_semantic_manifest_rejects_renderer_semantic_and_operational_mutations() -> None:
+def test_semantic_manifest_rejects_renderer_semantic_and_operational_mutations() -> (
+    None
+):
     dataset = _dataset()
     manifest = build_court_semantic_manifest(dataset)
 
@@ -54,6 +75,169 @@ def test_semantic_manifest_rejects_renderer_semantic_and_operational_mutations()
     mutated_manifest["wall_seconds"] = 1.0
     with pytest.raises(ValueError, match="operational field"):
         validate_court_semantic_manifest(dataset, mutated_manifest)
+
+
+def test_v2_semantic_manifest_binds_exact_schemas_target_and_singleton_geometry() -> (
+    None
+):
+    dataset = _v2_dataset()
+    manifest = build_court_semantic_manifest(dataset)
+
+    assert manifest["schema"] == "court_renderer_semantic_manifest_v2"
+    assert manifest["dataset_schema"] == "canonical_court_dataset_v2"
+    assert manifest["sample_schema"] == "canonical_court_sample_v2"
+    semantic_schema = manifest["semantic_schema"]
+    assert isinstance(semantic_schema, dict)
+    assert semantic_schema["class_names"] == list(COURT_SEMANTIC_CLASS_NAMES_V2)
+    assert semantic_schema["physical_point_count_per_class"] == 1
+    assert validate_court_semantic_manifest(dataset, manifest) == manifest
+
+    mixed = copy.deepcopy(manifest)
+    mixed["schema"] = "court_renderer_semantic_manifest_v1"
+    with pytest.raises(ValueError, match="schemas are mixed"):
+        validate_court_semantic_manifest(dataset, mixed)
+
+    mutated_target = copy.deepcopy(dataset)
+    samples = mutated_target["samples"]
+    assert isinstance(samples, list)
+    target = samples[0]["target_court"]
+    assert isinstance(target, dict)
+    binding = target["binding"]
+    assert isinstance(binding, dict)
+    scene_from_court = binding["scene_from_court"]
+    assert isinstance(scene_from_court, list)
+    scene_from_court[3] = 0.25
+    with pytest.raises(ValueError, match="binding disagrees"):
+        build_court_semantic_manifest(mutated_target)
+
+
+def test_v2_false_ambiguity_and_near_far_mutations_are_rejected() -> None:
+    dataset = _v2_dataset()
+
+    false_ambiguity = copy.deepcopy(dataset)
+    accepted = false_ambiguity["samples"]
+    rejected = false_ambiguity["rejected_samples"]
+    metrics = false_ambiguity["metrics"]
+    assert isinstance(accepted, list)
+    assert isinstance(rejected, list)
+    assert isinstance(metrics, dict)
+    record = copy.deepcopy(accepted[0])
+    record["sample_index"] = 1
+    record["sample_id"] = "sample-000001"
+    camera = record["camera"]
+    assert isinstance(camera, dict)
+    camera["camera_id"] = "sample-000001"
+    record["projection"] = None
+    record["reasons"] = ["ambiguous_camera_relative_near_far:court-a"]
+    rejected.append(record)
+    metrics["proposal_count"] = 2
+    metrics["rejected_frame_count"] = 1
+    with pytest.raises(ValueError, match="ambiguity reason disagrees"):
+        build_court_semantic_manifest(false_ambiguity)
+
+    wrong_permutation = copy.deepcopy(dataset)
+    samples = wrong_permutation["samples"]
+    assert isinstance(samples, list)
+    projection = samples[0]["projection"]
+    assert isinstance(projection, dict)
+    courts = projection["courts"]
+    assert isinstance(courts, list)
+    classes = courts[0]["classes"]
+    assert isinstance(classes, list)
+    first_point = classes[0]["points"][0]
+    second_point = classes[1]["points"][0]
+    first_point["physical_index"], second_point["physical_index"] = (
+        second_point["physical_index"],
+        first_point["physical_index"],
+    )
+    with pytest.raises(ValueError, match="rigid court geometry"):
+        build_court_semantic_manifest(wrong_permutation)
+
+
+@pytest.mark.parametrize(
+    ("container_path", "missing_key"),
+    [
+        (("samples", 0), "target_court"),
+        (("samples", 0), "projection"),
+        (("samples", 0, "projection"), "courts"),
+        (("samples", 0, "projection", "courts", 0), "classes"),
+        (
+            ("samples", 0, "projection", "courts", 0, "classes", 0),
+            "points",
+        ),
+        (
+            (
+                "samples",
+                0,
+                "projection",
+                "courts",
+                0,
+                "classes",
+                0,
+                "points",
+                0,
+            ),
+            "physical_index",
+        ),
+        (
+            (
+                "samples",
+                0,
+                "projection",
+                "courts",
+                0,
+                "classes",
+                0,
+                "points",
+                0,
+            ),
+            "scene_xyz_m",
+        ),
+    ],
+)
+def test_v2_persisted_geometry_rejects_missing_required_keys(
+    container_path: tuple[str | int, ...],
+    missing_key: str,
+) -> None:
+    dataset = _v2_dataset()
+    container = _mapping_at_path(dataset, container_path)
+    del container[missing_key]
+
+    with pytest.raises((KeyError, TypeError, ValueError)):
+        validate_v2_published_court_geometry(dataset)
+
+
+def test_v2_persisted_geometry_rejects_conflicting_candidate_binding() -> None:
+    dataset = _v2_dataset()
+    samples = dataset["samples"]
+    assert isinstance(samples, list)
+    conflicting = copy.deepcopy(samples[0])
+    assert isinstance(conflicting, dict)
+    target = conflicting["target_court"]
+    assert isinstance(target, dict)
+    binding = target["binding"]
+    assert isinstance(binding, dict)
+    binding["candidate_id"] = "candidate-conflict"
+    samples.append(conflicting)
+
+    with pytest.raises(ValueError, match="candidate disagrees"):
+        validate_v2_published_court_geometry(dataset)
+
+
+def _mapping_at_path(
+    value: dict[str, object],
+    path: tuple[str | int, ...],
+) -> dict[str, object]:
+    current: object = value
+    for part in path:
+        if isinstance(part, int):
+            assert isinstance(current, list)
+            current = current[part]
+        else:
+            assert isinstance(current, dict)
+            current = current[part]
+    assert isinstance(current, dict)
+    return current
 
 
 def _dataset() -> dict[str, object]:
@@ -166,3 +350,111 @@ def _projection() -> dict[str, object]:
             }
         ],
     }
+
+
+def _v2_dataset() -> dict[str, object]:
+    transform = RigidTransform.identity()
+    court = CourtInstance(
+        court_instance_id="court-a",
+        candidate_id="candidate-a",
+        scene_from_court=transform,
+        court_from_scene=transform,
+        fit_status="accepted",
+        fit_metrics={"rms_error_m": 0.01},
+        holdout_status="accepted",
+        holdout_metrics={"rms_error_m": 0.02},
+    )
+    layout = MultiCourtLayout(
+        courts=(court,),
+        complex_bounds_scene=(-20.0, -25.0, -1.0, 20.0, 25.0, 12.0),
+        primary_court_instance_id=court.court_instance_id,
+    )
+    camera = _v2_camera()
+    projection = project_court_semantics_v2(camera, layout)
+    visible = attach_renderer_visibility(
+        projection,
+        alpha=np.ones((480, 640, 1), dtype=np.float32),
+        depth=np.ones((480, 640, 1), dtype=np.float32),
+    )
+    target = ResolvedTargetCourtV2(
+        binding=TargetCourtBinding(
+            court_instance_id="court-a",
+            candidate_id="candidate-a",
+            scene_from_court=transform,
+            selection_seed=695,
+        ),
+        resolution_policy=TargetCourtResolutionPolicy.TRAJECTORY_CENTER_COURT,
+        camera_to_court_center_distance_m=float(
+            np.linalg.norm(camera.camera_to_scene.matrix()[:3, 3])
+        ),
+    )
+    sample = {
+        "sample_index": 0,
+        "sample_id": camera.camera_id,
+        "trajectory_group_id": "group-a",
+        "trajectory_id": "trajectory-a",
+        "view_id": "view-a",
+        "trajectory_frame_index": 0,
+        "split": "train",
+        "shard_id": "shard-000",
+        "camera": camera.to_dict(),
+        "projection": visible.to_dict(),
+        "target_court": target.to_dict(),
+        "metadata": {},
+    }
+    coverage = visible.courts[0].coverage_mode
+    return {
+        "schema": "canonical_court_dataset_v2",
+        "scene_id": "B00",
+        "profile": "v2",
+        "seed": 695,
+        "sampling_policy": {"mode": "uniform_arc_length"},
+        "metadata_fields": [],
+        "trajectory_groups": [
+            {
+                "trajectory": {
+                    "trajectory_group_id": "group-a",
+                    "trajectory_id": "trajectory-a",
+                },
+                "target_court_policy": {
+                    "mode": "trajectory_center_court",
+                    "centre_court_instance_id": "court-a",
+                },
+            }
+        ],
+        "samples": [sample],
+        "rejected_samples": [],
+        "metrics": {
+            "proposal_count": 1,
+            "accepted_frame_count": 1,
+            "rejected_frame_count": 0,
+            "trajectory_group_count": 1,
+            "split_frame_counts": {"train": 1},
+            "coverage_counts": {coverage: 1},
+            "renderer_visible_points_by_class": {
+                name: 1 for name in COURT_SEMANTIC_CLASS_NAMES_V2
+            },
+        },
+    }
+
+
+def _v2_camera() -> SceneCamera:
+    center = np.asarray((0.0, -30.0, 12.0), dtype=np.float64)
+    target: NDArray[np.float64] = np.zeros(3, dtype=np.float64)
+    forward = target - center
+    forward /= np.linalg.norm(forward)
+    right = np.cross(forward, np.asarray((0.0, 0.0, 1.0)))
+    right /= np.linalg.norm(right)
+    down = np.cross(forward, right)
+    matrix = np.eye(4, dtype=np.float64)
+    matrix[:3, :3] = np.column_stack((right, down, forward))
+    matrix[:3, 3] = center
+    return SceneCamera(
+        camera_id="sample-000000",
+        source_frame_index=0,
+        width=640,
+        height=480,
+        intrinsics=(500.0, 0.0, 319.5, 0.0, 500.0, 239.5, 0.0, 0.0, 1.0),
+        camera_to_scene=RigidTransform.from_matrix(matrix),
+        image_path="generated/sample-000000.png",
+    )
