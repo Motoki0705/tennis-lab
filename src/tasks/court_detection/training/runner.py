@@ -1,4 +1,4 @@
-"""Training runner for court detection."""
+"""Training runner for composable Court detection."""
 
 from __future__ import annotations
 
@@ -16,10 +16,7 @@ from src.tasks.court_detection.training.lightning_module import (
 
 
 class CourtDetectionTrainingRunner(BaseTrainingRunner):
-    """Training runner for court detection.
-
-    Overrides datamodule/model construction for court detection.
-    """
+    """Construct the model only after the DataModule resolves its target bundle."""
 
     def build_datamodule(self, config: Any) -> pl.LightningDataModule:
         return CourtDetectionDataModule(config)
@@ -31,8 +28,20 @@ class CourtDetectionTrainingRunner(BaseTrainingRunner):
         *,
         steps_per_epoch: int | None = None,
     ) -> pl.LightningModule:
-        return CourtDetectionLightningModule(config)
+        if not isinstance(datamodule, CourtDetectionDataModule):
+            raise TypeError(
+                "Court training requires CourtDetectionDataModule to resolve "
+                "the target bundle before model construction."
+            )
+        module = CourtDetectionLightningModule(
+            config,
+            target_bundle=datamodule.target_bundle_spec,
+        )
+        module.steps_per_epoch = steps_per_epoch
+        return module
 
     def validate_runtime_config(self, config: Any) -> TrainingRuntimeConfig:
-        """Validate shared and court-specific contracts before side effects."""
         return CourtTrainingConfig.from_config(config).shared
+
+
+__all__ = ["CourtDetectionTrainingRunner"]

@@ -820,6 +820,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.court_detection.scripts.evaluate_homography_annotations": "court_detection.evaluate_homography_annotations",
     "src.tasks.court_detection.scripts.generate_line_masks": "court_detection.generate_line_masks",
     "src.tasks.court_detection.scripts.generate_masks": "court_detection.generate_masks",
+    "src.tasks.court_detection.scripts.materialize_targets": "court_detection.materialize_targets",
     "src.tasks.court_detection.scripts.prepare_youtube_dataset": "court_detection.prepare_youtube_dataset",
     "src.tasks.court_detection.scripts.preview_augmentation": "court_detection.preview_augmentation",
     "src.tasks.court_detection.scripts.preview_heatmaps": "court_detection.preview_heatmaps",
@@ -878,6 +879,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.court_detection.scripts.evaluate_homography_annotations": "src.tasks.court_detection.scripts.evaluate_homography_annotations._validate_boundary",
     "src.tasks.court_detection.scripts.generate_line_masks": "src.tasks.court_detection.scripts.generate_line_masks._validate_boundary",
     "src.tasks.court_detection.scripts.generate_masks": "src.tasks.court_detection.scripts.generate_masks._validate_boundary",
+    "src.tasks.court_detection.scripts.materialize_targets": "src.tasks.court_detection.scripts.materialize_targets._validate_boundary",
     "src.tasks.court_detection.scripts.prepare_youtube_dataset": "src.tasks.court_detection.scripts.prepare_youtube_dataset._validate_boundary",
     "src.tasks.court_detection.scripts.preview_augmentation": "src.tasks.court_detection.scripts.preview_augmentation._validate_boundary",
     "src.tasks.court_detection.scripts.preview_heatmaps": "src.tasks.court_detection.scripts.preview_heatmaps._validate_boundary",
@@ -1042,6 +1044,9 @@ _RUNTIME_BOUNDARIES = (
     ),
     _runtime_boundary(
         "court_detection", "src.tasks.court_detection.scripts.generate_masks"
+    ),
+    _runtime_boundary(
+        "court_detection", "src.tasks.court_detection.scripts.materialize_targets"
     ),
     _runtime_boundary(
         "court_detection",
