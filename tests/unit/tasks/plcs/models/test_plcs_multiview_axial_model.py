@@ -27,14 +27,14 @@ def test_multiview_axial_model_forward_accepts_single_view() -> None:
         num_court_tokens=20,
     ).eval()
 
-    human_mask = torch.ones(2, 1, 4)
-    camera_mask, time_mask = prepare_axial_attention_masks(human_mask)
+    padding_mask = torch.zeros(2, 1, 4, dtype=torch.bool)
+    camera_mask, time_mask = prepare_axial_attention_masks(padding_mask)
     with torch.no_grad():
         out = model(
             human_kp=torch.randn(2, 1, 4, 17, 2),
             court_kp=torch.randn(2, 1, 4, 20, 2),
             human_vis=torch.ones(2, 1, 4, 17),
-            human_mask=human_mask,
+            padding_mask=padding_mask,
             court_vis=torch.ones(2, 1, 4, 20),
             camera_attention_mask=camera_mask,
             time_attention_mask=time_mask,

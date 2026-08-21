@@ -7,6 +7,11 @@ from src.tasks.base.data.chunk_manager import (
     ChunkState,
 )
 from src.tasks.base.data.dataset_writer import BaseDatasetWriter
+from src.tasks.base.data.lifecycle_slots import (
+    LifecycleSlotAssignment,
+    build_fixed_lifecycle_assignment,
+    pack_lifecycle_slots,
+)
 from src.tasks.base.data.scene_dataset import (
     CameraSelection,
     Scene,
@@ -23,6 +28,7 @@ __all__ = [
     "ChunkManager",
     "ChunkState",
     "BaseDatasetWriter",
+    "LifecycleSlotAssignment",
     "CameraSelection",
     "Scene",
     "SceneDataContractError",
@@ -30,4 +36,6 @@ __all__ = [
     "SceneHeader",
     "SceneDatasetConfig",
     "TemporalWindow",
+    "build_fixed_lifecycle_assignment",
+    "pack_lifecycle_slots",
 ]

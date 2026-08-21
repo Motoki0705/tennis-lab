@@ -23,7 +23,7 @@ class PLCSTrackingDetectionAugmentation:
         """Corrupt only detection/court inputs and preserve clean GT tensors."""
         output: dict[str, Tensor] = clone_tensor_dict(sample)
         views, frames, detections, joints, _ = output["human_kp"].shape
-        clean_detection = output["detection_mask"].clone()
+        clean_detection = output["human_vis"].any(-1)
         court_keypoints = output["court_kp"].clone()
         court_visible = output["court_vis"].clone()
         adapted = {
@@ -47,9 +47,8 @@ class PLCSTrackingDetectionAugmentation:
         # confidence stream.
         output["court_kp"] = court_keypoints
         output["court_vis"] = court_visible
-        output["detection_mask"] = output["human_vis"].any(-1)
         output["detection_gt_index"] = torch.where(
-            output["detection_mask"] & clean_detection,
+            output["human_vis"].any(-1) & clean_detection,
             output["detection_gt_index"],
             -1,
         )

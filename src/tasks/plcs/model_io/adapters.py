@@ -19,7 +19,6 @@ from src.tasks.base.model_io import (
 )
 from src.tasks.plcs.model_io.attention_masks import (
     prepare_axial_attention_masks,
-    prepare_tracking_attention_masks,
 )
 from src.tasks.plcs.model_io.contracts import (
     PLCSDecodedPrediction,
@@ -170,19 +169,19 @@ class PLCSModelIOAdapter:
         human_shape: tuple[int | None, ...]
         court_shape: tuple[int | None, ...]
         human_vis_shape: tuple[int | None, ...]
-        human_mask_shape: tuple[int | None, ...]
+        padding_mask_shape: tuple[int | None, ...]
         court_vis_shape: tuple[int | None, ...]
         if self.profile in {PLCSInputProfile.FRAME, PLCSInputProfile.SEQUENCE}:
             human_shape = (None, NUM_HUMAN_KP, 2)
             court_shape = (None, self.num_court_tokens, 2)
             human_vis_shape = (None, NUM_HUMAN_KP)
-            human_mask_shape = (None,)
+            padding_mask_shape = (None,)
             court_vis_shape = (None, self.num_court_tokens)
         else:
             human_shape = (None, None, None, NUM_HUMAN_KP, 2)
             court_shape = (None, None, None, self.num_court_tokens, 2)
             human_vis_shape = (None, None, None, NUM_HUMAN_KP)
-            human_mask_shape = (None, None, None)
+            padding_mask_shape = (None, None, None)
             court_vis_shape = (None, None, None, self.num_court_tokens)
 
         human_kp = require_tensor(
@@ -200,10 +199,14 @@ class PLCSModelIOAdapter:
             "human_vis",
             spec=TensorSpec(shape=human_vis_shape, dtypes=_MASK_DTYPES),
         )
-        human_mask = require_tensor(
+        if "human_mask" in batch:
+            raise ModelInputContractError(
+                "human_mask is no longer supported; use padding_mask with True=padding."
+            )
+        padding_mask = require_tensor(
             batch,
-            "human_mask",
-            spec=TensorSpec(shape=human_mask_shape, dtypes=_MASK_DTYPES),
+            "padding_mask",
+            spec=TensorSpec(shape=padding_mask_shape, dtypes=frozenset({torch.bool})),
         )
         court_vis = require_tensor(
             batch,
@@ -248,24 +251,24 @@ class PLCSModelIOAdapter:
         _normalized_uv("human_kp", human_kp)
         _normalized_uv("court_kp", court_kp)
         _binary_mask("human_vis", human_vis)
-        _binary_mask("human_mask", human_mask)
+        _binary_mask("padding_mask", padding_mask)
         _binary_mask("court_vis", court_vis)
-        return human_kp, court_kp, human_vis, human_mask, court_vis
+        return human_kp, court_kp, human_vis, padding_mask, court_vis
 
     def build_call(self, batch: Mapping[str, object]) -> ModelCall:
         """Validate a model-ready batch and build one immutable model call."""
-        human_kp, court_kp, human_vis, human_mask, court_vis = (
+        human_kp, court_kp, human_vis, padding_mask, court_vis = (
             self._validate_ready_inputs(batch)
         )
         kwargs = {
             "human_kp": human_kp,
             "court_kp": court_kp,
             "human_vis": human_vis,
-            "human_mask": human_mask,
+            "padding_mask": padding_mask,
             "court_vis": court_vis,
         }
         if issubclass(self.model_type, PLCSMultiViewAxialModel):
-            camera_mask, time_mask = prepare_axial_attention_masks(human_mask)
+            camera_mask, time_mask = prepare_axial_attention_masks(padding_mask)
             kwargs.update(
                 {
                     "camera_attention_mask": camera_mask,
@@ -300,10 +303,16 @@ class PLCSModelIOAdapter:
                 shape=(None, None, None, NUM_HUMAN_KP), dtypes=_MASK_DTYPES
             ),
         )
-        human_mask = require_tensor(
+        if "human_mask" in batch:
+            raise ModelInputContractError(
+                "human_mask is no longer supported; use padding_mask with True=padding."
+            )
+        padding_mask = require_tensor(
             batch,
-            "human_mask",
-            spec=TensorSpec(shape=(None, None, None), dtypes=_MASK_DTYPES),
+            "padding_mask",
+            spec=TensorSpec(
+                shape=(None, None, None), dtypes=frozenset({torch.bool})
+            ),
         )
         court_vis = require_tensor(
             batch,
@@ -317,7 +326,7 @@ class PLCSModelIOAdapter:
             "human_kp": human_kp,
             "court_kp": court_kp,
             "human_vis": human_vis,
-            "human_mask": human_mask,
+            "padding_mask": padding_mask,
             "court_vis": court_vis,
         }
         self._validate_canonical_axes(canonical)
@@ -356,7 +365,7 @@ class PLCSModelIOAdapter:
                 target_position=target_position,
                 target_rotation=target_rotation,
                 target_human_kp_3d=target_human_kp_3d,
-                target_human_mask=human_mask,
+                target_padding_mask=padding_mask,
             )
         if self.camera_index >= views:
             raise ModelInputContractError(
@@ -378,7 +387,7 @@ class PLCSModelIOAdapter:
             "human_vis": human_vis[:, self.camera_index].reshape(
                 batch_size * frames, NUM_HUMAN_KP
             ),
-            "human_mask": human_mask[:, self.camera_index].reshape(
+            "padding_mask": padding_mask[:, self.camera_index].reshape(
                 batch_size * frames
             ),
             "court_vis": court_vis[:, self.camera_index].reshape(
@@ -395,16 +404,16 @@ class PLCSModelIOAdapter:
             target_rotation = target_rotation[:, 0]
             if target_human_kp_3d is not None:
                 target_human_kp_3d = target_human_kp_3d[:, 0]
-            target_human_mask = human_mask[:, self.camera_index, 0]
+            target_padding_mask = padding_mask[:, self.camera_index, 0]
         else:
-            target_human_mask = human_mask[:, self.camera_index]
+            target_padding_mask = padding_mask[:, self.camera_index]
         return PLCSPreparedBatch(
             call=self.build_call(ready),
             sequence_shape=sequence_shape,
             target_position=target_position,
             target_rotation=target_rotation,
             target_human_kp_3d=target_human_kp_3d,
-            target_human_mask=target_human_mask,
+            target_padding_mask=target_padding_mask,
         )
 
     def _validate_canonical_axes(self, batch: Mapping[str, Tensor]) -> None:
@@ -422,12 +431,12 @@ class PLCSModelIOAdapter:
             raise ModelInputContractError(
                 "court_vis must match court_kp without its UV axis."
             )
-        if batch["human_mask"].shape != human_kp.shape[:3]:
-            raise ModelInputContractError("human_mask must have shape (B,V,T).")
+        if batch["padding_mask"].shape != human_kp.shape[:3]:
+            raise ModelInputContractError("padding_mask must have shape (B,V,T).")
         _normalized_uv("human_kp", human_kp)
         _normalized_uv("court_kp", court_kp)
         _binary_mask("human_vis", batch["human_vis"])
-        _binary_mask("human_mask", batch["human_mask"])
+        _binary_mask("padding_mask", batch["padding_mask"])
         _binary_mask("court_vis", batch["court_vis"])
 
     def decode_output(
@@ -536,14 +545,14 @@ class PLCSModelIOAdapter:
         )
         human_vis = np.stack(
             [
-                np.asarray(scene_cameras[index].human_kp_visible, dtype=np.bool_)
+                np.asarray(scene_cameras[index].human_kp_vis, dtype=np.bool_)
                 for index in selected
             ],
             axis=0,
         )
         court_vis = np.stack(
             [
-                np.asarray(scene_cameras[index].court_kp_visible, dtype=np.bool_)
+                np.asarray(scene_cameras[index].court_kp_vis, dtype=np.bool_)
                 for index in selected
             ],
             axis=0,
@@ -553,7 +562,9 @@ class PLCSModelIOAdapter:
             "human_kp": torch.as_tensor(human, dtype=torch.float32).unsqueeze(0),
             "court_kp": torch.as_tensor(court, dtype=torch.float32).unsqueeze(0),
             "human_vis": torch.as_tensor(human_vis, dtype=torch.bool).unsqueeze(0),
-            "human_mask": torch.ones((1, len(selected), frames), dtype=torch.bool),
+            "padding_mask": torch.zeros(
+                (1, len(selected), frames), dtype=torch.bool
+            ),
             "court_vis": torch.as_tensor(court_vis, dtype=torch.bool).unsqueeze(0),
         }
         if self.profile is PLCSInputProfile.MULTIVIEW:
@@ -566,7 +577,7 @@ class PLCSModelIOAdapter:
                 frames, self.num_court_tokens, 2
             ),
             "human_vis": ready["human_vis"][:, 0].reshape(frames, NUM_HUMAN_KP),
-            "human_mask": ready["human_mask"][:, 0].reshape(frames),
+            "padding_mask": ready["padding_mask"][:, 0].reshape(frames),
             "court_vis": ready["court_vis"][:, 0].reshape(
                 frames, self.num_court_tokens
             ),
@@ -581,7 +592,7 @@ class PLCSModelIOAdapter:
         human_kp: np.ndarray,
         court_kp: np.ndarray,
         human_vis: np.ndarray,
-        human_mask: np.ndarray,
+        padding_mask: np.ndarray,
         court_vis: np.ndarray,
     ) -> PLCSPreparedBatch:
         """Convert explicit NumPy multiview observations at the task boundary."""
@@ -598,16 +609,17 @@ class PLCSModelIOAdapter:
                 court_vis[None], (batch_size, *court_vis.shape)
             )
         expected_human_vis = (batch_size, views, frames, NUM_HUMAN_KP)
-        expected_human_mask = (batch_size, views, frames)
+        expected_padding_mask = (batch_size, views, frames)
         expected_court = (batch_size, views, frames, self.num_court_tokens, 2)
         expected_court_vis = (batch_size, views, frames, self.num_court_tokens)
         if human_vis.shape != expected_human_vis:
             raise ModelInputContractError(
                 f"human_vis must have shape {expected_human_vis}, got {human_vis.shape}."
             )
-        if human_mask.shape != expected_human_mask:
+        if padding_mask.shape != expected_padding_mask:
             raise ModelInputContractError(
-                f"human_mask must have shape {expected_human_mask}, got {human_mask.shape}."
+                "padding_mask must have shape "
+                f"{expected_padding_mask}, got {padding_mask.shape}."
             )
         if court_kp.shape != expected_court:
             raise ModelInputContractError(
@@ -621,7 +633,7 @@ class PLCSModelIOAdapter:
             "human_kp": torch.as_tensor(np.array(human_kp, copy=True)),
             "court_kp": torch.as_tensor(np.array(court_kp, copy=True)),
             "human_vis": torch.as_tensor(np.array(human_vis, copy=True)),
-            "human_mask": torch.as_tensor(np.array(human_mask, copy=True)),
+            "padding_mask": torch.as_tensor(np.array(padding_mask, copy=True)),
             "court_vis": torch.as_tensor(np.array(court_vis, copy=True)),
         }
         return PLCSPreparedBatch(call=self.build_call(ready))
@@ -637,14 +649,12 @@ class PLCSTrackQueryIOAdapter:
         num_queries: int,
         num_court_tokens: int,
         num_joints: int,
-        mask_invisible_observations: bool,
     ) -> None:
         self._model_type = model_type
         self.profile = PLCSInputProfile.TRACK_QUERY
         self.num_queries = num_queries
         self.num_court_tokens = num_court_tokens
         self.num_joints = num_joints
-        self.mask_invisible_observations = mask_invisible_observations
 
     @property
     def model_type(self) -> type[nn.Module]:
@@ -659,19 +669,26 @@ class PLCSTrackQueryIOAdapter:
             )
 
     def build_call(self, batch: Mapping[str, object]) -> ModelCall:
+        legacy_keys = {"detection_mask", "frame_mask", "view_mask"} & set(batch)
+        if legacy_keys:
+            raise ModelInputContractError(
+                "Legacy PLCS tracking mask keys are not supported: "
+                f"{sorted(legacy_keys)}. Use padding_mask with True=padding."
+            )
         human_kp = require_tensor(
             batch,
             "human_kp",
             spec=TensorSpec(
-                shape=(None, None, None, None, self.num_joints, 2),
+                shape=(None, None, None, self.num_queries, self.num_joints, 2),
                 dtypes=_FLOAT_DTYPES,
             ),
         )
-        detection_mask = require_tensor(
+        human_vis = require_tensor(
             batch,
-            "detection_mask",
+            "human_vis",
             spec=TensorSpec(
-                shape=(None, None, None, None), dtypes=frozenset({torch.bool})
+                shape=(None, None, None, self.num_queries, self.num_joints),
+                dtypes=frozenset({torch.bool}),
             ),
         )
         court_kp = require_tensor(
@@ -690,29 +707,24 @@ class PLCSTrackQueryIOAdapter:
                 dtypes=frozenset({torch.bool}),
             ),
         )
-        frame_mask = require_tensor(
+        padding_mask = require_tensor(
             batch,
-            "frame_mask",
+            "padding_mask",
             spec=TensorSpec(
-                shape=(None, None), dtypes=frozenset({torch.bool})
+                shape=(None, None, None), dtypes=frozenset({torch.bool})
             ),
         )
-        view_mask = require_tensor(
-            batch,
-            "view_mask",
-            spec=TensorSpec(
-                shape=(None, None), dtypes=frozenset({torch.bool})
-            ),
-        )
-        batch_size, views, frames, detections = human_kp.shape[:4]
-        if min(batch_size, views, frames, detections) == 0:
+        batch_size, views, frames, queries = human_kp.shape[:4]
+        if min(batch_size, views, frames, queries) == 0:
             raise ModelInputContractError(
-                "Tracking (B,V,T,P) axes must all be non-empty."
+                "Tracking (B,V,T,Q) axes must all be non-empty."
             )
-        if detection_mask.shape != (batch_size, views, frames, detections):
+        if queries != self.num_queries:
             raise ModelInputContractError(
-                "detection_mask must match human_kp through its detection axis."
+                "human_kp query axis must equal num_queries."
             )
+        if human_vis.shape != human_kp.shape[:-1]:
+            raise ModelInputContractError("human_vis must match human_kp without UV.")
         if court_kp.shape[:3] != (batch_size, views, frames):
             raise ModelInputContractError(
                 "court_kp must share human_kp (B,V,T) axes."
@@ -721,36 +733,20 @@ class PLCSTrackQueryIOAdapter:
             raise ModelInputContractError(
                 "court_vis must match court_kp without its UV axis."
             )
-        if frame_mask.shape != (batch_size, frames):
-            raise ModelInputContractError("frame_mask must have shape (B,T).")
-        if view_mask.shape != (batch_size, views):
-            raise ModelInputContractError("view_mask must have shape (B,V).")
+        if padding_mask.shape != (batch_size, views, frames):
+            raise ModelInputContractError("padding_mask must have shape (B,V,T).")
         _normalized_uv("human_kp", human_kp)
         _normalized_uv("court_kp", court_kp)
-        valid_observation = view_mask[:, :, None, None] & frame_mask[:, None, :, None]
-        if bool((detection_mask & ~valid_observation).any().item()):
-            raise ModelInputContractError(
-                "detection_mask cannot be true in a padded view or frame."
-            )
-        camera_state_valid, spatial_mask, temporal_mask = (
-            prepare_tracking_attention_masks(
-                detection_mask=detection_mask,
-                frame_mask=frame_mask,
-                view_mask=view_mask,
-                num_queries=self.num_queries,
-                mask_invisible_observations=self.mask_invisible_observations,
-            )
-        )
+        _binary_mask("human_vis", human_vis)
+        _binary_mask("court_vis", court_vis)
+        _binary_mask("padding_mask", padding_mask)
         return ModelCall(
             kwargs={
                 "human_kp": human_kp,
-                "detection_mask": detection_mask,
+                "human_vis": human_vis,
                 "court_kp": court_kp,
                 "court_vis": court_vis,
-                "frame_mask": frame_mask,
-                "camera_state_valid": camera_state_valid,
-                "spatial_attention_mask": spatial_mask,
-                "temporal_attention_mask": temporal_mask,
+                "padding_mask": padding_mask,
             }
         )
 
@@ -764,21 +760,23 @@ class PLCSTrackQueryIOAdapter:
             batch,
             "target_position",
             spec=TensorSpec(
-                shape=(batch_size, frames, None, 3), dtypes=_FLOAT_DTYPES
+                shape=(batch_size, frames, self.num_queries, 3),
+                dtypes=_FLOAT_DTYPES,
             ),
         )
         target_rotation = require_tensor(
             batch,
             "target_rotation",
             spec=TensorSpec(
-                shape=(batch_size, frames, None, 2), dtypes=_FLOAT_DTYPES
+                shape=(batch_size, frames, self.num_queries, 2),
+                dtypes=_FLOAT_DTYPES,
             ),
         )
         target_presence = require_tensor(
             batch,
             "target_presence",
             spec=TensorSpec(
-                shape=(batch_size, frames, None),
+                shape=(batch_size, frames, self.num_queries),
                 dtypes=frozenset({torch.bool}),
             ),
         )
@@ -786,14 +784,15 @@ class PLCSTrackQueryIOAdapter:
             batch,
             "target_slot_mask",
             spec=TensorSpec(
-                shape=(batch_size, None), dtypes=frozenset({torch.bool})
+                shape=(batch_size, self.num_queries),
+                dtypes=frozenset({torch.bool}),
             ),
         )
         target_instance_id = require_tensor(
             batch,
             "target_instance_id",
             spec=TensorSpec(
-                shape=(batch_size, frames, None),
+                shape=(batch_size, frames, self.num_queries),
                 dtypes=frozenset({torch.int64}),
             ),
         )

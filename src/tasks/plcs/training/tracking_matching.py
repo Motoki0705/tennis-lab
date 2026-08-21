@@ -38,7 +38,7 @@ def match_player_tracks(
             assignments.append((empty, empty))
             continue
         costs = pred_position.new_zeros((num_queries, target_indices.numel()))
-        valid_frames = batch["frame_mask"][batch_index]
+        valid_frames = (~batch["padding_mask"][batch_index]).any(dim=0)
         for target_column, target_index in enumerate(target_indices.tolist()):
             target_active = (
                 batch["target_presence"][batch_index, :, target_index] & valid_frames

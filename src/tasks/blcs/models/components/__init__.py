@@ -1,1 +1,1 @@
-"""Internal BLCS model components; import implementations canonically."""
+"""Internal BLCS model components."""

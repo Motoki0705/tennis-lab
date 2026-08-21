@@ -34,9 +34,7 @@ def parse_build_cuda_ops(raw: str | None, /) -> bool:
         return False
     if raw == "1":
         return True
-    raise ValueError(
-        f"{BUILD_CUDA_OPS} must be exactly '0' or '1'; got {raw!r}."
-    )
+    raise ValueError(f"{BUILD_CUDA_OPS} must be exactly '0' or '1'; got {raw!r}.")
 
 
 def should_build_cuda_ops() -> bool:
@@ -194,6 +192,14 @@ def get_extensions() -> list[Any]:
             sources=[
                 str(build_paths.time_local_bindings),
                 str(build_paths.time_local_kernels),
+            ],
+            extra_compile_args=common_compile_args,
+        ),
+        CUDAExtension(
+            name="src.utils.models.components.ops.compressed_time_local._C",
+            sources=[
+                str(build_paths.compressed_time_local_bindings),
+                str(build_paths.compressed_time_local_kernels),
             ],
             extra_compile_args=common_compile_args,
         ),
