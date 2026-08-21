@@ -44,6 +44,7 @@ PLCSValue: TypeAlias = (
     str | int | float | bool | None | tuple[object, ...] | Mapping[str, object]
 )
 
+
 def _plain(value: object, *, path: str) -> Mapping[str, object]:
     if isinstance(value, DictConfig):
         value = OmegaConf.to_container(value, resolve=True)
@@ -122,7 +123,7 @@ def _sequence(
 
 
 def _positive(number: float, *, path: str, allow_zero: bool = False) -> None:
-    if (number < 0.0 if allow_zero else number <= 0.0):
+    if number < 0.0 if allow_zero else number <= 0.0:
         qualifier = "non-negative" if allow_zero else "positive"
         raise SemanticConfigurationError(f"{path} must be {qualifier}.")
 
@@ -139,14 +140,10 @@ def _ordered_numeric_range(
     path: str,
     positive: bool = False,
 ) -> tuple[float, float]:
-    values = _sequence(
-        mapping, key, path=path, item_types=(float, int), length=2
-    )
+    values = _sequence(mapping, key, path=path, item_types=(float, int), length=2)
     lo, hi = (float(cast("float | int", value)) for value in values)
     if lo > hi:
-        raise SemanticConfigurationError(
-            f"{path}.{key} must be ordered low-to-high."
-        )
+        raise SemanticConfigurationError(f"{path}.{key} must be ordered low-to-high.")
     if positive and lo <= 0.0:
         raise SemanticConfigurationError(f"{path}.{key} values must be positive.")
     return lo, hi
@@ -415,7 +412,10 @@ class PLCSModelConfig:
                 raise SemanticConfigurationError(
                     "model.ffn_type must be 'swiglu' or 'mlp'."
                 )
-        if "num_joints" in mapping and _integer(mapping, "num_joints", path="model") != NUM_HUMAN_KP:
+        if (
+            "num_joints" in mapping
+            and _integer(mapping, "num_joints", path="model") != NUM_HUMAN_KP
+        ):
             raise SemanticConfigurationError(
                 f"model.num_joints must equal the canonical COCO joint count ({NUM_HUMAN_KP})."
             )
@@ -768,11 +768,15 @@ class PLCSDataConfig:
                 raise SemanticConfigurationError(
                     f"data.{key} must be a positive ordered range."
                 )
-        if "max_views" in model.values and num_views_range[1] > model.integer("max_views"):
+        if "max_views" in model.values and num_views_range[1] > model.integer(
+            "max_views"
+        ):
             raise SemanticConfigurationError(
                 "data.num_views_range cannot exceed model.max_views."
             )
-        if "max_seq_len" in model.values and seq_len_range[1] > model.integer("max_seq_len"):
+        if "max_seq_len" in model.values and seq_len_range[1] > model.integer(
+            "max_seq_len"
+        ):
             raise SemanticConfigurationError(
                 "data.seq_len_range cannot exceed model.max_seq_len."
             )
@@ -811,9 +815,7 @@ class PLCSDataConfig:
                 required=lifecycle_fields,
                 allowed=lifecycle_fields,
             )
-            if not _boolean(
-                lifecycle, "pack_to_query_slots", path="data.lifecycle"
-            ):
+            if not _boolean(lifecycle, "pack_to_query_slots", path="data.lifecycle"):
                 raise SemanticConfigurationError(
                     "data.lifecycle.pack_to_query_slots must be true for fixed-Q "
                     "PLCS tracking."
@@ -937,6 +939,7 @@ class PLCSTrainingConfig:
             "min_lr",
             "steps_per_epoch",
             "optimizer",
+            "compile",
             "matmul_precision",
             "allow_tf32",
             "checkpoint",
@@ -1024,9 +1027,7 @@ class PLCSTrainingConfig:
                 )
                 if _integer(
                     timeline, "min_reuse_gap_frames", path="generation.timeline"
-                ) < _integer(
-                    lifecycle, "min_reuse_gap_frames", path="data.lifecycle"
-                ):
+                ) < _integer(lifecycle, "min_reuse_gap_frames", path="data.lifecycle"):
                     raise SemanticConfigurationError(
                         "generation.timeline.min_reuse_gap_frames cannot be smaller "
                         "than data.lifecycle.min_reuse_gap_frames."
@@ -1139,7 +1140,10 @@ class PLCSTrainingConfig:
                 required=discriminator_fields,
                 allowed=discriminator_fields,
             )
-            if _string(discriminator, "name", path="training.gan.discriminator") != "pose_sequence_transformer":
+            if (
+                _string(discriminator, "name", path="training.gan.discriminator")
+                != "pose_sequence_transformer"
+            ):
                 raise SemanticConfigurationError(
                     "training.gan.discriminator.name must be 'pose_sequence_transformer'."
                 )
@@ -1161,7 +1165,10 @@ class PLCSTrainingConfig:
                 raise SemanticConfigurationError(
                     "training.gan.discriminator.ffn_dim must be positive."
                 )
-            if _integer(discriminator, "num_layers", path="training.gan.discriminator") < 0:
+            if (
+                _integer(discriminator, "num_layers", path="training.gan.discriminator")
+                < 0
+            ):
                 raise SemanticConfigurationError(
                     "training.gan.discriminator.num_layers must be non-negative."
                 )
@@ -1173,7 +1180,9 @@ class PLCSTrainingConfig:
                     "training.gan.discriminator.rope_dim must be non-negative, "
                     "even, and no larger than the attention head dimension."
                 )
-            if _string(discriminator, "ffn_type", path="training.gan.discriminator") not in {"swiglu", "mlp"}:
+            if _string(
+                discriminator, "ffn_type", path="training.gan.discriminator"
+            ) not in {"swiglu", "mlp"}:
                 raise SemanticConfigurationError(
                     "training.gan.discriminator.ffn_type must be 'swiglu' or 'mlp'."
                 )
@@ -1195,7 +1204,12 @@ class PLCSTrainingConfig:
                     path=f"training.gan.discriminator.{key}",
                     allow_zero=True,
                 )
-            if _integer(discriminator, "max_seq_len", path="training.gan.discriminator") <= 0:
+            if (
+                _integer(
+                    discriminator, "max_seq_len", path="training.gan.discriminator"
+                )
+                <= 0
+            ):
                 raise SemanticConfigurationError(
                     "training.gan.discriminator.max_seq_len must be positive."
                 )
@@ -1337,7 +1351,9 @@ def _validate_script_boundary(
                     "data.camera_mode must be 'random', 'first', or a non-negative index."
                 )
         elif cast("int", camera_mode) < 0:
-            raise SemanticConfigurationError("data.camera_mode index must be non-negative.")
+            raise SemanticConfigurationError(
+                "data.camera_mode index must be non-negative."
+            )
         views = _sequence(
             data,
             "num_views_range",
@@ -1423,7 +1439,10 @@ def _validate_script_boundary(
             allowed={"panel_width", "panel_height", "dpi"},
         )
         for key in {"panel_width", "panel_height"}:
-            _positive(_number(figure, key, path="preview.figure"), path=f"preview.figure.{key}")
+            _positive(
+                _number(figure, key, path="preview.figure"),
+                path=f"preview.figure.{key}",
+            )
         if _integer(figure, "dpi", path="preview.figure") <= 0:
             raise SemanticConfigurationError("preview.figure.dpi must be positive.")
     if "analysis" in root:
@@ -1517,9 +1536,7 @@ def _validate_script_boundary(
                 raise SemanticConfigurationError(
                     "analysis.split must be 'train', 'val', or 'test'."
                 )
-            _resolved_device(
-                analysis["device"], path="analysis.device", nullable=True
-            )
+            _resolved_device(analysis["device"], path="analysis.device", nullable=True)
             max_batches = require_config_value(
                 analysis, "max_batches", (int, type(None)), path="analysis"
             )
@@ -1555,7 +1572,9 @@ def _validate_script_boundary(
             }:
                 text = _string(analysis, key, path="analysis")
                 if not text:
-                    raise SemanticConfigurationError(f"analysis.{key} must not be empty.")
+                    raise SemanticConfigurationError(
+                        f"analysis.{key} must not be empty."
+                    )
             if analysis["split"] not in {"train", "val", "test"}:
                 raise SemanticConfigurationError(
                     "analysis.split must be 'train', 'val', or 'test'."
@@ -1565,8 +1584,13 @@ def _validate_script_boundary(
                     "analysis.animation_view must be '3d' or '2d_topdown'."
                 )
             _resolved_device(analysis["device"], path="analysis.device")
-            _simple_name(cast("str", analysis["report_filename"]), path="analysis.report_filename")
-            _simple_name(cast("str", analysis["output_suffix"]), path="analysis.output_suffix")
+            _simple_name(
+                cast("str", analysis["report_filename"]),
+                path="analysis.report_filename",
+            )
+            _simple_name(
+                cast("str", analysis["output_suffix"]), path="analysis.output_suffix"
+            )
             for key in {
                 "top_k",
                 "candidates_per_scene",
@@ -1575,7 +1599,9 @@ def _validate_script_boundary(
             }:
                 value = _integer(analysis, key, path="analysis")
                 if value <= 0:
-                    raise SemanticConfigurationError(f"analysis.{key} must be positive.")
+                    raise SemanticConfigurationError(
+                        f"analysis.{key} must be positive."
+                    )
             for key in {
                 "unique_scenes",
                 "render_visualizations",
@@ -1630,7 +1656,9 @@ def _validate_script_boundary(
             output_relative = _string(run, "output_dir", path="run")
             resolver.resolve(PathRole.OUTPUT, output_relative)
             if "analysis" in root:
-                analysis = require_config_mapping(root, "analysis", path="configuration")
+                analysis = require_config_mapping(
+                    root, "analysis", path="configuration"
+                )
                 for key in {"output_filename", "report_filename", "plot_filename"}:
                     if key not in analysis:
                         continue
@@ -1687,7 +1715,9 @@ class PLCSPreviewRuntimeConfig:
         return cls(
             resolver=resolver,
             scene_dir=resolver.resolve(PathRole.DATA, str(config.data.scene_dir)),
-            output_dir=resolver.resolve(cls.OUTPUT_ROLE, str(config.preview.output_dir)),
+            output_dir=resolver.resolve(
+                cls.OUTPUT_ROLE, str(config.preview.output_dir)
+            ),
             raw=config,
         )
 

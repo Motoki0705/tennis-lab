@@ -1,0 +1,14 @@
+{
+  "run_id": "1787318913400850877_2910147_shared_compile_blcs_eager_b_3ep_v4",
+  "name": "shared_compile_blcs_eager_b_3ep_v4",
+  "command": "/usr/bin/time -f \"BENCHMARK_WALL_SECONDS=%e BENCHMARK_MAX_RSS_KB=%M\" env PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.venv/bin/python -c \"import atexit,runpy,torch; atexit.register(lambda: print(\\\"BENCHMARK_PEAK_CUDA_BYTES=\\\"+str(torch.cuda.max_memory_allocated()))); runpy.run_module(\\\"src.tasks.blcs.scripts.train\\\",run_name=\\\"__main__\\\")\" --config-name train_tracking paths.data_root=/home/kamimura/projects/tennis-lab/data paths.output_root=/home/kamimura/projects/tennis-lab/outputs paths.checkpoint_root=/home/kamimura/projects/tennis-lab/ckpt data.scene_dir=blcs/compile_benchmark_schema_v1 data.seq_len_range=[1024,1024] data.num_views_range=[3,3] data.batch_size=1 model=track_query_small model.dropout=0.0 model.cswa.backend=cuda training.compile.enabled=false training.trainer.precision=32-true training.trainer.max_epochs=3 training.trainer.log_every_n_steps=1 training.trainer.enable_model_summary=false training.warmup_steps=0 training.checkpoint.enabled=false training.early_stopping.enabled=false training.lr_monitor.enabled=false training.qualitative_logging.enabled=false run.output_dir=blcs/compile_training_abba_v4/eager_b",
+  "provider": "codex",
+  "session": "01a023be-2b89-7a33-9856-7b46d34326d5",
+  "issue": "",
+  "commit": "2f92bcb473e7ba653a6998db1049551bd7ac7938",
+  "branch": "feat/shared-torch-compile",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/shared-torch-compile",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/shared-torch-compile",
+  "captured_at": "2026-08-21T22:44:48+09:00"
+}

@@ -37,6 +37,86 @@ def test_build_trainer_forwards_dataloader_reload_interval(
     assert inspected_trainer.reload_dataloaders_every_n_epochs == 1
 
 
+def test_run_compiles_after_init_weights_and_before_trainer_construction(
+    make_training_config: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = OmegaConf.create(make_training_config())
+    runner = BaseTrainingRunner()
+    runtime = runner.validate_runtime_config(config)
+    events: list[str] = []
+    lightning_module = cast(Any, object())
+    datamodule = cast(Any, object())
+
+    class _Trainer:
+        def fit(self, *args: object, **kwargs: object) -> None:
+            del args, kwargs
+            events.append("fit")
+
+    monkeypatch.setattr(runner, "prepare_config", lambda _: None)
+    monkeypatch.setattr(runner, "seed_everything", lambda _: None)
+    monkeypatch.setattr(runner, "apply_runtime_settings", lambda _: None)
+    monkeypatch.setattr(runner, "save_config", lambda *_: None)
+    monkeypatch.setattr(runner, "build_datamodule", lambda _: datamodule)
+    monkeypatch.setattr(runner, "resolve_steps_per_epoch", lambda *_, **__: None)
+    monkeypatch.setattr(
+        runner, "build_lightning_module", lambda *_, **__: lightning_module
+    )
+    monkeypatch.setattr(
+        runner,
+        "maybe_load_init_weights",
+        lambda *_: events.append("init_weights"),
+    )
+    def compile_models(*args: object) -> tuple[str, ...]:
+        del args
+        events.append("compile")
+        return ("model",)
+
+    monkeypatch.setattr(runner, "maybe_compile_models", compile_models)
+    monkeypatch.setattr(runner, "build_logger", lambda *_: cast(Any, False))
+    monkeypatch.setattr(runner, "build_callbacks", lambda *_: [])
+
+    def build_trainer(*args: object, **kwargs: object) -> _Trainer:
+        del args, kwargs
+        events.append("trainer")
+        return _Trainer()
+
+    monkeypatch.setattr(runner, "build_trainer", build_trainer)
+    monkeypatch.setattr(runner, "resolve_resume", lambda *_: None)
+
+    runner.run(config)
+
+    assert runtime.training.compile.enabled is True
+    assert events == ["init_weights", "compile", "trainer", "fit"]
+
+
+def test_maybe_compile_models_is_noop_when_disabled(
+    make_training_config: Any,
+) -> None:
+    config = OmegaConf.create(
+        make_training_config(
+            training={
+                "compile": {
+                    "enabled": False,
+                    "backend": "inductor",
+                    "mode": "reduce-overhead",
+                    "fullgraph": False,
+                    "dynamic": False,
+                }
+            }
+        )
+    )
+    runtime = BaseTrainingRunner().validate_runtime_config(config)
+
+    assert (
+        BaseTrainingRunner().maybe_compile_models(
+            runtime,
+            cast(Any, object()),
+        )
+        == ()
+    )
+
+
 def test_select_devices_rejects_unavailable_positive_gpu_request(
     make_training_config: Any,
     monkeypatch: pytest.MonkeyPatch,
