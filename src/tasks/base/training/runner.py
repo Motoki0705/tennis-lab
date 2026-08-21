@@ -12,7 +12,7 @@ import types
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import pytorch_lightning as pl
 import torch
@@ -28,7 +28,6 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.tasks.base.configuration import TrainingRuntimeConfig
 from src.tasks.base.training.qualitative_callback import QualitativeLoggingCallback
-from src.tasks.base.training.repro import resolve_queue_repro_dir
 from src.utils.configuration import PathResolver, PathRole
 from src.utils.device import select_accelerator
 from src.utils.paths import PROJECT_ROOT
@@ -107,11 +106,13 @@ class BaseTrainingRunner:
 
     def prepare_output_dir(self, config: TrainingRuntimeConfig) -> Path:
         """Prepare output directory path."""
-        return cast("Path", config.run.output_dir)
+        output_dir: Path = config.run.output_dir
+        return output_dir
 
     def _gan_enabled(self, config: Any) -> bool:
         runtime = self.validate_runtime_config(config)
-        return cast("bool", runtime.training.gan.enabled)
+        enabled: bool = runtime.training.gan.enabled
+        return enabled
 
     def prepare_config(self, config: Any) -> None:
         """Validate task-specific configuration before the run starts.
@@ -257,16 +258,10 @@ class BaseTrainingRunner:
         dir (where the test-split ``pred_test.npz`` also lands). Writing the
         checkpoint dir there gives the optional post-run ckpt pruner a
         deterministic repro -> ckpt link, so it can delete *only this run's*
-        checkpoints once the predictions are saved. An invalid queue boundary
-        fails closed before any pointer is written; non-queue runs retain the
-        configured artifact-root location.
+        checkpoints once the predictions are saved. Best-effort: never raise, so
+        a bookkeeping hiccup cannot abort training.
         """
-        queue_repro_dir = resolve_queue_repro_dir()
-        target = (
-            resolver.resolve(PathRole.ARTIFACT, "repro")
-            if queue_repro_dir is None
-            else queue_repro_dir
-        )
+        target = resolver.resolve(PathRole.ARTIFACT, "repro")
         target.mkdir(parents=True, exist_ok=True)
         resolved_checkpoint_dir = checkpoint_dir.resolve()
         (target / "output_dir.txt").write_text(

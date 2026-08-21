@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import inspect
+
 import torch
 from torch import nn
 
@@ -51,19 +53,10 @@ def _inputs() -> dict[str, torch.Tensor]:
         "ball_vis": torch.ones(batch, frames, dtype=torch.bool),
         "court_kp": torch.rand(batch, frames, court_kp, 2),
         "court_vis": torch.ones(batch, frames, court_kp),
-        "frame_mask": torch.ones(batch, frames, dtype=torch.bool),
-        "entity_attn_mask": torch.ones(
-            batch * frames, players + 1, players + 1, dtype=torch.bool
-        ),
-        "time_attn_mask": torch.ones(
-            batch * (players + 1), frames, frames, dtype=torch.bool
-        ),
+        "padding_mask": torch.zeros(batch, frames, dtype=torch.bool),
         "dino_tokens": torch.rand(batch, 2, 12, 8),
         "dino_frame_idx": torch.tensor([[0, 7], [0, 7]]),
-        "dino_attn_mask": torch.ones(
-            batch, frames * (players + 1), 2 * 12, dtype=torch.bool
-        ),
-        "dino_batch_has_evidence": torch.ones(batch, dtype=torch.bool),
+        "dino_padding_mask": torch.zeros(batch, 2, dtype=torch.bool),
     }
 
 
@@ -110,14 +103,79 @@ def test_all_shared_configuration_has_no_task_trunk_parameters() -> None:
     assert isinstance(model.rotation_final_norm, nn.Identity)
 
 
-def test_batch_without_valid_dino_is_a_tensor_only_no_evidence_path() -> None:
+def test_public_forward_accepts_only_raw_observations_and_padding_masks() -> None:
+    assert list(inspect.signature(_model(num_shared_layers=1).forward).parameters) == [
+        "player_kp",
+        "player_kp_vis",
+        "player_valid",
+        "ball_uv",
+        "ball_vis",
+        "court_kp",
+        "court_vis",
+        "padding_mask",
+        "dino_tokens",
+        "dino_frame_idx",
+        "dino_padding_mask",
+    ]
+
+
+def test_batch_with_all_dino_padding_is_finite() -> None:
     model = _model(num_shared_layers=1)
     inputs = _inputs()
     inputs["dino_tokens"].zero_()
-    inputs["dino_attn_mask"].zero_()
-    inputs["dino_attn_mask"][:, :, 0] = True
-    inputs["dino_batch_has_evidence"].zero_()
+    inputs["dino_padding_mask"].fill_(True)
 
     output = model(**inputs)
 
     assert torch.isfinite(output["player_position"]).all()
+
+
+def test_padding_values_cannot_change_real_frame_outputs() -> None:
+    torch.manual_seed(12)
+    model = _model(num_shared_layers=2).eval()
+    inputs = _inputs()
+    inputs["padding_mask"][:, -2:] = True
+    inputs["player_valid"][:, :, -2:] = False
+    inputs["player_kp_vis"][:, :, -2:] = 0.0
+    inputs["ball_vis"][:, -2:] = False
+    inputs["court_vis"][:, -2:] = 0.0
+    changed = {name: value.clone() for name, value in inputs.items()}
+    changed["player_kp"][:, :, -2:] = 10_000.0
+    changed["ball_uv"][:, -2:] = -10_000.0
+    changed["court_kp"][:, -2:] = 10_000.0
+
+    with torch.no_grad():
+        baseline = model(**inputs)
+        modified = model(**changed)
+
+    real_frames = ~inputs["padding_mask"]
+    real_player_frames = real_frames.unsqueeze(1).expand(2, 2, 8)
+    for key in (
+        "player_position",
+        "player_rotation",
+        "player_position_log_b",
+        "player_rotation_log_b",
+    ):
+        torch.testing.assert_close(
+            baseline[key][real_player_frames], modified[key][real_player_frames]
+        )
+    for key in ("ball_position", "ball_position_log_b"):
+        torch.testing.assert_close(
+            baseline[key][real_frames], modified[key][real_frames]
+        )
+
+
+def test_dino_padding_values_cannot_change_outputs() -> None:
+    torch.manual_seed(23)
+    model = _model(num_shared_layers=1).eval()
+    inputs = _inputs()
+    inputs["dino_padding_mask"][:, 1] = True
+    changed = {name: value.clone() for name, value in inputs.items()}
+    changed["dino_tokens"][:, 1] = 10_000.0
+
+    with torch.no_grad():
+        baseline = model(**inputs)
+        modified = model(**changed)
+
+    for key in baseline:
+        torch.testing.assert_close(baseline[key], modified[key])

@@ -55,12 +55,12 @@ def load_scene(filepath: str | Path) -> dict[str, Any]:
         cam_data = AttrDict(
             params=params,
             human_kp_uv=np.load(scene_dir / f"{prefix}human_kp_uv.npy"),
-            human_kp_visible=np.load(scene_dir / f"{prefix}human_kp_visible.npy"),
+            human_kp_vis=np.load(scene_dir / f"{prefix}human_kp_vis.npy"),
             human_visibility_ratio=float(
                 np.load(scene_dir / f"{prefix}human_visibility_ratio.npy")
             ),
             court_kp_uv=np.load(scene_dir / f"{prefix}court_kp_uv.npy"),
-            court_kp_visible=np.load(scene_dir / f"{prefix}court_kp_visible.npy"),
+            court_kp_vis=np.load(scene_dir / f"{prefix}court_kp_vis.npy"),
             court_visibility_count=float(
                 np.load(scene_dir / f"{prefix}court_visibility_count.npy")
             ),

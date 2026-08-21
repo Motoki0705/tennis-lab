@@ -11,7 +11,10 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+import torch
+from torch import nn
 
+from src.tasks.base.training.gan_loss import LSGANLoss
 from src.tasks.base.training.gan_training import ManualGANTrainingStrategy
 
 pytestmark = pytest.mark.unit
@@ -183,3 +186,79 @@ def test_unwrap_optimizer() -> None:
 
     assert s._unwrap_optimizer(_Wrapped()) == "inner"
     assert s._unwrap_optimizer("plain") == "plain"
+
+
+class _RecordingDiscriminator(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.scale = nn.Parameter(torch.tensor(0.5))
+        self.padding_masks: list[torch.Tensor] = []
+
+    def forward(
+        self,
+        sequence: torch.Tensor,
+        *,
+        padding_mask: torch.Tensor,
+    ) -> torch.Tensor:
+        self.padding_masks.append(padding_mask.detach().clone())
+        valid = (~padding_mask).unsqueeze(-1)
+        masked = torch.where(valid, sequence, torch.zeros_like(sequence))
+        denominator = valid.sum(dim=1).clamp_min(1)
+        return (masked.sum(dim=1) / denominator).mean(dim=-1) * self.scale
+
+
+def test_gan_step_passes_named_padding_mask_to_discriminator() -> None:
+    strategy = _strategy()
+    strategy.activate_phase(0)
+    strategy.set_weight(0.2)
+    generator_value = nn.Parameter(torch.tensor(0.25))
+    discriminator = _RecordingDiscriminator()
+    generator_optimizer = torch.optim.SGD([generator_value], lr=0.01)
+    discriminator_optimizer = torch.optim.SGD(discriminator.parameters(), lr=0.01)
+    gan_padding_mask = torch.tensor([[False, True, False]])
+
+    class _Module:
+        gan_loss_fn = LSGANLoss()
+
+        def __init__(self) -> None:
+            self.discriminator = discriminator
+
+        def _compute_supervised_result(
+            self,
+            batch: object,
+            stage: str,
+        ) -> dict[str, object]:
+            del batch, stage
+            return {
+                "loss": generator_value.square(),
+                "metrics": {},
+                "gan_fake": generator_value.reshape(1, 1, 1).expand(1, 3, 1),
+                "gan_real": torch.tensor([[[0.1], [0.2], [0.3]]]),
+                "gan_padding_mask": gan_padding_mask,
+            }
+
+        def optimizers(self) -> list[torch.optim.Optimizer]:
+            return [generator_optimizer, discriminator_optimizer]
+
+        def lr_schedulers(self) -> list[object]:
+            return []
+
+        def toggle_optimizer(self, optimizer: torch.optim.Optimizer) -> None:
+            del optimizer
+
+        def untoggle_optimizer(self, optimizer: torch.optim.Optimizer) -> None:
+            del optimizer
+
+        def manual_backward(self, loss: torch.Tensor) -> None:
+            loss.backward()
+
+    loss, metrics = strategy._gan_step(_Module(), batch=None, stage="train")
+
+    assert torch.isfinite(loss)
+    assert "loss_gan_generator" in metrics
+    assert "loss_gan_discriminator" in metrics
+    assert strategy.hybrid_gan_step_count == 1
+    assert len(discriminator.padding_masks) == 3
+    assert all(
+        torch.equal(mask, gan_padding_mask) for mask in discriminator.padding_masks
+    )

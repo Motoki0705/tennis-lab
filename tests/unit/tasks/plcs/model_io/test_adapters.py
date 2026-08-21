@@ -30,10 +30,10 @@ class _StandardModel(nn.Module):
         human_kp: Tensor,
         court_kp: Tensor,
         human_vis: Tensor,
-        human_mask: Tensor,
+        padding_mask: Tensor,
         court_vis: Tensor,
     ) -> dict[str, Tensor]:
-        del court_kp, human_vis, human_mask, court_vis
+        del court_kp, human_vis, padding_mask, court_vis
         return {
             "position": torch.zeros(*human_kp.shape[:-2], 3),
             "rotation": torch.ones(*human_kp.shape[:-2], 2),
@@ -53,23 +53,17 @@ class _TrackingModel(nn.Module):
         self,
         *,
         human_kp: Tensor,
-        detection_mask: Tensor,
+        human_vis: Tensor,
         court_kp: Tensor,
         court_vis: Tensor,
-        frame_mask: Tensor,
-        camera_state_valid: Tensor,
-        spatial_attention_mask: Tensor,
-        temporal_attention_mask: Tensor,
+        padding_mask: Tensor,
     ) -> dict[str, Tensor]:
         self.forward_calls += 1
         del (
-            detection_mask,
+            human_vis,
             court_kp,
             court_vis,
-            frame_mask,
-            camera_state_valid,
-            spatial_attention_mask,
-            temporal_attention_mask,
+            padding_mask,
         )
         batch_size, _, frames = human_kp.shape[:3]
         return {
@@ -107,7 +101,7 @@ def _canonical_batch(
         "human_kp": torch.rand(*prefix, 17, 2),
         "court_kp": torch.rand(*prefix, 20, 2),
         "human_vis": torch.ones(*prefix, 17, dtype=torch.bool),
-        "human_mask": torch.ones(*prefix, dtype=torch.bool),
+        "padding_mask": torch.zeros(*prefix, dtype=torch.bool),
         "court_vis": torch.ones(*prefix, 20, dtype=torch.bool),
         "position": torch.rand(batch_size, frames, 3),
         "rotation": torch.rand(batch_size, frames, 2),
@@ -159,7 +153,7 @@ def _empty_time_axis(batch: dict[str, Tensor]) -> None:
     batch["human_kp"] = torch.empty(2, 2, 0, 17, 2)
     batch["court_kp"] = torch.empty(2, 2, 0, 20, 2)
     batch["human_vis"] = torch.empty(2, 2, 0, 17, dtype=torch.bool)
-    batch["human_mask"] = torch.empty(2, 2, 0, dtype=torch.bool)
+    batch["padding_mask"] = torch.empty(2, 2, 0, dtype=torch.bool)
     batch["court_vis"] = torch.empty(2, 2, 0, 20, dtype=torch.bool)
 
 
@@ -169,9 +163,9 @@ def _empty_time_axis(batch: dict[str, Tensor]) -> None:
         (lambda batch: batch.pop("human_vis"), "human_vis.*missing"),
         (
             lambda batch: batch.__setitem__(
-                "human_mask", batch["human_mask"].to(torch.int16) + 2
+                "padding_mask", batch["padding_mask"].to(torch.int16)
             ),
-            "explicit 0/1",
+            "torch.bool",
         ),
         (
             lambda batch: batch.__setitem__(
@@ -228,7 +222,7 @@ def test_numpy_multiview_boundary_broadcasts_explicit_shared_court() -> None:
         human_kp=np.zeros((2, 2, 3, 17, 2), dtype=np.float32),
         court_kp=np.zeros((2, 3, 20, 2), dtype=np.float32),
         human_vis=np.ones((2, 2, 3, 17), dtype=np.bool_),
-        human_mask=np.ones((2, 2, 3), dtype=np.bool_),
+        padding_mask=np.zeros((2, 2, 3), dtype=np.bool_),
         court_vis=np.ones((2, 3, 20), dtype=np.bool_),
     )
     court_kp = cast(Tensor, prepared.call.kwargs["court_kp"])
@@ -241,23 +235,21 @@ def _tracking_adapter() -> PLCSTrackQueryIOAdapter:
         num_queries=3,
         num_court_tokens=14,
         num_joints=17,
-        mask_invisible_observations=True,
     )
 
 
 def _tracking_batch() -> dict[str, Tensor]:
     return {
-        "human_kp": torch.rand(1, 2, 3, 2, 17, 2),
-        "detection_mask": torch.ones(1, 2, 3, 2, dtype=torch.bool),
+        "human_kp": torch.rand(1, 2, 3, 3, 17, 2),
+        "human_vis": torch.ones(1, 2, 3, 3, 17, dtype=torch.bool),
         "court_kp": torch.rand(1, 2, 3, 14, 2),
         "court_vis": torch.ones(1, 2, 3, 14, dtype=torch.bool),
-        "frame_mask": torch.ones(1, 3, dtype=torch.bool),
-        "view_mask": torch.ones(1, 2, dtype=torch.bool),
-        "target_position": torch.rand(1, 3, 2, 3),
-        "target_rotation": torch.rand(1, 3, 2, 2),
-        "target_presence": torch.ones(1, 3, 2, dtype=torch.bool),
-        "target_slot_mask": torch.ones(1, 2, dtype=torch.bool),
-        "target_instance_id": torch.ones(1, 3, 2, dtype=torch.int64),
+        "padding_mask": torch.zeros(1, 2, 3, dtype=torch.bool),
+        "target_position": torch.rand(1, 3, 3, 3),
+        "target_rotation": torch.rand(1, 3, 3, 2),
+        "target_presence": torch.ones(1, 3, 3, dtype=torch.bool),
+        "target_slot_mask": torch.ones(1, 3, dtype=torch.bool),
+        "target_instance_id": torch.ones(1, 3, 3, dtype=torch.int64),
     }
 
 
@@ -275,7 +267,7 @@ def test_tracking_boundary_validates_inputs_targets_and_decodes_required_presenc
     assert decoded.presence_logits.shape == (1, 3, 3)
 
 
-def test_tracking_boundary_rejects_incomplete_court_and_mask_dtype() -> None:
+def test_tracking_boundary_rejects_incomplete_court_and_visibility_dtype() -> None:
     adapter = _tracking_adapter()
     batch = _tracking_batch()
     batch["court_kp"] = torch.rand(1, 2, 3, 13, 2)
@@ -284,45 +276,39 @@ def test_tracking_boundary_rejects_incomplete_court_and_mask_dtype() -> None:
         adapter.build_call(batch)
 
     batch = _tracking_batch()
-    batch["detection_mask"] = batch["detection_mask"].float()
+    batch["human_vis"] = batch["human_vis"].float()
     with pytest.raises(ModelInputContractError, match="torch.bool"):
         adapter.build_call(batch)
 
 
-@pytest.mark.parametrize(
-    ("padding_key", "padding_index"),
-    [("frame_mask", (0, 1)), ("view_mask", (0, 1))],
-)
-def test_tracking_boundary_rejects_detections_in_padding_before_model_entry(
-    padding_key: str,
-    padding_index: tuple[int, int],
-) -> None:
+def test_tracking_boundary_rejects_legacy_masks() -> None:
+    adapter = _tracking_adapter()
+    batch = _tracking_batch()
+    batch["detection_mask"] = torch.ones(1, 2, 3, 3, dtype=torch.bool)
+
+    with pytest.raises(ModelInputContractError, match="Legacy PLCS tracking mask"):
+        adapter.build_call(batch)
+
+
+def test_tracking_boundary_accepts_nonrectangular_padding() -> None:
     model = _TrackingModel()
     adapter = _tracking_adapter()
     bound = bind_plcs_model_io(model, adapter)
     batch = _tracking_batch()
-    batch[padding_key][padding_index] = False
-
-    with pytest.raises(ModelInputContractError, match="padded view or frame"):
-        bound.execute_call(adapter.build_call(batch))
-
-    assert model.forward_calls == 0
-
-
-def test_tracking_boundary_accepts_explicitly_empty_padded_observations() -> None:
-    model = _TrackingModel()
-    adapter = _tracking_adapter()
-    bound = bind_plcs_model_io(model, adapter)
-    batch = _tracking_batch()
-    batch["frame_mask"][0, -1] = False
-    batch["view_mask"][0, -1] = False
-    batch["detection_mask"][:, -1] = False
-    batch["detection_mask"][:, :, -1] = False
+    batch["padding_mask"][0, -1, -1] = True
 
     decoded = bound.run(batch)
 
     assert decoded.position.shape == (1, 3, 3, 3)
     assert model.forward_calls == 1
+
+
+def test_tracking_boundary_rejects_nonfixed_query_width() -> None:
+    batch = _tracking_batch()
+    batch["human_kp"] = batch["human_kp"][:, :, :, :2]
+    batch["human_vis"] = batch["human_vis"][:, :, :, :2]
+    with pytest.raises(ModelInputContractError, match="axis 3"):
+        _tracking_adapter().build_call(batch)
 
 
 def test_tracking_boundary_rejects_inactive_non_sentinel_instance_id() -> None:

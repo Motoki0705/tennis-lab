@@ -22,9 +22,15 @@ def plcs_tracking_metrics(
     config: TrackingMetricConfig,
 ) -> dict[str, torch.Tensor]:
     """Compute shared lifecycle metrics plus matched angular error."""
-    metrics = common_lifecycle_tracking_metrics(
+    frame_valid = (~batch["padding_mask"]).any(dim=1)
+    metrics: dict[str, torch.Tensor] = common_lifecycle_tracking_metrics(
         prediction,
-        batch,
+        {
+            "target_position": batch["target_position"],
+            "target_presence": batch["target_presence"],
+            "target_instance_id": batch["target_instance_id"],
+            "frame_mask": frame_valid,
+        },
         assignments,
         config=config,
     )
@@ -35,7 +41,7 @@ def plcs_tracking_metrics(
         ):
             active = (
                 batch["target_presence"][batch_index, :, target_index]
-                & batch["frame_mask"][batch_index]
+                & frame_valid[batch_index]
             )
             if not active.any():
                 continue

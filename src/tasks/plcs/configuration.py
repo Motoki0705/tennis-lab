@@ -7,7 +7,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
-from typing import ClassVar, TypeAlias, cast
+from typing import ClassVar, Literal, TypeAlias, cast
 
 from omegaconf import DictConfig, OmegaConf
 
@@ -273,11 +273,32 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "ffn_type",
             "dropout",
             "role_rope_enabled",
-            "mask_invisible_observations",
             "invisible_init_std",
+            "mhc",
+            "cswa",
         }
     ),
 }
+
+
+@dataclass(frozen=True, slots=True)
+class PLCSTrackQueryMHCConfig:
+    """Strict manifold-constrained hyper-connection configuration."""
+
+    coefficient_dim: int
+    sinkhorn_iters: int
+    eps: float
+    residual_identity_bias: float
+    update_scale_init: float
+
+
+@dataclass(frozen=True, slots=True)
+class PLCSTrackQueryCSWAConfig:
+    """Strict compressed sliding-window attention configuration."""
+
+    compression_ratio: int
+    window_radius: int
+    backend: Literal["reference", "cuda"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -287,6 +308,8 @@ class PLCSModelConfig:
     name: str
     input_profile: str | None
     values: Mapping[str, object]
+    track_query_mhc: PLCSTrackQueryMHCConfig | None
+    track_query_cswa: PLCSTrackQueryCSWAConfig | None
 
     @classmethod
     def from_mapping(cls, value: object) -> PLCSModelConfig:
@@ -384,7 +407,6 @@ class PLCSModelConfig:
             "aux_position_on_rotation_branch",
             "detach_pose_branch",
             "role_rope_enabled",
-            "mask_invisible_observations",
         } & set(mapping):
             _boolean(mapping, key, path="model")
         if "ffn_type" in mapping:
@@ -397,10 +419,91 @@ class PLCSModelConfig:
             raise SemanticConfigurationError(
                 f"model.num_joints must equal the canonical COCO joint count ({NUM_HUMAN_KP})."
             )
+        track_query_mhc: PLCSTrackQueryMHCConfig | None = None
+        track_query_cswa: PLCSTrackQueryCSWAConfig | None = None
+        if name == "plcs_track_query":
+            num_stages = _integer(mapping, "num_stages", path="model")
+            if num_stages % 4 != 0:
+                raise SemanticConfigurationError(
+                    "model.num_stages must be a positive multiple of 4."
+                )
+
+            raw_mhc = _exact(
+                mapping["mhc"],
+                path="model.mhc",
+                required={
+                    "coefficient_dim",
+                    "sinkhorn_iters",
+                    "eps",
+                    "residual_identity_bias",
+                    "update_scale_init",
+                },
+                allowed={
+                    "coefficient_dim",
+                    "sinkhorn_iters",
+                    "eps",
+                    "residual_identity_bias",
+                    "update_scale_init",
+                },
+            )
+            track_query_mhc = PLCSTrackQueryMHCConfig(
+                coefficient_dim=_integer(raw_mhc, "coefficient_dim", path="model.mhc"),
+                sinkhorn_iters=_integer(raw_mhc, "sinkhorn_iters", path="model.mhc"),
+                eps=_number(raw_mhc, "eps", path="model.mhc"),
+                residual_identity_bias=_number(
+                    raw_mhc, "residual_identity_bias", path="model.mhc"
+                ),
+                update_scale_init=_number(
+                    raw_mhc, "update_scale_init", path="model.mhc"
+                ),
+            )
+            if (
+                track_query_mhc.coefficient_dim <= 0
+                or track_query_mhc.sinkhorn_iters <= 0
+            ):
+                raise SemanticConfigurationError(
+                    "model.mhc.coefficient_dim and model.mhc.sinkhorn_iters "
+                    "must be positive."
+                )
+            _positive(track_query_mhc.eps, path="model.mhc.eps")
+            _positive(
+                track_query_mhc.residual_identity_bias,
+                path="model.mhc.residual_identity_bias",
+                allow_zero=True,
+            )
+
+            raw_cswa = _exact(
+                mapping["cswa"],
+                path="model.cswa",
+                required={"compression_ratio", "window_radius", "backend"},
+                allowed={"compression_ratio", "window_radius", "backend"},
+            )
+            backend = _string(raw_cswa, "backend", path="model.cswa")
+            if backend not in {"reference", "cuda"}:
+                raise SemanticConfigurationError(
+                    "model.cswa.backend must be 'reference' or 'cuda'."
+                )
+            track_query_cswa = PLCSTrackQueryCSWAConfig(
+                compression_ratio=_integer(
+                    raw_cswa, "compression_ratio", path="model.cswa"
+                ),
+                window_radius=_integer(raw_cswa, "window_radius", path="model.cswa"),
+                backend=cast("Literal['reference', 'cuda']", backend),
+            )
+            if track_query_cswa.compression_ratio < 2:
+                raise SemanticConfigurationError(
+                    "model.cswa.compression_ratio must be at least 2."
+                )
+            if track_query_cswa.window_radius < 0:
+                raise SemanticConfigurationError(
+                    "model.cswa.window_radius must be non-negative."
+                )
         return cls(
             name=name,
             input_profile=input_profile,
             values=MappingProxyType(dict(mapping)),
+            track_query_mhc=track_query_mhc,
+            track_query_cswa=track_query_cswa,
         )
 
     def integer(self, key: str) -> int:
@@ -708,7 +811,13 @@ class PLCSDataConfig:
                 required=lifecycle_fields,
                 allowed=lifecycle_fields,
             )
-            _boolean(lifecycle, "pack_to_query_slots", path="data.lifecycle")
+            if not _boolean(
+                lifecycle, "pack_to_query_slots", path="data.lifecycle"
+            ):
+                raise SemanticConfigurationError(
+                    "data.lifecycle.pack_to_query_slots must be true for fixed-Q "
+                    "PLCS tracking."
+                )
             _integer(lifecycle, "min_reuse_gap_frames", path="data.lifecycle")
             _boolean(lifecycle, "randomize_slots_train", path="data.lifecycle")
             if _integer(lifecycle, "min_reuse_gap_frames", path="data.lifecycle") < 0:

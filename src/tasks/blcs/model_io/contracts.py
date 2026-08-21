@@ -56,26 +56,12 @@ class BLCSTrackQueryTrainingBatch:
     target_presence: Tensor
     target_instance_id: Tensor
     target_slot_mask: Tensor
-    frame_mask: Tensor
-
-
-@dataclass(frozen=True, slots=True)
-class BLCSTrackingAttentionMasks:
-    """Boundary-prepared raw validity and dense keep-mask contracts."""
-
-    camera_state_valid: Tensor
-    spatial_attention_mask: Tensor
-    object_temporal_state_valid: Tensor
-    object_temporal_attention_mask: Tensor
-    query_temporal_state_valid: Tensor
-    query_temporal_attention_mask: Tensor
-    point_attention_mask: Tensor
+    frame_valid: Tensor
 
 
 __all__ = [
     "BLCSTrackQueryPrediction",
     "BLCSTrackQueryTrainingBatch",
-    "BLCSTrackingAttentionMasks",
     "BLCSTrajectoryPrediction",
     "BLCSTrajectoryTrainingBatch",
 ]

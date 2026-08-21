@@ -31,7 +31,7 @@ def _fixture():
             [[[1, 0], [1, 1], [1, 1], [0, 1], [0, 0]]], dtype=torch.bool
         ),
         "target_slot_mask": torch.ones(1, 2, dtype=torch.bool),
-        "frame_mask": torch.ones(1, 5, dtype=torch.bool),
+        "padding_mask": torch.zeros(1, 2, 5, dtype=torch.bool),
     }
     return prediction, batch
 
