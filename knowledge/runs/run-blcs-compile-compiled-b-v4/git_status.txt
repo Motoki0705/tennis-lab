@@ -1,0 +1,33 @@
+ M src/tasks/ball_detection/configs/training/default.yaml
+ M src/tasks/ball_detection/configs/training/staged.yaml
+ M src/tasks/ball_detection/configuration.py
+ M src/tasks/ball_detection/training/staged_calibration.py
+ M src/tasks/base/README.md
+ M src/tasks/base/__init__.py
+ M src/tasks/base/configuration.py
+ M src/tasks/base/training/__init__.py
+ M src/tasks/base/training/gan_training.py
+ M src/tasks/base/training/lightning_module.py
+ M src/tasks/base/training/runner.py
+ M src/tasks/blcs/configs/training/default.yaml
+ M src/tasks/blcs/configuration.py
+ M src/tasks/court_detection/configs/training/default.yaml
+ M src/tasks/court_detection/configuration.py
+ M src/tasks/plcs/configs/training/default.yaml
+ M src/tasks/plcs/configuration.py
+ M src/tasks/slcs/configs/training/default.yaml
+ M src/tasks/slcs/configuration.py
+ M src/utils/configuration/exemption_data.py
+ M src/utils/configuration/migration_data.py
+ M tests/integration/tasks/base/test_lightning_train_smoke.py
+ M tests/unit/tasks/base/conftest.py
+ M tests/unit/tasks/base/test_configuration.py
+ M tests/unit/tasks/base/training/test_gan_training.py
+ M tests/unit/tasks/base/training/test_gan_transition_callback.py
+ M tests/unit/tasks/base/training/test_lightning_module.py
+ M tests/unit/tasks/base/training/test_runner.py
+?? artifacts/
+?? src/tasks/base/training/compilation.py
+?? tests/integration/tasks/base/test_compile_config_compose.py
+?? tests/unit/tasks/ball_detection/training/test_staged_calibration.py
+?? tests/unit/tasks/base/training/test_compilation.py

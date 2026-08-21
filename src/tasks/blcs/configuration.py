@@ -2029,6 +2029,7 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
         "min_lr",
         "steps_per_epoch",
         "optimizer",
+        "compile",
         "position_loss_weight",
         "position_axis_weights",
         "reprojection_loss_weight",

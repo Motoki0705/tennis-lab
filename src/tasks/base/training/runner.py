@@ -27,6 +27,8 @@ from pytorch_lightning.callbacks import (
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.tasks.base.configuration import TrainingRuntimeConfig
+from src.tasks.base.training.compilation import compile_modules
+from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_callback import QualitativeLoggingCallback
 from src.utils.configuration import PathResolver, PathRole
 from src.utils.device import select_accelerator
@@ -66,6 +68,7 @@ class BaseTrainingRunner:
             config, datamodule, steps_per_epoch=steps_per_epoch
         )
         self.maybe_load_init_weights(runtime, lightning_module)
+        self.maybe_compile_models(runtime, lightning_module)
 
         logger = self.build_logger(config, output_dir)
         callbacks = self.build_callbacks(config, datamodule, logger)
@@ -169,6 +172,25 @@ class BaseTrainingRunner:
                 f"checkpoint likely does not match the model. missing[:5]={missing[:5]} "
                 f"unexpected[:5]={unexpected[:5]}"
             )
+
+    def maybe_compile_models(
+        self,
+        config: TrainingRuntimeConfig,
+        lightning_module: pl.LightningModule,
+    ) -> tuple[str, ...]:
+        """Compile all explicit training model targets without replacing them."""
+        compile_config = config.training.compile
+        if not compile_config.enabled:
+            return ()
+        if not isinstance(lightning_module, BaseLightningModule):
+            raise TypeError(
+                "training.compile.enabled=true requires a BaseLightningModule "
+                "with explicit compilation_targets()."
+            )
+        return compile_modules(
+            lightning_module.compilation_targets(),
+            compile_config,
+        )
 
     @contextmanager
     def resume_checkpoint_load_env(self, resume_ckpt: str | None) -> Iterator[None]:

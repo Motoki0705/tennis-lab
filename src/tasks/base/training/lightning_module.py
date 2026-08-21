@@ -9,7 +9,9 @@ from typing import Any, Protocol, cast
 
 import numpy as np
 import pytorch_lightning as pl
+import torch
 from pytorch_lightning.utilities.types import OptimizerLRScheduler
+from torch import nn
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import (
     CosineAnnealingLR,
@@ -66,7 +68,12 @@ class BaseLightningModule(pl.LightningModule):
 
     def __init__(self, config: Any) -> None:
         super().__init__()
-        self.save_hyperparameters()
+        # Be explicit: Lightning otherwise walks the concrete subclass's
+        # ``__init__`` frame and captures runtime-only dependencies such as a
+        # frozen BoundModelIO dataclass.  TensorBoard cannot serialize those
+        # objects, while the Hydra config is the only hyperparameter source we
+        # intend to persist here.
+        self.save_hyperparameters("config")
 
         root = as_config_mapping(config, path="configuration")
         self.config = config
@@ -88,6 +95,82 @@ class BaseLightningModule(pl.LightningModule):
         self.max_epochs = optimizer.max_epochs
         self.min_lr = optimizer.min_lr
         self.optimizer_betas = optimizer.betas
+
+    def additional_compilation_targets(self) -> dict[str, nn.Module]:
+        """Return task-owned models invoked outside the primary model forward.
+
+        The primary model is supplied by :meth:`compilation_targets`.  GAN and
+        future teacher/student modules extend this hook instead of relying on
+        recursive child-module discovery.
+        """
+        return {}
+
+    def compilation_targets(self) -> dict[str, nn.Module]:
+        """Return the explicit, named modules compiled by the shared runner."""
+        model = getattr(self, "model", None)
+        if not isinstance(model, nn.Module):
+            raise RuntimeError(
+                f"{type(self).__name__} must expose its primary nn.Module as "
+                "self.model when training.compile.enabled=true."
+            )
+        targets = {"model": model}
+        additional = self.additional_compilation_targets()
+        overlap = sorted(set(targets) & set(additional))
+        if overlap:
+            rendered = ", ".join(overlap)
+            raise RuntimeError(
+                f"Additional compile target names overlap primary targets: {rendered}."
+            )
+        targets.update(additional)
+        return targets
+
+    def _mark_compiled_iteration(self) -> None:
+        """Declare a batch boundary for Inductor modes backed by CUDA Graphs.
+
+        Lightning can invoke a compiled model from sanity validation, training,
+        validation, and testing.  Graph breaks inside a model make PyTorch's
+        automatic iteration heuristic ambiguous, so mark the outer batch once.
+        Keeping this at the Lightning boundary also lets GAN generator and
+        discriminator calls within one training batch share the same iteration.
+        """
+        compile_config = self.training_config.compile
+        if (
+            compile_config.enabled
+            and compile_config.backend == "inductor"
+            and compile_config.mode in {"reduce-overhead", "max-autotune"}
+        ):
+            torch.compiler.cudagraph_mark_step_begin()
+
+    def on_train_batch_start(self, batch: Any, batch_idx: int) -> None:
+        del batch, batch_idx
+        self._mark_compiled_iteration()
+
+    def on_validation_batch_start(
+        self,
+        batch: Any,
+        batch_idx: int,
+        dataloader_idx: int = 0,
+    ) -> None:
+        del batch, batch_idx, dataloader_idx
+        self._mark_compiled_iteration()
+
+    def on_test_batch_start(
+        self,
+        batch: Any,
+        batch_idx: int,
+        dataloader_idx: int = 0,
+    ) -> None:
+        del batch, batch_idx, dataloader_idx
+        self._mark_compiled_iteration()
+
+    def on_predict_batch_start(
+        self,
+        batch: Any,
+        batch_idx: int,
+        dataloader_idx: int = 0,
+    ) -> None:
+        del batch, batch_idx, dataloader_idx
+        self._mark_compiled_iteration()
 
     # ------------------------------------------------------------------
     # Qualitative validation logging hook
