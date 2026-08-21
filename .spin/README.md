@@ -38,7 +38,7 @@ editable installする。production SfMの任意retry backendも用意する場�
 | `spin lint [--fix] [PATHS...]` | `src/`, `tests/`, `.spin/` を Ruff で検査する。`--changed --base <ref>` で差分だけを検査できる |
 | `spin typecheck [PATHS...]` | 既定では `origin/main` との差分だけを mypy で検査する。`--all` で全体を検査する |
 | `spin test [PYTEST_ARGS...]` | `local_data` / `cuda` marker を除外して pytest を実行する。`--all`, `--coverage`, `--serial` を利用できる |
-| `spin ci` | GitHub Actions と同じ全体 Ruff と環境非依存テストを実行する |
+| `spin ci [--lane LANE]` | 全体 Ruff と環境非依存テストを実行する。GitHub Actions は `--lane` で分割実行する |
 | `spin setup [--no-hooks]` | `uv sync --locked` と pre-commit hook の導入を行う |
 
 例:
@@ -50,7 +50,12 @@ spin typecheck src/utils/geometry
 spin test tests/unit/utils -q
 spin test --all -m cuda
 spin ci
+spin ci --lane remainder
 ```
+
+`spin ci` はローカルで全テストを実行する。GitHub Actions は同じ入口に
+`--lane remainder|long-tail|scene-pipeline` を渡し、全テストファイルを重複・欠落なく
+並列レーンへ分割する。lane ごとの worker 数や pytest 条件もこのコマンドが所有する。
 
 `typecheck` が差分を既定とするのは、リポジトリ全体には段階的に解消中の
 既存 mypy error があるためである。対象 ref が存在しない場合は暗黙に別の ref へ

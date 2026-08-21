@@ -43,7 +43,7 @@ def test_tracking_augmentation_preserves_id_order_without_permutation() -> None:
     uv = torch.tensor([[[[0.1, 0.2], [0.3, 0.4]], [[0.5, 0.6], [0.7, 0.8]]]])
     sample = {
         "ball_uv": uv.clone(),
-        "ball_visible": torch.ones(1, 2, 2, dtype=torch.bool),
+        "ball_vis": torch.ones(1, 2, 2, dtype=torch.bool),
         "candidate_gt_index": torch.tensor([[[0, 1], [0, 1]]]),
         "court_kp": torch.rand(1, 2, 14, 2),
         "court_vis": torch.ones(1, 2, 14, dtype=torch.bool),
@@ -64,17 +64,15 @@ def test_tracking_augmentation_preserves_id_order_without_permutation() -> None:
         result["candidate_gt_index"], sample["candidate_gt_index"]
     )
     torch.testing.assert_close(result["ball_uv"], sample["ball_uv"])
-    torch.testing.assert_close(result["ball_visible"], sample["ball_visible"])
+    torch.testing.assert_close(result["ball_vis"], sample["ball_vis"])
 
 
 def test_tracking_noise_changes_coordinates_without_reordering_object_ids() -> None:
     torch.manual_seed(23)
-    uv = torch.tensor(
-        [[[[0.2, 0.2], [0.8, 0.8]], [[0.25, 0.25], [0.75, 0.75]]]]
-    )
+    uv = torch.tensor([[[[0.2, 0.2], [0.8, 0.8]], [[0.25, 0.25], [0.75, 0.75]]]])
     sample = {
         "ball_uv": uv.clone(),
-        "ball_visible": torch.ones(1, 2, 2, dtype=torch.bool),
+        "ball_vis": torch.ones(1, 2, 2, dtype=torch.bool),
         "candidate_gt_index": torch.tensor([[[0, 1], [0, 1]]]),
         "court_kp": torch.rand(1, 2, 14, 2),
         "court_vis": torch.ones(1, 2, 14, dtype=torch.bool),
@@ -92,3 +90,19 @@ def test_tracking_noise_changes_coordinates_without_reordering_object_ids() -> N
     )
     torch.testing.assert_close(result["court_kp"], sample["court_kp"])
     torch.testing.assert_close(result["court_vis"], sample["court_vis"])
+
+
+def test_tracking_augmentation_preserves_invisible_query_slots() -> None:
+    uv = torch.rand(1, 2, 2, 2)
+    sample = {
+        "ball_uv": uv,
+        "ball_vis": torch.tensor([[[True, False], [True, False]]]),
+        "candidate_gt_index": torch.tensor([[[3, -1], [3, -1]]]),
+        "court_kp": torch.rand(1, 2, 14, 2),
+        "court_vis": torch.ones(1, 2, 14, dtype=torch.bool),
+    }
+    augmentation = BLCSTrackingCandidateAugmentation(_augmentation_config(enabled=True))
+
+    result = augmentation(sample)
+
+    assert not result["ball_vis"][..., 1].any()

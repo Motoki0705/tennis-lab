@@ -23,7 +23,6 @@ from src.tasks.slcs.model_io.contracts import (
     SLCSTrainingTargets,
 )
 from src.tasks.slcs.models.slcs_model import SLCSFusionModel
-from src.utils.models.transformer_utils import build_self_attn_mask
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 from src.utils.schema.player import NUM_HUMAN_KP
 
@@ -32,6 +31,16 @@ _BOOL = frozenset({torch.bool})
 _INT64 = frozenset({torch.int64})
 _UV_TOLERANCE = 0.25
 _OUTPUT_KEYS = frozenset(SLCSRawOutput.__required_keys__)
+_LEGACY_OR_PREPARED_MASK_KEYS = frozenset(
+    {
+        "frame_mask",
+        "dino_valid",
+        "entity_attn_mask",
+        "time_attn_mask",
+        "dino_attn_mask",
+        "dino_batch_has_evidence",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,12 +73,19 @@ def _visible_uv(name: str, uv: Tensor, visible: Tensor) -> None:
     if values.numel() == 0:
         return
     _finite(name, values)
-    if bool(
-        ((values < -_UV_TOLERANCE) | (values > 1.0 + _UV_TOLERANCE)).any()
-    ):
+    if bool(((values < -_UV_TOLERANCE) | (values > 1.0 + _UV_TOLERANCE)).any()):
         raise ModelInputContractError(
             f"{name} visible values must be normalized UV within "
             f"[{-_UV_TOLERANCE}, {1.0 + _UV_TOLERANCE}]."
+        )
+
+
+def _reject_legacy_or_prepared_masks(batch: Mapping[str, object]) -> None:
+    present = sorted(_LEGACY_OR_PREPARED_MASK_KEYS.intersection(batch))
+    if present:
+        raise ModelInputContractError(
+            "legacy or adapter-prepared SLCS masks are not accepted: "
+            f"{present}; provide only padding_mask and dino_padding_mask."
         )
 
 
@@ -85,6 +101,7 @@ class SLCSModelIOAdapter:
 
     def build_call(self, batch: Mapping[str, object]) -> ModelCall:
         """Validate observations and create an immutable model invocation."""
+        _reject_legacy_or_prepared_masks(batch)
         spec = self.spec
         player_kp = require_tensor(
             batch,
@@ -141,9 +158,9 @@ class SLCSModelIOAdapter:
                 shape=(batch_size, seq_len, spec.num_court_kp), dtypes=_FLOAT32
             ),
         )
-        frame_mask = require_tensor(
+        padding_mask = require_tensor(
             batch,
-            "frame_mask",
+            "padding_mask",
             spec=TensorSpec(shape=(batch_size, seq_len), dtypes=_BOOL),
         )
         dino_tokens = require_tensor(
@@ -164,25 +181,27 @@ class SLCSModelIOAdapter:
             "dino_frame_idx",
             spec=TensorSpec(shape=(batch_size, dino_samples), dtypes=_INT64),
         )
-        dino_valid = require_tensor(
+        dino_padding_mask = require_tensor(
             batch,
-            "dino_valid",
+            "dino_padding_mask",
             spec=TensorSpec(shape=(batch_size, dino_samples), dtypes=_BOOL),
         )
 
-        if not bool(frame_mask.any(dim=1).all()):
+        frame_valid = ~padding_mask
+        dino_sample_valid = ~dino_padding_mask
+        if not bool(frame_valid.any(dim=1).all()):
             raise ModelInputContractError(
-                "frame_mask must contain at least one real frame per sample."
+                "padding_mask must leave at least one real frame per sample."
             )
-        if seq_len > 1 and bool((frame_mask[:, 1:] & ~frame_mask[:, :-1]).any()):
+        if seq_len > 1 and bool((padding_mask[:, :-1] & ~padding_mask[:, 1:]).any()):
             raise ModelInputContractError(
-                "frame_mask must be a contiguous real-frame prefix."
+                "padding_mask must be a contiguous padding suffix."
             )
-        if bool((player_valid & ~frame_mask.unsqueeze(1)).any()):
+        if bool((player_valid & padding_mask.unsqueeze(1)).any()):
             raise ModelInputContractError(
                 "player_valid cannot mark a padded frame as observed."
             )
-        if bool((ball_vis & ~frame_mask).any()):
+        if bool((ball_vis & padding_mask).any()):
             raise ModelInputContractError(
                 "ball_vis cannot mark a padded frame as observed."
             )
@@ -199,7 +218,7 @@ class SLCSModelIOAdapter:
         _visible_uv("court_kp", court_kp, court_vis > 0)
         _finite("dino_tokens", dino_tokens)
 
-        valid_indices = dino_frame_idx[dino_valid]
+        valid_indices = dino_frame_idx[dino_sample_valid]
         if valid_indices.numel() and bool(
             ((valid_indices < 0) | (valid_indices >= seq_len)).any()
         ):
@@ -207,49 +226,23 @@ class SLCSModelIOAdapter:
                 f"valid dino_frame_idx values must lie in [0, {seq_len})."
             )
         safe_indices = dino_frame_idx.clamp(min=0, max=seq_len - 1)
-        if bool((dino_valid & ~frame_mask.gather(1, safe_indices)).any()):
+        if bool((dino_sample_valid & padding_mask.gather(1, safe_indices)).any()):
             raise ModelInputContractError(
-                "dino_valid cannot reference a padded frame."
+                "a non-padding DINO sample cannot reference a padded frame."
             )
-        if dino_samples > 1 and bool((dino_valid[:, 1:] & ~dino_valid[:, :-1]).any()):
+        if dino_samples > 1 and bool(
+            (dino_padding_mask[:, :-1] & ~dino_padding_mask[:, 1:]).any()
+        ):
             raise ModelInputContractError(
-                "dino_valid must be a contiguous valid-sample prefix."
+                "dino_padding_mask must be a contiguous padding suffix."
             )
         for sample_idx in range(batch_size):
-            indices = dino_frame_idx[sample_idx][dino_valid[sample_idx]]
+            indices = dino_frame_idx[sample_idx][dino_sample_valid[sample_idx]]
             if indices.numel() > 1 and bool((indices[1:] <= indices[:-1]).any()):
                 raise ModelInputContractError(
                     "valid dino_frame_idx values must be strictly increasing "
                     f"for sample {sample_idx}."
                 )
-
-        num_entities = spec.num_players + 1
-        token_valid = frame_mask.unsqueeze(-1).expand(
-            batch_size, seq_len, num_entities
-        )
-        entity_axis_valid = token_valid.reshape(
-            batch_size * seq_len, num_entities
-        )
-        time_axis_valid = token_valid.permute(0, 2, 1).reshape(
-            batch_size * num_entities, seq_len
-        )
-        entity_attn_mask, _ = build_self_attn_mask(entity_axis_valid)
-        time_attn_mask, _ = build_self_attn_mask(time_axis_valid)
-
-        encoded_tokens = spec.dino_encoded_num_tokens
-        dino_key_valid = (
-            dino_valid.unsqueeze(-1)
-            .expand(batch_size, dino_samples, encoded_tokens)
-            .reshape(batch_size, dino_samples * encoded_tokens)
-        )
-        dino_batch_has_evidence = dino_key_valid.any(dim=1)
-        dino_key_valid = dino_key_valid.clone()
-        dino_key_valid[:, 0] = dino_key_valid[:, 0] | ~dino_batch_has_evidence
-        dino_attn_mask = dino_key_valid[:, None, :].expand(
-            batch_size,
-            seq_len * num_entities,
-            dino_samples * encoded_tokens,
-        )
 
         return ModelCall(
             kwargs={
@@ -260,13 +253,10 @@ class SLCSModelIOAdapter:
                 "ball_vis": ball_vis,
                 "court_kp": court_kp,
                 "court_vis": court_vis,
-                "frame_mask": frame_mask,
-                "entity_attn_mask": entity_attn_mask,
-                "time_attn_mask": time_attn_mask,
+                "padding_mask": padding_mask,
                 "dino_tokens": dino_tokens,
                 "dino_frame_idx": dino_frame_idx,
-                "dino_attn_mask": dino_attn_mask,
-                "dino_batch_has_evidence": dino_batch_has_evidence,
+                "dino_padding_mask": dino_padding_mask,
             }
         )
 
@@ -274,6 +264,7 @@ class SLCSModelIOAdapter:
         self, batch: Mapping[str, object]
     ) -> SLCSTrainingTargets:
         """Validate all training targets before the model is entered."""
+        _reject_legacy_or_prepared_masks(batch)
         spec = self.spec
         player_kp = require_tensor(
             batch,
@@ -289,24 +280,20 @@ class SLCSModelIOAdapter:
                 f"training targets require B>0 and 0<T<={spec.max_seq_len}, got "
                 f"B={batch_size}, T={seq_len}."
             )
-        frame_mask = require_tensor(
+        padding_mask = require_tensor(
             batch,
-            "frame_mask",
+            "padding_mask",
             spec=TensorSpec(shape=(batch_size, seq_len), dtypes=_BOOL),
         )
         target_player_position = require_tensor(
             batch,
             "target_player_position",
-            spec=TensorSpec(
-                shape=(batch_size, players, seq_len, 3), dtypes=_FLOAT32
-            ),
+            spec=TensorSpec(shape=(batch_size, players, seq_len, 3), dtypes=_FLOAT32),
         )
         target_player_rotation = require_tensor(
             batch,
             "target_player_rotation",
-            spec=TensorSpec(
-                shape=(batch_size, players, seq_len, 2), dtypes=_FLOAT32
-            ),
+            spec=TensorSpec(shape=(batch_size, players, seq_len, 2), dtypes=_FLOAT32),
         )
         target_player_valid = require_tensor(
             batch,
@@ -345,8 +332,8 @@ class SLCSModelIOAdapter:
             ((target_player_weight < 0.0) | (target_player_weight > 1.0)).any()
         ) or bool(((target_ball_weight < 0.0) | (target_ball_weight > 1.0)).any()):
             raise ModelInputContractError("SLCS target weights must lie in [0, 1].")
-        if bool((target_player_valid & ~frame_mask.unsqueeze(1)).any()) or bool(
-            (target_ball_valid & ~frame_mask).any()
+        if bool((target_player_valid & padding_mask.unsqueeze(1)).any()) or bool(
+            (target_ball_valid & padding_mask).any()
         ):
             raise ModelInputContractError(
                 "SLCS targets cannot mark a padded frame as label-valid."
@@ -365,8 +352,8 @@ class SLCSModelIOAdapter:
                 "valid target_player_rotation vectors must have nonzero norm."
             )
 
-        player_mask = target_player_valid & frame_mask.unsqueeze(1)
-        ball_mask = target_ball_valid & frame_mask
+        player_mask = target_player_valid & ~padding_mask.unsqueeze(1)
+        ball_mask = target_ball_valid & ~padding_mask
         return SLCSTrainingTargets(
             target_player_position=target_player_position,
             target_player_rotation=target_player_rotation,
@@ -375,7 +362,7 @@ class SLCSModelIOAdapter:
             player_weight=target_player_weight,
             ball_mask=ball_mask,
             ball_weight=target_ball_weight,
-            frame_mask=frame_mask,
+            padding_mask=padding_mask,
         )
 
     def decode_output(self, output: SLCSRawOutput) -> SLCSDecodedOutput:
@@ -428,22 +415,17 @@ class SLCSModelIOAdapter:
                     f"{name} must have shape {expected}, got "
                     f"{tuple(tensors[name].shape)}."
                 )
-        rotation_norm = torch.linalg.vector_norm(tensors["player_rotation"], dim=-1)
-        if bool((rotation_norm <= 0.0).any()):
-            raise ModelOutputContractError(
-                "player_rotation vectors must have nonzero norm."
-            )
         for name in (
             "player_position_log_b",
             "player_rotation_log_b",
             "ball_position_log_b",
         ):
             value = tensors[name]
-            if bool(
-                ((value < self.spec.log_b_min) | (value > self.spec.log_b_max)).any()
-            ):
+            outside = (value < self.spec.log_b_min) | (value > self.spec.log_b_max)
+            if bool((outside & (value != 0.0)).any()):
                 raise ModelOutputContractError(
-                    f"{name} must stay inside the configured log-b range."
+                    f"{name} must be zero padding or stay inside the configured "
+                    "log-b range."
                 )
 
         return SLCSDecodedOutput(

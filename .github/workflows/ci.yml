@@ -4,11 +4,26 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint-and-test:
+    name: Python / ${{ matrix.lane }}
     runs-on: ubuntu-latest
-
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lane: remainder
+            install_system_dependencies: true
+          - lane: long-tail
+            install_system_dependencies: false
+          - lane: scene-pipeline
+            install_system_dependencies: false
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -22,16 +37,16 @@ jobs:
           python-version: "3.11"
 
       - name: Install system dependencies
-        # ffmpeg is required by video e2e tests; rclone is required by the
-        # local-to-Google-Drive command e2e tests.
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg rclone
+        if: matrix.install_system_dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg rclone
 
-      - name: Project checks
-        # `spin ci` is the shared local/CI entry point. This runner is CPU-only
-        # and has no large local datasets, so it excludes those pytest markers.
-        run: uv run --locked spin ci
+      - name: Project checks for ${{ matrix.lane }} lane
+        run: uv run --locked spin ci --lane "${{ matrix.lane }}"
 
       - name: Validate formal and staged knowledge
+        if: matrix.lane == 'remainder'
         run: |
           uv run --locked python \
             .agents/skills/knowledge-control/scripts/kg_validate.py
@@ -44,11 +59,9 @@ jobs:
 
   knowledge-webui:
     runs-on: ubuntu-latest
-
     defaults:
       run:
         working-directory: knowledge/webui
-
     steps:
       - name: Checkout
         uses: actions/checkout@v6

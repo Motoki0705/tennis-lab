@@ -6,6 +6,10 @@ Schema-v5 scripts enforce these invariants.
 
 Preflight PASS binds the pre-test candidate; allowed Test Writer edits may create another fingerprint, which Tester PASS binds. The no-edit Seal Reviewer reruns every seal-stage check. Any post-Tester content change rejects the seal and requires fresh Preflight/Test.
 
+The first Preflight is the only discovery pass. It may use only bounded diagnostic categories frozen in `plan.md` from the ACs and planned risks; the Reviewer does not design new categories during review. After one RETURN, the next Preflight is closure-only: verify the frozen findings, canonical checks, and direct repair regressions. A second consecutive Preflight RETURN requires `return-review`; do not start a third ordinary Preflight with another exploratory mutation set.
+
+Seal is narrower than Preflight and Validator. It verifies Tester-candidate equality, no post-test content change, approved diff scope, repository rules, artifact completeness, and canonical seal results. It does not design semantic mutations, fuzz readers, reopen architecture, or search indefinitely for new failure categories. Any Seal RETURN requires `return-review`; after classification, every content repair restarts Preflight/Test before resealing.
+
 Preflight, test, seal, validation, and packaging have separate state bindings. Validation equals the seal; packaging equals the validated candidate. History-only packaging may preserve the content fingerprint; content changes invalidate downstream evidence.
 
 ## PR-bound completion
@@ -20,6 +24,6 @@ Validator PASS sets `status = "validated"`, `phase = "packaging"`, `verdict = "V
 
 Every mutation first validates state/artifacts. Packaging/completion validate a prospective next state and whole task before atomically replacing `state.toml`; errors preserve prior bytes.
 
-Never reconstruct canonical commands from prose: `run-check` executes the manifest entry and writes results. A broader diagnostic forces RETURN only if it independently proves an AC defect; stale/altered invocations fail mechanically.
+Never reconstruct canonical commands from prose: `run-check` executes the manifest entry and writes results. On the first Preflight, a broader diagnostic may force RETURN only when its category was frozen in `plan.md` and it independently proves a frozen-AC defect. On closure Preflight or Seal, do not introduce a new diagnostic category; an incidentally discovered new category is classified through `return-review` and promoted into `plan.md`/`checks.json` before another cycle.
 
-A user-directed sole Implementer changes topology, not gates. After Validator RETURN or several long cycles, prefer a fresh bounded session; artifacts carry state more reliably/cheaply than inherited chat.
+A user-directed sole Implementer changes topology, not gates. After `return-review`, Validator RETURN, or several long cycles, prefer a fresh bounded session; artifacts carry state more reliably/cheaply than inherited chat.

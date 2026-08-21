@@ -127,8 +127,8 @@ class _MotionSceneStub:
                     },
                     human_kp_uv=uv.numpy(),
                     court_kp_uv=np.tile(court_uv.numpy()[None], (frames, 1, 1)),
-                    human_kp_visible=visible.numpy(),
-                    court_kp_visible=np.tile(court_visible.numpy()[None], (frames, 1)),
+                    human_kp_vis=visible.numpy(),
+                    court_kp_vis=np.tile(court_visible.numpy()[None], (frames, 1)),
                     human_visibility_ratio=float(visible.any(-1).float().mean()),
                     court_visibility_count=float(court_visible.sum()),
                 )
@@ -165,7 +165,7 @@ def test_multi_person_uses_motion_scenes_and_canonical_writer(tmp_path) -> None:
     assert scene.person_present[:, : scene.num_persons].any(0).all()
     assert scene.cameras[0].human_kp_uv.shape == (12, 2, 17, 2)
     assert len(scene.track_instances) == 2
-    assert not scene.cameras[0].human_kp_visible[~scene.person_present].any()
+    assert not scene.cameras[0].human_kp_vis[~scene.person_present].any()
 
     dataset_root = tmp_path / "dataset"
     writer = PLCSDatasetWriter(dataset_root)
@@ -173,6 +173,10 @@ def test_multi_person_uses_motion_scenes_and_canonical_writer(tmp_path) -> None:
     (dataset_root / "train.txt").write_text("scene_000000\n")
     assert (scene_path / "position.npy").exists()
     assert (scene_path / "cam_0_human_kp_uv.npy").exists()
+    assert (scene_path / "cam_0_human_kp_vis.npy").exists()
+    assert (scene_path / "cam_0_court_kp_vis.npy").exists()
+    assert not (scene_path / "cam_0_human_kp_visible.npy").exists()
+    assert not (scene_path / "cam_0_court_kp_visible.npy").exists()
     sample = PLCSTrackingDataset(
         scene_dir=dataset_root,
         split_file="train.txt",
@@ -188,10 +192,10 @@ def test_multi_person_uses_motion_scenes_and_canonical_writer(tmp_path) -> None:
         torch.tensor([1.0, 0.0]).expand(missing_count, 2),
     )
     detection_ids = sample["detection_gt_index"][0]
+    target_ids = sample["target_instance_id"]
+    assert bool(((detection_ids == target_ids) | (detection_ids == -1)).all())
     for object_id in range(2):
-        column_ids = detection_ids[:, object_id]
-        assert bool(((column_ids == object_id) | (column_ids == -1)).all())
-        assert bool((column_ids == object_id).any())
+        assert bool((detection_ids == object_id).any())
 
 
 def test_invalid_person_cardinality_is_rejected() -> None:

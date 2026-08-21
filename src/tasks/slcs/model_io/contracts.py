@@ -65,7 +65,7 @@ class SLCSTrainingTargets:
     player_weight: Tensor
     ball_mask: Tensor
     ball_weight: Tensor
-    frame_mask: Tensor
+    padding_mask: Tensor
 
     def detached_cpu(self) -> SLCSTrainingTargets:
         """Detach every prepared target and transfer it to CPU."""
@@ -77,7 +77,7 @@ class SLCSTrainingTargets:
             player_weight=self.player_weight.detach().cpu(),
             ball_mask=self.ball_mask.detach().cpu(),
             ball_weight=self.ball_weight.detach().cpu(),
-            frame_mask=self.frame_mask.detach().cpu(),
+            padding_mask=self.padding_mask.detach().cpu(),
         )
 
 

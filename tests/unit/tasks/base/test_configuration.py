@@ -36,6 +36,9 @@ def test_complete_shared_training_contract_is_accepted(
     assert runtime.training.trainer.precision == "32-true"
     assert runtime.training.optimizer.betas == (0.9, 0.999)
     assert runtime.training.early_stopping.check_on_train_epoch_end is False
+    assert runtime.training.compile.enabled is True
+    assert runtime.training.compile.backend == "inductor"
+    assert runtime.training.compile.mode == "reduce-overhead"
 
 
 @pytest.mark.parametrize(
@@ -60,6 +63,8 @@ def test_complete_shared_training_contract_is_accepted(
         ("training.gan.generator_gradient_clip_val", -1.0),
         ("training.gan.discriminator_gradient_clip_val", float("inf")),
         ("training.matmul_precision", "default"),
+        ("training.compile.backend", "eager"),
+        ("training.compile.mode", "fast"),
     ],
 )
 def test_invalid_shared_training_semantics_fail_at_boundary(
@@ -82,6 +87,9 @@ def test_invalid_shared_training_semantics_fail_at_boundary(
         ("training.trainer.precision", 32),
         ("training.optimizer.betas", None),
         ("training.early_stopping.check_on_train_epoch_end", None),
+        ("training.compile.enabled", 1),
+        ("training.compile.fullgraph", None),
+        ("training.compile.dynamic", "false"),
     ],
 )
 def test_framework_default_delegation_is_rejected(
@@ -135,9 +143,7 @@ def test_enabled_checkpoint_must_write_an_artifact(
 
 
 def _enabled_gan_config(make_training_config: Any) -> dict[str, Any]:
-    config = cast(
-        "dict[str, Any]", make_training_config(trainer={"max_epochs": 4})
-    )
+    config = cast("dict[str, Any]", make_training_config(trainer={"max_epochs": 4}))
     config["training"]["trainer"]["gradient_clip_val"] = None
     config["training"]["early_stopping"]["enabled"] = False
     config["training"]["gan"].update(

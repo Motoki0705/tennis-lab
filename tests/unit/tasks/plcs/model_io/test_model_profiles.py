@@ -71,7 +71,7 @@ def test_frame_model_runs_only_through_its_bound_profile() -> None:
             "human_kp": torch.rand(2, 17, 2),
             "court_kp": torch.rand(2, 20, 2),
             "human_vis": torch.ones(2, 17, dtype=torch.bool),
-            "human_mask": torch.ones(2, dtype=torch.bool),
+            "padding_mask": torch.zeros(2, dtype=torch.bool),
             "court_vis": torch.ones(2, 20, dtype=torch.bool),
         }
     )
@@ -112,7 +112,7 @@ def test_interleaved_multiview_model_runs_through_multiview_profile() -> None:
             "human_kp": torch.rand(*prefix, 17, 2),
             "court_kp": torch.rand(*prefix, 20, 2),
             "human_vis": torch.ones(*prefix, 17, dtype=torch.bool),
-            "human_mask": torch.ones(*prefix, dtype=torch.bool),
+            "padding_mask": torch.zeros(*prefix, dtype=torch.bool),
             "court_vis": torch.ones(*prefix, 20, dtype=torch.bool),
         }
     )
@@ -159,7 +159,7 @@ def test_split_model_output_strategy_matches_bound_adapter() -> None:
             "human_kp": torch.rand(*prefix, 17, 2),
             "court_kp": torch.rand(*prefix, 20, 2),
             "human_vis": torch.ones(*prefix, 17, dtype=torch.bool),
-            "human_mask": torch.ones(*prefix, dtype=torch.bool),
+            "padding_mask": torch.zeros(*prefix, dtype=torch.bool),
             "court_vis": torch.ones(*prefix, 20, dtype=torch.bool),
         }
     )

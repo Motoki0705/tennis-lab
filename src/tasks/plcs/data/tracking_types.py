@@ -10,21 +10,17 @@ from torch import Tensor
 class PLCSTrackingBatch(TypedDict):
     """Padded multi-person input, GT, and debug tensors.
 
-    ``human_vis`` and ``detection_gt_index`` are retained for augmentation/data
-    validation only. ``detection_gt_index`` validates the object-ID-ordered
-    observation axis and is never passed to the model. The model consumes
-    ``detection_mask`` for whole-person invisibility and ``court_vis`` to zero
-    unavailable court coordinates. See ``src/tasks/plcs/README.md`` for shapes.
+    ``human_vis`` selects the visible/invisible observation embedding but never
+    controls attention. ``detection_gt_index`` is retained for augmentation and
+    data validation only. ``padding_mask`` is the sole attention-padding input.
     """
 
     scene_format_version: Tensor
     human_kp: Tensor
     human_vis: Tensor
-    detection_mask: Tensor
     court_kp: Tensor
     court_vis: Tensor
-    frame_mask: Tensor
-    view_mask: Tensor
+    padding_mask: Tensor
     target_position: Tensor
     target_rotation: Tensor
     target_canonical_pose_3d: Tensor
@@ -33,7 +29,7 @@ class PLCSTrackingBatch(TypedDict):
     target_instance_id: Tensor
     target_slot_mask: Tensor
     clean_human_kp: Tensor
-    clean_human_visible: Tensor
+    clean_human_vis: Tensor
     detection_gt_index: Tensor
 
 

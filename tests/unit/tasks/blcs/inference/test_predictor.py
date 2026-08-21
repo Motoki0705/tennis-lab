@@ -23,12 +23,12 @@ class _FixedTrajectoryModel(BLCSModel):
     def forward(
         self,
         ball_uv: Tensor,
-        court_kp: Tensor,
         ball_vis: Tensor,
+        court_kp: Tensor,
         court_vis: Tensor,
-        attention_mask: Tensor,
+        padding_mask: Tensor,
     ) -> dict[str, Tensor]:
-        del court_kp, ball_vis, court_vis, attention_mask
+        del court_kp, ball_vis, court_vis, padding_mask
         shape = (ball_uv.shape[0], ball_uv.shape[1], 3)
         return {
             "position": torch.ones(shape, device=ball_uv.device),
@@ -56,7 +56,7 @@ def test_predict_returns_typed_cpu_trajectory_decode() -> None:
         ball_uv=torch.zeros(1, 3, 2),
         court_kp=torch.zeros(1, 14, 2),
         ball_vis=torch.ones(1, 3, dtype=torch.bool),
-        ball_mask=torch.ones(1, 3, dtype=torch.bool),
+        padding_mask=torch.zeros(1, 3, dtype=torch.bool),
         court_vis=torch.ones(1, 14, dtype=torch.bool),
         denormalize=False,
     )

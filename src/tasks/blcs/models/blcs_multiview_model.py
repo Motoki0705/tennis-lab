@@ -9,6 +9,10 @@ from torch import Tensor, nn
 
 from src.tasks.blcs.configuration import MultiViewModelConfig
 from src.tasks.blcs.models.components.heads import build_trajectory_output
+from src.tasks.blcs.models.components.padding import (
+    build_multiview_padding_masks,
+    mask_trajectory_outputs,
+)
 from src.utils.models import (
     CrossAttnBlock,
     CrossAttnBlockConfig,
@@ -278,13 +282,10 @@ class BLCSMultiViewModel(nn.Module):
     def forward(
         self,
         ball_uv: Tensor,
-        court_kp: Tensor,
         ball_vis: Tensor,
+        court_kp: Tensor,
         court_vis: Tensor,
-        query_attention_mask: Tensor,
-        query_state_valid: Tensor,
-        cross_attention_mask: Tensor,
-        frame_token_valid: Tensor,
+        padding_mask: Tensor,
     ) -> dict[str, Tensor]:
         """Forward pass.
 
@@ -298,6 +299,10 @@ class BLCSMultiViewModel(nn.Module):
             dict: Dictionary with 'position' (B, T, 3) and optionally 'velocity'.
         """
         batch_size, n_cams, seq_len_in = ball_uv.shape[:3]
+        masks = build_multiview_padding_masks(
+            padding_mask,
+            num_court_tokens=self.num_court_tokens,
+        )
 
         ball_uv_bn = ball_uv.reshape(batch_size * n_cams, seq_len_in, 2)
         ball_vis_bn = ball_vis.reshape(batch_size * n_cams, seq_len_in)
@@ -339,7 +344,7 @@ class BLCSMultiViewModel(nn.Module):
                 n_cams * (self.num_court_tokens + 1),
                 self.hidden_dim,
             )
-            frame_bt = frame_bt * frame_token_valid.reshape(
+            frame_bt = frame_bt * masks.frame_token_valid.reshape(
                 batch_size * seq_len_in,
                 n_cams * (self.num_court_tokens + 1),
                 1,
@@ -369,22 +374,23 @@ class BLCSMultiViewModel(nn.Module):
             query_bt = cross_layer(
                 query_bt,
                 frame_bt,
-                attn_mask=cross_attention_mask,
+                attn_mask=masks.cross_attention_keep_mask,
                 freqs_q_cis=query_freqs_bt,
                 freqs_k_cis=frame_freqs_bt,
             )
             query_x = query_bt.reshape(batch_size, seq_len_in, self.hidden_dim)
 
-            query_x = query_x * query_state_valid.unsqueeze(-1).to(dtype=query_x.dtype)
+            query_x = query_x * masks.frame_valid.unsqueeze(-1).to(dtype=query_x.dtype)
             query_x = temporal_layer(
                 query_x,
                 freqs_cis=freqs_time,
-                attn_mask=query_attention_mask,
+                attn_mask=masks.query_attention_keep_mask,
             )
 
         query_x = self.final_norm(query_x)
 
-        return cast("dict[str, Tensor]", self.output_head(query_x))
+        outputs = cast("dict[str, Tensor]", self.output_head(query_x))
+        return mask_trajectory_outputs(outputs, masks.frame_valid)
 
     query_freqs_cis: Tensor
     frame_freqs_cis: Tensor

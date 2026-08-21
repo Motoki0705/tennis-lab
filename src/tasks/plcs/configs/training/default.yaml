@@ -28,6 +28,13 @@ steps_per_epoch: null
 optimizer:
   betas: [0.9, 0.999]
 
+compile:
+  enabled: true
+  backend: inductor
+  mode: default
+  fullgraph: false
+  dynamic: false
+
 matmul_precision: high
 allow_tf32: true
 

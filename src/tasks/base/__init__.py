@@ -5,6 +5,7 @@ from src.tasks.base.configuration import (
     BaseRunConfig,
     BaseTrainingConfig,
     ChunkDataConfig,
+    CompileConfig,
     SceneVisualizationConfig,
     TrainingRuntimeConfig,
 )
@@ -43,6 +44,7 @@ __all__ = [
     "ChunkRotationCallback",
     "ChunkState",
     "ChunkDataConfig",
+    "CompileConfig",
     "Scene",
     "SceneDataContractError",
     "SceneDatasetBase",
