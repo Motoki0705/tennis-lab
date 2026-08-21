@@ -3,20 +3,20 @@ repos:
     hooks:
       - id: ruff
         name: ruff (fix)
-        entry: ruff check --fix --exit-non-zero-on-fix
+        entry: ./scripts/run_in_repo_venv.sh ruff check --fix --exit-non-zero-on-fix
         language: system
         types: [python]
         files: ^(src|tests|\.spin)/
       - id: mypy
         name: mypy
-        entry: mypy --follow-imports=skip
+        entry: ./scripts/run_in_repo_venv.sh mypy --follow-imports=skip
         language: system
         types: [python]
         files: ^(src|tests|\.spin)/
         require_serial: true
       - id: task-script-reviewer
         name: task script reviewer
-        entry: python ./.agents/skills/script-conventions/scripts/review_task_scripts.py
+        entry: ./scripts/run_in_repo_venv.sh python ./.agents/skills/script-conventions/scripts/review_task_scripts.py
         language: system
         files: ^(src|experiments)/.+/scripts/.+\.py$
         exclude: ^(src|experiments)/.+/scripts/__init__\.py$
