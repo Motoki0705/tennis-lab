@@ -27,7 +27,7 @@ class _FakePLCSPredictor:
         human_kp: np.ndarray,
         court_kp: np.ndarray,
         human_vis: np.ndarray,
-        human_mask: np.ndarray,
+        padding_mask: np.ndarray,
         court_vis: np.ndarray,
     ) -> PLCSPhysicalPrediction:
         self.calls.append(
@@ -35,7 +35,7 @@ class _FakePLCSPredictor:
                 "human_kp": human_kp,
                 "court_kp": court_kp,
                 "human_vis": human_vis,
-                "human_mask": human_mask,
+                "padding_mask": padding_mask,
                 "court_vis": court_vis,
             }
         )
@@ -70,8 +70,8 @@ def test_process_delegates_multiview_assembly_and_decode_to_predictor(tmp_path) 
     assert call["court_kp"].shape == (1, 4, 20, 2)
     assert call["human_vis"].dtype == np.bool_
     assert not bool(call["human_vis"][0, 0, 0, 0])
-    assert call["human_mask"].dtype == np.bool_
-    assert call["human_mask"].all()
+    assert call["padding_mask"].dtype == np.bool_
+    assert not call["padding_mask"].any()
 
 
 def test_load_requires_multiview_profile_before_component_use(

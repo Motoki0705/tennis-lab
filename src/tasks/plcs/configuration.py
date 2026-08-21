@@ -273,7 +273,6 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "ffn_type",
             "dropout",
             "role_rope_enabled",
-            "mask_invisible_observations",
             "invisible_init_std",
         }
     ),
@@ -384,7 +383,6 @@ class PLCSModelConfig:
             "aux_position_on_rotation_branch",
             "detach_pose_branch",
             "role_rope_enabled",
-            "mask_invisible_observations",
         } & set(mapping):
             _boolean(mapping, key, path="model")
         if "ffn_type" in mapping:
@@ -708,7 +706,13 @@ class PLCSDataConfig:
                 required=lifecycle_fields,
                 allowed=lifecycle_fields,
             )
-            _boolean(lifecycle, "pack_to_query_slots", path="data.lifecycle")
+            if not _boolean(
+                lifecycle, "pack_to_query_slots", path="data.lifecycle"
+            ):
+                raise SemanticConfigurationError(
+                    "data.lifecycle.pack_to_query_slots must be true for fixed-Q "
+                    "PLCS tracking."
+                )
             _integer(lifecycle, "min_reuse_gap_frames", path="data.lifecycle")
             _boolean(lifecycle, "randomize_slots_train", path="data.lifecycle")
             if _integer(lifecycle, "min_reuse_gap_frames", path="data.lifecycle") < 0:

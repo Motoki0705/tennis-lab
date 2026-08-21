@@ -49,11 +49,11 @@ class CameraData:
     camera_params: dict
 
     ball_uv: np.ndarray  # [T, 2] normalized UV coordinates
-    ball_visible: np.ndarray  # [T] visibility flags
+    ball_vis: np.ndarray  # [T] visibility flags
     ball_visibility_ratio: float  # Ratio of visible frames
 
     court_kp_uv: np.ndarray  # [20, 2] UV coordinates
-    court_kp_visible: np.ndarray  # [20] visibility flags
+    court_kp_vis: np.ndarray  # [20] visibility flags
     court_visibility_count: float  # Average visible keypoints
 
 
@@ -164,16 +164,16 @@ class BLCSSceneGenerator:
         T = len(ball_vis)
         ball_visibility_ratio = float(ball_vis.sum()) / T if T > 0 else 0.0
 
-        court_vis = view.court_kp_visible.numpy()
+        court_vis = view.court_kp_vis.numpy()
         court_visibility_count = float(court_vis.sum())
 
         return CameraData(
             camera_params=view.camera_params,
             ball_uv=view.points_uv.numpy(),
-            ball_visible=ball_vis,
+            ball_vis=ball_vis,
             ball_visibility_ratio=ball_visibility_ratio,
             court_kp_uv=view.court_kp_uv.numpy(),
-            court_kp_visible=court_vis,
+            court_kp_vis=court_vis,
             court_visibility_count=court_visibility_count,
         )
 

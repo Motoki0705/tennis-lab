@@ -182,7 +182,7 @@ def analyze(
                 target_rotation=target_rotation,
                 pred_canonical_pose=outputs.canonical_pose,
                 target_human_kp_3d=prepared.target_human_kp_3d,
-                human_mask=prepared.target_human_mask,
+                padding_mask=prepared.target_padding_mask,
             )
             losses = loss_fn(loss_inputs)
             metrics.update(
@@ -190,7 +190,7 @@ def analyze(
                 outputs.rotation,
                 target_position,
                 target_rotation,
-                human_mask=prepared.target_human_mask,
+                padding_mask=prepared.target_padding_mask,
             )
 
             count += 1

@@ -23,3 +23,25 @@ def test_scene_loader_requires_explicit_num_persons(tmp_path: Path) -> None:
 
     with pytest.raises(KeyError, match="num_persons"):
         load_scene(tmp_path)
+
+
+def test_scene_loader_rejects_legacy_visible_filenames(tmp_path: Path) -> None:
+    (tmp_path / "meta.json").write_text(json.dumps({"fps": 30.0}))
+    (tmp_path / "scalars.json").write_text(
+        json.dumps({"num_cameras": 1, "num_persons": 1, "cam_0_params": {}})
+    )
+    for name, shape in {
+        "position": (1, 3),
+        "rotation": (1, 2),
+        "canonical_pose_3d": (1, 17, 3),
+        "cam_0_human_kp_uv": (1, 17, 2),
+        "cam_0_human_kp_visible": (1, 17),
+        "cam_0_human_visibility_ratio": (),
+        "cam_0_court_kp_uv": (1, 20, 2),
+        "cam_0_court_kp_visible": (1, 20),
+        "cam_0_court_visibility_count": (),
+    }.items():
+        np.save(tmp_path / f"{name}.npy", np.zeros(shape, dtype=np.float32))
+
+    with pytest.raises(FileNotFoundError, match="human_kp_vis"):
+        load_scene(tmp_path)

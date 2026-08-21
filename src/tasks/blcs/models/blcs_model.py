@@ -51,7 +51,7 @@ class BLCSModel(nn.Module):
         - ball_uv: Ball 2D positions (u, v), shape (B, T, 2)
         - court_kp: Court 2D keypoints (20 landmarks), shape (B, 40) or (B, 20, 2)
         - ball_vis: Ball visibility flags, shape (B, T). Optional.
-        - ball_mask: Ball padding mask, shape (B, T). Optional.
+        - attention_mask: Adapter-prepared token attention mask.
         - court_vis: Court keypoint visibility, shape (B, 20). Optional.
 
     Output:
@@ -227,8 +227,8 @@ class BLCSModel(nn.Module):
             ball_uv: Ball 2D positions, shape (B, T, 2).
             court_kp: Court keypoints, shape (B, 40) or (B, 20, 2).
             ball_vis: Ball visibility flags, shape (B, T).
-            ball_mask: Ball padding mask, shape (B, T).
             court_vis: Court visibility mask, shape (B, K).
+            attention_mask: Adapter-prepared court/ball attention mask.
 
         Returns:
             dict: Dictionary with 'position' (B, T, 3) and optionally 'velocity'.

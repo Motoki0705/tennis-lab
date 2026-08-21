@@ -15,6 +15,7 @@ from src.utils.models import (
     RotaryFrequencyComputer,
     TransformerBlock,
     TransformerBlockConfig,
+    build_fixed_query_padding_masks,
 )
 from src.utils.models.embeddings import (
     CourtPlayerGroupEmbedding,
@@ -120,29 +121,37 @@ class PLCSTrackQueryModel(nn.Module):
     def forward(
         self,
         human_kp: torch.Tensor,
-        detection_mask: torch.Tensor,
+        human_vis: torch.Tensor,
         court_kp: torch.Tensor,
         court_vis: torch.Tensor,
-        frame_mask: torch.Tensor,
-        camera_state_valid: torch.Tensor,
-        spatial_attention_mask: torch.Tensor,
-        temporal_attention_mask: torch.Tensor,
+        padding_mask: torch.Tensor,
     ) -> PLCSTrackingPrediction:
-        batch_size, num_views, num_frames, num_detections, num_joints, _ = (
+        batch_size, num_views, num_frames, num_queries, num_joints, _ = (
             human_kp.shape
         )
         del num_joints
-        masked_court = court_kp.masked_fill(~court_vis.unsqueeze(-1), 0.0)
-        court_for_detections = masked_court.unsqueeze(3).expand(
-            -1, -1, -1, num_detections, -1, -1
+        if num_queries != self.num_queries:
+            raise ValueError(
+                "human_kp query axis must equal model.num_queries: "
+                f"got {num_queries} and {self.num_queries}."
+            )
+        masks = build_fixed_query_padding_masks(
+            padding_mask,
+            num_queries=self.num_queries,
         )
-        human_for_detections = human_kp.masked_fill(
-            ~detection_mask[..., None, None], 0.0
+        context_valid = masks.context_valid
+        effective_human_vis = human_vis & context_valid[..., None, None]
+        effective_court_vis = court_vis & context_valid[..., None]
+        observation_visible = effective_human_vis.any(dim=-1)
+        masked_court = court_kp.masked_fill(~effective_court_vis.unsqueeze(-1), 0.0)
+        court_for_queries = masked_court.unsqueeze(3).expand(
+            -1, -1, -1, num_queries, -1, -1
         )
+        masked_human = human_kp.masked_fill(~effective_human_vis.unsqueeze(-1), 0.0)
         camera_tokens = self.group_embed(
-            court_for_detections,
-            human_for_detections,
-            detection_mask,
+            court_for_queries,
+            masked_human,
+            observation_visible,
         ).permute(
             0,
             2,
@@ -153,22 +162,24 @@ class PLCSTrackQueryModel(nn.Module):
         camera_tokens = camera_tokens.reshape(
             batch_size,
             num_frames,
-            num_views * num_detections,
+            num_views * num_queries,
             self.hidden_dim,
         )
-        camera_tokens = camera_tokens * camera_state_valid.reshape(
+        camera_tokens = camera_tokens * masks.camera_state_valid.permute(
+            0, 2, 1, 3
+        ).reshape(
             batch_size, num_frames, -1
         ).unsqueeze(-1)
 
         slots = self.slot_embeddings.view(
             1, 1, self.num_queries, self.hidden_dim
         ).expand(batch_size, num_frames, -1, -1)
-        slots = slots * frame_mask[:, :, None, None]
+        slots = slots * masks.frame_valid[:, :, None, None]
         coordinates = self.build_spatial_coordinates(
             batch_size=batch_size,
             num_frames=num_frames,
             num_views=num_views,
-            num_detections=num_detections,
+            num_detections=num_queries,
             num_queries=self.num_queries,
             device=human_kp.device,
         )
@@ -182,30 +193,41 @@ class PLCSTrackQueryModel(nn.Module):
         ):
             tokens = torch.cat([slots, camera_tokens], dim=2).flatten(0, 1)
             tokens = spatial_block(
-                tokens, freqs_cis=spatial_freqs, attn_mask=spatial_attention_mask
+                tokens,
+                freqs_cis=spatial_freqs,
+                attn_mask=masks.spatial_attention_keep_mask,
             ).view(batch_size, num_frames, -1, self.hidden_dim)
-            slots = tokens[:, :, : self.num_queries] * frame_mask[:, :, None, None]
+            slots = (
+                tokens[:, :, : self.num_queries]
+                * masks.frame_valid[:, :, None, None]
+            )
             camera_tokens = tokens[
                 :, :, self.num_queries :
-            ] * camera_state_valid.reshape(batch_size, num_frames, -1).unsqueeze(-1)
+            ] * masks.camera_state_valid.permute(0, 2, 1, 3).reshape(
+                batch_size, num_frames, -1
+            ).unsqueeze(-1)
             temporal = slots.permute(0, 2, 1, 3).reshape(
                 batch_size * self.num_queries, num_frames, self.hidden_dim
             )
             temporal = temporal_block(
-                temporal, freqs_cis=temporal_freqs, attn_mask=temporal_attention_mask
+                temporal,
+                freqs_cis=temporal_freqs,
+                attn_mask=masks.query_temporal_attention_keep_mask,
             )
             slots = (
                 temporal.view(
                     batch_size, self.num_queries, num_frames, self.hidden_dim
                 ).permute(0, 2, 1, 3)
-                * frame_mask[:, :, None, None]
+                * masks.frame_valid[:, :, None, None]
             )
 
         slots = self.output_norm(slots)
+        output_valid = masks.frame_valid[:, :, None]
         return {
-            "position": self.position_head(slots),
-            "rotation": F.normalize(self.rotation_head(slots), dim=-1),
-            "presence_logits": self.presence_head(slots).squeeze(-1),
+            "position": self.position_head(slots) * output_valid.unsqueeze(-1),
+            "rotation": F.normalize(self.rotation_head(slots), dim=-1)
+            * output_valid.unsqueeze(-1),
+            "presence_logits": self.presence_head(slots).squeeze(-1) * output_valid,
         }
 
     @staticmethod

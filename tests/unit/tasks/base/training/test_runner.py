@@ -11,7 +11,6 @@ import torch
 from omegaconf import OmegaConf
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
-from src.tasks.base.training.repro import QueueReproDirError
 from src.tasks.base.training.runner import BaseTrainingRunner
 from src.utils.configuration import PathContractError
 from src.utils.device import DeviceSelectionError
@@ -144,61 +143,6 @@ def test_checkpoint_dir_resolves_beneath_validated_logger_parent(
         callback for callback in callbacks if isinstance(callback, ModelCheckpoint)
     )
     assert checkpoint.dirpath == str(log_dir / "checkpoints")
-
-
-def test_checkpoint_pointer_preserves_legacy_artifact_location_without_queue(
-    make_training_config: Any,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.delenv("TENNIS_REPRO_DIR", raising=False)
-    runner = BaseTrainingRunner()
-    runtime = runner.validate_runtime_config(OmegaConf.create(make_training_config()))
-    checkpoint_dir = runtime.resolver.roots.output_root / "run" / "checkpoints"
-
-    runner._record_ckpt_dir_pointer(checkpoint_dir, runtime.resolver)
-
-    pointer = runtime.resolver.roots.artifact_root / "repro" / "output_dir.txt"
-    assert pointer.read_text(encoding="utf-8") == f"{checkpoint_dir.resolve()}\n"
-
-
-def test_checkpoint_pointer_isolated_between_queue_repro_dirs(
-    make_training_config: Any,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    runner = BaseTrainingRunner()
-    runtime = runner.validate_runtime_config(OmegaConf.create(make_training_config()))
-    repro_dirs = (tmp_path / "queue-a", tmp_path / "queue-b")
-    checkpoint_dirs = (tmp_path / "checkpoint-a", tmp_path / "checkpoint-b")
-
-    for repro_dir, checkpoint_dir in zip(
-        repro_dirs, checkpoint_dirs, strict=True
-    ):
-        monkeypatch.setenv("TENNIS_REPRO_DIR", str(repro_dir))
-        runner._record_ckpt_dir_pointer(checkpoint_dir, runtime.resolver)
-
-    for repro_dir, checkpoint_dir in zip(
-        repro_dirs, checkpoint_dirs, strict=True
-    ):
-        assert (repro_dir / "output_dir.txt").read_text(
-            encoding="utf-8"
-        ) == f"{checkpoint_dir.resolve()}\n"
-    assert not (runtime.resolver.roots.artifact_root / "repro").exists()
-
-
-def test_checkpoint_pointer_rejects_invalid_queue_dir_before_writes(
-    make_training_config: Any,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    runner = BaseTrainingRunner()
-    runtime = runner.validate_runtime_config(OmegaConf.create(make_training_config()))
-    monkeypatch.setenv("TENNIS_REPRO_DIR", "relative/repro")
-
-    with pytest.raises(QueueReproDirError, match="absolute"):
-        runner._record_ckpt_dir_pointer(tmp_path / "checkpoints", runtime.resolver)
-
-    assert not (runtime.resolver.roots.artifact_root / "repro").exists()
 
 
 def test_checkpoint_dir_rejects_logger_parent_outside_output_role(

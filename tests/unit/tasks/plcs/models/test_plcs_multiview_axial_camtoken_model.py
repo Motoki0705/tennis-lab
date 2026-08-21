@@ -48,13 +48,13 @@ def _make_inputs(model: PLCSMultiViewAxialCamTokenModel, *, n_cams: int):
 
 def _forward(model, human_kp, court_kp):
     mask_shape = human_kp.shape[:3]
-    human_mask = torch.ones(*mask_shape)
-    camera_mask, time_mask = prepare_axial_attention_masks(human_mask)
+    padding_mask = torch.zeros(*mask_shape, dtype=torch.bool)
+    camera_mask, time_mask = prepare_axial_attention_masks(padding_mask)
     return model(
         human_kp,
         court_kp,
         torch.ones(*human_kp.shape[:-1]),
-        human_mask,
+        padding_mask,
         torch.ones(*court_kp.shape[:-1]),
         camera_mask,
         time_mask,

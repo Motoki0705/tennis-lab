@@ -56,7 +56,7 @@ def test_predict_returns_typed_cpu_trajectory_decode() -> None:
         ball_uv=torch.zeros(1, 3, 2),
         court_kp=torch.zeros(1, 14, 2),
         ball_vis=torch.ones(1, 3, dtype=torch.bool),
-        ball_mask=torch.ones(1, 3, dtype=torch.bool),
+        padding_mask=torch.zeros(1, 3, dtype=torch.bool),
         court_vis=torch.ones(1, 14, dtype=torch.bool),
         denormalize=False,
     )

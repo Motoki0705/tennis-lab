@@ -8,7 +8,6 @@ from src.tasks.blcs.model_io.adapters import (
     TrajectoryModelIOAdapter,
 )
 from src.tasks.blcs.model_io.contracts import (
-    BLCSTrackingAttentionMasks,
     BLCSTrackQueryPrediction,
     BLCSTrackQueryTrainingBatch,
     BLCSTrajectoryPrediction,
@@ -28,7 +27,6 @@ __all__ = [
     "BLCSBoundModelIO",
     "BLCSTrackQueryPrediction",
     "BLCSTrackQueryTrainingBatch",
-    "BLCSTrackingAttentionMasks",
     "BLCSTrajectoryPrediction",
     "BLCSTrajectoryTrainingBatch",
     "MultiViewTrajectoryModelIOAdapter",

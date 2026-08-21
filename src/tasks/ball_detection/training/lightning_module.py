@@ -52,7 +52,7 @@ class BallStepResult(TypedDict):
     pred_heatmaps: Tensor
     gan_fake: Tensor
     gan_real: Tensor
-    gan_mask: Tensor
+    gan_padding_mask: Tensor
 
 
 class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
@@ -108,12 +108,13 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
         )
 
     def _extract_gt_trajectory(self, call: BallTrainingCall) -> tuple[Tensor, Tensor]:
-        """Extract the primary ball trajectory and its visibility mask.
+        """Extract the primary ball trajectory and its padding mask.
 
         Returns:
             Tuple of:
                 - ball_xy: Normalized ``(B, T, 2)`` coordinates in ``(x, y)``.
-                - mask: Boolean ``(B, T)`` mask of frames with a visible ball.
+                - padding_mask: Boolean ``(B, T)`` mask where ``True`` marks a
+                  frame without a visible ball.
         """
         coords = call.coords
         visibility = call.visibility
@@ -127,8 +128,8 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
         scale = (original_size - 1.0).clamp(min=1.0)  # (B, 2)
         ball_xy = ball_xy / scale[:, None, :]
-        mask = visibility.amax(dim=-1) > 0.5
-        return ball_xy, mask
+        padding_mask = ~(visibility.amax(dim=-1) > 0.5)
+        return ball_xy, padding_mask
 
     def _compute_supervised_result(
         self,
@@ -152,7 +153,7 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
             call.original_size,
         )
 
-        gan_real, gan_mask = self._extract_gt_trajectory(call)
+        gan_real, gan_padding_mask = self._extract_gt_trajectory(call)
         gan_fake = heatmaps_to_soft_argmax(
             logits,
             temperature=self.gan_soft_argmax_temperature,
@@ -164,7 +165,7 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
             "pred_heatmaps": pred_heatmaps,
             "gan_fake": gan_fake,
             "gan_real": gan_real,
-            "gan_mask": gan_mask,
+            "gan_padding_mask": gan_padding_mask,
         }
 
     def _metric_tracker_for_stage(self, stage: str) -> BallDetectionMetrics:

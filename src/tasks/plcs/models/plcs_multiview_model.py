@@ -225,7 +225,7 @@ class PLCSMultiViewModel(nn.Module):
         human_kp: Tensor,
         court_kp: Tensor,
         human_vis: Tensor,
-        human_mask: Tensor,
+        padding_mask: Tensor,
         court_vis: Tensor,
     ) -> dict[str, Tensor]:
         """Forward pass.
@@ -251,9 +251,8 @@ class PLCSMultiViewModel(nn.Module):
                 - Single frame: (B, N, K)
                 Each element is interpreted as visible if > 0.
                 Optional; if None, all court keypoints are treated as visible.
-            human_mask:
-                Padding mask with shape (B, N, T), True/1 for valid tokens.
-                Optional; if None, all views/frames are treated as valid.
+            padding_mask:
+                Padding mask with shape (B, N, T), True for padding.
 
         Returns:
             dict:
@@ -263,9 +262,8 @@ class PLCSMultiViewModel(nn.Module):
         B, N, T = human_kp.shape[:3]
         device = human_kp.device
 
-        token_mask = human_mask > 0
-        view_valid = token_mask.any(dim=2)
-        seq_valid = token_mask.any(dim=1)
+        token_valid = ~padding_mask
+        view_valid = token_valid.any(dim=2)
 
         # court is camera-level (use first frame per camera)
         court_scene = court_kp[:, :, 0, :, :]  # (B,N,K,2)
@@ -297,7 +295,7 @@ class PLCSMultiViewModel(nn.Module):
         x = tokens_per_camera.reshape(B, N * camera_block_tokens, self.hidden_dim)
 
         # Build token validity mask from padding masks only.
-        frame_token_valid = view_valid.unsqueeze(-1) & seq_valid.unsqueeze(1)
+        frame_token_valid = token_valid
         court_token_valid = view_valid
 
         court_rep = court_token_valid.unsqueeze(-1).expand(B, N, K)

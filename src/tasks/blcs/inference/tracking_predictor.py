@@ -95,21 +95,17 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
         self,
         *,
         ball_uv: Tensor,
-        ball_visible: Tensor,
-        candidate_mask: Tensor,
+        ball_vis: Tensor,
         court_kp: Tensor,
         court_vis: Tensor,
-        frame_mask: Tensor,
-        view_mask: Tensor,
+        padding_mask: Tensor,
         denormalize: bool,
     ) -> BLCSTrackQueryPrediction:
         """Pad an explicit short candidate set, then run the strict adapter."""
         if ball_uv.ndim != 5:
             raise ValueError("ball_uv must have shape (B,V,T,P,2).")
-        if ball_visible.shape != ball_uv.shape[:-1]:
-            raise ValueError("ball_visible must match ball_uv without UV.")
-        if candidate_mask.shape != ball_visible.shape:
-            raise ValueError("candidate_mask must match ball_visible.")
+        if ball_vis.shape != ball_uv.shape[:-1]:
+            raise ValueError("ball_vis must match ball_uv without UV.")
         candidate_width = int(ball_uv.shape[3])
         if candidate_width > self.num_queries:
             raise ValueError(
@@ -126,28 +122,19 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
                 device=ball_uv.device,
             )
             mask_padding = torch.zeros(
-                *ball_visible.shape[:3],
+                *ball_vis.shape[:3],
                 padding_width,
                 dtype=torch.bool,
-                device=ball_visible.device,
-            )
-            candidate_padding = torch.zeros(
-                *candidate_mask.shape[:3],
-                padding_width,
-                dtype=torch.bool,
-                device=candidate_mask.device,
+                device=ball_vis.device,
             )
             ball_uv = torch.cat((ball_uv, uv_padding), dim=3)
-            ball_visible = torch.cat((ball_visible, mask_padding), dim=3)
-            candidate_mask = torch.cat((candidate_mask, candidate_padding), dim=3)
+            ball_vis = torch.cat((ball_vis, mask_padding), dim=3)
         inputs = {
             "ball_uv": ball_uv,
-            "ball_visible": ball_visible,
-            "candidate_mask": candidate_mask,
+            "ball_vis": ball_vis,
             "court_kp": court_kp,
             "court_vis": court_vis,
-            "frame_mask": frame_mask,
-            "view_mask": view_mask,
+            "padding_mask": padding_mask,
         }
         return self.predict_batch(
             inputs,
