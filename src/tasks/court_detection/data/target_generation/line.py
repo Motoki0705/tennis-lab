@@ -114,8 +114,9 @@ def generate_line_target(
         raise ValueError("Court line generation requires image geometry.")
     output: UInt8Array = np.zeros((height, width), dtype=np.uint8)
     for instance in instances:
+        physical_points = _ordered_physical_points(instance)
         homography = compute_template_to_image_homography(
-            _ordered_physical_points(instance),
+            physical_points,
             ransac_reproj_threshold=5.0,
         )
         if homography is None:
@@ -131,6 +132,12 @@ def generate_line_target(
             )
             polygon = cast(NDArray[np.int32], np.round(projected).astype(np.int32))
             cv2.fillPoly(output, [polygon], 255)
+        for point in physical_points:
+            center = (
+                int(round(float(point[0]))),
+                int(round(float(point[1]))),
+            )
+            cv2.circle(output, center, radius=1, color=255, thickness=-1)
     return output
 
 
