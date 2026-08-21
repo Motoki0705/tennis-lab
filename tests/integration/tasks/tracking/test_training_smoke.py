@@ -58,10 +58,10 @@ def _materialize_blcs(root: Path) -> None:
                     ball_uv=np.random.default_rng(index + camera).random(
                         (frames, objects, 2), dtype=np.float32
                     ),
-                    ball_visible=np.ones((frames, objects), dtype=bool),
+                    ball_vis=np.ones((frames, objects), dtype=bool),
                     ball_visibility_ratio=1.0,
                     court_kp_uv=np.zeros((20, 2), dtype=np.float32),
-                    court_kp_visible=np.ones(20, dtype=bool),
+                    court_kp_vis=np.ones(20, dtype=bool),
                     court_visibility_count=20.0,
                 )
                 for camera in range(cameras)
@@ -119,8 +119,8 @@ def _materialize_plcs(root: Path) -> None:
                         (frames, objects, 17, 2), dtype=np.float32
                     ),
                     court_kp_uv=np.zeros((frames, 20, 2), dtype=np.float32),
-                    human_kp_visible=np.ones((frames, objects, 17), dtype=bool),
-                    court_kp_visible=np.ones((frames, 20), dtype=bool),
+                    human_kp_vis=np.ones((frames, objects, 17), dtype=bool),
+                    court_kp_vis=np.ones((frames, 20), dtype=bool),
                     human_visibility_ratio=1.0,
                     court_visibility_count=20.0,
                 )
@@ -227,16 +227,22 @@ def test_tracking_task_runs_one_training_and_validation_step(
         model_io = lightning_module.model_io
     first_batch = next(iter(datamodule.val_dataloader()))
     model_inputs = model_io.build_call(first_batch).kwargs
-    assert {
-        "ball_score",
-        "ball_candidate_mask",
-        "human_vis",
-        "detection_score",
-        "bbox",
-    }.isdisjoint(model_inputs)
-    assert "court_vis" in model_inputs
     if task == "blcs":
-        assert "ball_visible" in model_inputs
+        assert set(model_inputs) == {
+            "ball_uv",
+            "ball_vis",
+            "court_kp",
+            "court_vis",
+            "padding_mask",
+        }
+    else:
+        assert set(model_inputs) == {
+            "human_kp",
+            "human_vis",
+            "court_kp",
+            "court_vis",
+            "padding_mask",
+        }
     trainer = pl.Trainer(
         max_steps=1,
         limit_train_batches=1,

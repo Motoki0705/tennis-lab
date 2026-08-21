@@ -37,7 +37,7 @@ class BLCSBatch(TypedDict):
     ball_vis: torch.Tensor  # (B, T_max) padded visibility flags
     ball_uv_target: NotRequired[torch.Tensor]  # (B, 1, T_max, 2) clean 2D loss target
     ball_vis_target: NotRequired[torch.Tensor]  # (B, 1, T_max) clean visibility target
-    ball_mask: torch.Tensor  # (B, T_max) padding mask (1=valid)
+    padding_mask: torch.Tensor  # (B, T_max), True=padding
     court_kp: torch.Tensor  # (B, 20, 2) court keypoints
     court_vis: torch.Tensor  # (B, 20) court keypoint visibility
     position_3d: torch.Tensor  # (B, T_max, 3) padded ground truth trajectories
@@ -60,7 +60,7 @@ class BLCSMultiViewSample(TypedDict):
     ball_vis: torch.Tensor  # (N_cam, T) ball visibility masks (1=visible)
     ball_uv_target: NotRequired[torch.Tensor]  # (N_cam, T, 2) clean pre-augmentation UV
     ball_vis_target: NotRequired[torch.Tensor]  # (N_cam, T) clean pre-augmentation vis
-    ball_mask: torch.Tensor  # (N_cam, T) sequence padding masks (1=valid token)
+    padding_mask: torch.Tensor  # (N_cam, T), True=padding
     court_kp: torch.Tensor  # (N_cam, T, 20, 2) court keypoints expanded to T
     court_vis: torch.Tensor  # (N_cam, T, 20) court visibility expanded to T
     position_3d: torch.Tensor  # (T, 3) ground truth 3D trajectory (shared)
@@ -83,7 +83,7 @@ class BLCSMultiViewBatch(TypedDict):
     ball_vis: torch.Tensor  # (B, N_max, T_max)
     ball_uv_target: NotRequired[torch.Tensor]  # (B, N_max, T_max, 2)
     ball_vis_target: NotRequired[torch.Tensor]  # (B, N_max, T_max)
-    ball_mask: torch.Tensor  # (B, N_max, T_max) padding mask
+    padding_mask: torch.Tensor  # (B, N_max, T_max), True=padding
     court_kp: torch.Tensor  # (B, N_max, T_max, 20, 2)
     court_vis: torch.Tensor  # (B, N_max, T_max, 20)
     position_3d: torch.Tensor  # (B, T_max, 3)

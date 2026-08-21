@@ -148,12 +148,12 @@ class MultiBallSceneGenerator:
                 CameraData(
                     camera_params=base_camera.camera_params,
                     ball_uv=uv,
-                    ball_visible=visible,
+                    ball_vis=visible,
                     ball_visibility_ratio=float(
                         visible[:, :num_balls].sum() / active_count
                     ),
                     court_kp_uv=base_camera.court_kp_uv,
-                    court_kp_visible=base_camera.court_kp_visible,
+                    court_kp_vis=base_camera.court_kp_vis,
                     court_visibility_count=base_camera.court_visibility_count,
                 )
             )

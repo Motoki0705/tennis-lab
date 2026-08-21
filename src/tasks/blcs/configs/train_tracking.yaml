@@ -12,6 +12,7 @@ training:
   trainer:
     max_epochs: 100
     check_val_every_n_epoch: 5
+    accumulate_grad_batches: 8
   checkpoint:
     monitor: val/loss
   early_stopping:

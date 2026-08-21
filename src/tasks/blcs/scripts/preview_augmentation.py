@@ -115,7 +115,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
             "seq_len": int(base_sample["ball_uv"].shape[1]),
             "num_cameras": int(base_sample["ball_uv"].shape[0]),
             "num_augmented": num_augmented,
-            "ball_visible_fraction": {
+            "ball_vis_fraction": {
                 "original": _visible_fraction(base_sample["ball_vis"]),
                 "augmented": [
                     _visible_fraction(variant["ball_vis"]) for variant in variants

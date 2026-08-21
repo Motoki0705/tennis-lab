@@ -9,6 +9,10 @@ from torch import Tensor, nn
 
 from src.tasks.blcs.configuration import AxialModelConfig
 from src.tasks.blcs.models.components.heads import build_trajectory_output
+from src.tasks.blcs.models.components.padding import (
+    build_axial_padding_masks,
+    mask_trajectory_outputs,
+)
 from src.utils.models import (
     RMSNorm,
     TransformerBlock,
@@ -32,12 +36,12 @@ class _GlobalTimeAttention(nn.Module):
     def forward(
         self,
         x: Tensor,
-        full_mask: Tensor,
-        sliding_mask: Tensor,
+        full_attention_keep_mask: Tensor,
+        sliding_attention_keep_mask: Tensor,
         frequencies: Tensor,
     ) -> Tensor:
         """Apply full-sequence time attention."""
-        del sliding_mask
+        del sliding_attention_keep_mask
         batch_size, seq_len, num_cameras = x.shape[:3]
         values = x.permute(0, 2, 1, 3).reshape(
             batch_size * num_cameras,
@@ -46,7 +50,11 @@ class _GlobalTimeAttention(nn.Module):
         )
         values = cast(
             "Tensor",
-            self.block(values, freqs_cis=frequencies, attn_mask=full_mask),
+            self.block(
+                values,
+                freqs_cis=frequencies,
+                attn_mask=full_attention_keep_mask,
+            ),
         )
         return values.reshape(
             batch_size,
@@ -67,12 +75,12 @@ class _SlidingTimeAttention(nn.Module):
     def forward(
         self,
         x: Tensor,
-        full_mask: Tensor,
-        sliding_mask: Tensor,
+        full_attention_keep_mask: Tensor,
+        sliding_attention_keep_mask: Tensor,
         frequencies: Tensor,
     ) -> Tensor:
         """Apply sliding-window time attention."""
-        del full_mask
+        del full_attention_keep_mask
         batch_size, seq_len, num_cameras = x.shape[:3]
         values = x.permute(0, 2, 1, 3).reshape(
             batch_size * num_cameras,
@@ -81,7 +89,11 @@ class _SlidingTimeAttention(nn.Module):
         )
         values = cast(
             "Tensor",
-            self.block(values, freqs_cis=frequencies, attn_mask=sliding_mask),
+            self.block(
+                values,
+                freqs_cis=frequencies,
+                attn_mask=sliding_attention_keep_mask,
+            ),
         )
         return values.reshape(
             batch_size,
@@ -109,9 +121,9 @@ class _AxialAttentionStage(nn.Module):
     def forward(
         self,
         x: Tensor,
-        camera_mask: Tensor,
-        time_mask: Tensor,
-        sliding_mask: Tensor,
+        camera_attention_keep_mask: Tensor,
+        time_attention_keep_mask: Tensor,
+        sliding_attention_keep_mask: Tensor,
         camera_frequencies: Tensor,
         time_frequencies: Tensor,
     ) -> Tensor:
@@ -126,7 +138,7 @@ class _AxialAttentionStage(nn.Module):
             camera_values = layer(
                 camera_values,
                 freqs_cis=camera_frequencies,
-                attn_mask=camera_mask,
+                attn_mask=camera_attention_keep_mask,
             )
             x = camera_values.reshape(
                 batch_size,
@@ -137,8 +149,8 @@ class _AxialAttentionStage(nn.Module):
         for layer in self.time_layers:
             x = layer(
                 x,
-                time_mask,
-                sliding_mask,
+                time_attention_keep_mask,
+                sliding_attention_keep_mask,
                 time_frequencies,
             )
         return x
@@ -401,15 +413,17 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
     def forward(
         self,
         ball_uv: Tensor,
-        court_kp: Tensor,
         ball_vis: Tensor,
+        court_kp: Tensor,
         court_vis: Tensor,
-        camera_attention_mask: Tensor,
-        time_attention_mask: Tensor,
-        sliding_attention_mask: Tensor,
+        padding_mask: Tensor,
     ) -> dict[str, Tensor]:
         """Forward pass for multi-view BLCS inputs."""
         batch_size, n_cams, seq_len_in = ball_uv.shape[:3]
+        masks = build_axial_padding_masks(
+            padding_mask,
+            time_window_radius=self.time_window_radius,
+        )
         court_kp = court_kp.masked_fill(~court_vis.unsqueeze(-1), 0.0)
         court_flat = court_kp.reshape(
             batch_size * n_cams * seq_len_in, self.num_court_tokens, 2
@@ -426,6 +440,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             )
             .permute(0, 2, 1, 3)
         )
+        x = x * masks.context_valid.permute(0, 2, 1).unsqueeze(-1)
 
         camera_freqs = self._camera_freqs(
             batch_size=batch_size,
@@ -440,9 +455,9 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         for stage in self.stages:
             x = stage(
                 x,
-                camera_attention_mask,
-                time_attention_mask,
-                sliding_attention_mask,
+                masks.camera_attention_keep_mask,
+                masks.time_attention_keep_mask,
+                masks.sliding_attention_keep_mask,
                 camera_freqs,
                 time_freqs,
             )
@@ -450,6 +465,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         x = x[:, :, 0, :]
         x = self.final_norm(x)
 
-        return cast("dict[str, Tensor]", self.output_head(x))
+        outputs = cast("dict[str, Tensor]", self.output_head(x))
+        return mask_trajectory_outputs(outputs, masks.frame_valid)
 
     token_freqs_cis: Tensor

@@ -56,7 +56,7 @@ class BLCSTrackQueryTrainingBatch:
     target_presence: Tensor
     target_instance_id: Tensor
     target_slot_mask: Tensor
-    frame_mask: Tensor
+    frame_valid: Tensor
 
 
 __all__ = [

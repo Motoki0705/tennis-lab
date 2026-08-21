@@ -106,11 +106,13 @@ class BaseTrainingRunner:
 
     def prepare_output_dir(self, config: TrainingRuntimeConfig) -> Path:
         """Prepare output directory path."""
-        return config.run.output_dir
+        output_dir: Path = config.run.output_dir
+        return output_dir
 
     def _gan_enabled(self, config: Any) -> bool:
         runtime = self.validate_runtime_config(config)
-        return runtime.training.gan.enabled
+        enabled: bool = runtime.training.gan.enabled
+        return enabled
 
     def prepare_config(self, config: Any) -> None:
         """Validate task-specific configuration before the run starts.

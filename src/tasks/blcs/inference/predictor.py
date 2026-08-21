@@ -37,7 +37,9 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
 
     Example:
         >>> predictor = BLCSPredictor.load_from_checkpoint("model.ckpt", device="cuda")
-        >>> result = predictor.predict(ball_uv, court_kp, ball_vis, ball_mask, court_vis)
+        >>> result = predictor.predict(
+        ...     ball_uv, court_kp, ball_vis, padding_mask, court_vis
+        ... )
         >>> print(result.position.shape)  # (B, T, 3)
 
     """
@@ -174,7 +176,7 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
         ball_uv: Tensor,
         court_kp: Tensor,
         ball_vis: Tensor,
-        ball_mask: Tensor,
+        padding_mask: Tensor,
         court_vis: Tensor,
         denormalize: bool = True,
     ) -> BLCSTrajectoryPrediction:
@@ -184,7 +186,7 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
             ball_uv: Ball 2D trajectory tensor accepted by the loaded model.
             court_kp: Court keypoint tensor accepted by the loaded model.
             ball_vis: Ball visibility tensor.
-            ball_mask: Ball validity/padding mask tensor.
+            padding_mask: Ball padding tensor where ``True`` marks padding.
             court_vis: Court keypoint visibility tensor.
             denormalize: If True, convert positions to meters.
 
@@ -194,7 +196,7 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
                 "ball_uv": ball_uv,
                 "court_kp": court_kp,
                 "ball_vis": ball_vis,
-                "ball_mask": ball_mask,
+                "padding_mask": padding_mask,
                 "court_vis": court_vis,
             },
             denormalize=denormalize,
