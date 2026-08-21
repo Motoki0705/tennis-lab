@@ -104,6 +104,7 @@ class CourtProcessingGeometry:
                 target,
                 matrix=matrix,
                 output_size_hw=selected.output_size_hw,
+                preserve_binary_coverage=kind == "line",
             )
 
         channels = (
@@ -338,6 +339,7 @@ class CourtProcessingGeometry:
         *,
         matrix: np.ndarray,
         output_size_hw: tuple[int, int],
+        preserve_binary_coverage: bool,
     ) -> Tensor:
         height, width = output_size_hw
         array = target.detach().cpu().numpy()
@@ -350,10 +352,12 @@ class CourtProcessingGeometry:
             array,
             matrix,
             (width, height),
-            flags=cv2.INTER_NEAREST,
+            flags=(cv2.INTER_LINEAR if preserve_binary_coverage else cv2.INTER_NEAREST),
             borderMode=cv2.BORDER_CONSTANT,
             borderValue=0,
         )
+        if preserve_binary_coverage:
+            warped = (warped > 0).astype(array.dtype)
         tensor = torch.from_numpy(np.ascontiguousarray(warped)).to(dtype=target.dtype)
         return tensor.unsqueeze(0) if had_channel else tensor
 
