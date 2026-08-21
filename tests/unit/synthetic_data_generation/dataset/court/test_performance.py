@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from dataclasses import replace
 from pathlib import Path
 
@@ -25,6 +26,10 @@ from src.synthetic_data_generation.dataset.court.contracts import (
 )
 from src.synthetic_data_generation.dataset.court.performance import (
     CourtPerformanceEvidence,
+)
+from src.synthetic_data_generation.dataset.court.schema import (
+    COURT_PERFORMANCE_SCHEMA_V2,
+    COURT_SEMANTIC_CLASS_NAMES_V2,
 )
 from src.synthetic_data_generation.dataset.court.shards import (
     CourtRenderedSample,
@@ -53,6 +58,30 @@ def test_performance_evidence_round_trips_measured_court_budget() -> None:
     assert reopened.accepted_staged_complete_array_scans == 2
     assert reopened.post_render_rejected_staged_complete_array_scans == 1
     assert reopened.budget.maximum_complete_array_scans_per_sample == 2
+
+
+def test_v2_performance_evidence_requires_exact_fourteen_class_schema() -> None:
+    v1 = _post_render_rejection_evidence(fresh_rendered_sample_count=3)
+    v2 = replace(
+        v1,
+        schema=COURT_PERFORMANCE_SCHEMA_V2,
+        visible_points_by_class={name: 1 for name in COURT_SEMANTIC_CLASS_NAMES_V2},
+    )
+
+    assert CourtPerformanceEvidence.from_dict(v2.to_dict()) == v2
+    assert v2.to_dict()["schema"] == "court_dataset_performance_v3"
+
+    mixed = copy.deepcopy(v2.to_dict())
+    semantic = mixed["semantic"]
+    assert isinstance(semantic, dict)
+    semantic["visible_points_by_class"] = {name: 1 for name in SEMANTIC_CLASS_NAMES}
+    with pytest.raises(ValueError, match="semantic classes"):
+        CourtPerformanceEvidence.from_dict(mixed)
+
+    unknown = copy.deepcopy(v2.to_dict())
+    unknown["schema"] = "court_dataset_performance_v4"
+    with pytest.raises(ValueError, match="Unknown Court performance schema"):
+        CourtPerformanceEvidence.from_dict(unknown)
 
 
 def test_array_scan_budget_is_equivalent_for_fresh_and_reused_shards() -> None:
@@ -101,9 +130,7 @@ def _post_render_rejection_evidence(
     fresh_rendered_sample_count: int,
 ) -> CourtPerformanceEvidence:
     renderable_sample_count = 3
-    reused_rendered_sample_count = (
-        renderable_sample_count - fresh_rendered_sample_count
-    )
+    reused_rendered_sample_count = renderable_sample_count - fresh_rendered_sample_count
     nht_invocations = int(fresh_rendered_sample_count > 0)
     metrics = DatasetPerformanceMetrics(
         domain="court",

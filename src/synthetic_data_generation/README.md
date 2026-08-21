@@ -94,9 +94,7 @@ The canonical dataset package owns config-driven camera rigs, balanced target-co
 assignment, and exact cross-chunk timeline continuity. Task packages provide only
 their public domain source contracts.
 
-- Court Detection builds typed 3-D orbit trajectories, deterministic
-  coverage selection, uniform arc-length samples, group-disjoint splits,
-  attempt-local shards, final semantic labels, and quantitative diagnostics.
+- [Court Detection dataset v1/v2 contract](dataset/court/README.md).
 - BLCS preserves every source physics frame across multi-object planning,
   config-owned cameras, balanced court assignment, contiguous chunks, labels,
   final assembly, and diagnostics.
@@ -121,9 +119,7 @@ Canonical frames with odd dimensions are preserved and padded by one black pixel
 on the right and/or bottom for H.264 `yuv420p`; the source dimensions and exact
 padding are recorded in the sidecar.
 
-Court selection is one explicit orbit `trajectory_id`. Every accepted view and
-frame for that orbit is encoded in canonical manifest order, with the seven
-semantic court classes and renderer visibility overlaid:
+Court visualization follows the versioned Court dataset contract linked above:
 
 ```bash
 .venv/bin/python -m src.synthetic_data_generation.scripts.visualize_dataset \

@@ -13,7 +13,9 @@ from numpy.typing import NDArray
 
 from src.synthetic_data_generation.dataset.court.components.labels import (
     SEMANTIC_CLASS_NAMES,
+    SEMANTIC_CLASS_NAMES_V2,
 )
+from src.synthetic_data_generation.dataset.court.schema import CourtDatasetSchemaVersion
 from src.synthetic_data_generation.dataset.runtime import LogicalRenderSample
 from src.synthetic_data_generation.visualization.sources import (
     BLCSSourceFrame,
@@ -31,6 +33,22 @@ _COURT_CLASS_COLORS: tuple[tuple[int, int, int], ...] = (
     (60, 220, 220),
     (220, 120, 80),
     (230, 230, 80),
+)
+_COURT_CLASS_COLORS_V2: tuple[tuple[int, int, int], ...] = (
+    (80, 210, 255),
+    (255, 170, 70),
+    (80, 255, 140),
+    (255, 100, 210),
+    (60, 220, 220),
+    (220, 120, 80),
+    (230, 230, 80),
+    (150, 100, 255),
+    (100, 240, 200),
+    (255, 130, 130),
+    (130, 200, 255),
+    (200, 255, 100),
+    (230, 150, 255),
+    (100, 180, 230),
 )
 _IDENTITY_COLORS: tuple[tuple[int, int, int], ...] = (
     (70, 220, 255),
@@ -62,6 +80,10 @@ def render_court_overlay(
     trajectory_id: str,
 ) -> NDArray[np.uint8]:
     """Overlay seven-class physical keypoints and renderer visibility."""
+    if frame.schema_version is CourtDatasetSchemaVersion.V2:
+        return _render_court_overlay_v2(frame, trajectory_id=trajectory_id)
+    if frame.schema_version is not CourtDatasetSchemaVersion.V1:
+        raise TypeError("Court overlay requires an explicit supported schema version.")
     canvas = _rgb_float_to_bgr(frame.rgb)
     projection = _object(frame.projection, name="Court projection")
     courts = _array(projection.get("courts"), name="Court projected courts")
@@ -144,6 +166,118 @@ def render_court_overlay(
         ),
     )
     _court_class_legend(canvas)
+    return cast(NDArray[np.uint8], cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB))
+
+
+def _render_court_overlay_v2(
+    frame: CourtSourceFrame,
+    *,
+    trajectory_id: str,
+) -> NDArray[np.uint8]:
+    """Overlay exact v2 camera-relative singleton classes and CourtKP lines."""
+    canvas = _rgb_float_to_bgr(frame.rgb)
+    projection = _object(frame.projection, name="Court projection")
+    courts = _array(projection.get("courts"), name="Court projected courts")
+    visible_points = 0
+    total_points = 0
+    for court_index, value in enumerate(courts):
+        court = _object(value, name="Court projection court")
+        court_id = _text(court.get("court_instance_id"), name="court_instance_id")
+        classes = _array(court.get("classes"), name="Court semantic classes")
+        if len(classes) != len(SEMANTIC_CLASS_NAMES_V2):
+            raise ValueError("Court v2 overlay requires fourteen semantic classes.")
+        points_by_physical_index: dict[
+            int, tuple[tuple[int, int], bool, bool, str]
+        ] = {}
+        physical_index_by_class: list[int] = []
+        for class_index, (raw_class, expected_name) in enumerate(
+            zip(classes, SEMANTIC_CLASS_NAMES_V2, strict=True)
+        ):
+            semantic_class = _object(raw_class, name="Court semantic class")
+            if (
+                semantic_class.get("class_id") != class_index
+                or semantic_class.get("class_name") != expected_name
+            ):
+                raise ValueError("Court v2 semantic class identity/order changed.")
+            points = _array(semantic_class.get("points"), name="Court points")
+            if len(points) != 1:
+                raise ValueError("Court v2 semantic class must contain one point.")
+            point = _object(points[0], name="Court v2 point")
+            physical_index = _nonnegative_integer(
+                point.get("physical_index"), name="physical_index"
+            )
+            physical_index_by_class.append(physical_index)
+            if physical_index >= 14 or physical_index in points_by_physical_index:
+                raise ValueError("Court v2 physical point inventory is invalid.")
+            uv, in_frame, renderer_visible = _court_point(point)
+            points_by_physical_index[physical_index] = (
+                uv,
+                in_frame,
+                renderer_visible,
+                expected_name,
+            )
+        if set(points_by_physical_index) != set(range(14)):
+            raise ValueError("Court v2 physical point inventory must cover 0..13.")
+        for first, second in COURT_SKELETON:
+            if first >= 14 or second >= 14:
+                continue
+            first_point = points_by_physical_index[first]
+            second_point = points_by_physical_index[second]
+            if first_point[1] and second_point[1]:
+                cv2.line(
+                    canvas,
+                    first_point[0],
+                    second_point[0],
+                    _VISIBLE_COURT_BGR,
+                    1,
+                    cv2.LINE_AA,
+                )
+        label_anchor: tuple[int, int] | None = None
+        for class_index, expected_name in enumerate(SEMANTIC_CLASS_NAMES_V2):
+            physical_index = physical_index_by_class[class_index]
+            parsed_point, in_frame, renderer_visible, _ = points_by_physical_index[
+                physical_index
+            ]
+            total_points += 1
+            visible_points += int(renderer_visible)
+            if not in_frame:
+                continue
+            if label_anchor is None:
+                label_anchor = parsed_point
+            color = _COURT_CLASS_COLORS_V2[class_index]
+            if renderer_visible:
+                cv2.circle(canvas, parsed_point, 5, color, -1, cv2.LINE_AA)
+                cv2.circle(canvas, parsed_point, 7, (255, 255, 255), 1, cv2.LINE_AA)
+            else:
+                cv2.circle(canvas, parsed_point, 6, _INVISIBLE_BGR, 2, cv2.LINE_AA)
+            _outlined_text(
+                canvas,
+                expected_name,
+                (parsed_point[0] + 5, parsed_point[1] - 5),
+                color=color,
+                scale=0.28,
+            )
+        if label_anchor is not None:
+            _outlined_text(
+                canvas,
+                court_id,
+                (label_anchor[0] + 8, label_anchor[1] - 8 - 16 * court_index),
+                color=_TEXT_BGR,
+                scale=0.48,
+            )
+    _header(
+        canvas,
+        (
+            f"COURT v2 trajectory={trajectory_id} view={frame.view_id} "
+            f"frame={frame.trajectory_frame_index} sample={frame.sample_id}"
+        ),
+        second_line=(f"filled=renderer-visible  count={visible_points}/{total_points}"),
+    )
+    _court_class_legend(
+        canvas,
+        class_names=SEMANTIC_CLASS_NAMES_V2,
+        colors=_COURT_CLASS_COLORS_V2,
+    )
     return cast(NDArray[np.uint8], cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB))
 
 
@@ -491,15 +625,18 @@ def _status_panel(canvas: NDArray[np.uint8], statuses: Sequence[str]) -> None:
         _outlined_text(canvas, status, (21, y), color=_TEXT_BGR, scale=0.43)
 
 
-def _court_class_legend(canvas: NDArray[np.uint8]) -> None:
+def _court_class_legend(
+    canvas: NDArray[np.uint8],
+    *,
+    class_names: Sequence[str] = SEMANTIC_CLASS_NAMES,
+    colors: Sequence[tuple[int, int, int]] = _COURT_CLASS_COLORS,
+) -> None:
     line_height = 18
     panel_width = 145
     left = max(0, canvas.shape[1] - panel_width)
-    bottom = min(canvas.shape[0] - 1, 58 + line_height * len(SEMANTIC_CLASS_NAMES))
+    bottom = min(canvas.shape[0] - 1, 58 + line_height * len(class_names))
     cv2.rectangle(canvas, (left, 52), (canvas.shape[1] - 1, bottom), (20, 20, 20), -1)
-    for index, (name, color) in enumerate(
-        zip(SEMANTIC_CLASS_NAMES, _COURT_CLASS_COLORS, strict=True)
-    ):
+    for index, (name, color) in enumerate(zip(class_names, colors, strict=True)):
         y = 68 + line_height * index
         cv2.circle(canvas, (left + 9, y - 4), 4, color, -1, cv2.LINE_AA)
         _outlined_text(canvas, name, (left + 18, y), color=_TEXT_BGR, scale=0.36)
