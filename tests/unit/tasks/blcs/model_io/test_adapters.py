@@ -53,14 +53,19 @@ def _tracking_batch() -> dict[str, torch.Tensor]:
     }
 
 
-def test_single_adapter_uses_true_as_padding() -> None:
+def test_single_adapter_builds_exact_five_tensor_padding_call() -> None:
     batch = _single_batch()
     batch["padding_mask"][:, -1] = True
 
     call = _single_adapter().build_call(batch)
-    attention = call.kwargs["attention_mask"]
-    assert isinstance(attention, torch.Tensor)
-    assert not attention[..., -1].any()
+    assert set(call.kwargs) == {
+        "ball_uv",
+        "ball_vis",
+        "court_kp",
+        "court_vis",
+        "padding_mask",
+    }
+    assert call.kwargs["padding_mask"] is batch["padding_mask"]
     assert _single_adapter()._loss_mask(batch).tolist() == [
         [True, True, False],
         [True, True, False],
@@ -74,7 +79,7 @@ def test_standard_adapters_reject_removed_ball_mask_key() -> None:
         _single_adapter().build_call(batch)
 
 
-def test_multiview_all_padding_attention_is_finite_and_loss_mask_is_false() -> None:
+def test_multiview_adapter_builds_exact_five_tensor_all_padding_call() -> None:
     adapter = MultiViewTrajectoryModelIOAdapter(
         num_court_tokens=14,
         max_seq_len=8,
@@ -92,9 +97,14 @@ def test_multiview_all_padding_attention_is_finite_and_loss_mask_is_false() -> N
 
     call = adapter.build_call(batch)
 
-    query_mask = call.kwargs["query_attention_mask"]
-    assert isinstance(query_mask, torch.Tensor)
-    assert query_mask.any(dim=-1).all()
+    assert set(call.kwargs) == {
+        "ball_uv",
+        "ball_vis",
+        "court_kp",
+        "court_vis",
+        "padding_mask",
+    }
+    assert call.kwargs["padding_mask"] is batch["padding_mask"]
     assert not adapter._loss_mask(batch).any()
 
 

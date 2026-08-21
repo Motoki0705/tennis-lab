@@ -32,14 +32,14 @@
 - **`blcs_multiview_axial_model.py`**: `BLCSMultiViewAxialModel`(現行デフォルト)。camera軸/time軸交互self-attention。
 - **`blcs_track_query_model.py`**: `BLCSTrackQueryModel`。fixed-Q camera候補へmHC object temporalとhybrid CSWAを適用し、clip-localな固定query slotで複数ボール軌道とpresenceを推定する。
 - **`components/heads.py`**: constructor時に選択されるposition-only / position+velocity出力module。
+- **`components/padding.py`**: 全BLCS modelの公開`padding_mask=True`から、内部validity・attention keep maskを一意に生成する。
 - **`components/observation_fusion.py`**: track-query用の固定linear観測融合module。
 - **`components/differentiable_projection.py`**: `DifferentiableProjection`。予測3D位置をカメラへ再投影。
 - **`discriminators/`**: 共有trajectory discriminatorを構築するcanonical factory。
 
 ### model_io/
 - **`contracts.py`**: trajectory / track-queryのtyped predictionと、学習に必要な全tensorを持つvalidated batch契約。
-- **`attention_masks.py`**: single / multiview / axial用のattention maskとempty-row修復をmodel実行前に準備する。
-- **`adapters.py`**: single / multiview / axial / track-queryごとの入力検証・model call構築・出力decode。track-queryのattention tensorはmodel内部で`padding_mask`から一意に生成する。
+- **`adapters.py`**: single / multiview / axial / track-queryごとの入力検証・5 tensor model call構築・出力decode。attention tensorはadapterで生成しない。
 - **`factory.py`**: modelと対応adapterを同時に構築して一度だけbindingするcomposition root。学習・推論loopはmodel名や出力keyを分岐しない。
 - **`training.py`**: binding、collate、DataModule、LightningModuleを一括構成する学習runtime root。
 
@@ -78,7 +78,7 @@ tracking modelの観測幅は常に `P=Q=model.num_queries` です。公開入�
 
 14 court UVはannotation schemaのkeypoint ID順を維持します。固定linear融合は`court_vis`で不可視点を0化し、Q順の各ball UVと連結して共有`CourtBallGroupEmbedding`により1 query = 1 tokenへ写像します。下流の空間self-attention入力は `(B*T, Q + V*Q, D)` です。旧`observation_fusion`、`point_fusion`、`mask_invisible_observations`設定は受理しません。
 
-disk schemaもruntimeと同じ略称に固定し、camera arrayは`cam_{i}_ball_vis.npy`と`cam_{i}_court_kp_vis.npy`を使用します。旧`*_visible.npy`名へのalias/fallbackはありません。通常trajectory batchも`padding_mask=True`をpadding極性として使います。
+disk schemaもruntimeと同じ略称に固定し、camera arrayは`cam_{i}_ball_vis.npy`と`cam_{i}_court_kp_vis.npy`を使用します。旧`*_visible.npy`名へのalias/fallbackはありません。single / multiview / axial / track-queryの全modelは公開入力を`ball_uv`、`ball_vis`、`court_kp`、`court_vis`、`padding_mask`の5 tensorに統一し、`padding_mask=True`だけをpadding極性として使います。内部の`state_valid=True`と`attention_keep_mask=True`はmodel内でのみ導出します。
 
 multi-object generatorは1024-frame global timelineに3〜10個のsource rally subclipを配置し、query再利用gapを含む同時slot占有数を4以下に保ちます。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
 

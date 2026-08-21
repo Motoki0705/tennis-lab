@@ -90,11 +90,11 @@ class BLCSTrackQueryStage(nn.Module):
         *,
         camera_state_valid: Tensor,
         frame_valid: Tensor,
-        spatial_attention_mask: Tensor,
+        spatial_attention_keep_mask: Tensor,
         object_temporal_state_valid: Tensor,
-        object_temporal_attention_mask: Tensor,
+        object_temporal_attention_keep_mask: Tensor,
         query_temporal_state_valid: Tensor,
-        query_temporal_attention_mask: Tensor,
+        query_temporal_attention_keep_mask: Tensor,
         spatial_freqs: Tensor,
         time_freqs: Tensor,
     ) -> tuple[Tensor, Tensor]:
@@ -109,7 +109,7 @@ class BLCSTrackQueryStage(nn.Module):
             object_update = self.object_temporal_block.forward_update(
                 object_values,
                 freqs_cis=time_freqs,
-                attn_mask=object_temporal_attention_mask,
+                attn_mask=object_temporal_attention_keep_mask,
             )
         else:
             object_update = self.object_temporal_block.forward_update(
@@ -135,7 +135,7 @@ class BLCSTrackQueryStage(nn.Module):
         spatial_values = self.spatial_block(
             spatial_values,
             freqs_cis=spatial_freqs,
-            attn_mask=spatial_attention_mask,
+            attn_mask=spatial_attention_keep_mask,
         ).reshape(batch_size, num_frames, -1, hidden_dim)
         spatial_slots = spatial_values[:, :, :num_queries]
         spatial_slots = spatial_slots * frame_valid[:, :, None, None]
@@ -152,7 +152,7 @@ class BLCSTrackQueryStage(nn.Module):
             query_values = self.query_temporal_block(
                 query_values,
                 freqs_cis=time_freqs,
-                attn_mask=query_temporal_attention_mask,
+                attn_mask=query_temporal_attention_keep_mask,
             )
         else:
             query_values = self.query_temporal_block(
