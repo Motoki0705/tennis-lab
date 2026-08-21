@@ -1,13 +1,6 @@
-"""Data loading for court detection."""
+"""Composable data loading for Court detection."""
 
-from src.tasks.court_detection.data.court_kp_dataset import CourtKPDataset
-from src.tasks.court_detection.data.court_line_dataset import CourtLineDataset
-from src.tasks.court_detection.data.court_seg_dataset import CourtSegDataset
 from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
+from src.tasks.court_detection.data.dataset import CourtDetectionDataset
 
-__all__ = [
-    "CourtDetectionDataModule",
-    "CourtKPDataset",
-    "CourtLineDataset",
-    "CourtSegDataset",
-]
+__all__ = ["CourtDetectionDataModule", "CourtDetectionDataset"]
