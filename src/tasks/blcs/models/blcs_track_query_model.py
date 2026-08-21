@@ -295,11 +295,15 @@ class BLCSTrackQueryModel(nn.Module):
                 slots,
                 camera_state_valid=masks.camera_state_valid,
                 frame_valid=masks.frame_valid,
-                spatial_attention_mask=masks.spatial_attention_keep_mask,
+                spatial_attention_keep_mask=masks.spatial_attention_keep_mask,
                 object_temporal_state_valid=masks.object_temporal_state_valid,
-                object_temporal_attention_mask=masks.object_temporal_attention_keep_mask,
+                object_temporal_attention_keep_mask=(
+                    masks.object_temporal_attention_keep_mask
+                ),
                 query_temporal_state_valid=masks.query_temporal_state_valid,
-                query_temporal_attention_mask=masks.query_temporal_attention_keep_mask,
+                query_temporal_attention_keep_mask=(
+                    masks.query_temporal_attention_keep_mask
+                ),
                 spatial_freqs=spatial_freqs,
                 time_freqs=time_freqs,
             )

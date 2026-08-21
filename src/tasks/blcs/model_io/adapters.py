@@ -23,11 +23,6 @@ from src.tasks.blcs.data.types import (
     BLCSMultiViewBatch,
     BLCSMultiViewSample,
 )
-from src.tasks.blcs.model_io.attention_masks import (
-    prepare_axial_attention_masks,
-    prepare_multiview_attention_masks,
-    prepare_single_attention_mask,
-)
 from src.tasks.blcs.model_io.contracts import (
     BLCSTrackQueryPrediction,
     BLCSTrackQueryTrainingBatch,
@@ -468,17 +463,13 @@ class SingleTrajectoryModelIOAdapter(TrajectoryModelIOAdapter):
                 "court_vis": court_vis,
             }
         )
-        attention_mask = prepare_single_attention_mask(
-            padding_mask,
-            num_court_tokens=self.num_court_tokens,
-        )
         return ModelCall(
             kwargs={
                 "ball_uv": ball_uv,
-                "court_kp": court_kp,
                 "ball_vis": ball_vis,
+                "court_kp": court_kp,
                 "court_vis": court_vis,
-                "attention_mask": attention_mask,
+                "padding_mask": padding_mask,
             }
         )
 
@@ -520,10 +511,6 @@ class SingleTrajectoryModelIOAdapter(TrajectoryModelIOAdapter):
 
 
 class _MultiviewTrajectoryModelIOAdapter(TrajectoryModelIOAdapter):
-    @abstractmethod
-    def _prepare_attention_kwargs(self, padding_mask: Tensor) -> dict[str, Tensor]:
-        """Prepare the exact attention tensors required by the model family."""
-
     def build_call(self, batch: Mapping[str, object]) -> ModelCall:
         _reject_removed_keys(batch, removed=frozenset({"ball_mask"}))
         ball_uv = require_tensor(
@@ -591,14 +578,15 @@ class _MultiviewTrajectoryModelIOAdapter(TrajectoryModelIOAdapter):
                 "court_vis": court_vis,
             }
         )
-        kwargs = {
-            "ball_uv": ball_uv,
-            "court_kp": court_kp,
-            "ball_vis": ball_vis,
-            "court_vis": court_vis,
-        }
-        kwargs.update(self._prepare_attention_kwargs(padding_mask))
-        return ModelCall(kwargs=kwargs)
+        return ModelCall(
+            kwargs={
+                "ball_uv": ball_uv,
+                "ball_vis": ball_vis,
+                "court_kp": court_kp,
+                "court_vis": court_vis,
+                "padding_mask": padding_mask,
+            }
+        )
 
     def _loss_mask(self, batch: Mapping[str, object]) -> Tensor:
         padding = require_tensor(
@@ -624,57 +612,13 @@ class MultiViewTrajectoryModelIOAdapter(_MultiviewTrajectoryModelIOAdapter):
     def model_type(self) -> type[nn.Module]:
         return cast("type[nn.Module]", BLCSMultiViewModel)
 
-    def _prepare_attention_kwargs(self, padding_mask: Tensor) -> dict[str, Tensor]:
-        query_mask, query_state_valid, cross_mask, frame_token_valid = (
-            prepare_multiview_attention_masks(
-                padding_mask,
-                num_court_tokens=self.num_court_tokens,
-            )
-        )
-        return {
-            "query_attention_mask": query_mask,
-            "query_state_valid": query_state_valid,
-            "cross_attention_mask": cross_mask,
-            "frame_token_valid": frame_token_valid,
-        }
-
 
 class AxialTrajectoryModelIOAdapter(_MultiviewTrajectoryModelIOAdapter):
     """I/O adapter for the axial multiview model."""
 
-    def __init__(
-        self,
-        *,
-        num_court_tokens: int,
-        max_seq_len: int,
-        predict_velocity: bool,
-        input_profile: Literal["single", "multiview"],
-        max_num_cameras: int | None,
-        time_window_radius: int,
-    ) -> None:
-        super().__init__(
-            num_court_tokens=num_court_tokens,
-            max_seq_len=max_seq_len,
-            predict_velocity=predict_velocity,
-            input_profile=input_profile,
-            max_num_cameras=max_num_cameras,
-        )
-        self.time_window_radius = time_window_radius
-
     @property
     def model_type(self) -> type[nn.Module]:
         return cast("type[nn.Module]", BLCSMultiViewAxialModel)
-
-    def _prepare_attention_kwargs(self, padding_mask: Tensor) -> dict[str, Tensor]:
-        camera_mask, time_mask, sliding_mask = prepare_axial_attention_masks(
-            padding_mask,
-            time_window_radius=self.time_window_radius,
-        )
-        return {
-            "camera_attention_mask": camera_mask,
-            "time_attention_mask": time_mask,
-            "sliding_attention_mask": sliding_mask,
-        }
 
 
 class TrackQueryModelIOAdapter:

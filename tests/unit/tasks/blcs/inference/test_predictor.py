@@ -23,12 +23,12 @@ class _FixedTrajectoryModel(BLCSModel):
     def forward(
         self,
         ball_uv: Tensor,
-        court_kp: Tensor,
         ball_vis: Tensor,
+        court_kp: Tensor,
         court_vis: Tensor,
-        attention_mask: Tensor,
+        padding_mask: Tensor,
     ) -> dict[str, Tensor]:
-        del court_kp, ball_vis, court_vis, attention_mask
+        del court_kp, ball_vis, court_vis, padding_mask
         shape = (ball_uv.shape[0], ball_uv.shape[1], 3)
         return {
             "position": torch.ones(shape, device=ball_uv.device),
