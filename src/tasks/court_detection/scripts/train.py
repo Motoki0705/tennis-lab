@@ -2,14 +2,16 @@
 
 Usage:
     python -m src.tasks.court_detection.scripts.train
-    python -m src.tasks.court_detection.scripts.train data=court_kp loss=kp
-    python -m src.tasks.court_detection.scripts.train data=court_line loss=line
+    python -m src.tasks.court_detection.scripts.train data/processing=kp
+    python -m src.tasks.court_detection.scripts.train data/processing=all
+    python -m src.tasks.court_detection.scripts.train data/source=synthetic_court
     python -m src.tasks.court_detection.scripts.train run.dry_run=true
 
 Notes:
     - Hydra loads configuration from ``src/tasks/court_detection/configs/train.yaml``.
-    - ``model`` defaults to the config matching the selected ``data`` group.
-    - When you switch tasks, set ``loss`` to the same task family.
+    - Select the source and non-empty target set independently through the
+      ``data/source`` and ``data/processing`` config groups.
+    - Model heads and losses are derived from the resolved target bundle.
     - The script forwards the resolved config to the training runner.
 """
 

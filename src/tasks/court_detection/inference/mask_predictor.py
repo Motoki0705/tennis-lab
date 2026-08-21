@@ -1,10 +1,10 @@
-"""Typed inference predictors for court segmentation and line detection."""
+"""Typed inference predictors for Court segmentation and line heads."""
 
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from pathlib import Path
-from typing import Any, Self, TypeAlias
+from typing import Any, Self, TypeAlias, cast
 
 import numpy as np
 import torch
@@ -13,12 +13,11 @@ from torch import Tensor
 
 from src.tasks.base.inference.predictor import BasePredictor
 from src.tasks.base.model_io import BoundModelIO, bind_model_io
-from src.tasks.court_detection.model_io.adapters import (
-    CourtLineModelIO,
-    CourtSegmentationModelIO,
-)
+from src.tasks.court_detection.data.contracts import CourtTargetKind
+from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
 from src.tasks.court_detection.model_io.contracts import (
     CourtLinePrediction,
+    CourtLogits,
     CourtModelIOError,
     CourtSegmentationPrediction,
 )
@@ -29,20 +28,21 @@ from src.tasks.court_detection.training.lightning_module import (
 from src.utils.configuration import PathResolver
 
 CourtImage: TypeAlias = np.ndarray | Image.Image | Tensor
-CourtBoundModelIO: TypeAlias = BoundModelIO[Mapping[str, object], Tensor, Tensor]
+CourtBoundModelIO: TypeAlias = BoundModelIO[
+    Mapping[str, object],
+    CourtLogits,
+    CourtLogits,
+]
 
 
 class CourtSegPredictor(BasePredictor[CourtSegmentationPrediction]):
-    """Predict multi-class court segmentation through one selected adapter."""
+    """Predict the segmentation head from a Court bundle checkpoint."""
 
     def __init__(self, model_io: CourtBoundModelIO, device: torch.device) -> None:
-        if not isinstance(model_io.adapter, CourtSegmentationModelIO):
-            raise CourtModelIOError(
-                "CourtSegPredictor requires a segmentation model-I/O adapter."
-            )
+        adapter = _require_adapter(model_io, kind="seg")
         self.model_io = model_io
         self.model = model_io.model
-        self.adapter = model_io.adapter
+        self.adapter = adapter
         self.device = device
         self.adapter.validate_model_pair(self.model)
         self.model.to(device)
@@ -57,7 +57,6 @@ class CourtSegPredictor(BasePredictor[CourtSegmentationPrediction]):
         device: str | torch.device,
         **kwargs: Any,
     ) -> Self:
-        """Load one segmentation checkpoint and preserve its bound adapter."""
         module, resolved_device = cls._load_single_lightning_module(
             checkpoint_path,
             CourtDetectionLightningModule,
@@ -68,10 +67,15 @@ class CourtSegPredictor(BasePredictor[CourtSegmentationPrediction]):
         )
         adapter = module.model_io
         adapter.validate_model_pair(module.model)
-        return cls(bind_model_io(module.model, adapter), resolved_device)
+        return cls(
+            cast(
+                CourtBoundModelIO,
+                bind_model_io(module.model, adapter),
+            ),
+            resolved_device,
+        )
 
     def predict(self, image: CourtImage) -> CourtSegmentationPrediction:
-        """Return a label mask and raw segmentation logits on CPU."""
         images, original_size_hw = _prepare_images(
             image,
             adapter=self.adapter,
@@ -79,25 +83,26 @@ class CourtSegPredictor(BasePredictor[CourtSegmentationPrediction]):
         )
         with torch.no_grad():
             call = self.adapter.prepare_images(images)
-            logits = self.model(*call.model_args)
-        return self.adapter.decode_prediction(
-            logits,
-            original_size_hw=original_size_hw,
-            subpixel_refine=False,
+            logits = cast(CourtLogits, self.model(*call.model_args))
+        return cast(
+            CourtSegmentationPrediction,
+            self.adapter.decode_prediction(
+                "seg",
+                logits["seg"],
+                original_size_hw=original_size_hw,
+                subpixel_refine=False,
+            ),
         )
 
 
 class CourtLinePredictor(BasePredictor[CourtLinePrediction]):
-    """Predict court-line probabilities through one selected adapter."""
+    """Predict the binary line head from a Court bundle checkpoint."""
 
     def __init__(self, model_io: CourtBoundModelIO, device: torch.device) -> None:
-        if not isinstance(model_io.adapter, CourtLineModelIO):
-            raise CourtModelIOError(
-                "CourtLinePredictor requires a line model-I/O adapter."
-            )
+        adapter = _require_adapter(model_io, kind="line")
         self.model_io = model_io
         self.model = model_io.model
-        self.adapter = model_io.adapter
+        self.adapter = adapter
         self.device = device
         self.adapter.validate_model_pair(self.model)
         self.model.to(device)
@@ -112,7 +117,6 @@ class CourtLinePredictor(BasePredictor[CourtLinePrediction]):
         device: str | torch.device,
         **kwargs: Any,
     ) -> Self:
-        """Load one line checkpoint and preserve its bound adapter."""
         module, resolved_device = cls._load_single_lightning_module(
             checkpoint_path,
             CourtDetectionLightningModule,
@@ -123,10 +127,15 @@ class CourtLinePredictor(BasePredictor[CourtLinePrediction]):
         )
         adapter = module.model_io
         adapter.validate_model_pair(module.model)
-        return cls(bind_model_io(module.model, adapter), resolved_device)
+        return cls(
+            cast(
+                CourtBoundModelIO,
+                bind_model_io(module.model, adapter),
+            ),
+            resolved_device,
+        )
 
     def predict(self, image: CourtImage) -> CourtLinePrediction:
-        """Return a probability mask and raw line logits on CPU."""
         images, original_size_hw = _prepare_images(
             image,
             adapter=self.adapter,
@@ -134,29 +143,51 @@ class CourtLinePredictor(BasePredictor[CourtLinePrediction]):
         )
         with torch.no_grad():
             call = self.adapter.prepare_images(images)
-            logits = self.model(*call.model_args)
-        return self.adapter.decode_prediction(
-            logits,
-            original_size_hw=original_size_hw,
-            subpixel_refine=False,
+            logits = cast(CourtLogits, self.model(*call.model_args))
+        return cast(
+            CourtLinePrediction,
+            self.adapter.decode_prediction(
+                "line",
+                logits["line"],
+                original_size_hw=original_size_hw,
+                subpixel_refine=False,
+            ),
         )
+
+
+def _require_adapter(
+    model_io: CourtBoundModelIO,
+    *,
+    kind: CourtTargetKind,
+) -> CourtModelIOAdapter:
+    adapter = model_io.adapter
+    if not isinstance(adapter, CourtModelIOAdapter):
+        raise CourtModelIOError("Court predictor requires CourtModelIOAdapter.")
+    if kind not in adapter.spec.target_bundle.targets:
+        raise CourtModelIOError(
+            f"Court predictor requires a checkpoint with a {kind!r} head."
+        )
+    return adapter
 
 
 def _prepare_images(
     image: CourtImage,
     *,
-    adapter: CourtSegmentationModelIO | CourtLineModelIO,
+    adapter: CourtModelIOAdapter,
     device: torch.device,
 ) -> tuple[Tensor, tuple[int, int]]:
     if isinstance(image, Tensor):
         if image.ndim not in {3, 4}:
             raise CourtModelIOError(
-                "Court predictor tensors must have shape (C,H,W) or (1,C,H,W)."
+                "Court predictor tensors must have shape "
+                "(C,H,W) or (1,C,H,W)."
             )
         original_size_hw = (image.shape[-2], image.shape[-1])
         images = image.unsqueeze(0) if image.ndim == 3 else image
         if images.shape[0] != 1:
-            raise CourtModelIOError("Court predictors accept exactly one image.")
+            raise CourtModelIOError(
+                "Court predictors accept exactly one image."
+            )
         return images.to(device), original_size_hw
     images, original_height, original_width = prepare_court_image(
         image,

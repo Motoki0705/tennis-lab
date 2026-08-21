@@ -1,6 +1,6 @@
 defaults:
   - paths: default
-  - data: court_kp
+  - data: default
   - _self_
 
 hydra:

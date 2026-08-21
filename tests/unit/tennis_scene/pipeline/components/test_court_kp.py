@@ -15,8 +15,9 @@ class _TypedCourtPredictor:
     def predict(self, image: np.ndarray) -> CourtKeypointPrediction:
         assert image.shape == (8, 12, 3)
         return CourtKeypointPrediction(
-            keypoints=torch.arange(28, dtype=torch.float32).reshape(14, 2),
-            scores=torch.linspace(0.1, 0.9, 14),
+            keypoints=torch.arange(28, dtype=torch.float32).reshape(14, 1, 2),
+            scores=torch.linspace(0.1, 0.9, 14).reshape(14, 1),
+            valid=torch.ones((14, 1), dtype=torch.bool),
             heatmaps=torch.zeros((14, 2, 3)),
         )
 
@@ -42,7 +43,7 @@ def test_predict_frame_consumes_typed_task_prediction(tmp_path) -> None:
     module = CourtKPModule(make_court_kp_config(tmp_path))
     module._predictor = _TypedCourtPredictor()  # type: ignore[assignment]
 
-    keypoints, scores = module._predict_frame_pixels(
+    keypoints, scores, valid = module._predict_frame_pixels(
         np.zeros((8, 12, 3), dtype=np.uint8)
     )
 
@@ -53,3 +54,4 @@ def test_predict_frame_consumes_typed_task_prediction(tmp_path) -> None:
     np.testing.assert_allclose(scores, np.linspace(0.1, 0.9, 14))
     assert keypoints.dtype == np.float32
     assert scores.dtype == np.float32
+    np.testing.assert_array_equal(valid, np.ones(14, dtype=bool))
