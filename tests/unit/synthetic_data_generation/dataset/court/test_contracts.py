@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
 from src.synthetic_data_generation.dataset.court.contracts import (
     OrbitCenterKind,
     OrbitCoverageMode,
@@ -15,7 +16,12 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     OrbitTargetMode,
     OrbitTrajectorySpec,
     OrbitViewSpec,
+    OrbitViewSpecV2,
+    ResolvedTargetCourtV2,
+    TargetCourtPolicyV2,
+    TargetCourtResolutionPolicy,
 )
+from src.synthetic_data_generation.scene_contract import RigidTransform
 
 
 def _trajectory() -> OrbitTrajectorySpec:
@@ -106,3 +112,79 @@ def test_sampling_contract_rejects_unknown_keys_modes_fields_and_objectives() ->
     values["unexpected"] = True
     with pytest.raises(ValueError, match="unknown"):
         OrbitSamplingPolicy.from_mapping(values)
+
+
+def test_v2_view_policy_and_sample_target_round_trip_exact_keys() -> None:
+    view = OrbitViewSpecV2(
+        view_id="view-v2",
+        target_kind=OrbitTargetKind.COURT,
+        target_mode=OrbitTargetMode.COURT_CENTER,
+        coverage_mode=OrbitCoverageMode.FULL,
+        look_at_height_m=1.5,
+        hfov_degrees=60.0,
+    )
+    fixed_policy = TargetCourtPolicyV2(
+        mode=TargetCourtResolutionPolicy.TRAJECTORY_CENTER_COURT,
+        centre_court_instance_id="court-a",
+    )
+    nearest_policy = TargetCourtPolicyV2(
+        mode=TargetCourtResolutionPolicy.NEAREST_CAMERA,
+        centre_court_instance_id=None,
+    )
+    target = ResolvedTargetCourtV2(
+        binding=TargetCourtBinding(
+            court_instance_id="court-a",
+            candidate_id="candidate-a",
+            scene_from_court=RigidTransform.identity(),
+            selection_seed=695,
+        ),
+        resolution_policy=TargetCourtResolutionPolicy.NEAREST_CAMERA,
+        camera_to_court_center_distance_m=12.5,
+    )
+
+    assert OrbitViewSpecV2.from_mapping(view.to_dict()) == view
+    assert TargetCourtPolicyV2.from_mapping(fixed_policy.to_dict()) == fixed_policy
+    assert TargetCourtPolicyV2.from_mapping(nearest_policy.to_dict()) == nearest_policy
+    assert ResolvedTargetCourtV2.from_mapping(target.to_dict()) == target
+    assert "target_court_instance_id" not in view.to_dict()
+
+
+def test_v2_contracts_reject_v1_fields_and_mixed_discriminants() -> None:
+    view = OrbitViewSpecV2(
+        view_id="view-v2",
+        target_kind=OrbitTargetKind.COURT,
+        target_mode=OrbitTargetMode.COURT_CENTER,
+        coverage_mode=OrbitCoverageMode.FULL,
+        look_at_height_m=0.0,
+        hfov_degrees=60.0,
+    ).to_dict()
+    view["target_court_instance_id"] = "court-a"
+    with pytest.raises(ValueError, match="unknown"):
+        OrbitViewSpecV2.from_mapping(view)
+
+    with pytest.raises(ValueError, match="required exactly"):
+        TargetCourtPolicyV2(
+            mode=TargetCourtResolutionPolicy.NEAREST_CAMERA,
+            centre_court_instance_id="court-a",
+        )
+    with pytest.raises(ValueError, match="required exactly"):
+        TargetCourtPolicyV2(
+            mode=TargetCourtResolutionPolicy.TRAJECTORY_CENTER_COURT,
+            centre_court_instance_id=None,
+        )
+
+    target = {
+        "binding": {
+            "court_instance_id": "court-a",
+            "candidate_id": "candidate-a",
+            "scene_from_court": (
+                RigidTransform.identity().matrix().reshape(-1).tolist()
+            ),
+            "selection_seed": 695,
+        },
+        "resolution_policy": "nearest_camera",
+        "camera_to_court_center_distance_m": 1.0,
+        "unexpected": True,
+    }
+    with pytest.raises(ValueError, match="unknown"):
+        ResolvedTargetCourtV2.from_mapping(target)

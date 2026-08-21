@@ -6,12 +6,16 @@ import math
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
 
+from src.synthetic_data_generation.dataset.court.schema import (
+    COURT_PERFORMANCE_SCHEMA_V1,
+    court_schema_from_performance_schema,
+)
 from src.synthetic_data_generation.dataset.runtime import (
     DatasetPerformanceBudget,
     DatasetPerformanceMetrics,
 )
 
-COURT_PERFORMANCE_SCHEMA = "court_dataset_performance_v2"
+COURT_PERFORMANCE_SCHEMA = COURT_PERFORMANCE_SCHEMA_V1
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,10 +54,11 @@ class CourtPerformanceEvidence:
     schema: str = COURT_PERFORMANCE_SCHEMA
 
     def __post_init__(self) -> None:
-        if self.schema != COURT_PERFORMANCE_SCHEMA:
-            raise ValueError("Unsupported Court performance evidence schema.")
+        definition = court_schema_from_performance_schema(self.schema)
         if not isinstance(self.budget, DatasetPerformanceBudget):
-            raise TypeError("Court performance budget must be DatasetPerformanceBudget.")
+            raise TypeError(
+                "Court performance budget must be DatasetPerformanceBudget."
+            )
         if self.metrics.domain != "court":
             raise ValueError("Court performance metrics must use domain='court'.")
         for name in (
@@ -120,16 +125,19 @@ class CourtPerformanceEvidence:
                 "Court renderable proposals are not partitioned by post-render disposition."
             )
         if self.depth_conversion_count != self.accepted_frame_count:
-            raise ValueError("Every accepted Court depth must be converted exactly once.")
+            raise ValueError(
+                "Every accepted Court depth must be converted exactly once."
+            )
         if self.budget.maximum_complete_array_scans_per_sample > 2:
             raise ValueError("Court complete-array scan budget is not satisfied.")
-        if (
-            not self.budget.require_cuda
-            or not self.budget.execution_device.startswith("cuda")
+        if not self.budget.require_cuda or not self.budget.execution_device.startswith(
+            "cuda"
         ):
             raise ValueError("Court production performance requires configured CUDA.")
         if self.request_path_count != self.metrics.nht_invocations:
-            raise ValueError("Court request paths and NHT invocations must be one-to-one.")
+            raise ValueError(
+                "Court request paths and NHT invocations must be one-to-one."
+            )
         if (
             self.budget.maximum_nht_invocations > self.resolved_shard_count
             or self.metrics.nht_invocations > self.resolved_shard_count
@@ -138,16 +146,19 @@ class CourtPerformanceEvidence:
         if self.maximum_shard_sample_count > self.budget.maximum_batch_frames:
             raise ValueError("Court shard batch exceeds its configured frame budget.")
         if self.metrics.background_cache_misses != 0:
-            raise ValueError("Court camera-specific renders cannot report background caches.")
+            raise ValueError(
+                "Court camera-specific renders cannot report background caches."
+            )
         if (
             self.metrics.frame_count != self.accepted_frame_count
             or self.metrics.camera_count != self.accepted_frame_count
             or self.metrics.sample_count != self.accepted_frame_count
         ):
-            raise ValueError("Court performance metrics disagree with accepted samples.")
+            raise ValueError(
+                "Court performance metrics disagree with accepted samples."
+            )
         if self.metrics.complete_array_scans != (
-            self.nht_boundary_complete_array_scans
-            + self.staged_complete_array_scans
+            self.nht_boundary_complete_array_scans + self.staged_complete_array_scans
         ):
             raise ValueError("Court aggregate array-scan evidence is inconsistent.")
         if self.fresh_rendered_sample_count != self.nht_boundary_complete_array_scans:
@@ -162,10 +173,7 @@ class CourtPerformanceEvidence:
             raise ValueError(
                 "Fresh and reused Court samples do not partition renderable proposals."
             )
-        if (
-            self.accepted_staged_complete_array_scans
-            != self.accepted_frame_count
-        ):
+        if self.accepted_staged_complete_array_scans != self.accepted_frame_count:
             raise ValueError(
                 "Every accepted Court proposal must be scanned exactly once during "
                 "staged assembly."
@@ -192,9 +200,7 @@ class CourtPerformanceEvidence:
             )
         expected_fresh_requirement = 2 * self.renderable_sample_count
         if self.fresh_run_complete_array_scan_requirement != expected_fresh_requirement:
-            raise ValueError(
-                "Court fresh-run array-scan requirement is inconsistent."
-            )
+            raise ValueError("Court fresh-run array-scan requirement is inconsistent.")
         expected_budget_capacity = (
             self.budget.maximum_complete_array_scans_per_sample
             * self.renderable_sample_count
@@ -217,12 +223,12 @@ class CourtPerformanceEvidence:
         if self.nht_boundary_complete_array_scans == 0:
             if self.maximum_nht_live_array_bytes != 0:
                 raise ValueError("Reused Court shards cannot report live NHT arrays.")
-        elif not (
-            0 < self.maximum_nht_live_array_bytes <= self.loaded_array_bytes
-        ):
+        elif not (0 < self.maximum_nht_live_array_bytes <= self.loaded_array_bytes):
             raise ValueError("Court maximum live NHT array evidence is inconsistent.")
         if self.retained_nht_array_bytes != 0:
-            raise ValueError("Court performance evidence cannot retain dense NHT arrays.")
+            raise ValueError(
+                "Court performance evidence cannot retain dense NHT arrays."
+            )
         if self.metrics.dense_reference_bytes != self.metrics.published_bytes:
             raise ValueError(
                 "Court camera-specific publication must equal its dense reference."
@@ -255,8 +261,10 @@ class CourtPerformanceEvidence:
             )
             for name, count in self.visible_points_by_class.items()
         }
-        if len(visible) != 7:
-            raise ValueError("Court performance evidence requires seven visible classes.")
+        if set(visible) != set(definition.semantic_class_names):
+            raise ValueError(
+                "Court performance evidence semantic classes disagree with its schema."
+            )
         # Court's published sample count is the accepted inventory, while array scans
         # necessarily cover accepted and post-render-rejected renderable proposals.
         # Validate all shared limits using the explicit, history-independent Court
@@ -267,7 +275,9 @@ class CourtPerformanceEvidence:
             sample_count=self.renderable_sample_count,
         ).validate_budget(self.budget)
         object.__setattr__(self, "external_nht_boundary_wall_seconds", boundary_seconds)
-        object.__setattr__(self, "shard_wall_seconds", dict(sorted(shard_seconds.items())))
+        object.__setattr__(
+            self, "shard_wall_seconds", dict(sorted(shard_seconds.items()))
+        )
         object.__setattr__(
             self,
             "visible_points_by_class",
@@ -412,8 +422,7 @@ class CourtPerformanceEvidence:
                 "visible_points_by_class",
             },
         )
-        if raw["schema"] != COURT_PERFORMANCE_SCHEMA:
-            raise ValueError("Unsupported Court performance evidence schema.")
+        court_schema_from_performance_schema(raw["schema"])
         performance_budget = DatasetPerformanceBudget(
             maximum_wall_seconds=_positive_float(
                 budget["maximum_wall_seconds"],
@@ -486,7 +495,9 @@ class CourtPerformanceEvidence:
             name="nht_boundary_complete_array_scans",
             minimum=0,
         )
-        expected_per_camera = boundary_seconds / boundary_scans if boundary_scans else 0.0
+        expected_per_camera = (
+            boundary_seconds / boundary_scans if boundary_scans else 0.0
+        )
         if not math.isclose(
             _nonnegative_float(
                 processing["external_nht_boundary_wall_seconds_per_camera"],
@@ -496,7 +507,9 @@ class CourtPerformanceEvidence:
             abs_tol=1.0e-12,
             rel_tol=1.0e-12,
         ):
-            raise ValueError("Court per-camera external boundary timing is inconsistent.")
+            raise ValueError(
+                "Court per-camera external boundary timing is inconsistent."
+            )
         return cls(
             schema=_identifier(raw["schema"], name="schema"),
             budget=performance_budget,
