@@ -77,6 +77,26 @@ def test_cat_threshold_boundary(tmp_path: Path) -> None:
     assert deny_output(denied)["hookSpecificOutput"]["permissionDecision"] == "deny"
 
 
+def test_all_subagents_bypass_the_root_large_read_guard(tmp_path: Path) -> None:
+    evidence = tmp_path / "large.txt"
+    evidence.write_bytes(b"large evidence\n" * THRESHOLD)
+
+    for agent_type in ("codebase_scout", "issue_implementer"):
+        payload_overrides = {
+            "agent_id": f"{agent_type}-thread",
+            "agent_type": agent_type,
+        }
+        for command in ("cat large.txt", "rg evidence ."):
+            result = run_hook(
+                command,
+                tmp_path,
+                payload_overrides=payload_overrides,
+            )
+            assert result.returncode == 0
+            assert result.stdout == ""
+            assert result.stderr == ""
+
+
 def test_bounded_sed_allows_small_slice_and_denies_large_slice(tmp_path: Path) -> None:
     evidence = tmp_path / "evidence.txt"
     evidence.write_bytes((b"x" * 7_000 + b"\n") * 4)
