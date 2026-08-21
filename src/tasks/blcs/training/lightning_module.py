@@ -97,7 +97,8 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         self, batch: Mapping[str, object]
     ) -> BLCSTrajectoryPrediction:
         """Delegate a validated model invocation to the bound adapter."""
-        return self.model_io.run(batch)
+        prediction: BLCSTrajectoryPrediction = self.model_io.run(batch)
+        return prediction
 
     def _compute_supervised_result(
         self,
@@ -106,9 +107,7 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
     ) -> dict[str, Any]:
         """Compute forward pass, supervised losses, and metrics."""
         prepared = self.io_adapter.build_training_batch(batch)
-        outputs = self.model_io.decode_output(
-            self.model_io.execute_call(prepared.call)
-        )
+        outputs = self.model_io.decode_output(self.model_io.execute_call(prepared.call))
 
         losses = self.loss_fn(
             pred_position=outputs.position,
@@ -142,7 +141,7 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             "mask": prepared.loss_mask,
             "gan_fake": outputs.position,
             "gan_real": prepared.position,
-            "gan_mask": prepared.loss_mask,
+            "gan_padding_mask": ~prepared.loss_mask,
         }
 
     def test_prediction_payload(

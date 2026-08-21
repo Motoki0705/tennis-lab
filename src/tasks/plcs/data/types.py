@@ -19,7 +19,7 @@ class PLCSBatch(TypedDict):
     - ``human_kp``: (B, N, T, 17, 2)
     - ``court_kp``: (B, N, T, 20, 2)
     - ``human_vis``: (B, N, T, 17)
-    - ``human_mask``: (B, N, T), padding mask (True/1=valid token)
+    - ``padding_mask``: (B, N, T), ``True`` marks padding
     - ``court_vis``: (B, N, T, 20)
     - ``position``: (B, T, 3)
     - ``rotation``: (B, T, 2)
@@ -28,7 +28,7 @@ class PLCSBatch(TypedDict):
     human_kp: torch.Tensor
     court_kp: torch.Tensor
     human_vis: torch.Tensor
-    human_mask: torch.Tensor
+    padding_mask: torch.Tensor
     court_vis: torch.Tensor
     position: torch.Tensor
     rotation: torch.Tensor

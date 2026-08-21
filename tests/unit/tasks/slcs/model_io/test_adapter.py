@@ -77,10 +77,10 @@ def _batch(*, frames: int = 8) -> dict[str, Tensor]:
         "ball_vis": torch.ones(batch_size, frames, dtype=torch.bool),
         "court_kp": torch.rand(batch_size, frames, court, 2),
         "court_vis": torch.ones(batch_size, frames, court),
-        "frame_mask": torch.ones(batch_size, frames, dtype=torch.bool),
+        "padding_mask": torch.zeros(batch_size, frames, dtype=torch.bool),
         "dino_tokens": torch.rand(batch_size, 2, 12, 8),
         "dino_frame_idx": torch.tensor([[0, frames - 1], [0, frames - 1]]),
-        "dino_valid": torch.ones(batch_size, 2, dtype=torch.bool),
+        "dino_padding_mask": torch.zeros(batch_size, 2, dtype=torch.bool),
         "target_player_position": torch.rand(batch_size, players, frames, 3),
         "target_player_rotation": torch.nn.functional.normalize(
             torch.rand(batch_size, players, frames, 2), dim=-1
@@ -109,47 +109,140 @@ def test_valid_batch_runs_once_and_returns_typed_decode() -> None:
     assert len(calls) == 1
 
 
-def test_all_invalid_dino_slots_are_an_explicit_boundary_case() -> None:
+def test_all_dino_padding_is_a_finite_raw_model_boundary_case() -> None:
     batch = _batch(frames=1)
     batch["dino_tokens"] = torch.zeros(2, 1, 12, 8)
     batch["dino_frame_idx"] = torch.zeros(2, 1, dtype=torch.int64)
-    batch["dino_valid"] = torch.zeros(2, 1, dtype=torch.bool)
+    batch["dino_padding_mask"] = torch.ones(2, 1, dtype=torch.bool)
 
     call = _adapter().build_call(batch)
-    dino_attn_mask = call.kwargs["dino_attn_mask"]
-    dino_batch_has_evidence = call.kwargs["dino_batch_has_evidence"]
-    assert dino_attn_mask is not None
-    assert dino_batch_has_evidence is not None
-    assert not dino_batch_has_evidence.any()
-    assert dino_attn_mask[:, :, 0].all()
-    assert not dino_attn_mask[:, :, 1:].any()
+    torch.testing.assert_close(
+        call.kwargs["dino_padding_mask"], batch["dino_padding_mask"]
+    )
 
     output = bind_model_io(_model(), _adapter()).run(batch)
 
     assert torch.isfinite(output.ball_position).all()
 
 
-def test_adapter_prepares_padded_self_attention_masks() -> None:
+def test_adapter_forwards_only_raw_observations_and_padding_masks() -> None:
     batch = _batch()
-    batch["frame_mask"][:, -2:] = False
+    batch["padding_mask"][:, -2:] = True
     batch["player_kp_vis"][:, :, -2:] = 0.0
     batch["player_valid"][:, :, -2:] = False
     batch["ball_vis"][:, -2:] = False
-    batch["dino_valid"][:, 1] = False
+    batch["court_vis"][:, -2:] = 0.0
+    batch["dino_padding_mask"][:, 1] = True
 
     call = _adapter().build_call(batch)
 
-    entity_mask = call.kwargs["entity_attn_mask"]
-    time_mask = call.kwargs["time_attn_mask"]
-    assert entity_mask is not None
-    assert time_mask is not None
-    entity_mask = entity_mask.reshape(2, 8, 3, 3)
-    time_mask = time_mask.reshape(2, 3, 8, 8)
-    assert entity_mask[:, :6].all()
-    assert entity_mask[:, 6:, :, 0].all()
-    assert not entity_mask[:, 6:, :, 1:].any()
-    assert time_mask[:, :, :, :6].all()
-    assert not time_mask[:, :, :, 6:].any()
+    assert set(call.kwargs) == {
+        "player_kp",
+        "player_kp_vis",
+        "player_valid",
+        "ball_uv",
+        "ball_vis",
+        "court_kp",
+        "court_vis",
+        "padding_mask",
+        "dino_tokens",
+        "dino_frame_idx",
+        "dino_padding_mask",
+    }
+    torch.testing.assert_close(call.kwargs["padding_mask"], batch["padding_mask"])
+    torch.testing.assert_close(
+        call.kwargs["dino_padding_mask"], batch["dino_padding_mask"]
+    )
+
+
+def test_padding_masks_require_contiguous_suffixes() -> None:
+    batch = _batch()
+    batch["padding_mask"][0, 3] = True
+    batch["player_kp_vis"][0, :, 3] = 0.0
+    batch["player_valid"][0, :, 3] = False
+    batch["ball_vis"][0, 3] = False
+    batch["court_vis"][0, 3] = 0.0
+
+    with pytest.raises(ModelInputContractError, match="contiguous padding suffix"):
+        _adapter().build_call(batch)
+
+    batch = _batch()
+    batch["dino_padding_mask"][0, 0] = True
+    with pytest.raises(ModelInputContractError, match="contiguous padding suffix"):
+        _adapter().build_call(batch)
+
+
+def test_dino_sample_cannot_reference_a_padded_frame() -> None:
+    batch = _batch()
+    batch["padding_mask"][:, -1] = True
+    batch["player_kp_vis"][:, :, -1] = 0.0
+    batch["player_valid"][:, :, -1] = False
+    batch["ball_vis"][:, -1] = False
+    batch["court_vis"][:, -1] = 0.0
+
+    with pytest.raises(ModelInputContractError, match="padded frame"):
+        _adapter().build_call(batch)
+
+
+@pytest.mark.parametrize(
+    ("legacy_key", "replacement_key"),
+    [
+        ("frame_mask", "padding_mask"),
+        ("dino_valid", "dino_padding_mask"),
+    ],
+)
+def test_legacy_mask_keys_are_rejected(
+    legacy_key: str, replacement_key: str
+) -> None:
+    batch = _batch()
+    batch[legacy_key] = batch.pop(replacement_key)
+
+    with pytest.raises(ModelInputContractError, match="legacy or adapter-prepared"):
+        _adapter().build_call(batch)
+
+
+@pytest.mark.parametrize(
+    "prepared_key",
+    [
+        "entity_attn_mask",
+        "time_attn_mask",
+        "dino_attn_mask",
+        "dino_batch_has_evidence",
+    ],
+)
+def test_adapter_prepared_mask_inputs_are_rejected(prepared_key: str) -> None:
+    batch = _batch()
+    batch[prepared_key] = torch.ones(1, dtype=torch.bool)
+
+    with pytest.raises(ModelInputContractError, match="legacy or adapter-prepared"):
+        _adapter().build_call(batch)
+
+
+def test_observation_and_target_validity_remain_independent_from_padding() -> None:
+    batch = _batch()
+    batch["player_kp_vis"][:, 0, 2] = 0.0
+    batch["player_valid"][:, 0, 2] = False
+    batch["ball_vis"][:, 3] = False
+    batch["target_player_valid"][:, 1, 4] = False
+    batch["target_player_weight"][:, 1, 4] = 0.0
+    batch["target_ball_valid"][:, 5] = False
+    batch["target_ball_weight"][:, 5] = 0.0
+
+    call = _adapter().build_call(batch)
+    targets = _adapter().build_training_targets(batch)
+
+    call_padding_mask = call.kwargs["padding_mask"]
+    call_player_valid = call.kwargs["player_valid"]
+    call_ball_vis = call.kwargs["ball_vis"]
+    assert isinstance(call_padding_mask, Tensor)
+    assert isinstance(call_player_valid, Tensor)
+    assert isinstance(call_ball_vis, Tensor)
+    assert not call_padding_mask.any()
+    assert not call_player_valid[:, 0, 2].any()
+    assert not call_ball_vis[:, 3].any()
+    assert targets.player_mask[:, 0, 2].all()
+    assert not targets.player_mask[:, 1, 4].any()
+    assert not targets.ball_mask[:, 5].any()
 
 
 def _drop_player_key(batch: dict[str, Tensor]) -> None:

@@ -117,7 +117,7 @@ class PLCSPredictor(BasePredictor):
         human_kp: Tensor,
         court_kp: Tensor,
         human_vis: Tensor,
-        human_mask: Tensor,
+        padding_mask: Tensor,
         court_vis: Tensor,
         *,
         denormalize: bool,
@@ -130,7 +130,7 @@ class PLCSPredictor(BasePredictor):
                         "human_kp": human_kp,
                         "court_kp": court_kp,
                         "human_vis": human_vis,
-                        "human_mask": human_mask,
+                        "padding_mask": padding_mask,
                         "court_vis": court_vis,
                     }
                 )
@@ -168,7 +168,7 @@ class PLCSPredictor(BasePredictor):
         human_kp: np.ndarray,
         court_kp: np.ndarray,
         human_vis: np.ndarray,
-        human_mask: np.ndarray,
+        padding_mask: np.ndarray,
         court_vis: np.ndarray,
     ) -> PLCSPhysicalPrediction:
         """Decode explicit NumPy ``(B,V,T,...)`` observations to physical units."""
@@ -177,7 +177,7 @@ class PLCSPredictor(BasePredictor):
                 human_kp=human_kp,
                 court_kp=court_kp,
                 human_vis=human_vis,
-                human_mask=human_mask,
+                padding_mask=padding_mask,
                 court_vis=court_vis,
             )
             decoded = self._run_prepared(prepared)

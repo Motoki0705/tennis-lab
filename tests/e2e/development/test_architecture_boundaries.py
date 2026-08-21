@@ -5,11 +5,13 @@ from __future__ import annotations
 import ast
 import re
 import subprocess
-from collections import deque
-from collections.abc import Iterable
+from collections import Counter, deque
+from collections.abc import Hashable, Iterable, Mapping
 from pathlib import Path
+from typing import TypeVar
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+BoundaryIdentityT = TypeVar("BoundaryIdentityT", bound=Hashable)
 BASE_REVISION = "408791ac5697adb89c431a9e4331d173cb01a890"
 CONFIG_MERGE_REVISION = "7ea4e16a48137c249763f884b831a82c70b7eb29"
 REMOVED_MODULES = (
@@ -23,6 +25,7 @@ REMOVED_MODULES = (
     "src.tasks.base.data.scene_chunk_manager",
     "src.tasks.base.inference.grad_mode",
     "src.tasks.base.preview",
+    "src.tasks.blcs.models.components.court_ball_point_fusion",
     "src.tasks.blcs.models.discriminators.trajectory_discriminator",
     "src.tasks.blcs.validation",
     "src.tasks.blcs.visualization.adapters",
@@ -88,6 +91,188 @@ COURT_LINE_PREPROCESSING_CONSUMERS = {
         "predictor.adapter.spec.short_side",
         "predictor.short_side",
     ),
+}
+EXPECTED_DIRECT_FORWARD_VALIDATION_BOUNDARIES = {
+    (
+        "src.tasks.plcs.models.plcs_track_query_model."
+        "PLCSTrackQueryModel.build_spatial_coordinates",
+        "Python raise",
+    ): 1,
+    (
+        "src.utils.models.architectures.transformer_sequence_discriminator."
+        "TransformerSequenceDiscriminator.forward",
+        "Python raise",
+    ): 9,
+    (
+        "src.utils.models.architectures.transformer_sequence_discriminator."
+        "TransformerSequenceDiscriminator.forward",
+        "Python shape/value validation branch",
+    ): 5,
+    (
+        "src.utils.models.architectures.transformer_sequence_discriminator."
+        "TransformerSequenceDiscriminator.forward",
+        "runtime implementation/type selection via isinstance",
+    ): 2,
+}
+BLCS_SINGLE_VIEW_MASK_PATH = (
+    "src.tasks.blcs.models.blcs_model.BLCSModel.forward",
+    "src.tasks.blcs.models.components.padding.build_single_view_padding_masks",
+)
+BLCS_SINGLE_VIEW_COURT_COUNT_VALIDATION_PATH = (
+    *BLCS_SINGLE_VIEW_MASK_PATH,
+    "src.tasks.blcs.models.components.padding._validate_num_court_tokens",
+)
+BLCS_SINGLE_VIEW_PADDING_VALIDATION_PATH = (
+    *BLCS_SINGLE_VIEW_MASK_PATH,
+    "src.tasks.blcs.models.components.padding._validate_padding_mask",
+)
+BLCS_SINGLE_VIEW_OUTPUT_MASK_PATH = (
+    "src.tasks.blcs.models.blcs_model.BLCSModel.forward",
+    "src.tasks.blcs.models.components.padding.mask_trajectory_outputs",
+)
+BLCS_AXIAL_MASK_PATH = (
+    "src.tasks.blcs.models.blcs_multiview_axial_model."
+    "BLCSMultiViewAxialModel.forward",
+    "src.tasks.blcs.models.components.padding.build_axial_padding_masks",
+)
+BLCS_AXIAL_PADDING_VALIDATION_PATH = (
+    *BLCS_AXIAL_MASK_PATH,
+    "src.tasks.blcs.models.components.padding._validate_padding_mask",
+)
+BLCS_AXIAL_OUTPUT_MASK_PATH = (
+    "src.tasks.blcs.models.blcs_multiview_axial_model."
+    "BLCSMultiViewAxialModel.forward",
+    "src.tasks.blcs.models.components.padding.mask_trajectory_outputs",
+)
+BLCS_MULTIVIEW_MASK_PATH = (
+    "src.tasks.blcs.models.blcs_multiview_model.BLCSMultiViewModel.forward",
+    "src.tasks.blcs.models.components.padding.build_multiview_padding_masks",
+)
+BLCS_MULTIVIEW_COURT_COUNT_VALIDATION_PATH = (
+    *BLCS_MULTIVIEW_MASK_PATH,
+    "src.tasks.blcs.models.components.padding._validate_num_court_tokens",
+)
+BLCS_MULTIVIEW_PADDING_VALIDATION_PATH = (
+    *BLCS_MULTIVIEW_MASK_PATH,
+    "src.tasks.blcs.models.components.padding._validate_padding_mask",
+)
+BLCS_MULTIVIEW_OUTPUT_MASK_PATH = (
+    "src.tasks.blcs.models.blcs_multiview_model.BLCSMultiViewModel.forward",
+    "src.tasks.blcs.models.components.padding.mask_trajectory_outputs",
+)
+BLCS_FIXED_QUERY_MASK_PATH = (
+    "src.tasks.blcs.models.blcs_track_query_model.BLCSTrackQueryModel.forward",
+    "src.utils.models.multiview_padding.build_fixed_query_padding_masks",
+)
+PLCS_SPATIAL_COORDINATE_VALIDATION_PATH = (
+    "src.tasks.plcs.models.plcs_track_query_model.PLCSTrackQueryModel.forward",
+    "src.tasks.plcs.models.plcs_track_query_model."
+    "PLCSTrackQueryModel.build_spatial_coordinates",
+)
+PLCS_FIXED_QUERY_MASK_PATH = (
+    "src.tasks.plcs.models.plcs_track_query_model.PLCSTrackQueryModel.forward",
+    "src.utils.models.multiview_padding.build_fixed_query_padding_masks",
+)
+SLCS_MASK_PATH = (
+    "src.tasks.slcs.models.slcs_model.SLCSFusionModel.forward",
+    "src.tasks.slcs.models.components.padding.build_slcs_padding_masks",
+)
+SLCS_PADDING_VALIDATION_PATH = (
+    *SLCS_MASK_PATH,
+    "src.tasks.slcs.models.components.padding._validate_padding_mask",
+)
+TRANSFORMER_SEQUENCE_DISCRIMINATOR_PATH = (
+    "src.utils.models.architectures.transformer_sequence_discriminator."
+    "TransformerSequenceDiscriminator.forward",
+)
+EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES_BY_PATH = {
+    BLCS_SINGLE_VIEW_MASK_PATH: {
+        "forward validation helper _validate_num_court_tokens": 1,
+        "forward validation helper _validate_padding_mask": 1,
+    },
+    BLCS_SINGLE_VIEW_COURT_COUNT_VALIDATION_PATH: {
+        "Python raise": 2,
+        "Python shape/value validation branch": 1,
+        "runtime implementation/type selection via type": 1,
+    },
+    BLCS_SINGLE_VIEW_PADDING_VALIDATION_PATH: {
+        "Python raise": 4,
+        "Python shape/value validation branch": 3,
+        "runtime implementation/type selection via isinstance": 1,
+    },
+    BLCS_SINGLE_VIEW_OUTPUT_MASK_PATH: {
+        "Python raise": 1,
+        "Python shape/value validation branch": 1,
+    },
+    BLCS_AXIAL_MASK_PATH: {
+        "Python raise": 2,
+        "Python shape/value validation branch": 1,
+        "forward validation helper _validate_padding_mask": 1,
+        "runtime implementation/type selection via type": 1,
+    },
+    BLCS_AXIAL_PADDING_VALIDATION_PATH: {
+        "Python raise": 4,
+        "Python shape/value validation branch": 3,
+        "runtime implementation/type selection via isinstance": 1,
+    },
+    BLCS_AXIAL_OUTPUT_MASK_PATH: {
+        "Python raise": 1,
+        "Python shape/value validation branch": 1,
+    },
+    BLCS_MULTIVIEW_MASK_PATH: {
+        "forward validation helper _validate_num_court_tokens": 1,
+        "forward validation helper _validate_padding_mask": 1,
+    },
+    BLCS_MULTIVIEW_COURT_COUNT_VALIDATION_PATH: {
+        "Python raise": 2,
+        "Python shape/value validation branch": 1,
+        "runtime implementation/type selection via type": 1,
+    },
+    BLCS_MULTIVIEW_PADDING_VALIDATION_PATH: {
+        "Python raise": 4,
+        "Python shape/value validation branch": 3,
+        "runtime implementation/type selection via isinstance": 1,
+    },
+    BLCS_MULTIVIEW_OUTPUT_MASK_PATH: {
+        "Python raise": 1,
+        "Python shape/value validation branch": 1,
+    },
+    BLCS_FIXED_QUERY_MASK_PATH: {
+        "Python raise": 6,
+        "Python shape/value validation branch": 4,
+        "runtime implementation/type selection via isinstance": 1,
+        "runtime implementation/type selection via type": 1,
+    },
+    PLCS_SPATIAL_COORDINATE_VALIDATION_PATH: {"Python raise": 1},
+    PLCS_FIXED_QUERY_MASK_PATH: {
+        "Python raise": 6,
+        "Python shape/value validation branch": 4,
+        "runtime implementation/type selection via isinstance": 1,
+        "runtime implementation/type selection via type": 1,
+    },
+    SLCS_MASK_PATH: {
+        "Python raise": 2,
+        "Python shape/value validation branch": 2,
+        "forward validation helper _validate_padding_mask": 2,
+        "runtime implementation/type selection via type": 2,
+    },
+    SLCS_PADDING_VALIDATION_PATH: {
+        "Python raise": 5,
+        "Python shape/value validation branch": 4,
+        "runtime implementation/type selection via isinstance": 1,
+    },
+    TRANSFORMER_SEQUENCE_DISCRIMINATOR_PATH: {
+        "Python raise": 9,
+        "Python shape/value validation branch": 5,
+        "runtime implementation/type selection via isinstance": 2,
+    },
+}
+EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES = {
+    (call_path, violation): count
+    for call_path, expected in (
+        EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES_BY_PATH.items()
+    )
+    for violation, count in expected.items()
 }
 COMPATIBILITY_RETENTION_PATTERN = re.compile(
     r"\b(?:retain(?:ed|ing)?|ke(?:ep|pt)|preserv(?:e|ed|ing))\b"
@@ -654,7 +839,7 @@ def _transitive_forward_functions() -> Iterable[
     ]
 ]:
     functions, imports = _repository_function_index()
-    pending: deque[tuple[tuple[str, str | None, str], tuple[str, ...]]] = deque()
+    roots: list[tuple[str, str | None, str]] = []
     for identity, (path, _) in functions.items():
         module, class_name, function_name = identity
         relative = path.relative_to(REPOSITORY_ROOT).as_posix()
@@ -665,56 +850,63 @@ def _transitive_forward_functions() -> Iterable[
             or "/training/" in relative
         )
         if class_name is not None and function_name == "forward" and module_owner:
-            pending.append((identity, (f"{module}.{class_name}.forward",)))
+            roots.append(identity)
 
-    visited: set[tuple[str, str | None, str]] = set()
-    while pending:
-        identity, call_path = pending.popleft()
-        if identity in visited:
+    for root in roots:
+        module, class_name, _ = root
+        if class_name is None:
             continue
-        visited.add(identity)
-        path, function = functions[identity]
-        yield path, function, call_path
-        module, class_name, _ = identity
-        module_imports = imports[module]
-        for child in ast.walk(function):
-            if not isinstance(child, ast.Call):
+        pending: deque[
+            tuple[tuple[str, str | None, str], tuple[str, ...]]
+        ] = deque([(root, (f"{module}.{class_name}.forward",))])
+        visited: set[tuple[str, str | None, str]] = set()
+        while pending:
+            identity, call_path = pending.popleft()
+            if identity in visited:
                 continue
-            call = _call_name(child)
-            target: tuple[str, str | None, str] | None = None
-            if class_name is not None and call.startswith("self."):
-                method = call.removeprefix("self.")
-                if "." not in method:
-                    candidate = (module, class_name, method)
-                    target = candidate if candidate in functions else None
-            elif "." not in call:
-                local = (module, None, call)
-                if local in functions:
-                    target = local
-                elif call in module_imports:
-                    target = _repository_function_target(
-                        module_imports[call],
-                        functions=functions,
-                        imports=imports,
+            visited.add(identity)
+            path, function = functions[identity]
+            yield path, function, call_path
+            module, class_name, _ = identity
+            module_imports = imports[module]
+            for child in ast.walk(function):
+                if not isinstance(child, ast.Call):
+                    continue
+                call = _call_name(child)
+                target: tuple[str, str | None, str] | None = None
+                if class_name is not None and call.startswith("self."):
+                    method = call.removeprefix("self.")
+                    if "." not in method:
+                        candidate = (module, class_name, method)
+                        target = candidate if candidate in functions else None
+                elif "." not in call:
+                    local = (module, None, call)
+                    if local in functions:
+                        target = local
+                    elif call in module_imports:
+                        target = _repository_function_target(
+                            module_imports[call],
+                            functions=functions,
+                            imports=imports,
+                        )
+                else:
+                    prefix, _, suffix = call.partition(".")
+                    qualified = (
+                        f"{module_imports[prefix]}.{suffix}"
+                        if prefix in module_imports
+                        else call
                     )
-            else:
-                prefix, _, suffix = call.partition(".")
-                qualified = (
-                    f"{module_imports[prefix]}.{suffix}"
-                    if prefix in module_imports
-                    else call
-                )
-                if qualified.startswith("src."):
-                    target = _repository_function_target(
-                        qualified,
-                        functions=functions,
-                        imports=imports,
+                    if qualified.startswith("src."):
+                        target = _repository_function_target(
+                            qualified,
+                            functions=functions,
+                            imports=imports,
+                        )
+                if target is not None:
+                    target_name = ".".join(
+                        part for part in target if part is not None
                     )
-            if target is not None:
-                target_name = ".".join(
-                    part for part in target if part is not None
-                )
-                pending.append((target, (*call_path, target_name)))
+                    pending.append((target, (*call_path, target_name)))
 
 
 def _condition_uses_python_validation(node: ast.expr) -> bool:
@@ -774,33 +966,123 @@ def _forward_violation(node: ast.AST) -> str | None:
     return None
 
 
+def _assert_exact_forward_validation_boundaries(
+    actual: Counter[tuple[BoundaryIdentityT, str]],
+    expected: Mapping[tuple[BoundaryIdentityT, str], int],
+    *,
+    heading: str,
+) -> None:
+    expected_counter = Counter(expected)
+    unexpected = actual - expected_counter
+    missing = expected_counter - actual
+    details = [
+        *(
+            f"unexpected {identity}: {violation} ({count})"
+            for (identity, violation), count in sorted(
+                unexpected.items(), key=lambda item: repr(item[0])
+            )
+        ),
+        *(
+            f"missing {identity}: {violation} ({count})"
+            for (identity, violation), count in sorted(
+                missing.items(), key=lambda item: repr(item[0])
+            )
+        ),
+    ]
+    assert not details, f"{heading}:\n" + "\n".join(details)
+
+
 def test_repository_owned_forwards_are_computation_only() -> None:
-    violations: list[str] = []
+    violations: Counter[tuple[str, str]] = Counter()
     for path in _repository_python_files():
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for function, identity in _reachable_forward_functions(tree):
             for node in ast.walk(function):
                 violation = _forward_violation(node)
                 if violation is not None:
-                    violations.append(
-                        f"{_source_reference(path, node)} {identity}: {violation}"
-                    )
-    assert not violations, "forward contract violations:\n" + "\n".join(violations)
+                    qualified_identity = f"{_source_module_name(path)}.{identity}"
+                    violations[(qualified_identity, violation)] += 1
+    _assert_exact_forward_validation_boundaries(
+        violations,
+        EXPECTED_DIRECT_FORWARD_VALIDATION_BOUNDARIES,
+        heading="forward contract violations",
+    )
 
 
 def test_transitive_repository_forward_helpers_are_computation_only() -> None:
-    violations: list[str] = []
-    for path, function, call_path in _transitive_forward_functions():
+    violations: Counter[tuple[tuple[str, ...], str]] = Counter()
+    for _path, function, call_path in _transitive_forward_functions():
         for node in ast.walk(function):
             violation = _forward_violation(node)
             if violation is not None:
-                violations.append(
-                    f"{_source_reference(path, node)} "
-                    f"{' -> '.join(call_path)}: {violation}"
-                )
-    assert not violations, "transitive forward contract violations:\n" + "\n".join(
-        violations
+                violations[(call_path, violation)] += 1
+    _assert_exact_forward_validation_boundaries(
+        violations,
+        EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES,
+        heading="transitive forward contract violations",
     )
+
+
+def test_forward_validation_boundary_controls_freeze_paths_and_counts() -> None:
+    reason = "Python raise"
+    expected_path: tuple[str, ...] = (
+        "src.example.Model.forward",
+        "src.example.validate_input",
+    )
+    expected: dict[tuple[tuple[str, ...], str], int] = {
+        (expected_path, reason): 1
+    }
+    mutations: tuple[Counter[tuple[tuple[str, ...], str]], ...] = (
+        Counter(
+            {
+                (
+                    ("src.other.Model.forward", "src.example.validate_input"),
+                    reason,
+                ): 1
+            }
+        ),
+        Counter(
+            {
+                (
+                    (
+                        "src.example.Model.forward",
+                        "src.example.bridge",
+                        "src.example.validate_input",
+                    ),
+                    reason,
+                ): 1
+            }
+        ),
+        Counter({(expected_path, reason): 2}),
+    )
+
+    for mutation in mutations:
+        try:
+            _assert_exact_forward_validation_boundaries(
+                mutation,
+                expected,
+                heading="mutation",
+            )
+        except AssertionError as error:
+            assert "unexpected" in str(error)
+        else:
+            raise AssertionError("rerouted or recounted validation was accepted")
+
+
+def test_transitive_forward_inventory_keeps_shared_helper_roots_distinct() -> None:
+    shared_helper = (
+        "src.utils.models.multiview_padding.build_fixed_query_padding_masks"
+    )
+    discovered = {
+        call_path
+        for _, _, call_path in _transitive_forward_functions()
+        if call_path[-1] == shared_helper
+    }
+
+    assert discovered == {
+        BLCS_FIXED_QUERY_MASK_PATH,
+        PLCS_FIXED_QUERY_MASK_PATH,
+    }
 
 
 def test_transitive_forward_inventory_crosses_repository_modules() -> None:

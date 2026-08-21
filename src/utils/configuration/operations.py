@@ -153,6 +153,8 @@ _DINO_BUILD_SCHEMA = StrictConfigSchema(
         "moe_kernels": ConfigField.of(str),
         "time_local_bindings": ConfigField.of(str),
         "time_local_kernels": ConfigField.of(str),
+        "compressed_time_local_bindings": ConfigField.of(str),
+        "compressed_time_local_kernels": ConfigField.of(str),
     },
 )
 
@@ -169,6 +171,8 @@ class DinoOpsBuildConfig:
     moe_kernels: Path
     time_local_bindings: Path
     time_local_kernels: Path
+    compressed_time_local_bindings: Path
+    compressed_time_local_kernels: Path
 
     def require_inputs(self) -> None:
         """Fail before importing the build toolchain when any source is absent."""
@@ -181,6 +185,8 @@ class DinoOpsBuildConfig:
             self.moe_kernels,
             self.time_local_bindings,
             self.time_local_kernels,
+            self.compressed_time_local_bindings,
+            self.compressed_time_local_kernels,
         ):
             if not path.is_file():
                 raise FileNotFoundError(
@@ -285,6 +291,12 @@ class DinoOpsBuildConfig:
             moe_kernels=resolve(PathRole.PROJECT, "moe_kernels"),
             time_local_bindings=resolve(PathRole.PROJECT, "time_local_bindings"),
             time_local_kernels=resolve(PathRole.PROJECT, "time_local_kernels"),
+            compressed_time_local_bindings=resolve(
+                PathRole.PROJECT, "compressed_time_local_bindings"
+            ),
+            compressed_time_local_kernels=resolve(
+                PathRole.PROJECT, "compressed_time_local_kernels"
+            ),
         )
 
 

@@ -24,10 +24,10 @@ class _FixedRotationModel(nn.Module):
         human_kp: Tensor,
         court_kp: Tensor,
         human_vis: Tensor,
-        human_mask: Tensor,
+        padding_mask: Tensor,
         court_vis: Tensor,
     ) -> dict[str, Tensor]:
-        del human_kp, court_kp, human_vis, human_mask, court_vis
+        del human_kp, court_kp, human_vis, padding_mask, court_vis
         rotation = cast(Tensor, self.rotation)
         return {
             "position": torch.zeros(
@@ -68,7 +68,7 @@ def test_yaw_radians_round_trips_dataset_cos_sin_encoding() -> None:
         human_kp=torch.zeros(*human_shape, 17, 2),
         court_kp=torch.zeros(*human_shape, 20, 2),
         human_vis=torch.ones(*human_shape, 17, dtype=torch.bool),
-        human_mask=torch.ones(*human_shape, dtype=torch.bool),
+        padding_mask=torch.zeros(*human_shape, dtype=torch.bool),
         court_vis=torch.ones(*human_shape, 20, dtype=torch.bool),
         denormalize=True,
     )
@@ -80,7 +80,7 @@ def test_yaw_radians_round_trips_dataset_cos_sin_encoding() -> None:
         human_kp=np.zeros((*human_shape, 17, 2), dtype=np.float32),
         court_kp=np.zeros((1, 3, 20, 2), dtype=np.float32),
         human_vis=np.ones((*human_shape, 17), dtype=np.bool_),
-        human_mask=np.ones(human_shape, dtype=np.bool_),
+        padding_mask=np.zeros(human_shape, dtype=np.bool_),
         court_vis=np.ones((1, 3, 20), dtype=np.bool_),
     )
     np.testing.assert_allclose(physical.yaw_radians, angles.numpy(), atol=1e-6)
