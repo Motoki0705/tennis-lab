@@ -23,14 +23,13 @@ class BLCSTrackingCandidateAugmentation:
         """Corrupt only candidate/court inputs and preserve clean GT tensors."""
         output: dict[str, Tensor] = clone_tensor_dict(sample)
         views, frames, detections, _ = output["ball_uv"].shape
-        candidate_mask = output["candidate_mask"].bool()
         court_keypoints = output["court_kp"].clone()
-        court_visible = output["court_vis"].clone()
+        court_vis = output["court_vis"].clone()
         adapted = {
             "ball_uv": output["ball_uv"]
             .permute(0, 2, 1, 3)
             .reshape(views * detections, frames, 2),
-            "ball_vis": output["ball_visible"]
+            "ball_vis": output["ball_vis"]
             .permute(0, 2, 1)
             .reshape(views * detections, frames),
             "court_kp": output["court_kp"],
@@ -42,20 +41,16 @@ class BLCSTrackingCandidateAugmentation:
             .reshape(views, detections, frames, 2)
             .permute(0, 2, 1, 3)
         )
-        output["ball_visible"] = (
+        output["ball_vis"] = (
             augmented["ball_vis"]
             .reshape(views, detections, frames)
             .permute(0, 2, 1)
             .bool()
         )
-        output["ball_visible"] &= candidate_mask
-        output["ball_uv"] = output["ball_uv"].masked_fill(
-            ~candidate_mask.unsqueeze(-1), 0.0
-        )
         # Court input is geometric projection/manual annotation, not a detector
         # confidence stream.
         output["court_kp"] = court_keypoints
-        output["court_vis"] = court_visible
+        output["court_vis"] = court_vis
         return output
 
     def __call__(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:

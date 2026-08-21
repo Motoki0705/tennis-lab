@@ -11,9 +11,9 @@ from src.tasks.base.data.canonical_tracking import (
     CanonicalTrackingDataset,
     pad_and_stack_tracking_batch,
 )
+from src.tasks.base.data.lifecycle_slots import build_fixed_lifecycle_assignment
 from src.tasks.base.data.scene_dataset import Scene
 from src.tasks.blcs.data.observation_candidates import (
-    build_fixed_lifecycle_assignment,
     pack_observation_candidates,
 )
 from src.tasks.blcs.data.tracking_augmentation import (
@@ -23,19 +23,17 @@ from src.tasks.blcs.data.tracking_augmentation import (
 BLCS_TRACKING_KEYS = (
     "scene_format_version",
     "ball_uv",
-    "ball_visible",
-    "candidate_mask",
+    "ball_vis",
     "court_kp",
     "court_vis",
-    "frame_mask",
-    "view_mask",
+    "padding_mask",
     "target_position",
     "target_velocity",
     "target_presence",
     "target_instance_id",
     "target_slot_mask",
     "clean_ball_uv",
-    "clean_ball_visible",
+    "clean_ball_vis",
     "candidate_gt_index",
 )
 
@@ -87,74 +85,73 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
             num_slots=num_queries,
             min_reuse_gap_frames=self.min_reuse_gap_frames,
             randomize_slots=randomize_slots,
+            generator=None,
         )
 
         uv_rows: list[Tensor] = []
-        visible_rows: list[Tensor] = []
+        vis_rows: list[Tensor] = []
         court_rows: list[Tensor] = []
         court_vis_rows: list[Tensor] = []
         for camera_index in cameras.indices:
             uv = torch.from_numpy(
                 scene.get_camera_array(camera_index, "ball_uv", window=window)
             ).float()
-            visible = torch.from_numpy(
-                scene.get_camera_array(camera_index, "ball_visible", window=window)
+            ball_vis = torch.from_numpy(
+                scene.get_camera_array(camera_index, "ball_vis", window=window)
             ).bool()
             if uv.ndim == 2:
                 uv = uv[:, None]
-                visible = visible[:, None]
-            visible &= physical_presence
+                ball_vis = ball_vis[:, None]
+            ball_vis &= physical_presence
             uv[~physical_presence] = 0.0
             uv_rows.append(uv)
-            visible_rows.append(visible)
+            vis_rows.append(ball_vis)
 
             court_np = scene.get_camera_array(camera_index, "court_kp_uv")
-            court_visible_np = scene.get_camera_array(camera_index, "court_kp_visible")
+            court_vis_np = scene.get_camera_array(camera_index, "court_kp_vis")
             if court_np.ndim == 2:
                 court = (
                     torch.from_numpy(court_np[:14])
                     .float()[None]
                     .expand(window.seq_len, -1, -1)
                 )
-                court_visible = (
-                    torch.from_numpy(court_visible_np[:14])
+                court_vis = (
+                    torch.from_numpy(court_vis_np[:14])
                     .bool()[None]
                     .expand(window.seq_len, -1)
                 )
             else:
                 court = torch.from_numpy(court_np[window.sl, :14]).float()
-                court_visible = torch.from_numpy(
-                    court_visible_np[window.sl, :14]
-                ).bool()
+                court_vis = torch.from_numpy(court_vis_np[window.sl, :14]).bool()
             court_rows.append(court)
-            court_vis_rows.append(court_visible)
+            court_vis_rows.append(court_vis)
 
         physical_uv = torch.stack(uv_rows)
-        physical_visible = torch.stack(visible_rows)
+        physical_vis = torch.stack(vis_rows)
         observations = pack_observation_candidates(
             ball_uv=physical_uv,
-            ball_visible=physical_visible,
+            ball_vis=physical_vis,
             physical_presence=physical_presence,
             num_slots=num_queries,
             min_reuse_gap_frames=self.min_reuse_gap_frames,
             randomize_slots=randomize_slots,
         )
         sample = {
-            "scene_format_version": torch.tensor(3),
+            "scene_format_version": torch.tensor(4),
             "ball_uv": observations.uv,
-            "ball_visible": observations.visible,
-            "candidate_mask": observations.candidate_mask,
+            "ball_vis": observations.vis,
             "court_kp": torch.stack(court_rows),
             "court_vis": torch.stack(court_vis_rows),
-            "frame_mask": torch.ones(window.seq_len, dtype=torch.bool),
-            "view_mask": torch.ones(len(cameras.indices), dtype=torch.bool),
+            "padding_mask": torch.zeros(
+                len(cameras.indices), window.seq_len, dtype=torch.bool
+            ),
             "target_position": target_packing.pack_tensor(position, physical_presence),
             "target_velocity": target_packing.pack_tensor(velocity, physical_presence),
             "target_presence": target_packing.target_presence,
             "target_instance_id": target_packing.target_instance_id,
             "target_slot_mask": target_packing.target_presence.any(0),
             "clean_ball_uv": observations.uv.clone(),
-            "clean_ball_visible": observations.visible.clone(),
+            "clean_ball_vis": observations.vis.clone(),
             "candidate_gt_index": observations.gt_index,
         }
         return sample
@@ -174,7 +171,6 @@ def collate_blcs_tracking_batch(
     for sample in batch:
         if (
             sample["ball_uv"].shape[2] != candidate_width
-            or sample["candidate_mask"].shape[2] != candidate_width
             or sample["target_position"].shape[1] != candidate_width
             or sample["target_slot_mask"].shape[0] != candidate_width
         ):
@@ -186,23 +182,22 @@ def collate_blcs_tracking_batch(
         batch,
         padding_dimensions={
             "ball_uv": (0, 1),
-            "ball_visible": (0, 1),
-            "candidate_mask": (0, 1),
+            "ball_vis": (0, 1),
             "court_kp": (0, 1),
             "court_vis": (0, 1),
-            "frame_mask": (0,),
-            "view_mask": (0,),
+            "padding_mask": (0, 1),
             "target_position": (0,),
             "target_velocity": (0,),
             "target_presence": (0,),
             "target_instance_id": (0,),
             "clean_ball_uv": (0, 1),
-            "clean_ball_visible": (0, 1),
+            "clean_ball_vis": (0, 1),
             "candidate_gt_index": (0, 1),
         },
         pad_values={
             "target_instance_id": -1,
             "candidate_gt_index": -1,
+            "padding_mask": True,
         },
     )
     return collated

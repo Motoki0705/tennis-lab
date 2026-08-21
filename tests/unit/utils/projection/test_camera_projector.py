@@ -156,6 +156,7 @@ class TestCameraProjector:
         view = projector.generate_camera_view(torch.rand(3, 3), cam)
         assert isinstance(view, CameraView)
         assert set(view.camera_params) == {"C", "R", "f", "cx", "cy", "w", "h"}
+        assert view.court_kp_vis.shape == (20,)
         assert view.points_uv is not None and view.points_uv.shape == (3, 2)
 
     def test_fixed_cameras_deterministic_without_noise(self) -> None:

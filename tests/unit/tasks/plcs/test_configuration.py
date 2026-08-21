@@ -13,7 +13,11 @@ from src.tasks.plcs.configuration import (
     PLCSTrainingConfig,
 )
 from src.tasks.plcs.generate_dataset.config import PLCSGenerationConfig
-from src.utils.configuration import PathContractError, PathRole
+from src.utils.configuration import (
+    PathContractError,
+    PathRole,
+    UnknownConfigurationKeyError,
+)
 from src.utils.paths import PROJECT_ROOT
 
 
@@ -71,3 +75,14 @@ def test_frame_model_accepts_explicit_sequence_data_profile() -> None:
     runtime = PLCSTrainingConfig.from_config(config)
     assert runtime.data.values["mode"] == "sequence"
     assert runtime.data.values["seq_stride"] == 128
+
+
+def test_tracking_rejects_legacy_invisible_attention_config() -> None:
+    config = deepcopy(_config("train_tracking"))
+    with open_dict(config.model):
+        config.model.mask_invisible_observations = True
+
+    with pytest.raises(
+        UnknownConfigurationKeyError, match="mask_invisible_observations"
+    ):
+        PLCSTrainingConfig.from_config(config)

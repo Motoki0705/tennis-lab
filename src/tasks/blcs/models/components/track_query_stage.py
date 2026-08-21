@@ -41,9 +41,13 @@ class BLCSTrackQueryStage(nn.Module):
 
         expected_temporal = "mha" if self.is_global else "cswa"
         if object_temporal_block.cfg.attention_type != expected_temporal:
-            raise ValueError("object temporal block does not match the fixed stage mode.")
+            raise ValueError(
+                "object temporal block does not match the fixed stage mode."
+            )
         if query_temporal_block.cfg.attention_type != expected_temporal:
-            raise ValueError("query temporal block does not match the fixed stage mode.")
+            raise ValueError(
+                "query temporal block does not match the fixed stage mode."
+            )
         if spatial_block.cfg.attention_type != "mha":
             raise ValueError("spatial attention must always use global MHA.")
         self.register_forward_pre_hook(
@@ -66,7 +70,7 @@ class BLCSTrackQueryStage(nn.Module):
             args[1] if len(args) > 1 else kwargs["slots"],
         )
         camera_state_valid = cast(Tensor, kwargs["camera_state_valid"])
-        frame_mask = cast(Tensor, kwargs["frame_mask"])
+        frame_valid = cast(Tensor, kwargs["frame_valid"])
         if camera_tokens.ndim != 5:
             raise ValueError("camera_tokens must have shape (B,V,T,Q,D).")
         batch_size, _, num_frames, num_queries, hidden_dim = camera_tokens.shape
@@ -76,8 +80,8 @@ class BLCSTrackQueryStage(nn.Module):
             raise ValueError("slots must have shape (B,T,Q,D).")
         if camera_state_valid.shape != camera_tokens.shape[:-1]:
             raise ValueError("camera_state_valid must match camera token axes.")
-        if frame_mask.shape != (batch_size, num_frames):
-            raise ValueError("frame_mask must have shape (B,T).")
+        if frame_valid.shape != (batch_size, num_frames):
+            raise ValueError("frame_valid must have shape (B,T).")
 
     def forward(
         self,
@@ -85,7 +89,7 @@ class BLCSTrackQueryStage(nn.Module):
         slots: Tensor,
         *,
         camera_state_valid: Tensor,
-        frame_mask: Tensor,
+        frame_valid: Tensor,
         spatial_attention_mask: Tensor,
         object_temporal_state_valid: Tensor,
         object_temporal_attention_mask: Tensor,
@@ -95,9 +99,7 @@ class BLCSTrackQueryStage(nn.Module):
         time_freqs: Tensor,
     ) -> tuple[Tensor, Tensor]:
         """Return canonical ``[B,V,T,Q,D]`` camera and ``[B,T,Q,D]`` slots."""
-        batch_size, num_views, num_frames, num_queries, hidden_dim = (
-            camera_tokens.shape
-        )
+        batch_size, num_views, num_frames, num_queries, hidden_dim = camera_tokens.shape
 
         projected, mhc_state = self.mhc.pre(camera_tokens, camera_state_valid)
         object_values = projected.squeeze(-2).reshape(
@@ -136,7 +138,7 @@ class BLCSTrackQueryStage(nn.Module):
             attn_mask=spatial_attention_mask,
         ).reshape(batch_size, num_frames, -1, hidden_dim)
         spatial_slots = spatial_values[:, :, :num_queries]
-        spatial_slots = spatial_slots * frame_mask[:, :, None, None]
+        spatial_slots = spatial_slots * frame_valid[:, :, None, None]
         camera_output = spatial_values[:, :, num_queries:].reshape(
             batch_size, num_frames, num_views, num_queries, hidden_dim
         )
@@ -161,7 +163,7 @@ class BLCSTrackQueryStage(nn.Module):
         query_output = query_values.reshape(
             batch_size, num_queries, num_frames, hidden_dim
         ).permute(0, 2, 1, 3)
-        query_output = query_output * frame_mask[:, :, None, None]
+        query_output = query_output * frame_valid[:, :, None, None]
         return camera_output, query_output
 
 

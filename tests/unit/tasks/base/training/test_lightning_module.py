@@ -23,7 +23,6 @@ from src.tasks.base.training.lightning_module import (
     BaseLightningModule,
     _concat_padded,
 )
-from src.tasks.base.training.repro import QueueReproDirError
 
 pytestmark = pytest.mark.unit
 
@@ -241,16 +240,13 @@ def test_default_payload_empty_and_collect_noop() -> None:
     assert not getattr(m, "_test_pred_arrays", None)
 
 
-def test_save_test_predictions_preserves_legacy_artifact_location(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_save_test_predictions_writes_npz(tmp_path: Path, monkeypatch) -> None:
     class _PredModule(_TinyModule):
         def test_prediction_payload(self, batch, result):
             return {"position": result["position"]}
 
     m = _PredModule(_config(artifact_root=tmp_path))
-    monkeypatch.delenv("TENNIS_REPRO_DIR", raising=False)
+    monkeypatch.setenv("TENNIS_REPRO_DIR", str(tmp_path))
     m._reset_test_prediction_buffer()
 
     # two batches of differing time length to exercise padding
@@ -259,7 +255,7 @@ def test_save_test_predictions_preserves_legacy_artifact_location(
 
     npz_path = m.save_test_predictions(metrics={"mae": 0.1})
     assert npz_path is not None
-    assert npz_path == tmp_path / "test_predictions" / "pred_test.npz"
+    assert npz_path.name == "pred_test.npz"
     loaded = np.load(npz_path)
     assert loaded["position"].shape == (3, 5, 3)  # batch 2+1, T padded to 5
     assert loaded["scene_ids"].shape == (3,)
@@ -267,60 +263,7 @@ def test_save_test_predictions_preserves_legacy_artifact_location(
     assert "mae" in metrics
 
 
-def test_save_test_predictions_isolated_between_queue_repro_dirs(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    class _PredModule(_TinyModule):
-        def test_prediction_payload(self, batch, result):
-            return {"position": result["position"]}
-
-    artifact_root = tmp_path / "artifacts"
-    module = _PredModule(_config(artifact_root=artifact_root))
-    repro_dirs = (tmp_path / "queue-a", tmp_path / "queue-b")
-
-    saved_paths: list[Path] = []
-    for index, repro_dir in enumerate(repro_dirs):
-        monkeypatch.setenv("TENNIS_REPRO_DIR", str(repro_dir))
-        module._reset_test_prediction_buffer()
-        module.collect_test_predictions(
-            None,
-            {"position": torch.full((1, 2, 3), float(index))},
-        )
-        saved = module.save_test_predictions(metrics={"run": index})
-        assert saved is not None
-        saved_paths.append(saved)
-
-    assert saved_paths == [
-        repro_dirs[0] / "predictions" / "pred_test.npz",
-        repro_dirs[1] / "predictions" / "pred_test.npz",
-    ]
-    for index, path in enumerate(saved_paths):
-        assert np.load(path)["position"].item(0) == float(index)
-        assert (path.parent / "metrics.json").is_file()
-    assert not (artifact_root / "test_predictions").exists()
-
-
-def test_save_test_predictions_rejects_invalid_queue_dir_before_writes(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    class _PredModule(_TinyModule):
-        def test_prediction_payload(self, batch, result):
-            return {"position": result["position"]}
-
-    artifact_root = tmp_path / "artifacts"
-    module = _PredModule(_config(artifact_root=artifact_root))
-    module._reset_test_prediction_buffer()
-    module.collect_test_predictions(None, {"position": torch.zeros(1, 2, 3)})
-    monkeypatch.setenv("TENNIS_REPRO_DIR", "relative/repro")
-
-    with pytest.raises(QueueReproDirError, match="absolute"):
-        module.save_test_predictions(metrics={"mae": 0.1})
-
-    assert not (artifact_root / "test_predictions").exists()
-
-
-def test_save_test_predictions_none_when_empty(tmp_path: Path) -> None:
+def test_save_test_predictions_none_when_empty(tmp_path: Path, monkeypatch) -> None:
     m = _TinyModule(_config(artifact_root=tmp_path))
+    monkeypatch.setenv("TENNIS_REPRO_DIR", str(tmp_path))
     assert m.save_test_predictions() is None  # nothing collected

@@ -14,7 +14,7 @@
 - **`augmentation.py`**: `PLCSObservationAugmentation`。UVノイズ・時間jitter・可視性dropout等8段のパイプライン。
 - **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
 - **`targets.py`**: `build_coco17_world_targets()`。canonical poseまたはAthletePose3DからCOCO17ワールド座標targetを構築。
-- **`tracking_dataset.py` / `tracking_datamodule.py`**: scene読込後にclip/viewをsampleし、object観測をscene object IDの昇順で保持したまま、物理trackをlifecycle slotへpackingするDataset/DataModule。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成する。val/testは常に`scene_dir`上の固定splitを使う。
+- **`tracking_dataset.py` / `tracking_datamodule.py`**: scene読込後にclip/viewをsampleし、物理trackを固定幅lifecycle observation slotへpackingするDataset/DataModule。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成する。val/testは常に`scene_dir`上の固定splitを使う。
 - **`tracking_augmentation.py`**: object列を並べ替えず、clean GTを保持したまま観測だけへpose noise/dropout/false-positiveを適用するshape adapter。
 - **`types.py`**: `PLCSBatch`/`PLCSSceneMeta` のバッチ・meta契約。
 
@@ -43,7 +43,7 @@
 
 ### model_io/
 - **`contracts.py`**: frame/sequence/multiview/track-query profile、prepared call、standard/tracking decoded prediction、physical predictionの型付き契約。
-- **`attention_masks.py`**: axial / track-queryのcamera・time・spatial attention maskとempty-row修復をmodel実行前に準備する。
+- **`attention_masks.py`**: standard axial model向けcamera・time attention maskを`padding_mask`から準備する。track-query modelは共有padding utilityを内部で使う。
 - **`adapters.py`**: 必須field、dtype、rank、shape、normalized UV、binary mask、view/time capacity、prepared attention tensor、output schemaを`forward`前後の境界で検証するtask-local adapter。
 - **`factory.py`**: model variantとadapterを外部compositionで一度だけ選択し、exact model classのpairを固定する唯一のfactory。
 
@@ -74,9 +74,9 @@
 
 ## Multi-person tracking
 
-観測座標は `human_kp (B,V,T,P,J,2)` のみで、`P` 軸は全camera/frameでscene object IDの昇順に固定し、欠損・dropout・false positiveがあっても列を並べ替えません。debug用の `detection_gt_index` は観測が実object由来ならその列と同じobject ID、そうでなければ`-1`であり、モデルへは渡しません。bbox・keypoint score/visibilityを数値特徴へ連結せず、`detection_mask (B,V,T,P)` がfalseのpersonはlearned invisible tokenへ置換します。`mask_invisible_observations=true` は不可視tokenをattention keyから除外する対照条件、`false` は`frame_mask` / `view_mask`によるpaddingだけを除外し、不可視tokenを更新可能なmemoryとして使う条件です。欠損joint UVは0にします。出力は `position (B,T,Q,3)`、`rotation (B,T,Q,2)`、`presence_logits (B,T,Q)` です。教師は `target_position`、`target_rotation`、`target_presence`、`target_instance_id` で、inactive rotationはidentity、instance IDは`-1`です。重ならないbirth/death区間を同じtarget columnへ詰めるため、同一queryはdeath後に別instanceへ再利用できます。
+モデル入力は `human_kp (B,V,T,Q,17,2)`、`human_vis (B,V,T,Q,17)`、`court_kp (B,V,T,14,2)`、`court_vis (B,V,T,14)`、`padding_mask (B,V,T)` の5 tensorです。`padding_mask=True`だけがattentionから除外されます。各sceneの物理trackはDatasetで固定幅`Q`のlifecycle slotへpackされるため、観測軸とquery軸は常に`P=Q`です。`human_vis.any(-1)`がfalseの非padding slotはlearned invisible tokenになりますがattentionには参加し、時間・camera文脈から更新されます。debug用の`detection_gt_index`は実object由来なら物理instance ID、不可視またはfalse positiveなら`-1`で、モデルへは渡しません。欠損joint UVは0にします。出力は `position (B,T,Q,3)`、`rotation (B,T,Q,2)`、`presence_logits (B,T,Q)` です。教師は `target_position`、`target_rotation`、`target_presence`、`target_instance_id` で、inactive rotationはidentity、instance IDは`-1`です。重ならないbirth/death区間を同じslotへ詰めるため、同一queryはdeath後に別instanceへ再利用できます。
 
-14 court UVはannotation schemaのkeypoint ID順を維持し、`court_vis`で不可視点を0化します。object ID順の各person keypointsとcourtを連結し、BLCSと同じ`src/utils/models/embeddings/group_tokens.py`の共有`CourtPlayerGroupEmbedding`により1 object = 1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*P, D)` です。M-RoPE `(time,camera,role)` のroleはquery=0、court-player group=1です。
+14 court UVはannotation schemaのkeypoint ID順を維持し、`court_vis`で不可視点を0化します。各lifecycle slotのperson keypointsとcourtを連結し、BLCSと同じ`src/utils/models/embeddings/group_tokens.py`の共有`CourtPlayerGroupEmbedding`により1 slot = 1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*Q, D)` です。M-RoPE `(time,camera,role)` のroleはquery=0、court-player group=1です。
 
 multi-object generatorは1024-frame global timelineに3〜10個のAMASS/SMPL-H source subclipを配置し、query再利用gapを含む同時slot占有数を4以下に保ちます。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
 

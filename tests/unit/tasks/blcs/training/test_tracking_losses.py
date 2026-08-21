@@ -21,7 +21,9 @@ def _criterion() -> BLCSTrackingLoss:
     return BLCSTrackingLoss(config)
 
 
-def _prediction(position: torch.Tensor, logits: torch.Tensor) -> BLCSTrackQueryPrediction:
+def _prediction(
+    position: torch.Tensor, logits: torch.Tensor
+) -> BLCSTrackQueryPrediction:
     probability = logits.sigmoid()
     return BLCSTrackQueryPrediction(
         position=position,
@@ -37,8 +39,8 @@ def _fixture() -> tuple[BLCSTrackQueryPrediction, BLCSTrackQueryTrainingBatch]:
     logits = torch.randn(1, 5, 3, requires_grad=True)
     target_position = torch.rand(1, 5, 2, 3)
     target_presence = torch.tensor(
-            [[[1, 0], [1, 1], [1, 1], [0, 1], [0, 0]]], dtype=torch.bool
-        )
+        [[[1, 0], [1, 1], [1, 1], [0, 1], [0, 0]]], dtype=torch.bool
+    )
     batch = BLCSTrackQueryTrainingBatch(
         call=ModelCall(kwargs={}),
         target_position=target_position,
@@ -50,7 +52,7 @@ def _fixture() -> tuple[BLCSTrackQueryPrediction, BLCSTrackQueryTrainingBatch]:
             -1,
         ),
         target_slot_mask=torch.ones(1, 2, dtype=torch.bool),
-        frame_mask=torch.ones(1, 5, dtype=torch.bool),
+        frame_valid=torch.ones(1, 5, dtype=torch.bool),
     )
     prediction = _prediction(position, logits)
     return prediction, batch
@@ -120,7 +122,9 @@ def test_forward_only_combines_boundary_prepared_tensor_terms(
     def _unexpected_matching(*args: object, **kwargs: object) -> None:
         raise AssertionError("matching must not run from forward")
 
-    monkeypatch.setattr(tracking_losses_module, "match_ball_tracks", _unexpected_matching)
+    monkeypatch.setattr(
+        tracking_losses_module, "match_ball_tracks", _unexpected_matching
+    )
 
     losses = criterion(inputs)
 
@@ -142,7 +146,7 @@ def test_position_loss_reports_axes_and_uses_configured_balance() -> None:
         target_presence=torch.ones(1, 1, 1, dtype=torch.bool),
         target_instance_id=torch.zeros(1, 1, 1, dtype=torch.long),
         target_slot_mask=torch.ones(1, 1, dtype=torch.bool),
-        frame_mask=torch.ones(1, 1, dtype=torch.bool),
+        frame_valid=torch.ones(1, 1, dtype=torch.bool),
     )
 
     losses, _ = _compute(criterion, prediction, batch)

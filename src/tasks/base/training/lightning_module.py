@@ -23,7 +23,6 @@ from src.tasks.base.configuration import (
     as_config_mapping,
     require_config_mapping,
 )
-from src.tasks.base.training.repro import resolve_queue_repro_dir
 from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
 from src.utils.paths import PROJECT_ROOT
 from src.utils.tensor_utils import to_numpy
@@ -67,7 +66,7 @@ class BaseLightningModule(pl.LightningModule):
 
     def __init__(self, config: Any) -> None:
         super().__init__()
-        self.save_hyperparameters(ignore=["model_io"])
+        self.save_hyperparameters()
 
         root = as_config_mapping(config, path="configuration")
         self.config = config
@@ -196,9 +195,6 @@ class BaseLightningModule(pl.LightningModule):
             self._test_pred_arrays[key].append(arr)
 
     def _test_predictions_dir(self) -> Path:
-        queue_repro_dir = resolve_queue_repro_dir()
-        if queue_repro_dir is not None:
-            return queue_repro_dir / "predictions"
         resolved: Path = self.path_resolver.resolve(
             PathRole.ARTIFACT, "test_predictions"
         )
@@ -209,12 +205,8 @@ class BaseLightningModule(pl.LightningModule):
     ) -> Path | None:
         """Write accumulated test predictions to ``pred_test.npz`` (+ metrics.json).
 
-        Queue jobs write below their isolated
-        ``$TENNIS_REPRO_DIR/predictions`` directory. Non-queue runs retain the
-        configured artifact-root location. Invalid queue paths fail before any
-        files are written.
-
-        Returns the npz path, or ``None`` if there is nothing to save.
+        Returns the npz path, or ``None`` if there is nothing to save / no target
+        directory could be resolved.
         """
         if not hasattr(self, "_test_pred_arrays") or not self._test_pred_arrays:
             return None

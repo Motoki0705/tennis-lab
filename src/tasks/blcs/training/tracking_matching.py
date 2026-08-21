@@ -20,7 +20,7 @@ def match_ball_tracks(
     target_position: torch.Tensor,
     target_presence: torch.Tensor,
     target_mask: torch.Tensor,
-    frame_mask: torch.Tensor,
+    frame_valid: torch.Tensor,
     *,
     position_cost_weight: float,
     presence_cost_weight: float,
@@ -49,7 +49,7 @@ def match_ball_tracks(
             device=pred_position.device,
             dtype=pred_position.dtype,
         )
-        valid_frames = frame_mask[batch]
+        valid_frames = frame_valid[batch]
         for target_column, target_index in enumerate(target_indices.tolist()):
             target_active = target_presence[batch, :, target_index] & valid_frames
             presence_target = target_presence[batch, :, target_index].float()

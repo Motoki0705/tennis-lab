@@ -5,7 +5,6 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-from src.tasks.blcs.model_io.contracts import BLCSTrackingAttentionMasks
 from src.utils.models import build_self_attn_mask
 from src.utils.models.components.ops.time_local import (
     build_local_attention_keep_mask,
@@ -13,30 +12,30 @@ from src.utils.models.components.ops.time_local import (
 
 
 def prepare_single_attention_mask(
-    ball_mask: Tensor,
+    padding_mask: Tensor,
     *,
     num_court_tokens: int,
 ) -> Tensor:
     """Prepare the single-view court/ball self-attention mask."""
     court_valid = torch.ones(
-        ball_mask.shape[0],
+        padding_mask.shape[0],
         num_court_tokens,
-        device=ball_mask.device,
+        device=padding_mask.device,
         dtype=torch.bool,
     )
-    token_valid = torch.cat((court_valid, ball_mask.bool()), dim=1)
+    token_valid = torch.cat((court_valid, ~padding_mask), dim=1)
     attention_mask, _ = build_self_attn_mask(token_valid)
     return attention_mask
 
 
 def prepare_multiview_attention_masks(
-    ball_mask: Tensor,
+    padding_mask: Tensor,
     *,
     num_court_tokens: int,
 ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     """Prepare query self-attention state and per-frame cross-attention masks."""
-    batch_size, num_cameras, num_frames = ball_mask.shape
-    ball_valid = ball_mask.bool()
+    batch_size, num_cameras, num_frames = padding_mask.shape
+    ball_valid = ~padding_mask
     query_valid = ball_valid.any(dim=1)
     query_mask, query_state_valid = build_self_attn_mask(query_valid)
 
@@ -71,13 +70,13 @@ def prepare_multiview_attention_masks(
 
 
 def prepare_axial_attention_masks(
-    ball_mask: Tensor,
+    padding_mask: Tensor,
     *,
     time_window_radius: int,
 ) -> tuple[Tensor, Tensor, Tensor]:
     """Prepare camera, global-time, and local-time axial masks."""
-    batch_size, num_cameras, num_frames = ball_mask.shape
-    token_valid = ball_mask.bool().permute(0, 2, 1)
+    batch_size, num_cameras, num_frames = padding_mask.shape
+    token_valid = (~padding_mask).permute(0, 2, 1)
     camera_valid = token_valid.reshape(batch_size * num_frames, num_cameras)
     time_valid = token_valid.permute(0, 2, 1).reshape(
         batch_size * num_cameras,
@@ -92,100 +91,8 @@ def prepare_axial_attention_masks(
     return camera_mask, time_mask, sliding_mask
 
 
-def prepare_tracking_attention_masks(
-    *,
-    ball_visible: Tensor,
-    candidate_mask: Tensor,
-    court_visible: Tensor,
-    frame_mask: Tensor,
-    view_mask: Tensor,
-    num_queries: int,
-    mask_invisible_observations: bool,
-) -> BLCSTrackingAttentionMasks:
-    """Prepare raw and dense track-query masks without conflating visibility."""
-    batch_size, num_views, num_frames, num_detections = ball_visible.shape
-    context_valid = (
-        view_mask[:, :, None, None] & frame_mask[:, None, :, None]
-    ).expand(-1, -1, -1, num_detections)
-    candidate_context_valid = context_valid & candidate_mask
-    camera_state_valid = (
-        candidate_context_valid & ball_visible
-        if mask_invisible_observations
-        else candidate_context_valid
-    )
-
-    slot_valid = frame_mask[:, :, None].expand(-1, -1, num_queries)
-    time_major_camera_valid = camera_state_valid.permute(0, 2, 1, 3)
-    spatial_valid = torch.cat(
-        (
-            slot_valid,
-            time_major_camera_valid.reshape(batch_size, num_frames, -1),
-        ),
-        dim=2,
-    ).flatten(0, 1)
-    spatial_mask, _ = build_self_attn_mask(spatial_valid)
-    query_temporal_state_valid = (
-        frame_mask[:, None, :]
-        .expand(-1, num_queries, -1)
-        .reshape(batch_size * num_queries, num_frames)
-    )
-    query_temporal_attention_mask, _ = build_self_attn_mask(
-        query_temporal_state_valid
-    )
-    object_temporal_state_valid = camera_state_valid.any(dim=-1).reshape(
-        batch_size * num_views, num_frames
-    )
-    object_temporal_attention_mask, _ = build_self_attn_mask(
-        object_temporal_state_valid
-    )
-
-    _, point_mask = prepare_point_attention_mask(
-        ball_visible=ball_visible,
-        candidate_mask=candidate_mask,
-        court_visible=court_visible,
-        context_valid=context_valid[..., 0],
-        mask_invisible_observations=mask_invisible_observations,
-    )
-    return BLCSTrackingAttentionMasks(
-        camera_state_valid=camera_state_valid,
-        spatial_attention_mask=spatial_mask,
-        object_temporal_state_valid=object_temporal_state_valid,
-        object_temporal_attention_mask=object_temporal_attention_mask,
-        query_temporal_state_valid=query_temporal_state_valid,
-        query_temporal_attention_mask=query_temporal_attention_mask,
-        point_attention_mask=point_mask,
-    )
-
-
-def prepare_point_attention_mask(
-    *,
-    ball_visible: Tensor,
-    candidate_mask: Tensor,
-    court_visible: Tensor,
-    context_valid: Tensor,
-    mask_invisible_observations: bool,
-) -> tuple[Tensor, Tensor]:
-    """Prepare point-fusion state validity and its complete attention mask."""
-    ball_context_valid = (
-        context_valid.unsqueeze(-1).expand_as(ball_visible) & candidate_mask
-    )
-    ball_state_valid = (
-        ball_context_valid & ball_visible
-        if mask_invisible_observations
-        else ball_context_valid
-    )
-    court_key_valid = court_visible & context_valid.unsqueeze(-1)
-    point_valid = torch.cat((court_key_valid, ball_state_valid), dim=-1)
-    point_mask, _ = build_self_attn_mask(
-        point_valid.reshape(-1, point_valid.shape[-1])
-    )
-    return ball_state_valid, point_mask
-
-
 __all__ = [
     "prepare_axial_attention_masks",
     "prepare_multiview_attention_masks",
-    "prepare_point_attention_mask",
     "prepare_single_attention_mask",
-    "prepare_tracking_attention_masks",
 ]
