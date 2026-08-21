@@ -640,6 +640,7 @@ class SyntheticCourtInput:
             if len(classes) != 7:
                 raise ValueError("Synthetic Court v1 requires seven semantic classes.")
             instance_points = torch.empty((14, 2), dtype=torch.float32)
+            instance_in_front = torch.zeros(14, dtype=torch.bool)
             instance_visible = torch.zeros(14, dtype=torch.bool)
             seen_physical: set[int] = set()
             for class_id, class_value in enumerate(classes):
@@ -675,7 +676,10 @@ class SyntheticCourtInput:
                     seen_physical.add(physical_index)
                     uv = point["uv"]
                     instance_points[physical_index] = torch.tensor(uv)
-                    instance_visible[physical_index] = point["in_frame"]
+                    instance_in_front[physical_index] = point["in_front"]
+                    instance_visible[physical_index] = (
+                        point["in_front"] and point["in_frame"]
+                    )
                     channel_points[class_id].append(uv)
                     channel_visible[class_id].append(point["renderer_visible"])
                     channel_physical[class_id].append(physical_index)
@@ -688,6 +692,7 @@ class SyntheticCourtInput:
                     court_instance_id=court_id,
                     physical_indices=torch.arange(14, dtype=torch.long),
                     points_xy=instance_points,
+                    point_in_front=instance_in_front,
                     point_visible=instance_visible,
                 )
             )
@@ -757,6 +762,7 @@ class SyntheticCourtInput:
                     "Synthetic Court v2 requires fourteen singleton semantic classes."
                 )
             instance_points = torch.empty((14, 2), dtype=torch.float32)
+            instance_in_front = torch.zeros(14, dtype=torch.bool)
             instance_visible = torch.zeros(14, dtype=torch.bool)
             semantic_physical: list[int] = []
             for class_id, class_value in enumerate(classes):
@@ -801,6 +807,7 @@ class SyntheticCourtInput:
                 geometry_visible = point["in_front"] and point["in_frame"]
                 supervision_visible = geometry_visible and renderer_visible
                 instance_points[physical_index] = torch.tensor(uv)
+                instance_in_front[physical_index] = point["in_front"]
                 instance_visible[physical_index] = geometry_visible
                 channel_points[class_id].append(uv)
                 channel_visible[class_id].append(supervision_visible)
@@ -822,6 +829,7 @@ class SyntheticCourtInput:
                     court_instance_id=court_id,
                     physical_indices=torch.arange(14, dtype=torch.long),
                     points_xy=instance_points,
+                    point_in_front=instance_in_front,
                     point_visible=instance_visible,
                 )
             )
