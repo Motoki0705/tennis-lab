@@ -68,6 +68,14 @@ def _threshold_bytes() -> int:
     return value if value > 0 else DEFAULT_THRESHOLD_BYTES
 
 
+def _is_subagent(payload: dict[str, object]) -> bool:
+    agent_id = payload.get("agent_id")
+    agent_type = payload.get("agent_type")
+    return (isinstance(agent_id, str) and bool(agent_id)) or (
+        isinstance(agent_type, str) and bool(agent_type)
+    )
+
+
 def _shell_tokens(command: str) -> list[str] | None:
     try:
         lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|<>()\n")
@@ -1032,6 +1040,8 @@ def main() -> int:
         if raw_payload.get("hook_event_name") != "PreToolUse":
             return 0
         if raw_payload.get("tool_name") != "Bash":
+            return 0
+        if _is_subagent(raw_payload):
             return 0
         tool_input = raw_payload.get("tool_input")
         if not isinstance(tool_input, dict):
