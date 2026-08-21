@@ -37,9 +37,9 @@ def test_reviewer_sequence_is_explicit() -> None:
         ROOT / ".agents/skills/issue-subagent-workflow/SKILL.md"
     ).read_text(encoding="utf-8")
     stages = (
-        "run one independent `preflight_reviewer`",
-        "run one independent Test Writer",
-        "run one independent `seal_reviewer`",
+        "discovery `preflight_reviewer`",
+        "independent Test Writer",
+        "`seal_reviewer` with no source/test edits",
         "The Validator receives",
     )
     offsets = [skill.index(stage) for stage in stages]
