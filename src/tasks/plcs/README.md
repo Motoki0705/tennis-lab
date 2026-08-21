@@ -2,8 +2,6 @@
 
 2D の人物 pose とコート keypoint から、コート座標系でのプレイヤー `position`/`rotation`（および任意で canonical 3D pose）を推定するタスクです。AMASS/SMPL-H モーションと仮想カメラから学習データを合成する generator、frame/sequence/multiview の各モデル、Lightning 学習、推論、可視化までを一貫して提供します。
 
-BLCS・PLCS・SLCSを横断する入力shape、マスク極性、派生関係は [入力・マスク契約](../../../docs/blcs-plcs-slcs-input-mask-contracts.md) を参照してください。
-
 ## Modules
 
 ### configuration
