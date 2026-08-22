@@ -96,3 +96,20 @@ def test_kp_metric_all_invisible_is_zero() -> None:
     )
 
     assert metrics.compute()["mean_dist"] == 0.0
+
+
+def test_target_court_metric_uses_single_point_capacity() -> None:
+    metrics = CourtDetectionMetrics("kp", 1)
+    expected = torch.tensor([[[[4.0, 4.0]]]])
+    target = _target(expected, visible=torch.tensor([[[True]]]))
+    logits = torch.full((1, 1, 16, 16), -10.0)
+    logits[0, 0, 4, 4] = 10.0
+    logits[0, 0, 12, 12] = 9.0  # A non-target-court-like second peak.
+
+    metrics.update(
+        logits,
+        target,
+        image_size=torch.tensor([[16, 16]], dtype=torch.long),
+    )
+
+    assert metrics.compute()["mean_dist"] == 0.0

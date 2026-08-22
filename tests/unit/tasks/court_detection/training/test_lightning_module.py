@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 import torch
+from hydra import compose, initialize_config_dir
 
 from src.tasks.court_detection.configuration import CourtLossConfig
 from src.tasks.court_detection.data.bundle_state import (
@@ -23,13 +24,15 @@ from src.tasks.court_detection.training.lightning_module import (
     CourtDetectionLightningModule,
 )
 
+_CONFIG_DIR = Path(__file__).resolve().parents[5] / "src/tasks/court_detection/configs"
 
-def _bundle() -> CourtTargetBundleSpec:
+
+def _bundle(*, kp_schema: str = "test_kp") -> CourtTargetBundleSpec:
     return CourtTargetBundleSpec(
         {
             "kp": CourtTargetSpec(
                 kind="kp",
-                schema="test_kp",
+                schema=kp_schema,
                 output_channels=2,
                 channel_names=("left", "right"),
                 target_dtype=torch.float32,
@@ -80,6 +83,31 @@ def test_bundle_snapshot_round_trip_is_order_preserving() -> None:
 
     assert restored == bundle
     assert restored.kinds == ("kp", "seg", "line")
+
+
+def test_scope_specific_checkpoint_bundle_mismatch_is_rejected() -> None:
+    all_courts = _bundle(kp_schema="synthetic_camera_relative_kp14:gaussian_max_v1")
+    target_court = _bundle(
+        kp_schema="synthetic_camera_relative_kp14_target_court:gaussian_max_v1"
+    )
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train",
+            overrides=[
+                "data/source=synthetic_court",
+                "data.source.keypoint_court_scope=target_court",
+                "data/processing=kp",
+            ],
+        )
+
+    assert deserialize_target_bundle(serialize_target_bundle(all_courts)) == all_courts
+    assert target_court != all_courts
+    with pytest.raises(ValueError, match="disagrees with its checkpoint snapshot"):
+        CourtDetectionLightningModule(
+            config,
+            target_bundle=target_court,
+            target_bundle_state=serialize_target_bundle(all_courts),
+        )
 
 
 def test_test_prediction_payload_flattens_every_selected_head(
