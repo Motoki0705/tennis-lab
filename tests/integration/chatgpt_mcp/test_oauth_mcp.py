@@ -158,26 +158,25 @@ def test_oauth_discovery_token_and_reduced_tool_surface(tmp_path: Path) -> None:
             "Accept": "application/json, text/event-stream",
             "Authorization": f"Bearer {access_token}",
             "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
+            "Mcp-Method": "tools/list",
         }
-        initialize = client.post(
+        tools = client.post(
             "/mcp",
             json={
                 "jsonrpc": "2.0",
                 "id": 2,
-                "method": "initialize",
+                "method": "tools/list",
                 "params": {
-                    "protocolVersion": LATEST_PROTOCOL_VERSION,
-                    "capabilities": {},
-                    "clientInfo": {"name": "pytest", "version": "1"},
+                    "_meta": {
+                        "io.modelcontextprotocol/protocolVersion": LATEST_PROTOCOL_VERSION,
+                        "io.modelcontextprotocol/clientInfo": {
+                            "name": "pytest",
+                            "version": "1",
+                        },
+                        "io.modelcontextprotocol/clientCapabilities": {},
+                    }
                 },
             },
-            headers=mcp_headers,
-        )
-        assert initialize.status_code == 200, initialize.text
-
-        tools = client.post(
-            "/mcp",
-            json={"jsonrpc": "2.0", "id": 3, "method": "tools/list"},
             headers=mcp_headers,
         )
         assert tools.status_code == 200, tools.text
@@ -199,6 +198,7 @@ def test_private_tunnel_mode_uses_loopback_without_oauth(tmp_path: Path) -> None
     headers = {
         "Accept": "application/json, text/event-stream",
         "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
+        "Mcp-Method": "tools/list",
     }
 
     with TestClient(app, base_url="http://127.0.0.1:8767") as client:
@@ -212,25 +212,23 @@ def test_private_tunnel_mode_uses_loopback_without_oauth(tmp_path: Path) -> None
             client.get("/.well-known/oauth-protected-resource/mcp").status_code == 404
         )
 
-        initialize = client.post(
+        tools = client.post(
             "/mcp",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
-                "method": "initialize",
+                "method": "tools/list",
                 "params": {
-                    "protocolVersion": LATEST_PROTOCOL_VERSION,
-                    "capabilities": {},
-                    "clientInfo": {"name": "tunnel-test", "version": "1"},
+                    "_meta": {
+                        "io.modelcontextprotocol/protocolVersion": LATEST_PROTOCOL_VERSION,
+                        "io.modelcontextprotocol/clientInfo": {
+                            "name": "tunnel-test",
+                            "version": "1",
+                        },
+                        "io.modelcontextprotocol/clientCapabilities": {},
+                    }
                 },
             },
-            headers=headers,
-        )
-        assert initialize.status_code == 200, initialize.text
-
-        tools = client.post(
-            "/mcp",
-            json={"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
             headers=headers,
         )
         assert tools.status_code == 200, tools.text
