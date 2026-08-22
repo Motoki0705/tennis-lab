@@ -16,6 +16,9 @@ from src.tasks.blcs.generate_dataset.multi_object_scene_generator import (
     MultiBallSceneGenerator,
 )
 from src.tasks.blcs.generate_dataset.scene_generator import BLCSSceneData, CameraData
+from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
+    FULL_PHYSICS_REJECTION_PREFIX,
+)
 from src.utils.projection.camera_projector import CameraConfig, CameraProjector
 from src.utils.schema.court import NET_POST_OFFSET_X, CourtConfig
 
@@ -154,12 +157,49 @@ class _PhysicalSceneStub:
         )
 
 
-def test_multi_ball_uses_physical_scenes_and_canonical_writer(tmp_path) -> None:
-    scene = MultiBallSceneGenerator(
-        _PhysicalSceneStub(),
+class _RejectOncePhysicalSceneStub(_PhysicalSceneStub):
+    def __init__(self) -> None:
+        super().__init__()
+        self.attempts: dict[str, int] = {}
+
+    def generate_scene(self, from_cell: int, side: str, scene_id: str) -> BLCSSceneData:
+        attempt = self.attempts.get(scene_id, 0) + 1
+        self.attempts[scene_id] = attempt
+        if attempt == 1:
+            raise RuntimeError(
+                f"{FULL_PHYSICS_REJECTION_PREFIX} within the requested-side "
+                "tolerance."
+            )
+        return super().generate_scene(from_cell, side, scene_id)
+
+
+class _AlwaysRejectPhysicalSceneStub(_PhysicalSceneStub):
+    def __init__(self, message: str) -> None:
+        super().__init__()
+        self.message = message
+        self.attempts = 0
+
+    def generate_scene(self, from_cell: int, side: str, scene_id: str) -> BLCSSceneData:
+        del from_cell, side, scene_id
+        self.attempts += 1
+        raise RuntimeError(self.message)
+
+
+def _multi_ball_generator(
+    source: _PhysicalSceneStub,
+    *,
+    maximum_attempts: int = 3,
+) -> MultiBallSceneGenerator:
+    return MultiBallSceneGenerator(
+        source,
         timeline=_timeline(),
+        maximum_physics_attempts_per_object=maximum_attempts,
         rng=random.Random(2),
-    ).generate_scene("scene_000000")
+    )
+
+
+def test_multi_ball_uses_physical_scenes_and_canonical_writer(tmp_path) -> None:
+    scene = _multi_ball_generator(_PhysicalSceneStub()).generate_scene("scene_000000")
     assert scene.num_balls == 2
     assert scene.ball_present is not None
     assert scene.ball_pos_world.shape == (12, 2, 3)
@@ -246,6 +286,44 @@ def test_multi_ball_uses_physical_scenes_and_canonical_writer(tmp_path) -> None:
     (scene_path / "cam_0_ball_vis.npy").rename(scene_path / "cam_0_ball_visible.npy")
     with pytest.raises(FileNotFoundError, match="cam_0_ball_vis.npy"):
         load_scene(scene_path)
+
+
+def test_multi_ball_resamples_only_rejected_physics_proposals(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    source = _RejectOncePhysicalSceneStub()
+    caplog.set_level("INFO")
+
+    scene = _multi_ball_generator(source).generate_scene("scene_000000")
+
+    assert scene.num_balls == 2
+    assert source.attempts == {
+        "scene_000000_ball_00": 2,
+        "scene_000000_ball_01": 2,
+    }
+    assert caplog.text.count("Accepted BLCS physics proposal") == 2
+
+
+def test_multi_ball_physics_proposal_exhaustion_is_bounded() -> None:
+    source = _AlwaysRejectPhysicalSceneStub(
+        f"{FULL_PHYSICS_REJECTION_PREFIX}."
+    )
+
+    with pytest.raises(RuntimeError, match="exhausted 2 bounded attempts"):
+        _multi_ball_generator(source, maximum_attempts=2).generate_scene(
+            "scene_000000"
+        )
+
+    assert source.attempts == 2
+
+
+def test_multi_ball_does_not_retry_unexpected_runtime_errors() -> None:
+    source = _AlwaysRejectPhysicalSceneStub("unexpected implementation failure")
+
+    with pytest.raises(RuntimeError, match="unexpected implementation failure"):
+        _multi_ball_generator(source).generate_scene("scene_000000")
+
+    assert source.attempts == 1
 
 
 def test_invalid_ball_cardinality_is_rejected() -> None:
