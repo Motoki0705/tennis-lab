@@ -6,6 +6,15 @@ import math
 from dataclasses import dataclass
 from pathlib import Path
 
+from src.utils.schema.court import (
+    DOUBLES_WIDTH,
+    HALF_DOUBLES_WIDTH,
+    HALF_LENGTH,
+    HALF_SINGLES_WIDTH,
+    SERVICE_LINE_DISTANCE,
+    SINGLES_WIDTH,
+)
+
 
 def _positive_float(value: float, *, name: str) -> None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
@@ -228,12 +237,18 @@ class CourtCandidateFitSettings:
     family_orientation_tolerance_radians: float
     family_scale_relative_tolerance: float
     minimum_center_separation_metres: float
-    separation_penalty: float
     optimizer_maximum_iterations: int
     optimizer_population_size: int
     optimizer_tolerance: float
     maximum_fit_points: int
     common_scale_relative_tolerance: float
+    scale_bound_margin_relative: float
+    evidence_assignment_distance_metres: float
+    whole_template_inlier_distance_metres: float
+    minimum_whole_template_inlier_fraction: float
+    maximum_whole_template_q95_error_metres: float
+    minimum_semantic_segment_inlier_fraction: float
+    maximum_court_footprint_overlap_fraction: float
 
     def __post_init__(self) -> None:
         _positive_int(self.candidate_count, name="candidate_count")
@@ -245,8 +260,10 @@ class CourtCandidateFitSettings:
             "minimum_template_score",
             "family_orientation_tolerance_radians",
             "minimum_center_separation_metres",
-            "separation_penalty",
             "optimizer_tolerance",
+            "evidence_assignment_distance_metres",
+            "whole_template_inlier_distance_metres",
+            "maximum_whole_template_q95_error_metres",
         ):
             _positive_float(getattr(self, name), name=name)
         if (
@@ -259,16 +276,261 @@ class CourtCandidateFitSettings:
         for name in (
             "family_scale_relative_tolerance",
             "common_scale_relative_tolerance",
+            "scale_bound_margin_relative",
         ):
             value = getattr(self, name)
             if not 0.0 < value < 1.0:
                 raise ValueError(f"{name} must lie in (0, 1).")
+        if self.scale_bound_margin_relative >= 0.5:
+            raise ValueError("scale_bound_margin_relative must be below 0.5.")
+        _fraction(
+            self.minimum_whole_template_inlier_fraction,
+            name="minimum_whole_template_inlier_fraction",
+        )
+        _fraction(
+            self.minimum_semantic_segment_inlier_fraction,
+            name="minimum_semantic_segment_inlier_fraction",
+        )
+        _fraction(
+            self.maximum_court_footprint_overlap_fraction,
+            name="maximum_court_footprint_overlap_fraction",
+            inclusive_zero=True,
+        )
         _positive_int(
             self.optimizer_maximum_iterations,
             name="optimizer_maximum_iterations",
         )
         _positive_int(self.optimizer_population_size, name="optimizer_population_size")
         _positive_int(self.maximum_fit_points, name="maximum_fit_points")
+
+    def whole_court_evidence(
+        self,
+        *,
+        minimum_matches_per_offset_level: int,
+    ) -> WholeCourtEvidenceSettings:
+        """Freeze geometry-derived identifiability and diagnostic policy."""
+        return WholeCourtEvidenceSettings(
+            required_court_count=self.candidate_count,
+            maximum_common_scale_relative_deviation=(
+                self.common_scale_relative_tolerance
+            ),
+            maximum_center_refit_displacement_metres=(
+                self.maximum_center_refit_displacement_metres()
+            ),
+            minimum_distinct_offset_levels=2,
+            minimum_matches_per_offset_level=minimum_matches_per_offset_level,
+            minimum_level_camera_count=2,
+            minimum_secondary_tangential_span_metres=(
+                2.0 * self.whole_template_inlier_distance_metres
+            ),
+            minimum_longitudinal_offset_span_metres=SINGLES_WIDTH,
+            minimum_longitudinal_tangential_span_metres=(2.0 * SERVICE_LINE_DISTANCE),
+            minimum_transverse_offset_span_metres=(2.0 * SERVICE_LINE_DISTANCE),
+            minimum_transverse_tangential_span_metres=SINGLES_WIDTH,
+            samples_per_metre=self.samples_per_metre,
+            inlier_distance_metres=self.whole_template_inlier_distance_metres,
+            minimum_inlier_fraction=self.minimum_whole_template_inlier_fraction,
+            maximum_q95_error_metres=self.maximum_whole_template_q95_error_metres,
+            minimum_semantic_segment_inlier_fraction=(
+                self.minimum_semantic_segment_inlier_fraction
+            ),
+            minimum_center_separation_metres=self.minimum_center_separation_metres,
+            maximum_footprint_overlap_fraction=(
+                self.maximum_court_footprint_overlap_fraction
+            ),
+        )
+
+    def orientation_family_count(self) -> int:
+        """Return the number of deterministic <=pi/2 orientation basins."""
+        span = self.orientation_maximum_radians - self.orientation_minimum_radians
+        return max(1, math.ceil((span - 1.0e-12) / (math.pi / 2.0)))
+
+    def maximum_center_refit_displacement_metres(self) -> float:
+        """Return the scale/localization-derived native-center search radius."""
+        court_half_diagonal = math.hypot(HALF_DOUBLES_WIDTH, HALF_LENGTH)
+        return (
+            self.common_scale_relative_tolerance * court_half_diagonal
+            + self.whole_template_inlier_distance_metres
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class WholeCourtEvidenceSettings:
+    """Persistable identifiability policy and whole-template diagnostic policy."""
+
+    required_court_count: int
+    maximum_common_scale_relative_deviation: float
+    maximum_center_refit_displacement_metres: float
+    minimum_distinct_offset_levels: int
+    minimum_matches_per_offset_level: int
+    minimum_level_camera_count: int
+    minimum_secondary_tangential_span_metres: float
+    minimum_longitudinal_offset_span_metres: float
+    minimum_longitudinal_tangential_span_metres: float
+    minimum_transverse_offset_span_metres: float
+    minimum_transverse_tangential_span_metres: float
+    samples_per_metre: float
+    inlier_distance_metres: float
+    minimum_inlier_fraction: float
+    maximum_q95_error_metres: float
+    minimum_semantic_segment_inlier_fraction: float
+    minimum_center_separation_metres: float
+    maximum_footprint_overlap_fraction: float
+
+    def __post_init__(self) -> None:
+        _positive_int(self.required_court_count, name="required_court_count")
+        _positive_int(
+            self.minimum_distinct_offset_levels,
+            name="minimum_distinct_offset_levels",
+        )
+        if self.minimum_distinct_offset_levels != 2:
+            raise ValueError("minimum_distinct_offset_levels must equal two.")
+        _positive_int(
+            self.minimum_matches_per_offset_level,
+            name="minimum_matches_per_offset_level",
+        )
+        _positive_int(
+            self.minimum_level_camera_count,
+            name="minimum_level_camera_count",
+        )
+        if self.minimum_level_camera_count != 2:
+            raise ValueError(
+                "minimum_level_camera_count must equal two for independent "
+                "multiview support."
+            )
+        for name in (
+            "maximum_common_scale_relative_deviation",
+            "maximum_center_refit_displacement_metres",
+            "minimum_longitudinal_offset_span_metres",
+            "minimum_longitudinal_tangential_span_metres",
+            "minimum_transverse_offset_span_metres",
+            "minimum_transverse_tangential_span_metres",
+            "minimum_secondary_tangential_span_metres",
+            "samples_per_metre",
+            "inlier_distance_metres",
+            "maximum_q95_error_metres",
+            "minimum_center_separation_metres",
+        ):
+            _positive_float(getattr(self, name), name=name)
+        if self.maximum_common_scale_relative_deviation >= 1.0:
+            raise ValueError(
+                "maximum_common_scale_relative_deviation must be below one."
+            )
+        maximum_scale_deviation = (
+            2.0
+            * self.inlier_distance_metres
+            / self.minimum_longitudinal_offset_span_metres
+        )
+        if (
+            self.maximum_common_scale_relative_deviation
+            > maximum_scale_deviation + 1.0e-12
+        ):
+            raise ValueError(
+                "maximum_common_scale_relative_deviation exceeds the "
+                "localization/semantic-separation bound."
+            )
+        expected_displacement = (
+            self.maximum_common_scale_relative_deviation
+            * math.hypot(HALF_DOUBLES_WIDTH, HALF_LENGTH)
+            + self.inlier_distance_metres
+        )
+        if not math.isclose(
+            self.maximum_center_refit_displacement_metres,
+            expected_displacement,
+            abs_tol=1.0e-12,
+            rel_tol=0.0,
+        ):
+            raise ValueError(
+                "maximum_center_refit_displacement_metres must equal the "
+                "scale/localization-derived court-center bound."
+            )
+        expected_spans = {
+            "minimum_longitudinal_offset_span_metres": SINGLES_WIDTH,
+            "minimum_longitudinal_tangential_span_metres": (
+                2.0 * SERVICE_LINE_DISTANCE
+            ),
+            "minimum_transverse_offset_span_metres": (2.0 * SERVICE_LINE_DISTANCE),
+            "minimum_transverse_tangential_span_metres": SINGLES_WIDTH,
+        }
+        for name, expected in expected_spans.items():
+            if not math.isclose(
+                getattr(self, name), expected, abs_tol=1.0e-12, rel_tol=0.0
+            ):
+                raise ValueError(
+                    f"{name} must equal the regulation-derived value {expected}."
+                )
+        expected_secondary_span = 2.0 * self.inlier_distance_metres
+        if not math.isclose(
+            self.minimum_secondary_tangential_span_metres,
+            expected_secondary_span,
+            abs_tol=1.0e-12,
+            rel_tol=0.0,
+        ):
+            raise ValueError(
+                "minimum_secondary_tangential_span_metres must equal twice the "
+                "maximum localization error."
+            )
+        if not math.isclose(
+            self.minimum_center_separation_metres,
+            DOUBLES_WIDTH,
+            abs_tol=1.0e-12,
+            rel_tol=0.0,
+        ):
+            raise ValueError(
+                "minimum_center_separation_metres is diagnostic and must equal "
+                f"the regulation doubles width {DOUBLES_WIDTH}."
+            )
+        _fraction(self.minimum_inlier_fraction, name="minimum_inlier_fraction")
+        _fraction(
+            self.minimum_semantic_segment_inlier_fraction,
+            name="minimum_semantic_segment_inlier_fraction",
+        )
+        _fraction(
+            self.maximum_footprint_overlap_fraction,
+            name="maximum_footprint_overlap_fraction",
+            inclusive_zero=True,
+        )
+
+    def to_dict(self) -> dict[str, object]:
+        """Return the exact policy persisted with measured ground-line evidence."""
+        return {
+            "required_court_count": self.required_court_count,
+            "maximum_common_scale_relative_deviation": (
+                self.maximum_common_scale_relative_deviation
+            ),
+            "maximum_center_refit_displacement_metres": (
+                self.maximum_center_refit_displacement_metres
+            ),
+            "minimum_distinct_offset_levels": self.minimum_distinct_offset_levels,
+            "minimum_matches_per_offset_level": (self.minimum_matches_per_offset_level),
+            "minimum_level_camera_count": self.minimum_level_camera_count,
+            "minimum_secondary_tangential_span_metres": (
+                self.minimum_secondary_tangential_span_metres
+            ),
+            "minimum_longitudinal_offset_span_metres": (
+                self.minimum_longitudinal_offset_span_metres
+            ),
+            "minimum_longitudinal_tangential_span_metres": (
+                self.minimum_longitudinal_tangential_span_metres
+            ),
+            "minimum_transverse_offset_span_metres": (
+                self.minimum_transverse_offset_span_metres
+            ),
+            "minimum_transverse_tangential_span_metres": (
+                self.minimum_transverse_tangential_span_metres
+            ),
+            "samples_per_metre": self.samples_per_metre,
+            "inlier_distance_metres": self.inlier_distance_metres,
+            "minimum_inlier_fraction": self.minimum_inlier_fraction,
+            "maximum_q95_error_metres": self.maximum_q95_error_metres,
+            "minimum_semantic_segment_inlier_fraction": (
+                self.minimum_semantic_segment_inlier_fraction
+            ),
+            "minimum_center_separation_metres": (self.minimum_center_separation_metres),
+            "maximum_footprint_overlap_fraction": (
+                self.maximum_footprint_overlap_fraction
+            ),
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -312,7 +574,7 @@ class AlignmentEvidenceSettings:
     holdout_fraction: float
     minimum_fit_cameras: int
     minimum_holdout_cameras: int
-    maximum_cameras: int
+    camera_prefix_count: int
     line_model: CourtLineModelSettings
     ground_plane: GroundPlaneSettings
     projection: LineProjectionSettings
@@ -338,15 +600,66 @@ class AlignmentEvidenceSettings:
         for name in (
             "minimum_fit_cameras",
             "minimum_holdout_cameras",
-            "maximum_cameras",
+            "camera_prefix_count",
         ):
             _positive_int(getattr(self, name), name=name)
-        if (
-            self.maximum_cameras
-            < self.minimum_fit_cameras + self.minimum_holdout_cameras
+        minimum_unit = self.minimum_fit_cameras + self.minimum_holdout_cameras
+        expected_fit = minimum_unit * self.fit_fraction
+        expected_holdout = minimum_unit * self.holdout_fraction
+        if not math.isclose(
+            expected_fit,
+            self.minimum_fit_cameras,
+            abs_tol=1.0e-12,
+            rel_tol=0.0,
+        ) or not math.isclose(
+            expected_holdout,
+            self.minimum_holdout_cameras,
+            abs_tol=1.0e-12,
+            rel_tol=0.0,
         ):
             raise ValueError(
-                "maximum_cameras cannot satisfy the minimum partition sizes."
+                "Camera-unit partition counts disagree with the "
+                "configured fit/holdout fractions."
+            )
+        if self.camera_prefix_count != self.expected_camera_prefix_count():
+            raise ValueError(
+                "camera_prefix_count must equal candidate_count * orientation "
+                "family count * (minimum_fit_cameras + minimum_holdout_cameras): "
+                f"{self.camera_prefix_count} != "
+                f"{self.expected_camera_prefix_count()}."
+            )
+        assignment_distance = self.candidate_fit.evidence_assignment_distance_metres
+        minimum_assignment_distance = max(
+            self.correspondences.maximum_match_distance_metres,
+            self.candidate_fit.whole_template_inlier_distance_metres,
+        )
+        half_minimum_line_separation = (HALF_DOUBLES_WIDTH - HALF_SINGLES_WIDTH) / 2.0
+        if assignment_distance < minimum_assignment_distance:
+            raise ValueError(
+                "evidence_assignment_distance_metres must cover both the "
+                "correspondence and localization gates."
+            )
+        if assignment_distance >= half_minimum_line_separation:
+            raise ValueError(
+                "evidence_assignment_distance_metres must be below half the "
+                "minimum distinct regulation-line separation."
+            )
+
+    def expected_camera_prefix_count(self) -> int:
+        """Derive the one fixed evidence-independent camera prefix size."""
+        return (
+            self.candidate_fit.candidate_count
+            * self.candidate_fit.orientation_family_count()
+            * (self.minimum_fit_cameras + self.minimum_holdout_cameras)
+        )
+
+    def require_available_cameras(self, *, available_camera_count: int) -> None:
+        """Reject scenes that cannot supply the fixed selection prefix."""
+        _positive_int(available_camera_count, name="available_camera_count")
+        if available_camera_count < self.camera_prefix_count:
+            raise ValueError(
+                "Available cameras cannot satisfy the fixed alignment selection: "
+                f"{available_camera_count} < {self.camera_prefix_count}."
             )
 
 
@@ -358,4 +671,5 @@ __all__ = [
     "CourtLineModelSettings",
     "GroundPlaneSettings",
     "LineProjectionSettings",
+    "WholeCourtEvidenceSettings",
 ]

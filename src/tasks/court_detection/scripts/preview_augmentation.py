@@ -2,8 +2,8 @@
 
 Usage:
     python -m src.tasks.court_detection.scripts.preview_augmentation
-    python -m src.tasks.court_detection.scripts.preview_augmentation data=court_seg
-    python -m src.tasks.court_detection.scripts.preview_augmentation data=court_line preview.split=val
+    python -m src.tasks.court_detection.scripts.preview_augmentation data/processing=all
+    python -m src.tasks.court_detection.scripts.preview_augmentation data/source=synthetic_court preview.split=val
     python -m src.tasks.court_detection.scripts.preview_augmentation preview.sample_indices=[0,8,16]
 
 Notes:
@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import random
 import sys
-from collections.abc import Sized
+from collections.abc import Mapping, Sized
 from pathlib import Path
 from typing import Any, cast
 
@@ -40,7 +40,11 @@ from src.tasks.court_detection.configuration import (
     CourtDataConfig,
     validate_paths_boundary,
 )
-from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
+from src.tasks.court_detection.data.contracts import CourtSourceSplit
+from src.tasks.court_detection.data.dataset import CourtDetectionDataset
+from src.tasks.court_detection.data.processing.factory import (
+    build_court_processing_pipeline,
+)
 from src.tasks.court_detection.visualization.rendering.common import (
     colorize_seg_mask,
     denormalize_tensor_to_rgb,
@@ -148,15 +152,14 @@ register_boundary_validator(_BOUNDARY, _validate_boundary)
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Hydra entry point."""
-    output_dir, _ = _runtime(cfg)
+    output_dir, data = _runtime(cfg)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     split_name = str(cfg.preview.split)
-    datamodule = CourtDetectionDataModule(cfg)
-    base_dataset = datamodule.create_dataset(split=split_name, is_train=False)
-    augmented_dataset = datamodule.create_dataset(split=split_name, is_train=True)
+    base_dataset = _dataset(data, split=split_name, is_train=False)
+    augmented_dataset = _dataset(data, split=split_name, is_train=True)
 
-    task = str(cfg.data.task)
+    target_kinds = tuple(target.kind for target in data.processing.targets)
     seed = int(cfg.preview.seed)
     num_augmented = int(cfg.preview.num_augmented)
     if num_augmented < 1:
@@ -169,26 +172,32 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     for sample_index in sample_indices:
         _seed_all(seed + sample_index)
         base_sample = base_dataset[sample_index]
-        panels = [_annotate_sample(base_sample, task=task, cfg=cfg)]
+        panels = [_annotate_sample(base_sample, target_kinds=target_kinds, cfg=cfg)]
         titles = ["original"]
         for variant in range(num_augmented):
             _seed_all(seed + sample_index * 1009 + variant + 1)
             augmented_sample = augmented_dataset[sample_index]
-            panels.append(_annotate_sample(augmented_sample, task=task, cfg=cfg))
+            panels.append(
+                _annotate_sample(
+                    augmented_sample,
+                    target_kinds=target_kinds,
+                    cfg=cfg,
+                )
+            )
             titles.append(f"augmented #{variant}")
 
         panels = _pad_panels_to_common_size(panels, cfg)
         sheet = compose_titled_row(panels, titles, cfg)
 
-        image_id = str(base_sample["image_id"])
-        file_stem = f"{sample_index:06d}_{image_id}"
+        sample_id = str(base_sample["sample_id"])
+        file_stem = f"{sample_index:06d}_{sample_id.replace(':', '_')}"
         image_path = output_dir / f"{file_stem}.png"
         cv2.imwrite(str(image_path), cv2.cvtColor(sheet, cv2.COLOR_RGB2BGR))
 
         metadata = {
             "sample_index": sample_index,
-            "image_id": image_id,
-            "task": task,
+            "sample_id": sample_id,
+            "targets": list(target_kinds),
             "split": split_name,
             "num_augmented": num_augmented,
             "output_image": str(image_path),
@@ -208,32 +217,49 @@ def _seed_all(seed: int) -> None:
     torch.manual_seed(seed)
 
 
+def _dataset(
+    data: CourtDataConfig,
+    *,
+    split: str,
+    is_train: bool,
+) -> CourtDetectionDataset:
+    if split not in {"train", "val"}:
+        raise ValueError("Preview split must be train or val.")
+    pipeline = build_court_processing_pipeline(data, is_train=is_train)
+    records = pipeline.input_layer.records(cast("CourtSourceSplit", split))
+    return CourtDetectionDataset(records, pipeline=pipeline)
+
+
 def _annotate_sample(
     sample: dict[str, Any],
     *,
-    task: str,
+    target_kinds: tuple[str, ...],
     cfg: DictConfig,
 ) -> np.ndarray:
-    """Render one dataset sample as an RGB panel with its annotations."""
+    """Render every selected target over one shared RGB geometry."""
     image = cast("torch.Tensor", sample["image"])
-    rgb = denormalize_tensor_to_rgb(image)
-    if task == "kp":
-        return _overlay_keypoints(rgb, sample, cfg)
-    if task == "seg":
-        return _overlay_seg_mask(rgb, sample, cfg)
-    if task == "line":
-        return _overlay_line_mask(rgb, sample, cfg)
-    raise ValueError(f"Unknown data.task: {task!r}")
+    rgb: np.ndarray = denormalize_tensor_to_rgb(image)
+    targets = cast("Mapping[str, object]", sample["targets"])
+    for kind in target_kinds:
+        if kind == "kp":
+            rgb = _overlay_keypoints(rgb, targets[kind], cfg)
+        elif kind == "seg":
+            rgb = _overlay_seg_mask(rgb, targets[kind], cfg)
+        elif kind == "line":
+            rgb = _overlay_line_mask(rgb, targets[kind], cfg)
+        else:  # pragma: no cover - strict configuration rejects this
+            raise ValueError(f"Unknown Court target: {kind!r}")
+    return rgb
 
 
-def _overlay_keypoints(
-    rgb: np.ndarray, sample: dict[str, Any], cfg: DictConfig
-) -> np.ndarray:
+def _overlay_keypoints(rgb: np.ndarray, value: object, cfg: DictConfig) -> np.ndarray:
     """Draw pixel-space court keypoints onto the panel."""
     overlay = rgb.copy()
-    keypoints = cast("torch.Tensor", sample["keypoints"]).cpu().numpy()
+    payload = cast("Mapping[str, torch.Tensor]", value)
+    keypoints = payload["points_xy"].cpu().numpy()
+    visible = payload["point_visible"].cpu().numpy()
     height, width = overlay.shape[:2]
-    for x_pos, y_pos in keypoints:
+    for x_pos, y_pos in keypoints[visible]:
         if not (0.0 <= float(x_pos) < width and 0.0 <= float(y_pos) < height):
             continue
         cv2.circle(
@@ -247,20 +273,16 @@ def _overlay_keypoints(
     return overlay
 
 
-def _overlay_seg_mask(
-    rgb: np.ndarray, sample: dict[str, Any], cfg: DictConfig
-) -> np.ndarray:
+def _overlay_seg_mask(rgb: np.ndarray, value: object, cfg: DictConfig) -> np.ndarray:
     """Blend the colorized segmentation mask over foreground pixels."""
-    mask = cast("torch.Tensor", sample["mask"]).cpu().numpy()
+    mask = cast("torch.Tensor", value).cpu().numpy()
     colored = colorize_seg_mask(mask)
     return _blend_where(rgb, colored, mask > 0, float(cfg.preview.draw.mask_alpha))
 
 
-def _overlay_line_mask(
-    rgb: np.ndarray, sample: dict[str, Any], cfg: DictConfig
-) -> np.ndarray:
+def _overlay_line_mask(rgb: np.ndarray, value: object, cfg: DictConfig) -> np.ndarray:
     """Tint white-line pixels with a solid overlay color."""
-    mask = cast("torch.Tensor", sample["mask"]).cpu().numpy()[0]
+    mask = cast("torch.Tensor", value).cpu().numpy()[0]
     colored = np.zeros_like(rgb)
     colored[:, :] = _LINE_OVERLAY_RGB
     return _blend_where(rgb, colored, mask > 0.5, float(cfg.preview.draw.mask_alpha))

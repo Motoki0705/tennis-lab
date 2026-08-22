@@ -13,6 +13,7 @@ from src.synthetic_data_generation.composition.contracts import (
     GaussianAssetRole,
     GaussianCoordinates,
     GaussianForegroundComposition,
+    GaussianTransform,
 )
 from src.synthetic_data_generation.composition.gaussians import (
     GaussianTensorSet,
@@ -209,19 +210,14 @@ def compose_prevalidated_frame_gaussians(
             raise ValueError("PLCS prepared avatar tensor contracts are incompatible.")
 
         transform = instance.scene_from_asset
+        scale = local.means.new_tensor(transform.scale)
         rotation = torch.as_tensor(
             transform.rotation,
             dtype=local.means.dtype,
             device=local.means.device,
         ).reshape(3, 3)
-        translation = torch.as_tensor(
-            transform.translation,
-            dtype=local.means.dtype,
-            device=local.means.device,
-        )
-        scale = local.means.new_tensor(transform.scale)
         transform_quaternion = _rotation_matrix_to_quaternion(rotation)
-        means.append(scale * (local.means @ rotation.T) + translation)
+        means.append(transform_asset_points(local.means, transform=transform))
         quaternions.append(
             torch.nn.functional.normalize(
                 _quaternion_multiply(
@@ -250,6 +246,35 @@ def compose_prevalidated_frame_gaussians(
         appearance_model=reference.appearance_model,
         appearance_space=reference.appearance_space,
     )
+
+
+def transform_asset_points(
+    points: Tensor,
+    *,
+    transform: GaussianTransform,
+) -> Tensor:
+    """Apply the one tensor point transform shared by RGB and supervision."""
+    if points.ndim < 2 or points.shape[-1] != 3:
+        raise ValueError("PLCS transform points must have trailing shape [...,3].")
+    if points.dtype not in {torch.float32, torch.float64}:
+        raise TypeError("PLCS transform points must use float32 or float64.")
+    if not bool(torch.isfinite(points).all()):
+        raise ValueError("PLCS transform points contain NaN or infinity.")
+    rotation = torch.as_tensor(
+        transform.rotation,
+        dtype=points.dtype,
+        device=points.device,
+    ).reshape(3, 3)
+    translation = torch.as_tensor(
+        transform.translation,
+        dtype=points.dtype,
+        device=points.device,
+    )
+    scale = points.new_tensor(transform.scale)
+    result = scale * (points @ rotation.T) + translation
+    if not bool(torch.isfinite(result).all()):
+        raise ValueError("PLCS point transform produced NaN or infinity.")
+    return result
 
 
 def _validate_prepared_local_tensors(
@@ -333,4 +358,5 @@ __all__ = [
     "PreparedAvatar",
     "compose_prevalidated_frame_gaussians",
     "prepare_avatar",
+    "transform_asset_points",
 ]

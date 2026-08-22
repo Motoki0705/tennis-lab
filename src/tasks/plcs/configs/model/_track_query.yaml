@@ -1,0 +1,31 @@
+# Shared base for persistent track-query PLCS model variants.
+# Size-specific configs supply the mandatory model width, attention heads,
+# spatial/temporal stages, feed-forward width, and RoPE width.
+
+name: plcs_track_query
+
+hidden_dim: ???
+num_heads: ???
+ffn_dim: ???
+num_stages: ???
+rope_dim: ???
+
+num_queries: 4
+num_joints: 17
+rope_theta: 10000.0
+ffn_type: swiglu
+dropout: 0.1
+role_rope_enabled: true
+invisible_init_std: 0.02
+
+mhc:
+  coefficient_dim: 64
+  sinkhorn_iters: 20
+  eps: 1.0e-6
+  residual_identity_bias: 4.0
+  update_scale_init: 0.0
+
+cswa:
+  compression_ratio: 4
+  window_radius: 4
+  backend: reference

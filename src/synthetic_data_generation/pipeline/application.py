@@ -96,6 +96,8 @@ def build_stage_registry(
         ingest=IngestStageHandler(),
         reconstruction=NHTReconstructionHandler(
             executable=nht.reconstruct_executable,
+            pipeline_config=nht.pipeline_config,
+            training_runtime=nht.training_runtime,
             environment=dict(nht.environment),
             timeout_seconds=nht.reconstruction_timeout_seconds,
         ),

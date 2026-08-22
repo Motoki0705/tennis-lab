@@ -54,6 +54,9 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     OrbitStableField,
     OrbitTargetMode,
 )
+from src.synthetic_data_generation.dataset.court.schema import (
+    CourtDatasetSchemaVersion,
+)
 from src.synthetic_data_generation.dataset.plcs.production import (
     PLCSProductionMode,
     validate_plcs_production_contract,
@@ -70,6 +73,8 @@ from src.synthetic_data_generation.pipeline.contracts import (
 from src.synthetic_data_generation.pipeline.workspace import SceneWorkspace
 from src.synthetic_data_generation.reconstruction.contracts import (
     NHT_RECONSTRUCT_COMMAND,
+    NHTPipelineConfig,
+    NHTTrainingRuntime,
 )
 from src.synthetic_data_generation.rendering.nht.contracts import NHT_RENDER_COMMAND
 from src.tasks.blcs.generate_dataset.source_api import (
@@ -390,6 +395,8 @@ class NHTCommandPaths:
 
     reconstruct_executable: str | Path
     render_executable: str | Path
+    pipeline_config: NHTPipelineConfig
+    training_runtime: NHTTrainingRuntime
     environment: Mapping[str, str]
     reconstruction_timeout_seconds: float
     render_timeout_seconds: float
@@ -398,6 +405,8 @@ class NHTCommandPaths:
     def from_mapping(
         cls,
         value: object,
+        *,
+        resolver: PathResolver,
     ) -> NHTCommandPaths:
         raw = _exact(
             value,
@@ -405,6 +414,9 @@ class NHTCommandPaths:
             keys={
                 "reconstruct_executable",
                 "render_executable",
+                "pipeline_config_path",
+                "training_python_path",
+                "trainer_path",
                 "environment",
                 "reconstruction_timeout_seconds",
                 "render_timeout_seconds",
@@ -420,6 +432,8 @@ class NHTCommandPaths:
             key="render_executable",
             expected=NHT_RENDER_COMMAND,
         )
+        pipeline_config = _nht_pipeline_config(raw, resolver=resolver)
+        training_runtime = _nht_training_runtime(raw, resolver=resolver)
         environment_raw = _mapping(raw["environment"], path="nht.environment")
         unknown_environment = sorted(
             set(environment_raw) - {"CUDA_VISIBLE_DEVICES"}
@@ -456,10 +470,55 @@ class NHTCommandPaths:
         return cls(
             reconstruct_executable=reconstruct,
             render_executable=render,
+            pipeline_config=pipeline_config,
+            training_runtime=training_runtime,
             environment=environment,
             reconstruction_timeout_seconds=reconstruction_timeout,
             render_timeout_seconds=render_timeout,
         )
+
+
+def _nht_pipeline_config(
+    mapping: ConfigMapping,
+    *,
+    resolver: PathResolver,
+) -> NHTPipelineConfig:
+    """Resolve and validate the public NHT config without provider imports."""
+    configured = _text(mapping, "pipeline_config_path", path="nht")
+    lexical_path = resolver.resolve_symlink_entry(
+        PathRole.EXTERNAL_ASSET,
+        configured,
+    )
+    if lexical_path.is_symlink():
+        raise PathContractError(
+            f"nht.pipeline_config_path must not be a symbolic link: {lexical_path}"
+        )
+    if not lexical_path.exists():
+        raise PathContractError(
+            f"nht.pipeline_config_path does not exist: {lexical_path}"
+        )
+    if not lexical_path.is_file():
+        raise PathContractError(
+            f"nht.pipeline_config_path is not a file: {lexical_path}"
+        )
+    resolved = resolver.resolve(PathRole.EXTERNAL_ASSET, configured)
+    return NHTPipelineConfig.load(resolved)
+
+
+def _nht_training_runtime(
+    mapping: ConfigMapping,
+    *,
+    resolver: PathResolver,
+) -> NHTTrainingRuntime:
+    """Resolve the dedicated trainer environment without dereferencing its Python."""
+    configured_python = _text(mapping, "training_python_path", path="nht")
+    python = resolver.resolve_symlink_entry(
+        PathRole.EXTERNAL_ASSET,
+        configured_python,
+    )
+    configured_trainer = _text(mapping, "trainer_path", path="nht")
+    trainer = resolver.resolve(PathRole.EXTERNAL_ASSET, configured_trainer)
+    return NHTTrainingRuntime(python=python, trainer=trainer)
 
 
 def _installed_nht_command(
@@ -536,7 +595,7 @@ class AlignmentConfiguration:
                 "holdout_fraction",
                 "minimum_fit_cameras",
                 "minimum_holdout_cameras",
-                "maximum_cameras",
+                "camera_prefix_count",
                 "line_model",
                 "ground_plane",
                 "projection",
@@ -779,12 +838,18 @@ class AlignmentConfiguration:
                 "family_orientation_tolerance_radians",
                 "family_scale_relative_tolerance",
                 "minimum_center_separation_metres",
-                "separation_penalty",
                 "optimizer_maximum_iterations",
                 "optimizer_population_size",
                 "optimizer_tolerance",
                 "maximum_fit_points",
                 "common_scale_relative_tolerance",
+                "scale_bound_margin_relative",
+                "evidence_assignment_distance_metres",
+                "whole_template_inlier_distance_metres",
+                "minimum_whole_template_inlier_fraction",
+                "maximum_whole_template_q95_error_metres",
+                "minimum_semantic_segment_inlier_fraction",
+                "maximum_court_footprint_overlap_fraction",
             },
         )
         candidate = CourtCandidateFitSettings(
@@ -829,9 +894,6 @@ class AlignmentConfiguration:
                 "minimum_center_separation_metres",
                 path=candidate_path,
             ),
-            separation_penalty=_number(
-                candidate_raw, "separation_penalty", path=candidate_path
-            ),
             optimizer_maximum_iterations=_integer(
                 candidate_raw,
                 "optimizer_maximum_iterations",
@@ -853,6 +915,41 @@ class AlignmentConfiguration:
             common_scale_relative_tolerance=_number(
                 candidate_raw,
                 "common_scale_relative_tolerance",
+                path=candidate_path,
+            ),
+            scale_bound_margin_relative=_number(
+                candidate_raw,
+                "scale_bound_margin_relative",
+                path=candidate_path,
+            ),
+            evidence_assignment_distance_metres=_number(
+                candidate_raw,
+                "evidence_assignment_distance_metres",
+                path=candidate_path,
+            ),
+            whole_template_inlier_distance_metres=_number(
+                candidate_raw,
+                "whole_template_inlier_distance_metres",
+                path=candidate_path,
+            ),
+            minimum_whole_template_inlier_fraction=_number(
+                candidate_raw,
+                "minimum_whole_template_inlier_fraction",
+                path=candidate_path,
+            ),
+            maximum_whole_template_q95_error_metres=_number(
+                candidate_raw,
+                "maximum_whole_template_q95_error_metres",
+                path=candidate_path,
+            ),
+            minimum_semantic_segment_inlier_fraction=_number(
+                candidate_raw,
+                "minimum_semantic_segment_inlier_fraction",
+                path=candidate_path,
+            ),
+            maximum_court_footprint_overlap_fraction=_number(
+                candidate_raw,
+                "maximum_court_footprint_overlap_fraction",
                 path=candidate_path,
             ),
         )
@@ -895,7 +992,9 @@ class AlignmentConfiguration:
             minimum_holdout_cameras=_integer(
                 raw, "minimum_holdout_cameras", path=path, minimum=1
             ),
-            maximum_cameras=_integer(raw, "maximum_cameras", path=path, minimum=1),
+            camera_prefix_count=_integer(
+                raw, "camera_prefix_count", path=path, minimum=1
+            ),
             line_model=line_model,
             ground_plane=ground,
             projection=projection,
@@ -1046,7 +1145,12 @@ class CourtViewPolicy:
     hfov_degrees: tuple[float, float]
 
     @classmethod
-    def from_mapping(cls, value: object) -> CourtViewPolicy:
+    def from_mapping(
+        cls,
+        value: object,
+        *,
+        schema_version: CourtDatasetSchemaVersion,
+    ) -> CourtViewPolicy:
         raw = _exact(
             value,
             path="dataset.court.view",
@@ -1069,9 +1173,23 @@ class CourtViewPolicy:
             look_at_height_m=_ordered_range(raw, "look_at_height_m", path=path, positive=False),
             hfov_degrees=_ordered_range(raw, "hfov_degrees", path=path, positive=True),
         )
-        if set(result.target_modes) != set(OrbitTargetMode):
+        if not isinstance(schema_version, CourtDatasetSchemaVersion):
+            raise ConfigurationTypeError(
+                "dataset.court.schema_version must be a CourtDatasetSchemaVersion."
+            )
+        if (
+            schema_version is CourtDatasetSchemaVersion.V1
+            and set(result.target_modes) != set(OrbitTargetMode)
+        ):
             raise SemanticConfigurationError(
-                "Court target modes must include complex/court center and both baselines."
+                "Court v1 target modes must include complex/court center and both baselines."
+            )
+        if (
+            schema_version is CourtDatasetSchemaVersion.V2
+            and result.target_modes != (OrbitTargetMode.COURT_CENTER,)
+        ):
+            raise SemanticConfigurationError(
+                "Court v2 target modes must be exactly [court_center]."
             )
         if set(result.coverage_modes) != set(OrbitCoverageMode):
             raise SemanticConfigurationError(
@@ -1255,6 +1373,7 @@ def _performance_budget(value: object, *, path: str) -> DatasetPerformanceBudget
 class CourtDatasetConfiguration:
     """Complete typed Court dataset policy."""
 
+    schema_version: CourtDatasetSchemaVersion
     trajectory: CourtTrajectoryPolicy
     view: CourtViewPolicy
     sampling: CourtSamplingPolicy
@@ -1267,6 +1386,7 @@ class CourtDatasetConfiguration:
             value,
             path="dataset.court",
             keys={
+                "schema_version",
                 "trajectory",
                 "view",
                 "sampling",
@@ -1279,8 +1399,17 @@ class CourtDatasetConfiguration:
             raise SemanticConfigurationError(
                 "dataset.court.metadata_fields omits required provenance."
             )
+        schema_version = _enum_value(
+            raw,
+            "schema_version",
+            path="dataset.court",
+            enum_type=CourtDatasetSchemaVersion,
+        )
         trajectory = CourtTrajectoryPolicy.from_mapping(raw["trajectory"])
-        view = CourtViewPolicy.from_mapping(raw["view"])
+        view = CourtViewPolicy.from_mapping(
+            raw["view"],
+            schema_version=schema_version,
+        )
         sampling = CourtSamplingPolicy.from_mapping(raw["sampling"])
         performance = _performance_budget(
             raw["performance"],
@@ -1297,6 +1426,7 @@ class CourtDatasetConfiguration:
                 "shard count, and permit at most two complete scans per sample."
             )
         return cls(
+            schema_version=schema_version,
             trajectory=trajectory,
             view=view,
             sampling=sampling,
@@ -2086,7 +2216,7 @@ class ScenePipelineConfiguration:
             request=request,
             stages=stages,
             camera=_camera_profile(root["camera"]),
-            nht=NHTCommandPaths.from_mapping(root["nht"]),
+            nht=NHTCommandPaths.from_mapping(root["nht"], resolver=resolver),
             alignment=AlignmentConfiguration.from_mapping(
                 root["alignment"],
                 resolver=resolver,
@@ -2108,6 +2238,7 @@ __all__ = [
     "AlignmentConfiguration",
     "BLCSDatasetConfiguration",
     "CourtDatasetConfiguration",
+    "CourtDatasetSchemaVersion",
     "CourtSamplingPolicy",
     "CourtTrajectoryPolicy",
     "CourtViewPolicy",

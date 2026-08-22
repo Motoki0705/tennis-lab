@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from hydra import compose, initialize_config_dir
 
@@ -22,6 +24,9 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     OrbitShape,
     OrbitStableField,
     OrbitTargetMode,
+)
+from src.synthetic_data_generation.dataset.court.schema import (
+    CourtDatasetSchemaVersion,
 )
 from src.synthetic_data_generation.dataset.plcs.handler import PLCSStageParameters
 from src.synthetic_data_generation.dataset.plcs.production import PLCSProductionMode
@@ -44,9 +49,32 @@ _NHT_ENVIRONMENT = {
 pytestmark = pytest.mark.local_data
 
 
+def _resource_repository_root() -> Path:
+    for candidate in (PROJECT_ROOT, *PROJECT_ROOT.parents):
+        if (
+            candidate / "data/synthetic_data_generation/raw/tennis_court.mp4"
+        ).is_file() and (
+            candidate / "third_party/nht/configs/production.yaml"
+        ).is_file():
+            return Path(candidate)
+    raise FileNotFoundError("Canonical synthetic-data local resources are unavailable.")
+
+
 def _compose(*overrides: str) -> ScenePipelineConfiguration:
+    resource_root = _resource_repository_root()
     with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_ROOT)):
-        config = compose(config_name="run_scene_pipeline", overrides=list(overrides))
+        config = compose(
+            config_name="run_scene_pipeline",
+            overrides=[
+                *overrides,
+                f"roots.data_root={(resource_root / 'data').as_posix()}",
+                f"roots.checkpoint_root={(resource_root / 'ckpt').as_posix()}",
+                (
+                    "roots.external_asset_root="
+                    f"{(resource_root / 'third_party').as_posix()}"
+                ),
+            ],
+        )
     return ScenePipelineConfiguration.from_config(config)
 
 
@@ -66,17 +94,74 @@ def test_broadcast_profile_composes_exactly_two_shared_camera_slots() -> None:
     assert len(runtime.camera.slots) == 2
 
 
-def test_court_modes_and_objectives_compose_as_finite_typed_vocabularies() -> None:
-    court = _compose().court
+@pytest.mark.parametrize(
+    ("selector", "version", "target_modes"),
+    [
+        (
+            "dataset/court=v1",
+            CourtDatasetSchemaVersion.V1,
+            set(OrbitTargetMode),
+        ),
+        (
+            "dataset/court=v2",
+            CourtDatasetSchemaVersion.V2,
+            {OrbitTargetMode.COURT_CENTER},
+        ),
+    ],
+)
+def test_court_selectors_compose_and_validate_exact_typed_versions(
+    selector: str,
+    version: CourtDatasetSchemaVersion,
+    target_modes: set[OrbitTargetMode],
+) -> None:
+    court = _compose(selector).court
 
+    assert court.schema_version is version
     assert set(court.trajectory.shapes) == set(OrbitShape)
     assert set(court.trajectory.center_kinds) == set(OrbitCenterKind)
     assert set(court.trajectory.curve_modes) == set(OrbitCurveMode)
-    assert set(court.view.target_modes) == set(OrbitTargetMode)
+    assert set(court.view.target_modes) == target_modes
     assert set(court.view.coverage_modes) == set(OrbitCoverageMode)
     assert court.sampling.mode is OrbitSamplingMode.UNIFORM_ARC_LENGTH
     assert set(court.sampling.stable_field_order) == set(OrbitStableField)
     assert set(court.sampling.coverage_objective) == set(OrbitCoverageObjective)
+
+
+def test_default_and_compatibility_train_selectors_remain_exact_v1() -> None:
+    default = _compose().court
+    compatibility = _compose("dataset/court=train").court
+
+    assert default.schema_version is CourtDatasetSchemaVersion.V1
+    assert compatibility.schema_version is CourtDatasetSchemaVersion.V1
+    assert default == compatibility
+    assert tuple(default.view.target_modes) == (
+        OrbitTargetMode.COURT_CENTER,
+        OrbitTargetMode.COMPLEX_CENTER,
+        OrbitTargetMode.NEAR_BASELINE,
+        OrbitTargetMode.FAR_BASELINE,
+    )
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        "dataset.court.schema_version=v3",
+        "dataset/court=v1",
+        "dataset/court=v2",
+    ],
+)
+def test_version_or_version_specific_target_mismatch_fails_closed(
+    override: str,
+) -> None:
+    extra = {
+        "dataset/court=v1": "dataset.court.view.target_modes=[court_center]",
+        "dataset/court=v2": (
+            "dataset.court.view.target_modes=[court_center,complex_center]"
+        ),
+    }.get(override)
+    overrides = (override,) if extra is None else (override, extra)
+    with pytest.raises(SemanticConfigurationError):
+        _compose(*overrides)
 
 
 @pytest.mark.parametrize(
@@ -102,11 +187,28 @@ def test_unknown_court_key_fails_at_configuration_boundary() -> None:
         _compose("+dataset.court.trajectory.unknown_key=true")
 
 
-def test_public_nht_commands_are_installed_names_without_provider_knowledge() -> None:
+def test_public_nht_commands_and_trainer_runtime_are_explicit() -> None:
     runtime = _compose()
 
     assert runtime.nht.reconstruct_executable == "nht-reconstruct"
     assert runtime.nht.render_executable == "nht-render"
+    assert (
+        runtime.nht.pipeline_config.path
+        == (
+            runtime.resolver.roots.external_asset_root / "nht/configs/production.yaml"
+        ).resolve()
+    )
+    assert runtime.nht.pipeline_config.schema == "nht_pipeline_config_v1"
+    assert runtime.nht.training_runtime.python == (
+        runtime.resolver.roots.external_asset_root / "nht/.trainer-venv/bin/python"
+    )
+    assert (
+        runtime.nht.training_runtime.trainer
+        == (
+            runtime.resolver.roots.external_asset_root
+            / "nht/gsplat/examples/simple_trainer_nht.py"
+        ).resolve()
+    )
     assert runtime.nht.environment == _NHT_ENVIRONMENT
     assert runtime.nht.reconstruction_timeout_seconds == 86_400.0
     assert runtime.nht.render_timeout_seconds == 3_600.0
@@ -114,17 +216,26 @@ def test_public_nht_commands_are_installed_names_without_provider_knowledge() ->
     assert not hasattr(runtime.nht, "commit")
     assert not hasattr(runtime.nht, "repository_root")
     assert not hasattr(runtime.nht, "reconstruction_config_path")
-    assert not hasattr(runtime.nht, "training_runtime")
 
 
 def test_configured_paths_retain_their_declared_runtime_roles() -> None:
     runtime = _compose()
     line_model = runtime.alignment.evidence.line_model
 
-    assert runtime.resolver.validate(
-        PathRole.CHECKPOINT,
-        line_model.checkpoint_path,
-    ) == line_model.checkpoint_path
+    assert (
+        runtime.resolver.validate(
+            PathRole.EXTERNAL_ASSET,
+            runtime.nht.pipeline_config.path,
+        )
+        == runtime.nht.pipeline_config.path
+    )
+    assert (
+        runtime.resolver.validate(
+            PathRole.CHECKPOINT,
+            line_model.checkpoint_path,
+        )
+        == line_model.checkpoint_path
+    )
     for path in (
         line_model.backbone_repository_path,
         line_model.backbone_checkpoint_path,
@@ -140,6 +251,8 @@ def test_composition_root_can_construct_each_no_default_runtime_input() -> None:
 
     reconstruction = NHTReconstructionHandler(
         executable=runtime.nht.reconstruct_executable,
+        pipeline_config=runtime.nht.pipeline_config,
+        training_runtime=runtime.nht.training_runtime,
         environment=runtime.nht.environment,
         timeout_seconds=runtime.nht.reconstruction_timeout_seconds,
     )

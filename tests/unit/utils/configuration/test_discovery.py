@@ -95,18 +95,16 @@ def test_deleted_inventory_module_uses_its_explicit_canonical_authority() -> Non
 
 
 def test_catalog_does_not_publish_legacy_synthetic_boundaries() -> None:
-    synthetic = tuple(
-        contract
+    synthetic = {
+        contract.boundary_id
         for contract in catalog.BOUNDARY_CONTRACTS
         if contract.boundary_id.startswith("src.synthetic_data_generation.")
-    )
+    }
 
-    assert all(
-        contract.boundary_id.startswith(
-            "src.synthetic_data_generation.scripts.run_scene_pipeline:"
-        )
-        for contract in synthetic
-    )
+    assert synthetic == {
+        "src.synthetic_data_generation.scripts.run_scene_pipeline:main",
+        "src.synthetic_data_generation.scripts.visualize_dataset:main",
+    }
     discovery_source = (
         PROJECT_ROOT / "src/utils/configuration/discovery.py"
     ).read_text(encoding="utf-8")

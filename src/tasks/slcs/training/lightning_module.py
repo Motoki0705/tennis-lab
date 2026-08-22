@@ -54,7 +54,8 @@ class SLCSLightningModule(BaseLightningModule):
 
     def forward_batch(self, batch: dict[str, Tensor]) -> SLCSDecodedOutput:
         """Validate, execute, and decode one collated SLCS batch."""
-        return self.model_io.run(batch)
+        decoded: SLCSDecodedOutput = self.model_io.run(batch)
+        return decoded
 
     def _step(self, batch: dict[str, Tensor], stage: str) -> Tensor:
         call = self.model_io.build_call(batch)
@@ -63,7 +64,7 @@ class SLCSLightningModule(BaseLightningModule):
         losses = self.loss_fn(build_slcs_loss_inputs(outputs, targets))
         batch_metrics = self._metrics[stage].update(outputs, targets)
 
-        batch_size = int(batch["frame_mask"].shape[0])
+        batch_size = int(batch["padding_mask"].shape[0])
         on_step = stage == "train"
         self.log(
             f"{stage}/loss",
@@ -151,7 +152,7 @@ class SLCSLightningModule(BaseLightningModule):
             "target_player_valid": targets.player_mask,
             "target_ball_position": targets.target_ball_position,
             "target_ball_valid": targets.ball_mask,
-            "frame_mask": targets.frame_mask,
+            "padding_mask": targets.padding_mask,
         }
         return {k: self._to_numpy(v) for k, v in payload_keys.items()}
 

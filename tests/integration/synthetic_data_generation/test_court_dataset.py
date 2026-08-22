@@ -5,12 +5,14 @@ from __future__ import annotations
 import copy
 import json
 import math
+import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import cast
 
 import numpy as np
 import pytest
+from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 from PIL import Image
 
@@ -25,14 +27,28 @@ from src.synthetic_data_generation.alignment.contracts import (
     PartitionThresholds,
 )
 from src.synthetic_data_generation.configuration import CourtDatasetConfiguration
+from src.synthetic_data_generation.dataset.court import assembler as court_assembler
 from src.synthetic_data_generation.dataset.court.assembler import (
+    CourtArrayValidationMode,
     assemble_court_dataset,
+    validate_court_dataset,
 )
 from src.synthetic_data_generation.dataset.court.components.camera_sampling.selection import (
     build_court_dataset_plan,
 )
-from src.synthetic_data_generation.dataset.court.contracts import CourtDatasetPlan
+from src.synthetic_data_generation.dataset.court.contracts import (
+    CourtDatasetPlan,
+    CourtDatasetPlanAny,
+    CourtDatasetPlanV2,
+    TargetCourtResolutionPolicy,
+)
+from src.synthetic_data_generation.dataset.court.performance import (
+    CourtPerformanceEvidence,
+)
 from src.synthetic_data_generation.dataset.court.rendering.nht import CourtNHTRenderer
+from src.synthetic_data_generation.dataset.court.schema import (
+    COURT_SEMANTIC_CLASS_NAMES_V2,
+)
 from src.synthetic_data_generation.dataset.court.semantic_manifest import (
     COURT_SEMANTIC_MANIFEST_PATH,
     require_equal_court_semantic_manifests,
@@ -54,6 +70,9 @@ from src.synthetic_data_generation.scene_contract import (
     SceneCamera,
 )
 from src.utils.io import load_json
+from src.utils.paths import PROJECT_ROOT
+
+_CONFIG_ROOT = PROJECT_ROOT / "src/synthetic_data_generation/configs"
 
 
 def test_court_domain_resolves_production_quantities_and_balanced_courts() -> None:
@@ -76,6 +95,7 @@ def test_court_domain_resolves_production_quantities_and_balanced_courts() -> No
             np.eye(4, dtype=np.float64)
         ),
     )
+    assert isinstance(plan, CourtDatasetPlan)
     assert len(plan.groups) >= 24
     assert 2_000 <= plan.proposal_count <= 5_000
     assert max(group.maximum_adjacent_step_m for group in plan.groups) <= 1.05
@@ -88,8 +108,7 @@ def test_court_domain_resolves_production_quantities_and_balanced_courts() -> No
     for group in plan.groups:
         by_split[group.split.value][group.target_court.court_instance_id] += 1
     assert all(
-        max(counts.values()) - min(counts.values()) <= 1
-        for counts in by_split.values()
+        max(counts.values()) - min(counts.values()) <= 1 for counts in by_split.values()
     )
     assert all(
         group.trajectory.center_court_instance_id is None
@@ -107,6 +126,7 @@ def test_same_seed_public_renderer_runs_publish_equal_semantic_manifests(
         tmp_path / "repeat-a",
         executable=executable,
         rgb_value=0.2,
+        verify_attempt_local_reuse=True,
     )
     second_plan, second_manifest, second_root = _execute_court_render(
         tmp_path / "repeat-b",
@@ -119,18 +139,169 @@ def test_same_seed_public_renderer_runs_publish_equal_semantic_manifests(
     assert first_manifest == second_manifest
     first_dataset = _json_mapping(load_json(first_root / "dataset.json"))
     second_dataset = _json_mapping(load_json(second_root / "dataset.json"))
+    first_performance = CourtPerformanceEvidence.from_dict(
+        load_json(first_root / "diagnostics/performance.json")
+    )
+    second_performance = CourtPerformanceEvidence.from_dict(
+        load_json(second_root / "diagnostics/performance.json")
+    )
     assert first_manifest["trajectory_groups"] == first_dataset["trajectory_groups"]
     assert first_manifest["counts"] == second_manifest["counts"]
+    assert first_performance.post_render_rejected_sample_count > 0
+    assert (
+        first_performance.post_render_rejected_sample_count
+        == second_performance.post_render_rejected_sample_count
+    )
+    assert first_performance.fresh_rendered_sample_count == (
+        first_performance.renderable_sample_count
+    )
+    assert first_performance.retained_nht_array_bytes == 0
     _assert_no_operational_manifest_fields(first_manifest)
 
     first_record = _first_accepted_record(first_dataset)
     second_record = _first_accepted_record(second_dataset)
-    first_rgb = np.load(_record_path(first_root, first_record, "rgb"), allow_pickle=False)
+    first_rgb = np.load(
+        _record_path(first_root, first_record, "rgb"), allow_pickle=False
+    )
     second_rgb = np.load(
         _record_path(second_root, second_record, "rgb"), allow_pickle=False
     )
     assert not np.array_equal(first_rgb, second_rgb)
     _assert_repeat_semantic_mutations_fail(first_manifest)
+
+
+def test_v2_public_renderer_publishes_exact_sample_targets_labels_and_diagnostics(
+    tmp_path: Path,
+) -> None:
+    executable = _write_fake_nht_render(tmp_path / "bin/nht-render")
+    plan, semantic_manifest, dataset_root = _execute_court_render(
+        tmp_path / "v2",
+        executable=executable,
+        rgb_value=0.4,
+        court_selector="v2",
+    )
+
+    assert isinstance(plan, CourtDatasetPlanV2)
+    dataset = _json_mapping(load_json(dataset_root / "dataset.json"))
+    report = validate_court_dataset(
+        dataset_root,
+        expected_plan=plan,
+        expected_configuration=_configuration("v2"),
+        array_validation=CourtArrayValidationMode.HEADERS_ONLY,
+    )
+    assert dataset["schema"] == "canonical_court_dataset_v2"
+    assert semantic_manifest["schema"] == "court_renderer_semantic_manifest_v2"
+    assert semantic_manifest["sample_schema"] == "canonical_court_sample_v2"
+    assert report.accepted_frame_count >= 2_000
+
+    accepted = cast(list[object], dataset["samples"])
+    rejected = cast(list[object], dataset["rejected_samples"])
+    assert accepted
+    group_by_id = {group.trajectory_group_id: group for group in plan.groups}
+    targets_by_complex_group: dict[str, set[str]] = defaultdict(set)
+    for raw_record in (*accepted, *rejected):
+        record = _json_mapping(raw_record)
+        target = _json_mapping(record["target_court"])
+        binding = _json_mapping(target["binding"])
+        group_id = cast(str, record["trajectory_group_id"])
+        group = group_by_id[group_id]
+        court_id = cast(str, binding["court_instance_id"])
+        if (
+            group.target_court_policy.mode
+            is TargetCourtResolutionPolicy.TRAJECTORY_CENTER_COURT
+        ):
+            assert court_id == group.trajectory.center_court_instance_id
+        else:
+            targets_by_complex_group.setdefault(group_id, set()).add(court_id)
+    assert any(len(targets) > 1 for targets in targets_by_complex_group.values())
+
+    first_record = _json_mapping(accepted[0])
+    labels = _json_mapping(
+        load_json(_record_path(dataset_root, first_record, "labels"))
+    )
+    assert labels["schema"] == "canonical_court_sample_v2"
+    assert labels["target_court"] == first_record["target_court"]
+    projection = _json_mapping(labels["projection"])
+    for raw_court in cast(list[object], projection["courts"]):
+        court = _json_mapping(raw_court)
+        classes = cast(list[object], court["classes"])
+        assert [_json_mapping(value)["class_name"] for value in classes] == list(
+            COURT_SEMANTIC_CLASS_NAMES_V2
+        )
+        physical_indices = [
+            _json_mapping(cast(list[object], _json_mapping(value)["points"])[0])[
+                "physical_index"
+            ]
+            for value in classes
+        ]
+        assert len(classes) == 14
+        assert all(
+            len(cast(list[object], _json_mapping(value)["points"])) == 1
+            for value in classes
+        )
+        assert set(physical_indices) == set(range(14))
+
+    diagnostics = {
+        "trajectory-plan.json": "canonical_court_orbit_plan_v2",
+        "acceptance.json": "court_acceptance_diagnostics_v2",
+        "splits.json": "court_split_diagnostics_v2",
+        "parameter-table.json": "court_parameter_table_v2",
+        "semantic-visibility.json": "court_semantic_visibility_diagnostics_v2",
+        "semantic-manifest.json": "court_renderer_semantic_manifest_v2",
+        "performance.json": "court_dataset_performance_v3",
+    }
+    for filename, schema in diagnostics.items():
+        payload = _json_mapping(load_json(dataset_root / "diagnostics" / filename))
+        assert payload["schema"] == schema
+
+    ambiguous = [
+        record
+        for value in rejected
+        for record in (_json_mapping(value),)
+        if record["projection"] is None
+    ]
+    assert ambiguous
+    assert all(
+        cast(list[str], record["reasons"])[0].startswith(
+            "ambiguous_camera_relative_near_far:"
+        )
+        for record in ambiguous
+    )
+
+    with pytest.raises(ValueError, match="configuration schemas are mixed"):
+        validate_court_dataset(
+            dataset_root,
+            expected_configuration=_configuration("v1"),
+            array_validation=CourtArrayValidationMode.HEADERS_ONLY,
+        )
+
+    dataset_path = dataset_root / "dataset.json"
+    original_dataset_text = dataset_path.read_text(encoding="utf-8")
+    unknown_dataset = json.loads(original_dataset_text)
+    unknown_dataset["schema"] = "canonical_court_dataset_v3"
+    dataset_path.write_text(json.dumps(unknown_dataset), encoding="utf-8")
+    try:
+        with pytest.raises(ValueError, match="Unknown Court dataset schema"):
+            validate_court_dataset(
+                dataset_root,
+                array_validation=CourtArrayValidationMode.HEADERS_ONLY,
+            )
+    finally:
+        dataset_path.write_text(original_dataset_text, encoding="utf-8")
+
+    label_path = _record_path(dataset_root, first_record, "labels")
+    original_label_text = label_path.read_text(encoding="utf-8")
+    mixed_label = json.loads(original_label_text)
+    mixed_label["schema"] = "canonical_court_sample_v1"
+    label_path.write_text(json.dumps(mixed_label), encoding="utf-8")
+    try:
+        with pytest.raises(ValueError, match="labels schema"):
+            validate_court_dataset(
+                dataset_root,
+                array_validation=CourtArrayValidationMode.HEADERS_ONLY,
+            )
+    finally:
+        label_path.write_text(original_label_text, encoding="utf-8")
 
 
 def _layout() -> MultiCourtLayout:
@@ -160,9 +331,7 @@ def _layout() -> MultiCourtLayout:
 
 def _captured_cameras() -> tuple[SceneCamera, ...]:
     result = []
-    for index, angle in enumerate(
-        np.linspace(0.0, 2.0 * math.pi, 12, endpoint=False)
-    ):
+    for index, angle in enumerate(np.linspace(0.0, 2.0 * math.pi, 12, endpoint=False)):
         matrix = np.eye(4, dtype=np.float64)
         matrix[:3, 3] = (
             24.0 * math.cos(angle),
@@ -193,14 +362,14 @@ def _captured_cameras() -> tuple[SceneCamera, ...]:
     return tuple(result)
 
 
-def _configuration() -> CourtDatasetConfiguration:
-    return CourtDatasetConfiguration.from_mapping(
-        OmegaConf.to_container(
-            OmegaConf.load(
-                Path("src/synthetic_data_generation/configs/dataset/court/train.yaml")
-            ),
-            resolve=True,
+def _configuration(selector: str = "train") -> CourtDatasetConfiguration:
+    with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_ROOT)):
+        config = compose(
+            config_name="run_scene_pipeline",
+            overrides=[f"dataset/court={selector}"],
         )
+    return CourtDatasetConfiguration.from_mapping(
+        OmegaConf.to_container(config.dataset.court, resolve=True)
     )
 
 
@@ -209,17 +378,22 @@ def _execute_court_render(
     *,
     executable: Path,
     rgb_value: float,
-) -> tuple[CourtDatasetPlan, dict[str, object], Path]:
+    verify_attempt_local_reuse: bool = False,
+    court_selector: str = "train",
+) -> tuple[CourtDatasetPlanAny, dict[str, object], Path]:
     alignment = _alignment()
     scene_path = _write_standard_scene(workspace, _render_cameras())
     renderer = CourtNHTRenderer(
         executable=executable,
         client=NHTRenderClient(),
-        environment={"FAKE_NHT_RGB_VALUE": str(rgb_value)},
+        environment={
+            "FAKE_NHT_REJECT_FIRST": "1",
+            "FAKE_NHT_RGB_VALUE": str(rgb_value),
+        },
         timeout_seconds=180.0,
     )
     scene = renderer.preflight(scene_path)
-    configuration = _configuration()
+    configuration = _configuration(court_selector)
     plan = build_court_dataset_plan(
         scene_id="B00",
         profile="train",
@@ -239,7 +413,20 @@ def _execute_court_render(
         attempt_token="repeat-attempt",
         alignment=alignment,
     )
-    assemble_court_dataset(
+    reused_result = None
+    if verify_attempt_local_reuse:
+        reused_result = renderer.render(
+            plan=plan,
+            scene=scene,
+            attempt_root=attempt_root,
+            attempt_token="repeat-attempt",
+            alignment=alignment,
+        )
+        assert reused_result.samples == result.samples
+        assert reused_result.nht_invocations == 0
+        assert reused_result.nht_complete_array_scans == 0
+        assert reused_result.retained_nht_array_bytes == 0
+    report = assemble_court_dataset(
         dataset_root,
         plan=plan,
         layout=alignment.layout,
@@ -249,9 +436,33 @@ def _execute_court_render(
         attempt_root=attempt_root,
         performance_timer=timer,
     )
-    manifest = _json_mapping(
-        load_json(dataset_root / COURT_SEMANTIC_MANIFEST_PATH)
-    )
+    if reused_result is not None:
+        reused_evidence_root = workspace / "reused-performance-evidence"
+        (reused_evidence_root / "diagnostics").mkdir(parents=True)
+        reused_evidence = court_assembler._write_performance_evidence(
+            reused_evidence_root,
+            timer=PerformanceTimer(),
+            render_result=reused_result,
+            proposal_count=report.proposal_count,
+            accepted_frame_count=report.accepted_frame_count,
+            rejected_frame_count=report.rejected_frame_count,
+            accepted_staged_complete_array_scans=report.accepted_frame_count,
+            post_render_rejected_staged_complete_array_scans=(
+                report.performance.post_render_rejected_sample_count
+            ),
+            budget=configuration.performance,
+            visible_by_class=report.performance.visible_points_by_class,
+        )
+        assert reused_evidence.fresh_run_complete_array_scan_requirement == (
+            report.performance.fresh_run_complete_array_scan_requirement
+        )
+        assert reused_evidence.complete_array_scan_budget_capacity == (
+            report.performance.complete_array_scan_budget_capacity
+        )
+        assert reused_evidence.metrics.complete_array_scans < (
+            report.performance.metrics.complete_array_scans
+        )
+    manifest = _json_mapping(load_json(dataset_root / COURT_SEMANTIC_MANIFEST_PATH))
     return plan, manifest, dataset_root
 
 
@@ -266,9 +477,7 @@ def _alignment() -> AlignmentResult:
     )
     policy = AlignmentAcceptancePolicy(fit=thresholds, holdout=thresholds)
     fit = PartitionAssessment.evaluate(_partition_metrics("captured-0"), thresholds)
-    holdout = PartitionAssessment.evaluate(
-        _partition_metrics("captured-1"), thresholds
-    )
+    holdout = PartitionAssessment.evaluate(_partition_metrics("captured-1"), thresholds)
     candidates = []
     for index, x in enumerate((-8.0, 8.0)):
         matrix = np.eye(4, dtype=np.float64)
@@ -293,7 +502,9 @@ def _alignment() -> AlignmentResult:
         policy=policy,
         candidates=candidate_tuple,
         layout=MultiCourtLayout(
-            courts=tuple(candidate.to_court_instance() for candidate in candidate_tuple),
+            courts=tuple(
+                candidate.to_court_instance() for candidate in candidate_tuple
+            ),
             complex_bounds_scene=(-20.0, -25.0, -1.0, 20.0, 25.0, 12.0),
             primary_court_instance_id="court-0",
         ),
@@ -317,9 +528,7 @@ def _partition_metrics(camera_id: str) -> PartitionMetrics:
 
 def _render_cameras() -> tuple[SceneCamera, ...]:
     cameras = []
-    for index, angle in enumerate(
-        np.linspace(0.0, 2.0 * math.pi, 12, endpoint=False)
-    ):
+    for index, angle in enumerate(np.linspace(0.0, 2.0 * math.pi, 12, endpoint=False)):
         matrix = np.eye(4, dtype=np.float64)
         matrix[:3, 3] = (
             24.0 * math.cos(angle),
@@ -479,7 +688,7 @@ def _write_standard_scene(workspace: Path, cameras: tuple[SceneCamera, ...]) -> 
 
 def _write_fake_nht_render(path: Path) -> Path:
     path.parent.mkdir(parents=True)
-    interpreter = Path.cwd() / ".venv/bin/python"
+    interpreter = Path(sys.executable)
     path.write_text(
         f"""#!{interpreter}
 import argparse
@@ -501,16 +710,21 @@ request = json.loads(Path(args.cameras).read_text(encoding="utf-8"))
 output = Path(args.output)
 output.mkdir(parents=True, exist_ok=False)
 rgb_value = float(os.environ["FAKE_NHT_RGB_VALUE"])
+reject_first = os.environ.get("FAKE_NHT_REJECT_FIRST") == "1"
 previews = {{}}
 records = []
-for camera in request["cameras"]:
+for camera_index, camera in enumerate(request["cameras"]):
     camera_id = camera["camera_id"]
     width = camera["width"]
     height = camera["height"]
     frame = output / camera_id
     frame.mkdir()
     np.save(frame / "rgb.npy", np.full((height, width, 3), rgb_value, dtype=np.float32))
-    np.save(frame / "alpha.npy", np.ones((height, width, 1), dtype=np.float32))
+    alpha_value = 0.0 if reject_first and camera_index == 0 else 1.0
+    np.save(
+        frame / "alpha.npy",
+        np.full((height, width, 1), alpha_value, dtype=np.float32),
+    )
     np.save(frame / "depth.npy", np.ones((height, width, 1), dtype=np.float32))
     key = (width, height)
     if key not in previews:
@@ -564,9 +778,7 @@ def _assert_repeat_semantic_mutations_fail(manifest: dict[str, object]) -> None:
         _manifest_sample(payload)["disposition"] = "rejected"
 
     def mutate_class_visibility(payload: dict[str, object]) -> None:
-        projection = _json_mapping(
-            _manifest_sample(payload)["semantic_projection"]
-        )
+        projection = _json_mapping(_manifest_sample(payload)["semantic_projection"])
         courts = cast(list[object], projection["courts"])
         court = _json_mapping(courts[0])
         counts = _json_mapping(court["renderer_visible_points_by_class"])
@@ -588,7 +800,11 @@ def _assert_repeat_semantic_mutations_fail(manifest: dict[str, object]) -> None:
 
 def _manifest_sample(manifest: dict[str, object]) -> dict[str, object]:
     samples = cast(list[object], manifest["samples"])
-    return _json_mapping(samples[0])
+    for sample in samples:
+        record = _json_mapping(sample)
+        if record.get("disposition") == "accepted":
+            return record
+    raise AssertionError("Court semantic manifest has no accepted sample.")
 
 
 def _first_accepted_record(dataset: dict[str, object]) -> dict[str, object]:

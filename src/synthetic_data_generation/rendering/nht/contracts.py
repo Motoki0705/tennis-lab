@@ -8,6 +8,7 @@ import re
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -257,8 +258,34 @@ class NHTRenderCommandRequest:
 
 
 @dataclass(frozen=True, slots=True)
+class NHTRenderArrayMetadata:
+    """Validated file metadata retained without retaining its dense payload."""
+
+    path: Path
+    shape: tuple[int, int, int]
+    dtype: str
+    byte_count: int
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.path, Path) or not self.path.is_absolute():
+            raise ValueError("NHT array metadata path must be absolute.")
+        if (
+            len(self.shape) != 3
+            or any(isinstance(value, bool) or value <= 0 for value in self.shape)
+        ):
+            raise ValueError("NHT array metadata shape must contain three positive integers.")
+        if self.dtype != "float32":
+            raise TypeError("NHT array metadata dtype must be float32.")
+        expected_bytes = int(np.prod(self.shape, dtype=np.int64)) * np.dtype(
+            np.float32
+        ).itemsize
+        if self.byte_count != expected_bytes:
+            raise ValueError("NHT array metadata byte count disagrees with shape/dtype.")
+
+
+@dataclass(frozen=True, slots=True)
 class NHTRenderRecord:
-    """Validated RGB, alpha, depth, and preview files for one camera."""
+    """Validated files and metadata for one camera, without dense array ownership."""
 
     camera_id: str
     request_source: str
@@ -269,7 +296,14 @@ class NHTRenderRecord:
     alpha_path: Path
     alpha_preview_path: Path
     depth_path: Path
-    _arrays: NHTRenderArrays | None = field(
+    _array_metadata: (
+        tuple[
+            NHTRenderArrayMetadata,
+            NHTRenderArrayMetadata,
+            NHTRenderArrayMetadata,
+        ]
+        | None
+    ) = field(
         default=None,
         init=False,
         repr=False,
@@ -278,23 +312,88 @@ class NHTRenderRecord:
 
     @property
     def arrays(self) -> NHTRenderArrays:
-        """Return the immutable arrays scanned for this exact invocation."""
-        if self._arrays is None:
+        """Load a fresh validated payload; the record never caches dense arrays."""
+        return self.load_arrays()
+
+    @property
+    def array_metadata(
+        self,
+    ) -> tuple[
+        NHTRenderArrayMetadata,
+        NHTRenderArrayMetadata,
+        NHTRenderArrayMetadata,
+    ]:
+        """Return the exact RGB/alpha/depth metadata retained after validation."""
+        if self._array_metadata is None:
             raise RuntimeError(
-                "NHT render arrays are unavailable because this record was not "
+                "NHT array metadata is unavailable because this record was not "
                 "produced by NHTRenderClient."
             )
-        return self._arrays
+        return self._array_metadata
+
+    @property
+    def validated_array_byte_count(self) -> int:
+        """Return the validated dense payload size without loading the payload."""
+        return sum(item.byte_count for item in self.array_metadata)
+
+    @property
+    def retained_array_byte_count(self) -> int:
+        """Return dense bytes strongly retained by this metadata-only record."""
+        return 0
+
+    def load_arrays(self) -> NHTRenderArrays:
+        """Load and revalidate one transient payload against retained metadata."""
+        expected = self.array_metadata
+        arrays = NHTRenderArrays(
+            rgb=np.load(self.rgb_path, allow_pickle=False),
+            alpha=np.load(self.alpha_path, allow_pickle=False),
+            depth=np.load(self.depth_path, allow_pickle=False),
+        )
+        if self._metadata_from_arrays(arrays) != expected:
+            raise ValueError("NHT render arrays changed after public result validation.")
+        return arrays
 
     def _bind_arrays(self, arrays: NHTRenderArrays) -> None:
-        """Bind the one validated payload loaded by ``NHTRenderClient``."""
+        """Retain metadata for one validated payload and release its dense arrays."""
         if not isinstance(arrays, NHTRenderArrays):
             raise TypeError("NHT record arrays must be NHTRenderArrays.")
-        if self._arrays is not None:
-            raise RuntimeError("NHT render arrays are already bound to this record.")
+        if self._array_metadata is not None:
+            raise RuntimeError("NHT render array metadata is already bound to this record.")
         if (arrays.width, arrays.height) != (self.width, self.height):
             raise ValueError("NHT render arrays disagree with the record resolution.")
-        object.__setattr__(self, "_arrays", arrays)
+        object.__setattr__(self, "_array_metadata", self._metadata_from_arrays(arrays))
+
+    def _metadata_from_arrays(
+        self,
+        arrays: NHTRenderArrays,
+    ) -> tuple[
+        NHTRenderArrayMetadata,
+        NHTRenderArrayMetadata,
+        NHTRenderArrayMetadata,
+    ]:
+        return cast(
+            tuple[
+                NHTRenderArrayMetadata,
+                NHTRenderArrayMetadata,
+                NHTRenderArrayMetadata,
+            ],
+            tuple(
+                NHTRenderArrayMetadata(
+                    path=path,
+                    shape=cast(
+                        tuple[int, int, int],
+                        tuple(int(value) for value in array.shape),
+                    ),
+                    dtype=array.dtype.name,
+                    byte_count=int(array.nbytes),
+                )
+                for path, array in (
+                    (self.rgb_path, arrays.rgb),
+                    (self.alpha_path, arrays.alpha),
+                    (self.depth_path, arrays.depth),
+                )
+            ),
+        )
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -384,6 +483,8 @@ class NHTRenderEvidence:
     array_file_load_count: int
     preview_validation_count: int
     loaded_array_bytes: int
+    maximum_live_array_bytes: int
+    retained_array_bytes: int
     subprocess_wall_seconds: float
 
     def __post_init__(self) -> None:
@@ -403,6 +504,17 @@ class NHTRenderEvidence:
             raise ValueError("NHT must validate exactly two previews per camera.")
         if isinstance(self.loaded_array_bytes, bool) or self.loaded_array_bytes < 0:
             raise ValueError("NHT loaded_array_bytes must be non-negative.")
+        if (
+            isinstance(self.maximum_live_array_bytes, bool)
+            or self.maximum_live_array_bytes <= 0
+            or self.maximum_live_array_bytes > self.loaded_array_bytes
+        ):
+            raise ValueError(
+                "NHT maximum_live_array_bytes must be positive and no greater than "
+                "the total loaded bytes."
+            )
+        if self.retained_array_bytes != 0:
+            raise ValueError("NHT results must not retain dense render arrays.")
         if (
             isinstance(self.subprocess_wall_seconds, bool)
             or not np.isfinite(self.subprocess_wall_seconds)
@@ -495,6 +607,7 @@ __all__ = [
     "NHT_RENDER_COMMAND",
     "NHT_RENDER_REQUEST_SCHEMA",
     "NHT_RENDER_RESULT_SCHEMA",
+    "NHTRenderArrayMetadata",
     "NHTRenderCamera",
     "NHTRenderCommandRequest",
     "NHTRenderEvidence",

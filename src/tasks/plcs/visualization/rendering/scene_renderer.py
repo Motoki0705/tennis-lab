@@ -527,7 +527,7 @@ class PLCSSceneRenderer:
         ax.set_ylim(1, 0)
 
         court_uv = cam.court_kp_uv[frame_idx]
-        court_vis = cam.court_kp_visible[frame_idx]
+        court_vis = cam.court_kp_vis[frame_idx]
         self.court_renderer.render_projected_2d(
             ax,
             court_uv,
@@ -543,7 +543,7 @@ class PLCSSceneRenderer:
         )
 
         human_uv = cam.human_kp_uv[frame_idx]
-        human_vis = cam.human_kp_visible[frame_idx]
+        human_vis = cam.human_kp_vis[frame_idx]
         if human_uv.ndim == 2:
             self.skeleton_renderer.render_2d(ax, human_uv, human_vis)
             return

@@ -22,12 +22,15 @@ from src.synthetic_data_generation.dataset.plcs.components.avatar_asset import (
     AvatarGaussianAsset,
     build_surface_gaussian_asset,
 )
+from src.synthetic_data_generation.dataset.plcs.coordinates import (
+    SMPLH_SURFACE_VERTEX_COUNT,
+)
 from src.tasks.plcs.generate_dataset.sampling.motion_source import PLCSMotionClip
 
 FloatArray: TypeAlias = NDArray[np.float64]
 IntArray: TypeAlias = NDArray[np.int64]
 
-_VERTEX_COUNT = 6890
+_VERTEX_COUNT = SMPLH_SURFACE_VERTEX_COUNT
 _JOINT_COUNT = 52
 _POSE_BLEND_WIDTH = (_JOINT_COUNT - 1) * 9
 _REQUIRED_KEYS = {
@@ -203,15 +206,19 @@ class SMPLHDeviceModel:
     gender: str
     template_vertices_m: Tensor
     shape_directions: Tensor
+    pose_directions: Tensor
     joint_regressor: Tensor
     parents: Tensor
+    vertex_joint_weights: Tensor
 
     def __post_init__(self) -> None:
         tensors = (
             self.template_vertices_m,
             self.shape_directions,
+            self.pose_directions,
             self.joint_regressor,
             self.parents,
+            self.vertex_joint_weights,
         )
         if any(value.device.type != "cuda" for value in tensors):
             raise ValueError("Production SMPL-H model buffers must be CUDA-resident.")
@@ -221,10 +228,20 @@ class SMPLHDeviceModel:
             raise TypeError("Production SMPL-H model buffers must use float32.")
         if self.shape_directions.dtype != torch.float32:
             raise TypeError("Production SMPL-H shape directions must use float32.")
+        if self.pose_directions.dtype != torch.float32:
+            raise TypeError("Production SMPL-H pose directions must use float32.")
         if self.joint_regressor.dtype != torch.float32:
             raise TypeError("Production SMPL-H joint regressor must use float32.")
         if self.parents.dtype != torch.int64:
             raise TypeError("Production SMPL-H parents must use int64.")
+        if self.vertex_joint_weights.dtype != torch.float32:
+            raise TypeError("Production SMPL-H vertex weights must use float32.")
+        if self.template_vertices_m.shape != (_VERTEX_COUNT, 3):
+            raise ValueError("Production SMPL-H template must have shape [6890,3].")
+        if self.pose_directions.shape != (_POSE_BLEND_WIDTH, _VERTEX_COUNT * 3):
+            raise ValueError("Production SMPL-H pose directions have the wrong shape.")
+        if self.vertex_joint_weights.shape != (_VERTEX_COUNT, _JOINT_COUNT):
+            raise ValueError("Production SMPL-H vertex weights have the wrong shape.")
 
     @property
     def device(self) -> torch.device:
@@ -358,6 +375,11 @@ def upload_smplh_model(
             dtype=torch.float32,
             device=target,
         ),
+        pose_directions=torch.as_tensor(
+            np.array(model.pose_directions, copy=True),
+            dtype=torch.float32,
+            device=target,
+        ),
         joint_regressor=torch.as_tensor(
             np.array(model.joint_regressor, copy=True),
             dtype=torch.float32,
@@ -366,6 +388,11 @@ def upload_smplh_model(
         parents=torch.as_tensor(
             np.array(model.parents, copy=True),
             dtype=torch.int64,
+            device=target,
+        ),
+        vertex_joint_weights=torch.as_tensor(
+            np.array(model.vertex_joint_weights, copy=True),
+            dtype=torch.float32,
             device=target,
         ),
     )
@@ -529,6 +556,74 @@ def skin_gaussian_batch(
     )
 
 
+def pose_smplh_surface_batch(
+    model: SMPLHDeviceModel,
+    clip: SMPLHDeviceClip,
+    *,
+    source_frame_indices: tuple[int, ...],
+) -> Tensor:
+    """Evaluate the posed full 6,890-vertex surface before root translation.
+
+    This is the deterministic support-geometry authority. It evaluates the
+    official pose blend and LBS on CUDA and includes the clip's root
+    ``global_orient`` through the same 52-joint rotation batch as Gaussian LBS.
+    """
+    if not source_frame_indices:
+        raise ValueError("SMPL-H surface LBS requires at least one source frame.")
+    if len(source_frame_indices) != len(set(source_frame_indices)):
+        raise ValueError("SMPL-H surface source frame indices must be unique.")
+    if any(index < 0 or index >= clip.frame_count for index in source_frame_indices):
+        raise IndexError("SMPL-H surface source frame index is outside the clip.")
+    if model.device != clip.full_pose_axis_angle.device:
+        raise ValueError("SMPL-H model and clip must share one CUDA device.")
+    indices = torch.tensor(source_frame_indices, dtype=torch.int64, device=model.device)
+    pose = clip.full_pose_axis_angle.index_select(0, indices)
+    betas = clip.betas.unsqueeze(0).expand(len(source_frame_indices), -1)
+    with torch.inference_mode():
+        _joints, transforms, posed_vertices = _lbs_state(
+            betas,
+            pose,
+            template=model.template_vertices_m,
+            shapedirs=model.shape_directions,
+            posedirs=model.pose_directions,
+            joint_regressor=model.joint_regressor,
+            parents=model.parents,
+        )
+        blended = torch.einsum(
+            "vj,bjkl->bvkl", model.vertex_joint_weights, transforms
+        )
+        homogeneous = torch.cat(
+            (
+                posed_vertices,
+                torch.ones(
+                    (*posed_vertices.shape[:-1], 1),
+                    dtype=posed_vertices.dtype,
+                    device=model.device,
+                ),
+            ),
+            dim=-1,
+        )
+        vertices = torch.einsum("bvkl,bvl->bvk", blended, homogeneous)[..., :3]
+        if vertices.shape != (len(source_frame_indices), _VERTEX_COUNT, 3):
+            raise RuntimeError("SMPL-H surface LBS returned an invalid shape.")
+        if not bool(torch.isfinite(vertices).all()):
+            raise ValueError("SMPL-H surface LBS produced NaN or infinity.")
+    return vertices
+
+
+def initial_smplh_surface_min_z(
+    model: SMPLHDeviceModel,
+    clip: SMPLHDeviceClip,
+) -> float:
+    """Return frame-zero posed full-surface minimum local Z from CUDA."""
+    vertices = pose_smplh_surface_batch(
+        model,
+        clip,
+        source_frame_indices=(0,),
+    )
+    return float(vertices[0, :, 2].amin().item())
+
+
 def _joint_transforms(
     betas: Tensor,
     pose: Tensor,
@@ -550,6 +645,40 @@ def _joint_transforms(
         dtype=betas.dtype,
     )
     return cast(Tensor, joints), cast(Tensor, transforms)
+
+
+def _lbs_state(
+    betas: Tensor,
+    pose: Tensor,
+    *,
+    template: Tensor,
+    shapedirs: Tensor,
+    posedirs: Tensor,
+    joint_regressor: Tensor,
+    parents: Tensor,
+) -> tuple[Tensor, Tensor, Tensor]:
+    shaped = template + blend_shapes(betas, shapedirs)
+    canonical_joints = vertices2joints(joint_regressor, shaped)
+    rotations = batch_rodrigues(pose.reshape(-1, 3)).reshape(
+        pose.shape[0], _JOINT_COUNT, 3, 3
+    )
+    identity = torch.eye(3, dtype=pose.dtype, device=pose.device)
+    pose_feature = (rotations[:, 1:] - identity).reshape(pose.shape[0], -1)
+    pose_offsets = (pose_feature @ posedirs).reshape(
+        pose.shape[0], _VERTEX_COUNT, 3
+    )
+    posed_vertices = shaped + pose_offsets
+    joints, transforms = batch_rigid_transform(
+        rotations,
+        canonical_joints,
+        parents,
+        dtype=betas.dtype,
+    )
+    return (
+        cast(Tensor, joints),
+        cast(Tensor, transforms),
+        cast(Tensor, posed_vertices),
+    )
 
 
 def _quaternion_to_matrix(quaternions: Tensor) -> Tensor:
@@ -640,6 +769,8 @@ __all__ = [
     "SMPLHModelData",
     "build_smplh_surface_asset",
     "load_smplh_model",
+    "initial_smplh_surface_min_z",
+    "pose_smplh_surface_batch",
     "skin_gaussian_batch",
     "upload_gaussian_asset",
     "upload_motion_clip",

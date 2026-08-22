@@ -802,6 +802,7 @@ EXPECTED_AUDIT_RULES = tuple(AuditRule)
 
 _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.synthetic_data_generation.scripts.run_scene_pipeline": "synthetic.scene_pipeline",
+    "src.synthetic_data_generation.scripts.visualize_dataset": "synthetic.dataset_visualization",
     "src.tasks.ball_detection.scripts.analyze_web_bbox_ratio": "ball.web_tool",
     "src.tasks.ball_detection.scripts.convert_web_dataset": "ball.web_tool",
     "src.tasks.ball_detection.scripts.eval": "ball.eval",
@@ -819,6 +820,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.court_detection.scripts.evaluate_homography_annotations": "court_detection.evaluate_homography_annotations",
     "src.tasks.court_detection.scripts.generate_line_masks": "court_detection.generate_line_masks",
     "src.tasks.court_detection.scripts.generate_masks": "court_detection.generate_masks",
+    "src.tasks.court_detection.scripts.materialize_targets": "court_detection.materialize_targets",
     "src.tasks.court_detection.scripts.prepare_youtube_dataset": "court_detection.prepare_youtube_dataset",
     "src.tasks.court_detection.scripts.preview_augmentation": "court_detection.preview_augmentation",
     "src.tasks.court_detection.scripts.preview_heatmaps": "court_detection.preview_heatmaps",
@@ -856,6 +858,10 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.synthetic_data_generation.scripts.run_scene_pipeline": (
         "src.synthetic_data_generation.configuration.validate_scene_pipeline_boundary"
     ),
+    "src.synthetic_data_generation.scripts.visualize_dataset": (
+        "src.synthetic_data_generation.visualization.configuration."
+        "validate_dataset_visualization_boundary"
+    ),
     "src.tasks.ball_detection.scripts.analyze_web_bbox_ratio": "src.tasks.ball_detection.configuration.validate_web_tool",
     "src.tasks.ball_detection.scripts.convert_web_dataset": "src.tasks.ball_detection.configuration.validate_web_tool",
     "src.tasks.ball_detection.scripts.eval": "src.tasks.ball_detection.configuration.validate_eval",
@@ -873,6 +879,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.court_detection.scripts.evaluate_homography_annotations": "src.tasks.court_detection.scripts.evaluate_homography_annotations._validate_boundary",
     "src.tasks.court_detection.scripts.generate_line_masks": "src.tasks.court_detection.scripts.generate_line_masks._validate_boundary",
     "src.tasks.court_detection.scripts.generate_masks": "src.tasks.court_detection.scripts.generate_masks._validate_boundary",
+    "src.tasks.court_detection.scripts.materialize_targets": "src.tasks.court_detection.scripts.materialize_targets._validate_boundary",
     "src.tasks.court_detection.scripts.prepare_youtube_dataset": "src.tasks.court_detection.scripts.prepare_youtube_dataset._validate_boundary",
     "src.tasks.court_detection.scripts.preview_augmentation": "src.tasks.court_detection.scripts.preview_augmentation._validate_boundary",
     "src.tasks.court_detection.scripts.preview_heatmaps": "src.tasks.court_detection.scripts.preview_heatmaps._validate_boundary",
@@ -979,6 +986,10 @@ _RUNTIME_BOUNDARIES = (
         "src.synthetic_data_generation.scripts.run_scene_pipeline",
     ),
     _runtime_boundary(
+        "synthetic_data_generation",
+        "src.synthetic_data_generation.scripts.visualize_dataset",
+    ),
+    _runtime_boundary(
         "ball_detection", "src.tasks.ball_detection.scripts.analyze_web_bbox_ratio"
     ),
     _runtime_boundary(
@@ -1033,6 +1044,9 @@ _RUNTIME_BOUNDARIES = (
     ),
     _runtime_boundary(
         "court_detection", "src.tasks.court_detection.scripts.generate_masks"
+    ),
+    _runtime_boundary(
+        "court_detection", "src.tasks.court_detection.scripts.materialize_targets"
     ),
     _runtime_boundary(
         "court_detection",
