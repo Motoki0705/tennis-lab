@@ -36,6 +36,7 @@ CourtSourceKind: TypeAlias = Literal["tennis_court_detector", "synthetic_court"]
 CourtSourceSplit: TypeAlias = Literal["train", "val", "test"]
 CourtTargetKind: TypeAlias = Literal["kp", "seg", "line"]
 SyntheticCourtSchemaVersion: TypeAlias = Literal["v1", "v2"]
+KeypointCourtScope: TypeAlias = Literal["all_courts", "target_court"]
 
 SEGMENTATION_TARGET_SCHEMA = "court_cell_segmentation_v1"
 LINE_TARGET_SCHEMA = "court_line_binary_v1"
@@ -448,6 +449,7 @@ class TennisCourtDetectorSourceConfig:
 class SyntheticCourtSourceConfig:
     kind: Literal["synthetic_court"]
     schema: SyntheticCourtSchemaVersion
+    keypoint_court_scope: KeypointCourtScope
     workspace_root: Path
     scene_ids: tuple[str, ...]
 
@@ -458,7 +460,13 @@ class SyntheticCourtSourceConfig:
         mapping = as_config_mapping(value, path="data.source")
         _exact(
             mapping,
-            {"kind", "schema", "workspace_root", "scene_ids"},
+            {
+                "kind",
+                "schema",
+                "keypoint_court_scope",
+                "workspace_root",
+                "scene_ids",
+            },
             path="data.source",
         )
         if _string(mapping, "kind", path="data.source") != "synthetic_court":
@@ -469,6 +477,19 @@ class SyntheticCourtSourceConfig:
         if schema not in {"v1", "v2"}:
             raise SemanticConfigurationError(
                 "data.source.schema must be explicitly 'v1' or 'v2'."
+            )
+        keypoint_court_scope = _string(
+            mapping, "keypoint_court_scope", path="data.source"
+        )
+        if keypoint_court_scope not in {"all_courts", "target_court"}:
+            raise SemanticConfigurationError(
+                "data.source.keypoint_court_scope must be 'all_courts' or "
+                "'target_court'."
+            )
+        if schema == "v1" and keypoint_court_scope == "target_court":
+            raise SemanticConfigurationError(
+                "data.source.keypoint_court_scope='target_court' requires "
+                "data.source.schema='v2'."
             )
         raw_ids = _sequence(mapping, "scene_ids", path="data.source")
         scene_ids_list: list[str] = []
@@ -497,6 +518,7 @@ class SyntheticCourtSourceConfig:
         return cls(
             kind="synthetic_court",
             schema=cast(SyntheticCourtSchemaVersion, schema),
+            keypoint_court_scope=cast(KeypointCourtScope, keypoint_court_scope),
             workspace_root=resolver.resolve(
                 PathRole.DATA,
                 _string(mapping, "workspace_root", path="data.source"),
@@ -1153,6 +1175,7 @@ __all__ = [
     "CourtSourceConfig",
     "CourtTargetConfig",
     "CourtTrainingConfig",
+    "KeypointCourtScope",
     "LINE_TARGET_SCHEMA",
     "SEGMENTATION_TARGET_SCHEMA",
     "SyntheticCourtSourceConfig",

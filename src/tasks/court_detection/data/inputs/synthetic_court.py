@@ -45,6 +45,7 @@ _V2_DATASET_SCHEMA = "canonical_court_dataset_v2"
 _V2_SAMPLE_SCHEMA = "canonical_court_sample_v2"
 _V1_KP_SCHEMA = "synthetic_symmetric_kp7"
 _V2_KP_SCHEMA = "synthetic_camera_relative_kp14"
+_V2_TARGET_COURT_KP_SCHEMA = "synthetic_camera_relative_kp14_target_court"
 _V1_FLIP_PERMUTATION = (1, 0, 3, 2, 5, 4, 6)
 _V2_FLIP_PERMUTATION = (1, 0, 3, 2, 6, 7, 4, 5, 9, 8, 11, 10, 12, 13)
 _V2_OPPOSITE_PHYSICAL_INDICES = (2, 3, 0, 1, 5, 4, 7, 6, 10, 11, 8, 9, 13, 12)
@@ -150,7 +151,11 @@ class SyntheticCourtInput:
             flip_permutation = _V1_FLIP_PERMUTATION
         elif config.schema == "v2":
             source_schema = _V2_DATASET_SCHEMA
-            keypoint_schema = _V2_KP_SCHEMA
+            keypoint_schema = (
+                _V2_TARGET_COURT_KP_SCHEMA
+                if config.keypoint_court_scope == "target_court"
+                else _V2_KP_SCHEMA
+            )
             channel_names = _V2_CHANNEL_NAMES
             flip_permutation = _V2_FLIP_PERMUTATION
         else:  # pragma: no cover - typed configuration is the authority
@@ -737,9 +742,14 @@ class SyntheticCourtInput:
             )
         courts = self._required_sequence(projection["courts"], name="projection.courts")
         instances: list[CourtInstance2D] = []
-        channel_points: list[list[tuple[float, float]]] = [[] for _ in range(14)]
-        channel_visible: list[list[bool]] = [[] for _ in range(14)]
-        channel_physical: list[list[int]] = [[] for _ in range(14)]
+        validated_court_channels: list[
+            tuple[
+                str,
+                list[tuple[float, float]],
+                list[bool],
+                list[int],
+            ]
+        ] = []
         court_ids: set[str] = set()
         coverage_modes: list[object] = []
         renderer_visible_names: set[str] = set()
@@ -764,6 +774,8 @@ class SyntheticCourtInput:
             instance_points = torch.empty((14, 2), dtype=torch.float32)
             instance_in_front = torch.zeros(14, dtype=torch.bool)
             instance_visible = torch.zeros(14, dtype=torch.bool)
+            court_points: list[tuple[float, float]] = []
+            court_visible: list[bool] = []
             semantic_physical: list[int] = []
             for class_id, class_value in enumerate(classes):
                 semantic = self._exact_mapping(
@@ -809,9 +821,8 @@ class SyntheticCourtInput:
                 instance_points[physical_index] = torch.tensor(uv)
                 instance_in_front[physical_index] = point["in_front"]
                 instance_visible[physical_index] = geometry_visible
-                channel_points[class_id].append(uv)
-                channel_visible[class_id].append(supervision_visible)
-                channel_physical[class_id].append(physical_index)
+                court_points.append(uv)
+                court_visible.append(supervision_visible)
                 if renderer_visible:
                     renderer_visible_names.add(class_name)
                     renderer_visible_count += 1
@@ -833,6 +844,9 @@ class SyntheticCourtInput:
                     point_visible=instance_visible,
                 )
             )
+            validated_court_channels.append(
+                (court_id, court_points, court_visible, semantic_physical)
+            )
         if projection["coverage_modes"] != coverage_modes:
             raise ValueError(
                 "Synthetic Court v2 coverage_modes disagree with court order."
@@ -849,10 +863,30 @@ class SyntheticCourtInput:
                 "Synthetic Court v2 visible_point_count inventory is inconsistent."
             )
         target_court_id = record.payload.get("target_court_id")
-        if sum(instance.court_instance_id == target_court_id for instance in instances) != 1:
+        if (
+            sum(instance.court_instance_id == target_court_id for instance in instances)
+            != 1
+        ):
             raise ValueError(
                 "Synthetic Court v2 target_court must occur exactly once in projection."
             )
+        selected_courts = (
+            validated_court_channels
+            if self.config.keypoint_court_scope == "all_courts"
+            else [
+                court
+                for court in validated_court_channels
+                if court[0] == target_court_id
+            ]
+        )
+        channel_points: list[list[tuple[float, float]]] = [[] for _ in range(14)]
+        channel_visible: list[list[bool]] = [[] for _ in range(14)]
+        channel_physical: list[list[int]] = [[] for _ in range(14)]
+        for _, points, visible, physical in selected_courts:
+            for class_id in range(14):
+                channel_points[class_id].append(points[class_id])
+                channel_visible[class_id].append(visible[class_id])
+                channel_physical[class_id].append(physical[class_id])
         channels = self._channels(
             names=_V2_CHANNEL_NAMES,
             points=channel_points,

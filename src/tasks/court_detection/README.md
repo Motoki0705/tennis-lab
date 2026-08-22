@@ -9,6 +9,8 @@
 - `data/source=synthetic_court_v1`: `schema: v1`を明示したcanonical v1回帰source。physical pointを7 semantic multi-peak channelへまとめます。
 - `data/processing=kp|seg|line|kp_seg|kp_line|seg_line|all`: 選択したtargetを同じ幾何変換で生成します。
 
+Synthetic schema v2では`data.source.keypoint_court_scope=all_courts|target_court`でKP教師に含めるコートを選択できます。既定の`all_courts`は全accepted courtを14 semantic channelのpoint軸へ保持します。`target_court`はv2専用で、sampleの`target_court.binding.court_instance_id`とexact matchする1面だけをpoint軸へ保持します。このoptionはKP教師だけに作用し、全コートの`court_instances`と事前生成するseg / lineの参照・内容には作用しません。v1で`target_court`を指定した場合はtyped configuration validationで拒否されます。
+
 source固有のmanifest・annotation・path解決は `data/inputs/`、target固有の構築は `data/processing/targets.py` が所有します。`data/processing/geometry.py` はRGB、KP、seg、lineに適用する幾何変換をsampleごとに一度だけ決定します。seg/lineはDataset内で生成せず、`data/target_generation/` で事前生成します。
 
 ```bash
@@ -20,6 +22,11 @@ python -m src.tasks.court_detection.scripts.materialize_targets \
 python -m src.tasks.court_detection.scripts.train \
   data/source=synthetic_court data.source.schema=v2 data/processing=all \
   run.test_after_fit=true
+
+# synthetic v2でcameraの対象コート1面だけをKP教師にする
+python -m src.tasks.court_detection.scripts.train \
+  data/source=synthetic_court data.source.keypoint_court_scope=target_court \
+  data/processing=kp
 
 # synthetic v2のdense targetを学習前にsource外へ事前生成
 python -m src.tasks.court_detection.scripts.materialize_targets \
