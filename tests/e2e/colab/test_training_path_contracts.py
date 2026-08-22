@@ -29,7 +29,11 @@ COLAB_ROOT = ROOT / "scripts/colab"
 PATH_CONTRACT = COLAB_ROOT / "setup/path_contract.sh"
 PREPARE_GENERATED = COLAB_ROOT / "setup/prepare_generated_dataset.sh"
 INSTALL_CUDA_OPS = COLAB_ROOT / "setup/install_cuda_ops.sh"
-COURT_SCRIPT = COLAB_ROOT / "train/2026-08-22/train_court_synthetic_v2_kp_dinov3_dpt.sh"
+COURT_SCRIPT = (
+    COLAB_ROOT
+    / "train/2026-08-22/train_court_synthetic_v2_kp_dinov3_dpt.sh"
+)
+BLCS_TRACK_QUERY_SCRIPT = COLAB_ROOT / "train/2026-08-22/train_blcs_track_query_base.sh"
 
 
 @dataclass(frozen=True)
@@ -55,7 +59,7 @@ TRAINING_CASES = (
     ),
     TrainingCase(
         task="blcs",
-        script=COLAB_ROOT / "train/2026-08-22/train_blcs_track_query_base.sh",
+        script=BLCS_TRACK_QUERY_SCRIPT,
         module="src.tasks.blcs.scripts.train",
         default_config_name="train",
     ),
@@ -343,6 +347,70 @@ def test_train_script_emits_hydra_valid_role_paths(
         ]
     else:
         assert not cuda_ops_capture.exists()
+    if case.script == BLCS_TRACK_QUERY_SCRIPT:
+        assert override_map["physics"] == "fast_approximate"
+        assert override_map["rally"] == "fast_approximate"
+        assert override_map["targeted_velocity"] == "fast_approximate"
+
+
+def test_blcs_track_query_script_uses_one_profile_for_fixed_and_chunked_data(
+    tmp_path: Path,
+) -> None:
+    repo_root = _fake_repo_root(tmp_path)
+    bin_dir, capture_path = _write_fake_python(tmp_path)
+    data_root = tmp_path / "roots/data"
+    artifact_root = tmp_path / "roots/artifacts"
+    output_root = tmp_path / "roots/outputs"
+    checkpoint_root = tmp_path / "roots/checkpoints"
+    env = {
+        **os.environ,
+        "ARGS_CAPTURE": str(capture_path),
+        "PATH": f"{bin_dir}:{os.environ.get('PATH', '')}",
+        "REPO_ROOT": str(repo_root),
+        "DATA_ROOT": str(data_root),
+        "ARTIFACT_ROOT": str(artifact_root),
+        "OUTPUT_ROOT": str(output_root),
+        "CHECKPOINT_ROOT": str(checkpoint_root),
+    }
+
+    result = subprocess.run(
+        ["bash", str(BLCS_TRACK_QUERY_SCRIPT)],
+        cwd=tmp_path,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
+
+    generation_args, training_args = _read_commands(capture_path)
+    assert generation_args[:2] == [
+        "-m",
+        "src.tasks.blcs.scripts.generate_dataset",
+    ]
+    generation_overrides = _override_mapping(generation_args[2:])
+    _config_name, raw_training_overrides = _command_config(
+        training_args,
+        "train",
+    )
+    training_overrides = _override_mapping(raw_training_overrides)
+    expected_profile = {
+        "physics": "fast_approximate",
+        "rally": "fast_approximate",
+        "targeted_velocity": "fast_approximate",
+    }
+    assert {
+        key: generation_overrides[key] for key in expected_profile
+    } == expected_profile
+    assert {
+        key: training_overrides[key] for key in expected_profile
+    } == expected_profile
+    assert generation_overrides["run.output_dir"] == (
+        "blcs/multi_object_lifecycle_colab_fast_approximate"
+    )
+    assert training_overrides["data.scene_dir"] == (
+        "blcs/multi_object_lifecycle_colab_fast_approximate"
+    )
 
 
 def test_court_train_script_emits_hydra_valid_role_paths_and_resume(
