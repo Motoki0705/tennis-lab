@@ -10,7 +10,9 @@ import numpy as np
 from numpy.typing import NDArray
 
 from src.tasks.court_detection.data.contracts import CourtInstance2D
-from src.tasks.court_detection.geometry import compute_template_to_image_homography
+from src.tasks.court_detection.data.target_generation.rasterization import (
+    CourtPlaneRasterizer,
+)
 from src.utils.schema.court import (
     CENTER_MARK_LENGTH,
     COURT_SKELETON,
@@ -71,19 +73,6 @@ def _metric_lines() -> tuple[_MetricLine, ...]:
 _METRIC_LINES = _metric_lines()
 
 
-def _ordered_physical_points(instance: CourtInstance2D) -> Float32Array:
-    if set(instance.physical_indices.tolist()) != set(range(14)):
-        raise ValueError("Court line generation requires physical points 0..13.")
-    points: Float32Array = np.empty((14, 2), dtype=np.float32)
-    for physical, point in zip(
-        instance.physical_indices.tolist(),
-        instance.points_xy.detach().cpu().numpy(),
-        strict=True,
-    ):
-        points[int(physical)] = point
-    return points
-
-
 def _segment_quad(line: _MetricLine) -> Float32Array:
     start: Float32Array = np.asarray(line.start, dtype=np.float32)
     end: Float32Array = np.asarray(line.end, dtype=np.float32)
@@ -114,25 +103,29 @@ def generate_line_target(
         raise ValueError("Court line generation requires image geometry.")
     output: UInt8Array = np.zeros((height, width), dtype=np.uint8)
     for instance in instances:
-        physical_points = _ordered_physical_points(instance)
-        homography = compute_template_to_image_homography(
-            physical_points,
-            ransac_reproj_threshold=5.0,
+        rasterizer = CourtPlaneRasterizer.from_instance(
+            instance,
+            width=width,
+            height=height,
         )
-        if homography is None:
-            raise ValueError(
-                f"Court line homography failed for {instance.court_instance_id!r}."
-            )
+        if rasterizer is None:
+            continue
         for line in _METRIC_LINES:
-            projected = cast(
-                Float32Array,
-                cv2.perspectiveTransform(
-                    _segment_quad(line).reshape(1, -1, 2), homography
-                ).reshape(-1, 2),
-            )
-            polygon = cast(NDArray[np.int32], np.round(projected).astype(np.int32))
-            cv2.fillPoly(output, [polygon], 255)
-        for point in physical_points:
+            polygon = rasterizer.project_polygon(_segment_quad(line))
+            if polygon is not None:
+                cv2.fillPoly(output, [polygon], 255)
+        for point, in_front in zip(
+            rasterizer.image_points,
+            rasterizer.point_in_front,
+            strict=True,
+        ):
+            if not bool(in_front):
+                continue
+            if not (
+                -1.0 <= float(point[0]) <= float(width)
+                and -1.0 <= float(point[1]) <= float(height)
+            ):
+                continue
             center = (
                 int(round(float(point[0]))),
                 int(round(float(point[1]))),

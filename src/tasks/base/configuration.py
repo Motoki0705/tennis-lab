@@ -1135,6 +1135,13 @@ class BaseTrainingConfig:
             path="training.compile",
             keys=_COMPILE_KEYS,
         )
+        shared["qualitative_logging"] = _project_required_mapping(
+            require_config_mapping(
+                task_mapping, "qualitative_logging", path="training"
+            ),
+            path="training.qualitative_logging",
+            keys=_QUALITATIVE_LOGGING_KEYS,
+        )
         return cls.from_mapping(shared)
 
     @classmethod
