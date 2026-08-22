@@ -12,6 +12,7 @@ EXPECTED_LONG_TAIL = {
     "tests/e2e/development/test_configuration_audit.py",
     "tests/unit/synthetic_data_generation/alignment/test_evidence_source.py",
     "tests/unit/tasks/plcs/test_configuration_contracts.py",
+    "tests/unit/utils/configuration/test_audit.py",
     "tests/unit/utils/configuration/test_discovery.py",
     "tests/unit/utils/configuration/test_inventory.py",
 }

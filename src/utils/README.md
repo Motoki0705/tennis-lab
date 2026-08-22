@@ -19,7 +19,7 @@
 - **`paths.py` / `schema.py` / `contracts.py`**: `PathRole`・`PathResolver`・`RuntimePathRoots`、strict schema、typed adapter inspection の正本。設定値や path role の暗黙補完は行わない。
 - **`discovery.py`**: runtime boundary を source-only に列挙する下位 discovery の唯一の実装。`catalog.py` と `audit.py` はこの module を一方向に参照する。
 - **`catalog.py`**: source declaration と runtime boundary を結び付けた inspectable contract catalog の唯一の import path。
-- **`audit.py` / `inventory.py`**: repository-owned source の configuration/path route と runtime boundary を検査する library API。運用 entrypoint は root の `scripts/audit_configuration.py` のみ。
+- **`audit.py` / `inventory.py`**: 現在の repository-owned source から configuration/path の禁止パターンを直接検査し、明示的な runtime boundary 契約と照合する library API。行番号依存の migration/exemption snapshot は保持しない。運用 entrypoint は root の `scripts/audit_configuration.py` のみ。
 
 ### `data/`
 - **`heatmaps.py`**: Gaussian heatmap 生成と、argmax / soft-argmax / peaks / pixel coordinates への復号、`resize_heatmap_sequence()` による (B,T,H,W) の bilinear リサイズ。
