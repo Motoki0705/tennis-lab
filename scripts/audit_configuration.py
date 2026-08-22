@@ -24,11 +24,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source_root", type=Path)
     parser.add_argument(
-        "--show-ledger",
-        action="store_true",
-        help="render every exact migration record as tab-separated data",
-    )
-    parser.add_argument(
         "--show-contracts",
         action="store_true",
         help="render required/optional/default/precedence authorities",
@@ -38,39 +33,14 @@ def main() -> int:
         action="store_true",
         help="render source-discovered callable, executable, and validator bindings",
     )
-    parser.add_argument(
-        "--regenerate-ledger",
-        action="store_true",
-        help="emit deterministic candidate ledger JSON without changing embedded data",
-    )
-    parser.add_argument(
-        "--write-generated-data",
-        action="store_true",
-        help=(
-            "freeze re-anchored exemptions and ledger metadata in migration_data.py "
-            "and exemption_data.py; fails on every newly unclassified construct"
-        ),
-    )
-    parser.add_argument(
-        "--source-revision",
-        help="immutable revision label required by --write-generated-data",
-    )
     arguments = parser.parse_args()
-    source_revision = cast(str | None, arguments.source_revision)
-    write_generated_data = cast(bool, arguments.write_generated_data)
-    if write_generated_data and source_revision is None:
-        parser.error("--write-generated-data requires --source-revision")
     return run_configuration_audit(
         cast(Path, arguments.source_root),
         AuditOptions(
-            show_ledger=cast(bool, arguments.show_ledger),
             show_contracts=cast(bool, arguments.show_contracts),
             show_discovered_boundaries=cast(
                 bool, arguments.show_discovered_boundaries
             ),
-            regenerate_ledger=cast(bool, arguments.regenerate_ledger),
-            write_generated_data=write_generated_data,
-            source_revision=source_revision,
         ),
     )
 
