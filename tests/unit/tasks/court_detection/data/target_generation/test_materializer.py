@@ -76,6 +76,7 @@ def test_materializer_writes_both_dense_targets_below_derived_store(
         court_instance_id="court",
         physical_indices=torch.arange(14, dtype=torch.long),
         points_xy=image_points,
+        point_in_front=torch.ones(14, dtype=torch.bool),
         point_visible=torch.ones(14, dtype=torch.bool),
     )
     raw = CourtRawSample(
