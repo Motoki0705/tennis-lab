@@ -108,6 +108,11 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
             if generation_mode == "multi_object"
             else None
         ),
+        maximum_physics_attempts_per_object=(
+            int(cfg.generation.maximum_physics_attempts_per_object)
+            if generation_mode == "multi_object"
+            else None
+        ),
         chunksize=run.chunksize,
     )
 

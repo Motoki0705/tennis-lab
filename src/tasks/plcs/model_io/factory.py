@@ -184,9 +184,6 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
             num_queries=model_cfg.integer("num_queries"),
             num_court_tokens=14,
             num_joints=model_cfg.integer("num_joints"),
-            mask_invisible_observations=model_cfg.boolean(
-                "mask_invisible_observations"
-            ),
         )
     else:
         raise ValueError(f"Unsupported validated PLCS model {model_name!r}.")

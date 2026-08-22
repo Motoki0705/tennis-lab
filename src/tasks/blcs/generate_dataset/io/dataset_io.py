@@ -66,10 +66,16 @@ class BLCSDatasetWriter(BaseDatasetWriter):
         camera_records: list[dict[str, float]] = []
         for i, cam in enumerate(scene.cameras):
             prefix = f"cam_{i}_"
-            self._append_court_camera_arrays(arrays, scalars, cam, prefix)
+            scalars[f"{prefix}params"] = cam.camera_params
+            arrays[f"{prefix}court_kp_uv"] = cam.court_kp_uv.astype(np.float32)
+            arrays[f"{prefix}court_kp_vis"] = cam.court_kp_vis.astype(bool)
+            arrays[f"{prefix}court_visibility_count"] = np.array(
+                cam.court_visibility_count,
+                dtype=np.float32,
+            )
             # Ball-specific per-camera arrays (not shared with PLCS).
             arrays[f"{prefix}ball_uv"] = cam.ball_uv.astype(np.float32)
-            arrays[f"{prefix}ball_visible"] = cam.ball_visible.astype(bool)
+            arrays[f"{prefix}ball_vis"] = cam.ball_vis.astype(bool)
             arrays[f"{prefix}ball_visibility_ratio"] = np.array(
                 cam.ball_visibility_ratio,
                 dtype=np.float32,
@@ -154,12 +160,12 @@ def load_scene(filepath: str | Path) -> dict:
         cam_data = {
             "params": params,
             "ball_uv": np.load(scene_dir / f"{prefix}ball_uv.npy"),
-            "ball_visible": np.load(scene_dir / f"{prefix}ball_visible.npy"),
+            "ball_vis": np.load(scene_dir / f"{prefix}ball_vis.npy"),
             "ball_visibility_ratio": float(
                 np.load(scene_dir / f"{prefix}ball_visibility_ratio.npy")
             ),
             "court_kp_uv": np.load(scene_dir / f"{prefix}court_kp_uv.npy"),
-            "court_kp_visible": np.load(scene_dir / f"{prefix}court_kp_visible.npy"),
+            "court_kp_vis": np.load(scene_dir / f"{prefix}court_kp_vis.npy"),
             "court_visibility_count": float(
                 np.load(scene_dir / f"{prefix}court_visibility_count.npy")
             ),

@@ -97,6 +97,13 @@ def make_training_config(tmp_path: Path):
                 "discriminator_gradient_clip_val": None,
                 "transition": {"start_epoch": 0},
             },
+            "compile": {
+                "enabled": True,
+                "backend": "inductor",
+                "mode": "reduce-overhead",
+                "fullgraph": False,
+                "dynamic": False,
+            },
             "matmul_precision": "high",
             "allow_tf32": False,
         }
@@ -138,7 +145,11 @@ def write_scene_dir(
     (scene_dir / "scalars.json").write_text(
         json.dumps({"num_cameras": num_cameras}), encoding="utf-8"
     )
-    arr = arrays if arrays is not None else {"position": np.zeros((num_frames, 3), np.float32)}
+    arr = (
+        arrays
+        if arrays is not None
+        else {"position": np.zeros((num_frames, 3), np.float32)}
+    )
     for key, value in arr.items():
         np.save(scene_dir / f"{key}.npy", value)
     return scene_dir
@@ -220,10 +231,14 @@ def make_scene():
         meta: dict[str, Any] | None = None,
         path: Path | None = None,
     ) -> Scene:
-        payload = data if data is not None else {
-            "cam_0_ball_uv": np.zeros((num_frames, 2), np.float32),
-            "position": np.zeros((num_frames, 3), np.float32),
-        }
+        payload = (
+            data
+            if data is not None
+            else {
+                "cam_0_ball_uv": np.zeros((num_frames, 2), np.float32),
+                "position": np.zeros((num_frames, 3), np.float32),
+            }
+        )
         return Scene(
             path=path or Path("/tmp/scene_x"),
             data=payload,

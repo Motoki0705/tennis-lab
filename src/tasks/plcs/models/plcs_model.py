@@ -434,7 +434,7 @@ class PLCSModel(nn.Module):
         human_kp: Tensor,
         court_kp: Tensor,
         human_vis: Tensor,
-        human_mask: Tensor,
+        padding_mask: Tensor,
         court_vis: Tensor,
     ) -> dict[str, Tensor]:
         """Forward pass for frame model.
@@ -444,9 +444,9 @@ class PLCSModel(nn.Module):
         - ``court_kp``: ``(B,K,2)``
         - ``human_vis``: ``(B,17)``
         - ``court_vis``: ``(B,K)``
-        - ``human_mask``: ``(B,)`` (unused by frame model)
+        - ``padding_mask``: ``(B,)``, True for padding (unused by frame model)
         """
-        del human_mask
+        del padding_mask
 
         x, _ = self._encode_tokens(
             human_kp=human_kp,

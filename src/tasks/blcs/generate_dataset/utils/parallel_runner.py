@@ -35,6 +35,7 @@ def _get_worker_scene_generator(
     device: str,
     multi_object: bool,
     timeline_config: dict[str, Any] | None,
+    maximum_physics_attempts_per_object: int | None,
 ) -> BLCSSceneGenerator | MultiBallSceneGenerator:
     global _WORKER_SCENE_GENERATOR
     if _WORKER_SCENE_GENERATOR is None:
@@ -47,9 +48,17 @@ def _get_worker_scene_generator(
                 raise ValueError(
                     "Multi-object BLCS generation requires timeline config."
                 )
+            if maximum_physics_attempts_per_object is None:
+                raise ValueError(
+                    "Multi-object BLCS generation requires an explicit bounded "
+                    "physics proposal budget."
+                )
             _WORKER_SCENE_GENERATOR = MultiBallSceneGenerator(
                 base,
                 timeline=timeline_config,
+                maximum_physics_attempts_per_object=(
+                    maximum_physics_attempts_per_object
+                ),
                 rng=random.Random(random.getrandbits(64)),
             )
         else:
@@ -64,6 +73,7 @@ def _generate_scene_task(
     base_seed: int,
     multi_object: bool,
     timeline_config: dict[str, Any] | None,
+    maximum_physics_attempts_per_object: int | None,
 ) -> BLCSSceneData:
     if torch.device(device).type != "cpu":
         raise ValueError(
@@ -79,7 +89,11 @@ def _generate_scene_task(
     np.random.seed(base_seed + scene_index)
 
     generator = _get_worker_scene_generator(
-        generator_config, device, multi_object, timeline_config
+        generator_config,
+        device,
+        multi_object,
+        timeline_config,
+        maximum_physics_attempts_per_object,
     )
     if isinstance(generator, MultiBallSceneGenerator):
         generator.composer.rng.seed(base_seed + scene_index)
@@ -102,6 +116,7 @@ def generate_parallel_scenes(
     seed: int,
     multi_object: bool,
     timeline_config: dict[str, Any] | None,
+    maximum_physics_attempts_per_object: int | None,
     chunksize: int,
 ) -> Iterator[BLCSSceneData]:
     # Keep a BLCS-specific guard so the task-specific error message is raised
@@ -110,6 +125,21 @@ def generate_parallel_scenes(
     if num_scenes <= 0:
         raise ValueError(
             f"Parallel BLCS scene generation requires num_scenes >= 1 (got {num_scenes})"
+        )
+    if multi_object:
+        if (
+            isinstance(maximum_physics_attempts_per_object, bool)
+            or not isinstance(maximum_physics_attempts_per_object, int)
+            or maximum_physics_attempts_per_object <= 0
+        ):
+            raise ValueError(
+                "Multi-object BLCS generation requires "
+                "maximum_physics_attempts_per_object >= 1."
+            )
+    elif maximum_physics_attempts_per_object is not None:
+        raise ValueError(
+            "Single-object BLCS generation does not accept a multi-object "
+            "physics proposal budget."
         )
 
     yield from run_parallel_scene_generation(
@@ -120,6 +150,7 @@ def generate_parallel_scenes(
         seed,
         multi_object,
         timeline_config,
+        maximum_physics_attempts_per_object,
         num_workers=num_workers,
         chunksize=chunksize,
     )

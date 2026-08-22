@@ -91,5 +91,5 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Tensor]]):
             "target_rotation": self._to_numpy(batch["target_rotation"]),
             "target_presence": self._to_numpy(batch["target_presence"]),
             "target_instance_id": self._to_numpy(batch["target_instance_id"]),
-            "frame_mask": self._to_numpy(batch["frame_mask"]),
+            "padding_mask": self._to_numpy(batch["padding_mask"]),
         }

@@ -31,7 +31,7 @@ def _position_mae_meters(
         ):
             active = (
                 batch.target_presence[batch_index, :, target_index]
-                & batch.frame_mask[batch_index]
+                & batch.frame_valid[batch_index]
             )
             if active.any():
                 terms.append(
@@ -65,7 +65,7 @@ def blcs_tracking_metrics(
             "target_position": batch.target_position,
             "target_presence": batch.target_presence,
             "target_instance_id": batch.target_instance_id,
-            "frame_mask": batch.frame_mask,
+            "frame_mask": batch.frame_valid,
         },
         assignments,
         config=config,

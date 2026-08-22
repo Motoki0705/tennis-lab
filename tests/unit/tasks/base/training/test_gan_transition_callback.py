@@ -101,6 +101,13 @@ def _cfg(**gan: Any) -> dict[str, Any]:
                 "selected_indices": None,
             },
             "gan": gan_config,
+            "compile": {
+                "enabled": True,
+                "backend": "inductor",
+                "mode": "reduce-overhead",
+                "fullgraph": False,
+                "dynamic": False,
+            },
             "matmul_precision": "high",
             "allow_tf32": False,
         }

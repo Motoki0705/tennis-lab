@@ -77,7 +77,7 @@ class BLCSTrackingLoss(nn.Module):
             batch.target_position,
             batch.target_presence,
             batch.target_slot_mask,
-            batch.frame_mask,
+            batch.frame_valid,
             position_cost_weight=self.match_position_weight,
             presence_cost_weight=self.match_presence_weight,
             presence_inactive_weight=self.presence_inactive_weight,
@@ -99,7 +99,7 @@ class BLCSTrackingLoss(nn.Module):
             ):
                 active = (
                     batch.target_presence[batch_index, :, target_index]
-                    & batch.frame_mask[batch_index]
+                    & batch.frame_valid[batch_index]
                 )
                 presence_target[batch_index, :, query_index] = batch.target_presence[
                     batch_index, :, target_index
@@ -141,7 +141,7 @@ class BLCSTrackingLoss(nn.Module):
                             )
                         )
 
-        valid_frames = batch.frame_mask.unsqueeze(-1).expand_as(pred_presence)
+        valid_frames = batch.frame_valid.unsqueeze(-1).expand_as(pred_presence)
         presence = weighted_presence_bce_with_logits(
             pred_presence,
             presence_target.bool(),

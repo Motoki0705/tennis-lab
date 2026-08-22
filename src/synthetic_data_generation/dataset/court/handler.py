@@ -20,7 +20,8 @@ from src.synthetic_data_generation.dataset.court.assembler import (
 from src.synthetic_data_generation.dataset.court.components.camera_sampling.selection import (
     build_court_dataset_plan,
 )
-from src.synthetic_data_generation.dataset.court.contracts import CourtDatasetPlan
+from src.synthetic_data_generation.dataset.court.contracts import CourtDatasetPlanAny
+from src.synthetic_data_generation.dataset.court.schema import CourtDatasetSchemaVersion
 from src.synthetic_data_generation.dataset.court.shards import CourtRenderResult
 from src.synthetic_data_generation.dataset.runtime import PerformanceTimer
 from src.synthetic_data_generation.pipeline.contracts import (
@@ -41,7 +42,7 @@ class CourtRenderBoundary(Protocol):
     def render(
         self,
         *,
-        plan: CourtDatasetPlan,
+        plan: CourtDatasetPlanAny,
         scene: StandardSceneExport,
         attempt_root: Path,
         attempt_token: str,
@@ -59,7 +60,9 @@ class CourtDatasetStageHandler:
 
     def __post_init__(self) -> None:
         if not self.profile or self.profile != self.profile.strip():
-            raise ValueError("Court dataset profile must be a non-empty trimmed string.")
+            raise ValueError(
+                "Court dataset profile must be a non-empty trimmed string."
+            )
 
     def preflight(self, context: StageExecutionContext) -> None:
         """Validate scene export, accepted alignment, config, and renderer first."""
@@ -103,20 +106,24 @@ class CourtDatasetStageHandler:
             attempt_root=attempt_root,
             performance_timer=timer,
         )
-        return StageExecutionSummary(
-            values={
-                "profile": self.profile,
-                "proposal_count": report.proposal_count,
-                "accepted_frame_count": report.accepted_frame_count,
-                "rejected_frame_count": report.rejected_frame_count,
-                "accepted_fraction": report.accepted_fraction,
-                "trajectory_group_count": report.trajectory_group_count,
-                "maximum_adjacent_step_m": report.maximum_adjacent_step_m,
-                "split_frame_counts": dict(report.split_frame_counts),
-                "court_group_counts": dict(report.court_group_counts),
-                "performance": report.performance.to_dict(),
-            }
+        values: dict[str, object] = {
+            "profile": self.profile,
+            "proposal_count": report.proposal_count,
+            "accepted_frame_count": report.accepted_frame_count,
+            "rejected_frame_count": report.rejected_frame_count,
+            "accepted_fraction": report.accepted_fraction,
+            "trajectory_group_count": report.trajectory_group_count,
+            "maximum_adjacent_step_m": report.maximum_adjacent_step_m,
+            "split_frame_counts": dict(report.split_frame_counts),
+            "performance": report.performance.to_dict(),
+        }
+        count_key = (
+            "court_group_counts"
+            if self.configuration.schema_version is CourtDatasetSchemaVersion.V1
+            else "court_sample_counts"
         )
+        values[count_key] = dict(report.court_group_counts)
+        return StageExecutionSummary(values=values)
 
     def validate(self, context: StageExecutionContext) -> None:
         """Revalidate the complete staged fixed inventory before publication."""
@@ -142,7 +149,9 @@ def _upstream_paths(context: StageExecutionContext) -> tuple[Path, Path]:
         raise ValueError("CourtDatasetStageHandler received a non-Court stage context.")
     owner = Path(context.owner_path)
     if owner.parts[-2:] != ("datasets", "court"):
-        raise ValueError("Court stage owner must be the fixed datasets/court directory.")
+        raise ValueError(
+            "Court stage owner must be the fixed datasets/court directory."
+        )
     scene_root = owner.parents[1]
     return (
         scene_root / "reconstruction" / "export" / "scene.json",

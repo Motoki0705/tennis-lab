@@ -234,7 +234,7 @@ class PLCSModule(BasePipelineModule):
             "Thresholded human keypoint confidence at "
             f"{self.config.human_vis_threshold} (dropped {dropped:.1%} of joints)"
         )
-        human_mask = np.ones(
+        padding_mask = np.zeros(
             (num_players, num_cameras, num_frames), dtype=np.bool_
         )
 
@@ -252,7 +252,7 @@ class PLCSModule(BasePipelineModule):
                 human_kp=human_kp_2d[:, :, start:end],
                 court_kp=court_kp[:, start:end],
                 human_vis=binary_vis[:, :, start:end],
-                human_mask=human_mask[:, :, start:end],
+                padding_mask=padding_mask[:, :, start:end],
                 court_vis=court_vis[:, start:end],
             )
             win_pos = prediction.position_meters

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import random
 from collections.abc import Iterator, Mapping
 from typing import Any, Protocol
@@ -19,10 +20,15 @@ from src.tasks.blcs.generate_dataset.scene_generator import (
     BLCSSceneData,
     CameraData,
 )
+from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
+    is_retryable_full_physics_rejection,
+)
 from src.utils.projection.camera_projector import (
     CameraProjector,
     camera_from_mapping,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class _BLCSSceneSource(Protocol):
@@ -73,9 +79,21 @@ class MultiBallSceneGenerator:
         scene_generator: _BLCSSceneSource,
         *,
         timeline: TimelineConfig | Mapping[str, Any],
+        maximum_physics_attempts_per_object: int,
         rng: random.Random | None = None,
     ) -> None:
+        if (
+            isinstance(maximum_physics_attempts_per_object, bool)
+            or not isinstance(maximum_physics_attempts_per_object, int)
+            or maximum_physics_attempts_per_object <= 0
+        ):
+            raise ValueError(
+                "maximum_physics_attempts_per_object must be a positive integer."
+            )
         self.scene_generator = scene_generator
+        self.maximum_physics_attempts_per_object = (
+            maximum_physics_attempts_per_object
+        )
         self.timeline = (
             timeline
             if isinstance(timeline, TimelineConfig)
@@ -84,14 +102,43 @@ class MultiBallSceneGenerator:
         self.composer = TimelineComposer(self.timeline, rng=rng)
 
     def _generate_ball(self, scene_id: str) -> BLCSSceneData:
-        scene = self.scene_generator.generate_scene(
-            self.scene_generator.sample_from_cell(),
-            self.scene_generator.sample_side(),
-            scene_id,
+        last_rejection: RuntimeError | None = None
+        last_reason = "BLCS physical scene generation returned no scene."
+        for attempt in range(1, self.maximum_physics_attempts_per_object + 1):
+            try:
+                scene = self.scene_generator.generate_scene(
+                    self.scene_generator.sample_from_cell(),
+                    self.scene_generator.sample_side(),
+                    scene_id,
+                )
+            except RuntimeError as error:
+                if not is_retryable_full_physics_rejection(error):
+                    raise
+                last_rejection = error
+                last_reason = str(error)
+                continue
+            if scene is not None:
+                if attempt > 1:
+                    logger.info(
+                        "Accepted BLCS physics proposal for %s after bounded "
+                        "resampling (attempt %s/%s); last_rejection=%s",
+                        scene_id,
+                        attempt,
+                        self.maximum_physics_attempts_per_object,
+                        last_reason,
+                    )
+                return scene
+            last_rejection = None
+            last_reason = "BLCS physical scene generation returned no scene."
+
+        exhausted = RuntimeError(
+            "BLCS physical scene generation exhausted "
+            f"{self.maximum_physics_attempts_per_object} bounded attempts for "
+            f"{scene_id!r}; last_rejection={last_reason}"
         )
-        if scene is None:
-            raise RuntimeError("BLCS physical scene generation returned no scene.")
-        return scene
+        if last_rejection is not None:
+            raise exhausted from last_rejection
+        raise exhausted
 
     def generate_scene(self, scene_id: str) -> BLCSSceneData:
         """Generate one fixed-length multi-ball lifecycle scene."""
@@ -148,12 +195,12 @@ class MultiBallSceneGenerator:
                 CameraData(
                     camera_params=base_camera.camera_params,
                     ball_uv=uv,
-                    ball_visible=visible,
+                    ball_vis=visible,
                     ball_visibility_ratio=float(
                         visible[:, :num_balls].sum() / active_count
                     ),
                     court_kp_uv=base_camera.court_kp_uv,
-                    court_kp_visible=base_camera.court_kp_visible,
+                    court_kp_vis=base_camera.court_kp_vis,
                     court_visibility_count=base_camera.court_visibility_count,
                 )
             )

@@ -18,6 +18,8 @@ SLCS は Issue #634 の構造化実動画データセットを読み、単眼の
 
 すべての観測は visibility/confidence/valid mask を持ちます。DINOv3 tokens は時間方向には補間せず、実 frame index を RoPE position とする cross-attention で伝播します。空間方向は `model.dino_patch_downsample_factor` により、元のDINO特徴空間でbilinear downsampleしてからモデル幅へ次元圧縮できます。factor 2では16×28の448 patchを8×14の112 patchへ圧縮します。player は疑似ラベルの平均 court-Y により near-side、far-side の順へ明示的に並べ替えます。
 
+windowの公開padding契約は`padding_mask (B,T)`、sparse DINO sample軸は`dino_padding_mask (B,T_d)`で、どちらも`True=padding`です。2つの軸は異なるため単一tensorへ統合しません。旧`frame_mask` / `dino_valid`とcaller生成attention maskはadapterでrejectし、entity/time/DINO attention keep-maskはmodel内部でraw padding maskから生成します。評価用`.npz`も`padding_mask`へ破壊的移行し、旧keyへのfallbackは行いません。
+
 モデルとの接続は `model_io` が唯一の境界です。composition 時に sole model と adapter を一度だけ bind し、adapter が必須 key、dtype、rank、全 shape、mask、normalized UV、DINO token spec・frame index semantic を検証してから immutable model call を作ります。model の raw mapping は同じ adapter が `SLCSDecodedOutput` へ decode するため、Lightning・評価・推論 loop は model 名や output key を認識しません。`nn.Module.forward` は検証済み tensor に対する計算だけを行います。
 
 DINO token precompute も同じ境界方針です。`model_io.factory` が backbone と `SLCSFrameTokenIOAdapter` を実行前に一度だけ bind し、adapter が uint8 `(B,H,W,3)` frame を検証・正規化して、`x_norm_patchtokens` を設定済み `(B,S,C)` と照合した後に float16 NumPy array へ変換します。precompute script と clip orchestration は backbone variant、tensor layout、raw output key を扱いません。テストデータの組み立ては production package に置かず、test support から canonical clip export、pseudo annotation/archive、DINO token、dataset index writer を呼びます。
@@ -65,7 +67,7 @@ axial trunkの層数は `model.num_shared_layers`、`model.num_position_layers`�
 ```bash
 .venv/bin/python -m src.tasks.slcs.scripts.predict_clip checkpoint_path=/path/to/model.ckpt
 .venv/bin/python -m src.tasks.slcs.scripts.evaluate checkpoint_path=/path/to/model.ckpt
-.venv/bin/python -m src.tasks.slcs.scripts.analyze_predictions predictions_path=/path/to/predictions.npz
+.venv/bin/python -m src.tasks.slcs.scripts.analyze_predictions analysis.arrays=/path/to/eval_arrays.npz
 ```
 
 評価は player/ball の 3D 誤差、yaw 誤差、速度・加速度・jerk を BLCS/PLCS と比較可能な単位で出力します。解析は誤差分布、時系列誤差、欠損率、uncertainty calibration を保存します。2D overlay は入力観測を描画し、3D prediction の reprojection は calibrated camera が明示された場合だけ行います。
