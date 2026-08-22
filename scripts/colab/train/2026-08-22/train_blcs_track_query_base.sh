@@ -42,6 +42,7 @@ set -euo pipefail
 #   MAX_EPOCHS        default: 200
 #   BATCH_SIZE        default: 4
 #   CSWA_BACKEND      default: cuda; use reference only when chosen explicitly
+#   CUDA_OPS_MAX_JOBS default: 2 CUDA compiler processes
 
 REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)}"
 DATA_ROOT="${DATA_ROOT:-${REPO_ROOT}/data}"
@@ -62,6 +63,7 @@ BATCH_SIZE="${BATCH_SIZE:-4}"
 CSWA_BACKEND="${CSWA_BACKEND:-cuda}"
 
 source "${REPO_ROOT}/scripts/colab/setup/install_deps.sh"
+source "${REPO_ROOT}/scripts/colab/setup/install_cuda_ops.sh"
 source "${REPO_ROOT}/scripts/colab/setup/prepare_generated_dataset.sh"
 validate_colab_role_root DATA_ROOT "${DATA_ROOT}"
 validate_colab_role_child DATASET_DIR "${DATASET_DIR}"
@@ -88,6 +90,9 @@ if [[ ( "${OUTPUT_ROOT}" == /content/drive/* || "${CHECKPOINT_ROOT}" == /content
 fi
 
 install_colab_dependencies "${REPO_ROOT}"
+if [[ "${CSWA_BACKEND}" == "cuda" ]]; then
+    install_colab_cuda_ops "${REPO_ROOT}"
+fi
 prepare_generated_dataset blcs "${REPO_ROOT}" "${DATA_ROOT}" "${DATASET_DIR}" \
     generation=multi_object \
     "generator.num_scenes=${NUM_SCENES}" \

@@ -28,10 +28,8 @@ ROOT = Path(__file__).parents[3]
 COLAB_ROOT = ROOT / "scripts/colab"
 PATH_CONTRACT = COLAB_ROOT / "setup/path_contract.sh"
 PREPARE_GENERATED = COLAB_ROOT / "setup/prepare_generated_dataset.sh"
-COURT_SCRIPT = (
-    COLAB_ROOT
-    / "train/2026-08-22/train_court_synthetic_v2_kp_dinov3_dpt.sh"
-)
+INSTALL_CUDA_OPS = COLAB_ROOT / "setup/install_cuda_ops.sh"
+COURT_SCRIPT = COLAB_ROOT / "train/2026-08-22/train_court_synthetic_v2_kp_dinov3_dpt.sh"
 
 
 @dataclass(frozen=True)
@@ -138,6 +136,13 @@ def _fake_repo_root(tmp_path: Path) -> Path:
         "install_colab_dependencies() { :; }\n",
         encoding="utf-8",
     )
+    (setup_dir / "install_cuda_ops.sh").write_text(
+        "install_colab_cuda_ops() { "
+        'if [[ -n "${CUDA_OPS_CAPTURE:-}" ]]; then '
+        'printf \'%s\\n\' "$1" >> "${CUDA_OPS_CAPTURE}"; '
+        "fi; }\n",
+        encoding="utf-8",
+    )
     (setup_dir / "prepare_archive_dataset.sh").write_text(
         "prepare_archive_dataset() { :; }\n",
         encoding="utf-8",
@@ -152,6 +157,7 @@ def _fake_repo_root(tmp_path: Path) -> Path:
     (
         PATH_CONTRACT,
         PREPARE_GENERATED,
+        INSTALL_CUDA_OPS,
         COURT_SCRIPT,
         *(case.script for case in TRAINING_CASES),
     ),
@@ -180,7 +186,7 @@ def test_generated_dataset_helper_emits_root_and_relative_child(
         "ARGS_CAPTURE": str(capture_path),
         "PATH": f"{bin_dir}:{os.environ.get('PATH', '')}",
     }
-    command = "source \"$1\"; shift; prepare_generated_dataset \"$@\""
+    command = 'source "$1"; shift; prepare_generated_dataset "$@"'
 
     subprocess.run(
         [
@@ -229,7 +235,7 @@ def test_generated_dataset_helper_rejects_absolute_child_before_python(
         "ARGS_CAPTURE": str(capture_path),
         "PATH": f"{bin_dir}:{os.environ.get('PATH', '')}",
     }
-    command = "source \"$1\"; shift; prepare_generated_dataset \"$@\""
+    command = 'source "$1"; shift; prepare_generated_dataset "$@"'
     result = subprocess.run(
         [
             "bash",
@@ -264,6 +270,7 @@ def test_train_script_emits_hydra_valid_role_paths(
     artifact_root = tmp_path / "roots/artifacts"
     output_root = tmp_path / "roots/outputs"
     checkpoint_root = tmp_path / "roots/checkpoints"
+    cuda_ops_capture = tmp_path / "cuda-ops-calls.txt"
     dataset_dir = f"{case.task}/captured-scenes"
     chunks_dir = f"{case.task}/captured-chunks"
     output_dir = f"{case.task}-captured-run"
@@ -282,6 +289,7 @@ def test_train_script_emits_hydra_valid_role_paths(
         "OUTPUT_ROOT": str(output_root),
         "OUTPUT_DIR": output_dir,
         "CHECKPOINT_ROOT": str(checkpoint_root),
+        "CUDA_OPS_CAPTURE": str(cuda_ops_capture),
     }
 
     result = subprocess.run(
@@ -329,6 +337,12 @@ def test_train_script_emits_hydra_valid_role_paths(
     assert data.scene_dir == data_root / dataset_dir
     assert chunk.chunks_dir == artifact_root / chunks_dir
     assert shared.run.output_dir == output_root / output_dir
+    if case.script.parent.name == "2026-08-22" and case.task in {"blcs", "plcs"}:
+        assert cuda_ops_capture.read_text(encoding="utf-8").splitlines() == [
+            str(repo_root)
+        ]
+    else:
+        assert not cuda_ops_capture.exists()
 
 
 def test_court_train_script_emits_hydra_valid_role_paths_and_resume(
@@ -340,18 +354,14 @@ def test_court_train_script_emits_hydra_valid_role_paths_and_resume(
     output_root = tmp_path / "roots/outputs"
     checkpoint_root = output_root
     output_dir = "court_detection/captured-synthetic-v2"
-    dataset_root = (
-        data_root / "synthetic_data_generation/scenes/B00/datasets/court"
-    )
+    dataset_root = data_root / "synthetic_data_generation/scenes/B00/datasets/court"
     dataset_root.mkdir(parents=True)
     (dataset_root / "dataset.json").write_text(
         '{"schema": "canonical_court_dataset_v2"}\n',
         encoding="utf-8",
     )
     (repo_root / "third_party/dinov3/dinov3").mkdir(parents=True)
-    checkpoint = (
-        output_root / output_dir / "logs/version_0/checkpoints/last.ckpt"
-    )
+    checkpoint = output_root / output_dir / "logs/version_0/checkpoints/last.ckpt"
     checkpoint.parent.mkdir(parents=True)
     checkpoint.touch()
     backbone = (
