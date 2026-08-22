@@ -11,10 +11,11 @@ from typing import Any, Literal
 from urllib.parse import urlsplit
 
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
 from pydantic import AnyHttpUrl
+from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
@@ -31,6 +32,45 @@ _SECURITY_META = {
 }
 
 
+class _ConfiguredMCPServer(MCPServer[Any]):
+    """MCP 2 server retaining this gateway's fixed HTTP listener contract."""
+
+    _http_options: dict[str, Any]
+
+    def configure_http(
+        self,
+        *,
+        host: str,
+        port: int,
+        transport_security: TransportSecuritySettings,
+    ) -> None:
+        self._http_options = {
+            "host": host,
+            "port": port,
+            "streamable_http_path": "/mcp",
+            "stateless_http": True,
+            "json_response": True,
+            "transport_security": transport_security,
+        }
+
+    def streamable_http_app(self, **kwargs: Any) -> Starlette:
+        options = dict(self._http_options)
+        options.pop("port")
+        options.update(kwargs)
+        return super().streamable_http_app(**options)
+
+    def run(
+        self,
+        transport: Literal["stdio", "sse", "streamable-http"] = "stdio",
+        **kwargs: Any,
+    ) -> None:
+        if transport == "streamable-http":
+            options = dict(self._http_options)
+            options.update(kwargs)
+            kwargs = options
+        super().run(transport=transport, **kwargs)
+
+
 def _annotations(
     *,
     read_only: bool,
@@ -39,10 +79,10 @@ def _annotations(
     open_world: bool,
 ) -> ToolAnnotations:
     return ToolAnnotations(
-        readOnlyHint=read_only,
-        destructiveHint=destructive,
-        idempotentHint=idempotent,
-        openWorldHint=open_world,
+        read_only_hint=read_only,
+        destructive_hint=destructive,
+        idempotent_hint=idempotent,
+        open_world_hint=open_world,
     )
 
 
@@ -157,7 +197,9 @@ def _run_probe(arguments: list[str], *, timeout: int = 10) -> dict[str, Any]:
     }
 
 
-def _register_oauth_approval_routes(server: FastMCP, oauth: OwnerOAuthProvider) -> None:
+def _register_oauth_approval_routes(
+    server: MCPServer[Any], oauth: OwnerOAuthProvider
+) -> None:
     """Attach the browser approval flow used only by legacy public OAuth mode."""
 
     limiter = ApprovalRateLimiter()
@@ -211,7 +253,9 @@ def _register_oauth_approval_routes(server: FastMCP, oauth: OwnerOAuthProvider) 
         return RedirectResponse(redirect_url, status_code=303)
 
 
-def build_gateway(settings: GatewaySettings, *, authenticated: bool = True) -> FastMCP:
+def build_gateway(
+    settings: GatewaySettings, *, authenticated: bool = True
+) -> MCPServer[Any]:
     """Build the public OAuth server or private Secure Tunnel server."""
 
     settings.ensure_state()
@@ -260,17 +304,16 @@ def build_gateway(settings: GatewaySettings, *, authenticated: bool = True) -> F
             ],
             allowed_origins=[settings.public_base_url],
         )
-        server = FastMCP(
+        server = _ConfiguredMCPServer(
             name="tennis-lab-wsl",
             instructions=instructions,
             auth_server_provider=oauth,
             auth=auth_settings,
-            transport_security=transport_security,
+        )
+        server.configure_http(
             host=settings.host,
             port=settings.port,
-            streamable_http_path="/mcp",
-            stateless_http=True,
-            json_response=True,
+            transport_security=transport_security,
         )
         security_meta = _SECURITY_META
     else:
@@ -284,15 +327,14 @@ def build_gateway(settings: GatewaySettings, *, authenticated: bool = True) -> F
             ],
             allowed_origins=[],
         )
-        server = FastMCP(
+        server = _ConfiguredMCPServer(
             name="tennis-lab-wsl",
             instructions=instructions,
-            transport_security=transport_security,
+        )
+        server.configure_http(
             host=settings.host,
             port=settings.port,
-            streamable_http_path="/mcp",
-            stateless_http=True,
-            json_response=True,
+            transport_security=transport_security,
         )
         security_meta = {}
 
