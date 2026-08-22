@@ -1748,7 +1748,24 @@ def validate_generator_sections(
                 "generation ball counts must satisfy 1 <= min_balls <= max_balls."
             )
     elif mode == "multi_object":
-        _exact(generation, {"mode", "timeline"}, path="generation")
+        _exact(
+            generation,
+            {"mode", "maximum_physics_attempts_per_object", "timeline"},
+            path="generation",
+        )
+        maximum_attempts = cast(
+            "int",
+            _value(
+                generation,
+                "maximum_physics_attempts_per_object",
+                int,
+                path="generation",
+            ),
+        )
+        if maximum_attempts <= 0:
+            raise SemanticConfigurationError(
+                "generation.maximum_physics_attempts_per_object must be positive."
+            )
         timeline = require_config_mapping(generation, "timeline", path="generation")
         _exact(
             timeline,
