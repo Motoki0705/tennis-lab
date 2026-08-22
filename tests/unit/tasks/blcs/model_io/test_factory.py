@@ -8,6 +8,9 @@ from typing import Any
 import pytest
 from hydra import compose, initialize_config_dir
 
+from src.tasks.blcs.model_io import (
+    TrackQueryAblationModelIOAdapter as PublicTrackQueryAblationModelIOAdapter,
+)
 from src.tasks.blcs.model_io.adapters import TrackQueryAblationModelIOAdapter
 from src.tasks.blcs.model_io.factory import (
     TrackQueryBoundModelIO,
@@ -38,6 +41,10 @@ def _config(condition: str) -> Any:
             config_name="train_tracking",
             overrides=[f"model=track_query_ablation_{condition}", *_SMALL],
         )
+
+
+def test_ablation_adapter_is_exported_from_canonical_model_io_api() -> None:
+    assert PublicTrackQueryAblationModelIOAdapter is TrackQueryAblationModelIOAdapter
 
 
 @pytest.mark.parametrize("condition", ["a", "b", "c", "d"])

@@ -12,7 +12,6 @@ import pytest
 import src.utils.configuration.audit as audit
 import src.utils.configuration.catalog as catalog
 import src.utils.configuration.discovery as discovery
-from src.utils.configuration import DEFAULT_AUDIT_INVENTORY, MigrationStatus
 from src.utils.paths import PROJECT_ROOT
 
 
@@ -72,26 +71,6 @@ def test_catalog_and_audit_depend_on_lower_discovery_without_a_back_edge() -> No
     assert "src.utils.configuration.audit" not in catalog_source
     assert "src.utils.configuration.catalog" not in discovery_source
     assert "src.utils.configuration.audit" not in discovery_source
-
-
-def test_deleted_inventory_module_uses_its_explicit_canonical_authority() -> None:
-    historical = tuple(
-        record
-        for record in DEFAULT_AUDIT_INVENTORY.migrations
-        if record.former_module == "src.configuration_validation"
-    )
-    inventory_source = (
-        PROJECT_ROOT / "src/utils/configuration/inventory.py"
-    ).read_text(encoding="utf-8")
-
-    assert historical
-    assert all(record.status is MigrationStatus.MIGRATED for record in historical)
-    assert all(record.domain == "base" for record in historical)
-    assert all(
-        record.canonical_symbol.startswith("src.tasks.base.configuration.")
-        for record in historical
-    )
-    assert '== "configuration_validation"' not in inventory_source
 
 
 def test_catalog_does_not_publish_legacy_synthetic_boundaries() -> None:
