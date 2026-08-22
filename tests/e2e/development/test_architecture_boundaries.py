@@ -46,6 +46,9 @@ REMOVED_MODULES = (
     "src.tennis_scene.io",
     "src.tennis_scene.utils",
     "src.tennis_scene.utils.transforms",
+    "src.utils.configuration.exemption_data",
+    "src.utils.configuration.migration_data",
+    "src.utils.configuration.source_oracle",
     "src.utils.configuration.validation",
 )
 PROHIBITED_SYMBOLS = frozenset(

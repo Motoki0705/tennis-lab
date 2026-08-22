@@ -25,10 +25,13 @@ def test_root_configuration_audit_script_is_the_operational_entrypoint() -> None
     assert result.returncode == 0, result.stdout + result.stderr
     assert "source_root" in result.stdout
     assert "--show-discovered-boundaries" in result.stdout
+    assert "--show-contracts" in result.stdout
+    assert "--write-generated-data" not in result.stdout
+    assert "--regenerate-ledger" not in result.stdout
 
 
-def test_generated_inventory_update_requires_an_explicit_revision() -> None:
+def test_removed_generated_inventory_option_is_rejected() -> None:
     result = _run_audit_script("src", "--write-generated-data")
 
     assert result.returncode == 2
-    assert "--write-generated-data requires --source-revision" in result.stderr
+    assert "unrecognized arguments: --write-generated-data" in result.stderr
