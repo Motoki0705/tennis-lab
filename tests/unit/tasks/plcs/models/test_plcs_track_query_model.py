@@ -6,20 +6,25 @@ from typing import cast
 
 import pytest
 import torch
-from omegaconf import OmegaConf
+from hydra import compose, initialize_config_dir
 
 from src.tasks.plcs.configuration import PLCSModelConfig
 from src.tasks.plcs.models.plcs_track_query_model import PLCSTrackQueryModel
 from src.utils.models.components.fixed_query_track_stage import FixedQueryTrackStage
 from src.utils.models.embeddings import CourtPlayerGroupEmbedding
 
+MODEL_CONFIG_DIR = Path(__file__).parents[5] / "src/tasks/plcs/configs/model"
+
 
 def _model(*, backend: str = "reference") -> PLCSTrackQueryModel:
-    raw = OmegaConf.load(Path("src/tasks/plcs/configs/model/track_query.yaml"))
-    raw.cswa.backend = backend
-    config = PLCSModelConfig.from_mapping(
-        cast("dict[str, object]", OmegaConf.to_container(raw, resolve=True))
-    )
+    with initialize_config_dir(
+        config_dir=str(MODEL_CONFIG_DIR), version_base="1.3"
+    ):
+        raw = compose(
+            config_name="track_query",
+            overrides=[f"cswa.backend={backend}"],
+        )
+    config = PLCSModelConfig.from_mapping(raw)
     model = PLCSTrackQueryModel(config)
     model.eval()
     return model
