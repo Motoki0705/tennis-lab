@@ -311,6 +311,9 @@ cmd_serve() {
   fi
 
   echo "$$" > "$WORKER_PID_FILE"
+  if [ -n "${TRAINING_QUEUE_START_READY_FILE:-}" ]; then
+    printf '%s\n' "$$" > "$TRAINING_QUEUE_START_READY_FILE"
+  fi
   _cleanup_serve() {
     if [ "$(cat "$WORKER_PID_FILE" 2>/dev/null)" = "$$" ]; then
       rm -f "$WORKER_PID_FILE"
@@ -328,7 +331,11 @@ cmd_start() {
   fi
   # Detached background worker. Prefer a new session so agent/CI launchers that
   # tear down their own process group do not kill long-running training jobs.
-  local -a worker_cmd=(bash "$SCRIPT_PATH" serve "$@")
+  local ready_file="$QUEUE_DIR/.worker-ready.$$.$RANDOM"
+  local -a worker_cmd=(
+    env "TRAINING_QUEUE_START_READY_FILE=$ready_file"
+    bash "$SCRIPT_PATH" serve "$@"
+  )
   if command -v setsid >/dev/null 2>&1; then
     worker_cmd=(setsid "${worker_cmd[@]}")
   fi
@@ -336,7 +343,7 @@ cmd_start() {
   local pid=$!
   local ready=0
   for _ in $(seq 1 100); do
-    if [ "$(cat "$WORKER_PID_FILE" 2>/dev/null)" = "$pid" ]; then
+    if [ "$(cat "$ready_file" 2>/dev/null)" = "$pid" ]; then
       ready=1
       break
     fi
@@ -345,6 +352,7 @@ cmd_start() {
     fi
     sleep 0.02
   done
+  rm -f "$ready_file"
   if [ "$ready" -ne 1 ]; then
     echo "worker failed to start; inspect $WORKER_LOG" >&2
     return 1
