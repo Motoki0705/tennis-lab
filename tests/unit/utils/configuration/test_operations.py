@@ -12,6 +12,7 @@ import pytest
 
 from src.utils.configuration import (
     BUILD_CUDA_OPS,
+    CUDA_OPS_BUILD_TARGET,
     DINO_OPS_BUILD_CONFIG,
     FORCE_MOE_REFERENCE,
     FORCE_TIME_LOCAL_REFERENCE,
@@ -26,6 +27,12 @@ parse_build_cuda_ops = cast(
     importlib.import_module(
         "src.utils.models.components.ops.build"
     ).parse_build_cuda_ops,
+)
+parse_cuda_ops_build_target = cast(
+    Callable[[str | None], str],
+    importlib.import_module(
+        "src.utils.models.components.ops.build"
+    ).parse_cuda_ops_build_target,
 )
 
 
@@ -52,6 +59,12 @@ def _build_mapping(root: Path) -> dict[str, object]:
         "time_local_kernels": (
             "src/utils/models/components/ops/time_local/csrc/time_local_cuda.cu"
         ),
+        "compressed_time_local_bindings": (
+            "src/utils/models/components/ops/compressed_time_local/bindings.cpp"
+        ),
+        "compressed_time_local_kernels": (
+            "src/utils/models/components/ops/compressed_time_local/kernels.cu"
+        ),
     }
 
 
@@ -77,7 +90,9 @@ def _operation_environment(**overrides: str) -> dict[str, str]:
 )
 def test_boolean_environment_tokens_are_exact(name: str) -> None:
     with pytest.raises(ConfigurationError, match="exactly '0' or '1'"):
-        OperationEnvironmentConfig.from_mapping(_operation_environment(**{name: "true"}))
+        OperationEnvironmentConfig.from_mapping(
+            _operation_environment(**{name: "true"})
+        )
 
 
 def test_operation_environment_rejects_unknown_and_conflicting_inputs() -> None:
@@ -87,8 +102,8 @@ def test_operation_environment_rejects_unknown_and_conflicting_inputs() -> None:
         OperationEnvironmentConfig.from_mapping(
             _operation_environment(
                 **{
-                FORCE_TIME_LOCAL_REFERENCE: "1",
-                USE_TIME_LOCAL_CUDA: "1",
+                    FORCE_TIME_LOCAL_REFERENCE: "1",
+                    USE_TIME_LOCAL_CUDA: "1",
                 }
             )
         )
@@ -110,6 +125,35 @@ def test_runtime_environment_reuses_standalone_build_switch_authority(
 
     assert parse_build_cuda_ops(raw) is expected
     assert OperationEnvironmentConfig.from_mapping(values).build_cuda_ops is expected
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (None, "all"),
+        ("all", "all"),
+        ("compressed_time_local", "compressed_time_local"),
+    ],
+)
+def test_runtime_environment_reuses_standalone_build_target_authority(
+    raw: str | None,
+    expected: str,
+) -> None:
+    values = _operation_environment()
+    if raw is not None:
+        values[CUDA_OPS_BUILD_TARGET] = raw
+
+    environment = OperationEnvironmentConfig.from_mapping(values)
+
+    assert parse_cuda_ops_build_target(raw) == expected
+    assert environment.cuda_ops_build_target == expected
+
+
+def test_runtime_environment_rejects_unknown_build_target() -> None:
+    with pytest.raises(ConfigurationError, match=CUDA_OPS_BUILD_TARGET):
+        OperationEnvironmentConfig.from_mapping(
+            _operation_environment(**{CUDA_OPS_BUILD_TARGET: "compressed"})
+        )
 
 
 def test_enabled_build_requires_strict_json_contract(tmp_path: Path) -> None:
@@ -144,6 +188,9 @@ def test_dino_build_contract_resolves_all_roles(tmp_path: Path) -> None:
     assert config.destination == tmp_path / ".cache/dino_ops/src"
     assert config.moe_bindings == (
         tmp_path / "src/utils/models/components/ops/moe/csrc/moe.cpp"
+    )
+    assert config.compressed_time_local_kernels == (
+        tmp_path / "src/utils/models/components/ops/compressed_time_local/kernels.cu"
     )
 
 

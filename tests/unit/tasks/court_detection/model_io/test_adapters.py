@@ -1,36 +1,75 @@
-"""Unit tests for court task adapter contracts."""
+"""Unit tests for the bundle-aware Court model-I/O boundary."""
 
 from __future__ import annotations
-
-from typing import cast
 
 import pytest
 import torch
 from torch import nn
 
-from src.tasks.base.model_io import bind_model_io
-from src.tasks.court_detection.model_io.adapters import (
-    CourtKeypointModelIO,
-    CourtLineModelIO,
-    CourtSegmentationModelIO,
+from src.tasks.court_detection.configuration import CourtLossConfig
+from src.tasks.court_detection.data.contracts import (
+    CourtTargetBundleSpec,
+    CourtTargetKind,
+    CourtTargetSpec,
 )
+from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
 from src.tasks.court_detection.model_io.contracts import (
     CourtKeypointPrediction,
     CourtLinePrediction,
     CourtModelIOError,
     CourtModelSpec,
     CourtSegmentationPrediction,
-    CourtTask,
-    CourtTrainingResult,
 )
 from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
 
 
+def _bundle(*kinds: CourtTargetKind) -> CourtTargetBundleSpec:
+    specs: dict[CourtTargetKind, CourtTargetSpec] = {
+        "kp": CourtTargetSpec(
+            kind="kp",
+            schema="test_kp",
+            output_channels=2,
+            channel_names=("left", "right"),
+            target_dtype=torch.float32,
+            precomputed=False,
+        ),
+        "seg": CourtTargetSpec(
+            kind="seg",
+            schema="test_seg",
+            output_channels=3,
+            channel_names=("background", "a", "b"),
+            target_dtype=torch.long,
+            precomputed=True,
+        ),
+        "line": CourtTargetSpec(
+            kind="line",
+            schema="test_line",
+            output_channels=1,
+            channel_names=("line",),
+            target_dtype=torch.float32,
+            precomputed=True,
+        ),
+    }
+    return CourtTargetBundleSpec({kind: specs[kind] for kind in kinds})
+
+
+def _loss_config() -> CourtLossConfig:
+    return CourtLossConfig(
+        seg_ce_weight=1.0,
+        seg_dice_weight=1.0,
+        kp_focal_gamma=2.0,
+        line_bce_weight=1.0,
+        line_dice_weight=1.0,
+        line_pos_weight=1.0,
+    )
+
+
 class _CountingCourtModel(CourtHierarchicalModel):
-    def __init__(self, *, output_channels: int) -> None:
+    def __init__(self, bundle: CourtTargetBundleSpec) -> None:
         nn.Module.__init__(self)
         self.in_channels = 3
-        self.num_classes = output_channels
+        self.target_bundle_spec = bundle
+        self.bias = nn.Parameter(torch.zeros(()))
         self.calls = 0
 
     def forward(
@@ -40,226 +79,136 @@ class _CountingCourtModel(CourtHierarchicalModel):
         feature_2: torch.Tensor | None = None,
         feature_3: torch.Tensor | None = None,
         feature_4: torch.Tensor | None = None,
-    ) -> torch.Tensor:
-        assert feature_1 is None
-        assert feature_2 is None
-        assert feature_3 is None
-        assert feature_4 is None
-        self.calls += 1
-        return images.new_zeros(
-            images.shape[0],
-            self.num_classes,
-            images.shape[-2],
-            images.shape[-1],
+    ) -> dict[CourtTargetKind, torch.Tensor]:
+        assert all(
+            value is None
+            for value in (feature_1, feature_2, feature_3, feature_4)
         )
+        self.calls += 1
+        return {
+            kind: self.bias.expand(
+                images.shape[0],
+                spec.output_channels,
+                images.shape[-2],
+                images.shape[-1],
+            )
+            for kind, spec in self.target_bundle_spec.targets.items()
+        }
 
 
-def _spec(task: str, output_channels: int) -> CourtModelSpec:
-    return CourtModelSpec(
-        task=cast(CourtTask, task),
-        in_channels=3,
-        output_channels=output_channels,
-        short_side=32,
+def _adapter(bundle: CourtTargetBundleSpec) -> CourtModelIOAdapter:
+    return CourtModelIOAdapter(
+        CourtModelSpec(
+            target_bundle=bundle,
+            in_channels=3,
+            short_side=32,
+        ),
+        loss_config=_loss_config(),
     )
 
 
-def _valid_keypoint_batch() -> dict[str, torch.Tensor]:
+def _batch(bundle: CourtTargetBundleSpec) -> dict[str, object]:
+    targets: dict[str, object] = {}
+    if "kp" in bundle.targets:
+        targets["kp"] = {
+            "heatmap": torch.zeros(1, 2, 8, 8),
+            "points_xy": torch.zeros(1, 2, 1, 2),
+            "point_visible": torch.ones(1, 2, 1, dtype=torch.bool),
+            "physical_indices": torch.zeros(1, 2, 1, dtype=torch.long),
+        }
+    if "seg" in bundle.targets:
+        targets["seg"] = torch.zeros(1, 8, 8, dtype=torch.long)
+    if "line" in bundle.targets:
+        targets["line"] = torch.zeros(1, 1, 8, 8)
     return {
         "image": torch.zeros(1, 3, 8, 8),
-        "heatmap": torch.zeros(1, 2, 8, 8),
-        "keypoints": torch.zeros(1, 2, 2),
-        "kp_visible": torch.ones(1, 2, dtype=torch.bool),
+        "targets": targets,
+        "image_size": torch.tensor([[8, 8]], dtype=torch.long),
     }
 
 
-def _run_training_boundary(
-    adapter: CourtKeypointModelIO | CourtSegmentationModelIO | CourtLineModelIO,
-    model: _CountingCourtModel,
-    batch: dict[str, torch.Tensor],
-) -> CourtTrainingResult:
-    call = adapter.prepare_training_batch(batch)
-    logits = model(*call.model_call.model_args)
-    return adapter.training_result(logits, call)
-
-
-def test_training_lifecycle_rejects_missing_fields_before_forward() -> None:
-    adapter = CourtKeypointModelIO(_spec("kp", 2), focal_gamma=2.0)
-    model = _CountingCourtModel(output_channels=2)
+def test_missing_head_target_fails_before_model_forward() -> None:
+    bundle = _bundle("kp", "line")
+    adapter = _adapter(bundle)
+    model = _CountingCourtModel(bundle)
     adapter.validate_model_pair(model)
-    pair = bind_model_io(model, adapter)
+    batch = _batch(bundle)
+    targets = batch["targets"]
+    assert isinstance(targets, dict)
+    del targets["line"]
 
-    with pytest.raises(CourtModelIOError, match="heatmap"):
-        pair.run({"image": torch.zeros(1, 3, 8, 8)})
-
-    assert model.calls == 0
-
-
-def test_adapter_rejects_non_rgb_model_spec() -> None:
-    with pytest.raises(CourtModelIOError, match="exactly three RGB channels"):
-        CourtKeypointModelIO(
-            CourtModelSpec(
-                task="kp",
-                in_channels=1,
-                output_channels=2,
-                short_side=32,
-            ),
-            focal_gamma=2.0,
-        )
-
-
-@pytest.mark.parametrize(
-    ("image", "message"),
-    [
-        (torch.zeros(1, 3, 8, 8, dtype=torch.float64), "torch.float32"),
-        (
-            torch.full((1, 3, 8, 8), -3.0),
-            "ImageNet-normalized values",
-        ),
-        (
-            torch.full((1, 3, 8, 8), 3.0),
-            "ImageNet-normalized values",
-        ),
-    ],
-)
-def test_image_semantics_fail_before_forward(
-    image: torch.Tensor,
-    message: str,
-) -> None:
-    adapter = CourtKeypointModelIO(_spec("kp", 2), focal_gamma=2.0)
-    model = _CountingCourtModel(output_channels=2)
-    batch = _valid_keypoint_batch()
-    batch["image"] = image
-
-    with pytest.raises(CourtModelIOError, match=message):
-        _run_training_boundary(adapter, model, batch)
+    with pytest.raises(CourtModelIOError, match="exactly match"):
+        adapter.prepare_training_batch(batch)
 
     assert model.calls == 0
 
 
-def test_keypoint_training_boundary_runs_validated_batch_once() -> None:
-    adapter = CourtKeypointModelIO(_spec("kp", 2), focal_gamma=2.0)
-    model = _CountingCourtModel(output_channels=2)
+def test_multi_head_training_runs_shared_model_once_and_backpropagates() -> None:
+    bundle = _bundle("kp", "seg", "line")
+    adapter = _adapter(bundle)
+    model = _CountingCourtModel(bundle)
+    adapter.validate_model_pair(model)
+    call = adapter.prepare_training_batch(_batch(bundle))
 
-    result = _run_training_boundary(adapter, model, _valid_keypoint_batch())
+    logits = model(*call.model_call.model_args)
+    result = adapter.training_result(logits, call)
+    result.loss.backward()
 
-    assert result.logits.shape == (1, 2, 8, 8)
-    assert result.loss.ndim == 0
     assert model.calls == 1
+    assert set(result.logits) == {"kp", "seg", "line"}
+    assert set(result.losses) == {"kp", "seg", "line"}
+    assert model.bias.grad is not None
 
 
-@pytest.mark.parametrize(
-    ("violation", "message"),
-    [
-        ("missing", "missing required field 'keypoints'"),
-        ("dtype", "torch.float32"),
-        ("rank", "Keypoint heatmap must have shape"),
-        ("shape", "keypoints must have shape"),
-        ("semantic", "kp_visible values must be in \[0, 1\]"),
-    ],
-)
-def test_keypoint_contract_violations_fail_before_forward(
-    violation: str,
-    message: str,
-) -> None:
-    batch = _valid_keypoint_batch()
-    if violation == "missing":
-        del batch["keypoints"]
-    elif violation == "dtype":
-        batch["image"] = batch["image"].to(torch.uint8)
-    elif violation == "rank":
-        batch["heatmap"] = batch["heatmap"].squeeze(0)
-    elif violation == "shape":
-        batch["keypoints"] = torch.zeros(1, 2, 3)
-    else:
-        batch["kp_visible"] = torch.full((1, 2), 2.0)
-    model = _CountingCourtModel(output_channels=2)
+def test_output_mapping_must_exactly_match_bundle() -> None:
+    bundle = _bundle("kp", "line")
+    adapter = _adapter(bundle)
+    call = adapter.prepare_training_batch(_batch(bundle))
 
-    with pytest.raises(CourtModelIOError, match=message):
-        _run_training_boundary(
-            CourtKeypointModelIO(_spec("kp", 2), focal_gamma=2.0),
-            model,
-            batch,
+    with pytest.raises(CourtModelIOError, match="exactly match"):
+        adapter.training_result(
+            {"kp": torch.zeros(1, 2, 8, 8)},
+            call,
         )
 
-    assert model.calls == 0
 
+def test_decode_returns_typed_predictions_for_every_head() -> None:
+    bundle = _bundle("kp", "seg", "line")
+    adapter = _adapter(bundle)
+    kp_logits = torch.full((1, 2, 4, 5), -10.0)
+    kp_logits[0, 0, 2, 3] = 10.0
+    kp_logits[0, 1, 1, 1] = 10.0
 
-@pytest.mark.parametrize("task", ["seg", "line"])
-def test_dense_mask_semantic_violation_fails_before_forward(task: str) -> None:
-    model = _CountingCourtModel(output_channels=3 if task == "seg" else 1)
-    adapter: CourtSegmentationModelIO | CourtLineModelIO
-    if task == "seg":
-        adapter = CourtSegmentationModelIO(
-            _spec("seg", 3),
-            ce_weight=1.0,
-            dice_weight=1.0,
-        )
-        batch = {
-            "image": torch.zeros(1, 3, 8, 8),
-            "mask": torch.full((1, 8, 8), 3, dtype=torch.long),
-        }
-        message = "invalid class index"
-    else:
-        adapter = CourtLineModelIO(
-            _spec("line", 1),
-            bce_weight=1.0,
-            dice_weight=1.0,
-            pos_weight=1.0,
-        )
-        batch = {
-            "image": torch.zeros(1, 3, 8, 8),
-            "mask": torch.full((1, 1, 8, 8), 1.5),
-        }
-        message = "Line mask values must be in"
-
-    with pytest.raises(CourtModelIOError, match=message):
-        _run_training_boundary(adapter, model, batch)
-
-    assert model.calls == 0
-
-
-def test_keypoint_decode_returns_original_pixel_coordinates() -> None:
-    adapter = CourtKeypointModelIO(_spec("kp", 1), focal_gamma=2.0)
-    logits = torch.full((1, 1, 4, 5), -10.0)
-    logits[0, 0, 2, 3] = 10.0
-
-    prediction = adapter.decode_prediction(
-        logits,
+    keypoints = adapter.decode_prediction(
+        "kp",
+        kp_logits,
         original_size_hw=(7, 9),
         subpixel_refine=False,
+        max_peaks=1,
     )
-
-    assert isinstance(prediction, CourtKeypointPrediction)
-    torch.testing.assert_close(prediction.keypoints, torch.tensor([[6.0, 4.0]]))
-    assert prediction.scores.shape == (1,)
-    assert prediction.heatmaps.shape == (1, 4, 5)
-
-
-def test_dense_adapters_return_typed_predictions() -> None:
-    seg_adapter = CourtSegmentationModelIO(
-        _spec("seg", 3),
-        ce_weight=1.0,
-        dice_weight=1.0,
-    )
-    line_adapter = CourtLineModelIO(
-        _spec("line", 1),
-        bce_weight=1.0,
-        dice_weight=1.0,
-        pos_weight=1.0,
-    )
-
-    seg = seg_adapter.decode_prediction(
+    segmentation = adapter.decode_prediction(
+        "seg",
         torch.zeros(1, 3, 4, 5),
         original_size_hw=(4, 5),
         subpixel_refine=False,
     )
-    line = line_adapter.decode_prediction(
+    line = adapter.decode_prediction(
+        "line",
         torch.zeros(1, 1, 4, 5),
         original_size_hw=(4, 5),
         subpixel_refine=False,
     )
 
-    assert isinstance(seg, CourtSegmentationPrediction)
-    assert seg.mask.shape == (4, 5)
+    assert isinstance(keypoints, CourtKeypointPrediction)
+    assert keypoints.keypoints.shape == (2, 1, 2)
+    torch.testing.assert_close(
+        keypoints.keypoints[:, 0],
+        torch.tensor([[6.0, 4.0], [2.0, 2.0]]),
+    )
+    assert isinstance(segmentation, CourtSegmentationPrediction)
+    assert segmentation.mask.shape == (4, 5)
     assert isinstance(line, CourtLinePrediction)
-    torch.testing.assert_close(line.probability, torch.full((4, 5), 0.5))
+    torch.testing.assert_close(
+        line.probability,
+        torch.full((4, 5), 0.5),
+    )

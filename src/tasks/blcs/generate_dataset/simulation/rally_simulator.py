@@ -584,16 +584,22 @@ class RallySimulator:
                 end = (
                     t_bounce3_sim
                     if t_bounce3_sim >= 0
-                    else min(t_bounce2_sim + 240, max_idx)
+                    else min(t_bounce2_sim + cfg.sim_fps, max_idx)
                 )
             else:
                 # Explicit late-return contract when a second bounce is absent.
                 start = max(0, t_bounce1_sim)
-                estimated_b2 = t_bounce1_sim + 240 if t_bounce1_sim >= 0 else max_idx
+                estimated_b2 = (
+                    t_bounce1_sim + cfg.sim_fps if t_bounce1_sim >= 0 else max_idx
+                )
                 end = min(estimated_b2, max_idx)
         else:  # normal
             start = max(0, t_bounce1_sim)
-            end = t_bounce2_sim if t_bounce2_sim >= 0 else min(start + 240, max_idx)
+            end = (
+                t_bounce2_sim
+                if t_bounce2_sim >= 0
+                else min(start + cfg.sim_fps, max_idx)
+            )
 
         end = min(end, max_idx)
         if start > end:

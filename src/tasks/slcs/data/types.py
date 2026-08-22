@@ -37,11 +37,11 @@ class SLCSSample(TypedDict):
     court_vis: torch.Tensor  # (T, K) float32
     dino_tokens: torch.Tensor  # (T_d, S, C) float32
     dino_frame_idx: torch.Tensor  # (T_d,) int64 — window-relative frame index
-    dino_valid: torch.Tensor  # (T_d,) bool
+    dino_padding_mask: torch.Tensor  # (T_d,) bool — True for padding
     # Timeline
     frame_idx: torch.Tensor  # (T,) int64 — absolute clip frame index
     timestamp: torch.Tensor  # (T,) float32 seconds
-    frame_mask: torch.Tensor  # (T,) bool — window padding mask (True=real frame)
+    padding_mask: torch.Tensor  # (T,) bool — True for padding
     # Targets (pseudo-labels)
     target_player_position: torch.Tensor  # (P, T, 3) float32, normalized
     target_player_rotation: torch.Tensor  # (P, T, 2) float32, (cos, sin)
@@ -55,8 +55,8 @@ class SLCSSample(TypedDict):
 class SLCSBatch(TypedDict):
     """Collated batch: sample tensors with a leading batch axis.
 
-    ``dino_tokens`` / ``dino_frame_idx`` / ``dino_valid`` are right-padded to
-    the largest ``T_d`` in the batch (padding marked invalid).
+    ``dino_tokens`` / ``dino_frame_idx`` / ``dino_padding_mask`` are
+    right-padded to the largest ``T_d`` in the batch (``True`` marks padding).
     """
 
     player_kp: torch.Tensor  # (B, P, T, J, 2)
@@ -68,10 +68,10 @@ class SLCSBatch(TypedDict):
     court_vis: torch.Tensor  # (B, T, K)
     dino_tokens: torch.Tensor  # (B, T_d, S, C)
     dino_frame_idx: torch.Tensor  # (B, T_d)
-    dino_valid: torch.Tensor  # (B, T_d)
+    dino_padding_mask: torch.Tensor  # (B, T_d), True for padding
     frame_idx: torch.Tensor  # (B, T)
     timestamp: torch.Tensor  # (B, T)
-    frame_mask: torch.Tensor  # (B, T)
+    padding_mask: torch.Tensor  # (B, T), True for padding
     target_player_position: torch.Tensor  # (B, P, T, 3)
     target_player_rotation: torch.Tensor  # (B, P, T, 2)
     target_player_valid: torch.Tensor  # (B, P, T)

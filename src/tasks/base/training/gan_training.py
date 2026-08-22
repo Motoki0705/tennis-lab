@@ -6,14 +6,13 @@ import math
 from typing import Any, cast
 
 import torch
-from torch import Tensor
+from torch import Tensor, nn
 from torch.nn.utils import clip_grad_norm_, clip_grad_value_
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 
 from src.tasks.base.configuration import BaseTrainingConfig
 from src.tasks.base.training.gan_loss import LSGANLoss
-from src.utils.models.architectures import prepare_sequence_discriminator_inputs
 
 
 class ManualGANTrainingStrategy:
@@ -164,32 +163,19 @@ class ManualGANTrainingStrategy:
         result = module._compute_supervised_result(batch, stage)
         generator_optimizer, discriminator_optimizer = self._manual_optimizers(module)
 
-        mask = result["gan_mask"]
+        gan_padding_mask = result["gan_padding_mask"]
         fake_sequence = result["gan_fake"]
         real_sequence = result["gan_real"]
-
-        real_discriminator_inputs = prepare_sequence_discriminator_inputs(
-            module.discriminator,
-            real_sequence,
-            mask=mask,
-        )
-        fake_discriminator_inputs = prepare_sequence_discriminator_inputs(
-            module.discriminator,
-            fake_sequence,
-            mask=mask,
-        )
 
         module.toggle_optimizer(discriminator_optimizer)
         discriminator_optimizer.zero_grad()
         real_logits = module.discriminator(
-            real_discriminator_inputs.sequence,
-            token_mask=real_discriminator_inputs.token_mask,
-            attention_mask=real_discriminator_inputs.attention_mask,
+            real_sequence,
+            padding_mask=gan_padding_mask,
         )
         fake_logits = module.discriminator(
-            fake_discriminator_inputs.sequence.detach(),
-            token_mask=fake_discriminator_inputs.token_mask,
-            attention_mask=fake_discriminator_inputs.attention_mask,
+            fake_sequence.detach(),
+            padding_mask=gan_padding_mask,
         )
         discriminator_loss = module.gan_loss_fn.discriminator_loss(
             real_logits, fake_logits
@@ -206,9 +192,8 @@ class ManualGANTrainingStrategy:
         module.toggle_optimizer(generator_optimizer)
         generator_optimizer.zero_grad()
         fake_logits_for_generator = module.discriminator(
-            fake_discriminator_inputs.sequence,
-            token_mask=fake_discriminator_inputs.token_mask,
-            attention_mask=fake_discriminator_inputs.attention_mask,
+            fake_sequence,
+            padding_mask=gan_padding_mask,
         )
         gan_loss = module.gan_loss_fn.generator_loss(fake_logits_for_generator)
         hybrid_loss = result["loss"] + self.current_weight * gan_loss
@@ -240,7 +225,7 @@ class ManualGANSupportMixin:
 
     gan_enabled: bool
     gan_training: ManualGANTrainingStrategy | None
-    discriminator: Any | None
+    discriminator: nn.Module | None
     gan_loss_fn: LSGANLoss | None
     training_config: BaseTrainingConfig
     max_epochs: int
@@ -261,6 +246,17 @@ class ManualGANSupportMixin:
     optimizers: Any
     lr_schedulers: Any
     _estimate_total_steps: Any
+
+    def additional_compilation_targets(self) -> dict[str, nn.Module]:
+        """Compile the independently invoked discriminator when GAN is active."""
+        if not self.gan_enabled:
+            return {}
+        if not isinstance(self.discriminator, nn.Module):
+            raise RuntimeError(
+                "GAN training requires discriminator to be an nn.Module before "
+                "compile target discovery."
+            )
+        return {"discriminator": self.discriminator}
 
     def _initialize_manual_gan(self, *, discriminator: Any | None) -> None:
         training = self.training_config

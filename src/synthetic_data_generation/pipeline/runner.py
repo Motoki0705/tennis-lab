@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -22,6 +23,10 @@ from src.synthetic_data_generation.pipeline.contracts import (
 from src.synthetic_data_generation.pipeline.registry import StageRegistry
 from src.synthetic_data_generation.pipeline.run_manifest import MutableRunManifest
 from src.synthetic_data_generation.pipeline.workspace import SceneWorkspace
+
+_LEGACY_COURT_REUSE_ADDITIVE_NHT_KEYS = frozenset(
+    {"training_python_path", "trainer_path"}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -173,10 +178,17 @@ class ScenePipelineRunner:
         """Validate request, retained upstream, config, handler and publication first."""
         if plan.cursor.name is not StageName.INGEST:
             if not self.workspace.resolved_config_path.is_file():
-                raise FileNotFoundError("Existing scene is missing resolved-config.yaml.")
-            existing_config = self.workspace.resolved_config_path.read_text(encoding="utf-8")
-            if _configuration_authority(existing_config) != _configuration_authority(
-                self.resolved_config_yaml
+                raise FileNotFoundError(
+                    "Existing scene is missing resolved-config.yaml."
+                )
+            existing_config = self.workspace.resolved_config_path.read_text(
+                encoding="utf-8"
+            )
+            if not _resolved_configuration_is_reusable(
+                existing_config,
+                self.resolved_config_yaml,
+                request=request,
+                plan=plan,
             ):
                 raise ValueError(
                     "Resolved configuration changed; rerun from ingest rather than "
@@ -189,6 +201,9 @@ class ScenePipelineRunner:
                     f"{definition.name.value}."
                 )
             self.workspace.validate_required_outputs(definition)
+            definition.validate_reusable_publication(
+                self.workspace.owner_path(definition)
+            )
         first_execution = plan.execution[0]
         self._validate_definition_inputs(request, first_execution)
         context = _Context(
@@ -218,7 +233,9 @@ class ScenePipelineRunner:
                 _configuration_authority(self.resolved_config_yaml)
             elif stage_input.kind is StageInputKind.STAGE_OUTPUT:
                 if stage_input.producer is None or stage_input.relative_path is None:
-                    raise RuntimeError("Invalid stage input escaped registry validation.")
+                    raise RuntimeError(
+                        "Invalid stage input escaped registry validation."
+                    )
                 self.workspace.validate_stage_input(
                     self.registry.definition(stage_input.producer),
                     stage_input.relative_path,
@@ -280,6 +297,96 @@ def _configuration_authority(resolved_yaml: str) -> Mapping[str, object]:
     del stable_request["from_stage"]
     authority["request"] = stable_request
     return authority
+
+
+def _resolved_configuration_is_reusable(
+    existing_yaml: str,
+    requested_yaml: str,
+    *,
+    request: ScenePipelineRequest,
+    plan: StageExecutionPlan,
+) -> bool:
+    """Compare exact config authority with one narrow Court/report exception."""
+    existing = _configuration_authority(existing_yaml)
+    requested = _configuration_authority(requested_yaml)
+    if plan.cursor.name is not StageName.COURT_DATASET or request.targets != frozenset(
+        {DatasetTarget.COURT}
+    ):
+        return existing == requested
+    scoped_existing = _court_report_scoped_authority(
+        existing, require_court_target=False
+    )
+    scoped_requested = _court_report_scoped_authority(
+        requested, require_court_target=True
+    )
+    if scoped_existing is None or scoped_requested is None:
+        return existing == requested
+    return _court_report_scoped_authorities_match(
+        scoped_existing,
+        scoped_requested,
+    )
+
+
+def _court_report_scoped_authorities_match(
+    existing: Mapping[str, object],
+    requested: Mapping[str, object],
+) -> bool:
+    """Allow only typed-required NHT path additions to a legacy authority."""
+    if existing == requested:
+        return True
+    existing_nht = existing.get("nht")
+    requested_nht = requested.get("nht")
+    if (
+        not isinstance(existing_nht, Mapping)
+        or any(not isinstance(key, str) for key in existing_nht)
+        or not isinstance(requested_nht, Mapping)
+        or any(not isinstance(key, str) for key in requested_nht)
+    ):
+        return False
+    existing_keys = set(existing_nht)
+    requested_keys = set(requested_nht)
+    requested_only_keys = requested_keys - existing_keys
+    if (
+        not requested_only_keys
+        or not requested_only_keys <= _LEGACY_COURT_REUSE_ADDITIVE_NHT_KEYS
+        or existing_keys - requested_keys
+    ):
+        return False
+    if any(
+        not isinstance(requested_nht[key], str) or not requested_nht[key].strip()
+        for key in requested_only_keys
+    ):
+        return False
+    if any(requested_nht[key] != value for key, value in existing_nht.items()):
+        return False
+    normalized_requested = dict(requested)
+    normalized_requested["nht"] = dict(existing_nht)
+    return existing == normalized_requested
+
+
+def _court_report_scoped_authority(
+    authority: Mapping[str, object],
+    *,
+    require_court_target: bool,
+) -> Mapping[str, object] | None:
+    """Remove only fields owned by a Court-only cursor and its report."""
+    scoped = deepcopy(dict(authority))
+    dataset = scoped.get("dataset")
+    request = scoped.get("request")
+    if not isinstance(dataset, dict) or "court" not in dataset:
+        return None
+    if not isinstance(request, dict):
+        return None
+    targets = request.get("targets")
+    if require_court_target and targets != [DatasetTarget.COURT.value]:
+        return None
+    dataset = dict(dataset)
+    del dataset["court"]
+    scoped["dataset"] = dataset
+    request = dict(request)
+    request.pop("targets", None)
+    scoped["request"] = request
+    return scoped
 
 
 __all__ = ["ScenePipelineRunner"]

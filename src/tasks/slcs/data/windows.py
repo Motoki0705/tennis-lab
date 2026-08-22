@@ -44,9 +44,10 @@ class WindowPlan:
     def pad(self) -> int:
         return self.window_size - self.length
 
-    def frame_mask(self) -> NDArray[np.bool_]:
-        mask: NDArray[np.bool_] = np.zeros(self.window_size, dtype=np.bool_)
-        mask[: self.length] = True
+    def padding_mask(self) -> NDArray[np.bool_]:
+        """Return the canonical window mask (``True`` for padded slots)."""
+        mask: NDArray[np.bool_] = np.ones(self.window_size, dtype=np.bool_)
+        mask[: self.length] = False
         return mask
 
     def frame_indices(self) -> NDArray[np.int64]:

@@ -97,7 +97,7 @@ class MultiPersonSceneGenerator:
                 base_camera.court_kp_uv[0:1], self.timeline.num_frames, axis=0
             )
             court_visible = np.repeat(
-                base_camera.court_kp_visible[0:1], self.timeline.num_frames, axis=0
+                base_camera.court_kp_vis[0:1], self.timeline.num_frames, axis=0
             )
             active_count = max(int(composition.present[:, :num_persons].sum()), 1)
             cameras.append(
@@ -105,8 +105,8 @@ class MultiPersonSceneGenerator:
                     camera_params=base_camera.camera_params,
                     human_kp_uv=human_uv,
                     court_kp_uv=court_uv,
-                    human_kp_visible=human_visible,
-                    court_kp_visible=court_visible,
+                    human_kp_vis=human_visible,
+                    court_kp_vis=court_visible,
                     human_visibility_ratio=float(
                         human_visible[:, :num_persons].any(axis=-1).sum() / active_count
                     ),

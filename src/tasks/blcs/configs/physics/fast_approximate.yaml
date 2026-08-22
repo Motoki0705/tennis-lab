@@ -1,0 +1,11 @@
+defaults:
+  - default
+  - _self_
+
+# Colab tracking-data profile: integrate directly at the 30 FPS output rate.
+# Gravity, bounce, net, and fence dynamics remain active; drag and Magnus are
+# intentionally omitted so the analytic target solver remains stable without
+# the expensive full-physics landing refinement.
+dt: 0.03333333333333333  # 1/30 s
+use_drag: false
+use_magnus: false

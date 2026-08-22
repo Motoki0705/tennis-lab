@@ -7,8 +7,8 @@ Usage:
 
 Notes:
     - Hydra loads configuration from `src/tasks/court_detection/configs/preview_heatmaps.yaml`.
-    - The script reads raw court keypoint annotations and images without training augmentation.
-    - Each panel overlays the max-pooled heatmap plus decoded argmax points for all keypoints.
+    - The configured source adapter supplies canonical point groups and visibility.
+    - Both ordered KP14 and multi-peak KP7 channels use the shared heatmap utility.
 """
 
 from __future__ import annotations
@@ -18,9 +18,7 @@ from typing import Any, cast
 
 import cv2
 import numpy as np
-import torch
 from omegaconf import DictConfig
-from PIL import Image
 
 from src.tasks.base.configuration import require_config_mapping, require_config_value
 from src.tasks.base.visualization.preview import (
@@ -36,21 +34,26 @@ from src.tasks.court_detection.configuration import (
     CourtDataConfig,
     validate_paths_boundary,
 )
+from src.tasks.court_detection.data.contracts import CourtSourceSplit
+from src.tasks.court_detection.data.inputs.factory import build_court_input
+from src.tasks.court_detection.data.target_generation.store import (
+    CourtDerivedTargetStore,
+)
 from src.utils.configuration import PathRole
 from src.utils.data.heatmaps import generate_gaussian_heatmaps, heatmaps_to_argmax
 from src.utils.hydra import hydra_main, register_boundary_validator
-from src.utils.io import find_existing_file, load_json, save_json
+from src.utils.io import save_json
 
 _BOUNDARY = "court_detection.preview_heatmaps"
 
 
-def _runtime(cfg: DictConfig) -> tuple[Path, Path]:
+def _runtime(cfg: DictConfig) -> tuple[Path, CourtDataConfig]:
     root, resolver = validate_paths_boundary(cfg, expected_sections={"data", "preview"})
     data = CourtDataConfig.from_mapping(
         require_config_mapping(root, "data", path="configuration"), resolver=resolver
     )
-    if data.task != "kp":
-        raise ValueError("preview_heatmaps requires data.task=kp.")
+    if "kp" not in {target.kind for target in data.processing.targets}:
+        raise ValueError("preview_heatmaps requires kp in data.processing.targets.")
     preview = require_config_mapping(root, "preview", path="configuration")
     expected = {
         "split",
@@ -122,10 +125,7 @@ def _runtime(cfg: DictConfig) -> tuple[Path, Path]:
     output_dir = cast("str", preview["output_dir"])
     if not output_dir:
         raise ValueError("preview.output_dir must not be empty.")
-    return resolver.resolve(
-        PathRole.OUTPUT,
-        output_dir,
-    ), data.data_dir
+    return resolver.resolve(PathRole.OUTPUT, output_dir), data
 
 
 def _validate_boundary(cfg: DictConfig) -> None:
@@ -143,26 +143,29 @@ register_boundary_validator(_BOUNDARY, _validate_boundary)
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Hydra entry point."""
-    output_dir, data_dir = _runtime(cfg)
+    output_dir, data = _runtime(cfg)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    entries = load_json(data_dir / f"data_{cfg.preview.split}.json")
-    sample_indices = resolve_sample_indices(cfg, len(entries))
+    store = CourtDerivedTargetStore(data.processing.derived_target_root)
+    input_layer = build_court_input(data.source, target_store=store)
+    records = input_layer.records(cast("CourtSourceSplit", str(cfg.preview.split)))
+    sample_indices = resolve_sample_indices(cfg, len(records))
 
     manifest: list[dict[str, Any]] = []
     for sample_index in sample_indices:
-        entry = entries[sample_index]
-        image_id = str(entry["id"])
-        image = _load_image(data_dir, image_id)
+        raw = input_layer.load(records[sample_index])
+        image_id = raw.sample_id
+        image = np.asarray(raw.image, dtype=np.uint8)
         height, width = image.shape[:2]
-        keypoints = np.asarray(entry["kps"], dtype=np.float32)
-        centers_xy = np.stack(
-            [
-                keypoints[:, 0] / max(width - 1, 1),
-                keypoints[:, 1] / max(height - 1, 1),
-            ],
-            axis=-1,
+        channels = raw.keypoint_channels
+        if channels is None:
+            raise ValueError(f"Court sample {image_id!r} has no keypoint channels.")
+        scale = channels.points_xy.new_tensor(
+            [float(max(width - 1, 1)), float(max(height - 1, 1))]
         )
+        centers = channels.points_xy / scale
+        visible = channels.point_visible
+        centers_xy = centers[visible].cpu().numpy()
 
         panels = [_annotate_original(image, centers_xy, cfg)]
         ratios = [float(value) for value in cfg.preview.ratios]
@@ -170,8 +173,10 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
         for sigma_ratio in ratios:
             heatmaps = generate_gaussian_heatmaps(
                 size_hw=(height, width),
-                centers_xy=torch.from_numpy(centers_xy),
+                centers_xy=centers,
                 sigma_ratio=sigma_ratio,
+                visibility=visible,
+                point_reduction="max",
             )
             argmax_xy, peak_values = heatmaps_to_argmax(heatmaps)
             panel = _render_ratio_panel(
@@ -193,7 +198,8 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
         canvas = _compose_row(
             panels, ["original", *[f"ratio={ratio:.4f}" for ratio in ratios]], cfg
         )
-        image_path = output_dir / f"sample_{sample_index:05d}_{image_id}.png"
+        safe_id = image_id.replace(":", "_")
+        image_path = output_dir / f"sample_{sample_index:05d}_{safe_id}.png"
         cv2.imwrite(str(image_path), cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR))
         manifest.append(
             {
@@ -207,19 +213,6 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     save_json(manifest, output_dir / "manifest.json")
     print(f"Saved {len(manifest)} court heatmap preview(s) to {output_dir}")
     return 0
-
-
-def _load_image(data_dir: Path, image_id: str) -> np.ndarray:
-    image_path = find_existing_file(
-        data_dir / "images", image_id, (".png", ".jpg", ".jpeg")
-    )
-    if image_path is None:
-        raise FileNotFoundError(
-            f"Image not found for image_id={image_id!r} under {data_dir / 'images'}"
-        )
-    with Image.open(image_path) as image:
-        rgb: np.ndarray = np.asarray(image.convert("RGB"))
-        return rgb
 
 
 def _annotate_original(

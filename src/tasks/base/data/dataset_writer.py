@@ -105,21 +105,21 @@ class BaseDatasetWriter(ABC):
         """Append shared court camera params/arrays for a single camera.
 
         Writes the ``{prefix}params`` scalar plus the ``{prefix}court_kp_uv``,
-        ``{prefix}court_kp_visible`` and ``{prefix}court_visibility_count``
+        ``{prefix}court_kp_vis`` and ``{prefix}court_visibility_count``
         arrays using the dtypes shared by PLCS and BLCS.
 
         Args:
             arrays: Array accumulator mutated in place.
             scalars: Scalar accumulator mutated in place.
             cam: Camera record exposing ``camera_params``, ``court_kp_uv``,
-                ``court_kp_visible`` and ``court_visibility_count``.
+                ``court_kp_vis`` and ``court_visibility_count``.
             prefix: Per-camera key prefix (e.g. ``"cam_0_"``).
         """
         import numpy as np
 
         scalars[f"{prefix}params"] = cam.camera_params
         arrays[f"{prefix}court_kp_uv"] = cam.court_kp_uv.astype(np.float32)
-        arrays[f"{prefix}court_kp_visible"] = cam.court_kp_visible.astype(bool)
+        arrays[f"{prefix}court_kp_vis"] = cam.court_kp_vis.astype(bool)
         arrays[f"{prefix}court_visibility_count"] = np.array(
             cam.court_visibility_count,
             dtype=np.float32,

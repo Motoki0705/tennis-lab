@@ -1,0 +1,7 @@
+defaults:
+  - base
+  - _self_
+
+schema_version: v2
+view:
+  target_modes: [court_center]

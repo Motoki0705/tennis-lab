@@ -27,7 +27,7 @@ def test_tracking_metrics_report_per_axis_physical_mae() -> None:
         target_presence=torch.ones(1, 1, 1, dtype=torch.bool),
         target_instance_id=torch.zeros(1, 1, 1, dtype=torch.long),
         target_slot_mask=torch.ones(1, 1, dtype=torch.bool),
-        frame_mask=torch.ones(1, 1, dtype=torch.bool),
+        frame_valid=torch.ones(1, 1, dtype=torch.bool),
     )
 
     metrics = blcs_tracking_metrics(

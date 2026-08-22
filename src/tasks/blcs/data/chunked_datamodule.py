@@ -51,4 +51,5 @@ class ChunkedBLCSDataModule(BLCSDataModuleHooks, BaseChunkedDataModule):
             generation_seed=int(config.run.seed),
             multi_object=False,
             timeline_config=None,
+            maximum_physics_attempts_per_object=None,
         )

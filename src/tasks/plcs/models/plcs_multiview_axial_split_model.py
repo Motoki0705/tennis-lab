@@ -242,7 +242,7 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
         human_kp: Tensor,
         court_kp: Tensor,
         human_vis: Tensor,
-        human_mask: Tensor,
+        padding_mask: Tensor,
         court_vis: Tensor,
         camera_attention_mask: Tensor,
         time_attention_mask: Tensor,
@@ -253,7 +253,7 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
         human_kp = human_kp * (human_vis > 0).unsqueeze(-1).to(dtype=human_kp.dtype)
         court_kp = court_kp * (court_vis > 0).unsqueeze(-1).to(dtype=court_kp.dtype)
 
-        token_valid = human_mask > 0
+        token_valid = ~padding_mask
 
         court_flat = court_kp.reshape(
             batch_size * n_cams * seq_len_in, self.num_court_tokens, 2
