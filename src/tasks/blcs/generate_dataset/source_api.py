@@ -29,6 +29,9 @@ from src.tasks.blcs.generate_dataset.scene_generator import (
     BLCSSceneGenerator,
     GeneratorConfig,
 )
+from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
+    is_retryable_full_physics_rejection,
+)
 
 BLCSGeneratorConfiguration: TypeAlias = GeneratorConfig
 
@@ -128,11 +131,6 @@ _TARGETED_VELOCITY_KEYS = {
     "target_margin_m",
 }
 _COURT_KEYS = {"net_post_offset_x", "net_post_offset_x_range"}
-_FULL_PHYSICS_REJECTION_PREFIX = (
-    "Full-physics targeted-velocity refinement produced no valid landing"
-)
-
-
 class BLCSPhysicsProposalRejected(RuntimeError):
     """Signal that one stochastic physics proposal may be resampled."""
 
@@ -1040,7 +1038,7 @@ class _BoundedPhysicsSceneSource:
                 )
                 continue
             except RuntimeError as error:
-                if not _is_retryable_internal_physics_error(error):
+                if not is_retryable_full_physics_rejection(error):
                     raise
                 rejected.append(
                     _proposal_rejection(
@@ -1118,6 +1116,10 @@ class BLCSPhysicsTrajectorySource:
             internal = MultiBallSceneGenerator(
                 bounded,
                 timeline=self.settings.timeline._to_internal(),
+                # ``bounded`` already owns the configured proposal sequence and
+                # its lossless diagnostics. The compositor must not add a
+                # second, unrecorded retry layer around that source contract.
+                maximum_physics_attempts_per_object=1,
                 rng=random.Random(seed),
             ).generate_scene(scene_id)
         return _source_scene_from_internal(
@@ -1296,10 +1298,6 @@ def _proposal_rejection(
         from_cell=from_cell,
         side=side,
     )
-
-
-def _is_retryable_internal_physics_error(error: RuntimeError) -> bool:
-    return str(error).startswith(_FULL_PHYSICS_REJECTION_PREFIX)
 
 
 @contextmanager
