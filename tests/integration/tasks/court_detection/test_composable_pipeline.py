@@ -6,7 +6,7 @@ import hashlib
 import json
 from collections.abc import Mapping
 from pathlib import Path
-from typing import cast
+from typing import Any, Literal, cast
 
 import numpy as np
 import pytest
@@ -35,6 +35,9 @@ from src.tasks.court_detection.data.target_generation.store import (
 )
 from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
 from src.tasks.court_detection.model_io.factory import build_court_detection_pair
+from src.tasks.court_detection.visualization.adapters.render_inputs import (
+    build_court_qualitative_renderer,
+)
 from src.utils.schema.court import (
     COURT_KP_NAMES,
     STANDARD_COURT_CONFIG,
@@ -252,7 +255,7 @@ def _v2_projection(sample_id: str) -> dict[str, object]:
             zip(COURT_KP_NAMES[:14], physical_order, strict=True)
         ):
             uv = list(points[physical_index])
-            uv[0] += float(court_index)
+            uv[0] += float(court_index * 8)
             classes.append(
                 {
                     "class_id": class_id,
@@ -365,14 +368,23 @@ def _write_synthetic_court_v2(workspace_root: Path) -> None:
     (root / "dataset.json").write_text(json.dumps(manifest), encoding="utf-8")
 
 
-def _compose(tmp_path: Path, *, source: str, processing: str) -> DictConfig:
+def _compose(
+    tmp_path: Path,
+    *,
+    source: str,
+    processing: str,
+    keypoint_court_scope: Literal["all_courts", "target_court"] | None = None,
+) -> DictConfig:
+    overrides = [
+        f"data/source={source}",
+        f"data/processing={processing}",
+    ]
+    if keypoint_court_scope is not None:
+        overrides.append(f"data.source.keypoint_court_scope={keypoint_court_scope}")
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
             config_name="train",
-            overrides=[
-                f"data/source={source}",
-                f"data/processing={processing}",
-            ],
+            overrides=overrides,
         )
     config.paths.project_root = str(tmp_path)
     config.paths.data_root = "data"
@@ -474,7 +486,9 @@ def test_real_three_target_dataset_dataloader_contract(
     datamodule.setup("validate")
 
     batch = next(iter(datamodule.val_dataloader()))
-    targets = cast(Mapping[str, object], batch["targets"])
+    targets = cast(
+        Mapping[str, object], batch["targets"]
+    )
     kp = cast(Mapping[str, torch.Tensor], targets["kp"])
 
     assert tuple(targets) == ("kp", "seg", "line")
@@ -483,6 +497,178 @@ def test_real_three_target_dataset_dataloader_contract(
     assert cast(torch.Tensor, targets["seg"]).shape == (1, 32, 48)
     assert cast(torch.Tensor, targets["seg"]).dtype == torch.long
     assert cast(torch.Tensor, targets["line"]).shape == (1, 1, 32, 48)
+
+
+def test_v2_target_court_scope_composes_through_pipeline_and_preserves_dense_targets(
+    court_roots: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    all_config = _compose(
+        court_roots,
+        source="synthetic_court",
+        processing="all",
+        keypoint_court_scope="all_courts",
+    )
+    target_config = _compose(
+        court_roots,
+        source="synthetic_court",
+        processing="all",
+        keypoint_court_scope="target_court",
+    )
+    all_runtime = CourtTrainingConfig.from_config(all_config)
+    target_runtime = CourtTrainingConfig.from_config(target_config)
+    all_store = CourtDerivedTargetStore(all_runtime.data.processing.derived_target_root)
+    target_store = CourtDerivedTargetStore(
+        target_runtime.data.processing.derived_target_root
+    )
+    all_input = build_court_input(all_runtime.data.source, target_store=all_store)
+    target_input = build_court_input(
+        target_runtime.data.source,
+        target_store=target_store,
+    )
+
+    all_record = all_input.records("val")[0]
+    target_record = target_input.records("val")[0]
+    all_raw = all_input.load(all_record)
+    target_raw = target_input.load(target_record)
+    assert all_raw.keypoint_channels is not None
+    assert target_raw.keypoint_channels is not None
+    assert all_input.spec.source_schema == target_input.spec.source_schema
+    assert all_input.spec.keypoint_schema == "synthetic_camera_relative_kp14"
+    assert (
+        target_input.spec.keypoint_schema
+        == "synthetic_camera_relative_kp14_target_court"
+    )
+    assert target_record.dense_target_refs == all_record.dense_target_refs
+    assert (
+        target_record.payload["source_target_sha256"]
+        == all_record.payload["source_target_sha256"]
+    )
+    assert [instance.court_instance_id for instance in target_raw.court_instances] == [
+        "court-0",
+        "court-1",
+    ]
+    for target_instance, all_instance in zip(
+        target_raw.court_instances,
+        all_raw.court_instances,
+        strict=True,
+    ):
+        torch.testing.assert_close(target_instance.points_xy, all_instance.points_xy)
+
+    _materialize(all_config)
+    derived_root = court_roots / "data/court_detection/derived_targets"
+    all_dense_files = _source_files(derived_root)
+    _materialize(target_config)
+    assert _source_files(derived_root) == all_dense_files
+
+    all_datamodule = CourtDetectionDataModule(all_config)
+    target_datamodule = CourtDetectionDataModule(target_config)
+    all_datamodule.setup("validate")
+    target_datamodule.setup("validate")
+    all_batch = next(iter(all_datamodule.val_dataloader()))
+    target_batch = next(iter(target_datamodule.val_dataloader()))
+    all_targets = cast(Mapping[str, object], all_batch["targets"])
+    target_targets = cast(Mapping[str, object], target_batch["targets"])
+    all_kp = cast(Mapping[str, torch.Tensor], all_targets["kp"])
+    target_kp = cast(Mapping[str, torch.Tensor], target_targets["kp"])
+
+    assert all_kp["points_xy"].shape == (1, 14, 2, 2)
+    assert target_kp["points_xy"].shape == (1, 14, 1, 2)
+    torch.testing.assert_close(
+        target_kp["points_xy"][:, :, 0], all_kp["points_xy"][:, :, 1]
+    )
+    torch.testing.assert_close(
+        target_kp["point_visible"][:, :, 0], all_kp["point_visible"][:, :, 1]
+    )
+    torch.testing.assert_close(
+        target_kp["physical_indices"][:, :, 0],
+        all_kp["physical_indices"][:, :, 1],
+    )
+    assert target_kp["heatmap"].shape == (1, 14, 32, 48)
+    assert target_datamodule.target_bundle_spec.targets["kp"].schema == (
+        "synthetic_camera_relative_kp14_target_court:gaussian_max_v1"
+    )
+    assert all_datamodule.target_bundle_spec.targets["kp"].schema == (
+        "synthetic_camera_relative_kp14:gaussian_max_v1"
+    )
+    assert (
+        target_datamodule.target_bundle_spec.targets["seg"]
+        == (all_datamodule.target_bundle_spec.targets["seg"])
+    )
+    assert (
+        target_datamodule.target_bundle_spec.targets["line"]
+        == (all_datamodule.target_bundle_spec.targets["line"])
+    )
+    torch.testing.assert_close(
+        cast(torch.Tensor, target_targets["seg"]),
+        cast(torch.Tensor, all_targets["seg"]),
+    )
+    torch.testing.assert_close(
+        cast(torch.Tensor, target_targets["line"]),
+        cast(torch.Tensor, all_targets["line"]),
+    )
+
+    channel_index = 12
+    height, width = (
+        int(value) for value in cast(torch.Tensor, target_batch["image_size"])[0]
+    )
+    non_target_xy = all_kp["points_xy"][0, channel_index, 0]
+    target_xy = target_kp["points_xy"][0, channel_index, 0]
+    non_target_x = round(float(non_target_xy[0]) * (width - 1))
+    non_target_y = round(float(non_target_xy[1]) * (height - 1))
+    target_x = round(float(target_xy[0]) * (width - 1))
+    target_y = round(float(target_xy[1]) * (height - 1))
+    assert float(all_kp["heatmap"][0, channel_index, non_target_y, non_target_x]) > 0.5
+    assert float(target_kp["heatmap"][0, channel_index, target_y, target_x]) > 0.5
+    assert (
+        float(target_kp["heatmap"][0, channel_index, non_target_y, non_target_x]) < 0.1
+    )
+
+    pair = build_court_detection_pair(
+        target_config,
+        target_bundle=target_datamodule.target_bundle_spec,
+    )
+    renderer = build_court_qualitative_renderer(
+        cast(CourtModelIOAdapter, pair.adapter),
+        kind="kp",
+    )
+    rendered_keypoints: list[np.ndarray] = []
+
+    def _capture_keypoints(
+        *,
+        frames: list[Any],
+        predictions: list[Any],
+        style: Any,
+        clip_label: str,
+    ) -> list[np.ndarray]:
+        assert len(frames) == len(predictions) == 1
+        _ = style, clip_label
+        rendered_keypoints.append(predictions[0].keypoints_px.copy())
+        return [np.zeros((1, 1, 3), dtype=np.uint8)]
+
+    monkeypatch.setattr(
+        "src.tasks.court_detection.visualization.adapters.render_inputs.render_kp_frames",
+        _capture_keypoints,
+    )
+    logits = torch.full_like(target_kp["heatmap"], -20.0)
+    logits[0, channel_index, non_target_y, non_target_x] = 10.0
+    logits[0, channel_index, target_y, target_x] = 20.0
+
+    rendered = renderer.render(
+        batch=cast(dict[str, Any], target_batch),
+        logits=logits,
+        style=target_runtime.render_style.build(),
+        clip_label="target-court",
+    )
+
+    assert len(rendered) == 1
+    assert len(rendered_keypoints) == 1
+    assert rendered_keypoints[0].shape == (1, 2)
+    np.testing.assert_allclose(
+        rendered_keypoints[0][0],
+        [target_x, target_y],
+        atol=1.0,
+    )
 
 
 @pytest.mark.parametrize(
@@ -573,9 +759,7 @@ def test_shared_geometry_keeps_kp_and_line_correspondence(
     datamodule = CourtDetectionDataModule(config)
     datamodule.setup("validate")
     batch = next(iter(datamodule.val_dataloader()))
-    targets = cast(
-        Mapping[str, object], batch["targets"]
-    )
+    targets = cast(Mapping[str, object], batch["targets"])
     kp = cast(Mapping[str, torch.Tensor], targets["kp"])
     line = cast(torch.Tensor, targets["line"])[0, 0]
     image_height, image_width = cast(torch.Tensor, batch["image_size"])[0]

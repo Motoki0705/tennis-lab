@@ -22,10 +22,15 @@ from src.tasks.court_detection.configuration import (
     SyntheticCourtSourceConfig,
     TennisCourtDetectorSourceConfig,
 )
+from src.tasks.court_detection.data.collate import court_detection_collate
 from src.tasks.court_detection.data.contracts import (
+    CourtInputCapability,
+    CourtInputSpec,
+    CourtKeypointChannels,
     CourtRawSample,
     CourtSampleMetadata,
     CourtSampleRecord,
+    CourtTargetBundleSpec,
     CourtTargetKind,
     CourtTargetSpec,
     CourtTransformedSample,
@@ -39,7 +44,10 @@ from src.tasks.court_detection.data.processing.geometry import CourtProcessingGe
 from src.tasks.court_detection.data.processing.pipeline import (
     CourtProcessingPipeline,
 )
-from src.tasks.court_detection.data.processing.targets import CourtTargetBuilder
+from src.tasks.court_detection.data.processing.targets import (
+    CourtTargetBuilder,
+    KeypointTargetBuilder,
+)
 from src.tasks.court_detection.data.target_generation.store import (
     CourtDerivedTargetStore,
 )
@@ -68,6 +76,69 @@ def test_heatmap_default_preserves_one_map_per_point_and_max_reduces() -> None:
     assert default.shape == (2, 17, 19)
     assert reduced.shape == (1, 17, 19)
     torch.testing.assert_close(reduced[0], default.amax(dim=0))
+
+
+def test_target_court_point_capacity_stays_one_through_heatmap_and_collate() -> None:
+    input_spec = CourtInputSpec(
+        source_kind="synthetic_court",
+        source_schema="canonical_court_dataset_v2",
+        capabilities=frozenset({CourtInputCapability.KEYPOINT_CHANNELS}),
+        keypoint_schema="synthetic_camera_relative_kp14_target_court",
+        keypoint_channel_names=tuple(f"kp-{index}" for index in range(14)),
+        keypoint_flip_permutation=tuple(range(14)),
+    )
+    builder = KeypointTargetBuilder(input_spec, sigma_ratio=0.02)
+    points = torch.full((14, 1, 2), 2.0)
+    channels = CourtKeypointChannels(
+        channel_names=input_spec.keypoint_channel_names,
+        points_xy=points,
+        point_visible=torch.ones((14, 1), dtype=torch.bool),
+        physical_indices=torch.arange(14).view(14, 1),
+        horizontal_flip_permutation=tuple(range(14)),
+    )
+    sample = CourtTransformedSample(
+        sample_id="target-court",
+        image_tensor=torch.zeros(3, 32, 32),
+        image_size=torch.tensor([32, 32], dtype=torch.long),
+        keypoint_channels=channels,
+        court_instances=(),
+        dense_targets={},
+        horizontal_flipped=False,
+        metadata=CourtSampleMetadata(
+            source_kind="synthetic_court",
+            source_schema="canonical_court_dataset_v2",
+            source_sample_id="target-court",
+            scene_id="B00",
+            provenance={},
+        ),
+    )
+
+    target = cast(dict[str, torch.Tensor], builder.build(sample))
+    batch = court_detection_collate(
+        [
+            {
+                "image": sample.image_tensor,
+                "targets": {"kp": target},
+                "image_size": sample.image_size,
+                "sample_id": sample.sample_id,
+                "metadata": sample.metadata.to_dict(),
+            }
+        ],
+        bundle=CourtTargetBundleSpec({"kp": builder.spec}),
+    )
+    collated = cast(
+        dict[str, torch.Tensor], cast(dict[str, object], batch["targets"])["kp"]
+    )
+
+    assert builder.spec.schema == (
+        "synthetic_camera_relative_kp14_target_court:gaussian_max_v1"
+    )
+    assert target["heatmap"].shape == (14, 32, 32)
+    assert float(target["heatmap"][0, 2, 2]) > 0.99
+    assert float(target["heatmap"][0, 25, 25]) < 1.0e-6
+    assert collated["points_xy"].shape == (1, 14, 1, 2)
+    assert collated["point_visible"].shape == (1, 14, 1)
+    assert collated["physical_indices"].shape == (1, 14, 1)
 
 
 def test_tennis_court_detector_input_emits_ordered_14_by_1_channels(tmp_path) -> None:
@@ -222,6 +293,7 @@ def test_synthetic_input_consumes_manifest_paths_and_renderer_visibility(
         SyntheticCourtSourceConfig(
             kind="synthetic_court",
             schema="v1",
+            keypoint_court_scope="all_courts",
             workspace_root=tmp_path,
             scene_ids=("B00",),
         ),
