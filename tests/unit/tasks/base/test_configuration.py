@@ -6,7 +6,7 @@ from typing import Any, cast
 
 import pytest
 
-from src.tasks.base.configuration import TrainingRuntimeConfig
+from src.tasks.base.configuration import BaseTrainingConfig, TrainingRuntimeConfig
 from src.utils.configuration import (
     ConfigurationTypeError,
     SemanticConfigurationError,
@@ -205,3 +205,14 @@ def test_fixed_qualitative_indices_are_explicit_and_consistent(
 
     runtime = _validate(config, tmp_path)
     assert runtime.training.qualitative_logging.selected_indices == (0, 2)
+
+
+def test_task_qualitative_extension_is_projected_from_shared_contract(
+    make_training_config: Any,
+) -> None:
+    config = make_training_config()
+    config["training"]["qualitative_logging"]["fps"] = 6
+
+    training = BaseTrainingConfig.from_validated_task_mapping(config["training"])
+
+    assert training.qualitative_logging.num_samples == 1
