@@ -44,6 +44,7 @@ set -euo pipefail
 #   MAX_EPOCHS        default: 200
 #   BATCH_SIZE        default: 4
 #   CSWA_BACKEND      default: cuda; use reference only when chosen explicitly
+#   CUDA_OPS_MAX_JOBS default: 2 CUDA compiler processes
 #   BLCS_SIMULATION_PROFILE
 #                     default: fast_approximate; set default for strict
 #                     drag/Magnus physics with iterative landing refinement
@@ -68,6 +69,7 @@ CSWA_BACKEND="${CSWA_BACKEND:-cuda}"
 BLCS_SIMULATION_PROFILE="${BLCS_SIMULATION_PROFILE:-fast_approximate}"
 
 source "${REPO_ROOT}/scripts/colab/setup/install_deps.sh"
+source "${REPO_ROOT}/scripts/colab/setup/install_cuda_ops.sh"
 source "${REPO_ROOT}/scripts/colab/setup/prepare_generated_dataset.sh"
 validate_colab_role_root DATA_ROOT "${DATA_ROOT}"
 validate_colab_role_child DATASET_DIR "${DATASET_DIR}"
@@ -95,6 +97,9 @@ if [[ ( "${OUTPUT_ROOT}" == /content/drive/* || "${CHECKPOINT_ROOT}" == /content
 fi
 
 install_colab_dependencies "${REPO_ROOT}"
+if [[ "${CSWA_BACKEND}" == "cuda" ]]; then
+    install_colab_cuda_ops "${REPO_ROOT}"
+fi
 prepare_generated_dataset blcs "${REPO_ROOT}" "${DATA_ROOT}" "${DATASET_DIR}" \
     generation=multi_object \
     "physics=${BLCS_SIMULATION_PROFILE}" \

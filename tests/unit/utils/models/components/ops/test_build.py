@@ -7,7 +7,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
@@ -19,6 +19,7 @@ _BUILD_MODULE_PATH = Path(build_module.__file__).resolve()
 _PROJECT_ROOT = _BUILD_MODULE_PATH.parents[5]
 _OPERATION_ENVIRONMENT_NAMES = (
     build_module.BUILD_CUDA_OPS,
+    build_module.CUDA_OPS_BUILD_TARGET,
     build_module.DINO_OPS_BUILD_CONFIG,
     "TENNIS_LAB_FORCE_MOE_REFERENCE",
     "TENNIS_LAB_FORCE_TIME_LOCAL_REFERENCE",
@@ -123,6 +124,97 @@ def test_setup_spec_load_rejects_noncanonical_build_tokens(
     assert "must be exactly '0' or '1'" in completed.stderr
 
 
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (None, build_module.ALL_CUDA_OPS),
+        (build_module.ALL_CUDA_OPS, build_module.ALL_CUDA_OPS),
+        (
+            build_module.COMPRESSED_TIME_LOCAL_CUDA_OP,
+            build_module.COMPRESSED_TIME_LOCAL_CUDA_OP,
+        ),
+    ],
+)
+def test_cuda_ops_build_target_is_exact(raw: str | None, expected: str) -> None:
+    assert build_module.parse_cuda_ops_build_target(raw) == expected
+
+
+@pytest.mark.parametrize("raw", ["", "compressed", "ALL", " all"])
+def test_cuda_ops_build_target_rejects_unknown_values(raw: str) -> None:
+    with pytest.raises(ValueError, match=build_module.CUDA_OPS_BUILD_TARGET):
+        build_module.parse_cuda_ops_build_target(raw)
+
+
+def test_compressed_time_local_target_requires_only_its_sources(
+    tmp_path: Path,
+) -> None:
+    bindings = tmp_path / "bindings.cpp"
+    kernels = tmp_path / "kernels.cu"
+    bindings.touch()
+    kernels.touch()
+    build_paths = SimpleNamespace(
+        compressed_time_local_bindings=bindings,
+        compressed_time_local_kernels=kernels,
+        require_inputs=lambda: pytest.fail("full CUDA inputs must not be required"),
+    )
+
+    build_module._require_build_inputs(
+        build_paths,
+        build_module.COMPRESSED_TIME_LOCAL_CUDA_OP,
+    )
+
+
+def test_compressed_time_local_target_rejects_missing_selected_source(
+    tmp_path: Path,
+) -> None:
+    build_paths = SimpleNamespace(
+        compressed_time_local_bindings=tmp_path / "missing-bindings.cpp",
+        compressed_time_local_kernels=tmp_path / "missing-kernels.cu",
+    )
+
+    with pytest.raises(FileNotFoundError, match="CUDA operation source file"):
+        build_module._require_build_inputs(
+            build_paths,
+            build_module.COMPRESSED_TIME_LOCAL_CUDA_OP,
+        )
+
+
+def test_compressed_time_local_target_builds_only_selected_extension(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from torch.utils import cpp_extension
+
+    bindings = tmp_path / "bindings.cpp"
+    kernels = tmp_path / "kernels.cu"
+    bindings.touch()
+    kernels.touch()
+    build_paths = SimpleNamespace(
+        compressed_time_local_bindings=bindings,
+        compressed_time_local_kernels=kernels,
+    )
+    captured: list[dict[str, object]] = []
+
+    def fake_cuda_extension(**kwargs: object) -> dict[str, object]:
+        captured.append(kwargs)
+        return kwargs
+
+    monkeypatch.setattr(build_module, "_enabled_build_paths", lambda: build_paths)
+    monkeypatch.setattr(cpp_extension, "CUDA_HOME", str(tmp_path))
+    monkeypatch.setattr(cpp_extension, "CUDAExtension", fake_cuda_extension)
+    monkeypatch.setenv(
+        build_module.CUDA_OPS_BUILD_TARGET,
+        build_module.COMPRESSED_TIME_LOCAL_CUDA_OP,
+    )
+
+    extensions = build_module.get_extensions()
+
+    assert extensions == captured
+    assert [extension["name"] for extension in captured] == [
+        "src.utils.models.components.ops.compressed_time_local._C"
+    ]
+
+
 @pytest.mark.parametrize("raw_json", [None, ""])
 def test_enabled_setup_spec_load_requires_nonempty_build_json(
     tmp_path: Path,
@@ -136,6 +228,24 @@ def test_enabled_setup_spec_load_requires_nonempty_build_json(
 
     assert completed.returncode != 0
     assert build_module.DINO_OPS_BUILD_CONFIG in completed.stderr
+
+
+def test_enabled_setup_spec_load_rejects_unknown_build_target(
+    tmp_path: Path,
+) -> None:
+    completed = _spec_loaded_build(
+        tmp_path,
+        {
+            build_module.BUILD_CUDA_OPS: "1",
+            build_module.CUDA_OPS_BUILD_TARGET: "unknown",
+            build_module.DINO_OPS_BUILD_CONFIG: json.dumps(
+                _build_mapping(_PROJECT_ROOT)
+            ),
+        },
+    )
+
+    assert completed.returncode != 0
+    assert build_module.CUDA_OPS_BUILD_TARGET in completed.stderr
 
 
 @pytest.mark.parametrize(
