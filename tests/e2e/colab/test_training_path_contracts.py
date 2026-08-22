@@ -20,6 +20,7 @@ from src.tasks.blcs.configuration import (
     parse_generation_run,
     validate_training_boundary,
 )
+from src.tasks.court_detection.configuration import CourtTrainingConfig
 from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.generate_dataset.config import PLCSGenerationConfig
 
@@ -27,6 +28,10 @@ ROOT = Path(__file__).parents[3]
 COLAB_ROOT = ROOT / "scripts/colab"
 PATH_CONTRACT = COLAB_ROOT / "setup/path_contract.sh"
 PREPARE_GENERATED = COLAB_ROOT / "setup/prepare_generated_dataset.sh"
+COURT_SCRIPT = (
+    COLAB_ROOT
+    / "train/2026-08-22/train_court_synthetic_v2_kp_dinov3_dpt.sh"
+)
 
 
 @dataclass(frozen=True)
@@ -72,6 +77,10 @@ def _write_fake_python(tmp_path: Path) -> tuple[Path, Path]:
     python_path = bin_dir / "python"
     python_path.write_text(
         """#!/usr/bin/env bash
+if [[ "${1:-}" == "-c" ]]; then
+    printf '%s\n' 'canonical_court_dataset_v2'
+    exit 0
+fi
 {
     printf '%s\n' '__COMMAND__'
     printf '%s\n' "$@"
@@ -143,6 +152,7 @@ def _fake_repo_root(tmp_path: Path) -> Path:
     (
         PATH_CONTRACT,
         PREPARE_GENERATED,
+        COURT_SCRIPT,
         *(case.script for case in TRAINING_CASES),
     ),
 )
@@ -319,3 +329,83 @@ def test_train_script_emits_hydra_valid_role_paths(
     assert data.scene_dir == data_root / dataset_dir
     assert chunk.chunks_dir == artifact_root / chunks_dir
     assert shared.run.output_dir == output_root / output_dir
+
+
+def test_court_train_script_emits_hydra_valid_role_paths_and_resume(
+    tmp_path: Path,
+) -> None:
+    repo_root = _fake_repo_root(tmp_path)
+    bin_dir, capture_path = _write_fake_python(tmp_path)
+    data_root = tmp_path / "roots/data"
+    output_root = tmp_path / "roots/outputs"
+    checkpoint_root = output_root
+    output_dir = "court_detection/captured-synthetic-v2"
+    dataset_root = (
+        data_root / "synthetic_data_generation/scenes/B00/datasets/court"
+    )
+    dataset_root.mkdir(parents=True)
+    (dataset_root / "dataset.json").write_text(
+        '{"schema": "canonical_court_dataset_v2"}\n',
+        encoding="utf-8",
+    )
+    (repo_root / "third_party/dinov3/dinov3").mkdir(parents=True)
+    checkpoint = (
+        output_root / output_dir / "logs/version_0/checkpoints/last.ckpt"
+    )
+    checkpoint.parent.mkdir(parents=True)
+    checkpoint.touch()
+    backbone = (
+        repo_root
+        / "third_party/dinov3/checkpoints"
+        / "dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+    )
+    backbone.parent.mkdir(parents=True)
+    backbone.touch()
+    env = {
+        **os.environ,
+        "ARGS_CAPTURE": str(capture_path),
+        "PATH": f"{bin_dir}:{os.environ.get('PATH', '')}",
+        "REPO_ROOT": str(repo_root),
+        "DATA_ROOT": str(data_root),
+        "OUTPUT_ROOT": str(output_root),
+        "OUTPUT_DIR": output_dir,
+        "CHECKPOINT_ROOT": str(checkpoint_root),
+    }
+
+    result = subprocess.run(
+        ["bash", str(COURT_SCRIPT)],
+        cwd=tmp_path,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
+
+    commands = _read_commands(capture_path)
+    assert len(commands) == 1
+    args = commands[0]
+    assert args[:2] == ["-m", "src.tasks.court_detection.scripts.train"]
+    _config_name, overrides = _command_config(args, "train")
+    override_map = _override_mapping(overrides)
+    expected = {
+        "paths.data_root": str(data_root),
+        "paths.output_root": str(output_root),
+        "paths.checkpoint_root": str(checkpoint_root),
+        "data.source.workspace_root": "synthetic_data_generation/scenes",
+        "run.output_dir": output_dir,
+        "run.resume": f"{output_dir}/logs/version_0/checkpoints/last.ckpt",
+    }
+    assert {key: override_map[key] for key in expected} == expected
+    for key in ("data.source.workspace_root", "run.output_dir", "run.resume"):
+        assert not Path(override_map[key]).is_absolute()
+
+    config_dir = ROOT / "src/tasks/court_detection/configs"
+    with initialize_config_dir(config_dir=str(config_dir), version_base="1.3"):
+        config = compose(config_name="train", overrides=overrides)
+    runtime = CourtTrainingConfig.from_config(config)
+    assert runtime.data.source.workspace_root == (
+        data_root / "synthetic_data_generation/scenes"
+    )
+    assert runtime.shared.run.output_dir == output_root / output_dir
+    assert runtime.shared.run.resume == checkpoint
