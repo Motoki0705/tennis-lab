@@ -90,13 +90,14 @@ def _court(
     *,
     physical_order: tuple[int, ...],
     x_offset: float,
+    all_invisible: bool = False,
 ) -> dict[str, object]:
     classes: list[dict[str, object]] = []
     for class_id, (class_name, physical_index) in enumerate(
         zip(COURT_KP_NAMES[:14], physical_order, strict=True)
     ):
         in_front = not (court_id == "court-a" and class_id == 0)
-        in_frame = not (court_id == "court-a" and class_id == 2)
+        in_frame = not all_invisible and not (court_id == "court-a" and class_id == 2)
         renderer_visible = not (court_id == "court-a" and class_id == 1)
         point = {
             "physical_index": physical_index,
@@ -125,10 +126,24 @@ def _court(
     }
 
 
-def _projection(sample_id: str) -> dict[str, object]:
+def _projection(
+    sample_id: str,
+    *,
+    court_order: tuple[str, str] = ("court-a", "court-b"),
+    invisible_court_id: str | None = None,
+) -> dict[str, object]:
+    court_specs = {
+        "court-a": (_IDENTITY_PHYSICAL, 0.0),
+        "court-b": (_OPPOSITE_PHYSICAL, 2.0),
+    }
     courts = [
-        _court("court-a", physical_order=_IDENTITY_PHYSICAL, x_offset=0.0),
-        _court("court-b", physical_order=_OPPOSITE_PHYSICAL, x_offset=2.0),
+        _court(
+            court_id,
+            physical_order=court_specs[court_id][0],
+            x_offset=court_specs[court_id][1],
+            all_invisible=court_id == invisible_court_id,
+        )
+        for court_id in court_order
     ]
     visible_names = list(COURT_KP_NAMES[:14])
     visible_count = sum(
@@ -146,7 +161,13 @@ def _projection(sample_id: str) -> dict[str, object]:
     }
 
 
-def _write_v2_dataset(root: Path) -> tuple[Path, dict[str, object]]:
+def _write_v2_dataset(
+    root: Path,
+    *,
+    court_order: tuple[str, str] = ("court-a", "court-b"),
+    target_court_id: str = "court-b",
+    invisible_court_id: str | None = None,
+) -> tuple[Path, dict[str, object]]:
     dataset_root = root / "B00" / "datasets" / "court"
     records: list[dict[str, object]] = []
     for sample_index, split in enumerate(("train", "validation", "test")):
@@ -159,8 +180,12 @@ def _write_v2_dataset(root: Path) -> tuple[Path, dict[str, object]]:
         np.save(sample_root / "depth.npy", np.ones((48, 64, 1), np.float32))
         Image.new("RGB", (64, 48)).save(sample_root / "rgb.png")
         Image.new("L", (64, 48)).save(sample_root / "alpha.png")
-        projection = _projection(sample_id)
-        target = _target()
+        projection = _projection(
+            sample_id,
+            court_order=court_order,
+            invisible_court_id=invisible_court_id,
+        )
+        target = _target(target_court_id)
         camera = _camera(sample_id, sample_index)
         metadata = {"fixture": True}
         labels = {
@@ -226,12 +251,16 @@ def _write_v2_dataset(root: Path) -> tuple[Path, dict[str, object]]:
 
 
 def _input(
-    root: Path, *, schema: Literal["v1", "v2"] = "v2"
+    root: Path,
+    *,
+    schema: Literal["v1", "v2"] = "v2",
+    keypoint_court_scope: Literal["all_courts", "target_court"] = "all_courts",
 ) -> SyntheticCourtInput:
     return SyntheticCourtInput(
         SyntheticCourtSourceConfig(
             kind="synthetic_court",
             schema=schema,
+            keypoint_court_scope=keypoint_court_scope,
             workspace_root=root,
             scene_ids=("B00",),
         ),
@@ -254,6 +283,7 @@ def test_v2_keeps_semantic_multi_peaks_separate_from_physical_instances(
 
     assert input_layer.available_splits == ("train", "val", "test")
     assert input_layer.spec.source_schema == "canonical_court_dataset_v2"
+    assert input_layer.spec.keypoint_schema == "synthetic_camera_relative_kp14"
     assert input_layer.spec.keypoint_channel_names == COURT_KP_NAMES[:14]
     assert input_layer.spec.keypoint_flip_permutation == _FLIP
 
@@ -281,6 +311,136 @@ def test_v2_keeps_semantic_multi_peaks_separate_from_physical_instances(
     )
     torch.testing.assert_close(flipped.points_xy[0], channels.points_xy[1])
     torch.testing.assert_close(flipped.points_xy[4], channels.points_xy[6])
+
+
+def test_v2_target_scope_selects_exact_bound_court_and_keeps_dense_inventory(
+    tmp_path: Path,
+) -> None:
+    _write_v2_dataset(tmp_path)
+    all_input = _input(tmp_path)
+    target_input = _input(tmp_path, keypoint_court_scope="target_court")
+
+    all_record = all_input.records("train")[0]
+    target_record = target_input.records("train")[0]
+    all_raw = all_input.load(all_record)
+    target_raw = target_input.load(target_record)
+    assert all_raw.keypoint_channels is not None
+    assert target_raw.keypoint_channels is not None
+
+    all_channels = all_raw.keypoint_channels
+    target_channels = target_raw.keypoint_channels
+    assert target_input.spec.source_schema == all_input.spec.source_schema
+    assert (
+        target_input.spec.keypoint_schema
+        == "synthetic_camera_relative_kp14_target_court"
+    )
+    assert target_channels.points_xy.shape == (14, 1, 2)
+    assert target_channels.point_visible.shape == (14, 1)
+    assert target_channels.physical_indices.shape == (14, 1)
+    torch.testing.assert_close(
+        target_channels.points_xy[:, 0], all_channels.points_xy[:, 1]
+    )
+    torch.testing.assert_close(
+        target_channels.point_visible[:, 0], all_channels.point_visible[:, 1]
+    )
+    torch.testing.assert_close(
+        target_channels.physical_indices[:, 0], all_channels.physical_indices[:, 1]
+    )
+    assert target_record.dense_target_refs == all_record.dense_target_refs
+    assert (
+        target_record.payload["source_target_sha256"]
+        == all_record.payload["source_target_sha256"]
+    )
+    assert [instance.court_instance_id for instance in target_raw.court_instances] == [
+        "court-a",
+        "court-b",
+    ]
+    for target_instance, all_instance in zip(
+        target_raw.court_instances,
+        all_raw.court_instances,
+        strict=True,
+    ):
+        torch.testing.assert_close(target_instance.points_xy, all_instance.points_xy)
+        torch.testing.assert_close(
+            target_instance.point_visible, all_instance.point_visible
+        )
+
+
+def test_v2_target_scope_is_independent_of_projection_order(tmp_path: Path) -> None:
+    selected_points: list[torch.Tensor] = []
+    for name, order in (
+        ("target-first", ("court-b", "court-a")),
+        ("target-last", ("court-a", "court-b")),
+    ):
+        root = tmp_path / name
+        _write_v2_dataset(root, court_order=order)
+        input_layer = _input(root, keypoint_court_scope="target_court")
+
+        raw = input_layer.load(input_layer.records("train")[0])
+
+        assert raw.keypoint_channels is not None
+        assert [instance.court_instance_id for instance in raw.court_instances] == list(
+            order
+        )
+        selected_points.append(raw.keypoint_channels.points_xy)
+
+    torch.testing.assert_close(selected_points[0], selected_points[1])
+
+
+def test_v2_target_scope_keeps_all_invisible_target_without_fallback(
+    tmp_path: Path,
+) -> None:
+    _write_v2_dataset(tmp_path, invisible_court_id="court-b")
+    all_input = _input(tmp_path)
+    target_input = _input(tmp_path, keypoint_court_scope="target_court")
+
+    all_raw = all_input.load(all_input.records("train")[0])
+    target_raw = target_input.load(target_input.records("train")[0])
+    assert all_raw.keypoint_channels is not None
+    assert target_raw.keypoint_channels is not None
+
+    target_channels = target_raw.keypoint_channels
+    assert target_channels.points_xy.shape == (14, 1, 2)
+    assert not bool(target_channels.point_visible.any())
+    torch.testing.assert_close(
+        target_channels.points_xy[:, 0],
+        all_raw.keypoint_channels.points_xy[:, 1],
+    )
+    assert target_channels.physical_indices[:, 0].tolist() == list(_OPPOSITE_PHYSICAL)
+
+
+def test_v2_target_scope_flip_preserves_semantic_and_physical_identity(
+    tmp_path: Path,
+) -> None:
+    _write_v2_dataset(tmp_path)
+    input_layer = _input(tmp_path, keypoint_court_scope="target_court")
+    raw = input_layer.load(input_layer.records("train")[0])
+    assert raw.keypoint_channels is not None
+
+    channels = raw.keypoint_channels
+    flipped = CourtProcessingGeometry._transform_channels(
+        channels,
+        matrix=torch.eye(3, dtype=torch.float64),
+        output_size_hw=(48, 64),
+        horizontal_flipped=True,
+    )
+
+    permutation = torch.tensor(_FLIP, dtype=torch.long)
+    torch.testing.assert_close(
+        flipped.points_xy, channels.points_xy.index_select(0, permutation)
+    )
+    torch.testing.assert_close(
+        flipped.point_visible, channels.point_visible.index_select(0, permutation)
+    )
+    torch.testing.assert_close(
+        flipped.physical_indices,
+        channels.physical_indices.index_select(0, permutation),
+    )
+    assert sorted(flipped.physical_indices[:, 0].tolist()) == list(range(14))
+    assert [instance.court_instance_id for instance in raw.court_instances] == [
+        "court-a",
+        "court-b",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -416,7 +576,12 @@ def test_v2_rejects_labels_manifest_drift_and_mixed_sample_schema(
 
 @pytest.mark.parametrize(
     "failure",
-    ["absent_target", "duplicate_target_instance", "duplicate_physical"],
+    [
+        "absent_target",
+        "duplicate_target_instance",
+        "non_target_class",
+        "non_target_duplicate_physical",
+    ],
 )
 def test_v2_rejects_invalid_target_and_physical_inventory(
     tmp_path: Path,
@@ -433,6 +598,11 @@ def test_v2_rejects_invalid_target_and_physical_inventory(
         projection = cast(dict[str, object], record["projection"])
         courts = cast(list[dict[str, object]], projection["courts"])
         courts[0]["court_instance_id"] = "court-b"
+    elif failure == "non_target_class":
+        projection = cast(dict[str, object], record["projection"])
+        courts = cast(list[dict[str, object]], projection["courts"])
+        classes = cast(list[dict[str, object]], courts[0]["classes"])
+        classes[0]["class_id"] = 99
     else:
         projection = cast(dict[str, object], record["projection"])
         courts = cast(list[dict[str, object]], projection["courts"])
@@ -447,9 +617,55 @@ def test_v2_rejects_invalid_target_and_physical_inventory(
     labels["projection"] = deepcopy(record["projection"])
     labels_path.write_text(json.dumps(labels), encoding="utf-8")
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
-    input_layer = _input(tmp_path)
+    input_layer = _input(tmp_path, keypoint_court_scope="target_court")
 
-    with pytest.raises(ValueError, match="target_court|instance|physical"):
+    with pytest.raises(ValueError, match="target_court|instance|class|physical"):
+        input_layer.load(input_layer.records("train")[0])
+
+
+@pytest.mark.parametrize("failure", ["missing_binding", "invalid_binding_id"])
+def test_v2_target_scope_rejects_missing_or_invalid_binding(
+    tmp_path: Path,
+    failure: str,
+) -> None:
+    manifest_path, manifest = _write_v2_dataset(tmp_path)
+    record = cast(list[dict[str, object]], manifest["samples"])[0]
+    labels_path = manifest_path.parent / cast(str, record["labels"])
+    labels = json.loads(labels_path.read_text(encoding="utf-8"))
+    assert isinstance(labels, dict)
+    manifest_target = cast(dict[str, object], record["target_court"])
+    labels_target = cast(dict[str, object], labels["target_court"])
+    if failure == "missing_binding":
+        manifest_target.pop("binding")
+        labels_target.pop("binding")
+    else:
+        manifest_binding = cast(dict[str, object], manifest_target["binding"])
+        labels_binding = cast(dict[str, object], labels_target["binding"])
+        manifest_binding["court_instance_id"] = 7
+        labels_binding["court_instance_id"] = 7
+    labels_path.write_text(json.dumps(labels), encoding="utf-8")
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises((TypeError, ValueError), match="target_court|binding|court"):
+        _input(tmp_path, keypoint_court_scope="target_court")
+
+
+def test_v2_target_scope_rejects_labels_manifest_binding_mismatch(
+    tmp_path: Path,
+) -> None:
+    manifest_path, manifest = _write_v2_dataset(tmp_path)
+    record = cast(list[dict[str, object]], manifest["samples"])[0]
+    labels_path = manifest_path.parent / cast(str, record["labels"])
+
+    def _change_binding(labels: dict[str, object]) -> None:
+        target = cast(dict[str, object], labels["target_court"])
+        binding = cast(dict[str, object], target["binding"])
+        binding["court_instance_id"] = "court-a"
+
+    _rewrite(labels_path, _change_binding)
+    input_layer = _input(tmp_path, keypoint_court_scope="target_court")
+
+    with pytest.raises(ValueError, match="target_court disagrees with manifest"):
         input_layer.load(input_layer.records("train")[0])
 
 
