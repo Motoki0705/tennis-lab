@@ -1,5 +1,10 @@
 mode: multi_object
 
+# A physics landing outside the strict requested-cell tolerance rejects one
+# stochastic rally proposal. Re-sample the whole source rally within this
+# explicit finite budget; exhaustion remains a hard error.
+maximum_physics_attempts_per_object: 64
+
 timeline:
   num_frames: 1024
   min_tracks: 3

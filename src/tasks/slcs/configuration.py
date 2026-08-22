@@ -178,6 +178,18 @@ SLCS_TRAINING_SCHEMA = _schema(
         "optimizer": _mapping(
             _schema("training.optimizer", {"betas": ConfigField.sequence(_number())})
         ),
+        "compile": _mapping(
+            _schema(
+                "training.compile",
+                {
+                    "enabled": ConfigField.of(bool),
+                    "backend": ConfigField.of(str),
+                    "mode": ConfigField.of(str),
+                    "fullgraph": ConfigField.of(bool),
+                    "dynamic": ConfigField.of(bool),
+                },
+            )
+        ),
         "checkpoint": _mapping(
             _schema(
                 "training.checkpoint",
@@ -703,7 +715,9 @@ def _loss(raw: dict[str, object]) -> SLCSLossConfig:
     if any(weight < 0 for weight in weights):
         raise SemanticConfigurationError("SLCS loss weights must be non-negative.")
     if not any(weight > 0 for weight in weights):
-        raise SemanticConfigurationError("At least one SLCS loss weight must be positive.")
+        raise SemanticConfigurationError(
+            "At least one SLCS loss weight must be positive."
+        )
     if result.smoothness_order not in {1, 2, 3}:
         raise SemanticConfigurationError("loss.smoothness_order must be 1, 2, or 3.")
     return result
@@ -892,9 +906,7 @@ class SLCSPredictConfig:
         raw = _validate_boundary(config, SLCS_PREDICTION_BOUNDARY_SCHEMA)
         resolver = _resolver(raw)
         values = cast(dict[str, object], raw["predict"])
-        if cast(int, values["batch_size"]) <= 0 or cast(
-            int, values["frame_step"]
-        ) <= 0:
+        if cast(int, values["batch_size"]) <= 0 or cast(int, values["frame_step"]) <= 0:
             raise SemanticConfigurationError(
                 "predict.batch_size and predict.frame_step must be positive."
             )

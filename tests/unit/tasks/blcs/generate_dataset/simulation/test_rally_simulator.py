@@ -96,3 +96,22 @@ def test_return_timing_rejects_a_window_outside_the_requested_side() -> None:
             t_bounce3_sim=-1,
             trajectory_sim=trajectory,
         )
+
+
+def test_missing_second_bounce_window_is_one_simulated_second() -> None:
+    simulator = _timing_simulator()
+    first_bounce = 10
+    last_in_window = first_bounce + simulator.rally_config.sim_fps
+    trajectory = [torch.tensor([0.0, -2.0, 1.0]) for _ in range(last_in_window + 1)]
+    trajectory.append(torch.tensor([0.0, 2.0, 1.0]))
+
+    with pytest.raises(RuntimeError, match="requested canonical court side"):
+        simulator._sample_return_timing(
+            return_type="normal",
+            target_side="far",
+            t_net_sim=5,
+            t_bounce1_sim=first_bounce,
+            t_bounce2_sim=-1,
+            t_bounce3_sim=-1,
+            trajectory_sim=trajectory,
+        )

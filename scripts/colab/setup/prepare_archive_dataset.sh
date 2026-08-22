@@ -72,6 +72,9 @@ prepare_archive_dataset() {
         court)
             archives=("court.tar.zst")
             ;;
+        synthetic_court_v2)
+            archives=("synthetic_court_v2.tar.zst")
+            ;;
         plcs)
             archives=("smplx.tar.zst" "smplh.tar.zst" "ACCAD.tar.zst")
             ;;
@@ -120,7 +123,8 @@ prepare_archive_dataset() {
         tar -I zstd -xf "${cache_dir}/${archive}" -C "${data_dir}"
     done
 
-    if [[ "${target}" == "ball" || "${target}" == "court" || "${target}" == "dinov3_ssl" ]]; then
+    if [[ "${target}" == "ball" || "${target}" == "court" \
+          || "${target}" == "synthetic_court_v2" || "${target}" == "dinov3_ssl" ]]; then
         _prepare_dinov3_submodule "${repo_root}"
         _stage_dinov3_checkpoint "${dinov3_ckpt}" "${dinov3_dest_dir}"
     fi

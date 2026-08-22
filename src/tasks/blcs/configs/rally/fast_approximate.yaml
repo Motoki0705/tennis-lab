@@ -1,0 +1,10 @@
+defaults:
+  - default
+  - _self_
+
+# Preserve the default wall-clock simulation budgets at the 30 FPS output
+# rate instead of oversampling every emitted trajectory frame eight times.
+max_sim_frames: 250
+sim_fps: 30
+max_total_frames: 1500
+toss_max_frames: 30

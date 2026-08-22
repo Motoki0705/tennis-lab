@@ -9,7 +9,6 @@ from torch import Tensor
 
 from src.utils.geometry.angles import angular_error
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
-from src.utils.tensor_utils import normalize_padding_mask
 
 
 def _flatten_valid(valid: Tensor, values: Tensor) -> Tensor:
@@ -61,7 +60,7 @@ class PLCSMetrics:
         target_position: Tensor,
         target_rotation: Tensor,
         *,
-        human_mask: Tensor | None = None,
+        padding_mask: Tensor | None = None,
     ) -> dict[str, float]:
         """Update metrics with new predictions.
 
@@ -75,7 +74,14 @@ class PLCSMetrics:
             dict: Current batch metrics.
 
         """
-        valid = normalize_padding_mask(human_mask, flatten=True)
+        valid = None
+        if padding_mask is not None:
+            frame_padding = (
+                padding_mask.all(dim=1)
+                if padding_mask.ndim == 3
+                else padding_mask
+            )
+            valid = (~frame_padding).reshape(-1)
 
         # Flatten temporal dimension if present: (B, T, D) -> (B*T, D)
         if pred_position.dim() == 3:

@@ -54,6 +54,9 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     OrbitStableField,
     OrbitTargetMode,
 )
+from src.synthetic_data_generation.dataset.court.schema import (
+    CourtDatasetSchemaVersion,
+)
 from src.synthetic_data_generation.dataset.plcs.production import (
     PLCSProductionMode,
     validate_plcs_production_contract,
@@ -1142,7 +1145,12 @@ class CourtViewPolicy:
     hfov_degrees: tuple[float, float]
 
     @classmethod
-    def from_mapping(cls, value: object) -> CourtViewPolicy:
+    def from_mapping(
+        cls,
+        value: object,
+        *,
+        schema_version: CourtDatasetSchemaVersion,
+    ) -> CourtViewPolicy:
         raw = _exact(
             value,
             path="dataset.court.view",
@@ -1165,9 +1173,23 @@ class CourtViewPolicy:
             look_at_height_m=_ordered_range(raw, "look_at_height_m", path=path, positive=False),
             hfov_degrees=_ordered_range(raw, "hfov_degrees", path=path, positive=True),
         )
-        if set(result.target_modes) != set(OrbitTargetMode):
+        if not isinstance(schema_version, CourtDatasetSchemaVersion):
+            raise ConfigurationTypeError(
+                "dataset.court.schema_version must be a CourtDatasetSchemaVersion."
+            )
+        if (
+            schema_version is CourtDatasetSchemaVersion.V1
+            and set(result.target_modes) != set(OrbitTargetMode)
+        ):
             raise SemanticConfigurationError(
-                "Court target modes must include complex/court center and both baselines."
+                "Court v1 target modes must include complex/court center and both baselines."
+            )
+        if (
+            schema_version is CourtDatasetSchemaVersion.V2
+            and result.target_modes != (OrbitTargetMode.COURT_CENTER,)
+        ):
+            raise SemanticConfigurationError(
+                "Court v2 target modes must be exactly [court_center]."
             )
         if set(result.coverage_modes) != set(OrbitCoverageMode):
             raise SemanticConfigurationError(
@@ -1351,6 +1373,7 @@ def _performance_budget(value: object, *, path: str) -> DatasetPerformanceBudget
 class CourtDatasetConfiguration:
     """Complete typed Court dataset policy."""
 
+    schema_version: CourtDatasetSchemaVersion
     trajectory: CourtTrajectoryPolicy
     view: CourtViewPolicy
     sampling: CourtSamplingPolicy
@@ -1363,6 +1386,7 @@ class CourtDatasetConfiguration:
             value,
             path="dataset.court",
             keys={
+                "schema_version",
                 "trajectory",
                 "view",
                 "sampling",
@@ -1375,8 +1399,17 @@ class CourtDatasetConfiguration:
             raise SemanticConfigurationError(
                 "dataset.court.metadata_fields omits required provenance."
             )
+        schema_version = _enum_value(
+            raw,
+            "schema_version",
+            path="dataset.court",
+            enum_type=CourtDatasetSchemaVersion,
+        )
         trajectory = CourtTrajectoryPolicy.from_mapping(raw["trajectory"])
-        view = CourtViewPolicy.from_mapping(raw["view"])
+        view = CourtViewPolicy.from_mapping(
+            raw["view"],
+            schema_version=schema_version,
+        )
         sampling = CourtSamplingPolicy.from_mapping(raw["sampling"])
         performance = _performance_budget(
             raw["performance"],
@@ -1393,6 +1426,7 @@ class CourtDatasetConfiguration:
                 "shard count, and permit at most two complete scans per sample."
             )
         return cls(
+            schema_version=schema_version,
             trajectory=trajectory,
             view=view,
             sampling=sampling,
@@ -2204,6 +2238,7 @@ __all__ = [
     "AlignmentConfiguration",
     "BLCSDatasetConfiguration",
     "CourtDatasetConfiguration",
+    "CourtDatasetSchemaVersion",
     "CourtSamplingPolicy",
     "CourtTrajectoryPolicy",
     "CourtViewPolicy",

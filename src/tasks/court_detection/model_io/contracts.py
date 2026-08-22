@@ -1,37 +1,39 @@
-"""Typed model-I/O contracts for court keypoint, segmentation, and line tasks."""
+"""Typed bundle model-I/O contracts for Court detection."""
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, TypeAlias
 
 from torch import Tensor
 
 from src.tasks.base.model_io import ModelIOContractError
+from src.tasks.court_detection.data.contracts import (
+    CourtTargetBundleSpec,
+    CourtTargetKind,
+)
 
-CourtTask = Literal["kp", "seg", "line"]
 CourtEncoderKind = Literal["default", "dinov3"]
+CourtLogits: TypeAlias = Mapping[CourtTargetKind, Tensor]
 
 
 class CourtModelIOError(ModelIOContractError):
-    """Raised when a court model, batch, or output violates its contract."""
+    """Raised when a Court model, batch, or output violates its contract."""
 
 
 @dataclass(frozen=True, slots=True)
 class CourtModelSpec:
-    """Static model and preprocessing contract selected at composition."""
+    """Static model/preprocessing contract selected at composition."""
 
-    task: CourtTask
+    target_bundle: CourtTargetBundleSpec
     in_channels: int
-    output_channels: int
     short_side: int
     encoder_kind: CourtEncoderKind = "default"
 
 
 @dataclass(frozen=True, slots=True)
 class CourtModelCall:
-    """Validated court model input."""
-
     images: Tensor
     model_args: tuple[Tensor, ...]
     batch_size: int
@@ -41,55 +43,55 @@ class CourtModelCall:
 
 @dataclass(frozen=True, slots=True)
 class CourtTrainingCall:
-    """Validated task-specific training tensors."""
-
     model_call: CourtModelCall
-    target: Tensor
-    batch: dict[str, object]
+    targets: Mapping[CourtTargetKind, object]
+    batch: Mapping[str, object]
 
 
 @dataclass(frozen=True, slots=True)
 class CourtTrainingResult:
-    """Canonical training result decoded by a task adapter."""
-
     loss: Tensor
-    logits: Tensor
+    losses: Mapping[CourtTargetKind, Tensor]
+    logits: CourtLogits
 
 
 @dataclass(frozen=True, slots=True)
 class CourtKeypointPrediction:
-    """Decoded court keypoints in original-image pixels."""
+    """Decoded one- or multi-peak channels in original-image pixels."""
 
-    keypoints: Tensor
-    scores: Tensor
-    heatmaps: Tensor
+    keypoints: Tensor  # [C,P,2]
+    scores: Tensor  # [C,P]
+    valid: Tensor  # [C,P]
+    heatmaps: Tensor  # [C,H,W]
 
 
 @dataclass(frozen=True, slots=True)
 class CourtSegmentationPrediction:
-    """Decoded multi-class court segmentation output."""
-
     mask: Tensor
     logits: Tensor
 
 
 @dataclass(frozen=True, slots=True)
 class CourtLinePrediction:
-    """Decoded binary court-line probability output."""
-
     probability: Tensor
     logits: Tensor
 
 
+CourtDecodedPrediction: TypeAlias = (
+    CourtKeypointPrediction | CourtSegmentationPrediction | CourtLinePrediction
+)
+
+
 __all__ = [
+    "CourtDecodedPrediction",
     "CourtEncoderKind",
     "CourtKeypointPrediction",
     "CourtLinePrediction",
+    "CourtLogits",
     "CourtModelCall",
     "CourtModelIOError",
     "CourtModelSpec",
     "CourtSegmentationPrediction",
-    "CourtTask",
     "CourtTrainingCall",
     "CourtTrainingResult",
 ]

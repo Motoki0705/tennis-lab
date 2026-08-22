@@ -6,7 +6,7 @@ import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
+from typing import Literal, TypeAlias, cast
 
 from omegaconf import DictConfig
 
@@ -16,7 +16,6 @@ from src.tasks.court_detection.configuration import (
     CourtRenderConfig,
     validate_paths_boundary,
 )
-from src.tasks.court_detection.model_io.contracts import CourtTask
 from src.tasks.court_detection.visualization.api.predict import (
     build_court_visualization_pipeline,
 )
@@ -28,6 +27,8 @@ from src.utils.configuration import (
     PathRole,
     UnknownConfigurationKeyError,
 )
+
+CourtTargetHead: TypeAlias = Literal["kp", "seg", "line"]
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ def _integer(value: object) -> int:
 class RuntimeConfig:
     """Resolved runtime settings for court-detection visualization."""
 
-    task: str
+    task: CourtTargetHead
     image_source: str
     checkpoint: str
     save: Path
@@ -83,11 +84,12 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         path="visualization",
     )
 
-    task = str(require_config_value(vis, "task", str, path="visualization"))
-    if task not in _VALID_TASKS:
+    task_raw = str(require_config_value(vis, "task", str, path="visualization"))
+    if task_raw not in _VALID_TASKS:
         raise ValueError(
-            f"visualization.task must be one of {sorted(_VALID_TASKS)}, got {task!r}."
+            f"visualization.task must be one of {sorted(_VALID_TASKS)}, got {task_raw!r}."
         )
+    task = cast(CourtTargetHead, task_raw)
 
     image_source_raw = str(
         require_config_value(vis, "image_source", str, path="visualization")
@@ -163,7 +165,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         return 0
 
     pipeline = build_court_visualization_pipeline(
-        cast(CourtTask, cfg.task),
+        cfg.task,
         checkpoint_path=cfg.checkpoint,
         device=cfg.device,
         resolver=cfg.resolver,

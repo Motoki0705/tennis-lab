@@ -1,0 +1,5 @@
+kind: synthetic_court
+schema: v1
+keypoint_court_scope: all_courts
+workspace_root: synthetic_data_generation/scenes
+scene_ids: [B00]

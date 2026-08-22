@@ -66,12 +66,17 @@ from src.tasks.court_detection.configuration import (
     CourtDecoderConfig,
     CourtEncoderConfig,
     CourtLoRAConfig,
+    CourtLossConfig,
     CourtModelConfig,
+)
+from src.tasks.court_detection.data.contracts import (
+    CourtTargetBundleSpec,
+    CourtTargetSpec,
 )
 from src.tasks.court_detection.inference import CourtLinePredictor
 from src.tasks.court_detection.model_io.adapters import (
     CourtDINOv3ExecutionBoundary,
-    CourtLineModelIO,
+    CourtModelIOAdapter,
 )
 from src.tasks.court_detection.model_io.contracts import CourtModelSpec
 from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
@@ -226,7 +231,6 @@ class ProductionCourtLineDetector:
         model_config = CourtModelConfig(
             name="court_hierarchical",
             in_channels=3,
-            num_classes=1,
             encoder=encoder_config,
             decoder=CourtDecoderConfig(
                 name="dpt",
@@ -234,7 +238,19 @@ class ProductionCourtLineDetector:
                 reassemble_factors=architecture.decoder_reassemble_factors,
             ),
         )
-        model = CourtHierarchicalModel.from_config(model_config)
+        target_bundle = CourtTargetBundleSpec(
+            {
+                "line": CourtTargetSpec(
+                    kind="line",
+                    schema="court_line_binary_v1",
+                    output_channels=1,
+                    channel_names=("court_line",),
+                    target_dtype=torch.float32,
+                    precomputed=True,
+                )
+            }
+        )
+        model = CourtHierarchicalModel.from_config(model_config, target_bundle)
         raw_state = raw.get("state_dict")
         if not isinstance(raw_state, Mapping):
             raise ValueError("Court-line checkpoint has no state_dict mapping.")
@@ -249,17 +265,21 @@ class ProductionCourtLineDetector:
         model.load_state_dict(model_state, strict=True)
         model.eval()
         spec = CourtModelSpec(
-            task="line",
+            target_bundle=target_bundle,
             in_channels=3,
-            output_channels=1,
             short_side=settings.expected_short_side,
             encoder_kind="dinov3",
         )
-        adapter = CourtLineModelIO(
+        adapter = CourtModelIOAdapter(
             spec,
-            bce_weight=architecture.line_bce_weight,
-            dice_weight=architecture.line_dice_weight,
-            pos_weight=architecture.line_positive_weight,
+            loss_config=CourtLossConfig(
+                seg_ce_weight=1.0,
+                seg_dice_weight=1.0,
+                kp_focal_gamma=2.0,
+                line_bce_weight=architecture.line_bce_weight,
+                line_dice_weight=architecture.line_dice_weight,
+                line_pos_weight=architecture.line_positive_weight,
+            ),
             execution_boundary=CourtDINOv3ExecutionBoundary(
                 frozen_backbone=(
                     architecture.backbone_train_mode == "frozen"

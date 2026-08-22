@@ -13,9 +13,16 @@ num_queries: 4
 rope_dim: ???
 dropout: 0.1
 role_rope_enabled: true
-mask_invisible_observations: true
 invisible_init_std: 0.02
 
-# ``linear`` preserves the flattened court+ball checkpoint architecture.
-# Point-attention experiments override this in a dedicated model config.
-observation_fusion: linear
+mhc:
+  coefficient_dim: 64
+  sinkhorn_iters: 20
+  eps: 1.0e-6
+  residual_identity_bias: 4.0
+  update_scale_init: 0.0
+
+cswa:
+  compression_ratio: 4
+  window_radius: 4
+  backend: reference

@@ -59,7 +59,7 @@ def evaluate_split(
         "ball_pos_error_m": [],
         "player_mask": [],
         "ball_mask": [],
-        "frame_mask": [],
+        "padding_mask": [],
         "player_observed": [],
         "ball_observed": [],
         "player_sigma_m": [],
@@ -74,7 +74,7 @@ def evaluate_split(
         batch = collate_slcs(samples)
         outputs, targets = predictor.predict_with_targets(batch)
 
-        frame_mask = targets.frame_mask
+        padding_mask = targets.padding_mask
         player_mask = targets.player_mask
         ball_mask = targets.ball_mask
         metrics.update(outputs, targets)
@@ -96,7 +96,7 @@ def evaluate_split(
         collected["ball_pos_error_m"].append(ball_err.numpy())
         collected["player_mask"].append(player_mask.numpy())
         collected["ball_mask"].append(ball_mask.numpy())
-        collected["frame_mask"].append(frame_mask.numpy())
+        collected["padding_mask"].append(padding_mask.numpy())
         collected["player_observed"].append((batch["player_valid"] > 0).numpy())
         collected["ball_observed"].append((batch["ball_vis"] > 0).numpy())
         collected["player_sigma_m"].append(

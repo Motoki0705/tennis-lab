@@ -24,6 +24,10 @@ from src.synthetic_data_generation.dataset.court.assembler import (
     CourtArrayValidationMode,
     validate_court_dataset,
 )
+from src.synthetic_data_generation.dataset.court.schema import (
+    CourtDatasetSchemaVersion,
+    court_schema_from_dataset_schema,
+)
 from src.synthetic_data_generation.dataset.plcs.assembler import (
     PLCS_DATASET_SCHEMA,
     PLCS_FRAME_LABEL_SCHEMA,
@@ -53,6 +57,7 @@ class CourtSourceFrame:
     view_id: str
     trajectory_frame_index: int
     projection: Mapping[str, object]
+    schema_version: CourtDatasetSchemaVersion = CourtDatasetSchemaVersion.V1
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,6 +97,7 @@ class CourtVisualizationSource:
             name="Court dataset",
         )
         self.dataset_schema = _text(manifest.get("schema"), name="Court schema")
+        self.schema_definition = court_schema_from_dataset_schema(self.dataset_schema)
         self.dataset_scene_id = _text(manifest.get("scene_id"), name="Court scene_id")
         groups = tuple(
             _object(value, name="Court trajectory group")
@@ -204,6 +210,12 @@ class CourtVisualizationSource:
                 ),
                 name="Court labels",
             )
+            label_schema = label.get("schema")
+            if (
+                not isinstance(label_schema, str)
+                or label_schema != self.schema_definition.sample_schema
+            ):
+                raise ValueError("Court labels schema changed after validation.")
             for field in (
                 "sample_id",
                 "view_id",
@@ -223,6 +235,7 @@ class CourtVisualizationSource:
                     name="Court trajectory_frame_index",
                 ),
                 projection=_object(label["projection"], name="Court projection"),
+                schema_version=self.schema_definition.version,
             )
 
 

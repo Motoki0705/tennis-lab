@@ -48,6 +48,29 @@ class TestGenerateGaussianHeatmaps:
         assert hm[0].sum() > 0
         assert torch.count_nonzero(hm[1]) == 0
 
+    def test_max_reduction_preserves_multiple_visible_peaks_per_channel(self) -> None:
+        centers = torch.tensor([[[0.25, 0.25], [0.75, 0.75]]])
+        heatmaps = generate_gaussian_heatmaps(
+            (17, 17),
+            centers,
+            sigma_ratio=0.02,
+            visibility=torch.tensor([[True, True]]),
+            point_reduction="max",
+        )
+
+        assert heatmaps.shape == (1, 17, 17)
+        assert heatmaps[0, 4, 4].item() == pytest.approx(1.0)
+        assert heatmaps[0, 12, 12].item() == pytest.approx(1.0)
+
+    def test_max_reduction_requires_explicit_point_axis(self) -> None:
+        with pytest.raises(ValueError, match="explicit point axis"):
+            generate_gaussian_heatmaps(
+                (17, 17),
+                (0.5, 0.5),
+                sigma_ratio=0.02,
+                point_reduction="max",
+            )
+
     def test_non_positive_sigma_raises(self) -> None:
         with pytest.raises(ValueError, match="sigma_ratio"):
             generate_gaussian_heatmaps((16, 16), (0.5, 0.5), sigma_ratio=0.0)

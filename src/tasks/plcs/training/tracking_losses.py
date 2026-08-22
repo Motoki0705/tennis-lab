@@ -74,7 +74,7 @@ class PLCSTrackingLoss(nn.Module):
             ):
                 active = (
                     batch["target_presence"][batch_index, :, target_index]
-                    & batch["frame_mask"][batch_index]
+                    & (~batch["padding_mask"][batch_index]).any(dim=0)
                 )
                 presence_target[batch_index, :, query_index] = batch["target_presence"][
                     batch_index, :, target_index
@@ -110,7 +110,9 @@ class PLCSTrackingLoss(nn.Module):
                                 torch.zeros_like(acceleration[consecutive]),
                             )
                         )
-        valid_frames = batch["frame_mask"].unsqueeze(-1).expand_as(pred_presence)
+        valid_frames = (~batch["padding_mask"]).any(dim=1).unsqueeze(-1).expand_as(
+            pred_presence
+        )
         presence = weighted_presence_bce_with_logits(
             pred_presence,
             presence_target.bool(),

@@ -1,0 +1,6 @@
+kind: tennis_court_detector
+root: court
+split_mapping:
+  train: train
+  val: val
+  test: null

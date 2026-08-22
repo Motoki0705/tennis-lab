@@ -8,13 +8,15 @@ smoke suite.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import Any, TypedDict, cast
 
 import numpy as np
 import pytest
 import torch
 import torch.nn as nn
+from pytorch_lightning.loggers import TensorBoardLogger
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, SequentialLR
 from torch.optim.optimizer import Optimizer
@@ -32,7 +34,23 @@ class _TinyModule(BaseLightningModule):
 
     def __init__(self, config: dict[str, object]) -> None:
         super().__init__(config)
-        self.lin = nn.Linear(2, 2)
+        self.model = nn.Linear(2, 2)
+
+
+@dataclass(frozen=True)
+class _FrozenRuntimeDependency:
+    value: int
+
+
+class _ModuleWithRuntimeDependency(BaseLightningModule):
+    def __init__(
+        self,
+        config: dict[str, object],
+        *,
+        dependency: _FrozenRuntimeDependency,
+    ) -> None:
+        super().__init__(config)
+        self.dependency = dependency
 
 
 class _SchedulerResult(TypedDict):
@@ -123,10 +141,99 @@ def _config(
                 "discriminator_gradient_clip_val": None,
                 "transition": {"start_epoch": 0},
             },
+            "compile": {
+                "enabled": True,
+                "backend": "inductor",
+                "mode": "reduce-overhead",
+                "fullgraph": False,
+                "dynamic": False,
+            },
             "matmul_precision": "high",
             "allow_tf32": False,
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# compilation_targets
+# ---------------------------------------------------------------------------
+
+
+def test_hyperparameters_only_capture_serializable_config(tmp_path: Path) -> None:
+    module = _ModuleWithRuntimeDependency(
+        _config(),
+        dependency=_FrozenRuntimeDependency(value=1),
+    )
+    logger = TensorBoardLogger(save_dir=tmp_path)
+
+    assert set(module.hparams) == {"config"}
+    logger.log_hyperparams(cast("dict[str, Any]", dict(module.hparams)))
+    logger.save()
+
+
+def test_compilation_targets_exposes_primary_model() -> None:
+    module = _TinyModule(_config())
+
+    assert module.compilation_targets() == {"model": module.model}
+
+
+def test_compilation_targets_rejects_missing_primary_model() -> None:
+    module = BaseLightningModule(_config())
+
+    with pytest.raises(RuntimeError, match="self.model"):
+        module.compilation_targets()
+
+
+def test_cuda_graph_compile_marks_each_outer_batch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _TinyModule(_config())
+    calls = 0
+
+    def mark_step_begin() -> None:
+        nonlocal calls
+        calls += 1
+
+    monkeypatch.setattr(torch.compiler, "cudagraph_mark_step_begin", mark_step_begin)
+
+    module.on_train_batch_start({}, 0)
+    module.on_validation_batch_start({}, 0)
+    module.on_test_batch_start({}, 0)
+    module.on_predict_batch_start({}, 0)
+
+    assert calls == 4
+
+
+@pytest.mark.parametrize(
+    "compile_overrides",
+    [
+        {"enabled": False},
+        {"mode": "default"},
+        {"mode": "max-autotune-no-cudagraphs"},
+    ],
+)
+def test_non_cuda_graph_compile_does_not_mark_batch(
+    compile_overrides: dict[str, object],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _config()
+    compile_config = cast(
+        "dict[str, object]",
+        cast("dict[str, object]", config["training"])["compile"],
+    )
+    compile_config.update(compile_overrides)
+    module = _TinyModule(config)
+    calls = 0
+
+    def mark_step_begin() -> None:
+        nonlocal calls
+        calls += 1
+
+    monkeypatch.setattr(torch.compiler, "cudagraph_mark_step_begin", mark_step_begin)
+
+    module.on_train_batch_start({}, 0)
+
+    assert calls == 0
 
 
 # ---------------------------------------------------------------------------

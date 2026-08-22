@@ -1,0 +1,10 @@
+defaults:
+  - default
+  - _self_
+
+# With drag and Magnus disabled by physics=fast_approximate, the analytic
+# gravity-only launch already targets the sampled bounce point. Avoid running
+# a second simulated trajectory solely to refine that proposal.
+landing_refine_enabled: false
+landing_refine_max_iters: 0
+landing_sim_max_frames: 150

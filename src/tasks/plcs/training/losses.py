@@ -39,7 +39,7 @@ from src.utils.schema.player import (
 from src.utils.schema.player import (
     COCO17_TORSION_QUADRUPLETS as TORSION_QUADRUPLETS,
 )
-from src.utils.tensor_utils import masked_mean, normalize_padding_mask
+from src.utils.tensor_utils import masked_mean
 
 # Loss terms that require pred_canonical_pose and target_human_kp_3d.
 CANONICAL_DEPENDENT_TERM_NAMES: tuple[str, ...] = (
@@ -770,10 +770,16 @@ class PLCSLoss(nn.Module):
         *,
         pred_canonical_pose: Tensor | None,
         target_human_kp_3d: Tensor | None,
-        human_mask: Tensor | None,
+        padding_mask: Tensor | None,
     ) -> PLCSPreparedLossTerms:
         """Validate inputs and compute named scalar terms before ``forward``."""
-        frame_mask = normalize_padding_mask(human_mask, flatten=False)
+        frame_mask = None
+        if padding_mask is not None:
+            frame_mask = ~(
+                padding_mask.all(dim=1)
+                if padding_mask.ndim == 3
+                else padding_mask
+            )
 
         canonical_required = self._requires_canonical_pose()
         if canonical_required and pred_canonical_pose is None:
