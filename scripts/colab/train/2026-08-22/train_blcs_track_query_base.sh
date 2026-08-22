@@ -15,6 +15,7 @@ set -euo pipefail
 #   - max_epochs=200
 #   - physical/effective batch size=4 (no gradient accumulation)
 #   - 1000 scenes per chunk, 20 epochs per chunk
+#   - fast_approximate BLCS simulation (30 FPS gravity/bounce physics)
 #
 # Usage from Colab after mounting Google Drive:
 #   !bash scripts/colab/train/2026-08-22/train_blcs_track_query_base.sh
@@ -27,7 +28,8 @@ set -euo pipefail
 # Environment overrides:
 #   REPO_ROOT         default: repository root inferred from this script path
 #   DATA_ROOT         default: ${REPO_ROOT}/data (absolute Hydra data root)
-#   DATASET_DIR       default: blcs/multi_object_lifecycle_colab (DATA_ROOT-relative)
+#   DATASET_DIR       default: blcs/multi_object_lifecycle_colab_fast_approximate
+#                     (DATA_ROOT-relative)
 #   ARTIFACT_ROOT     default: ${DATA_ROOT} (absolute Hydra artifact root)
 #   CHUNKS_DIR        default: ${DATASET_DIR}/chunks (ARTIFACT_ROOT-relative)
 #   OUTPUT_ROOT       default: /content/drive/MyDrive/tennis_lab/outputs
@@ -42,10 +44,13 @@ set -euo pipefail
 #   MAX_EPOCHS        default: 200
 #   BATCH_SIZE        default: 4
 #   CSWA_BACKEND      default: cuda; use reference only when chosen explicitly
+#   BLCS_SIMULATION_PROFILE
+#                     default: fast_approximate; set default for strict
+#                     drag/Magnus physics with iterative landing refinement
 
 REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)}"
 DATA_ROOT="${DATA_ROOT:-${REPO_ROOT}/data}"
-DATASET_DIR="${DATASET_DIR:-blcs/multi_object_lifecycle_colab}"
+DATASET_DIR="${DATASET_DIR:-blcs/multi_object_lifecycle_colab_fast_approximate}"
 ARTIFACT_ROOT="${ARTIFACT_ROOT:-${DATA_ROOT}}"
 CHUNKS_DIR="${CHUNKS_DIR:-${DATASET_DIR}/chunks}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-/content/drive/MyDrive/tennis_lab/outputs}"
@@ -60,6 +65,7 @@ PREFETCH_CHUNKS="${PREFETCH_CHUNKS:-5}"
 MAX_EPOCHS="${MAX_EPOCHS:-200}"
 BATCH_SIZE="${BATCH_SIZE:-4}"
 CSWA_BACKEND="${CSWA_BACKEND:-cuda}"
+BLCS_SIMULATION_PROFILE="${BLCS_SIMULATION_PROFILE:-fast_approximate}"
 
 source "${REPO_ROOT}/scripts/colab/setup/install_deps.sh"
 source "${REPO_ROOT}/scripts/colab/setup/prepare_generated_dataset.sh"
@@ -79,6 +85,7 @@ echo "[train_blcs_track_query_base] dataset path: ${DATASET_PATH}"
 echo "[train_blcs_track_query_base] output path: ${OUTPUT_PATH}"
 echo "[train_blcs_track_query_base] batch size: ${BATCH_SIZE}"
 echo "[train_blcs_track_query_base] CSWA backend: ${CSWA_BACKEND}"
+echo "[train_blcs_track_query_base] simulation profile: ${BLCS_SIMULATION_PROFILE}"
 
 if [[ ( "${OUTPUT_ROOT}" == /content/drive/* || "${CHECKPOINT_ROOT}" == /content/drive/* ) \
       && ! -d /content/drive/MyDrive ]]; then
@@ -90,6 +97,9 @@ fi
 install_colab_dependencies "${REPO_ROOT}"
 prepare_generated_dataset blcs "${REPO_ROOT}" "${DATA_ROOT}" "${DATASET_DIR}" \
     generation=multi_object \
+    "physics=${BLCS_SIMULATION_PROFILE}" \
+    "rally=${BLCS_SIMULATION_PROFILE}" \
+    "targeted_velocity=${BLCS_SIMULATION_PROFILE}" \
     "generator.num_scenes=${NUM_SCENES}" \
     "run.num_workers=${GEN_WORKERS}"
 
@@ -100,6 +110,9 @@ PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}" \
 python -m src.tasks.blcs.scripts.train \
     --config-name train_tracking_chunked \
     model=track_query_base \
+    "physics=${BLCS_SIMULATION_PROFILE}" \
+    "rally=${BLCS_SIMULATION_PROFILE}" \
+    "targeted_velocity=${BLCS_SIMULATION_PROFILE}" \
     "model.cswa.backend=${CSWA_BACKEND}" \
     "paths.data_root=${DATA_ROOT}" \
     "paths.artifact_root=${ARTIFACT_ROOT}" \
