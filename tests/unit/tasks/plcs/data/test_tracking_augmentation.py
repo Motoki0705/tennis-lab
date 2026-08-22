@@ -44,7 +44,6 @@ def test_tracking_augmentation_preserves_id_order_without_permutation() -> None:
     sample = {
         "human_kp": human_kp.clone(),
         "human_vis": torch.ones(1, 2, 2, 17, dtype=torch.bool),
-        "detection_mask": torch.ones(1, 2, 2, dtype=torch.bool),
         "detection_gt_index": torch.tensor([[[0, 1], [0, 1]]]),
         "court_kp": torch.rand(1, 2, 14, 2),
         "court_vis": torch.ones(1, 2, 14, dtype=torch.bool),
@@ -76,7 +75,6 @@ def test_tracking_noise_changes_keypoints_without_reordering_object_ids() -> Non
     sample = {
         "human_kp": human_kp.clone(),
         "human_vis": torch.ones(1, 2, 2, 17, dtype=torch.bool),
-        "detection_mask": torch.ones(1, 2, 2, dtype=torch.bool),
         "detection_gt_index": torch.tensor([[[0, 1], [0, 1]]]),
         "court_kp": torch.rand(1, 2, 14, 2),
         "court_vis": torch.ones(1, 2, 14, dtype=torch.bool),

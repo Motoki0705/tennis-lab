@@ -29,7 +29,7 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
     - court_kp: (N, T, 20, 2)
     - human_vis: (N, T, 17)
     - court_vis: (N, T, 20)
-    - human_mask: (N, T)
+    - padding_mask: (N, T), True for padding
     - position: (T, 3)
     - rotation: (T, 2)
     """
@@ -121,10 +121,10 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
                 scene.get_camera_array(cam_idx, "court_kp_uv", window=window)
             ).float()
             human_vis = torch.from_numpy(
-                scene.get_camera_array(cam_idx, "human_kp_visible", window=window)
+                scene.get_camera_array(cam_idx, "human_kp_vis", window=window)
             ).float()
             court_vis = torch.from_numpy(
-                scene.get_camera_array(cam_idx, "court_kp_visible", window=window)
+                scene.get_camera_array(cam_idx, "court_kp_vis", window=window)
             ).float()
             court_kp = court_kp[..., : self.num_court_kp, :]
             court_vis = court_vis[..., : self.num_court_kp]
@@ -145,10 +145,10 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
             "court_kp": torch.stack(court_kp_list, dim=0),
             "human_vis": torch.stack(human_vis_list, dim=0),
             "court_vis": torch.stack(court_vis_list, dim=0),
-            "human_mask": torch.ones(
+            "padding_mask": torch.zeros(
                 len(cams.indices),
                 window.seq_len,
-                dtype=torch.float32,
+                dtype=torch.bool,
             ),
             "position": position,
             "rotation": rotation,
@@ -166,7 +166,8 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
     def augment_sample(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
         if not self.augment:
             return sample
-        return self.augmentation.forward(sample)
+        augmented: dict[str, Tensor] = self.augmentation.forward(sample)
+        return augmented
 
 
 def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, Tensor]:
@@ -178,7 +179,7 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, 
     court_kp_batch = []
     human_vis_batch = []
     court_vis_batch = []
-    human_mask_batch = []
+    padding_mask_batch = []
     position_batch = []
     rotation_batch = []
     human_kp_3d_batch = []
@@ -194,7 +195,7 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, 
         n_kp = int(court_kp.shape[2])
         human_vis = sample["human_vis"]
         court_vis = sample["court_vis"]
-        human_mask = sample["human_mask"]
+        padding_mask = sample["padding_mask"]
         position = sample["position"]
         rotation = sample["rotation"]
         human_kp_3d = sample.get("human_kp_3d")
@@ -210,7 +211,9 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, 
             court_vis = torch.cat(
                 [court_vis, torch.zeros(n_views, pad_seq, n_kp)], dim=1
             )
-            human_mask = torch.cat([human_mask, torch.zeros(n_views, pad_seq)], dim=1)
+            padding_mask = torch.cat(
+                [padding_mask, torch.ones(n_views, pad_seq, dtype=torch.bool)], dim=1
+            )
             position = torch.cat([position, torch.zeros(pad_seq, 3)], dim=0)
             rotation = torch.cat([rotation, torch.zeros(pad_seq, 2)], dim=0)
             if human_kp_3d is not None:
@@ -231,15 +234,19 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, 
             court_vis = torch.cat(
                 [court_vis, torch.zeros(pad_views, max_seq_len, n_kp)], dim=0
             )
-            human_mask = torch.cat(
-                [human_mask, torch.zeros(pad_views, max_seq_len)], dim=0
+            padding_mask = torch.cat(
+                [
+                    padding_mask,
+                    torch.ones(pad_views, max_seq_len, dtype=torch.bool),
+                ],
+                dim=0,
             )
 
         human_kp_batch.append(human_kp)
         court_kp_batch.append(court_kp)
         human_vis_batch.append(human_vis)
         court_vis_batch.append(court_vis)
-        human_mask_batch.append(human_mask)
+        padding_mask_batch.append(padding_mask)
         position_batch.append(position)
         rotation_batch.append(rotation)
         if human_kp_3d is not None:
@@ -250,7 +257,7 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, 
         "court_kp": torch.stack(court_kp_batch, dim=0),
         "human_vis": torch.stack(human_vis_batch, dim=0),
         "court_vis": torch.stack(court_vis_batch, dim=0),
-        "human_mask": torch.stack(human_mask_batch, dim=0),
+        "padding_mask": torch.stack(padding_mask_batch, dim=0),
         "position": torch.stack(position_batch, dim=0),
         "rotation": torch.stack(rotation_batch, dim=0),
     }

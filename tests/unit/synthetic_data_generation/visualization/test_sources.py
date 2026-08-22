@@ -24,7 +24,13 @@ from src.synthetic_data_generation.visualization.sources import (
 )
 
 
-def _write_court_fixture(root: Path, *, indices: tuple[int, ...]) -> None:
+def _write_court_fixture(
+    root: Path,
+    *,
+    indices: tuple[int, ...],
+    dataset_schema: str = "canonical_court_dataset_v1",
+    label_schema: str | None = "canonical_court_sample_v1",
+) -> None:
     records = []
     for sample_index, frame_index in enumerate(indices):
         directory = root / "samples" / f"sample-{sample_index}"
@@ -42,6 +48,8 @@ def _write_court_fixture(root: Path, *, indices: tuple[int, ...]) -> None:
             "trajectory_frame_index": frame_index,
             "projection": projection,
         }
+        if label_schema is not None:
+            labels["schema"] = label_schema
         (directory / "labels.json").write_text(json.dumps(labels), encoding="utf-8")
         records.append(
             {
@@ -57,7 +65,7 @@ def _write_court_fixture(root: Path, *, indices: tuple[int, ...]) -> None:
             }
         )
     payload = {
-        "schema": "canonical_court_dataset_v1",
+        "schema": dataset_schema,
         "scene_id": "scene-0",
         "trajectory_groups": [
             {
@@ -100,6 +108,56 @@ def test_court_source_fails_closed_on_unknown_id_or_reordered_frames(
     with pytest.raises(KeyError, match="Unknown Court trajectory_id"):
         CourtVisualizationSource(tmp_path, trajectory_id="missing")
     with pytest.raises(ValueError, match="source-frame ordering"):
+        CourtVisualizationSource(tmp_path, trajectory_id="orbit-0")
+
+
+@pytest.mark.parametrize(
+    "label_schema",
+    [
+        None,
+        "canonical_court_sample_v1",
+        "canonical_court_sample_v2",
+        "canonical_court_sample_v3",
+    ],
+)
+def test_v2_court_source_rejects_missing_or_mixed_sample_schema_after_validation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    label_schema: str | None,
+) -> None:
+    _write_court_fixture(
+        tmp_path,
+        indices=(0, 1),
+        dataset_schema="canonical_court_dataset_v2",
+        label_schema=label_schema,
+    )
+    monkeypatch.setattr(
+        sources_module, "validate_court_dataset", lambda *args, **kwargs: None
+    )
+    source = CourtVisualizationSource(tmp_path, trajectory_id="orbit-0")
+
+    if label_schema == "canonical_court_sample_v2":
+        assert tuple(source.frames())
+    else:
+        with pytest.raises(ValueError, match="labels schema changed"):
+            tuple(source.frames())
+
+
+def test_court_source_rejects_unknown_dataset_schema_without_shape_fallback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _write_court_fixture(
+        tmp_path,
+        indices=(0, 1),
+        dataset_schema="canonical_court_dataset_v3",
+        label_schema="canonical_court_sample_v2",
+    )
+    monkeypatch.setattr(
+        sources_module, "validate_court_dataset", lambda *args, **kwargs: None
+    )
+
+    with pytest.raises(ValueError, match="Unknown Court dataset schema"):
         CourtVisualizationSource(tmp_path, trajectory_id="orbit-0")
 
 

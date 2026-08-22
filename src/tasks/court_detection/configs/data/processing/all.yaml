@@ -1,0 +1,8 @@
+derived_target_root: court_detection/derived_targets
+targets:
+  - kind: kp
+    sigma_ratio: 0.01
+  - kind: seg
+    target_schema: court_cell_segmentation_v1
+  - kind: line
+    target_schema: court_line_binary_v1

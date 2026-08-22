@@ -148,4 +148,48 @@ def pack_lifecycle_slots(
     )
 
 
-__all__ = ["LifecycleSlotAssignment", "pack_lifecycle_slots"]
+def build_fixed_lifecycle_assignment(
+    physical_presence: Tensor,
+    *,
+    num_slots: int,
+    min_reuse_gap_frames: int,
+    randomize_slots: bool,
+    generator: torch.Generator | None,
+) -> LifecycleSlotAssignment:
+    """Build an exact-width lifecycle assignment with optional slot relabeling.
+
+    Interval coloring is always deterministic.  When ``randomize_slots`` is
+    enabled, one ``torch.randperm`` draw relabels the complete fixed-width slot
+    axis.  Passing a ``generator`` makes that draw explicit; passing ``None``
+    selects PyTorch's current worker-seeded RNG.
+    """
+    assignment = pack_lifecycle_slots(
+        physical_presence,
+        num_slots=num_slots,
+        min_reuse_gap_frames=min_reuse_gap_frames,
+        randomize_slots=False,
+    )
+    if not randomize_slots:
+        return assignment
+
+    permutation = torch.randperm(
+        num_slots,
+        device=physical_presence.device,
+        generator=generator,
+    )
+    track_to_slot = assignment.track_to_slot.clone()
+    assigned = track_to_slot >= 0
+    track_to_slot[assigned] = permutation[track_to_slot[assigned]]
+    inverse_permutation = permutation.argsort()
+    return LifecycleSlotAssignment(
+        track_to_slot=track_to_slot,
+        target_presence=assignment.target_presence[:, inverse_permutation],
+        target_instance_id=assignment.target_instance_id[:, inverse_permutation],
+    )
+
+
+__all__ = [
+    "LifecycleSlotAssignment",
+    "build_fixed_lifecycle_assignment",
+    "pack_lifecycle_slots",
+]

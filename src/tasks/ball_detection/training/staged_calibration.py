@@ -15,7 +15,9 @@ import torch
 from torch import Tensor
 
 from src.tasks.ball_detection.model_io.factory import build_ball_detection_pair
+from src.tasks.base.configuration import BaseTrainingConfig
 from src.tasks.base.model_io import BoundModelIO
+from src.tasks.base.training.compilation import compile_modules
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -74,6 +76,8 @@ def probe_batch_size_by_t(
     """
     model_io = build_ball_detection_pair(config)
     model_io.model.to(device).train()
+    training = BaseTrainingConfig.from_validated_task_mapping(config.training)
+    compile_modules({"model": model_io.model}, training.compile)
     hw = _image_hw(config)
 
     result: dict[int, int] = {}

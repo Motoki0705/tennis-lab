@@ -150,9 +150,7 @@ def _optional_number(mapping: ConfigMapping, key: str, *, path: str) -> float | 
 
 
 def _positive(value: float | int, *, path: str, allow_zero: bool = False) -> None:
-    invalid = not math.isfinite(value) or (
-        value < 0 if allow_zero else value <= 0
-    )
+    invalid = not math.isfinite(value) or (value < 0 if allow_zero else value <= 0)
     if invalid:
         qualifier = "non-negative" if allow_zero else "positive"
         raise SemanticConfigurationError(f"{path} must be {qualifier}.")
@@ -174,11 +172,7 @@ def _validate_rgb(mapping: ConfigMapping, key: str, *, path: str) -> None:
 
 def _validate_relative_child(value: object, *, path: str) -> str:
     relative = cast(str, value)
-    if (
-        type(value) is not str
-        or not relative.strip()
-        or relative != relative.strip()
-    ):
+    if type(value) is not str or not relative.strip() or relative != relative.strip():
         raise ConfigurationTypeError(
             f"{path}: expected non-empty trimmed str, got {type(value).__name__}."
         )
@@ -220,9 +214,7 @@ def _validate_string_sequence(
 def _validate_trimmed_string(value: object, *, path: str) -> str:
     text = cast(str, value)
     if type(value) is not str or not text.strip() or text != text.strip():
-        raise SemanticConfigurationError(
-            f"{path} must be a non-empty trimmed string."
-        )
+        raise SemanticConfigurationError(f"{path} must be a non-empty trimmed string.")
     return text
 
 
@@ -236,9 +228,7 @@ def _validate_http_url(value: object, *, path: str) -> str:
     text = _validate_trimmed_string(value, path=path)
     parsed = urlsplit(text)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        raise SemanticConfigurationError(
-            f"{path} must be an absolute HTTP(S) URL."
-        )
+        raise SemanticConfigurationError(f"{path} must be an absolute HTTP(S) URL.")
     return text
 
 
@@ -443,9 +433,7 @@ class DetailedEvaluationConfig:
             str,
             typed(evaluation, "output_json_name", str, path="evaluation"),
         )
-        _validate_relative_child(
-            output_json_name, path="evaluation.output_json_name"
-        )
+        _validate_relative_child(output_json_name, path="evaluation.output_json_name")
         raw_max_batches = typed(
             evaluation,
             "max_batches_per_split",
@@ -1187,6 +1175,7 @@ def validate_training(config: DictConfig) -> None:
         "min_lr",
         "steps_per_epoch",
         "optimizer",
+        "compile",
         "matmul_precision",
         "allow_tf32",
         "checkpoint",
@@ -1201,6 +1190,11 @@ def validate_training(config: DictConfig) -> None:
     training = exact_mapping(training, path="training", required=training_fields)
     optimizer = exact_mapping(
         training["optimizer"], path="training.optimizer", required={"name", "betas"}
+    )
+    exact_mapping(
+        training["compile"],
+        path="training.compile",
+        required={"enabled", "backend", "mode", "fullgraph", "dynamic"},
     )
     typed(optimizer, "name", str, path="training.optimizer")
     trainer = exact_mapping(
@@ -1283,9 +1277,7 @@ def validate_training(config: DictConfig) -> None:
             "discriminator",
         },
     )
-    gan_enabled = cast(
-        bool, typed(gan, "enabled", bool, path="training.gan")
-    )
+    gan_enabled = cast(bool, typed(gan, "enabled", bool, path="training.gan"))
     if gan_enabled:
         if trainer["gradient_clip_val"] is not None:
             raise SemanticConfigurationError(
@@ -1712,6 +1704,7 @@ def _validate_eval_training_mapping(value: object) -> ConfigMapping:
             "min_lr",
             "steps_per_epoch",
             "optimizer",
+            "compile",
             "matmul_precision",
             "allow_tf32",
             "checkpoint",
@@ -1738,6 +1731,11 @@ def _validate_eval_training_mapping(value: object) -> ConfigMapping:
             "enable_model_summary",
             "benchmark",
         },
+    )
+    exact_mapping(
+        training["compile"],
+        path="training.compile",
+        required={"enabled", "backend", "mode", "fullgraph", "dynamic"},
     )
     optimizer = exact_mapping(
         training["optimizer"],
@@ -1981,9 +1979,7 @@ def validate_web_tool(config: DictConfig) -> None:
             numeric_values = tuple(cast(float | int, item) for item in values)
             if (
                 len(numeric_values) < 2
-                or any(
-                    not math.isfinite(item) or item < 0 for item in numeric_values
-                )
+                or any(not math.isfinite(item) or item < 0 for item in numeric_values)
                 or any(
                     left >= right
                     for left, right in zip(
@@ -2057,7 +2053,9 @@ def _validate_download(value: object, *, path: str, require_av1: bool) -> Config
     if not enabled:
         return mapping
 
-    _validate_trimmed_string(mapping["merge_output_format"], path=f"{path}.merge_output_format")
+    _validate_trimmed_string(
+        mapping["merge_output_format"], path=f"{path}.merge_output_format"
+    )
     if require_av1 and cast(bool, mapping["require_av1"]):
         _validate_trimmed_string(mapping["strict_format"], path=f"{path}.strict_format")
     else:
@@ -2236,9 +2234,7 @@ def validate_youtube_boundary(config: DictConfig) -> None:
                 workflow_paths[key], path=f"workflow.paths.{key}"
             )
             paths.resolver.resolve(PathRole.DATA, workflow_root, child)
-        raw_video_id = typed(
-            workflow, "video_id", (str, type(None)), path="workflow"
-        )
+        raw_video_id = typed(workflow, "video_id", (str, type(None)), path="workflow")
         if raw_video_id is None:
             raise SemanticConfigurationError(
                 "workflow.video_id is required for candidate selection or prediction."
@@ -2849,9 +2845,7 @@ def validate_youtube_boundary(config: DictConfig) -> None:
         allow_empty=not vllm_active,
     )
     if vllm_active:
-        _validate_http_url(
-            vllm["base_url"], path="workflow.gate.vllm.base_url"
-        )
+        _validate_http_url(vllm["base_url"], path="workflow.gate.vllm.base_url")
         for key in ("model", "prompt"):
             _validate_trimmed_string(vllm[key], path=f"workflow.gate.vllm.{key}")
         normalized_labels = tuple(label.lower() for label in accept_labels)
@@ -3016,9 +3010,7 @@ def validate_annotation_boundary(config: DictConfig) -> None:
     _validate_trimmed_string(annotation["window_name"], path="annotate.window_name")
     start_index = annotation["start_index"]
     if start_index is not None:
-        _positive(
-            cast(int, start_index), path="annotate.start_index", allow_zero=True
-        )
+        _positive(cast(int, start_index), path="annotate.start_index", allow_zero=True)
     for key in (
         "max_display_width",
         "max_display_height",

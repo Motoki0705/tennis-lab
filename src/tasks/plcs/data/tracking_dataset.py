@@ -11,6 +11,7 @@ from src.tasks.base.data.canonical_tracking import (
     CanonicalTrackingDataset,
     pad_and_stack_tracking_batch,
 )
+from src.tasks.base.data.lifecycle_slots import build_fixed_lifecycle_assignment
 from src.tasks.base.data.scene_dataset import Scene
 from src.tasks.plcs.data.tracking_augmentation import (
     PLCSTrackingDetectionAugmentation,
@@ -20,11 +21,9 @@ PLCS_TRACKING_KEYS = (
     "scene_format_version",
     "human_kp",
     "human_vis",
-    "detection_mask",
     "court_kp",
     "court_vis",
-    "frame_mask",
-    "view_mask",
+    "padding_mask",
     "target_position",
     "target_rotation",
     "target_canonical_pose_3d",
@@ -33,7 +32,7 @@ PLCS_TRACKING_KEYS = (
     "target_instance_id",
     "target_slot_mask",
     "clean_human_kp",
-    "clean_human_visible",
+    "clean_human_vis",
     "detection_gt_index",
 )
 
@@ -72,7 +71,15 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
         canonical_pose = canonical_pose[window.sl]
         world_joints = world_joints[window.sl]
         physical_presence = physical_presence[window.sl]
-        packing = self.pack_lifecycle(physical_presence)
+        if self.num_queries is None:
+            raise ValueError("PLCS tracking requires model.num_queries.")
+        packing = build_fixed_lifecycle_assignment(
+            physical_presence,
+            num_slots=self.num_queries,
+            min_reuse_gap_frames=self.min_reuse_gap_frames,
+            randomize_slots=self.augment and self.randomize_slots_train,
+            generator=None,
+        )
 
         kp_rows: list[Tensor] = []
         visible_rows: list[Tensor] = []
@@ -81,25 +88,27 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
         clean_visible_rows: list[Tensor] = []
         court_rows: list[Tensor] = []
         court_vis_rows: list[Tensor] = []
-        ordered_object_ids = torch.arange(num_physical).expand(window.seq_len, -1)
         for camera_index in cameras.indices:
             keypoints = torch.from_numpy(
                 scene.get_camera_array(camera_index, "human_kp_uv", window=window)
             ).float()
             visible = torch.from_numpy(
-                scene.get_camera_array(camera_index, "human_kp_visible", window=window)
+                scene.get_camera_array(camera_index, "human_kp_vis", window=window)
             ).bool()
             if keypoints.ndim == 3:
                 keypoints = keypoints[:, None]
                 visible = visible[:, None]
             visible &= physical_presence[..., None]
             keypoints[~visible] = 0.0
-            clean_kp_rows.append(keypoints.clone())
-            clean_visible_rows.append(visible.clone())
-            detection_mask = visible.any(-1)
-            detection_index = torch.where(detection_mask, ordered_object_ids, -1)
-            kp_rows.append(keypoints)
-            visible_rows.append(visible)
+            packed_keypoints = packing.pack_tensor(keypoints, physical_presence)
+            packed_visible = packing.pack_tensor(visible, physical_presence)
+            clean_kp_rows.append(packed_keypoints.clone())
+            clean_visible_rows.append(packed_visible.clone())
+            detection_index = torch.where(
+                packed_visible.any(-1), packing.target_instance_id, -1
+            )
+            kp_rows.append(packed_keypoints)
+            visible_rows.append(packed_visible)
             index_rows.append(detection_index)
             court_rows.append(
                 torch.from_numpy(
@@ -111,7 +120,7 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
             court_vis_rows.append(
                 torch.from_numpy(
                     scene.get_camera_array(
-                        camera_index, "court_kp_visible", window=window
+                        camera_index, "court_kp_vis", window=window
                     )[:, :14]
                 ).bool()
             )
@@ -120,14 +129,14 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
         human_vis = torch.stack(visible_rows)
         rotation_fill = torch.tensor([1.0, 0.0], dtype=rotation.dtype)
         sample = {
-            "scene_format_version": torch.tensor(3),
+            "scene_format_version": torch.tensor(4),
             "human_kp": human_kp,
             "human_vis": human_vis,
-            "detection_mask": human_vis.any(-1),
             "court_kp": torch.stack(court_rows),
             "court_vis": torch.stack(court_vis_rows),
-            "frame_mask": torch.ones(window.seq_len, dtype=torch.bool),
-            "view_mask": torch.ones(len(cameras.indices), dtype=torch.bool),
+            "padding_mask": torch.zeros(
+                len(cameras.indices), window.seq_len, dtype=torch.bool
+            ),
             "target_position": packing.pack_tensor(position, physical_presence),
             "target_rotation": packing.pack_tensor(
                 rotation,
@@ -142,7 +151,7 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
             "target_instance_id": packing.target_instance_id,
             "target_slot_mask": packing.target_presence.any(0),
             "clean_human_kp": torch.stack(clean_kp_rows),
-            "clean_human_visible": torch.stack(clean_visible_rows),
+            "clean_human_vis": torch.stack(clean_visible_rows),
             "detection_gt_index": torch.stack(index_rows),
         }
         return sample
@@ -157,32 +166,31 @@ def collate_plcs_tracking_batch(
     batch: list[dict[str, Tensor]],
 ) -> dict[str, Tensor]:
     """Pad variable camera/time/detection dimensions and stack PLCS scenes."""
-    return pad_and_stack_tracking_batch(
+    collated: dict[str, Tensor] = pad_and_stack_tracking_batch(
         batch,
         padding_dimensions={
-            "human_kp": (0, 1, 2),
-            "human_vis": (0, 1, 2),
-            "detection_mask": (0, 1, 2),
+            "human_kp": (0, 1),
+            "human_vis": (0, 1),
             "court_kp": (0, 1),
             "court_vis": (0, 1),
-            "frame_mask": (0,),
-            "view_mask": (0,),
-            "target_position": (0, 1),
-            "target_rotation": (0, 1),
-            "target_canonical_pose_3d": (0, 1),
-            "target_human_kp_3d": (0, 1),
-            "target_presence": (0, 1),
-            "target_instance_id": (0, 1),
-            "target_slot_mask": (0,),
-            "clean_human_kp": (0, 1, 2),
-            "clean_human_visible": (0, 1, 2),
-            "detection_gt_index": (0, 1, 2),
+            "padding_mask": (0, 1),
+            "target_position": (0,),
+            "target_rotation": (0,),
+            "target_canonical_pose_3d": (0,),
+            "target_human_kp_3d": (0,),
+            "target_presence": (0,),
+            "target_instance_id": (0,),
+            "clean_human_kp": (0, 1),
+            "clean_human_vis": (0, 1),
+            "detection_gt_index": (0, 1),
         },
         pad_values={
+            "padding_mask": True,
             "target_instance_id": -1,
             "detection_gt_index": -1,
         },
     )
+    return collated
 
 
 __all__ = [

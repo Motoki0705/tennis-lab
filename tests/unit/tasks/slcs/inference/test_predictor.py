@@ -75,10 +75,10 @@ def _batch() -> dict[str, Tensor]:
         "ball_vis": torch.ones(batch_size, frames, dtype=torch.bool),
         "court_kp": torch.rand(batch_size, frames, court, 2),
         "court_vis": torch.ones(batch_size, frames, court),
-        "frame_mask": torch.ones(batch_size, frames, dtype=torch.bool),
+        "padding_mask": torch.zeros(batch_size, frames, dtype=torch.bool),
         "dino_tokens": torch.rand(batch_size, 2, 12, 8),
         "dino_frame_idx": torch.tensor([[0, frames - 1]]),
-        "dino_valid": torch.ones(batch_size, 2, dtype=torch.bool),
+        "dino_padding_mask": torch.zeros(batch_size, 2, dtype=torch.bool),
         "target_player_position": torch.rand(batch_size, players, frames, 3),
         "target_player_rotation": torch.nn.functional.normalize(
             torch.rand(batch_size, players, frames, 2), dim=-1

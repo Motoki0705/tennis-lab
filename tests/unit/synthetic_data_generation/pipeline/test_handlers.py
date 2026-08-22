@@ -11,6 +11,9 @@ import pytest
 from src.synthetic_data_generation.dataset.court.assembler import (
     CourtAssemblyReport,
 )
+from src.synthetic_data_generation.dataset.court.schema import (
+    CourtDatasetSchemaVersion,
+)
 from src.synthetic_data_generation.pipeline.contracts import (
     DatasetTarget,
     ScenePipelineRequest,
@@ -96,6 +99,74 @@ def test_court_report_projection_rejects_conflicting_target_binding() -> None:
 
     with pytest.raises(ValueError, match="disagree"):
         _court_report_manifest(payload, report=_court_report())
+
+
+def test_v2_report_aggregates_sample_targets_and_rejects_mixed_group_fallback() -> None:
+    resolved_a = {
+        "binding": _target_court("court-000"),
+        "resolution_policy": "nearest_camera",
+        "camera_to_court_center_distance_m": 2.0,
+    }
+    resolved_b = {
+        "binding": _target_court("court-001", x_metres=20.0),
+        "resolution_policy": "nearest_camera",
+        "camera_to_court_center_distance_m": 3.0,
+    }
+    payload = {
+        "scene_id": "B00",
+        "schema": "canonical_court_dataset_v2",
+        "profile": "v2",
+        "trajectory_groups": [{"target_court": _target_court("legacy")}],
+        "samples": [
+            {"target_court": resolved_a},
+            {"target_court": resolved_b},
+            {"target_court": resolved_a},
+        ],
+        "rejected_samples": [],
+        "diagnostics": ["diagnostics/summary.json"],
+    }
+
+    manifest = _court_report_manifest(
+        payload,
+        report=_court_report(),
+        schema_version=CourtDatasetSchemaVersion.V2,
+    )
+
+    assert [binding.court_instance_id for binding in manifest.target_courts] == [
+        "court-000",
+        "court-001",
+    ]
+    assert all(
+        binding.court_instance_id != "legacy" for binding in manifest.target_courts
+    )
+
+    mixed = dict(payload)
+    mixed["samples"] = [{"target_court": _target_court("court-000")}]
+    with pytest.raises(ValueError, match="resolved target court"):
+        _court_report_manifest(
+            mixed,
+            report=_court_report(),
+            schema_version=CourtDatasetSchemaVersion.V2,
+        )
+
+
+def test_v2_report_rejects_missing_sample_target_without_group_fallback() -> None:
+    payload = {
+        "scene_id": "B00",
+        "schema": "canonical_court_dataset_v2",
+        "profile": "v2",
+        "trajectory_groups": [{"target_court": _target_court("legacy")}],
+        "samples": [{}],
+        "rejected_samples": [],
+        "diagnostics": ["diagnostics/summary.json"],
+    }
+
+    with pytest.raises(TypeError, match="v2 resolved target court must be a mapping"):
+        _court_report_manifest(
+            payload,
+            report=_court_report(),
+            schema_version=CourtDatasetSchemaVersion.V2,
+        )
 
 
 def test_report_stage_is_a_valid_failure_recovery_cursor(tmp_path: Path) -> None:

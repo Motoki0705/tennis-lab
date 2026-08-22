@@ -18,6 +18,7 @@ from src.utils.configuration.paths import PathResolver, PathRole, RuntimePathRoo
 from src.utils.configuration.schema import ConfigField, StrictConfigSchema
 
 BUILD_CUDA_OPS = "TENNIS_LAB_BUILD_CUDA_OPS"
+CUDA_OPS_BUILD_TARGET = "TENNIS_LAB_CUDA_OPS_BUILD_TARGET"
 FORCE_MOE_REFERENCE = "TENNIS_LAB_FORCE_MOE_REFERENCE"
 FORCE_TIME_LOCAL_REFERENCE = "TENNIS_LAB_FORCE_TIME_LOCAL_REFERENCE"
 USE_TIME_LOCAL_CUDA = "TENNIS_LAB_USE_TIME_LOCAL_CUDA"
@@ -39,6 +40,7 @@ _OPERATION_ENVIRONMENT_SCHEMA = StrictConfigSchema(
     name="operation_environment",
     fields={
         BUILD_CUDA_OPS: ConfigField.of(str, required=False),
+        CUDA_OPS_BUILD_TARGET: ConfigField.of(str, required=False),
         **{name: ConfigField.of(str) for name in _RUNTIME_BOOLEAN_NAMES},
         DINO_OPS_BUILD_CONFIG: ConfigField.of(str, required=False),
     },
@@ -59,11 +61,25 @@ def _parse_build_cuda_ops(raw: str | None) -> bool:
         raise SemanticConfigurationError(str(error)) from error
 
 
+def _parse_cuda_ops_build_target(raw: str | None) -> str:
+    """Delegate the extension selection to the standalone build authority."""
+    build_module = importlib.import_module("src.utils.models.components.ops.build")
+    parse_target = cast(
+        Callable[[str | None], str],
+        build_module.parse_cuda_ops_build_target,
+    )
+    try:
+        return parse_target(raw)
+    except ValueError as error:
+        raise SemanticConfigurationError(str(error)) from error
+
+
 @dataclass(frozen=True, slots=True)
 class OperationEnvironmentConfig:
     """Validated process inputs controlling optional CUDA operation routes."""
 
     build_cuda_ops: bool
+    cuda_ops_build_target: str
     force_moe_reference: bool
     force_time_local_reference: bool
     use_time_local_cuda: bool
@@ -85,6 +101,11 @@ class OperationEnvironmentConfig:
                 else None
             )
         }
+        build_target = _parse_cuda_ops_build_target(
+            cast(str, validated[CUDA_OPS_BUILD_TARGET])
+            if CUDA_OPS_BUILD_TARGET in validated
+            else None
+        )
         for name in _RUNTIME_BOOLEAN_NAMES:
             raw = cast(str, validated[name])
             if raw not in {"0", "1"}:
@@ -108,6 +129,7 @@ class OperationEnvironmentConfig:
             )
         return cls(
             build_cuda_ops=parsed[BUILD_CUDA_OPS],
+            cuda_ops_build_target=build_target,
             force_moe_reference=parsed[FORCE_MOE_REFERENCE],
             force_time_local_reference=parsed[FORCE_TIME_LOCAL_REFERENCE],
             use_time_local_cuda=parsed[USE_TIME_LOCAL_CUDA],
@@ -123,6 +145,8 @@ class OperationEnvironmentConfig:
         )
         if DINO_OPS_BUILD_CONFIG in os.environ:
             selected[DINO_OPS_BUILD_CONFIG] = os.environ[DINO_OPS_BUILD_CONFIG]
+        if CUDA_OPS_BUILD_TARGET in os.environ:
+            selected[CUDA_OPS_BUILD_TARGET] = os.environ[CUDA_OPS_BUILD_TARGET]
         return cls.from_mapping(selected)
 
     def require_dino_build_config(self, *, repository_root: Path) -> DinoOpsBuildConfig:
@@ -153,6 +177,8 @@ _DINO_BUILD_SCHEMA = StrictConfigSchema(
         "moe_kernels": ConfigField.of(str),
         "time_local_bindings": ConfigField.of(str),
         "time_local_kernels": ConfigField.of(str),
+        "compressed_time_local_bindings": ConfigField.of(str),
+        "compressed_time_local_kernels": ConfigField.of(str),
     },
 )
 
@@ -169,6 +195,8 @@ class DinoOpsBuildConfig:
     moe_kernels: Path
     time_local_bindings: Path
     time_local_kernels: Path
+    compressed_time_local_bindings: Path
+    compressed_time_local_kernels: Path
 
     def require_inputs(self) -> None:
         """Fail before importing the build toolchain when any source is absent."""
@@ -181,6 +209,8 @@ class DinoOpsBuildConfig:
             self.moe_kernels,
             self.time_local_bindings,
             self.time_local_kernels,
+            self.compressed_time_local_bindings,
+            self.compressed_time_local_kernels,
         ):
             if not path.is_file():
                 raise FileNotFoundError(
@@ -285,6 +315,12 @@ class DinoOpsBuildConfig:
             moe_kernels=resolve(PathRole.PROJECT, "moe_kernels"),
             time_local_bindings=resolve(PathRole.PROJECT, "time_local_bindings"),
             time_local_kernels=resolve(PathRole.PROJECT, "time_local_kernels"),
+            compressed_time_local_bindings=resolve(
+                PathRole.PROJECT, "compressed_time_local_bindings"
+            ),
+            compressed_time_local_kernels=resolve(
+                PathRole.PROJECT, "compressed_time_local_kernels"
+            ),
         )
 
 
@@ -295,6 +331,7 @@ def operation_environment() -> OperationEnvironmentConfig:
 
 __all__ = [
     "BUILD_CUDA_OPS",
+    "CUDA_OPS_BUILD_TARGET",
     "DINO_OPS_BUILD_CONFIG",
     "DinoOpsBuildConfig",
     "FORCE_MOE_REFERENCE",

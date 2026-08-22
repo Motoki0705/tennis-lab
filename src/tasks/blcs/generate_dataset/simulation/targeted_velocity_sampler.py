@@ -24,6 +24,15 @@ if TYPE_CHECKING:
     from src.tasks.blcs.generate_dataset.simulation.ball_physics import BallPhysics
     from src.tasks.blcs.generate_dataset.simulation.cell_manager import CellManager
 
+FULL_PHYSICS_REJECTION_PREFIX = (
+    "Full-physics targeted-velocity refinement produced no valid landing"
+)
+
+
+def is_retryable_full_physics_rejection(error: RuntimeError) -> bool:
+    """Return whether an error denotes one rejectable stochastic proposal."""
+    return str(error).startswith(FULL_PHYSICS_REJECTION_PREFIX)
+
 
 @dataclass
 class TargetedVelocityConfig:
@@ -283,7 +292,7 @@ class TargetedVelocitySampler:
             virtual_target = self._clamp_virtual_target(virtual_target, target_side)
 
         raise RuntimeError(
-            "Full-physics targeted-velocity refinement produced no valid landing "
+            f"{FULL_PHYSICS_REJECTION_PREFIX} "
             "within the requested-side tolerance; "
             f"best_error_m={best_error!r}, "
             f"tolerance_m={cfg.landing_refine_tolerance_m!r}."
