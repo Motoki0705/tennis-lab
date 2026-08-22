@@ -106,6 +106,7 @@ class TennisCourtDetectorInput:
             court_instance_id=f"{record.sample_id}:court",
             physical_indices=physical,
             points_xy=points,
+            point_in_front=torch.ones(14, dtype=torch.bool),
             point_visible=visible,
         )
         channels = CourtKeypointChannels(

@@ -153,6 +153,7 @@ class CourtInstance2D:
     court_instance_id: str
     physical_indices: Tensor  # [N], int64
     points_xy: Tensor  # [N, 2], float32 pixel coordinates
+    point_in_front: Tensor  # [N], bool; positive camera-depth half-plane
     point_visible: Tensor  # [N], bool; geometry visibility, not KP supervision
 
     def __post_init__(self) -> None:
@@ -163,8 +164,12 @@ class CourtInstance2D:
             raise ValueError("physical_indices must be an int64 vector.")
         if self.points_xy.shape != (count, 2) or not self.points_xy.is_floating_point():
             raise ValueError("Court instance points_xy must have shape (N, 2) and float dtype.")
+        if self.point_in_front.shape != (count,) or self.point_in_front.dtype != torch.bool:
+            raise ValueError("Court instance point_in_front must be a boolean vector.")
         if self.point_visible.shape != (count,) or self.point_visible.dtype != torch.bool:
             raise ValueError("Court instance point_visible must be a boolean vector.")
+        if bool(torch.any(self.point_visible & ~self.point_in_front)):
+            raise ValueError("Visible Court instance points must be in front of the camera.")
         if not bool(torch.isfinite(self.points_xy).all()):
             raise ValueError("Court instance points_xy must be finite.")
         if count == 0 or len(set(self.physical_indices.tolist())) != count:

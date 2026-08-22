@@ -330,6 +330,7 @@ class CourtProcessingGeometry:
             court_instance_id=instance.court_instance_id,
             physical_indices=instance.physical_indices,
             points_xy=points,
+            point_in_front=instance.point_in_front,
             point_visible=visible,
         )
 

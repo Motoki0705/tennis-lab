@@ -9,7 +9,9 @@ import numpy as np
 from numpy.typing import NDArray
 
 from src.tasks.court_detection.data.contracts import CourtInstance2D
-from src.tasks.court_detection.geometry import compute_template_to_image_homography
+from src.tasks.court_detection.data.target_generation.rasterization import (
+    CourtPlaneRasterizer,
+)
 from src.utils.schema.court import (
     HALF_DOUBLES_WIDTH,
     HALF_LENGTH,
@@ -28,19 +30,6 @@ _CELL_BOUNDS: dict[int, tuple[float, float, float, float]] = {
     5: (-HALF_DOUBLES_WIDTH, -HALF_SINGLES_WIDTH, 0.0, HALF_LENGTH),
     6: (HALF_SINGLES_WIDTH, HALF_DOUBLES_WIDTH, 0.0, HALF_LENGTH),
 }
-
-
-def _ordered_physical_points(instance: CourtInstance2D) -> Float32Array:
-    if set(instance.physical_indices.tolist()) != set(range(14)):
-        raise ValueError("Court target generation requires physical points 0..13.")
-    points: Float32Array = np.empty((14, 2), dtype=np.float32)
-    for physical, point in zip(
-        instance.physical_indices.tolist(),
-        instance.points_xy.detach().cpu().numpy(),
-        strict=True,
-    ):
-        points[int(physical)] = point
-    return points
 
 
 def _cell_corners(bounds: tuple[float, float, float, float]) -> Float32Array:
@@ -67,14 +56,13 @@ def generate_segmentation_target(
         raise ValueError("Court segmentation generation requires image geometry.")
     output: UInt8Array = np.zeros((height, width), dtype=np.uint8)
     for instance in instances:
-        homography = compute_template_to_image_homography(
-            _ordered_physical_points(instance),
-            ransac_reproj_threshold=5.0,
+        rasterizer = CourtPlaneRasterizer.from_instance(
+            instance,
+            width=width,
+            height=height,
         )
-        if homography is None:
-            raise ValueError(
-                f"Court segmentation homography failed for {instance.court_instance_id!r}."
-            )
+        if rasterizer is None:
+            continue
         instance_mask: UInt8Array = np.zeros_like(output)
         for label, bounds in _CELL_BOUNDS.items():
             for selected in (
@@ -82,14 +70,9 @@ def generate_segmentation_target(
                 (-bounds[1], -bounds[0], -bounds[3], -bounds[2]),
             ):
                 corners = _cell_corners(selected)
-                projected = cast(
-                    NDArray[np.int32],
-                    cv2.perspectiveTransform(
-                        corners.reshape(1, -1, 2), homography
-                    )
-                    .reshape(-1, 2)
-                    .astype(np.int32),
-                )
+                projected = rasterizer.project_polygon(corners)
+                if projected is None:
+                    continue
                 cv2.fillPoly(instance_mask, [projected], int(label))
         output = cast(
             UInt8Array,
