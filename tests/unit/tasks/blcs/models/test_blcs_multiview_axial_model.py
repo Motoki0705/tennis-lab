@@ -48,7 +48,7 @@ def test_multiview_axial_model_forward_accepts_single_view() -> None:
         "ball_uv": torch.rand(2, 1, 4, 2),
         "court_kp": torch.rand(2, 1, 4, 20, 2),
         "ball_vis": torch.ones(2, 1, 4),
-        "ball_mask": torch.ones(2, 1, 4),
+        "padding_mask": torch.zeros(2, 1, 4, dtype=torch.bool),
         "court_vis": torch.ones(2, 1, 4, 20),
     }
 
@@ -68,7 +68,7 @@ def test_multiview_axial_model_masks_invisible_court_coordinates() -> None:
         "ball_uv": torch.rand(1, 2, 3, 2),
         "court_kp": torch.rand(1, 2, 3, 20, 2),
         "ball_vis": torch.ones(1, 2, 3),
-        "ball_mask": torch.ones(1, 2, 3),
+        "padding_mask": torch.zeros(1, 2, 3, dtype=torch.bool),
         "court_vis": torch.ones(1, 2, 3, 20),
     }
     inputs["court_vis"][:, 1, :, 4] = 0

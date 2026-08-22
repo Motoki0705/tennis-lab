@@ -172,13 +172,9 @@ def _ordered_range(
     if positive and lo <= 0.0:
         raise SemanticConfigurationError(f"{path} values must be positive.")
     if lower_bound is not None and lo < lower_bound:
-        raise SemanticConfigurationError(
-            f"{path} values must be >= {lower_bound}."
-        )
+        raise SemanticConfigurationError(f"{path} values must be >= {lower_bound}.")
     if upper_bound is not None and hi > upper_bound:
-        raise SemanticConfigurationError(
-            f"{path} values must be <= {upper_bound}."
-        )
+        raise SemanticConfigurationError(f"{path} values must be <= {upper_bound}.")
     return lo, hi
 
 
@@ -290,13 +286,19 @@ class AxialModelConfig:
 
 
 @dataclass(frozen=True, slots=True)
-class PointFusionConfig:
-    token_dim: int
-    num_heads: int
-    num_layers: int
-    ffn_dim: int
-    rope_dim: int
-    dropout: float
+class TrackQueryMHCConfig:
+    coefficient_dim: int
+    sinkhorn_iters: int
+    eps: float
+    residual_identity_bias: float
+    update_scale_init: float
+
+
+@dataclass(frozen=True, slots=True)
+class TrackQueryCSWAConfig:
+    compression_ratio: int
+    window_radius: int
+    backend: Literal["reference", "cuda"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -310,10 +312,9 @@ class TrackQueryModelConfig:
     rope_dim: int
     dropout: float
     role_rope_enabled: bool
-    mask_invisible_observations: bool
     invisible_init_std: float
-    observation_fusion: Literal["linear", "point_attention"]
-    point_fusion: PointFusionConfig | None
+    mhc: TrackQueryMHCConfig
+    cswa: TrackQueryCSWAConfig
 
 
 BLCSModelConfig: TypeAlias = (
@@ -689,17 +690,11 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             "rope_dim",
             "dropout",
             "role_rope_enabled",
-            "mask_invisible_observations",
             "invisible_init_std",
-            "observation_fusion",
+            "mhc",
+            "cswa",
         }
-        fusion_name = cast(
-            "str", _value(model, "observation_fusion", str, path="model")
-        )
-        expected = base_keys | (
-            {"point_fusion"} if fusion_name == "point_attention" else set()
-        )
-        _exact(model, expected, path="model")
+        _exact(model, base_keys, path="model")
         _validate_types(
             model,
             {
@@ -712,59 +707,79 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 "rope_dim": int,
                 "dropout": (float, int),
                 "role_rope_enabled": bool,
-                "mask_invisible_observations": bool,
                 "invisible_init_std": (float, int),
-                "observation_fusion": str,
             },
             path="model",
         )
-        point: PointFusionConfig | None = None
-        if fusion_name == "point_attention":
-            raw = as_config_mapping(model["point_fusion"], path="model.point_fusion")
-            point_keys = {
-                "token_dim",
-                "num_heads",
-                "num_layers",
-                "ffn_dim",
-                "rope_dim",
-                "dropout",
-            }
-            _exact(raw, point_keys, path="model.point_fusion")
-            _validate_types(
-                raw,
-                {
-                    "token_dim": int,
-                    "num_heads": int,
-                    "num_layers": int,
-                    "ffn_dim": int,
-                    "rope_dim": int,
-                    "dropout": float,
-                },
-                path="model.point_fusion",
-            )
-            point = PointFusionConfig(
-                token_dim=cast("int", raw["token_dim"]),
-                num_heads=cast("int", raw["num_heads"]),
-                num_layers=cast("int", raw["num_layers"]),
-                ffn_dim=cast("int", raw["ffn_dim"]),
-                rope_dim=cast("int", raw["rope_dim"]),
-                dropout=float(cast("float | int", raw["dropout"])),
-            )
-            _validate_transformer_dimensions(
-                hidden_dim=point.token_dim,
-                num_heads=point.num_heads,
-                ffn_dim=point.ffn_dim,
-                rope_dim=point.rope_dim,
-                dropout=point.dropout,
-                path="model.point_fusion",
-            )
-            if point.num_layers <= 0:
-                raise SemanticConfigurationError(
-                    "model.point_fusion.num_layers must be positive."
-                )
-        if fusion_name not in {"linear", "point_attention"}:
+        raw_mhc = as_config_mapping(model["mhc"], path="model.mhc")
+        mhc_keys = {
+            "coefficient_dim",
+            "sinkhorn_iters",
+            "eps",
+            "residual_identity_bias",
+            "update_scale_init",
+        }
+        _exact(raw_mhc, mhc_keys, path="model.mhc")
+        _validate_types(
+            raw_mhc,
+            {
+                "coefficient_dim": int,
+                "sinkhorn_iters": int,
+                "eps": (float, int),
+                "residual_identity_bias": (float, int),
+                "update_scale_init": (float, int),
+            },
+            path="model.mhc",
+        )
+        mhc = TrackQueryMHCConfig(
+            coefficient_dim=cast("int", raw_mhc["coefficient_dim"]),
+            sinkhorn_iters=cast("int", raw_mhc["sinkhorn_iters"]),
+            eps=float(cast("float | int", raw_mhc["eps"])),
+            residual_identity_bias=float(
+                cast("float | int", raw_mhc["residual_identity_bias"])
+            ),
+            update_scale_init=float(cast("float | int", raw_mhc["update_scale_init"])),
+        )
+        if mhc.coefficient_dim <= 0 or mhc.sinkhorn_iters <= 0:
             raise SemanticConfigurationError(
-                "model.observation_fusion must be 'linear' or 'point_attention'."
+                "model.mhc.coefficient_dim and sinkhorn_iters must be positive."
+            )
+        _positive(mhc.eps, path="model.mhc.eps")
+        _non_negative(
+            mhc.residual_identity_bias,
+            path="model.mhc.residual_identity_bias",
+        )
+        _finite(mhc.update_scale_init, path="model.mhc.update_scale_init")
+
+        raw_cswa = as_config_mapping(model["cswa"], path="model.cswa")
+        cswa_keys = {"compression_ratio", "window_radius", "backend"}
+        _exact(raw_cswa, cswa_keys, path="model.cswa")
+        _validate_types(
+            raw_cswa,
+            {
+                "compression_ratio": int,
+                "window_radius": int,
+                "backend": str,
+            },
+            path="model.cswa",
+        )
+        backend = cast("str", raw_cswa["backend"])
+        if backend not in {"reference", "cuda"}:
+            raise SemanticConfigurationError(
+                "model.cswa.backend must be 'reference' or 'cuda'."
+            )
+        cswa = TrackQueryCSWAConfig(
+            compression_ratio=cast("int", raw_cswa["compression_ratio"]),
+            window_radius=cast("int", raw_cswa["window_radius"]),
+            backend=cast("Literal['reference', 'cuda']", backend),
+        )
+        if cswa.compression_ratio < 2:
+            raise SemanticConfigurationError(
+                "model.cswa.compression_ratio must be at least 2."
+            )
+        if cswa.window_radius < 0:
+            raise SemanticConfigurationError(
+                "model.cswa.window_radius must be non-negative."
             )
         result = TrackQueryModelConfig(
             name="blcs_track_query",
@@ -776,12 +791,9 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             rope_dim=cast("int", model["rope_dim"]),
             dropout=float(model["dropout"]),
             role_rope_enabled=bool(model["role_rope_enabled"]),
-            mask_invisible_observations=bool(model["mask_invisible_observations"]),
             invisible_init_std=float(model["invisible_init_std"]),
-            observation_fusion=cast(
-                "Literal['linear', 'point_attention']", fusion_name
-            ),
-            point_fusion=point,
+            mhc=mhc,
+            cswa=cswa,
         )
         _validate_transformer_dimensions(
             hidden_dim=result.hidden_dim,
@@ -791,9 +803,14 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             dropout=result.dropout,
             path="model",
         )
-        if result.num_stages <= 0 or result.num_queries <= 0:
+        if (
+            result.num_stages <= 0
+            or result.num_stages % 4 != 0
+            or result.num_queries <= 0
+        ):
             raise SemanticConfigurationError(
-                "model.num_stages and model.num_queries must be positive."
+                "model.num_stages must be a positive multiple of 4 and "
+                "model.num_queries must be positive."
             )
         _non_negative(result.invisible_init_std, path="model.invisible_init_std")
         return result
@@ -1421,9 +1438,7 @@ def validate_generator_sections(
         physics["gravity_range"], path="physics.gravity_range", positive=True
     )
     for key in ("k_drag_range", "k_magnus_range", "mu_range", "wind_speed_range"):
-        _ordered_range(
-            physics[key], path=f"physics.{key}", lower_bound=0.0
-        )
+        _ordered_range(physics[key], path=f"physics.{key}", lower_bound=0.0)
     _ordered_range(
         physics["e_z_range"],
         path="physics.e_z_range",
@@ -1511,14 +1526,17 @@ def validate_generator_sections(
     )
     for key in probability_keys:
         _probability(cast("float", rally[key]), path=f"rally.{key}")
-    if sum(
-        cast("float", rally[key])
-        for key in (
-            "volley_probability",
-            "normal_return_probability",
-            "late_return_probability",
+    if (
+        sum(
+            cast("float", rally[key])
+            for key in (
+                "volley_probability",
+                "normal_return_probability",
+                "late_return_probability",
+            )
         )
-    ) <= 0.0:
+        <= 0.0
+    ):
         raise SemanticConfigurationError(
             "At least one rally return-type probability must be positive."
         )
@@ -1609,12 +1627,11 @@ def validate_generator_sections(
                 range_value,
                 path=f"camera.{key}",
                 positive=True,
-                upper_bound=(1.0 if key == "broadcast_court_width_frac_range" else None),
+                upper_bound=(
+                    1.0 if key == "broadcast_court_width_frac_range" else None
+                ),
             )
-    if (
-        camera["broadcast_court_width_frac_range"] is not None
-        and jitter != 0.0
-    ):
+    if camera["broadcast_court_width_frac_range"] is not None and jitter != 0.0:
         raise SemanticConfigurationError(
             "camera.broadcast_court_width_frac_range and non-zero "
             "camera.broadcast_hfov_jitter_deg are mutually exclusive."
@@ -1664,16 +1681,17 @@ def validate_generator_sections(
         path="targeted_velocity.lob_probability",
     )
     for key in ("max_ballistic_apex_height_m", "gravity"):
-        _positive(cast("float", targeted_velocity[key]), path=f"targeted_velocity.{key}")
-    for key in (
-        "landing_sim_max_frames",
-    ):
+        _positive(
+            cast("float", targeted_velocity[key]), path=f"targeted_velocity.{key}"
+        )
+    for key in ("landing_sim_max_frames",):
         if cast("int", targeted_velocity[key]) <= 0:
-            raise SemanticConfigurationError(f"targeted_velocity.{key} must be positive.")
+            raise SemanticConfigurationError(
+                f"targeted_velocity.{key} must be positive."
+            )
     refine_iters = cast("int", targeted_velocity["landing_refine_max_iters"])
     if refine_iters < 0 or (
-        cast("bool", targeted_velocity["landing_refine_enabled"])
-        and refine_iters == 0
+        cast("bool", targeted_velocity["landing_refine_enabled"]) and refine_iters == 0
     ):
         raise SemanticConfigurationError(
             "targeted_velocity.landing_refine_max_iters must be non-negative and "
@@ -1683,7 +1701,9 @@ def validate_generator_sections(
         "net_elevation_step_deg",
         "landing_refine_tolerance_m",
     ):
-        _positive(cast("float", targeted_velocity[key]), path=f"targeted_velocity.{key}")
+        _positive(
+            cast("float", targeted_velocity[key]), path=f"targeted_velocity.{key}"
+        )
     _non_negative(
         cast("float", targeted_velocity["target_margin_m"]),
         path="targeted_velocity.target_margin_m",
@@ -1728,7 +1748,24 @@ def validate_generator_sections(
                 "generation ball counts must satisfy 1 <= min_balls <= max_balls."
             )
     elif mode == "multi_object":
-        _exact(generation, {"mode", "timeline"}, path="generation")
+        _exact(
+            generation,
+            {"mode", "maximum_physics_attempts_per_object", "timeline"},
+            path="generation",
+        )
+        maximum_attempts = cast(
+            "int",
+            _value(
+                generation,
+                "maximum_physics_attempts_per_object",
+                int,
+                path="generation",
+            ),
+        )
+        if maximum_attempts <= 0:
+            raise SemanticConfigurationError(
+                "generation.maximum_physics_attempts_per_object must be positive."
+            )
         timeline = require_config_mapping(generation, "timeline", path="generation")
         _exact(
             timeline,
@@ -1889,7 +1926,9 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             config, include_generation=model.name == "blcs_track_query"
         )
         if model.name == "blcs_track_query":
-            generation = require_config_mapping(root, "generation", path="configuration")
+            generation = require_config_mapping(
+                root, "generation", path="configuration"
+            )
             if generation["mode"] != "multi_object":
                 raise SemanticConfigurationError(
                     "Chunked BLCS tracking requires generation.mode='multi_object'."
@@ -1977,6 +2016,11 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             },
             path="data.lifecycle",
         )
+        if lifecycle["pack_to_query_slots"] is not True:
+            raise SemanticConfigurationError(
+                "BLCS track-query training requires "
+                "data.lifecycle.pack_to_query_slots=true."
+            )
         if cast("int", lifecycle["min_reuse_gap_frames"]) < 0:
             raise SemanticConfigurationError(
                 "data.lifecycle.min_reuse_gap_frames must be non-negative."
@@ -2002,6 +2046,7 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
         "min_lr",
         "steps_per_epoch",
         "optimizer",
+        "compile",
         "position_loss_weight",
         "position_axis_weights",
         "reprojection_loss_weight",
@@ -2198,7 +2243,9 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
                 "loss.position_axis_weights values must be positive."
             )
         if cast("int", loss["transition_radius"]) < 0:
-            raise SemanticConfigurationError("loss.transition_radius must be non-negative.")
+            raise SemanticConfigurationError(
+                "loss.transition_radius must be non-negative."
+            )
         if (
             cast("float", loss["match_position_weight"]) == 0.0
             and cast("float", loss["match_presence_weight"]) == 0.0
@@ -2454,10 +2501,11 @@ __all__ = [
     "BLCSModelConfig",
     "GenerationRunConfig",
     "MultiViewModelConfig",
-    "PointFusionConfig",
     "PreviewConfig",
     "QualitativeRenderingConfig",
     "SingleModelConfig",
+    "TrackQueryCSWAConfig",
+    "TrackQueryMHCConfig",
     "TrackQueryModelConfig",
     "build_path_resolver",
     "parse_generation_run",

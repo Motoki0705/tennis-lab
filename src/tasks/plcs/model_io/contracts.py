@@ -30,7 +30,7 @@ class PLCSPreparedBatch:
     target_position: Tensor | None = None
     target_rotation: Tensor | None = None
     target_human_kp_3d: Tensor | None = None
-    target_human_mask: Tensor | None = None
+    target_padding_mask: Tensor | None = None
 
 
 @dataclass(frozen=True, slots=True)

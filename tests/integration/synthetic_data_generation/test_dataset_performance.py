@@ -17,6 +17,7 @@ from src.synthetic_data_generation.dataset.plcs.handler import PLCSStageHandler
 from src.synthetic_data_generation.pipeline import SceneWorkspace, StageName
 from src.synthetic_data_generation.pipeline.application import build_stage_registry
 from src.synthetic_data_generation.pipeline.publication import StagePublisher
+from src.synthetic_data_generation.reconstruction import NHTReconstructionHandler
 from src.utils.paths import PROJECT_ROOT
 
 _CONFIG_ROOT = PROJECT_ROOT / "src/synthetic_data_generation/configs"
@@ -26,7 +27,9 @@ def _runtime(tmp_path: Path) -> ScenePipelineConfiguration:
     data_root = tmp_path / "data"
     external_root = tmp_path / "third_party"
     data_root.mkdir()
-    (data_root / "tennis_court.mp4").write_bytes(b"integration fixture")
+    source_video = data_root / "synthetic_data_generation/raw/tennis_court.mp4"
+    source_video.parent.mkdir(parents=True)
+    source_video.write_bytes(b"integration fixture")
     accad_root = data_root / "ACCAD"
     accad_root.mkdir()
     for category in ("running", "walking", "general"):
@@ -45,6 +48,9 @@ def _runtime(tmp_path: Path) -> ScenePipelineConfiguration:
     )
     checkpoint.parent.mkdir(parents=True)
     checkpoint.write_bytes(b"integration fixture")
+    nht_config = external_root / "nht/configs/production.yaml"
+    nht_config.parent.mkdir(parents=True)
+    nht_config.write_text("schema: nht_pipeline_config_v1\n", encoding="utf-8")
     with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_ROOT)):
         config = compose(
             config_name="run_scene_pipeline",
@@ -61,10 +67,13 @@ def test_composition_root_wires_config_owned_cross_domain_budgets(
 ) -> None:
     runtime = _runtime(tmp_path)
     registry = build_stage_registry(runtime)
+    reconstruction = registry.definition(StageName.RECONSTRUCTION).handler
     court = registry.definition(StageName.COURT_DATASET).handler
     blcs = registry.definition(StageName.BLCS_DATASET).handler
     plcs = registry.definition(StageName.PLCS_DATASET).handler
 
+    assert isinstance(reconstruction, NHTReconstructionHandler)
+    assert reconstruction.pipeline_config is runtime.nht.pipeline_config
     assert isinstance(court, CourtDatasetStageHandler)
     assert isinstance(blcs, BLCSDatasetStageHandler)
     assert isinstance(plcs, PLCSStageHandler)

@@ -247,7 +247,7 @@ class SharedBackgroundStore:
             rgb_path = camera_root / "rgb.npy"
             alpha_path = camera_root / "alpha.npy"
             depth_path = camera_root / "depth-metric.npy"
-            arrays = record.arrays
+            arrays = record.load_arrays()
             background = BackgroundArrays.from_validated_nht(
                 record.camera_id,
                 arrays,

@@ -9,11 +9,23 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from src.synthetic_data_generation.alignment.contracts import AlignmentResult
-from src.synthetic_data_generation.dataset.court.components.labels import (
-    MultiCourtProjection,
-    project_court_semantics,
+from src.synthetic_data_generation.dataset.court.components.camera_sampling.targeting import (
+    validate_camera_looks_at_resolved_court,
+    validate_resolved_target_court,
 )
-from src.synthetic_data_generation.dataset.court.contracts import CourtDatasetPlan
+from src.synthetic_data_generation.dataset.court.components.labels import (
+    AmbiguousCameraRelativeNearFarError,
+    MultiCourtProjectionAny,
+    project_court_semantics_for_version,
+)
+from src.synthetic_data_generation.dataset.court.contracts import (
+    CourtDatasetPlan,
+    CourtDatasetPlanAny,
+    CourtDatasetPlanV2,
+)
+from src.synthetic_data_generation.dataset.court.schema import (
+    CourtDatasetSchemaVersion,
+)
 from src.synthetic_data_generation.dataset.court.shards import (
     CourtRenderedSample,
     CourtRenderResult,
@@ -41,8 +53,9 @@ from src.synthetic_data_generation.scene_contract import SceneCamera
 class CourtPreRenderEvaluation:
     """Deterministic geometry gate over every proposal before NHT execution."""
 
-    projections: tuple[MultiCourtProjection, ...]
+    projections: tuple[MultiCourtProjectionAny, ...]
     rejected_sample_ids: tuple[str, ...]
+    rejection_reasons: tuple[tuple[str, tuple[str, ...]], ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,7 +91,7 @@ class CourtNHTRenderer:
     def render(
         self,
         *,
-        plan: CourtDatasetPlan,
+        plan: CourtDatasetPlanAny,
         scene: StandardSceneExport,
         attempt_root: Path,
         attempt_token: str,
@@ -112,6 +125,8 @@ class CourtNHTRenderer:
         scene_validation_count = 0
         preview_validation_count = 0
         loaded_array_bytes = 0
+        maximum_nht_live_array_bytes = 0
+        retained_nht_array_bytes = 0
         for shard_id, samples in shards.items():
             output_directory = attempt_root / "renders" / shard_id
             try:
@@ -120,6 +135,7 @@ class CourtNHTRenderer:
                     attempt_token=attempt_token,
                     shard_id=shard_id,
                     samples=samples,
+                    schema_version=plan.schema_version,
                 )
             except StaleCourtShardError:
                 _discard_stale_shard(output_directory, attempt_root=attempt_root)
@@ -129,7 +145,9 @@ class CourtNHTRenderer:
                 continue
             if output_directory.exists():
                 if output_directory.is_symlink() or not output_directory.is_dir():
-                    raise ValueError("Partial Court shard output is not an ordinary directory.")
+                    raise ValueError(
+                        "Partial Court shard output is not an ordinary directory."
+                    )
                 shutil.rmtree(output_directory)
             request = NHTRenderRequest(
                 cameras=tuple(
@@ -167,6 +185,11 @@ class CourtNHTRenderer:
             scene_validation_count += result.evidence.scene_validation_count
             preview_validation_count += result.evidence.preview_validation_count
             loaded_array_bytes += result.evidence.loaded_array_bytes
+            maximum_nht_live_array_bytes = max(
+                maximum_nht_live_array_bytes,
+                result.evidence.maximum_live_array_bytes,
+            )
+            retained_nht_array_bytes += result.evidence.retained_array_bytes
             if result.scene_id != plan.scene_id:
                 raise ValueError("NHT result scene_id disagrees with the Court plan.")
             shard_rendered = rendered_from_nht_records(samples, result.records)
@@ -175,13 +198,17 @@ class CourtNHTRenderer:
                 attempt_token=attempt_token,
                 shard_id=shard_id,
                 samples=samples,
+                schema_version=plan.schema_version,
             )
             rendered.extend(shard_rendered)
+            del result
         rendered.sort(key=lambda item: item.sample.sample_index)
         if [item.sample.sample_id for item in rendered] != [
             sample.sample_id for sample in renderable_samples
         ]:
-            raise ValueError("Rendered shard assembly changed the planned sample order.")
+            raise ValueError(
+                "Rendered shard assembly changed the planned sample order."
+            )
         return CourtRenderResult(
             samples=tuple(rendered),
             pre_render_projections=pre_render.projections,
@@ -195,12 +222,15 @@ class CourtNHTRenderer:
             scene_validation_count=scene_validation_count,
             preview_validation_count=preview_validation_count,
             loaded_array_bytes=loaded_array_bytes,
+            maximum_nht_live_array_bytes=maximum_nht_live_array_bytes,
+            retained_nht_array_bytes=retained_nht_array_bytes,
             shard_timings=tuple(timings),
+            pre_render_rejection_reasons=pre_render.rejection_reasons,
         )
 
 
 def validate_pre_render_plan(
-    plan: CourtDatasetPlan,
+    plan: CourtDatasetPlanAny,
     *,
     alignment: AlignmentResult,
 ) -> CourtPreRenderEvaluation:
@@ -208,19 +238,36 @@ def validate_pre_render_plan(
     _validate_plan_alignment(plan, alignment)
     if plan.proposal_count > plan.policy.proposal_budget:
         raise ValueError("Court plan exceeds its resolved pre-render proposal budget.")
-    projections: list[MultiCourtProjection] = []
+    projections: list[MultiCourtProjectionAny] = []
     rejected: list[str] = []
+    rejection_reasons: list[tuple[str, tuple[str, ...]]] = []
+    schema_version = (
+        plan.schema_version
+        if isinstance(plan, CourtDatasetPlan | CourtDatasetPlanV2)
+        else CourtDatasetSchemaVersion.V1
+    )
     for sample in plan.samples:
-        projection = project_court_semantics(sample.camera, alignment.layout)
-        in_frame_points = sum(
-            court.in_frame_point_count for court in projection.courts
-        )
+        try:
+            projection = project_court_semantics_for_version(
+                sample.camera,
+                alignment.layout,
+                schema_version=schema_version,
+            )
+        except AmbiguousCameraRelativeNearFarError as error:
+            rejected.append(sample.sample_id)
+            rejection_reasons.append((sample.sample_id, (error.reason,)))
+            continue
+        in_frame_points = sum(court.in_frame_point_count for court in projection.courts)
         if in_frame_points < 4:
             rejected.append(sample.sample_id)
+            rejection_reasons.append(
+                (sample.sample_id, ("insufficient_pre_render_semantic_coverage",))
+            )
         projections.append(projection)
     return CourtPreRenderEvaluation(
         projections=tuple(projections),
         rejected_sample_ids=tuple(rejected),
+        rejection_reasons=tuple(rejection_reasons),
     )
 
 
@@ -255,24 +302,42 @@ def _nht_camera_from_metric_plan(
 
 
 def _validate_plan_alignment(
-    plan: CourtDatasetPlan,
+    plan: CourtDatasetPlanAny,
     alignment: AlignmentResult,
 ) -> None:
     """Require every planned court binding to come from this alignment result."""
     if not isinstance(alignment, AlignmentResult):
         raise TypeError("Court rendering requires a complete AlignmentResult.")
-    for group in plan.groups:
-        try:
-            court = alignment.layout.court(
-                group.target_court.court_instance_id
+    if isinstance(plan, CourtDatasetPlanV2):
+        groups = {group.trajectory_group_id: group for group in plan.groups}
+        for sample in plan.samples:
+            group_v2 = groups[sample.trajectory_group_id]
+            validate_resolved_target_court(
+                policy=group_v2.target_court_policy,
+                camera_center_scene_m=sample.camera_center_scene_m,
+                target_court=sample.target_court,
+                layout=alignment.layout,
             )
+            view = next(
+                value for value in group_v2.views if value.view_id == sample.view_id
+            )
+            validate_camera_looks_at_resolved_court(
+                camera=sample.camera,
+                target_court=sample.target_court,
+                layout=alignment.layout,
+                look_at_height_m=view.look_at_height_m,
+            )
+        return
+    for group_v1 in plan.groups:
+        try:
+            court = alignment.layout.court(group_v1.target_court.court_instance_id)
         except KeyError as error:
             raise ValueError(
                 "Court plan references a court outside the alignment inventory."
             ) from error
         if (
-            group.target_court.candidate_id != court.candidate_id
-            or group.target_court.scene_from_court != court.scene_from_court
+            group_v1.target_court.candidate_id != court.candidate_id
+            or group_v1.target_court.scene_from_court != court.scene_from_court
         ):
             raise ValueError(
                 "Court plan binding disagrees with the complete alignment inventory."

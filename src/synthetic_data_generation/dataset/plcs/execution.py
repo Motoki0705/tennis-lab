@@ -21,6 +21,9 @@ from src.synthetic_data_generation.dataset.plcs.composition import (
     PLCSAvatarFrameTensors,
     prepare_avatar,
 )
+from src.synthetic_data_generation.dataset.plcs.coordinates import (
+    PLCSSourceSupportPlane,
+)
 from src.synthetic_data_generation.dataset.plcs.rendering.contracts import (
     PLCSForegroundCompositor,
 )
@@ -28,6 +31,7 @@ from src.synthetic_data_generation.dataset.plcs.smplh import (
     SMPLHDeviceClip,
     SMPLHDeviceModel,
     SMPLHModelData,
+    initial_smplh_surface_min_z,
     load_smplh_model,
     upload_motion_clip,
     upload_smplh_model,
@@ -98,6 +102,14 @@ class PLCSExecutionBackend(Protocol):
 
     def load_model(self, *, model_root: Path, gender: str) -> object:
         """Load one gender model through the explicit execution dependency."""
+
+    def initial_support_plane(
+        self,
+        *,
+        clip: PLCSMotionClip,
+        model: object,
+    ) -> PLCSSourceSupportPlane:
+        """Evaluate explicit frame-zero full-surface support provenance."""
 
     def prepare_avatar(
         self,
@@ -218,6 +230,29 @@ class CUDAPLCSExecutionBackend:
                 model_data,
                 device=self.torch_device,
             )
+
+    def initial_support_plane(
+        self,
+        *,
+        clip: PLCSMotionClip,
+        model: object,
+    ) -> PLCSSourceSupportPlane:
+        """Evaluate frame-zero full SMPL-H surface support on CUDA."""
+        model_data = _model_data(model)
+        if model_data.gender != clip.gender:
+            raise ValueError("PLCS support clip/model gender is inconsistent.")
+        try:
+            device_model = self._device_models[clip.gender]
+            device_clip = self._device_clips[clip.source_path]
+        except KeyError as error:
+            raise RuntimeError(
+                "PLCS support evaluation requires retained source buffers."
+            ) from error
+        local_min_z = initial_smplh_surface_min_z(device_model, device_clip)
+        return PLCSSourceSupportPlane.from_surface_minimum(
+            initial_root_translation_z_m=float(clip.root_translation_m[0, 2]),
+            support_local_z_m=local_min_z,
+        )
 
     def prepare_avatar(
         self,

@@ -1,11 +1,10 @@
-"""Shape adapter for BLCS ID-ordered candidate observation augmentation."""
+"""Shape adapter for fixed-width BLCS candidate observation augmentation."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Any, cast
 
-import torch
 from torch import Tensor
 
 from src.tasks.blcs.data.augmentation import BLCSBallObservationAugmentation
@@ -24,14 +23,13 @@ class BLCSTrackingCandidateAugmentation:
         """Corrupt only candidate/court inputs and preserve clean GT tensors."""
         output: dict[str, Tensor] = clone_tensor_dict(sample)
         views, frames, detections, _ = output["ball_uv"].shape
-        clean_visible = output["ball_visible"].clone()
         court_keypoints = output["court_kp"].clone()
-        court_visible = output["court_vis"].clone()
+        court_vis = output["court_vis"].clone()
         adapted = {
             "ball_uv": output["ball_uv"]
             .permute(0, 2, 1, 3)
             .reshape(views * detections, frames, 2),
-            "ball_vis": output["ball_visible"]
+            "ball_vis": output["ball_vis"]
             .permute(0, 2, 1)
             .reshape(views * detections, frames),
             "court_kp": output["court_kp"],
@@ -43,7 +41,7 @@ class BLCSTrackingCandidateAugmentation:
             .reshape(views, detections, frames, 2)
             .permute(0, 2, 1, 3)
         )
-        output["ball_visible"] = (
+        output["ball_vis"] = (
             augmented["ball_vis"]
             .reshape(views, detections, frames)
             .permute(0, 2, 1)
@@ -52,12 +50,7 @@ class BLCSTrackingCandidateAugmentation:
         # Court input is geometric projection/manual annotation, not a detector
         # confidence stream.
         output["court_kp"] = court_keypoints
-        output["court_vis"] = court_visible
-        output["candidate_gt_index"] = torch.where(
-            output["ball_visible"] & clean_visible,
-            output["candidate_gt_index"],
-            -1,
-        )
+        output["court_vis"] = court_vis
         return output
 
     def __call__(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:

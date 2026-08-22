@@ -33,6 +33,7 @@ from src.utils.configuration.inventory import (
 )
 from src.utils.configuration.operations import (
     BUILD_CUDA_OPS,
+    CUDA_OPS_BUILD_TARGET,
     DINO_OPS_BUILD_CONFIG,
     FORCE_MOE_REFERENCE,
     FORCE_TIME_LOCAL_REFERENCE,
@@ -73,6 +74,7 @@ __all__ = [
     "BoundaryAuthorityBinding",
     "BoundaryPathField",
     "BUILD_CUDA_OPS",
+    "CUDA_OPS_BUILD_TARGET",
     "DEFAULT_AUDIT_INVENTORY",
     "ConfigField",
     "ConfigFieldContract",

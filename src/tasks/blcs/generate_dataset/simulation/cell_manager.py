@@ -24,6 +24,7 @@ Shot category classification:
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -52,6 +53,11 @@ NUM_IN_COURT_CELLS: int = 6
 NUM_OUT_COURT_CELLS: int = 3
 NUM_CELLS_PER_SIDE: int = NUM_IN_COURT_CELLS + NUM_OUT_COURT_CELLS  # 9
 NUM_TOTAL_CELLS: int = NUM_CELLS_PER_SIDE * 2  # 18
+
+
+def _float32_geometry(value: float) -> float:
+    """Represent a court boundary in the physics tensor's canonical dtype."""
+    return float(torch.tensor(value, dtype=torch.float32).item())
 
 
 class ShotCategory(Enum):
@@ -101,13 +107,17 @@ class CellManager:
     """
 
     # Court geometry (precomputed for fast lookup)
-    _xs: float = HALF_SINGLES_WIDTH  # 4.115
-    _xd: float = HALF_DOUBLES_WIDTH  # 5.485
-    _ys: float = SERVICE_LINE_DISTANCE  # 6.40
-    _yB: float = HALF_LENGTH  # 11.885
-    _x_min: float = X_MIN  # -9.145
-    _x_max: float = X_MAX  # +9.145
-    _y_max: float = abs(Y_MAX)  # 18.285
+    # BallPhysics evolves float32 tensors.  Round every boundary once into that
+    # same representation so a Tensor constructed from an exact schema endpoint
+    # remains the endpoint.  This is dtype canonicalization, not a tolerance;
+    # all discrete comparisons below stay exact.
+    _xs: float = _float32_geometry(HALF_SINGLES_WIDTH)  # 4.115
+    _xd: float = _float32_geometry(HALF_DOUBLES_WIDTH)  # 5.485
+    _ys: float = _float32_geometry(SERVICE_LINE_DISTANCE)  # 6.40
+    _yB: float = _float32_geometry(HALF_LENGTH)  # 11.885
+    _x_min: float = _float32_geometry(X_MIN)  # -9.145
+    _x_max: float = _float32_geometry(X_MAX)  # +9.145
+    _y_max: float = _float32_geometry(abs(Y_MAX))  # 18.285
 
     def __init__(self) -> None:
         """Initialize cell manager with geometry boundaries."""
@@ -145,6 +155,21 @@ class CellManager:
 
         x = pos[0].item()
         y = pos[1].item()
+        if not math.isfinite(x) or not math.isfinite(y):
+            raise ValueError(
+                "Position must contain finite court coordinates: "
+                f"x={x}, y={y}."
+            )
+        if not self.is_position_on_side(pos, side):
+            raise ValueError(
+                "Position does not lie on the requested canonical court side: "
+                f"x={x}, y={y}, side={side!r}."
+            )
+        if not self.is_position_in_cell_grid(pos, side):
+            raise ValueError(
+                "Position lies outside the canonical half-court cell grid: "
+                f"x={x}, y={y}, side={side!r}."
+            )
 
         # Normalise to far-side canonical orientation.
         # Mirror both x and y for near side to preserve deuce/ad semantics.
@@ -156,6 +181,15 @@ class CellManager:
 
     def _xy_to_cell(self, x: float, y: float) -> int:
         """Map (x, y) in far-side orientation to cell ID."""
+        if not (
+            self._x_min <= x <= self._x_max
+            and 0.0 <= y <= self._y_max
+        ):
+            raise ValueError(
+                "Position lies outside the canonical half-court cell grid: "
+                f"x={x}, y={y}."
+            )
+
         # Check in-court regions first (most common)
         if 0.0 <= y < self._ys:
             # Service box row
@@ -189,6 +223,37 @@ class CellManager:
         raise ValueError(
             "Position does not lie on the requested canonical court side: "
             f"x={x}, y={y}."
+        )
+
+    @staticmethod
+    def is_position_on_side(pos: Tensor, side: str) -> bool:
+        """Return exact membership in the requested closed court half.
+
+        The net centre line (``y == 0``) is a geometric endpoint shared by
+        both closed halves.  No numerical tolerance is used: a non-zero value
+        on the opposite side is never reassigned.
+        """
+        if side not in ("near", "far"):
+            raise ValueError(f"side must be 'near' or 'far', got {side!r}")
+        y = float(pos[1].item())
+        if not math.isfinite(y):
+            return False
+        return y >= 0.0 if side == "far" else y <= 0.0
+
+    def is_position_in_cell_grid(self, pos: Tensor, side: str) -> bool:
+        """Return whether a position is inside one bounded canonical half-grid."""
+        if not self.is_position_on_side(pos, side):
+            return False
+        x = float(pos[0].item())
+        y = float(pos[1].item())
+        if not math.isfinite(x):
+            return False
+        if side == "near":
+            x = -x
+            y = -y
+        return (
+            self._x_min <= x <= self._x_max
+            and 0.0 <= y <= self._y_max
         )
 
     # ------------------------------------------------------------------
@@ -244,11 +309,19 @@ class CellManager:
         """
         bounds = self.cell_id_to_bounds(cell_id, side)
 
-        x = bounds.x_min + torch.rand(1).item() * (bounds.x_max - bounds.x_min)
-        y = bounds.y_min + torch.rand(1).item() * (bounds.y_max - bounds.y_min)
+        x = self._sample_in_open_range(bounds.x_min, bounds.x_max)
+        y = self._sample_in_open_range(bounds.y_min, bounds.y_max)
         z = z_range[0] + torch.rand(1).item() * (z_range[1] - z_range[0])
 
-        return torch.tensor([x, y, z], device=device)
+        position = torch.tensor([x, y, z], device=device)
+        sampled_cell = self.position_to_cell_id(position, side)
+        if sampled_cell != cell_id:
+            raise RuntimeError(
+                "Sampled BLCS launch position violated its requested cell: "
+                f"requested={cell_id}, actual={sampled_cell}, side={side!r}, "
+                f"position={position.tolist()}."
+            )
+        return position
 
     def sample_bounce_position_in_cell(
         self,
@@ -274,16 +347,41 @@ class CellManager:
         x = self._sample_in_range(bounds.x_min, bounds.x_max, margin)
         y = self._sample_in_range(bounds.y_min, bounds.y_max, margin)
 
-        return torch.tensor([x, y, 0.0], device=device)
+        position = torch.tensor([x, y, 0.0], device=device)
+        sampled_cell = self.position_to_cell_id(position, side)
+        if sampled_cell != cell_id:
+            raise RuntimeError(
+                "Sampled BLCS bounce position violated its requested cell: "
+                f"requested={cell_id}, actual={sampled_cell}, side={side!r}, "
+                f"position={position.tolist()}."
+            )
+        return position
 
     @staticmethod
     def _sample_in_range(lo: float, hi: float, margin: float) -> float:
         """Sample uniformly in [lo + margin, hi - margin] with centre fallback."""
+        if not math.isfinite(margin) or margin < 0.0:
+            raise ValueError("margin must be a finite non-negative value.")
         lo_m = lo + margin
         hi_m = hi - margin
         if lo_m >= hi_m:
             return (lo + hi) / 2.0
+        if margin == 0.0:
+            return CellManager._sample_in_open_range(lo_m, hi_m)
         return float(lo_m + torch.rand(1).item() * (hi_m - lo_m))
+
+    @staticmethod
+    def _sample_in_open_range(lo: float, hi: float) -> float:
+        """Use one RNG draw to construct a float32 value strictly inside a range."""
+        value = lo + torch.rand(1).item() * (hi - lo)
+        value_tensor = torch.tensor(value, dtype=torch.float32)
+        lo_tensor = torch.tensor(lo, dtype=torch.float32)
+        hi_tensor = torch.tensor(hi, dtype=torch.float32)
+        if value_tensor <= lo_tensor:
+            value_tensor = torch.nextafter(lo_tensor, hi_tensor)
+        elif value_tensor >= hi_tensor:
+            value_tensor = torch.nextafter(hi_tensor, lo_tensor)
+        return float(value_tensor.item())
 
     def get_cell_center(
         self,

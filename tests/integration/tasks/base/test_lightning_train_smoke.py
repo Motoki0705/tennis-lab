@@ -9,6 +9,7 @@ no checkpoints, minimal data.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 import pytorch_lightning as pl
@@ -16,6 +17,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
+from src.tasks.base.configuration import CompileConfig
+from src.tasks.base.training.compilation import compile_modules
 from src.tasks.base.training.lightning_module import BaseLightningModule
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
@@ -24,18 +27,18 @@ pytestmark = [pytest.mark.integration, pytest.mark.slow]
 class _SmokeModule(BaseLightningModule):
     def __init__(self, config=None) -> None:
         super().__init__(config)
-        self.net = nn.Linear(4, 1)
+        self.model = nn.Linear(4, 1)
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        pred = self.net(x).squeeze(-1)
+        pred = self.model(x).squeeze(-1)
         loss = nn.functional.mse_loss(pred, y)
         self.log("train/loss", loss)
         return loss
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        pred = self.net(x).squeeze(-1)
+        pred = self.model(x).squeeze(-1)
         loss = nn.functional.mse_loss(pred, y)
         self.log("val/loss", loss)
         return loss
@@ -134,6 +137,13 @@ def _config(
                 "discriminator_gradient_clip_val": None,
                 "transition": {"start_epoch": 0},
             },
+            "compile": {
+                "enabled": True,
+                "backend": "inductor",
+                "mode": "reduce-overhead",
+                "fullgraph": False,
+                "dynamic": False,
+            },
             "matmul_precision": "high",
             "allow_tf32": False,
         },
@@ -171,3 +181,29 @@ def test_one_step_with_epoch_warmup_scheduler(tmp_path) -> None:
     # optimizer actually got constructed and is an AdamW
     opt = trainer.optimizers[0]
     assert isinstance(opt, torch.optim.AdamW)
+
+
+def test_one_step_with_compiled_primary_model(tmp_path) -> None:
+    module = _SmokeModule(
+        _config(
+            tmp_path,
+            max_epochs=1,
+            steps_per_epoch=2,
+            warmup_steps=0,
+            warmup_epochs=None,
+        )
+    )
+    compile_config = CompileConfig(
+        enabled=True,
+        backend=cast(Any, "aot_eager"),
+        mode="default",
+        fullgraph=False,
+        dynamic=False,
+    )
+
+    assert compile_modules(module.compilation_targets(), compile_config) == ("model",)
+    trainer = _trainer(tmp_path)
+    trainer.fit(module, _loader(), _loader())
+
+    assert trainer.global_step == 1
+    assert module.model._compiled_call_impl is not None

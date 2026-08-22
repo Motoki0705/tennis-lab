@@ -446,6 +446,7 @@ class CourtKPModule(BasePipelineModule):
         for camera_index, video_path in enumerate(video_paths):
             keypoints_px: list[NDArray[np.float32]] = []
             scores: list[NDArray[np.float32]] = []
+            validities: list[NDArray[np.bool_]] = []
             frame_indices: list[int] = []
             image_width: int | None = None
             image_height: int | None = None
@@ -454,9 +455,12 @@ class CourtKPModule(BasePipelineModule):
                     "NDArray[np.uint8]",
                     cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB),
                 )
-                frame_keypoints_px, frame_scores = self._predict_frame_pixels(frame_rgb)
+                frame_keypoints_px, frame_scores, frame_valid = (
+                    self._predict_frame_pixels(frame_rgb)
+                )
                 keypoints_px.append(frame_keypoints_px)
                 scores.append(frame_scores)
+                validities.append(frame_valid)
                 frame_indices.append(packet.index)
                 width, height = packet.original_size
                 if image_width is None:
@@ -485,7 +489,8 @@ class CourtKPModule(BasePipelineModule):
 
             camera_keypoints_px = np.stack(keypoints_px, axis=0).astype(np.float32)
             camera_scores = np.stack(scores, axis=0).astype(np.float32)
-            camera_visibility = np.ones(camera_scores.shape, dtype=np.float32)
+            camera_validity = np.stack(validities, axis=0)
+            camera_visibility = camera_validity.astype(np.float32)
             if self.postprocess.enabled:
                 from src.tasks.court_detection.geometry import (
                     refine_court_keypoints_with_homography,
@@ -493,7 +498,7 @@ class CourtKPModule(BasePipelineModule):
 
                 postprocess_result = refine_court_keypoints_with_homography(
                     camera_keypoints_px,
-                    camera_scores,
+                    np.where(camera_validity, camera_scores, 0.0),
                     min_score=float(self.postprocess.min_score),
                     ransac_reproj_threshold=float(
                         self.postprocess.ransac_reproj_threshold
@@ -501,7 +506,9 @@ class CourtKPModule(BasePipelineModule):
                     temporal_median_window=int(self.postprocess.temporal_median_window),
                 )
                 camera_keypoints_px = postprocess_result.keypoints
-                camera_visibility = postprocess_result.visibility
+                camera_visibility = (
+                    postprocess_result.visibility * camera_validity
+                ).astype(np.float32)
                 camera_diagnostics = dict(postprocess_result.diagnostics)
                 camera_diagnostics["camera_index"] = int(camera_index)
                 camera_diagnostics["video_path"] = str(video_path)
@@ -546,25 +553,39 @@ class CourtKPModule(BasePipelineModule):
     def _predict_frame_pixels(
         self,
         frame_rgb: NDArray[np.uint8],
-    ) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
-        """Run the loaded model on one RGB frame and return pixel KPs + scores."""
+    ) -> tuple[
+        NDArray[np.float32],
+        NDArray[np.float32],
+        NDArray[np.bool_],
+    ]:
+        """Return one explicit ordered peak, score, and validity per KP channel."""
         if self._predictor is None:
             raise RuntimeError("Court KP predictor is not loaded.")
         prediction = self._predictor.predict(frame_rgb)
         keypoints = prediction.keypoints.numpy().astype(np.float32)
         scores = prediction.scores.numpy().astype(np.float32)
+        valid = prediction.valid.numpy().astype(np.bool_)
 
-        if keypoints.shape != (self.num_keypoints, 2):
+        if keypoints.shape != (self.num_keypoints, 1, 2):
             raise ValueError(
                 f"Predicted court keypoints must have shape "
-                f"({self.num_keypoints}, 2), got {keypoints.shape}."
+                f"({self.num_keypoints}, 1, 2), got {keypoints.shape}."
             )
-        if scores.shape != (self.num_keypoints,):
+        if scores.shape != (self.num_keypoints, 1):
             raise ValueError(
-                f"Predicted court scores must have shape ({self.num_keypoints},), "
+                f"Predicted court scores must have shape ({self.num_keypoints}, 1), "
                 f"got {scores.shape}."
             )
-        return keypoints.astype(np.float32), scores.astype(np.float32)
+        if valid.shape != (self.num_keypoints, 1):
+            raise ValueError(
+                f"Predicted court validity must have shape ({self.num_keypoints}, 1), "
+                f"got {valid.shape}."
+            )
+        return (
+            keypoints[:, 0].astype(np.float32),
+            scores[:, 0].astype(np.float32),
+            valid[:, 0],
+        )
 
 
 def _normalize_keypoints(

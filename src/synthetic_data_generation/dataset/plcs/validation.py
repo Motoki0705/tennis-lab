@@ -25,6 +25,10 @@ from src.synthetic_data_generation.dataset.plcs.assembler import (
     PLCS_FRAME_LABEL_SCHEMA,
     PLCSSupervisionArrays,
 )
+from src.synthetic_data_generation.dataset.plcs.coordinates import (
+    PLCSCoordinateContract,
+    PLCSSourceSupportPlane,
+)
 from src.synthetic_data_generation.dataset.plcs.production import (
     PLCSProductionMode,
     validate_plcs_production_contract,
@@ -81,6 +85,7 @@ class PLCSCompactDatasetReader:
         self.directory = directory
         manifest = _manifest(directory)
         metadata = _object(manifest["metadata"], name="metadata")
+        PLCSCoordinateContract.from_dict(metadata.get("coordinate_contract"))
         storage = _object(manifest["storage"], name="storage")
         background_relative = _relative_path(
             storage["background_store"], name="background_store"
@@ -170,6 +175,7 @@ def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
     _keys(
         metadata,
         {
+            "coordinate_contract",
             "seed",
             "logical_scene_count",
             "aggregate_global_frame_count",
@@ -180,6 +186,7 @@ def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
         },
         name="metadata",
     )
+    PLCSCoordinateContract.from_dict(metadata["coordinate_contract"])
     seed = _nonnegative_integer(metadata["seed"], name="seed")
     required_categories = tuple(
         _text(value, name="required motion category")
@@ -363,6 +370,11 @@ def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
                 track["object_id"],
                 track["instance_id"],
                 track["asset_id"],
+                tuple(
+                    PLCSSourceSupportPlane.from_dict(
+                        track["support_plane"]
+                    ).to_dict().items()
+                ),
                 track["start_frame"],
                 track["stop_frame"],
                 tuple(cast(Sequence[object], track["anchor_position_court_m"])),
@@ -917,6 +929,7 @@ def _track(value: object) -> Mapping[str, object]:
             "object_id",
             "instance_id",
             "asset_id",
+            "support_plane",
             "start_frame",
             "stop_frame",
             "anchor_position_court_m",
@@ -927,6 +940,7 @@ def _track(value: object) -> Mapping[str, object]:
     _text(result["object_id"], name="object_id")
     _positive_integer(result["instance_id"], name="instance_id")
     _text(result["asset_id"], name="asset_id")
+    PLCSSourceSupportPlane.from_dict(result["support_plane"])
     start = _nonnegative_integer(result["start_frame"], name="start_frame")
     stop = _positive_integer(result["stop_frame"], name="stop_frame")
     if stop <= start:

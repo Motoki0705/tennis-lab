@@ -69,6 +69,9 @@ class ChunkedBLCSTrackingDataModule(BaseChunkedDataModule, BLCSTrackingDataModul
             generation_seed=int(config.run.seed),
             multi_object=True,
             timeline_config=timeline_cfg,
+            maximum_physics_attempts_per_object=int(
+                generation_cfg.maximum_physics_attempts_per_object
+            ),
         )
 
 

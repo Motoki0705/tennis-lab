@@ -17,6 +17,12 @@ from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
 from src.synthetic_data_generation.dataset.court.components.camera_sampling.sampling import (
     sample_uniform_arc_length,
 )
+from src.synthetic_data_generation.dataset.court.components.camera_sampling.targeting import (
+    resolve_target_court,
+    resolved_court_look_at_scene,
+    target_court_policy_for_trajectory,
+    validate_camera_looks_at_resolved_court,
+)
 from src.synthetic_data_generation.dataset.court.components.camera_sampling.trajectory import (
     derive_orbit_centers,
     generate_trajectory_candidates,
@@ -24,6 +30,8 @@ from src.synthetic_data_generation.dataset.court.components.camera_sampling.traj
 )
 from src.synthetic_data_generation.dataset.court.contracts import (
     CourtDatasetPlan,
+    CourtDatasetPlanAny,
+    CourtDatasetPlanV2,
     DatasetSplit,
     OrbitCenter,
     OrbitCoverageMode,
@@ -35,8 +43,15 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     OrbitTargetMode,
     OrbitTrajectorySpec,
     OrbitViewSpec,
+    OrbitViewSpecV2,
     PlannedCourtSample,
+    PlannedCourtSampleV2,
+    ResolvedTargetCourtV2,
     TrajectoryGroupPlan,
+    TrajectoryGroupPlanV2,
+)
+from src.synthetic_data_generation.dataset.court.schema import (
+    CourtDatasetSchemaVersion,
 )
 from src.synthetic_data_generation.dataset.court_assignment import CourtAssignment
 from src.synthetic_data_generation.scene_contract import (
@@ -88,7 +103,7 @@ def build_court_dataset_plan(
     layout: MultiCourtLayout,
     configuration: CourtDatasetConfiguration,
     metric_adapter: MetricSceneAdapter,
-) -> CourtDatasetPlan:
+) -> CourtDatasetPlanAny:
     """Plan in metres after adapting captured public NHT-export cameras."""
     policy = OrbitSamplingPolicy.from_configuration(configuration.sampling)
     nht_camera_tuple = tuple(cameras)
@@ -105,7 +120,15 @@ def build_court_dataset_plan(
         seed=policy.seed,
         stable_field_order=policy.stable_field_order,
     )
-    selected = select_budgeted_coverage(candidates, centers=centers, policy=policy)
+    first_group_view_count = len(
+        _target_modes_for_group(group_index=0, configuration=configuration)
+    )
+    selected = select_budgeted_coverage(
+        candidates,
+        centers=centers,
+        policy=policy,
+        first_group_view_count=first_group_view_count,
+    )
     split_by_group = assign_group_disjoint_splits(
         tuple(item.trajectory.trajectory_group_id for item in selected),
         fractions=policy.split_fractions,
@@ -114,20 +137,40 @@ def build_court_dataset_plan(
     shard_by_group = assign_group_shards(
         {
             item.trajectory.trajectory_group_id: len(item.path.theta_radians)
-            * (2 if index == 0 else 1)
+            * len(
+                _target_modes_for_group(
+                    group_index=index,
+                    configuration=configuration,
+                )
+            )
             for index, item in enumerate(selected)
         },
         shard_count=policy.shard_count,
         seed=policy.seed,
         maximum_shard_samples=configuration.performance.maximum_batch_frames,
     )
+    if configuration.schema_version is CourtDatasetSchemaVersion.V2:
+        return _build_v2_plan(
+            scene_id=scene_id,
+            profile=profile,
+            selected=selected,
+            split_by_group=split_by_group,
+            shard_by_group=shard_by_group,
+            cameras=camera_tuple,
+            layout=layout,
+            centers=centers,
+            configuration=configuration,
+            policy=policy,
+        )
     assignments = assign_court_targets_for_groups(
         selected,
         split_by_group=split_by_group,
         layout=layout,
         seed=policy.seed,
     )
-    assignment_by_group = {assignment.scene_id: assignment for assignment in assignments}
+    assignment_by_group = {
+        assignment.scene_id: assignment for assignment in assignments
+    }
     groups: list[TrajectoryGroupPlan] = []
     paths_by_group: dict[str, OrbitPathSamples] = {}
     for group_index, selected_item in enumerate(selected):
@@ -194,6 +237,77 @@ def build_court_dataset_plan(
     )
 
 
+def _build_v2_plan(
+    *,
+    scene_id: str,
+    profile: str,
+    selected: Sequence[SelectedTrajectory],
+    split_by_group: Mapping[str, DatasetSplit],
+    shard_by_group: Mapping[str, str],
+    cameras: Sequence[SceneCamera],
+    layout: MultiCourtLayout,
+    centers: Sequence[OrbitCenter],
+    configuration: CourtDatasetConfiguration,
+    policy: OrbitSamplingPolicy,
+) -> CourtDatasetPlanV2:
+    """Build v2 groups first, then resolve every target inside its sample loop."""
+    groups: list[TrajectoryGroupPlanV2] = []
+    paths_by_group: dict[str, OrbitPathSamples] = {}
+    for group_index, selected_item in enumerate(selected):
+        trajectory = selected_item.trajectory
+        group_id = trajectory.trajectory_group_id
+        groups.append(
+            TrajectoryGroupPlanV2(
+                trajectory=trajectory,
+                center=selected_item.center,
+                views=_views_for_group_v2(
+                    group_index=group_index,
+                    group_id=group_id,
+                    configuration=configuration,
+                ),
+                split=split_by_group[group_id],
+                shard_id=shard_by_group[group_id],
+                target_court_policy=target_court_policy_for_trajectory(trajectory),
+                sample_count=len(selected_item.path.theta_radians),
+                maximum_adjacent_step_m=float(
+                    np.max(selected_item.path.adjacent_steps_m)
+                ),
+                total_arc_length_m=selected_item.path.total_arc_length_m,
+            )
+        )
+        paths_by_group[group_id] = selected_item.path
+    generated_target_modes = {
+        view.target_mode for group in groups for view in group.views
+    }
+    if generated_target_modes != set(configuration.view.target_modes):
+        raise ValueError(
+            "Court view generation did not consume configured targets exactly."
+        )
+    generated_coverage_modes = {
+        view.coverage_mode for group in groups for view in group.views
+    }
+    if generated_coverage_modes != set(configuration.view.coverage_modes):
+        raise ValueError(
+            "Court view generation did not consume configured coverage modes exactly."
+        )
+    groups.sort(key=lambda item: item.trajectory_group_id)
+    samples = _plan_samples_v2(
+        groups=groups,
+        paths_by_group=paths_by_group,
+        cameras=cameras,
+        layout=layout,
+        centers=centers,
+        selection_seed=policy.seed,
+    )
+    return CourtDatasetPlanV2(
+        scene_id=scene_id,
+        profile=profile,
+        policy=policy,
+        groups=tuple(groups),
+        samples=samples,
+    )
+
+
 def _metric_cameras_from_nht_export(
     cameras: Sequence[SceneCamera],
     *,
@@ -224,6 +338,7 @@ def select_budgeted_coverage(
     *,
     centers: Sequence[OrbitCenter],
     policy: OrbitSamplingPolicy,
+    first_group_view_count: int = 2,
 ) -> tuple[SelectedTrajectory, ...]:
     """Maximize ordered typed token families within one explicit frame budget.
 
@@ -248,6 +363,12 @@ def select_budgeted_coverage(
         raise ValueError(
             "Candidate inventory cannot satisfy minimum trajectory groups."
         )
+    if (
+        isinstance(first_group_view_count, bool)
+        or not isinstance(first_group_view_count, int)
+        or first_group_view_count < 1
+    ):
+        raise ValueError("first_group_view_count must be a positive integer.")
     center_by_key = {center.key(): center for center in centers}
     if len(center_by_key) != len(tuple(centers)):
         raise ValueError("Resolved orbit centres must be unique.")
@@ -304,9 +425,9 @@ def select_budgeted_coverage(
     remaining = list(resolved)
     selected: list[SelectedTrajectory] = []
     covered: set[tuple[OrbitCoverageObjective, OrbitStableField, object]] = set()
-    token_counts: Counter[
-        tuple[OrbitCoverageObjective, OrbitStableField, object]
-    ] = Counter()
+    token_counts: Counter[tuple[OrbitCoverageObjective, OrbitStableField, object]] = (
+        Counter()
+    )
     stable_token_counts: Counter[tuple[OrbitStableField, object]] = Counter()
     proposal_count = 0
     while remaining:
@@ -319,7 +440,7 @@ def select_budgeted_coverage(
             break
         feasible: list[tuple[SelectedTrajectory, int]] = []
         for item in remaining:
-            view_count = 2 if not selected else 1
+            view_count = first_group_view_count if not selected else 1
             cost = len(item.path.theta_radians) * view_count
             remaining_group_count = max(
                 0,
@@ -332,9 +453,7 @@ def select_budgeted_coverage(
             )
             if len(completion_costs) < remaining_group_count:
                 continue
-            minimum_completion_cost = sum(
-                completion_costs[:remaining_group_count]
-            )
+            minimum_completion_cost = sum(completion_costs[:remaining_group_count])
             if (
                 proposal_count + cost + minimum_completion_cost
                 <= policy.proposal_budget
@@ -397,7 +516,9 @@ def select_budgeted_coverage(
         )
     if covered != all_tokens:
         missing = sorted(repr(token) for token in all_tokens - covered)
-        raise ValueError(f"Candidate budget cannot cover all typed field values: {missing}.")
+        raise ValueError(
+            f"Candidate budget cannot cover all typed field values: {missing}."
+        )
     if proposal_count > policy.proposal_budget:
         raise ValueError("Coverage selector exceeded proposal_budget.")
     if not any(len(item.path.theta_radians) > 0 for item in selected):
@@ -441,7 +562,9 @@ def assign_group_disjoint_splits(
         if counts[index] == 0:
             donor = int(np.argmax(counts))
             if counts[donor] <= 1:
-                raise ValueError("Configured fractions cannot produce non-empty splits.")
+                raise ValueError(
+                    "Configured fractions cannot produce non-empty splits."
+                )
             counts[donor] -= 1
             counts[index] += 1
     shuffled = sorted(identifiers)
@@ -467,8 +590,7 @@ def assign_group_shards(
     """Deterministically balance whole groups within the render batch limit."""
     identifiers = tuple(group_sample_counts)
     if not identifiers or any(
-        not isinstance(group_id, str) or not group_id
-        for group_id in identifiers
+        not isinstance(group_id, str) or not group_id for group_id in identifiers
     ):
         raise ValueError("group_sample_counts must use non-empty group IDs.")
     if any(
@@ -502,9 +624,7 @@ def assign_group_shards(
     )
     seeded_shards = list(range(shard_count))
     random.Random(seed + 2).shuffle(seeded_shards)
-    shard_rank = {
-        shard_index: rank for rank, shard_index in enumerate(seeded_shards)
-    }
+    shard_rank = {shard_index: rank for rank, shard_index in enumerate(seeded_shards)}
     shard_loads = [0] * shard_count
     assigned: dict[str, str] = {}
     for group_id in ordered_groups:
@@ -538,7 +658,9 @@ def assign_court_targets_for_groups(
     selected_tuple = tuple(selected)
     group_ids = {item.trajectory.trajectory_group_id for item in selected_tuple}
     if not selected_tuple or set(split_by_group) != group_ids:
-        raise ValueError("Court target assignment requires every selected group and split.")
+        raise ValueError(
+            "Court target assignment requires every selected group and split."
+        )
     court_ids = sorted(court.court_instance_id for court in layout.courts)
     ranked_courts = list(court_ids)
     random.Random(seed).shuffle(ranked_courts)
@@ -586,7 +708,9 @@ def assign_court_targets_for_groups(
     def solve(index: int) -> bool:
         if index == len(pending):
             global_values = [global_counts[court_id] for court_id in court_ids]
-            if any(not global_floor <= value <= global_ceiling for value in global_values):
+            if any(
+                not global_floor <= value <= global_ceiling for value in global_values
+            ):
                 return False
             return all(
                 all(
@@ -622,7 +746,9 @@ def assign_court_targets_for_groups(
         return False
 
     if not solve(0):
-        raise ValueError("Complex-centred paths cannot satisfy balanced court assignment.")
+        raise ValueError(
+            "Complex-centred paths cannot satisfy balanced court assignment."
+        )
     if set(assigned) != group_ids:
         raise ValueError("Court target assignment did not cover every selected group.")
     if len(selected_tuple) >= len(court_ids) and set(global_counts) != set(court_ids):
@@ -656,9 +782,6 @@ def _views_for_group(
 ) -> tuple[OrbitViewSpec, ...]:
     coverage_modes = configuration.view.coverage_modes
     coverage = coverage_modes[group_index % len(coverage_modes)]
-    primary_target = configuration.view.target_modes[
-        group_index % len(configuration.view.target_modes)
-    ]
     low_hfov, high_hfov = configuration.view.hfov_degrees
     hfov_by_coverage = {
         OrbitCoverageMode.FULL: high_hfov,
@@ -666,14 +789,10 @@ def _views_for_group(
         OrbitCoverageMode.PARTIAL: low_hfov,
     }
     low_height, high_height = configuration.view.look_at_height_m
-    targets: tuple[OrbitTargetMode, ...] = (primary_target,)
-    if group_index == 0:
-        variant = next(
-            target
-            for target in configuration.view.target_modes
-            if target.target_kind is not primary_target.target_kind
-        )
-        targets = (primary_target, variant)
+    targets = _target_modes_for_group(
+        group_index=group_index,
+        configuration=configuration,
+    )
     views = tuple(
         _view_for_target(
             group_index=group_index,
@@ -690,6 +809,66 @@ def _views_for_group(
     if group_id in {view.view_id for view in views}:
         raise ValueError("Opaque group and view IDs unexpectedly collide.")
     return views
+
+
+def _views_for_group_v2(
+    *,
+    group_index: int,
+    group_id: str,
+    configuration: CourtDatasetConfiguration,
+) -> tuple[OrbitViewSpecV2, ...]:
+    coverage_modes = configuration.view.coverage_modes
+    coverage = coverage_modes[group_index % len(coverage_modes)]
+    low_hfov, high_hfov = configuration.view.hfov_degrees
+    hfov_by_coverage = {
+        OrbitCoverageMode.FULL: high_hfov,
+        OrbitCoverageMode.NEAR_FULL: (low_hfov + high_hfov) / 2.0,
+        OrbitCoverageMode.PARTIAL: low_hfov,
+    }
+    low_height, high_height = configuration.view.look_at_height_m
+    targets = _target_modes_for_group(
+        group_index=group_index,
+        configuration=configuration,
+    )
+    views = tuple(
+        OrbitViewSpecV2(
+            view_id=f"view-{group_index:05d}-{target.value}",
+            target_kind=target.target_kind,
+            target_mode=target,
+            coverage_mode=coverage,
+            look_at_height_m=(
+                low_height if (group_index + target_index) % 2 == 0 else high_height
+            ),
+            hfov_degrees=hfov_by_coverage[coverage],
+        )
+        for target_index, target in enumerate(targets)
+    )
+    if group_id in {view.view_id for view in views}:
+        raise ValueError("Opaque group and view IDs unexpectedly collide.")
+    return views
+
+
+def _target_modes_for_group(
+    *,
+    group_index: int,
+    configuration: CourtDatasetConfiguration,
+) -> tuple[OrbitTargetMode, ...]:
+    """Return configured variants, adding a cross-kind view only when present."""
+    configured = configuration.view.target_modes
+    primary_target = configured[group_index % len(configured)]
+    if group_index != 0:
+        return (primary_target,)
+    variant = next(
+        (
+            target
+            for target in configured
+            if target.target_kind is not primary_target.target_kind
+        ),
+        None,
+    )
+    if variant is None:
+        return (primary_target,)
+    return primary_target, variant
 
 
 def _view_for_target(
@@ -782,6 +961,88 @@ def _plan_samples(
     return tuple(samples)
 
 
+def _plan_samples_v2(
+    *,
+    groups: Sequence[TrajectoryGroupPlanV2],
+    paths_by_group: Mapping[str, OrbitPathSamples],
+    cameras: Sequence[SceneCamera],
+    layout: MultiCourtLayout,
+    centers: Sequence[OrbitCenter],
+    selection_seed: int,
+) -> tuple[PlannedCourtSampleV2, ...]:
+    """Resolve sample target, then construct its look-at pose in that order."""
+    template = cameras[0]
+    complex_center = next(
+        center for center in centers if center.court_instance_id is None
+    )
+    samples: list[PlannedCourtSampleV2] = []
+    for group in groups:
+        path = paths_by_group[group.trajectory_group_id]
+        vertical_scene = group.center.scene_from_center.matrix()[:3, 2]
+        for view in group.views:
+            intrinsics = _intrinsics_from_hfov(
+                width=template.width,
+                height=template.height,
+                hfov_degrees=view.hfov_degrees,
+            )
+            for frame_index, center_scene in enumerate(path.points_scene_m):
+                resolved_target = resolve_target_court(
+                    policy=group.target_court_policy,
+                    camera_center_scene_m=center_scene,
+                    layout=layout,
+                    selection_seed=selection_seed,
+                )
+                target_scene = _target_scene_v2(
+                    view,
+                    target_court=resolved_target,
+                    layout=layout,
+                    complex_center=complex_center,
+                )
+                camera_to_scene = _look_at_opencv(
+                    center_scene,
+                    target_scene,
+                    vertical_scene=vertical_scene,
+                )
+                sample_index = len(samples)
+                sample_id = f"court-sample-{sample_index:06d}"
+                camera = SceneCamera(
+                    camera_id=sample_id,
+                    source_frame_index=sample_index,
+                    width=template.width,
+                    height=template.height,
+                    intrinsics=intrinsics,
+                    camera_to_scene=RigidTransform.from_matrix(camera_to_scene),
+                    image_path=f"generated/court/{sample_id}.png",
+                )
+                if view.target_mode is OrbitTargetMode.COURT_CENTER:
+                    validate_camera_looks_at_resolved_court(
+                        camera=camera,
+                        target_court=resolved_target,
+                        layout=layout,
+                        look_at_height_m=view.look_at_height_m,
+                    )
+                samples.append(
+                    PlannedCourtSampleV2(
+                        sample_index=sample_index,
+                        sample_id=sample_id,
+                        trajectory_group_id=group.trajectory_group_id,
+                        trajectory_id=group.trajectory.trajectory_id,
+                        view_id=view.view_id,
+                        trajectory_frame_index=frame_index,
+                        split=group.split,
+                        shard_id=group.shard_id,
+                        camera_center_scene_m=(
+                            float(center_scene[0]),
+                            float(center_scene[1]),
+                            float(center_scene[2]),
+                        ),
+                        camera=camera,
+                        target_court=resolved_target,
+                    )
+                )
+    return tuple(samples)
+
+
 def _target_scene(
     view: OrbitViewSpec,
     *,
@@ -816,6 +1077,37 @@ def _target_scene(
         ),
         dtype=np.float64,
     )
+
+
+def _target_scene_v2(
+    view: OrbitViewSpecV2,
+    *,
+    target_court: ResolvedTargetCourtV2,
+    layout: MultiCourtLayout,
+    complex_center: OrbitCenter,
+) -> NDArray[np.float64]:
+    """Resolve a v2 view without reading a static court from the view."""
+    if not isinstance(target_court, ResolvedTargetCourtV2):
+        raise TypeError("target_court must be a ResolvedTargetCourtV2.")
+    if view.target_kind is OrbitTargetKind.COMPLEX:
+        local = np.asarray(((0.0, 0.0, view.look_at_height_m),), dtype=np.float64)
+        return np.asarray(
+            complex_center.scene_from_center.apply(local)[0],
+            dtype=np.float64,
+        )
+    if view.target_mode is OrbitTargetMode.COURT_CENTER:
+        return resolved_court_look_at_scene(
+            target_court=target_court,
+            layout=layout,
+            look_at_height_m=view.look_at_height_m,
+        )
+    court = layout.court(target_court.binding.court_instance_id)
+    y = {
+        OrbitTargetMode.NEAR_BASELINE: -HALF_LENGTH,
+        OrbitTargetMode.FAR_BASELINE: HALF_LENGTH,
+    }[view.target_mode]
+    local = np.asarray(((0.0, y, view.look_at_height_m),), dtype=np.float64)
+    return np.asarray(court.scene_from_court.apply(local)[0], dtype=np.float64)
 
 
 def _intrinsics_from_hfov(

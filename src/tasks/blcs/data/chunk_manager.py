@@ -28,6 +28,7 @@ class _BLCSChunkGenerator:
         generation_seed: int,
         multi_object: bool,
         timeline_config: Mapping[str, Any] | None,
+        maximum_physics_attempts_per_object: int | None,
     ) -> None:
         self.generator_config = generator_config
         self.generator_device = generator_device
@@ -37,6 +38,9 @@ class _BLCSChunkGenerator:
         self.multi_object = multi_object
         self.timeline_config = (
             dict(timeline_config) if timeline_config is not None else None
+        )
+        self.maximum_physics_attempts_per_object = (
+            maximum_physics_attempts_per_object
         )
         self._next_scene_index = 0
 
@@ -59,6 +63,9 @@ class _BLCSChunkGenerator:
             seed=self.generation_seed,
             multi_object=self.multi_object,
             timeline_config=self.timeline_config,
+            maximum_physics_attempts_per_object=(
+                self.maximum_physics_attempts_per_object
+            ),
             chunksize=self.generation_chunksize,
         ):
             if stop_event.is_set():
@@ -83,6 +90,7 @@ class ChunkManager(BaseChunkManager):
         generation_seed: int,
         multi_object: bool,
         timeline_config: Mapping[str, Any] | None,
+        maximum_physics_attempts_per_object: int | None,
     ) -> None:
         self.generator_config = generator_config
         self.generator_device = generator_device
@@ -98,6 +106,9 @@ class ChunkManager(BaseChunkManager):
                 generation_seed=generation_seed,
                 multi_object=multi_object,
                 timeline_config=timeline_config,
+                maximum_physics_attempts_per_object=(
+                    maximum_physics_attempts_per_object
+                ),
             ),
             scenes_per_chunk=scenes_per_chunk,
             epochs_per_chunk=epochs_per_chunk,

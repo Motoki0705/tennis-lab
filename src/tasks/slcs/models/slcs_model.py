@@ -57,6 +57,7 @@ from src.tasks.slcs.models.components.heads import (
     PlayerPositionHead,
     PlayerRotationHead,
 )
+from src.tasks.slcs.models.components.padding import build_slcs_padding_masks
 from src.utils.models import (
     CrossAttnBlock,
     CrossAttnBlockConfig,
@@ -91,7 +92,7 @@ class _DinoCrossUpdate(nn.Module):
         q: Tensor,
         kv: Tensor,
         *,
-        attn_mask: Tensor,
+        attention_keep_mask: Tensor,
         freqs_q_cis: Tensor,
         freqs_k_cis: Tensor,
         batch_has_dino: Tensor,
@@ -100,7 +101,7 @@ class _DinoCrossUpdate(nn.Module):
         updated = self.block(
             q,
             kv,
-            attn_mask=attn_mask,
+            attn_mask=attention_keep_mask,
             freqs_q_cis=freqs_q_cis,
             freqs_k_cis=freqs_k_cis,
         )
@@ -115,7 +116,7 @@ class _NoDinoCrossUpdate(nn.Module):
         q: Tensor,
         kv: Tensor,
         *,
-        attn_mask: Tensor,
+        attention_keep_mask: Tensor,
         freqs_q_cis: Tensor,
         freqs_k_cis: Tensor,
         batch_has_dino: Tensor,
@@ -437,13 +438,10 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         ball_vis: Tensor,
         court_kp: Tensor,
         court_vis: Tensor,
-        frame_mask: Tensor,
-        entity_attn_mask: Tensor,
-        time_attn_mask: Tensor,
+        padding_mask: Tensor,
         dino_tokens: Tensor,
         dino_frame_idx: Tensor,
-        dino_attn_mask: Tensor,
-        dino_batch_has_evidence: Tensor,
+        dino_padding_mask: Tensor,
     ) -> dict[str, Tensor]:
         """Run the fusion model on one batch of single-camera windows.
 
@@ -453,13 +451,17 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         batch_size, _, seq_len = player_kp.shape[:3]
         num_players = self.num_players
         num_entities = self.num_entities
+        masks = build_slcs_padding_masks(
+            padding_mask,
+            dino_padding_mask,
+            num_entities=num_entities,
+            dino_tokens_per_sample=self.dino_encoder.num_tokens,
+        )
 
         # Zero-out invisible observations before embedding (PLCS convention).
         player_kp = player_kp * (player_kp_vis > 0).unsqueeze(-1).to(player_kp.dtype)
         ball_uv = ball_uv * (ball_vis > 0).unsqueeze(-1).to(ball_uv.dtype)
         court_kp = court_kp * (court_vis > 0).unsqueeze(-1).to(court_kp.dtype)
-
-        frame_valid = frame_mask > 0
 
         # ---- Entity tokens (B, T, E, D) --------------------------------
         court_for_players = (
@@ -470,14 +472,14 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         player_flat = player_kp.reshape(
             batch_size * num_players * seq_len, NUM_HUMAN_KP, 2
         )
-        player_token_valid = (player_valid > 0) & frame_valid.unsqueeze(1)  # (B, P, T)
+        player_token_valid = (player_valid > 0) & masks.frame_state_valid.unsqueeze(1)
         player_tokens = self.player_embed(
             court_for_players,
             player_flat,
             player_token_valid.reshape(batch_size * num_players * seq_len),
         ).reshape(batch_size, num_players, seq_len, self.hidden_dim)
 
-        ball_token_valid = (ball_vis > 0) & frame_valid  # (B, T)
+        ball_token_valid = (ball_vis > 0) & masks.frame_state_valid
         ball_tokens = self.ball_embed(
             court_kp.reshape(batch_size * seq_len, self.num_court_kp, 2),
             ball_uv.reshape(batch_size * seq_len, 2),
@@ -488,6 +490,7 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         entity_ids = torch.arange(num_entities, device=x.device)
         x = x + self.entity_embed(entity_ids)[None, :, None, :]
         x = x.permute(0, 2, 1, 3)  # (B, T, E, D)
+        x = x * masks.entity_state_valid.unsqueeze(-1).to(x.dtype)
 
         entity_freqs = self._camera_freqs(
             batch_size=batch_size, seq_len=seq_len, n_cams=num_entities
@@ -499,8 +502,9 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         dino_ctx = self._encode_dino(
             dino_tokens=dino_tokens,
             dino_frame_idx=dino_frame_idx,
-            dino_attn_mask=dino_attn_mask,
-            dino_batch_has_evidence=dino_batch_has_evidence,
+            dino_sample_valid=masks.dino_sample_valid,
+            dino_attention_keep_mask=masks.dino_attention_keep_mask,
+            dino_batch_has_evidence=masks.dino_batch_has_evidence,
             batch_size=batch_size,
         )
 
@@ -514,8 +518,9 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             num_entities=num_entities,
             entity_freqs=entity_freqs,
             time_freqs=time_freqs,
-            entity_mask=entity_attn_mask,
-            time_mask=time_attn_mask,
+            entity_state_valid=masks.entity_state_valid,
+            entity_attention_keep_mask=masks.entity_attention_keep_mask,
+            time_attention_keep_mask=masks.time_attention_keep_mask,
             dino_ctx=dino_ctx,
         )
         position_x = self._run_axial_trunk(
@@ -528,8 +533,9 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             num_entities=num_entities,
             entity_freqs=entity_freqs,
             time_freqs=time_freqs,
-            entity_mask=entity_attn_mask,
-            time_mask=time_attn_mask,
+            entity_state_valid=masks.entity_state_valid,
+            entity_attention_keep_mask=masks.entity_attention_keep_mask,
+            time_attention_keep_mask=masks.time_attention_keep_mask,
             dino_ctx=dino_ctx,
         )
         rotation_x = self._run_axial_trunk(
@@ -542,8 +548,9 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             num_entities=num_entities,
             entity_freqs=entity_freqs,
             time_freqs=time_freqs,
-            entity_mask=entity_attn_mask,
-            time_mask=time_attn_mask,
+            entity_state_valid=masks.entity_state_valid,
+            entity_attention_keep_mask=masks.entity_attention_keep_mask,
+            time_attention_keep_mask=masks.time_attention_keep_mask,
             dino_ctx=dino_ctx,
         )
 
@@ -554,19 +561,27 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         rotation_player_feat = rotation_x[:, :, :num_players, :].permute(0, 2, 1, 3)
         ball_feat = position_x[:, :, num_players, :]
 
+        player_output_valid = masks.frame_state_valid[:, None, :]
+        ball_output_valid = masks.frame_state_valid
         return {
-            "player_position": self.player_position_head(position_player_feat),
-            "player_rotation": self.player_rotation_head(rotation_player_feat),
+            "player_position": self.player_position_head(position_player_feat)
+            * player_output_valid.unsqueeze(-1),
+            "player_rotation": self.player_rotation_head(rotation_player_feat)
+            * player_output_valid.unsqueeze(-1),
             "player_position_log_b": self._clamp_log_b(
                 self.player_position_scale_head(position_player_feat).squeeze(-1)
-            ),
+            )
+            * player_output_valid,
             "player_rotation_log_b": self._clamp_log_b(
                 self.player_rotation_scale_head(rotation_player_feat).squeeze(-1)
-            ),
-            "ball_position": self.ball_position_head(ball_feat),
+            )
+            * player_output_valid,
+            "ball_position": self.ball_position_head(ball_feat)
+            * ball_output_valid.unsqueeze(-1),
             "ball_position_log_b": self._clamp_log_b(
                 self.ball_position_scale_head(ball_feat).squeeze(-1)
-            ),
+            )
+            * ball_output_valid,
         }
 
     # ------------------------------------------------------------------
@@ -585,41 +600,50 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         num_entities: int,
         entity_freqs: Tensor,
         time_freqs: Tensor,
-        entity_mask: Tensor,
-        time_mask: Tensor,
+        entity_state_valid: Tensor,
+        entity_attention_keep_mask: Tensor,
+        time_attention_keep_mask: Tensor,
         dino_ctx: tuple[Tensor, Tensor, Tensor, Tensor],
     ) -> Tensor:
         """Run one shared or task-specific axial trunk."""
-        kv, dino_attn_mask, k_freqs, batch_has_dino = dino_ctx
+        kv, dino_attention_keep_mask, k_freqs, batch_has_dino = dino_ctx
+        state_scale = entity_state_valid.unsqueeze(-1).to(x.dtype)
         for entity_layer, time_layer, dino_cross_layer in zip(
             entity_layers, time_layers, dino_cross_layers, strict=True
         ):
             x_entity = x.reshape(batch_size * seq_len, num_entities, self.hidden_dim)
             x_entity = entity_layer(
-                x_entity, freqs_cis=entity_freqs, attn_mask=entity_mask
+                x_entity,
+                freqs_cis=entity_freqs,
+                attn_mask=entity_attention_keep_mask,
             )
             x = x_entity.reshape(batch_size, seq_len, num_entities, self.hidden_dim)
+            x = x * state_scale
 
             x_time = x.permute(0, 2, 1, 3).reshape(
                 batch_size * num_entities, seq_len, self.hidden_dim
             )
-            x_time = time_layer(x_time, freqs_cis=time_freqs, attn_mask=time_mask)
+            x_time = time_layer(
+                x_time,
+                freqs_cis=time_freqs,
+                attn_mask=time_attention_keep_mask,
+            )
             x = x_time.reshape(
                 batch_size, num_entities, seq_len, self.hidden_dim
             ).permute(0, 2, 1, 3)
+            x = x * state_scale
 
             q = x.reshape(batch_size, seq_len * num_entities, self.hidden_dim)
             q = dino_cross_layer(
                 q,
                 kv,
-                attn_mask=dino_attn_mask,
-                freqs_q_cis=self._query_freqs(
-                    batch_size=batch_size, seq_len=seq_len
-                ),
+                attention_keep_mask=dino_attention_keep_mask,
+                freqs_q_cis=self._query_freqs(batch_size=batch_size, seq_len=seq_len),
                 freqs_k_cis=k_freqs,
                 batch_has_dino=batch_has_dino,
             )
             x = q.reshape(batch_size, seq_len, num_entities, self.hidden_dim)
+            x = x * state_scale
         return x
 
     def _clamp_log_b(self, log_b: Tensor) -> Tensor:
@@ -645,7 +669,8 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         *,
         dino_tokens: Tensor,
         dino_frame_idx: Tensor,
-        dino_attn_mask: Tensor,
+        dino_sample_valid: Tensor,
+        dino_attention_keep_mask: Tensor,
         dino_batch_has_evidence: Tensor,
         batch_size: int,
     ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
@@ -653,16 +678,25 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
 
         num_samples = dino_tokens.shape[1]
         num_patches = self.dino_encoder.num_tokens
+        dino_tokens = dino_tokens * dino_sample_valid[..., None, None].to(
+            dino_tokens.dtype
+        )
         encoded = self.dino_encoder(dino_tokens)  # (B, T_d, S, D)
         kv = encoded.reshape(batch_size, num_samples * num_patches, self.hidden_dim)
-
-        kv = kv.masked_fill(~dino_batch_has_evidence[:, None, None], 0.0)
+        dino_key_valid = (
+            dino_sample_valid.unsqueeze(-1)
+            .expand(batch_size, num_samples, num_patches)
+            .reshape(batch_size, num_samples * num_patches)
+        )
+        kv = kv * dino_key_valid.unsqueeze(-1).to(kv.dtype)
 
         # Time-axis RoPE with the *actual* sampled frame indices; the entity
         # axis uses the reserved visual-stream slot. Buffer row f holds the
         # RoPE phase of window frame f (time position f+1, mixin convention),
         # so keys index rows by the raw window-relative frame index.
-        time_row = dino_frame_idx.clamp(min=0)
+        time_row = dino_frame_idx.masked_fill(~dino_sample_valid, 0).clamp(
+            min=0, max=self.max_seq_len - 1
+        )
         freqs = self.token_freqs_cis[time_row, self.num_entities]
         k_freqs = (
             freqs.unsqueeze(2)
@@ -680,7 +714,7 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
                 self.rope_dim // 2,
             )
         )
-        return kv, dino_attn_mask, k_freqs, dino_batch_has_evidence
+        return kv, dino_attention_keep_mask, k_freqs, dino_batch_has_evidence
 
 
 __all__ = ["SLCSFusionModel"]

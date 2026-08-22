@@ -18,7 +18,7 @@ Notes:
       ``src/tasks/plcs/configs/analyze_angle_velocity.yaml`` via Hydra.
     - The script must be run CPU-only (prefix with ``CUDA_VISIBLE_DEVICES=""``).
     - Only valid frame-to-frame transitions are counted: both adjacent frames
-      must have human_mask > 0.
+      must not be padded according to ``padding_mask``.
     - Torsion angles and torso twist are periodic; their velocity differences are
       wrapped into [-pi, pi] before aggregation.
     - The JSON output contains per-angle std, mean-abs velocity, and normalized
@@ -171,7 +171,7 @@ def analyze_angle_velocity(
 
     """
     # Build the dataset directly without the collate adapter so that we always
-    # have human_kp_3d, position, rotation, and human_mask in the batch.
+    # have human_kp_3d, position, rotation, and padding_mask in the batch.
     loader: torch.utils.data.DataLoader[dict[str, Tensor]] = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
@@ -199,7 +199,9 @@ def analyze_angle_velocity(
         human_kp_3d: Tensor | None = cast("Tensor | None", batch.get("human_kp_3d"))
         position: Tensor | None = cast("Tensor | None", batch.get("position"))
         rotation: Tensor | None = cast("Tensor | None", batch.get("rotation"))
-        human_mask: Tensor | None = cast("Tensor | None", batch.get("human_mask"))
+        padding_mask: Tensor | None = cast(
+            "Tensor | None", batch.get("padding_mask")
+        )
 
         if human_kp_3d is None or position is None or rotation is None:
             batches_processed += 1
@@ -208,7 +210,7 @@ def analyze_angle_velocity(
         # human_kp_3d: (B, T, 17, 3)
         # position   : (B, T, 3)
         # rotation   : (B, T, 2)
-        # human_mask : (B, N, T) from collate – take max over camera axis -> (B, T)
+        # padding_mask: (B,N,T), True=padding.
         if human_kp_3d.ndim != 4:
             batches_processed += 1
             continue
@@ -220,12 +222,12 @@ def analyze_angle_velocity(
             continue
 
         # Resolve validity mask: (B, T) boolean
-        if human_mask is not None:
-            if human_mask.ndim == 3:
-                # (B, N, T) -> (B, T): valid if ANY camera says valid
-                mask_bt: Tensor = human_mask.max(dim=1).values > 0
-            elif human_mask.ndim == 2:
-                mask_bt = human_mask > 0
+        if padding_mask is not None:
+            if padding_mask.ndim == 3:
+                # (B,N,T) -> (B,T): valid if any camera is not padded.
+                mask_bt: Tensor = (~padding_mask).any(dim=1)
+            elif padding_mask.ndim == 2:
+                mask_bt = ~padding_mask
             else:
                 mask_bt = torch.ones(b, t, dtype=torch.bool)
         else:

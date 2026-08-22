@@ -38,6 +38,13 @@ TrainerPrecision: TypeAlias = Literal[
     "64-true",
 ]
 MonitorMode: TypeAlias = Literal["min", "max"]
+CompileBackend: TypeAlias = Literal["inductor"]
+CompileMode: TypeAlias = Literal[
+    "default",
+    "reduce-overhead",
+    "max-autotune",
+    "max-autotune-no-cudagraphs",
+]
 
 __all__ = [
     "BaseDataConfig",
@@ -45,6 +52,7 @@ __all__ = [
     "BaseTrainingConfig",
     "CheckpointConfig",
     "ChunkDataConfig",
+    "CompileConfig",
     "EarlyStoppingConfig",
     "GANConfig",
     "GANTransitionConfig",
@@ -103,6 +111,7 @@ _BASE_TRAINING_KEYS = frozenset(
         "lr_monitor",
         "qualitative_logging",
         "gan",
+        "compile",
         "matmul_precision",
         "allow_tf32",
     }
@@ -129,6 +138,7 @@ _GAN_KEYS = frozenset(
     }
 )
 _GAN_TRANSITION_KEYS = frozenset({"start_epoch"})
+_COMPILE_KEYS = frozenset({"enabled", "backend", "mode", "fullgraph", "dynamic"})
 _BASE_DATA_KEYS = frozenset({"scene_dir", "batch_size", "num_workers", "pin_memory"})
 _CHUNK_DATA_KEYS = frozenset({"chunk", "generator_device"})
 _CHUNK_KEYS = frozenset(
@@ -153,6 +163,10 @@ _TRAINER_PRECISIONS = frozenset(
     }
 )
 _MATMUL_PRECISIONS = frozenset({"highest", "high", "medium"})
+_COMPILE_BACKENDS = frozenset({"inductor"})
+_COMPILE_MODES = frozenset(
+    {"default", "reduce-overhead", "max-autotune", "max-autotune-no-cudagraphs"}
+)
 _MAX_LIGHTNING_SEED = 2**32 - 1
 
 
@@ -1012,6 +1026,61 @@ class GANConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class CompileConfig:
+    """Explicit ``torch.compile`` settings shared by every training task."""
+
+    enabled: bool
+    backend: CompileBackend
+    mode: CompileMode
+    fullgraph: bool
+    dynamic: bool
+
+    @classmethod
+    def from_mapping(cls, value: object) -> CompileConfig:
+        mapping = exact_config_mapping(
+            value,
+            path="training.compile",
+            required_keys=_COMPILE_KEYS,
+        )
+        backend = cast(
+            "str",
+            require_config_value(mapping, "backend", str, path="training.compile"),
+        )
+        if backend not in _COMPILE_BACKENDS:
+            allowed = ", ".join(sorted(_COMPILE_BACKENDS))
+            raise SemanticConfigurationError(
+                f"training.compile.backend must be one of {allowed}; got {backend!r}."
+            )
+        mode = cast(
+            "str",
+            require_config_value(mapping, "mode", str, path="training.compile"),
+        )
+        if mode not in _COMPILE_MODES:
+            allowed = ", ".join(sorted(_COMPILE_MODES))
+            raise SemanticConfigurationError(
+                f"training.compile.mode must be one of {allowed}; got {mode!r}."
+            )
+        return cls(
+            enabled=cast(
+                "bool",
+                require_config_value(mapping, "enabled", bool, path="training.compile"),
+            ),
+            backend=cast("CompileBackend", backend),
+            mode=cast("CompileMode", mode),
+            fullgraph=cast(
+                "bool",
+                require_config_value(
+                    mapping, "fullgraph", bool, path="training.compile"
+                ),
+            ),
+            dynamic=cast(
+                "bool",
+                require_config_value(mapping, "dynamic", bool, path="training.compile"),
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class BaseTrainingConfig:
     """All task-independent training settings consumed by shared runtime code."""
 
@@ -1022,6 +1091,7 @@ class BaseTrainingConfig:
     lr_monitor: LRMonitorConfig
     qualitative_logging: QualitativeLoggingConfig
     gan: GANConfig
+    compile: CompileConfig
     matmul_precision: str
     allow_tf32: bool
 
@@ -1060,6 +1130,18 @@ class BaseTrainingConfig:
             keys=_GAN_TRANSITION_KEYS,
         )
         shared["gan"] = shared_gan
+        shared["compile"] = _project_required_mapping(
+            require_config_mapping(task_mapping, "compile", path="training"),
+            path="training.compile",
+            keys=_COMPILE_KEYS,
+        )
+        shared["qualitative_logging"] = _project_required_mapping(
+            require_config_mapping(
+                task_mapping, "qualitative_logging", path="training"
+            ),
+            path="training.qualitative_logging",
+            keys=_QUALITATIVE_LOGGING_KEYS,
+        )
         return cls.from_mapping(shared)
 
     @classmethod
@@ -1101,6 +1183,9 @@ class BaseTrainingConfig:
             ),
             gan=GANConfig.from_mapping(
                 require_config_mapping(mapping, "gan", path="training")
+            ),
+            compile=CompileConfig.from_mapping(
+                require_config_mapping(mapping, "compile", path="training")
             ),
             matmul_precision=matmul_precision,
             allow_tf32=cast(

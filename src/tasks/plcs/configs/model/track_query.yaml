@@ -1,14 +1,11 @@
-name: plcs_track_query
+defaults:
+  - _track_query
+  - _self_
+
+# Lightweight canonical setup used by the default tracking experiment.
 hidden_dim: 64
 num_heads: 4
 ffn_dim: 128
-num_queries: 4
-num_stages: 2
-num_joints: 17
+num_stages: 4
 rope_dim: 16
-rope_theta: 10000.0
-ffn_type: swiglu
 dropout: 0.0
-role_rope_enabled: true
-mask_invisible_observations: true
-invisible_init_std: 0.02

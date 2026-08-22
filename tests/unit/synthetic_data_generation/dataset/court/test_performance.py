@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import copy
 from dataclasses import replace
 from pathlib import Path
-from typing import Literal
 
 import numpy as np
 import pytest
@@ -13,7 +13,6 @@ from PIL import Image
 
 from src.synthetic_data_generation.alignment.contracts import MetricSceneAdapter
 from src.synthetic_data_generation.dataset.court import assembler
-from src.synthetic_data_generation.dataset.court import shards as court_shards
 from src.synthetic_data_generation.dataset.court.components.labels import (
     SEMANTIC_CLASS_NAMES,
     CourtProjection,
@@ -27,6 +26,10 @@ from src.synthetic_data_generation.dataset.court.contracts import (
 )
 from src.synthetic_data_generation.dataset.court.performance import (
     CourtPerformanceEvidence,
+)
+from src.synthetic_data_generation.dataset.court.schema import (
+    COURT_PERFORMANCE_SCHEMA_V2,
+    COURT_SEMANTIC_CLASS_NAMES_V2,
 )
 from src.synthetic_data_generation.dataset.court.shards import (
     CourtRenderedSample,
@@ -44,6 +47,91 @@ from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCa
 
 
 def test_performance_evidence_round_trips_measured_court_budget() -> None:
+    evidence = _post_render_rejection_evidence(fresh_rendered_sample_count=3)
+
+    reopened = CourtPerformanceEvidence.from_dict(evidence.to_dict())
+
+    assert reopened == evidence
+    assert reopened.metrics.nht_invocations <= reopened.resolved_shard_count
+    assert reopened.metrics.published_bytes == 900
+    assert reopened.post_render_rejected_sample_count == 1
+    assert reopened.accepted_staged_complete_array_scans == 2
+    assert reopened.post_render_rejected_staged_complete_array_scans == 1
+    assert reopened.budget.maximum_complete_array_scans_per_sample == 2
+
+
+def test_v2_performance_evidence_requires_exact_fourteen_class_schema() -> None:
+    v1 = _post_render_rejection_evidence(fresh_rendered_sample_count=3)
+    v2 = replace(
+        v1,
+        schema=COURT_PERFORMANCE_SCHEMA_V2,
+        visible_points_by_class={name: 1 for name in COURT_SEMANTIC_CLASS_NAMES_V2},
+    )
+
+    assert CourtPerformanceEvidence.from_dict(v2.to_dict()) == v2
+    assert v2.to_dict()["schema"] == "court_dataset_performance_v3"
+
+    mixed = copy.deepcopy(v2.to_dict())
+    semantic = mixed["semantic"]
+    assert isinstance(semantic, dict)
+    semantic["visible_points_by_class"] = {name: 1 for name in SEMANTIC_CLASS_NAMES}
+    with pytest.raises(ValueError, match="semantic classes"):
+        CourtPerformanceEvidence.from_dict(mixed)
+
+    unknown = copy.deepcopy(v2.to_dict())
+    unknown["schema"] = "court_dataset_performance_v4"
+    with pytest.raises(ValueError, match="Unknown Court performance schema"):
+        CourtPerformanceEvidence.from_dict(unknown)
+
+
+def test_array_scan_budget_is_equivalent_for_fresh_and_reused_shards() -> None:
+    fresh = _post_render_rejection_evidence(fresh_rendered_sample_count=3)
+    reused = _post_render_rejection_evidence(fresh_rendered_sample_count=0)
+
+    assert fresh.metrics.complete_array_scans == 6
+    assert reused.metrics.complete_array_scans == 3
+    assert fresh.fresh_run_complete_array_scan_requirement == 6
+    assert reused.fresh_run_complete_array_scan_requirement == 6
+    assert fresh.complete_array_scan_budget_capacity == 6
+    assert reused.complete_array_scan_budget_capacity == 6
+    assert fresh.retained_nht_array_bytes == reused.retained_nht_array_bytes == 0
+
+    for evidence in (fresh, reused):
+        with pytest.raises(ValueError, match="cannot cover"):
+            replace(
+                evidence,
+                budget=_budget(maximum_complete_array_scans_per_sample=1),
+                complete_array_scan_budget_capacity=3,
+            )
+
+
+def test_performance_evidence_rejects_genuine_extra_staged_array_scan() -> None:
+    evidence = _post_render_rejection_evidence(fresh_rendered_sample_count=3)
+    excessive_metrics = replace(evidence.metrics, complete_array_scans=7)
+
+    with pytest.raises(ValueError, match="Every accepted Court proposal"):
+        replace(
+            evidence,
+            metrics=excessive_metrics,
+            accepted_staged_complete_array_scans=3,
+            staged_complete_array_scans=4,
+        )
+
+
+def test_performance_evidence_rejects_retained_nht_arrays() -> None:
+    evidence = _post_render_rejection_evidence(fresh_rendered_sample_count=3)
+
+    with pytest.raises(ValueError, match="cannot retain dense NHT arrays"):
+        replace(evidence, retained_nht_array_bytes=1)
+
+
+def _post_render_rejection_evidence(
+    *,
+    fresh_rendered_sample_count: int,
+) -> CourtPerformanceEvidence:
+    renderable_sample_count = 3
+    reused_rendered_sample_count = renderable_sample_count - fresh_rendered_sample_count
+    nht_invocations = int(fresh_rendered_sample_count > 0)
     metrics = DatasetPerformanceMetrics(
         domain="court",
         wall_seconds=12.0,
@@ -51,9 +139,9 @@ def test_performance_evidence_round_trips_measured_court_budget() -> None:
         peak_rss_bytes=1024,
         execution_device="cuda:0",
         cuda_peak_bytes=0,
-        nht_invocations=1,
+        nht_invocations=nht_invocations,
         background_cache_misses=0,
-        complete_array_scans=2,
+        complete_array_scans=fresh_rendered_sample_count + renderable_sample_count,
         generated_bytes=1000,
         published_bytes=900,
         dense_reference_bytes=900,
@@ -61,77 +149,37 @@ def test_performance_evidence_round_trips_measured_court_budget() -> None:
         camera_count=2,
         sample_count=2,
     )
-    evidence = CourtPerformanceEvidence(
+    return CourtPerformanceEvidence(
         budget=_budget(),
         metrics=metrics,
         resolved_shard_count=8,
-        maximum_shard_sample_count=2,
-        request_path_count=1,
-        proposal_count=2,
+        maximum_shard_sample_count=3,
+        request_path_count=nht_invocations,
+        proposal_count=3,
         accepted_frame_count=2,
-        rejected_frame_count=0,
-        pre_render_checked_sample_count=2,
+        rejected_frame_count=1,
+        pre_render_checked_sample_count=3,
         pre_render_rejected_sample_count=0,
+        renderable_sample_count=renderable_sample_count,
+        post_render_rejected_sample_count=1,
         depth_conversion_count=2,
-        nht_boundary_complete_array_scans=2,
-        staged_complete_array_scans=0,
-        scene_validation_count=1,
-        preview_validation_count=4,
-        loaded_array_bytes=100,
-        external_nht_boundary_wall_seconds=3.0,
-        shard_wall_seconds={"shard-000": 3.0},
+        fresh_rendered_sample_count=fresh_rendered_sample_count,
+        reused_rendered_sample_count=reused_rendered_sample_count,
+        nht_boundary_complete_array_scans=fresh_rendered_sample_count,
+        accepted_staged_complete_array_scans=2,
+        post_render_rejected_staged_complete_array_scans=1,
+        staged_complete_array_scans=renderable_sample_count,
+        fresh_run_complete_array_scan_requirement=6,
+        complete_array_scan_budget_capacity=6,
+        scene_validation_count=nht_invocations,
+        preview_validation_count=2 * fresh_rendered_sample_count,
+        loaded_array_bytes=300 if nht_invocations else 0,
+        maximum_nht_live_array_bytes=100 if nht_invocations else 0,
+        retained_nht_array_bytes=0,
+        external_nht_boundary_wall_seconds=3.0 if nht_invocations else 0.0,
+        shard_wall_seconds={"shard-000": 3.0} if nht_invocations else {},
         visible_points_by_class={name: 1 for name in SEMANTIC_CLASS_NAMES},
     )
-
-    reopened = CourtPerformanceEvidence.from_dict(evidence.to_dict())
-
-    assert reopened == evidence
-    assert reopened.metrics.nht_invocations <= reopened.resolved_shard_count
-    assert reopened.metrics.published_bytes == 900
-    assert reopened.budget.maximum_complete_array_scans_per_sample == 2
-
-
-def test_performance_evidence_rejects_extra_array_scan() -> None:
-    metrics = DatasetPerformanceMetrics(
-        domain="court",
-        wall_seconds=1.0,
-        cpu_seconds=1.0,
-        peak_rss_bytes=1,
-        execution_device="cuda:0",
-        cuda_peak_bytes=0,
-        nht_invocations=0,
-        background_cache_misses=0,
-        complete_array_scans=3,
-        generated_bytes=100,
-        published_bytes=100,
-        dense_reference_bytes=100,
-        frame_count=1,
-        camera_count=1,
-        sample_count=1,
-    )
-
-    with pytest.raises(ValueError, match="scanned exactly once"):
-        CourtPerformanceEvidence(
-            budget=_budget(),
-            metrics=metrics,
-            resolved_shard_count=8,
-            maximum_shard_sample_count=1,
-            request_path_count=0,
-            proposal_count=1,
-            accepted_frame_count=1,
-            rejected_frame_count=0,
-            pre_render_checked_sample_count=1,
-            pre_render_rejected_sample_count=0,
-            depth_conversion_count=1,
-            nht_boundary_complete_array_scans=3,
-            staged_complete_array_scans=0,
-            scene_validation_count=0,
-            preview_validation_count=6,
-            loaded_array_bytes=100,
-            external_nht_boundary_wall_seconds=0.0,
-            shard_wall_seconds={},
-            visible_points_by_class={name: 1 for name in SEMANTIC_CLASS_NAMES},
-        )
 
 
 def test_performance_evidence_counts_pre_render_rejection_without_array_scan() -> None:
@@ -146,7 +194,7 @@ def test_performance_evidence_counts_pre_render_rejection_without_array_scan() -
             cuda_peak_bytes=0,
             nht_invocations=1,
             background_cache_misses=0,
-            complete_array_scans=1,
+            complete_array_scans=2,
             generated_bytes=100,
             published_bytes=100,
             dense_reference_bytes=100,
@@ -162,19 +210,29 @@ def test_performance_evidence_counts_pre_render_rejection_without_array_scan() -
         rejected_frame_count=1,
         pre_render_checked_sample_count=2,
         pre_render_rejected_sample_count=1,
+        renderable_sample_count=1,
+        post_render_rejected_sample_count=0,
         depth_conversion_count=1,
+        fresh_rendered_sample_count=1,
+        reused_rendered_sample_count=0,
         nht_boundary_complete_array_scans=1,
-        staged_complete_array_scans=0,
+        accepted_staged_complete_array_scans=1,
+        post_render_rejected_staged_complete_array_scans=0,
+        staged_complete_array_scans=1,
+        fresh_run_complete_array_scan_requirement=2,
+        complete_array_scan_budget_capacity=2,
         scene_validation_count=1,
         preview_validation_count=2,
         loaded_array_bytes=100,
+        maximum_nht_live_array_bytes=100,
+        retained_nht_array_bytes=0,
         external_nht_boundary_wall_seconds=0.25,
         shard_wall_seconds={"shard-000": 0.25},
         visible_points_by_class={name: 1 for name in SEMANTIC_CLASS_NAMES},
     )
 
     assert evidence.pre_render_rejected_sample_count == 1
-    assert evidence.metrics.complete_array_scans == 1
+    assert evidence.metrics.complete_array_scans == 2
 
 
 def test_staged_evaluation_preserves_rgb_alpha_and_converts_depth_once(
@@ -248,6 +306,8 @@ def test_performance_writer_persists_exact_published_bytes(tmp_path: Path) -> No
         scene_validation_count=1,
         preview_validation_count=2,
         loaded_array_bytes=192,
+        maximum_nht_live_array_bytes=192,
+        retained_nht_array_bytes=0,
         shard_timings=(
             CourtShardTiming(
                 shard_id="shard-000",
@@ -264,59 +324,14 @@ def test_performance_writer_persists_exact_published_bytes(tmp_path: Path) -> No
         proposal_count=1,
         accepted_frame_count=1,
         rejected_frame_count=0,
-        staged_complete_array_scans=0,
+        accepted_staged_complete_array_scans=1,
+        post_render_rejected_staged_complete_array_scans=0,
         budget=_budget(maximum_nht_invocations=1, maximum_batch_frames=1),
         visible_by_class={name: 1 for name in SEMANTIC_CLASS_NAMES},
     )
 
     assert evidence.metrics.published_bytes == directory_size_bytes(root)
     assert (root / "diagnostics" / "performance.json").is_file()
-
-
-def test_staged_evaluation_reuses_nht_validated_arrays_without_reopening_payloads(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    rendered = _rendered(tmp_path)
-    actual_load = np.load
-    rendered = replace(
-        rendered,
-        validated_arrays=NHTRenderArrays(
-            rgb=actual_load(rendered.rgb_path, allow_pickle=False),
-            alpha=actual_load(rendered.alpha_path, allow_pickle=False),
-            depth=actual_load(rendered.depth_path, allow_pickle=False),
-        ),
-    )
-    load_modes: list[str | None] = []
-
-    def header_load(
-        file: Path,
-        *,
-        mmap_mode: Literal["r", "r+", "w+", "c"] | None = None,
-        allow_pickle: bool = False,
-    ) -> NDArray[np.float32]:
-        load_modes.append(mmap_mode)
-        if mmap_mode != "r":
-            raise AssertionError("Court reopened a complete NHT payload.")
-        loaded: NDArray[np.float32] = actual_load(
-            file,
-            mmap_mode=mmap_mode,
-            allow_pickle=allow_pickle,
-        )
-        return loaded
-
-    monkeypatch.setattr(court_shards.np, "load", header_load)
-    result = assembler._evaluate_staged_sample(
-        rendered,
-        projection=_projection(rendered),
-        metric_adapter=MetricSceneAdapter.from_nht_scene_from_metric_scene(
-            np.eye(4, dtype=np.float64)
-        ),
-    )
-
-    assert result.accepted
-    assert result.complete_array_scan_count == 0
-    assert load_modes == ["r", "r", "r"]
 
 
 def _projection(rendered: CourtRenderedSample) -> MultiCourtProjection:
@@ -349,6 +364,7 @@ def _budget(
     *,
     maximum_nht_invocations: int = 8,
     maximum_batch_frames: int = 600,
+    maximum_complete_array_scans_per_sample: int = 2,
 ) -> DatasetPerformanceBudget:
     return DatasetPerformanceBudget(
         maximum_wall_seconds=1800.0,
@@ -356,7 +372,9 @@ def _budget(
         maximum_published_fraction_of_dense_reference=1.0,
         maximum_nht_invocations=maximum_nht_invocations,
         maximum_background_cache_misses=1,
-        maximum_complete_array_scans_per_sample=2,
+        maximum_complete_array_scans_per_sample=(
+            maximum_complete_array_scans_per_sample
+        ),
         maximum_batch_frames=maximum_batch_frames,
         execution_device="cuda:0",
         require_cuda=True,

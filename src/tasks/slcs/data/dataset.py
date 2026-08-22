@@ -275,24 +275,24 @@ def build_window_sample(
     court_kp = pad_time(clip.court_kp[cam, t0:t1], 0)
     court_vis = pad_time(clip.court_vis[cam, t0:t1], 0)
 
-    frame_mask = plan.frame_mask()
+    padding_mask = plan.padding_mask()
     frame_idx = plan.frame_indices()
     timestamp = (frame_idx.astype(np.float32)) / np.float32(clip.fps)
 
     dino_tokens: NDArray[np.float32]
     dino_frame_idx: NDArray[np.int64]
-    dino_valid: NDArray[np.bool_]
+    dino_padding_mask: NDArray[np.bool_]
     if dino_arrays is not None:
         tokens, token_frames = dino_arrays
         sel = select_window_tokens(token_frames, plan)
         dino_tokens = tokens[sel]
         dino_frame_idx = (token_frames[sel] - plan.start).astype(np.int64)
-        dino_valid = np.ones(len(sel), dtype=np.bool_)
+        dino_padding_mask = np.zeros(len(sel), dtype=np.bool_)
     else:
         num_patches, embed_dim = empty_dino_shape
         dino_tokens = np.zeros((0, num_patches, embed_dim), dtype=np.float32)
         dino_frame_idx = np.zeros((0,), dtype=np.int64)
-        dino_valid = np.zeros((0,), dtype=np.bool_)
+        dino_padding_mask = np.zeros((0,), dtype=np.bool_)
 
     target_player_position = pad_time(clip.player_position_norm[:, t0:t1], 1)
     target_player_rotation = pad_time(clip.player_rotation[:, t0:t1], 1)
@@ -312,10 +312,10 @@ def build_window_sample(
         court_vis=torch.from_numpy(np.ascontiguousarray(court_vis)),
         dino_tokens=torch.from_numpy(np.ascontiguousarray(dino_tokens)),
         dino_frame_idx=torch.from_numpy(np.ascontiguousarray(dino_frame_idx)),
-        dino_valid=torch.from_numpy(np.ascontiguousarray(dino_valid)),
+        dino_padding_mask=torch.from_numpy(np.ascontiguousarray(dino_padding_mask)),
         frame_idx=torch.from_numpy(np.ascontiguousarray(frame_idx)),
         timestamp=torch.from_numpy(np.ascontiguousarray(timestamp)),
-        frame_mask=torch.from_numpy(np.ascontiguousarray(frame_mask)),
+        padding_mask=torch.from_numpy(np.ascontiguousarray(padding_mask)),
         target_player_position=torch.from_numpy(
             np.ascontiguousarray(target_player_position)
         ),
@@ -489,13 +489,13 @@ def collate_slcs(samples: list[SLCSSample]) -> dict[str, torch.Tensor]:
 
     Fixed-shape tensors are stacked; the variable DINOv3 sample axis is
     right-padded to the batch maximum (at least 1 slot so downstream tensor
-    ops are well-defined) with ``dino_valid=False`` marking the padding.
+    ops are well-defined) with ``dino_padding_mask=True`` marking padding.
     """
     if not samples:
         raise ValueError("collate_slcs received an empty sample list.")
     sample_dicts = cast("list[dict[str, torch.Tensor]]", samples)
     batch: dict[str, torch.Tensor] = {}
-    dino_keys = {"dino_tokens", "dino_frame_idx", "dino_valid"}
+    dino_keys = {"dino_tokens", "dino_frame_idx", "dino_padding_mask"}
     for key in sample_dicts[0]:
         if key in dino_keys:
             continue
@@ -521,16 +521,16 @@ def collate_slcs(samples: list[SLCSSample]) -> dict[str, torch.Tensor]:
         len(samples), max_td, num_patches, embed_dim, dtype=torch.float32
     )
     frames_out = torch.zeros(len(samples), max_td, dtype=torch.int64)
-    valid_out = torch.zeros(len(samples), max_td, dtype=torch.bool)
+    padding_out = torch.ones(len(samples), max_td, dtype=torch.bool)
     for i, s in enumerate(sample_dicts):
         td = int(s["dino_tokens"].shape[0])
         if td > 0:
             tokens_out[i, :td] = s["dino_tokens"]
             frames_out[i, :td] = s["dino_frame_idx"]
-            valid_out[i, :td] = s["dino_valid"]
+            padding_out[i, :td] = s["dino_padding_mask"]
     batch["dino_tokens"] = tokens_out
     batch["dino_frame_idx"] = frames_out
-    batch["dino_valid"] = valid_out
+    batch["dino_padding_mask"] = padding_out
     return batch
 
 

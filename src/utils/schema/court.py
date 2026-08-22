@@ -125,6 +125,27 @@ COURT_KP_NAMES: tuple[str, ...] = (
 
 COURT_KP_IDX: dict[str, int] = {name: i for i, name in enumerate(COURT_KP_NAMES)}
 
+# Additive aliases for the immutable ground subset of CourtKP20.  These expose
+# the existing physical contract; they do not define a second geometry.
+NUM_GROUND_COURT_KP: int = 14
+GROUND_COURT_KP_NAMES: tuple[str, ...] = COURT_KP_NAMES[:NUM_GROUND_COURT_KP]
+OPPOSITE_COURT_END_INDEX: tuple[int, ...] = (
+    2,
+    3,
+    0,
+    1,
+    5,
+    4,
+    7,
+    6,
+    10,
+    11,
+    8,
+    9,
+    13,
+    12,
+)
+
 
 def court_keypoints_3d(config: CourtConfig) -> Tensor:
     """Return 20 court keypoints (idx 0..19) as a (20, 3) tensor.

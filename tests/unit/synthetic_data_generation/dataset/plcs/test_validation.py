@@ -4,8 +4,13 @@ import json
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from src.synthetic_data_generation.dataset.plcs.assembler import PLCS_DATASET_SCHEMA
+from src.synthetic_data_generation.dataset.plcs.coordinates import (
+    PLCS_COORDINATE_CONTRACT,
+    PLCSSourceSupportPlane,
+)
 from src.synthetic_data_generation.dataset.plcs.validation import (
     PLCSCompactDatasetReader,
 )
@@ -95,77 +100,81 @@ def test_logical_reader_reconstructs_shared_background_plus_delta(
         human_kp_3d=np.zeros((1, 1, 17, 3), dtype=np.float32),
         canonical_pose_3d=np.zeros((1, 1, 52, 3), dtype=np.float32),
     )
-    (root / "dataset.json").write_text(
-        json.dumps(
-            {
-                "schema": PLCS_DATASET_SCHEMA,
-                "scene_id": "B00",
-                "domain": "plcs",
-                "frame_inventory": {
-                    "source": 1,
-                    "planned": 1,
-                    "rendered": 1,
-                    "labelled": 1,
-                    "first_frame": 0,
-                    "last_frame": 0,
-                },
-                "target_courts": [],
-                "metadata": {
-                    "logical_scenes": [
+    manifest_path = root / "dataset.json"
+    manifest = {
+        "schema": PLCS_DATASET_SCHEMA,
+        "scene_id": "B00",
+        "domain": "plcs",
+        "frame_inventory": {
+            "source": 1,
+            "planned": 1,
+            "rendered": 1,
+            "labelled": 1,
+            "first_frame": 0,
+            "last_frame": 0,
+        },
+        "target_courts": [],
+        "metadata": {
+            "coordinate_contract": PLCS_COORDINATE_CONTRACT.to_dict(),
+            "logical_scenes": [
+                {
+                    "scene_id": "B00",
+                    "split": "train",
+                    "frame_inventory": {
+                        "source": 1,
+                        "planned": 1,
+                        "rendered": 1,
+                        "labelled": 1,
+                        "first_frame": 0,
+                        "last_frame": 0,
+                    },
+                    "tracks": [
                         {
-                            "scene_id": "B00",
-                            "split": "train",
-                            "frame_inventory": {
-                                "source": 1,
-                                "planned": 1,
-                                "rendered": 1,
-                                "labelled": 1,
-                                "first_frame": 0,
-                                "last_frame": 0,
-                            },
-                            "tracks": [
-                                {
-                                    "object_id": "player-001",
-                                    "instance_id": 1,
-                                    "asset_id": "avatar-001",
-                                    "start_frame": 0,
-                                    "stop_frame": 1,
-                                    "anchor_position_court_m": [0.0, 0.0, 0.0],
-                                    "yaw_radians": 0.0,
-                                }
-                            ],
-                            "cameras": [
-                                {
-                                    "slot_id": "camera-0",
-                                    "court_local_center_m": [0.0, 0.0, 1.0],
-                                    "court_local_look_at_m": [0.0, 1.0, 1.0],
-                                    "hfov_degrees": 60.0,
-                                    "camera": camera.to_dict(),
-                                }
-                            ],
-                        }
-                    ]
-                },
-                "diagnostics": [],
-                "storage": {
-                    "layout": "shared-background-plus-per-scene-foreground-delta",
-                    "background_store": "backgrounds",
-                    "scenes": [
-                        {
-                            "scene_id": "B00",
-                            "chunks": [str(written.directory.relative_to(root))],
-                            "attempt_token": "B00-plcs",
-                            "sample_order": "scene-frame-then-configured-camera",
-                            "supervision": "scenes/B00/supervision.npz",
-                            "camera_ids": ["camera-0"],
-                            "object_ids": ["player-001"],
+                            "object_id": "player-001",
+                            "instance_id": 1,
+                            "asset_id": "avatar-001",
+                            "support_plane": (
+                                PLCSSourceSupportPlane.from_surface_minimum(
+                                    initial_root_translation_z_m=0.0,
+                                    support_local_z_m=0.0,
+                                ).to_dict()
+                            ),
+                            "start_frame": 0,
+                            "stop_frame": 1,
+                            "anchor_position_court_m": [0.0, 0.0, 0.0],
+                            "yaw_radians": 0.0,
                         }
                     ],
-                },
-            }
-        ),
-        encoding="utf-8",
-    )
+                    "cameras": [
+                        {
+                            "slot_id": "camera-0",
+                            "court_local_center_m": [0.0, 0.0, 1.0],
+                            "court_local_look_at_m": [0.0, 1.0, 1.0],
+                            "hfov_degrees": 60.0,
+                            "camera": camera.to_dict(),
+                        }
+                    ],
+                }
+            ],
+        },
+        "diagnostics": [],
+        "storage": {
+            "layout": "shared-background-plus-per-scene-foreground-delta",
+            "background_store": "backgrounds",
+            "scenes": [
+                {
+                    "scene_id": "B00",
+                    "chunks": [str(written.directory.relative_to(root))],
+                    "attempt_token": "B00-plcs",
+                    "sample_order": "scene-frame-then-configured-camera",
+                    "supervision": "scenes/B00/supervision.npz",
+                    "camera_ids": ["camera-0"],
+                    "object_ids": ["player-001"],
+                }
+            ],
+        },
+    }
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     (root / "diagnostics").mkdir()
 
     reader = PLCSCompactDatasetReader(root)
@@ -178,3 +187,8 @@ def test_logical_reader_reconstructs_shared_background_plus_delta(
     assert sample.depth[0, 0, 0] == 5.0
     assert all_views.index.camera_ids == ("camera-0",)
     assert all_views.supervision.human_kp.shape == (1, 1, 1, 17, 2)
+
+    manifest["schema"] = "tennis_plcs_compact_dataset_v4"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ValueError, match="Unsupported PLCS dataset schema"):
+        PLCSCompactDatasetReader(root)

@@ -13,22 +13,16 @@ class _FixedTrackingModel(nn.Module):
         self,
         *,
         human_kp: Tensor,
-        detection_mask: Tensor,
+        human_vis: Tensor,
         court_kp: Tensor,
         court_vis: Tensor,
-        frame_mask: Tensor,
-        camera_state_valid: Tensor,
-        spatial_attention_mask: Tensor,
-        temporal_attention_mask: Tensor,
+        padding_mask: Tensor,
     ) -> dict[str, Tensor]:
         del (
-            detection_mask,
+            human_vis,
             court_kp,
             court_vis,
-            frame_mask,
-            camera_state_valid,
-            spatial_attention_mask,
-            temporal_attention_mask,
+            padding_mask,
         )
         batch, _, frames = human_kp.shape[:3]
         rotation = torch.tensor([0.0, 1.0], device=human_kp.device)
@@ -49,7 +43,6 @@ def test_predictor_returns_cpu_lifecycle_and_yaw_outputs() -> None:
             num_queries=2,
             num_court_tokens=14,
             num_joints=17,
-            mask_invisible_observations=True,
         ),
         device=torch.device("cpu"),
     )
@@ -57,11 +50,10 @@ def test_predictor_returns_cpu_lifecycle_and_yaw_outputs() -> None:
 
     result = predictor.predict(
         human_kp=torch.zeros(*shape, 17, 2),
-        detection_mask=torch.ones(*shape, dtype=torch.bool),
+        human_vis=torch.ones(*shape, 17, dtype=torch.bool),
         court_kp=torch.zeros(1, 2, 3, 14, 2),
         court_vis=torch.ones(1, 2, 3, 14, dtype=torch.bool),
-        frame_mask=torch.ones(1, 3, dtype=torch.bool),
-        view_mask=torch.ones(1, 2, dtype=torch.bool),
+        padding_mask=torch.zeros(1, 2, 3, dtype=torch.bool),
         tracking_metrics=TrackingMetricConfig(
             presence_threshold=0.5,
             duplicate_distance=0.05,

@@ -1,0 +1,70 @@
+{
+  "aggregate": {
+    "collector_count": 1,
+    "collectors": ["perception"],
+    "discovery_count": 1,
+    "max_novelty_score": 70,
+    "max_relevance_score": 89,
+    "mean_relevance_score": 89.0,
+    "repo_paths": [
+      "src/tasks/ball_detection/data/dataset.py",
+      "src/tasks/ball_detection/models/spatiotemporal_unet.py",
+      "src/tasks/ball_detection/training/lightning_module.py",
+      "src/tasks/ball_detection/training/metrics.py"
+    ],
+    "tasks": ["ball_detection"]
+  },
+  "curation": {
+    "decision": "promoted",
+    "issue": 720,
+    "paper_node": "paper-doi-10-1109-icassp49660-2025-10889364",
+    "proposal_nodes": [],
+    "reason_ja": "ICASSP 2025 DOI metadata、arXiv全文、公式project、公式TensorFlow repositoryとMIT licenseを再確認した。motion attentionは現行SpatioTemporalUNetへdataset/lossを変えず局所A/Bできる一方、既にTrackNetV5由来R-STR proposalとMDD系入力があるため、今runのproposal上限では新規proposalを増やさずformal paperとしてpromotedする。将来は既存motion表現との相補性とfalse-positive/latencyを先に比較する。",
+    "reviewed_at": "2026-08-08T00:27:00+09:00"
+  },
+  "discoveries": [
+    {
+      "collector_id": "perception",
+      "discovered_at": "2026-08-08T00:20:04+09:00",
+      "schedule_run_id": "perception-20260808T002004+0900-tracknetv4",
+      "screening": {
+        "applicability_ja": "tennis-labのSpatioTemporalUNetは既に(B,C,T,H,W)の連続RGB入力とフレーム単位heatmap出力を持つため、dataset契約を変えずに隣接フレーム差分からmotion promptを作り、decoder末段またはfinal_conv直前の特徴へgate/fusionするA/B実験が可能である。現行のFocal BCE学習とheatmap peak評価を維持できるため、導入差分をmodel層へ局所化しやすい。",
+        "candidate_experiment_ja": "固定baselineを現行SpatioTemporalUNet + 現行data split + Focal BCEとし、変更はPyTorch版motion prompt branchとdecoder末段fusionのみとする。Type A相当とType B相当を各3 seedで比較し、既存のF1・recall・mean_distance_pxに加えて同一batchで推論latencyを測る。合格条件は3 seed平均でF1がbaseline比+0.3 percentage point以上、recallが悪化せず、mean_distance_pxが悪化せず、推論latency増加が5%以内。3 seed平均F1改善が0.3 point未満、FP増加でprecisionが1 point以上低下、またはlatency増加が5%を超える場合は停止する。",
+        "evidence_level": "fulltext-code-data",
+        "novelty_score": 70,
+        "relevance_score": 89,
+        "repo_paths": [
+          "src/tasks/ball_detection/models/spatiotemporal_unet.py",
+          "src/tasks/ball_detection/data/dataset.py",
+          "src/tasks/ball_detection/training/lightning_module.py",
+          "src/tasks/ball_detection/training/metrics.py"
+        ],
+        "risks_ja": "公式コードはTensorFlowかつ3フレーム前提で、現行PyTorch SpatioTemporalUNetの可変Tへそのまま移植できない。絶対差分は移動方向の符号を失い、カメラ運動・選手運動もmotion cueとして強調し得る。公式追加datasetはresearch-onlyで申請制のため、tennis-lab既存splitを主要検証に使うべきである。multi-instance heatmapではmotion gateが別ボールや背景動体を強めてFPを増やす可能性もある。",
+        "score_breakdown": {"adoption_feasibility": 7, "evidence_quality": 20, "experiment_quality": 13, "repo_fit": 21, "task_fit": 28},
+        "summary_ja": "TrackNetV4は、連続RGBフレームの絶対差分から学習可能なmotion attention mapを生成し、高レベル視覚特徴へ乗算・融合して高速な小物体の位置推定を強化する。テニス球とシャトルのheatmap trackingで、ベースラインのTrackNetV2/TrackNetV3に対して主に見逃し低減とF1改善を報告し、公式実装ではmotion moduleを少数パラメータのplug-and-play部品として提供している。",
+        "tasks": ["ball_detection"],
+        "topic": "ball_detection"
+      },
+      "sources": [
+        {"checked_at": "2026-08-08T00:20:04+09:00", "kind": "publisher", "url": "https://doi.org/10.1109/ICASSP49660.2025.10889364"},
+        {"checked_at": "2026-08-08T00:20:04+09:00", "kind": "paper", "url": "https://arxiv.org/pdf/2409.14543"},
+        {"checked_at": "2026-08-08T00:20:04+09:00", "kind": "code", "url": "https://github.com/TrackNetV4/TrackNetV4"},
+        {"checked_at": "2026-08-08T00:20:04+09:00", "kind": "project", "url": "https://tracknetv4.github.io/"},
+        {"checked_at": "2026-08-08T00:20:04+09:00", "kind": "dataset", "url": "https://tracknetv4.github.io/"}
+      ]
+    }
+  ],
+  "first_seen": "2026-08-08T00:20:04+09:00",
+  "id": "paper-doi-10-1109-icassp49660-2025-10889364",
+  "last_seen": "2026-08-08T00:20:04+09:00",
+  "paper": {
+    "authors": ["Arjun Raj", "Lei Wang", "Tom Gedeon"],
+    "identifiers": {"arxiv": "2409.14543", "doi": "10.1109/icassp49660.2025.10889364", "openreview": null},
+    "title": "TrackNetV4: Enhancing Fast Sports Object Tracking with Motion Attention Maps",
+    "urls": {"code": "https://github.com/TrackNetV4/TrackNetV4", "dataset": "https://tracknetv4.github.io/", "paper": "https://arxiv.org/pdf/2409.14543", "primary": "https://doi.org/10.1109/ICASSP49660.2025.10889364", "project": "https://tracknetv4.github.io/"},
+    "venue": "ICASSP 2025",
+    "year": 2025
+  },
+  "schema_version": 1,
+  "state": "promoted"
+}

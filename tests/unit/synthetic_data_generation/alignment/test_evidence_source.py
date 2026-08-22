@@ -2,18 +2,55 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import math
+from collections.abc import Callable
+from dataclasses import dataclass, replace
 from pathlib import Path
+from types import SimpleNamespace
+from typing import cast
 
 import numpy as np
 import pytest
 from numpy.typing import NDArray
 from PIL import Image
 
-from src.synthetic_data_generation.alignment.evidence_source import (
-    MeasuredAlignmentEvidenceSource,
-    _resolve_primary_scale,
+from src.synthetic_data_generation.alignment.contracts import (
+    AlignmentAcceptancePolicy,
+    AlignmentEvidence,
+    FixedCameraSelectionDiagnostics,
+    LineInferenceDeterminismDiagnostics,
 )
+from src.synthetic_data_generation.alignment.evidence_source import (
+    _MAXIMUM_COMPLETE_BRANCH_COUNT,
+    _MAXIMUM_RESIDUAL_STATE_COUNT,
+    _MAXIMUM_TILE_STATE_COUNT,
+    MeasuredAlignmentEvidenceSource,
+    _assign_candidate_evidence,
+    _center_space_tiles,
+    _CenterTile,
+    _CourtHypothesis,
+    _deduplicate_tiled_proposals,
+    _fit_court_hypotheses,
+    _fixed_camera_selection,
+    _GroundPlane,
+    _maximum_center_tile_width_scene_units,
+    _NativeProposal,
+    _optimize_court,
+    _orientation_search_bands,
+    _partition_cameras,
+    _prepare_residual_evidence,
+    _project_probability_to_ground,
+    _ProjectedLineEvidence,
+    _proposal_branch_seed,
+    _proposal_search_resource_bounds,
+    _proposal_topology_compatible,
+    _ResidualEvidenceContext,
+    _resolve_common_scale,
+    _retain_observable_cameras,
+    _scale_bound_saturation_reason,
+    _TiledProposal,
+)
+from src.synthetic_data_generation.alignment.fitting import fit_alignment
 from src.synthetic_data_generation.alignment.settings import (
     AlignmentEvidenceSettings,
     CorrespondenceSettings,
@@ -22,6 +59,12 @@ from src.synthetic_data_generation.alignment.settings import (
     CourtLineModelSettings,
     GroundPlaneSettings,
     LineProjectionSettings,
+)
+from src.synthetic_data_generation.alignment.whole_court import (
+    evaluate_court_topology,
+    evaluate_whole_template,
+    sample_court_line_template,
+    transform_template_2d,
 )
 from src.synthetic_data_generation.reconstruction.scene_export import (
     StandardSceneExport,
@@ -33,6 +76,7 @@ from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCa
 class _Detector:
     error: Exception | None = None
     preflight_calls: int = 0
+    predict_calls: int = 0
 
     def preflight(self) -> None:
         self.preflight_calls += 1
@@ -43,15 +87,38 @@ class _Detector:
         self,
         image_rgb: NDArray[np.uint8],
     ) -> NDArray[np.float32]:
+        self.predict_calls += 1
         return np.ones(image_rgb.shape[:2], dtype=np.float32)
+
+    def determinism_diagnostics(self) -> LineInferenceDeterminismDiagnostics:
+        return LineInferenceDeterminismDiagnostics(
+            seed=42,
+            device="cpu",
+            model_eval=True,
+            inference_mode=True,
+            deterministic_algorithms=True,
+            deterministic_warn_only=False,
+            cudnn_benchmark=False,
+            cudnn_deterministic=True,
+            cuda_matmul_allow_tf32=False,
+            cudnn_allow_tf32=False,
+            cublas_workspace_config=None,
+            torch_version="test",
+            cuda_version=None,
+            device_name="cpu",
+            cross_hardware_bit_identity_claimed=False,
+        )
 
 
 def test_measured_source_preflight_checks_real_images_and_detector(
     tmp_path: Path,
+    alignment_policy: AlignmentAcceptancePolicy,
 ) -> None:
     scene = _scene(tmp_path, camera_count=4)
     detector = _Detector()
-    source = MeasuredAlignmentEvidenceSource(_settings(tmp_path), detector)
+    source = MeasuredAlignmentEvidenceSource(
+        _settings(tmp_path), detector, alignment_policy
+    )
 
     source.preflight(scene)
 
@@ -60,34 +127,1051 @@ def test_measured_source_preflight_checks_real_images_and_detector(
 
 def test_measured_source_preflight_fails_before_detector_when_partitions_unavailable(
     tmp_path: Path,
+    alignment_policy: AlignmentAcceptancePolicy,
 ) -> None:
     scene = _scene(tmp_path, camera_count=2)
     detector = _Detector()
-    source = MeasuredAlignmentEvidenceSource(_settings(tmp_path), detector)
+    source = MeasuredAlignmentEvidenceSource(
+        _settings(tmp_path), detector, alignment_policy
+    )
 
-    with pytest.raises(ValueError, match="independent alignment camera partitions"):
+    with pytest.raises(ValueError, match="fixed alignment selection"):
         source.preflight(scene)
     assert detector.preflight_calls == 0
 
 
-def test_measured_source_has_no_detector_fallback(tmp_path: Path) -> None:
+def test_measured_source_has_no_detector_fallback(
+    tmp_path: Path,
+    alignment_policy: AlignmentAcceptancePolicy,
+) -> None:
     scene = _scene(tmp_path, camera_count=4)
     detector = _Detector(error=RuntimeError("trained detector unavailable"))
-    source = MeasuredAlignmentEvidenceSource(_settings(tmp_path), detector)
+    source = MeasuredAlignmentEvidenceSource(
+        _settings(tmp_path), detector, alignment_policy
+    )
 
     with pytest.raises(RuntimeError, match="trained detector unavailable"):
         source.preflight(scene)
     assert detector.preflight_calls == 1
 
 
-def test_primary_hypothesis_is_the_metric_scale_authority() -> None:
-    scale, maximum_deviation = _resolve_primary_scale(
+def test_fixed_selection_is_exact_nested_uniform_with_stable_ownership(
+    tmp_path: Path,
+) -> None:
+    base = _settings(tmp_path)
+    settings = replace(
+        base,
+        minimum_fit_cameras=8,
+        minimum_holdout_cameras=4,
+        camera_prefix_count=48,
+        candidate_fit=replace(
+            base.candidate_fit,
+            candidate_count=2,
+            orientation_minimum_radians=-np.pi / 2.0,
+            orientation_maximum_radians=np.pi / 2.0,
+        ),
+    )
+    scene = _scene(tmp_path, camera_count=100)
+    fixed = _fixed_camera_selection(
+        scene.cameras,
+        settings=settings,
+    )
+    fit, holdout = _partition_cameras(fixed.ordered_cameras, settings=settings)
+
+    assert len(fixed.ordered_cameras) == 48
+    assert len(fit) == 32
+    assert len(holdout) == 16
+    assert (
+        fixed.ordered_cameras
+        == _fixed_camera_selection(
+            scene.cameras,
+            settings=settings,
+        ).ordered_cameras
+    )
+    assert settings.expected_camera_prefix_count() == 48
+
+
+def test_fixed_collection_measures_once_and_evaluates_holdout_once(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    alignment_evidence: AlignmentEvidence,
+    alignment_policy: AlignmentAcceptancePolicy,
+) -> None:
+    base = _settings(tmp_path)
+    settings = replace(
+        base,
+        minimum_fit_cameras=8,
+        minimum_holdout_cameras=4,
+        camera_prefix_count=48,
+        candidate_fit=replace(
+            base.candidate_fit,
+            candidate_count=2,
+            orientation_minimum_radians=-np.pi / 2.0,
+            orientation_maximum_radians=np.pi / 2.0,
+        ),
+    )
+    detector = _Detector()
+    source = MeasuredAlignmentEvidenceSource(settings, detector, alignment_policy)
+    selections: list[object] = []
+    validation_calls = 0
+    expected_result = fit_alignment(alignment_evidence, policy=alignment_policy)
+
+    def evidence_for_selection(**kwargs: object) -> AlignmentEvidence:
+        selections.append(kwargs["selection"])
+        return alignment_evidence
+
+    def validate(*_args: object, **_kwargs: object) -> object:
+        nonlocal validation_calls
+        validation_calls += 1
+        return expected_result
+
+    _stub_fixed_geometry(monkeypatch)
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source."
+        "_alignment_evidence_for_fixed_selection",
+        evidence_for_selection,
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source.fit_alignment",
+        validate,
+    )
+
+    assert source.collect(_scene(tmp_path, camera_count=60)) is alignment_evidence
+    assert detector.predict_calls == 48
+    assert validation_calls == 1
+    assert len(selections) == 1
+    selection = cast(FixedCameraSelectionDiagnostics, selections[0])
+    assert selection.requested_camera_count == 48
+    assert len(selection.fit_camera_ids) == 32
+    assert len(selection.holdout_camera_ids) == 16
+
+
+def test_fixed_collection_failure_does_not_reselect_or_refit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    alignment_evidence: AlignmentEvidence,
+    alignment_policy: AlignmentAcceptancePolicy,
+) -> None:
+    base = _settings(tmp_path)
+    settings = replace(
+        base,
+        minimum_fit_cameras=8,
+        minimum_holdout_cameras=4,
+        camera_prefix_count=48,
+        candidate_fit=replace(
+            base.candidate_fit,
+            candidate_count=2,
+            orientation_minimum_radians=-np.pi / 2.0,
+            orientation_maximum_radians=np.pi / 2.0,
+        ),
+    )
+    detector = _Detector()
+    source = MeasuredAlignmentEvidenceSource(settings, detector, alignment_policy)
+    validation_calls = 0
+
+    def reject(*_args: object, **_kwargs: object) -> object:
+        nonlocal validation_calls
+        validation_calls += 1
+        raise ValueError("complete validation rejected")
+
+    _stub_fixed_geometry(monkeypatch)
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source."
+        "_alignment_evidence_for_fixed_selection",
+        lambda **_kwargs: alignment_evidence,
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source.fit_alignment",
+        reject,
+    )
+
+    with pytest.raises(ValueError, match="without holdout-driven reselection or refit"):
+        source.collect(_scene(tmp_path, camera_count=60))
+
+    assert detector.predict_calls == 48
+    assert validation_calls == 1
+
+
+def test_observable_camera_acquisition_excludes_holdout_without_backfill(
+    tmp_path: Path,
+) -> None:
+    settings = replace(
+        _settings(tmp_path),
+        minimum_fit_cameras=8,
+        minimum_holdout_cameras=4,
+        camera_prefix_count=24,
+        candidate_fit=replace(
+            _settings(tmp_path).candidate_fit,
+            candidate_count=2,
+            orientation_minimum_radians=-0.5,
+            orientation_maximum_radians=0.5,
+        ),
+        projection=replace(
+            _settings(tmp_path).projection,
+            minimum_projected_points_per_camera=20,
+        ),
+    )
+    selected = _scene(tmp_path, camera_count=24).cameras
+    fit, holdout = _partition_cameras(selected, settings=settings)
+    excluded = holdout[0]
+    projected = {
+        camera.camera_id: _projected_evidence(
+            19 if camera.camera_id == excluded.camera_id else 20
+        )
+        for camera in selected
+    }
+
+    retained_fit, retained_holdout, exclusions = _retain_observable_cameras(
+        fit,
+        holdout,
+        projected_by_camera=projected,
+        settings=settings,
+    )
+
+    assert retained_fit == fit
+    assert retained_holdout == holdout[1:]
+    assert len(retained_fit) == 16
+    assert len(retained_holdout) == 7
+    assert [item.to_dict() for item in exclusions] == [
+        {
+            "camera_id": excluded.camera_id,
+            "original_partition": "holdout",
+            "selected_line_pixel_count": 20,
+            "projected_line_point_count": 19,
+            "reason": "insufficient_projected_points",
+        }
+    ]
+
+
+def test_observable_camera_acquisition_fails_with_every_exclusion_listed(
+    tmp_path: Path,
+) -> None:
+    settings = replace(
+        _settings(tmp_path),
+        minimum_fit_cameras=8,
+        minimum_holdout_cameras=4,
+        camera_prefix_count=24,
+        candidate_fit=replace(
+            _settings(tmp_path).candidate_fit,
+            candidate_count=2,
+            orientation_minimum_radians=-0.5,
+            orientation_maximum_radians=0.5,
+        ),
+        projection=replace(
+            _settings(tmp_path).projection,
+            minimum_projected_points_per_camera=20,
+        ),
+    )
+    selected = _scene(tmp_path, camera_count=24).cameras
+    fit, holdout = _partition_cameras(selected, settings=settings)
+    excluded_ids = {camera.camera_id for camera in holdout[:5]}
+    projected = {
+        camera.camera_id: _projected_evidence(
+            0 if camera.camera_id in excluded_ids else 20,
+            selected_count=0 if camera.camera_id in excluded_ids else 20,
+        )
+        for camera in selected
+    }
+
+    with pytest.raises(ValueError, match="fit=16/8,holdout=3/4") as error:
+        _retain_observable_cameras(
+            fit,
+            holdout,
+            projected_by_camera=projected,
+            settings=settings,
+        )
+
+    rendered = str(error.value)
+    for camera_id in sorted(excluded_ids):
+        assert camera_id in rendered
+    assert rendered.count("reason=no_detected_line_pixels") == 5
+
+
+def test_empty_probability_is_explicit_projected_evidence_not_an_exception(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    camera = _scene(tmp_path, camera_count=3).cameras[0]
+    plane = _GroundPlane(
+        normal=np.asarray((0.0, 0.0, 1.0), dtype=np.float64),
+        offset=0.0,
+        origin=np.zeros(3, dtype=np.float64),
+        basis_u=np.asarray((1.0, 0.0, 0.0), dtype=np.float64),
+        basis_v=np.asarray((0.0, 1.0, 0.0), dtype=np.float64),
+        support_uv_bounds=(-2.0, 2.0, -2.0, 2.0),
+    )
+
+    projected = _project_probability_to_ground(
+        np.zeros((8, 8), dtype=np.float32),
+        camera=camera,
+        plane=plane,
+        model_settings=settings.line_model,
+        projection_settings=settings.projection,
+    )
+
+    assert projected.selected_line_pixel_count == 0
+    assert projected.points_nht_scene.shape == (0, 3)
+    assert projected.points_uv.shape == (0, 2)
+
+
+@pytest.mark.parametrize("assignment_distance", (0.24, 0.685))
+def test_assignment_corridor_is_cross_validated(
+    tmp_path: Path,
+    assignment_distance: float,
+) -> None:
+    settings = _settings(tmp_path)
+
+    with pytest.raises(ValueError, match="evidence_assignment_distance_metres"):
+        replace(
+            settings,
+            candidate_fit=replace(
+                settings.candidate_fit,
+                evidence_assignment_distance_metres=assignment_distance,
+            ),
+        )
+
+
+def test_common_scale_does_not_privilege_the_first_hypothesis() -> None:
+    scale, maximum_deviation = _resolve_common_scale(
         np.asarray((0.076, 0.058), dtype=np.float64),
         maximum_relative_deviation=0.3,
     )
 
-    assert scale == pytest.approx(0.076)
-    assert maximum_deviation == pytest.approx(abs(0.058 / 0.076 - 1.0))
+    assert scale == pytest.approx(0.067)
+    assert maximum_deviation == pytest.approx(abs(0.058 / 0.067 - 1.0))
+
+
+def test_bound_saturated_and_scale_inconsistent_hypotheses_are_explicit() -> None:
+    settings = _settings(Path("/tmp")).candidate_fit
+
+    reason = _scale_bound_saturation_reason(
+        settings.minimum_nht_scene_units_per_metre,
+        settings=settings,
+    )
+
+    assert reason is not None
+    assert "scale_bound_saturated(lower" in reason
+    with pytest.raises(ValueError, match="scale-inconsistent native hypotheses"):
+        _resolve_common_scale(
+            np.asarray((0.06, 0.09), dtype=np.float64),
+            maximum_relative_deviation=0.1,
+        )
+
+
+def test_spatial_tiles_recover_valid_pair_when_both_band_global_maxima_are_false(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = replace(
+        _settings(tmp_path).candidate_fit,
+        candidate_count=2,
+        orientation_minimum_radians=-np.pi / 2.0,
+        orientation_maximum_radians=np.pi / 2.0,
+        minimum_nht_scene_units_per_metre=0.8,
+        maximum_nht_scene_units_per_metre=1.2,
+        minimum_template_score=0.1,
+        maximum_fit_points=1_000,
+    )
+    bands = _orientation_search_bands(settings)
+    np.testing.assert_allclose(
+        bands,
+        ((-np.pi / 2.0, 0.0), (0.0, np.pi / 2.0)),
+    )
+    calls: list[tuple[int, tuple[float, float], int, int]] = []
+    prepared_contexts: list[_ResidualEvidenceContext] = []
+    prepare_residual_evidence = _prepare_residual_evidence
+
+    def counted_prepare_residual_evidence(
+        points: NDArray[np.float64],
+    ) -> _ResidualEvidenceContext:
+        context = prepare_residual_evidence(points)
+        prepared_contexts.append(context)
+        return context
+
+    def fake_optimize(
+        points: NDArray[np.float64],
+        *_args: object,
+        **kwargs: object,
+    ) -> tuple[NDArray[np.float64], float]:
+        search_bounds = cast(list[tuple[float, float]], kwargs["bounds"])
+        fixed_scale = cast(float | None, kwargs.get("fixed_scale"))
+        if fixed_scale is not None:
+            center = (search_bounds[0][0] + search_bounds[0][1]) / 2.0
+            angle = (search_bounds[2][0] + search_bounds[2][1]) / 2.0
+            return np.asarray((center, 0.0, angle)), 0.95
+        selected = cast(tuple[_CourtHypothesis, ...], kwargs["selected"])
+        band = search_bounds[2]
+        if kwargs.get("polish") is False:
+            context = cast(_ResidualEvidenceContext, kwargs["evidence_context"])
+            assert points is context.points
+            calls.append(
+                (
+                    len(points),
+                    band,
+                    cast(int, kwargs["seed"]),
+                    id(context.nearest_tree),
+                )
+            )
+        upper_family = band[0] >= 0.0
+        lower, upper = search_bounds[0]
+        if lower <= 0.0 <= upper:
+            center, score = (0.0, 0.99 if not selected else 0.98)
+        elif lower <= -8.0 <= upper:
+            center, score = (-8.0, 0.80)
+        elif lower <= 8.0 <= upper:
+            center, score = (8.0, 0.79)
+        else:
+            center, score = ((lower + upper) / 2.0, 0.05)
+        angle = 0.25 if upper_family else -0.25
+        return np.asarray((center, 0.0, angle, 1.0)), score
+
+    def fake_suppress(
+        points: NDArray[np.float64],
+        *,
+        parameters: NDArray[np.float64],
+        **_kwargs: object,
+    ) -> NDArray[np.float64]:
+        removed = 10 if abs(float(parameters[0])) < 1.0 else 45
+        return points[min(removed, len(points)) :]
+
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source._optimize_court",
+        fake_optimize,
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source."
+        "_prepare_residual_evidence",
+        counted_prepare_residual_evidence,
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source._suppress_assigned_points",
+        fake_suppress,
+    )
+
+    hypotheses, common_scale, _deviation, search = _fit_court_hypotheses(
+        np.column_stack((np.linspace(-4.0, 4.0, 100), np.zeros(100))),
+        bounds=(-10.0, 10.0, -0.1, 0.1),
+        seed=42,
+        settings=settings,
+    )
+
+    assert sorted(item.native_center_uv[0] for item in hypotheses) == [-8.0, 8.0]
+    assert 0.0 not in [item.native_center_uv[0] for item in hypotheses]
+    assert common_scale == pytest.approx(1.0)
+    assert search.center_tile_count == 5
+    assert search.maximum_complete_branch_count == 100
+    assert search.maximum_tile_state_count == 110
+    assert search.feasible_complete_state_count >= 1
+    assert set(search.selected_center_tile_indices) == {0, 4}
+    assert search.selected_explained_point_count == 90
+    assert search.explored_tile_state_count == len(calls)
+    assert search.retained_proposal_count >= 4
+    assert search.residual_state_count == len(prepared_contexts)
+    assert search.residual_tree_build_count == len(prepared_contexts)
+    assert {tree_id for *_prefix, tree_id in calls} == {
+        id(context.nearest_tree) for context in prepared_contexts
+    }
+
+
+def test_production_tiled_search_resource_cap_is_exact() -> None:
+    resources = _proposal_search_resource_bounds(
+        candidate_count=2,
+        orientation_band_count=2,
+        center_tile_count=64,
+    )
+
+    assert resources.branch_factor == 128
+    assert resources.maximum_complete_branch_count == 16_384
+    assert resources.maximum_tile_state_count == 16_512
+    assert resources.maximum_residual_state_count == 129
+    assert _MAXIMUM_COMPLETE_BRANCH_COUNT == 16_384
+    assert _MAXIMUM_TILE_STATE_COUNT == 16_512
+    assert _MAXIMUM_RESIDUAL_STATE_COUNT == 129
+
+
+@pytest.mark.parametrize(
+    ("candidate_count", "orientation_band_count", "center_tile_count"),
+    ((3, 2, 64), (2, 3, 64), (2, 2, 65), (1, 2, 65)),
+)
+def test_tiled_search_resource_cap_rejects_overflow(
+    candidate_count: int,
+    orientation_band_count: int,
+    center_tile_count: int,
+) -> None:
+    with pytest.raises(ValueError, match="exact resource cap"):
+        _proposal_search_resource_bounds(
+            candidate_count=candidate_count,
+            orientation_band_count=orientation_band_count,
+            center_tile_count=center_tile_count,
+        )
+
+
+def test_prepared_residual_tree_preserves_optimizer_result(tmp_path: Path) -> None:
+    settings = replace(
+        _settings(tmp_path).candidate_fit,
+        samples_per_metre=1.0,
+        optimizer_maximum_iterations=2,
+        optimizer_population_size=5,
+    )
+    template = sample_court_line_template(settings.samples_per_metre)
+    points = transform_template_2d(
+        template,
+        np.asarray((0.2, -0.1, 0.05, 0.07), dtype=np.float64),
+    )
+    bounds = ((-1.0, 1.0), (-1.0, 1.0), (-0.2, 0.2), (0.06, 0.08))
+    baseline_parameters, baseline_score = _optimize_court(
+        points,
+        template=template,
+        bounds=bounds,
+        seed=42,
+        settings=settings,
+    )
+    evidence = _prepare_residual_evidence(points)
+
+    reused_parameters, reused_score = _optimize_court(
+        evidence.points,
+        template=template,
+        bounds=bounds,
+        seed=42,
+        settings=settings,
+        evidence_context=evidence,
+    )
+
+    np.testing.assert_array_equal(reused_parameters, baseline_parameters)
+    assert reused_score == baseline_score
+
+
+def test_center_tiles_cover_exact_two_dimensional_bounds_with_half_open_edges() -> None:
+    tiles = _center_space_tiles((0.0, 1.0, -0.2, 0.5), maximum_width=0.3)
+
+    assert len(tiles) == 12
+    assert [(tile.u_index, tile.v_index) for tile in tiles] == [
+        (u_index, v_index) for u_index in range(4) for v_index in range(3)
+    ]
+    assert tiles[0].u_bounds[0] == 0.0
+    assert tiles[0].v_bounds[0] == -0.2
+    assert tiles[-1].logical_u_upper == 1.0
+    assert tiles[-1].logical_v_upper == 0.5
+    assert tiles[0].u_bounds[1] < tiles[3].u_bounds[0]
+    assert np.nextafter(tiles[0].u_bounds[1], math.inf) == tiles[3].u_bounds[0]
+    assert all(
+        tile.logical_u_upper - tile.u_bounds[0] <= 0.3
+        and tile.logical_v_upper - tile.v_bounds[0] <= 0.3
+        for tile in tiles
+    )
+
+
+def test_adjacent_tile_boundary_duplicates_are_removed_without_losing_basins() -> None:
+    shared = _NativeProposal(
+        parameters=np.asarray((0.5, 0.0, 0.1, 1.0)),
+        measured_score=0.9,
+        orientation_band_radians=(-0.5, 0.5),
+        residual_point_count=100,
+    )
+    distinct = replace(
+        shared,
+        parameters=np.asarray((8.0, 0.0, 0.1, 1.0)),
+        measured_score=0.8,
+    )
+    retained, duplicate_count = _deduplicate_tiled_proposals(
+        (
+            _TiledProposal(shared, 0, 0),
+            _TiledProposal(shared, 0, 1),
+            _TiledProposal(distinct, 0, 2),
+        ),
+        center_tolerance=1.0e-8,
+    )
+
+    assert duplicate_count == 1
+    assert [item.proposal.parameters[0] for item in retained] == [0.5, 8.0]
+
+
+def test_geometry_derives_center_tile_width_from_minimum_compatible_separation(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path).candidate_fit
+
+    assert _maximum_center_tile_width_scene_units(settings) == pytest.approx(
+        settings.minimum_center_separation_metres
+        * settings.minimum_nht_scene_units_per_metre
+        / 2.0
+    )
+
+
+def test_proposal_seeds_are_bound_to_branch_geometry_not_iteration_position() -> None:
+    lower = (-np.pi / 2.0, 0.0)
+    upper = (0.0, np.pi / 2.0)
+    first = replace(
+        _hypothesis_for_topology(center=(-8.0, 0.0)),
+        proposal_orientation_band_radians=lower,
+        native_orientation_radians=-0.25,
+        orientation_radians=-0.25,
+    )
+
+    tile = _CenterTile(0, 0, 0, (-1.0, 0.0), (-1.0, 0.0), 0.0, 0.0)
+    direct = {
+        band: _proposal_branch_seed(
+            42, selected=(), orientation_band=band, center_tile=tile
+        )
+        for band in (lower, upper)
+    }
+    reversed_iteration = {
+        band: _proposal_branch_seed(
+            42, selected=(), orientation_band=band, center_tile=tile
+        )
+        for band in (upper, lower)
+    }
+
+    assert direct == reversed_iteration
+    assert direct[upper] != _proposal_branch_seed(
+        42, selected=(first,), orientation_band=upper, center_tile=tile
+    )
+    adjacent = replace(
+        tile,
+        flat_index=1,
+        u_index=1,
+        u_bounds=(0.0, 1.0),
+        logical_u_upper=1.0,
+    )
+    assert direct[lower] != _proposal_branch_seed(
+        42, selected=(), orientation_band=lower, center_tile=adjacent
+    )
+
+
+def test_adjacent_shared_line_proposals_pass_but_overlapping_duplicate_fails(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path).candidate_fit
+    first = _hypothesis_for_topology(center=(0.0, 0.0))
+    adjacent = _hypothesis_for_topology(center=(0.07 * 10.97, 0.0))
+    duplicate = _hypothesis_for_topology(center=(0.01, 0.0))
+
+    assert _proposal_topology_compatible(
+        adjacent,
+        selected=(first,),
+        settings=settings,
+    )
+
+    assert not _proposal_topology_compatible(
+        duplicate,
+        selected=(first,),
+        settings=settings,
+    )
+
+
+def test_native_optimizer_penalizes_duplicate_basin_inside_objective(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _settings(tmp_path).candidate_fit
+    template = sample_court_line_template(settings.samples_per_metre)
+    invalid = np.asarray((0.0, 0.0, 0.0, 0.07), dtype=np.float64)
+    valid = np.asarray((0.07 * 10.97, 0.0, 0.0, 0.07), dtype=np.float64)
+    points = transform_template_2d(template, invalid)
+
+    def fake_differential_evolution(
+        objective: Callable[[NDArray[np.float64]], float],
+        _bounds: object,
+        **_kwargs: object,
+    ) -> SimpleNamespace:
+        assert objective(invalid) == pytest.approx(0.0)
+        assert objective(valid) < 0.0
+        return SimpleNamespace(x=valid)
+
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source.differential_evolution",
+        fake_differential_evolution,
+    )
+
+    optimized, score = _optimize_court(
+        points,
+        template=template,
+        bounds=((-1.0, 1.0), (-1.0, 1.0), (-0.5, 0.5), (0.05, 0.1)),
+        seed=42,
+        settings=settings,
+        selected=(_hypothesis_for_topology(center=(0.0, 0.0)),),
+    )
+
+    np.testing.assert_array_equal(optimized, valid)
+    assert score > 0.0
+
+
+def test_one_court_proposal_search_exhausts_explicitly(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = replace(
+        _settings(tmp_path).candidate_fit,
+        candidate_count=2,
+        samples_per_metre=2.0,
+        minimum_nht_scene_units_per_metre=0.8,
+        maximum_nht_scene_units_per_metre=1.2,
+        orientation_minimum_radians=-0.2,
+        orientation_maximum_radians=0.2,
+        score_distance_metres=0.2,
+        minimum_template_score=0.4,
+        optimizer_maximum_iterations=70,
+        optimizer_population_size=8,
+        maximum_fit_points=10_000,
+        scale_bound_margin_relative=0.005,
+        evidence_assignment_distance_metres=0.35,
+    )
+    template = sample_court_line_template(settings.samples_per_metre)
+    observed = transform_template_2d(
+        template,
+        np.asarray((0.0, 0.0, 0.04, 1.0)),
+    )
+
+    def one_court_optimum(
+        *_args: object, **kwargs: object
+    ) -> tuple[NDArray[np.float64], float]:
+        search_bounds = cast(list[tuple[float, float]], kwargs["bounds"])
+        lower, upper = search_bounds[0]
+        v_center = (search_bounds[1][0] + search_bounds[1][1]) / 2.0
+        angle = (search_bounds[2][0] + search_bounds[2][1]) / 2.0
+        if lower <= 0.0 <= upper and search_bounds[1][0] <= 0.0 <= search_bounds[1][1]:
+            return np.asarray((0.0, 0.0, angle, 1.0)), 1.0
+        return np.asarray(((lower + upper) / 2.0, v_center, angle, 1.0)), 0.0
+
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source._optimize_court",
+        one_court_optimum,
+    )
+
+    with pytest.raises(ValueError, match="required feasible complete set"):
+        _fit_court_hypotheses(
+            observed,
+            bounds=(-15.0, 15.0, -15.0, 15.0),
+            seed=42,
+            settings=settings,
+        )
+
+
+def test_common_scale_replacement_refits_pose_and_recomputes_score(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = replace(
+        _settings(tmp_path).candidate_fit,
+        candidate_count=2,
+        evidence_assignment_distance_metres=1.0e-4,
+        common_scale_relative_tolerance=0.1,
+        orientation_minimum_radians=-0.3,
+        orientation_maximum_radians=0.3,
+    )
+    calls: list[float | None] = []
+    answers = iter(
+        (
+            (np.asarray((0.0, 0.0, 0.0, 0.070)), 0.81),
+            (np.asarray((2.0, 0.0, 0.0, 0.072)), 0.79),
+            (np.asarray((0.0, 0.0, 0.0, 0.070)), 0.81),
+            (np.asarray((2.0, 0.0, 0.0, 0.072)), 0.79),
+            (np.asarray((0.02, 0.01, 0.1)), 0.91),
+            (np.asarray((2.02, 0.01, 0.1)), 0.89),
+        )
+    )
+
+    def fake_optimize(
+        *_args: object, **kwargs: object
+    ) -> tuple[NDArray[np.float64], float]:
+        fixed_scale = kwargs.get("fixed_scale")
+        calls.append(None if fixed_scale is None else cast(float, fixed_scale))
+        return next(answers)
+
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source._optimize_court",
+        fake_optimize,
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source."
+        "_maximum_center_tile_width_scene_units",
+        lambda _settings: 100.0,
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source._suppress_assigned_points",
+        lambda points, **_kwargs: points[len(points) // 2 :],
+    )
+    points = np.column_stack(
+        (np.linspace(-10.0, 10.0, 200), np.linspace(-8.0, 8.0, 200))
+    )
+
+    hypotheses, common_scale, _deviation, _search = _fit_court_hypotheses(
+        points,
+        bounds=(-12.0, 12.0, -10.0, 10.0),
+        seed=42,
+        settings=settings,
+    )
+
+    assert calls == [
+        None,
+        None,
+        None,
+        None,
+        pytest.approx(0.071),
+        pytest.approx(0.071),
+    ]
+    assert common_scale == pytest.approx(0.071)
+    assert [item.center_uv for item in hypotheses] == [(0.02, 0.01), (2.02, 0.01)]
+    assert [item.template_score for item in hypotheses] == [0.91, 0.89]
+    assert all(
+        item.nht_scene_units_per_metre == pytest.approx(common_scale)
+        for item in hypotheses
+    )
+
+
+def test_common_scale_refit_bounds_preserve_parallel_court_identity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = replace(
+        _settings(tmp_path).candidate_fit,
+        candidate_count=2,
+        evidence_assignment_distance_metres=1.0e-4,
+        common_scale_relative_tolerance=0.07,
+        orientation_minimum_radians=-0.3,
+        orientation_maximum_radians=0.3,
+    )
+    native_answers = iter(
+        (
+            (np.asarray((0.0, 0.0, 0.0, 0.070)), 0.9),
+            (np.asarray((1.0, 0.0, 0.0, 0.071)), 0.89),
+            (np.asarray((0.0, 0.0, 0.0, 0.070)), 0.9),
+            (np.asarray((1.0, 0.0, 0.0, 0.071)), 0.89),
+        )
+    )
+    refit_bounds: list[list[tuple[float, float]]] = []
+
+    def fake_optimize(
+        *_args: object,
+        **kwargs: object,
+    ) -> tuple[NDArray[np.float64], float]:
+        if kwargs.get("fixed_scale") is None:
+            return next(native_answers)
+        bounds = cast(list[tuple[float, float]], kwargs["bounds"])
+        refit_bounds.append(bounds)
+        candidate_index = len(refit_bounds) - 1
+        x = bounds[0][1] if candidate_index == 0 else bounds[0][0]
+        return np.asarray((x, 0.0, 0.0)), 0.95
+
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source._optimize_court",
+        fake_optimize,
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source."
+        "_maximum_center_tile_width_scene_units",
+        lambda _settings: 100.0,
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source._suppress_assigned_points",
+        lambda points, **_kwargs: points[len(points) // 2 :],
+    )
+    points = np.column_stack(
+        (np.linspace(-10.0, 10.0, 200), np.linspace(-8.0, 8.0, 200))
+    )
+
+    hypotheses, common_scale, _deviation, _search = _fit_court_hypotheses(
+        points,
+        bounds=(-12.0, 12.0, -10.0, 10.0),
+        seed=42,
+        settings=settings,
+    )
+
+    maximum_scene_displacement = (
+        common_scale * settings.maximum_center_refit_displacement_metres()
+    )
+    assert refit_bounds[0][0] == pytest.approx(
+        (-maximum_scene_displacement, maximum_scene_displacement)
+    )
+    assert refit_bounds[1][0] == pytest.approx(
+        (1.0 - maximum_scene_displacement, 1.0 + maximum_scene_displacement)
+    )
+    assert hypotheses[0].center_uv[0] < hypotheses[1].center_uv[0]
+    assert [item.candidate_id for item in hypotheses] == [
+        "candidate-000",
+        "candidate-001",
+    ]
+    assert all(
+        item.common_scale_refit_center_displacement_metres
+        <= item.maximum_common_scale_refit_center_displacement_metres
+        for item in hypotheses
+    )
+
+
+def test_two_side_by_side_courts_are_deterministic_under_clutter(
+    tmp_path: Path,
+) -> None:
+    settings = replace(
+        _settings(tmp_path).candidate_fit,
+        candidate_count=2,
+        samples_per_metre=2.0,
+        minimum_nht_scene_units_per_metre=0.8,
+        maximum_nht_scene_units_per_metre=1.2,
+        orientation_minimum_radians=-0.3,
+        orientation_maximum_radians=0.3,
+        score_distance_metres=0.2,
+        minimum_template_score=0.35,
+        family_orientation_tolerance_radians=0.15,
+        family_scale_relative_tolerance=0.15,
+        optimizer_maximum_iterations=70,
+        optimizer_population_size=8,
+        maximum_fit_points=10_000,
+        common_scale_relative_tolerance=0.07,
+        scale_bound_margin_relative=0.005,
+        evidence_assignment_distance_metres=0.3,
+    )
+    template = sample_court_line_template(settings.samples_per_metre)
+    rng = np.random.default_rng(19)
+    first = transform_template_2d(template, np.asarray((-8.0, 0.0, 0.04, 1.0)))
+    second = transform_template_2d(template, np.asarray((8.0, 0.0, 0.04, 1.0)))
+    observed = np.concatenate(
+        (
+            first + rng.normal(scale=0.01, size=first.shape),
+            second + rng.normal(scale=0.01, size=second.shape),
+            rng.uniform((-20.0, -15.0), (20.0, 15.0), size=(100, 2)),
+        )
+    )
+
+    first_run = _fit_court_hypotheses(
+        observed,
+        bounds=(-20.0, 20.0, -15.0, 15.0),
+        seed=42,
+        settings=settings,
+    )
+    second_run = _fit_court_hypotheses(
+        observed,
+        bounds=(-20.0, 20.0, -15.0, 15.0),
+        seed=42,
+        settings=settings,
+    )
+
+    hypotheses, common_scale, maximum_deviation, proposal_search = first_run
+    assert first_run == second_run
+    assert common_scale == pytest.approx(1.0, abs=0.03)
+    assert maximum_deviation < settings.common_scale_relative_tolerance
+    assert proposal_search.feasible_complete_state_count >= 1
+    centers = np.asarray([item.center_uv for item in hypotheses])
+    assert np.linalg.norm(centers[0] - centers[1]) > 15.0
+    assert sorted(centers[:, 0]) == pytest.approx([-8.0, 8.0], abs=0.15)
+    plane = _GroundPlane(
+        normal=np.asarray((0.0, 0.0, 1.0)),
+        offset=0.0,
+        origin=np.zeros(3, dtype=np.float64),
+        basis_u=np.asarray((1.0, 0.0, 0.0)),
+        basis_v=np.asarray((0.0, 1.0, 0.0)),
+        support_uv_bounds=(-20.0, 20.0, -15.0, 15.0),
+    )
+    observed_3d = np.column_stack((observed, np.zeros(len(observed))))
+    projected = {
+        "camera-0": _ProjectedLineEvidence(
+            points_nht_scene=observed_3d,
+            points_uv=observed,
+            selected_line_pixel_count=len(observed),
+        )
+    }
+    first_assignment = _assign_candidate_evidence(
+        hypotheses,
+        plane=plane,
+        projected_by_camera=projected,
+        settings=settings,
+    )
+    second_assignment = _assign_candidate_evidence(
+        hypotheses,
+        plane=plane,
+        projected_by_camera=projected,
+        settings=settings,
+    )
+    for candidate_id in first_assignment:
+        np.testing.assert_array_equal(
+            first_assignment[candidate_id]["camera-0"],
+            second_assignment[candidate_id]["camera-0"],
+        )
+    transforms: list[tuple[str, RigidTransform]] = []
+    for hypothesis in hypotheses:
+        cosine = np.cos(hypothesis.orientation_radians)
+        sine = np.sin(hypothesis.orientation_radians)
+        matrix = np.eye(4, dtype=np.float64)
+        matrix[:2, :2] = ((cosine, -sine), (sine, cosine))
+        matrix[:2, 3] = np.asarray(hypothesis.center_uv) / common_scale
+        transform = RigidTransform.from_matrix(matrix)
+        transforms.append((hypothesis.candidate_id, transform))
+        metrics = evaluate_whole_template(
+            scene_from_court=transform,
+            measured_points_scene=observed_3d / common_scale,
+            settings=settings.whole_court_evidence(minimum_matches_per_offset_level=3),
+        )
+        assert all(
+            metrics.threshold_checks(
+                settings.whole_court_evidence(minimum_matches_per_offset_level=3)
+            ).values()
+        )
+    topology = evaluate_court_topology(transforms)
+    assert len(topology) == 1
+    assert all(
+        topology[0]
+        .threshold_checks(
+            settings.whole_court_evidence(minimum_matches_per_offset_level=3)
+        )
+        .values()
+    )
+
+
+def _stub_fixed_geometry(monkeypatch: pytest.MonkeyPatch) -> None:
+    plane = _GroundPlane(
+        normal=np.asarray((0.0, 0.0, 1.0), dtype=np.float64),
+        offset=0.0,
+        origin=np.zeros(3, dtype=np.float64),
+        basis_u=np.asarray((1.0, 0.0, 0.0), dtype=np.float64),
+        basis_v=np.asarray((0.0, 1.0, 0.0), dtype=np.float64),
+        support_uv_bounds=(-2.0, 2.0, -2.0, 2.0),
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source._estimate_ground_plane",
+        lambda *_args, **_kwargs: plane,
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source._project_probability_to_ground",
+        lambda *_args, **_kwargs: _projected_evidence(20),
+    )
+
+
+def _projected_evidence(
+    projected_count: int, *, selected_count: int = 20
+) -> _ProjectedLineEvidence:
+    points = np.column_stack(
+        (
+            np.linspace(-1.0, 1.0, projected_count),
+            np.linspace(1.0, -1.0, projected_count),
+            np.zeros(projected_count),
+        )
+    )
+    return _ProjectedLineEvidence(
+        points_nht_scene=np.asarray(points, dtype=np.float64),
+        points_uv=np.asarray(points[:, :2], dtype=np.float64),
+        selected_line_pixel_count=selected_count,
+    )
+
+
+def _hypothesis_for_topology(
+    *,
+    center: tuple[float, float],
+) -> _CourtHypothesis:
+    return _CourtHypothesis(
+        candidate_id="proposal",
+        center_uv=center,
+        orientation_radians=0.0,
+        nht_scene_units_per_metre=0.07,
+        template_score=0.9,
+        native_nht_scene_units_per_metre=0.07,
+        native_template_score=0.9,
+        native_center_uv=center,
+        native_orientation_radians=0.0,
+        common_scale_refit_center_displacement_metres=0.0,
+        maximum_common_scale_refit_center_displacement_metres=1.0,
+        proposal_orientation_band_radians=(-0.5, 0.5),
+        proposal_residual_point_count_before_suppression=100,
+        proposal_residual_point_count_after_suppression=50,
+    )
 
 
 def _scene(tmp_path: Path, *, camera_count: int) -> StandardSceneExport:
@@ -158,7 +1242,7 @@ def _settings(tmp_path: Path) -> AlignmentEvidenceSettings:
         holdout_fraction=1.0 / 3.0,
         minimum_fit_cameras=2,
         minimum_holdout_cameras=1,
-        maximum_cameras=3,
+        camera_prefix_count=3,
         line_model=CourtLineModelSettings(
             checkpoint_path=(tmp_path / "line.ckpt").resolve(),
             backbone_repository_path=(tmp_path / "dinov3").resolve(),
@@ -198,19 +1282,25 @@ def _settings(tmp_path: Path) -> AlignmentEvidenceSettings:
             samples_per_metre=2.0,
             minimum_nht_scene_units_per_metre=0.05,
             maximum_nht_scene_units_per_metre=0.1,
-            orientation_minimum_radians=-1.0,
-            orientation_maximum_radians=1.0,
+            orientation_minimum_radians=-0.5,
+            orientation_maximum_radians=0.5,
             score_distance_metres=0.25,
             minimum_template_score=0.1,
             family_orientation_tolerance_radians=0.1,
             family_scale_relative_tolerance=0.1,
-            minimum_center_separation_metres=10.0,
-            separation_penalty=10.0,
+            minimum_center_separation_metres=10.97,
             optimizer_maximum_iterations=2,
             optimizer_population_size=2,
             optimizer_tolerance=1.0e-4,
             maximum_fit_points=100,
             common_scale_relative_tolerance=0.1,
+            scale_bound_margin_relative=0.01,
+            evidence_assignment_distance_metres=0.35,
+            whole_template_inlier_distance_metres=0.3,
+            minimum_whole_template_inlier_fraction=0.6,
+            maximum_whole_template_q95_error_metres=1.5,
+            minimum_semantic_segment_inlier_fraction=0.5,
+            maximum_court_footprint_overlap_fraction=1.0e-9,
         ),
         correspondences=CorrespondenceSettings(
             maximum_match_distance_metres=0.25,

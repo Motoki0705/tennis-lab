@@ -159,12 +159,18 @@ def test_slcs_boundaries_bind_only_their_actual_public_boundary_schema() -> None
         assert boundary.path_role_authorities
 
 
-def test_synthetic_registry_exposes_only_the_canonical_scene_composition_boundary() -> None:
-    boundary = next(
+def test_synthetic_registry_exposes_only_the_canonical_production_boundaries() -> None:
+    scene_boundary = next(
         contract
         for contract in BOUNDARY_CONTRACTS
         if contract.boundary_id
         == "src.synthetic_data_generation.scripts.run_scene_pipeline:main"
+    )
+    visualization_boundary = next(
+        contract
+        for contract in BOUNDARY_CONTRACTS
+        if contract.boundary_id
+        == "src.synthetic_data_generation.scripts.visualize_dataset:main"
     )
 
     synthetic_boundaries = {
@@ -173,11 +179,20 @@ def test_synthetic_registry_exposes_only_the_canonical_scene_composition_boundar
         if contract.boundary_id.startswith("src.synthetic_data_generation")
     }
     assert synthetic_boundaries == {
-        "src.synthetic_data_generation.scripts.run_scene_pipeline:main"
+        "src.synthetic_data_generation.scripts.run_scene_pipeline:main",
+        "src.synthetic_data_generation.scripts.visualize_dataset:main",
     }
     assert (
         "src.synthetic_data_generation.configuration.ScenePipelineConfiguration"
-        in boundary.authority_symbols
+        in scene_boundary.authority_symbols
+    )
+    assert visualization_boundary.validator_callable == (
+        "src.synthetic_data_generation.visualization.configuration."
+        "validate_dataset_visualization_boundary"
+    )
+    assert any(
+        authority.endswith(".build_visualization_request")
+        for authority in visualization_boundary.semantic_constraint_authorities
     )
 
 

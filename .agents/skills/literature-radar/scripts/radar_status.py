@@ -150,6 +150,8 @@ def validate_status(
     path: Path,
     records: list[dict[str, Any]],
     config: dict[str, Any],
+    *,
+    validate_current_backlog: bool = True,
 ) -> list[str]:
     errors: list[str] = []
     try:
@@ -209,20 +211,34 @@ def validate_status(
             f"({accepted}/{daily_limit})"
         )
 
-    open_count = sum(record.get("state") == "inbox" for record in records)
     open_limit = int(settings["max_open_candidates"])
-    if ingestion.get("open_candidates") != open_count:
-        errors.append(
-            f"{path}: open_candidates must be {open_count}, "
-            f"got {ingestion.get('open_candidates')!r}"
-        )
+    open_candidates = ingestion.get("open_candidates")
+    if (
+        not isinstance(open_candidates, int)
+        or isinstance(open_candidates, bool)
+        or open_candidates < 0
+    ):
+        errors.append(f"{path}: open_candidates must be a non-negative integer")
+    else:
+        if validate_current_backlog:
+            open_count = sum(
+                record.get("state") == "inbox" for record in records
+            )
+            if open_candidates != open_count:
+                errors.append(
+                    f"{path}: open_candidates must be {open_count}, "
+                    f"got {open_candidates!r}"
+                )
+        if open_candidates > open_limit:
+            errors.append(
+                f"{path}: open candidate backlog exceeds {open_limit} "
+                f"(snapshot {open_candidates})"
+            )
     if ingestion.get("open_limit") != open_limit:
         errors.append(
             f"{path}: open_limit must be {open_limit}, "
             f"got {ingestion.get('open_limit')!r}"
         )
-    if open_count > open_limit:
-        errors.append(f"{path}: open candidate backlog exceeds {open_limit}")
 
     collector_limit = int(settings["max_candidates_per_collector_per_day"])
     collectors = ingestion.get("collectors")
@@ -299,9 +315,26 @@ def validate_repository(repo_root: Path) -> list[str]:
     directory = repo_root / "knowledge/literature/status"
     if not directory.exists():
         return []
+
+    paths = sorted(directory.glob("????-??-??.json"))
+    if not paths:
+        return []
+
+    # open_candidates is a point-in-time global backlog snapshot. Canonical
+    # candidate records retain only their current state, so an older snapshot
+    # cannot be reconstructed from the present tree. Only the newest daily
+    # status is expected to match the current canonical inbox exactly.
+    current_path = paths[-1]
     errors: list[str] = []
-    for path in sorted(directory.glob("????-??-??.json")):
-        errors.extend(validate_status(path, records, config))
+    for path in paths:
+        errors.extend(
+            validate_status(
+                path,
+                records,
+                config,
+                validate_current_backlog=path == current_path,
+            )
+        )
     return errors
 
 
