@@ -19,17 +19,10 @@ from src.utils.configuration.errors import (
 )
 from src.utils.configuration.inventory import (
     DEFAULT_AUDIT_INVENTORY,
-    AuditExemption,
     AuditInventory,
     AuditRule,
     BoundaryKind,
-    MigrationAuthorityKind,
-    MigrationCategory,
-    MigrationRecord,
-    MigrationStatus,
     RuntimeBoundary,
-    audit_exemption_reason_code,
-    migration_route_audit_rule,
 )
 from src.utils.configuration.operations import (
     BUILD_CUDA_OPS,
@@ -66,10 +59,8 @@ from src.utils.configuration.schema import (
 )
 
 __all__ = [
-    "AuditExemption",
     "AuditInventory",
     "AuditRule",
-    "audit_exemption_reason_code",
     "BoundaryKind",
     "BoundaryAuthorityBinding",
     "BoundaryPathField",
@@ -88,11 +79,6 @@ __all__ = [
     "FORCE_MOE_REFERENCE",
     "FORCE_TIME_LOCAL_REFERENCE",
     "MissingConfigurationKeyError",
-    "MigrationAuthorityKind",
-    "MigrationCategory",
-    "MigrationRecord",
-    "MigrationStatus",
-    "migration_route_audit_rule",
     "PathContractError",
     "PathDirection",
     "PathKind",

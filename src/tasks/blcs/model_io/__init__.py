@@ -4,6 +4,7 @@ from src.tasks.blcs.model_io.adapters import (
     AxialTrajectoryModelIOAdapter,
     MultiViewTrajectoryModelIOAdapter,
     SingleTrajectoryModelIOAdapter,
+    TrackQueryAblationModelIOAdapter,
     TrackQueryModelIOAdapter,
     TrajectoryModelIOAdapter,
 )
@@ -31,6 +32,7 @@ __all__ = [
     "BLCSTrajectoryTrainingBatch",
     "MultiViewTrajectoryModelIOAdapter",
     "SingleTrajectoryModelIOAdapter",
+    "TrackQueryAblationModelIOAdapter",
     "TrackQueryBoundModelIO",
     "TrackQueryModelIOAdapter",
     "TrajectoryBoundModelIO",
