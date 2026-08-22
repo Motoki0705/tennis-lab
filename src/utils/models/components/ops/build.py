@@ -11,7 +11,15 @@ from types import ModuleType
 from typing import Any
 
 BUILD_CUDA_OPS = "TENNIS_LAB_BUILD_CUDA_OPS"
+CUDA_OPS_BUILD_TARGET = "TENNIS_LAB_CUDA_OPS_BUILD_TARGET"
 DINO_OPS_BUILD_CONFIG = "TENNIS_LAB_DINO_OPS_BUILD_CONFIG"
+
+ALL_CUDA_OPS = "all"
+COMPRESSED_TIME_LOCAL_CUDA_OP = "compressed_time_local"
+_CUDA_OPS_BUILD_TARGETS = {
+    ALL_CUDA_OPS,
+    COMPRESSED_TIME_LOCAL_CUDA_OP,
+}
 
 _OPERATIONS_MODULE = "src.utils.configuration.operations"
 _OPERATIONS_RELATIVE_PATH = Path("src/utils/configuration/operations.py")
@@ -44,6 +52,21 @@ def should_build_cuda_ops() -> bool:
     except KeyError:
         raw = None
     return parse_build_cuda_ops(raw)
+
+
+def parse_cuda_ops_build_target(raw: str | None, /) -> str:
+    """Parse the exact extension selection used by the packaging boundary."""
+    if raw is None:
+        return ALL_CUDA_OPS
+    if raw in _CUDA_OPS_BUILD_TARGETS:
+        return raw
+    choices = ", ".join(sorted(_CUDA_OPS_BUILD_TARGETS))
+    raise ValueError(f"{CUDA_OPS_BUILD_TARGET} must be one of: {choices}; got {raw!r}.")
+
+
+def selected_cuda_ops_build_target() -> str:
+    """Return the validated extension selection without importing ``src``."""
+    return parse_cuda_ops_build_target(os.environ.get(CUDA_OPS_BUILD_TARGET))
 
 
 def _required_build_json() -> str:
@@ -156,7 +179,8 @@ def get_extensions() -> list[Any]:
     build_paths = _enabled_build_paths()
     if build_paths is None:
         return []
-    build_paths.require_inputs()
+    build_target = selected_cuda_ops_build_target()
+    _require_build_inputs(build_paths, build_target)
 
     try:
         from torch.utils.cpp_extension import CUDA_HOME, CUDAExtension
@@ -173,28 +197,29 @@ def get_extensions() -> list[Any]:
         "cxx": ["-O3"],
         "nvcc": ["-O3", "--use_fast_math"],
     }
-    dino_ops_src = _prepare_dino_ops_sources(
-        build_paths.source,
-        build_paths.destination,
-    )
-
-    return [
-        CUDAExtension(
-            name="src.utils.models.components.ops.moe._C",
-            sources=[
-                str(build_paths.moe_bindings),
-                str(build_paths.moe_kernels),
-            ],
-            extra_compile_args=common_compile_args,
-        ),
-        CUDAExtension(
-            name="src.utils.models.components.ops.time_local._C",
-            sources=[
-                str(build_paths.time_local_bindings),
-                str(build_paths.time_local_kernels),
-            ],
-            extra_compile_args=common_compile_args,
-        ),
+    extensions = []
+    if build_target == ALL_CUDA_OPS:
+        extensions.extend(
+            [
+                CUDAExtension(
+                    name="src.utils.models.components.ops.moe._C",
+                    sources=[
+                        str(build_paths.moe_bindings),
+                        str(build_paths.moe_kernels),
+                    ],
+                    extra_compile_args=common_compile_args,
+                ),
+                CUDAExtension(
+                    name="src.utils.models.components.ops.time_local._C",
+                    sources=[
+                        str(build_paths.time_local_bindings),
+                        str(build_paths.time_local_kernels),
+                    ],
+                    extra_compile_args=common_compile_args,
+                ),
+            ]
+        )
+    extensions.append(
         CUDAExtension(
             name="src.utils.models.components.ops.compressed_time_local._C",
             sources=[
@@ -202,27 +227,48 @@ def get_extensions() -> list[Any]:
                 str(build_paths.compressed_time_local_kernels),
             ],
             extra_compile_args=common_compile_args,
-        ),
-        CUDAExtension(
-            name="MultiScaleDeformableAttention",
-            sources=[
-                str(dino_ops_src / "vision.cpp"),
-                str(dino_ops_src / "cpu/ms_deform_attn_cpu.cpp"),
-                str(dino_ops_src / "cuda/ms_deform_attn_cuda.cu"),
-            ],
-            include_dirs=[str(dino_ops_src)],
-            define_macros=[("WITH_CUDA", None)],
-            extra_compile_args={
-                "cxx": [],
-                "nvcc": [
-                    "-DCUDA_HAS_FP16=1",
-                    "-D__CUDA_NO_HALF_OPERATORS__",
-                    "-D__CUDA_NO_HALF_CONVERSIONS__",
-                    "-D__CUDA_NO_HALF2_OPERATORS__",
+        )
+    )
+    if build_target == ALL_CUDA_OPS:
+        dino_ops_src = _prepare_dino_ops_sources(
+            build_paths.source,
+            build_paths.destination,
+        )
+        extensions.append(
+            CUDAExtension(
+                name="MultiScaleDeformableAttention",
+                sources=[
+                    str(dino_ops_src / "vision.cpp"),
+                    str(dino_ops_src / "cpu/ms_deform_attn_cpu.cpp"),
+                    str(dino_ops_src / "cuda/ms_deform_attn_cuda.cu"),
                 ],
-            },
-        ),
-    ]
+                include_dirs=[str(dino_ops_src)],
+                define_macros=[("WITH_CUDA", None)],
+                extra_compile_args={
+                    "cxx": [],
+                    "nvcc": [
+                        "-DCUDA_HAS_FP16=1",
+                        "-D__CUDA_NO_HALF_OPERATORS__",
+                        "-D__CUDA_NO_HALF_CONVERSIONS__",
+                        "-D__CUDA_NO_HALF2_OPERATORS__",
+                    ],
+                },
+            )
+        )
+    return extensions
+
+
+def _require_build_inputs(build_paths: Any, build_target: str) -> None:
+    """Require only the sources consumed by the selected extension build."""
+    if build_target == ALL_CUDA_OPS:
+        build_paths.require_inputs()
+        return
+    for path in (
+        build_paths.compressed_time_local_bindings,
+        build_paths.compressed_time_local_kernels,
+    ):
+        if not path.is_file():
+            raise FileNotFoundError(f"CUDA operation source file is missing: {path}")
 
 
 def _prepare_dino_ops_sources(source: Path, destination: Path) -> Path:
