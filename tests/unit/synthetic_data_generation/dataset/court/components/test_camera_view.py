@@ -233,3 +233,55 @@ def test_invalid_type_inventory_and_nonfinite_projection_reject() -> None:
         validate_finite_camera_view_projection(nonfinite)
     with pytest.raises(ValueError, match=r"\(14, 2\)"):
         validate_finite_camera_view_projection(valid_uv[:13])
+
+
+@pytest.mark.parametrize(
+    ("semantic_to_physical", "canonical_matrix"),
+    [
+        (
+            tuple(range(14)),
+            np.diag((-1.0, -1.0, 1.0, 1.0)),
+        ),
+        (
+            CAMERA_VIEW_HALF_TURN_INDEX,
+            np.eye(4, dtype=np.float64),
+        ),
+        (
+            tuple(range(14)),
+            np.asarray(
+                (
+                    (1.0, 0.0, 0.0, 0.25),
+                    (0.0, 1.0, 0.0, 0.0),
+                    (0.0, 0.0, 1.0, 0.0),
+                    (0.0, 0.0, 0.0, 1.0),
+                ),
+                dtype=np.float64,
+            ),
+        ),
+    ],
+    ids=("identity_with_half_turn", "half_turn_with_identity", "translated_identity"),
+)
+def test_camera_view_value_rejects_mapping_transform_mismatch(
+    semantic_to_physical: tuple[int, ...],
+    canonical_matrix: NDArray[np.float64],
+) -> None:
+    with pytest.raises(ValueError, match="canonical|semantic"):
+        CameraViewCanonicalization(
+            semantic_to_physical=semantic_to_physical,
+            canonical_from_court=RigidTransform.from_matrix(canonical_matrix),
+            camera_from_canonical=RigidTransform.identity(),
+            camera_center_canonical_m=(0.0, -30.0, 12.0),
+        )
+
+
+@pytest.mark.parametrize("canonical_y", [30.0, 0.0, -1.0e-6])
+def test_camera_view_value_rejects_nonnegative_or_ambiguous_canonical_side(
+    canonical_y: float,
+) -> None:
+    with pytest.raises(ValueError, match="canonical|negative"):
+        CameraViewCanonicalization(
+            semantic_to_physical=tuple(range(14)),
+            canonical_from_court=RigidTransform.identity(),
+            camera_from_canonical=RigidTransform.identity(),
+            camera_center_canonical_m=(0.0, canonical_y, 12.0),
+        )
