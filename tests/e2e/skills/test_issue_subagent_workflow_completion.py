@@ -13,14 +13,16 @@ def load_agent(filename: str) -> dict[str, Any]:
 
 
 def test_user_directed_single_implementer_is_explicitly_compliant() -> None:
-    skill = (
-        ROOT / ".agents/skills/issue-subagent-workflow/SKILL.md"
-    ).read_text(encoding="utf-8")
+    skill = (ROOT / ".agents/skills/issue-subagent-workflow/SKILL.md").read_text(
+        encoding="utf-8"
+    )
     workflow = (
         ROOT / ".agents/skills/issue-subagent-workflow/references/workflow.md"
     ).read_text(encoding="utf-8")
     assert "one Implementer or sequential execution is compliant" in skill
-    assert "Parallelism is a latency optimization, not an acceptance criterion" in workflow
+    assert (
+        "Parallelism is a latency optimization, not an acceptance criterion" in workflow
+    )
 
 
 def test_default_implementer_does_not_own_shared_artifacts() -> None:
@@ -33,12 +35,12 @@ def test_default_implementer_does_not_own_shared_artifacts() -> None:
 
 
 def test_reviewer_sequence_is_explicit() -> None:
-    skill = (
-        ROOT / ".agents/skills/issue-subagent-workflow/SKILL.md"
-    ).read_text(encoding="utf-8")
+    skill = (ROOT / ".agents/skills/issue-subagent-workflow/SKILL.md").read_text(
+        encoding="utf-8"
+    )
     stages = (
         "discovery `preflight_reviewer`",
-        "independent Test Writer",
+        "independent adversarial Test Writer",
         "`seal_reviewer` with no source/test edits",
         "The Validator receives",
     )
@@ -94,18 +96,18 @@ def test_test_writer_and_validator_preserve_independent_gates() -> None:
     validator = load_agent("issue-validator.toml")["developer_instructions"]
     assert "Never modify production code" in tester
     assert "run-check <task-dir> test <check-id>" in tester
+    assert "mandatory minimum coverage only" in tester
+    assert "run-test-probe <task-dir> <AT-NNN>" in tester
     assert "sole task specification" in validator
     assert "sealed candidate fingerprint" in validator
 
 
 def test_contracts_are_machine_backed_not_instruction_only() -> None:
     schema = (
-        ROOT
-        / ".agents/skills/issue-subagent-workflow/scripts/issue_task_schema.py"
+        ROOT / ".agents/skills/issue-subagent-workflow/scripts/issue_task_schema.py"
     ).read_text(encoding="utf-8")
     state = (
-        ROOT
-        / ".agents/skills/issue-subagent-workflow/scripts/issue_task_state.py"
+        ROOT / ".agents/skills/issue-subagent-workflow/scripts/issue_task_state.py"
     ).read_text(encoding="utf-8")
     finalization = (
         ROOT
@@ -116,6 +118,6 @@ def test_contracts_are_machine_backed_not_instruction_only() -> None:
         / ".agents/skills/issue-subagent-workflow/scripts/issue_task_transitions.py"
     ).read_text(encoding="utf-8")
     assert "ARTIFACT_CONTRACTS" in schema
-    assert 'CURRENT_SCHEMA_VERSION = 5' in state
+    assert "CURRENT_SCHEMA_VERSION = 6" in state
     assert 'state["status"] = "validated"' in transitions
     assert "compute_revision_fingerprint" in finalization
