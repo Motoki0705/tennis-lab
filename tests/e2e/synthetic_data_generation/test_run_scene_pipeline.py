@@ -54,9 +54,9 @@ def test_cli_resolves_one_full_b00_request_without_legacy_pipeline_fields() -> N
         assert forbidden not in serialized.lower()
 
 
-def test_cli_exposes_exact_v1_v2_court_selectors_and_keeps_v1_default() -> None:
+def test_cli_exposes_exact_v1_v2_v3_court_selectors_and_keeps_v1_default() -> None:
     payloads = {}
-    for selector in (None, "v1", "v2"):
+    for selector in (None, "v1", "v2", "v3"):
         argv = [
             sys.executable,
             "-m",
@@ -84,6 +84,8 @@ def test_cli_exposes_exact_v1_v2_court_selectors_and_keeps_v1_default() -> None:
     ]
     assert payloads["v2"]["schema_version"] == "v2"
     assert payloads["v2"]["view"]["target_modes"] == ["court_center"]
+    assert payloads["v3"]["schema_version"] == "v3"
+    assert payloads["v3"]["view"]["target_modes"] == ["court_center"]
 
 
 def test_court_readme_is_single_linked_and_documents_executable_selectors() -> None:
@@ -94,10 +96,12 @@ def test_court_readme_is_single_linked_and_documents_executable_selectors() -> N
         PROJECT_ROOT / "src/synthetic_data_generation/dataset/court/README.md"
     ).read_text(encoding="utf-8")
 
-    link = "[Court Detection dataset v1/v2 contract](dataset/court/README.md)"
+    link = "[Court Detection dataset v1/v2/v3 contract](dataset/court/README.md)"
     assert parent.count(link) == 1
-    assert parent.count("## Court dataset v1/v2 contract") == 0
+    assert parent.count("## Court dataset v1/v2/v3 contract") == 0
     assert contract.count("dataset/court=v1") >= 1
     assert contract.count("dataset/court=v2") >= 1
+    assert contract.count("dataset/court=v3") >= 1
     assert "canonical_court_dataset_v1" in contract
     assert "canonical_court_dataset_v2" in contract
+    assert "canonical_court_dataset_v3" in contract
