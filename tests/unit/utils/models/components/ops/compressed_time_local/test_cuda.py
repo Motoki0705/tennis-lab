@@ -1,4 +1,4 @@
-"""Queued-GPU tests for fused compressed time-local CUDA attention."""
+"""CUDA tests for fused compressed time-local attention."""
 
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ def _phasors(
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("TENNIS_LAB_RUN_CUDA_TESTS") != "1" or not torch.cuda.is_available(),
-    reason="CUDA operation tests run only in an attributed training-queue job",
+    reason="CUDA operation tests require TENNIS_LAB_RUN_CUDA_TESTS=1 and CUDA",
 )
 
 
@@ -551,6 +551,23 @@ def test_cuda_rejects_partial_kv_head_count() -> None:
             key,
             query_valid=torch.ones(1, 9, dtype=torch.bool, device="cuda"),
             key_valid=torch.ones(1, 3, dtype=torch.bool, device="cuda"),
+        )
+
+
+def test_cuda_rejects_compression_ratio_that_does_not_fit_int32() -> None:
+    query = torch.randn(1, 1, 1, 16, device="cuda")
+    key = torch.randn(1, 1, 1, 16, device="cuda")
+    executor = resolve_compressed_time_local_attention(
+        "cuda", compression_ratio=2**31, window_radius=0
+    )
+
+    with pytest.raises(RuntimeError, match="compression ratio must fit int32"):
+        executor(
+            query,
+            key,
+            key,
+            query_valid=torch.ones(1, 1, dtype=torch.bool, device="cuda"),
+            key_valid=torch.ones(1, 1, dtype=torch.bool, device="cuda"),
         )
 
 

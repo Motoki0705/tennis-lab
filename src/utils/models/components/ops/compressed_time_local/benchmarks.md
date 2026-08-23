@@ -67,3 +67,27 @@ material eager speedup. The full model record and rejected ablations live in
   deterministic.
 - Results are specific to the recorded hardware and shapes; small-shape launch
   overhead remains workload-dependent.
+
+## 2026-08-23 kernel optimization
+
+The forward kernel now normalizes each local-window softmax once per query row
+and reuses the probabilities across value features. Query values are cached in
+registers; backward also caches the upstream gradient. Invalid rows are zeroed
+inside the kernels, removing full output and query-gradient prefill launches.
+Profiling selected int32 row arithmetic for forward and int64 arithmetic for
+backward; runtime validation rejects forward dimensions, row counts, or
+compression ratios that cannot be represented safely.
+
+Environment: NVIDIA GeForce GTX 1650 (compute capability 7.5), Python 3.11.15,
+PyTorch 2.13.0+cu130, CUDA 13.0. A five-iteration profiler run used bfloat16
+CSWA with `N=7,T=512,D=256,H=4,Dh=64`, compression ratio 4, window radius 4,
+and approximately 0.875 valid density.
+
+| kernel | mean CUDA time (ms) |
+|---|---:|
+| compressed attention forward | 0.716 |
+| compressed attention backward | 1.022 |
+
+CUDA/reference parity, non-contiguous layouts, fused RoPE, invalid rows, and
+forward/backward behavior passed the complete operator test matrix after a
+fresh compute-capability-7.5 extension build.
