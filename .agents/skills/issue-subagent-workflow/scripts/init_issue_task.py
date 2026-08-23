@@ -107,9 +107,11 @@ None
 
 ## Independent test work unit
 
+Define the mandatory planned minimum. It is not a ceiling on the independent Test Writer's issue-relevant adversarial test design.
+
 ## Canonical verification commands
 
-Define the exact commands in `02-planning/checks.json` and summarize their IDs here.
+Define the exact baseline commands in `02-planning/checks.json` and summarize their IDs here.
 
 ## Ordered execution plan
 
@@ -192,6 +194,20 @@ None
 | ID | Issue checklist item | Test or authoritative evidence | Result |
 |---|---|---|---|
 {test_rows}
+
+## Independent adversarial test design
+
+PENDING
+
+## Independently derived adversarial tests
+
+| ID | Perspective | Authority | Oracle | Machine evidence | Result |
+|---|---|---|---|---|---|
+| AT-PENDING | Replace this perspective | PUBLIC_CONTRACT | Replace this oracle | Replace this evidence | PENDING |
+
+## Adversarial probe results
+
+None
 
 ## Tests added or changed
 
@@ -416,8 +432,11 @@ def render_state(
             'block_reason = ""\n'
             f"updated_at = {json.dumps(now)}\n"
         )
+    adversarial_mode = (
+        'adversarial_testing_mode = "ENFORCED"\n' if schema_version >= 6 else ""
+    )
     return (
-        f"schema_version = {CURRENT_SCHEMA_VERSION}\n"
+        f"schema_version = {schema_version}\n"
         f"issue_number = {payload['number']}\n"
         f"issue_url = {json.dumps(payload['url'])}\n"
         f"issue_sha256 = {json.dumps(digest)}\n"
@@ -426,6 +445,7 @@ def render_state(
         f"acceptance_checklist_count = {checklist_count}\n"
         f"base_revision = {json.dumps(base_revision)}\n"
         'candidate_binding_mode = "ENFORCED"\n'
+        f"{adversarial_mode}"
         f"attempt = {attempt}\n"
         'feasibility_verdict = ""\n'
         "preflight_cycle = 0\n"
@@ -509,7 +529,11 @@ def main() -> int:
         for relative_path, template in TEMPLATES.items():
             path = task_dir / relative_path
             path.parent.mkdir(parents=True, exist_ok=True)
-            if not path.exists() or args.refresh_issue or relative_path == "00-feasibility/feasibility.md":
+            if (
+                not path.exists()
+                or args.refresh_issue
+                or relative_path == "00-feasibility/feasibility.md"
+            ):
                 path.write_text(template.format(**format_values), encoding="utf-8")
         checks_path = task_dir / "02-planning/checks.json"
         if not checks_path.exists() or args.refresh_issue:
