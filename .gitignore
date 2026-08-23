@@ -198,3 +198,5 @@ experiments_mcmc/
 # local and immutable at the paths recorded by STATE.md.
 .codex-loop/**/artifacts/
 .codex-loop/**/logs/
+
+paper
