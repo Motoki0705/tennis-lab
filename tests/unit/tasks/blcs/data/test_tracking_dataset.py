@@ -132,15 +132,20 @@ def test_dataset_packs_more_physical_tracks_than_q_with_independent_assignments(
         vis = presence.copy()
         if camera_index == 1:
             vis[0, 1] = False
+            uv[0, 1] = np.asarray([-3.0, 4.0], dtype=np.float32)
         np.save(scene / f"cam_{camera_index}_ball_uv.npy", uv)
         np.save(scene / f"cam_{camera_index}_ball_vis.npy", vis)
+        court_uv: np.ndarray = np.zeros((14, 2), dtype=np.float32)
+        court_vis: np.ndarray = np.ones(14, dtype=np.bool_)
+        court_uv[0] = np.asarray([float("nan"), float("inf")], dtype=np.float32)
+        court_vis[0] = False
         np.save(
             scene / f"cam_{camera_index}_court_kp_uv.npy",
-            np.zeros((14, 2), dtype=np.float32),
+            court_uv,
         )
         np.save(
             scene / f"cam_{camera_index}_court_kp_vis.npy",
-            np.ones(14, dtype=np.bool_),
+            court_vis,
         )
 
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
@@ -180,6 +185,11 @@ def test_dataset_packs_more_physical_tracks_than_q_with_independent_assignments(
         sample["candidate_gt_index"][0], sample["target_instance_id"]
     )
     assert not sample["ball_vis"][1, 0, 0]
+    hidden_slot = torch.where(sample["candidate_gt_index"][1, 0] == 1)[0].item()
+    torch.testing.assert_close(
+        sample["ball_uv"][1, 0, hidden_slot], torch.zeros(2)
+    )
+    torch.testing.assert_close(sample["court_kp"][:, :, 0], torch.zeros(2, 4, 2))
     assert not sample["padding_mask"].any()
 
 

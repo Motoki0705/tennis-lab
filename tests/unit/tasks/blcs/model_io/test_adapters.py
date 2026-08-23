@@ -119,6 +119,17 @@ def test_tracking_adapter_builds_exact_five_tensor_call() -> None:
     }
 
 
+@pytest.mark.parametrize("field", ["ball_uv", "court_kp"])
+def test_tracking_adapter_rejects_out_of_range_visible_uv(field: str) -> None:
+    batch = _tracking_batch()
+    batch[field].reshape(-1, 2)[0] = torch.tensor([-0.1, 1.1])
+    if field == "ball_uv":
+        batch["ball_vis"].reshape(-1)[0] = True
+
+    with pytest.raises(ModelInputContractError, match=r"within \[0, 1\]"):
+        _tracking_adapter().build_call(batch)
+
+
 @pytest.mark.parametrize("width", [1, 3])
 def test_tracking_adapter_requires_exact_q(width: int) -> None:
     batch = _tracking_batch()

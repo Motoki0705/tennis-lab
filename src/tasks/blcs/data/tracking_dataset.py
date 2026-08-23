@@ -25,6 +25,7 @@ from src.tasks.blcs.data.observation_candidates import (
 from src.tasks.blcs.data.tracking_augmentation import (
     BLCSTrackingCandidateAugmentation,
 )
+from src.tasks.blcs.data.visibility import zero_invisible_uv
 from src.utils.schema.court_normalization import (
     resolve_court_coordinate_normalization,
 )
@@ -136,7 +137,7 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
                 uv = uv[:, None]
                 ball_vis = ball_vis[:, None]
             ball_vis &= physical_presence
-            uv[~physical_presence] = 0.0
+            uv = zero_invisible_uv(uv, ball_vis)
             uv_rows.append(uv)
             vis_rows.append(ball_vis)
 
@@ -156,6 +157,7 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
             else:
                 court = torch.from_numpy(court_np[window.sl, :14]).float()
                 court_vis = torch.from_numpy(court_vis_np[window.sl, :14]).bool()
+            court = zero_invisible_uv(court, court_vis)
             court_rows.append(court)
             court_vis_rows.append(court_vis)
 
