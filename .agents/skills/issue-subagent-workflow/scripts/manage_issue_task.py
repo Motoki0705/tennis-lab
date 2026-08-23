@@ -29,6 +29,7 @@ apply_validation_verdict = _commands.apply_validation_verdict
 finalize_pr = _commands.finalize_pr
 capture_pr_evidence = _commands.capture_pr_evidence
 run_check = _commands.run_check
+run_test_probe = _commands.run_test_probe
 
 
 def non_blank(value: str) -> str:
@@ -49,7 +50,9 @@ def parse_args() -> argparse.Namespace:
 
     transition_parser = subparsers.add_parser("transition")
     transition_parser.add_argument("task_dir", type=Path)
-    transition_parser.add_argument("phase", choices=("planning", "implementation", "validation"))
+    transition_parser.add_argument(
+        "phase", choices=("planning", "implementation", "validation")
+    )
 
     artifact_parser = subparsers.add_parser("artifact-check")
     artifact_parser.add_argument("task_dir", type=Path)
@@ -63,6 +66,17 @@ def parse_args() -> argparse.Namespace:
     run_check_parser.add_argument("task_dir", type=Path)
     run_check_parser.add_argument("stage", choices=tuple(_commands.RESULT_PATHS))
     run_check_parser.add_argument("check_id", type=non_blank)
+
+    probe_parser = subparsers.add_parser("run-test-probe")
+    probe_parser.add_argument("task_dir", type=Path)
+    probe_parser.add_argument("probe_id", type=non_blank)
+    probe_parser.add_argument(
+        "--authority", choices=_state.ADVERSARIAL_AUTHORITIES, required=True
+    )
+    probe_parser.add_argument("--authority-ref", type=non_blank, required=True)
+    probe_parser.add_argument("--cwd", default=".")
+    probe_parser.add_argument("--env", action="append", default=[])
+    probe_parser.add_argument("--argv", nargs=argparse.REMAINDER, required=True)
 
     preflight_parser = subparsers.add_parser("preflight-verdict")
     preflight_parser.add_argument("task_dir", type=Path)
@@ -78,7 +92,9 @@ def parse_args() -> argparse.Namespace:
 
     return_review_parser = subparsers.add_parser("return-review")
     return_review_parser.add_argument("task_dir", type=Path)
-    return_review_parser.add_argument("action", choices=("implementation", "exploration"))
+    return_review_parser.add_argument(
+        "action", choices=("implementation", "exploration")
+    )
     return_review_parser.add_argument("--reason", type=non_blank, required=True)
 
     block_parser = subparsers.add_parser("block")
@@ -130,11 +146,31 @@ def main() -> int:
         elif args.command == "candidate-fingerprint":
             state = load_state(args.task_dir)
             if args.revision:
-                print(_commands.compute_revision_fingerprint(args.task_dir, state, args.revision))
+                print(
+                    _commands.compute_revision_fingerprint(
+                        args.task_dir, state, args.revision
+                    )
+                )
             else:
                 print(_commands.compute_candidate_fingerprint(args.task_dir, state))
         elif args.command == "run-check":
             return run_check(args.task_dir, args.stage, args.check_id)
+        elif args.command == "run-test-probe":
+            environment: dict[str, str] = {}
+            for item in args.env:
+                key, separator, value = item.partition("=")
+                if not separator or not key:
+                    raise ValueError("--env must use non-empty KEY=VALUE entries")
+                environment[key] = value
+            return run_test_probe(
+                args.task_dir,
+                args.probe_id,
+                authority=args.authority,
+                authority_ref=args.authority_ref,
+                argv=args.argv,
+                cwd=args.cwd,
+                env=environment,
+            )
         elif args.command == "preflight-verdict":
             apply_preflight_verdict(args.task_dir, args.verdict)
         elif args.command == "test-verdict":

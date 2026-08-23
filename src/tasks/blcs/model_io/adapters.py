@@ -32,6 +32,9 @@ from src.tasks.blcs.model_io.contracts import (
 from src.tasks.blcs.models.blcs_model import BLCSModel
 from src.tasks.blcs.models.blcs_multiview_axial_model import BLCSMultiViewAxialModel
 from src.tasks.blcs.models.blcs_multiview_model import BLCSMultiViewModel
+from src.tasks.blcs.models.blcs_track_query_ablation_model import (
+    BLCSTrackQueryAblationModel,
+)
 from src.tasks.blcs.models.blcs_track_query_model import BLCSTrackQueryModel
 
 RawBLCSOutput = Mapping[str, Tensor]
@@ -811,11 +814,20 @@ class TrackQueryModelIOAdapter:
         )
 
 
+class TrackQueryAblationModelIOAdapter(TrackQueryModelIOAdapter):
+    """Exact BLCS adapter binding for the ablation architecture family."""
+
+    @property
+    def model_type(self) -> type[nn.Module]:
+        return cast("type[nn.Module]", BLCSTrackQueryAblationModel)
+
+
 __all__ = [
     "AxialTrajectoryModelIOAdapter",
     "MultiViewTrajectoryModelIOAdapter",
     "RawBLCSOutput",
     "SingleTrajectoryModelIOAdapter",
+    "TrackQueryAblationModelIOAdapter",
     "TrackQueryModelIOAdapter",
     "TrajectoryModelIOAdapter",
 ]

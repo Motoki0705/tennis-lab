@@ -31,6 +31,7 @@
 - **`blcs_multiview_model.py`**: `BLCSMultiViewModel`。クエリのcross-attention+時間self-attentionによる反復更新モデル。
 - **`blcs_multiview_axial_model.py`**: `BLCSMultiViewAxialModel`(現行デフォルト)。camera軸/time軸交互self-attention。
 - **`blcs_track_query_model.py`**: `BLCSTrackQueryModel`。fixed-Q camera候補へmHC object temporalとhybrid CSWAを適用し、clip-localな固定query slotで複数ボール軌道とpresenceを推定する。
+- **`blcs_track_query_ablation_model.py`**: `BLCSTrackQueryAblationModel`。既存modelとは別の`blcs_track_query_ablation` architectureとして、SwiGLU配置とmHC writeback位置の4条件を同じ5入力・2出力契約で比較する。
 - **`components/heads.py`**: constructor時に選択されるposition-only / position+velocity出力module。
 - **`components/padding.py`**: 全BLCS modelの公開`padding_mask=True`から、内部validity・attention keep maskを一意に生成する。
 - **`components/observation_fusion.py`**: track-query用の固定linear観測融合module。
@@ -111,6 +112,8 @@ tracking modelの観測幅は常に `P=Q=model.num_queries` です。公開入�
 
 `ball_vis`は観測tokenとlearned invisible tokenの選択だけに使います。非padding位置では`ball_vis=False`のQ tokenもattentionへ参加します。各stageは `mHC object temporal -> global spatial(Q+VQ) -> query temporal` の順で、temporal modeはconstructor時に `CSWA, CSWA, CSWA, Global` のcycleへ固定されます。nested `model.mhc` / `model.cswa` configはunknown/missing/invalid値をrejectし、`model.cswa.backend=cuda`はextensionが利用不能ならreferenceへfallbackせずconstruction時に失敗します。
 
+`model=track_query_ablation_{a,b,c,d}`は新しいablation architectureを選びます。A/CはAttentionごとに独立SwiGLUを3回、B/Dは全Attention後にstage共有SwiGLUを1回適用します。A/Bはobject temporal直後にmHCを書き戻してspatial幅を`Q+V×P`にし、C/Dはstage末尾まで圧縮streamを保持して`Q+V`にします。2軸は各configで必須であり、既存`track_query` checkpointとの相互loadはstrict errorです。
+
 出力契約は従来どおり `position (B,T,Q,3)` と `presence_logits (B,T,Q)` です。教師は `target_position (B,T,Q,3)`、`target_presence (B,T,Q)`、`target_instance_id (B,T,Q)` で、inactive IDは`-1`です。旧track-query checkpointはarchitectureが異なるためstrict load errorとなり、自動key migrationやmissing parameter補完は行いません。推論のstrict adapterはexact Qを要求し、`BLCSTrackingPredictor.predict()`だけが`P<Q`入力をzero/invisible tokenでQへpadします。`P>Q`はrejectします。
 
 14 court UVはannotation schemaのkeypoint ID順を維持します。固定linear融合は`court_vis`で不可視点を0化し、Q順の各ball UVと連結して共有`CourtBallGroupEmbedding`により1 query = 1 tokenへ写像します。下流の空間self-attention入力は `(B*T, Q + V*Q, D)` です。旧`observation_fusion`、`point_fusion`、`mask_invisible_observations`設定は受理しません。
@@ -126,6 +129,10 @@ multi-object generatorは1024-frame global timelineに3〜10個のsource rally s
 
 # 事前生成データで学習
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking
+
+# 4条件の例（a / b / c / dを明示して選択）
+.venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking \
+  model=track_query_ablation_d
 
 # trainだけon-the-fly chunk生成（val/testは上記の固定データ）
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking_chunked

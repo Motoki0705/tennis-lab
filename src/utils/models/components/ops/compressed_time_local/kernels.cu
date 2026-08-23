@@ -10,6 +10,7 @@
 #include <limits>
 #include <array>
 #include <algorithm>
+#include <type_traits>
 #include <vector>
 
 #define CHECK_CUDA(tensor) TORCH_CHECK((tensor).is_cuda(), #tensor " must be CUDA")
@@ -21,6 +22,9 @@
 namespace {
 
 constexpr int kWarpSize = 32;
+constexpr int kCachedFeaturesPerLane = 4;
+constexpr int64_t kMaximumCachedHeadDim =
+    kWarpSize * kCachedFeaturesPerLane;
 constexpr int64_t kMaximumWindowRadius = 64;
 
 void check_supported_feature_layout(
@@ -142,14 +146,42 @@ __device__ __forceinline__ float load_rotated_component(
     return static_cast<float>(static_cast<scalar_t>(rotated));
 }
 
-__device__ __forceinline__ float warp_sum(float value) {
-    for (int offset = kWarpSize / 2; offset > 0; offset /= 2) {
-        value += __shfl_down_sync(0xffffffff, value, offset);
+template <int threads_per_row>
+__device__ __forceinline__ float row_sum(float value, unsigned active_mask) {
+    for (int offset = threads_per_row / 2; offset > 0; offset /= 2) {
+        value += __shfl_down_sync(
+            active_mask,
+            value,
+            offset,
+            threads_per_row);
     }
     return value;
 }
 
-template <typename scalar_t>
+template <typename Launch>
+void dispatch_attention_row_groups(int64_t head_dim, Launch&& launch) {
+    // Keep at most four features per lane and use the rest of the warp for
+    // independent rows. Wider or uncommon head dimensions retain one row.
+    if (head_dim == 16) {
+        launch(
+            std::integral_constant<int, 4>{},
+            std::integral_constant<int, 8>{});
+    } else if (head_dim == 32) {
+        launch(
+            std::integral_constant<int, 8>{},
+            std::integral_constant<int, 4>{});
+    } else if (head_dim == 64) {
+        launch(
+            std::integral_constant<int, 16>{},
+            std::integral_constant<int, 2>{});
+    } else {
+        launch(
+            std::integral_constant<int, kWarpSize>{},
+            std::integral_constant<int, 1>{});
+    }
+}
+
+template <typename scalar_t, int threads_per_row, int rows_per_warp>
 __global__ void compressed_time_local_forward_kernel(
     const scalar_t* __restrict__ query,
     const scalar_t* __restrict__ key,
@@ -161,13 +193,14 @@ __global__ void compressed_time_local_forward_kernel(
     scalar_t* __restrict__ output,
     float* __restrict__ logsumexp,
     int* __restrict__ invalid_row,
-    int64_t heads,
-    int64_t key_heads,
-    int64_t query_length,
-    int64_t key_length,
-    int64_t head_dim,
-    int64_t compression_ratio,
-    int64_t window_radius,
+    int rows,
+    int heads,
+    int key_heads,
+    int query_length,
+    int key_length,
+    int head_dim,
+    int compression_ratio,
+    int window_radius,
     int64_t query_batch_stride,
     int64_t query_head_stride,
     int64_t query_time_stride,
@@ -186,44 +219,57 @@ __global__ void compressed_time_local_forward_kernel(
     int64_t key_phasor_time_stride,
     int64_t key_phasor_head_stride,
     int64_t key_phasor_pair_stride) {
-    const int64_t row = blockIdx.x;
-    const int lane = threadIdx.x;
-    const int64_t query_index = row % query_length;
-    const int64_t head_index = (row / query_length) % heads;
-    const int64_t key_head_index = key_heads == 1 ? 0 : head_index;
-    const int64_t batch_index = row / (heads * query_length);
-    if (!query_valid[batch_index * query_length + query_index]) {
+    static_assert(
+        threads_per_row * rows_per_warp == kWarpSize,
+        "one warp must be partitioned into complete attention rows");
+    const int row_in_warp = threadIdx.x / threads_per_row;
+    const int row = blockIdx.x * rows_per_warp + row_in_warp;
+    if (row >= rows) {
         return;
     }
-
+    const int lane = threadIdx.x % threads_per_row;
+    unsigned active_mask;
+    if constexpr (threads_per_row == kWarpSize) {
+        active_mask = 0xffffffffu;
+    } else {
+        active_mask =
+            ((1u << threads_per_row) - 1u) << (row_in_warp * threads_per_row);
+    }
+    const int query_index = row % query_length;
+    const int head_index = (row / query_length) % heads;
+    const int key_head_index = key_heads == 1 ? 0 : head_index;
+    const int batch_index = row / (heads * query_length);
     const int64_t query_offset =
         batch_index * query_batch_stride + head_index * query_head_stride +
         query_index * query_time_stride;
     const int64_t output_offset =
         batch_index * output_batch_stride + head_index * output_head_stride +
         query_index * output_time_stride;
-    const int64_t center = query_index / compression_ratio;
+    if (!query_valid[batch_index * query_length + query_index]) {
+        for (int feature = lane; feature < head_dim; feature += threads_per_row) {
+            output[output_offset + feature] = static_cast<scalar_t>(0.0f);
+        }
+        if (lane == 0) {
+            logsumexp[row] = 0.0f;
+        }
+        return;
+    }
+
+    const int center = query_index / compression_ratio;
     const int window_width = static_cast<int>(2 * window_radius + 1);
     extern __shared__ float shared[];
-    float* scores = shared;
-    float* statistics = shared + window_width;
+    float* scores = shared + row_in_warp * (window_width + 2);
+    float* statistics = scores + window_width;
     float running_max = -INFINITY;
     float denominator = 0.0f;
     bool any_valid = false;
     const float scale = rsqrtf(static_cast<float>(head_dim));
-
-    for (int window_index = 0; window_index < window_width; ++window_index) {
-        const int64_t key_index = center + window_index - window_radius;
-        const bool index_valid = key_index >= 0 && key_index < key_length;
-        const bool valid = index_valid &&
-            key_valid[batch_index * key_length + key_index];
-        float dot = 0.0f;
-        if (valid) {
-            const int64_t key_offset =
-                ((batch_index * key_heads + key_head_index) * key_length + key_index) *
-                head_dim;
-            for (int64_t feature = lane; feature < head_dim; feature += kWarpSize) {
-                const float rotated_query = load_rotated_component(
+    float cached_query[kCachedFeaturesPerLane];
+    if (head_dim <= kMaximumCachedHeadDim) {
+        for (int slot = 0; slot < kCachedFeaturesPerLane; ++slot) {
+            const int feature = lane + slot * threads_per_row;
+            if (feature < head_dim) {
+                cached_query[slot] = load_rotated_component(
                     query,
                     query_offset,
                     feature,
@@ -237,6 +283,39 @@ __global__ void compressed_time_local_forward_kernel(
                     query_phasor_time_stride,
                     query_phasor_head_stride,
                     query_phasor_pair_stride);
+            }
+        }
+    }
+
+    for (int window_index = 0; window_index < window_width; ++window_index) {
+        const int key_index = center + window_index - window_radius;
+        const bool index_valid = key_index >= 0 && key_index < key_length;
+        const bool valid = index_valid &&
+            key_valid[batch_index * key_length + key_index];
+        float dot = 0.0f;
+        if (valid) {
+            const int64_t key_offset =
+                ((static_cast<int64_t>(batch_index) * key_heads + key_head_index) *
+                     key_length +
+                 key_index) *
+                head_dim;
+            for (int feature = lane; feature < head_dim; feature += threads_per_row) {
+                const float rotated_query = head_dim <= kMaximumCachedHeadDim
+                    ? cached_query[feature / threads_per_row]
+                    : load_rotated_component(
+                          query,
+                          query_offset,
+                          feature,
+                          query_phasors,
+                          batch_index,
+                          head_index,
+                          query_index,
+                          query_phasor_batches,
+                          query_phasor_heads,
+                          query_phasor_batch_stride,
+                          query_phasor_time_stride,
+                          query_phasor_head_stride,
+                          query_phasor_pair_stride);
                 const float rotated_key = load_rotated_component(
                     key,
                     key_offset,
@@ -254,7 +333,7 @@ __global__ void compressed_time_local_forward_kernel(
                 dot += rotated_query * rotated_key;
             }
         }
-        dot = warp_sum(dot);
+        dot = row_sum<threads_per_row>(dot, active_mask);
         if (lane == 0) {
             if (valid) {
                 const float score = dot * scale;
@@ -273,44 +352,56 @@ __global__ void compressed_time_local_forward_kernel(
                 scores[window_index] = -INFINITY;
             }
         }
-        __syncwarp();
+        __syncwarp(active_mask);
     }
 
     if (lane == 0) {
         statistics[0] = running_max;
         statistics[1] = denominator;
         if (!any_valid) {
+            logsumexp[row] = 0.0f;
             atomicExch(invalid_row, 1);
         } else {
             logsumexp[row] = running_max + logf(denominator);
         }
     }
-    __syncwarp();
+    __syncwarp(active_mask);
     if (statistics[1] == 0.0f) {
+        for (int feature = lane; feature < head_dim; feature += threads_per_row) {
+            output[output_offset + feature] = static_cast<scalar_t>(0.0f);
+        }
         return;
     }
+    for (int window_index = lane; window_index < window_width;
+         window_index += threads_per_row) {
+        const float score = scores[window_index];
+        scores[window_index] = score == -INFINITY
+            ? 0.0f
+            : expf(score - statistics[0]) / statistics[1];
+    }
+    __syncwarp(active_mask);
 
-    for (int64_t feature = lane; feature < head_dim; feature += kWarpSize) {
+    for (int feature = lane; feature < head_dim; feature += threads_per_row) {
         float accumulated = 0.0f;
         for (int window_index = 0; window_index < window_width; ++window_index) {
-            const float score = scores[window_index];
-            if (score == -INFINITY) {
+            const float probability = scores[window_index];
+            if (probability == 0.0f) {
                 continue;
             }
-            const int64_t key_index = center + window_index - window_radius;
+            const int key_index = center + window_index - window_radius;
             const int64_t value_offset =
-                ((batch_index * key_heads + key_head_index) * key_length + key_index) *
+                ((static_cast<int64_t>(batch_index) * key_heads + key_head_index) *
+                     key_length +
+                 key_index) *
                     head_dim +
                 feature;
-            const float probability =
-                expf(score - statistics[0]) / statistics[1];
             accumulated += probability * static_cast<float>(value[value_offset]);
         }
         output[output_offset + feature] = static_cast<scalar_t>(accumulated);
     }
 }
 
-template <typename scalar_t>
+template <typename scalar_t, int threads_per_row, int rows_per_warp>
 __global__ void compressed_time_local_backward_kernel(
     const scalar_t* __restrict__ grad_output,
     const scalar_t* __restrict__ query,
@@ -324,6 +415,7 @@ __global__ void compressed_time_local_backward_kernel(
     scalar_t* __restrict__ grad_query,
     float* __restrict__ grad_key,
     float* __restrict__ grad_value,
+    int64_t rows,
     int64_t heads,
     int64_t key_heads,
     int64_t query_length,
@@ -352,13 +444,36 @@ __global__ void compressed_time_local_backward_kernel(
     int64_t key_phasor_time_stride,
     int64_t key_phasor_head_stride,
     int64_t key_phasor_pair_stride) {
-    const int64_t row = blockIdx.x;
-    const int lane = threadIdx.x;
+    static_assert(
+        threads_per_row * rows_per_warp == kWarpSize,
+        "one warp must be partitioned into complete attention rows");
+    const int64_t row_in_warp = threadIdx.x / threads_per_row;
+    const int64_t row =
+        static_cast<int64_t>(blockIdx.x) * rows_per_warp + row_in_warp;
+    if (row >= rows) {
+        return;
+    }
+    const int lane = threadIdx.x % threads_per_row;
+    unsigned active_mask;
+    if constexpr (threads_per_row == kWarpSize) {
+        active_mask = 0xffffffffu;
+    } else {
+        active_mask =
+            ((1u << threads_per_row) - 1u) << (row_in_warp * threads_per_row);
+    }
     const int64_t query_index = row % query_length;
     const int64_t head_index = (row / query_length) % heads;
     const int64_t key_head_index = key_heads == 1 ? 0 : head_index;
     const int64_t batch_index = row / (heads * query_length);
+    const int64_t grad_query_offset =
+        batch_index * grad_query_batch_stride +
+        head_index * grad_query_head_stride +
+        query_index * grad_query_time_stride;
     if (!query_valid[batch_index * query_length + query_index]) {
+        for (int64_t feature = lane; feature < head_dim;
+             feature += threads_per_row) {
+            grad_query[grad_query_offset + feature] = static_cast<scalar_t>(0.0f);
+        }
         return;
     }
     const int64_t grad_output_offset =
@@ -368,17 +483,38 @@ __global__ void compressed_time_local_backward_kernel(
     const int64_t query_offset =
         batch_index * query_batch_stride + head_index * query_head_stride +
         query_index * query_time_stride;
-    const int64_t grad_query_offset =
-        batch_index * grad_query_batch_stride +
-        head_index * grad_query_head_stride +
-        query_index * grad_query_time_stride;
     const int64_t center = query_index / compression_ratio;
     const int window_width = static_cast<int>(2 * window_radius + 1);
     const float scale = rsqrtf(static_cast<float>(head_dim));
     extern __shared__ float shared[];
-    float* probabilities = shared;
+    float* probabilities = shared + row_in_warp * (2 * window_width);
     float* probability_gradients = probabilities + window_width;
     float* scaled_score_gradients = probability_gradients;
+    float cached_query[kCachedFeaturesPerLane];
+    float cached_grad_output[kCachedFeaturesPerLane];
+    if (head_dim <= kMaximumCachedHeadDim) {
+        for (int slot = 0; slot < kCachedFeaturesPerLane; ++slot) {
+            const int64_t feature = lane + slot * threads_per_row;
+            if (feature < head_dim) {
+                cached_query[slot] = load_rotated_component(
+                    query,
+                    query_offset,
+                    feature,
+                    query_phasors,
+                    batch_index,
+                    head_index,
+                    query_index,
+                    query_phasor_batches,
+                    query_phasor_heads,
+                    query_phasor_batch_stride,
+                    query_phasor_time_stride,
+                    query_phasor_head_stride,
+                    query_phasor_pair_stride);
+                cached_grad_output[slot] =
+                    static_cast<float>(grad_output[grad_output_offset + feature]);
+            }
+        }
+    }
 
     for (int window_index = 0; window_index < window_width; ++window_index) {
         const int64_t key_index = center + window_index - window_radius;
@@ -390,29 +526,35 @@ __global__ void compressed_time_local_backward_kernel(
                 probabilities[window_index] = 0.0f;
                 probability_gradients[window_index] = 0.0f;
             }
-            __syncwarp();
+            __syncwarp(active_mask);
             continue;
         }
         const int64_t key_offset =
-            ((batch_index * key_heads + key_head_index) * key_length + key_index) *
+            ((static_cast<int64_t>(batch_index) * key_heads + key_head_index) *
+                 key_length +
+             key_index) *
             head_dim;
         float score = 0.0f;
         float probability_gradient = 0.0f;
-        for (int64_t feature = lane; feature < head_dim; feature += kWarpSize) {
-            const float rotated_query = load_rotated_component(
-                query,
-                query_offset,
-                feature,
-                query_phasors,
-                batch_index,
-                head_index,
-                query_index,
-                query_phasor_batches,
-                query_phasor_heads,
-                query_phasor_batch_stride,
-                query_phasor_time_stride,
-                query_phasor_head_stride,
-                query_phasor_pair_stride);
+        for (int64_t feature = lane; feature < head_dim;
+             feature += threads_per_row) {
+            const int64_t feature_slot = feature / threads_per_row;
+            const float rotated_query = head_dim <= kMaximumCachedHeadDim
+                ? cached_query[feature_slot]
+                : load_rotated_component(
+                      query,
+                      query_offset,
+                      feature,
+                      query_phasors,
+                      batch_index,
+                      head_index,
+                      query_index,
+                      query_phasor_batches,
+                      query_phasor_heads,
+                      query_phasor_batch_stride,
+                      query_phasor_time_stride,
+                      query_phasor_head_stride,
+                      query_phasor_pair_stride);
             const float rotated_key = load_rotated_component(
                 key,
                 key_offset,
@@ -428,19 +570,23 @@ __global__ void compressed_time_local_backward_kernel(
                 key_phasor_head_stride,
                 key_phasor_pair_stride);
             score += rotated_query * rotated_key;
+            const float output_gradient = head_dim <= kMaximumCachedHeadDim
+                ? cached_grad_output[feature_slot]
+                : static_cast<float>(grad_output[grad_output_offset + feature]);
             probability_gradient +=
-                static_cast<float>(grad_output[grad_output_offset + feature]) *
-                static_cast<float>(value[key_offset + feature]);
+                output_gradient * static_cast<float>(value[key_offset + feature]);
         }
-        score = warp_sum(score);
-        probability_gradient = warp_sum(probability_gradient);
+        score = row_sum<threads_per_row>(score, active_mask);
+        probability_gradient = row_sum<threads_per_row>(
+            probability_gradient,
+            active_mask);
         if (lane == 0) {
             const float probability =
                 expf(score * scale - logsumexp[row]);
             probabilities[window_index] = probability;
             probability_gradients[window_index] = probability_gradient;
         }
-        __syncwarp();
+        __syncwarp(active_mask);
     }
 
     if (lane == 0) {
@@ -458,9 +604,10 @@ __global__ void compressed_time_local_backward_kernel(
             scaled_score_gradients[window_index] = score_gradient * scale;
         }
     }
-    __syncwarp();
+    __syncwarp(active_mask);
 
-    for (int64_t feature = lane; feature < head_dim; feature += kWarpSize) {
+    for (int64_t feature = lane; feature < head_dim;
+         feature += threads_per_row) {
         float query_gradient = 0.0f;
         for (int window_index = 0; window_index < window_width; ++window_index) {
             if (probabilities[window_index] == 0.0f) {
@@ -468,25 +615,30 @@ __global__ void compressed_time_local_backward_kernel(
             }
             const int64_t key_index = center + window_index - window_radius;
             const int64_t key_offset =
-                ((batch_index * key_heads + key_head_index) * key_length + key_index) *
+                ((static_cast<int64_t>(batch_index) * key_heads + key_head_index) *
+                     key_length +
+                 key_index) *
                     head_dim +
                 feature;
             const int64_t key_row_offset = key_offset - feature;
             const float scaled_score_gradient = scaled_score_gradients[window_index];
-            const float rotated_query = load_rotated_component(
-                query,
-                query_offset,
-                feature,
-                query_phasors,
-                batch_index,
-                head_index,
-                query_index,
-                query_phasor_batches,
-                query_phasor_heads,
-                query_phasor_batch_stride,
-                query_phasor_time_stride,
-                query_phasor_head_stride,
-                query_phasor_pair_stride);
+            const int64_t feature_slot = feature / threads_per_row;
+            const float rotated_query = head_dim <= kMaximumCachedHeadDim
+                ? cached_query[feature_slot]
+                : load_rotated_component(
+                      query,
+                      query_offset,
+                      feature,
+                      query_phasors,
+                      batch_index,
+                      head_index,
+                      query_index,
+                      query_phasor_batches,
+                      query_phasor_heads,
+                      query_phasor_batch_stride,
+                      query_phasor_time_stride,
+                      query_phasor_head_stride,
+                      query_phasor_pair_stride);
             const float rotated_key = load_rotated_component(
                 key,
                 key_row_offset,
@@ -509,7 +661,10 @@ __global__ void compressed_time_local_backward_kernel(
             atomicAdd(
                 grad_value + key_offset,
                 probabilities[window_index] *
-                    static_cast<float>(grad_output[grad_output_offset + feature]));
+                    (head_dim <= kMaximumCachedHeadDim
+                         ? cached_grad_output[feature_slot]
+                         : static_cast<float>(
+                               grad_output[grad_output_offset + feature])));
         }
         grad_query[grad_query_offset + feature] =
             static_cast<scalar_t>(query_gradient);
@@ -684,6 +839,14 @@ void validate_inputs(
         "query/key batch and head dimensions must match, and key heads must be 1 "
         "or equal query heads");
     TORCH_CHECK(query.numel() > 0 && key.numel() > 0, "tensor dimensions must be positive");
+    constexpr int64_t maximum_int = std::numeric_limits<int>::max();
+    TORCH_CHECK(
+        query.size(0) <= maximum_int && query.size(1) <= maximum_int &&
+            query.size(2) <= maximum_int && query.size(3) <= maximum_int &&
+            key.size(1) <= maximum_int && key.size(2) <= maximum_int &&
+            query.numel() / query.size(3) <= maximum_int &&
+            compression_ratio <= maximum_int,
+        "CUDA attention dimensions, row count, and compression ratio must fit int32");
     TORCH_CHECK(
         query.scalar_type() == key.scalar_type() &&
             query.scalar_type() == value.scalar_type(),
@@ -748,20 +911,33 @@ std::vector<torch::Tensor> compressed_time_local_forward_cuda(
     const c10::cuda::CUDAGuard device_guard(query.device());
     const int64_t rows = query.size(0) * query.size(1) * query.size(2);
     auto output = empty_compact_nhtd_like(query);
-    output.zero_();
-    auto logsumexp = torch::zeros(
+    auto logsumexp = torch::empty(
         {query.size(0), query.size(1), query.size(2)},
         query.options().dtype(torch::kFloat));
     auto invalid_row = torch::zeros({1}, query.options().dtype(torch::kInt));
-    const int shared_bytes = static_cast<int>((2 * window_radius + 3) * sizeof(float));
     AT_DISPATCH_FLOATING_TYPES_AND2(
         at::kHalf,
         at::kBFloat16,
         query.scalar_type(),
         "compressed_time_local_forward_cuda",
         [&] {
-            compressed_time_local_forward_kernel<scalar_t>
-                <<<rows, kWarpSize, shared_bytes, at::cuda::getCurrentCUDAStream()>>>(
+            const auto launch = [&](auto threads_per_row_tag, auto rows_per_warp_tag) {
+                constexpr int threads_per_row =
+                    decltype(threads_per_row_tag)::value;
+                constexpr int rows_per_warp = decltype(rows_per_warp_tag)::value;
+                const int blocks = static_cast<int>(
+                    (rows + rows_per_warp - 1) / rows_per_warp);
+                const int shared_bytes = static_cast<int>(
+                    rows_per_warp * (2 * window_radius + 3) * sizeof(float));
+                compressed_time_local_forward_kernel<
+                    scalar_t,
+                    threads_per_row,
+                    rows_per_warp>
+                    <<<
+                        blocks,
+                        kWarpSize,
+                        shared_bytes,
+                        at::cuda::getCurrentCUDAStream()>>>(
                     query.data_ptr<scalar_t>(),
                     key.data_ptr<scalar_t>(),
                     value.data_ptr<scalar_t>(),
@@ -776,6 +952,7 @@ std::vector<torch::Tensor> compressed_time_local_forward_cuda(
                     output.data_ptr<scalar_t>(),
                     logsumexp.data_ptr<float>(),
                     invalid_row.data_ptr<int>(),
+                    static_cast<int>(rows),
                     query.size(1),
                     key.size(1),
                     query.size(2),
@@ -825,6 +1002,8 @@ std::vector<torch::Tensor> compressed_time_local_forward_cuda(
                     key_phasors_real.has_value()
                         ? key_phasors_real.value().stride(3)
                         : 0);
+            };
+            dispatch_attention_row_groups(query.size(3), launch);
         });
     C10_CUDA_KERNEL_LAUNCH_CHECK();
     return {output, logsumexp, invalid_row};
@@ -871,7 +1050,6 @@ std::vector<torch::Tensor> compressed_time_local_backward_cuda(
     const c10::cuda::CUDAGuard device_guard(query.device());
     const int64_t rows = query.size(0) * query.size(1) * query.size(2);
     auto grad_query = empty_compact_nhtd_like(query);
-    grad_query.zero_();
     auto float_options = query.options().dtype(torch::kFloat);
     auto grad_key_float = torch::zeros(key.sizes(), float_options);
     auto grad_value_float = torch::zeros(value.sizes(), float_options);
@@ -881,12 +1059,23 @@ std::vector<torch::Tensor> compressed_time_local_backward_cuda(
         query.scalar_type(),
         "compressed_time_local_backward_cuda",
         [&] {
-            compressed_time_local_backward_kernel<scalar_t>
-                <<<
-                    rows,
-                    kWarpSize,
-                    (4 * window_radius + 2) * sizeof(float),
-                    at::cuda::getCurrentCUDAStream()>>>(
+            const auto launch = [&](auto threads_per_row_tag, auto rows_per_warp_tag) {
+                constexpr int threads_per_row =
+                    decltype(threads_per_row_tag)::value;
+                constexpr int rows_per_warp = decltype(rows_per_warp_tag)::value;
+                const int blocks = static_cast<int>(
+                    (rows + rows_per_warp - 1) / rows_per_warp);
+                const int shared_bytes = static_cast<int>(
+                    rows_per_warp * (4 * window_radius + 2) * sizeof(float));
+                compressed_time_local_backward_kernel<
+                    scalar_t,
+                    threads_per_row,
+                    rows_per_warp>
+                    <<<
+                        blocks,
+                        kWarpSize,
+                        shared_bytes,
+                        at::cuda::getCurrentCUDAStream()>>>(
                     grad_output.data_ptr<scalar_t>(),
                     query.data_ptr<scalar_t>(),
                     key.data_ptr<scalar_t>(),
@@ -903,6 +1092,7 @@ std::vector<torch::Tensor> compressed_time_local_backward_cuda(
                     grad_query.data_ptr<scalar_t>(),
                     grad_key_float.data_ptr<float>(),
                     grad_value_float.data_ptr<float>(),
+                    rows,
                     query.size(1),
                     key.size(1),
                     query.size(2),
@@ -955,6 +1145,8 @@ std::vector<torch::Tensor> compressed_time_local_backward_cuda(
                     key_phasors_real.has_value()
                         ? key_phasors_real.value().stride(3)
                         : 0);
+            };
+            dispatch_attention_row_groups(query.size(3), launch);
         });
     C10_CUDA_KERNEL_LAUNCH_CHECK();
     auto grad_key = grad_key_float.to(key.scalar_type());

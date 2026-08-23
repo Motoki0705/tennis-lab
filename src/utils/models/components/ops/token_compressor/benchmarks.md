@@ -38,9 +38,36 @@ The later production implementation is not the rejected multi-head prototype.
 It compresses to one shared `head_dim` latent used as both key and value, and
 uses an explicit reference/CUDA pooling resolver. The CUDA path is a Triton
 masked-pooling operator with parity, boundary, all-invalid, non-contiguous, and
-gradient tests. No separate latency claim was retained for this revised
-operator, so the table above must not be interpreted as its performance.
+gradient tests. It supports float16, bfloat16, and float32 inputs at head
+dimensions 16, 32, 64, and 128. Unsupported widths fail at construction; they
+do not silently select the reference path.
 
-Its effect is covered only by the final integrated comparisons in
-[`../../benchmarks.md`](../../benchmarks.md). Unsupported CUDA requests fail
-explicitly; they do not fall back silently to the reference implementation.
+## 2026-08-23 pooling optimization
+
+The backward launch was changed from one program per input token and branch to
+one program per compressed output. Each program now computes its masked
+softmax statistics once and writes all contributing source gradients. The
+forward and backward launches also select one, two, or four warps according to
+head width. Boundary-only source gradients are explicitly zero-initialized.
+
+Environment: NVIDIA GeForce GTX 1650 (compute capability 7.5), Python 3.11.15,
+PyTorch 2.13.0+cu130, CUDA 13.0. The benchmark used bfloat16 `raw_kv`, float32
+gates, `N=7,T=1024,Dh=64`, compression ratio 4, approximately 0.875 valid
+density, 8 warmups, and 30 synchronized measured iterations.
+
+| direction | candidate | median / p95 (ms) | peak allocated / reserved (bytes) | speedup |
+|---|---|---:|---:|---:|
+| forward | gathered reference | 2.319 / 3.204 | 46,846,976 / 67,108,864 | 1.000x |
+| forward | optimized Triton | 0.117 / 0.224 | 11,936,768 / 23,068,672 | 19.820x |
+| forward-backward | gathered reference | 3.187 / 6.981 | 46,846,976 / 69,206,016 | 1.000x |
+| forward-backward | optimized Triton | 0.593 / 0.898 | 17,441,792 / 23,068,672 | 5.376x |
+
+The optimized path reduced peak allocation by 74.5% for forward and 62.8% for
+forward-backward in this run. CUDA/reference operator forward, validity,
+input-gradient, and gate-gradient parity passed across all four supported
+widths; float16 coverage was added with the optimization. Full-compressor
+parameter-gradient parity also passed at the configured width 16 and the
+established width 64.
+
+The integrated CSWA and BLCS model results are retained in
+[`../../benchmarks.md`](../../benchmarks.md).

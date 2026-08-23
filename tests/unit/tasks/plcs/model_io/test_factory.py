@@ -9,7 +9,19 @@ import pytest
 from hydra import compose, initialize_config_dir
 
 from src.tasks.plcs.configuration import PLCSTrainingConfig
-from src.tasks.plcs.model_io import PLCSAdapter, PLCSInputProfile, build_plcs_model_io
+from src.tasks.plcs.model_io import (
+    PLCSAdapter,
+    PLCSInputProfile,
+    PLCSTrackQueryIOAdapter,
+    build_plcs_model_io,
+)
+from src.tasks.plcs.models.plcs_track_query_ablation_model import (
+    PLCSTrackQueryAblationModel,
+)
+from src.tasks.plcs.training.composition import (
+    build_plcs_datamodule,
+    build_plcs_lightning_module,
+)
 from src.utils.paths import PROJECT_ROOT
 
 _SMALL_MODEL = (
@@ -17,6 +29,18 @@ _SMALL_MODEL = (
     "model.num_heads=4",
     "model.ffn_dim=32",
     "model.rope_dim=4",
+)
+_CONFIG_DIR = PROJECT_ROOT / "src/tasks/plcs/configs"
+_TRACKING_SMALL = (
+    "model.hidden_dim=16",
+    "model.num_heads=4",
+    "model.ffn_dim=32",
+    "model.rope_dim=4",
+    "model.num_stages=4",
+    "model.mhc.coefficient_dim=8",
+    "model.mhc.sinkhorn_iters=5",
+    "model.cswa.compression_ratio=2",
+    "model.cswa.window_radius=1",
 )
 
 
@@ -114,11 +138,63 @@ def test_factory_binds_each_validated_model_profile_once(
     model_name: str,
     profile: PLCSInputProfile,
 ) -> None:
-    config_dir = PROJECT_ROOT / "src/tasks/plcs/configs"
-    with initialize_config_dir(version_base="1.3", config_dir=str(config_dir)):
+    with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_DIR)):
         config = compose(config_name=config_name, overrides=list(overrides))
     bound = build_plcs_model_io(PLCSTrainingConfig.from_config(config))
     adapter = cast("PLCSAdapter", bound.adapter)
     assert type(bound.model).__name__ == model_name
     assert adapter.profile is profile
     assert type(bound.model) is adapter.model_type
+
+
+def _tracking_config(condition: str) -> object:
+    with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_DIR)):
+        return compose(
+            config_name="train_tracking",
+            overrides=[f"model=track_query_ablation_{condition}", *_TRACKING_SMALL],
+        )
+
+
+@pytest.mark.parametrize("condition", ["a", "b", "c", "d"])
+def test_factory_binds_every_ablation_config_to_exact_model_and_adapter(
+    condition: str,
+) -> None:
+    runtime = PLCSTrainingConfig.from_config(_tracking_config(condition))
+
+    binding = build_plcs_model_io(runtime)
+
+    assert type(binding.model) is PLCSTrackQueryAblationModel
+    assert type(binding.adapter) is PLCSTrackQueryIOAdapter
+    assert binding.adapter.model_type is PLCSTrackQueryAblationModel
+    assert binding.adapter.profile is PLCSInputProfile.TRACK_QUERY
+
+
+def test_ablation_uses_tracking_training_composition(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _tracking_config("d")
+
+    class _DataModule:
+        def __init__(self, received: object) -> None:
+            self.received = received
+
+    class _LightningModule:
+        def __init__(self, received: object) -> None:
+            self.received = received
+
+    monkeypatch.setattr(
+        "src.tasks.plcs.data.tracking_datamodule.PLCSTrackingDataModule",
+        _DataModule,
+    )
+    monkeypatch.setattr(
+        "src.tasks.plcs.training.tracking_lightning_module.PLCSTrackingLightningModule",
+        _LightningModule,
+    )
+
+    datamodule = build_plcs_datamodule(config)
+    lightning_module = build_plcs_lightning_module(config)
+
+    assert type(datamodule) is _DataModule
+    assert type(lightning_module) is _LightningModule
+    assert datamodule.received is config
+    assert lightning_module.received is config

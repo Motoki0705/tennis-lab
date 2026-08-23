@@ -7,6 +7,7 @@ from hydra import compose, initialize_config_dir
 from omegaconf import open_dict
 
 from src.tasks.blcs.configuration import (
+    TrackQueryAblationModelConfig,
     TrackQueryModelConfig,
     parse_model_config,
     validate_training_boundary,
@@ -109,6 +110,71 @@ def test_default_track_query_config_completes_one_cccg_cycle() -> None:
     assert parsed.num_stages == 4
     assert parsed.mhc.sinkhorn_iters == 20
     assert parsed.cswa.backend == "reference"
+
+
+@pytest.mark.parametrize(
+    ("condition", "ffn_mode", "mhc_writeback"),
+    [
+        ("a", "per_attention", "after_object_temporal"),
+        ("b", "shared", "after_object_temporal"),
+        ("c", "per_attention", "layer_end"),
+        ("d", "shared", "layer_end"),
+    ],
+)
+def test_all_four_track_query_ablation_configs_compose_and_validate(
+    condition: str,
+    ffn_mode: str,
+    mhc_writeback: str,
+) -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_tracking",
+            overrides=[f"model=track_query_ablation_{condition}"],
+        )
+
+    parsed = validate_training_boundary(config)
+
+    assert isinstance(parsed, TrackQueryAblationModelConfig)
+    assert parsed.name == "blcs_track_query_ablation"
+    assert parsed.ffn_mode == ffn_mode
+    assert parsed.mhc_writeback == mhc_writeback
+    assert parsed.num_queries == 4
+
+
+@pytest.mark.parametrize(
+    ("violation", "error"),
+    [
+        ("missing_ffn", MissingConfigurationKeyError),
+        ("missing_writeback", MissingConfigurationKeyError),
+        ("unknown", UnknownConfigurationKeyError),
+        ("invalid_ffn", SemanticConfigurationError),
+        ("invalid_writeback", SemanticConfigurationError),
+    ],
+)
+def test_ablation_axes_reject_missing_unknown_and_invalid_values(
+    violation: str,
+    error: type[Exception],
+) -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_tracking",
+            overrides=["model=track_query_ablation_a"],
+        )
+
+    with open_dict(config.model):
+        if violation == "missing_ffn":
+            del config.model["ffn_mode"]
+        elif violation == "missing_writeback":
+            del config.model["mhc_writeback"]
+        elif violation == "unknown":
+            config.model["legacy_ablation"] = True
+        elif violation == "invalid_ffn":
+            config.model.ffn_mode = "legacy"
+        else:
+            config.model.mhc_writeback = "before_spatial"
+
+    with pytest.raises(error):
+        parse_model_config(config)
 
 
 @pytest.mark.parametrize(

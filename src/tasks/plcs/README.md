@@ -69,6 +69,7 @@ version を artifact 名でも区別するため、baseline 用に
 - **`plcs_multiview_axial_split_model.py`**: `PLCSMultiViewAxialSplitModel`(issue #518)。rotation/pose trunkを分離。
 - **`plcs_multiview_axial_camtoken_model.py`**: `PLCSMultiViewAxialCamTokenModel`(issue #576)。head別に別camera tokenを読む。
 - **`plcs_track_query_model.py`**: `PLCSTrackQueryModel`。object ID順のcamera pose観測からclip-localな固定query slotで複数playerの位置・rotation・presenceを推定する。
+- **`plcs_track_query_ablation_model.py`**: `PLCSTrackQueryAblationModel`。既存modelとは別の`plcs_track_query_ablation` architectureとして、SwiGLU配置とmHC writeback位置の4条件を同じ5入力・3出力契約で比較する。
 - **`components/heads.py`**: `PositionHead`/`RotationHead`/`CanonicalPoseHead`。
 - **`discriminators/`**: 共有`TransformerSequenceDiscriminator`を`input_dim=5`で構築するPLCS composition factory。
 
@@ -124,6 +125,8 @@ version を artifact 名でも区別するため、baseline 用に
 
 BLCSと共有する各stageは `mHC object temporal -> global spatial(Q+VQ) -> query temporal` の順で更新し、temporal modeを `CSWA, CSWA, CSWA, Global MHA` のcycleへ固定します。`object_state_valid`を含む全state/attention maskは共有`build_fixed_query_padding_masks()`が`padding_mask`だけから生成します。nested `model.mhc` / `model.cswa`はstrictに検証し、旧`spatial_blocks` / `temporal_blocks` checkpointは自動変換せずstrict load errorとします。
 
+`model=track_query_ablation_{a,b,c,d}`は新しいablation architectureを選びます。A/CはAttentionごとに独立SwiGLUを3回、B/Dは全Attention後にstage共有SwiGLUを1回適用します。A/Bはobject temporal直後にmHCを書き戻してspatial幅を`Q+V×P`にし、C/Dはstage末尾まで圧縮streamを保持して`Q+V`にします。2軸は各configで必須であり、既存`track_query` checkpointとの相互loadはstrict errorです。
+
 multi-object generatorは1024-frame global timelineに3〜10個のAMASS/SMPL-H source subclipを配置し、query再利用gapを含む同時slot占有数を4以下に保ちます。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
 
 ```bash
@@ -133,6 +136,10 @@ multi-object generatorは1024-frame global timelineに3〜10個のAMASS/SMPL-H s
 
 # 事前生成データで学習
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking
+
+# 4条件の例（a / b / c / dを明示して選択）
+.venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking \
+  model=track_query_ablation_d
 
 # trainだけon-the-fly chunk生成（val/testは上記の固定データ）
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking_chunked
