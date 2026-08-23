@@ -17,6 +17,7 @@ from src.tasks.base.configuration import (
     require_config_mapping,
     require_config_value,
 )
+from src.tasks.plcs.artifact_paths import validate_plcs_artifact_publication_path
 from src.utils.configuration import (
     ConfigurationTypeError,
     SemanticConfigurationError,
@@ -72,10 +73,6 @@ class PLCSGenerationConfig:
             raise ConfigurationTypeError(
                 "PLCS generation boundary requires DictConfig."
             )
-        components = configuration_contracts.PLCSGenerationComponents.from_config(
-            value
-        )
-        path_config = components.paths
         root = as_config_mapping(
             OmegaConf.to_container(value, resolve=True), path="configuration"
         )
@@ -106,10 +103,20 @@ class PLCSGenerationConfig:
             },
             path="run",
         )
-        mode = components.mode
         output_relative = cast(
             "str", require_config_value(run, "output_dir", str, path="run")
         )
+        normalization = CourtCoordinateNormalizationConfig.from_config(value).contract
+        validate_plcs_artifact_publication_path(
+            output_relative,
+            normalization=normalization,
+            config_path="run.output_dir",
+        )
+        components = configuration_contracts.PLCSGenerationComponents.from_config(
+            value
+        )
+        mode = components.mode
+        path_config = components.paths
         output_dir = path_config.resolver.resolve(PathRole.DATA, output_relative)
         requested_device = cast(
             "str", require_config_value(run, "device", str, path="run")
@@ -160,9 +167,7 @@ class PLCSGenerationConfig:
         resolved.run.device = device
         return cls(
             config=resolved,
-            court_coordinate_normalization=(
-                CourtCoordinateNormalizationConfig.from_config(value).contract
-            ),
+            court_coordinate_normalization=normalization,
             output_dir=output_dir,
             device=device,
             seed=cast("int", require_config_value(run, "seed", int, path="run")),
