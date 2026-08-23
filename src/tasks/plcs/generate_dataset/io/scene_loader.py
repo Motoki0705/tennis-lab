@@ -35,27 +35,28 @@ class AttrDict(dict[str, Any]):
 def load_scene(
     filepath: str | Path,
     *,
-    court_coordinate_normalization: CourtCoordinateNormalization | None = None,
+    court_coordinate_normalization: CourtCoordinateNormalization,
 ) -> dict[str, Any]:
     """Load a scene from a npy + json scene directory.
 
     Args:
         filepath: Path to the scene directory.
+        court_coordinate_normalization: Resolved runtime normalization contract
+            required to validate root and scene metadata before payload loading.
 
     Returns:
         Dictionary with scene data including meta, position, rotation,
         canonical_pose_3d, num_cameras, and cameras list.
     """
     scene_dir = Path(filepath)
-    if court_coordinate_normalization is not None:
-        dataset_root = (
-            scene_dir.parent.parent if scene_dir.parent.name == "scenes" else scene_dir
-        )
-        validate_dataset_court_coordinate_contract(
-            dataset_root,
-            court_coordinate_normalization,
-            scene_paths=(scene_dir,),
-        )
+    dataset_root = (
+        scene_dir.parent.parent if scene_dir.parent.name == "scenes" else scene_dir
+    )
+    validate_dataset_court_coordinate_contract(
+        dataset_root,
+        court_coordinate_normalization,
+        scene_paths=(scene_dir,),
+    )
 
     with open(scene_dir / "meta.json") as f:
         meta = json.load(f)

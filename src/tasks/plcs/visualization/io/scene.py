@@ -22,16 +22,13 @@ def load_scene_bundle(
     scene_path: Path,
     camera: int,
     cameras: tuple[int, ...] | Literal["all"] | None,
-    court_coordinate_normalization: CourtCoordinateNormalization | None = None,
+    *,
+    court_coordinate_normalization: CourtCoordinateNormalization,
 ) -> SceneBundle:
-    """Load scene and resolve selected cameras/fps for visualization."""
-    scene: Any = (
-        load_scene(scene_path)
-        if court_coordinate_normalization is None
-        else load_scene(
-            scene_path,
-            court_coordinate_normalization=court_coordinate_normalization,
-        )
+    """Validate and load a scene, then resolve selected cameras and fps."""
+    scene: Any = load_scene(
+        scene_path,
+        court_coordinate_normalization=court_coordinate_normalization,
     )
     num_cameras = int(scene.num_cameras)
     selected_cameras = resolve_cameras(

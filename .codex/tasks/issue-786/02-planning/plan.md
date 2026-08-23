@@ -12,8 +12,8 @@
 |---|---|---|---|
 | AC-001 | versioned contractの単一正本が、`v1=(5.485,11.885,1.07)m`、`v2=(11.885,11.885,11.885)m`を返し、未知versionを明示的エラーにする。 | Add an immutable typed resolver/value object and shape-generic conversion helpers; retain current constants as documented v1 aliases only. | `unit-contract`, `precommit-all`, `full-pytest`. |
 | AC-002 | Hydraの共通configからBLCS / PLCS / SLCSの生成・学習・評価・推論へ同じnormalization versionが伝播し、`v1` / `v2`を明示的に切り替えられる。 | Add a shared Hydra group with explicit v1 default and inject the resolved contract through every task boundary rather than a mutable global. | Config-composition cases in `integration-normalization`; task unit checks. |
-| AC-003 | 初回導入時のdefaultが`v1`であり、既存config・dataset・checkpointを用いた代表的な推論、metric、lossの数値が変更前と許容誤差内で一致する。 | Preserve v1 behavior and add finite task-local adapters for the two named metadata-free real checkpoints: BLCS derives only missing `model.num_court_tokens` from saved `data.num_court_kp`; PLCS reconstructs only missing `external_assets` from the saved path and the exact canonical qualitative schema. Generate base-revision prediction/loss/metric goldens from the named artifacts. | `legacy-v1-checkpoint-parity`, strict negative adapter cases, v2-before-compose rejection, and existing v1 goldens. |
-| AC-004 | metadataを持たない既存dataset / checkpointは`v1` runtimeでのみ利用でき、`v2` runtimeでは明示的エラーになる。 | Keep the shared all-missing gate and make the finite adapter reachable only after it reports `legacy_metadata_free=True` under explicit v1. Never overwrite stored values or admit metadata-bearing/v2 files. | `legacy-v1-checkpoint-parity`, `unit-contract`, and adapter rejection matrix. |
+| AC-003 | 初回導入時のdefaultが`v1`であり、既存config・dataset・checkpointを用いた代表的な推論、metric、lossの数値が変更前と許容誤差内で一致する。 | At frozen base `59e3b166...`, deterministically generate small metadata-free BLCS/PLCS checkpoints and loader-compatible dataset fixtures with actual task models; record prediction/loss/metre-metric goldens. The current v1 path must load those unchanged artifacts and match at explicit tolerances. Archived checkpoints already incompatible with the frozen base are documented but not auto-migrated. | `legacy-v1-checkpoint-parity`, existing v1 goldens, and v2 metadata rejection. |
+| AC-004 | metadataを持たない既存dataset / checkpointは`v1` runtimeでのみ利用でき、`v2` runtimeでは明示的エラーになる。 | Keep the shared all-missing legacy gate: frozen-base metadata-free representative artifacts load only under explicit v1 and fail before config/state use under v2. Do not add architecture/config migration for older files already incompatible at the base revision. | `legacy-v1-checkpoint-parity`, `unit-contract`, and real metadata-free artifact rejection matrix. |
 | AC-005 | runtime config、dataset metadata、checkpoint metadataのversionまたは`scale_xyz`が一致しない場合、resume・evaluation・inferenceが明示的エラーになる。 | Bind the same contract to runtime, root/scene metadata and checkpoint config; validate before array/model use. | Cross-product mismatch tests in `unit-contract` and integration smoke. |
 | AC-006 | 任意shape`(...,3)`の物理positionについて、BLCS / PLCS / SLCSの各versionの`normalize -> denormalize`が最大絶対誤差`1e-5m`以下で元の値を復元する。 | Use broadcast-safe NumPy/Torch helpers backed by the typed scale. | Parameterized property examples in `unit-contract` plus task checks. |
 | AC-007 | `v2`正規化空間でdoubles sideline、baseline、net postがそれぞれ`x≈±0.4615`, `y=±1`, `z≈0.0900`となり、物理コート寸法は変更されない。 | Keep physical constants/CourtKP geometry unchanged and derive v2 only in normalization resolver. | Landmark/aspect assertions in `unit-contract`. |
@@ -43,7 +43,7 @@
 - SLCS/SceneResult: SLCS data types/loader, adapter, metrics/evaluation/inference and applicable scripts/configs/docs; tennis-scene unit/provenance contract without changing physical output values.
 - Formal experiment evidence: `knowledge/nodes/run-i786-*.md`, `knowledge/nodes/group-i786-coordinate-normalization-v2.md`, corresponding small reproducibility bundles under `knowledge/runs/`; large datasets/checkpoints/logs remain outside git.
 - Tests are not owned by production Implementers. The independent Test Writer will place pure tests under mirrored `tests/unit/...` paths from `checks.json` and cross-task CPU smoke at `tests/integration/tasks/test_court_coordinate_normalization_smoke.py`.
-- Attempt-2 repair files are limited to task-local BLCS/PLCS checkpoint adapters and PLCS public scene-loader propagation. The parent produces raw base-revision golden evidence in a detached worktree; only the independent Test Writer may add the committed fixture and test changes.
+- Attempt-2 production repair is limited to PLCS public scene-loader propagation. The parent produces raw base-revision representative checkpoint/data goldens in a detached worktree; only the independent Test Writer may add the committed fixture and test changes.
 
 ## Implementation topology and ownership
 
@@ -51,13 +51,13 @@
 - Production Implementers may edit source/config/docs in their ownership but no tests and no workflow artifacts. They must preserve edits from other agents and use the shared core contract rather than create task-local resolvers.
 - The parent is the sole implementation integrator: resolves cross-task config composition, performs repository-wide fixed-scale inventory, writes `implementation.md`, runs materialization/training operations, and registers knowledge evidence.
 - Independent Preflight Reviewer, Test Writer, Seal Reviewer and Issue-only Validator remain sequential and own only their prescribed artifacts/tests.
-- Attempt 2 is sequential: one bounded production Implementer owns only the checkpoint adapters and PLCS loader contract; the parent owns detached-base evidence generation and final integration. No production worker edits tests.
+- Attempt 2 is sequential: one bounded production Implementer owns only the PLCS loader contract; the parent owns detached-base representative artifact generation and final integration. No production worker edits tests.
 
 ## Independent test work unit
 
 - After production Preflight PASS, one independent Test Writer owns all test changes. Unit tests mirror `src/` only for the new shared/base pure modules and high-value task logic; renderer/model-forward flows live in the single integration smoke.
 - Required cases: v1/v2 mappings and unknown version; shape-generic NumPy/Torch round trip; aspect ratio; v1 golden behavior; metadata-free v1 and v2 rejection; root/scene/checkpoint mismatch matrix; BLCS velocity/gravity/projection/metric/predictor; PLCS translation versus canonical metres and renderer; SLCS scalar uncertainty/SceneResult metres; v2 equal physical loss/beta; materializer non-overwrite and physical round trip; both-version CPU task flow.
-- Attempt-2 required cases add real named checkpoint parity against frozen-base goldens, mandatory PLCS public-loader metadata rejection, actual task dataset/model CPU chains, and default-v1 standard/tracking predictor physical scaling. Missing external evidence is not a skip-based PASS.
+- Attempt-2 required cases add frozen-base metadata-free representative checkpoint/data parity, mandatory PLCS public-loader metadata rejection, actual task dataset/model CPU chains, and default-v1 standard/tracking predictor physical scaling. A fixture-generation failure is not a skip-based PASS.
 
 ## Canonical verification commands
 
@@ -66,7 +66,7 @@
 - `unit-plcs`: PLCS targets, generation, loss and both predictors.
 - `unit-slcs`: SLCS dataset/adapter/predictor/metrics and SceneResult units.
 - `integration-normalization`: cross-task v1/v2 CPU smoke and bounded materialization.
-- `legacy-v1-checkpoint-parity`: real metadata-free BLCS/PLCS checkpoint inference, loss, and metre-metric parity against frozen-base goldens plus explicit v2 rejection before config composition.
+- `legacy-v1-checkpoint-parity`: frozen-base metadata-free representative BLCS/PLCS checkpoint inference, loss, and metre-metric parity plus explicit v2 rejection before config/state use.
 - `preflight-regression`: existing v1-facing schema/config/loss/metric/predictor tests that must stay green before the Test Writer adds new coverage.
 - `knowledge-graph`: formal v1/v2 baseline run/group nodes.
 - `precommit-all`: Ruff, mypy, script reviewer and repository hooks.
@@ -74,9 +74,9 @@
 
 ## Ordered execution plan
 
-1. Preserve attempt-1 implementation and repair only the two named real legacy checkpoint composition gaps with finite explicit-v1 task-local adapters; keep strict typed config and shared metadata gates unchanged.
+1. Preserve attempt-1 implementation and keep strict typed config/model state plus shared metadata gates unchanged; do not auto-migrate archived checkpoints already incompatible at the frozen base.
 2. Make PLCS public scene loading require and forward a resolved normalization contract across every owned caller.
-3. In a detached worktree at frozen base `59e3b166...`, run one deterministic legacy scene through each named real checkpoint and capture normalized/metre prediction, task loss, and metre metrics with provenance. Missing artifacts or non-reproducible base execution is an explicit blocker, never fabricated evidence.
+3. In a detached worktree at frozen base `59e3b166...`, deterministically create small metadata-free representative checkpoints and dataset fixtures using actual BLCS/PLCS task classes, then capture normalized/metre prediction, task loss, and metre metrics with provenance. A non-reproducible base execution is an explicit blocker, never fabricated evidence.
 4. Parent integrates implementation and evidence handoffs, records exact adapter amendments/golden provenance in `implementation.md`, and runs attempt-2 discovery Preflight using only frozen Validator-return categories.
 5. After Preflight PASS, a fresh Test Writer commits the base goldens, adds strict positive/negative real-checkpoint parity, replaces the surrogate CPU smoke with actual dataset/model chains, adds mandatory PLCS loader failures and v1/default predictor scale assertions, then runs every test-stage canonical check.
 6. Repeat Seal and Issue-only validation on one stable candidate. Only Validator PASS may proceed to PR packaging/finalization.
@@ -86,7 +86,7 @@
 - Contract validation is fail-closed: unknown/partial/mixed/mismatch cases must raise before reading model tensors or scene arrays.
 - v1 is checked by numeric golden/regression evidence, not only round trip. v2 is checked by aspect ratio, equal physical loss, physical gravity and metre reconstruction.
 - Repository-wide deterministic `rg` inventory confirms remaining `COURT_COORD_SCALE_*` references are physical geometry, documented v1 aliases, or explicitly version-resolved compatibility paths.
-- Attempt-2 Preflight may additionally inspect only the finite legacy checkpoint amendment conditions, named real checkpoint CPU composition, mandatory PLCS scene-loader call graph, actual tiny-model/loader feasibility, and default-v1 predictor scale consumers. These are frozen Validator-return closure categories, not an open-ended campaign.
+- Attempt-2 Preflight may additionally inspect only frozen-base representative artifact provenance/current-v1 parity feasibility, explicit-v2 metadata rejection, mandatory PLCS scene-loader call graph, actual tiny-model/loader feasibility, and default-v1 predictor scale consumers. These are frozen Validator-return closure categories, not an open-ended campaign.
 - Operational evidence uses identical physical scenes and controlled v1/v2 training pairs; comparisons are reported only in physical metres, never raw normalized loss alone.
 - Final Validator receives the frozen Issue and sealed candidate only and must substantively verify all 22 ACs.
 
@@ -104,4 +104,4 @@
 - Rollback is configuration-level: select v1 and legacy artifacts. Removal of v1 is not part of this Issue.
 - Main risks are config paths that omit the shared group, default arguments capturing v1, scene subsets escaping metadata validation, PLCS renderer/canonical coupling, SLCS uncertainty units, and long training. Preflight may use only the bounded diagnostics listed in Validation strategy plus config-composition, metadata-mutation, unit-round-trip, checkpoint-mismatch and materialization-smoke categories.
 - Tester cycle 1 exposed a baseline-environment coverage gap: `full-pytest` combined `CUDA_VISIBLE_DEVICES=""` with existing mandatory CUDA tests and lacked the private NHT submodule config. The repaired authority keeps all normalization smokes CPU-only, exposes only GPU 0 for the repository-wide test, and requires a worktree-local non-symlink NHT config. This changes test environment authority only, not Issue production behavior or acceptance scope.
-- Attempt-2 risks are adapter overreach, qualitative-default drift, checkpoint/scene availability, and a nominal smoke that substitutes a generic model. Mitigations are finite allowlists derived only from saved values/canonical config, exact inserted-mapping assertions, committed base-revision golden provenance, and explicit actual task class assertions. If base-revision goldens cannot be generated from the named files, AC-003/004 remain NOT VERIFIED and the task blocks rather than silently skipping.
+- Attempt-2 risks are confusing already-obsolete archived files with normalization compatibility, fixture provenance drift, and a nominal smoke that substitutes a generic model. Mitigations are no legacy architecture conversion, committed frozen-base artifact/golden hashes and generation provenance, explicit v1/v2 metadata guards, and actual task class assertions. If frozen-base representative artifacts cannot be generated and replayed, AC-003/004 remain NOT VERIFIED and the task blocks rather than silently skipping.
