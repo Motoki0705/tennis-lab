@@ -11,6 +11,7 @@ from src.tasks.blcs.data.tracking_types import BLCSTrackingPrediction
 from src.tasks.blcs.inference.tracking_predictor import BLCSTrackingPredictor
 from src.tasks.blcs.model_io import TrackQueryBoundModelIO, TrackQueryModelIOAdapter
 from src.tasks.blcs.models import BLCSTrackQueryModel
+from src.utils.schema.court_normalization import resolve_court_coordinate_normalization
 
 
 class _FixedTrackingModel(BLCSTrackQueryModel):
@@ -109,3 +110,37 @@ def test_predictor_is_the_only_boundary_that_pads_short_candidates() -> None:
             ball_vis=torch.ones(1, 1, 3, 3, dtype=torch.bool),
             **common,
         )
+
+
+def test_v2_tracking_predictor_returns_meter_valued_positions() -> None:
+    binding = cast(
+        "TrackQueryBoundModelIO",
+        bind_model_io(
+            _FixedTrackingModel(),
+            TrackQueryModelIOAdapter(
+                num_court_tokens=14,
+                num_queries=2,
+                presence_threshold=0.5,
+            ),
+        ),
+    )
+    contract = resolve_court_coordinate_normalization("v2")
+    predictor = BLCSTrackingPredictor(
+        binding,
+        torch.device("cpu"),
+        normalization=contract,
+    )
+
+    result = predictor.predict(
+        ball_uv=torch.zeros(1, 1, 2, 2, 2),
+        ball_vis=torch.ones(1, 1, 2, 2, dtype=torch.bool),
+        court_kp=torch.zeros(1, 1, 2, 14, 2),
+        court_vis=torch.ones(1, 1, 2, 14, dtype=torch.bool),
+        padding_mask=torch.zeros(1, 1, 2, dtype=torch.bool),
+        denormalize=True,
+    )
+
+    torch.testing.assert_close(
+        result.position,
+        torch.tensor(contract.scale_xyz).expand(1, 2, 2, 3),
+    )

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import asdict, replace
+from types import SimpleNamespace
 
+import pytest
 import torch
 
 from src.tasks.plcs.training.losses import (
@@ -13,7 +15,9 @@ from src.tasks.plcs.training.losses import (
     PLCSLossInputs,
     position_smoothness_loss_term,
 )
+from src.tasks.plcs.training.tracking_losses import PLCSTrackingLoss
 from src.utils.losses.temporal import TemporalSmoothnessPenalty
+from src.utils.schema.court_normalization import resolve_court_coordinate_normalization
 
 
 def _loss_config() -> PLCSLossConfig:
@@ -132,3 +136,61 @@ def test_forward_combines_only_prepared_terms_without_registry_dispatch() -> Non
     losses = loss_fn(prepared)
 
     assert torch.isfinite(losses["total"])
+
+
+def test_v2_equal_physical_axis_errors_have_equal_default_position_loss() -> None:
+    contract = resolve_court_coordinate_normalization("v2")
+    loss_fn = PLCSLoss(_loss_config(), normalization=contract)
+    losses = []
+    for axis in range(3):
+        target = torch.zeros(1, 1, 3)
+        target[..., axis] = 0.5 / contract.scale_xyz[axis]
+        prepared = loss_fn.prepare_inputs(
+            pred_position=torch.zeros_like(target),
+            pred_rotation=torch.tensor([[[1.0, 0.0]]]),
+            target_position=target,
+            target_rotation=torch.tensor([[[1.0, 0.0]]]),
+            pred_canonical_pose=None,
+            target_human_kp_3d=None,
+            padding_mask=torch.zeros(1, 1, dtype=torch.bool),
+        )
+        losses.append(loss_fn(prepared)["position"])
+
+    assert loss_fn.position_huber_beta == pytest.approx(1.0 / 11.885)
+    torch.testing.assert_close(torch.stack(losses), losses[0].expand(3))
+
+
+def test_v1_position_loss_keeps_historical_normalized_beta() -> None:
+    assert PLCSLoss(_loss_config(), normalization="v1").position_huber_beta == 1.0
+
+    with pytest.raises(ValueError, match="not representable"):
+        PLCSLoss(
+            replace(_loss_config(), position_huber_beta_m=1.0),
+            normalization="v1",
+        )
+
+
+def _tracking_config() -> SimpleNamespace:
+    return SimpleNamespace(
+        position_weight=1.0,
+        rotation_weight=0.5,
+        presence_weight=1.0,
+        presence_inactive_weight=0.25,
+        presence_active_weight=1.0,
+        presence_transition_weight=2.0,
+        transition_radius=2,
+        track_smoothness_weight=0.0,
+        match_position_weight=1.0,
+        match_rotation_weight=0.5,
+        match_presence_weight=0.5,
+        position_huber_beta_m=None,
+    )
+
+
+def test_plcs_tracking_loss_and_hungarian_cost_share_v2_physical_beta() -> None:
+    v1 = PLCSTrackingLoss(_tracking_config(), normalization="v1")
+    v2 = PLCSTrackingLoss(_tracking_config(), normalization="v2")
+
+    assert v1.position_huber_beta == 1.0
+    assert v2.position_huber_beta == pytest.approx(1.0 / 11.885)
+    assert not hasattr(v2, "position_axis_weights")

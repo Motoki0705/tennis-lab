@@ -244,6 +244,8 @@ def test_task_local_boundaries_keep_task_local_configuration_authority(
     assert boundary.authority_symbols
     assert all(
         symbol.startswith((task_prefix, "src.tasks.base.", "src.utils.configuration."))
+        or symbol
+        == "src.utils.schema.court_normalization.CourtCoordinateNormalization"
         for symbol in boundary.authority_symbols
     )
     assert not any(

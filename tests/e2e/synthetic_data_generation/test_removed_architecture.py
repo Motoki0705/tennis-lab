@@ -31,6 +31,7 @@ REMOVED_MODULE_PREFIXES = (
 
 APPROVED_TASK_BOUNDARIES = frozenset(
     {
+        "src.tasks.base.data",
         "src.tasks.base.model_io",
         "src.tasks.blcs.generate_dataset.source_api",
         "src.tasks.plcs.data.targets",

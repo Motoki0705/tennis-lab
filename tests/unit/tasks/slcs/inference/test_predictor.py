@@ -5,19 +5,27 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import cast
 
+import pytest
 import torch
 from torch import Tensor, nn
 
-from src.tasks.base.model_io import BoundModelIO, bind_model_io
+from src.tasks.base.data import MissingCourtCoordinateMetadataError
+from src.tasks.base.model_io import (
+    BoundModelIO,
+    bind_model_io,
+    write_checkpoint_court_coordinate_contract,
+)
 from src.tasks.slcs.inference.predictor import SLCSPredictor
 from src.tasks.slcs.model_io import (
     SLCSDecodedOutput,
     SLCSModelIOAdapter,
     SLCSModelIOSpec,
     SLCSRawOutput,
+    prepare_slcs_checkpoint_config,
 )
 from src.tasks.slcs.models.slcs_model import SLCSFusionModel
 from src.tasks.slcs.training.lightning_module import SLCSLightningModule
+from src.utils.schema.court_normalization import resolve_court_coordinate_normalization
 
 
 def _model() -> SLCSFusionModel:
@@ -131,3 +139,33 @@ def test_predictor_returns_typed_detached_cpu_output_and_targets() -> None:
     assert targets.target_ball_position.device.type == "cpu"
     assert not output.player_position.requires_grad
     assert len(calls) == 1
+
+
+def test_slcs_checkpoint_legacy_and_runtime_contract_are_fail_closed() -> None:
+    legacy = {"hyper_parameters": {"config": {"model": {"name": "slcs"}}}}
+    with pytest.raises(MissingCourtCoordinateMetadataError, match="legacy v1 only"):
+        prepare_slcs_checkpoint_config(
+            legacy,
+            resolve_court_coordinate_normalization("v2"),
+        )
+
+    config = prepare_slcs_checkpoint_config(
+        legacy,
+        resolve_court_coordinate_normalization("v1"),
+    )
+    assert config.court_coordinate_normalization.version == "v1"
+
+    versioned: dict[str, object] = {
+        "hyper_parameters": {
+            "config": {"court_coordinate_normalization": {"version": "v2"}}
+        }
+    }
+    write_checkpoint_court_coordinate_contract(
+        versioned,
+        resolve_court_coordinate_normalization("v2"),
+    )
+    restored = prepare_slcs_checkpoint_config(
+        versioned,
+        resolve_court_coordinate_normalization("v2"),
+    )
+    assert restored.court_coordinate_normalization.version == "v2"
