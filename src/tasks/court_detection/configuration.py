@@ -37,6 +37,8 @@ CourtSourceSplit: TypeAlias = Literal["train", "val", "test"]
 CourtTargetKind: TypeAlias = Literal["kp", "seg", "line"]
 SyntheticCourtSchemaVersion: TypeAlias = Literal["v1", "v2", "v3"]
 KeypointCourtScope: TypeAlias = Literal["all_courts", "target_court"]
+CourtQueryPreset: TypeAlias = Literal["tiny", "small", "base", "raw"]
+CourtQueryDecoderFamily: TypeAlias = Literal["linear", "progressive", "dpt"]
 
 SEGMENTATION_TARGET_SCHEMA = "court_cell_segmentation_v1"
 LINE_TARGET_SCHEMA = "court_line_binary_v1"
@@ -247,6 +249,8 @@ class CourtAugmentationConfig:
     gaussian_blur_prob: float
     min_visible_kp: int
     visibility_max_retries: int
+    preserve_fx_fy: bool
+    canvas_size: int | None
 
     @classmethod
     def from_mapping(cls, value: object) -> CourtAugmentationConfig:
@@ -269,6 +273,8 @@ class CourtAugmentationConfig:
             "gaussian_blur_prob",
             "min_visible_kp",
             "visibility_max_retries",
+            "preserve_fx_fy",
+            "canvas_size",
         }
         _exact(mapping, keys, path="data.augmentation")
         result = cls(
@@ -322,6 +328,18 @@ class CourtAugmentationConfig:
             ),
             visibility_max_retries=_integer(
                 mapping, "visibility_max_retries", path="data.augmentation"
+            ),
+            preserve_fx_fy=_bool(
+                mapping, "preserve_fx_fy", path="data.augmentation"
+            ),
+            canvas_size=cast(
+                "int | None",
+                require_config_value(
+                    mapping,
+                    "canvas_size",
+                    (int, type(None)),
+                    path="data.augmentation",
+                ),
             ),
         )
         if not result.train_scales or any(scale <= 0 for scale in result.train_scales):
@@ -386,6 +404,10 @@ class CourtAugmentationConfig:
         if result.min_visible_kp < 0:
             raise SemanticConfigurationError(
                 "data.augmentation.min_visible_kp must be non-negative."
+            )
+        if result.canvas_size is not None and result.canvas_size <= 0:
+            raise SemanticConfigurationError(
+                "data.augmentation.canvas_size must be null or positive."
             )
         return result
 
@@ -678,30 +700,35 @@ class CourtLoRAConfig:
     target_modules: tuple[str, ...]
 
     @classmethod
-    def from_mapping(cls, value: object) -> CourtLoRAConfig:
-        mapping = as_config_mapping(value, path="model.encoder.lora")
+    def from_mapping(
+        cls,
+        value: object,
+        *,
+        path: str = "model.encoder.lora",
+    ) -> CourtLoRAConfig:
+        mapping = as_config_mapping(value, path=path)
         _exact(
             mapping,
             {"enabled", "rank", "alpha", "dropout", "target_modules"},
-            path="model.encoder.lora",
+            path=path,
         )
-        raw_targets = _sequence(mapping, "target_modules", path="model.encoder.lora")
+        raw_targets = _sequence(mapping, "target_modules", path=path)
         if not raw_targets or any(
             type(item) is not str or not item for item in raw_targets
         ):
             raise ConfigurationTypeError(
-                "model.encoder.lora.target_modules must contain non-empty strings."
+                f"{path}.target_modules must contain non-empty strings."
             )
         result = cls(
-            enabled=_bool(mapping, "enabled", path="model.encoder.lora"),
-            rank=_integer(mapping, "rank", path="model.encoder.lora"),
-            alpha=_number(mapping, "alpha", path="model.encoder.lora"),
-            dropout=_number(mapping, "dropout", path="model.encoder.lora"),
+            enabled=_bool(mapping, "enabled", path=path),
+            rank=_integer(mapping, "rank", path=path),
+            alpha=_number(mapping, "alpha", path=path),
+            dropout=_number(mapping, "dropout", path=path),
             target_modules=tuple(cast("str", item) for item in raw_targets),
         )
         if result.rank <= 0 or result.alpha <= 0 or not 0.0 <= result.dropout < 1.0:
             raise SemanticConfigurationError(
-                "Invalid model.encoder.lora rank/alpha/dropout."
+                f"Invalid {path} rank/alpha/dropout."
             )
         return result
 
@@ -887,6 +914,492 @@ class CourtModelConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class CourtQueryBackboneConfig:
+    """Exact DINOv3 asset and trainability contract for the query variant."""
+
+    name: Literal["dinov3"]
+    repository_path: Path
+    checkpoint_path: Path
+    backbone_name: str
+    output_layer: Literal["normalized_patch_tokens"]
+    strict: bool
+    train_mode: Literal["frozen", "last_n", "full"]
+    last_n_blocks: int
+    lora: CourtLoRAConfig
+
+    @classmethod
+    def from_mapping(
+        cls,
+        value: object,
+        *,
+        resolver: PathResolver,
+    ) -> CourtQueryBackboneConfig:
+        path = "model.backbone"
+        mapping = as_config_mapping(value, path=path)
+        _exact(
+            mapping,
+            {
+                "name",
+                "repository_path",
+                "checkpoint_path",
+                "checkpoint_directory",
+                "backbone_name",
+                "output_layer",
+                "strict",
+                "train_mode",
+                "last_n_blocks",
+                "lora",
+            },
+            path=path,
+        )
+        if _string(mapping, "name", path=path) != "dinov3":
+            raise SemanticConfigurationError("model.backbone.name must be 'dinov3'.")
+        if _string(mapping, "checkpoint_directory", path=path) != "checkpoints":
+            raise SemanticConfigurationError(
+                "model.backbone.checkpoint_directory must be 'checkpoints'."
+            )
+        output_layer = _string(mapping, "output_layer", path=path)
+        if output_layer != "normalized_patch_tokens":
+            raise SemanticConfigurationError(
+                "model.backbone.output_layer must be 'normalized_patch_tokens'; "
+                "CLS/register tokens are not supported."
+            )
+        train_mode = _string(mapping, "train_mode", path=path)
+        if train_mode not in {"frozen", "last_n", "full"}:
+            raise SemanticConfigurationError(
+                "model.backbone.train_mode must be frozen, last_n, or full."
+            )
+        last_n_blocks = _integer(mapping, "last_n_blocks", path=path)
+        if last_n_blocks < 0 or (
+            (train_mode == "last_n") != (last_n_blocks > 0)
+        ):
+            raise SemanticConfigurationError(
+                "model.backbone.last_n_blocks must be positive exactly when "
+                "train_mode='last_n'."
+            )
+        lora = CourtLoRAConfig.from_mapping(
+            require_config_mapping(mapping, "lora", path=path),
+            path="model.backbone.lora",
+        )
+        if lora.enabled and train_mode != "frozen":
+            raise SemanticConfigurationError(
+                "Query-backbone LoRA requires model.backbone.train_mode='frozen'."
+            )
+        return cls(
+            name="dinov3",
+            repository_path=resolver.resolve(
+                PathRole.EXTERNAL_ASSET,
+                _string(mapping, "repository_path", path=path),
+            ),
+            checkpoint_path=resolver.resolve_symlink_entry(
+                PathRole.EXTERNAL_ASSET,
+                _string(mapping, "checkpoint_path", path=path),
+            ),
+            backbone_name=_string(mapping, "backbone_name", path=path),
+            output_layer="normalized_patch_tokens",
+            strict=_bool(mapping, "strict", path=path),
+            train_mode=cast(
+                "Literal['frozen', 'last_n', 'full']",
+                train_mode,
+            ),
+            last_n_blocks=last_n_blocks,
+            lora=lora,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class CourtQueryTaskEncoderConfig:
+    hidden_dim: int
+    depth: int
+    num_heads: int
+    mlp_ratio: float
+    dropout: float
+    rope_dim: int
+    rope_theta: float
+    tap_indices: tuple[int, ...]
+
+    @classmethod
+    def from_mapping(cls, value: object) -> CourtQueryTaskEncoderConfig:
+        path = "model.task_encoder"
+        mapping = as_config_mapping(value, path=path)
+        _exact(
+            mapping,
+            {
+                "hidden_dim",
+                "depth",
+                "num_heads",
+                "mlp_ratio",
+                "dropout",
+                "rope_dim",
+                "rope_theta",
+                "tap_indices",
+            },
+            path=path,
+        )
+        result = cls(
+            hidden_dim=_integer(mapping, "hidden_dim", path=path),
+            depth=_integer(mapping, "depth", path=path),
+            num_heads=_integer(mapping, "num_heads", path=path),
+            mlp_ratio=_number(mapping, "mlp_ratio", path=path),
+            dropout=_number(mapping, "dropout", path=path),
+            rope_dim=_integer(mapping, "rope_dim", path=path),
+            rope_theta=_number(mapping, "rope_theta", path=path),
+            tap_indices=_int_tuple(mapping, "tap_indices", path=path),
+        )
+        if result.hidden_dim <= 0 or result.depth <= 0 or result.num_heads <= 0:
+            raise SemanticConfigurationError(
+                "model.task_encoder dimensions/depth/heads must be positive."
+            )
+        if result.hidden_dim % result.num_heads:
+            raise SemanticConfigurationError(
+                "model.task_encoder.hidden_dim must be divisible by num_heads."
+            )
+        head_dim = result.hidden_dim // result.num_heads
+        if (
+            result.rope_dim <= 0
+            or result.rope_dim % 4
+            or result.rope_dim > head_dim
+        ):
+            raise SemanticConfigurationError(
+                "model.task_encoder.rope_dim must be positive, divisible by 4, "
+                "and no larger than the attention head dimension."
+            )
+        if result.mlp_ratio <= 0.0 or not 0.0 <= result.dropout < 1.0:
+            raise SemanticConfigurationError(
+                "model.task_encoder.mlp_ratio must be positive and dropout in [0,1)."
+            )
+        if result.rope_theta <= 0.0:
+            raise SemanticConfigurationError(
+                "model.task_encoder.rope_theta must be positive."
+            )
+        _validate_query_taps(
+            result.tap_indices,
+            depth=result.depth,
+            path="model.task_encoder.tap_indices",
+        )
+        return result
+
+
+@dataclass(frozen=True, slots=True)
+class CourtQueryLinearDecoderConfig:
+    family: Literal["linear"]
+    width: int
+    tap_indices: tuple[int, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class CourtQueryProgressiveDecoderConfig:
+    family: Literal["progressive"]
+    width: int
+    tap_indices: tuple[int, ...]
+    stage_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class CourtQueryDPTDecoderConfig:
+    family: Literal["dpt"]
+    width: int
+    tap_indices: tuple[int, ...]
+    fusion_levels: int
+    reassemble_factors: tuple[float, ...]
+
+
+CourtQueryDecoderConfig: TypeAlias = (
+    CourtQueryLinearDecoderConfig
+    | CourtQueryProgressiveDecoderConfig
+    | CourtQueryDPTDecoderConfig
+)
+
+
+def _query_decoder_config(value: object) -> CourtQueryDecoderConfig:
+    path = "model.decoder"
+    mapping = as_config_mapping(value, path=path)
+    family = _string(mapping, "family", path=path)
+    if family not in {"linear", "progressive", "dpt"}:
+        raise SemanticConfigurationError(
+            "Query model.decoder.family must be linear, progressive, or dpt."
+        )
+    expected = {
+        "linear": {"family", "width", "tap_indices"},
+        "progressive": {"family", "width", "tap_indices", "stage_count"},
+        "dpt": {
+            "family",
+            "width",
+            "tap_indices",
+            "fusion_levels",
+            "reassemble_factors",
+        },
+    }[family]
+    _exact(mapping, expected, path=path)
+    width = _integer(mapping, "width", path=path)
+    taps = _int_tuple(mapping, "tap_indices", path=path)
+    if width <= 0:
+        raise SemanticConfigurationError("model.decoder.width must be positive.")
+    if len(set(taps)) != len(taps) or not taps or taps != tuple(sorted(taps)):
+        raise SemanticConfigurationError(
+            "model.decoder.tap_indices must be non-empty, unique, and increasing."
+        )
+    if family == "linear":
+        if len(taps) != 1:
+            raise SemanticConfigurationError(
+                "Linear query decoder requires exactly one tap index."
+            )
+        return CourtQueryLinearDecoderConfig(
+            family="linear",
+            width=width,
+            tap_indices=taps,
+        )
+    if family == "progressive":
+        stages = _integer(mapping, "stage_count", path=path)
+        if len(taps) != 1 or stages <= 0:
+            raise SemanticConfigurationError(
+                "Progressive query decoder requires one tap and positive stage_count."
+            )
+        return CourtQueryProgressiveDecoderConfig(
+            family="progressive",
+            width=width,
+            tap_indices=taps,
+            stage_count=stages,
+        )
+    fusion_levels = _integer(mapping, "fusion_levels", path=path)
+    factors = _float_tuple(
+        mapping,
+        "reassemble_factors",
+        len(taps),
+        path=path,
+    )
+    if len(taps) < 2 or fusion_levels != len(taps):
+        raise SemanticConfigurationError(
+            "DPT query decoder requires at least two taps and fusion_levels equal "
+            "to their count."
+        )
+    if any(factor <= 0.0 for factor in factors):
+        raise SemanticConfigurationError(
+            "model.decoder.reassemble_factors must be positive."
+        )
+    return CourtQueryDPTDecoderConfig(
+        family="dpt",
+        width=width,
+        tap_indices=taps,
+        fusion_levels=fusion_levels,
+        reassemble_factors=factors,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class CourtQueryHeadsConfig:
+    pose_hidden_dim: int
+    pose_depth: int
+    dense_targets: tuple[CourtTargetKind, ...]
+
+    @classmethod
+    def from_mapping(cls, value: object) -> CourtQueryHeadsConfig:
+        path = "model.heads"
+        mapping = as_config_mapping(value, path=path)
+        _exact(
+            mapping,
+            {"pose_hidden_dim", "pose_depth", "dense_targets"},
+            path=path,
+        )
+        raw_targets = _sequence(mapping, "dense_targets", path=path)
+        if not raw_targets or any(
+            type(item) is not str or item not in {"kp", "seg", "line"}
+            for item in raw_targets
+        ):
+            raise SemanticConfigurationError(
+                "model.heads.dense_targets must be a non-empty kp/seg/line subset."
+            )
+        dense_targets = tuple(cast(CourtTargetKind, item) for item in raw_targets)
+        if len(set(dense_targets)) != len(dense_targets):
+            raise SemanticConfigurationError(
+                "model.heads.dense_targets must not contain duplicates."
+            )
+        result = cls(
+            pose_hidden_dim=_integer(mapping, "pose_hidden_dim", path=path),
+            pose_depth=_integer(mapping, "pose_depth", path=path),
+            dense_targets=dense_targets,
+        )
+        if result.pose_hidden_dim <= 0 or result.pose_depth <= 0:
+            raise SemanticConfigurationError(
+                "model.heads pose_hidden_dim and pose_depth must be positive."
+            )
+        return result
+
+
+@dataclass(frozen=True, slots=True)
+class CourtQueryModelConfig:
+    """Strict discriminated configuration for the additive query ablation."""
+
+    name: Literal["court_query_encoder"]
+    preset: CourtQueryPreset
+    in_channels: int
+    backbone: CourtQueryBackboneConfig
+    task_encoder: CourtQueryTaskEncoderConfig
+    decoder: CourtQueryDecoderConfig
+    heads: CourtQueryHeadsConfig
+
+    @classmethod
+    def from_mapping(
+        cls,
+        value: object,
+        *,
+        resolver: PathResolver,
+    ) -> CourtQueryModelConfig:
+        path = "model"
+        mapping = as_config_mapping(value, path=path)
+        _exact(
+            mapping,
+            {
+                "name",
+                "preset",
+                "in_channels",
+                "backbone",
+                "task_encoder",
+                "decoder",
+                "heads",
+            },
+            path=path,
+        )
+        if _string(mapping, "name", path=path) != "court_query_encoder":
+            raise SemanticConfigurationError(
+                "CourtQueryModelConfig requires model.name='court_query_encoder'."
+            )
+        preset = _string(mapping, "preset", path=path)
+        if preset not in {"tiny", "small", "base", "raw"}:
+            raise SemanticConfigurationError(
+                "model.preset must be tiny, small, base, or raw."
+            )
+        result = cls(
+            name="court_query_encoder",
+            preset=cast(CourtQueryPreset, preset),
+            in_channels=_integer(mapping, "in_channels", path=path),
+            backbone=CourtQueryBackboneConfig.from_mapping(
+                require_config_mapping(mapping, "backbone", path=path),
+                resolver=resolver,
+            ),
+            task_encoder=CourtQueryTaskEncoderConfig.from_mapping(
+                require_config_mapping(mapping, "task_encoder", path=path)
+            ),
+            decoder=_query_decoder_config(
+                require_config_mapping(mapping, "decoder", path=path)
+            ),
+            heads=CourtQueryHeadsConfig.from_mapping(
+                require_config_mapping(mapping, "heads", path=path)
+            ),
+        )
+        if result.in_channels != 3:
+            raise SemanticConfigurationError(
+                "Court query model requires exactly three RGB input channels."
+            )
+        decoder_taps = result.decoder.tap_indices
+        if not set(decoder_taps).issubset(result.task_encoder.tap_indices):
+            raise SemanticConfigurationError(
+                "model.decoder.tap_indices must be declared by "
+                "model.task_encoder.tap_indices."
+            )
+        if result.preset != "raw":
+            _validate_query_preset(result)
+        return result
+
+
+CourtAnyModelConfig: TypeAlias = CourtModelConfig | CourtQueryModelConfig
+
+
+def _validate_query_taps(
+    taps: tuple[int, ...],
+    *,
+    depth: int,
+    path: str,
+) -> None:
+    if not taps or len(set(taps)) != len(taps) or taps != tuple(sorted(taps)):
+        raise SemanticConfigurationError(
+            f"{path} must be non-empty, unique, and increasing."
+        )
+    if any(index < 0 or index >= depth for index in taps):
+        raise SemanticConfigurationError(
+            f"{path} must be within [0, {depth - 1}]."
+        )
+
+
+def _validate_query_preset(config: CourtQueryModelConfig) -> None:
+    preset = cast(Literal["tiny", "small", "base"], config.preset)
+    expected = {
+        "tiny": {
+            "task": (64, 2, 4, 2.0, 16, (0, 1)),
+            "decoder_width": 32,
+            "progressive_stages": 1,
+            "dpt": ((0, 1), (2.0, 1.0)),
+            "heads": (64, 2),
+        },
+        "small": {
+            "task": (128, 4, 8, 3.0, 16, (0, 1, 2, 3)),
+            "decoder_width": 64,
+            "progressive_stages": 2,
+            "dpt": ((0, 1, 2, 3), (4.0, 2.0, 1.0, 0.5)),
+            "heads": (128, 3),
+        },
+        "base": {
+            "task": (256, 8, 8, 4.0, 32, (1, 3, 5, 7)),
+            "decoder_width": 128,
+            "progressive_stages": 3,
+            "dpt": ((1, 3, 5, 7), (4.0, 2.0, 1.0, 0.5)),
+            "heads": (256, 4),
+        },
+    }[preset]
+    task = config.task_encoder
+    actual_task = (
+        task.hidden_dim,
+        task.depth,
+        task.num_heads,
+        task.mlp_ratio,
+        task.rope_dim,
+        task.tap_indices,
+    )
+    mismatched = actual_task != expected["task"]
+    decoder = config.decoder
+    mismatched = mismatched or decoder.width != expected["decoder_width"]
+    task_taps = cast("tuple[int, ...]", cast("tuple[object, ...]", expected["task"])[-1])
+    final_tap = task_taps[-1]
+    if decoder.family in {"linear", "progressive"}:
+        mismatched = mismatched or decoder.tap_indices != (final_tap,)
+    if isinstance(decoder, CourtQueryProgressiveDecoderConfig):
+        mismatched = mismatched or (
+            decoder.stage_count != expected["progressive_stages"]
+        )
+    if isinstance(decoder, CourtQueryDPTDecoderConfig):
+        dpt_taps, dpt_factors = cast(
+            "tuple[tuple[int, ...], tuple[float, ...]]",
+            expected["dpt"],
+        )
+        mismatched = mismatched or (
+            decoder.tap_indices != dpt_taps
+            or decoder.fusion_levels != len(dpt_taps)
+            or decoder.reassemble_factors != dpt_factors
+        )
+    mismatched = mismatched or (
+        (config.heads.pose_hidden_dim, config.heads.pose_depth)
+        != expected["heads"]
+    )
+    if mismatched:
+        raise SemanticConfigurationError(
+            f"model preset {preset!r} disagrees with its raw component values; "
+            "set model.preset=raw for independent raw overrides."
+        )
+
+
+def _model_config(value: object, *, resolver: PathResolver) -> CourtAnyModelConfig:
+    mapping = as_config_mapping(value, path="model")
+    name = _string(mapping, "name", path="model")
+    if name == "court_hierarchical":
+        return CourtModelConfig.from_mapping(mapping, resolver=resolver)
+    if name == "court_query_encoder":
+        return CourtQueryModelConfig.from_mapping(mapping, resolver=resolver)
+    raise SemanticConfigurationError(
+        "model.name must be 'court_hierarchical' or 'court_query_encoder'."
+    )
+
+
+@dataclass(frozen=True, slots=True)
 class CourtLossConfig:
     seg_ce_weight: float
     seg_dice_weight: float
@@ -940,11 +1453,104 @@ class CourtLossConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class CourtQueryPoseLossConfig:
+    enabled: bool
+    translation_weight: float
+    rotation_weight: float
+    focal_weight: float
+
+
+@dataclass(frozen=True, slots=True)
+class CourtQueryLossConfig:
+    """Explicit dense and pose weights for query-model supervision."""
+
+    name: str
+    dense: CourtLossConfig
+    dense_weights: Mapping[CourtTargetKind, float]
+    pose: CourtQueryPoseLossConfig
+
+    @classmethod
+    def from_mapping(cls, value: object) -> CourtQueryLossConfig:
+        mapping = as_config_mapping(value, path="loss")
+        _exact(mapping, {"name", "seg", "kp", "line", "pose"}, path="loss")
+        seg = require_config_mapping(mapping, "seg", path="loss")
+        kp = require_config_mapping(mapping, "kp", path="loss")
+        line = require_config_mapping(mapping, "line", path="loss")
+        pose = require_config_mapping(mapping, "pose", path="loss")
+        _exact(seg, {"ce_weight", "dice_weight", "weight"}, path="loss.seg")
+        _exact(kp, {"focal_gamma", "weight"}, path="loss.kp")
+        _exact(
+            line,
+            {"bce_weight", "dice_weight", "pos_weight", "weight"},
+            path="loss.line",
+        )
+        _exact(
+            pose,
+            {"enabled", "translation_weight", "rotation_weight", "focal_weight"},
+            path="loss.pose",
+        )
+        dense = CourtLossConfig.from_mapping(
+            {
+                "seg": {
+                    "ce_weight": seg["ce_weight"],
+                    "dice_weight": seg["dice_weight"],
+                },
+                "kp": {"focal_gamma": kp["focal_gamma"]},
+                "line": {
+                    "bce_weight": line["bce_weight"],
+                    "dice_weight": line["dice_weight"],
+                    "pos_weight": line["pos_weight"],
+                },
+            }
+        )
+        dense_weights: dict[CourtTargetKind, float] = {
+            "kp": _number(kp, "weight", path="loss.kp"),
+            "seg": _number(seg, "weight", path="loss.seg"),
+            "line": _number(line, "weight", path="loss.line"),
+        }
+        if any(weight <= 0.0 for weight in dense_weights.values()):
+            raise SemanticConfigurationError(
+                "Query dense loss weights must all be positive."
+            )
+        pose_config = CourtQueryPoseLossConfig(
+            enabled=_bool(pose, "enabled", path="loss.pose"),
+            translation_weight=_number(
+                pose, "translation_weight", path="loss.pose"
+            ),
+            rotation_weight=_number(pose, "rotation_weight", path="loss.pose"),
+            focal_weight=_number(pose, "focal_weight", path="loss.pose"),
+        )
+        pose_weights = (
+            pose_config.translation_weight,
+            pose_config.rotation_weight,
+            pose_config.focal_weight,
+        )
+        if pose_config.enabled and any(weight <= 0.0 for weight in pose_weights):
+            raise SemanticConfigurationError(
+                "Enabled query pose supervision requires positive translation, "
+                "rotation, and focal weights."
+            )
+        if not pose_config.enabled and any(weight != 0.0 for weight in pose_weights):
+            raise SemanticConfigurationError(
+                "Disabled query pose supervision requires zero pose weights."
+            )
+        return cls(
+            name=_string(mapping, "name", path="loss"),
+            dense=dense,
+            dense_weights=MappingProxyType(dense_weights),
+            pose=pose_config,
+        )
+
+
+CourtAnyLossConfig: TypeAlias = CourtLossConfig | CourtQueryLossConfig
+
+
+@dataclass(frozen=True, slots=True)
 class CourtTrainingConfig:
     shared: TrainingRuntimeConfig
     data: CourtDataConfig
-    model: CourtModelConfig
-    loss: CourtLossConfig
+    model: CourtAnyModelConfig
+    loss: CourtAnyLossConfig
     render_style: CourtRenderConfig
     qualitative_fps: int
 
@@ -1087,13 +1693,12 @@ class CourtTrainingConfig:
             (list, tuple, type(None)),
             path="training.qualitative_logging",
         )
-        selected_indices = (
-            ()
-            if selected_raw is None
-            else _int_tuple(
+        if selected_raw is None:
+            selected_indices: tuple[int, ...] = ()
+        else:
+            selected_indices = _int_tuple(
                 qualitative, "selected_indices", path="training.qualitative_logging"
             )
-        )
         if any(index < 0 for index in selected_indices):
             raise SemanticConfigurationError(
                 "training.qualitative_logging.selected_indices must be non-negative."
@@ -1115,12 +1720,15 @@ class CourtTrainingConfig:
             require_config_mapping(config, "data", path="configuration"),
             resolver=shared.resolver,
         )
-        model = CourtModelConfig.from_mapping(
+        model = _model_config(
             require_config_mapping(config, "model", path="configuration"),
             resolver=shared.resolver,
         )
-        loss = CourtLossConfig.from_mapping(
-            require_config_mapping(config, "loss", path="configuration")
+        loss_mapping = require_config_mapping(config, "loss", path="configuration")
+        loss: CourtAnyLossConfig = (
+            CourtQueryLossConfig.from_mapping(loss_mapping)
+            if isinstance(model, CourtQueryModelConfig)
+            else CourtLossConfig.from_mapping(loss_mapping)
         )
         render_style = CourtRenderConfig.from_mapping(
             require_config_mapping(config, "render_style", path="configuration")
@@ -1132,7 +1740,7 @@ class CourtTrainingConfig:
             raise SemanticConfigurationError(
                 "training.qualitative_logging.fps must be positive."
             )
-        if (
+        if isinstance(model, CourtModelConfig) and (
             model.encoder.lora is not None
             and model.encoder.lora.enabled
             and model.encoder.train_mode != "frozen"
@@ -1140,6 +1748,32 @@ class CourtTrainingConfig:
             raise SemanticConfigurationError(
                 "LoRA requires model.encoder.train_mode=frozen."
             )
+        if isinstance(model, CourtQueryModelConfig):
+            configured_targets = tuple(
+                target.kind for target in data.processing.targets
+            )
+            if model.heads.dense_targets != configured_targets:
+                raise SemanticConfigurationError(
+                    "model.heads.dense_targets must exactly match the ordered "
+                    "data.processing.targets for the query variant."
+                )
+            if not isinstance(loss, CourtQueryLossConfig):  # pragma: no cover
+                raise TypeError("Query model requires CourtQueryLossConfig.")
+            source = data.source
+            if not isinstance(source, SyntheticCourtSourceConfig) or source.schema != "v3":
+                raise SemanticConfigurationError(
+                    "Court query model requires data.source Synthetic Court V3."
+                )
+            if source.keypoint_court_scope != "target_court":
+                raise SemanticConfigurationError(
+                    "Court query model requires data.source.keypoint_court_scope="
+                    "'target_court'."
+                )
+            if "kp" not in configured_targets:
+                raise SemanticConfigurationError(
+                    "Court query model requires singleton target-court KP14 supervision."
+                )
+            _validate_pose_safe_augmentation(data.augmentation)
         return cls(
             shared=shared,
             data=data,
@@ -1154,6 +1788,37 @@ def validate_train_boundary(config: DictConfig) -> None:
     CourtTrainingConfig.from_config(config)
 
 
+def _validate_pose_safe_augmentation(config: CourtAugmentationConfig) -> None:
+    if not config.preserve_fx_fy:
+        raise SemanticConfigurationError(
+            "Pose supervision requires data.augmentation.preserve_fx_fy=true."
+        )
+    if config.canvas_size is None:
+        raise SemanticConfigurationError(
+            "Pose-safe augmentation requires an explicit square canvas_size."
+        )
+    unsupported = (
+        config.crop_scale != (1.0, 1.0)
+        or config.crop_ratio != (1.0, 1.0)
+        or config.hflip_prob != 0.0
+        or config.affine_degrees != 0.0
+        or config.affine_translate != (0.0, 0.0)
+        or config.affine_scale != (1.0, 1.0)
+        or config.affine_shear != 0.0
+        or config.perspective_distortion != 0.0
+        or config.perspective_prob != 0.0
+    )
+    if unsupported:
+        raise SemanticConfigurationError(
+            "Pose supervision rejects horizontal flip, random-resized crop, unequal "
+            "axes, affine, shear, and perspective transforms."
+        )
+    if config.train_scales != (config.canvas_size,) or config.val_short_side != config.canvas_size:
+        raise SemanticConfigurationError(
+            "Pose-safe train_scales/val_short_side must equal the square canvas_size."
+        )
+
+
 def validate_paths_boundary(
     config: DictConfig, *, expected_sections: set[str]
 ) -> tuple[ConfigMapping, PathResolver]:
@@ -1163,13 +1828,27 @@ def validate_paths_boundary(
 
 
 __all__ = [
+    "CourtAnyModelConfig",
     "CourtAugmentationConfig",
+    "CourtAnyLossConfig",
     "CourtDataConfig",
     "CourtDecoderConfig",
     "CourtEncoderConfig",
     "CourtLoRAConfig",
     "CourtLossConfig",
     "CourtModelConfig",
+    "CourtQueryBackboneConfig",
+    "CourtQueryDPTDecoderConfig",
+    "CourtQueryDecoderConfig",
+    "CourtQueryDecoderFamily",
+    "CourtQueryHeadsConfig",
+    "CourtQueryLinearDecoderConfig",
+    "CourtQueryLossConfig",
+    "CourtQueryModelConfig",
+    "CourtQueryPreset",
+    "CourtQueryProgressiveDecoderConfig",
+    "CourtQueryPoseLossConfig",
+    "CourtQueryTaskEncoderConfig",
     "CourtProcessingConfig",
     "CourtRenderConfig",
     "CourtSourceConfig",

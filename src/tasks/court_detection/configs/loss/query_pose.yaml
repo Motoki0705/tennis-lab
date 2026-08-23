@@ -1,0 +1,18 @@
+name: query_pose_v1
+seg:
+  ce_weight: 1.0
+  dice_weight: 1.0
+  weight: 1.0
+kp:
+  focal_gamma: 2.0
+  weight: 1.0
+line:
+  bce_weight: 1.0
+  dice_weight: 1.0
+  pos_weight: 8.0
+  weight: 1.0
+pose:
+  enabled: true
+  translation_weight: 1.0
+  rotation_weight: 1.0
+  focal_weight: 1.0

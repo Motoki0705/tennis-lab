@@ -1,0 +1,11 @@
+# Additive query-encoder ablation. The production default remains hierarchical.
+defaults:
+  - backbone: query_dinov3
+  - task_encoder: query_tiny
+  - decoder: query_linear_tiny
+  - heads: query_tiny
+  - _self_
+
+name: court_query_encoder
+preset: tiny
+in_channels: 3

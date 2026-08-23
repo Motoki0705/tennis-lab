@@ -66,7 +66,7 @@ def denormalize_tensor_to_rgb(
         ``(H, W, 3)`` uint8 NumPy array in RGB order.
     """
     img = denormalize_tensor_images_imagenet(tensor.cpu().float(), mean=mean, std=std)
-    return tensor_images_to_uint8_rgb(img)
+    return cast("np.ndarray", tensor_images_to_uint8_rgb(img))
 
 
 def resize_for_display(rgb: np.ndarray, max_width: int) -> np.ndarray:

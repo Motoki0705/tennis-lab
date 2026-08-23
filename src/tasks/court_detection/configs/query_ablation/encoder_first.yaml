@@ -1,0 +1,11 @@
+name: encoder_first
+order: 1
+depths: [1, 2, 4, 8]
+hidden_dim: 256
+num_heads: 8
+decoder_family: linear
+decoder_size: base
+supervision: kp+pose
+reference_depth: 8
+tolerance_ratio: 0.05
+

@@ -341,6 +341,9 @@ def test_v3_uses_distinct_schema_full_half_turn_and_one_flip_only(
     assert input_layer.spec.keypoint_flip_permutation == _FLIP
     raw = input_layer.load(input_layer.records("train")[0])
     assert raw.keypoint_channels is not None
+    assert raw.pose_authority is not None
+    assert raw.pose_authority.camera.camera_id == "sample-train"
+    assert raw.pose_authority.target_court.court_instance_id == "court-b"
     channels = raw.keypoint_channels
     assert channels.points_xy.shape == (14, 2, 2)
     assert channels.physical_indices[:, 0].tolist() == list(range(14))

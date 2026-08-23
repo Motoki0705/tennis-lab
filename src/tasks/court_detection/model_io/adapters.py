@@ -15,9 +15,17 @@ from torch import Tensor
 
 from src.tasks.base.model_io import ModelCall
 from src.tasks.base.training.losses import FocalBCEWithLogitsLoss
-from src.tasks.court_detection.configuration import CourtLossConfig
+from src.tasks.court_detection.configuration import (
+    CourtLossConfig,
+    CourtQueryLossConfig,
+)
 from src.tasks.court_detection.data.augmentation import IMAGENET_MEAN, IMAGENET_STD
 from src.tasks.court_detection.data.contracts import CourtTargetKind
+from src.tasks.court_detection.geometry.pose import (
+    decode_pose10d_strict,
+    validate_proper_rotation,
+    validate_square_intrinsics,
+)
 from src.tasks.court_detection.model_io.contracts import (
     CourtDecodedPrediction,
     CourtKeypointPrediction,
@@ -26,17 +34,35 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtModelCall,
     CourtModelIOError,
     CourtModelSpec,
+    CourtPoseTargetBatch,
+    CourtQueryDecodedOutput,
+    CourtQueryModelCall,
+    CourtQueryModelSpec,
+    CourtQueryPrediction,
+    CourtQueryRawOutput,
+    CourtQueryTrainingCall,
+    CourtQueryTrainingResult,
     CourtSegmentationPrediction,
     CourtTrainingCall,
     CourtTrainingResult,
 )
 from src.tasks.court_detection.models.encoders import CourtDINOv3Encoder
 from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
-from src.tasks.court_detection.training.losses import BinaryDiceLoss, DiceLoss
+from src.tasks.court_detection.models.query_encoder.backbone import (
+    CourtQueryDINOv3Backbone,
+)
+from src.tasks.court_detection.models.query_encoder.contracts import PatchTokenBatch
+from src.tasks.court_detection.models.query_encoder.model import CourtQueryEncoderModel
+from src.tasks.court_detection.training.losses import (
+    BinaryDiceLoss,
+    DiceLoss,
+    query_pose_losses,
+)
 from src.utils.data.heatmaps import (
     heatmaps_to_peaks,
     refine_peaks_log_parabolic,
 )
+from src.utils.models.loading import require_dinov3_patch_tokens
 
 _NORMALIZED_IMAGE_MIN = tuple(
     -mean / std for mean, std in zip(IMAGENET_MEAN, IMAGENET_STD, strict=True)
@@ -51,6 +77,12 @@ class CourtModelExecutionBoundary(Protocol):
     def bind_model(self, model: CourtHierarchicalModel) -> None: ...
 
     def prepare(self, call: CourtModelCall) -> CourtModelCall: ...
+
+
+class CourtQueryModelExecutionBoundary(Protocol):
+    def bind_model(self, model: CourtQueryEncoderModel) -> None: ...
+
+    def prepare(self, call: CourtModelCall) -> CourtQueryModelCall: ...
 
 
 def _run_dinov3_intermediate_layers(
@@ -154,6 +186,102 @@ class CourtDINOv3ExecutionBoundary:
         return replace(call, model_args=(call.images, *features))
 
 
+def _run_query_dinov3(
+    backbone: CourtQueryDINOv3Backbone,
+    images: Tensor,
+) -> object:
+    return backbone.execute_patch_features(images)
+
+
+def _run_frozen_query_dinov3(
+    backbone: CourtQueryDINOv3Backbone,
+    images: Tensor,
+) -> object:
+    with torch.no_grad():
+        return backbone.execute_patch_features(images)
+
+
+class CourtQueryDINOv3ExecutionBoundary:
+    """Extract and validate patch-only DINO output before query-model forward."""
+
+    def __init__(self, *, frozen_backbone: bool) -> None:
+        self._model_ref: weakref.ReferenceType[CourtQueryEncoderModel] | None = None
+        self._backbone_executor = (
+            _run_frozen_query_dinov3 if frozen_backbone else _run_query_dinov3
+        )
+
+    def bind_model(self, model: CourtQueryEncoderModel) -> None:
+        if not isinstance(model.backbone, CourtQueryDINOv3Backbone):
+            raise CourtModelIOError(
+                "Court query DINO boundary requires CourtQueryDINOv3Backbone."
+            )
+        if model.backbone.frozen_execution != (
+            self._backbone_executor is _run_frozen_query_dinov3
+        ):
+            raise CourtModelIOError(
+                "Court query DINO boundary frozen mode disagrees with its backbone."
+            )
+        self._model_ref = weakref.ref(model)
+
+    def prepare(self, call: CourtModelCall) -> CourtQueryModelCall:
+        if self._model_ref is None or (model := self._model_ref()) is None:
+            raise CourtModelIOError(
+                "Court query DINO execution boundary is not bound to its model."
+            )
+        backbone = model.backbone
+        patch_size = backbone.patch_size
+        pad_h = (-call.height) % patch_size
+        pad_w = (-call.width) % patch_size
+        padded = (
+            call.images
+            if pad_h == 0 and pad_w == 0
+            else F.pad(call.images, (0, pad_w, 0, pad_h), mode="replicate")
+        )
+        padded_hw = (int(padded.shape[-2]), int(padded.shape[-1]))
+        grid_hw = (padded_hw[0] // patch_size, padded_hw[1] // patch_size)
+        expected_tokens = grid_hw[0] * grid_hw[1]
+        raw_output = self._backbone_executor(backbone, padded)
+        try:
+            tokens = require_dinov3_patch_tokens(
+                raw_output,
+                expected_batch_size=call.batch_size,
+                expected_embed_dim=backbone.embed_dim,
+                expected_num_tokens=expected_tokens,
+                context="Court query DINOv3 forward_features",
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise CourtModelIOError(str(error)) from error
+        if not tokens.is_floating_point():
+            raise CourtModelIOError("Court query DINO patch tokens must be floating.")
+        if tokens.device != padded.device:
+            raise CourtModelIOError(
+                "Court query DINO patch tokens must remain on the image device."
+            )
+        _require_finite(tokens, name="Court query DINO patch tokens")
+        patch_batch = PatchTokenBatch(
+            tokens=tokens,
+            original_hw=(call.height, call.width),
+            padded_hw=padded_hw,
+            padding_hw=(pad_h, pad_w),
+            grid_hw=grid_hw,
+            patch_size=patch_size,
+        )
+        grid_tensor = torch.tensor(grid_hw, device=tokens.device, dtype=torch.long)
+        padded_tensor = torch.tensor(
+            padded_hw,
+            device=tokens.device,
+            dtype=torch.long,
+        )
+        return CourtQueryModelCall(
+            images=call.images,
+            patch_batch=patch_batch,
+            model_args=(call.images, tokens, grid_tensor, padded_tensor),
+            batch_size=call.batch_size,
+            height=call.height,
+            width=call.width,
+        )
+
+
 class CourtModelIOAdapter(nn.Module):
     """Validate one target bundle and compute one loss per selected head."""
 
@@ -213,33 +341,9 @@ class CourtModelIOAdapter(nn.Module):
         return MappingProxyType(dict(output))
 
     def prepare_images(self, images: Tensor) -> CourtModelCall:
-        if images.ndim != 4 or images.dtype != torch.float32:
-            raise CourtModelIOError(
-                "Court images must be float32 with shape (B,3,H,W)."
-            )
-        batch_size, channels, height, width = images.shape
-        if (
-            batch_size <= 0
-            or height <= 0
-            or width <= 0
-            or channels != self.spec.in_channels
-        ):
-            raise CourtModelIOError("Court image dimensions/channels are invalid.")
-        _require_finite(images, name="Court images")
-        lower = images.new_tensor(_NORMALIZED_IMAGE_MIN).view(1, 3, 1, 1)
-        upper = images.new_tensor(_NORMALIZED_IMAGE_MAX).view(1, 3, 1, 1)
-        if bool(torch.any((images < lower) | (images > upper))):
-            raise CourtModelIOError(
-                "Court images must be ImageNet-normalized RGB values from [0,1]."
-            )
-        call = CourtModelCall(
-            images=images,
-            model_args=(images,),
-            batch_size=batch_size,
-            height=height,
-            width=width,
+        return self._prepare_execution(
+            _prepare_image_call(images, in_channels=self.spec.in_channels)
         )
-        return self._prepare_execution(call)
 
     @staticmethod
     def _prepare_direct_execution(call: CourtModelCall) -> CourtModelCall:
@@ -518,6 +622,355 @@ class CourtModelIOAdapter(nn.Module):
         _require_finite(value, name=f"Court {kind} inference logits")
 
 
+class CourtQueryModelIOAdapter(nn.Module):
+    """Typed query pose/dense adapter with singleton KP and weighted losses."""
+
+    def __init__(
+        self,
+        spec: CourtQueryModelSpec,
+        *,
+        execution_boundary: CourtQueryModelExecutionBoundary,
+        loss_config: CourtQueryLossConfig,
+    ) -> None:
+        super().__init__()
+        if spec.in_channels != 3:
+            raise CourtModelIOError(
+                "Court query model input must use exactly three RGB channels."
+            )
+        if spec.short_side <= 0:
+            raise CourtModelIOError(
+                "Court query preprocessing short_side must be positive."
+            )
+        self.spec = spec
+        self.execution_boundary = execution_boundary
+        self.loss_config = loss_config
+        kp_spec = spec.target_bundle.targets.get("kp")
+        if (
+            kp_spec is None
+            or kp_spec.output_channels != 14
+            or kp_spec.schema
+            != "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1"
+        ):
+            raise CourtModelIOError(
+                "Court query model requires the V3 target-court singleton KP14 bundle."
+            )
+        self.dense_adapter = CourtModelIOAdapter(
+            CourtModelSpec(
+                target_bundle=spec.target_bundle,
+                in_channels=spec.in_channels,
+                short_side=spec.short_side,
+            ),
+            loss_config=loss_config.dense,
+        )
+
+    @property
+    def model_type(self) -> type[nn.Module]:
+        return cast("type[nn.Module]", CourtQueryEncoderModel)
+
+    def validate_model_pair(self, model: nn.Module) -> None:
+        if not isinstance(model, CourtQueryEncoderModel):
+            raise CourtModelIOError(
+                "Court query model-I/O requires CourtQueryEncoderModel, got "
+                f"{type(model).__name__}."
+            )
+        if model.in_channels != self.spec.in_channels:
+            raise CourtModelIOError(
+                "Court query model input channels disagree with adapter."
+            )
+        if model.target_bundle_spec != self.spec.target_bundle:
+            raise CourtModelIOError(
+                "Court query model heads disagree with target bundle."
+            )
+        self.execution_boundary.bind_model(model)
+
+    def prepare_images(self, images: Tensor) -> CourtQueryModelCall:
+        call = _prepare_image_call(images, in_channels=self.spec.in_channels)
+        return self.execution_boundary.prepare(call)
+
+    def build_call(self, batch: Mapping[str, object]) -> ModelCall:
+        call = self.prepare_images(_tensor(batch, "image"))
+        return ModelCall(args=call.model_args)
+
+    def validate_output(
+        self,
+        output: CourtQueryRawOutput,
+        *,
+        call: CourtQueryModelCall | None = None,
+    ) -> None:
+        if not isinstance(output, CourtQueryRawOutput):
+            raise CourtModelIOError(
+                "Court query model output must be CourtQueryRawOutput."
+            )
+        logits = output.dense_logits
+        if set(logits) != set(self.spec.target_bundle.kinds):
+            raise CourtModelIOError(
+                "Court query dense output keys must exactly match the target bundle."
+            )
+        if call is not None and output.pose.values.shape[0] != call.batch_size:
+            raise CourtModelIOError(
+                "Court query pose output batch size must match its model call."
+            )
+        for kind, target_spec in self.spec.target_bundle.targets.items():
+            value = logits[kind]
+            if value.ndim != 4 or value.shape[1] != target_spec.output_channels:
+                raise CourtModelIOError(
+                    f"Court query {kind} logits have invalid rank/channels."
+                )
+            if call is not None and value.shape != (
+                call.batch_size,
+                target_spec.output_channels,
+                call.height,
+                call.width,
+            ):
+                raise CourtModelIOError(
+                    f"Court query {kind} logits must preserve input batch/H/W."
+                )
+            _require_finite(value, name=f"Court query {kind} logits")
+
+    def decode_output(self, output: CourtQueryRawOutput) -> CourtQueryDecodedOutput:
+        self.validate_output(output)
+        return CourtQueryDecodedOutput(
+            pose=decode_pose10d_strict(output.pose.values),
+            dense_logits=output.dense_logits,
+        )
+
+    def prepare_training_batch(
+        self,
+        batch: Mapping[str, object],
+    ) -> CourtQueryTrainingCall:
+        query_call = self.prepare_images(_tensor(batch, "image"))
+        dense_call = self.dense_adapter.prepare_training_batch(batch)
+        kp_target = cast(Mapping[str, Tensor], dense_call.targets["kp"])
+        if kp_target["points_xy"].shape != (
+            query_call.batch_size,
+            14,
+            1,
+            2,
+        ):
+            raise CourtModelIOError(
+                "Court query KP target must be singleton with shape (B,14,1,2)."
+            )
+        pose_target = self._validate_pose_target(
+            batch.get("pose_target"),
+            batch_size=query_call.batch_size,
+        )
+        if not torch.equal(
+            kp_target["physical_indices"][:, :, 0],
+            pose_target.semantic_to_physical,
+        ):
+            raise CourtModelIOError(
+                "Court query KP14 physical order disagrees with pose authority."
+            )
+        return CourtQueryTrainingCall(
+            model_call=query_call,
+            dense_targets=dense_call.targets,
+            pose_target=pose_target,
+            batch=MappingProxyType(dict(batch)),
+        )
+
+    def training_result(
+        self,
+        output: CourtQueryRawOutput,
+        call: CourtQueryTrainingCall,
+    ) -> CourtQueryTrainingResult:
+        self.validate_output(output, call=call.model_call)
+        dense_call = CourtTrainingCall(
+            model_call=CourtModelCall(
+                images=call.model_call.images,
+                model_args=(call.model_call.images,),
+                batch_size=call.model_call.batch_size,
+                height=call.model_call.height,
+                width=call.model_call.width,
+            ),
+            targets=call.dense_targets,
+            batch=call.batch,
+        )
+        dense_result = self.dense_adapter.training_result(
+            output.dense_logits,
+            dense_call,
+        )
+        decoded_pose = decode_pose10d_strict(output.pose.values)
+        pose_losses = query_pose_losses(decoded_pose, call.pose_target)
+        weighted_terms = [
+            self.loss_config.dense_weights[kind] * loss
+            for kind, loss in dense_result.losses.items()
+        ]
+        if self.loss_config.pose.enabled:
+            weighted_terms.extend(
+                (
+                    self.loss_config.pose.translation_weight
+                    * pose_losses["pose_translation"],
+                    self.loss_config.pose.rotation_weight
+                    * pose_losses["pose_rotation"],
+                    self.loss_config.pose.focal_weight * pose_losses["pose_focal"],
+                )
+            )
+        total = torch.stack(weighted_terms).sum()
+        return CourtQueryTrainingResult(
+            loss=total,
+            dense_losses=dense_result.losses,
+            pose_losses=MappingProxyType(
+                pose_losses if self.loss_config.pose.enabled else {}
+            ),
+            output=output,
+            decoded_pose=decoded_pose,
+        )
+
+    def test_payload(
+        self,
+        batch: Mapping[str, object],
+        output: CourtQueryRawOutput,
+    ) -> CourtQueryPrediction:
+        self.validate_output(output)
+        dense: dict[CourtTargetKind, object] = {}
+        for kind, value in output.dense_logits.items():
+            if kind == "kp":
+                flat = value.flatten(2)
+                index = flat.argmax(dim=-1)
+                height, width = value.shape[-2:]
+                coordinates = torch.stack(
+                    (
+                        (index % width).to(dtype=value.dtype)
+                        / float(max(width - 1, 1)),
+                        torch.div(index, width, rounding_mode="floor").to(
+                            dtype=value.dtype
+                        )
+                        / float(max(height - 1, 1)),
+                    ),
+                    dim=-1,
+                ).unsqueeze(2)
+                scores = torch.sigmoid(flat.amax(dim=-1)).unsqueeze(2)
+                dense[kind] = {
+                    "keypoints_normalized": coordinates,
+                    "scores": scores,
+                    "valid": torch.ones_like(scores, dtype=torch.bool),
+                    "heatmaps": value,
+                }
+            elif kind == "seg":
+                dense[kind] = {"mask": value.argmax(dim=1), "logits": value}
+            else:
+                dense[kind] = {
+                    "probability": torch.sigmoid(value),
+                    "logits": value,
+                }
+        _ = batch
+        return CourtQueryPrediction(
+            pose=decode_pose10d_strict(output.pose.values),
+            dense=MappingProxyType(dense),
+        )
+
+    @staticmethod
+    def _validate_pose_target(
+        value: object,
+        *,
+        batch_size: int,
+    ) -> CourtPoseTargetBatch:
+        expected = {
+            "translation_m",
+            "rotation",
+            "log_focal",
+            "intrinsics",
+            "semantic_to_physical",
+            "raw_pose10d",
+        }
+        if not isinstance(value, Mapping) or set(value) != expected:
+            raise CourtModelIOError("Court query pose target fields changed.")
+        target = CourtPoseTargetBatch(
+            translation_m=_mapping_tensor(value, "translation_m"),
+            rotation=_mapping_tensor(value, "rotation"),
+            log_focal=_mapping_tensor(value, "log_focal"),
+            intrinsics=_mapping_tensor(value, "intrinsics"),
+            semantic_to_physical=_mapping_tensor(value, "semantic_to_physical"),
+            raw_pose10d=_mapping_tensor(value, "raw_pose10d"),
+        )
+        if target.translation_m.shape != (batch_size, 3):
+            raise CourtModelIOError("Court pose translation target must be (B,3).")
+        if target.rotation.shape != (batch_size, 3, 3):
+            raise CourtModelIOError("Court pose rotation target must be (B,3,3).")
+        if target.log_focal.shape != (batch_size,):
+            raise CourtModelIOError("Court pose log-focal target must be (B,).")
+        if target.intrinsics.shape != (batch_size, 3, 3):
+            raise CourtModelIOError("Court pose intrinsics target must be (B,3,3).")
+        if (
+            target.semantic_to_physical.shape != (batch_size, 14)
+            or target.semantic_to_physical.dtype != torch.long
+        ):
+            raise CourtModelIOError(
+                "Court pose semantic-to-physical target must be int64 (B,14)."
+            )
+        expected_physical = torch.arange(
+            14,
+            device=target.semantic_to_physical.device,
+        ).expand(batch_size, 14)
+        if not torch.equal(
+            torch.sort(target.semantic_to_physical, dim=1).values,
+            expected_physical,
+        ):
+            raise CourtModelIOError(
+                "Court pose semantic-to-physical target must be a 0..13 bijection."
+            )
+        if target.raw_pose10d.shape != (batch_size, 10):
+            raise CourtModelIOError("Court raw pose target must be (B,10).")
+        for name, tensor in (
+            ("translation", target.translation_m),
+            ("rotation", target.rotation),
+            ("log-focal", target.log_focal),
+            ("intrinsics", target.intrinsics),
+            ("raw pose", target.raw_pose10d),
+        ):
+            _require_finite(tensor, name=f"Court pose target {name}")
+        validate_proper_rotation(target.rotation)
+        for intrinsics in target.intrinsics:
+            validate_square_intrinsics(intrinsics)
+        reconstructed = torch.cat(
+            (
+                target.translation_m,
+                target.rotation[:, :2].reshape(batch_size, 6),
+                target.log_focal.unsqueeze(-1),
+            ),
+            dim=-1,
+        )
+        if not bool(
+            torch.allclose(
+                target.raw_pose10d,
+                reconstructed,
+                atol=1.0e-6,
+                rtol=0.0,
+            )
+        ):
+            raise CourtModelIOError("Court raw pose target order/content changed.")
+        return target
+
+
+def _prepare_image_call(images: Tensor, *, in_channels: int) -> CourtModelCall:
+    if images.ndim != 4 or images.dtype != torch.float32:
+        raise CourtModelIOError(
+            "Court images must be float32 with shape (B,3,H,W)."
+        )
+    batch_size, channels, height, width = images.shape
+    if (
+        batch_size <= 0
+        or height <= 0
+        or width <= 0
+        or channels != in_channels
+    ):
+        raise CourtModelIOError("Court image dimensions/channels are invalid.")
+    _require_finite(images, name="Court images")
+    lower = images.new_tensor(_NORMALIZED_IMAGE_MIN).view(1, 3, 1, 1)
+    upper = images.new_tensor(_NORMALIZED_IMAGE_MAX).view(1, 3, 1, 1)
+    if bool(torch.any((images < lower) | (images > upper))):
+        raise CourtModelIOError(
+            "Court images must be ImageNet-normalized RGB values from [0,1]."
+        )
+    return CourtModelCall(
+        images=images,
+        model_args=(images,),
+        batch_size=batch_size,
+        height=height,
+        width=width,
+    )
+
+
 def _tensor(mapping: Mapping[str, object], key: str) -> Tensor:
     value = mapping.get(key)
     if not isinstance(value, Tensor):
@@ -547,4 +1000,7 @@ __all__ = [
     "CourtDINOv3ExecutionBoundary",
     "CourtModelExecutionBoundary",
     "CourtModelIOAdapter",
+    "CourtQueryDINOv3ExecutionBoundary",
+    "CourtQueryModelExecutionBoundary",
+    "CourtQueryModelIOAdapter",
 ]

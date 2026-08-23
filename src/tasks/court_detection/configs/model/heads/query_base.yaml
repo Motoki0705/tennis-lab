@@ -1,0 +1,3 @@
+pose_hidden_dim: 256
+pose_depth: 4
+dense_targets: [kp]

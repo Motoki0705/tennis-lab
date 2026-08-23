@@ -123,7 +123,7 @@ def court_detection_collate(
             )
         else:  # pragma: no cover - bundle validation rejects this
             raise ValueError(f"Unsupported Court target kind: {kind!r}.")
-    return {
+    output: dict[str, object] = {
         "image": torch.stack(
             [_pad_image(value, height=height, width=width) for value in images]
         ),
@@ -136,6 +136,28 @@ def court_detection_collate(
             cast(Mapping[str, object], sample["metadata"]) for sample in batch
         ],
     }
+    pose_payloads = [sample.get("pose_target") for sample in batch]
+    if any(value is not None for value in pose_payloads):
+        if not all(isinstance(value, Mapping) for value in pose_payloads):
+            raise ValueError("Court pose targets must be present for the entire batch.")
+        expected_fields = {
+            "translation_m",
+            "rotation",
+            "log_focal",
+            "intrinsics",
+            "semantic_to_physical",
+            "raw_pose10d",
+        }
+        typed_payloads = [cast(Mapping[str, object], value) for value in pose_payloads]
+        if any(set(value) != expected_fields for value in typed_payloads):
+            raise ValueError("Court pose target fields changed before collation.")
+        output["pose_target"] = {
+            field: torch.stack(
+                [cast(Tensor, value[field]) for value in typed_payloads]
+            )
+            for field in expected_fields
+        }
+    return output
 
 
 __all__ = ["court_detection_collate"]

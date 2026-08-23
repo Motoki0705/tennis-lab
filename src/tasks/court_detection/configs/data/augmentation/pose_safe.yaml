@@ -1,0 +1,20 @@
+# Square-focal query supervision: isotropic fit plus explicit letterbox padding.
+train_scales: [256]
+val_short_side: 256
+crop_scale: [1.0, 1.0]
+crop_ratio: [1.0, 1.0]
+hflip_prob: 0.0
+affine_degrees: 0.0
+affine_translate: [0.0, 0.0]
+affine_scale: [1.0, 1.0]
+affine_shear: 0.0
+perspective_distortion: 0.0
+perspective_prob: 0.0
+color_jitter: [0.2, 0.2, 0.2, 0.05]
+gaussian_blur_kernel: [3, 5]
+gaussian_blur_sigma: [0.1, 1.5]
+gaussian_blur_prob: 0.2
+min_visible_kp: 0
+visibility_max_retries: 1
+preserve_fx_fy: true
+canvas_size: 256

@@ -18,3 +18,5 @@ gaussian_blur_prob: 0.2
 # See augmentation/default.yaml for the min_visible_kp mechanism.
 min_visible_kp: 12
 visibility_max_retries: 10
+preserve_fx_fy: false
+canvas_size: null

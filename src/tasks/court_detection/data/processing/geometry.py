@@ -24,6 +24,10 @@ from src.tasks.court_detection.data.contracts import (
     CourtRawSample,
     CourtTransformedSample,
 )
+from src.tasks.court_detection.geometry.pose import (
+    build_pose_target,
+    validate_projection_round_trip,
+)
 from src.utils.geometry.affine import build_centered_affine_matrix
 
 
@@ -50,9 +54,20 @@ class CourtProcessingGeometry:
     _MEAN = (0.485, 0.456, 0.406)
     _STD = (0.229, 0.224, 0.225)
 
-    def __init__(self, config: CourtAugmentationConfig, *, is_train: bool) -> None:
+    def __init__(
+        self,
+        config: CourtAugmentationConfig,
+        *,
+        is_train: bool,
+        require_pose: bool = False,
+    ) -> None:
         self.config = config
         self.is_train = is_train
+        self.require_pose = require_pose
+        if require_pose and not config.preserve_fx_fy:
+            raise ValueError(
+                "Court pose geometry requires augmentation preserve_fx_fy=true."
+            )
         self.color_jitter = ColorJitter(*config.color_jitter)
 
     def sample(self, raw: CourtRawSample) -> CourtGeometryPlan:
@@ -125,6 +140,29 @@ class CourtProcessingGeometry:
             )
             for instance in raw.court_instances
         )
+        pose_target = None
+        if self.require_pose:
+            if raw.pose_authority is None:
+                raise ValueError("Court pose geometry received no typed V3 authority.")
+            if channels is None or channels.points_xy.shape != (14, 1, 2):
+                raise ValueError(
+                    "Court query pose geometry requires singleton target-court KP14."
+                )
+            pose_target = build_pose_target(
+                raw.pose_authority,
+                source_to_output=selected.matrix,
+            )
+            if not torch.equal(
+                channels.physical_indices[:, 0],
+                pose_target.semantic_to_physical,
+            ):
+                raise ValueError(
+                    "Court V3 KP14 physical order disagrees with pose authority."
+                )
+            validate_projection_round_trip(
+                pose_target,
+                channels.points_xy[:, 0],
+            )
         return CourtTransformedSample(
             sample_id=raw.sample_id,
             image_tensor=image_tensor,
@@ -134,10 +172,29 @@ class CourtProcessingGeometry:
             dense_targets=MappingProxyType(transformed_dense),
             horizontal_flipped=selected.horizontal_flipped,
             metadata=raw.metadata,
+            pose_target=pose_target,
         )
 
     def _sample_once(self, image_size_wh: tuple[int, int]) -> CourtGeometryPlan:
         width, height = image_size_wh
+        if self.require_pose:
+            canvas = self.config.canvas_size
+            if canvas is None:  # pragma: no cover - typed config rejects this
+                raise ValueError("Court pose geometry requires a square canvas_size.")
+            scale = min(canvas / float(width), canvas / float(height))
+            resized_width = width * scale
+            resized_height = height * scale
+            offset_x = (canvas - resized_width) * 0.5
+            offset_y = (canvas - resized_height) * 0.5
+            matrix = torch.tensor(
+                [
+                    [scale, 0.0, offset_x],
+                    [0.0, scale, offset_y],
+                    [0.0, 0.0, 1.0],
+                ],
+                dtype=torch.float64,
+            )
+            return CourtGeometryPlan(matrix, (canvas, canvas), False)
         if not self.is_train:
             short_side = self.config.val_short_side
             scale = short_side / float(min(width, height))
