@@ -66,7 +66,7 @@
 - `preflight-regression`: existing v1-facing schema/config/loss/metric/predictor tests that must stay green before the Test Writer adds new coverage.
 - `knowledge-graph`: formal v1/v2 baseline run/group nodes.
 - `precommit-all`: Ruff, mypy, script reviewer and repository hooks.
-- `full-pytest`: complete repository regression; authorized for Test and Seal after tests are finalized.
+- `full-pytest`: complete repository regression; authorized for Test and Seal after tests are finalized. Unlike the Issue-specific CPU smoke, this repository-wide suite exposes GPU 0 because the existing baseline contains mandatory CUDA acceptance tests that fail rather than skip when CUDA is hidden.
 
 ## Ordered execution plan
 
@@ -100,3 +100,4 @@
 - Frozen data decision: deterministic materialization from identical legacy scenes is used instead of re-simulation so normalization is the only baseline variable; v1 data is never modified.
 - Rollback is configuration-level: select v1 and legacy artifacts. Removal of v1 is not part of this Issue.
 - Main risks are config paths that omit the shared group, default arguments capturing v1, scene subsets escaping metadata validation, PLCS renderer/canonical coupling, SLCS uncertainty units, and long training. Preflight may use only the bounded diagnostics listed in Validation strategy plus config-composition, metadata-mutation, unit-round-trip, checkpoint-mismatch and materialization-smoke categories.
+- Tester cycle 1 exposed a baseline-environment coverage gap: `full-pytest` combined `CUDA_VISIBLE_DEVICES=""` with existing mandatory CUDA tests and lacked the private NHT submodule config. The repaired authority keeps all normalization smokes CPU-only, exposes only GPU 0 for the repository-wide test, and requires a worktree-local non-symlink NHT config. This changes test environment authority only, not Issue production behavior or acceptance scope.
