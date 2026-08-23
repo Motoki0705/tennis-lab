@@ -1,11 +1,12 @@
-# Court dataset v1/v2 contract
+# Court dataset v1/v2/v3 contract
 
 Status: implemented. This document is the canonical production contract for
-both explicitly selected Court dataset versions.
+all explicitly selected Court dataset versions. It is also the sole prose
+authority for the camera-view KP14 semantics and their migration policy.
 
 ## Purpose
 
-Court dataset v2 introduces three related changes without changing the shared
+Court dataset v2 introduced three related changes without changing the shared
 scene or court geometry contracts.
 
 1. Provide an explicit configuration that uses only `court_center` as the
@@ -19,6 +20,14 @@ scene or court geometry contracts.
 The generator must continue to produce the current v1 dataset when v1 is
 selected. It must not auto-convert, dual-write, or silently fall back between
 versions.
+
+Court dataset v3 retains v2's sample-level target-court planning and fourteen
+singleton channels, but corrects the legacy left/right definition. V2 is
+frozen as the court-local-X/Y-only legacy family. V3 defines left/right in the
+canonical court frame and near/far by camera distance to the baseline. Its
+camera-side switch is one proper half-turn in court XY, shared by the KP
+permutation and canonical camera transform. V2 artifacts and checkpoints are
+never treated as V3.
 
 ## Confirmed v1 behaviour
 
@@ -69,16 +78,18 @@ means `OrbitCenterKind.COURT`, not merely a view whose target mode is
 
 ## Design decisions
 
-| Area | v1 | v2 |
-|---|---|---|
-| Default selector | retained as the pipeline default | explicit opt-in |
-| View targets | all four modes | preset uses only `court_center` |
-| Target-court authority | trajectory group | camera sample |
-| Court-centred path | centre court | centre court |
-| Complex-centred path | seeded balanced assignment | nearest court per camera sample |
-| Label channels | 7 classes × 2 points | 14 classes × 1 point |
-| `near` / `far` | fixed physical points grouped together | recomputed for every camera and court |
-| Compatibility | exact current schema | exact new schema; no v1 fallback |
+| Area | v1 | v2 legacy | v3 camera-view |
+|---|---|---|---|
+| Generation selector | explicit | explicit | explicit |
+| Court Detection unsuffixed source | legacy explicit source only | `synthetic_court_v2` | `synthetic_court` default |
+| View targets | all four modes | only `court_center` | only `court_center` |
+| Target-court authority | trajectory group | camera sample | camera sample |
+| Court-centred path | centre court | centre court | centre court |
+| Complex-centred path | seeded balanced assignment | nearest court per camera sample | nearest court per camera sample |
+| Label channels | 7 classes × 2 points | 14 classes × 1 point | 14 classes × 1 point |
+| `near` / `far` | fixed physical points grouped together | camera-side Y swap | camera-side Y swap |
+| `left` / `right` | symmetric class | fixed court-local X | canonical-frame X after `I | Rz(pi)` |
+| Compatibility | exact v1 | exact v2; no fallback | exact v3; no v2 alias/remap |
 
 The target and label flow for v2 is:
 
@@ -108,7 +119,7 @@ trajectory path -> camera centre -> target-court resolver
 
 `CourtDatasetConfiguration` gains a required
 `schema_version: CourtDatasetSchemaVersion`, with the only accepted values
-`v1` and `v2`. The version is selected once at the configuration boundary and
+`v1`, `v2`, and `v3`. The version is selected once at the configuration boundary and
 is passed explicitly to planning, assembly, diagnostics, validation, and
 visualization. Inferring the version from the shape of a label payload is not
 allowed.
@@ -121,10 +132,11 @@ configs/dataset/court/
 ├── base.yaml   # shared policy plus schema_version=v1 and all four targets
 ├── v1.yaml     # alias to base.yaml
 ├── v2.yaml     # composes base and overrides version plus target modes
+├── v3.yaml     # corrected camera-view KP14 family
 └── train.yaml  # compatibility alias to base.yaml (therefore v1)
 ```
 
-`run_scene_pipeline.yaml` continues to resolve v1 by default. Both versions are
+`run_scene_pipeline.yaml` continues to resolve v1 by default. All versions are
 selectable without editing a file:
 
 ```bash
@@ -133,18 +145,21 @@ selectable without editing a file:
 
 .venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
   dataset/court=v2
+
+.venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
+  dataset/court=v3
 ```
 
 Tests and runtime code must use Hydra composition for these files. They must not
-load `base.yaml`, `v1.yaml`, or `v2.yaml` as standalone mappings.
+load `base.yaml`, `v1.yaml`, `v2.yaml`, or `v3.yaml` as standalone mappings.
 
 ### Validation rules
 
 - v1 requires the exact existing set of four target modes. This preserves the
   legacy generation contract rather than merely its JSON shape.
-- v2 requires exactly `[court_center]`. Overrides to `complex_center`,
+- v2 and v3 require exactly `[court_center]`. Overrides to `complex_center`,
   `near_baseline`, or `far_baseline` fail at typed configuration validation.
-- Coverage modes remain exactly `full`, `near_full`, and `partial` in both
+- Coverage modes remain exactly `full`, `near_full`, and `partial` in all
   versions.
 - Both `complex` and `court` trajectory centre kinds remain required.
 - `_views_for_group()` only adds its first-group cross-target variant when a
@@ -153,12 +168,12 @@ load `base.yaml`, `v1.yaml`, or `v2.yaml` as standalone mappings.
 - The generated target-mode inventory must still equal the configured
   target-mode inventory exactly.
 
-The v2 preset therefore guarantees that every accepted generated camera looks
+The v2 and v3 presets therefore guarantee that every accepted generated camera looks
 at the centre of its resolved target court. The existing configurable
 `look_at_height_m` remains the local court Z coordinate; “centre” means local
 `(x, y) = (0, 0)` rather than forcing the look-at height to zero.
 
-## Per-camera target-court resolution
+## Per-camera target-court resolution (v2 and v3)
 
 ### Resolution point and distance
 
@@ -200,10 +215,10 @@ target_scene = resolved_court.scene_from_court(0, 0, look_at_height_m)
 The OpenCV camera forward axis must equal the normalized vector from the camera
 centre to this point, within the existing numerical tolerance.
 
-### v2 typed ownership
+### v2/v3 typed ownership
 
 The group-level v1 binding cannot represent a complex trajectory whose nearest
-court changes partway around the orbit. v2 therefore uses an explicit policy at
+court changes partway around the orbit. v2 and v3 therefore use an explicit policy at
 group level and a resolved binding at sample level:
 
 ```text
@@ -235,13 +250,13 @@ complex-centred view does not carry one static `target_court_instance_id`.
 - target-court diagnostics and validation.
 
 The existing v1 types and serialized fields remain exact. Implementation may
-share primitives, but the public boundary must use explicit v1/v2 plan types or
+share primitives, but the public boundary must use explicit v1/v2/v3 plan types or
 an equally strict discriminated union; it must not make the current group
-binding nullable for both versions.
+binding nullable across versions.
 
 ### Validation and diagnostics
 
-v2 removes the v1 court-balance release gate. It replaces it with a geometric
+v2 and v3 remove the v1 court-balance release gate. They replace it with a geometric
 recomputation over every planned, accepted, and rejected sample:
 
 - court-centred samples reference their trajectory's centre court;
@@ -271,16 +286,17 @@ the existing ground contract:
 NUM_GROUND_COURT_KP = 14
 GROUND_COURT_KP_NAMES = COURT_KP_NAMES[:14]
 OPPOSITE_COURT_END_INDEX = (2, 3, 0, 1, 5, 4, 7, 6, 10, 11, 8, 9, 13, 12)
+CAMERA_VIEW_HALF_TURN_INDEX = (3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 13, 12)
 ```
 
 The scene/camera transformation and dataset-specific label construction stay
 under `src/synthetic_data_generation/dataset/court/`; they depend on
-`CourtInstance`, `SceneCamera`, and the v2 dataset schema and therefore do not
+`CourtInstance`, `SceneCamera`, and the versioned dataset schema and therefore do not
 belong in `src/utils`.
 
-### v2 semantic class order
+### Shared v2/v3 semantic class order
 
-v2 contains fourteen singleton classes in the exact order of
+v2 and v3 contain fourteen singleton classes in the exact order of
 `COURT_KP_NAMES[:14]`:
 
 ```text
@@ -304,7 +320,7 @@ v2 contains fourteen singleton classes in the exact order of
 remains the stable physical index in `court_keypoints_3d()`. They are equal only
 when the camera is on the court's negative-Y side.
 
-### Near/far algorithm
+### Legacy v2 near/far algorithm
 
 Near/far is resolved separately for every generated camera and every accepted
 court, not only for the sample's target court.
@@ -327,8 +343,10 @@ Because no valid v2 class permutation exists in that case, its rejected sample
 record keeps the resolved sample-level `target_court` and stores
 `projection: null`. No `labels.json` is published for a rejected proposal.
 
-Left/right remains the court-local X convention. Only near/far changes with the
-camera position.
+In v2 only, left/right remains the court-local X convention. Only near/far
+changes with the camera position. This Y-only permutation is preserved solely
+so existing v2 artifacts retain their exact meaning; it is not the corrected
+camera-view contract.
 
 For every serialized court, strict validation requires:
 
@@ -340,10 +358,52 @@ For every serialized court, strict validation requires:
 - coverage still counts the same fourteen physical points;
 - renderer visibility is recomputed from validated NHT alpha and depth.
 
-### v2 projection JSON
+### Corrected v3 camera-view algorithm
 
-The outer projection keys are retained. This limits downstream churn while the
-schema string makes the changed class contract explicit. A shortened example is:
+V3 resolves one side decision independently for every accepted court in a
+sample. Let `C_court` be the camera center transformed by
+`court.court_from_scene`. If `C_court.y < -1e-6 m`, the semantic-to-physical
+mapping is identity and the canonical transform `S = I`. If
+`C_court.y > +1e-6 m`, both axes in the court plane rotate by pi:
+
+```text
+semantic_to_physical = CAMERA_VIEW_HALF_TURN_INDEX
+S = Rz(pi) = diag(-1, -1, +1)
+```
+
+`S` is a proper right-handed rotation (`det(S) = +1`), not a reflection. The
+same side decision produces the KP permutation, `canonical_from_court`,
+`camera_from_canonical`, and the canonical camera center. Consequently a known
+court point projected through the original court/camera transforms has the
+same pixel coordinates and depth when projected through the canonical chain.
+Symmetric cameras at opposite ends canonicalize their positions, rotations,
+look-at targets, and unchanged focal lengths to the same convention.
+
+The class names remain `COURT_KP_NAMES[:14]`, but their V3 meanings are:
+
+- `near_*` belongs to the baseline closer to the camera center and `far_*` to
+  the more distant baseline;
+- `left` and `right` are the negative-X and positive-X identities in the
+  canonical court frame. End views and baseline-exterior off-axis views satisfy
+  `u(left) < u(right)`, which is useful evidence for those fixtures;
+- finite lateral views remain valid even when perspective reverses a
+  baseline-specific projected-u order. They retain the same side-derived
+  physical identities and canonical projection round-trip;
+- `abs(C_court.y) <= 1e-6 m`, missing or non-finite transforms, non-finite
+  projections, and incomplete/duplicate physical inventories are explicit
+  rejections.
+
+Horizontal image flip applies the existing single channel flip permutation to
+names, points, visibility, and physical indices together. It does not apply a
+second court half-turn. Target-court filtering occurs only after each court's
+mapping is validated, so adding non-target courts cannot change the target
+court's identities.
+
+### Singleton projection JSON
+
+The outer projection keys are retained in v2 and v3. The exact dataset/sample
+schema identifies which singleton mapping owns the payload. A shortened legacy
+v2 example is:
 
 ```json
 {
@@ -395,19 +455,21 @@ remains invalid.
 The version registry under the Court dataset package owns all related schema
 identifiers and semantic cardinality:
 
-| Artifact | v1 | v2 |
-|---|---|---|
-| dataset | `canonical_court_dataset_v1` | `canonical_court_dataset_v2` |
-| orbit plan | `canonical_court_orbit_plan_v1` | `canonical_court_orbit_plan_v2` |
-| sample labels | `canonical_court_sample_v1` | `canonical_court_sample_v2` |
-| semantic manifest | `court_renderer_semantic_manifest_v1` | `court_renderer_semantic_manifest_v2` |
-| acceptance diagnostics | `court_acceptance_diagnostics_v1` | `court_acceptance_diagnostics_v2` |
-| semantic classes | 7 × 2 | 14 × 1 |
+| Artifact | v1 | v2 legacy | v3 camera-view |
+|---|---|---|---|
+| dataset | `canonical_court_dataset_v1` | `canonical_court_dataset_v2` | `canonical_court_dataset_v3` |
+| orbit plan | `canonical_court_orbit_plan_v1` | `canonical_court_orbit_plan_v2` | `canonical_court_orbit_plan_v3` |
+| sample labels | `canonical_court_sample_v1` | `canonical_court_sample_v2` | `canonical_court_sample_v3` |
+| semantic manifest | `court_renderer_semantic_manifest_v1` | `court_renderer_semantic_manifest_v2` | `court_renderer_semantic_manifest_v3` |
+| performance | `court_dataset_performance_v2` | `court_dataset_performance_v3` | `court_dataset_performance_v4` |
+| shard attempt | `court_render_shard_attempt_v1` | `court_render_shard_attempt_v2` | `court_render_shard_attempt_v3` |
+| acceptance diagnostics | `court_acceptance_diagnostics_v1` | `court_acceptance_diagnostics_v2` | `court_acceptance_diagnostics_v3` |
+| semantic classes | 7 × 2 | 14 × 1 | 14 × 1 |
 
-The performance evidence schema must also be bumped because
-`visible_points_by_class` changes from seven to fourteen keys. Attempt-local
-shard metadata must include the selected dataset schema so a v1 shard cannot be
-reused by a v2 attempt. Split, parameter-table, and semantic-visibility
+The performance evidence schema changes with each family because
+`visible_points_by_class` changes cardinality or semantic meaning. Attempt-local
+shard metadata must include the selected dataset schema so a shard cannot be
+reused by another version's attempt. Split, parameter-table, and semantic-visibility
 diagnostics that encode group target or class cardinality receive new schema
 versions as well.
 
@@ -416,23 +478,40 @@ Dispatch rules are strict:
 - Generation uses only `configuration.schema_version`.
 - Validation accepts the exact requested dataset, plan, sample, manifest,
   performance, and diagnostic schemas.
-- A reader that supports both versions dispatches on the exact top-level
+- A reader that supports multiple versions dispatches on the exact top-level
   `schema` value, then invokes a version-specific parser. It does not try one
   parser and fall back to the other.
-- v1 output is not upgraded in place, and v2 output is not down-converted.
+- no version is upgraded, aliased, or down-converted in place.
 - One dataset owner directory contains one version. Rerunning with another
   version goes through normal stage invalidation and transactional publication;
   files from two versions may not coexist.
 - The global `canonical_scene_pipeline_v1` and `multi_court_layout_v1` schemas
   do not change because their contracts are unaffected.
 
-The v2 `dataset.json` and per-sample `labels.json` add the sample-level resolved
-target-court record. `trajectory_groups[].target_court` is replaced in v2 by
+The v2/v3 `dataset.json` and per-sample `labels.json` add the sample-level resolved
+target-court record. `trajectory_groups[].target_court` is replaced in v2/v3 by
 the explicit target-court policy. The v1 field layout remains unchanged.
 
-The report adapter aggregates unique target bindings from v2 samples instead
+The report adapter aggregates unique target bindings from v2/v3 samples instead
 of trajectory groups. Semantic manifests, accepted records, rejected records,
 and label files must agree exactly on each sample's target binding.
+
+### V3 regeneration and checkpoint policy
+
+There is no in-place V2-to-V3 metadata rewrite because the physical identity of
+left/right channels changes. To adopt V3, regenerate the Court dataset with
+`dataset/court=v3`, then regenerate every derived Court Detection target,
+preview, diagnostic overlay, and semantic manifest from that V3 artifact.
+Finally retrain any model that consumes the fourteen KP channels.
+
+Court Detection distinguishes the bundles exactly as
+`synthetic_camera_view_kp14_v3` and
+`synthetic_camera_view_kp14_v3_target_court`. The unsuffixed
+`data/source=synthetic_court` selects V3; legacy V2 requires
+`data/source=synthetic_court_v2`. A V2 checkpoint is not compatible with either
+V3 bundle even though both have fourteen channels. Loading it as V3 must fail
+at the target-bundle snapshot check. No channel-weight permutation, inferred
+shape compatibility, or silent remap is supported.
 
 ## Court-only pipeline regeneration
 
@@ -457,33 +536,35 @@ publication mutation.
 The visualizer first validates and selects the exact dataset schema.
 
 - v1 keeps the current seven-class two-point overlay and legend.
-- v2 validates fourteen singleton classes, indexes points by
+- v2 and v3 validate fourteen singleton classes, index points by
   `physical_index`, and draws the ground-court connections from the 0–13 subset
-  of `COURT_SKELETON`. Point labels and the legend use the camera-relative
-  fourteen-class names.
-- Neither overlay reshapes the other schema in memory as a compatibility
+  of `COURT_SKELETON`. V3 validates the shared identity/full-half-turn inventory
+  before drawing. Point labels and the legend use the selected version's
+  fourteen-class meanings.
+- No overlay reshapes another schema in memory as a compatibility
   conversion.
 
 ## Implementation ownership
 
 | Area | Responsibility |
 |---|---|
-| `configs/dataset/court/*.yaml` | Shared base plus explicit v1/v2 selection; v2 singleton target preset. |
+| `configs/dataset/court/*.yaml` | Shared base plus explicit v1/v2/v3 selection; v2/v3 singleton target presets. |
 | `configuration.py` | Parse schema version and enforce version-specific target-mode rules. |
 | `dataset/court/schema.py` (new) | Court dataset version registry, exact schema identifiers, semantic cardinality, and dispatch metadata. |
-| `dataset/court/contracts.py` | Preserve v1 public types; add strict v2 group-policy and sample-target contracts. |
+| `dataset/court/contracts.py` | Preserve v1/v2 public meanings and give the V3 plan an exact new identity. |
 | `components/camera_sampling/targeting.py` (new) | Pure task-local target-court distance, tie, and invariant logic. |
 | `components/camera_sampling/selection.py` | Resolve target inside the sample loop, build look-at pose, and handle singleton target lists. |
-| `components/labels.py` | Keep v1 projection and add v2 singleton projection selected explicitly by version. |
-| `src/utils/schema/court.py` | Expose ground-name and opposite-end constants without changing CourtKP20. |
+| `components/camera_view.py` | Own the per-court V3 side decision, proper canonical transform, and finite projection boundary. |
+| `components/labels.py` | Keep v1/v2 projections and add explicit V3 camera-view singleton projection. |
+| `src/utils/schema/court.py` | Expose legacy and full-half-turn mappings without changing CourtKP20. |
 | `assembler.py` / `semantic_manifest.py` | Version-specific sample layout, strict visibility/class validation, and manifest construction. |
 | `rendering/nht.py` / `shards.py` | Validate sample bindings against alignment; prevent cross-version shard reuse. |
-| `diagnostics.py` / `performance.py` | Replace v2 balance evidence with sample geometry evidence and fourteen-class metrics. |
-| `pipeline/handlers.py` | Aggregate v2 target bindings from samples. |
-| `visualization/sources.py` / `overlays.py` | Exact v1/v2 reader dispatch and version-specific overlays. |
+| `diagnostics.py` / `performance.py` | Record exact versioned sample geometry and class metrics. |
+| `pipeline/handlers.py` | Aggregate v2/v3 target bindings from samples. |
+| `visualization/sources.py` / `overlays.py` | Exact v1/v2/v3 reader dispatch and version-specific overlays. |
 
 The nearest-court resolver stays task-local because it depends on the synthetic
-scene's `MultiCourtLayout` and v2 planning contracts. Only stable CourtKP
+scene's `MultiCourtLayout` and singleton planning contracts. Only stable CourtKP
 geometry vocabulary belongs in `src/utils/schema/court.py`.
 
 ## Test design
@@ -496,6 +577,8 @@ Tests follow the repository's unit/integration/e2e boundaries.
   - ground-name order and the opposite-end permutation;
   - permutation is an involution and covers `0..13` exactly;
   - existing CourtKP20 indices and coordinates do not change.
+  - the V3 full-half-turn mapping is an exact bijective involution and maps
+    `(x, y, z)` to `(-x, -y, z)`.
 - `tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_targeting.py`
   - court-centred paths remain fixed even when another court is closer;
   - a complex trajectory changes target court between camera samples;
@@ -508,13 +591,15 @@ Tests follow the repository's unit/integration/e2e boundaries.
 - existing `test_labels.py`
   - v1 golden shape remains 7 × 2;
   - v2 shape is 14 × 1;
+  - v3 shape is 14 × 1 with the exact full-half-turn mapping;
   - cameras on opposite court ends swap near/far physical indices;
-  - left/right and the complete physical inventory remain stable;
+  - end views preserve projected left/right evidence while lateral views keep
+    canonical-X identities without an image-order rejection;
   - mid-plane ambiguity is rejected explicitly;
   - renderer-visible summaries use the selected version's ordered names.
 - existing `test_contracts.py`, `test_assembler.py`,
   `test_semantic_manifest.py`, `test_shards.py`, and `test_performance.py`
-  - exact v1/v2 keys and schemas;
+  - exact v1/v2/v3 keys and schemas;
   - cross-version inputs and mixed artifacts are rejected;
   - sample-level targets and fourteen-class metrics are recomputed rather than
     trusted.
@@ -522,14 +607,16 @@ Tests follow the repository's unit/integration/e2e boundaries.
 ### Integration
 
 - `tests/integration/synthetic_data_generation/test_configuration.py`
-  composes `dataset/court=v1` and `dataset/court=v2`, checks the four-versus-one
+  composes `dataset/court=v1`, `dataset/court=v2`, and `dataset/court=v3`, checks the four-versus-one
   target modes, and rejects unknown versions or invalid empty target lists.
 - `tests/integration/synthetic_data_generation/test_court_dataset.py` runs the
-  lightweight renderer boundary for both versions. v1 keeps the current group
-  balance assertions; v2 checks per-sample nearest/fixed selection, 14KP labels,
-  accepted/rejected propagation, and deterministic same-seed output.
+  lightweight renderer boundary for the versioned families. v1 keeps the
+  current group balance assertions; v2/v3 check per-sample nearest/fixed
+  selection, exact 14KP labels, accepted/rejected propagation, and deterministic
+  same-seed output. V3 also checks the full-half-turn and finite lateral
+  acceptance.
 - `tests/integration/synthetic_data_generation/test_dataset_visualization.py`
-  validates both overlays without GPU training.
+  validates the versioned overlays without GPU training.
 - `tests/integration/synthetic_data_generation/test_dataset_performance.py`
   verifies version-specific semantic key inventories and the new performance
   evidence schema.
@@ -537,18 +624,18 @@ Tests follow the repository's unit/integration/e2e boundaries.
 ### E2E
 
 `tests/e2e/synthetic_data_generation/test_run_scene_pipeline.py` and
-`test_visualize_dataset.py` cover the two Hydra selectors and exact reader
+`test_visualize_dataset.py` cover the Hydra selectors and exact reader
 dispatch at command level. Existing GPU acceptance remains a release gate, not
 the primary test for pure target or label logic.
 
 ## Implementation sequence
 
-1. Add the version enum, composed v1/v2 configs, schema registry, and v1 golden
+1. Preserve the version enum, composed v1/v2 configs, schema registry, and v1 golden
    tests before changing behaviour.
 2. Introduce v2 group/sample contracts and the pure target resolver; update
    camera planning and geometric validation.
-3. Add shared ground CourtKP aliases and v2 camera-relative singleton labels.
-4. Add version-specific assembly, manifests, diagnostics, performance evidence,
+3. Add the V3 shared full-half-turn authority and camera-view canonicalization.
+4. Add V3 labels and exact version-specific assembly, manifests, diagnostics, performance evidence,
    shard binding, reporting, and visualization.
 5. Run focused unit tests, the synthetic-data integration suite, pre-commit,
    and finally the existing Court GPU acceptance when an implementation is
@@ -578,3 +665,9 @@ Implementation is complete only when all of the following hold:
    schemas.
 9. Same input, config version, and seed produce exactly equal semantic
    manifests.
+10. `dataset/court=v3` uses the exact full-half-turn mapping on the positive-Y
+    side and identity on the negative-Y side. It rejects the court mid-plane,
+    non-finite geometry, or an invalid inventory, while finite lateral views do
+    not depend on projected left/right order.
+11. V2 artifacts and checkpoints are rejected by V3 readers and target-bundle
+    checks; migration requires regeneration and retraining.

@@ -7,6 +7,7 @@ import pytest
 from src.synthetic_data_generation.dataset.court.schema import (
     COURT_SCHEMA_V1,
     COURT_SCHEMA_V2,
+    COURT_SCHEMA_V3,
     CourtDatasetSchemaVersion,
     court_schema_for_version,
     court_schema_from_dataset_schema,
@@ -19,7 +20,7 @@ from src.synthetic_data_generation.dataset.court.schema import (
 from src.utils.schema.court import COURT_KP_NAMES
 
 
-def test_v1_and_v2_registry_exposes_all_exact_boundary_schemas() -> None:
+def test_v1_v2_and_v3_registry_expose_all_exact_boundary_schemas() -> None:
     expected = {
         CourtDatasetSchemaVersion.V1: (
             COURT_SCHEMA_V1,
@@ -43,6 +44,19 @@ def test_v1_and_v2_registry_exposes_all_exact_boundary_schemas() -> None:
                 "court_renderer_semantic_manifest_v2",
                 "court_dataset_performance_v3",
                 "court_render_shard_attempt_v2",
+            ),
+            14,
+            1,
+        ),
+        CourtDatasetSchemaVersion.V3: (
+            COURT_SCHEMA_V3,
+            (
+                "canonical_court_dataset_v3",
+                "canonical_court_orbit_plan_v3",
+                "canonical_court_sample_v3",
+                "court_renderer_semantic_manifest_v3",
+                "court_dataset_performance_v4",
+                "court_render_shard_attempt_v3",
             ),
             14,
             1,
@@ -71,6 +85,7 @@ def test_v1_and_v2_registry_exposes_all_exact_boundary_schemas() -> None:
         ) == (definition,) * len(readers)
 
     assert COURT_SCHEMA_V2.semantic_class_names == COURT_KP_NAMES[:14]
+    assert COURT_SCHEMA_V3.semantic_class_names == COURT_KP_NAMES[:14]
 
 
 @pytest.mark.parametrize(

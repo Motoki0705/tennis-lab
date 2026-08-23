@@ -94,7 +94,7 @@ The canonical dataset package owns config-driven camera rigs, balanced target-co
 assignment, and exact cross-chunk timeline continuity. Task packages provide only
 their public domain source contracts.
 
-- [Court Detection dataset v1/v2 contract](dataset/court/README.md).
+- [Court Detection dataset v1/v2/v3 contract](dataset/court/README.md).
 - BLCS preserves every source physics frame across multi-object planning,
   config-owned cameras, balanced court assignment, contiguous chunks, labels,
   final assembly, and diagnostics.

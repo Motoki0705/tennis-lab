@@ -99,57 +99,85 @@ def test_shard_reuse_is_attempt_local_and_semantically_validated(
         )
 
 
-def test_v2_shard_marker_binds_dataset_schema_and_rejects_mixed_reuse(
+@pytest.mark.parametrize(
+    ("schema_version", "attempt_token", "shard_schema", "dataset_schema", "other"),
+    [
+        (
+            CourtDatasetSchemaVersion.V2,
+            "attempt-v2",
+            "court_render_shard_attempt_v2",
+            "canonical_court_dataset_v2",
+            CourtDatasetSchemaVersion.V3,
+        ),
+        (
+            CourtDatasetSchemaVersion.V3,
+            "attempt-v3",
+            "court_render_shard_attempt_v3",
+            "canonical_court_dataset_v3",
+            CourtDatasetSchemaVersion.V2,
+        ),
+    ],
+)
+def test_singleton_shard_marker_binds_dataset_schema_and_rejects_mixed_reuse(
     tmp_path: Path,
+    schema_version: CourtDatasetSchemaVersion,
+    attempt_token: str,
+    shard_schema: str,
+    dataset_schema: str,
+    other: CourtDatasetSchemaVersion,
 ) -> None:
     sample = _sample()
     shard_root = tmp_path / "shard-000"
     _rendered(shard_root, sample)
     marker = write_attempt_shard_marker(
         shard_root,
-        attempt_token="attempt-v2",
+        attempt_token=attempt_token,
         shard_id="shard-000",
         samples=(sample,),
-        schema_version=CourtDatasetSchemaVersion.V2,
+        schema_version=schema_version,
     )
     payload = json.loads(marker.read_text(encoding="utf-8"))
 
     assert payload == {
-        "schema": "court_render_shard_attempt_v2",
-        "attempt_token": "attempt-v2",
+        "schema": shard_schema,
+        "attempt_token": attempt_token,
         "shard_id": "shard-000",
         "trajectory_group_ids": ["group-a"],
         "sample_ids": [sample.sample_id],
-        "dataset_schema": "canonical_court_dataset_v2",
+        "dataset_schema": dataset_schema,
     }
     assert (
         load_attempt_local_shard(
             shard_root,
-            attempt_token="attempt-v2",
+            attempt_token=attempt_token,
             shard_id="shard-000",
             samples=(sample,),
-            schema_version=CourtDatasetSchemaVersion.V2,
+            schema_version=schema_version,
         )
         is not None
     )
     with pytest.raises(ValueError, match="schema"):
         load_attempt_local_shard(
             shard_root,
-            attempt_token="attempt-v2",
+            attempt_token=attempt_token,
             shard_id="shard-000",
             samples=(sample,),
-            schema_version=CourtDatasetSchemaVersion.V1,
+            schema_version=other,
         )
 
-    payload["dataset_schema"] = "canonical_court_dataset_v1"
+    payload["dataset_schema"] = (
+        "canonical_court_dataset_v3"
+        if schema_version is CourtDatasetSchemaVersion.V2
+        else "canonical_court_dataset_v2"
+    )
     marker.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(ValueError, match="dataset schema"):
         load_attempt_local_shard(
             shard_root,
-            attempt_token="attempt-v2",
+            attempt_token=attempt_token,
             shard_id="shard-000",
             samples=(sample,),
-            schema_version=CourtDatasetSchemaVersion.V2,
+            schema_version=schema_version,
         )
 
 

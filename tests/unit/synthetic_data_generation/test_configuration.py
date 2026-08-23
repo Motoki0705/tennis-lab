@@ -16,12 +16,17 @@ from src.synthetic_data_generation.alignment.settings import AlignmentEvidenceSe
 from src.synthetic_data_generation.configuration import (
     SCENE_PIPELINE_SCHEMA,
     AlignmentConfiguration,
+    CourtDatasetConfiguration,
     ScenePipelineConfiguration,
     _blcs_generator_config,
     _blcs_source_settings,
 )
 from src.synthetic_data_generation.dataset.blcs.source import (
     BLCSTrajectorySourceSettings,
+)
+from src.synthetic_data_generation.dataset.court.contracts import OrbitTargetMode
+from src.synthetic_data_generation.dataset.court.schema import (
+    CourtDatasetSchemaVersion,
 )
 from src.synthetic_data_generation.pipeline.contracts import DatasetTarget, StageName
 from src.synthetic_data_generation.reconstruction import NHT_PIPELINE_CONFIG_SCHEMA
@@ -122,6 +127,42 @@ def test_b00_quantitative_and_full_timeline_values_are_config_owned() -> None:
         runtime.blcs.performance.execution_device,
         runtime.plcs.performance.execution_device,
     } == {"cuda:0"}
+
+
+@pytest.mark.parametrize(
+    ("selector", "version", "target_modes"),
+    [
+        (
+            "v1",
+            CourtDatasetSchemaVersion.V1,
+            frozenset(OrbitTargetMode),
+        ),
+        (
+            "v2",
+            CourtDatasetSchemaVersion.V2,
+            frozenset({OrbitTargetMode.COURT_CENTER}),
+        ),
+        (
+            "v3",
+            CourtDatasetSchemaVersion.V3,
+            frozenset({OrbitTargetMode.COURT_CENTER}),
+        ),
+    ],
+)
+def test_explicit_court_schema_compositions_preserve_versioned_target_contract(
+    selector: str,
+    version: CourtDatasetSchemaVersion,
+    target_modes: frozenset[OrbitTargetMode],
+) -> None:
+    config = _compose(f"dataset/court={selector}")
+
+    court = CourtDatasetConfiguration.from_mapping(
+        OmegaConf.to_container(config.dataset.court, resolve=True)
+    )
+
+    assert court.schema_version is version
+    assert frozenset(court.view.target_modes) == target_modes
+    assert court.sampling.minimum_accepted_fraction == 0.9
 
 
 def test_production_alignment_evidence_and_acceptance_are_complete_typed_values(

@@ -66,6 +66,7 @@ from src.synthetic_data_generation.dataset.court.semantic_manifest import (
     build_court_semantic_manifest,
     validate_court_semantic_manifest,
     validate_v2_published_court_geometry,
+    validate_v3_published_court_geometry,
 )
 from src.synthetic_data_generation.dataset.court.shards import (
     CourtRenderedSample,
@@ -106,7 +107,18 @@ _COURT_METRIC_KEYS_BY_VERSION = {
     | {"court_group_counts", "split_court_group_counts"},
     CourtDatasetSchemaVersion.V2: _COMMON_COURT_METRIC_KEYS
     | {"court_sample_counts", "split_court_sample_counts"},
+    CourtDatasetSchemaVersion.V3: _COMMON_COURT_METRIC_KEYS
+    | {"court_sample_counts", "split_court_sample_counts"},
 }
+
+
+def _uses_resolved_target_version(version: CourtDatasetSchemaVersion) -> bool:
+    """Return the explicitly enumerated V2/V3 target-resolution contract."""
+    if version is CourtDatasetSchemaVersion.V1:
+        return False
+    if version in (CourtDatasetSchemaVersion.V2, CourtDatasetSchemaVersion.V3):
+        return True
+    raise TypeError("Unsupported Court dataset schema version.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -588,7 +600,9 @@ def _rejected_record(
         and len(reason_tuple) == 1
         and _is_ambiguous_near_far_reason(reason_tuple[0])
     ):
-        raise ValueError("Only an ambiguous v2 rejection may omit projection.")
+        raise ValueError(
+            "Only an explicit singleton mid-plane ambiguity may omit projection."
+        )
     record: dict[str, object] = {
         "sample_index": sample.sample_index,
         "sample_id": sample.sample_id,
@@ -835,11 +849,14 @@ def validate_court_dataset(
     groups = _mapping_sequence(raw["trajectory_groups"], name="trajectory_groups")
     samples = _mapping_sequence(raw["samples"], name="samples")
     rejected = _mapping_sequence(raw["rejected_samples"], name="rejected_samples")
-    published_court_geometry = (
-        validate_v2_published_court_geometry(raw)
-        if definition.version is CourtDatasetSchemaVersion.V2
-        else None
-    )
+    if definition.version is CourtDatasetSchemaVersion.V1:
+        published_court_geometry = None
+    elif definition.version is CourtDatasetSchemaVersion.V2:
+        published_court_geometry = validate_v2_published_court_geometry(raw)
+    elif definition.version is CourtDatasetSchemaVersion.V3:
+        published_court_geometry = validate_v3_published_court_geometry(raw)
+    else:  # pragma: no cover - exact schema registry is exhaustive
+        raise TypeError("Unsupported Court dataset schema version.")
     validate_court_semantic_manifest(
         raw,
         load_json(_contained_file(root, COURT_SEMANTIC_MANIFEST_PATH)),
@@ -884,7 +901,7 @@ def validate_court_dataset(
         "metadata",
         "reasons",
     }
-    if definition.version is CourtDatasetSchemaVersion.V2:
+    if _uses_resolved_target_version(definition.version):
         rejected_keys.add("target_court")
     for record in rejected:
         if set(record) != rejected_keys or not isinstance(record.get("reasons"), list):
@@ -927,7 +944,7 @@ def validate_court_dataset(
             "labels",
             "metadata",
         }
-        if definition.version is CourtDatasetSchemaVersion.V2:
+        if _uses_resolved_target_version(definition.version):
             expected_sample_keys.add("target_court")
         if set(record) != expected_sample_keys:
             raise ValueError(
@@ -1099,7 +1116,7 @@ def validate_court_dataset(
                     raise ValueError(
                         "Published Court sample semantics changed after planning."
                     )
-            if definition.version is CourtDatasetSchemaVersion.V2 and (
+            if _uses_resolved_target_version(definition.version) and (
                 record.get("target_court") != expected.get("target_court")
             ):
                 raise ValueError(
@@ -1118,7 +1135,7 @@ def validate_court_dataset(
         )
     court_counts_key = (
         "court_group_counts"
-        if definition.version is CourtDatasetSchemaVersion.V1
+        if not _uses_resolved_target_version(definition.version)
         else "court_sample_counts"
     )
     court_counts_raw = metrics.get(court_counts_key)
@@ -1214,7 +1231,7 @@ def _validate_semantic_sample_record(
     if projection is None:
         reasons = record["reasons"]
         if (
-            definition.version is not CourtDatasetSchemaVersion.V2
+            not _uses_resolved_target_version(definition.version)
             or not isinstance(reasons, list)
             or published_court_geometry is None
         ):
@@ -1243,7 +1260,7 @@ def _validate_semantic_sample_record(
         "intrinsics": list(camera.intrinsics),
         "camera_to_scene": camera.camera_to_scene.to_list(),
     }
-    if definition.version is CourtDatasetSchemaVersion.V1:
+    if not _uses_resolved_target_version(definition.version):
         target = group.get("target_court")
         if not isinstance(target, Mapping):
             raise TypeError("Court v1 trajectory group target is incomplete.")
@@ -1389,7 +1406,7 @@ def _validate_published_sample(
         "projection",
         "metadata",
     }
-    if definition.version is CourtDatasetSchemaVersion.V2:
+    if _uses_resolved_target_version(definition.version):
         label_keys.add("target_court")
     if (
         not isinstance(label_payload, Mapping)
@@ -1411,7 +1428,7 @@ def _validate_published_sample(
     ):
         if label_payload[field] != record[field]:
             raise ValueError(f"Court sample labels {field} mismatch.")
-    if definition.version is CourtDatasetSchemaVersion.V2 and (
+    if _uses_resolved_target_version(definition.version) and (
         label_payload["target_court"] != record["target_court"]
     ):
         raise ValueError("Court sample labels target_court mismatch.")
@@ -1545,7 +1562,7 @@ def _validate_group_record(
         "maximum_adjacent_step_m",
         "total_arc_length_m",
     }
-    if definition.version is CourtDatasetSchemaVersion.V1:
+    if not _uses_resolved_target_version(definition.version):
         keys.add("target_court")
     else:
         keys.add("target_court_policy")
@@ -1556,7 +1573,7 @@ def _validate_group_record(
     if not isinstance(views, list) or not views:
         raise TypeError("Court group views must be a non-empty list.")
     for view in views:
-        if definition.version is CourtDatasetSchemaVersion.V1:
+        if not _uses_resolved_target_version(definition.version):
             OrbitViewSpec.from_mapping(view)
         else:
             OrbitViewSpecV2.from_mapping(view)
@@ -1566,7 +1583,7 @@ def _validate_group_record(
         trajectory.center_court_instance_id,
     ):
         raise ValueError("Court resolved centre disagrees with its trajectory.")
-    if definition.version is CourtDatasetSchemaVersion.V1:
+    if not _uses_resolved_target_version(definition.version):
         target = group["target_court"]
         target_keys = {
             "court_instance_id",
@@ -1768,7 +1785,7 @@ def _validate_split_diagnostic(
 ) -> None:
     """Validate exact v1/v2 split records and v2 target-resolution evidence."""
     keys = {"schema", "groups"}
-    if definition.version is CourtDatasetSchemaVersion.V2:
+    if _uses_resolved_target_version(definition.version):
         keys.add("target_resolution")
     if not isinstance(value, Mapping) or set(value) != keys:
         raise ValueError("Court split diagnostic schema is invalid.")
@@ -1785,7 +1802,7 @@ def _validate_split_diagnostic(
             "split": group["split"],
             "shard_id": group["shard_id"],
         }
-        if definition.version is CourtDatasetSchemaVersion.V1:
+        if not _uses_resolved_target_version(definition.version):
             target = group["target_court"]
             if not isinstance(target, Mapping):
                 raise TypeError("Court v1 group target must be a mapping.")
@@ -1807,14 +1824,14 @@ def _validate_split_diagnostic(
             raw_group["shard_id"], str
         ):
             raise TypeError("Court split group identifiers must be strings.")
-        if definition.version is CourtDatasetSchemaVersion.V1:
+        if not _uses_resolved_target_version(definition.version):
             if not isinstance(raw_group["target_court_instance_id"], str):
                 raise TypeError("Court split target court ID must be a string.")
         else:
             TargetCourtPolicyV2.from_mapping(raw_group["target_court_policy"])
         if dict(raw_group) != expected_group:
             raise ValueError("Court split group semantics are inconsistent.")
-    if definition.version is CourtDatasetSchemaVersion.V2:
+    if _uses_resolved_target_version(definition.version):
         _validate_v2_target_resolution_diagnostic(
             value["target_resolution"],
             dataset=dataset,
@@ -2043,7 +2060,7 @@ def _validate_parameter_table_diagnostic(
             "shard_id": group["shard_id"],
             "sample_count_per_view": group["sample_count"],
         }
-        if definition.version is CourtDatasetSchemaVersion.V1:
+        if not _uses_resolved_target_version(definition.version):
             target = group["target_court"]
             if not isinstance(target, Mapping):
                 raise TypeError("Court v1 group target must be a mapping.")
@@ -2071,7 +2088,7 @@ def _validate_parameter_table_diagnostic(
         if not isinstance(row["split"], str) or not isinstance(row["shard_id"], str):
             raise TypeError("Court parameter-table split/shard must be strings.")
         _mapping_integer(row, "sample_count_per_view", minimum=8)
-        if definition.version is CourtDatasetSchemaVersion.V1:
+        if not _uses_resolved_target_version(definition.version):
             if not isinstance(row["target_court_instance_id"], str) or not isinstance(
                 row["candidate_id"], str
             ):
@@ -2211,7 +2228,7 @@ def _validate_metric_inventories(
     )
     court_counts: Counter[str] = Counter()
     split_court_counts: dict[str, Counter[str]] = defaultdict(Counter)
-    if definition.version is CourtDatasetSchemaVersion.V1:
+    if not _uses_resolved_target_version(definition.version):
         for group in groups:
             target = group["target_court"]
             if not isinstance(target, Mapping):
@@ -2353,7 +2370,7 @@ def _validate_trajectory_plan_diagnostic(
         "camera_center_scene_m",
         "camera",
     }
-    if definition.version is CourtDatasetSchemaVersion.V2:
+    if _uses_resolved_target_version(definition.version):
         base_keys.add("target_court")
     for planned_sample, record in zip(planned, records, strict=True):
         if set(planned_sample) != base_keys:
@@ -2399,7 +2416,7 @@ def _validated_v2_target_policy(
     required = target_court_policy_for_trajectory(trajectory)
     if persisted != required:
         raise ValueError("Court v2 target policy disagrees with its trajectory centre.")
-    return required
+    return persisted
 
 
 def _parse_canonical_sampling_policy(value: object) -> OrbitSamplingPolicy:
@@ -2470,32 +2487,31 @@ def _validate_published_ambiguity_reason(
     camera: SceneCamera,
     published_court_geometry: Mapping[str, RigidTransform],
 ) -> None:
-    """Require the one persisted ambiguity reason to match physical geometry."""
+    """Require the persisted mid-plane reason to match physical geometry."""
     if (
         len(reasons) != 1
         or not isinstance(reasons[0], str)
         or not _is_ambiguous_near_far_reason(reasons[0])
     ):
         raise ValueError(
-            "A null Court v2 projection requires exactly one ambiguity reason."
+            "A null Court v2/v3 projection requires exactly one ambiguity reason."
         )
-    court_id = reasons[0].removeprefix(
+    reason = reasons[0]
+    court_id = reason.removeprefix(
         f"{AMBIGUOUS_CAMERA_RELATIVE_NEAR_FAR_REASON}:"
     )
     try:
         scene_from_court = published_court_geometry[court_id]
     except KeyError as error:
         raise ValueError(
-            "Court v2 ambiguity reason references unpublished court geometry."
+            "Court ambiguity reason references unpublished court geometry."
         ) from error
     local_y = camera_center_court_y(
         camera,
         scene_from_court=scene_from_court,
     )
     if abs(local_y) > CAMERA_RELATIVE_MID_PLANE_TOLERANCE_M:
-        raise ValueError(
-            "Court v2 ambiguity reason disagrees with camera/court geometry."
-        )
+        raise ValueError("Court ambiguity reason disagrees with camera/court geometry.")
 
 
 def _is_ambiguous_near_far_reason(reason: str) -> bool:

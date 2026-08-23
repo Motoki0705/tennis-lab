@@ -23,6 +23,12 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     COURT_DATASET_SCHEMA,
     COURT_SAMPLE_SCHEMA,
 )
+from src.synthetic_data_generation.dataset.court.schema import (
+    COURT_DATASET_SCHEMA_V2,
+    COURT_DATASET_SCHEMA_V3,
+    COURT_SAMPLE_SCHEMA_V2,
+    COURT_SAMPLE_SCHEMA_V3,
+)
 from src.tasks.court_detection.configuration import CourtTrainingConfig
 from src.tasks.court_detection.data.contracts import CourtTargetKind
 from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
@@ -39,7 +45,9 @@ from src.tasks.court_detection.visualization.adapters.render_inputs import (
     build_court_qualitative_renderer,
 )
 from src.utils.schema.court import (
+    CAMERA_VIEW_HALF_TURN_INDEX,
     COURT_KP_NAMES,
+    OPPOSITE_COURT_END_INDEX,
     STANDARD_COURT_CONFIG,
     court_keypoints_3d,
 )
@@ -183,7 +191,7 @@ def _write_synthetic_court(workspace_root: Path) -> None:
     (root / "dataset.json").write_text(json.dumps(manifest), encoding="utf-8")
 
 
-def _v2_target() -> dict[str, object]:
+def _singleton_target() -> dict[str, object]:
     return {
         "binding": {
             "court_instance_id": "court-1",
@@ -213,7 +221,7 @@ def _v2_target() -> dict[str, object]:
     }
 
 
-def _v2_camera(sample_id: str, sample_index: int) -> dict[str, object]:
+def _singleton_camera(sample_id: str, sample_index: int) -> dict[str, object]:
     return {
         "camera_id": sample_id,
         "source_frame_index": sample_index,
@@ -242,11 +250,19 @@ def _v2_camera(sample_id: str, sample_index: int) -> dict[str, object]:
     }
 
 
-def _v2_projection(sample_id: str) -> dict[str, object]:
+def _singleton_projection(
+    sample_id: str,
+    *,
+    schema: Literal["v2", "v3"],
+) -> dict[str, object]:
     points = _image_points()
     physical_orders = (
         tuple(range(14)),
-        (2, 3, 0, 1, 5, 4, 7, 6, 10, 11, 8, 9, 13, 12),
+        (
+            OPPOSITE_COURT_END_INDEX
+            if schema == "v2"
+            else CAMERA_VIEW_HALF_TURN_INDEX
+        ),
     )
     courts: list[dict[str, object]] = []
     for court_index, physical_order in enumerate(physical_orders):
@@ -255,6 +271,8 @@ def _v2_projection(sample_id: str) -> dict[str, object]:
             zip(COURT_KP_NAMES[:14], physical_order, strict=True)
         ):
             uv = list(points[physical_index])
+            if schema == "v3" and court_index == 1:
+                uv[0] = 63.0 - uv[0]
             uv[0] += float(court_index * 8)
             classes.append(
                 {
@@ -291,11 +309,22 @@ def _v2_projection(sample_id: str) -> dict[str, object]:
     }
 
 
-def _write_synthetic_court_v2(workspace_root: Path) -> None:
-    root = workspace_root / "V2" / "datasets" / "court"
+def _write_synthetic_court_singleton(
+    workspace_root: Path,
+    *,
+    schema: Literal["v2", "v3"],
+) -> None:
+    scene_id = schema.upper()
+    dataset_schema = (
+        COURT_DATASET_SCHEMA_V2 if schema == "v2" else COURT_DATASET_SCHEMA_V3
+    )
+    sample_schema = (
+        COURT_SAMPLE_SCHEMA_V2 if schema == "v2" else COURT_SAMPLE_SCHEMA_V3
+    )
+    root = workspace_root / scene_id / "datasets" / "court"
     records: list[dict[str, object]] = []
     for sample_index, split in enumerate(("train", "validation", "test")):
-        sample_id = f"v2-{split}"
+        sample_id = f"{schema}-{split}"
         relative = Path("samples") / sample_id
         sample_root = root / relative
         sample_root.mkdir(parents=True)
@@ -304,16 +333,16 @@ def _write_synthetic_court_v2(workspace_root: Path) -> None:
         np.save(sample_root / "depth.npy", np.ones((48, 64, 1), np.float32))
         Image.new("RGB", (64, 48)).save(sample_root / "rgb.png")
         Image.new("L", (64, 48)).save(sample_root / "alpha.png")
-        projection = _v2_projection(sample_id)
-        target = _v2_target()
-        camera = _v2_camera(sample_id, sample_index)
-        metadata = {"fixture": "v2"}
+        projection = _singleton_projection(sample_id, schema=schema)
+        target = _singleton_target()
+        camera = _singleton_camera(sample_id, sample_index)
+        metadata = {"fixture": schema}
         labels = {
-            "schema": "canonical_court_sample_v2",
+            "schema": sample_schema,
             "sample_index": sample_index,
             "sample_id": sample_id,
-            "trajectory_group_id": f"v2-group-{split}",
-            "trajectory_id": f"v2-trajectory-{split}",
+            "trajectory_group_id": f"{schema}-group-{split}",
+            "trajectory_id": f"{schema}-trajectory-{split}",
             "view_id": "view-0",
             "trajectory_frame_index": 0,
             "split": split,
@@ -329,8 +358,8 @@ def _write_synthetic_court_v2(workspace_root: Path) -> None:
             {
                 "sample_index": sample_index,
                 "sample_id": sample_id,
-                "trajectory_group_id": f"v2-group-{split}",
-                "trajectory_id": f"v2-trajectory-{split}",
+                "trajectory_group_id": f"{schema}-group-{split}",
+                "trajectory_id": f"{schema}-trajectory-{split}",
                 "view_id": "view-0",
                 "trajectory_frame_index": 0,
                 "split": split,
@@ -352,10 +381,10 @@ def _write_synthetic_court_v2(workspace_root: Path) -> None:
             }
         )
     manifest = {
-        "schema": "canonical_court_dataset_v2",
+        "schema": dataset_schema,
         "status": "completed",
-        "scene_id": "V2",
-        "profile": "fixture-v2",
+        "scene_id": scene_id,
+        "profile": f"fixture-{schema}",
         "seed": 761,
         "sampling_policy": {},
         "metadata_fields": [],
@@ -398,8 +427,10 @@ def _compose(
     config.data.pin_memory = False
     config.data.augmentation.train_scales = [32]
     config.data.augmentation.val_short_side = 32
-    if source == "synthetic_court":
+    if source == "synthetic_court_v2":
         config.data.source.scene_ids = ["V2"]
+    elif source == "synthetic_court":
+        config.data.source.scene_ids = ["V3"]
     return config
 
 
@@ -429,9 +460,9 @@ def court_roots(tmp_path: Path) -> Path:
     data_root = tmp_path / "data"
     _write_tennis_court_detector(data_root / "court")
     _write_synthetic_court(data_root / "synthetic_data_generation" / "scenes")
-    _write_synthetic_court_v2(
-        data_root / "synthetic_data_generation" / "scenes"
-    )
+    singleton_root = data_root / "synthetic_data_generation" / "scenes"
+    _write_synthetic_court_singleton(singleton_root, schema="v2")
+    _write_synthetic_court_singleton(singleton_root, schema="v3")
     return tmp_path
 
 
@@ -444,6 +475,9 @@ def court_roots(tmp_path: Path) -> Path:
         ("synthetic_court_v1", "kp", 7),
         ("synthetic_court_v1", "seg", 7),
         ("synthetic_court_v1", "line", 1),
+        ("synthetic_court_v2", "kp", 14),
+        ("synthetic_court_v2", "seg", 7),
+        ("synthetic_court_v2", "line", 1),
         ("synthetic_court", "kp", 14),
         ("synthetic_court", "seg", 7),
         ("synthetic_court", "line", 1),
@@ -472,6 +506,7 @@ def test_real_single_target_dataset_dataloader_paths(
     [
         ("tennis_court_detector", 14),
         ("synthetic_court_v1", 7),
+        ("synthetic_court_v2", 14),
         ("synthetic_court", 14),
     ],
 )
@@ -499,7 +534,7 @@ def test_real_three_target_dataset_dataloader_contract(
     assert cast(torch.Tensor, targets["line"]).shape == (1, 1, 32, 48)
 
 
-def test_v2_target_court_scope_composes_through_pipeline_and_preserves_dense_targets(
+def test_v3_target_court_scope_composes_through_pipeline_and_preserves_dense_targets(
     court_roots: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -534,10 +569,10 @@ def test_v2_target_court_scope_composes_through_pipeline_and_preserves_dense_tar
     assert all_raw.keypoint_channels is not None
     assert target_raw.keypoint_channels is not None
     assert all_input.spec.source_schema == target_input.spec.source_schema
-    assert all_input.spec.keypoint_schema == "synthetic_camera_relative_kp14"
+    assert all_input.spec.keypoint_schema == "synthetic_camera_view_kp14_v3"
     assert (
         target_input.spec.keypoint_schema
-        == "synthetic_camera_relative_kp14_target_court"
+        == "synthetic_camera_view_kp14_v3_target_court"
     )
     assert target_record.dense_target_refs == all_record.dense_target_refs
     assert (
@@ -554,6 +589,15 @@ def test_v2_target_court_scope_composes_through_pipeline_and_preserves_dense_tar
         strict=True,
     ):
         torch.testing.assert_close(target_instance.points_xy, all_instance.points_xy)
+    assert all_raw.keypoint_channels.physical_indices is not None
+    assert tuple(
+        int(value)
+        for value in all_raw.keypoint_channels.physical_indices[:, 0].tolist()
+    ) == tuple(range(14))
+    assert tuple(
+        int(value)
+        for value in all_raw.keypoint_channels.physical_indices[:, 1].tolist()
+    ) == CAMERA_VIEW_HALF_TURN_INDEX
 
     _materialize(all_config)
     derived_root = court_roots / "data/court_detection/derived_targets"
@@ -586,10 +630,10 @@ def test_v2_target_court_scope_composes_through_pipeline_and_preserves_dense_tar
     )
     assert target_kp["heatmap"].shape == (1, 14, 32, 48)
     assert target_datamodule.target_bundle_spec.targets["kp"].schema == (
-        "synthetic_camera_relative_kp14_target_court:gaussian_max_v1"
+        "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1"
     )
     assert all_datamodule.target_bundle_spec.targets["kp"].schema == (
-        "synthetic_camera_relative_kp14:gaussian_max_v1"
+        "synthetic_camera_view_kp14_v3:gaussian_max_v1"
     )
     assert (
         target_datamodule.target_bundle_spec.targets["seg"]
@@ -679,7 +723,7 @@ def test_v2_target_court_scope_composes_through_pipeline_and_preserves_dense_tar
         ("seg_line", ("seg", "line")),
     ],
 )
-def test_real_two_target_v2_dataset_dataloader_contract(
+def test_real_two_target_v3_dataset_dataloader_contract(
     court_roots: Path,
     processing: str,
     expected: tuple[CourtTargetKind, CourtTargetKind],
@@ -719,7 +763,12 @@ def test_missing_dense_targets_fail_during_setup_before_worker_start(
 
 @pytest.mark.parametrize(
     "source",
-    ["tennis_court_detector", "synthetic_court_v1", "synthetic_court"],
+    [
+        "tennis_court_detector",
+        "synthetic_court_v1",
+        "synthetic_court_v2",
+        "synthetic_court",
+    ],
 )
 def test_materialization_preserves_both_source_trees(
     court_roots: Path,
@@ -780,6 +829,7 @@ def test_shared_geometry_keeps_kp_and_line_correspondence(
     [
         ("tennis_court_detector", 14),
         ("synthetic_court_v1", 7),
+        ("synthetic_court_v2", 14),
         ("synthetic_court", 14),
     ],
 )

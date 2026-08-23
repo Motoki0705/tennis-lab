@@ -1185,11 +1185,12 @@ class CourtViewPolicy:
                 "Court v1 target modes must include complex/court center and both baselines."
             )
         if (
-            schema_version is CourtDatasetSchemaVersion.V2
+            schema_version
+            in (CourtDatasetSchemaVersion.V2, CourtDatasetSchemaVersion.V3)
             and result.target_modes != (OrbitTargetMode.COURT_CENTER,)
         ):
             raise SemanticConfigurationError(
-                "Court v2 target modes must be exactly [court_center]."
+                "Court v2/v3 target modes must be exactly [court_center]."
             )
         if set(result.coverage_modes) != set(OrbitCoverageMode):
             raise SemanticConfigurationError(

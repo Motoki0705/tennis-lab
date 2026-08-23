@@ -16,10 +16,13 @@ from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
 from src.synthetic_data_generation.dataset.court.schema import (
     COURT_DATASET_SCHEMA_V1,
     COURT_DATASET_SCHEMA_V2,
+    COURT_DATASET_SCHEMA_V3,
     COURT_PLAN_SCHEMA_V1,
     COURT_PLAN_SCHEMA_V2,
+    COURT_PLAN_SCHEMA_V3,
     COURT_SAMPLE_SCHEMA_V1,
     COURT_SAMPLE_SCHEMA_V2,
+    COURT_SAMPLE_SCHEMA_V3,
     CourtDatasetSchemaVersion,
 )
 from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
@@ -1636,25 +1639,52 @@ class CourtDatasetPlanV2:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class CourtDatasetPlanV3(CourtDatasetPlanV2):
+    """V3 plan with V2 target resolution and an exact revised artifact identity."""
+
+    @property
+    def schema_version(self) -> CourtDatasetSchemaVersion:
+        """Return the corrected camera-view plan version."""
+        return CourtDatasetSchemaVersion.V3
+
+    def to_dict(self) -> dict[str, object]:
+        """Return the complete deterministic V3 plan."""
+        return {
+            "schema": COURT_PLAN_SCHEMA_V3,
+            "scene_id": self.scene_id,
+            "profile": self.profile,
+            "policy": self.policy.to_dict(),
+            "groups": [group.to_dict() for group in self.groups],
+            "samples": [sample.to_dict() for sample in self.samples],
+        }
+
+
 TrajectoryGroupPlanAny: TypeAlias = TrajectoryGroupPlan | TrajectoryGroupPlanV2
 PlannedCourtSampleAny: TypeAlias = PlannedCourtSample | PlannedCourtSampleV2
-CourtDatasetPlanAny: TypeAlias = CourtDatasetPlan | CourtDatasetPlanV2
+CourtDatasetPlanAny: TypeAlias = (
+    CourtDatasetPlan | CourtDatasetPlanV2 | CourtDatasetPlanV3
+)
 
 
 __all__ = [
     "COURT_DATASET_SCHEMA",
     "COURT_DATASET_SCHEMA_V1",
     "COURT_DATASET_SCHEMA_V2",
+    "COURT_DATASET_SCHEMA_V3",
     "COURT_PLAN_SCHEMA",
     "COURT_PLAN_SCHEMA_V1",
     "COURT_PLAN_SCHEMA_V2",
+    "COURT_PLAN_SCHEMA_V3",
     "COURT_SAMPLE_SCHEMA",
     "COURT_SAMPLE_SCHEMA_V1",
     "COURT_SAMPLE_SCHEMA_V2",
+    "COURT_SAMPLE_SCHEMA_V3",
     "CourtDatasetPlan",
     "CourtDatasetPlanAny",
     "CourtDatasetPlanV1",
     "CourtDatasetPlanV2",
+    "CourtDatasetPlanV3",
     "DatasetSplit",
     "OrbitCenter",
     "OrbitCenterKind",
