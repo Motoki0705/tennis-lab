@@ -9,6 +9,9 @@ import numpy as np
 import pytest
 
 from src.tasks.plcs.generate_dataset.io.scene_loader import load_scene
+from src.utils.schema.court_normalization import resolve_court_coordinate_normalization
+
+V1_NORMALIZATION = resolve_court_coordinate_normalization("v1")
 
 
 def test_scene_loader_requires_explicit_num_persons(tmp_path: Path) -> None:
@@ -22,7 +25,7 @@ def test_scene_loader_requires_explicit_num_persons(tmp_path: Path) -> None:
     )
 
     with pytest.raises(KeyError, match="num_persons"):
-        load_scene(tmp_path)
+        load_scene(tmp_path, court_coordinate_normalization=V1_NORMALIZATION)
 
 
 def test_scene_loader_rejects_legacy_visible_filenames(tmp_path: Path) -> None:
@@ -44,4 +47,4 @@ def test_scene_loader_rejects_legacy_visible_filenames(tmp_path: Path) -> None:
         np.save(tmp_path / f"{name}.npy", np.zeros(shape, dtype=np.float32))
 
     with pytest.raises(FileNotFoundError, match="human_kp_vis"):
-        load_scene(tmp_path)
+        load_scene(tmp_path, court_coordinate_normalization=V1_NORMALIZATION)
