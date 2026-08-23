@@ -4,7 +4,7 @@
 - Attempt: 2
 - Test cycle: 1
 - Status: COMPLETE
-- Candidate SHA-256: `sha256:cd14bed3320f21545ccb001a5b523eab8dd900cfe3cdff842843a72e62d9683f`
+- Candidate SHA-256: `sha256:1bd9e244065866a58dbbdf4a677745eb262d3c64a006f656019fb4021dfebaf4`
 
 ## Assigned ownership
 
@@ -15,6 +15,7 @@
 - Parent integrator: cross-task configuration, legacy compatibility repairs, invisible-BLCS observation masking, materialization, baseline training, knowledge registration, and configuration-inventory integration.
 - Attempt-2 `i786_impl_core_repair`: make the public PLCS scene-load contract mandatory and verify all production callers forward an already resolved normalization contract.
 - Attempt-2 `i786_attempt2_repair`: close frozen Preflight findings R-001/R-002 in the BLCS checkpoint runtime and directly affected BLCS/PLCS unit tests only.
+- Packaging repair `i786_main_merge_repair`: integrate `origin/main` without rewriting branch history and resolve the three overlapping BLCS configuration / BLCS+PLCS predictor-test conflicts while retaining both normalization coverage and upstream track-query-ablation behavior.
 - Attempt-2 parent integrator: incorporate the Validator findings, replace the invalid archived-checkpoint migration premise with frozen-base representative parity evidence, and bind this artifact to the repaired candidate.
 
 ## Files and symbols changed
@@ -41,6 +42,7 @@
 - Every direct PLCS scene load now requires the caller to declare its resolved normalization contract. Root and selected-scene metadata are checked unconditionally before `meta.json` or array payloads are read; there is no metadata-free public bypass.
 - The legacy v1 compatibility promise remains scoped to normalization metadata and numerical behavior. It does not silently migrate checkpoint architecture/configuration formats that were already unloadable at the frozen base revision.
 - A metadata-free checkpoint selected with explicit v1 receives an in-memory BLCS overlay containing only `position_huber_beta_v1=1.0` (the frozen-base PyTorch Smooth L1 default) and the separately named, v1-unused `position_huber_transition_m_v2=1.0` required by the current typed configuration. Existing conflicting values fail closed, checkpoint bytes remain unchanged, metadata-bearing paths are untouched, and explicit v2 still rejects before composition.
+- The merged BLCS typed parser admits both `blcs_track_query` and upstream `blcs_track_query_ablation`, validates generator sections for either model with the chunked backend rule, and retains the complete version-aware normalization loss schema. Merged predictor tests retain default/v2 metre-scale assertions alongside upstream ablation checkpoint restoration.
 
 ## Plan deviations and rationale
 
@@ -51,6 +53,7 @@
 - Tester cycle 1 returned only because the canonical full-suite environment hid CUDA and omitted a private NHT config required by existing baseline tests. The plan/check authority now exposes GPU 0 only to `full-pytest`, worktree-local non-symlink NHT configuration is present, and three direct test defects were corrected without production changes.
 - The Validator-selected archived BLCS and PLCS checkpoints cannot be loaded by frozen base `59e3b166c2d010d5e62be52c2be76d98a94af0e0`: BLCS contains 132 state-key architecture/name differences and incomplete current typed config; PLCS carries obsolete configuration roots. Attempt 2 therefore does not add an unrelated, identity-bound architecture migration or relax strict parsing.
 - AC-003/004 will instead use small deterministic metadata-free checkpoints, dataset fixtures, and expected outputs produced by the frozen base itself. This directly tests that the Issue preserves the behavior of artifacts the base revision could actually create and load.
+- PR #792 initially reported a merge conflict because `main` advanced by 13 commits. A normal merge was selected instead of rewriting the validated branch history; the resulting upstream changes are not Issue-authored scope, but their three overlaps require fresh repair-local Preflight/Test/Seal/Validator binding on the final merge tree.
 
 ## Commands and results
 
@@ -66,6 +69,7 @@
 - Frozen-base representative bundle generated and strictly replayed on CPU float32 with `atol=1e-5, rtol=0`: manifest `3854d8fd9cbc83af3456a295fc872d4a0afcaa859550bca85d0e15859e4a2047`, generator `956bef2a7fff8e375398a62c031a95eaeab3247a89ffe1e92b5d091639059358`, BLCS checkpoint/golden `69af21b3f8008ab7f53708e1d03346113aafa49c857a5465ad6e6da86f80a5e7` / `0f494e30e07c99e3f59feba113093530a87c25334a216eea9bee33e9a32397e6`, and PLCS checkpoint/golden `6c212eec6bbe616b498000928733318b19f76e4ad957a680963621c672ca841d` / `3fcc1205f96f531f7b731248ecf1f8cd48c8e0bc0091d3d0e3dc04cf5eb1b969`.
 - Frozen-base worktree remained tracked-clean before and after generation; both generated predictors strictly reloaded their metadata-free checkpoints before producing the recorded outputs.
 - Attempt-2 bounded Preflight repair: owned pre-commit hooks PASS; 10 focused checkpoint/PLCS loader tests PASS; the actual representative BLCS dataset, strict Lightning state load, inference, loss, and metric replay match the frozen-base golden exactly (`max_abs_diff=0.0`) without changing checkpoint bytes.
+- `origin/main` merge repair: Ruff PASS, mypy PASS, pre-commit PASS, 39 focused BLCS/PLCS configuration and tracking predictor tests PASS, `git diff --check` PASS, and no conflict marker/unmerged index entry remains.
 
 ## Known limitations and remaining risks
 
@@ -75,4 +79,4 @@
 
 ## Handoff
 
-The bounded R-001/R-002 repair is complete and ready for a fresh closure Preflight Reviewer. That reviewer must freeze the existing RETURN findings and verify only representative BLCS v1 composition/parity, the four explicit PLCS test arguments, both canonical checks, and direct repair-local regressions; it must not restart discovery or add a mutation category.
+The final `origin/main` merge tree is ready for a fresh repair-local Preflight before test cycle 2. Review must verify the three conflict resolutions, upstream/Issue scope separation, canonical checks, and direct merge regressions without reopening the completed normalization discovery campaign.

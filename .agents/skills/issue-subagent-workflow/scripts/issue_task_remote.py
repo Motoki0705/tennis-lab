@@ -133,7 +133,7 @@ def capture_pr_evidence(task_dir: Path, *, pr_number: int) -> None:
     """Query the real PR head, all changed-file pages, and remote checks."""
     state = load_state(task_dir)
     if state.get("candidate_binding_mode") != "ENFORCED":
-        raise ValueError("capture-pr is available only for schema v5 tasks")
+        raise ValueError("capture-pr is available only for schema-v5-or-newer tasks")
     if state.get("phase") != "packaging" or state.get("status") != "validated":
         raise ValueError("capture-pr requires packaging/validated state")
     state_errors = validate_state(task_dir, state)
@@ -186,7 +186,9 @@ def capture_pr_evidence(task_dir: Path, *, pr_number: int) -> None:
         raise ValueError("remote PR head content differs from the validated candidate")
     local_files = revision_changed_paths(task_dir, state, head_sha)
     if files != local_files:
-        raise ValueError("complete paginated PR file list differs from the validated revision")
+        raise ValueError(
+            "complete paginated PR file list differs from the validated revision"
+        )
 
     evidence: dict[str, Any] = {
         "schema_version": 1,

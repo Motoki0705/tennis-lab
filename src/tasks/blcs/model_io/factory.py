@@ -12,6 +12,7 @@ from src.tasks.blcs.configuration import (
     AxialModelConfig,
     MultiViewModelConfig,
     SingleModelConfig,
+    TrackQueryAblationModelConfig,
     TrackQueryModelConfig,
     parse_model_config,
 )
@@ -20,6 +21,7 @@ from src.tasks.blcs.model_io.adapters import (
     MultiViewTrajectoryModelIOAdapter,
     RawBLCSOutput,
     SingleTrajectoryModelIOAdapter,
+    TrackQueryAblationModelIOAdapter,
     TrackQueryModelIOAdapter,
     TrajectoryModelIOAdapter,
 )
@@ -30,6 +32,9 @@ from src.tasks.blcs.model_io.contracts import (
 from src.tasks.blcs.models.blcs_model import BLCSModel
 from src.tasks.blcs.models.blcs_multiview_axial_model import BLCSMultiViewAxialModel
 from src.tasks.blcs.models.blcs_multiview_model import BLCSMultiViewModel
+from src.tasks.blcs.models.blcs_track_query_ablation_model import (
+    BLCSTrackQueryAblationModel,
+)
 from src.tasks.blcs.models.blcs_track_query_model import BLCSTrackQueryModel
 
 TrajectoryBoundModelIO: TypeAlias = BoundModelIO[
@@ -87,6 +92,17 @@ def compose_blcs_model_io(config: object) -> BLCSBoundModelIO:
             max_num_cameras=model_config.max_num_cameras,
         )
         return cast("TrajectoryBoundModelIO", bind_model_io(axial_model, axial_adapter))
+    if isinstance(model_config, TrackQueryAblationModelConfig):
+        ablation_model = BLCSTrackQueryAblationModel(model_config)
+        ablation_adapter = TrackQueryAblationModelIOAdapter(
+            num_court_tokens=ablation_model.num_court_tokens,
+            num_queries=model_config.num_queries,
+            presence_threshold=_tracking_presence_threshold(config),
+        )
+        return cast(
+            "TrackQueryBoundModelIO",
+            bind_model_io(ablation_model, ablation_adapter),
+        )
     if isinstance(model_config, TrackQueryModelConfig):
         tracking_model = BLCSTrackQueryModel(model_config)
         tracking_adapter = TrackQueryModelIOAdapter(

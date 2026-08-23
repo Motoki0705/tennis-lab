@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 from issue_task_candidate import candidate_metadata
+from issue_task_remote import evidence_digest, load_pr_evidence
 from issue_task_schema import ARTIFACT_CONTRACTS, ARTIFACT_PATHS
 from issue_task_state import (
     acceptance_items,
@@ -23,8 +24,7 @@ from issue_task_state import (
     validate_state,
     validation_matrix_errors,
 )
-from issue_task_remote import evidence_digest, load_pr_evidence
-from issue_task_verification import manifest_errors
+from issue_task_verification import manifest_errors, test_probe_result_errors
 
 NONE_VALUES = {"None", "N/A", "なし"}
 
@@ -61,11 +61,33 @@ def _metadata_text(path: Path, label: str) -> str:
     return match.group(1).strip()
 
 
-def _section_errors(path: Path, artifact: str) -> list[str]:
+ADVERSARIAL_TEST_HEADINGS = {
+    "## Independent adversarial test design",
+    "## Independently derived adversarial tests",
+    "## Adversarial probe results",
+}
+
+
+def _section_errors(
+    path: Path,
+    artifact: str,
+    state: dict[str, object],
+) -> list[str]:
     contract = ARTIFACT_CONTRACTS[artifact]
     text = path.read_text(encoding="utf-8")
     errors: list[str] = []
-    for heading in contract.headings:
+    headings = contract.headings
+    nonempty_headings = contract.nonempty_headings
+    if artifact == "tests" and state.get("adversarial_testing_mode") == "LEGACY":
+        headings = tuple(
+            heading for heading in headings if heading not in ADVERSARIAL_TEST_HEADINGS
+        )
+        nonempty_headings = tuple(
+            heading
+            for heading in nonempty_headings
+            if heading not in ADVERSARIAL_TEST_HEADINGS
+        )
+    for heading in headings:
         count = heading_count(text, heading)
         if count != 1:
             errors.append(
@@ -73,7 +95,7 @@ def _section_errors(path: Path, artifact: str) -> list[str]:
             )
     if errors:
         return errors
-    for heading in contract.nonempty_headings:
+    for heading in nonempty_headings:
         section = extract_section(text, heading)
         allow_none = heading in contract.allow_none_headings
         if not section:
@@ -99,7 +121,7 @@ def check_artifact(task_dir: Path, artifact: str) -> list[str]:
     except ValueError as exc:
         return [str(exc)]
 
-    errors.extend(_section_errors(path, artifact))
+    errors.extend(_section_errors(path, artifact, state))
     if errors:
         return errors
 
@@ -137,10 +159,16 @@ def check_artifact(task_dir: Path, artifact: str) -> list[str]:
                 path.read_text(encoding="utf-8"),
                 "## Blocker resolution required",
             ).strip()
-            if verdict == "PASS" and (conflicts not in NONE_VALUES or resolution not in NONE_VALUES):
+            if verdict == "PASS" and (
+                conflicts not in NONE_VALUES or resolution not in NONE_VALUES
+            ):
                 errors.append("feasibility PASS must not retain an unresolved conflict")
-            if verdict == "BLOCKED" and (conflicts in NONE_VALUES or resolution in NONE_VALUES):
-                errors.append("feasibility BLOCKED requires conflict and resolution evidence")
+            if verdict == "BLOCKED" and (
+                conflicts in NONE_VALUES or resolution in NONE_VALUES
+            ):
+                errors.append(
+                    "feasibility BLOCKED requires conflict and resolution evidence"
+                )
         elif artifact == "plan":
             assert_mapping_table(path, "## Acceptance checklist mapping", items)
             errors.extend(manifest_errors(task_dir))
@@ -175,6 +203,13 @@ def check_artifact(task_dir: Path, artifact: str) -> list[str]:
                     require_all_pass=verdict == "PASS",
                 )
             )
+            if state.get("adversarial_testing_mode") == "ENFORCED":
+                errors.extend(
+                    test_probe_result_errors(
+                        task_dir,
+                        candidate_metadata(path),
+                    )
+                )
             findings = extract_section(
                 path.read_text(encoding="utf-8"),
                 "## RETURN implementation findings",

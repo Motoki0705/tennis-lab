@@ -1,11 +1,29 @@
 from __future__ import annotations
 
+from pathlib import Path
+from types import SimpleNamespace
+from typing import Any, cast
+
+import pytest
 import torch
+from hydra import compose, initialize_config_dir
 from torch import Tensor, nn
 
 from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
+from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.inference.tracking_predictor import PLCSTrackingPredictor
-from src.tasks.plcs.model_io import PLCSTrackQueryIOAdapter
+from src.tasks.plcs.model_io import (
+    PLCSTrackQueryIOAdapter,
+    build_plcs_model_io,
+    write_plcs_checkpoint_normalization,
+)
+from src.tasks.plcs.models.plcs_track_query_ablation_model import (
+    PLCSTrackQueryAblationModel,
+)
+from src.tasks.plcs.training.tracking_lightning_module import (
+    PLCSTrackingLightningModule,
+)
+from src.utils.configuration import PathResolver
 from src.utils.schema.court_normalization import resolve_court_coordinate_normalization
 
 
@@ -107,3 +125,74 @@ def test_v2_tracking_predictor_denormalizes_all_query_positions_to_meters() -> N
         result["position_meters"],
         torch.tensor(contract.scale_xyz).expand(1, 2, 2, 3),
     )
+
+
+def test_checkpoint_restoration_retains_exact_ablation_model_adapter_pair(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    config_dir = Path("src/tasks/plcs/configs").resolve()
+    with initialize_config_dir(config_dir=str(config_dir), version_base="1.3"):
+        config = compose(
+            config_name="train_tracking",
+            overrides=[
+                "model=track_query_ablation_c",
+                "model.hidden_dim=16",
+                "model.num_heads=4",
+                "model.ffn_dim=32",
+                "model.rope_dim=4",
+                "model.num_stages=4",
+                "model.mhc.coefficient_dim=8",
+                "model.mhc.sinkhorn_iters=5",
+                "model.cswa.compression_ratio=2",
+                "model.cswa.window_radius=1",
+            ],
+        )
+    binding = build_plcs_model_io(PLCSTrainingConfig.from_config(config))
+    assert isinstance(binding.adapter, PLCSTrackQueryIOAdapter)
+    checkpoint = tmp_path / "ablation.ckpt"
+    normalization = resolve_court_coordinate_normalization("v1")
+    checkpoint_payload: dict[str, object] = {
+        "hyper_parameters": {"config": config}
+    }
+    write_plcs_checkpoint_normalization(checkpoint_payload, normalization)
+    torch.save(checkpoint_payload, checkpoint)
+    observed: dict[str, object] = {}
+
+    def load_module(
+        cls: type[PLCSTrackingLightningModule],
+        path: Path,
+        **kwargs: Any,
+    ) -> SimpleNamespace:
+        del cls
+        observed["path"] = path
+        observed["strict"] = kwargs["strict"]
+        observed["weights_only"] = kwargs["weights_only"]
+        return SimpleNamespace(model=binding.model, io_adapter=binding.adapter)
+
+    monkeypatch.setattr(
+        PLCSTrackingPredictor,
+        "_ensure_checkpoint",
+        classmethod(lambda cls, value, *, resolver: [checkpoint]),
+    )
+    monkeypatch.setattr(
+        PLCSTrackingLightningModule,
+        "load_from_checkpoint",
+        classmethod(load_module),
+    )
+
+    predictor = PLCSTrackingPredictor.load_from_checkpoint(
+        checkpoint,
+        resolver=cast("PathResolver", object()),
+        device="cpu",
+    )
+
+    assert observed == {
+        "path": checkpoint,
+        "strict": True,
+        "weights_only": False,
+    }
+    assert type(predictor.model) is PLCSTrackQueryAblationModel
+    assert predictor.io_adapter is binding.adapter
+    assert predictor.io_adapter.model_type is PLCSTrackQueryAblationModel
+    assert predictor.court_coordinate_normalization == normalization
