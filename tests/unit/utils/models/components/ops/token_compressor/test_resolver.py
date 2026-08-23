@@ -36,8 +36,10 @@ def test_reference_resolution_does_not_import_triton_backend(
     assert pooled_valid.shape == (1, 1)
 
 
+@pytest.mark.parametrize("head_dim", [16, 32, 64, 128])
 def test_cuda_resolution_is_explicit_and_loads_only_cuda_executor(
     monkeypatch: pytest.MonkeyPatch,
+    head_dim: int,
 ) -> None:
     sentinel = torch.empty(0)
 
@@ -59,7 +61,9 @@ def test_cuda_resolution_is_explicit_and_loads_only_cuda_executor(
         return SimpleNamespace(cuda_token_compressor_pool=cuda_pool)
 
     monkeypatch.setattr(api, "import_module", fake_import)
-    pool = api.resolve_token_compressor_pool("cuda", compression_ratio=4, head_dim=64)
+    pool = api.resolve_token_compressor_pool(
+        "cuda", compression_ratio=4, head_dim=head_dim
+    )
     result = pool(torch.empty(0), torch.empty(0), torch.empty(0))
 
     assert result == (sentinel, sentinel)
@@ -82,7 +86,7 @@ def test_cuda_unavailable_fails_without_reference_fallback(
     [
         ("automatic", 4, 64, "Unsupported"),
         ("cuda", 3, 64, "compression_ratio=4"),
-        ("cuda", 4, 32, "head_dim=64"),
+        ("cuda", 4, 8, "head_dim in"),
     ],
 )
 def test_resolver_rejects_unsupported_configuration_before_import(

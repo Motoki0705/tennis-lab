@@ -10,9 +10,8 @@ import triton.language as tl  # type: ignore[import-untyped]
 from torch import Tensor
 
 _COMPRESSION_RATIO = 4
-_HEAD_DIM = 64
-_BLOCK_DIM = 64
-_SUPPORTED_RAW_DTYPES = {torch.bfloat16, torch.float32}
+_SUPPORTED_HEAD_DIMS = frozenset({16, 32, 64, 128})
+_SUPPORTED_RAW_DTYPES = {torch.float16, torch.bfloat16, torch.float32}
 
 
 @triton.jit  # type: ignore[untyped-decorator]
@@ -106,16 +105,10 @@ def _token_compressor_backward_kernel(  # type: ignore[no-untyped-def]
     BLOCK_DIM: tl.constexpr,
 ):
     row = tl.program_id(0)
-    batch = row // (sequence_length * 2)
-    within_batch = row - batch * sequence_length * 2
-    token = within_batch // 2
-    branch = within_batch - token * 2
-    compressed_index = token // RATIO + (1 - branch)
+    batch = row // compressed_length
+    compressed_index = row - batch * compressed_length
     channels = tl.arange(0, BLOCK_DIM)
     channel_valid = channels < HEAD_DIM
-    contributes = (compressed_index < compressed_length) & tl.load(
-        state_valid + batch * sequence_length + token
-    )
 
     maximum = tl.full((BLOCK_DIM,), -float("inf"), tl.float32)
     any_source_valid = False
@@ -158,21 +151,7 @@ def _token_compressor_backward_kernel(  # type: ignore[no-untyped-def]
         ).to(tl.float32)
         denominator += tl.where(source_valid, tl.exp(gate - maximum), 0.0)
 
-    raw_offset = ((batch * sequence_length + token) * 2 + branch) * HEAD_DIM + channels
-    gate = tl.load(
-        raw_gate + raw_offset,
-        mask=channel_valid,
-        other=0.0,
-    ).to(tl.float32)
-    value = tl.load(
-        raw_kv + raw_offset,
-        mask=channel_valid,
-        other=0.0,
-    ).to(tl.float32)
-    safe_compressed_index = tl.minimum(compressed_index, compressed_length - 1)
-    pooled_offset = (
-        batch * compressed_length + safe_compressed_index
-    ) * HEAD_DIM + channels
+    pooled_offset = (batch * compressed_length + compressed_index) * HEAD_DIM + channels
     pooled_value = tl.load(
         pooled + pooled_offset,
         mask=channel_valid,
@@ -183,31 +162,46 @@ def _token_compressor_backward_kernel(  # type: ignore[no-untyped-def]
         mask=channel_valid,
         other=0.0,
     ).to(tl.float32)
-    safe_denominator = tl.where(contributes, denominator, 1.0)
-    safe_gate = tl.where(contributes, gate, 0.0)
-    weight = tl.where(
-        contributes,
-        tl.exp(safe_gate - maximum) / safe_denominator,
-        0.0,
-    )
-    safe_value = tl.where(contributes, value, 0.0)
-    safe_pooled = tl.where(contributes, pooled_value, 0.0)
-    grad_value = tl.where(contributes, upstream * weight, 0.0)
-    grad_gate = tl.where(
-        contributes,
-        upstream * weight * (safe_value - safe_pooled),
-        0.0,
-    )
-    tl.store(
-        grad_raw_kv + raw_offset,
-        grad_value,
-        mask=channel_valid,
-    )
-    tl.store(
-        grad_raw_gate + raw_offset,
-        grad_gate,
-        mask=channel_valid,
-    )
+    safe_denominator = tl.where(any_source_valid, denominator, 1.0)
+    for source in range(2 * RATIO):
+        token = (compressed_index - 1) * RATIO + source
+        branch: tl.constexpr = source // RATIO
+        boundary_valid = (token >= 0) & (token < sequence_length)
+        safe_token = tl.maximum(0, tl.minimum(token, sequence_length - 1))
+        source_valid = boundary_valid & tl.load(
+            state_valid + batch * sequence_length + safe_token
+        )
+        raw_offset = (
+            (batch * sequence_length + safe_token) * 2 + branch
+        ) * HEAD_DIM + channels
+        gate = tl.load(
+            raw_gate + raw_offset,
+            mask=channel_valid & boundary_valid,
+            other=0.0,
+        ).to(tl.float32)
+        value = tl.load(
+            raw_kv + raw_offset,
+            mask=channel_valid & boundary_valid,
+            other=0.0,
+        ).to(tl.float32)
+        weight = tl.where(
+            source_valid,
+            tl.exp(gate - maximum) / safe_denominator,
+            0.0,
+        )
+        safe_value = tl.where(source_valid, value, 0.0)
+        grad_value = upstream * weight
+        grad_gate = upstream * weight * (safe_value - pooled_value)
+        tl.store(
+            grad_raw_kv + raw_offset,
+            grad_value,
+            mask=channel_valid & boundary_valid,
+        )
+        tl.store(
+            grad_raw_gate + raw_offset,
+            grad_gate,
+            mask=channel_valid & boundary_valid,
+        )
 
 
 def _validate_inputs(
@@ -219,21 +213,23 @@ def _validate_inputs(
 ) -> tuple[int, int]:
     if raw_kv.ndim != 4:
         raise ValueError(
-            f"raw_kv must have shape [N, T, 2, 64], got {tuple(raw_kv.shape)}"
+            "raw_kv must have shape [N, T, 2, Dh], "
+            f"got {tuple(raw_kv.shape)}"
         )
     if raw_gate.shape != raw_kv.shape:
         raise ValueError("raw_gate shape must equal raw_kv shape")
     n, sequence_length, branches, head_dim = raw_kv.shape
     if n <= 0 or sequence_length <= 0:
         raise ValueError("raw_kv batch and sequence dimensions must be positive")
-    if branches != 2 or head_dim != _HEAD_DIM:
+    if branches != 2 or head_dim not in _SUPPORTED_HEAD_DIMS:
+        supported = ", ".join(str(value) for value in sorted(_SUPPORTED_HEAD_DIMS))
         raise ValueError(
-            "token-compressor CUDA requires raw shape [N, T, 2, 64], "
-            f"got {tuple(raw_kv.shape)}"
+            "token-compressor CUDA requires raw shape [N, T, 2, Dh] with "
+            f"Dh in {{{supported}}}, got {tuple(raw_kv.shape)}"
         )
     if raw_kv.dtype not in _SUPPORTED_RAW_DTYPES:
         raise TypeError(
-            "token-compressor CUDA supports bfloat16 and float32 raw_kv, "
+            "token-compressor CUDA supports float16, bfloat16, and float32 raw_kv, "
             f"got {raw_kv.dtype}"
         )
     if raw_gate.dtype != torch.float32:
@@ -279,13 +275,16 @@ class _TritonTokenCompressorPool(torch.autograd.Function):
         contiguous_raw_gate = raw_gate.contiguous()
         contiguous_state_valid = state_valid.contiguous()
         n, sequence_length = contiguous_state_valid.shape
+        head_dim = contiguous_raw_kv.shape[-1]
+        block_dim = triton.next_power_of_2(head_dim)
+        num_warps = 1 if block_dim <= 32 else 2 if block_dim <= 64 else 4
         compressed_length = (
             sequence_length + compression_ratio - 1
         ) // compression_ratio
         pooled = torch.empty(
             n,
             compressed_length,
-            _HEAD_DIM,
+            head_dim,
             device=raw_kv.device,
             dtype=torch.float32,
         )
@@ -304,9 +303,9 @@ class _TritonTokenCompressorPool(torch.autograd.Function):
             sequence_length,
             compressed_length,
             RATIO=_COMPRESSION_RATIO,
-            HEAD_DIM=_HEAD_DIM,
-            BLOCK_DIM=_BLOCK_DIM,
-            num_warps=4,
+            HEAD_DIM=head_dim,
+            BLOCK_DIM=block_dim,
+            num_warps=num_warps,
         )
         ctx.save_for_backward(
             contiguous_raw_kv,
@@ -330,10 +329,13 @@ class _TritonTokenCompressorPool(torch.autograd.Function):
             )
         raw_kv, raw_gate, state_valid, pooled = ctx.saved_tensors
         n, sequence_length, _, _ = raw_kv.shape
+        head_dim = raw_kv.shape[-1]
+        block_dim = triton.next_power_of_2(head_dim)
+        num_warps = 1 if block_dim <= 32 else 2 if block_dim <= 64 else 4
         compressed_length = pooled.shape[1]
-        grad_raw_kv = torch.empty_like(raw_kv)
-        grad_raw_gate = torch.empty_like(raw_gate, dtype=torch.float32)
-        _token_compressor_backward_kernel[(n * sequence_length * 2,)](
+        grad_raw_kv = torch.zeros_like(raw_kv)
+        grad_raw_gate = torch.zeros_like(raw_gate, dtype=torch.float32)
+        _token_compressor_backward_kernel[(n * compressed_length,)](
             grad_pooled.contiguous(),
             raw_kv,
             raw_gate,
@@ -344,9 +346,9 @@ class _TritonTokenCompressorPool(torch.autograd.Function):
             sequence_length,
             compressed_length,
             RATIO=_COMPRESSION_RATIO,
-            HEAD_DIM=_HEAD_DIM,
-            BLOCK_DIM=_BLOCK_DIM,
-            num_warps=4,
+            HEAD_DIM=head_dim,
+            BLOCK_DIM=block_dim,
+            num_warps=num_warps,
         )
         return grad_raw_kv, grad_raw_gate, None, None
 
