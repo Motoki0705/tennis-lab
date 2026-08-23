@@ -298,6 +298,7 @@ def test_blcs_plcs_cpu_flow_stays_meter_valued_through_projection_and_render(
         ball_3d=blcs_result.ball_3d,
     )
     original_player = integrated.player_position.copy()
+    assert integrated.ball_3d is not None
     original_ball = integrated.ball_3d.copy()
     attach_scene_result_court_coordinate_provenance(integrated, contract)
     np.testing.assert_array_equal(integrated.player_position, original_player)

@@ -2,9 +2,9 @@
 
 - Issue: #786
 - Attempt: 1
-- Test cycle: 1
+- Test cycle: 2
 - Status: COMPLETE
-- Candidate SHA-256: `sha256:5e1143f697800fbf6958b465f5e4d080088037c019956be639845cc4741f04f3`
+- Candidate SHA-256: `sha256:708a562c5be1dc6c83bee32418680531d113d8fe55e4dfd2c570e82be7d6f90d`
 
 ## Assigned ownership
 
@@ -40,6 +40,7 @@
 - GPU 1 was not retained for the final runs because its 4GB capacity made heterogeneous DDP throughput much worse than GPU 0 alone. BLCS used GPU 0, `batch_size=64`, and user-requested `data.num_workers=16` for both versions.
 - Runtime prediction files for earlier completed runs had been overwritten by subsequent executions. Their logged metrics, curves, and reproducibility metadata were retained without fabricating replacement predictions; the final BLCS v2 prediction bundle is preserved.
 - The required all-files mypy gate exposed eight diagnostics in unchanged baseline files. The bounded repair added only type narrowing/casts/targeted decorator annotations and removed one redundant cast; runtime behavior and test assertions are unchanged.
+- Tester cycle 1 returned only because the canonical full-suite environment hid CUDA and omitted a private NHT config required by existing baseline tests. The plan/check authority now exposes GPU 0 only to `full-pytest`, worktree-local non-symlink NHT configuration is present, and three direct test defects were corrected without production changes.
 
 ## Commands and results
 
@@ -48,6 +49,7 @@
 - Configuration inventory/audit after materializer registration: `11 passed in 39.10s`.
 - Full repository diagnostic before the inventory/policy closure: `3087 passed, 53 skipped, 42 failed, 2 errors`; remaining failures were classified as missing worktree-only licensed/external data links and repository allowlists that must be updated by the independent Test Writer. Worktree data links are now present.
 - Bounded Preflight repair: all-files mypy passed across `1103` files and staged-file mypy passed across the owned delta; Ruff passed on all owned files; `30` focused unit tests and `3` focused Colab e2e tests passed; the dynamic missing-root materialization fixture passed root/scene v2 metadata, physical round trip, source preservation, overwrite refusal, and missing-scene rejection.
+- Test-environment closure evidence before cycle-2 Preflight: all nine test-stage canonical checks passed on the repaired test candidate, including `3230 passed, 53 skipped` in the GPU-visible full suite. Because that run preceded the state machine's required cycle-2 Preflight, it is supporting evidence only and will be rerun by a fresh Test Writer after Preflight PASS.
 - Knowledge validation: `0 errors`; four warnings are pre-existing graph warnings.
 - Shared training queue: both BLCS jobs completed 100 epochs with `batch_size=64`, `data.num_workers=16`; PLCS v2 completed through epoch 101 on GPU 0.
 

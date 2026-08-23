@@ -17,11 +17,11 @@ from src.synthetic_data_generation.configuration import ScenePipelineConfigurati
 from src.synthetic_data_generation.dataset.blcs.assembler import (
     validate_blcs_dataset,
 )
+from src.synthetic_data_generation.dataset.court import (
+    COURT_SCHEMA_V2,
+)
 from src.synthetic_data_generation.dataset.court.assembler import (
     validate_court_dataset,
-)
-from src.synthetic_data_generation.dataset.court.components.labels import (
-    SEMANTIC_CLASS_NAMES,
 )
 from src.synthetic_data_generation.dataset.plcs.validation import (
     validate_plcs_dataset,
@@ -136,6 +136,7 @@ def test_b00_video_to_report_meets_all_quantitative_and_motion_gates() -> None:
     assert court.accepted_fraction >= 0.9
 
     court_manifest = _json(root / "datasets/court/dataset.json")
+    assert court_manifest["schema"] == COURT_SCHEMA_V2.dataset_schema
     court_metrics = _mapping(court_manifest["metrics"], name="court.metrics")
     assert court_metrics["split_leakage_count"] == 0
     coverage = _mapping(court_metrics["coverage_counts"], name="court.coverage_counts")
@@ -147,10 +148,11 @@ def test_b00_video_to_report_meets_all_quantitative_and_motion_gates() -> None:
         court_metrics["renderer_visible_points_by_class"],
         name="court.renderer_visible_points_by_class",
     )
-    assert set(visible) == set(SEMANTIC_CLASS_NAMES)
+    semantic_class_names = COURT_SCHEMA_V2.semantic_class_names
+    assert set(visible) == set(semantic_class_names)
     assert all(
         _integer(visible[name], name=f"court.visible.{name}") > 0
-        for name in SEMANTIC_CLASS_NAMES
+        for name in semantic_class_names
     )
 
     blcs_inventory = blcs.manifest.frame_inventory

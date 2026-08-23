@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from copy import deepcopy
 from pathlib import Path
-from typing import cast
 
 import pytest
 
@@ -26,12 +25,10 @@ from src.utils.schema.court_normalization import (
 
 
 def _metadata(version: str) -> dict[str, object]:
-    return cast(
-        dict[str, object],
-        CourtCoordinateNormalizationMetadata.from_contract(
-            resolve_court_coordinate_normalization(version)
-        ).to_dict(),
-    )
+    metadata: dict[str, object] = CourtCoordinateNormalizationMetadata.from_contract(
+        resolve_court_coordinate_normalization(version)
+    ).to_dict()
+    return metadata
 
 
 def _document(version: str) -> dict[str, object]:

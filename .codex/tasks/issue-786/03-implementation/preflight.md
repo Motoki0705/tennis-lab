@@ -2,55 +2,58 @@
 
 - Issue: #786
 - Attempt: 1
-- Test cycle: 1
+- Test cycle: 2
 - Status: COMPLETE
-- Candidate SHA-256: `sha256:5e1143f697800fbf6958b465f5e4d080088037c019956be639845cc4741f04f3`
+- Candidate SHA-256: `sha256:708a562c5be1dc6c83bee32418680531d113d8fe55e4dfd2c570e82be7d6f90d`
 
 ## Candidate identity
 
-- Review mode: **Closure**. `state.toml` records the first Preflight `RETURN` for `preflight_cycle = 1` and the pending test cycle; this review is restricted to the frozen RETURN findings, canonical preflight checks, and direct repair-local regressions.
-- Branch/head: `feat/issue-786-normalization-v2` / `ed8415a4a5e63367436f3755ba64b05fde2640c1`.
+- Review mode: **Discovery**. `state.toml` records `preflight_verdict = "PASS"` for cycle 1, so this is the required fresh production review for the pending Tester cycle 2. Scope was bounded to the approved implementation, the frozen plan categories (config composition, metadata mutation, unit round trip, checkpoint mismatch, and materialization smoke), direct Tester-return repair regressions, and canonical preflight checks.
+- Branch/head: `feat/issue-786-normalization-v2` / `45320cb7b9e9ea96c0913592bb4e12cdf8e6ae4c`.
 - Frozen base: `59e3b166c2d010d5e62be52c2be76d98a94af0e0`.
-- Recomputed candidate fingerprint: `sha256:5e1143f697800fbf6958b465f5e4d080088037c019956be639845cc4741f04f3` (matches `implementation.md` and both generated canonical results).
-- Complete candidate diff against the frozen base is 197 paths, 5,420 additions, and 441 deletions, excluding `.codex/tasks/` workflow artifacts.
+- Recomputed candidate fingerprint: `sha256:708a562c5be1dc6c83bee32418680531d113d8fe55e4dfd2c570e82be7d6f90d` (matches `implementation.md` and all generated test/preflight results).
+- Complete candidate diff against the frozen base is 221 paths, 7,155 additions, and 456 deletions, excluding `.codex/tasks/` workflow artifacts. The current source portion is 164 paths; the current test portion is 29 paths; the knowledge evidence portion is 27 paths.
 
 ## Changed scope
 
-- The frozen implementation repair adds the validated-legacy-root branch in `src/tasks/base/data/court_coordinate_materializer.py`, preserving strict scene-header validation and non-overwrite publication.
-- The frozen environment repair makes the licensed ACCAD tree worktree-contained for the PLCS path regression; it does not alter the path-contract implementation.
-- The frozen mypy repair is limited to type narrowing/casts and targeted decorator annotations in the four paths named by the prior Preflight finding. No reviewer production or test changes were made.
+- The approved production implementation covers the immutable v1/v2 resolver, explicit BLCS/PLCS/SLCS propagation, fail-closed dataset/checkpoint metadata, non-overwriting materialization, metre-valued scene boundaries, and documentation/knowledge evidence. The complete source diff was inspected against the frozen base; remaining fixed court dimensions are physical geometry or documented v1 aliases, and task consumers receive the selected contract.
+- Comparing the current worktree with the cycle-1 Preflight PASS commit `65a67c839bbcc0dd021f466a722768d51f04b5a8`, there are no `src/` changes. The post-PASS candidate changes are test-only: Issue coverage additions plus the three direct Tester-return repairs.
+- The three repair-local test changes are bounded and do not weaken an oracle: the B00 test now asserts the v2 dataset schema and all v2 semantic classes, the integration smoke asserts optional `SceneResult.ball_3d` presence before copying it, and the metadata test removes only a redundant static cast.
+- The revised environment authority is confined to the repository-wide baseline. `full-pytest` selects `CUDA_VISIBLE_DEVICES=0`; all Issue-specific unit and normalization integration checks remain CPU-only with `CUDA_VISIBLE_DEVICES=""`. The required worktree-local `third_party/nht/configs/production.yaml` is a regular file under this worktree, not a symlink. No Issue production behavior or acceptance scope is changed by this authority repair.
 
 ## Deterministic policy checks
 
 - `candidate-fingerprint .codex/tasks/issue-786`: PASS; the recomputed identity above is current.
 - `git diff --check 59e3b166c2d010d5e62be52c2be76d98a94af0e0 -- . ':(exclude).codex/tasks'`: PASS; no whitespace errors.
-- State, the prior `preflight.md`, the frozen plan/check manifest, implementation handoff, repository guidance, and the complete candidate diff were read before closure review. No discovery category was added.
+- The frozen Issue, exploration, updated plan, canonical check manifest, implementation handoff, repository guidance, state, prior Preflight artifact, Tester artifact, complete current diff, and generated test evidence were read before review. No diagnostic category was added.
+- The complete current test-stage result set is supporting evidence only for this stage: all nine generated results bind candidate `sha256:708a562c5be1dc6c83bee32418680531d113d8fe55e4dfd2c570e82be7d6f90d`; the GPU-visible repository baseline reports `3230 passed, 53 skipped, 19 warnings`.
 
 ## Focused checks
 
-- **Missing-root legacy-v1 materialization (AC-015, AC-018):** A temporary BLCS fixture with no root `meta.json`, a metadata-free legacy-v1 scene header, and valid `ball_pos_world.npy`/`ball_pos_norm.npy` was accepted only under v1 and materialized into a separate `norm-v2` root. The published root and scene headers both carry identical v2 metadata, including scale `(11.885, 11.885, 11.885)` and units. Physical reconstruction error was `1.1920929e-07m` (at most `1e-5m`). Source world/normalized arrays, source scene header, and an unrelated source file were byte/content-preserved. Repeating the operation refused overwrite. An explicit missing scene path and a scene directory missing `meta.json` were rejected before output publication.
-- **Worktree-contained ACCAD path regression:** `data/ACCAD` resolves to `/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-normalization-v2/data/ACCAD`, is not a symlink, and is contained below the worktree data root. The former PLCS generation path case and the complete direct repair-local test set pass.
-- **Exact prior mypy finding set and repair-local regressions:** The frozen RETURN reported eight diagnostics: three in `src/tasks/ball_detection/data/components/staged_sampler.py`, two in `src/automation/chatgpt_mcp/jobs.py`, one in `src/synthetic_data_generation/dataset/plcs/execution.py`, and two in `tests/e2e/colab/test_training_path_contracts.py`. The repaired direct suites (`test_staged_sampler.py`, `test_jobs.py`, `test_execution.py`, `test_training_path_contracts.py`, and `tests/unit/tasks/plcs/test_configuration.py`) passed `58` tests.
+- **Approved normalization scope (AC-001 through AC-022):** The resolver is immutable and explicit (`v1=(5.485,11.885,1.07)m`, `v2=(11.885,11.885,11.885)m`); conversion, geometry, BLCS/PLCS/SLCS consumers, metadata/checkpoint guards, and the metre-valued `SceneResult` boundary use the selected contract. Physical court dimensions and canonical/root-relative metre poses remain unchanged. The frozen bounded categories are represented by the Issue unit/integration evidence and the v1 regression check below.
+- **Tester-return environment regression:** The canonical manifest keeps `CUDA_VISIBLE_DEVICES=""` for `unit-contract`, `unit-blcs`, `unit-plcs`, `unit-slcs`, and `integration-normalization`, while only `full-pytest` uses `CUDA_VISIBLE_DEVICES="0"`. The complete-suite result demonstrates that the GPU-required baseline is executed rather than hidden; the NHT prerequisite is present at the worktree-local regular-file path.
+- **Tester-return test repairs:** The B00 assertion is strengthened by exact `COURT_SCHEMA_V2.dataset_schema` identity and positive coverage for every schema-defined class; the smoke assertion preserves the existing metre-array check; the cast removal leaves the metadata mapping oracle unchanged. No production path or test scope outside the frozen repair bundle changed after cycle-1 PASS.
 
 ## Canonical command results
 
-- `preflight-regression`: **PASS**, exit 0; `108 passed`. The generated result is bound to candidate `sha256:5e1143f697800fbf6958b465f5e4d080088037c019956be639845cc4741f04f3` and is recorded in `logs/canonical-preflight-preflight-regression.log`.
+- `preflight-regression`: **PASS**, exit 0; `125 passed`. The generated result is bound to candidate `sha256:708a562c5be1dc6c83bee32418680531d113d8fe55e4dfd2c570e82be7d6f90d` and is recorded in `logs/canonical-preflight-preflight-regression.log`.
 - `precommit-all`: **PASS**, exit 0; Ruff, mypy, and task-script reviewer each passed. The generated result is bound to the same candidate and is recorded in `logs/canonical-preflight-precommit-all.log`.
 - `preflight-checks.json` contains both required preflight-stage checks, each with exit code 0, current candidate identity, invocation digest, and verdict `PASS`.
 
 ## Baseline comparison
 
-- The prior candidate fingerprint `sha256:0b141aeead98e5cfcdf04f55132ed10a43acb5c95e676ad5823061104904a7e6` had the frozen PLCS ACCAD path failure (`107 passed, 1 failed`) and the eight baseline mypy diagnostics. The current candidate fingerprint is `sha256:5e1143f697800fbf6958b465f5e4d080088037c019956be639845cc4741f04f3`; the same canonical checks now pass and the direct repair-local suites pass.
-- The prior AC-015/AC-018 missing-root materialization failure is closed: a validated metadata-free v1 source with an absent root header now publishes v2 root/scene metadata while preserving source data, enforcing the physical round trip, refusing overwrite, and rejecting missing scene metadata.
-- No frozen closure finding remains open, and no materially new category was encountered.
+- Cycle-1 production Preflight PASS bound candidate `sha256:5e1143f697800fbf6958b465f5e4d080088037c019956be639845cc4741f04f3`; its approved production scope has no source changes in the current worktree. The current candidate is `sha256:708a562c5be1dc6c83bee32418680531d113d8fe55e4dfd2c570e82be7d6f90d`, and both required preflight checks pass again.
+- Tester cycle 1 returned on the repository-wide baseline because CUDA was hidden and the private NHT configuration was absent. The repaired authority exposes only GPU 0 for `full-pytest`, leaves every Issue-specific CPU check unchanged, and supplies the worktree-local non-symlink NHT configuration. The final supporting full-suite result is `3230 passed, 53 skipped` with no failure or error.
+- The direct repairs close only the reported test/environment findings: B00 now validates the v2 artifact schema before semantic coverage, and the two static-typing repairs do not remove runtime assertions. No frozen production or acceptance finding remains open.
 
 ## Commands and exact outcomes
 
-- `.venv/bin/python .agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py candidate-fingerprint .codex/tasks/issue-786`: PASS; `sha256:5e1143f697800fbf6958b465f5e4d080088037c019956be639845cc4741f04f3`.
-- `.venv/bin/python .agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py run-check .codex/tasks/issue-786 preflight preflight-regression`: PASS; exit 0, `108 passed`.
+- `.venv/bin/python .agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py candidate-fingerprint .codex/tasks/issue-786`: PASS; `sha256:708a562c5be1dc6c83bee32418680531d113d8fe55e4dfd2c570e82be7d6f90d`.
+- `.venv/bin/python .agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py run-check .codex/tasks/issue-786 preflight preflight-regression`: PASS; exit 0, `125 passed`.
 - `.venv/bin/python .agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py run-check .codex/tasks/issue-786 preflight precommit-all`: PASS; exit 0, Ruff/mypy/task-script reviewer passed.
-- `.venv/bin/python -m pytest -q tests/unit/tasks/ball_detection/data/test_staged_sampler.py tests/unit/automation/chatgpt_mcp/test_jobs.py tests/unit/synthetic_data_generation/dataset/plcs/test_execution.py tests/e2e/colab/test_training_path_contracts.py tests/unit/tasks/plcs/test_configuration.py`: PASS; `58 passed in 12.17s`.
-- Bounded temporary-fixture materialization diagnostic: PASS; missing-root legacy-v1 source produced matching root/scene v2 metadata, `1.1920929e-07m` physical round-trip error, source preservation, overwrite refusal, and missing-scene rejection.
+- `git diff --check 59e3b166c2d010d5e62be52c2be76d98a94af0e0 -- . ':(exclude).codex/tasks'`: PASS.
+- `git diff --name-only 65a67c839bbcc0dd021f466a722768d51f04b5a8 -- src`: PASS; no production source paths changed since cycle-1 Preflight PASS.
+- The existing generated test-stage evidence is candidate-bound and reports PASS for all nine required test checks, including `full-pytest: 3230 passed, 53 skipped, 19 warnings`.
 
 ## Final production preflight verdict
 
