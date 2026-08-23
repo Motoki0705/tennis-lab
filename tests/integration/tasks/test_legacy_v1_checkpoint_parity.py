@@ -52,6 +52,7 @@ _FIXTURE_ROOT = (
 )
 _BASE_REVISION = "59e3b166c2d010d5e62be52c2be76d98a94af0e0"
 _ATOL = 1.0e-5
+_PR_FORBIDDEN_MODEL_SUFFIXES = (".ckpt", ".pt", ".pth", ".pkl")
 
 
 def _sha256(path: Path) -> str:
@@ -137,7 +138,7 @@ def _assert_matches_golden(
 
 
 def _run_blcs_parity(tmp_path: Path) -> None:
-    checkpoint = _FIXTURE_ROOT / "blcs_representative_legacy_v1.ckpt"
+    checkpoint = _FIXTURE_ROOT / "blcs_representative_legacy_v1.ckpt.bin"
     dataset_root = _FIXTURE_ROOT / "datasets" / "blcs_legacy_v1"
     v1 = resolve_court_coordinate_normalization("v1")
     runtime = load_checkpoint_runtime(
@@ -224,7 +225,7 @@ def _run_blcs_parity(tmp_path: Path) -> None:
 
 
 def _run_plcs_parity(tmp_path: Path) -> None:
-    checkpoint = _FIXTURE_ROOT / "plcs_representative_legacy_v1.ckpt"
+    checkpoint = _FIXTURE_ROOT / "plcs_representative_legacy_v1.ckpt.bin"
     dataset_root = _FIXTURE_ROOT / "datasets" / "plcs_legacy_v1"
     v1 = resolve_court_coordinate_normalization("v1")
     checkpoint_mapping = load_plcs_checkpoint_mapping(checkpoint)
@@ -347,8 +348,8 @@ def test_representative_fixture_has_frozen_base_provenance_and_exact_bytes() -> 
     artifacts = cast("Mapping[str, Mapping[str, Any]]", manifest["artifacts"])
     for key, filename in {
         "generator": "generate_representative.py.txt",
-        "blcs_checkpoint": "blcs_representative_legacy_v1.ckpt",
-        "plcs_checkpoint": "plcs_representative_legacy_v1.ckpt",
+        "blcs_checkpoint": "blcs_representative_legacy_v1.ckpt.bin",
+        "plcs_checkpoint": "plcs_representative_legacy_v1.ckpt.bin",
         "blcs_golden": "blcs_representative_legacy_v1_golden.npz",
         "plcs_golden": "plcs_representative_legacy_v1_golden.npz",
     }.items():
@@ -365,7 +366,7 @@ def test_representative_fixture_has_frozen_base_provenance_and_exact_bytes() -> 
 
     for task in ("blcs", "plcs"):
         checkpoint = torch.load(
-            _FIXTURE_ROOT / f"{task}_representative_legacy_v1.ckpt",
+            _FIXTURE_ROOT / f"{task}_representative_legacy_v1.ckpt.bin",
             map_location="cpu",
             weights_only=False,
         )
@@ -377,6 +378,15 @@ def test_representative_fixture_has_frozen_base_provenance_and_exact_bytes() -> 
         scene_meta = next((dataset_root / "scenes").glob("*/meta.json"))
         document = json.loads(scene_meta.read_text())
         assert "court_coordinate_normalization" not in document
+
+
+def test_representative_fixture_uses_pr_safe_checkpoint_filenames() -> None:
+    forbidden = [
+        path.relative_to(_FIXTURE_ROOT).as_posix()
+        for path in _FIXTURE_ROOT.rglob("*")
+        if path.is_file() and path.name.endswith(_PR_FORBIDDEN_MODEL_SUFFIXES)
+    ]
+    assert forbidden == []
 
 
 def test_frozen_base_v1_checkpoints_replay_inference_loss_and_metrics(
@@ -399,7 +409,7 @@ def test_metadata_free_checkpoint_rejects_v2_before_lightning_state_restore(
     tmp_path: Path,
     task: str,
 ) -> None:
-    checkpoint = _FIXTURE_ROOT / f"{task}_representative_legacy_v1.ckpt"
+    checkpoint = _FIXTURE_ROOT / f"{task}_representative_legacy_v1.ckpt.bin"
     v2 = resolve_court_coordinate_normalization("v2")
     if task == "blcs":
         with (
@@ -446,7 +456,7 @@ def test_metadata_free_dataset_rejects_v2_before_array_payload_load(
     v1 = resolve_court_coordinate_normalization("v1")
     v2_config: DictConfig
     if task == "blcs":
-        checkpoint = _FIXTURE_ROOT / "blcs_representative_legacy_v1.ckpt"
+        checkpoint = _FIXTURE_ROOT / "blcs_representative_legacy_v1.ckpt.bin"
         runtime = load_checkpoint_runtime(
             checkpoint,
             runtime_normalization=v1,
@@ -459,7 +469,7 @@ def test_metadata_free_dataset_rejects_v2_before_array_payload_load(
             ),
         )
     else:
-        checkpoint = _FIXTURE_ROOT / "plcs_representative_legacy_v1.ckpt"
+        checkpoint = _FIXTURE_ROOT / "plcs_representative_legacy_v1.ckpt.bin"
         mapping = load_plcs_checkpoint_mapping(checkpoint)
         v1_config, _ = prepare_plcs_checkpoint_config(mapping, v1)
         v2_config = cast(
@@ -502,12 +512,12 @@ def _assert_explicit_v1_contract(
 
 def test_metadata_free_loads_are_explicitly_bound_to_v1() -> None:
     blcs = load_checkpoint_runtime(
-        _FIXTURE_ROOT / "blcs_representative_legacy_v1.ckpt",
+        _FIXTURE_ROOT / "blcs_representative_legacy_v1.ckpt.bin",
         runtime_normalization="v1",
     )
     _assert_explicit_v1_contract(blcs.normalization)
     mapping = load_plcs_checkpoint_mapping(
-        _FIXTURE_ROOT / "plcs_representative_legacy_v1.ckpt"
+        _FIXTURE_ROOT / "plcs_representative_legacy_v1.ckpt.bin"
     )
     _, plcs_contract = prepare_plcs_checkpoint_config(
         mapping,
