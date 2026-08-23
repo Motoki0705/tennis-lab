@@ -50,7 +50,11 @@ def _model(*, num_players: int = 2) -> SLCSFusionModel:
     )
 
 
-def _adapter() -> SLCSModelIOAdapter:
+def _adapter(version: str = "v1") -> SLCSModelIOAdapter:
+    from src.utils.schema.court_normalization import (
+        resolve_court_coordinate_normalization,
+    )
+
     return SLCSModelIOAdapter(
         SLCSModelIOSpec(
             num_players=2,
@@ -61,7 +65,10 @@ def _adapter() -> SLCSModelIOAdapter:
             dino_embed_dim=8,
             log_b_min=-6.0,
             log_b_max=3.0,
-        )
+        ),
+        court_coordinate_normalization=resolve_court_coordinate_normalization(
+            version
+        ),
     )
 
 
@@ -343,3 +350,35 @@ def test_invalid_raw_output_is_rejected_by_decode() -> None:
 
     with pytest.raises(ModelOutputContractError, match="missing"):
         adapter.decode_output(raw)  # type: ignore[arg-type]
+
+
+def test_v2_adapter_decodes_positions_and_scalar_uncertainty_to_meters() -> None:
+    adapter = _adapter("v2")
+    normalized = torch.ones(1, 2, 3, 3)
+    output = SLCSDecodedOutput(
+        player_position=normalized,
+        player_rotation=torch.tensor([1.0, 0.0]).expand(1, 2, 3, 2),
+        player_position_log_b=torch.zeros(1, 2, 3),
+        player_rotation_log_b=torch.zeros(1, 2, 3),
+        ball_position=torch.ones(1, 3, 3),
+        ball_position_log_b=torch.zeros(1, 3),
+    )
+
+    physical = adapter.to_physical(output)
+
+    torch.testing.assert_close(
+        physical.player_position_meters,
+        torch.full((1, 2, 3, 3), 11.885),
+    )
+    torch.testing.assert_close(
+        physical.ball_position_meters,
+        torch.full((1, 3, 3), 11.885),
+    )
+    torch.testing.assert_close(
+        physical.player_position_sigma_m,
+        torch.full((1, 2, 3), 11.885),
+    )
+    torch.testing.assert_close(
+        physical.ball_position_sigma_m,
+        torch.full((1, 3), 11.885),
+    )

@@ -6,6 +6,10 @@ import pytest
 import torch
 from torch import Tensor
 
+from src.tasks.blcs.configuration import (
+    resolve_position_huber_beta,
+    resolve_tracking_gravity_target,
+)
 from src.tasks.blcs.models.components.differentiable_projection import (
     DifferentiableProjection,
 )
@@ -15,6 +19,9 @@ from src.tasks.blcs.training.losses import (
     trajectory_position_loss,
 )
 from src.utils.schema.court import COURT_COORD_SCALE_Z
+from src.utils.schema.court_normalization import (
+    resolve_court_coordinate_normalization,
+)
 
 
 class _StaticProjection(DifferentiableProjection):
@@ -319,3 +326,105 @@ def test_ballistic_target_second_difference_scales_with_output_fps() -> None:
     ).gravity_penalty.target_second_difference
     assert fast < 0 and slow < 0
     assert slow == pytest.approx(4.0 * fast, rel=1e-6)
+
+
+def test_v2_equal_physical_axis_errors_have_equal_unweighted_smooth_l1_loss() -> None:
+    contract = resolve_court_coordinate_normalization("v2")
+    beta = resolve_position_huber_beta(
+        contract,
+        legacy_v1_beta=1.0,
+        v2_transition_m=1.0,
+    )
+    losses = []
+    for axis in range(3):
+        target = torch.zeros(1, 1, 3)
+        target[..., axis] = 0.5 / contract.scale_xyz[axis]
+        losses.append(
+            trajectory_position_loss(
+                torch.zeros_like(target),
+                target,
+                torch.ones(1, 1, dtype=torch.bool),
+                axis_weights=torch.ones(3),
+                beta=beta,
+            )
+        )
+
+    assert beta == pytest.approx(1.0 / 11.885)
+    torch.testing.assert_close(torch.stack(losses), losses[0].expand(3))
+
+
+def test_v2_projection_and_gravity_share_the_resolved_scale_contract() -> None:
+    contract = resolve_court_coordinate_normalization("v2")
+    frame_dt = 1.0 / 30.0
+    loss_fn = BLCSLoss(
+        position_weight=1.0,
+        reprojection_weight=1.0,
+        position_axis_weights=None,
+        smoothness_weight=0.0,
+        gravity_weight=1.0,
+        smoothness_order=3,
+        smoothness_beta=1.0e-3,
+        smoothness_axis_weights=None,
+        gravity_beta=5.0e-3,
+        gravity=9.81,
+        frame_dt=frame_dt,
+        position_beta=1.0 / contract.scale_xyz[0],
+        normalization=contract,
+    )
+
+    torch.testing.assert_close(
+        loss_fn.projector.scale_xyz,
+        torch.tensor(contract.scale_xyz),
+    )
+    assert loss_fn.gravity_penalty.target_second_difference == pytest.approx(
+        -9.81 * frame_dt**2 / contract.scale_xyz[2]
+    )
+
+
+def test_tracking_gravity_keeps_v1_literal_and_derives_v2_formula() -> None:
+    v1 = resolve_court_coordinate_normalization("v1")
+    v2 = resolve_court_coordinate_normalization("v2")
+
+    assert resolve_tracking_gravity_target(
+        v1,
+        legacy_v1_target=-0.01,
+        gravity=9.81,
+        frame_dt=1.0 / 30.0,
+    ) == -0.01
+    assert resolve_tracking_gravity_target(
+        v2,
+        legacy_v1_target=-0.01,
+        gravity=9.81,
+        frame_dt=1.0 / 30.0,
+    ) == pytest.approx(-9.81 * (1.0 / 30.0) ** 2 / 11.885)
+
+
+def test_same_physical_point_projects_identically_under_both_versions() -> None:
+    point_m = torch.tensor([[[2.5, -4.0, 1.8]]], requires_grad=True)
+    camera_r = torch.eye(3).view(1, 1, 3, 3)
+    camera_c = torch.tensor([[[0.0, 0.0, -20.0]]])
+    scalar = torch.tensor([[1000.0]])
+    center = torch.tensor([[500.0]])
+    size = torch.tensor([[1000.0]])
+    projected = []
+    for version in ("v1", "v2"):
+        contract = resolve_court_coordinate_normalization(version)
+        normalized = contract.normalize_position(point_m)
+        projector = DifferentiableProjection(normalization=contract)
+        uv, in_front = projector(
+            normalized,
+            camera_r,
+            camera_c,
+            scalar,
+            center,
+            center,
+            size,
+            size,
+        )
+        assert in_front.all()
+        projected.append(uv)
+
+    torch.testing.assert_close(projected[0], projected[1])
+    projected[1].sum().backward()
+    assert point_m.grad is not None
+    assert torch.isfinite(point_m.grad).all()

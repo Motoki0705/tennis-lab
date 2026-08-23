@@ -3,7 +3,11 @@
 import numpy as np
 import pytest
 
-from src.tasks.plcs.data.targets import smplh_joints_to_coco17
+from src.tasks.plcs.data.targets import (
+    build_coco17_world_targets,
+    smplh_joints_to_coco17,
+)
+from src.utils.schema.court_normalization import resolve_court_coordinate_normalization
 from src.utils.schema.player import FACE_KEYPOINT_OFFSETS, SMPLH_TO_COCO17_MAPPING
 
 
@@ -56,3 +60,50 @@ def test_smplh_joints_to_coco17_rejects_non_finite_values() -> None:
 
     with pytest.raises(ValueError, match="NaN or infinity"):
         smplh_joints_to_coco17(joints, 0.0)
+
+
+@pytest.mark.parametrize("version", ["v1", "v2"])
+def test_world_targets_scale_only_position_translation(version: str) -> None:
+    contract = resolve_court_coordinate_normalization(version)
+    physical_position = np.array([[2.0, -3.0, 1.25]], dtype=np.float32)
+    canonical: np.ndarray = np.zeros((1, 52, 3), dtype=np.float32)
+    canonical[0, :, 0] = np.linspace(-0.5, 0.5, 52)
+    canonical[0, :, 2] = np.linspace(0.0, 2.0, 52)
+    scene = {
+        "position": contract.normalize_position(physical_position),
+        "rotation": np.array([[1.0, 0.0]], dtype=np.float32),
+        "canonical_pose_3d": canonical,
+        "meta": {"initial_yaw": 0.0},
+    }
+
+    result = build_coco17_world_targets(scene, normalization=contract)
+
+    for coco_index, smplh_index in SMPLH_TO_COCO17_MAPPING.items():
+        if coco_index not in FACE_KEYPOINT_OFFSETS:
+            np.testing.assert_allclose(
+                result[0, coco_index],
+                canonical[0, smplh_index] + physical_position[0],
+                atol=1.0e-5,
+                rtol=0.0,
+            )
+
+
+def test_v1_v2_world_targets_are_identical_for_same_physical_scene() -> None:
+    physical_position = np.array([[1.2, -5.4, 0.9]], dtype=np.float32)
+    canonical = np.arange(52 * 3, dtype=np.float32).reshape(1, 52, 3) / 100.0
+    results = []
+    for version in ("v1", "v2"):
+        contract = resolve_court_coordinate_normalization(version)
+        results.append(
+            build_coco17_world_targets(
+                {
+                    "position": contract.normalize_position(physical_position),
+                    "rotation": np.array([[0.0, 1.0]], dtype=np.float32),
+                    "canonical_pose_3d": canonical,
+                    "meta": {"initial_yaw": np.pi / 2.0},
+                },
+                normalization=contract,
+            )
+        )
+
+    np.testing.assert_allclose(results[0], results[1], atol=1.0e-5, rtol=0.0)
