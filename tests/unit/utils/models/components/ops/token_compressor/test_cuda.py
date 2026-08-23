@@ -1,4 +1,4 @@
-"""Queued-GPU tests for fused Triton token-compressor pooling."""
+"""CUDA tests for fused Triton token-compressor pooling."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from src.utils.models.components.ops.token_compressor import (
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("TENNIS_LAB_RUN_CUDA_TESTS") != "1" or not torch.cuda.is_available(),
-    reason="CUDA operation tests run only in an attributed training-queue job",
+    reason="CUDA operation tests require TENNIS_LAB_RUN_CUDA_TESTS=1 and CUDA",
 )
 
 
@@ -27,13 +27,14 @@ def _inputs(
     n: int,
     sequence_length: int,
     dtype: torch.dtype,
+    head_dim: int = 64,
 ) -> tuple[Tensor, Tensor, Tensor]:
     generator = torch.Generator(device="cuda").manual_seed(753 + sequence_length + n)
     raw_kv = torch.randn(
         n,
         sequence_length,
         2,
-        64,
+        head_dim,
         device="cuda",
         dtype=dtype,
         generator=generator,
@@ -43,7 +44,7 @@ def _inputs(
             n,
             sequence_length,
             2,
-            64,
+            head_dim,
             device="cuda",
             dtype=torch.float32,
             generator=generator,
@@ -63,6 +64,43 @@ def _inputs(
     state_valid[-1] = False
     assert not state_valid.is_contiguous() or sequence_length == 1
     return raw_kv, raw_gate, state_valid
+
+
+@pytest.mark.parametrize("head_dim", [16, 32, 64, 128])
+@pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16, torch.float32])
+def test_cuda_matches_reference_across_supported_widths_and_dtypes(
+    head_dim: int,
+    dtype: torch.dtype,
+) -> None:
+    raw_kv, raw_gate, state_valid = _inputs(3, 17, dtype, head_dim)
+    reference_kv = raw_kv.detach().clone().requires_grad_(True)
+    reference_gate = raw_gate.detach().clone().requires_grad_(True)
+    cuda_kv = raw_kv.detach().clone().requires_grad_(True)
+    cuda_gate = raw_gate.detach().clone().requires_grad_(True)
+    expected, expected_valid = reference_token_compressor_pool(
+        reference_kv,
+        reference_gate,
+        state_valid,
+        compression_ratio=4,
+    )
+    pool = resolve_token_compressor_pool(
+        "cuda", compression_ratio=4, head_dim=head_dim
+    )
+    actual, actual_valid = pool(cuda_kv, cuda_gate, state_valid)
+    upstream = torch.randn_like(expected)
+    expected.backward(upstream)
+    actual.backward(upstream)
+
+    atol = 4.0e-3 if dtype == torch.float16 else 7.0e-2 if dtype == torch.bfloat16 else 3.0e-5
+    rtol = 4.0e-3 if dtype == torch.float16 else 3.0e-2 if dtype == torch.bfloat16 else 3.0e-4
+    torch.testing.assert_close(actual, expected, atol=atol, rtol=rtol)
+    torch.testing.assert_close(actual_valid, expected_valid)
+    assert cuda_kv.grad is not None and reference_kv.grad is not None
+    assert cuda_gate.grad is not None and reference_gate.grad is not None
+    torch.testing.assert_close(cuda_kv.grad, reference_kv.grad, atol=atol, rtol=rtol)
+    torch.testing.assert_close(
+        cuda_gate.grad, reference_gate.grad, atol=atol, rtol=rtol
+    )
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.bfloat16])
@@ -147,20 +185,23 @@ def test_cuda_is_stable_for_large_finite_logits_and_exact_for_all_invalid() -> N
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.bfloat16])
+@pytest.mark.parametrize("head_dim", [16, 64])
 def test_full_compressor_tied_key_value_sums_both_gradient_paths(
     dtype: torch.dtype,
+    head_dim: int,
 ) -> None:
+    dim = 4 * head_dim
     config = TokenLevelCompressorConfig(
-        dim=256,
+        dim=dim,
         n_heads=4,
-        head_dim=64,
+        head_dim=head_dim,
         compression_ratio=4,
         overlap=True,
     )
     reference_module = TokenLevelKVCompressor(config, backend="reference").cuda()
     cuda_module = TokenLevelKVCompressor(config, backend="cuda").cuda()
     cuda_module.load_state_dict(reference_module.state_dict(), strict=True)
-    reference_x = torch.randn(3, 5, 256, device="cuda", dtype=dtype).requires_grad_()
+    reference_x = torch.randn(3, 5, dim, device="cuda", dtype=dtype).requires_grad_()
     cuda_x = reference_x.detach().clone().requires_grad_()
     state_valid = torch.tensor(
         [
@@ -251,17 +292,17 @@ def test_cuda_rejects_unsupported_dtype_shape_ratio_and_device() -> None:
     state_valid = torch.ones(3, 5, dtype=torch.bool, device="cuda")
     valid_kv = torch.randn(3, 5, 2, 64, device="cuda")
     valid_gate = torch.randn_like(valid_kv)
-    with pytest.raises(TypeError, match="bfloat16 and float32"):
+    with pytest.raises(TypeError, match="float16, bfloat16, and float32"):
         cuda_token_compressor_pool(
-            valid_kv.half(), valid_gate, state_valid, compression_ratio=4
+            valid_kv.double(), valid_gate, state_valid, compression_ratio=4
         )
     with pytest.raises(TypeError, match="float32 raw_gate"):
         cuda_token_compressor_pool(
             valid_kv, valid_gate.bfloat16(), state_valid, compression_ratio=4
         )
-    with pytest.raises(ValueError, match=r"\[N, T, 2, 64\]"):
+    with pytest.raises(ValueError, match="Dh in"):
         cuda_token_compressor_pool(
-            valid_kv[..., :32], valid_gate[..., :32], state_valid, compression_ratio=4
+            valid_kv[..., :8], valid_gate[..., :8], state_valid, compression_ratio=4
         )
     with pytest.raises(ValueError, match="compression_ratio=4"):
         cuda_token_compressor_pool(

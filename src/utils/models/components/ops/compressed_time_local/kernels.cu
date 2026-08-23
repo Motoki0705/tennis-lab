@@ -21,6 +21,9 @@
 namespace {
 
 constexpr int kWarpSize = 32;
+constexpr int kCachedFeaturesPerLane = 4;
+constexpr int64_t kMaximumCachedHeadDim =
+    kWarpSize * kCachedFeaturesPerLane;
 constexpr int64_t kMaximumWindowRadius = 64;
 
 void check_supported_feature_layout(
@@ -161,13 +164,13 @@ __global__ void compressed_time_local_forward_kernel(
     scalar_t* __restrict__ output,
     float* __restrict__ logsumexp,
     int* __restrict__ invalid_row,
-    int64_t heads,
-    int64_t key_heads,
-    int64_t query_length,
-    int64_t key_length,
-    int64_t head_dim,
-    int64_t compression_ratio,
-    int64_t window_radius,
+    int heads,
+    int key_heads,
+    int query_length,
+    int key_length,
+    int head_dim,
+    int compression_ratio,
+    int window_radius,
     int64_t query_batch_stride,
     int64_t query_head_stride,
     int64_t query_time_stride,
@@ -186,23 +189,29 @@ __global__ void compressed_time_local_forward_kernel(
     int64_t key_phasor_time_stride,
     int64_t key_phasor_head_stride,
     int64_t key_phasor_pair_stride) {
-    const int64_t row = blockIdx.x;
+    const int row = blockIdx.x;
     const int lane = threadIdx.x;
-    const int64_t query_index = row % query_length;
-    const int64_t head_index = (row / query_length) % heads;
-    const int64_t key_head_index = key_heads == 1 ? 0 : head_index;
-    const int64_t batch_index = row / (heads * query_length);
-    if (!query_valid[batch_index * query_length + query_index]) {
-        return;
-    }
-
+    const int query_index = row % query_length;
+    const int head_index = (row / query_length) % heads;
+    const int key_head_index = key_heads == 1 ? 0 : head_index;
+    const int batch_index = row / (heads * query_length);
     const int64_t query_offset =
         batch_index * query_batch_stride + head_index * query_head_stride +
         query_index * query_time_stride;
     const int64_t output_offset =
         batch_index * output_batch_stride + head_index * output_head_stride +
         query_index * output_time_stride;
-    const int64_t center = query_index / compression_ratio;
+    if (!query_valid[batch_index * query_length + query_index]) {
+        for (int feature = lane; feature < head_dim; feature += kWarpSize) {
+            output[output_offset + feature] = static_cast<scalar_t>(0.0f);
+        }
+        if (lane == 0) {
+            logsumexp[row] = 0.0f;
+        }
+        return;
+    }
+
+    const int center = query_index / compression_ratio;
     const int window_width = static_cast<int>(2 * window_radius + 1);
     extern __shared__ float shared[];
     float* scores = shared;
@@ -211,19 +220,12 @@ __global__ void compressed_time_local_forward_kernel(
     float denominator = 0.0f;
     bool any_valid = false;
     const float scale = rsqrtf(static_cast<float>(head_dim));
-
-    for (int window_index = 0; window_index < window_width; ++window_index) {
-        const int64_t key_index = center + window_index - window_radius;
-        const bool index_valid = key_index >= 0 && key_index < key_length;
-        const bool valid = index_valid &&
-            key_valid[batch_index * key_length + key_index];
-        float dot = 0.0f;
-        if (valid) {
-            const int64_t key_offset =
-                ((batch_index * key_heads + key_head_index) * key_length + key_index) *
-                head_dim;
-            for (int64_t feature = lane; feature < head_dim; feature += kWarpSize) {
-                const float rotated_query = load_rotated_component(
+    float cached_query[kCachedFeaturesPerLane];
+    if (head_dim <= kMaximumCachedHeadDim) {
+        for (int slot = 0; slot < kCachedFeaturesPerLane; ++slot) {
+            const int feature = lane + slot * kWarpSize;
+            if (feature < head_dim) {
+                cached_query[slot] = load_rotated_component(
                     query,
                     query_offset,
                     feature,
@@ -237,6 +239,39 @@ __global__ void compressed_time_local_forward_kernel(
                     query_phasor_time_stride,
                     query_phasor_head_stride,
                     query_phasor_pair_stride);
+            }
+        }
+    }
+
+    for (int window_index = 0; window_index < window_width; ++window_index) {
+        const int key_index = center + window_index - window_radius;
+        const bool index_valid = key_index >= 0 && key_index < key_length;
+        const bool valid = index_valid &&
+            key_valid[batch_index * key_length + key_index];
+        float dot = 0.0f;
+        if (valid) {
+            const int64_t key_offset =
+                ((static_cast<int64_t>(batch_index) * key_heads + key_head_index) *
+                     key_length +
+                 key_index) *
+                head_dim;
+            for (int feature = lane; feature < head_dim; feature += kWarpSize) {
+                const float rotated_query = head_dim <= kMaximumCachedHeadDim
+                    ? cached_query[feature / kWarpSize]
+                    : load_rotated_component(
+                          query,
+                          query_offset,
+                          feature,
+                          query_phasors,
+                          batch_index,
+                          head_index,
+                          query_index,
+                          query_phasor_batches,
+                          query_phasor_heads,
+                          query_phasor_batch_stride,
+                          query_phasor_time_stride,
+                          query_phasor_head_stride,
+                          query_phasor_pair_stride);
                 const float rotated_key = load_rotated_component(
                     key,
                     key_offset,
@@ -280,6 +315,7 @@ __global__ void compressed_time_local_forward_kernel(
         statistics[0] = running_max;
         statistics[1] = denominator;
         if (!any_valid) {
+            logsumexp[row] = 0.0f;
             atomicExch(invalid_row, 1);
         } else {
             logsumexp[row] = running_max + logf(denominator);
@@ -287,23 +323,34 @@ __global__ void compressed_time_local_forward_kernel(
     }
     __syncwarp();
     if (statistics[1] == 0.0f) {
+        for (int feature = lane; feature < head_dim; feature += kWarpSize) {
+            output[output_offset + feature] = static_cast<scalar_t>(0.0f);
+        }
         return;
     }
+    for (int window_index = lane; window_index < window_width;
+         window_index += kWarpSize) {
+        const float score = scores[window_index];
+        scores[window_index] = score == -INFINITY
+            ? 0.0f
+            : expf(score - statistics[0]) / statistics[1];
+    }
+    __syncwarp();
 
-    for (int64_t feature = lane; feature < head_dim; feature += kWarpSize) {
+    for (int feature = lane; feature < head_dim; feature += kWarpSize) {
         float accumulated = 0.0f;
         for (int window_index = 0; window_index < window_width; ++window_index) {
-            const float score = scores[window_index];
-            if (score == -INFINITY) {
+            const float probability = scores[window_index];
+            if (probability == 0.0f) {
                 continue;
             }
-            const int64_t key_index = center + window_index - window_radius;
+            const int key_index = center + window_index - window_radius;
             const int64_t value_offset =
-                ((batch_index * key_heads + key_head_index) * key_length + key_index) *
+                ((static_cast<int64_t>(batch_index) * key_heads + key_head_index) *
+                     key_length +
+                 key_index) *
                     head_dim +
                 feature;
-            const float probability =
-                expf(score - statistics[0]) / statistics[1];
             accumulated += probability * static_cast<float>(value[value_offset]);
         }
         output[output_offset + feature] = static_cast<scalar_t>(accumulated);
@@ -358,7 +405,14 @@ __global__ void compressed_time_local_backward_kernel(
     const int64_t head_index = (row / query_length) % heads;
     const int64_t key_head_index = key_heads == 1 ? 0 : head_index;
     const int64_t batch_index = row / (heads * query_length);
+    const int64_t grad_query_offset =
+        batch_index * grad_query_batch_stride +
+        head_index * grad_query_head_stride +
+        query_index * grad_query_time_stride;
     if (!query_valid[batch_index * query_length + query_index]) {
+        for (int64_t feature = lane; feature < head_dim; feature += kWarpSize) {
+            grad_query[grad_query_offset + feature] = static_cast<scalar_t>(0.0f);
+        }
         return;
     }
     const int64_t grad_output_offset =
@@ -368,10 +422,6 @@ __global__ void compressed_time_local_backward_kernel(
     const int64_t query_offset =
         batch_index * query_batch_stride + head_index * query_head_stride +
         query_index * query_time_stride;
-    const int64_t grad_query_offset =
-        batch_index * grad_query_batch_stride +
-        head_index * grad_query_head_stride +
-        query_index * grad_query_time_stride;
     const int64_t center = query_index / compression_ratio;
     const int window_width = static_cast<int>(2 * window_radius + 1);
     const float scale = rsqrtf(static_cast<float>(head_dim));
@@ -379,6 +429,31 @@ __global__ void compressed_time_local_backward_kernel(
     float* probabilities = shared;
     float* probability_gradients = probabilities + window_width;
     float* scaled_score_gradients = probability_gradients;
+    float cached_query[kCachedFeaturesPerLane];
+    float cached_grad_output[kCachedFeaturesPerLane];
+    if (head_dim <= kMaximumCachedHeadDim) {
+        for (int slot = 0; slot < kCachedFeaturesPerLane; ++slot) {
+            const int64_t feature = lane + slot * kWarpSize;
+            if (feature < head_dim) {
+                cached_query[slot] = load_rotated_component(
+                    query,
+                    query_offset,
+                    feature,
+                    query_phasors,
+                    batch_index,
+                    head_index,
+                    query_index,
+                    query_phasor_batches,
+                    query_phasor_heads,
+                    query_phasor_batch_stride,
+                    query_phasor_time_stride,
+                    query_phasor_head_stride,
+                    query_phasor_pair_stride);
+                cached_grad_output[slot] =
+                    static_cast<float>(grad_output[grad_output_offset + feature]);
+            }
+        }
+    }
 
     for (int window_index = 0; window_index < window_width; ++window_index) {
         const int64_t key_index = center + window_index - window_radius;
@@ -394,25 +469,30 @@ __global__ void compressed_time_local_backward_kernel(
             continue;
         }
         const int64_t key_offset =
-            ((batch_index * key_heads + key_head_index) * key_length + key_index) *
+            ((static_cast<int64_t>(batch_index) * key_heads + key_head_index) *
+                 key_length +
+             key_index) *
             head_dim;
         float score = 0.0f;
         float probability_gradient = 0.0f;
         for (int64_t feature = lane; feature < head_dim; feature += kWarpSize) {
-            const float rotated_query = load_rotated_component(
-                query,
-                query_offset,
-                feature,
-                query_phasors,
-                batch_index,
-                head_index,
-                query_index,
-                query_phasor_batches,
-                query_phasor_heads,
-                query_phasor_batch_stride,
-                query_phasor_time_stride,
-                query_phasor_head_stride,
-                query_phasor_pair_stride);
+            const int64_t feature_slot = feature / kWarpSize;
+            const float rotated_query = head_dim <= kMaximumCachedHeadDim
+                ? cached_query[feature_slot]
+                : load_rotated_component(
+                      query,
+                      query_offset,
+                      feature,
+                      query_phasors,
+                      batch_index,
+                      head_index,
+                      query_index,
+                      query_phasor_batches,
+                      query_phasor_heads,
+                      query_phasor_batch_stride,
+                      query_phasor_time_stride,
+                      query_phasor_head_stride,
+                      query_phasor_pair_stride);
             const float rotated_key = load_rotated_component(
                 key,
                 key_offset,
@@ -428,9 +508,11 @@ __global__ void compressed_time_local_backward_kernel(
                 key_phasor_head_stride,
                 key_phasor_pair_stride);
             score += rotated_query * rotated_key;
+            const float output_gradient = head_dim <= kMaximumCachedHeadDim
+                ? cached_grad_output[feature_slot]
+                : static_cast<float>(grad_output[grad_output_offset + feature]);
             probability_gradient +=
-                static_cast<float>(grad_output[grad_output_offset + feature]) *
-                static_cast<float>(value[key_offset + feature]);
+                output_gradient * static_cast<float>(value[key_offset + feature]);
         }
         score = warp_sum(score);
         probability_gradient = warp_sum(probability_gradient);
@@ -468,25 +550,30 @@ __global__ void compressed_time_local_backward_kernel(
             }
             const int64_t key_index = center + window_index - window_radius;
             const int64_t key_offset =
-                ((batch_index * key_heads + key_head_index) * key_length + key_index) *
+                ((static_cast<int64_t>(batch_index) * key_heads + key_head_index) *
+                     key_length +
+                 key_index) *
                     head_dim +
                 feature;
             const int64_t key_row_offset = key_offset - feature;
             const float scaled_score_gradient = scaled_score_gradients[window_index];
-            const float rotated_query = load_rotated_component(
-                query,
-                query_offset,
-                feature,
-                query_phasors,
-                batch_index,
-                head_index,
-                query_index,
-                query_phasor_batches,
-                query_phasor_heads,
-                query_phasor_batch_stride,
-                query_phasor_time_stride,
-                query_phasor_head_stride,
-                query_phasor_pair_stride);
+            const int64_t feature_slot = feature / kWarpSize;
+            const float rotated_query = head_dim <= kMaximumCachedHeadDim
+                ? cached_query[feature_slot]
+                : load_rotated_component(
+                      query,
+                      query_offset,
+                      feature,
+                      query_phasors,
+                      batch_index,
+                      head_index,
+                      query_index,
+                      query_phasor_batches,
+                      query_phasor_heads,
+                      query_phasor_batch_stride,
+                      query_phasor_time_stride,
+                      query_phasor_head_stride,
+                      query_phasor_pair_stride);
             const float rotated_key = load_rotated_component(
                 key,
                 key_row_offset,
@@ -509,7 +596,10 @@ __global__ void compressed_time_local_backward_kernel(
             atomicAdd(
                 grad_value + key_offset,
                 probabilities[window_index] *
-                    static_cast<float>(grad_output[grad_output_offset + feature]));
+                    (head_dim <= kMaximumCachedHeadDim
+                         ? cached_grad_output[feature_slot]
+                         : static_cast<float>(
+                               grad_output[grad_output_offset + feature])));
         }
         grad_query[grad_query_offset + feature] =
             static_cast<scalar_t>(query_gradient);
@@ -684,6 +774,14 @@ void validate_inputs(
         "query/key batch and head dimensions must match, and key heads must be 1 "
         "or equal query heads");
     TORCH_CHECK(query.numel() > 0 && key.numel() > 0, "tensor dimensions must be positive");
+    constexpr int64_t maximum_int = std::numeric_limits<int>::max();
+    TORCH_CHECK(
+        query.size(0) <= maximum_int && query.size(1) <= maximum_int &&
+            query.size(2) <= maximum_int && query.size(3) <= maximum_int &&
+            key.size(1) <= maximum_int && key.size(2) <= maximum_int &&
+            query.numel() / query.size(3) <= maximum_int &&
+            compression_ratio <= maximum_int,
+        "CUDA attention dimensions, row count, and compression ratio must fit int32");
     TORCH_CHECK(
         query.scalar_type() == key.scalar_type() &&
             query.scalar_type() == value.scalar_type(),
@@ -748,8 +846,7 @@ std::vector<torch::Tensor> compressed_time_local_forward_cuda(
     const c10::cuda::CUDAGuard device_guard(query.device());
     const int64_t rows = query.size(0) * query.size(1) * query.size(2);
     auto output = empty_compact_nhtd_like(query);
-    output.zero_();
-    auto logsumexp = torch::zeros(
+    auto logsumexp = torch::empty(
         {query.size(0), query.size(1), query.size(2)},
         query.options().dtype(torch::kFloat));
     auto invalid_row = torch::zeros({1}, query.options().dtype(torch::kInt));
@@ -871,7 +968,6 @@ std::vector<torch::Tensor> compressed_time_local_backward_cuda(
     const c10::cuda::CUDAGuard device_guard(query.device());
     const int64_t rows = query.size(0) * query.size(1) * query.size(2);
     auto grad_query = empty_compact_nhtd_like(query);
-    grad_query.zero_();
     auto float_options = query.options().dtype(torch::kFloat);
     auto grad_key_float = torch::zeros(key.sizes(), float_options);
     auto grad_value_float = torch::zeros(value.sizes(), float_options);

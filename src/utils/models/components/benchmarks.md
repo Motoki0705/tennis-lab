@@ -71,3 +71,30 @@ material 1.10x end-to-end speedup gate.
   context limits.
 - Integrated parity covers stage outputs and camera/query input gradients;
   operator tests cover CUDA query/key/value gradients separately.
+
+## 2026-08-23 GPU-1 validation
+
+The optimized token-compressor and compressed-attention operators were
+validated on the repository's second physical GPU while GPU 0 remained in use.
+Environment: NVIDIA GeForce GTX 1650 (compute capability 7.5), Python 3.11.15,
+PyTorch 2.13.0+cu130, CUDA 13.0.
+
+The CSWA comparison used `N=7,T=1024,D=64,H=4,Dh=16`, bfloat16
+forward-backward, approximately 0.875 valid density, 4 warmups, and 20
+synchronized iterations. The BLCS comparison used
+`B=1,V=3,T=512,Q=4,D=64`, four stages, float32 forward-backward, eval mode, 2
+warmups, and 8 synchronized iterations. Reference and CUDA candidates shared
+identical weights.
+
+| workload | candidate | median / p95 (ms) | peak allocated / reserved (bytes) | speedup |
+|---|---|---:|---:|---:|
+| default-width CSWA | reference | 10.314 / 25.399 | 86,091,776 / 111,149,056 | 1.000x |
+| default-width CSWA | CUDA | 4.920 / 18.897 | 28,688,384 / 31,457,280 | 2.097x |
+| BLCS track-query model | reference | 213.322 / 387.541 | 581,164,544 / 629,145,600 | 1.000x |
+| BLCS track-query model | CUDA | 175.596 / 289.563 | 530,912,256 / 587,202,560 | 1.215x |
+
+CUDA reduced peak allocation by 66.7% for default-width CSWA and 8.6% for the
+full model. A permanent integration test with the configured `Dh=16` compares
+the BLCS model's position/presence outputs and ball/court input gradients
+against the reference backend; it passed on the same GPU build. Operator-level
+measurements remain in the linked package benchmark records above.
