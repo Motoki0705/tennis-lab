@@ -17,6 +17,7 @@ from src.tasks.base.data.scene_dataset import (
 from src.tasks.blcs.configuration import parse_court_coordinate_normalization
 from src.tasks.blcs.data.augmentation import BLCSBallObservationAugmentation
 from src.tasks.blcs.data.types import BLCSMultiViewBatch, BLCSMultiViewSample
+from src.tasks.blcs.data.visibility import zero_invisible_uv
 
 
 class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
@@ -126,6 +127,9 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
             ).float()
             court_kp = court_kp[: self.num_court_kp]
             court_vis = court_vis[: self.num_court_kp]
+
+            ball_uv = zero_invisible_uv(ball_uv, ball_vis)
+            court_kp = zero_invisible_uv(court_kp, court_vis)
 
             court_kp_expanded = court_kp.unsqueeze(0).expand(window.seq_len, -1, -1)
             court_vis_expanded = court_vis.unsqueeze(0).expand(window.seq_len, -1)
