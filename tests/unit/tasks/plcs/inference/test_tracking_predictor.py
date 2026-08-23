@@ -66,6 +66,10 @@ def test_predictor_returns_cpu_lifecycle_and_yaw_outputs() -> None:
     assert result["presence"][..., 0].all()
     assert not result["presence"][..., 1].any()
     torch.testing.assert_close(
+        result["position_meters"],
+        torch.tensor([5.485, 11.885, 1.07]).expand(1, 3, 2, 3),
+    )
+    torch.testing.assert_close(
         result["yaw_radians"],
         torch.full((1, 3, 2), torch.pi / 2),
     )

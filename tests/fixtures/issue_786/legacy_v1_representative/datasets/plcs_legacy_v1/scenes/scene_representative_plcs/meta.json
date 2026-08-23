@@ -1,0 +1,8 @@
+{
+  "fps": 30.0,
+  "initial_yaw": 0.0,
+  "num_cameras": 1,
+  "num_cameras_sampled": 1,
+  "num_frames": 2,
+  "scene_id": "scene_representative_plcs"
+}

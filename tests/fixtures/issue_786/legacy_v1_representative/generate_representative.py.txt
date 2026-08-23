@@ -1,0 +1,738 @@
+"""Generate frozen-base representative legacy-v1 checkpoint parity evidence."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import random
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+sys.path.insert(
+    0,
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-base-golden",
+)
+
+import numpy as np
+import pytorch_lightning as pl
+import torch
+from hydra import compose, initialize_config_dir
+from omegaconf import DictConfig, OmegaConf
+
+from src.tasks.blcs.data.dataset import (
+    BallTrajectoryDataset,
+    collate_multiview_trajectories,
+)
+from src.tasks.blcs.inference.predictor import BLCSPredictor
+from src.tasks.blcs.model_io import compose_blcs_trajectory_model_io
+from src.tasks.blcs.model_io.checkpoints import load_checkpoint_config
+from src.tasks.blcs.training.lightning_module import BLCSLightningModule
+from src.tasks.plcs.data.dataset import SceneDataset, collate_plcs_batch
+from src.tasks.plcs.inference.predictor import PLCSPredictor
+from src.tasks.plcs.training.lightning_module import PLCSLightningModule
+from src.utils.configuration import PathResolver, RuntimePathRoots
+from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+
+BASE_SHA = "59e3b166c2d010d5e62be52c2be76d98a94af0e0"
+SEED = 786
+ROOT = Path("/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-base-golden")
+OUT = Path(
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/"
+    "issue-786-normalization-v2/.codex/tasks/issue-786/logs/"
+    "legacy-base-goldens/representative"
+)
+SCALE = np.asarray(COURT_COORD_SCALE_XYZ, dtype=np.float32)
+
+
+def _run(*args: str) -> str:
+    return subprocess.run(
+        args,
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _tree_evidence(root: Path) -> dict[str, Any]:
+    aggregate = hashlib.sha256()
+    files: dict[str, dict[str, Any]] = {}
+    for path in sorted(candidate for candidate in root.rglob("*") if candidate.is_file()):
+        relative = path.relative_to(root).as_posix()
+        digest = _sha256(path)
+        size = path.stat().st_size
+        aggregate.update(relative.encode("utf-8"))
+        aggregate.update(b"\0")
+        aggregate.update(bytes.fromhex(digest))
+        aggregate.update(b"\n")
+        files[relative] = {"sha256": digest, "byte_count": size}
+    return {
+        "sha256": aggregate.hexdigest(),
+        "algorithm": "sha256(relative_posix_path + NUL + binary_sha256(file) + LF)",
+        "file_count": len(files),
+        "byte_count": sum(int(value["byte_count"]) for value in files.values()),
+        "files": files,
+    }
+
+
+def _array_evidence(arrays: dict[str, np.ndarray]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for name, array in sorted(arrays.items()):
+        contiguous = np.ascontiguousarray(array)
+        result[name] = {
+            "shape": list(contiguous.shape),
+            "dtype": str(contiguous.dtype),
+            "sha256": hashlib.sha256(contiguous.tobytes()).hexdigest(),
+            "finite": bool(np.isfinite(contiguous).all())
+            if np.issubdtype(contiguous.dtype, np.number)
+            else True,
+        }
+    return result
+
+
+def _jsonable(value: Any) -> Any:
+    if isinstance(value, torch.Tensor):
+        value = value.detach().cpu().item()
+    if isinstance(value, np.generic):
+        value = value.item()
+    if isinstance(value, dict):
+        return {str(key): _jsonable(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_jsonable(item) for item in value]
+    return value
+
+
+def _write_json(path: Path, value: Any) -> None:
+    path.write_text(
+        json.dumps(_jsonable(value), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _save_checkpoint(path: Path, module: torch.nn.Module, config: DictConfig) -> None:
+    checkpoint = {
+        "epoch": 0,
+        "global_step": 0,
+        "pytorch-lightning_version": pl.__version__,
+        "state_dict": module.state_dict(),
+        "loops": {},
+        "callbacks": {},
+        "optimizer_states": [],
+        "lr_schedulers": [],
+        "hparams_name": "kwargs",
+        "hyper_parameters": {"config": config},
+    }
+    torch.save(checkpoint, path)
+
+
+def _checkpoint_state_matches(path: Path, module: torch.nn.Module) -> bool:
+    checkpoint = torch.load(path, map_location="cpu", weights_only=False)
+    saved = checkpoint["state_dict"]
+    loaded = module.state_dict()
+    return set(saved) == set(loaded) and all(
+        torch.equal(saved[key], loaded[key]) for key in saved
+    )
+
+
+def _compose_blcs_config() -> tuple[DictConfig, list[str]]:
+    overrides = [
+        "model=multiview_axial_small",
+        "model.hidden_dim=16",
+        "model.num_layers=1",
+        "model.num_heads=4",
+        "model.ffn_dim=32",
+        "model.rope_dim=4",
+        "model.camera_layers_per_stage=[1]",
+        "model.time_layers_per_stage=[1]",
+        "model.time_global_stage_mask=[false]",
+        "model.max_seq_len=2",
+        "model.max_num_cameras=1",
+        "model.num_court_tokens=14",
+        "model.dropout=0.0",
+        "data.seq_len_range=[2,2]",
+        "data.num_views_range=[1,1]",
+        "data.camera_mode=first",
+        "data.num_court_kp=14",
+        "data.batch_size=1",
+        "data.num_workers=0",
+        "training.compile.enabled=false",
+    ]
+    with initialize_config_dir(
+        version_base="1.3", config_dir=str(ROOT / "src/tasks/blcs/configs")
+    ):
+        config = compose(config_name="train", overrides=overrides)
+    return config, overrides
+
+
+def _compose_plcs_config() -> tuple[DictConfig, list[str]]:
+    overrides = [
+        "model=multiview",
+        "loss=no_canonical",
+        "model.hidden_dim=16",
+        "model.num_layers=1",
+        "model.num_heads=4",
+        "model.ffn_dim=32",
+        "model.rope_dim=4",
+        "model.max_seq_len=2",
+        "model.max_views=1",
+        "model.dropout=0.0",
+        "data.seq_len_range=[2,2]",
+        "data.num_views_range=[1,1]",
+        "data.min_cameras=1",
+        "data.camera_mode=first",
+        "data.num_court_kp=14",
+        "data.batch_size=1",
+        "data.num_workers=0",
+        "training.compile.enabled=false",
+    ]
+    with initialize_config_dir(
+        version_base="1.3", config_dir=str(ROOT / "src/tasks/plcs/configs")
+    ):
+        config = compose(config_name="train", overrides=overrides)
+    return config, overrides
+
+
+def _camera_parameters() -> dict[str, Any]:
+    return {
+        "R": np.eye(3, dtype=np.float32).tolist(),
+        "C": [0.0, 0.0, -10.0],
+        "f": 800.0,
+        "cx": 640.0,
+        "cy": 360.0,
+        "w": 1280,
+        "h": 720,
+    }
+
+
+def _write_blcs_fixture(root: Path) -> np.ndarray:
+    scene = root / "scenes/scene_representative_blcs"
+    scene.mkdir(parents=True, exist_ok=True)
+    (root / "test.txt").write_text("scene_representative_blcs\n", encoding="utf-8")
+    target_norm = np.asarray(
+        [[0.20, -0.30, 0.40], [-0.40, 0.50, 0.60]], dtype=np.float32
+    )
+    target_m = target_norm * SCALE
+    velocity_mps = np.asarray(
+        [[1.0, 2.0, 3.0], [-1.5, 0.75, -2.25]], dtype=np.float32
+    )
+    ball_uv = np.asarray([[0.48, 0.52], [0.53, 0.47]], dtype=np.float32)
+    court_uv = np.linspace(0.1, 0.9, 28, dtype=np.float32).reshape(14, 2)
+    arrays = {
+        "ball_pos_norm": target_norm,
+        "ball_pos_world": target_m,
+        "ball_vel_world": velocity_mps,
+        "cam_0_ball_uv": ball_uv,
+        "cam_0_ball_vis": np.ones(2, dtype=np.bool_),
+        "cam_0_court_kp_uv": court_uv,
+        "cam_0_court_kp_vis": np.ones(14, dtype=np.bool_),
+        "cam_0_ball_visibility_ratio": np.asarray(1.0, dtype=np.float32),
+        "cam_0_court_visibility_count": np.asarray(14.0, dtype=np.float32),
+    }
+    for name, array in arrays.items():
+        np.save(scene / f"{name}.npy", array)
+    _write_json(
+        scene / "meta.json",
+        {
+            "scene_id": "scene_representative_blcs",
+            "num_frames": 2,
+            "num_cameras": 1,
+            "num_cameras_sampled": 1,
+            "fps_out": 30,
+        },
+    )
+    _write_json(
+        scene / "scalars.json",
+        {"num_cameras": 1, "cam_0_params": _camera_parameters()},
+    )
+    return target_norm
+
+
+def _write_plcs_fixture(root: Path) -> np.ndarray:
+    scene = root / "scenes/scene_representative_plcs"
+    scene.mkdir(parents=True, exist_ok=True)
+    (root / "test.txt").write_text("scene_representative_plcs\n", encoding="utf-8")
+    target_norm = np.asarray(
+        [[0.25, -0.50, 0.75], [-0.20, 0.40, 0.60]], dtype=np.float32
+    )
+    rotation = np.asarray([[1.0, 0.0], [0.0, 1.0]], dtype=np.float32)
+    human_uv = np.linspace(0.15, 0.85, 68, dtype=np.float32).reshape(2, 17, 2)
+    court_frame = np.linspace(0.1, 0.9, 28, dtype=np.float32).reshape(14, 2)
+    court_uv = np.repeat(court_frame[None, ...], 2, axis=0)
+    human_world = np.zeros((2, 17, 3), dtype=np.float32)
+    human_world[..., 0] = target_norm[:, None, 0] * SCALE[0]
+    human_world[..., 1] = target_norm[:, None, 1] * SCALE[1]
+    human_world[..., 2] = target_norm[:, None, 2] * SCALE[2]
+    human_world += np.linspace(-0.2, 0.2, 51, dtype=np.float32).reshape(1, 17, 3)
+    canonical_pose = np.zeros((2, 73, 3), dtype=np.float32)
+    arrays = {
+        "position": target_norm,
+        "rotation": rotation,
+        "human_kp_3d": human_world,
+        "canonical_pose_3d": canonical_pose,
+        "cam_0_human_kp_uv": human_uv,
+        "cam_0_human_kp_vis": np.ones((2, 17), dtype=np.bool_),
+        "cam_0_court_kp_uv": court_uv,
+        "cam_0_court_kp_vis": np.ones((2, 14), dtype=np.bool_),
+        "cam_0_human_visibility_ratio": np.asarray(1.0, dtype=np.float32),
+        "cam_0_court_visibility_count": np.asarray(14.0, dtype=np.float32),
+    }
+    for name, array in arrays.items():
+        np.save(scene / f"{name}.npy", array)
+    _write_json(
+        scene / "meta.json",
+        {
+            "scene_id": "scene_representative_plcs",
+            "num_frames": 2,
+            "num_cameras": 1,
+            "num_cameras_sampled": 1,
+            "fps": 30.0,
+            "initial_yaw": 0.0,
+        },
+    )
+    _write_json(
+        scene / "scalars.json",
+        {"num_cameras": 1, "cam_0_params": _camera_parameters()},
+    )
+    return target_norm
+
+
+def _resolver() -> PathResolver:
+    return PathResolver(
+        RuntimePathRoots(
+            project_root=ROOT.resolve(),
+            data_root=(ROOT / "data").resolve(),
+            checkpoint_root=OUT.resolve(),
+            artifact_root=OUT.resolve(),
+            output_root=OUT.resolve(),
+            cache_root=(OUT / "cache").resolve(),
+            external_asset_root=(ROOT / "data").resolve(),
+        )
+    )
+
+
+def _tensor_arrays(batch: dict[str, Any], names: list[str]) -> dict[str, np.ndarray]:
+    return {
+        f"input_{name}": batch[name].detach().cpu().numpy()
+        for name in names
+        if isinstance(batch.get(name), torch.Tensor)
+    }
+
+
+def _npz(path: Path, arrays: dict[str, np.ndarray]) -> None:
+    np.savez_compressed(path, **arrays)
+
+
+def main() -> None:
+    OUT.mkdir(parents=True, exist_ok=True)
+    observed_sha = _run("git", "rev-parse", "HEAD")
+    if observed_sha != BASE_SHA:
+        raise RuntimeError(f"Base HEAD mismatch: {observed_sha}")
+    status_before = _run("git", "status", "--porcelain=v1", "--untracked-files=all")
+    if status_before:
+        raise RuntimeError(f"Base worktree is not clean before generation: {status_before}")
+
+    random.seed(SEED)
+    np.random.seed(SEED)
+    torch.manual_seed(SEED)
+    torch.use_deterministic_algorithms(True)
+    torch.set_num_threads(1)
+
+    blcs_config, blcs_overrides = _compose_blcs_config()
+    plcs_config, plcs_overrides = _compose_plcs_config()
+    if "court_coordinate_normalization" in blcs_config:
+        raise AssertionError("Frozen-base BLCS config unexpectedly contains normalization metadata.")
+    if "court_coordinate_normalization" in plcs_config:
+        raise AssertionError("Frozen-base PLCS config unexpectedly contains normalization metadata.")
+
+    blcs_fixture = OUT / "datasets/blcs_legacy_v1"
+    plcs_fixture = OUT / "datasets/plcs_legacy_v1"
+    _write_blcs_fixture(blcs_fixture)
+    _write_plcs_fixture(plcs_fixture)
+
+    blcs_dataset = BallTrajectoryDataset(
+        scene_dir=blcs_fixture,
+        split_file=blcs_fixture / "test.txt",
+        config=blcs_config,
+        augment=False,
+    )
+    blcs_dataset.rng = np.random.default_rng(SEED)
+    blcs_sample = blcs_dataset[0]
+    blcs_batch = dict(collate_multiview_trajectories([blcs_sample]))
+
+    plcs_dataset = SceneDataset(
+        scene_dir=plcs_fixture,
+        split_file=plcs_fixture / "test.txt",
+        config=plcs_config,
+        augment=False,
+    )
+    plcs_dataset.rng = np.random.default_rng(SEED)
+    plcs_sample = plcs_dataset[0]
+    plcs_batch = dict(collate_plcs_batch([plcs_sample]))
+
+    for target in (blcs_batch["position_3d"], plcs_batch["position"]):
+        target_m = target * torch.tensor(SCALE, dtype=target.dtype)
+        if not bool((target_m.abs().sum(dim=(0, 1)) > 0).all()):
+            raise AssertionError("Representative target must be nonzero on XYZ.")
+
+    torch.manual_seed(SEED)
+    blcs_binding = compose_blcs_trajectory_model_io(blcs_config)
+    blcs_module = BLCSLightningModule(blcs_config, model_io=blcs_binding).cpu().eval()
+    blcs_checkpoint = OUT / "blcs_representative_legacy_v1.ckpt"
+    _save_checkpoint(blcs_checkpoint, blcs_module, blcs_config)
+
+    torch.manual_seed(SEED)
+    plcs_module = PLCSLightningModule(plcs_config).cpu().eval()
+    plcs_checkpoint = OUT / "plcs_representative_legacy_v1.ckpt"
+    _save_checkpoint(plcs_checkpoint, plcs_module, plcs_config)
+
+    resolver = _resolver()
+    blcs_predictor = BLCSPredictor.load_from_checkpoint(
+        blcs_checkpoint, resolver=resolver, device="cpu"
+    )
+    plcs_predictor = PLCSPredictor.load_from_checkpoint(
+        plcs_checkpoint, resolver=resolver, device="cpu"
+    )
+
+    blcs_reload_binding = compose_blcs_trajectory_model_io(
+        load_checkpoint_config(blcs_checkpoint)
+    )
+    blcs_reloaded = BLCSLightningModule.load_from_checkpoint(
+        blcs_checkpoint,
+        map_location="cpu",
+        model_io=blcs_reload_binding,
+        strict=True,
+        weights_only=False,
+    ).cpu().eval()
+    plcs_reloaded = PLCSLightningModule.load_from_checkpoint(
+        plcs_checkpoint,
+        map_location="cpu",
+        strict=True,
+        weights_only=False,
+    ).cpu().eval()
+
+    blcs_strict_match = _checkpoint_state_matches(blcs_checkpoint, blcs_reloaded)
+    plcs_strict_match = _checkpoint_state_matches(plcs_checkpoint, plcs_reloaded)
+    if not blcs_strict_match or not plcs_strict_match:
+        raise AssertionError("Strictly reloaded Lightning state differs from checkpoint.")
+
+    blcs_reloaded.test_metrics.reset()
+    with torch.no_grad():
+        blcs_result = blcs_reloaded._compute_supervised_result(blcs_batch, "test")
+        blcs_norm = blcs_predictor.predict_batch(blcs_batch, denormalize=False)
+        blcs_meters = blcs_predictor.predict_batch(blcs_batch, denormalize=True)
+    blcs_aggregate_metrics = blcs_reloaded.test_metrics.compute()
+    torch.testing.assert_close(
+        blcs_result["outputs"].position.cpu(), blcs_norm.position, rtol=0.0, atol=0.0
+    )
+    if blcs_norm.velocity is None or blcs_meters.velocity is None:
+        raise AssertionError("Representative BLCS model must predict velocity.")
+    torch.testing.assert_close(
+        blcs_meters.position,
+        blcs_norm.position * torch.tensor(SCALE),
+        rtol=0.0,
+        atol=0.0,
+    )
+    torch.testing.assert_close(
+        blcs_meters.velocity,
+        blcs_norm.velocity * torch.tensor(SCALE),
+        rtol=0.0,
+        atol=0.0,
+    )
+
+    plcs_reloaded.test_metrics.reset()
+    with torch.no_grad():
+        plcs_result = plcs_reloaded._compute_supervised_result(plcs_batch, "test")
+        plcs_norm = plcs_predictor.predict(
+            plcs_batch["human_kp"],
+            plcs_batch["court_kp"],
+            plcs_batch["human_vis"],
+            plcs_batch["padding_mask"],
+            plcs_batch["court_vis"],
+            denormalize=False,
+        )
+        plcs_meters = plcs_predictor.predict(
+            plcs_batch["human_kp"],
+            plcs_batch["court_kp"],
+            plcs_batch["human_vis"],
+            plcs_batch["padding_mask"],
+            plcs_batch["court_vis"],
+            denormalize=True,
+        )
+        plcs_physical = plcs_predictor.predict_multiview_observations(
+            human_kp=plcs_batch["human_kp"].numpy(),
+            court_kp=plcs_batch["court_kp"].numpy(),
+            human_vis=plcs_batch["human_vis"].numpy().astype(np.bool_),
+            padding_mask=plcs_batch["padding_mask"].numpy(),
+            court_vis=plcs_batch["court_vis"].numpy().astype(np.bool_),
+        )
+    plcs_aggregate_metrics = plcs_reloaded.test_metrics.compute()
+    torch.testing.assert_close(
+        plcs_result["outputs"].position.cpu(), plcs_norm["position"], rtol=0.0, atol=0.0
+    )
+    torch.testing.assert_close(
+        plcs_meters["position_meters"],
+        plcs_norm["position"] * torch.tensor(SCALE),
+        rtol=0.0,
+        atol=0.0,
+    )
+    np.testing.assert_array_equal(
+        plcs_physical.position_meters, plcs_meters["position_meters"].numpy()
+    )
+
+    blcs_losses = {
+        name: float(value.detach().cpu().item())
+        for name, value in blcs_result["losses"].items()
+    }
+    blcs_batch_metrics = {
+        name: float(value) for name, value in blcs_result["metrics"].items()
+    }
+    plcs_batch_metrics = {
+        name: float(value) for name, value in plcs_result["metrics"].items()
+    }
+    plcs_loss_values = {
+        name.removeprefix("loss_"): value
+        for name, value in plcs_batch_metrics.items()
+        if name.startswith("loss_")
+    }
+
+    blcs_arrays = {
+        **_tensor_arrays(
+            blcs_batch,
+            ["ball_uv", "ball_vis", "court_kp", "court_vis", "padding_mask"],
+        ),
+        "target_position_normalized": blcs_batch["position_3d"].numpy(),
+        "target_position_meters": blcs_batch["position_3d"].numpy() * SCALE,
+        "target_velocity_world_mps": blcs_batch["velocity_3d"].numpy(),
+        "prediction_position_normalized": blcs_norm.position.numpy(),
+        "prediction_position_meters": blcs_meters.position.numpy(),
+        "prediction_velocity_normalized": blcs_norm.velocity.numpy(),
+        "prediction_velocity_meters_per_second": blcs_meters.velocity.numpy(),
+        **{
+            f"loss_{name}": np.asarray(value, dtype=np.float32)
+            for name, value in blcs_losses.items()
+        },
+        **{
+            f"metric_batch_{name}": np.asarray(value, dtype=np.float64)
+            for name, value in blcs_batch_metrics.items()
+        },
+        **{
+            f"metric_aggregate_{name}": np.asarray(value, dtype=np.float64)
+            for name, value in blcs_aggregate_metrics.items()
+        },
+    }
+    plcs_arrays = {
+        **_tensor_arrays(
+            plcs_batch,
+            ["human_kp", "human_vis", "court_kp", "court_vis", "padding_mask"],
+        ),
+        "target_position_normalized": plcs_batch["position"].numpy(),
+        "target_position_meters": plcs_batch["position"].numpy() * SCALE,
+        "target_rotation_cos_sin": plcs_batch["rotation"].numpy(),
+        "target_human_kp_3d_meters": plcs_batch["human_kp_3d"].numpy(),
+        "prediction_position_normalized": plcs_norm["position"].numpy(),
+        "prediction_position_meters": plcs_meters["position_meters"].numpy(),
+        "prediction_rotation_cos_sin": plcs_norm["rotation"].numpy(),
+        "prediction_yaw_radians": plcs_meters["yaw_radians"].numpy(),
+        **{
+            f"loss_{name}": np.asarray(value, dtype=np.float32)
+            for name, value in plcs_loss_values.items()
+        },
+        **{
+            f"metric_batch_{name}": np.asarray(value, dtype=np.float64)
+            for name, value in plcs_batch_metrics.items()
+        },
+        **{
+            f"metric_aggregate_{name}": np.asarray(value, dtype=np.float64)
+            for name, value in plcs_aggregate_metrics.items()
+        },
+    }
+    blcs_golden = OUT / "blcs_representative_legacy_v1_golden.npz"
+    plcs_golden = OUT / "plcs_representative_legacy_v1_golden.npz"
+    _npz(blcs_golden, blcs_arrays)
+    _npz(plcs_golden, plcs_arrays)
+
+    status_after = _run("git", "status", "--porcelain=v1", "--untracked-files=all")
+    if status_after:
+        raise RuntimeError(f"Base worktree changed during generation: {status_after}")
+
+    checkpoint_payloads = {
+        "blcs": torch.load(blcs_checkpoint, map_location="cpu", weights_only=False),
+        "plcs": torch.load(plcs_checkpoint, map_location="cpu", weights_only=False),
+    }
+    manifest = {
+        "schema_version": 1,
+        "issue": 786,
+        "evidence_kind": "base-compatible representative legacy-v1 parity",
+        "base": {
+            "worktree": str(ROOT),
+            "sha": observed_sha,
+            "tracked_clean_before": status_before == "",
+            "tracked_clean_after": status_after == "",
+        },
+        "runtime": {
+            "python_seed": SEED,
+            "numpy_seed": SEED,
+            "torch_seed": SEED,
+            "torch_deterministic_algorithms": True,
+            "torch_num_threads": 1,
+            "device": "cpu",
+            "dtype": "float32",
+            "court_coordinate_scale_xyz_meters": SCALE.tolist(),
+        },
+        "commands": {
+            "generation": f"cd {ROOT} && .venv/bin/python {OUT / 'generate_representative.py'}",
+            "verification": (
+                f"cd {ROOT} && .venv/bin/python -m json.tool "
+                f"{OUT / 'manifest.json'} >/dev/null && git status --porcelain=v1 "
+                "--untracked-files=all"
+            ),
+        },
+        "tasks": {
+            "blcs": {
+                "model_class": type(blcs_predictor.model).__module__
+                + "."
+                + type(blcs_predictor.model).__qualname__,
+                "io_adapter_class": type(blcs_predictor.io_adapter).__module__
+                + "."
+                + type(blcs_predictor.io_adapter).__qualname__,
+                "lightning_class": BLCSLightningModule.__module__
+                + "."
+                + BLCSLightningModule.__qualname__,
+                "dataset_class": BallTrajectoryDataset.__module__
+                + "."
+                + BallTrajectoryDataset.__qualname__,
+                "predictor_api": "BLCSPredictor.load_from_checkpoint(strict=True, weights_only=False) -> predict_batch",
+                "loss_metric_api": "BLCSLightningModule.load_from_checkpoint(strict=True, weights_only=False) -> _compute_supervised_result -> BLCSLoss/BLCSMetrics",
+                "hydra_config_name": "train",
+                "hydra_overrides": blcs_overrides,
+                "config": OmegaConf.to_container(blcs_config, resolve=True),
+                "parameter_count": sum(parameter.numel() for parameter in blcs_predictor.model.parameters()),
+                "strict_reload": {
+                    "succeeded": True,
+                    "state_matches_checkpoint_exactly": blcs_strict_match,
+                    "state_key_count": len(checkpoint_payloads["blcs"]["state_dict"]),
+                },
+                "metadata_free": {
+                    "checkpoint_has_normalization_metadata": "court_coordinate_normalization" in checkpoint_payloads["blcs"],
+                    "config_has_normalization_metadata": "court_coordinate_normalization" in blcs_config,
+                    "dataset_has_normalization_metadata": False,
+                },
+                "selection": {
+                    "scene_id": "scene_representative_blcs",
+                    "split_index": 0,
+                    "augment": False,
+                    "window": [0, 2],
+                    "cameras": [0],
+                },
+                "target_position_normalized": blcs_arrays["target_position_normalized"].tolist(),
+                "target_position_meters": blcs_arrays["target_position_meters"].tolist(),
+                "prediction_position_normalized": blcs_arrays["prediction_position_normalized"].tolist(),
+                "prediction_position_meters": blcs_arrays["prediction_position_meters"].tolist(),
+                "prediction_velocity_normalized": blcs_arrays["prediction_velocity_normalized"].tolist(),
+                "prediction_velocity_meters_per_second": blcs_arrays["prediction_velocity_meters_per_second"].tolist(),
+                "losses": blcs_losses,
+                "batch_metrics": blcs_batch_metrics,
+                "aggregate_metrics": blcs_aggregate_metrics,
+                "arrays": _array_evidence(blcs_arrays),
+            },
+            "plcs": {
+                "model_class": type(plcs_predictor.model).__module__
+                + "."
+                + type(plcs_predictor.model).__qualname__,
+                "io_adapter_class": type(plcs_predictor.io_adapter).__module__
+                + "."
+                + type(plcs_predictor.io_adapter).__qualname__,
+                "lightning_class": PLCSLightningModule.__module__
+                + "."
+                + PLCSLightningModule.__qualname__,
+                "dataset_class": SceneDataset.__module__ + "." + SceneDataset.__qualname__,
+                "predictor_api": "PLCSPredictor.load_from_checkpoint(strict=True, weights_only=False) -> predict/predict_multiview_observations",
+                "loss_metric_api": "PLCSLightningModule.load_from_checkpoint(strict=True, weights_only=False) -> _compute_supervised_result -> PLCSLoss/PLCSMetrics",
+                "hydra_config_name": "train",
+                "hydra_overrides": plcs_overrides,
+                "config": OmegaConf.to_container(plcs_config, resolve=True),
+                "parameter_count": sum(parameter.numel() for parameter in plcs_predictor.model.parameters()),
+                "strict_reload": {
+                    "succeeded": True,
+                    "state_matches_checkpoint_exactly": plcs_strict_match,
+                    "state_key_count": len(checkpoint_payloads["plcs"]["state_dict"]),
+                },
+                "metadata_free": {
+                    "checkpoint_has_normalization_metadata": "court_coordinate_normalization" in checkpoint_payloads["plcs"],
+                    "config_has_normalization_metadata": "court_coordinate_normalization" in plcs_config,
+                    "dataset_has_normalization_metadata": False,
+                },
+                "selection": {
+                    "scene_id": "scene_representative_plcs",
+                    "split_index": 0,
+                    "augment": False,
+                    "window": [0, 2],
+                    "cameras": [0],
+                },
+                "target_position_normalized": plcs_arrays["target_position_normalized"].tolist(),
+                "target_position_meters": plcs_arrays["target_position_meters"].tolist(),
+                "target_rotation_cos_sin": plcs_arrays["target_rotation_cos_sin"].tolist(),
+                "prediction_position_normalized": plcs_arrays["prediction_position_normalized"].tolist(),
+                "prediction_position_meters": plcs_arrays["prediction_position_meters"].tolist(),
+                "prediction_rotation_cos_sin": plcs_arrays["prediction_rotation_cos_sin"].tolist(),
+                "prediction_yaw_radians": plcs_arrays["prediction_yaw_radians"].tolist(),
+                "losses": plcs_loss_values,
+                "batch_metrics": plcs_batch_metrics,
+                "aggregate_metrics": plcs_aggregate_metrics,
+                "arrays": _array_evidence(plcs_arrays),
+            },
+        },
+        "artifacts": {
+            "generator": {
+                "path": str(OUT / "generate_representative.py"),
+                "sha256": _sha256(OUT / "generate_representative.py"),
+            },
+            "blcs_checkpoint": {
+                "path": str(blcs_checkpoint),
+                "sha256": _sha256(blcs_checkpoint),
+                "byte_count": blcs_checkpoint.stat().st_size,
+            },
+            "plcs_checkpoint": {
+                "path": str(plcs_checkpoint),
+                "sha256": _sha256(plcs_checkpoint),
+                "byte_count": plcs_checkpoint.stat().st_size,
+            },
+            "blcs_golden": {
+                "path": str(blcs_golden),
+                "sha256": _sha256(blcs_golden),
+                "byte_count": blcs_golden.stat().st_size,
+            },
+            "plcs_golden": {
+                "path": str(plcs_golden),
+                "sha256": _sha256(plcs_golden),
+                "byte_count": plcs_golden.stat().st_size,
+            },
+            "blcs_dataset_fixture": {
+                "path": str(blcs_fixture),
+                **_tree_evidence(blcs_fixture),
+            },
+            "plcs_dataset_fixture": {
+                "path": str(plcs_fixture),
+                **_tree_evidence(plcs_fixture),
+            },
+        },
+        "portability": {
+            "cpu_float32_tolerance": {"atol": 1e-5, "rtol": 0.0},
+            "risk": "Exact whole-file checkpoint/NPZ hashes may vary across PyTorch/NumPy serialization versions; array hashes and scalar values are the portable parity contract.",
+        },
+    }
+    _write_json(OUT / "manifest.json", manifest)
+
+
+if __name__ == "__main__":
+    main()

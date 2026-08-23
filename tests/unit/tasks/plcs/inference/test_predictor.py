@@ -62,7 +62,7 @@ def test_yaw_radians_round_trips_dataset_cos_sin_encoding() -> None:
         dim=-1,
     )
     predictor = PLCSPredictor(
-        model=_FixedRotationModel(dataset_encoded_rotation),
+        model=_FixedRotationModel(dataset_encoded_rotation, position_value=1.0),
         adapter=PLCSModelIOAdapter(
             model_type=_FixedRotationModel,
             profile=PLCSInputProfile.MULTIVIEW,
@@ -87,6 +87,8 @@ def test_yaw_radians_round_trips_dataset_cos_sin_encoding() -> None:
 
     assert torch.allclose(result["rotation"], dataset_encoded_rotation)
     assert torch.allclose(result["yaw_radians"], angles, atol=1e-6)
+    v1_scale = torch.tensor([5.485, 11.885, 1.07]).expand(2, 3, 3)
+    torch.testing.assert_close(result["position_meters"], v1_scale)
 
     physical = predictor.predict_multiview_observations(
         human_kp=np.zeros((*human_shape, 17, 2), dtype=np.float32),
@@ -98,6 +100,12 @@ def test_yaw_radians_round_trips_dataset_cos_sin_encoding() -> None:
     np.testing.assert_allclose(physical.yaw_radians, angles.numpy(), atol=1e-6)
     assert physical.position_meters.shape == (2, 3, 3)
     assert physical.position_meters.dtype == np.float32
+    np.testing.assert_allclose(
+        physical.position_meters,
+        v1_scale.numpy(),
+        atol=0.0,
+        rtol=0.0,
+    )
 
 
 def test_v2_predictor_returns_meter_translation_without_rescaling_canonical_pose() -> None:
