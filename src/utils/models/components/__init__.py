@@ -30,6 +30,11 @@ from src.utils.models.components.cswa import (
     CSWAConfig,
 )
 from src.utils.models.components.ffn_layers import MLP, SwiGLU, default_ffn_dim
+from src.utils.models.components.fixed_query_track_ablation_stage import (
+    FFNMode,
+    FixedQueryTrackAblationStage,
+    MHCWriteback,
+)
 from src.utils.models.components.fixed_query_track_stage import FixedQueryTrackStage
 from src.utils.models.components.moe import MoEConfig, MoELayer, MoERouting, TopKRouter
 from src.utils.models.components.norm import LayerNorm, RMSNorm
@@ -68,5 +73,8 @@ __all__ = [
     "TransformerBlock",
     "CrossAttnBlockConfig",
     "CrossAttnBlock",
+    "FFNMode",
+    "FixedQueryTrackAblationStage",
     "FixedQueryTrackStage",
+    "MHCWriteback",
 ]

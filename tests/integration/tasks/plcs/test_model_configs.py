@@ -4,8 +4,14 @@ from pathlib import Path
 
 import pytest
 from hydra import compose, initialize_config_dir
+from omegaconf import open_dict
 
-from src.tasks.plcs.configuration import PLCSModelConfig
+from src.tasks.plcs.configuration import PLCSModelConfig, PLCSTrainingConfig
+from src.utils.configuration import (
+    MissingConfigurationKeyError,
+    SemanticConfigurationError,
+    UnknownConfigurationKeyError,
+)
 
 _CONFIG_DIR = Path("src/tasks/plcs/configs").resolve()
 
@@ -54,3 +60,70 @@ def test_track_query_size_configs_compose_and_validate(
     assert parsed.name == "plcs_track_query"
     assert parsed.integer("hidden_dim") == hidden_dim
     assert parsed.integer("num_stages") == num_stages
+
+
+@pytest.mark.parametrize(
+    ("condition", "ffn_mode", "mhc_writeback"),
+    [
+        ("a", "per_attention", "after_object_temporal"),
+        ("b", "shared", "after_object_temporal"),
+        ("c", "per_attention", "layer_end"),
+        ("d", "shared", "layer_end"),
+    ],
+)
+def test_all_four_track_query_ablation_configs_compose_and_validate(
+    condition: str,
+    ffn_mode: str,
+    mhc_writeback: str,
+) -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_tracking",
+            overrides=[f"model=track_query_ablation_{condition}"],
+        )
+
+    runtime = PLCSTrainingConfig.from_config(config)
+
+    assert runtime.model.name == "plcs_track_query_ablation"
+    assert runtime.model.string("ffn_mode") == ffn_mode
+    assert runtime.model.string("mhc_writeback") == mhc_writeback
+    assert runtime.model.integer("num_queries") == 4
+
+
+@pytest.mark.parametrize(
+    ("violation", "error"),
+    [
+        ("missing_ffn", MissingConfigurationKeyError),
+        ("missing_writeback", MissingConfigurationKeyError),
+        ("unknown", UnknownConfigurationKeyError),
+        ("invalid_ffn", SemanticConfigurationError),
+        ("invalid_writeback", SemanticConfigurationError),
+        ("non_swiglu", SemanticConfigurationError),
+    ],
+)
+def test_ablation_axes_reject_missing_unknown_invalid_and_inconsistent_values(
+    violation: str,
+    error: type[Exception],
+) -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_tracking",
+            overrides=["model=track_query_ablation_a"],
+        )
+
+    with open_dict(config.model):
+        if violation == "missing_ffn":
+            del config.model["ffn_mode"]
+        elif violation == "missing_writeback":
+            del config.model["mhc_writeback"]
+        elif violation == "unknown":
+            config.model["legacy_ablation"] = True
+        elif violation == "invalid_ffn":
+            config.model.ffn_mode = "legacy"
+        elif violation == "invalid_writeback":
+            config.model.mhc_writeback = "before_spatial"
+        else:
+            config.model.ffn_type = "mlp"
+
+    with pytest.raises(error):
+        PLCSModelConfig.from_mapping(config.model)

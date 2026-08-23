@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TypeAlias, cast, overload
+from typing import Protocol, TypeAlias, TypeVar, cast
 
 from torch import nn
 
 from src.tasks.base.model_io import (
     BoundModelIO,
     ModelAdapterMismatchError,
+    ModelCall,
     bind_model_io,
 )
 from src.tasks.plcs.configuration import PLCSTrainingConfig
@@ -32,6 +33,9 @@ from src.tasks.plcs.models.plcs_multiview_axial_split_model import (
     PLCSMultiViewAxialSplitModel,
 )
 from src.tasks.plcs.models.plcs_multiview_model import PLCSMultiViewModel
+from src.tasks.plcs.models.plcs_track_query_ablation_model import (
+    PLCSTrackQueryAblationModel,
+)
 from src.tasks.plcs.models.plcs_track_query_model import PLCSTrackQueryModel
 
 PLCSRawOutput = Mapping[str, object]
@@ -42,21 +46,27 @@ PLCSTrackingBoundModelIO: TypeAlias = BoundModelIO[
     Mapping[str, object], PLCSRawOutput, PLCSTrackingDecodedPrediction
 ]
 PLCSBoundModelIO: TypeAlias = PLCSStandardBoundModelIO | PLCSTrackingBoundModelIO
+DecodedPredictionT_co = TypeVar("DecodedPredictionT_co", covariant=True)
 
 
-@overload
+class _PLCSBindingAdapter(Protocol[DecodedPredictionT_co]):
+    """Structural adapter contract preserving the bound decoded type."""
+
+    @property
+    def model_type(self) -> type[nn.Module]: ...
+
+    def build_call(self, batch: Mapping[str, object]) -> ModelCall: ...
+
+    def decode_output(
+        self,
+        output: PLCSRawOutput,
+    ) -> DecodedPredictionT_co: ...
+
+
 def bind_plcs_model_io(
-    model: nn.Module, adapter: PLCSModelIOAdapter
-) -> PLCSStandardBoundModelIO: ...
-
-
-@overload
-def bind_plcs_model_io(
-    model: nn.Module, adapter: PLCSTrackQueryIOAdapter
-) -> PLCSTrackingBoundModelIO: ...
-
-
-def bind_plcs_model_io(model: nn.Module, adapter: PLCSAdapter) -> PLCSBoundModelIO:
+    model: nn.Module,
+    adapter: _PLCSBindingAdapter[DecodedPredictionT_co],
+) -> BoundModelIO[Mapping[str, object], PLCSRawOutput, DecodedPredictionT_co]:
     """Bind an exact PLCS model/adapter pair and reject subclass mismatches."""
     if type(model) is not adapter.model_type:
         expected = adapter.model_type
@@ -65,7 +75,7 @@ def bind_plcs_model_io(model: nn.Module, adapter: PLCSAdapter) -> PLCSBoundModel
             f"{expected.__module__}.{expected.__qualname__}, got "
             f"{type(model).__module__}.{type(model).__qualname__}."
         )
-    return cast(PLCSBoundModelIO, bind_model_io(model, adapter))
+    return bind_model_io(model, adapter)
 
 
 def _standard_adapter(
@@ -185,10 +195,18 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
             num_court_tokens=14,
             num_joints=model_cfg.integer("num_joints"),
         )
+    elif model_name == "plcs_track_query_ablation":
+        model = PLCSTrackQueryAblationModel(model_cfg)
+        adapter = PLCSTrackQueryIOAdapter(
+            model_type=PLCSTrackQueryAblationModel,
+            num_queries=model_cfg.integer("num_queries"),
+            num_court_tokens=14,
+            num_joints=model_cfg.integer("num_joints"),
+        )
     else:
         raise ValueError(f"Unsupported validated PLCS model {model_name!r}.")
 
-    return bind_plcs_model_io(model, adapter)
+    return cast(PLCSBoundModelIO, bind_plcs_model_io(model, adapter))
 
 
 __all__ = [

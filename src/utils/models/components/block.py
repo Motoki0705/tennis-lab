@@ -107,6 +107,8 @@ class TransformerBlockConfig:
         ffn_type: FFN implementation to use.
         cswa: Compressed sliding-window attention configuration. Required only
             when ``attention_type='cswa'``.
+        ffn_enabled: Whether this block owns and applies an FFN. The default
+            preserves the legacy block parameter and execution contract.
     """
 
     dim: int
@@ -122,8 +124,9 @@ class TransformerBlockConfig:
     rope_base: float
     # FFN
     ffn_type: Literal["swiglu", "mlp"]
-    # CSWA (kept last with a default for existing dataclass call compatibility)
+    # Optional fields keep their legacy positional order; new options append.
     cswa: CSWAConfig | None = None
+    ffn_enabled: bool = True
 
 
 class TransformerBlock(nn.Module):
@@ -188,13 +191,21 @@ class TransformerBlock(nn.Module):
         else:
             raise ValueError(f"Unsupported attention_type={cfg.attention_type}")
 
-        self.ffn_norm = RMSNorm(cfg.dim)
-        if cfg.ffn_type == "swiglu":
-            self.ffn: nn.Module = SwiGLU(cfg.dim, cfg.ffn_dim)
-        elif cfg.ffn_type == "mlp":
-            self.ffn = MLP(cfg.dim, cfg.ffn_dim)
+        if type(cfg.ffn_enabled) is not bool:
+            raise TypeError("ffn_enabled must be exactly bool")
+        self.ffn_norm: RMSNorm | None
+        self.ffn: nn.Module | None
+        if cfg.ffn_enabled:
+            self.ffn_norm = RMSNorm(cfg.dim)
+            if cfg.ffn_type == "swiglu":
+                self.ffn = SwiGLU(cfg.dim, cfg.ffn_dim)
+            elif cfg.ffn_type == "mlp":
+                self.ffn = MLP(cfg.dim, cfg.ffn_dim)
+            else:
+                raise ValueError(f"Unsupported ffn_type={cfg.ffn_type}")
         else:
-            raise ValueError(f"Unsupported ffn_type={cfg.ffn_type}")
+            self.ffn_norm = None
+            self.ffn = None
         self.register_forward_pre_hook(
             self._validate_forward_arguments,
             with_kwargs=True,
@@ -335,6 +346,8 @@ class TransformerBlock(nn.Module):
             state_valid=state_valid,
         )
         x_attn = x + attn_output
+        if self.ffn is None or self.ffn_norm is None:
+            return attn_output
         ffn_output = self.ffn(self.ffn_norm(x_attn))
         return cast(torch.Tensor, attn_output + ffn_output)
 

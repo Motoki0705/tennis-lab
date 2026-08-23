@@ -117,7 +117,43 @@ def build_fixed_query_padding_masks(
     )
 
 
+def build_compressed_spatial_attention_keep_mask(
+    padding_mask: Tensor,
+    *,
+    num_queries: int,
+) -> Tensor:
+    """Build the dense ``Q + V`` keep-mask for delayed mHC writeback.
+
+    Query validity is frame-level and each compressed object token retains its
+    view-specific context validity. Visibility is intentionally absent from
+    this boundary. The shared dense-mask builder performs the same token-0
+    repair used by the expanded fixed-query path for all-padding rows.
+    """
+    masks = build_fixed_query_padding_masks(
+        padding_mask,
+        num_queries=num_queries,
+    )
+    batch_size, num_views, num_frames = masks.context_valid.shape
+    query_valid = masks.frame_valid.unsqueeze(-1).expand(
+        batch_size,
+        num_frames,
+        num_queries,
+    )
+    object_valid = masks.context_valid.permute(0, 2, 1)
+    spatial_valid = torch.cat((query_valid, object_valid), dim=-1).flatten(0, 1)
+    attention_keep_mask, _ = build_self_attn_mask(spatial_valid)
+    expected_width = num_queries + num_views
+    if attention_keep_mask.shape != (
+        batch_size * num_frames,
+        expected_width,
+        expected_width,
+    ):
+        raise RuntimeError("compressed spatial keep-mask has an invalid shape")
+    return attention_keep_mask
+
+
 __all__ = [
     "FixedQueryPaddingMasks",
+    "build_compressed_spatial_attention_keep_mask",
     "build_fixed_query_padding_masks",
 ]
