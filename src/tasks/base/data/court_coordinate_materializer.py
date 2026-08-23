@@ -308,10 +308,17 @@ def _write_contract_metadata(
     *,
     source_contract: CourtCoordinateNormalization,
     target_contract: CourtCoordinateNormalization,
+    validated_source_root_metadata_absent: bool,
 ) -> None:
     root_path = root / "meta.json"
+    if root_path.exists():
+        root_document = _load_json_object(root_path)
+    elif validated_source_root_metadata_absent and source_contract.version == "v1":
+        root_document = {}
+    else:
+        root_document = _load_json_object(root_path)
     root_metadata = _replace_validated_source_metadata(
-        _load_json_object(root_path),
+        root_document,
         source_contract=source_contract,
         target_contract=target_contract,
         location=root_path,
@@ -401,6 +408,7 @@ def _materialize_into_staging(
     config: CourtCoordinateMaterializationConfig,
     source: Path,
     staging: Path,
+    validated_source_root_metadata_absent: bool,
 ) -> tuple[dict[str, object], float]:
     _copy_source_dataset(source, staging)
     source_scenes = _scene_directories(source)
@@ -447,6 +455,7 @@ def _materialize_into_staging(
         staging_scenes,
         source_contract=config.source_contract,
         target_contract=config.target_contract,
+        validated_source_root_metadata_absent=validated_source_root_metadata_absent,
     )
     validate_dataset_court_coordinate_contract(
         staging,
@@ -479,10 +488,13 @@ def materialize_court_coordinate_normalization_dataset(
     """Publish one complete non-overwriting, version-qualified dataset copy."""
     source, target = _validate_paths(config)
     source_scenes = _scene_directories(source)
-    validate_dataset_court_coordinate_contract(
+    source_validation = validate_dataset_court_coordinate_contract(
         source,
         config.source_contract,
         scene_paths=source_scenes,
+    )
+    validated_source_root_metadata_absent = (
+        source_validation.legacy_metadata_free and not (source / "meta.json").exists()
     )
 
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -497,6 +509,7 @@ def materialize_court_coordinate_normalization_dataset(
             config=config,
             source=source,
             staging=staging,
+            validated_source_root_metadata_absent=validated_source_root_metadata_absent,
         )
         if target.exists():
             raise FileExistsError(

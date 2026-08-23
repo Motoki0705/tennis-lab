@@ -306,15 +306,13 @@ class CUDAPLCSExecutionBackend:
         expected_instance_ids: tuple[int, ...],
     ) -> tuple[ForegroundDelta, dict[int, int]]:
         """Delegate one sparse sample to the CUDA compositor."""
-        return cast(
-            tuple[ForegroundDelta, dict[int, int]],
-            compositor.compose_delta(
-                frame_index=frame_index,
-                camera=camera,
-                gaussians_scene=gaussians_scene,
-                expected_instance_ids=expected_instance_ids,
-            ),
+        result: tuple[ForegroundDelta, dict[int, int]] = compositor.compose_delta(
+            frame_index=frame_index,
+            camera=camera,
+            gaussians_scene=gaussians_scene,
+            expected_instance_ids=expected_instance_ids,
         )
+        return result
 
 
 def _model_data(value: object) -> SMPLHModelData:
