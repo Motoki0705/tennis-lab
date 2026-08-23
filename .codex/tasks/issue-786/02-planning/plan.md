@@ -1,7 +1,7 @@
 # Plan
 
 - Issue: #786
-- Attempt: 2
+- Attempt: 3
 - Status: COMPLETE
 - Frozen issue SHA-256: `6279b189d4b3c0a7c11da3e605fbc252624f5a60ec808db2c476e061f55fa6a9`
 - Frozen acceptance checklist SHA-256: `95bcebf4388fdba9773e3c538c9e22caf82b6e4a413ec1241e9a58b0c4483032`
@@ -26,7 +26,7 @@
 | AC-014 | `v2`のBLCS / PLCS default position lossとHungarian position costに、旧axis-scale補正由来の非等方weightが残っていない。`v1`の既存config挙動は維持される。 | Split version-specific defaults: v1 retains historical weights; v2 uses uniform axis weights unless an explicitly documented task policy overrides them. | Loss/matching config and numeric tests in task unit checks. |
 | AC-015 | 新規生成dataset metadataにnormalization version、`scale_xyz`、position / velocity単位が保存され、root / scene間のmissing・unknown・mixed contractをloaderが拒否する。 | Retain complete root/scene metadata and make the PLCS public `load_scene`/visualization bundle contract mandatory so no owned load path can bypass validation. | Public-loader missing/unknown/mixed/mismatch tests plus `unit-contract` and materialization evidence. |
 | AC-016 | 新規checkpoint metadataにnormalization versionと`scale_xyz`が保存され、checkpoint由来のversionが推論時に復元・検証される。 | Persist the composed/resolved contract in Lightning config and add shared extraction/validation used by BLCS/PLCS/SLCS loaders/predictors. | Checkpoint round-trip/mismatch tests in `unit-contract` and task checks. |
-| AC-017 | 既存`v1` dataset / checkpointは上書きされず、`v2` dataset / checkpointとartifact名・metadataの両方で識別できる。 | Use `norm-v1`/`norm-v2` qualified output configs and reject input/output identity in the materializer. | Artifact-name/metadata assertions plus recorded commands. |
+| AC-017 | 既存`v1` dataset / checkpointは上書きされず、`v2` dataset / checkpointとartifact名・metadataの両方で識別できる。 | Retain materializer protections and add primary PLCS publication guards: selected v2 standalone-generation/training roots require a delimiter-bounded `norm_v2` token in one configured relative path component; the generator validates before its first write; the writer rejects non-empty roots and colliding scene directories. v1/default remains compatible and an empty destination remains valid. | New `plcs-artifact-preservation` config/writer/entrypoint byte-preservation cases, existing materializer assertions, `precommit-all`, and `full-pytest`. |
 | AC-018 | BLCS / PLCSの`v2` datasetが別versionとして生成され、保存normalized値をmetersへ戻した値が生成時world値と最大絶対誤差`1e-5m`以下で一致する。 | Add a Hydra materialization entrypoint that copies legacy scenes into separate v2 roots, recomputes only normalized position from physical/world or v1-resolved values, and records hashes/contracts. | `integration-normalization` bounded fixture plus full materialization validation log/manifest. |
 | AC-019 | `v2`のBLCS / PLCS baselineを再学習し、`v1` baselineとの比較を物理m単位の軸別metricと統合metricで記録する。 | Run controlled v1/v2 pairs for BLCS and PLCS with identical architecture/seed/data scenes via shared training queue; register four run nodes and one group node with commands/metrics. | Training-queue completion evidence, run bundles, `knowledge-graph`, physical metric comparison. |
 | AC-020 | BLCS / PLCSについて、`v1`と`v2`それぞれのCPU smoke testで`dataset load -> model forward -> loss -> metric -> denormalized output -> projection/render`が完走する。 | Replace the standalone NumPy/Identity surrogate with complete two-frame versioned fixtures, real `BallTrajectoryDataset`/PLCS `SceneDataset`, tiny actual `BLCSModel`/`PLCSMultiViewModel` through their adapters, real losses/metrics, and projection/renderer. | `integration-normalization` asserts actual loader/model types and the full CPU chain for both tasks/versions. |
@@ -44,6 +44,7 @@
 - Formal experiment evidence: `knowledge/nodes/run-i786-*.md`, `knowledge/nodes/group-i786-coordinate-normalization-v2.md`, corresponding small reproducibility bundles under `knowledge/runs/`; large datasets/checkpoints/logs remain outside git.
 - Tests are not owned by production Implementers. The independent Test Writer will place pure tests under mirrored `tests/unit/...` paths from `checks.json` and cross-task CPU smoke at `tests/integration/tasks/test_court_coordinate_normalization_smoke.py`.
 - Attempt-2 production repair is limited to PLCS public scene-loader propagation. The parent produces raw base-revision representative checkpoint/data goldens in a detached worktree; only the independent Test Writer may add the committed fixture and test changes.
+- Attempt-3 AC-017 production scope is limited to a task-local PLCS artifact-path validator, `PLCSGenerationConfig` and `PLCSTrainingConfig` publication-path checks, `PLCSDatasetWriter` occupancy/scene exclusivity, and reordering standalone `generate_dataset.py` so writer validation precedes `config.yaml`. Compact synthetic scene workspace publication is excluded because it has no selectable v2 artifact and intentionally owns a fixed mutable workspace path.
 
 ## Implementation topology and ownership
 
@@ -52,18 +53,21 @@
 - The parent is the sole implementation integrator: resolves cross-task config composition, performs repository-wide fixed-scale inventory, writes `implementation.md`, runs materialization/training operations, and registers knowledge evidence.
 - Independent Preflight Reviewer, Test Writer, Seal Reviewer and Issue-only Validator remain sequential and own only their prescribed artifacts/tests.
 - Attempt 2 is sequential: one bounded production Implementer owns only the PLCS loader contract; the parent owns detached-base representative artifact generation and final integration. No production worker edits tests.
+- Attempt 3 is sequential: one bounded production Implementer owns only the AC-017 PLCS path/config/writer/standalone-entrypoint sources and task documentation if needed. The independent Test Writer alone owns all new preservation tests. The parent integrates artifacts and keeps the prior normalization implementation sealed from unrelated refactoring.
 
 ## Independent test work unit
 
 - After production Preflight PASS, one independent Test Writer owns all test changes. Unit tests mirror `src/` only for the new shared/base pure modules and high-value task logic; renderer/model-forward flows live in the single integration smoke.
 - Required cases: v1/v2 mappings and unknown version; shape-generic NumPy/Torch round trip; aspect ratio; v1 golden behavior; metadata-free v1 and v2 rejection; root/scene/checkpoint mismatch matrix; BLCS velocity/gravity/projection/metric/predictor; PLCS translation versus canonical metres and renderer; SLCS scalar uncertainty/SceneResult metres; v2 equal physical loss/beta; materializer non-overwrite and physical round trip; both-version CPU task flow.
 - Attempt-2 required cases add frozen-base metadata-free representative checkpoint/data parity, mandatory PLCS public-loader metadata rejection, actual task dataset/model CPU chains, and default-v1 standard/tracking predictor physical scaling. A fixture-generation failure is not a skip-based PASS.
+- Attempt-3 required cases add delimiter-bound v2-name positive/lookalike matrices; bad generation/training paths failing before any destination creation; non-empty root/config/root-metadata/scene sentinel byte preservation; exclusive scene collision; empty qualified v2 and unqualified v1 controls; shipped v1/v2 config composition; and existing materializer non-overwrite regression.
 
 ## Canonical verification commands
 
 - `unit-contract`: shared resolver, geometry, dataset and checkpoint contract.
 - `unit-blcs`: BLCS generation, gravity/loss/matching/metric/predictor/checkpoint.
 - `unit-plcs`: PLCS targets, generation, loss and both predictors.
+- `plcs-artifact-preservation`: AC-017 primary PLCS path/config/writer/entrypoint preservation and control cases.
 - `unit-slcs`: SLCS dataset/adapter/predictor/metrics and SceneResult units.
 - `integration-normalization`: cross-task v1/v2 CPU smoke and bounded materialization.
 - `legacy-v1-checkpoint-parity`: frozen-base metadata-free representative BLCS/PLCS checkpoint inference, loss, and metre-metric parity plus explicit v2 rejection before config/state use.
@@ -80,6 +84,10 @@
 4. Parent integrates implementation and evidence handoffs, records exact adapter amendments/golden provenance in `implementation.md`, and runs attempt-2 discovery Preflight using only frozen Validator-return categories.
 5. After Preflight PASS, a fresh Test Writer commits the base goldens, adds strict positive/negative real-checkpoint parity, replaces the surrogate CPU smoke with actual dataset/model chains, adds mandatory PLCS loader failures and v1/default predictor scale assertions, then runs every test-stage canonical check.
 6. Repeat Seal and Issue-only validation on one stable candidate. Only Validator PASS may proceed to PR packaging/finalization.
+7. Attempt 3 adds a PLCS-owned delimiter-bound `norm_v2` path predicate and applies it at typed standalone generation/training boundaries before any runner or filesystem publication.
+8. Make `PLCSDatasetWriter` reject non-empty roots and use exclusive scene creation; construct it before the standalone generator saves `config.yaml`. Do not apply durable-name policy to anonymous chunk roots.
+9. Run one bounded AC-017 Preflight, then a fresh Test Writer adds preservation/control coverage and executes every canonical test including `plcs-artifact-preservation`; follow with Seal and Issue-only validation.
+10. Update existing PR #792 only after the new Validator PASS; capture/finalize only the remote final head.
 
 ## Validation strategy
 
@@ -87,6 +95,7 @@
 - v1 is checked by numeric golden/regression evidence, not only round trip. v2 is checked by aspect ratio, equal physical loss, physical gravity and metre reconstruction.
 - Repository-wide deterministic `rg` inventory confirms remaining `COURT_COORD_SCALE_*` references are physical geometry, documented v1 aliases, or explicitly version-resolved compatibility paths.
 - Attempt-2 Preflight may additionally inspect only frozen-base representative artifact provenance/current-v1 parity feasibility, explicit-v2 metadata rejection, mandatory PLCS scene-loader call graph, actual tiny-model/loader feasibility, and default-v1 predictor scale consumers. These are frozen Validator-return closure categories, not an open-ended campaign.
+- Attempt-3 Preflight is bounded to AC-017: parsed v2 token grammar, first-write ordering, non-empty-root/scene collision refusal, generation/training publication callers, v1/empty-root controls, shipped config composition, materializer regression, and byte-preservation diagnostics. It must not reopen other normalization semantics or compact-workspace layout.
 - Operational evidence uses identical physical scenes and controlled v1/v2 training pairs; comparisons are reported only in physical metres, never raw normalized loss alone.
 - Final Validator receives the frozen Issue and sealed candidate only and must substantively verify all 22 ACs.
 
@@ -95,6 +104,7 @@
 - Do not alter physical court/net dimensions, court axes/origin, camera/world/UV conventions, SMPL/canonical pose units, production metre arrays, or SceneResult physical units.
 - Do not change BLCS shot/apex generation policy, repair the old 28m lob distribution, auto-convert model weights, infer versions from values, overwrite legacy artifacts, or make v2 a process-global mutable singleton.
 - Do not broaden SLCS scalar uncertainty into a per-axis prediction head; preserve the scalar convention while making its scale version-aware.
+- Do not version or redesign the compact synthetic `workspace/datasets/plcs` owner in attempt 3: it cannot select v2 and is an intentional mutable scene-pipeline workspace, not a primary versioned training dataset/checkpoint publication root.
 
 ## Risks, rollback, and open decisions
 
@@ -105,3 +115,4 @@
 - Main risks are config paths that omit the shared group, default arguments capturing v1, scene subsets escaping metadata validation, PLCS renderer/canonical coupling, SLCS uncertainty units, and long training. Preflight may use only the bounded diagnostics listed in Validation strategy plus config-composition, metadata-mutation, unit-round-trip, checkpoint-mismatch and materialization-smoke categories.
 - Tester cycle 1 exposed a baseline-environment coverage gap: `full-pytest` combined `CUDA_VISIBLE_DEVICES=""` with existing mandatory CUDA tests and lacked the private NHT submodule config. The repaired authority keeps all normalization smokes CPU-only, exposes only GPU 0 for the repository-wide test, and requires a worktree-local non-symlink NHT config. This changes test environment authority only, not Issue production behavior or acceptance scope.
 - Attempt-2 risks are confusing already-obsolete archived files with normalization compatibility, fixture provenance drift, and a nominal smoke that substitutes a generic model. Mitigations are no legacy architecture conversion, committed frozen-base artifact/golden hashes and generation provenance, explicit v1/v2 metadata guards, and actual task class assertions. If frozen-base representative artifacts cannot be generated and replayed, AC-003/004 remain NOT VERIFIED and the task blocks rather than silently skipping.
+- Attempt-3 freezes the name grammar to a delimiter-bounded exact `norm_v2` token within one configured relative path component, preserving shipped `plcs_broadcast_norm_v2` and `baseline_norm_v2` names while rejecting `norm_v20`, `normalization_v2`, `misnamed-v2`, and a v1-labelled root. Names remain an additional publication identity guard; metadata is still authoritative for runtime compatibility. Default/v1 paths remain unqualified-compatible, and any non-empty destination is refused rather than merged or cleaned.
