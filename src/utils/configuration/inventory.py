@@ -139,6 +139,9 @@ _PATH_AUTHORITY = "src.utils.configuration.paths.PathResolver.resolve"
 _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.synthetic_data_generation.scripts.run_scene_pipeline": "synthetic.scene_pipeline",
     "src.synthetic_data_generation.scripts.visualize_dataset": "synthetic.dataset_visualization",
+    "src.tasks.base.scripts.materialize_court_coordinate_normalization": (
+        "base.materialize_court_coordinate_normalization"
+    ),
     "src.tasks.ball_detection.scripts.analyze_web_bbox_ratio": "ball.web_tool",
     "src.tasks.ball_detection.scripts.convert_web_dataset": "ball.web_tool",
     "src.tasks.ball_detection.scripts.eval": "ball.eval",
@@ -197,6 +200,10 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.synthetic_data_generation.scripts.visualize_dataset": (
         "src.synthetic_data_generation.visualization.configuration."
         "validate_dataset_visualization_boundary"
+    ),
+    "src.tasks.base.scripts.materialize_court_coordinate_normalization": (
+        "src.tasks.base.scripts.materialize_court_coordinate_normalization."
+        "_validate_boundary"
     ),
     "src.tasks.ball_detection.scripts.analyze_web_bbox_ratio": "src.tasks.ball_detection.configuration.validate_web_tool",
     "src.tasks.ball_detection.scripts.convert_web_dataset": "src.tasks.ball_detection.configuration.validate_web_tool",
@@ -324,6 +331,10 @@ _RUNTIME_BOUNDARIES = (
     _runtime_boundary(
         "synthetic_data_generation",
         "src.synthetic_data_generation.scripts.visualize_dataset",
+    ),
+    _runtime_boundary(
+        "base",
+        "src.tasks.base.scripts.materialize_court_coordinate_normalization",
     ),
     _runtime_boundary(
         "ball_detection", "src.tasks.ball_detection.scripts.analyze_web_bbox_ratio"
