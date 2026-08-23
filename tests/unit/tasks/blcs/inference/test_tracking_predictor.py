@@ -112,6 +112,35 @@ def test_predictor_is_the_only_boundary_that_pads_short_candidates() -> None:
         )
 
 
+def test_default_v1_tracking_predictor_returns_physical_scale() -> None:
+    binding = cast(
+        "TrackQueryBoundModelIO",
+        bind_model_io(
+            _FixedTrackingModel(),
+            TrackQueryModelIOAdapter(
+                num_court_tokens=14,
+                num_queries=2,
+                presence_threshold=0.5,
+            ),
+        ),
+    )
+    predictor = BLCSTrackingPredictor(binding, torch.device("cpu"))
+
+    result = predictor.predict(
+        ball_uv=torch.zeros(1, 1, 2, 2, 2),
+        ball_vis=torch.ones(1, 1, 2, 2, dtype=torch.bool),
+        court_kp=torch.zeros(1, 1, 2, 14, 2),
+        court_vis=torch.ones(1, 1, 2, 14, dtype=torch.bool),
+        padding_mask=torch.zeros(1, 1, 2, dtype=torch.bool),
+        denormalize=True,
+    )
+
+    torch.testing.assert_close(
+        result.position,
+        torch.tensor([5.485, 11.885, 1.07]).expand(1, 2, 2, 3),
+    )
+
+
 def test_v2_tracking_predictor_returns_meter_valued_positions() -> None:
     binding = cast(
         "TrackQueryBoundModelIO",

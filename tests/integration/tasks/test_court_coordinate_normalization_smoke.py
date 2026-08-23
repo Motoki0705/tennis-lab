@@ -3,32 +3,50 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
+from typing import cast
 
 import matplotlib
 
 matplotlib.use("Agg")
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 import torch
 from hydra import compose, initialize_config_dir
+from omegaconf import DictConfig
+from torch import Tensor
 
 from src.tasks.base.data.court_coordinate_contract import (
     COURT_COORDINATE_NORMALIZATION_METADATA_KEY,
+    CourtCoordinateNormalizationMetadata,
 )
 from src.tasks.base.data.court_coordinate_materializer import (
     CourtCoordinateMaterializationConfig,
     materialize_court_coordinate_normalization_dataset,
 )
 from src.tasks.base.visualization.style import SceneStyleConfig
+from src.tasks.blcs.data.dataset import (
+    BallTrajectoryDataset,
+    collate_multiview_trajectories,
+)
+from src.tasks.blcs.model_io import (
+    BLCSTrajectoryPrediction,
+    compose_blcs_trajectory_model_io,
+)
+from src.tasks.blcs.models.blcs_multiview_axial_model import (
+    BLCSMultiViewAxialModel,
+)
 from src.tasks.blcs.models.components.differentiable_projection import (
     DifferentiableProjection,
 )
-from src.tasks.blcs.training.losses import trajectory_position_loss
-from src.tasks.blcs.training.metrics import BLCSMetrics
-from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
-from src.tasks.plcs.training.metrics import PLCSMetrics
+from src.tasks.blcs.training.lightning_module import BLCSLightningModule
+from src.tasks.plcs.data.dataset import SceneDataset, collate_plcs_batch
+from src.tasks.plcs.model_io import PLCSDecodedPrediction
+from src.tasks.plcs.models.plcs_multiview_model import PLCSMultiViewModel
+from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.tasks.plcs.visualization.contracts import PoseRenderScene
 from src.tasks.plcs.visualization.rendering import PLCSSceneRenderer
 from src.tennis_scene.pipeline.components.blcs import BLCSResult
@@ -41,6 +59,14 @@ from src.utils.paths import PROJECT_ROOT
 from src.utils.schema.court_normalization import resolve_court_coordinate_normalization
 
 pytestmark = pytest.mark.integration
+
+_LEGACY_FIXTURE_ROOT = (
+    Path(__file__).resolve().parents[2]
+    / "fixtures"
+    / "issue_786"
+    / "legacy_v1_representative"
+    / "datasets"
+)
 
 
 @pytest.mark.parametrize(
@@ -148,25 +174,6 @@ def test_v2_materialization_is_non_overwriting_and_round_trips_legacy_root_witho
         materialize_court_coordinate_normalization_dataset(config)
 
 
-def _plcs_loss_config() -> PLCSLossConfig:
-    return PLCSLossConfig(
-        position_weight=1.0,
-        rotation_weight=0.0,
-        angle_weight=0.0,
-        position_smoothness_weight=0.0,
-        canonical_pose_weight=0.0,
-        joint_angle_weight=0.0,
-        torsion_angle_weight=0.0,
-        torso_twist_weight=0.0,
-        bone_length_weight=0.0,
-        joint_angle_velocity_weight=0.0,
-        torsion_angle_velocity_weight=0.0,
-        torso_twist_velocity_weight=0.0,
-        joint_angle_velocity_angle_weights=None,
-        torsion_angle_velocity_angle_weights=None,
-    )
-
-
 def _style() -> SceneStyleConfig:
     return SceneStyleConfig(
         theme="light",
@@ -178,122 +185,256 @@ def _style() -> SceneStyleConfig:
     )
 
 
+def _metadata(version: str) -> dict[str, object]:
+    metadata: dict[str, object] = CourtCoordinateNormalizationMetadata.from_contract(
+        resolve_court_coordinate_normalization(version)
+    ).to_dict()
+    return metadata
+
+
+def _versioned_dataset(
+    tmp_path: Path,
+    *,
+    task: str,
+    version: str,
+) -> Path:
+    source = _LEGACY_FIXTURE_ROOT / f"{task}_legacy_v1"
+    destination = tmp_path / f"{task}_{version}"
+    shutil.copytree(source, destination)
+    scene = next((destination / "scenes").iterdir())
+    v1 = resolve_court_coordinate_normalization("v1")
+    contract = resolve_court_coordinate_normalization(version)
+    if task == "blcs":
+        physical = np.load(scene / "ball_pos_world.npy")
+        np.save(scene / "ball_pos_norm.npy", contract.normalize_position(physical))
+    else:
+        legacy_position = np.load(scene / "position.npy")
+        physical = v1.denormalize_position(legacy_position)
+        np.save(scene / "position.npy", contract.normalize_position(physical))
+
+    metadata = _metadata(version)
+    (destination / "meta.json").write_text(
+        json.dumps({COURT_COORDINATE_NORMALIZATION_METADATA_KEY: metadata}),
+        encoding="utf-8",
+    )
+    scene_document = json.loads((scene / "meta.json").read_text(encoding="utf-8"))
+    assert isinstance(scene_document, dict)
+    scene_document[COURT_COORDINATE_NORMALIZATION_METADATA_KEY] = metadata
+    (scene / "meta.json").write_text(
+        json.dumps(scene_document),
+        encoding="utf-8",
+    )
+    return destination
+
+
+def _compose_blcs_smoke_config(version: str) -> DictConfig:
+    overrides = [
+        f"court_coordinate_normalization={version}",
+        "model=multiview_axial_small",
+        "model.hidden_dim=16",
+        "model.num_layers=1",
+        "model.num_heads=4",
+        "model.ffn_dim=32",
+        "model.rope_dim=4",
+        "model.camera_layers_per_stage=[1]",
+        "model.time_layers_per_stage=[1]",
+        "model.time_global_stage_mask=[false]",
+        "model.max_seq_len=2",
+        "model.max_num_cameras=1",
+        "model.num_court_tokens=14",
+        "model.dropout=0.0",
+        "data.seq_len_range=[2,2]",
+        "data.num_views_range=[1,1]",
+        "data.camera_mode=first",
+        "data.num_court_kp=14",
+        "data.batch_size=1",
+        "data.num_workers=0",
+        "training.compile.enabled=false",
+    ]
+    with initialize_config_dir(
+        version_base="1.3",
+        config_dir=str(PROJECT_ROOT / "src/tasks/blcs/configs"),
+    ):
+        config = compose(config_name="train", overrides=overrides)
+    return config
+
+
+def _compose_plcs_smoke_config(version: str) -> DictConfig:
+    overrides = [
+        f"court_coordinate_normalization={version}",
+        "model=multiview",
+        "loss=no_canonical",
+        "model.hidden_dim=16",
+        "model.num_layers=1",
+        "model.num_heads=4",
+        "model.ffn_dim=32",
+        "model.rope_dim=4",
+        "model.max_seq_len=2",
+        "model.max_views=1",
+        "model.dropout=0.0",
+        "data.seq_len_range=[2,2]",
+        "data.num_views_range=[1,1]",
+        "data.min_cameras=1",
+        "data.camera_mode=first",
+        "data.num_court_kp=14",
+        "data.batch_size=1",
+        "data.num_workers=0",
+        "training.compile.enabled=false",
+    ]
+    with initialize_config_dir(
+        version_base="1.3",
+        config_dir=str(PROJECT_ROOT / "src/tasks/plcs/configs"),
+    ):
+        config = compose(config_name="train", overrides=overrides)
+    return config
+
+
 @pytest.mark.parametrize("version", ["v1", "v2"])
-def test_blcs_plcs_cpu_flow_stays_meter_valued_through_projection_and_render(
+def test_actual_blcs_plcs_cpu_flow_reaches_projection_and_render(
     tmp_path: Path,
     version: str,
 ) -> None:
     contract = resolve_court_coordinate_normalization(version)
-    physical = np.array(
-        [[1.0, -2.0, 1.2], [2.0, -1.0, 1.5], [3.0, 0.0, 1.8]],
-        dtype=np.float32,
+    torch.manual_seed(786)
+
+    blcs_root = _versioned_dataset(
+        tmp_path,
+        task="blcs",
+        version=version,
     )
-    dataset_path = tmp_path / f"positions_{version}.npy"
-    np.save(dataset_path, contract.normalize_position(physical))
-    dataset_position = torch.from_numpy(np.load(dataset_path)).unsqueeze(0)
-
-    model = torch.nn.Identity().cpu()
-    prediction = model(dataset_position)
-    perturbed = prediction.clone()
-    perturbed[..., 0] += 0.5 / contract.scale_xyz[0]
-
-    blcs_loss = trajectory_position_loss(
-        perturbed,
-        prediction,
-        torch.ones(1, 3, dtype=torch.bool),
-        axis_weights=torch.ones(3),
-        beta=(1.0 if version == "v1" else 1.0 / contract.scale_xyz[0]),
+    blcs_config = _compose_blcs_smoke_config(version)
+    blcs_dataset = BallTrajectoryDataset(
+        scene_dir=blcs_root,
+        split_file=blcs_root / "test.txt",
+        config=blcs_config,
+        augment=False,
     )
-    assert torch.isfinite(blcs_loss)
-    blcs_metric = BLCSMetrics(
-        position_threshold_m=0.3,
-        endpoint_threshold_m=0.5,
-        normalization=contract,
-    ).update(perturbed, prediction)
-    assert blcs_metric["x_error_m"] == pytest.approx(0.5)
-    blcs_meters = contract.denormalize_position(prediction).squeeze(0).numpy()
-    np.testing.assert_allclose(blcs_meters, physical, atol=1.0e-5, rtol=0.0)
+    blcs_dataset.rng = np.random.default_rng(786)
+    blcs_batch = dict(collate_multiview_trajectories([blcs_dataset[0]]))
+    blcs_binding = compose_blcs_trajectory_model_io(blcs_config)
+    blcs_module = BLCSLightningModule(
+        blcs_config,
+        model_io=blcs_binding,
+    ).cpu().eval()
+    assert isinstance(blcs_dataset, BallTrajectoryDataset)
+    assert isinstance(blcs_module.model, BLCSMultiViewAxialModel)
+    blcs_module.test_metrics.reset()
+    with torch.no_grad():
+        blcs_result = blcs_module._compute_supervised_result(blcs_batch, "test")
+    blcs_output = blcs_result["outputs"]
+    assert isinstance(blcs_output, BLCSTrajectoryPrediction)
+    assert torch.isfinite(cast("Tensor", blcs_result["loss"]))
+    assert blcs_module.test_metrics.compute()
+    blcs_meters = contract.denormalize_position(blcs_output.position)
+    assert isinstance(blcs_meters, Tensor)
+    assert blcs_meters.shape == (1, 2, 3)
+    assert torch.isfinite(blcs_meters).all()
 
-    camera_r = torch.eye(3).view(1, 1, 3, 3)
     projector = DifferentiableProjection(normalization=contract)
     uv, visible = projector(
-        prediction,
-        camera_r,
-        torch.tensor([[[0.0, 0.0, -20.0]]]),
-        torch.tensor([[1000.0]]),
-        torch.tensor([[500.0]]),
-        torch.tensor([[500.0]]),
-        torch.tensor([[1000.0]]),
-        torch.tensor([[1000.0]]),
+        blcs_output.position,
+        blcs_batch["camera_R"],
+        blcs_batch["camera_C"],
+        blcs_batch["camera_f"],
+        blcs_batch["camera_cx"],
+        blcs_batch["camera_cy"],
+        blcs_batch["camera_w"],
+        blcs_batch["camera_h"],
     )
+    assert uv.shape == (1, 1, 2, 2)
+    assert visible.shape == (1, 1, 2)
     assert torch.isfinite(uv).all()
-    assert visible.all()
-
-    plcs_loss_fn = PLCSLoss(_plcs_loss_config(), normalization=contract)
-    prepared = plcs_loss_fn.prepare_inputs(
-        pred_position=perturbed,
-        pred_rotation=torch.tensor([[[1.0, 0.0]]]).expand(1, 3, 2),
-        target_position=prediction,
-        target_rotation=torch.tensor([[[1.0, 0.0]]]).expand(1, 3, 2),
-        pred_canonical_pose=None,
-        target_human_kp_3d=None,
-        padding_mask=torch.zeros(1, 3, dtype=torch.bool),
+    torch.testing.assert_close(
+        projector.scale_xyz,
+        torch.tensor(contract.scale_xyz, dtype=torch.float32),
     )
-    assert torch.isfinite(plcs_loss_fn(prepared)["total"])
-    plcs_metric = PLCSMetrics(
-        position_threshold_m=0.3,
-        angle_threshold_deg=10.0,
-        normalization=contract,
-    ).update(
-        perturbed,
-        torch.tensor([[[1.0, 0.0]]]).expand(1, 3, 2),
-        prediction,
-        torch.tensor([[[1.0, 0.0]]]).expand(1, 3, 2),
-    )
-    assert plcs_metric["x_error_m"] == pytest.approx(0.5)
 
-    canonical: np.ndarray = np.zeros((3, 17, 3), dtype=np.float32)
+    plcs_root = _versioned_dataset(
+        tmp_path,
+        task="plcs",
+        version=version,
+    )
+    plcs_config = _compose_plcs_smoke_config(version)
+    plcs_dataset = SceneDataset(
+        scene_dir=plcs_root,
+        split_file=plcs_root / "test.txt",
+        config=plcs_config,
+        augment=False,
+    )
+    plcs_dataset.rng = np.random.default_rng(786)
+    plcs_batch = cast("dict[str, Tensor]", dict(collate_plcs_batch([plcs_dataset[0]])))
+    torch.manual_seed(786)
+    plcs_module = PLCSLightningModule(plcs_config).cpu().eval()
+    assert isinstance(plcs_dataset, SceneDataset)
+    assert isinstance(plcs_module.model, PLCSMultiViewModel)
+    plcs_module.test_metrics.reset()
+    with torch.no_grad():
+        plcs_result = plcs_module._compute_supervised_result(plcs_batch, "test")
+    plcs_output = plcs_result["outputs"]
+    assert isinstance(plcs_output, PLCSDecodedPrediction)
+    assert torch.isfinite(cast("Tensor", plcs_result["loss"]))
+    assert plcs_module.test_metrics.compute()
+    plcs_meters = contract.denormalize_position(plcs_output.position)
+    assert isinstance(plcs_meters, Tensor)
+    assert plcs_meters.shape == (1, 2, 3)
+    assert torch.isfinite(plcs_meters).all()
+
+    canonical: np.ndarray = np.zeros((2, 17, 3), dtype=np.float32)
     canonical[:, :, 2] = np.linspace(0.0, 1.6, 17, dtype=np.float32)
     render_scene = PoseRenderScene(
-        position=np.asarray(dataset_position.squeeze(0)),
-        rotation=np.tile(np.array([1.0, 0.0], dtype=np.float32), (3, 1)),
+        position=plcs_output.position[0].detach().cpu().numpy(),
+        rotation=plcs_output.rotation[0].detach().cpu().numpy(),
         canonical_pose_3d=canonical,
-        meta={"num_frames": 3},
+        meta={"num_frames": 2},
     )
     renderer = PLCSSceneRenderer(style=_style(), normalization=contract)
+    rendered_meters = renderer._world_positions(render_scene)
     np.testing.assert_allclose(
-        renderer._world_positions(render_scene),
-        physical,
+        rendered_meters,
+        plcs_meters[0].numpy(),
         atol=1.0e-5,
         rtol=0.0,
     )
-    np.testing.assert_allclose(
-        renderer._compute_world_pose(render_scene, 0),
-        canonical[0] + physical[0],
-        atol=1.0e-5,
-        rtol=0.0,
+    figure = plt.figure(figsize=(4, 3))
+    axes_3d = figure.add_subplot(111, projection="3d")
+    renderer._render_3d_frame(
+        axes_3d,
+        [(render_scene, "red", "Prediction")],
+        0,
+        2,
+        30.0,
+        title=f"PLCS {version}",
     )
+    figure.canvas.draw()
+    assert axes_3d.has_data()
+    plt.close(figure)
+
+    figure_2d, axes_2d = plt.subplots(figsize=(4, 3))
+    renderer._render_2d_subplot(axes_2d, render_scene, 0)
+    figure_2d.canvas.draw()
+    assert axes_2d.has_data()
+    plt.close(figure_2d)
 
     blcs_result = BLCSResult(
-        ball_3d=blcs_meters.astype(np.float32),
-        visibility=np.ones(3, dtype=np.bool_),
+        ball_3d=blcs_meters[0].numpy().astype(np.float32),
+        visibility=np.ones(2, dtype=np.bool_),
     )
     plcs_result = PLCSResult(
-        position=physical[None],
-        yaw=np.zeros((1, 3), dtype=np.float32),
+        position=plcs_meters.numpy().astype(np.float32),
+        yaw=np.zeros((1, 2), dtype=np.float32),
         track_ids=np.array([7], dtype=np.int32),
     )
     integrated = SceneResult(
-        num_frames=3,
+        num_frames=2,
         fps=30.0,
         width=1920,
         height=1080,
-        court_kp=np.zeros((1, 3, 14, 2), dtype=np.float32),
-        court_vis=np.ones((1, 3, 14), dtype=np.float32),
+        court_kp=np.zeros((1, 2, 14, 2), dtype=np.float32),
+        court_vis=np.ones((1, 2, 14), dtype=np.float32),
         player_position=plcs_result.position,
         player_yaw=plcs_result.yaw,
-        smpl_body_pose=np.zeros((1, 3, 63), dtype=np.float32),
-        smpl_global_orient=np.zeros((1, 3, 3), dtype=np.float32),
+        smpl_body_pose=np.zeros((1, 2, 63), dtype=np.float32),
+        smpl_global_orient=np.zeros((1, 2, 3), dtype=np.float32),
         smpl_betas=np.zeros((1, 10), dtype=np.float32),
         ball_3d=blcs_result.ball_3d,
     )

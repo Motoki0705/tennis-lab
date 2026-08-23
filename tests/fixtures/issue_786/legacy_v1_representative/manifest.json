@@ -1,0 +1,2054 @@
+{
+  "artifacts": {
+    "blcs_checkpoint": {
+      "byte_count": 100421,
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-normalization-v2/.codex/tasks/issue-786/logs/legacy-base-goldens/representative/blcs_representative_legacy_v1.ckpt",
+      "sha256": "69af21b3f8008ab7f53708e1d03346113aafa49c857a5465ad6e6da86f80a5e7"
+    },
+    "blcs_dataset_fixture": {
+      "algorithm": "sha256(relative_posix_path + NUL + binary_sha256(file) + LF)",
+      "byte_count": 1892,
+      "file_count": 12,
+      "files": {
+        "scenes/scene_representative_blcs/ball_pos_norm.npy": {
+          "byte_count": 152,
+          "sha256": "b5cedea18b55c3f9cbec0bc4c0570575029cb27252303ce29551434eb3713fb7"
+        },
+        "scenes/scene_representative_blcs/ball_pos_world.npy": {
+          "byte_count": 152,
+          "sha256": "372750fad2874a1175da1ae363d6a4fac6f25a6ed6851c867a709aaa34716294"
+        },
+        "scenes/scene_representative_blcs/ball_vel_world.npy": {
+          "byte_count": 152,
+          "sha256": "80144c2a3d9b5c278fb0ee4b9479a8a2d887cf46ab7175499dbfed33e79516c8"
+        },
+        "scenes/scene_representative_blcs/cam_0_ball_uv.npy": {
+          "byte_count": 144,
+          "sha256": "a102d8d1047458c717594392a488e94122e5bee168841f3aa2afaff9409a4ff9"
+        },
+        "scenes/scene_representative_blcs/cam_0_ball_vis.npy": {
+          "byte_count": 130,
+          "sha256": "ac537e78759740605ab6c13c1755caf6d517d19b47b4b20cf679e5fed978ed67"
+        },
+        "scenes/scene_representative_blcs/cam_0_ball_visibility_ratio.npy": {
+          "byte_count": 132,
+          "sha256": "8911cbc3a75f98c55d74490c632594ffd99e0f242b800de2b0597e1b227998f2"
+        },
+        "scenes/scene_representative_blcs/cam_0_court_kp_uv.npy": {
+          "byte_count": 240,
+          "sha256": "55bca3de7fc45a1ec67b9d9435715f2164929108f21ebca8081dba64268c0cca"
+        },
+        "scenes/scene_representative_blcs/cam_0_court_kp_vis.npy": {
+          "byte_count": 142,
+          "sha256": "9f76d8aecfe2d05172cf18498ae9bcdeaf318eeca39220d78c925c34a0525feb"
+        },
+        "scenes/scene_representative_blcs/cam_0_court_visibility_count.npy": {
+          "byte_count": 132,
+          "sha256": "4392a5df6c9be63a91ea06ba97055eb59c3c25fe72ab3b2f9028896aed9c5fb4"
+        },
+        "scenes/scene_representative_blcs/meta.json": {
+          "byte_count": 130,
+          "sha256": "075818093d9993754964a4ffceb047ac2d1e567e0e11a83c15dd9e58a78b4cc0"
+        },
+        "scenes/scene_representative_blcs/scalars.json": {
+          "byte_count": 360,
+          "sha256": "e9b201bb20d757bfccf949b9e5bb7d4b77fabed8e8f476be32dda6b9c49e5674"
+        },
+        "test.txt": {
+          "byte_count": 26,
+          "sha256": "5f8678660b386740b3a959de92d63333eac630f634baec71f6975b999887027d"
+        }
+      },
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-normalization-v2/.codex/tasks/issue-786/logs/legacy-base-goldens/representative/datasets/blcs_legacy_v1",
+      "sha256": "885e8f63c7a2fce146296a92db076a9d8cf5e8e58d7dac91fedfb5b00f0ee3d4"
+    },
+    "blcs_golden": {
+      "byte_count": 8532,
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-normalization-v2/.codex/tasks/issue-786/logs/legacy-base-goldens/representative/blcs_representative_legacy_v1_golden.npz",
+      "sha256": "0f494e30e07c99e3f59feba113093530a87c25334a216eea9bee33e9a32397e6"
+    },
+    "generator": {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-normalization-v2/.codex/tasks/issue-786/logs/legacy-base-goldens/representative/generate_representative.py",
+      "sha256": "956bef2a7fff8e375398a62c031a95eaeab3247a89ffe1e92b5d091639059358"
+    },
+    "plcs_checkpoint": {
+      "byte_count": 71896,
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-normalization-v2/.codex/tasks/issue-786/logs/legacy-base-goldens/representative/plcs_representative_legacy_v1.ckpt",
+      "sha256": "6c212eec6bbe616b498000928733318b19f76e4ad957a680963621c672ca841d"
+    },
+    "plcs_dataset_fixture": {
+      "algorithm": "sha256(relative_posix_path + NUL + binary_sha256(file) + LF)",
+      "byte_count": 4582,
+      "file_count": 13,
+      "files": {
+        "scenes/scene_representative_plcs/cam_0_court_kp_uv.npy": {
+          "byte_count": 352,
+          "sha256": "adef2ddd1b7b7a0bad2ccd3a10c88af45153793867831149a79fdf78c4cd022e"
+        },
+        "scenes/scene_representative_plcs/cam_0_court_kp_vis.npy": {
+          "byte_count": 156,
+          "sha256": "89b0831ac69dabdfc74c969b4e1e633c13147fe7d844a6e9b10b6cc5c1f569ff"
+        },
+        "scenes/scene_representative_plcs/cam_0_court_visibility_count.npy": {
+          "byte_count": 132,
+          "sha256": "4392a5df6c9be63a91ea06ba97055eb59c3c25fe72ab3b2f9028896aed9c5fb4"
+        },
+        "scenes/scene_representative_plcs/cam_0_human_kp_uv.npy": {
+          "byte_count": 400,
+          "sha256": "a465e8f5b29b57d7aba1691de1e4f31b4344bb8b3b0f1464566c957b77a7a20f"
+        },
+        "scenes/scene_representative_plcs/cam_0_human_kp_vis.npy": {
+          "byte_count": 162,
+          "sha256": "2592772246e0f5922fa88c6620a96d40df0c0cfb60fd8d18c8b315aecb7bdada"
+        },
+        "scenes/scene_representative_plcs/cam_0_human_visibility_ratio.npy": {
+          "byte_count": 132,
+          "sha256": "8911cbc3a75f98c55d74490c632594ffd99e0f242b800de2b0597e1b227998f2"
+        },
+        "scenes/scene_representative_plcs/canonical_pose_3d.npy": {
+          "byte_count": 1880,
+          "sha256": "d0e883abd090dff4340305e242f80e3d4d18b190a1b61c15db2393877d3fa9ae"
+        },
+        "scenes/scene_representative_plcs/human_kp_3d.npy": {
+          "byte_count": 536,
+          "sha256": "65cb66534c32aa467a3e473bfcb358694ae43b22d053b349e2b24653c7065c18"
+        },
+        "scenes/scene_representative_plcs/meta.json": {
+          "byte_count": 150,
+          "sha256": "dbc1071382ed6ff928db03a8ddafc48ddf8bdfe3c6d562c810cb0009b9a7d734"
+        },
+        "scenes/scene_representative_plcs/position.npy": {
+          "byte_count": 152,
+          "sha256": "b0f9f9e7a32063e0a0d58921588a3c7d7b841608e040c2672d6dee5669b46619"
+        },
+        "scenes/scene_representative_plcs/rotation.npy": {
+          "byte_count": 144,
+          "sha256": "c74f298838ad3bca9dc3bef3f538fb9824ef14b4fcfd2fb95077fee0124eceee"
+        },
+        "scenes/scene_representative_plcs/scalars.json": {
+          "byte_count": 360,
+          "sha256": "e9b201bb20d757bfccf949b9e5bb7d4b77fabed8e8f476be32dda6b9c49e5674"
+        },
+        "test.txt": {
+          "byte_count": 26,
+          "sha256": "41d6b993804aec3cdae3a681b8384f0937ba8327059a2485973b538bdd316926"
+        }
+      },
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-normalization-v2/.codex/tasks/issue-786/logs/legacy-base-goldens/representative/datasets/plcs_legacy_v1",
+      "sha256": "2f2eb946876b933c68b5d9b3ba4873eb903038c096b9e6422dbf1bc40aab9e95"
+    },
+    "plcs_golden": {
+      "byte_count": 14956,
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-normalization-v2/.codex/tasks/issue-786/logs/legacy-base-goldens/representative/plcs_representative_legacy_v1_golden.npz",
+      "sha256": "3fcc1205f96f531f7b731248ecf1f8cd48c8e0bc0091d3d0e3dc04cf5eb1b969"
+    }
+  },
+  "base": {
+    "sha": "59e3b166c2d010d5e62be52c2be76d98a94af0e0",
+    "tracked_clean_after": true,
+    "tracked_clean_before": true,
+    "worktree": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-base-golden"
+  },
+  "commands": {
+    "generation": "cd /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-base-golden && .venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-normalization-v2/.codex/tasks/issue-786/logs/legacy-base-goldens/representative/generate_representative.py",
+    "verification": "cd /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-base-golden && .venv/bin/python -m json.tool /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-normalization-v2/.codex/tasks/issue-786/logs/legacy-base-goldens/representative/manifest.json >/dev/null && git status --porcelain=v1 --untracked-files=all"
+  },
+  "evidence_kind": "base-compatible representative legacy-v1 parity",
+  "issue": 786,
+  "portability": {
+    "cpu_float32_tolerance": {
+      "atol": 1e-05,
+      "rtol": 0.0
+    },
+    "risk": "Exact whole-file checkpoint/NPZ hashes may vary across PyTorch/NumPy serialization versions; array hashes and scalar values are the portable parity contract."
+  },
+  "runtime": {
+    "court_coordinate_scale_xyz_meters": [
+      5.485000133514404,
+      11.885000228881836,
+      1.0700000524520874
+    ],
+    "device": "cpu",
+    "dtype": "float32",
+    "numpy_seed": 786,
+    "python_seed": 786,
+    "torch_deterministic_algorithms": true,
+    "torch_num_threads": 1,
+    "torch_seed": 786
+  },
+  "schema_version": 1,
+  "tasks": {
+    "blcs": {
+      "aggregate_metrics": {
+        "endpoint_accuracy_0_5m": 0.0,
+        "endpoint_accuracy_1m": 0.0,
+        "mean_endpoint_error_m": 11.200171358640377,
+        "mean_position_error_m": 6.367661444296947,
+        "mean_x_error_m": 1.6470409549377079,
+        "mean_y_error_m": 6.134232967223123,
+        "mean_z_error_m": 0.24530188616648832,
+        "position_accuracy_0_3m": 0.0,
+        "position_accuracy_0_6m": 0.0,
+        "position_accuracy_1_2m": 0.0
+      },
+      "arrays": {
+        "input_ball_uv": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "8efb6cbc8672af1e448f4aaa2c88a706128d32a7d2f8f49ad1ef85c83f90d8f9",
+          "shape": [
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        "input_ball_vis": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "80b8fd6d60fa85fd14a38b5295cb92abd80dfec5ca406c9f969609a79d36809d",
+          "shape": [
+            1,
+            1,
+            2
+          ]
+        },
+        "input_court_kp": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "1875d3f7dcb2172b40c5ac926bd49ee9446337a7cf0510dbe5e6781395e59dcb",
+          "shape": [
+            1,
+            1,
+            2,
+            14,
+            2
+          ]
+        },
+        "input_court_vis": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "43469ce897d6b6e412109b858a9f4f6b8d0d91d6fd5292950ec2ddbdba6a8902",
+          "shape": [
+            1,
+            1,
+            2,
+            14
+          ]
+        },
+        "input_padding_mask": {
+          "dtype": "bool",
+          "finite": true,
+          "sha256": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
+          "shape": [
+            1,
+            1,
+            2
+          ]
+        },
+        "loss_gravity": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+          "shape": [
+            1
+          ]
+        },
+        "loss_position": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "49619f2ef6e9a0c5c6a283c39fe34dff9a395a6eda31240d37a0dcdae8dc1f35",
+          "shape": [
+            1
+          ]
+        },
+        "loss_reprojection": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+          "shape": [
+            1
+          ]
+        },
+        "loss_smoothness": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+          "shape": [
+            1
+          ]
+        },
+        "loss_total": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "49619f2ef6e9a0c5c6a283c39fe34dff9a395a6eda31240d37a0dcdae8dc1f35",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_endpoint_accuracy_0_5m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_endpoint_accuracy_1m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_mean_endpoint_error_m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "dfad5bc50b52be72205b82fe2caf6373bb08e024d12ee61485b1465cbfdeb822",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_mean_position_error_m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "a3bf4f0731a3a3c689bc22fbed46161670a6dfc4fa702262c6eacdc6ea40a405",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_mean_x_error_m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "5054f2257025ea42a2f0389a3e2478dbe2eb9cb449cbf6d14144680cac5fc8c9",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_mean_y_error_m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "2174b9ae47536288dcc327f5d8225086707b3500899884d0489bbf6a6cd4081e",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_mean_z_error_m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "d72814f15a2cb63f40b313b66f48768a83da5ac6f42102c644d42efe6df87ca0",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_position_accuracy_0_3m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_position_accuracy_0_6m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_position_accuracy_1_2m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_loss_gravity": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_loss_position": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "1b33f82f3168e3707138226e258b1a37fb89ef76e11d573f9083ebd2fd3c2af3",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_loss_reprojection": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_loss_smoothness": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_loss_total": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "1b33f82f3168e3707138226e258b1a37fb89ef76e11d573f9083ebd2fd3c2af3",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_position_error_m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "a3bf4f0731a3a3c689bc22fbed46161670a6dfc4fa702262c6eacdc6ea40a405",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_x_error_m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "5054f2257025ea42a2f0389a3e2478dbe2eb9cb449cbf6d14144680cac5fc8c9",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_y_error_m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "2174b9ae47536288dcc327f5d8225086707b3500899884d0489bbf6a6cd4081e",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_z_error_m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "d72814f15a2cb63f40b313b66f48768a83da5ac6f42102c644d42efe6df87ca0",
+          "shape": [
+            1
+          ]
+        },
+        "prediction_position_meters": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "dbe0ff3b6655077c97d5e3ae0cfd5776f92ccb9cff3680380513858ba6e6f11d",
+          "shape": [
+            1,
+            2,
+            3
+          ]
+        },
+        "prediction_position_normalized": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "d35c30798dc65ea808bce52dc37168497e55690d1dd6a605bf9ba8d10de96a28",
+          "shape": [
+            1,
+            2,
+            3
+          ]
+        },
+        "prediction_velocity_meters_per_second": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "e6c88d6cbe47115fac81987806c39de8538129eb7d3bfd02fc0c094cecb698cb",
+          "shape": [
+            1,
+            2,
+            3
+          ]
+        },
+        "prediction_velocity_normalized": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "5db12c3b8d96876dcc09fe1a9eeb8819c8d188e35184536c2e6aa9592a9c2db2",
+          "shape": [
+            1,
+            2,
+            3
+          ]
+        },
+        "target_position_meters": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "b7c4aab707472ececf1aefe8859dc8349d8ec673dea804278407e9d083527d88",
+          "shape": [
+            1,
+            2,
+            3
+          ]
+        },
+        "target_position_normalized": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "3ef2ab09166d61a236defeb9890ed6ba5d19401927117af565acc979ce6cb55e",
+          "shape": [
+            1,
+            2,
+            3
+          ]
+        },
+        "target_velocity_world_mps": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "6e228845f90f8bf60b7a1a10c42b4aff0689a1a815f80d4854983dac1036d1d7",
+          "shape": [
+            1,
+            2,
+            3
+          ]
+        }
+      },
+      "batch_metrics": {
+        "loss_gravity": 0.0,
+        "loss_position": 0.10216159373521805,
+        "loss_reprojection": 0.0,
+        "loss_smoothness": 0.0,
+        "loss_total": 0.10216159373521805,
+        "position_error_m": 6.367661444296947,
+        "x_error_m": 1.6470409549377079,
+        "y_error_m": 6.134232967223123,
+        "z_error_m": 0.24530188616648832
+      },
+      "config": {
+        "camera": {
+          "broadcast_court_width_frac_range": null,
+          "broadcast_height": 7.0,
+          "broadcast_height_range": null,
+          "broadcast_hfov_deg": 35.0,
+          "broadcast_hfov_jitter_deg": 2.0,
+          "broadcast_look_at_height": 0.5,
+          "broadcast_look_at_xy_radius": 1.0,
+          "broadcast_look_at_y": 0.0,
+          "broadcast_position_noise_radius": 1.0,
+          "broadcast_setback": 20.0,
+          "broadcast_setback_range": null,
+          "fixed_baseline_clear_extra": 0.0,
+          "fixed_look_at": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "fixed_look_at_xy_radius": 1.0,
+          "fixed_position_noise_radius": 1.5,
+          "hfov_deg": 60.0,
+          "image_size": [
+            1280,
+            720
+          ],
+          "layout": "fixed",
+          "z_max": 5.0,
+          "z_min": 3.0
+        },
+        "data": {
+          "augmentation": {
+            "burst_dropout": {
+              "enabled": true,
+              "max_bursts": 3,
+              "max_len": 16,
+              "min_len": 2,
+              "prob": 0.4,
+              "track_prob": 1.0
+            },
+            "edge_degradation": {
+              "clip_out_prob": 0.02,
+              "drop_prob": 0.08,
+              "edge_margin": 0.1,
+              "enabled": true,
+              "noise_std": 0.006,
+              "prob": 1.0
+            },
+            "enabled": true,
+            "false_positive": {
+              "after_dropout_window": 2,
+              "enabled": true,
+              "prob": 1.0,
+              "prob_absent": 0.1,
+              "prob_after_dropout": 0.03
+            },
+            "gaussian_noise": {
+              "ball_std": 0.0037,
+              "court_std": 0.0,
+              "enabled": true,
+              "prob": 1.0
+            },
+            "preserve_clean_targets": true,
+            "speed_conditioned": {
+              "enabled": true,
+              "frame_prob": 0.07,
+              "lag_overshoot_range": [
+                -0.25,
+                0.35
+              ],
+              "noise_std": 0.0037,
+              "prob": 1.0,
+              "speed_threshold": 0.03
+            },
+            "temporal_jitter": {
+              "drift_decay": 0.85,
+              "drift_std": 0.0015,
+              "enabled": true,
+              "jitter_std": 0.0025,
+              "prob": 1.0
+            },
+            "uv_scale": {
+              "apply_to_ball": true,
+              "apply_to_court": true,
+              "enabled": false,
+              "prob": 1.0,
+              "scale_range": [
+                1.0,
+                1.0
+              ]
+            },
+            "visibility_dropout": {
+              "drop_prob": 0.06,
+              "enabled": true,
+              "prob": 1.0
+            }
+          },
+          "backend": "default",
+          "batch_size": 1,
+          "camera_mode": "first",
+          "num_court_kp": 14,
+          "num_views_range": [
+            1,
+            1
+          ],
+          "num_workers": 0,
+          "pin_memory": true,
+          "scene_dir": "blcs",
+          "seq_len_range": [
+            2,
+            2
+          ]
+        },
+        "generator": {
+          "court": {
+            "net_post_offset_x": 0.914,
+            "net_post_offset_x_range": [
+              -0.3,
+              0.914
+            ]
+          },
+          "num_scenes": 1000
+        },
+        "metrics": {
+          "endpoint_threshold_m": 0.5,
+          "position_threshold_m": 0.3
+        },
+        "model": {
+          "attention_type": "mha",
+          "camera_layers_per_stage": [
+            1
+          ],
+          "dropout": 0.0,
+          "ffn_dim": 32,
+          "ffn_type": "swiglu",
+          "hidden_dim": 16,
+          "invisible_init_std": 0.02,
+          "io": {
+            "input_profile": "multiview"
+          },
+          "max_num_cameras": 1,
+          "max_seq_len": 2,
+          "name": "blcs_multiview_axial",
+          "num_court_tokens": 14,
+          "num_heads": 4,
+          "num_kv_heads": null,
+          "num_layers": 1,
+          "predict_velocity": true,
+          "rope_dim": 4,
+          "rope_theta_camera": 1000.0,
+          "rope_theta_time": 10000.0,
+          "time_global_stage_mask": [
+            false
+          ],
+          "time_layers_per_stage": [
+            1
+          ],
+          "time_window_radius": 16
+        },
+        "paths": {
+          "artifact_root": "artifacts",
+          "cache_root": ".cache",
+          "checkpoint_root": "ckpt",
+          "data_root": "data",
+          "external_asset_root": "third_party",
+          "output_root": "outputs",
+          "project_root": "."
+        },
+        "physics": {
+          "alpha_fence": 0.3,
+          "alpha_net": 0.3,
+          "alpha_net_cord": 0.05,
+          "dt": 0.00416667,
+          "e_z": 0.75,
+          "e_z_range": [
+            0.65,
+            0.85
+          ],
+          "gravity": 9.81,
+          "gravity_range": [
+            9.7,
+            9.9
+          ],
+          "k_drag": 0.01,
+          "k_drag_range": [
+            0.005,
+            0.02
+          ],
+          "k_magnus": 0.001,
+          "k_magnus_range": [
+            0.0005,
+            0.002
+          ],
+          "mu": 0.1,
+          "mu_range": [
+            0.05,
+            0.2
+          ],
+          "net_cord_radius": 0.03,
+          "net_half_thickness": 0.03,
+          "use_drag": true,
+          "use_magnus": true,
+          "wind": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "wind_direction_range_deg": [
+            0.0,
+            360.0
+          ],
+          "wind_speed_range": [
+            0.0,
+            3.0
+          ]
+        },
+        "rally": {
+          "hit_timing_range": [
+            0.2,
+            0.8
+          ],
+          "late_return_probability": 0.1,
+          "max_rallies": 10,
+          "max_sim_frames": 2000,
+          "max_total_frames": 12000,
+          "normal_return_probability": 0.85,
+          "out_court_target_probability": 0.1,
+          "output_fps": 30,
+          "return_z_range": [
+            0.8,
+            1.4
+          ],
+          "serve_probability": 0.3,
+          "serve_z_range": [
+            2.0,
+            2.8
+          ],
+          "sim_fps": 240,
+          "spin_x_range": [
+            -200.0,
+            200.0
+          ],
+          "spin_y_range": [
+            -80.0,
+            -40.0
+          ],
+          "spin_z_range": [
+            -200.0,
+            200.0
+          ],
+          "toss_max_frames": 240,
+          "toss_vz_range": [
+            4.5,
+            7.0
+          ],
+          "toss_xy_noise_range": [
+            -0.35,
+            0.35
+          ],
+          "toss_z0_tolerance": 0.03,
+          "volley_probability": 0.05,
+          "z_range": [
+            0.8,
+            1.4
+          ]
+        },
+        "run": {
+          "dry_run": false,
+          "fast_dev_run": false,
+          "gpus": 1,
+          "init_weights": null,
+          "output_dir": "blcs/blcs_multiview_axial",
+          "resume": null,
+          "seed": 42,
+          "test_after_fit": true
+        },
+        "targeted_velocity": {
+          "drive_elevation_range_deg": [
+            5.0,
+            25.0
+          ],
+          "gravity": 9.81,
+          "landing_refine_enabled": true,
+          "landing_refine_max_iters": 14,
+          "landing_refine_tolerance_m": 0.25,
+          "landing_sim_max_frames": 1200,
+          "lob_elevation_range_deg": [
+            35.0,
+            70.0
+          ],
+          "lob_probability": 0.25,
+          "max_ballistic_apex_height_m": 8.0,
+          "net_elevation_step_deg": 2.0,
+          "target_margin_m": 0.35
+        },
+        "training": {
+          "allow_tf32": true,
+          "checkpoint": {
+            "enabled": true,
+            "filename": "blcs-{epoch:02d}",
+            "mode": "min",
+            "monitor": "val/loss",
+            "save_last": true,
+            "save_top_k": 3
+          },
+          "compile": {
+            "backend": "inductor",
+            "dynamic": false,
+            "enabled": false,
+            "fullgraph": false,
+            "mode": "default"
+          },
+          "early_stopping": {
+            "check_on_train_epoch_end": false,
+            "enabled": true,
+            "min_delta": 0.001,
+            "mode": "min",
+            "monitor": "val/pos_error_m",
+            "patience": 10
+          },
+          "gan": {
+            "discriminator": {
+              "cls_init_std": 0.02,
+              "dropout": 0.1,
+              "ffn_dim": 256,
+              "ffn_type": "swiglu",
+              "hidden_dim": 128,
+              "invalid_init_std": 0.02,
+              "max_seq_len": 10240,
+              "name": "trajectory_transformer",
+              "num_heads": 4,
+              "num_layers": 4,
+              "rope_dim": 32,
+              "rope_theta": 10000.0
+            },
+            "discriminator_gradient_clip_val": 1.0,
+            "enabled": false,
+            "generator_gradient_clip_val": 1.0,
+            "target_weight": 2.0,
+            "transition": {
+              "start_epoch": 50
+            },
+            "warmup_epochs": 10
+          },
+          "gravity_beta": 0.005,
+          "gravity_loss_weight": 0.0,
+          "learning_rate": 0.0001,
+          "lr_monitor": {
+            "enabled": true,
+            "interval": "step"
+          },
+          "matmul_precision": "high",
+          "min_lr": 1e-06,
+          "optimizer": {
+            "betas": [
+              0.9,
+              0.999
+            ]
+          },
+          "position_axis_weights": null,
+          "position_loss_weight": 1.0,
+          "qualitative_logging": {
+            "enabled": true,
+            "every_n_epochs": 5,
+            "num_samples": 4,
+            "selected_indices": null,
+            "selection_mode": "random"
+          },
+          "qualitative_rendering": {
+            "fps": 10.0,
+            "style": {
+              "show_hud": true,
+              "show_minimap": true,
+              "show_shadow": true,
+              "show_trail": true,
+              "theme": "light",
+              "trail_length": 60
+            }
+          },
+          "reprojection_loss_weight": 0.0,
+          "smoothness_axis_weights": null,
+          "smoothness_beta": 0.001,
+          "smoothness_loss_weight": 0.0,
+          "smoothness_order": 3,
+          "steps_per_epoch": null,
+          "trainer": {
+            "accumulate_grad_batches": 1,
+            "benchmark": false,
+            "check_val_every_n_epoch": 1,
+            "deterministic": true,
+            "enable_model_summary": true,
+            "enable_progress_bar": true,
+            "gradient_clip_val": 1.0,
+            "log_every_n_steps": 100,
+            "max_epochs": 100,
+            "precision": "bf16-mixed",
+            "reload_dataloaders_every_n_epochs": 0
+          },
+          "warmup_epochs": null,
+          "warmup_steps": 200,
+          "weight_decay": 1e-05
+        }
+      },
+      "dataset_class": "src.tasks.blcs.data.dataset.BallTrajectoryDataset",
+      "hydra_config_name": "train",
+      "hydra_overrides": [
+        "model=multiview_axial_small",
+        "model.hidden_dim=16",
+        "model.num_layers=1",
+        "model.num_heads=4",
+        "model.ffn_dim=32",
+        "model.rope_dim=4",
+        "model.camera_layers_per_stage=[1]",
+        "model.time_layers_per_stage=[1]",
+        "model.time_global_stage_mask=[false]",
+        "model.max_seq_len=2",
+        "model.max_num_cameras=1",
+        "model.num_court_tokens=14",
+        "model.dropout=0.0",
+        "data.seq_len_range=[2,2]",
+        "data.num_views_range=[1,1]",
+        "data.camera_mode=first",
+        "data.num_court_kp=14",
+        "data.batch_size=1",
+        "data.num_workers=0",
+        "training.compile.enabled=false"
+      ],
+      "io_adapter_class": "src.tasks.blcs.model_io.adapters.AxialTrajectoryModelIOAdapter",
+      "lightning_class": "src.tasks.blcs.training.lightning_module.BLCSLightningModule",
+      "loss_metric_api": "BLCSLightningModule.load_from_checkpoint(strict=True, weights_only=False) -> _compute_supervised_result -> BLCSLoss/BLCSMetrics",
+      "losses": {
+        "gravity": 0.0,
+        "position": 0.10216159373521805,
+        "reprojection": 0.0,
+        "smoothness": 0.0,
+        "total": 0.10216159373521805
+      },
+      "metadata_free": {
+        "checkpoint_has_normalization_metadata": false,
+        "config_has_normalization_metadata": false,
+        "dataset_has_normalization_metadata": false
+      },
+      "model_class": "src.tasks.blcs.models.blcs_multiview_axial_model.BLCSMultiViewAxialModel",
+      "parameter_count": 6166,
+      "prediction_position_meters": [
+        [
+          [
+            0.4790309965610504,
+            -4.963886260986328,
+            0.2890048027038574
+          ],
+          [
+            0.48211297392845154,
+            -4.927579879760742,
+            0.2903915345668793
+          ]
+        ]
+      ],
+      "prediction_position_normalized": [
+        [
+          [
+            0.08733472973108292,
+            -0.4176597595214844,
+            0.270097941160202
+          ],
+          [
+            0.08789662271738052,
+            -0.41460496187210083,
+            0.27139395475387573
+          ]
+        ]
+      ],
+      "prediction_velocity_meters_per_second": [
+        [
+          [
+            -1.6029282808303833,
+            -5.0047736167907715,
+            0.004876100458204746
+          ],
+          [
+            -1.608097791671753,
+            -5.01556921005249,
+            0.0042762779630720615
+          ]
+        ]
+      ],
+      "prediction_velocity_normalized": [
+        [
+          [
+            -0.2922385036945343,
+            -0.421099990606308,
+            0.004557102918624878
+          ],
+          [
+            -0.29318100214004517,
+            -0.42200833559036255,
+            0.003996521234512329
+          ]
+        ]
+      ],
+      "predictor_api": "BLCSPredictor.load_from_checkpoint(strict=True, weights_only=False) -> predict_batch",
+      "selection": {
+        "augment": false,
+        "cameras": [
+          0
+        ],
+        "scene_id": "scene_representative_blcs",
+        "split_index": 0,
+        "window": [
+          0,
+          2
+        ]
+      },
+      "strict_reload": {
+        "state_key_count": 43,
+        "state_matches_checkpoint_exactly": true,
+        "succeeded": true
+      },
+      "target_position_meters": [
+        [
+          [
+            1.097000002861023,
+            -3.565500259399414,
+            0.4280000329017639
+          ],
+          [
+            -2.194000005722046,
+            5.942500114440918,
+            0.6420000791549683
+          ]
+        ]
+      ],
+      "target_position_normalized": [
+        [
+          [
+            0.20000000298023224,
+            -0.30000001192092896,
+            0.4000000059604645
+          ],
+          [
+            -0.4000000059604645,
+            0.5,
+            0.6000000238418579
+          ]
+        ]
+      ]
+    },
+    "plcs": {
+      "aggregate_metrics": {
+        "angle_accuracy": 0.0,
+        "angle_accuracy_10deg": 0.0,
+        "angle_accuracy_15deg": 0.0,
+        "angle_accuracy_30deg": 0.0,
+        "angular_error_deg": 92.88079833984375,
+        "angular_error_median_deg": 47.50485610961914,
+        "angular_error_std_deg": 64.17127227783203,
+        "position_accuracy": 0.0,
+        "position_accuracy_0.5m": 0.0,
+        "position_accuracy_1m": 0.0,
+        "position_accuracy_2m": 0.0,
+        "position_error_m": 7.67270565032959,
+        "position_error_median_m": 2.661170482635498,
+        "position_error_std_m": 7.087380886077881,
+        "x_error_m": 1.1710489988327026,
+        "y_error_m": 7.330424785614014,
+        "z_error_m": 0.6563951969146729
+      },
+      "arrays": {
+        "input_court_kp": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "1875d3f7dcb2172b40c5ac926bd49ee9446337a7cf0510dbe5e6781395e59dcb",
+          "shape": [
+            1,
+            1,
+            2,
+            14,
+            2
+          ]
+        },
+        "input_court_vis": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "43469ce897d6b6e412109b858a9f4f6b8d0d91d6fd5292950ec2ddbdba6a8902",
+          "shape": [
+            1,
+            1,
+            2,
+            14
+          ]
+        },
+        "input_human_kp": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "5531c3e95e95ad40cb41001aefe483b47189984e2bce56ecb0eb6e3324a571fa",
+          "shape": [
+            1,
+            1,
+            2,
+            17,
+            2
+          ]
+        },
+        "input_human_vis": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "3da4732691885ce6ba7dfeccf1a2cf7c3aba92b34f5176e8d12fd97692bb8bb4",
+          "shape": [
+            1,
+            1,
+            2,
+            17
+          ]
+        },
+        "input_padding_mask": {
+          "dtype": "bool",
+          "finite": true,
+          "sha256": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7",
+          "shape": [
+            1,
+            1,
+            2
+          ]
+        },
+        "loss_angle": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "f42ea051176654b8bbcb365845315549e34334a1f2b522cf13b2f4ae7b3b2a1d",
+          "shape": [
+            1
+          ]
+        },
+        "loss_bone_length": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+          "shape": [
+            1
+          ]
+        },
+        "loss_canonical_pose": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+          "shape": [
+            1
+          ]
+        },
+        "loss_joint_angle": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+          "shape": [
+            1
+          ]
+        },
+        "loss_joint_angle_velocity": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+          "shape": [
+            1
+          ]
+        },
+        "loss_position": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "ef9e8a9b1ea35050b80dcd13cb55d0b664bd6f567dc8b7e50fa07b8f3148fc28",
+          "shape": [
+            1
+          ]
+        },
+        "loss_position_smoothness": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+          "shape": [
+            1
+          ]
+        },
+        "loss_rotation": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "37638986a4ad77a6db80196641e51147c2a2479c83eeb428e64a1ed4fdbe91d2",
+          "shape": [
+            1
+          ]
+        },
+        "loss_torsion_angle": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+          "shape": [
+            1
+          ]
+        },
+        "loss_torsion_angle_velocity": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+          "shape": [
+            1
+          ]
+        },
+        "loss_torso_twist": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+          "shape": [
+            1
+          ]
+        },
+        "loss_torso_twist_velocity": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+          "shape": [
+            1
+          ]
+        },
+        "loss_total": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "0af85db29e23e27282f3b752c96549405eb09a690881a0f267cdddfa0d257ad9",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_angle_accuracy": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_angle_accuracy_10deg": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_angle_accuracy_15deg": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_angle_accuracy_30deg": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_angular_error_deg": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "91c4796f8476c29f6b63bb964bc7fa1dfb102736e4e90a635adc5aea5472b7ea",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_angular_error_median_deg": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "1df7003d4c7248e67a6d11edf62b23e93aa8989da836996b3e0b4caf7f1ad74e",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_angular_error_std_deg": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "e5f736a12d306119837e12b631f02b1b31e7142acc591774c20d4d1348f72f04",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_position_accuracy": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_position_accuracy_0.5m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_position_accuracy_1m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_position_accuracy_2m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_position_error_m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "ae01e8ca355b122e9ce0f335c4686044ab476535e28b54efd5cba32bfb9a2fa3",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_position_error_median_m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "ca5263905772a1d5fcca85c796b791958e00bf2af9f047125da9bc2661f8c236",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_position_error_std_m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "e52307a9e12920e3b5144ef3e6fa4fa0c30582ae3e4932fb438c659a6f4682e0",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_x_error_m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "12dfaef37c493214954fd8665fc66200ac4d5b2cdb1acef9b345c74dba5d6a23",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_y_error_m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "5eb9df0772282490641181500f46ecdb2dbb20e45f404825cde87d24dcc9ea22",
+          "shape": [
+            1
+          ]
+        },
+        "metric_aggregate_z_error_m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "35d809d9d3b7fb80dbcb45dfefc4c390e677e1dcf19b47a1720d6776f14e284a",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_angular_error_deg": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "91c4796f8476c29f6b63bb964bc7fa1dfb102736e4e90a635adc5aea5472b7ea",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_loss_angle": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "c454d2b6b017c0a48b2a5ff35b9ca00fc3b33d499c987901d93a0d1441ac038e",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_loss_bone_length": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_loss_canonical_pose": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_loss_joint_angle": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_loss_joint_angle_velocity": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_loss_position": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "7721b64285a92a58838dd93e5039a25e10846427943487f1a249c0df8de360d2",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_loss_position_smoothness": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_loss_rotation": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "7517298802df2a0c470b687efc89c647c40b00c268820bdba2900933f8caf409",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_loss_torsion_angle": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_loss_torsion_angle_velocity": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_loss_torso_twist": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_loss_torso_twist_velocity": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_loss_total": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "4916af5a09e7a94c923bf92f4de7db50d5069c142f9d265f447556e730797d87",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_position_error_m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "ae01e8ca355b122e9ce0f335c4686044ab476535e28b54efd5cba32bfb9a2fa3",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_x_error_m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "12dfaef37c493214954fd8665fc66200ac4d5b2cdb1acef9b345c74dba5d6a23",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_y_error_m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "5eb9df0772282490641181500f46ecdb2dbb20e45f404825cde87d24dcc9ea22",
+          "shape": [
+            1
+          ]
+        },
+        "metric_batch_z_error_m": {
+          "dtype": "float64",
+          "finite": true,
+          "sha256": "35d809d9d3b7fb80dbcb45dfefc4c390e677e1dcf19b47a1720d6776f14e284a",
+          "shape": [
+            1
+          ]
+        },
+        "prediction_position_meters": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "e00b7fc2b0f33fb4e24ab71f7a031d4f92b703184d7785b0ce0c3300cd2da71b",
+          "shape": [
+            1,
+            2,
+            3
+          ]
+        },
+        "prediction_position_normalized": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "a604d606f93e7f959a9b9da875d4f7ef4cb5719bf61a7dd36acd65eb0c45b689",
+          "shape": [
+            1,
+            2,
+            3
+          ]
+        },
+        "prediction_rotation_cos_sin": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "aaf99175e1bd28acccdf2d6e2ccc3d204d583a00b6a45ea7ce2e24dbc5399320",
+          "shape": [
+            1,
+            2,
+            2
+          ]
+        },
+        "prediction_yaw_radians": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "f0e80e6a40fcbabb622bbc81d698f1d284b2f463f1717f8de1ec69220661c6a9",
+          "shape": [
+            1,
+            2
+          ]
+        },
+        "target_human_kp_3d_meters": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "c1dd3a3856758185ab936e38de82e9bc131ca55adec122326800cfc903588f49",
+          "shape": [
+            1,
+            2,
+            17,
+            3
+          ]
+        },
+        "target_position_meters": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "184d54746d0df4f4429d204c3d8b55b668a4da66546a4091b249a03754438f9e",
+          "shape": [
+            1,
+            2,
+            3
+          ]
+        },
+        "target_position_normalized": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "3d7f109f6fe34c9fff19137bb382b88cd1d9535ed9d1815654db72b731e572c2",
+          "shape": [
+            1,
+            2,
+            3
+          ]
+        },
+        "target_rotation_cos_sin": {
+          "dtype": "float32",
+          "finite": true,
+          "sha256": "a666c95f0822c64e01580063e9bb27c629d4d0534e3163a9611738599f97df2a",
+          "shape": [
+            1,
+            2,
+            2
+          ]
+        }
+      },
+      "batch_metrics": {
+        "angular_error_deg": 92.88079833984375,
+        "loss_angle": 1.1283761262893677,
+        "loss_bone_length": 0.0,
+        "loss_canonical_pose": 0.0,
+        "loss_joint_angle": 0.0,
+        "loss_joint_angle_velocity": 0.0,
+        "loss_position": 0.16869141161441803,
+        "loss_position_smoothness": 0.0,
+        "loss_rotation": 1.0353039503097534,
+        "loss_torsion_angle": 0.0,
+        "loss_torsion_angle_velocity": 0.0,
+        "loss_torso_twist": 0.0,
+        "loss_torso_twist_velocity": 0.0,
+        "loss_total": 0.3580889105796814,
+        "position_error_m": 7.67270565032959,
+        "x_error_m": 1.1710489988327026,
+        "y_error_m": 7.330424785614014,
+        "z_error_m": 0.6563951969146729
+      },
+      "config": {
+        "data": {
+          "adapter_camera_index": 0,
+          "augmentation": {
+            "burst_dropout": {
+              "court_track_prob": 0.1,
+              "enabled": true,
+              "human_track_prob": 1.0,
+              "max_bursts": 1,
+              "max_len": 12,
+              "min_len": 2,
+              "prob": 0.3
+            },
+            "edge_degradation": {
+              "court_clip_out_prob": 0.0,
+              "court_drop_prob": 0.01,
+              "court_noise_std": 0.001,
+              "edge_margin": 0.1,
+              "enabled": true,
+              "human_clip_out_prob": 0.01,
+              "human_drop_prob": 0.03,
+              "human_noise_std": 0.002,
+              "prob": 1.0
+            },
+            "enabled": true,
+            "false_positive": {
+              "court_after_dropout_window": 0,
+              "court_prob_absent": 0.0,
+              "court_prob_after_dropout": 0.0,
+              "enabled": true,
+              "human_after_dropout_window": 2,
+              "human_prob_absent": 0.05,
+              "human_prob_after_dropout": 0.02,
+              "prob": 1.0
+            },
+            "gaussian_noise": {
+              "court_std": 0.0001,
+              "enabled": true,
+              "human_std": 0.003,
+              "prob": 1.0
+            },
+            "speed_conditioned": {
+              "court_frame_prob": 0.0,
+              "court_lag_overshoot_range": [
+                0.0,
+                0.0
+              ],
+              "court_noise_std": 0.0,
+              "court_speed_threshold": 0.02,
+              "enabled": true,
+              "human_frame_prob": 0.05,
+              "human_lag_overshoot_range": [
+                -0.15,
+                0.2
+              ],
+              "human_noise_std": 0.001,
+              "human_speed_threshold": 0.02,
+              "prob": 1.0
+            },
+            "temporal_jitter": {
+              "court_drift_std": 0.0,
+              "court_jitter_std": 0.0,
+              "drift_decay": 0.85,
+              "enabled": true,
+              "human_drift_std": 0.001,
+              "human_jitter_std": 0.002,
+              "prob": 1.0
+            },
+            "uv_scale": {
+              "apply_to_court": true,
+              "apply_to_human": true,
+              "enabled": false,
+              "prob": 1.0,
+              "scale_range": [
+                1.0,
+                1.0
+              ]
+            },
+            "visibility_dropout": {
+              "court_drop_prob": 0.05,
+              "enabled": true,
+              "human_drop_prob": 0.08,
+              "prob": 1.0
+            }
+          },
+          "backend": "default",
+          "batch_size": 1,
+          "camera_mode": "first",
+          "min_cameras": 1,
+          "mode": "multiview_sequence",
+          "num_court_kp": 14,
+          "num_views_range": [
+            1,
+            1
+          ],
+          "num_workers": 0,
+          "pin_memory": true,
+          "scene_dir": "plcs",
+          "seq_len_range": [
+            2,
+            2
+          ]
+        },
+        "external_assets": {
+          "smplh_model_path": "smplx/smplh"
+        },
+        "loss": {
+          "angle_weight": 0.0,
+          "bone_length_weight": 0.0,
+          "canonical_pose_weight": 0.0,
+          "joint_angle_velocity_angle_weights": null,
+          "joint_angle_velocity_weight": 0.0,
+          "joint_angle_weight": 0.0,
+          "position_smoothness_weight": 0.0,
+          "position_weight": 2.0,
+          "rotation_weight": 0.02,
+          "torsion_angle_velocity_angle_weights": null,
+          "torsion_angle_velocity_weight": 0.0,
+          "torsion_angle_weight": 0.0,
+          "torso_twist_velocity_weight": 0.0,
+          "torso_twist_weight": 0.0
+        },
+        "metrics": {
+          "angle_threshold_deg": 15.0,
+          "position_threshold_m": 0.5,
+          "velocity_threshold_m": 1.0
+        },
+        "model": {
+          "dropout": 0.0,
+          "ffn_dim": 32,
+          "ffn_type": "swiglu",
+          "hidden_dim": 16,
+          "invisible_init_std": 0.02,
+          "io": {
+            "input_profile": "multiview"
+          },
+          "max_seq_len": 2,
+          "max_views": 1,
+          "name": "plcs_multiview",
+          "num_heads": 4,
+          "num_layers": 1,
+          "predict_canonical_pose": false,
+          "rope_dim": 4,
+          "rope_theta": 10000.0,
+          "rope_theta_camera": 1000.0,
+          "rope_theta_time": 10000.0,
+          "rope_theta_type": 1000.0
+        },
+        "paths": {
+          "artifact_root": "outputs",
+          "cache_root": ".cache",
+          "checkpoint_root": "outputs",
+          "data_root": "data",
+          "external_asset_root": "data",
+          "output_root": "outputs",
+          "project_root": "."
+        },
+        "qualitative": {
+          "fps": 30.0,
+          "style": {
+            "show_hud": true,
+            "show_minimap": true,
+            "show_shadow": true,
+            "show_trail": true,
+            "theme": "dark",
+            "trail_length": 60
+          },
+          "view_3d": {
+            "azim": null,
+            "elev": null,
+            "keyframes": null,
+            "mode": "static",
+            "orbit_period_s": 10.0,
+            "preset": "broadcast",
+            "zoom": null
+          }
+        },
+        "run": {
+          "dry_run": false,
+          "fast_dev_run": false,
+          "gpus": 1,
+          "init_weights": null,
+          "output_dir": "plcs/plcs_multiview",
+          "resume": null,
+          "seed": 42,
+          "test_after_fit": true
+        },
+        "training": {
+          "allow_tf32": true,
+          "checkpoint": {
+            "enabled": true,
+            "filename": "plcs-{epoch:02d}",
+            "mode": "min",
+            "monitor": "val/pos_error_m",
+            "save_last": true,
+            "save_top_k": 3
+          },
+          "compile": {
+            "backend": "inductor",
+            "dynamic": false,
+            "enabled": false,
+            "fullgraph": false,
+            "mode": "default"
+          },
+          "early_stopping": {
+            "check_on_train_epoch_end": false,
+            "enabled": true,
+            "min_delta": 2e-05,
+            "mode": "min",
+            "monitor": "val/pos_error_m",
+            "patience": 10
+          },
+          "gan": {
+            "discriminator_gradient_clip_val": null,
+            "enabled": false,
+            "generator_gradient_clip_val": null,
+            "target_weight": 0.0,
+            "transition": {
+              "start_epoch": 0
+            },
+            "warmup_epochs": 1
+          },
+          "learning_rate": 0.0001,
+          "lr_monitor": {
+            "enabled": true,
+            "interval": "step"
+          },
+          "matmul_precision": "high",
+          "mcmc": {
+            "decay": "cosine",
+            "enabled": false,
+            "noise_scale": 1.0,
+            "target": "all",
+            "temperature": 1.0,
+            "warmup_epochs": 0
+          },
+          "min_lr": 1e-06,
+          "optimizer": {
+            "betas": [
+              0.9,
+              0.999
+            ]
+          },
+          "qualitative_logging": {
+            "enabled": true,
+            "every_n_epochs": 10,
+            "num_samples": 4,
+            "selected_indices": null,
+            "selection_mode": "random"
+          },
+          "steps_per_epoch": null,
+          "trainer": {
+            "accumulate_grad_batches": 1,
+            "benchmark": false,
+            "check_val_every_n_epoch": 3,
+            "deterministic": true,
+            "enable_model_summary": true,
+            "enable_progress_bar": true,
+            "gradient_clip_val": 1.0,
+            "log_every_n_steps": 50,
+            "max_epochs": 200,
+            "precision": "bf16-mixed",
+            "reload_dataloaders_every_n_epochs": 0
+          },
+          "warmup_epochs": null,
+          "warmup_steps": 1000,
+          "weight_decay": 1e-05
+        }
+      },
+      "dataset_class": "src.tasks.plcs.data.dataset.SceneDataset",
+      "hydra_config_name": "train",
+      "hydra_overrides": [
+        "model=multiview",
+        "loss=no_canonical",
+        "model.hidden_dim=16",
+        "model.num_layers=1",
+        "model.num_heads=4",
+        "model.ffn_dim=32",
+        "model.rope_dim=4",
+        "model.max_seq_len=2",
+        "model.max_views=1",
+        "model.dropout=0.0",
+        "data.seq_len_range=[2,2]",
+        "data.num_views_range=[1,1]",
+        "data.min_cameras=1",
+        "data.camera_mode=first",
+        "data.num_court_kp=14",
+        "data.batch_size=1",
+        "data.num_workers=0",
+        "training.compile.enabled=false"
+      ],
+      "io_adapter_class": "src.tasks.plcs.model_io.adapters.PLCSModelIOAdapter",
+      "lightning_class": "src.tasks.plcs.training.lightning_module.PLCSLightningModule",
+      "loss_metric_api": "PLCSLightningModule.load_from_checkpoint(strict=True, weights_only=False) -> _compute_supervised_result -> PLCSLoss/PLCSMetrics",
+      "losses": {
+        "angle": 1.1283761262893677,
+        "bone_length": 0.0,
+        "canonical_pose": 0.0,
+        "joint_angle": 0.0,
+        "joint_angle_velocity": 0.0,
+        "position": 0.16869141161441803,
+        "position_smoothness": 0.0,
+        "rotation": 1.0353039503097534,
+        "torsion_angle": 0.0,
+        "torsion_angle_velocity": 0.0,
+        "torso_twist": 0.0,
+        "torso_twist_velocity": 0.0,
+        "total": 0.3580889105796814
+      },
+      "metadata_free": {
+        "checkpoint_has_normalization_metadata": false,
+        "config_has_normalization_metadata": false,
+        "dataset_has_normalization_metadata": false
+      },
+      "model_class": "src.tasks.plcs.models.plcs_multiview_model.PLCSMultiViewModel",
+      "parameter_count": 3565,
+      "prediction_position_meters": [
+        [
+          [
+            -0.2040642350912094,
+            -7.955223083496094,
+            0.061446961015462875
+          ],
+          [
+            -0.33021625876426697,
+            -7.8941264152526855,
+            0.07026278972625732
+          ]
+        ]
+      ],
+      "prediction_position_normalized": [
+        [
+          [
+            -0.03720405325293541,
+            -0.6693498492240906,
+            0.0574270635843277
+          ],
+          [
+            -0.06020351126790047,
+            -0.6642091870307922,
+            0.06566615402698517
+          ]
+        ]
+      ],
+      "prediction_rotation_cos_sin": [
+        [
+          [
+            0.6755277514457703,
+            -0.7373345494270325
+          ],
+          [
+            0.6657938957214355,
+            -0.7461356520652771
+          ]
+        ]
+      ],
+      "prediction_yaw_radians": [
+        [
+          -0.8291161060333252,
+          -0.8422389626502991
+        ]
+      ],
+      "predictor_api": "PLCSPredictor.load_from_checkpoint(strict=True, weights_only=False) -> predict/predict_multiview_observations",
+      "selection": {
+        "augment": false,
+        "cameras": [
+          0
+        ],
+        "scene_id": "scene_representative_plcs",
+        "split_index": 0,
+        "window": [
+          0,
+          2
+        ]
+      },
+      "strict_reload": {
+        "state_key_count": 45,
+        "state_matches_checkpoint_exactly": true,
+        "succeeded": true
+      },
+      "target_position_meters": [
+        [
+          [
+            1.371250033378601,
+            -5.942500114440918,
+            0.8025000095367432
+          ],
+          [
+            -1.097000002861023,
+            4.754000186920166,
+            0.6420000791549683
+          ]
+        ]
+      ],
+      "target_position_normalized": [
+        [
+          [
+            0.25,
+            -0.5,
+            0.75
+          ],
+          [
+            -0.20000000298023224,
+            0.4000000059604645,
+            0.6000000238418579
+          ]
+        ]
+      ],
+      "target_rotation_cos_sin": [
+        [
+          [
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0
+          ]
+        ]
+      ]
+    }
+  }
+}
