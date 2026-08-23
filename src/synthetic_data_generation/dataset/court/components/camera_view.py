@@ -7,6 +7,9 @@ from dataclasses import dataclass
 import numpy as np
 
 from src.synthetic_data_generation.scene_contract import (
+    _MATRIX_ATOL as _RIGID_TRANSFORM_ATOL,
+)
+from src.synthetic_data_generation.scene_contract import (
     CourtInstance,
     RigidTransform,
     SceneCamera,
@@ -58,9 +61,27 @@ class CameraViewCanonicalization:
             raise TypeError("canonical_from_court must be a RigidTransform.")
         if not isinstance(self.camera_from_canonical, RigidTransform):
             raise TypeError("camera_from_canonical must be a RigidTransform.")
+        expected_canonical_matrix = np.eye(4, dtype=np.float64)
+        if self.semantic_to_physical == CAMERA_VIEW_HALF_TURN_INDEX:
+            expected_canonical_matrix[:3, :3] = np.diag((-1.0, -1.0, 1.0))
+        if not np.allclose(
+            self.canonical_from_court.matrix(),
+            expected_canonical_matrix,
+            atol=_RIGID_TRANSFORM_ATOL,
+            rtol=0.0,
+        ):
+            raise ValueError(
+                "canonical_from_court must be the zero-translation identity or "
+                "full half-turn paired with semantic_to_physical."
+            )
         center = np.asarray(self.camera_center_canonical_m, dtype=np.float64)
         if center.shape != (3,) or not np.isfinite(center).all():
             raise ValueError("camera_center_canonical_m must be a finite three-vector.")
+        if center[1] >= -CAMERA_VIEW_MID_PLANE_TOLERANCE_M:
+            raise ValueError(
+                "camera_center_canonical_m must lie strictly beyond the canonical "
+                "negative-Y mid-plane tolerance."
+            )
         object.__setattr__(
             self,
             "camera_center_canonical_m",
