@@ -1,0 +1,44 @@
+defaults:
+  - paths: default
+  - query_ablation@ablation.encoder_first: encoder_first
+  - query_ablation@ablation.decoder_second: decoder_second
+  - query_ablation@ablation.supervision_third: supervision_third
+  - _self_
+
+ablation:
+  output_path: court_detection/query_ablation/manifest.json
+  python_executable: .venv/bin/python
+  train_module: src.tasks.court_detection.scripts.train
+  seeds: [42, 43, 44]
+  epochs: 15
+  input:
+    height: 256
+    width: 256
+  augmentation:
+    isotropic_letterbox: true
+    preserve_fx_fy: true
+    hflip: false
+    affine: false
+    shear: false
+    perspective: false
+  selected:
+    encoder_depth: null
+    decoder_family: null
+    decoder_size: null
+  composition:
+    source: synthetic_court
+    keypoint_court_scope: target_court
+    augmentation: pose_safe
+    model: query_encoder_base
+    heads: query_base
+    loss_pose: query_pose
+    loss_dense: query_dense
+    processing_kp: kp
+    processing_all: all
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},court_detection/query_ablation/hydra/manifest}
+  output_subdir: null
+  job:
+    chdir: false

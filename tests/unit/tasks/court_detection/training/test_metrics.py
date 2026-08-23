@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+import pytest
 import torch
 
-from src.tasks.court_detection.training.metrics import CourtDetectionMetrics
+from src.tasks.court_detection.geometry.pose import CourtDecodedPose
+from src.tasks.court_detection.model_io.contracts import CourtPoseTargetBatch
+from src.tasks.court_detection.training.metrics import (
+    CourtDetectionMetrics,
+    CourtPoseMetrics,
+)
 
 
 def _logits_with_peaks(
@@ -99,7 +105,7 @@ def test_kp_metric_all_invisible_is_zero() -> None:
 
 
 def test_target_court_metric_uses_single_point_capacity() -> None:
-    metrics = CourtDetectionMetrics("kp", 1)
+    metrics = CourtDetectionMetrics("kp", 1, singleton_kp=True)
     expected = torch.tensor([[[[4.0, 4.0]]]])
     target = _target(expected, visible=torch.tensor([[[True]]]))
     logits = torch.full((1, 1, 16, 16), -10.0)
@@ -113,3 +119,47 @@ def test_target_court_metric_uses_single_point_capacity() -> None:
     )
 
     assert metrics.compute()["mean_dist"] == 0.0
+
+
+def test_singleton_metric_uses_one_global_peak_not_nearest_fallback() -> None:
+    metrics = CourtDetectionMetrics("kp", 1, singleton_kp=True)
+    expected = torch.tensor([[[[4.0, 4.0]]]])
+    target = _target(expected, visible=torch.tensor([[[True]]]))
+    logits = torch.full((1, 1, 16, 16), -10.0)
+    logits[0, 0, 4, 4] = 9.0  # Correct, but not the singleton prediction.
+    logits[0, 0, 12, 12] = 10.0
+
+    metrics.update(
+        logits,
+        target,
+        image_size=torch.tensor([[16, 16]], dtype=torch.long),
+    )
+
+    assert metrics.compute()["mean_dist"] == pytest.approx(8.0 * 2.0**0.5)
+
+
+def test_pose_metrics_report_metric_translation_rotation_and_focal() -> None:
+    metrics = CourtPoseMetrics()
+    prediction = CourtDecodedPose(
+        translation_m=torch.tensor([[1.0, 2.0, 3.0]]),
+        rotation=torch.eye(3).unsqueeze(0),
+        focal_px=torch.tensor([200.0]),
+        log_focal=torch.log(torch.tensor([200.0])),
+    )
+    target = CourtPoseTargetBatch(
+        translation_m=torch.tensor([[1.0, 2.0, 3.0]]),
+        rotation=torch.eye(3).unsqueeze(0),
+        log_focal=torch.log(torch.tensor([200.0])),
+        intrinsics=torch.eye(3).unsqueeze(0),
+        semantic_to_physical=torch.arange(14).unsqueeze(0),
+        raw_pose10d=torch.zeros(1, 10),
+    )
+
+    metrics.update(prediction, target)
+
+    assert metrics.compute() == pytest.approx({
+        "translation_l2_m": 0.0,
+        "rotation_geodesic_deg": 0.0,
+        "focal_relative_error": 0.0,
+        "log_focal_abs_error": 0.0,
+    }, abs=1.0e-6)

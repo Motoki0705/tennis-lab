@@ -1,0 +1,29 @@
+defaults:
+  - paths: default
+  - model: query_encoder_base
+  - loss: query_pose
+  - _self_
+
+profile:
+  output_path: court_detection/query_ablation/profiles/query_linear_base.json
+  device: cuda
+  allow_cpu_diagnostic: false
+  input:
+    batch_size: 1
+    channels: 3
+    height: 256
+    width: 256
+    dtype: float32
+  warmup: 20
+  repeats: 100
+  candidate:
+    family: linear
+    size: base
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},court_detection/query_ablation/hydra/profile}
+  output_subdir: null
+  job:
+    chdir: false
+

@@ -1,0 +1,5 @@
+family: dpt
+width: 64
+tap_indices: [0, 1, 2, 3]
+fusion_levels: 4
+reassemble_factors: [4.0, 2.0, 1.0, 0.5]

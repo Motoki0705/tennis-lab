@@ -7,11 +7,17 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from types import MappingProxyType
-from typing import Literal, TypeAlias
+from typing import TYPE_CHECKING, Literal, TypeAlias
 
 import torch
 from PIL import Image
 from torch import Tensor
+
+from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
+from src.synthetic_data_generation.scene_contract import SceneCamera
+
+if TYPE_CHECKING:
+    from src.tasks.court_detection.geometry.pose import CourtPoseTarget
 
 CourtTargetKind: TypeAlias = Literal["kp", "seg", "line"]
 CourtDenseTargetKind: TypeAlias = Literal["seg", "line"]
@@ -26,6 +32,7 @@ class CourtInputCapability(StrEnum):
     COURT_INSTANCES = "court_instances"
     SEGMENTATION_REFERENCE = "segmentation_reference"
     LINE_REFERENCE = "line_reference"
+    V3_TARGET_COURT_POSE = "v3_target_court_pose"
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,6 +126,25 @@ class CourtInputSpec:
                 raise ValueError(
                     "Court keypoint horizontal_flip_permutation must be a bijection."
                 )
+
+
+@dataclass(frozen=True, slots=True)
+class CourtPoseAuthority:
+    """Typed Synthetic Court V3 camera and target-court authority."""
+
+    source_schema: Literal["canonical_court_dataset_v3"]
+    camera: SceneCamera
+    target_court: TargetCourtBinding
+
+    def __post_init__(self) -> None:
+        if self.source_schema != "canonical_court_dataset_v3":
+            raise ValueError("Court pose authority requires Synthetic Court V3.")
+        if not isinstance(self.camera, SceneCamera):
+            raise TypeError("Court pose authority camera must be a SceneCamera.")
+        if not isinstance(self.target_court, TargetCourtBinding):
+            raise TypeError(
+                "Court pose authority target_court must be a TargetCourtBinding."
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -239,6 +265,7 @@ class CourtRawSample:
     court_instances: tuple[CourtInstance2D, ...]
     dense_target_refs: Mapping[CourtDenseTargetKind, Path]
     metadata: CourtSampleMetadata
+    pose_authority: CourtPoseAuthority | None = None
 
     def __post_init__(self) -> None:
         if self.image.mode != "RGB":
@@ -260,6 +287,7 @@ class CourtTransformedSample:
     dense_targets: Mapping[CourtDenseTargetKind, Tensor]
     horizontal_flipped: bool
     metadata: CourtSampleMetadata
+    pose_target: CourtPoseTarget | None = None
 
     def __post_init__(self) -> None:
         if self.image_tensor.ndim != 3 or self.image_tensor.shape[0] != 3:
@@ -277,6 +305,7 @@ __all__ = [
     "CourtInputSpec",
     "CourtInstance2D",
     "CourtKeypointChannels",
+    "CourtPoseAuthority",
     "CourtRawSample",
     "CourtSampleMetadata",
     "CourtSampleRecord",

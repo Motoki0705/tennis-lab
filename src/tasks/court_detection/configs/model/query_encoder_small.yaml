@@ -1,0 +1,10 @@
+defaults:
+  - backbone: query_dinov3
+  - task_encoder: query_small
+  - decoder: query_linear_small
+  - heads: query_small
+  - _self_
+
+name: court_query_encoder
+preset: small
+in_channels: 3
