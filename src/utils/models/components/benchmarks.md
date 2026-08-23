@@ -98,3 +98,14 @@ full model. A permanent integration test with the configured `Dh=16` compares
 the BLCS model's position/presence outputs and ball/court input gradients
 against the reference backend; it passed on the same GPU build. Operator-level
 measurements remain in the linked package benchmark records above.
+
+### Narrow-head follow-up
+
+After packing multiple narrow-head attention rows into each warp, the default
+BLCS workload was rerun with the same shape, model configuration, warmup count,
+iteration count, dtype, and paired reference/CUDA weights. The fresh paired
+run measured 176.132 / 210.902 ms median / p95 for reference and 136.797 /
+154.573 ms for CUDA, increasing the paired median speedup to 1.288x. Peak
+allocation was 584,594,944 B for reference and 531,196,928 B for CUDA, a 9.1%
+reduction. The operator-level narrow-head timings and dispatch policy are
+retained in the linked compressed-attention benchmark record.
