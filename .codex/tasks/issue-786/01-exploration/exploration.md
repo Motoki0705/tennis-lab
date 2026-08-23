@@ -1,129 +1,116 @@
 # Exploration
 
 - Issue: #786
-- Attempt: 1
+- Attempt: 2
 - Status: COMPLETE
 - Frozen issue SHA-256: `6279b189d4b3c0a7c11da3e605fbc252624f5a60ec808db2c476e061f55fa6a9`
 - Frozen acceptance checklist SHA-256: `95bcebf4388fdba9773e3c538c9e22caf82b6e4a413ec1241e9a58b0c4483032`
 
 ## Scope and Issue interpretation
 
-This is a versioned normalised court-position contract, not a physical court/frame change. A single resolver must return `v1=(5.485,11.885,1.07)m` or `v2=(11.885,11.885,11.885)m`, reject unknown versions, and support `(...,3)` normalize/denormalize. Position and normalized velocity use the same per-axis scale; world position stays m and world velocity m/s. Court geometry, UV/camera coordinates, yaw, and local/root-relative canonical poses remain unchanged.
+Attempt 2 narrowly repairs Validator RETURN findings for AC-003, AC-004, AC-015, AC-020, and AC-021. The existing v1/v2 mathematical contract remains intact. This attempt must make two real metadata-free v1 checkpoints composable without weakening strict typed configuration, remove every public PLCS scene-load bypass, and replace structural smoke/predictor gaps with executable task evidence.
 
-Current `src/utils/schema/court.py` globally exposes only the v1 tuple, so all consumers silently mean v1. The implementation must make runtime selection explicit through BLCS/PLCS/SLCS generation, training, evaluation and inference, bind generated datasets/checkpoints to the resolved version/scale, preserve default v1 numeric behavior, and fail before use on missing/unknown/mixed/mismatched contracts. Metadata-free artifacts are legacy v1 only under explicit v1 runtime; no value/shape inference or automatic conversion.
-
-Smallest safe topology: typed resolver/value object and conversion helpers in `src/utils/schema/court.py`; reusable base dataset/checkpoint compatibility validation; one Hydra normalization config included by each task root; and explicit contract injection into task constructors. Keep `COURT_COORD_SCALE_*` only as documented v1 aliases during migration, never as a mutable active selection.
+The real artifacts are `/home/kamimura/projects/tennis-lab/ckpt/blcs/run-mono3d-blcs-bcast-v3-simfix-epoch189.ckpt`, `/home/kamimura/projects/tennis-lab/ckpt/plcs/run-mono3d-plcs-bcast-v2-simfix-epoch199.ckpt`, and metadata-free legacy roots `/home/kamimura/projects/tennis-lab/data/blcs_broadcast` and `/home/kamimura/projects/tennis-lab/data/plcs_broadcast`. They are legacy v1 only when the caller explicitly supplies v1; v2 must stop in the metadata gate before config/model/data interpretation.
 
 ## Relevant files and symbols
 
-| Area | Facts / symbols | Impact |
-|---|---|---|
-| Shared schema | `src/utils/schema/court.py`: physical dimensions, `court_keypoints_3d`, fixed `COURT_COORD_SCALE_X/Y/Z/XYZ`. | Sole resolver/API; physical values and CourtKP20 remain metres. |
-| Court pose | `src/utils/geometry/court_pose.py::{court_position_to_world_translation,canonical_pose_to_world_pose,world_pose_to_canonical_pose}` import fixed scales. | Inject scale only for position translation; canonical pose stays metres. |
-| Base storage | `src/tasks/base/data/{dataset_writer,scene_dataset}.py`, `src/utils/data/scene_io.py`. | Add root/scene metadata validation before dataset index/payload use. |
-| BLCS generation/data | `generate_dataset/{scene_generator,simulation/ball_physics,io/dataset_io}.py`, `data/{dataset,tracking_dataset}.py`. `ball_pos_world` [m], `ball_pos_norm`, `ball_vel_world` [m/s]. | Versioned generation, artifact naming, metadata and loader guard. |
-| BLCS model paths | `models/components/differentiable_projection.py`, `training/{losses,metrics,tracking_losses,tracking_matching,tracking_metrics}.py`, `inference/{predictor,tracking_predictor}.py`, `model_io/checkpoints.py`. | Standard and tracking scale/gravity/metric/predictor/checkpoint propagation. |
-| PLCS generation/data | `generate_dataset/{scene_generator,io/dataset_io}.py`, `data/{targets,dataset,tracking_dataset,types}.py`. | Contract only `position`; `canonical_pose_3d` is local root-relative metres. |
-| PLCS model/render | `training/{losses,metrics,tracking_losses,tracking_matching,tracking_metrics}.py`, `inference/*`, `visualization/rendering/scene_renderer.py::_world_positions`, `model_io/*`. | Standard/tracking decoding, metre metrics, matching and render conversion must agree. |
-| SLCS | `data/dataset.py::load_clip_arrays`, `data/types.py`, `model_io/adapter.py::to_physical`, `training/metrics.py`, `evaluation/evaluate.py`, `inference/predictor.py`. | Version every meter↔normalized conversion and scalar uncertainty conversion. |
-| Integration | `src/tennis_scene/schema.py::SceneResult`, `pipeline/orchestrator.py`. | Public `player_position`/`ball_3d` remain court/world [m]. |
-| Config roots | `src/tasks/{blcs,plcs,slcs}/configs/{train,generate_dataset,visualize,evaluate,predict_clip}.yaml`, each `configuration.py`, each `scripts/`. | Explicit v1 default / v2 override in every applicable entrypoint. |
+| Area | Verified fact and repair boundary |
+|---|---|
+| BLCS checkpoints | `src/tasks/blcs/model_io/checkpoints.py::{load_checkpoint_runtime,_inject_legacy_v1_config}` only injects normalization. The real checkpoint's `model` lacks `num_court_tokens`; `parse_model_config` requires it, while saved `data.num_court_kp` is 20. |
+| PLCS checkpoints | `src/tasks/plcs/model_io/court_coordinate_checkpoint.py::{_stored_config,prepare_plcs_checkpoint_config}` only injects normalization. `PLCSTrainingConfig.from_config` strictly requires root `external_assets` and `qualitative`; the real checkpoint lacks both but retains `paths.smplh_model_path`. |
+| Shared guards | `src/tasks/base/{data,model_io}/court_coordinate_contract.py` implement all-missing legacy=v1-only and v2 rejection. |
+| PLCS public reads | `generate_dataset/io/scene_loader.py::load_scene` has optional contract. Production callers are `visualization/io/scene.py::load_scene_bundle` (via `visualization/orchestrator.py::run_visualization`) and `scripts/analysis/visualize_rotation_error_samples.py::_score_scene`. |
+| Actual loaders | `BallTrajectoryDataset` and PLCS `SceneDataset` inherit `SceneDatasetBase`; its constructor validates every split scene when supplied a contract. BLCS needs ball/court arrays, `ball_pos_norm`, `ball_vel_world`; PLCS needs human/court arrays, `position`, `rotation`, and valid `build_coco17_world_targets` input. |
+| CPU models | Actual `BLCSModel` and `PLCSMultiViewModel` can be tiny: hidden_dim=8, heads=2, ffn_dim=16, layers=0, rope_dim=4, one view/two frames/20 court tokens. Their real adapters are in each task's `model_io/factory.py`. |
+| Inadequate tests | `test_court_coordinate_normalization_smoke.py::test_blcs_plcs_cpu_flow_stays_meter_valued_through_projection_and_render` loads a standalone `.npy` then calls `torch.nn.Identity`; existing standard/tracking predictor tests pin v2, not v1/default, metre scaling. |
 
 ## Entry points and execution paths
 
-- BLCS generation: `python -m src.tasks.blcs.scripts.generate_dataset -> parse_generation_run -> build_generator_config -> SceneGenerator/parallel workers -> BLCSDatasetWriter`. `SceneGenerator.generate_scene()` obtains `ball_pos_norm` from `BallPhysics.normalize_position(rally_result.trajectory)`. It writes `config.yaml`, root metadata/splits, then scene metadata/scalars/arrays.
-- BLCS standard training: `scripts/train.py -> TrainingRuntimeConfig.from_config + validate_training_boundary -> BLCSTrainingRunner`; `BLCSLoss` defaults `height_scale=COURT_COORD_SCALE_Z`, `DifferentiableProjection` has a scale buffer, `BLCSPredictor` has an optional scale argument. Tracking has independent loss/matching/metric/predictor code; `BLCSTrackingPredictor` imports the global tuple directly.
-- PLCS generation: `scripts/generate_dataset.py -> PLCSGenerationConfig -> SceneGenerator/PLCSDatasetWriter`. `_transform_motion_to_court()` divides court metres by fixed XYZ scales; `data.targets` reverses them. Multi-object generation composes the same normalized arrays.
-- PLCS train: `scripts/train.py -> PLCSTrainingConfig -> PLCSTrainingRunner`; standard and tracking predictors independently decode. `SceneRenderer._world_positions()` directly multiplies by physical constants and can disagree with a migrated predictor unless supplied the contract.
-- SLCS: `load_clip_arrays()` reads metre-valued `SceneResult` player/ball labels then divides by the fixed tuple. Train/evaluate/predict have separate Hydra roots. Evaluation and `SLCSMetrics`, and `SLCSModelIOAdapter.to_physical`, each use both the tuple and its mean for scalar position uncertainty.
-- Integrated pipeline: `pipeline/orchestrator.py` places PLCS/BLCS outputs in `SceneResult`; its schema documents court coordinates. All task predictors therefore must denormalize before this boundary.
-- Required operational commands are the three generation scripts and BLCS/PLCS/SLCS train/evaluate/predict/visualize scripts. AC-019 training must use the shared training queue, never direct concurrent GPU execution.
+1. BLCS: `BLCSPredictor.load_from_checkpoint`/tracking → `load_checkpoint_runtime` → `compose_blcs_trajectory_model_io` → `BLCSLightningModule.load_from_checkpoint(strict=True)`. A legacy adapter must yield a complete, exact current config before compose.
+2. PLCS: standard/tracking predictor checkpoint load → `load_plcs_checkpoint_mapping` → `prepare_plcs_checkpoint_config` → strict Lightning load, whose constructor calls `PLCSTrainingConfig.from_config`. The adapter belongs before that typed boundary.
+3. PLCS dataset: `SceneDataset` → `SceneDatasetBase` → `validate_dataset_court_coordinate_contract(root, contract, scene_paths=all_paths)` → payload build. It already validates all split paths; standalone `load_scene` bypasses it when omitted.
+4. Visualization: Hydra → `build_runtime_config` resolves a contract → `run_visualization` → `load_scene_bundle` → `load_scene`. The runtime already owns a non-optional contract. The analysis script already passes its contract.
 
 ## Data, configuration, and interface contracts
 
-### Existing facts
+### Exact fail-closed legacy typed-config adapter
 
-- BLCS/PLCS root `meta.json`, per-scene `meta.json`, `scalars.json`, and arrays have no normalization version, scale or units. `BaseDatasetWriter.save_meta_json()` owns root metadata; task writers own scene metadata. `SceneDatasetBase` indexes scene headers only and does not load/compare root metadata.
-- BLCS persists `ball_pos_world` [m], `ball_pos_norm`, and `ball_vel_world` [m/s]. PLCS persists normalized `position`, `rotation`, and `canonical_pose_3d`; `PLCSSceneMeta` currently has no contract field. `canonical_pose_3d` is generated pelvis-root-relative/yaw-canonical in metres.
-- BLCS explicitly requires checkpoint `hyper_parameters.config` in `model_io/checkpoints.py`; PLCS/SLCS use generic Lightning-module loading. No inspected checkpoint path independently saves or validates normalization metadata.
+Use task-local helpers only after the shared checkpoint validator returned `legacy_metadata_free=True` and explicit runtime v1. Deep-copy the saved config and apply a finite allowlist; never merge current training defaults wholesale.
 
-### Required mathematical/data contract
+| Checkpoint | Exact admitted amendment | Validation / rejection |
+|---|---|---|
+| BLCS real v1 | Add `court_coordinate_normalization: {version: v1}` and `model.num_court_tokens: 20` only when absent. | Derive 20 only from legacy `data.num_court_kp`, require integer >0, parse the amended model, and require equality. Existing different value, missing/invalid source, metadata-bearing file, or non-v1 runtime raises a named config/contract error. Never infer tensor shape or use arbitrary default. |
+| PLCS real v1 | Add normalization, `external_assets: {smplh_model_path: <saved paths.smplh_model_path>}`, and the exact canonical `qualitative` schema (fps/style/view_3d) from owned PLCS `configs/qualitative/default.yaml`, only when absent. | Existing sections must exact-validate and never be overwritten. Missing/invalid legacy path, invalid canonical qualitative composition, unknown keys, metadata-bearing checkpoint, or non-v1 runtime raises. Pin the inserted mapping in tests; do not use an empty mapping or guessed path. |
 
-```text
-position_norm = position_m / scale_xyz
-position_m    = position_norm * scale_xyz
-velocity_norm = velocity_m_per_s / scale_xyz
-velocity_mps  = velocity_norm * scale_xyz
-```
+Direct inspection establishes the BLCS saved model is `blcs_multiview_axial`, hidden_dim=512/layers=8/heads=8 and otherwise has current parsed axial fields; PLCS is `plcs_multiview_axial_split` with `data.num_court_kp=20` and only the two root extensions absent. Thus a finite adapter is justified; relaxing `_exact` or `MissingConfigurationKeyError` globally is not.
 
-For v2: doubles sideline `±5.485/11.885 = ±0.4615…`, baseline `±1`, post top `1.07/11.885 = 0.0900…`; `court_keypoints_3d()` stays metre-valued. Both versions need `(...,3)` round-trip max error <= `1e-5m`.
+### Executable AC-003/004 parity evidence
 
-Recommended artifact schema is the same object in root and every new scene: `court_coordinate_normalization: {version, scale_xyz, position_unit: "m", velocity_unit: "m/s"}`. Checkpoint metadata needs version/scale plus schema marker. This is integrity evidence; the resolver remains the only mathematical source. Central validation should exact-resolve runtime version/scale, require root and every scene to be complete/equal, allow all-missing only with explicit v1 runtime, and reject partial/unknown/mixed/mismatch/v2-missing before model/data use. Current data has no metadata, so root-plus-scene ownership is an implementation decision, not an established legacy format.
+Add a focused integration regression using both named checkpoint paths and one explicitly named deterministic scene from each legacy `test.txt`, `augment=False`, CPU and fixed seeds. Execute the real loaded predictor, task loss, and metric. Commit a small golden fixture generated at frozen base revision `59e3b166c2d010d5e62be52c2be76d98a94af0e0`: input selection, normalized prediction, denormalized metre prediction (plus BLCS velocity), scalar loss, and metre metric fields. Compare CPU float32 arrays/scalars at `atol=1e-5, rtol=0`, require finite outputs and strict checkpoint loading.
 
-There is no inspected repository-wide common Hydra config root. Safest propagation is an identical shared config group/package selected before `_self_` in all BLCS/PLCS/SLCS roots (including tracking, evaluate, inference and visualization); typed configuration boundaries must require it, rather than synthesizing a Python default. Default composition must name `v1`. Persist resolved config in generator output/checkpoint and use version-qualified output names (e.g. `norm-v2`) without overwriting v1.
+Also assert each real checkpoint under explicit v2 raises `MissingCourtCoordinateMetadataError` before composition, and synthetic forbidden/mismatched amendments raise. The frozen tree has no pre-change golden values; generating and committing them from the named base revision is required implementation evidence, not something to invent here.
 
-### Loss/gravity/matching/uncertainty facts
+### Mandatory PLCS public load contract
 
-- `BLCSLoss` uses `ballistic_second_difference(gravity, dt, height_scale)`, which yields `-g*dt^2/scale_z`, but its default is fixed v1 Z. Tracking instead compares to literal `loss.gravity_target: -0.01` from `configs/loss/tracking.yaml`.
-- BLCS standard defaults position axis weights to uniform (`null`); tracking config explicitly uses `[1,1,0.5]` and passes it to Hungarian matching. PLCS has separate tracking matching/loss. v2 defaults must remove scale-derived nonuniform weights while v1 retains its existing configuration.
-- Existing Smooth L1 calls often use PyTorch default beta. AC-013 requires an explicit documented physical Huber transition for v2 (and a v1 compatibility decision), not merely isotropic v2 scale.
-- SLCS scalar `log_b` presently converts by `exp(log_b) * mean(scale_xyz)`. That is exact only as a scalar convention, not an axiswise conversion under v1; v2 naturally uses `HALF_LENGTH`.
+Make `load_scene(filepath, *, court_coordinate_normalization: CourtCoordinateNormalization)` mandatory; make `load_scene_bundle` mandatory and always forward it. `run_visualization` already has `RuntimeConfig.court_coordinate_normalization`; `_score_scene` already passes one. Update direct loader tests to explicitly pass v1 and add missing/unknown/mixed root-scene failures through `load_scene`, not only generic validator tests. Future callers must resolve/configure an explicit runtime version: plain filesystem loading is no longer a public bypass.
+
+### Actual CPU chain for AC-020
+
+Create temp root/scene fixtures with complete v1/v2 metadata, two frames, one camera, complete arrays, and `[2,2]`/`[1,1]`/`camera_mode="first"` composed task configs with workers=0. For PLCS include `human_kp_3d.npy` (or valid raw target input) so its real target builder succeeds.
+
+- BLCS: `BallTrajectoryDataset` → `collate_multiview_trajectories` → tiny actual `BLCSModel` bound through the matching real adapter → `trajectory_position_loss`/`BLCSMetrics` → denormalize → `DifferentiableProjection`.
+- PLCS: `SceneDataset` → `collate_plcs_batch` → tiny actual `PLCSMultiViewModel` bound through `PLCSModelIOAdapter` → `PLCSLoss`/`PLCSMetrics` → metre decode → `PLCSSceneRenderer`.
+
+For v1 and v2 assert actual model type/output shape, finite loss/metrics, restored physical positions, and finite projection/render coordinates. No `np.load` plus `Identity`/fixed model can satisfy AC-020.
+
+### v1/default predictor assertions for AC-021
+
+Keep v2 cases and add default-v1, `denormalize=True`, fixed-one-output tests:
+
+- BLCS `inference/test_predictor.py`: position `(5.485,11.885,1.07)` and velocity twice it.
+- BLCS `inference/test_tracking_predictor.py`: every query/frame equals the v1 tuple.
+- PLCS `inference/test_predictor.py`: use `_FixedRotationModel(position_value=1.0)` and assert `position_meters` equals the v1 tuple.
+- PLCS `inference/test_tracking_predictor.py`: every query/frame `position_meters` equals v1.
+
+Name each a default-v1 physical-scale regression. `denormalize=False`, zero output, or shape-only checks do not pin this contract.
 
 ## Existing tests and fixtures
 
-- `tests/unit/utils/schema/test_court.py` fixes physical CourtKP20; add resolver, unknown rejection, two-version round trips and v2 aspect-ratio tests. `tests/unit/utils/geometry/test_court_pose.py` already tests translation/canonical round trip; parameterize and assert canonical pose is not rescaled.
-- BLCS: `tests/unit/tasks/blcs/training/{test_losses,test_tracking_losses,test_tracking_matching,test_tracking_metrics}.py`, `inference/{test_predictor,test_tracking_predictor}.py`, `model_io/test_checkpoints.py`, generation tests, `visualization/rendering/test_scene_renderer.py`; integration config/physics tests are under `tests/integration/tasks/blcs/`.
-- PLCS: `tests/unit/tasks/plcs/data/{test_dataset,test_targets,test_types}.py`, training/predictor/tracking/renderer/model-io tests; generation coordinates are also covered in `tests/unit/synthetic_data_generation/dataset/plcs/test_coordinates.py` and `tests/integration/synthetic_data_generation/test_plcs_coordinate_contract.py`.
-- SLCS: `tests/unit/tasks/slcs/data/test_dataset.py`, `model_io/test_adapter.py`, `inference/test_predictor.py`, training/model tests; integration smoke/config tests are `tests/integration/tasks/slcs/{test_training_smoke,test_training_config}.py`.
-- Base/pipeline evidence locations include `tests/unit/utils/data/test_scene_io.py`, `tests/integration/tasks/base/test_model_io_lifecycle.py`, and `tests/unit/tennis_scene/pipeline/components/{test_blcs,test_plcs}.py`. Existing tests do not cover v2 or normalization metadata.
-- AC-020 needs new bounded v1/v2 CPU fixtures proving dataset load -> forward -> loss -> metric -> physical decode -> BLCS projection / PLCS render. AC-018 needs generated versioned sample round-trip evidence; AC-019 requires queued run records and axis/aggregate metre comparisons, beyond unit tests.
+- Current files: `tests/integration/tasks/test_court_coordinate_normalization_smoke.py`, `tests/unit/tasks/base/data/test_court_coordinate_contract.py`, BLCS `data/test_dataset.py`, both BLCS predictor tests, PLCS `generate_dataset/io/test_scene_loader.py`, and both PLCS predictor tests.
+- Base contract tests cover generic metadata validation; AC-015 needs the public PLCS loader boundary specifically.
+- Fixed predictor models are suitable for AC-021 but not AC-020; actual models/loaders are required there.
+- Legacy roots are approximately 80 MB (BLCS) and 1.1 GB (PLCS), so AC-003 uses one deterministic real sample and goldens; AC-020 uses small temp fixtures.
 
 ## Invariants and compatibility constraints
 
-- Court dimensions, axes/origin, CourtKP20, camera/world metres and UV conventions do not change.
-- v1 is default. Metadata-free `data/blcs_broadcast`/`data/plcs_broadcast` and old checkpoints are v1-only when runtime explicitly selects v1; v2 rejects before interpretation.
-- Runtime, root, every scene, and checkpoint must agree on both version and scale; never infer, silently fallback, or auto-convert.
-- `ball_pos_world` remains m and `ball_vel_world` m/s. Any normalized velocity needs the same selected scale and accurate unit metadata.
-- PLCS canonical/local pose, world joints, rotation/yaw and excluded production metre arrays are never rescaled; only global translation/position is.
-- `SceneResult.player_position`/`ball_3d` remain metres. Metadata can state provenance but must not alter public values.
-- v2 BLCS/PLCS default position loss and Hungarian cost have no inherited axis-scale compensation; v1 regression behavior/weights remain.
+- Preserve strict typed config validation, strict state loading, and no overwrite. Legacy mutation is in-memory, finite, explicit-v1-only, and auditable.
+- New roots/scenes must carry complete identical metadata. All-missing is v1 legacy only; partial/unknown/mixed/mismatch fail before use.
+- PLCS canonical/root-relative pose stays metres; global translation alone is normalized. Public outputs remain metres.
+- v2 must reject real metadata-free files before legacy config adaptation.
+- CPU smoke must use actual task dataset and model classes.
 
 ## Risks and likely impact radius
 
-1. Many fixed imports/default arguments mean mutating a global tuple or active-version singleton can silently corrupt consumers; explicit injection is required.
-2. Header-only dataset indexing can skip validating scenes not sampled in a short test. Validate every split scene when constructing/indexing the dataset.
-3. Checkpoint plumbing differs by task, so a BLCS-only helper would leave PLCS/SLCS resume/evaluate/inference unguarded.
-4. Tracking has independent BLCS predictor/gravity and PLCS matching/loss code; standard-path evidence is insufficient.
-5. PLCS renderer direct scaling and `court_pose.py` are separate conversions; migrate both or visual/integrated metres diverge.
-6. Scalar SLCS uncertainty is under-specified for anisotropic v1. Preserve/document current mean-scale legacy convention unless authority permits a breaking per-axis head change.
-7. AC-019 is operational, requiring separate versioned artifacts and queued training/evaluation evidence, not only code/tests.
+1. Broad OmegaConf merge would admit drift. Limit path/value/condition and test negative cases.
+2. PLCS qualitative defaults can drift; version the legacy adapter and pin its exact inserted mapping.
+3. Real-checkpoint tests need declared external artifacts. They may skip only outside required evidence environments; a skip is not AC-003/004 PASS evidence.
+4. PLCS fixture construction can under-specify `build_coco17_world_targets`; build it from a known loader-compatible format and assert the real loader/model was reached.
+5. Mandatory loader argument intentionally breaks external untyped callers, but owned repository callers already possess contracts and the bypass violates AC-015.
 
 ## Unresolved questions
 
-1. **Root vs scene metadata:** recommend required identical contract at root and every new scene; validator permits all-missing legacy v1 only. Confirm redundancy is desired.
-2. **Legacy declaration:** recommend a required composed v1 config field, not a Python fallback. Confirm a missing config group must error even if caller wants legacy.
-3. **Velocity:** writer persists world velocity only, while model docs/predictor support normalized velocity. Decide whether metadata must cover a new persisted normalized velocity or model-output-only units.
-4. **Tracking gravity:** recommend derive/validate target as `-gravity*dt^2/scale_z`, preserving literal `-0.01` only if a v1 config proves the same formula. Freeze source of tracking `dt`.
-5. **PLCS compact production data:** inspected PLCS writer stores normalized `position`, while `tennis_scene` contracts carry metre arrays. Identify exact compact producer/loader before adding normalization metadata; excluded metre-only artifacts must not be rescaled.
-6. **SLCS uncertainty:** recommended v1 legacy scalar `exp(log_b)*mean(scale_xyz)`, v2 `exp(log_b)*HALF_LENGTH`, documented as scalar-equivalent sigma. Confirm versus broad per-axis model change.
-7. **Huber beta:** choose a config/mechanism for common v2 metre-space transition and state whether v1 retains historical normalized beta; otherwise AC-013 cannot be tested/documented.
+None requiring product authority. Reproducible base-revision golden generation is an implementation prerequisite; if the named artifacts are unavailable for verification, AC-003/004 must remain NOT VERIFIED/RETURN rather than be skipped as PASS.
 
 ## Evidence table
 
 | Kind | Claim | Evidence |
 |---|---|---|
-| FACT | v1 scale and immutable court geometry share one current schema. | `src/utils/schema/court.py`; CourtKP20 regression in `tests/unit/utils/schema/test_court.py`. |
-| FACT | No inspected BLCS/PLCS/SLCS root config selects normalization. | `configs/{train,generate_dataset,visualize,evaluate,predict_clip}.yaml` defaults inspected. |
-| FACT | BLCS has independent generation, projection, standard/tracking loss/metric and predictor scale consumers. | `scene_generator.py`, `ball_physics.py`, `DifferentiableProjection`, `training/*`, `inference/*`. |
-| FACT | Tracking gravity is a fixed normalized literal. | `src/tasks/blcs/configs/loss/tracking.yaml` and `training/tracking_losses.py`. |
-| FACT | PLCS canonical pose is metres while translation is normalized. | `generate_dataset/scene_generator.py`, `data/targets.py`, `utils/geometry/court_pose.py`. |
-| FACT | PLCS renderer independently applies v1 dimensions. | `visualization/rendering/scene_renderer.py::_world_positions`. |
-| FACT | SLCS normalizes SceneResult metres and uses mean-scale scalar uncertainty. | `slcs/data/dataset.py`, `model_io/adapter.py`, `training/metrics.py`, `evaluation/evaluate.py`. |
-| FACT | New dataset/checkpoint normalization metadata checks do not exist in inspected writers/loaders. | `BaseDatasetWriter`, BLCS/PLCS writer/meta types, `SceneDatasetBase`, model checkpoint loaders. |
-| FACT | SceneResult is metre-valued integrated output. | `src/tennis_scene/schema.py`, `pipeline/orchestrator.py`. |
-| INFERENCE | Resolver plus explicit injection is safer than mutable process-global selection. | Multiple direct imports/defaults and independent tracking paths. |
-| INFERENCE | Root plus every-scene metadata is the smallest fail-closed mixed-artifact guard. | Root-only cannot detect replaced scenes; scene-only cannot prove set homogeneity. |
-| INFERENCE | v2 requires distinct default loss/matching configs while v1 retains current values. | AC-013/014; existing BLCS tracking `[1,1,0.5]`. |
-| UNKNOWN | Intended scalar SLCS uncertainty transform under anisotropic v1. | Existing mean rule lacks a documented statistical derivation. |
-| UNKNOWN | Whether normalized velocity is persisted data or model-output-only. | Writer stores world velocity; predictor/docs support normalized velocity. |
-| UNKNOWN | Exact legacy numeric tolerance/golden commands and AC-019 artifact/run locations. | Frozen issue requires evidence but repository has not defined it. |
+| FACT | BLCS real checkpoint lacks normalization and `model.num_court_tokens`, but has `data.num_court_kp=20`. | Direct CPU `torch.load(..., weights_only=False)` inspection; Validator's `MissingConfigurationKeyError`. |
+| FACT | PLCS real checkpoint lacks normalization, `external_assets`, and `qualitative`, but has `paths.smplh_model_path`. | Direct checkpoint inspection; `PLCSTrainingConfig.from_config` required fields. |
+| FACT | Shared metadata gate rejects metadata-free checkpoint under v2. | Base model-I/O contract and Validator direct attempts. |
+| FACT | All repository production PLCS `load_scene` calls are listed above; visualization retains optional bypass despite resolved runtime contract. | `rg "load_scene\\(" src/tasks/plcs --glob '*.py'`; visualization orchestrator. |
+| FACT | Nominal CPU smoke uses `np.load` and `torch.nn.Identity`. | Integration smoke test lines 191-196. |
+| FACT | Existing v2 predictors assert scale; v1/default cases omit it. | Four predictor test files. |
+| INFERENCE | `data.num_court_kp` is the only safe source for missing BLCS token count. | Existing parser requires equality; saved value is 20. |
+| INFERENCE | Finite PLCS adapter is safer than optional strict config fields. | Missing fields are runtime extensions; relaxed parser admits arbitrary configs. |
+| UNKNOWN | Pre-change numerical golden values/hashes are absent. | Frozen tree and Validator evidence contain no base-revision output fixture. |
