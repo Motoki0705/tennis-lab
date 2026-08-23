@@ -127,9 +127,11 @@ def test_v2_tracking_predictor_denormalizes_all_query_positions_to_meters() -> N
     )
 
 
-def test_checkpoint_restoration_retains_exact_ablation_model_adapter_pair(
+@pytest.mark.parametrize("normalization_version", ["v1", "v2"])
+def test_checkpoint_restoration_retains_exact_ablation_binding_and_scale(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
+    normalization_version: str,
 ) -> None:
     config_dir = Path("src/tasks/plcs/configs").resolve()
     with initialize_config_dir(config_dir=str(config_dir), version_base="1.3"):
@@ -146,12 +148,13 @@ def test_checkpoint_restoration_retains_exact_ablation_model_adapter_pair(
                 "model.mhc.sinkhorn_iters=5",
                 "model.cswa.compression_ratio=2",
                 "model.cswa.window_radius=1",
+                f"court_coordinate_normalization={normalization_version}",
             ],
         )
     binding = build_plcs_model_io(PLCSTrainingConfig.from_config(config))
     assert isinstance(binding.adapter, PLCSTrackQueryIOAdapter)
     checkpoint = tmp_path / "ablation.ckpt"
-    normalization = resolve_court_coordinate_normalization("v1")
+    normalization = resolve_court_coordinate_normalization(normalization_version)
     checkpoint_payload: dict[str, object] = {
         "hyper_parameters": {"config": config}
     }
@@ -196,3 +199,22 @@ def test_checkpoint_restoration_retains_exact_ablation_model_adapter_pair(
     assert predictor.io_adapter is binding.adapter
     assert predictor.io_adapter.model_type is PLCSTrackQueryAblationModel
     assert predictor.court_coordinate_normalization == normalization
+
+    inputs: dict[str, Any] = {
+        "human_kp": torch.zeros(1, 1, 2, 4, 17, 2),
+        "human_vis": torch.ones(1, 1, 2, 4, 17, dtype=torch.bool),
+        "court_kp": torch.zeros(1, 1, 2, 14, 2),
+        "court_vis": torch.ones(1, 1, 2, 14, dtype=torch.bool),
+        "padding_mask": torch.zeros(1, 1, 2, dtype=torch.bool),
+        "tracking_metrics": TrackingMetricConfig(
+            presence_threshold=0.5,
+            duplicate_distance=0.05,
+        ),
+    }
+    normalized = predictor.predict(**inputs, denormalize=False)
+    physical = predictor.predict(**inputs, denormalize=True)
+    scale = torch.tensor(normalization.scale_xyz).view(1, 1, 1, 3)
+    torch.testing.assert_close(
+        physical["position_meters"],
+        normalized["position"] * scale,
+    )
