@@ -145,6 +145,25 @@ OPPOSITE_COURT_END_INDEX: tuple[int, ...] = (
     13,
     12,
 )
+# Camera-view canonicalization is a proper half-turn in the court XY plane.
+# Keep this distinct from ``OPPOSITE_COURT_END_INDEX``: that legacy authority
+# reflects only court Y and remains the exact v2 label contract.
+CAMERA_VIEW_HALF_TURN_INDEX: tuple[int, ...] = (
+    3,
+    2,
+    1,
+    0,
+    7,
+    6,
+    5,
+    4,
+    11,
+    10,
+    9,
+    8,
+    13,
+    12,
+)
 
 
 def court_keypoints_3d(config: CourtConfig) -> Tensor:

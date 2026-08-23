@@ -110,6 +110,63 @@ def test_scope_specific_checkpoint_bundle_mismatch_is_rejected() -> None:
         )
 
 
+@pytest.mark.parametrize(
+    ("checkpoint_schema", "runtime_schema", "source"),
+    [
+        (
+            "synthetic_symmetric_kp7:gaussian_max_v1",
+            "synthetic_camera_relative_kp14:gaussian_max_v1",
+            "synthetic_court_v2",
+        ),
+        (
+            "synthetic_symmetric_kp7:gaussian_max_v1",
+            "synthetic_camera_view_kp14_v3:gaussian_max_v1",
+            "synthetic_court",
+        ),
+        (
+            "synthetic_camera_relative_kp14:gaussian_max_v1",
+            "synthetic_symmetric_kp7:gaussian_max_v1",
+            "synthetic_court_v1",
+        ),
+        (
+            "synthetic_camera_relative_kp14:gaussian_max_v1",
+            "synthetic_camera_view_kp14_v3:gaussian_max_v1",
+            "synthetic_court",
+        ),
+        (
+            "synthetic_camera_view_kp14_v3:gaussian_max_v1",
+            "synthetic_symmetric_kp7:gaussian_max_v1",
+            "synthetic_court_v1",
+        ),
+        (
+            "synthetic_camera_view_kp14_v3:gaussian_max_v1",
+            "synthetic_camera_relative_kp14:gaussian_max_v1",
+            "synthetic_court_v2",
+        ),
+    ],
+)
+def test_v1_v2_v3_checkpoint_bundles_are_pairwise_incompatible(
+    checkpoint_schema: str,
+    runtime_schema: str,
+    source: str,
+) -> None:
+    checkpoint = _bundle(kp_schema=checkpoint_schema)
+    runtime = _bundle(kp_schema=runtime_schema)
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train",
+            overrides=[f"data/source={source}", "data/processing=kp"],
+        )
+
+    assert checkpoint != runtime
+    with pytest.raises(ValueError, match="disagrees with its checkpoint snapshot"):
+        CourtDetectionLightningModule(
+            config,
+            target_bundle=runtime,
+            target_bundle_state=serialize_target_bundle(checkpoint),
+        )
+
+
 def test_test_prediction_payload_flattens_every_selected_head(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

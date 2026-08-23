@@ -10,6 +10,13 @@ from typing import TypeAlias, overload
 import numpy as np
 from numpy.typing import NDArray
 
+from src.synthetic_data_generation.dataset.court.components.camera_view import (
+    AMBIGUOUS_CAMERA_RELATIVE_NEAR_FAR_REASON,
+    CAMERA_VIEW_MID_PLANE_TOLERANCE_M,
+    AmbiguousCameraRelativeNearFarError,
+    camera_view_canonicalization,
+    validate_finite_camera_view_projection,
+)
 from src.synthetic_data_generation.dataset.court.schema import (
     COURT_PHYSICAL_INDICES_BY_CLASS_V1,
     COURT_SEMANTIC_CLASS_NAMES_V1,
@@ -23,6 +30,7 @@ from src.synthetic_data_generation.scene_contract import (
     SceneCamera,
 )
 from src.utils.schema.court import (
+    CAMERA_VIEW_HALF_TURN_INDEX,
     NUM_GROUND_COURT_KP,
     OPPOSITE_COURT_END_INDEX,
     STANDARD_COURT_CONFIG,
@@ -34,8 +42,7 @@ PHYSICAL_INDICES_BY_CLASS: tuple[tuple[int, int], ...] = tuple(
     (indices[0], indices[1]) for indices in COURT_PHYSICAL_INDICES_BY_CLASS_V1
 )
 SEMANTIC_CLASS_NAMES_V2 = COURT_SEMANTIC_CLASS_NAMES_V2
-CAMERA_RELATIVE_MID_PLANE_TOLERANCE_M = 1.0e-6
-AMBIGUOUS_CAMERA_RELATIVE_NEAR_FAR_REASON = "ambiguous_camera_relative_near_far"
+CAMERA_RELATIVE_MID_PLANE_TOLERANCE_M = CAMERA_VIEW_MID_PLANE_TOLERANCE_M
 PUBLISHED_COURT_GEOMETRY_ATOL_M = 1.0e-6
 
 
@@ -320,20 +327,112 @@ class MultiCourtProjectionV2:
         }
 
 
-CourtProjectionAny: TypeAlias = CourtProjection | CourtProjectionV2
-MultiCourtProjectionAny: TypeAlias = MultiCourtProjection | MultiCourtProjectionV2
-
-
-class AmbiguousCameraRelativeNearFarError(ValueError):
-    """Explicit pre-render rejection contract for a court mid-plane camera."""
+@dataclass(frozen=True, slots=True)
+class CourtProjectionV3:
+    """Corrected camera-view singleton classes for one accepted court."""
 
     court_instance_id: str
-    reason: str
+    classes: tuple[SemanticClassV2, ...]
 
-    def __init__(self, court_instance_id: str) -> None:
-        self.court_instance_id = court_instance_id
-        self.reason = f"{AMBIGUOUS_CAMERA_RELATIVE_NEAR_FAR_REASON}:{court_instance_id}"
-        super().__init__(self.reason)
+    def __post_init__(self) -> None:
+        if not self.court_instance_id.strip():
+            raise ValueError("court_instance_id must be non-empty.")
+        if tuple(value.class_id for value in self.classes) != tuple(
+            range(NUM_GROUND_COURT_KP)
+        ):
+            raise ValueError("V3 Court classes must be ordered exactly 0..13.")
+        physical_indices = tuple(
+            semantic_class.points[0].physical_index for semantic_class in self.classes
+        )
+        if set(physical_indices) != set(range(NUM_GROUND_COURT_KP)):
+            raise ValueError(
+                "V3 Court classes must preserve each physical index 0..13 once."
+            )
+        if physical_indices not in (
+            tuple(range(NUM_GROUND_COURT_KP)),
+            CAMERA_VIEW_HALF_TURN_INDEX,
+        ):
+            raise ValueError(
+                "V3 physical indices are not a camera-view full-half-turn permutation."
+            )
+        validate_finite_camera_view_projection(
+            np.asarray(
+                [semantic_class.points[0].uv for semantic_class in self.classes],
+                dtype=np.float64,
+            )
+        )
+
+    @property
+    def in_frame_point_count(self) -> int:
+        """Return the number of projected physical points inside the image."""
+        return sum(value.points[0].in_frame for value in self.classes)
+
+    @property
+    def coverage_mode(self) -> str:
+        """Classify geometric coverage using the unchanged 14-point inventory."""
+        return coverage_mode_from_in_frame_point_count(self.in_frame_point_count)
+
+    def to_dict(self) -> dict[str, object]:
+        """Return complete corrected camera-view supervision."""
+        return {
+            "court_instance_id": self.court_instance_id,
+            "coverage_mode": self.coverage_mode,
+            "classes": [value.to_dict() for value in self.classes],
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class MultiCourtProjectionV3:
+    """V3 camera-view supervision for every accepted court in one camera."""
+
+    camera_id: str
+    width: int
+    height: int
+    courts: tuple[CourtProjectionV3, ...]
+
+    def __post_init__(self) -> None:
+        if not self.camera_id.strip() or self.width <= 1 or self.height <= 1:
+            raise ValueError("Projection requires a camera ID and valid resolution.")
+        court_ids = [court.court_instance_id for court in self.courts]
+        if not court_ids or len(court_ids) != len(set(court_ids)):
+            raise ValueError("Projection court IDs must be non-empty and unique.")
+
+    @property
+    def visible_class_names(self) -> tuple[str, ...]:
+        """Return ordered V3 channels with renderer-visible supervision."""
+        visible = {
+            value.class_name
+            for court in self.courts
+            for value in court.classes
+            if value.renderer_visible
+        }
+        return tuple(name for name in SEMANTIC_CLASS_NAMES_V2 if name in visible)
+
+    @property
+    def visible_point_count(self) -> int:
+        """Return total renderer-visible physical points."""
+        return sum(
+            value.points[0].renderer_visible is True
+            for court in self.courts
+            for value in court.classes
+        )
+
+    def to_dict(self) -> dict[str, object]:
+        """Return the canonical corrected fourteen-class label payload."""
+        return {
+            "camera_id": self.camera_id,
+            "resolution": [self.width, self.height],
+            "coverage_modes": [court.coverage_mode for court in self.courts],
+            "visible_class_names": list(self.visible_class_names),
+            "visible_point_count": self.visible_point_count,
+            "courts": [court.to_dict() for court in self.courts],
+        }
+
+
+CourtProjectionAny: TypeAlias = CourtProjection | CourtProjectionV2 | CourtProjectionV3
+MultiCourtProjectionAny: TypeAlias = (
+    MultiCourtProjection | MultiCourtProjectionV2 | MultiCourtProjectionV3
+)
 
 
 def scene_from_court_from_published_points(
@@ -569,6 +668,84 @@ def project_court_semantics_v2(
     )
 
 
+def project_court_semantics_v3(
+    camera: SceneCamera,
+    layout: MultiCourtLayout,
+    *,
+    near_plane_m: float = 0.01,
+) -> MultiCourtProjectionV3:
+    """Project all courts with one shared side decision for V3 pose and KP identity."""
+    if not isinstance(camera, SceneCamera):
+        raise TypeError("camera must be a SceneCamera.")
+    if not isinstance(layout, MultiCourtLayout):
+        raise TypeError("layout must be a MultiCourtLayout.")
+    if not math.isfinite(near_plane_m) or near_plane_m <= 0.0:
+        raise ValueError("near_plane_m must be positive and finite.")
+    points_court = np.asarray(
+        court_keypoints_3d(STANDARD_COURT_CONFIG)[:NUM_GROUND_COURT_KP].numpy(),
+        dtype=np.float64,
+    )
+    scene_to_camera = camera.camera_to_scene.inverse()
+    intrinsics = np.asarray(camera.intrinsics, dtype=np.float64).reshape(3, 3)
+    court_records: list[CourtProjectionV3] = []
+    for court in layout.courts:
+        canonicalization = camera_view_canonicalization(camera, court)
+        physical_indices = canonicalization.semantic_to_physical
+        points_scene = court.scene_from_court.apply(points_court)
+        points_camera = scene_to_camera.apply(points_scene)
+        depth = points_camera[:, 2]
+        homogeneous = points_camera @ intrinsics.T
+        safe_depth = np.where(np.abs(depth) > 1.0e-12, depth, np.nan)
+        uv = homogeneous[:, :2] / safe_depth[:, None]
+        semantic_uv = uv[np.asarray(physical_indices, dtype=np.int64)]
+        validate_finite_camera_view_projection(semantic_uv)
+        in_front = depth > near_plane_m
+        in_frame = (
+            in_front
+            & (uv[:, 0] >= 0.0)
+            & (uv[:, 0] < camera.width)
+            & (uv[:, 1] >= 0.0)
+            & (uv[:, 1] < camera.height)
+        )
+        classes = tuple(
+            SemanticClassV2(
+                class_id=class_id,
+                class_name=SEMANTIC_CLASS_NAMES_V2[class_id],
+                points=(
+                    SemanticPoint(
+                        physical_index=physical_index,
+                        uv=(
+                            float(uv[physical_index, 0]),
+                            float(uv[physical_index, 1]),
+                        ),
+                        camera_depth_m=float(depth[physical_index]),
+                        scene_xyz_m=(
+                            float(points_scene[physical_index, 0]),
+                            float(points_scene[physical_index, 1]),
+                            float(points_scene[physical_index, 2]),
+                        ),
+                        in_front=bool(in_front[physical_index]),
+                        in_frame=bool(in_frame[physical_index]),
+                        renderer_visible=None,
+                    ),
+                ),
+            )
+            for class_id, physical_index in enumerate(physical_indices)
+        )
+        court_records.append(
+            CourtProjectionV3(
+                court_instance_id=court.court_instance_id,
+                classes=classes,
+            )
+        )
+    return MultiCourtProjectionV3(
+        camera_id=camera.camera_id,
+        width=camera.width,
+        height=camera.height,
+        courts=tuple(court_records),
+    )
+
+
 def project_court_semantics_for_version(
     camera: SceneCamera,
     layout: MultiCourtLayout,
@@ -585,6 +762,12 @@ def project_court_semantics_for_version(
         )
     if schema_version is CourtDatasetSchemaVersion.V2:
         return project_court_semantics_v2(
+            camera,
+            layout,
+            near_plane_m=near_plane_m,
+        )
+    if schema_version is CourtDatasetSchemaVersion.V3:
+        return project_court_semantics_v3(
             camera,
             layout,
             near_plane_m=near_plane_m,
@@ -612,6 +795,17 @@ def attach_renderer_visibility(
     alpha_threshold: float = 0.01,
     sample_radius_px: int = 1,
 ) -> MultiCourtProjectionV2: ...
+
+
+@overload
+def attach_renderer_visibility(
+    projection: MultiCourtProjectionV3,
+    *,
+    alpha: NDArray[np.floating],
+    depth: NDArray[np.floating],
+    alpha_threshold: float = 0.01,
+    sample_radius_px: int = 1,
+) -> MultiCourtProjectionV3: ...
 
 
 def attach_renderer_visibility(
@@ -677,6 +871,17 @@ def attach_renderer_visibility_from_validated_arrays(
 ) -> MultiCourtProjectionV2: ...
 
 
+@overload
+def attach_renderer_visibility_from_validated_arrays(
+    projection: MultiCourtProjectionV3,
+    *,
+    alpha: NDArray[np.float32],
+    depth: NDArray[np.float32],
+    alpha_threshold: float = 0.01,
+    sample_radius_px: int = 1,
+) -> MultiCourtProjectionV3: ...
+
+
 def attach_renderer_visibility_from_validated_arrays(
     projection: MultiCourtProjectionAny,
     *,
@@ -706,6 +911,14 @@ def attach_renderer_visibility_from_validated_arrays(
 
     if isinstance(projection, MultiCourtProjectionV2):
         return _attach_renderer_visibility_v2(
+            projection,
+            alpha=alpha,
+            depth=depth,
+            alpha_threshold=alpha_threshold,
+            sample_radius_px=sample_radius_px,
+        )
+    if isinstance(projection, MultiCourtProjectionV3):
+        return _attach_renderer_visibility_v3(
             projection,
             alpha=alpha,
             depth=depth,
@@ -774,6 +987,42 @@ def _attach_renderer_visibility_v2(
     return replace(projection, courts=tuple(courts))
 
 
+def _attach_renderer_visibility_v3(
+    projection: MultiCourtProjectionV3,
+    *,
+    alpha: NDArray[np.float32],
+    depth: NDArray[np.float32],
+    alpha_threshold: float,
+    sample_radius_px: int,
+) -> MultiCourtProjectionV3:
+    courts: list[CourtProjectionV3] = []
+    for court in projection.courts:
+        classes: list[SemanticClassV2] = []
+        for semantic_class in court.classes:
+            point = semantic_class.points[0]
+            visible = False
+            if point.in_frame:
+                x = int(round(point.uv[0]))
+                y = int(round(point.uv[1]))
+                x0 = max(0, x - sample_radius_px)
+                x1 = min(projection.width, x + sample_radius_px + 1)
+                y0 = max(0, y - sample_radius_px)
+                y1 = min(projection.height, y + sample_radius_px + 1)
+                local_alpha = alpha[y0:y1, x0:x1, 0]
+                local_depth = depth[y0:y1, x0:x1, 0]
+                visible = bool(
+                    np.any((local_alpha >= alpha_threshold) & (local_depth > 0.0))
+                )
+            classes.append(
+                replace(
+                    semantic_class,
+                    points=(replace(point, renderer_visible=visible),),
+                )
+            )
+        courts.append(replace(court, classes=tuple(classes)))
+    return replace(projection, courts=tuple(courts))
+
+
 __all__ = [
     "AMBIGUOUS_CAMERA_RELATIVE_NEAR_FAR_REASON",
     "CAMERA_RELATIVE_MID_PLANE_TOLERANCE_M",
@@ -781,9 +1030,11 @@ __all__ = [
     "CourtProjection",
     "CourtProjectionAny",
     "CourtProjectionV2",
+    "CourtProjectionV3",
     "MultiCourtProjection",
     "MultiCourtProjectionAny",
     "MultiCourtProjectionV2",
+    "MultiCourtProjectionV3",
     "PHYSICAL_INDICES_BY_CLASS",
     "SEMANTIC_CLASS_NAMES",
     "SEMANTIC_CLASS_NAMES_V2",
@@ -798,5 +1049,6 @@ __all__ = [
     "project_court_semantics",
     "project_court_semantics_for_version",
     "project_court_semantics_v2",
+    "project_court_semantics_v3",
     "scene_from_court_from_published_points",
 ]

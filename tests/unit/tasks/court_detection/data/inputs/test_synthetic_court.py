@@ -19,10 +19,15 @@ from src.tasks.court_detection.data.processing.geometry import CourtProcessingGe
 from src.tasks.court_detection.data.target_generation.store import (
     CourtDerivedTargetStore,
 )
-from src.utils.schema.court import COURT_KP_NAMES
+from src.utils.schema.court import (
+    CAMERA_VIEW_HALF_TURN_INDEX,
+    COURT_KP_NAMES,
+    OPPOSITE_COURT_END_INDEX,
+)
 
 _IDENTITY_PHYSICAL = tuple(range(14))
-_OPPOSITE_PHYSICAL = (2, 3, 0, 1, 5, 4, 7, 6, 10, 11, 8, 9, 13, 12)
+_OPPOSITE_PHYSICAL = OPPOSITE_COURT_END_INDEX
+_CAMERA_VIEW_PHYSICAL = CAMERA_VIEW_HALF_TURN_INDEX
 _FLIP = (1, 0, 3, 2, 6, 7, 4, 5, 9, 8, 11, 10, 12, 13)
 
 
@@ -91,6 +96,7 @@ def _court(
     physical_order: tuple[int, ...],
     x_offset: float,
     all_invisible: bool = False,
+    camera_view_uv: bool = False,
 ) -> dict[str, object]:
     classes: list[dict[str, object]] = []
     for class_id, (class_name, physical_index) in enumerate(
@@ -102,7 +108,11 @@ def _court(
         point = {
             "physical_index": physical_index,
             "uv": [
-                float(5 + (physical_index % 4) * 10) + x_offset,
+                (
+                    float(5 + class_id * 2) + x_offset
+                    if camera_view_uv
+                    else float(5 + (physical_index % 4) * 10) + x_offset
+                ),
                 float(5 + (physical_index // 4) * 10),
             ],
             "camera_depth_m": 10.0,
@@ -131,10 +141,14 @@ def _projection(
     *,
     court_order: tuple[str, str] = ("court-a", "court-b"),
     invisible_court_id: str | None = None,
+    schema: Literal["v2", "v3"] = "v2",
 ) -> dict[str, object]:
     court_specs = {
         "court-a": (_IDENTITY_PHYSICAL, 0.0),
-        "court-b": (_OPPOSITE_PHYSICAL, 2.0),
+        "court-b": (
+            _OPPOSITE_PHYSICAL if schema == "v2" else _CAMERA_VIEW_PHYSICAL,
+            2.0,
+        ),
     }
     courts = [
         _court(
@@ -142,6 +156,7 @@ def _projection(
             physical_order=court_specs[court_id][0],
             x_offset=court_specs[court_id][1],
             all_invisible=court_id == invisible_court_id,
+            camera_view_uv=schema == "v3",
         )
         for court_id in court_order
     ]
@@ -167,6 +182,7 @@ def _write_v2_dataset(
     court_order: tuple[str, str] = ("court-a", "court-b"),
     target_court_id: str = "court-b",
     invisible_court_id: str | None = None,
+    schema: Literal["v2", "v3"] = "v2",
 ) -> tuple[Path, dict[str, object]]:
     dataset_root = root / "B00" / "datasets" / "court"
     records: list[dict[str, object]] = []
@@ -184,12 +200,13 @@ def _write_v2_dataset(
             sample_id,
             court_order=court_order,
             invisible_court_id=invisible_court_id,
+            schema=schema,
         )
         target = _target(target_court_id)
         camera = _camera(sample_id, sample_index)
         metadata = {"fixture": True}
         labels = {
-            "schema": "canonical_court_sample_v2",
+            "schema": f"canonical_court_sample_{schema}",
             "sample_index": sample_index,
             "sample_id": sample_id,
             "trajectory_group_id": f"group-{split}",
@@ -232,10 +249,10 @@ def _write_v2_dataset(
             }
         )
     manifest: dict[str, object] = {
-        "schema": "canonical_court_dataset_v2",
+        "schema": f"canonical_court_dataset_{schema}",
         "status": "completed",
         "scene_id": "B00",
-        "profile": "v2-fixture",
+        "profile": f"{schema}-fixture",
         "seed": 761,
         "sampling_policy": {},
         "metadata_fields": [],
@@ -253,7 +270,7 @@ def _write_v2_dataset(
 def _input(
     root: Path,
     *,
-    schema: Literal["v1", "v2"] = "v2",
+    schema: Literal["v1", "v2", "v3"] = "v2",
     keypoint_court_scope: Literal["all_courts", "target_court"] = "all_courts",
 ) -> SyntheticCourtInput:
     return SyntheticCourtInput(
@@ -311,6 +328,191 @@ def test_v2_keeps_semantic_multi_peaks_separate_from_physical_instances(
     )
     torch.testing.assert_close(flipped.points_xy[0], channels.points_xy[1])
     torch.testing.assert_close(flipped.points_xy[4], channels.points_xy[6])
+
+
+def test_v3_uses_distinct_schema_full_half_turn_and_one_flip_only(
+    tmp_path: Path,
+) -> None:
+    _write_v2_dataset(tmp_path, schema="v3")
+    input_layer = _input(tmp_path, schema="v3")
+
+    assert input_layer.spec.source_schema == "canonical_court_dataset_v3"
+    assert input_layer.spec.keypoint_schema == "synthetic_camera_view_kp14_v3"
+    assert input_layer.spec.keypoint_flip_permutation == _FLIP
+    raw = input_layer.load(input_layer.records("train")[0])
+    assert raw.keypoint_channels is not None
+    channels = raw.keypoint_channels
+    assert channels.points_xy.shape == (14, 2, 2)
+    assert channels.physical_indices[:, 0].tolist() == list(range(14))
+    assert channels.physical_indices[:, 1].tolist() == list(_CAMERA_VIEW_PHYSICAL)
+
+    flipped = CourtProcessingGeometry._transform_channels(
+        channels,
+        matrix=torch.eye(3, dtype=torch.float64),
+        output_size_hw=(48, 64),
+        horizontal_flipped=True,
+    )
+    permutation = torch.tensor(_FLIP, dtype=torch.long)
+    torch.testing.assert_close(
+        flipped.points_xy,
+        channels.points_xy.index_select(0, permutation),
+    )
+    torch.testing.assert_close(
+        flipped.point_visible,
+        channels.point_visible.index_select(0, permutation),
+    )
+    torch.testing.assert_close(
+        flipped.physical_indices,
+        channels.physical_indices.index_select(0, permutation),
+    )
+
+
+def test_v3_target_scope_preserves_distinct_bundle_identity_and_physical_mapping(
+    tmp_path: Path,
+) -> None:
+    _write_v2_dataset(tmp_path, schema="v3")
+    all_input = _input(tmp_path, schema="v3")
+    target_input = _input(
+        tmp_path,
+        schema="v3",
+        keypoint_court_scope="target_court",
+    )
+
+    all_raw = all_input.load(all_input.records("train")[0])
+    target_raw = target_input.load(target_input.records("train")[0])
+    assert all_raw.keypoint_channels is not None
+    assert target_raw.keypoint_channels is not None
+    assert (
+        target_input.spec.keypoint_schema
+        == "synthetic_camera_view_kp14_v3_target_court"
+    )
+    assert target_raw.keypoint_channels.points_xy.shape == (14, 1, 2)
+    assert target_raw.keypoint_channels.physical_indices[:, 0].tolist() == list(
+        _CAMERA_VIEW_PHYSICAL
+    )
+    assert [instance.court_instance_id for instance in target_raw.court_instances] == [
+        "court-a",
+        "court-b",
+    ]
+    assert target_input.records("train")[0].dense_target_refs == all_input.records(
+        "train"
+    )[0].dense_target_refs
+
+
+@pytest.mark.parametrize(
+    ("artifact_schema", "selected_schema"),
+    [("v2", "v3"), ("v3", "v2")],
+)
+def test_v2_v3_artifacts_are_never_cross_accepted(
+    tmp_path: Path,
+    artifact_schema: Literal["v2", "v3"],
+    selected_schema: Literal["v2", "v3"],
+) -> None:
+    _write_v2_dataset(tmp_path, schema=artifact_schema)
+
+    with pytest.raises(ValueError, match="selected schema"):
+        _input(tmp_path, schema=selected_schema)
+
+
+def test_v3_rejects_legacy_mapping(tmp_path: Path) -> None:
+    manifest_path, manifest = _write_v2_dataset(tmp_path, schema="v3")
+    record = cast(list[dict[str, object]], manifest["samples"])[0]
+    projection = cast(dict[str, object], record["projection"])
+    courts = cast(list[dict[str, object]], projection["courts"])
+    classes = cast(list[dict[str, object]], courts[1]["classes"])
+    for class_id, physical_index in enumerate(_OPPOSITE_PHYSICAL):
+        point = cast(list[dict[str, object]], classes[class_id]["points"])[0]
+        point["physical_index"] = physical_index
+    labels_path = manifest_path.parent / cast(str, record["labels"])
+    labels = json.loads(labels_path.read_text(encoding="utf-8"))
+    assert isinstance(labels, dict)
+    labels["projection"] = deepcopy(projection)
+    labels_path.write_text(json.dumps(labels), encoding="utf-8")
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    input_layer = _input(tmp_path, schema="v3")
+
+    with pytest.raises(ValueError, match="physical indices"):
+        input_layer.load(input_layer.records("train")[0])
+
+
+def test_v3_accepts_finite_lateral_projected_u_reversal(tmp_path: Path) -> None:
+    manifest_path, manifest = _write_v2_dataset(tmp_path, schema="v3")
+    record = cast(list[dict[str, object]], manifest["samples"])[0]
+    projection = cast(dict[str, object], record["projection"])
+    courts = cast(list[dict[str, object]], projection["courts"])
+    classes = cast(list[dict[str, object]], courts[1]["classes"])
+    left = cast(list[dict[str, object]], classes[2]["points"])[0]
+    right = cast(list[dict[str, object]], classes[3]["points"])[0]
+    left_u = cast(list[float], left["uv"])[0]
+    cast(list[float], right["uv"])[0] = left_u - 1.0
+    labels_path = manifest_path.parent / cast(str, record["labels"])
+    labels = json.loads(labels_path.read_text(encoding="utf-8"))
+    assert isinstance(labels, dict)
+    labels["projection"] = deepcopy(projection)
+    labels_path.write_text(json.dumps(labels), encoding="utf-8")
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    input_layer = _input(tmp_path, schema="v3")
+
+    loaded = input_layer.load(input_layer.records("train")[0])
+
+    assert loaded.keypoint_channels is not None
+    assert loaded.keypoint_channels.points_xy[2, 1, 0] > (
+        loaded.keypoint_channels.points_xy[3, 1, 0]
+    )
+
+
+def test_v3_rejects_nonfinite_projected_uv(tmp_path: Path) -> None:
+    manifest_path, manifest = _write_v2_dataset(tmp_path, schema="v3")
+    record = cast(list[dict[str, object]], manifest["samples"])[0]
+    projection = cast(dict[str, object], record["projection"])
+    courts = cast(list[dict[str, object]], projection["courts"])
+    classes = cast(list[dict[str, object]], courts[1]["classes"])
+    point = cast(list[dict[str, object]], classes[0]["points"])[0]
+    cast(list[float], point["uv"])[0] = float("nan")
+    labels_path = manifest_path.parent / cast(str, record["labels"])
+    labels = json.loads(labels_path.read_text(encoding="utf-8"))
+    assert isinstance(labels, dict)
+    labels["projection"] = deepcopy(projection)
+    labels_path.write_text(json.dumps(labels), encoding="utf-8")
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="finite"):
+        _input(tmp_path, schema="v3")
+
+
+@pytest.mark.parametrize(
+    ("transform_owner", "mutation", "message"),
+    [
+        ("camera", "missing", "missing=.*camera_to_scene"),
+        ("camera", "nonfinite", "finite JSON"),
+        ("court", "missing", "missing=.*scene_from_court"),
+        ("court", "nonfinite", "finite JSON"),
+    ],
+)
+def test_v3_rejects_missing_or_nonfinite_camera_and_court_transforms(
+    tmp_path: Path,
+    transform_owner: Literal["camera", "court"],
+    mutation: Literal["missing", "nonfinite"],
+    message: str,
+) -> None:
+    manifest_path, manifest = _write_v2_dataset(tmp_path, schema="v3")
+    record = cast(list[dict[str, object]], manifest["samples"])[0]
+    if transform_owner == "camera":
+        owner = cast(dict[str, object], record["camera"])
+        field = "camera_to_scene"
+    else:
+        target = cast(dict[str, object], record["target_court"])
+        owner = cast(dict[str, object], target["binding"])
+        field = "scene_from_court"
+    if mutation == "missing":
+        del owner[field]
+    else:
+        transform = cast(list[float], owner[field])
+        transform[3] = float("nan")
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=message):
+        _input(tmp_path, schema="v3")
 
 
 def test_v2_target_scope_selects_exact_bound_court_and_keeps_dense_inventory(

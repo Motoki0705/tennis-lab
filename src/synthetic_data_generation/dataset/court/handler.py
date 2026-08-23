@@ -117,11 +117,15 @@ class CourtDatasetStageHandler:
             "split_frame_counts": dict(report.split_frame_counts),
             "performance": report.performance.to_dict(),
         }
-        count_key = (
-            "court_group_counts"
-            if self.configuration.schema_version is CourtDatasetSchemaVersion.V1
-            else "court_sample_counts"
-        )
+        if self.configuration.schema_version is CourtDatasetSchemaVersion.V1:
+            count_key = "court_group_counts"
+        elif self.configuration.schema_version in (
+            CourtDatasetSchemaVersion.V2,
+            CourtDatasetSchemaVersion.V3,
+        ):
+            count_key = "court_sample_counts"
+        else:  # pragma: no cover - typed configuration is exhaustive
+            raise TypeError("Unsupported Court dataset schema version.")
         values[count_key] = dict(report.court_group_counts)
         return StageExecutionSummary(values=values)
 

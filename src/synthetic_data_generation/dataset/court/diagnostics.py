@@ -12,7 +12,11 @@ from numpy.typing import NDArray
 from src.synthetic_data_generation.dataset.court.components.camera_sampling.targeting import (
     nearest_court_tie_ids,
 )
+from src.synthetic_data_generation.dataset.court.components.camera_view import (
+    AMBIGUOUS_CAMERA_RELATIVE_NEAR_FAR_REASON,
+)
 from src.synthetic_data_generation.dataset.court.contracts import (
+    CourtDatasetPlan,
     CourtDatasetPlanAny,
     CourtDatasetPlanV2,
     PlannedCourtSampleV2,
@@ -101,9 +105,14 @@ def write_court_diagnostics(
         },
         root / "acceptance.json",
     )
-    if isinstance(plan, CourtDatasetPlanV2):
+    if plan.schema_version in (
+        CourtDatasetSchemaVersion.V2,
+        CourtDatasetSchemaVersion.V3,
+    ):
+        if not isinstance(plan, CourtDatasetPlanV2):
+            raise TypeError("V2/V3 Court diagnostics require a resolved-target plan.")
         if layout is None:
-            raise ValueError("V2 Court diagnostics require the accepted layout.")
+            raise ValueError("V2/V3 Court diagnostics require the accepted layout.")
         resolution = _v2_target_resolution_diagnostics(plan, layout=layout)
         split_groups = {
             group.trajectory_group_id: {
@@ -124,7 +133,9 @@ def write_court_diagnostics(
             }
             for group in plan.groups
         ]
-    else:
+    elif plan.schema_version is CourtDatasetSchemaVersion.V1:
+        if not isinstance(plan, CourtDatasetPlan):
+            raise TypeError("V1 Court diagnostics require a V1 plan.")
         resolution = None
         split_groups = {
             group.trajectory_group_id: {
@@ -146,6 +157,8 @@ def write_court_diagnostics(
             }
             for group in plan.groups
         ]
+    else:  # pragma: no cover - exact plan versions are exhaustive
+        raise TypeError("Unsupported Court diagnostic plan version.")
     split_payload: dict[str, object] = {
         "schema": definition.split_diagnostics_schema,
         "groups": split_groups,
@@ -220,7 +233,10 @@ def _validate_acceptance_inventory(
         "metadata",
         "reasons",
     }
-    if plan.schema_version is CourtDatasetSchemaVersion.V2:
+    if plan.schema_version in (
+        CourtDatasetSchemaVersion.V2,
+        CourtDatasetSchemaVersion.V3,
+    ):
         rejected_keys.add("target_court")
     planned_by_id = {sample.sample_id: sample for sample in plan.samples}
     rejected_ids: list[str] = []
@@ -242,12 +258,15 @@ def _validate_acceptance_inventory(
         ):
             raise ValueError("Court acceptance rejection reasons are incomplete.")
         if projection is None:
-            if plan.schema_version is not CourtDatasetSchemaVersion.V2 or not any(
-                reason.startswith("ambiguous_camera_relative_near_far:")
+            if plan.schema_version not in (
+                CourtDatasetSchemaVersion.V2,
+                CourtDatasetSchemaVersion.V3,
+            ) or not any(
+                reason.startswith(f"{AMBIGUOUS_CAMERA_RELATIVE_NEAR_FAR_REASON}:")
                 for reason in reasons
             ):
                 raise ValueError(
-                    "Only an ambiguous v2 acceptance rejection may omit projection."
+                    "Only an explicit v2/v3 mid-plane ambiguity may omit projection."
                 )
         elif not isinstance(projection, Mapping):
             raise TypeError("Court acceptance rejection projection must be a mapping.")
@@ -268,7 +287,7 @@ def _validate_acceptance_inventory(
         if isinstance(planned, PlannedCourtSampleV2) and (
             record["target_court"] != planned.target_court.to_dict()
         ):
-            raise ValueError("Court v2 acceptance rejection target is invalid.")
+            raise ValueError("Court v2/v3 acceptance rejection target is invalid.")
         rejected_ids.append(sample_id)
     if len(rejected_ids) != len(set(rejected_ids)):
         raise ValueError("Court acceptance rejection IDs must be unique.")
