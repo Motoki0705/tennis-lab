@@ -387,12 +387,12 @@ def main() -> None:
     torch.manual_seed(SEED)
     blcs_binding = compose_blcs_trajectory_model_io(blcs_config)
     blcs_module = BLCSLightningModule(blcs_config, model_io=blcs_binding).cpu().eval()
-    blcs_checkpoint = OUT / "blcs_representative_legacy_v1.ckpt"
+    blcs_checkpoint = OUT / "blcs_representative_legacy_v1.ckpt.bin"
     _save_checkpoint(blcs_checkpoint, blcs_module, blcs_config)
 
     torch.manual_seed(SEED)
     plcs_module = PLCSLightningModule(plcs_config).cpu().eval()
-    plcs_checkpoint = OUT / "plcs_representative_legacy_v1.ckpt"
+    plcs_checkpoint = OUT / "plcs_representative_legacy_v1.ckpt.bin"
     _save_checkpoint(plcs_checkpoint, plcs_module, plcs_config)
 
     resolver = _resolver()

@@ -2,7 +2,7 @@
   "artifacts": {
     "blcs_checkpoint": {
       "byte_count": 100421,
-      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-normalization-v2/.codex/tasks/issue-786/logs/legacy-base-goldens/representative/blcs_representative_legacy_v1.ckpt",
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-normalization-v2/.codex/tasks/issue-786/logs/legacy-base-goldens/representative/blcs_representative_legacy_v1.ckpt.bin",
       "sha256": "69af21b3f8008ab7f53708e1d03346113aafa49c857a5465ad6e6da86f80a5e7"
     },
     "blcs_dataset_fixture": {
@@ -69,11 +69,11 @@
     },
     "generator": {
       "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-normalization-v2/.codex/tasks/issue-786/logs/legacy-base-goldens/representative/generate_representative.py",
-      "sha256": "956bef2a7fff8e375398a62c031a95eaeab3247a89ffe1e92b5d091639059358"
+      "sha256": "63901c0ffee71a0eea2d79d0f3365444544b1e272cccb89d73b1cf61ad40edae"
     },
     "plcs_checkpoint": {
       "byte_count": 71896,
-      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-normalization-v2/.codex/tasks/issue-786/logs/legacy-base-goldens/representative/plcs_representative_legacy_v1.ckpt",
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-normalization-v2/.codex/tasks/issue-786/logs/legacy-base-goldens/representative/plcs_representative_legacy_v1.ckpt.bin",
       "sha256": "6c212eec6bbe616b498000928733318b19f76e4ad957a680963621c672ca841d"
     },
     "plcs_dataset_fixture": {
