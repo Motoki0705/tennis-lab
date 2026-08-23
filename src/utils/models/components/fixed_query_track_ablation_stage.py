@@ -9,7 +9,7 @@ from torch import Tensor, nn
 
 from src.utils.models.components.block import TransformerBlock
 from src.utils.models.components.ffn_layers import SwiGLU
-from src.utils.models.components.mhc import ManifoldConstrainedHyperConnection
+from src.utils.models.components.mhc import ManifoldConstrainedHyperConnection, MHCState
 from src.utils.models.components.norm import RMSNorm
 
 FFNMode: TypeAlias = Literal["per_attention", "shared"]
@@ -231,6 +231,20 @@ class FixedQueryTrackAblationStage(nn.Module):
             ),
         )
 
+    def _write_mhc_update(
+        self,
+        update: Tensor,
+        *,
+        residual: Tensor,
+        state: MHCState,
+    ) -> Tensor:
+        """Restore autocast updates to the strict residual-stream dtype."""
+        return self.mhc.post(
+            update.to(dtype=residual.dtype),
+            residual=residual,
+            state=state,
+        )
+
     def forward(
         self,
         object_tokens: Tensor,
@@ -267,7 +281,7 @@ class FixedQueryTrackAblationStage(nn.Module):
         object_update = object_update * compressed_valid.unsqueeze(-1).unsqueeze(-1)
 
         if self.mhc_writeback == "after_object_temporal":
-            spatial_objects = self.mhc.post(
+            spatial_objects = self._write_mhc_update(
                 object_update,
                 residual=object_tokens,
                 state=mhc_state,
@@ -352,7 +366,7 @@ class FixedQueryTrackAblationStage(nn.Module):
                 ).unsqueeze(-1)
 
         if self.mhc_writeback == "layer_end":
-            object_output = self.mhc.post(
+            object_output = self._write_mhc_update(
                 current_objects,
                 residual=object_tokens,
                 state=mhc_state,
