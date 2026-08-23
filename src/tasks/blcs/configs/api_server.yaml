@@ -1,4 +1,5 @@
 defaults:
+  - court_coordinate_normalization: v1
   - paths: default
   - physics: default
   - rally: default
@@ -13,6 +14,8 @@ server:
   log_level: info
 
 hydra:
+  searchpath:
+    - pkg://src.tasks.base.configs
   run:
     dir: ${tennis_lab_path:output,${paths.output_root},hydra/blcs/api_server}/${now:%Y-%m-%d}/${now:%H-%M-%S}
   output_subdir: null

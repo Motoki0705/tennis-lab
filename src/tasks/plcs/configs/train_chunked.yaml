@@ -1,4 +1,5 @@
 defaults:
+  - court_coordinate_normalization: v1
   - model: multiview_axial_base
   - data: chunked_multiview_sequence_bs8
   - training: default

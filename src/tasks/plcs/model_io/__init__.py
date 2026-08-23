@@ -12,6 +12,12 @@ from src.tasks.plcs.model_io.contracts import (
     PLCSPreparedBatch,
     PLCSTrackingDecodedPrediction,
 )
+from src.tasks.plcs.model_io.court_coordinate_checkpoint import (
+    load_plcs_checkpoint_mapping,
+    prepare_plcs_checkpoint_config,
+    validate_plcs_checkpoint_normalization,
+    write_plcs_checkpoint_normalization,
+)
 from src.tasks.plcs.model_io.factory import (
     PLCSBoundModelIO,
     PLCSStandardBoundModelIO,
@@ -34,4 +40,8 @@ __all__ = [
     "PLCSTrackingDecodedPrediction",
     "bind_plcs_model_io",
     "build_plcs_model_io",
+    "load_plcs_checkpoint_mapping",
+    "prepare_plcs_checkpoint_config",
+    "validate_plcs_checkpoint_normalization",
+    "write_plcs_checkpoint_normalization",
 ]

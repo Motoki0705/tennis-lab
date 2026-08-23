@@ -43,7 +43,8 @@ def create_slcs_model_io(
             dino_embed_dim=dino.embed_dim,
             log_b_min=model_config.log_b_min,
             log_b_max=model_config.log_b_max,
-        )
+        ),
+        data_config.pipeline.court_coordinate_normalization,
     )
     adapter.validate_model(model)
     binding = bind_model_io(model, adapter)

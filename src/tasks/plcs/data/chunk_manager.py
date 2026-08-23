@@ -7,6 +7,7 @@ from pathlib import Path
 
 from omegaconf import DictConfig
 
+from src.tasks.base.configuration import CourtCoordinateNormalizationConfig
 from src.tasks.base.data.chunk_manager import (
     ChunkManager as BaseChunkManager,
 )
@@ -43,7 +44,11 @@ class _PLCSChunkGenerator:
         num_scenes: int,
         stop_event: threading.Event,
     ) -> None:
-        writer = PLCSDatasetWriter(str(chunk_dir))
+        contract = CourtCoordinateNormalizationConfig.from_config(self.config).contract
+        writer = PLCSDatasetWriter(
+            str(chunk_dir),
+            court_coordinate_normalization=contract,
+        )
         start_index = self._allocate_scene_range(num_scenes)
 
         for scene_data in generate_parallel_scenes(
@@ -56,6 +61,7 @@ class _PLCSChunkGenerator:
             if stop_event.is_set():
                 break
             writer.save_scene(scene_data)
+        writer.save_meta_json()
 
     def _allocate_scene_range(self, num_scenes: int) -> int:
         start_index = self._next_scene_index

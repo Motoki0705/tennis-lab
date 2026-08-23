@@ -11,6 +11,7 @@ import numpy as np
 from src.tasks.base.data.dataset_writer import BaseDatasetWriter
 from src.tasks.plcs.data.types import PLCSSceneMeta
 from src.tasks.plcs.generate_dataset.scene_generator import SceneData
+from src.utils.schema.court_normalization import CourtCoordinateNormalization
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +21,16 @@ class PLCSDatasetWriter(BaseDatasetWriter):
 
     scenes_dir: Path
 
-    def __init__(self, output_dir: str | Path) -> None:
-        super().__init__(output_dir)
+    def __init__(
+        self,
+        output_dir: str | Path,
+        *,
+        court_coordinate_normalization: CourtCoordinateNormalization | None = None,
+    ) -> None:
+        super().__init__(
+            output_dir,
+            court_coordinate_normalization=court_coordinate_normalization,
+        )
 
     def save_scene(self, scene: SceneData) -> Path:
         """Save a single scene as a directory with npy + json files.

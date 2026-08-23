@@ -8,6 +8,7 @@ from typing import Any, Literal
 
 from src.tasks.base.visualization.io import BaseSceneBundle, resolve_cameras
 from src.tasks.plcs.generate_dataset.io.scene_loader import load_scene
+from src.utils.schema.court_normalization import CourtCoordinateNormalization
 
 
 @dataclass(frozen=True)
@@ -21,9 +22,17 @@ def load_scene_bundle(
     scene_path: Path,
     camera: int,
     cameras: tuple[int, ...] | Literal["all"] | None,
+    court_coordinate_normalization: CourtCoordinateNormalization | None = None,
 ) -> SceneBundle:
     """Load scene and resolve selected cameras/fps for visualization."""
-    scene: Any = load_scene(scene_path)
+    scene: Any = (
+        load_scene(scene_path)
+        if court_coordinate_normalization is None
+        else load_scene(
+            scene_path,
+            court_coordinate_normalization=court_coordinate_normalization,
+        )
+    )
     num_cameras = int(scene.num_cameras)
     selected_cameras = resolve_cameras(
         num_cameras,

@@ -5,10 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 import pytorch_lightning as pl
+import torch
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.tasks.base.training.runner import BaseTrainingRunner
 from src.tasks.plcs.configuration import PLCSTrainingConfig
+from src.tasks.plcs.model_io import validate_plcs_checkpoint_normalization
 from src.tasks.plcs.training.composition import (
     build_plcs_datamodule,
     build_plcs_lightning_module,
@@ -33,6 +35,28 @@ class PLCSTrainingRunner(BaseTrainingRunner):
         steps_per_epoch: int | None = None,
     ) -> pl.LightningModule:
         return build_plcs_lightning_module(config)
+
+    def maybe_load_init_weights(
+        self,
+        config: Any,
+        lightning_module: pl.LightningModule,
+    ) -> None:
+        """Validate normalization metadata before weight-only initialization."""
+        init_path = config.run.init_weights
+        if init_path is not None:
+            checkpoint = torch.load(
+                init_path,
+                map_location="cpu",
+                weights_only=False,
+            )
+            if not isinstance(checkpoint, dict):
+                raise ValueError(f"Invalid PLCS init_weights checkpoint: {init_path}.")
+            runtime = PLCSTrainingConfig.from_config(lightning_module.config)
+            validate_plcs_checkpoint_normalization(
+                checkpoint,
+                runtime.court_coordinate_normalization.contract,
+            )
+        super().maybe_load_init_weights(config, lightning_module)
 
     def callbacks_extra(
         self,

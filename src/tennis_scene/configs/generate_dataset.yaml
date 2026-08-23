@@ -1,4 +1,6 @@
 defaults:
+  # Shared compatibility default; opt in with court_coordinate_normalization=v2.
+  - court_coordinate_normalization: v1
   - paths: default
   - _self_
 dataset_directory: tennis_scene/dataset
@@ -14,6 +16,8 @@ pipeline_overrides:
   - plcs.save_result=false
   - blcs.save_result=false
 hydra:
+  searchpath:
+    - pkg://src.tasks.base.configs
   run:
     dir: ${tennis_lab_path:output,${paths.output_root},tennis_scene/generate_dataset,${now:%Y-%m-%d_%H-%M-%S}}
   output_subdir: null

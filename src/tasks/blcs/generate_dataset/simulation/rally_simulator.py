@@ -32,6 +32,7 @@ from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import
     TargetedVelocitySampler,
 )
 from src.utils.schema.court import HALF_LENGTH
+from src.utils.schema.court_normalization import CourtCoordinateNormalization
 
 if TYPE_CHECKING:
     pass
@@ -201,6 +202,7 @@ class RallySimulator:
         cell_manager: CellManager,
         targeted_velocity_config: TargetedVelocityConfig,
         device: str | torch.device,
+        court_coordinate_normalization: CourtCoordinateNormalization | str = "v1",
     ) -> None:
         """Initialize rally simulator.
 
@@ -210,8 +212,12 @@ class RallySimulator:
             cell_manager: Cell manager for position sampling.
             targeted_velocity_config: Configuration for targeted velocity sampling.
             device: Torch device.
+            court_coordinate_normalization: Explicit versioned coordinate contract.
         """
-        self.physics = BallPhysics(physics_config)
+        self.physics = BallPhysics(
+            physics_config,
+            normalization=court_coordinate_normalization,
+        )
         self.physics_config = physics_config
         self.rally_config = rally_config
         self.cell_manager = cell_manager

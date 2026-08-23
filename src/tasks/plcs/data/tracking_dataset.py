@@ -7,14 +7,22 @@ from typing import Any
 import torch
 from torch import Tensor
 
+from src.tasks.base.configuration import CourtCoordinateNormalizationConfig
 from src.tasks.base.data.canonical_tracking import (
     CanonicalTrackingDataset,
     pad_and_stack_tracking_batch,
+)
+from src.tasks.base.data.court_coordinate_contract import (
+    validate_dataset_court_coordinate_contract,
 )
 from src.tasks.base.data.lifecycle_slots import build_fixed_lifecycle_assignment
 from src.tasks.base.data.scene_dataset import Scene
 from src.tasks.plcs.data.tracking_augmentation import (
     PLCSTrackingDetectionAugmentation,
+)
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
 )
 
 PLCS_TRACKING_KEYS = (
@@ -41,7 +49,16 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
     """Load ID-ordered objects, pack lifecycle slots, and corrupt observations."""
 
     def __init__(self, **kwargs: Any) -> None:
+        config = kwargs.get("config")
+        self.court_coordinate_normalization = _tracking_normalization_contract(
+            config
+        )
         super().__init__(**kwargs)
+        validate_dataset_court_coordinate_contract(
+            self.scene_dir,
+            self.court_coordinate_normalization,
+            scene_paths=self.scenes,
+        )
         data_cfg = self._resolve_data_cfg(self.hydra_cfg)
         self.tracking_augmentation = PLCSTrackingDetectionAugmentation(
             data_cfg["augmentation"]
@@ -159,7 +176,17 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
     def augment_sample(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
         if not self.augment:
             return sample
-        return self.tracking_augmentation(sample)
+        augmented: dict[str, Tensor] = self.tracking_augmentation(sample)
+        return augmented
+
+
+def _tracking_normalization_contract(
+    config: object,
+) -> CourtCoordinateNormalization:
+    """Keep the pre-Hydra direct mapping constructor on the legacy v1 scale."""
+    if isinstance(config, dict) and "court_coordinate_normalization" not in config:
+        return resolve_court_coordinate_normalization("v1")
+    return CourtCoordinateNormalizationConfig.from_config(config).contract
 
 
 def collate_plcs_tracking_batch(

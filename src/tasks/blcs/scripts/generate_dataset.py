@@ -3,7 +3,7 @@
 Usage:
     python -m src.tasks.blcs.scripts.generate_dataset
     python -m src.tasks.blcs.scripts.generate_dataset generator.num_scenes=100
-    python -m src.tasks.blcs.scripts.generate_dataset run.output_dir=blcs generator.num_scenes=500
+    python -m src.tasks.blcs.scripts.generate_dataset run.output_dir=blcs_norm-v1_custom generator.num_scenes=500
     python -m src.tasks.blcs.scripts.generate_dataset run.num_workers=4
 
 Notes:
@@ -48,14 +48,18 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Generate scenes and write them to disk."""
     run, _resolver = parse_generation_run(cfg)
     generator_config = build_generator_config(cfg)
+    output_dir = run.output_dir
+    writer = BLCSDatasetWriter(
+        output_dir,
+        court_coordinate_normalization=(
+            generator_config.court_coordinate_normalization
+        ),
+    )
+    OmegaConf.save(cfg, output_dir / "config.yaml")
+
     logger.info("=" * 60)
     logger.info("BLCS Dataset Generator")
     logger.info("=" * 60)
-
-    output_dir = run.output_dir
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    OmegaConf.save(cfg, output_dir / "config.yaml")
 
     seed = run.seed
     seed_everything(seed)
@@ -83,8 +87,6 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     logger.info("Number of scenes: %s", num_scenes)
     logger.info("Max rallies per scene: %s", cfg.rally.max_rallies)
     logger.info("Device: %s", device)
-
-    writer = BLCSDatasetWriter(output_dir)
 
     logger.info("Starting scene generation...")
     logger.info("Scene generation mode: parallel")

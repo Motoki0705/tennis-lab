@@ -1,4 +1,5 @@
-output_dir: blcs/${model.name}
+# New checkpoints are separated from legacy artifacts by normalization version.
+output_dir: blcs/norm-${court_coordinate_normalization.version}/${model.name}
 seed: 42
 gpus: 1
 resume: null

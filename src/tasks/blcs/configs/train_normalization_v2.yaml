@@ -1,0 +1,23 @@
+defaults:
+  - court_coordinate_normalization: v2
+  - paths: default
+  - model: multiview_axial_base
+  - data: broadcast_norm_v2
+  - training: default
+  - metrics: default
+  - run: train
+  - physics: default
+  - rally: default
+  - camera: broadcast
+  - targeted_velocity: default
+  - generator: default
+  - _self_
+
+hydra:
+  searchpath:
+    - pkg://src.tasks.base.configs
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

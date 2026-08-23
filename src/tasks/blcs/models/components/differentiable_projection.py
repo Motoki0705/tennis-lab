@@ -14,7 +14,10 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
+)
 
 
 class DifferentiableProjection(nn.Module):
@@ -41,20 +44,25 @@ class DifferentiableProjection(nn.Module):
 
     def __init__(
         self,
-        scale_xyz: tuple[float, float, float] = COURT_COORD_SCALE_XYZ,
+        normalization: CourtCoordinateNormalization | str = "v1",
         depth_eps: float = 1e-6,
     ) -> None:
         """Initialise the projection module.
 
         Args:
-            scale_xyz: Per-axis scale used to convert normalised court
-                coordinates back to world coordinates (metres).
+            normalization: Versioned contract used to convert normalised court
+                coordinates back to world metres.
             depth_eps: Minimum depth value to avoid division-by-zero.
         """
         super().__init__()
+        contract = (
+            normalization
+            if isinstance(normalization, CourtCoordinateNormalization)
+            else resolve_court_coordinate_normalization(normalization)
+        )
         self.register_buffer(
             "scale_xyz",
-            torch.tensor(scale_xyz, dtype=torch.float32),
+            torch.tensor(contract.scale_xyz, dtype=torch.float32),
             persistent=False,
         )
         self.depth_eps = float(depth_eps)

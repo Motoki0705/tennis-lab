@@ -22,6 +22,7 @@ def match_player_tracks(
     presence_active_weight: float,
     presence_transition_weight: float,
     transition_radius: int,
+    position_huber_beta: float = 1.0,
 ) -> list[tuple[torch.Tensor, torch.Tensor]]:
     """Match query slots to valid GT persons with padded frames excluded."""
     pred_position = prediction["position"]
@@ -67,6 +68,7 @@ def match_player_tracks(
                         batch_index, :, target_index, None
                     ].expand_as(pred_position[batch_index]),
                     reduction="none",
+                    beta=position_huber_beta,
                 ).mean(-1)
                 position = (position * target_active[:, None]).sum(
                     0

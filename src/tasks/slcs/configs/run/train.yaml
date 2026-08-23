@@ -1,4 +1,4 @@
-output_dir: slcs/${model.name}
+output_dir: slcs/${model.name}/norm-${court_coordinate_normalization.version}
 seed: 42
 gpus: 1
 resume: null

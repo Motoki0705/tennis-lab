@@ -11,6 +11,7 @@ import numpy as np
 
 from src.tasks.plcs.inference.predictor import PLCSPredictor
 from src.utils.configuration import PathResolver
+from src.utils.schema.court_normalization import CourtCoordinateNormalization
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ def predict_scene(
     canonical_pose_source: CanonicalPoseSource = "gt",
     *,
     resolver: PathResolver,
+    court_coordinate_normalization: CourtCoordinateNormalization,
 ) -> Any:
     """Run PLCS prediction and return a scene whose pose is replaced by prediction.
 
@@ -83,6 +85,7 @@ def predict_scene(
         checkpoint_path=checkpoint_path,
         resolver=resolver,
         device=device,
+        court_coordinate_normalization=court_coordinate_normalization,
     )
     logger.info(f"Model loaded successfully on {device}.")
     decoded = predictor.predict_scene(scene, cameras)

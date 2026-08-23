@@ -1,4 +1,5 @@
 defaults:
+  - court_coordinate_normalization: v1
   - run: analyze_loss_dominance
   - paths: default
   - _self_

@@ -90,9 +90,12 @@ from src.tasks.plcs.generate_dataset.sampling.motion_source import (
     load_amass_motion_clip,
 )
 from src.utils.schema.court import (
-    COURT_COORD_SCALE_XYZ,
     STANDARD_COURT_CONFIG,
     court_keypoints_3d,
+)
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
 )
 
 
@@ -150,6 +153,9 @@ class PLCSStageParameters:
     gaussian_count: int
     smplh_batch_size: int
     device: str
+    court_coordinate_normalization: CourtCoordinateNormalization = field(
+        default_factory=lambda: resolve_court_coordinate_normalization("v1")
+    )
 
     def __post_init__(self) -> None:
         if (
@@ -178,6 +184,20 @@ class PLCSStageParameters:
         if not self.smplh_model_root.is_dir():
             raise FileNotFoundError(
                 f"SMPL-H model root does not exist: {self.smplh_model_root}"
+            )
+        if (
+            not isinstance(
+                self.court_coordinate_normalization,
+                CourtCoordinateNormalization,
+            )
+            or self.court_coordinate_normalization
+            != resolve_court_coordinate_normalization(
+                self.court_coordinate_normalization.version
+            )
+        ):
+            raise ValueError(
+                "PLCS compact generation requires a canonical court-coordinate "
+                "normalization contract."
             )
         for name, value in (
             ("gaussian_count", self.gaussian_count),
@@ -450,6 +470,9 @@ class PLCSStageHandler:
             chunk_size=chunk_size,
             diagnostics=all_diagnostics,
             seed=self.parameters.seed,
+            court_coordinate_normalization=(
+                self.parameters.court_coordinate_normalization
+            ),
         )
         wall_seconds, cpu_seconds, peak_rss_bytes = timer.elapsed()
         sample_count = assembly.sample_count
@@ -775,6 +798,9 @@ class PLCSStageHandler:
                             frame_index=frame_index,
                             frame_tensors=frame_tensors,
                             court_points_court_m=court_points,
+                            court_coordinate_normalization=(
+                                self.parameters.court_coordinate_normalization
+                            ),
                         )
                         for camera_index, sampled in enumerate(rig.cameras):
                             delta, visibility = self.execution_backend.compose_delta(
@@ -848,12 +874,17 @@ def _write_frame_supervision(
     frame_index: int,
     frame_tensors: Mapping[str, Mapping[int, PLCSAvatarFrameTensors]],
     court_points_court_m: np.ndarray,
+    court_coordinate_normalization: CourtCoordinateNormalization | None = None,
 ) -> None:
     """Project validated SMPL-H joints and court geometry through generated cameras."""
+    normalization = (
+        court_coordinate_normalization
+        if court_coordinate_normalization is not None
+        else resolve_court_coordinate_normalization("v1")
+    )
     frame = timeline.frames[frame_index]
     court_from_scene = timeline.target_court.scene_from_court.inverse()
     scene_court = timeline.target_court.scene_from_court.apply(court_points_court_m)
-    scale = np.asarray(COURT_COORD_SCALE_XYZ, dtype=np.float32)
     present_joints: dict[int, np.ndarray] = {}
     for object_index, (track, entry) in enumerate(
         zip(timeline.tracks, frame.entries, strict=True)
@@ -881,7 +912,9 @@ def _write_frame_supervision(
         output.present[frame_index, object_index] = True
         output.human_mask[frame_index, :, object_index] = True
         output.position_court_m[frame_index, object_index] = joints_court[0]
-        output.position[frame_index, object_index] = joints_court[0] / scale
+        output.position[frame_index, object_index] = (
+            normalization.normalize_position(joints_court[0])
+        )
         output.rotation[frame_index, object_index] = (
             np.cos(track.yaw_radians),
             np.sin(track.yaw_radians),

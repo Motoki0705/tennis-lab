@@ -13,6 +13,10 @@ from src.tasks.base.training.tracking_lifecycle import (
     weighted_presence_bce_with_logits,
 )
 from src.tasks.plcs.training.tracking_matching import match_player_tracks
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
+)
 
 Assignment = tuple[torch.Tensor, torch.Tensor]
 
@@ -30,7 +34,12 @@ class PLCSTrackingLossInputs:
 class PLCSTrackingLoss(nn.Module):
     """Supervise fixed queries after clip-level assignment."""
 
-    def __init__(self, config: Any) -> None:
+    def __init__(
+        self,
+        config: Any,
+        *,
+        normalization: CourtCoordinateNormalization | str = "v1",
+    ) -> None:
         super().__init__()
         self.position_weight = float(config.position_weight)
         self.rotation_weight = float(config.rotation_weight)
@@ -43,6 +52,29 @@ class PLCSTrackingLoss(nn.Module):
         self.match_position_weight = float(config.match_position_weight)
         self.match_rotation_weight = float(config.match_rotation_weight)
         self.match_presence_weight = float(config.match_presence_weight)
+        self.court_coordinate_normalization = (
+            normalization
+            if isinstance(normalization, CourtCoordinateNormalization)
+            else resolve_court_coordinate_normalization(normalization)
+        )
+        configured_beta_m = getattr(config, "position_huber_beta_m", None)
+        if self.court_coordinate_normalization.version == "v1":
+            if configured_beta_m is not None:
+                raise ValueError(
+                    "PLCS tracking v1 preserves normalized Huber beta=1; "
+                    "loss.position_huber_beta_m must be null."
+                )
+            self.position_huber_beta = 1.0
+        else:
+            physical_beta_m = (
+                1.0 if configured_beta_m is None else float(configured_beta_m)
+            )
+            if physical_beta_m <= 0.0:
+                raise ValueError("loss.position_huber_beta_m must be positive.")
+            scale = self.court_coordinate_normalization.scale_xyz
+            if scale[0] != scale[1] or scale[1] != scale[2]:
+                raise ValueError("PLCS v2 tracking Huber beta requires isotropic scale.")
+            self.position_huber_beta = physical_beta_m / scale[0]
 
     def prepare_inputs(
         self,
@@ -60,6 +92,7 @@ class PLCSTrackingLoss(nn.Module):
             presence_active_weight=self.presence_active_weight,
             presence_transition_weight=self.presence_transition_weight,
             transition_radius=self.transition_radius,
+            position_huber_beta=self.position_huber_beta,
         )
         pred_position = prediction["position"]
         pred_rotation = F.normalize(prediction["rotation"], dim=-1)
@@ -84,6 +117,7 @@ class PLCSTrackingLoss(nn.Module):
                         F.smooth_l1_loss(
                             pred_position[batch_index, active, query_index],
                             batch["target_position"][batch_index, active, target_index],
+                            beta=self.position_huber_beta,
                         )
                     )
                     target_rotation = F.normalize(

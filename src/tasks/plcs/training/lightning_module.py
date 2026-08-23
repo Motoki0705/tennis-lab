@@ -20,6 +20,8 @@ from src.tasks.plcs.model_io import (
     PLCSPreparedBatch,
     PLCSStandardBoundModelIO,
     build_plcs_model_io,
+    validate_plcs_checkpoint_normalization,
+    write_plcs_checkpoint_normalization,
 )
 from src.tasks.plcs.models.discriminators import build_plcs_discriminator
 from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
@@ -62,7 +64,10 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
         root = runtime.raw
         loss_cfg = PLCSLossConfig.from_dict(dict(root.loss))
-        self.loss_fn = PLCSLoss(config=loss_cfg)
+        self.loss_fn = PLCSLoss(
+            config=loss_cfg,
+            normalization=runtime.court_coordinate_normalization.contract,
+        )
 
         # MCMC (SGLD) training strategy (issue #519): optional Langevin noise
         # injection to escape the 180deg rotation flat-saddle local optimum.
@@ -98,6 +103,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             return PLCSMetrics(
                 position_threshold_m=position_threshold,
                 angle_threshold_deg=angle_threshold,
+                normalization=runtime.court_coordinate_normalization.contract,
             )
 
         self.train_metrics = _build_metrics()
@@ -143,7 +149,10 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             per_frame = 1.0 - (pred_norm * target_norm).sum(dim=-1)
         else:
             per_frame = nn.functional.smooth_l1_loss(
-                pred, target, reduction="none"
+                pred,
+                target,
+                reduction="none",
+                beta=self.loss_fn.position_huber_beta,
             ).mean(dim=-1)
         if frame_mask is not None and per_frame.shape == frame_mask.shape:
             from src.utils.tensor_utils import masked_mean  # noqa: PLC0415
@@ -276,6 +285,20 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
     def configure_optimizers(self) -> Any:
         return self.configure_gan_optimizers(self.model.parameters())
 
+    def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        """Persist the selected normalization beside the saved model state."""
+        write_plcs_checkpoint_normalization(
+            checkpoint,
+            self.plcs_runtime.court_coordinate_normalization.contract,
+        )
+
+    def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        """Reject normalization mismatch before Lightning restores state."""
+        validate_plcs_checkpoint_normalization(
+            checkpoint,
+            self.plcs_runtime.court_coordinate_normalization.contract,
+        )
+
     def on_train_batch_end(self, outputs: Any, batch: Any, batch_idx: int) -> None:
         """Inject SGLD/Langevin noise after the optimizer step (issue #519).
 
@@ -336,6 +359,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         renderer = PLCSSceneRenderer(
             style=self.plcs_runtime.qualitative_style,
             camera=self.plcs_runtime.qualitative_view_3d,
+            normalization=self.plcs_runtime.court_coordinate_normalization.contract,
         )
 
         for batch_idx, batch in enumerate(batches):
@@ -369,6 +393,9 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
                         ),
                     ),
                     sample_idx=0,
+                    normalization=(
+                        self.plcs_runtime.court_coordinate_normalization.contract
+                    ),
                 )
 
                 # Choose view: 3d only when both scenes have canonical pose data

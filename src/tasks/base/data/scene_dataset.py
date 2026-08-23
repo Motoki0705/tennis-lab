@@ -21,9 +21,19 @@ import numpy as np
 from torch.utils.data import Dataset
 
 from src.tasks.base.configuration import as_config_mapping, require_config_mapping
+from src.tasks.base.data.court_coordinate_contract import (
+    validate_dataset_court_coordinate_contract,
+)
 from src.utils.data.scene_io import load_scene_payload
+from src.utils.schema.court_normalization import CourtCoordinateNormalization
 
 SampleT = TypeVar("SampleT")
+
+_LEGACY_CAMERA_ARRAY_SUFFIXES: dict[str, str] = {
+    "ball_vis": "ball_visible",
+    "court_kp_vis": "court_kp_visible",
+    "human_kp_vis": "human_kp_visible",
+}
 
 
 class SceneDataContractError(ValueError):
@@ -42,6 +52,7 @@ class SceneDatasetConfig:
     crop_mode: Literal["random", "center"]
     min_num_frames: int
     min_num_cameras: int
+    court_coordinate_normalization: CourtCoordinateNormalization | None = None
 
 
 @dataclass(frozen=True)
@@ -196,8 +207,23 @@ class Scene:
 
         Returns:
             Copied numpy array.
+
+        The three historical ``*_visible`` persisted suffixes are accepted as
+        explicit schema aliases when the canonical ``*_vis`` key is absent.
+        Artifacts containing both spellings are rejected as ambiguous.
         """
-        key = f"{self._camera_prefix(cam_idx)}{suffix}"
+        prefix = self._camera_prefix(cam_idx)
+        key = f"{prefix}{suffix}"
+        legacy_suffix = _LEGACY_CAMERA_ARRAY_SUFFIXES.get(suffix)
+        if legacy_suffix is not None:
+            legacy_key = f"{prefix}{legacy_suffix}"
+            if key in self.data and legacy_key in self.data:
+                raise SceneDataContractError(
+                    f"Ambiguous camera array schema in {self.path}: both "
+                    f"'{key}' and legacy '{legacy_key}' are present."
+                )
+            if key not in self.data and legacy_key in self.data:
+                key = legacy_key
         return self._copy_temporal_array(key, window=window)
 
     def get_array(
@@ -253,6 +279,12 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
         all_paths = self._resolve_scene_files(self.scene_dir, config.split_file)
         if not all_paths:
             raise RuntimeError(f"No scenes found from split_file={config.split_file}")
+        if config.court_coordinate_normalization is not None:
+            validate_dataset_court_coordinate_contract(
+                self.scene_dir,
+                config.court_coordinate_normalization,
+                scene_paths=all_paths,
+            )
 
         all_headers = self._index_scene_headers(all_paths)
         self.scene_headers = [h for h in all_headers if self._passes_filters(h)]

@@ -1,0 +1,8 @@
+defaults:
+  - multiview_sequence
+  - _self_
+
+# Produced separately by the normalization materializer; never overwrites v1.
+scene_dir: plcs_broadcast_norm_v2
+# Match the identical two-camera source scenes used by the v1 comparison run.
+num_views_range: [2, 2]

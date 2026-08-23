@@ -35,6 +35,10 @@ compile:
 # ---- Loss weights ----
 position_loss_weight: 1.0
 position_axis_weights: null
+# v1 keeps PyTorch's historical beta=1.0 in normalized units. v2 derives its
+# isotropic beta from a shared 1.0m physical transition and the selected scale.
+position_huber_beta_v1: 1.0
+position_huber_transition_m_v2: 1.0
 reprojection_loss_weight: 0.0
 # Physics priors (temporal); see src/utils/losses/temporal.py. These are an
 # explicit, tunable alternative to the GAN discriminator for temporal
@@ -50,8 +54,8 @@ gravity_beta: 5.0e-3         # Smooth-L1 knee for the gravity prior
 # the gravity term on z) and over-smooths axes with legitimate sharp motion.
 # e.g. [1, 1, 0] smooths only x/y depth-jitter and lets the gravity term own z.
 smoothness_axis_weights: null
-# gravity target = -g * (1/output_fps)^2 / COURT_COORD_SCALE_Z; g and output_fps
-# are read from the physics / rally config groups (see lightning_module).
+# gravity target = -g * (1/output_fps)^2 / normalization.scale_xyz[2]; g,
+# output_fps and the contract are read at the Lightning composition boundary.
 
 # ---- Callbacks (BaseTrainingRunner references) ----
 checkpoint:

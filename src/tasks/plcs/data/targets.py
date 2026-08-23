@@ -7,10 +7,9 @@ from typing import Any, cast
 
 import numpy as np
 
-from src.utils.schema.court import (
-    COURT_COORD_SCALE_X,
-    COURT_COORD_SCALE_Y,
-    COURT_COORD_SCALE_Z,
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
 )
 from src.utils.schema.player import FACE_KEYPOINT_OFFSETS, SMPLH_TO_COCO17_MAPPING
 
@@ -63,7 +62,11 @@ def smplh_joints_to_coco17(
     return _smplh_to_coco17(joints, yaw)
 
 
-def build_coco17_world_targets(scene: dict[str, Any]) -> np.ndarray:
+def build_coco17_world_targets(
+    scene: dict[str, Any],
+    *,
+    normalization: CourtCoordinateNormalization | str = "v1",
+) -> np.ndarray:
     """Build world/court-coordinate COCO17 targets from a loaded scene.
 
     Returns:
@@ -83,10 +86,15 @@ def build_coco17_world_targets(scene: dict[str, Any]) -> np.ndarray:
     position_norm = np.asarray(scene["position"], dtype=np.float32)
     if position_norm.ndim == 1:
         position_norm = position_norm[None, ...]
-    pelvis_world = np.zeros_like(position_norm, dtype=np.float32)
-    pelvis_world[:, 0] = position_norm[:, 0] * COURT_COORD_SCALE_X
-    pelvis_world[:, 1] = position_norm[:, 1] * COURT_COORD_SCALE_Y
-    pelvis_world[:, 2] = position_norm[:, 2] * COURT_COORD_SCALE_Z
+    contract = (
+        normalization
+        if isinstance(normalization, CourtCoordinateNormalization)
+        else resolve_court_coordinate_normalization(normalization)
+    )
+    pelvis_world = np.asarray(
+        contract.denormalize_position(position_norm),
+        dtype=np.float32,
+    )
 
     # Use per-frame rotation (cos, sin) when available.
     if "rotation" in scene:

@@ -29,6 +29,7 @@ def match_ball_tracks(
     presence_transition_weight: float,
     transition_radius: int,
     position_axis_weights: torch.Tensor,
+    position_beta: float = 1.0,
 ) -> list[tuple[torch.Tensor, torch.Tensor]]:
     """Match `Q` predictions to valid `P` targets using clip-level costs."""
     axis_weights = position_axis_weights.to(
@@ -74,6 +75,7 @@ def match_ball_tracks(
                         pred_position[batch]
                     ),
                     reduction="none",
+                    beta=position_beta,
                 )
                 position_error = weighted_position_axis_mean(
                     position_error_xyz, axis_weights

@@ -25,8 +25,15 @@ from src.tennis_scene.generate_dataset.manifest import (
 from src.tennis_scene.generate_dataset.pseudo_annotation import (
     ANNOTATION_SCHEMA_VERSION,
 )
-from src.tennis_scene.schema import SceneResult
+from src.tennis_scene.schema import (
+    SceneResult,
+    validate_scene_result_court_coordinate_provenance,
+)
 from src.utils.io import load_json
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
+)
 
 SLCS_ANNOTATION_FILENAME = "annotation.json"
 SLCS_SCENE_ARCHIVE_FILENAME = "scene.npz"
@@ -155,8 +162,14 @@ def load_slcs_annotation(
     manifest: ClipManifest,
     *,
     verify_manifest_digest: bool = True,
+    court_coordinate_normalization: CourtCoordinateNormalization | None = None,
 ) -> SceneResult:
     """Load a completed annotation and enforce every SLCS data constraint."""
+    runtime_contract = (
+        resolve_court_coordinate_normalization("v1")
+        if court_coordinate_normalization is None
+        else court_coordinate_normalization
+    )
     annotation_dir = slcs_annotation_dir(manifest.clip_dir)
     marker_path = annotation_dir / SLCS_ANNOTATION_FILENAME
     if not marker_path.is_file():
@@ -183,7 +196,12 @@ def load_slcs_annotation(
         raise DatasetManifestError(
             f"{manifest.clip_id}: scene archive missing: {scene_path}"
         )
-    scene = load_scene_result(scene_path)
+    scene: SceneResult = load_scene_result(scene_path)
+    validate_scene_result_court_coordinate_provenance(
+        scene,
+        runtime_contract,
+        location=f"{manifest.clip_id}: {scene_path}",
+    )
     _validate_scene_against_manifest(scene, manifest)
     _validate_scene_arrays(scene, arrays_spec, clip_id=manifest.clip_id)
     return scene

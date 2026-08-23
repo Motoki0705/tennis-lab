@@ -2,6 +2,49 @@
 
 2D の人物 pose とコート keypoint から、コート座標系でのプレイヤー `position`/`rotation`（および任意で canonical 3D pose）を推定するタスクです。AMASS/SMPL-H モーションと仮想カメラから学習データを合成する generator、frame/sequence/multiview の各モデル、Lightning 学習、推論、可視化までを一貫して提供します。
 
+## Court-coordinate normalization
+
+正規化の数式と version-to-scale mapping の正本は
+[`src/utils/schema/court_normalization.py`](../../utils/schema/court_normalization.py)
+です。PLCS の `position` だけを `position_norm = position_court_m / scale_xyz`
+で正規化します。`canonical_pose_3d`、`human_kp_3d`、
+`position_court_m` は metre のままで、`rotation` / yaw も変更しません。
+
+- `v1`（互換 default）: `scale_xyz = (5.485, 11.885, 1.07) m`
+- `v2`: `scale_xyz = (11.885, 11.885, 11.885) m`
+
+すべての Hydra root は `court_coordinate_normalization=v1|v2` を明示的に
+compose します。新規 dataset は root と全 scene、新規 checkpoint は root に
+version、`scale_xyz`、position/velocity unit を保存します。runtime と artifact の
+version または scale が異なる場合、dataset load、resume、evaluation、inference
+はいずれも変換せずに error になります。metadata のない既存 artifact は
+明示的な `v1` runtime だけで legacy として読めます。shape や値域から version
+を推測しません。
+
+`v1` loss は従来の normalized Smooth L1 `beta=1` を維持します。`v2` の
+position loss と tracking Hungarian position cost は全軸一様で、default の
+物理 transition は `1.0 m`（normalized `1 / 11.885`）です。
+
+version を artifact 名でも区別するため、baseline 用に
+`generate_dataset_norm_v1|v2.yaml`、`train_norm_v1|v2.yaml`、
+`data/multiview_sequence_norm_v1|v2.yaml` を用意しています。既存 v1 dataset を
+上書きせず v2 copy へ materialize する例は次の通りです。
+
+```bash
+.venv/bin/python -m src.tasks.base.scripts.materialize_court_coordinate_normalization \
+  court_coordinate_normalization=v2 \
+  materialization.dataset_kind=plcs \
+  materialization.source_dir=data/plcs_broadcast \
+  materialization.output_dir=data/plcs_broadcast_norm_v2 \
+  materialization.source_normalization_version=v1
+
+.venv/bin/python -m src.tasks.plcs.scripts.generate_dataset \
+  --config-name generate_dataset_norm_v2
+
+.venv/bin/python -m src.tasks.plcs.scripts.train \
+  --config-name train_norm_v2
+```
+
 ## Modules
 
 ### configuration
@@ -46,6 +89,7 @@
 - **`attention_masks.py`**: standard axial model向けcamera・time attention maskを`padding_mask`から準備する。track-query modelは共有padding utilityを内部で使う。
 - **`adapters.py`**: 必須field、dtype、rank、shape、normalized UV、binary mask、view/time capacity、prepared attention tensor、output schemaを`forward`前後の境界で検証するtask-local adapter。
 - **`factory.py`**: model variantとadapterを外部compositionで一度だけ選択し、exact model classのpairを固定する唯一のfactory。
+- **`court_coordinate_checkpoint.py`**: checkpoint root の normalization metadata と保存 config を、state restore 前に復元・検証する。
 
 ### generate_dataset/
 - **`config.py`**: standalone generation boundary。共有契約を消費し、run/device/split と生成 worker 用の絶対 path を検証・解決する。

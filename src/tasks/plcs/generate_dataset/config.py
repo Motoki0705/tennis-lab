@@ -12,6 +12,7 @@ from omegaconf import DictConfig, OmegaConf
 
 import src.tasks.plcs.configuration_contracts as configuration_contracts
 from src.tasks.base.configuration import (
+    CourtCoordinateNormalizationConfig,
     as_config_mapping,
     require_config_mapping,
     require_config_value,
@@ -24,6 +25,7 @@ from src.utils.configuration import (
 from src.utils.configuration.paths import PathRole
 from src.utils.device import DeviceSelectionError, resolve_device
 from src.utils.hydra import register_boundary_validator
+from src.utils.schema.court_normalization import CourtCoordinateNormalization
 
 
 def _reject_unknown(
@@ -50,6 +52,7 @@ class PLCSGenerationConfig:
     """Validated generation boundary with a fully resolved worker config."""
 
     config: DictConfig
+    court_coordinate_normalization: CourtCoordinateNormalization
     output_dir: Path
     device: str
     seed: int
@@ -79,6 +82,7 @@ class PLCSGenerationConfig:
         root = _reject_unknown(
             root,
             {
+                "court_coordinate_normalization",
                 "generation",
                 "paths",
                 "external_assets",
@@ -156,6 +160,9 @@ class PLCSGenerationConfig:
         resolved.run.device = device
         return cls(
             config=resolved,
+            court_coordinate_normalization=(
+                CourtCoordinateNormalizationConfig.from_config(value).contract
+            ),
             output_dir=output_dir,
             device=device,
             seed=cast("int", require_config_value(run, "seed", int, path="run")),

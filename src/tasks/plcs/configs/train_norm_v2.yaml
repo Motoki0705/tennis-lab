@@ -1,0 +1,24 @@
+defaults:
+  - court_coordinate_normalization: v2
+  - model: multiview_axial_base
+  - data: multiview_sequence_norm_v2
+  - training: default
+  - loss: canonical
+  - metrics: default
+  - qualitative: default
+  - run: train
+  - paths: default
+  - _self_
+
+external_assets:
+  smplh_model_path: smplx/smplh
+
+run:
+  output_dir: plcs/baseline_norm_v2/${model.name}
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

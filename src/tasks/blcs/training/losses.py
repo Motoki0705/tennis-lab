@@ -16,7 +16,10 @@ from src.utils.losses.temporal import (
     TemporalSmoothnessPenalty,
     ballistic_second_difference,
 )
-from src.utils.schema.court import COURT_COORD_SCALE_Z
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
+)
 
 
 def _expanded_mask_mean(values: Tensor, expanded_mask: Tensor) -> Tensor:
@@ -30,6 +33,8 @@ def trajectory_position_loss(
     target: Tensor,
     mask: Tensor,
     axis_weights: Tensor,
+    *,
+    beta: float = 1.0,
 ) -> Tensor:
     """Compute position loss for trajectory prediction.
 
@@ -45,7 +50,12 @@ def trajectory_position_loss(
         Tensor: Position loss.
 
     """
-    loss = nn.functional.smooth_l1_loss(pred, target, reduction="none")
+    loss = nn.functional.smooth_l1_loss(
+        pred,
+        target,
+        reduction="none",
+        beta=beta,
+    )
     loss = loss * axis_weights.to(device=loss.device, dtype=loss.dtype).view(1, 1, 3)
     expanded_mask = mask.unsqueeze(-1).expand_as(loss)
     return _expanded_mask_mean(loss, expanded_mask)
@@ -140,7 +150,9 @@ class BLCSLoss(nn.Module):
         gravity_beta: float,
         gravity: float,
         frame_dt: float,
-        height_scale: float = COURT_COORD_SCALE_Z,
+        position_beta: float = 1.0,
+        normalization: CourtCoordinateNormalization | str = "v1",
+        height_scale: float | None = None,
     ) -> None:
         """Initialize the loss module.
 
@@ -163,7 +175,10 @@ class BLCSLoss(nn.Module):
             gravity_beta: Smooth-L1 transition for the gravity prior.
             gravity: Gravitational acceleration (m/s**2).
             frame_dt: Seconds between output frames.
-            height_scale: Normalization scale of the height axis (metres).
+            position_beta: Smooth-L1 transition in normalized position units.
+            normalization: Selected versioned position/projection contract.
+            height_scale: Compatibility-only explicit height scale. When
+                supplied, it must equal the selected contract's Z scale.
 
         """
         super().__init__()
@@ -171,6 +186,21 @@ class BLCSLoss(nn.Module):
         self.reprojection_weight = reprojection_weight
         self.smoothness_weight = smoothness_weight
         self.gravity_weight = gravity_weight
+        self.position_beta = float(position_beta)
+        if self.position_beta <= 0.0:
+            raise ValueError("position_beta must be positive.")
+        contract = (
+            normalization
+            if isinstance(normalization, CourtCoordinateNormalization)
+            else resolve_court_coordinate_normalization(normalization)
+        )
+        resolved_height_scale = contract.scale_xyz[2]
+        if height_scale is not None and float(height_scale) != resolved_height_scale:
+            raise ValueError(
+                "height_scale must match the selected court-coordinate "
+                f"normalization Z scale ({height_scale!r} != "
+                f"{resolved_height_scale!r})."
+            )
         self.position_enabled = float(position_weight > 0.0)
         self.reprojection_enabled = float(reprojection_weight > 0.0)
         self.smoothness_enabled = float(smoothness_weight > 0.0)
@@ -199,7 +229,7 @@ class BLCSLoss(nn.Module):
             target_second_difference=ballistic_second_difference(
                 gravity=gravity,
                 dt=frame_dt,
-                height_scale=height_scale,
+                height_scale=resolved_height_scale,
             ),
             beta=gravity_beta,
         )
@@ -224,7 +254,7 @@ class BLCSLoss(nn.Module):
             persistent=False,
         )
 
-        self.projector = DifferentiableProjection()
+        self.projector = DifferentiableProjection(normalization=contract)
 
     def forward(
         self,
@@ -262,6 +292,7 @@ class BLCSLoss(nn.Module):
             target_position,
             mask,
             axis_weights=self.position_axis_weights,
+            beta=self.position_beta,
         )
         reproj_loss = self.reprojection_enabled * reprojection_loss(
             pred_position=pred_position,

@@ -14,6 +14,7 @@ from omegaconf import DictConfig, OmegaConf
 import src.tasks.plcs.configuration_contracts as configuration_contracts
 from src.tasks.base.configuration import (
     ChunkDataConfig,
+    CourtCoordinateNormalizationConfig,
     SceneVisualizationConfig,
     TrainingRuntimeConfig,
     as_config_mapping,
@@ -38,6 +39,7 @@ from src.utils.device import DeviceSelectionError, resolve_device
 from src.utils.hydra import register_boundary_validator
 from src.utils.paths import PROJECT_ROOT
 from src.utils.rendering.camera_view import CameraController
+from src.utils.schema.court_normalization import CourtCoordinateNormalization
 from src.utils.schema.player import NUM_HUMAN_KP
 
 PLCSValue: TypeAlias = (
@@ -859,6 +861,7 @@ class PLCSTrainingConfig:
     """Complete typed PLCS training boundary."""
 
     shared: TrainingRuntimeConfig
+    court_coordinate_normalization: CourtCoordinateNormalizationConfig
     paths: configuration_contracts.PLCSPathConfig
     model: PLCSModelConfig
     data: PLCSDataConfig
@@ -876,6 +879,7 @@ class PLCSTrainingConfig:
             value,
             path="configuration",
             required={
+                "court_coordinate_normalization",
                 "model",
                 "data",
                 "training",
@@ -886,6 +890,7 @@ class PLCSTrainingConfig:
                 "qualitative",
             },
             allowed={
+                "court_coordinate_normalization",
                 "model",
                 "data",
                 "training",
@@ -912,6 +917,7 @@ class PLCSTrainingConfig:
             model=model,
         )
         exact_root_fields = {
+            "court_coordinate_normalization",
             "model",
             "data",
             "training",
@@ -1079,6 +1085,7 @@ class PLCSTrainingConfig:
             )
             tracking_loss_fields = {
                 "position_weight",
+                "position_huber_beta_m",
                 "rotation_weight",
                 "presence_weight",
                 "presence_inactive_weight",
@@ -1096,11 +1103,25 @@ class PLCSTrainingConfig:
                 required=tracking_loss_fields,
                 allowed=tracking_loss_fields,
             )
-            for key in tracking_loss_fields - {"transition_radius"}:
+            for key in tracking_loss_fields - {
+                "position_huber_beta_m",
+                "transition_radius",
+            }:
                 _positive(
                     _number(tracking_loss, key, path="loss"),
                     path=f"loss.{key}",
                     allow_zero=True,
+                )
+            beta_m = require_config_value(
+                tracking_loss,
+                "position_huber_beta_m",
+                (float, int, type(None)),
+                path="loss",
+            )
+            if beta_m is not None:
+                _positive(
+                    float(cast("float | int", beta_m)),
+                    path="loss.position_huber_beta_m",
                 )
             if _integer(tracking_loss, "transition_radius", path="loss") < 0:
                 raise SemanticConfigurationError(
@@ -1219,6 +1240,9 @@ class PLCSTrainingConfig:
             )
         return cls(
             shared=shared,
+            court_coordinate_normalization=(
+                CourtCoordinateNormalizationConfig.from_config(value)
+            ),
             paths=paths,
             model=model,
             data=data,
@@ -1238,9 +1262,20 @@ def _validate_visualization_boundary(config: DictConfig) -> None:
     root = _exact(
         config,
         path="configuration",
-        required={"visualization", "run", "paths"},
-        allowed={"visualization", "run", "paths"},
+        required={
+            "court_coordinate_normalization",
+            "visualization",
+            "run",
+            "paths",
+        },
+        allowed={
+            "court_coordinate_normalization",
+            "visualization",
+            "run",
+            "paths",
+        },
     )
+    CourtCoordinateNormalizationConfig.from_config(config)
     resolver = configuration_contracts.PLCSPathConfig.from_config(config).resolver
     visualization_fields = {
         "mode",
@@ -1302,12 +1337,14 @@ def _validate_script_boundary(
     required_sections: set[str],
     section_fields: Mapping[str, set[str]],
 ) -> None:
+    required_sections = {*required_sections, "court_coordinate_normalization"}
     root = _exact(
         config,
         path="configuration",
         required=required_sections,
         allowed=required_sections,
     )
+    CourtCoordinateNormalizationConfig.from_config(config)
     resolver = configuration_contracts.PLCSPathConfig.from_config(config).resolver
     if "data" in root:
         data_fields = {
@@ -1688,6 +1725,7 @@ class PLCSPreviewRuntimeConfig:
     OUTPUT_ROLE: ClassVar[PathRole] = PathRole.OUTPUT
 
     resolver: PathResolver
+    court_coordinate_normalization: CourtCoordinateNormalization
     scene_dir: Path
     output_dir: Path
     raw: DictConfig
@@ -1714,6 +1752,9 @@ class PLCSPreviewRuntimeConfig:
         resolver = configuration_contracts.PLCSPathConfig.from_config(config).resolver
         return cls(
             resolver=resolver,
+            court_coordinate_normalization=(
+                CourtCoordinateNormalizationConfig.from_config(config).contract
+            ),
             scene_dir=resolver.resolve(PathRole.DATA, str(config.data.scene_dir)),
             output_dir=resolver.resolve(
                 cls.OUTPUT_ROLE, str(config.preview.output_dir)
@@ -1729,6 +1770,7 @@ class PLCSAnalysisRuntimeConfig:
     OUTPUT_ROLE: ClassVar[PathRole] = PathRole.OUTPUT
 
     resolver: PathResolver
+    court_coordinate_normalization: CourtCoordinateNormalization
     output_dir: Path
     scene_dir: Path | None
     scene_records_dir: Path | None
@@ -1756,6 +1798,9 @@ class PLCSAnalysisRuntimeConfig:
         output_dir = resolver.resolve(cls.OUTPUT_ROLE, str(config.run.output_dir))
         return cls(
             resolver=resolver,
+            court_coordinate_normalization=(
+                CourtCoordinateNormalizationConfig.from_config(config).contract
+            ),
             output_dir=output_dir,
             scene_dir=resolver.resolve(PathRole.DATA, str(config.data.scene_dir)),
             scene_records_dir=None,
@@ -1795,6 +1840,9 @@ class PLCSAnalysisRuntimeConfig:
         resolver = configuration_contracts.PLCSPathConfig.from_config(config).resolver
         return cls(
             resolver=resolver,
+            court_coordinate_normalization=(
+                CourtCoordinateNormalizationConfig.from_config(config).contract
+            ),
             output_dir=resolver.resolve(cls.OUTPUT_ROLE, str(config.run.output_dir)),
             scene_dir=resolver.resolve(PathRole.DATA, str(config.data.scene_dir)),
             scene_records_dir=resolver.resolve(
@@ -1837,6 +1885,9 @@ class PLCSAnalysisRuntimeConfig:
         loss_config = config.analysis.loss_config
         return cls(
             resolver=resolver,
+            court_coordinate_normalization=(
+                CourtCoordinateNormalizationConfig.from_config(config).contract
+            ),
             output_dir=resolver.resolve(cls.OUTPUT_ROLE, output_relative),
             scene_dir=None,
             scene_records_dir=None,
@@ -1916,6 +1967,9 @@ class PLCSAnalysisRuntimeConfig:
         scene_relative = str(config.run.scene_dir)
         return cls(
             resolver=resolver,
+            court_coordinate_normalization=(
+                CourtCoordinateNormalizationConfig.from_config(config).contract
+            ),
             output_dir=resolver.resolve(cls.OUTPUT_ROLE, output_relative),
             scene_dir=resolver.resolve(PathRole.DATA, scene_relative),
             scene_records_dir=resolver.resolve(

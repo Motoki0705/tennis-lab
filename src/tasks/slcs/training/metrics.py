@@ -21,8 +21,12 @@ import torch
 from torch import Tensor
 
 from src.tasks.slcs.model_io import SLCSDecodedOutput, SLCSTrainingTargets
+from src.tasks.slcs.normalization import scalar_position_uncertainty_scale_m
 from src.utils.geometry.angles import angular_error
-from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
+)
 
 _POSITION_THRESHOLDS_M = (0.3, 0.5, 1.0, 2.0)
 _ANGLE_THRESHOLDS_DEG = (10.0, 15.0, 30.0)
@@ -42,10 +46,18 @@ def _pearson(x: Tensor, y: Tensor) -> float:
 class SLCSMetrics:
     """Accumulate masked player/ball errors over batches."""
 
-    def __init__(self) -> None:
-        self._scale = torch.tensor(list(COURT_COORD_SCALE_XYZ), dtype=torch.float32)
-        # Mean position scale for converting normalized Laplace b to meters.
-        self._scale_mean = float(sum(COURT_COORD_SCALE_XYZ) / 3.0)
+    def __init__(
+        self,
+        court_coordinate_normalization: CourtCoordinateNormalization | None = None,
+    ) -> None:
+        self.court_coordinate_normalization = (
+            resolve_court_coordinate_normalization("v1")
+            if court_coordinate_normalization is None
+            else court_coordinate_normalization
+        )
+        self._uncertainty_scale_m = scalar_position_uncertainty_scale_m(
+            self.court_coordinate_normalization
+        )
         self.reset()
 
     def reset(self) -> None:
@@ -65,12 +77,14 @@ class SLCSMetrics:
         player_mask = targets.player_mask
         ball_mask = targets.ball_mask
 
-        scale = self._scale.to(outputs.player_position.device)
-
         result: dict[str, float] = {}
         if bool(player_mask.any()):
-            pred_pos = outputs.player_position[player_mask] * scale
-            target_pos = targets.target_player_position[player_mask] * scale
+            pred_pos = self.court_coordinate_normalization.denormalize_position(
+                outputs.player_position[player_mask]
+            )
+            target_pos = self.court_coordinate_normalization.denormalize_position(
+                targets.target_player_position[player_mask]
+            )
             pos_err = (pred_pos - target_pos).norm(dim=-1)
             ang_err_deg = (
                 angular_error(
@@ -81,7 +95,8 @@ class SLCSMetrics:
                 / math.pi
             )
             pos_b = (
-                outputs.player_position_log_b[player_mask].exp() * self._scale_mean
+                outputs.player_position_log_b[player_mask].exp()
+                * self._uncertainty_scale_m
             )
             rot_b = (
                 outputs.player_rotation_log_b[player_mask].exp() * 180.0 / math.pi
@@ -93,10 +108,17 @@ class SLCSMetrics:
             result["player_position_error_m"] = float(pos_err.mean().item())
             result["player_angular_error_deg"] = float(ang_err_deg.mean().item())
         if bool(ball_mask.any()):
-            pred_ball = outputs.ball_position[ball_mask] * scale
-            target_ball = targets.target_ball_position[ball_mask] * scale
+            pred_ball = self.court_coordinate_normalization.denormalize_position(
+                outputs.ball_position[ball_mask]
+            )
+            target_ball = self.court_coordinate_normalization.denormalize_position(
+                targets.target_ball_position[ball_mask]
+            )
             ball_err = (pred_ball - target_ball).norm(dim=-1)
-            ball_b = outputs.ball_position_log_b[ball_mask].exp() * self._scale_mean
+            ball_b = (
+                outputs.ball_position_log_b[ball_mask].exp()
+                * self._uncertainty_scale_m
+            )
             self._ball_pos_errors.append(ball_err.detach().cpu())
             self._ball_pos_b.append(ball_b.detach().cpu())
             result["ball_position_error_m"] = float(ball_err.mean().item())

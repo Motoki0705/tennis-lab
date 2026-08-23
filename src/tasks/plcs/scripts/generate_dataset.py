@@ -54,7 +54,10 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     OmegaConf.save(cfg, output_dir / "config.yaml")
 
     # Initialize components
-    writer = PLCSDatasetWriter(output_dir)
+    writer = PLCSDatasetWriter(
+        output_dir,
+        court_coordinate_normalization=runtime.court_coordinate_normalization,
+    )
 
     # Generate scenes
     num_scenes = runtime.num_scenes

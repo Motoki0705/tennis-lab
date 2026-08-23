@@ -11,6 +11,7 @@ from typing import Any, Literal, TypeAlias, cast
 from omegaconf import DictConfig
 
 from src.tasks.base.configuration import (
+    CourtCoordinateNormalizationConfig,
     SceneVisualizationConfig,
     TrainingRuntimeConfig,
     as_config_mapping,
@@ -35,6 +36,7 @@ from src.utils.configuration import (
 from src.utils.device import resolve_device
 from src.utils.hydra import register_boundary_validator
 from src.utils.paths import PROJECT_ROOT
+from src.utils.schema.court_normalization import CourtCoordinateNormalization
 
 Scalar: TypeAlias = str | int | float | bool | None
 
@@ -213,6 +215,58 @@ def build_path_resolver(config: object) -> PathResolver:
             repository_root=PROJECT_ROOT,
         )
     )
+
+
+def parse_court_coordinate_normalization(
+    config: object,
+) -> CourtCoordinateNormalization:
+    """Resolve the required shared normalization selection at a BLCS boundary."""
+    return CourtCoordinateNormalizationConfig.from_config(config).contract
+
+
+def resolve_position_huber_beta(
+    normalization: CourtCoordinateNormalization,
+    *,
+    legacy_v1_beta: float,
+    v2_transition_m: float,
+) -> float:
+    """Resolve the normalized Smooth-L1 knee without a process-global scale.
+
+    ``v1`` retains the historical normalized beta. The isotropic ``v2``
+    contract expresses its configured transition in physical metres.
+    """
+    if normalization.version == "v1":
+        return float(legacy_v1_beta)
+    return float(v2_transition_m) / normalization.scale_xyz[2]
+
+
+def resolve_tracking_gravity_target(
+    normalization: CourtCoordinateNormalization,
+    *,
+    legacy_v1_target: float,
+    gravity: float,
+    frame_dt: float,
+) -> float:
+    """Keep the v1 literal while deriving the v2 normalized gravity target."""
+    if normalization.version == "v1":
+        return float(legacy_v1_target)
+    return -float(gravity) * float(frame_dt) ** 2 / normalization.scale_xyz[2]
+
+
+def _validate_version_qualified_artifact_path(
+    path: Path,
+    normalization: CourtCoordinateNormalization,
+    *,
+    location: str,
+) -> None:
+    if normalization.version != "v2":
+        return
+    normalized_path = str(path).replace("_", "-").lower()
+    if "norm-v2" not in normalized_path:
+        raise SemanticConfigurationError(
+            f"{location} must contain 'norm-v2' when normalization v2 is "
+            f"selected; got {path}."
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -1230,6 +1284,7 @@ def parse_generation_run(config: object) -> tuple[GenerationRunConfig, PathResol
         root,
         {
             "paths",
+            "court_coordinate_normalization",
             "generation",
             "physics",
             "rally",
@@ -1240,6 +1295,7 @@ def parse_generation_run(config: object) -> tuple[GenerationRunConfig, PathResol
         },
         path="configuration",
     )
+    normalization = parse_court_coordinate_normalization(config)
     validate_generator_sections(config)
     run = require_config_mapping(root, "run", path="configuration")
     keys = {
@@ -1289,6 +1345,11 @@ def parse_generation_run(config: object) -> tuple[GenerationRunConfig, PathResol
         raise SemanticConfigurationError(
             "run.device must resolve to 'cpu' for parallel BLCS generation."
         )
+    _validate_version_qualified_artifact_path(
+        result.output_dir,
+        normalization,
+        location="run.output_dir",
+    )
     return result, resolver
 
 
@@ -1828,12 +1889,18 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
     if model.name == "blcs_track_query":
         allowed = {
             "paths",
+            "court_coordinate_normalization",
             "model",
             "data",
             "training",
             "loss",
             "tracking_metrics",
             "run",
+            "physics",
+            "rally",
+            "camera",
+            "targeted_velocity",
+            "generator",
         }
         data = require_config_mapping(root, "data", path="configuration")
         backend = cast("str", _value(data, "backend", str, path="data"))
@@ -1849,6 +1916,7 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
     else:
         allowed = {
             "paths",
+            "court_coordinate_normalization",
             "model",
             "data",
             "training",
@@ -1861,6 +1929,7 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             "generator",
         }
     _exact(root, allowed, path="configuration")
+    normalization = parse_court_coordinate_normalization(config)
     build_path_resolver(config)
     data = require_config_mapping(root, "data", path="configuration")
     backend = cast("str", _value(data, "backend", str, path="data"))
@@ -2049,6 +2118,8 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
         "compile",
         "position_loss_weight",
         "position_axis_weights",
+        "position_huber_beta_v1",
+        "position_huber_transition_m_v2",
         "reprojection_loss_weight",
         "smoothness_loss_weight",
         "gravity_loss_weight",
@@ -2071,6 +2142,8 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
         {
             "position_loss_weight": float,
             "position_axis_weights": (list, type(None)),
+            "position_huber_beta_v1": float,
+            "position_huber_transition_m_v2": float,
             "reprojection_loss_weight": float,
             "smoothness_loss_weight": float,
             "gravity_loss_weight": float,
@@ -2099,9 +2172,19 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
         "gravity_beta",
     ):
         _non_negative(cast("float", training[key]), path=f"training.{key}")
+    for key in ("position_huber_beta_v1", "position_huber_transition_m_v2"):
+        _positive(cast("float", training[key]), path=f"training.{key}")
     if cast("int", training["smoothness_order"]) < 1:
         raise SemanticConfigurationError("training.smoothness_order must be >= 1.")
-    TrainingRuntimeConfig.from_config(config, repository_root=PROJECT_ROOT)
+    training_runtime = TrainingRuntimeConfig.from_config(
+        config,
+        repository_root=PROJECT_ROOT,
+    )
+    _validate_version_qualified_artifact_path(
+        training_runtime.run.output_dir,
+        normalization,
+        location="run.output_dir",
+    )
     parse_qualitative_rendering(config)
     gan = require_config_mapping(training, "gan", path="training")
     _exact(
@@ -2184,12 +2267,16 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             path=f"training.gan.discriminator.{key}",
         )
     if model.name == "blcs_track_query":
+        validate_generator_sections(config, include_generation=backend == "chunked")
         loss = require_config_mapping(root, "loss", path="configuration")
         _exact(
             loss,
             {
                 "position_weight",
                 "position_axis_weights",
+                "position_axis_weights_v2",
+                "position_huber_beta_v1",
+                "position_huber_transition_m_v2",
                 "presence_weight",
                 "presence_inactive_weight",
                 "presence_active_weight",
@@ -2208,6 +2295,9 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             {
                 "position_weight": float,
                 "position_axis_weights": list,
+                "position_axis_weights_v2": list,
+                "position_huber_beta_v1": float,
+                "position_huber_transition_m_v2": float,
                 "presence_weight": float,
                 "presence_inactive_weight": float,
                 "presence_active_weight": float,
@@ -2242,6 +2332,24 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             raise SemanticConfigurationError(
                 "loss.position_axis_weights values must be positive."
             )
+        v2_axis_weights = _numeric_sequence(
+            loss["position_axis_weights_v2"],
+            path="loss.position_axis_weights_v2",
+            length=3,
+        )
+        if v2_axis_weights != (1.0, 1.0, 1.0):
+            raise SemanticConfigurationError(
+                "loss.position_axis_weights_v2 must be the uniform [1, 1, 1] "
+                "normalization-v2 default."
+            )
+        _positive(
+            cast("float", loss["position_huber_beta_v1"]),
+            path="loss.position_huber_beta_v1",
+        )
+        _positive(
+            cast("float", loss["position_huber_transition_m_v2"]),
+            path="loss.position_huber_transition_m_v2",
+        )
         if cast("int", loss["transition_radius"]) < 0:
             raise SemanticConfigurationError(
                 "loss.transition_radius must be non-negative."
@@ -2278,7 +2386,12 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
 def validate_visualization_boundary(config: object) -> None:
     """Validate the complete BLCS visualization contract before scene I/O."""
     root = as_config_mapping(config, path="configuration")
-    _exact(root, {"paths", "visualization"}, path="configuration")
+    _exact(
+        root,
+        {"paths", "court_coordinate_normalization", "visualization"},
+        path="configuration",
+    )
+    parse_court_coordinate_normalization(config)
     visualization = require_config_mapping(root, "visualization", path="configuration")
     common = SceneVisualizationConfig.from_mapping(
         visualization,
@@ -2314,6 +2427,7 @@ def validate_api_boundary(config: object) -> None:
         root,
         {
             "paths",
+            "court_coordinate_normalization",
             "physics",
             "rally",
             "camera",
@@ -2323,6 +2437,7 @@ def validate_api_boundary(config: object) -> None:
         },
         path="configuration",
     )
+    parse_court_coordinate_normalization(config)
     build_path_resolver(config)
     validate_generator_sections(config, include_generation=False)
     server = require_config_mapping(root, "server", path="configuration")
@@ -2340,6 +2455,7 @@ def validate_generation_boundary(config: object) -> None:
 
 def validate_preview_boundary(config: object) -> None:
     """Validate augmentation-preview configuration before dataset I/O."""
+    parse_court_coordinate_normalization(config)
     parse_preview_config(config)
 
 

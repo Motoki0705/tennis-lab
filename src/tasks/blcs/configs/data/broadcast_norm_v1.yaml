@@ -1,0 +1,12 @@
+defaults:
+  - _augmentation
+  - _singleview
+  - _self_
+
+# Existing metadata-free broadcast dataset: valid only with normalization v1.
+backend: default
+scene_dir: blcs_broadcast
+num_court_kp: 20
+num_workers: 4
+pin_memory: true
+seq_len_range: [64, 256]

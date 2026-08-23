@@ -1,4 +1,6 @@
 defaults:
+  # Shared compatibility default; opt in with court_coordinate_normalization=v2.
+  - court_coordinate_normalization: v1
   - paths: default
   - model: base
   - data: default
@@ -8,6 +10,8 @@ defaults:
   - _self_
 
 hydra:
+  searchpath:
+    - pkg://src.tasks.base.configs
   run:
     dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
   output_subdir: null

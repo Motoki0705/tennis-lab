@@ -68,10 +68,16 @@ def _positive_axes(name: str, tensor: Tensor, axes: tuple[int, ...]) -> None:
         raise ModelInputContractError(f"{name} must be non-empty on axes {empty}.")
 
 
-def _validate_uv(name: str, tensor: Tensor) -> None:
+def _validate_uv(
+    name: str,
+    tensor: Tensor,
+    *,
+    validity_mask: Tensor | None = None,
+) -> None:
     if not bool(torch.isfinite(tensor).all()):
         raise ModelInputContractError(f"{name} must contain only finite UV values.")
-    if not bool(((tensor >= 0.0) & (tensor <= 1.0)).all()):
+    values = tensor if validity_mask is None else tensor[validity_mask.bool()]
+    if not bool(((values >= 0.0) & (values <= 1.0)).all()):
         raise ModelInputContractError(
             f"{name} must contain normalized UV values within [0, 1]."
         )
@@ -258,8 +264,8 @@ class TrajectoryModelIOAdapter(ABC):
             raise ModelInputContractError(
                 "All camera parameter tensors must match the target UV camera axis."
             )
-        _validate_uv("target_uv", target_uv)
         _validate_mask("target_vis", target_vis)
+        _validate_uv("target_uv", target_uv, validity_mask=target_vis)
         _validate_mask("loss_mask", loss_mask)
         _same_device(
             {

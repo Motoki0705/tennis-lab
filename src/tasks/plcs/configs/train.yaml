@@ -1,4 +1,6 @@
 defaults:
+  # Compatibility default. Select court_coordinate_normalization=v2 explicitly.
+  - court_coordinate_normalization: v1
   - model: multiview_axial_base
   - data: multiview_sequence
   - training: default

@@ -11,9 +11,9 @@ the following symbols:
 - ``C``: DINOv3 embedding width
 
 2D coordinates are normalized image UV in ``[0, 1]``; 3D positions are
-normalized court coordinates (meters divided by
-``src.utils.schema.court.COURT_COORD_SCALE_XYZ``); rotations are ``(cos, sin)``
-of court-frame yaw.
+normalized court coordinates (metres divided by the explicitly selected
+``CourtCoordinateNormalization.scale_xyz``); rotations are ``(cos, sin)`` of
+court-frame yaw.
 """
 
 from __future__ import annotations

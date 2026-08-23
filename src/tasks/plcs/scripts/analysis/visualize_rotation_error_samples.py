@@ -37,7 +37,7 @@ from src.utils.configuration import PathResolver, PathRole
 from src.utils.hydra import hydra_main
 from src.utils.io import load_json_if_exists, save_json
 from src.utils.rendering.camera_view import CameraController
-from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+from src.utils.schema.court_normalization import CourtCoordinateNormalization
 
 
 def _resolve_cameras(raw: Any, num_cameras: int) -> list[int]:
@@ -89,8 +89,12 @@ def _score_scene(
     scene_path: Path,
     cameras_cfg: Any,
     candidates_per_scene: int,
+    normalization: CourtCoordinateNormalization,
 ) -> list[dict[str, Any]]:
-    scene: Any = load_scene(scene_path)
+    scene: Any = load_scene(
+        scene_path,
+        court_coordinate_normalization=normalization,
+    )
     cameras = _resolve_cameras(cameras_cfg, int(scene.num_cameras))
     predictor.require_input_profile("multiview")
     outputs = predictor.predict_scene(scene, cameras)
@@ -108,9 +112,9 @@ def _score_scene(
     angular_error = _angular_error_deg(pred_rotation, gt_rotation)
     signed_error = _signed_angular_error_deg(pred_rotation, gt_rotation)
     position_error_norm = np.linalg.norm(pred_position - gt_position, axis=-1)
-    scale_xyz = np.asarray(COURT_COORD_SCALE_XYZ, dtype=np.float32)
     position_error_m = np.linalg.norm(
-        (pred_position - gt_position) * scale_xyz, axis=-1
+        normalization.denormalize_position(pred_position - gt_position),
+        axis=-1,
     )
 
     pred_norm = _normalized_rotation(pred_rotation)
@@ -227,6 +231,7 @@ def _render_sample(
     resolver: PathResolver,
     style: SceneStyleConfig,
     view_3d: CameraController,
+    normalization: CourtCoordinateNormalization,
 ) -> None:
     runtime = RuntimeConfig(
         mode="predict",
@@ -243,6 +248,7 @@ def _render_sample(
         view_3d=view_3d,
         canonical_pose_source="gt",
         resolver=resolver,
+        court_coordinate_normalization=normalization,
     )
     exit_code = run_visualization(runtime)
     if exit_code != 0:
@@ -278,6 +284,9 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
         checkpoint,
         resolver=resolver,
         device=device,
+        court_coordinate_normalization=(
+            runtime_config.court_coordinate_normalization
+        ),
     )
     candidates: list[dict[str, Any]] = []
     names = _scene_names(runtime_config.split_path)
@@ -294,6 +303,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
                 scene_path,
                 cfg.analysis.cameras,
                 candidates_per_scene=int(cfg.analysis.candidates_per_scene),
+                normalization=runtime_config.court_coordinate_normalization,
             )
         )
 
@@ -336,6 +346,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
                 resolver=resolver,
                 style=parse_scene_style(cfg.visualization.style),
                 view_3d=parse_view_3d(cfg.visualization.view_3d),
+                normalization=runtime_config.court_coordinate_normalization,
             )
 
     report = {

@@ -18,14 +18,14 @@ from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
-import torch
 
+from src.tasks.base.data import CourtCoordinateContractMismatchError
 from src.tasks.slcs.data.dataset import SLCSDataConfig, SLCSWindowDataset, collate_slcs
 from src.tasks.slcs.inference.predictor import SLCSPredictor
+from src.tasks.slcs.normalization import scalar_position_uncertainty_scale_m
 from src.tasks.slcs.training.metrics import SLCSMetrics
 from src.utils.geometry.angles import angular_error
 from src.utils.io import save_json
-from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 SavezCompressed = Callable[..., None]
 
@@ -49,9 +49,17 @@ def evaluate_split(
             data_config.train_stride if split == "train" else data_config.eval_stride
         ),
     )
-    metrics = SLCSMetrics()
-    scale = torch.tensor(list(COURT_COORD_SCALE_XYZ), dtype=torch.float32)
-    scale_mean = float(scale.mean().item())
+    contract = data_config.court_coordinate_normalization
+    if predictor.court_coordinate_normalization != contract:
+        raise CourtCoordinateContractMismatchError(
+            "SLCS evaluation dataset normalization "
+            f"{contract.version!r}/{contract.scale_xyz!r} does not match "
+            "predictor normalization "
+            f"{predictor.court_coordinate_normalization.version!r}/"
+            f"{predictor.court_coordinate_normalization.scale_xyz!r}."
+        )
+    metrics = SLCSMetrics(contract)
+    uncertainty_scale_m = scalar_position_uncertainty_scale_m(contract)
 
     collected: dict[str, list[np.ndarray]] = {
         "player_pos_error_m": [],
@@ -79,16 +87,16 @@ def evaluate_split(
         ball_mask = targets.ball_mask
         metrics.update(outputs, targets)
 
-        player_err = (
-            (outputs.player_position - targets.target_player_position) * scale
+        player_err = contract.denormalize_position(
+            outputs.player_position - targets.target_player_position
         ).norm(dim=-1)
         ang_err = (
             angular_error(outputs.player_rotation, targets.target_player_rotation)
             * 180.0
             / math.pi
         )
-        ball_err = (
-            (outputs.ball_position - targets.target_ball_position) * scale
+        ball_err = contract.denormalize_position(
+            outputs.ball_position - targets.target_ball_position
         ).norm(dim=-1)
 
         collected["player_pos_error_m"].append(player_err.numpy())
@@ -100,17 +108,21 @@ def evaluate_split(
         collected["player_observed"].append((batch["player_valid"] > 0).numpy())
         collected["ball_observed"].append((batch["ball_vis"] > 0).numpy())
         collected["player_sigma_m"].append(
-            (outputs.player_position_log_b.exp() * scale_mean).numpy()
+            (outputs.player_position_log_b.exp() * uncertainty_scale_m).numpy()
         )
         collected["player_rot_sigma_deg"].append(
             (outputs.player_rotation_log_b.exp() * 180.0 / math.pi).numpy()
         )
         collected["ball_sigma_m"].append(
-            (outputs.ball_position_log_b.exp() * scale_mean).numpy()
+            (outputs.ball_position_log_b.exp() * uncertainty_scale_m).numpy()
         )
 
     arrays = {key: np.concatenate(chunks, axis=0) for key, chunks in collected.items()}
     arrays["scene_ids"] = np.asarray(dataset.scenes)
+    arrays["court_coordinate_normalization_version"] = np.asarray(contract.version)
+    arrays["court_coordinate_scale_xyz_m"] = np.asarray(
+        contract.scale_xyz, dtype=np.float32
+    )
     report = metrics.compute()
     report["num_windows"] = float(len(dataset))
     return report, arrays

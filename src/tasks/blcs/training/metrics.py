@@ -5,7 +5,10 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
+)
 
 
 class BLCSMetrics:
@@ -19,7 +22,7 @@ class BLCSMetrics:
         *,
         position_threshold_m: float,
         endpoint_threshold_m: float,
-        scale_xyz: tuple[float, float, float] = COURT_COORD_SCALE_XYZ,
+        normalization: CourtCoordinateNormalization | str = "v1",
     ) -> None:
         """Initialize metrics tracker.
 
@@ -30,7 +33,11 @@ class BLCSMetrics:
         """
         self.position_threshold_m = position_threshold_m
         self.endpoint_threshold_m = endpoint_threshold_m
-        self.scale_xyz = scale_xyz
+        self.normalization = (
+            normalization
+            if isinstance(normalization, CourtCoordinateNormalization)
+            else resolve_court_coordinate_normalization(normalization)
+        )
         self.position_thresholds_m = (
             self.position_threshold_m,
             2.0 * self.position_threshold_m,
@@ -74,12 +81,10 @@ class BLCSMetrics:
         batch_size, seq_len, _ = pred_position.shape
 
         # Denormalize to meters
-        scale = torch.tensor(
-            list(self.scale_xyz),
-            device=pred_position.device,
-        )
-        pred_m = pred_position * scale
-        target_m = target_position * scale
+        pred_m = self.normalization.denormalize_position(pred_position)
+        target_m = self.normalization.denormalize_position(target_position)
+        if not isinstance(pred_m, Tensor) or not isinstance(target_m, Tensor):
+            raise TypeError("BLCS metric denormalization returned a non-tensor.")
 
         # Compute per-frame errors
         error = pred_m - target_m

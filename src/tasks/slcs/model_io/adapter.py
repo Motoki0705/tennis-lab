@@ -23,7 +23,11 @@ from src.tasks.slcs.model_io.contracts import (
     SLCSTrainingTargets,
 )
 from src.tasks.slcs.models.slcs_model import SLCSFusionModel
-from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+from src.tasks.slcs.normalization import scalar_position_uncertainty_scale_m
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
+)
 from src.utils.schema.player import NUM_HUMAN_KP
 
 _FLOAT32 = frozenset({torch.float32})
@@ -92,12 +96,21 @@ def _reject_legacy_or_prepared_masks(batch: Mapping[str, object]) -> None:
 class SLCSModelIOAdapter:
     """Validate SLCS batches and decode the sole model's raw tensor mapping."""
 
-    def __init__(self, spec: SLCSModelIOSpec) -> None:
+    def __init__(
+        self,
+        spec: SLCSModelIOSpec,
+        court_coordinate_normalization: CourtCoordinateNormalization | None = None,
+    ) -> None:
         self.spec = spec
+        self.court_coordinate_normalization = (
+            resolve_court_coordinate_normalization("v1")
+            if court_coordinate_normalization is None
+            else court_coordinate_normalization
+        )
 
     @property
     def model_type(self) -> type[nn.Module]:
-        return SLCSFusionModel
+        return cast("type[nn.Module]", SLCSFusionModel)
 
     def build_call(self, batch: Mapping[str, object]) -> ModelCall:
         """Validate observations and create an immutable model invocation."""
@@ -437,19 +450,24 @@ class SLCSModelIOAdapter:
             ball_position_log_b=tensors["ball_position_log_b"],
         )
 
-    @staticmethod
-    def to_physical(output: SLCSDecodedOutput) -> SLCSPhysicalOutput:
+    def to_physical(self, output: SLCSDecodedOutput) -> SLCSPhysicalOutput:
         """Decode normalized predictions into physical units."""
-        scale = output.player_position.new_tensor(COURT_COORD_SCALE_XYZ)
-        scale_mean = sum(COURT_COORD_SCALE_XYZ) / len(COURT_COORD_SCALE_XYZ)
+        contract = self.court_coordinate_normalization
+        uncertainty_scale = scalar_position_uncertainty_scale_m(contract)
         rotation = torch.nn.functional.normalize(output.player_rotation, dim=-1)
         return SLCSPhysicalOutput(
-            player_position_meters=output.player_position * scale,
+            player_position_meters=contract.denormalize_position(
+                output.player_position
+            ),
             player_yaw_radians=torch.atan2(rotation[..., 1], rotation[..., 0]),
-            ball_position_meters=output.ball_position * scale,
-            player_position_sigma_m=output.player_position_log_b.exp() * scale_mean,
+            ball_position_meters=contract.denormalize_position(output.ball_position),
+            player_position_sigma_m=(
+                output.player_position_log_b.exp() * uncertainty_scale
+            ),
             player_rotation_sigma_rad=output.player_rotation_log_b.exp(),
-            ball_position_sigma_m=output.ball_position_log_b.exp() * scale_mean,
+            ball_position_sigma_m=(
+                output.ball_position_log_b.exp() * uncertainty_scale
+            ),
         )
 
     def validate_model(self, model: SLCSFusionModel) -> None:

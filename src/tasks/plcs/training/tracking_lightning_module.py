@@ -16,6 +16,8 @@ from src.tasks.plcs.model_io import (
     PLCSTrackingBoundModelIO,
     PLCSTrackQueryIOAdapter,
     build_plcs_model_io,
+    validate_plcs_checkpoint_normalization,
+    write_plcs_checkpoint_normalization,
 )
 from src.tasks.plcs.training.tracking_losses import PLCSTrackingLoss
 from src.tasks.plcs.training.tracking_metrics import plcs_tracking_metrics
@@ -36,7 +38,11 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Tensor]]):
         self.io_adapter = adapter
         self.model_io = cast(PLCSTrackingBoundModelIO, model_io)
         self.model = self.model_io.model
-        self.criterion = PLCSTrackingLoss(config.loss)
+        self.plcs_runtime = runtime
+        self.criterion = PLCSTrackingLoss(
+            config.loss,
+            normalization=runtime.court_coordinate_normalization.contract,
+        )
         if runtime.tracking_metrics is None:
             raise ValueError("PLCS tracking requires tracking_metrics configuration.")
         self.tracking_metric_config = runtime.tracking_metrics
@@ -64,6 +70,7 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Tensor]]):
                 batch,
                 assignments,
                 config=self.tracking_metric_config,
+                normalization=self.plcs_runtime.court_coordinate_normalization.contract,
             )
             if compute_metrics
             else {}
@@ -72,6 +79,20 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Tensor]]):
             losses=losses,
             metrics=metrics,
             prediction=prediction,
+        )
+
+    def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        """Persist the selected normalization beside tracking model state."""
+        write_plcs_checkpoint_normalization(
+            checkpoint,
+            self.plcs_runtime.court_coordinate_normalization.contract,
+        )
+
+    def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        """Reject normalization mismatch before tracking state restoration."""
+        validate_plcs_checkpoint_normalization(
+            checkpoint,
+            self.plcs_runtime.court_coordinate_normalization.contract,
         )
 
     def tracking_prediction_result(
