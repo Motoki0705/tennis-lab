@@ -46,18 +46,15 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     seed = runtime.seed
     seed_everything(seed)
 
-    # Create output directory
+    # Validate and claim the destination before its first write.
     output_dir = runtime.output_dir
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Save resolved config
-    OmegaConf.save(cfg, output_dir / "config.yaml")
-
-    # Initialize components
     writer = PLCSDatasetWriter(
         output_dir,
         court_coordinate_normalization=runtime.court_coordinate_normalization,
     )
+
+    # Save resolved config only after destination validation succeeds.
+    OmegaConf.save(cfg, output_dir / "config.yaml")
 
     # Generate scenes
     num_scenes = runtime.num_scenes

@@ -27,8 +27,16 @@ class PLCSDatasetWriter(BaseDatasetWriter):
         *,
         court_coordinate_normalization: CourtCoordinateNormalization | None = None,
     ) -> None:
+        output_path = Path(output_dir)
+        if output_path.exists() and (
+            not output_path.is_dir() or any(output_path.iterdir())
+        ):
+            raise FileExistsError(
+                "Refusing to write a PLCS dataset into a non-empty or "
+                f"non-directory destination: {output_path}."
+            )
         super().__init__(
-            output_dir,
+            output_path,
             court_coordinate_normalization=court_coordinate_normalization,
         )
 
@@ -43,7 +51,7 @@ class PLCSDatasetWriter(BaseDatasetWriter):
         """
         dirname = str(scene.meta["scene_id"])
         scene_path: Path = self.scenes_dir / dirname
-        scene_path.mkdir(parents=True, exist_ok=True)
+        scene_path.mkdir(exist_ok=False)
 
         # Create metadata using dataclass (with optional Pydantic validation)
         meta_dict = {

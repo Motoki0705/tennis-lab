@@ -12,6 +12,7 @@ external_assets:
   smplh_model_path: smplx/smplh
 
 run:
+  # v2 publication name; see the artifact naming guard in the PLCS README.
   output_dir: plcs_broadcast_norm_v2
 
 hydra:

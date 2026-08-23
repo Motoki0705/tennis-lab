@@ -28,7 +28,13 @@ position loss と tracking Hungarian position cost は全軸一様で、default 
 version を artifact 名でも区別するため、baseline 用に
 `generate_dataset_norm_v1|v2.yaml`、`train_norm_v1|v2.yaml`、
 `data/multiview_sequence_norm_v1|v2.yaml` を用意しています。既存 v1 dataset を
-上書きせず v2 copy へ materialize する例は次の通りです。
+上書きせず v2 copy へ materialize する例は次の通りです。standalone generation
+と training で v2 を選ぶ場合、設定された相対 `run.output_dir` のいずれかの
+path component に、先頭/末尾または `_`/`-` で区切られた exact token
+`norm_v2` が必要です（例: `plcs_broadcast_norm_v2`, `baseline_norm_v2`）。これは
+publication 時の追加 guard であり、version 判定の正本は引き続き metadata
+です。v1/default path にこの token は不要です。generator は既存の non-empty
+destination と既存 scene directory を再利用せず、上書き前に error にします。
 
 ```bash
 .venv/bin/python -m src.tasks.base.scripts.materialize_court_coordinate_normalization \

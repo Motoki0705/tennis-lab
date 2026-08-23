@@ -27,6 +27,7 @@ from src.tasks.base.visualization.style import (
     parse_scene_style,
     parse_view_3d,
 )
+from src.tasks.plcs.artifact_paths import validate_plcs_artifact_publication_path
 from src.utils.configuration import (
     ConfigurationTypeError,
     MissingConfigurationKeyError,
@@ -949,6 +950,28 @@ class PLCSTrainingConfig:
                 "simulation",
             },
         )
+        normalization = CourtCoordinateNormalizationConfig.from_config(value)
+        run_fields = {
+            "output_dir",
+            "seed",
+            "gpus",
+            "resume",
+            "init_weights",
+            "fast_dev_run",
+            "dry_run",
+            "test_after_fit",
+        }
+        run = _exact(
+            require_config_mapping(root, "run", path="configuration"),
+            path="run",
+            required=run_fields,
+            allowed=run_fields,
+        )
+        validate_plcs_artifact_publication_path(
+            _string(run, "output_dir", path="run"),
+            normalization=normalization.contract,
+            config_path="run.output_dir",
+        )
         paths = configuration_contracts.PLCSPathConfig.from_config(value)
         model = PLCSModelConfig.from_mapping(
             require_config_mapping(root, "model", path="configuration")
@@ -1018,22 +1041,6 @@ class PLCSTrainingConfig:
             path="training.gan",
             required=gan_fields,
             allowed=gan_fields | {"discriminator"},
-        )
-        run_fields = {
-            "output_dir",
-            "seed",
-            "gpus",
-            "resume",
-            "init_weights",
-            "fast_dev_run",
-            "dry_run",
-            "test_after_fit",
-        }
-        _exact(
-            require_config_mapping(root, "run", path="configuration"),
-            path="run",
-            required=run_fields,
-            allowed=run_fields,
         )
         shared = TrainingRuntimeConfig.from_config(value, repository_root=PROJECT_ROOT)
         external_assets = _exact(
@@ -1287,9 +1294,7 @@ class PLCSTrainingConfig:
             )
         return cls(
             shared=shared,
-            court_coordinate_normalization=(
-                CourtCoordinateNormalizationConfig.from_config(value)
-            ),
+            court_coordinate_normalization=normalization,
             paths=paths,
             model=model,
             data=data,

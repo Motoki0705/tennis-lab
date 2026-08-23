@@ -1,10 +1,10 @@
 # Implementation
 
 - Issue: #786
-- Attempt: 2
-- Test cycle: 2
+- Attempt: 3
+- Test cycle: 1
 - Status: COMPLETE
-- Candidate SHA-256: `sha256:0d52bf2f739ab9f989ed8d64df18e5e7d5d53dc4b386cd493dc4633f710b87bb`
+- Candidate SHA-256: `sha256:836df260400170df46667244d06be0b527a3a2267aa0ba61cab8b7cba9df6749`
 
 ## Assigned ownership
 
@@ -17,6 +17,7 @@
 - Attempt-2 `i786_attempt2_repair`: close frozen Preflight findings R-001/R-002 in the BLCS checkpoint runtime and directly affected BLCS/PLCS unit tests only.
 - Packaging repair `i786_main_merge_repair`: integrate `origin/main` without rewriting branch history and resolve the three overlapping BLCS configuration / BLCS+PLCS predictor-test conflicts while retaining both normalization coverage and upstream track-query-ablation behavior.
 - Merge Preflight repair `i786_merge_mypy_repair`: preserve the upstream ablation model-identity assertion while widening only mypy's static view at the failing comparison.
+- Attempt-3 `i786_ac017_implementer`: own the bounded PLCS primary dataset/training publication path validation, writer occupancy/exclusive-scene boundary, standalone first-write ordering, and canonical documentation comments. Tests remain independently owned.
 - Attempt-2 parent integrator: incorporate the Validator findings, replace the invalid archived-checkpoint migration premise with frozen-base representative parity evidence, and bind this artifact to the repaired candidate.
 
 ## Files and symbols changed
@@ -30,6 +31,7 @@
 - Evidence and documentation: task READMEs/config comments, four run nodes, one comparison group, and reproducibility bundles under `knowledge/`.
 - Attempt-2 PLCS boundary: `src/tasks/plcs/generate_dataset/io/scene_loader.py::load_scene` and `src/tasks/plcs/visualization/io/scene.py::load_scene_bundle` require `CourtCoordinateNormalization`; metadata validation always precedes payload reads.
 - Attempt-2 authority: `.codex/tasks/issue-786/{01-exploration/exploration.md,02-planning/plan.md}` records why archived checkpoint architecture drift is outside this normalization Issue and freezes representative frozen-base parity as the AC-003/004 test oracle.
+- Attempt-3 AC-017 boundary: `src/tasks/plcs/artifact_paths.py`, `generate_dataset/config.py`, `configuration.py`, `generate_dataset/io/dataset_io.py`, and `scripts/generate_dataset.py` enforce v2 publication identity and preservation before any primary PLCS destination mutation; shipped v2 config comments and the PLCS README point to the same rule.
 
 ## Behavior implemented
 
@@ -44,6 +46,8 @@
 - The legacy v1 compatibility promise remains scoped to normalization metadata and numerical behavior. It does not silently migrate checkpoint architecture/configuration formats that were already unloadable at the frozen base revision.
 - A metadata-free checkpoint selected with explicit v1 receives an in-memory BLCS overlay containing only `position_huber_beta_v1=1.0` (the frozen-base PyTorch Smooth L1 default) and the separately named, v1-unused `position_huber_transition_m_v2=1.0` required by the current typed configuration. Existing conflicting values fail closed, checkpoint bytes remain unchanged, metadata-bearing paths are untouched, and explicit v2 still rejects before composition.
 - The merged BLCS typed parser admits both `blcs_track_query` and upstream `blcs_track_query_ablation`, validates generator sections for either model with the chunked backend rule, and retains the complete version-aware normalization loss schema. Merged predictor tests retain default/v2 metre-scale assertions alongside upstream ablation checkpoint restoration.
+- Primary PLCS generation/training selected with v2 now requires a delimiter-bounded `norm_v2` token in a configured relative path component before role resolution or runner execution. It preserves shipped `_norm_v2` names while rejecting lookalikes, absolute/parent-traversal paths, v1-labelled roots, and unqualified v2 output; v1/default remains compatible.
+- `PLCSDatasetWriter` refuses every non-empty or non-directory destination root before writes, allows missing/empty roots, and creates scene directories exclusively. The standalone entrypoint constructs the writer before saving `config.yaml`, so path/root failures preserve all existing bytes. Anonymous fresh chunk roots remain supported and compact mutable workspace publication is unchanged.
 
 ## Plan deviations and rationale
 
@@ -55,6 +59,7 @@
 - The Validator-selected archived BLCS and PLCS checkpoints cannot be loaded by frozen base `59e3b166c2d010d5e62be52c2be76d98a94af0e0`: BLCS contains 132 state-key architecture/name differences and incomplete current typed config; PLCS carries obsolete configuration roots. Attempt 2 therefore does not add an unrelated, identity-bound architecture migration or relax strict parsing.
 - AC-003/004 will instead use small deterministic metadata-free checkpoints, dataset fixtures, and expected outputs produced by the frozen base itself. This directly tests that the Issue preserves the behavior of artifacts the base revision could actually create and load.
 - PR #792 initially reported a merge conflict because `main` advanced by 13 commits. A normal merge was selected instead of rewriting the validated branch history; the resulting upstream changes are not Issue-authored scope, but their three overlaps require fresh repair-local Preflight/Test/Seal/Validator binding on the final merge tree.
+- Attempt 3 follows the final Validator's AC-017 finding. The narrow repair treats artifact naming as an additional publication guard, not metadata authority; it does not require a new separator/layout or redesign the compact fixed-owner scene workspace, which cannot select v2.
 
 ## Commands and results
 
@@ -72,13 +77,15 @@
 - Attempt-2 bounded Preflight repair: owned pre-commit hooks PASS; 10 focused checkpoint/PLCS loader tests PASS; the actual representative BLCS dataset, strict Lightning state load, inference, loss, and metric replay match the frozen-base golden exactly (`max_abs_diff=0.0`) without changing checkpoint bytes.
 - `origin/main` merge repair: Ruff PASS, mypy PASS, pre-commit PASS, 39 focused BLCS/PLCS configuration and tracking predictor tests PASS, `git diff --check` PASS, and no conflict marker/unmerged index entry remains.
 - Merge Preflight F-001 repair: 8 focused ablation tests PASS; Ruff, repository-hook mypy, and pre-commit PASS; the runtime class-identity assertion remains exact while `cast("object", ...)` prevents the static non-overlap false positive.
+- Attempt-3 production checks: owned-file Ruff/mypy/script reviewer PASS; 48 focused PLCS tests and 12 normalization/materializer regressions PASS. Temporary diagnostics passed valid/lookalike/v1 path matrices, shipped configs, pre-resolution failure, missing/empty/non-empty roots, exclusive scene collision, standalone first-write preservation, training pre-run config/checkpoint preservation, and v1/v2 controls; `git diff --check` PASS.
 
 ## Known limitations and remaining risks
 
 - The independent Test Writer must commit portable representative fixtures, add the planned frozen-base v1 parity integration test, update existing PLCS loader tests for the mandatory argument, and replace the nominal NumPy/Identity smoke with real task chains before the final full-suite verdict.
+- Attempt 3 still requires the independent Test Writer to commit AC-017 path/config/writer/entrypoint preservation and success-control tests, including byte identity after failure; temporary Implementer diagnostics are not acceptance evidence.
 - PLCS v1/v2 metrics are not a single-variable comparison because restart and batch-size conditions differ.
 - Local full-suite execution depends on ignored worktree-local hard-link trees to licensed/external datasets in the original repository; these are environment evidence, not committed artifacts and preserve strict worktree-root path semantics.
 
 ## Handoff
 
-The bounded merge findings are repaired and ready for a closure Preflight in test cycle 2. Closure must verify F-001, the canonical checks, and direct merge-local regressions only; it must not restart normalization discovery.
+Attempt-3 AC-017 production integration is ready for a bounded discovery Preflight. Review may inspect only the planned publication-path grammar, first-write ordering, root/scene exclusivity, primary generation/training callers, v1/empty-root controls, shipped configs, materializer regression, and byte preservation; it must not reopen other normalization or compact-workspace semantics.
