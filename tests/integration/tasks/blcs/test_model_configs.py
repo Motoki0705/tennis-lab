@@ -138,7 +138,16 @@ def test_all_four_track_query_ablation_configs_compose_and_validate(
     assert parsed.name == "blcs_track_query_ablation"
     assert parsed.ffn_mode == ffn_mode
     assert parsed.mhc_writeback == mhc_writeback
+    assert parsed.hidden_dim == 512
+    assert parsed.num_heads == 8
+    assert parsed.num_stages == 12
+    assert parsed.ffn_dim == 1408
     assert parsed.num_queries == 4
+    assert parsed.rope_dim == 64
+    assert parsed.dropout == 0.0
+    assert parsed.cswa.compression_ratio == 4
+    assert parsed.cswa.window_radius == 4
+    assert parsed.cswa.backend == "cuda"
 
 
 @pytest.mark.parametrize(
