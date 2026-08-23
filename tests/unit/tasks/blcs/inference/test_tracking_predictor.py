@@ -193,9 +193,11 @@ def test_v2_tracking_predictor_returns_meter_valued_positions() -> None:
     )
 
 
-def test_checkpoint_restoration_dispatches_to_exact_ablation_binding(
+@pytest.mark.parametrize("normalization_version", ["v1", "v2"])
+def test_checkpoint_restoration_dispatches_to_exact_ablation_binding_and_scale(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
+    normalization_version: str,
 ) -> None:
     config_dir = Path("src/tasks/blcs/configs").resolve()
     with initialize_config_dir(config_dir=str(config_dir), version_base="1.3"):
@@ -212,11 +214,12 @@ def test_checkpoint_restoration_dispatches_to_exact_ablation_binding(
                 "model.mhc.sinkhorn_iters=5",
                 "model.cswa.compression_ratio=2",
                 "model.cswa.window_radius=1",
+                f"court_coordinate_normalization={normalization_version}",
             ],
         )
     binding = compose_blcs_track_query_model_io(config)
     checkpoint = tmp_path / "ablation.ckpt"
-    normalization = resolve_court_coordinate_normalization("v1")
+    normalization = resolve_court_coordinate_normalization(normalization_version)
     checkpoint_payload: dict[str, object] = {
         "hyper_parameters": {"config": config}
     }
@@ -270,3 +273,15 @@ def test_checkpoint_restoration_dispatches_to_exact_ablation_binding(
     assert type(predictor.model) is BLCSTrackQueryAblationModel
     assert type(predictor.model_io.adapter) is TrackQueryAblationModelIOAdapter
     assert predictor.court_coordinate_normalization == normalization
+
+    inputs: dict[str, Any] = {
+        "ball_uv": torch.zeros(1, 1, 2, 4, 2),
+        "ball_vis": torch.ones(1, 1, 2, 4, dtype=torch.bool),
+        "court_kp": torch.zeros(1, 1, 2, 14, 2),
+        "court_vis": torch.ones(1, 1, 2, 14, dtype=torch.bool),
+        "padding_mask": torch.zeros(1, 1, 2, dtype=torch.bool),
+    }
+    normalized = predictor.predict(**inputs, denormalize=False)
+    physical = predictor.predict(**inputs, denormalize=True)
+    scale = torch.tensor(normalization.scale_xyz).view(1, 1, 1, 3)
+    torch.testing.assert_close(physical.position, normalized.position * scale)

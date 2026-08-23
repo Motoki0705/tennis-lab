@@ -12,6 +12,9 @@ from src.tasks.blcs.configuration import (
     parse_model_config,
     validate_training_boundary,
 )
+from src.tasks.blcs.generate_dataset.config import build_generator_config
+from src.tasks.blcs.generate_dataset.scene_generator import GeneratorConfig
+from src.tasks.blcs.training.tracking_losses import BLCSTrackingLoss
 from src.utils.configuration import (
     MissingConfigurationKeyError,
     SemanticConfigurationError,
@@ -139,6 +142,78 @@ def test_all_four_track_query_ablation_configs_compose_and_validate(
     assert parsed.ffn_mode == ffn_mode
     assert parsed.mhc_writeback == mhc_writeback
     assert parsed.num_queries == 4
+
+
+@pytest.mark.parametrize(
+    ("model_name", "expected_type"),
+    [
+        ("track_query", TrackQueryModelConfig),
+        ("track_query_ablation_d", TrackQueryAblationModelConfig),
+    ],
+)
+def test_tracking_model_families_preserve_normalization_loss_and_generator_contracts(
+    model_name: str,
+    expected_type: type[TrackQueryModelConfig | TrackQueryAblationModelConfig],
+) -> None:
+    composed: dict[
+        str,
+        tuple[
+            TrackQueryModelConfig | TrackQueryAblationModelConfig,
+            GeneratorConfig,
+            BLCSTrackingLoss,
+        ],
+    ] = {}
+    for version in ("v1", "v2"):
+        with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+            config = compose(
+                config_name="train_tracking",
+                overrides=[
+                    f"model={model_name}",
+                    f"court_coordinate_normalization={version}",
+                ],
+            )
+
+        parsed = validate_training_boundary(config)
+        generator = build_generator_config(config)
+        criterion = BLCSTrackingLoss(
+            config.loss,
+            normalization=generator.court_coordinate_normalization,
+            gravity=float(config.physics.gravity),
+            frame_dt=1.0 / float(config.rally.output_fps),
+        )
+        assert isinstance(parsed, expected_type)
+        composed[version] = (parsed, generator, criterion)
+
+    v1_model, v1_generator, v1_criterion = composed["v1"]
+    v2_model, v2_generator, v2_criterion = composed["v2"]
+    assert v1_model == v2_model
+    assert v1_generator.physics == v2_generator.physics
+    assert v1_generator.rally == v2_generator.rally
+    assert v1_generator.camera == v2_generator.camera
+    assert v1_generator.targeted_velocity == v2_generator.targeted_velocity
+    assert v1_generator.court == v2_generator.court
+    assert v1_generator.court_coordinate_normalization.version == "v1"
+    assert v2_generator.court_coordinate_normalization.version == "v2"
+    assert v1_generator.court_coordinate_normalization.scale_xyz == (
+        5.485,
+        11.885,
+        1.07,
+    )
+    assert v2_generator.court_coordinate_normalization.scale_xyz == (
+        11.885,
+        11.885,
+        11.885,
+    )
+    assert v1_criterion.position_axis_weights.tolist() == [1.0, 1.0, 0.5]
+    assert v2_criterion.position_axis_weights.tolist() == [1.0, 1.0, 1.0]
+    assert v1_criterion.position_beta == 1.0
+    assert v2_criterion.position_beta == pytest.approx(1.0 / 11.885)
+    assert v1_criterion.gravity_target == -0.01
+    assert v2_criterion.gravity_target == pytest.approx(
+        -float(v2_generator.physics.gravity)
+        * (1.0 / float(v2_generator.rally.output_fps)) ** 2
+        / 11.885
+    )
 
 
 @pytest.mark.parametrize(
