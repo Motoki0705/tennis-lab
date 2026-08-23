@@ -4,7 +4,7 @@
 - Attempt: 1
 - Test cycle: 1
 - Status: COMPLETE
-- Candidate SHA-256: `sha256:0b141aeead98e5cfcdf04f55132ed10a43acb5c95e676ad5823061104904a7e6`
+- Candidate SHA-256: `sha256:5e1143f697800fbf6958b465f5e4d080088037c019956be639845cc4741f04f3`
 
 ## Assigned ownership
 
@@ -32,12 +32,14 @@
 - v2 uses a common physical Smooth L1 transition and uniform default position/Hungarian axes; v1 preserves its historical behavior.
 - v2 datasets were materialized beside, not over, legacy datasets and validated by normalized-to-metre round trips.
 - BLCS v1/v2 and PLCS v1/v2 baselines were trained through the shared queue and recorded in physical metre metrics. BLCS v2 reduced mean position error from `2.405233m` to `2.338450m` under matched batch/worker settings.
+- After discovery Preflight RETURN, the materializer now publishes an empty root document only when prior validation proved the source is metadata-free legacy v1 and its root `meta.json` is absent. Scene metadata, v2, mismatch, and overwrite checks remain strict.
 
 ## Plan deviations and rationale
 
 - PLCS v2 was resumed from the epoch-62 checkpoint with `batch_size=24` on GPU 0 after measured heterogeneous two-GPU DDP was substantially slower; PLCS v1 used `batch_size=4`. Therefore the PLCS figures are operational baselines, not a normalization-only controlled comparison. The knowledge group states this limitation explicitly.
 - GPU 1 was not retained for the final runs because its 4GB capacity made heterogeneous DDP throughput much worse than GPU 0 alone. BLCS used GPU 0, `batch_size=64`, and user-requested `data.num_workers=16` for both versions.
 - Runtime prediction files for earlier completed runs had been overwritten by subsequent executions. Their logged metrics, curves, and reproducibility metadata were retained without fabricating replacement predictions; the final BLCS v2 prediction bundle is preserved.
+- The required all-files mypy gate exposed eight diagnostics in unchanged baseline files. The bounded repair added only type narrowing/casts/targeted decorator annotations and removed one redundant cast; runtime behavior and test assertions are unchanged.
 
 ## Commands and results
 
@@ -45,6 +47,7 @@
 - Invisible BLCS observation repair: `26 passed`; Ruff and mypy passed on the focused delta.
 - Configuration inventory/audit after materializer registration: `11 passed in 39.10s`.
 - Full repository diagnostic before the inventory/policy closure: `3087 passed, 53 skipped, 42 failed, 2 errors`; remaining failures were classified as missing worktree-only licensed/external data links and repository allowlists that must be updated by the independent Test Writer. Worktree data links are now present.
+- Bounded Preflight repair: all-files mypy passed across `1103` files and staged-file mypy passed across the owned delta; Ruff passed on all owned files; `30` focused unit tests and `3` focused Colab e2e tests passed; the dynamic missing-root materialization fixture passed root/scene v2 metadata, physical round trip, source preservation, overwrite refusal, and missing-scene rejection.
 - Knowledge validation: `0 errors`; four warnings are pre-existing graph warnings.
 - Shared training queue: both BLCS jobs completed 100 epochs with `batch_size=64`, `data.num_workers=16`; PLCS v2 completed through epoch 101 on GPU 0.
 
@@ -52,7 +55,7 @@
 
 - The independent Test Writer must update existing configuration/architecture policy tests for the new shared schema/base boundary and add the planned v1/v2 acceptance coverage before the final full-suite verdict.
 - PLCS v1/v2 metrics are not a single-variable comparison because restart and batch-size conditions differ.
-- Local full-suite execution depends on ignored symlinks to licensed/external datasets in the original repository; these are environment evidence, not committed artifacts.
+- Local full-suite execution depends on ignored worktree-local hard-link trees to licensed/external datasets in the original repository; these are environment evidence, not committed artifacts and preserve strict worktree-root path semantics.
 
 ## Handoff
 

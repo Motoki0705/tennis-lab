@@ -94,14 +94,14 @@ class SandboxSpec(BaseModel):
     use_gpu: bool = False
     timeout_seconds: int = Field(default=900, ge=1, le=7 * 24 * 3600)
 
-    @field_validator("command")
+    @field_validator("command")  # type: ignore[untyped-decorator]
     @classmethod
     def reject_nul_command(cls, value: str) -> str:
         if "\x00" in value:
             raise ValueError("command may not contain NUL")
         return value
 
-    @field_validator("working_directory")
+    @field_validator("working_directory")  # type: ignore[untyped-decorator]
     @classmethod
     def validate_working_directory(cls, value: str) -> str:
         return _normalize_working_directory(value)
@@ -214,7 +214,8 @@ class DockerSandbox:
         return job_root, workspace_copy, artifacts, command_path
 
     def _command_file(self, job_id: str) -> Path:
-        return self.settings.sandbox_jobs_dir / job_id / _COMMAND_FILE_NAME
+        sandbox_jobs_dir: Path = self.settings.sandbox_jobs_dir
+        return sandbox_jobs_dir / job_id / _COMMAND_FILE_NAME
 
     def _wrapper(self, spec: SandboxSpec) -> str:
         selected_root = (

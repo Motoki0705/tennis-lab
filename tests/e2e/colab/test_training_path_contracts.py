@@ -7,6 +7,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 import pytest
 from hydra import compose, initialize_config_dir
@@ -17,10 +18,14 @@ from src.tasks.base.configuration import (
     TrainingRuntimeConfig,
 )
 from src.tasks.blcs.configuration import (
+    GenerationRunConfig,
     parse_generation_run,
     validate_training_boundary,
 )
-from src.tasks.court_detection.configuration import CourtTrainingConfig
+from src.tasks.court_detection.configuration import (
+    CourtTrainingConfig,
+    SyntheticCourtSourceConfig,
+)
 from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.generate_dataset.config import PLCSGenerationConfig
 
@@ -223,6 +228,7 @@ def test_generated_dataset_helper_emits_root_and_relative_child(
     config_dir = ROOT / f"src/tasks/{task}/configs"
     with initialize_config_dir(config_dir=str(config_dir), version_base="1.3"):
         config = compose(config_name="generate_dataset", overrides=overrides)
+    runtime: GenerationRunConfig | PLCSGenerationConfig
     if task == "blcs":
         runtime, _resolver = parse_generation_run(config)
     else:
@@ -482,7 +488,8 @@ def test_court_train_script_emits_hydra_valid_role_paths_and_resume(
     with initialize_config_dir(config_dir=str(config_dir), version_base="1.3"):
         config = compose(config_name="train", overrides=overrides)
     runtime = CourtTrainingConfig.from_config(config)
-    assert runtime.data.source.workspace_root == (
+    source = cast("SyntheticCourtSourceConfig", runtime.data.source)
+    assert source.workspace_root == (
         data_root / "synthetic_data_generation/scenes"
     )
     assert runtime.shared.run.output_dir == output_root / output_dir
