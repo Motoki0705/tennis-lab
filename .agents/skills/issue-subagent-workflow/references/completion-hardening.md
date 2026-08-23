@@ -6,6 +6,8 @@ Schema-v5 scripts enforce these invariants.
 
 Preflight PASS binds the pre-test candidate; allowed Test Writer edits may create another fingerprint, which Tester PASS binds. The no-edit Seal Reviewer reruns every seal-stage check. Any post-Tester content change rejects the seal and requires fresh Preflight/Test.
 
+The plan and `checks.json` define mandatory minimum coverage, not the Test Writer's search ceiling. The Test Writer may add impacted tests and candidate-bound `AT-*` probes from Issue/public contracts, repository invariants, or baseline regressions. Every reported `AT-*` row must match `test-probes.json`; an all-AC-PASS candidate still returns when a supported adversarial probe fails. Unsupported or ambiguous oracles do not become product requirements.
+
 The first Preflight is the only discovery pass. It may use only bounded diagnostic categories frozen in `plan.md` from the ACs and planned risks; the Reviewer does not design new categories during review. After one RETURN, the next Preflight is closure-only: verify the frozen findings, canonical checks, and direct repair regressions. A second consecutive Preflight RETURN requires `return-review`; do not start a third ordinary Preflight with another exploratory mutation set.
 
 Seal is narrower than Preflight and Validator. It verifies Tester-candidate equality, no post-test content change, approved diff scope, repository rules, artifact completeness, and canonical seal results. It does not design semantic mutations, fuzz readers, reopen architecture, or search indefinitely for new failure categories. Any Seal RETURN requires `return-review`; after classification, every content repair restarts Preflight/Test before resealing.

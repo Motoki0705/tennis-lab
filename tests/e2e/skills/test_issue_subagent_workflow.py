@@ -32,7 +32,9 @@ candidate = load("issue_task_candidate")
 
 
 def git(root: Path, *args: str) -> str:
-    result = subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True, text=True)
+    result = subprocess.run(
+        ["git", "-C", str(root), *args], check=True, capture_output=True, text=True
+    )
     return result.stdout.strip()
 
 
@@ -63,7 +65,9 @@ def setup_task(
         "labels": [],
         "updatedAt": "2026-08-06T00:00:00Z",
     }
-    issue_hash, issue_md_hash, checklist_hash, items = init.write_issue_snapshot(task, payload)
+    issue_hash, issue_md_hash, checklist_hash, items = init.write_issue_snapshot(
+        task, payload
+    )
     (task / "state.toml").write_text(
         init.render_state(
             payload,
@@ -100,8 +104,8 @@ def write_feasibility(task: Path) -> None:
 - Issue: #1
 - Attempt: 1
 - Status: COMPLETE
-- Frozen issue SHA-256: `{state['issue_sha256']}`
-- Frozen acceptance checklist SHA-256: `{state['acceptance_checklist_sha256']}`
+- Frozen issue SHA-256: `{state["issue_sha256"]}`
+- Frozen acceptance checklist SHA-256: `{state["acceptance_checklist_sha256"]}`
 
 ## Allowed and prohibited changes
 src and tests are allowed.
@@ -173,8 +177,8 @@ def write_plan(task: Path) -> None:
 - Issue: #1
 - Attempt: 1
 - Status: COMPLETE
-- Frozen issue SHA-256: `{state['issue_sha256']}`
-- Frozen acceptance checklist SHA-256: `{state['acceptance_checklist_sha256']}`
+- Frozen issue SHA-256: `{state["issue_sha256"]}`
+- Frozen acceptance checklist SHA-256: `{state["acceptance_checklist_sha256"]}`
 
 ## Acceptance checklist mapping
 | ID | Issue checklist item | Planned implementation | Validation method |
@@ -214,7 +218,9 @@ None
             }
         ],
     }
-    (task / "02-planning/checks.json").write_text(json.dumps(manifest), encoding="utf-8")
+    (task / "02-planning/checks.json").write_text(
+        json.dumps(manifest), encoding="utf-8"
+    )
 
 
 def write_implementation(task: Path, cycle: int) -> None:
@@ -278,7 +284,14 @@ None
     )
 
 
-def write_tests(task: Path, cycle: int, fp: str) -> None:
+def write_tests(
+    task: Path,
+    cycle: int,
+    fp: str,
+    *,
+    adversarial_rows: str = "None — independent impact review found no additional executable case.",
+    adversarial_probe_results: str = "None",
+) -> None:
     state = manage.load_state(task)
     (task / "03-implementation/tests.md").write_text(
         f"""# Tests
@@ -287,7 +300,7 @@ def write_tests(task: Path, cycle: int, fp: str) -> None:
 - Attempt: 1
 - Test cycle: {cycle}
 - Status: COMPLETE
-- Frozen acceptance checklist SHA-256: `{state['acceptance_checklist_sha256']}`
+- Frozen acceptance checklist SHA-256: `{state["acceptance_checklist_sha256"]}`
 - Candidate SHA-256: `{fp}`
 
 ## Candidate identity
@@ -297,6 +310,12 @@ def write_tests(task: Path, cycle: int, fp: str) -> None:
 |---|---|---|---|
 | AC-001 | Observable behavior | py-ok | PASS |
 | AC-002 | Regression is covered | tests.txt | PASS |
+## Independent adversarial test design
+Inspected public behavior and changed callers independently of the planned minimum.
+## Independently derived adversarial tests
+{adversarial_rows}
+## Adversarial probe results
+{adversarial_probe_results}
 ## Tests added or changed
 tests.txt
 ## Normal, boundary, invalid, and regression cases
@@ -355,8 +374,8 @@ def write_validation(task: Path, fp: str) -> None:
 - Issue: #1
 - Attempt: 1
 - Status: COMPLETE
-- Frozen issue SHA-256: `{state['issue_sha256']}`
-- Frozen acceptance checklist SHA-256: `{state['acceptance_checklist_sha256']}`
+- Frozen issue SHA-256: `{state["issue_sha256"]}`
+- Frozen acceptance checklist SHA-256: `{state["acceptance_checklist_sha256"]}`
 - Candidate SHA-256: `{fp}`
 
 ## Inspection scope and revision
@@ -423,7 +442,6 @@ def advance_to_validation(
     return test_fp
 
 
-
 def install_fake_gh(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -480,7 +498,7 @@ else:
     monkeypatch.setenv("PATH", f"{directory}:{os.environ.get('PATH', '')}")
 
 
-def test_full_v5_flow_uses_validated_then_complete(
+def test_full_v6_flow_uses_validated_then_complete(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     root, task = setup_task(tmp_path)
@@ -532,6 +550,42 @@ PASS
     assert state["status"] == "complete"
     assert state["verdict"] == "PASS"
     assert manage.check(task) == []
+
+
+def test_schema_v5_task_loads_with_legacy_adversarial_contract(tmp_path: Path) -> None:
+    root, task = setup_task(tmp_path)
+    state_path = task / "state.toml"
+    state_path.write_text(
+        state_path.read_text(encoding="utf-8")
+        .replace("schema_version = 6", "schema_version = 5")
+        .replace('adversarial_testing_mode = "ENFORCED"\n', ""),
+        encoding="utf-8",
+    )
+
+    state = manage.load_state(task)
+    assert state["schema_version"] == 6
+    assert state["adversarial_testing_mode"] == "LEGACY"
+
+    advance_to_implementation(root, task)
+    write_implementation(task, 1)
+    preflight_fp = candidate.compute_candidate_fingerprint(
+        task, manage.load_state(task)
+    )
+    write_preflight(task, 1, preflight_fp)
+    assert manage.run_check(task, "preflight", "py-ok") == 0
+    manage.apply_preflight_verdict(task, "PASS")
+    write_tests(task, 1, preflight_fp)
+    tests_path = task / "03-implementation/tests.md"
+    tests_text = tests_path.read_text(encoding="utf-8")
+    adversarial_start = tests_text.index("## Independent adversarial test design")
+    tests_start = tests_text.index("## Tests added or changed")
+    tests_path.write_text(
+        tests_text[:adversarial_start] + tests_text[tests_start:],
+        encoding="utf-8",
+    )
+    assert manage.run_check(task, "test", "py-ok") == 0
+    manage.apply_test_verdict(task, "PASS")
+    assert manage.load_state(task)["test_verdict"] == "PASS"
 
 
 def test_capture_and_finalize_reconcile_renamed_files_with_no_renames_revision(
@@ -740,6 +794,201 @@ def test_candidate_change_after_tester_pass_requires_retest(tmp_path: Path) -> N
         manage.apply_seal_verdict(task, "PASS")
 
 
+def test_adversarial_probe_can_return_with_every_ac_passing(tmp_path: Path) -> None:
+    root, task = setup_task(tmp_path)
+    advance_to_implementation(root, task)
+    write_implementation(task, 1)
+    preflight_fp = candidate.compute_candidate_fingerprint(
+        task, manage.load_state(task)
+    )
+    write_preflight(task, 1, preflight_fp)
+    assert manage.run_check(task, "preflight", "py-ok") == 0
+    manage.apply_preflight_verdict(task, "PASS")
+
+    (root / "tests.txt").write_text("adversarial regression\n", encoding="utf-8")
+    test_fp = candidate.compute_candidate_fingerprint(task, manage.load_state(task))
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS / "manage_issue_task.py"),
+            "run-test-probe",
+            str(task),
+            "AT-001",
+            "--authority",
+            "PUBLIC_CONTRACT",
+            "--authority-ref",
+            "documented caller accepts the boundary input",
+            "--argv",
+            sys.executable,
+            "-c",
+            "raise SystemExit(7)",
+        ],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 7
+    write_tests(
+        task,
+        1,
+        test_fp,
+        adversarial_rows=(
+            "| AT-001 | boundary input rejected | PUBLIC_CONTRACT | "
+            "documented caller accepts it | test-probes.json and log | FAIL |"
+        ),
+        adversarial_probe_results="AT-001 FAIL with exit code 7.",
+    )
+    tests_path = task / "03-implementation/tests.md"
+    tests_path.write_text(
+        tests_path.read_text(encoding="utf-8")
+        .replace("## Final test verdict\nPASS", "## Final test verdict\nRETURN")
+        .replace(
+            "## RETURN implementation findings\nNone",
+            "## RETURN implementation findings\nAT-001: production rejects a documented boundary input.",
+        ),
+        encoding="utf-8",
+    )
+
+    manage.apply_test_verdict(task, "RETURN")
+    state = manage.load_state(task)
+    assert state["test_verdict"] == "RETURN"
+    assert state["test_candidate_sha256"] == test_fp
+
+
+def test_adversarial_row_requires_candidate_bound_probe_evidence(
+    tmp_path: Path,
+) -> None:
+    root, task = setup_task(tmp_path)
+    advance_to_implementation(root, task)
+    write_implementation(task, 1)
+    preflight_fp = candidate.compute_candidate_fingerprint(
+        task, manage.load_state(task)
+    )
+    write_preflight(task, 1, preflight_fp)
+    assert manage.run_check(task, "preflight", "py-ok") == 0
+    manage.apply_preflight_verdict(task, "PASS")
+
+    test_fp = candidate.compute_candidate_fingerprint(task, manage.load_state(task))
+    write_tests(
+        task,
+        1,
+        test_fp,
+        adversarial_rows=(
+            "| AT-001 | downstream caller | REPO_INVARIANT | caller remains compatible | "
+            "claimed command | PASS |"
+        ),
+        adversarial_probe_results="AT-001 claimed PASS.",
+    )
+    assert "missing adversarial test probe results" in "; ".join(
+        manage.check_artifact(task, "tests")
+    )
+
+
+def test_passing_adversarial_probe_can_complete_tester_gate(tmp_path: Path) -> None:
+    root, task = setup_task(tmp_path)
+    advance_to_implementation(root, task)
+    write_implementation(task, 1)
+    preflight_fp = candidate.compute_candidate_fingerprint(
+        task, manage.load_state(task)
+    )
+    write_preflight(task, 1, preflight_fp)
+    assert manage.run_check(task, "preflight", "py-ok") == 0
+    manage.apply_preflight_verdict(task, "PASS")
+
+    (root / "tests.txt").write_text("adversarial pass\n", encoding="utf-8")
+    test_fp = candidate.compute_candidate_fingerprint(task, manage.load_state(task))
+    assert (
+        manage.run_test_probe(
+            task,
+            "AT-001",
+            authority="BASELINE_REGRESSION",
+            authority_ref="base revision accepts the downstream call",
+            argv=[sys.executable, "-c", "raise SystemExit(0)"],
+        )
+        == 0
+    )
+    write_tests(
+        task,
+        1,
+        test_fp,
+        adversarial_rows=(
+            "| AT-001 | downstream compatibility | BASELINE_REGRESSION | "
+            "base revision accepts the call | test-probes.json and log | PASS |"
+        ),
+        adversarial_probe_results="AT-001 PASS with candidate-bound evidence.",
+    )
+    assert manage.run_check(task, "test", "py-ok") == 0
+    manage.apply_test_verdict(task, "PASS")
+    assert manage.load_state(task)["test_verdict"] == "PASS"
+
+
+def test_adversarial_probe_result_is_stale_after_candidate_change(
+    tmp_path: Path,
+) -> None:
+    root, task = setup_task(tmp_path)
+    advance_to_implementation(root, task)
+    write_implementation(task, 1)
+    preflight_fp = candidate.compute_candidate_fingerprint(
+        task, manage.load_state(task)
+    )
+    write_preflight(task, 1, preflight_fp)
+    assert manage.run_check(task, "preflight", "py-ok") == 0
+    manage.apply_preflight_verdict(task, "PASS")
+
+    assert (
+        manage.run_test_probe(
+            task,
+            "AT-001",
+            authority="REPO_INVARIANT",
+            authority_ref="changed caller remains executable",
+            argv=[sys.executable, "-c", "raise SystemExit(0)"],
+        )
+        == 0
+    )
+    (root / "tests.txt").write_text("changed after probe\n", encoding="utf-8")
+    stale_fp = candidate.compute_candidate_fingerprint(task, manage.load_state(task))
+    write_tests(
+        task,
+        1,
+        stale_fp,
+        adversarial_rows=(
+            "| AT-001 | changed caller | REPO_INVARIANT | caller remains executable | "
+            "test-probes.json and log | PASS |"
+        ),
+        adversarial_probe_results="AT-001 PASS before the later candidate change.",
+    )
+    assert "candidate fingerprint is stale" in "; ".join(
+        manage.check_artifact(task, "tests")
+    )
+
+
+def test_adversarial_probe_rejects_candidate_mutation(tmp_path: Path) -> None:
+    root, task = setup_task(tmp_path)
+    advance_to_implementation(root, task)
+    write_implementation(task, 1)
+    preflight_fp = candidate.compute_candidate_fingerprint(
+        task, manage.load_state(task)
+    )
+    write_preflight(task, 1, preflight_fp)
+    assert manage.run_check(task, "preflight", "py-ok") == 0
+    manage.apply_preflight_verdict(task, "PASS")
+
+    with pytest.raises(ValueError, match="changed candidate content"):
+        manage.run_test_probe(
+            task,
+            "AT-001",
+            authority="REPO_INVARIANT",
+            authority_ref="tests must not edit production",
+            argv=[
+                sys.executable,
+                "-c",
+                "from pathlib import Path; Path('src.txt').write_text('mutated')",
+            ],
+        )
+    assert not (task / "03-implementation/test-probes.json").exists()
+
+
 def test_issue_body_tampering_blocks_transition(tmp_path: Path) -> None:
     _, task = setup_task(tmp_path)
     write_feasibility(task)
@@ -778,7 +1027,12 @@ def test_changed_canonical_invocation_rejects_old_result(tmp_path: Path) -> None
 
     manifest_path = task / "02-planning/checks.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    manifest["checks"][0]["argv"] = [sys.executable, "-c", "raise SystemExit(0)", "changed"]
+    manifest["checks"][0]["argv"] = [
+        sys.executable,
+        "-c",
+        "raise SystemExit(0)",
+        "changed",
+    ]
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
 
     with pytest.raises(ValueError, match="canonical invocation mismatch"):
