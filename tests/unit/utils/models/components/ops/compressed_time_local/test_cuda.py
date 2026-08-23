@@ -296,6 +296,116 @@ def test_cuda_shared_tied_key_value_accumulates_both_gradients() -> None:
 
 
 @pytest.mark.parametrize(
+    ("dtype", "atol", "rtol"),
+    [
+        (torch.float32, 4.0e-5, 4.0e-4),
+        (torch.float16, 8.0e-2, 3.0e-2),
+        (torch.bfloat16, 8.0e-2, 3.0e-2),
+    ],
+)
+@pytest.mark.parametrize("head_dim", [16, 32, 64])
+def test_cuda_fused_rope_subwarp_widths_match_tied_reference(
+    dtype: torch.dtype,
+    atol: float,
+    rtol: float,
+    head_dim: int,
+) -> None:
+    """Exercise packed sub-warp paths, including their partial final warp."""
+    torch.manual_seed(753)
+    batch_size, heads, query_length = 1, 3, 17
+    key_length = 5
+    reference_query = torch.randn(
+        batch_size,
+        query_length,
+        heads,
+        head_dim,
+        device="cuda",
+        dtype=dtype,
+    ).transpose(1, 2)
+    actual_query = reference_query.detach().clone()
+    reference_key = torch.randn(
+        batch_size,
+        1,
+        key_length,
+        head_dim,
+        device="cuda",
+        dtype=dtype,
+    )
+    actual_key = reference_key.detach().clone()
+    reference_query.requires_grad_(True)
+    actual_query.requires_grad_(True)
+    reference_key.requires_grad_(True)
+    actual_key.requires_grad_(True)
+    query_valid = torch.tensor(
+        [[index % 5 != 2 for index in range(query_length)]],
+        device="cuda",
+        dtype=torch.bool,
+    )
+    key_valid = torch.tensor(
+        [[True, False, True, True, True]],
+        device="cuda",
+        dtype=torch.bool,
+    )
+    query_freqs_cis = _phasors(
+        batch_size=batch_size,
+        sequence_length=query_length,
+        heads=heads,
+        pairs=head_dim // 2,
+        rank=3,
+        device=actual_query.device,
+    )
+    key_freqs_cis = _phasors(
+        batch_size=batch_size,
+        sequence_length=key_length,
+        heads=1,
+        pairs=head_dim // 2,
+        rank=3,
+        device=actual_query.device,
+    )
+    expected = reference_compressed_time_local_attention(
+        _apply_full_rope_explicit(reference_query, query_freqs_cis),
+        _apply_full_rope_explicit(reference_key, key_freqs_cis),
+        reference_key,
+        query_valid=query_valid,
+        key_valid=key_valid,
+        compression_ratio=4,
+        window_radius=2,
+    )
+    executor = resolve_compressed_time_local_attention(
+        "cuda", compression_ratio=4, window_radius=2
+    )
+    actual = executor(
+        actual_query,
+        actual_key,
+        actual_key,
+        query_valid=query_valid,
+        key_valid=key_valid,
+        query_freqs_cis=query_freqs_cis,
+        key_freqs_cis=key_freqs_cis,
+    )
+    upstream = torch.randn_like(actual)
+    expected_gradients = torch.autograd.grad(
+        (expected * upstream).sum(),
+        (reference_query, reference_key),
+    )
+    actual_gradients = torch.autograd.grad(
+        (actual * upstream).sum(),
+        (actual_query, actual_key),
+    )
+
+    torch.testing.assert_close(actual, expected, atol=atol, rtol=rtol)
+    for actual_gradient, expected_gradient in zip(
+        actual_gradients, expected_gradients, strict=True
+    ):
+        torch.testing.assert_close(
+            actual_gradient,
+            expected_gradient,
+            atol=atol,
+            rtol=rtol,
+        )
+
+
+@pytest.mark.parametrize(
     ("dtype", "key_heads", "phasor_rank", "tied_kv", "atol", "rtol"),
     [
         (torch.float32, 1, 3, True, 4.0e-5, 4.0e-4),
