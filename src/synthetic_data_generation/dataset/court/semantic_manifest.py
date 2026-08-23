@@ -8,6 +8,7 @@ from collections.abc import Mapping, Sequence
 from typing import cast
 
 import numpy as np
+from numpy.typing import NDArray
 
 from src.synthetic_data_generation.dataset.court.components.camera_view import (
     validate_finite_camera_view_projection,
@@ -253,14 +254,17 @@ def require_equal_court_semantic_manifests(
 
 def _validate_singleton_published_court_geometry(
     dataset: Mapping[str, object],
+    *,
+    use_binding_authority: bool,
 ) -> dict[str, RigidTransform]:
-    """Derive singleton court geometry and bind every resolved target to it."""
+    """Validate singleton geometry and select its versioned transform authority."""
     accepted = _mapping_sequence(dataset["samples"], name="samples")
     rejected = _mapping_sequence(
         dataset["rejected_samples"], name="rejected_samples"
     )
     records = (*accepted, *rejected)
     geometry_by_court: dict[str, RigidTransform] = {}
+    points_scene_by_court: dict[str, list[NDArray[np.float64]]] = {}
     expected_court_inventory: tuple[str, ...] | None = None
     points_court = np.asarray(
         court_keypoints_3d(STANDARD_COURT_CONFIG)[:14].numpy(),
@@ -318,6 +322,7 @@ def _validate_singleton_published_court_geometry(
                 raise ValueError(
                     "Court v2 physical geometry disagrees across published samples."
                 )
+            points_scene_by_court.setdefault(court_id, []).append(points_scene)
         current_inventory = tuple(court_inventory)
         if expected_court_inventory is None:
             expected_court_inventory = current_inventory
@@ -329,6 +334,7 @@ def _validate_singleton_published_court_geometry(
         raise ValueError("Court v2 requires published physical geometry for every court.")
 
     candidate_by_court: dict[str, str] = {}
+    binding_geometry_by_court: dict[str, RigidTransform] = {}
     for record in records:
         target = ResolvedTargetCourtV2.from_mapping(record.get("target_court"))
         binding = target.binding
@@ -338,7 +344,7 @@ def _validate_singleton_published_court_geometry(
             raise ValueError(
                 "Court v2 target binding references unpublished court geometry."
             ) from error
-        if not np.allclose(
+        if not use_binding_authority and not np.allclose(
             binding.scene_from_court.matrix(),
             published_transform.matrix(),
             atol=_PUBLISHED_COURT_TRANSFORM_ATOL,
@@ -353,10 +359,46 @@ def _validate_singleton_published_court_geometry(
             raise ValueError(
                 "Court v2 target candidate disagrees across published samples."
             )
+        if use_binding_authority:
+            existing_binding = binding_geometry_by_court.get(
+                binding.court_instance_id
+            )
+            if existing_binding is None:
+                binding_geometry_by_court[binding.court_instance_id] = (
+                    binding.scene_from_court
+                )
+            elif existing_binding != binding.scene_from_court:
+                raise ValueError(
+                    "Court v3 target binding disagrees across published samples."
+                )
     if set(candidate_by_court) != set(geometry_by_court):
         raise ValueError(
             "Court v2 requires one target candidate binding for every published court."
         )
+    if use_binding_authority:
+        if len(candidate_by_court) != len(set(candidate_by_court.values())):
+            raise ValueError(
+                "Court v3 target candidate IDs must be unique across published courts."
+            )
+        if set(binding_geometry_by_court) != set(geometry_by_court):
+            raise ValueError(
+                "Court v3 requires one target binding for every published court."
+            )
+        for court_id, scene_from_court in binding_geometry_by_court.items():
+            expected_points_scene = scene_from_court.apply(points_court)
+            if any(
+                not np.allclose(
+                    expected_points_scene,
+                    observed_points_scene,
+                    atol=PUBLISHED_COURT_GEOMETRY_ATOL_M,
+                    rtol=0.0,
+                )
+                for observed_points_scene in points_scene_by_court[court_id]
+            ):
+                raise ValueError(
+                    "Court v3 target binding disagrees with published physical geometry."
+                )
+        return dict(sorted(binding_geometry_by_court.items()))
     return dict(sorted(geometry_by_court.items()))
 
 
@@ -367,7 +409,10 @@ def validate_v2_published_court_geometry(
     definition = court_schema_from_dataset_schema(dataset.get("schema"))
     if definition.version is not CourtDatasetSchemaVersion.V2:
         raise ValueError("Legacy V2 geometry validation requires a V2 dataset.")
-    return _validate_singleton_published_court_geometry(dataset)
+    return _validate_singleton_published_court_geometry(
+        dataset,
+        use_binding_authority=False,
+    )
 
 
 def validate_v3_published_court_geometry(
@@ -377,7 +422,10 @@ def validate_v3_published_court_geometry(
     definition = court_schema_from_dataset_schema(dataset.get("schema"))
     if definition.version is not CourtDatasetSchemaVersion.V3:
         raise ValueError("Corrected V3 geometry validation requires a V3 dataset.")
-    return _validate_singleton_published_court_geometry(dataset)
+    return _validate_singleton_published_court_geometry(
+        dataset,
+        use_binding_authority=True,
+    )
 
 
 def _sample_entry(
@@ -767,7 +815,7 @@ def _camera_relative_v3_indices(
         raise ValueError("Accepted Court v3 projection has ambiguous near/far.")
     if local_y < 0.0:
         return tuple(range(14))
-    return CAMERA_VIEW_HALF_TURN_INDEX
+    return tuple(int(value) for value in CAMERA_VIEW_HALF_TURN_INDEX)
 
 
 def _validate_v3_projected_geometry(
