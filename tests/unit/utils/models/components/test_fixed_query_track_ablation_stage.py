@@ -61,6 +61,7 @@ class _RecordingBlock(nn.Module):
         )
         self.ffn = _RecordingFFN(name, events) if ffn_enabled else None
         self.calls: list[dict[str, Tensor | None]] = []
+        self.output_dtype: torch.dtype | None = None
 
     def _record(
         self,
@@ -96,7 +97,7 @@ class _RecordingBlock(nn.Module):
             attn_mask=attn_mask,
             state_valid=state_valid,
         )
-        return values
+        return values.to(dtype=self.output_dtype) if self.output_dtype else values
 
     def forward(
         self,
@@ -112,7 +113,7 @@ class _RecordingBlock(nn.Module):
             attn_mask=attn_mask,
             state_valid=state_valid,
         )
-        return values
+        return values.to(dtype=self.output_dtype) if self.output_dtype else values
 
 
 class _RecordingMHC(nn.Module):
@@ -120,6 +121,7 @@ class _RecordingMHC(nn.Module):
         super().__init__()
         self.events = events
         self.post_shapes: list[tuple[int, ...]] = []
+        self.post_dtypes: list[tuple[torch.dtype, torch.dtype]] = []
 
     def pre(self, streams: Tensor, valid_mask: Tensor) -> tuple[Tensor, object]:
         del valid_mask
@@ -136,6 +138,9 @@ class _RecordingMHC(nn.Module):
         del state
         self.events.append("mhc.post")
         self.post_shapes.append(tuple(update.shape))
+        self.post_dtypes.append((update.dtype, residual.dtype))
+        if update.dtype != residual.dtype:
+            raise TypeError("mHC update and residual dtypes must match")
         return residual + update
 
 
@@ -282,6 +287,40 @@ def test_four_conditions_have_exact_event_order_width_and_single_writeback(
     assert query_output.shape == (1, 2, 4, 8)
     assert torch.isfinite(object_output).all()
     assert torch.isfinite(query_output).all()
+
+
+@pytest.mark.parametrize(
+    ("condition", "ffn_mode", "mhc_writeback", "spatial_width"),
+    _CONDITIONS,
+)
+def test_writeback_restores_mixed_precision_update_to_residual_dtype(
+    condition: str,
+    ffn_mode: FFNMode,
+    mhc_writeback: MHCWriteback,
+    spatial_width: int,
+) -> None:
+    del condition
+    stage, mhc, blocks, _ = _stage(
+        ffn_mode=ffn_mode,
+        mhc_writeback=mhc_writeback,
+    )
+    inputs = _inputs(spatial_width=spatial_width)
+    residual_dtype = (
+        torch.float32
+        if mhc_writeback == "after_object_temporal"
+        else torch.bfloat16
+    )
+    inputs["object_tokens"] = inputs["object_tokens"].to(dtype=residual_dtype)
+    inputs["query_tokens"] = inputs["query_tokens"].to(dtype=residual_dtype)
+    if mhc_writeback == "after_object_temporal":
+        blocks[0].output_dtype = torch.bfloat16
+    else:
+        blocks[1].output_dtype = torch.float32
+
+    object_output, _ = stage(**inputs)
+
+    assert mhc.post_dtypes == [(residual_dtype, residual_dtype)]
+    assert object_output.dtype == residual_dtype
 
 
 @pytest.mark.parametrize("ffn_mode", ["per_attention", "shared"])
