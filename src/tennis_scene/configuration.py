@@ -16,6 +16,7 @@ from src.submodules.configuration import (
     SubmoduleRuntimeConfig,
 )
 from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateConfig
+from src.tasks.base.configuration import CourtCoordinateNormalizationConfig
 from src.tasks.base.visualization import parse_view_3d
 from src.tasks.base.visualization.orchestrator import parse_hw
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
@@ -39,6 +40,7 @@ from src.utils.configuration import (
 )
 from src.utils.paths import PROJECT_ROOT
 from src.utils.rendering.camera_view import CameraController
+from src.utils.schema.court_normalization import CourtCoordinateNormalization
 
 _PATH_FIELDS = {
     f"{role.value}_root": ConfigField.of(str)
@@ -268,6 +270,12 @@ _PIPELINE_SCHEMA = StrictConfigSchema(
     name="tennis_scene.pipeline",
     fields={
         "paths": ConfigField.mapping(PATHS_SCHEMA),
+        "court_coordinate_normalization": ConfigField.mapping(
+            StrictConfigSchema(
+                name="tennis_scene.court_coordinate_normalization",
+                fields={"version": ConfigField.of(str)},
+            )
+        ),
         "video_paths": ConfigField.sequence(ConfigField.of(str)),
         "camera_ids": ConfigField.sequence(ConfigField.of(str)),
         "output_name": ConfigField.of(str),
@@ -289,6 +297,7 @@ class PipelineRuntimeConfig:
 
     roots: RuntimePathRoots
     resolver: PathResolver
+    court_coordinate_normalization: CourtCoordinateNormalization
     video_paths: tuple[Path, ...]
     camera_ids: tuple[str, ...]
     output_path: Path
@@ -308,6 +317,11 @@ class PipelineRuntimeConfig:
         """Reject the complete composed config before any model or I/O begins."""
         value = _PIPELINE_SCHEMA.validate(_plain(cfg))
         roots, resolver = _roots(value["paths"])
+        court_coordinate_normalization = (
+            CourtCoordinateNormalizationConfig.from_mapping(
+                value["court_coordinate_normalization"]
+            ).contract
+        )
         raw_videos = _sequence(value["video_paths"], name="video_paths")
         raw_cameras = _sequence(value["camera_ids"], name="camera_ids")
         if not raw_videos or len(raw_videos) != len(raw_cameras):
@@ -552,6 +566,7 @@ class PipelineRuntimeConfig:
             window_overlap=plcs_window_overlap,
             human_vis_threshold=human_vis_threshold,
             resolver=resolver,
+            court_coordinate_normalization=court_coordinate_normalization,
         )
         blcs = _mapping(value["blcs"], name="blcs")
         blcs_load, blcs_output = _stage_path(blcs, resolver, name="blcs")
@@ -570,6 +585,7 @@ class PipelineRuntimeConfig:
             window_size=blcs_window_size,
             window_overlap=blcs_window_overlap,
             resolver=resolver,
+            court_coordinate_normalization=court_coordinate_normalization,
         )
         enabled = {
             name: cast(bool, section["enabled"])
@@ -593,6 +609,7 @@ class PipelineRuntimeConfig:
         return cls(
             roots=roots,
             resolver=resolver,
+            court_coordinate_normalization=court_coordinate_normalization,
             video_paths=video_paths,
             camera_ids=camera_ids,
             output_path=output_path,
@@ -1111,6 +1128,12 @@ _GENERATE_SCHEMA = StrictConfigSchema(
     name="tennis_scene.generate_dataset",
     fields={
         "paths": ConfigField.mapping(PATHS_SCHEMA),
+        "court_coordinate_normalization": ConfigField.mapping(
+            StrictConfigSchema(
+                name="tennis_scene.generate_dataset.court_coordinate_normalization",
+                fields={"version": ConfigField.of(str)},
+            )
+        ),
         "dataset_directory": ConfigField.of(str),
         "clip_ids": ConfigField.of(list, tuple, type(None)),
         "overwrite": ConfigField.of(bool),
@@ -1123,6 +1146,7 @@ _GENERATE_SCHEMA = StrictConfigSchema(
 @dataclass(frozen=True, slots=True)
 class GenerateDatasetRuntimeConfig:
     roots: RuntimePathRoots
+    court_coordinate_normalization: CourtCoordinateNormalization
     dataset_directory: Path
     clip_ids: tuple[str, ...] | None
     overwrite: bool
@@ -1159,8 +1183,25 @@ def parse_generate_dataset_config(cfg: DictConfig) -> GenerateDatasetRuntimeConf
             "pipeline_overrides may not replace the generation boundary's path "
             f"authority: {forbidden_keys}."
         )
+    normalization_override_keys = tuple(
+        key
+        for key in override_keys
+        if key == "court_coordinate_normalization"
+        or key.startswith("court_coordinate_normalization.")
+    )
+    if normalization_override_keys:
+        raise SemanticConfigurationError(
+            "pipeline_overrides may not replace the generation boundary's "
+            "court_coordinate_normalization selection; override the shared "
+            f"Hydra group instead: {normalization_override_keys}."
+        )
     return GenerateDatasetRuntimeConfig(
         roots=roots,
+        court_coordinate_normalization=(
+            CourtCoordinateNormalizationConfig.from_mapping(
+                value["court_coordinate_normalization"]
+            ).contract
+        ),
         dataset_directory=resolver.resolve(
             PathRole.ARTIFACT, cast(str, value["dataset_directory"])
         ),

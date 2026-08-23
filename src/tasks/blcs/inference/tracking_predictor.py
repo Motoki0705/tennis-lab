@@ -16,12 +16,15 @@ from src.tasks.blcs.model_io import (
     compose_blcs_track_query_model_io,
 )
 from src.tasks.blcs.model_io.adapters import TrackQueryModelIOAdapter
-from src.tasks.blcs.model_io.checkpoints import load_checkpoint_config
+from src.tasks.blcs.model_io.checkpoints import load_checkpoint_runtime
 from src.tasks.blcs.training.tracking_lightning_module import (
     BLCSTrackingLightningModule,
 )
 from src.utils.configuration import PathResolver
-from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
+)
 
 
 class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
@@ -31,6 +34,7 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
         self,
         model_io: TrackQueryBoundModelIO,
         device: torch.device,
+        normalization: CourtCoordinateNormalization | str = "v1",
     ) -> None:
         self.model_io = model_io
         if not isinstance(model_io.adapter, TrackQueryModelIOAdapter):
@@ -38,6 +42,11 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
         self.num_queries = model_io.adapter.num_queries
         self.model = model_io.model.to(device).eval()
         self.device = device
+        self.court_coordinate_normalization = (
+            normalization
+            if isinstance(normalization, CourtCoordinateNormalization)
+            else resolve_court_coordinate_normalization(normalization)
+        )
 
     @classmethod
     def load_from_checkpoint(
@@ -46,6 +55,9 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
         *,
         resolver: PathResolver,
         device: str | torch.device,
+        court_coordinate_normalization: CourtCoordinateNormalization
+        | str
+        | None = None,
         **kwargs: Any,
     ) -> Self:
         checkpoints = cls._ensure_checkpoint(checkpoint_path, resolver=resolver)
@@ -53,9 +65,16 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
             raise ValueError(
                 f"{cls.__name__} expects exactly one checkpoint, got {len(checkpoints)}."
             )
-        binding = compose_blcs_track_query_model_io(
-            load_checkpoint_config(checkpoints[0])
+        checkpoint_runtime = load_checkpoint_runtime(
+            checkpoints[0],
+            runtime_normalization=court_coordinate_normalization,
         )
+        binding = compose_blcs_track_query_model_io(checkpoint_runtime.config)
+        if "config" in kwargs:
+            raise TypeError(
+                "BLCSTrackingPredictor.load_from_checkpoint owns checkpoint "
+                "config restoration; do not pass config in kwargs."
+            )
         lightning_module, resolved_device = cls._load_single_lightning_module(
             checkpoints[0],
             BLCSTrackingLightningModule,
@@ -64,9 +83,14 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
             model_io=binding,
             strict=True,
             weights_only=False,
+            config=checkpoint_runtime.config,
             **kwargs,
         )
-        return cls(model_io=lightning_module.model_io, device=resolved_device)
+        return cls(
+            model_io=lightning_module.model_io,
+            device=resolved_device,
+            normalization=checkpoint_runtime.normalization,
+        )
 
     def predict_batch(
         self,
@@ -83,7 +107,15 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
             prediction = self.model_io.run(moved)
             position = prediction.position
             if denormalize:
-                position = self._denormalize_coords(position, COURT_COORD_SCALE_XYZ)
+                position = (
+                    self.court_coordinate_normalization.denormalize_position(
+                        position
+                    )
+                )
+                if not isinstance(position, Tensor):
+                    raise TypeError(
+                        "BLCS tracking predictor denormalization returned a non-tensor."
+                    )
             return BLCSTrackQueryPrediction(
                 position=position.detach().cpu(),
                 presence_logits=prediction.presence_logits.detach().cpu(),

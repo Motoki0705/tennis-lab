@@ -68,6 +68,43 @@
 ### configs/
 - model(single/multiview/axial・track-queryのサイズ違い)・data(single/multiview/chunked)・training(default/chunked/GAN)・physics/rally/camera/targeted_velocity/generator(データ生成)・metrics・visualization・run の各Hydra設定。
 
+## Court-coordinate normalization
+
+正規化versionとscaleの単一正本は
+[`src/utils/schema/court_normalization.py`](../../utils/schema/court_normalization.py)
+です。全Hydra rootは共有group `court_coordinate_normalization=v1|v2` を明示的に
+composeし、defaultは後方互換の`v1`です。BLCSでは次の同じcontractをdataset生成、
+loader、loss/gravity、projection、metric、checkpoint、standard/tracking predictorへ渡します。
+
+- `v1`: `position_norm = position_m / (5.485, 11.885, 1.07)`。既存の
+  metadata-free dataset/checkpointはruntimeが`v1`を選択した場合だけ利用できます。
+- `v2`: `position_norm = position_m / (11.885, 11.885, 11.885)`。
+  `ball_vel_world`は引き続き`m/s`で保存し、model target/outputのvelocityだけを同じ
+  scaleでnormalized units/sへ変換します。
+- 新規datasetはrootと全sceneへversion、`scale_xyz`、position=`m`、velocity=`m/s`
+  metadataを保存します。新規checkpointも同じcontractを保存します。missing、unknown、
+  mixed、runtime/dataset/checkpoint mismatchはarray/weight利用前に例外となります。
+- `v1`のSmooth L1 betaとtracking axis weight/gravity literalは維持します。`v2`は
+  position lossとHungarian costをuniform XYZ weightにし、1.0mの物理Huber遷移点と
+  `-g * dt^2 / scale_z` gravity targetをruntimeで導出します。
+
+既存artifactは上書きしません。materialized datasetは`*_norm_v2`、新しい学習出力は
+`blcs/norm-v1|norm-v2/...`で識別します。比較baselineは同じmodel/seed設定を持つ
+`train_normalization_v1.yaml`と`train_normalization_v2.yaml`を使用します。
+
+```bash
+# 既存world座標を保持したまま、別rootへv2 normalized値をmaterialize
+.venv/bin/python -m src.tasks.base.scripts.materialize_court_coordinate_normalization \
+  court_coordinate_normalization=v2 \
+  materialization.dataset_kind=blcs \
+  materialization.source_dir=data/blcs_broadcast \
+  materialization.output_dir=data/blcs_broadcast_norm_v2
+
+# version-qualified v1 / v2 baseline（GPU実行時はtraining queue経由）
+.venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_normalization_v1
+.venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_normalization_v2
+```
+
 ## Multi-ball tracking
 
 tracking modelの観測幅は常に `P=Q=model.num_queries` です。公開入力は `ball_uv (B,V,T,Q,2)`、`ball_vis (B,V,T,Q)`、`court_kp (B,V,T,14,2)`、`court_vis (B,V,T,14)`、`padding_mask (B,V,T)` の5 tensorだけです。`padding_mask=True`だけがattentionから除外する位置を表します。physical scene入力は全viewで同期したlifecycle assignmentによってfixed-Qへpackingします。clip全体のphysical object数はQを超えても構いませんが、同時存在数がQを超える入力は切り捨てずrejectします。target lifecycle assignmentとobservation assignmentは別物であり、trainingではDataLoader workerのTorch RNGから独立にslot permutationをdrawし、evaluationではdeterministicに割り当てます。collateはview/timeだけをpaddingし、Q軸はpaddingしません。

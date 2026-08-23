@@ -14,6 +14,7 @@ from src.tasks.base.visualization.orchestrator import (
 )
 from src.tasks.blcs.configuration import (
     build_path_resolver,
+    parse_court_coordinate_normalization,
     validate_visualization_boundary,
 )
 from src.tasks.blcs.visualization.api.predict import predict_positions
@@ -23,6 +24,7 @@ from src.tasks.blcs.visualization.rendering import (
     extract_ball_events,
 )
 from src.utils.configuration import PathResolver
+from src.utils.schema.court_normalization import CourtCoordinateNormalization
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +37,7 @@ class RuntimeConfig(BaseVisualizationRuntimeConfig):
 
     fps: float
     resolver: PathResolver
+    court_coordinate_normalization: CourtCoordinateNormalization
 
 
 def build_runtime_config(config: DictConfig) -> RuntimeConfig:
@@ -57,6 +60,7 @@ def build_runtime_config(config: DictConfig) -> RuntimeConfig:
         style=base.style,
         view_3d=base.view_3d,
         resolver=build_path_resolver(config),
+        court_coordinate_normalization=parse_court_coordinate_normalization(config),
     )
 
 
@@ -67,6 +71,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         scene_path=cfg.scene_path,
         camera=cfg.camera,
         cameras=cfg.cameras,
+        normalization=cfg.court_coordinate_normalization,
     )
     logger.info("Scene loaded successfully.")
 
@@ -88,6 +93,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
             device=cfg.device,
             scene=bundle.scene,
             cameras=bundle.cameras,
+            normalization=cfg.court_coordinate_normalization,
         )
         logger.info("Creating comparison animation...")
         anim = renderer.create_comparison_animation(

@@ -1,0 +1,18 @@
+defaults:
+  # v1 is the repository-wide compatibility default; opt into v2 explicitly.
+  - court_coordinate_normalization: v1
+  - _self_
+
+materialization:
+  dataset_kind: blcs
+  source_dir: data/blcs_broadcast
+  output_dir: data/blcs_broadcast_norm_${court_coordinate_normalization.version}
+  source_normalization_version: v1
+  max_abs_round_trip_error_m: 1.0e-5
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,outputs,hydra/base/materialize_court_coordinate_normalization}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

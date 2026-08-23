@@ -11,6 +11,7 @@ import numpy as np
 
 from src.tasks.blcs.inference.predictor import BLCSPredictor
 from src.utils.configuration import PathResolver, PathRole
+from src.utils.schema.court_normalization import CourtCoordinateNormalization
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ def predict_positions(
     device: str,
     scene: Mapping[str, Any],
     cameras: list[int],
+    normalization: CourtCoordinateNormalization,
 ) -> np.ndarray:
     """Run BLCS prediction and return denormalized 3D positions.
 
@@ -29,6 +31,7 @@ def predict_positions(
         device: Inference device (``cpu``/``cuda``/``auto``-resolved value).
         scene: Canonical BLCS scene mapping.
         cameras: Explicit selected camera indices.
+        normalization: Runtime contract validated against the checkpoint.
 
     Returns:
         Predicted positions as ``(T, 3)`` numpy array in meters.
@@ -39,6 +42,7 @@ def predict_positions(
         ),
         resolver=resolver,
         device=device,
+        court_coordinate_normalization=normalization,
     )
     logger.info(f"Model loaded successfully on {device}.")
     prediction = predictor.predict_scene(

@@ -3,12 +3,15 @@
 Usage:
     python -m src.tennis_scene.scripts.run_pipeline video_paths='[inputs/demo/cam0.mp4,inputs/demo/cam1.mp4]'
     python -m src.tennis_scene.scripts.run_pipeline video_paths='[cam0.mp4,cam1.mp4]' max_frames=100
+    python -m src.tennis_scene.scripts.run_pipeline court_coordinate_normalization=v2 output_name=tennis_clip_norm_v2
 
 Notes:
     - The pipeline combines court keypoint detection, GVHMR, ball detection, PLCS,
       and BLCS.
     - Input videos must already be synchronized and share FPS, frame count, and resolution.
     - Configuration is loaded from `src/tennis_scene/configs/pipeline.yaml`.
+    - The same normalization contract validates PLCS/BLCS checkpoints and is
+      recorded as SceneResult provenance; public 3D arrays remain metres.
     - Hydra handles runtime overrides.
 """
 

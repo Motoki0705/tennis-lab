@@ -1,6 +1,10 @@
 """Canonical typed model I/O API for SLCS."""
 
 from src.tasks.slcs.model_io.adapter import SLCSModelIOAdapter, SLCSModelIOSpec
+from src.tasks.slcs.model_io.checkpoints import (
+    load_slcs_checkpoint_mapping,
+    prepare_slcs_checkpoint_config,
+)
 from src.tasks.slcs.model_io.contracts import (
     SLCSClipPrediction,
     SLCSDecodedOutput,
@@ -27,4 +31,6 @@ __all__ = [
     "SLCSPhysicalOutput",
     "SLCSRawOutput",
     "SLCSTrainingTargets",
+    "load_slcs_checkpoint_mapping",
+    "prepare_slcs_checkpoint_config",
 ]

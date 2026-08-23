@@ -3,16 +3,24 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
+from src.tennis_scene.schema import (
+    attach_court_coordinate_provenance,
+    validate_court_coordinate_provenance,
+)
 from src.utils.configuration import PathResolver
 from src.utils.inference.windowed import blend_windows, window_slices
 from src.utils.io import load_json, save_json
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
+)
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -53,6 +61,9 @@ class PLCSConfig:
     window_overlap: int
     human_vis_threshold: float
     resolver: PathResolver
+    court_coordinate_normalization: CourtCoordinateNormalization = field(
+        default_factory=lambda: resolve_court_coordinate_normalization("v1")
+    )
 
     def __post_init__(self) -> None:
         if (self.source == "load") != (self.load_path is not None):
@@ -75,16 +86,35 @@ class PLCSResult:
     yaw: NDArray[np.float32]
     track_ids: NDArray[np.int32]
 
-    def to_dict(self) -> dict:
-        result = {
+    def to_dict(
+        self,
+        court_coordinate_normalization: CourtCoordinateNormalization | None = None,
+    ) -> dict[str, object]:
+        result: dict[str, object] = {
             "position": self.position.tolist(),
             "yaw": self.yaw.tolist(),
         }
         result["track_ids"] = self.track_ids.tolist()
+        if court_coordinate_normalization is not None:
+            result = attach_court_coordinate_provenance(
+                result,
+                court_coordinate_normalization,
+                location="PLCS result",
+            )
         return result
 
     @classmethod
-    def from_dict(cls, data: dict) -> PLCSResult:
+    def from_dict(
+        cls,
+        data: dict[str, object],
+        court_coordinate_normalization: CourtCoordinateNormalization | None = None,
+    ) -> PLCSResult:
+        if court_coordinate_normalization is not None:
+            validate_court_coordinate_provenance(
+                data,
+                court_coordinate_normalization,
+                location="PLCS result",
+            )
         missing = {"position", "yaw", "track_ids"} - set(data)
         if missing:
             raise ValueError(
@@ -97,8 +127,12 @@ class PLCSResult:
 
         return cls(position=position, yaw=yaw, track_ids=track_ids)
 
-    def save(self, path: str | Path) -> None:
-        save_json(self.to_dict(), path)
+    def save(
+        self,
+        path: str | Path,
+        court_coordinate_normalization: CourtCoordinateNormalization | None = None,
+    ) -> None:
+        save_json(self.to_dict(court_coordinate_normalization), path)
         LOGGER.info(f"Saved PLCS result to {path}")
 
     def validate(self) -> tuple[bool, list[str]]:
@@ -131,8 +165,15 @@ class PLCSResult:
         return len(errors) == 0, errors
 
     @classmethod
-    def load(cls, path: str | Path) -> PLCSResult:
-        return cls.from_dict(load_json(path))
+    def load(
+        cls,
+        path: str | Path,
+        court_coordinate_normalization: CourtCoordinateNormalization | None = None,
+    ) -> PLCSResult:
+        data = load_json(path)
+        if not isinstance(data, dict):
+            raise TypeError(f"PLCS result must be a JSON object: {path}")
+        return cls.from_dict(data, court_coordinate_normalization)
 
 
 class PLCSModule(BasePipelineModule):
@@ -155,6 +196,9 @@ class PLCSModule(BasePipelineModule):
             self.checkpoint,
             resolver=self.config.resolver,
             device=self.device,
+            court_coordinate_normalization=(
+                self.config.court_coordinate_normalization
+            ),
         )
         self._predictor.require_input_profile("multiview")
 
@@ -190,7 +234,10 @@ class PLCSModule(BasePipelineModule):
                 LOGGER.info(
                     f"Loading PLCS result from {load_path} (skipping inference)"
                 )
-                return PLCSResult.load(load_path)
+                return PLCSResult.load(
+                    load_path,
+                    self.config.court_coordinate_normalization,
+                )
             raise FileNotFoundError(f"PLCS artifact not found: {load_path}")
 
         if not self.is_loaded:
@@ -287,6 +334,9 @@ class PLCSModule(BasePipelineModule):
         )
 
         if self.config.save_result:
-            result.save(self.config.output_path)
+            result.save(
+                self.config.output_path,
+                self.config.court_coordinate_normalization,
+            )
 
         return result

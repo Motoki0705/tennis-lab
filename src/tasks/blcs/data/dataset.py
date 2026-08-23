@@ -14,6 +14,7 @@ from src.tasks.base.data.scene_dataset import (
     SceneDatasetBase,
     SceneDatasetConfig,
 )
+from src.tasks.blcs.configuration import parse_court_coordinate_normalization
 from src.tasks.blcs.data.augmentation import BLCSBallObservationAugmentation
 from src.tasks.blcs.data.types import BLCSMultiViewBatch, BLCSMultiViewSample
 
@@ -41,6 +42,9 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
     ) -> None:
         self.hydra_cfg = config
         self.augment = augment
+        self.court_coordinate_normalization = (
+            parse_court_coordinate_normalization(config)
+        )
         data_cfg = self._resolve_data_cfg(self.hydra_cfg)
         self._configure_task(data_cfg)
         super().__init__(
@@ -82,6 +86,7 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
             crop_mode=("random" if self.augment else "center"),
             min_num_frames=self.seq_len_range[0],
             min_num_cameras=self.num_views_range[0],
+            court_coordinate_normalization=self.court_coordinate_normalization,
         )
 
     def build_sample(self, scene: Scene) -> BLCSMultiViewSample:
@@ -154,9 +159,11 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
             "position_3d": torch.from_numpy(
                 scene.get_array("ball_pos_norm", window=window)
             ).float(),
-            "velocity_3d": torch.from_numpy(
-                scene.get_array("ball_vel_world", window=window)
-            ).float(),
+            "velocity_3d": self._normalized_velocity_target(
+                torch.from_numpy(
+                    scene.get_array("ball_vel_world", window=window)
+                ).float()
+            ),
             "seq_len": torch.tensor(window.seq_len, dtype=torch.long),
             "camera_R": torch.stack(cam_R_list, dim=0),
             "camera_C": torch.stack(cam_C_list, dim=0),
@@ -167,6 +174,15 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
             "camera_h": torch.stack(cam_h_list, dim=0),
         }
         return sample
+
+    def _normalized_velocity_target(self, velocity_world: Tensor) -> Tensor:
+        """Convert persisted m/s velocity to the model's normalized contract."""
+        normalized = self.court_coordinate_normalization.normalize_velocity(
+            velocity_world
+        )
+        if not isinstance(normalized, Tensor):
+            raise TypeError("BLCS velocity normalization returned a non-tensor.")
+        return normalized
 
     def _apply_augmentation_multiview(
         self, sample: BLCSMultiViewSample

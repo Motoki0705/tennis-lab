@@ -1,4 +1,6 @@
 position_weight: 1.0
+# v1: historical normalized beta=1; v2: canonical 1.0 m physical transition.
+position_huber_beta_m: null
 rotation_weight: 0.5
 presence_weight: 1.0
 presence_inactive_weight: 0.25

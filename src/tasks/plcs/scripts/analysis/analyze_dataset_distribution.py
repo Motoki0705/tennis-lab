@@ -22,10 +22,10 @@ from typing import Any
 import numpy as np
 from omegaconf import DictConfig, OmegaConf
 
+from src.tasks.base.data import validate_dataset_court_coordinate_contract
 from src.tasks.plcs.configuration import PLCSAnalysisRuntimeConfig
 from src.utils.hydra import hydra_main
 from src.utils.io import load_json, save_json
-from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 
 @dataclass
@@ -142,7 +142,11 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     if max_frames_per_scene is not None:
         max_frames_per_scene = int(max_frames_per_scene)
 
-    scale_xyz = np.asarray(COURT_COORD_SCALE_XYZ, dtype=np.float64)  # (3,)
+    validate_dataset_court_coordinate_contract(
+        scene_dir,
+        runtime.court_coordinate_normalization,
+        scene_paths=scene_files,
+    )
 
     x_stats = RunningStats()
     y_stats = RunningStats()
@@ -255,7 +259,9 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
                 pos_norm = pos_norm[idx]
                 rot = rot[idx]
 
-            pos_m = pos_norm * scale_xyz
+            pos_m = runtime.court_coordinate_normalization.denormalize_position(
+                pos_norm
+            )
             x = pos_m[:, 0]
             y = pos_m[:, 1]
             z = pos_m[:, 2]

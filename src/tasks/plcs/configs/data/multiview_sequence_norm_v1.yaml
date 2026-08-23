@@ -1,0 +1,8 @@
+defaults:
+  - multiview_sequence
+  - _self_
+
+# Metadata-free legacy baseline. Runtime v1 is required.
+scene_dir: plcs_broadcast
+# The controlled broadcast artifact contains exactly two cameras per scene.
+num_views_range: [2, 2]

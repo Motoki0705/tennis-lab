@@ -24,6 +24,11 @@ from src.utils.configuration import (
     SemanticConfigurationError,
     UnknownConfigurationKeyError,
 )
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    CourtCoordinateNormalizationVersion,
+    resolve_court_coordinate_normalization,
+)
 
 ConfigMapping: TypeAlias = Mapping[str, object]
 TrainerDeterministic: TypeAlias = bool | Literal["warn"]
@@ -53,6 +58,7 @@ __all__ = [
     "CheckpointConfig",
     "ChunkDataConfig",
     "CompileConfig",
+    "CourtCoordinateNormalizationConfig",
     "EarlyStoppingConfig",
     "GANConfig",
     "GANTransitionConfig",
@@ -168,6 +174,7 @@ _COMPILE_MODES = frozenset(
     {"default", "reduce-overhead", "max-autotune", "max-autotune-no-cudagraphs"}
 )
 _MAX_LIGHTNING_SEED = 2**32 - 1
+_COURT_COORDINATE_NORMALIZATION_KEYS = frozenset({"version"})
 
 
 def as_config_mapping(value: object, *, path: str) -> ConfigMapping:
@@ -307,6 +314,60 @@ def _optional_non_negative(
 ) -> None:
     if value is not None:
         _positive(value, path=path, allow_zero=True)
+
+
+@dataclass(frozen=True, slots=True)
+class CourtCoordinateNormalizationConfig:
+    """Strict composed selection for the shared court-coordinate contract.
+
+    The field is required at applicable runtime boundaries. In particular,
+    this parser never treats a missing section as legacy ``v1``; Hydra roots
+    opt into the shared ``v1`` group explicitly when compatibility is wanted.
+    """
+
+    version: CourtCoordinateNormalizationVersion
+
+    @property
+    def contract(self) -> CourtCoordinateNormalization:
+        """Resolve the immutable mathematical contract for this selection."""
+        return resolve_court_coordinate_normalization(self.version)
+
+    @property
+    def scale_xyz(self) -> tuple[float, float, float]:
+        """Return the selected XYZ scale in metres."""
+        return self.contract.scale_xyz
+
+    @classmethod
+    def from_mapping(cls, value: object) -> CourtCoordinateNormalizationConfig:
+        """Validate an exact ``court_coordinate_normalization`` mapping."""
+        mapping = exact_config_mapping(
+            value,
+            path="court_coordinate_normalization",
+            required_keys=_COURT_COORDINATE_NORMALIZATION_KEYS,
+        )
+        raw_version = cast(
+            "str",
+            require_config_value(
+                mapping,
+                "version",
+                str,
+                path="court_coordinate_normalization",
+            ),
+        )
+        contract = resolve_court_coordinate_normalization(raw_version)
+        return cls(version=contract.version)
+
+    @classmethod
+    def from_config(cls, value: object) -> CourtCoordinateNormalizationConfig:
+        """Read the required shared section from a composed Hydra root."""
+        root = as_config_mapping(value, path="configuration")
+        return cls.from_mapping(
+            require_config_mapping(
+                root,
+                "court_coordinate_normalization",
+                path="configuration",
+            )
+        )
 
 
 @dataclass(frozen=True, slots=True)

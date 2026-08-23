@@ -1,4 +1,7 @@
 position_weight: 1.0
+# null keeps the historical normalized beta=1 in v1. In v2 it selects the
+# canonical 1.0 m physical Huber transition (beta_norm=1/11.885).
+position_huber_beta_m: null
 rotation_weight: 1.0
 angle_weight: 0.0
 position_smoothness_weight: 0.0

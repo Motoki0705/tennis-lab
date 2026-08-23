@@ -4,13 +4,15 @@ Run SLCS clip inference on one clip camera and render qualitative outputs.
 Usage:
     python -m src.tasks.slcs.scripts.predict_clip predict.checkpoint=... predict.clip_id=rec-a/clip_000
     python -m src.tasks.slcs.scripts.predict_clip predict.checkpoint=... predict.clip_id=rec-a/clip_000 predict.camera_id=cam0
-    python -m src.tasks.slcs.scripts.predict_clip predict.checkpoint=... predict.clip_id=... predict.render_3d=false
+    python -m src.tasks.slcs.scripts.predict_clip court_coordinate_normalization=v2 predict.checkpoint=... predict.clip_id=...
 
 Notes:
     - Configuration is loaded from `src/tasks/slcs/configs/predict_clip.yaml`;
       dataset location comes from the shared `data` group.
     - Checkpoint and output paths are relative to `paths.checkpoint_root` and
       `paths.output_root`, respectively.
+    - The selected normalization must match the dataset and checkpoint; legacy
+      metadata-free artifacts are accepted only with the default v1 runtime.
     - Writes `predictions.npz` (full-timeline positions/yaw/uncertainty in
       meters and normalized units), an optional 3D+top-down comparison video
       and an optional 2D overlay video (observations + homography-based
@@ -41,7 +43,6 @@ from src.tennis_scene.generate_dataset.manifest import (
     load_dataset_manifest,
 )
 from src.utils.hydra import hydra_main
-from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 SavezCompressed = Callable[..., None]
 
@@ -65,6 +66,7 @@ def run(config: DictConfig) -> None:
     predictor = SLCSPredictor.load_from_checkpoint(
         runtime.checkpoint,
         resolver=runtime.resolver,
+        court_coordinate_normalization=runtime.court_coordinate_normalization,
         device=runtime.device,
         strict=runtime.checkpoint_strict,
         weights_only=runtime.checkpoint_weights_only,
@@ -99,12 +101,19 @@ def run(config: DictConfig) -> None:
     }
     prediction_arrays["clip_id"] = np.asarray(manifest.clip_id)
     prediction_arrays["camera_id"] = np.asarray(camera_id)
+    prediction_arrays["court_coordinate_normalization_version"] = np.asarray(
+        runtime.court_coordinate_normalization.version
+    )
+    prediction_arrays["court_coordinate_scale_xyz_m"] = np.asarray(
+        runtime.court_coordinate_normalization.scale_xyz,
+        dtype=np.float32,
+    )
     savez_compressed = cast(SavezCompressed, np.savez_compressed)
     savez_compressed(Path(npz_path), **prediction_arrays)
     print(f"predictions -> {npz_path}")
 
     clip = load_clip_arrays(manifest, config=data_config)
-    scale = np.asarray(COURT_COORD_SCALE_XYZ, dtype=np.float32)
+    contract = runtime.court_coordinate_normalization
     if runtime.render_3d:
         renderer = SLCSSceneRenderer(
             figsize=(
@@ -119,9 +128,13 @@ def run(config: DictConfig) -> None:
                 player_position_m=physical.player_position_meters.numpy(),
                 player_yaw_rad=physical.player_yaw_radians.numpy(),
                 ball_position_m=physical.ball_position_meters.numpy(),
-                gt_player_position_m=clip.player_position_norm * scale,
+                gt_player_position_m=contract.denormalize_position(
+                    clip.player_position_norm
+                ),
                 gt_player_yaw_rad=gt_yaw.astype(np.float32),
-                gt_ball_position_m=clip.ball_position_norm * scale,
+                gt_ball_position_m=contract.denormalize_position(
+                    clip.ball_position_norm
+                ),
                 gt_player_valid=clip.player_label_valid,
                 gt_ball_valid=clip.ball_label_valid,
             ),

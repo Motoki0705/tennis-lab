@@ -20,10 +20,16 @@ from src.tasks.plcs.model_io import (
     PLCSPreparedBatch,
     PLCSStandardBoundModelIO,
     bind_plcs_model_io,
+    load_plcs_checkpoint_mapping,
+    prepare_plcs_checkpoint_config,
 )
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.utils.configuration import PathResolver
-from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+from src.utils.device import resolve_device
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
+)
 
 
 class PLCSPredictor(BasePredictor):
@@ -35,13 +41,22 @@ class PLCSPredictor(BasePredictor):
         model: nn.Module,
         adapter: PLCSModelIOAdapter,
         device: torch.device,
+        court_coordinate_normalization: CourtCoordinateNormalization | str = "v1",
     ) -> None:
         bound = bind_plcs_model_io(model, adapter)
         self.model_io: PLCSStandardBoundModelIO = bound
         self.model = self.model_io.model.to(device).eval()
         self.io_adapter = adapter
         self.device = device
-        self._norm_scale_xyz = COURT_COORD_SCALE_XYZ
+        self.court_coordinate_normalization = (
+            court_coordinate_normalization
+            if isinstance(
+                court_coordinate_normalization, CourtCoordinateNormalization
+            )
+            else resolve_court_coordinate_normalization(
+                court_coordinate_normalization
+            )
+        )
 
     @property
     def input_profile(self) -> PLCSInputProfile:
@@ -59,13 +74,30 @@ class PLCSPredictor(BasePredictor):
         *,
         resolver: PathResolver,
         device: str | torch.device,
+        court_coordinate_normalization: CourtCoordinateNormalization | None = None,
         **kwargs: Any,
     ) -> Self:
-        lightning_module, resolved_device = cls._load_single_lightning_module(
-            checkpoint_path,
-            PLCSLightningModule,
-            resolver=resolver,
-            device=device,
+        checkpoints = cls._ensure_checkpoint(checkpoint_path, resolver=resolver)
+        if len(checkpoints) != 1:
+            raise ValueError(
+                f"{cls.__name__} expects a single checkpoint, "
+                f"got {len(checkpoints)} checkpoints."
+            )
+        if "config" in kwargs:
+            raise TypeError(
+                "PLCSPredictor restores checkpoint config internally; do not pass config."
+            )
+        resolved_device = resolve_device(device)
+        checkpoint = load_plcs_checkpoint_mapping(checkpoints[0])
+        checkpoint_config, contract = prepare_plcs_checkpoint_config(
+            checkpoint,
+            court_coordinate_normalization,
+            location=str(checkpoints[0]),
+        )
+        lightning_module = PLCSLightningModule.load_from_checkpoint(
+            checkpoints[0],
+            map_location=resolved_device,
+            config=checkpoint_config,
             strict=bool(kwargs.pop("strict", True)),
             weights_only=bool(kwargs.pop("weights_only", False)),
             **kwargs,
@@ -79,6 +111,7 @@ class PLCSPredictor(BasePredictor):
             model=lightning_module.model,
             adapter=adapter,
             device=resolved_device,
+            court_coordinate_normalization=contract,
         )
 
     def _move_call(self, call: ModelCall) -> ModelCall:
@@ -145,8 +178,10 @@ class PLCSPredictor(BasePredictor):
             if decoded.auxiliary_position is not None:
                 result["auxiliary_position"] = decoded.auxiliary_position
             if denormalize:
-                result["position_meters"] = self._denormalize_coords(
-                    decoded.position, self._norm_scale_xyz
+                result["position_meters"] = (
+                    self.court_coordinate_normalization.denormalize_position(
+                        decoded.position
+                    )
                 )
                 result["yaw_radians"] = torch.atan2(
                     decoded.rotation[..., 1], decoded.rotation[..., 0]
@@ -181,8 +216,10 @@ class PLCSPredictor(BasePredictor):
                 court_vis=court_vis,
             )
             decoded = self._run_prepared(prepared)
-            position_meters = self._denormalize_coords(
-                decoded.position, self._norm_scale_xyz
+            position_meters = (
+                self.court_coordinate_normalization.denormalize_position(
+                    decoded.position
+                )
             ).numpy()
             yaw_radians = torch.atan2(
                 decoded.rotation[..., 1], decoded.rotation[..., 0]

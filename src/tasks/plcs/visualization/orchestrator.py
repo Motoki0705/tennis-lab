@@ -8,7 +8,10 @@ from typing import cast
 
 from omegaconf import DictConfig
 
-from src.tasks.base.configuration import require_config_value
+from src.tasks.base.configuration import (
+    CourtCoordinateNormalizationConfig,
+    require_config_value,
+)
 from src.tasks.base.visualization.orchestrator import (
     BaseVisualizationRuntimeConfig,
     build_scene_runtime_config,
@@ -22,6 +25,7 @@ from src.tasks.plcs.visualization.api.predict import (
 from src.tasks.plcs.visualization.io.scene import load_scene_bundle
 from src.tasks.plcs.visualization.rendering import PLCSSceneRenderer
 from src.utils.configuration import PathResolver
+from src.utils.schema.court_normalization import CourtCoordinateNormalization
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +38,7 @@ class RuntimeConfig(BaseVisualizationRuntimeConfig):
 
     canonical_pose_source: CanonicalPoseSource
     resolver: PathResolver
+    court_coordinate_normalization: CourtCoordinateNormalization
 
 
 def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
@@ -71,6 +76,9 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         view_3d=base.view_3d,
         canonical_pose_source=cast(CanonicalPoseSource, source),
         resolver=path_config.resolver,
+        court_coordinate_normalization=(
+            CourtCoordinateNormalizationConfig.from_config(cfg).contract
+        ),
     )
 
 
@@ -82,6 +90,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
             scene_path=cfg.scene_path,
             camera=cfg.camera,
             cameras=cfg.cameras,
+            court_coordinate_normalization=cfg.court_coordinate_normalization,
         )
         logger.info(
             f"Scene loaded successfully. Num frames: {len(bundle.scene.position)}"
@@ -90,7 +99,11 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         logger.error(f"Error: {exc}")
         return 1
 
-    renderer = PLCSSceneRenderer(style=cfg.style, camera=cfg.view_3d)
+    renderer = PLCSSceneRenderer(
+        style=cfg.style,
+        camera=cfg.view_3d,
+        normalization=cfg.court_coordinate_normalization,
+    )
     if cfg.info:
         renderer.print_scene_info(bundle.scene)
         return 0
@@ -117,6 +130,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
                 cameras=bundle.cameras,
                 canonical_pose_source=cfg.canonical_pose_source,
                 resolver=cfg.resolver,
+                court_coordinate_normalization=cfg.court_coordinate_normalization,
             )
         except ValueError as exc:
             logger.error(f"Error: {exc}")

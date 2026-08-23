@@ -4,13 +4,15 @@ Evaluate a trained SLCS checkpoint on a dataset split and export analysis arrays
 Usage:
     python -m src.tasks.slcs.scripts.evaluate evaluate.checkpoint=slcs/run/last.ckpt
     python -m src.tasks.slcs.scripts.evaluate evaluate.checkpoint=... evaluate.split=val
-    python -m src.tasks.slcs.scripts.evaluate evaluate.checkpoint=... evaluate.device=cuda
+    python -m src.tasks.slcs.scripts.evaluate court_coordinate_normalization=v2 evaluate.checkpoint=...
 
 Notes:
     - Configuration is loaded from `src/tasks/slcs/configs/evaluate.yaml`
       (dataset location comes from the shared `data` group).
     - Checkpoint and output paths are relative to `paths.checkpoint_root` and
       `paths.output_root`, respectively.
+    - The selected normalization must match the dataset and checkpoint; legacy
+      metadata-free artifacts are accepted only with the default v1 runtime.
     - Writes `metrics.json` (BLCS/PLCS-comparable metric names) and
       `eval_arrays.npz` (per-frame errors/masks/uncertainties) into
       `evaluate.output_dir`; the analysis script consumes the npz.
@@ -32,6 +34,7 @@ def run(config: DictConfig) -> None:
     predictor = SLCSPredictor.load_from_checkpoint(
         runtime.checkpoint,
         resolver=runtime.resolver,
+        court_coordinate_normalization=runtime.court_coordinate_normalization,
         device=runtime.device,
         strict=runtime.checkpoint_strict,
         weights_only=runtime.checkpoint_weights_only,
@@ -52,6 +55,12 @@ def run(config: DictConfig) -> None:
             "checkpoint": str(runtime.checkpoint),
             "split": runtime.split,
             "dataset_root": str(runtime.data.dataset_root),
+            "court_coordinate_normalization": {
+                "version": runtime.court_coordinate_normalization.version,
+                "scale_xyz": list(
+                    runtime.court_coordinate_normalization.scale_xyz
+                ),
+            },
         },
     )
     print(f"metrics -> {metrics_path}")

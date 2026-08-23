@@ -12,6 +12,7 @@ from typing import ParamSpec, TypeVar
 import torch
 from torch import Tensor
 
+from src.tasks.base.data import CourtCoordinateContractMismatchError
 from src.tasks.base.inference.predictor import BasePredictor
 from src.tasks.base.model_io import BoundModelIO
 from src.tasks.slcs.data.dataset import (
@@ -29,11 +30,15 @@ from src.tasks.slcs.model_io import (
     SLCSModelIOAdapter,
     SLCSRawOutput,
     SLCSTrainingTargets,
+    load_slcs_checkpoint_mapping,
+    prepare_slcs_checkpoint_config,
 )
 from src.tasks.slcs.models.slcs_model import SLCSFusionModel
 from src.tasks.slcs.training.lightning_module import SLCSLightningModule
 from src.tennis_scene.generate_dataset.manifest import ClipManifest
 from src.utils.configuration import PathResolver
+from src.utils.device import resolve_device
+from src.utils.schema.court_normalization import CourtCoordinateNormalization
 
 _P = ParamSpec("_P")
 _R = TypeVar("_R")
@@ -53,6 +58,9 @@ class SLCSPredictor(BasePredictor[SLCSDecodedOutput]):
             Mapping[str, object], SLCSRawOutput, SLCSDecodedOutput
         ] = lightning_module.model_io
         self.model_adapter: SLCSModelIOAdapter = lightning_module.model_adapter
+        self.court_coordinate_normalization = (
+            self.model_adapter.court_coordinate_normalization
+        )
         self.device = device
 
     @classmethod
@@ -61,16 +69,29 @@ class SLCSPredictor(BasePredictor[SLCSDecodedOutput]):
         checkpoint_path: str | Path | Iterable[str | Path],
         *,
         resolver: PathResolver,
+        court_coordinate_normalization: CourtCoordinateNormalization,
         device: str | torch.device,
         strict: bool,
         weights_only: bool,
     ) -> SLCSPredictor:
         """Load a predictor from an SLCS Lightning checkpoint."""
-        module, resolved_device = cls._load_single_lightning_module(
-            checkpoint_path,
-            SLCSLightningModule,
-            resolver=resolver,
-            device=device,
+        checkpoints = cls._ensure_checkpoint(checkpoint_path, resolver=resolver)
+        if len(checkpoints) != 1:
+            raise ValueError(
+                f"{cls.__name__} expects a single checkpoint, "
+                f"got {len(checkpoints)} checkpoints."
+            )
+        resolved_device = resolve_device(device)
+        checkpoint = load_slcs_checkpoint_mapping(checkpoints[0])
+        checkpoint_config = prepare_slcs_checkpoint_config(
+            checkpoint,
+            court_coordinate_normalization,
+            location=str(checkpoints[0]),
+        )
+        module = SLCSLightningModule.load_from_checkpoint(
+            checkpoints[0],
+            map_location=resolved_device,
+            config=checkpoint_config,
             strict=strict,
             weights_only=weights_only,
         )
@@ -121,6 +142,18 @@ class SLCSPredictor(BasePredictor[SLCSDecodedOutput]):
         windows contributing to each frame.
         """
         manifest = ClipManifest.load(clip_dir)
+        if (
+            data_config.court_coordinate_normalization
+            != self.court_coordinate_normalization
+        ):
+            raise CourtCoordinateContractMismatchError(
+                "SLCS clip dataset normalization "
+                f"{data_config.court_coordinate_normalization.version!r}/"
+                f"{data_config.court_coordinate_normalization.scale_xyz!r} does "
+                "not match predictor normalization "
+                f"{self.court_coordinate_normalization.version!r}/"
+                f"{self.court_coordinate_normalization.scale_xyz!r}."
+            )
         clip = load_clip_arrays(manifest, config=data_config)
         spec = data_config.dino_spec
         dino_arrays = (

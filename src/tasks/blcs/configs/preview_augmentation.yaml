@@ -1,9 +1,12 @@
 defaults:
+  - court_coordinate_normalization: v1
   - paths: default
   - data: multiview_sequence
   - _self_
 
 hydra:
+  searchpath:
+    - pkg://src.tasks.base.configs
   run:
     dir: ${tennis_lab_path:output,${paths.output_root},${preview.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
   output_subdir: null

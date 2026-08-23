@@ -3,9 +3,12 @@ Generate incremental tennis-scene pseudo annotations for exported clips.
 
 Usage:
     python -m src.tennis_scene.scripts.generate_dataset dataset_directory=tennis_scene/dataset
+    python -m src.tennis_scene.scripts.generate_dataset court_coordinate_normalization=v2 dataset_directory=tennis_scene/dataset_norm_v2
 
 Notes:
     - The generation boundary and the nested pipeline are both strictly validated.
+    - The same normalization selection is passed to PLCS, BLCS, and SceneResult
+      provenance; v1/v2 artifacts must use separate dataset directories.
     - A failed clip records a failure marker and makes the process return non-zero.
 """
 
@@ -42,7 +45,13 @@ def _compose_pipeline_config(
 
     pipeline_cfg = compose(
         config_name="pipeline",
-        overrides=list(runtime.pipeline_overrides),
+        overrides=[
+            *runtime.pipeline_overrides,
+            (
+                "court_coordinate_normalization="
+                f"{runtime.court_coordinate_normalization.version}"
+            ),
+        ],
     )
     paths = {
         "project_root": str(runtime.roots.project_root),

@@ -71,3 +71,17 @@ option; chunk size affects only bounded execution and storage batching. The
 canonical reader reconstructs a logical full sample by logical scene ID, local
 frame index, and camera ID from one shared background plus one sparse delta; no
 full-frame compatibility writer or reader exists.
+
+`supervision.npz` stores only `position` in the selected dimensionless PLCS
+normalization. `position_court_m`, `human_kp_3d`, and `canonical_pose_3d` remain
+physical metres and are never rescaled. The single mathematical authority for
+`position_norm = position_court_m / scale_xyz` and the `v1`/`v2` scales is
+[`src/utils/schema/court_normalization.py`](../../../utils/schema/court_normalization.py).
+The resolved contract (schema version, normalization version, `scale_xyz`,
+position unit `m`, and velocity unit `m/s`) is written identically into the
+dataset manifest root metadata and every logical-scene record. Assembly and
+the canonical reader reject malformed, mixed, or mismatched metadata and
+validate the persisted `position` → `position_court_m` round trip within
+`1e-5 m`. A wholly metadata-free compact artifact is accepted only when the
+reader/validator receives an explicit legacy `v1` runtime contract; no version
+is inferred from array values.

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor
 
+from src.tasks.base.configuration import CourtCoordinateNormalizationConfig
 from src.tasks.base.data.scene_dataset import (
     Scene,
     SceneDatasetBase,
@@ -44,6 +45,9 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
     ) -> None:
         self.hydra_cfg = config
         self.augment = augment
+        self.court_coordinate_normalization = (
+            CourtCoordinateNormalizationConfig.from_config(config).contract
+        )
         data_cfg = self._resolve_data_cfg(self.hydra_cfg)
         self._configure_task(data_cfg)
         super().__init__(
@@ -93,6 +97,7 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
             crop_mode=("random" if self.augment else "center"),
             min_num_frames=self._plcs_seq_len_range[0],
             min_num_cameras=self._plcs_num_views_range[0],
+            court_coordinate_normalization=self.court_coordinate_normalization,
         )
 
     def build_sample(self, scene: Scene) -> dict[str, Tensor]:
@@ -158,7 +163,10 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
         # scene.data["meta"] is a raw numpy scalar (JSON string); use scene.meta
         # (already parsed dict) so build_coco17_world_targets gets a plain dict.
         payload_for_targets = {**scene.data, "meta": scene.meta}
-        human_kp_3d = build_coco17_world_targets(payload_for_targets)
+        human_kp_3d = build_coco17_world_targets(
+            payload_for_targets,
+            normalization=self.court_coordinate_normalization,
+        )
         sample["human_kp_3d"] = torch.from_numpy(human_kp_3d[window.sl].copy()).float()
 
         return sample

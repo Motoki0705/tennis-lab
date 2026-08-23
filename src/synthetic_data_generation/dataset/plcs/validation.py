@@ -43,7 +43,18 @@ from src.synthetic_data_generation.dataset.runtime import (
     materialize_logical_sample,
 )
 from src.synthetic_data_generation.scene_contract import SceneCamera
+from src.tasks.base.data import (
+    COURT_COORDINATE_NORMALIZATION_METADATA_KEY,
+    CourtCoordinateContractMismatchError,
+    MissingCourtCoordinateMetadataError,
+    MixedCourtCoordinateMetadataError,
+    extract_court_coordinate_normalization_metadata,
+)
 from src.utils.projection.camera_projector import make_look_at_camera
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,7 +92,12 @@ class PLCSAllViewScene:
 class PLCSCompactDatasetReader:
     """Cache-aware logical reader keyed by scene, local frame, and camera."""
 
-    def __init__(self, directory: Path) -> None:
+    def __init__(
+        self,
+        directory: Path,
+        *,
+        court_coordinate_normalization: CourtCoordinateNormalization | None = None,
+    ) -> None:
         self.directory = directory
         manifest = _manifest(directory)
         metadata = _object(manifest["metadata"], name="metadata")
@@ -92,6 +108,12 @@ class PLCSCompactDatasetReader:
         )
         self.backgrounds = SharedBackgroundStore(directory / background_relative)
         logical_scenes = _logical_scene_map(metadata)
+        self.court_coordinate_normalization = _resolve_normalization_contract(
+            metadata,
+            logical_scenes,
+            runtime_contract=court_coordinate_normalization,
+            location=str(directory / "dataset.json"),
+        )
         storage_scenes = _storage_scene_map(storage)
         if set(logical_scenes) != set(storage_scenes):
             raise ValueError("PLCS reader scene metadata and storage differ.")
@@ -146,6 +168,10 @@ class PLCSCompactDatasetReader:
             camera_count=len(index.camera_ids),
             object_count=len(index.object_ids),
         )
+        _validate_supervision_normalization(
+            arrays,
+            self.court_coordinate_normalization,
+        )
         return PLCSAllViewScene(index=index, supervision=arrays)
 
     def logical_sample(
@@ -166,24 +192,31 @@ class PLCSCompactDatasetReader:
         return materialize_logical_sample(self.backgrounds.load(camera_id), delta)
 
 
-def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
+def validate_plcs_dataset(
+    directory: Path,
+    *,
+    court_coordinate_normalization: CourtCoordinateNormalization | None = None,
+) -> dict[str, int | float | str]:
     """Validate every complete logical timeline, court, label, and budget fact."""
     manifest = _manifest(directory)
     scene_id = _text(manifest["scene_id"], name="scene_id")
     frame_inventory = FrameInventory.from_dict(manifest["frame_inventory"])
     metadata = _object(manifest["metadata"], name="metadata")
+    metadata_keys = {
+        "coordinate_contract",
+        "seed",
+        "logical_scene_count",
+        "aggregate_global_frame_count",
+        "aggregate_source_frame_count",
+        "required_motion_categories",
+        "accepted_court_instance_ids",
+        "logical_scenes",
+    }
+    if COURT_COORDINATE_NORMALIZATION_METADATA_KEY in metadata:
+        metadata_keys.add(COURT_COORDINATE_NORMALIZATION_METADATA_KEY)
     _keys(
         metadata,
-        {
-            "coordinate_contract",
-            "seed",
-            "logical_scene_count",
-            "aggregate_global_frame_count",
-            "aggregate_source_frame_count",
-            "required_motion_categories",
-            "accepted_court_instance_ids",
-            "logical_scenes",
-        },
+        metadata_keys,
         name="metadata",
     )
     PLCSCoordinateContract.from_dict(metadata["coordinate_contract"])
@@ -230,6 +263,12 @@ def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
     if storage["layout"] != "shared-background-plus-per-scene-foreground-delta":
         raise ValueError("PLCS dataset does not use the sole multi-scene layout.")
     logical_scenes = _logical_scene_map(metadata)
+    normalization = _resolve_normalization_contract(
+        metadata,
+        logical_scenes,
+        runtime_contract=court_coordinate_normalization,
+        location=str(directory / "dataset.json"),
+    )
     storage_scenes = _storage_scene_map(storage)
     if set(logical_scenes) != set(storage_scenes):
         raise ValueError("PLCS logical-scene metadata and storage IDs differ.")
@@ -251,21 +290,24 @@ def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
     production_mode: PLCSProductionMode | None = None
     for raw_scene in logical_scene_values:
         scene = _object(raw_scene, name="logical scene")
+        scene_keys = {
+            "scene_id",
+            "split",
+            "aggregate_frame_offset",
+            "frame_inventory",
+            "mode",
+            "target_court",
+            "camera_profile",
+            "cameras",
+            "motion_sources",
+            "tracks",
+            "continuity",
+        }
+        if COURT_COORDINATE_NORMALIZATION_METADATA_KEY in scene:
+            scene_keys.add(COURT_COORDINATE_NORMALIZATION_METADATA_KEY)
         _keys(
             scene,
-            {
-                "scene_id",
-                "split",
-                "aggregate_frame_offset",
-                "frame_inventory",
-                "mode",
-                "target_court",
-                "camera_profile",
-                "cameras",
-                "motion_sources",
-                "tracks",
-                "continuity",
-            },
+            scene_keys,
             name="logical scene",
         )
         logical_scene_id = _text(scene["scene_id"], name="logical scene_id")
@@ -425,6 +467,7 @@ def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
             ] = True
         if not np.array_equal(supervision.present, expected_presence):
             raise ValueError("PLCS supervision omits or invents lifecycle frames.")
+        _validate_supervision_normalization(supervision, normalization)
         readers = tuple(
             ChunkReader(directory / _relative_path(value, name="scene chunk"))
             for value in _array(record["chunks"], name="scene chunks")
@@ -553,6 +596,7 @@ def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
         raise ValueError("PLCS measured performance violates the multi-scene schema.")
     return {
         "scene_id": scene_id,
+        "court_coordinate_normalization_version": normalization.version,
         "logical_scene_count": logical_scene_count,
         "frame_count": aggregate_offset,
         "camera_count": len(expected_background_ids),
@@ -677,6 +721,77 @@ def _validate_diagnostics(
         or f"aggregate global frames: {aggregate_global_frames}" not in summary
     ):
         raise ValueError("PLCS human diagnostics disagree with the dataset.")
+
+
+def _resolve_normalization_contract(
+    metadata: Mapping[str, object],
+    logical_scenes: Mapping[str, Mapping[str, object]],
+    *,
+    runtime_contract: CourtCoordinateNormalization | None,
+    location: str,
+) -> CourtCoordinateNormalization:
+    """Resolve one root/all-scenes compact normalization contract."""
+    root_metadata = extract_court_coordinate_normalization_metadata(
+        metadata,
+        location=f"{location}.metadata",
+    )
+    scene_metadata = {
+        scene_id: extract_court_coordinate_normalization_metadata(
+            scene,
+            location=f"{location}.metadata.logical_scenes[{scene_id!r}]",
+        )
+        for scene_id, scene in logical_scenes.items()
+    }
+    present = [
+        value
+        for value in (root_metadata, *scene_metadata.values())
+        if value is not None
+    ]
+    if not present:
+        legacy_contract = (
+            runtime_contract
+            if runtime_contract is not None
+            else resolve_court_coordinate_normalization("v1")
+        )
+        if legacy_contract.version != "v1":
+            raise MissingCourtCoordinateMetadataError(
+                f"{location}: compact PLCS normalization metadata is absent. "
+                "Metadata-free artifacts are legacy v1 only; got runtime "
+                f"{legacy_contract.version!r}."
+            )
+        return legacy_contract
+
+    missing = []
+    if root_metadata is None:
+        missing.append(f"{location}.metadata")
+    missing.extend(
+        f"{location}.metadata.logical_scenes[{scene_id!r}]"
+        for scene_id, value in scene_metadata.items()
+        if value is None
+    )
+    if missing:
+        raise MixedCourtCoordinateMetadataError(
+            f"{location}: compact PLCS root/logical-scene normalization metadata "
+            f"is mixed; missing at {missing!r}."
+        )
+    assert root_metadata is not None
+    for scene_id, value in scene_metadata.items():
+        if value != root_metadata:
+            assert value is not None
+            raise CourtCoordinateContractMismatchError(
+                f"{location}: logical scene {scene_id!r} normalization "
+                f"{value.to_dict()!r} does not match root "
+                f"{root_metadata.to_dict()!r}."
+            )
+    artifact_contract = root_metadata.contract
+    if runtime_contract is not None and runtime_contract != artifact_contract:
+        raise CourtCoordinateContractMismatchError(
+            f"{location}: compact PLCS normalization "
+            f"{artifact_contract.version!r}/{artifact_contract.scale_xyz!r} does "
+            f"not match runtime {runtime_contract.version!r}/"
+            f"{runtime_contract.scale_xyz!r}."
+        )
+    return artifact_contract
 
 
 def _manifest(directory: Path) -> Mapping[str, object]:
@@ -834,6 +949,26 @@ def _supervision_arrays(
         object_count=object_count,
     )
     return result
+
+
+def _validate_supervision_normalization(
+    supervision: PLCSSupervisionArrays,
+    normalization: CourtCoordinateNormalization,
+) -> None:
+    """Verify that only the compact translation array is normalized."""
+    recovered_position_court_m = normalization.denormalize_position(
+        supervision.position
+    )
+    if not np.allclose(
+        recovered_position_court_m,
+        supervision.position_court_m,
+        rtol=0.0,
+        atol=1e-5,
+    ):
+        raise ValueError(
+            "PLCS normalized position does not recover position_court_m "
+            "within 1e-5 metres."
+        )
 
 
 def _scene_cameras(scene: Mapping[str, object]) -> tuple[SceneCamera, ...]:

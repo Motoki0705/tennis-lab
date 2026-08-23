@@ -33,6 +33,14 @@ from src.synthetic_data_generation.dataset.runtime import (
     ChunkReader,
     FinalDatasetAssembler,
 )
+from src.tasks.base.data import (
+    COURT_COORDINATE_NORMALIZATION_METADATA_KEY,
+    CourtCoordinateNormalizationMetadata,
+)
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
+)
 
 PLCS_DATASET_SCHEMA = "tennis_plcs_compact_dataset_v5"
 PLCS_FRAME_LABEL_SCHEMA = "tennis_plcs_frame_label_v3"
@@ -231,6 +239,7 @@ def assemble_plcs_dataset(
     chunk_size: int,
     diagnostics: tuple[str, ...],
     seed: int,
+    court_coordinate_normalization: CourtCoordinateNormalization | None = None,
 ) -> PLCSAssemblyResult:
     """Validate and publish every logical scene without splitting its timeline."""
     if (
@@ -244,6 +253,14 @@ def assemble_plcs_dataset(
         )
     if chunk_size <= 0:
         raise ValueError("chunk_size must be positive.")
+    normalization = (
+        court_coordinate_normalization
+        if court_coordinate_normalization is not None
+        else resolve_court_coordinate_normalization("v1")
+    )
+    normalization_metadata = CourtCoordinateNormalizationMetadata.from_contract(
+        normalization
+    ).to_dict()
     background_directory = staging_directory / "backgrounds"
     if not background_directory.is_dir() or background_directory.is_symlink():
         raise FileNotFoundError(
@@ -267,6 +284,19 @@ def assemble_plcs_dataset(
         if value.timeline is not logical.timeline or value.split != logical.split:
             raise ValueError("PLCS assembly input disagrees with its scene inventory.")
         result = _validate_scene(value, chunk_size=chunk_size, seed=seed)
+        recovered_position_court_m = (
+            normalization.denormalize_position(value.supervision.position)
+        )
+        if not np.allclose(
+            recovered_position_court_m,
+            value.supervision.position_court_m,
+            rtol=0.0,
+            atol=1e-5,
+        ):
+            raise ValueError(
+                "PLCS normalized position does not recover position_court_m "
+                "within 1e-5 metres."
+            )
         scene_results.append(result)
         timeline = value.timeline
         frame_indices = tuple(range(timeline.frame_count))
@@ -279,6 +309,9 @@ def assemble_plcs_dataset(
         logical_metadata.append(
             {
                 "scene_id": timeline.scene_id,
+                COURT_COORDINATE_NORMALIZATION_METADATA_KEY: (
+                    normalization_metadata
+                ),
                 "split": value.split,
                 "aggregate_frame_offset": aggregate_offset,
                 "frame_inventory": local_inventory.to_dict(),
@@ -354,6 +387,7 @@ def assemble_plcs_dataset(
         target_courts=inventory.target_courts,
         metadata={
             "coordinate_contract": PLCS_COORDINATE_CONTRACT.to_dict(),
+            COURT_COORDINATE_NORMALIZATION_METADATA_KEY: normalization_metadata,
             "seed": seed,
             "logical_scene_count": inventory.scene_count,
             "aggregate_global_frame_count": inventory.aggregate_global_frame_count,

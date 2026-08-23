@@ -6,13 +6,22 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
+import numpy as np
 import torch
 from torch import Tensor
 
+from src.tasks.base.model_io import (
+    validate_checkpoint_court_coordinate_contract,
+    write_checkpoint_court_coordinate_contract,
+)
 from src.tasks.base.training.gan_training import ManualGANSupportMixin
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_saving import save_qualitative_animation
-from src.tasks.blcs.configuration import parse_qualitative_rendering
+from src.tasks.blcs.configuration import (
+    parse_court_coordinate_normalization,
+    parse_qualitative_rendering,
+    resolve_position_huber_beta,
+)
 from src.tasks.blcs.model_io import (
     BLCSTrajectoryPrediction,
     TrajectoryBoundModelIO,
@@ -49,6 +58,9 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         self.model_io = model_io
         self.model = model_io.model
         self.io_adapter = cast("TrajectoryModelIOAdapter", model_io.adapter)
+        self.court_coordinate_normalization = (
+            parse_court_coordinate_normalization(self.config)
+        )
         self.qualitative_rendering = parse_qualitative_rendering(self.config)
 
         train_cfg = self.config.training
@@ -71,6 +83,14 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             gravity_beta=float(train_cfg.gravity_beta),
             gravity=float(physics_cfg.gravity),
             frame_dt=1.0 / output_fps,
+            position_beta=resolve_position_huber_beta(
+                self.court_coordinate_normalization,
+                legacy_v1_beta=float(train_cfg.position_huber_beta_v1),
+                v2_transition_m=float(
+                    train_cfg.position_huber_transition_m_v2
+                ),
+            ),
+            normalization=self.court_coordinate_normalization,
         )
         gan_enabled = bool(train_cfg.gan.enabled)
         self._initialize_manual_gan(
@@ -83,14 +103,33 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         self.train_metrics = BLCSMetrics(
             position_threshold_m=metrics_cfg.position_threshold_m,
             endpoint_threshold_m=metrics_cfg.endpoint_threshold_m,
+            normalization=self.court_coordinate_normalization,
         )
         self.val_metrics = BLCSMetrics(
             position_threshold_m=metrics_cfg.position_threshold_m,
             endpoint_threshold_m=metrics_cfg.endpoint_threshold_m,
+            normalization=self.court_coordinate_normalization,
         )
         self.test_metrics = BLCSMetrics(
             position_threshold_m=metrics_cfg.position_threshold_m,
             endpoint_threshold_m=metrics_cfg.endpoint_threshold_m,
+            normalization=self.court_coordinate_normalization,
+        )
+
+    def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        """Persist the exact normalization contract beside model state."""
+        write_checkpoint_court_coordinate_contract(
+            checkpoint,
+            self.court_coordinate_normalization,
+            location="BLCS checkpoint",
+        )
+
+    def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        """Reject checkpoint/runtime normalization mismatches before weights."""
+        validate_checkpoint_court_coordinate_contract(
+            checkpoint,
+            self.court_coordinate_normalization,
+            location="BLCS checkpoint",
         )
 
     def _forward_from_batch(
@@ -219,10 +258,18 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
                 out,
                 sample_index=0,
             )
+            gt_m = self.court_coordinate_normalization.denormalize_position(gt)
+            pred_m = self.court_coordinate_normalization.denormalize_position(pred)
+            if not isinstance(gt_m, np.ndarray) or not isinstance(
+                pred_m, np.ndarray
+            ):
+                raise TypeError(
+                    "BLCS qualitative denormalization returned a non-array."
+                )
 
             anim = renderer.create_comparison_animation(
-                gt,
-                pred,
+                gt_m,
+                pred_m,
                 view="3d",
                 events=[],
             )

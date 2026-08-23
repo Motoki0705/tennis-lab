@@ -1,4 +1,6 @@
 defaults:
+  # Compatibility default. Select court_coordinate_normalization=v2 explicitly.
+  - court_coordinate_normalization: v1
   - generation: single_object
   - paths: default
   - simulation: default

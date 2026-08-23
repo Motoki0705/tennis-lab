@@ -137,6 +137,9 @@ def simulate_shot(
         cell_manager=CellManager(),
         targeted_velocity_config=generator_config.targeted_velocity,
         device="cpu",
+        court_coordinate_normalization=(
+            generator_config.court_coordinate_normalization
+        ),
     )
 
     # ---- Initial state sampling / overrides ----

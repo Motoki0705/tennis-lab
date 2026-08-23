@@ -3,16 +3,24 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
+from src.tennis_scene.schema import (
+    attach_court_coordinate_provenance,
+    validate_court_coordinate_provenance,
+)
 from src.utils.configuration import PathResolver
 from src.utils.inference.windowed import blend_windows, window_slices
 from src.utils.io import load_json, save_json
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
+)
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -49,6 +57,9 @@ class BLCSConfig:
     window_size: int
     window_overlap: int
     resolver: PathResolver
+    court_coordinate_normalization: CourtCoordinateNormalization = field(
+        default_factory=lambda: resolve_court_coordinate_normalization("v1")
+    )
 
     def __post_init__(self) -> None:
         if (self.source == "load") != (self.load_path is not None):
@@ -70,15 +81,34 @@ class BLCSResult:
     ball_3d: NDArray[np.float32]
     visibility: NDArray[np.bool_]
 
-    def to_dict(self) -> dict:
+    def to_dict(
+        self,
+        court_coordinate_normalization: CourtCoordinateNormalization | None = None,
+    ) -> dict[str, object]:
         """Convert result to JSON-serializable dict."""
-        data = {"ball_3d": self.ball_3d.tolist()}
+        data: dict[str, object] = {"ball_3d": self.ball_3d.tolist()}
         data["visibility"] = self.visibility.tolist()
+        if court_coordinate_normalization is not None:
+            data = attach_court_coordinate_provenance(
+                data,
+                court_coordinate_normalization,
+                location="BLCS result",
+            )
         return data
 
     @classmethod
-    def from_dict(cls, data: dict) -> BLCSResult:
+    def from_dict(
+        cls,
+        data: dict[str, object],
+        court_coordinate_normalization: CourtCoordinateNormalization | None = None,
+    ) -> BLCSResult:
         """Create result from dict."""
+        if court_coordinate_normalization is not None:
+            validate_court_coordinate_provenance(
+                data,
+                court_coordinate_normalization,
+                location="BLCS result",
+            )
         missing = {"ball_3d", "visibility"} - set(data)
         if missing:
             raise ValueError(
@@ -89,9 +119,13 @@ class BLCSResult:
             visibility=np.array(data["visibility"], dtype=np.bool_),
         )
 
-    def save(self, path: str | Path) -> None:
+    def save(
+        self,
+        path: str | Path,
+        court_coordinate_normalization: CourtCoordinateNormalization | None = None,
+    ) -> None:
         """Save result to JSON file."""
-        save_json(self.to_dict(), path)
+        save_json(self.to_dict(court_coordinate_normalization), path)
         LOGGER.info(f"Saved BLCS result to {path}")
 
     def validate(self) -> tuple[bool, list[str]]:
@@ -113,9 +147,16 @@ class BLCSResult:
         return len(errors) == 0, errors
 
     @classmethod
-    def load(cls, path: str | Path) -> BLCSResult:
+    def load(
+        cls,
+        path: str | Path,
+        court_coordinate_normalization: CourtCoordinateNormalization | None = None,
+    ) -> BLCSResult:
         """Load result from JSON file."""
-        return cls.from_dict(load_json(path))
+        data = load_json(path)
+        if not isinstance(data, dict):
+            raise TypeError(f"BLCS result must be a JSON object: {path}")
+        return cls.from_dict(data, court_coordinate_normalization)
 
 
 class BLCSModule(BasePipelineModule):
@@ -154,6 +195,9 @@ class BLCSModule(BasePipelineModule):
             self.checkpoint,
             resolver=self.config.resolver,
             device=self.device,
+            court_coordinate_normalization=(
+                self.config.court_coordinate_normalization
+            ),
         )
         if self._predictor.input_profile != "multiview":
             raise ValueError(
@@ -194,7 +238,10 @@ class BLCSModule(BasePipelineModule):
                 LOGGER.info(
                     f"Loading BLCS result from {load_path} (skipping inference)"
                 )
-                return BLCSResult.load(load_path)
+                return BLCSResult.load(
+                    load_path,
+                    self.config.court_coordinate_normalization,
+                )
             raise FileNotFoundError(f"BLCS artifact not found: {load_path}")
 
         if not self.is_loaded:
@@ -252,6 +299,9 @@ class BLCSModule(BasePipelineModule):
         result = BLCSResult(ball_3d=ball_3d, visibility=output_visibility)
 
         if self.config.save_result:
-            result.save(self.config.output_path)
+            result.save(
+                self.config.output_path,
+                self.config.court_coordinate_normalization,
+            )
 
         return result

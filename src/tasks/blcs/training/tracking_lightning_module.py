@@ -9,11 +9,16 @@ import numpy as np
 from torch import Tensor
 
 from src.tasks.base.configuration import as_config_mapping, require_config_mapping
+from src.tasks.base.model_io import (
+    validate_checkpoint_court_coordinate_contract,
+    write_checkpoint_court_coordinate_contract,
+)
 from src.tasks.base.training.tracking_lightning_module import (
     TrackingLightningModule,
     TrackingStepResult,
 )
 from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
+from src.tasks.blcs.configuration import parse_court_coordinate_normalization
 from src.tasks.blcs.model_io import (
     BLCSTrackQueryPrediction,
     TrackQueryBoundModelIO,
@@ -21,6 +26,9 @@ from src.tasks.blcs.model_io import (
 )
 from src.tasks.blcs.training.tracking_losses import BLCSTrackingLoss
 from src.tasks.blcs.training.tracking_metrics import blcs_tracking_metrics
+from src.utils.schema.court_normalization import (
+    resolve_court_coordinate_normalization,
+)
 
 
 class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPrediction]):
@@ -36,7 +44,15 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
         self.model_io = model_io
         self.model = model_io.model
         self.io_adapter = cast("TrackQueryModelIOAdapter", model_io.adapter)
-        self.criterion = BLCSTrackingLoss(config.loss)
+        self.court_coordinate_normalization = (
+            parse_court_coordinate_normalization(config)
+        )
+        self.criterion = BLCSTrackingLoss(
+            config.loss,
+            normalization=self.court_coordinate_normalization,
+            gravity=float(config.physics.gravity),
+            frame_dt=1.0 / float(config.rally.output_fps),
+        )
         root = as_config_mapping(config, path="configuration")
         self.tracking_metrics = TrackingMetricConfig.from_mapping(
             require_config_mapping(root, "tracking_metrics", path="configuration")
@@ -55,6 +71,28 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
                 "retrain or explicitly convert the artifact outside runtime loading. "
                 f"First incompatible key: {legacy_keys[0]}."
             )
+        # Hooks exercised without a fully initialized runtime retain the legacy
+        # v1 checkpoint contract. Fully constructed v2 runtimes always carry
+        # their selected contract and therefore still reject missing/mismatched
+        # normalization metadata.
+        normalization = getattr(
+            self,
+            "court_coordinate_normalization",
+            resolve_court_coordinate_normalization("v1"),
+        )
+        validate_checkpoint_court_coordinate_contract(
+            checkpoint,
+            normalization,
+            location="BLCS tracking checkpoint",
+        )
+
+    def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        """Persist the exact tracking normalization contract."""
+        write_checkpoint_court_coordinate_contract(
+            checkpoint,
+            self.court_coordinate_normalization,
+            location="BLCS tracking checkpoint",
+        )
 
     def compute_tracking_step(
         self,
@@ -75,6 +113,7 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
                 prepared,
                 assignments,
                 config=self.tracking_metrics,
+                normalization=self.court_coordinate_normalization,
             )
             if compute_metrics
             else {}

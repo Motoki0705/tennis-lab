@@ -12,6 +12,10 @@ from torch import nn
 from src.tasks.base.training.tracking_lifecycle import (
     weighted_presence_bce_with_logits,
 )
+from src.tasks.blcs.configuration import (
+    resolve_position_huber_beta,
+    resolve_tracking_gravity_target,
+)
 from src.tasks.blcs.model_io import (
     BLCSTrackQueryPrediction,
     BLCSTrackQueryTrainingBatch,
@@ -20,6 +24,10 @@ from src.tasks.blcs.training.tracking_matching import match_ball_tracks
 from src.tasks.blcs.training.tracking_position import (
     position_axis_weight_tensor,
     weighted_position_axis_mean,
+)
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
 )
 
 Assignment = tuple[torch.Tensor, torch.Tensor]
@@ -41,8 +49,20 @@ class BLCSTrackingLoss(nn.Module):
 
     position_axis_weights: torch.Tensor
 
-    def __init__(self, config: Any) -> None:
+    def __init__(
+        self,
+        config: Any,
+        *,
+        normalization: CourtCoordinateNormalization | str = "v1",
+        gravity: float = 9.81,
+        frame_dt: float = 1.0 / 30.0,
+    ) -> None:
         super().__init__()
+        contract = (
+            normalization
+            if isinstance(normalization, CourtCoordinateNormalization)
+            else resolve_court_coordinate_normalization(normalization)
+        )
         self.position_weight = float(config.position_weight)
         self.presence_weight = float(config.presence_weight)
         self.presence_inactive_weight = float(config.presence_inactive_weight)
@@ -51,10 +71,26 @@ class BLCSTrackingLoss(nn.Module):
         self.transition_radius = int(config.transition_radius)
         self.smoothness_weight = float(config.smoothness_weight)
         self.gravity_weight = float(config.gravity_weight)
-        self.gravity_target = float(config.gravity_target)
+        self.gravity_target = resolve_tracking_gravity_target(
+            contract,
+            legacy_v1_target=float(config.gravity_target),
+            gravity=gravity,
+            frame_dt=frame_dt,
+        )
         self.match_position_weight = float(config.match_position_weight)
         self.match_presence_weight = float(config.match_presence_weight)
-        configured_axis_weights = config.position_axis_weights
+        configured_axis_weights = (
+            config.position_axis_weights
+            if contract.version == "v1"
+            else config.position_axis_weights_v2
+        )
+        self.position_beta = resolve_position_huber_beta(
+            contract,
+            legacy_v1_beta=float(getattr(config, "position_huber_beta_v1", 1.0)),
+            v2_transition_m=float(
+                getattr(config, "position_huber_transition_m_v2", 1.0)
+            ),
+        )
         self.register_buffer(
             "position_axis_weights",
             position_axis_weight_tensor(configured_axis_weights),
@@ -85,6 +121,7 @@ class BLCSTrackingLoss(nn.Module):
             presence_transition_weight=self.presence_transition_weight,
             transition_radius=self.transition_radius,
             position_axis_weights=self.position_axis_weights,
+            position_beta=self.position_beta,
         )
         pred_position = prediction.position
         pred_presence = prediction.presence_logits
@@ -109,6 +146,7 @@ class BLCSTrackingLoss(nn.Module):
                         pred_position[batch_index, active, query_index],
                         batch.target_position[batch_index, active, target_index],
                         reduction="none",
+                        beta=self.position_beta,
                     )
                     position_per_axis = position_error_xyz.mean(0)
                     position_axis_terms.append(position_per_axis)

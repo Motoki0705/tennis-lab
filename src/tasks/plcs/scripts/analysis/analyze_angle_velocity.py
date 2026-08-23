@@ -45,6 +45,7 @@ from src.tasks.plcs.training.losses import (
 from src.utils.geometry.court_pose import world_pose_to_canonical_pose
 from src.utils.hydra import hydra_main
 from src.utils.io import save_json
+from src.utils.schema.court_normalization import CourtCoordinateNormalization
 from src.utils.schema.player import COCO17_JOINT_ANGLE_TRIPLETS as JOINT_ANGLE_TRIPLETS
 from src.utils.schema.player import COCO17_TORSION_QUADRUPLETS as TORSION_QUADRUPLETS
 
@@ -157,6 +158,7 @@ def analyze_angle_velocity(
     batch_size: int,
     num_workers: int,
     max_batches: int | None,
+    normalization: CourtCoordinateNormalization,
 ) -> dict[str, Any]:
     """Compute per-angle GT angular-velocity statistics on the given split.
 
@@ -235,7 +237,10 @@ def analyze_angle_velocity(
 
         with torch.no_grad():
             canon = world_pose_to_canonical_pose(
-                human_kp_3d, position, rotation
+                human_kp_3d,
+                position,
+                rotation,
+                normalization=normalization,
             )  # (B, T, 17, 3)
 
             # --- joint angles (B, T, 12), non-periodic ---
@@ -428,6 +433,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
         batch_size=int(cfg.data.batch_size),
         num_workers=int(cfg.data.num_workers),
         max_batches=max_batches,
+        normalization=runtime.court_coordinate_normalization,
     )
 
     _print_report(result)

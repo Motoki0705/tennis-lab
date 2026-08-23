@@ -6,6 +6,7 @@ from src.tasks.base.configuration import (
     BaseTrainingConfig,
     ChunkDataConfig,
     CompileConfig,
+    CourtCoordinateNormalizationConfig,
     SceneVisualizationConfig,
     TrainingRuntimeConfig,
 )
@@ -45,6 +46,7 @@ __all__ = [
     "ChunkState",
     "ChunkDataConfig",
     "CompileConfig",
+    "CourtCoordinateNormalizationConfig",
     "Scene",
     "SceneDataContractError",
     "SceneDatasetBase",

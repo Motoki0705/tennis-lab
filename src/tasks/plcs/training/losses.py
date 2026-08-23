@@ -30,6 +30,10 @@ from src.utils.geometry.skeleton import (
     compute_torso_twist,
 )
 from src.utils.losses.temporal import TemporalSmoothnessPenalty
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
+)
 from src.utils.schema.player import (
     COCO17_BONE_LENGTH_EDGES as BONE_LENGTH_EDGES,
 )
@@ -89,13 +93,16 @@ class PLCSLossConfig:
     # None -> uniform. Lengths: 12 joint angles, 4 torsion angles, 1 twist.
     joint_angle_velocity_angle_weights: tuple[float, ...] | None
     torsion_angle_velocity_angle_weights: tuple[float, ...] | None
+    # ``None`` preserves the historical normalized beta=1 for v1 and selects
+    # the documented 1.0 m transition for v2.
+    position_huber_beta_m: float | None = None
 
     @classmethod
     def from_dict(cls, cfg: dict[str, object]) -> PLCSLossConfig:
         """Create config from dictionary, e.g. loaded from YAML."""
         fields = {field.name for field in dataclasses.fields(cls)}
         unknown = sorted(set(cfg) - fields)
-        missing = sorted(fields - set(cfg))
+        missing = sorted(fields - {"position_huber_beta_m"} - set(cfg))
         if unknown or missing:
             raise ValueError(
                 f"Invalid PLCS loss keys: missing={missing}, unknown={unknown}."
@@ -104,6 +111,7 @@ class PLCSLossConfig:
         scalar_keys = fields - {
             "joint_angle_velocity_angle_weights",
             "torsion_angle_velocity_angle_weights",
+            "position_huber_beta_m",
         }
 
         def _weight(key: str) -> float:
@@ -156,6 +164,21 @@ class PLCSLossConfig:
                 )
             return tuple(parsed)
 
+        raw_beta = cfg.get("position_huber_beta_m")
+        if raw_beta is not None:
+            if type(raw_beta) not in {float, int}:
+                raise ConfigurationTypeError(
+                    "loss.position_huber_beta_m: expected float | int | None, "
+                    f"got {type(raw_beta).__name__}."
+                )
+            position_huber_beta_m = float(cast("float | int", raw_beta))
+            if not math.isfinite(position_huber_beta_m) or position_huber_beta_m <= 0:
+                raise SemanticConfigurationError(
+                    "loss.position_huber_beta_m must be finite and positive."
+                )
+        else:
+            position_huber_beta_m = None
+
         return cls(
             position_weight=weights["position_weight"],
             rotation_weight=weights["rotation_weight"],
@@ -177,6 +200,7 @@ class PLCSLossConfig:
             torsion_angle_velocity_angle_weights=_opt_weights(
                 "torsion_angle_velocity_angle_weights", expected_length=4
             ),
+            position_huber_beta_m=position_huber_beta_m,
         )
 
 
@@ -414,12 +438,13 @@ def _masked_frame_mean(per_frame: Tensor, frame_mask: Tensor | None) -> Tensor:
     return per_frame.mean()
 
 
-def position_loss_term(inputs: PLCSLossInputs) -> Tensor:
+def position_loss_term(inputs: PLCSLossInputs, *, beta: float = 1.0) -> Tensor:
     """Position term: masked smooth-L1 between predicted and target positions."""
     per_frame = nn.functional.smooth_l1_loss(
         inputs.pred_position,
         inputs.target_position,
         reduction="none",
+        beta=beta,
     ).mean(dim=-1)
     return _masked_frame_mean(per_frame, inputs.frame_mask)
 
@@ -693,6 +718,7 @@ class PLCSLoss(nn.Module):
         self,
         config: PLCSLossConfig,
         *,
+        normalization: CourtCoordinateNormalization | str = "v1",
         loss_terms: dict[str, PLCSLossTerm] | None = None,
     ) -> None:
         """Initialize the loss module.
@@ -704,6 +730,12 @@ class PLCSLoss(nn.Module):
         """
         super().__init__()
         self.config = config
+        self.court_coordinate_normalization = (
+            normalization
+            if isinstance(normalization, CourtCoordinateNormalization)
+            else resolve_court_coordinate_normalization(normalization)
+        )
+        self.position_huber_beta = self._resolve_position_huber_beta()
         self.position_smoothness_penalty = TemporalSmoothnessPenalty(
             order=3,
             beta=1e-3,
@@ -712,6 +744,10 @@ class PLCSLoss(nn.Module):
         self.loss_terms: dict[str, PLCSLossTerm]
         if loss_terms is None:
             self.loss_terms = dict(DEFAULT_LOSS_TERMS)
+            self.loss_terms["position"] = partial(
+                position_loss_term,
+                beta=self.position_huber_beta,
+            )
             self.loss_terms["position_smoothness"] = partial(
                 position_smoothness_loss_term,
                 penalty=self.position_smoothness_penalty,
@@ -723,6 +759,24 @@ class PLCSLoss(nn.Module):
             for name in self.loss_terms
         }
         self._bind_velocity_angle_weights()
+
+    def _resolve_position_huber_beta(self) -> float:
+        """Resolve the normalized beta without changing legacy v1 numerics."""
+        configured_m = self.config.position_huber_beta_m
+        contract = self.court_coordinate_normalization
+        if contract.version == "v1":
+            if configured_m is not None:
+                raise ValueError(
+                    "A single physical position Huber beta is not representable "
+                    "under anisotropic v1; leave loss.position_huber_beta_m null "
+                    "to preserve the historical normalized beta=1."
+                )
+            return 1.0
+        physical_beta_m = 1.0 if configured_m is None else configured_m
+        scale_x, scale_y, scale_z = contract.scale_xyz
+        if scale_x != scale_y or scale_y != scale_z:
+            raise ValueError("PLCS v2 physical Huber beta requires isotropic scale.")
+        return physical_beta_m / scale_x
 
     def _bind_velocity_angle_weights(self) -> None:
         """Rebind velocity terms with GT-derived per-angle dominance weights.
@@ -803,6 +857,7 @@ class PLCSLoss(nn.Module):
                     target_human_kp_3d,
                     target_position,
                     target_rotation,
+                    normalization=self.court_coordinate_normalization,
                 )
 
         source = PLCSLossInputs(

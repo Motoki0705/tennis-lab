@@ -17,12 +17,18 @@ from src.tasks.plcs.model_io import (
     PLCSTrackingBoundModelIO,
     PLCSTrackQueryIOAdapter,
     bind_plcs_model_io,
+    load_plcs_checkpoint_mapping,
+    prepare_plcs_checkpoint_config,
 )
 from src.tasks.plcs.training.tracking_lightning_module import (
     PLCSTrackingLightningModule,
 )
 from src.utils.configuration import PathResolver
-from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+from src.utils.device import resolve_device
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
+)
 
 
 class PLCSTrackingPredictor(BasePredictor):
@@ -34,12 +40,22 @@ class PLCSTrackingPredictor(BasePredictor):
         model: nn.Module,
         adapter: PLCSTrackQueryIOAdapter,
         device: torch.device,
+        court_coordinate_normalization: CourtCoordinateNormalization | str = "v1",
     ) -> None:
         bound = bind_plcs_model_io(model, adapter)
         self.model_io: PLCSTrackingBoundModelIO = bound
         self.model = self.model_io.model.to(device).eval()
         self.io_adapter = adapter
         self.device = device
+        self.court_coordinate_normalization = (
+            court_coordinate_normalization
+            if isinstance(
+                court_coordinate_normalization, CourtCoordinateNormalization
+            )
+            else resolve_court_coordinate_normalization(
+                court_coordinate_normalization
+            )
+        )
 
     @classmethod
     def load_from_checkpoint(
@@ -48,13 +64,31 @@ class PLCSTrackingPredictor(BasePredictor):
         *,
         resolver: PathResolver,
         device: str | torch.device,
+        court_coordinate_normalization: CourtCoordinateNormalization | None = None,
         **kwargs: Any,
     ) -> Self:
-        lightning_module, resolved_device = cls._load_single_lightning_module(
-            checkpoint_path,
-            PLCSTrackingLightningModule,
-            resolver=resolver,
-            device=device,
+        checkpoints = cls._ensure_checkpoint(checkpoint_path, resolver=resolver)
+        if len(checkpoints) != 1:
+            raise ValueError(
+                f"{cls.__name__} expects a single checkpoint, "
+                f"got {len(checkpoints)} checkpoints."
+            )
+        if "config" in kwargs:
+            raise TypeError(
+                "PLCSTrackingPredictor restores checkpoint config internally; "
+                "do not pass config."
+            )
+        resolved_device = resolve_device(device)
+        checkpoint = load_plcs_checkpoint_mapping(checkpoints[0])
+        checkpoint_config, contract = prepare_plcs_checkpoint_config(
+            checkpoint,
+            court_coordinate_normalization,
+            location=str(checkpoints[0]),
+        )
+        lightning_module = PLCSTrackingLightningModule.load_from_checkpoint(
+            checkpoints[0],
+            map_location=resolved_device,
+            config=checkpoint_config,
             strict=bool(kwargs.pop("strict", True)),
             weights_only=bool(kwargs.pop("weights_only", False)),
             **kwargs,
@@ -68,6 +102,7 @@ class PLCSTrackingPredictor(BasePredictor):
             model=lightning_module.model,
             adapter=adapter,
             device=resolved_device,
+            court_coordinate_normalization=contract,
         )
 
     def predict(
@@ -112,8 +147,10 @@ class PLCSTrackingPredictor(BasePredictor):
                 "presence": probability >= tracking_metrics.presence_threshold,
             }
             if denormalize:
-                result["position_meters"] = self._denormalize_coords(
-                    decoded.position, COURT_COORD_SCALE_XYZ
+                result["position_meters"] = (
+                    self.court_coordinate_normalization.denormalize_position(
+                        decoded.position
+                    )
                 )
                 result["yaw_radians"] = torch.atan2(
                     decoded.rotation[..., 1], decoded.rotation[..., 0]

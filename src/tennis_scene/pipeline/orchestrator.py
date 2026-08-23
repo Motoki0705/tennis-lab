@@ -30,8 +30,15 @@ from src.tennis_scene.pipeline.model_io.gvhmr import (
     GVHMRResult,
     build_gvhmr_chain,
 )
-from src.tennis_scene.schema import SceneResult
+from src.tennis_scene.schema import (
+    SceneResult,
+    attach_scene_result_court_coordinate_provenance,
+)
 from src.utils.configuration import PathResolver, PathRole
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
+)
 from src.utils.video import probe_video_info
 
 if TYPE_CHECKING:
@@ -62,6 +69,7 @@ class TennisSceneOrchestrator:
         resolution: ResolutionResult,
         device: str,
         resolver: PathResolver,
+        court_coordinate_normalization: CourtCoordinateNormalization | None = None,
     ) -> None:
         self.court_kp_module = court_kp_module
         self.gvhmr_config = gvhmr_config
@@ -75,6 +83,11 @@ class TennisSceneOrchestrator:
         self.execution_order = resolution.enabled_order
         self.device = device
         self.resolver = resolver
+        self.court_coordinate_normalization = (
+            resolve_court_coordinate_normalization("v1")
+            if court_coordinate_normalization is None
+            else court_coordinate_normalization
+        )
 
     @classmethod
     def from_runtime_config(cls, cfg: PipelineRuntimeConfig) -> TennisSceneOrchestrator:
@@ -107,6 +120,7 @@ class TennisSceneOrchestrator:
             resolution=resolution,
             device=cfg.device,
             resolver=cfg.resolver,
+            court_coordinate_normalization=cfg.court_coordinate_normalization,
         )
 
     @classmethod
@@ -269,7 +283,7 @@ class TennisSceneOrchestrator:
                 ball_3d = blcs_result.ball_3d
 
         T = plcs_result.position.shape[1]
-        return SceneResult(
+        result = SceneResult(
             num_frames=T,
             fps=video_info.fps,
             width=width,
@@ -304,6 +318,11 @@ class TennisSceneOrchestrator:
                 "enabled_stages": [stage.value for stage in self.execution_order],
             },
         )
+        attach_scene_result_court_coordinate_provenance(
+            result,
+            self.court_coordinate_normalization,
+        )
+        return result
 
     def _probe_synced_video_infos(
         self,

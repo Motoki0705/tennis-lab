@@ -34,19 +34,31 @@ import torch
 from omegaconf import DictConfig, OmegaConf
 from torch import Tensor
 
+from src.tasks.base.data import (
+    CourtCoordinateContractMismatchError,
+    MissingCourtCoordinateMetadataError,
+)
+from src.tasks.base.model_io import validate_checkpoint_court_coordinate_contract
 from src.tasks.plcs.configuration import (
     PLCSAnalysisRuntimeConfig,
     PLCSTrainingConfig,
 )
 from src.tasks.plcs.data.datamodule import PLCSDataModule
+from src.tasks.plcs.model_io import load_plcs_checkpoint_mapping
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
 from src.tasks.plcs.training.metrics import PLCSMetrics
 from src.utils.hydra import hydra_main
 from src.utils.io import save_json
+from src.utils.schema.court_normalization import CourtCoordinateNormalization
 
 
-def _load_hparams_config(hparams_path: Path) -> DictConfig:
+def _load_hparams_config(
+    hparams_path: Path,
+    *,
+    normalization: CourtCoordinateNormalization,
+    legacy_metadata_free: bool,
+) -> DictConfig:
     """Load the ``config`` block stored in a Lightning ``hparams.yaml``."""
     raw = OmegaConf.load(hparams_path)
     if not isinstance(raw, DictConfig):
@@ -60,6 +72,22 @@ def _load_hparams_config(hparams_path: Path) -> DictConfig:
         config = OmegaConf.create(config)
     if not isinstance(config, DictConfig):
         raise TypeError("Lightning hparams config must resolve to a mapping.")
+    if "court_coordinate_normalization" not in config:
+        if not legacy_metadata_free:
+            raise MissingCourtCoordinateMetadataError(
+                f"{hparams_path}: versioned checkpoint hparams omit "
+                "court_coordinate_normalization."
+            )
+        config = OmegaConf.merge(
+            config,
+            {
+                "court_coordinate_normalization": {
+                    "version": normalization.version
+                }
+            },
+        )
+        if not isinstance(config, DictConfig):
+            raise TypeError("Merged PLCS hparams config must be a mapping.")
     return config
 
 
@@ -112,11 +140,30 @@ def analyze(
     split: str,
     device: torch.device,
     max_batches: int | None,
+    normalization: CourtCoordinateNormalization,
     loss_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Run the dominance analysis and return a result dict."""
-    config = _load_hparams_config(hparams)
+    checkpoint_mapping = load_plcs_checkpoint_mapping(checkpoint)
+    compatibility = validate_checkpoint_court_coordinate_contract(
+        checkpoint_mapping,
+        normalization,
+        location=str(checkpoint),
+    )
+    config = _load_hparams_config(
+        hparams,
+        normalization=normalization,
+        legacy_metadata_free=compatibility.legacy_metadata_free,
+    )
     runtime = PLCSTrainingConfig.from_config(config)
+    stored_contract = runtime.court_coordinate_normalization.contract
+    if stored_contract != normalization:
+        raise CourtCoordinateContractMismatchError(
+            f"{hparams}: saved config normalization "
+            f"{stored_contract.version!r}/{stored_contract.scale_xyz!r} does not "
+            f"match analysis runtime {normalization.version!r}/"
+            f"{normalization.scale_xyz!r}."
+        )
 
     # Model weights from the checkpoint, all settings from hparams.yaml.
     module = PLCSLightningModule.load_from_checkpoint(
@@ -137,12 +184,16 @@ def analyze(
     loss_weights = dict(config.loss)
     if loss_overrides:
         loss_weights.update(loss_overrides)
-    loss_fn = PLCSLoss(config=PLCSLossConfig.from_dict(loss_weights))
+    loss_fn = PLCSLoss(
+        config=PLCSLossConfig.from_dict(loss_weights),
+        normalization=normalization,
+    )
     term_names = tuple(loss_fn.loss_terms)
 
     metrics = PLCSMetrics(
         position_threshold_m=float(config.metrics.position_threshold_m),
         angle_threshold_deg=float(config.metrics.angle_threshold_deg),
+        normalization=normalization,
     )
 
     torch.manual_seed(runtime.shared.run.seed)
@@ -371,6 +422,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
         split=str(cfg.analysis.split),
         device=torch.device(runtime.device),
         max_batches=int(max_batches) if max_batches is not None else None,
+        normalization=runtime.court_coordinate_normalization,
         loss_overrides=loss_overrides,
     )
     _print_report(result)

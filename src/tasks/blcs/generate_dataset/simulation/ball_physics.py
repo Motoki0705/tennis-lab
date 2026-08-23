@@ -27,12 +27,15 @@ from src.utils.schema.court import (
     HALF_DOUBLES_WIDTH,
     HALF_LENGTH,
     HALF_SINGLES_WIDTH,
-    NET_HEIGHT_POST,
     X_MAX,
     X_MIN,
     Y_MAX,
     Y_MIN,
     net_height_at_x,
+)
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
 )
 
 if TYPE_CHECKING:
@@ -197,13 +200,24 @@ class BallPhysics:
     - Fence boundary detection
     """
 
-    def __init__(self, config: PhysicsConfig) -> None:
+    def __init__(
+        self,
+        config: PhysicsConfig,
+        *,
+        normalization: CourtCoordinateNormalization | str = "v1",
+    ) -> None:
         """Initialize ball physics.
 
         Args:
             config: Validated physics configuration.
+            normalization: Explicit versioned position/velocity contract.
         """
         self.config = config
+        self.normalization = (
+            normalization
+            if isinstance(normalization, CourtCoordinateNormalization)
+            else resolve_court_coordinate_normalization(normalization)
+        )
         self._wind_vec: Tensor | None = None
 
     @property
@@ -630,11 +644,7 @@ class BallPhysics:
             return bool(-HALF_LENGTH <= y < 0)
 
     def normalize_position(self, pos: Tensor) -> Tensor:
-        """Normalize position to BLCS coordinates.
-
-        x_norm = X / HALF_DOUBLES_WIDTH
-        y_norm = Y / HALF_LENGTH
-        z_norm = Z / NET_HEIGHT_POST
+        """Normalize physical metres with the selected versioned contract.
 
         Args:
             pos: Position [3] or [T, 3] in metres.
@@ -642,16 +652,10 @@ class BallPhysics:
         Returns:
             Normalized position.
         """
-        norm = pos.clone()
-        if pos.dim() == 1:
-            norm[0] = pos[0] / HALF_DOUBLES_WIDTH
-            norm[1] = pos[1] / HALF_LENGTH
-            norm[2] = pos[2] / NET_HEIGHT_POST
-        else:
-            norm[..., 0] = pos[..., 0] / HALF_DOUBLES_WIDTH
-            norm[..., 1] = pos[..., 1] / HALF_LENGTH
-            norm[..., 2] = pos[..., 2] / NET_HEIGHT_POST
-        return norm
+        normalized = self.normalization.normalize_position(pos)
+        if not isinstance(normalized, Tensor):
+            raise TypeError("BLCS position normalization returned a non-tensor.")
+        return normalized
 
     def denormalize_position(self, norm: Tensor) -> Tensor:
         """Denormalize position from BLCS coordinates to metres.
@@ -662,13 +666,21 @@ class BallPhysics:
         Returns:
             Position in metres.
         """
-        pos = norm.clone()
-        if norm.dim() == 1:
-            pos[0] = norm[0] * HALF_DOUBLES_WIDTH
-            pos[1] = norm[1] * HALF_LENGTH
-            pos[2] = norm[2] * NET_HEIGHT_POST
-        else:
-            pos[..., 0] = norm[..., 0] * HALF_DOUBLES_WIDTH
-            pos[..., 1] = norm[..., 1] * HALF_LENGTH
-            pos[..., 2] = norm[..., 2] * NET_HEIGHT_POST
-        return pos
+        position = self.normalization.denormalize_position(norm)
+        if not isinstance(position, Tensor):
+            raise TypeError("BLCS position denormalization returned a non-tensor.")
+        return position
+
+    def normalize_velocity(self, velocity: Tensor) -> Tensor:
+        """Convert world velocity in m/s to model-normalized units/s."""
+        normalized = self.normalization.normalize_velocity(velocity)
+        if not isinstance(normalized, Tensor):
+            raise TypeError("BLCS velocity normalization returned a non-tensor.")
+        return normalized
+
+    def denormalize_velocity(self, velocity: Tensor) -> Tensor:
+        """Convert model-normalized velocity to physical m/s."""
+        physical = self.normalization.denormalize_velocity(velocity)
+        if not isinstance(physical, Tensor):
+            raise TypeError("BLCS velocity denormalization returned a non-tensor.")
+        return physical

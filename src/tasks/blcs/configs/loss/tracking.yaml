@@ -3,6 +3,11 @@ position_weight: 1.0
 # Keep z lower so rare high lobs cannot dominate loss or Hungarian assignment.
 # The implementation normalizes by the weight sum.
 position_axis_weights: [1.0, 1.0, 0.5]
+# v2 removes the legacy high-lob tracking down-weight from both supervised loss
+# and Hungarian cost; selection is resolved once from the shared contract.
+position_axis_weights_v2: [1.0, 1.0, 1.0]
+position_huber_beta_v1: 1.0
+position_huber_transition_m_v2: 1.0
 presence_weight: 1.0
 presence_inactive_weight: 0.25
 presence_active_weight: 1.0
@@ -10,6 +15,8 @@ presence_transition_weight: 2.0
 transition_radius: 2
 smoothness_weight: 0.0
 gravity_weight: 0.0
+# v1 retains this rounded literal. v2 derives -g*dt^2/scale_z from physics,
+# rally.output_fps and the selected contract.
 gravity_target: -0.01
 match_position_weight: 1.0
 match_presence_weight: 0.5

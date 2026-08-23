@@ -8,7 +8,10 @@ import torch
 from torch import Tensor
 
 from src.utils.geometry.angles import angular_error
-from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
+)
 
 
 def _flatten_valid(valid: Tensor, values: Tensor) -> Tensor:
@@ -31,6 +34,7 @@ class PLCSMetrics:
         *,
         position_threshold_m: float,
         angle_threshold_deg: float,
+        normalization: CourtCoordinateNormalization | str = "v1",
     ) -> None:
         """Initialize the metrics tracker.
 
@@ -43,7 +47,11 @@ class PLCSMetrics:
         self.angle_threshold_deg = angle_threshold_deg
         self.reset()
 
-        self._norm_scale_xyz = COURT_COORD_SCALE_XYZ
+        self.court_coordinate_normalization = (
+            normalization
+            if isinstance(normalization, CourtCoordinateNormalization)
+            else resolve_court_coordinate_normalization(normalization)
+        )
 
     def reset(self) -> None:
         """Reset all accumulated metrics."""
@@ -108,13 +116,14 @@ class PLCSMetrics:
                 target_rotation = target_rotation.flatten(0, 1)
 
         # Denormalize positions to meters
-        scale = torch.tensor(
-            list(self._norm_scale_xyz),
-            device=pred_position.device,
-            dtype=pred_position.dtype,
+        pred_meters = self.court_coordinate_normalization.denormalize_position(
+            pred_position
         )
-        pred_meters = pred_position * scale
-        target_meters = target_position * scale
+        target_meters = self.court_coordinate_normalization.denormalize_position(
+            target_position
+        )
+        if not isinstance(pred_meters, Tensor) or not isinstance(target_meters, Tensor):
+            raise TypeError("PLCS metric denormalization must preserve tensors.")
 
         # Position error (Euclidean distance)
         pos_error = (pred_meters - target_meters).norm(dim=-1)

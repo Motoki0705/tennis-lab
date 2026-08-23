@@ -38,6 +38,10 @@ from src.utils.projection.camera_projector import (
     CameraView,
 )
 from src.utils.schema.court import CourtConfig
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +109,9 @@ class GeneratorConfig:
     camera: CameraConfig
     targeted_velocity: TargetedVelocityConfig
     court: CourtConfig
+    court_coordinate_normalization: CourtCoordinateNormalization = field(
+        default_factory=lambda: resolve_court_coordinate_normalization("v1")
+    )
 
 
 class BLCSSceneGenerator:
@@ -153,6 +160,9 @@ class BLCSSceneGenerator:
             cell_manager=self.cell_manager,
             targeted_velocity_config=self.config.targeted_velocity,
             device=self.device,
+            court_coordinate_normalization=(
+                self.config.court_coordinate_normalization
+            ),
         )
 
     def _camera_view_to_data(self, view: CameraView) -> CameraData:
@@ -216,7 +226,10 @@ class BLCSSceneGenerator:
 
         # 2. Build rally simulator with sampled physics
         rally_simulator = self._build_rally_simulator(physics_config)
-        physics = BallPhysics(physics_config)
+        physics = BallPhysics(
+            physics_config,
+            normalization=self.config.court_coordinate_normalization,
+        )
 
         # 3. Generate rally
         rally_result = rally_simulator.generate_rally(from_cell, side)

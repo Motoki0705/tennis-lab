@@ -2,22 +2,31 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import torch
 from torch import Tensor
 
+from src.tasks.base.configuration import as_config_mapping
 from src.tasks.base.data.canonical_tracking import (
     CanonicalTrackingDataset,
     pad_and_stack_tracking_batch,
 )
+from src.tasks.base.data.court_coordinate_contract import (
+    validate_dataset_court_coordinate_contract,
+)
 from src.tasks.base.data.lifecycle_slots import build_fixed_lifecycle_assignment
 from src.tasks.base.data.scene_dataset import Scene
+from src.tasks.blcs.configuration import parse_court_coordinate_normalization
 from src.tasks.blcs.data.observation_candidates import (
     pack_observation_candidates,
 )
 from src.tasks.blcs.data.tracking_augmentation import (
     BLCSTrackingCandidateAugmentation,
+)
+from src.utils.schema.court_normalization import (
+    resolve_court_coordinate_normalization,
 )
 
 BLCS_TRACKING_KEYS = (
@@ -42,6 +51,24 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
     """Load ID-ordered objects, pack lifecycle slots, and corrupt observations."""
 
     def __init__(self, **kwargs: Any) -> None:
+        config = kwargs.get("config")
+        config_root = as_config_mapping(config, path="configuration")
+        # Preserve the pre-versioning direct-construction API as explicit v1.
+        # Composed runtime configs carry this section and therefore continue to
+        # inject and validate their selected v1/v2 contract.
+        self.court_coordinate_normalization = (
+            parse_court_coordinate_normalization(config)
+            if "court_coordinate_normalization" in config_root
+            else resolve_court_coordinate_normalization("v1")
+        )
+        scene_dir = Path(kwargs["scene_dir"])
+        split_file = Path(kwargs["split_file"])
+        scene_paths = self._resolve_scene_files(scene_dir, split_file)
+        validate_dataset_court_coordinate_contract(
+            scene_dir,
+            self.court_coordinate_normalization,
+            scene_paths=scene_paths,
+        )
         super().__init__(**kwargs)
         data_cfg = self._resolve_data_cfg(self.hydra_cfg)
         self.tracking_augmentation = BLCSTrackingCandidateAugmentation(
@@ -60,6 +87,12 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
         num_queries = self.num_queries
         position = torch.from_numpy(scene.get_array("ball_pos_norm")).float()
         velocity = torch.from_numpy(scene.get_array("ball_vel_world")).float()
+        normalized_velocity = self.court_coordinate_normalization.normalize_velocity(
+            velocity
+        )
+        if not isinstance(normalized_velocity, Tensor):
+            raise TypeError("BLCS tracking velocity normalization returned a non-tensor.")
+        velocity = normalized_velocity
         if position.ndim != 3 or velocity.shape != position.shape:
             raise ValueError(
                 "Tracking scenes require explicit (T,P,3) position/velocity arrays."

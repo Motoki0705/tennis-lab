@@ -9,7 +9,11 @@ import numpy as np
 from omegaconf import DictConfig
 from torch import Tensor
 
-from src.tasks.base.model_io import BoundModelIO
+from src.tasks.base.model_io import (
+    BoundModelIO,
+    validate_checkpoint_court_coordinate_contract,
+    write_checkpoint_court_coordinate_contract,
+)
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.slcs.configuration import SLCSTrainingRuntimeConfig
 from src.tasks.slcs.model_io import (
@@ -35,6 +39,7 @@ class SLCSLightningModule(BaseLightningModule):
         )
         super().__init__(runtime.raw)
         self.max_epochs = runtime.training.trainer.max_epochs
+        self.court_coordinate_normalization = runtime.court_coordinate_normalization
         self.model: SLCSFusionModel
         self.model_adapter: SLCSModelIOAdapter
         self.model_io: BoundModelIO[
@@ -45,10 +50,26 @@ class SLCSLightningModule(BaseLightningModule):
         )
         self.loss_fn = SLCSLoss(runtime.loss)
         self._metrics = {
-            "train": SLCSMetrics(),
-            "val": SLCSMetrics(),
-            "test": SLCSMetrics(),
+            "train": SLCSMetrics(self.court_coordinate_normalization),
+            "val": SLCSMetrics(self.court_coordinate_normalization),
+            "test": SLCSMetrics(self.court_coordinate_normalization),
         }
+
+    def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        """Persist the normalization contract beside the saved Hydra config."""
+        write_checkpoint_court_coordinate_contract(
+            checkpoint,
+            self.court_coordinate_normalization,
+            location="SLCS checkpoint",
+        )
+
+    def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        """Reject resume/inference checkpoints incompatible with this runtime."""
+        validate_checkpoint_court_coordinate_contract(
+            checkpoint,
+            self.court_coordinate_normalization,
+            location="SLCS checkpoint",
+        )
 
     # ------------------------------------------------------------------
 

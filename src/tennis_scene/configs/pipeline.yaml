@@ -1,10 +1,12 @@
 defaults:
+  # Shared compatibility default; opt in with court_coordinate_normalization=v2.
+  - court_coordinate_normalization: v1
   - paths: default
   - _self_
 
 video_paths: [samples/tennis_clip.mp4]
 camera_ids: [cam0]
-output_name: tennis_clip
+output_name: tennis_clip_norm_${court_coordinate_normalization.version}
 device: cuda
 
 court_kp:
@@ -111,7 +113,7 @@ plcs:
   source: execute
   checkpoint: plcs/run-multiview-plcs-i590-courtkp14-epoch197.ckpt
   save_result: true
-  output_path: tennis_scene/plcs_result.json
+  output_path: tennis_scene/plcs_result_norm_${court_coordinate_normalization.version}.json
   load_path: null
   window_size: 1024
   window_overlap: 64
@@ -122,7 +124,7 @@ blcs:
   source: execute
   checkpoint: blcs/run-multiview-blcs-v3-simfix-c3-6-epoch129.ckpt
   save_result: true
-  output_path: tennis_scene/blcs_result.json
+  output_path: tennis_scene/blcs_result_norm_${court_coordinate_normalization.version}.json
   load_path: null
   window_size: 1024
   window_overlap: 64
@@ -130,6 +132,8 @@ blcs:
 max_frames: null
 
 hydra:
+  searchpath:
+    - pkg://src.tasks.base.configs
   run:
     dir: ${tennis_lab_path:output,${paths.output_root},tennis_scene/hydra,${now:%Y-%m-%d_%H-%M-%S}}
   output_subdir: null

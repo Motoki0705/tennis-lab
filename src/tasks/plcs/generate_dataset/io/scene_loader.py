@@ -13,6 +13,11 @@ from typing import Any
 
 import numpy as np
 
+from src.tasks.base.data.court_coordinate_contract import (
+    validate_dataset_court_coordinate_contract,
+)
+from src.utils.schema.court_normalization import CourtCoordinateNormalization
+
 
 class AttrDict(dict[str, Any]):
     """Dict with attribute-style access for convenience."""
@@ -27,7 +32,11 @@ class AttrDict(dict[str, Any]):
         self[key] = value
 
 
-def load_scene(filepath: str | Path) -> dict[str, Any]:
+def load_scene(
+    filepath: str | Path,
+    *,
+    court_coordinate_normalization: CourtCoordinateNormalization | None = None,
+) -> dict[str, Any]:
     """Load a scene from a npy + json scene directory.
 
     Args:
@@ -38,6 +47,15 @@ def load_scene(filepath: str | Path) -> dict[str, Any]:
         canonical_pose_3d, num_cameras, and cameras list.
     """
     scene_dir = Path(filepath)
+    if court_coordinate_normalization is not None:
+        dataset_root = (
+            scene_dir.parent.parent if scene_dir.parent.name == "scenes" else scene_dir
+        )
+        validate_dataset_court_coordinate_contract(
+            dataset_root,
+            court_coordinate_normalization,
+            scene_paths=(scene_dir,),
+        )
 
     with open(scene_dir / "meta.json") as f:
         meta = json.load(f)

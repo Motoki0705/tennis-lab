@@ -38,6 +38,17 @@ def _get_worker_scene_generator(
     maximum_physics_attempts_per_object: int | None,
 ) -> BLCSSceneGenerator | MultiBallSceneGenerator:
     global _WORKER_SCENE_GENERATOR
+    if _WORKER_SCENE_GENERATOR is not None:
+        cached_base = (
+            _WORKER_SCENE_GENERATOR.scene_generator
+            if isinstance(_WORKER_SCENE_GENERATOR, MultiBallSceneGenerator)
+            else _WORKER_SCENE_GENERATOR
+        )
+        cached_mode = isinstance(_WORKER_SCENE_GENERATOR, MultiBallSceneGenerator)
+        if cached_mode != multi_object or cached_base.config != generator_config:
+            # A worker cache is an optimization, never normalization authority.
+            # Rebuild when any explicit generator contract changes.
+            _WORKER_SCENE_GENERATOR = None
     if _WORKER_SCENE_GENERATOR is None:
         base = BLCSSceneGenerator(
             config=generator_config,
@@ -97,7 +108,10 @@ def _generate_scene_task(
     )
     if isinstance(generator, MultiBallSceneGenerator):
         generator.composer.rng.seed(base_seed + scene_index)
-        return generator.generate_scene(f"scene_{scene_index:06d}")
+        multi_scene_data: BLCSSceneData = generator.generate_scene(
+            f"scene_{scene_index:06d}"
+        )
+        return multi_scene_data
     from_cell = generator.sample_from_cell()
     side = generator.sample_side()
     scene_data = generator.generate_scene(from_cell, side, f"scene_{scene_index:06d}")

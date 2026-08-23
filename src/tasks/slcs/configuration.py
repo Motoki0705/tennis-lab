@@ -10,7 +10,10 @@ from typing import Literal, cast
 import torch
 from omegaconf import DictConfig, OmegaConf
 
-from src.tasks.base.configuration import TrainingRuntimeConfig
+from src.tasks.base.configuration import (
+    CourtCoordinateNormalizationConfig,
+    TrainingRuntimeConfig,
+)
 from src.tasks.slcs.data.dataset import SLCSDataConfig
 from src.tasks.slcs.data.dino_tokens import DinoTokenSpec
 from src.tasks.slcs.data.quality import QualityConfig
@@ -30,6 +33,7 @@ from src.utils.configuration import (
 )
 from src.utils.hydra import register_boundary_validator
 from src.utils.paths import PROJECT_ROOT
+from src.utils.schema.court_normalization import CourtCoordinateNormalization
 
 Number = float | int
 
@@ -77,6 +81,10 @@ SLCS_QUALITY_SCHEMA = _schema(
         "label_weight_power": _number(),
         "min_window_label_ratio": _number(),
     },
+)
+SLCS_COURT_COORDINATE_NORMALIZATION_SCHEMA = _schema(
+    "court_coordinate_normalization",
+    {"version": ConfigField.of(str)},
 )
 SLCS_DATA_SCHEMA = _schema(
     "data",
@@ -342,6 +350,9 @@ SLCS_TRAINING_BOUNDARY_SCHEMA = _schema(
         "data": _mapping(SLCS_DATA_SCHEMA),
         "model": _mapping(SLCS_MODEL_SCHEMA),
         "loss": _mapping(SLCS_LOSS_SCHEMA),
+        "court_coordinate_normalization": _mapping(
+            SLCS_COURT_COORDINATE_NORMALIZATION_SCHEMA
+        ),
     },
 )
 SLCS_EVALUATION_BOUNDARY_SCHEMA = _schema(
@@ -350,6 +361,9 @@ SLCS_EVALUATION_BOUNDARY_SCHEMA = _schema(
         "paths": _mapping(SLCS_PATHS_SCHEMA),
         "data": _mapping(SLCS_DATA_SCHEMA),
         "evaluate": _mapping(SLCS_EVALUATION_SCHEMA),
+        "court_coordinate_normalization": _mapping(
+            SLCS_COURT_COORDINATE_NORMALIZATION_SCHEMA
+        ),
     },
 )
 SLCS_PREDICTION_BOUNDARY_SCHEMA = _schema(
@@ -359,6 +373,9 @@ SLCS_PREDICTION_BOUNDARY_SCHEMA = _schema(
         "data": _mapping(SLCS_DATA_SCHEMA),
         "predict": _mapping(SLCS_PREDICTION_SCHEMA),
         "visualization": _mapping(SLCS_VISUALIZATION_SCHEMA),
+        "court_coordinate_normalization": _mapping(
+            SLCS_COURT_COORDINATE_NORMALIZATION_SCHEMA
+        ),
     },
 )
 SLCS_PRECOMPUTE_BOUNDARY_SCHEMA = _schema(
@@ -454,6 +471,14 @@ def _resolver(raw: dict[str, object]) -> PathResolver:
     )
 
 
+def _court_coordinate_normalization(
+    raw: dict[str, object],
+) -> CourtCoordinateNormalization:
+    return CourtCoordinateNormalizationConfig.from_mapping(
+        cast(dict[str, object], raw["court_coordinate_normalization"])
+    ).contract
+
+
 def _resolve_nonempty(
     resolver: PathResolver, role: PathRole, value: object, *, path: str
 ) -> Path:
@@ -476,7 +501,10 @@ class SLCSDataRuntimeConfig:
 
     @classmethod
     def from_mapping(
-        cls, raw: dict[str, object], resolver: PathResolver
+        cls,
+        raw: dict[str, object],
+        resolver: PathResolver,
+        court_coordinate_normalization: CourtCoordinateNormalization | None = None,
     ) -> SLCSDataRuntimeConfig:
         dino = cast(dict[str, object], raw["dino"])
         quality = cast(dict[str, object], raw["quality"])
@@ -514,6 +542,13 @@ class SLCSDataRuntimeConfig:
                         quality["min_window_label_ratio"],
                         path="data.quality.min_window_label_ratio",
                     ),
+                ),
+                court_coordinate_normalization=(
+                    court_coordinate_normalization
+                    if court_coordinate_normalization is not None
+                    else CourtCoordinateNormalizationConfig.from_mapping(
+                        {"version": "v1"}
+                    ).contract
                 ),
             )
         except ValueError as error:
@@ -728,6 +763,7 @@ class SLCSTrainingRuntimeConfig(TrainingRuntimeConfig):
     data: SLCSDataRuntimeConfig
     model: SLCSModelConfig
     loss: SLCSLossConfig
+    court_coordinate_normalization: CourtCoordinateNormalization
     raw: DictConfig
 
     @classmethod
@@ -752,8 +788,11 @@ class SLCSTrainingRuntimeConfig(TrainingRuntimeConfig):
         base = TrainingRuntimeConfig.from_config(
             config, repository_root=repository_root
         )
+        court_coordinate_normalization = _court_coordinate_normalization(raw)
         data = SLCSDataRuntimeConfig.from_mapping(
-            cast(dict[str, object], raw["data"]), base.resolver
+            cast(dict[str, object], raw["data"]),
+            base.resolver,
+            court_coordinate_normalization,
         )
         model = SLCSModelConfig.from_mapping(cast(dict[str, object], raw["model"]))
         factor = model.dino_patch_downsample_factor
@@ -769,6 +808,7 @@ class SLCSTrainingRuntimeConfig(TrainingRuntimeConfig):
             data=data,
             model=model,
             loss=_loss(cast(dict[str, object], raw["loss"])),
+            court_coordinate_normalization=court_coordinate_normalization,
             raw=config,
         )
 
@@ -784,6 +824,7 @@ class SLCSEvaluationConfig:
     checkpoint_strict: bool
     checkpoint_weights_only: bool
     output_dir: Path
+    court_coordinate_normalization: CourtCoordinateNormalization
 
     @classmethod
     def from_config(cls, config: DictConfig) -> SLCSEvaluationConfig:
@@ -796,28 +837,34 @@ class SLCSEvaluationConfig:
         if cast(int, values["batch_size"]) <= 0:
             raise SemanticConfigurationError("evaluate.batch_size must be positive.")
         device = _device_string(values["device"], path="evaluate.device")
+        court_coordinate_normalization = _court_coordinate_normalization(raw)
         return cls(
-            resolver,
-            SLCSDataRuntimeConfig.from_mapping(
-                cast(dict[str, object], raw["data"]), resolver
+            resolver=resolver,
+            data=SLCSDataRuntimeConfig.from_mapping(
+                cast(dict[str, object], raw["data"]),
+                resolver,
+                court_coordinate_normalization,
             ),
-            _resolve_nonempty(
+            checkpoint=_resolve_nonempty(
                 resolver,
                 PathRole.CHECKPOINT,
                 values["checkpoint"],
                 path="evaluate.checkpoint",
             ),
-            cast(Literal["train", "val", "test"], split),
-            device,
-            cast(int, values["batch_size"]),
-            cast(bool, values["checkpoint_strict"]),
-            cast(bool, values["checkpoint_weights_only"]),
-            _resolve_nonempty(
+            split=cast(Literal["train", "val", "test"], split),
+            device=device,
+            batch_size=cast(int, values["batch_size"]),
+            checkpoint_strict=cast(bool, values["checkpoint_strict"]),
+            checkpoint_weights_only=cast(
+                bool, values["checkpoint_weights_only"]
+            ),
+            output_dir=_resolve_nonempty(
                 resolver,
                 PathRole.OUTPUT,
                 values["output_dir"],
                 path="evaluate.output_dir",
             ),
+            court_coordinate_normalization=court_coordinate_normalization,
         )
 
 
@@ -900,6 +947,7 @@ class SLCSPredictConfig:
     render_overlay: bool
     output_dir: Path
     visualization: SLCSVisualizationConfig
+    court_coordinate_normalization: CourtCoordinateNormalization
 
     @classmethod
     def from_config(cls, config: DictConfig) -> SLCSPredictConfig:
@@ -913,37 +961,43 @@ class SLCSPredictConfig:
         clip_id = _canonical_clip_id(values["clip_id"])
         camera_id = _canonical_camera_id(values["camera_id"])
         device = _device_string(values["device"], path="predict.device")
+        court_coordinate_normalization = _court_coordinate_normalization(raw)
         data = SLCSDataRuntimeConfig.from_mapping(
-            cast(dict[str, object], raw["data"]), resolver
+            cast(dict[str, object], raw["data"]),
+            resolver,
+            court_coordinate_normalization,
         )
         return cls(
-            resolver,
-            data,
-            _resolve_nonempty(
+            resolver=resolver,
+            data=data,
+            checkpoint=_resolve_nonempty(
                 resolver,
                 PathRole.CHECKPOINT,
                 values["checkpoint"],
                 path="predict.checkpoint",
             ),
-            clip_id,
-            camera_id,
-            device,
-            cast(int, values["batch_size"]),
-            cast(bool, values["checkpoint_strict"]),
-            cast(bool, values["checkpoint_weights_only"]),
-            cast(int, values["frame_step"]),
-            cast(bool, values["render_3d"]),
-            cast(bool, values["render_overlay"]),
-            _resolve_nonempty(
+            clip_id=clip_id,
+            camera_id=camera_id,
+            device=device,
+            batch_size=cast(int, values["batch_size"]),
+            checkpoint_strict=cast(bool, values["checkpoint_strict"]),
+            checkpoint_weights_only=cast(
+                bool, values["checkpoint_weights_only"]
+            ),
+            frame_step=cast(int, values["frame_step"]),
+            render_3d=cast(bool, values["render_3d"]),
+            render_overlay=cast(bool, values["render_overlay"]),
+            output_dir=_resolve_nonempty(
                 resolver,
                 PathRole.OUTPUT,
                 values["output_dir"],
                 path="predict.output_dir",
             ),
-            SLCSVisualizationConfig.from_mapping(
+            visualization=SLCSVisualizationConfig.from_mapping(
                 cast(dict[str, object], raw["visualization"]),
                 num_court_kp=data.pipeline.num_court_kp,
             ),
+            court_coordinate_normalization=court_coordinate_normalization,
         )
 
 
@@ -1097,6 +1151,7 @@ register_boundary_validator("slcs.analyze_predictions", validate_analysis_bounda
 __all__ = [
     "SLCS_ANALYSIS_BOUNDARY_SCHEMA",
     "SLCS_ANALYSIS_SCHEMA",
+    "SLCS_COURT_COORDINATE_NORMALIZATION_SCHEMA",
     "SLCS_DATA_SCHEMA",
     "SLCS_DINO_SCHEMA",
     "SLCS_EVALUATION_BOUNDARY_SCHEMA",

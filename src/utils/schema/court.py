@@ -242,18 +242,19 @@ COURT_SKELETON: list[tuple[int, int]] = [
 # -----------------------------
 # Court Coordinate Normalization Scales
 # -----------------------------
-# Shared convention for "court-coordinate normalized position" used across tasks:
-#   x_norm = X / HALF_DOUBLES_WIDTH
-#   y_norm = Y / HALF_LENGTH
-#   z_norm = Z / NET_HEIGHT_POST
-COURT_COORD_SCALE_X: float = float(HALF_DOUBLES_WIDTH)
-COURT_COORD_SCALE_Y: float = float(HALF_LENGTH)
-COURT_COORD_SCALE_Z: float = float(NET_HEIGHT_POST)
-COURT_COORD_SCALE_XYZ: tuple[float, float, float] = (
-    COURT_COORD_SCALE_X,
-    COURT_COORD_SCALE_Y,
-    COURT_COORD_SCALE_Z,
+# These names are compatibility aliases for the immutable legacy ``v1``
+# contract. New runtime code must resolve and inject a contract from
+# ``court_normalization`` instead of treating these constants as an active
+# process-wide selection.
+from src.utils.schema.court_normalization import (  # noqa: E402
+    resolve_court_coordinate_normalization as _resolve_court_coordinate_normalization,
 )
+
+_LEGACY_NORMALIZATION = _resolve_court_coordinate_normalization("v1")
+COURT_COORD_SCALE_X: float = _LEGACY_NORMALIZATION.scale_xyz[0]
+COURT_COORD_SCALE_Y: float = _LEGACY_NORMALIZATION.scale_xyz[1]
+COURT_COORD_SCALE_Z: float = _LEGACY_NORMALIZATION.scale_xyz[2]
+COURT_COORD_SCALE_XYZ: tuple[float, float, float] = _LEGACY_NORMALIZATION.scale_xyz
 
 
 def net_height_at_x(x: float) -> float:

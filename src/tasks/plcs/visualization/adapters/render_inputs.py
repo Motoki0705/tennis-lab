@@ -2,10 +2,14 @@
 
 Usage::
 
-    gt_scene, pred_scene = batch_to_pose_render_scenes(batch, out, sample_idx=0)
+    gt_scene, pred_scene = batch_to_pose_render_scenes(
+        batch, out, sample_idx=0, normalization=normalization
+    )
     view = "3d" if (gt_scene.canonical_pose_3d is not None
                     and pred_scene.canonical_pose_3d is not None) else "2d_topdown"
-    anim = PLCSSceneRenderer().create_comparison_animation(gt_scene, pred_scene, view=view)
+    anim = PLCSSceneRenderer(
+        style=style, normalization=normalization
+    ).create_comparison_animation(gt_scene, pred_scene, view=view, fps=fps)
 """
 
 from __future__ import annotations
@@ -18,6 +22,7 @@ import torch
 from src.tasks.plcs.model_io import PLCSDecodedPrediction
 from src.tasks.plcs.visualization.contracts import PoseRenderScene
 from src.utils.geometry.court_pose import world_pose_to_canonical_pose
+from src.utils.schema.court_normalization import CourtCoordinateNormalization
 from src.utils.tensor_utils import to_numpy
 
 
@@ -44,6 +49,7 @@ def batch_to_pose_render_scenes(
     output: PLCSDecodedPrediction,
     *,
     sample_idx: int = 0,
+    normalization: CourtCoordinateNormalization,
 ) -> tuple[PoseRenderScene, PoseRenderScene]:
     """Build a (gt_scene, pred_scene) pair from a training batch and model output.
 
@@ -92,7 +98,12 @@ def batch_to_pose_render_scenes(
         rot_t = torch.from_numpy(gt_rot).float()  # (T, 2)
         kp3d_t = torch.from_numpy(kp3d).float()  # (T, 17, 3)
         gt_canonical = _to_numpy(
-            world_pose_to_canonical_pose(kp3d_t, pos_t, rot_t)
+            world_pose_to_canonical_pose(
+                kp3d_t,
+                pos_t,
+                rot_t,
+                normalization=normalization,
+            )
         )  # (T, 17, 3)
 
     meta: dict[str, Any] = {"num_frames": T}

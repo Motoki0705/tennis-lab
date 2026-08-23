@@ -52,7 +52,7 @@ class BLCSTrackQueryTrainingBatch:
 
     call: ModelCall
     target_position: Tensor
-    target_velocity: Tensor
+    target_velocity: Tensor  # Normalized velocity vectors per second.
     target_presence: Tensor
     target_instance_id: Tensor
     target_slot_mask: Tensor

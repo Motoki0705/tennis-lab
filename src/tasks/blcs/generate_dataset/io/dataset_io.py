@@ -19,11 +19,18 @@ from typing import Any
 
 import numpy as np
 
+from src.tasks.base.data.court_coordinate_contract import (
+    validate_dataset_court_coordinate_contract,
+)
 from src.tasks.base.data.dataset_writer import BaseDatasetWriter
 from src.tasks.blcs.data.types import (
     BLCSSceneMeta,
 )
 from src.tasks.blcs.generate_dataset.scene_generator import BLCSSceneData
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +40,34 @@ class BLCSDatasetWriter(BaseDatasetWriter):
 
     scenes_dir: Path
 
-    def __init__(self, output_dir: str | Path) -> None:
-        super().__init__(output_dir)
+    def __init__(
+        self,
+        output_dir: str | Path,
+        *,
+        court_coordinate_normalization: CourtCoordinateNormalization | str = "v1",
+    ) -> None:
+        output_path = Path(output_dir)
+        if output_path.exists() and any(output_path.iterdir()):
+            raise FileExistsError(
+                "Refusing to write a BLCS dataset into a non-empty directory: "
+                f"{output_path}."
+            )
+        normalization = (
+            court_coordinate_normalization
+            if isinstance(
+                court_coordinate_normalization, CourtCoordinateNormalization
+            )
+            else resolve_court_coordinate_normalization(
+                court_coordinate_normalization
+            )
+        )
+        super().__init__(
+            output_dir,
+            court_coordinate_normalization=normalization,
+        )
+        # Publish the root contract immediately so even incrementally written
+        # datasets never expose versioned scenes under a metadata-free root.
+        self.save_meta_json(config={})
 
     def _build_scene_meta(self, scene: BLCSSceneData) -> BLCSSceneMeta:
         scene_meta_dict: dict[str, Any] = {
@@ -129,11 +162,19 @@ class BLCSDatasetWriter(BaseDatasetWriter):
         return scene_path
 
 
-def load_scene(filepath: str | Path) -> dict:
+def load_scene(
+    filepath: str | Path,
+    *,
+    court_coordinate_normalization: CourtCoordinateNormalization | str = "v1",
+) -> dict:
     """Load a scene from a npy + json scene directory.
 
     Args:
         filepath: Path to the scene directory.
+        court_coordinate_normalization: Runtime contract used to validate the
+            dataset root and selected scene before loading arrays. Direct
+            legacy calls default to ``v1``; v2 pipelines must pass their
+            selected contract explicitly.
 
     Returns:
         dict: Scene data with:
@@ -143,6 +184,25 @@ def load_scene(filepath: str | Path) -> dict:
             - cameras: list of camera data dicts
     """
     scene_dir = Path(filepath)
+    normalization = (
+        court_coordinate_normalization
+        if isinstance(
+            court_coordinate_normalization, CourtCoordinateNormalization
+        )
+        else resolve_court_coordinate_normalization(
+            court_coordinate_normalization
+        )
+    )
+    if scene_dir.parent.name != "scenes":
+        raise ValueError(
+            "BLCS scene contract validation requires "
+            "<dataset>/scenes/<scene>."
+        )
+    validate_dataset_court_coordinate_contract(
+        scene_dir.parent.parent,
+        normalization,
+        scene_paths=[scene_dir],
+    )
 
     with open(scene_dir / "meta.json") as f:
         scene_meta = json.load(f)

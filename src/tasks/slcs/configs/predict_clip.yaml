@@ -1,4 +1,6 @@
 defaults:
+  # Shared compatibility default; opt in with court_coordinate_normalization=v2.
+  - court_coordinate_normalization: v1
   - paths: default
   - data: default
   - _self_
@@ -14,7 +16,7 @@ predict:
   frame_step: 1
   render_3d: true
   render_overlay: true
-  output_dir: slcs/predict_clip/${now:%Y-%m-%d_%H-%M-%S}
+  output_dir: slcs/predict_clip/norm-${court_coordinate_normalization.version}/${now:%Y-%m-%d_%H-%M-%S}
 
 visualization:
   figure_width: 12.0
@@ -25,6 +27,8 @@ visualization:
   court_visibility_threshold: 0.5
 
 hydra:
+  searchpath:
+    - pkg://src.tasks.base.configs
   run:
     dir: ${tennis_lab_path:output,${paths.output_root},${predict.output_dir}}
   output_subdir: null

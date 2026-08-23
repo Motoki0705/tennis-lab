@@ -13,8 +13,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from src.tasks.base.data.court_coordinate_contract import (
+    inject_court_coordinate_normalization_metadata,
+)
+
 if TYPE_CHECKING:
     import numpy as np
+
+    from src.utils.schema.court_normalization import CourtCoordinateNormalization
 
 logger = logging.getLogger(__name__)
 
@@ -32,14 +38,24 @@ class BaseDatasetWriter(ABC):
     Subclasses must implement save_scene() for module-specific data serialization.
     """
 
-    def __init__(self, output_dir: str | Path) -> None:
+    def __init__(
+        self,
+        output_dir: str | Path,
+        *,
+        court_coordinate_normalization: CourtCoordinateNormalization | None = None,
+    ) -> None:
         """Initialize dataset writer.
 
         Args:
             output_dir: Output directory for dataset.
+            court_coordinate_normalization: Explicit normalization contract to
+                persist at the dataset root and in every scene. ``None`` is
+                retained only for legacy writers that do not store normalized
+                court coordinates.
 
         """
         self.output_dir = Path(output_dir)
+        self.court_coordinate_normalization = court_coordinate_normalization
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Create subdirectories
@@ -83,9 +99,17 @@ class BaseDatasetWriter(ABC):
         """
         import numpy as np
 
+        scene_meta_dict: dict[str, object] = dict(scene_meta.to_dict())
+        if self.court_coordinate_normalization is not None:
+            scene_meta_dict = inject_court_coordinate_normalization_metadata(
+                scene_meta_dict,
+                self.court_coordinate_normalization,
+                location=str(scene_path / "meta.json"),
+            )
+
         # Write meta.json
         with open(scene_path / "meta.json", "w") as f:
-            json.dump(scene_meta.to_dict(), f, indent=2)
+            json.dump(scene_meta_dict, f, indent=2)
 
         # Write scalars.json
         with open(scene_path / "scalars.json", "w") as f:
@@ -203,7 +227,7 @@ class BaseDatasetWriter(ABC):
             total_cameras / len(self.scene_records) if self.scene_records else 0
         )
 
-        meta = {
+        meta: dict[str, object] = {
             "generated_at": datetime.now().isoformat(),
             "config": config or {},
             "stats": {
@@ -213,6 +237,12 @@ class BaseDatasetWriter(ABC):
             },
             "scenes": self.scene_records,
         }
+        if self.court_coordinate_normalization is not None:
+            meta = inject_court_coordinate_normalization_metadata(
+                meta,
+                self.court_coordinate_normalization,
+                location=str(self.output_dir / "meta.json"),
+            )
 
         with open(self.output_dir / "meta.json", "w") as f:
             json.dump(meta, f, indent=2)

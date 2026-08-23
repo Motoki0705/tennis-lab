@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, cast
 import numpy as np
 import torch
 
+from src.tasks.base.configuration import CourtCoordinateNormalizationConfig
 from src.tasks.plcs.generate_dataset.sampling.motion_sampler import (
     MotionSampler,
     MotionSequence,
@@ -26,9 +27,6 @@ from src.utils.projection.camera_projector import (
     CameraProjector,
 )
 from src.utils.schema.court import (
-    COURT_COORD_SCALE_X,
-    COURT_COORD_SCALE_Y,
-    COURT_COORD_SCALE_Z,
     HALF_LENGTH,
     HALF_SINGLES_WIDTH,
     STANDARD_COURT_CONFIG,
@@ -110,6 +108,9 @@ class SceneGenerator:
         """
         self.config = config
         self.device = torch.device(device)
+        self.court_coordinate_normalization = (
+            CourtCoordinateNormalizationConfig.from_config(config).contract
+        )
 
         # Initialize motion sampler if not provided
         if motion_sampler is None:
@@ -258,10 +259,10 @@ class SceneGenerator:
         court_trans[:, 1] += init_y
 
         # Normalize positions
-        positions: np.ndarray = np.zeros((T, 3), dtype=np.float32)
-        positions[:, 0] = court_trans[:, 0] / COURT_COORD_SCALE_X
-        positions[:, 1] = court_trans[:, 1] / COURT_COORD_SCALE_Y
-        positions[:, 2] = court_trans[:, 2] / COURT_COORD_SCALE_Z
+        positions = np.asarray(
+            self.court_coordinate_normalization.normalize_position(court_trans),
+            dtype=np.float32,
+        )
 
         # Compute rotations (yaw): motion-relative yaw with randomized initial yaw.
         relative_yaw = self._wrap_angle(motion_yaw - motion_yaw[0])  # t=0 -> 0
@@ -425,10 +426,10 @@ class SceneGenerator:
 
         # Get world-space joints for projection
         T = motion.num_frames
-        pelvis_world: np.ndarray = np.zeros((T, 3), dtype=np.float32)
-        pelvis_world[:, 0] = positions[:, 0] * COURT_COORD_SCALE_X
-        pelvis_world[:, 1] = positions[:, 1] * COURT_COORD_SCALE_Y
-        pelvis_world[:, 2] = positions[:, 2] * COURT_COORD_SCALE_Z
+        pelvis_world = np.asarray(
+            self.court_coordinate_normalization.denormalize_position(positions),
+            dtype=np.float32,
+        )
 
         cos_yaw: np.ndarray = rotations[:, 0].astype(np.float32)
         sin_yaw: np.ndarray = rotations[:, 1].astype(np.float32)

@@ -5,6 +5,7 @@ Usage:
     python -m src.tasks.slcs.scripts.train
     python -m src.tasks.slcs.scripts.train run.gpus=0 training.trainer.max_epochs=1
     python -m src.tasks.slcs.scripts.train model=small data.batch_size=2
+    python -m src.tasks.slcs.scripts.train court_coordinate_normalization=v2
     python -m src.tasks.slcs.scripts.train run.dry_run=true
 
 Notes:
@@ -14,6 +15,8 @@ Notes:
       (`scripts/precompute_dino_tokens.py`) and a split file
       (`scripts/make_splits.py`).
     - The script uses Hydra for configuration loading.
+    - The normalization selection is persisted in checkpoints; resume and
+      init_weights reject metadata/config mismatches before loading state.
 """
 
 from __future__ import annotations

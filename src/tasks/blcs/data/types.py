@@ -23,7 +23,7 @@ class BLCSSample(TypedDict):
     court_kp: torch.Tensor  # (20, 2) court 2D keypoints in normalized UV
     court_vis: torch.Tensor  # (20,) court keypoint visibility flags
     position_3d: torch.Tensor  # (T, 3) ground truth 3D trajectory (normalized)
-    velocity_3d: torch.Tensor  # (T, 3) 3D velocity vectors
+    velocity_3d: torch.Tensor  # (T, 3) normalized 3D velocity vectors per second
     seq_len: torch.Tensor  # scalar, actual sequence length
 
 
@@ -41,7 +41,7 @@ class BLCSBatch(TypedDict):
     court_kp: torch.Tensor  # (B, 20, 2) court keypoints
     court_vis: torch.Tensor  # (B, 20) court keypoint visibility
     position_3d: torch.Tensor  # (B, T_max, 3) padded ground truth trajectories
-    velocity_3d: torch.Tensor  # (B, T_max, 3) padded velocities
+    velocity_3d: torch.Tensor  # (B, T_max, 3) padded normalized velocities per second
     seq_len: torch.Tensor  # (B,) actual sequence lengths
 
 
@@ -64,7 +64,7 @@ class BLCSMultiViewSample(TypedDict):
     court_kp: torch.Tensor  # (N_cam, T, 20, 2) court keypoints expanded to T
     court_vis: torch.Tensor  # (N_cam, T, 20) court visibility expanded to T
     position_3d: torch.Tensor  # (T, 3) ground truth 3D trajectory (shared)
-    velocity_3d: torch.Tensor  # (T, 3) 3D velocity vectors (shared)
+    velocity_3d: torch.Tensor  # (T, 3) normalized velocity vectors/s (shared)
     seq_len: torch.Tensor  # scalar, actual sequence length
     # Camera parameters (per-camera, for reprojection loss)
     camera_R: torch.Tensor  # (N_cam, 3, 3) rotation matrices (world → camera)
@@ -87,7 +87,7 @@ class BLCSMultiViewBatch(TypedDict):
     court_kp: torch.Tensor  # (B, N_max, T_max, 20, 2)
     court_vis: torch.Tensor  # (B, N_max, T_max, 20)
     position_3d: torch.Tensor  # (B, T_max, 3)
-    velocity_3d: torch.Tensor  # (B, T_max, 3)
+    velocity_3d: torch.Tensor  # (B, T_max, 3) normalized velocity vectors/s
     seq_len: torch.Tensor  # (B,)
     # Camera parameters (padded to N_max cameras)
     camera_R: torch.Tensor  # (B, N_max, 3, 3)

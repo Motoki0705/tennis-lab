@@ -1,0 +1,12 @@
+defaults:
+  - _augmentation
+  - _singleview
+  - _self_
+
+# Separately materialized v2 dataset. Root/scene metadata is mandatory.
+backend: default
+scene_dir: blcs_broadcast_norm_v2
+num_court_kp: 20
+num_workers: 4
+pin_memory: true
+seq_len_range: [64, 256]

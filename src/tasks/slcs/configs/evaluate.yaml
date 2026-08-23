@@ -1,4 +1,6 @@
 defaults:
+  # Shared compatibility default; opt in with court_coordinate_normalization=v2.
+  - court_coordinate_normalization: v1
   - paths: default
   - data: default
   - _self_
@@ -10,9 +12,11 @@ evaluate:
   batch_size: 4
   checkpoint_strict: true
   checkpoint_weights_only: false
-  output_dir: slcs/evaluate/${now:%Y-%m-%d_%H-%M-%S}
+  output_dir: slcs/evaluate/norm-${court_coordinate_normalization.version}/${now:%Y-%m-%d_%H-%M-%S}
 
 hydra:
+  searchpath:
+    - pkg://src.tasks.base.configs
   run:
     dir: ${tennis_lab_path:output,${paths.output_root},${evaluate.output_dir}}
   output_subdir: null

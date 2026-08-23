@@ -13,7 +13,7 @@ an ambiguous ordering (equal means) is an error.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -40,7 +40,10 @@ from src.tennis_scene.generate_dataset.manifest import (
     ClipManifest,
     DatasetManifestError,
 )
-from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+from src.utils.schema.court_normalization import (
+    CourtCoordinateNormalization,
+    resolve_court_coordinate_normalization,
+)
 from src.utils.schema.player import NUM_HUMAN_KP
 
 # Normalized-UV sanity range for visible observations. Slightly outside [0, 1]
@@ -63,6 +66,9 @@ class SLCSDataConfig:
     on_incomplete: Literal["error", "skip"]
     dino_spec: DinoTokenSpec
     quality: QualityConfig
+    court_coordinate_normalization: CourtCoordinateNormalization = field(
+        default_factory=lambda: resolve_court_coordinate_normalization("v1")
+    )
 
     def __post_init__(self) -> None:
         if self.window_size <= 0:
@@ -160,7 +166,11 @@ def load_clip_arrays(manifest: ClipManifest, *, config: SLCSDataConfig) -> ClipA
     exact same normalization, ordering and quality masks.
     """
     cfg = config
-    scene = load_slcs_annotation(manifest, verify_manifest_digest=True)
+    scene = load_slcs_annotation(
+        manifest,
+        verify_manifest_digest=True,
+        court_coordinate_normalization=cfg.court_coordinate_normalization,
+    )
     clip_id = manifest.clip_id
 
     human_kp_2d = np.asarray(scene.human_kp_2d, dtype=np.float32)
@@ -205,12 +215,15 @@ def load_clip_arrays(manifest: ClipManifest, *, config: SLCSDataConfig) -> ClipA
         player_position, masks["player_label_valid"], clip_id=clip_id
     )
 
-    scale = np.asarray(COURT_COORD_SCALE_XYZ, dtype=np.float32)
-    player_position_norm = (player_position / scale)[order]
+    player_position_norm = cfg.court_coordinate_normalization.normalize_position(
+        player_position
+    )[order]
     player_rotation = np.stack(
         [np.cos(player_yaw), np.sin(player_yaw)], axis=-1
     ).astype(np.float32)[order]
-    ball_position_norm = (ball_3d / scale).astype(np.float32)
+    ball_position_norm = cfg.court_coordinate_normalization.normalize_position(
+        ball_3d
+    ).astype(np.float32)
 
     return ClipArrays(
         manifest=manifest,
