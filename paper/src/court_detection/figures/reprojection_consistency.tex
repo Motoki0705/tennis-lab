@@ -1,0 +1,130 @@
+\begin{tikzpicture}[
+  font=\sffamily\footnotesize,
+  box/.style={draw, rounded corners=2pt, align=center, minimum height=9mm,
+    inner xsep=4pt, inner ysep=3pt, line width=0.55pt},
+  densebox/.style={box, draw=gsblue, fill=gsblue!9},
+  posebox/.style={box, draw=poseorange, fill=poseorange!9},
+  lossbox/.style={box, draw=lossred, fill=lossred!8},
+  auxbox/.style={box, draw=black!48, fill=softgray},
+  arrow/.style={-{Latex[length=2.1mm,width=1.35mm]}, semithick,
+    draw=black!72},
+  densearrow/.style={-{Latex[length=2.1mm,width=1.35mm]}, semithick,
+    draw=gsblue!88!black},
+  posearrow/.style={-{Latex[length=2.1mm,width=1.35mm]}, semithick,
+    draw=poseorange!90!black},
+  maskarrow/.style={-{Latex[length=2.0mm,width=1.25mm]}, semithick,
+    dashed, draw=black!52},
+  lossarrow/.style={-{Latex[length=2.1mm,width=1.35mm]}, semithick,
+    draw=lossred},
+  grad/.style={-{Latex[length=2.2mm,width=1.4mm]}, semithick,
+    dashed, draw=lossred},
+  smalllabel/.style={font=\sffamily\scriptsize, align=center, text=black!72}
+]
+  \node[font=\sffamily\small\bfseries, text=gsblue!85!black, anchor=west]
+    at (0,5.88) {Dense KP branch};
+  \node[font=\sffamily\small\bfseries, text=poseorange!90!black, anchor=west]
+    at (0,2.78) {Camera branch};
+
+  \node[densebox, text width=15mm, minimum height=11mm] (logits)
+    at (0.85,4.55)
+    {KP logits $\mathbf z$\\[-0.15em]\scriptsize 14 maps\\[-0.2em]
+     \scriptsize padded $H_{\max}\!\times\!W_{\max}$};
+  \node[densebox, text width=3.0cm, minimum height=13mm] (softmax)
+    at (3.40,4.55)
+    {valid-region masked spatial softmax\\[-0.15em]
+     \scriptsize $p_{bkyx}\propto\exp(z_{bkyx}/\tau)$\\[-0.15em]
+     \scriptsize expectation $\sum_{y,x}p_{bkyx}[x,y]$};
+  \node[densebox, minimum width=17mm, minimum height=10mm] (densecoord)
+    at (6.25,4.55)
+    {$\hat{\mathbf u}^{\mathrm{dense}}_{bk}$\\[-0.15em]
+     \scriptsize continuous pixels};
+
+  \node[auxbox, minimum width=25mm, minimum height=7mm] (validregion)
+    at (3.40,6.22)
+    {\scriptsize $V_b$: true image region\\[-0.2em]
+     \scriptsize batch padding excluded};
+
+  \draw[densearrow] (logits.east) -- (softmax.west);
+  \draw[densearrow] (softmax.east) -- (densecoord.west);
+  \draw[maskarrow] (validregion.south) -- (softmax.north);
+
+  \node[posebox, text width=15mm, minimum height=11mm] (pose10d)
+    at (0.85,1.57)
+    {raw pose10D\\[-0.15em]\scriptsize query-head output};
+  \node[posebox, text width=2.72cm, minimum height=14mm] (decode)
+    at (3.30,1.57)
+    {strict differentiable decode\\[-0.15em]
+     \scriptsize centre $\hat{\mathbf C}$; row--6D $\xrightarrow{\rm GS}$
+       $\hat{\mathbf R}\in\SOthree$\\[-0.15em]
+     \scriptsize $\hat f=\exp(\widehat{\log f})>0$};
+  \node[posebox, text width=3.15cm, minimum height=16mm] (project)
+    at (6.57,1.57)
+    {differentiable projection\\[-0.15em]
+     \scriptsize $\mathbf X^{\rm cam}_{bk}=\hat{\mathbf R}^{\!\top}
+       (\mathbf X_k-\hat{\mathbf C})$\\[-0.15em]
+     \scriptsize $(\hat{\mathbf u}^{\rm pose}_{bk},\hat z_{bk})
+       =\pi_{\hat f,\,\mathbf c^{\rm GT}}
+       (\mathbf X^{\rm cam}_{bk})$};
+  \node[auxbox, minimum width=30mm, minimum height=8mm] (known)
+    at (6.57,0.10)
+    {\scriptsize known canonical $\mathbf X_{1:14}$ in semantic order\\[-0.2em]
+     \scriptsize augmentation-aware $\mathbf c^{\rm GT}=(c_x,c_y)$};
+
+  \draw[posearrow] (pose10d.east) -- (decode.west);
+  \draw[posearrow] (decode.east) -- (project.west);
+  \draw[maskarrow] (known.north) -- (project.south);
+
+  \node[lossbox, text width=4.55cm, minimum height=15mm] (coordloss)
+    at (11.42,4.55)
+    {\bfseries normalized coordinate consistency\\[-0.05em]
+     \scriptsize $d_b=\sqrt{H_b^2+W_b^2},\quad
+       r_{bk}=\lVert\hat{\mathbf u}^{\rm dense}_{bk}
+       -\hat{\mathbf u}^{\rm pose}_{bk}\rVert_2/d_b$\\[-0.05em]
+     \scriptsize $\displaystyle
+       \mathcal L_{\rm coord}=
+       \frac{\sum_{b,k}m^{\rm GT}_{bk}\,
+       \operatorname{Huber}_{\delta}(r_{bk})}
+       {\sum_{b,k}m^{\rm GT}_{bk}}$};
+  \node[lossbox, text width=4.55cm, minimum height=14mm] (depthloss)
+    at (11.42,1.57)
+    {\bfseries cheirality term\\[-0.05em]
+     \scriptsize $\displaystyle
+       \mathcal L_{\rm depth}=
+       \operatorname*{mean}_{m^{\rm GT}_{bk}=1}
+       \operatorname{softplus}\!\left(
+       \frac{z_{\min}-\hat z_{bk}}{s_z}\right)$\\[-0.05em]
+     \scriptsize invalid predicted depth is penalized, never masked};
+  \node[auxbox, text width=4.35cm, minimum height=8mm] (visibility)
+    at (11.42,6.22)
+    {\scriptsize fixed $m^{\rm GT}_{bk}$: generated supervision / in-frame authority\\[-0.2em]
+     \scriptsize independent of predicted score, coordinate, and depth};
+
+  \draw[densearrow] (densecoord.east) -- (coordloss.west);
+  \draw[posearrow] (project.east) -- (depthloss.west);
+  \draw[posearrow] (project.east) -- (9.05,1.57) |-
+    ($(coordloss.south west)+(0.35,0)$);
+  \draw[maskarrow] (visibility.south) -- (coordloss.north);
+  \draw[maskarrow] (visibility.east) -- (13.92,6.22) |-
+    (depthloss.east);
+
+  \node[lossbox, text width=2.30cm, minimum height=16mm] (total)
+    at (15.56,3.16)
+    {\bfseries auxiliary objective\\[-0.05em]
+     \scriptsize $\mathcal L_{\rm kp\leftrightarrow pose}$\\[-0.1em]
+     \scriptsize $=\mathcal L_{\rm coord}
+       +\lambda_z\mathcal L_{\rm depth}$\\[0.15em]
+     \scriptsize standard: both-grad};
+  \draw[lossarrow] (coordloss.east) -- (total.north west);
+  \draw[lossarrow] (depthloss.east) -- (total.south west);
+  \node[smalllabel, text width=2.6cm, text=lossred!90!black] at (15.56,2.02)
+    {direct KP and pose losses remain};
+
+  \draw[grad, rounded corners=3pt] (total.north) -- (15.56,7.02) --
+    node[smalllabel, above, pos=0.58, text=lossred!90!black]
+      {$\nabla_{\mathbf z}\mathcal L$: gradient to dense branch}
+    (0.85,7.02) -- (logits.north);
+  \draw[grad, rounded corners=3pt] (total.south) -- (15.56,-0.58) --
+    node[smalllabel, below, pos=0.58, text=lossred!90!black]
+      {$\nabla_{\rm pose10D}\mathcal L$: gradient to camera branch}
+    (0.85,-0.58) -- (pose10d.south);
+\end{tikzpicture}

@@ -1,0 +1,32 @@
+\begin{table}[t]
+  \centering
+  \caption{Selected production alignment gates.  Values specify executable
+  acceptance policy, not achieved accuracy.  The typed configuration also owns
+  optimizer/resource bounds and all preflight schema checks.}
+  \label{tab:alignment_gates}
+  \small
+  \begin{tabularx}{\linewidth}{@{}p{0.33\linewidth}X@{}}
+    \toprule
+    Gate & Threshold \\
+    \midrule
+    Evidence ownership & 48-camera prefix; preflight $\geq8$ fit and $\geq4$
+      holdout cameras \\
+    Ground plane & $\geq1000$ support points; normal/up cosine $\geq0.97$;
+      positive-camera fraction $=1$ \\
+    Projected evidence & $\geq20$ points per usable camera \\
+    Court hypotheses & exactly 2; centre separation $\geq10.97$ m; footprint
+      overlap $\leq10^{-9}$ \\
+    Common scale & native relative disagreement $\leq0.07290401$ \\
+    Correspondence construction & distance $\leq0.25$ m; 3--200 matches per
+      contributing camera \\
+    Fit acceptance & $\geq6$ cameras, $\geq100$ correspondences, $\geq90\%$
+      inliers within 0.30 m, RMS/q95 $\leq0.30$ m \\
+    Holdout acceptance & $\geq3$ cameras, $\geq80$ correspondences, $\geq90\%$
+      inliers within 0.30 m, RMS/q95 $\leq0.30$ m \\
+    Whole template & $\geq60\%$ inliers within 0.30 m; q95 $\leq1.50$ m;
+      every semantic segment $\geq50\%$ \\
+    Transform/projection checks & inverse absolute tolerance $10^{-6}$;
+      projection absolute tolerance $10^{-5}$ px \\
+    \bottomrule
+  \end{tabularx}
+\end{table}

@@ -1,0 +1,23 @@
+\begin{table}[t]
+  \centering
+  \caption{Registered historical court-task evidence.  These runs predate and
+  do not evaluate the combined global-query/reprojection method.}
+  \label{tab:registered_evidence}
+  \small
+  \begin{tabularx}{\linewidth}{@{}p{0.27\linewidth}p{0.19\linewidth}X@{}}
+    \toprule
+    Registered run & Recorded value & Interpretation boundary \\
+    \midrule
+    KP14, 512-scale checkpoint & val. best 2.23 px; re-eval. 1.708886 px &
+      Re-evaluation uses the validation source, not an independent test. \\
+    Frozen \DINO{} segmentation & val. mIoU $\approx0.517$ &
+      No tennis-domain self-supervised adaptation. \\
+    Frozen adapted \DINO{} segmentation & val. mIoU $\approx0.800$ &
+      Matched downstream setting; supports backbone adaptation only. \\
+    B00 global subset alignment & 9.08 m / $89.94^\circ$ max drift &
+      Negative run; rejected before dataset publication. \\
+    B00 frozen holdout alignment & q95 1.240 m &
+      Machine-rejected; a later user override is separate and remains marked. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}

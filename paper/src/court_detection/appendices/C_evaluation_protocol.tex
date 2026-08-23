@@ -1,0 +1,41 @@
+\section{Full Evaluation and Reporting Protocol}
+\label{app:evaluation}
+
+\subsection{Required immutable run identity}
+
+Every result row must resolve to a run record containing repository commit,
+complete composed configuration, source and split manifest digests, seed,
+checkpoint, training log, final metrics, and prediction artifact.  A group
+record binds the three or more seed runs used for a reported mean and standard
+deviation.  Failed/non-finite runs remain in the group; they may not be removed
+after inspecting results.
+
+\subsection{Joint-objective result template}
+
+\input{tables/result_template}
+
+In addition to this compact main table, the run bundle reports mean/median and
+per-channel keypoint distance, translation axes, rotation, focal relative and
+log error, pose-only reprojection, line Dice, segmentation mIoU, dense--pose
+consistency, invalid-depth rate, eligible-point counts, parameter count, step
+time, memory, and non-finite events.  Synthetic and real-image metrics remain
+separate.
+
+\subsection{Alignment and dataset manifest report}
+
+For every reconstructed scene, a dataset paper table must be generated from the
+published manifest rather than copied from configuration defaults.  Required
+fields are accepted/rejected render counts; trajectory groups by split; camera
+height, radius, azimuth, field-of-view, and adjacent-step distributions;
+target-court counts; coverage/supervision-eligible-point histograms; render failures; and
+the exact alignment artifact digest.  Rejected alignment attempts are reported
+as negative evidence and contribute zero dataset samples.
+
+\subsection{Failure cases}
+
+Qualitative results must include at least: weak or occluded line evidence,
+partial court views, neighbouring-court confusion, mid-plane near/far
+rejection, predicted negative depth, a low consistency/high GT-error example,
+3DGS extrapolation artifacts, and a real image outside the synthetic camera
+envelope.  Cherry-picked successful overlays alone do not test the claimed
+global mechanism.

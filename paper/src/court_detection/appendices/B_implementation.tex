@@ -1,0 +1,89 @@
+\section{Implementation Details}
+\label{app:implementation}
+
+\subsection{Repository and reference-implementation map}
+
+The production scene DAG is rooted at
+\path{src/synthetic_data_generation/}.  Reconstruction validation lives under
+\path{src/synthetic_data_generation/reconstruction/}; metric fitting, evidence
+partitioning, evaluation, and transactional publication live under
+\path{src/synthetic_data_generation/alignment/}; and render-supervised court
+generation lives under
+\path{src/synthetic_data_generation/dataset/court/}.  Camera proposal,
+target-court selection, view construction, and labels are separated into
+\path{src/synthetic_data_generation/dataset/court/components/camera_sampling/}
+and
+\path{src/synthetic_data_generation/dataset/court/components/labels.py}.
+
+The detector is rooted at \path{src/tasks/court_detection/}.  In the pinned
+query-model revision, the global model is decomposed under
+\path{src/tasks/court_detection/models/query_encoder/} into
+\path{backbone.py}, \path{task_encoder.py}, \path{rope.py},
+\path{decoders.py}, \path{heads.py}, and \path{model.py}.  Pose
+construction/decoding is task-local in
+\path{src/tasks/court_detection/geometry/pose.py}; typed source-to-model adapters
+own physical ordering and augmented intrinsics.  The completed-method placement
+contract assigns the task-neutral masked expectation to
+\path{src/utils/data/heatmaps.py}, while predicted-court projection,
+supervision eligibility, cheirality, and loss aggregation remain task-local.
+This manuscript does not claim that the latter \#790 paths are present in the
+pinned \#779 revision.
+
+\subsection{Fail-before-side-effect configuration}
+
+The query loss has an explicit consistency group:
+\begin{verbatim}
+consistency:
+  enabled: true
+  weight: <positive float>
+  temperature: <positive float>
+  huber_delta: <positive float>
+  min_depth_m: <positive float>
+  depth_scale_m: <positive float>
+  cheirality_weight: <non-negative float>
+  warmup_fraction: <float in [0,1)>
+  gradient_flow: both | stopgrad_pose | stopgrad_dense
+\end{verbatim}
+When enabled, pose supervision and the singleton \KP head are both mandatory.
+The source must provide target-court pose authority, square post-augmentation
+intrinsics, one physical point per channel, and a valid image region.  Unsupported
+augmentation, all-court/multi-peak keypoints, non-positive numeric fields,
+unknown gradient modes, or dense/pose physical-order disagreement raise during
+typed composition or adapter construction---before data workers or an
+accelerator are initialized.  When disabled, auxiliary-only weights and warmup
+must be zero instead of being silently ignored.
+
+\subsection{Loss execution order}
+
+For each batch the completed method performs the following deterministic steps:
+\begin{enumerate}
+  \item validate raw dense outputs, raw pose10D, target contracts, model image
+    sizes, and exact semantic-to-physical equality;
+  \item build a Boolean valid-content mask from each unpadded model image size;
+  \item compute \cref{eq:masked_expectation} in the logits' device and dtype;
+  \item decode row-6D rotation and exponential focal, rejecting non-finite or
+    degenerate values;
+  \item project canonical semantic \KP with the predicted pose, predicted focal,
+    and augmented target principal point;
+  \item reduce normalized Huber residuals with only fixed GT supervision
+    eligibility and add the eligible-point cheirality term;
+  \item compute every direct dense and pose loss independently; and
+  \item apply the scheduled auxiliary weight, return typed components, and log
+    raw/weighted values, eligible count, and dense--pose pixel distance.
+\end{enumerate}
+Loss aggregation stays outside the Lightning module.  The module logs the typed
+result and checkpoint identity; it does not reimplement projection or masking.
+
+\subsection{Validation contract}
+
+The pinned \#779 query model is exercised with a fake \DINO{} backbone so shape, all decoder
+families, pose10D, finite loss, and backward do not require proprietary or large
+weights.  The completed consistency method requires pure tensor tests for
+padded-mask exclusion, known expectations, invalid masks, pose projection,
+physical ordering, zero/known offsets, cheirality, and gradients to raw
+rotation, translation, focal, and both model branches.  Its required integration
+smoke composes Hydra and performs one CPU forward/loss/backward with \KP, line,
+segmentation, pose, and auxiliary losses.  These \#790 tests are an evidence
+requirement, not a test result attributed to the pinned \#779 revision.
+Legacy hierarchical inference, hard keypoint decode, direct-only query config,
+and mask-free soft-argmax remain separate regression contracts.

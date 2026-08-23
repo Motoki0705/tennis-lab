@@ -1,0 +1,47 @@
+\section{Related Work}
+\label{sec:related_work}
+
+\paragraph{3D Gaussian scenes as supervision.}
+3D Gaussian Splatting (3DGS) represents a radiance field with anisotropic
+Gaussians and supports high-quality real-time novel-view rendering
+\citep{kerbl2023gaussian}.  Synthetic-to-real work commonly randomizes an
+entire simulator in the hope that real images lie within the induced
+distribution \citep{tobin2017domain}.  Our use is different: the splats are
+reconstructed from the target visual domain, whereas the controlled variables
+are camera pose, target court, and view path.  More importantly, the renderer
+is downstream of a metric court alignment, so the same transformation used to
+render an image also produces its geometric label.
+
+\paragraph{Sports-field registration.}
+Sports-field localization has been approached through detected field markings,
+structured matching, homography estimation, and camera calibration
+\citep{homayounfar2017sports}.  Recent protocols measure calibration quality
+more carefully and combine points and lines to improve observability
+\citep{magera2024procc,gutierrez2026pnlcalib}.  These methods motivate the use
+of physical line topology, but our training target is not an unconstrained
+homography.  We publish reciprocal metric scene--court transforms, preserve
+camera intrinsics, and generate new calibrated views.  A separate holdout
+partition tests the frozen alignment before it can become dataset authority.
+
+\paragraph{Foundation features and global queries.}
+Self-supervised vision Transformers provide patch features that transfer well
+to dense tasks; we use \DINO{} as the frozen or fine-tunable image backbone
+\citep{simeoni2025dinov3}.  Object-query architectures such as DETR show how a
+learned token can aggregate a variable spatial token set into a global
+prediction \citep{carion2020detr}.  Rotary position encoding injects spatial
+relations directly into attention \citep{su2021roformer}.  Our court query is
+intentionally positionless, while patch query/key vectors receive 2D rotary
+encoding.  The output is one camera--court hypothesis, not a set of exchangeable
+objects.
+
+\paragraph{Differentiable geometric consistency.}
+Differentiable sampling and projection have long connected image predictions
+to geometric parameters \citep{jaderberg2015spatial}.  Soft-argmax and
+integral-coordinate formulations convert heatmaps to continuous coordinates
+without severing gradients \citep{luvizon2019human}.  Continuous 6D rotation
+representations avoid discontinuities that make direct rotation regression
+difficult \citep{zhou2019continuity}.  We combine these ingredients under a
+strict semantic contract: every heatmap channel corresponds to exactly one
+physical court point, padded pixels receive no probability mass, the active
+supervision mask comes only from generated ground truth, and negative predicted
+depth is penalized rather than silently dropped.

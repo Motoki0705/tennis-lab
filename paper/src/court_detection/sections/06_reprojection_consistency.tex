@@ -1,0 +1,189 @@
+\section{Differentiable Keypoint--Pose Consistency}
+\label{sec:consistency}
+
+Direct heatmap and pose losses supervise the same court through different
+interfaces.  We make that shared meaning executable by requiring the dense
+keypoints to agree with a differentiable projection of the pose prediction.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\linewidth}{!}{\input{figures/reprojection_consistency}}
+  \caption{\textbf{Cross-branch geometric objective.}  The dense branch uses a
+  valid-region spatial softmax and expectation, while the pose branch projects
+  physically ordered 3D court points with predicted centre, rotation, and focal
+  length.  Generated supervision eligibility fixes which residuals count.  A normalized
+  Huber term aligns image coordinates; cheirality penalizes points placed
+  behind the camera.  The default objective sends gradients to both branches.}
+  \label{fig:consistency}
+\end{figure}
+
+\subsection{Padding-aware continuous coordinates}
+
+Batch collation pads every sample to the maximum height and width in the batch.
+A spatial softmax over that canvas is incorrect: even a constant zero padding
+logit can absorb probability mass when valid logits are negative.  Let
+\(z_{bkyx}\) be the logit for batch item \(b\), physical keypoint channel \(k\),
+and pixel \((x,y)\), and let \(V_b\) be the Boolean region belonging to the
+sample's actual augmented image.  We compute
+\begin{align}
+  p_{bkyx}
+    &=\frac{\mathbb{1}[(y,x)\in V_b]\exp(z_{bkyx}/\tau)}
+      {\sum_{(y',x')\in V_b}\exp(z_{bky'x'}/\tau)}, \\
+  \widehat{\mathbf{u}}^{\mathrm{dense}}_{bk}
+    &=\sum_{(y,x)\in V_b}p_{bkyx}[x,y]^{\top},
+  \label{eq:masked_expectation}
+\end{align}
+where \(\tau>0\).  There is no sigmoid, top-\(k\), rounding, argmax, CPU
+transfer, or detachment in this path.  The mask must be Boolean, share the
+logit's device and spatial shape, and contain at least one valid pixel for every
+sample; invalid inputs raise before reduction.
+
+This expectation is restricted to the target-court singleton \KP contract.
+Applying one expectation to a multi-court, multi-peak channel would produce a
+coordinate between courts that has no physical meaning.
+
+\subsection{Projection from the predicted camera}
+
+Let \(\mathbf{X}_{bk}\) be the known canonical 3D coordinate in the exact
+physical order stored by the pose target.  The decoded pose in
+\cref{eq:pose10d,eq:rotation_decode} gives camera centre
+\(\widehat{\mathbf{C}}_b\), canonical-from-camera rotation
+\(\widehat{\mathbf{R}}_b\), and focal \(\widehat f_b\).  We transform and
+project without using ground-truth translation, rotation, or focal length:
+\begin{align}
+  \widehat{\mathbf{X}}^{\Cam}_{bk}
+    &=[\widehat X_{bk},\widehat Y_{bk},\widehat Z_{bk}]^{\top}
+      =\widehat{\mathbf{R}}_b^{\top}
+      (\mathbf{X}_{bk}-\widehat{\mathbf{C}}_b), \\
+  \widehat{\Kmat}_b
+    &=\begin{bmatrix}
+       \widehat f_b&0&c_{x,b}\\
+       0&\widehat f_b&c_{y,b}\\
+       0&0&1
+      \end{bmatrix}, \\
+  \overline Z_{bk}
+    &=\operatorname{sgn}_{+}(\widehat Z_{bk})
+      \max(|\widehat Z_{bk}|,z_{\min}), \\
+  \widehat{\mathbf{u}}^{\mathrm{pose}}_{bk}
+    &=\pi_{z_{\min}}(\widehat{\Kmat}_b,
+       \widehat{\mathbf{X}}^{\Cam}_{bk})
+      =\begin{bmatrix}
+        \widehat f_b\widehat X_{bk}/\overline Z_{bk}+c_{x,b}\\
+        \widehat f_b\widehat Y_{bk}/\overline Z_{bk}+c_{y,b}
+       \end{bmatrix},
+  \label{eq:predicted_projection}
+\end{align}
+Here \(\operatorname{sgn}_{+}(z)=1\) for \(z\geq0\) and \(-1\) otherwise;
+the configured \(z_{\min}>0\) is both the safe-depth magnitude and cheirality
+threshold.  The principal point \((c_{x,b},c_{y,b})\) comes from the
+augmentation-aware target intrinsics because the pose head does not predict it.
+It is geometry metadata, not leaked pose supervision.  The bounded coordinate
+projection remains finite at invalid depth, while the cheirality term below
+supplies its corrective gradient.
+
+Before projection, the adapter verifies exact equality between
+\texttt{semantic\_to\_physical} in the pose target and the singleton physical
+index in every dense channel.  It also verifies that both branches use the same
+augmented model-pixel frame.  No nearest-neighbour matching or implicit source-
+to-model rescaling is permitted.
+
+\subsection{Supervision-fixed robust loss}
+
+Let \(m^{\mathrm{GT}}_{bk}\) indicate that a target-court point is eligible for
+supervision according to generated in-front, in-frame, and renderer-support
+authority.  Crucially, this mask is independent of the predicted keypoint score
+and predicted depth.  With image diagonal
+\(d_b=\sqrt{H_b^2+W_b^2}\), the normalized residual and coordinate loss are
+\begin{align}
+  r_{bk}
+    &=\frac{\|\widehat{\mathbf{u}}^{\mathrm{dense}}_{bk}
+              -\widehat{\mathbf{u}}^{\mathrm{pose}}_{bk}\|_2}{d_b}, \\
+  \mathcal{L}_{\mathrm{coord}}
+    &=\frac{\sum_{b,k}m^{\mathrm{GT}}_{bk}
+      \operatorname{Huber}(r_{bk};\delta)}
+      {\sum_{b,k}m^{\mathrm{GT}}_{bk}}.
+  \label{eq:coordinate_loss}
+\end{align}
+We use the scalar Huber definition
+\(
+  \operatorname{Huber}(r;\delta)=\tfrac12r^2
+\)
+for \(r\leq\delta\), and
+\(
+  \delta(r-\tfrac12\delta)
+\)
+otherwise.  A sample with no eligible point contributes no coordinate residual,
+but a batch with zero eligible points is a configuration/data error rather than
+a silent zero loss.
+
+Sending an eligible point behind the camera must not turn off supervision.  We add
+\begin{equation}
+  \mathcal{L}_{\mathrm{cheir}}=
+  \frac{\sum_{b,k}m^{\mathrm{GT}}_{bk}
+    \operatorname{softplus}\!\left(
+      \frac{z_{\min}-\widehat Z_{bk}}{s_z}\right)}
+       {\sum_{b,k}m^{\mathrm{GT}}_{bk}},
+  \qquad
+  \mathcal{L}_{\mathrm{aux}}=
+     \mathcal{L}_{\mathrm{coord}}+w_z\mathcal{L}_{\mathrm{cheir}},
+  \label{eq:cheirality}
+\end{equation}
+with \(z_{\min},s_z>0\).  The full training objective is
+\begin{equation}
+  \mathcal{L}_{\mathrm{total}}=
+  \mathcal{L}_{\mathrm{dense}}+\mathcal{L}_{\mathrm{pose}}
+  +w_{\mathrm{aux}}(t)\mathcal{L}_{\mathrm{aux}}.
+  \label{eq:total_loss}
+\end{equation}
+After a configurable zero-weight warmup, \(w_{\mathrm{aux}}(t)\) increases
+linearly to its declared value.  This prevents two untrained branches from
+serving as each other's sole teacher while retaining direct supervision
+throughout.  The standard mode propagates through both branches.  Two explicit
+ablations stop the pose-side or dense-side gradient, respectively; they do not
+change the forward residual.
+
+\subsection{Constraining local-intersection shortcuts}
+\label{sec:shortcut}
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\linewidth}{!}{\input{figures/shortcut_mechanism}}
+  \caption{\textbf{Constraining the local-intersection shortcut.}  A small
+  neighbourhood around a white-line crossing is compatible with multiple
+  physical identities and poses.  Rendered pose diversity changes the global
+  arrangement while preserving such local evidence.  Direct pose supervision,
+  global query attention, physical channel identity, and one shared projected
+  \KP configuration penalize mutually inconsistent local outputs.  They do not
+  make a local internal representation impossible; real-domain shortcut
+  reduction remains an empirical question.}
+  \label{fig:shortcut}
+\end{figure}
+
+Consider a crop containing two approximately perpendicular white lines.  Its
+local appearance may be compatible with a service-line intersection, a
+baseline/sideline corner, the far court instead of the near court, or a
+different projective view.  A purely local classifier can exploit frequency
+biases in the training set to choose among these identities.
+
+\Method{} attacks this shortcut at three connected levels.
+First, 3DGS rendering changes azimuth, range, height, field of view, target
+court, partial coverage, and background context while retaining exact physical
+identity and 6DoF.  The same local motif can therefore occur inside different
+global configurations.  Second, the positionless court query can attend across
+the spatial patch set and is directly trained to regress global pose; 2D RoPE
+preserves where that evidence occurred.  Third,
+\cref{eq:coordinate_loss} penalizes every supervision-eligible dense channel
+that disagrees with the same projected rigid court.  Moving one eligible
+junction independently increases the residual, while moving pose and dense
+predictions together remains penalized by the direct losses in
+\cref{eq:direct_losses}.
+
+This mechanism does not ban local features---lines and junctions remain useful
+image evidence---and it cannot determine which internal features the dense
+branch uses.  It instead raises the loss whenever those outputs fail to support
+a globally consistent, directly supervised camera--court explanation.  The
+shortcut-focused diagnostic in \cref{sec:experiments} is therefore required to
+test whether reliance actually decreases.  Exact pose labels make this
+output-level constraint affordable: creating the same joint supervision by
+hand would require calibrating every training image, including deliberately
+off-centre and partially covered views.

@@ -1,0 +1,116 @@
+% Controlled camera synthesis from path families to leakage-free partitions.
+\begin{tikzpicture}[
+  font=\sffamily\scriptsize,
+  panel/.style={draw=black!28, rounded corners=2.5pt, fill=white,
+    minimum height=50mm, inner sep=0pt, line width=0.45pt},
+  title/.style={font=\sffamily\bfseries\footnotesize, text=black!84},
+  tinylabel/.style={font=\sffamily\fontsize{6.35}{7.15}\selectfont,
+    text=black!70, align=center},
+  arr/.style={-{Stealth[length=1.8mm,width=1.25mm]}, line width=0.65pt},
+  camera/.style={regular polygon, regular polygon sides=3, minimum size=3.4mm,
+    inner sep=0pt, draw=gsblue, fill=gsblue!17, line width=0.5pt},
+  sample/.style={circle, fill=gsblue, draw=white, line width=0.3pt,
+    minimum size=1.9mm, inner sep=0pt},
+  splitbox/.style={rounded corners=1.5pt, minimum width=31mm,
+    minimum height=6.6mm, align=left, inner xsep=3pt, line width=0.5pt},
+]
+  % Four compact panels correspond to generation decisions made once per group.
+  \node[panel, minimum width=43mm] (pa) at (2.15,0) {};
+  \node[panel, minimum width=40mm] (pb) at (6.43,0) {};
+  \node[panel, minimum width=42mm] (pc) at (10.65,0) {};
+  \node[panel, minimum width=39mm] (pd) at (14.82,0) {};
+  \node[title, anchor=north] at ($(pa.north)+(0,-2.2mm)$) {(a) Path family};
+  \node[title, anchor=north] at ($(pb.north)+(0,-2.2mm)$) {(b) 3-D arc length};
+  \node[title, anchor=north] at ($(pc.north)+(0,-2.2mm)$) {(c) Target + look-at};
+  \node[title, anchor=north] at ($(pd.north)+(0,-2.2mm)$) {(d) Group-disjoint split};
+
+  % (a) Horizontal footprints and vertical profiles are independently controlled.
+  \node[tinylabel, anchor=west] at (0.35,1.52) {ground footprint};
+  \draw[courtgreen, line width=0.75pt] (1.12,0.78) circle[radius=0.54];
+  \fill[courtgreen] (1.12,0.78) circle[radius=0.75pt];
+  \draw[gsblue, line width=0.75pt, rotate around={22:(3.08,0.78)}]
+    (3.08,0.78) ellipse[x radius=0.78,y radius=0.42];
+  \fill[gsblue] (3.08,0.78) circle[radius=0.75pt];
+  \node[tinylabel, text=courtgreen] at (1.12,0.04) {circle};
+  \node[tinylabel, text=gsblue] at (3.08,0.04) {ellipse};
+  \draw[black!22] (0.36,-1.36) -- (4.00,-1.36);
+  \node[tinylabel, anchor=west] at (0.72,-0.30) {camera height};
+  \draw[courtgreen, line width=0.75pt] (0.58,-0.88) -- (1.88,-0.88);
+  \draw[gsblue, line width=0.75pt]
+    plot[smooth] coordinates {(2.22,-0.88) (2.48,-0.57) (2.75,-0.46)
+      (3.03,-0.68) (3.30,-1.00) (3.58,-1.10) (3.88,-0.88)};
+  \draw[arr, draw=black!48] (0.46,-1.31) -- (0.46,-0.55)
+    node[above, tinylabel] {$z$};
+  \node[tinylabel, text=courtgreen] at (1.23,-1.16) {planar};
+  \node[tinylabel, text=gsblue] at (3.05,-1.39) {sinusoidal};
+  \node[tinylabel, text width=37mm, anchor=south] at (2.15,-2.30)
+    {$p(\theta)=[a\cos\theta,\,b\sin\theta,\,
+      h+A\sin(k\theta+\phi)]^\top$};
+
+  % (b) Samples are equally spaced along the full spatial curve, not in theta.
+  \coordinate (o3) at (4.86,-1.18);
+  \draw[arr, draw=black!45] (o3) -- ++(0.52,0) node[right, tinylabel] {$x$};
+  \draw[arr, draw=black!45] (o3) -- ++(-0.27,0.34) node[above, tinylabel] {$y$};
+  \draw[arr, draw=black!45] (o3) -- ++(0,0.60) node[above, tinylabel] {$z$};
+  \draw[gsblue, line width=0.9pt]
+    plot[smooth cycle, tension=0.55] coordinates {
+      (5.10,-0.46) (5.31,0.16) (5.91,0.72) (6.73,0.98)
+      (7.47,0.72) (7.86,0.14) (7.69,-0.49) (7.05,-0.89)
+      (6.28,-0.96) (5.55,-0.80)};
+  \foreach \x/\y in {5.10/-.46,5.31/.16,5.91/.72,6.73/.98,
+      7.47/.72,7.86/.14,7.69/-.49,7.05/-.89,6.28/-.96,5.55/-.80}
+    \node[sample] at (\x,\y) {};
+  \draw[black!30, dashed] (5.91,0.72) -- (5.91,-1.22)
+    (7.47,0.72) -- (7.47,-1.22);
+  \draw[<->, >=Stealth, black!55, line width=0.5pt]
+    (5.95,0.86) -- node[above, tinylabel] {$\Delta s$} (6.67,1.08);
+  \node[tinylabel, fill=white, inner sep=1pt] at (6.43,-1.28)
+    {equal spatial steps};
+  \node[tinylabel, text width=35mm, anchor=south] at (6.43,-2.30)
+    {$s(\theta)=\int_0^\theta\!\|p'(u)\|_2\,du$,\quad
+     $s_i=iL/N$\\dense curve $\rightarrow$ invert cumulative $s$};
+
+  % (c) A complex-centred sample binds to the metrically nearest court.
+  \draw[courtgreen, fill=courtgreen!6, line width=0.48pt]
+    (8.85,-0.82) rectangle (10.13,0.12);
+  \draw[courtgreen, line width=0.42pt] (9.49,-0.82) -- (9.49,0.12);
+  \draw[courtgreen, fill=courtgreen!13, line width=0.65pt]
+    (11.18,-0.82) rectangle (12.46,0.12);
+  \draw[courtgreen, line width=0.42pt] (11.82,-0.82) -- (11.82,0.12);
+  \fill[courtgreen] (9.49,-0.35) circle[radius=0.8pt]
+    (11.82,-0.35) circle[radius=0.8pt];
+  \node[tinylabel] at (9.49,-1.06) {$\Court_A$};
+  \node[tinylabel, text=courtgreen] at (11.82,-1.06) {$\Court_B=c_i^*$};
+  \node[camera, shape border rotate=-75] (vc) at (11.35,1.13) {};
+  \node[camera, shape border rotate=-42, opacity=0.55] (vp) at (10.60,0.86) {};
+  \node[camera, shape border rotate=-122, opacity=0.55] (vn) at (12.24,0.78) {};
+  \draw[gsblue!45, line width=0.55pt] (vp) to[bend left=10] (vc)
+    to[bend left=10] (vn);
+  \draw[black!42, dashed] (vc) -- node[left, tinylabel] {$d_A$} (9.49,-0.35);
+  \draw[arr, draw=poseorange] (vc) -- node[right, tinylabel, text=poseorange]
+    {$d_B$} (11.82,-0.35);
+  \draw[arr, draw=gsblue!72] (vp) -- (11.82,-0.35);
+  \draw[arr, draw=gsblue!72] (vn) -- (11.82,-0.35);
+  \node[tinylabel, text width=37mm, anchor=south] at (10.65,-2.30)
+    {$c_i^*=\operatorname*{lexmin}\arg\min_c
+      \|v_i-o_c\|_2$\\camera $+z$ axes look at $o_{c_i^*}$};
+
+  % (d) Seeded allocation moves complete trajectory groups as indivisible units.
+  \node[tinylabel, draw=black!28, fill=softgray!72, rounded corners=1.5pt,
+    minimum width=31mm, minimum height=8.0mm] (groups) at (14.82,1.08)
+    {trajectory groups $G_1,\ldots,G_n$\\[-0.1em]seeded shuffle};
+  \coordinate (forktop) at (13.10,0.70);
+  \node[splitbox, draw=courtgreen, fill=courtgreen!9] (train) at (14.82,0.18)
+    {\textcolor{courtgreen}{\textbf{Train 80\%}}\quad $G_2,G_4,\ldots$};
+  \node[splitbox, draw=gsblue, fill=gsblue!8] (val) at (14.82,-0.58)
+    {\textcolor{gsblue}{\textbf{Val. 10\%}}\quad $G_7$};
+  \node[splitbox, draw=poseorange, fill=poseorange!8] (test) at (14.82,-1.34)
+    {\textcolor{poseorange}{\textbf{Test 10\%}}\quad $G_9$};
+  \draw[black!52, line width=0.55pt] (groups.south) -- ++(0,-0.12) --
+    (forktop) -- (13.10,-1.34);
+  \draw[arr, draw=courtgreen] (13.10,0.18) -- (train.west);
+  \draw[arr, draw=gsblue] (13.10,-0.58) -- (val.west);
+  \draw[arr, draw=poseorange] (13.10,-1.34) -- (test.west);
+  \node[tinylabel, text width=33mm, anchor=south] at (14.82,-2.30)
+    {all frames and views of one $G_i$ stay together};
+\end{tikzpicture}

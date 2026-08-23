@@ -1,0 +1,26 @@
+\begin{table}[t]
+  \centering
+  \caption{Coordinate frames.  All transforms are stored as proper homogeneous
+  matrices; no quaternion convention is required by the data generator.}
+  \label{tab:coordinate_contracts}
+  \small
+  \begin{tabularx}{\linewidth}{@{}p{0.15\linewidth}p{0.20\linewidth}X@{}}
+    \toprule
+    Frame & Units / axes & Contract \\
+    \midrule
+    NHT scene \(\Scene_n\) & Normalized, right-handed & Public reconstruction
+      and render coordinates; Gaussian means and captured cameras live here. \\
+    Metric scene \(\Scene_m\) & Metres, right-handed & Reciprocal uniform
+      scaling of \(\Scene_n\); common carrier for all accepted courts. \\
+    Court \(\Court_i\) & Metres; \(+X\) right sideline, \(+Y\) far baseline,
+      \(+Z\) up & Regulation geometry and physical point indices. \\
+    Camera \(\Cam\) & OpenCV; \(+x\) right, \(+y\) down, \(+z\) forward &
+      \(\T{\Scene}{\Cam}\) is camera-to-scene; projection uses its inverse. \\
+    Canonical court \(\Canon\) & Metres, target-relative & Court frame after
+      camera-end choice \(S\in\{I,R_z(\pi)\}\); pose10D authority. \\
+    Model image & Augmented pixels & KP logits, principal point, focal length,
+      and reprojection residual are all expressed in this same frame. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
