@@ -4,7 +4,7 @@
 - Attempt: 2
 - Test cycle: 1
 - Status: COMPLETE
-- Candidate SHA-256: `sha256:ef780395bce0ef3208e173408a2ef1ab4880604d10fee427197ffc8fe270314d`
+- Candidate SHA-256: `sha256:cd14bed3320f21545ccb001a5b523eab8dd900cfe3cdff842843a72e62d9683f`
 
 ## Assigned ownership
 
@@ -14,6 +14,7 @@
 - `i786_impl_slcs`: SLCS and tennis-scene propagation while preserving metre-valued public outputs.
 - Parent integrator: cross-task configuration, legacy compatibility repairs, invisible-BLCS observation masking, materialization, baseline training, knowledge registration, and configuration-inventory integration.
 - Attempt-2 `i786_impl_core_repair`: make the public PLCS scene-load contract mandatory and verify all production callers forward an already resolved normalization contract.
+- Attempt-2 `i786_attempt2_repair`: close frozen Preflight findings R-001/R-002 in the BLCS checkpoint runtime and directly affected BLCS/PLCS unit tests only.
 - Attempt-2 parent integrator: incorporate the Validator findings, replace the invalid archived-checkpoint migration premise with frozen-base representative parity evidence, and bind this artifact to the repaired candidate.
 
 ## Files and symbols changed
@@ -39,6 +40,7 @@
 - After discovery Preflight RETURN, the materializer now publishes an empty root document only when prior validation proved the source is metadata-free legacy v1 and its root `meta.json` is absent. Scene metadata, v2, mismatch, and overwrite checks remain strict.
 - Every direct PLCS scene load now requires the caller to declare its resolved normalization contract. Root and selected-scene metadata are checked unconditionally before `meta.json` or array payloads are read; there is no metadata-free public bypass.
 - The legacy v1 compatibility promise remains scoped to normalization metadata and numerical behavior. It does not silently migrate checkpoint architecture/configuration formats that were already unloadable at the frozen base revision.
+- A metadata-free checkpoint selected with explicit v1 receives an in-memory BLCS overlay containing only `position_huber_beta_v1=1.0` (the frozen-base PyTorch Smooth L1 default) and the separately named, v1-unused `position_huber_transition_m_v2=1.0` required by the current typed configuration. Existing conflicting values fail closed, checkpoint bytes remain unchanged, metadata-bearing paths are untouched, and explicit v2 still rejects before composition.
 
 ## Plan deviations and rationale
 
@@ -63,6 +65,7 @@
 - Attempt-2 PLCS loader repair: Ruff PASS, mypy PASS, and 23 focused tests PASS. Four existing loader tests intentionally await Test Writer changes because the public function now requires an explicit contract.
 - Frozen-base representative bundle generated and strictly replayed on CPU float32 with `atol=1e-5, rtol=0`: manifest `3854d8fd9cbc83af3456a295fc872d4a0afcaa859550bca85d0e15859e4a2047`, generator `956bef2a7fff8e375398a62c031a95eaeab3247a89ffe1e92b5d091639059358`, BLCS checkpoint/golden `69af21b3f8008ab7f53708e1d03346113aafa49c857a5465ad6e6da86f80a5e7` / `0f494e30e07c99e3f59feba113093530a87c25334a216eea9bee33e9a32397e6`, and PLCS checkpoint/golden `6c212eec6bbe616b498000928733318b19f76e4ad957a680963621c672ca841d` / `3fcc1205f96f531f7b731248ecf1f8cd48c8e0bc0091d3d0e3dc04cf5eb1b969`.
 - Frozen-base worktree remained tracked-clean before and after generation; both generated predictors strictly reloaded their metadata-free checkpoints before producing the recorded outputs.
+- Attempt-2 bounded Preflight repair: owned pre-commit hooks PASS; 10 focused checkpoint/PLCS loader tests PASS; the actual representative BLCS dataset, strict Lightning state load, inference, loss, and metric replay match the frozen-base golden exactly (`max_abs_diff=0.0`) without changing checkpoint bytes.
 
 ## Known limitations and remaining risks
 
@@ -72,4 +75,4 @@
 
 ## Handoff
 
-Attempt-2 production integration and authority repair are complete and ready for a fresh independent discovery Preflight Reviewer. The reviewer should use only the diagnostic categories frozen in the updated `plan.md`, execute canonical preflight check IDs through `manage_issue_task.py run-check`, verify the representative frozen-base premise and mandatory PLCS loader boundary, and write `preflight.md` without editing source or tests.
+The bounded R-001/R-002 repair is complete and ready for a fresh closure Preflight Reviewer. That reviewer must freeze the existing RETURN findings and verify only representative BLCS v1 composition/parity, the four explicit PLCS test arguments, both canonical checks, and direct repair-local regressions; it must not restart discovery or add a mutation category.
