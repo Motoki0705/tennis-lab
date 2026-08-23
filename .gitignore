@@ -79,6 +79,7 @@ ckpt/
 *.safetensors
 
 # Training artifacts
+artifacts/
 logs/
 outputs/
 results/
