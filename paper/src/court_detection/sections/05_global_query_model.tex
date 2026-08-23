@@ -1,0 +1,120 @@
+\section{Global Court Query Model}
+\label{sec:model}
+
+The render pipeline supplies a camera hypothesis that cannot be learned from a
+standard keypoint heatmap loss alone.  We therefore separate the model into a
+global geometric encoder and deliberately lightweight dense reconstruction
+heads, as shown in \cref{fig:model}.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\linewidth}{!}{\input{figures/global_query_model}}
+  \caption{\textbf{Global query, mechanical dense decoding.}  \DINO{} patch
+  tokens are projected and receive 2D rotary encoding.  One learned court query
+  receives no positional rotation but globally attends with every patch in the
+  task Transformer.  Its final state predicts pose10D; selected patch taps feed
+  interchangeable lightweight decoders and direct \KP, line, and segmentation
+  heads.}
+  \label{fig:model}
+\end{figure}
+
+\subsection{Strict patch-token boundary}
+
+Given an augmented image \(I\in\R^{H\times W\times 3}\), we replicate-pad its
+right and bottom boundaries to the \DINO{} patch multiple.  The backbone
+returns a sequence containing patch and special tokens; the adapter accepts
+only the \(H_pW_p\) patch tokens and verifies that token count, patch grid,
+dtype, device, and finiteness agree.  CLS and register tokens are excluded so
+that the task encoder has one unambiguous global token: its own learned court
+query.
+
+The patch features \(\mathbf{x}_{ij}\) are projected to task width \(d\).  For
+each attention layer, 2D rotary position encoding rotates the patch query/key
+pairs as a function of row and column \citep{su2021roformer}.  The prepended
+learned token \(\mathbf{q}_0\) is not rotated:
+\begin{equation}
+  \mathbf{Z}^{(0)}=
+  [\mathbf{q}_0,\,\mathbf{P}\mathbf{x}_{00},\ldots,
+   \mathbf{P}\mathbf{x}_{H_p-1,W_p-1}],
+  \qquad
+  \operatorname{RoPE}_{2D}(\mathbf{q}_0)=\mathbf{q}_0.
+  \label{eq:query_input}
+\end{equation}
+All query and patch tokens participate in the same self-attention layers.
+Thus the final query state \(\mathbf{q}_L\) can aggregate any visible part of
+the court, while patch states retain their spatial identity.
+
+\subsection{One camera hypothesis}
+\label{sec:pose10d}
+
+The target view is first canonicalized by a proper camera-end rotation
+\begin{equation}
+  \T{\Canon}{\Cam}=\mathbf{S}\T{\Court_i}{\Cam},
+  \qquad \mathbf{S}\in\{\mathbf{I},\mathbf{R}_z(\pi)\}.
+  \label{eq:canonical_pose}
+\end{equation}
+The physical \KP ordering and canonicalization choice are stored authority;
+the model adapter rejects a disagreement between the dense target and pose
+target rather than inferring a permutation.
+
+An MLP maps \(\mathbf{q}_L\) to
+\begin{equation}
+  \widehat{\mathbf{p}}=
+  [\widehat C_x,\widehat C_y,\widehat C_z,
+   \widehat a_{11},\widehat a_{12},\widehat a_{13},
+   \widehat a_{21},\widehat a_{22},\widehat a_{23},
+   \widehat\ell_f]\in\R^{10}.
+  \label{eq:pose10d}
+\end{equation}
+The first three values are the camera centre \(\widehat{\mathbf{C}}\) in
+canonical court metres.  The next two raw row vectors are orthogonalized:
+\begin{align}
+  \mathbf{r}_1&=\frac{\mathbf{a}_1}{\|\mathbf{a}_1\|_2}, &
+  \bar{\mathbf{r}}_2&=\mathbf{a}_2-
+      (\mathbf{r}_1^{\top}\mathbf{a}_2)\mathbf{r}_1, \\
+  \mathbf{r}_2&=\frac{\bar{\mathbf{r}}_2}{\|\bar{\mathbf{r}}_2\|_2}, &
+  \mathbf{r}_3&=\mathbf{r}_1\times\mathbf{r}_2, \\
+  \widehat{\mathbf{R}}_{\Canon\leftarrow\Cam}
+    &= [\mathbf{r}_1^{\top};\mathbf{r}_2^{\top};\mathbf{r}_3^{\top}], &
+  \widehat f&=\exp(\widehat\ell_f).
+  \label{eq:rotation_decode}
+\end{align}
+This continuous representation avoids quaternion normalization/sign ambiguity
+and is rejected if either basis vector degenerates
+\citep{zhou2019continuity}.  Focal length is finite and strictly positive; the
+principal point is not predicted but comes from the augmentation-aware target
+intrinsics.
+
+\subsection{Lightweight dense heads}
+
+Selected patch states from the task Transformer feed one of three controlled
+decoder families:
+\begin{itemize}
+  \item \emph{linear}: a per-location projection followed by resize;
+  \item \emph{progressive}: staged upsampling with depthwise-separable
+    refinement; and
+  \item \emph{DPT}: multi-tap reassembly and feature fusion.
+\end{itemize}
+The decoder produces an image-resolution feature map.  Independent \(1\times1\)
+heads emit fourteen singleton keypoint logits, one line-mask logit map, and
+court segmentation logits.  Decoder width, stages, fusion mode, and taps are
+typed ablation variables, but the output contract never changes.  This design
+tests whether global geometry can reside in the shared token encoder instead of
+being reconstructed by an opaque high-capacity task head.
+
+The direct objective remains indispensable:
+\begin{align}
+  \mathcal{L}_{\mathrm{dense}}
+   &=w_{\mathrm{kp}}\mathcal{L}_{\mathrm{focalBCE}}
+    +w_{\mathrm{line}}\mathcal{L}_{\mathrm{BCE+Dice}}
+    +w_{\mathrm{seg}}\mathcal{L}_{\mathrm{CE+Dice}}, \\
+  \mathcal{L}_{\mathrm{pose}}
+   &=w_t\|\widehat{\mathbf{C}}-\mathbf{C}\|_2^2
+    +w_R\,d_{\SOthree}(\widehat{\mathbf{R}},\mathbf{R})
+    +w_f(\widehat\ell_f-\ell_f)^2,
+  \label{eq:direct_losses}
+\end{align}
+where \(d_{\SOthree}\) is geodesic rotation distance.  The auxiliary objective
+next connects these otherwise independent branches; it never replaces their
+ground-truth losses.
+

@@ -1,0 +1,24 @@
+\begin{table}[t]
+  \centering
+  \caption{Shared typed trajectory policy composed by the explicit v2 selector.
+  Counts are configured lower bounds or budgets, not a completed dataset
+  inventory; v1 remains the backward-compatible root default.}
+  \label{tab:data_policy}
+  \small
+  \begin{tabularx}{\linewidth}{@{}p{0.27\linewidth}X@{}}
+    \toprule
+    Dimension & Configured values \\
+    \midrule
+    Planar path & circle / ellipse; axis ratios $1.0,0.8,0.65$; orientations
+      $0^\circ,45^\circ,90^\circ$ \\
+    Radius / height & captured-offset scales $0.85$--$1.20$; base heights
+      $1.50,2.25,3.00$ m \\
+    Vertical path & planar or sinusoidal; amplitude $0.25$ or $0.50$ m \\
+    View profile & look-at height $0$ or $1.5$ m; horizontal FoV
+      $35^\circ$--$75^\circ$ \\
+    Sampling & seed 695; uniform 3D arc length; maximum adjacent step $1.05$ m \\
+    Coverage & proposal budget 4800; at least 24 groups and 2000 accepted frames \\
+    Splits / rendering & group-disjoint 80/10/10; 8 render shards \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
