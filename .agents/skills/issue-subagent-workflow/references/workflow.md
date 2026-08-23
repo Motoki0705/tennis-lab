@@ -17,7 +17,7 @@ scouting -> exploration -> planning -> implementation
                                       |     | RETURN #2 -> return-review
                                       |     ` PASS
                                       |        v
-                                      |  independent Test Writer
+                                      |  adversarial Test Writer
                                       |     | RETURN #1 -> repair
                                       |     | RETURN #2 -> return-review
                                       |     ` PASS
@@ -43,7 +43,7 @@ Preflight RETURN spends no Tester cycle. The first Preflight RETURN permits one 
 
 ## Frozen specification and identity
 
-Schema-v5 initialization writes canonical raw `issue.json`, deterministic `issue.md`, and `state.toml` containing hashes, phase, verdicts, candidate bindings, and PR binding. Every mutation revalidates payload hash, exact rendering, Issue number/URL, and normalized checklist hash; editing `issue.md` alone fails.
+Schema-v6 initialization writes canonical raw `issue.json`, deterministic `issue.md`, and `state.toml` containing hashes, phase, verdicts, candidate bindings, PR binding, and enforced adversarial-testing mode. Loaded schema-v5 tasks retain legacy Tester artifact semantics. Every mutation revalidates payload hash, exact rendering, Issue number/URL, and normalized checklist hash; editing `issue.md` alone fails.
 
 `base_revision` is frozen. The candidate fingerprint content-hashes every changed/untracked path relative to it except `.codex/tasks/`, so history-only recommits/squashes may retain identity. Separate fields bind `preflight_candidate_sha256`, `test_candidate_sha256`, `sealed_candidate_sha256`, `validation_candidate_sha256`, and `packaging_candidate_sha256`.
 
@@ -51,7 +51,9 @@ Preflight may precede test edits; Tester PASS therefore binds the post-test cand
 
 ## Canonical checks
 
-`02-planning/checks.json` is command authority. Each unique ID fixes `argv`, repository-relative `cwd`, environment additions, authorized `preflight`/`test`/`seal` stages, required/optional status, and AC authority. Only `manage_issue_task.py run-check` may execute it; generated stage JSON/raw logs bind invocation digest, candidate fingerprint, exit code, and verdict. Changed argv/cwd/environment/candidate or a missing required check invalidates the stage.
+`02-planning/checks.json` is mandatory baseline command authority. Each unique ID fixes `argv`, repository-relative `cwd`, environment additions, authorized `preflight`/`test`/`seal` stages, required/optional status, and AC authority. Only `manage_issue_task.py run-check` may execute it; generated stage JSON/raw logs bind invocation digest, candidate fingerprint, exit code, and verdict. Changed argv/cwd/environment/candidate or a missing required check invalidates the stage. The baseline is a floor for the Test Writer, never an exhaustive test ceiling.
+
+After Preflight PASS, the Test Writer independently derives bounded adversarial perspectives from Issue requirements, public contracts, repository invariants, baseline regressions, current code, and the complete changed impact radius. Each executed `AT-*` perspective uses `run-test-probe`; `test-probes.json` binds exact argv/cwd/environment, authority and source, candidate, outcome, and raw log. The Test Writer never edits `checks.json` or production. A machine-recorded `AT-*` failure is valid RETURN authority even when all AC rows PASS. Unsupported expectations, unrelated pre-existing failures, or prose-only observations are not.
 
 The first Preflight may supplement these commands only with bounded diagnostic categories explicitly frozen in `plan.md` from the ACs and planned risks. The Reviewer does not create new categories during execution. After RETURN, the next Reviewer is closure-only: the prior findings, canonical checks, and direct repair regressions are the frozen scope. Seal never creates a new mutation/fuzzing program; semantic acceptance remains owned by the frozen checks, Test Writer evidence, and final Issue-only Validator.
 
@@ -71,6 +73,7 @@ The first Preflight may supplement these commands only with bounded diagnostic c
 │   ├── preflight-checks.json
 │   ├── tests.md
 │   ├── test-checks.json
+│   ├── test-probes.json (when AT-* probes are recorded)
 │   ├── seal.md
 │   └── seal-checks.json
 ├── 04-validation/validation.md
@@ -92,7 +95,7 @@ Parallelism is a latency optimization, not an acceptance criterion. `plan.md` re
 | planning transition | exploration |
 | implementation transition | plan + manifest |
 | preflight verdict | implementation + preflight + results + candidate; second consecutive RETURN forces return-review |
-| test verdict | tests + results + candidate; second RETURN forces return-review |
+| test verdict | planned minimum + adversarial matrix/probes + candidate; second RETURN forces return-review |
 | seal verdict | seal + results + Tester-candidate equality; every RETURN forces return-review |
 | validation transition | all implementation artifacts + sealed candidate |
 | Validator verdict | complete artifact set + sealed candidate |
@@ -106,7 +109,7 @@ These checks run inside mutations; manual `artifact-check` only provides earlier
 - Prefer deterministic scripts for mechanical inventories.
 - Every `spawn_agent` call uses `fork_turns = "none"` exactly. Numeric/inherited turns invalidate the handoff and require respawn; for Preflight Reviewers, Test Writers, Seal Reviewers, and Validators they also break independence.
 - Supply frozen artifacts, paths, AC IDs, ownership, and focused failures; append the exact `Communication mode: terminal-only.` footer from `spawn-contracts.md`.
-- A discovery Preflight gets the complete approved scope. A closure Preflight gets the previous findings as its frozen worklist and does not broaden mutation categories. A Seal assignment explicitly excludes open-ended semantic exploration.
+- A discovery Preflight gets the complete approved scope. A closure Preflight gets the previous findings as its frozen worklist and does not broaden mutation categories. A Test Writer gets the planned minimum without being capped by it; after RETURN it closes frozen findings plus repair-local adversarial coverage. A Seal assignment explicitly excludes open-ended semantic exploration.
 - Children produce one terminal handoff; earlier contact is limited to missing authority, ownership collision, or an unresolvable assigned-scope blocker.
 - Do parent work, then event-driven `wait_agent` with `timeout_ms = 3_600_000` or the maximum. Only `FINAL_ANSWER` completes; resume the long wait after other non-escalations.
 - Do not pair waiting with repeated `list_agents`, short-timeout polling, or status-request `send_message`.

@@ -15,6 +15,7 @@ from issue_task_candidate import (
     current_revision,
 )
 from issue_task_checks import check
+from issue_task_remote import load_pr_evidence, pr_evidence_errors
 from issue_task_state import (
     assert_standalone_value,
     load_state,
@@ -22,13 +23,14 @@ from issue_task_state import (
     validation_matrix_errors,
     write_state,
 )
-from issue_task_remote import load_pr_evidence, pr_evidence_errors
 from issue_task_transitions import apply_validation_verdict as _apply_validation_verdict
 
 
 def _raise_errors(errors: list[str]) -> None:
     if errors:
-        raise ValueError("pre-completion check failed: " + "; ".join(dict.fromkeys(errors)))
+        raise ValueError(
+            "pre-completion check failed: " + "; ".join(dict.fromkeys(errors))
+        )
 
 
 def apply_validation_verdict(task_dir: Path, verdict: str) -> None:
@@ -87,7 +89,7 @@ def finalize_pr(
     """Bind the validated candidate to a checked remote PR head and complete."""
     state = load_state(task_dir)
     if state.get("candidate_binding_mode") != "ENFORCED":
-        raise ValueError("finalize-pr is available only for schema v5 tasks")
+        raise ValueError("finalize-pr is available only for schema-v5-or-newer tasks")
     if state.get("phase") != "packaging" or state.get("status") != "validated":
         raise ValueError("finalize-pr requires packaging/validated state")
 
