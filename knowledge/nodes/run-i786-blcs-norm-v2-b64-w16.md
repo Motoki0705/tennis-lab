@@ -12,12 +12,17 @@ config:
   loss: default
   data: broadcast_norm_v2
 metrics:
-  loss: 0.060155753
-  position_error_m: 2.3384501934
-  x_error_m: 0.4341706038
-  y_error_m: 2.1221547127
-  z_error_m: 0.5046098828
-  endpoint_error_m: 4.3641867638
+  loss: 0.0601557530
+  mean_position_error_m: 2.33845
+  mean_x_error_m: 0.434171
+  mean_y_error_m: 2.122155
+  mean_z_error_m: 0.50461
+  mean_endpoint_error_m: 4.364187
+  position_accuracy_0_3m: 0.069732
+  position_accuracy_0_6m: 0.213814
+  position_accuracy_1_2m: 0.434886
+  endpoint_accuracy_0_5m: 0.04
+  endpoint_accuracy_1m: 0.11
 repro:
   commit: 7aff92cb59eb6c4abfa844fcf19a9452ee7e8000
   branch: feat/issue-786-normalization-v2
@@ -29,26 +34,21 @@ repro:
     data.num_workers=16
 artifacts:
   run_dir: knowledge/runs/run-i786-blcs-norm-v2-b64-w16
+  predictions: knowledge/runs/run-i786-blcs-norm-v2-b64-w16/pred_test.npz
   log: .training_queue/logs/1787472877773340690_605419_i786-blcs-norm-v2-b64-w16.log
-  tb_logdir: outputs/blcs/i786/norm-v2/multiview_axial_base/logs/version_1
   curves: knowledge/runs/run-i786-blcs-norm-v2-b64-w16/curves.png
-parents:
-- run-i786-blcs-norm-v1-b64-w16
+  tb_logdir: outputs/blcs/i786/norm-v2/multiview_axial_base/logs/version_1
+parents: [run-i786-blcs-norm-v1-b64-w16]
 relations:
-- to: run-i786-blcs-norm-v1-b64-w16
-  rel: compares
-tags:
-- blcs
-- normalization-v2
-- baseline
-- batch-64
+  - {to: run-i786-blcs-norm-v1-b64-w16, rel: compares}
+tags: [blcs, normalization-v2, baseline, batch-64]
 ---
 
 ## 考察 / Findings
 
 ### 要約
 
-XYZ全軸へ`11.885m`を適用するv2 datasetで100 epochを完走し、test `position_error_m=2.3385m`を得た。同条件v1比で`0.0668m`（2.8%）低い。
+XYZ全軸へ`11.885m`を適用するv2 datasetで100 epochを完走し、test `mean_position_error_m=2.3385m`を得た。同条件v1比で`0.0668m`（2.8%）低い。
 
 ### アーキテクチャ詳細
 
