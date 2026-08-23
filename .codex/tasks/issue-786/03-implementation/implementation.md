@@ -2,9 +2,9 @@
 
 - Issue: #786
 - Attempt: 2
-- Test cycle: 1
+- Test cycle: 2
 - Status: COMPLETE
-- Candidate SHA-256: `sha256:1bd9e244065866a58dbbdf4a677745eb262d3c64a006f656019fb4021dfebaf4`
+- Candidate SHA-256: `sha256:0d52bf2f739ab9f989ed8d64df18e5e7d5d53dc4b386cd493dc4633f710b87bb`
 
 ## Assigned ownership
 
@@ -16,6 +16,7 @@
 - Attempt-2 `i786_impl_core_repair`: make the public PLCS scene-load contract mandatory and verify all production callers forward an already resolved normalization contract.
 - Attempt-2 `i786_attempt2_repair`: close frozen Preflight findings R-001/R-002 in the BLCS checkpoint runtime and directly affected BLCS/PLCS unit tests only.
 - Packaging repair `i786_main_merge_repair`: integrate `origin/main` without rewriting branch history and resolve the three overlapping BLCS configuration / BLCS+PLCS predictor-test conflicts while retaining both normalization coverage and upstream track-query-ablation behavior.
+- Merge Preflight repair `i786_merge_mypy_repair`: preserve the upstream ablation model-identity assertion while widening only mypy's static view at the failing comparison.
 - Attempt-2 parent integrator: incorporate the Validator findings, replace the invalid archived-checkpoint migration premise with frozen-base representative parity evidence, and bind this artifact to the repaired candidate.
 
 ## Files and symbols changed
@@ -70,6 +71,7 @@
 - Frozen-base worktree remained tracked-clean before and after generation; both generated predictors strictly reloaded their metadata-free checkpoints before producing the recorded outputs.
 - Attempt-2 bounded Preflight repair: owned pre-commit hooks PASS; 10 focused checkpoint/PLCS loader tests PASS; the actual representative BLCS dataset, strict Lightning state load, inference, loss, and metric replay match the frozen-base golden exactly (`max_abs_diff=0.0`) without changing checkpoint bytes.
 - `origin/main` merge repair: Ruff PASS, mypy PASS, pre-commit PASS, 39 focused BLCS/PLCS configuration and tracking predictor tests PASS, `git diff --check` PASS, and no conflict marker/unmerged index entry remains.
+- Merge Preflight F-001 repair: 8 focused ablation tests PASS; Ruff, repository-hook mypy, and pre-commit PASS; the runtime class-identity assertion remains exact while `cast("object", ...)` prevents the static non-overlap false positive.
 
 ## Known limitations and remaining risks
 
@@ -79,4 +81,4 @@
 
 ## Handoff
 
-The final `origin/main` merge tree is ready for a fresh repair-local Preflight before test cycle 2. Review must verify the three conflict resolutions, upstream/Issue scope separation, canonical checks, and direct merge regressions without reopening the completed normalization discovery campaign.
+The bounded merge findings are repaired and ready for a closure Preflight in test cycle 2. Closure must verify F-001, the canonical checks, and direct merge-local regressions only; it must not restart normalization discovery.

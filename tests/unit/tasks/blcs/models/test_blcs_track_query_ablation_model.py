@@ -126,7 +126,7 @@ def _forward(
 
 
 def test_ablation_model_is_a_distinct_named_public_architecture() -> None:
-    assert BLCSTrackQueryAblationModel is not BLCSTrackQueryModel
+    assert cast("object", BLCSTrackQueryAblationModel) is not BLCSTrackQueryModel
     assert BLCSTrackQueryAblationModel.__name__ == "BLCSTrackQueryAblationModel"
     assert BLCSTrackQueryAblationModel.__module__.endswith(
         ".blcs_track_query_ablation_model"
