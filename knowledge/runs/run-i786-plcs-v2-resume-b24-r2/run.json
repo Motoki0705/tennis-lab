@@ -1,0 +1,14 @@
+{
+  "run_id": "1787470103957374667_558507_i786-plcs-v2-resume-b24-r2",
+  "name": "i786-plcs-v2-resume-b24-r2",
+  "command": "CUDA_VISIBLE_DEVICES=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_norm_v2 paths.data_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-normalization-v2/data paths.external_asset_root=/home/kamimura/projects/tennis-lab/data run.output_dir=plcs/i786/norm-v2/multiview_axial_base run.gpus=1 data.batch_size=24 training.steps_per_epoch=200 run.resume=plcs/i786/norm-v2/multiview_axial_base/logs/version_0/checkpoints/last.ckpt",
+  "provider": "codex",
+  "session": "01a028df-6133-79c2-9266-f9b6a343765f",
+  "issue": "786",
+  "commit": "b356bbeb6bedeb43d4dd07c0b574f4eddc8c4f8c",
+  "branch": "feat/issue-786-normalization-v2",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-normalization-v2",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-normalization-v2",
+  "captured_at": "2026-08-23T16:28:24+09:00"
+}
