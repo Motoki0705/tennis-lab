@@ -33,6 +33,9 @@ ROTATION_DEGENERACY_EPS = 1.0e-6
 SO3_ATOL = 1.0e-5
 INTRINSICS_ATOL = 1.0e-6
 PROJECTION_ATOL_PX = 1.0e-4
+PROJECTIVE_DEPTH_EPS_M = 1.0e-6
+MIN_PROJECTION_REFERENCE_POINTS = 4
+PROJECTION_REFERENCE_AREA_EPS_M2 = 1.0e-6
 
 
 def _require_finite(value: Tensor, *, name: str) -> None:
@@ -236,10 +239,10 @@ def build_pose_target(
         dtype=torch.float64,
     )
     return CourtPoseTarget(
-        translation_m=translation.float(),
-        rotation=rotation.float(),
-        log_focal=torch.log(intrinsic[0, 0]).float(),
-        intrinsics=intrinsic.float(),
+        translation_m=translation,
+        rotation=rotation,
+        log_focal=torch.log(intrinsic[0, 0]),
+        intrinsics=intrinsic,
         semantic_to_physical=torch.tensor(
             canonical.semantic_to_physical,
             dtype=torch.long,
@@ -260,7 +263,7 @@ def canonical_semantic_court_points(target: CourtPoseTarget) -> Tensor:
 
 
 def project_canonical_points(target: CourtPoseTarget, points: Tensor) -> Tensor:
-    """Project canonical metres with target C, R and augmentation-aware K."""
+    """Project canonical metres at finite, non-degenerate projective depths."""
     if points.ndim != 2 or points.shape[1] != 3:
         raise ValueError("Canonical Court projection points must have shape (N,3).")
     _require_finite(points, name="Canonical Court projection points")
@@ -268,12 +271,68 @@ def project_canonical_points(target: CourtPoseTarget, points: Tensor) -> Tensor:
     center = target.translation_m.to(dtype=torch.float64)
     rotation_camera_from_canonical = target.rotation.to(dtype=torch.float64).T
     points_camera = (points64 - center) @ rotation_camera_from_canonical.T
-    if bool(torch.any(points_camera[:, 2] <= 0.0)):
-        raise ValueError("Canonical Court projection requires positive camera depth.")
+    _require_finite(points_camera, name="Canonical Court camera-space points")
+    depth = points_camera[:, 2]
+    if bool(torch.any(torch.abs(depth) <= PROJECTIVE_DEPTH_EPS_M)):
+        raise ValueError(
+            "Canonical Court projection has zero/near-zero projective depth "
+            "within 1e-6 m."
+        )
     homogeneous = points_camera @ target.intrinsics.to(dtype=torch.float64).T
     pixels = homogeneous[:, :2] / homogeneous[:, 2:3]
     _require_finite(pixels, name="Canonical Court projected pixels")
     return pixels
+
+
+def _valid_projection_reference_mask(
+    target: CourtPoseTarget,
+    points: Tensor,
+) -> Tensor:
+    """Select the deterministic positive-depth subset used as pose/K evidence."""
+    points64 = points.to(dtype=torch.float64)
+    center = target.translation_m.to(dtype=torch.float64)
+    points_camera = (points64 - center) @ target.rotation.to(dtype=torch.float64)
+    _require_finite(points_camera, name="Canonical Court camera-space points")
+    return points_camera[:, 2] > PROJECTIVE_DEPTH_EPS_M
+
+
+def _validate_projection_reference_evidence(
+    points: Tensor,
+    reference_mask: Tensor,
+) -> None:
+    """Require four positive-depth references spanning non-collinear court XY."""
+    reference_count = int(reference_mask.sum())
+    if reference_count < MIN_PROJECTION_REFERENCE_POINTS:
+        raise ValueError(
+            "Synthetic Court V3 projection round-trip requires at least "
+            f"{MIN_PROJECTION_REFERENCE_POINTS} positive-depth references; "
+            f"got {reference_count}."
+        )
+    reference_xy = points.to(dtype=torch.float64)[reference_mask, :2]
+    offsets = reference_xy[1:] - reference_xy[0]
+    twice_triangle_area = torch.abs(
+        offsets[:, None, 0] * offsets[None, :, 1]
+        - offsets[:, None, 1] * offsets[None, :, 0]
+    )
+    if float(torch.max(twice_triangle_area)) <= PROJECTION_REFERENCE_AREA_EPS_M2:
+        raise ValueError(
+            "Synthetic Court V3 projection round-trip positive-depth references "
+            "must contain non-collinear canonical-court evidence."
+        )
+
+
+def _projection_comparison_tolerance(
+    expected: Tensor,
+    *,
+    atol_px: float,
+) -> Tensor:
+    """Include only the unavoidable half-ULP uncertainty of serialized UV."""
+    positive_infinity = torch.full_like(expected, float("inf"))
+    negative_infinity = torch.full_like(expected, float("-inf"))
+    upper_spacing = torch.nextafter(expected, positive_infinity) - expected
+    lower_spacing = expected - torch.nextafter(expected, negative_infinity)
+    quantization_radius = 0.5 * torch.maximum(upper_spacing, lower_spacing)
+    return quantization_radius.to(dtype=torch.float64) + atol_px
 
 
 def validate_projection_round_trip(
@@ -283,24 +342,27 @@ def validate_projection_round_trip(
     atol_px: float = PROJECTION_ATOL_PX,
 ) -> None:
     """Require pose/K to reproduce V3 semantic KP14 within 1e-4 px."""
+    if not math.isfinite(atol_px) or atol_px < 0.0:
+        raise ValueError(
+            "Projection round-trip atol_px must be finite and non-negative."
+        )
     if expected_semantic_uv.shape != (14, 2):
         raise ValueError("V3 projection round-trip expects semantic UV [14,2].")
     _require_finite(expected_semantic_uv, name="V3 semantic UV")
-    projected = project_canonical_points(
-        target,
-        canonical_semantic_court_points(target),
+    canonical_points = canonical_semantic_court_points(target)
+    projected = project_canonical_points(target, canonical_points)
+    reference_mask = _valid_projection_reference_mask(target, canonical_points)
+    _validate_projection_reference_evidence(canonical_points, reference_mask)
+    projected_references = projected[reference_mask]
+    expected_references_native = expected_semantic_uv[reference_mask]
+    expected_references = expected_references_native.to(dtype=torch.float64)
+    absolute_error = torch.abs(projected_references - expected_references)
+    tolerance = _projection_comparison_tolerance(
+        expected_references_native,
+        atol_px=atol_px,
     )
-    if not bool(
-        torch.allclose(
-            projected,
-            expected_semantic_uv.to(dtype=torch.float64),
-            atol=atol_px,
-            rtol=0.0,
-        )
-    ):
-        max_error = float(
-            torch.max(torch.abs(projected - expected_semantic_uv.to(dtype=torch.float64)))
-        )
+    if not bool(torch.all(absolute_error <= tolerance)):
+        max_error = float(torch.max(absolute_error))
         raise ValueError(
             "Synthetic Court V3 pose/K projection round-trip exceeds 1e-4 px; "
             f"max_error_px={max_error:.6g}."
@@ -309,9 +371,12 @@ def validate_projection_round_trip(
 
 __all__ = [
     "INTRINSICS_ATOL",
+    "MIN_PROJECTION_REFERENCE_POINTS",
     "POSE10D_RAW_ORDER",
     "POSE10D_SCHEMA",
     "PROJECTION_ATOL_PX",
+    "PROJECTIVE_DEPTH_EPS_M",
+    "PROJECTION_REFERENCE_AREA_EPS_M2",
     "ROTATION_DEGENERACY_EPS",
     "SO3_ATOL",
     "CourtDecodedPose",
