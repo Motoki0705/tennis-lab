@@ -10,6 +10,7 @@ import torch
 from torch import Tensor
 
 from src.tasks.base.data import include_evaluation_reference_camera
+from src.tasks.base.data.rng import require_run_seed
 from src.tasks.base.data.scene_dataset import (
     CameraSelection,
     Scene,
@@ -59,6 +60,7 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
         scene_dir: str | Path,
         split_file: str | Path,
         config: object,
+        seed: int | None = None,
         augment: bool = True,
         reference_camera_id: str | None = None,
     ) -> None:
@@ -85,7 +87,9 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
                 scene_dir=scene_dir,
                 split_file=split_file,
                 data_cfg=data_cfg,
-            )
+            ),
+            seed=require_run_seed(config) if seed is None else seed,
+            sample_local_rng=not augment,
         )
 
     # -- Composed-method hooks ------------------------------------------

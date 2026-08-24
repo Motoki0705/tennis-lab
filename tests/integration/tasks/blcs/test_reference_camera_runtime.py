@@ -144,6 +144,18 @@ def test_datamodule_passes_eval_reference_but_training_keeps_seeded_selection(
 
     assert received[0]["reference_camera_id"] is None
     assert received[1]["reference_camera_id"] == "cam_1"
+    assert received[0]["seed"] == datamodule._dataset_seed(
+        Path("dataset"), "train.txt"
+    )
+    assert received[1]["seed"] == datamodule._dataset_seed(
+        Path("dataset"), "val.txt"
+    )
+
+    selector_zero = BLCSTrackingDataModule(
+        _config("track_query_ablation_d_v2_selector_zero")
+    )
+    selector_zero._build_dataset(Path("dataset"), "train.txt", True)
+    assert received[2]["seed"] == received[0]["seed"]
 
 
 def test_checkpoint_and_prediction_metadata_round_trip_and_reject_selector_mismatch() -> None:
