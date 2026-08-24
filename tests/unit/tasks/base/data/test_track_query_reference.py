@@ -256,6 +256,49 @@ def test_batch_contract_accepts_padding_only_outside_stable_id_domain() -> None:
     )
 
 
+def test_batch_transform_validation_is_safe_under_bfloat16_autocast() -> None:
+    batch = _valid_batch()
+
+    with torch.autocast(device_type="cpu", dtype=torch.bfloat16):
+        autocast_product = (
+            batch["reference_from_physical"].transpose(-1, -2)
+            @ batch["reference_from_physical"]
+        )
+        assert autocast_product.dtype == torch.bfloat16
+        validate_reference_view_batch(**batch)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        (
+            "reference_from_physical",
+            torch.tensor(
+                [
+                    [[1.0, 0.0, 0.0], [0.0, 0.5, 0.0], [0.0, 0.0, 1.0]],
+                    [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+                ]
+            ),
+            "proper rotations",
+        ),
+        ("physical_from_reference", torch.zeros(2, 3, 3), "must equal"),
+    ],
+)
+def test_batch_transform_validation_fails_closed_under_bfloat16_autocast(
+    field: str,
+    value: torch.Tensor,
+    message: str,
+) -> None:
+    batch = _valid_batch()
+    batch[field] = value
+
+    with (
+        torch.autocast(device_type="cpu", dtype=torch.bfloat16),
+        pytest.raises(ReferenceViewBatchError, match=message),
+    ):
+        validate_reference_view_batch(**batch)
+
+
 def test_batch_contract_supports_one_complete_id_table_per_scene() -> None:
     validate_reference_view_batch(
         **_valid_batch(),
