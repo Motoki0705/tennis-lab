@@ -943,7 +943,8 @@ def write_query_consistency_summary_artifacts(
 
 def _write_all_runs(results: Mapping[str, object], path: Path) -> None:
     rows: list[dict[str, object]] = []
-    for record in cast(Sequence[Mapping[str, object]], results["runs"]):
+    for raw_record in cast(Sequence[Mapping[str, object]], results["runs"]):
+        record = _mapping(raw_record, name="result.run")
         row: dict[str, object] = {
             "run_id": record["run_id"],
             "phase": record["phase"],
@@ -980,7 +981,10 @@ def _write_scaling(summary: Mapping[str, JsonValue], path: Path) -> None:
 def _write_pareto(summary: Mapping[str, JsonValue], path: Path) -> None:
     decoder = cast(Mapping[str, object], summary["decoder_selection"])
     rows: list[dict[str, object]] = []
-    for candidate in cast(Sequence[Mapping[str, object]], decoder["candidates"]):
+    for raw_candidate in cast(
+        Sequence[Mapping[str, object]], decoder["candidates"]
+    ):
+        candidate = _mapping(raw_candidate, name="decoder.candidate")
         metrics = _mapping(candidate["metrics_mean"], name="metrics_mean")
         diagnostics = _mapping(candidate["diagnostics_mean"], name="diagnostics_mean")
         capacity = _mapping(candidate["capacity_mean"], name="capacity_mean")
