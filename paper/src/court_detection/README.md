@@ -25,14 +25,17 @@ cd paper/src/court_detection
 make
 ```
 
-The PDF is written to `main.pdf`; intermediate products remain under `build/`.
-`make clean` removes intermediates and `make distclean` also removes the PDF.
+`make` builds both `main.pdf` (English, pdfLaTeX) and `main_jp.pdf` (Japanese,
+LuaLaTeX/LuaTeX-ja).  Build either edition independently with `make main.pdf`
+or `make main_jp.pdf`.  Intermediate products remain under `build/`;
+`make clean` removes intermediates and `make distclean` also removes both PDFs.
 
 ## Source layout
 
 | Path | Purpose |
 |---|---|
-| `main.tex` | Title and section order only |
+| `main.tex` | English title and section order |
+| `main_jp.tex` | Japanese title and section order; shares figures, tables, references, and appendices |
 | `preamble.tex` | Packages, notation, colors, and shared macros |
 | `sections/eg/` | English main manuscript, one argument per file; used by `main.tex` |
 | `sections/jp/` | Japanese translation with matching filenames and LaTeX contracts |
