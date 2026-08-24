@@ -34,7 +34,7 @@ def test_script_roots_compose_and_default_manifest_exposes_only_phase_one() -> N
     assert isinstance(QueryProfileConfig.from_config(profile_cfg), QueryProfileConfig)
     assert isinstance(QuerySummaryConfig.from_config(summary_cfg), QuerySummaryConfig)
     assert manifest["phase_order"] == list(PHASE_ORDER)
-    assert len(cast(list[object], manifest["runs"])) == 51
+    assert len(cast(list[object], manifest["runs"])) == 60
     assert (
         sum(
             bool(cast(dict[str, object], run)["queue_ready"])
@@ -44,8 +44,8 @@ def test_script_roots_compose_and_default_manifest_exposes_only_phase_one() -> N
     )
 
 
-@pytest.mark.parametrize("family", ["linear", "progressive", "dpt"])
-@pytest.mark.parametrize("size", ["tiny", "small", "base"])
+@pytest.mark.parametrize("family", ["dpt"])
+@pytest.mark.parametrize("size", ["tiny", "small", "base", "large"])
 def test_profiler_composes_every_decoder_family_size(
     family: str,
     size: str,
@@ -67,7 +67,7 @@ def test_profiler_composes_every_decoder_family_size(
         )
 
     runtime = QueryProfileConfig.from_config(profile_cfg)
-    assert runtime.model.decoder.family == family
+    assert runtime.model.decoder.family == "dpt"
     assert runtime.candidate_size == size
 
 

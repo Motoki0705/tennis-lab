@@ -11,8 +11,6 @@ from torch.nn import functional as F
 from src.tasks.court_detection.configuration import (
     CourtQueryDecoderConfig,
     CourtQueryDPTDecoderConfig,
-    CourtQueryLinearDecoderConfig,
-    CourtQueryProgressiveDecoderConfig,
 )
 from src.tasks.court_detection.models.query_encoder.contracts import CourtEncoderTap
 
@@ -84,72 +82,6 @@ class DepthwiseSeparableRefinement(nn.Module):
         return cast(Tensor, self.block(value))
 
 
-class CourtQueryLinearDecoder(nn.Module):
-    def __init__(self, *, hidden_dim: int, config: CourtQueryLinearDecoderConfig) -> None:
-        super().__init__()
-        self.tap_indices = config.tap_indices
-        self.output_channels = config.width
-        self.projection = nn.Conv2d(hidden_dim, config.width, kernel_size=1)
-
-    def forward(
-        self,
-        taps: tuple[CourtEncoderTap, ...],
-        *,
-        output_hw: tuple[int, int],
-    ) -> Tensor:
-        _validate_output_hw(output_hw)
-        (tap,) = _select_taps(taps, self.tap_indices)
-        projected = self.projection(_tap_to_map(tap))
-        return F.interpolate(
-            projected,
-            size=output_hw,
-            mode="bilinear",
-            align_corners=False,
-        )
-
-
-class CourtQueryProgressiveDecoder(nn.Module):
-    def __init__(
-        self,
-        *,
-        hidden_dim: int,
-        config: CourtQueryProgressiveDecoderConfig,
-    ) -> None:
-        super().__init__()
-        self.tap_indices = config.tap_indices
-        self.output_channels = config.width
-        self.projection = nn.Conv2d(hidden_dim, config.width, kernel_size=1)
-        self.stages = nn.ModuleList(
-            DepthwiseSeparableRefinement(config.width)
-            for _ in range(config.stage_count)
-        )
-
-    def forward(
-        self,
-        taps: tuple[CourtEncoderTap, ...],
-        *,
-        output_hw: tuple[int, int],
-    ) -> Tensor:
-        _validate_output_hw(output_hw)
-        (tap,) = _select_taps(taps, self.tap_indices)
-        value = self.projection(_tap_to_map(tap))
-        for stage in self.stages:
-            value = F.interpolate(
-                value,
-                scale_factor=2.0,
-                mode="bilinear",
-                align_corners=False,
-                recompute_scale_factor=False,
-            )
-            value = stage(value)
-        return F.interpolate(
-            value,
-            size=output_hw,
-            mode="bilinear",
-            align_corners=False,
-        )
-
-
 class CourtQueryDPTDecoder(nn.Module):
     def __init__(self, *, hidden_dim: int, config: CourtQueryDPTDecoderConfig) -> None:
         super().__init__()
@@ -217,9 +149,7 @@ class CourtQueryDPTDecoder(nn.Module):
         )
 
 
-CourtQueryDenseDecoderModule = (
-    CourtQueryLinearDecoder | CourtQueryProgressiveDecoder | CourtQueryDPTDecoder
-)
+CourtQueryDenseDecoderModule = CourtQueryDPTDecoder
 
 
 def build_query_dense_decoder(
@@ -227,10 +157,6 @@ def build_query_dense_decoder(
     hidden_dim: int,
     config: CourtQueryDecoderConfig,
 ) -> CourtQueryDenseDecoderModule:
-    if isinstance(config, CourtQueryLinearDecoderConfig):
-        return CourtQueryLinearDecoder(hidden_dim=hidden_dim, config=config)
-    if isinstance(config, CourtQueryProgressiveDecoderConfig):
-        return CourtQueryProgressiveDecoder(hidden_dim=hidden_dim, config=config)
     if isinstance(config, CourtQueryDPTDecoderConfig):
         return CourtQueryDPTDecoder(hidden_dim=hidden_dim, config=config)
     raise TypeError(f"Unsupported query decoder config: {type(config).__name__}.")
@@ -239,8 +165,6 @@ def build_query_dense_decoder(
 __all__ = [
     "CourtQueryDPTDecoder",
     "CourtQueryDenseDecoder",
-    "CourtQueryLinearDecoder",
-    "CourtQueryProgressiveDecoder",
     "DepthwiseSeparableRefinement",
     "build_query_dense_decoder",
 ]

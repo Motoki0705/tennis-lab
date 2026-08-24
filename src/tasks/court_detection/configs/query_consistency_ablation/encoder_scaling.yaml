@@ -1,8 +1,2 @@
 name: encoder_scaling
-order: 1
-depths: [1, 2, 4, 8]
-decoder_family: linear
-decoder_size: base
-condition: joint-both
-reference_depth: 8
-tolerance_ratio: 0.05
+depths: [1, 8]

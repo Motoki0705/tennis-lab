@@ -7,8 +7,6 @@ import torch
 
 from src.tasks.court_detection.configuration import (
     CourtQueryDPTDecoderConfig,
-    CourtQueryLinearDecoderConfig,
-    CourtQueryProgressiveDecoderConfig,
 )
 from src.tasks.court_detection.models.query_encoder.contracts import CourtEncoderTap
 from src.tasks.court_detection.models.query_encoder.decoders import (
@@ -37,14 +35,21 @@ def _taps() -> tuple[CourtEncoderTap, ...]:
 def test_decoder_size_profiles_have_monotonic_parameters_and_macs() -> None:
     taps = _taps()
     configs = (
-        CourtQueryProgressiveDecoderConfig(
-            family="progressive", width=32, tap_indices=(3,), stage_count=1
+        CourtQueryDPTDecoderConfig(
+            family="dpt", width=32, tap_indices=(0, 1), fusion_levels=2,
+            reassemble_factors=(2.0, 1.0)
         ),
-        CourtQueryProgressiveDecoderConfig(
-            family="progressive", width=64, tap_indices=(3,), stage_count=2
+        CourtQueryDPTDecoderConfig(
+            family="dpt", width=64, tap_indices=(0, 1, 2, 3), fusion_levels=4,
+            reassemble_factors=(4.0, 2.0, 1.0, 0.5)
         ),
-        CourtQueryProgressiveDecoderConfig(
-            family="progressive", width=128, tap_indices=(3,), stage_count=3
+        CourtQueryDPTDecoderConfig(
+            family="dpt", width=128, tap_indices=(0, 1, 2, 3), fusion_levels=4,
+            reassemble_factors=(4.0, 2.0, 1.0, 0.5)
+        ),
+        CourtQueryDPTDecoderConfig(
+            family="dpt", width=256, tap_indices=(0, 1, 2, 3), fusion_levels=4,
+            reassemble_factors=(4.0, 2.0, 1.0, 0.5)
         ),
     )
     decoders = [
@@ -56,15 +61,14 @@ def test_decoder_size_profiles_have_monotonic_parameters_and_macs() -> None:
     ]
 
     assert parameters == sorted(parameters)
-    assert len(set(parameters)) == 3
+    assert len(set(parameters)) == 4
     assert macs == sorted(macs)
-    assert len(set(macs)) == 3
+    assert len(set(macs)) == 4
 
 
 @pytest.mark.parametrize(
     "config",
     [
-        CourtQueryLinearDecoderConfig(family="linear", width=16, tap_indices=(3,)),
         CourtQueryDPTDecoderConfig(
             family="dpt",
             width=16,
@@ -75,10 +79,7 @@ def test_decoder_size_profiles_have_monotonic_parameters_and_macs() -> None:
     ],
 )
 def test_mac_counter_executes_every_decoder_family(config: object) -> None:
-    assert isinstance(
-        config,
-        (CourtQueryLinearDecoderConfig, CourtQueryDPTDecoderConfig),
-    )
+    assert isinstance(config, CourtQueryDPTDecoderConfig)
     decoder = build_query_dense_decoder(hidden_dim=32, config=config)
 
     assert count_decoder_macs(decoder, _taps(), output_hw=(64, 64)) > 0
@@ -87,7 +88,7 @@ def test_mac_counter_executes_every_decoder_family(config: object) -> None:
 def test_cpu_diagnostic_schema_cannot_be_used_as_gpu_adoption_evidence() -> None:
     profile = {
         "schema": PROFILE_SCHEMA,
-        "candidate": {"family": "linear", "size": "tiny"},
+        "candidate": {"family": "dpt", "size": "tiny"},
         "evidence": {
             "kind": "cpu_diagnostic",
             "device_name": "cpu",

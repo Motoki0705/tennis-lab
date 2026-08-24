@@ -43,7 +43,7 @@ def build_ablation_manifest(config: QueryAblationConfig) -> dict[str, JsonValue]
             "seeds": list(config.seeds),
             "epochs": config.epochs,
             "input_hw": [config.image_height, config.image_width],
-            "resize": "isotropic_fit_letterbox",
+            "resize": "isotropic_long_side_patch_aligned",
             "preserve_fx_fy": config.preserve_fx_fy,
             "hflip": config.hflip,
             "affine": config.affine,
@@ -64,7 +64,7 @@ def build_ablation_manifest(config: QueryAblationConfig) -> dict[str, JsonValue]
                     "pose_focal_relative_error",
                 ],
                 "rule": (
-                    "smallest depth whose three-seed means are all within 5% of "
+                    "smallest depth whose fixed-seed metrics are all within 5% of "
                     "depth-8; use depth-8 if none"
                 ),
             },
@@ -115,17 +115,19 @@ def _encoder_run(
     depth: int,
     seed: int,
 ) -> dict[str, JsonValue]:
-    final_tap = depth - 1
     run_id = f"encoder-depth-{depth:02d}-seed-{seed}"
     argv = _base_argv(config, run_id=run_id, seed=seed)
+    taps = _decoder_taps(depth, family="dpt", size="base")
     argv.extend(
         [
             f"data/processing={config.composition.processing_kp}",
             f"loss={config.composition.loss_pose}",
-            "model/decoder=query_linear_base",
+            "model/decoder=query_dpt_base",
             f"model.task_encoder.depth={depth}",
-            f"model.task_encoder.tap_indices=[{final_tap}]",
-            f"model.decoder.tap_indices=[{final_tap}]",
+            f"model.task_encoder.tap_indices={_render_int_list(taps)}",
+            f"model.decoder.tap_indices={_render_int_list(taps)}",
+            f"model.decoder.fusion_levels={len(taps)}",
+            f"model.decoder.reassemble_factors={_render_float_list(_dpt_factors(len(taps)))}",
         ]
     )
     return _run_record(
@@ -137,9 +139,9 @@ def _encoder_run(
             "encoder_depth": depth,
             "hidden_dim": config.encoder_first.hidden_dim,
             "num_heads": config.encoder_first.num_heads,
-            "decoder_family": "linear",
+            "decoder_family": "dpt",
             "decoder_size": "base",
-            "encoder_taps": [final_tap],
+            "encoder_taps": taps,
         },
         supervision="kp+pose",
         argv=argv,
@@ -317,23 +319,20 @@ def _decoder_taps(
 ) -> list[int]:
     if depth <= 0:
         raise ValueError("Selected encoder depth must be positive.")
-    if family in {"linear", "progressive"}:
-        return [depth - 1]
     requested = 2 if size == "tiny" else 4
     levels = min(requested, depth)
-    if levels < 2:
-        raise ValueError(
-            "Selected encoder depth 1 cannot resolve the multi-tap DPT decoder "
-            "matrix; complete encoder selection with a DPT-compatible depth."
-        )
+    if levels < 1:
+        raise ValueError("DPT decoder requires at least one encoder tap.")
     if levels == depth:
         return list(range(depth))
     return [round(index * (depth - 1) / (levels - 1)) for index in range(levels)]
 
 
 def _dpt_factors(levels: int) -> list[float]:
-    if levels < 2:
-        raise ValueError("DPT requires at least two fusion levels.")
+    if levels < 1:
+        raise ValueError("DPT requires at least one fusion level.")
+    if levels == 1:
+        return [1.0]
     if levels == 2:
         return [2.0, 1.0]
     if levels == 3:
@@ -405,10 +404,10 @@ def validate_ablation_manifest(
     }:
         raise ValueError("Court query ablation fixed-contract fields changed.")
     if (
-        fixed["seeds"] != [42, 43, 44]
+        fixed["seeds"] != [42]
         or fixed["epochs"] != 15
         or fixed["input_hw"] != [256, 256]
-        or fixed["resize"] != "isotropic_fit_letterbox"
+        or fixed["resize"] != "isotropic_long_side_patch_aligned"
         or fixed["preserve_fx_fy"] is not True
         or any(
             fixed[name] is not False
@@ -430,7 +429,7 @@ def validate_ablation_manifest(
                 "pose_focal_relative_error",
             ],
             "rule": (
-                "smallest depth whose three-seed means are all within 5% of "
+                "smallest depth whose fixed-seed metrics are all within 5% of "
                 "depth-8; use depth-8 if none"
             ),
         },
@@ -452,14 +451,14 @@ def validate_ablation_manifest(
     selected_depth = selected["encoder_depth"]
     selected_family = selected["decoder_family"]
     selected_size = selected["decoder_size"]
-    if selected_depth is not None and selected_depth not in {1, 2, 4, 8}:
+    if selected_depth is not None and selected_depth not in {1, 8}:
         raise ValueError("Court query selected encoder depth is invalid.")
     decoder_partly_selected = (selected_family is None) != (selected_size is None)
     if decoder_partly_selected or (
         selected_family is not None
         and (
-            selected_family not in {"linear", "progressive", "dpt"}
-            or selected_size not in {"tiny", "small", "base"}
+            selected_family != "dpt"
+            or selected_size not in {"tiny", "small", "base", "large"}
         )
     ):
         raise ValueError("Court query selected decoder identity is invalid.")
@@ -467,8 +466,8 @@ def validate_ablation_manifest(
     if not isinstance(raw_runs, Sequence) or isinstance(raw_runs, (str, bytes)):
         raise ValueError("Court query ablation runs must be a sequence.")
     runs = tuple(_mapping(run, name="manifest.run") for run in raw_runs)
-    if len(runs) != 51:
-        raise ValueError("Court query ablation manifest must contain exactly 51 runs.")
+    if len(runs) != 10:
+        raise ValueError("Court query ablation manifest must contain exactly 10 runs.")
     ids: set[str] = set()
     observed_phases: list[str] = []
     phase_counts = {"encoder_first": 0, "decoder_second": 0, "supervision_third": 0}
@@ -482,32 +481,32 @@ def validate_ablation_manifest(
         observed_phases.append(phase)
         phase_counts[phase] += 1
     if phase_counts != {
-        "encoder_first": 12,
-        "decoder_second": 27,
-        "supervision_third": 12,
+        "encoder_first": 2,
+        "decoder_second": 4,
+        "supervision_third": 4,
     }:
         raise ValueError("Court query ablation phase matrix is incomplete.")
     expected_ids = [
         f"encoder-depth-{depth:02d}-seed-{seed}"
-        for depth in (1, 2, 4, 8)
-        for seed in (42, 43, 44)
+        for depth in (1, 8)
+        for seed in (42,)
     ]
     expected_ids.extend(
         f"decoder-{family}-{size}-seed-{seed}"
-        for family in ("linear", "progressive", "dpt")
-        for size in ("tiny", "small", "base")
-        for seed in (42, 43, 44)
+        for family in ("dpt",)
+        for size in ("tiny", "small", "base", "large")
+        for seed in (42,)
     )
     expected_ids.extend(
         f"supervision-{supervision}-seed-{seed}"
         for supervision in ("kp", "kp_pose", "all", "all_pose")
-        for seed in (42, 43, 44)
+        for seed in (42,)
     )
     if [cast(str, run["run_id"]) for run in runs] != expected_ids:
         raise ValueError("Court query ablation run identity/order matrix changed.")
-    if any(bool(run["queue_ready"]) for run in runs[12:39]) is (selected_depth is None):
+    if any(bool(run["queue_ready"]) for run in runs[2:6]) is (selected_depth is None):
         raise ValueError("Decoder phase readiness disagrees with encoder selection.")
-    if any(bool(run["queue_ready"]) for run in runs[39:]) is (
+    if any(bool(run["queue_ready"]) for run in runs[6:]) is (
         selected_depth is None or selected_family is None
     ):
         raise ValueError("Supervision phase readiness disagrees with prior selections.")
@@ -533,7 +532,7 @@ def _validate_run(run: Mapping[str, object], *, require_resolved: bool) -> None:
     phase = run["phase"]
     if phase not in PHASE_ORDER or run["phase_order"] != PHASE_ORDER.index(phase) + 1:
         raise ValueError("Court query run phase identity/order is invalid.")
-    if run["seed"] not in {42, 43, 44}:
+    if run["seed"] not in {42}:
         raise ValueError("Court query run seed is outside the fixed seed set.")
     argv = run["command_argv"]
     if (

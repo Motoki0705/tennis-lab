@@ -37,13 +37,12 @@ from src.utils.io import save_json_atomic
 
 JsonValue: TypeAlias = Any
 SummaryPhase: TypeAlias = Literal[
-    "encoder_scaling",
-    "decoder_scaling",
+    "scaling_grid",
     "consistency_ablation",
 ]
 
-RESULTS_SCHEMA = "court_query_consistency_results_v1"
-SUMMARY_SCHEMA = "court_query_consistency_summary_v1"
+RESULTS_SCHEMA = "court_query_consistency_results_v2"
+SUMMARY_SCHEMA = "court_query_consistency_summary_v2"
 CAPACITY_NAMES = (
     "decoder_params",
     "trainable_params",
@@ -60,13 +59,11 @@ _STATIC_CAPACITY_NAMES = (
     "decoder_macs",
 )
 _PHASE_RESULT_COUNTS: Mapping[SummaryPhase, int] = {
-    "encoder_scaling": 12,
-    "decoder_scaling": 39,
-    "consistency_ablation": 51,
+    "scaling_grid": 24,
+    "consistency_ablation": 28,
 }
 _PHASE_GROUP_COUNTS: Mapping[str, int] = {
-    "encoder_scaling": 4,
-    "decoder_scaling": 9,
+    "scaling_grid": 24,
     "consistency_ablation": 4,
 }
 
@@ -312,21 +309,24 @@ def build_query_consistency_result_record(
     """Build one result from explicit fixtures without omissions or aliases."""
     if "line_iou" in test_metrics:
         raise ValueError("Legacy line_iou is not an accepted #790 metric alias.")
-    missing = set(RESULT_METRIC_NAMES) - set(test_metrics)
-    if missing:
-        raise ValueError(f"Test metrics lack required #790 keys: {sorted(missing)}.")
+    if set(test_metrics) != set(RESULT_METRIC_NAMES):
+        missing = set(RESULT_METRIC_NAMES) - set(test_metrics)
+        unexpected = set(test_metrics) - set(RESULT_METRIC_NAMES)
+        raise ValueError(
+            "Test metrics must contain exactly the canonical #790 keys: "
+            f"missing={sorted(missing)}, unexpected={sorted(unexpected)}."
+        )
     metrics = {
         name: _finite_number(test_metrics[name], name=f"metrics.{name}")
         for name in RESULT_METRIC_NAMES
     }
     _validate_metrics(metrics)
+    if set(diagnostics) != set(TRAIN_DIAGNOSTIC_NAMES):
+        raise ValueError("Diagnostics must contain exactly the canonical #790 keys.")
     diagnostic_values = {
         name: _finite_number(diagnostics[name], name=f"diagnostics.{name}")
         for name in TRAIN_DIAGNOSTIC_NAMES
-        if name in diagnostics
     }
-    if set(diagnostic_values) != set(TRAIN_DIAGNOSTIC_NAMES):
-        raise ValueError("Diagnostics must contain every exact #790 diagnostic key.")
     _validate_diagnostics(diagnostic_values)
     normalized_curve = [dict(point) for point in loss_curve]
     _validate_loss_curve(normalized_curve)
@@ -338,6 +338,21 @@ def build_query_consistency_result_record(
         or candidate["size"] != architecture["decoder_size"]
     ):
         raise ValueError("Capacity profile candidate disagrees with the manifest run.")
+    input_long_side = architecture["input_long_side"]
+    if type(input_long_side) is not int or input_long_side <= 0:
+        raise ValueError("Ready run architecture requires a positive input long side.")
+    input_contract = _mapping(profile["input_contract"], name="profile.input_contract")
+    if (
+        input_contract["batch_size"] != 1
+        or input_contract["channels"] != 3
+        or input_contract["height"] != input_long_side
+        or input_contract["width"] != input_long_side
+        or input_contract["dtype"] != "float32"
+        or (require_gpu_profile and input_contract["device"] != "cuda")
+    ):
+        raise ValueError(
+            "Capacity profile input disagrees with the manifest input-size grid member."
+        )
     parameters = _mapping(profile["parameters"], name="profile.parameters")
     macs = _mapping(profile["decoder_macs"], name="profile.decoder_macs")
     latency = _mapping(profile["latency_ms"], name="profile.latency_ms")
@@ -357,6 +372,7 @@ def build_query_consistency_result_record(
         "phase": run["phase"],
         "seed": run["seed"],
         "condition": run["condition"],
+        "architecture": dict(architecture),
         "metrics": metrics,
         "diagnostics": diagnostic_values,
         "capacity": capacity,
@@ -399,6 +415,7 @@ def validate_query_consistency_results(
             "phase",
             "seed",
             "condition",
+            "architecture",
             "metrics",
             "diagnostics",
             "capacity",
@@ -409,7 +426,10 @@ def validate_query_consistency_results(
         if run_id in seen:
             raise ValueError("Query consistency result run IDs must be unique.")
         seen.add(run_id)
-        if any(record[name] != planned[name] for name in ("phase", "seed", "condition")):
+        if any(
+            record[name] != planned[name]
+            for name in ("phase", "seed", "condition", "architecture")
+        ):
             raise ValueError("Query consistency result identity disagrees with manifest.")
         metrics = _mapping(record["metrics"], name="result.metrics")
         diagnostics = _mapping(record["diagnostics"], name="result.diagnostics")
@@ -494,31 +514,34 @@ def summarize_query_consistency(
     *,
     phase: SummaryPhase,
 ) -> dict[str, JsonValue]:
-    """Aggregate one explicitly requested completed phase and apply frozen rules."""
+    """Aggregate one completed phase without inferring an architecture choice."""
     validate_query_consistency_manifest(manifest, require_resolved=False)
     _validate_manifest_phase_state(manifest, phase=phase)
     validate_query_consistency_results(results, manifest=manifest, phase=phase)
     records = cast(Sequence[Mapping[str, object]], results["runs"])
     aggregates = _aggregate(records, phase=phase)
-    encoder = _select_encoder(aggregates["encoder_scaling"])
-    selected = _mapping(manifest["selected"], name="manifest.selected")
+    scaling_selection = _scaling_selection(
+        manifest,
+        aggregates["scaling_grid"],
+        phase=phase,
+    )
     summary: dict[str, JsonValue] = {
         "schema": SUMMARY_SCHEMA,
         "source_manifest_schema": MANIFEST_SCHEMA,
         "manifest_sha256": manifest["manifest_sha256"],
         "phase": phase,
+        "phase_order": list(PHASE_ORDER),
         "run_count": len(records),
         "seed_count": len(SEEDS),
         "aggregation": {
-            "mean": "arithmetic_mean_over_seeds",
-            "variance": "population_variance_over_seeds",
+            "mean": "fixed_seed_42_value",
+            "variance": "zero_by_definition_not_seed_stability_evidence",
             "gradient_diagnostic": "per_run_min_over_logged_steps",
             "train_step_time": "per_run_mean_over_logged_steps",
             "cuda_peak_memory": "per_run_max_over_logged_steps",
         },
         "groups": aggregates,
-        "encoder_selection": encoder,
-        "decoder_selection": None,
+        "scaling_selection": scaling_selection,
         "adoption_decision": None,
         "gradient_direction": None,
         "production_default": {
@@ -526,26 +549,20 @@ def summarize_query_consistency(
             "status": "ablation_only_until_complete_formal_adoption",
         },
     }
-    if phase == "encoder_scaling":
+    if phase == "scaling_grid":
         return summary
-    if selected["encoder_depth"] != encoder["selected_depth"]:
-        raise ValueError(
-            "Manifest selected encoder disagrees with the frozen phase-one rule."
-        )
-    decoder = _select_decoder(aggregates["decoder_scaling"])
-    summary["decoder_selection"] = decoder
-    if phase == "decoder_scaling":
-        return summary
-    if (
-        selected["decoder_family"] != decoder["selected_family"]
-        or selected["decoder_size"] != decoder["selected_size"]
-    ):
-        raise ValueError(
-            "Manifest selected decoder disagrees with the frozen phase-two rule."
-        )
     formal = aggregates["consistency_ablation"]
-    summary["adoption_decision"] = _adoption_decision(formal)
+    adoption = _adoption_decision(formal)
+    summary["adoption_decision"] = adoption
     summary["gradient_direction"] = _gradient_direction(formal)
+    summary["production_default"] = {
+        "changed": False,
+        "status": (
+            "adoption_evidence_complete_production_default_unchanged"
+            if adoption["status"] == "adopted"
+            else "not_adopted_ablation_only"
+        ),
+    }
     return summary
 
 
@@ -553,16 +570,11 @@ def _validate_manifest_phase_state(
     manifest: Mapping[str, object], *, phase: SummaryPhase
 ) -> None:
     selected = _mapping(manifest["selected"], name="manifest.selected")
-    depth = selected["encoder_depth"]
-    decoder_resolved = (
-        selected["decoder_family"] is not None and selected["decoder_size"] is not None
-    )
-    if phase == "encoder_scaling" and (depth is not None or decoder_resolved):
-        raise ValueError("Encoder summary requires an unresolved selection manifest.")
-    if phase == "decoder_scaling" and (depth is None or decoder_resolved):
-        raise ValueError("Decoder summary requires only the encoder selection.")
-    if phase == "consistency_ablation" and (depth is None or not decoder_resolved):
-        raise ValueError("Formal summary requires the fully selected architecture.")
+    resolved = all(value is not None for value in selected.values())
+    if phase == "scaling_grid" and resolved:
+        raise ValueError("Scaling-grid summary requires an unresolved selection manifest.")
+    if phase == "consistency_ablation" and not resolved:
+        raise ValueError("Consistency summary requires one explicit selected grid member.")
 
 
 def _aggregate(
@@ -588,7 +600,17 @@ def _aggregate(
         members = groups[(phase_name, candidate)]
         seeds = [cast(int, member["seed"]) for member in members]
         if seeds != list(SEEDS):
-            raise ValueError(f"Candidate {phase_name}/{candidate} lacks exact seed order.")
+            raise ValueError(
+                f"Candidate {phase_name}/{candidate} lacks the fixed seed-42 record."
+            )
+        architectures = [
+            _mapping(member["architecture"], name="result.architecture")
+            for member in members
+        ]
+        if any(architecture != architectures[0] for architecture in architectures[1:]):
+            raise ValueError(
+                f"Candidate {phase_name}/{candidate} changed architecture within its group."
+            )
         metrics_mean, metrics_variance = _aggregate_mapping(members, "metrics")
         diagnostics_mean, diagnostics_variance = _aggregate_mapping(
             members, "diagnostics"
@@ -601,12 +623,14 @@ def _aggregate(
             ]
             if len(set(values)) != 1:
                 raise ValueError(
-                    f"Candidate {phase_name}/{candidate} changed static {name} by seed."
+                    f"Candidate {phase_name}/{candidate} changed static {name} "
+                    "within its declared run set."
                 )
         aggregates[phase_name].append(
             {
                 "candidate": candidate,
                 "seeds": seeds,
+                "architecture": dict(architectures[0]),
                 "metrics_mean": metrics_mean,
                 "metrics_variance": metrics_variance,
                 "diagnostics_mean": diagnostics_mean,
@@ -640,139 +664,89 @@ def _aggregate_mapping(
 
 
 def _candidate_identity(record: Mapping[str, object]) -> str:
-    run_id = cast(str, record["run_id"])
-    if record["phase"] == "encoder_scaling":
-        return run_id.removeprefix("encoder-").rsplit("-seed-", maxsplit=1)[0]
-    if record["phase"] == "decoder_scaling":
-        return run_id.removeprefix("decoder-").rsplit("-seed-", maxsplit=1)[0]
+    if record["phase"] == "scaling_grid":
+        architecture = _mapping(record["architecture"], name="result.architecture")
+        return _architecture_identity(architecture)
     return cast(str, record["condition"])
 
 
-def _select_encoder(rows: Sequence[dict[str, JsonValue]]) -> dict[str, JsonValue]:
-    by_depth = {
-        int(cast(str, row["candidate"]).removeprefix("depth-")): row for row in rows
-    }
-    reference = by_depth[8]
-    reference_metrics = cast(Mapping[str, object], reference["metrics_mean"])
-    required = (
-        "kp_mean_distance_px",
-        "pose_reprojection_mean_distance_px",
-        "pose_translation_l2_m",
-        "pose_rotation_geodesic_deg",
-        "pose_focal_relative_error",
-    )
-    candidates: list[dict[str, JsonValue]] = []
-    sufficient: list[int] = []
-    for depth in sorted(by_depth):
-        row = by_depth[depth]
-        metrics = cast(Mapping[str, object], row["metrics_mean"])
-        within = all(
-            float(cast(float, metrics[name]))
-            <= float(cast(float, reference_metrics[name])) * 1.05
-            for name in required
-        )
-        if within:
-            sufficient.append(depth)
-        candidates.append({**row, "within_reference_tolerance": within})
-    selected = min(sufficient) if sufficient else 8
-    return {
-        "selected_depth": selected,
-        "reference_depth": 8,
-        "decoder_phase_compatible": selected >= 2,
-        "decoder_phase_blocker": (
-            None
-            if selected >= 2
-            else (
-                "Frozen selection chose depth 1, but the required DPT matrix needs "
-                "at least two unique taps; manifest regeneration fails closed."
-            )
-        ),
-        "candidates": [
-            {
-                **row,
-                "adopted": row["candidate"] == f"depth-{selected}",
-                "non_adoption_reason": (
-                    None
-                    if row["candidate"] == f"depth-{selected}"
-                    else (
-                        "Failed one or more frozen 5% depth-8 thresholds."
-                        if not row["within_reference_tolerance"]
-                        else "A smaller sufficient encoder was selected."
-                    )
-                ),
-            }
-            for row in candidates
-        ],
-    }
+def _architecture_identity(architecture: Mapping[str, object]) -> str:
+    input_long_side = architecture["input_long_side"]
+    depth = architecture["encoder_depth"]
+    family = architecture["decoder_family"]
+    size = architecture["decoder_size"]
+    if type(input_long_side) is not int or type(depth) is not int:
+        raise ValueError("Scaling architecture input/depth must be integers.")
+    if family != "dpt" or size not in {"tiny", "small", "base", "large"}:
+        raise ValueError("Scaling architecture must use one declared DPT size.")
+    return f"input-{input_long_side}-depth-{depth:02d}-{family}-{size}"
 
 
-def _select_decoder(rows: Sequence[dict[str, JsonValue]]) -> dict[str, JsonValue]:
-    by_name = {cast(str, row["candidate"]): row for row in rows}
-    reference = by_name["dpt-base"]
-    ref_metrics = cast(Mapping[str, object], reference["metrics_mean"])
-    sufficient: list[dict[str, JsonValue]] = []
-    decisions: list[dict[str, JsonValue]] = []
-    for row in rows:
-        metrics = cast(Mapping[str, object], row["metrics_mean"])
-        within = all(
-            float(cast(float, metrics[name]))
-            <= float(cast(float, ref_metrics[name])) * 1.05
-            for name in (
-                "kp_mean_distance_px",
-                "pose_reprojection_mean_distance_px",
-                "pose_translation_l2_m",
-                "pose_rotation_geodesic_deg",
-                "pose_focal_relative_error",
+def _scaling_selection(
+    manifest: Mapping[str, object],
+    rows: Sequence[dict[str, JsonValue]],
+    *,
+    phase: SummaryPhase,
+) -> dict[str, JsonValue]:
+    rules = _mapping(manifest["selection_rules"], name="manifest.selection_rules")
+    scaling_rule = _mapping(rules["scaling_grid"], name="selection_rules.scaling_grid")
+    selected = _mapping(manifest["selected"], name="manifest.selected")
+    selected_candidate: str | None = None
+    if phase == "consistency_ablation":
+        matches = [
+            row
+            for row in rows
+            if _matches_selected_architecture(
+                _mapping(row["architecture"], name="scaling.architecture"),
+                selected,
             )
-        ) and all(
-            float(cast(float, metrics[name]))
-            >= float(cast(float, ref_metrics[name])) - 0.01
-            for name in ("line_dice", "seg_miou")
-        )
-        candidate = {**row, "within_reference_tolerance": within}
-        decisions.append(candidate)
-        if within:
-            sufficient.append(candidate)
-    selected = min(
-        sufficient or [reference],
-        key=lambda row: (
-            _finite_number(
-                cast(Mapping[str, object], row["capacity_mean"])["decoder_macs"],
-                name="capacity.decoder_macs",
-            ),
-            _finite_number(
-                cast(Mapping[str, object], row["capacity_mean"])["decoder_params"],
-                name="capacity.decoder_params",
-            ),
-            cast(str, row["candidate"]),
-        ),
-    )
-    selected_name = cast(str, selected["candidate"])
+        ]
+        if len(matches) != 1:
+            raise ValueError(
+                "Explicit selected architecture must match exactly one completed grid member."
+            )
+        selected_candidate = cast(str, matches[0]["candidate"])
     marked = _mark_pareto(
         [
             {
                 **row,
-                "adopted": row["candidate"] == selected_name,
-                "non_adoption_reason": (
+                "selected": row["candidate"] == selected_candidate,
+                "non_selection_reason": (
                     None
-                    if row["candidate"] == selected_name
-                    else (
-                        "Failed one or more frozen DPT-base accuracy thresholds."
-                        if not row["within_reference_tolerance"]
-                        else "A sufficient candidate with lower MACs/parameters was selected."
-                    )
+                    if selected_candidate is None or row["candidate"] == selected_candidate
+                    else f"Explicit selection chose {selected_candidate}."
                 ),
             }
-            for row in decisions
+            for row in rows
         ]
     )
-    family, size = selected_name.split("-", maxsplit=1)
     return {
-        "selected_family": family,
-        "selected_size": size,
-        "reference": "dpt-base",
+        "status": (
+            "explicit_selection_recorded"
+            if selected_candidate is not None
+            else "awaiting_explicit_post_grid_selection"
+        ),
+        "rule": scaling_rule["rule"],
+        "selected_architecture": (
+            dict(selected) if selected_candidate is not None else None
+        ),
+        "selected_candidate": selected_candidate,
         "candidates": marked,
     }
+
+
+def _matches_selected_architecture(
+    architecture: Mapping[str, object], selected: Mapping[str, object]
+) -> bool:
+    return all(
+        architecture[name] == selected[name]
+        for name in (
+            "input_long_side",
+            "encoder_depth",
+            "decoder_family",
+            "decoder_size",
+        )
+    )
 
 
 def _mark_pareto(rows: Sequence[dict[str, JsonValue]]) -> list[dict[str, JsonValue]]:
@@ -794,7 +768,9 @@ def _pareto_axes(row: Mapping[str, JsonValue]) -> tuple[float, ...]:
         float(cast(float, metrics["kp_mean_distance_px"])),
         float(cast(float, metrics["pose_reprojection_mean_distance_px"])),
         float(cast(float, capacity["decoder_macs"])),
-        float(cast(float, capacity["decoder_params"])),
+        float(cast(float, capacity["trainable_params"])),
+        float(cast(float, capacity["end_to_end_latency_ms"])),
+        float(cast(float, capacity["inference_peak_memory_bytes"])),
         float(cast(float, diagnostics["train_step_time_ms"])),
         float(cast(float, diagnostics["cuda_peak_memory_bytes"])),
     )
@@ -933,10 +909,9 @@ def write_query_consistency_summary_artifacts(
     _write_all_runs(results, all_runs_path)
     _write_scaling(summary, scaling_path)
     artifacts.extend((all_runs_path, scaling_path))
-    if summary["decoder_selection"] is not None:
-        pareto_path = output_dir / "pareto_table.csv"
-        _write_pareto(summary, pareto_path)
-        artifacts.append(pareto_path)
+    pareto_path = output_dir / "pareto_table.csv"
+    _write_pareto(summary, pareto_path)
+    artifacts.append(pareto_path)
     artifacts.extend(_write_plots(summary, output_dir=output_dir))
     return tuple(artifacts)
 
@@ -951,6 +926,15 @@ def _write_all_runs(results: Mapping[str, object], path: Path) -> None:
             "condition": record["condition"],
             "seed": record["seed"],
         }
+        architecture = _mapping(record["architecture"], name="architecture")
+        row.update(
+            {
+                "input_long_side": architecture["input_long_side"],
+                "encoder_depth": architecture["encoder_depth"],
+                "decoder_family": architecture["decoder_family"],
+                "decoder_size": architecture["decoder_size"],
+            }
+        )
         for field in ("metrics", "diagnostics", "capacity"):
             row.update(_mapping(record[field], name=field))
         rows.append(row)
@@ -960,11 +944,28 @@ def _write_all_runs(results: Mapping[str, object], path: Path) -> None:
 def _write_scaling(summary: Mapping[str, JsonValue], path: Path) -> None:
     rows: list[dict[str, object]] = []
     groups = cast(Mapping[str, Sequence[Mapping[str, object]]], summary["groups"])
+    selection = cast(Mapping[str, object], summary["scaling_selection"])
+    scaling_candidates = {
+        cast(str, candidate["candidate"]): candidate
+        for candidate in cast(
+            Sequence[Mapping[str, object]], selection["candidates"]
+        )
+    }
     for phase_name in PHASE_ORDER:
         for group in groups.get(phase_name, ()):
+            architecture = _mapping(group["architecture"], name="architecture")
             row: dict[str, object] = {
                 "phase": phase_name,
                 "candidate": group["candidate"],
+                "input_long_side": architecture["input_long_side"],
+                "encoder_depth": architecture["encoder_depth"],
+                "decoder_family": architecture["decoder_family"],
+                "decoder_size": architecture["decoder_size"],
+                "selected": (
+                    scaling_candidates[cast(str, group["candidate"])]["selected"]
+                    if phase_name == "scaling_grid"
+                    else ""
+                ),
             }
             for field in ("metrics", "diagnostics", "capacity"):
                 means = _mapping(group[f"{field}_mean"], name=f"{field}_mean")
@@ -979,29 +980,40 @@ def _write_scaling(summary: Mapping[str, JsonValue], path: Path) -> None:
 
 
 def _write_pareto(summary: Mapping[str, JsonValue], path: Path) -> None:
-    decoder = cast(Mapping[str, object], summary["decoder_selection"])
+    scaling = cast(Mapping[str, object], summary["scaling_selection"])
     rows: list[dict[str, object]] = []
     for raw_candidate in cast(
-        Sequence[Mapping[str, object]], decoder["candidates"]
+        Sequence[Mapping[str, object]], scaling["candidates"]
     ):
-        candidate = _mapping(raw_candidate, name="decoder.candidate")
+        candidate = _mapping(raw_candidate, name="scaling.candidate")
+        architecture = _mapping(candidate["architecture"], name="architecture")
         metrics = _mapping(candidate["metrics_mean"], name="metrics_mean")
         diagnostics = _mapping(candidate["diagnostics_mean"], name="diagnostics_mean")
         capacity = _mapping(candidate["capacity_mean"], name="capacity_mean")
         rows.append(
             {
                 "candidate": candidate["candidate"],
+                "input_long_side": architecture["input_long_side"],
+                "encoder_depth": architecture["encoder_depth"],
+                "decoder_family": architecture["decoder_family"],
+                "decoder_size": architecture["decoder_size"],
                 "kp_mean_distance_px": metrics["kp_mean_distance_px"],
                 "pose_reprojection_mean_distance_px": metrics[
                     "pose_reprojection_mean_distance_px"
                 ],
                 "decoder_macs": capacity["decoder_macs"],
                 "decoder_params": capacity["decoder_params"],
+                "trainable_params": capacity["trainable_params"],
+                "total_params": capacity["total_params"],
+                "end_to_end_latency_ms": capacity["end_to_end_latency_ms"],
+                "inference_peak_memory_bytes": capacity[
+                    "inference_peak_memory_bytes"
+                ],
                 "train_step_time_ms": diagnostics["train_step_time_ms"],
                 "cuda_peak_memory_bytes": diagnostics["cuda_peak_memory_bytes"],
                 "pareto_front": candidate["pareto_front"],
-                "adopted": candidate["adopted"],
-                "non_adoption_reason": candidate["non_adoption_reason"],
+                "selected": candidate["selected"],
+                "non_selection_reason": candidate["non_selection_reason"],
             }
         )
     _write_csv(path, rows)
@@ -1025,68 +1037,88 @@ def _write_plots(
     from matplotlib import pyplot as plt
 
     groups = cast(Mapping[str, Sequence[Mapping[str, object]]], summary["groups"])
-    encoder = groups["encoder_scaling"]
-    depths = [
-        int(cast(str, row["candidate"]).removeprefix("depth-")) for row in encoder
-    ]
-    kp = [
-        _finite_number(
-            _mapping(row["metrics_mean"], name="metrics")["kp_mean_distance_px"],
-            name="metrics.kp_mean_distance_px",
-        )
-        for row in encoder
-    ]
-    pose = [
-        _finite_number(
-            _mapping(row["metrics_mean"], name="metrics")[
-                "pose_reprojection_mean_distance_px"
-            ],
-            name="metrics.pose_reprojection_mean_distance_px",
-        )
-        for row in encoder
-    ]
-    fig, axis = plt.subplots(figsize=(7, 4))
-    axis.plot(depths, kp, marker="o", label="GT KP mean")
-    axis.plot(depths, pose, marker="s", label="Pose reprojection mean")
-    axis.set(xlabel="Encoder depth", ylabel="Distance (px)", title="Encoder scaling")
-    axis.legend()
+    scaling = groups["scaling_grid"]
+    by_architecture: dict[tuple[int, str], list[Mapping[str, object]]] = {}
+    for row in scaling:
+        architecture = _mapping(row["architecture"], name="architecture")
+        depth = architecture["encoder_depth"]
+        size = architecture["decoder_size"]
+        if type(depth) is not int or not isinstance(size, str):
+            raise ValueError("Scaling plot architecture identity is invalid.")
+        by_architecture.setdefault((depth, size), []).append(row)
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5), sharex=True)
+    plotted_metrics = (
+        ("kp_mean_distance_px", "GT KP mean distance (px)"),
+        ("pose_reprojection_mean_distance_px", "Pose reprojection mean (px)"),
+    )
+    for axis, (metric_name, label) in zip(axes, plotted_metrics, strict=True):
+        for (depth, size), rows in sorted(by_architecture.items()):
+            ordered = sorted(
+                rows,
+                key=lambda row: cast(
+                    int,
+                    _mapping(row["architecture"], name="architecture")[
+                        "input_long_side"
+                    ],
+                ),
+            )
+            inputs = [
+                cast(
+                    int,
+                    _mapping(row["architecture"], name="architecture")[
+                        "input_long_side"
+                    ],
+                )
+                for row in ordered
+            ]
+            values = [
+                _finite_number(
+                    _mapping(row["metrics_mean"], name="metrics")[metric_name],
+                    name=f"metrics.{metric_name}",
+                )
+                for row in ordered
+            ]
+            axis.plot(inputs, values, marker="o", label=f"depth {depth} / DPT {size}")
+        axis.set(xlabel="Input long side (px)", ylabel=label)
+        axis.grid(True, alpha=0.3)
+    axes[0].legend(fontsize=7, ncol=2)
+    fig.suptitle("Input size × task-encoder depth × DPT size (fixed seed 42)")
     fig.tight_layout()
-    encoder_path = output_dir / "encoder_scaling.png"
-    fig.savefig(encoder_path, dpi=160)
+    scaling_path = output_dir / "scaling_grid.png"
+    fig.savefig(scaling_path, dpi=160)
     plt.close(fig)
-    paths = [encoder_path]
-    decoder = summary["decoder_selection"]
-    if decoder is not None:
-        candidates = cast(
-            Sequence[Mapping[str, object]],
-            cast(Mapping[str, object], decoder)["candidates"],
+    paths = [scaling_path]
+    candidates = cast(
+        Sequence[Mapping[str, object]],
+        cast(Mapping[str, object], summary["scaling_selection"])["candidates"],
+    )
+    fig, axis = plt.subplots(figsize=(9, 6))
+    for row in candidates:
+        capacity = _mapping(row["capacity_mean"], name="capacity")
+        metrics = _mapping(row["metrics_mean"], name="metrics")
+        decoder_macs = _finite_number(
+            capacity["decoder_macs"], name="capacity.decoder_macs"
         )
-        fig, axis = plt.subplots(figsize=(8, 5))
-        for row in candidates:
-            capacity = _mapping(row["capacity_mean"], name="capacity")
-            metrics = _mapping(row["metrics_mean"], name="metrics")
-            decoder_macs = _finite_number(
-                capacity["decoder_macs"], name="capacity.decoder_macs"
-            )
-            kp_mean = _finite_number(
-                metrics["kp_mean_distance_px"], name="metrics.kp_mean_distance_px"
-            )
-            axis.scatter(
-                decoder_macs,
-                kp_mean,
-                marker="o" if row["pareto_front"] else "x",
-            )
-            axis.annotate(str(row["candidate"]), (decoder_macs, kp_mean))
-        axis.set(
-            xlabel="Decoder MACs",
-            ylabel="GT KP mean distance (px)",
-            title="Decoder scaling Pareto view",
+        kp_mean = _finite_number(
+            metrics["kp_mean_distance_px"], name="metrics.kp_mean_distance_px"
         )
-        fig.tight_layout()
-        decoder_path = output_dir / "decoder_pareto.png"
-        fig.savefig(decoder_path, dpi=160)
-        plt.close(fig)
-        paths.append(decoder_path)
+        axis.scatter(
+            decoder_macs,
+            kp_mean,
+            marker="o" if row["pareto_front"] else "x",
+        )
+        axis.annotate(str(row["candidate"]), (decoder_macs, kp_mean), fontsize=6)
+    axis.set_xscale("log")
+    axis.set(
+        xlabel="Decoder MACs",
+        ylabel="GT KP mean distance (px)",
+        title="Full scaling-grid Pareto view (fixed seed 42)",
+    )
+    fig.tight_layout()
+    pareto_path = output_dir / "scaling_pareto.png"
+    fig.savefig(pareto_path, dpi=160)
+    plt.close(fig)
+    paths.append(pareto_path)
     if summary["adoption_decision"] is not None:
         formal = groups["consistency_ablation"]
         names = [str(row["candidate"]) for row in formal]

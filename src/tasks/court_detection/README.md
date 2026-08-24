@@ -46,7 +46,7 @@ Synthetic schema v1/v2/v3の生成・publication・semantic contractの正本は
 ## Model and runtime
 
 - `models/hierarchical_model.py`: shared encoder/decoder trunkと、`CourtTargetBundleSpec`から導出したhead群。
-- `models/query_encoder/`: 明示的なablation variant。DINOv3 patch boundary、task encoder、`linear / progressive / dpt` decoder、dense headとpose10D headを独立したHydra groupとしてcomposeします。production defaultは変更しません。
+- `models/query_encoder/`: 明示的なablation variant。DINOv3 patch boundary、MHA + patch-only 2-D RoPE task encoder、DPT decoder、dense headとpose10D headを独立したHydra groupとしてcomposeします。production defaultは変更しません。
 - `model_io/`: bundle全体の入力、loss、typed prediction契約。KP predictionは `[channel, peak, xy]`、score、validityを明示します。
 - `training/`: targetごとのloss/metricを一つのbundleとして集約します。
 - `inference/`: single-head predictorはmulti-head checkpointから対象headを明示選択します。
@@ -69,8 +69,8 @@ python -m src.tasks.court_detection.scripts.train \
   data.source.keypoint_court_scope=target_court \
   data/processing=kp data/augmentation=pose_safe \
   model=query_encoder_base model.preset=raw \
-  model/task_encoder=query_base model/decoder=query_progressive_small \
-  model.decoder.tap_indices=[7] model/heads=query_base loss=query_pose
+  model/task_encoder=query_base model/decoder=query_dpt_small \
+  model.decoder.tap_indices=[0,2,5,7] model/heads=query_base loss=query_pose
 ```
 
 Synthetic V3の座標・camera authority・KP semanticの定義は、このconsumer READMEでは再定義しません。正本は上記のSynthetic Court READMEです。
@@ -80,17 +80,17 @@ Synthetic V3の座標・camera authority・KP semanticの定義は、このconsu
 3つのentry pointはいずれもHydra configだけを使用し、GPU学習を直接起動しません。
 
 ```bash
-# 1. 3 phase × 3 seedのordered manifestを生成
+# 1. input long-side × encoder depth × DPT decoder-size gridを生成
 python -m src.tasks.court_detection.scripts.run_query_ablation
 
-# encoder結果から選んだdepthを解決し、decoder phaseをqueue-readyにする
+# 選定したdepth/decoderを明示して後続のformal routeを解決
 python -m src.tasks.court_detection.scripts.run_query_ablation \
-  ablation.selected.encoder_depth=4
+  ablation.selected.encoder_depth=8
 
 # decoder結果も選択した完全解決manifest
 python -m src.tasks.court_detection.scripts.run_query_ablation \
-  ablation.selected.encoder_depth=4 \
-  ablation.selected.decoder_family=linear \
+  ablation.selected.encoder_depth=8 \
+  ablation.selected.decoder_family=dpt \
   ablation.selected.decoder_size=base
 
 # 2. 同一256x256入力contractで1 candidateをprofile
@@ -102,44 +102,37 @@ python -m src.tasks.court_detection.scripts.summarize_query_ablation \
   summary.adoption.rationale='complete three-seed evidence supports joint pose supervision'
 ```
 
-manifestの順序はencoder depth `1/2/4/8`、選定encoderを固定したdecoder `linear/progressive/dpt × tiny/small/base`、選定architectureを固定したsupervision `kp / kp+pose / all / all+pose`です。各runは15 epoch、seed `42/43/44`、256×256 isotropic letterbox、`preserve_fx_fy=true`、hflip/affine/shear/perspectiveなしを固定します。未選定の後続phaseはplaceholderと`queue_ready=false`を保持し、暗黙の構成には置換しません。
+manifestのscaling gridは入力長辺 `256/384/512`、encoder depth `1/8`、DPT decoder `tiny/small/base/large`の直積です。各runは15 epoch、seed `42`、長辺等方resize、patchサイズで割り切れない場合のみ右・下へ最小padding、`preserve_fx_fy=true`、hflip/affine/shear/perspectiveなしを固定します。DPTのsingle-tapはdepth 1でのみ許可されます。
 
 manifest内の`command_argv`は、repository root共有のtraining queueへ順番にenqueueするための入力です。`run_query_ablation.py`自身はqueue workerもtraining processも開始しません。profileはdecoder/trainable/total parameters、明示定義のdecoder MACs、decoder/end-to-end latency、peak memoryを記録します。CPU profileはdiagnosticと明記され、採用判断のGPU latency evidenceとしてsummarizerに受理されません。summaryはscaling/Pareto tableとplot、および全candidateの`adopted / non_adoption_reason`を出力し、run・seed・metric・phaseが1件でも欠ければ停止します。
 
 ## Query KP–pose consistency scaling workflow
 
-Issue #790のscaling/formal comparisonは、上記#779の51-run routeを変更しない独立manifestです。Phase 1はencoder depth `1/2/4/8 × seed 42/43/44`、Phase 2は選定encoderを固定したdecoder `linear/progressive/dpt × tiny/small/base × 3 seed`、Phase 3は選定architectureを固定した`direct-all / joint-both / joint-stopgrad-pose / joint-stopgrad-dense × 3 seed`です。全phaseでV3 target-court singleton KP14、`KP/LINE/SEG + translation/rotation/focal`直接教師、pose-safe 256×256、15 epochを固定します。
+Issue #790のscaling/formal comparisonは、上記#779のquery routeに対する独立manifestです。encoder depth `1/8`、入力長辺 `256/384/512`、DPT `tiny/small/base/large`をまず比較し、その後に選定architectureでKP–pose consistency条件を比較します。全phaseでV3 target-court singleton KP14、`KP/LINE/SEG + translation/rotation/focal`直接教師、patch-aligned pose-safe geometry、15 epoch、seed `42`を固定します。
 
 ```bash
-# Phase 1だけがqueue-readyなmanifest
+# 24-member scaling gridをqueue-readyで生成
 python -m src.tasks.court_detection.scripts.run_query_consistency_ablation
 
-# 完了したPhase 1 evidenceからencoder選定を検証・集約
+# 完了したgrid evidenceを検証・集約
 python -m src.tasks.court_detection.scripts.summarize_query_consistency_ablation \
-  summary.phase=encoder_scaling
+  summary.phase=scaling_grid
 
-# 選定encoderを明示してPhase 2を解決
+# 選定input/depth/decoderを明示してformal consistency phaseを解決
 python -m src.tasks.court_detection.scripts.run_query_consistency_ablation \
-  consistency_ablation.selected.encoder_depth=4
+  consistency_ablation.selected.input_long_side=256 \
+  consistency_ablation.selected.encoder_depth=8 \
+  consistency_ablation.selected.decoder_family=dpt \
+  consistency_ablation.selected.decoder_size=base
 
-# Phase 2完了後にdecoder選定を検証・集約
-python -m src.tasks.court_detection.scripts.summarize_query_consistency_ablation \
-  summary.phase=decoder_scaling
-
-# 選定encoder/decoderをすべて明示してPhase 3を解決
-python -m src.tasks.court_detection.scripts.run_query_consistency_ablation \
-  consistency_ablation.selected.encoder_depth=4 \
-  consistency_ablation.selected.decoder_family=linear \
-  consistency_ablation.selected.decoder_size=tiny
-
-# 全51 runの採用/不採用条件を自動判定
+# 全24-member grid / 4-condition formal evidenceの採用判断
 python -m src.tasks.court_detection.scripts.summarize_query_consistency_ablation \
   summary.phase=consistency_ablation
 ```
 
 各ready runはtraining用`command_argv`とcapacity用`profile_command_argv`を公開します。どちらもrepository root共有training queueへそのまま渡せるargvであり、manifest generator自身はGPU processやqueue workerを開始しません。`command_argv`は`run.output_dir`、run固有artifact root、`run.test_after_fit=true`を明示します。未選定phaseはargvを持たず`queue_ready=false`となり、placeholderや既定architectureへ置換されません。
 
-Frozen ruleがencoder depth 1を選んだ場合、DPTに必要な2個以上のunique tapを作れません。この場合はdepthを暗黙に変更せず、Phase 2 manifestの解決を明示エラーにしてsummaryへblockerを記録します。
+Frozen ruleがencoder depth 1を選んだ場合は、single-tap DPTを明示的に使います。depthを暗黙に変更したり、別decoder familyへfallbackしたりしません。
 
 summarizerはtest `metrics.json`のcanonical metric、TensorBoardのbranch gradient/train-step/CUDA-memory scalarとloss curve、GPU capacity profileを別々の必須sourceとして収集します。legacy `line_iou`は`line_dice`のaliasとして受理しません。1 run/seed/metric/diagnostic/profileでも欠けると停止し、all-run/scaling/Pareto tableとplot、Phase 3ではIssueのGT改善・直接metric劣化・dense metric・cost上限を使った採用判断を出力します。
 

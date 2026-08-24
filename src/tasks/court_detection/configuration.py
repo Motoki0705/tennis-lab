@@ -38,7 +38,7 @@ CourtTargetKind: TypeAlias = Literal["kp", "seg", "line"]
 SyntheticCourtSchemaVersion: TypeAlias = Literal["v1", "v2", "v3"]
 KeypointCourtScope: TypeAlias = Literal["all_courts", "target_court"]
 CourtQueryPreset: TypeAlias = Literal["tiny", "small", "base", "raw"]
-CourtQueryDecoderFamily: TypeAlias = Literal["linear", "progressive", "dpt"]
+CourtQueryDecoderFamily: TypeAlias = Literal["dpt"]
 CourtConsistencyGradientFlow: TypeAlias = Literal[
     "both",
     "stopgrad_pose",
@@ -1093,21 +1093,6 @@ class CourtQueryTaskEncoderConfig:
 
 
 @dataclass(frozen=True, slots=True)
-class CourtQueryLinearDecoderConfig:
-    family: Literal["linear"]
-    width: int
-    tap_indices: tuple[int, ...]
-
-
-@dataclass(frozen=True, slots=True)
-class CourtQueryProgressiveDecoderConfig:
-    family: Literal["progressive"]
-    width: int
-    tap_indices: tuple[int, ...]
-    stage_count: int
-
-
-@dataclass(frozen=True, slots=True)
 class CourtQueryDPTDecoderConfig:
     family: Literal["dpt"]
     width: int
@@ -1116,32 +1101,24 @@ class CourtQueryDPTDecoderConfig:
     reassemble_factors: tuple[float, ...]
 
 
-CourtQueryDecoderConfig: TypeAlias = (
-    CourtQueryLinearDecoderConfig
-    | CourtQueryProgressiveDecoderConfig
-    | CourtQueryDPTDecoderConfig
-)
+CourtQueryDecoderConfig: TypeAlias = CourtQueryDPTDecoderConfig
 
 
 def _query_decoder_config(value: object) -> CourtQueryDecoderConfig:
     path = "model.decoder"
     mapping = as_config_mapping(value, path=path)
     family = _string(mapping, "family", path=path)
-    if family not in {"linear", "progressive", "dpt"}:
+    if family != "dpt":
         raise SemanticConfigurationError(
-            "Query model.decoder.family must be linear, progressive, or dpt."
+            "Query model.decoder.family must be dpt."
         )
     expected = {
-        "linear": {"family", "width", "tap_indices"},
-        "progressive": {"family", "width", "tap_indices", "stage_count"},
-        "dpt": {
-            "family",
-            "width",
-            "tap_indices",
-            "fusion_levels",
-            "reassemble_factors",
-        },
-    }[family]
+        "family",
+        "width",
+        "tap_indices",
+        "fusion_levels",
+        "reassemble_factors",
+    }
     _exact(mapping, expected, path=path)
     width = _integer(mapping, "width", path=path)
     taps = _int_tuple(mapping, "tap_indices", path=path)
@@ -1150,28 +1127,6 @@ def _query_decoder_config(value: object) -> CourtQueryDecoderConfig:
     if len(set(taps)) != len(taps) or not taps or taps != tuple(sorted(taps)):
         raise SemanticConfigurationError(
             "model.decoder.tap_indices must be non-empty, unique, and increasing."
-        )
-    if family == "linear":
-        if len(taps) != 1:
-            raise SemanticConfigurationError(
-                "Linear query decoder requires exactly one tap index."
-            )
-        return CourtQueryLinearDecoderConfig(
-            family="linear",
-            width=width,
-            tap_indices=taps,
-        )
-    if family == "progressive":
-        stages = _integer(mapping, "stage_count", path=path)
-        if len(taps) != 1 or stages <= 0:
-            raise SemanticConfigurationError(
-                "Progressive query decoder requires one tap and positive stage_count."
-            )
-        return CourtQueryProgressiveDecoderConfig(
-            family="progressive",
-            width=width,
-            tap_indices=taps,
-            stage_count=stages,
         )
     fusion_levels = _integer(mapping, "fusion_levels", path=path)
     factors = _float_tuple(
@@ -1338,21 +1293,18 @@ def _validate_query_preset(config: CourtQueryModelConfig) -> None:
         "tiny": {
             "task": (64, 2, 4, 2.0, 16, (0, 1)),
             "decoder_width": 32,
-            "progressive_stages": 1,
             "dpt": ((0, 1), (2.0, 1.0)),
             "heads": (64, 2),
         },
         "small": {
             "task": (128, 4, 8, 3.0, 16, (0, 1, 2, 3)),
             "decoder_width": 64,
-            "progressive_stages": 2,
             "dpt": ((0, 1, 2, 3), (4.0, 2.0, 1.0, 0.5)),
             "heads": (128, 3),
         },
         "base": {
             "task": (256, 8, 8, 4.0, 32, (1, 3, 5, 7)),
             "decoder_width": 128,
-            "progressive_stages": 3,
             "dpt": ((1, 3, 5, 7), (4.0, 2.0, 1.0, 0.5)),
             "heads": (256, 4),
         },
@@ -1369,14 +1321,6 @@ def _validate_query_preset(config: CourtQueryModelConfig) -> None:
     mismatched = actual_task != expected["task"]
     decoder = config.decoder
     mismatched = mismatched or decoder.width != expected["decoder_width"]
-    task_taps = cast("tuple[int, ...]", cast("tuple[object, ...]", expected["task"])[-1])
-    final_tap = task_taps[-1]
-    if decoder.family in {"linear", "progressive"}:
-        mismatched = mismatched or decoder.tap_indices != (final_tap,)
-    if isinstance(decoder, CourtQueryProgressiveDecoderConfig):
-        mismatched = mismatched or (
-            decoder.stage_count != expected["progressive_stages"]
-        )
     if isinstance(decoder, CourtQueryDPTDecoderConfig):
         dpt_taps, dpt_factors = cast(
             "tuple[tuple[int, ...], tuple[float, ...]]",
@@ -2011,12 +1955,10 @@ __all__ = [
     "CourtQueryDecoderConfig",
     "CourtQueryDecoderFamily",
     "CourtQueryHeadsConfig",
-    "CourtQueryLinearDecoderConfig",
     "CourtQueryConsistencyLossConfig",
     "CourtQueryLossConfig",
     "CourtQueryModelConfig",
     "CourtQueryPreset",
-    "CourtQueryProgressiveDecoderConfig",
     "CourtQueryPoseLossConfig",
     "CourtQueryTaskEncoderConfig",
     "CourtProcessingConfig",

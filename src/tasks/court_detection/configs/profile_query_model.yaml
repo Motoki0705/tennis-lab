@@ -5,7 +5,7 @@ defaults:
   - _self_
 
 profile:
-  output_path: court_detection/query_ablation/profiles/query_linear_base.json
+  output_path: court_detection/query_ablation/profiles/query_dpt_base.json
   device: cuda
   allow_cpu_diagnostic: false
   input:
@@ -17,7 +17,7 @@ profile:
   warmup: 20
   repeats: 100
   candidate:
-    family: linear
+    family: dpt
     size: base
 
 hydra:
@@ -26,4 +26,3 @@ hydra:
   output_subdir: null
   job:
     chdir: false
-

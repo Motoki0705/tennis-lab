@@ -7,8 +7,6 @@ import torch
 
 from src.tasks.court_detection.configuration import (
     CourtQueryDPTDecoderConfig,
-    CourtQueryLinearDecoderConfig,
-    CourtQueryProgressiveDecoderConfig,
 )
 from src.tasks.court_detection.models.query_encoder.contracts import CourtEncoderTap
 from src.tasks.court_detection.models.query_encoder.decoders import (
@@ -30,17 +28,6 @@ def _taps() -> tuple[CourtEncoderTap, ...]:
 @pytest.mark.parametrize(
     "config",
     [
-        CourtQueryLinearDecoderConfig(
-            family="linear",
-            width=8,
-            tap_indices=(3,),
-        ),
-        CourtQueryProgressiveDecoderConfig(
-            family="progressive",
-            width=10,
-            tap_indices=(3,),
-            stage_count=2,
-        ),
         CourtQueryDPTDecoderConfig(
             family="dpt",
             width=12,
@@ -48,17 +35,17 @@ def _taps() -> tuple[CourtEncoderTap, ...]:
             fusion_levels=4,
             reassemble_factors=(4.0, 2.0, 1.0, 0.5),
         ),
+        CourtQueryDPTDecoderConfig(
+            family="dpt",
+            width=256,
+            tap_indices=(0,),
+            fusion_levels=1,
+            reassemble_factors=(1.0,),
+        ),
     ],
 )
-def test_all_decoder_families_return_input_hw_and_backpropagate(config: object) -> None:
-    assert isinstance(
-        config,
-        (
-            CourtQueryLinearDecoderConfig,
-            CourtQueryProgressiveDecoderConfig,
-            CourtQueryDPTDecoderConfig,
-        ),
-    )
+def test_dpt_decoder_returns_input_hw_and_backpropagates(config: object) -> None:
+    assert isinstance(config, CourtQueryDPTDecoderConfig)
     taps = _taps()
     decoder = build_query_dense_decoder(hidden_dim=16, config=config)
 
@@ -76,10 +63,12 @@ def test_all_decoder_families_return_input_hw_and_backpropagate(config: object) 
 def test_decoder_missing_declared_tap_fails_without_fallback() -> None:
     decoder = build_query_dense_decoder(
         hidden_dim=16,
-        config=CourtQueryLinearDecoderConfig(
-            family="linear",
+        config=CourtQueryDPTDecoderConfig(
+            family="dpt",
             width=8,
             tap_indices=(3,),
+            fusion_levels=1,
+            reassemble_factors=(1.0,),
         ),
     )
 

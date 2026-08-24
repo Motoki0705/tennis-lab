@@ -1,5 +1,5 @@
 name: consistency_ablation
-order: 3
+order: 2
 conditions: [direct-all, joint-both, joint-stopgrad-pose, joint-stopgrad-dense]
 baseline: direct-all
 candidate: joint-both

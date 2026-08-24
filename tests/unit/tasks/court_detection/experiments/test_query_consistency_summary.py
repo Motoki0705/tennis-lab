@@ -35,8 +35,8 @@ def _manifest() -> dict[str, object]:
         config = compose(
             config_name="run_query_consistency_ablation",
             overrides=[
-                "consistency_ablation.selected.encoder_depth=4",
-                "consistency_ablation.selected.decoder_family=linear",
+                "consistency_ablation.selected.encoder_depth=8",
+                "consistency_ablation.selected.decoder_family=dpt",
                 "consistency_ablation.selected.decoder_size=tiny",
             ],
         )
@@ -136,12 +136,11 @@ def _results(manifest: dict[str, object]) -> dict[str, object]:
             kp = {1: 11.0, 2: 10.7, 4: 10.4, 8: 10.0}[depth]
             capacity = depth * 100
         elif run["phase"] == "decoder_scaling":
-            family_index = {"linear": 0, "progressive": 1, "dpt": 2}[family]
-            size_index = {"tiny": 0, "small": 1, "base": 2}[size]
-            kp = 10.4 + 0.05 * family_index - 0.05 * size_index
+            size_index = {"tiny": 0, "small": 1, "base": 2, "large": 3}[size]
+            kp = 10.4 - 0.05 * size_index
             if family == "dpt" and size == "base":
                 kp = 10.0
-            capacity = 100 + 100 * family_index + 50 * size_index
+            capacity = 100 + 50 * size_index
         else:
             kp = 9.4 if condition == "joint-both" else 10.0
             capacity = 100
@@ -177,7 +176,7 @@ def test_summary_applies_frozen_scaling_and_adoption_rules(tmp_path: Path) -> No
     ] == 4
     decoder = cast(dict[str, object], summary["decoder_selection"])
     assert (decoder["selected_family"], decoder["selected_size"]) == (
-        "linear",
+        "dpt",
         "tiny",
     )
     decision = cast(dict[str, object], summary["adoption_decision"])

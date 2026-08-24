@@ -9,7 +9,7 @@ ablation:
   output_path: court_detection/query_ablation/manifest.json
   python_executable: .venv/bin/python
   train_module: src.tasks.court_detection.scripts.train
-  seeds: [42, 43, 44]
+  seeds: [42]
   epochs: 15
   input:
     height: 256

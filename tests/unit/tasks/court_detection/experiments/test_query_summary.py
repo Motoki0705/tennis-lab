@@ -31,8 +31,8 @@ def _manifest() -> dict[str, object]:
         config = compose(
             config_name="run_query_ablation",
             overrides=[
-                "ablation.selected.encoder_depth=4",
-                "ablation.selected.decoder_family=linear",
+                "ablation.selected.encoder_depth=8",
+                "ablation.selected.decoder_family=dpt",
                 "ablation.selected.decoder_size=tiny",
             ],
         )
@@ -100,12 +100,11 @@ def _results(manifest: dict[str, object]) -> dict[str, object]:
             kp = {1: 12.0, 2: 10.6, 4: 10.4, 8: 10.0}[depth]
             capacity = depth * 100
         elif run["phase"] == "decoder_second":
-            family_index = {"linear": 0, "progressive": 1, "dpt": 2}[family]
-            size_index = {"tiny": 0, "small": 1, "base": 2}[size]
-            kp = 10.4 + 0.2 * family_index - 0.2 * size_index
+            size_index = {"tiny": 0, "small": 1, "base": 2, "large": 3}[size]
+            kp = 10.4 - 0.2 * size_index
             if family == "dpt" and size == "base":
                 kp = 10.0
-            capacity = 100 + 100 * family_index + 50 * size_index
+            capacity = 100 + 50 * size_index
         else:
             supervision_index = {"kp": 0, "kp+pose": 1, "all": 2, "all+pose": 3}[
                 cast(str, run["supervision"])
@@ -156,7 +155,7 @@ def test_summary_selects_by_frozen_rules_and_writes_all_artifacts(
     assert cast(dict[str, object], summary["encoder_selection"])["selected_depth"] == 4
     decoder = cast(dict[str, object], summary["decoder_selection"])
     assert (decoder["selected_family"], decoder["selected_size"]) == (
-        "linear",
+        "dpt",
         "tiny",
     )
     candidates = cast(list[dict[str, object]], decoder["candidates"])

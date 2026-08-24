@@ -1,7 +1,7 @@
 defaults:
   - backbone: query_dinov3
   - task_encoder: query_base
-  - decoder: query_linear_base
+  - decoder: query_dpt_base
   - heads: query_base
   - _self_
 

@@ -10,13 +10,15 @@ consistency_ablation:
   python_executable: /home/kamimura/projects/tennis-lab/.venv/bin/python
   train_module: src.tasks.court_detection.scripts.train
   profile_module: src.tasks.court_detection.scripts.profile_query_model
-  seeds: [42, 43, 44]
+  seeds: [42]
   epochs: 15
   input:
-    height: 256
-    width: 256
+    long_sides: [256, 384, 512]
+    patch_size: 16
   batch_size: 8
+  scaling_condition: joint-both
   selected:
+    input_long_side: null
     encoder_depth: null
     decoder_family: null
     decoder_size: null

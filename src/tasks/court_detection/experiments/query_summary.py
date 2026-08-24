@@ -74,7 +74,18 @@ def summarize_ablation(
         manifest_runs=manifest_runs,
         require_gpu_profiles=require_gpu_profiles,
     )
-    aggregates = _aggregate(result_runs, manifest_runs=manifest_runs)
+    fixed_contract = _mapping(manifest["fixed_contract"], name="manifest.fixed_contract")
+    raw_seeds = fixed_contract.get("seeds")
+    if not isinstance(raw_seeds, Sequence) or isinstance(raw_seeds, (str, bytes)):
+        raise ValueError("Manifest fixed_contract.seeds must be a non-empty sequence.")
+    expected_seeds = tuple(sorted(cast(int, seed) for seed in raw_seeds))
+    if not expected_seeds:
+        raise ValueError("Manifest fixed_contract.seeds must not be empty.")
+    aggregates = _aggregate(
+        result_runs,
+        manifest_runs=manifest_runs,
+        expected_seeds=expected_seeds,
+    )
     encoder_rows = aggregates["encoder_first"]
     decoder_rows = aggregates["decoder_second"]
     supervision_rows = aggregates["supervision_third"]
@@ -84,7 +95,7 @@ def summarize_ablation(
     if selected["encoder_depth"] != encoder_decision["selected_depth"]:
         raise ValueError(
             "Resolved manifest encoder selection disagrees with the frozen "
-            "three-seed selection rule."
+            "fixed-seed selection rule."
         )
     if (
         selected["decoder_family"] != decoder_decision["selected_family"]
@@ -113,10 +124,10 @@ def summarize_ablation(
         "manifest_sha256": cast(str, manifest["manifest_sha256"]),
         "phase_order": list(PHASE_ORDER),
         "run_count": len(result_runs),
-        "seed_count": 3,
+        "seed_count": len(expected_seeds),
         "aggregation": {
-            "mean": "arithmetic_mean_over_seeds",
-            "variance": "population_variance_over_seeds",
+            "mean": "fixed_seed_42_value",
+            "variance": "zero_by_definition_not_seed_stability_evidence",
         },
         "encoder_selection": encoder_decision,
         "decoder_selection": {
@@ -251,6 +262,7 @@ def _aggregate(
     results: Sequence[Mapping[str, object]],
     *,
     manifest_runs: Mapping[str, Mapping[str, object]],
+    expected_seeds: Sequence[int],
 ) -> dict[str, list[dict[str, JsonValue]]]:
     groups: dict[tuple[str, str], list[Mapping[str, object]]] = {}
     for result in results:
@@ -264,9 +276,9 @@ def _aggregate(
     }
     for (phase, candidate), records in groups.items():
         seeds = sorted(cast(int, record["seed"]) for record in records)
-        if seeds != [42, 43, 44]:
+        if seeds != list(expected_seeds):
             raise ValueError(
-                f"Ablation candidate {phase}/{candidate} lacks exactly three seeds."
+                f"Ablation candidate {phase}/{candidate} lacks the declared seed set."
             )
         metric_names = tuple(sorted(_mapping(records[0]["metrics"], name="metrics")))
         metric_means: dict[str, JsonValue] = {}
@@ -290,7 +302,8 @@ def _aggregate(
         ):
             if len({row[name] for row in profile_rows}) != 1:
                 raise ValueError(
-                    f"Ablation candidate {phase}/{candidate} changed {name} across seeds."
+                    f"Ablation candidate {phase}/{candidate} changed {name} "
+                    "within its declared seed set."
                 )
         profile_mean = {
             name: statistics.fmean(row[name] for row in profile_rows)
@@ -310,7 +323,7 @@ def _aggregate(
                 "profile_variance": profile_variance,
             }
         )
-    expected_counts = {"encoder_first": 4, "decoder_second": 9, "supervision_third": 4}
+    expected_counts = {"encoder_first": 2, "decoder_second": 4, "supervision_third": 4}
     for phase, count in expected_counts.items():
         if len(aggregated[phase]) != count:
             raise ValueError(f"Ablation phase {phase!r} aggregate is incomplete.")
@@ -650,7 +663,7 @@ def _write_plots(
         axis.set_xlabel("Task encoder depth")
         axis.set_ylabel(label)
         axis.grid(True, alpha=0.3)
-    figure.suptitle("Encoder scaling (three-seed mean ± std)")
+    figure.suptitle("Encoder scaling (fixed seed 42)")
     figure.tight_layout()
     figure.savefig(encoder_path, dpi=160)
     plt.close(figure)
@@ -703,7 +716,7 @@ def _write_plots(
     figure, axis = plt.subplots(figsize=(7, 4))
     axis.bar(labels, values)
     axis.set_ylabel("KP mean distance [px]")
-    axis.set_title("Supervision comparison (three-seed mean)")
+    axis.set_title("Supervision comparison (fixed seed 42)")
     axis.grid(True, axis="y", alpha=0.3)
     figure.tight_layout()
     figure.savefig(supervision_path, dpi=160)

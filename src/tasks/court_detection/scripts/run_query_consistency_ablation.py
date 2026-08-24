@@ -1,12 +1,14 @@
-"""Generate the staged Issue #790 query-consistency scaling manifest.
+"""Generate the Issue #790 DPT scaling-grid and consistency manifest.
 
 Usage:
     python -m src.tasks.court_detection.scripts.run_query_consistency_ablation
-    python -m src.tasks.court_detection.scripts.run_query_consistency_ablation consistency_ablation.selected.encoder_depth=4
+    python -m src.tasks.court_detection.scripts.run_query_consistency_ablation consistency_ablation.selected.input_long_side=256 consistency_ablation.selected.encoder_depth=8 consistency_ablation.selected.decoder_family=dpt consistency_ablation.selected.decoder_size=base
 
 Notes:
     - Hydra loads ``src/tasks/court_detection/configs/run_query_consistency_ablation.yaml``.
-    - Only phases with every required prior selection expose queue-ready argv.
+    - The 24-member input-size × depth × DPT-size scaling grid is always queue-ready.
+      The optional four-condition consistency phase requires one explicit selected
+      grid member.
     - This script writes commands and never launches training, profiling, or a queue worker.
 """
 
@@ -37,7 +39,7 @@ register_boundary_validator(
     validation_boundary=_BOUNDARY,
 )
 def main(cfg: DictConfig) -> None:
-    """Write one deterministic staged manifest without starting work."""
+    """Write one deterministic scaling manifest without starting work."""
     runtime = QueryConsistencyAblationConfig.from_config(cfg)
     manifest = build_query_consistency_manifest(runtime)
     save_json_atomic(manifest, runtime.output_path)

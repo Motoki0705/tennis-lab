@@ -102,7 +102,7 @@ def _config(
                 f"loss={loss}",
                 "model=query_encoder",
                 f"model.heads.dense_targets={dense_targets}",
-                f"model/decoder=query_{family}_tiny",
+                "model/decoder=query_dpt_tiny",
                 "model.backbone.train_mode=full",
             ],
         )
@@ -145,7 +145,7 @@ def _batch(*, all_targets: bool = False) -> dict[str, object]:
     }
 
 
-@pytest.mark.parametrize("family", ["linear", "progressive", "dpt"])
+@pytest.mark.parametrize("family", ["dpt"])
 def test_all_query_decoder_families_complete_finite_cpu_training_step(
     family: str,
     monkeypatch: pytest.MonkeyPatch,
@@ -188,7 +188,7 @@ def test_query_lightning_logs_and_persists_every_typed_component(
         lambda **_: DINOv3BackboneAdapter(_FakeDINO()),
     )
     module = CourtDetectionLightningModule(
-        _config("linear"),
+        _config("dpt"),
         target_bundle=_bundle(),
     )
     logged: list[str] = []
@@ -347,7 +347,7 @@ def test_fake_dino_complete_model_cpu_profile_is_explicitly_diagnostic(
         "src.tasks.court_detection.models.query_encoder.backbone.load_dinov3_backbone",
         lambda **_: DINOv3BackboneAdapter(_FakeDINO()),
     )
-    pair = build_court_detection_pair(_config("linear"), target_bundle=_bundle())
+    pair = build_court_detection_pair(_config("dpt"), target_bundle=_bundle())
     model = cast(CourtQueryEncoderModel, pair.model)
     adapter = cast(CourtQueryModelIOAdapter, pair.adapter)
 
@@ -355,7 +355,7 @@ def test_fake_dino_complete_model_cpu_profile_is_explicitly_diagnostic(
         model,
         adapter,
         torch.zeros(1, 3, 17, 19),
-        family="linear",
+        family="dpt",
         size="tiny",
         warmup=0,
         repeats=1,

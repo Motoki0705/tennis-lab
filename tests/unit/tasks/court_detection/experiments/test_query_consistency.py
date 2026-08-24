@@ -38,11 +38,11 @@ def test_manifest_is_deterministic_ordered_and_only_phase_one_is_ready() -> None
 
     assert first == second
     assert first["phase_order"] == list(PHASE_ORDER)
-    assert len(runs) == 51
-    assert [run["seed"] for run in runs[:6]] == [42, 43, 44, 42, 43, 44]
-    assert sum(bool(run["queue_ready"]) for run in runs) == 12
-    assert all(run["command_argv"] is None for run in runs[12:])
-    assert all(run["profile_command_argv"] is None for run in runs[12:])
+    assert len(runs) == 10
+    assert [run["seed"] for run in runs[:2]] == [42, 42]
+    assert sum(bool(run["queue_ready"]) for run in runs) == 2
+    assert all(run["command_argv"] is None for run in runs[2:])
+    assert all(run["profile_command_argv"] is None for run in runs[2:])
     fixed_contract = cast(dict[str, object], first["fixed_contract"])
     assert fixed_contract["data_root"] == SHARED_DATA_ROOT
     assert fixed_contract["external_asset_root"] == SHARED_EXTERNAL_ASSET_ROOT
@@ -52,21 +52,21 @@ def test_manifest_is_deterministic_ordered_and_only_phase_one_is_ready() -> None
 
 def test_selection_resolution_exposes_exact_phase_counts_and_formal_order() -> None:
     encoder_manifest = build_query_consistency_manifest(
-        _compose("consistency_ablation.selected.encoder_depth=4")
+        _compose("consistency_ablation.selected.encoder_depth=8")
     )
     complete_manifest = build_query_consistency_manifest(
         _compose(
-            "consistency_ablation.selected.encoder_depth=4",
-            "consistency_ablation.selected.decoder_family=linear",
+            "consistency_ablation.selected.encoder_depth=8",
+            "consistency_ablation.selected.decoder_family=dpt",
             "consistency_ablation.selected.decoder_size=tiny",
         )
     )
     encoder_runs = cast(list[dict[str, object]], encoder_manifest["runs"])
     complete_runs = cast(list[dict[str, object]], complete_manifest["runs"])
 
-    assert sum(bool(run["queue_ready"]) for run in encoder_runs) == 39
-    assert sum(bool(run["queue_ready"]) for run in complete_runs) == 51
-    assert [run["condition"] for run in complete_runs[39::3]] == [
+    assert sum(bool(run["queue_ready"]) for run in encoder_runs) == 6
+    assert sum(bool(run["queue_ready"]) for run in complete_runs) == 10
+    assert [run["condition"] for run in complete_runs[6:]] == [
         "direct-all",
         "joint-both",
         "joint-stopgrad-pose",
@@ -77,14 +77,14 @@ def test_selection_resolution_exposes_exact_phase_counts_and_formal_order() -> N
 def test_queue_ready_argv_fixes_all_targets_auxiliary_and_evidence_paths() -> None:
     manifest = build_query_consistency_manifest(
         _compose(
-            "consistency_ablation.selected.encoder_depth=4",
+            "consistency_ablation.selected.encoder_depth=8",
             "consistency_ablation.selected.decoder_family=dpt",
             "consistency_ablation.selected.decoder_size=base",
         )
     )
     runs = cast(list[dict[str, object]], manifest["runs"])
-    direct = runs[39]
-    joint = runs[42]
+    direct = runs[6]
+    joint = runs[7]
     direct_argv = cast(list[str], direct["command_argv"])
     joint_argv = cast(list[str], joint["command_argv"])
 
@@ -110,9 +110,9 @@ def test_queue_ready_argv_fixes_all_targets_auxiliary_and_evidence_paths() -> No
     assert "loss.consistency.cheirality_weight=0.1" in joint_argv
 
 
-def test_depth_one_selection_fails_instead_of_substituting_dpt_architecture() -> None:
-    with pytest.raises(ValueError, match="depth 1 cannot resolve"):
-        _compose("consistency_ablation.selected.encoder_depth=1")
+def test_depth_one_selection_is_valid_with_single_tap_dpt() -> None:
+    config = _compose("consistency_ablation.selected.encoder_depth=1")
+    assert config.selected_encoder_depth == 1
 
 
 @pytest.mark.parametrize(
