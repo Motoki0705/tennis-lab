@@ -35,6 +35,7 @@ def _manifest() -> dict[str, object]:
         config = compose(
             config_name="run_query_consistency_ablation",
             overrides=[
+                "consistency_ablation.selected.input_long_side=256",
                 "consistency_ablation.selected.encoder_depth=8",
                 "consistency_ablation.selected.decoder_family=dpt",
                 "consistency_ablation.selected.decoder_size=tiny",
@@ -48,7 +49,9 @@ def _manifest() -> dict[str, object]:
     )
 
 
-def _profile(family: str, size: str, *, capacity: int) -> dict[str, object]:
+def _profile(
+    family: str, size: str, *, capacity: int, input_long_side: int
+) -> dict[str, object]:
     return {
         "schema": PROFILE_SCHEMA,
         "candidate": {"family": family, "size": size},
@@ -66,8 +69,8 @@ def _profile(family: str, size: str, *, capacity: int) -> dict[str, object]:
         "input_contract": {
             "batch_size": 1,
             "channels": 3,
-            "height": 256,
-            "width": 256,
+            "height": input_long_side,
+            "width": input_long_side,
             "dtype": "float32",
             "device": "cuda",
         },
@@ -131,16 +134,12 @@ def _results(manifest: dict[str, object]) -> dict[str, object]:
         family = cast(str, architecture["decoder_family"])
         size = cast(str, architecture["decoder_size"])
         condition = cast(str, run["condition"])
-        if run["phase"] == "encoder_scaling":
+        input_long_side = cast(int, architecture["input_long_side"])
+        if run["phase"] == "scaling_grid":
             depth = cast(int, architecture["encoder_depth"])
-            kp = {1: 11.0, 2: 10.7, 4: 10.4, 8: 10.0}[depth]
-            capacity = depth * 100
-        elif run["phase"] == "decoder_scaling":
             size_index = {"tiny": 0, "small": 1, "base": 2, "large": 3}[size]
-            kp = 10.4 - 0.05 * size_index
-            if family == "dpt" and size == "base":
-                kp = 10.0
-            capacity = 100 + 50 * size_index
+            kp = 12.0 - 0.001 * input_long_side - 0.2 * depth - 0.05 * size_index
+            capacity = input_long_side * 10 + depth * 100 + size_index * 50
         else:
             kp = 9.4 if condition == "joint-both" else 10.0
             capacity = 100
@@ -150,7 +149,12 @@ def _results(manifest: dict[str, object]) -> dict[str, object]:
                 test_metrics=_metrics(kp, condition=condition),
                 diagnostics=_diagnostics(condition=condition),
                 loss_curve=[{"step": 0, "loss": 2.0}, {"step": 1, "loss": 1.0}],
-                profile=_profile(family, size, capacity=capacity),
+                profile=_profile(
+                    family,
+                    size,
+                    capacity=capacity,
+                    input_long_side=input_long_side,
+                ),
                 require_gpu_profile=True,
             )
         )
@@ -171,14 +175,13 @@ def test_summary_applies_frozen_scaling_and_adoption_rules(tmp_path: Path) -> No
         phase="consistency_ablation",
     )
 
-    assert cast(dict[str, object], summary["encoder_selection"])[
-        "selected_depth"
-    ] == 4
-    decoder = cast(dict[str, object], summary["decoder_selection"])
-    assert (decoder["selected_family"], decoder["selected_size"]) == (
-        "dpt",
-        "tiny",
-    )
+    scaling_selection = cast(dict[str, object], summary["scaling_selection"])
+    assert scaling_selection["selected_architecture"] == {
+        "input_long_side": 256,
+        "encoder_depth": 8,
+        "decoder_family": "dpt",
+        "decoder_size": "tiny",
+    }
     decision = cast(dict[str, object], summary["adoption_decision"])
     assert decision["status"] == "adopted"
     outputs = write_query_consistency_summary_artifacts(
@@ -191,8 +194,8 @@ def test_summary_applies_frozen_scaling_and_adoption_rules(tmp_path: Path) -> No
         "all_runs.csv",
         "scaling_table.csv",
         "pareto_table.csv",
-        "encoder_scaling.png",
-        "decoder_pareto.png",
+        "scaling_grid.png",
+        "scaling_pareto.png",
         "consistency_comparison.png",
     }
     assert all(path.is_file() and path.stat().st_size > 0 for path in outputs)
@@ -207,6 +210,7 @@ def test_result_fixture_rejects_line_iou_alias_and_missing_diagnostic() -> None:
         cast(str, architecture["decoder_family"]),
         cast(str, architecture["decoder_size"]),
         capacity=100,
+        input_long_side=cast(int, architecture["input_long_side"]),
     )
 
     with pytest.raises(ValueError, match="line_iou"):
@@ -220,7 +224,7 @@ def test_result_fixture_rejects_line_iou_alias_and_missing_diagnostic() -> None:
         )
     diagnostics = _diagnostics(condition="joint-both")
     del diagnostics["pose_gradient_finite"]
-    with pytest.raises(ValueError, match="every exact"):
+    with pytest.raises(ValueError, match="exactly the canonical"):
         build_query_consistency_result_record(
             run,
             test_metrics=_metrics(10.0, condition="joint-both"),

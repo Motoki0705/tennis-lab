@@ -211,9 +211,21 @@ def build_shard_plan(
     seeds: Sequence[int],
     job_kind: JobKind,
     runtime: RuntimeRelocation,
+    start_index: int = 0,
+    end_index: int | None = None,
 ) -> dict[str, object]:
     """Build a candidate-bound plan of queue commands without mutating state."""
     runs = select_scaling_grid_runs(manifest, seeds=seeds)
+    if start_index < 0 or start_index > len(runs):
+        raise ValueError(f"start_index must be in [0, {len(runs)}]: {start_index}")
+    resolved_end = len(runs) if end_index is None else end_index
+    if resolved_end < start_index or resolved_end > len(runs):
+        raise ValueError(
+            f"end_index must be in [{start_index}, {len(runs)}]: {resolved_end}"
+        )
+    runs = runs[start_index:resolved_end]
+    if not runs:
+        raise ValueError("Shard selection must contain at least one scaling-grid run.")
     kinds: tuple[Literal["train", "profile"], ...] = (
         ("train", "profile") if job_kind == "both" else (job_kind,)
     )
@@ -243,6 +255,8 @@ def build_shard_plan(
         "source_manifest_sha256": manifest["manifest_sha256"],
         "phase": "scaling_grid",
         "seeds": list(seeds),
+        "start_index": start_index,
+        "end_index": resolved_end,
         "job_kind": job_kind,
         "runtime": {
             "python_executable": str(runtime.python_executable),
@@ -265,9 +279,13 @@ def _queue_status(queue_script: Path, *, queue_dir: Path, repository_root: Path)
         text=True,
     )
     status = completed.stdout
-    if "worker: stopped" not in status or "queued=0 running=0" not in status:
+    if (
+        "worker: stopped" not in status
+        or "queued=0 running=0 done=0 failed=0" not in status
+    ):
         raise RuntimeError(
-            "Shard queue must be stopped with no pending/running jobs before enqueue:\n"
+            "Shard queue must be fresh and stopped (queued=0, running=0, done=0, "
+            "failed=0) before enqueue:\n"
             f"{status}"
         )
     return status
@@ -296,6 +314,17 @@ def enqueue_shard_plan(
     jobs = plan["jobs"]
     if not isinstance(jobs, list) or not jobs:
         raise ValueError("Shard plan must contain at least one job.")
+    runtime = _mapping(plan["runtime"], name="plan.runtime")
+    output_root = Path(_string(runtime["output_root"], name="plan.runtime.output_root"))
+    for raw_job in jobs:
+        job = _mapping(raw_job, name="job")
+        run_id = _string(job["run_id"], name="job.run_id")
+        run_dir = output_root / "court_detection" / "query_consistency_ablation" / run_id
+        if run_dir.exists():
+            raise FileExistsError(
+                "Scaling-grid run output already exists; use a fresh output root or "
+                f"remove only this run directory: {run_dir}"
+            )
     environment = {**os.environ, "TRAINING_QUEUE_DIR": str(queue_dir)}
     for raw_job in jobs:
         job = _mapping(raw_job, name="job")
@@ -356,6 +385,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--job-kind", choices=("train", "profile", "both"), required=True
     )
+    parser.add_argument("--start-index", type=int, default=0)
+    parser.add_argument("--end-index", type=int, default=None)
     parser.add_argument("--python-executable", type=_absolute_path, required=True)
     parser.add_argument("--data-root", type=_absolute_path, required=True)
     parser.add_argument("--external-asset-root", type=_absolute_path, required=True)
@@ -387,6 +418,8 @@ def main() -> None:
         seeds=tuple(args.seed),
         job_kind=cast(JobKind, args.job_kind),
         runtime=runtime,
+        start_index=args.start_index,
+        end_index=args.end_index,
     )
     enqueue_shard_plan(
         plan,
