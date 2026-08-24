@@ -1,0 +1,24 @@
+\begin{table}[t]
+  \centering
+  \caption{Evidence boundary for this manuscript version.}
+  \label{tab:claim_scope}
+  \small
+  \begin{tabularx}{\linewidth}{@{}p{0.34\linewidth}p{0.18\linewidth}X@{}}
+    \toprule
+    Claim & Status & Evidence \\
+    \midrule
+    Typed 3DGS scene/alignment/dataset pipeline & \statusimplemented &
+      Main-branch contracts, configs, unit and integration tests \\
+    Global query + pose10D + dense decoder family & \statusimplemented &
+      Issue-779 implementation branch and CPU contract/smoke tests \\
+    Masked KP--pose objective described here & \statusspecified &
+      Complete manuscript algorithm; no frozen implementation revision claimed \\
+    Joint objective improves GT metrics & \statusprotocol &
+      Requires registered three-seed runs; no value asserted here \\
+    Local shortcut eliminated on real video & \statusprotocol &
+      Requires context diagnostic and independently calibrated real data \\
+    Legacy dense task performance & \statushistorical &
+      Immutable knowledge-run artifacts with printed caveats \\
+    \bottomrule
+  \end{tabularx}
+\end{table}

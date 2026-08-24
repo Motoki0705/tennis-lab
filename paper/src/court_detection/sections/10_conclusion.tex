@@ -1,0 +1,20 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+We presented \Method, a court-detection system built around render supervision
+from 3D Gaussian scenes.  Its fail-closed alignment recovers a metric
+scene--court transform from held-out-validated line evidence; its trajectory
+generator turns that transform into diverse calibrated views; and its labels
+provide exact camera-to-court 6DoF, intrinsics, geometric validity,
+renderer-supported pixel evidence, and physical keypoint identity without
+per-render human annotation.  This data authority
+enables a model that predicts one global camera hypothesis and couples it to
+lightweight dense heads through differentiable reprojection and cheirality.
+
+The central design lesson is that synthetic data is most useful here not because
+it imitates more images, but because it exposes the latent geometry behind each
+image at negligible marginal annotation cost.  By training local visual
+evidence to participate in one globally consistent court explanation, the
+system provides the coordinate foundation required for downstream 3D tennis
+reconstruction.  Its empirical adoption remains governed by the preregistered
+multi-seed and real-transfer protocol rather than by consistency loss alone.

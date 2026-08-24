@@ -1,0 +1,118 @@
+\begin{tikzpicture}[
+  font=\sffamily\footnotesize,
+  module/.style={draw, rounded corners=2pt, align=center, minimum height=9mm,
+    inner xsep=4pt, inner ysep=3pt, line width=0.55pt},
+  patch/.style={draw=gsblue, fill=gsblue!16, rounded corners=1pt,
+    minimum width=3.2mm, minimum height=5.0mm, inner sep=0pt},
+  choice/.style={draw=courtgreen!75!black, fill=white, rounded corners=1pt,
+    minimum width=22mm, minimum height=4.2mm, inner sep=1pt,
+    font=\sffamily\scriptsize},
+  head/.style={draw=gsblue!75!black, fill=white, rounded corners=1pt,
+    minimum width=20mm, minimum height=4.2mm, inner sep=1pt,
+    font=\sffamily\scriptsize\bfseries},
+  arrow/.style={-{Latex[length=2.1mm,width=1.35mm]}, semithick,
+    draw=black!72},
+  taparrow/.style={-{Latex[length=2.1mm,width=1.35mm]}, semithick,
+    draw=gsblue!85!black},
+  queryarrow/.style={-{Latex[length=2.1mm,width=1.35mm]}, semithick,
+    draw=poseorange!90!black},
+  label/.style={font=\sffamily\scriptsize, text=black!72, align=center}
+]
+  \node[font=\sffamily\footnotesize\bfseries, text=gsblue!85!black, anchor=west]
+    at (0,5.72) {(1) Patch tokens};
+  \node[font=\sffamily\footnotesize\bfseries, text=poseorange!90!black, anchor=west]
+    at (7.95,5.72) {(2) Global reasoning};
+  \node[font=\sffamily\footnotesize\bfseries, text=courtgreen!85!black, anchor=west]
+    at (11.55,5.72) {(3) Pose + dense readouts};
+
+  \node[module, draw=gsblue, fill=gsblue!8, minimum width=16mm,
+    minimum height=14mm] (rgb) at (0.85,4.00) {};
+  \fill[courtgreen!88, rounded corners=0.7pt]
+    ($(rgb.center)+(-0.57,0.01)$) rectangle ($(rgb.center)+(0.57,0.47)$);
+  \draw[white, line width=0.45pt]
+    ($(rgb.center)+(-0.48,0.08)$) rectangle ($(rgb.center)+(0.48,0.40)$);
+  \draw[white, line width=0.4pt]
+    ($(rgb.center)+(0,0.08)$) -- ($(rgb.center)+(0,0.40)$)
+    ($(rgb.center)+(-0.48,0.24)$) -- ($(rgb.center)+(0.48,0.24)$);
+  \node[font=\sffamily\scriptsize\bfseries] at ($(rgb.center)+(0,-0.40)$)
+    {RGB frame};
+
+  \node[module, draw=gsblue, fill=gsblue!10, minimum width=18mm,
+    minimum height=12mm] (dino) at (2.75,4.00)
+    {{\bfseries DINOv3} ViT\\[-0.15em]\scriptsize patch tokens only};
+  \node[module, draw=poseorange, fill=poseorange!9, minimum width=15mm,
+    minimum height=11mm] (projection) at (4.67,4.00)
+    {Patch\\projection\\[-0.2em]\scriptsize $C\!\rightarrow\!d$};
+
+  \node[module, draw=gsblue, fill=gsblue!5, minimum width=21mm,
+    minimum height=12mm] (sequence) at (6.75,4.00) {};
+  \node[patch] at ($(sequence.center)+(-0.60,0.16)$) {};
+  \node[patch] at ($(sequence.center)+(-0.20,0.16)$) {};
+  \node[patch] at ($(sequence.center)+(0.20,0.16)$) {};
+  \node[font=\sffamily\scriptsize, text=gsblue!80!black]
+    at ($(sequence.center)+(0.52,0.16)$) {$\cdots$};
+  \node[label] at ($(sequence.center)+(0,-0.30)$)
+    {$N=H_pW_p$ projected patches};
+
+  \node[module, draw=poseorange, fill=poseorange!10, minimum width=22mm,
+    minimum height=9mm] (query) at (6.75,1.72)
+    {one learned court query\\[-0.15em]\scriptsize positionless: no RoPE};
+
+  \node[module, draw=poseorange!35, fill=poseorange!3, minimum width=24mm,
+    minimum height=14mm] at (9.58,4.18) {};
+  \node[module, draw=poseorange!55, fill=poseorange!5, minimum width=24mm,
+    minimum height=14mm] at (9.48,4.09) {};
+  \node[module, draw=poseorange, fill=poseorange!11, minimum width=24mm,
+    minimum height=14mm] (task) at (9.38,4.00)
+    {Global task Transformer\\[-0.10em]
+     \scriptsize shared self-attention + MLP\\[-0.10em]
+     \scriptsize 2D RoPE on patch $Q,K$ only};
+
+  \draw[arrow] (rgb.east) -- (dino.west);
+  \draw[arrow] (dino.east) -- (projection.west);
+  \draw[arrow] (projection.east) -- (sequence.west);
+  \draw[arrow] (sequence.east) -- (task.west);
+  \draw[queryarrow] (query.east) -| ($(task.south west)+(0.28,0)$);
+
+  \node[module, draw=poseorange, fill=poseorange!10, text width=18mm,
+    minimum height=9mm] (posehead) at (12.10,4.52)
+    {final query\\[-0.15em]\scriptsize MLP pose head};
+  \node[module, draw=poseorange, fill=poseorange!6, text width=32mm,
+    minimum height=12mm] (poseout) at (15.15,4.52)
+    {\bfseries raw pose10D\\[-0.10em]
+     \scriptsize camera centre $\hat{\mathbf C}$ (3)\\[-0.10em]
+     \scriptsize row--6D $\hat{\mathbf a}$ (6) $\;\vert\;$
+     $\widehat{\log f}$ (1)};
+
+  \node[choice] (linear) at (12.18,2.18) {Linear: $1{\times}1$ + resize};
+  \node[choice] (progressive) at (12.18,1.70) {Progressive: upsample + DW conv};
+  \node[choice] (dpt) at (12.18,1.22) {DPT: reassemble + fuse taps};
+  \begin{scope}[on background layer]
+    \node[draw=courtgreen, fill=courtgreen!8, rounded corners=2pt,
+      fit=(linear)(progressive)(dpt), inner xsep=2.5mm, inner ysep=2.2mm]
+      (decoders) {};
+  \end{scope}
+  \node[font=\sffamily\scriptsize\bfseries, text=courtgreen!85!black]
+    at ($(decoders.north)+(0,0.23)$) {lightweight decoder (choose one)};
+
+  \node[head] (kphead) at (15.28,2.18) {KP14};
+  \node[head] (linehead) at (15.28,1.70) {LINE};
+  \node[head] (seghead) at (15.28,1.22) {SEG};
+  \begin{scope}[on background layer]
+    \node[draw=gsblue, fill=gsblue!7, rounded corners=2pt,
+      fit=(kphead)(linehead)(seghead), inner xsep=2.5mm, inner ysep=2.2mm]
+      (heads) {};
+  \end{scope}
+  \node[font=\sffamily\scriptsize\bfseries, text=gsblue!85!black]
+    at ($(heads.north)+(0,0.23)$) {selected $1{\times}1$ heads};
+
+  \draw[queryarrow] (task.east) |- (posehead.west);
+  \draw[queryarrow] (posehead.east) -- (poseout.west);
+  \draw[taparrow] ($(task.south east)+(-0.23,0)$) |- (decoders.west);
+  \node[label, text=gsblue!85!black, anchor=east] at (10.32,2.82)
+    {task-layer patch taps};
+  \draw[taparrow] (decoders.east) -- (heads.west);
+
+  \node[label, text width=5.8cm] at (13.75,0.35)
+    {Dense heads restore image space; global mixing stays in the task Transformer.};
+\end{tikzpicture}
