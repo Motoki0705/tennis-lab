@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -29,6 +30,7 @@ sys.path.insert(0, str(SCRIPTS))
 init = load("init_issue_task")
 manage = load("manage_issue_task")
 candidate = load("issue_task_candidate")
+remote = sys.modules["issue_task_remote"]
 
 
 def git(root: Path, *args: str) -> str:
@@ -446,8 +448,10 @@ def install_fake_gh(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     *,
+    base: object,
     head: str,
     checks_pass: bool,
+    base_ref_name: object = "main",
     files_payload: object | None = None,
 ) -> None:
     directory = tmp_path / "fake-bin"
@@ -459,6 +463,8 @@ import json
 import os
 import sys
 
+base_ref_name = json.loads(os.environ["FAKE_PR_BASE_REF_NAME"])
+base = json.loads(os.environ["FAKE_PR_BASE"])
 head = os.environ["FAKE_PR_HEAD"]
 checks_pass = os.environ["FAKE_CHECKS_PASS"] == "1"
 files_payload = json.loads(os.environ["FAKE_PR_FILES"])
@@ -467,6 +473,8 @@ if sys.argv[1:3] == ["pr", "view"]:
     print(json.dumps({
         "number": 706,
         "url": "https://github.com/example/repo/pull/706",
+        "baseRefName": base_ref_name,
+        "baseRefOid": base,
         "headRefOid": head,
         "isDraft": False,
         "state": "OPEN",
@@ -485,6 +493,8 @@ else:
         encoding="utf-8",
     )
     script.chmod(0o755)
+    monkeypatch.setenv("FAKE_PR_BASE_REF_NAME", json.dumps(base_ref_name))
+    monkeypatch.setenv("FAKE_PR_BASE", json.dumps(base))
     monkeypatch.setenv("FAKE_PR_HEAD", head)
     monkeypatch.setenv("FAKE_CHECKS_PASS", "1" if checks_pass else "0")
     monkeypatch.setenv(
@@ -514,7 +524,13 @@ def test_full_v6_flow_uses_validated_then_complete(
     git(root, "commit", "-m", "candidate")
     head = git(root, "rev-parse", "HEAD")
     assert candidate.compute_revision_fingerprint(task, state, head) == fp
-    install_fake_gh(tmp_path, monkeypatch, head=head, checks_pass=True)
+    install_fake_gh(
+        tmp_path,
+        monkeypatch,
+        base=state["base_revision"],
+        head=head,
+        checks_pass=True,
+    )
     manage.capture_pr_evidence(task, pr_number=706)
     state = manage.load_state(task)
     evidence_digest = state["pr_evidence_sha256"]
@@ -545,11 +561,218 @@ PASS
 """,
         encoding="utf-8",
     )
+
     manage.finalize_pr(task, pr_number=706, head_sha=head)
     state = manage.load_state(task)
     assert state["status"] == "complete"
     assert state["verdict"] == "PASS"
     assert manage.check(task) == []
+
+
+def test_capture_and_finalize_use_advanced_pr_base_with_tracked_task_artifacts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root, task = setup_task(tmp_path)
+    frozen_base = manage.load_state(task)["base_revision"]
+    (root / "base-shared.txt").write_text("advanced base\n", encoding="utf-8")
+    git(root, "add", "base-shared.txt")
+    git(root, "commit", "-m", "advance PR base")
+    pr_base = git(root, "rev-parse", "HEAD")
+
+    fp = advance_to_validation(root, task)
+    write_validation(task, fp)
+    manage.apply_validation_verdict(task, "PASS")
+    git(root, "add", "-A")
+    git(root, "commit", "-m", "candidate with workflow artifacts")
+    head = git(root, "rev-parse", "HEAD")
+    state = manage.load_state(task)
+
+    candidate_files = candidate.revision_changed_paths(task, state, head)
+    assert "base-shared.txt" in candidate_files
+    assert not any(path.startswith(".codex/tasks/") for path in candidate_files)
+    pr_files = candidate.revision_path_inventory(task, pr_base, head)
+    assert "base-shared.txt" not in pr_files
+    assert "src.txt" in pr_files
+    assert "tests.txt" in pr_files
+    assert any(path.startswith(".codex/tasks/issue-1/") for path in pr_files)
+    files_payload = [[{"filename": path, "status": "modified"} for path in pr_files]]
+
+    install_fake_gh(
+        tmp_path,
+        monkeypatch,
+        base=frozen_base,
+        head=head,
+        checks_pass=True,
+        files_payload=files_payload,
+    )
+    state_before = (task / "state.toml").read_bytes()
+    with pytest.raises(
+        ValueError,
+        match="complete paginated PR file list differs from the remote PR base",
+    ):
+        manage.capture_pr_evidence(task, pr_number=706)
+    assert (task / "state.toml").read_bytes() == state_before
+    assert not (task / "05-packaging/pr-evidence.json").exists()
+
+    install_fake_gh(
+        tmp_path,
+        monkeypatch,
+        base=pr_base,
+        head=head,
+        checks_pass=True,
+        files_payload=files_payload,
+    )
+    manage.capture_pr_evidence(task, pr_number=706)
+    state = manage.load_state(task)
+    evidence = json.loads(
+        (task / "05-packaging/pr-evidence.json").read_text(encoding="utf-8")
+    )
+    assert evidence["schema_version"] == 2
+    assert evidence["base_ref_name"] == "main"
+    assert evidence["base_sha"] == pr_base
+    assert evidence["head_sha"] == head
+    assert evidence["files"] == pr_files
+
+    evidence_digest = state["pr_evidence_sha256"]
+    (task / "05-packaging/packaging.md").write_text(
+        f"""# Packaging
+
+- Issue: #1
+- Attempt: 1
+- Status: COMPLETE
+- Candidate SHA-256: `{fp}`
+- PR number: 706
+- PR head SHA: `{head}`
+- Remote checks: PASS
+- PR evidence SHA-256: `{evidence_digest}`
+
+## Final candidate binding
+Matches Validator candidate.
+## Pull request identity
+PR #706 at {head}, based on main at {pr_base}.
+## Complete paginated diff scope
+PR-base inventory includes tracked workflow artifacts.
+## Remote required checks
+All required checks PASS.
+## Packaging evidence
+Remote base, head, files, and checks recorded.
+## Final packaging verdict
+PASS
+""",
+        encoding="utf-8",
+    )
+
+    evidence_path = task / "05-packaging/pr-evidence.json"
+    state_path = task / "state.toml"
+    packaging_path = task / "05-packaging/packaging.md"
+    correct_evidence_text = evidence_path.read_text(encoding="utf-8")
+    tampered_evidence = dict(evidence)
+    tampered_evidence["base_sha"] = frozen_base
+    tampered_evidence_text = (
+        json.dumps(tampered_evidence, ensure_ascii=False, sort_keys=True, indent=2)
+        + "\n"
+    )
+    tampered_digest = (
+        "sha256:"
+        + hashlib.sha256(
+            json.dumps(
+                tampered_evidence,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode()
+        ).hexdigest()
+    )
+    evidence_path.write_text(tampered_evidence_text, encoding="utf-8")
+    state_path.write_text(
+        state_path.read_text(encoding="utf-8").replace(
+            evidence_digest,
+            tampered_digest,
+        ),
+        encoding="utf-8",
+    )
+    packaging_path.write_text(
+        packaging_path.read_text(encoding="utf-8").replace(
+            evidence_digest,
+            tampered_digest,
+        ),
+        encoding="utf-8",
+    )
+    state_before_finalize = state_path.read_bytes()
+    with pytest.raises(
+        ValueError,
+        match="PR evidence files differ from the recorded PR base revision",
+    ):
+        manage.finalize_pr(task, pr_number=706, head_sha=head)
+    assert state_path.read_bytes() == state_before_finalize
+
+    evidence_path.write_text(correct_evidence_text, encoding="utf-8")
+    state_path.write_text(
+        state_path.read_text(encoding="utf-8").replace(
+            tampered_digest,
+            evidence_digest,
+        ),
+        encoding="utf-8",
+    )
+    packaging_path.write_text(
+        packaging_path.read_text(encoding="utf-8").replace(
+            tampered_digest,
+            evidence_digest,
+        ),
+        encoding="utf-8",
+    )
+    manage.finalize_pr(task, pr_number=706, head_sha=head)
+    state = manage.load_state(task)
+    assert state["status"] == "complete"
+    assert state["verdict"] == "PASS"
+    assert manage.check(task) == []
+
+
+@pytest.mark.parametrize(
+    "base",
+    [None, "", "a" * 39, "A" * 40, "g" * 40],
+)
+def test_capture_rejects_malformed_remote_pr_base_sha_without_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    base: object,
+) -> None:
+    root, task = setup_task(tmp_path)
+    fp = advance_to_validation(root, task)
+    write_validation(task, fp)
+    manage.apply_validation_verdict(task, "PASS")
+    git(root, "add", "src.txt", "tests.txt")
+    git(root, "commit", "-m", "candidate")
+    head = git(root, "rev-parse", "HEAD")
+    install_fake_gh(
+        tmp_path,
+        monkeypatch,
+        base=base,
+        head=head,
+        checks_pass=True,
+    )
+    state_before = (task / "state.toml").read_bytes()
+
+    with pytest.raises(ValueError, match="remote PR base SHA is invalid"):
+        manage.capture_pr_evidence(task, pr_number=706)
+    assert (task / "state.toml").read_bytes() == state_before
+    assert not (task / "05-packaging/pr-evidence.json").exists()
+
+
+def test_legacy_pr_evidence_schema_requires_base_bound_recapture(
+    tmp_path: Path,
+) -> None:
+    task = tmp_path / ".codex/tasks/issue-1"
+    evidence_path = task / "05-packaging/pr-evidence.json"
+    evidence_path.parent.mkdir(parents=True)
+    evidence_path.write_text('{"schema_version": 1}\n', encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match="schema_version 1 does not bind the remote PR base; rerun capture-pr",
+    ):
+        remote.load_pr_evidence(task)
 
 
 def test_schema_v5_task_loads_with_legacy_adversarial_contract(tmp_path: Path) -> None:
@@ -607,7 +830,8 @@ def test_capture_and_finalize_reconcile_renamed_files_with_no_renames_revision(
     write_validation(task, fp)
     manage.apply_validation_verdict(task, "PASS")
 
-    git(root, "add", "-A")
+    git(root, "add", "-u")
+    git(root, "add", "tests.txt")
     git(root, "commit", "-m", "renamed candidate")
     head = git(root, "rev-parse", "HEAD")
     state = manage.load_state(task)
@@ -624,6 +848,7 @@ def test_capture_and_finalize_reconcile_renamed_files_with_no_renames_revision(
     install_fake_gh(
         tmp_path,
         monkeypatch,
+        base=state["base_revision"],
         head=head,
         checks_pass=True,
         files_payload=[
@@ -716,6 +941,7 @@ def test_capture_rejects_renamed_file_without_valid_previous_filename(
     install_fake_gh(
         tmp_path,
         monkeypatch,
+        base=manage.load_state(task)["base_revision"],
         head=head,
         checks_pass=True,
         files_payload=[
@@ -746,12 +972,14 @@ def test_capture_rejects_valid_renamed_inventory_mismatch_without_mutation(
     write_validation(task, fp)
     manage.apply_validation_verdict(task, "PASS")
 
-    git(root, "add", "-A")
+    git(root, "add", "-u")
+    git(root, "add", "tests.txt")
     git(root, "commit", "-m", "renamed candidate")
     head = git(root, "rev-parse", "HEAD")
     install_fake_gh(
         tmp_path,
         monkeypatch,
+        base=manage.load_state(task)["base_revision"],
         head=head,
         checks_pass=True,
         files_payload=[
@@ -769,7 +997,7 @@ def test_capture_rejects_valid_renamed_inventory_mismatch_without_mutation(
 
     with pytest.raises(
         ValueError,
-        match="complete paginated PR file list differs from the validated revision",
+        match="complete paginated PR file list differs from the remote PR base",
     ):
         manage.capture_pr_evidence(task, pr_number=706)
     assert (task / "state.toml").read_bytes() == state_before
@@ -1066,7 +1294,13 @@ def test_finalize_pr_failure_keeps_validated_state_unchanged(
     git(root, "add", "src.txt", "tests.txt")
     git(root, "commit", "-m", "candidate")
     head = git(root, "rev-parse", "HEAD")
-    install_fake_gh(tmp_path, monkeypatch, head=head, checks_pass=False)
+    install_fake_gh(
+        tmp_path,
+        monkeypatch,
+        base=manage.load_state(task)["base_revision"],
+        head=head,
+        checks_pass=False,
+    )
     manage.capture_pr_evidence(task, pr_number=706)
     state = manage.load_state(task)
     evidence_digest = state["pr_evidence_sha256"]
