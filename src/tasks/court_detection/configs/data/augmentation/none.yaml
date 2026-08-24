@@ -20,3 +20,4 @@ min_visible_kp: 0
 visibility_max_retries: 1
 preserve_fx_fy: false
 canvas_size: null
+patch_size: 16

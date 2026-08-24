@@ -256,6 +256,7 @@ class CourtAugmentationConfig:
     visibility_max_retries: int
     preserve_fx_fy: bool
     canvas_size: int | None
+    patch_size: int
 
     @classmethod
     def from_mapping(cls, value: object) -> CourtAugmentationConfig:
@@ -280,6 +281,7 @@ class CourtAugmentationConfig:
             "visibility_max_retries",
             "preserve_fx_fy",
             "canvas_size",
+            "patch_size",
         }
         _exact(mapping, keys, path="data.augmentation")
         result = cls(
@@ -346,6 +348,7 @@ class CourtAugmentationConfig:
                     path="data.augmentation",
                 ),
             ),
+            patch_size=_integer(mapping, "patch_size", path="data.augmentation"),
         )
         if not result.train_scales or any(scale <= 0 for scale in result.train_scales):
             raise SemanticConfigurationError(
@@ -413,6 +416,10 @@ class CourtAugmentationConfig:
         if result.canvas_size is not None and result.canvas_size <= 0:
             raise SemanticConfigurationError(
                 "data.augmentation.canvas_size must be null or positive."
+            )
+        if result.patch_size <= 0:
+            raise SemanticConfigurationError(
+                "data.augmentation.patch_size must be positive."
             )
         return result
 
@@ -1173,10 +1180,9 @@ def _query_decoder_config(value: object) -> CourtQueryDecoderConfig:
         len(taps),
         path=path,
     )
-    if len(taps) < 2 or fusion_levels != len(taps):
+    if fusion_levels != len(taps):
         raise SemanticConfigurationError(
-            "DPT query decoder requires at least two taps and fusion_levels equal "
-            "to their count."
+            "DPT query decoder requires fusion_levels equal to its tap count."
         )
     if any(factor <= 0.0 for factor in factors):
         raise SemanticConfigurationError(
@@ -1954,9 +1960,10 @@ def _validate_pose_safe_augmentation(config: CourtAugmentationConfig) -> None:
         raise SemanticConfigurationError(
             "Pose supervision requires data.augmentation.preserve_fx_fy=true."
         )
-    if config.canvas_size is None:
+    if config.canvas_size is not None:
         raise SemanticConfigurationError(
-            "Pose-safe augmentation requires an explicit square canvas_size."
+            "Pose-safe augmentation must not use a square canvas_size; "
+            "padding is restricted to patch alignment."
         )
     unsupported = (
         config.crop_scale != (1.0, 1.0)
@@ -1974,9 +1981,9 @@ def _validate_pose_safe_augmentation(config: CourtAugmentationConfig) -> None:
             "Pose supervision rejects horizontal flip, random-resized crop, unequal "
             "axes, affine, shear, and perspective transforms."
         )
-    if config.train_scales != (config.canvas_size,) or config.val_short_side != config.canvas_size:
+    if len(config.train_scales) != 1 or config.train_scales[0] != config.val_short_side:
         raise SemanticConfigurationError(
-            "Pose-safe train_scales/val_short_side must equal the square canvas_size."
+            "Pose-safe train_scales must contain exactly the validation long-side size."
         )
 
 

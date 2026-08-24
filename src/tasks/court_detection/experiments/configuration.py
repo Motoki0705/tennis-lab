@@ -23,7 +23,7 @@ from src.tasks.court_detection.configuration import (
 from src.utils.configuration import PathResolver, PathRole
 
 DecoderFamily: TypeAlias = Literal["linear", "progressive", "dpt"]
-DecoderSize: TypeAlias = Literal["tiny", "small", "base"]
+DecoderSize: TypeAlias = Literal["tiny", "small", "base", "large"]
 SupervisionName: TypeAlias = Literal["kp", "kp+pose", "all", "all+pose"]
 
 
@@ -171,11 +171,13 @@ class QueryProfileConfig:
             raise ValueError("Profile warmup/repeats are invalid.")
         if self.candidate_family not in {"linear", "progressive", "dpt"}:
             raise ValueError("Profile candidate family is invalid.")
-        if self.candidate_size not in {"tiny", "small", "base"}:
+        if self.candidate_size not in {"tiny", "small", "base", "large"}:
             raise ValueError("Profile candidate size is invalid.")
         if self.model.decoder.family != self.candidate_family:
             raise ValueError("Profile candidate family disagrees with model.decoder.")
-        expected_width = {"tiny": 32, "small": 64, "base": 128}[self.candidate_size]
+        expected_width = {"tiny": 32, "small": 64, "base": 128, "large": 256}[
+            self.candidate_size
+        ]
         if self.model.decoder.width != expected_width:
             raise ValueError(
                 "Profile candidate size disagrees with model.decoder.width."

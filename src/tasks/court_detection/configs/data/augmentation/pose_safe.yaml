@@ -1,4 +1,4 @@
-# Square-focal query supervision: isotropic fit plus explicit letterbox padding.
+# Query pose supervision: isotropic long-side resize plus patch-alignment padding.
 train_scales: [256]
 val_short_side: 256
 crop_scale: [1.0, 1.0]
@@ -17,4 +17,5 @@ gaussian_blur_prob: 0.2
 min_visible_kp: 0
 visibility_max_retries: 1
 preserve_fx_fy: true
-canvas_size: 256
+canvas_size: null
+patch_size: 16
