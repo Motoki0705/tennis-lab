@@ -22,6 +22,7 @@ from src.synthetic_data_generation.dataset.court.components.camera_sampling.traj
 from src.synthetic_data_generation.dataset.court.contracts import (
     CourtDatasetPlan,
     CourtDatasetPlanV2,
+    CourtDatasetPlanV3,
     OrbitCenter,
     OrbitCenterKind,
     OrbitCoverageObjective,
@@ -141,7 +142,7 @@ def test_production_plan_is_budgeted_diverse_group_disjoint_and_deterministic(
     assert first.to_dict() == second.to_dict()
 
 
-def test_v2_plan_has_singleton_views_and_per_sample_geometric_targets(
+def test_v2_v3_plans_share_unchanged_sampling_and_per_sample_geometric_targets(
     captured_cameras: tuple[SceneCamera, ...],
     multi_court_layout: MultiCourtLayout,
     identity_metric_adapter: MetricSceneAdapter,
@@ -155,18 +156,26 @@ def test_v2_plan_has_singleton_views_and_per_sample_geometric_targets(
         configuration=configuration,
         metric_adapter=identity_metric_adapter,
     )
+    v3_configuration = _composed_configuration("v3")
     second = build_court_dataset_plan(
         scene_id="B00",
-        profile="v2",
+        profile="v3",
         cameras=captured_cameras,
         layout=multi_court_layout,
-        configuration=configuration,
+        configuration=v3_configuration,
         metric_adapter=identity_metric_adapter,
     )
 
     assert isinstance(first, CourtDatasetPlanV2)
+    assert isinstance(second, CourtDatasetPlanV3)
     assert first.schema_version is CourtDatasetSchemaVersion.V2
+    assert second.schema_version is CourtDatasetSchemaVersion.V3
     assert first.to_dict()["schema"] == "canonical_court_orbit_plan_v2"
+    assert second.to_dict()["schema"] == "canonical_court_orbit_plan_v3"
+    assert first.policy.minimum_accepted_fraction == 0.9
+    assert first.policy == second.policy
+    assert first.groups == second.groups
+    assert first.samples == second.samples
     assert all(len(group.views) == 1 for group in first.groups)
     assert {
         view.target_mode.value for group in first.groups for view in group.views
@@ -227,7 +236,6 @@ def test_v2_plan_has_singleton_views_and_per_sample_geometric_targets(
     assert any(
         len(set(targets_by_group[group_id])) > 1 for group_id in complex_group_ids
     )
-    assert first.to_dict() == second.to_dict()
 
 
 def test_selector_reserves_group_budget_for_a_long_captured_complex_orbit() -> None:

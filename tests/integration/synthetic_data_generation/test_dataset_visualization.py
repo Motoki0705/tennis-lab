@@ -171,6 +171,21 @@ class _FakeCourtV2(_FakeCourt):
             )
 
 
+class _FakeCourtV3(_FakeCourtV2):
+    dataset_schema = "canonical_court_dataset_v3"
+
+    def frames(self) -> Iterator[CourtSourceFrame]:
+        for frame in super().frames():
+            yield CourtSourceFrame(
+                rgb=frame.rgb,
+                sample_id=frame.sample_id,
+                view_id=frame.view_id,
+                trajectory_frame_index=frame.trajectory_frame_index,
+                projection=frame.projection,
+                schema_version=CourtDatasetSchemaVersion.V3,
+            )
+
+
 class _FakeBLCS:
     dataset_schema = "canonical_blcs_compact_dataset_v2"
     dataset_scene_id = "scene-0"
@@ -334,12 +349,21 @@ def test_court_orbit_streams_exact_manifest_sequence_to_mp4(
     assert payload["selection"]["trajectory_id"] == "orbit-0"
 
 
-def test_court_v2_singleton_overlay_streams_to_mp4_without_v1_reshaping(
+@pytest.mark.parametrize(
+    ("source", "dataset_schema"),
+    [
+        (_FakeCourtV2, "canonical_court_dataset_v2"),
+        (_FakeCourtV3, "canonical_court_dataset_v3"),
+    ],
+)
+def test_court_singleton_overlay_streams_to_mp4_without_v1_reshaping(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    source: type[_FakeCourtV2],
+    dataset_schema: str,
 ) -> None:
-    monkeypatch.setattr(renderer_module, "CourtVisualizationSource", _FakeCourtV2)
-    output = tmp_path / "court-v2.mp4"
+    monkeypatch.setattr(renderer_module, "CourtVisualizationSource", source)
+    output = tmp_path / f"court-{dataset_schema}.mp4"
     request = DatasetVisualizationRequest(
         domain=DatasetVisualizationDomain.COURT,
         dataset_root=_root(tmp_path, "court"),
@@ -356,7 +380,7 @@ def test_court_v2_singleton_overlay_streams_to_mp4_without_v1_reshaping(
 
     assert probe_video_info(output).frame_count == 3
     payload = json.loads(result.metadata_path.read_text(encoding="utf-8"))
-    assert payload["dataset_schema"] == "canonical_court_dataset_v2"
+    assert payload["dataset_schema"] == dataset_schema
     assert payload["frame_count"] == 3
 
 

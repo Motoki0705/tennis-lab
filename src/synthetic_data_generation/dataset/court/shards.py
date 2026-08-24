@@ -16,8 +16,10 @@ from types import MappingProxyType
 import numpy as np
 from PIL import Image, UnidentifiedImageError
 
-from src.synthetic_data_generation.dataset.court.components.labels import (
+from src.synthetic_data_generation.dataset.court.components.camera_view import (
     AMBIGUOUS_CAMERA_RELATIVE_NEAR_FAR_REASON,
+)
+from src.synthetic_data_generation.dataset.court.components.labels import (
     MultiCourtProjectionAny,
 )
 from src.synthetic_data_generation.dataset.court.contracts import PlannedCourtSampleAny
@@ -146,7 +148,7 @@ class CourtRenderResult:
                 for reason in rejection_reasons[sample_id]
             ):
                 raise ValueError(
-                    "Only camera-relative near/far ambiguity may lack a projection."
+                    "Only an explicit mid-plane ambiguity may lack a projection."
                 )
         for name in (
             "resolved_shard_count",
@@ -394,7 +396,10 @@ def write_attempt_shard_marker(
         "trajectory_group_ids": group_ids,
         "sample_ids": [sample.sample_id for sample in sample_tuple],
     }
-    if schema_version is CourtDatasetSchemaVersion.V2:
+    if schema_version in (
+        CourtDatasetSchemaVersion.V2,
+        CourtDatasetSchemaVersion.V3,
+    ):
         payload["dataset_schema"] = definition.dataset_schema
     return Path(save_json_atomic(payload, shard_root / "court-shard.json"))
 
@@ -422,7 +427,10 @@ def load_attempt_local_shard(
         "trajectory_group_ids",
         "sample_ids",
     }
-    if schema_version is CourtDatasetSchemaVersion.V2:
+    if schema_version in (
+        CourtDatasetSchemaVersion.V2,
+        CourtDatasetSchemaVersion.V3,
+    ):
         keys.add("dataset_schema")
     if not isinstance(raw, Mapping) or set(raw) != keys:
         raise ValueError("Court shard marker schema is invalid.")
@@ -430,7 +438,7 @@ def load_attempt_local_shard(
     if observed_definition is not definition or raw["shard_id"] != shard_id:
         raise ValueError("Court shard marker schema/shard identity is invalid.")
     if (
-        schema_version is CourtDatasetSchemaVersion.V2
+        schema_version in (CourtDatasetSchemaVersion.V2, CourtDatasetSchemaVersion.V3)
         and raw["dataset_schema"] != definition.dataset_schema
     ):
         raise ValueError("Court shard marker dataset schema is invalid.")

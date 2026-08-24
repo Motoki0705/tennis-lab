@@ -36,10 +36,14 @@ from src.synthetic_data_generation.dataset.court.assembler import (
 from src.synthetic_data_generation.dataset.court.components.camera_sampling.selection import (
     build_court_dataset_plan,
 )
+from src.synthetic_data_generation.dataset.court.components.camera_view import (
+    camera_view_canonicalization,
+)
 from src.synthetic_data_generation.dataset.court.contracts import (
     CourtDatasetPlan,
     CourtDatasetPlanAny,
     CourtDatasetPlanV2,
+    CourtDatasetPlanV3,
     TargetCourtResolutionPolicy,
 )
 from src.synthetic_data_generation.dataset.court.performance import (
@@ -170,28 +174,66 @@ def test_same_seed_public_renderer_runs_publish_equal_semantic_manifests(
     _assert_repeat_semantic_mutations_fail(first_manifest)
 
 
-def test_v2_public_renderer_publishes_exact_sample_targets_labels_and_diagnostics(
+@pytest.mark.parametrize(
+    (
+        "selector",
+        "plan_type",
+        "dataset_schema",
+        "sample_schema",
+        "manifest_schema",
+        "diagnostic_suffix",
+        "performance_schema",
+    ),
+    [
+        (
+            "v2",
+            CourtDatasetPlanV2,
+            "canonical_court_dataset_v2",
+            "canonical_court_sample_v2",
+            "court_renderer_semantic_manifest_v2",
+            "v2",
+            "court_dataset_performance_v3",
+        ),
+        (
+            "v3",
+            CourtDatasetPlanV3,
+            "canonical_court_dataset_v3",
+            "canonical_court_sample_v3",
+            "court_renderer_semantic_manifest_v3",
+            "v3",
+            "court_dataset_performance_v4",
+        ),
+    ],
+)
+def test_singleton_public_renderer_publishes_exact_targets_labels_and_diagnostics(
     tmp_path: Path,
+    selector: str,
+    plan_type: type[CourtDatasetPlanV2],
+    dataset_schema: str,
+    sample_schema: str,
+    manifest_schema: str,
+    diagnostic_suffix: str,
+    performance_schema: str,
 ) -> None:
     executable = _write_fake_nht_render(tmp_path / "bin/nht-render")
     plan, semantic_manifest, dataset_root = _execute_court_render(
-        tmp_path / "v2",
+        tmp_path / selector,
         executable=executable,
         rgb_value=0.4,
-        court_selector="v2",
+        court_selector=selector,
     )
 
-    assert isinstance(plan, CourtDatasetPlanV2)
+    assert type(plan) is plan_type
     dataset = _json_mapping(load_json(dataset_root / "dataset.json"))
     report = validate_court_dataset(
         dataset_root,
         expected_plan=plan,
-        expected_configuration=_configuration("v2"),
+        expected_configuration=_configuration(selector),
         array_validation=CourtArrayValidationMode.HEADERS_ONLY,
     )
-    assert dataset["schema"] == "canonical_court_dataset_v2"
-    assert semantic_manifest["schema"] == "court_renderer_semantic_manifest_v2"
-    assert semantic_manifest["sample_schema"] == "canonical_court_sample_v2"
+    assert dataset["schema"] == dataset_schema
+    assert semantic_manifest["schema"] == manifest_schema
+    assert semantic_manifest["sample_schema"] == sample_schema
     assert report.accepted_frame_count >= 2_000
 
     accepted = cast(list[object], dataset["samples"])
@@ -219,16 +261,17 @@ def test_v2_public_renderer_publishes_exact_sample_targets_labels_and_diagnostic
     labels = _json_mapping(
         load_json(_record_path(dataset_root, first_record, "labels"))
     )
-    assert labels["schema"] == "canonical_court_sample_v2"
+    assert labels["schema"] == sample_schema
     assert labels["target_court"] == first_record["target_court"]
     projection = _json_mapping(labels["projection"])
-    for raw_court in cast(list[object], projection["courts"]):
+    projection_courts = cast(list[object], projection["courts"])
+    for raw_court in projection_courts:
         court = _json_mapping(raw_court)
         classes = cast(list[object], court["classes"])
         assert [_json_mapping(value)["class_name"] for value in classes] == list(
             COURT_SEMANTIC_CLASS_NAMES_V2
         )
-        physical_indices = [
+        serialized_physical_indices = [
             _json_mapping(cast(list[object], _json_mapping(value)["points"])[0])[
                 "physical_index"
             ]
@@ -239,46 +282,71 @@ def test_v2_public_renderer_publishes_exact_sample_targets_labels_and_diagnostic
             len(cast(list[object], _json_mapping(value)["points"])) == 1
             for value in classes
         )
-        assert set(physical_indices) == set(range(14))
+        assert set(serialized_physical_indices) == set(range(14))
+
+    if selector == "v3":
+        camera = SceneCamera.from_dict(first_record["camera"])
+        layout_by_id = {
+            court.court_instance_id: court for court in _alignment().layout.courts
+        }
+        for raw_court in projection_courts:
+            court = _json_mapping(raw_court)
+            court_id = cast(str, court["court_instance_id"])
+            classes = cast(list[object], court["classes"])
+            canonical_physical_indices = tuple(
+                cast(
+                    int,
+                    _json_mapping(
+                        cast(list[object], _json_mapping(value)["points"])[0]
+                    )["physical_index"],
+                )
+                for value in classes
+            )
+            assert canonical_physical_indices == camera_view_canonicalization(
+                camera,
+                layout_by_id[court_id],
+            ).semantic_to_physical
 
     diagnostics = {
-        "trajectory-plan.json": "canonical_court_orbit_plan_v2",
-        "acceptance.json": "court_acceptance_diagnostics_v2",
-        "splits.json": "court_split_diagnostics_v2",
-        "parameter-table.json": "court_parameter_table_v2",
-        "semantic-visibility.json": "court_semantic_visibility_diagnostics_v2",
-        "semantic-manifest.json": "court_renderer_semantic_manifest_v2",
-        "performance.json": "court_dataset_performance_v3",
+        "trajectory-plan.json": f"canonical_court_orbit_plan_{diagnostic_suffix}",
+        "acceptance.json": f"court_acceptance_diagnostics_{diagnostic_suffix}",
+        "splits.json": f"court_split_diagnostics_{diagnostic_suffix}",
+        "parameter-table.json": f"court_parameter_table_{diagnostic_suffix}",
+        "semantic-visibility.json": (
+            f"court_semantic_visibility_diagnostics_{diagnostic_suffix}"
+        ),
+        "semantic-manifest.json": manifest_schema,
+        "performance.json": performance_schema,
     }
     for filename, schema in diagnostics.items():
         payload = _json_mapping(load_json(dataset_root / "diagnostics" / filename))
         assert payload["schema"] == schema
 
-    ambiguous = [
+    pre_render_rejected = [
         record
         for value in rejected
         for record in (_json_mapping(value),)
         if record["projection"] is None
     ]
-    assert ambiguous
-    assert all(
-        cast(list[str], record["reasons"])[0].startswith(
-            "ambiguous_camera_relative_near_far:"
-        )
-        for record in ambiguous
-    )
+    assert pre_render_rejected
+    pre_render_reasons = {
+        cast(list[str], record["reasons"])[0].split(":", maxsplit=1)[0]
+        for record in pre_render_rejected
+    }
+    assert "ambiguous_camera_relative_near_far" in pre_render_reasons
+    assert pre_render_reasons == {"ambiguous_camera_relative_near_far"}
 
     with pytest.raises(ValueError, match="configuration schemas are mixed"):
         validate_court_dataset(
             dataset_root,
-            expected_configuration=_configuration("v1"),
+            expected_configuration=_configuration("v3" if selector == "v2" else "v2"),
             array_validation=CourtArrayValidationMode.HEADERS_ONLY,
         )
 
     dataset_path = dataset_root / "dataset.json"
     original_dataset_text = dataset_path.read_text(encoding="utf-8")
     unknown_dataset = json.loads(original_dataset_text)
-    unknown_dataset["schema"] = "canonical_court_dataset_v3"
+    unknown_dataset["schema"] = "canonical_court_dataset_v4"
     dataset_path.write_text(json.dumps(unknown_dataset), encoding="utf-8")
     try:
         with pytest.raises(ValueError, match="Unknown Court dataset schema"):
@@ -292,7 +360,11 @@ def test_v2_public_renderer_publishes_exact_sample_targets_labels_and_diagnostic
     label_path = _record_path(dataset_root, first_record, "labels")
     original_label_text = label_path.read_text(encoding="utf-8")
     mixed_label = json.loads(original_label_text)
-    mixed_label["schema"] = "canonical_court_sample_v1"
+    mixed_label["schema"] = (
+        "canonical_court_sample_v3"
+        if selector == "v2"
+        else "canonical_court_sample_v2"
+    )
     label_path.write_text(json.dumps(mixed_label), encoding="utf-8")
     try:
         with pytest.raises(ValueError, match="labels schema"):

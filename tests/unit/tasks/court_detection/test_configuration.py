@@ -36,7 +36,11 @@ def _compose(source: str, *overrides: str) -> DictConfig:
 
 @pytest.mark.parametrize(
     ("source", "schema"),
-    [("synthetic_court_v1", "v1"), ("synthetic_court", "v2")],
+    [
+        ("synthetic_court_v1", "v1"),
+        ("synthetic_court_v2", "v2"),
+        ("synthetic_court", "v3"),
+    ],
 )
 def test_hydra_explicitly_composes_each_synthetic_schema(
     source: str,
@@ -50,16 +54,23 @@ def test_hydra_explicitly_composes_each_synthetic_schema(
     assert runtime.data.source.keypoint_court_scope == "all_courts"
 
 
-def test_hydra_composes_target_court_scope_for_v2() -> None:
+@pytest.mark.parametrize(
+    ("source", "schema"),
+    [("synthetic_court_v2", "v2"), ("synthetic_court", "v3")],
+)
+def test_hydra_composes_target_court_scope_for_singleton_schemas(
+    source: str,
+    schema: str,
+) -> None:
     runtime = CourtTrainingConfig.from_config(
         _compose(
-            "synthetic_court",
+            source,
             "data.source.keypoint_court_scope=target_court",
         )
     )
 
     assert isinstance(runtime.data.source, SyntheticCourtSourceConfig)
-    assert runtime.data.source.schema == "v2"
+    assert runtime.data.source.schema == schema
     assert runtime.data.source.keypoint_court_scope == "target_court"
 
 
@@ -72,7 +83,10 @@ def test_synthetic_schema_cannot_be_omitted_or_guessed() -> None:
 
     unknown = deepcopy(_compose("synthetic_court"))
     unknown.data.source.schema = "auto"
-    with pytest.raises(SemanticConfigurationError, match="explicitly 'v1' or 'v2'"):
+    with pytest.raises(
+        SemanticConfigurationError,
+        match="explicitly 'v1', 'v2', or 'v3'",
+    ):
         CourtTrainingConfig.from_config(unknown)
 
 
@@ -108,7 +122,7 @@ def test_v1_rejects_target_court_scope_at_typed_configuration_boundary() -> None
 
     with pytest.raises(
         SemanticConfigurationError,
-        match="target_court.*requires.*schema='v2'",
+        match="target_court.*requires.*schema='v2'.*'v3'",
     ):
         CourtTrainingConfig.from_config(config)
 

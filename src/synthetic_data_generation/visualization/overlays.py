@@ -22,7 +22,7 @@ from src.synthetic_data_generation.visualization.sources import (
     CourtSourceFrame,
     PLCSSourceFrame,
 )
-from src.utils.schema.court import COURT_SKELETON
+from src.utils.schema.court import CAMERA_VIEW_HALF_TURN_INDEX, COURT_SKELETON
 from src.utils.schema.player import COCO17_SKELETON
 
 _COURT_CLASS_COLORS: tuple[tuple[int, int, int], ...] = (
@@ -80,8 +80,11 @@ def render_court_overlay(
     trajectory_id: str,
 ) -> NDArray[np.uint8]:
     """Overlay seven-class physical keypoints and renderer visibility."""
-    if frame.schema_version is CourtDatasetSchemaVersion.V2:
-        return _render_court_overlay_v2(frame, trajectory_id=trajectory_id)
+    if frame.schema_version in (
+        CourtDatasetSchemaVersion.V2,
+        CourtDatasetSchemaVersion.V3,
+    ):
+        return _render_court_overlay_singleton(frame, trajectory_id=trajectory_id)
     if frame.schema_version is not CourtDatasetSchemaVersion.V1:
         raise TypeError("Court overlay requires an explicit supported schema version.")
     canvas = _rgb_float_to_bgr(frame.rgb)
@@ -169,12 +172,13 @@ def render_court_overlay(
     return cast(NDArray[np.uint8], cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB))
 
 
-def _render_court_overlay_v2(
+def _render_court_overlay_singleton(
     frame: CourtSourceFrame,
     *,
     trajectory_id: str,
 ) -> NDArray[np.uint8]:
-    """Overlay exact v2 camera-relative singleton classes and CourtKP lines."""
+    """Overlay exact V2/V3 singleton classes and physical CourtKP lines."""
+    version = frame.schema_version.value
     canvas = _rgb_float_to_bgr(frame.rgb)
     projection = _object(frame.projection, name="Court projection")
     courts = _array(projection.get("courts"), name="Court projected courts")
@@ -185,7 +189,9 @@ def _render_court_overlay_v2(
         court_id = _text(court.get("court_instance_id"), name="court_instance_id")
         classes = _array(court.get("classes"), name="Court semantic classes")
         if len(classes) != len(SEMANTIC_CLASS_NAMES_V2):
-            raise ValueError("Court v2 overlay requires fourteen semantic classes.")
+            raise ValueError(
+                f"Court {version} overlay requires fourteen semantic classes."
+            )
         points_by_physical_index: dict[
             int, tuple[tuple[int, int], bool, bool, str]
         ] = {}
@@ -198,17 +204,23 @@ def _render_court_overlay_v2(
                 semantic_class.get("class_id") != class_index
                 or semantic_class.get("class_name") != expected_name
             ):
-                raise ValueError("Court v2 semantic class identity/order changed.")
+                raise ValueError(
+                    f"Court {version} semantic class identity/order changed."
+                )
             points = _array(semantic_class.get("points"), name="Court points")
             if len(points) != 1:
-                raise ValueError("Court v2 semantic class must contain one point.")
-            point = _object(points[0], name="Court v2 point")
+                raise ValueError(
+                    f"Court {version} semantic class must contain one point."
+                )
+            point = _object(points[0], name=f"Court {version} point")
             physical_index = _nonnegative_integer(
                 point.get("physical_index"), name="physical_index"
             )
             physical_index_by_class.append(physical_index)
             if physical_index >= 14 or physical_index in points_by_physical_index:
-                raise ValueError("Court v2 physical point inventory is invalid.")
+                raise ValueError(
+                    f"Court {version} physical point inventory is invalid."
+                )
             uv, in_frame, renderer_visible = _court_point(point)
             points_by_physical_index[physical_index] = (
                 uv,
@@ -217,7 +229,15 @@ def _render_court_overlay_v2(
                 expected_name,
             )
         if set(points_by_physical_index) != set(range(14)):
-            raise ValueError("Court v2 physical point inventory must cover 0..13.")
+            raise ValueError(
+                f"Court {version} physical point inventory must cover 0..13."
+            )
+        if frame.schema_version is CourtDatasetSchemaVersion.V3:
+            physical_order = tuple(physical_index_by_class)
+            if physical_order not in (tuple(range(14)), CAMERA_VIEW_HALF_TURN_INDEX):
+                raise ValueError(
+                    "Court v3 physical inventory must be identity or full half-turn."
+                )
         for first, second in COURT_SKELETON:
             if first >= 14 or second >= 14:
                 continue
@@ -268,7 +288,7 @@ def _render_court_overlay_v2(
     _header(
         canvas,
         (
-            f"COURT v2 trajectory={trajectory_id} view={frame.view_id} "
+            f"COURT {version} trajectory={trajectory_id} view={frame.view_id} "
             f"frame={frame.trajectory_frame_index} sample={frame.sample_id}"
         ),
         second_line=(f"filled=renderer-visible  count={visible_points}/{total_points}"),
