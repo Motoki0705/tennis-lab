@@ -13,7 +13,9 @@ FINGERPRINT_PREFIX = "sha256:"
 EXCLUDED_PREFIXES = (".codex/tasks/",)
 
 
-def _git(root: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[bytes]:
+def _git(
+    root: Path, *args: str, check: bool = True
+) -> subprocess.CompletedProcess[bytes]:
     completed = subprocess.run(
         ["git", "-C", str(root), *args],
         check=False,
@@ -73,14 +75,24 @@ def _changed_paths(root: Path, base_revision: str) -> list[str]:
         "-z",
     ).stdout.split(b"\0")
     paths = {
-        item.decode(errors="surrogateescape")
-        for item in (*tracked, *untracked)
-        if item
+        item.decode(errors="surrogateescape") for item in (*tracked, *untracked) if item
     }
     return sorted(path for path in paths if not _excluded(path))
 
 
 def _revision_changed_paths(root: Path, base_revision: str, revision: str) -> list[str]:
+    return [
+        relative
+        for relative in _revision_path_inventory(root, base_revision, revision)
+        if not _excluded(relative)
+    ]
+
+
+def _revision_path_inventory(
+    root: Path,
+    base_revision: str,
+    revision: str,
+) -> list[str]:
     output = _git(
         root,
         "diff",
@@ -92,11 +104,7 @@ def _revision_changed_paths(root: Path, base_revision: str, revision: str) -> li
         "--",
         ".",
     ).stdout.split(b"\0")
-    return sorted(
-        item.decode(errors="surrogateescape")
-        for item in output
-        if item and not _excluded(item.decode(errors="surrogateescape"))
-    )
+    return sorted(item.decode(errors="surrogateescape") for item in output if item)
 
 
 def _worktree_entry(root: Path, relative: str) -> tuple[str, bytes]:
@@ -163,7 +171,6 @@ def _fallback_entries(root: Path, task_dir: Path) -> list[tuple[str, str, bytes]
     return entries
 
 
-
 def changed_paths(
     task_dir: Path,
     state: dict[str, Any] | None = None,
@@ -187,6 +194,24 @@ def revision_changed_paths(
     if not base_revision or revision == "WORKTREE":
         return changed_paths(task_dir, state)
     return _revision_changed_paths(root, base_revision, revision)
+
+
+def revision_path_inventory(
+    task_dir: Path,
+    base_revision: str,
+    revision: str,
+) -> list[str]:
+    """Return the unfiltered no-renames path inventory for one revision range."""
+    if not base_revision:
+        raise ValueError("revision path inventory requires a base revision")
+    if revision == "WORKTREE":
+        raise ValueError("revision path inventory requires a committed revision")
+    return _revision_path_inventory(
+        repository_root(task_dir),
+        base_revision,
+        revision,
+    )
+
 
 def compute_candidate_fingerprint(
     task_dir: Path,
