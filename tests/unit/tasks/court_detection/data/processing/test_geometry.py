@@ -12,7 +12,7 @@ from PIL import Image
 
 from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
 from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
-from src.tasks.court_detection.configuration import CourtTrainingConfig
+from src.tasks.court_detection.configuration import CourtAugmentationConfig
 from src.tasks.court_detection.data.contracts import (
     CourtKeypointChannels,
     CourtPoseAuthority,
@@ -72,7 +72,90 @@ def _pose_safe_config():
                 "model=query_encoder",
             ],
         )
-    return CourtTrainingConfig.from_config(config).data.augmentation
+    return CourtAugmentationConfig.from_mapping(config.data.augmentation)
+
+
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+def test_transform_points_preserves_floating_input_dtype(dtype: torch.dtype) -> None:
+    points = torch.tensor([[[1.25, 2.5], [3.75, 4.0]]], dtype=dtype)
+    matrix = torch.tensor(
+        [[2.0, 0.0, 3.0], [0.0, 0.5, -1.0], [0.0, 0.0, 1.0]],
+        dtype=torch.float64,
+    )
+
+    transformed = CourtProcessingGeometry._transform_points(points, matrix)
+
+    assert transformed.dtype == dtype
+    torch.testing.assert_close(
+        transformed,
+        torch.tensor([[[5.5, 0.25], [10.5, 1.0]]], dtype=dtype),
+    )
+
+
+def test_transform_points_preserves_001588_large_coordinate_precision() -> None:
+    points = torch.tensor(
+        [[[387122.0463825724, 48177.58336823048]]],
+        dtype=torch.float64,
+    )
+    scale = 256.0 / 959.0
+    offset_y = (256.0 - 539.0 * scale) * 0.5
+    matrix = torch.tensor(
+        [[scale, 0.0, 0.0], [0.0, scale, offset_y], [0.0, 0.0, 1.0]],
+        dtype=torch.float64,
+    )
+
+    transformed = CourtProcessingGeometry._transform_points(points, matrix)
+
+    torch.testing.assert_close(
+        transformed[0, 0],
+        torch.tensor(
+            [103340.19173507667, 12916.810575878],
+            dtype=torch.float64,
+        ),
+        rtol=0.0,
+        atol=1.0e-9,
+    )
+    rounded_source = CourtProcessingGeometry._transform_points(points.float(), matrix)
+    assert float(torch.max(torch.abs(transformed - rounded_source.double()))) > 4.0e-3
+
+
+@pytest.mark.parametrize(
+    ("points", "matrix", "error", "message"),
+    [
+        (
+            torch.tensor([[1, 2]], dtype=torch.long),
+            torch.eye(3),
+            TypeError,
+            "floating dtype",
+        ),
+        (
+            torch.tensor([1.0, 2.0]),
+            torch.eye(3),
+            ValueError,
+            "shape",
+        ),
+        (
+            torch.tensor([[1.0, 2.0]]),
+            torch.eye(2),
+            ValueError,
+            "matrix",
+        ),
+        (
+            torch.tensor([[1.0, 2.0]]),
+            torch.eye(3, device="meta"),
+            ValueError,
+            "device",
+        ),
+    ],
+)
+def test_transform_points_rejects_invalid_contracts(
+    points: torch.Tensor,
+    matrix: torch.Tensor,
+    error: type[Exception],
+    message: str,
+) -> None:
+    with pytest.raises(error, match=message):
+        CourtProcessingGeometry._transform_points(points, matrix)
 
 
 def test_pose_safe_geometry_letterboxes_kp_and_k_with_one_isotropic_plan() -> None:
