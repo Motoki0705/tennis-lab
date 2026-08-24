@@ -14,6 +14,7 @@ from src.tasks.base.data.lifecycle_slots import (
     LifecycleSlotAssignment,
     pack_lifecycle_slots,
 )
+from src.tasks.base.data.rng import require_run_seed
 from src.tasks.base.data.scene_dataset import SceneDatasetBase, SceneDatasetConfig
 from src.utils.schema.court_normalization import (
     validate_court_coordinate_normalization,
@@ -53,6 +54,7 @@ class CanonicalTrackingDataset(SceneDatasetBase[dict[str, Tensor]]):
         scene_dir: str | Path,
         split_file: str | Path,
         config: Any | None = None,
+        seed: int | None = None,
         augment: bool = False,
         rng: np.random.Generator | None = None,
     ) -> None:
@@ -86,7 +88,9 @@ class CanonicalTrackingDataset(SceneDatasetBase[dict[str, Tensor]]):
                 min_num_frames=1,
                 min_num_cameras=1,
             ),
+            seed=require_run_seed(config) if seed is None else seed,
             rng=rng,
+            sample_local_rng=not augment,
         )
 
     def _validate_scene_metadata(self, meta: dict[str, Any], *, path: Path) -> None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from torch.utils.data import Dataset
 
@@ -28,12 +28,20 @@ class BLCSDataModuleHooks:
         scene_dir: Path,
         split_file: str,
         augment: bool,
+        seed: int | None = None,
     ) -> Dataset:
         contract = parse_court_keypoint_contract(self.config)
         return BallTrajectoryDataset(
             scene_dir=scene_dir,
             split_file=split_file,
             config=self.config,
+            seed=(
+                cast("SceneDirectoryDataModule", self)._dataset_seed(
+                    scene_dir, split_file
+                )
+                if seed is None
+                else seed
+            ),
             augment=augment,
             reference_camera_id=(
                 str(self.config.data.evaluation_reference_camera_id)

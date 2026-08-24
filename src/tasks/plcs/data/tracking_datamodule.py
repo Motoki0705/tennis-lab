@@ -30,12 +30,19 @@ class PLCSTrackingDataModule(SceneDirectoryDataModule):
         return collate_plcs_tracking_batch
 
     def _build_dataset(
-        self, scene_dir: Path, split_file: str, augment: bool
+        self,
+        scene_dir: Path,
+        split_file: str,
+        augment: bool,
+        seed: int | None = None,
     ) -> Dataset:
         return PLCSTrackingDataset(
             scene_dir=scene_dir,
             split_file=split_file,
             config=self.plcs_runtime.raw,
+            seed=(
+                self._dataset_seed(scene_dir, split_file) if seed is None else seed
+            ),
             augment=augment,
             reference_camera_id=(
                 self.plcs_runtime.data.evaluation_reference_camera_id

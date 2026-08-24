@@ -14,8 +14,9 @@ pytestmark = pytest.mark.unit
 
 
 class _DummyDataset(Dataset):
-    def __init__(self, name: str, n: int = 4) -> None:
+    def __init__(self, name: str, seed: int, n: int = 32) -> None:
         self.name = name
+        self.seed = seed
         self.n = n
 
     def __len__(self) -> int:
@@ -24,13 +25,19 @@ class _DummyDataset(Dataset):
     def __getitem__(self, idx: int):
         return idx
 
+    def seed_worker(self, *, worker_seed: int, worker_id: int) -> None:
+        del worker_seed, worker_id
+
 
 class _DM(SceneDirectoryDataModule):
     def _build_collate_fn(self):
         return None
 
-    def _build_dataset(self, scene_dir, split_file, augment):
-        return _DummyDataset(f"{split_file}:{augment}")
+    def _build_dataset(self, scene_dir, split_file, augment, seed=None):
+        del scene_dir
+        if seed is None:
+            raise ValueError("test dataset requires an explicit seed")
+        return _DummyDataset(f"{split_file}:{augment}", seed)
 
     def _dataset_name(self) -> str:
         return "dummy"
@@ -70,6 +77,7 @@ def _config(
             "num_workers": num_workers,
             "pin_memory": pin_memory,
         },
+        "run": {"seed": 42},
     }
 
 
@@ -92,6 +100,14 @@ def test_config_parsing_explicit_values(tmp_path: Path) -> None:
     assert dm.num_workers == 2
     assert dm.pin_memory is False
     assert dm.scene_dir == tmp_path / "scenes"
+    assert dm.seed == 42
+
+
+def test_config_parsing_rejects_missing_seed(tmp_path: Path) -> None:
+    config = _config(tmp_path, scene_dir="scenes")
+    del config["run"]
+    with pytest.raises(MissingConfigurationKeyError, match="configuration.run"):
+        _DM(config)
 
 
 def test_setup_missing_scene_dir_raises(tmp_path: Path) -> None:
@@ -114,6 +130,7 @@ def test_setup_fit_builds_train_and_val(tmp_path: Path) -> None:
     assert dm.train_dataset is not None
     assert dm.val_dataset is not None
     assert dm.train_dataset is not dm.val_dataset
+    assert dm.train_dataset.seed != dm.val_dataset.seed  # type: ignore[attr-defined]
 
 
 def test_setup_fit_missing_val_split_raises(tmp_path: Path) -> None:
@@ -149,3 +166,22 @@ def test_train_loader_shuffles_and_drops_last(tmp_path: Path) -> None:
     assert train_loader.drop_last is True
     assert val_loader.drop_last is False
     assert train_loader.batch_size == 2
+
+
+def test_train_shuffle_replays_between_process_equivalent_modules(
+    tmp_path: Path,
+) -> None:
+    root = _make_scene_root(tmp_path, splits=("train", "val"))
+    first = _DM(_config(root, batch_size=4))
+    replay = _DM(_config(root, batch_size=4))
+    first.setup("fit")
+    replay.setup("fit")
+
+    first_loader = first.train_dataloader()
+    replay_loader = replay.train_dataloader()
+    first_epoch = [int(item) for batch in first_loader for item in batch]
+    replay_epoch = [int(item) for batch in replay_loader for item in batch]
+    second_epoch = [int(item) for batch in first_loader for item in batch]
+
+    assert first_epoch == replay_epoch
+    assert first_epoch != second_epoch
