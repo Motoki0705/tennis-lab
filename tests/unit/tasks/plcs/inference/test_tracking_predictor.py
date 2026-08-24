@@ -149,6 +149,7 @@ def test_checkpoint_restoration_retains_exact_ablation_binding_and_scale(
                 "model.cswa.compression_ratio=2",
                 "model.cswa.window_radius=1",
                 f"court_coordinate_normalization={normalization_version}",
+                f"run.output_dir=plcs/checkpoint_norm_{normalization_version}",
             ],
         )
     binding = build_plcs_model_io(PLCSTrainingConfig.from_config(config))

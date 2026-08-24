@@ -16,6 +16,7 @@ from src.tasks.plcs.generate_dataset.config import PLCSGenerationConfig
 from src.utils.configuration import (
     MissingConfigurationKeyError,
     PathContractError,
+    PathResolver,
     PathRole,
     SemanticConfigurationError,
     UnknownConfigurationKeyError,
@@ -49,6 +50,153 @@ def test_generation_output_is_explicitly_data_root_relative() -> None:
 
     assert runtime.OUTPUT_ROLE is PathRole.DATA
     assert runtime.output_dir == PROJECT_ROOT / "data/plcs"
+
+
+@pytest.mark.parametrize(
+    ("config_name", "expected_version", "expected_component"),
+    [
+        ("generate_dataset_norm_v1", "v1", "plcs_broadcast_norm_v1"),
+        ("generate_dataset_norm_v2", "v2", "plcs_broadcast_norm_v2"),
+    ],
+)
+def test_shipped_generation_configs_publish_distinct_versioned_artifacts(
+    config_name: str,
+    expected_version: str,
+    expected_component: str,
+) -> None:
+    runtime = PLCSGenerationConfig.from_config(_config(config_name))
+
+    assert runtime.court_coordinate_normalization.version == expected_version
+    assert expected_component in runtime.output_dir.parts
+
+
+@pytest.mark.parametrize(
+    ("config_name", "expected_version", "expected_component"),
+    [
+        ("train_norm_v1", "v1", "baseline_norm_v1"),
+        ("train_norm_v2", "v2", "baseline_norm_v2"),
+    ],
+)
+def test_shipped_training_configs_publish_distinct_versioned_artifacts(
+    config_name: str,
+    expected_version: str,
+    expected_component: str,
+) -> None:
+    runtime = PLCSTrainingConfig.from_config(_config(config_name))
+
+    assert runtime.court_coordinate_normalization.version == expected_version
+    assert expected_component in runtime.shared.run.output_dir.parts
+
+
+@pytest.mark.parametrize(
+    "output_dir",
+    [
+        "norm_v2",
+        "plcs_broadcast_norm_v2",
+        "plcs/norm_v2/baseline",
+        "plcs/baseline-norm_v2",
+        "plcs/prefix_norm_v2_suffix",
+        "plcs/norm_v2-extra",
+    ],
+)
+@pytest.mark.parametrize(
+    ("config_name", "boundary"),
+    [
+        ("generate_dataset_norm_v2", PLCSGenerationConfig),
+        ("train_norm_v2", PLCSTrainingConfig),
+    ],
+)
+def test_v2_publication_accepts_delimiter_bounded_name_components(
+    config_name: str,
+    boundary: type[PLCSGenerationConfig] | type[PLCSTrainingConfig],
+    output_dir: str,
+) -> None:
+    config = deepcopy(_config(config_name))
+    config.run.output_dir = output_dir
+
+    boundary.from_config(config)
+
+
+@pytest.mark.parametrize(
+    "output_dir",
+    [
+        "plcs/baseline",
+        "plcs/norm_v20",
+        "plcs/normalization_v2",
+        "plcs/misnamed-v2",
+        "plcs/NORM_V2",
+        "plcs/baseline.norm_v2",
+        "plcs/norm_v2.json",
+        "plcs/norm_v1-norm_v2",
+        "../norm_v2",
+        "/tmp/norm_v2",
+    ],
+)
+@pytest.mark.parametrize(
+    ("config_name", "boundary"),
+    [
+        ("generate_dataset_norm_v2", PLCSGenerationConfig),
+        ("train_norm_v2", PLCSTrainingConfig),
+    ],
+)
+def test_v2_publication_rejects_ambiguous_or_unsafe_names(
+    config_name: str,
+    boundary: type[PLCSGenerationConfig] | type[PLCSTrainingConfig],
+    output_dir: str,
+) -> None:
+    config = deepcopy(_config(config_name))
+    config.run.output_dir = output_dir
+
+    with pytest.raises(SemanticConfigurationError, match="norm_v2"):
+        boundary.from_config(config)
+
+
+@pytest.mark.parametrize(
+    ("config_name", "boundary"),
+    [
+        ("generate_dataset_norm_v2", PLCSGenerationConfig),
+        ("train_norm_v2", PLCSTrainingConfig),
+    ],
+)
+def test_invalid_v2_publication_name_fails_before_role_path_resolution(
+    monkeypatch: pytest.MonkeyPatch,
+    config_name: str,
+    boundary: type[PLCSGenerationConfig] | type[PLCSTrainingConfig],
+) -> None:
+    config = deepcopy(_config(config_name))
+    config.run.output_dir = "plcs/normalization_v2"
+
+    def unexpected_resolution(
+        self: PathResolver,
+        role: PathRole,
+        *relative_parts: str | object,
+    ) -> object:
+        del self, role, relative_parts
+        raise AssertionError("role path resolution preceded publication validation")
+
+    monkeypatch.setattr(PathResolver, "resolve", unexpected_resolution)
+
+    with pytest.raises(SemanticConfigurationError, match="exact token 'norm_v2'"):
+        boundary.from_config(config)
+
+
+@pytest.mark.parametrize(
+    ("config_name", "boundary"),
+    [
+        ("generate_dataset", PLCSGenerationConfig),
+        ("train", PLCSTrainingConfig),
+    ],
+)
+def test_default_v1_publication_remains_unqualified_compatible(
+    config_name: str,
+    boundary: type[PLCSGenerationConfig] | type[PLCSTrainingConfig],
+) -> None:
+    config = deepcopy(_config(config_name))
+    config.run.output_dir = "plcs/legacy-compatible"
+
+    runtime = boundary.from_config(config)
+
+    assert runtime.court_coordinate_normalization.version == "v1"
 
 
 def test_analysis_output_is_explicitly_output_root_relative() -> None:

@@ -33,6 +33,44 @@
 - **`tracking_lightning_module.py`**: BLCS/PLCSに共通するtracking stage dispatch、loss/metric logging、test prediction収集・保存を所有し、task固有adapter/loss/metrics/payloadはhookへ委譲する。
 - **`tracking_metrics.py`**: lifecycle segment単位のbirth/death誤差・presence F1・query再利用・ID switch診断。
 
+## Court-coordinate normalization contract
+
+この節が、BLCS / PLCS / SLCS が共有するcourt座標正規化契約の唯一のhuman-facingな正本です。物理コートの寸法・軸・原点は変更せず、任意shape `(..., 3)` のpositionとvelocityを次のscaleで変換します。
+
+| version | `scale_xyz` [m] | 契約 |
+|---|---|---|
+| `v1` | `(5.485, 11.885, 1.07)` | legacyの軸別scale。初回導入時と既存Hydra rootの互換default。 |
+| `v2` | `(11.885, 11.885, 11.885)` | center-to-baseline距離をXYZ全軸へ使うisotropic scale。明示的にopt inする。 |
+
+```text
+position_norm = position_m / scale_xyz
+position_m = position_norm * scale_xyz
+velocity_norm = velocity_m_per_s / scale_xyz
+velocity_m_per_s = velocity_norm * scale_xyz
+```
+
+物理positionは`m`、物理velocityは`m/s`、normalized positionはdimensionless、normalized velocityはdimensionless/sです。Hydraでは各runtime rootが共有group `court_coordinate_normalization` をcomposeし、`court_coordinate_normalization=v1`または`court_coordinate_normalization=v2`で選択します。省略時の互換defaultは`v1`で、新しい`v2`実行はoverrideを明示します。未知versionはerrorであり、値やshapeからversionを推測しません。
+
+実装上の責務は次の4つに分かれます。
+
+- [`src/utils/schema/court_normalization.py`](../../utils/schema/court_normalization.py) はmathematical resolverです。immutableな`version -> scale_xyz` mappingとposition/velocity変換だけを所有し、artifact metadataをserializeせず、artifact compatibilityも単独では判定しません。
+- [`src/tasks/base/data/court_coordinate_contract.py`](data/court_coordinate_contract.py) はdataset metadata schemaです。metadata key `court_coordinate_normalization`のexact mappingを定義・parse・validateします。mappingは`schema_version: 1`、`version`、`scale_xyz`、`position_unit: "m"`、`velocity_unit: "m/s"`を持ち、dataset rootと全sceneで同一でなければなりません。宣言scaleはmathematical resolverに照合され、arrayを読む前に検証されます。
+- [`src/tasks/base/model_io/court_coordinate_contract.py`](model_io/court_coordinate_contract.py) はcheckpoint metadata adapterです。dataset metadata schemaと同じmappingをcheckpoint rootへ書き、復元・検証します。これは第2のschemaではなく、weightや保存stateを使う前に同じmetadataを検証するmodel-I/O adapterです。
+- [`src/tasks/base/data/court_coordinate_materializer.py`](data/court_coordinate_materializer.py) とその[`src/tasks/base/configs/materialize_court_coordinate_normalization.yaml`](configs/materialize_court_coordinate_normalization.yaml) はmaterializerです。既存BLCS / PLCS datasetを明示したsource contractから別のversion-qualified rootへcopyして変換し、sourceを変更せず、既存outputを上書きしません。
+
+新規dataset/checkpointは上記metadataを必ず保存します。dataset root/scene間のmissing・unknown・partial・mixed metadata、またはruntime / dataset / checkpoint間の`version`・`scale_xyz`不一致は、array・weight・保存stateを利用する前にerrorになります。artifact全体がmetadata-freeの場合だけ、明示的な`v1` runtimeでlegacy artifactとして利用できます。metadata-freeを暗黙に`v1`と推定すること、mismatchをsilentに変換すること、checkpoint weightを自動移行することはありません。
+
+既存`v1` dataset/checkpointは残し、新しいartifactはversion-qualifiedな別名とmetadataの両方で識別します。BLCSの新しい学習出力は`blcs/norm-v1|norm-v2/...`、PLCSのversioned dataset/training出力は`norm_v1` / `norm_v2`を区切られたpath tokenとして使います。名前はpublication時の追加guardであり、runtime compatibilityの正本はmetadataです。materializerは既存targetを、PLCS standalone generationはnon-empty rootと既存sceneを、PLCS trainingはoccupied outputをそれぞれpublication前に拒否します。移行はin-placeではなく、明示したsource versionと未作成の別target rootをmaterializerへ渡します。たとえばlegacy PLCS datasetを`v2`へ移行するコマンドは次のとおりです。
+
+```bash
+.venv/bin/python -m src.tasks.base.scripts.materialize_court_coordinate_normalization \
+  court_coordinate_normalization=v2 \
+  materialization.dataset_kind=plcs \
+  materialization.source_dir=data/plcs_broadcast \
+  materialization.output_dir=data/plcs_broadcast_norm_v2 \
+  materialization.source_normalization_version=v1
+```
+
 ## Training model compilation
 
 全taskのtraining configは次の共有契約を明示し、標準ではcompileを有効にする。

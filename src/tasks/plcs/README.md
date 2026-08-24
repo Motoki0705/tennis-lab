@@ -4,46 +4,21 @@
 
 ## Court-coordinate normalization
 
-正規化の数式と version-to-scale mapping の正本は
-[`src/utils/schema/court_normalization.py`](../../utils/schema/court_normalization.py)
-です。PLCS の `position` だけを `position_norm = position_court_m / scale_xyz`
-で正規化します。`canonical_pose_3d`、`human_kp_3d`、
+共有する数式、Hydra選択、単位、metadata互換性、artifact命名、移行手順は
+[`src/tasks/base/README.md#court-coordinate-normalization-contract`](../base/README.md#court-coordinate-normalization-contract)
+を参照してください。PLCSでは`position` translationだけを選択済みcontractで
+正規化します。`canonical_pose_3d`、`human_kp_3d`、
 `position_court_m` は metre のままで、`rotation` / yaw も変更しません。
-
-- `v1`（互換 default）: `scale_xyz = (5.485, 11.885, 1.07) m`
-- `v2`: `scale_xyz = (11.885, 11.885, 11.885) m`
-
-すべての Hydra root は `court_coordinate_normalization=v1|v2` を明示的に
-compose します。新規 dataset は root と全 scene、新規 checkpoint は root に
-version、`scale_xyz`、position/velocity unit を保存します。runtime と artifact の
-version または scale が異なる場合、dataset load、resume、evaluation、inference
-はいずれも変換せずに error になります。metadata のない既存 artifact は
-明示的な `v1` runtime だけで legacy として読めます。shape や値域から version
-を推測しません。
 
 `v1` loss は従来の normalized Smooth L1 `beta=1` を維持します。`v2` の
 position loss と tracking Hungarian position cost は全軸一様で、default の
 物理 transition は `1.0 m`（normalized `1 / 11.885`）です。
 
-version を artifact 名でも区別するため、baseline 用に
+baseline 用に
 `generate_dataset_norm_v1|v2.yaml`、`train_norm_v1|v2.yaml`、
-`data/multiview_sequence_norm_v1|v2.yaml` を用意しています。既存 v1 dataset を
-上書きせず v2 copy へ materialize する例は次の通りです。standalone generation
-と training で v2 を選ぶ場合、設定された相対 `run.output_dir` のいずれかの
-path component に、先頭/末尾または `_`/`-` で区切られた exact token
-`norm_v2` が必要です（例: `plcs_broadcast_norm_v2`, `baseline_norm_v2`）。これは
-publication 時の追加 guard であり、version 判定の正本は引き続き metadata
-です。v1/default path にこの token は不要です。generator は既存の non-empty
-destination と既存 scene directory を再利用せず、上書き前に error にします。
+`data/multiview_sequence_norm_v1|v2.yaml` を用意しています。
 
 ```bash
-.venv/bin/python -m src.tasks.base.scripts.materialize_court_coordinate_normalization \
-  court_coordinate_normalization=v2 \
-  materialization.dataset_kind=plcs \
-  materialization.source_dir=data/plcs_broadcast \
-  materialization.output_dir=data/plcs_broadcast_norm_v2 \
-  materialization.source_normalization_version=v1
-
 .venv/bin/python -m src.tasks.plcs.scripts.generate_dataset \
   --config-name generate_dataset_norm_v2
 

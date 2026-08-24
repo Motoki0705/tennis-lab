@@ -9,6 +9,7 @@ import torch
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.tasks.base.training.runner import BaseTrainingRunner
+from src.tasks.plcs.artifact_paths import validate_plcs_training_output_occupancy
 from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.model_io import validate_plcs_checkpoint_normalization
 from src.tasks.plcs.training.composition import (
@@ -21,7 +22,11 @@ class PLCSTrainingRunner(BaseTrainingRunner):
     """Training runner for PLCS."""
 
     def prepare_config(self, config: Any) -> None:
-        PLCSTrainingConfig.from_config(config)
+        runtime = PLCSTrainingConfig.from_config(config)
+        validate_plcs_training_output_occupancy(
+            runtime.shared.run.output_dir,
+            normalization=runtime.court_coordinate_normalization.contract,
+        )
         super().prepare_config(config)
 
     def build_datamodule(self, config: Any) -> pl.LightningDataModule:

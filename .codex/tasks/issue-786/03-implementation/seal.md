@@ -1,145 +1,147 @@
 # Final candidate seal
 
 - Issue: #786
-- Attempt: 2
-- Test cycle: 2
-- Seal cycle: 2
+- Attempt: 6
+- Test cycle: 1
 - Status: COMPLETE
+- Frozen issue SHA-256: `6279b189d4b3c0a7c11da3e605fbc252624f5a60ec808db2c476e061f55fa6a9`
 - Frozen acceptance checklist SHA-256: `95bcebf4388fdba9773e3c538c9e22caf82b6e4a413ec1241e9a58b0c4483032`
-- Base revision: `59e3b166c2d010d5e62be52c2be76d98a94af0e0`
-- Candidate SHA-256: `sha256:30e9ef4b33bc6ffb35e756376de425b67b7c3c08f8d72f2875fd8042c1a5aea9`
+- Candidate SHA-256: `sha256:6ca1bf6d8eaf5a619a0d923c0568806510c5a35ea663d3332b2c0cff23492b35`
 
 ## Candidate identity
 
-The required first identity check was recomputed with `candidate-fingerprint
-.codex/tasks/issue-786` and returned exactly
-`sha256:30e9ef4b33bc6ffb35e756376de425b67b7c3c08f8d72f2875fd8042c1a5aea9`.
-It equals `state.toml` `test_candidate_sha256`, the Candidate SHA-256 in
-`tests.md`, and the candidate bound by every PASS result in `test-checks.json`.
-The frozen base is `59e3b166c2d010d5e62be52c2be76d98a94af0e0`; candidate
-fingerprinting excludes only `.codex/tasks/` workflow storage.
+The Tester PASS candidate is exactly
+`sha256:6ca1bf6d8eaf5a619a0d923c0568806510c5a35ea663d3332b2c0cff23492b35`.
+The Tester `tests.md`, `test-checks.json`, and `state.toml` test binding all
+record this same identity and `test_verdict = "PASS"`. A fresh
+`candidate-fingerprint` at the start of Seal and again after all Seal checks
+returned the same hash. The frozen base revision is
+`59e3b166c2d010d5e62be52c2be76d98a94af0e0`.
 
-State records attempt 2, `preflight_cycle = 2`, `preflight_verdict = PASS`,
-`test_cycle = 2`, `test_verdict = PASS`, `test_return_count = 0`, and legacy
-Tester mode. The Tester PASS is therefore the authoritative post-test identity
-for this seal. The merge commit `64ea1b5a99bacd5ec7f8ab4f356333835eaa9de9`
-has parents `2661f3a80b56d5b2e1d44106162ba199cfaf45b0` and
-`179dac756aef137c9a35b1025ce76f0a31023648`; the final Tester candidate is
-`9b50abfdab08e7a4e1ed7b366cc6c980248538ff`.
+No candidate-bound `AT-*` probes are present because this task is in the
+frozen `LEGACY` adversarial-testing mode; the Tester evidence records that
+the canonical checks are the authorized repair-local evidence.
 
 ## Changed-since-test inspection
 
-`git status --short --untracked-files=all` is empty. The final candidate is
-the Tester commit `9b50abfd` and `git log 9b50abfd..HEAD` is empty, so no
-source, test, or fixture content was changed after Tester PASS. The only
-post-test writes in this review are this owned artifact and manager-generated
-seal result/raw-log files under `.codex/tasks/`; they are excluded from the
-candidate fingerprint. Recomputing the fingerprint after each inspection
-remains equal to the Tester identity.
+There is no changed-since-test candidate content. The pre-check and post-check
+fingerprints are both the Tester PASS hash above, including untracked candidate
+tests. The only workflow-owned files changed while this candidate was being
+sealed are under `.codex/tasks/issue-786/` and the generated Seal result/log
+artifacts; those paths are excluded from the candidate fingerprint by the
+workflow contract. The Seal Reviewer did not edit source, tests, fixtures,
+documentation, planning, Issue, or state.
 
-The final post-test commit changed only `tests/integration/tasks/blcs/test_model_configs.py`,
-`tests/unit/tasks/blcs/inference/test_tracking_predictor.py`,
-`tests/unit/tasks/plcs/inference/test_tracking_predictor.py`, and workflow
-evidence. No production or fixture path is in `HEAD^..HEAD`.
+The complete working-tree content delta relative to `HEAD` was inspected and
+was already part of the Tester-bound candidate:
 
-The PR-shaped `origin/main...HEAD` inventory is 268 paths: 11 frozen workflow
-artifacts under `.codex/tasks/issue-786/`, 27 formal `knowledge/nodes` and
-`knowledge/runs` evidence paths, 164 `src/**` production/configuration/docs
-paths in the Issue's normalization/base/BLCS/PLCS/SLCS/scene/synthetic-data
-scope, 65 `tests/**` unit/integration/e2e/fixture paths, and one `.gitignore`
-training-artifact policy line. There are no other paths and no untracked
-paths. The complete frozen-base inventory is 334 paths (323 non-workflow),
-with upstream-main additions visible only in the frozen-base comparison; the
-PR-shaped comparison is the delivery scope used here.
+- Attempt-6's exact repair is the local `text: str` bridge in
+  `tests/integration/tasks/test_court_coordinate_normalization_documentation.py::_read`.
+  The UTF-8 `Path.read_text` expression, path, exception propagation, and all
+  four assertions are unchanged.
+- The earlier approved documentation/config inventory is
+  `src/synthetic_data_generation/dataset/plcs/README.md`,
+  `src/tasks/base/README.md`, both `src/tasks/base/configs/court_coordinate_normalization/*.yaml`,
+  `src/tasks/blcs/README.md`, `src/tasks/blcs/configs/run/train.yaml`,
+  `src/tasks/plcs/README.md`, both
+  `src/tasks/plcs/configs/court_coordinate_normalization/*.yaml`,
+  `src/tasks/plcs/configs/{generate_dataset_norm_v2,train_norm_v2}.yaml`,
+  `src/tasks/slcs/README.md`, and
+  `src/tennis_scene/{README.md,generate_dataset/README.md}`.
+- The earlier approved AC-017 implementation paths are
+  `src/tasks/plcs/artifact_paths.py` and `src/tasks/plcs/training/runner.py`.
+  The approved Test Writer paths are
+  `tests/integration/tasks/plcs/test_artifact_publication.py`,
+  `tests/integration/tasks/test_court_coordinate_normalization_documentation.py`,
+  and `tests/unit/tasks/plcs/generate_dataset/io/test_dataset_io.py`, together
+  with the existing normalization smoke, PLCS predictor, and PLCS configuration
+  tests.
+
+The three untracked paths are exactly those three approved test paths; no other
+untracked path is present outside workflow artifacts.
 
 ## Canonical command results
 
-All ten required seal-stage checks from `02-planning/checks.json` are executed
+Every required Seal-stage check from `02-planning/checks.json` was executed
 through `manage_issue_task.py run-check .codex/tasks/issue-786 seal <check-id>`.
-The resulting `seal-checks.json` is schema version 1, stage `seal`, and every
-row must bind the exact Tester candidate above, the manifest argv/cwd/env, exit
-code 0, and verdict PASS.
+All 14 machine results bind the Tester candidate and have exit code 0:
 
-| Check ID | Required | Result |
-|---|---:|---|
-| `unit-contract` | yes | PASS, exit 0; 56 passed in 10.65s; invocation `sha256:3ed4ae83b3de4124b06a061a25a86d03951e6e2af05581134fdee52d26573d76` |
-| `legacy-v1-checkpoint-parity` | yes | PASS, exit 0; 8 passed in 11.59s; invocation `sha256:f0fbee638ef03518f51cf6b653eff143032562501537fd1a3430fa218c864937` |
-| `unit-blcs` | yes | PASS, exit 0; 39 passed in 16.82s; invocation `sha256:91c5453fbdb390f7c8cbb1295463de9d7082414a9651abb0e1a829f1e0c7b2d9` |
-| `unit-plcs` | yes | PASS, exit 0; 27 passed in 10.79s; invocation `sha256:729094dc11098d6875294d4c0a8e329cd32e682e4a6fd08b462bbe911cdef0ae` |
-| `unit-slcs` | yes | PASS, exit 0; 35 passed in 11.19s; invocation `sha256:f3730fcb1216ec4c1a68a737cf4ef7739e923c0ccace263857cd5cbc6889a21f` |
-| `integration-normalization` | yes | PASS, exit 0; 14 passed in 12.33s; invocation `sha256:393e115292ad3ecd19c97c70d78bd6d9001264cfd88d03b7cfbf7126579bb61c` |
-| `preflight-regression` | yes | PASS, exit 0; 127 passed in 11.45s; invocation `sha256:3a4023b90399d612468e51a82fa1078582859b7eb78a66691ebe55fba8eb3686` |
-| `knowledge-graph` | yes | PASS, exit 0; 181 nodes, 0 errors, 4 warnings; invocation `sha256:fc39d3529b5dafe9405f680ef63607bb0bbde8d72e77c1b439cfae69879e8446` |
-| `precommit-all` | yes | PASS, exit 0; Ruff, mypy, and task-script reviewer passed; invocation `sha256:a8c9e12dd2478c4cf43f586c9830d54e6b66c561ae1beb54ba56bd1bbfd2b61b` |
-| `full-pytest` | yes | PASS, exit 0; 3331 passed, 78 skipped, 18 warnings in 846.62s; invocation `sha256:fedc9bb174546f8c9935561e4733f1372d07168fc0dd38846a0defd3ee52390b` |
+| Check ID | Exit | Result | Exact outcome | Raw log |
+|---|---:|---|---|---|
+| `unit-contract` | 0 | PASS | 56 passed | `logs/canonical-seal-unit-contract.log` |
+| `plcs-artifact-preservation` | 0 | PASS | 77 passed | `logs/canonical-seal-plcs-artifact-preservation.log` |
+| `legacy-v1-checkpoint-parity` | 0 | PASS | 8 passed | `logs/canonical-seal-legacy-v1-checkpoint-parity.log` |
+| `unit-blcs` | 0 | PASS | 39 passed | `logs/canonical-seal-unit-blcs.log` |
+| `unit-plcs` | 0 | PASS | 27 passed | `logs/canonical-seal-unit-plcs.log` |
+| `unit-slcs` | 0 | PASS | 35 passed | `logs/canonical-seal-unit-slcs.log` |
+| `integration-normalization` | 0 | PASS | 14 passed | `logs/canonical-seal-integration-normalization.log` |
+| `preflight-regression` | 0 | PASS | 167 passed | `logs/canonical-seal-preflight-regression.log` |
+| `knowledge-graph` | 0 | PASS | 181 nodes, 0 errors, 4 warnings | `logs/canonical-seal-knowledge-graph.log` |
+| `normalization-documentation` | 0 | PASS | 4 passed | `logs/canonical-seal-normalization-documentation.log` |
+| `candidate-python-mypy` | 0 | PASS | no issues in 1124 source files | `logs/canonical-seal-candidate-python-mypy.log` |
+| `documentation-test-mypy` | 0 | PASS | no issues in 1 source file | `logs/canonical-seal-documentation-test-mypy.log` |
+| `precommit-all` | 0 | PASS | ruff, mypy, and task script reviewer passed | `logs/canonical-seal-precommit-all.log` |
+| `full-pytest` | 0 | PASS | 3393 passed, 78 skipped, 18 warnings | `logs/canonical-seal-full-pytest.log` |
 
-Legacy Tester evidence is internally complete: `tests.md` has one PASS row for
-all 22 ACs, records all ten test-stage canonical checks as PASS, and records
-no AT probes because `state.toml` deliberately retains `adversarial_testing_mode
-= LEGACY`. `test-checks.json` has all ten candidate-bound PASS rows. The
-committed representative checkpoint names end in `.ckpt.bin`, not a forbidden
-model suffix, and the fixture manifest binds both checkpoint/golden bytes and
-the BLCS/PLCS dataset trees.
+The four knowledge-graph warnings are the pre-existing unrelated nodes named
+in the raw log and are not failures. The two distinct mypy checks both pass:
+the broad hook-equivalent `src tests` run and the isolated changed-file run.
 
 ## Complete scope inspection
 
-The Issue scope and frozen plan authorize the versioned normalization contract,
-shared/base configuration and metadata gates, BLCS/PLCS/SLCS and tennis-scene
-propagation, materialization, documentation, formal baseline evidence, and
-mirrored tests/fixtures. Every PR-shaped path falls in one of those categories
-or is the explicitly required repository artifact policy line. No third-party
-tree, generated large output, unrelated task, or production checkpoint was
-added.
+The frozen-base inventory contains 326 tracked changed paths plus the three
+approved untracked Test Writer paths (329 candidate paths total). Every path
+was classified against the plan's Issue ownership and merge provenance:
 
-The merge commit records exactly three conflict resolutions:
+- 247 paths are first-parent Issue-owned normalization implementation,
+  configuration, documentation, tests/fixtures, or knowledge evidence.
+  The 27 knowledge paths are the four run bundles and five v1/v2 baseline
+  nodes/group record required by AC-019.
+- Eight merge-resolution paths are the explicitly reconciled paths
+  `.gitignore`, `src/tasks/blcs/README.md`,
+  `src/tasks/blcs/configuration.py`, `src/tasks/blcs/model_io/adapters.py`,
+  `src/tasks/plcs/README.md`, `src/tasks/plcs/configuration.py`,
+  `tests/unit/tasks/blcs/inference/test_tracking_predictor.py`, and
+  `tests/unit/tasks/plcs/inference/test_tracking_predictor.py`; each is
+  covered by the Issue implementation or the frozen merge/support inventory.
+- 68 paths are second-parent-only upstream provenance: the 16 workflow skill
+  files, two `.codex/agents` definitions, `AGENTS.md`, the track-query
+  ablation model/config/factory/composition paths, shared model/CUDA operator
+  paths, and their architecture/workflow e2e and integration/unit tests. They
+  are retained as upstream baseline and are not Issue-authored scope.
+- The six exact repository-gate support paths approved by the plan are
+  `.gitignore`, `src/automation/chatgpt_mcp/jobs.py`,
+  `src/tasks/ball_detection/data/components/staged_sampler.py`,
+  `tests/e2e/colab/test_training_path_contracts.py`,
+  `tests/e2e/synthetic_data_generation/test_b00_gpu_acceptance.py`, and
+  `tests/e2e/synthetic_data_generation/test_removed_architecture.py`.
+- The post-merge AC-017 paths and the Attempt-4/5/6 documentation/test paths
+  listed in Changed-since-test inspection are all within the exact later
+  attempt scopes in `plan.md`; no path outside those scopes remains.
 
-1. `src/tasks/blcs/configuration.py` retains the normalization resolver,
-   v1/v2 beta and gravity helpers, strict normalization fields, while adding
-   the upstream `blcs_track_query_ablation` typed parser and generator-boundary
-   validation.
-2. `tests/unit/tasks/blcs/inference/test_tracking_predictor.py` retains
-   normalization v1/v2 physical-scale and checkpoint metadata assertions while
-   retaining exact upstream ablation model/adapter dispatch.
-3. `tests/unit/tasks/plcs/inference/test_tracking_predictor.py` retains the
-   same v1/v2 scale and metadata assertions alongside exact upstream ablation
-   model/adapter restoration.
-
-The merge has zero `git ls-files -u` entries and no conflict markers in `src`
-or `tests`. The bounded F-001 repair is test-only and typing-only: in
-`tests/unit/tasks/blcs/models/test_blcs_track_query_ablation_model.py`,
-`cast("object", BLCSTrackQueryAblationModel)` preserves the exact distinct
-class-identity assertion while satisfying strict mypy. No production or
-fixture behavior changed for that repair.
-
-Repository/test/script boundaries are satisfied by the canonical `precommit-all`
-and `full-pytest` PASS results. The fixture tree contains no path ending in
-`.ckpt`, `.pt`, `.pth`, `.pkl`, `.pickle`, `.onnx`, or `.safetensors`; the
-PR-safe `.ckpt.bin` names are the only checkpoint-like committed fixture
-names. `git diff --check` is clean for the complete non-workflow diff.
-The sole non-normalization `src/**` path in the PR-shaped inventory,
-`src/automation/chatgpt_mcp/jobs.py`, contains only the narrow mypy typing
-annotations carried by the repository-rule repair; it has no behavior change
-and is covered by the passing all-files hook.
-
-The direct `git diff --check` over the PR-shaped tree reports one blank line at
-EOF in the generated frozen `.codex/tasks/issue-786/issue.md`; the complete
-non-workflow source/test/fixture diff is clean. This is frozen workflow
-rendering, not a candidate content change or a seal-stage defect.
+The complete tracked inventory has no unmapped path, no unapproved generated
+artifact, and no production edit attributable to the Test Writer or Seal
+Reviewer. `git diff --check` is clean. Repository guidance is satisfied by
+the passing pre-commit hooks, including Ruff, strict mypy, and task-script
+reviewer; the isolated and broad mypy checks additionally prove the repaired
+test boundary without a cast, ignore, fallback, or configuration weakening.
 
 ## Commands and exact outcomes
 
-- `.venv/bin/python .agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py candidate-fingerprint .codex/tasks/issue-786` → `sha256:30e9ef4b33bc6ffb35e756376de425b67b7c3c08f8d72f2875fd8042c1a5aea9`.
-- `.venv/bin/python .agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py run-check .codex/tasks/issue-786 seal unit-contract` → PASS, exit 0; 56 passed.
-- `.venv/bin/python .agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py run-check .codex/tasks/issue-786 seal legacy-v1-checkpoint-parity` → PASS, exit 0; 8 passed.
-- `.venv/bin/python .agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py run-check .codex/tasks/issue-786 seal unit-blcs` → PASS, exit 0; 39 passed.
-- `.venv/bin/python .agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py run-check .codex/tasks/issue-786 seal unit-plcs` → PASS, exit 0; 27 passed.
-- `.venv/bin/python .agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py run-check .codex/tasks/issue-786 seal unit-slcs` → PASS, exit 0; 35 passed.
-- `.venv/bin/python .agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py run-check .codex/tasks/issue-786 seal integration-normalization` → PASS, exit 0; 14 passed.
-- `.venv/bin/python .agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py run-check .codex/tasks/issue-786 seal preflight-regression` → PASS, exit 0; 127 passed.
-- `.venv/bin/python .agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py run-check .codex/tasks/issue-786 seal knowledge-graph` → PASS, exit 0; 181 nodes, 0 errors, 4 warnings.
-- `.venv/bin/python .agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py run-check .codex/tasks/issue-786 seal precommit-all` → PASS, exit 0; Ruff, mypy, and task-script reviewer passed.
-- `.venv/bin/python .agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py run-check .codex/tasks/issue-786 seal full-pytest` → PASS, exit 0; 3331 passed, 78 skipped, 18 warnings.
-- `.venv/bin/python .agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py artifact-check .codex/tasks/issue-786 seal` → `ok`.
+The canonical invocations, cwd, environment, invocation digests, candidate
+bindings, exit codes, and raw logs are machine-recorded in
+`03-implementation/seal-checks.json`; no argv, cwd, or environment was
+reconstructed from prose. The result file contains exactly 14 required rows,
+all with candidate
+`sha256:6ca1bf6d8eaf5a619a0d923c0568806510c5a35ea663d3332b2c0cff23492b35`,
+exit code `0`, and verdict `PASS`. The final fingerprint recomputation after
+these commands is unchanged.
+
+Evidence is internally complete: the frozen Issue/checklist hashes agree
+across Issue/state/plan/tests; the Tester PASS artifact and all 14 test-stage
+results bind the same candidate; the Seal result binds that candidate; and
+the required canonical logs exist. No Seal state transition was requested or
+performed.
 
 ## Final candidate seal verdict
 

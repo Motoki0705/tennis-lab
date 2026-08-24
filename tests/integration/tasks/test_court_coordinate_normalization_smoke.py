@@ -170,8 +170,17 @@ def test_v2_materialization_is_non_overwriting_and_round_trips_legacy_root_witho
     )
     assert root_metadata[COURT_COORDINATE_NORMALIZATION_METADATA_KEY]["version"] == "v2"
     assert result.manifest_path.is_file()
+    output_before = {
+        str(path.relative_to(output)): path.read_bytes() if path.is_file() else None
+        for path in sorted(output.rglob("*"))
+    }
     with pytest.raises(FileExistsError, match="overwrite"):
         materialize_court_coordinate_normalization_dataset(config)
+    output_after = {
+        str(path.relative_to(output)): path.read_bytes() if path.is_file() else None
+        for path in sorted(output.rglob("*"))
+    }
+    assert output_after == output_before
 
 
 def _style() -> SceneStyleConfig:
@@ -262,6 +271,7 @@ def _compose_blcs_smoke_config(version: str) -> DictConfig:
 def _compose_plcs_smoke_config(version: str) -> DictConfig:
     overrides = [
         f"court_coordinate_normalization={version}",
+        f"run.output_dir=plcs/smoke_norm_{version}",
         "model=multiview",
         "loss=no_canonical",
         "model.hidden_dim=16",

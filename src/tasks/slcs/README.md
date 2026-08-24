@@ -18,9 +18,12 @@ SLCS は Issue #634 の構造化実動画データセットを読み、単眼の
 
 すべての観測は visibility/confidence/valid mask を持ちます。DINOv3 tokens は時間方向には補間せず、実 frame index を RoPE position とする cross-attention で伝播します。空間方向は `model.dino_patch_downsample_factor` により、元のDINO特徴空間でbilinear downsampleしてからモデル幅へ次元圧縮できます。factor 2では16×28の448 patchを8×14の112 patchへ圧縮します。player は疑似ラベルの平均 court-Y により near-side、far-side の順へ明示的に並べ替えます。
 
-court座標正規化の単一正本は `src/utils/schema/court_normalization.py` です。`v1` は `(5.485, 11.885, 1.07)m`、`v2` は全軸 `11.885m` を使い、`position_norm = position_m / scale_xyz` です。Hydraの既定は互換性のため明示的な`v1`で、train/evaluate/predictのいずれも `court_coordinate_normalization=v2` で切り替えます。datasetの`SceneResult`と推論で公開するplayer/ball positionは常にcourt座標のmetre値であり、正規化されるのはmodel境界のpositionだけです。
-
-新しいcheckpointと推論artifactはnormalization version/scaleを保存し、出力先は`norm-v1`/`norm-v2`で識別します。runtime・SceneResult provenance・checkpointのversion/scale不一致はarrayやweightを利用する前にエラーになります。metadataを持たない既存SceneResult/checkpointは明示的な`v1` runtimeでのみlegacy artifactとして利用でき、`v2`への値域推測、自動変換、上書きは行いません。SLCSのposition uncertaintyはscalar headのまま維持し、`v1`は従来どおり`mean(scale_xyz)`、isotropicな`v2`は共通scale `11.885m`でmetre換算します。
+共有する数式、Hydra選択、単位、metadata互換性、artifact命名、移行手順は
+[`src/tasks/base/README.md#court-coordinate-normalization-contract`](../base/README.md#court-coordinate-normalization-contract)
+を参照してください。datasetの`SceneResult`と推論で公開するplayer/ball positionは
+常にcourt座標のmetre値であり、正規化されるのはmodel境界のpositionだけです。
+SLCSのposition uncertaintyはscalar headのまま維持し、`v1`は従来どおり
+`mean(scale_xyz)`、isotropicな`v2`は選択済みの共通scaleでmetre換算します。
 
 windowの公開padding契約は`padding_mask (B,T)`、sparse DINO sample軸は`dino_padding_mask (B,T_d)`で、どちらも`True=padding`です。2つの軸は異なるため単一tensorへ統合しません。旧`frame_mask` / `dino_valid`とcaller生成attention maskはadapterでrejectし、entity/time/DINO attention keep-maskはmodel内部でraw padding maskから生成します。評価用`.npz`も`padding_mask`へ破壊的移行し、旧keyへのfallbackは行いません。
 
@@ -40,7 +43,7 @@ DINO token precompute も同じ境界方針です。`model_io.factory` が backb
 .venv/bin/python -m src.tasks.slcs.scripts.train \
   data.dataset_root=/path/to/dataset data.split_file=/path/to/splits.json
 
-# v2は既存v1 artifactと分離された出力先へ保存される
+# v2 training command
 .venv/bin/python -m src.tasks.slcs.scripts.train \
   court_coordinate_normalization=v2 \
   data.dataset_root=/path/to/versioned/dataset
