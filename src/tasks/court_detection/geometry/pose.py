@@ -94,7 +94,11 @@ def validate_proper_rotation(rotation: Tensor, *, atol: float = SO3_ATOL) -> Non
     with torch.autocast(device_type=rotation.device.type, enabled=False):
         authority = rotation.to(dtype=compute_dtype)
         identity = torch.eye(3, dtype=compute_dtype, device=rotation.device)
-        gram = authority.transpose(-1, -2) @ authority
+        # CUDA float32 matmul may use the process-wide TF32 policy.  A reduced-
+        # precision Gram matrix can reject an SO(3) result that was recovered
+        # accurately in float32, so keep this strict check on elementwise
+        # float32 arithmetic without changing the global matmul policy.
+        gram = (authority.unsqueeze(-1) * authority.unsqueeze(-2)).sum(dim=-3)
         if not bool(
             torch.allclose(
                 gram,
