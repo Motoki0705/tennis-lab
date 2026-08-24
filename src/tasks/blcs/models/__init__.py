@@ -13,12 +13,20 @@ from src.tasks.blcs.models.blcs_track_query_ablation_model import (
     BLCSTrackQueryAblationModel,
 )
 from src.tasks.blcs.models.blcs_track_query_model import BLCSTrackQueryModel
+from src.tasks.blcs.models.blcs_track_query_reference_ablation_model import (
+    BLCSTrackQueryReferenceAblationModel,
+)
+from src.tasks.blcs.models.blcs_track_query_reference_model import (
+    BLCSTrackQueryReferenceModel,
+)
 from src.tasks.blcs.models.discriminators import build_blcs_discriminator
 
 __all__ = [
     "BLCSModel",
     "BLCSTrackQueryAblationModel",
     "BLCSTrackQueryModel",
+    "BLCSTrackQueryReferenceAblationModel",
+    "BLCSTrackQueryReferenceModel",
     "BLCSMultiViewModel",
     "BLCSMultiViewAxialModel",
     "build_blcs_discriminator",

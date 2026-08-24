@@ -40,6 +40,7 @@ reference frame へ position と court-space velocity を同じ proper rotation 
 - **`blcs_multiview_axial_model.py`**: `BLCSMultiViewAxialModel`(現行デフォルト)。camera軸/time軸交互self-attention。
 - **`blcs_track_query_model.py`**: `BLCSTrackQueryModel`。fixed-Q camera候補へmHC object temporalとhybrid CSWAを適用し、clip-localな固定query slotで複数ボール軌道とpresenceを推定する。
 - **`blcs_track_query_ablation_model.py`**: `BLCSTrackQueryAblationModel`。既存modelとは別の`blcs_track_query_ablation` architectureとして、SwiGLU配置とmHC writeback位置の4条件を同じ5入力・2出力契約で比較する。
+- **`blcs_track_query_reference_model.py` / `blcs_track_query_reference_ablation_model.py`**: camera-view target frame用の明示的v2 family。BLCS固有出力はposition / presenceのままで、selector条件だけを独立contractとして追加する。
 - **`components/heads.py`**: constructor時に選択されるposition-only / position+velocity出力module。
 - **`components/padding.py`**: 全BLCS modelの公開`padding_mask=True`から、内部validity・attention keep maskを一意に生成する。
 - **`components/observation_fusion.py`**: track-query用の固定linear観測融合module。
@@ -78,7 +79,7 @@ reference frame へ position と court-space velocity を同じ proper rotation 
 
 ## Multi-ball tracking
 
-tracking modelの観測幅は常に `P=Q=model.num_queries` です。公開入力は `ball_uv (B,V,T,Q,2)`、`ball_vis (B,V,T,Q)`、`court_kp (B,V,T,14,2)`、`court_vis (B,V,T,14)`、`padding_mask (B,V,T)` の5 tensorだけです。`padding_mask=True`だけがattentionから除外する位置を表します。physical scene入力は全viewで同期したlifecycle assignmentによってfixed-Qへpackingします。clip全体のphysical object数はQを超えても構いませんが、同時存在数がQを超える入力は切り捨てずrejectします。target lifecycle assignmentとobservation assignmentは別物であり、trainingではDataLoader workerのTorch RNGから独立にslot permutationをdrawし、evaluationではdeterministicに割り当てます。collateはview/timeだけをpaddingし、Q軸はpaddingしません。
+tracking modelの観測幅は常に `P=Q=model.num_queries` です。BLCS固有の5観測tensor shapeは `ball_uv (B,V,T,Q,2)`、`ball_vis (B,V,T,Q)`、`court_kp (B,V,T,14,2)`、`court_vis (B,V,T,14)`、`padding_mask (B,V,T)` です。v1 / v2のforward差分、reference field、selector座標、checkpoint・推論指定は共有正本を参照してください。physical scene入力は全viewで同期したlifecycle assignmentによってfixed-Qへpackingします。clip全体のphysical object数はQを超えても構いませんが、同時存在数がQを超える入力は切り捨てずrejectします。target lifecycle assignmentとobservation assignmentは別物であり、trainingではDataLoader workerのTorch RNGから独立にslot permutationをdrawし、evaluationではdeterministicに割り当てます。collateはview/timeだけをpaddingし、Q軸はpaddingしません。
 
 `ball_vis`は観測tokenとlearned invisible tokenの選択だけに使います。非padding位置では`ball_vis=False`のQ tokenもattentionへ参加します。各stageは `mHC object temporal -> global spatial(Q+VQ) -> query temporal` の順で、temporal modeはconstructor時に `CSWA, CSWA, CSWA, Global` のcycleへ固定されます。nested `model.mhc` / `model.cswa` configはunknown/missing/invalid値をrejectし、`model.cswa.backend=cuda`はextensionが利用不能ならreferenceへfallbackせずconstruction時に失敗します。
 
@@ -103,6 +104,14 @@ multi-object generatorは1024-frame global timelineに3〜10個のsource rally s
 # 5条件の例（a / b / c / d / eを明示して選択）
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking \
   model=track_query_ablation_e
+
+# camera-view v2 D selector / selector-zero（GPU実行はtraining queue経由）
+.venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking \
+  court_keypoints=camera_view_v2 data.scene_dir=blcs/multi_object_camera_view_v2 \
+  model=track_query_ablation_d_v2_selector
+.venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking \
+  court_keypoints=camera_view_v2 data.scene_dir=blcs/multi_object_camera_view_v2 \
+  model=track_query_ablation_d_v2_selector_zero
 
 # trainだけon-the-fly chunk生成（val/testは上記の固定データ）
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking_chunked

@@ -2,6 +2,7 @@ mode: visualize  # visualize | predict
 scene_path: plcs/scenes/scene_000001
 camera: 0
 cameras: [0, 1, 2, 3, 4, 5]
+reference_camera_id: null
 animation_view: 3d  # 3d | 2d_topdown | camera
 fps: 30.0
 save: null

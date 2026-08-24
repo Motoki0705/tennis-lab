@@ -217,3 +217,139 @@ def test_ablation_axes_reject_missing_unknown_invalid_and_inconsistent_values(
 
     with pytest.raises(error):
         PLCSModelConfig.from_mapping(config.model)
+
+
+@pytest.mark.parametrize(
+    ("profile", "model_name", "selector_mode"),
+    [
+        (
+            "track_query_reference",
+            "plcs_track_query_reference",
+            "reference",
+        ),
+        (
+            "track_query_ablation_d_v2_selector",
+            "plcs_track_query_reference_ablation",
+            "reference",
+        ),
+        (
+            "track_query_ablation_d_v2_selector_zero",
+            "plcs_track_query_reference_ablation",
+            "selector_zero",
+        ),
+    ],
+)
+def test_reference_v2_profiles_compose_with_explicit_independent_contracts(
+    profile: str,
+    model_name: str,
+    selector_mode: str,
+) -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_tracking",
+            overrides=[
+                f"model={profile}",
+                "court_keypoints=camera_view_v2",
+            ],
+        )
+
+    runtime = PLCSTrainingConfig.from_config(config)
+    assert runtime.model.name == model_name
+    assert runtime.model.string("target_frame_contract") == (
+        "reference_camera_court_rzpi_v1"
+    )
+    assert runtime.model.string("track_query_rope_contract") == (
+        "time_camera_reference_selector_v1"
+    )
+    assert runtime.model.string("reference_selector_mode") == selector_mode
+    assert "role_rope_enabled" not in runtime.model.values
+
+
+@pytest.mark.parametrize(
+    "profile",
+    ["track_query_reference", "track_query_ablation_d_v2_selector"],
+)
+def test_reference_v2_rejects_rope_dim_four_and_accepts_dim_six(
+    profile: str,
+) -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_tracking",
+            overrides=[
+                f"model={profile}",
+                "court_keypoints=camera_view_v2",
+                "model.hidden_dim=24",
+                "model.num_heads=4",
+                "model.rope_dim=6",
+            ],
+        )
+    assert PLCSModelConfig.from_mapping(config.model).integer("rope_dim") == 6
+
+    with open_dict(config.model):
+        config.model.rope_dim = 4
+    with pytest.raises(SemanticConfigurationError, match="at least 6"):
+        PLCSModelConfig.from_mapping(config.model)
+
+
+@pytest.mark.parametrize(
+    ("model_profile", "court_profile"),
+    [
+        ("track_query_reference", "physical_v1"),
+        ("track_query", "camera_view_v2"),
+    ],
+)
+def test_track_query_runtime_rejects_mixed_v1_v2_contracts(
+    model_profile: str,
+    court_profile: str,
+) -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_tracking",
+            overrides=[
+                f"model={model_profile}",
+                f"court_keypoints={court_profile}",
+            ],
+        )
+    with pytest.raises(SemanticConfigurationError, match="track-query models require"):
+        PLCSTrainingConfig.from_config(config)
+
+
+def test_reference_v2_does_not_reinterpret_role_rope_enabled() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_tracking",
+            overrides=[
+                "model=track_query_reference",
+                "court_keypoints=camera_view_v2",
+                "+model.role_rope_enabled=true",
+            ],
+        )
+    with pytest.raises(UnknownConfigurationKeyError, match="role_rope_enabled"):
+        PLCSModelConfig.from_mapping(config.model)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("target_frame_contract", "physical_court_v1", "target_frame_contract"),
+        ("track_query_rope_contract", "time_camera_role_v1", "rope_contract"),
+        ("reference_selector_mode", "legacy_role", "selector_mode"),
+    ],
+)
+def test_reference_v2_rejects_unknown_or_mixed_semantic_markers(
+    field: str,
+    value: str,
+    message: str,
+) -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_tracking",
+            overrides=[
+                "model=track_query_ablation_d_v2_selector",
+                "court_keypoints=camera_view_v2",
+            ],
+        )
+    with open_dict(config.model):
+        config.model[field] = value
+    with pytest.raises(SemanticConfigurationError, match=message):
+        PLCSModelConfig.from_mapping(config.model)

@@ -102,3 +102,43 @@ Camera-view v2 datasets and checkpoints are separate artifacts. Existing v1
 weights are not auto-remapped, dual-written, or upgraded in place. Changing
 semantics requires dataset regeneration and model retraining; rollback is an
 explicit return to `physical_v1` with matching v1 artifacts.
+
+## Reference-camera track-query model contract
+
+CourtKP and track-query RoPE are independently versioned. Only these exact
+combinations are valid:
+
+| Model contract | Court / target contract | Spatial coordinates | Forward |
+|---|---|---|---|
+| `time_camera_role_v1` | `physical_courtkp20_v1` / `physical_court_v1` | query `(t,0,0)`, object `(t,v+1,1)` | the original five tensors |
+| `time_camera_reference_selector_v1` | `camera_view_courtkp20_rzpi_v1` / `reference_camera_court_rzpi_v1` | query `(t,0,0)`; reference objects `(t,v+1,0)`; other objects `(t,v+1,1)` | the same five tensors plus required `reference_view_index: int64[B]` |
+
+The v2 selector is clip-level and is repeated over every time and object token;
+it does not depend on visibility. Query-first flattening, time order, local
+camera coordinate `v+1`, and ordinary/compressed spatial widths are unchanged.
+`rope_dim` must be even and at least 6 so the generic round-robin allocator
+assigns a pair to time, camera, and selector. `selector_zero` is an explicit
+ablation contract: it retains the sixth input and changes only selector-axis
+coordinates to zero. `role_rope_enabled` remains a v1 setting and never means
+reference selection.
+
+Each v2 sample carries one typed selection with canonical string IDs,
+`reference_view_index`, `view_camera_ids`, `reference_camera_id`,
+`reference_from_physical`, and its transpose `physical_from_reference`.
+Integer IDs are collision-free ranks in the complete lexicographically ordered
+scene ID table; `-1` is reserved only for padded `view_camera_ids`. Missing,
+unknown, mixed, out-of-range, padded, or identity/index-inconsistent records are
+errors. Checkpoints persist Court, target-frame, RoPE, and selector markers as
+independent fields. Matching tensor shapes never authorize a v1/v2 or
+reference/selector-zero load.
+
+Training chooses the reference from the selected valid views using the
+caller-owned seeded worker RNG after subset selection; the candidate IDs are
+sorted before the draw, so view permutation does not change the random choice.
+Validation and test use the stable `data.evaluation_reference_camera_id`.
+Direct inference and prediction visualization require an explicit stable
+`reference_camera_id`; multi-view code never defaults to local index zero or a
+sorted/first camera. The selected ID, local index, complete ID table,
+forward/inverse transforms, target-frame marker, RoPE marker, and selector mode
+are serialized with predictions so downstream consumers can restore physical
+court coordinates exactly.

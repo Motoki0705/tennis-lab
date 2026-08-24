@@ -9,23 +9,35 @@ from typing import TYPE_CHECKING, Any, cast
 import torch
 from torch import Tensor
 
+from src.tasks.base.data import (
+    CAMERA_ID_PADDING_VALUE,
+    ReferenceViewSelection,
+    StableCameraIdTable,
+    include_evaluation_reference_camera,
+    validate_reference_view_batch,
+)
 from src.tasks.base.data.scene_dataset import (
+    CameraSelection,
     Scene,
     SceneDatasetBase,
     SceneDatasetConfig,
 )
 from src.tasks.base.generate_dataset import (
+    CAMERA_VIEW_V2_SELECTOR,
     CourtReferenceFrameProvenance,
+    build_physical_court_provenance,
     camera_extrinsics_physical_to_target,
 )
 from src.tasks.plcs.court_keypoint_contract import (
     PLCSCourtKeypointRuntimeConfig,
     align_selected_court_array,
-    choose_reference_provenance,
+    choose_reference_selection,
     court_keypoint_contract_document,
     normalized_headings_physical_to_target,
     normalized_points_physical_to_target,
+    scene_court_views,
     selected_court_views,
+    track_query_reference_contract_document,
     validate_plcs_dataset_court_keypoints,
     world_joints_physical_to_target,
 )
@@ -61,11 +73,17 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
         split_file: str | Path,
         config: DictConfig,
         augment: bool = True,
+        reference_camera_id: str | None = None,
     ) -> None:
         self.hydra_cfg = config
         self.augment = augment
+        self.reference_camera_id = reference_camera_id
         self.court_keypoint_contract = (
             PLCSCourtKeypointRuntimeConfig.from_config(config).contract
+        )
+        self.track_query_reference_document = track_query_reference_contract_document(
+            config,
+            self.court_keypoint_contract,
         )
         self.court_keypoint_validation = validate_plcs_dataset_court_keypoints(
             scene_dir,
@@ -132,6 +150,22 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
             num_views_range=self._plcs_num_views_range,
             camera_mode=self.camera_mode_plcs,
         )
+        complete_views = scene_court_views(
+            self.court_keypoint_validation,
+            scene.path,
+        )
+        if (
+            not self.augment
+            and self.court_keypoint_contract.selector == CAMERA_VIEW_V2_SELECTOR
+        ):
+            cams = CameraSelection(
+                indices=include_evaluation_reference_camera(
+                    tuple(view.camera_id for view in complete_views),
+                    cams.indices,
+                    requested_camera_id=self.reference_camera_id,
+                    rng=self.rng,
+                )
+            )
         # Resolve effective frame count from arrays
         pos_len = int(scene.data["position"].shape[0])
         rot_len = int(scene.data["rotation"].shape[0])
@@ -158,10 +192,24 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
             scene.path,
             cams.indices,
         )
-        provenance, reference_view = choose_reference_provenance(
+        selection = choose_reference_selection(
             self.court_keypoint_contract,
+            complete_views,
             views,
             rng=self.rng if self.augment else None,
+            requested_camera_id=(
+                None if self.augment else self.reference_camera_id
+            ),
+        )
+        provenance = (
+            build_physical_court_provenance()
+            if selection is None
+            else selection.provenance
+        )
+        reference_view = (
+            None
+            if selection is None
+            else selection.selected_views[selection.reference_view_index]
         )
 
         for local_index, cam_idx in enumerate(cams.indices):
@@ -274,6 +322,17 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
         sample["selected_camera_ids"] = tuple(
             view.camera_id for view in views
         ) or tuple(f"camera_{index}" for index in cams.indices)
+        if selection is not None:
+            sample["reference_view_selection"] = selection
+            sample["stable_camera_id_table"] = selection.stable_camera_id_table
+            sample["reference_camera_id_string"] = selection.reference_camera_id
+            sample.update(selection.to_tensor_fields(dtype=position.dtype))
+            sample["physical_from_reference"] = torch.tensor(
+                selection.provenance.physical_from_reference,
+                dtype=position.dtype,
+            )
+            if self.track_query_reference_document is not None:
+                sample.update(self.track_query_reference_document)
 
         return sample
 
@@ -282,6 +341,146 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
             return sample
         augmented: dict[str, Any] = self.augmentation.forward(sample)
         return augmented
+
+
+_REFERENCE_SAMPLE_FIELDS = frozenset(
+    {
+        "reference_view_selection",
+        "stable_camera_id_table",
+        "reference_camera_id_string",
+        "reference_view_index",
+        "view_camera_ids",
+        "reference_camera_id",
+        "reference_from_physical",
+        "physical_from_reference",
+    }
+)
+
+
+def _collate_reference_fields(
+    batch: list[dict[str, Any]],
+    collated: dict[str, Any],
+    *,
+    max_views: int,
+) -> None:
+    """Collate v2 reference fields with ``-1`` as the only view sentinel."""
+    field_sets = [set(sample) & _REFERENCE_SAMPLE_FIELDS for sample in batch]
+    if all(not fields for fields in field_sets):
+        return
+    for sample_index, fields in enumerate(field_sets):
+        if fields != _REFERENCE_SAMPLE_FIELDS:
+            raise ValueError(
+                "PLCS batch has missing/mixed reference schema at sample "
+                f"{sample_index}: expected {sorted(_REFERENCE_SAMPLE_FIELDS)!r}, "
+                f"got {sorted(fields)!r}."
+            )
+
+    selections = tuple(
+        cast(ReferenceViewSelection, sample["reference_view_selection"])
+        for sample in batch
+    )
+    tables = tuple(
+        cast(StableCameraIdTable, sample["stable_camera_id_table"])
+        for sample in batch
+    )
+    for sample_index, (sample, selection, table) in enumerate(
+        zip(batch, selections, tables, strict=True)
+    ):
+        if not isinstance(selection, ReferenceViewSelection):
+            raise TypeError(
+                f"PLCS sample {sample_index} reference_view_selection has invalid type."
+            )
+        if table != selection.stable_camera_id_table:
+            raise ValueError(
+                f"PLCS sample {sample_index} stable camera ID table does not match "
+                "its reference selection."
+            )
+        expected = selection.to_tensor_fields(
+            dtype=cast(Tensor, sample["position"]).dtype,
+        )
+        for key, value in expected.items():
+            stored = sample[key]
+            if not isinstance(stored, Tensor) or not torch.equal(stored, value):
+                raise ValueError(
+                    f"PLCS sample {sample_index} {key} does not match its typed "
+                    "reference selection."
+                )
+        if sample["reference_camera_id_string"] != selection.reference_camera_id:
+            raise ValueError(
+                f"PLCS sample {sample_index} canonical reference ID does not match "
+                "its typed reference selection."
+            )
+
+    view_rows = []
+    for sample in batch:
+        row = cast(Tensor, sample["view_camera_ids"])
+        pad_views = max_views - int(row.shape[0])
+        if pad_views:
+            row = torch.cat(
+                [
+                    row,
+                    torch.full(
+                        (pad_views,),
+                        CAMERA_ID_PADDING_VALUE,
+                        dtype=torch.int64,
+                        device=row.device,
+                    ),
+                ]
+            )
+        view_rows.append(row)
+
+    collated["reference_view_index"] = torch.stack(
+        [cast(Tensor, sample["reference_view_index"]) for sample in batch]
+    )
+    collated["view_camera_ids"] = torch.stack(view_rows)
+    collated["reference_camera_id"] = torch.stack(
+        [cast(Tensor, sample["reference_camera_id"]) for sample in batch]
+    )
+    collated["reference_from_physical"] = torch.stack(
+        [cast(Tensor, sample["reference_from_physical"]) for sample in batch]
+    )
+    collated["physical_from_reference"] = torch.stack(
+        [cast(Tensor, sample["physical_from_reference"]) for sample in batch]
+    )
+    collated["reference_view_selection"] = selections
+    collated["stable_camera_id_table"] = tables
+    collated["reference_camera_id_string"] = tuple(
+        selection.reference_camera_id for selection in selections
+    )
+    validate_reference_view_batch(
+        reference_view_index=collated["reference_view_index"],
+        view_camera_ids=collated["view_camera_ids"],
+        reference_camera_id=collated["reference_camera_id"],
+        view_valid_mask=collated["view_camera_ids"].ge(0),
+        reference_from_physical=collated["reference_from_physical"],
+        expected_device=collated["human_kp"].device,
+    )
+    if not torch.allclose(
+        collated["physical_from_reference"],
+        collated["reference_from_physical"].transpose(-1, -2),
+        rtol=0.0,
+        atol=(
+            1e-12
+            if collated["reference_from_physical"].dtype == torch.float64
+            else 1e-6
+        ),
+    ):
+        raise ValueError(
+            "PLCS physical_from_reference must equal reference_from_physical.T."
+        )
+
+    semantic_documents = [sample.get("track_query_reference") for sample in batch]
+    if any(document is not None for document in semantic_documents):
+        if any(document is None for document in semantic_documents):
+            raise ValueError(
+                "PLCS batch contains mixed track-query reference contract markers."
+            )
+        first = semantic_documents[0]
+        if any(document != first for document in semantic_documents[1:]):
+            raise ValueError(
+                "PLCS batch contains non-identical track-query reference contracts."
+            )
+        collated["track_query_reference"] = first
 
 
 def collate_plcs_batch(batch: list[dict[str, Any]]) -> PLCSBatch | dict[str, Any]:
@@ -493,5 +692,6 @@ def collate_plcs_batch(batch: list[dict[str, Any]]) -> PLCSBatch | dict[str, Any
     collated["selected_camera_ids"] = tuple(
         cast(tuple[str, ...], sample["selected_camera_ids"]) for sample in batch
     )
+    _collate_reference_fields(batch, collated, max_views=max_views)
 
     return collated

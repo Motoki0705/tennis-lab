@@ -10,7 +10,11 @@ from src.tasks.base.generate_dataset import (
     build_reference_frame_provenance,
     resolve_court_keypoint_contract,
 )
-from src.tasks.plcs.training.metrics import PLCSMetrics
+from src.tasks.plcs.training.metrics import (
+    PLCSMetrics,
+    compute_plcs_reference_metric_evidence,
+    compute_plcs_reference_transform_consistency,
+)
 
 
 def _positive_side_provenance():
@@ -18,6 +22,19 @@ def _positive_side_provenance():
     view = build_court_view_record(
         camera_id="camera_positive",
         camera_center_court_m=(2.0, 12.0, 5.0),
+        contract=contract,
+    )
+    return build_reference_frame_provenance(
+        (view,),
+        reference_camera_id=view.camera_id,
+    )
+
+
+def _negative_side_provenance():
+    contract = resolve_court_keypoint_contract("camera_view_v2")
+    view = build_court_view_record(
+        camera_id="camera_negative",
+        camera_center_court_m=(2.0, -12.0, 5.0),
         contract=contract,
     )
     return build_reference_frame_provenance(
@@ -60,3 +77,54 @@ def test_metrics_reject_provenance_cardinality_mismatch() -> None:
             target_rotation=torch.tensor([[[1.0, 0.0]], [[1.0, 0.0]]]),
             court_reference_provenance=(provenance, provenance, provenance),
         )
+
+
+def test_reference_metric_evidence_reports_y_sign_axes_heading_and_local_index() -> None:
+    target_position = torch.tensor(
+        [[[1.0, 2.0, 0.5]], [[-2.0, -3.0, 1.0]]]
+    )
+    prediction_position = target_position + torch.tensor([0.1, -0.2, 0.3])
+    target_heading = torch.tensor([[[1.0, 0.0]], [[0.0, 1.0]]])
+    prediction_heading = torch.tensor([[[0.0, 1.0]], [[0.0, 1.0]]])
+
+    evidence = compute_plcs_reference_metric_evidence(
+        prediction_position,
+        prediction_heading,
+        target_position,
+        target_heading,
+        torch.tensor([0, 1], dtype=torch.int64),
+    )
+    flattened = evidence.to_flat_dict()
+
+    assert flattened["y_sign_accuracy"] == pytest.approx(1.0)
+    assert flattened["x_error_m"] == pytest.approx(0.1)
+    assert flattened["y_error_m"] == pytest.approx(0.2)
+    assert flattened["z_error_m"] == pytest.approx(0.3)
+    assert flattened["heading_error_deg"] == pytest.approx(45.0)
+    assert flattened["reference_index_0_position_error_m"] == pytest.approx(
+        0.3741657
+    )
+    assert flattened["reference_index_1_position_error_m"] == pytest.approx(
+        0.3741657
+    )
+
+
+def test_paired_reference_transform_consistency_restores_position_and_heading() -> None:
+    negative = _negative_side_provenance()
+    positive = _positive_side_provenance()
+    first_position = torch.tensor([[1.0, 2.0, 0.5]], dtype=torch.float64)
+    second_position = torch.tensor([[-1.0, -2.0, 0.5]], dtype=torch.float64)
+    first_heading = torch.tensor([[1.0, 0.0]], dtype=torch.float64)
+    second_heading = torch.tensor([[-1.0, 0.0]], dtype=torch.float64)
+
+    consistency = compute_plcs_reference_transform_consistency(
+        first_position,
+        first_heading,
+        negative,
+        second_position,
+        second_heading,
+        positive,
+    )
+
+    assert consistency.position_error_m == pytest.approx(0.0, abs=1e-12)
+    assert consistency.heading_error_radians == pytest.approx(0.0, abs=1e-12)

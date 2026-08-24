@@ -38,12 +38,16 @@ class RuntimeConfig(BaseVisualizationRuntimeConfig):
     fps: float
     resolver: PathResolver
     court_keypoint_contract: CourtKeypointContract
+    reference_camera_id: str | None
 
 
 def build_runtime_config(config: DictConfig) -> RuntimeConfig:
     """Validate and build the BLCS visualization runtime contract."""
     validate_visualization_boundary(config)
-    base = build_scene_runtime_config(config)
+    base = build_scene_runtime_config(
+        config,
+        visualization_extension_keys={"reference_camera_id"},
+    )
     if base.fps is None:
         raise RuntimeError("Validated BLCS visualization fps must be explicit.")
     return RuntimeConfig(
@@ -61,6 +65,11 @@ def build_runtime_config(config: DictConfig) -> RuntimeConfig:
         view_3d=base.view_3d,
         resolver=build_path_resolver(config),
         court_keypoint_contract=parse_court_keypoint_contract(config),
+        reference_camera_id=(
+            None
+            if config.visualization.reference_camera_id is None
+            else str(config.visualization.reference_camera_id)
+        ),
     )
 
 
@@ -94,6 +103,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
             scene=bundle.scene,
             cameras=bundle.cameras,
             court_keypoint_contract=cfg.court_keypoint_contract,
+            reference_camera_id=cfg.reference_camera_id,
         )
         logger.info("Creating comparison animation...")
         anim = renderer.create_comparison_animation(

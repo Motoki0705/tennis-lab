@@ -24,6 +24,7 @@ def predict_positions(
     scene: Mapping[str, Any],
     cameras: list[int],
     court_keypoint_contract: CourtKeypointContract,
+    reference_camera_id: str | None,
 ) -> np.ndarray:
     """Run BLCS prediction and return denormalized 3D positions.
 
@@ -48,15 +49,14 @@ def predict_positions(
     raw_cameras = scene.get("cameras")
     if not isinstance(raw_cameras, list) or not cameras:
         raise ValueError("BLCS visualization requires selected scene cameras.")
-    reference_camera_id: str | None = None
     if court_keypoint_contract.camera_view_semantics:
-        raw_reference = raw_cameras[cameras[0]]
-        if not isinstance(raw_reference, Mapping):
-            raise TypeError("BLCS visualization camera must be a mapping.")
-        value = raw_reference.get("camera_id")
-        if not isinstance(value, str):
-            raise ValueError("camera_view_v2 visualization requires stable camera ID.")
-        reference_camera_id = value
+        if not isinstance(reference_camera_id, str) or not reference_camera_id.strip():
+            raise ValueError(
+                "camera_view_v2 visualization requires an explicit stable "
+                "reference_camera_id."
+            )
+    elif reference_camera_id is not None:
+        raise ValueError("physical_v1 visualization must not specify a reference camera.")
     prediction = predictor.predict_scene(
         scene,
         cameras,

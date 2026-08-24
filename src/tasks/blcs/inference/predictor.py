@@ -11,6 +11,7 @@ import torch
 from numpy.typing import NDArray
 from torch import Tensor
 
+from src.tasks.base.data import ReferenceViewSelection, StableCameraIdTable
 from src.tasks.base.generate_dataset import (
     PHYSICAL_V1_SELECTOR,
     CourtKeypointContract,
@@ -19,15 +20,19 @@ from src.tasks.base.generate_dataset import (
     CourtViewRecord,
     align_court_keypoints_to_reference,
     build_physical_court_provenance,
-    build_reference_frame_provenance,
     resolve_court_keypoint_contract,
 )
 from src.tasks.base.inference.predictor import BasePredictor
-from src.tasks.base.model_io import validate_model_artifact_court_keypoint_contract
+from src.tasks.base.model_io import (
+    ModelInputContractError,
+    validate_model_artifact_court_keypoint_contract,
+)
 from src.tasks.blcs.model_io import (
+    BLCSReferenceMetadata,
     BLCSTrajectoryPrediction,
     TrajectoryBoundModelIO,
     TrajectoryModelIOAdapter,
+    blcs_reference_metadata_from_batch,
     compose_blcs_trajectory_model_io,
 )
 from src.tasks.blcs.model_io.checkpoints import load_checkpoint_runtime
@@ -151,10 +156,34 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
         *,
         batch_size: int,
         explicit: tuple[CourtReferenceFrameProvenance, ...] | None = None,
+        reference_metadata: BLCSReferenceMetadata | None = None,
     ) -> tuple[CourtReferenceFrameProvenance, ...]:
-        raw = explicit if explicit is not None else batch.get(
-            "court_reference_provenance"
-        )
+        batch_provenance = batch.get("court_reference_provenance")
+        if (
+            explicit is not None
+            and batch_provenance is not None
+            and (
+                not isinstance(batch_provenance, (tuple, list))
+                or tuple(batch_provenance) != explicit
+            )
+        ):
+            raise ModelInputContractError(
+                "Explicit BLCS prediction provenance does not match the batch."
+            )
+        raw = explicit if explicit is not None else batch_provenance
+        if reference_metadata is not None:
+            metadata_provenance = tuple(
+                selection.provenance for selection in reference_metadata.selections
+            )
+            if raw is not None and (
+                not isinstance(raw, (tuple, list))
+                or tuple(raw) != metadata_provenance
+            ):
+                raise ModelInputContractError(
+                    "BLCS prediction provenance and typed reference metadata do "
+                    "not match."
+                )
+            raw = metadata_provenance
         if raw is None:
             if self.court_keypoint_contract.selector != PHYSICAL_V1_SELECTOR:
                 raise ValueError(
@@ -181,6 +210,55 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
             )
         return typed
 
+    @staticmethod
+    def _same_reference_metadata(
+        left: BLCSReferenceMetadata,
+        right: BLCSReferenceMetadata,
+    ) -> bool:
+        """Compare typed metadata without tensor truth-value coercion."""
+        return (
+            left.selections == right.selections
+            and left.stable_camera_id_tables == right.stable_camera_id_tables
+            and left.track_query_contract == right.track_query_contract
+            and torch.equal(left.reference_view_index, right.reference_view_index)
+            and torch.equal(left.view_camera_ids, right.view_camera_ids)
+            and torch.equal(left.reference_camera_id, right.reference_camera_id)
+            and torch.equal(
+                left.reference_from_physical,
+                right.reference_from_physical,
+            )
+            and torch.equal(
+                left.physical_from_reference,
+                right.physical_from_reference,
+            )
+        )
+
+    def _resolve_reference_metadata(
+        self,
+        batch: Mapping[str, object],
+        explicit: BLCSReferenceMetadata | None,
+    ) -> BLCSReferenceMetadata | None:
+        parsed = blcs_reference_metadata_from_batch(batch)
+        if explicit is not None and parsed is not None and not self._same_reference_metadata(
+            explicit,
+            parsed,
+        ):
+            raise ModelInputContractError(
+                "Explicit BLCS reference metadata does not match the batch."
+            )
+        metadata = explicit if explicit is not None else parsed
+        if self.court_keypoint_contract.selector == PHYSICAL_V1_SELECTOR:
+            if metadata is not None:
+                raise ModelInputContractError(
+                    "physical_v1 BLCS inference cannot consume reference metadata."
+                )
+        elif metadata is None:
+            raise ModelInputContractError(
+                "camera_view_v2 BLCS inference requires explicit typed "
+                "reference_metadata."
+            )
+        return metadata
+
     def _validate_direct_contract(
         self,
         document: Mapping[str, object] | None,
@@ -200,11 +278,16 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
             CourtReferenceFrameProvenance, ...
         ]
         | None = None,
+        reference_metadata: BLCSReferenceMetadata | None = None,
     ) -> BLCSTrajectoryPrediction:
         """Validate, execute, and decode one typed trajectory batch."""
+        metadata = self._resolve_reference_metadata(batch, reference_metadata)
+        model_batch = dict(batch)
+        if metadata is not None:
+            model_batch.update(metadata.to_batch_fields())
         moved = {
             key: value.to(self.device) if isinstance(value, Tensor) else value
-            for key, value in batch.items()
+            for key, value in model_batch.items()
         }
         with torch.no_grad():
             prediction = self.model_io.run(moved)
@@ -214,6 +297,7 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
             batch,
             batch_size=int(position.shape[0]),
             explicit=court_reference_provenance,
+            reference_metadata=metadata,
         )
         if denormalize:
             position = self._denormalize_coords(position, self.norm_scale_xyz)
@@ -224,6 +308,7 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
             velocity=None if velocity is None else velocity.detach().cpu(),
             court_reference_provenance=provenance,
             coordinates_in_metres=denormalize,
+            reference_metadata=metadata.cpu() if metadata is not None else None,
         )
 
     def predict_multiview_arrays(
@@ -239,6 +324,7 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
             CourtReferenceFrameProvenance, ...
         ]
         | None = None,
+        reference_metadata: BLCSReferenceMetadata | None = None,
     ) -> BLCSTrajectoryPrediction:
         """Build and predict one explicit multiview scene-array window."""
         if self.input_profile != "multiview":
@@ -256,6 +342,7 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
             batch,
             denormalize=denormalize,
             court_reference_provenance=court_reference_provenance,
+            reference_metadata=reference_metadata,
         )
 
     def predict_scene(
@@ -279,7 +366,12 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
             )
         inference_scene: Mapping[str, object] = scene
         if self.court_keypoint_contract.selector == PHYSICAL_V1_SELECTOR:
+            if reference_camera_id is not None:
+                raise ModelInputContractError(
+                    "physical_v1 scene inference must not specify a reference camera."
+                )
             provenance = (build_physical_court_provenance(),)
+            reference_metadata = None
         else:
             if reference_camera_id is None:
                 raise ValueError(
@@ -288,25 +380,39 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
             raw_cameras = scene.get("cameras")
             if not isinstance(raw_cameras, list):
                 raise ValueError("scene.cameras must be a list.")
+            complete_views = tuple(
+                camera.get("court_view")
+                if isinstance(camera, Mapping)
+                else None
+                for camera in raw_cameras
+            )
+            if any(not isinstance(view, CourtViewRecord) for view in complete_views):
+                raise ValueError(
+                    "camera_view_v2 scene cameras require validated metadata."
+                )
+            typed_complete_views = cast(
+                "tuple[CourtViewRecord, ...]",
+                complete_views,
+            )
             selected_views: list[CourtViewRecord] = []
             selected_cameras: list[dict[str, object]] = []
             for camera_index in cameras:
                 raw_camera = raw_cameras[camera_index]
                 if not isinstance(raw_camera, Mapping):
                     raise TypeError("Each scene camera must be a mapping.")
-                view = raw_camera.get("court_view")
-                if not isinstance(view, CourtViewRecord):
-                    raise ValueError(
-                        "camera_view_v2 scene camera is missing validated metadata."
-                    )
+                view = typed_complete_views[camera_index]
                 selected_views.append(view)
                 selected_cameras.append(dict(raw_camera))
-            frame = build_reference_frame_provenance(
-                selected_views,
+            table = StableCameraIdTable.from_complete_scene_camera_ids(
+                tuple(view.camera_id for view in typed_complete_views)
+            )
+            selection = ReferenceViewSelection.create(
+                stable_camera_id_table=table,
+                selected_views=tuple(selected_views),
                 reference_camera_id=reference_camera_id,
             )
-            assert frame.reference_camera_local_index is not None
-            reference_view = selected_views[frame.reference_camera_local_index]
+            frame = selection.provenance
+            reference_view = selected_views[selection.reference_view_index]
             for camera, source_view in zip(
                 selected_cameras, selected_views, strict=True
             ):
@@ -321,6 +427,17 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
             inference_scene = {**scene, "cameras": selected_cameras}
             cameras = list(range(len(selected_cameras)))
             provenance = (frame,)
+            fields = selection.to_tensor_fields(dtype=torch.float32)
+            forward = fields["reference_from_physical"].unsqueeze(0)
+            reference_metadata = BLCSReferenceMetadata(
+                selections=(selection,),
+                stable_camera_id_tables=(table,),
+                reference_view_index=fields["reference_view_index"].unsqueeze(0),
+                view_camera_ids=fields["view_camera_ids"].unsqueeze(0),
+                reference_camera_id=fields["reference_camera_id"].unsqueeze(0),
+                reference_from_physical=forward,
+                physical_from_reference=forward.transpose(-1, -2),
+            )
         batch = self.io_adapter.build_inference_batch_from_scene(
             inference_scene,
             cameras,
@@ -329,6 +446,7 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
             batch,
             denormalize=denormalize,
             court_reference_provenance=provenance,
+            reference_metadata=reference_metadata,
         )
 
     def predict(
@@ -344,6 +462,7 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
             CourtReferenceFrameProvenance, ...
         ]
         | None = None,
+        reference_metadata: BLCSReferenceMetadata | None = None,
     ) -> BLCSTrajectoryPrediction:
         """Predict and return the adapter's typed trajectory decode.
 
@@ -367,4 +486,5 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
             },
             denormalize=denormalize,
             court_reference_provenance=court_reference_provenance,
+            reference_metadata=reference_metadata,
         )
