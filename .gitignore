@@ -194,6 +194,8 @@ experiments_mcmc/
 # format. These files must remain git-tracked despite the generic *.json rule.
 !knowledge/literature/**/*.json
 
+paper/reference/
+
 # Persist loop decisions in Markdown while keeping heavyweight validation output
 # local and immutable at the paths recorded by STATE.md.
 .codex-loop/**/artifacts/
