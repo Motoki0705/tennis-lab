@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, cast
@@ -38,9 +39,12 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtTrainingResult,
 )
 from src.tasks.court_detection.model_io.factory import build_court_detection_pair
+from src.tasks.court_detection.models.query_encoder.model import CourtQueryEncoderModel
 from src.tasks.court_detection.training.metrics import (
     CourtDetectionMetrics,
     CourtPoseMetrics,
+    CourtQueryGeometryMetrics,
+    gradient_finite_status,
 )
 from src.tasks.court_detection.visualization.adapters.render_inputs import (
     CourtQualitativeRenderer,
@@ -108,6 +112,7 @@ class CourtDetectionLightningModule(BaseLightningModule):
                 resolved_bundle,
                 loss_config_name=runtime.loss.name,
                 pose_supervision=runtime.loss.pose.enabled,
+                consistency=runtime.loss.consistency,
             )
             if query_checkpoint_state is not None:
                 restored = deserialize_query_checkpoint_state(query_checkpoint_state)
@@ -133,6 +138,10 @@ class CourtDetectionLightningModule(BaseLightningModule):
         self.model_io = cast(
             "CourtModelIOAdapter | CourtQueryModelIOAdapter",
             model_pair.adapter,
+        )
+        self.query_consistency_instrumented = (
+            isinstance(self.model_io, CourtQueryModelIOAdapter)
+            and self.model_io.consistency_instrumented
         )
         self.qualitative_renderers: dict[
             CourtTargetKind, CourtQualitativeRenderer
@@ -163,6 +172,18 @@ class CourtDetectionLightningModule(BaseLightningModule):
         self._pose_metrics = {
             stage: CourtPoseMetrics() for stage in ("train", "val", "test")
         }
+        self._query_geometry_metrics: dict[str, CourtQueryGeometryMetrics] = {}
+        if (
+            isinstance(self.model_io, CourtQueryModelIOAdapter)
+            and self.query_consistency_instrumented
+        ):
+            self._query_geometry_metrics = {
+                stage: CourtQueryGeometryMetrics(
+                    min_depth_m=self.model_io.loss_config.consistency.min_depth_m
+                )
+                for stage in ("train", "val", "test")
+            }
+        self._train_batch_started_at: float | None = None
 
     def forward(
         self, *model_args: Tensor
@@ -183,7 +204,16 @@ class CourtDetectionLightningModule(BaseLightningModule):
                 CourtQueryRawOutput,
                 self.model(*query_call.model_call.model_args),
             )
-            query_result = self.model_io.training_result(output, query_call)
+            progress_fraction = (
+                self._query_progress_fraction(stage)
+                if self.model_io.consistency_instrumented
+                else None
+            )
+            query_result = self.model_io.training_result(
+                output,
+                query_call,
+                progress_fraction=progress_fraction,
+            )
             self._log_training_result(stage, query_result)
             image_size = batch.get("image_size")
             if not isinstance(image_size, Tensor):
@@ -198,6 +228,17 @@ class CourtDetectionLightningModule(BaseLightningModule):
                 query_result.decoded_pose,
                 query_call.pose_target,
             )
+            if query_result.consistency is not None:
+                kp_target = cast(
+                    Mapping[str, Tensor],
+                    query_call.dense_targets["kp"],
+                )
+                self._query_geometry_metrics[stage].update(
+                    query_result.consistency,
+                    ground_truth_points_normalized=kp_target["points_xy"].squeeze(2),
+                    point_visible=kp_target["point_visible"].squeeze(2),
+                    image_size=query_call.image_size,
+                )
             return query_result
         legacy_call = self.model_io.prepare_training_batch(batch)
         logits = cast(CourtLogits, self.model(*legacy_call.model_call.model_args))
@@ -232,6 +273,18 @@ class CourtDetectionLightningModule(BaseLightningModule):
         result: CourtQueryTrainingResult,
     ) -> None:
         self.log(f"{stage}/loss", result.loss, prog_bar=True, sync_dist=True)
+        self.log(
+            f"{stage}/loss_direct_dense",
+            result.direct_dense_loss,
+            prog_bar=False,
+            sync_dist=True,
+        )
+        self.log(
+            f"{stage}/loss_direct_pose",
+            result.direct_pose_loss,
+            prog_bar=False,
+            sync_dist=True,
+        )
         for kind, loss in result.dense_losses.items():
             self.log(
                 f"{stage}/loss_{kind}",
@@ -246,6 +299,34 @@ class CourtDetectionLightningModule(BaseLightningModule):
                 prog_bar=False,
                 sync_dist=True,
             )
+        consistency = result.consistency
+        if consistency is not None:
+            values = {
+                "loss_kp_pose_coordinate": consistency.coordinate_loss,
+                "loss_kp_pose_cheirality": consistency.cheirality_loss,
+                "loss_kp_pose_auxiliary_unweighted": consistency.auxiliary_loss,
+                "loss_kp_pose_auxiliary_weighted": (
+                    consistency.weighted_auxiliary_loss
+                ),
+                "kp_pose_effective_weight": consistency.effective_weight,
+                "kp_pose_visible_point_count": consistency.visible_point_count,
+                "kp_pose_consistency_distance_px": consistency.mean_distance_px,
+                "kp_pose_invalid_depth_rate": consistency.invalid_depth_rate,
+            }
+            for name, value in values.items():
+                self.log(
+                    f"{stage}/{name}",
+                    value,
+                    prog_bar=False,
+                    sync_dist=True,
+                )
+
+    def _query_progress_fraction(self, stage: str) -> float:
+        if stage != "train":
+            return 1.0
+        total_steps = self._estimate_total_steps()
+        completed_step = int(self.global_step) + 1
+        return float(min(max(completed_step / total_steps, 0.0), 1.0))
 
     def _flush_stage_metrics(self, stage: str) -> dict[str, float]:
         flattened: dict[str, float] = {}
@@ -275,7 +356,76 @@ class CourtDetectionLightningModule(BaseLightningModule):
                     sync_dist=False,
                 )
             pose_tracker.reset()
+            geometry_tracker = self._query_geometry_metrics.get(stage)
+            if geometry_tracker is not None:
+                for name, value in geometry_tracker.compute().items():
+                    flattened[name] = value
+                    self.log(
+                        f"{stage}/{name}",
+                        value,
+                        prog_bar=False,
+                        sync_dist=False,
+                    )
+                geometry_tracker.reset()
         return flattened
+
+    def on_train_batch_start(self, batch: object, batch_idx: int) -> None:
+        super().on_train_batch_start(batch, batch_idx)
+        if not self.query_consistency_instrumented:
+            return
+        if self.device.type == "cuda":
+            torch.cuda.synchronize(self.device)
+            torch.cuda.reset_peak_memory_stats(self.device)
+        self._train_batch_started_at = time.perf_counter()
+
+    def on_train_batch_end(
+        self,
+        outputs: object,
+        batch: object,
+        batch_idx: int,
+    ) -> None:
+        _ = (outputs, batch, batch_idx)
+        if (
+            not self.query_consistency_instrumented
+            or self._train_batch_started_at is None
+        ):
+            return
+        if self.device.type == "cuda":
+            torch.cuda.synchronize(self.device)
+        elapsed_ms = (time.perf_counter() - self._train_batch_started_at) * 1000.0
+        self.log(
+            "train/train_step_time_ms",
+            elapsed_ms,
+            prog_bar=False,
+            sync_dist=False,
+        )
+        if self.device.type == "cuda":
+            self.log(
+                "train/cuda_peak_memory_bytes",
+                float(torch.cuda.max_memory_allocated(self.device)),
+                prog_bar=False,
+                sync_dist=False,
+            )
+        self._train_batch_started_at = None
+
+    def on_after_backward(self) -> None:
+        if not self.query_consistency_instrumented:
+            return
+        model = cast("CourtQueryEncoderModel", self.model)
+        branch_parameters = {
+            "pose_gradient_finite": model.pose_head.parameters(),
+            **{
+                f"{kind}_gradient_finite": head.parameters()
+                for kind, head in model.dense_heads.heads.items()
+            },
+        }
+        for name, parameters in branch_parameters.items():
+            self.log(
+                f"train/{name}",
+                gradient_finite_status(parameters),
+                prog_bar=False,
+                sync_dist=False,
+            )
 
     def training_step(
         self,
@@ -354,7 +504,7 @@ class CourtDetectionLightningModule(BaseLightningModule):
                 raise ValueError("Court test result requires a logits mapping.")
             decoded = self.model_io.test_payload(
                 batch,
-                cast(CourtLogits, raw_output),
+                raw_output,
             )
             raw_predictions = decoded["predictions"]
             if not isinstance(raw_predictions, Mapping):

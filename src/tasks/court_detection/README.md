@@ -106,6 +106,43 @@ manifestの順序はencoder depth `1/2/4/8`、選定encoderを固定したdecode
 
 manifest内の`command_argv`は、repository root共有のtraining queueへ順番にenqueueするための入力です。`run_query_ablation.py`自身はqueue workerもtraining processも開始しません。profileはdecoder/trainable/total parameters、明示定義のdecoder MACs、decoder/end-to-end latency、peak memoryを記録します。CPU profileはdiagnosticと明記され、採用判断のGPU latency evidenceとしてsummarizerに受理されません。summaryはscaling/Pareto tableとplot、および全candidateの`adopted / non_adoption_reason`を出力し、run・seed・metric・phaseが1件でも欠ければ停止します。
 
+## Query KP–pose consistency scaling workflow
+
+Issue #790のscaling/formal comparisonは、上記#779の51-run routeを変更しない独立manifestです。Phase 1はencoder depth `1/2/4/8 × seed 42/43/44`、Phase 2は選定encoderを固定したdecoder `linear/progressive/dpt × tiny/small/base × 3 seed`、Phase 3は選定architectureを固定した`direct-all / joint-both / joint-stopgrad-pose / joint-stopgrad-dense × 3 seed`です。全phaseでV3 target-court singleton KP14、`KP/LINE/SEG + translation/rotation/focal`直接教師、pose-safe 256×256、15 epochを固定します。
+
+```bash
+# Phase 1だけがqueue-readyなmanifest
+python -m src.tasks.court_detection.scripts.run_query_consistency_ablation
+
+# 完了したPhase 1 evidenceからencoder選定を検証・集約
+python -m src.tasks.court_detection.scripts.summarize_query_consistency_ablation \
+  summary.phase=encoder_scaling
+
+# 選定encoderを明示してPhase 2を解決
+python -m src.tasks.court_detection.scripts.run_query_consistency_ablation \
+  consistency_ablation.selected.encoder_depth=4
+
+# Phase 2完了後にdecoder選定を検証・集約
+python -m src.tasks.court_detection.scripts.summarize_query_consistency_ablation \
+  summary.phase=decoder_scaling
+
+# 選定encoder/decoderをすべて明示してPhase 3を解決
+python -m src.tasks.court_detection.scripts.run_query_consistency_ablation \
+  consistency_ablation.selected.encoder_depth=4 \
+  consistency_ablation.selected.decoder_family=linear \
+  consistency_ablation.selected.decoder_size=tiny
+
+# 全51 runの採用/不採用条件を自動判定
+python -m src.tasks.court_detection.scripts.summarize_query_consistency_ablation \
+  summary.phase=consistency_ablation
+```
+
+各ready runはtraining用`command_argv`とcapacity用`profile_command_argv`を公開します。どちらもrepository root共有training queueへそのまま渡せるargvであり、manifest generator自身はGPU processやqueue workerを開始しません。`command_argv`は`run.output_dir`、run固有artifact root、`run.test_after_fit=true`を明示します。未選定phaseはargvを持たず`queue_ready=false`となり、placeholderや既定architectureへ置換されません。
+
+Frozen ruleがencoder depth 1を選んだ場合、DPTに必要な2個以上のunique tapを作れません。この場合はdepthを暗黙に変更せず、Phase 2 manifestの解決を明示エラーにしてsummaryへblockerを記録します。
+
+summarizerはtest `metrics.json`のcanonical metric、TensorBoardのbranch gradient/train-step/CUDA-memory scalarとloss curve、GPU capacity profileを別々の必須sourceとして収集します。legacy `line_iou`は`line_dice`のaliasとして受理しません。1 run/seed/metric/diagnostic/profileでも欠けると停止し、all-run/scaling/Pareto tableとplot、Phase 3ではIssueのGT改善・直接metric劣化・dense metric・cost上限を使った採用判断を出力します。
+
 ## Utilities and scripts
 
 - `src/utils/data/heatmaps.py`: single-peakとall-court multi-peakを共通に扱うdomain-neutral Gaussian heatmap utility。
@@ -117,5 +154,7 @@ manifest内の`command_argv`は、repository root共有のtraining queueへ順�
 - `scripts/profile_query_model.py`: 固定input contractのquery capacity/runtime profiler。
 - `scripts/run_query_ablation.py`: queueへ渡すordered argv manifest generator。
 - `scripts/summarize_query_ablation.py`: 完了runのscaling/Pareto summary generator。
+- `scripts/run_query_consistency_ablation.py`: #790の段階解決manifest generator。
+- `scripts/summarize_query_consistency_ablation.py`: #790 evidence collector/scaling/adoption summary。
 
 YouTube annotation UIは20点を収集しますが、TennisCourtDetector学習契約はordered KP14です。20点annotationからKP14への変換は別の明示的なデータ準備工程を必要とします。

@@ -14,7 +14,11 @@ from src.synthetic_data_generation.dataset.court.components.camera_view import (
 from src.synthetic_data_generation.scene_contract import CourtInstance
 from src.tasks.court_detection.data.contracts import CourtPoseAuthority
 from src.utils.geometry.rotation_conversions import rotation_6d_to_matrix
-from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
+from src.utils.schema.court import (
+    CAMERA_VIEW_HALF_TURN_INDEX,
+    STANDARD_COURT_CONFIG,
+    court_keypoints_3d,
+)
 
 POSE10D_SCHEMA = "pose10d_camera_to_canonical_row6d_logf_v1"
 POSE10D_RAW_ORDER: tuple[str, ...] = (
@@ -169,6 +173,22 @@ class CourtDecodedPose:
             raise ValueError("Decoded Court focal must be positive.")
 
 
+@dataclass(frozen=True, slots=True)
+class CourtPredictedProjection:
+    """Differentiable predicted-pose projection in the model pixel frame."""
+
+    points_xy: Tensor  # [B,14,2], model pixels
+    depth_m: Tensor  # [B,14], unmodified signed camera-space depth
+
+    def __post_init__(self) -> None:
+        if self.points_xy.ndim != 3 or self.points_xy.shape[1:] != (14, 2):
+            raise ValueError("Predicted Court projection points must have shape (B,14,2).")
+        if self.depth_m.shape != self.points_xy.shape[:2]:
+            raise ValueError("Predicted Court projection depth must have shape (B,14).")
+        _require_finite(self.points_xy, name="Predicted Court projected pixels")
+        _require_finite(self.depth_m, name="Predicted Court projective depth")
+
+
 def decode_pose10d_strict(values: Tensor) -> CourtDecodedPose:
     """Predecode-reject invalid rows, then recover a differentiable proper SO(3)."""
     if values.ndim != 2 or values.shape[1] != len(POSE10D_RAW_ORDER):
@@ -260,6 +280,106 @@ def canonical_semantic_court_points(target: CourtPoseTarget) -> Tensor:
     else:
         transform = torch.diag(torch.tensor((-1.0, -1.0, 1.0), dtype=torch.float64))
     return ordered @ transform.T
+
+
+def canonical_semantic_court_points_batched(
+    semantic_to_physical: Tensor,
+    *,
+    dtype: torch.dtype = torch.float32,
+    device: torch.device | str | None = None,
+) -> Tensor:
+    """Return V3 canonical KP14 for each exact camera-end semantic order.
+
+    The two accepted orders are the identity and the shared full half-turn.
+    This function deliberately consumes only the V3 ordering authority; it
+    does not accept or infer a camera pose.
+    """
+    if (
+        semantic_to_physical.ndim != 2
+        or semantic_to_physical.shape[1] != 14
+        or semantic_to_physical.dtype != torch.long
+    ):
+        raise ValueError("Court semantic_to_physical must be int64 (B,14).")
+    if semantic_to_physical.shape[0] <= 0:
+        raise ValueError("Court semantic_to_physical batch size must be positive.")
+    output_device = semantic_to_physical.device if device is None else torch.device(device)
+    if not torch.empty((), dtype=dtype).is_floating_point():
+        raise TypeError("Canonical Court points require a floating-point dtype.")
+    orders = semantic_to_physical.to(device=output_device)
+    identity = torch.arange(14, dtype=torch.long, device=output_device)
+    half_turn = torch.tensor(
+        CAMERA_VIEW_HALF_TURN_INDEX,
+        dtype=torch.long,
+        device=output_device,
+    )
+    identity_rows = torch.all(orders == identity, dim=1)
+    half_turn_rows = torch.all(orders == half_turn, dim=1)
+    if not bool(torch.all(identity_rows | half_turn_rows)):
+        raise ValueError(
+            "V3 Court semantic_to_physical must be identity or the shared full half-turn."
+        )
+    physical = court_keypoints_3d(STANDARD_COURT_CONFIG)[:14].to(
+        dtype=dtype,
+        device=output_device,
+    )
+    ordered = physical[orders]
+    half_turn_sign = ordered.new_tensor((-1.0, -1.0, 1.0))
+    signs = torch.where(
+        half_turn_rows[:, None],
+        half_turn_sign[None, :],
+        torch.ones_like(half_turn_sign)[None, :],
+    )
+    return ordered * signs[:, None, :]
+
+
+def project_predicted_canonical_points(
+    prediction: CourtDecodedPose,
+    canonical_points: Tensor,
+    principal_point_px: Tensor,
+    *,
+    depth_epsilon_m: float = PROJECTIVE_DEPTH_EPS_M,
+) -> CourtPredictedProjection:
+    """Project batched canonical points through a decoded predicted pose.
+
+    Unlike :func:`project_canonical_points`, this prediction-side path keeps
+    the model dtype and autograd graph and does not reject low or negative
+    depth. Near-zero depths use a signed finite denominator; the returned
+    depths remain unmodified so the loss can apply fixed-visibility
+    cheirality supervision.
+    """
+    if canonical_points.ndim != 3 or canonical_points.shape[1:] != (14, 3):
+        raise ValueError("Predicted Court canonical points must have shape (B,14,3).")
+    batch_size = canonical_points.shape[0]
+    if batch_size != prediction.translation_m.shape[0]:
+        raise ValueError(
+            "Predicted Court canonical points must match the pose batch size."
+        )
+    if principal_point_px.shape != (batch_size, 2):
+        raise ValueError("Predicted Court principal point must have shape (B,2).")
+    _require_finite(canonical_points, name="Predicted Court canonical points")
+    _require_finite(principal_point_px, name="Predicted Court principal point")
+    if not math.isfinite(depth_epsilon_m) or depth_epsilon_m <= 0.0:
+        raise ValueError("depth_epsilon_m must be finite and positive.")
+
+    dtype = prediction.translation_m.dtype
+    device = prediction.translation_m.device
+    points = canonical_points.to(device=device, dtype=dtype)
+    principal_point = principal_point_px.to(device=device, dtype=dtype)
+    offset = points - prediction.translation_m[:, None, :]
+    points_camera = torch.bmm(offset, prediction.rotation)
+    depth = points_camera[:, :, 2]
+    epsilon = float(depth_epsilon_m)
+    safe_depth = torch.where(
+        depth < 0.0,
+        torch.clamp(depth, max=-epsilon),
+        torch.clamp(depth, min=epsilon),
+    )
+    normalized_xy = points_camera[:, :, :2] / safe_depth[:, :, None]
+    points_xy = (
+        prediction.focal_px[:, None, None] * normalized_xy
+        + principal_point[:, None, :]
+    )
+    return CourtPredictedProjection(points_xy=points_xy, depth_m=depth)
 
 
 def project_canonical_points(target: CourtPoseTarget, points: Tensor) -> Tensor:
@@ -380,11 +500,14 @@ __all__ = [
     "ROTATION_DEGENERACY_EPS",
     "SO3_ATOL",
     "CourtDecodedPose",
+    "CourtPredictedProjection",
     "CourtPoseTarget",
     "build_pose_target",
     "canonical_semantic_court_points",
+    "canonical_semantic_court_points_batched",
     "decode_pose10d_strict",
     "project_canonical_points",
+    "project_predicted_canonical_points",
     "validate_projection_round_trip",
     "validate_proper_rotation",
     "validate_square_intrinsics",

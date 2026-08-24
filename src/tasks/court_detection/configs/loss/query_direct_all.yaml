@@ -1,0 +1,28 @@
+name: query_direct_all_v1
+seg:
+  ce_weight: 1.0
+  dice_weight: 1.0
+  weight: 1.0
+kp:
+  focal_gamma: 2.0
+  weight: 1.0
+line:
+  bce_weight: 1.0
+  dice_weight: 1.0
+  pos_weight: 8.0
+  weight: 1.0
+pose:
+  enabled: true
+  translation_weight: 1.0
+  rotation_weight: 1.0
+  focal_weight: 1.0
+consistency:
+  enabled: false
+  weight: 0.0
+  temperature: 1.0
+  huber_delta: 0.01
+  min_depth_m: 0.1
+  depth_scale_m: 1.0
+  cheirality_weight: 0.0
+  warmup_fraction: 0.0
+  gradient_flow: both

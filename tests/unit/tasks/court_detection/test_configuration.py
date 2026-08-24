@@ -18,10 +18,12 @@ from src.tasks.court_detection.configuration import (
     CourtTrainingConfig,
     SyntheticCourtSourceConfig,
 )
+from src.tasks.court_detection.training.runner import CourtDetectionTrainingRunner
 from src.utils.configuration import (
     ConfigurationTypeError,
     MissingConfigurationKeyError,
     SemanticConfigurationError,
+    UnknownConfigurationKeyError,
 )
 
 _CONFIG_DIR = Path(__file__).resolve().parents[4] / "src/tasks/court_detection/configs"
@@ -380,8 +382,10 @@ def test_query_pose_supervision_and_weights_are_explicit() -> None:
     assert isinstance(dense_runtime.loss, CourtQueryLossConfig)
     assert pose_runtime.loss.name == "query_pose_v1"
     assert pose_runtime.loss.pose.enabled
+    assert not pose_runtime.loss.consistency.enabled
     assert dense_runtime.loss.name == "query_dense_v1"
     assert not dense_runtime.loss.pose.enabled
+    assert not dense_runtime.loss.consistency.enabled
 
 
 def test_query_rejects_legacy_loss_schema_without_silent_defaults() -> None:
@@ -393,3 +397,176 @@ def test_query_rejects_legacy_loss_schema_without_silent_defaults() -> None:
 
     with pytest.raises(MissingConfigurationKeyError, match="loss.name|loss.pose"):
         CourtTrainingConfig.from_config(config)
+
+
+@pytest.mark.parametrize(
+    ("loss_name", "enabled", "gradient_flow"),
+    [
+        ("query_direct_all", False, "both"),
+        ("query_joint_both", True, "both"),
+        ("query_joint_stopgrad_pose", True, "stopgrad_pose"),
+        ("query_joint_stopgrad_dense", True, "stopgrad_dense"),
+    ],
+)
+def test_explicit_query_consistency_loss_routes_compose(
+    loss_name: str,
+    enabled: bool,
+    gradient_flow: str,
+) -> None:
+    runtime = CourtTrainingConfig.from_config(
+        _compose(
+            "synthetic_court",
+            "model=query_encoder",
+            "data/processing=all",
+            "model.heads.dense_targets=[kp,seg,line]",
+            f"loss={loss_name}",
+        )
+    )
+
+    assert isinstance(runtime.loss, CourtQueryLossConfig)
+    assert runtime.loss.consistency.enabled is enabled
+    assert runtime.loss.consistency.gradient_flow == gradient_flow
+    assert runtime.loss.pose.enabled
+    assert runtime.loss.dense_weights == {"kp": 1.0, "seg": 1.0, "line": 1.0}
+    if enabled:
+        assert runtime.loss.consistency.weight == 1.0
+        assert runtime.loss.consistency.temperature == 1.0
+        assert runtime.loss.consistency.huber_delta == 0.01
+        assert runtime.loss.consistency.min_depth_m == 0.1
+        assert runtime.loss.consistency.depth_scale_m == 1.0
+        assert runtime.loss.consistency.cheirality_weight == 0.1
+        assert runtime.loss.consistency.warmup_fraction == 0.1
+    else:
+        assert runtime.loss.consistency.weight == 0.0
+        assert runtime.loss.consistency.cheirality_weight == 0.0
+        assert runtime.loss.consistency.warmup_fraction == 0.0
+
+
+def _joint_config() -> DictConfig:
+    return _compose(
+        "synthetic_court",
+        "model=query_encoder",
+        "data/processing=all",
+        "model.heads.dense_targets=[kp,seg,line]",
+        "loss=query_joint_both",
+    )
+
+
+def test_query_consistency_section_is_exact_and_required_for_new_schemas() -> None:
+    unknown = deepcopy(_joint_config())
+    with open_dict(unknown.loss.consistency):
+        unknown.loss.consistency.ignored = 1.0
+    with pytest.raises(UnknownConfigurationKeyError, match="consistency.ignored"):
+        CourtTrainingConfig.from_config(unknown)
+
+    missing = deepcopy(_joint_config())
+    with open_dict(missing.loss.consistency):
+        del missing.loss.consistency.temperature
+    with pytest.raises(MissingConfigurationKeyError, match="consistency.temperature"):
+        CourtTrainingConfig.from_config(missing)
+
+    missing_section = deepcopy(_joint_config())
+    with open_dict(missing_section.loss):
+        del missing_section.loss.consistency
+    with pytest.raises(MissingConfigurationKeyError, match="loss.consistency"):
+        CourtTrainingConfig.from_config(missing_section)
+
+
+@pytest.mark.parametrize(
+    ("key", "value", "error"),
+    [
+        ("weight", 0.0, "positive weight"),
+        ("weight", float("nan"), "finite"),
+        ("temperature", 0.0, "must be positive"),
+        ("temperature", float("inf"), "finite"),
+        ("huber_delta", 0.0, "must be positive"),
+        ("min_depth_m", 0.0, "must be positive"),
+        ("depth_scale_m", 0.0, "must be positive"),
+        ("cheirality_weight", -0.1, "non-negative"),
+        ("warmup_fraction", -0.1, r"\[0, 1\)"),
+        ("warmup_fraction", 1.0, r"\[0, 1\)"),
+        ("gradient_flow", "both_grad", "gradient_flow"),
+    ],
+)
+def test_query_consistency_values_are_finite_and_range_checked(
+    key: str,
+    value: object,
+    error: str,
+) -> None:
+    config = _joint_config()
+    with open_dict(config.loss.consistency):
+        config.loss.consistency[key] = value
+
+    with pytest.raises(SemanticConfigurationError, match=error):
+        CourtTrainingConfig.from_config(config)
+
+
+@pytest.mark.parametrize("key", ["weight", "cheirality_weight", "warmup_fraction"])
+def test_disabled_query_consistency_rejects_nonzero_auxiliary_values(key: str) -> None:
+    config = _compose(
+        "synthetic_court",
+        "model=query_encoder",
+        "loss=query_direct_all",
+    )
+    with open_dict(config.loss.consistency):
+        config.loss.consistency[key] = 0.1
+
+    with pytest.raises(SemanticConfigurationError, match="Disabled.*zero"):
+        CourtTrainingConfig.from_config(config)
+
+
+def test_enabled_query_consistency_requires_direct_pose_supervision() -> None:
+    config = _joint_config()
+    with open_dict(config.loss.pose):
+        config.loss.pose.enabled = False
+        config.loss.pose.translation_weight = 0.0
+        config.loss.pose.rotation_weight = 0.0
+        config.loss.pose.focal_weight = 0.0
+
+    with pytest.raises(
+        SemanticConfigurationError,
+        match="consistency.*pose supervision",
+    ):
+        CourtTrainingConfig.from_config(config)
+
+
+def test_query_consistency_numeric_fields_are_exact_typed() -> None:
+    config = _joint_config()
+    with open_dict(config.loss.consistency):
+        config.loss.consistency.temperature = True
+
+    with pytest.raises(ConfigurationTypeError, match="consistency.temperature"):
+        CourtTrainingConfig.from_config(config)
+
+
+def test_runner_rejects_invalid_consistency_before_side_effects(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _joint_config()
+    with open_dict(config.loss.consistency):
+        config.loss.consistency.temperature = 0.0
+    runner = CourtDetectionTrainingRunner()
+    side_effects: list[str] = []
+
+    def record_output(*_: object) -> Path:
+        side_effects.append("output")
+        return Path("unused")
+
+    def record_datamodule(*_: object) -> None:
+        side_effects.append("datamodule")
+
+    monkeypatch.setattr(
+        runner,
+        "prepare_output_dir",
+        record_output,
+    )
+    monkeypatch.setattr(
+        runner,
+        "build_datamodule",
+        record_datamodule,
+    )
+
+    with pytest.raises(SemanticConfigurationError, match="temperature"):
+        runner.run(config)
+
+    assert side_effects == []

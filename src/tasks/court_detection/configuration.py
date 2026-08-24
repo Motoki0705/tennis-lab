@@ -39,6 +39,11 @@ SyntheticCourtSchemaVersion: TypeAlias = Literal["v1", "v2", "v3"]
 KeypointCourtScope: TypeAlias = Literal["all_courts", "target_court"]
 CourtQueryPreset: TypeAlias = Literal["tiny", "small", "base", "raw"]
 CourtQueryDecoderFamily: TypeAlias = Literal["linear", "progressive", "dpt"]
+CourtConsistencyGradientFlow: TypeAlias = Literal[
+    "both",
+    "stopgrad_pose",
+    "stopgrad_dense",
+]
 
 SEGMENTATION_TARGET_SCHEMA = "court_cell_segmentation_v1"
 LINE_TARGET_SCHEMA = "court_line_binary_v1"
@@ -1461,6 +1466,140 @@ class CourtQueryPoseLossConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class CourtQueryConsistencyLossConfig:
+    """Strict query-only KP/predicted-pose consistency configuration."""
+
+    enabled: bool
+    weight: float
+    temperature: float
+    huber_delta: float
+    min_depth_m: float
+    depth_scale_m: float
+    cheirality_weight: float
+    warmup_fraction: float
+    gradient_flow: CourtConsistencyGradientFlow
+
+    @classmethod
+    def from_mapping(cls, value: object) -> CourtQueryConsistencyLossConfig:
+        mapping = as_config_mapping(value, path="loss.consistency")
+        _exact(
+            mapping,
+            {
+                "enabled",
+                "weight",
+                "temperature",
+                "huber_delta",
+                "min_depth_m",
+                "depth_scale_m",
+                "cheirality_weight",
+                "warmup_fraction",
+                "gradient_flow",
+            },
+            path="loss.consistency",
+        )
+        raw_gradient_flow = _string(
+            mapping,
+            "gradient_flow",
+            path="loss.consistency",
+        )
+        if raw_gradient_flow not in {
+            "both",
+            "stopgrad_pose",
+            "stopgrad_dense",
+        }:
+            raise SemanticConfigurationError(
+                "loss.consistency.gradient_flow must be 'both', "
+                "'stopgrad_pose', or 'stopgrad_dense'."
+            )
+        result = cls(
+            enabled=_bool(mapping, "enabled", path="loss.consistency"),
+            weight=_number(mapping, "weight", path="loss.consistency"),
+            temperature=_number(
+                mapping,
+                "temperature",
+                path="loss.consistency",
+            ),
+            huber_delta=_number(
+                mapping,
+                "huber_delta",
+                path="loss.consistency",
+            ),
+            min_depth_m=_number(
+                mapping,
+                "min_depth_m",
+                path="loss.consistency",
+            ),
+            depth_scale_m=_number(
+                mapping,
+                "depth_scale_m",
+                path="loss.consistency",
+            ),
+            cheirality_weight=_number(
+                mapping,
+                "cheirality_weight",
+                path="loss.consistency",
+            ),
+            warmup_fraction=_number(
+                mapping,
+                "warmup_fraction",
+                path="loss.consistency",
+            ),
+            gradient_flow=cast(
+                "CourtConsistencyGradientFlow",
+                raw_gradient_flow,
+            ),
+        )
+        positive_values = (
+            result.temperature,
+            result.huber_delta,
+            result.min_depth_m,
+            result.depth_scale_m,
+        )
+        if any(item <= 0.0 for item in positive_values):
+            raise SemanticConfigurationError(
+                "loss.consistency temperature, huber_delta, min_depth_m, and "
+                "depth_scale_m must be positive."
+            )
+        if result.cheirality_weight < 0.0:
+            raise SemanticConfigurationError(
+                "loss.consistency.cheirality_weight must be non-negative."
+            )
+        if not 0.0 <= result.warmup_fraction < 1.0:
+            raise SemanticConfigurationError(
+                "loss.consistency.warmup_fraction must be in [0, 1)."
+            )
+        if result.enabled and result.weight <= 0.0:
+            raise SemanticConfigurationError(
+                "Enabled query consistency requires a positive weight."
+            )
+        if not result.enabled and (
+            result.weight != 0.0
+            or result.cheirality_weight != 0.0
+            or result.warmup_fraction != 0.0
+        ):
+            raise SemanticConfigurationError(
+                "Disabled query consistency requires zero weight, "
+                "cheirality_weight, and warmup_fraction."
+            )
+        return result
+
+    @classmethod
+    def legacy_disabled(cls) -> CourtQueryConsistencyLossConfig:
+        """Represent the two frozen direct-only query v1 loss schemas."""
+        return cls(
+            enabled=False,
+            weight=0.0,
+            temperature=1.0,
+            huber_delta=0.01,
+            min_depth_m=0.1,
+            depth_scale_m=1.0,
+            cheirality_weight=0.0,
+            warmup_fraction=0.0,
+            gradient_flow="both",
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class CourtQueryLossConfig:
     """Explicit dense and pose weights for query-model supervision."""
 
@@ -1468,11 +1607,23 @@ class CourtQueryLossConfig:
     dense: CourtLossConfig
     dense_weights: Mapping[CourtTargetKind, float]
     pose: CourtQueryPoseLossConfig
+    consistency: CourtQueryConsistencyLossConfig
 
     @classmethod
     def from_mapping(cls, value: object) -> CourtQueryLossConfig:
         mapping = as_config_mapping(value, path="loss")
-        _exact(mapping, {"name", "seg", "kp", "line", "pose"}, path="loss")
+        name = _string(mapping, "name", path="loss")
+        has_consistency = "consistency" in mapping
+        _exact(
+            mapping,
+            {"name", "seg", "kp", "line", "pose"}
+            | ({"consistency"} if has_consistency else set()),
+            path="loss",
+        )
+        if not has_consistency and name not in {"query_pose_v1", "query_dense_v1"}:
+            raise MissingConfigurationKeyError(
+                "Missing required configuration key: loss.consistency."
+            )
         seg = require_config_mapping(mapping, "seg", path="loss")
         kp = require_config_mapping(mapping, "kp", path="loss")
         line = require_config_mapping(mapping, "line", path="loss")
@@ -1534,11 +1685,21 @@ class CourtQueryLossConfig:
             raise SemanticConfigurationError(
                 "Disabled query pose supervision requires zero pose weights."
             )
+        consistency = (
+            CourtQueryConsistencyLossConfig.from_mapping(mapping["consistency"])
+            if has_consistency
+            else CourtQueryConsistencyLossConfig.legacy_disabled()
+        )
+        if consistency.enabled and not pose_config.enabled:
+            raise SemanticConfigurationError(
+                "Enabled query consistency requires enabled query pose supervision."
+            )
         return cls(
-            name=_string(mapping, "name", path="loss"),
+            name=name,
             dense=dense,
             dense_weights=MappingProxyType(dense_weights),
             pose=pose_config,
+            consistency=consistency,
         )
 
 
@@ -1828,6 +1989,7 @@ def validate_paths_boundary(
 
 
 __all__ = [
+    "CourtConsistencyGradientFlow",
     "CourtAnyModelConfig",
     "CourtAugmentationConfig",
     "CourtAnyLossConfig",
@@ -1843,6 +2005,7 @@ __all__ = [
     "CourtQueryDecoderFamily",
     "CourtQueryHeadsConfig",
     "CourtQueryLinearDecoderConfig",
+    "CourtQueryConsistencyLossConfig",
     "CourtQueryLossConfig",
     "CourtQueryModelConfig",
     "CourtQueryPreset",
