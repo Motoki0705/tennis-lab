@@ -1,0 +1,43 @@
+\documentclass[10pt]{ltjsarticle}
+
+\input{preamble}
+
+\crefname{equation}{式}{式}
+\crefname{figure}{図}{図}
+\crefname{table}{表}{表}
+\crefname{section}{節}{節}
+
+\title{\bfseries\LARGE
+  レンダリング教師による大域的コート幾何：\\
+  3D Gaussianシーンを用いた低アノテーションコストの6DoFコート検出
+}
+
+\author{Motoki Kamimura\\[0.25em]
+  \small Tennis Lab\\
+  \small \url{https://github.com/Motoki0705/tennis-lab}}
+\date{}
+
+\begin{document}
+\maketitle
+
+\input{sections/jp/00_abstract}
+\input{sections/jp/01_introduction}
+\input{sections/jp/02_related_work}
+\input{sections/jp/03_system_overview}
+\input{sections/jp/04_alignment_render_supervision}
+\input{sections/jp/05_global_query_model}
+\input{sections/jp/06_reprojection_consistency}
+\input{sections/jp/07_experimental_protocol}
+\input{sections/jp/08_results_scope}
+\input{sections/jp/09_discussion}
+\input{sections/jp/10_conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\appendix
+\input{appendices/A_coordinate_contracts}
+\input{appendices/B_implementation}
+\input{appendices/C_evaluation_protocol}
+
+\end{document}
