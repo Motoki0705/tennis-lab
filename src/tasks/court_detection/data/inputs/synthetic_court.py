@@ -759,6 +759,7 @@ class SyntheticCourtInput:
             visible=channel_visible,
             physical=channel_physical,
             flip=_V1_FLIP_PERMUTATION,
+            points_dtype=torch.float32,
         )
         return tuple(instances), channels
 
@@ -994,7 +995,7 @@ class SyntheticCourtInput:
         visible: list[list[bool]],
         physical: list[list[int]],
         flip: tuple[int, ...],
-        points_dtype: torch.dtype = torch.float32,
+        points_dtype: torch.dtype,
     ) -> CourtKeypointChannels:
         point_capacity = len(points[0])
         if point_capacity == 0 or any(len(values) != point_capacity for values in points):
