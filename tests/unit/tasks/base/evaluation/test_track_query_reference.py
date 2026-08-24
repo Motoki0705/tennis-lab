@@ -11,6 +11,7 @@ from src.tasks.base.evaluation.track_query_reference import (
     AxisWisePositionError,
     PairedReferenceEvaluationError,
     PairedReferenceKey,
+    ReferenceTransformQuantity,
     compute_axis_wise_position_error,
     compute_heading_error_radians,
     compute_paired_reference_position_metrics,
@@ -20,6 +21,7 @@ from src.tasks.base.evaluation.track_query_reference import (
 )
 from src.tasks.base.generate_dataset.court_view import (
     CAMERA_VIEW_V2_SELECTOR,
+    CourtReferenceFrameProvenance,
     build_court_view_record,
     build_reference_frame_provenance,
     court_headings_physical_to_target,
@@ -30,7 +32,10 @@ from src.tasks.base.generate_dataset.court_view import (
 )
 
 
-def _paired_provenance() -> tuple[object, object]:
+def _paired_provenance() -> tuple[
+    CourtReferenceFrameProvenance,
+    CourtReferenceFrameProvenance,
+]:
     contract = resolve_court_keypoint_contract(CAMERA_VIEW_V2_SELECTOR)
     views = (
         build_court_view_record(
@@ -146,27 +151,31 @@ def test_heading_error_is_radians_and_rejects_zero_vectors() -> None:
     ],
 )
 def test_opposite_reference_transform_consistency_uses_geometry_authority(
-    quantity: str,
+    quantity: ReferenceTransformQuantity,
     physical: torch.Tensor,
 ) -> None:
     negative, positive = _paired_provenance()
-    transform = {
-        "point": court_points_physical_to_target,
-        "vector": court_vectors_physical_to_target,
-        "heading": court_headings_physical_to_target,
-        "world_joints": court_world_joints_physical_to_target,
-    }[quantity]
-    first = transform(physical, negative)  # type: ignore[arg-type]
-    second = transform(physical, positive)  # type: ignore[arg-type]
+    if quantity == "point":
+        first = court_points_physical_to_target(physical, negative)
+        second = court_points_physical_to_target(physical, positive)
+    elif quantity == "vector":
+        first = court_vectors_physical_to_target(physical, negative)
+        second = court_vectors_physical_to_target(physical, positive)
+    elif quantity == "heading":
+        first = court_headings_physical_to_target(physical, negative)
+        second = court_headings_physical_to_target(physical, positive)
+    else:
+        first = court_world_joints_physical_to_target(physical, negative)
+        second = court_world_joints_physical_to_target(physical, positive)
     assert isinstance(first, torch.Tensor)
     assert isinstance(second, torch.Tensor)
 
     error = compute_reference_transform_consistency_error(
         first,
-        negative,  # type: ignore[arg-type]
+        negative,
         second,
-        positive,  # type: ignore[arg-type]
-        quantity=quantity,  # type: ignore[arg-type]
+        positive,
+        quantity=quantity,
     )
     assert error == pytest.approx(0.0, abs=1e-12)
 

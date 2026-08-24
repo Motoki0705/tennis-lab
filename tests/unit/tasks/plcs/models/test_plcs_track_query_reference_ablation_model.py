@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import cast
+from typing import TypedDict, cast
 
 import pytest
 import torch
@@ -21,6 +21,14 @@ from src.utils.models.components.fixed_query_track_ablation_stage import (
     FFNMode,
     MHCWriteback,
 )
+
+
+class _SpatialCoordinateArgs(TypedDict):
+    num_frames: int
+    num_views: int
+    num_detections: int
+    num_queries: int
+    mhc_writeback: MHCWriteback
 
 
 def _raw_config(
@@ -160,7 +168,7 @@ def test_selector_zero_changes_only_the_third_axis(
     writeback: MHCWriteback,
 ) -> None:
     reference = torch.tensor([1, 2], dtype=torch.int64)
-    shared = {
+    shared: _SpatialCoordinateArgs = {
         "num_frames": 2,
         "num_views": 3,
         "num_detections": 2,

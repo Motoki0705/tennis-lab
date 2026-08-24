@@ -162,6 +162,7 @@ def test_v2_normal_and_d_use_exact_six_input_cpu_forward_backward(
 ) -> None:
     torch.manual_seed(801)
     reference = _reference_fields(selector_mode)
+    binding: TrackQueryBoundModelIO | PLCSTrackingBoundModelIO
     if task == "blcs":
         binding = _blcs_binding(profile)
         batch: dict[str, object] = {
