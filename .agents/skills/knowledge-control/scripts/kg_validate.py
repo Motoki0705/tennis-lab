@@ -1,16 +1,19 @@
 #!/usr/bin/env python
-"""Validate formal nodes under ``knowledge/nodes/``.
+"""Validate the knowledge graph under ``knowledge/nodes/``.
 
-This validator covers experimental run/group nodes and reviewed
-paper/proposal nodes.  Raw literature-radar candidates are validated by
-``literature-radar/scripts/radar_ingest.py validate`` instead.
+Checks frontmatter schema (id/type/title/status/...) and that every edge
+reference (``parents``, group ``members``, ``relations[].to``) resolves to an
+existing node. Exits non-zero if any error is found so it can gate CI / commits.
+
+Usage:
+    .venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py
 """
 
 from __future__ import annotations
 
-from collections import Counter
+import sys
 
-from kg_lib import NODE_TYPES, load_nodes, nodes_dir, validate
+from kg_lib import load_nodes, nodes_dir, validate
 
 
 def main() -> int:
@@ -21,19 +24,19 @@ def main() -> int:
         print(f"ERROR: {exc}")
         return 1
 
-    result = validate(nodes)
-    for warning in result.warnings:
-        print(f"WARN: {warning}")
-    for error in result.errors:
-        print(f"ERROR: {error}")
+    res = validate(nodes)
+    for w in res.warnings:
+        print(f"WARN: {w}")
+    for e in res.errors:
+        print(f"ERROR: {e}")
 
-    counts = Counter(node.type for node in nodes)
-    summary = ", ".join(f"{counts[node_type]} {node_type}" for node_type in sorted(NODE_TYPES))
+    runs = sum(1 for n in nodes if n.type == "run")
+    groups = sum(1 for n in nodes if n.type == "group")
     print(
-        f"\n{len(nodes)} nodes ({summary}) in {directory} — "
-        f"{len(result.errors)} error(s), {len(result.warnings)} warning(s)."
+        f"\n{len(nodes)} nodes ({runs} run, {groups} group) in {directory} — "
+        f"{len(res.errors)} error(s), {len(res.warnings)} warning(s)."
     )
-    return 0 if result.ok else 1
+    return 0 if res.ok else 1
 
 
 if __name__ == "__main__":
