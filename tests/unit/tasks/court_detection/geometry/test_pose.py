@@ -245,6 +245,48 @@ def test_so3_validation_keeps_float32_tolerance_under_bfloat16_autocast() -> Non
             validate_proper_rotation(outside_tolerance)
 
 
+@pytest.mark.skipif(
+    not torch.cuda.is_available() or not torch.cuda.is_bf16_supported(),
+    reason="CUDA bf16 is required for the Lightning runtime regression.",
+)
+def test_cuda_tf32_does_not_reject_recovered_bfloat16_rotation() -> None:
+    raw = torch.tensor(
+        [
+            [
+                0.0,
+                0.0,
+                0.0,
+                1.125,
+                -0.75,
+                0.375,
+                0.25,
+                0.875,
+                -1.25,
+                math.log(3.0),
+            ]
+        ],
+        device="cuda",
+        dtype=torch.bfloat16,
+    )
+    original_precision = torch.get_float32_matmul_precision()
+    original_allow_tf32 = torch.backends.cuda.matmul.allow_tf32
+    try:
+        torch.set_float32_matmul_precision("high")
+        torch.backends.cuda.matmul.allow_tf32 = True
+        decoded = decode_pose10d_strict(raw)
+        identity = torch.eye(3, dtype=torch.float32, device="cuda")
+        tf32_gram = decoded.rotation.transpose(-1, -2) @ decoded.rotation
+        exact_gram = (
+            decoded.rotation.unsqueeze(-1) * decoded.rotation.unsqueeze(-2)
+        ).sum(dim=-3)
+    finally:
+        torch.backends.cuda.matmul.allow_tf32 = original_allow_tf32
+        torch.set_float32_matmul_precision(original_precision)
+
+    assert float(torch.max(torch.abs(tf32_gram - identity))) > 1.0e-5
+    torch.testing.assert_close(exact_gram, identity.unsqueeze(0), atol=1.0e-5, rtol=0.0)
+
+
 def test_bfloat16_autocast_decode_and_projection_have_float32_authority() -> None:
     raw = _identity_raw_pose(focal_px=3.0).to(torch.bfloat16)
     raw = raw.unsqueeze(0).requires_grad_()
@@ -282,6 +324,15 @@ def test_bfloat16_autocast_keeps_degenerate_and_improper_rejection() -> None:
             decode_pose10d_strict(degenerate)
         with pytest.raises(ValueError, match=r"determinant \+1"):
             validate_proper_rotation(improper)
+
+
+@pytest.mark.parametrize("invalid_value", [float("nan"), float("inf")])
+def test_so3_validation_rejects_nonfinite_rotation(invalid_value: float) -> None:
+    rotation = torch.eye(3)
+    rotation[0, 0] = invalid_value
+
+    with pytest.raises(ValueError, match="finite"):
+        validate_proper_rotation(rotation)
 
 
 @pytest.mark.parametrize(
