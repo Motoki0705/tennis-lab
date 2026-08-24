@@ -95,7 +95,8 @@ def test_wrappers_freeze_the_requested_colab_seed_mapping() -> None:
     assert "colab-0 44" not in colab0
     assert "colab-1 43" not in colab1
     assert "queued=0 running=0 done=0 failed=0" in shard
-    assert "queued=0 running=0 done=4 failed=0" in shard
+    assert "--job-kind both" in shard
+    assert "queued=0 running=0 done=8 failed=0" in shard
 
 
 def test_training_shard_relocates_only_runtime_roots_and_keeps_depth_order(

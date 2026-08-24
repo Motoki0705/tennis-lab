@@ -6,7 +6,7 @@ train スクリプトは作成日ごとの `YYYY-MM-DD/` に保存する。同�
 
 - `2026-07-02/`: 既存の7学習スクリプト。
 - `2026-08-22/`: BLCS / PLCS の base-size track-query、および synthetic Court v2 KP の学習スクリプト。
-- `2026-08-24/`: Issue #790 encoder scaling のColab shard。`colab0`はseed 43、`colab1`はseed 44を担当し、それぞれdepth `1/2/4/8`を専用training queueで直列実行する。local GPUはseed 42を担当し、capacity profileはhardware条件を揃えるためlocal GPUで全seed分を取得する。
+- `2026-08-24/`: Issue #790 encoder scaling のColab shard。`colab0`はseed 43、`colab1`はseed 44を担当し、それぞれdepth `1/2/4/8`のtrainingと対応するcapacity profileを専用training queueで直列実行する。local GPUはseed 42のtraining/profileを担当する。
 
 Issue #790の2本は、Driveの`tennis_lab/data/court_query_issue790_v3.tar.zst`を`DATA_ROOT`へ展開する。このarchiveはroot-relativeに次の2 subtreeを含む必要がある。
 

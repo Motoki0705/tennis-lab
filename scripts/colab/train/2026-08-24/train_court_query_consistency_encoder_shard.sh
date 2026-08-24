@@ -101,10 +101,17 @@ if [[ "${INITIAL_QUEUE_STATUS}" != *"worker: stopped"* \
     echo "${INITIAL_QUEUE_STATUS}" >&2
     exit 1
 fi
+for DEPTH in 01 02 04 08; do
+    RUN_DIR="${OUTPUT_ROOT%/}/court_detection/query_consistency_ablation/encoder-depth-${DEPTH}-seed-${SEED}"
+    if [[ -e "${RUN_DIR}" ]]; then
+        echo "[issue790] run output must be absent before a fresh shard: ${RUN_DIR}" >&2
+        exit 1
+    fi
+done
 python -m scripts.colab.setup.enqueue_query_consistency_shard \
     --manifest "${MANIFEST_PATH}" \
     --seed "${SEED}" \
-    --job-kind train \
+    --job-kind both \
     --python-executable "${RUNTIME_PYTHON}" \
     --data-root "${DATA_ROOT}" \
     --external-asset-root "${REPO_ROOT}/third_party" \
@@ -117,7 +124,7 @@ python -m scripts.colab.setup.enqueue_query_consistency_shard \
     --session "${SESSION_ID}" \
     --issue 790
 
-echo "[issue790] starting four serial training jobs in the foreground."
+echo "[issue790] starting four training and four profile jobs in the foreground."
 TRAINING_QUEUE_DIR="${TRAINING_QUEUE_DIR}" \
 TRAINING_QUEUE_PYTHON="${RUNTIME_PYTHON}" \
 bash "${QUEUE_SCRIPT}" serve --idle-timeout 30
@@ -125,7 +132,7 @@ bash "${QUEUE_SCRIPT}" serve --idle-timeout 30
 FINAL_QUEUE_STATUS="$(TRAINING_QUEUE_DIR="${TRAINING_QUEUE_DIR}" bash "${QUEUE_SCRIPT}" status)"
 echo "${FINAL_QUEUE_STATUS}"
 if [[ "${FINAL_QUEUE_STATUS}" != *"worker: stopped"* \
-      || "${FINAL_QUEUE_STATUS}" != *"queued=0 running=0 done=4 failed=0"* ]]; then
+      || "${FINAL_QUEUE_STATUS}" != *"queued=0 running=0 done=8 failed=0"* ]]; then
     echo "[issue790] one or more shard jobs failed; inspect ${TRAINING_QUEUE_DIR}/logs." >&2
     exit 1
 fi
