@@ -64,17 +64,19 @@ def _bundle() -> CourtTargetBundleSpec:
     )
 
 
-def _config() -> object:
+def _config(*, loss: str = "query_pose", processing: str = "kp") -> object:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        dense_targets = "[kp,seg,line]" if processing == "all" else "[kp]"
         return compose(
             config_name="train",
             overrides=[
                 "data/source=synthetic_court",
                 "data.source.keypoint_court_scope=target_court",
-                "data/processing=kp",
+                f"data/processing={processing}",
                 "data/augmentation=pose_safe",
-                "loss=query_pose",
+                f"loss={loss}",
                 "model=query_encoder",
+                f"model.heads.dense_targets={dense_targets}",
                 "model.backbone.train_mode=full",
             ],
         )
@@ -199,6 +201,12 @@ def test_query_training_result_has_explicit_weighted_pose_and_dense_losses(
     }
     expected = result.dense_losses["kp"] + sum(result.pose_losses.values())
     torch.testing.assert_close(result.loss, expected)
+    torch.testing.assert_close(result.direct_dense_loss, result.dense_losses["kp"])
+    torch.testing.assert_close(
+        result.direct_pose_loss,
+        sum(result.pose_losses.values()),
+    )
+    assert result.consistency is None
     assert bool(torch.isfinite(result.loss))
     assert fake.patch_embed.weight.grad is not None
 
@@ -229,10 +237,8 @@ def test_query_prediction_persistence_is_typed_and_singleton(
         "src.tasks.court_detection.models.query_encoder.backbone.load_dinov3_backbone",
         lambda **_: DINOv3BackboneAdapter(FakePatchDINO()),
     )
-    adapter = cast(
-        CourtQueryModelIOAdapter,
-        build_court_detection_pair(_config(), target_bundle=_bundle()).adapter,
-    )
+    pair = build_court_detection_pair(_config(), target_bundle=_bundle())
+    adapter = cast(CourtQueryModelIOAdapter, pair.adapter)
     logits = torch.full((1, 14, 8, 10), -10.0)
     logits[:, :, 2, 3] = 9.0
     logits[:, :, 6, 8] = 10.0
@@ -258,3 +264,74 @@ def test_query_prediction_persistence_is_typed_and_singleton(
     )
     assert prediction.pose.translation_m.shape == (1, 3)
     assert prediction.pose.rotation.shape == (1, 3, 3)
+
+
+def test_query_consistency_builds_exact_mask_and_requires_explicit_progress(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "src.tasks.court_detection.models.query_encoder.backbone.load_dinov3_backbone",
+        lambda **_: DINOv3BackboneAdapter(FakePatchDINO()),
+    )
+    pair = build_court_detection_pair(
+        _config(loss="query_joint_both"),
+        target_bundle=_bundle(),
+    )
+    adapter = cast(CourtQueryModelIOAdapter, pair.adapter)
+    batch = _training_batch()
+    batch["image_size"] = torch.tensor([[16, 20], [8, 10]], dtype=torch.long)
+    call = adapter.prepare_training_batch(batch)
+    output = cast(CourtQueryRawOutput, pair.model(*call.model_call.model_args))
+    mask = adapter._valid_region_mask(
+        image_size=call.image_size,
+        logits=output.dense_logits["kp"],
+    )
+
+    assert mask.shape == (2, 14, 16, 20)
+    assert mask.dtype == torch.bool
+    assert mask[0].all()
+    assert int(mask[1].sum()) == 14 * 8 * 10
+    assert not mask[1, :, 8:, :].any()
+    assert not mask[1, :, :, 10:].any()
+
+    with pytest.raises(CourtModelIOError, match="explicit progress"):
+        adapter.training_result(output, call)
+
+    result = adapter.training_result(output, call, progress_fraction=1.0)
+    assert result.consistency is not None
+    consistency = result.consistency
+    assert consistency.dense_points_xy.shape == (2, 14, 2)
+    assert consistency.pose_points_xy.shape == (2, 14, 2)
+    assert consistency.pose_depth_m.shape == (2, 14)
+    assert consistency.effective_weight.item() == 1.0
+    torch.testing.assert_close(
+        result.loss,
+        result.direct_dense_loss
+        + result.direct_pose_loss
+        + consistency.weighted_auxiliary_loss,
+    )
+
+
+@pytest.mark.parametrize(
+    "image_size",
+    [
+        torch.tensor([[0, 20], [16, 20]], dtype=torch.long),
+        torch.tensor([[17, 20], [16, 20]], dtype=torch.long),
+        torch.tensor([[16, 21], [16, 20]], dtype=torch.long),
+    ],
+)
+def test_query_image_size_is_strictly_bounded_before_model_loss(
+    image_size: torch.Tensor,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "src.tasks.court_detection.models.query_encoder.backbone.load_dinov3_backbone",
+        lambda **_: DINOv3BackboneAdapter(FakePatchDINO()),
+    )
+    pair = build_court_detection_pair(_config(), target_bundle=_bundle())
+    adapter = cast(CourtQueryModelIOAdapter, pair.adapter)
+    batch = _training_batch()
+    batch["image_size"] = image_size
+
+    with pytest.raises(CourtModelIOError, match="image_size"):
+        adapter.prepare_training_batch(batch)

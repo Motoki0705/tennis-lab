@@ -1,0 +1,9 @@
+name: decoder_scaling
+order: 2
+families: [linear, progressive, dpt]
+sizes: [tiny, small, base]
+condition: joint-both
+reference_family: dpt
+reference_size: base
+tolerance_ratio: 0.05
+dense_absolute_tolerance: 0.01

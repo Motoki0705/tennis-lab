@@ -8,6 +8,9 @@ from typing import cast
 
 import torch
 
+from src.tasks.court_detection.configuration import (
+    CourtQueryConsistencyLossConfig,
+)
 from src.tasks.court_detection.data.contracts import (
     CourtTargetBundleSpec,
     CourtTargetKind,
@@ -16,7 +19,8 @@ from src.tasks.court_detection.data.contracts import (
 from src.tasks.court_detection.geometry.pose import POSE10D_RAW_ORDER, POSE10D_SCHEMA
 
 _BUNDLE_SCHEMA = "court_target_bundle_v1"
-_QUERY_CHECKPOINT_SCHEMA = "court_query_checkpoint_v1"
+_QUERY_CHECKPOINT_SCHEMA_V1 = "court_query_checkpoint_v1"
+_QUERY_CHECKPOINT_SCHEMA_V2 = "court_query_checkpoint_v2"
 _DTYPE_TO_NAME = {
     torch.float32: "float32",
     torch.long: "int64",
@@ -113,6 +117,7 @@ class CourtQueryCheckpointState:
     loss_config_name: str
     supervision_subset: tuple[str, ...]
     pose_supervision: bool
+    consistency: CourtQueryConsistencyLossConfig | None
 
 
 def serialize_query_checkpoint_state(
@@ -120,13 +125,25 @@ def serialize_query_checkpoint_state(
     *,
     loss_config_name: str,
     pose_supervision: bool,
+    consistency: CourtQueryConsistencyLossConfig | None = None,
 ) -> dict[str, object]:
     """Snapshot query family, target order, and supervision identity."""
     if not loss_config_name or loss_config_name != loss_config_name.strip():
         raise ValueError("Query loss_config_name must be non-empty and trimmed.")
     subset = (*bundle.kinds, *(("pose",) if pose_supervision else ()))
-    return {
-        "schema": _QUERY_CHECKPOINT_SCHEMA,
+    if consistency is not None and consistency.enabled and not pose_supervision:
+        raise ValueError(
+            "Enabled query checkpoint consistency requires pose supervision."
+        )
+    enabled_consistency = (
+        consistency if consistency is not None and consistency.enabled else None
+    )
+    snapshot: dict[str, object] = {
+        "schema": (
+            _QUERY_CHECKPOINT_SCHEMA_V2
+            if enabled_consistency is not None
+            else _QUERY_CHECKPOINT_SCHEMA_V1
+        ),
         "model_family": "court_query_encoder",
         "pose_schema": POSE10D_SCHEMA,
         "pose_raw_order": list(POSE10D_RAW_ORDER),
@@ -137,11 +154,24 @@ def serialize_query_checkpoint_state(
             "pose_enabled": pose_supervision,
         },
     }
+    if enabled_consistency is not None:
+        snapshot["consistency"] = {
+            "enabled": enabled_consistency.enabled,
+            "weight": enabled_consistency.weight,
+            "temperature": enabled_consistency.temperature,
+            "huber_delta": enabled_consistency.huber_delta,
+            "min_depth_m": enabled_consistency.min_depth_m,
+            "depth_scale_m": enabled_consistency.depth_scale_m,
+            "cheirality_weight": enabled_consistency.cheirality_weight,
+            "warmup_fraction": enabled_consistency.warmup_fraction,
+            "gradient_flow": enabled_consistency.gradient_flow,
+        }
+    return snapshot
 
 
 def deserialize_query_checkpoint_state(value: object) -> CourtQueryCheckpointState:
     """Revalidate an exact versioned query checkpoint snapshot."""
-    expected = {
+    common_fields = {
         "schema",
         "model_family",
         "pose_schema",
@@ -149,10 +179,18 @@ def deserialize_query_checkpoint_state(value: object) -> CourtQueryCheckpointSta
         "target_bundle",
         "supervision",
     }
-    if not isinstance(value, Mapping) or set(value) != expected:
+    if not isinstance(value, Mapping):
+        raise ValueError("Court query checkpoint snapshot fields changed.")
+    schema = value.get("schema")
+    expected = (
+        common_fields | {"consistency"}
+        if schema == _QUERY_CHECKPOINT_SCHEMA_V2
+        else common_fields
+    )
+    if set(value) != expected:
         raise ValueError("Court query checkpoint snapshot fields changed.")
     if (
-        value["schema"] != _QUERY_CHECKPOINT_SCHEMA
+        schema not in {_QUERY_CHECKPOINT_SCHEMA_V1, _QUERY_CHECKPOINT_SCHEMA_V2}
         or value["model_family"] != "court_query_encoder"
         or value["pose_schema"] != POSE10D_SCHEMA
         or value["pose_raw_order"] != list(POSE10D_RAW_ORDER)
@@ -181,11 +219,26 @@ def deserialize_query_checkpoint_state(value: object) -> CourtQueryCheckpointSta
     expected_subset = [*bundle.kinds, *(("pose",) if pose_enabled else ())]
     if list(subset) != expected_subset:
         raise ValueError("Court query supervision subset disagrees with bundle/pose.")
+    consistency: CourtQueryConsistencyLossConfig | None = None
+    if schema == _QUERY_CHECKPOINT_SCHEMA_V2:
+        try:
+            consistency = CourtQueryConsistencyLossConfig.from_mapping(
+                value["consistency"]
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise ValueError(
+                "Court query checkpoint consistency identity is invalid."
+            ) from error
+        if not consistency.enabled or not pose_enabled:
+            raise ValueError(
+                "Court query checkpoint v2 requires enabled consistency and pose."
+            )
     return CourtQueryCheckpointState(
         target_bundle=bundle,
         loss_config_name=name,
         supervision_subset=tuple(cast(Sequence[str], subset)),
         pose_supervision=pose_enabled,
+        consistency=consistency,
     )
 
 

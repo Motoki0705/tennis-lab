@@ -1,0 +1,18 @@
+defaults:
+  - paths: default
+  - _self_
+
+summary:
+  phase: encoder_scaling
+  manifest_path: court_detection/query_consistency_ablation/manifest.json
+  evidence_root: court_detection/query_consistency_ablation
+  results_path: court_detection/query_consistency_ablation/results.json
+  output_dir: court_detection/query_consistency_ablation/summary
+  require_gpu_profiles: true
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},court_detection/query_consistency_ablation/hydra/summary}
+  output_subdir: null
+  job:
+    chdir: false

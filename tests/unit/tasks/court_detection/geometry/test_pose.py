@@ -18,10 +18,17 @@ from src.tasks.court_detection.geometry.pose import (
     CourtPoseTarget,
     build_pose_target,
     canonical_semantic_court_points,
+    canonical_semantic_court_points_batched,
     decode_pose10d_strict,
     project_canonical_points,
+    project_predicted_canonical_points,
     validate_projection_round_trip,
     validate_square_intrinsics,
+)
+from src.utils.schema.court import (
+    CAMERA_VIEW_HALF_TURN_INDEX,
+    STANDARD_COURT_CONFIG,
+    court_keypoints_3d,
 )
 
 
@@ -236,3 +243,125 @@ def test_pose_decode_rejects_nonfinite_and_predecode_degeneracy(raw: torch.Tenso
 def test_square_focal_and_skew_are_strict(intrinsics: torch.Tensor) -> None:
     with pytest.raises((ValueError, TypeError), match="finite|fx=fy|skew"):
         validate_square_intrinsics(intrinsics)
+
+
+def _identity_raw_pose(*, focal_px: float = 2.0) -> torch.Tensor:
+    return torch.tensor(
+        [
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            math.log(focal_px),
+        ],
+        dtype=torch.float64,
+    )
+
+
+def test_predicted_projection_has_known_pixels_and_principal_point() -> None:
+    raw = _identity_raw_pose().repeat(2, 1)
+    raw[1, 0] = 1.0
+    prediction = decode_pose10d_strict(raw)
+    points = torch.tensor(
+        [
+            [[1.0, 2.0, 2.0], [2.0, -1.0, 4.0]],
+            [[1.0, 2.0, 2.0], [2.0, -1.0, 4.0]],
+        ],
+        dtype=torch.float64,
+    ).repeat(1, 7, 1)
+    principal_point = torch.tensor(
+        [[10.0, 20.0], [30.0, 40.0]],
+        dtype=torch.float64,
+    )
+
+    projected = project_predicted_canonical_points(
+        prediction,
+        points,
+        principal_point,
+    )
+
+    expected = torch.tensor(
+        [
+            [[11.0, 22.0], [11.0, 19.5]],
+            [[30.0, 42.0], [30.5, 39.5]],
+        ],
+        dtype=torch.float64,
+    ).repeat(1, 7, 1)
+    torch.testing.assert_close(projected.points_xy, expected)
+    torch.testing.assert_close(
+        projected.depth_m,
+        torch.tensor([[2.0, 4.0], [2.0, 4.0]], dtype=torch.float64).repeat(
+            1, 7
+        ),
+    )
+
+
+def test_v3_batched_canonical_points_preserve_semantic_order() -> None:
+    orders = torch.tensor(
+        [list(range(14)), list(CAMERA_VIEW_HALF_TURN_INDEX)],
+        dtype=torch.long,
+    )
+    points = canonical_semantic_court_points_batched(
+        orders,
+        dtype=torch.float64,
+    )
+    physical = court_keypoints_3d(STANDARD_COURT_CONFIG)[:14].to(torch.float64)
+    half_turn_expected = physical[orders[1]] * physical.new_tensor(
+        [-1.0, -1.0, 1.0]
+    )
+
+    assert points.shape == (2, 14, 3)
+    torch.testing.assert_close(points[0], physical)
+    torch.testing.assert_close(points[1], half_turn_expected)
+
+    invalid = orders.clone()
+    invalid[1] = torch.roll(invalid[1], shifts=1)
+    with pytest.raises(ValueError, match="identity.*half-turn"):
+        canonical_semantic_court_points_batched(invalid)
+
+
+def test_predicted_projection_preserves_pose10d_gradients() -> None:
+    raw = _identity_raw_pose(focal_px=3.0).unsqueeze(0).requires_grad_()
+    prediction = decode_pose10d_strict(raw)
+    points = torch.tensor(
+        [[[1.0, 2.0, 4.0], [-2.0, 1.0, 3.0], [0.5, -1.5, 2.0]]],
+        dtype=torch.float64,
+    ).repeat(1, 5, 1)[:, :14]
+    projected = project_predicted_canonical_points(
+        prediction,
+        points,
+        torch.tensor([[7.0, 11.0]], dtype=torch.float64),
+    )
+
+    (projected.points_xy.square().sum() + projected.depth_m.square().sum()).backward()
+
+    assert raw.grad is not None
+    assert torch.isfinite(raw.grad).all()
+    assert torch.count_nonzero(raw.grad[:, :3]) > 0
+    assert torch.count_nonzero(raw.grad[:, 3:9]) > 0
+    assert torch.count_nonzero(raw.grad[:, 9]) > 0
+
+
+def test_predicted_projection_uses_signed_safe_depth_without_skipping() -> None:
+    prediction = decode_pose10d_strict(_identity_raw_pose().unsqueeze(0))
+    points = torch.tensor(
+        [[[1.0, 2.0, 0.0], [1.0, 2.0, -1.0e-12], [1.0, 2.0, -2.0]]],
+        dtype=torch.float64,
+    ).repeat(1, 5, 1)[:, :14]
+
+    projected = project_predicted_canonical_points(
+        prediction,
+        points,
+        torch.zeros((1, 2), dtype=torch.float64),
+    )
+
+    assert torch.isfinite(projected.points_xy).all()
+    torch.testing.assert_close(projected.depth_m, points[:, :, 2])
+    assert projected.points_xy[0, 0, 0] > 0.0
+    assert projected.points_xy[0, 1, 0] < 0.0
+    assert projected.points_xy[0, 2, 0] < 0.0

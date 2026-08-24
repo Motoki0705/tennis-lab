@@ -3,16 +3,40 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
+import statistics
+from collections.abc import Iterable, Mapping
 from typing import Protocol, cast
 
 import torch
-from torch import Tensor
+from torch import Tensor, nn
 
 from src.tasks.court_detection.data.contracts import CourtTargetKind
 from src.tasks.court_detection.geometry.pose import CourtDecodedPose
+from src.tasks.court_detection.model_io.contracts import CourtQueryConsistencyResult
 from src.tasks.court_detection.training.losses import rotation_geodesic_radians
 from src.utils.data.heatmaps import heatmaps_to_peaks
+
+COURT_QUERY_RESULT_METRIC_NAMES = (
+    "kp_mean_distance_px",
+    "kp_median_distance_px",
+    "pose_reprojection_mean_distance_px",
+    "pose_translation_l2_m",
+    "pose_rotation_geodesic_deg",
+    "pose_focal_relative_error",
+    "line_dice",
+    "seg_miou",
+    "kp_pose_consistency_distance_px",
+    "invalid_depth_rate",
+    "visible_point_count",
+)
+COURT_QUERY_TRAIN_DIAGNOSTIC_NAMES = (
+    "kp_gradient_finite",
+    "seg_gradient_finite",
+    "line_gradient_finite",
+    "pose_gradient_finite",
+    "train_step_time_ms",
+    "cuda_peak_memory_bytes",
+)
 
 
 class CourtDetectionMetrics:
@@ -156,26 +180,30 @@ class CourtDetectionMetrics:
             raise ValueError(
                 "Singleton Court KP metric requires exact target shape (B,C,1,2)."
             )
-        flat_index = logits.flatten(2).argmax(dim=-1)
-        padded_height, padded_width = logits.shape[-2:]
-        predicted_pixels = torch.stack(
-            (
-                (flat_index % padded_width).to(dtype=points.dtype),
-                torch.div(flat_index, padded_width, rounding_mode="floor").to(
-                    dtype=points.dtype
-                ),
-            ),
-            dim=-1,
-        )
         for sample_index, size in enumerate(image_size.tolist()):
             height, width = (int(value) for value in size)
+            if height <= 0 or width <= 0 or height > logits.shape[-2] or width > logits.shape[-1]:
+                raise ValueError(
+                    "Singleton Court KP metric image_size is outside logits bounds."
+                )
+            valid_logits = logits[sample_index, :, :height, :width]
+            flat_index = valid_logits.flatten(1).argmax(dim=-1)
+            predicted_pixels = torch.stack(
+                (
+                    (flat_index % width).to(dtype=points.dtype),
+                    torch.div(flat_index, width, rounding_mode="floor").to(
+                        dtype=points.dtype
+                    ),
+                ),
+                dim=-1,
+            )
             target_scale = points.new_tensor(
                 [float(max(width - 1, 0)), float(max(height - 1, 0))]
             )
             target_pixels = points[sample_index, :, 0] * target_scale
             accepted = visible[sample_index, :, 0]
             distances = torch.linalg.vector_norm(
-                predicted_pixels[sample_index] - target_pixels,
+                predicted_pixels - target_pixels,
                 dim=-1,
             )
             self._kp_distances.extend(distances[accepted].detach().cpu().tolist())
@@ -210,12 +238,20 @@ class CourtDetectionMetrics:
             ]
             return {"miou": sum(values) / len(values)}
         if self.kind == "kp":
+            mean_distance = (
+                sum(self._kp_distances) / len(self._kp_distances)
+                if self._kp_distances
+                else 0.0
+            )
+            median_distance = (
+                statistics.median(self._kp_distances)
+                if self._kp_distances
+                else 0.0
+            )
             return {
-                "mean_dist": (
-                    sum(self._kp_distances) / len(self._kp_distances)
-                    if self._kp_distances
-                    else 0.0
-                )
+                "mean_dist": mean_distance,
+                "mean_distance_px": mean_distance,
+                "median_distance_px": median_distance,
             }
         return {
             "dice": (
@@ -302,4 +338,115 @@ class CourtPoseMetrics:
         self._log_focal: list[float] = []
 
 
-__all__ = ["CourtDetectionMetrics", "CourtPoseMetrics"]
+class CourtQueryGeometryMetrics:
+    """Accumulate #790 pose-only and cross-branch pixel diagnostics."""
+
+    def __init__(self, *, min_depth_m: float) -> None:
+        if not math.isfinite(min_depth_m) or min_depth_m <= 0.0:
+            raise ValueError("min_depth_m must be finite and positive.")
+        self.min_depth_m = float(min_depth_m)
+        self.reset()
+
+    def update(
+        self,
+        consistency: CourtQueryConsistencyResult,
+        *,
+        ground_truth_points_normalized: Tensor,
+        point_visible: Tensor,
+        image_size: Tensor,
+    ) -> None:
+        dense = consistency.dense_points_xy
+        pose = consistency.pose_points_xy
+        depth = consistency.pose_depth_m
+        if dense.shape != pose.shape or dense.ndim != 3 or dense.shape[1:] != (14, 2):
+            raise ValueError("Court query metric points must share shape (B,14,2).")
+        batch_size = dense.shape[0]
+        if ground_truth_points_normalized.shape != (batch_size, 14, 2):
+            raise ValueError("Court query GT metric points must have shape (B,14,2).")
+        if point_visible.shape != (batch_size, 14) or point_visible.dtype != torch.bool:
+            raise ValueError("Court query GT metric visibility must be bool (B,14).")
+        if image_size.shape != (batch_size, 2) or image_size.dtype != torch.long:
+            raise ValueError("Court query metric image_size must be int64 (B,2).")
+        if depth.shape != (batch_size, 14):
+            raise ValueError("Court query metric pose depth must have shape (B,14).")
+        tensors = (
+            pose,
+            depth,
+            ground_truth_points_normalized,
+            point_visible,
+            image_size,
+        )
+        if any(value.device != dense.device for value in tensors):
+            raise ValueError("Court query metric tensors must share one device.")
+        if bool(torch.any(image_size <= 0)):
+            raise ValueError("Court query metric image_size must be positive.")
+        scale = torch.stack(
+            (
+                image_size[:, 1] - 1,
+                image_size[:, 0] - 1,
+            ),
+            dim=-1,
+        ).to(dtype=dense.dtype)
+        ground_truth_pixels = ground_truth_points_normalized.to(
+            dtype=dense.dtype
+        ) * scale[:, None, :]
+        pose_distance = torch.linalg.vector_norm(
+            pose - ground_truth_pixels,
+            dim=-1,
+        )
+        consistency_distance = torch.linalg.vector_norm(dense - pose, dim=-1)
+        accepted_pose = pose_distance[point_visible].detach().cpu().tolist()
+        accepted_consistency = (
+            consistency_distance[point_visible].detach().cpu().tolist()
+        )
+        self._pose_reprojection.extend(accepted_pose)
+        self._consistency_distance.extend(accepted_consistency)
+        self._invalid_depth_count += int(
+            ((depth <= self.min_depth_m) & point_visible).sum().item()
+        )
+        self._visible_point_count += int(point_visible.sum().item())
+
+    def compute(self) -> dict[str, float]:
+        return {
+            "pose_reprojection_mean_distance_px": self._mean(
+                self._pose_reprojection
+            ),
+            "kp_pose_consistency_distance_px": self._mean(
+                self._consistency_distance
+            ),
+            "invalid_depth_rate": (
+                self._invalid_depth_count / self._visible_point_count
+                if self._visible_point_count
+                else 0.0
+            ),
+            "visible_point_count": float(self._visible_point_count),
+        }
+
+    @staticmethod
+    def _mean(values: list[float]) -> float:
+        return sum(values) / len(values) if values else 0.0
+
+    def reset(self) -> None:
+        self._pose_reprojection: list[float] = []
+        self._consistency_distance: list[float] = []
+        self._invalid_depth_count = 0
+        self._visible_point_count = 0
+
+
+def gradient_finite_status(parameters: Iterable[nn.Parameter]) -> float:
+    """Return 1 only when a branch has gradients and all of them are finite."""
+    trainable = [parameter for parameter in parameters if parameter.requires_grad]
+    if not trainable or any(parameter.grad is None for parameter in trainable):
+        return 0.0
+    gradients = [cast(Tensor, parameter.grad) for parameter in trainable]
+    return float(all(bool(torch.isfinite(gradient).all()) for gradient in gradients))
+
+
+__all__ = [
+    "COURT_QUERY_RESULT_METRIC_NAMES",
+    "COURT_QUERY_TRAIN_DIAGNOSTIC_NAMES",
+    "CourtDetectionMetrics",
+    "CourtPoseMetrics",
+    "CourtQueryGeometryMetrics",
+    "gradient_finite_status",
+]

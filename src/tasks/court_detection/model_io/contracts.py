@@ -95,14 +95,35 @@ class CourtQueryTrainingCall:
     model_call: CourtQueryModelCall
     dense_targets: Mapping[CourtTargetKind, object]
     pose_target: CourtPoseTargetBatch
+    image_size: Tensor
     batch: Mapping[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class CourtQueryConsistencyResult:
+    """Typed auxiliary objective and geometry diagnostics for one batch."""
+
+    coordinate_loss: Tensor
+    cheirality_loss: Tensor
+    auxiliary_loss: Tensor
+    weighted_auxiliary_loss: Tensor
+    effective_weight: Tensor
+    visible_point_count: Tensor
+    mean_distance_px: Tensor
+    invalid_depth_rate: Tensor
+    dense_points_xy: Tensor
+    pose_points_xy: Tensor
+    pose_depth_m: Tensor
 
 
 @dataclass(frozen=True, slots=True)
 class CourtQueryTrainingResult:
     loss: Tensor
+    direct_dense_loss: Tensor
+    direct_pose_loss: Tensor
     dense_losses: Mapping[CourtTargetKind, Tensor]
     pose_losses: Mapping[str, Tensor]
+    consistency: CourtQueryConsistencyResult | None
     output: CourtQueryRawOutput
     decoded_pose: CourtDecodedPose
 
@@ -161,6 +182,7 @@ __all__ = [
     "CourtQueryDecodedOutput",
     "CourtQueryModelSpec",
     "CourtQueryPrediction",
+    "CourtQueryConsistencyResult",
     "CourtQueryTrainingCall",
     "CourtQueryTrainingResult",
     "CourtQueryRawOutput",

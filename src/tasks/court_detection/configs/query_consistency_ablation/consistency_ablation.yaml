@@ -1,0 +1,9 @@
+name: consistency_ablation
+order: 3
+conditions: [direct-all, joint-both, joint-stopgrad-pose, joint-stopgrad-dense]
+baseline: direct-all
+candidate: joint-both
+improvement_ratio: 0.05
+maximum_degradation_ratio: 0.05
+dense_absolute_tolerance: 0.01
+maximum_cost_overhead_ratio: 0.10

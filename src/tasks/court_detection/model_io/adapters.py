@@ -22,7 +22,9 @@ from src.tasks.court_detection.configuration import (
 from src.tasks.court_detection.data.augmentation import IMAGENET_MEAN, IMAGENET_STD
 from src.tasks.court_detection.data.contracts import CourtTargetKind
 from src.tasks.court_detection.geometry.pose import (
+    canonical_semantic_court_points_batched,
     decode_pose10d_strict,
+    project_predicted_canonical_points,
     validate_proper_rotation,
     validate_square_intrinsics,
 )
@@ -35,6 +37,7 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtModelIOError,
     CourtModelSpec,
     CourtPoseTargetBatch,
+    CourtQueryConsistencyResult,
     CourtQueryDecodedOutput,
     CourtQueryModelCall,
     CourtQueryModelSpec,
@@ -56,10 +59,13 @@ from src.tasks.court_detection.models.query_encoder.model import CourtQueryEncod
 from src.tasks.court_detection.training.losses import (
     BinaryDiceLoss,
     DiceLoss,
+    consistency_effective_weight,
+    query_keypoint_pose_consistency_loss,
     query_pose_losses,
 )
 from src.utils.data.heatmaps import (
     heatmaps_to_peaks,
+    heatmaps_to_soft_argmax,
     refine_peaks_log_parabolic,
 )
 from src.utils.models.loading import require_dinov3_patch_tokens
@@ -662,6 +668,15 @@ class CourtQueryModelIOAdapter(nn.Module):
             ),
             loss_config=loss_config.dense,
         )
+        self._consistency_instrumented: bool = bool(
+            loss_config.consistency.enabled
+            or loss_config.name == "query_direct_all_v1"
+        )
+
+    @property
+    def consistency_instrumented(self) -> bool:
+        """Whether this explicit route emits cross-branch loss/metrics."""
+        return self._consistency_instrumented
 
     @property
     def model_type(self) -> type[nn.Module]:
@@ -754,6 +769,10 @@ class CourtQueryModelIOAdapter(nn.Module):
             batch.get("pose_target"),
             batch_size=query_call.batch_size,
         )
+        image_size = self._validate_image_size(
+            batch.get("image_size"),
+            call=query_call,
+        )
         if not torch.equal(
             kp_target["physical_indices"][:, :, 0],
             pose_target.semantic_to_physical,
@@ -765,6 +784,7 @@ class CourtQueryModelIOAdapter(nn.Module):
             model_call=query_call,
             dense_targets=dense_call.targets,
             pose_target=pose_target,
+            image_size=image_size,
             batch=MappingProxyType(dict(batch)),
         )
 
@@ -772,6 +792,8 @@ class CourtQueryModelIOAdapter(nn.Module):
         self,
         output: CourtQueryRawOutput,
         call: CourtQueryTrainingCall,
+        *,
+        progress_fraction: float | None = None,
     ) -> CourtQueryTrainingResult:
         self.validate_output(output, call=call.model_call)
         dense_call = CourtTrainingCall(
@@ -791,12 +813,14 @@ class CourtQueryModelIOAdapter(nn.Module):
         )
         decoded_pose = decode_pose10d_strict(output.pose.values)
         pose_losses = query_pose_losses(decoded_pose, call.pose_target)
-        weighted_terms = [
+        weighted_dense_terms = [
             self.loss_config.dense_weights[kind] * loss
             for kind, loss in dense_result.losses.items()
         ]
+        direct_dense_loss = torch.stack(weighted_dense_terms).sum()
+        direct_pose_loss = direct_dense_loss.new_zeros(())
         if self.loss_config.pose.enabled:
-            weighted_terms.extend(
+            direct_pose_loss = torch.stack(
                 (
                     self.loss_config.pose.translation_weight
                     * pose_losses["pose_translation"],
@@ -804,17 +828,140 @@ class CourtQueryModelIOAdapter(nn.Module):
                     * pose_losses["pose_rotation"],
                     self.loss_config.pose.focal_weight * pose_losses["pose_focal"],
                 )
+            ).sum()
+        consistency_result: CourtQueryConsistencyResult | None = None
+        weighted_auxiliary = direct_dense_loss.new_zeros(())
+        if self.consistency_instrumented:
+            if progress_fraction is None:
+                raise CourtModelIOError(
+                    "Instrumented Court query loss requires an explicit progress fraction."
+                )
+            kp_logits = output.dense_logits["kp"]
+            valid_mask = self._valid_region_mask(
+                image_size=call.image_size,
+                logits=kp_logits,
             )
-        total = torch.stack(weighted_terms).sum()
+            normalized_dense = heatmaps_to_soft_argmax(
+                kp_logits,
+                temperature=self.loss_config.consistency.temperature,
+                valid_mask=valid_mask,
+            )
+            padded_height, padded_width = kp_logits.shape[-2:]
+            pixel_scale = kp_logits.new_tensor(
+                [float(padded_width - 1), float(padded_height - 1)]
+            )
+            dense_points_xy = normalized_dense * pixel_scale
+            canonical_points = canonical_semantic_court_points_batched(
+                call.pose_target.semantic_to_physical,
+                dtype=decoded_pose.translation_m.dtype,
+                device=decoded_pose.translation_m.device,
+            )
+            projection = project_predicted_canonical_points(
+                decoded_pose,
+                canonical_points,
+                call.pose_target.intrinsics[:, :2, 2],
+            )
+            kp_target = cast(Mapping[str, Tensor], call.dense_targets["kp"])
+            consistency = query_keypoint_pose_consistency_loss(
+                dense_points_xy,
+                projection.points_xy,
+                projection.depth_m,
+                call.image_size,
+                kp_target["point_visible"].squeeze(-1),
+                huber_delta=self.loss_config.consistency.huber_delta,
+                min_depth_m=self.loss_config.consistency.min_depth_m,
+                depth_scale_m=self.loss_config.consistency.depth_scale_m,
+                cheirality_weight=self.loss_config.consistency.cheirality_weight,
+                gradient_flow=self.loss_config.consistency.gradient_flow,
+            )
+            effective_weight = consistency_effective_weight(
+                weight=self.loss_config.consistency.weight,
+                warmup_fraction=self.loss_config.consistency.warmup_fraction,
+                progress=progress_fraction,
+            )
+            effective_weight_tensor = consistency.auxiliary.new_tensor(
+                effective_weight
+            )
+            weighted_auxiliary = consistency.auxiliary * effective_weight_tensor
+            consistency_result = CourtQueryConsistencyResult(
+                coordinate_loss=consistency.coordinate,
+                cheirality_loss=consistency.cheirality,
+                auxiliary_loss=consistency.auxiliary,
+                weighted_auxiliary_loss=weighted_auxiliary,
+                effective_weight=effective_weight_tensor,
+                visible_point_count=consistency.visible_point_count,
+                mean_distance_px=consistency.mean_distance_px,
+                invalid_depth_rate=consistency.invalid_depth_fraction,
+                dense_points_xy=dense_points_xy,
+                pose_points_xy=projection.points_xy,
+                pose_depth_m=projection.depth_m,
+            )
+        total = direct_dense_loss + direct_pose_loss + weighted_auxiliary
         return CourtQueryTrainingResult(
             loss=total,
+            direct_dense_loss=direct_dense_loss,
+            direct_pose_loss=direct_pose_loss,
             dense_losses=dense_result.losses,
             pose_losses=MappingProxyType(
                 pose_losses if self.loss_config.pose.enabled else {}
             ),
+            consistency=consistency_result,
             output=output,
             decoded_pose=decoded_pose,
         )
+
+    @staticmethod
+    def _valid_region_mask(*, image_size: Tensor, logits: Tensor) -> Tensor:
+        """Build the exact per-channel mask from strict unpadded ``(H,W)``."""
+        batch_size, channels, height, width = logits.shape
+        if image_size.shape != (batch_size, 2) or image_size.dtype != torch.long:
+            raise CourtModelIOError(
+                "Court image_size must be int64 with shape (B,2) in (H,W) order."
+            )
+        if image_size.device != logits.device:
+            raise CourtModelIOError(
+                "Court image_size and query logits must be on the same device."
+            )
+        if bool(torch.any(image_size <= 0)):
+            raise CourtModelIOError("Court image_size values must be positive.")
+        bounds = image_size.new_tensor([height, width])
+        if bool(torch.any(image_size > bounds)):
+            raise CourtModelIOError(
+                "Court image_size cannot exceed the query logits spatial bounds."
+            )
+        valid_y = torch.arange(height, device=logits.device)[None, :] < image_size[
+            :, 0:1
+        ]
+        valid_x = torch.arange(width, device=logits.device)[None, :] < image_size[
+            :, 1:2
+        ]
+        spatial = valid_y[:, :, None] & valid_x[:, None, :]
+        return spatial[:, None].expand(batch_size, channels, height, width)
+
+    @staticmethod
+    def _validate_image_size(
+        value: object,
+        *,
+        call: CourtQueryModelCall,
+    ) -> Tensor:
+        if not isinstance(value, Tensor):
+            raise CourtModelIOError("Court batch image_size must be a Tensor.")
+        if value.shape != (call.batch_size, 2) or value.dtype != torch.long:
+            raise CourtModelIOError(
+                "Court batch image_size must be int64 (B,2) in (H,W) order."
+            )
+        if value.device != call.images.device:
+            raise CourtModelIOError(
+                "Court batch image_size and images must be on the same device."
+            )
+        if bool(torch.any(value <= 0)):
+            raise CourtModelIOError("Court batch image_size values must be positive.")
+        bounds = value.new_tensor([call.height, call.width])
+        if bool(torch.any(value > bounds)):
+            raise CourtModelIOError(
+                "Court batch image_size cannot exceed the padded image bounds."
+            )
+        return value
 
     def test_payload(
         self,
