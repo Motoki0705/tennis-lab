@@ -110,6 +110,41 @@ body {
   color: var(--muted);
   margin-right: 2px;
 }
+.filters__tags {
+  flex: 0 0 auto;
+}
+.filters__tags[open] {
+  flex-basis: 100%;
+}
+.filters__tags-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+  user-select: none;
+}
+.filters__tags-toggle::-webkit-details-marker {
+  display: none;
+}
+.filters__tags-toggle::before {
+  content: "▸";
+  color: var(--muted);
+  font-size: 9px;
+  transition: transform 120ms ease;
+}
+.filters__tags[open] .filters__tags-toggle::before {
+  transform: rotate(90deg);
+}
+.filters__tags-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.filters__tags-toggle.chip--on .filters__tags-count {
+  color: inherit;
+}
+.filters__tags-options {
+  margin-top: 8px;
+}
 .chip {
   font-size: 11px;
   border: 1px solid var(--line);
