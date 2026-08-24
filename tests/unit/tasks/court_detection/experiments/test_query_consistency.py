@@ -11,6 +11,10 @@ from hydra import compose, initialize_config_dir
 from src.tasks.court_detection.experiments.query_consistency import (
     PHASE_ORDER,
     PYTHON_EXECUTABLE,
+    SHARED_DATA_ROOT,
+    SHARED_EXTERNAL_ASSET_ROOT,
+    V3_DERIVED_TARGET_ROOT,
+    V3_WORKSPACE_ROOT,
     QueryConsistencyAblationConfig,
     build_query_consistency_manifest,
 )
@@ -39,6 +43,11 @@ def test_manifest_is_deterministic_ordered_and_only_phase_one_is_ready() -> None
     assert sum(bool(run["queue_ready"]) for run in runs) == 12
     assert all(run["command_argv"] is None for run in runs[12:])
     assert all(run["profile_command_argv"] is None for run in runs[12:])
+    fixed_contract = cast(dict[str, object], first["fixed_contract"])
+    assert fixed_contract["data_root"] == SHARED_DATA_ROOT
+    assert fixed_contract["external_asset_root"] == SHARED_EXTERNAL_ASSET_ROOT
+    assert fixed_contract["derived_target_root"] == V3_DERIVED_TARGET_ROOT
+    assert fixed_contract["workspace_root"] == V3_WORKSPACE_ROOT
 
 
 def test_selection_resolution_exposes_exact_phase_counts_and_formal_order() -> None:
@@ -86,6 +95,10 @@ def test_queue_ready_argv_fixes_all_targets_auxiliary_and_evidence_paths() -> No
             "src.tasks.court_detection.scripts.train",
         ]
         assert "data/processing=all" in argv
+        assert f"paths.data_root={SHARED_DATA_ROOT}" in argv
+        assert f"paths.external_asset_root={SHARED_EXTERNAL_ASSET_ROOT}" in argv
+        assert f"data.source.workspace_root={V3_WORKSPACE_ROOT}" in argv
+        assert f"data.processing.derived_target_root={V3_DERIVED_TARGET_ROOT}" in argv
         assert "data/augmentation=pose_safe" in argv
         assert "model.heads.dense_targets=[kp,seg,line]" in argv
         assert "run.test_after_fit=true" in argv
@@ -100,3 +113,43 @@ def test_queue_ready_argv_fixes_all_targets_auxiliary_and_evidence_paths() -> No
 def test_depth_one_selection_fails_instead_of_substituting_dpt_architecture() -> None:
     with pytest.raises(ValueError, match="depth 1 cannot resolve"):
         _compose("consistency_ablation.selected.encoder_depth=1")
+
+
+@pytest.mark.parametrize(
+    "workspace_root",
+    (
+        "/tmp/scenes",
+        "../scenes",
+        "issue-779/scenes/../other",
+        "issue-779//scenes",
+        "issue-779/./scenes",
+    ),
+)
+def test_v3_workspace_requires_a_normalized_relative_descendant(
+    workspace_root: str,
+) -> None:
+    with pytest.raises(ValueError, match="normalized relative descendant"):
+        _compose(
+            f"consistency_ablation.composition.workspace_root={workspace_root}"
+        )
+
+
+def test_manifest_rejects_a_worktree_local_data_root() -> None:
+    with pytest.raises(
+        ValueError, match="shared declared data root|escapes its declared parent"
+    ):
+        _compose("paths.data_root=data")
+
+
+@pytest.mark.parametrize(
+    "derived_target_root",
+    ("/tmp/targets", "../targets", "court_detection/../targets"),
+)
+def test_v3_derived_store_requires_a_normalized_relative_descendant(
+    derived_target_root: str,
+) -> None:
+    with pytest.raises(ValueError, match="normalized relative descendant"):
+        _compose(
+            "consistency_ablation.composition.derived_target_root="
+            f"{derived_target_root}"
+        )
