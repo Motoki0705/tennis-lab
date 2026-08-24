@@ -10,6 +10,7 @@ from torch.utils.data import Dataset
 from src.tasks.base.data.canonical_tracking import validate_lifecycle_capacity
 from src.tasks.base.data.chunked_datamodule import BaseChunkedDataModule
 from src.tasks.base.data.datamodule import SceneDirectoryDataModule
+from src.tasks.base.generate_dataset import CAMERA_VIEW_V2_SELECTOR
 from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.data.chunk_manager import PLCSChunkManager
 from src.tasks.plcs.data.tracking_dataset import (
@@ -36,6 +37,15 @@ class PLCSTrackingDataModule(SceneDirectoryDataModule):
             split_file=split_file,
             config=self.plcs_runtime.raw,
             augment=augment,
+            reference_camera_id=(
+                self.plcs_runtime.data.evaluation_reference_camera_id
+                if (
+                    not augment
+                    and self.plcs_runtime.court_keypoint_contract.selector
+                    == CAMERA_VIEW_V2_SELECTOR
+                )
+                else None
+            ),
         )
 
     def _dataset_name(self) -> str:

@@ -3,17 +3,21 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
+from dataclasses import replace
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, Self, cast
 
 import numpy as np
 import torch
 from torch import Tensor, nn
 
+from src.tasks.base.data import ReferenceViewSelection, StableCameraIdTable
 from src.tasks.base.generate_dataset import (
+    CAMERA_VIEW_V2_SELECTOR,
     PHYSICAL_V1_SELECTOR,
     CourtKeypointContract,
     CourtReferenceFrameProvenance,
+    CourtViewRecord,
     build_physical_court_provenance,
 )
 from src.tasks.base.inference.predictor import BasePredictor
@@ -28,6 +32,7 @@ from src.tasks.plcs.model_io import (
     PLCSModelIOAdapter,
     PLCSPhysicalPrediction,
     PLCSPreparedBatch,
+    PLCSReferenceMetadata,
     PLCSStandardBoundModelIO,
     bind_plcs_model_io,
     prepare_plcs_checkpoint_court_keypoint_config,
@@ -64,7 +69,7 @@ class PLCSPredictor(BasePredictor):
     @property
     def input_profile(self) -> PLCSInputProfile:
         """Return the profile fixed by the checkpoint composition."""
-        return self.io_adapter.profile
+        return PLCSInputProfile(self.io_adapter.profile)
 
     def require_input_profile(self, profile: PLCSInputProfile | str) -> None:
         """Fail before assembly when a consumer needs another input profile."""
@@ -150,6 +155,11 @@ class PLCSPredictor(BasePredictor):
                 else None
             ),
             court_reference_provenance=decoded.court_reference_provenance,
+            reference_metadata=(
+                prepared.reference_metadata.cpu()
+                if prepared.reference_metadata is not None
+                else None
+            ),
         )
 
     def _physical_outputs(
@@ -192,6 +202,95 @@ class PLCSPredictor(BasePredictor):
             ),
         )
 
+    def _resolve_reference_provenance(
+        self,
+        provenance: CourtReferenceFrameProvenance
+        | Sequence[CourtReferenceFrameProvenance]
+        | None,
+        reference_metadata: PLCSReferenceMetadata | None,
+    ) -> (
+        CourtReferenceFrameProvenance
+        | tuple[CourtReferenceFrameProvenance, ...]
+        | None
+    ):
+        if reference_metadata is None:
+            if provenance is None or isinstance(
+                provenance,
+                CourtReferenceFrameProvenance,
+            ):
+                return provenance
+            return tuple(provenance)
+        if self.court_keypoint_contract.selector != CAMERA_VIEW_V2_SELECTOR:
+            raise ModelInputContractError(
+                "physical_v1 PLCS inference cannot consume reference metadata."
+            )
+        metadata_provenance = tuple(
+            selection.provenance for selection in reference_metadata.selections
+        )
+        if provenance is not None:
+            explicit = (
+                (provenance,)
+                if isinstance(provenance, CourtReferenceFrameProvenance)
+                else tuple(provenance)
+            )
+            if explicit != metadata_provenance:
+                raise ModelInputContractError(
+                    "PLCS provenance and typed reference metadata do not match."
+                )
+        return metadata_provenance
+
+    def _reference_metadata_for_scene(
+        self,
+        scene: object,
+        cameras: Sequence[int],
+        reference_camera_id: str | None,
+    ) -> PLCSReferenceMetadata | None:
+        if self.court_keypoint_contract.selector != CAMERA_VIEW_V2_SELECTOR:
+            return None
+        if reference_camera_id is None:
+            raise ModelInputContractError(
+                "camera_view_v2 scene prediction requires reference_camera_id."
+            )
+        scene_cameras = getattr(scene, "cameras", None)
+        if not isinstance(scene_cameras, Sequence):
+            raise ModelInputContractError("PLCS scene must expose a cameras sequence.")
+        selected_indices = (
+            tuple(cameras)
+            if self.input_profile is PLCSInputProfile.MULTIVIEW
+            else (cameras[0],)
+        )
+        complete_views = tuple(
+            getattr(camera, "court_view", None) for camera in scene_cameras
+        )
+        if any(not isinstance(view, CourtViewRecord) for view in complete_views):
+            raise ModelInputContractError(
+                "camera_view_v2 scene cameras require typed CourtKP20 metadata."
+            )
+        typed_complete = cast("tuple[CourtViewRecord, ...]", complete_views)
+        selected_views = tuple(typed_complete[index] for index in selected_indices)
+        try:
+            table = StableCameraIdTable.from_complete_scene_camera_ids(
+                tuple(view.camera_id for view in typed_complete)
+            )
+            selection = ReferenceViewSelection.create(
+                stable_camera_id_table=table,
+                selected_views=selected_views,
+                reference_camera_id=reference_camera_id,
+            )
+        except ValueError as error:
+            raise ModelInputContractError(str(error)) from error
+        fields = selection.to_tensor_fields(dtype=torch.float32)
+        forward = fields["reference_from_physical"].unsqueeze(0)
+        return PLCSReferenceMetadata(
+            selections=(selection,),
+            stable_camera_id_tables=(table,),
+            reference_view_index=fields["reference_view_index"].unsqueeze(0),
+            view_camera_ids=fields["view_camera_ids"].unsqueeze(0),
+            reference_camera_id=fields["reference_camera_id"].unsqueeze(0),
+            reference_from_physical=forward,
+            physical_from_reference=forward.transpose(-1, -2),
+        )
+
     def predict(
         self,
         human_kp: Tensor,
@@ -201,12 +300,18 @@ class PLCSPredictor(BasePredictor):
         court_vis: Tensor,
         *,
         denormalize: bool,
-        court_reference_provenance: CourtReferenceFrameProvenance | None = None,
+        court_reference_provenance: CourtReferenceFrameProvenance
+        | Sequence[CourtReferenceFrameProvenance]
+        | None = None,
         court_keypoint_metadata: dict[str, object] | None = None,
+        reference_metadata: PLCSReferenceMetadata | None = None,
     ) -> dict[str, Tensor]:
         """Validate, invoke, and decode caller-provided model-ready tensors."""
         with torch.no_grad():
-            effective_provenance = court_reference_provenance
+            effective_provenance = self._resolve_reference_provenance(
+                court_reference_provenance,
+                reference_metadata,
+            )
             if (
                 effective_provenance is None
                 and self.court_keypoint_contract.selector == PHYSICAL_V1_SELECTOR
@@ -228,9 +333,13 @@ class PLCSPredictor(BasePredictor):
                 ),
                 court_reference_provenance=(
                     (effective_provenance,)
-                    if effective_provenance is not None
-                    else None
+                    if isinstance(
+                        effective_provenance,
+                        CourtReferenceFrameProvenance,
+                    )
+                    else effective_provenance
                 ),
+                reference_metadata=reference_metadata,
             )
             decoded = self._run_prepared(prepared)
             result = {
@@ -262,12 +371,18 @@ class PLCSPredictor(BasePredictor):
     ) -> PLCSDecodedPrediction:
         """Assemble and predict one loaded PLCS scene through the adapter."""
         with torch.no_grad():
+            prepared = self.io_adapter.prepare_scene(
+                scene,
+                cameras,
+                reference_camera_id=reference_camera_id,
+            )
+            reference_metadata = self._reference_metadata_for_scene(
+                scene,
+                cameras,
+                reference_camera_id,
+            )
             return self._run_prepared(
-                self.io_adapter.prepare_scene(
-                    scene,
-                    cameras,
-                    reference_camera_id=reference_camera_id,
-                )
+                replace(prepared, reference_metadata=reference_metadata)
             )
 
     def predict_multiview_observations(
@@ -278,22 +393,44 @@ class PLCSPredictor(BasePredictor):
         human_vis: np.ndarray,
         padding_mask: np.ndarray,
         court_vis: np.ndarray,
-        court_reference_provenance: CourtReferenceFrameProvenance | None = None,
+        court_reference_provenance: CourtReferenceFrameProvenance
+        | Sequence[CourtReferenceFrameProvenance]
+        | None = None,
         court_keypoint_metadata: dict[str, object] | None = None,
+        reference_metadata: PLCSReferenceMetadata | None = None,
     ) -> PLCSPhysicalPrediction:
         """Decode explicit NumPy ``(B,V,T,...)`` observations to physical units."""
         with torch.no_grad():
-            prepared = self.io_adapter.prepare_multiview_observations(
-                human_kp=human_kp,
-                court_kp=court_kp,
-                human_vis=human_vis,
-                padding_mask=padding_mask,
-                court_vis=court_vis,
-                court_keypoint_metadata=(
-                    court_keypoint_metadata
-                ),
-                court_reference_provenance=court_reference_provenance,
+            effective_provenance = self._resolve_reference_provenance(
+                court_reference_provenance,
+                reference_metadata,
             )
+            prepare_arguments: dict[str, Any] = {
+                "human_kp": human_kp,
+                "court_kp": court_kp,
+                "human_vis": human_vis,
+                "padding_mask": padding_mask,
+                "court_vis": court_vis,
+                "court_keypoint_metadata": court_keypoint_metadata,
+                "court_reference_provenance": effective_provenance,
+            }
+            prepared = self.io_adapter.prepare_multiview_observations(
+                **prepare_arguments,
+            )
+            if reference_metadata is not None:
+                metadata_provenance = tuple(
+                    selection.provenance
+                    for selection in reference_metadata.selections
+                )
+                if prepared.court_reference_provenance != metadata_provenance:
+                    raise ModelInputContractError(
+                        "PLCS multiview provenance and typed reference metadata "
+                        "do not match."
+                    )
+                prepared = replace(
+                    prepared,
+                    reference_metadata=reference_metadata,
+                )
             decoded = self._run_prepared(prepared)
             position_physical, heading_physical = self._physical_outputs(
                 decoded.position,
@@ -318,6 +455,7 @@ class PLCSPredictor(BasePredictor):
                     else None
                 ),
                 court_reference_provenance=decoded.court_reference_provenance,
+                reference_metadata=decoded.reference_metadata,
             )
 
 

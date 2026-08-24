@@ -4,10 +4,17 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
 
+from src.tasks.base.evaluation import (
+    PairedReferencePositionMetrics,
+    compute_heading_error_radians,
+    compute_paired_reference_position_metrics,
+    compute_reference_transform_consistency_error,
+)
 from src.tasks.base.generate_dataset import CourtReferenceFrameProvenance
 from src.tasks.plcs.court_keypoint_contract import (
     headings_target_to_physical,
@@ -61,6 +68,98 @@ def _physical_metric_values(
     )
 
 
+@dataclass(frozen=True, slots=True)
+class PLCSReferenceMetricEvidence:
+    """Counterfactual-ready target-frame PLCS evaluation evidence."""
+
+    position: PairedReferencePositionMetrics
+    heading_error_radians: float
+
+    def to_flat_dict(self) -> dict[str, float]:
+        """Return stable scalar names, including local-reference strata."""
+        axis = self.position.axis_wise_position_error
+        result = {
+            "y_sign_accuracy": self.position.y_sign_accuracy,
+            "x_error_m": axis.x,
+            "y_error_m": axis.y,
+            "z_error_m": axis.z,
+            "heading_error_deg": self.heading_error_radians * 180.0 / math.pi,
+        }
+        result.update(
+            {
+                f"reference_index_{index}_position_error_m": value
+                for index, value in self.position.local_reference_index_error.items()
+            }
+        )
+        return result
+
+
+@dataclass(frozen=True, slots=True)
+class PLCSReferenceTransformConsistency:
+    """Physical-frame disagreement between opposite-reference predictions."""
+
+    position_error_m: float
+    heading_error_radians: float
+
+
+def compute_plcs_reference_metric_evidence(
+    prediction_position_m: Tensor,
+    prediction_heading: Tensor,
+    target_position_m: Tensor,
+    target_heading: Tensor,
+    reference_view_index: Tensor,
+    *,
+    valid_mask: Tensor | None = None,
+    y_zero_tolerance_m: float = 0.0,
+) -> PLCSReferenceMetricEvidence:
+    """Compute PLCS position, Y-sign, heading, and local-index evidence."""
+    return PLCSReferenceMetricEvidence(
+        position=compute_paired_reference_position_metrics(
+            prediction_position_m,
+            target_position_m,
+            reference_view_index,
+            valid_mask=valid_mask,
+            zero_tolerance=y_zero_tolerance_m,
+        ),
+        heading_error_radians=compute_heading_error_radians(
+            prediction_heading,
+            target_heading,
+            valid_mask=valid_mask,
+        ),
+    )
+
+
+def compute_plcs_reference_transform_consistency(
+    first_position_m: Tensor,
+    first_heading: Tensor,
+    first_provenance: CourtReferenceFrameProvenance,
+    second_position_m: Tensor,
+    second_heading: Tensor,
+    second_provenance: CourtReferenceFrameProvenance,
+    *,
+    valid_mask: Tensor | None = None,
+) -> PLCSReferenceTransformConsistency:
+    """Compare paired PLCS outputs after authoritative physical restoration."""
+    return PLCSReferenceTransformConsistency(
+        position_error_m=compute_reference_transform_consistency_error(
+            first_position_m,
+            first_provenance,
+            second_position_m,
+            second_provenance,
+            quantity="point",
+            valid_mask=valid_mask,
+        ),
+        heading_error_radians=compute_reference_transform_consistency_error(
+            first_heading,
+            first_provenance,
+            second_heading,
+            second_provenance,
+            quantity="heading",
+            valid_mask=valid_mask,
+        ),
+    )
+
+
 class PLCSMetrics:
     """Compute and track PLCS evaluation metrics.
 
@@ -109,6 +208,7 @@ class PLCSMetrics:
             CourtReferenceFrameProvenance
         ]
         | None = None,
+        reference_view_index: Tensor | None = None,
     ) -> dict[str, float]:
         """Update metrics with new predictions.
 
@@ -122,6 +222,33 @@ class PLCSMetrics:
             dict: Current batch metrics.
 
         """
+        reference_metrics: dict[str, float] = {}
+        reference_pred_position = denormalize_court_position(pred_position)
+        reference_target_position = denormalize_court_position(target_position)
+        if not isinstance(reference_pred_position, Tensor) or not isinstance(
+            reference_target_position, Tensor
+        ):
+            raise TypeError("PLCS metric denormalization must preserve tensors.")
+        frame_valid: Tensor | None = None
+        if padding_mask is not None:
+            frame_padding = (
+                padding_mask.all(dim=1)
+                if padding_mask.ndim == 3
+                else padding_mask
+            )
+            frame_valid = ~frame_padding
+        if reference_view_index is not None and (
+            frame_valid is None or bool(frame_valid.any().item())
+        ):
+            reference_metrics = compute_plcs_reference_metric_evidence(
+                reference_pred_position,
+                pred_rotation,
+                reference_target_position,
+                target_rotation,
+                reference_view_index,
+                valid_mask=frame_valid,
+            ).to_flat_dict()
+
         positions_are_meters = court_reference_provenance is not None
         if court_reference_provenance is not None:
             pred_position, pred_rotation = _physical_metric_values(
@@ -135,14 +262,7 @@ class PLCSMetrics:
                 court_reference_provenance,
             )
 
-        valid = None
-        if padding_mask is not None:
-            frame_padding = (
-                padding_mask.all(dim=1)
-                if padding_mask.ndim == 3
-                else padding_mask
-            )
-            valid = (~frame_padding).reshape(-1)
+        valid = frame_valid.reshape(-1) if frame_valid is not None else None
 
         # Flatten temporal dimension if present: (B, T, D) -> (B*T, D)
         if pred_position.dim() == 3:
@@ -203,6 +323,7 @@ class PLCSMetrics:
             "x_error_m": x_error.mean().item(),
             "y_error_m": y_error.mean().item(),
             "z_error_m": z_error.mean().item(),
+            **reference_metrics,
         }
 
     def compute(self) -> dict[str, float]:
@@ -265,3 +386,12 @@ class PLCSMetrics:
             "angle_accuracy_15deg": angle_acc_15deg,
             "angle_accuracy_30deg": angle_acc_30deg,
         }
+
+
+__all__ = [
+    "PLCSMetrics",
+    "PLCSReferenceMetricEvidence",
+    "PLCSReferenceTransformConsistency",
+    "compute_plcs_reference_metric_evidence",
+    "compute_plcs_reference_transform_consistency",
+]

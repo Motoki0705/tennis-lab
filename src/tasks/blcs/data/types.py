@@ -10,6 +10,7 @@ from typing import Any, NotRequired, TypedDict
 
 import torch
 
+from src.tasks.base.data import ReferenceViewSelection, StableCameraIdTable
 from src.tasks.base.generate_dataset import CourtReferenceFrameProvenance
 
 
@@ -79,6 +80,16 @@ class BLCSMultiViewSample(TypedDict):
     camera_w: torch.Tensor  # (N_cam,) image width
     camera_h: torch.Tensor  # (N_cam,) image height
     court_reference_provenance: CourtReferenceFrameProvenance
+    selected_camera_ids: tuple[str, ...]
+    reference_view_selection: NotRequired[ReferenceViewSelection]
+    stable_camera_id_table: NotRequired[StableCameraIdTable]
+    reference_camera_id_string: NotRequired[str]
+    reference_view_index: NotRequired[torch.Tensor]  # scalar int64
+    view_camera_ids: NotRequired[torch.Tensor]  # (N_cam,) int64
+    reference_camera_id: NotRequired[torch.Tensor]  # scalar int64
+    reference_from_physical: NotRequired[torch.Tensor]  # (3,3)
+    physical_from_reference: NotRequired[torch.Tensor]  # (3,3)
+    track_query_reference: NotRequired[dict[str, object]]
 
 
 class BLCSMultiViewBatch(TypedDict):
@@ -103,6 +114,16 @@ class BLCSMultiViewBatch(TypedDict):
     camera_w: torch.Tensor  # (B, N_max)
     camera_h: torch.Tensor  # (B, N_max)
     court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...]
+    selected_camera_ids: tuple[tuple[str, ...], ...]
+    reference_view_selection: NotRequired[tuple[ReferenceViewSelection, ...]]
+    stable_camera_id_table: NotRequired[tuple[StableCameraIdTable, ...]]
+    reference_camera_id_string: NotRequired[tuple[str, ...]]
+    reference_view_index: NotRequired[torch.Tensor]  # (B,) int64
+    view_camera_ids: NotRequired[torch.Tensor]  # (B,N_max) int64; -1 padding
+    reference_camera_id: NotRequired[torch.Tensor]  # (B,) int64
+    reference_from_physical: NotRequired[torch.Tensor]  # (B,3,3)
+    physical_from_reference: NotRequired[torch.Tensor]  # (B,3,3)
+    track_query_reference: NotRequired[dict[str, object]]
 
 
 @dataclass(frozen=True)

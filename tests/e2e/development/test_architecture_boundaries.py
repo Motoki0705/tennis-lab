@@ -187,6 +187,36 @@ EXPECTED_DIRECT_FORWARD_VALIDATION_BOUNDARIES = {
         "Python raise",
     ): 1,
     (
+        "src.tasks.blcs.models.blcs_track_query_reference_model."
+        "BLCSTrackQueryReferenceModel.build_spatial_coordinates",
+        "Python raise",
+    ): 1,
+    (
+        "src.tasks.blcs.models.blcs_track_query_reference_ablation_model."
+        "BLCSTrackQueryReferenceAblationModel.build_spatial_coordinates",
+        "Python raise",
+    ): 2,
+    (
+        "src.tasks.plcs.models.plcs_track_query_reference_model."
+        "PLCSTrackQueryReferenceModel.build_spatial_coordinates",
+        "Python raise",
+    ): 1,
+    (
+        "src.tasks.plcs.models.plcs_track_query_reference_model."
+        "PLCSTrackQueryReferenceModel.forward",
+        "forward validation helper validate_reference_context_mask",
+    ): 1,
+    (
+        "src.tasks.plcs.models.plcs_track_query_reference_ablation_model."
+        "PLCSTrackQueryReferenceAblationModel.build_spatial_coordinates",
+        "Python raise",
+    ): 2,
+    (
+        "src.tasks.plcs.models.plcs_track_query_reference_ablation_model."
+        "PLCSTrackQueryReferenceAblationModel.forward",
+        "forward validation helper validate_reference_context_mask",
+    ): 1,
+    (
         "src.utils.models.architectures.transformer_sequence_discriminator."
         "TransformerSequenceDiscriminator.forward",
         "Python raise",
@@ -255,6 +285,8 @@ BLCS_MULTIVIEW_OUTPUT_MASK_PATH = (
 )
 BLCS_FIXED_QUERY_MASK_PATH = (
     "src.tasks.blcs.models.blcs_track_query_model.BLCSTrackQueryModel.forward",
+    "src.tasks.blcs.models.blcs_track_query_model."
+    "BLCSTrackQueryModel._forward_with_spatial_coordinates",
     "src.utils.models.multiview_padding.build_fixed_query_padding_masks",
 )
 BLCS_ABLATION_FORWARD = (
@@ -268,11 +300,15 @@ BLCS_ABLATION_SPATIAL_COORDINATE_VALIDATION_PATH = (
 )
 BLCS_ABLATION_COMPRESSED_SPATIAL_MASK_PATH = (
     BLCS_ABLATION_FORWARD,
+    "src.tasks.blcs.models.blcs_track_query_ablation_model."
+    "BLCSTrackQueryAblationModel._forward_with_spatial_coordinates",
     "src.utils.models.multiview_padding."
     "build_compressed_spatial_attention_keep_mask",
 )
 BLCS_ABLATION_FIXED_QUERY_MASK_PATH = (
     BLCS_ABLATION_FORWARD,
+    "src.tasks.blcs.models.blcs_track_query_ablation_model."
+    "BLCSTrackQueryAblationModel._forward_with_spatial_coordinates",
     "src.utils.models.multiview_padding.build_fixed_query_padding_masks",
 )
 PLCS_SPATIAL_COORDINATE_VALIDATION_PATH = (
@@ -282,6 +318,8 @@ PLCS_SPATIAL_COORDINATE_VALIDATION_PATH = (
 )
 PLCS_FIXED_QUERY_MASK_PATH = (
     "src.tasks.plcs.models.plcs_track_query_model.PLCSTrackQueryModel.forward",
+    "src.tasks.plcs.models.plcs_track_query_model."
+    "PLCSTrackQueryModel._forward_with_spatial_coordinates",
     "src.utils.models.multiview_padding.build_fixed_query_padding_masks",
 )
 PLCS_ABLATION_FORWARD = (
@@ -295,12 +333,91 @@ PLCS_ABLATION_SPATIAL_COORDINATE_VALIDATION_PATH = (
 )
 PLCS_ABLATION_COMPRESSED_SPATIAL_MASK_PATH = (
     PLCS_ABLATION_FORWARD,
+    "src.tasks.plcs.models.plcs_track_query_ablation_model."
+    "PLCSTrackQueryAblationModel._forward_with_spatial_coordinates",
     "src.utils.models.multiview_padding."
     "build_compressed_spatial_attention_keep_mask",
 )
 PLCS_ABLATION_FIXED_QUERY_MASK_PATH = (
     PLCS_ABLATION_FORWARD,
+    "src.tasks.plcs.models.plcs_track_query_ablation_model."
+    "PLCSTrackQueryAblationModel._forward_with_spatial_coordinates",
     "src.utils.models.multiview_padding.build_fixed_query_padding_masks",
+)
+REFERENCE_COORDINATE_BUILDER_SUFFIX = (
+    "src.tasks.base.models.track_query_reference."
+    "build_full_track_query_spatial_coordinates",
+    "src.tasks.base.models.track_query_reference."
+    "build_track_query_spatial_coordinates",
+)
+REFERENCE_INDEX_VALIDATION = (
+    "src.tasks.base.data.track_query_reference.validate_reference_view_index"
+)
+REFERENCE_POSITIVE_INT_VALIDATION = (
+    "src.tasks.base.models.track_query_reference._require_positive_int"
+)
+REFERENCE_CONTEXT_VALIDATION = (
+    "src.tasks.base.models.track_query_reference.validate_reference_context_mask"
+)
+BLCS_REFERENCE_FORWARD = (
+    "src.tasks.blcs.models.blcs_track_query_reference_model."
+    "BLCSTrackQueryReferenceModel.forward"
+)
+BLCS_REFERENCE_SPATIAL_PATH = (
+    BLCS_REFERENCE_FORWARD,
+    "src.tasks.blcs.models.blcs_track_query_reference_model."
+    "BLCSTrackQueryReferenceModel.build_spatial_coordinates",
+)
+BLCS_REFERENCE_BUILDER_PATH = (
+    *BLCS_REFERENCE_SPATIAL_PATH,
+    *REFERENCE_COORDINATE_BUILDER_SUFFIX,
+)
+BLCS_REFERENCE_ABLATION_FORWARD = (
+    "src.tasks.blcs.models.blcs_track_query_reference_ablation_model."
+    "BLCSTrackQueryReferenceAblationModel.forward"
+)
+BLCS_REFERENCE_ABLATION_SPATIAL_PATH = (
+    BLCS_REFERENCE_ABLATION_FORWARD,
+    "src.tasks.blcs.models.blcs_track_query_reference_ablation_model."
+    "BLCSTrackQueryReferenceAblationModel.build_spatial_coordinates",
+)
+BLCS_REFERENCE_ABLATION_BUILDER_PATH = (
+    *BLCS_REFERENCE_ABLATION_SPATIAL_PATH,
+    *REFERENCE_COORDINATE_BUILDER_SUFFIX,
+)
+PLCS_REFERENCE_FORWARD = (
+    "src.tasks.plcs.models.plcs_track_query_reference_model."
+    "PLCSTrackQueryReferenceModel.forward"
+)
+PLCS_REFERENCE_CONTEXT_PATH = (
+    PLCS_REFERENCE_FORWARD,
+    REFERENCE_CONTEXT_VALIDATION,
+)
+PLCS_REFERENCE_SPATIAL_PATH = (
+    PLCS_REFERENCE_FORWARD,
+    "src.tasks.plcs.models.plcs_track_query_reference_model."
+    "PLCSTrackQueryReferenceModel.build_spatial_coordinates",
+)
+PLCS_REFERENCE_BUILDER_PATH = (
+    *PLCS_REFERENCE_SPATIAL_PATH,
+    *REFERENCE_COORDINATE_BUILDER_SUFFIX,
+)
+PLCS_REFERENCE_ABLATION_FORWARD = (
+    "src.tasks.plcs.models.plcs_track_query_reference_ablation_model."
+    "PLCSTrackQueryReferenceAblationModel.forward"
+)
+PLCS_REFERENCE_ABLATION_CONTEXT_PATH = (
+    PLCS_REFERENCE_ABLATION_FORWARD,
+    REFERENCE_CONTEXT_VALIDATION,
+)
+PLCS_REFERENCE_ABLATION_SPATIAL_PATH = (
+    PLCS_REFERENCE_ABLATION_FORWARD,
+    "src.tasks.plcs.models.plcs_track_query_reference_ablation_model."
+    "PLCSTrackQueryReferenceAblationModel.build_spatial_coordinates",
+)
+PLCS_REFERENCE_ABLATION_BUILDER_PATH = (
+    *PLCS_REFERENCE_ABLATION_SPATIAL_PATH,
+    *REFERENCE_COORDINATE_BUILDER_SUFFIX,
 )
 SLCS_MASK_PATH = (
     "src.tasks.slcs.models.slcs_model.SLCSFusionModel.forward",
@@ -428,6 +545,102 @@ EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES_BY_PATH = {
         "Python raise": 6,
         "Python shape/value validation branch": 4,
         "runtime implementation/type selection via isinstance": 1,
+        "runtime implementation/type selection via type": 1,
+    },
+    BLCS_REFERENCE_SPATIAL_PATH: {"Python raise": 1},
+    BLCS_REFERENCE_BUILDER_PATH: {
+        "Python raise": 4,
+        "Python shape/value validation branch": 3,
+        "forward validation helper _require_positive_int": 2,
+        "forward validation helper validate_reference_view_index": 1,
+        "runtime implementation/type selection via isinstance": 2,
+    },
+    (*BLCS_REFERENCE_BUILDER_PATH, REFERENCE_INDEX_VALIDATION): {
+        "Python raise": 6,
+        "Python shape/value validation branch": 2,
+        "runtime implementation/type selection via isinstance": 1,
+    },
+    (*BLCS_REFERENCE_BUILDER_PATH, REFERENCE_POSITIVE_INT_VALIDATION): {
+        "Python raise": 1,
+        "Python shape/value validation branch": 1,
+        "runtime implementation/type selection via type": 1,
+    },
+    BLCS_REFERENCE_ABLATION_SPATIAL_PATH: {"Python raise": 2},
+    BLCS_REFERENCE_ABLATION_BUILDER_PATH: {
+        "Python raise": 4,
+        "Python shape/value validation branch": 3,
+        "forward validation helper _require_positive_int": 2,
+        "forward validation helper validate_reference_view_index": 1,
+        "runtime implementation/type selection via isinstance": 2,
+    },
+    (*BLCS_REFERENCE_ABLATION_BUILDER_PATH, REFERENCE_INDEX_VALIDATION): {
+        "Python raise": 6,
+        "Python shape/value validation branch": 2,
+        "runtime implementation/type selection via isinstance": 1,
+    },
+    (
+        *BLCS_REFERENCE_ABLATION_BUILDER_PATH,
+        REFERENCE_POSITIVE_INT_VALIDATION,
+    ): {
+        "Python raise": 1,
+        "Python shape/value validation branch": 1,
+        "runtime implementation/type selection via type": 1,
+    },
+    (PLCS_REFERENCE_FORWARD,): {
+        "forward validation helper validate_reference_context_mask": 1,
+    },
+    PLCS_REFERENCE_CONTEXT_PATH: {
+        "Python raise": 9,
+        "Python shape/value validation branch": 4,
+        "forward validation helper validate_reference_view_index": 1,
+        "runtime implementation/type selection via isinstance": 2,
+    },
+    (*PLCS_REFERENCE_CONTEXT_PATH, REFERENCE_INDEX_VALIDATION): {
+        "Python raise": 6,
+        "Python shape/value validation branch": 2,
+        "runtime implementation/type selection via isinstance": 1,
+    },
+    PLCS_REFERENCE_SPATIAL_PATH: {"Python raise": 1},
+    PLCS_REFERENCE_BUILDER_PATH: {
+        "Python raise": 4,
+        "Python shape/value validation branch": 3,
+        "forward validation helper _require_positive_int": 2,
+        "forward validation helper validate_reference_view_index": 1,
+        "runtime implementation/type selection via isinstance": 2,
+    },
+    (*PLCS_REFERENCE_BUILDER_PATH, REFERENCE_POSITIVE_INT_VALIDATION): {
+        "Python raise": 1,
+        "Python shape/value validation branch": 1,
+        "runtime implementation/type selection via type": 1,
+    },
+    (PLCS_REFERENCE_ABLATION_FORWARD,): {
+        "forward validation helper validate_reference_context_mask": 1,
+    },
+    PLCS_REFERENCE_ABLATION_CONTEXT_PATH: {
+        "Python raise": 9,
+        "Python shape/value validation branch": 4,
+        "forward validation helper validate_reference_view_index": 1,
+        "runtime implementation/type selection via isinstance": 2,
+    },
+    (*PLCS_REFERENCE_ABLATION_CONTEXT_PATH, REFERENCE_INDEX_VALIDATION): {
+        "Python raise": 6,
+        "Python shape/value validation branch": 2,
+        "runtime implementation/type selection via isinstance": 1,
+    },
+    PLCS_REFERENCE_ABLATION_SPATIAL_PATH: {"Python raise": 2},
+    PLCS_REFERENCE_ABLATION_BUILDER_PATH: {
+        "Python raise": 4,
+        "Python shape/value validation branch": 3,
+        "forward validation helper _require_positive_int": 2,
+        "forward validation helper validate_reference_view_index": 1,
+        "runtime implementation/type selection via isinstance": 2,
+    },
+    (
+        *PLCS_REFERENCE_ABLATION_BUILDER_PATH,
+        REFERENCE_POSITIVE_INT_VALIDATION,
+    ): {
+        "Python raise": 1,
+        "Python shape/value validation branch": 1,
         "runtime implementation/type selection via type": 1,
     },
     SLCS_MASK_PATH: {

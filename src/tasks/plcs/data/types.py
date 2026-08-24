@@ -6,10 +6,14 @@ for metadata, ensuring type safety throughout the PLCS pipeline.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, TypedDict
+from typing import Any, NotRequired, TypedDict
 
 import torch
+
+from src.tasks.base.data import ReferenceViewSelection, StableCameraIdTable
+from src.tasks.base.generate_dataset import CourtReferenceFrameProvenance
 
 
 class PLCSBatch(TypedDict):
@@ -42,6 +46,20 @@ class PLCSBatch(TypedDict):
     camera_cy: torch.Tensor
     camera_w: torch.Tensor
     camera_h: torch.Tensor
+    court_keypoint_metadata: NotRequired[tuple[Mapping[str, object], ...]]
+    court_reference_provenance: NotRequired[
+        tuple[CourtReferenceFrameProvenance, ...]
+    ]
+    selected_camera_ids: NotRequired[tuple[tuple[str, ...], ...]]
+    reference_view_selection: NotRequired[tuple[ReferenceViewSelection, ...]]
+    stable_camera_id_table: NotRequired[tuple[StableCameraIdTable, ...]]
+    reference_camera_id_string: NotRequired[tuple[str, ...]]
+    reference_view_index: NotRequired[torch.Tensor]
+    view_camera_ids: NotRequired[torch.Tensor]
+    reference_camera_id: NotRequired[torch.Tensor]
+    reference_from_physical: NotRequired[torch.Tensor]
+    physical_from_reference: NotRequired[torch.Tensor]
+    track_query_reference: NotRequired[Mapping[str, object]]
 
 
 @dataclass(frozen=True)

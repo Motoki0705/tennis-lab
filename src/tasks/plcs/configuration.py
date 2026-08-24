@@ -301,7 +301,72 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "cswa",
         }
     ),
+    "plcs_track_query_reference": frozenset(
+        {
+            "name",
+            "hidden_dim",
+            "num_heads",
+            "ffn_dim",
+            "num_queries",
+            "num_stages",
+            "num_joints",
+            "rope_dim",
+            "rope_theta",
+            "ffn_type",
+            "dropout",
+            "invisible_init_std",
+            "target_frame_contract",
+            "track_query_rope_contract",
+            "reference_selector_mode",
+            "mhc",
+            "cswa",
+        }
+    ),
+    "plcs_track_query_reference_ablation": frozenset(
+        {
+            "name",
+            "hidden_dim",
+            "num_heads",
+            "ffn_dim",
+            "num_queries",
+            "num_stages",
+            "num_joints",
+            "rope_dim",
+            "rope_theta",
+            "ffn_type",
+            "dropout",
+            "invisible_init_std",
+            "target_frame_contract",
+            "track_query_rope_contract",
+            "reference_selector_mode",
+            "ffn_mode",
+            "mhc_writeback",
+            "mhc",
+            "cswa",
+        }
+    ),
 }
+
+_TRACK_QUERY_MODEL_NAMES = frozenset(
+    {
+        "plcs_track_query",
+        "plcs_track_query_ablation",
+        "plcs_track_query_reference",
+        "plcs_track_query_reference_ablation",
+    }
+)
+_REFERENCE_TRACK_QUERY_MODEL_NAMES = frozenset(
+    {
+        "plcs_track_query_reference",
+        "plcs_track_query_reference_ablation",
+    }
+)
+_TRACK_QUERY_ABLATION_MODEL_NAMES = frozenset(
+    {
+        "plcs_track_query_ablation",
+        "plcs_track_query_reference_ablation",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -371,6 +436,8 @@ class PLCSModelConfig:
             "plcs_multiview_axial_camtoken": "multiview",
             "plcs_track_query": None,
             "plcs_track_query_ablation": None,
+            "plcs_track_query_reference": None,
+            "plcs_track_query_reference_ablation": None,
         }[name]
         if input_profile != expected_profile:
             raise SemanticConfigurationError(
@@ -464,7 +531,7 @@ class PLCSModelConfig:
             )
         track_query_mhc: PLCSTrackQueryMHCConfig | None = None
         track_query_cswa: PLCSTrackQueryCSWAConfig | None = None
-        if name in {"plcs_track_query", "plcs_track_query_ablation"}:
+        if name in _TRACK_QUERY_MODEL_NAMES:
             num_stages = _integer(mapping, "num_stages", path="model")
             if num_stages % 4 != 0:
                 raise SemanticConfigurationError(
@@ -541,7 +608,49 @@ class PLCSModelConfig:
                 raise SemanticConfigurationError(
                     "model.cswa.window_radius must be non-negative."
                 )
-            if name == "plcs_track_query_ablation":
+            if name in _REFERENCE_TRACK_QUERY_MODEL_NAMES:
+                target_frame_contract = _string(
+                    mapping, "target_frame_contract", path="model"
+                )
+                if target_frame_contract != "reference_camera_court_rzpi_v1":
+                    raise SemanticConfigurationError(
+                        "model.target_frame_contract must be "
+                        "'reference_camera_court_rzpi_v1' for reference track-query models."
+                    )
+                track_query_rope_contract = _string(
+                    mapping, "track_query_rope_contract", path="model"
+                )
+                if (
+                    track_query_rope_contract
+                    != "time_camera_reference_selector_v1"
+                ):
+                    raise SemanticConfigurationError(
+                        "model.track_query_rope_contract must be "
+                        "'time_camera_reference_selector_v1' for reference "
+                        "track-query models."
+                    )
+                selector_mode = _string(
+                    mapping, "reference_selector_mode", path="model"
+                )
+                if selector_mode not in {"reference", "selector_zero"}:
+                    raise SemanticConfigurationError(
+                        "model.reference_selector_mode must be 'reference' or "
+                        "'selector_zero'."
+                    )
+                if rope_dim < 6:
+                    raise SemanticConfigurationError(
+                        "Reference track-query model.rope_dim must be at least 6 "
+                        "so every spatial axis receives a rotary pair."
+                    )
+                if (
+                    name == "plcs_track_query_reference"
+                    and selector_mode != "reference"
+                ):
+                    raise SemanticConfigurationError(
+                        "The normal reference track-query model requires "
+                        "model.reference_selector_mode='reference'."
+                    )
+            if name in _TRACK_QUERY_ABLATION_MODEL_NAMES:
                 if _string(mapping, "ffn_type", path="model") != "swiglu":
                     raise SemanticConfigurationError(
                         "PLCS track-query ablation requires model.ffn_type='swiglu'."
@@ -734,6 +843,7 @@ _DATA_COMMON = {
     "augmentation",
     "adapter_camera_index",
     "min_cameras",
+    "evaluation_reference_camera_id",
 }
 
 
@@ -747,6 +857,7 @@ class PLCSDataConfig:
     input_profile: str | None
     adapter_camera_index: int
     num_court_tokens: int | None
+    evaluation_reference_camera_id: str | None
     values: Mapping[str, object]
 
     @classmethod
@@ -755,7 +866,7 @@ class PLCSDataConfig:
     ) -> PLCSDataConfig:
         initial = _plain(value, path="data")
         backend = _string(initial, "backend", path="data")
-        tracking = model.name in {"plcs_track_query", "plcs_track_query_ablation"}
+        tracking = model.name in _TRACK_QUERY_MODEL_NAMES
         allowed = set(_DATA_COMMON)
         if tracking:
             allowed.add("lifecycle")
@@ -777,7 +888,19 @@ class PLCSDataConfig:
         mapping = _exact(
             initial,
             path="data",
-            required=allowed - {"seq_stride", "min_cameras"},
+            required=(
+                allowed
+                - {
+                    "seq_stride",
+                    "min_cameras",
+                    "evaluation_reference_camera_id",
+                }
+                | (
+                    {"evaluation_reference_camera_id"}
+                    if model.name in _REFERENCE_TRACK_QUERY_MODEL_NAMES
+                    else set()
+                )
+            ),
             allowed=allowed,
         )
         if backend == "chunked":
@@ -902,6 +1025,19 @@ class PLCSDataConfig:
             num_court_tokens = _integer(mapping, "num_court_kp", path="data")
             if num_court_tokens <= 0:
                 raise SemanticConfigurationError("data.num_court_kp must be positive.")
+        evaluation_reference_camera_id = (
+            _string(mapping, "evaluation_reference_camera_id", path="data")
+            if "evaluation_reference_camera_id" in mapping
+            else None
+        )
+        if (
+            evaluation_reference_camera_id is not None
+            and not evaluation_reference_camera_id.strip()
+        ):
+            raise SemanticConfigurationError(
+                "data.evaluation_reference_camera_id must be a non-empty stable "
+                "camera identity."
+            )
         resolved = dict(mapping)
         resolved["augmentation"] = augmentation
         return cls(
@@ -913,6 +1049,7 @@ class PLCSDataConfig:
             input_profile=model.input_profile,
             adapter_camera_index=adapter,
             num_court_tokens=num_court_tokens,
+            evaluation_reference_camera_id=evaluation_reference_camera_id,
             values=MappingProxyType(resolved),
         )
 
@@ -972,6 +1109,24 @@ class PLCSTrainingConfig:
         model = PLCSModelConfig.from_mapping(
             require_config_mapping(root, "model", path="configuration")
         )
+        court_keypoint_contract = (
+            PLCSCourtKeypointRuntimeConfig.from_config(value).contract
+        )
+        if model.name in _REFERENCE_TRACK_QUERY_MODEL_NAMES:
+            if court_keypoint_contract.selector != "camera_view_v2":
+                raise SemanticConfigurationError(
+                    "Reference track-query models require "
+                    "court_keypoints.selector='camera_view_v2'."
+                )
+        elif (
+            model.name in _TRACK_QUERY_MODEL_NAMES
+            and court_keypoint_contract.selector != "physical_v1"
+        ):
+            raise SemanticConfigurationError(
+                "Legacy track-query models require "
+                "court_keypoints.selector='physical_v1'; select an explicit "
+                "reference model for camera_view_v2."
+            )
         data = PLCSDataConfig.from_mapping(
             require_config_mapping(root, "data", path="configuration"),
             resolver=paths.resolver,
@@ -988,7 +1143,7 @@ class PLCSTrainingConfig:
             "external_assets",
             "qualitative",
             "tracking_metrics"
-            if model.name in {"plcs_track_query", "plcs_track_query_ablation"}
+            if model.name in _TRACK_QUERY_MODEL_NAMES
             else "metrics",
         }
         if data.backend == "chunked":
@@ -1070,7 +1225,7 @@ class PLCSTrainingConfig:
                 configuration_contracts.PLCSGenerationComponents.from_config(root)
             )
             generation_mode = generation_components.mode
-            if model.name in {"plcs_track_query", "plcs_track_query_ablation"}:
+            if model.name in _TRACK_QUERY_MODEL_NAMES:
                 if generation_mode != "multi_object":
                     raise SemanticConfigurationError(
                         "Chunked PLCS tracking requires generation.mode='multi_object'."
@@ -1123,7 +1278,7 @@ class PLCSTrainingConfig:
             dict(require_config_mapping(training_mapping, "mcmc", path="training"))
         )
         tracking_metric_config: TrackingMetricConfig | None = None
-        if model.name not in {"plcs_track_query", "plcs_track_query_ablation"}:
+        if model.name not in _TRACK_QUERY_MODEL_NAMES:
             from src.tasks.plcs.training.losses import PLCSLossConfig
 
             PLCSLossConfig.from_dict(
@@ -1283,7 +1438,7 @@ class PLCSTrainingConfig:
                     "training.gan.discriminator.max_seq_len must be positive."
                 )
         if (
-            model.name in {"plcs_track_query", "plcs_track_query_ablation"}
+            model.name in _TRACK_QUERY_MODEL_NAMES
             and model.input_profile is not None
         ):
             raise SemanticConfigurationError(
@@ -1291,9 +1446,7 @@ class PLCSTrainingConfig:
             )
         return cls(
             shared=shared,
-            court_keypoint_contract=(
-                PLCSCourtKeypointRuntimeConfig.from_config(value).contract
-            ),
+            court_keypoint_contract=court_keypoint_contract,
             paths=paths,
             model=model,
             data=data,
@@ -1326,7 +1479,9 @@ def _validate_visualization_boundary(config: DictConfig) -> None:
             "paths",
         },
     )
-    PLCSCourtKeypointRuntimeConfig.from_config(config)
+    court_keypoint_contract = PLCSCourtKeypointRuntimeConfig.from_config(
+        config
+    ).contract
     resolver = configuration_contracts.PLCSPathConfig.from_config(config).resolver
     visualization_fields = {
         "mode",
@@ -1342,6 +1497,7 @@ def _validate_visualization_boundary(config: DictConfig) -> None:
         "device",
         "style",
         "view_3d",
+        "reference_camera_id",
     }
     visualization = _exact(
         require_config_mapping(root, "visualization", path="configuration"),
@@ -1361,8 +1517,19 @@ def _validate_visualization_boundary(config: DictConfig) -> None:
     SceneVisualizationConfig.from_mapping(
         visualization,
         resolver=resolver,
-        extension_keys={"canonical_pose_source"},
+        extension_keys={"canonical_pose_source", "reference_camera_id"},
     )
+    reference_camera_id = visualization["reference_camera_id"]
+    if court_keypoint_contract.camera_view_semantics and mode == "predict":
+        if not isinstance(reference_camera_id, str) or not reference_camera_id.strip():
+            raise SemanticConfigurationError(
+                "camera_view_v2 prediction visualization requires an explicit "
+                "visualization.reference_camera_id."
+            )
+    elif reference_camera_id is not None:
+        raise SemanticConfigurationError(
+            "visualization.reference_camera_id is only valid for camera_view_v2."
+        )
     source = _string(visualization, "canonical_pose_source", path="visualization")
     if source not in {"gt", "prediction"}:
         raise SemanticConfigurationError(
@@ -1736,7 +1903,7 @@ def _validate_script_boundary(
             SceneVisualizationConfig.from_mapping(
                 visualization,
                 resolver=resolver,
-                extension_keys={"canonical_pose_source"},
+                extension_keys={"canonical_pose_source", "reference_camera_id"},
             )
             parse_scene_style(visualization["style"])
             parse_view_3d(visualization["view_3d"])

@@ -352,12 +352,72 @@ class TrackQueryAblationModelConfig:
     cswa: TrackQueryCSWAConfig
 
 
+@dataclass(frozen=True, slots=True)
+class TrackQueryReferenceModelConfig:
+    """Reference-conditioned v2 track-query architecture contract."""
+
+    name: Literal["blcs_track_query_reference"]
+    hidden_dim: int
+    num_heads: int
+    num_stages: int
+    ffn_dim: int
+    num_queries: int
+    rope_dim: int
+    dropout: float
+    invisible_init_std: float
+    target_frame_contract: Literal["reference_camera_court_rzpi_v1"]
+    track_query_rope_contract: Literal["time_camera_reference_selector_v1"]
+    reference_selector_mode: Literal["reference"]
+    mhc: TrackQueryMHCConfig
+    cswa: TrackQueryCSWAConfig
+
+
+@dataclass(frozen=True, slots=True)
+class TrackQueryReferenceAblationModelConfig:
+    """Reference-conditioned v2 FFN/writeback ablation contract."""
+
+    name: Literal["blcs_track_query_reference_ablation"]
+    hidden_dim: int
+    num_heads: int
+    num_stages: int
+    ffn_dim: int
+    num_queries: int
+    rope_dim: int
+    dropout: float
+    invisible_init_std: float
+    target_frame_contract: Literal["reference_camera_court_rzpi_v1"]
+    track_query_rope_contract: Literal["time_camera_reference_selector_v1"]
+    reference_selector_mode: Literal["reference", "selector_zero"]
+    ffn_mode: Literal["per_attention", "shared"]
+    mhc_writeback: Literal["after_object_temporal", "layer_end"]
+    query_ffn_after_spatial: bool
+    mhc: TrackQueryMHCConfig
+    cswa: TrackQueryCSWAConfig
+
+
 BLCSModelConfig: TypeAlias = (
     SingleModelConfig
     | MultiViewModelConfig
     | AxialModelConfig
     | TrackQueryModelConfig
     | TrackQueryAblationModelConfig
+    | TrackQueryReferenceModelConfig
+    | TrackQueryReferenceAblationModelConfig
+)
+
+_TRACK_QUERY_MODEL_CONFIG_TYPES = (
+    TrackQueryModelConfig,
+    TrackQueryAblationModelConfig,
+    TrackQueryReferenceModelConfig,
+    TrackQueryReferenceAblationModelConfig,
+)
+_TRACK_QUERY_MODEL_NAMES = frozenset(
+    {
+        "blcs_track_query",
+        "blcs_track_query_ablation",
+        "blcs_track_query_reference",
+        "blcs_track_query_reference_ablation",
+    }
 )
 
 
@@ -718,8 +778,15 @@ def parse_model_config(config: object) -> BLCSModelConfig:
         _positive(result.rope_theta_time, path="model.rope_theta_time")
         _positive(result.rope_theta_camera, path="model.rope_theta_camera")
         return result
-    if name in {"blcs_track_query", "blcs_track_query_ablation"}:
-        is_ablation = name == "blcs_track_query_ablation"
+    if name in _TRACK_QUERY_MODEL_NAMES:
+        is_reference = name in {
+            "blcs_track_query_reference",
+            "blcs_track_query_reference_ablation",
+        }
+        is_ablation = name in {
+            "blcs_track_query_ablation",
+            "blcs_track_query_reference_ablation",
+        }
         base_keys = {
             "name",
             "hidden_dim",
@@ -729,11 +796,18 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             "num_queries",
             "rope_dim",
             "dropout",
-            "role_rope_enabled",
             "invisible_init_std",
             "mhc",
             "cswa",
         }
+        if is_reference:
+            base_keys |= {
+                "target_frame_contract",
+                "track_query_rope_contract",
+                "reference_selector_mode",
+            }
+        else:
+            base_keys.add("role_rope_enabled")
         if is_ablation:
             base_keys |= {
                 "ffn_mode",
@@ -752,11 +826,50 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 "num_queries": int,
                 "rope_dim": int,
                 "dropout": (float, int),
-                "role_rope_enabled": bool,
                 "invisible_init_std": (float, int),
             },
             path="model",
         )
+        if is_reference:
+            _validate_types(
+                model,
+                {
+                    "target_frame_contract": str,
+                    "track_query_rope_contract": str,
+                    "reference_selector_mode": str,
+                },
+                path="model",
+            )
+            if (
+                model["target_frame_contract"]
+                != "reference_camera_court_rzpi_v1"
+            ):
+                raise SemanticConfigurationError(
+                    "model.target_frame_contract must be "
+                    "'reference_camera_court_rzpi_v1' for BLCS reference v2."
+                )
+            if (
+                model["track_query_rope_contract"]
+                != "time_camera_reference_selector_v1"
+            ):
+                raise SemanticConfigurationError(
+                    "model.track_query_rope_contract must be "
+                    "'time_camera_reference_selector_v1' for BLCS reference v2."
+                )
+            allowed_selector_modes = (
+                {"reference", "selector_zero"} if is_ablation else {"reference"}
+            )
+            if model["reference_selector_mode"] not in allowed_selector_modes:
+                raise SemanticConfigurationError(
+                    "model.reference_selector_mode must be "
+                    f"one of {sorted(allowed_selector_modes)!r}."
+                )
+        else:
+            _validate_types(
+                model,
+                {"role_rope_enabled": bool},
+                path="model",
+            )
         if is_ablation:
             _validate_types(
                 model,
@@ -857,7 +970,68 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             raise SemanticConfigurationError(
                 "model.cswa.window_radius must be non-negative."
             )
-        if is_ablation:
+        if is_reference and is_ablation:
+            result = TrackQueryReferenceAblationModelConfig(
+                name="blcs_track_query_reference_ablation",
+                hidden_dim=int(model["hidden_dim"]),
+                num_heads=int(model["num_heads"]),
+                num_stages=int(model["num_stages"]),
+                ffn_dim=cast("int", model["ffn_dim"]),
+                num_queries=int(model["num_queries"]),
+                rope_dim=cast("int", model["rope_dim"]),
+                dropout=float(model["dropout"]),
+                invisible_init_std=float(model["invisible_init_std"]),
+                target_frame_contract=cast(
+                    "Literal['reference_camera_court_rzpi_v1']",
+                    model["target_frame_contract"],
+                ),
+                track_query_rope_contract=cast(
+                    "Literal['time_camera_reference_selector_v1']",
+                    model["track_query_rope_contract"],
+                ),
+                reference_selector_mode=cast(
+                    "Literal['reference', 'selector_zero']",
+                    model["reference_selector_mode"],
+                ),
+                ffn_mode=cast(
+                    "Literal['per_attention', 'shared']", model["ffn_mode"]
+                ),
+                mhc_writeback=cast(
+                    "Literal['after_object_temporal', 'layer_end']",
+                    model["mhc_writeback"],
+                ),
+                query_ffn_after_spatial=cast(
+                    "bool", model["query_ffn_after_spatial"]
+                ),
+                mhc=mhc,
+                cswa=cswa,
+            )
+        elif is_reference:
+            result = TrackQueryReferenceModelConfig(
+                name="blcs_track_query_reference",
+                hidden_dim=int(model["hidden_dim"]),
+                num_heads=int(model["num_heads"]),
+                num_stages=int(model["num_stages"]),
+                ffn_dim=cast("int", model["ffn_dim"]),
+                num_queries=int(model["num_queries"]),
+                rope_dim=cast("int", model["rope_dim"]),
+                dropout=float(model["dropout"]),
+                invisible_init_std=float(model["invisible_init_std"]),
+                target_frame_contract=cast(
+                    "Literal['reference_camera_court_rzpi_v1']",
+                    model["target_frame_contract"],
+                ),
+                track_query_rope_contract=cast(
+                    "Literal['time_camera_reference_selector_v1']",
+                    model["track_query_rope_contract"],
+                ),
+                reference_selector_mode=cast(
+                    "Literal['reference']", model["reference_selector_mode"]
+                ),
+                mhc=mhc,
+                cswa=cswa,
+            )
+        elif is_ablation:
             result = TrackQueryAblationModelConfig(
                 name="blcs_track_query_ablation",
                 hidden_dim=int(model["hidden_dim"]),
@@ -903,6 +1077,10 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             dropout=result.dropout,
             path="model",
         )
+        if is_reference and result.rope_dim < 6:
+            raise SemanticConfigurationError(
+                "model.rope_dim must be at least 6 for all three reference-v2 axes."
+            )
         if (
             result.num_stages <= 0
             or result.num_stages % 4 != 0
@@ -1927,7 +2105,7 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
     """Validate BLCS-specific model and the seven-root contract before training."""
     root = as_config_mapping(config, path="configuration")
     model = parse_model_config(config)
-    if isinstance(model, (TrackQueryModelConfig, TrackQueryAblationModelConfig)):
+    if isinstance(model, _TRACK_QUERY_MODEL_CONFIG_TYPES):
         allowed = {
             "paths",
             "court_keypoints",
@@ -1965,7 +2143,28 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             "generator",
         }
     _exact(root, allowed, path="configuration")
-    parse_court_keypoint_contract(config)
+    court_keypoint_contract = parse_court_keypoint_contract(config)
+    if isinstance(
+        model,
+        (TrackQueryReferenceModelConfig, TrackQueryReferenceAblationModelConfig),
+    ):
+        if court_keypoint_contract.selector != "camera_view_v2":
+            raise SemanticConfigurationError(
+                "BLCS reference track-query models require "
+                "court_keypoints.selector='camera_view_v2'."
+            )
+        if model.target_frame_contract != court_keypoint_contract.target_frame_id:
+            raise SemanticConfigurationError(
+                "BLCS reference model target-frame and CourtKP20 contracts "
+                "must match exactly."
+            )
+    elif isinstance(model, (TrackQueryModelConfig, TrackQueryAblationModelConfig)):
+        if court_keypoint_contract.selector != "physical_v1":
+            raise SemanticConfigurationError(
+                "Legacy BLCS track-query models require "
+                "court_keypoints.selector='physical_v1'; select an explicit "
+                "reference-v2 model for camera_view_v2."
+            )
     build_path_resolver(config)
     data = require_config_mapping(root, "data", path="configuration")
     backend = cast("str", _value(data, "backend", str, path="data"))
@@ -1980,8 +2179,8 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
         "seq_len_range",
         "augmentation",
     }
-    if isinstance(model, (TrackQueryModelConfig, TrackQueryAblationModelConfig)):
-        data_keys.add("lifecycle")
+    if isinstance(model, _TRACK_QUERY_MODEL_CONFIG_TYPES):
+        data_keys.update({"lifecycle", "evaluation_reference_camera_id"})
         lifecycle = require_config_mapping(data, "lifecycle", path="data")
         _exact(
             lifecycle,
@@ -2029,10 +2228,17 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
                 raise SemanticConfigurationError(f"data.chunk.{key} must be positive.")
         validate_generator_sections(
             config,
-            include_generation=model.name
-            in {"blcs_track_query", "blcs_track_query_ablation"},
+            include_generation=model.name in _TRACK_QUERY_MODEL_NAMES,
         )
-        if model.name in {"blcs_track_query", "blcs_track_query_ablation"}:
+        if isinstance(
+            model,
+            (
+                TrackQueryModelConfig,
+                TrackQueryAblationModelConfig,
+                TrackQueryReferenceModelConfig,
+                TrackQueryReferenceAblationModelConfig,
+            ),
+        ):
             generation = require_config_mapping(
                 root, "generation", path="configuration"
             )
@@ -2064,9 +2270,19 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             "num_views_range": list,
             "seq_len_range": list,
             "augmentation": dict,
+            "evaluation_reference_camera_id": str,
         },
         path="data",
     )
+    if isinstance(model, _TRACK_QUERY_MODEL_CONFIG_TYPES):
+        evaluation_reference_camera_id = cast(
+            "str", data["evaluation_reference_camera_id"]
+        )
+        if not evaluation_reference_camera_id.strip():
+            raise SemanticConfigurationError(
+                "data.evaluation_reference_camera_id must be a non-empty stable "
+                "camera identity."
+            )
     if backend not in {"default", "chunked"}:
         raise SemanticConfigurationError("data.backend must be 'default' or 'chunked'.")
     if data["camera_mode"] not in {"random", "first"}:
@@ -2113,7 +2329,7 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
         raise SemanticConfigurationError(
             "Single-view BLCS models require data.num_views_range=[1, 1]."
         )
-    if isinstance(model, (TrackQueryModelConfig, TrackQueryAblationModelConfig)):
+    if isinstance(model, _TRACK_QUERY_MODEL_CONFIG_TYPES):
         _validate_types(
             lifecycle,
             {
@@ -2290,7 +2506,8 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             cast("float", discriminator[key]),
             path=f"training.gan.discriminator.{key}",
         )
-    if model.name in {"blcs_track_query", "blcs_track_query_ablation"}:
+    if model.name in _TRACK_QUERY_MODEL_NAMES:
+        validate_generator_sections(config, include_generation=backend == "chunked")
         loss = require_config_mapping(root, "loss", path="configuration")
         _exact(
             loss,
@@ -2400,13 +2617,24 @@ def validate_visualization_boundary(config: object) -> None:
         },
         path="configuration",
     )
-    parse_court_keypoint_contract(config)
+    court_keypoint_contract = parse_court_keypoint_contract(config)
     visualization = require_config_mapping(root, "visualization", path="configuration")
     common = SceneVisualizationConfig.from_mapping(
         visualization,
         resolver=build_path_resolver(config),
-        extension_keys=frozenset(),
+        extension_keys=frozenset({"reference_camera_id"}),
     )
+    reference_camera_id = visualization.get("reference_camera_id")
+    if court_keypoint_contract.camera_view_semantics and common.mode == "predict":
+        if not isinstance(reference_camera_id, str) or not reference_camera_id.strip():
+            raise SemanticConfigurationError(
+                "camera_view_v2 prediction visualization requires an explicit "
+                "visualization.reference_camera_id."
+            )
+    elif reference_camera_id is not None:
+        raise SemanticConfigurationError(
+            "visualization.reference_camera_id is only valid for camera_view_v2."
+        )
     parse_scene_style(
         require_config_mapping(visualization, "style", path="visualization")
     )
@@ -2633,6 +2861,8 @@ __all__ = [
     "TrackQueryMHCConfig",
     "TrackQueryAblationModelConfig",
     "TrackQueryModelConfig",
+    "TrackQueryReferenceAblationModelConfig",
+    "TrackQueryReferenceModelConfig",
     "build_path_resolver",
     "parse_court_keypoint_contract",
     "parse_generation_run",

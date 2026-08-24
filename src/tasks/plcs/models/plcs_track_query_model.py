@@ -273,6 +273,37 @@ class PLCSTrackQueryModel(nn.Module):
     ) -> PLCSTrackingPrediction:
         """Predict fixed-width tracks; only padding controls attention validity."""
         batch_size, num_views, num_frames = human_kp.shape[:3]
+        coordinates = self.build_spatial_coordinates(
+            batch_size=batch_size,
+            num_frames=num_frames,
+            num_views=num_views,
+            num_detections=self.num_queries,
+            num_queries=self.num_queries,
+            device=human_kp.device,
+        )
+        rope_coordinates = coordinates.clone()
+        rope_coordinates[..., 2] *= self.role_rope_scale
+        return self._forward_with_spatial_coordinates(
+            human_kp,
+            human_vis,
+            court_kp,
+            court_vis,
+            padding_mask,
+            spatial_coordinates=rope_coordinates,
+        )
+
+    def _forward_with_spatial_coordinates(
+        self,
+        human_kp: Tensor,
+        human_vis: Tensor,
+        court_kp: Tensor,
+        court_vis: Tensor,
+        padding_mask: Tensor,
+        *,
+        spatial_coordinates: Tensor,
+    ) -> PLCSTrackingPrediction:
+        """Execute the shared architecture with already validated coordinates."""
+        batch_size, _num_views, num_frames = human_kp.shape[:3]
         masks = build_fixed_query_padding_masks(
             padding_mask,
             num_queries=self.num_queries,
@@ -300,17 +331,7 @@ class PLCSTrackQueryModel(nn.Module):
             1, 1, self.num_queries, self.hidden_dim
         ).expand(batch_size, num_frames, -1, -1)
         query_tokens = query_tokens * masks.frame_valid[:, :, None, None]
-        coordinates = self.build_spatial_coordinates(
-            batch_size=batch_size,
-            num_frames=num_frames,
-            num_views=num_views,
-            num_detections=self.num_queries,
-            num_queries=self.num_queries,
-            device=human_kp.device,
-        )
-        rope_coordinates = coordinates.clone()
-        rope_coordinates[..., 2] *= self.role_rope_scale
-        spatial_freqs = self.spatial_frequency_computer(rope_coordinates)
+        spatial_freqs = self.spatial_frequency_computer(spatial_coordinates)
         time_freqs = self.temporal_frequency_computer(
             torch.arange(num_frames, device=human_kp.device).unsqueeze(-1)
         )

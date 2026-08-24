@@ -9,13 +9,15 @@ from typing import Any
 from torch.utils.data import Dataset
 
 from src.tasks.base.data.datamodule import SceneDirectoryDataModule
+from src.tasks.base.generate_dataset import CAMERA_VIEW_V2_SELECTOR
+from src.tasks.blcs.configuration import parse_court_keypoint_contract
 from src.tasks.blcs.data.dataset import BallTrajectoryDataset
 
 
 class BLCSDataModuleHooks:
     """Task-local dataset/collate hooks shared by fixed and chunked loaders."""
 
-    config: object
+    config: Any
     _collate_fn: Callable[..., Any]
 
     def _build_collate_fn(self) -> Callable[..., Any] | None:
@@ -27,11 +29,17 @@ class BLCSDataModuleHooks:
         split_file: str,
         augment: bool,
     ) -> Dataset:
+        contract = parse_court_keypoint_contract(self.config)
         return BallTrajectoryDataset(
             scene_dir=scene_dir,
             split_file=split_file,
             config=self.config,
             augment=augment,
+            reference_camera_id=(
+                str(self.config.data.evaluation_reference_camera_id)
+                if not augment and contract.selector == CAMERA_VIEW_V2_SELECTOR
+                else None
+            ),
         )
 
     def _dataset_name(self) -> str:
