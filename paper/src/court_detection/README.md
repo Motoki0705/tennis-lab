@@ -1,7 +1,8 @@
 # Render-Supervised Global Court Geometry
 
-`paper/src/court_detection` contains the self-contained English manuscript for
-the 3DGS-based Court Detection system.  The paper is structured after the
+`paper/src/court_detection` contains the self-contained English manuscript and
+its Japanese section translation for the 3DGS-based Court Detection system.
+The paper is structured after the
 argument-first organization of `paper/reference/arXiv-2508.10104v1`, while its
 text, figures, notation, and bibliography are independently authored.
 
@@ -33,7 +34,8 @@ The PDF is written to `main.pdf`; intermediate products remain under `build/`.
 |---|---|
 | `main.tex` | Title and section order only |
 | `preamble.tex` | Packages, notation, colors, and shared macros |
-| `sections/` | Main manuscript, one argument per file |
+| `sections/eg/` | English main manuscript, one argument per file; used by `main.tex` |
+| `sections/jp/` | Japanese translation with matching filenames and LaTeX contracts |
 | `appendices/` | Contracts, implementation details, and evaluation protocol |
 | `figures/` | Repository-native TikZ figures |
 | `tables/` | Reusable LaTeX tables |

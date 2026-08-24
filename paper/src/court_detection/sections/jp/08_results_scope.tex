@@ -1,0 +1,64 @@
+\section{結果とエビデンスの範囲}
+\label{sec:results}
+
+本稿は、再現可能な手法とシステムを報告する。joint-modelの表を、外挿値やsingle-seedの値で
+埋めることはしない。本稿が記録するrepository revisionの時点では、登録済みの定量的エビデンスは、
+大域クエリとreprojectionを組み合わせた実験より前に得られたものである。これはbackboneと
+密予測taskの背景情報にはなるが、\cref{eq:total_loss}の有効性を立証するものではない。
+
+\paragraph{リビジョンのスナップショット。}
+エビデンスとして用いた正確なsource revisionは以下のとおりである。
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+シーン／アライメント／データセット & \texttt{179dac756aef137c9a35b1025ce76f0a31023648} \\
+カメラ側エンドの正準化 & \texttt{82fc58d5a677049e1d12d4867238af4ca22b9795} \\
+グローバルクエリモデル & \texttt{2ae8cc3ea7ec6072d5595d691ff8c59a82f32ac7} \\
+クエリ設定ルート & \texttt{077e84dc9d9edeeb4868ce8cff7c76e5d1ca8540} \\
+\end{tabular}
+\end{center}
+分岐間のalgorithmはIssue~\#790に基づいて本稿で完全に規定しているが、本稿は
+固定された\#790のcode revisionにも、数値benchmarkの結果にも紐付けていない。
+
+\input{tables/registered_evidence}
+
+従来の\KP runでは、登録されたvalidation bestとして2.23 pixelsを達成し、512-scale inputで
+1.708886-pixelのdeterministic re-evaluationを得ている。後者のloaderは独立したholdout testでは
+なくvalidation sourceを再利用しているため、software/data sanity checkとしてのみ掲載する。
+同様に、条件を揃えたfrozen-backbone segmentation runでは、tennis-domain self-supervision後に
+validation mIoUが約0.517から0.800へ向上している。
+これらの結果は、court modelに\DINO{} featureを渡すという選択を支持するが、pose queryを評価するものでも、direct objectiveとjoint objectiveを比較するものでもない。
+対応するrepository recordは以下のとおりである。
+\begin{quote}\small
+\path{knowledge/nodes/run-i621-court-kp512-resume-r4.md}\\
+\path{knowledge/nodes/run-i524-court-seg-baseline.md}\\
+\path{knowledge/nodes/run-i524-court-seg-ssl.md}
+\end{quote}
+KP recordが固定するsource commitは
+\begin{center}\texttt{41b318b39f757e09897964a32f28148a777b87f5}.\end{center}
+
+アライメントに関する否定的エビデンスも同様に重要である。過去のB00 calibration attemptでは、
+aggregate fit residualは基準を満たした一方で、subset rediscoveryにより、あるcourt centreが最大
+9.08 m、orientationが89.94 degreesずれた。その後のone-shot holdoutでは0.832 weighted inliersを
+達成したものの、distance-weighted q95は1.240 mで、per-group coverageも弱かったため、
+machine-accepted alignment/dataset contractは公開されなかった。その後、別個の明示的な
+user-override decisionによって、\texttt{machine\_validation\_accepted=0}を維持したまま
+SceneContractが公開された。このartifactは、automatic gateを通過したエビデンスではない。
+3つのrecordは以下のとおりである。
+\begin{quote}\small
+\path{knowledge/nodes/run-i618-b00-alignment-calibration-global-v1.md}\\
+\path{knowledge/nodes/run-i618-b00-alignment-holdout-v1.md}\\
+\path{knowledge/nodes/run-i618-b00-alignment-user-override-v1.md}
+\end{quote}
+これはフェイルクローズ設計の意図した挙動である。すなわち、in-sample line supportが良好であっても、
+それを何千もの、確信度は高いが誤った6DoF labelへ変換しない。
+
+\paragraph{登録済みrunに留保する主張。}
+\cref{tab:ablation_protocol}で規定した空欄の数値cellは、commit、configuration、checkpoint、
+split identity、seed、metrics、およびprediction artifactを含むimmutable run manifestから
+埋めなければならない。それらのrecordが存在するまでは、joint-bothがbaselineを改善すること、
+ショートカットへの依存が実証的に除去されること、特定のdecoderがPareto optimalであること、または
+本手法がproduction defaultであることを、本稿では主張しない。ただし手法そのものは完全に
+規定されているため、将来のrunが結果を確認した後にoracleを変更することはできない。
+
+\input{tables/claim_scope}
