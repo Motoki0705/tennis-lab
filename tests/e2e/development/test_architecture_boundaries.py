@@ -483,6 +483,27 @@ COMPATIBILITY_RETENTION_PATTERN = re.compile(
     r"[^.!?\n]{0,100}\bfor compatibility\b",
     flags=re.IGNORECASE,
 )
+COURT_VIEW_SYMBOL_AUTHORITIES = {
+    "COURT_KP20_HALF_TURN_INDEX": "src/utils/schema/court.py",
+    **{
+        symbol: "src/tasks/base/generate_dataset/court_view.py"
+        for symbol in (
+            "RZ_PI_ROTATION_3D",
+            "camera_extrinsics_physical_to_target",
+            "camera_extrinsics_target_to_physical",
+            "classify_camera_court_side",
+            "court_headings_physical_to_target",
+            "court_headings_target_to_physical",
+            "court_points_physical_to_target",
+            "court_points_target_to_physical",
+            "court_vectors_physical_to_target",
+            "court_vectors_target_to_physical",
+            "court_world_joints_physical_to_target",
+            "court_world_joints_target_to_physical",
+            "validate_court_keypoint_mapping",
+        )
+    },
+}
 
 
 def _git_paths(*arguments: str) -> tuple[str, ...]:
@@ -1342,6 +1363,36 @@ def test_task_local_generation_and_chunk_consumers_remain_supported() -> None:
 
     assert not missing, "supported task-local modules are missing:\n" + "\n".join(
         missing
+    )
+
+
+def test_court_view_geometry_and_transform_authorities_are_centralized() -> None:
+    definitions: dict[str, set[str]] = {
+        symbol: set() for symbol in COURT_VIEW_SYMBOL_AUTHORITIES
+    }
+    for path in _repository_python_files():
+        relative_path = str(path.relative_to(REPOSITORY_ROOT))
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in tree.body:
+            bindings: set[str] = set()
+            if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                bindings.add(node.name)
+            elif isinstance(node, ast.Assign):
+                bindings.update(
+                    target.id for target in node.targets if isinstance(target, ast.Name)
+                )
+            elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                bindings.add(node.target.id)
+            for binding in bindings & COURT_VIEW_SYMBOL_AUTHORITIES.keys():
+                definitions[binding].add(relative_path)
+
+    violations = [
+        f"{symbol}: expected only {expected}, found {sorted(definitions[symbol])}"
+        for symbol, expected in COURT_VIEW_SYMBOL_AUTHORITIES.items()
+        if definitions[symbol] != {expected}
+    ]
+    assert not violations, "Court-view authority violations:\n" + "\n".join(
+        violations
     )
 
 

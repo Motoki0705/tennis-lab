@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from src.tasks.base.generate_dataset import resolve_court_keypoint_contract
 from src.tasks.plcs.generate_dataset.io.dataset_io import PLCSDatasetWriter
 from src.tasks.plcs.generate_dataset.io.scene_loader import load_scene
 from src.tasks.plcs.generate_dataset.scene_generator import SceneData
@@ -46,8 +47,11 @@ def test_writer_persists_contract_and_preserves_canonical_metres(
     tmp_path: Path,
 ) -> None:
     scene, translation_m = _scene()
-    path = PLCSDatasetWriter(tmp_path).save_scene(scene)
-    loaded = load_scene(path)
+    path = PLCSDatasetWriter(tmp_path, legacy_metadata_free_v1=True).save_scene(scene)
+    loaded = load_scene(
+        path,
+        court_keypoint_contract=resolve_court_keypoint_contract("physical_v1"),
+    )
 
     assert loaded["meta"]["court_coordinate_normalization"]["scale_xyz_m"] == [
         11.885,
@@ -65,11 +69,14 @@ def test_writer_persists_contract_and_preserves_canonical_metres(
 
 def test_direct_loader_rejects_missing_scene_contract(tmp_path: Path) -> None:
     scene, _ = _scene()
-    path = PLCSDatasetWriter(tmp_path).save_scene(scene)
+    path = PLCSDatasetWriter(tmp_path, legacy_metadata_free_v1=True).save_scene(scene)
     meta_path = path / "meta.json"
     meta = json.loads(meta_path.read_text())
     meta.pop("court_coordinate_normalization")
     meta_path.write_text(json.dumps(meta))
 
     with pytest.raises(CourtCoordinateContractError, match="missing"):
-        load_scene(path)
+        load_scene(
+            path,
+            court_keypoint_contract=resolve_court_keypoint_contract("physical_v1"),
+        )

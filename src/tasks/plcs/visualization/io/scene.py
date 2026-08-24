@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+from src.tasks.base.generate_dataset import CourtKeypointContract
 from src.tasks.base.visualization.io import BaseSceneBundle, resolve_cameras
 from src.tasks.plcs.generate_dataset.io.scene_loader import load_scene
 
@@ -21,9 +22,14 @@ def load_scene_bundle(
     scene_path: Path,
     camera: int,
     cameras: tuple[int, ...] | Literal["all"] | None,
+    *,
+    court_keypoint_contract: CourtKeypointContract,
 ) -> SceneBundle:
-    """Load scene and resolve selected cameras/fps for visualization."""
-    scene: Any = load_scene(scene_path)
+    """Validate and load a scene, then resolve selected cameras and fps."""
+    scene: Any = load_scene(
+        scene_path,
+        court_keypoint_contract=court_keypoint_contract,
+    )
     num_cameras = int(scene.num_cameras)
     selected_cameras = resolve_cameras(
         num_cameras,

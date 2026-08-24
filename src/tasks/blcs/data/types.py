@@ -10,6 +10,8 @@ from typing import Any, NotRequired, TypedDict
 
 import torch
 
+from src.tasks.base.generate_dataset import CourtReferenceFrameProvenance
+
 
 class BLCSSample(TypedDict):
     """Schema for single BLCS dataset sample.
@@ -25,6 +27,7 @@ class BLCSSample(TypedDict):
     position_3d: torch.Tensor  # (T, 3) ground truth 3D trajectory (normalized)
     velocity_3d: torch.Tensor  # (T, 3) 3D velocity vectors
     seq_len: torch.Tensor  # scalar, actual sequence length
+    court_reference_provenance: CourtReferenceFrameProvenance
 
 
 class BLCSBatch(TypedDict):
@@ -43,6 +46,7 @@ class BLCSBatch(TypedDict):
     position_3d: torch.Tensor  # (B, T_max, 3) padded ground truth trajectories
     velocity_3d: torch.Tensor  # (B, T_max, 3) padded velocities
     seq_len: torch.Tensor  # (B,) actual sequence lengths
+    court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...]
 
 
 class BLCSMultiViewSample(TypedDict):
@@ -74,6 +78,7 @@ class BLCSMultiViewSample(TypedDict):
     camera_cy: torch.Tensor  # (N_cam,) principal-point y
     camera_w: torch.Tensor  # (N_cam,) image width
     camera_h: torch.Tensor  # (N_cam,) image height
+    court_reference_provenance: CourtReferenceFrameProvenance
 
 
 class BLCSMultiViewBatch(TypedDict):
@@ -97,6 +102,7 @@ class BLCSMultiViewBatch(TypedDict):
     camera_cy: torch.Tensor  # (B, N_max)
     camera_w: torch.Tensor  # (B, N_max)
     camera_h: torch.Tensor  # (B, N_max)
+    court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...]
 
 
 @dataclass(frozen=True)

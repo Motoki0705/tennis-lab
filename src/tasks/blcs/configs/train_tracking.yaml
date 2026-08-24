@@ -1,4 +1,5 @@
 defaults:
+  - court_keypoints: physical_v1
   - paths: default
   - model: track_query
   - data: tracking

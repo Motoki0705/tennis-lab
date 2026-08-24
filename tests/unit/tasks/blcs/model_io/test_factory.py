@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 from hydra import compose, initialize_config_dir
 
+from src.tasks.base.generate_dataset import resolve_court_keypoint_contract
 from src.tasks.blcs.model_io import (
     TrackQueryAblationModelIOAdapter as PublicTrackQueryAblationModelIOAdapter,
 )
@@ -36,11 +37,15 @@ _SMALL = (
 )
 
 
-def _config(condition: str) -> Any:
+def _config(condition: str, *, court_keypoints: str = "physical_v1") -> Any:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         return compose(
             config_name="train_tracking",
-            overrides=[f"model=track_query_ablation_{condition}", *_SMALL],
+            overrides=[
+                f"model=track_query_ablation_{condition}",
+                f"court_keypoints={court_keypoints}",
+                *_SMALL,
+            ],
         )
 
 
@@ -58,6 +63,17 @@ def test_factory_binds_every_ablation_config_to_exact_model_and_adapter(
     assert type(binding.adapter) is TrackQueryAblationModelIOAdapter
     assert binding.adapter.model_type is BLCSTrackQueryAblationModel
     assert binding.adapter.num_queries == 4
+
+
+def test_tracking_factory_injects_camera_view_contract_into_adapter() -> None:
+    binding = compose_blcs_track_query_model_io(
+        _config("d", court_keypoints="camera_view_v2")
+    )
+
+    assert isinstance(binding.adapter, TrackQueryAblationModelIOAdapter)
+    assert binding.adapter.court_keypoint_contract == resolve_court_keypoint_contract(
+        "camera_view_v2"
+    )
 
 
 def test_ablation_uses_tracking_training_composition(

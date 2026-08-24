@@ -9,8 +9,17 @@ from typing import Any, Literal
 
 import numpy as np
 
+from src.tasks.base.generate_dataset import (
+    CAMERA_VIEW_V2_SELECTOR,
+    CourtKeypointContract,
+)
+from src.tasks.plcs.court_keypoint_contract import (
+    headings_target_to_physical,
+    normalized_points_target_to_physical,
+)
 from src.tasks.plcs.inference.predictor import PLCSPredictor
 from src.utils.configuration import PathResolver
+from src.utils.schema.court_normalization import normalize_court_position
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +70,7 @@ def predict_scene(
     canonical_pose_source: CanonicalPoseSource = "gt",
     *,
     resolver: PathResolver,
+    court_keypoint_contract: CourtKeypointContract,
 ) -> Any:
     """Run PLCS prediction and return a scene whose pose is replaced by prediction.
 
@@ -83,11 +93,41 @@ def predict_scene(
         checkpoint_path=checkpoint_path,
         resolver=resolver,
         device=device,
+        court_keypoint_contract=court_keypoint_contract,
     )
     logger.info(f"Model loaded successfully on {device}.")
-    decoded = predictor.predict_scene(scene, cameras)
-    pred_pos = decoded.position.squeeze(0).numpy()
-    pred_rot = decoded.rotation.squeeze(0).numpy()
+    reference_camera_id = None
+    if court_keypoint_contract.selector == CAMERA_VIEW_V2_SELECTOR:
+        selected_ids: list[str] = []
+        for index in cameras:
+            view = scene.cameras[index].court_view
+            if view is None or not view.camera_id:
+                raise ValueError(
+                    "camera_view_v2 visualization requires camera metadata."
+                )
+            selected_ids.append(view.camera_id)
+        reference_camera_id = sorted(selected_ids)[0]
+    decoded = predictor.predict_scene(
+        scene,
+        cameras,
+        reference_camera_id=reference_camera_id,
+    )
+    if (
+        decoded.court_reference_provenance is None
+        or len(decoded.court_reference_provenance) != 1
+    ):
+        raise ValueError(
+            "PLCS scene prediction requires exactly one Court reference provenance."
+        )
+    provenance = decoded.court_reference_provenance[0]
+    pred_position_m = normalized_points_target_to_physical(
+        decoded.position,
+        provenance,
+    )
+    pred_position_norm = normalize_court_position(pred_position_m)
+    pred_heading = headings_target_to_physical(decoded.rotation, provenance)
+    pred_pos = pred_position_norm.squeeze(0).numpy()
+    pred_rot = pred_heading.squeeze(0).numpy()
     pred_canonical_pose = (
         decoded.canonical_pose.squeeze(0).numpy()
         if decoded.canonical_pose is not None

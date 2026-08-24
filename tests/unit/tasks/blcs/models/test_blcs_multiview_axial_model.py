@@ -11,6 +11,7 @@ from src.tasks.blcs.model_io import compose_blcs_trajectory_model_io
 
 def _config(*, max_num_cameras: int, max_seq_len: int) -> dict[str, object]:
     return {
+        "court_keypoints": {"selector": "physical_v1"},
         "model": {
             "name": "blcs_multiview_axial",
             "io": {"input_profile": "multiview"},

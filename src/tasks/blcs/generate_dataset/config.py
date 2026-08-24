@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from omegaconf import DictConfig
 
+from src.tasks.blcs.configuration import parse_court_keypoint_contract
 from src.tasks.blcs.generate_dataset.scene_generator import GeneratorConfig
 from src.tasks.blcs.generate_dataset.simulation.ball_physics import PhysicsConfig
 from src.tasks.blcs.generate_dataset.simulation.rally_simulator import RallyConfig
@@ -133,4 +134,5 @@ def build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         camera=camera_config,
         targeted_velocity=targeted_velocity_config,
         court=court_config,
+        court_keypoint_contract=parse_court_keypoint_contract(cfg),
     )

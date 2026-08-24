@@ -21,6 +21,8 @@ from src.tasks.plcs.model_io import (
     PLCSPreparedBatch,
     PLCSStandardBoundModelIO,
     build_plcs_model_io,
+    validate_plcs_checkpoint_court_keypoints,
+    write_plcs_checkpoint_court_keypoints,
 )
 from src.tasks.plcs.models.discriminators import build_plcs_discriminator
 from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
@@ -121,9 +123,17 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         add_court_coordinate_normalization(checkpoint, artifact="PLCS checkpoint")
+        write_plcs_checkpoint_court_keypoints(
+            checkpoint,
+            self.plcs_runtime.court_keypoint_contract,
+        )
 
     def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         validate_court_coordinate_normalization(checkpoint, artifact="PLCS checkpoint")
+        validate_plcs_checkpoint_court_keypoints(
+            checkpoint,
+            self.plcs_runtime.court_keypoint_contract,
+        )
 
     def _pose_sequence(self, position: Tensor, rotation: Tensor) -> Tensor:
         if position.ndim == 2:
@@ -214,6 +224,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             target_position,
             target_rotation,
             padding_mask=padding_mask,
+            court_reference_provenance=prepared.court_reference_provenance,
         )
 
         return {

@@ -1,15 +1,23 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 import torch
 
+from src.tasks.base.generate_dataset import (
+    build_physical_court_provenance,
+    resolve_court_keypoint_contract,
+)
+from src.tasks.plcs.court_keypoint_contract import court_keypoint_contract_document
 from src.tasks.plcs.data.dataset import collate_plcs_batch
 
 
 def _sample(
     *, views: int, frames: int, reprojection: bool = False
-) -> dict[str, torch.Tensor]:
-    sample = {
+) -> dict[str, Any]:
+    contract = resolve_court_keypoint_contract("physical_v1")
+    sample: dict[str, Any] = {
         "human_kp": torch.rand(views, frames, 17, 2),
         "court_kp": torch.rand(views, frames, 20, 2),
         "human_vis": torch.ones(views, frames, 17),
@@ -17,6 +25,11 @@ def _sample(
         "padding_mask": torch.zeros(views, frames, dtype=torch.bool),
         "position": torch.rand(frames, 3),
         "rotation": torch.rand(frames, 2),
+        "camera_C": torch.zeros(views, 3),
+        "camera_R": torch.eye(3).expand(views, 3, 3).clone(),
+        "court_keypoint_metadata": court_keypoint_contract_document(contract),
+        "court_reference_provenance": build_physical_court_provenance(),
+        "selected_camera_ids": tuple(f"camera_{index}" for index in range(views)),
     }
     if reprojection:
         sample.update(
@@ -69,7 +82,7 @@ def test_collate_pads_clean_reprojection_targets_and_cameras() -> None:
 
 def test_collate_rejects_partial_or_mixed_reprojection_groups() -> None:
     partial = _sample(views=1, frames=2)
-    partial["camera_R"] = torch.eye(3).unsqueeze(0)
+    partial["camera_f"] = torch.full((1,), 800.0)
     with pytest.raises(ValueError, match="complete group"):
         collate_plcs_batch([partial])
 
@@ -80,3 +93,11 @@ def test_collate_rejects_partial_or_mixed_reprojection_groups() -> None:
                 _sample(views=1, frames=2),
             ]
         )
+
+
+def test_collate_rejects_missing_court_provenance() -> None:
+    sample = _sample(views=1, frames=2)
+    del sample["court_reference_provenance"]
+
+    with pytest.raises(ValueError, match="court_reference_provenance"):
+        collate_plcs_batch([sample])

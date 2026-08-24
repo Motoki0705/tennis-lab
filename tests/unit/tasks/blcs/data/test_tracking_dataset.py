@@ -9,8 +9,17 @@ import numpy as np
 import pytest
 import torch
 from hydra import compose, initialize_config_dir
+from omegaconf import open_dict
 
 from src.tasks.base.data.lifecycle_slots import build_fixed_lifecycle_assignment
+from src.tasks.base.generate_dataset import (
+    CourtReferenceFrameError,
+    CourtReferenceFrameProvenance,
+    build_court_view_record,
+    build_physical_court_provenance,
+    build_reference_frame_provenance,
+    resolve_court_keypoint_contract,
+)
 from src.tasks.blcs.data.observation_candidates import (
     pack_observation_candidates,
 )
@@ -18,11 +27,30 @@ from src.tasks.blcs.data.tracking_dataset import (
     BLCSTrackingDataset,
     collate_blcs_tracking_batch,
 )
+from src.utils.configuration import MissingConfigurationKeyError
 from src.utils.schema.court_normalization import (
     court_coordinate_normalization_metadata,
 )
 
 _CONFIG_DIR = Path("src/tasks/blcs/configs").resolve()
+
+
+def test_dataset_rejects_missing_court_keypoint_selector(tmp_path: Path) -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(config_name="train_tracking")
+    with open_dict(config):
+        del config["court_keypoints"]
+
+    with pytest.raises(
+        MissingConfigurationKeyError,
+        match=r"configuration\.court_keypoints",
+    ):
+        BLCSTrackingDataset(
+            scene_dir=tmp_path,
+            split_file="train.txt",
+            config=config,
+            augment=False,
+        )
 
 
 def test_observations_pack_all_views_to_exact_width_with_lifecycle_reuse() -> None:
@@ -196,7 +224,7 @@ def test_dataset_packs_more_physical_tracks_than_q_with_independent_assignments(
     assert not sample["padding_mask"].any()
 
 
-def _sample(*, views: int, frames: int, queries: int) -> dict[str, torch.Tensor]:
+def _sample(*, views: int, frames: int, queries: int) -> dict[str, object]:
     candidate_shape = (views, frames, queries)
     return {
         "scene_format_version": torch.tensor(4),
@@ -213,6 +241,7 @@ def _sample(*, views: int, frames: int, queries: int) -> dict[str, torch.Tensor]
         "clean_ball_uv": torch.zeros(*candidate_shape, 2),
         "clean_ball_vis": torch.zeros(candidate_shape, dtype=torch.bool),
         "candidate_gt_index": torch.full(candidate_shape, -1),
+        "court_reference_provenance": build_physical_court_provenance(),
     }
 
 
@@ -232,3 +261,94 @@ def test_collate_pads_view_and_time_but_never_candidate_axis() -> None:
                 _sample(views=1, frames=2, queries=4),
             ]
         )
+
+
+@pytest.mark.parametrize(
+    "invalid_provenance",
+    [None, {"contract_id": "unknown_courtkp20_contract"}, object()],
+)
+def test_collate_rejects_missing_or_non_record_provenance_before_padding(
+    monkeypatch: pytest.MonkeyPatch,
+    invalid_provenance: object,
+) -> None:
+    sample = _sample(views=1, frames=2, queries=4)
+    if invalid_provenance is None:
+        sample.pop("court_reference_provenance")
+    else:
+        sample["court_reference_provenance"] = invalid_provenance
+
+    def _forbid_padding(*args: object, **kwargs: object) -> None:
+        del args, kwargs
+        raise AssertionError("Tensor padding ran before provenance validation.")
+
+    monkeypatch.setattr(
+        "src.tasks.blcs.data.tracking_dataset.pad_and_stack_tracking_batch",
+        _forbid_padding,
+    )
+    with pytest.raises(
+        CourtReferenceFrameError,
+        match="must provide a validated CourtReferenceFrameProvenance",
+    ):
+        collate_blcs_tracking_batch([sample])
+
+
+def _camera_view_provenance(
+    *,
+    reference_camera_id: str,
+) -> CourtReferenceFrameProvenance:
+    contract = resolve_court_keypoint_contract("camera_view_v2")
+    views = (
+        build_court_view_record(
+            camera_id="camera_0",
+            camera_center_court_m=(2.0, -12.0, 4.0),
+            contract=contract,
+        ),
+        build_court_view_record(
+            camera_id="camera_1",
+            camera_center_court_m=(-3.0, 12.0, 5.0),
+            contract=contract,
+        ),
+    )
+    return build_reference_frame_provenance(
+        views,
+        reference_camera_id=reference_camera_id,
+    )
+
+
+def test_collate_rejects_mixed_contracts_before_padding(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    physical = _sample(views=1, frames=2, queries=4)
+    camera_view = _sample(views=1, frames=2, queries=4)
+    camera_view["court_reference_provenance"] = _camera_view_provenance(
+        reference_camera_id="camera_0"
+    )
+
+    def _forbid_padding(*args: object, **kwargs: object) -> None:
+        del args, kwargs
+        raise AssertionError("Tensor padding ran before provenance validation.")
+
+    monkeypatch.setattr(
+        "src.tasks.blcs.data.tracking_dataset.pad_and_stack_tracking_batch",
+        _forbid_padding,
+    )
+    with pytest.raises(
+        CourtReferenceFrameError, match="cannot mix CourtKP20 contracts"
+    ):
+        collate_blcs_tracking_batch([physical, camera_view])
+
+
+def test_collate_allows_same_v2_contract_with_distinct_reference_cameras() -> None:
+    first = _sample(views=1, frames=2, queries=4)
+    second = _sample(views=1, frames=2, queries=4)
+    first_provenance = _camera_view_provenance(reference_camera_id="camera_0")
+    second_provenance = _camera_view_provenance(reference_camera_id="camera_1")
+    first["court_reference_provenance"] = first_provenance
+    second["court_reference_provenance"] = second_provenance
+
+    result = collate_blcs_tracking_batch([first, second])
+
+    assert result["court_reference_provenance"] == (
+        first_provenance,
+        second_provenance,
+    )

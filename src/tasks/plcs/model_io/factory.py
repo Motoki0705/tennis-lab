@@ -111,6 +111,7 @@ def _standard_adapter(
             else None
         ),
         min_views=min_views,
+        court_keypoint_contract=runtime.court_keypoint_contract,
     )
 
 
@@ -194,6 +195,7 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
             num_queries=model_cfg.integer("num_queries"),
             num_court_tokens=14,
             num_joints=model_cfg.integer("num_joints"),
+            court_keypoint_contract=runtime.court_keypoint_contract,
         )
     elif model_name == "plcs_track_query_ablation":
         model = PLCSTrackQueryAblationModel(model_cfg)
@@ -202,6 +204,7 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
             num_queries=model_cfg.integer("num_queries"),
             num_court_tokens=14,
             num_joints=model_cfg.integer("num_joints"),
+            court_keypoint_contract=runtime.court_keypoint_contract,
         )
     else:
         raise ValueError(f"Unsupported validated PLCS model {model_name!r}.")

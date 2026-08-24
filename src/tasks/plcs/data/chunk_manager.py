@@ -10,6 +10,7 @@ from omegaconf import DictConfig
 from src.tasks.base.data.chunk_manager import (
     ChunkManager as BaseChunkManager,
 )
+from src.tasks.plcs.court_keypoint_contract import PLCSCourtKeypointRuntimeConfig
 from src.tasks.plcs.generate_dataset.config import resolve_generation_paths
 from src.tasks.plcs.generate_dataset.io.dataset_io import PLCSDatasetWriter
 from src.tasks.plcs.generate_dataset.utils.parallel_runner import (
@@ -43,7 +44,13 @@ class _PLCSChunkGenerator:
         num_scenes: int,
         stop_event: threading.Event,
     ) -> None:
-        writer = PLCSDatasetWriter(str(chunk_dir))
+        contract = PLCSCourtKeypointRuntimeConfig.from_config(self.config).contract
+        writer = PLCSDatasetWriter(
+            str(chunk_dir),
+            court_keypoint_contract=contract,
+        )
+        root_config = {"court_keypoints": {"selector": contract.selector}}
+        writer.save_meta_json(config=root_config)
         start_index = self._allocate_scene_range(num_scenes)
 
         for scene_data in generate_parallel_scenes(
@@ -56,6 +63,7 @@ class _PLCSChunkGenerator:
             if stop_event.is_set():
                 break
             writer.save_scene(scene_data)
+        writer.save_meta_json(config=root_config)
 
     def _allocate_scene_range(self, num_scenes: int) -> int:
         start_index = self._next_scene_index

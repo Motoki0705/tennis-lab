@@ -111,6 +111,7 @@ class MultiPersonSceneGenerator:
                         human_visible[:, :num_persons].any(axis=-1).sum() / active_count
                     ),
                     court_visibility_count=base_camera.court_visibility_count,
+                    court_view=base_camera.court_view,
                 )
             )
 

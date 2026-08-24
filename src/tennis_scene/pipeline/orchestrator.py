@@ -8,6 +8,10 @@ from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from src.tasks.base.generate_dataset import (
+    CourtKeypointContract,
+    resolve_court_keypoint_contract,
+)
 from src.tennis_scene.pipeline.components.ball_detection import (
     BallDetectionModule,
 )
@@ -30,7 +34,10 @@ from src.tennis_scene.pipeline.model_io.gvhmr import (
     GVHMRResult,
     build_gvhmr_chain,
 )
-from src.tennis_scene.schema import SceneResult
+from src.tennis_scene.schema import (
+    SceneResult,
+    attach_scene_result_court_keypoint_provenance,
+)
 from src.utils.configuration import PathResolver, PathRole
 from src.utils.video import probe_video_info
 
@@ -62,6 +69,7 @@ class TennisSceneOrchestrator:
         resolution: ResolutionResult,
         device: str,
         resolver: PathResolver,
+        court_keypoint_contract: CourtKeypointContract | None = None,
     ) -> None:
         self.court_kp_module = court_kp_module
         self.gvhmr_config = gvhmr_config
@@ -75,10 +83,20 @@ class TennisSceneOrchestrator:
         self.execution_order = resolution.enabled_order
         self.device = device
         self.resolver = resolver
+        self.court_keypoint_contract = (
+            resolve_court_keypoint_contract("physical_v1")
+            if court_keypoint_contract is None
+            else court_keypoint_contract
+        )
 
     @classmethod
     def from_runtime_config(cls, cfg: PipelineRuntimeConfig) -> TennisSceneOrchestrator:
         """Build every stage from an already validated runtime contract."""
+        if cfg.blcs.court_keypoint_contract != cfg.plcs.court_keypoint_contract:
+            raise ValueError(
+                "tennis_scene requires PLCS and BLCS to use the same CourtKP20 "
+                "contract."
+            )
         graph = build_default_dependency_graph()
         resolution = graph.resolve_from_enabled(cfg.enabled)
         for line in graph.format_resolution_messages(resolution):
@@ -107,6 +125,7 @@ class TennisSceneOrchestrator:
             resolution=resolution,
             device=cfg.device,
             resolver=cfg.resolver,
+            court_keypoint_contract=cfg.plcs.court_keypoint_contract,
         )
 
     @classmethod
@@ -247,6 +266,7 @@ class TennisSceneOrchestrator:
         ball_uv = None
         ball_vis = None
         ball_3d = None
+        blcs_result = None
         if (
             Stage.BALL_DETECTION in self.enabled_stages
             and self.ball_detection_module is not None
@@ -269,7 +289,7 @@ class TennisSceneOrchestrator:
                 ball_3d = blcs_result.ball_3d
 
         T = plcs_result.position.shape[1]
-        return SceneResult(
+        result = SceneResult(
             num_frames=T,
             fps=video_info.fps,
             width=width,
@@ -304,6 +324,21 @@ class TennisSceneOrchestrator:
                 "enabled_stages": [stage.value for stage in self.execution_order],
             },
         )
+        if (
+            blcs_result is not None
+            and blcs_result.court_reference_provenance
+            != plcs_result.court_reference_provenance
+        ):
+            raise ValueError(
+                "tennis_scene PLCS/BLCS reference provenance must match before "
+                "constructing one physical SceneResult."
+            )
+        attach_scene_result_court_keypoint_provenance(
+            result,
+            self.court_keypoint_contract,
+            plcs_result.court_reference_provenance,
+        )
+        return result
 
     def _probe_synced_video_infos(
         self,

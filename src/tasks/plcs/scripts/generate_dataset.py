@@ -54,7 +54,14 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     OmegaConf.save(cfg, output_dir / "config.yaml")
 
     # Initialize components
-    writer = PLCSDatasetWriter(output_dir)
+    writer = PLCSDatasetWriter(
+        output_dir,
+        court_keypoint_contract=runtime.court_keypoint_contract,
+    )
+    resolved_meta = OmegaConf.to_container(cfg, resolve=True)
+    if not isinstance(resolved_meta, dict):
+        raise TypeError("Resolved generation metadata must be a mapping.")
+    writer.save_meta_json(config=resolved_meta)
 
     # Generate scenes
     num_scenes = runtime.num_scenes
@@ -108,9 +115,6 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     meta_path = output_dir / "scenes_meta.json"
     save_json(scenes_meta, meta_path, default=str)
 
-    resolved_meta = OmegaConf.to_container(cfg, resolve=True)
-    if not isinstance(resolved_meta, dict):
-        raise TypeError("Resolved generation metadata must be a mapping.")
     writer.save_meta_json(config=resolved_meta)
     writer.save_split_info(
         train_ratio=runtime.train_ratio,

@@ -9,12 +9,14 @@ from typing import cast
 from omegaconf import DictConfig
 
 from src.tasks.base.configuration import require_config_value
+from src.tasks.base.generate_dataset import CourtKeypointContract
 from src.tasks.base.visualization.orchestrator import (
     BaseVisualizationRuntimeConfig,
     build_scene_runtime_config,
     save_or_show_animation,
 )
 from src.tasks.plcs.configuration_contracts import PLCSPathConfig
+from src.tasks.plcs.court_keypoint_contract import PLCSCourtKeypointRuntimeConfig
 from src.tasks.plcs.visualization.api.predict import (
     CanonicalPoseSource,
     predict_scene,
@@ -34,6 +36,7 @@ class RuntimeConfig(BaseVisualizationRuntimeConfig):
 
     canonical_pose_source: CanonicalPoseSource
     resolver: PathResolver
+    court_keypoint_contract: CourtKeypointContract
 
 
 def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
@@ -71,6 +74,9 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         view_3d=base.view_3d,
         canonical_pose_source=cast(CanonicalPoseSource, source),
         resolver=path_config.resolver,
+        court_keypoint_contract=(
+            PLCSCourtKeypointRuntimeConfig.from_config(cfg).contract
+        ),
     )
 
 
@@ -82,6 +88,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
             scene_path=cfg.scene_path,
             camera=cfg.camera,
             cameras=cfg.cameras,
+            court_keypoint_contract=cfg.court_keypoint_contract,
         )
         logger.info(
             f"Scene loaded successfully. Num frames: {len(bundle.scene.position)}"
@@ -117,6 +124,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
                 cameras=bundle.cameras,
                 canonical_pose_source=cfg.canonical_pose_source,
                 resolver=cfg.resolver,
+                court_keypoint_contract=cfg.court_keypoint_contract,
             )
         except ValueError as exc:
             logger.error(f"Error: {exc}")

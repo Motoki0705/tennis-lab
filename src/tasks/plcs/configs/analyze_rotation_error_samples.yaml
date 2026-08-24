@@ -1,4 +1,5 @@
 defaults:
+  - court_keypoints: physical_v1
   - run: analyze_rotation_error_samples
   - paths: default
   - visualization: default
