@@ -22,10 +22,12 @@ _MHC_WRITEBACKS = frozenset({"after_object_temporal", "layer_end"})
 class FixedQueryTrackAblationStage(nn.Module):
     """Run one strict fixed-query FFN/writeback ablation stage.
 
-    All four variants keep the ``C,C,C,G`` temporal cycle. Per-attention
+    All variants keep the ``C,C,C,G`` temporal cycle. Per-attention
     stages use three normal Transformer blocks. Shared stages use three
     attention-only blocks and exactly one stage-owned pre-norm SwiGLU residual
     over the latest query and object tokens after all attention operations.
+    Variant E additionally inserts a separate query-only pre-norm SwiGLU
+    residual between spatial and query-temporal attention.
     """
 
     def __init__(
@@ -40,6 +42,7 @@ class FixedQueryTrackAblationStage(nn.Module):
         num_queries: int,
         ffn_mode: FFNMode,
         mhc_writeback: MHCWriteback,
+        query_ffn_after_spatial: bool,
     ) -> None:
         super().__init__()
         if type(stage_index) is not int or stage_index < 0:
@@ -57,6 +60,15 @@ class FixedQueryTrackAblationStage(nn.Module):
                 "mhc_writeback must be exactly 'after_object_temporal' or "
                 "'layer_end'."
             )
+        if type(query_ffn_after_spatial) is not bool:
+            raise TypeError("query_ffn_after_spatial must be exactly bool.")
+        if query_ffn_after_spatial and (
+            ffn_mode != "shared" or mhc_writeback != "layer_end"
+        ):
+            raise ValueError(
+                "query_ffn_after_spatial requires shared FFN mode and "
+                "layer-end mHC writeback."
+            )
 
         self.stage_index = stage_index
         self.is_global = stage_index % 4 == 3
@@ -64,6 +76,7 @@ class FixedQueryTrackAblationStage(nn.Module):
         self.num_queries = num_queries
         self.ffn_mode = ffn_mode
         self.mhc_writeback = mhc_writeback
+        self.query_ffn_after_spatial_enabled = query_ffn_after_spatial
         self.mhc = mhc
         self.object_temporal_block = object_temporal_block
         self.spatial_block = spatial_block
@@ -93,6 +106,7 @@ class FixedQueryTrackAblationStage(nn.Module):
         ffn_dims = {block.cfg.ffn_dim for block in blocks}
         if len(ffn_dims) != 1:
             raise ValueError("all block FFN dimensions must match.")
+        ffn_dim = ffn_dims.pop()
         expected_block_ffn = self.ffn_mode == "per_attention"
         if any(block.cfg.ffn_enabled is not expected_block_ffn for block in blocks):
             raise ValueError(
@@ -100,11 +114,20 @@ class FixedQueryTrackAblationStage(nn.Module):
                 "requires three FFN-disabled blocks."
             )
 
+        self.query_ffn_after_spatial_norm: RMSNorm | None
+        self.query_ffn_after_spatial: SwiGLU | None
+        if self.query_ffn_after_spatial_enabled:
+            self.query_ffn_after_spatial_norm = RMSNorm(hidden_dim)
+            self.query_ffn_after_spatial = SwiGLU(hidden_dim, ffn_dim)
+        else:
+            self.query_ffn_after_spatial_norm = None
+            self.query_ffn_after_spatial = None
+
         self.shared_ffn_norm: RMSNorm | None
         self.shared_ffn: SwiGLU | None
         if self.ffn_mode == "shared":
             self.shared_ffn_norm = RMSNorm(hidden_dim)
-            self.shared_ffn = SwiGLU(hidden_dim, ffn_dims.pop())
+            self.shared_ffn = SwiGLU(hidden_dim, ffn_dim)
         else:
             self.shared_ffn_norm = None
             self.shared_ffn = None
@@ -303,6 +326,18 @@ class FixedQueryTrackAblationStage(nn.Module):
         ).reshape(batch_size, num_frames, -1, hidden_dim)
         spatial_queries = spatial_values[:, :, : self.num_queries]
         spatial_queries = spatial_queries * frame_valid[:, :, None, None]
+        if self.query_ffn_after_spatial_enabled:
+            if (
+                self.query_ffn_after_spatial is None
+                or self.query_ffn_after_spatial_norm is None
+            ):
+                raise RuntimeError(
+                    "query-only post-spatial FFN modules were not constructed"
+                )
+            spatial_queries = spatial_queries + self.query_ffn_after_spatial(
+                self.query_ffn_after_spatial_norm(spatial_queries)
+            )
+            spatial_queries = spatial_queries * frame_valid[:, :, None, None]
         current_objects = spatial_values[:, :, self.num_queries :].reshape(
             batch_size,
             num_frames,

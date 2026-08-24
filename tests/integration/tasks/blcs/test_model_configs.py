@@ -13,6 +13,7 @@ from src.tasks.blcs.configuration import (
     validate_training_boundary,
 )
 from src.utils.configuration import (
+    ConfigurationTypeError,
     MissingConfigurationKeyError,
     SemanticConfigurationError,
     UnknownConfigurationKeyError,
@@ -113,18 +114,20 @@ def test_default_track_query_config_completes_one_cccg_cycle() -> None:
 
 
 @pytest.mark.parametrize(
-    ("condition", "ffn_mode", "mhc_writeback"),
+    ("condition", "ffn_mode", "mhc_writeback", "query_ffn_after_spatial"),
     [
-        ("a", "per_attention", "after_object_temporal"),
-        ("b", "shared", "after_object_temporal"),
-        ("c", "per_attention", "layer_end"),
-        ("d", "shared", "layer_end"),
+        ("a", "per_attention", "after_object_temporal", False),
+        ("b", "shared", "after_object_temporal", False),
+        ("c", "per_attention", "layer_end", False),
+        ("d", "shared", "layer_end", False),
+        ("e", "shared", "layer_end", True),
     ],
 )
-def test_all_four_track_query_ablation_configs_compose_and_validate(
+def test_all_five_track_query_ablation_configs_compose_and_validate(
     condition: str,
     ffn_mode: str,
     mhc_writeback: str,
+    query_ffn_after_spatial: bool,
 ) -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
@@ -138,6 +141,7 @@ def test_all_four_track_query_ablation_configs_compose_and_validate(
     assert parsed.name == "blcs_track_query_ablation"
     assert parsed.ffn_mode == ffn_mode
     assert parsed.mhc_writeback == mhc_writeback
+    assert parsed.query_ffn_after_spatial is query_ffn_after_spatial
     assert parsed.hidden_dim == 512
     assert parsed.num_heads == 8
     assert parsed.num_stages == 12
@@ -155,9 +159,12 @@ def test_all_four_track_query_ablation_configs_compose_and_validate(
     [
         ("missing_ffn", MissingConfigurationKeyError),
         ("missing_writeback", MissingConfigurationKeyError),
+        ("missing_query_ffn", MissingConfigurationKeyError),
         ("unknown", UnknownConfigurationKeyError),
         ("invalid_ffn", SemanticConfigurationError),
         ("invalid_writeback", SemanticConfigurationError),
+        ("invalid_query_ffn_type", ConfigurationTypeError),
+        ("invalid_query_ffn_combination", SemanticConfigurationError),
     ],
 )
 def test_ablation_axes_reject_missing_unknown_and_invalid_values(
@@ -175,12 +182,18 @@ def test_ablation_axes_reject_missing_unknown_and_invalid_values(
             del config.model["ffn_mode"]
         elif violation == "missing_writeback":
             del config.model["mhc_writeback"]
+        elif violation == "missing_query_ffn":
+            del config.model["query_ffn_after_spatial"]
         elif violation == "unknown":
             config.model["legacy_ablation"] = True
         elif violation == "invalid_ffn":
             config.model.ffn_mode = "legacy"
-        else:
+        elif violation == "invalid_writeback":
             config.model.mhc_writeback = "before_spatial"
+        elif violation == "invalid_query_ffn_type":
+            config.model.query_ffn_after_spatial = "yes"
+        else:
+            config.model.query_ffn_after_spatial = True
 
     with pytest.raises(error):
         parse_model_config(config)
