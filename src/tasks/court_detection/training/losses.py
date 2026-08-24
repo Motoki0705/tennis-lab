@@ -57,6 +57,32 @@ def _finite_float(value: float, *, name: str) -> float:
     return resolved
 
 
+def _prediction_compute_dtype(dtype: torch.dtype) -> torch.dtype:
+    if dtype in {torch.float16, torch.bfloat16}:
+        return torch.float32
+    return dtype
+
+
+def _consistency_compute_dtype(
+    dense_points_xy: Tensor,
+    pose_points_xy: Tensor,
+    pose_depth_m: Tensor,
+) -> torch.dtype:
+    if pose_points_xy.dtype != pose_depth_m.dtype:
+        raise TypeError("Court pose projection points and depth must share dtype.")
+    if dense_points_xy.dtype == pose_points_xy.dtype:
+        return _prediction_compute_dtype(dense_points_xy.dtype)
+    if (
+        dense_points_xy.dtype in {torch.float16, torch.bfloat16}
+        and pose_points_xy.dtype == torch.float32
+    ):
+        return torch.float32
+    raise TypeError(
+        "Court consistency predictions must share dtype except for an AMP dense "
+        "prediction paired with the float32 pose authority."
+    )
+
+
 def consistency_effective_weight(
     *,
     weight: float,
@@ -117,14 +143,14 @@ def query_keypoint_pose_consistency_loss(
     tensors = (pose_points_xy, pose_depth_m, image_size, point_visible)
     if any(value.device != dense_points_xy.device for value in tensors):
         raise ValueError("Court consistency tensors must be on the same device.")
-    if (
-        pose_points_xy.dtype != dense_points_xy.dtype
-        or pose_depth_m.dtype != dense_points_xy.dtype
-    ):
-        raise TypeError("Court consistency prediction tensors must share dtype.")
     _require_finite_tensor(dense_points_xy, name="Dense Court pixel coordinates")
     _require_finite_tensor(pose_points_xy, name="Pose Court pixel coordinates")
     _require_finite_tensor(pose_depth_m, name="Predicted Court depth")
+    compute_dtype = _consistency_compute_dtype(
+        dense_points_xy,
+        pose_points_xy,
+        pose_depth_m,
+    )
     if bool(torch.any(image_size <= 0)):
         raise ValueError("Court image_size values must be positive.")
 
@@ -149,46 +175,50 @@ def query_keypoint_pose_consistency_loss(
     if int(visible_count) == 0:
         raise ValueError("Court consistency loss requires at least one GT-visible point.")
 
-    dense_for_loss = (
-        dense_points_xy.detach()
-        if gradient_flow == "stopgrad_dense"
-        else dense_points_xy
-    )
-    if gradient_flow == "stopgrad_pose":
-        pose_for_loss = pose_points_xy.detach()
-        depth_for_loss = pose_depth_m.detach()
-    else:
-        pose_for_loss = pose_points_xy
-        depth_for_loss = pose_depth_m
+    with torch.autocast(device_type=dense_points_xy.device.type, enabled=False):
+        dense_authority = dense_points_xy.to(dtype=compute_dtype)
+        pose_authority = pose_points_xy.to(dtype=compute_dtype)
+        depth_authority = pose_depth_m.to(dtype=compute_dtype)
+        dense_for_loss = (
+            dense_authority.detach()
+            if gradient_flow == "stopgrad_dense"
+            else dense_authority
+        )
+        if gradient_flow == "stopgrad_pose":
+            pose_for_loss = pose_authority.detach()
+            depth_for_loss = depth_authority.detach()
+        else:
+            pose_for_loss = pose_authority
+            depth_for_loss = depth_authority
 
-    distance_px = torch.linalg.vector_norm(
-        dense_for_loss - pose_for_loss,
-        dim=-1,
-    )
-    diagonal_px = torch.linalg.vector_norm(
-        image_size.to(dtype=dense_points_xy.dtype),
-        dim=-1,
-    )
-    normalized_distance = distance_px / diagonal_px[:, None]
-    coordinate_per_point = torch.where(
-        normalized_distance <= delta,
-        0.5 * normalized_distance.square(),
-        delta * (normalized_distance - 0.5 * delta),
-    )
-    visible_weight = point_visible.to(dtype=dense_points_xy.dtype)
-    count = visible_count.to(dtype=dense_points_xy.dtype)
-    coordinate = (coordinate_per_point * visible_weight).sum() / count
-    cheirality_per_point = F.softplus(
-        (minimum_depth - depth_for_loss) / depth_scale
-    )
-    cheirality = (cheirality_per_point * visible_weight).sum() / count
-    mean_distance_px = (distance_px * visible_weight).sum() / count
-    invalid_depth_fraction = (
-        ((pose_depth_m <= minimum_depth) & point_visible)
-        .to(dtype=dense_points_xy.dtype)
-        .sum()
-        / count
-    )
+        distance_px = torch.linalg.vector_norm(
+            dense_for_loss - pose_for_loss,
+            dim=-1,
+        )
+        diagonal_px = torch.linalg.vector_norm(
+            image_size.to(dtype=compute_dtype),
+            dim=-1,
+        )
+        normalized_distance = distance_px / diagonal_px[:, None]
+        coordinate_per_point = torch.where(
+            normalized_distance <= delta,
+            0.5 * normalized_distance.square(),
+            delta * (normalized_distance - 0.5 * delta),
+        )
+        visible_weight = point_visible.to(dtype=compute_dtype)
+        count = visible_count.to(dtype=compute_dtype)
+        coordinate = (coordinate_per_point * visible_weight).sum() / count
+        cheirality_per_point = F.softplus(
+            (minimum_depth - depth_for_loss) / depth_scale
+        )
+        cheirality = (cheirality_per_point * visible_weight).sum() / count
+        mean_distance_px = (distance_px * visible_weight).sum() / count
+        invalid_depth_fraction = (
+            ((depth_authority <= minimum_depth) & point_visible)
+            .to(dtype=compute_dtype)
+            .sum()
+            / count
+        )
     return CourtKeypointPoseConsistencyLoss(
         coordinate=coordinate,
         cheirality=cheirality,
@@ -248,20 +278,31 @@ def rotation_geodesic_radians(prediction: Tensor, target: Tensor) -> Tensor:
     """Return stable per-sample SO(3) geodesic angles in radians."""
     if prediction.shape != target.shape or prediction.ndim != 3 or prediction.shape[-2:] != (3, 3):
         raise ValueError("Rotation geodesic inputs must share shape (B,3,3).")
-    relative = prediction @ target.transpose(-1, -2)
-    skew = torch.stack(
-        (
-            relative[:, 2, 1] - relative[:, 1, 2],
-            relative[:, 0, 2] - relative[:, 2, 0],
-            relative[:, 1, 0] - relative[:, 0, 1],
-        ),
-        dim=-1,
-    )
-    sine = 0.5 * torch.linalg.vector_norm(skew, dim=-1)
-    cosine = 0.5 * (
-        relative[:, 0, 0] + relative[:, 1, 1] + relative[:, 2, 2] - 1.0
-    )
-    return torch.atan2(sine, cosine)
+    if prediction.device != target.device:
+        raise ValueError("Rotation geodesic inputs must share device.")
+    if prediction.dtype != target.dtype:
+        raise TypeError("Rotation geodesic inputs must share dtype.")
+    compute_dtype = _prediction_compute_dtype(prediction.dtype)
+    with torch.autocast(device_type=prediction.device.type, enabled=False):
+        prediction_authority = prediction.to(dtype=compute_dtype)
+        target_authority = target.to(dtype=compute_dtype)
+        relative = prediction_authority @ target_authority.transpose(-1, -2)
+        skew = torch.stack(
+            (
+                relative[:, 2, 1] - relative[:, 1, 2],
+                relative[:, 0, 2] - relative[:, 2, 0],
+                relative[:, 1, 0] - relative[:, 0, 1],
+            ),
+            dim=-1,
+        )
+        sine = 0.5 * torch.linalg.vector_norm(skew, dim=-1)
+        cosine = 0.5 * (
+            relative[:, 0, 0]
+            + relative[:, 1, 1]
+            + relative[:, 2, 2]
+            - 1.0
+        )
+        return torch.atan2(sine, cosine)
 
 
 def query_pose_losses(
@@ -269,32 +310,42 @@ def query_pose_losses(
     target: CourtPoseLossTarget,
 ) -> dict[str, Tensor]:
     """Compute explicit metric translation, SO(3), and log-focal losses."""
+    translation_dtype = _prediction_compute_dtype(prediction.translation_m.dtype)
+    rotation_dtype = _prediction_compute_dtype(prediction.rotation.dtype)
+    focal_dtype = _prediction_compute_dtype(prediction.log_focal.dtype)
+    prediction_translation = prediction.translation_m.to(dtype=translation_dtype)
+    prediction_rotation = prediction.rotation.to(dtype=rotation_dtype)
+    prediction_log_focal = prediction.log_focal.to(dtype=focal_dtype)
     target_translation = target.translation_m.to(
         device=prediction.translation_m.device,
-        dtype=prediction.translation_m.dtype,
+        dtype=translation_dtype,
     )
     target_rotation = target.rotation.to(
         device=prediction.rotation.device,
-        dtype=prediction.rotation.dtype,
+        dtype=rotation_dtype,
     )
     target_log_focal = target.log_focal.to(
         device=prediction.log_focal.device,
-        dtype=prediction.log_focal.dtype,
+        dtype=focal_dtype,
     )
-    return {
-        "pose_translation": F.mse_loss(
-            prediction.translation_m,
-            target_translation,
-        ),
-        "pose_rotation": rotation_geodesic_radians(
-            prediction.rotation,
-            target_rotation,
-        ).mean(),
-        "pose_focal": F.mse_loss(
-            prediction.log_focal,
-            target_log_focal,
-        ),
-    }
+    with torch.autocast(
+        device_type=prediction.translation_m.device.type,
+        enabled=False,
+    ):
+        return {
+            "pose_translation": F.mse_loss(
+                prediction_translation,
+                target_translation,
+            ),
+            "pose_rotation": rotation_geodesic_radians(
+                prediction_rotation,
+                target_rotation,
+            ).mean(),
+            "pose_focal": F.mse_loss(
+                prediction_log_focal,
+                target_log_focal,
+            ),
+        }
 
 
 __all__ = [

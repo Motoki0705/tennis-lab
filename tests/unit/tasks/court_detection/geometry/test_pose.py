@@ -23,6 +23,7 @@ from src.tasks.court_detection.geometry.pose import (
     project_canonical_points,
     project_predicted_canonical_points,
     validate_projection_round_trip,
+    validate_proper_rotation,
     validate_square_intrinsics,
 )
 from src.utils.schema.court import (
@@ -230,6 +231,57 @@ def test_round_trip_rejects_mismatch_among_positive_depth_references() -> None:
 def test_pose_decode_rejects_nonfinite_and_predecode_degeneracy(raw: torch.Tensor) -> None:
     with pytest.raises(ValueError, match="finite|norm"):
         decode_pose10d_strict(raw)
+
+
+def test_so3_validation_keeps_float32_tolerance_under_bfloat16_autocast() -> None:
+    within_tolerance = torch.eye(3)
+    within_tolerance[0, 0] += 4.0e-6
+    outside_tolerance = torch.eye(3)
+    outside_tolerance[0, 0] += 6.0e-6
+
+    with torch.autocast(device_type="cpu", dtype=torch.bfloat16):
+        validate_proper_rotation(within_tolerance)
+        with pytest.raises(ValueError, match="orthonormal within 1e-5"):
+            validate_proper_rotation(outside_tolerance)
+
+
+def test_bfloat16_autocast_decode_and_projection_have_float32_authority() -> None:
+    raw = _identity_raw_pose(focal_px=3.0).to(torch.bfloat16)
+    raw = raw.unsqueeze(0).requires_grad_()
+    points = torch.tensor(
+        [[[1.0, 2.0, 4.0], [-2.0, 1.0, 3.0], [0.5, -1.5, 2.0]]],
+        dtype=torch.bfloat16,
+    ).repeat(1, 5, 1)[:, :14]
+
+    with torch.autocast(device_type="cpu", dtype=torch.bfloat16):
+        prediction = decode_pose10d_strict(raw)
+        projected = project_predicted_canonical_points(
+            prediction,
+            points,
+            torch.tensor([[7.0, 11.0]], dtype=torch.bfloat16),
+        )
+
+    assert prediction.translation_m.dtype == torch.float32
+    assert prediction.rotation.dtype == torch.float32
+    assert prediction.focal_px.dtype == torch.float32
+    assert projected.points_xy.dtype == torch.float32
+    assert projected.depth_m.dtype == torch.float32
+    (projected.points_xy.square().sum() + projected.depth_m.square().sum()).backward()
+    assert raw.grad is not None
+    assert torch.isfinite(raw.grad).all()
+    assert torch.count_nonzero(raw.grad) > 0
+
+
+def test_bfloat16_autocast_keeps_degenerate_and_improper_rejection() -> None:
+    degenerate = _identity_raw_pose().to(torch.bfloat16).unsqueeze(0)
+    degenerate[:, 3:6] = 0.0
+    improper = torch.diag(torch.tensor([1.0, 1.0, -1.0]))
+
+    with torch.autocast(device_type="cpu", dtype=torch.bfloat16):
+        with pytest.raises(ValueError, match="first-row norm"):
+            decode_pose10d_strict(degenerate)
+        with pytest.raises(ValueError, match=r"determinant \+1"):
+            validate_proper_rotation(improper)
 
 
 @pytest.mark.parametrize(

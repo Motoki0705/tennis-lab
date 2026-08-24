@@ -42,6 +42,13 @@ MIN_PROJECTION_REFERENCE_POINTS = 4
 PROJECTION_REFERENCE_AREA_EPS_M2 = 1.0e-6
 
 
+def _pose_compute_dtype(dtype: torch.dtype) -> torch.dtype:
+    """Promote reduced-precision predictions to the SO(3) compute authority."""
+    if dtype in {torch.float16, torch.bfloat16}:
+        return torch.float32
+    return dtype
+
+
 def _require_finite(value: Tensor, *, name: str) -> None:
     if not value.is_floating_point():
         raise TypeError(f"{name} must be floating point.")
@@ -83,20 +90,30 @@ def validate_proper_rotation(rotation: Tensor, *, atol: float = SO3_ATOL) -> Non
     if rotation.ndim < 2 or rotation.shape[-2:] != (3, 3):
         raise ValueError("Court pose rotation must end in shape (3,3).")
     _require_finite(rotation, name="Court pose rotation")
-    identity = torch.eye(3, dtype=rotation.dtype, device=rotation.device)
-    gram = rotation.transpose(-1, -2) @ rotation
-    if not bool(torch.allclose(gram, identity.expand_as(gram), atol=atol, rtol=0.0)):
-        raise ValueError("Court pose rotation must be orthonormal within 1e-5.")
-    determinant = torch.linalg.det(rotation)
-    if not bool(
-        torch.allclose(
-            determinant,
-            torch.ones_like(determinant),
-            atol=atol,
-            rtol=0.0,
-        )
-    ):
-        raise ValueError("Court pose rotation must have determinant +1 within 1e-5.")
+    compute_dtype = _pose_compute_dtype(rotation.dtype)
+    with torch.autocast(device_type=rotation.device.type, enabled=False):
+        authority = rotation.to(dtype=compute_dtype)
+        identity = torch.eye(3, dtype=compute_dtype, device=rotation.device)
+        gram = authority.transpose(-1, -2) @ authority
+        if not bool(
+            torch.allclose(
+                gram,
+                identity.expand_as(gram),
+                atol=atol,
+                rtol=0.0,
+            )
+        ):
+            raise ValueError("Court pose rotation must be orthonormal within 1e-5.")
+        determinant = torch.linalg.det(authority)
+        if not bool(
+            torch.allclose(
+                determinant,
+                torch.ones_like(determinant),
+                atol=atol,
+                rtol=0.0,
+            )
+        ):
+            raise ValueError("Court pose rotation must have determinant +1 within 1e-5.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -190,33 +207,39 @@ class CourtPredictedProjection:
 
 
 def decode_pose10d_strict(values: Tensor) -> CourtDecodedPose:
-    """Predecode-reject invalid rows, then recover a differentiable proper SO(3)."""
+    """Decode a differentiable SO(3) at float32 or the higher input precision."""
     if values.ndim != 2 or values.shape[1] != len(POSE10D_RAW_ORDER):
         raise ValueError("Raw Court pose must have exact shape (B,10).")
     if values.shape[0] <= 0:
         raise ValueError("Raw Court pose batch size must be positive.")
     _require_finite(values, name="Raw Court pose10d")
-    row6d = values[:, 3:9]
-    first = row6d[:, :3]
-    second = row6d[:, 3:]
-    first_norm = torch.linalg.vector_norm(first, dim=-1)
-    if bool(torch.any(first_norm < ROTATION_DEGENERACY_EPS)):
-        raise ValueError("Raw Court pose first-row norm is below 1e-6.")
-    normalized_first = first / first_norm.unsqueeze(-1)
-    residual = second - (normalized_first * second).sum(dim=-1, keepdim=True) * normalized_first
-    residual_norm = torch.linalg.vector_norm(residual, dim=-1)
-    if bool(torch.any(residual_norm < ROTATION_DEGENERACY_EPS)):
-        raise ValueError("Raw Court pose second-row residual norm is below 1e-6.")
-    rotation = rotation_6d_to_matrix(row6d)
-    validate_proper_rotation(rotation)
-    focal = torch.exp(values[:, 9])
-    if not bool(torch.isfinite(focal).all()) or bool(torch.any(focal <= 0.0)):
-        raise ValueError("Decoded Court focal must be finite and positive.")
+    compute_dtype = _pose_compute_dtype(values.dtype)
+    with torch.autocast(device_type=values.device.type, enabled=False):
+        authority = values.to(dtype=compute_dtype)
+        row6d = authority[:, 3:9]
+        first = row6d[:, :3]
+        second = row6d[:, 3:]
+        first_norm = torch.linalg.vector_norm(first, dim=-1)
+        if bool(torch.any(first_norm < ROTATION_DEGENERACY_EPS)):
+            raise ValueError("Raw Court pose first-row norm is below 1e-6.")
+        normalized_first = first / first_norm.unsqueeze(-1)
+        residual = second - (
+            (normalized_first * second).sum(dim=-1, keepdim=True)
+            * normalized_first
+        )
+        residual_norm = torch.linalg.vector_norm(residual, dim=-1)
+        if bool(torch.any(residual_norm < ROTATION_DEGENERACY_EPS)):
+            raise ValueError("Raw Court pose second-row residual norm is below 1e-6.")
+        rotation = rotation_6d_to_matrix(row6d)
+        validate_proper_rotation(rotation)
+        focal = torch.exp(authority[:, 9])
+        if not bool(torch.isfinite(focal).all()) or bool(torch.any(focal <= 0.0)):
+            raise ValueError("Decoded Court focal must be finite and positive.")
     return CourtDecodedPose(
-        translation_m=values[:, :3],
+        translation_m=authority[:, :3],
         rotation=rotation,
         focal_px=focal,
-        log_focal=values[:, 9],
+        log_focal=authority[:, 9],
     )
 
 
@@ -342,10 +365,10 @@ def project_predicted_canonical_points(
     """Project batched canonical points through a decoded predicted pose.
 
     Unlike :func:`project_canonical_points`, this prediction-side path keeps
-    the model dtype and autograd graph and does not reject low or negative
-    depth. Near-zero depths use a signed finite denominator; the returned
-    depths remain unmodified so the loss can apply fixed-visibility
-    cheirality supervision.
+    the autograd graph while using float32 or the higher decoded precision,
+    and it does not reject low or negative depth. Near-zero depths use a
+    signed finite denominator; the returned depths remain unmodified so the
+    loss can apply fixed-visibility cheirality supervision.
     """
     if canonical_points.ndim != 3 or canonical_points.shape[1:] != (14, 3):
         raise ValueError("Predicted Court canonical points must have shape (B,14,3).")
@@ -361,24 +384,28 @@ def project_predicted_canonical_points(
     if not math.isfinite(depth_epsilon_m) or depth_epsilon_m <= 0.0:
         raise ValueError("depth_epsilon_m must be finite and positive.")
 
-    dtype = prediction.translation_m.dtype
+    dtype = _pose_compute_dtype(prediction.translation_m.dtype)
     device = prediction.translation_m.device
-    points = canonical_points.to(device=device, dtype=dtype)
-    principal_point = principal_point_px.to(device=device, dtype=dtype)
-    offset = points - prediction.translation_m[:, None, :]
-    points_camera = torch.bmm(offset, prediction.rotation)
-    depth = points_camera[:, :, 2]
-    epsilon = float(depth_epsilon_m)
-    safe_depth = torch.where(
-        depth < 0.0,
-        torch.clamp(depth, max=-epsilon),
-        torch.clamp(depth, min=epsilon),
-    )
-    normalized_xy = points_camera[:, :, :2] / safe_depth[:, :, None]
-    points_xy = (
-        prediction.focal_px[:, None, None] * normalized_xy
-        + principal_point[:, None, :]
-    )
+    with torch.autocast(device_type=device.type, enabled=False):
+        points = canonical_points.to(device=device, dtype=dtype)
+        principal_point = principal_point_px.to(device=device, dtype=dtype)
+        translation = prediction.translation_m.to(dtype=dtype)
+        rotation = prediction.rotation.to(dtype=dtype)
+        focal = prediction.focal_px.to(dtype=dtype)
+        offset = points - translation[:, None, :]
+        points_camera = torch.bmm(offset, rotation)
+        depth = points_camera[:, :, 2]
+        epsilon = float(depth_epsilon_m)
+        safe_depth = torch.where(
+            depth < 0.0,
+            torch.clamp(depth, max=-epsilon),
+            torch.clamp(depth, min=epsilon),
+        )
+        normalized_xy = points_camera[:, :, :2] / safe_depth[:, :, None]
+        points_xy = (
+            focal[:, None, None] * normalized_xy
+            + principal_point[:, None, :]
+        )
     return CourtPredictedProjection(points_xy=points_xy, depth_m=depth)
 
 
