@@ -30,6 +30,7 @@ _SMALL = (
     "model.num_stages=4",
     "model.mhc.coefficient_dim=8",
     "model.mhc.sinkhorn_iters=5",
+    "model.cswa.backend=reference",
     "model.cswa.compression_ratio=2",
     "model.cswa.window_radius=1",
 )
