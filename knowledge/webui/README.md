@@ -19,7 +19,7 @@ npm run dev          # http://localhost:3000
 - group ノード = 破線ボックスで、所属 run を**内包（囲む）**して表示。group→member のエッジは引かない。
 - 有向エッジは **parent→child の実線（依存関係）のみ**。シンプルな依存関係に注視できるよう、relation の点線エッジは描画しない（relation は右パネルに表示）。
 - ノードクリックで右パネルに config / metrics / artifacts / 考察(Markdown) を表示。
-- 上部チップで issue / provider / tag フィルタ。
+- 上部チップで issue / provider / tag フィルタ。tag 一覧はデフォルトで閉じ、`tags` をクリックすると展開。
 - レイアウトは dagre で自動配置（rankdir=TB）。
 
 ## 構成
