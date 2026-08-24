@@ -92,7 +92,14 @@ def _require_pair(
     *,
     trailing_width: int,
     quantity: str,
-) -> None:
+) -> tuple[Tensor, Tensor]:
+    """Validate one metric pair and normalize only its numeric precision.
+
+    AMP predictions may be float16/bfloat16 while dataset targets remain
+    float32.  Metrics use float32 for every non-float64 pair and preserve
+    float64 when either operand requests it; shape and device identity stay
+    strict.
+    """
     if not isinstance(prediction, Tensor) or not isinstance(target, Tensor):
         raise TypeError(f"{quantity} prediction and target must be tensors.")
     if prediction.shape != target.shape:
@@ -109,10 +116,16 @@ def _require_pair(
         raise PairedReferenceEvaluationError(
             f"{quantity} prediction and target must use floating dtypes."
         )
-    if prediction.dtype != target.dtype or prediction.device != target.device:
+    if prediction.device != target.device:
         raise PairedReferenceEvaluationError(
-            f"{quantity} prediction and target must share dtype and device."
+            f"{quantity} prediction and target must share a device."
         )
+    metric_dtype = (
+        torch.float64
+        if torch.float64 in (prediction.dtype, target.dtype)
+        else torch.float32
+    )
+    return prediction.to(dtype=metric_dtype), target.to(dtype=metric_dtype)
 
 
 def _selected_rows(
@@ -158,7 +171,12 @@ def compute_y_sign_accuracy(
     zero_tolerance: float = 0.0,
 ) -> float:
     """Return Y-sign accuracy, explicitly excluding near-mid-plane targets."""
-    _require_pair(prediction, target, trailing_width=3, quantity="position")
+    prediction, target = _require_pair(
+        prediction,
+        target,
+        trailing_width=3,
+        quantity="position",
+    )
     if not isinstance(zero_tolerance, (int, float)) or zero_tolerance < 0:
         raise PairedReferenceEvaluationError(
             f"zero_tolerance must be non-negative, got {zero_tolerance!r}."
@@ -191,7 +209,12 @@ def compute_axis_wise_position_error(
     valid_mask: Tensor | None = None,
 ) -> AxisWisePositionError:
     """Return selected-observation mean absolute X/Y/Z error."""
-    _require_pair(prediction, target, trailing_width=3, quantity="position")
+    prediction, target = _require_pair(
+        prediction,
+        target,
+        trailing_width=3,
+        quantity="position",
+    )
     difference = (prediction - target).abs()
     selected = _selected_rows(
         difference,
@@ -213,7 +236,12 @@ def compute_heading_error_radians(
     valid_mask: Tensor | None = None,
 ) -> float:
     """Return mean unsigned angle between selected 2D PLCS headings."""
-    _require_pair(prediction, target, trailing_width=2, quantity="heading")
+    prediction, target = _require_pair(
+        prediction,
+        target,
+        trailing_width=2,
+        quantity="heading",
+    )
     predicted_rows = _selected_rows(
         prediction,
         valid_mask=valid_mask,
@@ -266,29 +294,33 @@ def compute_reference_transform_consistency_error(
 ) -> float:
     """Compare counterfactual outputs after authoritative physical restoration."""
     trailing_width = 2 if quantity == "heading" else 3
-    _require_pair(
+    first_reference_value, second_reference_value = _require_pair(
         first_reference_value,
         second_reference_value,
         trailing_width=trailing_width,
         quantity="reference-transform consistency",
     )
-    first_physical = _restore_physical(
-        first_reference_value,
-        first_provenance,
-        quantity=quantity,
-    )
-    second_physical = _restore_physical(
-        second_reference_value,
-        second_provenance,
-        quantity=quantity,
-    )
-    error = torch.linalg.vector_norm(first_physical - second_physical, dim=-1)
-    selected = _selected_rows(
-        error.unsqueeze(-1),
-        valid_mask=valid_mask,
-        quantity="reference-transform consistency",
-    )
-    return float(selected.mean().item())
+    with torch.autocast(
+        device_type=first_reference_value.device.type,
+        enabled=False,
+    ):
+        first_physical = _restore_physical(
+            first_reference_value,
+            first_provenance,
+            quantity=quantity,
+        )
+        second_physical = _restore_physical(
+            second_reference_value,
+            second_provenance,
+            quantity=quantity,
+        )
+        error = torch.linalg.vector_norm(first_physical - second_physical, dim=-1)
+        selected = _selected_rows(
+            error.unsqueeze(-1),
+            valid_mask=valid_mask,
+            quantity="reference-transform consistency",
+        )
+        return float(selected.mean().item())
 
 
 def stratify_metric_by_reference_view_index(
@@ -325,7 +357,11 @@ def stratify_metric_by_reference_view_index(
         raise PairedReferenceEvaluationError(
             "reference_view_index cannot contain padding or negative values."
         )
-    per_sample = metric_values.reshape(batch_size, -1).mean(dim=1)
+    metric_dtype = (
+        torch.float64 if metric_values.dtype == torch.float64 else torch.float32
+    )
+    stable_values = metric_values.to(dtype=metric_dtype)
+    per_sample = stable_values.reshape(batch_size, -1).mean(dim=1)
     result: dict[int, float] = {}
     for index in sorted(int(value) for value in torch.unique(reference_view_index)):
         selected = per_sample[reference_view_index.eq(index)]
@@ -347,7 +383,12 @@ def compute_paired_reference_position_metrics(
         target,
         valid_mask=valid_mask,
     )
-    _require_pair(prediction, target, trailing_width=3, quantity="position")
+    prediction, target = _require_pair(
+        prediction,
+        target,
+        trailing_width=3,
+        quantity="position",
+    )
     sample_error = torch.linalg.vector_norm(prediction - target, dim=-1)
     if valid_mask is not None:
         if valid_mask.shape != sample_error.shape or valid_mask.dtype != torch.bool:
