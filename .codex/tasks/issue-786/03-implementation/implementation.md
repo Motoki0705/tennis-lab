@@ -1,10 +1,10 @@
 # Implementation
 
 - Issue: #786
-- Attempt: 3
+- Attempt: 6
 - Test cycle: 1
 - Status: COMPLETE
-- Candidate SHA-256: `sha256:836df260400170df46667244d06be0b527a3a2267aa0ba61cab8b7cba9df6749`
+- Candidate SHA-256: `sha256:6ca1bf6d8eaf5a619a0d923c0568806510c5a35ea663d3332b2c0cff23492b35`
 
 ## Assigned ownership
 
@@ -18,6 +18,11 @@
 - Packaging repair `i786_main_merge_repair`: integrate `origin/main` without rewriting branch history and resolve the three overlapping BLCS configuration / BLCS+PLCS predictor-test conflicts while retaining both normalization coverage and upstream track-query-ablation behavior.
 - Merge Preflight repair `i786_merge_mypy_repair`: preserve the upstream ablation model-identity assertion while widening only mypy's static view at the failing comparison.
 - Attempt-3 `i786_ac017_implementer`: own the bounded PLCS primary dataset/training publication path validation, writer occupancy/exclusive-scene boundary, standalone first-write ordering, and canonical documentation comments. Tests remain independently owned.
+- Attempt-3 `i786_ac017_training_repair`: own the Preflight F-001 repair at the PLCS training output boundary. The repair may change only PLCS production files and must preserve v1 behavior, missing/empty v2 roots, and every byte in a refused occupied v2 root.
+- Post-Seal parent integrator: own only the scope-evidence repair after `return-review implementation`; classify merge-parent provenance and the already committed repository-gate support paths without changing candidate-bound production, tests, or fixtures.
+- Attempt-4 `i786_docs_implementer`: own only the 14 approved README/YAML-comment paths needed to make `src/tasks/base/README.md` the single human-facing normalization contract. Executable code, numerical config values, tests, and workflow artifacts remain outside ownership.
+- Attempt-5 `i786_mypy_implementer`: own only `tests/integration/tasks/plcs/test_artifact_publication.py` and repair the Validator-reported static wrapper boundary without changing its runtime assertions or any production interface.
+- Attempt-6 `i786_strict_mypy_implementer`: own only `tests/integration/tasks/test_court_coordinate_normalization_documentation.py::_read` and close the isolated changed-file `no-any-return` without changing documentation assertions or runtime I/O.
 - Attempt-2 parent integrator: incorporate the Validator findings, replace the invalid archived-checkpoint migration premise with frozen-base representative parity evidence, and bind this artifact to the repaired candidate.
 
 ## Files and symbols changed
@@ -32,6 +37,11 @@
 - Attempt-2 PLCS boundary: `src/tasks/plcs/generate_dataset/io/scene_loader.py::load_scene` and `src/tasks/plcs/visualization/io/scene.py::load_scene_bundle` require `CourtCoordinateNormalization`; metadata validation always precedes payload reads.
 - Attempt-2 authority: `.codex/tasks/issue-786/{01-exploration/exploration.md,02-planning/plan.md}` records why archived checkpoint architecture drift is outside this normalization Issue and freezes representative frozen-base parity as the AC-003/004 test oracle.
 - Attempt-3 AC-017 boundary: `src/tasks/plcs/artifact_paths.py`, `generate_dataset/config.py`, `configuration.py`, `generate_dataset/io/dataset_io.py`, and `scripts/generate_dataset.py` enforce v2 publication identity and preservation before any primary PLCS destination mutation; shipped v2 config comments and the PLCS README point to the same rule.
+- Attempt-3 Preflight F-001 closure: `src/tasks/plcs/artifact_paths.py::validate_plcs_training_output_occupancy` and `src/tasks/plcs/training/runner.py::PLCSTrainingRunner.prepare_config` reject occupied or non-directory v2 training roots before the common runner can create the root or persist `config.yaml`.
+- Final scope integration: merge `64ea1b5a` keeps the branch synchronized with upstream parent `179dac75`; upstream workflow, ablation, shared-model/CUDA, and associated e2e paths are merge provenance rather than Issue-authored edits. Six branch-authored support paths are bounded repository-gate closure: `.gitignore`, two behavior-neutral mypy narrowing files, and three e2e contract/regression files named in `plan.md`.
+- Attempt-4 documentation: `src/tasks/base/README.md` now owns the complete human-facing court-coordinate normalization contract; BLCS/PLCS/SLCS, tennis-scene, compact-PLCS docs, and seven approved YAML comments route readers to that anchor and retain only task-local semantics.
+- Attempt-5 test typing: `tests/integration/tasks/plcs/test_artifact_publication.py::_run_generate_dataset` obtains Hydra's runtime `__wrapped__` attribute with no default, casts it to `Callable[[DictConfig], int]`, and centralizes the two existing injected-config calls.
+- Attempt-6 test typing: `tests/integration/tasks/test_court_coordinate_normalization_documentation.py::_read` assigns the unchanged UTF-8 `Path.read_text` result to a local `text: str` before returning it, keeping the value/error path identical under both broad and isolated mypy modes.
 
 ## Behavior implemented
 
@@ -48,6 +58,10 @@
 - The merged BLCS typed parser admits both `blcs_track_query` and upstream `blcs_track_query_ablation`, validates generator sections for either model with the chunked backend rule, and retains the complete version-aware normalization loss schema. Merged predictor tests retain default/v2 metre-scale assertions alongside upstream ablation checkpoint restoration.
 - Primary PLCS generation/training selected with v2 now requires a delimiter-bounded `norm_v2` token in a configured relative path component before role resolution or runner execution. It preserves shipped `_norm_v2` names while rejecting lookalikes, absolute/parent-traversal paths, v1-labelled roots, and unqualified v2 output; v1/default remains compatible.
 - `PLCSDatasetWriter` refuses every non-empty or non-directory destination root before writes, allows missing/empty roots, and creates scene directories exclusively. The standalone entrypoint constructs the writer before saving `config.yaml`, so path/root failures preserve all existing bytes. Anonymous fresh chunk roots remain supported and compact mutable workspace publication is unchanged.
+- PLCS training now performs a PLCS-owned occupancy check during configuration preparation, before `BaseTrainingRunner` can write configuration, logs, or checkpoints. Missing and empty v2 roots remain valid, occupied/non-directory v2 roots fail closed, filesystem inspection errors are explicit, and v1 retains its historical reusable-output behavior.
+- The canonical base README states the v1/v2 formula and scales, v1 Hydra default, physical/normalized units, dataset/checkpoint metadata and legacy/mismatch behavior, version-qualified non-overwrite naming, and migration command exactly once. It explicitly distinguishes `court_normalization.py` as the mathematical resolver, the base data module as dataset metadata schema, the model-I/O module as checkpoint adapter, and the materializer as migration owner. Task docs no longer duplicate common policy or call the resolver an artifact schema.
+- PLCS artifact-publication runtime behavior is unchanged: the helper invokes the same wrapped config-taking function, raises `AttributeError` if the wrapper disappears, and retains the successful-publication and occupied-root byte-preservation oracles. The production `HydraCLI` remains correctly typed as a zero-argument CLI.
+- Documentation-routing runtime behavior is unchanged: `_read` still resolves from `PROJECT_ROOT`, reads UTF-8 text, and raises on missing/unreadable files; only the local static type bridge was added.
 
 ## Plan deviations and rationale
 
@@ -60,6 +74,7 @@
 - AC-003/004 will instead use small deterministic metadata-free checkpoints, dataset fixtures, and expected outputs produced by the frozen base itself. This directly tests that the Issue preserves the behavior of artifacts the base revision could actually create and load.
 - PR #792 initially reported a merge conflict because `main` advanced by 13 commits. A normal merge was selected instead of rewriting the validated branch history; the resulting upstream changes are not Issue-authored scope, but their three overlaps require fresh repair-local Preflight/Test/Seal/Validator binding on the final merge tree.
 - Attempt 3 follows the final Validator's AC-017 finding. The narrow repair treats artifact naming as an additional publication guard, not metadata authority; it does not require a new separator/layout or redesign the compact fixed-owner scene workspace, which cannot select v2.
+- Attempt 6 initially froze a literal `cast(str, ...)`, but deterministic execution proved it cannot satisfy both isolated mypy (cast required) and broad mypy (`redundant-cast`). The same Explorer corrected the authority to a local `text: str` annotation, the parent revised the plan, and the Implementer applied that no-runtime-change bridge; both canonical modes now pass without ignores or configuration weakening.
 
 ## Commands and results
 
@@ -78,14 +93,25 @@
 - `origin/main` merge repair: Ruff PASS, mypy PASS, pre-commit PASS, 39 focused BLCS/PLCS configuration and tracking predictor tests PASS, `git diff --check` PASS, and no conflict marker/unmerged index entry remains.
 - Merge Preflight F-001 repair: 8 focused ablation tests PASS; Ruff, repository-hook mypy, and pre-commit PASS; the runtime class-identity assertion remains exact while `cast("object", ...)` prevents the static non-overlap false positive.
 - Attempt-3 production checks: owned-file Ruff/mypy/script reviewer PASS; 48 focused PLCS tests and 12 normalization/materializer regressions PASS. Temporary diagnostics passed valid/lookalike/v1 path matrices, shipped configs, pre-resolution failure, missing/empty/non-empty roots, exclusive scene collision, standalone first-write preservation, training pre-run config/checkpoint preservation, and v1/v2 controls; `git diff --check` PASS.
+- Attempt-3 Preflight F-001 repair: a `PLCSTrainingRunner.run` diagnostic proved identical SHA-256 values and tree contents for existing v2 config/checkpoint/logger sentinels after refusal; missing/empty v2 roots and an occupied v1 root remained accepted, and a non-directory v2 destination was rejected unchanged. The focused PLCS/config/path suite passed 40 tests, the frozen Preflight regression selection passed 127 tests, and Ruff, mypy, all-files pre-commit, and `git diff --check` passed.
+- Attempt-3 Test Writer PASS bound `sha256:5c19ed2cb9cc3becad4c1b377534801607af29d6beae355b1d2ca685816856f4`; all 11 checks passed, including `plcs-artifact-preservation` (76 passed), `preflight-regression` (167 passed), `precommit-all`, and `full-pytest` (3388 passed, 78 skipped).
+- The first Seal on that candidate reconfirmed identity and all 11 canonical checks but returned on scope inventory. `seal-verdict RETURN` and `return-review implementation` were recorded. The parent then classified the 57 reported paths by exact merge provenance or the six already committed repository-gate support edits and revised only workflow artifacts; candidate-bound content and fingerprint stayed unchanged.
+- Attempt-4 documentation checks: exactly one canonical heading and 13/13 inventoried routes were found; all 12 local Markdown targets resolved; duplicate/common-policy and false artifact-schema scans were clean; PLCS canonical-pose/translation, SLCS uncertainty/SceneResult metre, compact-workspace, and local command caveats remained present. All seven YAML files parsed with non-comment content unchanged; focused pre-commit and `git diff --check` passed.
+- Attempt-5 repair checks: the 76-test `plcs-artifact-preservation` set passed; the fail-loud wrapper probe raised the expected `AttributeError`; `candidate-python-mypy` passed across 1,124 source files; Ruff and diff/whitespace checks passed.
+- Attempt-6 repair checks: all four documentation tests passed; broad hook-launcher `candidate-python-mypy` passed 1,124 files; isolated `documentation-test-mypy` passed the one untracked file; Ruff and diff/whitespace checks passed.
 
 ## Known limitations and remaining risks
 
 - The independent Test Writer must commit portable representative fixtures, add the planned frozen-base v1 parity integration test, update existing PLCS loader tests for the mandatory argument, and replace the nominal NumPy/Identity smoke with real task chains before the final full-suite verdict.
-- Attempt 3 still requires the independent Test Writer to commit AC-017 path/config/writer/entrypoint preservation and success-control tests, including byte identity after failure; temporary Implementer diagnostics are not acceptance evidence.
+- Attempt 3 still requires the independent Test Writer to commit AC-017 path/config/writer/entrypoint/training-root preservation and success-control tests, including byte identity after failure; temporary Implementer diagnostics are not acceptance evidence.
+- The v2 training occupancy guard is deliberately a pre-write validation rather than an inter-process filesystem lock; an external writer racing after the final check is a narrow residual TOCTOU risk outside this bounded repair.
+- Final sealing must still verify that every frozen-base path is mapped to Issue ownership, the six exact support edits, or second-parent merge provenance; a generic claim that canonical checks passed is insufficient.
+- The independent Test Writer must add the planned focused documentation-routing/anti-duplication test and run all 12 canonical checks; Implementer diagnostics alone are not acceptance evidence.
+- Attempt 5 still requires an independent Test Writer to close the exact mypy finding and run all 13 canonical checks, including full pre-commit and full pytest.
+- Attempt 6 still requires an independent Test Writer to run all 14 canonical checks, including both mypy modes, full pre-commit, and full pytest.
 - PLCS v1/v2 metrics are not a single-variable comparison because restart and batch-size conditions differ.
 - Local full-suite execution depends on ignored worktree-local hard-link trees to licensed/external datasets in the original repository; these are environment evidence, not committed artifacts and preserve strict worktree-root path semantics.
 
 ## Handoff
 
-Attempt-3 AC-017 production integration is ready for a bounded discovery Preflight. Review may inspect only the planned publication-path grammar, first-write ordering, root/scene exclusivity, primary generation/training callers, v1/empty-root controls, shipped configs, materializer regression, and byte preservation; it must not reopen other normalization or compact-workspace semantics.
+Attempt-6 AC-021 test-only integration is ready for one bounded discovery Preflight. Review is limited to the former `no-any-return` site, local annotation/runtime equivalence, the corrected no-cast authority, both mypy modes, and canonical Preflight checks. It must not reopen normalization or documentation behavior.

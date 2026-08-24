@@ -14,7 +14,7 @@ external_assets:
   smplh_model_path: smplx/smplh
 
 run:
-  # v2 publication name; see the artifact naming guard in the PLCS README.
+  # Contract: src/tasks/base/README.md#court-coordinate-normalization-contract
   output_dir: plcs/baseline_norm_v2/${model.name}
 
 hydra:

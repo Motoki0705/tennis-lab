@@ -1,8 +1,9 @@
-"""PLCS publication-name guards for versioned persistent artifacts."""
+"""PLCS publication guards for versioned persistent artifacts."""
 
 from __future__ import annotations
 
 import re
+import stat
 from pathlib import Path
 
 from src.utils.configuration import SemanticConfigurationError
@@ -54,4 +55,44 @@ def validate_plcs_artifact_publication_path(
         )
 
 
-__all__ = ["validate_plcs_artifact_publication_path"]
+def validate_plcs_training_output_occupancy(
+    output_dir: Path,
+    *,
+    normalization: CourtCoordinateNormalization,
+) -> None:
+    """Refuse an occupied PLCS v2 training publication root before writes."""
+    if normalization.version != "v2":
+        return
+
+    try:
+        output_status = output_dir.stat()
+    except FileNotFoundError:
+        return
+    except OSError as error:
+        raise RuntimeError(
+            "Could not verify PLCS v2 training output occupancy before "
+            f"publication: {output_dir}."
+        ) from error
+
+    occupied = not stat.S_ISDIR(output_status.st_mode)
+    if not occupied:
+        try:
+            next(output_dir.iterdir())
+        except StopIteration:
+            return
+        except OSError as error:
+            raise RuntimeError(
+                "Could not verify PLCS v2 training output occupancy before "
+                f"publication: {output_dir}."
+            ) from error
+
+    raise FileExistsError(
+        "Refusing to publish PLCS v2 training artifacts into a non-empty or "
+        f"non-directory destination: {output_dir}."
+    )
+
+
+__all__ = [
+    "validate_plcs_artifact_publication_path",
+    "validate_plcs_training_output_occupancy",
+]

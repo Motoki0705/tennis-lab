@@ -14,7 +14,7 @@
 
 ### schema.py / archive.py
 - **`schema.SceneResult`**: パイプライン共有スキーマ(`court_kp`/`player_position`/`player_yaw`/`smpl_*`/`ball_*`等)の唯一の定義。
-- `SceneResult.player_position` / `ball_3d` はnormalization versionにかかわらず常にcourt/world座標の`[m]`。`court_coordinate_normalization` metadataは生成元modelのprovenanceであり、公開arrayの値を再scaleしない。metadataのschemaとversion/scaleの単一正本は `src/tasks/base/data/court_coordinate_contract.py` と `src/utils/schema/court_normalization.py`。
+- `SceneResult.player_position` / `ball_3d` は常にcourt/world座標の`[m]`。`court_coordinate_normalization` metadataは生成元modelのprovenanceであり、公開arrayの値を再scaleしない。共有契約と実装責務は[`src/tasks/base/README.md#court-coordinate-normalization-contract`](../tasks/base/README.md#court-coordinate-normalization-contract)を参照。
 - **`archive.save_scene_result()` / `load_scene_result()`**: `.npz` と必須 `*.metadata.json` サイドカーを明示的に保存・読込する唯一のarchive I/O。sidecar欠落・非object metadataはエラーにし、旧module/methodへ転送しない。
 
 ### pipeline/
@@ -39,7 +39,7 @@
 - **`generate_dataset.py`**: 構造化データセットへの増分疑似アノテーション生成。
 
 ### configs/
-- **`pipeline.yaml`**: stage別(`court_kp`/`gvhmr`/`player_association`/`ball_detection`/`plcs`/`blcs`)の実行設定。共有`court_coordinate_normalization`は既定`v1`で、`v2` overrideはPLCS/BLCS checkpoint検証と`SceneResult` provenanceへ同一contractを渡す。
+- **`pipeline.yaml`**: stage別(`court_kp`/`gvhmr`/`player_association`/`ball_detection`/`plcs`/`blcs`)の実行設定。共有`court_coordinate_normalization`の選択をPLCS/BLCS checkpoint検証と`SceneResult` provenanceへ同一contractとして渡す。
 - **`visualization.yaml`**: 可視化スタイル・出力設定。`style`(テーマ・影・トレイル・HUD・ミニマップ)と `camera`(プリセット・mode・keyframes)を含む。
 - **`clip_studio.yaml` / `export_clips.yaml` / `generate_dataset.yaml`**: クリップ編集・エクスポート・疑似アノテーション生成の設定。
 

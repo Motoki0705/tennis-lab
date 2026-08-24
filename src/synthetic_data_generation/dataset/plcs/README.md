@@ -74,14 +74,10 @@ full-frame compatibility writer or reader exists.
 
 `supervision.npz` stores only `position` in the selected dimensionless PLCS
 normalization. `position_court_m`, `human_kp_3d`, and `canonical_pose_3d` remain
-physical metres and are never rescaled. The single mathematical authority for
-`position_norm = position_court_m / scale_xyz` and the `v1`/`v2` scales is
-[`src/utils/schema/court_normalization.py`](../../../utils/schema/court_normalization.py).
-The resolved contract (schema version, normalization version, `scale_xyz`,
-position unit `m`, and velocity unit `m/s`) is written identically into the
-dataset manifest root metadata and every logical-scene record. Assembly and
-the canonical reader reject malformed, mixed, or mismatched metadata and
-validate the persisted `position` → `position_court_m` round trip within
-`1e-5 m`. A wholly metadata-free compact artifact is accepted only when the
-reader/validator receives an explicit legacy `v1` runtime contract; no version
-is inferred from array values.
+physical metres and are never rescaled. The shared contract and implementation
+boundaries are documented in
+[`src/tasks/base/README.md#court-coordinate-normalization-contract`](../../../tasks/base/README.md#court-coordinate-normalization-contract).
+This compact dataset writes the resolved metadata identically into the manifest
+root and every logical-scene record. Assembly and the canonical reader validate
+that local metadata before consuming arrays and verify the persisted `position`
+→ `position_court_m` round trip within `1e-5 m`.

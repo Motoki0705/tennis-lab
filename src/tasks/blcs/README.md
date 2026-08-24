@@ -71,37 +71,20 @@
 
 ## Court-coordinate normalization
 
-正規化versionとscaleの単一正本は
-[`src/utils/schema/court_normalization.py`](../../utils/schema/court_normalization.py)
-です。全Hydra rootは共有group `court_coordinate_normalization=v1|v2` を明示的に
-composeし、defaultは後方互換の`v1`です。BLCSでは次の同じcontractをdataset生成、
-loader、loss/gravity、projection、metric、checkpoint、standard/tracking predictorへ渡します。
+共有する数式、Hydra選択、単位、metadata互換性、artifact命名、移行手順は
+[`src/tasks/base/README.md#court-coordinate-normalization-contract`](../base/README.md#court-coordinate-normalization-contract)
+を参照してください。BLCSは解決済みcontractをdataset生成、loader、loss/gravity、
+projection、metric、checkpoint、standard/tracking predictorへ渡します。
+`ball_vel_world`は物理`m/s`のまま保存し、model target/outputのvelocityだけを選択済み
+contractで変換します。legacy loss/gravity挙動は`v1`で維持し、`v2`ではposition lossと
+Hungarian costがuniform XYZ weight、物理Huber遷移点が`1.0 m`、gravity targetが
+`-g * dt^2 / scale_z`です。
 
-- `v1`: `position_norm = position_m / (5.485, 11.885, 1.07)`。既存の
-  metadata-free dataset/checkpointはruntimeが`v1`を選択した場合だけ利用できます。
-- `v2`: `position_norm = position_m / (11.885, 11.885, 11.885)`。
-  `ball_vel_world`は引き続き`m/s`で保存し、model target/outputのvelocityだけを同じ
-  scaleでnormalized units/sへ変換します。
-- 新規datasetはrootと全sceneへversion、`scale_xyz`、position=`m`、velocity=`m/s`
-  metadataを保存します。新規checkpointも同じcontractを保存します。missing、unknown、
-  mixed、runtime/dataset/checkpoint mismatchはarray/weight利用前に例外となります。
-- `v1`のSmooth L1 betaとtracking axis weight/gravity literalは維持します。`v2`は
-  position lossとHungarian costをuniform XYZ weightにし、1.0mの物理Huber遷移点と
-  `-g * dt^2 / scale_z` gravity targetをruntimeで導出します。
-
-既存artifactは上書きしません。materialized datasetは`*_norm_v2`、新しい学習出力は
-`blcs/norm-v1|norm-v2/...`で識別します。比較baselineは同じmodel/seed設定を持つ
-`train_normalization_v1.yaml`と`train_normalization_v2.yaml`を使用します。
+比較baselineは同じmodel/seed設定を持つ`train_normalization_v1.yaml`と
+`train_normalization_v2.yaml`を使用します。
 
 ```bash
-# 既存world座標を保持したまま、別rootへv2 normalized値をmaterialize
-.venv/bin/python -m src.tasks.base.scripts.materialize_court_coordinate_normalization \
-  court_coordinate_normalization=v2 \
-  materialization.dataset_kind=blcs \
-  materialization.source_dir=data/blcs_broadcast \
-  materialization.output_dir=data/blcs_broadcast_norm_v2
-
-# version-qualified v1 / v2 baseline（GPU実行時はtraining queue経由）
+# v1 / v2 baseline（GPU実行時はtraining queue経由）
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_normalization_v1
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_normalization_v2
 ```

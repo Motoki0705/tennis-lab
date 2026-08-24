@@ -1,95 +1,75 @@
 # Exploration
 
 - Issue: #786
-- Attempt: 3
+- Attempt: 6
 - Status: COMPLETE
 - Frozen issue SHA-256: `6279b189d4b3c0a7c11da3e605fbc252624f5a60ec808db2c476e061f55fa6a9`
 - Frozen acceptance checklist SHA-256: `95bcebf4388fdba9773e3c538c9e22caf82b6e4a413ec1241e9a58b0c4483032`
 
 ## Scope and Issue interpretation
 
-Fresh AC-017-only exploration: prevent v2 PLCS datasets/checkpoints from being published over, or under the identity of, existing v1 artifacts. Failure must precede the first destination write, including `config.yaml`, a checkpoint, or a scene directory. Do not infer version from bytes or modify legacy v1 files.
+This fresh attempt addresses only Validator RETURN AC-021: the untracked documentation-routing integration test has one hook-scoped mypy `no-any-return` error at `tests/integration/tasks/test_court_coordinate_normalization_documentation.py:32`. The required repair is test-only and must preserve every documentation assertion. No production, configuration, contract, or runtime behavior change is authorized or warranted.
 
-The narrow persistent boundaries are the standalone generator dataset root and PLCS training run root (whose `logs/version_N/checkpoints/*.ckpt` children publish checkpoints). Dynamic chunk caches are not selected persistent artifacts. The compact scene-pipeline PLCS producer is a fixed mutable workspace owner; it requires an explicit in/out-of-scope decision rather than a silent assumption.
-
-Default/v1 remains backward-compatible: existing unqualified `data/plcs` and `outputs/plcs/${model.name}` spellings may parse, and an existing empty ordinary destination remains allowed. A selected v2 persistent root needs a canonical v2 token in a parsed relative path component. Shipped names use `*_norm_v2`; a compatible predicate therefore examines each `Path.parts` component for an exact delimiter-bounded `norm_v2` token, never `"v2" in str(path)`. It rejects `norm_v20`, `normalization_v2`, `norm-v1/misnamed-v2`, and tokens outside the configured artifact-relative path. A mandatory new `norm-v2` component would be a policy/layout migration not specified by the frozen Issue.
+The prior changed-file command was not an adequate canonical replacement for the pre-commit hook: it selected a partial candidate file list, so `src.utils.paths` could be skipped and its exported `PROJECT_ROOT` became `Any`. The closure command must use the hook executable and its exact `mypy --follow-imports=skip` argv while traversing both `src` and `tests`; this includes untracked tests and makes the imported path authority typed.
 
 ## Relevant files and symbols
 
-| Boundary | Verified fact / owner |
+| Path / symbol | Verified role and repair boundary |
 |---|---|
-| Generator CLI | `src/tasks/plcs/scripts/generate_dataset.py::main` calls `output_dir.mkdir(..., exist_ok=True)` and `OmegaConf.save(.../config.yaml)` before `PLCSDatasetWriter`. These are first writes. |
-| Generation config | `src/tasks/plcs/generate_dataset/config.py::PLCSGenerationConfig.from_config` resolves `run.output_dir` via DATA role but has no v2-name or occupancy check. `resolve_generation_paths` is also used by chunks. |
-| Writer | `PLCSDatasetWriter` inherits `BaseDatasetWriter`; base constructor creates root/`scenes` with `exist_ok=True`, and `save_scene` creates `scenes/<id>` with `exist_ok=True` before writing JSON/NPY. |
-| Chunk caller | `src/tasks/plcs/data/chunk_manager.py::_PLCSChunkGenerator.__call__` constructs `PLCSDatasetWriter(chunk_dir)`. |
-| Training | `scripts/train.py` -> `PLCSTrainingConfig` -> `PLCSTrainingRunner` -> `BaseTrainingRunner.run`; `BaseRunConfig` resolves OUTPUT role but only rejects empty text. Runner mkdirs/saves config before logger/callback checkpoints. |
-| Existing authority | `court_coordinate_materializer.py::_validate_paths` rejects existing target, stages then rechecks before rename. `BLCSDatasetWriter.__init__` rejects non-empty roots. |
-| Compact producer | `run_scene_pipeline.py` -> `ScenePipelineRunner` -> `PLCSStageHandler`; registry fixes owner `datasets/plcs`, and `StagePublisher.publish` atomically exchanges an existing owner. `PLCSV5ReusablePublicationValidator` does not check normalization. |
+| `tests/integration/tasks/test_court_coordinate_normalization_documentation.py::_read` | The sole failing helper. It declares `-> str` and returns `(PROJECT_ROOT / relative_path).read_text(...)`; this is the only test source that needs a narrow explicit local type bridge. |
+| `src/utils/paths.py::PROJECT_ROOT` | Declares `PROJECT_ROOT: Path`; it is unchanged from the frozen base. When this module is excluded by `--follow-imports=skip`, importing it from the isolated test produces `Any`; when `src` is a mypy target, it is checked and retains `Path`. |
+| `.pre-commit-config.yaml::mypy` | Mandatory hook entry is `./scripts/run_in_repo_venv.sh mypy --follow-imports=skip`, restricted to Python files under `src`, `tests`, or `.spin`; its repository configuration supplies the strict flags. |
+| `pyproject.toml::[tool.mypy]` and `[[tool.mypy.overrides]] module = ["tests.*"]` | Global `warn_return_any = true` emits `no-any-return`. Tests relax only untyped-def/decorator ceremony and unreachable/unused-ignore rules; they do not relax return-`Any` checking. |
 
 ## Entry points and execution paths
 
-1. Standalone: Hydra `plcs.scripts.generate_dataset:main` -> `PLCSGenerationConfig.from_config` -> current mkdir/config write -> writer -> parallel scenes -> `save_scene` -> splits/meta. Required order: typed v2-name validation -> writer occupancy validation -> config save and all later writes.
-2. Chunk cache: training -> `PLCSChunkManager` -> `_PLCSChunkGenerator` -> writer -> scenes/meta. It should receive writer occupancy safety, not durable artifact-name policy.
-3. Training: Hydra `scripts.train:main` -> `PLCSTrainingConfig.from_config` -> runner -> current mkdir/config save -> TensorBoard `logs/version_N` -> fixed checkpoint child. Name validation must happen in the PLCS typed boundary, before runner execution; resume/init are input validation, not publication naming.
-4. Compact: `run_scene_pipeline` creates `.transactions/plcs_dataset/snapshot`, `PLCSStageHandler` assembles/validates, then `StagePublisher` installs/exchanges `workspace/datasets/plcs`. `PLCSStageParameters` defaults v1 and `PLCSDatasetConfiguration.build_stage_parameters` does not pass a selectable normalization; there is no compact v2 owner/name today.
+1. The documentation test calls `_read()` for the canonical base README and every routed README/YAML entry point, then checks owner-only prose remains outside routed documents.
+2. `_read()` combines imported `PROJECT_ROOT` with a relative `Path` and calls `Path.read_text(encoding="utf-8")`; at runtime the result is a `str`.
+3. Under the Validator's changed-file-only invocation, `src/utils/paths.py` is not a target. `--follow-imports=skip` therefore treats `PROJECT_ROOT` as `Any`; `Any / Path` and the following `.read_text()` remain `Any`, which violates the declared `str` return under `warn_return_any`.
+4. A `cast(str, ...)` suppresses the isolated `Any` return but fails the broad command with `[redundant-cast]`, because that command traverses `src/utils/paths.py` and sees `PROJECT_ROOT: Path`. A typed local assignment accepts both views: `text: str = (PROJECT_ROOT / relative_path).read_text(encoding="utf-8")`; `return text` has no runtime transformation and remains type-correct whether the expression is `Any` or `str`.
 
 ## Data, configuration, and interface contracts
 
-| Artifact kind | Narrow name contract | Non-overwrite boundary |
-|---|---|---|
-| Standalone dataset `run.output_dir` (DATA) | v1/default keeps current spelling; v2 requires parsed `norm_v2` token. `generate_dataset_norm_v2.yaml` `plcs_broadcast_norm_v2` passes; v1 config remains `plcs_broadcast_norm_v1`. | `PLCSGenerationConfig.from_config` rejects bad v2 before `main`; writer rejects any non-empty root before root/scenes/config writes. Empty root allowed. `save_scene` must exclusively create its new scene directory so collision fails before JSON/NPY writes. Move config save after writer construction. |
-| PLCS training `run.output_dir` (OUTPUT) | v1/default keeps `plcs/${model.name}`; v2 requires same predicate. `train_norm_v2.yaml` `plcs/baseline_norm_v2/${model.name}` passes. | PLCS-owned check in `PLCSTrainingConfig.from_config` rejects before `BaseTrainingRunner.run` mkdir/config/logger/checkpoint actions. Callback filename checks are too late. |
-| Writer/chunk root | No version predicate: no selected durable identity. | Non-empty-root and exclusive-scene checks apply; fresh chunk root remains valid. |
-| Materialized copy | Existing explicit source/target contracts. | Preserve no-existing-target + staging/recheck/rename authority. |
-| Compact `datasets/plcs` | No satisfiable v2 name contract exists: fixed owner is unqualified and v2 is not selectable. | Intentional atomic replacement conflicts with AC-017 if compact artifacts are included; versioned owner/layout and reuse changes would be necessary. |
-
-`CourtCoordinateNormalization.version` selects the predicate. Existing `PathResolver` first rejects absolute/root-prefixed values; the predicate then inspects only configured relative `Path.parts`. Metadata remains independently injected/validated by dataset and checkpoint contracts; names do not substitute for metadata.
-
-Current configs: default generator `plcs`; `generate_dataset_norm_v1|v2.yaml` `plcs_broadcast_norm_v1|v2`; default train `plcs/${model.name}`; `train_norm_v1|v2.yaml` `plcs/baseline_norm_v1|v2/${model.name}`; data v1 is metadata-free `plcs_broadcast`, v2 is `plcs_broadcast_norm_v2`.
-
-Required preservation tests: (a) malformed v2 generation config raises with no destination/config; (b) non-empty version-qualified root containing sentinel `config.yaml`, root metadata, and scene byte fails through CLI-before-workers with all bytes identical; (c) post-construction scene collision leaves sentinel unchanged; (d) v2 training under v1-labelled output fails at `PLCSTrainingConfig.from_config` before runner/config/checkpoint writes, preserving representative config/checkpoint bytes; (e) control cases: empty qualified v2 root, unqualified default v1, and all shipped v1/v2 configs succeed. Retain materializer target-exists coverage.
+| Layer | Contract |
+|---|---|
+| Documentation helper | `_read(relative_path: Path) -> str` must return decoded UTF-8 document text and keep nonexistent paths/errors fail-loud. |
+| Type-only repair | Use `text: str = (PROJECT_ROOT / relative_path).read_text(encoding="utf-8")` followed by `return text`; remove the `cast` import. Assignment of `Any` is permitted in isolated changed-file checking, while the same assignment is naturally `str` in broad traversal, so `warn_redundant_casts` cannot reject it. This changes no runtime value. |
+| Hook-equivalent broad command | `./scripts/run_in_repo_venv.sh mypy --follow-imports=skip src tests` from the repository root. It preserves the hook executable and full mypy argv, loads `pyproject.toml` strictness, and traverses all `src` and `tests` files—including untracked tests. |
+| Non-goal | Do not loosen `warn_return_any`, add an ignore, change `PROJECT_ROOT`, alter the hook filter, or touch production code. |
 
 ## Existing tests and fixtures
 
-- `tests/unit/tasks/plcs/test_configuration.py` already tests DATA/OUTPUT role resolution and is the natural PLCS train v2-token/default-v1 surface.
-- `tests/unit/tasks/plcs/test_configuration_contracts.py` owns direct `PLCSGenerationConfig.from_config` tests.
-- There is no dedicated PLCS writer I/O test. Add `tests/unit/tasks/plcs/generate_dataset/io/test_dataset_io.py` for root/scene sentinel behavior. Existing fresh-root users are `test_multi_object_scene_generator.py` and `tests/integration/tasks/tracking/test_training_smoke.py`.
-- `tests/unit/tasks/base/training/test_runner.py` owns generic lifecycle, but this policy must not be put in generic `BaseRunConfig` because other tasks lack PLCS normalization authority.
-- `tests/integration/tasks/test_court_coordinate_normalization_smoke.py` already proves materializer target refusal/source bytes, not primary PLCS generation/training.
-- Compact coverage: `tests/unit/synthetic_data_generation/pipeline/{test_publication,test_runner}.py`, `dataset/plcs/test_assembler.py`, and `tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py`; they test staged replacement/reuse, not AC-017 preservation/v2 owner naming.
+- `test_court_coordinate_normalization_documentation.py` is untracked and is in the hook's `tests/` scope. Its four tests enforce canonical documentation ownership/routing and must remain unchanged except for the `_read` type bridge.
+- `tests/integration/tasks/plcs/test_artifact_publication.py` and `tests/unit/tasks/plcs/generate_dataset/io/test_dataset_io.py` are the other untracked candidate tests. Neither declares a `-> str` helper returning data through an imported skipped module.
+- A targeted inventory of `tests/integration/tasks` plus those two neighboring untracked PLCS files found only `_read` in the documentation test as a `-> str` helper around `read_text`; other nearby `read_text` uses feed `json.loads` or lack a declared `str` return boundary.
+- Deterministic current evidence: the `cast(str, ...)` variant passes isolated `./scripts/run_in_repo_venv.sh mypy --follow-imports=skip tests/integration/tasks/test_court_coordinate_normalization_documentation.py`, but broad `./scripts/run_in_repo_venv.sh mypy --follow-imports=skip src tests` fails at line 33 with `Redundant cast to "str" [redundant-cast]`. The typed-local assignment has the required static behavior in both modes without an ignore or configuration change.
 
 ## Invariants and compatibility constraints
 
-- Bad v2 labels fail before destination mutation; post-write validation/cleanup is insufficient.
-- Non-empty means any entry including dotfiles. Do not delete/reuse it; empty ordinary destination is allowed.
-- Keep v2 naming check PLCS-owned after normalization/run typing, not in generic base config.
-- Keep writer free of version-name policy because chunks use it; writer owns occupancy only.
-- Preserve materializer staging; do not route fresh generation through it.
-- A v1 token never makes a selected v2 output safe; existing metadata remains a separate runtime guard.
+- Preserve the exact UTF-8 read and all documentation-routing assertions; the local assignment must not introduce fallback text, path inference, coercion, or error suppression.
+- Retain repository mypy strictness from `pyproject.toml`; the tests override does not authorize `Any` returns.
+- Treat the broad `src tests` invocation as the frozen canonical check for this retry, not `pre-commit run --all-files` (which does not reliably enumerate untracked tests) and not a changed-file list that can hide imported type authorities.
+- No production code changed during this exploration; `src/utils/paths.py` is verified unchanged from frozen base revision `59e3b166c2d010d5e62be52c2be76d98a94af0e0`.
 
 ## Risks and likely impact radius
 
-1. Writer-before-config ordering is mandatory; avoid treating partial datasets as complete when moving it.
-2. Raw substring checks admit lookalikes; strict literal `norm-v2` component checks break shipped `_norm_v2` configs. Test the component-local grammar.
-3. Callback-level checks are too late because runner config/logs already exist.
-4. Writer fail-closed behavior changes reruns: callers must choose a new root rather than merge.
-5. Compact PLCS has intentional replacement semantics; inclusion in AC-017 requires registry/workspace/report/reuse-layout work beyond primary direct consumers.
+1. A bare `# type: ignore[no-any-return]` would conceal the returned-value contract; `cast(str, ...)` is also invalid because full traversal rejects it as redundant. The typed local assignment is the narrow bridge accepted in both modes.
+2. Changing `PROJECT_ROOT` or global mypy settings would expand the fix beyond the candidate test and could affect unrelated callers.
+3. Checking only the repaired test can still reproduce an `Any` imported authority under `--follow-imports=skip`; the required broad command is needed to exercise all source/test targets and untracked tests together.
 
 ## Unresolved questions
 
-1. Does AC-017 include compact scene-pipeline `workspace/datasets/plcs`? If yes, approve a version-qualified owner/layout; its current fixed owner cannot preserve v1 while publishing v2. If no, explicitly record its mutable scene-workspace semantics as out of the baseline dataset/checkpoint contract.
-2. Is delimiter-bounded `norm_v2` inside a path component approved, or must paths migrate to a dedicated `norm-v2` component? Frozen Issue requires identification but not separator/layout.
+None. The validator finding has an explicit, test-only repair and a reproducible hook-equivalent broad verification command.
 
 ## Evidence table
 
 | Kind | Claim | Evidence |
 |---|---|---|
-| FACT | Generator writes config before writer. | `src/tasks/plcs/scripts/generate_dataset.py::main` lines 48–59. |
-| FACT | PLCS writer/base accept non-empty roots and existing scene directories then write files. | `dataset_io.py::save_scene`; `base/data/dataset_writer.py::__init__`, `_write_scene_files`. |
-| FACT | Training writes root config before logger/checkpoint publication. | `BaseRunConfig.from_mapping`; `base/training/runner.py::run`, `build_logger`, `build_callbacks`. |
-| FACT | Materializer is no-overwrite staged; BLCS writer rejects non-empty root. | `court_coordinate_materializer.py`; `blcs/.../dataset_io.py::BLCSDatasetWriter.__init__`. |
-| FACT | Shipped PLCS v2 names use `_norm_v2`, not literal `norm-v2` component. | `configs/generate_dataset_norm_v2.yaml`, `train_norm_v2.yaml`. |
-| FACT | Compact PLCS fixed owner atomically replaces; reusable validation omits normalization. | `pipeline/registry.py`, `publication.py::StagePublisher.publish`, `reuse.py`. |
-| FACT | Compact config does not pass selectable normalization; stage parameters default v1. | `synthetic_data_generation/configuration.py::build_stage_parameters`; `dataset/plcs/handler.py::PLCSStageParameters`. |
-| INFERENCE | PLCS typed v2-name checks plus writer occupancy checks are the smallest fail-closed repair without policy leakage to chunks/other tasks. | Existing ownership boundaries above. |
-| UNKNOWN | Compact AC-017 inclusion and exact token grammar/layout. | Frozen Issue has no fixed-owner or delimiter authority. |
+| FACT | AC-021 failed only because of `no-any-return` at documentation test line 32. | `04-validation/validation.md`, focused AC-021 finding. |
+| FACT | `PROJECT_ROOT` is explicitly annotated `Path` in unchanged `src/utils/paths.py`. | `src/utils/paths.py:15`; frozen-base content is identical. |
+| FACT | The hook invokes `./scripts/run_in_repo_venv.sh mypy --follow-imports=skip` and applies to `src`/`tests` Python files. | `.pre-commit-config.yaml`. |
+| FACT | `warn_return_any = true` remains active for `tests.*`. | `pyproject.toml:178-191,254-259`. |
+| FACT | The `cast(str, ...)` variant passes isolated mypy but broad `src tests` mypy fails with one `[redundant-cast]` at line 33. | Fresh deterministic executions: isolated PASS (1 source); broad FAIL (1124 sources). |
+| FACT | Nearby untracked PLCS tests have no matching declared-string return/read-text boundary. | Focused `rg` inventory of the three untracked candidate tests. |
+| INFERENCE | A typed local `text: str` assignment followed by `return text` is the narrowest durable test-only repair. | It preserves the runtime string and fail-loud I/O behavior, accepts imported `Any` in isolated hook-style analysis, and requires no cast when full traversal proves the expression is already `str`. |
+| UNKNOWN | No material unresolved contract question remains. | Frozen Issue, focused Validator finding, hook/config, current test, nearby tests, and full candidate status were independently inspected. |

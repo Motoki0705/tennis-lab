@@ -1,4 +1,4 @@
-# New checkpoints are separated from legacy artifacts by normalization version.
+# Contract: src/tasks/base/README.md#court-coordinate-normalization-contract
 output_dir: blcs/norm-${court_coordinate_normalization.version}/${model.name}
 seed: 42
 gpus: 1
