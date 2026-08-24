@@ -16,6 +16,8 @@ from src.tasks.base.configuration import (
     require_config_mapping,
     require_config_value,
 )
+from src.tasks.base.generate_dataset import CourtKeypointContract
+from src.tasks.plcs.court_keypoint_contract import PLCSCourtKeypointRuntimeConfig
 from src.utils.configuration import (
     ConfigurationTypeError,
     SemanticConfigurationError,
@@ -50,6 +52,7 @@ class PLCSGenerationConfig:
     """Validated generation boundary with a fully resolved worker config."""
 
     config: DictConfig
+    court_keypoint_contract: CourtKeypointContract
     output_dir: Path
     device: str
     seed: int
@@ -79,6 +82,7 @@ class PLCSGenerationConfig:
         root = _reject_unknown(
             root,
             {
+                "court_keypoints",
                 "generation",
                 "paths",
                 "external_assets",
@@ -156,6 +160,9 @@ class PLCSGenerationConfig:
         resolved.run.device = device
         return cls(
             config=resolved,
+            court_keypoint_contract=(
+                PLCSCourtKeypointRuntimeConfig.from_config(value).contract
+            ),
             output_dir=output_dir,
             device=device,
             seed=cast("int", require_config_value(run, "seed", int, path="run")),

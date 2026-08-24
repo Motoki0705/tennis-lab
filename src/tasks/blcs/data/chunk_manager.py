@@ -51,7 +51,10 @@ class _BLCSChunkGenerator:
         num_scenes: int,
         stop_event: threading.Event,
     ) -> None:
-        writer = BLCSDatasetWriter(str(chunk_dir))
+        writer = BLCSDatasetWriter(
+            str(chunk_dir),
+            court_keypoint_contract=self.generator_config.court_keypoint_contract,
+        )
         start_index = self._next_scene_index
         self._next_scene_index += num_scenes
         for scene_data in generate_parallel_scenes(
@@ -71,6 +74,13 @@ class _BLCSChunkGenerator:
             if stop_event.is_set():
                 break
             writer.save_scene(scene_data)
+        writer.save_meta_json(
+            config={
+                "court_keypoints": {
+                    "selector": self.generator_config.court_keypoint_contract.selector
+                },
+            }
+        )
 
 
 class ChunkManager(BaseChunkManager):

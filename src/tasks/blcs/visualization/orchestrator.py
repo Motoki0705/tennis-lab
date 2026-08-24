@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from omegaconf import DictConfig
 
+from src.tasks.base.generate_dataset import CourtKeypointContract
 from src.tasks.base.visualization.orchestrator import (
     BaseVisualizationRuntimeConfig,
     build_scene_runtime_config,
@@ -14,6 +15,7 @@ from src.tasks.base.visualization.orchestrator import (
 )
 from src.tasks.blcs.configuration import (
     build_path_resolver,
+    parse_court_keypoint_contract,
     validate_visualization_boundary,
 )
 from src.tasks.blcs.visualization.api.predict import predict_positions
@@ -35,6 +37,7 @@ class RuntimeConfig(BaseVisualizationRuntimeConfig):
 
     fps: float
     resolver: PathResolver
+    court_keypoint_contract: CourtKeypointContract
 
 
 def build_runtime_config(config: DictConfig) -> RuntimeConfig:
@@ -57,6 +60,7 @@ def build_runtime_config(config: DictConfig) -> RuntimeConfig:
         style=base.style,
         view_3d=base.view_3d,
         resolver=build_path_resolver(config),
+        court_keypoint_contract=parse_court_keypoint_contract(config),
     )
 
 
@@ -67,6 +71,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         scene_path=cfg.scene_path,
         camera=cfg.camera,
         cameras=cfg.cameras,
+        court_keypoint_contract=cfg.court_keypoint_contract,
     )
     logger.info("Scene loaded successfully.")
 
@@ -88,6 +93,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
             device=cfg.device,
             scene=bundle.scene,
             cameras=bundle.cameras,
+            court_keypoint_contract=cfg.court_keypoint_contract,
         )
         logger.info("Creating comparison animation...")
         anim = renderer.create_comparison_animation(

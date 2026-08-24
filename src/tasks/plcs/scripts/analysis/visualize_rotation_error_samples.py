@@ -24,12 +24,22 @@ import numpy as np
 from omegaconf import DictConfig
 from tqdm import tqdm
 
+from src.tasks.base.generate_dataset import (
+    CAMERA_VIEW_V2_SELECTOR,
+    COURT_KEYPOINT_METADATA_KEY,
+    CourtKeypointContract,
+)
 from src.tasks.base.visualization.style import (
     SceneStyleConfig,
     parse_scene_style,
     parse_view_3d,
 )
 from src.tasks.plcs.configuration import PLCSAnalysisRuntimeConfig
+from src.tasks.plcs.court_keypoint_contract import (
+    PLCSCourtKeypointRuntimeConfig,
+    headings_target_to_physical,
+    normalized_points_target_to_physical,
+)
 from src.tasks.plcs.generate_dataset.io.scene_loader import load_scene
 from src.tasks.plcs.inference.predictor import PLCSPredictor
 from src.tasks.plcs.visualization.orchestrator import RuntimeConfig, run_visualization
@@ -38,6 +48,10 @@ from src.utils.hydra import hydra_main
 from src.utils.io import load_json_if_exists, save_json
 from src.utils.rendering.camera_view import CameraController
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+from src.utils.schema.court_normalization import (
+    COURT_COORDINATE_NORMALIZATION_KEY,
+    normalize_court_position,
+)
 
 
 def _resolve_cameras(raw: Any, num_cameras: int) -> list[int]:
@@ -89,13 +103,40 @@ def _score_scene(
     scene_path: Path,
     cameras_cfg: Any,
     candidates_per_scene: int,
+    court_keypoint_contract: CourtKeypointContract,
 ) -> list[dict[str, Any]]:
-    scene: Any = load_scene(scene_path)
+    scene: Any = load_scene(
+        scene_path,
+        court_keypoint_contract=court_keypoint_contract,
+    )
     cameras = _resolve_cameras(cameras_cfg, int(scene.num_cameras))
     predictor.require_input_profile("multiview")
-    outputs = predictor.predict_scene(scene, cameras)
-    pred_position = np.asarray(outputs.position.squeeze(0).numpy())
-    pred_rotation = np.asarray(outputs.rotation.squeeze(0).numpy())
+    reference_camera_id = None
+    if court_keypoint_contract.selector == CAMERA_VIEW_V2_SELECTOR:
+        selected_ids = tuple(
+            scene.cameras[index].court_view.camera_id for index in cameras
+        )
+        if any(not camera_id for camera_id in selected_ids):
+            raise ValueError("camera_view_v2 analysis requires camera metadata.")
+        reference_camera_id = sorted(selected_ids)[0]
+    outputs = predictor.predict_scene(
+        scene,
+        cameras,
+        reference_camera_id=reference_camera_id,
+    )
+    if not outputs.court_reference_provenance:
+        raise ValueError("PLCS analysis prediction is missing Court provenance.")
+    provenance = outputs.court_reference_provenance[0]
+    pred_position_m = normalized_points_target_to_physical(
+        outputs.position,
+        provenance,
+    )
+    pred_position = np.asarray(
+        normalize_court_position(pred_position_m).squeeze(0).numpy()
+    )
+    pred_rotation = np.asarray(
+        headings_target_to_physical(outputs.rotation, provenance).squeeze(0).numpy()
+    )
     gt_position = np.asarray(scene.position)
     gt_rotation = np.asarray(scene.rotation)
 
@@ -185,6 +226,7 @@ def _crop_scene(
         else:
             raise FileExistsError(f"Output scene already exists: {dst}")
     dst.mkdir(parents=True, exist_ok=True)
+    _copy_root_contract_metadata(src, dst)
 
     meta = _load_json(src / "meta.json")
     scalars = _load_json(src / "scalars.json")
@@ -216,6 +258,38 @@ def _crop_scene(
     return start, end, local_frame
 
 
+def _copy_root_contract_metadata(src_scene: Path, dst_scene: Path) -> None:
+    """Publish the exact source contracts for a cropped derived scene."""
+    src_root = (
+        src_scene.parent.parent
+        if src_scene.parent.name == "scenes"
+        else src_scene.parent
+    )
+    dst_root = (
+        dst_scene.parent.parent
+        if dst_scene.parent.name == "scenes"
+        else dst_scene.parent
+    )
+    source = _load_json(src_root / "meta.json")
+    contract_keys = (
+        COURT_COORDINATE_NORMALIZATION_KEY,
+        COURT_KEYPOINT_METADATA_KEY,
+    )
+    contracts = {key: source[key] for key in contract_keys if key in source}
+    if not contracts:
+        return
+    destination_path = dst_root / "meta.json"
+    destination = _load_json(destination_path)
+    for key, value in contracts.items():
+        existing = destination.get(key)
+        if existing is not None and existing != value:
+            raise ValueError(
+                f"{destination_path}: refusing to mix cropped dataset contract {key!r}."
+            )
+        destination[key] = value
+    save_json(destination, destination_path)
+
+
 def _render_sample(
     sample: dict[str, Any],
     *,
@@ -227,6 +301,7 @@ def _render_sample(
     resolver: PathResolver,
     style: SceneStyleConfig,
     view_3d: CameraController,
+    court_keypoint_contract: CourtKeypointContract,
 ) -> None:
     runtime = RuntimeConfig(
         mode="predict",
@@ -243,6 +318,7 @@ def _render_sample(
         view_3d=view_3d,
         canonical_pose_source="gt",
         resolver=resolver,
+        court_keypoint_contract=court_keypoint_contract,
     )
     exit_code = run_visualization(runtime)
     if exit_code != 0:
@@ -274,10 +350,12 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     out_dir.mkdir(parents=True, exist_ok=True)
 
     device = runtime_config.device
+    court_keypoint_contract = PLCSCourtKeypointRuntimeConfig.from_config(cfg).contract
     predictor = PLCSPredictor.load_from_checkpoint(
         checkpoint,
         resolver=resolver,
         device=device,
+        court_keypoint_contract=court_keypoint_contract,
     )
     candidates: list[dict[str, Any]] = []
     names = _scene_names(runtime_config.split_path)
@@ -294,6 +372,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
                 scene_path,
                 cfg.analysis.cameras,
                 candidates_per_scene=int(cfg.analysis.candidates_per_scene),
+                court_keypoint_contract=court_keypoint_contract,
             )
         )
 
@@ -336,6 +415,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
                 resolver=resolver,
                 style=parse_scene_style(cfg.visualization.style),
                 view_3d=parse_view_3d(cfg.visualization.view_3d),
+                court_keypoint_contract=court_keypoint_contract,
             )
 
     report = {

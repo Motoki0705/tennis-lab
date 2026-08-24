@@ -15,9 +15,20 @@ from typing import Any
 import numpy as np
 import torch
 
+from src.tasks.base.generate_dataset import (
+    CourtReferenceFrameProvenance,
+    court_points_target_to_physical,
+)
+from src.tasks.base.model_io import validate_model_artifact_court_keypoint_contract
+from src.tasks.plcs.court_keypoint_contract import (
+    headings_target_to_physical,
+    normalized_points_target_to_physical,
+    provenance_from_value,
+)
 from src.tasks.plcs.model_io import PLCSDecodedPrediction
 from src.tasks.plcs.visualization.contracts import PoseRenderScene
 from src.utils.geometry.court_pose import world_pose_to_canonical_pose
+from src.utils.schema.court_normalization import normalize_court_position
 from src.utils.tensor_utils import to_numpy
 
 
@@ -73,12 +84,52 @@ def batch_to_pose_render_scenes(
     Returns:
         ``(gt_scene, pred_scene)`` — two :class:`PoseRenderScene` instances.
     """
+    raw_provenance = batch.get("court_reference_provenance")
+    provenance: CourtReferenceFrameProvenance
+    if raw_provenance is None:
+        raise ValueError(
+            "PLCS render input requires explicit Court reference provenance."
+        )
+    elif isinstance(raw_provenance, (tuple, list)):
+        provenance = provenance_from_value(
+            raw_provenance[sample_idx],
+            location=f"render batch provenance[{sample_idx}]",
+        )
+    else:
+        provenance = provenance_from_value(
+            raw_provenance,
+            location="render batch provenance",
+        )
+    raw_metadata = batch.get("court_keypoint_metadata")
+    if isinstance(raw_metadata, (tuple, list)):
+        metadata = raw_metadata[sample_idx]
+    else:
+        metadata = raw_metadata
+    if not isinstance(metadata, dict):
+        raise ValueError("PLCS render input requires explicit CourtKP20 metadata.")
+    validate_model_artifact_court_keypoint_contract(
+        metadata,
+        provenance.contract,
+        location=f"PLCS render input[{sample_idx}]",
+    )
+
     # ---- GT ----------------------------------------------------------------
     gt_pos_raw = _to_numpy(batch["position"])[sample_idx]  # ([T], 3)
     gt_rot_raw = _to_numpy(batch["rotation"])[sample_idx]  # ([T], 2)
 
     gt_pos = _ensure_time_dim(gt_pos_raw, ndim_without_time=1)  # (T, 3)
     gt_rot = _ensure_time_dim(gt_rot_raw, ndim_without_time=1)  # (T, 2)
+    gt_pos_m = normalized_points_target_to_physical(
+        torch.from_numpy(gt_pos).float(),
+        provenance,
+    )
+    gt_pos = _to_numpy(normalize_court_position(gt_pos_m))
+    gt_rot = _to_numpy(
+        headings_target_to_physical(
+            torch.from_numpy(gt_rot).float(),
+            provenance,
+        )
+    )
     T = gt_pos.shape[0]
 
     gt_canonical: np.ndarray | None = None
@@ -86,6 +137,12 @@ def batch_to_pose_render_scenes(
     if human_kp_3d is not None:
         kp3d = _to_numpy(human_kp_3d)[sample_idx]  # ([T], 17, 3)
         kp3d = _ensure_time_dim(kp3d, ndim_without_time=2)  # (T, 17, 3)
+        kp3d = _to_numpy(
+            court_points_target_to_physical(
+                torch.from_numpy(kp3d).float(),
+                provenance,
+            )
+        )
         # Convert world joints → canonical (local yaw-zero) space.
         # We use the torch helper which accepts arbitrary shapes (..., J, 3).
         pos_t = torch.from_numpy(gt_pos).float()  # (T, 3)
@@ -109,6 +166,17 @@ def batch_to_pose_render_scenes(
 
     pred_pos = _ensure_time_dim(pred_pos_raw, ndim_without_time=1)  # (T, 3)
     pred_rot = _ensure_time_dim(pred_rot_raw, ndim_without_time=1)  # (T, 2)
+    pred_pos_m = normalized_points_target_to_physical(
+        torch.from_numpy(pred_pos).float(),
+        provenance,
+    )
+    pred_pos = _to_numpy(normalize_court_position(pred_pos_m))
+    pred_rot = _to_numpy(
+        headings_target_to_physical(
+            torch.from_numpy(pred_rot).float(),
+            provenance,
+        )
+    )
     T_pred = pred_pos.shape[0]
 
     pred_canonical: np.ndarray | None = None

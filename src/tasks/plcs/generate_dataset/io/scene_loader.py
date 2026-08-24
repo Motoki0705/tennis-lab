@@ -13,6 +13,14 @@ from typing import Any
 
 import numpy as np
 
+from src.tasks.base.generate_dataset import (
+    CourtKeypointContract,
+    validate_dataset_court_keypoint_contract,
+)
+from src.tasks.plcs.court_keypoint_contract import (
+    PLCS_GENERATED_DATASET_SCHEMA_ID,
+    validate_plcs_court_keypoint_headers,
+)
 from src.utils.schema.court_normalization import (
     validate_court_coordinate_normalization,
 )
@@ -31,7 +39,11 @@ class AttrDict(dict[str, Any]):
         self[key] = value
 
 
-def load_scene(filepath: str | Path) -> dict[str, Any]:
+def load_scene(
+    filepath: str | Path,
+    *,
+    court_keypoint_contract: CourtKeypointContract,
+) -> dict[str, Any]:
     """Load a scene from a npy + json scene directory.
 
     Args:
@@ -42,6 +54,17 @@ def load_scene(filepath: str | Path) -> dict[str, Any]:
         canonical_pose_3d, num_cameras, and cameras list.
     """
     scene_dir = Path(filepath)
+    dataset_root = (
+        scene_dir.parent.parent if scene_dir.parent.name == "scenes" else scene_dir
+    )
+    court_validation = validate_dataset_court_keypoint_contract(
+        dataset_root,
+        court_keypoint_contract,
+        expected_dataset_schema_id=PLCS_GENERATED_DATASET_SCHEMA_ID,
+        scene_paths=(scene_dir,),
+    )
+    validate_plcs_court_keypoint_headers(court_validation, (scene_dir,))
+    scene_court_views = court_validation.scenes[0].court_views
 
     with open(scene_dir / "meta.json") as f:
         meta = json.load(f)
@@ -69,6 +92,9 @@ def load_scene(filepath: str | Path) -> dict[str, Any]:
             court_visibility_count=float(
                 np.load(scene_dir / f"{prefix}court_visibility_count.npy")
             ),
+            court_view=(
+                scene_court_views[i] if scene_court_views else None
+            ),
         )
         cameras.append(cam_data)
 
@@ -80,6 +106,8 @@ def load_scene(filepath: str | Path) -> dict[str, Any]:
         num_cameras=num_cameras,
         cameras=cameras,
         num_persons=int(scalars["num_persons"]),
+        court_keypoint_contract=court_keypoint_contract,
+        court_keypoint_validation=court_validation,
     )
 
     # Include pre-computed COCO17 world joints when stored (AthletePose3D path).

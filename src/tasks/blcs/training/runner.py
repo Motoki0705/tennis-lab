@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytorch_lightning as pl
@@ -9,13 +10,18 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.tasks.base.configuration import TrainingRuntimeConfig
 from src.tasks.base.training.runner import BaseTrainingRunner
-from src.tasks.blcs.configuration import validate_training_boundary
+from src.tasks.blcs.configuration import (
+    parse_court_keypoint_contract,
+    validate_training_boundary,
+)
+from src.tasks.blcs.model_io.checkpoints import validate_checkpoint_path
 from src.tasks.blcs.model_io.training import (
     BLCSTrainingComposition,
     compose_blcs_training,
 )
 
 if TYPE_CHECKING:
+    from src.tasks.base.generate_dataset import CourtKeypointContract
     from src.tasks.blcs.generate_dataset.scene_generator import GeneratorConfig
 
 
@@ -28,6 +34,7 @@ class BLCSTrainingRunner(BaseTrainingRunner):
     def __init__(self, *, generator_config: GeneratorConfig | None = None) -> None:
         self.generator_config = generator_config
         self._composition: BLCSTrainingComposition | None = None
+        self._court_keypoint_contract: CourtKeypointContract | None = None
 
     def _runtime(self, config: Any) -> BLCSTrainingComposition:
         if self._composition is None:
@@ -72,4 +79,41 @@ class BLCSTrainingRunner(BaseTrainingRunner):
     def validate_runtime_config(self, config: Any) -> TrainingRuntimeConfig:
         """Validate shared and BLCS-specific contracts before runner side effects."""
         validate_training_boundary(config)
-        return super().validate_runtime_config(config)
+        self._court_keypoint_contract = parse_court_keypoint_contract(config)
+        runtime: TrainingRuntimeConfig = super().validate_runtime_config(config)
+        return runtime
+
+    def resolve_resume(
+        self,
+        config: TrainingRuntimeConfig,
+        output_dir: Path,
+    ) -> str | None:
+        """Reject CourtKP-incompatible full-state resumes before fit."""
+        path: str | None = super().resolve_resume(config, output_dir)
+        resume_path = config.run.resume
+        if resume_path is not None:
+            validate_checkpoint_path(
+                resume_path,
+                self._require_court_keypoint_contract(),
+            )
+        return path
+
+    def maybe_load_init_weights(
+        self,
+        config: TrainingRuntimeConfig,
+        lightning_module: pl.LightningModule,
+    ) -> None:
+        """Reject CourtKP-incompatible fine-tune weights before loading."""
+        if config.run.init_weights is not None:
+            validate_checkpoint_path(
+                config.run.init_weights,
+                self._require_court_keypoint_contract(),
+            )
+        super().maybe_load_init_weights(config, lightning_module)
+
+    def _require_court_keypoint_contract(self) -> CourtKeypointContract:
+        if self._court_keypoint_contract is None:
+            raise RuntimeError(
+                "BLCS CourtKP contract must be validated before checkpoint access."
+            )
+        return self._court_keypoint_contract

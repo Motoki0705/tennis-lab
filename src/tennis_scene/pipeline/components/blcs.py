@@ -3,13 +3,29 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
+from src.tasks.base.generate_dataset import (
+    PHYSICAL_V1_SELECTOR,
+    CourtKeypointContract,
+    CourtKeypointContractMismatchError,
+    CourtReferenceFrameProvenance,
+    MissingCourtKeypointMetadataError,
+    build_physical_court_provenance,
+    resolve_court_keypoint_contract,
+)
+from src.tasks.base.model_io import validate_model_artifact_court_keypoint_contract
+from src.tasks.blcs.model_io import blcs_trajectory_prediction_to_physical
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
+from src.tennis_scene.schema import (
+    attach_court_keypoint_provenance,
+    validate_court_keypoint_provenance,
+)
 from src.utils.configuration import PathResolver
 from src.utils.inference.windowed import blend_windows, window_slices
 from src.utils.io import load_json, save_json
@@ -49,6 +65,9 @@ class BLCSConfig:
     window_size: int
     window_overlap: int
     resolver: PathResolver
+    court_keypoint_contract: CourtKeypointContract = field(
+        default_factory=lambda: resolve_court_keypoint_contract("physical_v1")
+    )
 
     def __post_init__(self) -> None:
         if (self.source == "load") != (self.load_path is not None):
@@ -69,16 +88,42 @@ class BLCSResult:
 
     ball_3d: NDArray[np.float32]
     visibility: NDArray[np.bool_]
+    court_reference_provenance: CourtReferenceFrameProvenance = field(
+        default_factory=build_physical_court_provenance
+    )
 
-    def to_dict(self) -> dict:
+    def to_dict(
+        self,
+        court_keypoint_contract: CourtKeypointContract | None = None,
+    ) -> dict[str, object]:
         """Convert result to JSON-serializable dict."""
-        data = {"ball_3d": self.ball_3d.tolist()}
+        data: dict[str, object] = {"ball_3d": self.ball_3d.tolist()}
         data["visibility"] = self.visibility.tolist()
+        if court_keypoint_contract is not None:
+            data = attach_court_keypoint_provenance(
+                data,
+                court_keypoint_contract,
+                self.court_reference_provenance,
+                location="BLCS result",
+            )
         return data
 
     @classmethod
-    def from_dict(cls, data: dict) -> BLCSResult:
+    def from_dict(
+        cls,
+        data: dict[str, object],
+        court_keypoint_contract: CourtKeypointContract | None = None,
+    ) -> BLCSResult:
         """Create result from dict."""
+        provenance = (
+            build_physical_court_provenance()
+            if court_keypoint_contract is None
+            else validate_court_keypoint_provenance(
+                data,
+                court_keypoint_contract,
+                location="BLCS result",
+            )
+        )
         missing = {"ball_3d", "visibility"} - set(data)
         if missing:
             raise ValueError(
@@ -87,11 +132,16 @@ class BLCSResult:
         return cls(
             ball_3d=np.array(data["ball_3d"], dtype=np.float32),
             visibility=np.array(data["visibility"], dtype=np.bool_),
+            court_reference_provenance=provenance,
         )
 
-    def save(self, path: str | Path) -> None:
+    def save(
+        self,
+        path: str | Path,
+        court_keypoint_contract: CourtKeypointContract | None = None,
+    ) -> None:
         """Save result to JSON file."""
-        save_json(self.to_dict(), path)
+        save_json(self.to_dict(court_keypoint_contract), path)
         LOGGER.info(f"Saved BLCS result to {path}")
 
     def validate(self) -> tuple[bool, list[str]]:
@@ -113,9 +163,16 @@ class BLCSResult:
         return len(errors) == 0, errors
 
     @classmethod
-    def load(cls, path: str | Path) -> BLCSResult:
+    def load(
+        cls,
+        path: str | Path,
+        court_keypoint_contract: CourtKeypointContract | None = None,
+    ) -> BLCSResult:
         """Load result from JSON file."""
-        return cls.from_dict(load_json(path))
+        data = load_json(path)
+        if not isinstance(data, dict):
+            raise TypeError(f"BLCS result must be a JSON object: {path}")
+        return cls.from_dict(data, court_keypoint_contract)
 
 
 class BLCSModule(BasePipelineModule):
@@ -154,6 +211,7 @@ class BLCSModule(BasePipelineModule):
             self.checkpoint,
             resolver=self.config.resolver,
             device=self.device,
+            court_keypoints=self.config.court_keypoint_contract,
         )
         if self._predictor.input_profile != "multiview":
             raise ValueError(
@@ -172,6 +230,9 @@ class BLCSModule(BasePipelineModule):
         court_kp: NDArray[np.float32],
         ball_vis: NDArray[np.bool_],
         court_vis: NDArray[np.float32],
+        *,
+        court_keypoint_document: Mapping[str, object] | None = None,
+        court_reference_provenance: CourtReferenceFrameProvenance | None = None,
     ) -> BLCSResult:
         """Run BLCS inference.
 
@@ -194,8 +255,16 @@ class BLCSModule(BasePipelineModule):
                 LOGGER.info(
                     f"Loading BLCS result from {load_path} (skipping inference)"
                 )
-                return BLCSResult.load(load_path)
+                return BLCSResult.load(
+                    load_path,
+                    self.config.court_keypoint_contract,
+                )
             raise FileNotFoundError(f"BLCS artifact not found: {load_path}")
+
+        input_provenance = self._validate_input_court_context(
+            court_keypoint_document,
+            court_reference_provenance,
+        )
 
         if not self.is_loaded:
             self.load()
@@ -232,13 +301,29 @@ class BLCSModule(BasePipelineModule):
         )
         position_chunks = []
         for start, end in slices:
-            prediction = predictor.predict_multiview_arrays(
-                ball_uv=ball_uv[:, start:end],
-                court_kp=court_kp[:, start:end],
-                ball_vis=ball_vis[:, start:end],
-                court_vis=court_vis[:, start:end],
-                denormalize=True,
-            )
+            if self.config.court_keypoint_contract.selector == PHYSICAL_V1_SELECTOR:
+                prediction = predictor.predict_multiview_arrays(
+                    ball_uv=ball_uv[:, start:end],
+                    court_kp=court_kp[:, start:end],
+                    ball_vis=ball_vis[:, start:end],
+                    court_vis=court_vis[:, start:end],
+                    denormalize=True,
+                )
+            else:
+                prediction = predictor.predict_multiview_arrays(
+                    ball_uv=ball_uv[:, start:end],
+                    court_kp=court_kp[:, start:end],
+                    ball_vis=ball_vis[:, start:end],
+                    court_vis=court_vis[:, start:end],
+                    denormalize=True,
+                    court_keypoint_document=court_keypoint_document,
+                    court_reference_provenance=(input_provenance,),
+                )
+                if prediction.court_reference_provenance != (input_provenance,):
+                    raise CourtKeypointContractMismatchError(
+                        "BLCS prediction provenance does not match its validated input."
+                    )
+                prediction = blcs_trajectory_prediction_to_physical(prediction)
             win_pos = prediction.position.squeeze(0).cpu().numpy()
             position_chunks.append((start, win_pos))
 
@@ -249,9 +334,41 @@ class BLCSModule(BasePipelineModule):
             )
         output_visibility = np.asarray(ball_vis.any(axis=0), dtype=np.bool_)
 
-        result = BLCSResult(ball_3d=ball_3d, visibility=output_visibility)
+        result = BLCSResult(
+            ball_3d=ball_3d,
+            visibility=output_visibility,
+            court_reference_provenance=input_provenance,
+        )
 
         if self.config.save_result:
-            result.save(self.config.output_path)
+            result.save(
+                self.config.output_path,
+                self.config.court_keypoint_contract,
+            )
 
         return result
+
+    def _validate_input_court_context(
+        self,
+        document: Mapping[str, object] | None,
+        provenance: CourtReferenceFrameProvenance | None,
+    ) -> CourtReferenceFrameProvenance:
+        """Fail closed on direct v2 input before loading or invoking a model."""
+        validate_model_artifact_court_keypoint_contract(
+            {} if document is None else document,
+            self.config.court_keypoint_contract,
+            location="tennis_scene BLCS input",
+        )
+        if provenance is None:
+            if self.config.court_keypoint_contract.selector != PHYSICAL_V1_SELECTOR:
+                raise MissingCourtKeypointMetadataError(
+                    "tennis_scene BLCS camera_view_v2 input requires exact "
+                    "Court reference provenance."
+                )
+            return build_physical_court_provenance()
+        if provenance.contract != self.config.court_keypoint_contract:
+            raise CourtKeypointContractMismatchError(
+                "tennis_scene BLCS input provenance does not match runtime CourtKP20 "
+                "contract."
+            )
+        return provenance

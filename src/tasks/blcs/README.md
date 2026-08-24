@@ -2,6 +2,13 @@
 
 2D のボール観測とコート keypoint から、コート座標系の 3D ボール軌道を推定するタスクです。合成データ生成（物理シミュレーション + マルチカメラ投影）、学習、推論、可視化までを一貫して提供します。
 
+CourtKP20 の version 選択、disk 上の camera-local semantics、model の
+reference-frame semantics、metadata と再生成方針は共有の
+[`generate_dataset/README.md`](../base/generate_dataset/README.md) を正本とします。
+BLCS 固有の差分は、disk の Court 配列が static `(20, 2)` / `(20,)` であり、
+reference frame へ position と court-space velocity を同じ proper rotation で
+変換する点です。
+
 ## Modules
 
 ### generate_dataset/

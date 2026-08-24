@@ -2,6 +2,17 @@
 
 2D の人物 pose とコート keypoint から、コート座標系でのプレイヤー `position`/`rotation`（および任意で canonical 3D pose）を推定するタスクです。AMASS/SMPL-H モーションと仮想カメラから学習データを合成する generator、frame/sequence/multiview の各モデル、Lightning 学習、推論、可視化までを一貫して提供します。
 
+## Court keypoint contract
+
+CourtKP20 の version、camera-local disk ordering、reference-frame alignment、
+metadata と checkpoint の exact-match 規約は共有正本
+[`src/tasks/base/generate_dataset/README.md`](../base/generate_dataset/README.md)
+を参照してください。PLCS 固有の差分は、disk の `court_kp_uv` / `court_kp_vis`
+がそれぞれ `(T,20,2)` / `(T,20)`、standard sample が整列済み20点、tracking
+sample が整列後の先頭14点を使うことです。reference transform は position、
+heading、court-space world joints に適用し、player-local `canonical_pose_3d` と
+human UV/visibility には適用しません。
+
 ## Modules
 
 ### configuration
@@ -78,7 +89,7 @@
 
 モデル入力は `human_kp (B,V,T,Q,17,2)`、`human_vis (B,V,T,Q,17)`、`court_kp (B,V,T,14,2)`、`court_vis (B,V,T,14)`、`padding_mask (B,V,T)` の5 tensorです。`padding_mask=True`だけがattentionから除外されます。各sceneの物理trackはDatasetで固定幅`Q`のlifecycle slotへpackされるため、観測軸とquery軸は常に`P=Q`です。`human_vis.any(-1)`がfalseの非padding slotはlearned invisible tokenになりますがattentionには参加し、時間・camera文脈から更新されます。debug用の`detection_gt_index`は実object由来なら物理instance ID、不可視またはfalse positiveなら`-1`で、モデルへは渡しません。欠損joint UVは0にします。出力は `position (B,T,Q,3)`、`rotation (B,T,Q,2)`、`presence_logits (B,T,Q)` です。教師は `target_position`、`target_rotation`、`target_presence`、`target_instance_id` で、inactive rotationはidentity、instance IDは`-1`です。重ならないbirth/death区間を同じslotへ詰めるため、同一queryはdeath後に別instanceへ再利用できます。
 
-14 court UVはannotation schemaのkeypoint ID順を維持し、`court_vis`で不可視点を0化します。各lifecycle slotのperson keypointsとcourtを連結し、BLCSと同じ`src/utils/models/embeddings/group_tokens.py`の共有`CourtPlayerGroupEmbedding`により1 slot = 1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*Q, D)` です。M-RoPE `(time,camera,role)` のroleはquery=0、court-player group=1です。
+14 court UVは共有Court contractでreference整列した後の先頭14点を使い、`court_vis`で不可視点を0化します。各lifecycle slotのperson keypointsとcourtを連結し、BLCSと同じ`src/utils/models/embeddings/group_tokens.py`の共有`CourtPlayerGroupEmbedding`により1 slot = 1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*Q, D)` です。M-RoPE `(time,camera,role)` のroleはquery=0、court-player group=1です。
 
 BLCSと共有する各stageは `mHC object temporal -> global spatial(Q+VQ) -> query temporal` の順で更新し、temporal modeを `CSWA, CSWA, CSWA, Global MHA` のcycleへ固定します。`object_state_valid`を含む全state/attention maskは共有`build_fixed_query_padding_masks()`が`padding_mask`だけから生成します。nested `model.mhc` / `model.cswa`はstrictに検証し、旧`spatial_blocks` / `temporal_blocks` checkpointは自動変換せずstrict load errorとします。
 

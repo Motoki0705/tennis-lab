@@ -9,6 +9,7 @@ from typing import TypeAlias
 import numpy as np
 from torch import Tensor
 
+from src.tasks.base.generate_dataset import CourtReferenceFrameProvenance
 from src.tasks.base.model_io import ModelCall
 
 
@@ -48,6 +49,7 @@ class PLCSPreparedBatch:
     target_human_kp_3d: Tensor | None = None
     target_padding_mask: Tensor | None = None
     reprojection_target: PLCSReprojectionTarget | None = None
+    court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,6 +60,7 @@ class PLCSDecodedPrediction:
     rotation: Tensor
     canonical_pose: Tensor | None = None
     auxiliary_position: Tensor | None = None
+    court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +70,7 @@ class PLCSTrackingDecodedPrediction:
     position: Tensor
     rotation: Tensor
     presence_logits: Tensor
+    court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...] | None = None
 
 
 Float32Array: TypeAlias = np.ndarray
@@ -79,6 +83,7 @@ class PLCSPhysicalPrediction:
     position_meters: Float32Array
     yaw_radians: Float32Array
     canonical_pose: Float32Array | None = None
+    court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...] | None = None
 
 
 __all__ = [

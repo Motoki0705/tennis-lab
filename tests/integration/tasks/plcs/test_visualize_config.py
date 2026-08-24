@@ -58,6 +58,12 @@ def test_style_and_view_hydra_overrides() -> None:
     assert runtime.view_3d.base == CAMERA_PRESETS["side"]
 
 
+def test_camera_view_contract_composes_independently_for_visualization() -> None:
+    runtime = _build(["court_keypoints=camera_view_v2"])
+
+    assert runtime.court_keypoint_contract.selector == "camera_view_v2"
+
+
 def test_invalid_canonical_pose_source_is_rejected() -> None:
     with pytest.raises(
         ValueError,

@@ -165,6 +165,35 @@ CAMERA_VIEW_HALF_TURN_INDEX: tuple[int, ...] = (
     12,
 )
 
+# Right-handed camera-view half-turn for the complete immutable CourtKP20
+# geometry.  Unlike ``OPPOSITE_COURT_END_INDEX`` (the legacy 14-point,
+# Y-reflection contract), this permutation is exactly the point ordering
+# induced by ``Rz(pi): (x, y, z) -> (-x, -y, z)``.  It is the sole canonical
+# full-20 camera-view mapping; callers that need the ground subset take its
+# first ``NUM_GROUND_COURT_KP`` entries rather than defining another mapping.
+COURT_KP20_HALF_TURN_INDEX: tuple[int, ...] = (
+    3,
+    2,
+    1,
+    0,
+    7,
+    6,
+    5,
+    4,
+    11,
+    10,
+    9,
+    8,
+    13,
+    12,
+    14,
+    17,
+    18,
+    15,
+    16,
+    19,
+)
+
 
 def court_keypoints_3d(config: CourtConfig) -> Tensor:
     """Return 20 court keypoints (idx 0..19) as a (20, 3) tensor.

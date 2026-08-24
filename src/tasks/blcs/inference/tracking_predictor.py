@@ -9,14 +9,23 @@ from typing import Any, Self
 import torch
 from torch import Tensor
 
+from src.tasks.base.generate_dataset import (
+    PHYSICAL_V1_SELECTOR,
+    CourtKeypointContract,
+    CourtKeypointContractMismatchError,
+    CourtReferenceFrameProvenance,
+    build_physical_court_provenance,
+    resolve_court_keypoint_contract,
+)
 from src.tasks.base.inference.predictor import BasePredictor
+from src.tasks.base.model_io import validate_model_artifact_court_keypoint_contract
 from src.tasks.blcs.model_io import (
     BLCSTrackQueryPrediction,
     TrackQueryBoundModelIO,
     compose_blcs_track_query_model_io,
 )
 from src.tasks.blcs.model_io.adapters import TrackQueryModelIOAdapter
-from src.tasks.blcs.model_io.checkpoints import load_checkpoint_config
+from src.tasks.blcs.model_io.checkpoints import load_checkpoint_runtime
 from src.tasks.blcs.training.tracking_lightning_module import (
     BLCSTrackingLightningModule,
 )
@@ -31,6 +40,7 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
         self,
         model_io: TrackQueryBoundModelIO,
         device: torch.device,
+        court_keypoint_contract: CourtKeypointContract | str = "physical_v1",
     ) -> None:
         self.model_io = model_io
         if not isinstance(model_io.adapter, TrackQueryModelIOAdapter):
@@ -38,6 +48,11 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
         self.num_queries = model_io.adapter.num_queries
         self.model = model_io.model.to(device).eval()
         self.device = device
+        self.court_keypoint_contract = (
+            court_keypoint_contract
+            if isinstance(court_keypoint_contract, CourtKeypointContract)
+            else resolve_court_keypoint_contract(court_keypoint_contract)
+        )
 
     @classmethod
     def load_from_checkpoint(
@@ -46,6 +61,7 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
         *,
         resolver: PathResolver,
         device: str | torch.device,
+        court_keypoints: CourtKeypointContract | str | None = None,
         **kwargs: Any,
     ) -> Self:
         checkpoints = cls._ensure_checkpoint(checkpoint_path, resolver=resolver)
@@ -53,9 +69,16 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
             raise ValueError(
                 f"{cls.__name__} expects exactly one checkpoint, got {len(checkpoints)}."
             )
-        binding = compose_blcs_track_query_model_io(
-            load_checkpoint_config(checkpoints[0])
+        checkpoint_runtime = load_checkpoint_runtime(
+            checkpoints[0],
+            runtime_court_keypoints=court_keypoints,
         )
+        binding = compose_blcs_track_query_model_io(checkpoint_runtime.config)
+        if "config" in kwargs:
+            raise TypeError(
+                "BLCSTrackingPredictor.load_from_checkpoint owns checkpoint "
+                "config restoration; do not pass config in kwargs."
+            )
         lightning_module, resolved_device = cls._load_single_lightning_module(
             checkpoints[0],
             BLCSTrackingLightningModule,
@@ -64,15 +87,59 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
             model_io=binding,
             strict=True,
             weights_only=False,
+            config=checkpoint_runtime.config,
             **kwargs,
         )
-        return cls(model_io=lightning_module.model_io, device=resolved_device)
+        return cls(
+            model_io=lightning_module.model_io,
+            device=resolved_device,
+            court_keypoint_contract=checkpoint_runtime.court_keypoint_contract,
+        )
+
+    def _prediction_provenance(
+        self,
+        batch: Mapping[str, object],
+        *,
+        batch_size: int,
+        explicit: tuple[CourtReferenceFrameProvenance, ...] | None,
+    ) -> tuple[CourtReferenceFrameProvenance, ...]:
+        raw = explicit if explicit is not None else batch.get(
+            "court_reference_provenance"
+        )
+        if raw is None:
+            if self.court_keypoint_contract.selector != PHYSICAL_V1_SELECTOR:
+                raise ValueError(
+                    "camera_view_v2 prediction requires explicit reference-frame provenance."
+                )
+            return tuple(build_physical_court_provenance() for _ in range(batch_size))
+        if not isinstance(raw, (tuple, list)) or len(raw) != batch_size:
+            raise ValueError(
+                "Prediction provenance must contain exactly one record per batch item."
+            )
+        records = tuple(raw)
+        if any(
+            not isinstance(record, CourtReferenceFrameProvenance)
+            for record in records
+        ):
+            raise TypeError("Prediction provenance entries must be validated records.")
+        if any(
+            record.contract_id != self.court_keypoint_contract.contract_id
+            for record in records
+        ):
+            raise CourtKeypointContractMismatchError(
+                "Prediction provenance does not match the predictor CourtKP contract."
+            )
+        return records
 
     def predict_batch(
         self,
         batch: Mapping[str, object],
         *,
         denormalize: bool,
+        court_reference_provenance: tuple[
+            CourtReferenceFrameProvenance, ...
+        ]
+        | None = None,
     ) -> BLCSTrackQueryPrediction:
         """Run one validated tracking call and return its typed decode."""
         with torch.no_grad():
@@ -82,6 +149,11 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
             }
             prediction = self.model_io.run(moved)
             position = prediction.position
+            provenance = self._prediction_provenance(
+                batch,
+                batch_size=int(position.shape[0]),
+                explicit=court_reference_provenance,
+            )
             if denormalize:
                 position = self._denormalize_coords(position, COURT_COORD_SCALE_XYZ)
             return BLCSTrackQueryPrediction(
@@ -89,6 +161,8 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
                 presence_logits=prediction.presence_logits.detach().cpu(),
                 presence_probability=prediction.presence_probability.detach().cpu(),
                 presence=prediction.presence.detach().cpu(),
+                court_reference_provenance=provenance,
+                coordinates_in_metres=denormalize,
             )
 
     def predict(
@@ -100,8 +174,18 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
         court_vis: Tensor,
         padding_mask: Tensor,
         denormalize: bool,
+        court_keypoint_document: Mapping[str, object] | None = None,
+        court_reference_provenance: tuple[
+            CourtReferenceFrameProvenance, ...
+        ]
+        | None = None,
     ) -> BLCSTrackQueryPrediction:
         """Pad an explicit short candidate set, then run the strict adapter."""
+        validate_model_artifact_court_keypoint_contract(
+            {} if court_keypoint_document is None else court_keypoint_document,
+            self.court_keypoint_contract,
+            location="BLCS tracking direct inference input",
+        )
         if ball_uv.ndim != 5:
             raise ValueError("ball_uv must have shape (B,V,T,P,2).")
         if ball_vis.shape != ball_uv.shape[:-1]:
@@ -139,6 +223,7 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
         return self.predict_batch(
             inputs,
             denormalize=denormalize,
+            court_reference_provenance=court_reference_provenance,
         )
 
 

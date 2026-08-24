@@ -11,6 +11,7 @@ import pytorch_lightning as pl
 import torch
 from hydra import compose, initialize_config_dir
 
+from src.tasks.base.generate_dataset import CourtReferenceFrameProvenance
 from src.tasks.blcs.data.tracking_datamodule import BLCSTrackingDataModule
 from src.tasks.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter
 from src.tasks.blcs.generate_dataset.scene_generator import BLCSSceneData
@@ -37,6 +38,46 @@ from src.utils.schema.court_normalization import (
 )
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
+
+
+def _assert_sample_deterministic(
+    first: dict[str, Any],
+    repeated: dict[str, Any],
+) -> None:
+    assert first.keys() == repeated.keys()
+    for key, value in first.items():
+        repeated_value = repeated[key]
+        if key == "court_reference_provenance":
+            if not isinstance(value, CourtReferenceFrameProvenance) or not isinstance(
+                repeated_value, CourtReferenceFrameProvenance
+            ):
+                raise TypeError(
+                    "court_reference_provenance must be an immutable "
+                    "CourtReferenceFrameProvenance value."
+                )
+            assert value == repeated_value
+        elif key == "court_keypoint_metadata":
+            if type(value) is not dict or type(repeated_value) is not dict:
+                raise TypeError("court_keypoint_metadata must be an exact dict document.")
+            assert value == repeated_value
+        elif key == "selected_camera_ids":
+            if (
+                not isinstance(value, tuple)
+                or not isinstance(repeated_value, tuple)
+                or any(not isinstance(camera_id, str) for camera_id in value)
+                or any(not isinstance(camera_id, str) for camera_id in repeated_value)
+            ):
+                raise TypeError("selected_camera_ids must be an immutable tuple of str.")
+            assert value == repeated_value
+        elif isinstance(value, torch.Tensor) and isinstance(
+            repeated_value, torch.Tensor
+        ):
+            assert torch.equal(value, repeated_value)
+        else:
+            raise TypeError(
+                f"Unsupported sample value type for {key!r}: "
+                f"{type(value).__name__}/{type(repeated_value).__name__}."
+            )
 
 
 def _write_splits(root: Path, names: dict[str, list[str]]) -> None:
@@ -105,7 +146,7 @@ def _materialize_blcs(root: Path) -> None:
 
 
 def _materialize_plcs(root: Path) -> None:
-    writer = PLCSDatasetWriter(root)
+    writer = PLCSDatasetWriter(root, legacy_metadata_free_v1=True)
     names: dict[str, list[str]] = {split: [] for split in ("train", "val", "test")}
     for split_index, split in enumerate(names):
         for index in range(4):
@@ -233,9 +274,7 @@ def test_tracking_task_runs_one_training_and_validation_step(
     datamodule.setup("fit")
     first_val = datamodule.val_dataset[0]
     repeated_val = datamodule.val_dataset[0]
-    assert all(
-        torch.equal(value, repeated_val[key]) for key, value in first_val.items()
-    )
+    _assert_sample_deterministic(first_val, repeated_val)
     if task == "blcs":
         model_io = compose_blcs_track_query_model_io(config)
         lightning_module = module_class(config, model_io=model_io)

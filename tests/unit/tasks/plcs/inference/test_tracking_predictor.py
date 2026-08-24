@@ -9,6 +9,8 @@ import torch
 from hydra import compose, initialize_config_dir
 from torch import Tensor, nn
 
+from src.tasks.base.generate_dataset import resolve_court_keypoint_contract
+from src.tasks.base.model_io import write_model_artifact_court_keypoint_contract
 from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
 from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.inference.tracking_predictor import PLCSTrackingPredictor
@@ -54,6 +56,7 @@ def test_predictor_returns_cpu_lifecycle_and_yaw_outputs() -> None:
             num_queries=2,
             num_court_tokens=14,
             num_joints=17,
+            court_keypoint_contract=resolve_court_keypoint_contract("physical_v1"),
         ),
         device=torch.device("cpu"),
     )
@@ -109,6 +112,9 @@ def test_checkpoint_restoration_retains_exact_ablation_model_adapter_pair(
     binding = build_plcs_model_io(PLCSTrainingConfig.from_config(config))
     assert isinstance(binding.adapter, PLCSTrackQueryIOAdapter)
     checkpoint = tmp_path / "ablation.ckpt"
+    document: dict[str, object] = {"hyper_parameters": {"config": config}}
+    physical_v1 = resolve_court_keypoint_contract("physical_v1")
+    write_model_artifact_court_keypoint_contract(document, physical_v1)
     observed: dict[str, object] = {}
 
     def load_module(
@@ -138,13 +144,14 @@ def test_checkpoint_restoration_retains_exact_ablation_model_adapter_pair(
     )
     monkeypatch.setattr(
         "src.tasks.plcs.inference.tracking_predictor.load_and_validate_checkpoint",
-        lambda path: {},
+        lambda path: document,
     )
 
     predictor = PLCSTrackingPredictor.load_from_checkpoint(
         checkpoint,
         resolver=cast("PathResolver", object()),
         device="cpu",
+        court_keypoint_contract=physical_v1,
     )
 
     assert observed == {

@@ -13,6 +13,8 @@ from src.tasks.blcs.model_io.contracts import (
     BLCSTrackQueryTrainingBatch,
     BLCSTrajectoryPrediction,
     BLCSTrajectoryTrainingBatch,
+    blcs_track_query_prediction_to_physical,
+    blcs_trajectory_prediction_to_physical,
 )
 from src.tasks.blcs.model_io.factory import (
     BLCSBoundModelIO,
@@ -30,6 +32,8 @@ __all__ = [
     "BLCSTrackQueryTrainingBatch",
     "BLCSTrajectoryPrediction",
     "BLCSTrajectoryTrainingBatch",
+    "blcs_track_query_prediction_to_physical",
+    "blcs_trajectory_prediction_to_physical",
     "MultiViewTrajectoryModelIOAdapter",
     "SingleTrajectoryModelIOAdapter",
     "TrackQueryAblationModelIOAdapter",
