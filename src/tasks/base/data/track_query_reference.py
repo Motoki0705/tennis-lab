@@ -467,37 +467,44 @@ def _validate_reference_transform_batch(
         raise ReferenceViewBatchError(
             "reference_from_physical must contain only finite values."
         )
-    identity = torch.eye(
-        3,
-        dtype=reference_from_physical.dtype,
-        device=device,
-    ).expand(batch_size, -1, -1)
     tolerance = 1e-12 if reference_from_physical.dtype == torch.float64 else 1e-6
-    orthogonal = torch.allclose(
-        reference_from_physical.transpose(-1, -2) @ reference_from_physical,
-        identity,
-        rtol=0.0,
-        atol=tolerance,
+    validation_dtype = (
+        torch.float64
+        if reference_from_physical.dtype == torch.float64
+        else torch.float32
     )
-    determinant = torch.linalg.det(reference_from_physical)
-    proper = torch.allclose(
-        determinant,
-        torch.ones_like(determinant),
-        rtol=0.0,
-        atol=tolerance,
-    )
+    with torch.autocast(device_type=device.type, enabled=False):
+        validation_transform = reference_from_physical.to(dtype=validation_dtype)
+        identity = torch.eye(
+            3,
+            dtype=validation_dtype,
+            device=device,
+        ).expand(batch_size, -1, -1)
+        orthogonal = torch.allclose(
+            validation_transform.transpose(-1, -2) @ validation_transform,
+            identity,
+            rtol=0.0,
+            atol=tolerance,
+        )
+        determinant = torch.linalg.det(validation_transform)
+        proper = torch.allclose(
+            determinant,
+            torch.ones_like(determinant),
+            rtol=0.0,
+            atol=tolerance,
+        )
     if not orthogonal or not proper:
         raise ReferenceViewBatchError(
             "reference_from_physical must contain finite proper rotations."
         )
     allowed = torch.tensor(
         (IDENTITY_ROTATION_3D, RZ_PI_ROTATION_3D),
-        dtype=reference_from_physical.dtype,
+        dtype=validation_dtype,
         device=device,
     )
     is_allowed = (
         torch.isclose(
-            reference_from_physical[:, None],
+            validation_transform[:, None],
             allowed[None],
             rtol=0.0,
             atol=tolerance,
@@ -527,12 +534,14 @@ def _validate_reference_transform_batch(
             raise ReferenceViewBatchError(
                 "physical_from_reference must contain only finite values."
             )
-        if not torch.allclose(
-            physical_from_reference,
-            reference_from_physical.transpose(-1, -2),
-            rtol=0.0,
-            atol=tolerance,
-        ):
+        with torch.autocast(device_type=device.type, enabled=False):
+            inverse_matches = torch.allclose(
+                physical_from_reference.to(dtype=validation_dtype),
+                validation_transform.transpose(-1, -2),
+                rtol=0.0,
+                atol=tolerance,
+            )
+        if not inverse_matches:
             raise ReferenceViewBatchError(
                 "physical_from_reference must equal reference_from_physical.T."
             )
