@@ -327,15 +327,10 @@ class FixedQueryTrackAblationStage(nn.Module):
         spatial_queries = spatial_values[:, :, : self.num_queries]
         spatial_queries = spatial_queries * frame_valid[:, :, None, None]
         if self.query_ffn_after_spatial_enabled:
-            if (
-                self.query_ffn_after_spatial is None
-                or self.query_ffn_after_spatial_norm is None
-            ):
-                raise RuntimeError(
-                    "query-only post-spatial FFN modules were not constructed"
-                )
-            spatial_queries = spatial_queries + self.query_ffn_after_spatial(
-                self.query_ffn_after_spatial_norm(spatial_queries)
+            query_ffn = cast(SwiGLU, self.query_ffn_after_spatial)
+            query_ffn_norm = cast(RMSNorm, self.query_ffn_after_spatial_norm)
+            spatial_queries = spatial_queries + query_ffn(
+                query_ffn_norm(spatial_queries)
             )
             spatial_queries = spatial_queries * frame_valid[:, :, None, None]
         current_objects = spatial_values[:, :, self.num_queries :].reshape(
