@@ -316,7 +316,10 @@ def _court_report_manifest(
                     "Court trajectory group lacks its target-court binding."
                 )
             raw_bindings.append(TargetCourtBinding.from_dict(group["target_court"]))
-    else:
+    elif version in (
+        CourtDatasetSchemaVersion.V2,
+        CourtDatasetSchemaVersion.V3,
+    ):
         accepted = payload.get("samples")
         rejected = payload.get("rejected_samples")
         if (
@@ -333,6 +336,8 @@ def _court_report_manifest(
             raw_bindings.append(
                 ResolvedTargetCourtV2.from_mapping(sample.get("target_court")).binding
             )
+    else:  # pragma: no cover - exact schema registry is exhaustive
+        raise TypeError("Unsupported Court report schema version.")
     for binding in raw_bindings:
         previous = bindings.setdefault(binding.court_instance_id, binding)
         if previous != binding:

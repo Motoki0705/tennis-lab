@@ -150,14 +150,17 @@ def test_court_source_rejects_unknown_dataset_schema_without_shape_fallback(
     _write_court_fixture(
         tmp_path,
         indices=(0, 1),
-        dataset_schema="canonical_court_dataset_v3",
+        dataset_schema="canonical_court_dataset_v4",
         label_schema="canonical_court_sample_v2",
     )
     monkeypatch.setattr(
         sources_module, "validate_court_dataset", lambda *args, **kwargs: None
     )
 
-    with pytest.raises(ValueError, match="Unknown Court dataset schema"):
+    with pytest.raises(
+        ValueError,
+        match=r"^Unknown Court dataset schema: 'canonical_court_dataset_v4'\.$",
+    ):
         CourtVisualizationSource(tmp_path, trajectory_id="orbit-0")
 
 

@@ -4,6 +4,8 @@ import pytest
 
 from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
 from src.synthetic_data_generation.dataset.court.contracts import (
+    CourtDatasetPlanV2,
+    CourtDatasetPlanV3,
     OrbitCenterKind,
     OrbitCoverageMode,
     OrbitCoverageObjective,
@@ -20,6 +22,9 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     ResolvedTargetCourtV2,
     TargetCourtPolicyV2,
     TargetCourtResolutionPolicy,
+)
+from src.synthetic_data_generation.dataset.court.schema import (
+    CourtDatasetSchemaVersion,
 )
 from src.synthetic_data_generation.scene_contract import RigidTransform
 
@@ -188,3 +193,12 @@ def test_v2_contracts_reject_v1_fields_and_mixed_discriminants() -> None:
     }
     with pytest.raises(ValueError, match="unknown"):
         ResolvedTargetCourtV2.from_mapping(target)
+
+
+def test_v3_plan_has_distinct_identity_without_changing_v2_target_structure() -> None:
+    assert issubclass(CourtDatasetPlanV3, CourtDatasetPlanV2)
+    v2_plan = object.__new__(CourtDatasetPlanV2)
+    v3_plan = object.__new__(CourtDatasetPlanV3)
+
+    assert v2_plan.schema_version is CourtDatasetSchemaVersion.V2
+    assert v3_plan.schema_version is CourtDatasetSchemaVersion.V3

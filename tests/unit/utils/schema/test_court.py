@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from src.utils.schema.court import (
+    CAMERA_VIEW_HALF_TURN_INDEX,
     COURT_KP_IDX,
     COURT_KP_NAMES,
     GROUND_COURT_KP_NAMES,
@@ -82,3 +83,34 @@ def test_opposite_end_mapping_is_a_complete_involution() -> None:
     np.testing.assert_allclose(swapped[:, 0], points[:, 0], atol=0.0, rtol=0.0)
     np.testing.assert_allclose(swapped[:, 1], -points[:, 1], atol=0.0, rtol=0.0)
     np.testing.assert_allclose(swapped[:, 2], points[:, 2], atol=0.0, rtol=0.0)
+
+
+def test_camera_view_half_turn_is_the_complete_xy_involution() -> None:
+    assert CAMERA_VIEW_HALF_TURN_INDEX == (
+        3,
+        2,
+        1,
+        0,
+        7,
+        6,
+        5,
+        4,
+        11,
+        10,
+        9,
+        8,
+        13,
+        12,
+    )
+    assert len(CAMERA_VIEW_HALF_TURN_INDEX) == NUM_GROUND_COURT_KP
+    assert set(CAMERA_VIEW_HALF_TURN_INDEX) == set(range(NUM_GROUND_COURT_KP))
+    assert tuple(
+        CAMERA_VIEW_HALF_TURN_INDEX[index]
+        for index in CAMERA_VIEW_HALF_TURN_INDEX
+    ) == tuple(range(NUM_GROUND_COURT_KP))
+
+    points = court_keypoints_3d(STANDARD_COURT_CONFIG)[:14].numpy()
+    rotated = points[np.asarray(CAMERA_VIEW_HALF_TURN_INDEX)]
+    np.testing.assert_allclose(rotated[:, 0], -points[:, 0], atol=0.0, rtol=0.0)
+    np.testing.assert_allclose(rotated[:, 1], -points[:, 1], atol=0.0, rtol=0.0)
+    np.testing.assert_allclose(rotated[:, 2], points[:, 2], atol=0.0, rtol=0.0)

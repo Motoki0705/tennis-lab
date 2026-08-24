@@ -3,6 +3,7 @@
 from src.synthetic_data_generation.dataset.court.schema import (
     COURT_SCHEMA_V1,
     COURT_SCHEMA_V2,
+    COURT_SCHEMA_V3,
     CourtDatasetSchemaVersion,
     CourtSchemaDefinition,
     court_schema_for_version,
@@ -17,6 +18,7 @@ from src.synthetic_data_generation.dataset.court.schema import (
 __all__ = [
     "COURT_SCHEMA_V1",
     "COURT_SCHEMA_V2",
+    "COURT_SCHEMA_V3",
     "CourtDatasetSchemaVersion",
     "CourtSchemaDefinition",
     "court_schema_for_version",

@@ -32,6 +32,7 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     CourtDatasetPlan,
     CourtDatasetPlanAny,
     CourtDatasetPlanV2,
+    CourtDatasetPlanV3,
     DatasetSplit,
     OrbitCenter,
     OrbitCoverageMode,
@@ -149,7 +150,10 @@ def build_court_dataset_plan(
         seed=policy.seed,
         maximum_shard_samples=configuration.performance.maximum_batch_frames,
     )
-    if configuration.schema_version is CourtDatasetSchemaVersion.V2:
+    if configuration.schema_version in (
+        CourtDatasetSchemaVersion.V2,
+        CourtDatasetSchemaVersion.V3,
+    ):
         return _build_v2_plan(
             scene_id=scene_id,
             profile=profile,
@@ -162,6 +166,8 @@ def build_court_dataset_plan(
             configuration=configuration,
             policy=policy,
         )
+    if configuration.schema_version is not CourtDatasetSchemaVersion.V1:
+        raise TypeError("Unsupported Court dataset schema version.")
     assignments = assign_court_targets_for_groups(
         selected,
         split_by_group=split_by_group,
@@ -249,8 +255,8 @@ def _build_v2_plan(
     centers: Sequence[OrbitCenter],
     configuration: CourtDatasetConfiguration,
     policy: OrbitSamplingPolicy,
-) -> CourtDatasetPlanV2:
-    """Build v2 groups first, then resolve every target inside its sample loop."""
+) -> CourtDatasetPlanV2 | CourtDatasetPlanV3:
+    """Build V2/V3 groups, then resolve every target inside its sample loop."""
     groups: list[TrajectoryGroupPlanV2] = []
     paths_by_group: dict[str, OrbitPathSamples] = {}
     for group_index, selected_item in enumerate(selected):
@@ -299,7 +305,14 @@ def _build_v2_plan(
         centers=centers,
         selection_seed=policy.seed,
     )
-    return CourtDatasetPlanV2(
+    plan_type: type[CourtDatasetPlanV2]
+    if configuration.schema_version is CourtDatasetSchemaVersion.V2:
+        plan_type = CourtDatasetPlanV2
+    elif configuration.schema_version is CourtDatasetSchemaVersion.V3:
+        plan_type = CourtDatasetPlanV3
+    else:
+        raise TypeError("V2/V3 plan builder received an unsupported schema version.")
+    return plan_type(
         scene_id=scene_id,
         profile=profile,
         policy=policy,

@@ -13,32 +13,45 @@ class CourtDatasetSchemaVersion(StrEnum):
 
     V1 = "v1"
     V2 = "v2"
+    V3 = "v3"
 
 
 COURT_DATASET_SCHEMA_V1 = "canonical_court_dataset_v1"
 COURT_DATASET_SCHEMA_V2 = "canonical_court_dataset_v2"
+COURT_DATASET_SCHEMA_V3 = "canonical_court_dataset_v3"
 COURT_PLAN_SCHEMA_V1 = "canonical_court_orbit_plan_v1"
 COURT_PLAN_SCHEMA_V2 = "canonical_court_orbit_plan_v2"
+COURT_PLAN_SCHEMA_V3 = "canonical_court_orbit_plan_v3"
 COURT_SAMPLE_SCHEMA_V1 = "canonical_court_sample_v1"
 COURT_SAMPLE_SCHEMA_V2 = "canonical_court_sample_v2"
+COURT_SAMPLE_SCHEMA_V3 = "canonical_court_sample_v3"
 COURT_SEMANTIC_MANIFEST_SCHEMA_V1 = "court_renderer_semantic_manifest_v1"
 COURT_SEMANTIC_MANIFEST_SCHEMA_V2 = "court_renderer_semantic_manifest_v2"
+COURT_SEMANTIC_MANIFEST_SCHEMA_V3 = "court_renderer_semantic_manifest_v3"
 COURT_PERFORMANCE_SCHEMA_V1 = "court_dataset_performance_v2"
 COURT_PERFORMANCE_SCHEMA_V2 = "court_dataset_performance_v3"
+COURT_PERFORMANCE_SCHEMA_V3 = "court_dataset_performance_v4"
 COURT_SHARD_SCHEMA_V1 = "court_render_shard_attempt_v1"
 COURT_SHARD_SCHEMA_V2 = "court_render_shard_attempt_v2"
+COURT_SHARD_SCHEMA_V3 = "court_render_shard_attempt_v3"
 COURT_ARC_STEP_DIAGNOSTICS_SCHEMA_V1 = "court_arc_step_diagnostics_v1"
 COURT_ACCEPTANCE_DIAGNOSTICS_SCHEMA_V1 = "court_acceptance_diagnostics_v1"
 COURT_ACCEPTANCE_DIAGNOSTICS_SCHEMA_V2 = "court_acceptance_diagnostics_v2"
+COURT_ACCEPTANCE_DIAGNOSTICS_SCHEMA_V3 = "court_acceptance_diagnostics_v3"
 COURT_SPLIT_DIAGNOSTICS_SCHEMA_V1 = "court_split_diagnostics_v1"
 COURT_SPLIT_DIAGNOSTICS_SCHEMA_V2 = "court_split_diagnostics_v2"
+COURT_SPLIT_DIAGNOSTICS_SCHEMA_V3 = "court_split_diagnostics_v3"
 COURT_PARAMETER_TABLE_SCHEMA_V1 = "court_parameter_table_v1"
 COURT_PARAMETER_TABLE_SCHEMA_V2 = "court_parameter_table_v2"
+COURT_PARAMETER_TABLE_SCHEMA_V3 = "court_parameter_table_v3"
 COURT_SEMANTIC_VISIBILITY_DIAGNOSTICS_SCHEMA_V1 = (
     "court_semantic_visibility_diagnostics_v1"
 )
 COURT_SEMANTIC_VISIBILITY_DIAGNOSTICS_SCHEMA_V2 = (
     "court_semantic_visibility_diagnostics_v2"
+)
+COURT_SEMANTIC_VISIBILITY_DIAGNOSTICS_SCHEMA_V3 = (
+    "court_semantic_visibility_diagnostics_v3"
 )
 
 COURT_SEMANTIC_CLASS_NAMES_V1: tuple[str, ...] = (
@@ -60,6 +73,7 @@ COURT_PHYSICAL_INDICES_BY_CLASS_V1: tuple[tuple[int, ...], ...] = (
     (12, 13),
 )
 COURT_SEMANTIC_CLASS_NAMES_V2: tuple[str, ...] = GROUND_COURT_KP_NAMES
+COURT_SEMANTIC_CLASS_NAMES_V3: tuple[str, ...] = GROUND_COURT_KP_NAMES
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,10 +137,29 @@ COURT_SCHEMA_V2 = CourtSchemaDefinition(
     semantic_class_names=COURT_SEMANTIC_CLASS_NAMES_V2,
     points_per_class=1,
 )
+COURT_SCHEMA_V3 = CourtSchemaDefinition(
+    version=CourtDatasetSchemaVersion.V3,
+    dataset_schema=COURT_DATASET_SCHEMA_V3,
+    plan_schema=COURT_PLAN_SCHEMA_V3,
+    sample_schema=COURT_SAMPLE_SCHEMA_V3,
+    semantic_manifest_schema=COURT_SEMANTIC_MANIFEST_SCHEMA_V3,
+    performance_schema=COURT_PERFORMANCE_SCHEMA_V3,
+    shard_schema=COURT_SHARD_SCHEMA_V3,
+    arc_step_diagnostics_schema=COURT_ARC_STEP_DIAGNOSTICS_SCHEMA_V1,
+    acceptance_diagnostics_schema=COURT_ACCEPTANCE_DIAGNOSTICS_SCHEMA_V3,
+    split_diagnostics_schema=COURT_SPLIT_DIAGNOSTICS_SCHEMA_V3,
+    parameter_table_schema=COURT_PARAMETER_TABLE_SCHEMA_V3,
+    semantic_visibility_diagnostics_schema=(
+        COURT_SEMANTIC_VISIBILITY_DIAGNOSTICS_SCHEMA_V3
+    ),
+    semantic_class_names=COURT_SEMANTIC_CLASS_NAMES_V3,
+    points_per_class=1,
+)
 
 COURT_SCHEMA_BY_VERSION = {
     CourtDatasetSchemaVersion.V1: COURT_SCHEMA_V1,
     CourtDatasetSchemaVersion.V2: COURT_SCHEMA_V2,
+    CourtDatasetSchemaVersion.V3: COURT_SCHEMA_V3,
 }
 COURT_SCHEMA_BY_DATASET_SCHEMA = {
     definition.dataset_schema: definition
@@ -230,18 +263,24 @@ def court_schema_from_shard_schema(schema: object) -> CourtSchemaDefinition:
 __all__ = [
     "COURT_ACCEPTANCE_DIAGNOSTICS_SCHEMA_V1",
     "COURT_ACCEPTANCE_DIAGNOSTICS_SCHEMA_V2",
+    "COURT_ACCEPTANCE_DIAGNOSTICS_SCHEMA_V3",
     "COURT_ARC_STEP_DIAGNOSTICS_SCHEMA_V1",
     "COURT_DATASET_SCHEMA_V1",
     "COURT_DATASET_SCHEMA_V2",
+    "COURT_DATASET_SCHEMA_V3",
     "COURT_PHYSICAL_INDICES_BY_CLASS_V1",
     "COURT_PARAMETER_TABLE_SCHEMA_V1",
     "COURT_PARAMETER_TABLE_SCHEMA_V2",
+    "COURT_PARAMETER_TABLE_SCHEMA_V3",
     "COURT_PERFORMANCE_SCHEMA_V1",
     "COURT_PERFORMANCE_SCHEMA_V2",
+    "COURT_PERFORMANCE_SCHEMA_V3",
     "COURT_PLAN_SCHEMA_V1",
     "COURT_PLAN_SCHEMA_V2",
+    "COURT_PLAN_SCHEMA_V3",
     "COURT_SAMPLE_SCHEMA_V1",
     "COURT_SAMPLE_SCHEMA_V2",
+    "COURT_SAMPLE_SCHEMA_V3",
     "COURT_SCHEMA_BY_DATASET_SCHEMA",
     "COURT_SCHEMA_BY_PLAN_SCHEMA",
     "COURT_SCHEMA_BY_PERFORMANCE_SCHEMA",
@@ -251,16 +290,22 @@ __all__ = [
     "COURT_SCHEMA_BY_VERSION",
     "COURT_SCHEMA_V1",
     "COURT_SCHEMA_V2",
+    "COURT_SCHEMA_V3",
     "COURT_SEMANTIC_CLASS_NAMES_V1",
     "COURT_SEMANTIC_CLASS_NAMES_V2",
+    "COURT_SEMANTIC_CLASS_NAMES_V3",
     "COURT_SEMANTIC_VISIBILITY_DIAGNOSTICS_SCHEMA_V1",
     "COURT_SEMANTIC_VISIBILITY_DIAGNOSTICS_SCHEMA_V2",
+    "COURT_SEMANTIC_VISIBILITY_DIAGNOSTICS_SCHEMA_V3",
     "COURT_SEMANTIC_MANIFEST_SCHEMA_V1",
     "COURT_SEMANTIC_MANIFEST_SCHEMA_V2",
+    "COURT_SEMANTIC_MANIFEST_SCHEMA_V3",
     "COURT_SHARD_SCHEMA_V1",
     "COURT_SHARD_SCHEMA_V2",
+    "COURT_SHARD_SCHEMA_V3",
     "COURT_SPLIT_DIAGNOSTICS_SCHEMA_V1",
     "COURT_SPLIT_DIAGNOSTICS_SCHEMA_V2",
+    "COURT_SPLIT_DIAGNOSTICS_SCHEMA_V3",
     "CourtDatasetSchemaVersion",
     "CourtSchemaDefinition",
     "court_schema_for_version",

@@ -29,7 +29,9 @@ from src.synthetic_data_generation.dataset.court.performance import (
 )
 from src.synthetic_data_generation.dataset.court.schema import (
     COURT_PERFORMANCE_SCHEMA_V2,
+    COURT_PERFORMANCE_SCHEMA_V3,
     COURT_SEMANTIC_CLASS_NAMES_V2,
+    COURT_SEMANTIC_CLASS_NAMES_V3,
 )
 from src.synthetic_data_generation.dataset.court.shards import (
     CourtRenderedSample,
@@ -60,26 +62,45 @@ def test_performance_evidence_round_trips_measured_court_budget() -> None:
     assert reopened.budget.maximum_complete_array_scans_per_sample == 2
 
 
-def test_v2_performance_evidence_requires_exact_fourteen_class_schema() -> None:
+@pytest.mark.parametrize(
+    ("schema", "class_names", "schema_value"),
+    [
+        (
+            COURT_PERFORMANCE_SCHEMA_V2,
+            COURT_SEMANTIC_CLASS_NAMES_V2,
+            "court_dataset_performance_v3",
+        ),
+        (
+            COURT_PERFORMANCE_SCHEMA_V3,
+            COURT_SEMANTIC_CLASS_NAMES_V3,
+            "court_dataset_performance_v4",
+        ),
+    ],
+)
+def test_singleton_performance_evidence_requires_exact_versioned_schema(
+    schema: str,
+    class_names: tuple[str, ...],
+    schema_value: str,
+) -> None:
     v1 = _post_render_rejection_evidence(fresh_rendered_sample_count=3)
-    v2 = replace(
+    singleton = replace(
         v1,
-        schema=COURT_PERFORMANCE_SCHEMA_V2,
-        visible_points_by_class={name: 1 for name in COURT_SEMANTIC_CLASS_NAMES_V2},
+        schema=schema,
+        visible_points_by_class={name: 1 for name in class_names},
     )
 
-    assert CourtPerformanceEvidence.from_dict(v2.to_dict()) == v2
-    assert v2.to_dict()["schema"] == "court_dataset_performance_v3"
+    assert CourtPerformanceEvidence.from_dict(singleton.to_dict()) == singleton
+    assert singleton.to_dict()["schema"] == schema_value
 
-    mixed = copy.deepcopy(v2.to_dict())
+    mixed = copy.deepcopy(singleton.to_dict())
     semantic = mixed["semantic"]
     assert isinstance(semantic, dict)
     semantic["visible_points_by_class"] = {name: 1 for name in SEMANTIC_CLASS_NAMES}
     with pytest.raises(ValueError, match="semantic classes"):
         CourtPerformanceEvidence.from_dict(mixed)
 
-    unknown = copy.deepcopy(v2.to_dict())
-    unknown["schema"] = "court_dataset_performance_v4"
+    unknown = copy.deepcopy(singleton.to_dict())
+    unknown["schema"] = "court_dataset_performance_v5"
     with pytest.raises(ValueError, match="Unknown Court performance schema"):
         CourtPerformanceEvidence.from_dict(unknown)
 
