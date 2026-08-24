@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -158,7 +159,7 @@ def test_transform_points_rejects_invalid_contracts(
         CourtProcessingGeometry._transform_points(points, matrix)
 
 
-def test_pose_safe_geometry_letterboxes_kp_and_k_with_one_isotropic_plan() -> None:
+def test_pose_safe_geometry_resizes_without_redundant_square_letterbox() -> None:
     authority = _authority()
     source_target = build_pose_target(authority)
     points = project_canonical_points(
@@ -195,16 +196,27 @@ def test_pose_safe_geometry_letterboxes_kp_and_k_with_one_isotropic_plan() -> No
     plan = geometry.sample(raw)
     transformed = geometry.apply(raw, dense_targets={}, plan=plan)
 
-    assert plan.output_size_hw == (256, 256)
+    assert plan.output_size_hw == (192, 256)
     torch.testing.assert_close(plan.matrix[0, 0], plan.matrix[1, 1])
-    assert transformed.image_tensor.shape == (3, 256, 256)
+    assert transformed.image_tensor.shape == (3, 192, 256)
     assert transformed.pose_target is not None
     assert transformed.keypoint_channels is not None
     target = transformed.pose_target
     assert float(target.intrinsics[0, 0]) == 200.0
     assert float(target.intrinsics[1, 1]) == 200.0
-    assert float(target.intrinsics[1, 2]) == pytest.approx(127.8, abs=1.0e-5)
+    assert float(target.intrinsics[1, 2]) == pytest.approx(95.8, abs=1.0e-5)
     validate_projection_round_trip(
         target,
         transformed.keypoint_channels.points_xy[:, 0],
     )
+
+
+def test_pose_safe_geometry_adds_only_minimal_patch_alignment() -> None:
+    config = replace(_pose_safe_config(), train_scales=(250,), val_short_side=250)
+    geometry = CourtProcessingGeometry(config, is_train=True, require_pose=True)
+
+    plan = geometry._sample_once((640, 480))
+
+    assert plan.output_size_hw == (192, 256)
+    assert plan.matrix[0, 0] == pytest.approx(250.0 / 640.0)
+    assert plan.matrix[1, 1] == pytest.approx(250.0 / 640.0)

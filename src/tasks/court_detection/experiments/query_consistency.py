@@ -25,7 +25,7 @@ from src.utils.configuration import PathRole
 
 JsonValue: TypeAlias = Any
 DecoderFamily: TypeAlias = Literal["linear", "progressive", "dpt"]
-DecoderSize: TypeAlias = Literal["tiny", "small", "base"]
+DecoderSize: TypeAlias = Literal["tiny", "small", "base", "large"]
 ConsistencyCondition: TypeAlias = Literal[
     "direct-all",
     "joint-both",
@@ -1005,6 +1005,7 @@ def _architecture_overrides(
     ]
     if family == "dpt":
         factors = {
+            1: "[1.0]",
             2: "[2.0,1.0]",
             3: "[4.0,2.0,1.0]",
             4: "[4.0,2.0,1.0,0.5]",
@@ -1060,11 +1061,8 @@ def _decoder_taps(
     if family in {"linear", "progressive"}:
         return [depth - 1]
     levels = min(2 if size == "tiny" else 4, depth)
-    if levels < 2:
-        raise ValueError(
-            "DPT scaling requires at least two encoder taps; depth 1 cannot be "
-            "silently substituted."
-        )
+    if levels < 1:
+        raise ValueError("DPT scaling requires at least one encoder tap.")
     if levels == depth:
         return list(range(depth))
     return [round(index * (depth - 1) / (levels - 1)) for index in range(levels)]

@@ -178,23 +178,33 @@ class CourtProcessingGeometry:
     def _sample_once(self, image_size_wh: tuple[int, int]) -> CourtGeometryPlan:
         width, height = image_size_wh
         if self.require_pose:
-            canvas = self.config.canvas_size
-            if canvas is None:  # pragma: no cover - typed config rejects this
-                raise ValueError("Court pose geometry requires a square canvas_size.")
-            scale = min(canvas / float(width), canvas / float(height))
-            resized_width = width * scale
-            resized_height = height * scale
-            offset_x = (canvas - resized_width) * 0.5
-            offset_y = (canvas - resized_height) * 0.5
+            # Pose-safe query inputs preserve the source aspect ratio.  The target
+            # size is the long side; only the minimal right/bottom patch alignment
+            # is added so DINOv3/16 receives an integral patch grid.  In particular,
+            # do not letterbox every portrait frame into a square canvas.
+            long_side = (
+                random.choice(self.config.train_scales)
+                if self.is_train
+                else self.config.val_short_side
+            )
+            scale = long_side / float(max(width, height))
+            resized_width = max(1, int(round(width * scale)))
+            resized_height = max(1, int(round(height * scale)))
+            padded_width = resized_width + (-resized_width) % self.config.patch_size
+            padded_height = resized_height + (-resized_height) % self.config.patch_size
             matrix = torch.tensor(
                 [
-                    [scale, 0.0, offset_x],
-                    [0.0, scale, offset_y],
+                    [scale, 0.0, 0.0],
+                    [0.0, scale, 0.0],
                     [0.0, 0.0, 1.0],
                 ],
                 dtype=torch.float64,
             )
-            return CourtGeometryPlan(matrix, (canvas, canvas), False)
+            return CourtGeometryPlan(
+                matrix,
+                (padded_height, padded_width),
+                False,
+            )
         if not self.is_train:
             short_side = self.config.val_short_side
             scale = short_side / float(min(width, height))
