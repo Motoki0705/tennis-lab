@@ -2,7 +2,7 @@ MAIN := main
 BUILD_DIR := build
 LATEXMK := $(shell command -v latexmk 2>/dev/null)
 SOURCES := $(MAIN).tex preamble.tex refs.bib \
-	$(wildcard sections/*.tex) \
+	$(wildcard sections/*/*.tex) \
 	$(wildcard appendices/*.tex) \
 	$(wildcard figures/*.tex) \
 	$(wildcard tables/*.tex)
@@ -51,4 +51,3 @@ clean:
 distclean: clean
 	$(RM) $(MAIN).pdf
 endif
-
