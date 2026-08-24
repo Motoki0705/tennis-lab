@@ -114,18 +114,25 @@ export function GraphView({ graph }: { graph: KnowledgeGraph }) {
             </button>
           ))}
         </div>
-        <div className="filters__group">
-          <span className="filters__label">tag</span>
-          {allTags.map((t) => (
-            <button
-              key={t}
-              className={`chip ${tags.has(t) ? "chip--on" : ""}`}
-              onClick={() => toggle(tags, t, setTags)}
-            >
-              #{t}
-            </button>
-          ))}
-        </div>
+        <details className="filters__tags">
+          <summary className={`chip filters__tags-toggle ${tags.size ? "chip--on" : ""}`}>
+            tags
+            <span className="filters__tags-count">
+              {tags.size ? `${tags.size} selected` : allTags.length}
+            </span>
+          </summary>
+          <div className="filters__group filters__tags-options">
+            {allTags.map((t) => (
+              <button
+                key={t}
+                className={`chip ${tags.has(t) ? "chip--on" : ""}`}
+                onClick={() => toggle(tags, t, setTags)}
+              >
+                #{t}
+              </button>
+            ))}
+          </div>
+        </details>
         {(issues.size || providers.size || tags.size) > 0 && (
           <button
             className="chip chip--clear"
