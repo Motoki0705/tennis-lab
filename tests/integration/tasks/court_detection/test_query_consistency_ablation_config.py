@@ -10,6 +10,7 @@ from hydra import compose, initialize_config_dir
 from src.tasks.court_detection.configuration import (
     CourtQueryModelConfig,
     CourtTrainingConfig,
+    SyntheticCourtSourceConfig,
 )
 from src.tasks.court_detection.experiments.configuration import (
     QueryAblationConfig,
@@ -17,6 +18,10 @@ from src.tasks.court_detection.experiments.configuration import (
 )
 from src.tasks.court_detection.experiments.query_ablation import build_ablation_manifest
 from src.tasks.court_detection.experiments.query_consistency import (
+    SHARED_DATA_ROOT,
+    SHARED_EXTERNAL_ASSET_ROOT,
+    V3_DERIVED_TARGET_ROOT,
+    V3_WORKSPACE_ROOT,
     QueryConsistencyAblationConfig,
     build_query_consistency_manifest,
 )
@@ -65,11 +70,19 @@ def test_every_fully_resolved_training_argv_composes_strictly() -> None:
             argv = cast(list[str], run["command_argv"])
             training_config = compose(config_name="train", overrides=argv[3:])
             runtime = CourtTrainingConfig.from_config(training_config)
+            data_root = Path(SHARED_DATA_ROOT)
             assert runtime.shared.run.test_after_fit is True
             assert runtime.shared.training.trainer.max_epochs == 15
             assert runtime.shared.run.seed in {42, 43, 44}
             assert isinstance(runtime.model, CourtQueryModelConfig)
             assert runtime.model.heads.dense_targets == ("kp", "seg", "line")
+            assert isinstance(runtime.data.source, SyntheticCourtSourceConfig)
+            assert runtime.data.source.workspace_root == data_root / V3_WORKSPACE_ROOT
+            assert runtime.data.processing.derived_target_root == (
+                data_root / V3_DERIVED_TARGET_ROOT
+            )
+            assert runtime.data.source.workspace_root.is_relative_to(data_root)
+            assert runtime.data.processing.derived_target_root.is_relative_to(data_root)
 
 
 def test_every_unique_capacity_profile_argv_composes_strictly() -> None:
@@ -97,6 +110,11 @@ def test_every_unique_capacity_profile_argv_composes_strictly() -> None:
                 continue
             seen.add(identity)
             argv = cast(list[str], run["profile_command_argv"])
+            assert not any(
+                token.startswith(("paths.data_root=", "data.source.workspace_root="))
+                for token in argv
+            )
+            assert f"paths.external_asset_root={SHARED_EXTERNAL_ASSET_ROOT}" in argv
             profile_config = compose(
                 config_name="profile_query_model",
                 overrides=argv[3:],

@@ -33,10 +33,16 @@ ConsistencyCondition: TypeAlias = Literal[
     "joint-stopgrad-dense",
 ]
 
-MANIFEST_SCHEMA = "court_query_consistency_manifest_v1"
+MANIFEST_SCHEMA = "court_query_consistency_manifest_v2"
 PHASE_ORDER = ("encoder_scaling", "decoder_scaling", "consistency_ablation")
 SEEDS = (42, 43, 44)
 PYTHON_EXECUTABLE = "/home/kamimura/projects/tennis-lab/.venv/bin/python"
+SHARED_DATA_ROOT = "/home/kamimura/projects/tennis-lab/data"
+SHARED_EXTERNAL_ASSET_ROOT = "/home/kamimura/projects/tennis-lab/third_party"
+V3_DERIVED_TARGET_ROOT = "court_detection/derived_targets_issue790_v3"
+V3_WORKSPACE_ROOT = (
+    "issue-779-court-query-v3-attempt9/synthetic_data_generation/scenes"
+)
 RESULT_METRIC_NAMES = (
     "kp_mean_distance_px",
     "kp_median_distance_px",
@@ -121,6 +127,18 @@ def _strings(mapping: ConfigMapping, key: str, *, path: str) -> tuple[str, ...]:
     if any(type(value) is not str or not value for value in values):
         raise ValueError(f"{path}.{key} must contain non-empty strings.")
     return tuple(cast(str, value) for value in values)
+
+
+def _normalized_relative_descendant(
+    mapping: ConfigMapping, key: str, *, path: str
+) -> str:
+    value = _string(mapping, key, path=path)
+    parts = value.split("/")
+    if "\\" in value or any(part in {"", ".", ".."} for part in parts):
+        raise ValueError(
+            f"{path}.{key} must be a normalized relative descendant path."
+        )
+    return value
 
 
 @dataclass(frozen=True, slots=True)
@@ -334,6 +352,12 @@ class QueryConsistencyAblationConfig:
     """Resolved strict Hydra contract for the staged Issue #790 manifest."""
 
     output_path: Path
+    data_root: Path
+    external_asset_root: Path
+    derived_target_root: Path
+    derived_target_relative_path: str
+    workspace_root: Path
+    workspace_relative_path: str
     python_executable: str
     train_module: str
     profile_module: str
@@ -409,11 +433,41 @@ class QueryConsistencyAblationConfig:
             (str, type(None)),
             path="consistency_ablation.selected",
         )
+        composition = require_config_mapping(
+            section, "composition", path="consistency_ablation"
+        )
+        workspace_relative_path = _normalized_relative_descendant(
+            composition,
+            "workspace_root",
+            path="consistency_ablation.composition",
+        )
+        derived_target_relative_path = _normalized_relative_descendant(
+            composition,
+            "derived_target_root",
+            path="consistency_ablation.composition",
+        )
         result = cls(
             output_path=resolver.resolve(
                 PathRole.OUTPUT,
                 _string(section, "output_path", path="consistency_ablation"),
             ),
+            data_root=resolver.validate(
+                PathRole.DATA, resolver.roots.root(PathRole.DATA)
+            ),
+            external_asset_root=resolver.validate(
+                PathRole.EXTERNAL_ASSET,
+                resolver.roots.root(PathRole.EXTERNAL_ASSET),
+            ),
+            derived_target_root=resolver.resolve(
+                PathRole.DATA,
+                derived_target_relative_path,
+            ),
+            derived_target_relative_path=derived_target_relative_path,
+            workspace_root=resolver.resolve(
+                PathRole.DATA,
+                workspace_relative_path,
+            ),
+            workspace_relative_path=workspace_relative_path,
             python_executable=_string(
                 section, "python_executable", path="consistency_ablation"
             ),
@@ -467,6 +521,8 @@ class QueryConsistencyAblationConfig:
                 "dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
             ),
             "backbone_train_mode": "frozen",
+            "derived_target_root": V3_DERIVED_TARGET_ROOT,
+            "workspace_root": V3_WORKSPACE_ROOT,
         }:
             raise ValueError("Consistency composition changed from its frozen V3 route.")
         optimizer = require_config_mapping(
@@ -506,6 +562,32 @@ class QueryConsistencyAblationConfig:
             raise ValueError("Consistency auxiliary values changed from the frozen contract.")
 
     def validate(self) -> None:
+        if str(self.data_root) != SHARED_DATA_ROOT:
+            raise ValueError(
+                "Consistency runs require the shared declared data root "
+                f"{SHARED_DATA_ROOT!r}."
+            )
+        if str(self.external_asset_root) != SHARED_EXTERNAL_ASSET_ROOT:
+            raise ValueError(
+                "Consistency runs require the shared declared external asset root "
+                f"{SHARED_EXTERNAL_ASSET_ROOT!r}."
+            )
+        if self.workspace_relative_path != V3_WORKSPACE_ROOT:
+            raise ValueError(
+                "Consistency runs require the frozen V3 workspace relative path."
+            )
+        if self.derived_target_relative_path != V3_DERIVED_TARGET_ROOT:
+            raise ValueError(
+                "Consistency runs require the isolated V3 derived-target relative path."
+            )
+        if not self.derived_target_root.is_relative_to(self.data_root):
+            raise ValueError(
+                "Consistency V3 derived-target store must remain below the shared data root."
+            )
+        if not self.workspace_root.is_relative_to(self.data_root):
+            raise ValueError(
+                "Consistency V3 workspace must remain below the shared data root."
+            )
         if self.python_executable != PYTHON_EXECUTABLE:
             raise ValueError(
                 "Consistency commands must use the original repository's absolute "
@@ -643,6 +725,10 @@ def _fixed_contract(config: QueryConsistencyAblationConfig) -> dict[str, JsonVal
         or (config.image_height, config.image_width) != (256, 256)
         or config.batch_size != 8
         or config.python_executable != PYTHON_EXECUTABLE
+        or str(config.data_root) != SHARED_DATA_ROOT
+        or str(config.external_asset_root) != SHARED_EXTERNAL_ASSET_ROOT
+        or config.derived_target_relative_path != V3_DERIVED_TARGET_ROOT
+        or config.workspace_relative_path != V3_WORKSPACE_ROOT
     ):  # pragma: no cover - typed config validates before manifest construction
         raise AssertionError("Manifest received a non-frozen runtime contract.")
     return _expected_fixed_contract()
@@ -655,6 +741,10 @@ def _expected_fixed_contract() -> dict[str, JsonValue]:
         "input_hw": [256, 256],
         "batch_size": 8,
         "python_executable": PYTHON_EXECUTABLE,
+        "data_root": SHARED_DATA_ROOT,
+        "external_asset_root": SHARED_EXTERNAL_ASSET_ROOT,
+        "derived_target_root": V3_DERIVED_TARGET_ROOT,
+        "workspace_root": V3_WORKSPACE_ROOT,
         "dataset": "synthetic_court_v3_target_court_singleton_kp14",
         "dense_targets": ["kp", "line", "seg"],
         "pose_direct_targets": ["translation", "rotation", "focal"],
@@ -823,8 +913,12 @@ def _training_argv(
         "-m",
         config.train_module,
         "data/source=synthetic_court",
+        f"paths.data_root={config.data_root}",
+        f"paths.external_asset_root={config.external_asset_root}",
+        f"data.source.workspace_root={config.workspace_relative_path}",
         "data.source.keypoint_court_scope=target_court",
         "data/processing=all",
+        f"data.processing.derived_target_root={config.derived_target_relative_path}",
         "data/augmentation=pose_safe",
         f"data.batch_size={config.batch_size}",
         "model=query_encoder_base",
@@ -873,6 +967,7 @@ def _profile_argv(
         config.python_executable,
         "-m",
         config.profile_module,
+        f"paths.external_asset_root={config.external_asset_root}",
         "model=query_encoder_base",
         "model.preset=raw",
         "model/backbone=query_dinov3",
@@ -1141,7 +1236,11 @@ def _validate_run_record(
     if ready:
         train_argv = cast(Sequence[object], run["command_argv"])
         required_tokens = {
+            f"paths.data_root={SHARED_DATA_ROOT}",
+            f"paths.external_asset_root={SHARED_EXTERNAL_ASSET_ROOT}",
+            f"data.source.workspace_root={V3_WORKSPACE_ROOT}",
             "data/processing=all",
+            f"data.processing.derived_target_root={V3_DERIVED_TARGET_ROOT}",
             "data/augmentation=pose_safe",
             "model.heads.dense_targets=[kp,seg,line]",
             "training.trainer.max_epochs=15",
@@ -1165,8 +1264,15 @@ def _validate_run_record(
             f"profile.output_path={relative_dir}/capacity_profile.json"
             not in profile_argv
             or "profile.device=cuda" not in profile_argv
+            or f"paths.external_asset_root={SHARED_EXTERNAL_ASSET_ROOT}"
+            not in profile_argv
         ):
             raise ValueError("Ready query consistency profile evidence path changed.")
+        if any(
+            str(token).startswith(("paths.data_root=", "data.source.workspace_root="))
+            for token in profile_argv
+        ):
+            raise ValueError("Query consistency profiles must not carry data overrides.")
         consistency_tokens = set(_consistency_overrides(condition))
         if not consistency_tokens.issubset(set(train_argv)):
             raise ValueError("Ready query consistency auxiliary constants changed.")
@@ -1193,7 +1299,11 @@ __all__ = [
     "QueryConsistencyAblationConfig",
     "RESULT_METRIC_NAMES",
     "SEEDS",
+    "SHARED_DATA_ROOT",
+    "SHARED_EXTERNAL_ASSET_ROOT",
     "TRAIN_DIAGNOSTIC_NAMES",
+    "V3_DERIVED_TARGET_ROOT",
+    "V3_WORKSPACE_ROOT",
     "build_query_consistency_manifest",
     "validate_query_consistency_ablation_boundary",
     "validate_query_consistency_manifest",

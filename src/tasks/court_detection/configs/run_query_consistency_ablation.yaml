@@ -31,6 +31,8 @@ consistency_ablation:
     backbone: query_dinov3
     backbone_checkpoint: dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth
     backbone_train_mode: frozen
+    derived_target_root: court_detection/derived_targets_issue790_v3
+    workspace_root: issue-779-court-query-v3-attempt9/synthetic_data_generation/scenes
   optimizer:
     name: adamw
     learning_rate: 0.001
@@ -51,6 +53,10 @@ consistency_ablation:
     depth_scale_m: 1.0
     cheirality_weight: 0.1
     warmup_fraction: 0.1
+
+paths:
+  data_root: /home/kamimura/projects/tennis-lab/data
+  external_asset_root: /home/kamimura/projects/tennis-lab/third_party
 
 hydra:
   run:
