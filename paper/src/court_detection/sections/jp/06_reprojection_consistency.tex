@@ -1,0 +1,168 @@
+\section{微分可能なキーポイント--姿勢整合性}
+\label{sec:consistency}
+
+直接的なヒートマップ損失と姿勢損失は、異なるinterfaceを通じて同一のコートを教師する。
+密予測キーポイントが姿勢予測の微分可能な射影と一致することを要求し、この共通の意味を
+実行可能な形にする。
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\linewidth}{!}{\input{figures/reprojection_consistency}}
+  \caption{\textbf{分岐間の幾何学的目的関数。}  密予測分岐は有効領域上のspatial softmaxと
+  期待値を用いる一方、姿勢分岐は予測された中心、回転、および焦点距離により、物理的順序を
+  持つ3次元コート点を射影する。生成時の教師適格性により、どの残差を数えるかを固定する。
+  正規化Huber項が画像座標を整合させ、cheirality項がカメラ後方に配置された点を罰する。
+  デフォルトの目的関数は両分岐へ勾配を伝播する。}
+  \label{fig:consistency}
+\end{figure}
+
+\subsection{paddingを考慮した連続座標}
+
+batch collationは、各sampleをbatch内の最大の高さと幅までpaddingする。このcanvas全体に対する
+spatial softmaxは正しくない。有効logitが負の場合、定数0のpadding logitでさえ確率質量を
+吸収し得るためである。\(z_{bkyx}\) をbatch要素 \(b\)、物理キーポイントチャネル \(k\)、画素
+\((x,y)\) に対するlogitとし、sampleの実際の拡張後画像に属するBoolean領域を \(V_b\) とする。次式を
+計算する。
+\begin{align}
+  p_{bkyx}
+    &=\frac{\mathbb{1}[(y,x)\in V_b]\exp(z_{bkyx}/\tau)}
+      {\sum_{(y',x')\in V_b}\exp(z_{bky'x'}/\tau)}, \\
+  \widehat{\mathbf{u}}^{\mathrm{dense}}_{bk}
+    &=\sum_{(y,x)\in V_b}p_{bkyx}[x,y]^{\top},
+  \label{eq:masked_expectation}
+\end{align}
+ここで \(\tau>0\) である。この経路にはsigmoid、top-\(k\)、rounding、argmax、CPU transfer、
+またはdetachは存在しない。maskはBooleanであり、logitとdeviceおよび空間shapeを共有し、
+すべてのsampleについて少なくとも1画素の有効画素を含まなければならない。不正な入力は
+reduction前に例外を発生させる。
+
+この期待値は、target-court singleton \KP contractに限定して適用する。multi-courtかつmulti-peakな
+チャネルに1つの期待値を適用すると、物理的意味を持たないコート間の座標が生成される。
+
+\subsection{予測カメラからの射影}
+
+\(\mathbf{X}_{bk}\) を、姿勢教師に格納された厳密な物理的順序における既知の正準3次元座標と
+する。\cref{eq:pose10d,eq:rotation_decode}で復号された姿勢は、カメラ中心
+\(\widehat{\mathbf{C}}_b\)、canonical-from-camera回転 \(\widehat{\mathbf{R}}_b\)、および焦点距離
+\(\widehat f_b\) を与える。ground-truthの並進、回転、焦点距離を用いずに変換および射影する。
+\begin{align}
+  \widehat{\mathbf{X}}^{\Cam}_{bk}
+    &=[\widehat X_{bk},\widehat Y_{bk},\widehat Z_{bk}]^{\top}
+      =\widehat{\mathbf{R}}_b^{\top}
+      (\mathbf{X}_{bk}-\widehat{\mathbf{C}}_b), \\
+  \widehat{\Kmat}_b
+    &=\begin{bmatrix}
+       \widehat f_b&0&c_{x,b}\\
+       0&\widehat f_b&c_{y,b}\\
+       0&0&1
+      \end{bmatrix}, \\
+  \overline Z_{bk}
+    &=\operatorname{sgn}_{+}(\widehat Z_{bk})
+      \max(|\widehat Z_{bk}|,z_{\min}), \\
+  \widehat{\mathbf{u}}^{\mathrm{pose}}_{bk}
+    &=\pi_{z_{\min}}(\widehat{\Kmat}_b,
+       \widehat{\mathbf{X}}^{\Cam}_{bk})
+      =\begin{bmatrix}
+        \widehat f_b\widehat X_{bk}/\overline Z_{bk}+c_{x,b}\\
+        \widehat f_b\widehat Y_{bk}/\overline Z_{bk}+c_{y,b}
+       \end{bmatrix},
+  \label{eq:predicted_projection}
+\end{align}
+ここで、\(\operatorname{sgn}_{+}(z)=1\) は \(z\geq0\) のとき、そうでないときは \(-1\) である。
+設定された \(z_{\min}>0\) はsafe-depthの大きさであると同時にcheirality thresholdでもある。
+姿勢ヘッドは主点を予測しないため、主点 \((c_{x,b},c_{y,b})\) はaugmentation-awareなtarget
+intrinsicsから取得する。これは幾何metadataであり、漏洩した姿勢教師信号ではない。
+有界な座標射影は不正なdepthでも有限値を維持し、後述のcheirality項がその補正勾配を与える。
+
+射影の前に、adapterは姿勢教師内の \texttt{semantic\_to\_physical} と、すべての密予測チャネルの
+singleton physical indexが厳密に等しいことを検証する。また、両分岐が同一の拡張後model-pixel
+座標系を用いることも検証する。nearest-neighbour matchingや暗黙のsource-to-model rescalingは
+許容しない。
+
+\subsection{教師信号で固定されたロバスト損失}
+
+\(m^{\mathrm{GT}}_{bk}\) は、生成されたin-front、in-frame、およびrenderer-supportの正とする情報に
+基づき、target-court pointが教師対象として適格であることを表す。重要な点として、このmaskは
+予測キーポイントスコアおよび予測depthから独立している。画像対角長
+\(d_b=\sqrt{H_b^2+W_b^2}\) を用いると、正規化残差と座標損失は
+\begin{align}
+  r_{bk}
+    &=\frac{\|\widehat{\mathbf{u}}^{\mathrm{dense}}_{bk}
+              -\widehat{\mathbf{u}}^{\mathrm{pose}}_{bk}\|_2}{d_b}, \\
+  \mathcal{L}_{\mathrm{coord}}
+    &=\frac{\sum_{b,k}m^{\mathrm{GT}}_{bk}
+      \operatorname{Huber}(r_{bk};\delta)}
+      {\sum_{b,k}m^{\mathrm{GT}}_{bk}}.
+  \label{eq:coordinate_loss}
+\end{align}
+である。スカラーHuber関数の定義として
+\(
+  \operatorname{Huber}(r;\delta)=\tfrac12r^2
+\)
+を \(r\leq\delta\) の場合に用い、それ以外の場合は
+\(
+  \delta(r-\tfrac12\delta)
+\)
+とする。適格な点を持たないsampleは座標残差に寄与しない。ただし、batch全体で適格な点が
+0個の場合は、静かにゼロ損失とするのではなくconfiguration/data errorとする。
+
+適格な点をカメラ後方へ配置しても、教師信号を無効化できてはならない。そこで、次式を加える。
+\begin{equation}
+  \mathcal{L}_{\mathrm{cheir}}=
+  \frac{\sum_{b,k}m^{\mathrm{GT}}_{bk}
+    \operatorname{softplus}\!\left(
+      \frac{z_{\min}-\widehat Z_{bk}}{s_z}\right)}
+       {\sum_{b,k}m^{\mathrm{GT}}_{bk}},
+  \qquad
+  \mathcal{L}_{\mathrm{aux}}=
+     \mathcal{L}_{\mathrm{coord}}+w_z\mathcal{L}_{\mathrm{cheir}},
+  \label{eq:cheirality}
+\end{equation}
+ここで \(z_{\min},s_z>0\) である。学習の全目的関数は
+\begin{equation}
+  \mathcal{L}_{\mathrm{total}}=
+  \mathcal{L}_{\mathrm{dense}}+\mathcal{L}_{\mathrm{pose}}
+  +w_{\mathrm{aux}}(t)\mathcal{L}_{\mathrm{aux}}.
+  \label{eq:total_loss}
+\end{equation}
+である。設定可能なweight 0のwarmup後、\(w_{\mathrm{aux}}(t)\) を宣言された値まで線形に増加
+させる。これにより、未学習の2つの分岐が互いに唯一のteacherとなることを防ぎながら、
+学習全体を通して直接的な教師信号を維持する。標準modeでは両分岐を通じて勾配を伝播する。
+2つの明示的なablationでは、それぞれ姿勢側または密予測側の勾配を停止するが、forward residualは
+変更しない。
+
+\subsection{局所交点shortcutの制約}
+\label{sec:shortcut}
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\linewidth}{!}{\input{figures/shortcut_mechanism}}
+  \caption{\textbf{局所交点shortcutの制約。}  白線交差の周囲の小さな近傍は、複数の物理的identityと
+  姿勢に整合し得る。レンダリングされた姿勢の多様性は、そのような局所的観測情報を保持しながら
+  全体配置を変化させる。直接的な姿勢教師信号、大域クエリアテンション、物理channel identity、
+  および1つの共有された投影 \KP 配置は、互いに矛盾する局所出力を罰する。これらは局所的な内部表現を
+  不可能にするものではなく、実ドメインにおけるshortcutの減少は依然として経験的な問題である。}
+  \label{fig:shortcut}
+\end{figure}
+
+おおむね直交する2本の白線を含むcropを考える。その局所appearanceは、service-line intersection、
+baseline/sideline corner、手前のコートではなく奥のコート、あるいは異なる射影ビューのいずれとも
+整合し得る。純粋に局所的なclassifierは、学習集合内の頻度biasを利用して、これらのidentityから1つを
+選択できる。
+
+\Method{}は、相互に接続された3つの段階でこのshortcutに対処する。
+第1に、3DGSレンダリングは、正確な物理identityと6DoFを保持しながら、azimuth、range、height、
+画角、target court、partial coverage、およびbackground contextを変化させる。その結果、
+同じ局所motifが異なる大域配置内に現れ得る。第2に、位置を付与しないcourt queryは
+空間patch集合全体へattentionでき、大域姿勢を回帰するよう直接学習される。2D RoPEは、その観測情報が
+現れた位置を保持する。第3に、\cref{eq:coordinate_loss}は、同一の投影剛体コートと一致しない、
+教師対象として適格なすべての密予測チャネルを罰する。適格なjunctionを1つ独立に移動させれば残差が増加する。
+一方、姿勢予測と密予測を同時に移動させても、\cref{eq:direct_losses}の直接損失によって
+引き続き罰せられる。
+
+この機構は局所特徴を禁止しない---lineとjunctionは引き続き有用な画像情報である---うえ、密予測分岐が
+どの内部特徴を用いるかを決定することもできない。その代わり、これらの出力が、大域的に整合し直接教師された
+カメラ--コートの説明を支持できない場合には損失を増加させる。したがって、依存度が実際に減少するかを検証する
+には、\cref{sec:experiments}のshortcutに焦点を当てた診断が必要である。正確な姿勢ラベルによって、この出力
+levelの制約を低コストで実現できる。同じjoint supervisionを人手で作るには、意図的に中心から外したビューや
+部分被覆ビューを含め、すべての学習画像を較正する必要がある。
