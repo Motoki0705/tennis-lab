@@ -1,0 +1,77 @@
+\section{Introduction}
+\label{sec:introduction}
+
+Court geometry is the reference frame for downstream tennis understanding.
+Ball triangulation, player localization, camera fusion, and physically
+meaningful trajectories all depend on knowing how image pixels map to a
+regulation court.  In unconstrained video, however, the camera may move, crop
+the court, view it obliquely, or include more than one court.  A useful court
+detector must therefore recover a coherent global explanation rather than only
+mark visible white-line fragments.
+
+Most inexpensive annotations encourage exactly the opposite behavior.  A
+heatmap label says where a junction lies, but not why that junction occupies
+that pixel.  Two locally similar line intersections can correspond to different
+physical corners, different target courts, or different camera poses.  A large
+decoder may learn the dataset's local texture statistics while never acquiring
+the projective structure required downstream.  Manual camera calibration can
+remove this ambiguity, but attaching a metric 6DoF pose and intrinsics to every
+training frame is substantially more expensive than clicking a sparse set of
+image points.
+
+Our central observation is that a reconstructed 3D Gaussian scene can act as a
+\emph{geometric label generator}, not merely as a source of synthetic-looking
+backgrounds.  Given one video, a public reconstruction system produces a 3DGS
+scene, calibrated captured cameras, and a differentiable renderer
+\citep{kerbl2023gaussian}.  We align the scene to a regulation court in metres,
+then place new cameras along controlled three-dimensional paths.  Every render
+inherits an exact camera matrix, a camera-to-court rigid transform, and the
+projected geometry and renderer-supported pixel evidence of each canonical
+court point.  The marginal cost of
+annotating another view is consequently analytic projection rather than human
+labeling.
+
+This supervision becomes especially valuable when paired with an architecture
+that is forced to use it.  \Method{} feeds \DINO{} patch tokens
+\citep{simeoni2025dinov3} to a task Transformer containing a single learned
+court query.  Rotary position encoding is applied to patch queries and keys,
+but not to the court query itself.  The query is trained to aggregate the
+complete patch set when predicting translation, rotation, and focal length,
+while tapped patch
+features feed deliberately lightweight \KP, line, and segmentation heads.  A
+differentiable auxiliary objective then projects the known 3D court through
+the predicted camera and matches those projections to continuous coordinates
+extracted from the dense keypoint logits.  All supervision-eligible
+correspondences share one pose, so mutually inconsistent junction outputs incur
+an explicit penalty.
+
+Our contributions are fourfold:
+
+\begin{enumerate}
+  \item We formulate a public-command 3DGS pipeline that turns a single accepted
+  scene alignment into RGB, intrinsics, geometric validity, renderer support,
+  physical \KP identity, and camera-to-canonical-court 6DoF supervision for
+  arbitrarily many rendered views.
+
+  \item We introduce a fail-closed metric alignment procedure with ground-plane
+  ray intersection, a shared scale across two court hypotheses, rigid
+  correspondence fitting, and disjoint fit/holdout evidence.  Its output is a
+  typed scene--court contract rather than an unchecked homography.
+
+  \item We construct deterministic circle/ellipse trajectories with planar or
+  sinusoidal height, uniform 3D arc-length sampling, per-camera target-court
+  resolution under the explicit v2 contract, and group-disjoint data splits.
+  These paths expose the model to
+  global view changes that are difficult to label manually.
+
+  \item We couple a global pose-query encoder to lightweight dense heads through
+  padding-aware, supervision-fixed keypoint--pose reprojection consistency and
+  cheirality.  This design makes global projective agreement an explicit
+  output-level training constraint rather than leaving it entirely emergent.
+\end{enumerate}
+
+We use \emph{annotation-light} and \emph{render-supervised} rather than
+\emph{annotation-free}.  The scene alignment consumes measured court-line
+evidence and must be validated.  The saving is that this cost is incurred once
+per reconstructed scene; all accepted rendered frames receive their 6DoF and
+dense labels automatically.

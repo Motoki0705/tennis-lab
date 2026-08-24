@@ -1,0 +1,73 @@
+\section{Results and Evidence Scope}
+\label{sec:results}
+
+This manuscript is a reproducible method and system report.  We do not fill the
+joint-model tables with extrapolated or single-seed values.  At the repository
+revision documented by this paper, the registered quantitative evidence
+predates the combined global-query/reprojection experiment.  It provides
+context for the backbone and dense tasks but cannot establish the benefit of
+\cref{eq:total_loss}.
+
+\paragraph{Revision snapshot.}
+The exact source revisions used as evidence are:
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+Scene/alignment/dataset & \texttt{179dac756aef137c9a35b1025ce76f0a31023648} \\
+Camera-end canonicalization & \texttt{82fc58d5a677049e1d12d4867238af4ca22b9795} \\
+Global query model & \texttt{2ae8cc3ea7ec6072d5595d691ff8c59a82f32ac7} \\
+Query configuration routes & \texttt{077e84dc9d9edeeb4868ce8cff7c76e5d1ca8540} \\
+\end{tabular}
+\end{center}
+The cross-branch algorithm is fully specified in this manuscript from
+Issue~\#790, but this paper binds neither a frozen \#790 code revision nor a
+numerical benchmark outcome.
+
+\input{tables/registered_evidence}
+
+The legacy \KP run reaches a registered validation best of 2.23 pixels and a
+1.708886-pixel deterministic re-evaluation at 512-scale input.  The latter
+loader reuses the validation source rather than an independent held-out test,
+so we print it only as a software/data sanity check.  Likewise, the matched
+frozen-backbone segmentation runs improve from approximately 0.517 to 0.800
+validation mIoU after tennis-domain self-supervision.  These results support
+the choice to expose \DINO{} features to the court model, but they neither
+evaluate the pose query nor compare direct and joint objectives.
+The corresponding repository records are:
+\begin{quote}\small
+\path{knowledge/nodes/run-i621-court-kp512-resume-r4.md}\\
+\path{knowledge/nodes/run-i524-court-seg-baseline.md}\\
+\path{knowledge/nodes/run-i524-court-seg-ssl.md}
+\end{quote}
+The KP record pins source commit
+\begin{center}\texttt{41b318b39f757e09897964a32f28148a777b87f5}.\end{center}
+
+Negative alignment evidence is equally informative.  In a historical B00
+calibration attempt, aggregate fit residuals passed while subset rediscovery
+shifted a court centre by up to 9.08 m and its orientation by 89.94 degrees.
+The subsequent one-shot holdout achieved 0.832 weighted inliers but a 1.240 m
+distance-weighted q95 and weak per-group coverage, so no machine-accepted
+alignment/dataset contract was published.  A separate, explicit user-override
+decision later published a SceneContract while preserving
+\texttt{machine\_validation\_accepted=0}; that artifact is not evidence of a
+passing automatic gate.  The three records are:
+\begin{quote}\small
+\path{knowledge/nodes/run-i618-b00-alignment-calibration-global-v1.md}\\
+\path{knowledge/nodes/run-i618-b00-alignment-holdout-v1.md}\\
+\path{knowledge/nodes/run-i618-b00-alignment-user-override-v1.md}
+\end{quote}
+This is the intended behavior of the fail-closed design: good
+in-sample line support is not converted into thousands of confident but wrong
+6DoF labels.
+
+\paragraph{Claims reserved for registered runs.}
+The blank numerical cells specified by \cref{tab:ablation_protocol} must be
+populated from immutable run manifests containing commit, configuration,
+checkpoint, split identities, seed, metrics, and prediction artifacts.  Until
+those records exist, this paper makes no claim that joint-both improves a
+baseline, that shortcut reliance is empirically eliminated, that a particular
+decoder is Pareto optimal, or that the method is the production default.  The
+method remains fully specified: a future run cannot change the oracle after
+seeing its outcome.
+
+\input{tables/claim_scope}

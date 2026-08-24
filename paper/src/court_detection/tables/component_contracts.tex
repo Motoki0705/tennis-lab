@@ -1,0 +1,26 @@
+\begin{table}[t]
+  \centering
+  \caption{System boundaries and their failure behavior.  No downstream stage
+  silently reconstructs missing authority.}
+  \label{tab:component_contracts}
+  \small
+  \begin{tabularx}{\linewidth}{@{}p{0.18\linewidth}p{0.28\linewidth}X@{}}
+    \toprule
+    Boundary & Published authority & Rejected rather than inferred \\
+    \midrule
+    Reconstruction & Scene schema, captured cameras, intrinsics, normalized
+      points, renderable 3DGS & Hidden reconstruction paths, malformed arrays,
+      improper rotations, missing public commands \\
+    Alignment & Common metric scale, reciprocal scene--court transforms,
+      topology, fit/holdout metrics & One-court fallback, holdout refit,
+      inconsistent scales, weak segment coverage \\
+    Dataset & RGB/depth, target court, camera transform, \KP identity,
+      geometric validity and renderer support, group split & Schema conversion,
+      nearest-point identity,
+      frame-level split leakage, replacement views \\
+    Model & Typed dense targets, pose10D, augmented intrinsics, valid-region
+      mask & Unsupported source/augmentation, multi-peak KP under singleton
+      loss, missing pose or KP branch \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
