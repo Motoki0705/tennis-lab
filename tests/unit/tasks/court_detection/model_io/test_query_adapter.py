@@ -312,6 +312,72 @@ def test_query_consistency_builds_exact_mask_and_requires_explicit_progress(
     )
 
 
+def test_query_consistency_accepts_bfloat16_amp_predictions_with_gradients(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "src.tasks.court_detection.models.query_encoder.backbone.load_dinov3_backbone",
+        lambda **_: DINOv3BackboneAdapter(FakePatchDINO()),
+    )
+    pair = build_court_detection_pair(
+        _config(loss="query_joint_both"),
+        target_bundle=_bundle(),
+    )
+    adapter = cast(CourtQueryModelIOAdapter, pair.adapter)
+    call = adapter.prepare_training_batch(_training_batch())
+    pose_values = torch.tensor(
+        [
+            [
+                1.3,
+                -15.0,
+                8.0,
+                0.7,
+                0.3,
+                0.2,
+                -0.1,
+                0.8,
+                0.4,
+                3.0,
+            ]
+        ]
+        * 2,
+        dtype=torch.bfloat16,
+        requires_grad=True,
+    )
+    kp_logits = torch.randn(
+        (2, 14, 16, 20),
+        dtype=torch.bfloat16,
+        requires_grad=True,
+    )
+    output = CourtQueryRawOutput(
+        pose=CourtPose10DRaw(pose_values),
+        dense_logits={"kp": kp_logits},
+    )
+
+    with torch.autocast(device_type="cpu", dtype=torch.bfloat16):
+        result = adapter.training_result(output, call, progress_fraction=1.0)
+
+    assert result.consistency is not None
+    consistency = result.consistency
+    pose_gradient, dense_coordinate_gradient = torch.autograd.grad(
+        consistency.weighted_auxiliary_loss,
+        (pose_values, consistency.dense_points_xy),
+        retain_graph=True,
+    )
+    assert result.decoded_pose.rotation.dtype == torch.float32
+    assert consistency.pose_points_xy.dtype == torch.float32
+    assert consistency.auxiliary_loss.dtype == torch.float32
+    assert torch.isfinite(pose_gradient).all()
+    assert torch.isfinite(dense_coordinate_gradient).all()
+    assert torch.all(pose_gradient != 0.0)
+    assert torch.all(dense_coordinate_gradient != 0.0)
+
+    result.loss.backward()
+    assert kp_logits.grad is not None
+    assert torch.isfinite(kp_logits.grad).all()
+    assert torch.count_nonzero(kp_logits.grad) > 0
+
+
 @pytest.mark.parametrize(
     "image_size",
     [

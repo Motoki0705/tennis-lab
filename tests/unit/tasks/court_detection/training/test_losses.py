@@ -242,6 +242,65 @@ def test_soft_argmax_and_predicted_pose_both_receive_gradient() -> None:
     assert torch.count_nonzero(raw_pose.grad[:, 9]) > 0
 
 
+def test_bfloat16_autocast_full_pose_consistency_path_keeps_all_gradients() -> None:
+    raw_pose = torch.tensor(
+        [
+            [
+                1.3,
+                -15.0,
+                8.0,
+                0.7,
+                0.3,
+                0.2,
+                -0.1,
+                0.8,
+                0.4,
+                math.log(20.0),
+            ]
+        ],
+        dtype=torch.bfloat16,
+        requires_grad=True,
+    )
+    dense_points = torch.arange(28, dtype=torch.bfloat16).reshape(1, 14, 2)
+    dense_points.requires_grad_()
+
+    with torch.autocast(device_type="cpu", dtype=torch.bfloat16):
+        decoded = decode_pose10d_strict(raw_pose)
+        canonical_points = canonical_semantic_court_points_batched(
+            torch.arange(14, dtype=torch.long).unsqueeze(0),
+            dtype=torch.bfloat16,
+        )
+        projected = project_predicted_canonical_points(
+            decoded,
+            canonical_points,
+            torch.tensor([[8.0, 8.0]], dtype=torch.bfloat16),
+        )
+        result = query_keypoint_pose_consistency_loss(
+            dense_points,
+            projected.points_xy,
+            projected.depth_m,
+            torch.tensor([[16, 16]], dtype=torch.long),
+            torch.ones((1, 14), dtype=torch.bool),
+            huber_delta=0.1,
+            min_depth_m=0.1,
+            depth_scale_m=1.0,
+            cheirality_weight=0.1,
+            gradient_flow="both",
+        )
+
+    raw_gradient, dense_gradient = torch.autograd.grad(
+        result.auxiliary,
+        (raw_pose, dense_points),
+    )
+    assert decoded.rotation.dtype == torch.float32
+    assert projected.points_xy.dtype == torch.float32
+    assert result.auxiliary.dtype == torch.float32
+    assert torch.isfinite(raw_gradient).all()
+    assert torch.isfinite(dense_gradient).all()
+    assert torch.all(raw_gradient != 0.0)
+    assert torch.all(dense_gradient != 0.0)
+
+
 @pytest.mark.parametrize(
     ("progress", "expected"),
     [(0.0, 0.0), (0.1, 0.0), (0.55, 1.0), (1.0, 2.0)],
