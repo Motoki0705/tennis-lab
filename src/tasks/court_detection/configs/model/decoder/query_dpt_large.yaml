@@ -1,5 +1,5 @@
 family: dpt
 width: 256
-tap_indices: [0, 2, 5, 7]
+tap_indices: [1, 3, 5, 7]
 fusion_levels: 4
 reassemble_factors: [4.0, 2.0, 1.0, 0.5]

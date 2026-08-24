@@ -1,7 +1,7 @@
 """Collect and summarize one explicitly completed Issue #790 scaling phase.
 
 Usage:
-    python -m src.tasks.court_detection.scripts.summarize_query_consistency_ablation summary.phase=encoder_scaling
+    python -m src.tasks.court_detection.scripts.summarize_query_consistency_ablation summary.phase=scaling_grid
     python -m src.tasks.court_detection.scripts.summarize_query_consistency_ablation summary.phase=consistency_ablation
 
 Notes:

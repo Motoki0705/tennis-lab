@@ -1,4 +1,4 @@
-"""Relocate and enqueue one strict Issue #790 manifest shard.
+"""Relocate and enqueue the strict Issue #790 scaling-grid shard.
 
 The canonical manifest remains the scientific authority.  This helper changes
 only runtime-specific interpreter and role-root values, verifies the resulting
@@ -25,7 +25,11 @@ from src.tasks.court_detection.experiments.query_consistency import (
 
 JobKind = Literal["train", "profile", "both"]
 JsonMapping = Mapping[str, Any]
-_ENCODER_DEPTHS = (1, 2, 4, 8)
+_SCALING_SEEDS = (42,)
+_INPUT_LONG_SIDES = (256, 384, 512)
+_ENCODER_DEPTHS = (1, 8)
+_DECODER_FAMILIES = ("dpt",)
+_DECODER_SIZES = ("tiny", "small", "base", "large")
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,22 +153,22 @@ def relocate_run_argv(
     return tuple(argv)
 
 
-def select_encoder_shard_runs(
+def select_scaling_grid_runs(
     manifest: JsonMapping, *, seeds: Sequence[int]
 ) -> tuple[JsonMapping, ...]:
-    """Select complete seed shards in canonical encoder-manifest order."""
+    """Select the complete seed-42 Cartesian grid in canonical order."""
     validate_query_consistency_manifest(manifest, require_resolved=False)
     requested = tuple(seeds)
-    if not requested or len(set(requested)) != len(requested):
-        raise ValueError("seeds must be a non-empty unique sequence.")
+    if requested != _SCALING_SEEDS:
+        raise ValueError(f"Scaling-grid seeds must be exactly {_SCALING_SEEDS}.")
     fixed = _mapping(manifest["fixed_contract"], name="fixed_contract")
     canonical_seeds = fixed["seeds"]
     if not isinstance(canonical_seeds, list) or any(
         type(seed) is not int for seed in canonical_seeds
     ):
         raise TypeError("fixed_contract.seeds must be an integer list.")
-    if any(seed not in canonical_seeds for seed in requested):
-        raise ValueError("Requested seed is outside the canonical manifest.")
+    if tuple(canonical_seeds) != _SCALING_SEEDS:
+        raise ValueError("Canonical manifest seeds changed from the scaling contract.")
 
     raw_runs = manifest["runs"]
     if not isinstance(raw_runs, list):
@@ -172,24 +176,32 @@ def select_encoder_shard_runs(
     selected = tuple(
         _mapping(run, name="run")
         for run in raw_runs
-        if _mapping(run, name="run")["phase"] == "encoder_scaling"
+        if _mapping(run, name="run")["phase"] == "scaling_grid"
         and _mapping(run, name="run")["seed"] in requested
     )
-    for seed in requested:
-        shard = [run for run in selected if run["seed"] == seed]
-        depths = tuple(
-            cast(
-                int,
-                _mapping(run["architecture"], name="run.architecture")["encoder_depth"],
-            )
-            for run in shard
+    expected_architectures = tuple(
+        (input_long_side, depth, family, size)
+        for input_long_side in _INPUT_LONG_SIDES
+        for depth in _ENCODER_DEPTHS
+        for family in _DECODER_FAMILIES
+        for size in _DECODER_SIZES
+    )
+    actual_architectures = tuple(
+        (
+            architecture["input_long_side"],
+            architecture["encoder_depth"],
+            architecture["decoder_family"],
+            architecture["decoder_size"],
         )
-        if depths != _ENCODER_DEPTHS or any(
-            run["queue_ready"] is not True for run in shard
-        ):
-            raise ValueError(
-                f"Seed {seed} must resolve exactly encoder depths {_ENCODER_DEPTHS}."
-            )
+        for run in selected
+        for architecture in (_mapping(run["architecture"], name="run.architecture"),)
+    )
+    if actual_architectures != expected_architectures or any(
+        run["queue_ready"] is not True for run in selected
+    ):
+        raise ValueError(
+            "Seed 42 must resolve exactly the 24-member input/depth/DPT-size grid."
+        )
     return selected
 
 
@@ -201,7 +213,7 @@ def build_shard_plan(
     runtime: RuntimeRelocation,
 ) -> dict[str, object]:
     """Build a candidate-bound plan of queue commands without mutating state."""
-    runs = select_encoder_shard_runs(manifest, seeds=seeds)
+    runs = select_scaling_grid_runs(manifest, seeds=seeds)
     kinds: tuple[Literal["train", "profile"], ...] = (
         ("train", "profile") if job_kind == "both" else (job_kind,)
     )
@@ -226,10 +238,10 @@ def build_shard_plan(
                 }
             )
     return {
-        "schema": "court_query_consistency_shard_plan_v1",
+        "schema": "court_query_consistency_shard_plan_v2",
         "source_manifest_schema": manifest["schema"],
         "source_manifest_sha256": manifest["manifest_sha256"],
-        "phase": "encoder_scaling",
+        "phase": "scaling_grid",
         "seeds": list(seeds),
         "job_kind": job_kind,
         "runtime": {
@@ -359,7 +371,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
-    """Validate, relocate, record, and enqueue one encoder shard."""
+    """Validate, relocate, record, and enqueue the scaling-grid shard."""
     args = _parse_args()
     manifest_value = json.loads(args.manifest.read_text(encoding="utf-8"))
     manifest = _mapping(manifest_value, name="manifest")

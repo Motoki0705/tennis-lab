@@ -14,7 +14,6 @@ from src.tasks.court_detection.configuration import (
     CourtQueryDPTDecoderConfig,
     CourtQueryLossConfig,
     CourtQueryModelConfig,
-    CourtQueryProgressiveDecoderConfig,
     CourtTrainingConfig,
     SyntheticCourtSourceConfig,
 )
@@ -213,7 +212,7 @@ def test_query_hydra_axes_can_be_overridden_independently_in_raw_mode() -> None:
             "model=query_encoder_base",
             "model.preset=raw",
             "model/task_encoder=query_small",
-            "model/decoder=query_progressive_tiny",
+            "model/decoder=query_dpt_tiny",
             "model/heads=query_small",
         )
     )
@@ -222,13 +221,13 @@ def test_query_hydra_axes_can_be_overridden_independently_in_raw_mode() -> None:
     assert runtime.model.preset == "raw"
     assert runtime.model.backbone.name == "dinov3"
     assert runtime.model.task_encoder.hidden_dim == 128
-    assert isinstance(runtime.model.decoder, CourtQueryProgressiveDecoderConfig)
+    assert isinstance(runtime.model.decoder, CourtQueryDPTDecoderConfig)
     assert runtime.model.decoder.width == 32
     assert runtime.model.heads.pose_hidden_dim == 128
 
 
 @pytest.mark.parametrize("preset", ["tiny", "small", "base"])
-@pytest.mark.parametrize("family", ["linear", "progressive", "dpt"])
+@pytest.mark.parametrize("family", ["dpt"])
 def test_every_query_preset_decoder_family_composes(
     preset: str,
     family: str,
@@ -283,7 +282,7 @@ def test_query_config_rejects_invalid_rope_taps_and_decoder_family() -> None:
         "model.preset=raw",
         "model.decoder.family=magic",
     )
-    with pytest.raises(SemanticConfigurationError, match="linear, progressive, or dpt"):
+    with pytest.raises(SemanticConfigurationError, match="must be dpt"):
         CourtTrainingConfig.from_config(unknown_family)
 
 
@@ -308,6 +307,25 @@ def test_query_dpt_override_has_strict_multi_tap_contract() -> None:
     )
     with pytest.raises(SemanticConfigurationError, match="fusion_levels"):
         CourtTrainingConfig.from_config(config)
+
+
+def test_query_dpt_single_tap_is_valid_for_depth_one() -> None:
+    runtime = CourtTrainingConfig.from_config(
+        _compose(
+            "synthetic_court",
+            "model=query_encoder_base",
+            "model.preset=raw",
+            "model.task_encoder.depth=1",
+            "model.task_encoder.tap_indices=[0]",
+            "model/decoder=query_dpt_large",
+            "model.decoder.tap_indices=[0]",
+            "model.decoder.fusion_levels=1",
+            "model.decoder.reassemble_factors=[1.0]",
+        )
+    )
+    assert isinstance(runtime.model, CourtQueryModelConfig)
+    assert runtime.model.decoder.width == 256
+    assert runtime.model.decoder.tap_indices == (0,)
 
 
 def test_query_dense_head_subset_must_match_processing_targets() -> None:

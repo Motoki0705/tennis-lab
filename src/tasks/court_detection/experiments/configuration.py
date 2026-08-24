@@ -22,7 +22,7 @@ from src.tasks.court_detection.configuration import (
 )
 from src.utils.configuration import PathResolver, PathRole
 
-DecoderFamily: TypeAlias = Literal["linear", "progressive", "dpt"]
+DecoderFamily: TypeAlias = Literal["dpt"]
 DecoderSize: TypeAlias = Literal["tiny", "small", "base", "large"]
 SupervisionName: TypeAlias = Literal["kp", "kp+pose", "all", "all+pose"]
 
@@ -169,8 +169,8 @@ class QueryProfileConfig:
             raise ValueError("Profile input must be positive-size float32.")
         if self.warmup < 0 or self.repeats <= 0:
             raise ValueError("Profile warmup/repeats are invalid.")
-        if self.candidate_family not in {"linear", "progressive", "dpt"}:
-            raise ValueError("Profile candidate family is invalid.")
+        if self.candidate_family != "dpt":
+            raise ValueError("Profile candidate family must be dpt.")
         if self.candidate_size not in {"tiny", "small", "base", "large"}:
             raise ValueError("Profile candidate size is invalid.")
         if self.model.decoder.family != self.candidate_family:
@@ -240,7 +240,7 @@ class EncoderFirstConfig:
     depths: tuple[int, ...]
     hidden_dim: int
     num_heads: int
-    decoder_family: Literal["linear"]
+    decoder_family: Literal["dpt"]
     decoder_size: Literal["base"]
     supervision: Literal["kp+pose"]
     reference_depth: int
@@ -270,7 +270,7 @@ class EncoderFirstConfig:
             hidden_dim=_integer(mapping, "hidden_dim", path=path),
             num_heads=_integer(mapping, "num_heads", path=path),
             decoder_family=cast(
-                Literal["linear"], _string(mapping, "decoder_family", path=path)
+                Literal["dpt"], _string(mapping, "decoder_family", path=path)
             ),
             decoder_size=cast(
                 Literal["base"], _string(mapping, "decoder_size", path=path)
@@ -284,10 +284,10 @@ class EncoderFirstConfig:
         if result != cls(
             name="encoder_first",
             order=1,
-            depths=(1, 2, 4, 8),
+            depths=(1, 8),
             hidden_dim=256,
             num_heads=8,
-            decoder_family="linear",
+            decoder_family="dpt",
             decoder_size="base",
             supervision="kp+pose",
             reference_depth=8,
@@ -344,14 +344,14 @@ class DecoderSecondConfig:
         if result != cls(
             name="decoder_second",
             order=2,
-            families=("linear", "progressive", "dpt"),
-            sizes=("tiny", "small", "base"),
+            families=("dpt",),
+            sizes=("tiny", "small", "base", "large"),
             supervision="kp+pose",
             reference_family="dpt",
             reference_size="base",
             tolerance_ratio=0.05,
         ):
-            raise ValueError("Decoder-second preset must retain the frozen 3x3 sweep.")
+            raise ValueError("Decoder-second preset must retain the frozen DPT size sweep.")
         return result
 
 
@@ -523,8 +523,8 @@ class QueryAblationConfig:
             raise ValueError("Ablation commands must use the repository .venv Python.")
         if self.train_module != "src.tasks.court_detection.scripts.train":
             raise ValueError("Ablation commands must target the Court Hydra trainer.")
-        if self.seeds != (42, 43, 44) or self.epochs != 15:
-            raise ValueError("Ablation contract requires seeds 42/43/44 and 15 epochs.")
+        if self.seeds != (42,) or self.epochs != 15:
+            raise ValueError("Ablation contract requires seed 42 and 15 epochs.")
         if (self.image_height, self.image_width) != (256, 256):
             raise ValueError("Ablation input contract must be exactly 256x256.")
         if (

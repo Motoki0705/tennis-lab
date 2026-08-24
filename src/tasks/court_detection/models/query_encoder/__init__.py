@@ -13,8 +13,6 @@ from src.tasks.court_detection.models.query_encoder.contracts import (
 )
 from src.tasks.court_detection.models.query_encoder.decoders import (
     CourtQueryDPTDecoder,
-    CourtQueryLinearDecoder,
-    CourtQueryProgressiveDecoder,
     build_query_dense_decoder,
 )
 from src.tasks.court_detection.models.query_encoder.model import CourtQueryEncoderModel
@@ -34,8 +32,6 @@ __all__ = [
     "CourtQueryDINOv3Backbone",
     "CourtQueryDPTDecoder",
     "CourtQueryEncoderModel",
-    "CourtQueryLinearDecoder",
-    "CourtQueryProgressiveDecoder",
     "CourtQueryRawOutput",
     "CourtQueryTaskEncoder",
     "CourtTaskEncoderOutput",

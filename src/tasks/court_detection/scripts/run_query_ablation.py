@@ -2,7 +2,7 @@
 
 Usage:
     python -m src.tasks.court_detection.scripts.run_query_ablation
-    python -m src.tasks.court_detection.scripts.run_query_ablation ablation.selected.encoder_depth=4 ablation.selected.decoder_family=linear ablation.selected.decoder_size=base
+    python -m src.tasks.court_detection.scripts.run_query_ablation ablation.selected.encoder_depth=4 ablation.selected.decoder_family=dpt ablation.selected.decoder_size=base
 
 Notes:
     - Hydra loads ``src/tasks/court_detection/configs/run_query_ablation.yaml``.

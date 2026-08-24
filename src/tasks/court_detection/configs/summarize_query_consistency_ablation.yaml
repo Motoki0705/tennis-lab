@@ -3,7 +3,7 @@ defaults:
   - _self_
 
 summary:
-  phase: encoder_scaling
+  phase: scaling_grid
   manifest_path: court_detection/query_consistency_ablation/manifest.json
   evidence_root: court_detection/query_consistency_ablation
   results_path: court_detection/query_consistency_ablation/results.json

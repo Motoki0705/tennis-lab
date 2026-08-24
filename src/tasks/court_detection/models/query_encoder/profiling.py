@@ -273,9 +273,12 @@ def validate_profile_record(
         for name in ("family", "size")
     ):
         raise ValueError("Query profile candidate identity is invalid.")
-    if candidate["family"] not in {"linear", "progressive", "dpt"} or candidate[
-        "size"
-    ] not in {"tiny", "small", "base", "large"}:
+    if candidate["family"] != "dpt" or candidate["size"] not in {
+        "tiny",
+        "small",
+        "base",
+        "large",
+    }:
         raise ValueError("Query profile candidate family/size is unsupported.")
     evidence = _mapping(value["evidence"], name="profile.evidence")
     if set(evidence) != {"kind", "device_name", "latency_is_adoption_evidence"}:

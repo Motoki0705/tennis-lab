@@ -1,4 +1,4 @@
-"""Deterministic three-phase scaling manifest for Issue #790."""
+"""Deterministic DPT scaling grid and optional consistency manifest for #790."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ from src.tasks.court_detection.configuration import (
 from src.utils.configuration import PathRole
 
 JsonValue: TypeAlias = Any
-DecoderFamily: TypeAlias = Literal["linear", "progressive", "dpt"]
+DecoderFamily: TypeAlias = Literal["dpt"]
 DecoderSize: TypeAlias = Literal["tiny", "small", "base", "large"]
 ConsistencyCondition: TypeAlias = Literal[
     "direct-all",
@@ -33,9 +33,14 @@ ConsistencyCondition: TypeAlias = Literal[
     "joint-stopgrad-dense",
 ]
 
-MANIFEST_SCHEMA = "court_query_consistency_manifest_v2"
-PHASE_ORDER = ("encoder_scaling", "decoder_scaling", "consistency_ablation")
-SEEDS = (42, 43, 44)
+MANIFEST_SCHEMA = "court_query_consistency_manifest_v3"
+PHASE_ORDER = ("scaling_grid", "consistency_ablation")
+# The scaling grid deliberately uses one fixed seed; seed stability is not part
+# of this experiment.
+SEEDS = (42,)
+INPUT_LONG_SIDES = (256, 384, 512)
+PATCH_SIZE = 16
+ENCODER_DEPTHS = (1, 8)
 PYTHON_EXECUTABLE = "/home/kamimura/projects/tennis-lab/.venv/bin/python"
 SHARED_DATA_ROOT = "/home/kamimura/projects/tennis-lab/data"
 SHARED_EXTERNAL_ASSET_ROOT = "/home/kamimura/projects/tennis-lab/third_party"
@@ -65,8 +70,8 @@ TRAIN_DIAGNOSTIC_NAMES = (
     "cuda_peak_memory_bytes",
 )
 
-_FAMILIES: tuple[DecoderFamily, ...] = ("linear", "progressive", "dpt")
-_SIZES: tuple[DecoderSize, ...] = ("tiny", "small", "base")
+_FAMILIES: tuple[DecoderFamily, ...] = ("dpt",)
+_SIZES: tuple[DecoderSize, ...] = ("tiny", "small", "base", "large")
 _CONDITIONS: tuple[ConsistencyCondition, ...] = (
     "direct-all",
     "joint-both",
@@ -143,16 +148,10 @@ def _normalized_relative_descendant(
 
 @dataclass(frozen=True, slots=True)
 class EncoderScalingConfig:
-    """Frozen first-phase encoder matrix and selection threshold."""
+    """Frozen encoder axis used by the Cartesian scaling grid."""
 
     name: Literal["encoder_scaling"]
-    order: Literal[1]
     depths: tuple[int, ...]
-    decoder_family: Literal["linear"]
-    decoder_size: Literal["base"]
-    condition: Literal["joint-both"]
-    reference_depth: Literal[8]
-    tolerance_ratio: float
 
     @classmethod
     def from_mapping(cls, value: object) -> EncoderScalingConfig:
@@ -162,43 +161,17 @@ class EncoderScalingConfig:
             mapping,
             {
                 "name",
-                "order",
                 "depths",
-                "decoder_family",
-                "decoder_size",
-                "condition",
-                "reference_depth",
-                "tolerance_ratio",
             },
             path=path,
         )
         result = cls(
             name=cast(Literal["encoder_scaling"], _string(mapping, "name", path=path)),
-            order=cast(Literal[1], _integer(mapping, "order", path=path)),
             depths=_integers(mapping, "depths", path=path),
-            decoder_family=cast(
-                Literal["linear"], _string(mapping, "decoder_family", path=path)
-            ),
-            decoder_size=cast(
-                Literal["base"], _string(mapping, "decoder_size", path=path)
-            ),
-            condition=cast(
-                Literal["joint-both"], _string(mapping, "condition", path=path)
-            ),
-            reference_depth=cast(
-                Literal[8], _integer(mapping, "reference_depth", path=path)
-            ),
-            tolerance_ratio=_number(mapping, "tolerance_ratio", path=path),
         )
         if result != cls(
             name="encoder_scaling",
-            order=1,
-            depths=(1, 2, 4, 8),
-            decoder_family="linear",
-            decoder_size="base",
-            condition="joint-both",
-            reference_depth=8,
-            tolerance_ratio=0.05,
+            depths=ENCODER_DEPTHS,
         ):
             raise ValueError("Encoder scaling preset changed from the frozen matrix.")
         return result
@@ -206,17 +179,11 @@ class EncoderScalingConfig:
 
 @dataclass(frozen=True, slots=True)
 class DecoderScalingConfig:
-    """Frozen second-phase decoder matrix and selection thresholds."""
+    """Frozen DPT axis used by the Cartesian scaling grid."""
 
     name: Literal["decoder_scaling"]
-    order: Literal[2]
     families: tuple[DecoderFamily, ...]
     sizes: tuple[DecoderSize, ...]
-    condition: Literal["joint-both"]
-    reference_family: Literal["dpt"]
-    reference_size: Literal["base"]
-    tolerance_ratio: float
-    dense_absolute_tolerance: float
 
     @classmethod
     def from_mapping(cls, value: object) -> DecoderScalingConfig:
@@ -226,48 +193,22 @@ class DecoderScalingConfig:
             mapping,
             {
                 "name",
-                "order",
                 "families",
                 "sizes",
-                "condition",
-                "reference_family",
-                "reference_size",
-                "tolerance_ratio",
-                "dense_absolute_tolerance",
             },
             path=path,
         )
         result = cls(
             name=cast(Literal["decoder_scaling"], _string(mapping, "name", path=path)),
-            order=cast(Literal[2], _integer(mapping, "order", path=path)),
             families=cast(
                 tuple[DecoderFamily, ...], _strings(mapping, "families", path=path)
             ),
             sizes=cast(tuple[DecoderSize, ...], _strings(mapping, "sizes", path=path)),
-            condition=cast(
-                Literal["joint-both"], _string(mapping, "condition", path=path)
-            ),
-            reference_family=cast(
-                Literal["dpt"], _string(mapping, "reference_family", path=path)
-            ),
-            reference_size=cast(
-                Literal["base"], _string(mapping, "reference_size", path=path)
-            ),
-            tolerance_ratio=_number(mapping, "tolerance_ratio", path=path),
-            dense_absolute_tolerance=_number(
-                mapping, "dense_absolute_tolerance", path=path
-            ),
         )
         if result != cls(
             name="decoder_scaling",
-            order=2,
             families=_FAMILIES,
             sizes=_SIZES,
-            condition="joint-both",
-            reference_family="dpt",
-            reference_size="base",
-            tolerance_ratio=0.05,
-            dense_absolute_tolerance=0.01,
         ):
             raise ValueError("Decoder scaling preset changed from the frozen matrix.")
         return result
@@ -275,10 +216,10 @@ class DecoderScalingConfig:
 
 @dataclass(frozen=True, slots=True)
 class ConsistencyAblationPhaseConfig:
-    """Frozen third-phase formal comparison and adoption thresholds."""
+    """Frozen optional second-phase formal comparison and adoption thresholds."""
 
     name: Literal["consistency_ablation"]
-    order: Literal[3]
+    order: Literal[2]
     conditions: tuple[ConsistencyCondition, ...]
     baseline: Literal["direct-all"]
     candidate: Literal["joint-both"]
@@ -310,7 +251,7 @@ class ConsistencyAblationPhaseConfig:
             name=cast(
                 Literal["consistency_ablation"], _string(mapping, "name", path=path)
             ),
-            order=cast(Literal[3], _integer(mapping, "order", path=path)),
+            order=cast(Literal[2], _integer(mapping, "order", path=path)),
             conditions=cast(
                 tuple[ConsistencyCondition, ...],
                 _strings(mapping, "conditions", path=path),
@@ -334,7 +275,7 @@ class ConsistencyAblationPhaseConfig:
         )
         if result != cls(
             name="consistency_ablation",
-            order=3,
+            order=2,
             conditions=_CONDITIONS,
             baseline="direct-all",
             candidate="joint-both",
@@ -349,7 +290,7 @@ class ConsistencyAblationPhaseConfig:
 
 @dataclass(frozen=True, slots=True)
 class QueryConsistencyAblationConfig:
-    """Resolved strict Hydra contract for the staged Issue #790 manifest."""
+    """Resolved strict Hydra contract for the Issue #790 scaling grid."""
 
     output_path: Path
     data_root: Path
@@ -363,9 +304,11 @@ class QueryConsistencyAblationConfig:
     profile_module: str
     seeds: tuple[int, ...]
     epochs: int
-    image_height: int
-    image_width: int
+    input_long_sides: tuple[int, ...]
+    patch_size: int
     batch_size: int
+    scaling_condition: Literal["joint-both"]
+    selected_input_long_side: int | None
     selected_encoder_depth: int | None
     selected_decoder_family: DecoderFamily | None
     selected_decoder_size: DecoderSize | None
@@ -394,6 +337,7 @@ class QueryConsistencyAblationConfig:
                 "epochs",
                 "input",
                 "batch_size",
+                "scaling_condition",
                 "selected",
                 "composition",
                 "optimizer",
@@ -406,13 +350,28 @@ class QueryConsistencyAblationConfig:
             path="consistency_ablation",
         )
         tensor = require_config_mapping(section, "input", path="consistency_ablation")
-        _exact(tensor, {"height", "width"}, path="consistency_ablation.input")
+        _exact(
+            tensor,
+            {"long_sides", "patch_size"},
+            path="consistency_ablation.input",
+        )
         selected = require_config_mapping(
             section, "selected", path="consistency_ablation"
         )
         _exact(
             selected,
-            {"encoder_depth", "decoder_family", "decoder_size"},
+            {
+                "input_long_side",
+                "encoder_depth",
+                "decoder_family",
+                "decoder_size",
+            },
+            path="consistency_ablation.selected",
+        )
+        raw_input_long_side = require_config_value(
+            selected,
+            "input_long_side",
+            (int, type(None)),
             path="consistency_ablation.selected",
         )
         raw_depth = require_config_value(
@@ -477,9 +436,18 @@ class QueryConsistencyAblationConfig:
             ),
             seeds=_integers(section, "seeds", path="consistency_ablation"),
             epochs=_integer(section, "epochs", path="consistency_ablation"),
-            image_height=_integer(tensor, "height", path="consistency_ablation.input"),
-            image_width=_integer(tensor, "width", path="consistency_ablation.input"),
+            input_long_sides=_integers(
+                tensor, "long_sides", path="consistency_ablation.input"
+            ),
+            patch_size=_integer(
+                tensor, "patch_size", path="consistency_ablation.input"
+            ),
             batch_size=_integer(section, "batch_size", path="consistency_ablation"),
+            scaling_condition=cast(
+                Literal["joint-both"],
+                _string(section, "scaling_condition", path="consistency_ablation"),
+            ),
+            selected_input_long_side=cast(int | None, raw_input_long_side),
             selected_encoder_depth=cast(int | None, raw_depth),
             selected_decoder_family=cast(DecoderFamily | None, raw_family),
             selected_decoder_size=cast(DecoderSize | None, raw_size),
@@ -598,30 +566,40 @@ class QueryConsistencyAblationConfig:
         if self.profile_module != "src.tasks.court_detection.scripts.profile_query_model":
             raise ValueError("Consistency capacity must use the query profiler.")
         if self.seeds != SEEDS or self.epochs != 15:
-            raise ValueError("Consistency runs require seeds 42/43/44 and 15 epochs.")
-        if (self.image_height, self.image_width) != (256, 256):
-            raise ValueError("Consistency runs require the 256x256 pose-safe contract.")
+            raise ValueError("Consistency runs require seed 42 and 15 epochs.")
+        if self.input_long_sides != INPUT_LONG_SIDES or self.patch_size != PATCH_SIZE:
+            raise ValueError(
+                "Consistency scaling requires long sides 256/384/512 and patch size 16."
+            )
         if self.batch_size != 8:
             raise ValueError("Consistency comparison batch size must remain eight.")
+        if self.scaling_condition != "joint-both":
+            raise ValueError("The scaling grid requires the explicit joint-both route.")
+        selected_values = (
+            self.selected_input_long_side,
+            self.selected_encoder_depth,
+            self.selected_decoder_family,
+            self.selected_decoder_size,
+        )
+        if any(value is None for value in selected_values) and any(
+            value is not None for value in selected_values
+        ):
+            raise ValueError(
+                "Consistency selection must resolve input, encoder, and decoder together."
+            )
+        if self.selected_input_long_side is not None and (
+            self.selected_input_long_side not in self.input_long_sides
+        ):
+            raise ValueError("Selected input long side is outside the scaling grid.")
         if self.selected_encoder_depth is not None and (
             self.selected_encoder_depth not in self.encoder_scaling.depths
         ):
             raise ValueError("Selected encoder depth is outside the scaling matrix.")
-        if self.selected_encoder_depth == 1:
-            raise ValueError(
-                "Selected encoder depth 1 cannot resolve the required two-or-more-tap "
-                "DPT decoder phase; no implicit architecture substitution is allowed."
-            )
-        family_missing = self.selected_decoder_family is None
-        size_missing = self.selected_decoder_size is None
-        if family_missing != size_missing:
-            raise ValueError("Selected decoder family and size must resolve together.")
         if self.selected_decoder_family is not None and (
-            self.selected_encoder_depth is None
-            or self.selected_decoder_family not in self.decoder_scaling.families
+            self.selected_decoder_family not in self.decoder_scaling.families
             or self.selected_decoder_size not in self.decoder_scaling.sizes
         ):
-            raise ValueError("Selected decoder requires a valid selected encoder/matrix entry.")
+            raise ValueError("Selected decoder is outside the scaling grid.")
 
 
 def validate_query_consistency_ablation_boundary(config: DictConfig) -> None:
@@ -632,65 +610,63 @@ def validate_query_consistency_ablation_boundary(config: DictConfig) -> None:
 def build_query_consistency_manifest(
     config: QueryConsistencyAblationConfig,
 ) -> dict[str, JsonValue]:
-    """Build the strict 12 + 27 + 12 staged matrix without launching work."""
+    """Build the strict full scaling grid without launching work."""
     runs: list[dict[str, JsonValue]] = []
-    for depth in config.encoder_scaling.depths:
-        for seed in config.seeds:
-            runs.append(
-                _run_record(
-                    config,
-                    run_id=f"encoder-depth-{depth:02d}-seed-{seed}",
-                    phase="encoder_scaling",
-                    seed=seed,
-                    depth=depth,
-                    family="linear",
-                    size="base",
-                    condition="joint-both",
-                    unresolved=(),
-                )
-            )
-    for family in config.decoder_scaling.families:
-        for size in config.decoder_scaling.sizes:
-            for seed in config.seeds:
-                decoder_unresolved = (
-                    ()
-                    if config.selected_encoder_depth is not None
-                    else ("selected_encoder_depth",)
-                )
-                runs.append(
-                    _run_record(
-                        config,
-                        run_id=f"decoder-{family}-{size}-seed-{seed}",
-                        phase="decoder_scaling",
-                        seed=seed,
-                        depth=config.selected_encoder_depth,
-                        family=family,
-                        size=size,
-                        condition="joint-both",
-                        unresolved=decoder_unresolved,
-                    )
-                )
+    for input_long_side in config.input_long_sides:
+        for depth in config.encoder_scaling.depths:
+            for family in config.decoder_scaling.families:
+                for size in config.decoder_scaling.sizes:
+                    for seed in config.seeds:
+                        runs.append(
+                            _run_record(
+                                config,
+                                run_id=_grid_run_id(
+                                    input_long_side=input_long_side,
+                                    depth=depth,
+                                    family=family,
+                                    size=size,
+                                    seed=seed,
+                                ),
+                                phase="scaling_grid",
+                                seed=seed,
+                                input_long_side=input_long_side,
+                                depth=depth,
+                                family=family,
+                                size=size,
+                                condition=config.scaling_condition,
+                                unresolved=(),
+                            )
+                        )
+    selected_resolved = config.selected_input_long_side is not None
     for condition in config.consistency_ablation.conditions:
+        input_label = (
+            str(config.selected_input_long_side)
+            if config.selected_input_long_side is not None
+            else "unresolved"
+        )
+        depth_label = (
+            f"{config.selected_encoder_depth:02d}"
+            if config.selected_encoder_depth is not None
+            else "unresolved"
+        )
+        family_label = config.selected_decoder_family or "unresolved"
+        size_label = config.selected_decoder_size or "unresolved"
         for seed in config.seeds:
-            formal_unresolved: list[str] = []
-            if config.selected_encoder_depth is None:
-                formal_unresolved.append("selected_encoder_depth")
-            if (
-                config.selected_decoder_family is None
-                or config.selected_decoder_size is None
-            ):
-                formal_unresolved.append("selected_decoder")
             runs.append(
                 _run_record(
                     config,
-                    run_id=f"condition-{condition}-seed-{seed}",
+                    run_id=(
+                        f"condition-{condition}-input-{input_label}-"
+                        f"depth-{depth_label}-{family_label}-{size_label}-seed-{seed}"
+                    ),
                     phase="consistency_ablation",
                     seed=seed,
+                    input_long_side=config.selected_input_long_side,
                     depth=config.selected_encoder_depth,
                     family=config.selected_decoder_family,
                     size=config.selected_decoder_size,
                     condition=condition,
-                    unresolved=tuple(formal_unresolved),
+                    unresolved=() if selected_resolved else ("selected_architecture",),
                 )
             )
     manifest: dict[str, JsonValue] = {
@@ -699,6 +675,7 @@ def build_query_consistency_manifest(
         "fixed_contract": _fixed_contract(config),
         "selection_rules": _selection_rules(),
         "selected": {
+            "input_long_side": config.selected_input_long_side,
             "encoder_depth": config.selected_encoder_depth,
             "decoder_family": config.selected_decoder_family,
             "decoder_size": config.selected_decoder_size,
@@ -722,8 +699,10 @@ def _fixed_contract(config: QueryConsistencyAblationConfig) -> dict[str, JsonVal
     if (
         config.seeds != SEEDS
         or config.epochs != 15
-        or (config.image_height, config.image_width) != (256, 256)
+        or config.input_long_sides != INPUT_LONG_SIDES
+        or config.patch_size != PATCH_SIZE
         or config.batch_size != 8
+        or config.scaling_condition != "joint-both"
         or config.python_executable != PYTHON_EXECUTABLE
         or str(config.data_root) != SHARED_DATA_ROOT
         or str(config.external_asset_root) != SHARED_EXTERNAL_ASSET_ROOT
@@ -738,8 +717,10 @@ def _expected_fixed_contract() -> dict[str, JsonValue]:
     return {
         "seeds": list(SEEDS),
         "epochs": 15,
-        "input_hw": [256, 256],
+        "input_long_sides": list(INPUT_LONG_SIDES),
+        "patch_size": PATCH_SIZE,
         "batch_size": 8,
+        "scaling_condition": "joint-both",
         "python_executable": PYTHON_EXECUTABLE,
         "data_root": SHARED_DATA_ROOT,
         "external_asset_root": SHARED_EXTERNAL_ASSET_ROOT,
@@ -748,7 +729,14 @@ def _expected_fixed_contract() -> dict[str, JsonValue]:
         "dataset": "synthetic_court_v3_target_court_singleton_kp14",
         "dense_targets": ["kp", "line", "seg"],
         "pose_direct_targets": ["translation", "rotation", "focal"],
-        "augmentation": "pose_safe_256_isotropic_fx_eq_fy",
+        "augmentation": {
+            "name": "pose_safe",
+            "resize": "isotropic_long_side",
+            "padding": "minimal_right_bottom_patch_alignment",
+            "preserve_fx_fy": True,
+            "canvas_size": None,
+            "patch_size": PATCH_SIZE,
+        },
         "backbone": {
             "name": "dinov3_vitb16",
             "checkpoint": (
@@ -796,23 +784,15 @@ def _expected_fixed_contract() -> dict[str, JsonValue]:
 
 def _selection_rules() -> dict[str, JsonValue]:
     return {
-        "encoder": {
-            "reference_depth": 8,
-            "relative_tolerance": 0.05,
+        "scaling_grid": {
+            "input_long_sides": list(INPUT_LONG_SIDES),
+            "encoder_depths": list(ENCODER_DEPTHS),
+            "decoder_families": list(_FAMILIES),
+            "decoder_sizes": list(_SIZES),
+            "seed": SEEDS[0],
             "rule": (
-                "smallest depth within 5% of depth-8 for GT KP mean and pose-only "
-                "reprojection mean, with translation/rotation/focal each no more "
-                "than 5% worse; otherwise depth-8"
-            ),
-        },
-        "decoder": {
-            "reference": {"family": "dpt", "size": "base"},
-            "relative_tolerance": 0.05,
-            "dense_absolute_tolerance": 0.01,
-            "rule": (
-                "minimum decoder MACs then decoder parameters among candidates "
-                "within 5% on GT KP and pose-only reprojection/direct-pose metrics "
-                "and within 0.01 absolute LINE Dice/SEG mIoU loss; otherwise DPT-base"
+                "run every Cartesian grid member before selecting one exact member; "
+                "the manifest never infers or substitutes a selected architecture"
             ),
         },
         "adoption": {
@@ -834,6 +814,7 @@ def _run_record(
     run_id: str,
     phase: str,
     seed: int,
+    input_long_side: int | None,
     depth: int | None,
     family: DecoderFamily | None,
     size: DecoderSize | None,
@@ -842,6 +823,8 @@ def _run_record(
 ) -> dict[str, JsonValue]:
     ready = not unresolved
     architecture: dict[str, JsonValue] = {
+        "input_long_side": input_long_side,
+        "patch_size": PATCH_SIZE,
         "encoder_depth": depth,
         "hidden_dim": 256,
         "num_heads": 8,
@@ -869,6 +852,7 @@ def _run_record(
                 run_id=run_id,
                 relative_dir=relative_dir,
                 seed=seed,
+                input_long_side=cast(int, input_long_side),
                 depth=cast(int, depth),
                 family=cast(DecoderFamily, family),
                 size=cast(DecoderSize, size),
@@ -881,6 +865,7 @@ def _run_record(
             _profile_argv(
                 config,
                 relative_dir=relative_dir,
+                input_long_side=cast(int, input_long_side),
                 depth=cast(int, depth),
                 family=cast(DecoderFamily, family),
                 size=cast(DecoderSize, size),
@@ -896,12 +881,27 @@ def _run_record(
     }
 
 
+def _grid_run_id(
+    *,
+    input_long_side: int,
+    depth: int,
+    family: DecoderFamily,
+    size: DecoderSize,
+    seed: int,
+) -> str:
+    return (
+        f"scaling-input-{input_long_side}-depth-{depth:02d}-"
+        f"{family}-{size}-seed-{seed}"
+    )
+
+
 def _training_argv(
     config: QueryConsistencyAblationConfig,
     *,
     run_id: str,
     relative_dir: str,
     seed: int,
+    input_long_side: int,
     depth: int,
     family: DecoderFamily,
     size: DecoderSize,
@@ -920,6 +920,11 @@ def _training_argv(
         "data/processing=all",
         f"data.processing.derived_target_root={config.derived_target_relative_path}",
         "data/augmentation=pose_safe",
+        f"data.augmentation.train_scales=[{input_long_side}]",
+        f"data.augmentation.val_short_side={input_long_side}",
+        "data.augmentation.canvas_size=null",
+        "data.augmentation.preserve_fx_fy=true",
+        f"data.augmentation.patch_size={PATCH_SIZE}",
         f"data.batch_size={config.batch_size}",
         "model=query_encoder_base",
         "model.preset=raw",
@@ -959,10 +964,12 @@ def _profile_argv(
     config: QueryConsistencyAblationConfig,
     *,
     relative_dir: str,
+    input_long_side: int,
     depth: int,
     family: DecoderFamily,
     size: DecoderSize,
 ) -> list[str]:
+    profile_height, profile_width = _profile_input_hw(input_long_side)
     argv = [
         config.python_executable,
         "-m",
@@ -984,13 +991,28 @@ def _profile_argv(
         "profile.allow_cpu_diagnostic=false",
         "profile.input.batch_size=1",
         "profile.input.channels=3",
-        "profile.input.height=256",
-        "profile.input.width=256",
+        f"profile.input.height={profile_height}",
+        f"profile.input.width={profile_width}",
         f"profile.candidate.family={family}",
         f"profile.candidate.size={size}",
     ]
     argv.extend(_architecture_overrides(depth=depth, family=family, size=size))
     return argv
+
+
+def _profile_input_hw(input_long_side: int) -> tuple[int, int]:
+    """Return the 16:9 long-side geometry after minimal patch alignment.
+
+    Synthetic Court V3 cameras use the 1920×1080 aspect ratio.  Capacity
+    profiling must therefore exercise the same non-square tensor geometry as
+    training, including the bottom padding required when the resized height is
+    not divisible by the DINOv3 patch size.
+    """
+    if input_long_side not in INPUT_LONG_SIDES:
+        raise ValueError("Profile input long side is outside the scaling grid.")
+    raw_height = round(input_long_side * 9 / 16)
+    aligned_height = raw_height + (-raw_height) % PATCH_SIZE
+    return aligned_height, input_long_side
 
 
 def _architecture_overrides(
@@ -1058,8 +1080,6 @@ def _decoder_taps(
 ) -> list[int]:
     if depth <= 0:
         raise ValueError("Encoder depth must be positive.")
-    if family in {"linear", "progressive"}:
-        return [depth - 1]
     levels = min(2 if size == "tiny" else 4, depth)
     if levels < 1:
         raise ValueError("DPT scaling requires at least one encoder tap.")
@@ -1118,41 +1138,68 @@ def validate_query_consistency_manifest(
     ):
         raise ValueError("Query consistency manifest digest mismatch.")
     selected = _mapping(value["selected"], name="selected")
-    if set(selected) != {"encoder_depth", "decoder_family", "decoder_size"}:
+    if set(selected) != {
+        "input_long_side",
+        "encoder_depth",
+        "decoder_family",
+        "decoder_size",
+    }:
         raise ValueError("Query consistency selected fields changed.")
+    selected_input = selected["input_long_side"]
     selected_depth = selected["encoder_depth"]
     selected_family = selected["decoder_family"]
     selected_size = selected["decoder_size"]
-    if selected_depth is not None and selected_depth not in {2, 4, 8}:
-        raise ValueError("Query consistency selected encoder is invalid/incompatible.")
-    if (selected_family is None) != (selected_size is None) or (
-        selected_family is not None
-        and (
-            selected_depth is None
-            or selected_family not in _FAMILIES
-            or selected_size not in _SIZES
-        )
+    selected_values = (
+        selected_input,
+        selected_depth,
+        selected_family,
+        selected_size,
+    )
+    selection_resolved = all(item is not None for item in selected_values)
+    if not selection_resolved and any(item is not None for item in selected_values):
+        raise ValueError("Query consistency selection must be fully resolved or empty.")
+    if selection_resolved and (
+        type(selected_input) is not int
+        or type(selected_depth) is not int
+        or type(selected_family) is not str
+        or type(selected_size) is not str
+        or selected_input not in INPUT_LONG_SIDES
+        or selected_depth not in ENCODER_DEPTHS
+        or selected_family not in _FAMILIES
+        or selected_size not in _SIZES
     ):
-        raise ValueError("Query consistency selected decoder is invalid.")
+        raise ValueError("Query consistency selected architecture is outside the grid.")
     raw_runs = value["runs"]
     if not isinstance(raw_runs, Sequence) or isinstance(raw_runs, (str, bytes)):
         raise ValueError("Query consistency runs must be a sequence.")
     runs = tuple(_mapping(run, name="run") for run in raw_runs)
-    if len(runs) != 51:
-        raise ValueError("Query consistency manifest must contain exactly 51 runs.")
+    if len(runs) != 28:
+        raise ValueError("Query consistency manifest must contain exactly 28 runs.")
     expected_ids = [
-        f"encoder-depth-{depth:02d}-seed-{seed}"
-        for depth in (1, 2, 4, 8)
-        for seed in SEEDS
-    ]
-    expected_ids.extend(
-        f"decoder-{family}-{size}-seed-{seed}"
+        _grid_run_id(
+            input_long_side=input_long_side,
+            depth=depth,
+            family=family,
+            size=size,
+            seed=seed,
+        )
+        for input_long_side in INPUT_LONG_SIDES
+        for depth in ENCODER_DEPTHS
         for family in _FAMILIES
         for size in _SIZES
         for seed in SEEDS
+    ]
+    input_label = str(selected_input) if selected_input is not None else "unresolved"
+    depth_label = (
+        f"{cast(int, selected_depth):02d}"
+        if selected_depth is not None
+        else "unresolved"
     )
+    family_label = selected_family or "unresolved"
+    size_label = selected_size or "unresolved"
     expected_ids.extend(
-        f"condition-{condition}-seed-{seed}"
+        f"condition-{condition}-input-{input_label}-depth-{depth_label}-"
+        f"{family_label}-{size_label}-seed-{seed}"
         for condition in _CONDITIONS
         for seed in SEEDS
     )
@@ -1164,19 +1211,13 @@ def validate_query_consistency_manifest(
         phase = cast(str, run["phase"])
         phase_counts[phase] += 1
     if phase_counts != {
-        "encoder_scaling": 12,
-        "decoder_scaling": 27,
-        "consistency_ablation": 12,
+        "scaling_grid": 24,
+        "consistency_ablation": 4,
     }:
         raise ValueError("Query consistency phase counts changed.")
-    selected_decoder = selected["decoder_family"] is not None
-    if any(bool(run["queue_ready"]) for run in runs[12:39]) is (
-        selected_depth is None
-    ):
-        raise ValueError("Decoder readiness disagrees with encoder selection.")
-    if any(bool(run["queue_ready"]) for run in runs[39:]) is (
-        selected_depth is None or not selected_decoder
-    ):
+    if not all(bool(run["queue_ready"]) for run in runs[:24]):
+        raise ValueError("Every scaling-grid run must be queue-ready.")
+    if [bool(run["queue_ready"]) for run in runs[24:]] != [selection_resolved] * 4:
         raise ValueError("Formal readiness disagrees with architecture selection.")
 
 
@@ -1200,11 +1241,34 @@ def _validate_run_record(
     phase = run["phase"]
     if phase not in PHASE_ORDER or run["phase_order"] != PHASE_ORDER.index(phase) + 1:
         raise ValueError("Query consistency run phase/order is invalid.")
-    if run["seed"] not in SEEDS or run["condition"] not in _CONDITIONS:
+    if (
+        type(run["seed"]) is not int
+        or run["seed"] not in SEEDS
+        or type(run["condition"]) is not str
+        or run["condition"] not in _CONDITIONS
+    ):
         raise ValueError("Query consistency run seed/condition is invalid.")
     run_id = run["run_id"]
     if not isinstance(run_id, str) or not run_id:
         raise ValueError("Query consistency run ID must be a non-empty string.")
+    architecture = _mapping(run["architecture"], name="run.architecture")
+    if set(architecture) != {
+        "input_long_side",
+        "patch_size",
+        "encoder_depth",
+        "hidden_dim",
+        "num_heads",
+        "decoder_family",
+        "decoder_size",
+        "encoder_taps",
+    }:
+        raise ValueError("Query consistency architecture fields changed.")
+    if (
+        architecture["patch_size"] != PATCH_SIZE
+        or architecture["hidden_dim"] != 256
+        or architecture["num_heads"] != 8
+    ):
+        raise ValueError("Query consistency fixed architecture values changed.")
     evidence_paths = _mapping(run["evidence_paths"], name="run.evidence_paths")
     if evidence_paths != {
         "test_metrics": f"{run_id}/artifacts/test_predictions/metrics.json",
@@ -1218,6 +1282,13 @@ def _validate_run_record(
     ready = run["queue_ready"]
     if type(ready) is not bool or ready is not (len(unresolved) == 0):
         raise ValueError("Query consistency queue readiness is inconsistent.")
+    if ready:
+        if list(unresolved):
+            raise ValueError("Ready query consistency runs must have no unresolved fields.")
+    elif phase != "consistency_ablation" or list(unresolved) != [
+        "selected_architecture"
+    ]:
+        raise ValueError("Only an explicit selected architecture may block formal runs.")
     for field in ("command_argv", "profile_command_argv"):
         argv = run[field]
         if not ready:
@@ -1227,12 +1298,37 @@ def _validate_run_record(
         if (
             not isinstance(argv, Sequence)
             or isinstance(argv, (str, bytes))
+            or any(type(token) is not str for token in argv)
             or list(argv[:2]) != [PYTHON_EXECUTABLE, "-m"]
             or any("__SELECTED" in str(token) for token in argv)
         ):
             raise ValueError("Ready query consistency argv is not directly executable.")
     if ready:
         train_argv = cast(Sequence[object], run["command_argv"])
+        input_long_side = architecture["input_long_side"]
+        depth = architecture["encoder_depth"]
+        family = architecture["decoder_family"]
+        size = architecture["decoder_size"]
+        if (
+            type(input_long_side) is not int
+            or type(depth) is not int
+            or type(family) is not str
+            or type(size) is not str
+            or input_long_side not in INPUT_LONG_SIDES
+            or depth not in ENCODER_DEPTHS
+            or family not in _FAMILIES
+            or size not in _SIZES
+        ):
+            raise ValueError("Ready query consistency architecture is outside the grid.")
+        profile_height, profile_width = _profile_input_hw(input_long_side)
+        expected_taps = _decoder_taps(
+            depth,
+            family=family,
+            size=size,
+        )
+        if architecture["encoder_taps"] != expected_taps:
+            raise ValueError("Ready query consistency encoder taps changed.")
+        rendered_taps = "[" + ",".join(str(value) for value in expected_taps) + "]"
         required_tokens = {
             f"paths.data_root={SHARED_DATA_ROOT}",
             f"paths.external_asset_root={SHARED_EXTERNAL_ASSET_ROOT}",
@@ -1240,12 +1336,55 @@ def _validate_run_record(
             "data/processing=all",
             f"data.processing.derived_target_root={V3_DERIVED_TARGET_ROOT}",
             "data/augmentation=pose_safe",
+            f"data.augmentation.train_scales=[{input_long_side}]",
+            f"data.augmentation.val_short_side={input_long_side}",
+            "data.augmentation.canvas_size=null",
+            "data.augmentation.preserve_fx_fy=true",
+            f"data.augmentation.patch_size={PATCH_SIZE}",
             "model.heads.dense_targets=[kp,seg,line]",
+            f"model/decoder=query_{family}_{size}",
+            f"model.task_encoder.depth={depth}",
+            f"model.task_encoder.tap_indices={rendered_taps}",
+            f"model.decoder.tap_indices={rendered_taps}",
             "training.trainer.max_epochs=15",
+            f"run.seed={run['seed']}",
             "run.test_after_fit=true",
         }
         if not required_tokens.issubset(set(train_argv)):
             raise ValueError("Ready query consistency command lost fixed overrides.")
+        for prefix, expected_override in (
+            (
+                "data.augmentation.train_scales=",
+                f"data.augmentation.train_scales=[{input_long_side}]",
+            ),
+            (
+                "data.augmentation.val_short_side=",
+                f"data.augmentation.val_short_side={input_long_side}",
+            ),
+            ("data.augmentation.canvas_size=", "data.augmentation.canvas_size=null"),
+            (
+                "data.augmentation.preserve_fx_fy=",
+                "data.augmentation.preserve_fx_fy=true",
+            ),
+            (
+                "data.augmentation.patch_size=",
+                f"data.augmentation.patch_size={PATCH_SIZE}",
+            ),
+            ("data.batch_size=", "data.batch_size=8"),
+            ("model/decoder=", f"model/decoder=query_{family}_{size}"),
+            ("model.task_encoder.depth=", f"model.task_encoder.depth={depth}"),
+            (
+                "training.trainer.max_epochs=",
+                "training.trainer.max_epochs=15",
+            ),
+            ("run.seed=", f"run.seed={run['seed']}"),
+        ):
+            _require_single_override(
+                train_argv,
+                prefix=prefix,
+                expected=expected_override,
+                path="training argv",
+            )
         condition = run["condition"]
         expected_loss = f"loss={_LOSS_BY_CONDITION[condition]}"
         if expected_loss not in train_argv:
@@ -1264,8 +1403,22 @@ def _validate_run_record(
             or "profile.device=cuda" not in profile_argv
             or f"paths.external_asset_root={SHARED_EXTERNAL_ASSET_ROOT}"
             not in profile_argv
+            or f"profile.input.height={profile_height}" not in profile_argv
+            or f"profile.input.width={profile_width}" not in profile_argv
+            or f"profile.candidate.family={family}" not in profile_argv
+            or f"profile.candidate.size={size}" not in profile_argv
         ):
             raise ValueError("Ready query consistency profile evidence path changed.")
+        for prefix, expected_override in (
+            ("profile.input.height=", f"profile.input.height={profile_height}"),
+            ("profile.input.width=", f"profile.input.width={profile_width}"),
+        ):
+            _require_single_override(
+                profile_argv,
+                prefix=prefix,
+                expected=expected_override,
+                path="profile argv",
+            )
         if any(
             str(token).startswith(("paths.data_root=", "data.source.workspace_root="))
             for token in profile_argv
@@ -1274,6 +1427,17 @@ def _validate_run_record(
         consistency_tokens = set(_consistency_overrides(condition))
         if not consistency_tokens.issubset(set(train_argv)):
             raise ValueError("Ready query consistency auxiliary constants changed.")
+    elif architecture != {
+        "input_long_side": None,
+        "patch_size": PATCH_SIZE,
+        "encoder_depth": None,
+        "hidden_dim": 256,
+        "num_heads": 8,
+        "decoder_family": None,
+        "decoder_size": None,
+        "encoder_taps": None,
+    }:
+        raise ValueError("Unresolved consistency runs must not carry architecture values.")
     if require_resolved and not ready:
         raise ValueError("Requested query consistency phase is unresolved.")
 
@@ -1284,14 +1448,29 @@ def _mapping(value: object, *, name: str) -> Mapping[str, object]:
     return cast(Mapping[str, object], value)
 
 
+def _require_single_override(
+    argv: Sequence[object],
+    *,
+    prefix: str,
+    expected: str,
+    path: str,
+) -> None:
+    matches = [token for token in argv if str(token).startswith(prefix)]
+    if matches != [expected]:
+        raise ValueError(f"{path} requires exactly {expected!r}.")
+
+
 __all__ = [
     "ConsistencyAblationPhaseConfig",
     "ConsistencyCondition",
     "DecoderFamily",
     "DecoderScalingConfig",
     "DecoderSize",
+    "ENCODER_DEPTHS",
     "EncoderScalingConfig",
+    "INPUT_LONG_SIDES",
     "MANIFEST_SCHEMA",
+    "PATCH_SIZE",
     "PHASE_ORDER",
     "PYTHON_EXECUTABLE",
     "QueryConsistencyAblationConfig",
