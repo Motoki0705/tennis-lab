@@ -1,0 +1,231 @@
+\section{メートル尺度アライメントとレンダリング教師信号}
+\label{sec:render_supervision}
+
+データ生成器は本研究の主要な方法論的貢献である。その目的は任意の合成コートを
+作ることではない。再構成された実在のテニス施設を、画像とラベルが監査可能な単一の
+幾何学的正解情報源を共有する、座標系を認識したレンダラへと変換する。
+
+\subsection{座標系と公開再構成境界}
+\label{sec:frames}
+
+\(\T{b}{a}\) を、座標系 \(a\) で表された点を座標系 \(b\) に写す同次変換と記す。
+公開再構成エクスポートは、右手系の正規化シーン座標系
+\(\Scene_n\) を用いる。カメラは、右向きを \(+x\)、下向きを \(+y\)、前向きを
+\(+z\) とするOpenCV座標軸を用い、\(\T{\Scene_n}{\Cam}\) を公開する。
+\(\Scene_n\) とメートル値を持つシーン座標系 \(\Scene_m\) の間には、互いに逆数となる
+一様スケールをメートル尺度アダプタが定義する。各規定コート \(i\) はメートル単位の
+右手系座標系 \(\Court_i\) を持ち、\(+X\) は右サイドライン方向、\(+Y\) は奥側の
+ベースライン方向、\(+Z\) は上向きである。これらの規約を
+\cref{tab:coordinate_contracts}にまとめる。
+
+再構成プログラムはstructure from motion、Gaussianの学習、およびラスタライズを
+担う。われわれは2つの公開コマンドのみを介してこのプログラムと通信する。一方は
+検証済みの標準シーンをエクスポートし、もう一方は与えられたカメラをレンダリングする。
+エクスポート検証器は、アライメントを開始する前に、スキーマ、カメラ識別子、shape、
+dtype、有限値、内部パラメータ、行列式が $+1$ の回転行列、および相互に逆な変換を検査する。この境界に
+より、データセットが明示されていないcheckpointや座標規約に依存することを防ぐ。
+
+\input{tables/coordinate_contracts}
+
+\subsection{画像上のラインからメートル尺度のコート配置へ}
+\label{sec:alignment}
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\linewidth}{!}{\input{figures/metric_alignment}}
+  \caption{\textbf{フェイルクローズな3DGSからコートへのアライメント。}
+  撮影カメラはフィッティング前に分割する。フィッティング用カメラのコートライン画素と
+  ロバストな地面平面との交点を求める。2つの規定テンプレートを、シーン単位/メートルの
+  単一の共有スケールでフィッティングした後、メートル尺度のシーン座標で剛体
+  フィッティングを行う。固定した変換は、ホールドアウトカメラとコート全体のトポロジーを
+  説明できなければならない。カメラ側エンドの正準化では、反射を含まない二つの回転 \(I\) と
+  \(R_z(\pi)\) のみを用いる。}
+  \label{fig:alignment}
+\end{figure}
+
+\paragraph{地面平面とリフトされた観測情報。}
+疎なシーン点から地面支持点の候補を得る。RANSACにより
+\(
+  \pi_g=\{\mathbf{x}:\mathbf{n}^{\top}\mathbf{x}+b=0\}
+\)
+を推定し、その支持集合を3回精緻化したうえで、法線、支持集合、境界、またはカメラ側の
+検査が妥当でない平面を棄却する。検出されたライン画素
+\(\tilde{\mathbf{u}}\) に対し、その撮影カメラはシーン内のレイ
+\(
+  \mathbf{r}(\lambda)=\mathbf{o}+\lambda\mathbf{d}
+\)
+を定める。交点
+\begin{equation}
+  \lambda^*=-\frac{\mathbf{n}^{\top}\mathbf{o}+b}
+                    {\mathbf{n}^{\top}\mathbf{d}}
+  \label{eq:ray_plane}
+\end{equation}
+は、レイと平面の角度、正の距離、および施設境界に関する厳格なゲートをすべて通過した
+場合にのみ保持する。観測可能なライン情報を持たないカメラは明示的に除外する。残る
+観測情報が不十分な場合はフォールバックせず、エラーとする。
+
+\paragraph{共有スケールを持つテンプレート仮説。}
+リフトされた点群は、地面平面上の2次元基底で計測された観測集合
+\(\mathcal{E}\) を形成する。メートル値を持つ正準テンプレート
+\(\mathcal{Q}\) の各規定ライン区間をサンプリングする。
+\(d(\mathbf{a},\mathcal{E})=\min_{\mathbf{e}\in\mathcal{E}}
+\|\mathbf{a}-\mathbf{e}\|_2\) とすると、実装された提案スコアは
+\begin{equation}
+  J(\mathbf{c},\theta,s)=\frac{1}{|\mathcal{Q}|}
+  \sum_{\mathbf{q}\in\mathcal{Q}}
+  \exp\!\left[-\frac{1}{2}
+    \left(\frac{d(s\mathbf{R}(\theta)\mathbf{q}+\mathbf{c},\mathcal{E})}
+                    {s\sigma}\right)^2\right],
+  \qquad
+  (\mathbf{c}^*,\theta^*,s^*)=\arg\max J,
+  \label{eq:template_fit}
+\end{equation}
+である。ここで、\(s\) はメートル当たりのNHTシーン単位で測られ、設定されたスコア幅は
+\(\sigma=0.5\) mである。範囲を制限したdifferential evolution探索により、タイル状に
+配置した中心、方位帯、およびスケールを網羅する。第1コートをフィッティングした後、
+その観測情報を抑制してから第2仮説を探索する。2つの仮説は、ラインのトポロジーに
+整合性があり、フットプリントの重複が無視でき、中心間距離が十分であり、かつ各々の
+ネイティブスケールが宣言された許容範囲内で一致しなければならない。その後、単一の
+共通スケールのもとで両者の中心を再フィッティングする。この複数コート制約により、
+剛体のコート変換をフィッティングする前にメートル尺度を決定する。
+
+受理された共通スケールを \(s_*\) とする。メートル尺度アダプタは
+\begin{equation}
+  \mathbf{x}_{\Scene_n}=s_*\mathbf{x}_{\Scene_m},\qquad
+  \mathbf{x}_{\Scene_m}=s_*^{-1}\mathbf{x}_{\Scene_n}.
+  \label{eq:metric_adapter}
+\end{equation}
+である。対応付けられた正準コート点 \(\mathbf{x}_j\) と、リフトされたメートル尺度の
+シーン点 \(\mathbf{y}_j\) に対し、最終的な変換はKabsch解
+\begin{equation}
+  (\mathbf{R}_i,\mathbf{t}_i)=
+  \arg\min_{\mathbf{R}\in\SOthree,\mathbf{t}\in\R^3}
+    \sum_j \left\|\mathbf{R}\mathbf{x}_j+\mathbf{t}-\mathbf{y}_j\right\|_2^2,
+  \quad
+  \T{\Scene_m}{\Court_i}=
+  \begin{bmatrix}\mathbf{R}_i&\mathbf{t}_i\\\mathbf{0}^{\top}&1\end{bmatrix}.
+  \label{eq:kabsch}
+\end{equation}
+である。\(\det\mathbf{R}_i=1\) となるよう反射を補正する。スケールは
+\cref{eq:kabsch}には現れない。これはすでに\cref{eq:metric_adapter}で決定済みであるためである。
+
+\paragraph{分離された検証。}
+カメラの所属はフィッティング前に固定する。フィッティング用カメラからの対応点で
+\cref{eq:kabsch}を推定し、ホールドアウトカメラでは再フィッティングせずにその固定変換を
+評価する。さらに、最近傍の対応点だけでなくコートテンプレート全体をサンプリングすることで、
+可視な1本のベースライン上の残差が良好であっても、コート全体が誤っている状態を見逃さない。
+区間ごとのcoverage、2コートのトポロジー、スケールの一致、および相互逆変換の検査が
+すべて合格しなければならない。\cref{tab:alignment_gates}で選択したproduction閾値は、
+報告されたベンチマーク精度ではなく、実行可能な受理条件である。完全なtyped configurationが
+引き続き正とする情報源である。
+
+\input{tables/alignment_gates}
+
+\subsection{制御された3次元カメラ軌道}
+\label{sec:trajectories}
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\linewidth}{!}{\input{figures/trajectory_generation}}
+  \caption{\textbf{決定論的なビュー生成。}  円および楕円の候補軌道を撮影カメラのoffsetから
+  スケーリングし、高さ方向には平面または正弦波を用いる。密な補間により3次元弧長に
+  関して一様にサンプリングする。各カメラは決定論的に解決された対象コートを注視し、
+  個々のフレームではなく軌道グループ全体を80/10/10のsplitに割り当てる。}
+  \label{fig:trajectories}
+\end{figure}
+
+生成器はテニス施設に対して1つ、また受理された各コートに対して1つの周回中心を導出する。
+基準半径には、その中心に対する撮影カメラの水平offsetの90パーセンタイルを用い、提案の
+スケールを再構成された会場に固有のものとする。次に、型付き直積により、円/楕円の形状、
+半径スケール、軸比、平面内方位、基準高度、および鉛直profileを列挙する。局所軌道は
+\begin{align}
+  \bm{\gamma}(\theta)_{xy}
+    &=\mathbf{R}(\phi)
+      \begin{bmatrix}a\cos\theta\\b\sin\theta\end{bmatrix},
+      &a&=r_{90}\alpha, &b&=a\beta, \\
+  \gamma_z(\theta)
+    &=h_0+A\sin(n\theta+\varphi),
+  \label{eq:trajectory}
+\end{align}
+の形をとる。\(\beta=1\) なら円、\(A=0\) なら平面軌道となる。すべての高さは
+正でなければならない。
+
+\(\theta\) の一様な増分は、楕円や鉛直変調された軌道上の距離に関して一様ではない。
+そこで、4096点をサンプリングして累積3次元弧長関数を構成し、弧長について一様に補間する。
+さらに、閉軌道上の隣接stepが設定された最大値以下になるまでサンプル数を増加させる。
+候補の順序と選択には、固定seedと安定なfieldの明示的な順序を用いる。coverage objectiveは、
+提案budgetの範囲内で、多様なcoverage/semantic-support modeと軌道グループを保持する。
+
+以下に示すsingletonおよびカメラごとのtargetの挙動は、
+\texttt{dataset/court=v2}によって明示的に有効化される。後方互換なパイプラインselectorは
+v1（7つの2点channelおよびgroup-level target assignment）のままである。この生成スキーマv2は、
+Court Detection V3における利用側／姿勢の契約とは別物である。v2はシリアライズされるsingleton
+labelを定義するのに対し、V3はload後に導出される正準target-court training authorityを定義する。
+v2では、コート中心軌道はその中心コートを維持する。施設中心軌道では、メートル尺度の
+3次元空間で各カメラ中心に最も近い受理済みコートを選ぶ。距離が \(10^{-9}\) m以内で
+同値の場合は辞書順で決定する。カメラ中心を \(\mathbf{c}\)、選ばれたコート上の注視点を
+\(\mathbf{q}\) とし、次式によりOpenCVカメラ基底を構成する。
+\begin{equation}
+  \mathbf{f}=\frac{\mathbf{q}-\mathbf{c}}{\|\mathbf{q}-\mathbf{c}\|_2},\quad
+  \mathbf{r}=\mathbf{f}\times\mathbf{u}_{\mathrm{world}},\quad
+  \mathbf{d}=\mathbf{f}\times\mathbf{r},
+  \label{eq:lookat}
+\end{equation}
+これにより、各軸は右、下、前を向く。水平画角を \(\omega\)、出力幅を \(W\) とすると、
+\begin{equation}
+  f_x=f_y=\frac{W}{2\tan(\omega/2)},\qquad
+  (c_x,c_y)=\left(\frac{W-1}{2},\frac{H-1}{2}\right).
+  \label{eq:intrinsics}
+\end{equation}
+完全な軌道をサンプリングしてからsplitを割り当てる。同じ軌道グループ識別子を共有する全
+フレームをtrain、validation、testのいずれか1つのsplitに保持することで、ほぼ重複する
+隣接ビューがsplit間にleakすることを防ぐ。
+
+\input{tables/data_policy}
+
+\subsection{レンダリングと厳密なラベル}
+\label{sec:labels}
+
+メートル尺度のカメラを正規化シーン単位へ変換し、公開3DGSレンダラに渡す。レンダラはRGB、
+depth、alpha、および画素support情報を返す。コートパイプラインは、別途レンダリングしたコートを
+画像へ貼り付けない。そのため、背景、表面appearance、およびocclusion構造は元の動画から
+再構成された状態を維持する。
+
+正準な物理点 \(\mathbf{X}_k\) に対し、生成器は
+\begin{equation}
+  \mathbf{X}^{\Cam}_k =
+  \T{\Cam}{\Scene_m}\T{\Scene_m}{\Court_i}\mathbf{X}_k,
+  \qquad
+  \tilde{\mathbf{u}}_k=\Kmat\mathbf{X}^{\Cam}_k,
+  \qquad
+  \mathbf{u}_k=\left(\frac{\tilde u_k}{\tilde w_k},
+                       \frac{\tilde v_k}{\tilde w_k}\right).
+  \label{eq:label_projection}
+\end{equation}
+を計算する。各recordは、メートル尺度のシーン位置、カメラdepth、画素/正規化座標、
+in-front状態、in-frame状態、およびrenderer-support flagを保持する。このflagは、半径1画素の
+近傍に十分なレンダリングalphaと正のレンダリングdepthが含まれることを意味するが、
+メートル尺度のpoint-depth occlusion testではない。consumer contractは14個の物理点を
+カメラ相対のnear/far singleton channelへ並べ替えるが、画像座標からidentityを推測することは
+ない。segmentationおよびline targetは同じ投影コートgeometryから実体化する。学習時のcrop、
+affine/perspective、color、blur、geometric validity、およびsupervision-eligibilityの処理は、
+1つの拡張後の画像座標系において、教師信号を持つすべての量を更新する。
+
+公開sampleはpose10Dフィールドを重複して保持せず、\(\T{\Scene_m}{\Cam}\)、
+\(\T{\Scene_m}{\Court_i}\)、および \(\Kmat\) を格納する。画像拡張後、model adapterは
+カメラlabel
+\begin{equation}
+  \T{\Court_i}{\Cam}=
+  \bigl(\T{\Scene_m}{\Court_i}\bigr)^{-1}\T{\Scene_m}{\Cam}.
+  \label{eq:camera_to_court}
+\end{equation}
+を導出する。これは3つの並進自由度と3つの回転自由度を持つ。次にadapterは
+\cref{eq:canonical_pose}のtarget側canonicalizationを適用し、pose10D教師を構成する。
+拡張後の焦点距離は剛体変換とは別に保持する。これはnetworkが再投影のために焦点距離を
+同時に予測するためである。これが本論文における「6DoF supervision」の意味であり、
+別taskで用いられるyawのみのplayer-location labelと混同してはならない。
+
+あるシーンについて \cref{eq:camera_to_court} が受理されれば、その後の別ビューのレンダリングには、
+点のclick、line tracing、PnP solve、フレームごとのextrinsic calibrationのいずれも必要ない。
+人手は適切な動画の取得とシーン単位のアライメントの監査に集中する。この償却効果によって、
+\cref{sec:model,sec:consistency}の大域姿勢目的関数を大規模に適用することが現実的になる。
