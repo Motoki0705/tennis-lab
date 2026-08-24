@@ -75,6 +75,9 @@ prepare_archive_dataset() {
         synthetic_court_v2)
             archives=("synthetic_court_v2.tar.zst")
             ;;
+        court_query_issue790_v3)
+            archives=("court_query_issue790_v3.tar.zst")
+            ;;
         plcs)
             archives=("smplx.tar.zst" "smplh.tar.zst" "ACCAD.tar.zst")
             ;;
@@ -124,7 +127,9 @@ prepare_archive_dataset() {
     done
 
     if [[ "${target}" == "ball" || "${target}" == "court" \
-          || "${target}" == "synthetic_court_v2" || "${target}" == "dinov3_ssl" ]]; then
+          || "${target}" == "synthetic_court_v2" \
+          || "${target}" == "court_query_issue790_v3" \
+          || "${target}" == "dinov3_ssl" ]]; then
         _prepare_dinov3_submodule "${repo_root}"
         _stage_dinov3_checkpoint "${dinov3_ckpt}" "${dinov3_dest_dir}"
     fi
