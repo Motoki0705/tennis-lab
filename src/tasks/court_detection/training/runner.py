@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytorch_lightning as pl
 import torch
@@ -67,7 +67,7 @@ class CourtDetectionTrainingRunner(BaseTrainingRunner):
         self,
         runtime: CourtTrainingConfig,
     ) -> Mapping[str, object] | None:
-        checkpoint_path = runtime.shared.run.resume or runtime.shared.run.init_weights
+        checkpoint_path = _configured_checkpoint_path(runtime)
         cache_key: object = checkpoint_path
         if (
             isinstance(runtime.model, CourtQueryModelConfig)
@@ -96,7 +96,7 @@ def _query_checkpoint_state(
     *,
     require_query_identity: bool,
 ) -> Mapping[str, object] | None:
-    checkpoint_path = runtime.shared.run.resume or runtime.shared.run.init_weights
+    checkpoint_path = _configured_checkpoint_path(runtime)
     if checkpoint_path is None:
         return None
     checkpoint = _load_checkpoint(checkpoint_path)
@@ -134,6 +134,14 @@ def _query_checkpoint_state(
             "Court query supervision identity disagrees with checkpoint."
         )
     return query_state
+
+
+def _configured_checkpoint_path(runtime: CourtTrainingConfig) -> Path | None:
+    """Select the explicitly configured, mutually exclusive checkpoint field."""
+    resume = cast(Path | None, runtime.shared.run.resume)
+    if resume is not None:
+        return resume
+    return cast(Path | None, runtime.shared.run.init_weights)
 
 
 def _load_checkpoint(path: Path) -> Mapping[str, object]:
