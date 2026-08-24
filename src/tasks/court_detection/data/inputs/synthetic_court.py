@@ -773,6 +773,7 @@ class SyntheticCourtInput:
             record=record,
             opposite_physical_indices=OPPOSITE_COURT_END_INDEX,
             schema_label="v2",
+            channel_points_dtype=torch.float32,
         )
 
     def _parse_projection_v3(
@@ -786,6 +787,7 @@ class SyntheticCourtInput:
             record=record,
             opposite_physical_indices=CAMERA_VIEW_HALF_TURN_INDEX,
             schema_label="v3",
+            channel_points_dtype=torch.float64,
         )
 
     def _parse_projection_singleton(
@@ -795,6 +797,7 @@ class SyntheticCourtInput:
         record: CourtSampleRecord,
         opposite_physical_indices: tuple[int, ...],
         schema_label: str,
+        channel_points_dtype: torch.dtype,
     ) -> tuple[tuple[CourtInstance2D, ...], CourtKeypointChannels]:
         expected_resolution = [
             cast(int, record.payload["width"]),
@@ -979,6 +982,7 @@ class SyntheticCourtInput:
             visible=channel_visible,
             physical=channel_physical,
             flip=_V2_FLIP_PERMUTATION,
+            points_dtype=channel_points_dtype,
         )
         return tuple(instances), channels
 
@@ -990,6 +994,7 @@ class SyntheticCourtInput:
         visible: list[list[bool]],
         physical: list[list[int]],
         flip: tuple[int, ...],
+        points_dtype: torch.dtype = torch.float32,
     ) -> CourtKeypointChannels:
         point_capacity = len(points[0])
         if point_capacity == 0 or any(len(values) != point_capacity for values in points):
@@ -998,7 +1003,7 @@ class SyntheticCourtInput:
             )
         return CourtKeypointChannels(
             channel_names=names,
-            points_xy=torch.tensor(points, dtype=torch.float32),
+            points_xy=torch.tensor(points, dtype=points_dtype),
             point_visible=torch.tensor(visible, dtype=torch.bool),
             physical_indices=torch.tensor(physical, dtype=torch.long),
             horizontal_flip_permutation=flip,

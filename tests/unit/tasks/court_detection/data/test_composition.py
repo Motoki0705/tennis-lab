@@ -78,17 +78,17 @@ def test_heatmap_default_preserves_one_map_per_point_and_max_reduces() -> None:
     torch.testing.assert_close(reduced[0], default.amax(dim=0))
 
 
-def test_target_court_point_capacity_stays_one_through_heatmap_and_collate() -> None:
+def test_v3_target_court_point_capacity_and_float32_survive_collate() -> None:
     input_spec = CourtInputSpec(
         source_kind="synthetic_court",
-        source_schema="canonical_court_dataset_v2",
+        source_schema="canonical_court_dataset_v3",
         capabilities=frozenset({CourtInputCapability.KEYPOINT_CHANNELS}),
-        keypoint_schema="synthetic_camera_relative_kp14_target_court",
+        keypoint_schema="synthetic_camera_view_kp14_v3_target_court",
         keypoint_channel_names=tuple(f"kp-{index}" for index in range(14)),
         keypoint_flip_permutation=tuple(range(14)),
     )
     builder = KeypointTargetBuilder(input_spec, sigma_ratio=0.02)
-    points = torch.full((14, 1, 2), 2.0)
+    points = torch.full((14, 1, 2), 2.0, dtype=torch.float64)
     channels = CourtKeypointChannels(
         channel_names=input_spec.keypoint_channel_names,
         points_xy=points,
@@ -106,7 +106,7 @@ def test_target_court_point_capacity_stays_one_through_heatmap_and_collate() -> 
         horizontal_flipped=False,
         metadata=CourtSampleMetadata(
             source_kind="synthetic_court",
-            source_schema="canonical_court_dataset_v2",
+            source_schema="canonical_court_dataset_v3",
             source_sample_id="target-court",
             scene_id="B00",
             provenance={},
@@ -131,12 +131,16 @@ def test_target_court_point_capacity_stays_one_through_heatmap_and_collate() -> 
     )
 
     assert builder.spec.schema == (
-        "synthetic_camera_relative_kp14_target_court:gaussian_max_v1"
+        "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1"
     )
     assert target["heatmap"].shape == (14, 32, 32)
+    assert target["heatmap"].dtype == builder.spec.target_dtype == torch.float32
+    assert target["points_xy"].dtype == builder.spec.target_dtype
     assert float(target["heatmap"][0, 2, 2]) > 0.99
     assert float(target["heatmap"][0, 25, 25]) < 1.0e-6
     assert collated["points_xy"].shape == (1, 14, 1, 2)
+    assert collated["heatmap"].dtype == torch.float32
+    assert collated["points_xy"].dtype == torch.float32
     assert collated["point_visible"].shape == (1, 14, 1)
     assert collated["physical_indices"].shape == (1, 14, 1)
 
@@ -305,6 +309,7 @@ def test_synthetic_input_consumes_manifest_paths_and_renderer_visibility(
     assert sample.sample_id == "B00:sample-0"
     assert sample.keypoint_channels is not None
     assert sample.keypoint_channels.points_xy.shape == (7, 4, 2)
+    assert sample.keypoint_channels.points_xy.dtype == torch.float32
     assert sample.keypoint_channels.point_visible.shape == (7, 4)
     assert not bool(sample.keypoint_channels.point_visible[0, 0])
     assert bool(sample.court_instances[0].point_visible[0])

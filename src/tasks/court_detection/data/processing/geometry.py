@@ -321,15 +321,33 @@ class CourtProcessingGeometry:
 
     @staticmethod
     def _transform_points(points: Tensor, matrix: Tensor) -> Tensor:
+        if points.ndim < 2 or points.shape[-1] != 2:
+            raise ValueError("Court geometry points must have shape [...,2].")
+        if not points.is_floating_point():
+            raise TypeError("Court geometry points must use a floating dtype.")
+        if matrix.shape != (3, 3) or not matrix.is_floating_point():
+            raise ValueError("Court geometry matrix must be floating [3,3].")
+        if points.device != matrix.device:
+            raise ValueError("Court geometry points and matrix must share one device.")
+        if not bool(torch.isfinite(points).all()) or not bool(
+            torch.isfinite(matrix).all()
+        ):
+            raise ValueError("Court geometry points and matrix must be finite.")
         original_shape = points.shape
         flat = points.to(dtype=torch.float64).reshape(-1, 2)
-        ones = torch.ones((flat.shape[0], 1), dtype=torch.float64)
+        ones = torch.ones(
+            (flat.shape[0], 1),
+            dtype=torch.float64,
+            device=points.device,
+        )
         homogeneous = torch.cat((flat, ones), dim=1)
         transformed = homogeneous @ matrix.to(dtype=torch.float64).T
         denominator = transformed[:, 2:3]
         if bool(torch.any(torch.isclose(denominator, torch.zeros_like(denominator)))):
             raise ValueError("Court geometry produced a zero homogeneous denominator.")
-        return (transformed[:, :2] / denominator).reshape(original_shape).float()
+        return (transformed[:, :2] / denominator).reshape(original_shape).to(
+            dtype=points.dtype
+        )
 
     @classmethod
     def _transform_channels(
