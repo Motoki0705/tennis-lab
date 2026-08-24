@@ -1,8 +1,20 @@
-% Self-contained, arXiv-compatible preamble.
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
-\usepackage{lmodern}
-\usepackage{microtype}
+% Self-contained bilingual preamble.  The English entrypoint uses pdfLaTeX;
+% the Japanese entrypoint uses LuaLaTeX with LuaTeX-ja.
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{lmodern}
+  \usepackage{microtype}
+\else
+  \ifLuaTeX
+    \usepackage{luatexja-fontspec}
+  \else
+    \PackageError{court-detection-paper}
+      {Unsupported TeX engine}
+      {Use pdfLaTeX for main.tex or LuaLaTeX for main_jp.tex.}
+  \fi
+\fi
 \usepackage[margin=0.83in]{geometry}
 
 \usepackage{amsmath}

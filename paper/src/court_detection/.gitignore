@@ -1,5 +1,6 @@
 build/
 main.pdf
+main_jp.pdf
 *.aux
 *.bbl
 *.blg
@@ -9,4 +10,3 @@ main.pdf
 *.out
 *.synctex.gz
 *.toc
-
