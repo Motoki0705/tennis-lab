@@ -23,4 +23,4 @@ bash scripts/colab/train/2026-08-25/train_court_query_scaling_grid_colab1.sh
 bash scripts/colab/train/2026-08-25/train_court_query_scaling_grid_colab2.sh
 ```
 
-結果・checkpointは共通`OUTPUT_ROOT`、queue/repro bundleは`DRIVE_QUEUE_ROOT/issue-790/{colab-0,colab-1}`へ保存される。canonical manifestの学習条件は変更せず、実行環境ごとにPython executableとdata/external/output/checkpoint role rootだけをshard planへ記録して置換する。
+結果・checkpointは共通`OUTPUT_ROOT`、queue/repro bundleは`DRIVE_QUEUE_ROOT/issue-790/grid-v3-{colab-1,colab-2}`へ保存される。canonical manifestの学習条件は変更せず、実行環境ごとにPython executableとdata/external/output/checkpoint role rootだけをshard planへ記録して置換する。旧`grid-colab-*` queueは再利用しない。

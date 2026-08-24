@@ -32,7 +32,7 @@ from src.tasks.court_detection.experiments.query_consistency_summary import (
 _CONFIG_DIR = Path(__file__).resolve().parents[4] / "src/tasks/court_detection/configs"
 
 
-def test_new_roots_compose_without_changing_old_51_run_route() -> None:
+def test_new_roots_compose_without_changing_the_legacy_route() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         old_config = compose(config_name="run_query_ablation")
         new_config = compose(config_name="run_query_consistency_ablation")
@@ -44,8 +44,8 @@ def test_new_roots_compose_without_changing_old_51_run_route() -> None:
         QueryConsistencyAblationConfig.from_config(new_config)
     )
 
-    assert len(cast(list[object], old_manifest["runs"])) == 51
-    assert len(cast(list[object], new_manifest["runs"])) == 51
+    assert len(cast(list[object], old_manifest["runs"])) == 10
+    assert len(cast(list[object], new_manifest["runs"])) == 28
     assert old_manifest["schema"] != new_manifest["schema"]
     assert isinstance(
         QueryConsistencySummaryConfig.from_config(summary_config),
@@ -58,7 +58,8 @@ def test_every_fully_resolved_training_argv_composes_strictly() -> None:
         config = compose(
             config_name="run_query_consistency_ablation",
             overrides=[
-                "consistency_ablation.selected.encoder_depth=4",
+                "consistency_ablation.selected.input_long_side=384",
+                "consistency_ablation.selected.encoder_depth=8",
                 "consistency_ablation.selected.decoder_family=dpt",
                 "consistency_ablation.selected.decoder_size=base",
             ],
@@ -73,7 +74,7 @@ def test_every_fully_resolved_training_argv_composes_strictly() -> None:
             data_root = Path(SHARED_DATA_ROOT)
             assert runtime.shared.run.test_after_fit is True
             assert runtime.shared.training.trainer.max_epochs == 15
-            assert runtime.shared.run.seed in {42, 43, 44}
+            assert runtime.shared.run.seed == 42
             assert isinstance(runtime.model, CourtQueryModelConfig)
             assert runtime.model.heads.dense_targets == ("kp", "seg", "line")
             assert isinstance(runtime.data.source, SyntheticCourtSourceConfig)
@@ -90,7 +91,8 @@ def test_every_unique_capacity_profile_argv_composes_strictly() -> None:
         config = compose(
             config_name="run_query_consistency_ablation",
             overrides=[
-                "consistency_ablation.selected.encoder_depth=4",
+                "consistency_ablation.selected.input_long_side=384",
+                "consistency_ablation.selected.encoder_depth=8",
                 "consistency_ablation.selected.decoder_family=dpt",
                 "consistency_ablation.selected.decoder_size=base",
             ],

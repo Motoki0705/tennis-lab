@@ -31,18 +31,18 @@ def _compose(*overrides: str) -> QueryConsistencyAblationConfig:
     return QueryConsistencyAblationConfig.from_config(config)
 
 
-def test_manifest_is_deterministic_ordered_and_only_phase_one_is_ready() -> None:
+def test_manifest_is_deterministic_ordered_and_scaling_grid_is_ready() -> None:
     first = build_query_consistency_manifest(_compose())
     second = build_query_consistency_manifest(_compose())
     runs = cast(list[dict[str, object]], first["runs"])
 
     assert first == second
     assert first["phase_order"] == list(PHASE_ORDER)
-    assert len(runs) == 10
+    assert len(runs) == 28
     assert [run["seed"] for run in runs[:2]] == [42, 42]
-    assert sum(bool(run["queue_ready"]) for run in runs) == 2
-    assert all(run["command_argv"] is None for run in runs[2:])
-    assert all(run["profile_command_argv"] is None for run in runs[2:])
+    assert sum(bool(run["queue_ready"]) for run in runs) == 24
+    assert all(run["command_argv"] is not None for run in runs[:24])
+    assert all(run["command_argv"] is None for run in runs[24:])
     fixed_contract = cast(dict[str, object], first["fixed_contract"])
     assert fixed_contract["data_root"] == SHARED_DATA_ROOT
     assert fixed_contract["external_asset_root"] == SHARED_EXTERNAL_ASSET_ROOT
@@ -51,22 +51,18 @@ def test_manifest_is_deterministic_ordered_and_only_phase_one_is_ready() -> None
 
 
 def test_selection_resolution_exposes_exact_phase_counts_and_formal_order() -> None:
-    encoder_manifest = build_query_consistency_manifest(
-        _compose("consistency_ablation.selected.encoder_depth=8")
-    )
     complete_manifest = build_query_consistency_manifest(
         _compose(
+            "consistency_ablation.selected.input_long_side=384",
             "consistency_ablation.selected.encoder_depth=8",
             "consistency_ablation.selected.decoder_family=dpt",
             "consistency_ablation.selected.decoder_size=tiny",
         )
     )
-    encoder_runs = cast(list[dict[str, object]], encoder_manifest["runs"])
     complete_runs = cast(list[dict[str, object]], complete_manifest["runs"])
 
-    assert sum(bool(run["queue_ready"]) for run in encoder_runs) == 6
-    assert sum(bool(run["queue_ready"]) for run in complete_runs) == 10
-    assert [run["condition"] for run in complete_runs[6:]] == [
+    assert sum(bool(run["queue_ready"]) for run in complete_runs) == 28
+    assert [run["condition"] for run in complete_runs[24:]] == [
         "direct-all",
         "joint-both",
         "joint-stopgrad-pose",
@@ -77,14 +73,15 @@ def test_selection_resolution_exposes_exact_phase_counts_and_formal_order() -> N
 def test_queue_ready_argv_fixes_all_targets_auxiliary_and_evidence_paths() -> None:
     manifest = build_query_consistency_manifest(
         _compose(
+            "consistency_ablation.selected.input_long_side=384",
             "consistency_ablation.selected.encoder_depth=8",
             "consistency_ablation.selected.decoder_family=dpt",
             "consistency_ablation.selected.decoder_size=base",
         )
     )
     runs = cast(list[dict[str, object]], manifest["runs"])
-    direct = runs[6]
-    joint = runs[7]
+    direct = runs[24]
+    joint = runs[25]
     direct_argv = cast(list[str], direct["command_argv"])
     joint_argv = cast(list[str], joint["command_argv"])
 
@@ -111,7 +108,12 @@ def test_queue_ready_argv_fixes_all_targets_auxiliary_and_evidence_paths() -> No
 
 
 def test_depth_one_selection_is_valid_with_single_tap_dpt() -> None:
-    config = _compose("consistency_ablation.selected.encoder_depth=1")
+    config = _compose(
+        "consistency_ablation.selected.input_long_side=256",
+        "consistency_ablation.selected.encoder_depth=1",
+        "consistency_ablation.selected.decoder_family=dpt",
+        "consistency_ablation.selected.decoder_size=tiny",
+    )
     assert config.selected_encoder_depth == 1
 
 

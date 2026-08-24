@@ -1,4 +1,4 @@
-"""Command-level tests for the distributed Issue #790 encoder shards."""
+"""Command-level tests for the distributed Issue #790 DPT shards."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from hydra import compose, initialize_config_dir
 from scripts.colab.setup.enqueue_query_consistency_shard import (
     RuntimeRelocation,
     build_shard_plan,
+    enqueue_shard_plan,
 )
 from src.tasks.court_detection.experiments.query_consistency import (
     QueryConsistencyAblationConfig,
@@ -24,11 +25,11 @@ from src.tasks.court_detection.experiments.query_consistency import (
 ROOT = Path(__file__).parents[3]
 CONFIG_DIR = ROOT / "src/tasks/court_detection/configs"
 ENQUEUE_MODULE = "scripts.colab.setup.enqueue_query_consistency_shard"
-TRAIN_DIR = ROOT / "scripts/colab/train/2026-08-24"
+TRAIN_DIR = ROOT / "scripts/colab/train/2026-08-25"
 COLAB_SCRIPTS = (
-    TRAIN_DIR / "train_court_query_consistency_encoder_shard.sh",
-    TRAIN_DIR / "train_court_query_consistency_encoder_colab0.sh",
-    TRAIN_DIR / "train_court_query_consistency_encoder_colab1.sh",
+    TRAIN_DIR / "train_court_query_scaling_grid_shard.sh",
+    TRAIN_DIR / "train_court_query_scaling_grid_colab1.sh",
+    TRAIN_DIR / "train_court_query_scaling_grid_colab2.sh",
 )
 
 
@@ -53,7 +54,7 @@ def _runtime(tmp_path: Path) -> RuntimeRelocation:
     )
 
 
-def _write_fake_queue(tmp_path: Path) -> tuple[Path, Path]:
+def _write_fake_queue(tmp_path: Path, *, status: str = "queued=0 running=0 done=0 failed=0") -> tuple[Path, Path]:
     capture = tmp_path / "queue-calls.txt"
     queue_script = tmp_path / "training_queue.sh"
     queue_script.write_text(
@@ -61,12 +62,12 @@ def _write_fake_queue(tmp_path: Path) -> tuple[Path, Path]:
 set -euo pipefail
 case "${1:-}" in
     status)
-        printf '%s\n' 'worker: stopped' 'queued=0 running=0 done=3 failed=1'
+        printf '%s\\n' 'worker: stopped' "${QUEUE_STATUS}"
         ;;
     add)
         {
-            printf '%s\n' '__CALL__'
-            printf '%s\n' "$@"
+            printf '%s\\n' '__CALL__'
+            printf '%s\\n' "$@"
         } >> "${QUEUE_CAPTURE:?}"
         ;;
     *)
@@ -85,67 +86,44 @@ def test_issue790_colab_scripts_have_valid_bash_syntax(script: Path) -> None:
     subprocess.run(["bash", "-n", str(script)], check=True)
 
 
-def test_wrappers_freeze_the_requested_colab_seed_mapping() -> None:
-    colab0 = COLAB_SCRIPTS[1].read_text(encoding="utf-8")
-    colab1 = COLAB_SCRIPTS[2].read_text(encoding="utf-8")
+def test_colab_wrappers_select_the_two_manifest_halves() -> None:
+    colab1 = COLAB_SCRIPTS[1].read_text(encoding="utf-8")
+    colab2 = COLAB_SCRIPTS[2].read_text(encoding="utf-8")
     shard = COLAB_SCRIPTS[0].read_text(encoding="utf-8")
-
-    assert "colab-0 43" in colab0
-    assert "colab-1 44" in colab1
-    assert "colab-0 44" not in colab0
-    assert "colab-1 43" not in colab1
-    assert "queued=0 running=0 done=0 failed=0" in shard
-    assert "--job-kind both" in shard
-    assert "queued=0 running=0 done=8 failed=0" in shard
+    assert "exec bash" in colab1 and "colab1" in colab1
+    assert "exec bash" in colab2 and "colab2" in colab2
+    assert 'START_INDEX=0' in shard and 'END_INDEX=12' in shard
+    assert 'START_INDEX=12' in shard and 'END_INDEX=24' in shard
+    assert "run_query_consistency_ablation" in shard
+    assert "enqueue_query_consistency_shard" in shard
 
 
-def test_training_shard_relocates_only_runtime_roots_and_keeps_depth_order(
+def test_training_shard_relocates_only_runtime_roots_and_keeps_grid_order(
     tmp_path: Path,
 ) -> None:
-    manifest = _manifest()
-    runtime = _runtime(tmp_path)
-    plan = build_shard_plan(manifest, seeds=(43,), job_kind="train", runtime=runtime)
+    plan = build_shard_plan(
+        _manifest(), seeds=(42,), job_kind="train", runtime=_runtime(tmp_path), start_index=0, end_index=12
+    )
     jobs = cast(list[dict[str, object]], plan["jobs"])
-
-    assert plan["source_manifest_sha256"] == manifest["manifest_sha256"]
-    assert [job["run_id"] for job in jobs] == [
-        "encoder-depth-01-seed-43",
-        "encoder-depth-02-seed-43",
-        "encoder-depth-04-seed-43",
-        "encoder-depth-08-seed-43",
+    assert len(jobs) == 12
+    assert [job["run_id"] for job in jobs[:4]] == [
+        "scaling-input-256-depth-01-dpt-tiny-seed-42",
+        "scaling-input-256-depth-01-dpt-small-seed-42",
+        "scaling-input-256-depth-01-dpt-base-seed-42",
+        "scaling-input-256-depth-01-dpt-large-seed-42",
     ]
     for job in jobs:
         argv = cast(list[str], job["argv"])
-        assert argv[0] == str(runtime.python_executable)
-        assert f"paths.data_root={runtime.data_root}" in argv
-        assert f"paths.external_asset_root={runtime.external_asset_root}" in argv
-        assert f"paths.output_root={runtime.output_root}" in argv
-        assert f"paths.checkpoint_root={runtime.checkpoint_root}" in argv
+        assert argv[0] == str(_runtime(tmp_path).python_executable)
+        assert f"paths.data_root={_runtime(tmp_path).data_root}" in argv
+        assert f"paths.output_root={_runtime(tmp_path).output_root}" in argv
+        assert f"paths.checkpoint_root={_runtime(tmp_path).checkpoint_root}" in argv
         assert "training.trainer.max_epochs=15" in argv
         assert "data/augmentation=pose_safe" in argv
-        assert "loss=query_joint_both" in argv
-        assert f"run.seed={job['seed']}" in argv
+        assert "model.task_encoder.depth=1" in argv or "model.task_encoder.depth=8" in argv
 
 
-def test_local_profile_plan_covers_all_seeds_on_one_runtime(tmp_path: Path) -> None:
-    plan = build_shard_plan(
-        _manifest(),
-        seeds=(42, 43, 44),
-        job_kind="profile",
-        runtime=_runtime(tmp_path),
-    )
-    jobs = cast(list[dict[str, object]], plan["jobs"])
-
-    assert len(jobs) == 12
-    assert {cast(int, job["seed"]) for job in jobs} == {42, 43, 44}
-    for job in jobs:
-        argv = cast(list[str], job["argv"])
-        assert not any(token.startswith("paths.data_root=") for token in argv)
-        assert any(token.startswith("paths.output_root=") for token in argv)
-        assert "profile.device=cuda" in argv
-
-
-def test_enqueue_cli_writes_bound_plan_and_four_attributed_jobs(
+def test_enqueue_cli_writes_bound_plan_and_twelve_jobs(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -155,7 +133,7 @@ def test_enqueue_cli_writes_bound_plan_and_four_attributed_jobs(
     queue_dir = (tmp_path / "queue").resolve()
     runtime = _runtime(tmp_path)
     monkeypatch.setenv("QUEUE_CAPTURE", str(capture))
-
+    monkeypatch.setenv("QUEUE_STATUS", "queued=0 running=0 done=0 failed=0")
     subprocess.run(
         [
             sys.executable,
@@ -164,9 +142,13 @@ def test_enqueue_cli_writes_bound_plan_and_four_attributed_jobs(
             "--manifest",
             str(manifest_path),
             "--seed",
-            "44",
+            "42",
             "--job-kind",
             "train",
+            "--start-index",
+            "12",
+            "--end-index",
+            "24",
             "--python-executable",
             str(runtime.python_executable),
             "--data-root",
@@ -184,7 +166,7 @@ def test_enqueue_cli_writes_bound_plan_and_four_attributed_jobs(
             "--repository-root",
             str(ROOT),
             "--provider",
-            "codex",
+            "colab",
             "--session",
             "issue790-test",
             "--issue",
@@ -194,12 +176,30 @@ def test_enqueue_cli_writes_bound_plan_and_four_attributed_jobs(
         check=True,
         env=dict(os.environ),
     )
-
     captured = capture.read_text(encoding="utf-8")
-    assert captured.count("__CALL__") == 4
-    assert captured.count("--provider\ncodex\n") == 4
-    assert captured.count("--session\nissue790-test\n") == 4
-    assert captured.count("--issue\n790\n") == 4
+    assert captured.count("__CALL__") == 12
     plan = json.loads((queue_dir / "shard-plan.json").read_text(encoding="utf-8"))
-    assert plan["seeds"] == [44]
-    assert len(plan["jobs"]) == 4
+    assert plan["seeds"] == [42]
+    assert plan["start_index"] == 12
+    assert plan["end_index"] == 24
+    assert len(plan["jobs"]) == 12
+
+
+def test_enqueue_rejects_nonfresh_queue(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runtime = _runtime(tmp_path)
+    queue_script, _ = _write_fake_queue(
+        tmp_path, status="queued=0 running=0 done=1 failed=0"
+    )
+    monkeypatch.setenv("QUEUE_STATUS", "queued=0 running=0 done=1 failed=0")
+    with pytest.raises(RuntimeError, match="fresh and stopped"):
+        enqueue_shard_plan(
+            build_shard_plan(_manifest(), seeds=(42,), job_kind="train", runtime=runtime, end_index=1),
+            queue_script=queue_script,
+            queue_dir=(tmp_path / "queue").resolve(),
+            repository_root=ROOT,
+            provider="colab",
+            session="test",
+            issue=790,
+        )
