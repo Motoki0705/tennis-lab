@@ -26,6 +26,9 @@ from src.tasks.base.configuration import (
     as_config_mapping,
     require_config_mapping,
 )
+from src.tasks.base.training.batch_transfer import (
+    move_batch_to_device_preserving_frozen_metadata,
+)
 from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
 from src.utils.paths import PROJECT_ROOT
 from src.utils.tensor_utils import to_numpy
@@ -96,6 +99,16 @@ class BaseLightningModule(pl.LightningModule):
         self.max_epochs = optimizer.max_epochs
         self.min_lr = optimizer.min_lr
         self.optimizer_betas = optimizer.betas
+
+    def transfer_batch_to_device(
+        self,
+        batch: Any,
+        device: torch.device,
+        dataloader_idx: int,
+    ) -> Any:
+        """Move batch tensors without reconstructing frozen provenance records."""
+        del dataloader_idx
+        return move_batch_to_device_preserving_frozen_metadata(batch, device)
 
     def additional_compilation_targets(self) -> dict[str, nn.Module]:
         """Return task-owned models invoked outside the primary model forward.
