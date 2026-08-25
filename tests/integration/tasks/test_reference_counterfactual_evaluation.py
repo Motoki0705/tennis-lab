@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, cast
 
@@ -99,6 +100,14 @@ def _manifest() -> ReferenceCounterfactualManifest:
             }
         },
         expected_dataset_schema_id=_SCHEMA,
+    )
+
+
+def _two_scene_manifest() -> ReferenceCounterfactualManifest:
+    single = _manifest()
+    return replace(
+        single,
+        scenes=(single.scenes[0], replace(single.scenes[0], scene_id="scene_b")),
     )
 
 
@@ -239,6 +248,27 @@ def _write(path: Path, payload: dict[str, np.ndarray[Any, Any]]) -> None:
     cast("Any", np.savez_compressed)(path, **payload)
 
 
+def _two_scene_payload(
+    manifest: ReferenceCounterfactualManifest,
+    side: str,
+    task: str,
+) -> dict[str, np.ndarray[Any, Any]]:
+    single = (
+        _blcs_payload(manifest, side)
+        if task == "blcs"
+        else _plcs_payload(manifest, side)
+    )
+    payload = {
+        key: np.concatenate((value, value.copy()), axis=0)
+        for key, value in single.items()
+    }
+    payload["scene_ids"] = np.asarray(["scene_a", "scene_b"])
+    payload["pred_position"][1] += np.float32(0.25)
+    if task == "plcs":
+        payload["pred_rotation"][1] *= np.float32(2.0)
+    return payload
+
+
 @pytest.mark.parametrize("task", ["blcs", "plcs"])
 def test_task_adapters_build_and_join_reference_only_passes(
     tmp_path: Path,
@@ -336,6 +366,62 @@ def test_task_adapters_build_and_join_reference_only_passes(
     assert "reference_target_same_side_y_sign_accuracy" in node_text
     if task == "plcs":
         assert report.metrics.same_side.heading_error_deg == 0.0
+
+
+@pytest.mark.parametrize("task", ["blcs", "plcs"])
+def test_task_adapter_raw_scene_permutation_is_canonicalized_with_arrays(
+    tmp_path: Path,
+    task: str,
+) -> None:
+    manifest = _two_scene_manifest()
+    identity = _identity(manifest, task)
+    normalization = resolve_court_coordinate_normalization("v2")
+    adapter = (
+        build_blcs_counterfactual_pass
+        if task == "blcs"
+        else build_plcs_counterfactual_pass
+    )
+    canonical_passes = []
+    permuted_passes = []
+    for side in ("same_side", "opposite_side"):
+        payload = _two_scene_payload(manifest, side, task)
+        canonical_path = tmp_path / f"{task}_{side}_canonical.npz"
+        permuted_path = tmp_path / f"{task}_{side}_permuted.npz"
+        _write(canonical_path, payload)
+        _write(
+            permuted_path,
+            {key: value[np.asarray([1, 0])] for key, value in payload.items()},
+        )
+        arguments = {
+            "side": cast("Any", side),
+            "identity": identity,
+            "manifest": manifest,
+            "normalization": normalization,
+            "window_bounds": {"scene_a": (5, 7), "scene_b": (11, 13)},
+        }
+        canonical_passes.append(adapter(canonical_path, **cast("Any", arguments)))
+        permuted_passes.append(adapter(permuted_path, **cast("Any", arguments)))
+
+    expected = evaluate_reference_counterfactual(
+        manifest,
+        canonical_passes[0],
+        canonical_passes[1],
+    )
+    report = evaluate_reference_counterfactual(
+        manifest,
+        permuted_passes[0],
+        permuted_passes[1],
+    )
+
+    assert report.report_digest == expected.report_digest
+    assert [row.key.scene_id for row in report.same_side_pass.rows] == [
+        "scene_a",
+        "scene_b",
+    ]
+    assert np.array_equal(
+        report.same_side_pass.position.prediction,
+        expected.same_side_pass.position.prediction,
+    )
 
 
 def test_task_adapter_digest_makes_changed_uv_fail_strict_join(tmp_path: Path) -> None:
