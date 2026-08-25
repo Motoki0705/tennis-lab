@@ -86,7 +86,7 @@ def _exact(
     *,
     location: str,
 ) -> Mapping[str, object]:
-    mapping = as_config_mapping(value, path=location)
+    mapping: Mapping[str, object] = as_config_mapping(value, path=location)
     missing = sorted(fields - set(mapping))
     unknown = sorted(set(mapping) - fields)
     if missing:
@@ -99,7 +99,7 @@ def _exact(
             f"Unknown configuration key(s): "
             f"{', '.join(f'{location}.{key}' for key in unknown)}."
         )
-    return cast("Mapping[str, object]", mapping)
+    return mapping
 
 
 def _resolved_container(config: DictConfig) -> dict[str, object]:
