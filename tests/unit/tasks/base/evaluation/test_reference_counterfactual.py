@@ -24,6 +24,7 @@ from src.tasks.base.evaluation.reference_counterfactual import (
     array_payload_sha256,
     build_reference_counterfactual_manifest_from_documents,
     canonical_json_sha256,
+    canonicalize_reference_counterfactual_raw_payload,
     evaluate_reference_counterfactual,
     masked_counterfactual_quantity_for_digest,
     read_reference_counterfactual_report,
@@ -326,6 +327,102 @@ def _pass_with_empty_scene(
     )
 
 
+def _scaled_quantity_rows(
+    value: ReferenceCounterfactualQuantityArrays | None,
+) -> ReferenceCounterfactualQuantityArrays | None:
+    if value is None:
+        return None
+    return replace(
+        value,
+        prediction=np.concatenate((value.prediction, value.prediction * 2.0), axis=0),
+        target=np.concatenate((value.target, value.target * 2.0), axis=0),
+    )
+
+
+def _pass_with_scaled_scene(
+    manifest: ReferenceCounterfactualManifest,
+    side: str,
+    *,
+    task: str,
+) -> ReferenceCounterfactualPass:
+    pass_value = _pass(
+        manifest,
+        side,
+        task=task,
+        include_vector=task == "blcs",
+        include_world_joints=task == "plcs",
+    )
+    second_scene = manifest.scenes[1]
+    second_selection = second_scene.selection(cast("Any", side))
+    second_row = replace(
+        pass_value.rows[0],
+        key=second_scene.key,
+        window_start=10,
+        window_stop=12,
+        reference_camera_id=second_selection.camera_id,
+        reference_view_index=second_selection.local_index,
+        provenance=second_selection.provenance,
+    )
+    position = _scaled_quantity_rows(pass_value.position)
+    assert position is not None
+    return replace(
+        pass_value,
+        rows=(pass_value.rows[0], second_row),
+        valid_mask=np.concatenate((pass_value.valid_mask, pass_value.valid_mask), axis=0),
+        position=position,
+        vector=_scaled_quantity_rows(pass_value.vector),
+        heading=_scaled_quantity_rows(pass_value.heading),
+        world_joints=_scaled_quantity_rows(pass_value.world_joints),
+    )
+
+
+def _select_pass_rows(
+    pass_value: ReferenceCounterfactualPass,
+    indices: tuple[int, ...],
+    *,
+    reorder_quantities: bool = True,
+) -> ReferenceCounterfactualPass:
+    index_array = np.asarray(indices, dtype=np.int64)
+
+    def selected(
+        value: ReferenceCounterfactualQuantityArrays | None,
+    ) -> ReferenceCounterfactualQuantityArrays | None:
+        if value is None or not reorder_quantities:
+            return value
+        return replace(
+            value,
+            prediction=value.prediction[index_array],
+            target=value.target[index_array],
+        )
+
+    position = selected(pass_value.position)
+    assert position is not None
+    return replace(
+        pass_value,
+        rows=tuple(pass_value.rows[index] for index in indices),
+        valid_mask=pass_value.valid_mask[index_array],
+        position=position,
+        vector=selected(pass_value.vector),
+        heading=selected(pass_value.heading),
+        world_joints=selected(pass_value.world_joints),
+    )
+
+
+def _raw_payload(scene_ids: tuple[str, ...]) -> dict[str, np.ndarray[Any, Any]]:
+    batch_size = len(scene_ids)
+    return {
+        "scene_ids": np.asarray(scene_ids),
+        "view_camera_id_strings": np.full((batch_size, 6), "camera"),
+        "reference_camera_id_string": np.full((batch_size,), "camera"),
+        "reference_view_index": np.zeros((batch_size,), dtype=np.int64),
+        "reference_camera_id": np.zeros((batch_size,), dtype=np.int64),
+        "view_camera_ids": np.zeros((batch_size, 6), dtype=np.int64),
+        "reference_from_physical": np.zeros((batch_size, 3, 3), dtype=np.float32),
+        "physical_from_reference": np.zeros((batch_size, 3, 3), dtype=np.float32),
+        "row_marker": np.arange(batch_size, dtype=np.int64),
+    }
+
+
 def test_manifest_uses_persisted_transform_classes_and_lexicographic_first_ids() -> (
     None
 ):
@@ -367,6 +464,52 @@ def test_named_array_payload_digest_is_stable_and_semantic() -> None:
         array_payload_sha256({"bad": np.asarray([object()], dtype=object)})
     with pytest.raises(ReferenceCounterfactualError, match="non-finite"):
         array_payload_sha256({"bad": np.asarray([np.nan])})
+
+
+def test_raw_payload_canonicalization_reorders_every_row_aligned_field() -> None:
+    manifest = _two_scene_manifest()
+    payload = _raw_payload(("scene_b", "scene_a"))
+
+    canonical = canonicalize_reference_counterfactual_raw_payload(
+        payload,
+        manifest=manifest,
+        task="blcs",
+    )
+
+    assert canonical["scene_ids"].tolist() == ["scene_a", "scene_b"]
+    assert canonical["row_marker"].tolist() == [1, 0]
+
+
+@pytest.mark.parametrize(
+    ("scene_ids", "message"),
+    [
+        (("scene_a",), "missing=.*scene_b"),
+        (("scene_a", "scene_a"), "duplicate scene IDs"),
+        (("scene_a", "scene_c"), "extra=.*scene_c"),
+    ],
+)
+def test_raw_payload_canonicalization_rejects_inexact_scene_set(
+    scene_ids: tuple[str, ...],
+    message: str,
+) -> None:
+    with pytest.raises(ReferenceCounterfactualError, match=message):
+        canonicalize_reference_counterfactual_raw_payload(
+            _raw_payload(scene_ids),
+            manifest=_two_scene_manifest(),
+            task="blcs",
+        )
+
+
+def test_raw_payload_canonicalization_rejects_misaligned_metadata_axis() -> None:
+    payload = _raw_payload(("scene_b", "scene_a"))
+    payload["row_marker"] = np.zeros((1,), dtype=np.int64)
+
+    with pytest.raises(ReferenceCounterfactualError, match="leading row axis 2"):
+        canonicalize_reference_counterfactual_raw_payload(
+            payload,
+            manifest=_two_scene_manifest(),
+            task="blcs",
+        )
 
 
 def test_masked_digest_quantity_excludes_inactive_fill_and_signed_zero() -> None:
@@ -525,6 +668,87 @@ def test_pass_rejects_only_aggregate_empty_supervision_and_keeps_mask_strict() -
         replace(mixed, valid_mask=np.ones((2, 2), dtype=np.int64))
     with pytest.raises(ReferenceCounterfactualError, match="match position leading axes"):
         replace(mixed, valid_mask=np.ones((2, 1), dtype=np.bool_))
+
+
+@pytest.mark.parametrize("task", ["blcs", "plcs"])
+def test_join_canonicalizes_arbitrary_raw_scene_order_across_every_quantity(
+    task: str,
+) -> None:
+    manifest = _two_scene_manifest()
+    canonical_same = _pass_with_scaled_scene(manifest, "same_side", task=task)
+    canonical_opposite = _pass_with_scaled_scene(
+        manifest, "opposite_side", task=task
+    )
+    expected = evaluate_reference_counterfactual(
+        manifest,
+        canonical_same,
+        canonical_opposite,
+    )
+
+    report = evaluate_reference_counterfactual(
+        manifest,
+        _select_pass_rows(canonical_same, (1, 0)),
+        canonical_opposite,
+    )
+
+    assert report.report_digest == expected.report_digest
+    assert [row.key.scene_id for row in report.same_side_pass.rows] == [
+        "scene_a",
+        "scene_b",
+    ]
+    for quantity_name in ("position", "vector", "heading", "world_joints"):
+        actual = getattr(report.same_side_pass, quantity_name)
+        canonical = getattr(canonical_same, quantity_name)
+        if canonical is None:
+            assert actual is None
+        else:
+            assert actual is not None
+            assert np.array_equal(actual.prediction, canonical.prediction)
+            assert np.array_equal(actual.target, canonical.target)
+
+
+def test_join_rejects_missing_extra_duplicate_and_misaligned_scene_rows() -> None:
+    manifest = _two_scene_manifest()
+    same_side = _pass_with_scaled_scene(manifest, "same_side", task="blcs")
+    opposite_side = _pass_with_scaled_scene(manifest, "opposite_side", task="blcs")
+
+    with pytest.raises(ReferenceCounterfactualError, match="missing=.*scene_b"):
+        evaluate_reference_counterfactual(
+            manifest,
+            _select_pass_rows(same_side, (0,)),
+            opposite_side,
+        )
+
+    extra_key = replace(same_side.rows[1].key, scene_id="scene_c")
+    with pytest.raises(ReferenceCounterfactualError, match="extra=.*scene_c"):
+        evaluate_reference_counterfactual(
+            manifest,
+            replace(
+                same_side,
+                rows=(same_side.rows[0], replace(same_side.rows[1], key=extra_key)),
+            ),
+            opposite_side,
+        )
+
+    with pytest.raises(ReferenceCounterfactualError, match="duplicate scene IDs"):
+        replace(
+            same_side,
+            rows=(
+                same_side.rows[0],
+                replace(same_side.rows[1], key=same_side.rows[0].key),
+            ),
+        )
+
+    with pytest.raises(ReferenceCounterfactualError, match="targets do not restore"):
+        evaluate_reference_counterfactual(
+            manifest,
+            _select_pass_rows(
+                same_side,
+                (1, 0),
+                reorder_quantities=False,
+            ),
+            opposite_side,
+        )
 
 
 def test_task_specific_vector_and_world_joint_consistency_are_recomputed() -> None:

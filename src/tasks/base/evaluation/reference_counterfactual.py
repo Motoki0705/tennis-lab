@@ -1163,6 +1163,11 @@ class ReferenceCounterfactualPass:
         rows = tuple(self.rows)
         if not rows:
             raise ReferenceCounterfactualError("Raw counterfactual pass is empty.")
+        scene_ids = tuple(row.key.scene_id for row in rows)
+        if len(set(scene_ids)) != len(scene_ids):
+            raise ReferenceCounterfactualError(
+                "Raw counterfactual pass contains duplicate scene IDs."
+            )
         keys = tuple(row.key for row in rows)
         if len(set(keys)) != len(keys):
             raise ReferenceCounterfactualError(
@@ -1505,6 +1510,67 @@ def _target_frame_metrics(
     )
 
 
+def _canonicalize_quantity_rows(
+    value: ReferenceCounterfactualQuantityArrays | None,
+    permutation: NDArray[np.int64],
+) -> ReferenceCounterfactualQuantityArrays | None:
+    if value is None:
+        return None
+    return ReferenceCounterfactualQuantityArrays(
+        prediction=value.prediction[permutation],
+        target=value.target[permutation],
+        quantity=value.quantity,
+    )
+
+
+def _canonicalize_pass_against_manifest(
+    pass_value: ReferenceCounterfactualPass,
+    manifest: ReferenceCounterfactualManifest,
+) -> ReferenceCounterfactualPass:
+    """Reorder one complete raw pass to the manifest's canonical scene order."""
+    if pass_value.identity.manifest_digest != manifest.digest:
+        raise ReferenceCounterfactualError(
+            "Raw pass manifest digest is stale or belongs to another manifest."
+        )
+    row_scene_ids = tuple(row.key.scene_id for row in pass_value.rows)
+    if len(set(row_scene_ids)) != len(row_scene_ids):
+        raise ReferenceCounterfactualError(
+            "Raw counterfactual pass contains duplicate scene IDs."
+        )
+    manifest_scene_ids = tuple(scene.scene_id for scene in manifest.scenes)
+    raw_scene_id_set = set(row_scene_ids)
+    manifest_scene_id_set = set(manifest_scene_ids)
+    if raw_scene_id_set != manifest_scene_id_set:
+        missing = tuple(sorted(manifest_scene_id_set - raw_scene_id_set))
+        extra = tuple(sorted(raw_scene_id_set - manifest_scene_id_set))
+        raise ReferenceCounterfactualError(
+            "Raw pass scene IDs must exactly equal the manifest scene-ID set; "
+            f"missing={missing!r}, extra={extra!r}."
+        )
+    raw_index_by_scene_id = {
+        scene_id: index for index, scene_id in enumerate(row_scene_ids)
+    }
+    permutation = np.asarray(
+        [raw_index_by_scene_id[scene_id] for scene_id in manifest_scene_ids],
+        dtype=np.int64,
+    )
+    return ReferenceCounterfactualPass(
+        schema_version=pass_value.schema_version,
+        side=pass_value.side,
+        identity=pass_value.identity,
+        quantity_schema=pass_value.quantity_schema,
+        rows=tuple(pass_value.rows[int(index)] for index in permutation),
+        valid_mask=pass_value.valid_mask[permutation],
+        position=cast(
+            "ReferenceCounterfactualQuantityArrays",
+            _canonicalize_quantity_rows(pass_value.position, permutation),
+        ),
+        vector=_canonicalize_quantity_rows(pass_value.vector, permutation),
+        heading=_canonicalize_quantity_rows(pass_value.heading, permutation),
+        world_joints=_canonicalize_quantity_rows(pass_value.world_joints, permutation),
+    )
+
+
 def _validate_pass_against_manifest(
     pass_value: ReferenceCounterfactualPass,
     manifest: ReferenceCounterfactualManifest,
@@ -1756,6 +1822,8 @@ def evaluate_reference_counterfactual(
         raise ReferenceCounterfactualError(
             "Quantity availability differs across reference passes."
         )
+    same_side = _canonicalize_pass_against_manifest(same_side, manifest)
+    opposite_side = _canonicalize_pass_against_manifest(opposite_side, manifest)
     if len(same_side.rows) != len(opposite_side.rows):
         raise ReferenceCounterfactualError(
             "Same/opposite passes have unequal row counts or a missing side."
@@ -1984,6 +2052,45 @@ def validate_reference_counterfactual_raw_payload(
                 f"{task.upper()} raw {name} must use a floating dtype."
             )
     return batch_size
+
+
+def canonicalize_reference_counterfactual_raw_payload(
+    arrays: Mapping[str, np.ndarray[Any, Any]],
+    *,
+    manifest: ReferenceCounterfactualManifest,
+    task: ReferenceCounterfactualTask,
+) -> dict[str, np.ndarray[Any, Any]]:
+    """Validate and reorder every raw row-aligned field to manifest scene order."""
+    batch_size = validate_reference_counterfactual_raw_payload(arrays, task=task)
+    scene_ids = tuple(str(value) for value in arrays["scene_ids"])
+    if len(set(scene_ids)) != len(scene_ids):
+        raise ReferenceCounterfactualError(
+            f"{task.upper()} raw payload contains duplicate scene IDs."
+        )
+    manifest_scene_ids = tuple(scene.scene_id for scene in manifest.scenes)
+    raw_scene_id_set = set(scene_ids)
+    manifest_scene_id_set = set(manifest_scene_ids)
+    if raw_scene_id_set != manifest_scene_id_set:
+        missing = tuple(sorted(manifest_scene_id_set - raw_scene_id_set))
+        extra = tuple(sorted(raw_scene_id_set - manifest_scene_id_set))
+        raise ReferenceCounterfactualError(
+            f"{task.upper()} raw scene IDs must exactly equal the manifest scene-ID "
+            f"set; missing={missing!r}, extra={extra!r}."
+        )
+    index_by_scene_id = {scene_id: index for index, scene_id in enumerate(scene_ids)}
+    permutation = np.asarray(
+        [index_by_scene_id[scene_id] for scene_id in manifest_scene_ids],
+        dtype=np.int64,
+    )
+    result: dict[str, np.ndarray[Any, Any]] = {}
+    for name, value in arrays.items():
+        if value.ndim < 1 or value.shape[0] != batch_size:
+            raise ReferenceCounterfactualError(
+                f"{task.upper()} raw field {name!r} must have leading row axis "
+                f"{batch_size}; got {value.shape}."
+            )
+        result[name] = np.ascontiguousarray(value[permutation])
+    return result
 
 
 def masked_counterfactual_quantity_for_digest(
@@ -2448,6 +2555,7 @@ __all__ = [
     "build_reference_counterfactual_manifest_from_documents",
     "canonical_json_sha256",
     "canonical_json_text",
+    "canonicalize_reference_counterfactual_raw_payload",
     "evaluate_reference_counterfactual",
     "file_sha256",
     "masked_counterfactual_quantity_for_digest",

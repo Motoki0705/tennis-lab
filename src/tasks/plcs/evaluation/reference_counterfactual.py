@@ -27,10 +27,10 @@ from src.tasks.base.evaluation import (
     ReferenceCounterfactualSide,
     array_payload_sha256,
     build_reference_counterfactual_manifest,
+    canonicalize_reference_counterfactual_raw_payload,
     evaluate_reference_counterfactual,
     file_sha256,
     masked_counterfactual_quantity_for_digest,
-    validate_reference_counterfactual_raw_payload,
     write_reference_counterfactual_report,
 )
 from src.tasks.base.generate_dataset import (
@@ -319,8 +319,12 @@ def build_plcs_counterfactual_pass(
         raise ReferenceCounterfactualError(
             "PLCS adapter received another task identity."
         )
-    arrays = _load_arrays(prediction_path)
-    batch_size = validate_reference_counterfactual_raw_payload(arrays, task="plcs")
+    arrays = canonicalize_reference_counterfactual_raw_payload(
+        _load_arrays(prediction_path),
+        manifest=manifest,
+        task="plcs",
+    )
+    batch_size = len(manifest.scenes)
     scene_ids = _required_array(arrays, "scene_ids")
     local_order = _required_array(arrays, "view_camera_id_strings")
     ref_strings = _required_array(arrays, "reference_camera_id_string")
