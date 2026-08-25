@@ -163,6 +163,9 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.court_detection.scripts.train": "court_detection.train",
     "src.tasks.court_detection.scripts.visualize": "court_detection.visualize",
     "src.tasks.blcs.generate_dataset.api_server.__main__": "blcs.api_server",
+    "src.tasks.blcs.scripts.evaluate_reference_counterfactual": (
+        "blcs.evaluate_reference_counterfactual"
+    ),
     "src.tasks.blcs.scripts.generate_dataset": "blcs.generate_dataset",
     "src.tasks.blcs.scripts.preview_augmentation": "blcs.preview_augmentation",
     "src.tasks.blcs.scripts.train": "blcs.train",
@@ -171,6 +174,9 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.plcs.scripts.analysis.analyze_dataset_distribution": "plcs.analyze_dataset_distribution",
     "src.tasks.plcs.scripts.analysis.analyze_loss_dominance": "plcs.analyze_loss_dominance",
     "src.tasks.plcs.scripts.analysis.visualize_rotation_error_samples": "plcs.analyze_rotation_error_samples",
+    "src.tasks.plcs.scripts.evaluate_reference_counterfactual": (
+        "plcs.evaluate_reference_counterfactual"
+    ),
     "src.tasks.plcs.scripts.generate_dataset": "plcs.generate_dataset",
     "src.tasks.plcs.scripts.preview_augmentation": "plcs.preview_augmentation",
     "src.tasks.plcs.scripts.train": "plcs.train",
@@ -222,6 +228,9 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.court_detection.scripts.train": "src.tasks.court_detection.configuration.validate_train_boundary",
     "src.tasks.court_detection.scripts.visualize": "src.tasks.court_detection.scripts.visualize._validate_boundary",
     "src.tasks.blcs.generate_dataset.api_server.__main__": "src.tasks.blcs.configuration.validate_api_boundary",
+    "src.tasks.blcs.scripts.evaluate_reference_counterfactual": (
+        "src.tasks.blcs.evaluation.reference_counterfactual._validate_boundary"
+    ),
     "src.tasks.blcs.scripts.generate_dataset": "src.tasks.blcs.configuration.validate_generation_boundary",
     "src.tasks.blcs.scripts.preview_augmentation": "src.tasks.blcs.configuration.validate_preview_boundary",
     "src.tasks.blcs.scripts.train": "src.tasks.blcs.configuration._validate_training_for_hydra",
@@ -230,6 +239,9 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.plcs.scripts.analysis.analyze_dataset_distribution": "src.tasks.plcs.configuration._validate_distribution_boundary",
     "src.tasks.plcs.scripts.analysis.analyze_loss_dominance": "src.tasks.plcs.configuration._validate_loss_dominance_boundary",
     "src.tasks.plcs.scripts.analysis.visualize_rotation_error_samples": "src.tasks.plcs.configuration._validate_rotation_error_boundary",
+    "src.tasks.plcs.scripts.evaluate_reference_counterfactual": (
+        "src.tasks.plcs.evaluation.reference_counterfactual._validate_boundary"
+    ),
     "src.tasks.plcs.scripts.generate_dataset": "src.tasks.plcs.generate_dataset.config._validate_boundary",
     "src.tasks.plcs.scripts.preview_augmentation": "src.tasks.plcs.configuration._validate_preview_boundary",
     "src.tasks.plcs.scripts.train": "src.tasks.plcs.configuration._validate_training_boundary",
@@ -363,6 +375,9 @@ _RUNTIME_BOUNDARIES = (
         "src.tasks.ball_detection.scripts.youtube.prepare_youtube_dataset",
     ),
     _runtime_boundary("blcs", "src.tasks.blcs.generate_dataset.api_server.__main__"),
+    _runtime_boundary(
+        "blcs", "src.tasks.blcs.scripts.evaluate_reference_counterfactual"
+    ),
     _runtime_boundary("blcs", "src.tasks.blcs.scripts.generate_dataset"),
     _runtime_boundary("blcs", "src.tasks.blcs.scripts.preview_augmentation"),
     _runtime_boundary("blcs", "src.tasks.blcs.scripts.train"),
@@ -403,6 +418,9 @@ _RUNTIME_BOUNDARIES = (
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.analysis.analyze_loss_dominance"),
     _runtime_boundary(
         "plcs", "src.tasks.plcs.scripts.analysis.visualize_rotation_error_samples"
+    ),
+    _runtime_boundary(
+        "plcs", "src.tasks.plcs.scripts.evaluate_reference_counterfactual"
     ),
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.generate_dataset"),
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.preview_augmentation"),

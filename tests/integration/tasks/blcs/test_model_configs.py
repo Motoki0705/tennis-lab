@@ -24,6 +24,14 @@ from src.utils.configuration import (
 _CONFIG_DIR = Path("src/tasks/blcs/configs").resolve()
 
 
+def test_legacy_non_track_training_config_needs_no_reference_only_data_key() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(config_name="train")
+
+    assert "evaluation_reference_camera_id" not in config.data
+    validate_training_boundary(config)
+
+
 @pytest.mark.parametrize(
     "config_name", ("train_tracking", "train_tracking_chunked")
 )

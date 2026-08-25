@@ -16,7 +16,7 @@
 - **`tensor_utils.py`**: `clone_tensor_dict()`、`to_numpy()`、`masked_mean()`、`normalize_padding_mask()`、`flatten_time_to_batch()`/`restore_time_from_batch()`。テンソル辞書の複製、NumPy 変換、mask 付き集約、(B,C,T,H,W)↔(B·T,C,H,W) の変形。
 
 ### `configuration/`
-- **`paths.py` / `schema.py` / `contracts.py`**: `PathRole`・`PathResolver`・`RuntimePathRoots`、strict schema、typed adapter inspection の正本。設定値や path role の暗黙補完は行わない。
+- **`paths.py` / `schema.py` / `contracts.py`**: `PathRole`・`PathResolver`・`RuntimePathRoots`、strict schema、typed adapter inspection の正本。`resolve_configured()` は role-relative path と同じrole root内のabsolute pathだけを受け、process CWDや別rootへの暗黙補完は行わない。
 - **`discovery.py`**: runtime boundary を source-only に列挙する下位 discovery の唯一の実装。`catalog.py` と `audit.py` はこの module を一方向に参照する。
 - **`catalog.py`**: source declaration と runtime boundary を結び付けた inspectable contract catalog の唯一の import path。
 - **`audit.py` / `inventory.py`**: 現在の repository-owned source から configuration/path の禁止パターンを直接検査し、明示的な runtime boundary 契約と照合する library API。行番号依存の migration/exemption snapshot は保持しない。運用 entrypoint は root の `scripts/audit_configuration.py` のみ。
