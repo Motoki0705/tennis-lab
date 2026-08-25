@@ -1179,9 +1179,9 @@ class ReferenceCounterfactualPass:
             raise ReferenceCounterfactualError(
                 "valid_mask must have one leading row for every pass row."
             )
-        if np.any(valid_mask.reshape(len(rows), -1).sum(axis=1) == 0):
+        if not valid_mask.any():
             raise ReferenceCounterfactualError(
-                "Every pass row needs at least one supervised observation."
+                "A raw pass needs at least one supervised observation across all rows."
             )
         valid_mask.setflags(write=False)
         object.__setattr__(self, "valid_mask", valid_mask)
@@ -1285,9 +1285,7 @@ def _mean_physical_consistency(
         row_mask = mask[index : index + 1]
         count = int(row_mask.sum())
         if count <= 0:
-            raise ReferenceCounterfactualError(
-                "Every joined row needs selected values for physical consistency."
-            )
+            continue
         error = compute_reference_transform_consistency_error(
             _torch_array(first.prediction[index : index + 1]),
             first_row.provenance,
@@ -1298,6 +1296,10 @@ def _mean_physical_consistency(
         )
         weighted_sum += error * count
         total_count += count
+    if total_count <= 0:
+        raise ReferenceCounterfactualError(
+            "Physical consistency needs at least one supervised observation."
+        )
     result = weighted_sum / total_count
     if not math.isfinite(result):
         raise ReferenceCounterfactualError(

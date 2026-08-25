@@ -291,6 +291,41 @@ def _report() -> ReferenceCounterfactualReport:
     )
 
 
+def _two_scene_manifest() -> ReferenceCounterfactualManifest:
+    single = _manifest()
+    second_scene = replace(single.scenes[0], scene_id="scene_b")
+    return replace(single, scenes=(single.scenes[0], second_scene))
+
+
+def _pass_with_empty_scene(
+    manifest: ReferenceCounterfactualManifest,
+    side: str,
+) -> ReferenceCounterfactualPass:
+    pass_value = _pass(manifest, side, task="blcs")
+    empty_scene = manifest.scenes[1]
+    empty_selection = empty_scene.selection(cast("Any", side))
+    empty_row = replace(
+        pass_value.rows[0],
+        key=empty_scene.key,
+        reference_camera_id=empty_selection.camera_id,
+        reference_view_index=empty_selection.local_index,
+        provenance=empty_selection.provenance,
+    )
+    position = pass_value.position
+    return replace(
+        pass_value,
+        rows=(pass_value.rows[0], empty_row),
+        valid_mask=np.asarray([[True, True], [False, False]], dtype=np.bool_),
+        position=replace(
+            position,
+            prediction=np.concatenate(
+                (position.prediction, position.prediction + 37.0), axis=0
+            ),
+            target=np.concatenate((position.target, position.target - 19.0), axis=0),
+        ),
+    )
+
+
 def test_manifest_uses_persisted_transform_classes_and_lexicographic_first_ids() -> (
     None
 ):
@@ -420,6 +455,76 @@ def test_join_metrics_are_reference_target_frame_but_consistency_is_physical() -
     )
     assert report.metrics.physical_consistency.vector_error_m is None
     assert report.metrics.physical_consistency.world_joints_error_m is None
+
+
+def test_mixed_supervised_and_empty_rows_retain_complete_finite_evidence(
+    tmp_path: Path,
+) -> None:
+    supervised_manifest = _manifest()
+    supervised_report = evaluate_reference_counterfactual(
+        supervised_manifest,
+        _pass(supervised_manifest, "same_side", task="blcs"),
+        _pass(supervised_manifest, "opposite_side", task="blcs"),
+    )
+    manifest = _two_scene_manifest()
+    same_side = _pass_with_empty_scene(manifest, "same_side")
+    opposite_side = _pass_with_empty_scene(manifest, "opposite_side")
+
+    report = evaluate_reference_counterfactual(manifest, same_side, opposite_side)
+
+    assert report.metrics.to_dict() == supervised_report.metrics.to_dict()
+    assert all(np.isfinite(value) for value in report.metrics.flat_dict().values())
+    assert [row.key.scene_id for row in report.same_side_pass.rows] == [
+        "scene_a",
+        "scene_b",
+    ]
+    changed_empty_evidence = evaluate_reference_counterfactual(
+        manifest,
+        replace(
+            same_side,
+            rows=(
+                same_side.rows[0],
+                replace(same_side.rows[1], frame_digest="c" * 64),
+            ),
+        ),
+        replace(
+            opposite_side,
+            rows=(
+                opposite_side.rows[0],
+                replace(opposite_side.rows[1], frame_digest="c" * 64),
+            ),
+        ),
+    )
+    assert changed_empty_evidence.parity_digest != report.parity_digest
+
+    paths = write_reference_counterfactual_report(report, tmp_path)
+    document = json.loads(paths.json_path.read_text(encoding="utf-8"))
+    assert [
+        row["scene_id"] for row in document["passes"]["same_side"]["rows"]
+    ] == ["scene_a", "scene_b"]
+    with np.load(paths.npz_path, allow_pickle=False) as archive:
+        assert archive["scene_ids"].tolist() == ["scene_a", "scene_b"]
+        assert archive["valid_mask"].tolist() == [
+            [True, True],
+            [False, False],
+        ]
+
+
+def test_pass_rejects_only_aggregate_empty_supervision_and_keeps_mask_strict() -> (
+    None
+):
+    manifest = _two_scene_manifest()
+    mixed = _pass_with_empty_scene(manifest, "same_side")
+
+    with pytest.raises(
+        ReferenceCounterfactualError,
+        match="at least one supervised observation across all rows",
+    ):
+        replace(mixed, valid_mask=np.zeros((2, 2), dtype=np.bool_))
+    with pytest.raises(ReferenceCounterfactualError, match="bool numpy array"):
+        replace(mixed, valid_mask=np.ones((2, 2), dtype=np.int64))
+    with pytest.raises(ReferenceCounterfactualError, match="match position leading axes"):
+        replace(mixed, valid_mask=np.ones((2, 1), dtype=np.bool_))
 
 
 def test_task_specific_vector_and_world_joint_consistency_are_recomputed() -> None:

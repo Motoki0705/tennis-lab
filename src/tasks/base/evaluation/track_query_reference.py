@@ -369,6 +369,32 @@ def stratify_metric_by_reference_view_index(
     return result
 
 
+def _validate_reference_view_index(
+    reference_view_index: Tensor,
+    *,
+    batch_size: int,
+    device: torch.device,
+) -> None:
+    if not isinstance(reference_view_index, Tensor):
+        raise TypeError("reference_view_index must be a tensor.")
+    if reference_view_index.shape != (batch_size,):
+        raise PairedReferenceEvaluationError(
+            f"reference_view_index must have shape ({batch_size},)."
+        )
+    if reference_view_index.dtype != torch.int64:
+        raise PairedReferenceEvaluationError(
+            "reference_view_index must have dtype torch.int64."
+        )
+    if reference_view_index.device != device:
+        raise PairedReferenceEvaluationError(
+            "metric_values and reference_view_index must share a device."
+        )
+    if (reference_view_index < 0).any().item():
+        raise PairedReferenceEvaluationError(
+            "reference_view_index cannot contain padding or negative values."
+        )
+
+
 def compute_paired_reference_position_metrics(
     prediction: Tensor,
     target: Tensor,
@@ -390,22 +416,29 @@ def compute_paired_reference_position_metrics(
         quantity="position",
     )
     sample_error = torch.linalg.vector_norm(prediction - target, dim=-1)
+    if sample_error.ndim < 1:
+        raise PairedReferenceEvaluationError(
+            "Position metrics require a leading batch axis."
+        )
+    batch_size = sample_error.shape[0]
+    _validate_reference_view_index(
+        reference_view_index,
+        batch_size=batch_size,
+        device=sample_error.device,
+    )
+    expanded_reference_index = reference_view_index.reshape(
+        (batch_size,) + (1,) * (sample_error.ndim - 1)
+    ).expand_as(sample_error)
     if valid_mask is not None:
         if valid_mask.shape != sample_error.shape or valid_mask.dtype != torch.bool:
             raise PairedReferenceEvaluationError(
                 "valid_mask must be bool and match the position leading axes."
             )
-        counts = valid_mask.reshape(valid_mask.shape[0], -1).sum(dim=1)
-        if (counts == 0).any().item():
-            raise PairedReferenceEvaluationError(
-                "Every sample needs at least one valid local-index metric value."
-            )
-        sample_error = (
-            sample_error.masked_fill(~valid_mask, 0.0)
-            .reshape(valid_mask.shape[0], -1)
-            .sum(dim=1)
-            / counts
-        )
+        selected_error = sample_error[valid_mask]
+        selected_reference_index = expanded_reference_index[valid_mask]
+    else:
+        selected_error = sample_error.reshape(-1)
+        selected_reference_index = expanded_reference_index.reshape(-1)
     return PairedReferencePositionMetrics(
         y_sign_accuracy=compute_y_sign_accuracy(
             prediction,
@@ -415,8 +448,8 @@ def compute_paired_reference_position_metrics(
         ),
         axis_wise_position_error=axis_error,
         local_reference_index_error=stratify_metric_by_reference_view_index(
-            sample_error,
-            reference_view_index,
+            selected_error,
+            selected_reference_index,
         ),
     )
 
