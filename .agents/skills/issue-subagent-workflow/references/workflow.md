@@ -31,13 +31,14 @@ scouting -> exploration -> planning -> implementation
                                              ` PASS
                                                 v
                                       packaging / status=validated
-                                             | PR head or checks fail -> remain validated
+                                             | history/check metadata fails -> remain validated
+                                             | content defect -> packaging-repair -> implementation
                                              ` finalize-pr PASS
                                                 v
                                              complete
 ```
 
-Preflight RETURN spends no Tester cycle. The first Preflight RETURN permits one bounded repair and one closure Reviewer; a second consecutive RETURN sets `return_review_required`. Test Writer RETURN increments `test_cycle`; return #2 also requires `return-review`. Seal is a post-test identity/evidence gate rather than another semantic exploration phase, so any Seal RETURN requires `return-review`; every content repair then requires fresh Preflight/Test. Validator RETURN increments `attempt`, clears candidate evidence, and returns to formal exploration.
+Preflight RETURN spends no Tester cycle. The first Preflight RETURN permits one bounded repair and one closure Reviewer; a second consecutive RETURN sets `return_review_required`. Test Writer RETURN increments `test_cycle`; return #2 also requires `return-review`. Seal is a post-test identity/evidence gate rather than another semantic exploration phase, so any Seal RETURN requires `return-review`; every content repair then requires fresh Preflight/Test. Validator RETURN increments `attempt`, clears candidate evidence, and returns to formal exploration. Packaging repair preserves the attempt and frozen planning authority, clears all candidate/PR bindings, and returns to in-progress implementation for fresh Preflight/Test/Seal/Validation.
 
 `return-review` is the explicit strategy gate for repeated or late failures. The parent classifies `implementation` when the scope is understood and frozen checks/plan can be repaired, or `exploration` when the finding changes the semantic model or reveals an unknown impact radius. When the failure exposed a coverage-design gap, update `plan.md` and `checks.json` before continuing instead of launching another unchanged Reviewer.
 

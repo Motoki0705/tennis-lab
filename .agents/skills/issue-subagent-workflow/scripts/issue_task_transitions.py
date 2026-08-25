@@ -223,6 +223,30 @@ def transition(task_dir: Path, requested: str) -> None:
     write_state(task_dir, state)
 
 
+def reopen_packaging_repair(task_dir: Path, reason: str) -> None:
+    """Invalidate validated candidate evidence before a content-changing repair."""
+    state = load_state(task_dir)
+    if not _enforced(state):
+        raise ValueError(
+            "packaging repair is available only for schema-v5-or-newer tasks"
+        )
+    if state.get("phase") != "packaging" or state.get("status") != "validated":
+        raise ValueError("packaging repair requires packaging/validated state")
+    normalized_reason = reason.strip()
+    if not normalized_reason:
+        raise ValueError("packaging repair reason must not be blank")
+    _raise_errors(validate_state(task_dir, state))
+
+    _reset_candidate_evidence(state)
+    state["phase"] = "implementation"
+    state["status"] = "in_progress"
+    state["verdict"] = ""
+    state["return_review_action"] = "implementation"
+    state["return_review_reason"] = normalized_reason
+    _raise_errors(validate_state(task_dir, state))
+    write_state(task_dir, state)
+
+
 def apply_preflight_verdict(task_dir: Path, verdict: str) -> None:
     state = load_state(task_dir)
     if state.get("phase") != "implementation" or state.get("status") != "in_progress":

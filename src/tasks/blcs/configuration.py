@@ -2258,22 +2258,20 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
                     "data.lifecycle.min_reuse_gap_frames."
                 )
     _exact(data, data_keys, path="data")
-    _validate_types(
-        data,
-        {
-            "backend": str,
-            "scene_dir": str,
-            "batch_size": int,
-            "num_workers": int,
-            "pin_memory": bool,
-            "camera_mode": str,
-            "num_views_range": list,
-            "seq_len_range": list,
-            "augmentation": dict,
-            "evaluation_reference_camera_id": str,
-        },
-        path="data",
-    )
+    data_types: dict[str, type[object]] = {
+        "backend": str,
+        "scene_dir": str,
+        "batch_size": int,
+        "num_workers": int,
+        "pin_memory": bool,
+        "camera_mode": str,
+        "num_views_range": list,
+        "seq_len_range": list,
+        "augmentation": dict,
+    }
+    if isinstance(model, _TRACK_QUERY_MODEL_CONFIG_TYPES):
+        data_types["evaluation_reference_camera_id"] = str
+    _validate_types(data, data_types, path="data")
     if isinstance(model, _TRACK_QUERY_MODEL_CONFIG_TYPES):
         evaluation_reference_camera_id = cast(
             "str", data["evaluation_reference_camera_id"]

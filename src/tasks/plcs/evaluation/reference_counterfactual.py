@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Literal, TypeAlias, cast
 
@@ -56,11 +56,12 @@ from src.tasks.plcs.training.tracking_lightning_module import (
 from src.utils.configuration import (
     ConfigurationTypeError,
     MissingConfigurationKeyError,
+    PathResolver,
+    PathRole,
     SemanticConfigurationError,
     UnknownConfigurationKeyError,
 )
 from src.utils.hydra import register_boundary_validator
-from src.utils.paths import PROJECT_ROOT
 from src.utils.schema.court_normalization import CourtCoordinateNormalization
 
 _PASS_NAMES = ("same_side", "opposite_side")
@@ -222,10 +223,10 @@ class PLCSReferenceCounterfactualConfig:
             raise ConfigurationTypeError(
                 "evaluation.output_dir must be a non-empty string."
             )
-        checkpoint = Path(checkpoint_value)
-        if not checkpoint.is_absolute():
-            checkpoint = PROJECT_ROOT / checkpoint
-        checkpoint = checkpoint.resolve()
+        checkpoint = runtime.paths.resolver.resolve_configured(
+            PathRole.CHECKPOINT,
+            checkpoint_value,
+        )
         if not checkpoint.is_file():
             raise SemanticConfigurationError(
                 f"evaluation.checkpoint_path is not an existing file: {checkpoint}."
@@ -239,8 +240,16 @@ class PLCSReferenceCounterfactualConfig:
             raise SemanticConfigurationError(
                 "TENNIS_REPRO_DIR is required for queue-registerable evaluation output."
             )
-        expected_output = (Path(repro).resolve() / "predictions").resolve()
-        output = Path(output_value).resolve()
+        repro_root = Path(repro)
+        if not repro_root.is_absolute():
+            raise SemanticConfigurationError(
+                "TENNIS_REPRO_DIR must be an absolute path."
+            )
+        output_resolver = PathResolver(
+            replace(runtime.paths.resolver.roots, output_root=repro_root.resolve())
+        )
+        expected_output = output_resolver.resolve(PathRole.OUTPUT, "predictions")
+        output = output_resolver.resolve_configured(PathRole.OUTPUT, output_value)
         if output != expected_output:
             raise SemanticConfigurationError(
                 "evaluation.output_dir must be exactly $TENNIS_REPRO_DIR/predictions."

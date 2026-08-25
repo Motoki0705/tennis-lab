@@ -52,6 +52,7 @@ from src.tasks.plcs.training.composition import build_plcs_lightning_module
 from src.tasks.plcs.training.tracking_lightning_module import (
     PLCSTrackingLightningModule,
 )
+from src.utils.configuration import PathContractError, SemanticConfigurationError
 from src.utils.paths import PROJECT_ROOT
 from src.utils.schema.court_normalization import resolve_court_coordinate_normalization
 
@@ -64,7 +65,10 @@ def _evaluation_config(task: str, checkpoint: Path) -> DictConfig:
     with initialize_config_dir(config_dir=str(config_dir), version_base="1.3"):
         return compose(
             config_name="evaluate_reference_counterfactual",
-            overrides=[f"evaluation.checkpoint_path={checkpoint}"],
+            overrides=[
+                f"paths.checkpoint_root={checkpoint.parent}",
+                f"evaluation.checkpoint_path={checkpoint}",
+            ],
         )
 
 
@@ -570,6 +574,7 @@ def test_minimal_reference_v2_checkpoint_boundary_rejects_metadata_free_v1(
                 "court_coordinate_normalization=v2",
                 "court_keypoints=camera_view_v2",
                 "model=track_query_ablation_d_v2_selector",
+                "model.cswa.backend=reference",
             ],
         )
     if task == "blcs":
@@ -680,3 +685,75 @@ def test_counterfactual_evaluator_rejects_any_existing_output_directory(
 
     with pytest.raises(ReferenceCounterfactualError, match="refuses overwrite"):
         runner(_evaluation_config(task, checkpoint))
+
+
+@pytest.mark.parametrize(
+    ("task", "runner"),
+    [
+        ("blcs", run_blcs_reference_counterfactual),
+        ("plcs", run_plcs_reference_counterfactual),
+    ],
+)
+def test_counterfactual_evaluator_rejects_checkpoint_outside_declared_role_root(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    task: str,
+    runner: _Runner,
+) -> None:
+    repro_dir = tmp_path / f"{task}_repro"
+    checkpoint_root = tmp_path / f"{task}_declared_checkpoints"
+    checkpoint_root.mkdir()
+    checkpoint = tmp_path / f"{task}_outside.ckpt"
+    checkpoint.touch()
+    monkeypatch.setenv("TENNIS_REPRO_DIR", str(repro_dir))
+    config_dir = PROJECT_ROOT / "src" / "tasks" / task / "configs"
+    with initialize_config_dir(config_dir=str(config_dir), version_base="1.3"):
+        config = compose(
+            config_name="evaluate_reference_counterfactual",
+            overrides=[
+                f"paths.checkpoint_root={checkpoint_root}",
+                f"evaluation.checkpoint_path={checkpoint}",
+            ],
+        )
+
+    with pytest.raises(PathContractError, match="outside its root"):
+        runner(config)
+
+    assert not (repro_dir / "predictions").exists()
+
+
+@pytest.mark.parametrize(
+    ("task", "runner"),
+    [
+        ("blcs", run_blcs_reference_counterfactual),
+        ("plcs", run_plcs_reference_counterfactual),
+    ],
+)
+def test_counterfactual_evaluator_requires_dedicated_predictions_output_child(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    task: str,
+    runner: _Runner,
+) -> None:
+    repro_dir = tmp_path / f"{task}_repro"
+    checkpoint = tmp_path / f"{task}.ckpt"
+    checkpoint.touch()
+    monkeypatch.setenv("TENNIS_REPRO_DIR", str(repro_dir))
+    config_dir = PROJECT_ROOT / "src" / "tasks" / task / "configs"
+    with initialize_config_dir(config_dir=str(config_dir), version_base="1.3"):
+        config = compose(
+            config_name="evaluate_reference_counterfactual",
+            overrides=[
+                f"paths.checkpoint_root={checkpoint.parent}",
+                f"evaluation.checkpoint_path={checkpoint}",
+                f"evaluation.output_dir={repro_dir / 'adjacent'}",
+            ],
+        )
+
+    with pytest.raises(
+        SemanticConfigurationError,
+        match=r"exactly \$TENNIS_REPRO_DIR/predictions",
+    ):
+        runner(config)
+
+    assert not repro_dir.exists()

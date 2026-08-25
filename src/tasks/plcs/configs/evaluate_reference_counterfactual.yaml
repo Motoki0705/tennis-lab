@@ -21,6 +21,9 @@ data:
   num_views_range: [6, 6]
   evaluation_reference_camera_id: manifest_resolved_per_side
 
+paths:
+  checkpoint_root: outputs
+
 training:
   compile:
     enabled: false
