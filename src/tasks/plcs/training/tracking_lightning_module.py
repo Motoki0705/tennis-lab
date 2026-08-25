@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
@@ -127,11 +128,25 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Any]]):
             self.track_query_reference_contract,
         )
 
-    def tracking_prediction_result(
-        self, prediction: dict[str, Any]
-    ) -> dict[str, Any]:
+    def tracking_prediction_result(self, prediction: dict[str, Any]) -> dict[str, Any]:
         """Return the canonical PLCS tensor mapping unchanged."""
         return prediction
+
+    def set_counterfactual_prediction_dir(self, output_dir: Path) -> None:
+        """Route one explicit checkpoint-only pass to its isolated raw directory."""
+        if not isinstance(output_dir, Path) or not output_dir.is_absolute():
+            raise ValueError(
+                "PLCS counterfactual prediction output must be an absolute Path."
+            )
+        self._counterfactual_prediction_dir = output_dir
+
+    def _test_predictions_dir(self) -> Path:
+        output_dir = getattr(self, "_counterfactual_prediction_dir", None)
+        if output_dir is None:
+            return cast("Path", super()._test_predictions_dir())
+        if not isinstance(output_dir, Path):
+            raise TypeError("PLCS counterfactual prediction output is invalid.")
+        return output_dir
 
     def test_prediction_payload(
         self, batch: Any, result: dict[str, Any]
@@ -146,6 +161,22 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Any]]):
             "target_instance_id": self._to_numpy(batch["target_instance_id"]),
             "padding_mask": self._to_numpy(batch["padding_mask"]),
         }
+        if getattr(self, "_counterfactual_prediction_dir", None) is not None:
+            payload.update(
+                {
+                    "human_kp": self._to_numpy(batch["human_kp"]),
+                    "human_vis": self._to_numpy(batch["human_vis"]),
+                    "court_kp": self._to_numpy(batch["court_kp"]),
+                    "court_vis": self._to_numpy(batch["court_vis"]),
+                    "target_canonical_pose_3d": self._to_numpy(
+                        batch["target_canonical_pose_3d"]
+                    ),
+                    "target_human_kp_3d": self._to_numpy(batch["target_human_kp_3d"]),
+                    "clean_human_kp": self._to_numpy(batch["clean_human_kp"]),
+                    "clean_human_vis": self._to_numpy(batch["clean_human_vis"]),
+                    "detection_gt_index": self._to_numpy(batch["detection_gt_index"]),
+                }
+            )
         reference_metadata = plcs_reference_metadata_from_batch(batch)
         if reference_metadata is not None:
             num_views_range = cast(
