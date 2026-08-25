@@ -37,7 +37,7 @@ human UV/visibility には適用しません。
 - **`plcs_multiview_axial_split_model.py`**: `PLCSMultiViewAxialSplitModel`(issue #518)。rotation/pose trunkを分離。
 - **`plcs_multiview_axial_camtoken_model.py`**: `PLCSMultiViewAxialCamTokenModel`(issue #576)。head別に別camera tokenを読む。
 - **`plcs_track_query_model.py`**: `PLCSTrackQueryModel`。object ID順のcamera pose観測からclip-localな固定query slotで複数playerの位置・rotation・presenceを推定する。
-- **`plcs_track_query_ablation_model.py`**: `PLCSTrackQueryAblationModel`。既存modelとは別の`plcs_track_query_ablation` architectureとして、SwiGLU配置とmHC writeback位置の4条件を同じ5入力・3出力契約で比較する。
+- **`plcs_track_query_ablation_model.py`**: `PLCSTrackQueryAblationModel`。legacy v1 (`time_camera_role_v1`) の`plcs_track_query_ablation` architectureとして、SwiGLU配置とmHC writeback位置の4条件を同じ5入力・3出力契約で比較する。
 - **`plcs_track_query_reference_model.py` / `plcs_track_query_reference_ablation_model.py`**: camera-view target frame用の明示的v2 family。PLCS固有出力はposition / heading / presenceのままselector条件を追加する。
 - **`components/heads.py`**: `PositionHead`/`RotationHead`/`CanonicalPoseHead`。
 - **`discriminators/`**: 共有`TransformerSequenceDiscriminator`を`input_dim=5`で構築するPLCS composition factory。
@@ -90,7 +90,7 @@ human UV/visibility には適用しません。
 
 PLCS固有の5観測tensor shapeは `human_kp (B,V,T,Q,17,2)`、`human_vis (B,V,T,Q,17)`、`court_kp (B,V,T,14,2)`、`court_vis (B,V,T,14)`、`padding_mask (B,V,T)` です。v1 / v2のforward差分、reference field、selector座標、checkpoint・推論指定は共有正本を参照してください。各sceneの物理trackはDatasetで固定幅`Q`のlifecycle slotへpackされるため、観測軸とquery軸は常に`P=Q`です。`human_vis.any(-1)`がfalseの非padding slotはlearned invisible tokenになりますがattentionには参加し、時間・camera文脈から更新されます。debug用の`detection_gt_index`は実object由来なら物理instance ID、不可視またはfalse positiveなら`-1`で、モデルへは渡しません。欠損joint UVは0にします。出力は `position (B,T,Q,3)`、`rotation (B,T,Q,2)`、`presence_logits (B,T,Q)` です。教師は `target_position`、`target_rotation`、`target_presence`、`target_instance_id` で、inactive rotationはidentity、instance IDは`-1`です。重ならないbirth/death区間を同じslotへ詰めるため、同一queryはdeath後に別instanceへ再利用できます。
 
-14 court UVは共有Court contractでreference整列した後の先頭14点を使い、`court_vis`で不可視点を0化します。各lifecycle slotのperson keypointsとcourtを連結し、BLCSと同じ`src/utils/models/embeddings/group_tokens.py`の共有`CourtPlayerGroupEmbedding`により1 slot = 1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*Q, D)` です。M-RoPE `(time,camera,role)` のroleはquery=0、court-player group=1です。
+14 court UVは共有Court contractでreference整列した後の先頭14点を使い、`court_vis`で不可視点を0化します。各lifecycle slotのperson keypointsとcourtを連結し、BLCSと同じ`src/utils/models/embeddings/group_tokens.py`の共有`CourtPlayerGroupEmbedding`により1 slot = 1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*Q, D)` です。v1 / v2のM-RoPE座標と第3軸の意味は共有正本を参照してください。
 
 BLCSと共有する各stageは `mHC object temporal -> global spatial(Q+VQ) -> query temporal` の順で更新し、temporal modeを `CSWA, CSWA, CSWA, Global MHA` のcycleへ固定します。`object_state_valid`を含む全state/attention maskは共有`build_fixed_query_padding_masks()`が`padding_mask`だけから生成します。nested `model.mhc` / `model.cswa`はstrictに検証し、旧`spatial_blocks` / `temporal_blocks` checkpointは自動変換せずstrict load errorとします。
 

@@ -1,0 +1,57 @@
+defaults:
+  - court_coordinate_normalization: v2
+  - court_keypoints: camera_view_v2
+  - paths: default
+  - model: track_query_ablation_d_v2_selector
+  - data: tracking
+  - training: default
+  - loss: tracking
+  - tracking_metrics: default
+  - run: train
+  - physics: default
+  - rally: default
+  - camera: default
+  - targeted_velocity: default
+  - generator: default
+  - _self_
+
+data:
+  scene_dir: blcs/multi_object_camera_view_norm-v2
+  camera_mode: first
+  seq_len_range: [128, 128]
+  num_views_range: [6, 6]
+  evaluation_reference_camera_id: manifest_resolved_per_side
+
+training:
+  compile:
+    enabled: false
+
+run:
+  seed: 42
+  gpus: 0
+  resume: null
+  init_weights: null
+  fast_dev_run: false
+  dry_run: false
+
+evaluation:
+  task: blcs
+  checkpoint_path: ???
+  output_dir: ${oc.env:TENNIS_REPRO_DIR}/predictions
+  passes: [same_side, opposite_side]
+  trainer:
+    accelerator: auto
+    devices: 1
+    precision: 32-true
+    deterministic: true
+    enable_progress_bar: false
+    enable_model_summary: false
+
+hydra:
+  searchpath:
+    - pkg://src.tasks.base.configs
+  run:
+    dir: ${oc.env:TENNIS_REPRO_DIR}/hydra/reference_counterfactual/blcs
+  output_subdir: null
+  job:
+    chdir: false

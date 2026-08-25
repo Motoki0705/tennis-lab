@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import replace
+from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
@@ -158,6 +159,22 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
         """Keep the BLCS typed prediction under its canonical result key."""
         return {"prediction": prediction}
 
+    def set_counterfactual_prediction_dir(self, output_dir: Path) -> None:
+        """Route one explicit checkpoint-only pass to its isolated raw directory."""
+        if not isinstance(output_dir, Path) or not output_dir.is_absolute():
+            raise ValueError(
+                "BLCS counterfactual prediction output must be an absolute Path."
+            )
+        self._counterfactual_prediction_dir = output_dir
+
+    def _test_predictions_dir(self) -> Path:
+        output_dir = getattr(self, "_counterfactual_prediction_dir", None)
+        if output_dir is None:
+            return cast("Path", super()._test_predictions_dir())
+        if not isinstance(output_dir, Path):
+            raise TypeError("BLCS counterfactual prediction output is invalid.")
+        return output_dir
+
     def test_prediction_payload(
         self, batch: Any, result: dict[str, Any]
     ) -> dict[str, np.ndarray]:
@@ -171,14 +188,26 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
             "target_instance_id": self._to_numpy(prepared.target_instance_id),
             "frame_valid": self._to_numpy(prepared.frame_valid),
         }
+        if getattr(self, "_counterfactual_prediction_dir", None) is not None:
+            payload.update(
+                {
+                    "ball_uv": self._to_numpy(batch["ball_uv"]),
+                    "ball_vis": self._to_numpy(batch["ball_vis"]),
+                    "court_kp": self._to_numpy(batch["court_kp"]),
+                    "court_vis": self._to_numpy(batch["court_vis"]),
+                    "padding_mask": self._to_numpy(batch["padding_mask"]),
+                    "target_velocity": self._to_numpy(prepared.target_velocity),
+                    "target_slot_mask": self._to_numpy(prepared.target_slot_mask),
+                    "clean_ball_uv": self._to_numpy(batch["clean_ball_uv"]),
+                    "clean_ball_vis": self._to_numpy(batch["clean_ball_vis"]),
+                    "candidate_gt_index": self._to_numpy(batch["candidate_gt_index"]),
+                }
+            )
         if prediction.reference_metadata is not None:
             metadata_payload = prediction.reference_metadata.prediction_payload(
                 max_views=int(self.config.data.num_views_range[1]),
             )
             payload.update(
-                {
-                    key: self._to_numpy(value)
-                    for key, value in metadata_payload.items()
-                }
+                {key: self._to_numpy(value) for key, value in metadata_payload.items()}
             )
         return payload
