@@ -328,13 +328,13 @@ def _uv_boundary_profile(
     profile: str,
 ) -> tuple[dict[str, Tensor], object]:
     if profile == "tracking":
-        adapter = _tracking_adapter()
-        return _tracking_batch(), adapter.build_call
-    adapter = _standard_adapter()
+        tracking_adapter = _tracking_adapter()
+        return _tracking_batch(), tracking_adapter.build_call
+    standard_adapter = _standard_adapter()
     batch = _canonical_batch()
     if profile == "canonical":
-        return batch, adapter.prepare_training_batch
-    return batch, adapter.build_call
+        return batch, standard_adapter.prepare_training_batch
+    return batch, standard_adapter.build_call
 
 
 @pytest.mark.parametrize("profile", ["ordinary", "canonical", "tracking"])
@@ -366,8 +366,40 @@ def test_invisible_uv_still_requires_finite_values(
         boundary(batch)
 
 
+@pytest.mark.parametrize("profile", ["ordinary", "canonical"])
+def test_standard_boundaries_accept_legacy_float_binary_visibility(
+    profile: str,
+) -> None:
+    batch, boundary = _uv_boundary_profile(profile)
+    batch["human_vis"] = batch["human_vis"].to(torch.float32)
+    batch["court_vis"] = batch["court_vis"].to(torch.float32)
+    batch["court_kp"][..., 0, :] = torch.tensor([-0.25, 1.25])
+    batch["court_vis"][..., 0] = 0.0
+    assert callable(boundary)
+
+    boundary(batch)
+
+
+@pytest.mark.parametrize("profile", ["ordinary", "canonical"])
+@pytest.mark.parametrize("value", [0.5, float("nan"), float("inf")])
+def test_standard_boundaries_reject_invalid_numeric_visibility(
+    profile: str,
+    value: float,
+) -> None:
+    batch, boundary = _uv_boundary_profile(profile)
+    batch["court_vis"] = batch["court_vis"].to(torch.float32)
+    batch["court_vis"][..., 0] = value
+    assert callable(boundary)
+
+    with pytest.raises(
+        ModelInputContractError,
+        match="court_kp visibility.*finite|court_kp visibility.*0/1",
+    ):
+        boundary(batch)
+
+
 @pytest.mark.parametrize("profile", ["ordinary", "canonical", "tracking"])
-@pytest.mark.parametrize("mutation", ["shape", "dtype", "device"])
+@pytest.mark.parametrize("mutation", ["shape", "device"])
 def test_visibility_mask_contract_is_fail_closed(
     profile: str,
     mutation: str,
@@ -376,9 +408,6 @@ def test_visibility_mask_contract_is_fail_closed(
     if mutation == "shape":
         batch["court_vis"] = batch["court_vis"][:, :1]
         message = "court_vis must match court_kp|court_vis.*axis"
-    elif mutation == "dtype":
-        batch["court_vis"] = batch["court_vis"].to(torch.float32)
-        message = "torch.bool"
     else:
         batch["court_vis"] = batch["court_vis"].to("meta")
         message = "share the UV tensor device"

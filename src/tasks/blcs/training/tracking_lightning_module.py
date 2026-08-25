@@ -170,7 +170,8 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
     def _test_predictions_dir(self) -> Path:
         output_dir = getattr(self, "_counterfactual_prediction_dir", None)
         if output_dir is None:
-            return cast("Path", super()._test_predictions_dir())
+            base_output_dir: Path = super()._test_predictions_dir()
+            return base_output_dir
         if not isinstance(output_dir, Path):
             raise TypeError("BLCS counterfactual prediction output is invalid.")
         return output_dir

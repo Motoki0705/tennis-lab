@@ -1,0 +1,13 @@
+{
+  "physical_restored_position_consistency_error_m": 3.05808579234061,
+  "reference_target_opposite_side_position_error_x_m": 2.5352466106414795,
+  "reference_target_opposite_side_position_error_y_m": 5.1263427734375,
+  "reference_target_opposite_side_position_error_z_m": 0.9351840615272522,
+  "reference_target_opposite_side_reference_index_0_position_error_m": 6.312042236328125,
+  "reference_target_opposite_side_y_sign_accuracy": 0.7667710781097412,
+  "reference_target_same_side_position_error_x_m": 2.47200083732605,
+  "reference_target_same_side_position_error_y_m": 5.097867965698242,
+  "reference_target_same_side_position_error_z_m": 0.9445532560348511,
+  "reference_target_same_side_reference_index_2_position_error_m": 6.2679548263549805,
+  "reference_target_same_side_y_sign_accuracy": 0.7531330585479736
+}

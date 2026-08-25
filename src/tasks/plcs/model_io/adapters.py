@@ -172,15 +172,12 @@ def _normalized_uv(name: str, tensor: Tensor, visibility: Tensor) -> None:
         raise ModelInputContractError(
             f"{name} visibility must match {name} without its UV axis."
         )
-    if visibility.dtype != torch.bool:
-        raise ModelInputContractError(
-            f"{name} visibility must use torch.bool dtype."
-        )
     if visibility.device != tensor.device:
         raise ModelInputContractError(
             f"{name} visibility must share the UV tensor device."
         )
-    visible_uv = tensor[visibility]
+    _binary_mask(f"{name} visibility", visibility)
+    visible_uv = tensor[visibility.to(dtype=torch.bool)]
     if visible_uv.numel() and (
         bool((visible_uv < 0).any().item())
         or bool((visible_uv > 1).any().item())
@@ -384,9 +381,7 @@ class PLCSModelIOAdapter:
                 )
         _normalized_uv("human_kp", human_kp, human_vis)
         _normalized_uv("court_kp", court_kp, court_vis)
-        _binary_mask("human_vis", human_vis)
         _binary_mask("padding_mask", padding_mask)
-        _binary_mask("court_vis", court_vis)
         return human_kp, court_kp, human_vis, padding_mask, court_vis
 
     def build_call(self, batch: Mapping[str, object]) -> ModelCall:
@@ -606,9 +601,7 @@ class PLCSModelIOAdapter:
             raise ModelInputContractError("padding_mask must have shape (B,V,T).")
         _normalized_uv("human_kp", human_kp, batch["human_vis"])
         _normalized_uv("court_kp", court_kp, batch["court_vis"])
-        _binary_mask("human_vis", batch["human_vis"])
         _binary_mask("padding_mask", batch["padding_mask"])
-        _binary_mask("court_vis", batch["court_vis"])
 
     def _prepare_reprojection_target(
         self,
@@ -1105,8 +1098,6 @@ class PLCSTrackQueryIOAdapter:
             raise ModelInputContractError("padding_mask must have shape (B,V,T).")
         _normalized_uv("human_kp", human_kp, human_vis)
         _normalized_uv("court_kp", court_kp, court_vis)
-        _binary_mask("human_vis", human_vis)
-        _binary_mask("court_vis", court_vis)
         _binary_mask("padding_mask", padding_mask)
         return ModelCall(
             kwargs={
