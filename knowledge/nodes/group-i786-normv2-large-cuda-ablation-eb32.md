@@ -32,3 +32,7 @@ normalization v2、T=128、V=4、seed 42、bf16 mixed、hidden 512、12 stages�
 | E | shared | layer end | after spatial、queryのみ | 83.5M | 4.3063m | 0.9712 | 21.12 | 4.51 / 5.70 |
 
 単一の総合勝者はなく、positionはA、identity continuityはB、presence/lifecycle timingはDが最良だった。同一FFN内のA/CおよびB/D比較では、layer-end mHCはpresence/lifecycleとpeak memoryに有利だがpositionには不利だった。D/E比較では、spatial後のquery-only FFNはパラメータを45.1%、peak memoryを15.5%増やし、ID switchesを`1.52`減らした一方、position・presence・birth/death timingを改善しなかった。次はA/CとB/Dを複数seedで再現確認し、query-only FFNを継続評価する場合に限りD/Eのmulti-seed比較を行う。主目的をpositionに置く場合はA、memory/lifecycleを重視する場合はDをbaselineにする。
+
+### 現行mainとの互換性注記
+
+旧v2と現行mainのXYZ scaleはいずれも`(11.885, 11.885, 11.885)`であり、物理metric変換は比較可能である。ただし本groupのrunは旧versioned-v2 runtimeで、tracking Smooth-L1/Hungarian betaは旧`1/11.885`、現行mainはdefault`1.0`で、artifact metadata/schemaも異なる。したがって、ここに記録した数値は歴史的結果であり、現行mainの再現結果ではない。
