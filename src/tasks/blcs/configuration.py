@@ -331,6 +331,7 @@ class TrackQueryAblationModelConfig:
     invisible_init_std: float
     ffn_mode: Literal["per_attention", "shared"]
     mhc_writeback: Literal["after_object_temporal", "layer_end"]
+    query_ffn_after_spatial: bool
     mhc: TrackQueryMHCConfig
     cswa: TrackQueryCSWAConfig
 
@@ -718,7 +719,11 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             "cswa",
         }
         if is_ablation:
-            base_keys |= {"ffn_mode", "mhc_writeback"}
+            base_keys |= {
+                "ffn_mode",
+                "mhc_writeback",
+                "query_ffn_after_spatial",
+            }
         _exact(model, base_keys, path="model")
         _validate_types(
             model,
@@ -742,6 +747,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 {
                     "ffn_mode": str,
                     "mhc_writeback": str,
+                    "query_ffn_after_spatial": bool,
                 },
                 path="model",
             )
@@ -756,6 +762,14 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 raise SemanticConfigurationError(
                     "model.mhc_writeback must be 'after_object_temporal' or "
                     "'layer_end'."
+                )
+            if model["query_ffn_after_spatial"] and (
+                model["ffn_mode"] != "shared"
+                or model["mhc_writeback"] != "layer_end"
+            ):
+                raise SemanticConfigurationError(
+                    "model.query_ffn_after_spatial=true requires "
+                    "ffn_mode='shared' and mhc_writeback='layer_end'."
                 )
         raw_mhc = as_config_mapping(model["mhc"], path="model.mhc")
         mhc_keys = {
@@ -843,6 +857,9 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 mhc_writeback=cast(
                     "Literal['after_object_temporal', 'layer_end']",
                     model["mhc_writeback"],
+                ),
+                query_ffn_after_spatial=cast(
+                    "bool", model["query_ffn_after_spatial"]
                 ),
                 mhc=mhc,
                 cswa=cswa,

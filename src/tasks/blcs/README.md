@@ -76,11 +76,11 @@ tracking modelの観測幅は常に `P=Q=model.num_queries` です。公開入�
 
 `ball_vis`は観測tokenとlearned invisible tokenの選択だけに使います。非padding位置では`ball_vis=False`のQ tokenもattentionへ参加します。各stageは `mHC object temporal -> global spatial(Q+VQ) -> query temporal` の順で、temporal modeはconstructor時に `CSWA, CSWA, CSWA, Global` のcycleへ固定されます。nested `model.mhc` / `model.cswa` configはunknown/missing/invalid値をrejectし、`model.cswa.backend=cuda`はextensionが利用不能ならreferenceへfallbackせずconstruction時に失敗します。
 
-`model=track_query_ablation_{a,b,c,d}`は新しいablation architectureを選びます。A/CはAttentionごとに独立SwiGLUを3回、B/Dは全Attention後にstage共有SwiGLUを1回適用します。A/Bはobject temporal直後にmHCを書き戻してspatial幅を`Q+V×P`にし、C/Dはstage末尾まで圧縮streamを保持して`Q+V`にします。2軸は各configで必須であり、既存`track_query` checkpointとの相互loadはstrict errorです。
+`model=track_query_ablation_{a,b,c,d,e}`は新しいablation architectureを選びます。A/CはAttentionごとに独立SwiGLUを3回、B/D/Eは全Attention後にstage共有SwiGLUを1回適用します。A/Bはobject temporal直後にmHCを書き戻してspatial幅を`Q+V×P`にし、C/D/Eはstage末尾まで圧縮streamを保持して`Q+V`にします。EはDへ、spatial attention後・query temporal前のquery tokenだけに作用する独立pre-norm SwiGLU residualを追加します。object tokenはこの追加FFNを通りません。既存`track_query` checkpoint、および追加parameterを持たないDとEの相互loadはstrict errorです。
 
 出力契約は従来どおり `position (B,T,Q,3)` と `presence_logits (B,T,Q)` です。教師は `target_position (B,T,Q,3)`、`target_presence (B,T,Q)`、`target_instance_id (B,T,Q)` で、inactive IDは`-1`です。旧track-query checkpointはarchitectureが異なるためstrict load errorとなり、自動key migrationやmissing parameter補完は行いません。推論のstrict adapterはexact Qを要求し、`BLCSTrackingPredictor.predict()`だけが`P<Q`入力をzero/invisible tokenでQへpadします。`P>Q`はrejectします。
 
-14 court UVはannotation schemaのkeypoint ID順を維持します。固定linear融合は`court_vis`で不可視点を0化し、Q順の各ball UVと連結して共有`CourtBallGroupEmbedding`により1 query = 1 tokenへ写像します。下流の空間self-attention入力は `(B*T, Q + V*Q, D)` です。旧`observation_fusion`、`point_fusion`、`mask_invisible_observations`設定は受理しません。
+14 court UVはannotation schemaのkeypoint ID順を維持します。固定linear融合は`court_vis`で不可視点を0化し、Q順の各ball UVと連結して共有`CourtBallGroupEmbedding`により1 query = 1 tokenへ写像します。下流の空間self-attention入力はearly mHC writebackで`(B*T, Q + V*Q, D)`、layer-end writebackで`(B*T, Q + V, D)`です。旧`observation_fusion`、`point_fusion`、`mask_invisible_observations`設定は受理しません。
 
 disk schemaもruntimeと同じ略称に固定し、camera arrayは`cam_{i}_ball_vis.npy`と`cam_{i}_court_kp_vis.npy`を使用します。旧`*_visible.npy`名へのalias/fallbackはありません。single / multiview / axial / track-queryの全modelは公開入力を`ball_uv`、`ball_vis`、`court_kp`、`court_vis`、`padding_mask`の5 tensorに統一し、`padding_mask=True`だけをpadding極性として使います。内部の`state_valid=True`と`attention_keep_mask=True`はmodel内でのみ導出します。
 
@@ -94,9 +94,9 @@ multi-object generatorは1024-frame global timelineに3〜10個のsource rally s
 # 事前生成データで学習
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking
 
-# 4条件の例（a / b / c / dを明示して選択）
+# 5条件の例（a / b / c / d / eを明示して選択）
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking \
-  model=track_query_ablation_d
+  model=track_query_ablation_e
 
 # trainだけon-the-fly chunk生成（val/testは上記の固定データ）
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking_chunked

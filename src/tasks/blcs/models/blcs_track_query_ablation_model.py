@@ -49,6 +49,7 @@ class BLCSTrackQueryAblationModel(nn.Module):
         self.num_stages = int(config.num_stages)
         self.ffn_mode = config.ffn_mode
         self.mhc_writeback = config.mhc_writeback
+        self.query_ffn_after_spatial = config.query_ffn_after_spatial
         self.role_rope_scale = int(config.role_rope_enabled)
         # A persistent architecture marker makes baseline/ablation strict loads
         # fail in both directions without runtime key migration.
@@ -219,6 +220,7 @@ class BLCSTrackQueryAblationModel(nn.Module):
             num_queries=self.num_queries,
             ffn_mode=config.ffn_mode,
             mhc_writeback=config.mhc_writeback,
+            query_ffn_after_spatial=config.query_ffn_after_spatial,
         )
 
     @staticmethod

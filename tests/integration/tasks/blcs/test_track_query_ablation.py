@@ -24,6 +24,7 @@ from src.utils.models.components.fixed_query_track_ablation_stage import (
 def _config(
     ffn_mode: FFNMode,
     mhc_writeback: MHCWriteback,
+    query_ffn_after_spatial: bool,
 ) -> TrackQueryAblationModelConfig:
     parsed = parse_model_config(
         {
@@ -40,6 +41,7 @@ def _config(
                 "invisible_init_std": 0.02,
                 "ffn_mode": ffn_mode,
                 "mhc_writeback": mhc_writeback,
+                "query_ffn_after_spatial": query_ffn_after_spatial,
                 "mhc": {
                     "coefficient_dim": 8,
                     "sinkhorn_iters": 5,
@@ -60,21 +62,23 @@ def _config(
 
 
 @pytest.mark.parametrize(
-    ("ffn_mode", "mhc_writeback"),
+    ("ffn_mode", "mhc_writeback", "query_ffn_after_spatial"),
     [
-        ("per_attention", "after_object_temporal"),
-        ("shared", "after_object_temporal"),
-        ("per_attention", "layer_end"),
-        ("shared", "layer_end"),
+        ("per_attention", "after_object_temporal", False),
+        ("shared", "after_object_temporal", False),
+        ("per_attention", "layer_end", False),
+        ("shared", "layer_end", False),
+        ("shared", "layer_end", True),
     ],
 )
 def test_cpu_forward_backward_has_finite_outputs_and_gradients(
     ffn_mode: FFNMode,
     mhc_writeback: MHCWriteback,
+    query_ffn_after_spatial: bool,
 ) -> None:
     torch.manual_seed(777)
     model = BLCSTrackQueryAblationModel(
-        _config(ffn_mode, mhc_writeback)
+        _config(ffn_mode, mhc_writeback, query_ffn_after_spatial)
     ).train()
     ball_uv = torch.rand(1, 2, 2, 4, 2, requires_grad=True)
     court_kp = torch.rand(1, 2, 2, 14, 2, requires_grad=True)

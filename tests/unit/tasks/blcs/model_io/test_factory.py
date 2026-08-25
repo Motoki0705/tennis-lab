@@ -30,6 +30,7 @@ _SMALL = (
     "model.num_stages=4",
     "model.mhc.coefficient_dim=8",
     "model.mhc.sinkhorn_iters=5",
+    "model.cswa.backend=reference",
     "model.cswa.compression_ratio=2",
     "model.cswa.window_radius=1",
 )
@@ -47,7 +48,7 @@ def test_ablation_adapter_is_exported_from_canonical_model_io_api() -> None:
     assert PublicTrackQueryAblationModelIOAdapter is TrackQueryAblationModelIOAdapter
 
 
-@pytest.mark.parametrize("condition", ["a", "b", "c", "d"])
+@pytest.mark.parametrize("condition", ["a", "b", "c", "d", "e"])
 def test_factory_binds_every_ablation_config_to_exact_model_and_adapter(
     condition: str,
 ) -> None:
