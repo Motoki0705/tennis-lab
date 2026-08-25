@@ -21,6 +21,7 @@ from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import
 )
 from src.utils.projection.camera_projector import CameraConfig, CameraProjector
 from src.utils.schema.court import NET_POST_OFFSET_X, CourtConfig
+from src.utils.schema.court_normalization import normalize_court_position
 
 _AUGMENTATION_CONFIG = (
     Path(__file__).resolve().parents[5]
@@ -145,8 +146,9 @@ class _PhysicalSceneStub:
             winner_side=None,
             shots=[],
             ball_pos_world=trajectory,
-            ball_pos_norm=trajectory / 10.0,
+            ball_pos_norm=normalize_court_position(trajectory),
             ball_vel_world=torch.zeros_like(trajectory),
+            ball_vel_norm=torch.zeros_like(trajectory),
             cameras=cameras,
             num_cameras_sampled=len(cameras),
             fps_out=30,
@@ -167,8 +169,7 @@ class _RejectOncePhysicalSceneStub(_PhysicalSceneStub):
         self.attempts[scene_id] = attempt
         if attempt == 1:
             raise RuntimeError(
-                f"{FULL_PHYSICS_REJECTION_PREFIX} within the requested-side "
-                "tolerance."
+                f"{FULL_PHYSICS_REJECTION_PREFIX} within the requested-side tolerance."
             )
         return super().generate_scene(from_cell, side, scene_id)
 
@@ -305,14 +306,10 @@ def test_multi_ball_resamples_only_rejected_physics_proposals(
 
 
 def test_multi_ball_physics_proposal_exhaustion_is_bounded() -> None:
-    source = _AlwaysRejectPhysicalSceneStub(
-        f"{FULL_PHYSICS_REJECTION_PREFIX}."
-    )
+    source = _AlwaysRejectPhysicalSceneStub(f"{FULL_PHYSICS_REJECTION_PREFIX}.")
 
     with pytest.raises(RuntimeError, match="exhausted 2 bounded attempts"):
-        _multi_ball_generator(source, maximum_attempts=2).generate_scene(
-            "scene_000000"
-        )
+        _multi_ball_generator(source, maximum_attempts=2).generate_scene("scene_000000")
 
     assert source.attempts == 2
 

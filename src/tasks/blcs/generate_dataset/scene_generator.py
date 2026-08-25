@@ -38,6 +38,7 @@ from src.utils.projection.camera_projector import (
     CameraView,
 )
 from src.utils.schema.court import CourtConfig
+from src.utils.schema.court_normalization import normalize_court_velocity
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +80,7 @@ class BLCSSceneData:
     ball_pos_world: Tensor  # [T, 3] world coordinates (meters)
     ball_pos_norm: Tensor  # [T, 3] normalized coordinates
     ball_vel_world: Tensor  # [T, 3] velocities (m/s)
+    ball_vel_norm: Tensor  # [T, 3] velocities divided by fixed scale
 
     cameras: list[CameraData]
     num_cameras_sampled: int  # Total cameras tried (before filtering)
@@ -262,6 +264,7 @@ class BLCSSceneGenerator:
             ball_pos_world=rally_result.trajectory,
             ball_pos_norm=ball_pos_norm,
             ball_vel_world=rally_result.velocities,
+            ball_vel_norm=normalize_court_velocity(rally_result.velocities),
             cameras=valid_cameras,
             num_cameras_sampled=num_cameras_sampled,
             fps_out=rally_result.fps_out,

@@ -91,9 +91,7 @@ class MultiBallSceneGenerator:
                 "maximum_physics_attempts_per_object must be a positive integer."
             )
         self.scene_generator = scene_generator
-        self.maximum_physics_attempts_per_object = (
-            maximum_physics_attempts_per_object
-        )
+        self.maximum_physics_attempts_per_object = maximum_physics_attempts_per_object
         self.timeline = (
             timeline
             if isinstance(timeline, TimelineConfig)
@@ -161,6 +159,9 @@ class MultiBallSceneGenerator:
         ball_vel_world = composition.compose_tensor(
             [scene.ball_vel_world for scene in objects]
         )
+        ball_vel_norm = composition.compose_tensor(
+            [scene.ball_vel_norm for scene in objects]
+        )
         ball_present = torch.from_numpy(composition.present).to(
             device=ball_pos_world.device
         )
@@ -210,6 +211,7 @@ class MultiBallSceneGenerator:
         base.ball_pos_world = ball_pos_world
         base.ball_pos_norm = ball_pos_norm
         base.ball_vel_world = ball_vel_world
+        base.ball_vel_norm = ball_vel_norm
         base.cameras = cameras
         base.ball_present = ball_present
         base.num_balls = num_balls

@@ -1,8 +1,7 @@
 position_weight: 1.0
-# The court-plane coordinates jointly carry localization/association identity.
-# Keep z lower so rare high lobs cannot dominate loss or Hungarian assignment.
-# The implementation normalizes by the weight sum.
-position_axis_weights: [1.0, 1.0, 0.5]
+# Explicit task-semantic weights remain configurable, but the shipped position
+# loss and Hungarian matching are uniform across the isotropically scaled axes.
+position_axis_weights: [1.0, 1.0, 1.0]
 presence_weight: 1.0
 presence_inactive_weight: 0.25
 presence_active_weight: 1.0
@@ -10,6 +9,9 @@ presence_transition_weight: 2.0
 transition_radius: 2
 smoothness_weight: 0.0
 gravity_weight: 0.0
-gravity_target: -0.01
+# Physical inputs used to derive -g * dt^2 / 11.885. The fixed normalization
+# contract and incompatibility policy are documented in src/utils/README.md.
+gravity_mps2: 9.81
+frame_dt_seconds: 0.03333333333333333
 match_position_weight: 1.0
 match_presence_weight: 0.5

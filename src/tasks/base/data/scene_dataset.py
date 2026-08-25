@@ -388,6 +388,9 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
                 lengths[key] = int(arr.shape[0])
         return lengths
 
+    def _validate_scene_metadata(self, meta: dict[str, Any], *, path: Path) -> None:
+        """Validate task-owned metadata before indexing or filtering a scene."""
+
     def _resolve_num_frames(
         self,
         *,
@@ -424,6 +427,8 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
         payload = load_scene_payload(path)
         raw_meta = payload.get("meta", {})
         meta: dict[str, Any] = dict(raw_meta) if isinstance(raw_meta, dict) else {}
+
+        self._validate_scene_metadata(meta, path=path)
 
         num_frames = self._resolve_num_frames(path=path, meta=meta, payload=payload)
         try:

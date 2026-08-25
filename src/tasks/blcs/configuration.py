@@ -839,9 +839,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 dropout=float(model["dropout"]),
                 role_rope_enabled=bool(model["role_rope_enabled"]),
                 invisible_init_std=float(model["invisible_init_std"]),
-                ffn_mode=cast(
-                    "Literal['per_attention', 'shared']", model["ffn_mode"]
-                ),
+                ffn_mode=cast("Literal['per_attention', 'shared']", model["ffn_mode"]),
                 mhc_writeback=cast(
                     "Literal['after_object_temporal', 'layer_end']",
                     model["mhc_writeback"],
@@ -2268,7 +2266,8 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
                 "transition_radius",
                 "smoothness_weight",
                 "gravity_weight",
-                "gravity_target",
+                "gravity_mps2",
+                "frame_dt_seconds",
                 "match_position_weight",
                 "match_presence_weight",
             },
@@ -2286,7 +2285,8 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
                 "transition_radius": int,
                 "smoothness_weight": float,
                 "gravity_weight": float,
-                "gravity_target": float,
+                "gravity_mps2": float,
+                "frame_dt_seconds": float,
                 "match_position_weight": float,
                 "match_presence_weight": float,
             },
@@ -2324,7 +2324,11 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             raise SemanticConfigurationError(
                 "At least one tracking match cost weight must be positive."
             )
-        _finite(cast("float", loss["gravity_target"]), path="loss.gravity_target")
+        _positive(cast("float", loss["gravity_mps2"]), path="loss.gravity_mps2")
+        _positive(
+            cast("float", loss["frame_dt_seconds"]),
+            path="loss.frame_dt_seconds",
+        )
         TrackingMetricConfig.from_mapping(
             require_config_mapping(root, "tracking_metrics", path="configuration")
         )

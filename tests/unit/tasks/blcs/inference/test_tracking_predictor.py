@@ -87,6 +87,16 @@ def test_predictor_returns_cpu_query_presence_and_positions() -> None:
     assert result.presence_probability.device.type == "cpu"
     assert result.presence.device.type == "cpu"
 
+    physical = predictor.predict(
+        ball_uv=torch.zeros(*shape, 2),
+        ball_vis=torch.ones(*shape, dtype=torch.bool),
+        court_kp=torch.zeros(1, 2, 3, 14, 2),
+        court_vis=torch.ones(1, 2, 3, 14, dtype=torch.bool),
+        padding_mask=torch.zeros(1, 2, 3, dtype=torch.bool),
+        denormalize=True,
+    )
+    torch.testing.assert_close(physical.position, torch.full((1, 3, 2, 3), 11.885))
+
 
 def test_predictor_is_the_only_boundary_that_pads_short_candidates() -> None:
     binding = cast(
@@ -101,17 +111,17 @@ def test_predictor_is_the_only_boundary_that_pads_short_candidates() -> None:
         ),
     )
     predictor = BLCSTrackingPredictor(binding, torch.device("cpu"))
-    common = {
-        "court_kp": torch.zeros(1, 1, 3, 14, 2),
-        "court_vis": torch.ones(1, 1, 3, 14, dtype=torch.bool),
-        "padding_mask": torch.zeros(1, 1, 3, dtype=torch.bool),
-        "denormalize": False,
-    }
+    court_kp = torch.zeros(1, 1, 3, 14, 2)
+    court_vis = torch.ones(1, 1, 3, 14, dtype=torch.bool)
+    padding_mask = torch.zeros(1, 1, 3, dtype=torch.bool)
 
     result = predictor.predict(
         ball_uv=torch.zeros(1, 1, 3, 1, 2),
         ball_vis=torch.ones(1, 1, 3, 1, dtype=torch.bool),
-        **common,
+        court_kp=court_kp,
+        court_vis=court_vis,
+        padding_mask=padding_mask,
+        denormalize=False,
     )
     assert result.position.shape == (1, 3, 2, 3)
 
@@ -119,7 +129,10 @@ def test_predictor_is_the_only_boundary_that_pads_short_candidates() -> None:
         predictor.predict(
             ball_uv=torch.zeros(1, 1, 3, 3, 2),
             ball_vis=torch.ones(1, 1, 3, 3, dtype=torch.bool),
-            **common,
+            court_kp=court_kp,
+            court_vis=court_vis,
+            padding_mask=padding_mask,
+            denormalize=False,
         )
 
 

@@ -7,7 +7,7 @@ for metadata, ensuring type safety throughout the PLCS pipeline.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TypedDict
+from typing import Any, TypedDict
 
 import torch
 
@@ -52,6 +52,7 @@ class PLCSSceneMeta:
     initial_yaw: float  # initial yaw angle in radians
     num_cameras_sampled: int  # number of cameras generated for this scene
     num_cameras: int  # number of cameras stored for this scene
+    court_coordinate_normalization: dict[str, Any]
     track_instances: list[dict]
 
     def to_dict(self) -> dict:
@@ -67,6 +68,7 @@ class PLCSSceneMeta:
             "initial_yaw": self.initial_yaw,
             "num_cameras_sampled": self.num_cameras_sampled,
             "num_cameras": self.num_cameras,
+            "court_coordinate_normalization": self.court_coordinate_normalization,
             "track_instances": self.track_instances,
         }
 
@@ -84,5 +86,6 @@ class PLCSSceneMeta:
             initial_yaw=data["initial_yaw"],
             num_cameras_sampled=data["num_cameras_sampled"],
             num_cameras=data["num_cameras"],
+            court_coordinate_normalization=data["court_coordinate_normalization"],
             track_instances=data["track_instances"],
         )

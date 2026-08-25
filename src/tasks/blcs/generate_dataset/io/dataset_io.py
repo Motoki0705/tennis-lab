@@ -24,6 +24,10 @@ from src.tasks.blcs.data.types import (
     BLCSSceneMeta,
 )
 from src.tasks.blcs.generate_dataset.scene_generator import BLCSSceneData
+from src.utils.schema.court_normalization import (
+    court_coordinate_normalization_metadata,
+    validate_court_coordinate_normalization,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +54,9 @@ class BLCSDatasetWriter(BaseDatasetWriter):
             "num_frames": int(scene.ball_pos_world.shape[0]),
             "num_cameras_sampled": scene.num_cameras_sampled,
             "num_cameras": len(scene.cameras),
+            "court_coordinate_normalization": (
+                court_coordinate_normalization_metadata()
+            ),
             "physics_config": scene.physics_config_dict,
             "court_config": scene.court_config_dict,
             "track_instances": scene.track_instances,
@@ -99,6 +106,7 @@ class BLCSDatasetWriter(BaseDatasetWriter):
             "ball_pos_world": scene.ball_pos_world.numpy(),
             "ball_pos_norm": scene.ball_pos_norm.numpy(),
             "ball_vel_world": scene.ball_vel_world.numpy(),
+            "ball_vel_norm": scene.ball_vel_norm.numpy(),
         }
         if scene.ball_present is not None:
             arrays["ball_present"] = scene.ball_present.cpu().numpy()
@@ -146,6 +154,7 @@ def load_scene(filepath: str | Path) -> dict:
 
     with open(scene_dir / "meta.json") as f:
         scene_meta = json.load(f)
+    validate_court_coordinate_normalization(scene_meta, artifact=f"Scene {scene_dir}")
     with open(scene_dir / "scalars.json") as f:
         scalars = json.load(f)
 
@@ -177,6 +186,7 @@ def load_scene(filepath: str | Path) -> dict:
         "ball_pos_world": np.load(scene_dir / "ball_pos_world.npy"),
         "ball_pos_norm": np.load(scene_dir / "ball_pos_norm.npy"),
         "ball_vel_world": np.load(scene_dir / "ball_vel_world.npy"),
+        "ball_vel_norm": np.load(scene_dir / "ball_vel_norm.npy"),
         "num_cameras": num_cameras,
         "cameras": cameras,
     }
