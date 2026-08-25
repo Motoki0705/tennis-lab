@@ -1,6 +1,7 @@
 """Logical-reader tests for compact PLCS storage."""
 
 import json
+from copy import deepcopy
 from pathlib import Path
 
 import numpy as np
@@ -13,6 +14,7 @@ from src.synthetic_data_generation.dataset.plcs.coordinates import (
 )
 from src.synthetic_data_generation.dataset.plcs.validation import (
     PLCSCompactDatasetReader,
+    validate_plcs_dataset,
 )
 from src.synthetic_data_generation.dataset.runtime import (
     BACKGROUND_STORE_SCHEMA,
@@ -22,6 +24,72 @@ from src.synthetic_data_generation.dataset.runtime import (
     RenderSampleKey,
 )
 from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
+from src.utils.schema.court_normalization import (
+    court_coordinate_normalization_metadata,
+)
+
+
+def _write_contract_gate_manifest(root: Path, *, mutation: str) -> None:
+    for directory in ("backgrounds", "scenes", "diagnostics"):
+        (root / directory).mkdir(parents=True, exist_ok=True)
+    contract: object = court_coordinate_normalization_metadata()
+    if mutation == "malformed":
+        contract = "isotropic_half_length"
+    elif mutation in {"unknown", "mismatched"}:
+        assert isinstance(contract, dict)
+        contract = deepcopy(contract)
+        if mutation == "unknown":
+            contract["identity"] = "anisotropic"
+        else:
+            contract["scale_xyz_m"] = [5.485, 11.885, 1.07]
+    metadata = {
+        "coordinate_contract": PLCS_COORDINATE_CONTRACT.to_dict(),
+        "court_coordinate_normalization": contract,
+        "seed": 0,
+        "logical_scene_count": 1,
+        "aggregate_global_frame_count": 1,
+        "aggregate_source_frame_count": 1,
+        "required_motion_categories": ["running"],
+        "accepted_court_instance_ids": ["court-001"],
+        "logical_scenes": [],
+    }
+    if mutation == "missing":
+        del metadata["court_coordinate_normalization"]
+    manifest = {
+        "schema": PLCS_DATASET_SCHEMA,
+        "scene_id": "B00",
+        "domain": "plcs",
+        "frame_inventory": {
+            "source": 1,
+            "planned": 1,
+            "rendered": 1,
+            "labelled": 1,
+            "first_frame": 0,
+            "last_frame": 0,
+        },
+        "target_courts": [],
+        "metadata": metadata,
+        "diagnostics": [],
+        "storage": {},
+    }
+    (root / "dataset.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+
+@pytest.mark.parametrize("surface", ["reader", "validator"])
+@pytest.mark.parametrize("mutation", ["missing", "malformed", "unknown", "mismatched"])
+def test_compact_plcs_load_surfaces_reject_invalid_normalization_before_arrays(
+    tmp_path: Path,
+    surface: str,
+    mutation: str,
+) -> None:
+    root = tmp_path / ".transactions" / "plcs_dataset" / "snapshot"
+    _write_contract_gate_manifest(root, mutation=mutation)
+
+    with pytest.raises(ValueError, match="incompatible|unknown|mismatched"):
+        if surface == "reader":
+            PLCSCompactDatasetReader(root)
+        else:
+            validate_plcs_dataset(root)
 
 
 def test_logical_reader_reconstructs_shared_background_plus_delta(
@@ -116,6 +184,9 @@ def test_logical_reader_reconstructs_shared_background_plus_delta(
         "target_courts": [],
         "metadata": {
             "coordinate_contract": PLCS_COORDINATE_CONTRACT.to_dict(),
+            "court_coordinate_normalization": (
+                court_coordinate_normalization_metadata()
+            ),
             "logical_scenes": [
                 {
                     "scene_id": "B00",

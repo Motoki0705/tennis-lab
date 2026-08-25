@@ -13,6 +13,10 @@ from typing import Any
 
 import numpy as np
 
+from src.utils.schema.court_normalization import (
+    validate_court_coordinate_normalization,
+)
+
 
 class AttrDict(dict[str, Any]):
     """Dict with attribute-style access for convenience."""
@@ -41,6 +45,7 @@ def load_scene(filepath: str | Path) -> dict[str, Any]:
 
     with open(scene_dir / "meta.json") as f:
         meta = json.load(f)
+    validate_court_coordinate_normalization(meta, artifact=f"Scene {scene_dir}")
     with open(scene_dir / "scalars.json") as f:
         scalars = json.load(f)
 

@@ -26,6 +26,9 @@ from src.tasks.plcs.configuration import PLCSAnalysisRuntimeConfig
 from src.utils.hydra import hydra_main
 from src.utils.io import load_json, save_json
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+from src.utils.schema.court_normalization import (
+    validate_court_coordinate_normalization,
+)
 
 
 @dataclass
@@ -202,6 +205,10 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
             meta = load_json(meta_path)
             if not isinstance(meta, dict):
                 raise ValueError(f"Invalid meta in {scene_path}")
+            validate_court_coordinate_normalization(
+                meta,
+                artifact=f"PLCS distribution scene {scene_path}",
+            )
 
             scalars_path = scene_path / "scalars.json"
             scalars: dict[str, Any] = {}

@@ -59,7 +59,7 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
             raise RuntimeError("BLCS tracking dataset lost its fixed query width.")
         num_queries = self.num_queries
         position = torch.from_numpy(scene.get_array("ball_pos_norm")).float()
-        velocity = torch.from_numpy(scene.get_array("ball_vel_world")).float()
+        velocity = torch.from_numpy(scene.get_array("ball_vel_norm")).float()
         if position.ndim != 3 or velocity.shape != position.shape:
             raise ValueError(
                 "Tracking scenes require explicit (T,P,3) position/velocity arrays."

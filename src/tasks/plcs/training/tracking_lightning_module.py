@@ -19,6 +19,10 @@ from src.tasks.plcs.model_io import (
 )
 from src.tasks.plcs.training.tracking_losses import PLCSTrackingLoss
 from src.tasks.plcs.training.tracking_metrics import plcs_tracking_metrics
+from src.utils.schema.court_normalization import (
+    add_court_coordinate_normalization,
+    validate_court_coordinate_normalization,
+)
 
 
 class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Tensor]]):
@@ -72,6 +76,16 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Tensor]]):
             losses=losses,
             metrics=metrics,
             prediction=prediction,
+        )
+
+    def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        add_court_coordinate_normalization(
+            checkpoint, artifact="PLCS tracking checkpoint"
+        )
+
+    def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        validate_court_coordinate_normalization(
+            checkpoint, artifact="PLCS tracking checkpoint"
         )
 
     def tracking_prediction_result(

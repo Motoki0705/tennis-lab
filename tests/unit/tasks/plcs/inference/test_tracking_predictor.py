@@ -73,6 +73,9 @@ def test_predictor_returns_cpu_lifecycle_and_yaw_outputs() -> None:
     )
 
     assert result["position_meters"].shape == (1, 3, 2, 3)
+    torch.testing.assert_close(
+        result["position_meters"], torch.full((1, 3, 2, 3), 11.885)
+    )
     assert result["presence"][..., 0].all()
     assert not result["presence"][..., 1].any()
     torch.testing.assert_close(
@@ -128,6 +131,15 @@ def test_checkpoint_restoration_retains_exact_ablation_model_adapter_pair(
         "_load_single_lightning_module",
         classmethod(load_module),
     )
+    monkeypatch.setattr(
+        PLCSTrackingPredictor,
+        "_ensure_checkpoint",
+        staticmethod(lambda value, *, resolver: [checkpoint]),
+    )
+    monkeypatch.setattr(
+        "src.tasks.plcs.inference.tracking_predictor.load_and_validate_checkpoint",
+        lambda path: {},
+    )
 
     predictor = PLCSTrackingPredictor.load_from_checkpoint(
         checkpoint,
@@ -143,3 +155,33 @@ def test_checkpoint_restoration_retains_exact_ablation_model_adapter_pair(
     assert type(predictor.model) is PLCSTrackQueryAblationModel
     assert predictor.io_adapter is binding.adapter
     assert predictor.io_adapter.model_type is PLCSTrackQueryAblationModel
+
+
+def test_tracking_checkpoint_factory_rejects_mismatched_contract(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    checkpoint = tmp_path / "mismatched.ckpt"
+    torch.save(
+        {
+            "court_coordinate_normalization": {
+                "identity": "isotropic_half_length",
+                "scale_xyz_m": [5.485, 11.885, 1.07],
+                "position_unit": "m / scale_xyz_m",
+                "velocity_unit": "m/s / scale_xyz_m",
+            }
+        },
+        checkpoint,
+    )
+    monkeypatch.setattr(
+        PLCSTrackingPredictor,
+        "_ensure_checkpoint",
+        staticmethod(lambda value, *, resolver: [checkpoint]),
+    )
+
+    with pytest.raises(ValueError, match="mismatched"):
+        PLCSTrackingPredictor.load_from_checkpoint(
+            checkpoint,
+            resolver=cast("PathResolver", object()),
+            device="cpu",
+        )

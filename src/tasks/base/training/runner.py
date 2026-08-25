@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import os
 import types
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytorch_lightning as pl
 import torch
@@ -33,6 +33,7 @@ from src.tasks.base.training.qualitative_callback import QualitativeLoggingCallb
 from src.utils.configuration import PathResolver, PathRole
 from src.utils.device import select_accelerator
 from src.utils.paths import PROJECT_ROOT
+from src.utils.schema.court_normalization import load_and_validate_checkpoint
 
 
 class BaseTrainingRunner:
@@ -148,14 +149,16 @@ class BaseTrainingRunner:
         init_path = config.run.init_weights
         if init_path is None:
             return
-        # Trusted local checkpoint: Lightning ckpts carry non-tensor payloads,
-        # so weights_only=False is required.
-        checkpoint = torch.load(init_path, map_location="cpu", weights_only=False)
-        if not isinstance(checkpoint, dict) or "state_dict" not in checkpoint:
+        checkpoint = load_and_validate_checkpoint(init_path)
+        if "state_dict" not in checkpoint:
             raise ValueError(
                 f"init_weights checkpoint {init_path} has no required 'state_dict'."
             )
         state_dict = checkpoint["state_dict"]
+        if not isinstance(state_dict, Mapping):
+            raise TypeError(
+                f"init_weights checkpoint {init_path} 'state_dict' must be a mapping."
+            )
         result = lightning_module.load_state_dict(state_dict, strict=False)
         missing = list(result.missing_keys)
         unexpected = list(result.unexpected_keys)
@@ -187,9 +190,12 @@ class BaseTrainingRunner:
                 "training.compile.enabled=true requires a BaseLightningModule "
                 "with explicit compilation_targets()."
             )
-        return compile_modules(
-            lightning_module.compilation_targets(),
-            compile_config,
+        return cast(
+            tuple[str, ...],
+            compile_modules(
+                lightning_module.compilation_targets(),
+                compile_config,
+            ),
         )
 
     @contextmanager

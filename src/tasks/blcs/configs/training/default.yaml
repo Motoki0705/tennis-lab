@@ -50,8 +50,8 @@ gravity_beta: 5.0e-3         # Smooth-L1 knee for the gravity prior
 # the gravity term on z) and over-smooths axes with legitimate sharp motion.
 # e.g. [1, 1, 0] smooths only x/y depth-jitter and lets the gravity term own z.
 smoothness_axis_weights: null
-# gravity target = -g * (1/output_fps)^2 / COURT_COORD_SCALE_Z; g and output_fps
-# are read from the physics / rally config groups (see lightning_module).
+# The gravity target is derived from physical g, output-frame dt, and the sole
+# fixed scale documented in src/utils/README.md (see lightning_module).
 
 # ---- Callbacks (BaseTrainingRunner references) ----
 checkpoint:

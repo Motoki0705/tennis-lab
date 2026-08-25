@@ -15,6 +15,7 @@ from src.tasks.blcs.training.losses import (
     trajectory_position_loss,
 )
 from src.utils.schema.court import COURT_COORD_SCALE_Z
+from src.utils.schema.court_normalization import normalize_court_position
 
 
 class _StaticProjection(DifferentiableProjection):
@@ -90,8 +91,12 @@ def _loss_call(pred: torch.Tensor, target: torch.Tensor) -> dict[str, torch.Tens
         "mask": torch.ones(batch_size, frames, dtype=torch.bool),
         "target_uv": torch.zeros(batch_size, 1, frames, 2, dtype=pred.dtype),
         "target_vis": torch.zeros(batch_size, 1, frames, dtype=torch.bool),
-        "camera_R": torch.eye(3, dtype=pred.dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1),
-        "camera_C": torch.tensor([0.0, 0.0, -20.0], dtype=pred.dtype).view(1, 1, 3).expand(batch_size, -1, -1),
+        "camera_R": torch.eye(3, dtype=pred.dtype)
+        .view(1, 1, 3, 3)
+        .expand(batch_size, -1, -1, -1),
+        "camera_C": torch.tensor([0.0, 0.0, -20.0], dtype=pred.dtype)
+        .view(1, 1, 3)
+        .expand(batch_size, -1, -1),
         "camera_f": scalar,
         "camera_cx": scalar,
         "camera_cy": scalar,
@@ -143,9 +148,7 @@ def test_trajectory_position_loss_returns_zero_for_empty_mask() -> None:
 
 def test_reprojection_loss_reduces_only_explicitly_expanded_mask_entries() -> None:
     pred_uv = torch.zeros(1, 2, 2, 2)
-    target_uv = torch.tensor(
-        [[[[0.2, 0.4], [0.8, 0.6]], [[0.3, 0.7], [0.9, 0.5]]]]
-    )
+    target_uv = torch.tensor([[[[0.2, 0.4], [0.8, 0.6]], [[0.3, 0.7], [0.9, 0.5]]]])
     projector = _StaticProjection(
         pred_uv,
         torch.ones(1, 2, 2, dtype=torch.bool),
@@ -225,6 +228,19 @@ def test_blcs_loss_uses_axis_weights_for_position_term() -> None:
     assert losses["total"] == pytest.approx(expected)
 
 
+def test_default_position_loss_is_equal_for_same_physical_xyz_error() -> None:
+    loss_fn = _loss(position_axis_weights=None)
+    target = torch.zeros(1, 1, 3)
+    losses = []
+    for axis in range(3):
+        physical_error = torch.zeros(1, 1, 3)
+        physical_error[..., axis] = 0.25
+        pred = normalize_court_position(physical_error)
+        losses.append(loss_fn(**_loss_call(pred, target))["position"])
+
+    torch.testing.assert_close(torch.stack(losses), losses[0].expand(3))
+
+
 def test_zero_weight_physics_priors_are_off() -> None:
     loss_fn = _loss(
         position_weight=1.0,
@@ -263,17 +279,11 @@ def test_gravity_prior_prefers_ballistic_curvature() -> None:
 
 
 def test_physics_priors_contribute_to_total() -> None:
-    loss_fn = _loss(
-        position_weight=1.0, smoothness_weight=1.0, gravity_weight=0.5
-    )
+    loss_fn = _loss(position_weight=1.0, smoothness_weight=1.0, gravity_weight=0.5)
     pred = torch.randn(1, 30, 3)
     target = torch.randn(1, 30, 3)
     losses = loss_fn(**_loss_call(pred, target))
-    expected = (
-        losses["position"]
-        + losses["smoothness"]
-        + 0.5 * losses["gravity"]
-    )
+    expected = losses["position"] + losses["smoothness"] + 0.5 * losses["gravity"]
     assert losses["total"] == pytest.approx(expected.item(), rel=1e-5)
 
 
@@ -300,9 +310,8 @@ def test_smoothness_axis_weights_exclude_height_axis() -> None:
         smoothness_axis_weights=(1.0, 1.0, 0.0),
     )
     assert uniform(**_loss_call(traj, traj))["smoothness"] > 1e-3
-    assert (
-        zeroed_z(**_loss_call(traj, traj))["smoothness"].item()
-        == pytest.approx(0.0, abs=1e-8)
+    assert zeroed_z(**_loss_call(traj, traj))["smoothness"].item() == pytest.approx(
+        0.0, abs=1e-8
     )
 
 

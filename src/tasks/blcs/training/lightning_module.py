@@ -21,6 +21,10 @@ from src.tasks.blcs.model_io import (
 from src.tasks.blcs.models import build_blcs_discriminator
 from src.tasks.blcs.training.losses import BLCSLoss
 from src.tasks.blcs.training.metrics import BLCSMetrics
+from src.utils.schema.court_normalization import (
+    add_court_coordinate_normalization,
+    validate_court_coordinate_normalization,
+)
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -99,6 +103,12 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         """Delegate a validated model invocation to the bound adapter."""
         prediction: BLCSTrajectoryPrediction = self.model_io.run(batch)
         return prediction
+
+    def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        add_court_coordinate_normalization(checkpoint, artifact="BLCS checkpoint")
+
+    def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        validate_court_coordinate_normalization(checkpoint, artifact="BLCS checkpoint")
 
     def _compute_supervised_result(
         self,

@@ -33,6 +33,9 @@ from src.synthetic_data_generation.dataset.runtime import (
     ChunkReader,
     FinalDatasetAssembler,
 )
+from src.utils.schema.court_normalization import (
+    court_coordinate_normalization_metadata,
+)
 
 PLCS_DATASET_SCHEMA = "tennis_plcs_compact_dataset_v5"
 PLCS_FRAME_LABEL_SCHEMA = "tennis_plcs_frame_label_v3"
@@ -354,6 +357,9 @@ def assemble_plcs_dataset(
         target_courts=inventory.target_courts,
         metadata={
             "coordinate_contract": PLCS_COORDINATE_CONTRACT.to_dict(),
+            "court_coordinate_normalization": (
+                court_coordinate_normalization_metadata()
+            ),
             "seed": seed,
             "logical_scene_count": inventory.scene_count,
             "aggregate_global_frame_count": inventory.aggregate_global_frame_count,

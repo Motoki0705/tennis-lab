@@ -25,6 +25,10 @@ from src.tasks.plcs.models.discriminators import build_plcs_discriminator
 from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
 from src.tasks.plcs.training.mcmc import LangevinNoiseInjector, MCMCConfig
 from src.tasks.plcs.training.metrics import PLCSMetrics
+from src.utils.schema.court_normalization import (
+    add_court_coordinate_normalization,
+    validate_court_coordinate_normalization,
+)
 
 # Visualization imports are deferred to render_qualitative_samples to avoid
 # a circular import cycle (visualization.api.predict → inference.predictor →
@@ -103,6 +107,12 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         self.train_metrics = _build_metrics()
         self.val_metrics = _build_metrics()
         self.test_metrics = _build_metrics()
+
+    def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        add_court_coordinate_normalization(checkpoint, artifact="PLCS checkpoint")
+
+    def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        validate_court_coordinate_normalization(checkpoint, artifact="PLCS checkpoint")
 
     def _pose_sequence(self, position: Tensor, rotation: Tensor) -> Tensor:
         if position.ndim == 2:

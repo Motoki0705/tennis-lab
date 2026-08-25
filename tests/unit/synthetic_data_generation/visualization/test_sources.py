@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from pathlib import Path
 
 import numpy as np
@@ -11,6 +12,7 @@ from numpy.typing import NDArray
 
 import src.synthetic_data_generation.visualization.sources as sources_module
 from src.synthetic_data_generation.dataset.blcs.contracts import BLCSSampleRecord
+from src.synthetic_data_generation.dataset.plcs.assembler import PLCS_DATASET_SCHEMA
 from src.synthetic_data_generation.dataset.runtime import (
     ChunkWriter,
     ForegroundDelta,
@@ -21,6 +23,9 @@ from src.synthetic_data_generation.visualization.sources import (
     BLCSVisualizationSource,
     CourtVisualizationSource,
     PLCSVisualizationSource,
+)
+from src.utils.schema.court_normalization import (
+    court_coordinate_normalization_metadata,
 )
 
 
@@ -235,6 +240,60 @@ def test_plcs_visualization_rejects_v4_before_reading_any_payload(
     )
 
     with pytest.raises(ValueError, match="Unsupported canonical compact PLCS"):
+        PLCSVisualizationSource(
+            tmp_path,
+            logical_scene_id="B00",
+            camera_id="camera-0",
+        )
+
+
+@pytest.mark.parametrize("mutation", ["missing", "malformed", "unknown", "mismatched"])
+def test_plcs_visualization_rejects_invalid_normalization_before_payloads(
+    tmp_path: Path,
+    mutation: str,
+) -> None:
+    for directory in ("backgrounds", "scenes", "diagnostics"):
+        (tmp_path / directory).mkdir()
+    contract: object = court_coordinate_normalization_metadata()
+    if mutation == "malformed":
+        contract = "isotropic_half_length"
+    elif mutation in {"unknown", "mismatched"}:
+        assert isinstance(contract, dict)
+        contract = deepcopy(contract)
+        if mutation == "unknown":
+            contract["identity"] = "anisotropic"
+        else:
+            contract["scale_xyz_m"] = [5.485, 11.885, 1.07]
+    metadata = {
+        "coordinate_contract": {},
+        "court_coordinate_normalization": contract,
+        "seed": 0,
+        "logical_scene_count": 1,
+        "aggregate_global_frame_count": 1,
+        "aggregate_source_frame_count": 1,
+        "required_motion_categories": [],
+        "accepted_court_instance_ids": [],
+        "logical_scenes": [],
+    }
+    if mutation == "missing":
+        del metadata["court_coordinate_normalization"]
+    (tmp_path / "dataset.json").write_text(
+        json.dumps(
+            {
+                "schema": PLCS_DATASET_SCHEMA,
+                "scene_id": "B00",
+                "domain": "plcs",
+                "frame_inventory": {},
+                "target_courts": [],
+                "metadata": metadata,
+                "diagnostics": [],
+                "storage": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="incompatible|unknown|mismatched"):
         PLCSVisualizationSource(
             tmp_path,
             logical_scene_id="B00",

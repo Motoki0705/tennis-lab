@@ -21,6 +21,10 @@ from src.tasks.blcs.model_io import (
 )
 from src.tasks.blcs.training.tracking_losses import BLCSTrackingLoss
 from src.tasks.blcs.training.tracking_metrics import blcs_tracking_metrics
+from src.utils.schema.court_normalization import (
+    add_court_coordinate_normalization,
+    validate_court_coordinate_normalization,
+)
 
 
 class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPrediction]):
@@ -44,6 +48,9 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
 
     def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         """Reject the deleted checkpoint-key contract without migrating it."""
+        validate_court_coordinate_normalization(
+            checkpoint, artifact="BLCS tracking checkpoint"
+        )
         state_dict = checkpoint.get("state_dict")
         if not isinstance(state_dict, Mapping):
             raise TypeError("Tracking checkpoint must contain a state_dict mapping.")
@@ -55,6 +62,11 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
                 "retrain or explicitly convert the artifact outside runtime loading. "
                 f"First incompatible key: {legacy_keys[0]}."
             )
+
+    def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        add_court_coordinate_normalization(
+            checkpoint, artifact="BLCS tracking checkpoint"
+        )
 
     def compute_tracking_step(
         self,

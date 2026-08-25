@@ -11,6 +11,9 @@ import numpy as np
 from src.tasks.base.data.dataset_writer import BaseDatasetWriter
 from src.tasks.plcs.data.types import PLCSSceneMeta
 from src.tasks.plcs.generate_dataset.scene_generator import SceneData
+from src.utils.schema.court_normalization import (
+    court_coordinate_normalization_metadata,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +51,9 @@ class PLCSDatasetWriter(BaseDatasetWriter):
             "initial_yaw": scene.meta["initial_yaw"],
             "num_cameras_sampled": scene.meta["num_cameras_sampled"],
             "num_cameras": len(scene.cameras),
+            "court_coordinate_normalization": (
+                court_coordinate_normalization_metadata()
+            ),
             "track_instances": scene.track_instances,
         }
 
