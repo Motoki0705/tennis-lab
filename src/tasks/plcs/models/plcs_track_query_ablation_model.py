@@ -256,6 +256,7 @@ class PLCSTrackQueryAblationModel(nn.Module):
             num_queries=self.num_queries,
             ffn_mode=self.ffn_mode,
             mhc_writeback=self.mhc_writeback,
+            query_ffn_after_spatial=False,
         )
 
     @staticmethod

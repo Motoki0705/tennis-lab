@@ -18,11 +18,12 @@ from src.utils.models.components.fixed_query_track_ablation_stage import (
 )
 from src.utils.models.components.mhc import ManifoldConstrainedHyperConnection
 
-_CONDITIONS: tuple[tuple[str, FFNMode, MHCWriteback, int], ...] = (
-    ("A", "per_attention", "after_object_temporal", 16),
-    ("B", "shared", "after_object_temporal", 16),
-    ("C", "per_attention", "layer_end", 7),
-    ("D", "shared", "layer_end", 7),
+_CONDITIONS: tuple[tuple[str, FFNMode, MHCWriteback, bool, int], ...] = (
+    ("A", "per_attention", "after_object_temporal", False, 16),
+    ("B", "shared", "after_object_temporal", False, 16),
+    ("C", "per_attention", "layer_end", False, 7),
+    ("D", "shared", "layer_end", False, 7),
+    ("E", "shared", "layer_end", True, 7),
 )
 
 
@@ -61,6 +62,7 @@ class _RecordingBlock(nn.Module):
         )
         self.ffn = _RecordingFFN(name, events) if ffn_enabled else None
         self.calls: list[dict[str, Tensor | None]] = []
+        self.output_dtype: torch.dtype | None = None
 
     def _record(
         self,
@@ -96,7 +98,7 @@ class _RecordingBlock(nn.Module):
             attn_mask=attn_mask,
             state_valid=state_valid,
         )
-        return values
+        return values.to(dtype=self.output_dtype) if self.output_dtype else values
 
     def forward(
         self,
@@ -112,7 +114,7 @@ class _RecordingBlock(nn.Module):
             attn_mask=attn_mask,
             state_valid=state_valid,
         )
-        return values
+        return values.to(dtype=self.output_dtype) if self.output_dtype else values
 
 
 class _RecordingMHC(nn.Module):
@@ -120,6 +122,7 @@ class _RecordingMHC(nn.Module):
         super().__init__()
         self.events = events
         self.post_shapes: list[tuple[int, ...]] = []
+        self.post_dtypes: list[tuple[torch.dtype, torch.dtype]] = []
 
     def pre(self, streams: Tensor, valid_mask: Tensor) -> tuple[Tensor, object]:
         del valid_mask
@@ -136,6 +139,9 @@ class _RecordingMHC(nn.Module):
         del state
         self.events.append("mhc.post")
         self.post_shapes.append(tuple(update.shape))
+        self.post_dtypes.append((update.dtype, residual.dtype))
+        if update.dtype != residual.dtype:
+            raise TypeError("mHC update and residual dtypes must match")
         return residual + update
 
 
@@ -143,6 +149,7 @@ def _stage(
     *,
     ffn_mode: FFNMode,
     mhc_writeback: MHCWriteback,
+    query_ffn_after_spatial: bool = False,
     stage_index: int = 0,
 ) -> tuple[
     FixedQueryTrackAblationStage,
@@ -184,7 +191,12 @@ def _stage(
         num_queries=4,
         ffn_mode=ffn_mode,
         mhc_writeback=mhc_writeback,
+        query_ffn_after_spatial=query_ffn_after_spatial,
     )
+    if stage.query_ffn_after_spatial is not None:
+        stage.query_ffn_after_spatial.register_forward_pre_hook(
+            lambda _module, _args: events.append("query_mid.ffn")
+        )
     if stage.shared_ffn is not None:
         stage.shared_ffn.register_forward_pre_hook(
             lambda _module, _args: events.append("shared.ffn")
@@ -227,19 +239,27 @@ def _inputs(*, spatial_width: int) -> dict[str, Any]:
 
 
 @pytest.mark.parametrize(
-    ("condition", "ffn_mode", "mhc_writeback", "spatial_width"),
+    (
+        "condition",
+        "ffn_mode",
+        "mhc_writeback",
+        "query_ffn_after_spatial",
+        "spatial_width",
+    ),
     _CONDITIONS,
 )
-def test_four_conditions_have_exact_event_order_width_and_single_writeback(
+def test_five_conditions_have_exact_event_order_width_and_single_writeback(
     condition: str,
     ffn_mode: FFNMode,
     mhc_writeback: MHCWriteback,
+    query_ffn_after_spatial: bool,
     spatial_width: int,
 ) -> None:
     del condition
     stage, mhc, blocks, events = _stage(
         ffn_mode=ffn_mode,
         mhc_writeback=mhc_writeback,
+        query_ffn_after_spatial=query_ffn_after_spatial,
     )
     inputs = _inputs(spatial_width=spatial_width)
 
@@ -262,6 +282,8 @@ def test_four_conditions_have_exact_event_order_width_and_single_writeback(
         "shared.ffn",
     ]
     expected = per_attention_events if ffn_mode == "per_attention" else shared_events
+    if query_ffn_after_spatial:
+        expected.insert(expected.index("query.attention"), "query_mid.ffn")
     object_end = 3 if ffn_mode == "per_attention" else 2
     writeback_index = (
         object_end if mhc_writeback == "after_object_temporal" else len(expected)
@@ -282,6 +304,48 @@ def test_four_conditions_have_exact_event_order_width_and_single_writeback(
     assert query_output.shape == (1, 2, 4, 8)
     assert torch.isfinite(object_output).all()
     assert torch.isfinite(query_output).all()
+
+
+@pytest.mark.parametrize(
+    (
+        "condition",
+        "ffn_mode",
+        "mhc_writeback",
+        "query_ffn_after_spatial",
+        "spatial_width",
+    ),
+    _CONDITIONS,
+)
+def test_writeback_restores_mixed_precision_update_to_residual_dtype(
+    condition: str,
+    ffn_mode: FFNMode,
+    mhc_writeback: MHCWriteback,
+    query_ffn_after_spatial: bool,
+    spatial_width: int,
+) -> None:
+    del condition
+    stage, mhc, blocks, _ = _stage(
+        ffn_mode=ffn_mode,
+        mhc_writeback=mhc_writeback,
+        query_ffn_after_spatial=query_ffn_after_spatial,
+    )
+    inputs = _inputs(spatial_width=spatial_width)
+    residual_dtype = (
+        torch.float32
+        if mhc_writeback == "after_object_temporal"
+        else torch.bfloat16
+    )
+    inputs["object_tokens"] = inputs["object_tokens"].to(dtype=residual_dtype)
+    inputs["query_tokens"] = inputs["query_tokens"].to(dtype=residual_dtype)
+    if mhc_writeback == "after_object_temporal":
+        blocks[0].output_dtype = torch.bfloat16
+    else:
+        blocks[1].output_dtype = torch.float32
+
+    object_output, _ = stage(**inputs)
+
+    assert mhc.post_dtypes == [(residual_dtype, residual_dtype)]
+    assert object_output.dtype == residual_dtype
 
 
 @pytest.mark.parametrize("ffn_mode", ["per_attention", "shared"])
@@ -311,8 +375,54 @@ def test_ffn_module_identity_and_parameter_inventory_are_exact(
         assert block_ffns == [None, None, None]
         assert isinstance(stage.shared_ffn, SwiGLU)
         assert stage.shared_ffn_norm is not None
-        assert any(name.startswith("shared_ffn.") for name, _ in stage.named_parameters())
+        assert any(
+            name.startswith("shared_ffn.") for name, _ in stage.named_parameters()
+        )
         assert not any("_block.ffn." in name for name, _ in stage.named_parameters())
+
+
+def test_e_query_ffn_is_distinct_and_receives_only_spatial_queries() -> None:
+    stage, _, blocks, events = _stage(
+        ffn_mode="shared",
+        mhc_writeback="layer_end",
+        query_ffn_after_spatial=True,
+    )
+    assert isinstance(stage.query_ffn_after_spatial, SwiGLU)
+    assert stage.query_ffn_after_spatial_norm is not None
+    assert isinstance(stage.shared_ffn, SwiGLU)
+    assert stage.shared_ffn_norm is not None
+    assert all(block.ffn is None for block in blocks)
+
+    query_mid_shapes: list[tuple[int, ...]] = []
+    shared_shapes: list[tuple[int, ...]] = []
+    query_hook = stage.query_ffn_after_spatial.register_forward_pre_hook(
+        lambda _module, args: query_mid_shapes.append(tuple(args[0].shape))
+    )
+    shared_hook = stage.shared_ffn.register_forward_pre_hook(
+        lambda _module, args: shared_shapes.append(tuple(args[0].shape))
+    )
+    try:
+        stage(**_inputs(spatial_width=7))
+    finally:
+        query_hook.remove()
+        shared_hook.remove()
+
+    assert query_mid_shapes == [(1, 2, 4, 8)]
+    assert shared_shapes == [(1, 2, 7, 8)]
+    assert events == [
+        "mhc.pre",
+        "object.attention",
+        "spatial.attention",
+        "query_mid.ffn",
+        "query.attention",
+        "shared.ffn",
+        "mhc.post",
+    ]
+    mid_parameters = {id(value) for value in stage.query_ffn_after_spatial.parameters()}
+    shared_parameters = {id(value) for value in stage.shared_ffn.parameters()}
+    assert mid_parameters
+    assert shared_parameters
+    assert mid_parameters.isdisjoint(shared_parameters)
 
 
 def test_global_stage_uses_dense_temporal_masks_without_changing_schedule() -> None:
@@ -344,20 +454,39 @@ def test_global_stage_uses_dense_temporal_masks_without_changing_schedule() -> N
 
 
 @pytest.mark.parametrize(
-    ("axis", "value", "message"),
+    ("axis", "value", "error", "message"),
     [
-        ("ffn_mode", "legacy", "ffn_mode must be exactly"),
-        ("mhc_writeback", "before_attention", "mhc_writeback must be exactly"),
+        ("ffn_mode", "legacy", ValueError, "ffn_mode must be exactly"),
+        (
+            "mhc_writeback",
+            "before_attention",
+            ValueError,
+            "mhc_writeback must be exactly",
+        ),
+        (
+            "query_ffn_after_spatial",
+            "yes",
+            TypeError,
+            "query_ffn_after_spatial must be exactly bool",
+        ),
+        (
+            "query_ffn_after_spatial",
+            True,
+            ValueError,
+            "requires shared FFN mode and layer-end",
+        ),
     ],
 )
 def test_stage_rejects_unknown_ablation_axis_values(
     axis: str,
-    value: str,
+    value: object,
+    error: type[Exception],
     message: str,
 ) -> None:
     kwargs: dict[str, Any] = {
         "ffn_mode": "per_attention",
         "mhc_writeback": "layer_end",
+        "query_ffn_after_spatial": False,
     }
     kwargs[axis] = value
     events: list[str] = []
@@ -371,7 +500,7 @@ def test_stage_rejects_unknown_ablation_axis_values(
         for name in ("object", "spatial", "query")
     ]
 
-    with pytest.raises(ValueError, match=message):
+    with pytest.raises(error, match=message):
         FixedQueryTrackAblationStage(
             stage_index=0,
             mhc=cast(

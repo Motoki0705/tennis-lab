@@ -26,11 +26,12 @@ from src.utils.models.components.fixed_query_track_ablation_stage import (
     MHCWriteback,
 )
 
-_CONDITIONS: tuple[tuple[str, FFNMode, MHCWriteback, int], ...] = (
-    ("A", "per_attention", "after_object_temporal", 16),
-    ("B", "shared", "after_object_temporal", 16),
-    ("C", "per_attention", "layer_end", 7),
-    ("D", "shared", "layer_end", 7),
+_CONDITIONS: tuple[tuple[str, FFNMode, MHCWriteback, bool, int], ...] = (
+    ("A", "per_attention", "after_object_temporal", False, 16),
+    ("B", "shared", "after_object_temporal", False, 16),
+    ("C", "per_attention", "layer_end", False, 7),
+    ("D", "shared", "layer_end", False, 7),
+    ("E", "shared", "layer_end", True, 7),
 )
 
 
@@ -48,6 +49,7 @@ def _raw_model() -> dict[str, object]:
         "invisible_init_std": 0.02,
         "ffn_mode": "per_attention",
         "mhc_writeback": "after_object_temporal",
+        "query_ffn_after_spatial": False,
         "mhc": {
             "coefficient_dim": 8,
             "sinkhorn_iters": 5,
@@ -66,10 +68,12 @@ def _raw_model() -> dict[str, object]:
 def _config(
     ffn_mode: FFNMode,
     mhc_writeback: MHCWriteback,
+    query_ffn_after_spatial: bool = False,
 ) -> TrackQueryAblationModelConfig:
     raw = _raw_model()
     raw["ffn_mode"] = ffn_mode
     raw["mhc_writeback"] = mhc_writeback
+    raw["query_ffn_after_spatial"] = query_ffn_after_spatial
     parsed = parse_model_config({"model": raw})
     assert isinstance(parsed, TrackQueryAblationModelConfig)
     return parsed
@@ -80,6 +84,7 @@ def _baseline_config() -> TrackQueryModelConfig:
     raw["name"] = "blcs_track_query"
     del raw["ffn_mode"]
     del raw["mhc_writeback"]
+    del raw["query_ffn_after_spatial"]
     parsed = parse_model_config({"model": raw})
     assert isinstance(parsed, TrackQueryModelConfig)
     return parsed
@@ -88,8 +93,11 @@ def _baseline_config() -> TrackQueryModelConfig:
 def _model(
     ffn_mode: FFNMode,
     mhc_writeback: MHCWriteback,
+    query_ffn_after_spatial: bool = False,
 ) -> BLCSTrackQueryAblationModel:
-    model = BLCSTrackQueryAblationModel(_config(ffn_mode, mhc_writeback))
+    model = BLCSTrackQueryAblationModel(
+        _config(ffn_mode, mhc_writeback, query_ffn_after_spatial)
+    )
     model.eval()
     return model
 
@@ -144,14 +152,15 @@ def test_ablation_model_is_a_distinct_named_public_architecture() -> None:
     ]
 
 
-def test_four_conditions_build_exact_stage_ffn_ownership_and_parameter_counts() -> None:
+def test_five_conditions_build_exact_stage_ffn_ownership_and_parameter_counts() -> None:
     models = {
-        condition: _model(ffn_mode, mhc_writeback)
-        for condition, ffn_mode, mhc_writeback, _ in _CONDITIONS
+        condition: _model(ffn_mode, mhc_writeback, query_ffn_after_spatial)
+        for condition, ffn_mode, mhc_writeback, query_ffn_after_spatial, _ in _CONDITIONS
     }
 
     for condition, model in models.items():
-        expected_shared = condition in {"B", "D"}
+        expected_shared = condition in {"B", "D", "E"}
+        expected_query_mid = condition == "E"
         assert all(
             isinstance(stage, FixedQueryTrackAblationStage)
             for stage in model.stages
@@ -169,6 +178,12 @@ def test_four_conditions_build_exact_stage_ffn_ownership_and_parameter_counts() 
                 assert len({id(module) for module in block_ffns}) == 3
                 assert all(isinstance(module, SwiGLU) for module in block_ffns)
                 assert stage.shared_ffn is None
+            if expected_query_mid:
+                assert isinstance(stage.query_ffn_after_spatial, SwiGLU)
+                assert stage.query_ffn_after_spatial_norm is not None
+            else:
+                assert stage.query_ffn_after_spatial is None
+                assert stage.query_ffn_after_spatial_norm is None
 
     parameter_counts = {
         condition: sum(parameter.numel() for parameter in model.parameters())
@@ -177,21 +192,29 @@ def test_four_conditions_build_exact_stage_ffn_ownership_and_parameter_counts() 
     assert parameter_counts["A"] == parameter_counts["C"]
     assert parameter_counts["B"] == parameter_counts["D"]
     assert parameter_counts["A"] > parameter_counts["B"]
+    assert parameter_counts["D"] < parameter_counts["E"] < parameter_counts["A"]
 
 
 @pytest.mark.parametrize(
-    ("condition", "ffn_mode", "mhc_writeback", "spatial_width"),
+    (
+        "condition",
+        "ffn_mode",
+        "mhc_writeback",
+        "query_ffn_after_spatial",
+        "spatial_width",
+    ),
     _CONDITIONS,
 )
-def test_four_conditions_preserve_io_padding_visibility_and_rope_contracts(
+def test_five_conditions_preserve_io_padding_visibility_and_rope_contracts(
     condition: str,
     ffn_mode: FFNMode,
     mhc_writeback: MHCWriteback,
+    query_ffn_after_spatial: bool,
     spatial_width: int,
 ) -> None:
     del condition
     torch.manual_seed(777)
-    model = _model(ffn_mode, mhc_writeback)
+    model = _model(ffn_mode, mhc_writeback, query_ffn_after_spatial)
     baseline = _inputs()
     contaminated = {name: value.clone() for name, value in baseline.items()}
     padding_mask = contaminated["padding_mask"]
@@ -258,6 +281,16 @@ def test_baseline_and_ablation_checkpoints_are_strictly_incompatible_both_ways()
         ablation.load_state_dict(baseline.state_dict(), strict=True)
     with pytest.raises(RuntimeError):
         baseline.load_state_dict(ablation.state_dict(), strict=True)
+
+
+def test_d_and_e_checkpoints_are_strictly_incompatible_both_ways() -> None:
+    variant_d = _model("shared", "layer_end")
+    variant_e = _model("shared", "layer_end", True)
+
+    with pytest.raises(RuntimeError):
+        variant_e.load_state_dict(variant_d.state_dict(), strict=True)
+    with pytest.raises(RuntimeError):
+        variant_d.load_state_dict(variant_e.state_dict(), strict=True)
 
 
 def test_legacy_baseline_state_key_inventory_is_preserved() -> None:

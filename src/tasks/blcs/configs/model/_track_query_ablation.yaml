@@ -1,20 +1,22 @@
 # Shared architecture for the strict BLCS FFN/writeback ablation variants.
-# Concrete A/B/C/D configs must supply both ablation axes explicitly.
+# Concrete variants supply the FFN/writeback axes; E additionally enables the
+# query-only FFN between spatial and query-temporal attention.
 
 name: blcs_track_query_ablation
 
-hidden_dim: 64
-num_heads: 4
-num_stages: 4
-ffn_dim: 128
+hidden_dim: 512
+num_heads: 8
+num_stages: 12
+ffn_dim: 1408
 num_queries: 4
-rope_dim: 16
+rope_dim: 64
 dropout: 0.0
 role_rope_enabled: true
 invisible_init_std: 0.02
 
 ffn_mode: ???
 mhc_writeback: ???
+query_ffn_after_spatial: false
 
 mhc:
   coefficient_dim: 64
@@ -26,4 +28,4 @@ mhc:
 cswa:
   compression_ratio: 4
   window_radius: 4
-  backend: reference
+  backend: cuda
