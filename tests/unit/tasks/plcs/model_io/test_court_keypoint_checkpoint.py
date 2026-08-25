@@ -35,9 +35,9 @@ def _ready() -> dict[str, object]:
     return {
         "human_kp": torch.full((1, 2, 3, 17, 2), 0.5),
         "court_kp": torch.full((1, 2, 3, 20, 2), 0.5),
-        "human_vis": torch.ones(1, 2, 3, 17),
+        "human_vis": torch.ones(1, 2, 3, 17, dtype=torch.bool),
         "padding_mask": torch.zeros(1, 2, 3, dtype=torch.bool),
-        "court_vis": torch.ones(1, 2, 3, 20),
+        "court_vis": torch.ones(1, 2, 3, 20, dtype=torch.bool),
     }
 
 

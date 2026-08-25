@@ -166,13 +166,27 @@ def _finite(name: str, tensor: Tensor) -> None:
         raise ModelInputContractError(f"{name} must contain only finite values.")
 
 
-def _normalized_uv(name: str, tensor: Tensor) -> None:
+def _normalized_uv(name: str, tensor: Tensor, visibility: Tensor) -> None:
     _finite(name, tensor)
-    if tensor.numel() and (
-        bool((tensor < 0).any().item()) or bool((tensor > 1).any().item())
+    if visibility.shape != tensor.shape[:-1]:
+        raise ModelInputContractError(
+            f"{name} visibility must match {name} without its UV axis."
+        )
+    if visibility.dtype != torch.bool:
+        raise ModelInputContractError(
+            f"{name} visibility must use torch.bool dtype."
+        )
+    if visibility.device != tensor.device:
+        raise ModelInputContractError(
+            f"{name} visibility must share the UV tensor device."
+        )
+    visible_uv = tensor[visibility]
+    if visible_uv.numel() and (
+        bool((visible_uv < 0).any().item())
+        or bool((visible_uv > 1).any().item())
     ):
         raise ModelInputContractError(
-            f"{name} must use normalized UV coordinates within [0, 1]."
+            f"Visible {name} must use normalized UV coordinates within [0, 1]."
         )
 
 
@@ -368,8 +382,8 @@ class PLCSModelIOAdapter:
                     "Every multiview sequence must contain at least one "
                     "non-padding frame."
                 )
-        _normalized_uv("human_kp", human_kp)
-        _normalized_uv("court_kp", court_kp)
+        _normalized_uv("human_kp", human_kp, human_vis)
+        _normalized_uv("court_kp", court_kp, court_vis)
         _binary_mask("human_vis", human_vis)
         _binary_mask("padding_mask", padding_mask)
         _binary_mask("court_vis", court_vis)
@@ -590,8 +604,8 @@ class PLCSModelIOAdapter:
             )
         if batch["padding_mask"].shape != human_kp.shape[:3]:
             raise ModelInputContractError("padding_mask must have shape (B,V,T).")
-        _normalized_uv("human_kp", human_kp)
-        _normalized_uv("court_kp", court_kp)
+        _normalized_uv("human_kp", human_kp, batch["human_vis"])
+        _normalized_uv("court_kp", court_kp, batch["court_vis"])
         _binary_mask("human_vis", batch["human_vis"])
         _binary_mask("padding_mask", batch["padding_mask"])
         _binary_mask("court_vis", batch["court_vis"])
@@ -665,7 +679,7 @@ class PLCSModelIOAdapter:
                 ),
             )
 
-        _normalized_uv("human_kp_target", target_uv)
+        _normalized_uv("human_kp_target", target_uv, target_vis)
         _binary_mask("human_vis_target", target_vis)
         for name, tensor in {
             "camera_R": camera_R,
@@ -1089,8 +1103,8 @@ class PLCSTrackQueryIOAdapter:
             )
         if padding_mask.shape != (batch_size, views, frames):
             raise ModelInputContractError("padding_mask must have shape (B,V,T).")
-        _normalized_uv("human_kp", human_kp)
-        _normalized_uv("court_kp", court_kp)
+        _normalized_uv("human_kp", human_kp, human_vis)
+        _normalized_uv("court_kp", court_kp, court_vis)
         _binary_mask("human_vis", human_vis)
         _binary_mask("court_vis", court_vis)
         _binary_mask("padding_mask", padding_mask)
