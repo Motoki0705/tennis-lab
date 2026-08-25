@@ -6,7 +6,7 @@ for metadata, ensuring type safety throughout the BLCS pipeline.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import NotRequired, TypedDict
+from typing import Any, NotRequired, TypedDict
 
 import torch
 
@@ -118,6 +118,7 @@ class BLCSSceneMeta:
     num_frames: int
     num_cameras_sampled: int
     num_cameras: int
+    court_coordinate_normalization: dict[str, Any]
 
     # Per-scene variation metadata (may be absent in older files)
     physics_config: dict | None = None
@@ -139,6 +140,7 @@ class BLCSSceneMeta:
             "num_frames": self.num_frames,
             "num_cameras_sampled": self.num_cameras_sampled,
             "num_cameras": self.num_cameras,
+            "court_coordinate_normalization": self.court_coordinate_normalization,
             "physics_config": self.physics_config,
             "court_config": self.court_config,
             "track_instances": self.track_instances or [],
@@ -160,6 +162,7 @@ class BLCSSceneMeta:
             num_frames=data["num_frames"],
             num_cameras_sampled=data["num_cameras_sampled"],
             num_cameras=data["num_cameras"],
+            court_coordinate_normalization=data["court_coordinate_normalization"],
             physics_config=data["physics_config"],
             court_config=data["court_config"],
             track_instances=data.get("track_instances", []),

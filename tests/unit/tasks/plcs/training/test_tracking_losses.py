@@ -6,6 +6,7 @@ import torch
 from omegaconf import OmegaConf
 
 from src.tasks.plcs.training.tracking_losses import PLCSTrackingLoss
+from src.utils.schema.court_normalization import normalize_court_position
 
 
 def _criterion() -> PLCSTrackingLoss:
@@ -81,3 +82,26 @@ def test_matching_accepts_bfloat16_predictions() -> None:
 
     assert torch.isfinite(losses["total"])
     assert assignments[0][0].numel() == 2
+
+
+def test_tracking_position_loss_is_equal_for_same_physical_xyz_error() -> None:
+    criterion = _criterion()
+    values = []
+    for axis in range(3):
+        error_m = torch.zeros(1, 1, 1, 3)
+        error_m[..., axis] = 0.25
+        prediction = {
+            "position": normalize_court_position(error_m),
+            "rotation": torch.tensor([[[[1.0, 0.0]]]]),
+            "presence_logits": torch.full((1, 1, 1), 20.0),
+        }
+        batch = {
+            "target_position": torch.zeros_like(error_m),
+            "target_rotation": torch.tensor([[[[1.0, 0.0]]]]),
+            "target_presence": torch.ones(1, 1, 1, dtype=torch.bool),
+            "target_slot_mask": torch.ones(1, 1, dtype=torch.bool),
+            "padding_mask": torch.zeros(1, 1, 1, dtype=torch.bool),
+        }
+        values.append(_compute(criterion, prediction, batch)[0]["position"])
+
+    torch.testing.assert_close(torch.stack(values), values[0].expand(3))

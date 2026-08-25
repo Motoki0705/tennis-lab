@@ -31,7 +31,13 @@ from src.utils.rendering.theme import (
     apply_figure_theme,
     resolve_theme,
 )
-from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH, NET_HEIGHT_POST
+from src.utils.schema.court import (
+    COURT_COORD_SCALE_X,
+    COURT_COORD_SCALE_Y,
+    COURT_COORD_SCALE_Z,
+    HALF_DOUBLES_WIDTH,
+    HALF_LENGTH,
+)
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -296,10 +302,10 @@ class PLCSSceneRenderer:
         """Denormalize the full position track to world court coordinates."""
         pos = np.asarray(scene.position, dtype=np.float64)
         world = pos.copy()
-        world[:, 0] *= HALF_DOUBLES_WIDTH
-        world[:, 1] *= HALF_LENGTH
+        world[:, 0] *= COURT_COORD_SCALE_X
+        world[:, 1] *= COURT_COORD_SCALE_Y
         if world.shape[1] > 2:
-            world[:, 2] *= NET_HEIGHT_POST
+            world[:, 2] *= COURT_COORD_SCALE_Z
         return world
 
     def _render_player_3d(
@@ -418,14 +424,14 @@ class PLCSSceneRenderer:
         self.court_renderer.render_2d(ax, show_fence=True)
 
         pos = scene.position
-        x = pos[frame_idx, 0] * HALF_DOUBLES_WIDTH
-        y = pos[frame_idx, 1] * HALF_LENGTH
+        x = pos[frame_idx, 0] * COURT_COORD_SCALE_X
+        y = pos[frame_idx, 1] * COURT_COORD_SCALE_Y
 
         trail_start = max(0, frame_idx - 30)
         trail = pos[trail_start : frame_idx + 1]
         ax.plot(
-            trail[:, 0] * HALF_DOUBLES_WIDTH,
-            trail[:, 1] * HALF_LENGTH,
+            trail[:, 0] * COURT_COORD_SCALE_X,
+            trail[:, 1] * COURT_COORD_SCALE_Y,
             "c-",
             linewidth=2,
             alpha=0.5,
@@ -438,9 +444,9 @@ class PLCSSceneRenderer:
 
     def _compute_world_pose(self, scene: Any, frame_idx: int) -> np.ndarray:
         pos = scene.position[frame_idx]
-        x = float(pos[0]) * HALF_DOUBLES_WIDTH
-        y = float(pos[1]) * HALF_LENGTH
-        z = float(pos[2]) * NET_HEIGHT_POST if len(pos) > 2 else 0.0
+        x = float(pos[0]) * COURT_COORD_SCALE_X
+        y = float(pos[1]) * COURT_COORD_SCALE_Y
+        z = float(pos[2]) * COURT_COORD_SCALE_Z if len(pos) > 2 else 0.0
 
         canonical_pose = np.asarray(scene.canonical_pose_3d[frame_idx])
         cos_yaw = float(scene.rotation[frame_idx, 0])
@@ -470,26 +476,26 @@ class PLCSSceneRenderer:
         gt_trail = gt_pos[trail_start : frame_idx + 1]
         pred_trail = pred_pos[trail_start : frame_idx + 1]
         ax.plot(
-            gt_trail[:, 0] * HALF_DOUBLES_WIDTH,
-            gt_trail[:, 1] * HALF_LENGTH,
+            gt_trail[:, 0] * COURT_COORD_SCALE_X,
+            gt_trail[:, 1] * COURT_COORD_SCALE_Y,
             color="green",
             linewidth=2,
             alpha=0.7,
             label="GT",
         )
         ax.plot(
-            pred_trail[:, 0] * HALF_DOUBLES_WIDTH,
-            pred_trail[:, 1] * HALF_LENGTH,
+            pred_trail[:, 0] * COURT_COORD_SCALE_X,
+            pred_trail[:, 1] * COURT_COORD_SCALE_Y,
             color="red",
             linewidth=2,
             alpha=0.7,
             label="Prediction",
         )
 
-        gt_x = gt_pos[frame_idx, 0] * HALF_DOUBLES_WIDTH
-        gt_y = gt_pos[frame_idx, 1] * HALF_LENGTH
-        pred_x = pred_pos[frame_idx, 0] * HALF_DOUBLES_WIDTH
-        pred_y = pred_pos[frame_idx, 1] * HALF_LENGTH
+        gt_x = gt_pos[frame_idx, 0] * COURT_COORD_SCALE_X
+        gt_y = gt_pos[frame_idx, 1] * COURT_COORD_SCALE_Y
+        pred_x = pred_pos[frame_idx, 0] * COURT_COORD_SCALE_X
+        pred_y = pred_pos[frame_idx, 1] * COURT_COORD_SCALE_Y
         ax.scatter([gt_x], [gt_y], c="green", s=80, zorder=6)
         ax.scatter([pred_x], [pred_y], c="red", s=80, zorder=6)
 

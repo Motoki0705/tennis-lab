@@ -15,6 +15,7 @@ from src.tasks.plcs.generate_dataset.multi_object_scene_generator import (
 from src.tasks.plcs.generate_dataset.scene_generator import CameraData, SceneData
 from src.utils.projection.camera_projector import CameraConfig, CameraProjector
 from src.utils.schema.court import NET_POST_OFFSET_X, CourtConfig
+from src.utils.schema.court_normalization import normalize_court_position
 
 _AUGMENTATION_CONFIG = (
     Path(__file__).resolve().parents[5]
@@ -97,7 +98,8 @@ class _MotionSceneStub:
         self.calls += 1
         frames = 4
         position: np.ndarray = np.zeros((frames, 3), dtype=np.float32)
-        position[:, 0] = (-1.0 + offset) / 5.485
+        position[:, 0] = -1.0 + offset
+        position = normalize_court_position(position)
         rotation: np.ndarray = np.tile(
             np.array([[1.0, 0.0]], dtype=np.float32), (frames, 1)
         )

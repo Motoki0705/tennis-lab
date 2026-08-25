@@ -58,8 +58,25 @@
 - **`minimap.py`**: plain NumPy 配列（現在位置 dots・トレイル・イベント位置）を受け取るトップダウンミニマップ `MinimapRenderer` / `MinimapStyle`。配列の切り出し・色の意味付けは呼び出し側。
 
 ### `schema/`
-- **`court.py`**: コート寸法、`CourtConfig`、20 点 court keypoints、court skeleton、正規化スケール定数、`net_height_at_x()`。
+- **`court.py`**: 物理コート寸法、唯一の固定 `COURT_COORD_SCALE_*`、`CourtConfig`、20 点 court keypoints、court skeleton、`net_height_at_x()`。
+- **`court_normalization.py`**: 固定scaleを使うshape-safeなposition / velocity変換とcontract identity。
 - **`player.py`**: COCO-17 / SMPL / SMPL-H の keypoint 名、index、skeleton、角度計算用 group、SMPLH-to-COCO 対応。
+
+#### Court coordinate normalization contract
+
+`court.py` の `COURT_COORD_SCALE_X/Y/Z/XYZ` が唯一の数値正本です。
+`S = HALF_LENGTH = 11.885 m`、`scale_xyz = (S, S, S)` とし、
+`court_normalization.py` のhelperがこの値だけを使用します。position は
+`position_norm = position_m / scale_xyz`、velocity は
+`velocity_norm = velocity_mps / scale_xyz` で表現します。
+逆変換は同じ `scale_xyz` を掛けます。物理コート寸法、軸、原点、metre単位の
+world座標、およびPLCSのroot-relative `canonical_pose_3d`は変更しません。
+
+normalized BLCS/PLCS sceneとcheckpointは
+`court_coordinate_normalization` metadataを必須とします。この変更より前のartifact、
+metadata欠落、不明なidentity、scale/単位不一致はload/resume/evaluation/inference前に
+明示的なerrorとなります。自動推測・自動変換は行わないため、normalized datasetは
+再生成し、checkpointは新契約で再学習してください。
 
 ### `video/`
 - **`reader.py`**: OpenCV ベースの `probe_video_info()`、単フレーム読み出し、`OpenCVVideoFrameReader`、一括 RGB 読み出し `read_video_rgb()`、smart-seek 付きランダムアクセス `RandomAccessVideoReader`。

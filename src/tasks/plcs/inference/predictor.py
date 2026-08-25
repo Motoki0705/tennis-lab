@@ -24,6 +24,7 @@ from src.tasks.plcs.model_io import (
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.utils.configuration import PathResolver
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+from src.utils.schema.court_normalization import load_and_validate_checkpoint
 
 
 class PLCSPredictor(BasePredictor):
@@ -61,8 +62,15 @@ class PLCSPredictor(BasePredictor):
         device: str | torch.device,
         **kwargs: Any,
     ) -> Self:
+        checkpoints = cls._ensure_checkpoint(checkpoint_path, resolver=resolver)
+        if len(checkpoints) != 1:
+            raise ValueError(
+                f"{cls.__name__} expects a single checkpoint, "
+                f"got {len(checkpoints)} checkpoints."
+            )
+        load_and_validate_checkpoint(checkpoints[0])
         lightning_module, resolved_device = cls._load_single_lightning_module(
-            checkpoint_path,
+            checkpoints[0],
             PLCSLightningModule,
             resolver=resolver,
             device=device,

@@ -27,12 +27,15 @@ from src.utils.schema.court import (
     HALF_DOUBLES_WIDTH,
     HALF_LENGTH,
     HALF_SINGLES_WIDTH,
-    NET_HEIGHT_POST,
     X_MAX,
     X_MIN,
     Y_MAX,
     Y_MIN,
     net_height_at_x,
+)
+from src.utils.schema.court_normalization import (
+    denormalize_court_position,
+    normalize_court_position,
 )
 
 if TYPE_CHECKING:
@@ -630,11 +633,7 @@ class BallPhysics:
             return bool(-HALF_LENGTH <= y < 0)
 
     def normalize_position(self, pos: Tensor) -> Tensor:
-        """Normalize position to BLCS coordinates.
-
-        x_norm = X / HALF_DOUBLES_WIDTH
-        y_norm = Y / HALF_LENGTH
-        z_norm = Z / NET_HEIGHT_POST
+        """Normalize metre-valued position with the fixed court contract.
 
         Args:
             pos: Position [3] or [T, 3] in metres.
@@ -642,16 +641,7 @@ class BallPhysics:
         Returns:
             Normalized position.
         """
-        norm = pos.clone()
-        if pos.dim() == 1:
-            norm[0] = pos[0] / HALF_DOUBLES_WIDTH
-            norm[1] = pos[1] / HALF_LENGTH
-            norm[2] = pos[2] / NET_HEIGHT_POST
-        else:
-            norm[..., 0] = pos[..., 0] / HALF_DOUBLES_WIDTH
-            norm[..., 1] = pos[..., 1] / HALF_LENGTH
-            norm[..., 2] = pos[..., 2] / NET_HEIGHT_POST
-        return norm
+        return normalize_court_position(pos)
 
     def denormalize_position(self, norm: Tensor) -> Tensor:
         """Denormalize position from BLCS coordinates to metres.
@@ -662,13 +652,4 @@ class BallPhysics:
         Returns:
             Position in metres.
         """
-        pos = norm.clone()
-        if norm.dim() == 1:
-            pos[0] = norm[0] * HALF_DOUBLES_WIDTH
-            pos[1] = norm[1] * HALF_LENGTH
-            pos[2] = norm[2] * NET_HEIGHT_POST
-        else:
-            pos[..., 0] = norm[..., 0] * HALF_DOUBLES_WIDTH
-            pos[..., 1] = norm[..., 1] * HALF_LENGTH
-            pos[..., 2] = norm[..., 2] * NET_HEIGHT_POST
-        return pos
+        return denormalize_court_position(norm)

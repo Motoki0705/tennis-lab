@@ -54,6 +54,7 @@
 - **`multi_object_scene_generator.py`**: `MultiPersonSceneGenerator`。既存のAMASS/SMPL-H sceneを複数生成し、同一の仮想カメラへ再投影してcanonical multi-person sceneへ合成する。`generation=multi_object` で選択する。
 - **`sampling/motion_sampler.py`**: `MotionSampler`。AMASS/SMPL-Hモーションの重み付きサンプリングとjoint計算。
 - **`io/dataset_io.py` / `io/scene_loader.py`**: シーンのnpy/json書き出し・読み込み。
+- normalized translation、scene metadata、checkpoint互換性は [`src/utils/README.md`](../../utils/README.md) の単一契約に従い、canonical poseはmetreのまま保持する。
 - **`utils/parallel_runner.py`**: CPU専用の並列シーン生成ラッパー。
 
 ### visualization/

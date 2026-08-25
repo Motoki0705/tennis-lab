@@ -13,6 +13,9 @@ from src.synthetic_data_generation.dataset.plcs.coordinates import (
     PLCSCoordinateContract,
     PLCSSourceSupportPlane,
 )
+from src.utils.schema.court_normalization import (
+    validate_court_coordinate_normalization,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,12 +48,13 @@ class PLCSV5ReusablePublicationValidator:
             {"schema", "domain", "metadata"},
             name="PLCS dataset manifest",
         )
-        if (
-            manifest["schema"] != PLCS_DATASET_SCHEMA
-            or manifest["domain"] != "plcs"
-        ):
+        if manifest["schema"] != PLCS_DATASET_SCHEMA or manifest["domain"] != "plcs":
             raise ValueError("Completed PLCS publication is not exact v5/plcs.")
         metadata = _mapping(manifest["metadata"], name="PLCS metadata")
+        validate_court_coordinate_normalization(
+            metadata,
+            artifact="Reusable PLCS publication",
+        )
         _require_keys(
             metadata,
             {"coordinate_contract", "logical_scenes"},
@@ -75,9 +79,7 @@ class PLCSV5ReusablePublicationValidator:
             for track_index, raw_track in enumerate(tracks):
                 track = _mapping(
                     raw_track,
-                    name=(
-                        f"PLCS logical_scenes[{scene_index}].tracks[{track_index}]"
-                    ),
+                    name=(f"PLCS logical_scenes[{scene_index}].tracks[{track_index}]"),
                 )
                 _require_keys(track, {"support_plane"}, name="PLCS track")
                 PLCSSourceSupportPlane.from_dict(track["support_plane"])

@@ -18,6 +18,9 @@ from src.tasks.blcs.data.tracking_dataset import (
     BLCSTrackingDataset,
     collate_blcs_tracking_batch,
 )
+from src.utils.schema.court_normalization import (
+    court_coordinate_normalization_metadata,
+)
 
 _CONFIG_DIR = Path("src/tasks/blcs/configs").resolve()
 
@@ -109,7 +112,17 @@ def test_dataset_packs_more_physical_tracks_than_q_with_independent_assignments(
     """Exercise the persisted-scene boundary, not only the packing helper."""
     scene = tmp_path / "scenes" / "scene_000000"
     scene.mkdir(parents=True)
-    (scene / "meta.json").write_text(json.dumps({"num_frames": 4}), encoding="utf-8")
+    (scene / "meta.json").write_text(
+        json.dumps(
+            {
+                "num_frames": 4,
+                "court_coordinate_normalization": (
+                    court_coordinate_normalization_metadata()
+                ),
+            }
+        ),
+        encoding="utf-8",
+    )
     (scene / "scalars.json").write_text(
         json.dumps({"num_cameras": 2}), encoding="utf-8"
     )
@@ -126,7 +139,7 @@ def test_dataset_packs_more_physical_tracks_than_q_with_independent_assignments(
     )
     np.save(scene / "ball_present.npy", presence)
     np.save(scene / "ball_pos_norm.npy", np.zeros((4, 3, 3), dtype=np.float32))
-    np.save(scene / "ball_vel_world.npy", np.zeros((4, 3, 3), dtype=np.float32))
+    np.save(scene / "ball_vel_norm.npy", np.zeros((4, 3, 3), dtype=np.float32))
     for camera_index in range(2):
         uv = np.arange(4 * 3 * 2, dtype=np.float32).reshape(4, 3, 2) / 100.0
         vis = presence.copy()

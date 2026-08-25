@@ -48,6 +48,9 @@ from src.synthetic_data_generation.dataset.runtime import (
 from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
 from src.tasks.plcs.generate_dataset.sampling.motion_source import PLCSMotionClip
 from src.utils.projection.camera_projector import make_look_at_camera
+from src.utils.schema.court_normalization import (
+    court_coordinate_normalization_metadata,
+)
 
 
 def _tracks(tmp_path: Path) -> tuple[PLCSObjectTrack, ...]:
@@ -548,6 +551,9 @@ def test_single_object_all_frames_cross_chunks_and_reopen_compact_v5(
     assert assembly.manifest.schema == PLCS_DATASET_SCHEMA
     assert payload["metadata"]["coordinate_contract"] == (
         PLCS_COORDINATE_CONTRACT.to_dict()
+    )
+    assert payload["metadata"]["court_coordinate_normalization"] == (
+        court_coordinate_normalization_metadata()
     )
     assert all(
         track["support_plane"]["schema"] == "plcs_initial_smplh_surface_support_v1"

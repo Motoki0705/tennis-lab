@@ -5,6 +5,9 @@ from __future__ import annotations
 import pytest
 
 from src.tasks.plcs.data.types import PLCSSceneMeta
+from src.utils.schema.court_normalization import (
+    court_coordinate_normalization_metadata,
+)
 
 
 def test_scene_metadata_requires_track_instances_field() -> None:
@@ -19,6 +22,7 @@ def test_scene_metadata_requires_track_instances_field() -> None:
         "initial_yaw": 0.0,
         "num_cameras_sampled": 1,
         "num_cameras": 1,
+        "court_coordinate_normalization": court_coordinate_normalization_metadata(),
     }
 
     with pytest.raises(KeyError, match="track_instances"):
