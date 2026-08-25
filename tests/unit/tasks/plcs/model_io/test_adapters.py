@@ -324,6 +324,70 @@ def _tracking_batch() -> dict[str, Tensor]:
     }
 
 
+def _uv_boundary_profile(
+    profile: str,
+) -> tuple[dict[str, Tensor], object]:
+    if profile == "tracking":
+        adapter = _tracking_adapter()
+        return _tracking_batch(), adapter.build_call
+    adapter = _standard_adapter()
+    batch = _canonical_batch()
+    if profile == "canonical":
+        return batch, adapter.prepare_training_batch
+    return batch, adapter.build_call
+
+
+@pytest.mark.parametrize("profile", ["ordinary", "canonical", "tracking"])
+def test_uv_range_is_enforced_only_for_visible_coordinates(profile: str) -> None:
+    batch, boundary = _uv_boundary_profile(profile)
+    batch["court_kp"][..., 0, :] = torch.tensor([-0.25, 1.25])
+    batch["court_vis"][..., 0] = False
+    assert callable(boundary)
+
+    boundary(batch)
+
+    batch["court_vis"][..., 0] = True
+    with pytest.raises(ModelInputContractError, match=r"Visible court_kp.*\[0, 1\]"):
+        boundary(batch)
+
+
+@pytest.mark.parametrize("profile", ["ordinary", "canonical", "tracking"])
+@pytest.mark.parametrize("value", [float("nan"), float("inf")])
+def test_invisible_uv_still_requires_finite_values(
+    profile: str,
+    value: float,
+) -> None:
+    batch, boundary = _uv_boundary_profile(profile)
+    batch["human_kp"][..., 0, 0] = value
+    batch["human_vis"][..., 0] = False
+    assert callable(boundary)
+
+    with pytest.raises(ModelInputContractError, match="human_kp.*finite"):
+        boundary(batch)
+
+
+@pytest.mark.parametrize("profile", ["ordinary", "canonical", "tracking"])
+@pytest.mark.parametrize("mutation", ["shape", "dtype", "device"])
+def test_visibility_mask_contract_is_fail_closed(
+    profile: str,
+    mutation: str,
+) -> None:
+    batch, boundary = _uv_boundary_profile(profile)
+    if mutation == "shape":
+        batch["court_vis"] = batch["court_vis"][:, :1]
+        message = "court_vis must match court_kp|court_vis.*axis"
+    elif mutation == "dtype":
+        batch["court_vis"] = batch["court_vis"].to(torch.float32)
+        message = "torch.bool"
+    else:
+        batch["court_vis"] = batch["court_vis"].to("meta")
+        message = "share the UV tensor device"
+    assert callable(boundary)
+
+    with pytest.raises(ModelInputContractError, match=message):
+        boundary(batch)
+
+
 def test_tracking_boundary_validates_inputs_targets_and_decodes_required_presence() -> None:
     adapter = _tracking_adapter()
     prepared = adapter.prepare_training_batch(_tracking_batch())
