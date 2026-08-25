@@ -15,6 +15,9 @@ from src.tasks.base.data.lifecycle_slots import (
     pack_lifecycle_slots,
 )
 from src.tasks.base.data.scene_dataset import SceneDatasetBase, SceneDatasetConfig
+from src.utils.schema.court_normalization import (
+    validate_court_coordinate_normalization,
+)
 
 
 def validate_lifecycle_capacity(
@@ -85,6 +88,9 @@ class CanonicalTrackingDataset(SceneDatasetBase[dict[str, Tensor]]):
             ),
             rng=rng,
         )
+
+    def _validate_scene_metadata(self, meta: dict[str, Any], *, path: Path) -> None:
+        validate_court_coordinate_normalization(meta, artifact=f"Scene {path}")
 
     def pack_lifecycle(self, physical_presence: Tensor) -> LifecycleSlotAssignment:
         """Pack a clipped physical-track matrix into model query slots."""

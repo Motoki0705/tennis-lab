@@ -11,6 +11,11 @@ import torch
 
 from src.tasks.base.configuration import TrainingRuntimeConfig
 from src.tasks.base.training.runner import BaseTrainingRunner
+from src.utils.schema.court_normalization import (
+    COURT_COORDINATE_NORMALIZATION_KEY,
+    CourtCoordinateContractError,
+    court_coordinate_normalization_metadata,
+)
 
 
 class _TinyModule(pl.LightningModule):
@@ -23,6 +28,13 @@ def _runner() -> BaseTrainingRunner:
     return BaseTrainingRunner()
 
 
+def _checkpoint(state_dict: dict[str, torch.Tensor]) -> dict[str, object]:
+    return {
+        COURT_COORDINATE_NORMALIZATION_KEY: (court_coordinate_normalization_metadata()),
+        "state_dict": state_dict,
+    }
+
+
 def _runtime(
     make_training_config: Any,
     repository_root: Path,
@@ -31,9 +43,7 @@ def _runtime(
     resume: str | None = None,
 ) -> TrainingRuntimeConfig:
     return TrainingRuntimeConfig.from_config(
-        make_training_config(
-            run={"init_weights": init_weights, "resume": resume}
-        ),
+        make_training_config(run={"init_weights": init_weights, "resume": resume}),
         repository_root=repository_root,
     )
 
@@ -52,7 +62,7 @@ def test_loads_weights_from_checkpoint(
 ) -> None:
     source = _TinyModule()
     ckpt = tmp_path / "src.ckpt"
-    torch.save({"state_dict": source.state_dict()}, ckpt)
+    torch.save(_checkpoint(source.state_dict()), ckpt)
 
     target = _TinyModule()
     assert not torch.allclose(target.linear.weight, source.linear.weight)
@@ -66,7 +76,7 @@ def test_mutually_exclusive_with_resume(
     tmp_path: Path, make_training_config: Any
 ) -> None:
     ckpt = tmp_path / "src.ckpt"
-    torch.save({"state_dict": _TinyModule().state_dict()}, ckpt)
+    torch.save(_checkpoint(_TinyModule().state_dict()), ckpt)
     with pytest.raises(ValueError, match="mutually exclusive"):
         _runtime(
             make_training_config,
@@ -81,8 +91,31 @@ def test_raises_when_checkpoint_does_not_match(
 ) -> None:
     # Checkpoint keys are unrelated to the model -> nothing loads.
     ckpt = tmp_path / "src.ckpt"
-    torch.save({"state_dict": {"unrelated.weight": torch.zeros(3)}}, ckpt)
+    torch.save(_checkpoint({"unrelated.weight": torch.zeros(3)}), ckpt)
     with pytest.raises(RuntimeError, match="does not match"):
+        _runner().maybe_load_init_weights(
+            _runtime(make_training_config, tmp_path, init_weights=ckpt.name),
+            _TinyModule(),
+        )
+
+
+@pytest.mark.parametrize("mutation", ["missing", "mismatched"])
+def test_init_weights_rejects_incompatible_court_coordinate_contract(
+    tmp_path: Path,
+    make_training_config: Any,
+    mutation: str,
+) -> None:
+    payload = _checkpoint(_TinyModule().state_dict())
+    if mutation == "missing":
+        del payload[COURT_COORDINATE_NORMALIZATION_KEY]
+    else:
+        contract = payload[COURT_COORDINATE_NORMALIZATION_KEY]
+        assert isinstance(contract, dict)
+        contract["scale_xyz_m"] = [5.485, 11.885, 1.07]
+    ckpt = tmp_path / f"{mutation}.ckpt"
+    torch.save(payload, ckpt)
+
+    with pytest.raises(CourtCoordinateContractError, match="missing|mismatched"):
         _runner().maybe_load_init_weights(
             _runtime(make_training_config, tmp_path, init_weights=ckpt.name),
             _TinyModule(),

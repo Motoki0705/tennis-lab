@@ -28,10 +28,12 @@ from src.tasks.blcs.generate_dataset.source_api import (
 )
 from src.utils.projection.camera_projector import CameraConfig
 from src.utils.schema.court import NET_POST_OFFSET_X, CourtConfig
-
-_CONFIG_ROOT = (
-    Path(__file__).resolve().parents[5] / "src/tasks/blcs/configs"
+from src.utils.schema.court_normalization import (
+    normalize_court_position,
+    normalize_court_velocity,
 )
+
+_CONFIG_ROOT = Path(__file__).resolve().parents[5] / "src/tasks/blcs/configs"
 
 
 def _timeline_mapping() -> dict[str, object]:
@@ -166,8 +168,9 @@ class _RetryingPhysicsGenerator:
             winner_side=None,
             shots=[{"shot_index": 0, "t_start": 0, "t_bounce1": 4}],
             ball_pos_world=trajectory,
-            ball_pos_norm=trajectory / 10.0,
+            ball_pos_norm=normalize_court_position(trajectory),
             ball_vel_world=torch.ones_like(trajectory),
+            ball_vel_norm=normalize_court_velocity(torch.ones_like(trajectory)),
             cameras=[],
             num_cameras_sampled=0,
             fps_out=30,
@@ -246,7 +249,9 @@ def test_source_settings_are_strict_explicit_and_multi_object() -> None:
         )
 
 
-def test_public_factory_builds_the_hidden_generator_config_from_resolved_mapping() -> None:
+def test_public_factory_builds_the_hidden_generator_config_from_resolved_mapping() -> (
+    None
+):
     resolved = _resolved_generator_mapping()
 
     configuration = build_blcs_generator_configuration(resolved)
@@ -328,15 +333,9 @@ def test_source_is_deterministic_complete_and_independent_of_internal_scenes(
         for track in first.tracks
     )
     assert all(item.accepted_attempt == 2 for item in first.proposal_diagnostics)
-    assert all(
-        len(item.rejected_attempts) == 1 for item in first.proposal_diagnostics
-    )
-    assert all(
-        item.maximum_attempts == 3 for item in first.proposal_diagnostics
-    )
-    assert all(
-        item.source_frame_count == 5 for item in first.physics_provenance
-    )
+    assert all(len(item.rejected_attempts) == 1 for item in first.proposal_diagnostics)
+    assert all(item.maximum_attempts == 3 for item in first.proposal_diagnostics)
+    assert all(item.source_frame_count == 5 for item in first.physics_provenance)
     assert all(item.output_fps == 30.0 for item in first.physics_provenance)
     assert all(item.simulation_fps == 120.0 for item in first.physics_provenance)
     metadata = first.to_metadata()

@@ -16,6 +16,9 @@ from src.tasks.base.data.scene_dataset import (
 from src.tasks.plcs.data.augmentation import PLCSObservationAugmentation
 from src.tasks.plcs.data.targets import build_coco17_world_targets
 from src.tasks.plcs.data.types import PLCSBatch
+from src.utils.schema.court_normalization import (
+    validate_court_coordinate_normalization,
+)
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -94,6 +97,9 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
             min_num_frames=self._plcs_seq_len_range[0],
             min_num_cameras=self._plcs_num_views_range[0],
         )
+
+    def _validate_scene_metadata(self, meta: dict, *, path: Path) -> None:
+        validate_court_coordinate_normalization(meta, artifact=f"Scene {path}")
 
     def build_sample(self, scene: Scene) -> dict[str, Tensor]:
         cams = self.select_cameras(
