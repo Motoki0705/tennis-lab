@@ -1,6 +1,13 @@
 """Public file/subprocess boundary for the independently managed NHT renderer."""
 
 from src.synthetic_data_generation.rendering.nht.client import NHTRenderClient
+from src.synthetic_data_generation.rendering.nht.composed import (
+    NHTComposedChunkArrays,
+    NHTComposedChunkRecord,
+    NHTComposedRenderClient,
+    NHTComposedRenderCommandRequest,
+    NHTComposedRenderResult,
+)
 from src.synthetic_data_generation.rendering.nht.contracts import (
     NHT_RENDER_COMMAND,
     NHTRenderArrayMetadata,
@@ -20,6 +27,11 @@ __all__ = [
     "NHTRenderArrays",
     "NHTRenderCamera",
     "NHTRenderClient",
+    "NHTComposedChunkArrays",
+    "NHTComposedChunkRecord",
+    "NHTComposedRenderClient",
+    "NHTComposedRenderCommandRequest",
+    "NHTComposedRenderResult",
     "NHTRenderCommandRequest",
     "NHTRenderEvidence",
     "NHTRenderRecord",

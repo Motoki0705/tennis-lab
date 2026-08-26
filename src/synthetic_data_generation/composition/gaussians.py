@@ -420,7 +420,7 @@ def compose_foreground_frame_gaussians(
     frame_index: int,
     object_tensors: Mapping[str, GaussianTensorSet],
 ) -> GaussianTensorSet:
-    """Validate and place every positive-identity articulated foreground object."""
+    """Validate and place every positive-identity movable foreground object."""
     frame = composition.frame(frame_index)
     expected_object_ids = {instance.object_id for instance in frame.instances}
     actual_object_ids = set(object_tensors)

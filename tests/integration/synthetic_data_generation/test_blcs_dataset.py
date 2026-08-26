@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import importlib
 import json
-import math
-from collections.abc import Iterator, Mapping
-from dataclasses import dataclass, replace
+from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -27,6 +26,7 @@ from src.synthetic_data_generation.dataset.blcs.assembler import (
     validate_blcs_dataset,
 )
 from src.synthetic_data_generation.dataset.blcs.contracts import (
+    BLCSBallGaussianSettings,
     BLCSCompositionAssets,
     BLCSTrack,
     BLCSTrajectory,
@@ -34,16 +34,8 @@ from src.synthetic_data_generation.dataset.blcs.contracts import (
 from src.synthetic_data_generation.dataset.blcs.handler import BLCSDatasetStageHandler
 from src.synthetic_data_generation.dataset.blcs.rendering.nht import (
     BLCSNHTRenderer,
-    build_blcs_sample_metadata,
 )
-from src.synthetic_data_generation.dataset.blcs.timeline import BLCSTrajectoryPlan
 from src.synthetic_data_generation.dataset.camera_profiles import CameraProfileConfig
-from src.synthetic_data_generation.dataset.runtime import (
-    BackgroundArrays,
-    ForegroundDeltaBatch,
-    RenderSampleKey,
-    sparse_delta_from_composite,
-)
 from src.synthetic_data_generation.pipeline import (
     CanonicalStageHandlers,
     DatasetTarget,
@@ -55,16 +47,13 @@ from src.synthetic_data_generation.pipeline import (
     canonical_registry,
 )
 from src.synthetic_data_generation.pipeline.contracts import StageExecutionContext
-from src.synthetic_data_generation.rendering.nht.contracts import (
-    NHTRenderArrays,
-    NHTRenderCommandRequest,
-    NHTRenderRecord,
-    NHTRenderResult,
-)
 from src.synthetic_data_generation.scene_contract import (
     CourtInstance,
     MultiCourtLayout,
     RigidTransform,
+)
+from tests.support.synthetic_data_generation.composed_nht import (
+    FakeComposedNHTClient,
 )
 
 
@@ -90,152 +79,6 @@ class _NoOpHandler:
 
     def validate(self, context: StageExecutionContext) -> None:
         pass
-
-
-class _FakeNHTClient:
-    def __init__(self) -> None:
-        self.requests: list[NHTRenderCommandRequest] = []
-
-    def validate_scene(self, scene_path: Path) -> SimpleNamespace:
-        del scene_path
-        return SimpleNamespace(scene_id="B00")
-
-    def render(
-        self,
-        request: NHTRenderCommandRequest,
-        *,
-        environment=None,
-        timeout_seconds=None,
-    ) -> NHTRenderResult:
-        del environment, timeout_seconds
-        self.requests.append(request)
-        assert request.arbitrary_cameras is not None
-        assert request.arbitrary_request_path is not None
-        request.arbitrary_cameras.write(request.arbitrary_request_path)
-        request.output_directory.mkdir(parents=True, exist_ok=False)
-        records = []
-        for camera in request.arbitrary_cameras.cameras:
-            camera_root = request.output_directory / camera.camera_id
-            camera_root.mkdir()
-            rgb: NDArray[np.float32] = np.zeros(
-                (camera.height, camera.width, 3), dtype=np.float32
-            )
-            alpha: NDArray[np.float32] = np.ones(
-                (camera.height, camera.width, 1), dtype=np.float32
-            )
-            depth: NDArray[np.float32] = np.full(
-                (camera.height, camera.width, 1), 100.0, dtype=np.float32
-            )
-            rgb_path = camera_root / "rgb.npy"
-            alpha_path = camera_root / "alpha.npy"
-            depth_path = camera_root / "depth.npy"
-            np.save(rgb_path, rgb, allow_pickle=False)
-            np.save(alpha_path, alpha, allow_pickle=False)
-            np.save(depth_path, depth, allow_pickle=False)
-            preview = camera_root / "unused.png"
-            record = NHTRenderRecord(
-                camera_id=camera.camera_id,
-                request_source="arbitrary",
-                width=camera.width,
-                height=camera.height,
-                rgb_path=rgb_path,
-                rgb_preview_path=preview,
-                alpha_path=alpha_path,
-                alpha_preview_path=preview,
-                depth_path=depth_path,
-            )
-            record._bind_arrays(NHTRenderArrays(rgb=rgb, alpha=alpha, depth=depth))
-            records.append(record)
-        return NHTRenderResult(
-            scene_id="B00",
-            output_directory=request.output_directory,
-            records=tuple(records),
-        )
-
-
-@dataclass
-class _ExplicitCPUOracle:
-    """Independent dense oracle selected only by this CPU integration test."""
-
-    execution_device: str = "test-cpu-oracle"
-    cuda_peak_bytes: int = 0
-
-    def compose(
-        self,
-        *,
-        plan: BLCSTrajectoryPlan,
-        backgrounds: Mapping[str, BackgroundArrays],
-        ball_radius_m: float,
-    ) -> Iterator[ForegroundDeltaBatch]:
-        for chunk in plan.chunks:
-            deltas = []
-            metadata = []
-            for frame_index in chunk.frame_indices:
-                for camera_index, sampled in enumerate(plan.camera_rig.cameras):
-                    camera = sampled.scene_camera
-                    background = backgrounds[camera.camera_id]
-                    rgb = np.array(background.rgb, copy=True)
-                    alpha = np.array(background.alpha, copy=True)
-                    depth = np.array(background.depth, copy=True)
-                    labels: NDArray[np.int32] = np.zeros(
-                        (camera.height, camera.width), dtype=np.int32
-                    )
-                    focal = float(camera.intrinsics[0])
-                    for object_index in range(plan.source.object_count):
-                        if not plan.geometric_visible[
-                            frame_index, camera_index, object_index
-                        ]:
-                            continue
-                        centre = plan.camera_uv[frame_index, camera_index, object_index]
-                        object_depth = float(
-                            plan.camera_depth[frame_index, camera_index, object_index]
-                        )
-                        radius = max(
-                            1, int(round(focal * ball_radius_m / object_depth))
-                        )
-                        x_min = max(0, int(math.floor(centre[0] - radius)))
-                        x_max = min(
-                            camera.width, int(math.ceil(centre[0] + radius + 1))
-                        )
-                        y_min = max(0, int(math.floor(centre[1] - radius)))
-                        y_max = min(
-                            camera.height, int(math.ceil(centre[1] + radius + 1))
-                        )
-                        yy, xx = np.ogrid[y_min:y_max, x_min:x_max]
-                        disc = (xx - centre[0]) ** 2 + (
-                            yy - centre[1]
-                        ) ** 2 <= radius**2
-                        local_depth = depth[y_min:y_max, x_min:x_max, 0]
-                        visible = disc & (
-                            (local_depth <= 0.0) | (object_depth <= local_depth)
-                        )
-                        rgb[y_min:y_max, x_min:x_max][visible] = (1.0, 0.85, 0.0)
-                        alpha[y_min:y_max, x_min:x_max, 0][visible] = 1.0
-                        local_depth[visible] = object_depth
-                        labels[y_min:y_max, x_min:x_max][visible] = object_index + 1
-                    delta = sparse_delta_from_composite(
-                        key=RenderSampleKey(frame_index, camera.camera_id),
-                        background=background,
-                        rgb=rgb,
-                        alpha=alpha,
-                        depth=depth,
-                        instance_ids=labels,
-                    )
-                    deltas.append(delta)
-                    metadata.append(
-                        build_blcs_sample_metadata(
-                            plan=plan,
-                            source_frame_index=frame_index,
-                            camera_index=camera_index,
-                            chunk_index=chunk.chunk_index,
-                            delta=delta,
-                        )
-                    )
-            yield ForegroundDeltaBatch(
-                chunk_id=f"chunk-{chunk.chunk_index:06d}",
-                deltas=tuple(deltas),
-                metadata=tuple(metadata),
-            )
 
 
 @dataclass(frozen=True)
@@ -328,29 +171,27 @@ def _camera_profile() -> CameraProfileConfig:
 
 def _assets() -> BLCSCompositionAssets:
     return BLCSCompositionAssets(
-        background=GaussianAsset(
-            asset_id="background",
-            asset_class="court",
-            role=GaussianAssetRole.BACKGROUND,
-            coordinates=GaussianCoordinates.scene(),
-            gaussian_count=100,
-            feature_dim=8,
-            floating_dtype="float32",
-            appearance_model="nht-deferred",
-            appearance_space="test-space",
-        ),
         ball=GaussianAsset(
             asset_id="ball-surface",
             asset_class="ball",
             role=GaussianAssetRole.MOVABLE,
             coordinates=GaussianCoordinates.asset_local_metres(),
-            gaussian_count=12,
-            feature_dim=8,
+            gaussian_count=64,
+            feature_dim=3,
             floating_dtype="float32",
-            appearance_model="nht-deferred",
-            appearance_space="test-space",
+            appearance_model="rgb",
+            appearance_space="linear_rgb",
         ),
-        ball_radius_m=0.0335,
+        settings=BLCSBallGaussianSettings(
+            radius_m=0.0335,
+            radial_scale_m=0.0018,
+            tangential_scale_m=0.0048,
+            opacity=0.94,
+            base_color_linear_rgb=(0.72, 0.92, 0.08),
+            seam_color_linear_rgb=(0.92, 0.95, 0.80),
+            seam_width_radians=0.08,
+            visibility_threshold=0.0001,
+        ),
     )
 
 
@@ -408,26 +249,17 @@ def test_blcs_stage_carries_all_frames_through_chunks_and_balanced_courts(
     config.timeline.chunk_size_frames = 2
     config.generator.targeted_velocity.gravity = 9.81
     config.render_timeout_seconds = 60.0
-    config.performance.maximum_batch_frames = 2
+    config.performance.maximum_batch_frames = 1
     configuration = BLCSDatasetConfiguration.from_mapping(config)
-    configuration = replace(
-        configuration,
-        performance=replace(
-            configuration.performance,
-            execution_device="test-cpu-oracle",
-            require_cuda=False,
-        ),
-    )
-    client = _FakeNHTClient()
+    client = FakeComposedNHTClient()
     renderer = BLCSNHTRenderer(
         assets=_assets(),
-        client=client,  # type: ignore[arg-type]
+        client=client,
         executable="nht-render",
         environment={},
         timeout_seconds=60.0,
-        execution_device="test-cpu-oracle",
-        maximum_batch_frames=2,
-        test_cpu_oracle=_ExplicitCPUOracle(),
+        execution_device="cuda:0",
+        maximum_batch_frames=1,
     )
     handler = BLCSDatasetStageHandler(
         workspace=workspace,
@@ -488,7 +320,9 @@ def test_blcs_stage_carries_all_frames_through_chunks_and_balanced_courts(
     first_plan_path = staging / "samples/trajectory-0/plan.json"
     first_plan = json.loads(first_plan_path.read_text(encoding="utf-8"))
     metric_camera = first_plan["cameras"][0]["camera"]
-    request_camera = client.requests[0].arbitrary_cameras.cameras[0]  # type: ignore[union-attr]
+    arbitrary_cameras = client.requests[0].base.arbitrary_cameras
+    assert arbitrary_cameras is not None
+    request_camera = arbitrary_cameras.cameras[0]
     assert request_camera.camera_id == metric_camera["camera_id"]
     assert request_camera.width == metric_camera["width"]
     assert request_camera.height == metric_camera["height"]
@@ -525,7 +359,9 @@ def test_blcs_stage_carries_all_frames_through_chunks_and_balanced_courts(
         source_frame_index=first_sample.source_frame_index,
         camera_id=first_sample.camera_id,
     )
-    assert float(logical.render.depth[0, 0, 0]) == pytest.approx(400.0)
+    assert float(logical.render.depth[0, 0, 0]) == pytest.approx(32.0)
+    np.testing.assert_allclose(logical.render.rgb[0, 0], (0.72, 0.92, 0.08))
+    assert logical.render.instance_ids[0, 0] == 1
     camera_parameters = logical.metadata["camera_parameters"]
     assert isinstance(camera_parameters, Mapping)
     camera_payload = camera_parameters["camera"]
@@ -550,6 +386,14 @@ def test_blcs_stage_carries_all_frames_through_chunks_and_balanced_courts(
         validate_blcs_dataset(staging)
     metadata_path.write_text(original_metadata, encoding="utf-8")
     marker_path.write_text(original_marker, encoding="utf-8")
+
+    original_plan = first_plan_path.read_text(encoding="utf-8")
+    corrupted_plan = json.loads(original_plan)
+    corrupted_plan["composition"]["objects"][0]["deformation_kind"] = "articulated"
+    first_plan_path.write_text(json.dumps(corrupted_plan) + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="rigid deformation"):
+        validate_blcs_dataset(staging)
+    first_plan_path.write_text(original_plan, encoding="utf-8")
 
     monkeypatch.setattr(
         handler_module,
