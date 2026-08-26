@@ -29,7 +29,10 @@ from src.synthetic_data_generation.pipeline.registry import (
 )
 from src.synthetic_data_generation.pipeline.runner import ScenePipelineRunner
 from src.synthetic_data_generation.reconstruction import NHTReconstructionHandler
-from src.synthetic_data_generation.rendering.nht import NHTRenderClient
+from src.synthetic_data_generation.rendering.nht import (
+    NHTComposedRenderClient,
+    NHTRenderClient,
+)
 from src.tasks.plcs.generate_dataset.sampling.motion_source import ACCADMotionLibrary
 
 
@@ -66,7 +69,7 @@ def build_stage_registry(
         ),
         renderer=BLCSNHTRenderer(
             assets=runtime.blcs.assets,
-            client=NHTRenderClient(),
+            client=NHTComposedRenderClient(),
             executable=nht.render_executable,
             environment=render_environment,
             timeout_seconds=runtime.blcs.render_timeout_seconds,

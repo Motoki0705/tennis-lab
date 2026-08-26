@@ -93,12 +93,7 @@ class BLCSDatasetStageHandler:
         self.trajectory_provider.preflight(
             scene_id=context.request.scene_id, seed=self.seed
         )
-        renderer_device = (
-            self.renderer.test_cpu_oracle.execution_device
-            if self.renderer.test_cpu_oracle is not None
-            else self.renderer.execution_device
-        )
-        if renderer_device != self.configuration.performance.execution_device:
+        if self.renderer.execution_device != self.configuration.performance.execution_device:
             raise ValueError(
                 "BLCS renderer device differs from config-owned performance authority."
             )
