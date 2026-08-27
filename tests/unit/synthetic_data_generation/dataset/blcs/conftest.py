@@ -12,6 +12,7 @@ from src.synthetic_data_generation.composition import (
     GaussianCoordinates,
 )
 from src.synthetic_data_generation.dataset.blcs.contracts import (
+    BLCSBallGaussianSettings,
     BLCSCompositionAssets,
     BLCSTrack,
     BLCSTrajectory,
@@ -26,31 +27,29 @@ from src.synthetic_data_generation.scene_contract import (
 
 @pytest.fixture
 def blcs_assets() -> BLCSCompositionAssets:
-    """Return compatible semantic background and ball assets."""
+    """Return one small deterministic metric ball asset contract."""
     return BLCSCompositionAssets(
-        background=GaussianAsset(
-            asset_id="background",
-            asset_class="court",
-            role=GaussianAssetRole.BACKGROUND,
-            coordinates=GaussianCoordinates.scene(),
-            gaussian_count=100,
-            feature_dim=8,
-            floating_dtype="float32",
-            appearance_model="nht-deferred",
-            appearance_space="test-space",
-        ),
         ball=GaussianAsset(
             asset_id="ball-surface",
             asset_class="ball",
             role=GaussianAssetRole.MOVABLE,
             coordinates=GaussianCoordinates.asset_local_metres(),
-            gaussian_count=12,
-            feature_dim=8,
+            gaussian_count=64,
+            feature_dim=3,
             floating_dtype="float32",
-            appearance_model="nht-deferred",
-            appearance_space="test-space",
+            appearance_model="rgb",
+            appearance_space="linear_rgb",
         ),
-        ball_radius_m=0.0335,
+        settings=BLCSBallGaussianSettings(
+            radius_m=0.0335,
+            radial_scale_m=0.0018,
+            tangential_scale_m=0.0048,
+            opacity=0.94,
+            base_color_linear_rgb=(0.72, 0.92, 0.08),
+            seam_color_linear_rgb=(0.92, 0.95, 0.80),
+            seam_width_radians=0.08,
+            visibility_threshold=0.0001,
+        ),
     )
 
 
@@ -126,7 +125,11 @@ def make_trajectory(
     positions: NDArray[np.float64] = np.zeros((frame_count, 1, 3), dtype=np.float64)
     positions[:, 0, 0] = np.linspace(-1.0, 1.0, frame_count)
     positions[:, 0, 2] = 1.5
-    velocities = np.gradient(positions, axis=0)
+    velocities = (
+        np.gradient(positions, axis=0)
+        if frame_count > 1
+        else np.zeros_like(positions)
+    )
     present: NDArray[np.bool_] = np.ones((frame_count, 1), dtype=np.bool_)
     return BLCSTrajectory(
         trajectory_id=trajectory_id,
