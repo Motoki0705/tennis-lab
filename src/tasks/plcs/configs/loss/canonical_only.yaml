@@ -1,0 +1,13 @@
+# Canonical 3D pose is the sole supervised objective for motion-collapse studies.
+defaults:
+  - _base
+  - _self_
+
+position_weight: 0.0
+rotation_weight: 0.0
+canonical_pose_weight: 1.0
+
+# Canonical joints are metre-space values. A 0.1 m transition avoids the
+# near-zero gradients produced by the historical 1 m quadratic region without
+# changing the target representation.
+canonical_pose_smooth_l1_beta: 0.1

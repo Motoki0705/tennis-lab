@@ -1,0 +1,7 @@
+defaults:
+  - multiview_axial_base
+  - _self_
+
+# Preserve the shared axial trunk and separate only the canonical readout into
+# sequence-static geometry plus an explicitly normalized, zero-mean motion path.
+canonical_pose_readout: temporal_decomposition
