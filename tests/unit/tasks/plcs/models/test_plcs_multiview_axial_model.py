@@ -42,3 +42,40 @@ def test_multiview_axial_model_forward_accepts_single_view() -> None:
 
     assert out["position"].shape == (2, 4, 3)
     assert out["rotation"].shape == (2, 4, 2)
+
+
+def test_temporal_canonical_readout_returns_frame_aligned_pose() -> None:
+    torch.manual_seed(0)
+    model = PLCSMultiViewAxialModel(
+        hidden_dim=16,
+        num_layers=1,
+        num_heads=4,
+        ffn_dim=64,
+        dropout=0.0,
+        rope_dim=4,
+        rope_theta_time=10000.0,
+        rope_theta_camera=10000.0,
+        ffn_type="swiglu",
+        predict_canonical_pose=True,
+        max_views=2,
+        max_seq_len=4,
+        invisible_init_std=0.02,
+        num_court_tokens=20,
+        canonical_pose_readout="temporal_decomposition",
+    ).eval()
+
+    padding_mask = torch.zeros(2, 2, 4, dtype=torch.bool)
+    padding_mask[0, :, 3] = True
+    camera_mask, time_mask = prepare_axial_attention_masks(padding_mask)
+    with torch.no_grad():
+        out = model(
+            human_kp=torch.rand(2, 2, 4, 17, 2),
+            court_kp=torch.rand(2, 2, 4, 20, 2),
+            human_vis=torch.ones(2, 2, 4, 17),
+            padding_mask=padding_mask,
+            court_vis=torch.ones(2, 2, 4, 20),
+            camera_attention_mask=camera_mask,
+            time_attention_mask=time_mask,
+        )
+
+    assert out["canonical_pose"].shape == (2, 4, 17, 3)

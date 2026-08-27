@@ -224,6 +224,7 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "rope_theta_time",
             "rope_theta_camera",
             "predict_canonical_pose",
+            "canonical_pose_readout",
         }
     ),
     "plcs_multiview_axial_split": frozenset(
@@ -236,6 +237,7 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "rope_theta_time",
             "rope_theta_camera",
             "predict_canonical_pose",
+            "canonical_pose_readout",
             "num_task_layers",
             "rot_num_task_layers",
             "pose_num_task_layers",
@@ -254,6 +256,7 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "rope_theta_time",
             "rope_theta_camera",
             "predict_canonical_pose",
+            "canonical_pose_readout",
         }
     ),
     "plcs_track_query": frozenset(
@@ -433,6 +436,22 @@ class PLCSModelConfig:
             if ffn_type not in {"swiglu", "mlp"}:
                 raise SemanticConfigurationError(
                     "model.ffn_type must be 'swiglu' or 'mlp'."
+                )
+        if "canonical_pose_readout" in mapping:
+            canonical_pose_readout = _string(
+                mapping, "canonical_pose_readout", path="model"
+            )
+            if canonical_pose_readout not in {"direct", "temporal_decomposition"}:
+                raise SemanticConfigurationError(
+                    "model.canonical_pose_readout must be 'direct' or "
+                    "'temporal_decomposition'."
+                )
+            if canonical_pose_readout == "temporal_decomposition" and not _boolean(
+                mapping, "predict_canonical_pose", path="model"
+            ):
+                raise SemanticConfigurationError(
+                    "model.canonical_pose_readout='temporal_decomposition' requires "
+                    "model.predict_canonical_pose=true."
                 )
         if (
             "num_joints" in mapping
