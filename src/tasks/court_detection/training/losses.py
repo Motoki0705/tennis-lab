@@ -12,6 +12,7 @@ import torch.nn.functional as F
 from torch import Tensor
 
 from src.tasks.court_detection.geometry.pose import CourtDecodedPose
+from src.tasks.court_detection.model_io.contracts import CourtPoseLossKind
 
 CourtConsistencyGradientFlow: TypeAlias = Literal[
     "both",
@@ -105,7 +106,7 @@ def consistency_effective_weight(
     return resolved_weight * ramp
 
 
-def query_keypoint_pose_consistency_loss(
+def keypoint_pose_consistency_loss(
     dense_points_xy: Tensor,
     pose_points_xy: Tensor,
     pose_depth_m: Tensor,
@@ -305,10 +306,10 @@ def rotation_geodesic_radians(prediction: Tensor, target: Tensor) -> Tensor:
         return torch.atan2(sine, cosine)
 
 
-def query_pose_losses(
+def pose_losses(
     prediction: CourtDecodedPose,
     target: CourtPoseLossTarget,
-) -> dict[str, Tensor]:
+) -> dict[CourtPoseLossKind, Tensor]:
     """Compute explicit metric translation, SO(3), and log-focal losses."""
     translation_dtype = _prediction_compute_dtype(prediction.translation_m.dtype)
     rotation_dtype = _prediction_compute_dtype(prediction.rotation.dtype)
@@ -354,7 +355,14 @@ __all__ = [
     "CourtKeypointPoseConsistencyLoss",
     "DiceLoss",
     "consistency_effective_weight",
+    "keypoint_pose_consistency_loss",
+    "pose_losses",
+    "rotation_geodesic_radians",
     "query_keypoint_pose_consistency_loss",
     "query_pose_losses",
-    "rotation_geodesic_radians",
 ]
+
+# Deprecated symbol aliases for old experiment notebooks; implementations are
+# unified and never dispatch to a model-specific encoder.
+query_keypoint_pose_consistency_loss = keypoint_pose_consistency_loss
+query_pose_losses = pose_losses

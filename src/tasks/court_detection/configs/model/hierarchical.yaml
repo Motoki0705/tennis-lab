@@ -1,6 +1,7 @@
 # Shared encoder/decoder with one head per selected Court target.
 defaults:
   - encoder: default
+  - transformer_encoder: none
   - decoder: fpn
   - _self_
 

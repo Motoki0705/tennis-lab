@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 import torch
 from hydra import compose, initialize_config_dir
+from numpy.typing import NDArray
 from PIL import Image
 
 from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
@@ -69,11 +70,46 @@ def _pose_safe_config():
                 "data.source.keypoint_court_scope=target_court",
                 "data/processing=kp",
                 "data/augmentation=pose_safe",
-                "loss=query_pose",
-                "model=query_encoder",
+                "model/encoder=dinov3",
+                "model/transformer_encoder=default",
+                "model/decoder=dpt",
+                "loss.pose.enabled=true",
+                "loss.pose.translation_weight=1.0",
+                "loss.pose.rotation_weight=1.0",
+                "loss.pose.focal_weight=1.0",
             ],
         )
     return CourtAugmentationConfig.from_mapping(config.data.augmentation)
+
+
+def _raw_pose_sample(*, image: Image.Image | None = None) -> CourtRawSample:
+    authority = _authority()
+    source_target = build_pose_target(authority)
+    points = project_canonical_points(
+        source_target,
+        canonical_semantic_court_points(source_target),
+    ).float()
+    return CourtRawSample(
+        sample_id="sample",
+        image=Image.new("RGB", (640, 480)) if image is None else image,
+        keypoint_channels=CourtKeypointChannels(
+            channel_names=tuple(f"kp_{index}" for index in range(14)),
+            points_xy=points.unsqueeze(1),
+            point_visible=torch.ones(14, 1, dtype=torch.bool),
+            physical_indices=torch.arange(14).view(14, 1),
+            horizontal_flip_permutation=tuple(range(14)),
+        ),
+        court_instances=(),
+        dense_target_refs={},
+        metadata=CourtSampleMetadata(
+            source_kind="synthetic_court",
+            source_schema="canonical_court_dataset_v3",
+            source_sample_id="sample",
+            scene_id="scene",
+            provenance={},
+        ),
+        pose_authority=authority,
+    )
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
@@ -160,33 +196,7 @@ def test_transform_points_rejects_invalid_contracts(
 
 
 def test_pose_safe_geometry_resizes_without_redundant_square_letterbox() -> None:
-    authority = _authority()
-    source_target = build_pose_target(authority)
-    points = project_canonical_points(
-        source_target,
-        canonical_semantic_court_points(source_target),
-    ).float()
-    raw = CourtRawSample(
-        sample_id="sample",
-        image=Image.new("RGB", (640, 480)),
-        keypoint_channels=CourtKeypointChannels(
-            channel_names=tuple(f"kp_{index}" for index in range(14)),
-            points_xy=points.unsqueeze(1),
-            point_visible=torch.ones(14, 1, dtype=torch.bool),
-            physical_indices=torch.arange(14).view(14, 1),
-            horizontal_flip_permutation=tuple(range(14)),
-        ),
-        court_instances=(),
-        dense_target_refs={},
-        metadata=CourtSampleMetadata(
-            source_kind="synthetic_court",
-            source_schema="canonical_court_dataset_v3",
-            source_sample_id="sample",
-            scene_id="scene",
-            provenance={},
-        ),
-        pose_authority=authority,
-    )
+    raw = _raw_pose_sample()
     geometry = CourtProcessingGeometry(
         _pose_safe_config(),
         is_train=True,
@@ -197,8 +207,17 @@ def test_pose_safe_geometry_resizes_without_redundant_square_letterbox() -> None
     transformed = geometry.apply(raw, dense_targets={}, plan=plan)
 
     assert plan.output_size_hw == (192, 256)
+    assert plan.content_size_hw == (192, 256)
     torch.testing.assert_close(plan.matrix[0, 0], plan.matrix[1, 1])
     assert transformed.image_tensor.shape == (3, 192, 256)
+    torch.testing.assert_close(
+        transformed.image_size,
+        torch.tensor([192, 256], dtype=torch.long),
+    )
+    torch.testing.assert_close(
+        transformed.content_size_hw,
+        torch.tensor([192, 256], dtype=torch.long),
+    )
     assert transformed.pose_target is not None
     assert transformed.keypoint_channels is not None
     target = transformed.pose_target
@@ -218,5 +237,53 @@ def test_pose_safe_geometry_adds_only_minimal_patch_alignment() -> None:
     plan = geometry._sample_once((640, 480))
 
     assert plan.output_size_hw == (192, 256)
+    assert plan.content_size_hw == (188, 250)
     assert plan.matrix[0, 0] == pytest.approx(250.0 / 640.0)
     assert plan.matrix[1, 1] == pytest.approx(250.0 / 640.0)
+
+
+def test_pose_safe_geometry_marks_patch_alignment_as_invalid_content() -> None:
+    config = replace(_pose_safe_config(), train_scales=(250,), val_short_side=250)
+    geometry = CourtProcessingGeometry(config, is_train=True, require_pose=True)
+
+    plan = geometry._sample_once((640, 480))
+
+    assert plan.content_size_hw is not None
+    content_height, content_width = plan.content_size_hw
+    output_height, output_width = plan.output_size_hw
+    assert output_height >= content_height
+    assert output_width >= content_width
+    assert output_height - content_height == 4
+    assert output_width - content_width == 6
+    assert output_height % config.patch_size == 0
+    assert output_width % config.patch_size == 0
+
+
+def test_pose_safe_patch_alignment_is_replicate_filled_before_model_input() -> None:
+    columns: NDArray[np.uint8] = np.arange(640, dtype=np.uint8)[None, :]
+    rows: NDArray[np.uint8] = np.arange(480, dtype=np.uint8)[:, None]
+    image_array = np.stack(
+        (
+            np.broadcast_to(columns, (480, 640)),
+            np.broadcast_to(rows, (480, 640)),
+            np.full((480, 640), 127, dtype=np.uint8),
+        ),
+        axis=-1,
+    )
+    config = replace(_pose_safe_config(), train_scales=(250,), val_short_side=250)
+    geometry = CourtProcessingGeometry(config, is_train=False, require_pose=True)
+    raw = _raw_pose_sample(image=Image.fromarray(image_array, mode="RGB"))
+    plan = geometry._sample_once(raw.image.size)
+
+    transformed = geometry.apply(raw, dense_targets={}, plan=plan)
+
+    assert plan.content_size_hw == (188, 250)
+    image_tensor = transformed.image_tensor
+    torch.testing.assert_close(
+        image_tensor[:, :188, 250:],
+        image_tensor[:, :188, 249:250].expand(-1, -1, 6),
+    )
+    torch.testing.assert_close(
+        image_tensor[:, 188:, :],
+        image_tensor[:, 187:188, :].expand(-1, 4, -1),
+    )

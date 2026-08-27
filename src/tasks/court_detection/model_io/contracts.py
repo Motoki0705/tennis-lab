@@ -14,13 +14,19 @@ from src.tasks.court_detection.data.contracts import (
     CourtTargetKind,
 )
 from src.tasks.court_detection.geometry.pose import CourtDecodedPose
-from src.tasks.court_detection.models.query_encoder.contracts import (
-    CourtQueryRawOutput,
-    PatchTokenBatch,
+from src.tasks.court_detection.models.pose_head import (
+    CourtModelOutput,
+    CourtRawPoseOutput,
 )
 
 CourtEncoderKind = Literal["default", "dinov3"]
 CourtLogits: TypeAlias = Mapping[CourtTargetKind, Tensor]
+CourtTrainingTargetKind: TypeAlias = CourtTargetKind | Literal["pose", "image_size"]
+CourtPoseLossKind: TypeAlias = Literal[
+    "pose_translation",
+    "pose_rotation",
+    "pose_focal",
+]
 
 
 class CourtModelIOError(ModelIOContractError):
@@ -38,16 +44,6 @@ class CourtModelSpec:
 
 
 @dataclass(frozen=True, slots=True)
-class CourtQueryModelSpec:
-    """Static raw-output contract for the additive query model."""
-
-    target_bundle: CourtTargetBundleSpec
-    in_channels: int
-    short_side: int
-    model_family: Literal["court_query_encoder"] = "court_query_encoder"
-
-
-@dataclass(frozen=True, slots=True)
 class CourtModelCall:
     images: Tensor
     model_args: tuple[Tensor, ...]
@@ -57,27 +53,29 @@ class CourtModelCall:
 
 
 @dataclass(frozen=True, slots=True)
-class CourtQueryModelCall:
-    images: Tensor
-    patch_batch: PatchTokenBatch
-    model_args: tuple[Tensor, ...]
-    batch_size: int
-    height: int
-    width: int
-
-
-@dataclass(frozen=True, slots=True)
 class CourtTrainingCall:
     model_call: CourtModelCall
-    targets: Mapping[CourtTargetKind, object]
+    targets: Mapping[CourtTrainingTargetKind, object]
     batch: Mapping[str, object]
 
 
 @dataclass(frozen=True, slots=True)
 class CourtTrainingResult:
+    """Dense-only loss result with backward-compatible weighted fields.
+
+    ``loss`` and ``losses`` retain the original weighted objective contract.
+    The additional maps make the unweighted term and its configured/effective
+    outer weight explicit for experiment accounting.
+    """
+
     loss: Tensor
     losses: Mapping[CourtTargetKind, Tensor]
     logits: CourtLogits
+    raw_loss: Tensor
+    raw_losses: Mapping[CourtTargetKind, Tensor]
+    configured_weights: Mapping[CourtTargetKind, Tensor]
+    effective_weights: Mapping[CourtTargetKind, Tensor]
+    weighted_losses: Mapping[CourtTargetKind, Tensor]
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,22 +89,14 @@ class CourtPoseTargetBatch:
 
 
 @dataclass(frozen=True, slots=True)
-class CourtQueryTrainingCall:
-    model_call: CourtQueryModelCall
-    dense_targets: Mapping[CourtTargetKind, object]
-    pose_target: CourtPoseTargetBatch
-    image_size: Tensor
-    batch: Mapping[str, object]
-
-
-@dataclass(frozen=True, slots=True)
-class CourtQueryConsistencyResult:
-    """Typed auxiliary objective and geometry diagnostics for one batch."""
+class CourtConsistencyResult:
+    """Typed auxiliary objective, schedule weights, and geometry diagnostics."""
 
     coordinate_loss: Tensor
     cheirality_loss: Tensor
     auxiliary_loss: Tensor
     weighted_auxiliary_loss: Tensor
+    configured_weight: Tensor
     effective_weight: Tensor
     visible_point_count: Tensor
     mean_distance_px: Tensor
@@ -117,25 +107,35 @@ class CourtQueryConsistencyResult:
 
 
 @dataclass(frozen=True, slots=True)
-class CourtQueryTrainingResult:
+class CourtPoseTrainingResult:
+    """Typed raw/configured/effective/weighted pose loss decomposition."""
+
     loss: Tensor
+    raw_dense_loss: Tensor
     direct_dense_loss: Tensor
     direct_pose_loss: Tensor
+    raw_dense_losses: Mapping[CourtTargetKind, Tensor]
     dense_losses: Mapping[CourtTargetKind, Tensor]
-    pose_losses: Mapping[str, Tensor]
-    consistency: CourtQueryConsistencyResult | None
-    output: CourtQueryRawOutput
+    dense_configured_weights: Mapping[CourtTargetKind, Tensor]
+    dense_effective_weights: Mapping[CourtTargetKind, Tensor]
+    weighted_dense_losses: Mapping[CourtTargetKind, Tensor]
+    pose_losses: Mapping[CourtPoseLossKind, Tensor]
+    weighted_pose_losses: Mapping[CourtPoseLossKind, Tensor]
+    pose_configured_weights: Mapping[CourtPoseLossKind, Tensor]
+    pose_effective_weights: Mapping[CourtPoseLossKind, Tensor]
+    consistency: CourtConsistencyResult | None
+    output: CourtModelOutput
     decoded_pose: CourtDecodedPose
 
 
 @dataclass(frozen=True, slots=True)
-class CourtQueryDecodedOutput:
+class CourtDecodedOutput:
     pose: CourtDecodedPose
     dense_logits: CourtLogits
 
 
 @dataclass(frozen=True, slots=True)
-class CourtQueryPrediction:
+class CourtPosePrediction:
     """Typed prediction payload before persistence flattening."""
 
     pose: CourtDecodedPose
@@ -168,6 +168,13 @@ CourtDecodedPrediction: TypeAlias = (
     CourtKeypointPrediction | CourtSegmentationPrediction | CourtLinePrediction
 )
 
+CourtRawOutput = CourtModelOutput
+CourtHierarchicalTrainingResult = CourtPoseTrainingResult
+CourtModelTrainingResult = CourtPoseTrainingResult
+# Read-only source aliases for older metric/checkpoint consumers.  They point
+# at the unified contracts and do not restore a separate model branch.
+CourtQueryConsistencyResult = CourtConsistencyResult
+
 
 __all__ = [
     "CourtDecodedPrediction",
@@ -178,16 +185,18 @@ __all__ = [
     "CourtModelCall",
     "CourtModelIOError",
     "CourtModelSpec",
-    "CourtQueryModelCall",
-    "CourtQueryDecodedOutput",
-    "CourtQueryModelSpec",
-    "CourtQueryPrediction",
+    "CourtConsistencyResult",
     "CourtQueryConsistencyResult",
-    "CourtQueryTrainingCall",
-    "CourtQueryTrainingResult",
-    "CourtQueryRawOutput",
     "CourtSegmentationPrediction",
     "CourtPoseTargetBatch",
+    "CourtPoseLossKind",
     "CourtTrainingCall",
+    "CourtTrainingTargetKind",
     "CourtTrainingResult",
+    "CourtModelOutput",
+    "CourtRawPoseOutput",
+    "CourtPoseTrainingResult",
+    "CourtHierarchicalTrainingResult",
+    "CourtModelTrainingResult",
+    "CourtRawOutput",
 ]

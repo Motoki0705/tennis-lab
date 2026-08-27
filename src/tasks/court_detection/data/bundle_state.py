@@ -9,7 +9,7 @@ from typing import cast
 import torch
 
 from src.tasks.court_detection.configuration import (
-    CourtQueryConsistencyLossConfig,
+    CourtConsistencyLossConfig,
 )
 from src.tasks.court_detection.data.contracts import (
     CourtTargetBundleSpec,
@@ -19,6 +19,9 @@ from src.tasks.court_detection.data.contracts import (
 from src.tasks.court_detection.geometry.pose import POSE10D_RAW_ORDER, POSE10D_SCHEMA
 
 _BUNDLE_SCHEMA = "court_target_bundle_v1"
+_POSE_CHECKPOINT_SCHEMA_V1 = "court_hierarchical_pose_checkpoint_v1"
+_POSE_CHECKPOINT_SCHEMA_V2 = "court_hierarchical_pose_checkpoint_v2"
+# Read old additive snapshots but never emit the retired model-family marker.
 _QUERY_CHECKPOINT_SCHEMA_V1 = "court_query_checkpoint_v1"
 _QUERY_CHECKPOINT_SCHEMA_V2 = "court_query_checkpoint_v2"
 _DTYPE_TO_NAME = {
@@ -117,7 +120,7 @@ class CourtQueryCheckpointState:
     loss_config_name: str
     supervision_subset: tuple[str, ...]
     pose_supervision: bool
-    consistency: CourtQueryConsistencyLossConfig | None
+    consistency: CourtConsistencyLossConfig | None
 
 
 def serialize_query_checkpoint_state(
@@ -125,7 +128,7 @@ def serialize_query_checkpoint_state(
     *,
     loss_config_name: str,
     pose_supervision: bool,
-    consistency: CourtQueryConsistencyLossConfig | None = None,
+    consistency: CourtConsistencyLossConfig | None = None,
 ) -> dict[str, object]:
     """Snapshot query family, target order, and supervision identity."""
     if not loss_config_name or loss_config_name != loss_config_name.strip():
@@ -140,11 +143,11 @@ def serialize_query_checkpoint_state(
     )
     snapshot: dict[str, object] = {
         "schema": (
-            _QUERY_CHECKPOINT_SCHEMA_V2
+            _POSE_CHECKPOINT_SCHEMA_V2
             if enabled_consistency is not None
-            else _QUERY_CHECKPOINT_SCHEMA_V1
+            else _POSE_CHECKPOINT_SCHEMA_V1
         ),
-        "model_family": "court_query_encoder",
+        "model_family": "court_hierarchical",
         "pose_schema": POSE10D_SCHEMA,
         "pose_raw_order": list(POSE10D_RAW_ORDER),
         "target_bundle": serialize_target_bundle(bundle),
@@ -184,14 +187,19 @@ def deserialize_query_checkpoint_state(value: object) -> CourtQueryCheckpointSta
     schema = value.get("schema")
     expected = (
         common_fields | {"consistency"}
-        if schema == _QUERY_CHECKPOINT_SCHEMA_V2
+        if schema in {_POSE_CHECKPOINT_SCHEMA_V2, _QUERY_CHECKPOINT_SCHEMA_V2}
         else common_fields
     )
     if set(value) != expected:
         raise ValueError("Court query checkpoint snapshot fields changed.")
     if (
-        schema not in {_QUERY_CHECKPOINT_SCHEMA_V1, _QUERY_CHECKPOINT_SCHEMA_V2}
-        or value["model_family"] != "court_query_encoder"
+        schema not in {
+            _POSE_CHECKPOINT_SCHEMA_V1,
+            _POSE_CHECKPOINT_SCHEMA_V2,
+            _QUERY_CHECKPOINT_SCHEMA_V1,
+            _QUERY_CHECKPOINT_SCHEMA_V2,
+        }
+        or value["model_family"] not in {"court_hierarchical", "court_query_encoder"}
         or value["pose_schema"] != POSE10D_SCHEMA
         or value["pose_raw_order"] != list(POSE10D_RAW_ORDER)
     ):
@@ -219,10 +227,10 @@ def deserialize_query_checkpoint_state(value: object) -> CourtQueryCheckpointSta
     expected_subset = [*bundle.kinds, *(("pose",) if pose_enabled else ())]
     if list(subset) != expected_subset:
         raise ValueError("Court query supervision subset disagrees with bundle/pose.")
-    consistency: CourtQueryConsistencyLossConfig | None = None
-    if schema == _QUERY_CHECKPOINT_SCHEMA_V2:
+    consistency: CourtConsistencyLossConfig | None = None
+    if schema in {_POSE_CHECKPOINT_SCHEMA_V2, _QUERY_CHECKPOINT_SCHEMA_V2}:
         try:
-            consistency = CourtQueryConsistencyLossConfig.from_mapping(
+            consistency = CourtConsistencyLossConfig.from_mapping(
                 value["consistency"]
             )
         except (KeyError, TypeError, ValueError) as error:
@@ -242,10 +250,18 @@ def deserialize_query_checkpoint_state(value: object) -> CourtQueryCheckpointSta
     )
 
 
+CourtPoseCheckpointState = CourtQueryCheckpointState
+serialize_pose_checkpoint_state = serialize_query_checkpoint_state
+deserialize_pose_checkpoint_state = deserialize_query_checkpoint_state
+
+
 __all__ = [
     "CourtQueryCheckpointState",
+    "CourtPoseCheckpointState",
     "deserialize_query_checkpoint_state",
     "deserialize_target_bundle",
     "serialize_target_bundle",
     "serialize_query_checkpoint_state",
+    "serialize_pose_checkpoint_state",
+    "deserialize_pose_checkpoint_state",
 ]

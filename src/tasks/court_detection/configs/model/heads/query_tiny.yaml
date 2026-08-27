@@ -1,3 +1,0 @@
-pose_hidden_dim: 64
-pose_depth: 2
-dense_targets: [kp]

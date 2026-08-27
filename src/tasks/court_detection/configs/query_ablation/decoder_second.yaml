@@ -1,8 +1,0 @@
-name: decoder_second
-order: 2
-families: [dpt]
-sizes: [tiny, small, base, large]
-supervision: kp+pose
-reference_family: dpt
-reference_size: base
-tolerance_ratio: 0.05

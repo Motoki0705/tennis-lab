@@ -1,4 +1,4 @@
-"""Pure tensor tests for Court query losses."""
+"""Pure tensor tests for hierarchical Court pose losses."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from src.tasks.court_detection.training.losses import (
     CourtConsistencyGradientFlow,
     CourtKeypointPoseConsistencyLoss,
     consistency_effective_weight,
-    query_keypoint_pose_consistency_loss,
+    keypoint_pose_consistency_loss,
 )
 from src.utils.data.heatmaps import heatmaps_to_soft_argmax
 
@@ -60,7 +60,7 @@ def _consistency_loss(
     gradient_flow: CourtConsistencyGradientFlow = "both",
 ) -> CourtKeypointPoseConsistencyLoss:
     dense, pose, depth, visible = _pad_to_kp14(dense, pose, depth, visible)
-    return query_keypoint_pose_consistency_loss(
+    return keypoint_pose_consistency_loss(
         dense,
         pose,
         depth,
@@ -219,7 +219,7 @@ def test_soft_argmax_and_predicted_pose_both_receive_gradient() -> None:
         canonical_points,
         torch.tensor([[1.5, 1.5]]),
     )
-    result = query_keypoint_pose_consistency_loss(
+    result = keypoint_pose_consistency_loss(
         dense_px,
         projected.points_xy,
         projected.depth_m,
@@ -275,7 +275,7 @@ def test_bfloat16_autocast_full_pose_consistency_path_keeps_all_gradients() -> N
             canonical_points,
             torch.tensor([[8.0, 8.0]], dtype=torch.bfloat16),
         )
-        result = query_keypoint_pose_consistency_loss(
+        result = keypoint_pose_consistency_loss(
             dense_points,
             projected.points_xy,
             projected.depth_m,

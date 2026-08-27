@@ -677,6 +677,9 @@ _EXEMPTION_REASONS: Mapping[str, str] = {
     "algorithm-optional-value": (
         "an explicit algorithm/tensor optional-value branch with no composed-value synthesis"
     ),
+    "compatibility-api": (
+        "a reviewed compatibility API alias or structural fallback retained for a prior interface; it does not synthesize application configuration"
+    ),
     "code-or-artifact-location": (
         "an immutable code location or child artifact name below an already typed root"
     ),
@@ -824,11 +827,6 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.court_detection.scripts.prepare_youtube_dataset": "court_detection.prepare_youtube_dataset",
     "src.tasks.court_detection.scripts.preview_augmentation": "court_detection.preview_augmentation",
     "src.tasks.court_detection.scripts.preview_heatmaps": "court_detection.preview_heatmaps",
-    "src.tasks.court_detection.scripts.profile_query_model": "court_detection.profile_query_model",
-    "src.tasks.court_detection.scripts.run_query_ablation": "court_detection.run_query_ablation",
-    "src.tasks.court_detection.scripts.run_query_consistency_ablation": "court_detection.run_query_consistency_ablation",
-    "src.tasks.court_detection.scripts.summarize_query_ablation": "court_detection.summarize_query_ablation",
-    "src.tasks.court_detection.scripts.summarize_query_consistency_ablation": "court_detection.summarize_query_consistency_ablation",
     "src.tasks.court_detection.scripts.train": "court_detection.train",
     "src.tasks.court_detection.scripts.visualize": "court_detection.visualize",
     "src.tasks.blcs.generate_dataset.api_server.__main__": "blcs.api_server",
@@ -888,11 +886,6 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.court_detection.scripts.prepare_youtube_dataset": "src.tasks.court_detection.scripts.prepare_youtube_dataset._validate_boundary",
     "src.tasks.court_detection.scripts.preview_augmentation": "src.tasks.court_detection.scripts.preview_augmentation._validate_boundary",
     "src.tasks.court_detection.scripts.preview_heatmaps": "src.tasks.court_detection.scripts.preview_heatmaps._validate_boundary",
-    "src.tasks.court_detection.scripts.profile_query_model": "src.tasks.court_detection.experiments.configuration.validate_profile_boundary",
-    "src.tasks.court_detection.scripts.run_query_ablation": "src.tasks.court_detection.experiments.configuration.validate_ablation_boundary",
-    "src.tasks.court_detection.scripts.run_query_consistency_ablation": "src.tasks.court_detection.experiments.query_consistency.validate_query_consistency_ablation_boundary",
-    "src.tasks.court_detection.scripts.summarize_query_ablation": "src.tasks.court_detection.experiments.configuration.validate_summary_boundary",
-    "src.tasks.court_detection.scripts.summarize_query_consistency_ablation": "src.tasks.court_detection.experiments.query_consistency_summary.validate_query_consistency_summary_boundary",
     "src.tasks.court_detection.scripts.train": "src.tasks.court_detection.configuration.validate_train_boundary",
     "src.tasks.court_detection.scripts.visualize": "src.tasks.court_detection.scripts.visualize._validate_boundary",
     "src.tasks.blcs.generate_dataset.api_server.__main__": "src.tasks.blcs.configuration.validate_api_boundary",
@@ -1067,23 +1060,6 @@ _RUNTIME_BOUNDARIES = (
     ),
     _runtime_boundary(
         "court_detection", "src.tasks.court_detection.scripts.preview_heatmaps"
-    ),
-    _runtime_boundary(
-        "court_detection", "src.tasks.court_detection.scripts.profile_query_model"
-    ),
-    _runtime_boundary(
-        "court_detection", "src.tasks.court_detection.scripts.run_query_ablation"
-    ),
-    _runtime_boundary(
-        "court_detection",
-        "src.tasks.court_detection.scripts.run_query_consistency_ablation",
-    ),
-    _runtime_boundary(
-        "court_detection", "src.tasks.court_detection.scripts.summarize_query_ablation"
-    ),
-    _runtime_boundary(
-        "court_detection",
-        "src.tasks.court_detection.scripts.summarize_query_consistency_ablation",
     ),
     _runtime_boundary("court_detection", "src.tasks.court_detection.scripts.train"),
     _runtime_boundary("court_detection", "src.tasks.court_detection.scripts.visualize"),

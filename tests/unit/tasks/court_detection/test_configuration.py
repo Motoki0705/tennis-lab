@@ -10,47 +10,53 @@ from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig, open_dict
 
 from src.tasks.court_detection.configuration import (
+    CourtLossConfig,
     CourtModelConfig,
-    CourtQueryDPTDecoderConfig,
-    CourtQueryLossConfig,
-    CourtQueryModelConfig,
+    CourtPoseLossConfig,
     CourtTrainingConfig,
+    CourtTransformerEncoderConfig,
     SyntheticCourtSourceConfig,
 )
-from src.tasks.court_detection.training.runner import CourtDetectionTrainingRunner
 from src.utils.configuration import (
     ConfigurationTypeError,
     MissingConfigurationKeyError,
     SemanticConfigurationError,
-    UnknownConfigurationKeyError,
 )
 
 _CONFIG_DIR = Path(__file__).resolve().parents[4] / "src/tasks/court_detection/configs"
 
 
 def _compose(source: str, *overrides: str) -> DictConfig:
-    query_selected = any(
-        override.startswith("model=query_encoder") for override in overrides
-    )
-    query_requirements = (
-        [
-            "data.source.keypoint_court_scope=target_court",
-            "data/augmentation=pose_safe",
-            "loss=query_pose",
-        ]
-        if query_selected
-        else []
-    )
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         return compose(
             config_name="train",
-            overrides=[
-                f"data/source={source}",
-                "data/processing=kp",
-                *query_requirements,
-                *overrides,
-            ],
+            overrides=[f"data/source={source}", "data/processing=kp", *overrides],
         )
+
+
+def _pose_overrides() -> tuple[str, ...]:
+    return (
+        "data.source.keypoint_court_scope=target_court",
+        "data/augmentation=pose_safe",
+        "model/encoder=dinov3",
+        "model/transformer_encoder=default",
+        "model/decoder=dpt",
+        "loss.pose.enabled=true",
+        "loss.pose.translation_weight=1.0",
+        "loss.pose.rotation_weight=1.0",
+        "loss.pose.focal_weight=1.0",
+    )
+
+
+def _pose_only_overrides() -> tuple[str, ...]:
+    return (
+        "loss=default",
+        "loss.kp.weight=0.0",
+        "loss.seg.weight=0.0",
+        "loss.line.weight=0.0",
+        *_pose_overrides(),
+        "loss.consistency.enabled=false",
+    )
 
 
 @pytest.mark.parametrize(
@@ -82,10 +88,7 @@ def test_hydra_composes_target_court_scope_for_singleton_schemas(
     schema: str,
 ) -> None:
     runtime = CourtTrainingConfig.from_config(
-        _compose(
-            source,
-            "data.source.keypoint_court_scope=target_court",
-        )
+        _compose(source, "data.source.keypoint_court_scope=target_court")
     )
 
     assert isinstance(runtime.data.source, SyntheticCourtSourceConfig)
@@ -170,199 +173,233 @@ def test_tennis_rejects_validation_as_test_mapping() -> None:
         CourtTrainingConfig.from_config(config)
 
 
-@pytest.mark.parametrize(
-    ("model_name", "preset", "hidden_dim", "depth", "decoder_width"),
-    [
-        ("query_encoder", "tiny", 64, 2, 32),
-        ("query_encoder_small", "small", 128, 4, 64),
-        ("query_encoder_base", "base", 256, 8, 128),
-    ],
-)
-def test_query_presets_compose_with_monotonic_capacity(
-    model_name: str,
-    preset: str,
-    hidden_dim: int,
-    depth: int,
-    decoder_width: int,
-) -> None:
-    runtime = CourtTrainingConfig.from_config(
-        _compose("synthetic_court", f"model={model_name}")
-    )
-
-    assert isinstance(runtime.model, CourtQueryModelConfig)
-    assert runtime.model.preset == preset
-    assert runtime.model.task_encoder.hidden_dim == hidden_dim
-    assert runtime.model.task_encoder.depth == depth
-    assert runtime.model.decoder.width == decoder_width
-
-
-def test_legacy_default_remains_exactly_hierarchical() -> None:
+def test_default_model_is_hierarchical_without_transformer_refinement() -> None:
     runtime = CourtTrainingConfig.from_config(_compose("synthetic_court"))
 
     assert isinstance(runtime.model, CourtModelConfig)
     assert runtime.model.name == "court_hierarchical"
     assert runtime.model.encoder.name == "default"
     assert runtime.model.decoder.name == "fpn"
+    assert runtime.model.decoder.size is None
+    assert runtime.model.transformer_encoder.name == "none"
+    assert not runtime.model.transformer_encoder.enabled
 
 
-def test_query_hydra_axes_can_be_overridden_independently_in_raw_mode() -> None:
+def test_transformer_config_group_has_only_none_and_enabled_default_presets() -> None:
+    transformer_configs = _CONFIG_DIR / "model" / "transformer_encoder"
+
+    assert {path.name for path in transformer_configs.glob("*.yaml")} == {
+        "default.yaml",
+        "none.yaml",
+    }
+
+
+def test_dinov3_dpt_can_enable_transformer_refinement() -> None:
     runtime = CourtTrainingConfig.from_config(
         _compose(
             "synthetic_court",
-            "model=query_encoder_base",
-            "model.preset=raw",
-            "model/task_encoder=query_small",
-            "model/decoder=query_dpt_tiny",
-            "model/heads=query_small",
+            "data/processing=all",
+            "model/encoder=dinov3",
+            "model/transformer_encoder=default",
+            "model/decoder=dpt",
         )
     )
 
-    assert isinstance(runtime.model, CourtQueryModelConfig)
-    assert runtime.model.preset == "raw"
-    assert runtime.model.backbone.name == "dinov3"
-    assert runtime.model.task_encoder.hidden_dim == 128
-    assert isinstance(runtime.model.decoder, CourtQueryDPTDecoderConfig)
-    assert runtime.model.decoder.width == 32
-    assert runtime.model.heads.pose_hidden_dim == 128
+    assert isinstance(runtime.model, CourtModelConfig)
+    assert runtime.model.encoder.name == "dinov3"
+    assert runtime.model.decoder.name == "dpt"
+    assert isinstance(
+        runtime.model.transformer_encoder,
+        CourtTransformerEncoderConfig,
+    )
+    assert runtime.model.transformer_encoder.enabled
+    assert runtime.model.transformer_encoder.dim == 768
+    assert runtime.model.transformer_encoder.depth == 8
 
 
-@pytest.mark.parametrize("preset", ["tiny", "small", "base"])
-@pytest.mark.parametrize("family", ["dpt"])
-def test_every_query_preset_decoder_family_composes(
+@pytest.mark.parametrize(
+    ("preset", "size", "channels"),
+    [
+        ("dpt_tiny", "tiny", 64),
+        ("dpt_small", "small", 128),
+        ("dpt_base", "base", 256),
+        ("dpt", "large", 512),
+        ("dpt_large", "large", 512),
+    ],
+)
+def test_dpt_size_presets_are_strict_and_regular(
     preset: str,
-    family: str,
+    size: str,
+    channels: int,
 ) -> None:
-    model_name = "query_encoder" if preset == "tiny" else f"query_encoder_{preset}"
     runtime = CourtTrainingConfig.from_config(
         _compose(
             "synthetic_court",
-            f"model={model_name}",
-            f"model/decoder=query_{family}_{preset}",
+            "model/encoder=dinov3",
+            f"model/decoder={preset}",
         )
     )
 
-    assert isinstance(runtime.model, CourtQueryModelConfig)
-    assert runtime.model.preset == preset
-    assert runtime.model.decoder.family == family
+    assert runtime.model.decoder.name == "dpt"
+    assert runtime.model.decoder.size == size
+    assert runtime.model.decoder.channels == channels
 
 
-def test_query_preset_rejects_disagreeing_raw_override() -> None:
-    config = _compose(
-        "synthetic_court",
-        "model=query_encoder",
-        "model.task_encoder.hidden_dim=128",
-    )
-
-    with pytest.raises(SemanticConfigurationError, match="preset.*disagrees"):
-        CourtTrainingConfig.from_config(config)
-
-
-def test_query_config_rejects_invalid_rope_taps_and_decoder_family() -> None:
-    bad_rope = _compose(
-        "synthetic_court",
-        "model=query_encoder",
-        "model.preset=raw",
-        "model.task_encoder.rope_dim=6",
-    )
-    with pytest.raises(SemanticConfigurationError, match="rope_dim"):
-        CourtTrainingConfig.from_config(bad_rope)
-
-    duplicate_tap = _compose(
-        "synthetic_court",
-        "model=query_encoder",
-        "model.preset=raw",
-        "model.task_encoder.tap_indices=[0,0]",
-    )
-    with pytest.raises(SemanticConfigurationError, match="non-empty.*unique"):
-        CourtTrainingConfig.from_config(duplicate_tap)
-
-    unknown_family = _compose(
-        "synthetic_court",
-        "model=query_encoder",
-        "model.preset=raw",
-        "model.decoder.family=magic",
-    )
-    with pytest.raises(SemanticConfigurationError, match="must be dpt"):
-        CourtTrainingConfig.from_config(unknown_family)
-
-
-def test_query_dpt_override_has_strict_multi_tap_contract() -> None:
+@pytest.mark.parametrize("depth", [1, 8])
+def test_transformer_depth_is_selected_from_config(depth: int) -> None:
     runtime = CourtTrainingConfig.from_config(
         _compose(
             "synthetic_court",
-            "model=query_encoder_small",
-            "model/decoder=query_dpt_small",
+            "model/encoder=dinov3",
+            "model/transformer_encoder=default",
+            "model/decoder=dpt_tiny",
+            f"model.transformer_encoder.depth={depth}",
         )
     )
-    assert isinstance(runtime.model, CourtQueryModelConfig)
-    assert isinstance(runtime.model.decoder, CourtQueryDPTDecoderConfig)
-    assert runtime.model.decoder.tap_indices == (0, 1, 2, 3)
 
-    config = _compose(
+    assert runtime.model.transformer_encoder.depth == depth
+
+
+def test_dpt_size_rejects_arbitrary_or_mismatched_channels() -> None:
+    missing = _compose(
         "synthetic_court",
-        "model=query_encoder_small",
-        "model.preset=raw",
-        "model/decoder=query_dpt_small",
-        "model.decoder.fusion_levels=3",
+        "model/encoder=dinov3",
+        "model/decoder=dpt_tiny",
     )
-    with pytest.raises(SemanticConfigurationError, match="fusion_levels"):
+    with open_dict(missing.model.decoder):
+        del missing.model.decoder.size
+    with pytest.raises(MissingConfigurationKeyError, match="model.decoder.size"):
+        CourtTrainingConfig.from_config(missing)
+
+    mismatched = _compose(
+        "synthetic_court",
+        "model/encoder=dinov3",
+        "model/decoder=dpt_tiny",
+    )
+    mismatched.model.decoder.channels = 65
+    with pytest.raises(SemanticConfigurationError, match="strict size preset"):
+        CourtTrainingConfig.from_config(mismatched)
+
+    unknown = _compose(
+        "synthetic_court",
+        "model/encoder=dinov3",
+        "model/decoder=dpt_tiny",
+    )
+    unknown.model.decoder.size = "micro"
+    with pytest.raises(SemanticConfigurationError, match="tiny, small, base, or large"):
+        CourtTrainingConfig.from_config(unknown)
+
+
+def test_transformer_refinement_requires_dinov3_encoder() -> None:
+    config = _compose("synthetic_court", "model/transformer_encoder=default")
+
+    with pytest.raises(SemanticConfigurationError, match="DINOv3"):
         CourtTrainingConfig.from_config(config)
 
 
-def test_query_dpt_single_tap_is_valid_for_depth_one() -> None:
+def test_transformer_encoder_rejects_inconsistent_head_dimension() -> None:
+    config = _compose(
+        "synthetic_court",
+        "model/encoder=dinov3",
+        "model/transformer_encoder=default",
+        "model/decoder=dpt",
+    )
+    config.model.transformer_encoder.head_dim = 32
+
+    with pytest.raises(SemanticConfigurationError, match="head_dim"):
+        CourtTrainingConfig.from_config(config)
+
+
+def test_default_loss_is_dense_only_with_disabled_pose_and_consistency() -> None:
+    runtime = CourtTrainingConfig.from_config(_compose("synthetic_court"))
+
+    assert isinstance(runtime.loss, CourtLossConfig)
+    assert runtime.loss.dense_weights == {"kp": 1.0, "seg": 1.0, "line": 1.0}
+    assert not runtime.loss.pose.enabled
+    assert not runtime.loss.consistency.enabled
+
+
+def test_pose_supervision_requires_explicit_transformer_and_weights() -> None:
     runtime = CourtTrainingConfig.from_config(
-        _compose(
-            "synthetic_court",
-            "model=query_encoder_base",
-            "model.preset=raw",
-            "model.task_encoder.depth=1",
-            "model.task_encoder.tap_indices=[0]",
-            "model/decoder=query_dpt_large",
-            "model.decoder.tap_indices=[0]",
-            "model.decoder.fusion_levels=1",
-            "model.decoder.reassemble_factors=[1.0]",
-        )
+        _compose("synthetic_court", *_pose_overrides())
     )
-    assert isinstance(runtime.model, CourtQueryModelConfig)
-    assert runtime.model.decoder.width == 256
-    assert runtime.model.decoder.tap_indices == (0,)
+
+    assert isinstance(runtime.loss, CourtLossConfig)
+    assert isinstance(runtime.loss.pose, CourtPoseLossConfig)
+    assert runtime.loss.pose.enabled
+    assert runtime.model.transformer_encoder.enabled
+
+    no_transformer = _compose(
+        "synthetic_court",
+        "data.source.keypoint_court_scope=target_court",
+        "data/augmentation=pose_safe",
+        "loss.pose.enabled=true",
+        "loss.pose.translation_weight=1.0",
+        "loss.pose.rotation_weight=1.0",
+        "loss.pose.focal_weight=1.0",
+    )
+    with pytest.raises(SemanticConfigurationError, match="transformer_encoder"):
+        CourtTrainingConfig.from_config(no_transformer)
 
 
-def test_query_dense_head_subset_must_match_processing_targets() -> None:
+def test_default_is_the_only_court_loss_config() -> None:
+    loss_configs = _CONFIG_DIR / "loss"
+
+    assert {path.name for path in loss_configs.glob("*.yaml")} == {"default.yaml"}
+
+
+def test_pose_only_overrides_keep_kp_contract_with_zero_dense_weights() -> None:
+    runtime = CourtTrainingConfig.from_config(
+        _compose("synthetic_court", *_pose_only_overrides())
+    )
+
+    assert tuple(target.kind for target in runtime.data.processing.targets) == ("kp",)
+    assert runtime.loss.dense_weights == {"kp": 0.0, "seg": 0.0, "line": 0.0}
+    assert runtime.loss.pose.enabled
+    assert (
+        runtime.loss.pose.translation_weight,
+        runtime.loss.pose.rotation_weight,
+        runtime.loss.pose.focal_weight,
+    ) == (1.0, 1.0, 1.0)
+    assert not runtime.loss.consistency.enabled
+
+
+def test_pose_only_objective_rejects_a_bundle_without_kp() -> None:
     config = _compose(
         "synthetic_court",
-        "model=query_encoder",
-        "data/processing=kp_seg",
+        *_pose_only_overrides(),
+        "data/processing=seg",
     )
 
-    with pytest.raises(SemanticConfigurationError, match="dense_targets.*exactly"):
+    with pytest.raises(
+        SemanticConfigurationError,
+        match="pose-only objective requires KP",
+    ):
         CourtTrainingConfig.from_config(config)
 
-    matching = _compose(
-        "synthetic_court",
-        "model=query_encoder",
-        "data/processing=kp_seg",
-        "model.heads.dense_targets=[kp,seg]",
-    )
-    runtime = CourtTrainingConfig.from_config(matching)
-    assert isinstance(runtime.model, CourtQueryModelConfig)
-    assert runtime.model.heads.dense_targets == ("kp", "seg")
+
+@pytest.mark.parametrize("kind", ["kp", "seg", "line"])
+def test_dense_only_loss_rejects_zero_head_weight(kind: str) -> None:
+    config = _compose("synthetic_court")
+    config.loss[kind].weight = 0.0
+
+    with pytest.raises(
+        SemanticConfigurationError,
+        match="Zero dense loss weights require enabled pose supervision",
+    ):
+        CourtTrainingConfig.from_config(config)
 
 
-def test_query_requires_v3_target_court_singleton_authority() -> None:
-    with pytest.raises(SemanticConfigurationError, match="Synthetic Court V3"):
-        CourtTrainingConfig.from_config(
-            _compose("synthetic_court_v2", "model=query_encoder")
-        )
+def test_loss_requires_at_least_one_positive_objective_weight() -> None:
+    config = _compose("synthetic_court")
+    for kind in ("kp", "seg", "line"):
+        config.loss[kind].weight = 0.0
 
-    with pytest.raises(SemanticConfigurationError, match="target_court"):
-        CourtTrainingConfig.from_config(
-            _compose(
-                "synthetic_court",
-                "model=query_encoder",
-                "data.source.keypoint_court_scope=all_courts",
-            )
-        )
+    with pytest.raises(
+        SemanticConfigurationError,
+        match="at least one positive objective weight",
+    ):
+        CourtTrainingConfig.from_config(config)
 
 
 @pytest.mark.parametrize(
@@ -378,213 +415,28 @@ def test_query_requires_v3_target_court_singleton_authority() -> None:
 def test_pose_unsafe_augmentation_is_rejected_at_typed_boundary(
     override: str,
 ) -> None:
-    config = _compose("synthetic_court", "model=query_encoder", override)
+    config = _compose("synthetic_court", *_pose_overrides(), override)
 
     with pytest.raises(SemanticConfigurationError, match="Pose|pose"):
         CourtTrainingConfig.from_config(config)
 
 
-def test_query_pose_supervision_and_weights_are_explicit() -> None:
-    pose_runtime = CourtTrainingConfig.from_config(
-        _compose("synthetic_court", "model=query_encoder")
-    )
-    dense_runtime = CourtTrainingConfig.from_config(
-        _compose(
-            "synthetic_court",
-            "model=query_encoder",
-            "loss=query_dense",
-        )
-    )
-
-    assert isinstance(pose_runtime.loss, CourtQueryLossConfig)
-    assert isinstance(dense_runtime.loss, CourtQueryLossConfig)
-    assert pose_runtime.loss.name == "query_pose_v1"
-    assert pose_runtime.loss.pose.enabled
-    assert not pose_runtime.loss.consistency.enabled
-    assert dense_runtime.loss.name == "query_dense_v1"
-    assert not dense_runtime.loss.pose.enabled
-    assert not dense_runtime.loss.consistency.enabled
-
-
-def test_query_rejects_legacy_loss_schema_without_silent_defaults() -> None:
+def test_consistency_requires_kp_and_enabled_pose_supervision() -> None:
     config = _compose(
         "synthetic_court",
-        "model=query_encoder",
-        "loss=default",
+        *_pose_overrides(),
+        "loss.consistency.enabled=true",
+        "loss.consistency.weight=1.0",
     )
+    runtime = CourtTrainingConfig.from_config(config)
+    assert runtime.loss.consistency.enabled
 
-    with pytest.raises(MissingConfigurationKeyError, match="loss.name|loss.pose"):
-        CourtTrainingConfig.from_config(config)
-
-
-@pytest.mark.parametrize(
-    ("loss_name", "enabled", "gradient_flow"),
-    [
-        ("query_direct_all", False, "both"),
-        ("query_joint_both", True, "both"),
-        ("query_joint_stopgrad_pose", True, "stopgrad_pose"),
-        ("query_joint_stopgrad_dense", True, "stopgrad_dense"),
-    ],
-)
-def test_explicit_query_consistency_loss_routes_compose(
-    loss_name: str,
-    enabled: bool,
-    gradient_flow: str,
-) -> None:
-    runtime = CourtTrainingConfig.from_config(
-        _compose(
-            "synthetic_court",
-            "model=query_encoder",
-            "data/processing=all",
-            "model.heads.dense_targets=[kp,seg,line]",
-            f"loss={loss_name}",
-        )
-    )
-
-    assert isinstance(runtime.loss, CourtQueryLossConfig)
-    assert runtime.loss.consistency.enabled is enabled
-    assert runtime.loss.consistency.gradient_flow == gradient_flow
-    assert runtime.loss.pose.enabled
-    assert runtime.loss.dense_weights == {"kp": 1.0, "seg": 1.0, "line": 1.0}
-    if enabled:
-        assert runtime.loss.consistency.weight == 1.0
-        assert runtime.loss.consistency.temperature == 1.0
-        assert runtime.loss.consistency.huber_delta == 0.01
-        assert runtime.loss.consistency.min_depth_m == 0.1
-        assert runtime.loss.consistency.depth_scale_m == 1.0
-        assert runtime.loss.consistency.cheirality_weight == 0.1
-        assert runtime.loss.consistency.warmup_fraction == 0.1
-    else:
-        assert runtime.loss.consistency.weight == 0.0
-        assert runtime.loss.consistency.cheirality_weight == 0.0
-        assert runtime.loss.consistency.warmup_fraction == 0.0
-
-
-def _joint_config() -> DictConfig:
-    return _compose(
+    no_kp = _compose(
         "synthetic_court",
-        "model=query_encoder",
-        "data/processing=all",
-        "model.heads.dense_targets=[kp,seg,line]",
-        "loss=query_joint_both",
+        *_pose_overrides(),
+        "data/processing=seg",
+        "loss.consistency.enabled=true",
+        "loss.consistency.weight=1.0",
     )
-
-
-def test_query_consistency_section_is_exact_and_required_for_new_schemas() -> None:
-    unknown = deepcopy(_joint_config())
-    with open_dict(unknown.loss.consistency):
-        unknown.loss.consistency.ignored = 1.0
-    with pytest.raises(UnknownConfigurationKeyError, match="consistency.ignored"):
-        CourtTrainingConfig.from_config(unknown)
-
-    missing = deepcopy(_joint_config())
-    with open_dict(missing.loss.consistency):
-        del missing.loss.consistency.temperature
-    with pytest.raises(MissingConfigurationKeyError, match="consistency.temperature"):
-        CourtTrainingConfig.from_config(missing)
-
-    missing_section = deepcopy(_joint_config())
-    with open_dict(missing_section.loss):
-        del missing_section.loss.consistency
-    with pytest.raises(MissingConfigurationKeyError, match="loss.consistency"):
-        CourtTrainingConfig.from_config(missing_section)
-
-
-@pytest.mark.parametrize(
-    ("key", "value", "error"),
-    [
-        ("weight", 0.0, "positive weight"),
-        ("weight", float("nan"), "finite"),
-        ("temperature", 0.0, "must be positive"),
-        ("temperature", float("inf"), "finite"),
-        ("huber_delta", 0.0, "must be positive"),
-        ("min_depth_m", 0.0, "must be positive"),
-        ("depth_scale_m", 0.0, "must be positive"),
-        ("cheirality_weight", -0.1, "non-negative"),
-        ("warmup_fraction", -0.1, r"\[0, 1\)"),
-        ("warmup_fraction", 1.0, r"\[0, 1\)"),
-        ("gradient_flow", "both_grad", "gradient_flow"),
-    ],
-)
-def test_query_consistency_values_are_finite_and_range_checked(
-    key: str,
-    value: object,
-    error: str,
-) -> None:
-    config = _joint_config()
-    with open_dict(config.loss.consistency):
-        config.loss.consistency[key] = value
-
-    with pytest.raises(SemanticConfigurationError, match=error):
-        CourtTrainingConfig.from_config(config)
-
-
-@pytest.mark.parametrize("key", ["weight", "cheirality_weight", "warmup_fraction"])
-def test_disabled_query_consistency_rejects_nonzero_auxiliary_values(key: str) -> None:
-    config = _compose(
-        "synthetic_court",
-        "model=query_encoder",
-        "loss=query_direct_all",
-    )
-    with open_dict(config.loss.consistency):
-        config.loss.consistency[key] = 0.1
-
-    with pytest.raises(SemanticConfigurationError, match="Disabled.*zero"):
-        CourtTrainingConfig.from_config(config)
-
-
-def test_enabled_query_consistency_requires_direct_pose_supervision() -> None:
-    config = _joint_config()
-    with open_dict(config.loss.pose):
-        config.loss.pose.enabled = False
-        config.loss.pose.translation_weight = 0.0
-        config.loss.pose.rotation_weight = 0.0
-        config.loss.pose.focal_weight = 0.0
-
-    with pytest.raises(
-        SemanticConfigurationError,
-        match="consistency.*pose supervision",
-    ):
-        CourtTrainingConfig.from_config(config)
-
-
-def test_query_consistency_numeric_fields_are_exact_typed() -> None:
-    config = _joint_config()
-    with open_dict(config.loss.consistency):
-        config.loss.consistency.temperature = True
-
-    with pytest.raises(ConfigurationTypeError, match="consistency.temperature"):
-        CourtTrainingConfig.from_config(config)
-
-
-def test_runner_rejects_invalid_consistency_before_side_effects(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    config = _joint_config()
-    with open_dict(config.loss.consistency):
-        config.loss.consistency.temperature = 0.0
-    runner = CourtDetectionTrainingRunner()
-    side_effects: list[str] = []
-
-    def record_output(*_: object) -> Path:
-        side_effects.append("output")
-        return Path("unused")
-
-    def record_datamodule(*_: object) -> None:
-        side_effects.append("datamodule")
-
-    monkeypatch.setattr(
-        runner,
-        "prepare_output_dir",
-        record_output,
-    )
-    monkeypatch.setattr(
-        runner,
-        "build_datamodule",
-        record_datamodule,
-    )
-
-    with pytest.raises(SemanticConfigurationError, match="temperature"):
-        runner.run(config)
-
-    assert side_effects == []
+    with pytest.raises(SemanticConfigurationError, match="KP"):
+        CourtTrainingConfig.from_config(no_kp)

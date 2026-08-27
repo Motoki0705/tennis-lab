@@ -11,12 +11,16 @@ import torch
 from torch import Tensor, nn
 
 from src.tasks.court_detection.data.contracts import CourtTargetKind
-from src.tasks.court_detection.geometry.pose import CourtDecodedPose
-from src.tasks.court_detection.model_io.contracts import CourtQueryConsistencyResult
+from src.tasks.court_detection.geometry.pose import (
+    CourtDecodedPose,
+    canonical_semantic_court_points_batched,
+    project_predicted_canonical_points,
+)
+from src.tasks.court_detection.model_io.contracts import CourtConsistencyResult
 from src.tasks.court_detection.training.losses import rotation_geodesic_radians
 from src.utils.data.heatmaps import heatmaps_to_peaks
 
-COURT_QUERY_RESULT_METRIC_NAMES = (
+COURT_RESULT_METRIC_NAMES = (
     "kp_mean_distance_px",
     "kp_median_distance_px",
     "pose_reprojection_mean_distance_px",
@@ -29,7 +33,7 @@ COURT_QUERY_RESULT_METRIC_NAMES = (
     "invalid_depth_rate",
     "visible_point_count",
 )
-COURT_QUERY_TRAIN_DIAGNOSTIC_NAMES = (
+COURT_TRAIN_DIAGNOSTIC_NAMES = (
     "kp_gradient_finite",
     "seg_gradient_finite",
     "line_gradient_finite",
@@ -280,8 +284,16 @@ class _PoseMetricTarget(Protocol):
     def log_focal(self) -> Tensor: ...
 
 
+class _PoseProjectionTarget(_PoseMetricTarget, Protocol):
+    @property
+    def intrinsics(self) -> Tensor: ...
+
+    @property
+    def semantic_to_physical(self) -> Tensor: ...
+
+
 class CourtPoseMetrics:
-    """Accumulate the explicit query pose metrics required by the checkpoint."""
+    """Accumulate explicit camera-pose metrics for the hierarchy."""
 
     def __init__(self) -> None:
         self.reset()
@@ -338,8 +350,8 @@ class CourtPoseMetrics:
         self._log_focal: list[float] = []
 
 
-class CourtQueryGeometryMetrics:
-    """Accumulate #790 pose-only and cross-branch pixel diagnostics."""
+class CourtPoseGeometryMetrics:
+    """Accumulate pose-only and cross-branch pixel diagnostics."""
 
     def __init__(self, *, min_depth_m: float) -> None:
         if not math.isfinite(min_depth_m) or min_depth_m <= 0.0:
@@ -349,7 +361,7 @@ class CourtQueryGeometryMetrics:
 
     def update(
         self,
-        consistency: CourtQueryConsistencyResult,
+        consistency: CourtConsistencyResult,
         *,
         ground_truth_points_normalized: Tensor,
         point_visible: Tensor,
@@ -359,16 +371,16 @@ class CourtQueryGeometryMetrics:
         pose = consistency.pose_points_xy
         depth = consistency.pose_depth_m
         if dense.shape != pose.shape or dense.ndim != 3 or dense.shape[1:] != (14, 2):
-            raise ValueError("Court query metric points must share shape (B,14,2).")
+            raise ValueError("Court pose metric points must share shape (B,14,2).")
         batch_size = dense.shape[0]
         if ground_truth_points_normalized.shape != (batch_size, 14, 2):
-            raise ValueError("Court query GT metric points must have shape (B,14,2).")
+            raise ValueError("Court pose GT metric points must have shape (B,14,2).")
         if point_visible.shape != (batch_size, 14) or point_visible.dtype != torch.bool:
-            raise ValueError("Court query GT metric visibility must be bool (B,14).")
+            raise ValueError("Court pose GT metric visibility must be bool (B,14).")
         if image_size.shape != (batch_size, 2) or image_size.dtype != torch.long:
-            raise ValueError("Court query metric image_size must be int64 (B,2).")
+            raise ValueError("Court pose metric image_size must be int64 (B,2).")
         if depth.shape != (batch_size, 14):
-            raise ValueError("Court query metric pose depth must have shape (B,14).")
+            raise ValueError("Court pose metric depth must have shape (B,14).")
         tensors = (
             pose,
             depth,
@@ -377,9 +389,9 @@ class CourtQueryGeometryMetrics:
             image_size,
         )
         if any(value.device != dense.device for value in tensors):
-            raise ValueError("Court query metric tensors must share one device.")
+            raise ValueError("Court pose metric tensors must share one device.")
         if bool(torch.any(image_size <= 0)):
-            raise ValueError("Court query metric image_size must be positive.")
+            raise ValueError("Court pose metric image_size must be positive.")
         scale = torch.stack(
             (
                 image_size[:, 1] - 1,
@@ -395,16 +407,113 @@ class CourtQueryGeometryMetrics:
             dim=-1,
         )
         consistency_distance = torch.linalg.vector_norm(dense - pose, dim=-1)
-        accepted_pose = pose_distance[point_visible].detach().cpu().tolist()
-        accepted_consistency = (
+        self._record_pose_distances(
+            pose_distance,
+            depth,
+            point_visible,
+        )
+        self._consistency_distance.extend(
             consistency_distance[point_visible].detach().cpu().tolist()
         )
+
+    def update_pose_prediction(
+        self,
+        prediction: CourtDecodedPose,
+        target: _PoseProjectionTarget,
+        *,
+        ground_truth_points_normalized: Tensor,
+        point_visible: Tensor,
+        image_size: Tensor,
+    ) -> None:
+        """Record independent GT reprojection metrics for pose-only runs.
+
+        Pose-only supervision deliberately disables the KP--pose consistency
+        objective, but it still needs a pixel-space metric against the fixed
+        target-court geometry.  This path computes that metric directly from
+        the decoded pose and therefore does not manufacture a consistency
+        loss or depend on a dense prediction branch.
+        """
+        canonical_points = canonical_semantic_court_points_batched(
+            target.semantic_to_physical,
+            dtype=prediction.translation_m.dtype,
+            device=prediction.translation_m.device,
+        )
+        projection = project_predicted_canonical_points(
+            prediction,
+            canonical_points,
+            target.intrinsics[:, :2, 2],
+        )
+        self._validate_metric_inputs(
+            projection.points_xy,
+            projection.depth_m,
+            ground_truth_points_normalized,
+            point_visible,
+            image_size,
+        )
+        scale = torch.stack(
+            (
+                image_size[:, 1] - 1,
+                image_size[:, 0] - 1,
+            ),
+            dim=-1,
+        ).to(dtype=projection.points_xy.dtype)
+        ground_truth_pixels = ground_truth_points_normalized.to(
+            dtype=projection.points_xy.dtype
+        ) * scale[:, None, :]
+        pose_distance = torch.linalg.vector_norm(
+            projection.points_xy - ground_truth_pixels,
+            dim=-1,
+        )
+        self._record_pose_distances(
+            pose_distance,
+            projection.depth_m,
+            point_visible,
+        )
+
+    def _record_pose_distances(
+        self,
+        pose_distance: Tensor,
+        depth: Tensor,
+        point_visible: Tensor,
+    ) -> None:
+        accepted_pose = pose_distance[point_visible].detach().cpu().tolist()
         self._pose_reprojection.extend(accepted_pose)
-        self._consistency_distance.extend(accepted_consistency)
         self._invalid_depth_count += int(
             ((depth <= self.min_depth_m) & point_visible).sum().item()
         )
         self._visible_point_count += int(point_visible.sum().item())
+
+    @staticmethod
+    def _validate_metric_inputs(
+        pose_points: Tensor,
+        depth: Tensor,
+        ground_truth_points_normalized: Tensor,
+        point_visible: Tensor,
+        image_size: Tensor,
+    ) -> None:
+        batch_size = pose_points.shape[0]
+        if pose_points.shape != (batch_size, 14, 2):
+            raise ValueError("Court pose metric points must have shape (B,14,2).")
+        if depth.shape != (batch_size, 14):
+            raise ValueError("Court pose metric depth must have shape (B,14).")
+        if ground_truth_points_normalized.shape != (batch_size, 14, 2):
+            raise ValueError("Court pose GT metric points must have shape (B,14,2).")
+        if point_visible.shape != (batch_size, 14) or point_visible.dtype != torch.bool:
+            raise ValueError("Court pose GT metric visibility must be bool (B,14).")
+        if image_size.shape != (batch_size, 2) or image_size.dtype != torch.long:
+            raise ValueError("Court pose metric image_size must be int64 (B,2).")
+        if any(
+            value.device != pose_points.device
+            for value in (
+                depth,
+                ground_truth_points_normalized,
+                point_visible,
+                image_size,
+            )
+        ):
+            raise ValueError("Court pose metric tensors must share one device.")
+        if bool(torch.any(image_size <= 0)):
+            raise ValueError("Court pose metric image_size must be positive.")
 
     def compute(self) -> dict[str, float]:
         return {
@@ -442,11 +551,16 @@ def gradient_finite_status(parameters: Iterable[nn.Parameter]) -> float:
     return float(all(bool(torch.isfinite(gradient).all()) for gradient in gradients))
 
 
+# Deprecated source alias; both names resolve to the same unified tracker.
+CourtQueryGeometryMetrics = CourtPoseGeometryMetrics
+
+
 __all__ = [
-    "COURT_QUERY_RESULT_METRIC_NAMES",
-    "COURT_QUERY_TRAIN_DIAGNOSTIC_NAMES",
+    "COURT_RESULT_METRIC_NAMES",
+    "COURT_TRAIN_DIAGNOSTIC_NAMES",
     "CourtDetectionMetrics",
     "CourtPoseMetrics",
+    "CourtPoseGeometryMetrics",
     "CourtQueryGeometryMetrics",
     "gradient_finite_status",
 ]

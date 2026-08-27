@@ -7,30 +7,24 @@ from typing import TypeAlias, cast
 
 from src.tasks.base.model_io import BoundModelIO, bind_model_io
 from src.tasks.court_detection.configuration import (
-    CourtLossConfig,
     CourtModelConfig,
-    CourtQueryLossConfig,
-    CourtQueryModelConfig,
     CourtTrainingConfig,
 )
 from src.tasks.court_detection.data.contracts import CourtTargetBundleSpec
 from src.tasks.court_detection.model_io.adapters import (
     CourtDINOv3ExecutionBoundary,
     CourtModelIOAdapter,
-    CourtQueryDINOv3ExecutionBoundary,
-    CourtQueryModelIOAdapter,
+    CourtPoseModelIOAdapter,
 )
 from src.tasks.court_detection.model_io.contracts import (
     CourtEncoderKind,
     CourtLogits,
+    CourtModelOutput,
     CourtModelSpec,
-    CourtQueryModelSpec,
-    CourtQueryRawOutput,
 )
 from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
-from src.tasks.court_detection.models.query_encoder.model import CourtQueryEncoderModel
 
-CourtDetectionRawOutput: TypeAlias = CourtLogits | CourtQueryRawOutput
+CourtDetectionRawOutput: TypeAlias = CourtLogits | CourtModelOutput
 CourtDetectionBoundModelIO: TypeAlias = BoundModelIO[
     Mapping[str, object],
     CourtDetectionRawOutput,
@@ -43,21 +37,8 @@ def build_court_detection_pair(
     *,
     target_bundle: CourtTargetBundleSpec,
 ) -> CourtDetectionBoundModelIO:
-    """Bind the discriminated legacy or additive model to one exact bundle."""
+    """Bind one hierarchical model and its exact bundle-aware adapter."""
     runtime = CourtTrainingConfig.from_config(config)
-    if isinstance(runtime.model, CourtQueryModelConfig):
-        query_spec = CourtQueryModelSpec(
-            target_bundle=target_bundle,
-            in_channels=runtime.model.in_channels,
-            short_side=runtime.data.augmentation.val_short_side,
-        )
-        query_model = CourtQueryEncoderModel.from_config(runtime.model, target_bundle)
-        query_adapter = build_court_query_model_io(query_spec, runtime=runtime)
-        query_adapter.validate_model_pair(query_model)
-        return cast(
-            CourtDetectionBoundModelIO,
-            bind_model_io(query_model, query_adapter),
-        )
     if not isinstance(runtime.model, CourtModelConfig):
         raise TypeError(f"Unsupported Court model config: {type(runtime.model).__name__}.")
     spec = CourtModelSpec(
@@ -76,12 +57,10 @@ def build_court_model_io(
     spec: CourtModelSpec,
     *,
     runtime: CourtTrainingConfig,
-) -> CourtModelIOAdapter:
+) -> CourtModelIOAdapter | CourtPoseModelIOAdapter:
     """Build the one bundle-aware adapter from a validated runtime contract."""
     if not isinstance(runtime.model, CourtModelConfig):
-        raise TypeError("build_court_model_io only accepts the legacy model config.")
-    if not isinstance(runtime.loss, CourtLossConfig):
-        raise TypeError("build_court_model_io only accepts the legacy loss config.")
+        raise TypeError("build_court_model_io requires CourtModelConfig.")
     lora = runtime.model.encoder.lora
     lora_enabled = lora is not None and lora.enabled
     execution_boundary = (
@@ -94,36 +73,16 @@ def build_court_model_io(
         if spec.encoder_kind == "dinov3"
         else None
     )
+    if runtime.loss.pose.enabled:
+        return CourtPoseModelIOAdapter(
+            spec,
+            loss_config=runtime.loss,
+            execution_boundary=execution_boundary,
+        )
     return CourtModelIOAdapter(
         spec,
         loss_config=runtime.loss,
         execution_boundary=execution_boundary,
-    )
-
-
-def build_court_query_model_io(
-    spec: CourtQueryModelSpec,
-    *,
-    runtime: CourtTrainingConfig,
-) -> CourtQueryModelIOAdapter:
-    """Build the raw query-output seam without claiming training integration."""
-    if not isinstance(runtime.model, CourtQueryModelConfig):
-        raise TypeError(
-            "build_court_query_model_io requires the query-model configuration."
-        )
-    if not isinstance(runtime.loss, CourtQueryLossConfig):
-        raise TypeError(
-            "build_court_query_model_io requires the query loss configuration."
-        )
-    return CourtQueryModelIOAdapter(
-        spec,
-        loss_config=runtime.loss,
-        execution_boundary=CourtQueryDINOv3ExecutionBoundary(
-            frozen_backbone=(
-                runtime.model.backbone.train_mode == "frozen"
-                and not runtime.model.backbone.lora.enabled
-            )
-        ),
     )
 
 
@@ -132,5 +91,4 @@ __all__ = [
     "CourtDetectionRawOutput",
     "build_court_detection_pair",
     "build_court_model_io",
-    "build_court_query_model_io",
 ]
