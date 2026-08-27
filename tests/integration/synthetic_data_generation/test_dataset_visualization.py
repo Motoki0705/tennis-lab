@@ -14,6 +14,7 @@ import pytest
 from numpy.typing import NDArray
 
 import src.synthetic_data_generation.visualization.renderer as renderer_module
+from src.synthetic_data_generation.dataset.blcs.contracts import BLCS_DATASET_SCHEMA
 from src.synthetic_data_generation.dataset.court.schema import (
     COURT_SEMANTIC_CLASS_NAMES_V2,
     CourtDatasetSchemaVersion,
@@ -187,7 +188,7 @@ class _FakeCourtV3(_FakeCourtV2):
 
 
 class _FakeBLCS:
-    dataset_schema = "canonical_blcs_compact_dataset_v2"
+    dataset_schema = BLCS_DATASET_SCHEMA
     dataset_scene_id = "scene-0"
     width = 128
     height = 96

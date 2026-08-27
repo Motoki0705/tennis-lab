@@ -14,7 +14,7 @@ from torch import Tensor
 
 from src.synthetic_data_generation.composition import GaussianAsset
 
-BLCS_DATASET_SCHEMA = "canonical_blcs_compact_dataset_v2"
+BLCS_DATASET_SCHEMA = "canonical_blcs_compact_dataset_v3"
 BLCS_SAMPLE_SCHEMA = "canonical_blcs_compact_sample_v1"
 
 _PORTABLE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
@@ -210,27 +210,73 @@ class BLCSTrajectory:
 
 
 @dataclass(frozen=True, slots=True)
-class BLCSCompositionAssets:
-    """Semantic background and ball assets used by every planned frame."""
+class BLCSBallGaussianSettings:
+    """Physical surface and visibility settings for one tennis ball asset."""
 
-    background: GaussianAsset
+    radius_m: float
+    radial_scale_m: float
+    tangential_scale_m: float
+    opacity: float
+    base_color_linear_rgb: tuple[float, float, float]
+    seam_color_linear_rgb: tuple[float, float, float]
+    seam_width_radians: float
+    visibility_threshold: float
+
+    def __post_init__(self) -> None:
+        radius = _positive_float(self.radius_m, name="radius_m")
+        radial = _positive_float(self.radial_scale_m, name="radial_scale_m")
+        tangential = _positive_float(
+            self.tangential_scale_m,
+            name="tangential_scale_m",
+        )
+        if radial >= radius or tangential >= radius:
+            raise ValueError("Ball Gaussian scales must be smaller than the ball radius.")
+        opacity = _unit_interval(self.opacity, name="opacity", open_interval=True)
+        base = _linear_rgb(self.base_color_linear_rgb, name="base_color_linear_rgb")
+        seam = _linear_rgb(self.seam_color_linear_rgb, name="seam_color_linear_rgb")
+        seam_width = _positive_float(
+            self.seam_width_radians,
+            name="seam_width_radians",
+        )
+        if seam_width >= math.pi / 2.0:
+            raise ValueError("seam_width_radians must be smaller than pi/2.")
+        visibility = _unit_interval(
+            self.visibility_threshold,
+            name="visibility_threshold",
+            open_interval=True,
+        )
+        object.__setattr__(self, "radius_m", radius)
+        object.__setattr__(self, "radial_scale_m", radial)
+        object.__setattr__(self, "tangential_scale_m", tangential)
+        object.__setattr__(self, "opacity", opacity)
+        object.__setattr__(self, "base_color_linear_rgb", base)
+        object.__setattr__(self, "seam_color_linear_rgb", seam)
+        object.__setattr__(self, "seam_width_radians", seam_width)
+        object.__setattr__(self, "visibility_threshold", visibility)
+
+
+@dataclass(frozen=True, slots=True)
+class BLCSCompositionAssets:
+    """The real movable Gaussian asset used by every BLCS render."""
+
     ball: GaussianAsset
-    ball_radius_m: float
+    settings: BLCSBallGaussianSettings
 
     def __post_init__(self) -> None:
         from src.synthetic_data_generation.composition import GaussianAssetRole
 
-        if self.background.role is not GaussianAssetRole.BACKGROUND:
-            raise ValueError("BLCS background asset must have role=background.")
         if self.ball.role is not GaussianAssetRole.MOVABLE:
             raise ValueError("BLCS ball asset must have role=movable.")
         if self.ball.asset_class != "ball":
             raise ValueError("BLCS movable asset must declare asset_class='ball'.")
-        object.__setattr__(
-            self,
-            "ball_radius_m",
-            _positive_float(self.ball_radius_m, name="ball_radius_m"),
-        )
+        if self.ball.feature_dim != 3:
+            raise ValueError("BLCS ball assets must carry explicit linear RGB features.")
+        if self.ball.floating_dtype != "float32":
+            raise ValueError("BLCS ball assets must use float32 for the public NHT boundary.")
+        if self.ball.appearance_model != "rgb" or self.ball.appearance_space != "linear_rgb":
+            raise ValueError("BLCS ball assets must use the rgb/linear_rgb appearance contract.")
+        if not isinstance(self.settings, BLCSBallGaussianSettings):
+            raise TypeError("settings must be BLCSBallGaussianSettings.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -420,6 +466,29 @@ def _positive_float(value: object, *, name: str) -> float:
     return result
 
 
+def _unit_interval(value: object, *, name: str, open_interval: bool) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise TypeError(f"{name} must be numeric.")
+    result = float(value)
+    valid = 0.0 < result < 1.0 if open_interval else 0.0 <= result <= 1.0
+    if not math.isfinite(result) or not valid:
+        interval = "(0, 1)" if open_interval else "[0, 1]"
+        raise ValueError(f"{name} must be finite and lie in {interval}.")
+    return result
+
+
+def _linear_rgb(value: object, *, name: str) -> tuple[float, float, float]:
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+        raise TypeError(f"{name} must be a three-value RGB sequence.")
+    if len(value) != 3:
+        raise ValueError(f"{name} must contain exactly three values.")
+    channels = tuple(
+        _unit_interval(channel, name=f"{name}[{index}]", open_interval=False)
+        for index, channel in enumerate(value)
+    )
+    return channels[0], channels[1], channels[2]
+
+
 def _identifier(value: object, *, name: str) -> str:
     if not isinstance(value, str) or _PORTABLE_ID.fullmatch(value) is None:
         raise ValueError(f"{name} must be a portable non-empty identifier.")
@@ -472,6 +541,7 @@ __all__ = [
     "BLCS_DATASET_SCHEMA",
     "BLCS_SAMPLE_SCHEMA",
     "BLCSChunk",
+    "BLCSBallGaussianSettings",
     "BLCSCompositionAssets",
     "BLCSSampleRecord",
     "BLCSSceneLike",

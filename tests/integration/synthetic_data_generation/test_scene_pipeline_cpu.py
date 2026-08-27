@@ -6,7 +6,6 @@ import json
 import math
 import subprocess
 import sys
-from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import cast
@@ -64,9 +63,7 @@ from src.synthetic_data_generation.dataset.blcs.handler import (
 )
 from src.synthetic_data_generation.dataset.blcs.rendering.nht import (
     BLCSNHTRenderer,
-    build_blcs_sample_metadata,
 )
-from src.synthetic_data_generation.dataset.blcs.timeline import BLCSTrajectoryPlan
 from src.synthetic_data_generation.dataset.camera_profiles import CameraProfileConfig
 from src.synthetic_data_generation.dataset.court.contracts import (
     COURT_DATASET_SCHEMA,
@@ -99,7 +96,6 @@ from src.synthetic_data_generation.dataset.plcs.rendering import (
 from src.synthetic_data_generation.dataset.runtime import (
     BackgroundArrays,
     ForegroundDelta,
-    ForegroundDeltaBatch,
     RenderSampleKey,
     sparse_delta_from_composite,
 )
@@ -124,7 +120,10 @@ from src.synthetic_data_generation.reconstruction import (
 from src.synthetic_data_generation.reconstruction.scene_export import (
     StandardSceneExport,
 )
-from src.synthetic_data_generation.rendering.nht import NHTRenderClient
+from src.synthetic_data_generation.rendering.nht import (
+    NHTComposedRenderClient,
+    NHTRenderClient,
+)
 from src.synthetic_data_generation.scene_contract import RigidTransform
 from src.tasks.plcs.generate_dataset.sampling.motion_source import (
     ACCADMotionLibrary,
@@ -162,95 +161,6 @@ class _StaticTrajectoryProvider:
     def load(self, *, scene_id: str, seed: int) -> tuple[BLCSTrajectory, ...]:
         self.preflight(scene_id=scene_id, seed=seed)
         return self.trajectories
-
-
-@dataclass
-class _BLCSCPUOracle:
-    """Explicit dense CPU numerical seam; NHT backgrounds remain file-backed."""
-
-    execution_device: str = "test-cpu-oracle"
-    cuda_peak_bytes: int = 0
-
-    def compose(
-        self,
-        *,
-        plan: BLCSTrajectoryPlan,
-        backgrounds: Mapping[str, BackgroundArrays],
-        ball_radius_m: float,
-    ) -> Iterator[ForegroundDeltaBatch]:
-        for chunk in plan.chunks:
-            deltas = []
-            metadata = []
-            for frame_index in chunk.frame_indices:
-                for camera_index, sampled in enumerate(plan.camera_rig.cameras):
-                    camera = sampled.scene_camera
-                    background = backgrounds[camera.camera_id]
-                    rgb = np.array(background.rgb, copy=True)
-                    alpha = np.array(background.alpha, copy=True)
-                    depth = np.array(background.depth, copy=True)
-                    labels: NDArray[np.int32] = np.zeros(
-                        (camera.height, camera.width), dtype=np.int32
-                    )
-                    focal = float(camera.intrinsics[0])
-                    for object_index in range(plan.source.object_count):
-                        if not plan.geometric_visible[
-                            frame_index, camera_index, object_index
-                        ]:
-                            continue
-                        centre = plan.camera_uv[frame_index, camera_index, object_index]
-                        object_depth = float(
-                            plan.camera_depth[frame_index, camera_index, object_index]
-                        )
-                        radius = max(
-                            1, int(round(focal * ball_radius_m / object_depth))
-                        )
-                        x_min = max(0, int(math.floor(centre[0] - radius)))
-                        x_max = min(
-                            camera.width, int(math.ceil(centre[0] + radius + 1))
-                        )
-                        y_min = max(0, int(math.floor(centre[1] - radius)))
-                        y_max = min(
-                            camera.height, int(math.ceil(centre[1] + radius + 1))
-                        )
-                        yy, xx = np.ogrid[y_min:y_max, x_min:x_max]
-                        disc = (xx - centre[0]) ** 2 + (
-                            yy - centre[1]
-                        ) ** 2 <= radius**2
-                        local_depth = depth[y_min:y_max, x_min:x_max, 0]
-                        visible = disc & (
-                            (local_depth <= 0.0) | (object_depth <= local_depth)
-                        )
-                        rgb[y_min:y_max, x_min:x_max][visible] = (
-                            1.0,
-                            0.85,
-                            0.0,
-                        )
-                        alpha[y_min:y_max, x_min:x_max, 0][visible] = 1.0
-                        local_depth[visible] = object_depth
-                        labels[y_min:y_max, x_min:x_max][visible] = object_index + 1
-                    delta = sparse_delta_from_composite(
-                        key=RenderSampleKey(frame_index, camera.camera_id),
-                        background=background,
-                        rgb=rgb,
-                        alpha=alpha,
-                        depth=depth,
-                        instance_ids=labels,
-                    )
-                    deltas.append(delta)
-                    metadata.append(
-                        build_blcs_sample_metadata(
-                            plan=plan,
-                            source_frame_index=frame_index,
-                            camera_index=camera_index,
-                            chunk_index=chunk.chunk_index,
-                            delta=delta,
-                        )
-                    )
-            yield ForegroundDeltaBatch(
-                chunk_id=f"chunk-{chunk.chunk_index:06d}",
-                deltas=tuple(deltas),
-                metadata=tuple(metadata),
-            )
 
 
 @dataclass
@@ -729,6 +639,7 @@ class _Fixture:
             "FAKE_NHT_FAIL_DOMAIN": fail_domain or "",
         }
         nht_client = NHTRenderClient()
+        composed_nht_client = NHTComposedRenderClient()
         assets = self.blcs_configuration.assets
         plcs_handler = PLCSStageHandler(
             configuration=self.plcs_configuration,
@@ -776,13 +687,12 @@ class _Fixture:
                 ),
                 renderer=BLCSNHTRenderer(
                     assets=assets,
-                    client=nht_client,
+                    client=composed_nht_client,
                     executable=self.render_executable,
                     environment=environment,
                     timeout_seconds=180.0,
-                    execution_device="test-cpu-oracle",
-                    maximum_batch_frames=2,
-                    test_cpu_oracle=_BLCSCPUOracle(),
+                    execution_device="cuda:0",
+                    maximum_batch_frames=1,
                 ),
             ),
             plcs_dataset=plcs_handler,
@@ -880,7 +790,7 @@ def _assert_published_domains(
         _json(workspace.root / "datasets/blcs/diagnostics/performance.json")[
             "execution_device"
         ]
-        == "test-cpu-oracle"
+        == "cuda:0"
     )
     assert (
         _json(workspace.root / "datasets/plcs/diagnostics/performance.json")[
@@ -952,9 +862,9 @@ def _blcs_configuration() -> BLCSDatasetConfiguration:
             maximum_published_fraction_of_dense_reference=1.0,
             maximum_nht_invocations=2,
             maximum_background_cache_misses=12,
-            maximum_batch_frames=2,
-            execution_device="test-cpu-oracle",
-            require_cuda=False,
+            maximum_batch_frames=1,
+            execution_device="cuda:0",
+            require_cuda=True,
         ),
     )
 
@@ -1481,10 +1391,12 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--scene", required=True)
 parser.add_argument("--camera-id", action="append", default=[])
 parser.add_argument("--cameras")
+parser.add_argument("--composition")
 parser.add_argument("--output", required=True)
 args = parser.parse_args()
 scene = json.loads(Path(args.scene).read_text(encoding="utf-8"))
 request = json.loads(Path(args.cameras).read_text(encoding="utf-8")) if args.cameras else {{"cameras": []}}
+composition = json.loads(Path(args.composition).read_text(encoding="utf-8")) if args.composition else None
 output = Path(args.output)
 output_path = output.as_posix()
 domain = next((parts for parts in ("court", "blcs", "plcs") if f"/datasets/{{parts}}/" in output_path or f"/.transactions/{{parts}}_dataset/" in output_path), "unknown")
@@ -1496,13 +1408,16 @@ if failure:
     (output / "partial.tmp").write_text("injected public NHT failure", encoding="utf-8")
     sys.exit(7)
 rgb_value = float(os.environ["FAKE_NHT_RGB_VALUE"])
+render_root = output / "background" if composition is not None else output
+if composition is not None:
+    render_root.mkdir()
 records = []
 previews = {{}}
 for camera in request["cameras"]:
     camera_id = camera["camera_id"]
     width = camera["width"]
     height = camera["height"]
-    root = output / camera_id
+    root = render_root / camera_id
     root.mkdir()
     np.save(root / "rgb.npy", np.full((height, width, 3), rgb_value, dtype=np.float32))
     np.save(root / "alpha.npy", np.ones((height, width, 1), dtype=np.float32))
@@ -1527,7 +1442,7 @@ for camera in request["cameras"]:
         "alpha_preview": f"{{camera_id}}/alpha.png",
         "depth": f"{{camera_id}}/depth.npy",
     }})
-(output / "render.json").write_text(json.dumps({{
+(render_root / "render.json").write_text(json.dumps({{
     "schema": "nht_render_result_v1",
     "scene_schema": "nht_standard_scene_v1",
     "scene_id": scene["scene_id"],
@@ -1535,4 +1450,73 @@ for camera in request["cameras"]:
     "export_validation": {{}},
     "renders": records,
 }}), encoding="utf-8")
+if composition is not None:
+    timeline_path = Path(args.composition).parent / composition["timeline"]["tensors"]
+    with np.load(timeline_path, allow_pickle=False) as timeline:
+        present = np.array(timeline["present"], copy=True)
+    chunks_root = output / "chunks"
+    chunks_root.mkdir()
+    chunk_records = []
+    camera_count = len(request["cameras"])
+    for chunk in composition["timeline"]["chunks"]:
+        chunk_id = f"chunk-{{int(chunk['chunk_index']):06d}}"
+        chunk_root = chunks_root / chunk_id
+        chunk_root.mkdir()
+        frame_values = []
+        camera_values = []
+        pixels = []
+        rgbs = []
+        alphas = []
+        depths = []
+        instance_ids = []
+        offsets = [0]
+        for frame_index in chunk["frame_indices"]:
+            active = np.flatnonzero(present[frame_index])
+            for camera_index, camera in enumerate(request["cameras"]):
+                frame_values.append(frame_index)
+                camera_values.append(camera_index)
+                if len(active):
+                    pixels.append((frame_index + camera_index) % (camera["width"] * camera["height"]))
+                    rgbs.append((rgb_value, rgb_value, rgb_value))
+                    alphas.append(1.0)
+                    depths.append(8.0 + frame_index)
+                    instance_ids.append(int(active[0]) + 1)
+                offsets.append(len(pixels))
+        np.savez(
+            chunk_root / "composed.npz",
+            frame_indices=np.asarray(frame_values, dtype=np.int64),
+            camera_indices=np.asarray(camera_values, dtype=np.int32),
+            offsets=np.asarray(offsets, dtype=np.int64),
+            pixel_indices=np.asarray(pixels, dtype=np.int32),
+            rgb=np.asarray(rgbs, dtype=np.float32).reshape(-1, 3),
+            alpha=np.asarray(alphas, dtype=np.float32),
+            depth=np.asarray(depths, dtype=np.float32),
+            instance_ids=np.asarray(instance_ids, dtype=np.int32),
+        )
+        chunk_records.append({{
+            "chunk_id": chunk_id,
+            "frame_indices": chunk["frame_indices"],
+            "camera_ids": [camera["camera_id"] for camera in request["cameras"]],
+            "sample_count": len(frame_values),
+            "pixel_count": len(pixels),
+            "arrays": f"chunks/{{chunk_id}}/composed.npz",
+        }})
+    (output / "render.json").write_text(json.dumps({{
+        "schema": "nht_composed_render_result_v1",
+        "scene_schema": "nht_standard_scene_v1",
+        "scene_id": scene["scene_id"],
+        "coordinate_space": "canonical NHT scene space",
+        "background": "background/render.json",
+        "composition": {{
+            "request_schema": composition["schema"],
+            "frame_count": composition["timeline"]["frame_count"],
+            "object_count": composition["timeline"]["object_count"],
+            "asset_gaussian_count": composition["asset"]["gaussian_count"],
+            "appearance_model": "direct_linear_rgb",
+            "rasterization": "joint_3dgs_eval3d_transmittance_v1",
+            "visibility_threshold": composition["visibility_threshold"],
+        }},
+        "chunks": chunk_records,
+        "cuda_peak_bytes": 4096,
+    }}), encoding="utf-8")
 """
