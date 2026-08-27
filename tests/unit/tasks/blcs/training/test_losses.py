@@ -6,19 +6,19 @@ import pytest
 import torch
 from torch import Tensor
 
-from src.tasks.blcs.models.components.differentiable_projection import (
-    DifferentiableProjection,
-)
 from src.tasks.blcs.training.losses import (
     BLCSLoss,
     reprojection_loss,
     trajectory_position_loss,
 )
+from src.utils.projection.differentiable_projection import (
+    DifferentiablePinholeProjection,
+)
 from src.utils.schema.court import COURT_COORD_SCALE_Z
 from src.utils.schema.court_normalization import normalize_court_position
 
 
-class _StaticProjection(DifferentiableProjection):
+class _StaticProjection(DifferentiablePinholeProjection):
     """Return fixed projection tensors so reduction semantics stay isolated."""
 
     def __init__(self, uv: Tensor, in_front: Tensor) -> None:
@@ -28,7 +28,7 @@ class _StaticProjection(DifferentiableProjection):
 
     def forward(
         self,
-        position_norm: Tensor,
+        world_points: Tensor,
         camera_R: Tensor,
         camera_C: Tensor,
         camera_f: Tensor,
@@ -38,7 +38,7 @@ class _StaticProjection(DifferentiableProjection):
         camera_h: Tensor,
     ) -> tuple[Tensor, Tensor]:
         del (
-            position_norm,
+            world_points,
             camera_R,
             camera_C,
             camera_f,
@@ -193,6 +193,26 @@ def test_reprojection_loss_reduces_only_explicitly_expanded_mask_entries() -> No
     )
     assert torch.isfinite(empty)
     assert empty.item() == 0.0
+
+
+def test_blcs_reprojection_denormalizes_court_position_before_projection() -> None:
+    scalar = torch.ones(1, 1)
+    actual = reprojection_loss(
+        pred_position=torch.tensor([[[1.0, 0.0, 0.0]]]),
+        target_uv=torch.tensor([[[[1.0, 0.0]]]]),
+        target_vis=torch.ones(1, 1, 1, dtype=torch.bool),
+        camera_R=torch.eye(3).view(1, 1, 3, 3),
+        camera_C=torch.tensor([[[0.0, 0.0, -COURT_COORD_SCALE_Z]]]),
+        camera_f=scalar,
+        camera_cx=torch.zeros_like(scalar),
+        camera_cy=torch.zeros_like(scalar),
+        camera_w=scalar,
+        camera_h=scalar,
+        projector=DifferentiablePinholeProjection(),
+        mask=torch.ones(1, 1, dtype=torch.bool),
+    )
+
+    torch.testing.assert_close(actual, torch.zeros_like(actual))
 
 
 def test_blcs_loss_rejects_invalid_axis_weights() -> None:

@@ -1,0 +1,7 @@
+# All-output PLCS supervision plus clean multi-view 2D pose reprojection.
+defaults:
+  - all_outputs_beta01
+  - _self_
+
+reprojection_weight: 1.0
+reprojection_smooth_l1_beta: 0.01
