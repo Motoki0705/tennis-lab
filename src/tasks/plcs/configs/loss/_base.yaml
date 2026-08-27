@@ -1,4 +1,5 @@
 position_weight: 1.0
+position_smooth_l1_beta: 1.0
 rotation_weight: 1.0
 angle_weight: 0.0
 position_smoothness_weight: 0.0
