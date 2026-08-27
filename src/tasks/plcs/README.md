@@ -9,7 +9,7 @@
 - **`configuration_contracts.py`**: training と standalone generation が共有する path roots と generation component の型付き契約。両 runtime 設定より下位に置き、相互 import を作らない。
 
 ### data/
-- **`dataset.py`**: `SceneDataset`。sceneをcamera-time基準のcanonical sample(`human_kp`/`court_kp`/`position`/`rotation`等)に変換。
+- **`dataset.py`**: `SceneDataset`。sceneをcamera-time基準のcanonical sample(`human_kp`/`court_kp`/`position`/`rotation`等)に変換。augmentation前の`human_kp_target`/`human_vis_target`と選択camera parameterも保持し、2D reprojection supervisionへ渡す。
 - **`datamodule.py`**: `PLCSDataModule`。model非依存のcanonical `(B,V,T,...)` batchを構築し、profile固有変換は行わない。
 - **`augmentation.py`**: `PLCSObservationAugmentation`。UVノイズ・時間jitter・可視性dropout等8段のパイプライン。
 - **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
@@ -33,7 +33,7 @@
 ### training/
 - **`composition.py` / `runner.py`**: validated configからdatamodule/Lightning lifecycleを外部compositionで一度だけ選択する。
 - **`lightning_module.py`**: `PLCSLightningModule`。構築時にmodel-I/O pairを固定し、supervised+canonical+MCMCノイズ+GANを統括。
-- **`losses.py`**: `PLCSLoss`/`PLCSLossConfig`。`prepare_inputs()`で検証・canonical変換し、`forward()`はtensor loss termの合算だけを行う。
+- **`losses.py`**: `PLCSLoss`/`PLCSLossConfig`。`prepare_inputs()`で検証・canonical変換し、`forward()`はtensor loss termの合算だけを行う。reprojection termは予測position/rotation/canonical poseをworld poseへ統合し、clean 2D poseとのmasked Smooth-L1を全cameraで計算する。
 - **`metrics.py`**: `PLCSMetrics`。メートル換算誤差・角度誤差・閾値内accuracyを集計。
 - **`mcmc.py`**: `LangevinNoiseInjector`(issue #519)。rotation headのflat saddle脱出用SGLDノイズ注入。
 - **`tracking_{matching,losses,metrics,lightning_module}.py`**: clip-level Hungarian matchingとmulti-person固有loss/metrics/payloadを所有し、Lightning stage lifecycleは`tasks/base/training/tracking_lightning_module.py`へ委譲する。

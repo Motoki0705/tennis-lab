@@ -45,6 +45,33 @@ def test_multiview_all_outputs_beta01_config_composes_and_binds_model() -> None:
     assert module.loss_fn.config.rotation_weight == 1.0
     assert module.loss_fn.config.angle_weight == 1.0
     assert module.loss_fn.config.canonical_pose_weight == 1.0
+    assert module.loss_fn.config.reprojection_weight == 0.0
+
+
+def test_multiview_reprojection_config_composes_and_binds_loss() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train",
+            overrides=[
+                "model=multiview_canonical",
+                "loss=all_outputs_beta01_reprojection",
+                "model.hidden_dim=16",
+                "model.num_heads=4",
+                "model.ffn_dim=32",
+                "model.rope_dim=4",
+                "model.num_layers=1",
+            ],
+        )
+
+    module = build_plcs_lightning_module(config)
+
+    assert module.loss_fn.config.position_weight == 1.0
+    assert module.loss_fn.config.position_smooth_l1_beta == 0.1
+    assert module.loss_fn.config.rotation_weight == 1.0
+    assert module.loss_fn.config.angle_weight == 1.0
+    assert module.loss_fn.config.canonical_pose_weight == 1.0
+    assert module.loss_fn.config.reprojection_weight == 1.0
+    assert module.loss_fn.config.reprojection_smooth_l1_beta == 0.01
 
 
 @pytest.mark.parametrize(

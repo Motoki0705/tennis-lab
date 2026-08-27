@@ -40,6 +40,7 @@
 
 ### `projection/`
 - **`camera_projector.py`**: `Camera`、`CameraConfig`、`CameraView`、`CameraProjector`、`make_look_at_camera()`、`project_points()`。ピンホール投影の共通実装。
+- **`differentiable_projection.py`**: `DifferentiablePinholeProjection`。任意のworld point shape `(B,...,3)`を固定camera群へ微分可能に投影し、normalized UVと正depth maskを返す。court座標のdenormalizeやtask固有maskは呼び出し側が担当する。
 
 ### `rendering/`
 
