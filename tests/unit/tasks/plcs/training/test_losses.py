@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, replace
 
+import pytest
 import torch
 
 from src.tasks.plcs.training.losses import (
@@ -11,8 +12,10 @@ from src.tasks.plcs.training.losses import (
     PLCSLoss,
     PLCSLossConfig,
     PLCSLossInputs,
+    position_loss_term,
     position_smoothness_loss_term,
 )
+from src.utils.configuration import SemanticConfigurationError
 from src.utils.losses.temporal import TemporalSmoothnessPenalty
 from src.utils.schema.court_normalization import normalize_court_position
 
@@ -20,6 +23,7 @@ from src.utils.schema.court_normalization import normalize_court_position
 def _loss_config() -> PLCSLossConfig:
     return PLCSLossConfig(
         position_weight=1.0,
+        position_smooth_l1_beta=1.0,
         rotation_weight=1.0,
         angle_weight=0.0,
         position_smoothness_weight=0.0,
@@ -71,6 +75,43 @@ def test_from_dict_parses_weight() -> None:
     raw["position_smoothness_weight"] = 4.0
     cfg = PLCSLossConfig.from_dict(raw)
     assert cfg.position_smoothness_weight == 4.0
+
+
+def test_position_smooth_l1_beta_is_configurable() -> None:
+    inputs = PLCSLossInputs(
+        pred_position=torch.full((1, 1, 3), 0.2),
+        pred_rotation=torch.zeros(1, 1, 2),
+        target_position=torch.zeros(1, 1, 3),
+        target_rotation=torch.zeros(1, 1, 2),
+    )
+
+    torch.testing.assert_close(
+        position_loss_term(inputs, beta=1.0), torch.tensor(0.02)
+    )
+    torch.testing.assert_close(
+        position_loss_term(inputs, beta=0.1), torch.tensor(0.15)
+    )
+
+
+def test_position_beta_is_bound_to_combined_loss() -> None:
+    loss_fn = PLCSLoss(replace(_loss_config(), position_smooth_l1_beta=0.1))
+    inputs = PLCSLossInputs(
+        pred_position=torch.full((1, 1, 3), 0.2),
+        pred_rotation=torch.zeros(1, 1, 2),
+        target_position=torch.zeros(1, 1, 3),
+        target_rotation=torch.zeros(1, 1, 2),
+    )
+
+    torch.testing.assert_close(
+        loss_fn.loss_terms["position"](inputs), torch.tensor(0.15)
+    )
+
+
+def test_position_beta_must_be_positive() -> None:
+    raw = asdict(_loss_config())
+    raw["position_smooth_l1_beta"] = 0.0
+    with pytest.raises(SemanticConfigurationError, match="must be positive"):
+        PLCSLossConfig.from_dict(raw)
 
 
 def test_frame_level_input_is_noop() -> None:

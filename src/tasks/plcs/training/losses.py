@@ -60,6 +60,8 @@ class PLCSLossConfig:
 
     Attributes:
         position_weight: Weight for position loss.
+        position_smooth_l1_beta: Smooth-L1 transition beta in normalized court
+            coordinates for position loss.
         rotation_weight: Weight for rotation loss (1 - cosine on (cos, sin)).
         angle_weight: Weight for wrapped-angle smooth-L1 yaw loss.
         canonical_pose_weight: Weight for canonical pose loss.
@@ -71,6 +73,7 @@ class PLCSLossConfig:
     """
 
     position_weight: float
+    position_smooth_l1_beta: float
     rotation_weight: float
     angle_weight: float
     # Temporal jerk prior on predicted player position (removes per-frame
@@ -120,6 +123,10 @@ class PLCSLossConfig:
             return result
 
         weights = {key: _weight(key) for key in scalar_keys}
+        if weights["position_smooth_l1_beta"] <= 0.0:
+            raise SemanticConfigurationError(
+                "loss.position_smooth_l1_beta must be positive."
+            )
 
         def _opt_weights(key: str, *, expected_length: int) -> tuple[float, ...] | None:
             value = cfg[key]
@@ -158,6 +165,7 @@ class PLCSLossConfig:
 
         return cls(
             position_weight=weights["position_weight"],
+            position_smooth_l1_beta=weights["position_smooth_l1_beta"],
             rotation_weight=weights["rotation_weight"],
             angle_weight=weights["angle_weight"],
             position_smoothness_weight=weights["position_smoothness_weight"],
@@ -414,12 +422,13 @@ def _masked_frame_mean(per_frame: Tensor, frame_mask: Tensor | None) -> Tensor:
     return per_frame.mean()
 
 
-def position_loss_term(inputs: PLCSLossInputs) -> Tensor:
-    """Position term: masked smooth-L1 between predicted and target positions."""
+def position_loss_term(inputs: PLCSLossInputs, *, beta: float = 1.0) -> Tensor:
+    """Position term in normalized court coordinates with configurable beta."""
     per_frame = nn.functional.smooth_l1_loss(
         inputs.pred_position,
         inputs.target_position,
         reduction="none",
+        beta=beta,
     ).mean(dim=-1)
     return _masked_frame_mean(per_frame, inputs.frame_mask)
 
@@ -712,6 +721,13 @@ class PLCSLoss(nn.Module):
         self.loss_terms: dict[str, PLCSLossTerm]
         if loss_terms is None:
             self.loss_terms = dict(DEFAULT_LOSS_TERMS)
+            self.loss_terms["position"] = cast(
+                "PLCSLossTerm",
+                partial(
+                    position_loss_term,
+                    beta=config.position_smooth_l1_beta,
+                ),
+            )
             self.loss_terms["position_smoothness"] = partial(
                 position_smoothness_loss_term,
                 penalty=self.position_smoothness_penalty,
