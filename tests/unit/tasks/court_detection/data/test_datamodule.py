@@ -117,7 +117,7 @@ def test_setup_test_requests_explicit_test_split_without_fallback(
     assert datamodule.target_bundle_spec == bundle
 
 
-def test_query_datamodule_scans_all_authority_before_model_or_workers(
+def test_pose_datamodule_scans_all_authority_before_model_or_workers(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -178,24 +178,29 @@ def test_query_datamodule_scans_all_authority_before_model_or_workers(
         _factory,
     )
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
-        query = compose(
+        pose_config = compose(
             config_name="train",
             overrides=[
                 "data/source=synthetic_court",
                 "data.source.keypoint_court_scope=target_court",
                 "data/processing=kp",
                 "data/augmentation=pose_safe",
-                "loss=query_pose",
-                "model=query_encoder",
+                "model/encoder=dinov3",
+                "model/transformer_encoder=default",
+                "model/decoder=dpt",
+                "loss.pose.enabled=true",
+                "loss.pose.translation_weight=1.0",
+                "loss.pose.rotation_weight=1.0",
+                "loss.pose.focal_weight=1.0",
             ],
         )
-    query.paths.project_root = str(tmp_path)
-    query.paths.data_root = "data"
-    query.paths.output_root = "outputs"
-    query.paths.checkpoint_root = "checkpoints"
-    query.paths.artifact_root = "artifacts"
+    pose_config.paths.project_root = str(tmp_path)
+    pose_config.paths.data_root = "data"
+    pose_config.paths.output_root = "outputs"
+    pose_config.paths.checkpoint_root = "checkpoints"
+    pose_config.paths.artifact_root = "artifacts"
 
-    datamodule = CourtDetectionDataModule(query)
+    datamodule = CourtDetectionDataModule(pose_config)
 
     assert datamodule.num_workers == 4
     assert preflight_calls == [

@@ -18,8 +18,16 @@ from src.tasks.court_detection.data.contracts import (
     CourtTargetBundleSpec,
     CourtTargetSpec,
 )
+from src.tasks.court_detection.geometry.pose import CourtDecodedPose
 from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
-from src.tasks.court_detection.model_io.contracts import CourtModelSpec
+from src.tasks.court_detection.model_io.contracts import (
+    CourtConsistencyResult,
+    CourtModelOutput,
+    CourtModelSpec,
+    CourtPoseLossKind,
+    CourtPoseTrainingResult,
+    CourtRawPoseOutput,
+)
 from src.tasks.court_detection.training.lightning_module import (
     CourtDetectionLightningModule,
 )
@@ -65,13 +73,34 @@ def _adapter(bundle: CourtTargetBundleSpec) -> CourtModelIOAdapter:
             in_channels=3,
             short_side=32,
         ),
-        loss_config=CourtLossConfig(
-            seg_ce_weight=1.0,
-            seg_dice_weight=1.0,
-            kp_focal_gamma=2.0,
-            line_bce_weight=1.0,
-            line_dice_weight=1.0,
-            line_pos_weight=1.0,
+        loss_config=CourtLossConfig.from_mapping(
+            {
+                "seg": {"ce_weight": 1.0, "dice_weight": 1.0, "weight": 1.0},
+                "kp": {"focal_gamma": 2.0, "weight": 1.0},
+                "line": {
+                    "bce_weight": 1.0,
+                    "dice_weight": 1.0,
+                    "pos_weight": 1.0,
+                    "weight": 1.0,
+                },
+                "pose": {
+                    "enabled": False,
+                    "translation_weight": 0.0,
+                    "rotation_weight": 0.0,
+                    "focal_weight": 0.0,
+                },
+                "consistency": {
+                    "enabled": False,
+                    "weight": 0.0,
+                    "temperature": 1.0,
+                    "huber_delta": 0.01,
+                    "min_depth_m": 0.1,
+                    "depth_scale_m": 1.0,
+                    "cheirality_weight": 0.0,
+                    "warmup_fraction": 0.0,
+                    "gradient_flow": "both",
+                },
+            }
         ),
     )
 
@@ -221,3 +250,137 @@ def test_test_prediction_payload_flattens_every_selected_head(
             archive["scene_ids"],
             ["sample_000000", "sample_000001"],
         )
+
+
+def test_pose_loss_logs_keep_raw_weighted_and_effective_terms_separate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = object.__new__(CourtDetectionLightningModule)
+    torch.nn.Module.__init__(module)
+    logged: dict[str, float] = {}
+
+    def record_log(name: str, value: object, **_: object) -> None:
+        assert isinstance(value, torch.Tensor)
+        logged[name] = float(value)
+
+    monkeypatch.setattr(module, "log", record_log)
+    raw_losses: dict[CourtPoseLossKind, torch.Tensor] = {
+        "pose_translation": torch.tensor(1.0),
+        "pose_rotation": torch.tensor(2.0),
+        "pose_focal": torch.tensor(3.0),
+    }
+    weighted_losses: dict[CourtPoseLossKind, torch.Tensor] = {
+        "pose_translation": torch.tensor(2.0),
+        "pose_rotation": torch.tensor(6.0),
+        "pose_focal": torch.tensor(12.0),
+    }
+    effective_weights: dict[CourtPoseLossKind, torch.Tensor] = {
+        "pose_translation": torch.tensor(2.0),
+        "pose_rotation": torch.tensor(3.0),
+        "pose_focal": torch.tensor(4.0),
+    }
+    configured_weights = dict(effective_weights)
+    consistency = CourtConsistencyResult(
+        coordinate_loss=torch.tensor(5.0),
+        cheirality_loss=torch.tensor(6.0),
+        auxiliary_loss=torch.tensor(7.0),
+        weighted_auxiliary_loss=torch.tensor(3.5),
+        configured_weight=torch.tensor(2.0),
+        effective_weight=torch.tensor(0.5),
+        visible_point_count=torch.tensor(14.0),
+        mean_distance_px=torch.tensor(8.0),
+        invalid_depth_rate=torch.tensor(0.25),
+        dense_points_xy=torch.zeros(1, 14, 2),
+        pose_points_xy=torch.zeros(1, 14, 2),
+        pose_depth_m=torch.ones(1, 14),
+    )
+    result = CourtPoseTrainingResult(
+        loss=torch.tensor(20.0),
+        raw_dense_loss=torch.tensor(1.0),
+        direct_dense_loss=torch.tensor(0.0),
+        direct_pose_loss=torch.tensor(20.0),
+        raw_dense_losses={"kp": torch.tensor(1.0)},
+        dense_losses={"kp": torch.tensor(0.0)},
+        dense_configured_weights={"kp": torch.tensor(0.0)},
+        dense_effective_weights={"kp": torch.tensor(0.0)},
+        weighted_dense_losses={"kp": torch.tensor(0.0)},
+        pose_losses=raw_losses,
+        weighted_pose_losses=weighted_losses,
+        pose_configured_weights=configured_weights,
+        pose_effective_weights=effective_weights,
+        consistency=consistency,
+        output=CourtModelOutput(
+            dense_logits={"kp": torch.zeros(1, 14, 2, 2)},
+            pose=CourtRawPoseOutput(torch.zeros(1, 10)),
+        ),
+        decoded_pose=CourtDecodedPose(
+            translation_m=torch.zeros(1, 3),
+            rotation=torch.eye(3).unsqueeze(0),
+            focal_px=torch.ones(1),
+            log_focal=torch.zeros(1),
+        ),
+    )
+
+    module._log_training_result("train", result)
+
+    for name in raw_losses:
+        assert logged[f"train/loss_{name}"] == float(raw_losses[name])
+        assert logged[f"train/loss_{name}_weighted"] == float(
+            weighted_losses[name]
+        )
+        assert logged[f"train/{name}_configured_weight"] == float(
+            configured_weights[name]
+        )
+        assert logged[f"train/{name}_effective_weight"] == float(
+            effective_weights[name]
+        )
+    assert logged["train/loss_direct_pose"] == 20.0
+    assert logged["train/loss_direct_dense_raw"] == 1.0
+    assert logged["train/loss_kp_raw"] == 1.0
+    assert logged["train/loss_kp"] == 0.0
+    assert logged["train/loss_kp_weighted"] == 0.0
+    assert logged["train/kp_configured_weight"] == 0.0
+    assert logged["train/kp_effective_weight"] == 0.0
+    assert logged["train/loss_kp_pose_coordinate"] == 5.0
+    assert logged["train/loss_kp_pose_cheirality"] == 6.0
+    assert logged["train/loss_kp_pose_auxiliary_unweighted"] == 7.0
+    assert logged["train/loss_kp_pose_auxiliary_weighted"] == 3.5
+    assert logged["train/kp_pose_configured_weight"] == 2.0
+    assert logged["train/kp_pose_effective_weight"] == 0.5
+    assert logged["train/kp_pose_visible_point_count"] == 14.0
+    assert logged["train/kp_pose_consistency_distance_px"] == 8.0
+    assert logged["train/kp_pose_invalid_depth_rate"] == 0.25
+
+
+def test_after_backward_uses_hierarchical_dense_heads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = object.__new__(CourtDetectionLightningModule)
+    torch.nn.Module.__init__(module)
+    model = torch.nn.Module()
+    model.heads = torch.nn.ModuleDict(
+        {
+            "kp": torch.nn.Linear(2, 1),
+            "line": torch.nn.Linear(2, 1),
+        }
+    )
+    model.pose_head = torch.nn.Linear(2, 1)
+    for parameter in model.parameters():
+        parameter.grad = torch.ones_like(parameter)
+    module.model = model
+    module.consistency_instrumented = True
+    module._matrix_manifest_path = None
+    logged: dict[str, float] = {}
+
+    def record_log(name: str, value: object, **_: object) -> None:
+        logged[name] = float(value)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(module, "log", record_log)
+
+    module.on_after_backward()
+
+    assert logged == {
+        "train/kp_gradient_finite": 1.0,
+        "train/line_gradient_finite": 1.0,
+        "train/pose_gradient_finite": 1.0,
+    }

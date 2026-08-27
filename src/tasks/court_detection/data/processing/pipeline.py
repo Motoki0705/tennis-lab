@@ -99,6 +99,7 @@ class CourtProcessingPipeline:
             "image": transformed.image_tensor,
             "targets": MappingProxyType(targets),
             "image_size": transformed.image_size,
+            "content_size_hw": transformed.content_size_hw,
             "sample_id": transformed.sample_id,
             "metadata": transformed.metadata.to_dict(),
         }

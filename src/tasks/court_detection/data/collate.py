@@ -131,6 +131,15 @@ def court_detection_collate(
         "image_size": torch.stack(
             [cast(Tensor, sample["image_size"]) for sample in batch]
         ),
+        "content_size_hw": torch.stack(
+            [
+                cast(
+                    Tensor,
+                    sample.get("content_size_hw", sample["image_size"]),
+                )
+                for sample in batch
+            ]
+        ),
         "sample_id": [cast(str, sample["sample_id"]) for sample in batch],
         "metadata": [
             cast(Mapping[str, object], sample["metadata"]) for sample in batch

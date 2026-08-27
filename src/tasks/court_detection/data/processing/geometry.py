@@ -38,6 +38,10 @@ class CourtGeometryPlan:
     matrix: Tensor
     output_size_hw: tuple[int, int]
     horizontal_flipped: bool
+    # ``output_size_hw`` includes any right/bottom patch alignment.  Keep the
+    # pre-alignment content extent separate so consumers can exclude the
+    # synthetic border from spatial reductions (for example, soft-argmax).
+    content_size_hw: tuple[int, int] | None = None
 
     def __post_init__(self) -> None:
         if self.matrix.shape != (3, 3) or not self.matrix.is_floating_point():
@@ -46,6 +50,19 @@ class CourtGeometryPlan:
             raise ValueError("Court geometry matrix must be finite.")
         if self.output_size_hw[0] <= 0 or self.output_size_hw[1] <= 0:
             raise ValueError("Court output geometry must be positive.")
+        content_size = (
+            self.output_size_hw
+            if self.content_size_hw is None
+            else self.content_size_hw
+        )
+        if len(content_size) != 2 or any(value <= 0 for value in content_size):
+            raise ValueError("Court content geometry must be positive.")
+        if any(
+            content > output
+            for content, output in zip(content_size, self.output_size_hw, strict=True)
+        ):
+            raise ValueError("Court content geometry cannot exceed output geometry.")
+        object.__setattr__(self, "content_size_hw", tuple(content_size))
 
 
 class CourtProcessingGeometry:
@@ -93,24 +110,40 @@ class CourtProcessingGeometry:
         """Apply the same plan to RGB, points, instances, and dense targets."""
         selected = self.sample(raw) if plan is None else plan
         height, width = selected.output_size_hw
+        content_size_hw = selected.content_size_hw
+        assert content_size_hw is not None
+        content_height, content_width = content_size_hw
         matrix = selected.matrix.detach().cpu().numpy().astype(np.float64)
 
         image_array = np.asarray(raw.image, dtype=np.uint8)
-        warped = cv2.warpPerspective(
+        warped_content = cv2.warpPerspective(
             image_array,
             matrix,
-            (width, height),
+            (content_width, content_height),
             flags=cv2.INTER_LINEAR,
             borderMode=cv2.BORDER_CONSTANT,
             borderValue=(0, 0, 0),
         )
-        image = Image.fromarray(warped, mode="RGB")
+        image = Image.fromarray(warped_content, mode="RGB")
         if self.is_train:
             image = self.color_jitter(image)
             if random.random() < self.config.gaussian_blur_prob:
                 kernel = random.choice(self.config.gaussian_blur_kernel)
                 sigma = random.uniform(*self.config.gaussian_blur_sigma)
                 image = GaussianBlur(kernel_size=kernel, sigma=sigma)(image)
+        transformed_content = np.asarray(image, dtype=np.uint8)
+        pad_bottom = height - content_height
+        pad_right = width - content_width
+        if pad_bottom or pad_right:
+            transformed_content = cv2.copyMakeBorder(
+                transformed_content,
+                0,
+                pad_bottom,
+                0,
+                pad_right,
+                borderType=cv2.BORDER_REPLICATE,
+            )
+        image = Image.fromarray(transformed_content, mode="RGB")
         image_tensor = TF.normalize(TF.to_tensor(image), self._MEAN, self._STD)
 
         transformed_dense: dict[CourtDenseTargetKind, Tensor] = {}
@@ -167,6 +200,10 @@ class CourtProcessingGeometry:
             sample_id=raw.sample_id,
             image_tensor=image_tensor,
             image_size=torch.tensor([height, width], dtype=torch.long),
+            content_size_hw=torch.tensor(
+                selected.content_size_hw,
+                dtype=torch.long,
+            ),
             keypoint_channels=channels,
             court_instances=instances,
             dense_targets=MappingProxyType(transformed_dense),
@@ -204,6 +241,7 @@ class CourtProcessingGeometry:
                 matrix,
                 (padded_height, padded_width),
                 False,
+                content_size_hw=(resized_height, resized_width),
             )
         if not self.is_train:
             short_side = self.config.val_short_side
@@ -214,7 +252,12 @@ class CourtProcessingGeometry:
                 [[scale, 0.0, 0.0], [0.0, scale, 0.0], [0.0, 0.0, 1.0]],
                 dtype=torch.float64,
             )
-            return CourtGeometryPlan(matrix, (out_height, out_width), False)
+            return CourtGeometryPlan(
+                matrix,
+                (out_height, out_width),
+                False,
+                content_size_hw=(out_height, out_width),
+            )
 
         output = random.choice(self.config.train_scales)
         top, left, crop_height, crop_width = self._random_resized_crop(height, width)
@@ -282,6 +325,7 @@ class CourtProcessingGeometry:
             matrix=torch.from_numpy(matrix),
             output_size_hw=(output, output),
             horizontal_flipped=flipped,
+            content_size_hw=(output, output),
         )
 
     def _random_resized_crop(self, height: int, width: int) -> tuple[int, int, int, int]:

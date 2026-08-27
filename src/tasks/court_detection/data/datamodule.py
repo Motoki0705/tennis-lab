@@ -9,7 +9,6 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader, Dataset
 
 from src.tasks.court_detection.configuration import (
-    CourtQueryModelConfig,
     CourtTrainingConfig,
 )
 from src.tasks.court_detection.data.collate import court_detection_collate
@@ -34,9 +33,9 @@ class CourtDetectionDataModule(pl.LightningDataModule):
         self.batch_size = runtime.data.batch_size
         self.num_workers = runtime.data.num_workers
         self.pin_memory = runtime.data.pin_memory
-        self.query_variant = isinstance(runtime.model, CourtQueryModelConfig)
+        self.pose_variant = bool(getattr(runtime.loss.pose, "enabled", False))
 
-        if self.query_variant:
+        if self.pose_variant:
             self._train_pipeline = build_court_processing_pipeline(
                 self.data_config,
                 is_train=True,
@@ -63,9 +62,9 @@ class CourtDetectionDataModule(pl.LightningDataModule):
             self._train_pipeline.target_bundle_spec
         )
 
-        # Query authority is scanned synchronously here: Runner constructs this
+        # Pose authority is scanned synchronously here: Runner constructs this
         # DataModule before the model, Trainer, accelerator selection, or workers.
-        if self.query_variant:
+        if self.pose_variant:
             for split in self._train_pipeline.input_layer.available_splits:
                 pipeline = (
                     self._train_pipeline if split == "train" else self._eval_pipeline

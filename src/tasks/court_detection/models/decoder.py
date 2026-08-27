@@ -9,6 +9,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from src.tasks.court_detection.configuration import (
+    DPT_CHANNELS_BY_SIZE,
+    CourtDecoderConfig,
+)
 from src.utils.models.blocks import Conv2dWiseWiseBlock
 
 
@@ -296,34 +300,52 @@ def _apply_tensor_module(module: nn.Module, tensor: torch.Tensor) -> torch.Tenso
 
 def build_court_decoder(
     *,
-    decoder_name: str,
+    config: CourtDecoderConfig,
     encoder_channels: Sequence[int],
-    decoder_channels: Sequence[int] | int,
-    reassemble_factors: Sequence[float] | None,
 ) -> CourtDecoder:
-    """Build a court decoder from a decoder name."""
+    """Build one decoder from the strict typed Court decoder contract."""
 
-    resolved_decoder_name = str(decoder_name).lower()
-    if resolved_decoder_name == "fpn":
+    if config.name == "fpn":
+        _reject_dpt_only_fields(config)
         return CourtFPNDecoder(
             encoder_channels=encoder_channels,
-            decoder_channels=_parse_decoder_channel_sequence(decoder_channels),
+            decoder_channels=_parse_decoder_channel_sequence(config.channels),
         )
-    if resolved_decoder_name in {"unet", "u-net"}:
+    if config.name == "unet":
+        _reject_dpt_only_fields(config)
         return CourtUNetDecoder(
             encoder_channels=encoder_channels,
-            decoder_channels=_parse_decoder_channel_sequence(decoder_channels),
+            decoder_channels=_parse_decoder_channel_sequence(config.channels),
         )
-    if resolved_decoder_name == "dpt":
+    if config.name == "dpt":
+        if config.size is None:
+            raise ValueError("DPT decoder requires an explicit size preset.")
+        decoder_channels = _parse_decoder_channel_scalar(config.channels)
+        expected_channels = DPT_CHANNELS_BY_SIZE[config.size]
+        if decoder_channels != expected_channels:
+            raise ValueError(
+                "DPT decoder channels disagree with its size preset: "
+                f"size={config.size!r} requires {expected_channels}, "
+                f"got {decoder_channels}."
+            )
         return CourtDPTDecoder(
             encoder_channels=encoder_channels,
-            decoder_channels=_parse_decoder_channel_scalar(decoder_channels),
-            reassemble_factors=_require_reassemble_factors(reassemble_factors),
+            decoder_channels=decoder_channels,
+            reassemble_factors=_require_reassemble_factors(
+                config.reassemble_factors
+            ),
         )
-    raise ValueError(f"Unsupported court decoder: {decoder_name}")
+    raise ValueError(f"Unsupported court decoder: {config.name}")
 
 
 CourtDecoder: TypeAlias = CourtFPNDecoder | CourtUNetDecoder | CourtDPTDecoder
+
+
+def _reject_dpt_only_fields(config: CourtDecoderConfig) -> None:
+    if config.size is not None or config.reassemble_factors is not None:
+        raise ValueError(
+            "Only DPT decoders accept size and reassemble_factors."
+        )
 
 
 def _require_reassemble_factors(value: Sequence[float] | None) -> Sequence[float]:
@@ -341,10 +363,7 @@ def _parse_decoder_channel_sequence(value: Sequence[int] | int) -> tuple[int, ..
 def _parse_decoder_channel_scalar(value: Sequence[int] | int) -> int:
     if isinstance(value, int):
         return value
-    channels = tuple(int(channel) for channel in value)
-    if len(channels) != 1:
-        raise ValueError("DPT decoder expects a single channel count.")
-    return channels[0]
+    raise ValueError("DPT decoder expects one scalar channel count.")
 
 
 __all__ = [

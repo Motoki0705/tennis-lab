@@ -1,4 +1,4 @@
-# Query pose supervision: isotropic long-side resize plus patch-alignment padding.
+# Pose supervision: isotropic long-side resize plus patch-alignment padding.
 train_scales: [256]
 val_short_side: 256
 crop_scale: [1.0, 1.0]

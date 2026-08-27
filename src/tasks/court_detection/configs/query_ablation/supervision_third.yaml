@@ -1,4 +1,0 @@
-name: supervision_third
-order: 3
-variants: [kp, kp+pose, all, all+pose]
-seg_line_semantics: all_courts

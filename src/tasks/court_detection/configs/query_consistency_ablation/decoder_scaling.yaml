@@ -1,3 +1,0 @@
-name: decoder_scaling
-families: [dpt]
-sizes: [tiny, small, base, large]
