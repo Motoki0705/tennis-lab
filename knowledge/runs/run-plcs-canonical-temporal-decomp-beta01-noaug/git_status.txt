@@ -1,0 +1,16 @@
+ M src/tasks/plcs/configs/loss/_base.yaml
+ M src/tasks/plcs/configs/model/_multiview_axial.yaml
+ M src/tasks/plcs/configuration.py
+ M src/tasks/plcs/models/components/heads.py
+ M src/tasks/plcs/models/plcs_multiview_axial_camtoken_model.py
+ M src/tasks/plcs/models/plcs_multiview_axial_model.py
+ M src/tasks/plcs/models/plcs_multiview_axial_split_model.py
+ M src/tasks/plcs/training/lightning_module.py
+ M src/tasks/plcs/training/losses.py
+ M tests/integration/tasks/plcs/test_model_configs.py
+ M tests/unit/tasks/plcs/models/test_plcs_multiview_axial_model.py
+ M tests/unit/tasks/plcs/training/test_losses.py
+?? src/tasks/plcs/configs/loss/canonical_only.yaml
+?? src/tasks/plcs/configs/model/multiview_axial_base_temporal_pose.yaml
+?? tests/unit/tasks/plcs/models/components/
+?? tests/unit/tasks/plcs/training/test_lightning_module.py
