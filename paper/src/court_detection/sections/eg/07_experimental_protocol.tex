@@ -1,0 +1,98 @@
+\section{Experimental Protocol}
+\label{sec:experiments}
+
+We separate implementation claims from empirical adoption claims.  The model
+and losses in \cref{sec:model,sec:consistency} define the method; choosing them
+as the production default requires the fixed, multi-seed comparison below.
+This separation prevents a low consistency residual from being reported as
+evidence that either branch became more accurate.
+
+\subsection{Data partitions and controlled variables}
+
+The primary training source is the target-court singleton synthetic dataset
+described in \cref{sec:render_supervision}.  Whole trajectory groups are split
+80/10/10, so neighbouring renders never cross partitions.  The validation and
+test manifests must report view azimuth, elevation, field of view, coverage
+mode, target court, renderer-support flag, and trajectory identifier.  This
+metadata enables stratified analysis instead of averaging away difficult
+partial views.
+
+A held-out manually annotated real-image set evaluates \KP, line, and
+segmentation transfer.  It cannot evaluate translation, rotation, or focal
+length unless independent calibration authority is provided; we do not create
+pseudo-pose labels from the detector under test.  Synthetic pose metrics and
+real dense metrics are therefore reported in separate columns rather than
+collapsed into one score.
+
+Across an ablation family we fix the synthetic manifests, \DINO{} checkpoint
+and train mode, pose-safe augmentations, optimizer, batch construction, direct
+loss weights, image scale (approximately 256 pixels on the short side), and a
+15-epoch budget.  Each final comparison uses at least three seeds.  Hyperparameter
+search for temperature, Huber threshold, warmup, or auxiliary weight is limited
+to a short seed-0 pilot whose selected values are frozen before the multi-seed
+run.
+
+\subsection{Ordered architecture and objective ablations}
+
+Architecture is selected before the geometric auxiliary loss is compared.  We
+first sweep task-encoder depth with a fixed decoder, then sweep decoder family
+and capacity with the chosen encoder.  Only then do we hold the architecture
+fixed and compare supervision.  This order avoids attributing a capacity change
+to the consistency objective.
+
+\input{tables/ablation_protocol}
+
+The core supervision comparison is:
+\begin{enumerate}
+  \item \textbf{direct-all}: direct \KP, line, segmentation, translation,
+    rotation, and focal losses;
+  \item \textbf{joint-both}: direct-all plus \cref{eq:cheirality}, with
+    gradients to both branches;
+  \item \textbf{joint-stopgrad-pose}: the pose projection teaches only the
+    dense branch; and
+  \item \textbf{joint-stopgrad-dense}: the dense expectation teaches only the
+    pose branch.
+\end{enumerate}
+All four retain identical direct supervision.  The stop-gradient variants
+diagnose which branch benefits; they are not alternative test-time graphs.
+The auxiliary path is removed at inference, so deployment latency and parameter
+count are identical for the four variants.
+
+\subsection{Metrics and non-circular oracles}
+
+Dense keypoints are scored by mean and median Euclidean distance in the model
+pixel frame, with per-channel and supervision-eligibility-stratified breakdowns.  Line uses
+Dice; segmentation uses mean intersection over union.  Pose uses camera-centre
+L2 error in metres, \(\SOthree\) geodesic error in degrees, focal relative
+error, and absolute log-focal error.
+
+Two projection metrics must not be confused.  \emph{Pose reprojection error}
+projects ground-truth canonical points using only the predicted pose and focal,
+then compares with ground-truth image points.  It is an independent pose
+metric.  \emph{Branch consistency distance} compares the dense expectation to
+the predicted-pose projection.  It is a useful diagnostic but is not a ground-
+truth accuracy measure; two jointly wrong branches can make it small.
+We additionally record supervision-eligible count, invalid predicted-depth rate, finite
+gradient status for both branches, train-step time, and peak accelerator memory.
+
+\subsection{Predeclared adoption rule}
+
+Compared with direct-all, joint-both must improve either GT keypoint mean
+distance or pose-only reprojection error by at least 5\% in the three-seed mean.
+The other metric and translation/rotation/focal errors may not worsen by more
+than 5\% relative.  Absolute degradation must be no larger than 0.01 for line
+Dice and segmentation mIoU.  No run may produce a non-finite loss, non-finite
+gradient, or all-invalid batch, and step time and peak memory overhead must each
+remain within 10\%.  An improvement in consistency distance alone is an
+explicit rejection condition.
+
+\subsection{Shortcut-focused diagnostics}
+
+The test manifest is stratified by full, near-full, and partial court coverage;
+camera height; azimuth; target-court distance; and number of
+supervision-eligible points.  We report the worst stratum alongside the mean.  We also compare full
+images with a diagnostic view that retains fixed-size neighbourhoods around
+visible junctions while suppressing the remaining context.  This diagnostic is
+not used for training or model selection.  If global-pose performance remains
+unchanged under the local-only input, the claimed mechanism has not been
+empirically demonstrated even if the average dense metric is good.

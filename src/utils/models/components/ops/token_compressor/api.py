@@ -15,7 +15,7 @@ from src.utils.models.components.ops.token_compressor.reference import (
 
 TokenCompressorPool = Callable[[Tensor, Tensor, Tensor], tuple[Tensor, Tensor]]
 _CUDA_COMPRESSION_RATIO = 4
-_CUDA_HEAD_DIM = 64
+_CUDA_HEAD_DIMS = frozenset({16, 32, 64, 128})
 
 
 class _TokenCompressorImplementation(Protocol):
@@ -73,8 +73,11 @@ def resolve_token_compressor_pool(
             "token-compressor CUDA supports compression_ratio=4, "
             f"got {compression_ratio}"
         )
-    if head_dim != _CUDA_HEAD_DIM:
-        raise ValueError(f"token-compressor CUDA supports head_dim=64, got {head_dim}")
+    if head_dim not in _CUDA_HEAD_DIMS:
+        supported = ", ".join(str(value) for value in sorted(_CUDA_HEAD_DIMS))
+        raise ValueError(
+            f"token-compressor CUDA supports head_dim in {{{supported}}}, got {head_dim}"
+        )
     return partial(
         _require_cuda_pool(),
         compression_ratio=compression_ratio,

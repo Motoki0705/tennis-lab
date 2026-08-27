@@ -1,0 +1,108 @@
+\section{大域コートクエリモデル}
+\label{sec:model}
+
+レンダリングパイプラインは、標準的なキーポイントヒートマップ損失だけでは学習できないカメラ仮説を
+供給する。そこで、\cref{fig:model}に示すように、モデルを大域幾何エンコーダと、
+意図的に軽量化した密予測ヘッドに分離する。
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\linewidth}{!}{\input{figures/global_query_model}}
+  \caption{\textbf{大域クエリと機械的な密予測デコーディング。}  \DINO{} patch tokenを
+  射影し、2次元rotary encodingを付与する。1つの学習可能なcourt queryには位置回転を
+  適用せず、task Transformer内ですべてのpatchに対して大域アテンションを行う。その最終状態は
+  pose10Dを予測する。選択されたpatch tapは交換可能な軽量デコーダへ渡され、\KP{}、ライン、
+  セグメンテーションの各直接予測ヘッドへ接続される。}
+  \label{fig:model}
+\end{figure}
+
+\subsection{厳密なpatch-token境界}
+
+拡張後の画像 \(I\in\R^{H\times W\times 3}\) が与えられると、その右端と下端を
+replicate paddingして \DINO{} のpatch倍数に揃える。backboneはpatch tokenとspecial tokenを
+含むsequenceを返す。adapterは \(H_pW_p\) 個のpatch tokenのみを受理し、token数、patch grid、
+dtype、device、および有限性が一致することを検証する。CLS tokenとregister tokenは除外し、
+task encoder内で曖昧性のない唯一の大域トークンが、自身の学習可能なcourt queryとなるようにする。
+
+patch feature \(\mathbf{x}_{ij}\) はtask幅 \(d\) に射影される。各attention layerにおいて、
+2次元rotary position encodingが行と列の関数としてpatchのquery/key pairを回転させる
+\citep{su2021roformer}。先頭に付加した学習可能token \(\mathbf{q}_0\) は回転させない。
+\begin{equation}
+  \mathbf{Z}^{(0)}=
+  [\mathbf{q}_0,\,\mathbf{P}\mathbf{x}_{00},\ldots,
+   \mathbf{P}\mathbf{x}_{H_p-1,W_p-1}],
+  \qquad
+  \operatorname{RoPE}_{2D}(\mathbf{q}_0)=\mathbf{q}_0.
+  \label{eq:query_input}
+\end{equation}
+すべてのquery tokenとpatch tokenが同じself-attention layerに参加する。したがって、最終的な
+query state \(\mathbf{q}_L\) はコートの任意の可視部分から情報を集約できる一方で、patch stateは
+自身の空間的identityを保持する。
+
+\subsection{単一のカメラ仮説}
+\label{sec:pose10d}
+
+対象ビューはまず、カメラ側エンドに適用する行列式が $+1$ の回転行列によって正準化される。
+\begin{equation}
+  \T{\Canon}{\Cam}=\mathbf{S}\T{\Court_i}{\Cam},
+  \qquad \mathbf{S}\in\{\mathbf{I},\mathbf{R}_z(\pi)\}.
+  \label{eq:canonical_pose}
+\end{equation}
+物理的な \KP の順序とcanonicalizationの選択は、正とする情報として格納される。モデルアダプタは
+permutationを推論せず、密予測教師と姿勢教師の不一致を棄却する。
+
+MLPは \(\mathbf{q}_L\) を
+\begin{equation}
+  \widehat{\mathbf{p}}=
+  [\widehat C_x,\widehat C_y,\widehat C_z,
+   \widehat a_{11},\widehat a_{12},\widehat a_{13},
+   \widehat a_{21},\widehat a_{22},\widehat a_{23},
+   \widehat\ell_f]\in\R^{10}.
+  \label{eq:pose10d}
+\end{equation}
+へ写す。最初の3値は、正準コートのメートル座標におけるカメラ中心
+\(\widehat{\mathbf{C}}\) である。続く2つの未処理の行ベクトルは、次のように直交化する。
+\begin{align}
+  \mathbf{r}_1&=\frac{\mathbf{a}_1}{\|\mathbf{a}_1\|_2}, &
+  \bar{\mathbf{r}}_2&=\mathbf{a}_2-
+      (\mathbf{r}_1^{\top}\mathbf{a}_2)\mathbf{r}_1, \\
+  \mathbf{r}_2&=\frac{\bar{\mathbf{r}}_2}{\|\bar{\mathbf{r}}_2\|_2}, &
+  \mathbf{r}_3&=\mathbf{r}_1\times\mathbf{r}_2, \\
+  \widehat{\mathbf{R}}_{\Canon\leftarrow\Cam}
+    &= [\mathbf{r}_1^{\top};\mathbf{r}_2^{\top};\mathbf{r}_3^{\top}], &
+  \widehat f&=\exp(\widehat\ell_f).
+  \label{eq:rotation_decode}
+\end{align}
+この連続表現はquaternionの正規化と符号の曖昧性を回避し、いずれかの基底ベクトルが
+退化した場合には棄却される\citep{zhou2019continuity}。焦点距離は有限かつ厳密に正である。
+主点は予測せず、augmentation-awareなtarget intrinsicsから取得する。
+
+\subsection{軽量な密予測ヘッド}
+
+task Transformerから選択したpatch stateを、次の3つの制御されたデコーダ族のいずれかへ
+渡す。
+\begin{itemize}
+  \item \emph{linear}: 各位置での射影と、それに続くresize。
+  \item \emph{progressive}: depthwise-separable refinementを伴う段階的upsampling。
+  \item \emph{DPT}: multi-tap reassemblyとfeature fusion。
+\end{itemize}
+デコーダは画像解像度のfeature mapを生成する。独立した \(1\times1\) ヘッドが、14個のsingleton
+キーポイントlogit、1枚のline-mask logit map、およびcourt segmentation logitを出力する。
+デコーダ幅、stage、fusion mode、およびtapは型付けされたablation変数だが、出力contractは
+変化しない。この設計により、不透明で高容量なtaskヘッドが大域幾何を再構成するのではなく、
+共有token encoder内に大域幾何を保持できるかを検証する。
+
+直接目的関数は引き続き不可欠である。
+\begin{align}
+  \mathcal{L}_{\mathrm{dense}}
+   &=w_{\mathrm{kp}}\mathcal{L}_{\mathrm{focalBCE}}
+    +w_{\mathrm{line}}\mathcal{L}_{\mathrm{BCE+Dice}}
+    +w_{\mathrm{seg}}\mathcal{L}_{\mathrm{CE+Dice}}, \\
+  \mathcal{L}_{\mathrm{pose}}
+   &=w_t\|\widehat{\mathbf{C}}-\mathbf{C}\|_2^2
+    +w_R\,d_{\SOthree}(\widehat{\mathbf{R}},\mathbf{R})
+    +w_f(\widehat\ell_f-\ell_f)^2,
+  \label{eq:direct_losses}
+\end{align}
+ここで \(d_{\SOthree}\) は測地的回転距離である。次節の補助目的関数は、それまで独立していた
+これらの分岐を接続するが、各分岐の正解損失を置き換えることはない。

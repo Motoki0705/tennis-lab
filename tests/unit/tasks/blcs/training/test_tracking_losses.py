@@ -14,6 +14,7 @@ from src.tasks.blcs.model_io import (
     BLCSTrackQueryTrainingBatch,
 )
 from src.tasks.blcs.training.tracking_losses import BLCSTrackingLoss
+from src.utils.schema.court_normalization import normalize_court_position
 
 
 def _criterion() -> BLCSTrackingLoss:
@@ -154,7 +155,43 @@ def test_position_loss_reports_axes_and_uses_configured_balance() -> None:
     torch.testing.assert_close(losses["position_x"], torch.tensor(0.5))
     torch.testing.assert_close(losses["position_y"], torch.tensor(1.5))
     torch.testing.assert_close(losses["position_z"], torch.tensor(2.5))
-    torch.testing.assert_close(losses["position"], torch.tensor(1.3))
+    torch.testing.assert_close(losses["position"], torch.tensor(1.5))
+
+
+def test_tracking_gravity_target_is_derived_from_physical_inputs() -> None:
+    config = OmegaConf.load(Path("src/tasks/blcs/configs/loss/tracking.yaml"))
+    criterion = BLCSTrackingLoss(config)
+
+    assert criterion.gravity_target == pytest.approx(
+        -float(config.gravity_mps2) * float(config.frame_dt_seconds) ** 2 / 11.885
+    )
+    assert "gravity_target" not in config
+
+
+def test_default_tracking_position_loss_is_equal_for_physical_xyz_error() -> None:
+    config = OmegaConf.load(Path("src/tasks/blcs/configs/loss/tracking.yaml"))
+    config.presence_weight = 0.0
+    criterion = BLCSTrackingLoss(config)
+    values = []
+    for axis in range(3):
+        error_m = torch.zeros(1, 1, 1, 3)
+        error_m[..., axis] = 0.25
+        prediction = _prediction(
+            normalize_court_position(error_m).requires_grad_(),
+            torch.full((1, 1, 1), 20.0, requires_grad=True),
+        )
+        batch = BLCSTrackQueryTrainingBatch(
+            call=ModelCall(kwargs={}),
+            target_position=torch.zeros_like(error_m),
+            target_velocity=torch.zeros_like(error_m),
+            target_presence=torch.ones(1, 1, 1, dtype=torch.bool),
+            target_instance_id=torch.zeros(1, 1, 1, dtype=torch.long),
+            target_slot_mask=torch.ones(1, 1, dtype=torch.bool),
+            frame_valid=torch.ones(1, 1, dtype=torch.bool),
+        )
+        values.append(_compute(criterion, prediction, batch)[0]["position"])
+
+    torch.testing.assert_close(torch.stack(values), values[0].expand(3))
 
 
 def test_tracking_loss_rejects_invalid_position_axis_weights() -> None:

@@ -1,0 +1,64 @@
+\section{Discussion and Limitations}
+\label{sec:discussion}
+
+\paragraph{Where the annotation saving comes from.}
+The system does not make geometry disappear; it changes its amortization.  A
+manual workflow calibrates each image or clicks its points.  Our workflow pays
+for video acquisition, reconstruction, and one audited scene alignment, after
+which camera placement, pose, intrinsics, point identity, line/segmentation
+targets, depth, geometric validity, and renderer support are computed for every
+accepted render.  The
+saving grows with the number and diversity of rendered views.  This makes
+partial, elevated, off-axis, and multi-court views---precisely the views useful
+for defeating local shortcuts---cheap to add.
+
+\paragraph{3DGS is necessary but not sufficient.}
+Novel-view rendering alone supplies neither metres nor court semantics.  A
+beautiful but unaligned Gaussian scene cannot supervise translation or physical
+keypoint identity.  Conversely, a court transform without a renderer produces
+only labels, not realistic pixels at novel poses.  The contribution lies in
+their composition through one transform graph and in rejecting the composition
+when scale, topology, or held-out evidence is weak.
+
+\paragraph{Alignment bootstrapping and reconstruction failure.}
+Alignment consumes a learned line map, so its error modes include those of the
+existing line detector.  Sparse reconstruction points may poorly support the
+ground, reflective/occluded lines may be missed, and repetitive neighbouring
+courts can induce 90-degree or court-identity mistakes.  The common-scale,
+whole-template, topology, and holdout gates reduce propagation of these errors
+but also reject useful-looking scenes.  They are quality controls, not a proof
+that every accepted transform is exact.
+
+\paragraph{Rendering domain gap.}
+A 3DGS reconstruction stays close to the captured venue but may contain floaters,
+blur, missing transient objects, or unreliable extrapolation far outside the
+captured camera envelope.  Trajectory radii are therefore anchored to captured
+offsets and geometry is screened before rendering.  Training-time photometric
+augmentation provides additional variation, but this paper does not claim that
+it closes the gap to every broadcast camera, surface, weather condition, or
+compression pipeline.
+
+\paragraph{Camera model.}
+The pose head assumes equal focal lengths and uses an augmentation-provided
+principal point.  It does not predict distortion, skew, or a moving principal
+point.  Unsupported transforms are rejected so that the labels remain unique,
+but broader camera models require an expanded head and projection loss.  The
+camera-end canonicalization also assumes the two proper choices
+\(I/R_z(\pi)\); severely ambiguous mid-plane views must be filtered rather than
+assigned silently.
+
+\paragraph{Scope of shortcut resistance.}
+The global query and reprojection objective constrain the solution class, but
+they do not prove that a neural network ignores every spurious cue.  The network
+may exploit renderer artifacts or venue-specific texture correlated with pose,
+and the two branches may co-adapt.  Direct ground-truth losses, independent
+pose-reprojection metrics, stop-gradient ablations, worst-stratum reporting,
+and the local-context diagnostic are necessary to test the intended mechanism.
+Held-out real calibrated data remain the strongest missing evaluation.
+
+\paragraph{Compute and data governance.}
+Reconstruction and novel-view rendering add cost before training, although one
+scene can amortize that cost over many task datasets and camera views.  Source
+videos and reconstructed appearance may contain people or venue-identifying
+information; dataset publication must respect the source license and privacy
+constraints independently of the software's open-source license.

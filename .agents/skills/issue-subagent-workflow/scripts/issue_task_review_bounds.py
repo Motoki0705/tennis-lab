@@ -12,6 +12,7 @@ import issue_task_remote as _remote
 import issue_task_state as _state
 import issue_task_transitions as _transitions
 from issue_task_verification import run_check as _run_check
+from issue_task_verification import run_test_probe as _run_test_probe
 
 _BASE_VALIDATE_STATE = _state.validate_state
 
@@ -50,7 +51,7 @@ def _bounded_validate_state(
     task_dir: Path,
     state: dict[str, Any],
 ) -> list[str]:
-    """Extend schema-v5 validation to bounded Preflight and Seal gates."""
+    """Extend enforced candidate validation to bounded Preflight and Seal gates."""
     if state.get("return_review_required") is not True:
         return _BASE_VALIDATE_STATE(task_dir, state)
 
@@ -148,6 +149,28 @@ def run_check(task_dir: Path, stage: str, check_id: str) -> int:
     return _run_check(task_dir, stage, check_id)
 
 
+def run_test_probe(
+    task_dir: Path,
+    probe_id: str,
+    *,
+    authority: str,
+    authority_ref: str,
+    argv: list[str],
+    cwd: str = ".",
+    env: dict[str, str] | None = None,
+) -> int:
+    _require_open_gate(task_dir, "another adversarial test probe")
+    return _run_test_probe(
+        task_dir,
+        probe_id,
+        authority=authority,
+        authority_ref=authority_ref,
+        argv=argv,
+        cwd=cwd,
+        env=env,
+    )
+
+
 def _clear_preflight_and_downstream(state: dict[str, Any]) -> None:
     state["preflight_cycle"] = 0
     state["preflight_verdict"] = ""
@@ -186,7 +209,9 @@ def _reset_candidate_evidence(state: dict[str, Any]) -> None:
 def apply_return_review(task_dir: Path, action: str, reason: str) -> None:
     state = _state.load_state(task_dir)
     if state.get("phase") != "implementation" or state.get("status") != "in_progress":
-        raise ValueError("return review is valid only during in-progress implementation")
+        raise ValueError(
+            "return review is valid only during in-progress implementation"
+        )
     source = _review_source(state)
     if source not in {"preflight", "test", "seal"}:
         raise ValueError("return review is not currently required")

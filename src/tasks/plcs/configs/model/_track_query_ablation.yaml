@@ -1,0 +1,33 @@
+# Shared architecture for the strict PLCS FFN/writeback ablation variants.
+# Concrete A/B/C/D configs must supply both ablation axes explicitly.
+
+name: plcs_track_query_ablation
+
+hidden_dim: 64
+num_heads: 4
+ffn_dim: 128
+num_stages: 4
+rope_dim: 16
+
+num_queries: 4
+num_joints: 17
+rope_theta: 10000.0
+ffn_type: swiglu
+dropout: 0.0
+role_rope_enabled: true
+invisible_init_std: 0.02
+
+ffn_mode: ???
+mhc_writeback: ???
+
+mhc:
+  coefficient_dim: 64
+  sinkhorn_iters: 20
+  eps: 1.0e-6
+  residual_identity_bias: 4.0
+  update_scale_init: 0.0
+
+cswa:
+  compression_ratio: 4
+  window_radius: 4
+  backend: reference

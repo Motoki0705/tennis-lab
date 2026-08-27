@@ -67,3 +67,53 @@ material eager speedup. The full model record and rejected ablations live in
   deterministic.
 - Results are specific to the recorded hardware and shapes; small-shape launch
   overhead remains workload-dependent.
+
+## 2026-08-23 kernel optimization
+
+The forward kernel now normalizes each local-window softmax once per query row
+and reuses the probabilities across value features. Query values are cached in
+registers; backward also caches the upstream gradient. Invalid rows are zeroed
+inside the kernels, removing full output and query-gradient prefill launches.
+Profiling selected int32 row arithmetic for forward and int64 arithmetic for
+backward; runtime validation rejects forward dimensions, row counts, or
+compression ratios that cannot be represented safely.
+
+Environment: NVIDIA GeForce GTX 1650 (compute capability 7.5), Python 3.11.15,
+PyTorch 2.13.0+cu130, CUDA 13.0. A five-iteration profiler run used bfloat16
+CSWA with `N=7,T=512,D=256,H=4,Dh=64`, compression ratio 4, window radius 4,
+and approximately 0.875 valid density.
+
+| kernel | mean CUDA time (ms) |
+|---|---:|
+| compressed attention forward | 0.716 |
+| compressed attention backward | 1.022 |
+
+CUDA/reference parity, non-contiguous layouts, fused RoPE, invalid rows, and
+forward/backward behavior passed the complete operator test matrix after a
+fresh compute-capability-7.5 extension build.
+
+### Narrow-head sub-warp packing
+
+The configured BLCS width uses `Dh=16`, where assigning one 32-thread warp to
+one attention row left half of the lanes idle. The kernel now packs independent rows
+within a warp while keeping at most four features per lane: eight rows for
+`Dh=16`, four for `Dh=32`, two for `Dh=64`, and one for wider or uncommon
+widths. Forward and backward share the same dispatch, and partial final warps
+are covered by fused-RoPE tied-KV parity tests in float16, bfloat16, and
+float32.
+
+On the same GTX 1650, a profiler comparison used bfloat16
+`N=7,T=1024,D=64,H=4,Dh=16`, compression ratio 4, window radius 4, and
+approximately 0.875 valid density. Both candidates used the preceding kernel
+optimizations; only row packing changed.
+
+| kernel | one row per warp (ms) | eight rows per warp (ms) | speedup |
+|---|---:|---:|---:|
+| compressed attention forward | 0.960 | 0.298 | 3.221x |
+| compressed attention backward | 1.322 | 0.543 | 2.435x |
+
+The corresponding complete CSWA forward-backward benchmark used 4 warmups and
+20 synchronized iterations. The gathered reference measured 10.156 / 11.053
+ms median / p95, while CUDA measured 3.262 / 4.037 ms, a 3.113x median
+speedup. Peak allocation was 84,805,632 B for the reference and 28,680,192 B
+for CUDA.

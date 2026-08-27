@@ -44,6 +44,9 @@ from src.synthetic_data_generation.dataset.runtime import (
 )
 from src.synthetic_data_generation.scene_contract import SceneCamera
 from src.utils.projection.camera_projector import make_look_at_camera
+from src.utils.schema.court_normalization import (
+    validate_court_coordinate_normalization,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +88,10 @@ class PLCSCompactDatasetReader:
         self.directory = directory
         manifest = _manifest(directory)
         metadata = _object(manifest["metadata"], name="metadata")
+        validate_court_coordinate_normalization(
+            metadata,
+            artifact=f"Compact PLCS dataset {directory}",
+        )
         PLCSCoordinateContract.from_dict(metadata.get("coordinate_contract"))
         storage = _object(manifest["storage"], name="storage")
         background_relative = _relative_path(
@@ -172,10 +179,15 @@ def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
     scene_id = _text(manifest["scene_id"], name="scene_id")
     frame_inventory = FrameInventory.from_dict(manifest["frame_inventory"])
     metadata = _object(manifest["metadata"], name="metadata")
+    validate_court_coordinate_normalization(
+        metadata,
+        artifact=f"Compact PLCS dataset {directory}",
+    )
     _keys(
         metadata,
         {
             "coordinate_contract",
+            "court_coordinate_normalization",
             "seed",
             "logical_scene_count",
             "aggregate_global_frame_count",
@@ -350,9 +362,7 @@ def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
             source_count = _positive_integer(
                 source["frame_count"], name="source frame_count"
             )
-            start_frame = _nonnegative_integer(
-                track["start_frame"], name="start_frame"
-            )
+            start_frame = _nonnegative_integer(track["start_frame"], name="start_frame")
             stop_frame = _positive_integer(track["stop_frame"], name="stop_frame")
             if stop_frame - start_frame != source_count:
                 raise ValueError(
@@ -371,9 +381,9 @@ def validate_plcs_dataset(directory: Path) -> dict[str, int | float | str]:
                 track["instance_id"],
                 track["asset_id"],
                 tuple(
-                    PLCSSourceSupportPlane.from_dict(
-                        track["support_plane"]
-                    ).to_dict().items()
+                    PLCSSourceSupportPlane.from_dict(track["support_plane"])
+                    .to_dict()
+                    .items()
                 ),
                 track["start_frame"],
                 track["stop_frame"],

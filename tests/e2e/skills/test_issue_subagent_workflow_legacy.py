@@ -35,7 +35,12 @@ def digest(items: list[tuple[str, str]]) -> str:
 
 def write_legacy_task(tmp_path: Path, *, version: int, phase: str) -> Path:
     task = tmp_path / f"issue-{version}"
-    for directory in ("01-exploration", "02-planning", "03-implementation", "04-validation"):
+    for directory in (
+        "01-exploration",
+        "02-planning",
+        "03-implementation",
+        "04-validation",
+    ):
         (task / directory).mkdir(parents=True, exist_ok=True)
     items = [("AC-001", "Observable behavior"), ("AC-002", "Regression is covered")]
     checklist = digest(items)
@@ -103,7 +108,9 @@ Example
     common.append('updated_at = "x"')
     (task / "state.toml").write_text("\n".join(common) + "\n", encoding="utf-8")
 
-    (task / "01-exploration/exploration.md").write_text("# Exploration\n- Attempt: 1\n", encoding="utf-8")
+    (task / "01-exploration/exploration.md").write_text(
+        "# Exploration\n- Attempt: 1\n", encoding="utf-8"
+    )
     (task / "02-planning/plan.md").write_text(
         f"""# Plan
 - Attempt: 1
@@ -156,17 +163,22 @@ PASS
     return task
 
 
-def test_schema_v4_validation_can_complete_without_schema_v5_packaging(tmp_path: Path) -> None:
+def test_schema_v4_validation_can_complete_without_schema_v6_packaging(
+    tmp_path: Path,
+) -> None:
     task = write_legacy_task(tmp_path, version=4, phase="validation")
     manage.apply_validation_verdict(task, "PASS")
     state = manage.load_state(task)
-    assert state["schema_version"] == 5
+    assert state["schema_version"] == 6
+    assert state["adversarial_testing_mode"] == "LEGACY"
     assert state["candidate_binding_mode"] == "LEGACY"
     assert state["status"] == "complete"
     assert manage.check(task) == []
 
 
-def test_schema_v3_in_progress_check_does_not_require_v5_artifacts(tmp_path: Path) -> None:
+def test_schema_v3_in_progress_check_does_not_require_v6_artifacts(
+    tmp_path: Path,
+) -> None:
     task = write_legacy_task(tmp_path, version=3, phase="implementation")
     (task / "03-implementation/preflight.md").unlink()
     assert manage.check(task) == []

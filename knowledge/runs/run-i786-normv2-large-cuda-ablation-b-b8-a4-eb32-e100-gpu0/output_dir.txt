@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-ablation-v2-cuda/outputs/blcs/norm-v2/issue-786/t128-v4/ablation-b-large-cuda-eb32/logs/version_0/checkpoints

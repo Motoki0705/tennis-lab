@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import math
+from pathlib import Path
 from typing import cast
 
 import numpy as np
+import pytest
 import torch
 from torch import Tensor, nn
 
 from src.tasks.plcs.inference.predictor import PLCSPredictor
 from src.tasks.plcs.model_io import PLCSInputProfile, PLCSModelIOAdapter
+from src.utils.configuration import PathResolver
 
 
 class _FixedRotationModel(nn.Module):
@@ -30,7 +33,7 @@ class _FixedRotationModel(nn.Module):
         del human_kp, court_kp, human_vis, padding_mask, court_vis
         rotation = cast(Tensor, self.rotation)
         return {
-            "position": torch.zeros(
+            "position": torch.ones(
                 *rotation.shape[:-1],
                 3,
                 device=rotation.device,
@@ -86,3 +89,24 @@ def test_yaw_radians_round_trips_dataset_cos_sin_encoding() -> None:
     np.testing.assert_allclose(physical.yaw_radians, angles.numpy(), atol=1e-6)
     assert physical.position_meters.shape == (2, 3, 3)
     assert physical.position_meters.dtype == np.float32
+    np.testing.assert_allclose(physical.position_meters, 11.885, atol=1e-6)
+
+
+def test_checkpoint_factory_rejects_missing_contract_before_composition(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    checkpoint = tmp_path / "old.ckpt"
+    torch.save({"state_dict": {}}, checkpoint)
+    monkeypatch.setattr(
+        PLCSPredictor,
+        "_ensure_checkpoint",
+        staticmethod(lambda value, *, resolver: [checkpoint]),
+    )
+
+    with pytest.raises(ValueError, match="missing.*court_coordinate_normalization"):
+        PLCSPredictor.load_from_checkpoint(
+            checkpoint,
+            resolver=cast("PathResolver", object()),
+            device="cpu",
+        )

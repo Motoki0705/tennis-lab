@@ -317,8 +317,31 @@ class TrackQueryModelConfig:
     cswa: TrackQueryCSWAConfig
 
 
+@dataclass(frozen=True, slots=True)
+class TrackQueryAblationModelConfig:
+    name: Literal["blcs_track_query_ablation"]
+    hidden_dim: int
+    num_heads: int
+    num_stages: int
+    ffn_dim: int
+    num_queries: int
+    rope_dim: int
+    dropout: float
+    role_rope_enabled: bool
+    invisible_init_std: float
+    ffn_mode: Literal["per_attention", "shared"]
+    mhc_writeback: Literal["after_object_temporal", "layer_end"]
+    query_ffn_after_spatial: bool
+    mhc: TrackQueryMHCConfig
+    cswa: TrackQueryCSWAConfig
+
+
 BLCSModelConfig: TypeAlias = (
-    SingleModelConfig | MultiViewModelConfig | AxialModelConfig | TrackQueryModelConfig
+    SingleModelConfig
+    | MultiViewModelConfig
+    | AxialModelConfig
+    | TrackQueryModelConfig
+    | TrackQueryAblationModelConfig
 )
 
 
@@ -679,7 +702,8 @@ def parse_model_config(config: object) -> BLCSModelConfig:
         _positive(result.rope_theta_time, path="model.rope_theta_time")
         _positive(result.rope_theta_camera, path="model.rope_theta_camera")
         return result
-    if name == "blcs_track_query":
+    if name in {"blcs_track_query", "blcs_track_query_ablation"}:
+        is_ablation = name == "blcs_track_query_ablation"
         base_keys = {
             "name",
             "hidden_dim",
@@ -694,6 +718,12 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             "mhc",
             "cswa",
         }
+        if is_ablation:
+            base_keys |= {
+                "ffn_mode",
+                "mhc_writeback",
+                "query_ffn_after_spatial",
+            }
         _exact(model, base_keys, path="model")
         _validate_types(
             model,
@@ -711,6 +741,36 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             },
             path="model",
         )
+        if is_ablation:
+            _validate_types(
+                model,
+                {
+                    "ffn_mode": str,
+                    "mhc_writeback": str,
+                    "query_ffn_after_spatial": bool,
+                },
+                path="model",
+            )
+            if model["ffn_mode"] not in {"per_attention", "shared"}:
+                raise SemanticConfigurationError(
+                    "model.ffn_mode must be 'per_attention' or 'shared'."
+                )
+            if model["mhc_writeback"] not in {
+                "after_object_temporal",
+                "layer_end",
+            }:
+                raise SemanticConfigurationError(
+                    "model.mhc_writeback must be 'after_object_temporal' or "
+                    "'layer_end'."
+                )
+            if model["query_ffn_after_spatial"] and (
+                model["ffn_mode"] != "shared"
+                or model["mhc_writeback"] != "layer_end"
+            ):
+                raise SemanticConfigurationError(
+                    "model.query_ffn_after_spatial=true requires "
+                    "ffn_mode='shared' and mhc_writeback='layer_end'."
+                )
         raw_mhc = as_config_mapping(model["mhc"], path="model.mhc")
         mhc_keys = {
             "coefficient_dim",
@@ -781,20 +841,44 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             raise SemanticConfigurationError(
                 "model.cswa.window_radius must be non-negative."
             )
-        result = TrackQueryModelConfig(
-            name="blcs_track_query",
-            hidden_dim=int(model["hidden_dim"]),
-            num_heads=int(model["num_heads"]),
-            num_stages=int(model["num_stages"]),
-            ffn_dim=cast("int", model["ffn_dim"]),
-            num_queries=int(model["num_queries"]),
-            rope_dim=cast("int", model["rope_dim"]),
-            dropout=float(model["dropout"]),
-            role_rope_enabled=bool(model["role_rope_enabled"]),
-            invisible_init_std=float(model["invisible_init_std"]),
-            mhc=mhc,
-            cswa=cswa,
-        )
+        if is_ablation:
+            result = TrackQueryAblationModelConfig(
+                name="blcs_track_query_ablation",
+                hidden_dim=int(model["hidden_dim"]),
+                num_heads=int(model["num_heads"]),
+                num_stages=int(model["num_stages"]),
+                ffn_dim=cast("int", model["ffn_dim"]),
+                num_queries=int(model["num_queries"]),
+                rope_dim=cast("int", model["rope_dim"]),
+                dropout=float(model["dropout"]),
+                role_rope_enabled=bool(model["role_rope_enabled"]),
+                invisible_init_std=float(model["invisible_init_std"]),
+                ffn_mode=cast("Literal['per_attention', 'shared']", model["ffn_mode"]),
+                mhc_writeback=cast(
+                    "Literal['after_object_temporal', 'layer_end']",
+                    model["mhc_writeback"],
+                ),
+                query_ffn_after_spatial=cast(
+                    "bool", model["query_ffn_after_spatial"]
+                ),
+                mhc=mhc,
+                cswa=cswa,
+            )
+        else:
+            result = TrackQueryModelConfig(
+                name="blcs_track_query",
+                hidden_dim=int(model["hidden_dim"]),
+                num_heads=int(model["num_heads"]),
+                num_stages=int(model["num_stages"]),
+                ffn_dim=cast("int", model["ffn_dim"]),
+                num_queries=int(model["num_queries"]),
+                rope_dim=cast("int", model["rope_dim"]),
+                dropout=float(model["dropout"]),
+                role_rope_enabled=bool(model["role_rope_enabled"]),
+                invisible_init_std=float(model["invisible_init_std"]),
+                mhc=mhc,
+                cswa=cswa,
+            )
         _validate_transformer_dimensions(
             hidden_dim=result.hidden_dim,
             num_heads=result.num_heads,
@@ -1825,7 +1909,7 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
     """Validate BLCS-specific model and the seven-root contract before training."""
     root = as_config_mapping(config, path="configuration")
     model = parse_model_config(config)
-    if model.name == "blcs_track_query":
+    if isinstance(model, (TrackQueryModelConfig, TrackQueryAblationModelConfig)):
         allowed = {
             "paths",
             "model",
@@ -1875,7 +1959,7 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
         "seq_len_range",
         "augmentation",
     }
-    if model.name == "blcs_track_query":
+    if isinstance(model, (TrackQueryModelConfig, TrackQueryAblationModelConfig)):
         data_keys.add("lifecycle")
         lifecycle = require_config_mapping(data, "lifecycle", path="data")
         _exact(
@@ -1923,9 +2007,11 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             if cast("int", chunk[key]) <= 0:
                 raise SemanticConfigurationError(f"data.chunk.{key} must be positive.")
         validate_generator_sections(
-            config, include_generation=model.name == "blcs_track_query"
+            config,
+            include_generation=model.name
+            in {"blcs_track_query", "blcs_track_query_ablation"},
         )
-        if model.name == "blcs_track_query":
+        if model.name in {"blcs_track_query", "blcs_track_query_ablation"}:
             generation = require_config_mapping(
                 root, "generation", path="configuration"
             )
@@ -2006,7 +2092,7 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
         raise SemanticConfigurationError(
             "Single-view BLCS models require data.num_views_range=[1, 1]."
         )
-    if model.name == "blcs_track_query":
+    if isinstance(model, (TrackQueryModelConfig, TrackQueryAblationModelConfig)):
         _validate_types(
             lifecycle,
             {
@@ -2183,7 +2269,7 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             cast("float", discriminator[key]),
             path=f"training.gan.discriminator.{key}",
         )
-    if model.name == "blcs_track_query":
+    if model.name in {"blcs_track_query", "blcs_track_query_ablation"}:
         loss = require_config_mapping(root, "loss", path="configuration")
         _exact(
             loss,
@@ -2197,7 +2283,8 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
                 "transition_radius",
                 "smoothness_weight",
                 "gravity_weight",
-                "gravity_target",
+                "gravity_mps2",
+                "frame_dt_seconds",
                 "match_position_weight",
                 "match_presence_weight",
             },
@@ -2215,7 +2302,8 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
                 "transition_radius": int,
                 "smoothness_weight": float,
                 "gravity_weight": float,
-                "gravity_target": float,
+                "gravity_mps2": float,
+                "frame_dt_seconds": float,
                 "match_position_weight": float,
                 "match_presence_weight": float,
             },
@@ -2253,7 +2341,11 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             raise SemanticConfigurationError(
                 "At least one tracking match cost weight must be positive."
             )
-        _finite(cast("float", loss["gravity_target"]), path="loss.gravity_target")
+        _positive(cast("float", loss["gravity_mps2"]), path="loss.gravity_mps2")
+        _positive(
+            cast("float", loss["frame_dt_seconds"]),
+            path="loss.frame_dt_seconds",
+        )
         TrackingMetricConfig.from_mapping(
             require_config_mapping(root, "tracking_metrics", path="configuration")
         )
@@ -2506,6 +2598,7 @@ __all__ = [
     "SingleModelConfig",
     "TrackQueryCSWAConfig",
     "TrackQueryMHCConfig",
+    "TrackQueryAblationModelConfig",
     "TrackQueryModelConfig",
     "build_path_resolver",
     "parse_generation_run",

@@ -11,12 +11,25 @@ from src.tasks.base.data.canonical_tracking import (
     pad_and_stack_tracking_batch,
     validate_lifecycle_capacity,
 )
+from src.utils.schema.court_normalization import (
+    COURT_COORDINATE_NORMALIZATION_KEY,
+    court_coordinate_normalization_metadata,
+)
 
 
 def test_dataset_resolves_explicit_scene_split(tmp_path) -> None:
     scene = tmp_path / "scenes" / "scene_a"
     scene.mkdir(parents=True)
-    (scene / "meta.json").write_text(json.dumps({"num_frames": 2}))
+    (scene / "meta.json").write_text(
+        json.dumps(
+            {
+                "num_frames": 2,
+                COURT_COORDINATE_NORMALIZATION_KEY: (
+                    court_coordinate_normalization_metadata()
+                ),
+            }
+        )
+    )
     (scene / "scalars.json").write_text(json.dumps({"num_cameras": 1}))
     np.save(scene / "ball_pos_norm.npy", np.zeros((2, 3), dtype=np.float32))
     (tmp_path / "train.txt").write_text("scene_a\n")

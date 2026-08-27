@@ -65,6 +65,7 @@ def _block_config(
     n_kv_heads: int | None = None,
     attn_dropout: float = 0.0,
     cswa: CSWAConfig | None = None,
+    ffn_enabled: bool = True,
 ) -> TransformerBlockConfig:
     return TransformerBlockConfig(
         dim=8,
@@ -78,6 +79,7 @@ def _block_config(
         rope_base=10_000.0,
         ffn_type="mlp",
         cswa=cswa,
+        ffn_enabled=ffn_enabled,
     )
 
 
@@ -216,7 +218,35 @@ def test_added_config_field_preserves_existing_positional_construction() -> None
     )
 
     assert cfg.cswa is None
+    assert cfg.ffn_enabled is True
     assert isinstance(TransformerBlock(cfg).attn, MultiHeadSelfAttention)
+
+
+def test_attention_only_block_has_no_ffn_modules_or_state_keys() -> None:
+    block = TransformerBlock(_block_config("mha", ffn_enabled=False)).eval()
+    x, freqs_cis, attn_mask = _dense_inputs()
+
+    attention_output = _dense_attention_output(block, x, freqs_cis, attn_mask)
+    update = block.forward_update(
+        x,
+        freqs_cis=freqs_cis,
+        attn_mask=attn_mask,
+    )
+    output = block(x, freqs_cis=freqs_cis, attn_mask=attn_mask)
+
+    assert block.ffn is None
+    assert block.ffn_norm is None
+    assert not any(key.startswith("ffn") for key in block.state_dict())
+    torch.testing.assert_close(update, attention_output, atol=0, rtol=0)
+    torch.testing.assert_close(output, x + attention_output, atol=0, rtol=0)
+
+
+@pytest.mark.parametrize("value", [0, 1, None, "false"])
+def test_ffn_enabled_rejects_non_boolean_values(value: object) -> None:
+    cfg = replace(_block_config("mha"), ffn_enabled=cast(bool, value))
+
+    with pytest.raises(TypeError, match="ffn_enabled must be exactly bool"):
+        TransformerBlock(cfg)
 
 
 def test_ffn_recomputation_feature_is_absent() -> None:
@@ -593,6 +623,8 @@ def test_dense_state_dict_keys_and_gradients_are_preserved(
     output = source(x, freqs_cis=freqs_cis, attn_mask=attn_mask)
     oracle_attn = _dense_attention_output(clone, oracle_x, freqs_cis, attn_mask)
     oracle_x_attn = oracle_x + oracle_attn
+    assert clone.ffn is not None
+    assert clone.ffn_norm is not None
     oracle_output = oracle_x_attn + clone.ffn(clone.ffn_norm(oracle_x_attn))
     upstream = torch.randn_like(output)
     gradients = torch.autograd.grad(

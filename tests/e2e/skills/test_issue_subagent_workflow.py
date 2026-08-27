@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -29,10 +30,13 @@ sys.path.insert(0, str(SCRIPTS))
 init = load("init_issue_task")
 manage = load("manage_issue_task")
 candidate = load("issue_task_candidate")
+remote = sys.modules["issue_task_remote"]
 
 
 def git(root: Path, *args: str) -> str:
-    result = subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True, text=True)
+    result = subprocess.run(
+        ["git", "-C", str(root), *args], check=True, capture_output=True, text=True
+    )
     return result.stdout.strip()
 
 
@@ -63,7 +67,9 @@ def setup_task(
         "labels": [],
         "updatedAt": "2026-08-06T00:00:00Z",
     }
-    issue_hash, issue_md_hash, checklist_hash, items = init.write_issue_snapshot(task, payload)
+    issue_hash, issue_md_hash, checklist_hash, items = init.write_issue_snapshot(
+        task, payload
+    )
     (task / "state.toml").write_text(
         init.render_state(
             payload,
@@ -100,8 +106,8 @@ def write_feasibility(task: Path) -> None:
 - Issue: #1
 - Attempt: 1
 - Status: COMPLETE
-- Frozen issue SHA-256: `{state['issue_sha256']}`
-- Frozen acceptance checklist SHA-256: `{state['acceptance_checklist_sha256']}`
+- Frozen issue SHA-256: `{state["issue_sha256"]}`
+- Frozen acceptance checklist SHA-256: `{state["acceptance_checklist_sha256"]}`
 
 ## Allowed and prohibited changes
 src and tests are allowed.
@@ -173,8 +179,8 @@ def write_plan(task: Path) -> None:
 - Issue: #1
 - Attempt: 1
 - Status: COMPLETE
-- Frozen issue SHA-256: `{state['issue_sha256']}`
-- Frozen acceptance checklist SHA-256: `{state['acceptance_checklist_sha256']}`
+- Frozen issue SHA-256: `{state["issue_sha256"]}`
+- Frozen acceptance checklist SHA-256: `{state["acceptance_checklist_sha256"]}`
 
 ## Acceptance checklist mapping
 | ID | Issue checklist item | Planned implementation | Validation method |
@@ -214,7 +220,9 @@ None
             }
         ],
     }
-    (task / "02-planning/checks.json").write_text(json.dumps(manifest), encoding="utf-8")
+    (task / "02-planning/checks.json").write_text(
+        json.dumps(manifest), encoding="utf-8"
+    )
 
 
 def write_implementation(task: Path, cycle: int) -> None:
@@ -278,7 +286,14 @@ None
     )
 
 
-def write_tests(task: Path, cycle: int, fp: str) -> None:
+def write_tests(
+    task: Path,
+    cycle: int,
+    fp: str,
+    *,
+    adversarial_rows: str = "None — independent impact review found no additional executable case.",
+    adversarial_probe_results: str = "None",
+) -> None:
     state = manage.load_state(task)
     (task / "03-implementation/tests.md").write_text(
         f"""# Tests
@@ -287,7 +302,7 @@ def write_tests(task: Path, cycle: int, fp: str) -> None:
 - Attempt: 1
 - Test cycle: {cycle}
 - Status: COMPLETE
-- Frozen acceptance checklist SHA-256: `{state['acceptance_checklist_sha256']}`
+- Frozen acceptance checklist SHA-256: `{state["acceptance_checklist_sha256"]}`
 - Candidate SHA-256: `{fp}`
 
 ## Candidate identity
@@ -297,6 +312,12 @@ def write_tests(task: Path, cycle: int, fp: str) -> None:
 |---|---|---|---|
 | AC-001 | Observable behavior | py-ok | PASS |
 | AC-002 | Regression is covered | tests.txt | PASS |
+## Independent adversarial test design
+Inspected public behavior and changed callers independently of the planned minimum.
+## Independently derived adversarial tests
+{adversarial_rows}
+## Adversarial probe results
+{adversarial_probe_results}
 ## Tests added or changed
 tests.txt
 ## Normal, boundary, invalid, and regression cases
@@ -355,8 +376,8 @@ def write_validation(task: Path, fp: str) -> None:
 - Issue: #1
 - Attempt: 1
 - Status: COMPLETE
-- Frozen issue SHA-256: `{state['issue_sha256']}`
-- Frozen acceptance checklist SHA-256: `{state['acceptance_checklist_sha256']}`
+- Frozen issue SHA-256: `{state["issue_sha256"]}`
+- Frozen acceptance checklist SHA-256: `{state["acceptance_checklist_sha256"]}`
 - Candidate SHA-256: `{fp}`
 
 ## Inspection scope and revision
@@ -423,13 +444,14 @@ def advance_to_validation(
     return test_fp
 
 
-
 def install_fake_gh(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     *,
+    base: object,
     head: str,
     checks_pass: bool,
+    base_ref_name: object = "main",
     files_payload: object | None = None,
 ) -> None:
     directory = tmp_path / "fake-bin"
@@ -441,6 +463,8 @@ import json
 import os
 import sys
 
+base_ref_name = json.loads(os.environ["FAKE_PR_BASE_REF_NAME"])
+base = json.loads(os.environ["FAKE_PR_BASE"])
 head = os.environ["FAKE_PR_HEAD"]
 checks_pass = os.environ["FAKE_CHECKS_PASS"] == "1"
 files_payload = json.loads(os.environ["FAKE_PR_FILES"])
@@ -449,6 +473,8 @@ if sys.argv[1:3] == ["pr", "view"]:
     print(json.dumps({
         "number": 706,
         "url": "https://github.com/example/repo/pull/706",
+        "baseRefName": base_ref_name,
+        "baseRefOid": base,
         "headRefOid": head,
         "isDraft": False,
         "state": "OPEN",
@@ -467,6 +493,8 @@ else:
         encoding="utf-8",
     )
     script.chmod(0o755)
+    monkeypatch.setenv("FAKE_PR_BASE_REF_NAME", json.dumps(base_ref_name))
+    monkeypatch.setenv("FAKE_PR_BASE", json.dumps(base))
     monkeypatch.setenv("FAKE_PR_HEAD", head)
     monkeypatch.setenv("FAKE_CHECKS_PASS", "1" if checks_pass else "0")
     monkeypatch.setenv(
@@ -480,7 +508,7 @@ else:
     monkeypatch.setenv("PATH", f"{directory}:{os.environ.get('PATH', '')}")
 
 
-def test_full_v5_flow_uses_validated_then_complete(
+def test_full_v6_flow_uses_validated_then_complete(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     root, task = setup_task(tmp_path)
@@ -496,7 +524,13 @@ def test_full_v5_flow_uses_validated_then_complete(
     git(root, "commit", "-m", "candidate")
     head = git(root, "rev-parse", "HEAD")
     assert candidate.compute_revision_fingerprint(task, state, head) == fp
-    install_fake_gh(tmp_path, monkeypatch, head=head, checks_pass=True)
+    install_fake_gh(
+        tmp_path,
+        monkeypatch,
+        base=state["base_revision"],
+        head=head,
+        checks_pass=True,
+    )
     manage.capture_pr_evidence(task, pr_number=706)
     state = manage.load_state(task)
     evidence_digest = state["pr_evidence_sha256"]
@@ -527,11 +561,254 @@ PASS
 """,
         encoding="utf-8",
     )
+
     manage.finalize_pr(task, pr_number=706, head_sha=head)
     state = manage.load_state(task)
     assert state["status"] == "complete"
     assert state["verdict"] == "PASS"
     assert manage.check(task) == []
+
+
+def test_capture_and_finalize_use_advanced_pr_base_with_tracked_task_artifacts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root, task = setup_task(tmp_path)
+    frozen_base = manage.load_state(task)["base_revision"]
+    (root / "base-shared.txt").write_text("advanced base\n", encoding="utf-8")
+    git(root, "add", "base-shared.txt")
+    git(root, "commit", "-m", "advance PR base")
+    pr_base = git(root, "rev-parse", "HEAD")
+
+    fp = advance_to_validation(root, task)
+    write_validation(task, fp)
+    manage.apply_validation_verdict(task, "PASS")
+    git(root, "add", "-A")
+    git(root, "commit", "-m", "candidate with workflow artifacts")
+    head = git(root, "rev-parse", "HEAD")
+    state = manage.load_state(task)
+
+    candidate_files = candidate.revision_changed_paths(task, state, head)
+    assert "base-shared.txt" in candidate_files
+    assert not any(path.startswith(".codex/tasks/") for path in candidate_files)
+    pr_files = candidate.revision_path_inventory(task, pr_base, head)
+    assert "base-shared.txt" not in pr_files
+    assert "src.txt" in pr_files
+    assert "tests.txt" in pr_files
+    assert any(path.startswith(".codex/tasks/issue-1/") for path in pr_files)
+    files_payload = [[{"filename": path, "status": "modified"} for path in pr_files]]
+
+    install_fake_gh(
+        tmp_path,
+        monkeypatch,
+        base=frozen_base,
+        head=head,
+        checks_pass=True,
+        files_payload=files_payload,
+    )
+    state_before = (task / "state.toml").read_bytes()
+    with pytest.raises(
+        ValueError,
+        match="complete paginated PR file list differs from the remote PR base",
+    ):
+        manage.capture_pr_evidence(task, pr_number=706)
+    assert (task / "state.toml").read_bytes() == state_before
+    assert not (task / "05-packaging/pr-evidence.json").exists()
+
+    install_fake_gh(
+        tmp_path,
+        monkeypatch,
+        base=pr_base,
+        head=head,
+        checks_pass=True,
+        files_payload=files_payload,
+    )
+    manage.capture_pr_evidence(task, pr_number=706)
+    state = manage.load_state(task)
+    evidence = json.loads(
+        (task / "05-packaging/pr-evidence.json").read_text(encoding="utf-8")
+    )
+    assert evidence["schema_version"] == 2
+    assert evidence["base_ref_name"] == "main"
+    assert evidence["base_sha"] == pr_base
+    assert evidence["head_sha"] == head
+    assert evidence["files"] == pr_files
+
+    evidence_digest = state["pr_evidence_sha256"]
+    (task / "05-packaging/packaging.md").write_text(
+        f"""# Packaging
+
+- Issue: #1
+- Attempt: 1
+- Status: COMPLETE
+- Candidate SHA-256: `{fp}`
+- PR number: 706
+- PR head SHA: `{head}`
+- Remote checks: PASS
+- PR evidence SHA-256: `{evidence_digest}`
+
+## Final candidate binding
+Matches Validator candidate.
+## Pull request identity
+PR #706 at {head}, based on main at {pr_base}.
+## Complete paginated diff scope
+PR-base inventory includes tracked workflow artifacts.
+## Remote required checks
+All required checks PASS.
+## Packaging evidence
+Remote base, head, files, and checks recorded.
+## Final packaging verdict
+PASS
+""",
+        encoding="utf-8",
+    )
+
+    evidence_path = task / "05-packaging/pr-evidence.json"
+    state_path = task / "state.toml"
+    packaging_path = task / "05-packaging/packaging.md"
+    correct_evidence_text = evidence_path.read_text(encoding="utf-8")
+    tampered_evidence = dict(evidence)
+    tampered_evidence["base_sha"] = frozen_base
+    tampered_evidence_text = (
+        json.dumps(tampered_evidence, ensure_ascii=False, sort_keys=True, indent=2)
+        + "\n"
+    )
+    tampered_digest = (
+        "sha256:"
+        + hashlib.sha256(
+            json.dumps(
+                tampered_evidence,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode()
+        ).hexdigest()
+    )
+    evidence_path.write_text(tampered_evidence_text, encoding="utf-8")
+    state_path.write_text(
+        state_path.read_text(encoding="utf-8").replace(
+            evidence_digest,
+            tampered_digest,
+        ),
+        encoding="utf-8",
+    )
+    packaging_path.write_text(
+        packaging_path.read_text(encoding="utf-8").replace(
+            evidence_digest,
+            tampered_digest,
+        ),
+        encoding="utf-8",
+    )
+    state_before_finalize = state_path.read_bytes()
+    with pytest.raises(
+        ValueError,
+        match="PR evidence files differ from the recorded PR base revision",
+    ):
+        manage.finalize_pr(task, pr_number=706, head_sha=head)
+    assert state_path.read_bytes() == state_before_finalize
+
+    evidence_path.write_text(correct_evidence_text, encoding="utf-8")
+    state_path.write_text(
+        state_path.read_text(encoding="utf-8").replace(
+            tampered_digest,
+            evidence_digest,
+        ),
+        encoding="utf-8",
+    )
+    packaging_path.write_text(
+        packaging_path.read_text(encoding="utf-8").replace(
+            tampered_digest,
+            evidence_digest,
+        ),
+        encoding="utf-8",
+    )
+    manage.finalize_pr(task, pr_number=706, head_sha=head)
+    state = manage.load_state(task)
+    assert state["status"] == "complete"
+    assert state["verdict"] == "PASS"
+    assert manage.check(task) == []
+
+
+@pytest.mark.parametrize(
+    "base",
+    [None, "", "a" * 39, "A" * 40, "g" * 40],
+)
+def test_capture_rejects_malformed_remote_pr_base_sha_without_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    base: object,
+) -> None:
+    root, task = setup_task(tmp_path)
+    fp = advance_to_validation(root, task)
+    write_validation(task, fp)
+    manage.apply_validation_verdict(task, "PASS")
+    git(root, "add", "src.txt", "tests.txt")
+    git(root, "commit", "-m", "candidate")
+    head = git(root, "rev-parse", "HEAD")
+    install_fake_gh(
+        tmp_path,
+        monkeypatch,
+        base=base,
+        head=head,
+        checks_pass=True,
+    )
+    state_before = (task / "state.toml").read_bytes()
+
+    with pytest.raises(ValueError, match="remote PR base SHA is invalid"):
+        manage.capture_pr_evidence(task, pr_number=706)
+    assert (task / "state.toml").read_bytes() == state_before
+    assert not (task / "05-packaging/pr-evidence.json").exists()
+
+
+def test_legacy_pr_evidence_schema_requires_base_bound_recapture(
+    tmp_path: Path,
+) -> None:
+    task = tmp_path / ".codex/tasks/issue-1"
+    evidence_path = task / "05-packaging/pr-evidence.json"
+    evidence_path.parent.mkdir(parents=True)
+    evidence_path.write_text('{"schema_version": 1}\n', encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match="schema_version 1 does not bind the remote PR base; rerun capture-pr",
+    ):
+        remote.load_pr_evidence(task)
+
+
+def test_schema_v5_task_loads_with_legacy_adversarial_contract(tmp_path: Path) -> None:
+    root, task = setup_task(tmp_path)
+    state_path = task / "state.toml"
+    state_path.write_text(
+        state_path.read_text(encoding="utf-8")
+        .replace("schema_version = 6", "schema_version = 5")
+        .replace('adversarial_testing_mode = "ENFORCED"\n', ""),
+        encoding="utf-8",
+    )
+
+    state = manage.load_state(task)
+    assert state["schema_version"] == 6
+    assert state["adversarial_testing_mode"] == "LEGACY"
+
+    advance_to_implementation(root, task)
+    write_implementation(task, 1)
+    preflight_fp = candidate.compute_candidate_fingerprint(
+        task, manage.load_state(task)
+    )
+    write_preflight(task, 1, preflight_fp)
+    assert manage.run_check(task, "preflight", "py-ok") == 0
+    manage.apply_preflight_verdict(task, "PASS")
+    write_tests(task, 1, preflight_fp)
+    tests_path = task / "03-implementation/tests.md"
+    tests_text = tests_path.read_text(encoding="utf-8")
+    adversarial_start = tests_text.index("## Independent adversarial test design")
+    tests_start = tests_text.index("## Tests added or changed")
+    tests_path.write_text(
+        tests_text[:adversarial_start] + tests_text[tests_start:],
+        encoding="utf-8",
+    )
+    assert manage.run_check(task, "test", "py-ok") == 0
+    manage.apply_test_verdict(task, "PASS")
+    assert manage.load_state(task)["test_verdict"] == "PASS"
 
 
 def test_capture_and_finalize_reconcile_renamed_files_with_no_renames_revision(
@@ -553,7 +830,8 @@ def test_capture_and_finalize_reconcile_renamed_files_with_no_renames_revision(
     write_validation(task, fp)
     manage.apply_validation_verdict(task, "PASS")
 
-    git(root, "add", "-A")
+    git(root, "add", "-u")
+    git(root, "add", "tests.txt")
     git(root, "commit", "-m", "renamed candidate")
     head = git(root, "rev-parse", "HEAD")
     state = manage.load_state(task)
@@ -570,6 +848,7 @@ def test_capture_and_finalize_reconcile_renamed_files_with_no_renames_revision(
     install_fake_gh(
         tmp_path,
         monkeypatch,
+        base=state["base_revision"],
         head=head,
         checks_pass=True,
         files_payload=[
@@ -662,6 +941,7 @@ def test_capture_rejects_renamed_file_without_valid_previous_filename(
     install_fake_gh(
         tmp_path,
         monkeypatch,
+        base=manage.load_state(task)["base_revision"],
         head=head,
         checks_pass=True,
         files_payload=[
@@ -692,12 +972,14 @@ def test_capture_rejects_valid_renamed_inventory_mismatch_without_mutation(
     write_validation(task, fp)
     manage.apply_validation_verdict(task, "PASS")
 
-    git(root, "add", "-A")
+    git(root, "add", "-u")
+    git(root, "add", "tests.txt")
     git(root, "commit", "-m", "renamed candidate")
     head = git(root, "rev-parse", "HEAD")
     install_fake_gh(
         tmp_path,
         monkeypatch,
+        base=manage.load_state(task)["base_revision"],
         head=head,
         checks_pass=True,
         files_payload=[
@@ -715,7 +997,7 @@ def test_capture_rejects_valid_renamed_inventory_mismatch_without_mutation(
 
     with pytest.raises(
         ValueError,
-        match="complete paginated PR file list differs from the validated revision",
+        match="complete paginated PR file list differs from the remote PR base",
     ):
         manage.capture_pr_evidence(task, pr_number=706)
     assert (task / "state.toml").read_bytes() == state_before
@@ -738,6 +1020,201 @@ def test_candidate_change_after_tester_pass_requires_retest(tmp_path: Path) -> N
     write_seal(task, 1, new_fp)
     with pytest.raises(ValueError, match="rerun the Test Writer"):
         manage.apply_seal_verdict(task, "PASS")
+
+
+def test_adversarial_probe_can_return_with_every_ac_passing(tmp_path: Path) -> None:
+    root, task = setup_task(tmp_path)
+    advance_to_implementation(root, task)
+    write_implementation(task, 1)
+    preflight_fp = candidate.compute_candidate_fingerprint(
+        task, manage.load_state(task)
+    )
+    write_preflight(task, 1, preflight_fp)
+    assert manage.run_check(task, "preflight", "py-ok") == 0
+    manage.apply_preflight_verdict(task, "PASS")
+
+    (root / "tests.txt").write_text("adversarial regression\n", encoding="utf-8")
+    test_fp = candidate.compute_candidate_fingerprint(task, manage.load_state(task))
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS / "manage_issue_task.py"),
+            "run-test-probe",
+            str(task),
+            "AT-001",
+            "--authority",
+            "PUBLIC_CONTRACT",
+            "--authority-ref",
+            "documented caller accepts the boundary input",
+            "--argv",
+            sys.executable,
+            "-c",
+            "raise SystemExit(7)",
+        ],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 7
+    write_tests(
+        task,
+        1,
+        test_fp,
+        adversarial_rows=(
+            "| AT-001 | boundary input rejected | PUBLIC_CONTRACT | "
+            "documented caller accepts it | test-probes.json and log | FAIL |"
+        ),
+        adversarial_probe_results="AT-001 FAIL with exit code 7.",
+    )
+    tests_path = task / "03-implementation/tests.md"
+    tests_path.write_text(
+        tests_path.read_text(encoding="utf-8")
+        .replace("## Final test verdict\nPASS", "## Final test verdict\nRETURN")
+        .replace(
+            "## RETURN implementation findings\nNone",
+            "## RETURN implementation findings\nAT-001: production rejects a documented boundary input.",
+        ),
+        encoding="utf-8",
+    )
+
+    manage.apply_test_verdict(task, "RETURN")
+    state = manage.load_state(task)
+    assert state["test_verdict"] == "RETURN"
+    assert state["test_candidate_sha256"] == test_fp
+
+
+def test_adversarial_row_requires_candidate_bound_probe_evidence(
+    tmp_path: Path,
+) -> None:
+    root, task = setup_task(tmp_path)
+    advance_to_implementation(root, task)
+    write_implementation(task, 1)
+    preflight_fp = candidate.compute_candidate_fingerprint(
+        task, manage.load_state(task)
+    )
+    write_preflight(task, 1, preflight_fp)
+    assert manage.run_check(task, "preflight", "py-ok") == 0
+    manage.apply_preflight_verdict(task, "PASS")
+
+    test_fp = candidate.compute_candidate_fingerprint(task, manage.load_state(task))
+    write_tests(
+        task,
+        1,
+        test_fp,
+        adversarial_rows=(
+            "| AT-001 | downstream caller | REPO_INVARIANT | caller remains compatible | "
+            "claimed command | PASS |"
+        ),
+        adversarial_probe_results="AT-001 claimed PASS.",
+    )
+    assert "missing adversarial test probe results" in "; ".join(
+        manage.check_artifact(task, "tests")
+    )
+
+
+def test_passing_adversarial_probe_can_complete_tester_gate(tmp_path: Path) -> None:
+    root, task = setup_task(tmp_path)
+    advance_to_implementation(root, task)
+    write_implementation(task, 1)
+    preflight_fp = candidate.compute_candidate_fingerprint(
+        task, manage.load_state(task)
+    )
+    write_preflight(task, 1, preflight_fp)
+    assert manage.run_check(task, "preflight", "py-ok") == 0
+    manage.apply_preflight_verdict(task, "PASS")
+
+    (root / "tests.txt").write_text("adversarial pass\n", encoding="utf-8")
+    test_fp = candidate.compute_candidate_fingerprint(task, manage.load_state(task))
+    assert (
+        manage.run_test_probe(
+            task,
+            "AT-001",
+            authority="BASELINE_REGRESSION",
+            authority_ref="base revision accepts the downstream call",
+            argv=[sys.executable, "-c", "raise SystemExit(0)"],
+        )
+        == 0
+    )
+    write_tests(
+        task,
+        1,
+        test_fp,
+        adversarial_rows=(
+            "| AT-001 | downstream compatibility | BASELINE_REGRESSION | "
+            "base revision accepts the call | test-probes.json and log | PASS |"
+        ),
+        adversarial_probe_results="AT-001 PASS with candidate-bound evidence.",
+    )
+    assert manage.run_check(task, "test", "py-ok") == 0
+    manage.apply_test_verdict(task, "PASS")
+    assert manage.load_state(task)["test_verdict"] == "PASS"
+
+
+def test_adversarial_probe_result_is_stale_after_candidate_change(
+    tmp_path: Path,
+) -> None:
+    root, task = setup_task(tmp_path)
+    advance_to_implementation(root, task)
+    write_implementation(task, 1)
+    preflight_fp = candidate.compute_candidate_fingerprint(
+        task, manage.load_state(task)
+    )
+    write_preflight(task, 1, preflight_fp)
+    assert manage.run_check(task, "preflight", "py-ok") == 0
+    manage.apply_preflight_verdict(task, "PASS")
+
+    assert (
+        manage.run_test_probe(
+            task,
+            "AT-001",
+            authority="REPO_INVARIANT",
+            authority_ref="changed caller remains executable",
+            argv=[sys.executable, "-c", "raise SystemExit(0)"],
+        )
+        == 0
+    )
+    (root / "tests.txt").write_text("changed after probe\n", encoding="utf-8")
+    stale_fp = candidate.compute_candidate_fingerprint(task, manage.load_state(task))
+    write_tests(
+        task,
+        1,
+        stale_fp,
+        adversarial_rows=(
+            "| AT-001 | changed caller | REPO_INVARIANT | caller remains executable | "
+            "test-probes.json and log | PASS |"
+        ),
+        adversarial_probe_results="AT-001 PASS before the later candidate change.",
+    )
+    assert "candidate fingerprint is stale" in "; ".join(
+        manage.check_artifact(task, "tests")
+    )
+
+
+def test_adversarial_probe_rejects_candidate_mutation(tmp_path: Path) -> None:
+    root, task = setup_task(tmp_path)
+    advance_to_implementation(root, task)
+    write_implementation(task, 1)
+    preflight_fp = candidate.compute_candidate_fingerprint(
+        task, manage.load_state(task)
+    )
+    write_preflight(task, 1, preflight_fp)
+    assert manage.run_check(task, "preflight", "py-ok") == 0
+    manage.apply_preflight_verdict(task, "PASS")
+
+    with pytest.raises(ValueError, match="changed candidate content"):
+        manage.run_test_probe(
+            task,
+            "AT-001",
+            authority="REPO_INVARIANT",
+            authority_ref="tests must not edit production",
+            argv=[
+                sys.executable,
+                "-c",
+                "from pathlib import Path; Path('src.txt').write_text('mutated')",
+            ],
+        )
+    assert not (task / "03-implementation/test-probes.json").exists()
 
 
 def test_issue_body_tampering_blocks_transition(tmp_path: Path) -> None:
@@ -778,7 +1255,12 @@ def test_changed_canonical_invocation_rejects_old_result(tmp_path: Path) -> None
 
     manifest_path = task / "02-planning/checks.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    manifest["checks"][0]["argv"] = [sys.executable, "-c", "raise SystemExit(0)", "changed"]
+    manifest["checks"][0]["argv"] = [
+        sys.executable,
+        "-c",
+        "raise SystemExit(0)",
+        "changed",
+    ]
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
 
     with pytest.raises(ValueError, match="canonical invocation mismatch"):
@@ -812,7 +1294,13 @@ def test_finalize_pr_failure_keeps_validated_state_unchanged(
     git(root, "add", "src.txt", "tests.txt")
     git(root, "commit", "-m", "candidate")
     head = git(root, "rev-parse", "HEAD")
-    install_fake_gh(tmp_path, monkeypatch, head=head, checks_pass=False)
+    install_fake_gh(
+        tmp_path,
+        monkeypatch,
+        base=manage.load_state(task)["base_revision"],
+        head=head,
+        checks_pass=False,
+    )
     manage.capture_pr_evidence(task, pr_number=706)
     state = manage.load_state(task)
     evidence_digest = state["pr_evidence_sha256"]

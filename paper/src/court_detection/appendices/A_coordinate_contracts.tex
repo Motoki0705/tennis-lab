@@ -1,0 +1,85 @@
+\clearpage
+\section{Coordinate and Label Contracts}
+\label{app:contracts}
+
+\subsection{Transform direction and pose serialization}
+
+Every stored rigid transform is a row-major \(4\times4\) homogeneous matrix
+whose action on a column point is
+\begin{equation}
+  \begin{bmatrix}\mathbf{x}_b\\1\end{bmatrix}
+    =\T{b}{a}\begin{bmatrix}\mathbf{x}_a\\1\end{bmatrix},
+  \qquad
+  \T{a}{b}=\bigl(\T{b}{a}\bigr)^{-1}.
+\end{equation}
+Rotations must be orthonormal with determinant \(+1\); uniform scale is carried
+by the metric adapter rather than hidden inside a nominal rigid transform.
+The camera transform in a generated sample is camera-to-scene.  World-to-camera
+projection always uses its inverse.
+
+The dataset stores raw camera/court transforms and intrinsics; the
+augmentation-aware consumer derives, rather than duplicates, the pose target
+schema
+\texttt{pose10d\_camera\_to\_canonical\_row6d\_logf\_v1}.  Its scalar order is
+\begin{center}
+\texttt{tx, ty, tz, a11, a12, a13, a21, a22, a23, logf}.
+\end{center}
+Translation is the camera centre in canonical court metres, the six rotation
+values are the first two rows of canonical-from-camera rotation, and focal is
+in augmented model pixels.  Quaternion order is consequently irrelevant.
+
+\subsection{Fourteen singleton channels}
+
+The explicitly selected v2 dataset maintains both a camera-relative semantic
+channel and an immutable physical point index.  The semantic order is:
+
+\begin{table}[h]
+  \centering
+  \caption{Singleton semantic channels.  ``Identity'' is used when the camera
+  lies on the court's negative-\(Y\) side; the opposite mapping applies from the
+  positive-\(Y\) side.}
+  \label{tab:kp_order}
+  \small
+  \begin{tabular}{@{}rllr@{}}
+    \toprule
+    ID & Semantic name & Physical (identity) & Physical (opposite) \\
+    \midrule
+     0 & far doubles left  & 0  & 2 \\
+     1 & far doubles right & 1  & 3 \\
+     2 & near doubles left & 2  & 0 \\
+     3 & near doubles right& 3  & 1 \\
+     4 & far singles left  & 4  & 5 \\
+     5 & near singles left & 5  & 4 \\
+     6 & far singles right & 6  & 7 \\
+     7 & near singles right& 7  & 6 \\
+     8 & far service left  & 8  & 10 \\
+     9 & far service right & 9  & 11 \\
+    10 & near service left & 10 & 8 \\
+    11 & near service right& 11 & 9 \\
+    12 & far service T     & 12 & 13 \\
+    13 & near service T    & 13 & 12 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+For camera centre \(\mathbf{c}^{\Court_i}\), identity is selected when
+\(c_y<-10^{-6}\) m and the opposite mapping when \(c_y>10^{-6}\) m.  A camera
+within \(10^{-6}\) m of the court mid-plane is rejected before rendering:
+near/far is geometrically undefined there, and orientation is not used as a
+silent tie-break.  Left/right always follows court-local \(X\).
+
+\subsection{Visibility layers}
+
+Four states remain distinct:
+\begin{enumerate}
+  \item \emph{in front}: positive camera depth;
+  \item \emph{in frame}: the projected coordinate lies inside the image;
+  \item \emph{renderer-supported}: a radius-one neighbourhood has sufficient
+    alpha and positive rendered depth (not point-depth occlusion); and
+  \item \emph{supervision eligible}: the generated conjunction used by the
+    dense target.
+\end{enumerate}
+The reprojection loss uses the generated ground-truth supervision mask.  A
+predicted score or predicted depth cannot alter it.  Augmentation recomputes
+the image-frame geometry and supervision eligibility before collation; the padded batch
+canvas is never treated as valid content.

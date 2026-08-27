@@ -1,0 +1,251 @@
+\section{Metric Alignment and Render Supervision}
+\label{sec:render_supervision}
+
+The data generator is the main methodological contribution.  Its purpose is
+not to create arbitrary synthetic courts; it turns a reconstructed real tennis
+complex into a coordinate-aware renderer whose images and labels share one
+auditable geometric source of truth.
+
+\subsection{Frames and public reconstruction boundary}
+\label{sec:frames}
+
+We write \(\T{b}{a}\) for a homogeneous transform that maps a point expressed
+in frame \(a\) into frame \(b\).  The public reconstruction export uses a
+right-handed normalized scene frame \(\Scene_n\).  Cameras use the OpenCV axes
+\(+x\) right, \(+y\) down, and \(+z\) forward, and publish
+\(\T{\Scene_n}{\Cam}\).  A metric adapter defines a reciprocal uniform scale
+between \(\Scene_n\) and a metre-valued scene frame \(\Scene_m\).  Each
+regulation court \(i\) has a right-handed frame \(\Court_i\), in metres, with
+\(+X\) toward the right sideline, \(+Y\) toward the far baseline, and \(+Z\)
+up.  These conventions are summarized in \cref{tab:coordinate_contracts}.
+
+The reconstruction program owns structure from motion, Gaussian training, and
+rasterization.  We communicate with it only through two public commands: one
+exports a validated standard scene, and the other renders a supplied camera.
+The export validator checks schemas, camera identifiers, shapes, dtypes,
+finite values, intrinsics, proper rotations, and reciprocal transforms before
+alignment begins.  This boundary prevents the dataset from depending on an
+unstated checkpoint or coordinate convention.
+
+\input{tables/coordinate_contracts}
+
+\subsection{From image lines to a metric court layout}
+\label{sec:alignment}
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\linewidth}{!}{\input{figures/metric_alignment}}
+  \caption{\textbf{Fail-closed 3DGS-to-court alignment.}  Captured cameras are
+  partitioned before fitting.  Court-line pixels from fit cameras are intersected
+  with a robust ground plane.  Two regulation templates are fitted with one
+  shared scene-units-per-metre scale, followed by rigid fitting in metric scene
+  coordinates.  The frozen transform must explain held-out cameras and full
+  court topology.  Camera-end canonicalization uses only the two proper
+  rotations \(I\) and \(R_z(\pi)\).}
+  \label{fig:alignment}
+\end{figure}
+
+\paragraph{Ground plane and lifted evidence.}
+Sparse scene points provide candidate ground support.  We estimate
+\(
+  \pi_g=\{\mathbf{x}:\mathbf{n}^{\top}\mathbf{x}+b=0\}
+\)
+with RANSAC, refine its support three times, and reject planes whose normal,
+support, bounds, or camera-side tests are implausible.  For a detected line
+pixel \(\tilde{\mathbf{u}}\), its captured camera defines the scene ray
+\(
+  \mathbf{r}(\lambda)=\mathbf{o}+\lambda\mathbf{d}
+\).
+The intersection
+\begin{equation}
+  \lambda^*=-\frac{\mathbf{n}^{\top}\mathbf{o}+b}
+                    {\mathbf{n}^{\top}\mathbf{d}}
+  \label{eq:ray_plane}
+\end{equation}
+is retained only when the ray--plane angle, positive distance, and complex
+bounds pass strict gates.  Cameras with no observable line evidence are
+excluded explicitly; insufficient remaining evidence is an error rather than
+a fallback.
+
+\paragraph{Shared-scale template hypotheses.}
+The lifted points form a measured evidence set \(\mathcal{E}\) in a 2D basis
+on the ground plane.  We sample every regulation line segment of a canonical
+metre-valued template \(\mathcal{Q}\).  With
+\(d(\mathbf{a},\mathcal{E})=\min_{\mathbf{e}\in\mathcal{E}}
+\|\mathbf{a}-\mathbf{e}\|_2\), the implemented proposal score is
+\begin{equation}
+  J(\mathbf{c},\theta,s)=\frac{1}{|\mathcal{Q}|}
+  \sum_{\mathbf{q}\in\mathcal{Q}}
+  \exp\!\left[-\frac{1}{2}
+    \left(\frac{d(s\mathbf{R}(\theta)\mathbf{q}+\mathbf{c},\mathcal{E})}
+                    {s\sigma}\right)^2\right],
+  \qquad
+  (\mathbf{c}^*,\theta^*,s^*)=\arg\max J,
+  \label{eq:template_fit}
+\end{equation}
+where \(s\) is measured in NHT scene units per metre and the configured score
+width is \(\sigma=0.5\) m.  A bounded differential-evolution search covers tiled
+centres, orientation bands, and scale.  After fitting the first court, its
+evidence is suppressed before the second hypothesis is searched.  The two
+hypotheses must have compatible line topology, negligible footprint overlap,
+adequate centre separation, and native scales that agree within the declared
+tolerance.  We then refit their centres at one common scale.  This multi-court
+constraint resolves metric scale before any rigid court transform is fitted.
+
+Let \(s_*\) be the accepted common scale.  The metric adapter is
+\begin{equation}
+  \mathbf{x}_{\Scene_n}=s_*\mathbf{x}_{\Scene_m},\qquad
+  \mathbf{x}_{\Scene_m}=s_*^{-1}\mathbf{x}_{\Scene_n}.
+  \label{eq:metric_adapter}
+\end{equation}
+For matched canonical court points \(\mathbf{x}_j\) and lifted metric-scene
+points \(\mathbf{y}_j\), the final transform is the Kabsch solution
+\begin{equation}
+  (\mathbf{R}_i,\mathbf{t}_i)=
+  \arg\min_{\mathbf{R}\in\SOthree,\mathbf{t}\in\R^3}
+    \sum_j \left\|\mathbf{R}\mathbf{x}_j+\mathbf{t}-\mathbf{y}_j\right\|_2^2,
+  \quad
+  \T{\Scene_m}{\Court_i}=
+  \begin{bmatrix}\mathbf{R}_i&\mathbf{t}_i\\\mathbf{0}^{\top}&1\end{bmatrix}.
+  \label{eq:kabsch}
+\end{equation}
+Reflection is corrected so that \(\det\mathbf{R}_i=1\).  Scale is absent from
+\cref{eq:kabsch} because it was already resolved by \cref{eq:metric_adapter}.
+
+\paragraph{Disjoint verification.}
+Camera ownership is fixed before fitting.  Correspondences from fit cameras
+estimate \cref{eq:kabsch}; holdout cameras evaluate that frozen transform
+without refitting.  In addition to nearest matched points, the verifier samples
+the entire court template so that a good residual on one visible baseline
+cannot hide a globally incorrect court.  Per-segment coverage, two-court
+topology, scale agreement, and reciprocal-transform checks must all pass.  The
+selected production thresholds in \cref{tab:alignment_gates} are executable
+acceptance conditions, not reported benchmark accuracy; the complete typed
+configuration remains the authority.
+
+\input{tables/alignment_gates}
+
+\subsection{Controlled 3D camera trajectories}
+\label{sec:trajectories}
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\linewidth}{!}{\input{figures/trajectory_generation}}
+  \caption{\textbf{Deterministic view generation.}  Candidate circle and
+  ellipse paths are scaled from captured-camera offsets and may be planar or
+  sinusoidal in height.  Dense interpolation makes sampling uniform in 3D arc
+  length.  Each camera looks at a deterministically resolved target court, and
+  whole trajectory groups---not individual frames---are assigned to the
+  80/10/10 splits.}
+  \label{fig:trajectories}
+\end{figure}
+
+The generator derives one orbit centre for the tennis complex and one for each
+accepted court.  Its base radius is the 90th percentile of captured cameras'
+horizontal offsets from that centre, making the proposal scale specific to the
+reconstructed venue.  A typed Cartesian product then enumerates circle/ellipse
+shape, radius scale, axis ratio, in-plane orientation, base height, and vertical
+profile.  A local path has the form
+\begin{align}
+  \bm{\gamma}(\theta)_{xy}
+    &=\mathbf{R}(\phi)
+      \begin{bmatrix}a\cos\theta\\b\sin\theta\end{bmatrix},
+      &a&=r_{90}\alpha, &b&=a\beta, \\
+  \gamma_z(\theta)
+    &=h_0+A\sin(n\theta+\varphi),
+  \label{eq:trajectory}
+\end{align}
+where \(\beta=1\) gives a circle and \(A=0\) gives a planar path.  All heights
+must remain positive.
+
+Uniform increments of \(\theta\) are not uniform in distance on an ellipse or
+on a vertically modulated path.  We therefore sample 4096 points, construct the
+cumulative 3D arc-length function, interpolate uniformly in arc length, and
+increase the sample count until the closed-loop adjacent step is no larger than
+the configured maximum.  Candidate order and selection use a fixed seed and
+explicit stable-field ordering.  A coverage objective retains diverse
+coverage/semantic-support modes and trajectory groups under a proposal budget.
+
+The singleton and per-camera target behavior below is activated explicitly with
+\texttt{dataset/court=v2}; the backward-compatible pipeline selector remains
+v1 (seven two-point channels and group-level target assignment).  This
+generation-schema v2 is distinct from the Court Detection V3 consumer/pose
+contract: v2 defines the serialized singleton labels, whereas V3 defines the
+canonical target-court training authority derived after loading.  Under v2, a
+court-centred path retains its centre court.  A complex-centred path chooses the nearest accepted court to
+each camera centre in metric 3D; distance ties within \(10^{-9}\) m are broken
+lexicographically.  Let \(\mathbf{c}\) be the camera centre and \(\mathbf{q}\)
+the chosen court look-at point.  We form an OpenCV camera basis with
+\begin{equation}
+  \mathbf{f}=\frac{\mathbf{q}-\mathbf{c}}{\|\mathbf{q}-\mathbf{c}\|_2},\quad
+  \mathbf{r}=\mathbf{f}\times\mathbf{u}_{\mathrm{world}},\quad
+  \mathbf{d}=\mathbf{f}\times\mathbf{r},
+  \label{eq:lookat}
+\end{equation}
+so the axes are right, down, and forward.  For horizontal field of view
+\(\omega\) and output width \(W\),
+\begin{equation}
+  f_x=f_y=\frac{W}{2\tan(\omega/2)},\qquad
+  (c_x,c_y)=\left(\frac{W-1}{2},\frac{H-1}{2}\right).
+  \label{eq:intrinsics}
+\end{equation}
+The complete path is sampled before split assignment.  All frames sharing a
+trajectory-group identifier stay in one train, validation, or test split,
+preventing near-duplicate neighbouring views from leaking across splits.
+
+\input{tables/data_policy}
+
+\subsection{Rendering and exact labels}
+\label{sec:labels}
+
+The metric camera is converted to normalized scene units and passed to the
+public 3DGS renderer.  The renderer returns RGB, depth, alpha, and pixel-support
+evidence;
+the court pipeline does not paste a separately rendered court onto the image.
+Consequently the background, surface appearance, and occlusion structure
+remain those reconstructed from the original video.
+
+For canonical physical point \(\mathbf{X}_k\), the generator computes
+\begin{equation}
+  \mathbf{X}^{\Cam}_k =
+  \T{\Cam}{\Scene_m}\T{\Scene_m}{\Court_i}\mathbf{X}_k,
+  \qquad
+  \tilde{\mathbf{u}}_k=\Kmat\mathbf{X}^{\Cam}_k,
+  \qquad
+  \mathbf{u}_k=\left(\frac{\tilde u_k}{\tilde w_k},
+                       \frac{\tilde v_k}{\tilde w_k}\right).
+  \label{eq:label_projection}
+\end{equation}
+Each record retains metric scene position, camera depth, pixel/normalized
+coordinates, in-front state, in-frame state, and a renderer-support flag.  That
+flag means that a radius-one pixel neighbourhood contains sufficient rendered
+alpha and positive rendered depth; it is not a metric point-depth occlusion
+test.  The
+consumer contract reorders the fourteen physical points into camera-relative
+near/far singleton channels but never guesses identity from image coordinates.
+Segmentation and line targets are materialized from the same projected court
+geometry; training-time crop, affine/perspective, color, blur, geometric
+validity, and supervision-eligibility logic update all supervised quantities in
+one augmented image frame.
+
+The published sample stores \(\T{\Scene_m}{\Cam}\),
+\(\T{\Scene_m}{\Court_i}\), and \(\Kmat\) rather than duplicating a pose10D
+field.  After image augmentation, the model adapter derives the camera label
+\begin{equation}
+  \T{\Court_i}{\Cam}=
+  \bigl(\T{\Scene_m}{\Court_i}\bigr)^{-1}\T{\Scene_m}{\Cam}.
+  \label{eq:camera_to_court}
+\end{equation}
+It contains three translational and three rotational degrees of freedom.  The
+adapter then applies the target-side canonicalization in
+\cref{eq:canonical_pose} and constructs the pose10D target; augmented focal
+length is carried separately from the rigid transform because the network
+jointly predicts it for reprojection.  This is the paper's meaning of ``6DoF
+supervision''; it must not be confused with the yaw-only player-location label
+used by another task.
+
+Once \cref{eq:camera_to_court} is accepted for a scene, another rendered view
+requires no clicked points, line tracing, PnP solve, or per-frame extrinsic
+calibration.  Human effort is concentrated in acquiring a suitable video and
+auditing the scene-level alignment.  This amortization is what makes the
+global-pose objective in \cref{sec:model,sec:consistency} practical at scale.
