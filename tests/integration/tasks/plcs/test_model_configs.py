@@ -9,6 +9,7 @@ from omegaconf import open_dict
 from src.tasks.plcs.configuration import PLCSModelConfig, PLCSTrainingConfig
 from src.tasks.plcs.models.plcs_multiview_model import PLCSMultiViewModel
 from src.tasks.plcs.training.composition import build_plcs_lightning_module
+from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.utils.configuration import (
     MissingConfigurationKeyError,
     SemanticConfigurationError,
@@ -36,6 +37,7 @@ def test_multiview_all_outputs_beta01_config_composes_and_binds_model() -> None:
     runtime = PLCSTrainingConfig.from_config(config)
     module = build_plcs_lightning_module(config)
 
+    assert isinstance(module, PLCSLightningModule)
     assert runtime.model.name == "plcs_multiview"
     assert runtime.model.boolean("predict_canonical_pose")
     assert isinstance(module.model, PLCSMultiViewModel)
@@ -65,6 +67,7 @@ def test_multiview_reprojection_config_composes_and_binds_loss() -> None:
 
     module = build_plcs_lightning_module(config)
 
+    assert isinstance(module, PLCSLightningModule)
     assert module.loss_fn.config.position_weight == 1.0
     assert module.loss_fn.config.position_smooth_l1_beta == 0.1
     assert module.loss_fn.config.rotation_weight == 1.0
