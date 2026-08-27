@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/plcs/plcs_multiview_axial_all_outputs_beta01_v4_t128_bf16_gpu0/logs/version_0/checkpoints
