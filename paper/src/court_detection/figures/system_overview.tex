@@ -1,0 +1,81 @@
+% End-to-end ownership and supervision flow; all artwork is native TikZ.
+\begin{tikzpicture}[
+  font=\sffamily\scriptsize,
+  card/.style={draw=black!35, rounded corners=2.2pt, align=center,
+    minimum height=25mm, inner sep=3.2pt, line width=0.45pt},
+  pipe/.style={-{Stealth[length=2.2mm,width=1.45mm]},
+    line width=0.75pt, draw=black!72},
+  boundary/.style={draw=gsblue, dashed, rounded corners=3pt,
+    line width=0.75pt, inner sep=2.6pt},
+  tag/.style={rounded corners=1.5pt, inner xsep=3pt, inner ysep=1.3pt,
+    font=\sffamily\fontsize{6.7}{7.5}\selectfont},
+  note/.style={font=\sffamily\fontsize{6.5}{7.3}\selectfont,
+    text=black!67, align=center},
+]
+  % Six typed stages form the only production path.
+  \node[card, fill=softgray!65, minimum width=22mm] (video) {
+    \textbf{Multi-camera}\\[-0.15em]
+    \textbf{video}\\[0.55em]
+    \textcolor{gsblue}{RGB streams}\\[-0.1em]
+    + scene ID
+  };
+  \node[card, fill=gsblue!10, draw=gsblue, minimum width=25mm,
+    right=3.2mm of video] (nht) {
+    \textbf{Public NHT}\\[-0.15em]
+    \textbf{reconstruction}\\[0.55em]
+    SfM cameras\\[-0.1em]
+    + 3DGS model
+  };
+  \node[card, fill=courtgreen!10, draw=courtgreen, minimum width=27mm,
+    right=3.2mm of nht] (align) {
+    \textbf{Fail-closed}\\[-0.15em]
+    \textbf{metric alignment}\\[0.55em]
+    fit evidence\\[-0.1em]
+    + frozen holdout
+  };
+  \node[card, fill=softgray!65, minimum width=28mm,
+    right=3.2mm of align] (render) {
+    \textbf{Controlled cameras}\\[-0.15em]
+    \textbf{and rendering}\\[0.55em]
+    3-D paths + look-at\\[-0.1em]
+    \textcolor{gsblue}{public \texttt{nht-render}}
+  };
+  \node[card, fill=lossred!8, draw=lossred, minimum width=27mm,
+    right=3.2mm of render] (labels) {
+    \textbf{Exact supervision}\\[0.55em]
+    RGB + KP14\\[-0.1em]
+    $\T{\Canon}{\Cam}$ (6DoF) + $\Kmat$
+  };
+  \node[card, fill=poseorange!10, draw=poseorange, minimum width=24mm,
+    right=3.2mm of labels] (model) {
+    \textbf{Global}\\[-0.15em]
+    \textbf{court-query model}\\[0.55em]
+    scene-level pose\\[-0.1em]
+    + keypoints
+  };
+
+  % Uninterrupted arrows retain legibility at narrow publication widths.
+  \draw[pipe] (video) -- (nht);
+  \draw[pipe, draw=gsblue] (nht) -- (align);
+  \draw[pipe] (align) -- (render);
+  \draw[pipe] (render) -- (labels);
+  \draw[pipe, draw=lossred] (labels) -- (model);
+
+  % The external implementation is crossed only through public commands/files.
+  \begin{scope}[on background layer]
+    \node[boundary, fit=(nht)] (nhtboundary) {};
+  \end{scope}
+  \node[tag, fill=gsblue, text=white, anchor=south]
+    at ($(nhtboundary.north)+(0,0.5mm)$) {external NHT: public command only};
+  \draw[gsblue, dashed, line width=0.65pt]
+    ($(nhtboundary.south east)+(1.0mm,-1.8mm)$) --
+    ($(render.south west)+(-1.0mm,-1.8mm)$);
+  \node[tag, draw=gsblue, fill=white, text=gsblue]
+    at ($(render.south)+(0,-1.8mm)$) {same public file boundary};
+
+  % Compact contract statement beneath the process chain.
+  \node[note, anchor=north, text width=13.9cm]
+    at ($(align.south)!0.54!(render.south)+(0,-6.0mm)$)
+    {No private NHT imports or checkpoint reads; schema, coordinate, hash, shape,
+     and finite-value checks reject incomplete crossings.};
+\end{tikzpicture}

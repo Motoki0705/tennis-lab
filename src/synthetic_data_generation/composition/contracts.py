@@ -599,7 +599,7 @@ class GaussianSceneComposition:
 
 @dataclass(frozen=True, slots=True)
 class GaussianForegroundComposition:
-    """Complete articulated foreground timeline with no background authority.
+    """Complete movable foreground timeline with no background authority.
 
     Every object is a positive-identity movable asset.  Empty-space pixels are
     represented only by raster output masks; instance ID 0 is never a scene
@@ -636,12 +636,6 @@ class GaussianForegroundComposition:
             raise TypeError("Foreground frames must be non-empty GaussianFrame values.")
         if any(asset.role != GaussianAssetRole.MOVABLE for asset in assets):
             raise ValueError("Foreground assets must all be movable assets.")
-        if any(
-            item.deformation_kind != GaussianDeformationKind.ARTICULATED
-            for item in objects
-        ):
-            raise ValueError("Foreground objects must all be declared articulated.")
-
         _require_unique([asset.asset_id for asset in assets], name="foreground asset ids")
         _require_unique([item.object_id for item in objects], name="foreground object ids")
         _require_unique(
@@ -773,7 +767,11 @@ def _validate_object_timeline(
     if unused:
         raise ValueError(f"Declared foreground objects never appear: {unused}.")
     for object_id, values in placements.items():
-        if len(values) < 2:
+        if (
+            objects_by_id[object_id].deformation_kind
+            is GaussianDeformationKind.ARTICULATED
+            and len(values) < 2
+        ):
             raise ValueError(
                 f"Articulated foreground object {object_id!r} requires at least two frames."
             )

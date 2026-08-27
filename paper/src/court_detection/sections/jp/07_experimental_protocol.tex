@@ -1,0 +1,86 @@
+\section{実験プロトコル}
+\label{sec:experiments}
+
+本稿では、実装上の主張と、実験結果に基づく採用可否の主張とを分離する。
+\cref{sec:model,sec:consistency}のモデルと損失によって本手法は定義されるが、
+これらを実運用のデフォルトとして選択するには、以下に示す固定条件下での
+複数seed比較が必要である。この分離により、整合性残差が小さいことを、
+いずれかの分岐の精度が向上した証拠として報告することを防ぐ。
+
+\subsection{データ分割と統制変数}
+
+主要な学習データ源には、\cref{sec:render_supervision}で説明した、対象コート単位の
+singleton合成データセットを用いる。隣接するレンダリング画像が異なる分割にまたがらないよう、
+軌道グループ全体を80/10/10に分割する。検証用およびテスト用manifestには、視点の方位角、
+仰角、画角、coverage mode、対象コート、renderer-support flag、および軌道識別子を
+記録しなければならない。このメタデータにより、難しい部分視野を平均値の中に埋没させる
+ことなく層別解析できる。
+
+人手でアノテーションしたholdout実画像集合を用いて、\KP{}、ライン、および
+セグメンテーションの転移性能を評価する。独立したキャリブレーション正解情報が
+与えられない限り、この集合では並進、回転、焦点距離を評価できない。また、評価対象の
+検出器から擬似姿勢ラベルを作ることはしない。したがって、合成データ上の姿勢指標と
+実画像上の密予測指標は、単一のスコアに統合せず、別々の列に報告する。
+
+同一のablation系列では、合成データのmanifest、\DINO{} checkpointとtrain mode、
+姿勢を損なわないaugmentation、optimizer、batch構成、直接損失の重み、画像scale
+（短辺約256 pixels）、および15-epochのbudgetを固定する。最終比較にはそれぞれ少なくとも
+3つのseedを用いる。temperature、Huber threshold、warmup、またはauxiliary weightの
+hyperparameter探索は、短いseed-0 pilotに限定し、選択した値は複数seedでの実行前に固定する。
+
+\subsection{順序を定めたアーキテクチャと目的関数のアブレーション}
+
+幾何学的な補助損失を比較する前に、アーキテクチャを選択する。まずdecoderを固定して
+task encoderのdepthをsweepし、次に選択したencoderを用いてdecoder familyとcapacityを
+sweepする。その後に初めて、アーキテクチャを固定してsupervisionを比較する。この順序により、
+capacityの変化をconsistency objectiveの効果と誤って解釈することを避ける。
+
+\input{tables/ablation_protocol}
+
+中核となるsupervisionの比較は以下のとおりである。
+\begin{enumerate}
+  \item \textbf{direct-all}: \KP{}、ライン、セグメンテーション、並進、回転、焦点距離に
+    対する直接損失。
+  \item \textbf{joint-both}: direct-allに\cref{eq:cheirality}を加え、両方の分岐へ
+    勾配を伝播する。
+  \item \textbf{joint-stopgrad-pose}: 姿勢によるprojectionの信号を密予測分岐のみに伝える。
+  \item \textbf{joint-stopgrad-dense}: 密予測の期待値の信号を姿勢分岐のみに伝える。
+\end{enumerate}
+4つの設定はすべて同一の直接教師信号を維持する。stop-gradient variantは、どちらの
+分岐が恩恵を受けるかを診断するものであり、test-time graphの代替ではない。推論時には
+補助経路を取り除くため、4つのvariantでdeployment latencyとparameter countは同一である。
+
+\subsection{評価指標と循環性のない評価基準}
+
+密予測キーポイントは、モデルの画素座標系におけるEuclidean distanceの平均値と中央値で評価し、
+channel別およびsupervision eligibility別に層別した内訳も示す。ラインにはDice、
+セグメンテーションにはmean intersection over unionを用いる。姿勢には、metres単位の
+camera-centre L2 error、degrees単位の\(\SOthree\) geodesic error、focal relative error、
+およびabsolute log-focal errorを用いる。
+
+2つのprojection指標を混同してはならない。\emph{姿勢再投影誤差}は、予測姿勢と
+予測focalのみを用いてground-truth canonical pointをprojectし、ground-truth image pointと
+比較する。これは独立した姿勢指標である。\emph{分岐間整合距離}は、密予測の期待値と
+予測姿勢によるprojectionを比較する。有用な診断指標ではあるが、ground-truth accuracyの
+指標ではない。両分岐がともに誤っていても小さくなり得るためである。さらに、
+supervision-eligible count、invalid predicted-depth rate、両分岐のfinite gradient status、
+train-step time、およびpeak accelerator memoryを記録する。
+
+\subsection{事前に宣言した採用基準}
+
+direct-allと比較して、joint-bothは、GTキーポイント平均距離または姿勢のみの再投影誤差の
+いずれかを、3-seed meanで少なくとも5\%改善しなければならない。もう一方の指標、
+およびtranslation/rotation/focal errorは、相対的に5\%を超えて悪化してはならない。
+line Diceとsegmentation mIoUの絶対値の低下は0.01以下でなければならない。いずれの実行でも
+non-finite損失、non-finite勾配、またはall-invalid batchが生じてはならず、step timeと
+peak memoryのoverheadはいずれも10\%以内でなければならない。整合距離のみの
+改善は、明示的な棄却条件とする。
+
+\subsection{ショートカットに焦点を当てた診断}
+
+test manifestを、コートのfull、near-full、partial coverage、camera height、azimuth、
+target-court distance、およびsupervision-eligible point数で層別する。平均値と併せて最悪の
+stratumも報告する。また、full imageと、visible junction周辺の固定サイズの近傍のみを残して
+それ以外のcontextを抑制した診断用ビューを比較する。この診断用ビューは、学習にもmodel selectionにも
+使用しない。局所入力のみでも大域姿勢性能が変わらない場合、平均密予測指標が良好であっても、
+意図した機構が実証されたとはみなさない。

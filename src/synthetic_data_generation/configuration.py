@@ -38,6 +38,7 @@ from src.synthetic_data_generation.composition.contracts import (
     GaussianUnit,
 )
 from src.synthetic_data_generation.dataset.blcs.contracts import (
+    BLCSBallGaussianSettings,
     BLCSCompositionAssets,
 )
 from src.synthetic_data_generation.dataset.blcs.source import (
@@ -1663,20 +1664,64 @@ def _gaussian_asset(value: object, *, path: str) -> GaussianAsset:
 
 
 def _blcs_assets(value: object) -> BLCSCompositionAssets:
-    from src.synthetic_data_generation.dataset.blcs.contracts import (
-        BLCSCompositionAssets,
-    )
-
     path = "dataset.blcs.assets"
     raw = _exact(
         value,
         path=path,
-        keys={"background", "ball", "ball_radius_m"},
+        keys={"ball", "settings"},
     )
+    settings_path = f"{path}.settings"
+    settings_raw = _exact(
+        raw["settings"],
+        path=settings_path,
+        keys={
+            "radius_m",
+            "radial_scale_m",
+            "tangential_scale_m",
+            "opacity",
+            "base_color_linear_rgb",
+            "seam_color_linear_rgb",
+            "seam_width_radians",
+            "visibility_threshold",
+        },
+    )
+
+    def color(key: str) -> tuple[float, float, float]:
+        values = _number_sequence(settings_raw, key, path=settings_path)
+        if len(values) != 3:
+            raise ConfigurationTypeError(
+                f"{settings_path}.{key} must contain exactly three values."
+            )
+        return values[0], values[1], values[2]
+
     return BLCSCompositionAssets(
-        background=_gaussian_asset(raw["background"], path=f"{path}.background"),
         ball=_gaussian_asset(raw["ball"], path=f"{path}.ball"),
-        ball_radius_m=_number(raw, "ball_radius_m", path=path),
+        settings=BLCSBallGaussianSettings(
+            radius_m=_number(settings_raw, "radius_m", path=settings_path),
+            radial_scale_m=_number(
+                settings_raw,
+                "radial_scale_m",
+                path=settings_path,
+            ),
+            tangential_scale_m=_number(
+                settings_raw,
+                "tangential_scale_m",
+                path=settings_path,
+            ),
+            opacity=_number(settings_raw, "opacity", path=settings_path),
+            base_color_linear_rgb=color("base_color_linear_rgb"),
+            seam_color_linear_rgb=color("seam_color_linear_rgb"),
+            seam_width_radians=_number(
+                settings_raw,
+                "seam_width_radians",
+                path=settings_path,
+            ),
+            visibility_threshold=_number(
+                settings_raw,
+                "visibility_threshold",
+                path=settings_path,
+            ),
+        ),
     )
 
 
@@ -1727,14 +1772,14 @@ class BLCSDatasetConfiguration:
         )
         if (
             not performance.require_cuda
-            or not performance.execution_device.startswith("cuda")
+            or performance.execution_device != "cuda:0"
             or performance.maximum_nht_invocations != source.scene_count
-            or performance.maximum_batch_frames > timeline.chunk_size_frames
+            or performance.maximum_batch_frames != 1
             or performance.maximum_published_fraction_of_dense_reference > 0.2
         ):
             raise SemanticConfigurationError(
                 "BLCS production performance requires CUDA, one NHT call per "
-                "trajectory, bounded frame batches, and <=20% dense publication."
+                "trajectory, single-frame joint rasterization, and <=20% dense publication."
             )
         return cls(
             timeline=timeline,

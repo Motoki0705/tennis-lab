@@ -46,6 +46,9 @@ from src.synthetic_data_generation.dataset.runtime import (
     materialize_logical_sample,
 )
 from src.synthetic_data_generation.scene_contract import SceneCamera
+from src.utils.schema.court_normalization import (
+    validate_court_coordinate_normalization,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -684,11 +687,20 @@ class PLCSVisualizationSource:
         self.dataset_scene_id = _text(
             manifest.get("scene_id"), name="PLCS dataset scene_id"
         )
-        metadata = _exact_object(
+        metadata = _object(
             manifest.get("metadata"),
+            name="PLCS metadata",
+        )
+        validate_court_coordinate_normalization(
+            metadata,
+            artifact=f"Compact PLCS visualization dataset {root}",
+        )
+        metadata = _exact_object(
+            metadata,
             name="PLCS metadata",
             keys={
                 "coordinate_contract",
+                "court_coordinate_normalization",
                 "seed",
                 "logical_scene_count",
                 "aggregate_global_frame_count",

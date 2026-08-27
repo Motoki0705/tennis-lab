@@ -1,0 +1,38 @@
+\documentclass[10pt]{article}
+
+\input{preamble}
+
+\title{\bfseries\LARGE
+  Render-Supervised Global Court Geometry:\\
+  Annotation-Light 6DoF Court Detection from 3D Gaussian Scenes
+}
+
+\author{Motoki Kamimura\\[0.25em]
+  \small Tennis Lab\\
+  \small \url{https://github.com/Motoki0705/tennis-lab}}
+\date{}
+
+\begin{document}
+\maketitle
+
+\input{sections/eg/00_abstract}
+\input{sections/eg/01_introduction}
+\input{sections/eg/02_related_work}
+\input{sections/eg/03_system_overview}
+\input{sections/eg/04_alignment_render_supervision}
+\input{sections/eg/05_global_query_model}
+\input{sections/eg/06_reprojection_consistency}
+\input{sections/eg/07_experimental_protocol}
+\input{sections/eg/08_results_scope}
+\input{sections/eg/09_discussion}
+\input{sections/eg/10_conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\appendix
+\input{appendices/A_coordinate_contracts}
+\input{appendices/B_implementation}
+\input{appendices/C_evaluation_protocol}
+
+\end{document}

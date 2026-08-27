@@ -6,14 +6,12 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-import torch
+from src.utils.schema.court_normalization import load_and_validate_checkpoint
 
 
 def load_checkpoint_config(path: Path) -> Any:
     """Load the explicit configuration required to compose a BLCS checkpoint."""
-    checkpoint = torch.load(path, map_location="cpu", weights_only=False)
-    if not isinstance(checkpoint, Mapping):
-        raise RuntimeError("BLCS checkpoint root must be a mapping.")
+    checkpoint = load_and_validate_checkpoint(path)
     hyper_parameters = checkpoint.get("hyper_parameters")
     if not isinstance(hyper_parameters, Mapping) or "config" not in hyper_parameters:
         raise RuntimeError(

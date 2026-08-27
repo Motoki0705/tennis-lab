@@ -108,7 +108,7 @@ def discover_contract_declarations(source_root: Path) -> ContractDeclarations:
     Dataclass adapters are either owned by a conventional configuration module
     or explicitly named as a ``*Config``/``*Configuration``/``*Paths`` runtime
     type. Strict schemas are discovered by their module-level ``*_SCHEMA``
-    declaration, independent of the generated audit ledger and runtime catalog.
+    declaration, independent of the source audit and runtime catalog.
     """
     if not source_root.is_absolute() or source_root.name != "src":
         raise ValueError("configuration contract discovery requires an absolute src root")

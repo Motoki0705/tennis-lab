@@ -13,6 +13,10 @@ import numpy as np
 from numpy.typing import NDArray
 
 from src.synthetic_data_generation.alignment import MetricSceneAdapter
+from src.synthetic_data_generation.composition import (
+    GaussianDeformationKind,
+    GaussianForegroundComposition,
+)
 from src.synthetic_data_generation.dataset.blcs.contracts import (
     BLCS_DATASET_SCHEMA,
     BLCS_SAMPLE_SCHEMA,
@@ -825,6 +829,18 @@ def validate_blcs_dataset(output_directory: Path) -> BLCSAssemblyResult:
                 ),
                 track_mappings=track_mappings,
             )
+        _validate_plan_composition(
+            plan["composition"],
+            scene_id=scene_id,
+            trajectory_id=trajectory_id,
+            track_ids=track_ids,
+            track_mappings=track_mappings,
+            present=plan_arrays["present"],
+            positions_scene=plan_arrays["positions_scene"],
+            scene_from_court=RigidTransform(
+                _float_tuple(binding["scene_from_court"], name="scene_from_court")
+            ),
+        )
         background_path = _contained_directory(
             output_directory,
             _string(trajectory["background_store"], name="background_store"),
@@ -1383,6 +1399,70 @@ def _validated_plan_arrays(
     ):
         raise ValueError("BLCS trajectory and camera use different court transforms.")
     return result
+
+
+def _validate_plan_composition(
+    value: object,
+    *,
+    scene_id: str,
+    trajectory_id: str,
+    track_ids: tuple[str, ...],
+    track_mappings: tuple[tuple[int | None, ...], ...],
+    present: NDArray[np.generic],
+    positions_scene: NDArray[np.generic],
+    scene_from_court: RigidTransform,
+) -> None:
+    """Bind the published semantic plan to the exact rigid ball trajectory."""
+    composition = GaussianForegroundComposition.from_dict(value)
+    if (
+        composition.scene_id != scene_id
+        or composition.composition_id != f"blcs-{trajectory_id}"
+    ):
+        raise ValueError("BLCS Gaussian composition identity is inconsistent.")
+    if len(composition.assets) != 1 or composition.assets[0].asset_class != "ball":
+        raise ValueError("BLCS composition must contain exactly one ball Gaussian asset.")
+    if tuple(item.object_id for item in composition.objects) != track_ids:
+        raise ValueError("BLCS Gaussian objects differ from the trajectory tracks.")
+    if tuple(item.instance_id for item in composition.objects) != tuple(
+        range(1, len(track_ids) + 1)
+    ):
+        raise ValueError("BLCS Gaussian instance IDs must equal the track order.")
+    if any(
+        item.deformation_kind is not GaussianDeformationKind.RIGID
+        for item in composition.objects
+    ):
+        raise ValueError("BLCS ball Gaussian objects must use rigid deformation.")
+    if len(composition.frames) != present.shape[0]:
+        raise ValueError("BLCS Gaussian composition frame count is inconsistent.")
+
+    expected_rotation = scene_from_court.matrix()[:3, :3]
+    object_index = {object_id: index for index, object_id in enumerate(track_ids)}
+    for frame in composition.frames:
+        instances = {instance.object_id: instance for instance in frame.instances}
+        expected_ids = {
+            track_ids[index]
+            for index in range(len(track_ids))
+            if bool(present[frame.frame_index, index])
+        }
+        if set(instances) != expected_ids:
+            raise ValueError("BLCS Gaussian composition presence is inconsistent.")
+        for object_id, instance in instances.items():
+            index = object_index[object_id]
+            if instance.source_frame_index != track_mappings[index][frame.frame_index]:
+                raise ValueError("BLCS Gaussian source-frame mapping is inconsistent.")
+            transform = instance.scene_from_asset
+            if not np.isclose(transform.scale, 1.0, atol=1.0e-12, rtol=0.0):
+                raise ValueError("BLCS ball Gaussian assets must retain metric scale.")
+            matrix = transform.rigid.matrix()
+            if not np.allclose(
+                matrix[:3, :3], expected_rotation, atol=1.0e-8, rtol=0.0
+            ) or not np.allclose(
+                matrix[:3, 3],
+                positions_scene[frame.frame_index, index],
+                atol=1.0e-8,
+                rtol=0.0,
+            ):
+                raise ValueError("BLCS Gaussian rigid placement differs from its trajectory.")
 
 
 def _validate_sample_metadata(

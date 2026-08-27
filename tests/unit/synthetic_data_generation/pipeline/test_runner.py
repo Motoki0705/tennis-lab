@@ -35,6 +35,9 @@ from src.synthetic_data_generation.pipeline.publication import (
 from src.synthetic_data_generation.pipeline.registry import StageRegistry
 from src.synthetic_data_generation.pipeline.run_manifest import MutableRunManifest
 from src.utils.configuration import PathResolver, RuntimePathRoots
+from src.utils.schema.court_normalization import (
+    court_coordinate_normalization_metadata,
+)
 
 
 @dataclass
@@ -115,6 +118,9 @@ def _plcs_publication(payload: str) -> dict[str, object]:
         "fixture_payload": payload,
         "metadata": {
             "coordinate_contract": PLCS_COORDINATE_CONTRACT.to_dict(),
+            "court_coordinate_normalization": (
+                court_coordinate_normalization_metadata()
+            ),
             "logical_scenes": [
                 {
                     "tracks": [

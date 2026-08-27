@@ -21,6 +21,8 @@ from src.tasks.blcs.training.tracking_position import (
     position_axis_weight_tensor,
     weighted_position_axis_mean,
 )
+from src.utils.losses.temporal import ballistic_second_difference
+from src.utils.schema.court import COURT_COORD_SCALE_Z
 
 Assignment = tuple[torch.Tensor, torch.Tensor]
 
@@ -51,7 +53,11 @@ class BLCSTrackingLoss(nn.Module):
         self.transition_radius = int(config.transition_radius)
         self.smoothness_weight = float(config.smoothness_weight)
         self.gravity_weight = float(config.gravity_weight)
-        self.gravity_target = float(config.gravity_target)
+        self.gravity_target = ballistic_second_difference(
+            gravity=float(config.gravity_mps2),
+            dt=float(config.frame_dt_seconds),
+            height_scale=COURT_COORD_SCALE_Z,
+        )
         self.match_position_weight = float(config.match_position_weight)
         self.match_presence_weight = float(config.match_presence_weight)
         configured_axis_weights = config.position_axis_weights

@@ -72,7 +72,9 @@ def apply_feasibility_verdict(
 ) -> None:
     state = load_state(task_dir)
     if state.get("phase") != "feasibility" or state.get("status") != "in_progress":
-        raise ValueError("a feasibility verdict is valid only during in-progress feasibility")
+        raise ValueError(
+            "a feasibility verdict is valid only during in-progress feasibility"
+        )
     _raise_errors(validate_state(task_dir, state))
 
     attempt = int(state["attempt"])
@@ -108,8 +110,12 @@ def apply_feasibility_verdict(
             "BLOCKED",
             {"PASS", "BLOCKED"},
         )
-        assert_nonempty_section(path, "## Constraint conflicts", "constraint conflict evidence")
-        assert_nonempty_section(path, "## Blocker resolution required", "blocker resolution")
+        assert_nonempty_section(
+            path, "## Constraint conflicts", "constraint conflict evidence"
+        )
+        assert_nonempty_section(
+            path, "## Blocker resolution required", "blocker resolution"
+        )
         state["feasibility_verdict"] = "BLOCKED"
         state["status"] = "blocked"
         state["verdict"] = "BLOCKED"
@@ -139,7 +145,9 @@ def transition(task_dir: Path, requested: str) -> None:
         if _enforced(state):
             _check_artifacts(task_dir, "exploration")
         else:
-            assert_artifacts_ready(task_dir, ("01-exploration/exploration.md",), attempt)
+            assert_artifacts_ready(
+                task_dir, ("01-exploration/exploration.md",), attempt
+            )
     elif requested == "implementation":
         plan_path = task_dir / "02-planning/plan.md"
         if _enforced(state):
@@ -163,9 +171,13 @@ def transition(task_dir: Path, requested: str) -> None:
             if current_candidate != expected_candidate:
                 raise ValueError("candidate changed after the final seal")
             if state.get("test_candidate_sha256") != expected_candidate:
-                raise ValueError("Tester and sealed candidate fingerprints do not match")
+                raise ValueError(
+                    "Tester and sealed candidate fingerprints do not match"
+                )
             if artifact_candidate(task_dir, "tests") != expected_candidate:
-                raise ValueError("tests.md candidate fingerprint does not match the seal")
+                raise ValueError(
+                    "tests.md candidate fingerprint does not match the seal"
+                )
             if artifact_candidate(task_dir, "seal") != expected_candidate:
                 raise ValueError("seal.md candidate fingerprint does not match state")
             _raise_errors(stage_result_errors(task_dir, "test", expected_candidate))
@@ -181,7 +193,9 @@ def transition(task_dir: Path, requested: str) -> None:
             assert_artifact_test_cycle(implementation_path, cycle)
             assert_artifact_test_cycle(tests_path, cycle)
             assert_checklist_hash_present(tests_path, checklist_hash)
-            assert_mapping_table(tests_path, "## Acceptance-checklist-to-test mapping", items)
+            assert_mapping_table(
+                tests_path, "## Acceptance-checklist-to-test mapping", items
+            )
             assert_standalone_value(
                 tests_path,
                 "## Final test verdict",
@@ -193,7 +207,9 @@ def transition(task_dir: Path, requested: str) -> None:
                 or int(state.get("preflight_cycle", 0)) > 0
             ):
                 preflight_path = task_dir / "03-implementation/preflight.md"
-                assert_artifacts_ready(task_dir, ("03-implementation/preflight.md",), attempt)
+                assert_artifacts_ready(
+                    task_dir, ("03-implementation/preflight.md",), attempt
+                )
                 assert_artifact_test_cycle(preflight_path, cycle)
                 assert_standalone_value(
                     preflight_path,
@@ -210,7 +226,9 @@ def transition(task_dir: Path, requested: str) -> None:
 def apply_preflight_verdict(task_dir: Path, verdict: str) -> None:
     state = load_state(task_dir)
     if state.get("phase") != "implementation" or state.get("status") != "in_progress":
-        raise ValueError("a preflight verdict is valid only during in-progress implementation")
+        raise ValueError(
+            "a preflight verdict is valid only during in-progress implementation"
+        )
     if state.get("return_review_required"):
         raise ValueError("return review is required before another preflight cycle")
     _raise_errors(validate_state(task_dir, state))
@@ -261,14 +279,19 @@ def apply_preflight_verdict(task_dir: Path, verdict: str) -> None:
 def apply_test_verdict(task_dir: Path, verdict: str) -> None:
     state = load_state(task_dir)
     if state.get("phase") != "implementation" or state.get("status") != "in_progress":
-        raise ValueError("a test verdict is valid only during in-progress implementation")
+        raise ValueError(
+            "a test verdict is valid only during in-progress implementation"
+        )
     if state.get("return_review_required"):
         raise ValueError("return review is required before another test cycle")
     _raise_errors(validate_state(task_dir, state))
 
     attempt = int(state["attempt"])
     cycle = int(state["test_cycle"]) + 1
-    if state.get("preflight_verdict") != "PASS" or state.get("preflight_cycle") != cycle:
+    if (
+        state.get("preflight_verdict") != "PASS"
+        or state.get("preflight_cycle") != cycle
+    ):
         raise ValueError("test verdict requires a matching production preflight PASS")
 
     items = acceptance_items(task_dir)
@@ -294,8 +317,12 @@ def apply_test_verdict(task_dir: Path, verdict: str) -> None:
         )
         assert_artifact_test_cycle(implementation_path, cycle)
         assert_artifact_test_cycle(tests_path, cycle)
-        assert_checklist_hash_present(tests_path, str(state["acceptance_checklist_sha256"]))
-        assert_mapping_table(tests_path, "## Acceptance-checklist-to-test mapping", items)
+        assert_checklist_hash_present(
+            tests_path, str(state["acceptance_checklist_sha256"])
+        )
+        assert_mapping_table(
+            tests_path, "## Acceptance-checklist-to-test mapping", items
+        )
         assert_standalone_value(
             tests_path,
             "## Final test verdict",
@@ -327,9 +354,13 @@ def apply_test_verdict(task_dir: Path, verdict: str) -> None:
 def apply_seal_verdict(task_dir: Path, verdict: str) -> None:
     state = load_state(task_dir)
     if not _enforced(state):
-        raise ValueError("candidate seal is available only for schema v5 tasks")
+        raise ValueError(
+            "candidate seal is available only for schema-v5-or-newer tasks"
+        )
     if state.get("phase") != "implementation" or state.get("status") != "in_progress":
-        raise ValueError("a seal verdict is valid only during in-progress implementation")
+        raise ValueError(
+            "a seal verdict is valid only during in-progress implementation"
+        )
     if state.get("test_verdict") != "PASS" or int(state.get("test_cycle", 0)) < 1:
         raise ValueError("candidate seal requires Tester PASS")
     _raise_errors(validate_state(task_dir, state))
@@ -353,7 +384,9 @@ def apply_seal_verdict(task_dir: Path, verdict: str) -> None:
 def apply_return_review(task_dir: Path, action: str, reason: str) -> None:
     state = load_state(task_dir)
     if state.get("phase") != "implementation" or state.get("status") != "in_progress":
-        raise ValueError("return review is valid only during in-progress implementation")
+        raise ValueError(
+            "return review is valid only during in-progress implementation"
+        )
     if not state.get("return_review_required"):
         raise ValueError("return review is not currently required")
     _raise_errors(validate_state(task_dir, state))
@@ -387,7 +420,9 @@ def apply_validation_verdict(task_dir: Path, verdict: str) -> None:
     """Apply a validated artifact verdict; caller performs complete prechecks."""
     state = load_state(task_dir)
     if state.get("phase") != "validation" or state.get("status") != "in_progress":
-        raise ValueError("a Validator verdict is valid only during in-progress validation")
+        raise ValueError(
+            "a Validator verdict is valid only during in-progress validation"
+        )
     _raise_errors(validate_state(task_dir, state))
 
     attempt = int(state["attempt"])
@@ -396,7 +431,9 @@ def apply_validation_verdict(task_dir: Path, verdict: str) -> None:
         if _enforced(state):
             candidate = compute_candidate_fingerprint(task_dir, state)
             if candidate != state.get("sealed_candidate_sha256"):
-                raise ValueError("candidate changed after seal and before Validator PASS")
+                raise ValueError(
+                    "candidate changed after seal and before Validator PASS"
+                )
             if artifact_candidate(task_dir, "validation") != candidate:
                 raise ValueError("validation.md does not identify the sealed candidate")
             state["validation_candidate_sha256"] = candidate
@@ -405,12 +442,16 @@ def apply_validation_verdict(task_dir: Path, verdict: str) -> None:
             state["verdict"] = "VALIDATED"
         else:
             required = tuple(
-                path for path in CORE_REQUIRED_FILES if path not in {"issue.md", "state.toml"}
+                path
+                for path in CORE_REQUIRED_FILES
+                if path not in {"issue.md", "state.toml"}
             )
             if (task_dir / "03-implementation/preflight.md").is_file():
                 required += ("03-implementation/preflight.md",)
             assert_artifacts_ready(task_dir, required, attempt)
-            assert_checklist_hash_present(validation_path, str(state["acceptance_checklist_sha256"]))
+            assert_checklist_hash_present(
+                validation_path, str(state["acceptance_checklist_sha256"])
+            )
             _raise_errors(validation_matrix_errors(task_dir, require_all_pass=True))
             assert_standalone_value(
                 validation_path,
@@ -424,12 +465,16 @@ def apply_validation_verdict(task_dir: Path, verdict: str) -> None:
         if _enforced(state):
             candidate = compute_candidate_fingerprint(task_dir, state)
             if candidate != state.get("sealed_candidate_sha256"):
-                raise ValueError("candidate changed before Validator RETURN was applied")
+                raise ValueError(
+                    "candidate changed before Validator RETURN was applied"
+                )
             if artifact_candidate(task_dir, "validation") != candidate:
                 raise ValueError("validation.md does not identify the sealed candidate")
         else:
             assert_artifacts_ready(task_dir, ("04-validation/validation.md",), attempt)
-            assert_checklist_hash_present(validation_path, str(state["acceptance_checklist_sha256"]))
+            assert_checklist_hash_present(
+                validation_path, str(state["acceptance_checklist_sha256"])
+            )
             _raise_errors(validation_matrix_errors(task_dir, require_all_pass=False))
             assert_standalone_value(
                 validation_path,

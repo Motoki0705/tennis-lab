@@ -261,13 +261,12 @@ COURT_SKELETON: list[tuple[int, int]] = [
 # -----------------------------
 # Court Coordinate Normalization Scales
 # -----------------------------
-# Shared convention for "court-coordinate normalized position" used across tasks:
-#   x_norm = X / HALF_DOUBLES_WIDTH
-#   y_norm = Y / HALF_LENGTH
-#   z_norm = Z / NET_HEIGHT_POST
-COURT_COORD_SCALE_X: float = float(HALF_DOUBLES_WIDTH)
+# The sole normalized-court contract uses the centre-to-baseline distance for
+# every physical axis.  The stable axis names remain public so existing shared
+# consumers follow this breaking numeric change without import-path churn.
+COURT_COORD_SCALE_X: float = float(HALF_LENGTH)
 COURT_COORD_SCALE_Y: float = float(HALF_LENGTH)
-COURT_COORD_SCALE_Z: float = float(NET_HEIGHT_POST)
+COURT_COORD_SCALE_Z: float = float(HALF_LENGTH)
 COURT_COORD_SCALE_XYZ: tuple[float, float, float] = (
     COURT_COORD_SCALE_X,
     COURT_COORD_SCALE_Y,

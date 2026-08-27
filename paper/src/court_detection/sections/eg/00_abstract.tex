@@ -1,0 +1,32 @@
+\begin{abstract}
+Estimating a tennis court from a monocular image is often formulated as dense
+keypoint or line detection.  That formulation is easy to supervise in two
+dimensions, but it also admits a brittle shortcut: a detector can identify
+locally plausible line intersections without recovering the single global
+camera--court geometry that produced them.  Direct supervision of that geometry
+would normally require expensive per-frame camera calibration.
+
+We present \Method, a render-supervised court detector whose training data are
+generated from metrically aligned 3D Gaussian scenes.  A fail-closed alignment
+stage lifts image-line evidence onto an estimated ground plane, fits regulation
+court templates with a shared metric scale, and validates the resulting rigid
+transforms on held-out cameras.  Once this scene-level alignment is accepted,
+controlled three-dimensional camera trajectories can be rendered with exact
+intrinsics, camera-to-canonical-court 6DoF, in-front/in-frame state,
+renderer-supported pixel evidence, and fourteen physically identified court
+keypoints.  Thus the dominant annotation cost moves from
+labeling every rendered image to validating one reusable scene alignment.
+
+The detector combines a positionless global court query with patch-only 2D
+rotary position encoding and lightweight dense decoders.  Its query regresses
+camera translation, a continuous 6D rotation representation, and focal length.
+A padding-aware differentiable keypoint expectation is constrained to agree
+with the projection of the canonical court under that predicted geometry;
+a fixed generated supervision mask and a cheirality penalty prevent the model
+from choosing which residuals remain active.  The resulting objective permits
+local line evidence but penalizes every supervision-eligible keypoint that
+disagrees with one global camera hypothesis.  We provide the full coordinate
+contracts, generation
+algorithm, loss, failure conditions, and a preregistered evaluation protocol
+without attributing unrecorded numerical gains to the method.
+\end{abstract}

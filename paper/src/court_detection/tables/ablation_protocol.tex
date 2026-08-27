@@ -1,0 +1,23 @@
+\begin{table}[t]
+  \centering
+  \caption{Ordered ablation plan.  Every final row is repeated with at least
+  three seeds after pilot hyperparameters are frozen.}
+  \label{tab:ablation_protocol}
+  \small
+  \begin{tabularx}{\linewidth}{@{}p{0.14\linewidth}p{0.24\linewidth}p{0.25\linewidth}X@{}}
+    \toprule
+    Stage & Frozen & Varied & Required output \\
+    \midrule
+    Encoder & Backbone, decoder, direct losses & Task-Transformer depth/width &
+      KP/pose accuracy, variance, parameters, time \\
+    Decoder & Selected encoder, supervision & linear / progressive / DPT,
+      width, taps & Dense accuracy--capacity--speed Pareto \\
+    Supervision & Selected architecture, all direct losses & auxiliary off,
+      both-grad, two stop-gradient directions & Every GT metric, consistency,
+      invalid depth, gradients, memory/time \\
+    Robustness & Selected supervision & coverage/pose strata and local-context
+      diagnostic & Mean and worst-stratum synthetic/real transfer \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+

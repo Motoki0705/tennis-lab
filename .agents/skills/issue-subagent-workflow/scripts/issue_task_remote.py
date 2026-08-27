@@ -14,13 +14,16 @@ from issue_task_candidate import (
     compute_candidate_fingerprint,
     compute_revision_fingerprint,
     current_revision,
-    revision_changed_paths,
+    revision_path_inventory,
 )
 from issue_task_issue import canonical_json_bytes, sha256_bytes
 from issue_task_state import load_state, validate_state, write_state
 
 PR_EVIDENCE_PATH = "05-packaging/pr-evidence.json"
+PR_EVIDENCE_SCHEMA_VERSION = 2
+LEGACY_PR_EVIDENCE_SCHEMA_VERSIONS = (1,)
 _REPO_RE = re.compile(r"^https://github\.com/([^/]+/[^/]+)/issues/\d+(?:$|[/?#])")
+_GIT_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 _PASS_CONCLUSIONS = {"SUCCESS", "NEUTRAL", "SKIPPED"}
 
 
@@ -126,14 +129,15 @@ def _flatten_files(raw: object) -> list[str]:
 
 
 def evidence_digest(payload: dict[str, Any]) -> str:
-    return "sha256:" + sha256_bytes(canonical_json_bytes(payload))
+    digest: str = sha256_bytes(canonical_json_bytes(payload))
+    return "sha256:" + digest
 
 
 def capture_pr_evidence(task_dir: Path, *, pr_number: int) -> None:
     """Query the real PR head, all changed-file pages, and remote checks."""
     state = load_state(task_dir)
     if state.get("candidate_binding_mode") != "ENFORCED":
-        raise ValueError("capture-pr is available only for schema v5 tasks")
+        raise ValueError("capture-pr is available only for schema-v5-or-newer tasks")
     if state.get("phase") != "packaging" or state.get("status") != "validated":
         raise ValueError("capture-pr requires packaging/validated state")
     state_errors = validate_state(task_dir, state)
@@ -150,15 +154,21 @@ def capture_pr_evidence(task_dir: Path, *, pr_number: int) -> None:
         "--repo",
         repo,
         "--json",
-        "number,url,headRefOid,isDraft,state,statusCheckRollup",
+        "number,url,baseRefName,baseRefOid,headRefOid,isDraft,state,statusCheckRollup",
     )
     if not isinstance(metadata, dict):
         raise ValueError("gh pr view returned an unexpected payload")
     remote_number = metadata.get("number")
+    base_ref_name = metadata.get("baseRefName")
+    base_sha = metadata.get("baseRefOid")
     head_sha = metadata.get("headRefOid")
     if remote_number != pr_number:
         raise ValueError("remote PR number does not match capture-pr")
-    if not isinstance(head_sha, str) or re.fullmatch(r"[0-9a-f]{40}", head_sha) is None:
+    if not isinstance(base_ref_name, str) or not base_ref_name:
+        raise ValueError("remote PR base ref name is invalid")
+    if not isinstance(base_sha, str) or _GIT_SHA_RE.fullmatch(base_sha) is None:
+        raise ValueError("remote PR base SHA is invalid")
+    if not isinstance(head_sha, str) or _GIT_SHA_RE.fullmatch(head_sha) is None:
         raise ValueError("remote PR head SHA is invalid")
     if metadata.get("isDraft") is True:
         raise ValueError("final PR must not be draft")
@@ -184,16 +194,20 @@ def capture_pr_evidence(task_dir: Path, *, pr_number: int) -> None:
     revision_candidate = compute_revision_fingerprint(task_dir, state, head_sha)
     if revision_candidate != validated_candidate:
         raise ValueError("remote PR head content differs from the validated candidate")
-    local_files = revision_changed_paths(task_dir, state, head_sha)
+    local_files = revision_path_inventory(task_dir, base_sha, head_sha)
     if files != local_files:
-        raise ValueError("complete paginated PR file list differs from the validated revision")
+        raise ValueError(
+            "complete paginated PR file list differs from the remote PR base revision"
+        )
 
     evidence: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": PR_EVIDENCE_SCHEMA_VERSION,
         "repository": repo,
         "pr_number": pr_number,
         "url": str(metadata.get("url", "")),
         "state": str(metadata.get("state", "")),
+        "base_ref_name": base_ref_name,
+        "base_sha": base_sha,
         "head_sha": head_sha,
         "candidate_sha256": validated_candidate,
         "files": files,
@@ -228,8 +242,18 @@ def load_pr_evidence(task_dir: Path) -> dict[str, Any]:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         raise ValueError(f"{PR_EVIDENCE_PATH} is invalid JSON: {exc}") from exc
-    if not isinstance(payload, dict) or payload.get("schema_version") != 1:
-        raise ValueError(f"{PR_EVIDENCE_PATH} schema_version must be 1")
+    if not isinstance(payload, dict):
+        raise ValueError(f"{PR_EVIDENCE_PATH} must contain a JSON object")
+    schema_version = payload.get("schema_version")
+    if schema_version in LEGACY_PR_EVIDENCE_SCHEMA_VERSIONS:
+        raise ValueError(
+            f"{PR_EVIDENCE_PATH} schema_version {schema_version} does not bind the "
+            "remote PR base; rerun capture-pr"
+        )
+    if schema_version != PR_EVIDENCE_SCHEMA_VERSION:
+        raise ValueError(
+            f"{PR_EVIDENCE_PATH} schema_version must be {PR_EVIDENCE_SCHEMA_VERSION}"
+        )
     return payload
 
 
@@ -245,6 +269,15 @@ def pr_evidence_errors(task_dir: Path, state: dict[str, Any]) -> list[str]:
         errors.append("PR evidence number does not match state")
     if payload.get("head_sha") != state.get("pr_head_sha"):
         errors.append("PR evidence head SHA does not match state")
+    base_ref_name = payload.get("base_ref_name")
+    if not isinstance(base_ref_name, str) or not base_ref_name:
+        errors.append("PR evidence base ref name is invalid")
+    base_sha = payload.get("base_sha")
+    if not isinstance(base_sha, str) or _GIT_SHA_RE.fullmatch(base_sha) is None:
+        errors.append("PR evidence base SHA is invalid")
+    head_sha = payload.get("head_sha")
+    if not isinstance(head_sha, str) or _GIT_SHA_RE.fullmatch(head_sha) is None:
+        errors.append("PR evidence head SHA is invalid")
     if payload.get("candidate_sha256") != state.get("validation_candidate_sha256"):
         errors.append("PR evidence candidate does not match Validator candidate")
     if payload.get("remote_checks_verdict") != "PASS":
@@ -254,6 +287,21 @@ def pr_evidence_errors(task_dir: Path, state: dict[str, Any]) -> list[str]:
     files = payload.get("files")
     if not isinstance(files, list) or any(not isinstance(item, str) for item in files):
         errors.append("PR evidence files must be a string array")
+    elif (
+        isinstance(base_sha, str)
+        and _GIT_SHA_RE.fullmatch(base_sha) is not None
+        and isinstance(head_sha, str)
+        and _GIT_SHA_RE.fullmatch(head_sha) is not None
+    ):
+        try:
+            expected_files = revision_path_inventory(task_dir, base_sha, head_sha)
+        except ValueError as exc:
+            errors.append(str(exc))
+        else:
+            if files != expected_files:
+                errors.append(
+                    "PR evidence files differ from the recorded PR base revision"
+                )
     checks = payload.get("checks")
     if not isinstance(checks, list) or not checks:
         errors.append("PR evidence must contain remote checks")

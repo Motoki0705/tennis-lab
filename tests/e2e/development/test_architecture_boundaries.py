@@ -46,6 +46,9 @@ REMOVED_MODULES = (
     "src.tennis_scene.io",
     "src.tennis_scene.utils",
     "src.tennis_scene.utils.transforms",
+    "src.utils.configuration.exemption_data",
+    "src.utils.configuration.migration_data",
+    "src.utils.configuration.source_oracle",
     "src.utils.configuration.validation",
 )
 PROHIBITED_SYMBOLS = frozenset(
@@ -168,6 +171,16 @@ EXPECTED_DIRECT_FORWARD_VALIDATION_BOUNDARIES = {
         "Python raise",
     ): 1,
     (
+        "src.tasks.blcs.models.blcs_track_query_ablation_model."
+        "BLCSTrackQueryAblationModel.build_spatial_coordinates",
+        "Python raise",
+    ): 2,
+    (
+        "src.tasks.plcs.models.plcs_track_query_ablation_model."
+        "PLCSTrackQueryAblationModel.build_spatial_coordinates",
+        "Python raise",
+    ): 2,
+    (
         "src.tasks.plcs.models.plcs_track_query_model."
         "PLCSTrackQueryModel.build_spatial_coordinates",
         "Python raise",
@@ -187,6 +200,11 @@ EXPECTED_DIRECT_FORWARD_VALIDATION_BOUNDARIES = {
         "TransformerSequenceDiscriminator.forward",
         "runtime implementation/type selection via isinstance",
     ): 2,
+    (
+        "src.utils.models.components.fixed_query_track_ablation_stage."
+        "FixedQueryTrackAblationStage.forward",
+        "Python raise",
+    ): 1,
 }
 BLCS_SINGLE_VIEW_MASK_PATH = (
     "src.tasks.blcs.models.blcs_model.BLCSModel.forward",
@@ -238,6 +256,24 @@ BLCS_FIXED_QUERY_MASK_PATH = (
     "src.tasks.blcs.models.blcs_track_query_model.BLCSTrackQueryModel.forward",
     "src.utils.models.multiview_padding.build_fixed_query_padding_masks",
 )
+BLCS_ABLATION_FORWARD = (
+    "src.tasks.blcs.models.blcs_track_query_ablation_model."
+    "BLCSTrackQueryAblationModel.forward"
+)
+BLCS_ABLATION_SPATIAL_COORDINATE_VALIDATION_PATH = (
+    BLCS_ABLATION_FORWARD,
+    "src.tasks.blcs.models.blcs_track_query_ablation_model."
+    "BLCSTrackQueryAblationModel.build_spatial_coordinates",
+)
+BLCS_ABLATION_COMPRESSED_SPATIAL_MASK_PATH = (
+    BLCS_ABLATION_FORWARD,
+    "src.utils.models.multiview_padding."
+    "build_compressed_spatial_attention_keep_mask",
+)
+BLCS_ABLATION_FIXED_QUERY_MASK_PATH = (
+    BLCS_ABLATION_FORWARD,
+    "src.utils.models.multiview_padding.build_fixed_query_padding_masks",
+)
 PLCS_SPATIAL_COORDINATE_VALIDATION_PATH = (
     "src.tasks.plcs.models.plcs_track_query_model.PLCSTrackQueryModel.forward",
     "src.tasks.plcs.models.plcs_track_query_model."
@@ -245,6 +281,24 @@ PLCS_SPATIAL_COORDINATE_VALIDATION_PATH = (
 )
 PLCS_FIXED_QUERY_MASK_PATH = (
     "src.tasks.plcs.models.plcs_track_query_model.PLCSTrackQueryModel.forward",
+    "src.utils.models.multiview_padding.build_fixed_query_padding_masks",
+)
+PLCS_ABLATION_FORWARD = (
+    "src.tasks.plcs.models.plcs_track_query_ablation_model."
+    "PLCSTrackQueryAblationModel.forward"
+)
+PLCS_ABLATION_SPATIAL_COORDINATE_VALIDATION_PATH = (
+    PLCS_ABLATION_FORWARD,
+    "src.tasks.plcs.models.plcs_track_query_ablation_model."
+    "PLCSTrackQueryAblationModel.build_spatial_coordinates",
+)
+PLCS_ABLATION_COMPRESSED_SPATIAL_MASK_PATH = (
+    PLCS_ABLATION_FORWARD,
+    "src.utils.models.multiview_padding."
+    "build_compressed_spatial_attention_keep_mask",
+)
+PLCS_ABLATION_FIXED_QUERY_MASK_PATH = (
+    PLCS_ABLATION_FORWARD,
     "src.utils.models.multiview_padding.build_fixed_query_padding_masks",
 )
 SLCS_MASK_PATH = (
@@ -283,6 +337,10 @@ COURT_TRANSFORMER_PATCH_VALIDATION_PATH = (
 COURT_TRANSFORMER_PATCH_POSITIONS_PATH = (
     *COURT_TRANSFORMER_PATH,
     "src.tasks.court_detection.models.transformer_encoder.build_patch_positions",
+)
+FIXED_QUERY_TRACK_ABLATION_STAGE_PATH = (
+    "src.utils.models.components.fixed_query_track_ablation_stage."
+    "FixedQueryTrackAblationStage.forward",
 )
 EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES_BY_PATH = {
     BLCS_SINGLE_VIEW_MASK_PATH: {
@@ -342,8 +400,30 @@ EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES_BY_PATH = {
         "runtime implementation/type selection via isinstance": 1,
         "runtime implementation/type selection via type": 1,
     },
+    BLCS_ABLATION_SPATIAL_COORDINATE_VALIDATION_PATH: {"Python raise": 2},
+    BLCS_ABLATION_COMPRESSED_SPATIAL_MASK_PATH: {
+        "Python raise": 1,
+        "Python shape/value validation branch": 1,
+    },
+    BLCS_ABLATION_FIXED_QUERY_MASK_PATH: {
+        "Python raise": 6,
+        "Python shape/value validation branch": 4,
+        "runtime implementation/type selection via isinstance": 1,
+        "runtime implementation/type selection via type": 1,
+    },
     PLCS_SPATIAL_COORDINATE_VALIDATION_PATH: {"Python raise": 1},
     PLCS_FIXED_QUERY_MASK_PATH: {
+        "Python raise": 6,
+        "Python shape/value validation branch": 4,
+        "runtime implementation/type selection via isinstance": 1,
+        "runtime implementation/type selection via type": 1,
+    },
+    PLCS_ABLATION_SPATIAL_COORDINATE_VALIDATION_PATH: {"Python raise": 2},
+    PLCS_ABLATION_COMPRESSED_SPATIAL_MASK_PATH: {
+        "Python raise": 1,
+        "Python shape/value validation branch": 1,
+    },
+    PLCS_ABLATION_FIXED_QUERY_MASK_PATH: {
         "Python raise": 6,
         "Python shape/value validation branch": 4,
         "runtime implementation/type selection via isinstance": 1,
@@ -388,6 +468,7 @@ EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES_BY_PATH = {
         "Python shape/value validation branch": 1,
         "runtime implementation/type selection via type": 2,
     },
+    FIXED_QUERY_TRACK_ABLATION_STAGE_PATH: {"Python raise": 1},
 }
 EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES = {
     (call_path, violation): count
@@ -1202,7 +1283,9 @@ def test_transitive_forward_inventory_keeps_shared_helper_roots_distinct() -> No
     }
 
     assert discovered == {
+        BLCS_ABLATION_FIXED_QUERY_MASK_PATH,
         BLCS_FIXED_QUERY_MASK_PATH,
+        PLCS_ABLATION_FIXED_QUERY_MASK_PATH,
         PLCS_FIXED_QUERY_MASK_PATH,
     }
 

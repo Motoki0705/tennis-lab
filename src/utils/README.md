@@ -19,7 +19,7 @@
 - **`paths.py` / `schema.py` / `contracts.py`**: `PathRole`・`PathResolver`・`RuntimePathRoots`、strict schema、typed adapter inspection の正本。設定値や path role の暗黙補完は行わない。
 - **`discovery.py`**: runtime boundary を source-only に列挙する下位 discovery の唯一の実装。`catalog.py` と `audit.py` はこの module を一方向に参照する。
 - **`catalog.py`**: source declaration と runtime boundary を結び付けた inspectable contract catalog の唯一の import path。
-- **`audit.py` / `inventory.py`**: repository-owned source の configuration/path route と runtime boundary を検査する library API。運用 entrypoint は root の `scripts/audit_configuration.py` のみ。
+- **`audit.py` / `inventory.py`**: 現在の repository-owned source から configuration/path の禁止パターンを直接検査し、明示的な runtime boundary 契約と照合する library API。行番号依存の migration/exemption snapshot は保持しない。運用 entrypoint は root の `scripts/audit_configuration.py` のみ。
 
 ### `data/`
 - **`heatmaps.py`**: Gaussian heatmap 生成と、argmax / soft-argmax / peaks / pixel coordinates への復号、`resize_heatmap_sequence()` による (B,T,H,W) の bilinear リサイズ。
@@ -58,8 +58,25 @@
 - **`minimap.py`**: plain NumPy 配列（現在位置 dots・トレイル・イベント位置）を受け取るトップダウンミニマップ `MinimapRenderer` / `MinimapStyle`。配列の切り出し・色の意味付けは呼び出し側。
 
 ### `schema/`
-- **`court.py`**: コート寸法、`CourtConfig`、20 点 court keypoints、court skeleton、正規化スケール定数、`net_height_at_x()`。
+- **`court.py`**: 物理コート寸法、唯一の固定 `COURT_COORD_SCALE_*`、`CourtConfig`、20 点 court keypoints、court skeleton、`net_height_at_x()`。
+- **`court_normalization.py`**: 固定scaleを使うshape-safeなposition / velocity変換とcontract identity。
 - **`player.py`**: COCO-17 / SMPL / SMPL-H の keypoint 名、index、skeleton、角度計算用 group、SMPLH-to-COCO 対応。
+
+#### Court coordinate normalization contract
+
+`court.py` の `COURT_COORD_SCALE_X/Y/Z/XYZ` が唯一の数値正本です。
+`S = HALF_LENGTH = 11.885 m`、`scale_xyz = (S, S, S)` とし、
+`court_normalization.py` のhelperがこの値だけを使用します。position は
+`position_norm = position_m / scale_xyz`、velocity は
+`velocity_norm = velocity_mps / scale_xyz` で表現します。
+逆変換は同じ `scale_xyz` を掛けます。物理コート寸法、軸、原点、metre単位の
+world座標、およびPLCSのroot-relative `canonical_pose_3d`は変更しません。
+
+normalized BLCS/PLCS sceneとcheckpointは
+`court_coordinate_normalization` metadataを必須とします。この変更より前のartifact、
+metadata欠落、不明なidentity、scale/単位不一致はload/resume/evaluation/inference前に
+明示的なerrorとなります。自動推測・自動変換は行わないため、normalized datasetは
+再生成し、checkpointは新契約で再学習してください。
 
 ### `video/`
 - **`reader.py`**: OpenCV ベースの `probe_video_info()`、単フレーム読み出し、`OpenCVVideoFrameReader`、一括 RGB 読み出し `read_video_rgb()`、smart-seek 付きランダムアクセス `RandomAccessVideoReader`。
@@ -75,11 +92,11 @@
 
 ### `models/`
 - **`__init__.py`**: `__all__`に列挙した高頻度model primitiveのcanonical public API。列挙外の専門APIは責務別sub-packageが公開元となる。
-- **`components/`**: Transformer の基本部品。attention、RoPE、FFN、MoE、norm、`TransformerBlock`、`CrossAttnBlock` に加え、fixed-query multi-view modelで共有するmHC object-temporal → global spatial → query-temporalの`FixedQueryTrackStage`がここにある。attention forwardはboundaryで検証済みのsame-device `(B,Q,K)` maskと、`RotaryFrequencyComputer`がconstructor時に固定した`(...,T,1,D/2)` complex RoPEだけを受け取り、rank/dtype/device補完や実装選択を行わない。
+- **`components/`**: Transformer の基本部品。attention、RoPE、FFN、MoE、norm、`TransformerBlock`、`CrossAttnBlock` に加え、fixed-query multi-view modelで共有するmHC object-temporal → global spatial → query-temporalの`FixedQueryTrackStage`がここにある。ablation専用の`FixedQueryTrackAblationStage`は既存stageを変更せず、`ffn_mode=per_attention|shared`と`mhc_writeback=after_object_temporal|layer_end`を必須にする。前者はAttentionごとの3個のSwiGLUまたはstage末尾の共有SwiGLU 1個、後者はspatial幅`Q+V×P`または`Q+V`を選ぶ。BLCS Eだけが`query_ffn_after_spatial=true`を指定し、shared/layer-end構成のspatial後・query-temporal前へquery-only SwiGLUを追加する。attention forwardはboundaryで検証済みのsame-device `(B,Q,K)` maskと、`RotaryFrequencyComputer`がconstructor時に固定した`(...,T,1,D/2)` complex RoPEだけを受け取り、rank/dtype/device補完や実装選択を行わない。
 - **`components/ops/`**: MoE と time-local attention の CUDA / reference 実装、autograd bridge、extension loader/build。MoE backend/capacity policyは`MoELayer` constructorで固定し、time-localは`layout` boundaryがempty-row policyを含むmaskを準備した後、`resolve_time_local_attention()`がbackendとwindow radiusをtensor実行前に一度だけ固定する。
 - **`embeddings/`**: court / player / ball の埋め込みとgroup token系の構成要素。`CourtBallGroupEmbedding` / `CourtPlayerGroupEmbedding`はcourtとobject観測を1 object = 1 tokenへ写像し、呼び出し側のobject ID順を変えずにtoken軸へ保持する。入力はadapterで検証済みの構造化shape（court/playerは末尾`(K,2)`、ballは末尾`2`、visibilityはleading shape）に統一し、flattened旧variantやrank補完は受け付けない。
 - **`loading/`**: DINOv3 backbone 読み込み、LoRA 適用、trainability 切り替え。dynamic `forward_features` responseはmodel forward内で検査せず、外部model-I/O boundaryの`require_dinov3_patch_tokens()`が型・key・shapeを検証する。
-- **`multiview_padding.py`**: `padding_mask[B,V,T]`（`True=padding`、viewごとに異なる非矩形padding可）からfixed-Q model用のcontext/frame/state validityとdense attention keep-mask（`True=keep`）を一意に構築する。
+- **`multiview_padding.py`**: `padding_mask[B,V,T]`（`True=padding`、viewごとに異なる非矩形padding可）からfixed-Q model用のcontext/frame/state validityとdense attention keep-mask（`True=keep`）を一意に構築する。delayed mHC writeback用の`build_compressed_spatial_attention_keep_mask()`も同じpadding-only validityとtoken-0 repairで`Q+V` maskを構築する。
 - **`architectures/`**: 現状は `TransformerSequenceDiscriminator` を配置。公開forwardは`sequence[B,T,F]`と`padding_mask[B,T]`（`True=padding`）だけを受け、invalid-token置換、CLS validity、dense attention keep-maskを内部で構築する。
 - **`blocks.py`**: `DepthwiseSeparableConv2d` と `Conv2dWiseWiseBlock`。CNN 系の共通ブロック。
 - **`heads.py`**: `MLPHead`。

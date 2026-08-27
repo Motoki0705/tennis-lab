@@ -73,28 +73,27 @@ def test_private_gateway_advertises_flexible_execution_plane_tools(
     headers = {
         "Accept": "application/json, text/event-stream",
         "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
+        "Mcp-Method": "tools/list",
     }
 
     with TestClient(app, base_url="http://127.0.0.1:8767") as client:
-        initialize = client.post(
+        tools = client.post(
             "/mcp",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
-                "method": "initialize",
+                "method": "tools/list",
                 "params": {
-                    "protocolVersion": LATEST_PROTOCOL_VERSION,
-                    "capabilities": {},
-                    "clientInfo": {"name": "pytest", "version": "1"},
+                    "_meta": {
+                        "io.modelcontextprotocol/protocolVersion": LATEST_PROTOCOL_VERSION,
+                        "io.modelcontextprotocol/clientInfo": {
+                            "name": "pytest",
+                            "version": "1",
+                        },
+                        "io.modelcontextprotocol/clientCapabilities": {},
+                    }
                 },
             },
-            headers=headers,
-        )
-        assert initialize.status_code == 200, initialize.text
-
-        tools = client.post(
-            "/mcp",
-            json={"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
             headers=headers,
         )
         assert tools.status_code == 200, tools.text

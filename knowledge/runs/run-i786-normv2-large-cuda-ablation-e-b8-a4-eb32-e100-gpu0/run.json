@@ -1,0 +1,14 @@
+{
+  "run_id": "1787544230191286318_1839923_i786_normv2_large_cuda_ablation_e_b8_a4_eb32_e100_gpu0",
+  "name": "i786_normv2_large_cuda_ablation_e_b8_a4_eb32_e100_gpu0",
+  "command": "CUDA_VISIBLE_DEVICES=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.venv/bin/python -c 'import atexit,runpy,torch; atexit.register(lambda: print(\"TRAIN_PEAK_CUDA_ALLOCATED_BYTES=\"+str(torch.cuda.max_memory_allocated())+\" TRAIN_PEAK_CUDA_RESERVED_BYTES=\"+str(torch.cuda.max_memory_reserved()))); runpy.run_module(\"src.tasks.blcs.scripts.train\",run_name=\"__main__\")' --config-name train_tracking court_coordinate_normalization=v2 model=track_query_ablation_e paths.data_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-ablation-v2-cuda/data data.scene_dir=blcs/multi_object_norm_v2 data.seq_len_range=[128,128] data.num_views_range=[4,4] data.batch_size=8 data.num_workers=16 training.compile.enabled=false training.trainer.accumulate_grad_batches=4 training.trainer.max_epochs=100 training.trainer.check_val_every_n_epoch=5 training.trainer.enable_progress_bar=false training.trainer.enable_model_summary=false training.early_stopping.enabled=false run.fast_dev_run=false run.test_after_fit=true run.output_dir=blcs/norm-v2/issue-786/t128-v4/ablation-e-large-cuda-eb32",
+  "provider": "codex",
+  "session": "01a02e2e-b46e-7fc2-9a24-831f51144889",
+  "issue": "786",
+  "commit": "5169be60cee3a10c67f77380d296e2677097ad65",
+  "branch": "exp/issue-786-track-query-ablation-v2-cuda",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-ablation-v2-cuda",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-786-ablation-v2-cuda",
+  "captured_at": "2026-08-24T13:03:55+09:00"
+}

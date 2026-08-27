@@ -1,0 +1,97 @@
+% Self-contained bilingual preamble.  The English entrypoint uses pdfLaTeX;
+% the Japanese entrypoint uses LuaLaTeX with LuaTeX-ja.
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{lmodern}
+  \usepackage{microtype}
+\else
+  \ifLuaTeX
+    \usepackage{luatexja-fontspec}
+  \else
+    \PackageError{court-detection-paper}
+      {Unsupported TeX engine}
+      {Use pdfLaTeX for main.tex or LuaLaTeX for main_jp.tex.}
+  \fi
+\fi
+\usepackage[margin=0.83in]{geometry}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{xspace}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,fit,backgrounds,shapes.geometric}
+
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[colorlinks=true,
+            linkcolor=black,
+            citecolor=blue!60!black,
+            urlcolor=blue!60!black]{hyperref}
+\usepackage[nameinlink,capitalise]{cleveref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.08}
+
+% Shared palette for all repository-native vector figures.
+\definecolor{courtgreen}{HTML}{2E7D5B}
+\definecolor{gsblue}{HTML}{2F6FA5}
+\definecolor{poseorange}{HTML}{D9772B}
+\definecolor{lossred}{HTML}{B94A48}
+\definecolor{softgray}{HTML}{F0F2F4}
+
+% Generic TikZ styles; figures may add local styles without redefining colors.
+\tikzset{
+  block/.style={draw, rounded corners=2pt, align=center, fill=softgray,
+    minimum height=7mm, inner sep=4pt},
+  data/.style={block, draw=gsblue, fill=gsblue!10},
+  geometry/.style={block, draw=courtgreen, fill=courtgreen!10},
+  model/.style={block, draw=poseorange, fill=poseorange!10},
+  objective/.style={block, draw=lossred, fill=lossred!10},
+  flow/.style={-{Latex[length=2.2mm]}, semithick},
+  supervision/.style={-{Latex[length=2.2mm]}, semithick, dashed, draw=lossred}
+}
+
+% Notation. T^{b<-a} maps coordinates expressed in frame a into frame b.
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\SEthree}{\mathrm{SE}(3)}
+\newcommand{\SOthree}{\mathrm{SO}(3)}
+\newcommand{\T}[2]{\mathbf{T}^{#1\leftarrow #2}}
+\newcommand{\Rot}[2]{\mathbf{R}^{#1\leftarrow #2}}
+\newcommand{\trans}[2]{\mathbf{t}^{#1\leftarrow #2}}
+\newcommand{\Scene}{\mathcal{S}}
+\newcommand{\Court}{\mathcal{C}}
+\newcommand{\Canon}{\mathcal{N}}
+\newcommand{\Cam}{\mathcal{V}}
+\newcommand{\Kmat}{\mathbf{K}}
+\newcommand{\point}[1]{\mathbf{x}_{#1}}
+\newcommand{\pixel}[1]{\mathbf{u}_{#1}}
+\newcommand{\Method}{\textsc{RSG-Court}\xspace}
+\newcommand{\KP}{\textsc{KP14}\xspace}
+\newcommand{\DINO}{\textsc{DINOv3}\xspace}
+\newcommand{\NHT}{\textsc{NHT}\xspace}
+\newcommand{\ie}{i.e.,\ }
+\newcommand{\eg}{e.g.,\ }
+\newcommand{\etal}{et al.}
+
+\newcommand{\statusimplemented}{\textcolor{courtgreen}{\textsc{implemented}}}
+\newcommand{\statusspecified}{\textcolor{poseorange}{\textsc{specified}}}
+\newcommand{\statusprotocol}{\textcolor{poseorange}{\textsc{protocol}}}
+\newcommand{\statushistorical}{\textcolor{gsblue}{\textsc{historical}}}
+
+\crefname{equation}{Eq.}{Eqs.}
+\crefname{figure}{Fig.}{Figs.}
+\crefname{table}{Table}{Tables}
+\crefname{section}{Sec.}{Secs.}

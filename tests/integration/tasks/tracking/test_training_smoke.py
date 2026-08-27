@@ -16,6 +16,9 @@ from src.tasks.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter
 from src.tasks.blcs.generate_dataset.scene_generator import BLCSSceneData
 from src.tasks.blcs.generate_dataset.scene_generator import CameraData as BLCSCameraData
 from src.tasks.blcs.model_io import compose_blcs_track_query_model_io
+from src.tasks.blcs.models.components.differentiable_projection import (
+    DifferentiableProjection,
+)
 from src.tasks.blcs.training.tracking_lightning_module import (
     BLCSTrackingLightningModule,
 )
@@ -25,6 +28,12 @@ from src.tasks.plcs.generate_dataset.scene_generator import CameraData as PLCSCa
 from src.tasks.plcs.generate_dataset.scene_generator import SceneData
 from src.tasks.plcs.training.tracking_lightning_module import (
     PLCSTrackingLightningModule,
+)
+from src.utils.schema.court_normalization import (
+    denormalize_court_position,
+    denormalize_court_velocity,
+    normalize_court_position,
+    normalize_court_velocity,
 )
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
@@ -43,7 +52,10 @@ def _materialize_blcs(root: Path) -> None:
             scene_id = f"scene_{split}_{index:03d}"
             names[split].append(scene_id)
             frames, objects, cameras = 8, 3, 2
-            positions = torch.rand(frames, objects, 3) + split_index / 100.0
+            positions_m = (
+                torch.rand(frames, objects, 3) * 4.0 - 2.0 + split_index / 100.0
+            )
+            velocities_mps = torch.full_like(positions_m, 3.0)
             camera_rows = [
                 BLCSCameraData(
                     camera_params={
@@ -75,9 +87,10 @@ def _materialize_blcs(root: Path) -> None:
                     end_reason="test",
                     winner_side=None,
                     shots=[],
-                    ball_pos_world=positions,
-                    ball_pos_norm=positions,
-                    ball_vel_world=torch.zeros_like(positions),
+                    ball_pos_world=positions_m,
+                    ball_pos_norm=normalize_court_position(positions_m),
+                    ball_vel_world=velocities_mps,
+                    ball_vel_norm=normalize_court_velocity(velocities_mps),
                     cameras=camera_rows,
                     num_cameras_sampled=cameras,
                     fps_out=30,
@@ -99,8 +112,12 @@ def _materialize_plcs(root: Path) -> None:
             scene_id = f"scene_{split}_{index:03d}"
             names[split].append(scene_id)
             frames, objects, cameras = 8, 3, 2
-            position = np.random.default_rng(index).random(
-                (frames, objects, 3), dtype=np.float32
+            position_m = (
+                np.random.default_rng(index).random(
+                    (frames, objects, 3), dtype=np.float32
+                )
+                * 4.0
+                - 2.0
             )
             rotation: np.ndarray = np.zeros((frames, objects, 2), dtype=np.float32)
             rotation[..., 0] = 1.0
@@ -139,7 +156,7 @@ def _materialize_plcs(root: Path) -> None:
                         "initial_yaw": 0.0,
                         "num_cameras_sampled": cameras,
                     },
-                    position=position + split_index / 100.0,
+                    position=normalize_court_position(position_m + split_index / 100.0),
                     rotation=rotation,
                     canonical_pose_3d=np.zeros(
                         (frames, objects, 17, 3), dtype=np.float32
@@ -243,6 +260,39 @@ def test_tracking_task_runs_one_training_and_validation_step(
             "court_vis",
             "padding_mask",
         }
+    step = lightning_module.compute_tracking_step(
+        first_batch,
+        compute_metrics=True,
+    )
+    assert torch.isfinite(step.losses["total"])
+    assert step.metrics
+    if task == "blcs":
+        physical_prediction = denormalize_court_position(step.prediction.position)
+        recovered_velocity = denormalize_court_velocity(first_batch["target_velocity"])
+        torch.testing.assert_close(
+            recovered_velocity[first_batch["target_presence"]],
+            torch.full_like(recovered_velocity[first_batch["target_presence"]], 3.0),
+            atol=1e-5,
+            rtol=0.0,
+        )
+        projector = DifferentiableProjection()
+        batch_size, frames = physical_prediction.shape[:2]
+        scalar = torch.ones(batch_size, 1)
+        uv, in_front = projector(
+            step.prediction.position[:, :, 0],
+            torch.eye(3).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1),
+            torch.tensor([0.0, 0.0, -30.0]).view(1, 1, 3).expand(batch_size, -1, -1),
+            scalar,
+            scalar * 0.5,
+            scalar * 0.5,
+            scalar,
+            scalar,
+        )
+        assert uv.shape == (batch_size, 1, frames, 2)
+        assert in_front.all()
+    else:
+        physical_prediction = denormalize_court_position(step.prediction["position"])
+    assert torch.isfinite(physical_prediction).all()
     trainer = pl.Trainer(
         max_steps=1,
         limit_train_batches=1,

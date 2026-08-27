@@ -6,6 +6,9 @@ import pytest
 import torch
 
 from src.utils.models import build_fixed_query_padding_masks
+from src.utils.models.multiview_padding import (
+    build_compressed_spatial_attention_keep_mask,
+)
 
 
 def _expected_dense_keep_mask(valid: torch.Tensor) -> torch.Tensor:
@@ -86,6 +89,40 @@ def test_outputs_retain_padding_mask_device_and_boolean_dtype() -> None:
     ):
         assert value.dtype == torch.bool
         assert value.device == padding_mask.device
+
+
+def test_compressed_spatial_mask_uses_exact_q_plus_v_width() -> None:
+    padding_mask = torch.tensor(
+        [[[False, True, True], [True, False, True], [True, True, True]]]
+    )
+
+    keep_mask = build_compressed_spatial_attention_keep_mask(
+        padding_mask,
+        num_queries=4,
+    )
+
+    assert keep_mask.shape == (3, 7, 7)
+    expected_valid = torch.tensor(
+        [
+            [True, True, True, True, True, False, False],
+            [True, True, True, True, False, True, False],
+            [False, False, False, False, False, False, False],
+        ]
+    )
+    assert torch.equal(keep_mask, _expected_dense_keep_mask(expected_valid))
+
+
+def test_compressed_spatial_mask_repairs_only_all_padding_attention_rows() -> None:
+    padding_mask = torch.ones(2, 3, 2, dtype=torch.bool)
+
+    keep_mask = build_compressed_spatial_attention_keep_mask(
+        padding_mask,
+        num_queries=4,
+    )
+
+    assert keep_mask.shape == (4, 7, 7)
+    assert keep_mask[..., 0].all()
+    assert not keep_mask[..., 1:].any()
 
 
 @pytest.mark.parametrize(

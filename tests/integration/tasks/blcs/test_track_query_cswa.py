@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -14,18 +15,25 @@ from src.tasks.blcs.models import BLCSTrackQueryModel
 _CONFIG_DIR = Path("src/tasks/blcs/configs").resolve()
 
 
-def _config(*, backend: str = "reference") -> object:
+def _config(
+    *,
+    backend: str = "reference",
+    hidden_dim: int = 16,
+    ffn_dim: int = 32,
+    rope_dim: int = 4,
+    compression_ratio: int = 2,
+) -> object:
     overrides = [
-        "model.hidden_dim=16",
+        f"model.hidden_dim={hidden_dim}",
         "model.num_heads=4",
-        "model.ffn_dim=32",
-        "model.rope_dim=4",
+        f"model.ffn_dim={ffn_dim}",
+        f"model.rope_dim={rope_dim}",
         "model.num_queries=2",
         "model.num_stages=4",
         "model.dropout=0.0",
         "model.mhc.coefficient_dim=8",
         "model.mhc.sinkhorn_iters=5",
-        "model.cswa.compression_ratio=2",
+        f"model.cswa.compression_ratio={compression_ratio}",
         "model.cswa.window_radius=1",
         f"model.cswa.backend={backend}",
     ]
@@ -63,6 +71,75 @@ def test_hybrid_candidate_runs_cpu_forward_backward_and_preserves_outputs() -> N
     ]
     assert gradients
     assert all(torch.isfinite(gradient).all() for gradient in gradients)
+
+
+@pytest.mark.cuda
+@pytest.mark.skipif(
+    os.environ.get("TENNIS_LAB_RUN_CUDA_TESTS") != "1" or not torch.cuda.is_available(),
+    reason="CUDA integration tests require TENNIS_LAB_RUN_CUDA_TESTS=1 and CUDA",
+)
+def test_cuda_default_width_matches_reference_forward_backward() -> None:
+    torch.manual_seed(753)
+    config_kwargs = {
+        "hidden_dim": 64,
+        "ffn_dim": 128,
+        "rope_dim": 16,
+        "compression_ratio": 4,
+    }
+    reference_model = compose_blcs_track_query_model_io(
+        _config(backend="reference", **config_kwargs)
+    ).model.cuda().eval()
+    cuda_model = compose_blcs_track_query_model_io(
+        _config(backend="cuda", **config_kwargs)
+    ).model.cuda().eval()
+    cuda_model.load_state_dict(reference_model.state_dict(), strict=True)
+    batch = _batch()
+    reference_ball_uv = batch["ball_uv"].cuda().requires_grad_(True)
+    cuda_ball_uv = reference_ball_uv.detach().clone().requires_grad_(True)
+    reference_court_kp = batch["court_kp"].cuda().requires_grad_(True)
+    cuda_court_kp = reference_court_kp.detach().clone().requires_grad_(True)
+    ball_vis = batch["ball_vis"].cuda()
+    court_vis = batch["court_vis"].cuda()
+    padding_mask = batch["padding_mask"].cuda()
+
+    expected = reference_model(
+        reference_ball_uv,
+        ball_vis,
+        reference_court_kp,
+        court_vis,
+        padding_mask,
+    )
+    actual = cuda_model(
+        cuda_ball_uv,
+        ball_vis,
+        cuda_court_kp,
+        court_vis,
+        padding_mask,
+    )
+    position_upstream = torch.randn_like(expected["position"])
+    presence_upstream = torch.randn_like(expected["presence_logits"])
+    expected_gradients = torch.autograd.grad(
+        (expected["position"], expected["presence_logits"]),
+        (reference_ball_uv, reference_court_kp),
+        (position_upstream, presence_upstream),
+    )
+    actual_gradients = torch.autograd.grad(
+        (actual["position"], actual["presence_logits"]),
+        (cuda_ball_uv, cuda_court_kp),
+        (position_upstream, presence_upstream),
+    )
+
+    for name in ("position", "presence_logits"):
+        torch.testing.assert_close(actual[name], expected[name], atol=5e-4, rtol=5e-4)
+    for actual_gradient, expected_gradient in zip(
+        actual_gradients, expected_gradients, strict=True
+    ):
+        torch.testing.assert_close(
+            actual_gradient,
+            expected_gradient,
+            atol=5e-4,
+            rtol=5e-4,
+        )
 
 
 def test_old_track_query_state_dict_is_intentionally_strictly_incompatible() -> None:

@@ -66,3 +66,15 @@ def test_predict_returns_typed_cpu_trajectory_decode() -> None:
     torch.testing.assert_close(prediction.velocity, torch.full((1, 3, 3), 2.0))
     assert prediction.position.device.type == "cpu"
     assert prediction.velocity.device.type == "cpu"
+
+    physical = predictor.predict(
+        ball_uv=torch.zeros(1, 3, 2),
+        court_kp=torch.zeros(1, 14, 2),
+        ball_vis=torch.ones(1, 3, dtype=torch.bool),
+        padding_mask=torch.zeros(1, 3, dtype=torch.bool),
+        court_vis=torch.ones(1, 14, dtype=torch.bool),
+        denormalize=True,
+    )
+    torch.testing.assert_close(physical.position, torch.full((1, 3, 3), 11.885))
+    assert physical.velocity is not None
+    torch.testing.assert_close(physical.velocity, torch.full((1, 3, 3), 23.77))

@@ -16,6 +16,9 @@ from src.tasks.base.data.scene_dataset import (
 )
 from src.tasks.blcs.data.augmentation import BLCSBallObservationAugmentation
 from src.tasks.blcs.data.types import BLCSMultiViewBatch, BLCSMultiViewSample
+from src.utils.schema.court_normalization import (
+    validate_court_coordinate_normalization,
+)
 
 
 class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
@@ -84,6 +87,9 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
             min_num_cameras=self.num_views_range[0],
         )
 
+    def _validate_scene_metadata(self, meta: dict, *, path: Path) -> None:
+        validate_court_coordinate_normalization(meta, artifact=f"Scene {path}")
+
     def build_sample(self, scene: Scene) -> BLCSMultiViewSample:
         cams = self.select_cameras(
             scene, num_views_range=self.num_views_range, camera_mode=self.camera_mode
@@ -91,7 +97,7 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
         # Use camera trajectory length to guard against metadata drift.
         primary_len = int(scene.get_camera_array(cams.primary, "ball_uv").shape[0])
         pos_len = int(scene.data["ball_pos_norm"].shape[0])
-        vel_len = int(scene.data["ball_vel_world"].shape[0])
+        vel_len = int(scene.data["ball_vel_norm"].shape[0])
         full_len = scene.effective_num_frames(primary_len, pos_len, vel_len)
         window = self.select_window(scene, full_len=full_len)
         ball_uv_list: list[Tensor] = []
@@ -155,7 +161,7 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
                 scene.get_array("ball_pos_norm", window=window)
             ).float(),
             "velocity_3d": torch.from_numpy(
-                scene.get_array("ball_vel_world", window=window)
+                scene.get_array("ball_vel_norm", window=window)
             ).float(),
             "seq_len": torch.tensor(window.seq_len, dtype=torch.long),
             "camera_R": torch.stack(cam_R_list, dim=0),

@@ -275,6 +275,27 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "cswa",
         }
     ),
+    "plcs_track_query_ablation": frozenset(
+        {
+            "name",
+            "hidden_dim",
+            "num_heads",
+            "ffn_dim",
+            "num_queries",
+            "num_stages",
+            "num_joints",
+            "rope_dim",
+            "rope_theta",
+            "ffn_type",
+            "dropout",
+            "role_rope_enabled",
+            "invisible_init_std",
+            "ffn_mode",
+            "mhc_writeback",
+            "mhc",
+            "cswa",
+        }
+    ),
 }
 
 
@@ -344,6 +365,7 @@ class PLCSModelConfig:
             "plcs_multiview_axial_split": "multiview",
             "plcs_multiview_axial_camtoken": "multiview",
             "plcs_track_query": None,
+            "plcs_track_query_ablation": None,
         }[name]
         if input_profile != expected_profile:
             raise SemanticConfigurationError(
@@ -421,7 +443,7 @@ class PLCSModelConfig:
             )
         track_query_mhc: PLCSTrackQueryMHCConfig | None = None
         track_query_cswa: PLCSTrackQueryCSWAConfig | None = None
-        if name == "plcs_track_query":
+        if name in {"plcs_track_query", "plcs_track_query_ablation"}:
             num_stages = _integer(mapping, "num_stages", path="model")
             if num_stages % 4 != 0:
                 raise SemanticConfigurationError(
@@ -498,6 +520,26 @@ class PLCSModelConfig:
                 raise SemanticConfigurationError(
                     "model.cswa.window_radius must be non-negative."
                 )
+            if name == "plcs_track_query_ablation":
+                if _string(mapping, "ffn_type", path="model") != "swiglu":
+                    raise SemanticConfigurationError(
+                        "PLCS track-query ablation requires model.ffn_type='swiglu'."
+                    )
+                if _string(mapping, "ffn_mode", path="model") not in {
+                    "per_attention",
+                    "shared",
+                }:
+                    raise SemanticConfigurationError(
+                        "model.ffn_mode must be 'per_attention' or 'shared'."
+                    )
+                if _string(mapping, "mhc_writeback", path="model") not in {
+                    "after_object_temporal",
+                    "layer_end",
+                }:
+                    raise SemanticConfigurationError(
+                        "model.mhc_writeback must be 'after_object_temporal' or "
+                        "'layer_end'."
+                    )
         return cls(
             name=name,
             input_profile=input_profile,
@@ -692,7 +734,7 @@ class PLCSDataConfig:
     ) -> PLCSDataConfig:
         initial = _plain(value, path="data")
         backend = _string(initial, "backend", path="data")
-        tracking = model.name == "plcs_track_query"
+        tracking = model.name in {"plcs_track_query", "plcs_track_query_ablation"}
         allowed = set(_DATA_COMMON)
         if tracking:
             allowed.add("lifecycle")
@@ -920,7 +962,9 @@ class PLCSTrainingConfig:
             "paths",
             "external_assets",
             "qualitative",
-            "tracking_metrics" if model.name == "plcs_track_query" else "metrics",
+            "tracking_metrics"
+            if model.name in {"plcs_track_query", "plcs_track_query_ablation"}
+            else "metrics",
         }
         if data.backend == "chunked":
             exact_root_fields.update({"camera", "motion_sources", "generation"})
@@ -1001,7 +1045,7 @@ class PLCSTrainingConfig:
                 configuration_contracts.PLCSGenerationComponents.from_config(root)
             )
             generation_mode = generation_components.mode
-            if model.name == "plcs_track_query":
+            if model.name in {"plcs_track_query", "plcs_track_query_ablation"}:
                 if generation_mode != "multi_object":
                     raise SemanticConfigurationError(
                         "Chunked PLCS tracking requires generation.mode='multi_object'."
@@ -1054,7 +1098,7 @@ class PLCSTrainingConfig:
             dict(require_config_mapping(training_mapping, "mcmc", path="training"))
         )
         tracking_metric_config: TrackingMetricConfig | None = None
-        if model.name != "plcs_track_query":
+        if model.name not in {"plcs_track_query", "plcs_track_query_ablation"}:
             from src.tasks.plcs.training.losses import PLCSLossConfig
 
             PLCSLossConfig.from_dict(
@@ -1213,7 +1257,10 @@ class PLCSTrainingConfig:
                 raise SemanticConfigurationError(
                     "training.gan.discriminator.max_seq_len must be positive."
                 )
-        if model.name == "plcs_track_query" and model.input_profile is not None:
+        if (
+            model.name in {"plcs_track_query", "plcs_track_query_ablation"}
+            and model.input_profile is not None
+        ):
             raise SemanticConfigurationError(
                 "Tracking models must not define model.io."
             )

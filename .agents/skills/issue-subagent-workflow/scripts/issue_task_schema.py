@@ -160,6 +160,9 @@ ARTIFACT_CONTRACTS = {
         headings=(
             "## Candidate identity",
             "## Acceptance-checklist-to-test mapping",
+            "## Independent adversarial test design",
+            "## Independently derived adversarial tests",
+            "## Adversarial probe results",
             "## Tests added or changed",
             "## Normal, boundary, invalid, and regression cases",
             "## Canonical command results",
@@ -172,6 +175,9 @@ ARTIFACT_CONTRACTS = {
         nonempty_headings=(
             "## Candidate identity",
             "## Acceptance-checklist-to-test mapping",
+            "## Independent adversarial test design",
+            "## Independently derived adversarial tests",
+            "## Adversarial probe results",
             "## Tests added or changed",
             "## Normal, boundary, invalid, and regression cases",
             "## Canonical command results",
@@ -183,6 +189,7 @@ ARTIFACT_CONTRACTS = {
         ),
         allow_none_headings=(
             "## Tests added or changed",
+            "## Adversarial probe results",
             "## Failures encountered",
             "## Untested risks and reasons",
             "## RETURN implementation findings",
@@ -262,9 +269,7 @@ ARTIFACT_CONTRACTS = {
     ),
 }
 
-ARTIFACT_PATHS = {
-    name: contract.path for name, contract in ARTIFACT_CONTRACTS.items()
-}
+ARTIFACT_PATHS = {name: contract.path for name, contract in ARTIFACT_CONTRACTS.items()}
 REQUIRED_HEADINGS = {
     contract.path: contract.headings for contract in ARTIFACT_CONTRACTS.values()
 }

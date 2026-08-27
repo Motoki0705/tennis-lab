@@ -1,0 +1,47 @@
+\section{System Overview}
+\label{sec:system}
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\linewidth}{!}{\input{figures/system_overview}}
+  \caption{\textbf{Render-supervised global court detection.}  Tennis video is
+  reconstructed behind the public \NHT{} command boundary.  The resulting 3D
+  Gaussian scene becomes supervision only after fail-closed metric alignment.
+  Controlled render cameras then provide RGB together with exact intrinsics,
+  camera-to-court 6DoF, geometric validity, renderer support, and physical \KP
+  labels.  The detector uses
+  both direct dense supervision and a global pose constraint.}
+  \label{fig:system}
+\end{figure}
+
+The system has two independently validated boundaries, illustrated in
+\cref{fig:system}.  The \emph{scene boundary} accepts only a public standard
+scene export: images, calibrated cameras, sparse scene points, explicit
+coordinate conventions, and a renderable Gaussian model.  The court pipeline
+does not import reconstruction internals or infer hidden COLMAP/checkpoint
+layout.  The \emph{metric boundary} accepts a scene only after line evidence,
+scale, topology, reciprocal transforms, and holdout residuals pass typed
+quality gates.
+
+An accepted scene publishes a multi-court layout
+\(
+  \mathcal{L}=\{\T{\Scene}{\Court_i},
+  \T{\Court_i}{\Scene},\mathcal{B},\mathcal{M}\}_{i=1}^{N_c}
+\),
+where \(\mathcal{B}\) denotes complex bounds and \(\mathcal{M}\) contains fit
+and holdout metrics.  Downstream dataset code is not allowed to refit or
+reinterpret this authority.  It samples a metric camera centre, chooses a
+target court, constructs an OpenCV camera-to-scene transform and intrinsic
+matrix, converts the camera back to the renderer's scene units, and requests an
+RGB/depth render.  Labels are computed from the same immutable transforms.
+
+At training time the target-court view is canonicalized to remove an otherwise
+ambiguous camera-end orientation.  A pose query predicts the camera centre,
+canonical-from-camera rotation, and focal length; three dense heads predict
+\KP heatmaps, the court-line mask, and the court segmentation.  Direct losses
+anchor every output to its ground truth.  The cross-branch loss in
+\cref{sec:consistency} additionally requires the dense coordinates and pose
+projection to describe the same canonical court in the same augmented image
+frame.
+
+\input{tables/component_contracts}

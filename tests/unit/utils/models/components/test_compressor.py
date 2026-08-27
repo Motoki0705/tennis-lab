@@ -175,7 +175,7 @@ def test_constructor_rejects_unknown_backend_without_automatic_dispatch() -> Non
 
     with pytest.raises(ValueError, match="compression_ratio=4"):
         TokenLevelKVCompressor(_config(compression_ratio=3), backend="cuda")
-    with pytest.raises(ValueError, match="head_dim=64"):
+    with pytest.raises(ValueError, match="head_dim in"):
         TokenLevelKVCompressor(_config(compression_ratio=4), backend="cuda")
 
 
