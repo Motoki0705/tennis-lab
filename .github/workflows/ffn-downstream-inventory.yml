@@ -1,4 +1,4 @@
-name: FFN downstream inventory
+name: Apply downstream FFN configuration
 
 on:
   push:
@@ -6,52 +6,652 @@ on:
       - feat/swiglu-architecture-variants
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  inventory:
+  apply:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - name: Inventory block consumers and configuration surfaces
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/swiglu-architecture-variants
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+      - name: Apply downstream configuration support
         run: |
           python - <<'PY'
+          from __future__ import annotations
+
+          import ast
+          import re
           from pathlib import Path
 
-          print("=== PYTHON BLOCK CONSUMERS ===")
-          consumers = []
-          for path in sorted(Path("src").rglob("*.py")):
-              text = path.read_text(encoding="utf-8")
-              if "TransformerBlockConfig(" not in text and "CrossAttnBlockConfig(" not in text:
-                  continue
-              consumers.append(path)
-              print(f"\n--- {path} ---")
-              for number, line in enumerate(text.splitlines(), 1):
-                  if any(token in line for token in ("TransformerBlock", "CrossAttnBlock", "ffn_type", "from_config")):
-                      print(f"{number}: {line}")
-          print(f"\nconsumer_count={len(consumers)}")
 
-          print("\n=== STRICT FFN VALIDATORS / TYPE SURFACES ===")
-          for path in sorted(Path("src").rglob("*.py")):
-              text = path.read_text(encoding="utf-8")
-              matching = [
-                  (number, line)
-                  for number, line in enumerate(text.splitlines(), 1)
-                  if "ffn_type" in line
-                  and any(token in line for token in ("Literal", "swiglu", "model[", "mapping", "config."))
+          def read(path: str) -> str:
+              return Path(path).read_text(encoding="utf-8")
+
+
+          def write(path: str, text: str) -> None:
+              Path(path).write_text(text, encoding="utf-8")
+
+
+          def replace(path: str, old: str, new: str, *, count: int | None = None) -> None:
+              text = read(path)
+              actual = text.count(old)
+              if count is not None and actual != count:
+                  raise RuntimeError(
+                      f"{path}: expected {count} occurrences of {old!r}, found {actual}"
+                  )
+              if actual == 0:
+                  raise RuntimeError(f"{path}: missing replacement target {old!r}")
+              write(path, text.replace(old, new))
+
+
+          def add_standalone_import(path: str, statement: str) -> None:
+              text = read(path)
+              if statement in text:
+                  return
+              tree = ast.parse(text, filename=path)
+              imports = [
+                  node
+                  for node in tree.body
+                  if isinstance(node, (ast.Import, ast.ImportFrom))
               ]
-              if matching:
-                  print(f"\n--- {path} ---")
-                  for number, line in matching:
-                      print(f"{number}: {line}")
+              if not imports:
+                  raise RuntimeError(f"{path}: no import section")
+              last_line = max(node.end_lineno or node.lineno for node in imports)
+              lines = text.splitlines()
+              lines.insert(last_line, statement)
+              write(path, "\n".join(lines) + "\n")
 
-          print("\n=== YAML FFN SETTINGS ===")
-          yaml_paths = list(Path("src").rglob("*.yaml")) + list(Path("src").rglob("*.yml"))
-          for path in sorted(yaml_paths):
-              lines = path.read_text(encoding="utf-8").splitlines()
-              matches = [(number, line) for number, line in enumerate(lines, 1) if "ffn_type" in line]
-              if matches:
-                  print(f"\n--- {path} ---")
-                  for number, line in matches:
-                      print(f"{number}: {line}")
+
+          def add_names_to_import(path: str, module: str, names: tuple[str, ...]) -> None:
+              text = read(path)
+              lines = text.splitlines()
+              start = next(
+                  (
+                      index
+                      for index, line in enumerate(lines)
+                      if line == f"from {module} import ("
+                  ),
+                  None,
+              )
+              if start is None:
+                  raise RuntimeError(f"{path}: missing parenthesized import from {module}")
+              end = next(
+                  index for index in range(start + 1, len(lines)) if lines[index] == ")"
+              )
+              existing = {line.strip().rstrip(",") for line in lines[start + 1 : end]}
+              additions = [f"    {name}," for name in names if name not in existing]
+              if additions:
+                  lines[end:end] = additions
+                  write(path, "\n".join(lines) + "\n")
+
+
+          def add_all_names(path: str, names: tuple[str, ...]) -> None:
+              text = read(path)
+              lines = text.splitlines()
+              start = next(
+                  index for index, line in enumerate(lines) if line.startswith("__all__ = [")
+              )
+              end = next(index for index in range(start + 1, len(lines)) if lines[index] == "]")
+              existing = {line.strip().strip(",").strip('"') for line in lines[start + 1 : end]}
+              additions = [f'    "{name}",' for name in names if name not in existing]
+              if additions:
+                  lines[end:end] = additions
+                  write(path, "\n".join(lines) + "\n")
+
+
+          def replace_ffn_literal_types(path: str) -> None:
+              text = read(path)
+              text = text.replace('Literal["swiglu", "mlp"]', "FFNType")
+              text = text.replace("Literal['swiglu', 'mlp']", "FFNType")
+              text = text.replace('cast("Literal[\'swiglu\', \'mlp\']",', 'cast("FFNType",')
+              text = text.replace("cast('Literal[\"swiglu\", \"mlp\"]',", "cast('FFNType',")
+              write(path, text)
+
+
+          def add_field_to_dataclass_end(path: str, class_name: str, field: str) -> None:
+              text = read(path)
+              pattern = re.compile(
+                  rf"(?P<header>class {re.escape(class_name)}:\n)(?P<body>.*?)(?=\n\n(?:@dataclass|BLCSModelConfig:))",
+                  re.DOTALL,
+              )
+              match = pattern.search(text)
+              if match is None:
+                  raise RuntimeError(f"{path}: missing dataclass {class_name}")
+              body = match.group("body")
+              if field.split(":", 1)[0] in body:
+                  return
+              new_body = body.rstrip() + f"\n    {field}\n"
+              write(path, text[: match.start("body")] + new_body + text[match.end("body") :])
+
+
+          def insert_constructor_keyword(
+              path: str,
+              constructor: str,
+              after_prefix: str,
+              keyword_line: str,
+          ) -> None:
+              text = read(path)
+              start = text.index(f"result = {constructor}(")
+              if keyword_line.strip() in text[start : start + 1800]:
+                  return
+              line_start = text.index(after_prefix, start)
+              line_end = text.index("\n", line_start) + 1
+              write(path, text[:line_end] + keyword_line + text[line_end:])
+
+
+          # Canonical FFN type registry and public exports.
+          path = "src/utils/models/components/ffn_layers.py"
+          replace(
+              path,
+              "from typing import Literal, cast\n",
+              "from typing import Literal, cast, get_args\n",
+              count=1,
+          )
+          text = read(path)
+          marker = "]\n\n\ndef default_ffn_dim"
+          if "SUPPORTED_FFN_TYPES" not in text:
+              if marker not in text:
+                  raise RuntimeError(f"{path}: missing FFNType terminator")
+              text = text.replace(
+                  marker,
+                  "]\n\nSUPPORTED_FFN_TYPES: frozenset[str] = frozenset(get_args(FFNType))\n\n\ndef default_ffn_dim",
+                  1,
+              )
+              write(path, text)
+
+          add_names_to_import(
+              "src/utils/models/components/__init__.py",
+              "src.utils.models.components.ffn_layers",
+              ("SUPPORTED_FFN_TYPES",),
+          )
+          add_all_names(
+              "src/utils/models/components/__init__.py",
+              ("SUPPORTED_FFN_TYPES",),
+          )
+          add_names_to_import(
+              "src/utils/models/__init__.py",
+              "src.utils.models.components",
+              ("FFNType", "SUPPORTED_FFN_TYPES", "build_ffn"),
+          )
+          add_all_names(
+              "src/utils/models/__init__.py",
+              ("FFNType", "SUPPORTED_FFN_TYPES", "build_ffn"),
+          )
+
+          # Shared track-query ablation FFNs must use the same configured variant
+          # as the TransformerBlock instances, including shared-FFN mode.
+          path = "src/utils/models/components/fixed_query_track_ablation_stage.py"
+          replace(
+              path,
+              "from src.utils.models.components.ffn_layers import SwiGLU\n",
+              "from src.utils.models.components.ffn_layers import build_ffn\n",
+              count=1,
+          )
+          replace(
+              path,
+              "        if any(block.cfg.ffn_type != \"swiglu\" for block in blocks):\n"
+              "            raise ValueError(\"ablation stages require SwiGLU FFN configuration.\")\n"
+              "        ffn_dims = {block.cfg.ffn_dim for block in blocks}\n",
+              "        ffn_types = {block.cfg.ffn_type for block in blocks}\n"
+              "        if len(ffn_types) != 1:\n"
+              "            raise ValueError(\"all block FFN types must match.\")\n"
+              "        ffn_type = ffn_types.pop()\n"
+              "        ffn_dims = {block.cfg.ffn_dim for block in blocks}\n",
+              count=1,
+          )
+          text = read(path)
+          text = text.replace("self.query_ffn_after_spatial: SwiGLU | None", "self.query_ffn_after_spatial: nn.Module | None")
+          text = text.replace(
+              "self.query_ffn_after_spatial = SwiGLU(hidden_dim, ffn_dim)",
+              "self.query_ffn_after_spatial = build_ffn(\n"
+              "                ffn_type=ffn_type, dim=hidden_dim, ffn_dim=ffn_dim\n"
+              "            )",
+          )
+          text = text.replace("self.shared_ffn: SwiGLU | None", "self.shared_ffn: nn.Module | None")
+          text = text.replace(
+              "self.shared_ffn = SwiGLU(hidden_dim, ffn_dim)",
+              "self.shared_ffn = build_ffn(\n"
+              "                ffn_type=ffn_type, dim=hidden_dim, ffn_dim=ffn_dim\n"
+              "            )",
+          )
+          text = text.replace("cast(SwiGLU, self.query_ffn_after_spatial)", "cast(nn.Module, self.query_ffn_after_spatial)")
+          text = text.replace("pre-norm SwiGLU residual", "pre-norm configured-FFN residual")
+          write(path, text)
+
+          # All ordinary model constructors share the canonical FFNType annotation.
+          typed_model_files = (
+              "src/tasks/ball_detection/models/dinov3_rope.py",
+              "src/tasks/blcs/models/blcs_model.py",
+              "src/tasks/blcs/models/blcs_multiview_model.py",
+              "src/tasks/blcs/models/blcs_multiview_axial_model.py",
+              "src/tasks/plcs/models/plcs_model.py",
+              "src/tasks/plcs/models/plcs_multiview_model.py",
+              "src/tasks/plcs/models/plcs_multiview_axial_model.py",
+              "src/tasks/plcs/models/plcs_multiview_axial_split_model.py",
+              "src/tasks/plcs/models/plcs_track_query_model.py",
+              "src/tasks/slcs/models/slcs_model.py",
+          )
+          for model_path in typed_model_files:
+              replace_ffn_literal_types(model_path)
+              add_standalone_import(
+                  model_path,
+                  "from src.utils.models.components.ffn_layers import FFNType",
+              )
+
+          # Ball detector decoder config and constructor.
+          path = "src/tasks/ball_detection/configuration.py"
+          add_standalone_import(
+              path,
+              "from src.utils.models.components.ffn_layers import SUPPORTED_FFN_TYPES",
+          )
+          replace(
+              path,
+              '        if ffn_type not in {"swiglu", "mlp"}:\n'
+              '            raise SemanticConfigurationError(\n'
+              '                "model.decoder.ffn_type must be swiglu or mlp."\n'
+              '            )\n',
+              '        if ffn_type not in SUPPORTED_FFN_TYPES:\n'
+              '            raise SemanticConfigurationError(\n'
+              '                "model.decoder.ffn_type must be one of "\n'
+              '                f"{sorted(SUPPORTED_FFN_TYPES)!r}."\n'
+              '            )\n',
+              count=1,
+          )
+
+          # BLCS typed configs, including every track-query/reference wrapper.
+          path = "src/tasks/blcs/configuration.py"
+          replace_ffn_literal_types(path)
+          add_standalone_import(
+              path,
+              "from src.utils.models.components.ffn_layers import (\n"
+              "    FFNType,\n"
+              "    SUPPORTED_FFN_TYPES,\n"
+              ")",
+          )
+          text = read(path)
+          text = text.replace(
+              'model["ffn_type"] not in {"swiglu", "mlp"}',
+              'model["ffn_type"] not in SUPPORTED_FFN_TYPES',
+          )
+          write(path, text)
+          for class_name in (
+              "TrackQueryModelConfig",
+              "TrackQueryAblationModelConfig",
+              "TrackQueryReferenceModelConfig",
+              "TrackQueryReferenceAblationModelConfig",
+          ):
+              add_field_to_dataclass_end(path, class_name, 'ffn_type: FFNType = "swiglu"')
+          text = read(path)
+          branch_start = text.index("    if name in _TRACK_QUERY_MODEL_NAMES:")
+          base_key_target = '            "ffn_dim",\n            "num_queries",'
+          base_key_pos = text.index(base_key_target, branch_start)
+          text = text[:base_key_pos] + text[base_key_pos:].replace(
+              base_key_target,
+              '            "ffn_dim",\n            "ffn_type",\n            "num_queries",',
+              1,
+          )
+          type_target = '                "ffn_dim": int,\n                "num_queries": int,'
+          type_pos = text.index(type_target, branch_start)
+          text = text[:type_pos] + text[type_pos:].replace(
+              type_target,
+              '                "ffn_dim": int,\n                "ffn_type": str,\n                "num_queries": int,',
+              1,
+          )
+          validation_marker = "        if is_reference:\n"
+          validation_pos = text.index(validation_marker, branch_start)
+          validation = (
+              '        raw_ffn_type = cast("str", model["ffn_type"])\n'
+              '        if raw_ffn_type not in SUPPORTED_FFN_TYPES:\n'
+              '            raise SemanticConfigurationError(\n'
+              '                "model.ffn_type must be one of "\n'
+              '                f"{sorted(SUPPORTED_FFN_TYPES)!r}."\n'
+              '            )\n'
+          )
+          text = text[:validation_pos] + validation + text[validation_pos:]
+          write(path, text)
+          for constructor in (
+              "TrackQueryReferenceAblationModelConfig",
+              "TrackQueryReferenceModelConfig",
+              "TrackQueryAblationModelConfig",
+              "TrackQueryModelConfig",
+          ):
+              insert_constructor_keyword(
+                  path,
+                  constructor,
+                  '                ffn_dim=cast("int", model["ffn_dim"]),',
+                  '                ffn_type=cast("FFNType", model["ffn_type"]),\n',
+              )
+
+          path = "src/tasks/blcs/models/blcs_multiview_axial_model.py"
+          replace(
+              path,
+              '        raw_ffn_type = config.ffn_type\n'
+              '        if raw_ffn_type == "swiglu":\n'
+              '            ffn_type: FFNType = "swiglu"\n'
+              '        elif raw_ffn_type == "mlp":\n'
+              '            ffn_type = "mlp"\n'
+              '        else:\n'
+              '            raise ValueError(f"Unsupported ffn_type={raw_ffn_type!r}")\n\n',
+              '        ffn_type = config.ffn_type\n\n',
+              count=1,
+          )
+
+          for model_path in (
+              "src/tasks/blcs/models/blcs_track_query_model.py",
+              "src/tasks/blcs/models/blcs_track_query_ablation_model.py",
+          ):
+              replace(
+                  model_path,
+                  '            ffn_type="swiglu",\n',
+                  '            ffn_type=config.ffn_type,\n',
+                  count=1,
+              )
+          for wrapper_path in (
+              "src/tasks/blcs/models/blcs_track_query_reference_model.py",
+              "src/tasks/blcs/models/blcs_track_query_reference_ablation_model.py",
+          ):
+              text = read(wrapper_path)
+              target = "        ffn_dim=config.ffn_dim,\n"
+              if "        ffn_type=config.ffn_type,\n" not in text:
+                  if target not in text:
+                      raise RuntimeError(f"{wrapper_path}: missing ffn_dim forwarding")
+                  text = text.replace(
+                      target,
+                      target + "        ffn_type=config.ffn_type,\n",
+                      1,
+                  )
+                  write(wrapper_path, text)
+          for yaml_path in (
+              "src/tasks/blcs/configs/model/_track_query.yaml",
+              "src/tasks/blcs/configs/model/_track_query_ablation.yaml",
+              "src/tasks/blcs/configs/model/_track_query_reference.yaml",
+              "src/tasks/blcs/configs/model/_track_query_reference_ablation.yaml",
+          ):
+              text = read(yaml_path)
+              if "ffn_type:" not in text:
+                  if "ffn_dim: ???\n" not in text:
+                      raise RuntimeError(f"{yaml_path}: missing ffn_dim placeholder")
+                  text = text.replace("ffn_dim: ???\n", "ffn_dim: ???\nffn_type: swiglu\n", 1)
+                  write(yaml_path, text)
+
+          # PLCS config and every block-backed implementation.
+          path = "src/tasks/plcs/configuration.py"
+          add_standalone_import(
+              path,
+              "from src.utils.models.components.ffn_layers import SUPPORTED_FFN_TYPES",
+          )
+          text = read(path)
+          text = text.replace(
+              '            if ffn_type not in {"swiglu", "mlp"}:\n'
+              '                raise SemanticConfigurationError(\n'
+              '                    "model.ffn_type must be \'swiglu\' or \'mlp\'."\n'
+              '                )',
+              '            if ffn_type not in SUPPORTED_FFN_TYPES:\n'
+              '                raise SemanticConfigurationError(\n'
+              '                    "model.ffn_type must be one of "\n'
+              '                    f"{sorted(SUPPORTED_FFN_TYPES)!r}."\n'
+              '                )',
+          )
+          text = text.replace(
+              '                if _string(mapping, "ffn_type", path="model") != "swiglu":\n'
+              '                    raise SemanticConfigurationError(\n'
+              '                        "PLCS track-query ablation requires model.ffn_type=\'swiglu\'."\n'
+              '                    )\n',
+              "",
+          )
+          text = text.replace(
+              '            ) not in {"swiglu", "mlp"}:',
+              ') not in SUPPORTED_FFN_TYPES:',
+          )
+          text = text.replace(
+              '                    "training.gan.discriminator.ffn_type must be \'swiglu\' or \'mlp\'."',
+              '                    "training.gan.discriminator.ffn_type must be one of "\n'
+              '                    f"{sorted(SUPPORTED_FFN_TYPES)!r}."',
+          )
+          write(path, text)
+
+          path = "src/tasks/plcs/models/plcs_track_query_model.py"
+          replace_ffn_literal_types(path)
+          add_standalone_import(
+              path,
+              "from src.utils.models.components.ffn_layers import FFNType",
+          )
+          path = "src/tasks/plcs/models/plcs_track_query_ablation_model.py"
+          add_standalone_import(
+              path,
+              "from src.utils.models.components.ffn_layers import FFNType",
+          )
+          text = read(path)
+          text = text.replace(
+              '        if config.string("ffn_type") != "swiglu":\n'
+              '            raise ValueError("PLCS track-query ablation requires SwiGLU.")\n\n',
+              "",
+          )
+          text = text.replace(
+              '            ffn_type="swiglu",\n',
+              '            ffn_type=cast(FFNType, config.string("ffn_type")),\n',
+          )
+          write(path, text)
+
+          # Court intermediate Transformer now carries the configured FFNType.
+          path = "src/tasks/court_detection/configuration.py"
+          replace_ffn_literal_types(path)
+          text = read(path)
+          text = text.replace('Literal["swiglu"] | None', "FFNType | None")
+          text = text.replace('cast("Literal[\'swiglu\']", ffn_type)', 'cast("FFNType", ffn_type)')
+          text = text.replace(
+              '        if result.ffn_type != "swiglu":\n'
+              '            raise SemanticConfigurationError(\n'
+              '                "model.transformer_encoder.ffn_type must be \'swiglu\'."\n'
+              '            )\n',
+              '        if result.ffn_type not in SUPPORTED_FFN_TYPES:\n'
+              '            raise SemanticConfigurationError(\n'
+              '                "model.transformer_encoder.ffn_type must be one of "\n'
+              '                f"{sorted(SUPPORTED_FFN_TYPES)!r}."\n'
+              '            )\n',
+          )
+          write(path, text)
+          add_standalone_import(
+              path,
+              "from src.utils.models.components.ffn_layers import (\n"
+              "    FFNType,\n"
+              "    SUPPORTED_FFN_TYPES,\n"
+              ")",
+          )
+
+          path = "src/tasks/court_detection/models/transformer_encoder.py"
+          replace(
+              path,
+              "from src.utils.models.components.ffn_layers import default_ffn_dim\n",
+              "from src.utils.models.components.ffn_layers import (\n"
+              "    FFNType,\n"
+              "    SUPPORTED_FFN_TYPES,\n"
+              "    default_ffn_dim,\n"
+              ")\n",
+              count=1,
+          )
+          text = read(path)
+          text = text.replace(
+              '        if ffn_type != "swiglu":\n'
+              '            raise ValueError("Court intermediate Transformer requires ffn_type=\'swiglu\'.")\n',
+              '        if type(ffn_type) is not str or ffn_type not in SUPPORTED_FFN_TYPES:\n'
+              '            raise ValueError(\n'
+              '                "Court intermediate Transformer ffn_type must be one of "\n'
+              '                f"{sorted(SUPPORTED_FFN_TYPES)!r}."\n'
+              '            )\n',
+          )
+          assignment_marker = "        ) = _resolve_config(\n"
+          assignment_pos = text.index(assignment_marker)
+          call_end_marker = "            dropout=dropout,\n        )\n"
+          call_end = text.index(call_end_marker, assignment_pos) + len(call_end_marker)
+          if "        self.ffn_type = cast(FFNType" not in text:
+              text = (
+                  text[:call_end]
+                  + "        raw_ffn_type = (\n"
+                  + "            _config_value(config, \"ffn_type\", \"swiglu\")\n"
+                  + "            if config is not None\n"
+                  + "            else \"swiglu\"\n"
+                  + "        )\n"
+                  + "        self.ffn_type = cast(FFNType, raw_ffn_type)\n"
+                  + text[call_end:]
+              )
+          text = text.replace('            ffn_type="swiglu",\n', '            ffn_type=self.ffn_type,\n', 1)
+          write(path, text)
+
+          # SLCS model config and block construction.
+          path = "src/tasks/slcs/configuration.py"
+          replace_ffn_literal_types(path)
+          add_standalone_import(
+              path,
+              "from src.utils.models.components.ffn_layers import (\n"
+              "    FFNType,\n"
+              "    SUPPORTED_FFN_TYPES,\n"
+              ")",
+          )
+          text = read(path)
+          text = text.replace(
+              '        if ffn_type not in {"swiglu", "mlp"}:\n'
+              '            raise SemanticConfigurationError(\n'
+              '                f"model.ffn_type must be \'swiglu\' or \'mlp\'; got {ffn_type!r}."\n'
+              '            )\n',
+              '        if ffn_type not in SUPPORTED_FFN_TYPES:\n'
+              '            raise SemanticConfigurationError(\n'
+              '                "model.ffn_type must be one of "\n'
+              '                f"{sorted(SUPPORTED_FFN_TYPES)!r}; got {ffn_type!r}."\n'
+              '            )\n',
+          )
+          write(path, text)
+
+          # Shared Transformer discriminator used by GAN configs.
+          path = "src/utils/models/architectures/transformer_sequence_discriminator.py"
+          replace(
+              path,
+              "from typing import TYPE_CHECKING, Literal, cast\n",
+              "from typing import TYPE_CHECKING, cast\n",
+              count=1,
+          )
+          add_standalone_import(
+              path,
+              "from src.utils.models.components.ffn_layers import (\n"
+              "    FFNType,\n"
+              "    SUPPORTED_FFN_TYPES,\n"
+              ")",
+          )
+          text = read(path)
+          text = text.replace("        ffn_type: str,\n", "        ffn_type: FFNType,\n")
+          text = text.replace(
+              '                        ffn_type=cast(Literal["swiglu", "mlp"], ffn_type),\n',
+              "                        ffn_type=ffn_type,\n",
+          )
+          text = text.replace(
+              '    if disc_cfg["ffn_type"] not in {"swiglu", "mlp"}:\n'
+              '        raise ValueError("trajectory discriminator ffn_type must be \'swiglu\' or \'mlp\'.")\n',
+              '    if disc_cfg["ffn_type"] not in SUPPORTED_FFN_TYPES:\n'
+              '        raise ValueError(\n'
+              '            "trajectory discriminator ffn_type must be one of "\n'
+              '            f"{sorted(SUPPORTED_FFN_TYPES)!r}."\n'
+              '        )\n',
+          )
+          text = text.replace(
+              '        ffn_type=disc_cfg["ffn_type"],\n',
+              '        ffn_type=cast(FFNType, disc_cfg["ffn_type"]),\n',
+          )
+          write(path, text)
+
+          # Ensure every direct block consumer routes a variable/config value,
+          # never a hard-coded FFN variant.
+          expected_consumers = {
+              "src/tasks/ball_detection/models/dinov3_rope.py",
+              "src/tasks/blcs/models/blcs_model.py",
+              "src/tasks/blcs/models/blcs_multiview_axial_model.py",
+              "src/tasks/blcs/models/blcs_multiview_model.py",
+              "src/tasks/blcs/models/blcs_track_query_ablation_model.py",
+              "src/tasks/blcs/models/blcs_track_query_model.py",
+              "src/tasks/court_detection/models/transformer_encoder.py",
+              "src/tasks/plcs/models/plcs_model.py",
+              "src/tasks/plcs/models/plcs_multiview_axial_model.py",
+              "src/tasks/plcs/models/plcs_multiview_axial_split_model.py",
+              "src/tasks/plcs/models/plcs_multiview_model.py",
+              "src/tasks/plcs/models/plcs_track_query_ablation_model.py",
+              "src/tasks/plcs/models/plcs_track_query_model.py",
+              "src/tasks/slcs/models/slcs_model.py",
+              "src/utils/models/architectures/transformer_sequence_discriminator.py",
+          }
+          actual_consumers: set[str] = set()
+          hardcoded: list[str] = []
+          for source_path in sorted(Path("src").rglob("*.py")):
+              tree = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
+              for node in ast.walk(tree):
+                  if not isinstance(node, ast.Call):
+                      continue
+                  function = node.func
+                  name = function.id if isinstance(function, ast.Name) else None
+                  if name not in {"TransformerBlockConfig", "CrossAttnBlockConfig"}:
+                      continue
+                  actual_consumers.add(source_path.as_posix())
+                  keyword = next((item for item in node.keywords if item.arg == "ffn_type"), None)
+                  if keyword is None or (
+                      isinstance(keyword.value, ast.Constant)
+                      and isinstance(keyword.value.value, str)
+                  ):
+                      hardcoded.append(f"{source_path}:{node.lineno}")
+          if actual_consumers != expected_consumers:
+              raise RuntimeError(
+                  f"block consumer inventory changed: actual={sorted(actual_consumers)!r}"
+              )
+          if hardcoded:
+              raise RuntimeError(f"hard-coded downstream FFN selections: {hardcoded!r}")
           PY
+      - name: Format and lint changed Python files
+        run: |
+          uv run --locked ruff check --fix src tests
+          uv run --locked ruff check src tests
+          git diff --check
+      - name: Run focused FFN and downstream configuration tests
+        run: |
+          uv run --locked pytest -q -n auto --no-cov \
+            tests/unit/utils/models/components/test_ffn_layers.py \
+            tests/unit/utils/models/components/test_block.py \
+            tests/unit/utils/models/components/test_fixed_query_track_ablation_stage.py \
+            tests/unit/utils/models/architectures/test_transformer_sequence_discriminator.py \
+            tests/integration/tasks/blcs/test_model_configs.py \
+            tests/integration/tasks/plcs/test_model_configs.py \
+            tests/unit/tasks/ball_detection/test_configuration_semantics.py \
+            tests/unit/tasks/ball_detection/models/test_dinov3_rope.py \
+            tests/unit/tasks/court_detection/test_configuration.py \
+            tests/unit/tasks/court_detection/models/test_transformer_encoder.py \
+            tests/unit/tasks/slcs/models/test_slcs_model.py \
+            tests/integration/tasks/slcs/test_training_config.py
+      - name: Type-check changed source surfaces
+        run: |
+          uv run --locked mypy \
+            src/utils/models/components/ffn_layers.py \
+            src/utils/models/components/block.py \
+            src/utils/models/components/fixed_query_track_ablation_stage.py \
+            src/utils/models/architectures/transformer_sequence_discriminator.py \
+            src/tasks/ball_detection/configuration.py \
+            src/tasks/ball_detection/models/dinov3_rope.py \
+            src/tasks/blcs/configuration.py \
+            src/tasks/blcs/models \
+            src/tasks/court_detection/configuration.py \
+            src/tasks/court_detection/models/transformer_encoder.py \
+            src/tasks/plcs/configuration.py \
+            src/tasks/plcs/models \
+            src/tasks/slcs/configuration.py \
+            src/tasks/slcs/models/slcs_model.py
+      - name: Commit verified implementation
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src tests
+          if git diff --cached --quiet; then
+            echo "No implementation changes to commit"
+            exit 0
+          fi
+          git commit -m "feat: expose FFN variants across downstream block models"
+          git push origin HEAD:feat/swiglu-architecture-variants
