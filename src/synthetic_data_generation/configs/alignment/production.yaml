@@ -54,6 +54,9 @@ evidence:
     minimum_ray_plane_cosine: 0.05
     maximum_ray_distance: 3.0
     bounds_margin: 0.05
+    proximity_scale: 0.35
+    proximity_power: 2.0
+    grid_spacing: 0.0025
     minimum_projected_points_per_camera: 20
 
   candidate_fit:

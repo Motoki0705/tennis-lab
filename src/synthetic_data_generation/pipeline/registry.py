@@ -345,6 +345,7 @@ def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
                 Path("court-geometry.json"),
                 Path("alignment.json"),
                 Path("diagnostics"),
+                Path("line-heatmaps"),
             ),
             handler=handlers.alignment,
             publication=atomic,
