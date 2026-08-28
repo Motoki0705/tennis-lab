@@ -1,0 +1,64 @@
+name: Patch Court mixed boundary inventory
+
+on:
+  push:
+    branches:
+      - feat/court-mixed-source-batches
+    paths:
+      - .github/workflows/court-mixed-inventory-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ github.actor == github.repository_owner }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: feat/court-mixed-source-batches
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Register the mixed training boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/utils/configuration/inventory.py")
+          text = path.read_text(encoding="utf-8")
+
+          key_anchor = '    "src.tasks.court_detection.scripts.train": "court_detection.train",\n'
+          key_line = '    "src.tasks.court_detection.scripts.train_mixed": "court_detection.train_mixed",\n'
+          callable_anchor = '    "src.tasks.court_detection.scripts.train": "src.tasks.court_detection.configuration.validate_train_boundary",\n'
+          callable_line = '    "src.tasks.court_detection.scripts.train_mixed": "src.tasks.court_detection.training.runner_mixed.validate_mixed_train_boundary",\n'
+          boundary_anchor = '    _runtime_boundary("court_detection", "src.tasks.court_detection.scripts.train"),\n'
+          boundary_line = '    _runtime_boundary(\n        "court_detection", "src.tasks.court_detection.scripts.train_mixed"\n    ),\n'
+
+          for anchor, addition in (
+              (key_anchor, key_line),
+              (callable_anchor, callable_line),
+              (boundary_anchor, boundary_line),
+          ):
+              if addition in text:
+                  continue
+              if text.count(anchor) != 1:
+                  raise SystemExit(f"Expected exactly one inventory anchor: {anchor!r}")
+              text = text.replace(anchor, anchor + addition)
+
+          path.write_text(text, encoding="utf-8")
+          PY
+
+          git diff --check
+          git diff -- src/utils/configuration/inventory.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/utils/configuration/inventory.py
+          git commit -m "fix(config): register mixed Court training boundary"
+          git push origin HEAD:feat/court-mixed-source-batches
