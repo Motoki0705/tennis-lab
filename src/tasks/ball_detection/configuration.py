@@ -23,6 +23,7 @@ from src.utils.configuration import (
     UnknownConfigurationKeyError,
 )
 from src.utils.hydra import register_boundary_validator
+from src.utils.models.components.ffn_layers import SUPPORTED_FFN_TYPES
 from src.utils.paths import PROJECT_ROOT
 
 ConfigMapping = Mapping[str, Any]
@@ -622,9 +623,10 @@ def validate_model(
             )
         typed(decoder, "n_kv_heads", type(None), path="model.decoder")
         ffn_type = cast(str, typed(decoder, "ffn_type", str, path="model.decoder"))
-        if ffn_type not in {"swiglu", "mlp"}:
+        if ffn_type not in SUPPORTED_FFN_TYPES:
             raise SemanticConfigurationError(
-                "model.decoder.ffn_type must be swiglu or mlp."
+                "model.decoder.ffn_type must be one of "
+                f"{sorted(SUPPORTED_FFN_TYPES)!r}."
             )
         heatmap_head = exact_mapping(
             typed(model, "heatmap_head", (dict, DictConfig), path="model"),

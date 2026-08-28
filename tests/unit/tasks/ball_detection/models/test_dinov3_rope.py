@@ -16,6 +16,7 @@ from src.tasks.ball_detection.model_io.contracts import (
 )
 from src.tasks.ball_detection.models.dinov3_rope import DINOv3RoPEBallDetector
 from src.tasks.base.model_io import bind_model_io
+from src.utils.models.components.ffn_layers import DeepSeekV4SwiGLU, FFNType
 from src.utils.models.loading import DINOv3BackboneAdapter
 from src.utils.models.lora import LoRAConfig
 
@@ -50,6 +51,7 @@ def _model(
     fake: _FakeDINOv3,
     *,
     gradient_checkpointing: bool = False,
+    ffn_type: FFNType = "swiglu",
 ) -> DINOv3RoPEBallDetector:
     return DINOv3RoPEBallDetector(
         backbone_repository_path=Path("/unused/dinov3"),
@@ -79,7 +81,7 @@ def _model(
         decoder_dropout=0.0,
         decoder_attention_type="mha",
         decoder_n_kv_heads=None,
-        decoder_ffn_type="swiglu",
+        decoder_ffn_type=ffn_type,
         decoder_gradient_checkpointing=gradient_checkpointing,
         head_min_channels=2,
         backbone=DINOv3BackboneAdapter(fake),
@@ -112,11 +114,12 @@ def _pair(
 
 def test_dinov3_boundary_prepares_tokens_and_valid_shape_forward() -> None:
     fake = _FakeDINOv3()
-    model, adapter = _pair(_model(fake))
+    model, adapter = _pair(_model(fake, ffn_type="deepseek_v4_swiglu"))
     pair = bind_model_io(model, adapter)
 
     probability = pair.run(torch.zeros(1, 2, 3, 8, 8))
 
+    assert isinstance(model.decoder[0].ffn, DeepSeekV4SwiGLU)
     assert fake.grad_enabled is False
     assert probability.shape == (1, 2, 8, 8)
     assert torch.all((probability >= 0.0) & (probability <= 1.0))

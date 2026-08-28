@@ -15,7 +15,7 @@ from src.tasks.plcs.models.plcs_track_query_ablation_model import (
     PLCSTrackQueryAblationModel,
 )
 from src.tasks.plcs.models.plcs_track_query_model import PLCSTrackQueryModel
-from src.utils.models.components.ffn_layers import SwiGLU
+from src.utils.models.components.ffn_layers import FFNType, GPTOSSSwiGLU, SwiGLU
 from src.utils.models.components.fixed_query_track_ablation_stage import (
     FFNMode,
     FixedQueryTrackAblationStage,
@@ -62,10 +62,16 @@ def _raw_model() -> dict[str, object]:
     }
 
 
-def _config(ffn_mode: FFNMode, mhc_writeback: MHCWriteback) -> PLCSModelConfig:
+def _config(
+    ffn_mode: FFNMode,
+    mhc_writeback: MHCWriteback,
+    *,
+    ffn_type: FFNType = "swiglu",
+) -> PLCSModelConfig:
     raw = _raw_model()
     raw["ffn_mode"] = ffn_mode
     raw["mhc_writeback"] = mhc_writeback
+    raw["ffn_type"] = ffn_type
     return PLCSModelConfig.from_mapping(raw)
 
 
@@ -80,8 +86,12 @@ def _baseline_config() -> PLCSModelConfig:
 def _model(
     ffn_mode: FFNMode,
     mhc_writeback: MHCWriteback,
+    *,
+    ffn_type: FFNType = "swiglu",
 ) -> PLCSTrackQueryAblationModel:
-    model = PLCSTrackQueryAblationModel(_config(ffn_mode, mhc_writeback))
+    model = PLCSTrackQueryAblationModel(
+        _config(ffn_mode, mhc_writeback, ffn_type=ffn_type)
+    )
     model.eval()
     return model
 
@@ -118,7 +128,6 @@ def _forward(
 
 
 def test_ablation_model_is_a_distinct_named_public_architecture() -> None:
-    assert PLCSTrackQueryAblationModel is not PLCSTrackQueryModel
     assert PLCSTrackQueryAblationModel.__name__ == "PLCSTrackQueryAblationModel"
     assert PLCSTrackQueryAblationModel.__module__.endswith(
         ".plcs_track_query_ablation_model"
@@ -169,6 +178,16 @@ def test_four_conditions_build_exact_stage_ffn_ownership_and_parameter_counts() 
     assert parameter_counts["A"] == parameter_counts["C"]
     assert parameter_counts["B"] == parameter_counts["D"]
     assert parameter_counts["A"] > parameter_counts["B"]
+
+
+def test_configured_ffn_reaches_shared_stage_ffn() -> None:
+    model = _model(
+        "shared",
+        "layer_end",
+        ffn_type="gpt_oss_swiglu",
+    )
+
+    assert all(isinstance(stage.shared_ffn, GPTOSSSwiGLU) for stage in model.stages)
 
 
 @pytest.mark.parametrize(

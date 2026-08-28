@@ -16,7 +16,7 @@ from src.utils.models.components.cswa import (
     CompressedSlidingWindowSelfAttention,
     CSWAConfig,
 )
-from src.utils.models.components.ffn_layers import MLP, SwiGLU
+from src.utils.models.components.ffn_layers import FFNType, build_ffn
 from src.utils.models.components.norm import RMSNorm
 
 
@@ -123,7 +123,7 @@ class TransformerBlockConfig:
     # RoPE
     rope_base: float
     # FFN
-    ffn_type: Literal["swiglu", "mlp"]
+    ffn_type: FFNType
     # Optional fields keep their legacy positional order; new options append.
     cswa: CSWAConfig | None = None
     ffn_enabled: bool = True
@@ -197,12 +197,11 @@ class TransformerBlock(nn.Module):
         self.ffn: nn.Module | None
         if cfg.ffn_enabled:
             self.ffn_norm = RMSNorm(cfg.dim)
-            if cfg.ffn_type == "swiglu":
-                self.ffn = SwiGLU(cfg.dim, cfg.ffn_dim)
-            elif cfg.ffn_type == "mlp":
-                self.ffn = MLP(cfg.dim, cfg.ffn_dim)
-            else:
-                raise ValueError(f"Unsupported ffn_type={cfg.ffn_type}")
+            self.ffn = build_ffn(
+                ffn_type=cfg.ffn_type,
+                dim=cfg.dim,
+                ffn_dim=cfg.ffn_dim,
+            )
         else:
             self.ffn_norm = None
             self.ffn = None
@@ -402,7 +401,7 @@ class CrossAttnBlockConfig:
     rope_dim: int
     attn_dropout: float
     # FFN
-    ffn_type: Literal["swiglu", "mlp"]
+    ffn_type: FFNType
 
 
 class CrossAttnBlock(nn.Module):
@@ -423,12 +422,11 @@ class CrossAttnBlock(nn.Module):
             bias=False,
         )
         self.ffn_norm = RMSNorm(cfg.dim)
-        if cfg.ffn_type == "swiglu":
-            self.ffn: nn.Module = SwiGLU(cfg.dim, cfg.ffn_dim)
-        elif cfg.ffn_type == "mlp":
-            self.ffn = MLP(cfg.dim, cfg.ffn_dim)
-        else:
-            raise ValueError(f"Unsupported ffn_type={cfg.ffn_type}")
+        self.ffn = build_ffn(
+            ffn_type=cfg.ffn_type,
+            dim=cfg.dim,
+            ffn_dim=cfg.ffn_dim,
+        )
 
     def forward(
         self,

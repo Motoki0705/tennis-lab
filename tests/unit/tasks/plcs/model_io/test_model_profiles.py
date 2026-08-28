@@ -16,6 +16,7 @@ from src.tasks.plcs.models.plcs_multiview_axial_split_model import (
     PLCSMultiViewAxialSplitModel,
 )
 from src.tasks.plcs.models.plcs_multiview_model import PLCSMultiViewModel
+from src.utils.models.components.ffn_layers import DeepSeekV4SwiGLU
 
 
 def _adapter(
@@ -138,13 +139,21 @@ def test_split_model_output_strategy_matches_bound_adapter() -> None:
         rope_dim=4,
         rope_theta_time=10000.0,
         rope_theta_camera=10000.0,
-        ffn_type="swiglu",
+        ffn_type="deepseek_v4_swiglu",
         predict_canonical_pose=True,
         max_views=2,
         max_seq_len=3,
         invisible_init_std=0.02,
         num_court_tokens=20,
     ).eval()
+    split_blocks = (
+        *model.rot_camera_layers,
+        *model.rot_time_layers,
+        *model.pose_camera_layers,
+        *model.pose_time_layers,
+    )
+    assert split_blocks
+    assert all(isinstance(block.ffn, DeepSeekV4SwiGLU) for block in split_blocks)
     bound = bind_plcs_model_io(
         model,
         _adapter(

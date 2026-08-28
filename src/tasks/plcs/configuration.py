@@ -38,6 +38,7 @@ from src.utils.configuration import (
 )
 from src.utils.device import DeviceSelectionError, resolve_device
 from src.utils.hydra import register_boundary_validator
+from src.utils.models.components.ffn_layers import SUPPORTED_FFN_TYPES
 from src.utils.paths import PROJECT_ROOT
 from src.utils.rendering.camera_view import CameraController
 from src.utils.schema.player import NUM_HUMAN_KP
@@ -502,9 +503,10 @@ class PLCSModelConfig:
             _boolean(mapping, key, path="model")
         if "ffn_type" in mapping:
             ffn_type = _string(mapping, "ffn_type", path="model")
-            if ffn_type not in {"swiglu", "mlp"}:
+            if ffn_type not in SUPPORTED_FFN_TYPES:
                 raise SemanticConfigurationError(
-                    "model.ffn_type must be 'swiglu' or 'mlp'."
+                    "model.ffn_type must be one of "
+                    f"{sorted(SUPPORTED_FFN_TYPES)!r}."
                 )
         if "canonical_pose_readout" in mapping:
             canonical_pose_readout = _string(
@@ -651,10 +653,6 @@ class PLCSModelConfig:
                         "model.reference_selector_mode='reference'."
                     )
             if name in _TRACK_QUERY_ABLATION_MODEL_NAMES:
-                if _string(mapping, "ffn_type", path="model") != "swiglu":
-                    raise SemanticConfigurationError(
-                        "PLCS track-query ablation requires model.ffn_type='swiglu'."
-                    )
                 if _string(mapping, "ffn_mode", path="model") not in {
                     "per_attention",
                     "shared",
@@ -1406,9 +1404,10 @@ class PLCSTrainingConfig:
                 )
             if _string(
                 discriminator, "ffn_type", path="training.gan.discriminator"
-            ) not in {"swiglu", "mlp"}:
+) not in SUPPORTED_FFN_TYPES:
                 raise SemanticConfigurationError(
-                    "training.gan.discriminator.ffn_type must be 'swiglu' or 'mlp'."
+                    "training.gan.discriminator.ffn_type must be one of "
+                    f"{sorted(SUPPORTED_FFN_TYPES)!r}."
                 )
             dropout = _number(
                 discriminator, "dropout", path="training.gan.discriminator"

@@ -8,7 +8,7 @@ import torch
 from torch import Tensor, nn
 
 from src.utils.models.components.block import TransformerBlock
-from src.utils.models.components.ffn_layers import SwiGLU
+from src.utils.models.components.ffn_layers import build_ffn
 from src.utils.models.components.mhc import ManifoldConstrainedHyperConnection, MHCState
 from src.utils.models.components.norm import RMSNorm
 
@@ -24,9 +24,9 @@ class FixedQueryTrackAblationStage(nn.Module):
 
     All variants keep the ``C,C,C,G`` temporal cycle. Per-attention
     stages use three normal Transformer blocks. Shared stages use three
-    attention-only blocks and exactly one stage-owned pre-norm SwiGLU residual
+    attention-only blocks and exactly one stage-owned pre-norm configured-FFN residual
     over the latest query and object tokens after all attention operations.
-    Variant E additionally inserts a separate query-only pre-norm SwiGLU
+    Variant E additionally inserts a separate query-only pre-norm configured-FFN
     residual between spatial and query-temporal attention.
     """
 
@@ -101,8 +101,10 @@ class FixedQueryTrackAblationStage(nn.Module):
         )
         if any(block.cfg.dim != hidden_dim for block in blocks):
             raise ValueError("all block dimensions must equal hidden_dim.")
-        if any(block.cfg.ffn_type != "swiglu" for block in blocks):
-            raise ValueError("ablation stages require SwiGLU FFN configuration.")
+        ffn_types = {block.cfg.ffn_type for block in blocks}
+        if len(ffn_types) != 1:
+            raise ValueError("all block FFN types must match.")
+        ffn_type = ffn_types.pop()
         ffn_dims = {block.cfg.ffn_dim for block in blocks}
         if len(ffn_dims) != 1:
             raise ValueError("all block FFN dimensions must match.")
@@ -115,19 +117,23 @@ class FixedQueryTrackAblationStage(nn.Module):
             )
 
         self.query_ffn_after_spatial_norm: RMSNorm | None
-        self.query_ffn_after_spatial: SwiGLU | None
+        self.query_ffn_after_spatial: nn.Module | None
         if self.query_ffn_after_spatial_enabled:
             self.query_ffn_after_spatial_norm = RMSNorm(hidden_dim)
-            self.query_ffn_after_spatial = SwiGLU(hidden_dim, ffn_dim)
+            self.query_ffn_after_spatial = build_ffn(
+                ffn_type=ffn_type, dim=hidden_dim, ffn_dim=ffn_dim
+            )
         else:
             self.query_ffn_after_spatial_norm = None
             self.query_ffn_after_spatial = None
 
         self.shared_ffn_norm: RMSNorm | None
-        self.shared_ffn: SwiGLU | None
+        self.shared_ffn: nn.Module | None
         if self.ffn_mode == "shared":
             self.shared_ffn_norm = RMSNorm(hidden_dim)
-            self.shared_ffn = SwiGLU(hidden_dim, ffn_dim)
+            self.shared_ffn = build_ffn(
+                ffn_type=ffn_type, dim=hidden_dim, ffn_dim=ffn_dim
+            )
         else:
             self.shared_ffn_norm = None
             self.shared_ffn = None
@@ -327,7 +333,7 @@ class FixedQueryTrackAblationStage(nn.Module):
         spatial_queries = spatial_values[:, :, : self.num_queries]
         spatial_queries = spatial_queries * frame_valid[:, :, None, None]
         if self.query_ffn_after_spatial_enabled:
-            query_ffn = cast(SwiGLU, self.query_ffn_after_spatial)
+            query_ffn = cast(nn.Module, self.query_ffn_after_spatial)
             query_ffn_norm = cast(RMSNorm, self.query_ffn_after_spatial_norm)
             spatial_queries = spatial_queries + query_ffn(
                 query_ffn_norm(spatial_queries)
