@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from hydra import compose, initialize_config_dir
 
+from src.tasks.court_detection.configuration import TennisCourtDetectorSourceConfig
 from src.tasks.court_detection.training.runner_mixed import (
     resolve_mixed_training_config,
 )
@@ -33,9 +34,9 @@ def test_train_mixed_config_reuses_two_sources_with_canonical_kp_scope() -> None
         "synthetic_court": 4,
         "tennis_court_detector": 4,
     }
-    assert mixed.sources["tennis_court_detector"].excluded_sample_ids == (
-        "QszoUKyCOHo_600",
-    )
+    tennis = mixed.sources["tennis_court_detector"]
+    assert isinstance(tennis, TennisCourtDetectorSourceConfig)
+    assert tennis.excluded_sample_ids == ("QszoUKyCOHo_600",)
 
 
 def test_pose_overrides_keep_consistency_disabled_and_synthetic_only() -> None:
