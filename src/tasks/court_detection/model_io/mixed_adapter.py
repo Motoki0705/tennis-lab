@@ -9,7 +9,6 @@ from typing import cast
 import torch
 from torch import Tensor
 
-from src.tasks.court_detection.data.contracts import CourtTargetKind
 from src.tasks.court_detection.geometry.pose import CourtDecodedPose
 from src.tasks.court_detection.model_io.adapters import (
     CourtModelIOAdapter,
@@ -19,6 +18,7 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtModelCall,
     CourtModelIOError,
     CourtModelOutput,
+    CourtPoseLossKind,
     CourtPoseTargetBatch,
     CourtPoseTrainingResult,
     CourtTrainingCall,
@@ -256,7 +256,7 @@ class MixedCourtPoseModelIOAdapter(CourtPoseModelIOAdapter):
         assert checked.pose is not None
         if supervised_count == 0:
             zero = dense_result.loss.new_zeros(())
-            empty = MappingProxyType({})
+            empty: Mapping[CourtPoseLossKind, Tensor] = MappingProxyType({})
             return CourtPoseTrainingResult(
                 loss=dense_result.loss,
                 raw_dense_loss=dense_result.raw_loss,
@@ -280,7 +280,7 @@ class MixedCourtPoseModelIOAdapter(CourtPoseModelIOAdapter):
         supervised_output = CourtModelOutput(
             dense_logits=MappingProxyType(
                 {
-                    cast(CourtTargetKind, kind): value[mask]
+                    kind: value[mask]
                     for kind, value in checked.dense_logits.items()
                 }
             ),
