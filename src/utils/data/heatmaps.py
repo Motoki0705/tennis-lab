@@ -186,6 +186,7 @@ def heatmaps_to_soft_argmax(
     heatmaps: Tensor,
     *,
     temperature: float = 1.0,
+    valid_mask: Tensor | None = None,
 ) -> Tensor:
     """Convert heatmaps to dense normalized coordinates via soft-argmax.
 
@@ -197,18 +198,45 @@ def heatmaps_to_soft_argmax(
             unnormalized scores (e.g. logits) for the spatial softmax.
         temperature: Softmax temperature. Lower values sharpen the spatial
             distribution towards the hard argmax.
+        valid_mask: Optional boolean tensor with exactly the same shape and
+            device as ``heatmaps``. Invalid spatial entries receive no
+            probability mass and no gradient. Every heatmap must retain at
+            least one valid entry.
 
     Returns:
         Normalized ``(..., 2)`` coordinates in ``(x, y)`` ordering.
     """
     if heatmaps.ndim < 2:
         raise ValueError(f"heatmaps must have shape (..., H, W), got {tuple(heatmaps.shape)}.")
-    if temperature <= 0:
-        raise ValueError("temperature must be positive.")
+    if not math.isfinite(float(temperature)) or temperature <= 0:
+        raise ValueError("temperature must be finite and positive.")
 
     *leading_shape, height, width = heatmaps.shape
     flat = heatmaps.reshape(*leading_shape, height * width)
-    probs = torch.softmax(flat / float(temperature), dim=-1)
+    if valid_mask is None:
+        # Keep the established no-mask path unchanged: its normalized XY
+        # values are a public contract used outside Court Detection.
+        probs = torch.softmax(flat / float(temperature), dim=-1)
+    else:
+        if not isinstance(valid_mask, Tensor):
+            raise TypeError("valid_mask must be a tensor.")
+        if valid_mask.shape != heatmaps.shape:
+            raise ValueError(
+                "valid_mask must have exactly the same shape as heatmaps; "
+                f"got {tuple(valid_mask.shape)} and {tuple(heatmaps.shape)}."
+            )
+        if valid_mask.dtype != torch.bool:
+            raise TypeError("valid_mask must have boolean dtype.")
+        if valid_mask.device != heatmaps.device:
+            raise ValueError("valid_mask must be on the same device as heatmaps.")
+        flat_mask = valid_mask.reshape(*leading_shape, height * width)
+        if bool(torch.any(~flat_mask.any(dim=-1))):
+            raise ValueError("Every heatmap must contain at least one valid spatial entry.")
+        masked_scores = (flat / float(temperature)).masked_fill(
+            ~flat_mask,
+            float("-inf"),
+        )
+        probs = torch.softmax(masked_scores, dim=-1)
     probs = probs.reshape(*leading_shape, height, width)
 
     xs = (

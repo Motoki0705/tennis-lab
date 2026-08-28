@@ -106,6 +106,71 @@ COURT_LINE_PREPROCESSING_CONSUMERS = {
 }
 EXPECTED_DIRECT_FORWARD_VALIDATION_BOUNDARIES = {
     (
+        "src.tasks.court_detection.models.hierarchical_model."
+        "CourtHierarchicalModel.forward",
+        "Python raise",
+    ): 1,
+    (
+        "src.tasks.court_detection.models.pose_head."
+        "CourtPose10DHead.forward",
+        "Python raise",
+    ): 1,
+    (
+        "src.tasks.court_detection.models.pose_head."
+        "CourtPose10DHead.forward",
+        "Python shape/value validation branch",
+    ): 1,
+    (
+        "src.tasks.court_detection.models.transformer_encoder."
+        "CourtTransformerEncoder._validate_input",
+        "Python raise",
+    ): 6,
+    (
+        "src.tasks.court_detection.models.transformer_encoder."
+        "CourtTransformerEncoder._validate_input",
+        "Python shape/value validation branch",
+    ): 1,
+    (
+        "src.tasks.court_detection.models.transformer_encoder."
+        "CourtTransformerEncoder._validate_patch_valid_mask",
+        "Python raise",
+    ): 4,
+    (
+        "src.tasks.court_detection.models.transformer_encoder."
+        "CourtTransformerEncoder._validate_patch_valid_mask",
+        "Python shape/value validation branch",
+    ): 2,
+    (
+        "src.tasks.court_detection.models.transformer_encoder."
+        "CourtTransformerEncoder.build_patch_positions",
+        "Python raise",
+    ): 1,
+    (
+        "src.tasks.court_detection.models.transformer_encoder."
+        "CourtTransformerEncoder.build_patch_positions",
+        "Python shape/value validation branch",
+    ): 1,
+    (
+        "src.tasks.court_detection.models.transformer_encoder."
+        "CourtTransformerEncoder.build_patch_positions",
+        "runtime implementation/type selection via type",
+    ): 2,
+    (
+        "src.tasks.court_detection.models.transformer_encoder."
+        "CourtTransformerEncoder.forward",
+        "forward validation helper self._validate_input",
+    ): 1,
+    (
+        "src.tasks.court_detection.models.transformer_encoder."
+        "CourtTransformerEncoder.forward",
+        "forward validation helper self._validate_patch_valid_mask",
+    ): 1,
+    (
+        "src.tasks.court_detection.models.transformer_encoder."
+        "CourtTransformerEncoder.forward",
+        "Python raise",
+    ): 1,
+    (
         "src.tasks.blcs.models.blcs_track_query_ablation_model."
         "BLCSTrackQueryAblationModel.build_spatial_coordinates",
         "Python raise",
@@ -248,6 +313,31 @@ TRANSFORMER_SEQUENCE_DISCRIMINATOR_PATH = (
     "src.utils.models.architectures.transformer_sequence_discriminator."
     "TransformerSequenceDiscriminator.forward",
 )
+COURT_POSE_HEAD_PATH = (
+    "src.tasks.court_detection.models.pose_head.CourtPose10DHead.forward",
+)
+COURT_HIERARCHICAL_PATH = (
+    "src.tasks.court_detection.models.hierarchical_model."
+    "CourtHierarchicalModel.forward",
+)
+COURT_TRANSFORMER_PATH = (
+    "src.tasks.court_detection.models.transformer_encoder."
+    "CourtTransformerEncoder.forward",
+)
+COURT_TRANSFORMER_INPUT_VALIDATION_PATH = (
+    *COURT_TRANSFORMER_PATH,
+    "src.tasks.court_detection.models.transformer_encoder."
+    "CourtTransformerEncoder._validate_input",
+)
+COURT_TRANSFORMER_PATCH_VALIDATION_PATH = (
+    *COURT_TRANSFORMER_PATH,
+    "src.tasks.court_detection.models.transformer_encoder."
+    "CourtTransformerEncoder._validate_patch_valid_mask",
+)
+COURT_TRANSFORMER_PATCH_POSITIONS_PATH = (
+    *COURT_TRANSFORMER_PATH,
+    "src.tasks.court_detection.models.transformer_encoder.build_patch_positions",
+)
 FIXED_QUERY_TRACK_ABLATION_STAGE_PATH = (
     "src.utils.models.components.fixed_query_track_ablation_stage."
     "FixedQueryTrackAblationStage.forward",
@@ -354,6 +444,29 @@ EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES_BY_PATH = {
         "Python raise": 9,
         "Python shape/value validation branch": 5,
         "runtime implementation/type selection via isinstance": 2,
+    },
+    COURT_POSE_HEAD_PATH: {
+        "Python raise": 1,
+        "Python shape/value validation branch": 1,
+    },
+    COURT_HIERARCHICAL_PATH: {"Python raise": 1},
+    COURT_TRANSFORMER_PATH: {
+        "Python raise": 1,
+        "forward validation helper self._validate_input": 1,
+        "forward validation helper self._validate_patch_valid_mask": 1,
+    },
+    COURT_TRANSFORMER_INPUT_VALIDATION_PATH: {
+        "Python raise": 6,
+        "Python shape/value validation branch": 1,
+    },
+    COURT_TRANSFORMER_PATCH_VALIDATION_PATH: {
+        "Python raise": 4,
+        "Python shape/value validation branch": 2,
+    },
+    COURT_TRANSFORMER_PATCH_POSITIONS_PATH: {
+        "Python raise": 1,
+        "Python shape/value validation branch": 1,
+        "runtime implementation/type selection via type": 2,
     },
     FIXED_QUERY_TRACK_ABLATION_STAGE_PATH: {"Python raise": 1},
 }

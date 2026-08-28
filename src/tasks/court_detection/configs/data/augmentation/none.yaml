@@ -18,3 +18,6 @@ gaussian_blur_prob: 0.0
 # Resize-only pipeline cannot remove keypoints; keep the constraint off.
 min_visible_kp: 0
 visibility_max_retries: 1
+preserve_fx_fy: false
+canvas_size: null
+patch_size: 16

@@ -16,7 +16,7 @@ from src.tasks.court_detection.training.lightning_module import (
 
 
 class CourtDetectionTrainingRunner(BaseTrainingRunner):
-    """Construct the model only after the DataModule resolves its target bundle."""
+    """Construct the model after the DataModule resolves its target bundle."""
 
     def build_datamodule(self, config: Any) -> pl.LightningDataModule:
         return CourtDetectionDataModule(config)
@@ -33,6 +33,7 @@ class CourtDetectionTrainingRunner(BaseTrainingRunner):
                 "Court training requires CourtDetectionDataModule to resolve "
                 "the target bundle before model construction."
             )
+        CourtTrainingConfig.from_config(config)
         module = CourtDetectionLightningModule(
             config,
             target_bundle=datamodule.target_bundle_spec,
@@ -42,6 +43,9 @@ class CourtDetectionTrainingRunner(BaseTrainingRunner):
 
     def validate_runtime_config(self, config: Any) -> TrainingRuntimeConfig:
         return CourtTrainingConfig.from_config(config).shared
+
+    def prepare_config(self, config: Any) -> None:
+        CourtTrainingConfig.from_config(config)
 
 
 __all__ = ["CourtDetectionTrainingRunner"]

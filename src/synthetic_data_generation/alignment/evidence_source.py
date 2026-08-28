@@ -63,11 +63,14 @@ from src.synthetic_data_generation.reconstruction.scene_export import (
 from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
 from src.tasks.base.model_io import bind_model_io
 from src.tasks.court_detection.configuration import (
+    DPT_CHANNELS_BY_SIZE,
     CourtDecoderConfig,
+    CourtDPTSize,
     CourtEncoderConfig,
     CourtLoRAConfig,
     CourtLossConfig,
     CourtModelConfig,
+    CourtTransformerEncoderConfig,
 )
 from src.tasks.court_detection.data.contracts import (
     CourtTargetBundleSpec,
@@ -210,34 +213,7 @@ class ProductionCourtLineDetector:
             )
         _validate_embedded_architecture(settings, model_mapping)
         architecture = settings.architecture
-        encoder_config = CourtEncoderConfig(
-            name="dinov3",
-            repository_path=settings.backbone_repository_path,
-            checkpoint_path=settings.backbone_checkpoint_path,
-            backbone_name=architecture.backbone_name,
-            strict=architecture.backbone_strict,
-            train_mode=architecture.backbone_train_mode,
-            last_n_blocks=architecture.backbone_last_n_blocks,
-            out_indices=architecture.backbone_out_indices,
-            layer_mode=architecture.backbone_layer_mode,
-            lora=CourtLoRAConfig(
-                enabled=architecture.lora_enabled,
-                rank=architecture.lora_rank,
-                alpha=architecture.lora_alpha,
-                dropout=architecture.lora_dropout,
-                target_modules=architecture.lora_target_modules,
-            ),
-        )
-        model_config = CourtModelConfig(
-            name="court_hierarchical",
-            in_channels=3,
-            encoder=encoder_config,
-            decoder=CourtDecoderConfig(
-                name="dpt",
-                channels=architecture.decoder_channels,
-                reassemble_factors=architecture.decoder_reassemble_factors,
-            ),
-        )
+        model_config = _court_line_model_config(settings)
         target_bundle = CourtTargetBundleSpec(
             {
                 "line": CourtTargetSpec(
@@ -272,13 +248,38 @@ class ProductionCourtLineDetector:
         )
         adapter = CourtModelIOAdapter(
             spec,
-            loss_config=CourtLossConfig(
-                seg_ce_weight=1.0,
-                seg_dice_weight=1.0,
-                kp_focal_gamma=2.0,
-                line_bce_weight=architecture.line_bce_weight,
-                line_dice_weight=architecture.line_dice_weight,
-                line_pos_weight=architecture.line_positive_weight,
+            loss_config=CourtLossConfig.from_mapping(
+                {
+                    "seg": {
+                        "ce_weight": 1.0,
+                        "dice_weight": 1.0,
+                        "weight": 1.0,
+                    },
+                    "kp": {"focal_gamma": 2.0, "weight": 1.0},
+                    "line": {
+                        "bce_weight": architecture.line_bce_weight,
+                        "dice_weight": architecture.line_dice_weight,
+                        "pos_weight": architecture.line_positive_weight,
+                        "weight": 1.0,
+                    },
+                    "pose": {
+                        "enabled": False,
+                        "translation_weight": 0.0,
+                        "rotation_weight": 0.0,
+                        "focal_weight": 0.0,
+                    },
+                    "consistency": {
+                        "enabled": False,
+                        "weight": 0.0,
+                        "temperature": 1.0,
+                        "huber_delta": 0.01,
+                        "min_depth_m": 0.1,
+                        "depth_scale_m": 1.0,
+                        "cheirality_weight": 0.0,
+                        "warmup_fraction": 0.0,
+                        "gradient_flow": "both",
+                    },
+                }
             ),
             execution_boundary=CourtDINOv3ExecutionBoundary(
                 frozen_backbone=(
@@ -2846,6 +2847,65 @@ def _plain_value(value: object) -> Any:
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
         return [_plain_value(item) for item in value]
     return value
+
+
+def _court_line_model_config(settings: CourtLineModelSettings) -> CourtModelConfig:
+    """Rebuild the checkpoint architecture with the current strict model fields."""
+    architecture = settings.architecture
+    matching_sizes: tuple[CourtDPTSize, ...] = tuple(
+        size
+        for size, channels in DPT_CHANNELS_BY_SIZE.items()
+        if channels == architecture.decoder_channels
+    )
+    if len(matching_sizes) != 1:
+        raise ValueError(
+            "Court-line decoder_channels must match exactly one strict DPT size "
+            f"preset; got {architecture.decoder_channels}."
+        )
+    encoder_config = CourtEncoderConfig(
+        name="dinov3",
+        repository_path=settings.backbone_repository_path,
+        checkpoint_path=settings.backbone_checkpoint_path,
+        backbone_name=architecture.backbone_name,
+        strict=architecture.backbone_strict,
+        train_mode=architecture.backbone_train_mode,
+        last_n_blocks=architecture.backbone_last_n_blocks,
+        out_indices=architecture.backbone_out_indices,
+        layer_mode=architecture.backbone_layer_mode,
+        lora=CourtLoRAConfig(
+            enabled=architecture.lora_enabled,
+            rank=architecture.lora_rank,
+            alpha=architecture.lora_alpha,
+            dropout=architecture.lora_dropout,
+            target_modules=architecture.lora_target_modules,
+        ),
+    )
+    return CourtModelConfig(
+        name="court_hierarchical",
+        in_channels=3,
+        encoder=encoder_config,
+        decoder=CourtDecoderConfig(
+            name="dpt",
+            size=matching_sizes[0],
+            channels=architecture.decoder_channels,
+            reassemble_factors=architecture.decoder_reassemble_factors,
+        ),
+        transformer_encoder=CourtTransformerEncoderConfig(
+            name="none",
+            enabled=False,
+            dim=None,
+            depth=None,
+            num_heads=None,
+            head_dim=None,
+            ffn_dim=None,
+            rope_dim=None,
+            rope_theta=None,
+            dropout=None,
+            attention_type=None,
+            n_kv_heads=None,
+            ffn_type=None,
+        ),
+    )
 
 
 def _validate_embedded_architecture(

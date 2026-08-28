@@ -1,0 +1,15 @@
+# Optional spatial refinement over the DINOv3 ViT-B/16 patch grid.
+# Select with `model/transformer_encoder=default`.
+name: transformer
+enabled: true
+dim: 768
+depth: 8
+num_heads: 12
+head_dim: 64
+ffn_dim: 2048
+rope_dim: 64
+rope_theta: 10000.0
+dropout: 0.0
+attention_type: mha
+n_kv_heads: null
+ffn_type: swiglu
