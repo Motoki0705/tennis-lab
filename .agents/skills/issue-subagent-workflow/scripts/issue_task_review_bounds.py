@@ -96,10 +96,6 @@ def transition(task_dir: Path, requested: str) -> None:
     _transitions.transition(task_dir, requested)
 
 
-def reopen_packaging_repair(task_dir: Path, reason: str) -> None:
-    _transitions.reopen_packaging_repair(task_dir, reason)
-
-
 def apply_feasibility_verdict(
     task_dir: Path,
     verdict: str,

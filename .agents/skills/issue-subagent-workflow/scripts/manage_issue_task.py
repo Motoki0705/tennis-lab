@@ -24,7 +24,6 @@ apply_preflight_verdict = _commands.apply_preflight_verdict
 apply_test_verdict = _commands.apply_test_verdict
 apply_seal_verdict = _commands.apply_seal_verdict
 apply_return_review = _commands.apply_return_review
-reopen_packaging_repair = _commands.reopen_packaging_repair
 block_task = _commands.block_task
 apply_validation_verdict = _commands.apply_validation_verdict
 finalize_pr = _commands.finalize_pr
@@ -97,10 +96,6 @@ def parse_args() -> argparse.Namespace:
         "action", choices=("implementation", "exploration")
     )
     return_review_parser.add_argument("--reason", type=non_blank, required=True)
-
-    packaging_repair_parser = subparsers.add_parser("packaging-repair")
-    packaging_repair_parser.add_argument("task_dir", type=Path)
-    packaging_repair_parser.add_argument("--reason", type=non_blank, required=True)
 
     block_parser = subparsers.add_parser("block")
     block_parser.add_argument("task_dir", type=Path)
@@ -184,8 +179,6 @@ def main() -> int:
             apply_seal_verdict(args.task_dir, args.verdict)
         elif args.command == "return-review":
             apply_return_review(args.task_dir, args.action, args.reason)
-        elif args.command == "packaging-repair":
-            reopen_packaging_repair(args.task_dir, args.reason)
         elif args.command == "block":
             block_task(args.task_dir, args.kind, args.reason)
         elif args.command == "verdict":

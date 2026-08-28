@@ -20,7 +20,7 @@ After Validator PASS, create/update the PR, finish final-head checks, check out 
 
 `finalize-pr` verifies local HEAD=supplied head, revision content=validated candidate, captured files=revision diff, required remote checks=PASS, and agreement among evidence JSON, state digest, `packaging.md`, and current content.
 
-Validator PASS sets `status = "validated"`, `phase = "packaging"`, `verdict = "VALIDATED"`; only `finalize-pr` sets complete/PASS. History or remote-check metadata failure preserves validated state. A content defect requires `packaging-repair`, which invalidates candidate and PR bindings and returns to implementation for fresh Preflight/Test/Seal/Validation gates.
+Validator PASS sets `status = "validated"`, `phase = "packaging"`, `verdict = "VALIDATED"`; only `finalize-pr` sets complete/PASS. Packaging failure preserves validated state. Content-changing repair returns to applicable Preflight/Test/Seal gates.
 
 ## Atomicity and command authority
 
