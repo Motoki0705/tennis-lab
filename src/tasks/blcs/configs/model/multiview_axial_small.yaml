@@ -10,3 +10,4 @@ rope_dim: 64
 
 camera_layers_per_stage: [1, 1, 1, 1, 1, 1, 1, 1]
 time_layers_per_stage: [1, 1, 1, 1, 1, 1, 1, 1]
+time_global_stage_mask: [false, false, false, false, false, false, false, false]

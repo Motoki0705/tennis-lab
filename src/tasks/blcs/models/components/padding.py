@@ -38,6 +38,7 @@ class AxialPaddingMasks:
     frame_valid: Tensor
     camera_attention_keep_mask: Tensor
     time_attention_keep_mask: Tensor
+    sliding_attention_keep_mask: Tensor
 
 
 def _validate_padding_mask(padding_mask: Tensor, *, expected_rank: int) -> None:
@@ -64,6 +65,21 @@ def _validate_num_court_tokens(num_court_tokens: int) -> None:
         raise TypeError("num_court_tokens must be exactly int.")
     if num_court_tokens <= 0:
         raise ValueError("num_court_tokens must be positive.")
+
+
+def _build_local_attention_keep_mask(
+    valid_mask: Tensor,
+    *,
+    window_radius: int,
+) -> Tensor:
+    """Restrict valid temporal keys to a symmetric local window."""
+    seq_len = valid_mask.shape[1]
+    positions = torch.arange(seq_len, device=valid_mask.device)
+    local_keep = (positions[:, None] - positions[None, :]).abs() <= window_radius
+    keep_mask = valid_mask[:, None, :] & local_keep.unsqueeze(0)
+    fallback_keep = valid_mask[:, None, :].expand_as(keep_mask)
+    has_key = keep_mask.any(dim=-1, keepdim=True)
+    return torch.where(has_key, keep_mask, fallback_keep)
 
 
 def build_single_view_padding_masks(
@@ -126,9 +142,17 @@ def build_multiview_padding_masks(
     )
 
 
-def build_axial_padding_masks(padding_mask: Tensor) -> AxialPaddingMasks:
+def build_axial_padding_masks(
+    padding_mask: Tensor,
+    *,
+    time_window_radius: int,
+) -> AxialPaddingMasks:
     """Build axial camera/time attention masks from ``True=padding`` input."""
     _validate_padding_mask(padding_mask, expected_rank=3)
+    if type(time_window_radius) is not int:
+        raise TypeError("time_window_radius must be exactly int.")
+    if time_window_radius < 0:
+        raise ValueError("time_window_radius must be non-negative.")
     batch_size, num_views, num_frames = padding_mask.shape
     context_valid = ~padding_mask
     frame_valid = context_valid.any(dim=1)
@@ -138,12 +162,17 @@ def build_axial_padding_masks(padding_mask: Tensor) -> AxialPaddingMasks:
     )
     time_valid = context_valid.reshape(batch_size * num_views, num_frames)
     camera_attention_keep_mask, _ = build_self_attn_mask(camera_valid)
-    time_attention_keep_mask, _ = build_self_attn_mask(time_valid)
+    time_attention_keep_mask, repaired_time_valid = build_self_attn_mask(time_valid)
+    sliding_attention_keep_mask = _build_local_attention_keep_mask(
+        repaired_time_valid,
+        window_radius=time_window_radius,
+    )
     return AxialPaddingMasks(
         context_valid=context_valid,
         frame_valid=frame_valid,
         camera_attention_keep_mask=camera_attention_keep_mask,
         time_attention_keep_mask=time_attention_keep_mask,
+        sliding_attention_keep_mask=sliding_attention_keep_mask,
     )
 
 

@@ -271,6 +271,7 @@ def _blcs_config(selector: str) -> DictConfig:
         "model.rope_dim=4",
         "model.camera_layers_per_stage=[1]",
         "model.time_layers_per_stage=[1]",
+        "model.time_global_stage_mask=[false]",
         "model.max_seq_len=2",
         "model.max_num_cameras=2",
         "model.num_court_tokens=20",
