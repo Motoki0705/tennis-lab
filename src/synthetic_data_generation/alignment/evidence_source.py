@@ -5,11 +5,12 @@ from __future__ import annotations
 import heapq
 import math
 import os
+import warnings
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 import numpy as np
 import torch
@@ -44,6 +45,10 @@ from src.synthetic_data_generation.alignment.contracts import (
 )
 from src.synthetic_data_generation.alignment.fitting import fit_alignment
 from src.synthetic_data_generation.alignment.handler import AlignmentStageHandler
+from src.synthetic_data_generation.alignment.heatmaps import (
+    AlignmentLineHeatmaps,
+    AlignmentLineHeatmapView,
+)
 from src.synthetic_data_generation.alignment.settings import (
     AlignmentEvidenceSettings,
     CourtCandidateFitSettings,
@@ -77,6 +82,7 @@ from src.tasks.court_detection.data.contracts import (
     CourtTargetSpec,
 )
 from src.tasks.court_detection.inference import CourtLinePredictor
+from src.tasks.court_detection.inference.mask_predictor import CourtBoundModelIO
 from src.tasks.court_detection.model_io.adapters import (
     CourtDINOv3ExecutionBoundary,
     CourtModelIOAdapter,
@@ -230,14 +236,7 @@ class ProductionCourtLineDetector:
         raw_state = raw.get("state_dict")
         if not isinstance(raw_state, Mapping):
             raise ValueError("Court-line checkpoint has no state_dict mapping.")
-        model_state: dict[str, torch.Tensor] = {}
-        for key, value in raw_state.items():
-            if isinstance(key, str) and key.startswith("model."):
-                if not isinstance(value, torch.Tensor):
-                    raise TypeError(f"Court-line tensor {key!r} is not a Tensor.")
-                model_state[key.removeprefix("model.")] = value
-        if not model_state:
-            raise ValueError("Court-line checkpoint contains no model tensors.")
+        model_state = _court_line_model_state(raw_state)
         model.load_state_dict(model_state, strict=True)
         model.eval()
         spec = CourtModelSpec(
@@ -289,7 +288,7 @@ class ProductionCourtLineDetector:
             ),
         )
         predictor = CourtLinePredictor(
-            bind_model_io(model, adapter),
+            cast(CourtBoundModelIO, bind_model_io(model, adapter)),
             torch.device(settings.device),
         )
         if predictor.adapter.spec.short_side != settings.expected_short_side:
@@ -381,6 +380,8 @@ class _GroundPlane:
 class _ProjectedLineEvidence:
     points_nht_scene: NDArray[np.float64]
     points_uv: NDArray[np.float64]
+    probabilities: NDArray[np.float32]
+    proximity_weights: NDArray[np.float64]
     selected_line_pixel_count: int
 
 
@@ -619,7 +620,53 @@ class MeasuredAlignmentEvidenceSource:
                 "Fixed 48-camera alignment evaluation failed without holdout-driven "
                 f"reselection or refit: {type(error).__name__}: {error}"
             ) from error
-        return EvaluatedAlignment(evidence=evidence, result=result)
+        heatmaps = _alignment_line_heatmaps(
+            selected_cameras=selected,
+            probabilities=probabilities,
+            projected_by_camera=projected_by_camera,
+            plane=plane,
+            settings=self._settings.projection,
+            aggregate_camera_ids=selection.observed_camera_ids,
+        )
+        return EvaluatedAlignment(
+            evidence=evidence,
+            result=result,
+            heatmaps=heatmaps,
+        )
+
+
+def _alignment_line_heatmaps(
+    *,
+    selected_cameras: tuple[SceneCamera, ...],
+    probabilities: Mapping[str, NDArray[np.float32]],
+    projected_by_camera: Mapping[str, _ProjectedLineEvidence],
+    plane: _GroundPlane,
+    settings: LineProjectionSettings,
+    aggregate_camera_ids: tuple[str, ...],
+) -> AlignmentLineHeatmaps:
+    """Bind every selected raw view to its weighted common-ground projection."""
+    aggregate_ids = set(aggregate_camera_ids)
+    return AlignmentLineHeatmaps(
+        bounds_uv=_projection_bounds(plane, settings=settings),
+        grid_spacing=settings.grid_spacing,
+        proximity_scale=settings.proximity_scale,
+        proximity_power=settings.proximity_power,
+        views=tuple(
+            AlignmentLineHeatmapView(
+                camera_id=camera.camera_id,
+                probability=probabilities[camera.camera_id],
+                points_uv=projected_by_camera[camera.camera_id].points_uv,
+                projected_probabilities=(
+                    projected_by_camera[camera.camera_id].probabilities
+                ),
+                proximity_weights=(
+                    projected_by_camera[camera.camera_id].proximity_weights
+                ),
+                included_in_aggregate=camera.camera_id in aggregate_ids,
+            )
+            for camera in selected_cameras
+        ),
+    )
 
 
 def _alignment_evidence_for_fixed_selection(
@@ -1261,6 +1308,8 @@ def _project_probability_to_ground(
         return _ProjectedLineEvidence(
             points_nht_scene=np.empty((0, 3), dtype=np.float64),
             points_uv=np.empty((0, 2), dtype=np.float64),
+            probabilities=np.empty(0, dtype=np.float32),
+            proximity_weights=np.empty(0, dtype=np.float64),
             selected_line_pixel_count=0,
         )
     selected_probability = probability[selected_y, selected_x]
@@ -1269,6 +1318,7 @@ def _project_probability_to_ground(
         order = np.argsort(-selected_probability, kind="stable")[:maximum]
         selected_y = selected_y[order]
         selected_x = selected_x[order]
+        selected_probability = selected_probability[order]
     output_height, output_width = probability.shape
     pixels = np.column_stack(
         (
@@ -1296,21 +1346,44 @@ def _project_probability_to_ground(
     valid &= np.isfinite(distances)
     valid &= distances > 0.0
     valid &= distances <= projection_settings.maximum_ray_distance
-    points_nht = camera_center + distances[valid, None] * directions_nht[valid]
+    valid_distances = distances[valid]
+    points_nht = camera_center + valid_distances[:, None] * directions_nht[valid]
     points_uv = plane.to_uv(points_nht)
-    u_min, u_max, v_min, v_max = plane.support_uv_bounds
-    margin = projection_settings.bounds_margin
+    u_min, u_max, v_min, v_max = _projection_bounds(
+        plane,
+        settings=projection_settings,
+    )
     in_bounds = (
-        (points_uv[:, 0] >= u_min - margin)
-        & (points_uv[:, 0] <= u_max + margin)
-        & (points_uv[:, 1] >= v_min - margin)
-        & (points_uv[:, 1] <= v_max + margin)
+        (points_uv[:, 0] >= u_min)
+        & (points_uv[:, 0] <= u_max)
+        & (points_uv[:, 1] >= v_min)
+        & (points_uv[:, 1] <= v_max)
+    )
+    projected_distances = valid_distances[in_bounds]
+    proximity_weights = 1.0 / (
+        1.0
+        + np.power(
+            projected_distances / projection_settings.proximity_scale,
+            projection_settings.proximity_power,
+        )
     )
     return _ProjectedLineEvidence(
         points_nht_scene=np.asarray(points_nht[in_bounds], dtype=np.float64),
         points_uv=np.asarray(points_uv[in_bounds], dtype=np.float64),
+        probabilities=np.asarray(selected_probability[valid][in_bounds], dtype=np.float32),
+        proximity_weights=np.asarray(proximity_weights, dtype=np.float64),
         selected_line_pixel_count=len(pixels),
     )
+
+
+def _projection_bounds(
+    plane: _GroundPlane,
+    *,
+    settings: LineProjectionSettings,
+) -> tuple[float, float, float, float]:
+    u_min, u_max, v_min, v_max = plane.support_uv_bounds
+    margin = settings.bounds_margin
+    return u_min - margin, u_max + margin, v_min - margin, v_max + margin
 
 
 def _fit_court_hypotheses(
@@ -2847,6 +2920,49 @@ def _plain_value(value: object) -> Any:
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
         return [_plain_value(item) for item in value]
     return value
+
+
+def _court_line_model_state(
+    raw_state: Mapping[Any, Any],
+) -> dict[str, torch.Tensor]:
+    """Normalize the exact historical single-line head before a strict load."""
+    model_state: dict[str, torch.Tensor] = {}
+    for key, value in raw_state.items():
+        if not isinstance(key, str) or not key.startswith("model."):
+            continue
+        if not isinstance(value, torch.Tensor):
+            raise TypeError(f"Court-line tensor {key!r} is not a Tensor.")
+        model_state[key.removeprefix("model.")] = value
+    if not model_state:
+        raise ValueError("Court-line checkpoint contains no model tensors.")
+
+    legacy_keys = {"final_conv.weight", "final_conv.bias"}
+    canonical_keys = {"heads.line.weight", "heads.line.bias"}
+    legacy_candidates = {
+        key for key in model_state if key.startswith("final_conv.")
+    }
+    canonical_candidates = {
+        key for key in model_state if key.startswith("heads.line.")
+    }
+    if legacy_candidates:
+        if legacy_candidates != legacy_keys or canonical_candidates:
+            raise ValueError(
+                "Court-line checkpoint mixes or incompletely defines legacy and "
+                "canonical line-head tensors."
+            )
+        model_state["heads.line.weight"] = model_state.pop("final_conv.weight")
+        model_state["heads.line.bias"] = model_state.pop("final_conv.bias")
+        warnings.warn(
+            "Mapped the exact historical court-line final_conv head to "
+            "heads.line before strict checkpoint loading.",
+            UserWarning,
+            stacklevel=2,
+        )
+    elif canonical_candidates != canonical_keys:
+        raise ValueError(
+            "Court-line checkpoint must contain exactly one complete heads.line head."
+        )
+    return model_state
 
 
 def _court_line_model_config(settings: CourtLineModelSettings) -> CourtModelConfig:

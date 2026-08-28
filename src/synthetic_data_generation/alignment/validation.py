@@ -24,6 +24,7 @@ from src.synthetic_data_generation.alignment.contracts import (
     CandidateEvidence,
     CandidateScaleDiagnostics,
     CorrespondenceSet,
+    EvaluatedAlignment,
     ExcludedCameraDiagnostics,
     FixedCameraSelectionDiagnostics,
     LineInferenceDeterminismDiagnostics,
@@ -34,6 +35,12 @@ from src.synthetic_data_generation.alignment.contracts import (
 from src.synthetic_data_generation.alignment.fitting import (
     fit_alignment,
     whole_court_diagnostics,
+)
+from src.synthetic_data_generation.alignment.heatmaps import (
+    LINE_HEATMAP_DIRECTORY,
+    AlignmentLineHeatmaps,
+    validate_line_heatmaps,
+    write_line_heatmaps,
 )
 from src.synthetic_data_generation.alignment.settings import WholeCourtEvidenceSettings
 from src.synthetic_data_generation.scene_contract import (
@@ -124,6 +131,7 @@ def write_alignment_outputs(
     *,
     evidence: AlignmentEvidence,
     result: AlignmentResult,
+    heatmaps: AlignmentLineHeatmaps,
 ) -> None:
     """Write only the declared fixed files beneath one provided staging path."""
     _require_staging_directory(staging_path)
@@ -139,6 +147,7 @@ def write_alignment_outputs(
         raise ValueError(
             "Alignment result candidate order disagrees with source evidence."
         )
+    EvaluatedAlignment(evidence=evidence, result=result, heatmaps=heatmaps)
 
     archive = _evidence_archive(evidence)
     _savez_compressed(staging_path / GROUND_LINE_MAP_FILE, **archive)
@@ -152,6 +161,10 @@ def write_alignment_outputs(
     )
     _write_json(diagnostics / "evidence.json", evidence.diagnostics.to_dict())
     (diagnostics / "summary.txt").write_text(_human_summary(result), encoding="utf-8")
+    write_line_heatmaps(
+        staging_path / LINE_HEATMAP_DIRECTORY,
+        heatmaps=heatmaps,
+    )
 
 
 def validate_alignment_outputs(output_path: Path) -> AlignmentResult:
@@ -162,6 +175,7 @@ def validate_alignment_outputs(output_path: Path) -> AlignmentResult:
         COURT_GEOMETRY_FILE,
         ALIGNMENT_FILE,
         DIAGNOSTICS_DIRECTORY,
+        LINE_HEATMAP_DIRECTORY,
     }
     actual = {path.name for path in output_path.iterdir()}
     if actual != expected:
@@ -192,6 +206,8 @@ def validate_alignment_outputs(output_path: Path) -> AlignmentResult:
         raise ValueError(
             "Ground-line evidence disagrees with the fitted alignment result."
         )
+    heatmaps = validate_line_heatmaps(output_path / LINE_HEATMAP_DIRECTORY)
+    EvaluatedAlignment(evidence=evidence, result=result, heatmaps=heatmaps)
 
     geometry = _load_json_object(output_path / COURT_GEOMETRY_FILE)
     if geometry != _court_geometry_payload(result):
@@ -1340,6 +1356,7 @@ __all__ = [
     "COURT_GEOMETRY_FILE",
     "DIAGNOSTICS_DIRECTORY",
     "GROUND_LINE_MAP_FILE",
+    "LINE_HEATMAP_DIRECTORY",
     "load_accepted_layout",
     "load_alignment_result",
     "validate_alignment_outputs",
