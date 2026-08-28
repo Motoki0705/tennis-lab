@@ -199,25 +199,15 @@ def get_extensions() -> list[Any]:
     }
     extensions = []
     if build_target == ALL_CUDA_OPS:
-        extensions.extend(
-            [
-                CUDAExtension(
-                    name="src.utils.models.components.ops.moe._C",
-                    sources=[
-                        str(build_paths.moe_bindings),
-                        str(build_paths.moe_kernels),
-                    ],
-                    extra_compile_args=common_compile_args,
-                ),
-                CUDAExtension(
-                    name="src.utils.models.components.ops.time_local._C",
-                    sources=[
-                        str(build_paths.time_local_bindings),
-                        str(build_paths.time_local_kernels),
-                    ],
-                    extra_compile_args=common_compile_args,
-                ),
-            ]
+        extensions.append(
+            CUDAExtension(
+                name="src.utils.models.components.ops.time_local._C",
+                sources=[
+                    str(build_paths.time_local_bindings),
+                    str(build_paths.time_local_kernels),
+                ],
+                extra_compile_args=common_compile_args,
+            )
         )
     extensions.append(
         CUDAExtension(
