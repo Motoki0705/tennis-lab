@@ -328,6 +328,7 @@ class TrackQueryModelConfig:
     num_heads: int
     num_stages: int
     ffn_dim: int
+    ffn_type: FFNType
     num_queries: int
     rope_dim: int
     dropout: float
@@ -335,7 +336,6 @@ class TrackQueryModelConfig:
     invisible_init_std: float
     mhc: TrackQueryMHCConfig
     cswa: TrackQueryCSWAConfig
-    ffn_type: FFNType = "swiglu"
 
 
 @dataclass(frozen=True, slots=True)
@@ -345,6 +345,7 @@ class TrackQueryAblationModelConfig:
     num_heads: int
     num_stages: int
     ffn_dim: int
+    ffn_type: FFNType
     num_queries: int
     rope_dim: int
     dropout: float
@@ -355,7 +356,6 @@ class TrackQueryAblationModelConfig:
     query_ffn_after_spatial: bool
     mhc: TrackQueryMHCConfig
     cswa: TrackQueryCSWAConfig
-    ffn_type: FFNType = "swiglu"
 
 
 @dataclass(frozen=True, slots=True)
@@ -367,6 +367,7 @@ class TrackQueryReferenceModelConfig:
     num_heads: int
     num_stages: int
     ffn_dim: int
+    ffn_type: FFNType
     num_queries: int
     rope_dim: int
     dropout: float
@@ -376,7 +377,6 @@ class TrackQueryReferenceModelConfig:
     reference_selector_mode: Literal["reference"]
     mhc: TrackQueryMHCConfig
     cswa: TrackQueryCSWAConfig
-    ffn_type: FFNType = "swiglu"
 
 
 @dataclass(frozen=True, slots=True)
@@ -388,6 +388,7 @@ class TrackQueryReferenceAblationModelConfig:
     num_heads: int
     num_stages: int
     ffn_dim: int
+    ffn_type: FFNType
     num_queries: int
     rope_dim: int
     dropout: float
@@ -400,7 +401,6 @@ class TrackQueryReferenceAblationModelConfig:
     query_ffn_after_spatial: bool
     mhc: TrackQueryMHCConfig
     cswa: TrackQueryCSWAConfig
-    ffn_type: FFNType = "swiglu"
 
 
 BLCSModelConfig: TypeAlias = (
