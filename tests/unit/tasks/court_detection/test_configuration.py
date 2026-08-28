@@ -173,16 +173,18 @@ def test_tennis_rejects_validation_as_test_mapping() -> None:
         CourtTrainingConfig.from_config(config)
 
 
-def test_default_model_is_hierarchical_without_transformer_refinement() -> None:
+def test_default_model_is_hierarchical_with_dinov3_transformer_and_dpt() -> None:
     runtime = CourtTrainingConfig.from_config(_compose("synthetic_court"))
 
     assert isinstance(runtime.model, CourtModelConfig)
     assert runtime.model.name == "court_hierarchical"
-    assert runtime.model.encoder.name == "default"
-    assert runtime.model.decoder.name == "fpn"
-    assert runtime.model.decoder.size is None
-    assert runtime.model.transformer_encoder.name == "none"
-    assert not runtime.model.transformer_encoder.enabled
+    assert runtime.model.encoder.name == "dinov3"
+    assert runtime.model.decoder.name == "dpt"
+    assert runtime.model.decoder.size == "large"
+    assert runtime.model.decoder.channels == 512
+    assert runtime.model.transformer_encoder.name == "transformer"
+    assert runtime.model.transformer_encoder.enabled
+    assert runtime.model.transformer_encoder.depth == 8
 
 
 def test_transformer_config_group_has_only_none_and_enabled_default_presets() -> None:
@@ -220,11 +222,7 @@ def test_dinov3_dpt_can_enable_transformer_refinement() -> None:
 @pytest.mark.parametrize(
     ("preset", "size", "channels"),
     [
-        ("dpt_tiny", "tiny", 64),
-        ("dpt_small", "small", 128),
-        ("dpt_base", "base", 256),
         ("dpt", "large", 512),
-        ("dpt_large", "large", 512),
     ],
 )
 def test_dpt_size_presets_are_strict_and_regular(
@@ -252,7 +250,7 @@ def test_transformer_depth_is_selected_from_config(depth: int) -> None:
             "synthetic_court",
             "model/encoder=dinov3",
             "model/transformer_encoder=default",
-            "model/decoder=dpt_tiny",
+            "model/decoder=dpt",
             f"model.transformer_encoder.depth={depth}",
         )
     )
@@ -264,7 +262,7 @@ def test_dpt_size_rejects_arbitrary_or_mismatched_channels() -> None:
     missing = _compose(
         "synthetic_court",
         "model/encoder=dinov3",
-        "model/decoder=dpt_tiny",
+        "model/decoder=dpt",
     )
     with open_dict(missing.model.decoder):
         del missing.model.decoder.size
@@ -274,7 +272,7 @@ def test_dpt_size_rejects_arbitrary_or_mismatched_channels() -> None:
     mismatched = _compose(
         "synthetic_court",
         "model/encoder=dinov3",
-        "model/decoder=dpt_tiny",
+        "model/decoder=dpt",
     )
     mismatched.model.decoder.channels = 65
     with pytest.raises(SemanticConfigurationError, match="strict size preset"):
@@ -283,7 +281,7 @@ def test_dpt_size_rejects_arbitrary_or_mismatched_channels() -> None:
     unknown = _compose(
         "synthetic_court",
         "model/encoder=dinov3",
-        "model/decoder=dpt_tiny",
+        "model/decoder=dpt",
     )
     unknown.model.decoder.size = "micro"
     with pytest.raises(SemanticConfigurationError, match="tiny, small, base, or large"):
@@ -291,7 +289,12 @@ def test_dpt_size_rejects_arbitrary_or_mismatched_channels() -> None:
 
 
 def test_transformer_refinement_requires_dinov3_encoder() -> None:
-    config = _compose("synthetic_court", "model/transformer_encoder=default")
+    config = _compose(
+        "synthetic_court",
+        "model/encoder=default",
+        "model/transformer_encoder=default",
+        "model/decoder=fpn",
+    )
 
     with pytest.raises(SemanticConfigurationError, match="DINOv3"):
         CourtTrainingConfig.from_config(config)
@@ -333,6 +336,7 @@ def test_pose_supervision_requires_explicit_transformer_and_weights() -> None:
         "synthetic_court",
         "data.source.keypoint_court_scope=target_court",
         "data/augmentation=pose_safe",
+        "model/transformer_encoder=none",
         "loss.pose.enabled=true",
         "loss.pose.translation_weight=1.0",
         "loss.pose.rotation_weight=1.0",
