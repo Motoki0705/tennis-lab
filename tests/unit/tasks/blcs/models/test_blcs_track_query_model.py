@@ -7,9 +7,10 @@ import torch
 
 from src.tasks.blcs.configuration import TrackQueryModelConfig, parse_model_config
 from src.tasks.blcs.models import BLCSTrackQueryModel
+from src.utils.models.components.ffn_layers import DeepSeekV4SwiGLU, FFNType
 
 
-def _config() -> TrackQueryModelConfig:
+def _config(ffn_type: FFNType = "swiglu") -> TrackQueryModelConfig:
     parsed = parse_model_config(
         {
             "model": {
@@ -18,6 +19,7 @@ def _config() -> TrackQueryModelConfig:
                 "num_heads": 4,
                 "num_stages": 4,
                 "ffn_dim": 32,
+                "ffn_type": ffn_type,
                 "num_queries": 4,
                 "rope_dim": 4,
                 "dropout": 0.0,
@@ -42,8 +44,8 @@ def _config() -> TrackQueryModelConfig:
     return parsed
 
 
-def _model() -> BLCSTrackQueryModel:
-    model = BLCSTrackQueryModel(_config())
+def _model(ffn_type: FFNType = "swiglu") -> BLCSTrackQueryModel:
+    model = BLCSTrackQueryModel(_config(ffn_type))
     model.eval()
     return model
 
@@ -68,6 +70,22 @@ def test_forward_public_contract_has_exactly_five_tensors() -> None:
         "court_vis",
         "padding_mask",
     ]
+
+
+def test_configured_ffn_reaches_every_track_query_block() -> None:
+    model = _model("deepseek_v4_swiglu")
+    blocks = [
+        block
+        for stage in model.stages
+        for block in (
+            stage.object_temporal_block,
+            stage.spatial_block,
+            stage.query_temporal_block,
+        )
+    ]
+
+    assert blocks
+    assert all(isinstance(block.ffn, DeepSeekV4SwiGLU) for block in blocks)
 
 
 def test_forward_returns_fixed_query_outputs() -> None:

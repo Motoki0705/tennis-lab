@@ -6,6 +6,7 @@ hidden_dim: 512
 num_heads: 8
 num_stages: 12
 ffn_dim: 1408
+ffn_type: swiglu
 num_queries: 4
 rope_dim: 64
 dropout: 0.0

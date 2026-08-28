@@ -11,6 +11,7 @@ from src.tasks.court_detection.models.transformer_encoder import (
     CourtTransformerEncoder,
     build_patch_positions,
 )
+from src.utils.models.components.ffn_layers import DeepSeekV4SwiGLU
 
 
 @pytest.mark.parametrize("depth", [None, 0])
@@ -37,6 +38,7 @@ def test_depth_and_non_square_grid_preserve_spatial_shape_and_return_query() -> 
         num_heads=4,
         rope_dim=8,
         ffn_dim=64,
+        ffn_type="deepseek_v4_swiglu",
     )
     features = torch.randn(2, 32, 2, 3, requires_grad=True)
 
@@ -48,6 +50,7 @@ def test_depth_and_non_square_grid_preserve_spatial_shape_and_return_query() -> 
     assert output.spatial.shape == features.shape
     assert output.pose_query is not None
     assert output.pose_query.shape == (2, 32)
+    assert all(isinstance(block.ffn, DeepSeekV4SwiGLU) for block in encoder.blocks)
     assert encoder.pose_query.grad is not None
     assert features.grad is not None
 
@@ -122,6 +125,7 @@ def test_query_rope_frequency_is_identity_while_patch_frequency_is_not() -> None
         ({"dim": 32, "num_heads": 4, "rope_dim": 6}, "four"),
         ({"dim": 32, "num_heads": 4, "rope_dim": 40}, "head_dim"),
         ({"dim": 32, "num_heads": 4, "depth": -1}, "depth"),
+        ({"dim": 32, "ffn_type": "unknown"}, "ffn_type"),
     ],
 )
 def test_invalid_transformer_dimensions_fail_at_construction(

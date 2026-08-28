@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, cast
 
 import torch
 from torch import Tensor, nn
@@ -12,6 +12,10 @@ from src.utils.models.components import (
     TransformerBlock,
     TransformerBlockConfig,
     precompute_freqs_cis,
+)
+from src.utils.models.components.ffn_layers import (
+    SUPPORTED_FFN_TYPES,
+    FFNType,
 )
 from src.utils.models.transformer_utils import build_self_attn_mask
 
@@ -34,7 +38,7 @@ class TransformerSequenceDiscriminator(nn.Module):
         dropout: float,
         rope_dim: int,
         rope_theta: float,
-        ffn_type: str,
+        ffn_type: FFNType,
         max_seq_len: int,
         invalid_init_std: float,
         cls_init_std: float,
@@ -83,7 +87,7 @@ class TransformerSequenceDiscriminator(nn.Module):
                         attention_type="mha",
                         n_kv_heads=None,
                         rope_base=float(rope_theta),
-                        ffn_type=cast(Literal["swiglu", "mlp"], ffn_type),
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(int(num_layers))
@@ -225,8 +229,11 @@ def build_trajectory_discriminator(
             raise TypeError(f"trajectory discriminator {key} must be exactly float.")
     if type(disc_cfg["ffn_type"]) is not str:
         raise TypeError("trajectory discriminator ffn_type must be exactly str.")
-    if disc_cfg["ffn_type"] not in {"swiglu", "mlp"}:
-        raise ValueError("trajectory discriminator ffn_type must be 'swiglu' or 'mlp'.")
+    if disc_cfg["ffn_type"] not in SUPPORTED_FFN_TYPES:
+        raise ValueError(
+            "trajectory discriminator ffn_type must be one of "
+            f"{sorted(SUPPORTED_FFN_TYPES)!r}."
+        )
     return TransformerSequenceDiscriminator(
         input_dim=input_dim,
         hidden_dim=disc_cfg["hidden_dim"],
@@ -236,7 +243,7 @@ def build_trajectory_discriminator(
         dropout=disc_cfg["dropout"],
         rope_dim=disc_cfg["rope_dim"],
         rope_theta=disc_cfg["rope_theta"],
-        ffn_type=disc_cfg["ffn_type"],
+        ffn_type=cast(FFNType, disc_cfg["ffn_type"]),
         max_seq_len=disc_cfg["max_seq_len"],
         invalid_init_std=disc_cfg["invalid_init_std"],
         cls_init_std=disc_cfg["cls_init_std"],

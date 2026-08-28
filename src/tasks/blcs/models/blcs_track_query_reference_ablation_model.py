@@ -38,6 +38,7 @@ def _legacy_architecture_config(
         num_heads=config.num_heads,
         num_stages=config.num_stages,
         ffn_dim=config.ffn_dim,
+        ffn_type=config.ffn_type,
         num_queries=config.num_queries,
         rope_dim=config.rope_dim,
         dropout=config.dropout,

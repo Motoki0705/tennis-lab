@@ -580,6 +580,7 @@ def _blcs_tracking_model() -> BLCSTrackQueryReferenceAblationModel:
                 "num_heads": 4,
                 "num_stages": 4,
                 "ffn_dim": 32,
+                "ffn_type": "swiglu",
                 "num_queries": 2,
                 "rope_dim": 6,
                 "dropout": 0.0,

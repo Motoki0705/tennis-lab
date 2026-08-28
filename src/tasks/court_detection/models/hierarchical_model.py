@@ -89,12 +89,14 @@ class CourtHierarchicalModel(nn.Module):
             assert transformer_config.ffn_dim is not None
             assert transformer_config.rope_theta is not None
             assert transformer_config.dropout is not None
+            assert transformer_config.ffn_type is not None
             self.transformer_encoder = CourtTransformerEncoder(
                 dim=deepest_dim,
                 depth=transformer_config.depth,
                 num_heads=transformer_config.num_heads,
                 rope_dim=transformer_config.rope_dim,
                 ffn_dim=transformer_config.ffn_dim,
+                ffn_type=transformer_config.ffn_type,
                 rope_theta=transformer_config.rope_theta,
                 dropout=transformer_config.dropout,
             )
