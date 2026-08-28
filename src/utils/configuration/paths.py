@@ -222,30 +222,6 @@ class PathResolver:
         """Resolve a non-empty relative path without permitting root escape."""
         return self.resolve_beneath(role, self.roots.root(role), *relative_parts)
 
-    def resolve_configured(self, role: PathRole, value: str | Path) -> Path:
-        """Resolve one configured path without weakening its declared role root.
-
-        Role-relative values are resolved beneath the configured root. Absolute
-        values are accepted only when they already lie strictly below that same
-        root. No process-CWD or project-root fallback is applied.
-        """
-        rendered = str(value)
-        if not rendered.strip() or rendered != rendered.strip():
-            raise PathContractError(
-                f"Configured {role.value} path must be non-empty and trimmed; "
-                f"got {value!r}."
-            )
-        candidate = Path(value)
-        if not candidate.is_absolute():
-            return self.resolve(role, candidate)
-        resolved = self.validate(role, candidate)
-        if resolved == self.roots.root(role):
-            raise PathContractError(
-                f"Configured {role.value} path must identify a child below its "
-                f"declared root; got {value!r}."
-            )
-        return resolved
-
     def resolve_beneath(
         self,
         role: PathRole,

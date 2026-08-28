@@ -200,51 +200,6 @@ def test_project_source_child_remains_explicit_and_role_contained(
     )
 
 
-def test_resolve_configured_accepts_relative_and_contained_absolute_paths(
-    tmp_path: Path,
-) -> None:
-    resolver = PathResolver(
-        RuntimePathRoots.from_mapping(
-            _root_mapping(), repository_root=tmp_path.resolve()
-        )
-    )
-    absolute = resolver.roots.checkpoint_root / "run/model.ckpt"
-
-    assert resolver.resolve_configured(PathRole.CHECKPOINT, "run/model.ckpt") == (
-        absolute
-    )
-    assert resolver.resolve_configured(PathRole.CHECKPOINT, absolute) == absolute
-
-
-@pytest.mark.parametrize("configured", ["", " ", ".", "../escape.ckpt"])
-def test_resolve_configured_rejects_blank_root_and_escape_values(
-    tmp_path: Path,
-    configured: str,
-) -> None:
-    resolver = PathResolver(
-        RuntimePathRoots.from_mapping(
-            _root_mapping(), repository_root=tmp_path.resolve()
-        )
-    )
-
-    with pytest.raises(PathContractError, match="non-empty|child|escapes"):
-        resolver.resolve_configured(PathRole.CHECKPOINT, configured)
-
-
-def test_resolve_configured_rejects_absolute_path_from_another_role(
-    tmp_path: Path,
-) -> None:
-    resolver = PathResolver(
-        RuntimePathRoots.from_mapping(
-            _root_mapping(), repository_root=tmp_path.resolve()
-        )
-    )
-    wrong_role = resolver.roots.output_root / "run/model.ckpt"
-
-    with pytest.raises(PathContractError, match="outside its root"):
-        resolver.resolve_configured(PathRole.CHECKPOINT, wrong_role)
-
-
 @pytest.mark.parametrize("child", ["", " ", ".", "..", "nested/../.."])
 def test_resolve_beneath_rejects_blank_root_and_escape_children(
     tmp_path: Path,

@@ -129,23 +129,6 @@ def test_all_inventoried_runtime_boundaries_expose_truthful_authorities() -> Non
         assert contract.authority_symbols
         assert contract.semantic_constraint_authorities
         assert all("source-validated-input" not in path for path in contract.field_paths)
-    paired_boundaries = {
-        contract.boundary_id: contract
-        for contract in BOUNDARY_CONTRACTS
-        if contract.boundary_id.endswith(
-            ".scripts.evaluate_reference_counterfactual:main"
-        )
-    }
-    assert set(paired_boundaries) == {
-        "src.tasks.blcs.scripts.evaluate_reference_counterfactual:main",
-        "src.tasks.plcs.scripts.evaluate_reference_counterfactual:main",
-    }
-    for boundary in paired_boundaries.values():
-        assert boundary.validator_callable.endswith(
-            ".evaluation.reference_counterfactual._validate_boundary"
-        )
-        assert any("path-role:checkpoint" in value for value in boundary.path_role_authorities)
-        assert any("path-role:output" in value for value in boundary.path_role_authorities)
 
 
 def test_slcs_boundaries_bind_only_their_actual_public_boundary_schema() -> None:

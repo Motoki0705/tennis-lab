@@ -123,4 +123,4 @@ selectorなしでもposition/headingを同程度まで学習できたため、ca
 
 ### 次に有効な実験
 
-本runをselectorのmatched対照として保持し、paired side評価と複数seedで差を分解する。現時点ではv1 production defaultを変えない。
+本runをselectorのmatched対照として保持し、複数seedとreference local-index均衡samplingで差を分解する。現時点ではv1 production defaultを変えない。
