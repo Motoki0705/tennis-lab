@@ -213,6 +213,25 @@ def revision_path_inventory(
     )
 
 
+def pr_evidence_path_inventory(
+    task_dir: Path,
+    base_revision: str,
+    head_revision: str,
+) -> list[str]:
+    """Return the unfiltered no-renames PR inventory from merge base to head."""
+    if not base_revision:
+        raise ValueError("PR evidence path inventory requires a base revision")
+    if head_revision == "WORKTREE":
+        raise ValueError("PR evidence path inventory requires a committed head revision")
+    root = repository_root(task_dir)
+    merge_base = _git(root, "merge-base", base_revision, head_revision).stdout.decode(
+        errors="surrogateescape"
+    ).strip()
+    if not merge_base:
+        raise ValueError("PR evidence path inventory requires a merge base")
+    return _revision_path_inventory(root, merge_base, head_revision)
+
+
 def compute_candidate_fingerprint(
     task_dir: Path,
     state: dict[str, Any] | None = None,
