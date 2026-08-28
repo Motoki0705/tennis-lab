@@ -1,0 +1,35 @@
+defaults:
+  - paths: default
+  - _self_
+
+samples:
+  datasets:
+    - path: plcs/single_object
+      mode: single
+      court_keypoints: physical_v1
+    - path: plcs/multi_object
+      mode: multi
+      court_keypoints: physical_v1
+    - path: plcs/single_object_broadcast
+      mode: single
+      court_keypoints: physical_v1
+    - path: plcs/multi_object_broadcast
+      mode: multi
+      court_keypoints: physical_v1
+    - path: plcs/multi_object_camera_view_v2
+      mode: multi
+      court_keypoints: camera_view_v2
+  samples_per_stratum: 1
+  max_frames: 120
+  min_fps: 8
+  max_fps: 20
+  view: camera
+  figure_size: [6.4, 4.8]
+  overwrite: false
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},hydra/plcs/generate_dataset_samples}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

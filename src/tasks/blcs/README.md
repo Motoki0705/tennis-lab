@@ -71,6 +71,7 @@ reference frame へ position と court-space velocity を同じ proper rotation 
 
 ### scripts/
 - **`generate_dataset.py`**: 合成データ生成エントリポイント。
+- **`generate_dataset_samples.py`**: 生成済み各datasetへ層化されたcamera-view GIFとmanifestを作成。
 - **`train.py`**: 学習エントリポイント(chunked/GAN切替可)。
 - **`visualize.py`**: 可視化エントリポイント。
 
