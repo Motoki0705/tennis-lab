@@ -75,10 +75,8 @@ def _axial_model() -> BLCSMultiViewAxialModel:
         max_num_cameras=2,
         invisible_init_std=0.02,
         num_court_tokens=2,
-        time_window_radius=1,
         camera_layers_per_stage=[1],
         time_layers_per_stage=[1],
-        time_global_stage_mask=[False],
     )
 
 

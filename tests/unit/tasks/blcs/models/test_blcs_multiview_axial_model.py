@@ -24,7 +24,6 @@ def _config(*, max_num_cameras: int, max_seq_len: int) -> dict[str, object]:
             "ffn_type": "swiglu",
             "camera_layers_per_stage": [1],
             "time_layers_per_stage": [1],
-            "time_global_stage_mask": [False],
             "max_num_cameras": max_num_cameras,
             "max_seq_len": max_seq_len,
             "dropout": 0.0,
@@ -34,7 +33,6 @@ def _config(*, max_num_cameras: int, max_seq_len: int) -> dict[str, object]:
             "predict_velocity": False,
             "invisible_init_std": 0.02,
             "num_court_tokens": 20,
-            "time_window_radius": 2,
         }
     }
 
