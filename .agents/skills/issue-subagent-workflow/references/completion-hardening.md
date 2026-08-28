@@ -16,9 +16,9 @@ Preflight, test, seal, validation, and packaging have separate state bindings. V
 
 ## PR-bound completion
 
-After Validator PASS, create/update the PR, finish final-head checks, check out that head, then `capture-pr`. Through `gh`, it stores real metadata, all paginated files, and the complete status rollup in `pr-evidence.json`, binding its digest to state.
+After Validator PASS, create/update the PR, finish final-head checks, check out that head, then `capture-pr`. Through `gh`, it stores the actual remote base/head metadata, all paginated files, and the complete status rollup in `pr-evidence.json`, binding its digest to state. The PR file inventory uses GitHub's three-dot semantics: resolve `merge-base(baseRefOid, headRefOid)`, then compare that merge base to the PR head with an unfiltered `--no-renames` path inventory. A missing merge base or Git failure is an explicit error; it never falls back to an endpoint two-tree diff or an empty inventory.
 
-`finalize-pr` verifies local HEAD=supplied head, revision content=validated candidate, captured files=revision diff, required remote checks=PASS, and agreement among evidence JSON, state digest, `packaging.md`, and current content.
+`finalize-pr` verifies local HEAD=supplied head, revision content=validated candidate, captured files=the same merge-base-to-head PR inventory, required remote checks=PASS, and agreement among evidence JSON, state digest, `packaging.md`, and current content. Candidate and revision fingerprints remain a separate frozen-base identity: they stay anchored to `state.base_revision` and exclude `.codex/tasks/**`, while the PR inventory records the actual remote endpoints and remains unfiltered.
 
 Validator PASS sets `status = "validated"`, `phase = "packaging"`, `verdict = "VALIDATED"`; only `finalize-pr` sets complete/PASS. Packaging failure preserves validated state. Content-changing repair returns to applicable Preflight/Test/Seal gates.
 

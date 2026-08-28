@@ -839,6 +839,287 @@ PASS
     assert manage.check(task) == []
 
 
+def test_capture_finalize_and_check_use_diverged_pr_merge_base(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root, task = setup_task(tmp_path)
+    frozen_base = manage.load_state(task)["base_revision"]
+    fp = advance_to_validation(root, task)
+    write_validation(task, fp)
+    manage.apply_validation_verdict(task, "PASS")
+    git(root, "add", "-A")
+    git(root, "commit", "-m", "candidate with workflow artifacts")
+    head = git(root, "rev-parse", "HEAD")
+
+    git(root, "checkout", "--detach", frozen_base)
+    (root / "base-only.txt").write_text("advanced base\n", encoding="utf-8")
+    git(root, "add", "base-only.txt")
+    git(root, "commit", "-m", "diverged PR base")
+    pr_base = git(root, "rev-parse", "HEAD")
+    git(root, "checkout", "--detach", head)
+    assert git(root, "merge-base", pr_base, head) == frozen_base
+
+    state = manage.load_state(task)
+    candidate_files = candidate.revision_changed_paths(task, state, head)
+    assert candidate_files == ["src.txt", "tests.txt"]
+    assert candidate.compute_candidate_fingerprint(task, state) == fp
+    assert candidate.compute_revision_fingerprint(task, state, head) == fp
+
+    endpoint_files = candidate.revision_path_inventory(task, pr_base, head)
+    pr_files = candidate.pr_evidence_path_inventory(task, pr_base, head)
+    assert endpoint_files == sorted([*pr_files, "base-only.txt"])
+    assert "base-only.txt" not in pr_files
+    assert set(candidate_files) < set(pr_files)
+    assert any(path.startswith(".codex/tasks/issue-1/") for path in pr_files)
+
+    files_payload = [[{"filename": path, "status": "modified"} for path in pr_files]]
+    install_fake_gh(
+        tmp_path,
+        monkeypatch,
+        base=pr_base,
+        head=head,
+        checks_pass=True,
+        files_payload=files_payload,
+    )
+    manage.capture_pr_evidence(task, pr_number=706)
+    state = manage.load_state(task)
+    evidence_path = task / "05-packaging/pr-evidence.json"
+    state_path = task / "state.toml"
+    packaging_path = task / "05-packaging/packaging.md"
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    assert evidence["base_sha"] == pr_base
+    assert evidence["head_sha"] == head
+    assert evidence["candidate_sha256"] == fp
+    assert evidence["files"] == pr_files
+
+    evidence_digest = state["pr_evidence_sha256"]
+    packaging_path.write_text(
+        f"""# Packaging
+
+- Issue: #1
+- Attempt: 1
+- Status: COMPLETE
+- Candidate SHA-256: `{fp}`
+- PR number: 706
+- PR head SHA: `{head}`
+- Remote checks: PASS
+- PR evidence SHA-256: `{evidence_digest}`
+
+## Final candidate binding
+Matches the frozen-base Validator candidate.
+## Pull request identity
+PR #706 at {head}, based on diverged main at {pr_base}.
+## Complete paginated diff scope
+Merge-base-to-head inventory includes tracked workflow artifacts.
+## Remote required checks
+All required checks PASS.
+## Packaging evidence
+Actual remote base, head, files, and checks recorded.
+## Final packaging verdict
+PASS
+""",
+        encoding="utf-8",
+    )
+
+    correct_evidence_text = evidence_path.read_text(encoding="utf-8")
+    correct_state_text = state_path.read_text(encoding="utf-8")
+    correct_packaging_text = packaging_path.read_text(encoding="utf-8")
+    mismatched_evidence = dict(evidence)
+    mismatched_evidence["files"] = sorted([*pr_files, "base-only.txt"])
+    mismatched_digest = remote.evidence_digest(mismatched_evidence)
+    evidence_path.write_text(
+        json.dumps(
+            mismatched_evidence,
+            ensure_ascii=False,
+            sort_keys=True,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    state_path.write_text(
+        correct_state_text.replace(evidence_digest, mismatched_digest),
+        encoding="utf-8",
+    )
+    packaging_path.write_text(
+        correct_packaging_text.replace(evidence_digest, mismatched_digest),
+        encoding="utf-8",
+    )
+    state_before_failed_finalize = state_path.read_bytes()
+    with pytest.raises(
+        ValueError,
+        match="PR evidence files differ from the recorded PR base revision",
+    ):
+        manage.finalize_pr(task, pr_number=706, head_sha=head)
+    assert state_path.read_bytes() == state_before_failed_finalize
+
+    evidence_path.write_text(correct_evidence_text, encoding="utf-8")
+    state_path.write_text(correct_state_text, encoding="utf-8")
+    packaging_path.write_text(correct_packaging_text, encoding="utf-8")
+    manage.finalize_pr(task, pr_number=706, head_sha=head)
+    assert manage.check(task) == []
+
+    complete_state_text = state_path.read_text(encoding="utf-8")
+    evidence_path.write_text(
+        json.dumps(
+            mismatched_evidence,
+            ensure_ascii=False,
+            sort_keys=True,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    state_path.write_text(
+        complete_state_text.replace(evidence_digest, mismatched_digest),
+        encoding="utf-8",
+    )
+    state_before_failed_check = state_path.read_bytes()
+    assert (
+        "PR evidence files differ from the recorded PR base revision"
+        in manage.check(task)
+    )
+    assert state_path.read_bytes() == state_before_failed_check
+
+
+def test_capture_finalize_and_check_reject_pr_without_merge_base_without_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root, task = setup_task(tmp_path)
+    fp = advance_to_validation(root, task)
+    write_validation(task, fp)
+    manage.apply_validation_verdict(task, "PASS")
+    git(root, "add", "src.txt", "tests.txt")
+    git(root, "commit", "-m", "candidate")
+    head = git(root, "rev-parse", "HEAD")
+    frozen_base = manage.load_state(task)["base_revision"]
+    install_fake_gh(
+        tmp_path,
+        monkeypatch,
+        base=frozen_base,
+        head=head,
+        checks_pass=True,
+    )
+    manage.capture_pr_evidence(task, pr_number=706)
+    state = manage.load_state(task)
+    evidence_path = task / "05-packaging/pr-evidence.json"
+    state_path = task / "state.toml"
+    packaging_path = task / "05-packaging/packaging.md"
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    evidence_digest = state["pr_evidence_sha256"]
+    packaging_path.write_text(
+        f"""# Packaging
+
+- Issue: #1
+- Attempt: 1
+- Status: COMPLETE
+- Candidate SHA-256: `{fp}`
+- PR number: 706
+- PR head SHA: `{head}`
+- Remote checks: PASS
+- PR evidence SHA-256: `{evidence_digest}`
+
+## Final candidate binding
+Matches Validator candidate.
+## Pull request identity
+PR #706 at {head}.
+## Complete paginated diff scope
+Merge-base-to-head inventory recorded.
+## Remote required checks
+All required checks PASS.
+## Packaging evidence
+Remote base, head, files, and checks recorded.
+## Final packaging verdict
+PASS
+""",
+        encoding="utf-8",
+    )
+
+    empty_tree = git(root, "hash-object", "-w", "-t", "tree", "/dev/null")
+    unrelated_base = git(root, "commit-tree", empty_tree, "-m", "unrelated base")
+    install_fake_gh(
+        tmp_path,
+        monkeypatch,
+        base=unrelated_base,
+        head=head,
+        checks_pass=True,
+    )
+    correct_evidence_text = evidence_path.read_text(encoding="utf-8")
+    correct_state_text = state_path.read_text(encoding="utf-8")
+    correct_packaging_text = packaging_path.read_text(encoding="utf-8")
+    state_before_failed_recapture = state_path.read_bytes()
+    evidence_before_failed_recapture = evidence_path.read_bytes()
+
+    with pytest.raises(ValueError, match=r"git merge-base .* failed"):
+        manage.capture_pr_evidence(task, pr_number=706)
+    assert state_path.read_bytes() == state_before_failed_recapture
+    assert evidence_path.read_bytes() == evidence_before_failed_recapture
+
+    unrelated_evidence = dict(evidence)
+    unrelated_evidence["base_sha"] = unrelated_base
+    unrelated_digest = remote.evidence_digest(unrelated_evidence)
+    evidence_path.write_text(
+        json.dumps(
+            unrelated_evidence,
+            ensure_ascii=False,
+            sort_keys=True,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    state_path.write_text(
+        correct_state_text.replace(evidence_digest, unrelated_digest),
+        encoding="utf-8",
+    )
+    packaging_path.write_text(
+        correct_packaging_text.replace(evidence_digest, unrelated_digest),
+        encoding="utf-8",
+    )
+    state_before_failed_finalize = state_path.read_bytes()
+    evidence_before_failed_finalize = evidence_path.read_bytes()
+    with pytest.raises(ValueError, match=r"git merge-base .* failed"):
+        manage.finalize_pr(task, pr_number=706, head_sha=head)
+    assert state_path.read_bytes() == state_before_failed_finalize
+    assert evidence_path.read_bytes() == evidence_before_failed_finalize
+
+    evidence_path.write_text(correct_evidence_text, encoding="utf-8")
+    state_path.write_text(correct_state_text, encoding="utf-8")
+    packaging_path.write_text(correct_packaging_text, encoding="utf-8")
+    manage.finalize_pr(task, pr_number=706, head_sha=head)
+    assert manage.check(task) == []
+
+    complete_state_text = state_path.read_text(encoding="utf-8")
+    evidence_path.write_text(
+        json.dumps(
+            unrelated_evidence,
+            ensure_ascii=False,
+            sort_keys=True,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    state_path.write_text(
+        complete_state_text.replace(evidence_digest, unrelated_digest),
+        encoding="utf-8",
+    )
+    packaging_path.write_text(
+        correct_packaging_text.replace(evidence_digest, unrelated_digest),
+        encoding="utf-8",
+    )
+    state_before_failed_check = state_path.read_bytes()
+    evidence_before_failed_check = evidence_path.read_bytes()
+    assert any(
+        "git merge-base" in error and "failed" in error
+        for error in manage.check(task)
+    )
+    assert state_path.read_bytes() == state_before_failed_check
+    assert evidence_path.read_bytes() == evidence_before_failed_check
+
+
 @pytest.mark.parametrize(
     "base",
     [None, "", "a" * 39, "A" * 40, "g" * 40],
