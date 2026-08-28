@@ -805,6 +805,9 @@ class AlignmentConfiguration:
                 "minimum_ray_plane_cosine",
                 "maximum_ray_distance",
                 "bounds_margin",
+                "proximity_scale",
+                "proximity_power",
+                "grid_spacing",
                 "minimum_projected_points_per_camera",
             },
         )
@@ -816,6 +819,15 @@ class AlignmentConfiguration:
                 projection_raw, "maximum_ray_distance", path=projection_path
             ),
             bounds_margin=_number(projection_raw, "bounds_margin", path=projection_path),
+            proximity_scale=_number(
+                projection_raw, "proximity_scale", path=projection_path
+            ),
+            proximity_power=_number(
+                projection_raw, "proximity_power", path=projection_path
+            ),
+            grid_spacing=_number(
+                projection_raw, "grid_spacing", path=projection_path
+            ),
             minimum_projected_points_per_camera=_integer(
                 projection_raw,
                 "minimum_projected_points_per_camera",

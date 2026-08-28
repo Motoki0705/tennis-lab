@@ -42,6 +42,15 @@ from src.synthetic_data_generation.alignment.handler import (
     AlignmentStageHandler,
     SceneExportLoader,
 )
+from src.synthetic_data_generation.alignment.heatmaps import (
+    LINE_HEATMAP_DIRECTORY,
+    AlignmentLineHeatmaps,
+    AlignmentLineHeatmapView,
+    LineHeatmapRasters,
+    aggregate_line_heatmaps,
+    rasterize_weighted_view,
+    validate_line_heatmaps,
+)
 from src.synthetic_data_generation.alignment.settings import (
     AlignmentEvidenceSettings,
     CorrespondenceSettings,
@@ -73,6 +82,8 @@ __all__ = [
     "AlignmentEvidenceDiagnostics",
     "AlignmentEvidenceSettings",
     "AlignmentEvidenceSource",
+    "AlignmentLineHeatmaps",
+    "AlignmentLineHeatmapView",
     "AlignmentPartitions",
     "AlignmentResult",
     "AlignmentStageHandler",
@@ -97,6 +108,8 @@ __all__ = [
     "GroundPlaneSettings",
     "LineProbabilityDetector",
     "LineInferenceDeterminismDiagnostics",
+    "LineHeatmapRasters",
+    "LINE_HEATMAP_DIRECTORY",
     "LineFamilyIdentifiabilityMetrics",
     "LineProjectionSettings",
     "MeasuredAlignmentEvidenceSource",
@@ -115,5 +128,8 @@ __all__ = [
     "load_alignment_result",
     "validate_court_transform_binding",
     "validate_projection_equivalence",
+    "validate_line_heatmaps",
+    "aggregate_line_heatmaps",
+    "rasterize_weighted_view",
     "create_production_alignment_handler",
 ]

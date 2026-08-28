@@ -86,7 +86,10 @@ command or the dedicated trainer runtime is unavailable.
 Alignment uses measured court-line evidence with disjoint fit and holdout
 partitions. Only accepted results publish a `MultiCourtLayout` containing every
 accepted court, reciprocal metric transforms, complex bounds, and fit/holdout
-metrics.
+metrics. The alignment owner also publishes `line-heatmaps/`: raw detector
+heatmaps for every selected view, proximity-weighted ground-plane heatmaps for
+every view, and their weighted aggregate on one common ground grid. The numeric
+archive is the validation authority for the PNG diagnostics.
 
 ## Dataset domains
 
