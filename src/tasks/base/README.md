@@ -58,6 +58,7 @@ compile:
 ### generate_dataset/
 - **`parallel_runner.py`**: `run_parallel_scene_generation()`。`ProcessPoolExecutor`(spawn context)による並列シーン生成fan-out。
 - **`timeline_composer.py`**: BLCS/PLCS共通の固定global timelineへsource subclipを配置し、同時存在数とlifecycle metadataを保証。
+- **`dataset_samples.py`**: PLCS/BLCS共通の3×3層化選択、時間間引き、GIF検証、`samples/manifest.json`契約。
 
 ### visualization/
 - **`preview.py`**: dataset previewスクリプト共通helper(`resolve_split_file`/`resolve_sample_indices`等)のcanonical owner。

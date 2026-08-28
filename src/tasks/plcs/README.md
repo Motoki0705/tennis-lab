@@ -80,6 +80,7 @@ human UV/visibility には適用しません。
 ### scripts/
 - **`train.py`**: 学習エントリポイント(chunked/GAN切替可)。
 - **`generate_dataset.py`**: 並列合成データ生成エントリポイント。
+- **`generate_dataset_samples.py`**: 生成済み各datasetへ層化されたcamera-view GIFとmanifestを作成。
 - **`visualize.py`**: 可視化エントリポイント。
 - **`analysis/*.py`**: データセット分布・角速度統計・loss dominance・回転誤差サンプル抽出の分析スクリプト群。
 
