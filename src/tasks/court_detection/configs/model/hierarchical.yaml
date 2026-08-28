@@ -1,8 +1,8 @@
 # Shared encoder/decoder with one head per selected Court target.
 defaults:
-  - encoder: default
-  - transformer_encoder: none
-  - decoder: fpn
+  - encoder: dinov3
+  - transformer_encoder: default
+  - decoder: dpt
   - _self_
 
 name: court_hierarchical

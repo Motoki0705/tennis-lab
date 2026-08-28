@@ -53,7 +53,7 @@ Synthetic schema v1/v2/v3の生成・publication・semantic contractの正本は
 
 設定は `configs/data/default.yaml` をcomposition rootとし、`configs/data/source/` と `configs/data/processing/` を直交してoverrideします。syntheticの`schema=v1|v2|v3`はtyped configで必須で、directory内容から自動推測しません。v2/v3の`train / validation / test`は学習側`train / val / test`へ一意に変換し、空splitやtrajectory group leakageを拒否します。TennisCourtDetectorにtest splitがない既定設定は`data.source.split_mapping.test: null`であり、validationをtestとして代用しません。
 
-Model compositionは `model/hierarchical.yaml` をrootとし、encoder、optional transformer encoder、decoderを独立したHydra groupとして選択します。既定のtransformer encoderは `none` で、DINOv3 ViT-B/16のpatch gridを8層のMHA + 2-D RoPE + SwiGLUで精密化するpresetは `model/transformer_encoder=default` として明示的に有効化します。DPT decoderはDINOv3 encoderと組み合わせ、出力channelsは512です。
+Model compositionは `model/hierarchical.yaml` をrootとし、encoder、transformer encoder、decoderを独立したHydra groupとして選択します。既定構成はDINOv3 ViT-B/16、8層のMHA + 2-D RoPE + SwiGLUによるtransformer encoder、DPT decoderです。DPT decoderの出力channelsは512です。
 
 Lossは `configs/loss/default.yaml` の単一schemaで管理し、KP/SEG/LINEのdense項、camera poseのtranslation/rotation/focal項、任意のKP–pose consistency項と各weightを同時に記述します。
 
