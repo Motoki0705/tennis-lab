@@ -61,6 +61,7 @@ def test_tracking_metrics_report_per_axis_physical_mae() -> None:
         config=TrackingMetricConfig(
             presence_threshold=0.5,
             duplicate_distance=0.05,
+            id_switch_distance=0.05,
         ),
     )
 
@@ -91,6 +92,7 @@ def test_v2_tracking_metrics_reject_missing_and_mismatched_provenance() -> None:
     config = TrackingMetricConfig(
         presence_threshold=0.5,
         duplicate_distance=0.05,
+        id_switch_distance=0.05,
     )
     contract = resolve_court_keypoint_contract("camera_view_v2")
 
@@ -169,6 +171,7 @@ def test_tracking_reference_metrics_report_target_axes_y_sign_and_local_strata()
         config=TrackingMetricConfig(
             presence_threshold=0.5,
             duplicate_distance=0.05,
+            id_switch_distance=0.05,
         ),
         court_keypoint_contract=provenance.contract,
         reference_view_index=torch.tensor([1, 0], dtype=torch.int64),
