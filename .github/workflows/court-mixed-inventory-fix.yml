@@ -1,4 +1,4 @@
-name: Patch Court mixed boundary inventory
+name: Sync Court mixed branch with main
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  patch:
+  sync:
     if: ${{ github.actor == github.repository_owner }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -24,41 +24,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Register the mixed training boundary
+      - name: Merge latest main
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path("src/utils/configuration/inventory.py")
-          text = path.read_text(encoding="utf-8")
-
-          key_anchor = '    "src.tasks.court_detection.scripts.train": "court_detection.train",\n'
-          key_line = '    "src.tasks.court_detection.scripts.train_mixed": "court_detection.train_mixed",\n'
-          callable_anchor = '    "src.tasks.court_detection.scripts.train": "src.tasks.court_detection.configuration.validate_train_boundary",\n'
-          callable_line = '    "src.tasks.court_detection.scripts.train_mixed": "src.tasks.court_detection.training.runner_mixed.validate_mixed_train_boundary",\n'
-          boundary_anchor = '    _runtime_boundary("court_detection", "src.tasks.court_detection.scripts.train"),\n'
-          boundary_line = '    _runtime_boundary(\n        "court_detection", "src.tasks.court_detection.scripts.train_mixed"\n    ),\n'
-
-          for anchor, addition in (
-              (key_anchor, key_line),
-              (callable_anchor, callable_line),
-              (boundary_anchor, boundary_line),
-          ):
-              if addition in text:
-                  continue
-              if text.count(anchor) != 1:
-                  raise SystemExit(f"Expected exactly one inventory anchor: {anchor!r}")
-              text = text.replace(anchor, anchor + addition)
-
-          path.write_text(text, encoding="utf-8")
-          PY
-
-          git diff --check
-          git diff -- src/utils/configuration/inventory.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/utils/configuration/inventory.py
-          git commit -m "fix(config): register mixed Court training boundary"
+          git fetch origin main
+          git merge --no-edit origin/main
           git push origin HEAD:feat/court-mixed-source-batches
