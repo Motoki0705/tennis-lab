@@ -108,6 +108,7 @@ def test_mixed_collate_stacks_pose_for_synthetic_samples_only() -> None:
     collated = mixed_court_detection_collate(
         [synthetic, real],
         bundle=_line_bundle(),
+        require_pose_supervision=True,
     )
 
     torch.testing.assert_close(
@@ -121,6 +122,29 @@ def test_mixed_collate_stacks_pose_for_synthetic_samples_only() -> None:
     images = collated["image"]
     assert isinstance(images, torch.Tensor)
     assert images.shape == (2, 3, 8, 8)
+
+
+@pytest.mark.parametrize("require_pose_supervision", [False, True])
+def test_mixed_collate_rejects_pose_payload_disagreement(
+    require_pose_supervision: bool,
+) -> None:
+    synthetic = {
+        "image": torch.zeros(3, 4, 5),
+        "targets": {"line": torch.zeros(1, 4, 5)},
+        "image_size": torch.tensor([4, 5]),
+        "content_size_hw": torch.tensor([4, 5]),
+        "sample_id": "synthetic",
+        "metadata": {"source_kind": "synthetic_court"},
+    }
+    if not require_pose_supervision:
+        synthetic["pose_target"] = _pose_target()
+
+    with pytest.raises(ValueError, match="pose_target"):
+        mixed_court_detection_collate(
+            [synthetic],
+            bundle=_line_bundle(),
+            require_pose_supervision=require_pose_supervision,
+        )
 
 
 def test_mixed_bundle_accepts_only_explicit_semantic_kp_identity_mapping() -> None:
