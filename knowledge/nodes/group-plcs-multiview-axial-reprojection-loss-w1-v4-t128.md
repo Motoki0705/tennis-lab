@@ -36,3 +36,10 @@ tags:
 | angle accuracy 30 deg | 0.303438 | 0.346641 | +0.043203 |
 
 reprojection weight 1は平均・中央値の3D position、向き、画像面整合を改善し、V=2・T=16で見られたZ悪化も再現しなかった。ただし0.5 m以内率、X誤差、position分散は悪化したため全面的な改善ではない。採用判断には複数seedと低weight sweepを行い、meanだけでなく近距離accuracyとtailまで評価する必要がある。
+
+### 可視化
+
+- [baseline（GT vs prediction）](../runs/run-plcs-multiview-axial-all-outputs-beta01-v4-t128/visualization_scene_000233_position_rotation.mp4)
+- [reprojection weight 1（GT vs prediction）](../runs/run-plcs-multiview-axial-all-outputs-beta01-reprojection-w1-v4-t128/visualization_scene_000233_position_rotation.mp4)
+
+両動画は同じ`scene_000233`のtest clip（test index 18、source frames 265–392、128 frames）を30 fpsで描画した。選択条件は「reprojection版でscene平均position/angular errorがともに改善するsceneのうち、両runの4指標がtest全体の分布中心に最も近いもの」。このclipではbaselineが1.177687 m / 56.011864度、reprojection版が0.809771 m / 44.879143度である。`pred_test.npz`にはcanonical pose予測が含まれないため、両予測に同一のGT canonical poseを使用し、position・rotationの差だけを可視化している。

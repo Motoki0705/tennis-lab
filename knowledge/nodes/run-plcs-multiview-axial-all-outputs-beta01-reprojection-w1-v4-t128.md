@@ -62,6 +62,7 @@ artifacts:
   log: .training_queue/logs/1787847972038871666_797920_plcs-multiview-axial-all-outputs-beta01-reprojection-w1-v4-t128-bf16-gpu0.log
   output_dir: /home/kamimura/projects/tennis-lab/outputs/plcs/plcs_multiview_axial_all_outputs_beta01_reprojection_w1_v4_t128_bf16_gpu0/logs/version_0
   curves: knowledge/runs/run-plcs-multiview-axial-all-outputs-beta01-reprojection-w1-v4-t128/curves.png
+  visualization: knowledge/runs/run-plcs-multiview-axial-all-outputs-beta01-reprojection-w1-v4-t128/visualization_scene_000233_position_rotation.mp4
   tb_logdir: outputs/plcs/plcs_multiview_axial_all_outputs_beta01_reprojection_w1_v4_t128_bf16_gpu0/logs/version_0
 parents:
 - run-plcs-multiview-axial-all-outputs-beta01-v4-t128
