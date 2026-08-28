@@ -11,6 +11,15 @@ import torch
 from numpy.typing import NDArray
 from torch import Tensor, nn
 
+from src.tasks.base.generate_dataset import (
+    PHYSICAL_V1_SELECTOR,
+    CourtKeypointContract,
+    CourtKeypointContractMismatchError,
+    CourtReferenceFrameProvenance,
+    MissingCourtKeypointMetadataError,
+    build_physical_court_provenance,
+    resolve_court_keypoint_contract,
+)
 from src.tasks.base.model_io import (
     ModelCall,
     ModelInputContractError,
@@ -54,6 +63,9 @@ MaskDtypes = frozenset(
     }
 )
 IndexDtypes = frozenset({torch.int8, torch.int16, torch.int32, torch.int64})
+_PHYSICAL_COURT_KEYPOINT_CONTRACT = resolve_court_keypoint_contract(
+    PHYSICAL_V1_SELECTOR
+)
 
 
 def _same_device(tensors: Mapping[str, Tensor]) -> None:
@@ -109,6 +121,49 @@ def _raw_output(output: object) -> Mapping[str, Tensor]:
     return cast("Mapping[str, Tensor]", output)
 
 
+def _batch_court_provenance(
+    batch: Mapping[str, object],
+    *,
+    batch_size: int,
+    court_keypoint_contract: CourtKeypointContract,
+) -> tuple[CourtReferenceFrameProvenance, ...]:
+    raw = batch.get("court_reference_provenance")
+    if raw is None:
+        if court_keypoint_contract.selector != PHYSICAL_V1_SELECTOR:
+            raise MissingCourtKeypointMetadataError(
+                "BLCS camera_view_v2 batch requires explicit Court reference "
+                "provenance."
+            )
+        return tuple(build_physical_court_provenance() for _ in range(batch_size))
+    if (
+        isinstance(raw, (tuple, list))
+        and not raw
+        and court_keypoint_contract.selector != PHYSICAL_V1_SELECTOR
+    ):
+        raise MissingCourtKeypointMetadataError(
+            "BLCS camera_view_v2 batch Court reference provenance must not be empty."
+        )
+    if not isinstance(raw, (tuple, list)) or len(raw) != batch_size:
+        raise ModelInputContractError(
+            "court_reference_provenance must contain exactly one record per batch item."
+        )
+    if any(not isinstance(item, CourtReferenceFrameProvenance) for item in raw):
+        raise ModelInputContractError(
+            "court_reference_provenance entries must be validated provenance records."
+        )
+    typed_records = tuple(
+        item for item in raw if isinstance(item, CourtReferenceFrameProvenance)
+    )
+    for index, record in enumerate(typed_records):
+        if record.contract != court_keypoint_contract:
+            raise CourtKeypointContractMismatchError(
+                f"BLCS batch provenance[{index}] contract "
+                f"{record.contract_id!r} does not match runtime "
+                f"{court_keypoint_contract.contract_id!r}."
+            )
+    return typed_records
+
+
 class TrajectoryModelIOAdapter(ABC):
     """Common validation/decode contract for one-ball trajectory models."""
 
@@ -120,12 +175,23 @@ class TrajectoryModelIOAdapter(ABC):
         predict_velocity: bool,
         input_profile: Literal["single", "multiview"],
         max_num_cameras: int | None,
+        court_keypoint_contract: CourtKeypointContract = (
+            _PHYSICAL_COURT_KEYPOINT_CONTRACT
+        ),
     ) -> None:
         self.num_court_tokens = num_court_tokens
         self.max_seq_len = max_seq_len
         self.predict_velocity = predict_velocity
         self.input_profile = input_profile
         self.max_num_cameras = max_num_cameras
+        canonical_contract = resolve_court_keypoint_contract(
+            court_keypoint_contract.selector
+        )
+        if court_keypoint_contract != canonical_contract:
+            raise CourtKeypointContractMismatchError(
+                "BLCS trajectory adapter CourtKP20 contract must be canonical."
+            )
+        self.court_keypoint_contract = canonical_contract
 
     @property
     @abstractmethod
@@ -289,6 +355,11 @@ class TrajectoryModelIOAdapter(ABC):
             camera_cy=cameras["camera_cy"],
             camera_w=cameras["camera_w"],
             camera_h=cameras["camera_h"],
+            court_reference_provenance=_batch_court_provenance(
+                batch,
+                batch_size=batch_size,
+                court_keypoint_contract=self.court_keypoint_contract,
+            ),
         )
 
     @abstractmethod
@@ -488,7 +559,15 @@ class SingleTrajectoryModelIOAdapter(TrajectoryModelIOAdapter):
         from src.tasks.blcs.data.dataset import collate_multiview_trajectories
 
         batch = collate_multiview_trajectories(samples)
-        adapted: dict[str, Tensor] = {
+        provenance = batch["court_reference_provenance"]
+        if any(
+            record.reference_camera_local_index not in (None, 0)
+            for record in provenance
+        ):
+            raise ModelInputContractError(
+                "Single-view BLCS requires its sole selected camera to be the reference."
+            )
+        adapted: dict[str, object] = {
             "ball_uv": batch["ball_uv"][:, 0],
             "ball_vis": batch["ball_vis"][:, 0],
             "padding_mask": batch["padding_mask"][:, 0],
@@ -504,6 +583,7 @@ class SingleTrajectoryModelIOAdapter(TrajectoryModelIOAdapter):
             "camera_cy": batch["camera_cy"][:, :1],
             "camera_w": batch["camera_w"][:, :1],
             "camera_h": batch["camera_h"][:, :1],
+            "court_reference_provenance": provenance,
         }
         if "ball_uv_target" in batch and "ball_vis_target" in batch:
             adapted["ball_uv_target"] = batch["ball_uv_target"][:, 0]
@@ -635,10 +715,21 @@ class TrackQueryModelIOAdapter:
         num_court_tokens: int,
         num_queries: int,
         presence_threshold: float,
+        court_keypoint_contract: CourtKeypointContract = (
+            _PHYSICAL_COURT_KEYPOINT_CONTRACT
+        ),
     ) -> None:
         self.num_court_tokens = num_court_tokens
         self.num_queries = num_queries
         self.presence_threshold = presence_threshold
+        canonical_contract = resolve_court_keypoint_contract(
+            court_keypoint_contract.selector
+        )
+        if court_keypoint_contract != canonical_contract:
+            raise CourtKeypointContractMismatchError(
+                "BLCS tracking adapter CourtKP20 contract must be canonical."
+            )
+        self.court_keypoint_contract = canonical_contract
 
     @property
     def model_type(self) -> type[nn.Module]:
@@ -805,6 +896,11 @@ class TrackQueryModelIOAdapter:
             target_instance_id=instance_id,
             target_slot_mask=slot_mask,
             frame_valid=frame_valid,
+            court_reference_provenance=_batch_court_provenance(
+                batch,
+                batch_size=batch_size,
+                court_keypoint_contract=self.court_keypoint_contract,
+            ),
         )
 
 

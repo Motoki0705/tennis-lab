@@ -9,11 +9,16 @@ import numpy as np
 from torch import Tensor
 
 from src.tasks.base.configuration import as_config_mapping, require_config_mapping
+from src.tasks.base.model_io import (
+    validate_model_artifact_court_keypoint_contract,
+    write_model_artifact_court_keypoint_contract,
+)
 from src.tasks.base.training.tracking_lightning_module import (
     TrackingLightningModule,
     TrackingStepResult,
 )
 from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
+from src.tasks.blcs.configuration import parse_court_keypoint_contract
 from src.tasks.blcs.model_io import (
     BLCSTrackQueryPrediction,
     TrackQueryBoundModelIO,
@@ -40,6 +45,7 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
         self.model_io = model_io
         self.model = model_io.model
         self.io_adapter = cast("TrackQueryModelIOAdapter", model_io.adapter)
+        self.court_keypoint_contract = parse_court_keypoint_contract(config)
         self.criterion = BLCSTrackingLoss(config.loss)
         root = as_config_mapping(config, path="configuration")
         self.tracking_metrics = TrackingMetricConfig.from_mapping(
@@ -62,10 +68,20 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
                 "retrain or explicitly convert the artifact outside runtime loading. "
                 f"First incompatible key: {legacy_keys[0]}."
             )
+        validate_model_artifact_court_keypoint_contract(
+            checkpoint,
+            self.court_keypoint_contract,
+            location="BLCS tracking checkpoint",
+        )
 
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         add_court_coordinate_normalization(
             checkpoint, artifact="BLCS tracking checkpoint"
+        )
+        write_model_artifact_court_keypoint_contract(
+            checkpoint,
+            self.court_keypoint_contract,
+            location="BLCS tracking checkpoint",
         )
 
     def compute_tracking_step(
@@ -87,6 +103,7 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
                 prepared,
                 assignments,
                 config=self.tracking_metrics,
+                court_keypoint_contract=self.court_keypoint_contract,
             )
             if compute_metrics
             else {}

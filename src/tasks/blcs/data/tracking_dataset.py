@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import torch
@@ -13,6 +14,20 @@ from src.tasks.base.data.canonical_tracking import (
 )
 from src.tasks.base.data.lifecycle_slots import build_fixed_lifecycle_assignment
 from src.tasks.base.data.scene_dataset import Scene
+from src.tasks.base.generate_dataset import (
+    PHYSICAL_V1_SELECTOR,
+    CourtReferenceFrameError,
+    CourtReferenceFrameProvenance,
+    court_points_physical_to_target,
+    court_vectors_physical_to_target,
+)
+from src.tasks.blcs.configuration import parse_court_keypoint_contract
+from src.tasks.blcs.data.court_view import (
+    align_blcs_court_array,
+    court_views_by_scene,
+    resolve_blcs_sample_court_frame,
+    validate_blcs_dataset_court_keypoints,
+)
 from src.tasks.blcs.data.observation_candidates import (
     pack_observation_candidates,
 )
@@ -35,6 +50,7 @@ BLCS_TRACKING_KEYS = (
     "clean_ball_uv",
     "clean_ball_vis",
     "candidate_gt_index",
+    "court_reference_provenance",
 )
 
 
@@ -42,6 +58,16 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
     """Load ID-ordered objects, pack lifecycle slots, and corrupt observations."""
 
     def __init__(self, **kwargs: Any) -> None:
+        config = kwargs.get("config")
+        self.court_keypoint_contract = parse_court_keypoint_contract(config)
+        scene_dir = Path(kwargs["scene_dir"])
+        split_file = Path(kwargs["split_file"])
+        court_dataset = validate_blcs_dataset_court_keypoints(
+            scene_dir=scene_dir,
+            split_file=split_file,
+            contract=self.court_keypoint_contract,
+        )
+        self._court_views_by_scene = court_views_by_scene(court_dataset)
         super().__init__(**kwargs)
         data_cfg = self._resolve_data_cfg(self.hydra_cfg)
         self.tracking_augmentation = BLCSTrackingCandidateAugmentation(
@@ -54,7 +80,7 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
                 "BLCS tracking requires data.lifecycle.pack_to_query_slots=true."
             )
 
-    def build_sample(self, scene: Scene) -> dict[str, Tensor]:
+    def build_sample(self, scene: Scene) -> dict[str, Any]:
         if self.num_queries is None:
             raise RuntimeError("BLCS tracking dataset lost its fixed query width.")
         num_queries = self.num_queries
@@ -76,8 +102,19 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
             )
         window = self.select_window(scene, full_len=num_frames)
         cameras = self.select_cameras(scene)
+        frame = resolve_blcs_sample_court_frame(
+            scene=scene,
+            selected_camera_indices=cameras.indices,
+            court_views=self._court_views_by_scene.get(scene.path.name, ()),
+            contract=self.court_keypoint_contract,
+            rng=self.rng,
+            training=self.augment,
+        )
         position = position[window.sl]
         velocity = velocity[window.sl]
+        if self.court_keypoint_contract.selector != PHYSICAL_V1_SELECTOR:
+            position = court_points_physical_to_target(position, frame.provenance)
+            velocity = court_vectors_physical_to_target(velocity, frame.provenance)
         physical_presence = physical_presence[window.sl]
         randomize_slots = self.augment and self.randomize_slots_train
         target_packing = build_fixed_lifecycle_assignment(
@@ -92,7 +129,7 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
         vis_rows: list[Tensor] = []
         court_rows: list[Tensor] = []
         court_vis_rows: list[Tensor] = []
-        for camera_index in cameras.indices:
+        for selected_index, camera_index in enumerate(cameras.indices):
             uv = torch.from_numpy(
                 scene.get_camera_array(camera_index, "ball_uv", window=window)
             ).float()
@@ -107,8 +144,25 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
             uv_rows.append(uv)
             vis_rows.append(ball_vis)
 
-            court_np = scene.get_camera_array(camera_index, "court_kp_uv")
-            court_vis_np = scene.get_camera_array(camera_index, "court_kp_vis")
+            source_view = (
+                frame.selected_views[selected_index]
+                if frame.selected_views
+                else None
+            )
+            raw_court = scene.get_camera_array(camera_index, "court_kp_uv")
+            court_np = align_blcs_court_array(
+                raw_court,
+                source_view=source_view,
+                frame=frame,
+                keypoint_axis=(0 if raw_court.ndim == 2 else 1),
+            )
+            raw_court_vis = scene.get_camera_array(camera_index, "court_kp_vis")
+            court_vis_np = align_blcs_court_array(
+                raw_court_vis,
+                source_view=source_view,
+                frame=frame,
+                keypoint_axis=(0 if raw_court_vis.ndim == 1 else 1),
+            )
             if court_np.ndim == 2:
                 court = (
                     torch.from_numpy(court_np[:14])
@@ -153,20 +207,45 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
             "clean_ball_uv": observations.uv.clone(),
             "clean_ball_vis": observations.vis.clone(),
             "candidate_gt_index": observations.gt_index,
+            "court_reference_provenance": frame.provenance,
         }
         return sample
 
-    def augment_sample(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
+    def augment_sample(self, sample: dict[str, Any]) -> dict[str, Any]:
         if not self.augment:
             return sample
-        augmented: dict[str, Tensor] = self.tracking_augmentation(sample)
-        return augmented
+        provenance = sample["court_reference_provenance"]
+        tensor_sample = {
+            key: value for key, value in sample.items() if isinstance(value, Tensor)
+        }
+        augmented: dict[str, Tensor] = self.tracking_augmentation(tensor_sample)
+        return {**augmented, "court_reference_provenance": provenance}
 
 
 def collate_blcs_tracking_batch(
-    batch: list[dict[str, Tensor]],
-) -> dict[str, Tensor]:
+    batch: list[dict[str, Any]],
+) -> dict[str, Any]:
     """Pad only camera/time dimensions and stack exact-width BLCS scenes."""
+    provenance_rows: list[CourtReferenceFrameProvenance] = []
+    contract_id: str | None = None
+    for sample_index, sample in enumerate(batch):
+        provenance = sample.get("court_reference_provenance")
+        if not isinstance(provenance, CourtReferenceFrameProvenance):
+            raise CourtReferenceFrameError(
+                "Every BLCS tracking sample must provide a validated "
+                "CourtReferenceFrameProvenance; "
+                f"sample {sample_index} has {type(provenance).__name__}."
+            )
+        if contract_id is None:
+            contract_id = provenance.contract_id
+        elif provenance.contract_id != contract_id:
+            raise CourtReferenceFrameError(
+                "BLCS tracking batches cannot mix CourtKP20 contracts; "
+                f"sample 0 uses {contract_id!r} and sample {sample_index} uses "
+                f"{provenance.contract_id!r}."
+            )
+        provenance_rows.append(provenance)
+
     candidate_width = int(batch[0]["ball_uv"].shape[2]) if batch else 0
     for sample in batch:
         if (
@@ -178,8 +257,13 @@ def collate_blcs_tracking_batch(
                 "Every BLCS tracking sample must already have the same exact "
                 "candidate width before collation."
             )
-    collated: dict[str, Tensor] = pad_and_stack_tracking_batch(
-        batch,
+    provenances = tuple(provenance_rows)
+    tensor_batch = [
+        {key: value for key, value in sample.items() if isinstance(value, Tensor)}
+        for sample in batch
+    ]
+    collated: dict[str, Any] = pad_and_stack_tracking_batch(
+        tensor_batch,
         padding_dimensions={
             "ball_uv": (0, 1),
             "ball_vis": (0, 1),
@@ -200,6 +284,7 @@ def collate_blcs_tracking_batch(
             "padding_mask": True,
         },
     )
+    collated["court_reference_provenance"] = provenances
     return collated
 
 

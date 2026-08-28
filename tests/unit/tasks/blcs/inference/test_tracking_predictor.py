@@ -9,7 +9,11 @@ import torch
 from hydra import compose, initialize_config_dir
 from torch import Tensor, nn
 
-from src.tasks.base.model_io import bind_model_io
+from src.tasks.base.generate_dataset import resolve_court_keypoint_contract
+from src.tasks.base.model_io import (
+    bind_model_io,
+    write_model_artifact_court_keypoint_contract,
+)
 from src.tasks.blcs.data.tracking_types import BLCSTrackingPrediction
 from src.tasks.blcs.inference.tracking_predictor import BLCSTrackingPredictor
 from src.tasks.blcs.model_io import (
@@ -23,6 +27,9 @@ from src.tasks.blcs.models import (
     BLCSTrackQueryModel,
 )
 from src.utils.configuration import PathResolver
+from src.utils.schema.court_normalization import (
+    court_coordinate_normalization_metadata,
+)
 
 
 class _FixedTrackingModel(BLCSTrackQueryModel):
@@ -160,16 +167,21 @@ def test_checkpoint_restoration_dispatches_to_exact_ablation_binding(
         )
     binding = compose_blcs_track_query_model_io(config)
     checkpoint = tmp_path / "ablation.ckpt"
+    checkpoint_payload: dict[str, object] = {
+        "hyper_parameters": {"config": config},
+        "court_coordinate_normalization": (court_coordinate_normalization_metadata()),
+    }
+    write_model_artifact_court_keypoint_contract(
+        checkpoint_payload,
+        resolve_court_keypoint_contract("physical_v1"),
+    )
+    torch.save(checkpoint_payload, checkpoint)
     observed: dict[str, object] = {}
 
     monkeypatch.setattr(
         BLCSTrackingPredictor,
         "_ensure_checkpoint",
         classmethod(lambda cls, value, *, resolver: [checkpoint]),
-    )
-    monkeypatch.setattr(
-        "src.tasks.blcs.inference.tracking_predictor.load_checkpoint_config",
-        lambda path: config,
     )
 
     def compose_binding(value: object) -> TrackQueryBoundModelIO:

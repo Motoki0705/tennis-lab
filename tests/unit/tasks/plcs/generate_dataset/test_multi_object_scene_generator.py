@@ -6,6 +6,12 @@ import numpy as np
 import torch
 from omegaconf import OmegaConf
 
+from src.tasks.base.generate_dataset import (
+    CourtViewRecord,
+    apply_court_view_record,
+    build_court_view_record,
+    resolve_court_keypoint_contract,
+)
 from src.tasks.base.generate_dataset.timeline_composer import TimelineConfig
 from src.tasks.plcs.data.tracking_dataset import PLCSTrackingDataset
 from src.tasks.plcs.generate_dataset.io.dataset_io import PLCSDatasetWriter
@@ -65,6 +71,7 @@ def _timeline(*, min_tracks: int = 2) -> TimelineConfig:
 
 def _tracking_config() -> dict[str, object]:
     return {
+        "court_keypoints": {"selector": "physical_v1"},
         "data": {
             "seq_len_range": [12, 12],
             "num_views_range": [6, 6],
@@ -156,6 +163,48 @@ class _MotionSceneStub:
         )
 
 
+class _CourtViewMotionSceneStub(_MotionSceneStub):
+    def __init__(self) -> None:
+        super().__init__()
+        self.court_snapshots: list[
+            tuple[tuple[CourtViewRecord, np.ndarray, np.ndarray], ...]
+        ] = []
+
+    def generate_scene(self, scene_id: str) -> SceneData:
+        scene = super().generate_scene(scene_id)
+        contract = resolve_court_keypoint_contract("camera_view_v2")
+        for index, camera in enumerate(scene.cameras):
+            view = build_court_view_record(
+                camera_id=f"camera_{index}",
+                camera_center_court_m=camera.camera_params["C"],
+                contract=contract,
+            )
+            camera.court_kp_uv = apply_court_view_record(
+                camera.court_kp_uv,
+                view,
+                keypoint_axis=-2,
+            )
+            camera.court_kp_vis = apply_court_view_record(
+                camera.court_kp_vis,
+                view,
+                keypoint_axis=-1,
+            )
+            camera.court_view = view
+        scene.court_keypoint_contract = contract
+        self.court_snapshots.append(
+            tuple(
+                (
+                    camera.court_view,
+                    camera.court_kp_uv.copy(),
+                    camera.court_kp_vis.copy(),
+                )
+                for camera in scene.cameras
+                if camera.court_view is not None
+            )
+        )
+        return scene
+
+
 def test_multi_person_uses_motion_scenes_and_canonical_writer(tmp_path) -> None:
     scene = MultiPersonSceneGenerator(
         _MotionSceneStub(),
@@ -170,7 +219,7 @@ def test_multi_person_uses_motion_scenes_and_canonical_writer(tmp_path) -> None:
     assert not scene.cameras[0].human_kp_vis[~scene.person_present].any()
 
     dataset_root = tmp_path / "dataset"
-    writer = PLCSDatasetWriter(dataset_root)
+    writer = PLCSDatasetWriter(dataset_root, legacy_metadata_free_v1=True)
     scene_path = writer.save_scene(scene)
     (dataset_root / "train.txt").write_text("scene_000000\n")
     assert (scene_path / "position.npy").exists()
@@ -203,3 +252,29 @@ def test_multi_person_uses_motion_scenes_and_canonical_writer(tmp_path) -> None:
 def test_invalid_person_cardinality_is_rejected() -> None:
     with np.testing.assert_raises(ValueError):
         _timeline(min_tracks=0)
+
+
+def test_multi_person_propagates_camera_view_mapping_exactly_once() -> None:
+    source = _CourtViewMotionSceneStub()
+    scene = MultiPersonSceneGenerator(source, timeline=_timeline()).generate_scene(
+        "scene_000001"
+    )
+    snapshots = source.court_snapshots[0]
+    assert len(snapshots) == len(scene.cameras)
+    assert scene.court_keypoint_contract == resolve_court_keypoint_contract(
+        "camera_view_v2"
+    )
+    for result_camera, (source_view, source_uv, source_vis) in zip(
+        scene.cameras,
+        snapshots,
+        strict=True,
+    ):
+        assert result_camera.court_view == source_view
+        np.testing.assert_array_equal(
+            result_camera.court_kp_uv,
+            np.repeat(source_uv[:1], 12, axis=0),
+        )
+        np.testing.assert_array_equal(
+            result_camera.court_kp_vis,
+            np.repeat(source_vis[:1], 12, axis=0),
+        )

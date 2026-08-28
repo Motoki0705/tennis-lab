@@ -9,6 +9,13 @@ import pytest
 import torch
 from omegaconf import OmegaConf
 
+from src.tasks.base.generate_dataset import (
+    IDENTITY_COURT_KP20_INDEX,
+    CourtViewRecord,
+    apply_court_view_record,
+    build_court_view_record,
+    resolve_court_keypoint_contract,
+)
 from src.tasks.base.generate_dataset.timeline_composer import TimelineConfig
 from src.tasks.blcs.data.tracking_dataset import BLCSTrackingDataset
 from src.tasks.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter, load_scene
@@ -71,6 +78,7 @@ def _timeline(*, min_tracks: int = 2) -> TimelineConfig:
 
 def _tracking_config() -> dict[str, object]:
     return {
+        "court_keypoints": {"selector": "physical_v1"},
         "data": {
             "seq_len_range": [12, 12],
             "num_views_range": [6, 6],
@@ -172,6 +180,47 @@ class _RejectOncePhysicalSceneStub(_PhysicalSceneStub):
                 f"{FULL_PHYSICS_REJECTION_PREFIX} within the requested-side tolerance."
             )
         return super().generate_scene(from_cell, side, scene_id)
+
+
+class _CourtViewPhysicalSceneStub(_PhysicalSceneStub):
+    def __init__(self) -> None:
+        super().__init__()
+        self.court_snapshots: list[
+            tuple[tuple[CourtViewRecord, np.ndarray, np.ndarray], ...]
+        ] = []
+
+    def generate_scene(self, from_cell: int, side: str, scene_id: str) -> BLCSSceneData:
+        scene = super().generate_scene(from_cell, side, scene_id)
+        contract = resolve_court_keypoint_contract("camera_view_v2")
+        for index, camera in enumerate(scene.cameras):
+            view = build_court_view_record(
+                camera_id=f"cam_{index}",
+                camera_center_court_m=camera.camera_params["C"],
+                contract=contract,
+            )
+            camera.court_kp_uv = apply_court_view_record(
+                camera.court_kp_uv,
+                view,
+                keypoint_axis=0,
+            )
+            camera.court_kp_vis = apply_court_view_record(
+                camera.court_kp_vis,
+                view,
+                keypoint_axis=0,
+            )
+            camera.court_view = view
+        self.court_snapshots.append(
+            tuple(
+                (
+                    camera.court_view,
+                    camera.court_kp_uv.copy(),
+                    camera.court_kp_vis.copy(),
+                )
+                for camera in scene.cameras
+                if camera.court_view is not None
+            )
+        )
+        return scene
 
 
 class _AlwaysRejectPhysicalSceneStub(_PhysicalSceneStub):
@@ -287,6 +336,33 @@ def test_multi_ball_uses_physical_scenes_and_canonical_writer(tmp_path) -> None:
     (scene_path / "cam_0_ball_vis.npy").rename(scene_path / "cam_0_ball_visible.npy")
     with pytest.raises(FileNotFoundError, match="cam_0_ball_vis.npy"):
         load_scene(scene_path)
+
+
+def test_multi_ball_propagates_camera_view_mapping_exactly_once() -> None:
+    source = _CourtViewPhysicalSceneStub()
+
+    scene = _multi_ball_generator(source).generate_scene("scene_000001")
+
+    snapshots = source.court_snapshots[0]
+    assert len(snapshots) == len(scene.cameras)
+    assert any(
+        view.semantic_to_physical != IDENTITY_COURT_KP20_INDEX
+        for view, _, _ in snapshots
+    )
+    for result_camera, (source_view, source_uv, source_vis) in zip(
+        scene.cameras,
+        snapshots,
+        strict=True,
+    ):
+        assert result_camera.court_view == source_view
+        np.testing.assert_array_equal(
+            result_camera.court_kp_uv,
+            source_uv,
+        )
+        np.testing.assert_array_equal(
+            result_camera.court_kp_vis,
+            source_vis,
+        )
 
 
 def test_multi_ball_resamples_only_rejected_physics_proposals(

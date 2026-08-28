@@ -4,6 +4,15 @@ from __future__ import annotations
 
 import torch
 
+from src.tasks.base.generate_dataset import (
+    PHYSICAL_V1_SELECTOR,
+    CourtKeypointContract,
+    CourtKeypointContractMismatchError,
+    CourtReferenceFrameProvenance,
+    MissingCourtKeypointMetadataError,
+    court_vectors_target_to_physical,
+    resolve_court_keypoint_contract,
+)
 from src.tasks.base.training.tracking_metrics import (
     TrackingMetricConfig,
     common_lifecycle_tracking_metrics,
@@ -14,6 +23,40 @@ from src.tasks.blcs.model_io import (
 )
 from src.tasks.blcs.training.tracking_losses import Assignment
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+
+_PHYSICAL_COURT_KEYPOINT_CONTRACT = resolve_court_keypoint_contract(
+    PHYSICAL_V1_SELECTOR
+)
+
+
+def _validate_court_provenance(
+    provenance: tuple[CourtReferenceFrameProvenance, ...],
+    *,
+    batch_size: int,
+    court_keypoint_contract: CourtKeypointContract,
+) -> None:
+    if not provenance:
+        if court_keypoint_contract.selector != PHYSICAL_V1_SELECTOR:
+            raise MissingCourtKeypointMetadataError(
+                "BLCS camera_view_v2 tracking metrics require explicit Court "
+                "reference provenance."
+            )
+        return
+    if len(provenance) != batch_size:
+        raise ValueError(
+            "BLCS tracking metric provenance must contain one record per batch item."
+        )
+    for index, record in enumerate(provenance):
+        if not isinstance(record, CourtReferenceFrameProvenance):
+            raise TypeError(
+                "BLCS tracking metric provenance entries must be validated records."
+            )
+        if record.contract != court_keypoint_contract:
+            raise CourtKeypointContractMismatchError(
+                f"BLCS tracking metric provenance[{index}] contract "
+                f"{record.contract_id!r} does not match runtime "
+                f"{court_keypoint_contract.contract_id!r}."
+            )
 
 
 def _position_mae_meters(
@@ -34,15 +77,20 @@ def _position_mae_meters(
                 & batch.frame_valid[batch_index]
             )
             if active.any():
-                terms.append(
-                    (
-                        pred_position[batch_index, active, query_index]
-                        - batch.target_position[batch_index, active, target_index]
+                error_m = (
+                    pred_position[batch_index, active, query_index]
+                    - batch.target_position[batch_index, active, target_index]
+                ) * scale
+                if batch.court_reference_provenance:
+                    error_m = court_vectors_target_to_physical(
+                        error_m,
+                        batch.court_reference_provenance[batch_index],
                     )
-                    .abs()
-                    .mean(0)
-                    * scale
-                )
+                    if not isinstance(error_m, torch.Tensor):
+                        raise TypeError(
+                            "BLCS tracking metric frame conversion returned a non-tensor."
+                        )
+                terms.append(error_m.abs().mean(0))
     if terms:
         return torch.stack(terms).mean(0)
     return pred_position.new_zeros(3)
@@ -54,8 +102,23 @@ def blcs_tracking_metrics(
     assignments: list[Assignment],
     *,
     config: TrackingMetricConfig,
+    court_keypoint_contract: CourtKeypointContract = (
+        _PHYSICAL_COURT_KEYPOINT_CONTRACT
+    ),
 ) -> dict[str, torch.Tensor]:
     """Compute shared lifecycle metrics for BLCS predictions."""
+    canonical_court_contract = resolve_court_keypoint_contract(
+        court_keypoint_contract.selector
+    )
+    if court_keypoint_contract != canonical_court_contract:
+        raise CourtKeypointContractMismatchError(
+            "BLCS tracking metric CourtKP20 contract must be canonical."
+        )
+    _validate_court_provenance(
+        batch.court_reference_provenance,
+        batch_size=int(prediction.position.shape[0]),
+        court_keypoint_contract=canonical_court_contract,
+    )
     metrics: dict[str, torch.Tensor] = common_lifecycle_tracking_metrics(
         {
             "position": prediction.position,

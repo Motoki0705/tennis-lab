@@ -11,6 +11,7 @@ import pytest
 import torch
 from torch import Tensor, nn
 
+from src.tasks.base.generate_dataset import resolve_court_keypoint_contract
 from src.tasks.plcs.inference.predictor import PLCSPredictor
 from src.tasks.plcs.model_io import PLCSInputProfile, PLCSModelIOAdapter
 from src.utils.configuration import PathResolver
@@ -62,6 +63,7 @@ def test_yaw_radians_round_trips_dataset_cos_sin_encoding() -> None:
             output_rank=3,
             predict_canonical_pose=False,
             predict_auxiliary_position=False,
+            court_keypoint_contract=resolve_court_keypoint_contract("physical_v1"),
         ),
         device=torch.device("cpu"),
     )

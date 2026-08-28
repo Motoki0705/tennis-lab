@@ -3,16 +3,62 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 
 import torch
 from torch import Tensor
 
+from src.tasks.base.generate_dataset import CourtReferenceFrameProvenance
+from src.tasks.plcs.court_keypoint_contract import (
+    headings_target_to_physical,
+    normalized_points_target_to_physical,
+)
 from src.utils.geometry.angles import angular_error
-from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+from src.utils.schema.court_normalization import denormalize_court_position
 
 
 def _flatten_valid(valid: Tensor, values: Tensor) -> Tensor:
     return values.reshape(-1, values.shape[-1])[valid]
+
+
+def _physical_metric_values(
+    position: Tensor,
+    rotation: Tensor,
+    provenance: Sequence[CourtReferenceFrameProvenance],
+) -> tuple[Tensor, Tensor]:
+    """Restore one model batch to the physical court metric frame."""
+    records = tuple(provenance)
+    if not records:
+        raise ValueError("PLCS metric provenance must not be empty.")
+    if len(records) == 1:
+        return (
+            normalized_points_target_to_physical(
+                position,
+                records[0],
+            ),
+            headings_target_to_physical(rotation, records[0]),
+        )
+    if position.ndim < 2 or position.shape[0] != len(records):
+        raise ValueError(
+            "PLCS metric batch and Court provenance cardinality do not match."
+        )
+    return (
+        torch.stack(
+            [
+                normalized_points_target_to_physical(
+                    position[index],
+                    record,
+                )
+                for index, record in enumerate(records)
+            ]
+        ),
+        torch.stack(
+            [
+                headings_target_to_physical(rotation[index], record)
+                for index, record in enumerate(records)
+            ]
+        ),
+    )
 
 
 class PLCSMetrics:
@@ -43,8 +89,6 @@ class PLCSMetrics:
         self.angle_threshold_deg = angle_threshold_deg
         self.reset()
 
-        self._norm_scale_xyz = COURT_COORD_SCALE_XYZ
-
     def reset(self) -> None:
         """Reset all accumulated metrics."""
         self._position_errors: list[Tensor] = []
@@ -61,6 +105,10 @@ class PLCSMetrics:
         target_rotation: Tensor,
         *,
         padding_mask: Tensor | None = None,
+        court_reference_provenance: Sequence[
+            CourtReferenceFrameProvenance
+        ]
+        | None = None,
     ) -> dict[str, float]:
         """Update metrics with new predictions.
 
@@ -74,6 +122,19 @@ class PLCSMetrics:
             dict: Current batch metrics.
 
         """
+        positions_are_meters = court_reference_provenance is not None
+        if court_reference_provenance is not None:
+            pred_position, pred_rotation = _physical_metric_values(
+                pred_position,
+                pred_rotation,
+                court_reference_provenance,
+            )
+            target_position, target_rotation = _physical_metric_values(
+                target_position,
+                target_rotation,
+                court_reference_provenance,
+            )
+
         valid = None
         if padding_mask is not None:
             frame_padding = (
@@ -108,13 +169,16 @@ class PLCSMetrics:
                 target_rotation = target_rotation.flatten(0, 1)
 
         # Denormalize positions to meters
-        scale = torch.tensor(
-            list(self._norm_scale_xyz),
-            device=pred_position.device,
-            dtype=pred_position.dtype,
+        pred_meters = (
+            pred_position
+            if positions_are_meters
+            else denormalize_court_position(pred_position)
         )
-        pred_meters = pred_position * scale
-        target_meters = target_position * scale
+        target_meters = (
+            target_position
+            if positions_are_meters
+            else denormalize_court_position(target_position)
+        )
 
         # Position error (Euclidean distance)
         pos_error = (pred_meters - target_meters).norm(dim=-1)

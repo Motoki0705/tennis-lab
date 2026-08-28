@@ -14,7 +14,20 @@ from src.tasks.base.data.scene_dataset import (
     SceneDatasetBase,
     SceneDatasetConfig,
 )
+from src.tasks.base.generate_dataset import (
+    PHYSICAL_V1_SELECTOR,
+    camera_extrinsics_physical_to_target,
+    court_points_physical_to_target,
+    court_vectors_physical_to_target,
+)
+from src.tasks.blcs.configuration import parse_court_keypoint_contract
 from src.tasks.blcs.data.augmentation import BLCSBallObservationAugmentation
+from src.tasks.blcs.data.court_view import (
+    align_blcs_court_array,
+    court_views_by_scene,
+    resolve_blcs_sample_court_frame,
+    validate_blcs_dataset_court_keypoints,
+)
 from src.tasks.blcs.data.types import BLCSMultiViewBatch, BLCSMultiViewSample
 from src.utils.schema.court_normalization import (
     validate_court_coordinate_normalization,
@@ -44,6 +57,13 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
     ) -> None:
         self.hydra_cfg = config
         self.augment = augment
+        self.court_keypoint_contract = parse_court_keypoint_contract(config)
+        court_dataset = validate_blcs_dataset_court_keypoints(
+            scene_dir=scene_dir,
+            split_file=split_file,
+            contract=self.court_keypoint_contract,
+        )
+        self._court_views_by_scene = court_views_by_scene(court_dataset)
         data_cfg = self._resolve_data_cfg(self.hydra_cfg)
         self._configure_task(data_cfg)
         super().__init__(
@@ -94,6 +114,14 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
         cams = self.select_cameras(
             scene, num_views_range=self.num_views_range, camera_mode=self.camera_mode
         )
+        frame = resolve_blcs_sample_court_frame(
+            scene=scene,
+            selected_camera_indices=cams.indices,
+            court_views=self._court_views_by_scene.get(scene.path.name, ()),
+            contract=self.court_keypoint_contract,
+            rng=self.rng,
+            training=self.augment,
+        )
         # Use camera trajectory length to guard against metadata drift.
         primary_len = int(scene.get_camera_array(cams.primary, "ball_uv").shape[0])
         pos_len = int(scene.data["ball_pos_norm"].shape[0])
@@ -112,18 +140,33 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
         cam_w_list: list[Tensor] = []
         cam_h_list: list[Tensor] = []
 
-        for cam_idx in cams.indices:
+        for selected_index, cam_idx in enumerate(cams.indices):
             ball_uv = torch.from_numpy(
                 scene.get_camera_array(cam_idx, "ball_uv", window=window)
             ).float()
             ball_vis = torch.from_numpy(
                 scene.get_camera_array(cam_idx, "ball_vis", window=window)
             ).float()
+            source_view = (
+                frame.selected_views[selected_index]
+                if frame.selected_views
+                else None
+            )
             court_kp = torch.from_numpy(
-                scene.get_camera_array(cam_idx, "court_kp_uv")
+                align_blcs_court_array(
+                    scene.get_camera_array(cam_idx, "court_kp_uv"),
+                    source_view=source_view,
+                    frame=frame,
+                    keypoint_axis=0,
+                )
             ).float()
             court_vis = torch.from_numpy(
-                scene.get_camera_array(cam_idx, "court_kp_vis")
+                align_blcs_court_array(
+                    scene.get_camera_array(cam_idx, "court_kp_vis"),
+                    source_view=source_view,
+                    frame=frame,
+                    keypoint_axis=0,
+                )
             ).float()
             court_kp = court_kp[: self.num_court_kp]
             court_vis = court_vis[: self.num_court_kp]
@@ -141,13 +184,39 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
             raw = scene.data[params_key]
             cam_params = raw if isinstance(raw, dict) else json.loads(str(raw))
             # Normalise key: generators may store centre as "C" or "center"
-            cam_R_list.append(torch.tensor(cam_params["R"], dtype=torch.float32))
-            cam_C_list.append(torch.tensor(cam_params["C"], dtype=torch.float32))
+            physical_R = torch.tensor(cam_params["R"], dtype=torch.float32)
+            physical_C = torch.tensor(cam_params["C"], dtype=torch.float32)
+            if self.court_keypoint_contract.selector == PHYSICAL_V1_SELECTOR:
+                transformed_C, transformed_R = physical_C, physical_R
+            else:
+                transformed_C, transformed_R = camera_extrinsics_physical_to_target(
+                    physical_C,
+                    physical_R,
+                    frame.provenance,
+                )
+            cam_R_list.append(transformed_R)
+            cam_C_list.append(transformed_C)
             cam_f_list.append(torch.tensor(cam_params["f"], dtype=torch.float32))
             cam_cx_list.append(torch.tensor(cam_params["cx"], dtype=torch.float32))
             cam_cy_list.append(torch.tensor(cam_params["cy"], dtype=torch.float32))
             cam_w_list.append(torch.tensor(float(cam_params["w"]), dtype=torch.float32))
             cam_h_list.append(torch.tensor(float(cam_params["h"]), dtype=torch.float32))
+
+        position_3d = torch.from_numpy(
+            scene.get_array("ball_pos_norm", window=window)
+        ).float()
+        velocity_3d = torch.from_numpy(
+            scene.get_array("ball_vel_norm", window=window)
+        ).float()
+        if self.court_keypoint_contract.selector != PHYSICAL_V1_SELECTOR:
+            position_3d = court_points_physical_to_target(
+                position_3d,
+                frame.provenance,
+            )
+            velocity_3d = court_vectors_physical_to_target(
+                velocity_3d,
+                frame.provenance,
+            )
 
         sample: BLCSMultiViewSample = {
             "ball_uv": torch.stack(ball_uv_list, dim=0),
@@ -157,12 +226,8 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
             ),
             "court_kp": torch.stack(court_kp_list, dim=0),
             "court_vis": torch.stack(court_vis_list, dim=0),
-            "position_3d": torch.from_numpy(
-                scene.get_array("ball_pos_norm", window=window)
-            ).float(),
-            "velocity_3d": torch.from_numpy(
-                scene.get_array("ball_vel_norm", window=window)
-            ).float(),
+            "position_3d": position_3d,
+            "velocity_3d": velocity_3d,
             "seq_len": torch.tensor(window.seq_len, dtype=torch.long),
             "camera_R": torch.stack(cam_R_list, dim=0),
             "camera_C": torch.stack(cam_C_list, dim=0),
@@ -171,6 +236,7 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
             "camera_cy": torch.stack(cam_cy_list, dim=0),
             "camera_w": torch.stack(cam_w_list, dim=0),
             "camera_h": torch.stack(cam_h_list, dim=0),
+            "court_reference_provenance": frame.provenance,
         }
         return sample
 
@@ -328,7 +394,7 @@ def collate_multiview_trajectories(
         cam_cy_batch.append(cam_cy)
         cam_w_batch.append(cam_w)
         cam_h_batch.append(cam_h)
-    collated = {
+    collated: dict[str, object] = {
         "ball_uv": torch.stack(ball_uv_batch, dim=0),
         "ball_vis": torch.stack(ball_vis_batch, dim=0),
         "padding_mask": torch.stack(padding_mask_batch, dim=0),
@@ -344,6 +410,9 @@ def collate_multiview_trajectories(
         "camera_cy": torch.stack(cam_cy_batch, dim=0),
         "camera_w": torch.stack(cam_w_batch, dim=0),
         "camera_h": torch.stack(cam_h_batch, dim=0),
+        "court_reference_provenance": tuple(
+            sample["court_reference_provenance"] for sample in batch
+        ),
     }
     if has_clean_targets:
         collated["ball_uv_target"] = torch.stack(ball_uv_target_batch, dim=0)

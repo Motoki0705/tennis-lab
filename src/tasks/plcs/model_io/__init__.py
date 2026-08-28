@@ -13,6 +13,11 @@ from src.tasks.plcs.model_io.contracts import (
     PLCSReprojectionTarget,
     PLCSTrackingDecodedPrediction,
 )
+from src.tasks.plcs.model_io.court_keypoint_checkpoint import (
+    prepare_plcs_checkpoint_court_keypoint_config,
+    validate_plcs_checkpoint_court_keypoints,
+    write_plcs_checkpoint_court_keypoints,
+)
 from src.tasks.plcs.model_io.factory import (
     PLCSBoundModelIO,
     PLCSStandardBoundModelIO,
@@ -36,4 +41,7 @@ __all__ = [
     "PLCSTrackingDecodedPrediction",
     "bind_plcs_model_io",
     "build_plcs_model_io",
+    "prepare_plcs_checkpoint_court_keypoint_config",
+    "validate_plcs_checkpoint_court_keypoints",
+    "write_plcs_checkpoint_court_keypoints",
 ]

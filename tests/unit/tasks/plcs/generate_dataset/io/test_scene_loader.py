@@ -8,10 +8,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from src.tasks.base.generate_dataset import resolve_court_keypoint_contract
 from src.tasks.plcs.generate_dataset.io.scene_loader import load_scene
 from src.utils.schema.court_normalization import (
     court_coordinate_normalization_metadata,
 )
+
+PHYSICAL_V1_COURT = resolve_court_keypoint_contract("physical_v1")
 
 
 def _meta() -> dict[str, object]:
@@ -32,7 +35,10 @@ def test_scene_loader_requires_explicit_num_persons(tmp_path: Path) -> None:
     )
 
     with pytest.raises(KeyError, match="num_persons"):
-        load_scene(tmp_path)
+        load_scene(
+            tmp_path,
+            court_keypoint_contract=PHYSICAL_V1_COURT,
+        )
 
 
 def test_scene_loader_rejects_legacy_visible_filenames(tmp_path: Path) -> None:
@@ -54,4 +60,7 @@ def test_scene_loader_rejects_legacy_visible_filenames(tmp_path: Path) -> None:
         np.save(tmp_path / f"{name}.npy", np.zeros(shape, dtype=np.float32))
 
     with pytest.raises(FileNotFoundError, match="human_kp_vis"):
-        load_scene(tmp_path)
+        load_scene(
+            tmp_path,
+            court_keypoint_contract=PHYSICAL_V1_COURT,
+        )

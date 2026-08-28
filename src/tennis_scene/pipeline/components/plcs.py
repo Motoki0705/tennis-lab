@@ -3,13 +3,28 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
+from src.tasks.base.generate_dataset import (
+    PHYSICAL_V1_SELECTOR,
+    CourtKeypointContract,
+    CourtKeypointContractMismatchError,
+    CourtReferenceFrameProvenance,
+    MissingCourtKeypointMetadataError,
+    build_physical_court_provenance,
+    resolve_court_keypoint_contract,
+)
+from src.tasks.base.model_io import validate_model_artifact_court_keypoint_contract
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
+from src.tennis_scene.schema import (
+    attach_court_keypoint_provenance,
+    validate_court_keypoint_provenance,
+)
 from src.utils.configuration import PathResolver
 from src.utils.inference.windowed import blend_windows, window_slices
 from src.utils.io import load_json, save_json
@@ -53,6 +68,9 @@ class PLCSConfig:
     window_overlap: int
     human_vis_threshold: float
     resolver: PathResolver
+    court_keypoint_contract: CourtKeypointContract = field(
+        default_factory=lambda: resolve_court_keypoint_contract("physical_v1")
+    )
 
     def __post_init__(self) -> None:
         if (self.source == "load") != (self.load_path is not None):
@@ -74,17 +92,43 @@ class PLCSResult:
     position: NDArray[np.float32]
     yaw: NDArray[np.float32]
     track_ids: NDArray[np.int32]
+    court_reference_provenance: CourtReferenceFrameProvenance = field(
+        default_factory=build_physical_court_provenance
+    )
 
-    def to_dict(self) -> dict:
-        result = {
+    def to_dict(
+        self,
+        court_keypoint_contract: CourtKeypointContract | None = None,
+    ) -> dict[str, object]:
+        result: dict[str, object] = {
             "position": self.position.tolist(),
             "yaw": self.yaw.tolist(),
         }
         result["track_ids"] = self.track_ids.tolist()
+        if court_keypoint_contract is not None:
+            result = attach_court_keypoint_provenance(
+                result,
+                court_keypoint_contract,
+                self.court_reference_provenance,
+                location="PLCS result",
+            )
         return result
 
     @classmethod
-    def from_dict(cls, data: dict) -> PLCSResult:
+    def from_dict(
+        cls,
+        data: dict[str, object],
+        court_keypoint_contract: CourtKeypointContract | None = None,
+    ) -> PLCSResult:
+        provenance = (
+            build_physical_court_provenance()
+            if court_keypoint_contract is None
+            else validate_court_keypoint_provenance(
+                data,
+                court_keypoint_contract,
+                location="PLCS result",
+            )
+        )
         missing = {"position", "yaw", "track_ids"} - set(data)
         if missing:
             raise ValueError(
@@ -95,10 +139,19 @@ class PLCSResult:
 
         track_ids = np.array(data["track_ids"], dtype=np.int32)
 
-        return cls(position=position, yaw=yaw, track_ids=track_ids)
+        return cls(
+            position=position,
+            yaw=yaw,
+            track_ids=track_ids,
+            court_reference_provenance=provenance,
+        )
 
-    def save(self, path: str | Path) -> None:
-        save_json(self.to_dict(), path)
+    def save(
+        self,
+        path: str | Path,
+        court_keypoint_contract: CourtKeypointContract | None = None,
+    ) -> None:
+        save_json(self.to_dict(court_keypoint_contract), path)
         LOGGER.info(f"Saved PLCS result to {path}")
 
     def validate(self) -> tuple[bool, list[str]]:
@@ -131,8 +184,15 @@ class PLCSResult:
         return len(errors) == 0, errors
 
     @classmethod
-    def load(cls, path: str | Path) -> PLCSResult:
-        return cls.from_dict(load_json(path))
+    def load(
+        cls,
+        path: str | Path,
+        court_keypoint_contract: CourtKeypointContract | None = None,
+    ) -> PLCSResult:
+        data = load_json(path)
+        if not isinstance(data, dict):
+            raise TypeError(f"PLCS result must be a JSON object: {path}")
+        return cls.from_dict(data, court_keypoint_contract)
 
 
 class PLCSModule(BasePipelineModule):
@@ -155,6 +215,7 @@ class PLCSModule(BasePipelineModule):
             self.checkpoint,
             resolver=self.config.resolver,
             device=self.device,
+            court_keypoint_contract=self.config.court_keypoint_contract,
         )
         self._predictor.require_input_profile("multiview")
 
@@ -169,6 +230,9 @@ class PLCSModule(BasePipelineModule):
         human_kp_vis: NDArray[np.float32],
         court_vis: NDArray[np.float32],
         track_ids: NDArray[np.int32],
+        *,
+        court_keypoint_document: Mapping[str, object] | None = None,
+        court_reference_provenance: CourtReferenceFrameProvenance | None = None,
     ) -> PLCSResult:
         """Run PLCS inference.
 
@@ -190,8 +254,19 @@ class PLCSModule(BasePipelineModule):
                 LOGGER.info(
                     f"Loading PLCS result from {load_path} (skipping inference)"
                 )
-                return PLCSResult.load(load_path)
+                return PLCSResult.load(
+                    load_path,
+                    self.config.court_keypoint_contract,
+                )
             raise FileNotFoundError(f"PLCS artifact not found: {load_path}")
+
+        input_provenance = self._validate_input_court_context(
+            court_keypoint_document,
+            court_reference_provenance,
+        )
+        direct_document = (
+            None if court_keypoint_document is None else dict(court_keypoint_document)
+        )
 
         if not self.is_loaded:
             self.load()
@@ -248,13 +323,28 @@ class PLCSModule(BasePipelineModule):
         position_chunks: list[tuple[int, NDArray[np.float64]]] = []
         yaw_vec_chunks: list[tuple[int, NDArray[np.float64]]] = []
         for start, end in slices:
-            prediction = predictor.predict_multiview_observations(
-                human_kp=human_kp_2d[:, :, start:end],
-                court_kp=court_kp[:, start:end],
-                human_vis=binary_vis[:, :, start:end],
-                padding_mask=padding_mask[:, :, start:end],
-                court_vis=court_vis[:, start:end],
-            )
+            if self.config.court_keypoint_contract.selector == PHYSICAL_V1_SELECTOR:
+                prediction = predictor.predict_multiview_observations(
+                    human_kp=human_kp_2d[:, :, start:end],
+                    court_kp=court_kp[:, start:end],
+                    human_vis=binary_vis[:, :, start:end],
+                    padding_mask=padding_mask[:, :, start:end],
+                    court_vis=court_vis[:, start:end],
+                )
+            else:
+                prediction = predictor.predict_multiview_observations(
+                    human_kp=human_kp_2d[:, :, start:end],
+                    court_kp=court_kp[:, start:end],
+                    human_vis=binary_vis[:, :, start:end],
+                    padding_mask=padding_mask[:, :, start:end],
+                    court_vis=court_vis[:, start:end],
+                    court_keypoint_metadata=direct_document,
+                    court_reference_provenance=input_provenance,
+                )
+                if prediction.court_reference_provenance != (input_provenance,):
+                    raise CourtKeypointContractMismatchError(
+                        "PLCS prediction provenance does not match its validated input."
+                    )
             win_pos = prediction.position_meters
             win_yaw = prediction.yaw_radians
             position_chunks.append((start, win_pos.transpose(1, 0, 2)))
@@ -284,9 +374,38 @@ class PLCSModule(BasePipelineModule):
             position=positions,  # (P, T, 3)
             yaw=yaws,  # (P, T)
             track_ids=track_ids.astype(np.int32),
+            court_reference_provenance=input_provenance,
         )
 
         if self.config.save_result:
-            result.save(self.config.output_path)
+            result.save(
+                self.config.output_path,
+                self.config.court_keypoint_contract,
+            )
 
         return result
+
+    def _validate_input_court_context(
+        self,
+        document: Mapping[str, object] | None,
+        provenance: CourtReferenceFrameProvenance | None,
+    ) -> CourtReferenceFrameProvenance:
+        """Fail closed on direct v2 input before loading or invoking a model."""
+        validate_model_artifact_court_keypoint_contract(
+            {} if document is None else document,
+            self.config.court_keypoint_contract,
+            location="tennis_scene PLCS input",
+        )
+        if provenance is None:
+            if self.config.court_keypoint_contract.selector != PHYSICAL_V1_SELECTOR:
+                raise MissingCourtKeypointMetadataError(
+                    "tennis_scene PLCS camera_view_v2 input requires exact "
+                    "Court reference provenance."
+                )
+            return build_physical_court_provenance()
+        if provenance.contract != self.config.court_keypoint_contract:
+            raise CourtKeypointContractMismatchError(
+                "tennis_scene PLCS input provenance does not match runtime CourtKP20 "
+                "contract."
+            )
+        return provenance

@@ -6,6 +6,8 @@ from typing import TypedDict
 
 from torch import Tensor
 
+from src.tasks.base.generate_dataset import CourtReferenceFrameProvenance
+
 
 class BLCSTrackingBatch(TypedDict):
     """Padded multi-ball input, GT, and debug tensors.
@@ -31,6 +33,7 @@ class BLCSTrackingBatch(TypedDict):
     clean_ball_uv: Tensor
     clean_ball_vis: Tensor
     candidate_gt_index: Tensor
+    court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...]
 
 
 class BLCSTrackingPrediction(TypedDict):

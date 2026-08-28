@@ -16,6 +16,10 @@ from src.tasks.base.configuration import (
     as_config_mapping,
     require_config_mapping,
 )
+from src.tasks.base.generate_dataset import (
+    CourtKeypointContract,
+    resolve_court_keypoint_contract,
+)
 from src.tasks.base.generate_dataset.timeline_composer import TimelineConfig
 from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
 from src.tasks.base.visualization.style import (
@@ -213,6 +217,18 @@ def build_path_resolver(config: object) -> PathResolver:
             repository_root=PROJECT_ROOT,
         )
     )
+
+
+def parse_court_keypoint_contract(config: object) -> CourtKeypointContract:
+    """Resolve the independent, explicitly selected CourtKP20 contract."""
+    root = as_config_mapping(config, path="configuration")
+    section = require_config_mapping(root, "court_keypoints", path="configuration")
+    _exact(section, {"selector"}, path="court_keypoints")
+    selector = _value(section, "selector", str, path="court_keypoints")
+    try:
+        return resolve_court_keypoint_contract(cast("str", selector))
+    except ValueError as error:
+        raise SemanticConfigurationError(str(error)) from error
 
 
 @dataclass(frozen=True, slots=True)
@@ -1314,6 +1330,7 @@ def parse_generation_run(config: object) -> tuple[GenerationRunConfig, PathResol
         root,
         {
             "paths",
+            "court_keypoints",
             "generation",
             "physics",
             "rally",
@@ -1324,6 +1341,7 @@ def parse_generation_run(config: object) -> tuple[GenerationRunConfig, PathResol
         },
         path="configuration",
     )
+    parse_court_keypoint_contract(config)
     validate_generator_sections(config)
     run = require_config_mapping(root, "run", path="configuration")
     keys = {
@@ -1912,6 +1930,7 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
     if isinstance(model, (TrackQueryModelConfig, TrackQueryAblationModelConfig)):
         allowed = {
             "paths",
+            "court_keypoints",
             "model",
             "data",
             "training",
@@ -1933,6 +1952,7 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
     else:
         allowed = {
             "paths",
+            "court_keypoints",
             "model",
             "data",
             "training",
@@ -1945,6 +1965,7 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             "generator",
         }
     _exact(root, allowed, path="configuration")
+    parse_court_keypoint_contract(config)
     build_path_resolver(config)
     data = require_config_mapping(root, "data", path="configuration")
     backend = cast("str", _value(data, "backend", str, path="data"))
@@ -2370,7 +2391,16 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
 def validate_visualization_boundary(config: object) -> None:
     """Validate the complete BLCS visualization contract before scene I/O."""
     root = as_config_mapping(config, path="configuration")
-    _exact(root, {"paths", "visualization"}, path="configuration")
+    _exact(
+        root,
+        {
+            "paths",
+            "court_keypoints",
+            "visualization",
+        },
+        path="configuration",
+    )
+    parse_court_keypoint_contract(config)
     visualization = require_config_mapping(root, "visualization", path="configuration")
     common = SceneVisualizationConfig.from_mapping(
         visualization,
@@ -2406,6 +2436,7 @@ def validate_api_boundary(config: object) -> None:
         root,
         {
             "paths",
+            "court_keypoints",
             "physics",
             "rally",
             "camera",
@@ -2415,6 +2446,7 @@ def validate_api_boundary(config: object) -> None:
         },
         path="configuration",
     )
+    parse_court_keypoint_contract(config)
     build_path_resolver(config)
     validate_generator_sections(config, include_generation=False)
     server = require_config_mapping(root, "server", path="configuration")
@@ -2432,6 +2464,7 @@ def validate_generation_boundary(config: object) -> None:
 
 def validate_preview_boundary(config: object) -> None:
     """Validate augmentation-preview configuration before dataset I/O."""
+    parse_court_keypoint_contract(config)
     parse_preview_config(config)
 
 
@@ -2601,6 +2634,7 @@ __all__ = [
     "TrackQueryAblationModelConfig",
     "TrackQueryModelConfig",
     "build_path_resolver",
+    "parse_court_keypoint_contract",
     "parse_generation_run",
     "parse_model_config",
     "parse_preview_config",
