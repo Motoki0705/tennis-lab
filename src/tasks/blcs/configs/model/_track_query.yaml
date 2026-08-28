@@ -9,6 +9,7 @@ num_heads: ???
 num_stages: ???
 
 ffn_dim: ???
+ffn_type: swiglu
 num_queries: 4
 rope_dim: ???
 dropout: 0.1
