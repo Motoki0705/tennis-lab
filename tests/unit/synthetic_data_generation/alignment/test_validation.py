@@ -223,7 +223,7 @@ def test_excluded_camera_diagnostics_round_trip_and_reject_reason_tampering(
     )
 
     assert validated.to_dict() == result.to_dict()
-    assert persisted_evidence["schema"] == "alignment_measured_evidence_v9"
+    assert persisted_evidence["schema"] == "alignment_measured_evidence_v10"
     assert persisted_evidence["excluded_cameras"] == [
         item.to_dict() for item in exclusions
     ]
@@ -328,6 +328,35 @@ def test_proposal_search_archive_round_trip_rejects_weighted_gate_tampering(
     np.savez_compressed(archive_path, **arrays)  # type: ignore[arg-type]
 
     with pytest.raises(ValueError, match="explained-evidence gate"):
+        validate_alignment_outputs(staging)
+
+
+def test_proposal_search_archive_rejects_refinement_rank_tampering(
+    tmp_path: Path,
+    alignment_evidence: AlignmentEvidence,
+    alignment_policy: AlignmentAcceptancePolicy,
+) -> None:
+    result = fit_alignment(alignment_evidence, policy=alignment_policy)
+    staging = tmp_path / "alignment"
+    staging.mkdir()
+    write_alignment_outputs(
+        staging,
+        evidence=alignment_evidence,
+        result=result,
+        heatmaps=_line_heatmaps(alignment_evidence),
+    )
+
+    archive_path = staging / "ground-line-map.npz"
+    with np.load(archive_path, allow_pickle=False) as loaded:
+        arrays = {name: np.asarray(loaded[name]) for name in loaded.files}
+    payload = json.loads(str(arrays["diagnostic_proposal_search_json"].item()))
+    payload["refinement_attempt_count"] = 2
+    arrays["diagnostic_proposal_search_json"] = np.asarray(
+        json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    )
+    np.savez_compressed(archive_path, **arrays)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="attempts must equal rejected states"):
         validate_alignment_outputs(staging)
 
 

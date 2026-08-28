@@ -761,6 +761,9 @@ class ProposalSearchDiagnostics:
     expanded_state_count: int
     pruned_state_count: int
     feasible_complete_state_count: int
+    refinement_attempt_count: int
+    refinement_rejected_state_count: int
+    selected_complete_state_rank: int
     inferred_candidate_count: int
     stopping_reason: ProposalSearchStopReason
     minimum_explained_evidence_fraction: float
@@ -859,6 +862,33 @@ class ProposalSearchDiagnostics:
             name="feasible_complete_state_count",
             minimum=1,
         )
+        refinement_attempts = _integer(
+            self.refinement_attempt_count,
+            name="refinement_attempt_count",
+            minimum=1,
+        )
+        refinement_rejections = _integer(
+            self.refinement_rejected_state_count,
+            name="refinement_rejected_state_count",
+            minimum=0,
+        )
+        selected_rank = _integer(
+            self.selected_complete_state_rank,
+            name="selected_complete_state_rank",
+            minimum=0,
+        )
+        if refinement_attempts != refinement_rejections + 1:
+            raise ValueError(
+                "Refinement attempts must equal rejected states plus the selection."
+            )
+        if selected_rank != refinement_rejections:
+            raise ValueError(
+                "Selected complete-state rank must equal prior refinement rejections."
+            )
+        if selected_rank >= feasible:
+            raise ValueError(
+                "Selected complete-state rank exceeds feasible complete states."
+            )
         inferred = _integer(
             self.inferred_candidate_count,
             name="inferred_candidate_count",
@@ -1036,6 +1066,9 @@ class ProposalSearchDiagnostics:
             "expanded_state_count": self.expanded_state_count,
             "pruned_state_count": self.pruned_state_count,
             "feasible_complete_state_count": self.feasible_complete_state_count,
+            "refinement_attempt_count": self.refinement_attempt_count,
+            "refinement_rejected_state_count": (self.refinement_rejected_state_count),
+            "selected_complete_state_rank": self.selected_complete_state_rank,
             "inferred_candidate_count": self.inferred_candidate_count,
             "stopping_reason": self.stopping_reason.value,
             "minimum_explained_evidence_fraction": (
@@ -1141,6 +1174,21 @@ class ProposalSearchDiagnostics:
                 raw["feasible_complete_state_count"],
                 name="feasible_complete_state_count",
                 minimum=1,
+            ),
+            refinement_attempt_count=_integer(
+                raw["refinement_attempt_count"],
+                name="refinement_attempt_count",
+                minimum=1,
+            ),
+            refinement_rejected_state_count=_integer(
+                raw["refinement_rejected_state_count"],
+                name="refinement_rejected_state_count",
+                minimum=0,
+            ),
+            selected_complete_state_rank=_integer(
+                raw["selected_complete_state_rank"],
+                name="selected_complete_state_rank",
+                minimum=0,
             ),
             inferred_candidate_count=_integer(
                 raw["inferred_candidate_count"],
@@ -1454,7 +1502,7 @@ class AlignmentEvidenceDiagnostics:
     def to_dict(self) -> dict[str, object]:
         """Return machine-readable measured evidence diagnostics."""
         return {
-            "schema": "alignment_measured_evidence_v9",
+            "schema": "alignment_measured_evidence_v10",
             "cameras": [item.to_dict() for item in self.cameras],
             "excluded_cameras": [item.to_dict() for item in self.excluded_cameras],
             "selection": self.selection.to_dict(),
