@@ -95,6 +95,7 @@ class CourtHierarchicalModel(nn.Module):
                 num_heads=transformer_config.num_heads,
                 rope_dim=transformer_config.rope_dim,
                 ffn_dim=transformer_config.ffn_dim,
+                ffn_type=transformer_config.ffn_type,
                 rope_theta=transformer_config.rope_theta,
                 dropout=transformer_config.dropout,
             )

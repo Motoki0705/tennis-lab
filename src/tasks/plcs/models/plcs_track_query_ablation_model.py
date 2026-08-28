@@ -177,7 +177,8 @@ class PLCSTrackQueryAblationModel(nn.Module):
         config: PLCSModelConfig,
         head_dim: int,
         temporal_cswa: bool,
-    ) -> TransformerBlockConfig:
+            ffn_type: FFNType = "swiglu",
+) -> TransformerBlockConfig:
         attention_type: Literal["mha", "cswa"] = (
             "cswa" if temporal_cswa else "mha"
         )
@@ -219,7 +220,8 @@ class PLCSTrackQueryAblationModel(nn.Module):
         stage_index: int,
         config: PLCSModelConfig,
         head_dim: int,
-    ) -> FixedQueryTrackAblationStage:
+            ffn_type: FFNType = "swiglu",
+) -> FixedQueryTrackAblationStage:
         mhc_config = config.track_query_mhc
         if mhc_config is None:
             raise ValueError("PLCS track-query mhc config must be validated.")
@@ -228,12 +230,14 @@ class PLCSTrackQueryAblationModel(nn.Module):
             config=config,
             head_dim=head_dim,
             temporal_cswa=temporal_cswa,
-        )
+                    ffn_type=ffn_type,
+)
         spatial_config = self._block_config(
             config=config,
             head_dim=head_dim,
             temporal_cswa=False,
-        )
+                    ffn_type=ffn_type,
+)
         return FixedQueryTrackAblationStage(
             stage_index=stage_index,
             mhc=ManifoldConstrainedHyperConnection(

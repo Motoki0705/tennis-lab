@@ -40,7 +40,8 @@ class _GlobalTimeAttention(nn.Module):
         full_attention_keep_mask: Tensor,
         sliding_attention_keep_mask: Tensor,
         frequencies: Tensor,
-    ) -> Tensor:
+            ffn_type: FFNType = "swiglu",
+) -> Tensor:
         """Apply full-sequence time attention."""
         del sliding_attention_keep_mask
         batch_size, seq_len, num_cameras = x.shape[:3]
@@ -55,7 +56,8 @@ class _GlobalTimeAttention(nn.Module):
                 values,
                 freqs_cis=frequencies,
                 attn_mask=full_attention_keep_mask,
-            ),
+                            ffn_type=ffn_type,
+),
         )
         return values.reshape(
             batch_size,
@@ -79,7 +81,8 @@ class _SlidingTimeAttention(nn.Module):
         full_attention_keep_mask: Tensor,
         sliding_attention_keep_mask: Tensor,
         frequencies: Tensor,
-    ) -> Tensor:
+            ffn_type: FFNType = "swiglu",
+) -> Tensor:
         """Apply sliding-window time attention."""
         del full_attention_keep_mask
         batch_size, seq_len, num_cameras = x.shape[:3]
@@ -94,7 +97,8 @@ class _SlidingTimeAttention(nn.Module):
                 values,
                 freqs_cis=frequencies,
                 attn_mask=sliding_attention_keep_mask,
-            ),
+                            ffn_type=ffn_type,
+),
         )
         return values.reshape(
             batch_size,

@@ -39,6 +39,7 @@ from src.utils.models.components.ffn_layers import (
     SwiGLU,
     build_ffn,
     default_ffn_dim,
+    resolve_ffn_type,
 )
 from src.utils.models.components.fixed_query_track_ablation_stage import (
     FFNMode,
@@ -79,6 +80,7 @@ __all__ = [
     "SwiGLU",
     "build_ffn",
     "default_ffn_dim",
+    "resolve_ffn_type",
     "MoEConfig",
     "MoELayer",
     "MoERouting",

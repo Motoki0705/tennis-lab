@@ -5,6 +5,8 @@ symbols listed in ``__all__`` use this package root as their public import path;
 specialized APIs not listed here remain owned by their defining subpackage.
 """
 
+
+from src.utils.models.components.ffn_layers import FFNType
 from src.utils.models.components import (
     SUPPORTED_FFN_TYPES,
     CompressedSlidingWindowSelfAttention,

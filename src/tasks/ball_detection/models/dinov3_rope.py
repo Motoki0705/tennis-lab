@@ -42,10 +42,11 @@ def _run_decoder_block(
     tokens: torch.Tensor,
     freqs_cis: torch.Tensor,
     attn_mask: torch.Tensor,
+    ffn_type: FFNType = "swiglu",
 ) -> torch.Tensor:
     return cast(
         torch.Tensor,
-        block(tokens, freqs_cis=freqs_cis, attn_mask=attn_mask),
+        block(tokens, freqs_cis=freqs_cis, attn_mask=attn_mask, ffn_type=ffn_type),
     )
 
 
@@ -161,7 +162,8 @@ class DINOv3RoPEBallDetector(nn.Module):
         decoder_gradient_checkpointing: bool,
         head_min_channels: int,
         backbone: DINOv3BackboneAdapter | None = None,
-    ) -> None:
+            ffn_type: FFNType = "swiglu",
+) -> None:
         super().__init__()
         repository_path = Path(backbone_repository_path)
         checkpoint_path = Path(backbone_checkpoint_path)
