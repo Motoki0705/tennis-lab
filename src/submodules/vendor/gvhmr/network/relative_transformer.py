@@ -1,5 +1,3 @@
-from src.utils.models.components.ffn_layers import FFNType
-
 import torch
 import torch.nn as nn
 from einops import repeat
@@ -105,7 +103,7 @@ class NetworkEncoderRoPE(nn.Module):
                 zero_module(nn.Linear(self.imgseq_dim, latent_dim)),
             )
 
-    def forward(self, length, obs=None, f_cliffcam=None, f_cam_angvel=None, f_imgseq=None, ffn_type: FFNType = "swiglu"):
+    def forward(self, length, obs=None, f_cliffcam=None, f_cam_angvel=None, f_imgseq=None):
         """
         Args:
             x: None we do not use it
@@ -155,7 +153,7 @@ class NetworkEncoderRoPE(nn.Module):
 
         # Transformer
         for block in self.blocks:
-            x = block(x, attn_mask=attnmask, tgt_key_padding_mask=pmask, ffn_type=ffn_type)
+            x = block(x, attn_mask=attnmask, tgt_key_padding_mask=pmask)
 
         # Output
         sample = self.final_layer(x)  # (B, L, C)

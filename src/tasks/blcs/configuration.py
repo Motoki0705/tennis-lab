@@ -809,12 +809,6 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             "mhc",
             "cswa",
         }
-        raw_ffn_type = cast("str", model["ffn_type"])
-        if raw_ffn_type not in SUPPORTED_FFN_TYPES:
-            raise SemanticConfigurationError(
-                "model.ffn_type must be one of "
-                f"{sorted(SUPPORTED_FFN_TYPES)!r}."
-            )
         if is_reference:
             base_keys |= {
                 "target_frame_contract",
@@ -846,6 +840,12 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             },
             path="model",
         )
+        raw_ffn_type = cast("str", model["ffn_type"])
+        if raw_ffn_type not in SUPPORTED_FFN_TYPES:
+            raise SemanticConfigurationError(
+                "model.ffn_type must be one of "
+                f"{sorted(SUPPORTED_FFN_TYPES)!r}."
+            )
         if is_reference:
             _validate_types(
                 model,

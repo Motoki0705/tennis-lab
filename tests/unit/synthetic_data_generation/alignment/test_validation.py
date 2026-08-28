@@ -22,6 +22,10 @@ from src.synthetic_data_generation.alignment.contracts import (
 )
 from src.synthetic_data_generation.alignment.fitting import fit_alignment
 from src.synthetic_data_generation.alignment.handler import AlignmentStageHandler
+from src.synthetic_data_generation.alignment.heatmaps import (
+    AlignmentLineHeatmaps,
+    AlignmentLineHeatmapView,
+)
 from src.synthetic_data_generation.alignment.settings import WholeCourtEvidenceSettings
 from src.synthetic_data_generation.alignment.validation import (
     load_accepted_layout,
@@ -63,7 +67,12 @@ def test_fixed_outputs_round_trip_and_reject_cross_file_tampering(
     result = fit_alignment(alignment_evidence, policy=alignment_policy)
     staging = tmp_path / "alignment"
     staging.mkdir(parents=True)
-    write_alignment_outputs(staging, evidence=alignment_evidence, result=result)
+    write_alignment_outputs(
+        staging,
+        evidence=alignment_evidence,
+        result=result,
+        heatmaps=_line_heatmaps(alignment_evidence),
+    )
 
     validated = validate_alignment_outputs(staging)
     layout = load_accepted_layout(staging)
@@ -74,6 +83,7 @@ def test_fixed_outputs_round_trip_and_reject_cross_file_tampering(
         "court-geometry.json",
         "alignment.json",
         "diagnostics",
+        "line-heatmaps",
     }
 
     geometry_path = staging / "court-geometry.json"
@@ -103,7 +113,12 @@ def test_ground_line_archive_rejects_wrong_dtype(
     result = fit_alignment(alignment_evidence, policy=alignment_policy)
     staging = tmp_path / "alignment" / "staging"
     staging.mkdir(parents=True)
-    write_alignment_outputs(staging, evidence=alignment_evidence, result=result)
+    write_alignment_outputs(
+        staging,
+        evidence=alignment_evidence,
+        result=result,
+        heatmaps=_line_heatmaps(alignment_evidence),
+    )
     archive_path = staging / "ground-line-map.npz"
     with np.load(archive_path, allow_pickle=False) as loaded:
         arrays = {name: np.asarray(loaded[name]) for name in loaded.files}
@@ -122,7 +137,12 @@ def test_current_ground_line_archive_requires_whole_court_policy(
     result = fit_alignment(alignment_evidence, policy=alignment_policy)
     staging = tmp_path / "alignment" / "staging"
     staging.mkdir(parents=True)
-    write_alignment_outputs(staging, evidence=alignment_evidence, result=result)
+    write_alignment_outputs(
+        staging,
+        evidence=alignment_evidence,
+        result=result,
+        heatmaps=_line_heatmaps(alignment_evidence),
+    )
     archive_path = staging / "ground-line-map.npz"
     with np.load(archive_path, allow_pickle=False) as loaded:
         arrays = {name: np.asarray(loaded[name]) for name in loaded.files}
@@ -191,7 +211,12 @@ def test_excluded_camera_diagnostics_round_trip_and_reject_reason_tampering(
     staging = tmp_path / "alignment"
     staging.mkdir()
 
-    write_alignment_outputs(staging, evidence=evidence, result=result)
+    write_alignment_outputs(
+        staging,
+        evidence=evidence,
+        result=result,
+        heatmaps=_line_heatmaps(evidence),
+    )
     validated = validate_alignment_outputs(staging)
     persisted_evidence = json.loads(
         (staging / "diagnostics/evidence.json").read_text(encoding="utf-8")
@@ -223,7 +248,12 @@ def test_fixed_selection_archive_rejects_requested_count_tampering(
     result = fit_alignment(alignment_evidence, policy=alignment_policy)
     staging = tmp_path / "alignment"
     staging.mkdir()
-    write_alignment_outputs(staging, evidence=alignment_evidence, result=result)
+    write_alignment_outputs(
+        staging,
+        evidence=alignment_evidence,
+        result=result,
+        heatmaps=_line_heatmaps(alignment_evidence),
+    )
     archive_path = staging / "ground-line-map.npz"
     with np.load(archive_path, allow_pickle=False) as loaded:
         arrays = {name: np.asarray(loaded[name]) for name in loaded.files}
@@ -247,7 +277,12 @@ def test_fixed_selection_archive_rejects_contiguous_partition_tampering(
     result = fit_alignment(alignment_evidence, policy=alignment_policy)
     staging = tmp_path / "alignment"
     staging.mkdir()
-    write_alignment_outputs(staging, evidence=alignment_evidence, result=result)
+    write_alignment_outputs(
+        staging,
+        evidence=alignment_evidence,
+        result=result,
+        heatmaps=_line_heatmaps(alignment_evidence),
+    )
     archive_path = staging / "ground-line-map.npz"
     with np.load(archive_path, allow_pickle=False) as loaded:
         arrays = {name: np.asarray(loaded[name]) for name in loaded.files}
@@ -344,7 +379,12 @@ def test_whole_court_policy_and_recomputed_metrics_round_trip(
     staging = tmp_path / "alignment"
     staging.mkdir()
 
-    write_alignment_outputs(staging, evidence=evidence, result=result)
+    write_alignment_outputs(
+        staging,
+        evidence=evidence,
+        result=result,
+        heatmaps=_line_heatmaps(evidence),
+    )
     validated = validate_alignment_outputs(staging)
     metrics = json.loads(
         (staging / "diagnostics/candidate-metrics.json").read_text(encoding="utf-8")
@@ -453,6 +493,7 @@ class _EvidenceSource:
         return EvaluatedAlignment(
             evidence=self.evidence,
             result=fit_alignment(self.evidence, policy=self.policy),
+            heatmaps=_line_heatmaps(self.evidence),
         )
 
 
@@ -590,6 +631,7 @@ def _context(tmp_path: Path) -> _Context:
             Path("court-geometry.json"),
             Path("alignment.json"),
             Path("diagnostics"),
+            Path("line-heatmaps"),
         ),
         handler=_UnusedLifecycle(),
         publication=AtomicDirectoryPublication(),
@@ -616,4 +658,53 @@ def _load_test_scene(scene_path: str | Path) -> StandardSceneExport:
         sfm_from_scene=tuple(float(value) for value in np.eye(4).ravel()),
         checkpoint_path=path.parent / "model" / "checkpoint.pt",
         runtime_config_path=path.parent / "model" / "config.json",
+    )
+
+
+def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
+    selection = evidence.diagnostics.selection
+    projected_counts = {
+        item.camera_id: item.projected_line_point_count
+        for item in evidence.diagnostics.cameras
+    }
+    projected_counts.update(
+        {
+            item.camera_id: item.projected_line_point_count
+            for item in selection.excluded_cameras
+        }
+    )
+    observed = set(selection.observed_camera_ids)
+    return AlignmentLineHeatmaps(
+        bounds_uv=(-1.0, 1.0, -1.0, 1.0),
+        grid_spacing=0.25,
+        proximity_scale=0.35,
+        proximity_power=2.0,
+        views=tuple(
+            AlignmentLineHeatmapView(
+                camera_id=camera_id,
+                probability=np.asarray(
+                    [[0.0, 0.25], [0.5, 1.0]],
+                    dtype=np.float32,
+                ),
+                points_uv=np.column_stack(
+                    (
+                        np.linspace(-0.9, 0.9, projected_counts[camera_id]),
+                        np.linspace(0.9, -0.9, projected_counts[camera_id]),
+                    )
+                ).astype(np.float64),
+                projected_probabilities=np.linspace(
+                    0.5,
+                    1.0,
+                    projected_counts[camera_id],
+                    dtype=np.float32,
+                ),
+                proximity_weights=np.full(
+                    projected_counts[camera_id],
+                    0.8,
+                    dtype=np.float64,
+                ),
+                included_in_aggregate=camera_id in observed,
+            )
+            for camera_id in selection.camera_prefix_ids
+        ),
     )

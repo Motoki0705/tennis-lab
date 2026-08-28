@@ -391,7 +391,10 @@ class BLCSMultiViewModel(nn.Module):
         query_x = self.final_norm(query_x)
 
         outputs = cast("dict[str, Tensor]", self.output_head(query_x))
-        return mask_trajectory_outputs(outputs, masks.frame_valid)
+        return cast(
+            "dict[str, Tensor]",
+            mask_trajectory_outputs(outputs, masks.frame_valid),
+        )
 
     query_freqs_cis: Tensor
     frame_freqs_cis: Tensor

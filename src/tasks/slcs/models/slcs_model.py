@@ -231,7 +231,7 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         )
 
         # ---- Axial trunk with interleaved cross-attention --------------
-        def block(*, rope_base: float, ffn_type: FFNType = "swiglu") -> TransformerBlock:
+        def block(*, rope_base: float) -> TransformerBlock:
             return TransformerBlock(
                 TransformerBlockConfig(
                     dim=self.hidden_dim,
@@ -247,7 +247,7 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
                 )
             )
 
-        def cross_layers(depth: int, ffn_type: FFNType = "swiglu") -> nn.ModuleList:
+        def cross_layers(depth: int) -> nn.ModuleList:
             return nn.ModuleList(
                 [
                     _DinoCrossUpdate(

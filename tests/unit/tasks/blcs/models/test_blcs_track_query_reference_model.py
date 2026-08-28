@@ -28,6 +28,7 @@ def _raw_model(*, rope_dim: int = 6) -> dict[str, object]:
         "num_heads": 4,
         "num_stages": 4,
         "ffn_dim": 48,
+        "ffn_type": "swiglu",
         "num_queries": 2,
         "rope_dim": rope_dim,
         "dropout": 0.0,

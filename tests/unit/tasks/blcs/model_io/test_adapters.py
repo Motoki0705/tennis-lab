@@ -257,6 +257,7 @@ def test_track_query_config_rejects_removed_fusion_keys(removed_key: str) -> Non
         "num_heads": 4,
         "num_stages": 4,
         "ffn_dim": 32,
+        "ffn_type": "swiglu",
         "num_queries": 2,
         "rope_dim": 4,
         "dropout": 0.0,

@@ -92,7 +92,12 @@ class AlignmentStageHandler:
         result = evaluation.result
         if result.policy != self.policy:
             raise ValueError("Alignment evidence source used a different policy.")
-        write_alignment_outputs(context.staging_path, evidence=evidence, result=result)
+        write_alignment_outputs(
+            context.staging_path,
+            evidence=evidence,
+            result=result,
+            heatmaps=evaluation.heatmaps,
+        )
         return StageExecutionSummary(
             values={
                 "evaluated_court_count": len(result.candidates),
