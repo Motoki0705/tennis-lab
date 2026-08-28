@@ -41,6 +41,10 @@ from src.synthetic_data_generation.alignment.contracts import (
 )
 from src.synthetic_data_generation.alignment.fitting import fit_alignment
 from src.synthetic_data_generation.alignment.handler import AlignmentStageHandler
+from src.synthetic_data_generation.alignment.heatmaps import (
+    AlignmentLineHeatmaps,
+    AlignmentLineHeatmapView,
+)
 from src.synthetic_data_generation.alignment.settings import WholeCourtEvidenceSettings
 from src.synthetic_data_generation.composition import (
     GaussianAsset,
@@ -147,6 +151,7 @@ class _EvidenceSource:
         return EvaluatedAlignment(
             evidence=self.evidence,
             result=fit_alignment(self.evidence, policy=self.policy),
+            heatmaps=_line_heatmaps(self.evidence),
         )
 
 
@@ -1191,6 +1196,38 @@ def _identifiable_alignment_points() -> NDArray[np.float64]:
         np.concatenate((longitudinal, transverse)), dtype=np.float64
     )
     return points
+
+
+def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
+    selection = evidence.diagnostics.selection
+    counts = {
+        item.camera_id: item.projected_line_point_count
+        for item in evidence.diagnostics.cameras
+    }
+    observed = set(selection.observed_camera_ids)
+    return AlignmentLineHeatmaps(
+        bounds_uv=(-1.0, 1.0, -1.0, 1.0),
+        grid_spacing=0.25,
+        proximity_scale=0.35,
+        proximity_power=2.0,
+        views=tuple(
+            AlignmentLineHeatmapView(
+                camera_id=camera_id,
+                probability=np.asarray([[0.0, 0.5], [0.75, 1.0]], dtype=np.float32),
+                points_uv=np.asarray(
+                    ((-0.5, 0.5), (0.5, -0.5)), dtype=np.float64
+                )[: counts[camera_id]],
+                projected_probabilities=np.full(
+                    counts[camera_id], 0.75, dtype=np.float32
+                ),
+                proximity_weights=np.full(
+                    counts[camera_id], 0.8, dtype=np.float64
+                ),
+                included_in_aggregate=camera_id in observed,
+            )
+            for camera_id in selection.camera_prefix_ids
+        ),
+    )
 
 
 def _alignment_whole_court_settings() -> WholeCourtEvidenceSettings:
