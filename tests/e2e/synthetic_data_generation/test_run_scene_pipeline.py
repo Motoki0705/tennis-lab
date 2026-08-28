@@ -6,6 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
 
 from src.utils.paths import PROJECT_ROOT
@@ -29,7 +30,7 @@ def test_cli_resolves_one_full_b00_request_without_legacy_pipeline_fields() -> N
     payload = yaml.safe_load(completed.stdout)
     assert payload["request"] == {
         "scene_id": "B00",
-        "source_video": "synthetic_data_generation/raw/tennis_court.mp4",
+        "source_video": "synthetic_data_generation/raw/B00.mp4",
         "targets": ["court", "blcs", "plcs"],
         "from_stage": "ingest",
     }
@@ -52,6 +53,39 @@ def test_cli_resolves_one_full_b00_request_without_legacy_pipeline_fields() -> N
         "pose_indices",
     ):
         assert forbidden not in serialized.lower()
+
+
+@pytest.mark.parametrize(
+    ("profile", "scene_id"),
+    [("b01", "B01"), ("b02", "B02"), ("b03", "B03")],
+)
+def test_cli_composes_each_additional_scene_profile_with_matching_source_video(
+    profile: str,
+    scene_id: str,
+) -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "src.synthetic_data_generation.scripts.run_scene_pipeline",
+            f"profile={profile}",
+            "--cfg",
+            "job",
+        ],
+        cwd=PROJECT_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    payload = yaml.safe_load(completed.stdout)
+    assert payload["profile"] == f"{profile}-production"
+    assert payload["request"] == {
+        "scene_id": scene_id,
+        "source_video": f"synthetic_data_generation/raw/{scene_id}.mp4",
+        "targets": ["court", "blcs", "plcs"],
+        "from_stage": "ingest",
+    }
 
 
 def test_cli_exposes_exact_v1_v2_v3_court_selectors_and_keeps_v1_default() -> None:
