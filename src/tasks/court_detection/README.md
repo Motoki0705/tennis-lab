@@ -57,7 +57,7 @@ Model compositionは `model/hierarchical.yaml` をrootとし、encoder、optiona
 
 Lossは `configs/loss/default.yaml` の単一schemaで管理し、KP/SEG/LINEのdense項、camera poseのtranslation/rotation/focal項、任意のKP–pose consistency項と各weightを同時に記述します。
 
-pose-only objectiveは専用loss presetを持ちません。`loss=default`をcomposeし、`scripts/training/court_detection_matrix.py`のmatrix contractと同じ明示的なoverrideでKP/SEG/LINEのhead weightを0、poseのtranslation/rotation/focal weightを1、consistencyを無効にします。V3 target-court KP14のgeometry・data・head contractは保持されるためdense branchはforwardされますが、dense headにはdense loss由来のgradientは流れません。通常のdense-only設定では0 weightを許可しません。
+pose-only objectiveは専用loss presetを持ちません。`loss=default`をcomposeし、明示的なoverrideでKP/SEG/LINEのhead weightを0、poseのtranslation/rotation/focal weightを1、consistencyを無効にします。V3 target-court KP14のgeometry・data・head contractは保持されるためdense branchはforwardされますが、dense headにはdense loss由来のgradientは流れません。通常のdense-only設定では0 weightを許可しません。
 
 ```bash
 # DINOv3 + DPT + LoRA
