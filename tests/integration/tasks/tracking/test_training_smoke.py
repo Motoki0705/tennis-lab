@@ -16,9 +16,6 @@ from src.tasks.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter
 from src.tasks.blcs.generate_dataset.scene_generator import BLCSSceneData
 from src.tasks.blcs.generate_dataset.scene_generator import CameraData as BLCSCameraData
 from src.tasks.blcs.model_io import compose_blcs_track_query_model_io
-from src.tasks.blcs.models.components.differentiable_projection import (
-    DifferentiableProjection,
-)
 from src.tasks.blcs.training.tracking_lightning_module import (
     BLCSTrackingLightningModule,
 )
@@ -28,6 +25,9 @@ from src.tasks.plcs.generate_dataset.scene_generator import CameraData as PLCSCa
 from src.tasks.plcs.generate_dataset.scene_generator import SceneData
 from src.tasks.plcs.training.tracking_lightning_module import (
     PLCSTrackingLightningModule,
+)
+from src.utils.projection.differentiable_projection import (
+    DifferentiablePinholeProjection,
 )
 from src.utils.schema.court_normalization import (
     denormalize_court_position,
@@ -275,11 +275,11 @@ def test_tracking_task_runs_one_training_and_validation_step(
             atol=1e-5,
             rtol=0.0,
         )
-        projector = DifferentiableProjection()
+        projector = DifferentiablePinholeProjection()
         batch_size, frames = physical_prediction.shape[:2]
         scalar = torch.ones(batch_size, 1)
         uv, in_front = projector(
-            step.prediction.position[:, :, 0],
+            physical_prediction[:, :, 0],
             torch.eye(3).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1),
             torch.tensor([0.0, 0.0, -30.0]).view(1, 1, 3).expand(batch_size, -1, -1),
             scalar,

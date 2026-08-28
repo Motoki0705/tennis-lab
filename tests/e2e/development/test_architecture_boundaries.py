@@ -26,6 +26,7 @@ REMOVED_MODULES = (
     "src.tasks.base.inference.grad_mode",
     "src.tasks.base.preview",
     "src.tasks.blcs.models.components.court_ball_point_fusion",
+    "src.tasks.blcs.models.components.differentiable_projection",
     "src.tasks.blcs.models.discriminators.trajectory_discriminator",
     "src.tasks.blcs.validation",
     "src.tasks.blcs.visualization.adapters",

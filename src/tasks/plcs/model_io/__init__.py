@@ -10,6 +10,7 @@ from src.tasks.plcs.model_io.contracts import (
     PLCSInputProfile,
     PLCSPhysicalPrediction,
     PLCSPreparedBatch,
+    PLCSReprojectionTarget,
     PLCSTrackingDecodedPrediction,
 )
 from src.tasks.plcs.model_io.factory import (
@@ -28,6 +29,7 @@ __all__ = [
     "PLCSModelIOAdapter",
     "PLCSPhysicalPrediction",
     "PLCSPreparedBatch",
+    "PLCSReprojectionTarget",
     "PLCSStandardBoundModelIO",
     "PLCSTrackQueryIOAdapter",
     "PLCSTrackingBoundModelIO",
