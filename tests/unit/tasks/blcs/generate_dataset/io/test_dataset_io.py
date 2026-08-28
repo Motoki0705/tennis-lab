@@ -9,8 +9,12 @@ import numpy as np
 import pytest
 import torch
 
+from src.tasks.base.generate_dataset import (
+    build_court_view_record,
+    resolve_court_keypoint_contract,
+)
 from src.tasks.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter, load_scene
-from src.tasks.blcs.generate_dataset.scene_generator import BLCSSceneData
+from src.tasks.blcs.generate_dataset.scene_generator import BLCSSceneData, CameraData
 from src.utils.schema.court_normalization import (
     CourtCoordinateContractError,
     denormalize_court_position,
@@ -27,6 +31,30 @@ def _scene() -> BLCSSceneData:
     velocity_mps = torch.tensor(
         [[8.0, 20.0, 3.0], [-4.0, 15.0, -2.0]], dtype=torch.float32
     )
+    physical_v1 = resolve_court_keypoint_contract("physical_v1")
+    camera_center = (0.0, -12.0, 5.0)
+    camera = CameraData(
+        camera_params={
+            "R": np.eye(3).tolist(),
+            "C": list(camera_center),
+            "f": 100.0,
+            "cx": 50.0,
+            "cy": 40.0,
+            "w": 100,
+            "h": 80,
+        },
+        ball_uv=np.zeros((2, 2), dtype=np.float32),
+        ball_vis=np.ones(2, dtype=np.bool_),
+        ball_visibility_ratio=1.0,
+        court_kp_uv=np.zeros((20, 2), dtype=np.float32),
+        court_kp_vis=np.ones(20, dtype=np.bool_),
+        court_visibility_count=20.0,
+        court_view=build_court_view_record(
+            camera_id="cam_0",
+            camera_center_court_m=camera_center,
+            contract=physical_v1,
+        ),
+    )
     return BLCSSceneData(
         scene_id="scene_000000",
         initial_from_cell=0,
@@ -39,8 +67,8 @@ def _scene() -> BLCSSceneData:
         ball_pos_norm=normalize_court_position(position_m),
         ball_vel_world=velocity_mps,
         ball_vel_norm=normalize_court_velocity(velocity_mps),
-        cameras=[],
-        num_cameras_sampled=0,
+        cameras=[camera],
+        num_cameras_sampled=1,
         fps_out=30,
         sim_fps=120,
         physics_config_dict={},
@@ -54,11 +82,25 @@ def test_writer_persists_contract_and_normalized_velocity(tmp_path: Path) -> Non
     path = BLCSDatasetWriter(tmp_path).save_scene(scene)
     loaded = load_scene(path)
 
+    assert loaded["court_keypoint_contract"] == resolve_court_keypoint_contract(
+        "physical_v1"
+    )
     assert loaded["meta"]["court_coordinate_normalization"]["scale_xyz_m"] == [
         11.885,
         11.885,
         11.885,
     ]
+    assert loaded["cameras"][0]["params"] == scene.cameras[0].camera_params
+    assert loaded["cameras"][0]["court_kp_uv"].shape == (20, 2)
+    assert loaded["cameras"][0]["court_kp_vis"].shape == (20,)
+    np.testing.assert_array_equal(
+        loaded["cameras"][0]["court_kp_uv"],
+        scene.cameras[0].court_kp_uv,
+    )
+    np.testing.assert_array_equal(
+        loaded["cameras"][0]["court_kp_vis"],
+        scene.cameras[0].court_kp_vis,
+    )
     np.testing.assert_allclose(
         denormalize_court_position(loaded["ball_pos_norm"]),
         loaded["ball_pos_world"],

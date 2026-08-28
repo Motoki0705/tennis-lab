@@ -14,6 +14,7 @@ from src.tasks.blcs.configuration import (
     SingleModelConfig,
     TrackQueryAblationModelConfig,
     TrackQueryModelConfig,
+    parse_court_keypoint_contract,
     parse_model_config,
 )
 from src.tasks.blcs.model_io.adapters import (
@@ -57,6 +58,7 @@ def _tracking_presence_threshold(config: object) -> float:
 def compose_blcs_model_io(config: object) -> BLCSBoundModelIO:
     """Construct and bind the configured model/adapter pair exactly once."""
     model_config = parse_model_config(config)
+    court_keypoint_contract = parse_court_keypoint_contract(config)
     if isinstance(model_config, SingleModelConfig):
         single_model = BLCSModel.from_config(model_config)
         single_adapter = SingleTrajectoryModelIOAdapter(
@@ -65,6 +67,7 @@ def compose_blcs_model_io(config: object) -> BLCSBoundModelIO:
             predict_velocity=model_config.predict_velocity,
             input_profile=model_config.input_profile,
             max_num_cameras=None,
+            court_keypoint_contract=court_keypoint_contract,
         )
         return cast(
             "TrajectoryBoundModelIO", bind_model_io(single_model, single_adapter)
@@ -77,6 +80,7 @@ def compose_blcs_model_io(config: object) -> BLCSBoundModelIO:
             predict_velocity=model_config.predict_velocity,
             input_profile=model_config.input_profile,
             max_num_cameras=model_config.max_num_cameras,
+            court_keypoint_contract=court_keypoint_contract,
         )
         return cast(
             "TrajectoryBoundModelIO",
@@ -90,6 +94,7 @@ def compose_blcs_model_io(config: object) -> BLCSBoundModelIO:
             predict_velocity=model_config.predict_velocity,
             input_profile=model_config.input_profile,
             max_num_cameras=model_config.max_num_cameras,
+            court_keypoint_contract=court_keypoint_contract,
         )
         return cast("TrajectoryBoundModelIO", bind_model_io(axial_model, axial_adapter))
     if isinstance(model_config, TrackQueryAblationModelConfig):
@@ -98,6 +103,7 @@ def compose_blcs_model_io(config: object) -> BLCSBoundModelIO:
             num_court_tokens=ablation_model.num_court_tokens,
             num_queries=model_config.num_queries,
             presence_threshold=_tracking_presence_threshold(config),
+            court_keypoint_contract=court_keypoint_contract,
         )
         return cast(
             "TrackQueryBoundModelIO",
@@ -109,6 +115,7 @@ def compose_blcs_model_io(config: object) -> BLCSBoundModelIO:
             num_court_tokens=tracking_model.num_court_tokens,
             num_queries=model_config.num_queries,
             presence_threshold=_tracking_presence_threshold(config),
+            court_keypoint_contract=court_keypoint_contract,
         )
         return cast(
             "TrackQueryBoundModelIO",

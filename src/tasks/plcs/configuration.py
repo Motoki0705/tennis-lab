@@ -20,12 +20,14 @@ from src.tasks.base.configuration import (
     require_config_mapping,
     require_config_value,
 )
+from src.tasks.base.generate_dataset import CourtKeypointContract
 from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
 from src.tasks.base.visualization.style import (
     SceneStyleConfig,
     parse_scene_style,
     parse_view_3d,
 )
+from src.tasks.plcs.court_keypoint_contract import PLCSCourtKeypointRuntimeConfig
 from src.utils.configuration import (
     ConfigurationTypeError,
     MissingConfigurationKeyError,
@@ -920,6 +922,7 @@ class PLCSTrainingConfig:
     """Complete typed PLCS training boundary."""
 
     shared: TrainingRuntimeConfig
+    court_keypoint_contract: CourtKeypointContract
     paths: configuration_contracts.PLCSPathConfig
     model: PLCSModelConfig
     data: PLCSDataConfig
@@ -937,6 +940,7 @@ class PLCSTrainingConfig:
             value,
             path="configuration",
             required={
+                "court_keypoints",
                 "model",
                 "data",
                 "training",
@@ -947,6 +951,7 @@ class PLCSTrainingConfig:
                 "qualitative",
             },
             allowed={
+                "court_keypoints",
                 "model",
                 "data",
                 "training",
@@ -973,6 +978,7 @@ class PLCSTrainingConfig:
             model=model,
         )
         exact_root_fields = {
+            "court_keypoints",
             "model",
             "data",
             "training",
@@ -1285,6 +1291,9 @@ class PLCSTrainingConfig:
             )
         return cls(
             shared=shared,
+            court_keypoint_contract=(
+                PLCSCourtKeypointRuntimeConfig.from_config(value).contract
+            ),
             paths=paths,
             model=model,
             data=data,
@@ -1304,9 +1313,20 @@ def _validate_visualization_boundary(config: DictConfig) -> None:
     root = _exact(
         config,
         path="configuration",
-        required={"visualization", "run", "paths"},
-        allowed={"visualization", "run", "paths"},
+        required={
+            "court_keypoints",
+            "visualization",
+            "run",
+            "paths",
+        },
+        allowed={
+            "court_keypoints",
+            "visualization",
+            "run",
+            "paths",
+        },
     )
+    PLCSCourtKeypointRuntimeConfig.from_config(config)
     resolver = configuration_contracts.PLCSPathConfig.from_config(config).resolver
     visualization_fields = {
         "mode",
@@ -1368,12 +1388,17 @@ def _validate_script_boundary(
     required_sections: set[str],
     section_fields: Mapping[str, set[str]],
 ) -> None:
+    required_sections = {
+        *required_sections,
+        "court_keypoints",
+    }
     root = _exact(
         config,
         path="configuration",
         required=required_sections,
         allowed=required_sections,
     )
+    PLCSCourtKeypointRuntimeConfig.from_config(config)
     resolver = configuration_contracts.PLCSPathConfig.from_config(config).resolver
     if "data" in root:
         data_fields = {

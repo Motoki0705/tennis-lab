@@ -5,6 +5,7 @@ from __future__ import annotations
 import torch
 from torch import nn
 
+from src.tasks.base.generate_dataset import resolve_court_keypoint_contract
 from src.tasks.plcs.model_io import (
     PLCSInputProfile,
     PLCSModelIOAdapter,
@@ -35,6 +36,7 @@ def _adapter(
         predict_auxiliary_position=auxiliary,
         max_views=2,
         max_sequence_length=3,
+        court_keypoint_contract=resolve_court_keypoint_contract("physical_v1"),
     )
 
 

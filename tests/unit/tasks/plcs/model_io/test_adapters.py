@@ -10,6 +10,7 @@ import pytest
 import torch
 from torch import Tensor, nn
 
+from src.tasks.base.generate_dataset import resolve_court_keypoint_contract
 from src.tasks.base.model_io import (
     ModelAdapterMismatchError,
     ModelInputContractError,
@@ -90,6 +91,7 @@ def _standard_adapter(
         max_views=4,
         max_sequence_length=8,
         min_views=min_views,
+        court_keypoint_contract=resolve_court_keypoint_contract("physical_v1"),
     )
 
 
@@ -303,6 +305,7 @@ def _tracking_adapter() -> PLCSTrackQueryIOAdapter:
         num_queries=3,
         num_court_tokens=14,
         num_joints=17,
+        court_keypoint_contract=resolve_court_keypoint_contract("physical_v1"),
     )
 
 

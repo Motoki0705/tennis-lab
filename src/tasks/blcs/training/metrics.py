@@ -5,7 +5,20 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
+from src.tasks.base.generate_dataset import (
+    PHYSICAL_V1_SELECTOR,
+    CourtKeypointContract,
+    CourtKeypointContractMismatchError,
+    CourtReferenceFrameProvenance,
+    MissingCourtKeypointMetadataError,
+    court_vectors_target_to_physical,
+    resolve_court_keypoint_contract,
+)
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+
+_PHYSICAL_COURT_KEYPOINT_CONTRACT = resolve_court_keypoint_contract(
+    PHYSICAL_V1_SELECTOR
+)
 
 
 class BLCSMetrics:
@@ -20,6 +33,9 @@ class BLCSMetrics:
         position_threshold_m: float,
         endpoint_threshold_m: float,
         scale_xyz: tuple[float, float, float] = COURT_COORD_SCALE_XYZ,
+        court_keypoint_contract: CourtKeypointContract = (
+            _PHYSICAL_COURT_KEYPOINT_CONTRACT
+        ),
     ) -> None:
         """Initialize metrics tracker.
 
@@ -31,6 +47,14 @@ class BLCSMetrics:
         self.position_threshold_m = position_threshold_m
         self.endpoint_threshold_m = endpoint_threshold_m
         self.scale_xyz = scale_xyz
+        canonical_contract = resolve_court_keypoint_contract(
+            court_keypoint_contract.selector
+        )
+        if court_keypoint_contract != canonical_contract:
+            raise CourtKeypointContractMismatchError(
+                "BLCS metric CourtKP20 contract must be canonical."
+            )
+        self.court_keypoint_contract = canonical_contract
         self.position_thresholds_m = (
             self.position_threshold_m,
             2.0 * self.position_threshold_m,
@@ -59,6 +83,10 @@ class BLCSMetrics:
         pred_position: Tensor,
         target_position: Tensor,
         mask: Tensor | None = None,
+        court_reference_provenance: tuple[
+            CourtReferenceFrameProvenance, ...
+        ]
+        | None = None,
     ) -> dict[str, float]:
         """Update metrics with a batch of predictions.
 
@@ -80,6 +108,45 @@ class BLCSMetrics:
         )
         pred_m = pred_position * scale
         target_m = target_position * scale
+
+        if court_reference_provenance is None:
+            if self.court_keypoint_contract.selector != PHYSICAL_V1_SELECTOR:
+                raise MissingCourtKeypointMetadataError(
+                    "BLCS camera_view_v2 metrics require explicit Court reference "
+                    "provenance."
+                )
+        else:
+            if len(court_reference_provenance) != batch_size:
+                raise ValueError(
+                    "BLCS metric provenance must contain one record per batch item."
+                )
+            pred_rows: list[Tensor] = []
+            target_rows: list[Tensor] = []
+            for index, provenance in enumerate(court_reference_provenance):
+                if not isinstance(provenance, CourtReferenceFrameProvenance):
+                    raise TypeError(
+                        "BLCS metric provenance entries must be validated records."
+                    )
+                if provenance.contract != self.court_keypoint_contract:
+                    raise CourtKeypointContractMismatchError(
+                        f"BLCS metric provenance[{index}] contract "
+                        f"{provenance.contract_id!r} does not match runtime "
+                        f"{self.court_keypoint_contract.contract_id!r}."
+                    )
+                pred_row = court_vectors_target_to_physical(
+                    pred_m[index], provenance
+                )
+                target_row = court_vectors_target_to_physical(
+                    target_m[index], provenance
+                )
+                if not isinstance(pred_row, Tensor) or not isinstance(
+                    target_row, Tensor
+                ):
+                    raise TypeError("BLCS metric frame conversion returned non-tensors.")
+                pred_rows.append(pred_row)
+                target_rows.append(target_row)
+            pred_m = torch.stack(pred_rows)
+            target_m = torch.stack(target_rows)
 
         # Compute per-frame errors
         error = pred_m - target_m

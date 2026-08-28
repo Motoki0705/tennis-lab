@@ -9,10 +9,17 @@ from typing import TYPE_CHECKING, Any, cast
 import torch
 from torch import Tensor
 
+from src.tasks.base.model_io import (
+    validate_model_artifact_court_keypoint_contract,
+    write_model_artifact_court_keypoint_contract,
+)
 from src.tasks.base.training.gan_training import ManualGANSupportMixin
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_saving import save_qualitative_animation
-from src.tasks.blcs.configuration import parse_qualitative_rendering
+from src.tasks.blcs.configuration import (
+    parse_court_keypoint_contract,
+    parse_qualitative_rendering,
+)
 from src.tasks.blcs.model_io import (
     BLCSTrajectoryPrediction,
     TrajectoryBoundModelIO,
@@ -53,6 +60,7 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         self.model_io = model_io
         self.model = model_io.model
         self.io_adapter = cast("TrajectoryModelIOAdapter", model_io.adapter)
+        self.court_keypoint_contract = parse_court_keypoint_contract(self.config)
         self.qualitative_rendering = parse_qualitative_rendering(self.config)
 
         train_cfg = self.config.training
@@ -87,14 +95,35 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         self.train_metrics = BLCSMetrics(
             position_threshold_m=metrics_cfg.position_threshold_m,
             endpoint_threshold_m=metrics_cfg.endpoint_threshold_m,
+            court_keypoint_contract=self.court_keypoint_contract,
         )
         self.val_metrics = BLCSMetrics(
             position_threshold_m=metrics_cfg.position_threshold_m,
             endpoint_threshold_m=metrics_cfg.endpoint_threshold_m,
+            court_keypoint_contract=self.court_keypoint_contract,
         )
         self.test_metrics = BLCSMetrics(
             position_threshold_m=metrics_cfg.position_threshold_m,
             endpoint_threshold_m=metrics_cfg.endpoint_threshold_m,
+            court_keypoint_contract=self.court_keypoint_contract,
+        )
+
+    def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        """Persist the exact normalization and CourtKP contracts."""
+        add_court_coordinate_normalization(checkpoint, artifact="BLCS checkpoint")
+        write_model_artifact_court_keypoint_contract(
+            checkpoint,
+            self.court_keypoint_contract,
+            location="BLCS checkpoint",
+        )
+
+    def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        """Reject normalization or CourtKP mismatches before weights."""
+        validate_court_coordinate_normalization(checkpoint, artifact="BLCS checkpoint")
+        validate_model_artifact_court_keypoint_contract(
+            checkpoint,
+            self.court_keypoint_contract,
+            location="BLCS checkpoint",
         )
 
     def _forward_from_batch(
@@ -103,12 +132,6 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         """Delegate a validated model invocation to the bound adapter."""
         prediction: BLCSTrajectoryPrediction = self.model_io.run(batch)
         return prediction
-
-    def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
-        add_court_coordinate_normalization(checkpoint, artifact="BLCS checkpoint")
-
-    def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
-        validate_court_coordinate_normalization(checkpoint, artifact="BLCS checkpoint")
 
     def _compute_supervised_result(
         self,
@@ -138,6 +161,7 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             outputs.position,
             prepared.position,
             prepared.loss_mask,
+            prepared.court_reference_provenance,
         )
 
         return {

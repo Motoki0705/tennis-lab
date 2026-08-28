@@ -203,6 +203,7 @@ class MultiBallSceneGenerator:
                     court_kp_uv=base_camera.court_kp_uv,
                     court_kp_vis=base_camera.court_kp_vis,
                     court_visibility_count=base_camera.court_visibility_count,
+                    court_view=base_camera.court_view,
                 )
             )
 

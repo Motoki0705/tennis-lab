@@ -17,6 +17,14 @@ import numpy as np
 import torch
 from torch import Tensor
 
+from src.tasks.base.generate_dataset import (
+    CameraCourtViewError,
+    CourtKeypointContract,
+    CourtViewRecord,
+    apply_court_view_record,
+    build_court_view_record,
+    resolve_court_keypoint_contract,
+)
 from src.tasks.blcs.generate_dataset.simulation.ball_physics import (
     BallPhysics,
     PhysicsConfig,
@@ -56,6 +64,7 @@ class CameraData:
     court_kp_uv: np.ndarray  # [20, 2] UV coordinates
     court_kp_vis: np.ndarray  # [20] visibility flags
     court_visibility_count: float  # Average visible keypoints
+    court_view: CourtViewRecord | None = None
 
 
 @dataclass
@@ -107,6 +116,9 @@ class GeneratorConfig:
     camera: CameraConfig
     targeted_velocity: TargetedVelocityConfig
     court: CourtConfig
+    court_keypoint_contract: CourtKeypointContract = field(
+        default_factory=lambda: resolve_court_keypoint_contract("physical_v1")
+    )
 
 
 class BLCSSceneGenerator:
@@ -157,7 +169,12 @@ class BLCSSceneGenerator:
             device=self.device,
         )
 
-    def _camera_view_to_data(self, view: CameraView) -> CameraData:
+    def _camera_view_to_data(
+        self,
+        view: CameraView,
+        *,
+        camera_id: str = "cam_0",
+    ) -> CameraData:
         """Convert CameraView to CameraData with visibility metrics."""
         if view.points_uv is None or view.points_vis is None:
             raise ValueError("BLCS camera views must include projected ball points.")
@@ -166,7 +183,23 @@ class BLCSSceneGenerator:
         T = len(ball_vis)
         ball_visibility_ratio = float(ball_vis.sum()) / T if T > 0 else 0.0
 
-        court_vis = view.court_kp_vis.numpy()
+        court_view = build_court_view_record(
+            camera_id=camera_id,
+            camera_center_court_m=view.camera_params["C"],
+            contract=self.config.court_keypoint_contract,
+        )
+        physical_court_uv = view.court_kp_uv.numpy()
+        physical_court_vis = view.court_kp_vis.numpy()
+        court_uv = apply_court_view_record(
+            physical_court_uv,
+            court_view,
+            keypoint_axis=0,
+        )
+        court_vis = apply_court_view_record(
+            physical_court_vis,
+            court_view,
+            keypoint_axis=0,
+        )
         court_visibility_count = float(court_vis.sum())
 
         return CameraData(
@@ -174,9 +207,10 @@ class BLCSSceneGenerator:
             ball_uv=view.points_uv.numpy(),
             ball_vis=ball_vis,
             ball_visibility_ratio=ball_visibility_ratio,
-            court_kp_uv=view.court_kp_uv.numpy(),
+            court_kp_uv=court_uv,
             court_kp_vis=court_vis,
             court_visibility_count=court_visibility_count,
+            court_view=court_view,
         )
 
     def _generate_valid_cameras(
@@ -197,12 +231,29 @@ class BLCSSceneGenerator:
         # Create projector with court config that has the sampled net post position
         projector = CameraProjector(cfg.camera, court_config=court_config)
         valid_cameras: list[CameraData] = []
+        rejection_reasons: list[str] = []
         for camera in projector.cameras():
             self.total_cameras_tried += 1
             view = projector.generate_camera_view(trajectory, camera=camera)
-            cam_data = self._camera_view_to_data(view)
+            camera_id = f"cam_{len(valid_cameras)}"
+            try:
+                cam_data = self._camera_view_to_data(view, camera_id=camera_id)
+            except CameraCourtViewError as error:
+                reason = f"{camera_id}: {error}"
+                rejection_reasons.append(reason)
+                logger.warning(
+                    "Rejected BLCS camera proposal %s: %s",
+                    camera_id,
+                    error,
+                )
+                continue
             valid_cameras.append(cam_data)
             self.total_cameras_accepted += 1
+        if not valid_cameras and rejection_reasons:
+            raise RuntimeError(
+                "All BLCS camera proposals were rejected by the CourtKP contract: "
+                + "; ".join(rejection_reasons)
+            )
         return valid_cameras
 
     def generate_scene(

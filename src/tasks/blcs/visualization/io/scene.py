@@ -9,6 +9,7 @@ from typing import Any
 
 import numpy as np
 
+from src.tasks.base.generate_dataset import CourtKeypointContract
 from src.tasks.base.visualization.io import BaseSceneBundle, resolve_cameras
 from src.tasks.blcs.generate_dataset.io.dataset_io import load_scene
 
@@ -30,6 +31,7 @@ def load_scene_bundle(
     scene_path: Path,
     camera: int,
     cameras: Sequence[int] | str | None,
+    court_keypoint_contract: CourtKeypointContract,
 ) -> SceneBundle:
     """Load scene and prepare GT/fps artifacts.
 
@@ -41,7 +43,10 @@ def load_scene_bundle(
     Returns:
         SceneBundle containing scene object, GT positions, selected cameras and fps.
     """
-    scene = load_scene(scene_path)
+    scene = load_scene(
+        scene_path,
+        court_keypoint_contract=court_keypoint_contract,
+    )
     gt_positions = scene["ball_pos_world"]
     if "fps_out" not in scene["meta"]:
         raise ValueError("BLCS scene meta.fps_out is required for visualization.")

@@ -6,6 +6,15 @@ import pytest
 import torch
 
 from src.tasks.base.configuration import UnknownConfigurationKeyError
+from src.tasks.base.generate_dataset import (
+    CourtKeypointContractMismatchError,
+    CourtReferenceFrameProvenance,
+    MissingCourtKeypointMetadataError,
+    build_court_view_record,
+    build_physical_court_provenance,
+    build_reference_frame_provenance,
+    resolve_court_keypoint_contract,
+)
 from src.tasks.base.model_io import ModelInputContractError
 from src.tasks.blcs.configuration import parse_model_config
 from src.tasks.blcs.model_io import (
@@ -51,6 +60,33 @@ def _tracking_batch() -> dict[str, torch.Tensor]:
         "court_vis": torch.ones(1, 2, 3, 14, dtype=torch.bool),
         "padding_mask": torch.tensor([[[False, False, True], [False, True, True]]]),
     }
+
+
+def _tracking_training_batch() -> dict[str, object]:
+    batch: dict[str, object] = dict(_tracking_batch())
+    batch.update(
+        {
+            "target_position": torch.zeros(1, 3, 2, 3),
+            "target_velocity": torch.zeros(1, 3, 2, 3),
+            "target_presence": torch.zeros(1, 3, 2, dtype=torch.bool),
+            "target_instance_id": torch.full((1, 3, 2), -1),
+            "target_slot_mask": torch.zeros(1, 2, dtype=torch.bool),
+        }
+    )
+    return batch
+
+
+def _positive_side_provenance() -> CourtReferenceFrameProvenance:
+    contract = resolve_court_keypoint_contract("camera_view_v2")
+    view = build_court_view_record(
+        camera_id="camera_positive",
+        camera_center_court_m=(2.0, 12.0, 5.0),
+        contract=contract,
+    )
+    return build_reference_frame_provenance(
+        (view,),
+        reference_camera_id=view.camera_id,
+    )
 
 
 def test_single_adapter_builds_exact_five_tensor_padding_call() -> None:
@@ -139,20 +175,50 @@ def test_tracking_adapter_rejects_removed_input_keys(removed_key: str) -> None:
 
 
 def test_tracking_training_batch_derives_frame_valid_from_padding() -> None:
-    batch = _tracking_batch()
-    batch.update(
-        {
-            "target_position": torch.zeros(1, 3, 2, 3),
-            "target_velocity": torch.zeros(1, 3, 2, 3),
-            "target_presence": torch.zeros(1, 3, 2, dtype=torch.bool),
-            "target_instance_id": torch.full((1, 3, 2), -1),
-            "target_slot_mask": torch.zeros(1, 2, dtype=torch.bool),
-        }
-    )
+    batch = _tracking_training_batch()
 
     prepared = _tracking_adapter().build_training_batch(batch)
 
     assert prepared.frame_valid.tolist() == [[True, True, False]]
+    assert prepared.court_reference_provenance == (
+        build_physical_court_provenance(),
+    )
+
+
+@pytest.mark.parametrize("missing_value", [None, ()])
+def test_v2_tracking_adapter_rejects_missing_provenance(
+    missing_value: object,
+) -> None:
+    batch = _tracking_training_batch()
+    if missing_value is not None:
+        batch["court_reference_provenance"] = missing_value
+    adapter = TrackQueryModelIOAdapter(
+        num_court_tokens=14,
+        num_queries=2,
+        presence_threshold=0.5,
+        court_keypoint_contract=resolve_court_keypoint_contract("camera_view_v2"),
+    )
+
+    with pytest.raises(MissingCourtKeypointMetadataError):
+        adapter.build_training_batch(batch)
+
+
+def test_v2_tracking_adapter_rejects_cardinality_and_contract_mismatch() -> None:
+    batch = _tracking_training_batch()
+    adapter = TrackQueryModelIOAdapter(
+        num_court_tokens=14,
+        num_queries=2,
+        presence_threshold=0.5,
+        court_keypoint_contract=resolve_court_keypoint_contract("camera_view_v2"),
+    )
+    provenance = _positive_side_provenance()
+    batch["court_reference_provenance"] = (provenance, provenance)
+    with pytest.raises(ValueError, match="one record per batch item"):
+        adapter.build_training_batch(batch)
+
+    batch["court_reference_provenance"] = (build_physical_court_provenance(),)
+    with pytest.raises(CourtKeypointContractMismatchError, match="does not match"):
+        adapter.build_training_batch(batch)
 
 
 @pytest.mark.parametrize(

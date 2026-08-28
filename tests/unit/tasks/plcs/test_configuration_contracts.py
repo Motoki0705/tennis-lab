@@ -24,6 +24,12 @@ def _generation_config() -> DictConfig:
         return compose(config_name="generate_dataset")
 
 
+def test_generation_config_defaults_to_physical_v1_court_keypoints() -> None:
+    config = _generation_config()
+
+    assert config.court_keypoints.selector == "physical_v1"
+
+
 @pytest.mark.parametrize(
     "modules",
     [

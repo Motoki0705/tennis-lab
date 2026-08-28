@@ -10,12 +10,28 @@ import numpy as np
 import torch
 from torch import Tensor, nn
 
+from src.tasks.base.generate_dataset import (
+    CAMERA_VIEW_V2_SELECTOR,
+    PHYSICAL_V1_SELECTOR,
+    CourtKeypointContract,
+    CourtReferenceFrameProvenance,
+    CourtViewRecord,
+    align_court_keypoints_to_reference,
+    build_physical_court_provenance,
+    build_reference_frame_provenance,
+)
 from src.tasks.base.model_io import (
     ModelCall,
     ModelInputContractError,
     ModelOutputContractError,
     TensorSpec,
     require_tensor,
+    validate_model_artifact_court_keypoint_contract,
+)
+from src.tasks.plcs.court_keypoint_contract import (
+    court_keypoint_contract_document,
+    provenance_from_value,
+    validate_provenance_contract,
 )
 from src.tasks.plcs.model_io.attention_masks import (
     prepare_axial_attention_masks,
@@ -60,6 +76,84 @@ _REPROJECTION_KEYS = frozenset(
         "camera_h",
     }
 )
+
+
+def _court_context(
+    batch: Mapping[str, object],
+    contract: CourtKeypointContract,
+    *,
+    batch_size: int,
+) -> tuple[CourtReferenceFrameProvenance, ...]:
+    documents_value = batch.get("court_keypoint_metadata")
+    if documents_value is None:
+        documents: tuple[Mapping[str, object], ...] = ({},)
+    elif isinstance(documents_value, Mapping):
+        documents = (documents_value,)
+    elif isinstance(documents_value, Sequence) and not isinstance(
+        documents_value, (str, bytes, bytearray)
+    ):
+        documents = tuple(
+            value for value in documents_value if isinstance(value, Mapping)
+        )
+        if len(documents) != len(documents_value):
+            raise ModelInputContractError(
+                "court_keypoint_metadata must contain only metadata mappings."
+            )
+    else:
+        raise ModelInputContractError(
+            "court_keypoint_metadata must be a mapping or mapping sequence."
+        )
+    if not documents or batch_size % len(documents) != 0:
+        raise ModelInputContractError(
+            "court_keypoint_metadata cardinality must divide the model batch axis."
+        )
+    for index, document in enumerate(documents):
+        try:
+            validate_model_artifact_court_keypoint_contract(
+                document,
+                contract,
+                location=f"PLCS input[{index}]",
+            )
+        except ValueError as error:
+            raise ModelInputContractError(str(error)) from error
+
+    provenance_value = batch.get("court_reference_provenance")
+    if provenance_value is None:
+        if contract.selector != PHYSICAL_V1_SELECTOR:
+            raise ModelInputContractError(
+                "camera_view_v2 input requires court_reference_provenance."
+            )
+        return tuple(build_physical_court_provenance() for _ in documents)
+    if isinstance(provenance_value, (CourtReferenceFrameProvenance, Mapping)):
+        raw_provenance: tuple[object, ...] = (provenance_value,)
+    elif isinstance(provenance_value, Sequence) and not isinstance(
+        provenance_value, (str, bytes, bytearray)
+    ):
+        raw_provenance = tuple(provenance_value)
+    else:
+        raise ModelInputContractError(
+            "court_reference_provenance must be a record or record sequence."
+        )
+    if not raw_provenance or batch_size % len(raw_provenance) != 0:
+        raise ModelInputContractError(
+            "court_reference_provenance cardinality must divide the model batch axis."
+        )
+    parsed: list[CourtReferenceFrameProvenance] = []
+    for index, value in enumerate(raw_provenance):
+        try:
+            provenance = provenance_from_value(
+                value,
+                location=f"PLCS input provenance[{index}]",
+            )
+            validate_provenance_contract(
+                provenance,
+                contract,
+                location=f"PLCS input provenance[{index}]",
+            )
+        except ValueError as error:
+            raise ModelInputContractError(str(error)) from error
+        parsed.append(provenance)
+    return tuple(parsed)
 
 
 def _finite(name: str, tensor: Tensor) -> None:
@@ -128,6 +222,7 @@ class PLCSModelIOAdapter:
         max_views: int | None = None,
         max_sequence_length: int | None = None,
         min_views: int = 1,
+        court_keypoint_contract: CourtKeypointContract,
     ) -> None:
         if profile is PLCSInputProfile.TRACK_QUERY:
             raise ValueError("Use PLCSTrackQueryIOAdapter for track-query models.")
@@ -162,6 +257,7 @@ class PLCSModelIOAdapter:
         self.max_views = max_views
         self.max_sequence_length = max_sequence_length
         self.min_views = min_views
+        self.court_keypoint_contract = court_keypoint_contract
 
     @property
     def model_type(self) -> type[nn.Module]:
@@ -279,6 +375,11 @@ class PLCSModelIOAdapter:
         human_kp, court_kp, human_vis, padding_mask, court_vis = (
             self._validate_ready_inputs(batch)
         )
+        _court_context(
+            batch,
+            self.court_keypoint_contract,
+            batch_size=int(human_kp.shape[0]),
+        )
         kwargs = {
             "human_kp": human_kp,
             "court_kp": court_kp,
@@ -341,15 +442,27 @@ class PLCSModelIOAdapter:
                 dtypes=_MASK_DTYPES,
             ),
         )
-        canonical = {
+        canonical_tensors = {
             "human_kp": human_kp,
             "court_kp": court_kp,
             "human_vis": human_vis,
             "padding_mask": padding_mask,
             "court_vis": court_vis,
         }
-        self._validate_canonical_axes(canonical)
+        canonical: dict[str, object] = {
+            **canonical_tensors,
+            "court_keypoint_metadata": batch.get("court_keypoint_metadata"),
+            "court_reference_provenance": batch.get(
+                "court_reference_provenance"
+            ),
+        }
+        self._validate_canonical_axes(canonical_tensors)
         batch_size, views, frames = human_kp.shape[:3]
+        provenance = _court_context(
+            batch,
+            self.court_keypoint_contract,
+            batch_size=batch_size,
+        )
         if batch_size == 0 or views == 0 or frames == 0:
             raise ModelInputContractError(
                 "Canonical PLCS (B,V,T) axes must all be non-empty."
@@ -393,6 +506,7 @@ class PLCSModelIOAdapter:
                 target_human_kp_3d=target_human_kp_3d,
                 target_padding_mask=padding_mask,
                 reprojection_target=reprojection_target,
+                court_reference_provenance=provenance,
             )
         if self.camera_index >= views:
             raise ModelInputContractError(
@@ -420,6 +534,10 @@ class PLCSModelIOAdapter:
             "court_vis": court_vis[:, self.camera_index].reshape(
                 batch_size * frames, self.num_court_tokens
             ),
+            "court_keypoint_metadata": batch.get("court_keypoint_metadata"),
+            "court_reference_provenance": batch.get(
+                "court_reference_provenance"
+            ),
         }
         sequence_shape = (
             (batch_size, frames)
@@ -441,6 +559,7 @@ class PLCSModelIOAdapter:
             target_rotation=target_rotation,
             target_human_kp_3d=target_human_kp_3d,
             target_padding_mask=target_padding_mask,
+            court_reference_provenance=provenance,
         )
 
     def _validate_canonical_axes(self, batch: Mapping[str, Tensor]) -> None:
@@ -631,7 +750,10 @@ class PLCSModelIOAdapter:
         """Decode one output and restore a flattened sequence layout."""
         decoded = self.decode_output(output)
         if prepared.sequence_shape is None:
-            return decoded
+            return replace(
+                decoded,
+                court_reference_provenance=prepared.court_reference_provenance,
+            )
         batch_size, frames = prepared.sequence_shape
 
         def restore(value: Tensor | None) -> Tensor | None:
@@ -645,12 +767,15 @@ class PLCSModelIOAdapter:
             rotation=cast(Tensor, restore(decoded.rotation)),
             canonical_pose=restore(decoded.canonical_pose),
             auxiliary_position=restore(decoded.auxiliary_position),
+            court_reference_provenance=prepared.court_reference_provenance,
         )
 
     def prepare_scene(
         self,
         scene: object,
         cameras: Sequence[int],
+        *,
+        reference_camera_id: str | None = None,
     ) -> PLCSPreparedBatch:
         """Build a validated frame/sequence/multiview call from a loaded scene."""
         if not cameras:
@@ -658,6 +783,15 @@ class PLCSModelIOAdapter:
         scene_cameras = getattr(scene, "cameras", None)
         if not isinstance(scene_cameras, Sequence):
             raise ModelInputContractError("PLCS scene must expose a cameras sequence.")
+        scene_contract = getattr(scene, "court_keypoint_contract", None)
+        if not isinstance(scene_contract, CourtKeypointContract):
+            raise ModelInputContractError(
+                "PLCS direct scene input requires an explicit CourtKP20 contract."
+            )
+        if scene_contract != self.court_keypoint_contract:
+            raise ModelInputContractError(
+                "PLCS scene and adapter CourtKP20 contracts do not match."
+            )
         if any(index < 0 or index >= len(scene_cameras) for index in cameras):
             raise ModelInputContractError("PLCS camera selection is out of range.")
 
@@ -665,14 +799,55 @@ class PLCSModelIOAdapter:
             selected = list(cameras)
         else:
             selected = [cameras[0]]
+        selected_scene_cameras = [scene_cameras[index] for index in selected]
+        if self.court_keypoint_contract.selector == CAMERA_VIEW_V2_SELECTOR:
+            if reference_camera_id is None:
+                raise ModelInputContractError(
+                    "camera_view_v2 direct scene inference requires an explicit "
+                    "reference_camera_id."
+                )
+            court_views = tuple(
+                getattr(camera, "court_view", None)
+                for camera in selected_scene_cameras
+            )
+            if any(view is None for view in court_views):
+                raise ModelInputContractError(
+                    "camera_view_v2 scene cameras require CourtKP20 metadata."
+                )
+            typed_views = cast(
+                "tuple[CourtViewRecord, ...]",
+                court_views,
+            )
+            try:
+                provenance = build_reference_frame_provenance(
+                    typed_views,
+                    reference_camera_id=reference_camera_id,
+                )
+            except ValueError as error:
+                raise ModelInputContractError(str(error)) from error
+            reference_view = typed_views[
+                cast(int, provenance.reference_camera_local_index)
+            ]
+        else:
+            provenance = build_physical_court_provenance()
+            typed_views = ()
+            reference_view = None
         human = np.stack(
             [np.asarray(scene_cameras[index].human_kp_uv) for index in selected],
             axis=0,
         )
-        court = np.stack(
-            [np.asarray(scene_cameras[index].court_kp_uv) for index in selected],
-            axis=0,
-        )
+        court_arrays: list[np.ndarray] = []
+        for local_index, camera in enumerate(selected_scene_cameras):
+            court_array = np.asarray(camera.court_kp_uv)
+            if reference_view is not None:
+                court_array = align_court_keypoints_to_reference(
+                    court_array,
+                    typed_views[local_index],
+                    reference_view,
+                    keypoint_axis=-2,
+                )
+            court_arrays.append(court_array[..., : self.num_court_tokens, :])
+        court = np.stack(court_arrays, axis=0)
         human_vis = np.stack(
             [
                 np.asarray(scene_cameras[index].human_kp_vis, dtype=np.bool_)
@@ -680,40 +855,57 @@ class PLCSModelIOAdapter:
             ],
             axis=0,
         )
-        court_vis = np.stack(
-            [
-                np.asarray(scene_cameras[index].court_kp_vis, dtype=np.bool_)
-                for index in selected
-            ],
-            axis=0,
-        )
+        court_vis_arrays: list[np.ndarray] = []
+        for local_index, camera in enumerate(selected_scene_cameras):
+            court_vis_array = np.asarray(camera.court_kp_vis, dtype=np.bool_)
+            if reference_view is not None:
+                court_vis_array = align_court_keypoints_to_reference(
+                    court_vis_array,
+                    typed_views[local_index],
+                    reference_view,
+                    keypoint_axis=-1,
+                )
+            court_vis_arrays.append(court_vis_array[..., : self.num_court_tokens])
+        court_vis = np.stack(court_vis_arrays, axis=0)
         frames = human.shape[1]
-        ready = {
-            "human_kp": torch.as_tensor(human, dtype=torch.float32).unsqueeze(0),
-            "court_kp": torch.as_tensor(court, dtype=torch.float32).unsqueeze(0),
-            "human_vis": torch.as_tensor(human_vis, dtype=torch.bool).unsqueeze(0),
-            "padding_mask": torch.zeros(
-                (1, len(selected), frames), dtype=torch.bool
+        ready_human = torch.as_tensor(human, dtype=torch.float32).unsqueeze(0)
+        ready_court = torch.as_tensor(court, dtype=torch.float32).unsqueeze(0)
+        ready_human_vis = torch.as_tensor(human_vis, dtype=torch.bool).unsqueeze(0)
+        ready_padding = torch.zeros((1, len(selected), frames), dtype=torch.bool)
+        ready_court_vis = torch.as_tensor(court_vis, dtype=torch.bool).unsqueeze(0)
+        ready: dict[str, object] = {
+            "human_kp": ready_human,
+            "court_kp": ready_court,
+            "human_vis": ready_human_vis,
+            "padding_mask": ready_padding,
+            "court_vis": ready_court_vis,
+            "court_keypoint_metadata": court_keypoint_contract_document(
+                self.court_keypoint_contract
             ),
-            "court_vis": torch.as_tensor(court_vis, dtype=torch.bool).unsqueeze(0),
+            "court_reference_provenance": provenance,
         }
         if self.profile is PLCSInputProfile.MULTIVIEW:
-            return PLCSPreparedBatch(call=self.build_call(ready))
+            return PLCSPreparedBatch(
+                call=self.build_call(ready),
+                court_reference_provenance=(provenance,),
+            )
         flattened = {
-            "human_kp": ready["human_kp"][:, 0].reshape(
-                frames, NUM_HUMAN_KP, 2
-            ),
-            "court_kp": ready["court_kp"][:, 0].reshape(
+            "human_kp": ready_human[:, 0].reshape(frames, NUM_HUMAN_KP, 2),
+            "court_kp": ready_court[:, 0].reshape(
                 frames, self.num_court_tokens, 2
             ),
-            "human_vis": ready["human_vis"][:, 0].reshape(frames, NUM_HUMAN_KP),
-            "padding_mask": ready["padding_mask"][:, 0].reshape(frames),
-            "court_vis": ready["court_vis"][:, 0].reshape(
+            "human_vis": ready_human_vis[:, 0].reshape(frames, NUM_HUMAN_KP),
+            "padding_mask": ready_padding[:, 0].reshape(frames),
+            "court_vis": ready_court_vis[:, 0].reshape(
                 frames, self.num_court_tokens
             ),
+            "court_keypoint_metadata": ready["court_keypoint_metadata"],
+            "court_reference_provenance": ready["court_reference_provenance"],
         }
         return PLCSPreparedBatch(
-            call=self.build_call(flattened), sequence_shape=(1, frames)
+            call=self.build_call(flattened),
+            sequence_shape=(1, frames),
+            court_reference_provenance=(provenance,),
         )
 
     def prepare_multiview_observations(
@@ -724,6 +916,8 @@ class PLCSModelIOAdapter:
         human_vis: np.ndarray,
         padding_mask: np.ndarray,
         court_vis: np.ndarray,
+        court_keypoint_metadata: Mapping[str, object] | None = None,
+        court_reference_provenance: CourtReferenceFrameProvenance | None = None,
     ) -> PLCSPreparedBatch:
         """Convert explicit NumPy multiview observations at the task boundary."""
         self.require_profile(PLCSInputProfile.MULTIVIEW)
@@ -765,8 +959,18 @@ class PLCSModelIOAdapter:
             "human_vis": torch.as_tensor(np.array(human_vis, copy=True)),
             "padding_mask": torch.as_tensor(np.array(padding_mask, copy=True)),
             "court_vis": torch.as_tensor(np.array(court_vis, copy=True)),
+            "court_keypoint_metadata": court_keypoint_metadata,
+            "court_reference_provenance": court_reference_provenance,
         }
-        return PLCSPreparedBatch(call=self.build_call(ready))
+        provenance = _court_context(
+            ready,
+            self.court_keypoint_contract,
+            batch_size=batch_size,
+        )
+        return PLCSPreparedBatch(
+            call=self.build_call(ready),
+            court_reference_provenance=provenance,
+        )
 
 
 class PLCSTrackQueryIOAdapter:
@@ -779,12 +983,14 @@ class PLCSTrackQueryIOAdapter:
         num_queries: int,
         num_court_tokens: int,
         num_joints: int,
+        court_keypoint_contract: CourtKeypointContract,
     ) -> None:
         self._model_type = model_type
         self.profile = PLCSInputProfile.TRACK_QUERY
         self.num_queries = num_queries
         self.num_court_tokens = num_court_tokens
         self.num_joints = num_joints
+        self.court_keypoint_contract = court_keypoint_contract
 
     @property
     def model_type(self) -> type[nn.Module]:
@@ -845,6 +1051,11 @@ class PLCSTrackQueryIOAdapter:
             ),
         )
         batch_size, views, frames, queries = human_kp.shape[:4]
+        _court_context(
+            batch,
+            self.court_keypoint_contract,
+            batch_size=batch_size,
+        )
         if min(batch_size, views, frames, queries) == 0:
             raise ModelInputContractError(
                 "Tracking (B,V,T,Q) axes must all be non-empty."
@@ -886,6 +1097,11 @@ class PLCSTrackQueryIOAdapter:
         call = self.build_call(batch)
         human_kp = cast(Tensor, call.kwargs["human_kp"])
         batch_size, _, frames = human_kp.shape[:3]
+        provenance = _court_context(
+            batch,
+            self.court_keypoint_contract,
+            batch_size=batch_size,
+        )
         target_position = require_tensor(
             batch,
             "target_position",
@@ -952,7 +1168,10 @@ class PLCSTrackQueryIOAdapter:
             raise ModelInputContractError(
                 "Inactive tracking targets must use target_instance_id=-1."
             )
-        return PLCSPreparedBatch(call=call)
+        return PLCSPreparedBatch(
+            call=call,
+            court_reference_provenance=provenance,
+        )
 
     def decode_output(
         self, output: Mapping[str, object]
@@ -996,8 +1215,11 @@ class PLCSTrackQueryIOAdapter:
         output: Mapping[str, object],
         prepared: PLCSPreparedBatch,
     ) -> PLCSTrackingDecodedPrediction:
-        del prepared
-        return self.decode_output(output)
+        decoded = self.decode_output(output)
+        return replace(
+            decoded,
+            court_reference_provenance=prepared.court_reference_provenance,
+        )
 
 
 PLCSAdapter = PLCSModelIOAdapter | PLCSTrackQueryIOAdapter

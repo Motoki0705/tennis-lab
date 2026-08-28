@@ -17,6 +17,13 @@ from typing import TYPE_CHECKING, cast
 import numpy as np
 import torch
 
+from src.tasks.base.generate_dataset import (
+    CourtKeypointContract,
+    CourtViewRecord,
+    apply_court_view_record,
+    build_court_view_record,
+)
+from src.tasks.plcs.court_keypoint_contract import PLCSCourtKeypointRuntimeConfig
 from src.tasks.plcs.generate_dataset.sampling.motion_sampler import (
     MotionSampler,
     MotionSequence,
@@ -57,6 +64,7 @@ class CameraData:
         float  # Fraction of frames with at least one visible human keypoint
     )
     court_visibility_count: float  # Average visible court keypoints
+    court_view: CourtViewRecord | None = None
 
 
 @dataclass
@@ -81,6 +89,7 @@ class SceneData:
     # Present for multi-object scenes. Object arrays then use shape (T, O, ...).
     person_present: np.ndarray | None = None
     track_instances: list[dict] = field(default_factory=list)
+    court_keypoint_contract: CourtKeypointContract | None = None
 
 
 class SceneGenerator:
@@ -110,6 +119,9 @@ class SceneGenerator:
         """
         self.config = config
         self.device = torch.device(device)
+        self.court_keypoint_contract = (
+            PLCSCourtKeypointRuntimeConfig.from_config(config).contract
+        )
 
         # Initialize motion sampler if not provided
         if motion_sampler is None:
@@ -456,7 +468,7 @@ class SceneGenerator:
 
         # Generate multiple cameras
         cameras_data = []
-        for camera in self.camera_projector.cameras():
+        for camera_index, camera in enumerate(self.camera_projector.cameras()):
             # Project human keypoints
             human_uv: np.ndarray = np.zeros((T, 17, 2), dtype=np.float32)
             human_vis: np.ndarray = np.zeros((T, 17), dtype=bool)
@@ -475,6 +487,21 @@ class SceneGenerator:
             )
             court_uv_single = court_uv_t.numpy()
             court_vis_single = court_vis_t.numpy()
+            court_view = build_court_view_record(
+                camera_id=f"camera_{camera_index}",
+                camera_center_court_m=camera.C.numpy(),
+                contract=self.court_keypoint_contract,
+            )
+            court_uv_single = apply_court_view_record(
+                court_uv_single,
+                court_view,
+                keypoint_axis=0,
+            )
+            court_vis_single = apply_court_view_record(
+                court_vis_single,
+                court_view,
+                keypoint_axis=0,
+            )
             court_uv = np.tile(court_uv_single[None, ...], (T, 1, 1))
             court_vis = np.tile(court_vis_single[None, ...], (T, 1))
 
@@ -499,6 +526,7 @@ class SceneGenerator:
                 court_kp_vis=court_vis,
                 human_visibility_ratio=human_ratio,
                 court_visibility_count=avg_court,
+                court_view=court_view,
             )
             cameras_data.append(cam_data)
 
@@ -523,4 +551,5 @@ class SceneGenerator:
             cameras=cameras_data,
             num_persons=1,
             human_kp_3d=coco17_joints,
+            court_keypoint_contract=self.court_keypoint_contract,
         )
