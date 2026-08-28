@@ -1,4 +1,4 @@
-"""Paired-reference evaluation metric tests."""
+"""Reference-frame training metric tests."""
 
 from __future__ import annotations
 
@@ -10,70 +10,12 @@ import torch
 from src.tasks.base.evaluation.track_query_reference import (
     AxisWisePositionError,
     PairedReferenceEvaluationError,
-    PairedReferenceKey,
-    ReferenceTransformQuantity,
     compute_axis_wise_position_error,
     compute_heading_error_radians,
     compute_paired_reference_position_metrics,
-    compute_reference_transform_consistency_error,
     compute_y_sign_accuracy,
     stratify_metric_by_reference_view_index,
 )
-from src.tasks.base.generate_dataset.court_view import (
-    CAMERA_VIEW_V2_SELECTOR,
-    CourtReferenceFrameProvenance,
-    build_court_view_record,
-    build_reference_frame_provenance,
-    court_headings_physical_to_target,
-    court_points_physical_to_target,
-    court_vectors_physical_to_target,
-    court_world_joints_physical_to_target,
-    resolve_court_keypoint_contract,
-)
-
-
-def _paired_provenance() -> tuple[
-    CourtReferenceFrameProvenance,
-    CourtReferenceFrameProvenance,
-]:
-    contract = resolve_court_keypoint_contract(CAMERA_VIEW_V2_SELECTOR)
-    views = (
-        build_court_view_record(
-            camera_id="negative",
-            camera_center_court_m=(0.0, -5.0, 2.0),
-            contract=contract,
-        ),
-        build_court_view_record(
-            camera_id="positive",
-            camera_center_court_m=(0.0, 5.0, 2.0),
-            contract=contract,
-        ),
-    )
-    return (
-        build_reference_frame_provenance(
-            views,
-            reference_camera_id="negative",
-        ),
-        build_reference_frame_provenance(
-            views,
-            reference_camera_id="positive",
-        ),
-    )
-
-
-def test_paired_key_requires_same_complete_view_set_and_local_ordering() -> None:
-    key = PairedReferenceKey(
-        scene_id="scene_a",
-        view_camera_ids=("a", "b"),
-        local_ordering=("b", "a"),
-    )
-    assert key.local_ordering == ("b", "a")
-    with pytest.raises(PairedReferenceEvaluationError, match="permutation"):
-        PairedReferenceKey(
-            scene_id="scene_a",
-            view_camera_ids=("a", "b"),
-            local_ordering=("a", "c"),
-        )
 
 
 def test_y_sign_axis_error_and_local_index_metrics_are_exact() -> None:
@@ -198,91 +140,6 @@ def test_heading_error_is_radians_and_rejects_zero_vectors() -> None:
     )
     with pytest.raises(PairedReferenceEvaluationError, match="non-zero"):
         compute_heading_error_radians(torch.zeros_like(prediction), target)
-
-
-@pytest.mark.parametrize(
-    ("quantity", "physical"),
-    [
-        ("point", torch.tensor([[1.0, 2.0, 3.0]], dtype=torch.float64)),
-        ("vector", torch.tensor([[0.5, -2.0, 1.0]], dtype=torch.float64)),
-        ("heading", torch.tensor([[0.0, 1.0]], dtype=torch.float64)),
-        (
-            "world_joints",
-            torch.tensor([[[-1.0, 2.0, 0.5], [2.0, -3.0, 1.0]]], dtype=torch.float64),
-        ),
-    ],
-)
-def test_opposite_reference_transform_consistency_uses_geometry_authority(
-    quantity: ReferenceTransformQuantity,
-    physical: torch.Tensor,
-) -> None:
-    negative, positive = _paired_provenance()
-    if quantity == "point":
-        first = court_points_physical_to_target(physical, negative)
-        second = court_points_physical_to_target(physical, positive)
-    elif quantity == "vector":
-        first = court_vectors_physical_to_target(physical, negative)
-        second = court_vectors_physical_to_target(physical, positive)
-    elif quantity == "heading":
-        first = court_headings_physical_to_target(physical, negative)
-        second = court_headings_physical_to_target(physical, positive)
-    else:
-        first = court_world_joints_physical_to_target(physical, negative)
-        second = court_world_joints_physical_to_target(physical, positive)
-    assert isinstance(first, torch.Tensor)
-    assert isinstance(second, torch.Tensor)
-
-    error = compute_reference_transform_consistency_error(
-        first,
-        negative,
-        second,
-        positive,
-        quantity=quantity,
-    )
-    assert error == pytest.approx(0.0, abs=1e-12)
-
-
-@pytest.mark.parametrize(
-    ("quantity", "physical"),
-    [
-        ("point", torch.tensor([[1.0, 2.0, 3.0]])),
-        ("vector", torch.tensor([[0.5, -2.0, 1.0]])),
-        ("heading", torch.tensor([[0.0, 1.0]])),
-        (
-            "world_joints",
-            torch.tensor([[[-1.0, 2.0, 0.5], [2.0, -3.0, 1.0]]]),
-        ),
-    ],
-)
-def test_reference_transform_consistency_accepts_amp_mixed_floating_dtypes(
-    quantity: ReferenceTransformQuantity,
-    physical: torch.Tensor,
-) -> None:
-    negative, positive = _paired_provenance()
-    if quantity == "point":
-        first = court_points_physical_to_target(physical, negative)
-        second = court_points_physical_to_target(physical, positive)
-    elif quantity == "vector":
-        first = court_vectors_physical_to_target(physical, negative)
-        second = court_vectors_physical_to_target(physical, positive)
-    elif quantity == "heading":
-        first = court_headings_physical_to_target(physical, negative)
-        second = court_headings_physical_to_target(physical, positive)
-    else:
-        first = court_world_joints_physical_to_target(physical, negative)
-        second = court_world_joints_physical_to_target(physical, positive)
-    assert isinstance(first, torch.Tensor)
-    assert isinstance(second, torch.Tensor)
-
-    with torch.autocast(device_type="cpu", dtype=torch.bfloat16):
-        error = compute_reference_transform_consistency_error(
-            first.to(torch.bfloat16),
-            negative,
-            second,
-            positive,
-            quantity=quantity,
-        )
-    assert error == pytest.approx(0.0)
 
 
 def test_local_index_stratification_rejects_padding_and_nonfinite_values() -> None:

@@ -1,67 +1,15 @@
-"""Paired-reference metrics shared by BLCS and PLCS evaluation."""
+"""Reference-frame metrics shared by BLCS and PLCS training."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, TypeAlias
 
 import torch
 from torch import Tensor
 
-from src.tasks.base.generate_dataset.court_view import (
-    CourtReferenceFrameProvenance,
-    court_headings_target_to_physical,
-    court_points_target_to_physical,
-    court_vectors_target_to_physical,
-    court_world_joints_target_to_physical,
-)
-
-ReferenceTransformQuantity: TypeAlias = Literal[
-    "point",
-    "vector",
-    "heading",
-    "world_joints",
-]
-
 
 class PairedReferenceEvaluationError(ValueError):
     """Raised when paired inputs cannot produce an unambiguous metric."""
-
-
-@dataclass(frozen=True, slots=True)
-class PairedReferenceKey:
-    """Identity of one counterfactual pair excluding the changed reference."""
-
-    scene_id: str
-    view_camera_ids: tuple[str, ...]
-    local_ordering: tuple[str, ...]
-
-    def __post_init__(self) -> None:
-        if type(self.scene_id) is not str or not self.scene_id.strip():
-            raise PairedReferenceEvaluationError("scene_id must be a non-empty string.")
-        views = tuple(self.view_camera_ids)
-        ordering = tuple(self.local_ordering)
-        for name, values in (
-            ("view_camera_ids", views),
-            ("local_ordering", ordering),
-        ):
-            if not values or any(
-                type(camera_id) is not str or not camera_id.strip()
-                for camera_id in values
-            ):
-                raise PairedReferenceEvaluationError(
-                    f"{name} must contain non-empty canonical camera IDs."
-                )
-            if len(set(values)) != len(values):
-                raise PairedReferenceEvaluationError(
-                    f"{name} must contain unique camera IDs."
-                )
-        if set(views) != set(ordering) or len(views) != len(ordering):
-            raise PairedReferenceEvaluationError(
-                "local_ordering must be a permutation of view_camera_ids."
-            )
-        object.__setattr__(self, "view_camera_ids", views)
-        object.__setattr__(self, "local_ordering", ordering)
 
 
 @dataclass(frozen=True, slots=True)
@@ -264,65 +212,6 @@ def compute_heading_error_radians(
     return float(torch.acos(cosine).mean().item())
 
 
-def _restore_physical(
-    value: Tensor,
-    provenance: CourtReferenceFrameProvenance,
-    *,
-    quantity: ReferenceTransformQuantity,
-) -> Tensor:
-    if quantity == "point":
-        return court_points_target_to_physical(value, provenance)
-    if quantity == "vector":
-        return court_vectors_target_to_physical(value, provenance)
-    if quantity == "heading":
-        return court_headings_target_to_physical(value, provenance)
-    if quantity == "world_joints":
-        return court_world_joints_target_to_physical(value, provenance)
-    raise PairedReferenceEvaluationError(
-        f"Unknown reference transform quantity {quantity!r}."
-    )
-
-
-def compute_reference_transform_consistency_error(
-    first_reference_value: Tensor,
-    first_provenance: CourtReferenceFrameProvenance,
-    second_reference_value: Tensor,
-    second_provenance: CourtReferenceFrameProvenance,
-    *,
-    quantity: ReferenceTransformQuantity,
-    valid_mask: Tensor | None = None,
-) -> float:
-    """Compare counterfactual outputs after authoritative physical restoration."""
-    trailing_width = 2 if quantity == "heading" else 3
-    first_reference_value, second_reference_value = _require_pair(
-        first_reference_value,
-        second_reference_value,
-        trailing_width=trailing_width,
-        quantity="reference-transform consistency",
-    )
-    with torch.autocast(
-        device_type=first_reference_value.device.type,
-        enabled=False,
-    ):
-        first_physical = _restore_physical(
-            first_reference_value,
-            first_provenance,
-            quantity=quantity,
-        )
-        second_physical = _restore_physical(
-            second_reference_value,
-            second_provenance,
-            quantity=quantity,
-        )
-        error = torch.linalg.vector_norm(first_physical - second_physical, dim=-1)
-        selected = _selected_rows(
-            error.unsqueeze(-1),
-            valid_mask=valid_mask,
-            quantity="reference-transform consistency",
-        )
-        return float(selected.mean().item())
-
-
 def stratify_metric_by_reference_view_index(
     metric_values: Tensor,
     reference_view_index: Tensor,
@@ -424,13 +313,10 @@ def compute_paired_reference_position_metrics(
 __all__ = [
     "AxisWisePositionError",
     "PairedReferenceEvaluationError",
-    "PairedReferenceKey",
     "PairedReferencePositionMetrics",
-    "ReferenceTransformQuantity",
     "compute_axis_wise_position_error",
     "compute_heading_error_radians",
     "compute_paired_reference_position_metrics",
-    "compute_reference_transform_consistency_error",
     "compute_y_sign_accuracy",
     "stratify_metric_by_reference_view_index",
 ]
