@@ -48,14 +48,18 @@ from src.synthetic_data_generation.alignment.evidence_source import (
     _project_probability_to_ground,
     _ProjectedLineEvidence,
     _proposal_branch_seed,
+    _proposal_frontier_snapshot,
+    _proposal_search_after_fit_reliability,
     _proposal_search_resource_bounds,
     _proposal_topology_compatible,
     _ProposalSearchState,
+    _refine_complete_proposal_state,
     _ResidualEvidenceContext,
     _resolve_common_scale,
     _retain_fit_reliable_hypotheses,
     _retain_observable_cameras,
     _scale_bound_saturation_reason,
+    _tile_is_geometrically_impossible,
     _TiledProposal,
 )
 from src.synthetic_data_generation.alignment.fitting import fit_alignment
@@ -653,8 +657,9 @@ def test_spatial_tiles_recover_valid_pair_when_both_band_global_maxima_are_false
 
     def counted_prepare_residual_evidence(
         points: NDArray[np.float64],
+        evidence_weights: NDArray[np.float64],
     ) -> _ResidualEvidenceContext:
-        context = prepare_residual_evidence(points)
+        context = prepare_residual_evidence(points, evidence_weights)
         prepared_contexts.append(context)
         return context
 
@@ -674,6 +679,7 @@ def test_spatial_tiles_recover_valid_pair_when_both_band_global_maxima_are_false
         if kwargs.get("polish") is False:
             context = cast(_ResidualEvidenceContext, kwargs["evidence_context"])
             assert points is context.points
+            assert kwargs["evidence_weights"] is context.evidence_weights
             calls.append(
                 (
                     len(points),
@@ -775,6 +781,26 @@ def test_production_tiled_search_resource_cap_is_exact() -> None:
     assert _MAXIMUM_RESIDUAL_STATE_COUNT == 1_024
 
 
+def test_frontier_history_snapshot_does_not_retain_residual_arrays() -> None:
+    points: NDArray[np.float64] = np.zeros((100, 2), dtype=np.float64)
+    weights: NDArray[np.float64] = np.ones(len(points), dtype=np.float64)
+    state = _ProposalSearchState(
+        selected=(_hypothesis_for_topology(center=(0.0, 0.0)),),
+        residual=points,
+        residual_evidence_weights=weights,
+        explained_evidence_fractions=(0.5,),
+        orientation_band_indices=(0,),
+        center_tile_indices=(0,),
+    )
+
+    snapshot = _proposal_frontier_snapshot(state)
+
+    assert not hasattr(snapshot, "residual")
+    assert not hasattr(snapshot, "residual_evidence_weights")
+    assert snapshot.residual_point_count == 100
+    assert snapshot.residual_evidence_sum == pytest.approx(100.0)
+
+
 @pytest.mark.parametrize(
     (
         "maximum_candidate_count",
@@ -811,18 +837,21 @@ def test_prepared_residual_tree_preserves_optimizer_result(tmp_path: Path) -> No
         template,
         np.asarray((0.2, -0.1, 0.05, 0.07), dtype=np.float64),
     )
+    weights: NDArray[np.float64] = np.ones(len(points), dtype=np.float64)
     bounds = ((-1.0, 1.0), (-1.0, 1.0), (-0.2, 0.2), (0.06, 0.08))
     baseline_parameters, baseline_score = _optimize_court(
         points,
+        evidence_weights=weights,
         template=template,
         bounds=bounds,
         seed=42,
         settings=settings,
     )
-    evidence = _prepare_residual_evidence(points)
+    evidence = _prepare_residual_evidence(points, weights)
 
     reused_parameters, reused_score = _optimize_court(
         evidence.points,
+        evidence_weights=evidence.evidence_weights,
         template=template,
         bounds=bounds,
         seed=42,
@@ -832,6 +861,76 @@ def test_prepared_residual_tree_preserves_optimizer_result(tmp_path: Path) -> No
 
     np.testing.assert_array_equal(reused_parameters, baseline_parameters)
     assert reused_score == baseline_score
+
+
+@pytest.mark.parametrize(
+    "weights",
+    (
+        np.asarray((1.0, 9.0), dtype=np.float64),
+        np.asarray((9.0, 1.0), dtype=np.float64),
+    ),
+)
+def test_optimizer_score_uses_weighted_coverage_with_unweighted_floor(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    weights: NDArray[np.float64],
+) -> None:
+    settings = replace(
+        _settings(tmp_path).candidate_fit,
+        score_distance_metres=1.0,
+        optimizer_maximum_iterations=1,
+        optimizer_population_size=2,
+    )
+    template = np.asarray(((0.0, 0.0), (1.5, 0.0)), dtype=np.float64)
+    points = np.asarray(((0.0, 0.0), (1.0, 0.0)), dtype=np.float64)
+    candidate = np.asarray((0.0, 0.0, 0.0, 1.0), dtype=np.float64)
+    distant_kernel = math.exp(-0.5 * 0.5**2)
+    unweighted_score = (1.0 + distant_kernel) / 2.0
+    weighted_score = float((weights[0] + weights[1] * distant_kernel) / np.sum(weights))
+    expected = min(unweighted_score, weighted_score)
+
+    def fake_differential_evolution(
+        objective: Callable[[NDArray[np.float64]], float],
+        _bounds: object,
+        **_kwargs: object,
+    ) -> SimpleNamespace:
+        assert -objective(candidate) == pytest.approx(expected)
+        return SimpleNamespace(x=candidate)
+
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source."
+        "differential_evolution",
+        fake_differential_evolution,
+    )
+
+    optimized, score = _optimize_court(
+        points,
+        evidence_weights=weights,
+        template=template,
+        bounds=((-1.0, 1.0), (-1.0, 1.0), (-0.1, 0.1), (0.9, 1.1)),
+        seed=42,
+        settings=settings,
+    )
+
+    np.testing.assert_array_equal(optimized, candidate)
+    assert score == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    "weights",
+    (
+        np.asarray((1.0, 0.0), dtype=np.float64),
+        np.asarray((1.0, np.nan), dtype=np.float64),
+        np.asarray((1.0,), dtype=np.float64),
+    ),
+)
+def test_residual_evidence_rejects_invalid_weights(
+    weights: NDArray[np.float64],
+) -> None:
+    points = np.asarray(((0.0, 0.0), (1.0, 0.0)), dtype=np.float64)
+
+    with pytest.raises(ValueError, match="positive finite value per point"):
+        _prepare_residual_evidence(points, weights)
 
 
 def test_center_tiles_cover_exact_two_dimensional_bounds_with_half_open_edges() -> None:
@@ -851,6 +950,52 @@ def test_center_tiles_cover_exact_two_dimensional_bounds_with_half_open_edges() 
         tile.logical_u_upper - tile.u_bounds[0] <= 0.3
         and tile.logical_v_upper - tile.v_bounds[0] <= 0.3
         for tile in tiles
+    )
+
+
+def test_weighted_coverage_floor_preserves_unweighted_tile_bound(
+    tmp_path: Path,
+) -> None:
+    settings = replace(
+        _candidate_count_settings(tmp_path, maximum_candidate_count=2),
+        minimum_template_score=0.8,
+    )
+    points = np.asarray(((0.0, 0.0), (0.0, 0.1)), dtype=np.float64)
+    relative_bounds = np.asarray(
+        ((0.0, 0.0, 0.0, 0.0), (10.0, 0.0, 10.0, 0.0)),
+        dtype=np.float64,
+    )
+    tile = _CenterTile(
+        flat_index=0,
+        u_index=0,
+        v_index=0,
+        u_bounds=(0.0, 0.0),
+        v_bounds=(0.0, 0.0),
+        logical_u_upper=0.0,
+        logical_v_upper=0.0,
+    )
+    uniform = _prepare_residual_evidence(
+        points,
+        np.ones(len(points), dtype=np.float64),
+    )
+    weighted = _prepare_residual_evidence(
+        points,
+        np.asarray((9.0, 1.0), dtype=np.float64),
+    )
+
+    assert _tile_is_geometrically_impossible(
+        evidence=uniform,
+        tile=tile,
+        template_relative_bounds=relative_bounds,
+        settings=settings,
+        selected=(),
+    )
+    assert _tile_is_geometrically_impossible(
+        evidence=weighted,
+        tile=tile,
+        template_relative_bounds=relative_bounds,
+        settings=settings,
+        selected=(),
     )
 
 
@@ -978,6 +1123,7 @@ def test_native_optimizer_penalizes_duplicate_basin_inside_objective(
 
     optimized, score = _optimize_court(
         points,
+        evidence_weights=np.ones(len(points), dtype=np.float64),
         template=template,
         bounds=((-1.0, 1.0), (-1.0, 1.0), (-0.5, 0.5), (0.05, 0.1)),
         seed=42,
@@ -1085,9 +1231,180 @@ def test_three_court_proposal_search_infers_three_before_no_reliable_stop(
         fraction >= settings.minimum_explained_evidence_fraction
         for fraction in search.selected_candidate_explained_evidence_fractions
     )
+    assert search.frontier_state_counts == (1, 1, 1)
+    assert search.feasible_complete_state_counts == (1, 1, 1)
+    assert search.refinement_attempt_count == 3
+    assert search.refinement_rejected_state_count == 2
+    assert search.selected_complete_state_rank == 2
+    assert search.selected_complete_state_candidate_count == 3
+
+
+def test_refined_shallow_frontier_wins_before_deeper_proposals(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = replace(
+        _candidate_count_settings(tmp_path, maximum_candidate_count=3),
+        minimum_explained_evidence_fraction=0.2,
+    )
+
+    def optimize(
+        *_args: object,
+        **kwargs: object,
+    ) -> tuple[NDArray[np.float64], float]:
+        fixed_scale = kwargs.get("fixed_scale")
+        if fixed_scale is not None:
+            fixed_center, _maximum_distance = cast(
+                tuple[NDArray[np.float64], float], kwargs["center_limit"]
+            )
+            return np.asarray((fixed_center[0], fixed_center[1], 0.0)), 0.9
+        selected = cast(tuple[_CourtHypothesis, ...], kwargs.get("selected", ()))
+        if len(selected) >= 2:
+            return np.asarray((48.0, 0.0, 0.0, 1.0)), 0.0
+        proposal_center = 0.0 if not selected else 24.0
+        return np.asarray((proposal_center, 0.0, 0.0, 1.0)), 0.9
+
+    def suppress_evidence(
+        points: NDArray[np.float64],
+        evidence_weights: NDArray[np.float64],
+        *,
+        parameters: NDArray[np.float64],
+        **_kwargs: object,
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+        explained_fraction = 0.9 if float(parameters[0]) == 1.0 else 0.5
+        offset = round(len(points) * explained_fraction)
+        return points[offset:], evidence_weights[offset:]
+
+    def refine(
+        selected_state: _ProposalSearchState,
+        **_kwargs: object,
+    ) -> tuple[_CourtHypothesis, ...]:
+        if len(selected_state.selected) == 1:
+            item = selected_state.selected[0]
+            return (
+                replace(
+                    item,
+                    center_uv=(1.0, 0.0),
+                    native_center_uv=(1.0, 0.0),
+                ),
+            )
+        return selected_state.selected
+
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source._optimize_court",
+        optimize,
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source."
+        "_maximum_center_tile_width_scene_units",
+        lambda _settings: 200.0,
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source."
+        "_tile_is_geometrically_impossible",
+        lambda **_kwargs: False,
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source."
+        "_suppress_assigned_evidence",
+        suppress_evidence,
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source."
+        "_refine_selected_native_hypotheses",
+        refine,
+    )
+    points = np.column_stack(
+        (np.linspace(-50.0, 50.0, 100), np.zeros(100, dtype=np.float64))
+    )
+
+    hypotheses, _scale, _deviation, search = _fit_court_hypotheses(
+        points,
+        evidence_weights=np.ones(len(points), dtype=np.float64),
+        bounds=(-60.0, 60.0, -5.0, 5.0),
+        seed=42,
+        settings=settings,
+    )
+
+    assert len(hypotheses) == 1
+    assert hypotheses[0].native_center_uv == (1.0, 0.0)
+    assert search.frontier_state_counts == (1, 1)
+    assert search.feasible_complete_state_counts == (1, 1)
+    assert search.selected_complete_state_candidate_count == 1
     assert search.refinement_attempt_count == 1
-    assert search.refinement_rejected_state_count == 0
-    assert search.selected_complete_state_rank == 0
+    assert search.selected_residual_evidence_sum == pytest.approx(10.0)
+
+
+def test_complete_state_residual_is_recomputed_after_common_scale_refit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = replace(
+        _candidate_count_settings(tmp_path, maximum_candidate_count=2),
+        minimum_explained_evidence_fraction=0.2,
+    )
+    native = replace(
+        _hypothesis_for_topology(center=(1.0, 0.0)),
+        nht_scene_units_per_metre=1.0,
+        native_nht_scene_units_per_metre=1.0,
+    )
+    points = np.column_stack(
+        (np.linspace(-10.0, 10.0, 100), np.zeros(100, dtype=np.float64))
+    )
+    weights: NDArray[np.float64] = np.ones(len(points), dtype=np.float64)
+    selected_state = _ProposalSearchState(
+        selected=(native,),
+        residual=points[90:],
+        residual_evidence_weights=weights[90:],
+        explained_evidence_fractions=(0.9,),
+        orientation_band_indices=(0,),
+        center_tile_indices=(0,),
+    )
+
+    def suppress_evidence(
+        values: NDArray[np.float64],
+        evidence_weights: NDArray[np.float64],
+        *,
+        parameters: NDArray[np.float64],
+        **_kwargs: object,
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+        explained_fraction = 0.9 if float(parameters[0]) == 1.0 else 0.5
+        offset = round(len(values) * explained_fraction)
+        return values[offset:], evidence_weights[offset:]
+
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source."
+        "_refine_selected_native_hypotheses",
+        lambda *_args, **_kwargs: (native,),
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source._optimize_court",
+        lambda *_args, **_kwargs: (np.asarray((0.0, 0.0, 0.0)), 0.9),
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source."
+        "_suppress_assigned_evidence",
+        suppress_evidence,
+    )
+
+    refined = _refine_complete_proposal_state(
+        selected_state,
+        points=points,
+        evidence_weights=weights,
+        bounds=(-20.0, 20.0, -5.0, 5.0),
+        template=sample_court_line_template(settings.samples_per_metre),
+        orientation_bands=_orientation_search_bands(settings),
+        center_tiles=_center_space_tiles(
+            (-20.0, 20.0, -5.0, 5.0),
+            maximum_width=100.0,
+        ),
+        seed=42,
+        settings=settings,
+    )
+
+    assert refined.hypotheses[0].center_uv == (0.0, 0.0)
+    assert len(refined.residual) == 50
+    assert np.sum(refined.residual_evidence_weights) == pytest.approx(50.0)
 
 
 def test_ranked_complete_state_refinement_uses_next_valid_state(
@@ -1419,6 +1736,43 @@ def test_fit_only_reliability_refits_and_rebuilds_selected_diagnostics(
     )
 
 
+def test_fit_reliability_cannot_relabel_residual_stop_to_accept_missing_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    alignment_evidence: AlignmentEvidence,
+) -> None:
+    proposal_search = alignment_evidence.diagnostics.proposal_search
+    assert (
+        proposal_search.stopping_reason
+        is ProposalSearchStopReason.RESIDUAL_EVIDENCE_BELOW_MINIMUM
+    )
+    hypothesis = replace(
+        _hypothesis_for_topology(center=(0.0, 0.0)),
+        candidate_id="candidate-000",
+    )
+    points = np.column_stack(
+        (np.linspace(-10.0, 10.0, 100), np.zeros(100, dtype=np.float64))
+    )
+    weights: NDArray[np.float64] = np.ones(len(points), dtype=np.float64)
+
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source."
+        "_proposal_explanation_for_hypotheses",
+        lambda *_args, **_kwargs: ((0.4,), points[40:], weights[40:]),
+    )
+
+    with pytest.raises(ValueError, match="Residual-evidence stop requires"):
+        _proposal_search_after_fit_reliability(
+            proposal_search,
+            (hypothesis,),
+            source_indices=(0,),
+            fit_points_uv=points,
+            evidence_weights=weights,
+            seed=42,
+            settings=_settings(tmp_path).candidate_fit,
+        )
+
+
 def test_common_scale_replacement_refits_pose_and_recomputes_score(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -1437,6 +1791,8 @@ def test_common_scale_replacement_refits_pose_and_recomputes_score(
         (
             (np.asarray((0.0, 0.0, 0.0, 0.070)), 0.81),
             (np.asarray((2.0, 0.0, 0.0, 0.072)), 0.79),
+            (np.asarray((0.0, 0.0, 0.0, 0.070)), 0.81),
+            (np.asarray((0.01, 0.0, 0.0)), 0.90),
             (np.asarray((0.0, 0.0, 0.0, 0.070)), 0.81),
             (np.asarray((2.0, 0.0, 0.0, 0.072)), 0.79),
             (np.asarray((0.02, 0.01, 0.1)), 0.91),
@@ -1488,6 +1844,8 @@ def test_common_scale_replacement_refits_pose_and_recomputes_score(
         None,
         None,
         None,
+        pytest.approx(0.070),
+        None,
         None,
         pytest.approx(0.071),
         pytest.approx(0.071),
@@ -1518,6 +1876,7 @@ def test_common_scale_refit_bounds_preserve_parallel_court_identity(
         (
             (np.asarray((0.0, 0.0, 0.0, 0.070)), 0.9),
             (np.asarray((1.0, 0.0, 0.0, 0.071)), 0.89),
+            (np.asarray((0.0, 0.0, 0.0, 0.070)), 0.9),
             (np.asarray((0.0, 0.0, 0.0, 0.070)), 0.9),
             (np.asarray((1.0, 0.0, 0.0, 0.071)), 0.89),
         )
@@ -1572,10 +1931,11 @@ def test_common_scale_refit_bounds_preserve_parallel_court_identity(
     maximum_scene_displacement = (
         common_scale * settings.maximum_center_refit_displacement_metres()
     )
-    assert refit_bounds[0][0] == pytest.approx(
+    assert len(refit_bounds) == 3
+    assert refit_bounds[1][0] == pytest.approx(
         (-maximum_scene_displacement, maximum_scene_displacement)
     )
-    assert refit_bounds[1][0] == pytest.approx(
+    assert refit_bounds[2][0] == pytest.approx(
         (1.0 - maximum_scene_displacement, 1.0 + maximum_scene_displacement)
     )
     assert hypotheses[0].center_uv[0] < hypotheses[1].center_uv[0]

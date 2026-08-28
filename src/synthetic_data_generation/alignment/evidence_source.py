@@ -42,6 +42,7 @@ from src.synthetic_data_generation.alignment.contracts import (
     LineInferenceDeterminismDiagnostics,
     MeasuredCameraLines,
     MetricSceneAdapter,
+    ProposalScoreModel,
     ProposalSearchDiagnostics,
     ProposalSearchStopReason,
 )
@@ -429,6 +430,34 @@ class _ProposalSearchState:
     center_tile_indices: tuple[int, ...]
 
 
+class _ProposalBranchState(Protocol):
+    """Structural branch metadata needed for deterministic full refinement."""
+
+    @property
+    def selected(self) -> tuple[_CourtHypothesis, ...]: ...
+
+    @property
+    def explained_evidence_fractions(self) -> tuple[float, ...]: ...
+
+    @property
+    def orientation_band_indices(self) -> tuple[int, ...]: ...
+
+    @property
+    def center_tile_indices(self) -> tuple[int, ...]: ...
+
+
+@dataclass(frozen=True, slots=True)
+class _ProposalFrontierSnapshot:
+    """Compact frontier history without duplicated residual point arrays."""
+
+    selected: tuple[_CourtHypothesis, ...]
+    explained_evidence_fractions: tuple[float, ...]
+    orientation_band_indices: tuple[int, ...]
+    center_tile_indices: tuple[int, ...]
+    residual_point_count: int
+    residual_evidence_sum: float
+
+
 @dataclass(frozen=True, slots=True)
 class _RefinedCompleteState:
     """One ranked complete state after native and common-scale refinement."""
@@ -449,6 +478,7 @@ class _ResidualEvidenceContext:
     """Read-only residual points and their one reusable nearest-neighbour tree."""
 
     points: NDArray[np.float64]
+    evidence_weights: NDArray[np.float64]
     nearest_tree: cKDTree
 
 
@@ -890,6 +920,7 @@ def _common_scale_refit_retained_hypotheses(
     hypotheses: Sequence[_CourtHypothesis],
     *,
     points: NDArray[np.float64],
+    evidence_weights: NDArray[np.float64],
     bounds: tuple[float, float, float, float],
     seed: int,
     settings: CourtCandidateFitSettings,
@@ -941,6 +972,7 @@ def _common_scale_refit_retained_hypotheses(
         ]
         pose, refit_score = _optimize_court(
             points,
+            evidence_weights=evidence_weights,
             template=template,
             bounds=pose_bounds,
             seed=seed + len(ordered) + candidate_index,
@@ -1107,7 +1139,6 @@ def _proposal_search_after_fit_reliability(
     return replace(
         proposal_search,
         inferred_candidate_count=len(hypotheses),
-        stopping_reason=ProposalSearchStopReason.NO_RELIABLE_PROPOSAL,
         selected_orientation_band_indices=tuple(
             proposal_search.selected_orientation_band_indices[index]
             for index in source_indices
@@ -1202,7 +1233,7 @@ def _retain_fit_reliable_hypotheses(
             source_indices[index] for index in reliable_indices
         )
         selected_hypotheses = tuple(retained[index] for index in reliable_indices)
-        points, _weights = _bounded_fit_evidence(
+        points, weights = _bounded_fit_evidence(
             fit_points_uv,
             evidence_weights=evidence_weights,
             seed=seed,
@@ -1212,6 +1243,7 @@ def _retain_fit_reliable_hypotheses(
             _common_scale_refit_retained_hypotheses(
                 selected_hypotheses,
                 points=points,
+                evidence_weights=weights,
                 bounds=bounds,
                 seed=seed,
                 settings=settings.candidate_fit,
@@ -1788,15 +1820,11 @@ def _bounded_fit_evidence(
     points = np.asarray(fit_points_uv, dtype=np.float64)
     if points.ndim != 2 or points.shape[1] != 2 or not np.isfinite(points).all():
         raise ValueError("Measured fit line points must be a finite (N, 2) array.")
-    weights = np.asarray(evidence_weights, dtype=np.float64)
-    if (
-        weights.shape != (len(points),)
-        or not np.isfinite(weights).all()
-        or np.any(weights <= 0.0)
-    ):
-        raise ValueError(
-            "Measured fit evidence weights must be one positive finite value per point."
-        )
+    weights = _positive_evidence_weights(
+        evidence_weights,
+        point_count=len(points),
+        name="Measured fit evidence_weights",
+    )
     if len(points) < 3:
         raise ValueError(
             "Measured fit line evidence is insufficient for court fitting."
@@ -1809,6 +1837,24 @@ def _bounded_fit_evidence(
         points = points[indices]
         weights = weights[indices]
     return points, weights
+
+
+def _positive_evidence_weights(
+    evidence_weights: NDArray[np.float64],
+    *,
+    point_count: int,
+    name: str,
+) -> NDArray[np.float64]:
+    """Require one positive finite weight per evidence point and finite total mass."""
+    weights = np.asarray(evidence_weights, dtype=np.float64)
+    if (
+        weights.shape != (point_count,)
+        or not np.isfinite(weights).all()
+        or np.any(weights <= 0.0)
+        or not math.isfinite(float(np.sum(weights)))
+    ):
+        raise ValueError(f"{name} must contain one positive finite value per point.")
+    return weights
 
 
 def _fit_court_hypotheses(
@@ -1867,6 +1913,7 @@ def _fit_court_hypotheses(
             center_tile_indices=(),
         ),
     )
+    frontiers: list[tuple[_ProposalFrontierSnapshot, ...]] = []
     explored_tile_state_count = 0
     impossible_tile_state_count = 0
     feasible_proposal_count = 0
@@ -1895,7 +1942,6 @@ def _fit_court_hypotheses(
             float(np.sum(best_state.residual_evidence_weights))
             < minimum_explained_evidence
         ):
-            states = (best_state,)
             stopping_reason = ProposalSearchStopReason.RESIDUAL_EVIDENCE_BELOW_MINIMUM
             break
         expanded: list[_ProposalSearchState] = []
@@ -1906,7 +1952,10 @@ def _fit_court_hypotheses(
                 )
                 continue
             tiled_proposals: list[_TiledProposal] = []
-            residual_evidence = _prepare_residual_evidence(state.residual)
+            residual_evidence = _prepare_residual_evidence(
+                state.residual,
+                state.residual_evidence_weights,
+            )
             residual_state_count += 1
             residual_tree_build_count += 1
             for orientation_band in orientation_bands:
@@ -1914,7 +1963,7 @@ def _fit_court_hypotheses(
                 possible_tiles: list[_CenterTile] = []
                 for center_tile in center_tiles:
                     if _tile_is_geometrically_impossible(
-                        tree=residual_evidence.nearest_tree,
+                        evidence=residual_evidence,
                         tile=center_tile,
                         template_relative_bounds=(
                             template_bounds_by_band[orientation_band]
@@ -2112,67 +2161,76 @@ def _fit_court_hypotheses(
         retained_states = expanded[: settings.maximum_retained_state_count]
         pruned_state_count += len(expanded) - len(retained_states)
         states = tuple(retained_states)
+        frontiers.append(tuple(_proposal_frontier_snapshot(state) for state in states))
     else:
         best_state = min(states, key=_proposal_state_sort_key)
         if (
             float(np.sum(best_state.residual_evidence_weights))
             >= minimum_explained_evidence
         ):
-            raise ValueError(
-                "Court-count inference reached maximum_candidate_count while "
-                "enough weighted residual evidence remained for another court: "
-                f"maximum={settings.maximum_candidate_count},"
-                f"residual_fraction="
-                f"{float(np.sum(best_state.residual_evidence_weights)) / original_evidence_sum:.6f},"
-                f"minimum={settings.minimum_explained_evidence_fraction:.6f}."
-            )
-        states = (best_state,)
-        stopping_reason = ProposalSearchStopReason.RESIDUAL_EVIDENCE_BELOW_MINIMUM
+            stopping_reason = ProposalSearchStopReason.MAXIMUM_CANDIDATE_COUNT_REACHED
+        else:
+            stopping_reason = ProposalSearchStopReason.RESIDUAL_EVIDENCE_BELOW_MINIMUM
 
     if stopping_reason is None:
         raise RuntimeError("Court-count inference ended without a stopping reason.")
+    if not frontiers:
+        raise RuntimeError("Court-count inference stopped without a positive frontier.")
+    terminal_candidate_count = len(frontiers)
 
     complete_states: list[
-        tuple[_ProposalSearchState, float, float, float, int, float]
+        tuple[_ProposalFrontierSnapshot, float, float, float, int, float]
     ] = []
-    for state in states:
-        try:
-            common_scale, maximum_deviation = _resolve_common_scale(
-                np.asarray(
-                    [item.native_nht_scene_units_per_metre for item in state.selected],
-                    dtype=np.float64,
-                ),
-                maximum_relative_deviation=(settings.common_scale_relative_tolerance),
+    feasible_complete_state_counts: list[int] = []
+    for candidate_count, frontier in enumerate(frontiers, start=1):
+        complete_frontier: list[
+            tuple[_ProposalFrontierSnapshot, float, float, float, int, float]
+        ] = []
+        for snapshot in frontier:
+            try:
+                common_scale, maximum_deviation = _resolve_common_scale(
+                    np.asarray(
+                        [
+                            item.native_nht_scene_units_per_metre
+                            for item in snapshot.selected
+                        ],
+                        dtype=np.float64,
+                    ),
+                    maximum_relative_deviation=(
+                        settings.common_scale_relative_tolerance
+                    ),
+                )
+            except ValueError as error:
+                rejection_reasons.append(
+                    f"candidate_count={candidate_count}:scale_incompatible({error})"
+                )
+                continue
+            explained_evidence = original_evidence_sum - snapshot.residual_evidence_sum
+            explained_count = len(original_points) - snapshot.residual_point_count
+            native_score_sum = float(
+                sum(item.native_template_score for item in snapshot.selected)
             )
-        except ValueError as error:
-            rejection_reasons.append(f"scale_incompatible({error})")
-            continue
-        explained_evidence = original_evidence_sum - float(
-            np.sum(state.residual_evidence_weights)
-        )
-        explained_count = len(original_points) - len(state.residual)
-        native_score_sum = float(
-            sum(item.native_template_score for item in state.selected)
-        )
-        complete_states.append(
-            (
-                state,
-                common_scale,
-                maximum_deviation,
-                explained_evidence,
-                explained_count,
-                native_score_sum,
+            complete_frontier.append(
+                (
+                    snapshot,
+                    common_scale,
+                    maximum_deviation,
+                    explained_evidence,
+                    explained_count,
+                    native_score_sum,
+                )
             )
-        )
+        complete_frontier.sort(key=_complete_proposal_state_sort_key)
+        feasible_complete_state_counts.append(len(complete_frontier))
+        complete_states.extend(complete_frontier)
 
     if not complete_states:
         rendered = ";".join(rejection_reasons)
         raise ValueError(
             "Court-count inference retained no common-scale complete state: "
-            f"remaining_states={len(states)}, "
+            f"remaining_states={sum(len(frontier) for frontier in frontiers)}, "
             f"rejections=[{rendered}]."
         )
-    complete_states.sort(key=_complete_proposal_state_sort_key)
     refinement_rejection_reasons: list[str] = []
     refined_state: _RefinedCompleteState | None = None
     selected_complete_state_rank: int | None = None
@@ -2188,9 +2246,27 @@ def _fit_court_hypotheses(
                 center_tiles=center_tiles,
                 seed=seed,
                 settings=settings,
-                stopping_reason=stopping_reason,
-                minimum_explained_evidence=minimum_explained_evidence,
             )
+            refined_residual_evidence = float(
+                np.sum(refined_state.residual_evidence_weights)
+            )
+            candidate_count = len(candidate_state.selected)
+            terminal_no_proposal = (
+                stopping_reason is ProposalSearchStopReason.NO_RELIABLE_PROPOSAL
+                and candidate_count == terminal_candidate_count
+            )
+            if (
+                refined_residual_evidence >= minimum_explained_evidence
+                and not terminal_no_proposal
+            ):
+                raise ValueError(
+                    "Refined complete state left enough weighted residual evidence "
+                    "for another court: "
+                    f"candidate_count={candidate_count},"
+                    f"residual_fraction="
+                    f"{refined_residual_evidence / original_evidence_sum:.6f},"
+                    f"minimum={settings.minimum_explained_evidence_fraction:.6f}."
+                )
         except ValueError as error:
             refinement_rejection_reasons.append(f"rank={rank}({error})")
             continue
@@ -2198,12 +2274,19 @@ def _fit_court_hypotheses(
         break
     if refined_state is None or selected_complete_state_rank is None:
         rendered = ";".join(refinement_rejection_reasons)
+        maximum_prefix = (
+            "Court-count inference reached maximum_candidate_count and "
+            if stopping_reason
+            is ProposalSearchStopReason.MAXIMUM_CANDIDATE_COUNT_REACHED
+            else "Court-count inference "
+        )
         raise ValueError(
-            "Court-count inference rejected every common-scale complete state "
+            f"{maximum_prefix}rejected every common-scale complete state "
             "during refinement: "
             f"feasible_complete_states={len(complete_states)},"
             f"rejections=[{rendered}]."
         )
+    selected_complete_state_candidate_count = len(refined_state.hypotheses)
 
     refitted = refined_state.hypotheses
     common_scale = refined_state.common_scale
@@ -2219,6 +2302,7 @@ def _fit_court_hypotheses(
         np.sum(original_residual_weights)
     )
     proposal_search = ProposalSearchDiagnostics(
+        score_model=(ProposalScoreModel.WEIGHTED_COVERAGE_FLOOR_GAUSSIAN_V1),
         orientation_band_count=len(orientation_bands),
         center_tile_count=len(center_tiles),
         maximum_center_tile_width_scene_units=maximum_tile_width,
@@ -2236,9 +2320,14 @@ def _fit_court_hypotheses(
         expanded_state_count=expanded_state_count,
         pruned_state_count=pruned_state_count,
         feasible_complete_state_count=len(complete_states),
+        frontier_state_counts=tuple(len(frontier) for frontier in frontiers),
+        feasible_complete_state_counts=tuple(feasible_complete_state_counts),
         refinement_attempt_count=selected_complete_state_rank + 1,
         refinement_rejected_state_count=selected_complete_state_rank,
         selected_complete_state_rank=selected_complete_state_rank,
+        selected_complete_state_candidate_count=(
+            selected_complete_state_candidate_count
+        ),
         inferred_candidate_count=len(refitted),
         stopping_reason=stopping_reason,
         minimum_explained_evidence_fraction=(
@@ -2264,7 +2353,7 @@ def _fit_court_hypotheses(
 
 
 def _refine_complete_proposal_state(
-    selected_state: _ProposalSearchState,
+    selected_state: _ProposalBranchState,
     *,
     points: NDArray[np.float64],
     evidence_weights: NDArray[np.float64],
@@ -2274,14 +2363,13 @@ def _refine_complete_proposal_state(
     center_tiles: Sequence[_CenterTile],
     seed: int,
     settings: CourtCandidateFitSettings,
-    stopping_reason: ProposalSearchStopReason,
-    minimum_explained_evidence: float,
 ) -> _RefinedCompleteState:
     """Refine and common-scale refit one ranked complete search state."""
     native_hypotheses = list(
         _refine_selected_native_hypotheses(
             selected_state,
             points=points,
+            evidence_weights=evidence_weights,
             template=template,
             orientation_bands=orientation_bands,
             center_tiles=center_tiles,
@@ -2306,13 +2394,6 @@ def _refine_complete_proposal_state(
         evidence_weights=evidence_weights,
         settings=settings,
     )
-    if (
-        stopping_reason is ProposalSearchStopReason.RESIDUAL_EVIDENCE_BELOW_MINIMUM
-        and float(np.sum(residual_evidence_weights)) >= minimum_explained_evidence
-    ):
-        raise ValueError(
-            "Common-scale refinement invalidated the residual-evidence stopping gate."
-        )
     native_score_sum = float(
         sum(item.native_template_score for item in native_hypotheses)
     )
@@ -2386,6 +2467,7 @@ def _refine_complete_proposal_state(
         ]
         pose, refit_score = _optimize_court(
             points,
+            evidence_weights=evidence_weights,
             template=template,
             bounds=pose_bounds,
             seed=seed + len(native_hypotheses) + candidate_index,
@@ -2441,6 +2523,22 @@ def _refine_complete_proposal_state(
                 ),
             )
         )
+    refitted_by_search_depth = tuple(
+        refitted[sort_order.index(depth_index)] for depth_index in range(len(refitted))
+    )
+    (
+        depth_explained_fractions,
+        residual,
+        residual_evidence_weights,
+    ) = _proposal_explanation_for_hypotheses(
+        refitted_by_search_depth,
+        points=points,
+        evidence_weights=evidence_weights,
+        settings=settings,
+    )
+    refined_explained_fractions = tuple(
+        depth_explained_fractions[index] for index in sort_order
+    )
     return _RefinedCompleteState(
         hypotheses=tuple(refitted),
         common_scale=common_scale,
@@ -2477,10 +2575,10 @@ def _proposal_explanation_for_hypotheses(
             residual_weights,
             parameters=np.asarray(
                 (
-                    hypothesis.native_center_uv[0],
-                    hypothesis.native_center_uv[1],
-                    hypothesis.native_orientation_radians,
-                    hypothesis.native_nht_scene_units_per_metre,
+                    hypothesis.center_uv[0],
+                    hypothesis.center_uv[1],
+                    hypothesis.orientation_radians,
+                    hypothesis.nht_scene_units_per_metre,
                 ),
                 dtype=np.float64,
             ),
@@ -2500,9 +2598,10 @@ def _proposal_explanation_for_hypotheses(
 
 
 def _refine_selected_native_hypotheses(
-    selected_state: _ProposalSearchState,
+    selected_state: _ProposalBranchState,
     *,
     points: NDArray[np.float64],
+    evidence_weights: NDArray[np.float64],
     template: NDArray[np.float64],
     orientation_bands: Sequence[tuple[float, float]],
     center_tiles: Sequence[_CenterTile],
@@ -2519,6 +2618,7 @@ def _refine_selected_native_hypotheses(
     ):
         raise RuntimeError("Selected proposal branch metadata is incomplete.")
     residual = points
+    residual_weights = evidence_weights
     refined: list[_CourtHypothesis] = []
     for depth, (band_index, tile_index) in enumerate(
         zip(
@@ -2531,6 +2631,7 @@ def _refine_selected_native_hypotheses(
         center_tile = center_tiles[tile_index]
         parameters, measured_score = _optimize_court(
             residual,
+            evidence_weights=residual_weights,
             template=template,
             bounds=[
                 center_tile.u_bounds,
@@ -2591,8 +2692,9 @@ def _refine_selected_native_hypotheses(
             raise ValueError(
                 f"Selected basin refinement at depth {depth} violates topology."
             )
-        suppressed = _suppress_assigned_points(
+        suppressed, suppressed_weights = _suppress_assigned_evidence(
             residual,
+            residual_weights,
             parameters=parameters,
             assignment_distance_metres=settings.evidence_assignment_distance_metres,
         )
@@ -2623,6 +2725,7 @@ def _refine_selected_native_hypotheses(
             )
         )
         residual = suppressed
+        residual_weights = suppressed_weights
     return tuple(refined)
 
 
@@ -2660,6 +2763,7 @@ def _optimize_center_tiles(
         ]
         parameters, measured_score = _optimize_court(
             evidence.points,
+            evidence_weights=evidence.evidence_weights,
             template=template,
             bounds=search_bounds,
             seed=_proposal_branch_seed(
@@ -2684,6 +2788,7 @@ def _optimize_center_tiles(
 def _optimize_court(
     points: NDArray[np.float64],
     *,
+    evidence_weights: NDArray[np.float64],
     template: NDArray[np.float64],
     bounds: Sequence[tuple[float, float]],
     seed: int,
@@ -2695,12 +2800,22 @@ def _optimize_court(
     polish: bool = True,
     evidence_context: _ResidualEvidenceContext | None = None,
 ) -> tuple[NDArray[np.float64], float]:
+    """Optimize the lower of whole-template and confidence-weighted coverage."""
+    weights = _positive_evidence_weights(
+        evidence_weights,
+        point_count=len(points),
+        name="optimizer evidence_weights",
+    )
     if evidence_context is None:
         tree = cKDTree(points)
     else:
         if points is not evidence_context.points:
             raise ValueError(
                 "Prepared residual evidence must be passed with its exact point view."
+            )
+        if evidence_weights is not evidence_context.evidence_weights:
+            raise ValueError(
+                "Prepared residual evidence must be passed with its exact weight view."
             )
         tree = evidence_context.nearest_tree
 
@@ -2747,7 +2862,7 @@ def _optimize_court(
             :, 3, None
         ] + active[:, 1, None]
         transformed = np.stack((transformed_x, transformed_y), axis=2)
-        distances, _indices = tree.query(
+        distances, indices = tree.query(
             transformed.reshape(-1, 2),
             k=1,
             workers=1,
@@ -2756,10 +2871,15 @@ def _optimize_court(
             len(active), len(template)
         )
         widths = active[:, 3] * settings.score_distance_metres
-        result[valid] = np.mean(
-            np.exp(-0.5 * np.square(distance_matrix / widths[:, None])),
+        kernels = np.exp(-0.5 * np.square(distance_matrix / widths[:, None]))
+        nearest_weights = weights[
+            np.asarray(indices, dtype=np.intp).reshape(len(active), len(template))
+        ]
+        weighted_scores = np.sum(nearest_weights * kernels, axis=1) / np.sum(
+            nearest_weights,
             axis=1,
         )
+        result[valid] = np.minimum(np.mean(kernels, axis=1), weighted_scores)
         return result
 
     def score(values: NDArray[np.float64]) -> float:
@@ -2880,15 +3000,24 @@ def _maximum_center_tile_width_scene_units(
 
 def _prepare_residual_evidence(
     points: NDArray[np.float64],
+    evidence_weights: NDArray[np.float64],
 ) -> _ResidualEvidenceContext:
-    """Build the sole nearest-neighbour tree for one residual proposal state."""
+    """Build one weight-aligned nearest-neighbour context per residual state."""
     values = np.asarray(points, dtype=np.float64)
     if values.ndim != 2 or values.shape[1] != 2 or not np.isfinite(values).all():
         raise ValueError("Residual proposal evidence must be a finite (N, 2) array.")
+    weights = _positive_evidence_weights(
+        evidence_weights,
+        point_count=len(values),
+        name="Residual evidence_weights",
+    )
     read_only = values.view()
     read_only.setflags(write=False)
+    read_only_weights = weights.view()
+    read_only_weights.setflags(write=False)
     return _ResidualEvidenceContext(
         points=read_only,
+        evidence_weights=read_only_weights,
         nearest_tree=cKDTree(read_only),
     )
 
@@ -2958,7 +3087,7 @@ def _center_space_tiles(
 
 def _tile_is_geometrically_impossible(
     *,
-    tree: cKDTree,
+    evidence: _ResidualEvidenceContext,
     tile: _CenterTile,
     template_relative_bounds: NDArray[np.float64],
     settings: CourtCandidateFitSettings,
@@ -2998,7 +3127,11 @@ def _tile_is_geometrically_impossible(
     )
     box_centers = (box_minimum + box_maximum) / 2.0
     box_half_diagonals = np.linalg.norm((box_maximum - box_minimum) / 2.0, axis=1)
-    nearest_to_centers, _indices = tree.query(box_centers, k=1, workers=1)
+    nearest_to_centers, _indices = evidence.nearest_tree.query(
+        box_centers,
+        k=1,
+        workers=1,
+    )
     distance_lower_bounds = np.maximum(
         np.asarray(nearest_to_centers, dtype=np.float64) - box_half_diagonals,
         0.0,
@@ -3124,6 +3257,20 @@ def _proposal_branch_seed(
     return value
 
 
+def _proposal_frontier_snapshot(
+    state: _ProposalSearchState,
+) -> _ProposalFrontierSnapshot:
+    """Retain only bounded ranking/refinement metadata for one completed layer."""
+    return _ProposalFrontierSnapshot(
+        selected=state.selected,
+        explained_evidence_fractions=state.explained_evidence_fractions,
+        orientation_band_indices=state.orientation_band_indices,
+        center_tile_indices=state.center_tile_indices,
+        residual_point_count=len(state.residual),
+        residual_evidence_sum=float(np.sum(state.residual_evidence_weights)),
+    )
+
+
 def _proposal_state_sort_key(
     state: _ProposalSearchState,
 ) -> tuple[
@@ -3146,7 +3293,7 @@ def _proposal_state_sort_key(
 
 
 def _complete_proposal_state_sort_key(
-    value: tuple[_ProposalSearchState, float, float, float, int, float],
+    value: tuple[_ProposalFrontierSnapshot, float, float, float, int, float],
 ) -> tuple[
     float,
     int,

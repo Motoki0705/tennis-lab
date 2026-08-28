@@ -223,7 +223,7 @@ def test_excluded_camera_diagnostics_round_trip_and_reject_reason_tampering(
     )
 
     assert validated.to_dict() == result.to_dict()
-    assert persisted_evidence["schema"] == "alignment_measured_evidence_v10"
+    assert persisted_evidence["schema"] == "alignment_measured_evidence_v11"
     assert persisted_evidence["excluded_cameras"] == [
         item.to_dict() for item in exclusions
     ]
@@ -358,6 +358,30 @@ def test_proposal_search_archive_rejects_refinement_rank_tampering(
 
     with pytest.raises(ValueError, match="attempts must equal rejected states"):
         validate_alignment_outputs(staging)
+
+
+def test_proposal_search_rejects_inconsistent_frontier_history(
+    alignment_evidence: AlignmentEvidence,
+) -> None:
+    proposal = alignment_evidence.diagnostics.proposal_search
+
+    with pytest.raises(ValueError, match="disagree with their total"):
+        replace(
+            proposal,
+            feasible_complete_state_counts=(1, 1),
+        )
+    with pytest.raises(ValueError, match="rank disagrees with per-depth ordering"):
+        replace(
+            proposal,
+            selected_complete_state_candidate_count=1,
+        )
+    with pytest.raises(ValueError, match="expanded and pruned state counts"):
+        replace(
+            proposal,
+            frontier_state_counts=(1,),
+            feasible_complete_state_counts=(1,),
+            selected_complete_state_candidate_count=1,
+        )
 
 
 def test_whole_court_policy_and_recomputed_metrics_round_trip(

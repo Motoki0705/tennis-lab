@@ -87,12 +87,19 @@ Alignment uses measured court-line evidence with disjoint fit and holdout
 partitions. The fixed camera prefix and its immutable partition units are chosen
 without assuming a court count. Fit views alone form a common weighted ground
 grid; bounded residual search adds regulation-court candidates only while each
-one explains the configured minimum fraction of weighted evidence. The search
-stops when the remaining evidence is below that gate or no reliable additional
-proposal exists, and fails closed for zero courts or an exhausted configured
-maximum with unexplained evidence. Holdout views are evaluated once after the
-positive court count is frozen and never drive count reselection. Only accepted
-results publish a `MultiCourtLayout` containing every accepted court,
+one explains the configured minimum fraction of weighted evidence. Every
+proposal and common-scale refinement uses the same probability-and-proximity
+weighted coverage-floor objective, which cannot trade away whole-template
+coverage for a small high-confidence fragment. Bounded beam frontiers are
+retained by candidate count. After search termination they are refined from the
+smallest count upward, and
+the first fully valid frontier whose final weighted residual satisfies the gate
+is selected. A terminal frontier may retain residual clutter only when no
+reliable additional proposal exists. The search fails closed for zero courts or
+an exhausted configured maximum without a valid refined frontier. Holdout views
+are evaluated once after the positive court count is frozen and never drive
+count reselection. Only accepted results publish a `MultiCourtLayout`
+containing every accepted court,
 reciprocal metric transforms, complex bounds, and fit/holdout metrics. The
 alignment owner also publishes `line-heatmaps/`: raw detector heatmaps for every
 selected view, proximity-weighted ground-plane heatmaps for every view, and
