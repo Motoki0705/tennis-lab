@@ -445,7 +445,7 @@ def _compose_with_nht_config_root(root: Path) -> DictConfig:
     config = _compose()
     data_root = root.parent / "data"
     data_root.mkdir(exist_ok=True)
-    source_video = data_root / "synthetic_data_generation/raw/tennis_court.mp4"
+    source_video = data_root / "synthetic_data_generation/raw/B00.mp4"
     source_video.parent.mkdir(parents=True)
     source_video.write_bytes(b"configuration fixture")
     backbone = (

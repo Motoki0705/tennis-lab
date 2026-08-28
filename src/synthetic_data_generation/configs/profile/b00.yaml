@@ -3,6 +3,6 @@ profile: b00-production
 
 request:
   scene_id: B00
-  source_video: synthetic_data_generation/raw/tennis_court.mp4
+  source_video: synthetic_data_generation/raw/B00.mp4
   targets: [court, blcs, plcs]
   from_stage: ingest

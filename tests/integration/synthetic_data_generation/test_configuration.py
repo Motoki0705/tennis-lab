@@ -55,7 +55,7 @@ pytestmark = pytest.mark.local_data
 def _resource_repository_root() -> Path:
     for candidate in (PROJECT_ROOT, *PROJECT_ROOT.parents):
         if (
-            candidate / "data/synthetic_data_generation/raw/tennis_court.mp4"
+            candidate / "data/synthetic_data_generation/raw/B00.mp4"
         ).is_file() and (
             candidate / "third_party/nht/configs/production.yaml"
         ).is_file():
