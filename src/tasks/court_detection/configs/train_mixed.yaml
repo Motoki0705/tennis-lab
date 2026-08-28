@@ -1,0 +1,22 @@
+defaults:
+  - paths: default
+  - data: default
+  - override data/source: synthetic_court
+  - override data/processing: all
+  - model: hierarchical
+  - loss: default
+  - training: default
+  - run: train
+  - render_style: default
+  - data/source@mixed.sources.tennis_court_detector: tennis_court_detector
+  - _self_
+
+mixed:
+  sources:
+    synthetic_court: ${data.source}
+  train_batch_counts:
+    synthetic_court: 4
+    tennis_court_detector: 4
+
+run:
+  output_dir: court_detection/mixed
