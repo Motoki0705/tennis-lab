@@ -21,7 +21,6 @@ _OPERATION_ENVIRONMENT_NAMES = (
     build_module.BUILD_CUDA_OPS,
     build_module.CUDA_OPS_BUILD_TARGET,
     build_module.DINO_OPS_BUILD_CONFIG,
-    "TENNIS_LAB_FORCE_MOE_REFERENCE",
     "TENNIS_LAB_FORCE_TIME_LOCAL_REFERENCE",
     "TENNIS_LAB_USE_TIME_LOCAL_CUDA",
 )
@@ -80,20 +79,10 @@ def _build_mapping(project_root: Path) -> dict[str, object]:
         "source": "DINO/ops/src",
         "destination_role": "cache",
         "destination": "dino_ops/src",
-        "moe_bindings": "src/utils/models/components/ops/moe/csrc/moe.cpp",
-        "moe_kernels": "src/utils/models/components/ops/moe/csrc/moe_cuda.cu",
-        "time_local_bindings": (
-            "src/utils/models/components/ops/time_local/csrc/time_local.cpp"
-        ),
-        "time_local_kernels": (
-            "src/utils/models/components/ops/time_local/csrc/time_local_cuda.cu"
-        ),
-        "compressed_time_local_bindings": (
-            "src/utils/models/components/ops/compressed_time_local/bindings.cpp"
-        ),
-        "compressed_time_local_kernels": (
-            "src/utils/models/components/ops/compressed_time_local/kernels.cu"
-        ),
+        "time_local_bindings": "src/utils/models/components/ops/time_local/csrc/time_local.cpp",
+        "time_local_kernels": "src/utils/models/components/ops/time_local/csrc/time_local_cuda.cu",
+        "compressed_time_local_bindings": "src/utils/models/components/ops/compressed_time_local/bindings.cpp",
+        "compressed_time_local_kernels": "src/utils/models/components/ops/compressed_time_local/kernels.cu",
     }
 
 
