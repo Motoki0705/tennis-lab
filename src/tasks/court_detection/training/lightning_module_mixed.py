@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import cast
+from typing import Any, cast
 
 from torch import Tensor
 
@@ -49,7 +49,7 @@ class MixedCourtDetectionLightningModule(CourtDetectionLightningModule):
             execution_boundary=raw_model_io.execution_boundary,
         )
         mixed.validate_model_pair(self.model)
-        self.model_io = mixed
+        cast(Any, self).model_io = mixed
         self.consistency_instrumented = mixed.consistency_instrumented
 
     def _shared_step(
