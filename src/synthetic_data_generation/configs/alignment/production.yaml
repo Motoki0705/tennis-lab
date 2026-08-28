@@ -60,7 +60,9 @@ evidence:
     minimum_projected_points_per_camera: 20
 
   candidate_fit:
-    candidate_count: 2
+    maximum_candidate_count: 8
+    maximum_retained_state_count: 128
+    minimum_explained_evidence_fraction: 0.05
     samples_per_metre: 6.0
     minimum_nht_scene_units_per_metre: 0.055
     maximum_nht_scene_units_per_metre: 0.085

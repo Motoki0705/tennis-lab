@@ -383,7 +383,7 @@ def _evidence_archive(evidence: AlignmentEvidence) -> dict[str, NDArray[Any]]:
     )
     whole_court = evidence.whole_court_settings
     return {
-        "schema": np.asarray("semantic_ground_line_correspondences_v11"),
+        "schema": np.asarray("semantic_ground_line_correspondences_v12"),
         "primary_candidate_id": np.asarray(evidence.primary_candidate_id or ""),
         "candidate_ids": np.asarray(
             [candidate.candidate_id for candidate in evidence.candidates], dtype=np.str_
@@ -644,7 +644,7 @@ def _load_evidence_archive(path: Path) -> AlignmentEvidence:
     if (
         schema.ndim != 0
         or schema.dtype.kind != "U"
-        or str(schema.item()) != "semantic_ground_line_correspondences_v11"
+        or str(schema.item()) != "semantic_ground_line_correspondences_v12"
     ):
         raise ValueError("Unsupported ground-line correspondence schema.")
     primary = arrays["primary_candidate_id"]

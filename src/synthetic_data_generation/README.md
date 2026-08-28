@@ -84,12 +84,20 @@ tennis-lab still imports no NHT Python internals and fails closed when a public
 command or the dedicated trainer runtime is unavailable.
 
 Alignment uses measured court-line evidence with disjoint fit and holdout
-partitions. Only accepted results publish a `MultiCourtLayout` containing every
-accepted court, reciprocal metric transforms, complex bounds, and fit/holdout
-metrics. The alignment owner also publishes `line-heatmaps/`: raw detector
-heatmaps for every selected view, proximity-weighted ground-plane heatmaps for
-every view, and their weighted aggregate on one common ground grid. The numeric
-archive is the validation authority for the PNG diagnostics.
+partitions. The fixed camera prefix and its immutable partition units are chosen
+without assuming a court count. Fit views alone form a common weighted ground
+grid; bounded residual search adds regulation-court candidates only while each
+one explains the configured minimum fraction of weighted evidence. The search
+stops when the remaining evidence is below that gate or no reliable additional
+proposal exists, and fails closed for zero courts or an exhausted configured
+maximum with unexplained evidence. Holdout views are evaluated once after the
+positive court count is frozen and never drive count reselection. Only accepted
+results publish a `MultiCourtLayout` containing every accepted court,
+reciprocal metric transforms, complex bounds, and fit/holdout metrics. The
+alignment owner also publishes `line-heatmaps/`: raw detector heatmaps for every
+selected view, proximity-weighted ground-plane heatmaps for every view, and
+their weighted aggregate on one common ground grid. The numeric archive is the
+validation authority for the PNG diagnostics.
 
 ## Dataset domains
 

@@ -73,23 +73,29 @@ def test_b00_configuration_is_the_canonical_scene_request() -> None:
     assert runtime.request.config_schema == SCENE_PIPELINE_SCHEMA
     assert runtime.request.from_stage is StageName.INGEST
     assert runtime.request.targets == frozenset(DatasetTarget)
-    assert runtime.workspace.root == (
-        PROJECT_ROOT / "data/synthetic_data_generation/scenes/B00"
-    ).resolve()
+    assert (
+        runtime.workspace.root
+        == (PROJECT_ROOT / "data/synthetic_data_generation/scenes/B00").resolve()
+    )
     assert "B01" not in runtime.workspace.root.parts
     assert "B02" not in runtime.workspace.root.parts
-    assert runtime.nht.pipeline_config.path == (
-        runtime.resolver.roots.external_asset_root / "nht/configs/production.yaml"
-    ).resolve()
+    assert (
+        runtime.nht.pipeline_config.path
+        == (
+            runtime.resolver.roots.external_asset_root / "nht/configs/production.yaml"
+        ).resolve()
+    )
     assert runtime.nht.pipeline_config.schema == NHT_PIPELINE_CONFIG_SCHEMA
     assert runtime.nht.training_runtime.python == (
-        runtime.resolver.roots.external_asset_root
-        / "nht/.trainer-venv/bin/python"
+        runtime.resolver.roots.external_asset_root / "nht/.trainer-venv/bin/python"
     )
-    assert runtime.nht.training_runtime.trainer == (
-        runtime.resolver.roots.external_asset_root
-        / "nht/gsplat/examples/simple_trainer_nht.py"
-    ).resolve()
+    assert (
+        runtime.nht.training_runtime.trainer
+        == (
+            runtime.resolver.roots.external_asset_root
+            / "nht/gsplat/examples/simple_trainer_nht.py"
+        ).resolve()
+    )
 
 
 def test_b00_quantitative_and_full_timeline_values_are_config_owned() -> None:
@@ -196,18 +202,25 @@ def test_production_alignment_evidence_and_acceptance_are_complete_typed_values(
         evidence.minimum_holdout_cameras,
         evidence.camera_prefix_count,
     ) == (42, 2.0 / 3.0, 1.0 / 3.0, 8, 4, 48)
-    assert evidence.expected_camera_prefix_count() == 48
-    assert evidence.line_model.checkpoint_path == (
-        resolver.roots.checkpoint_root
-        / "court_detection/line/court-detection-epoch19.ckpt"
-    ).resolve()
-    assert evidence.line_model.backbone_repository_path == (
-        resolver.roots.external_asset_root / "dinov3"
-    ).resolve()
-    assert evidence.line_model.backbone_checkpoint_path == (
-        resolver.roots.external_asset_root
-        / "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
-    ).resolve()
+    assert evidence.camera_partition_unit_count() == 4
+    assert (
+        evidence.line_model.checkpoint_path
+        == (
+            resolver.roots.checkpoint_root
+            / "court_detection/line/court-detection-epoch19.ckpt"
+        ).resolve()
+    )
+    assert (
+        evidence.line_model.backbone_repository_path
+        == (resolver.roots.external_asset_root / "dinov3").resolve()
+    )
+    assert (
+        evidence.line_model.backbone_checkpoint_path
+        == (
+            resolver.roots.external_asset_root
+            / "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+        ).resolve()
+    )
     assert (
         evidence.line_model.device,
         evidence.line_model.expected_short_side,
@@ -263,7 +276,9 @@ def test_production_alignment_evidence_and_acceptance_are_complete_typed_values(
         20,
     )
     assert astuple(evidence.candidate_fit) == (
-        2,
+        8,
+        128,
+        0.05,
         6.0,
         0.055,
         0.085,
@@ -329,12 +344,14 @@ def test_blcs_and_plcs_production_inputs_are_typed_and_have_no_frame_subset() ->
     assert runtime.blcs.assets.settings.visibility_threshold == 0.0001
     assert runtime.blcs.render_timeout_seconds == runtime.nht.render_timeout_seconds
 
-    assert runtime.plcs.accad_root == (
-        runtime.resolver.roots.data_root / "ACCAD"
-    ).resolve()
-    assert runtime.plcs.smplh_model_root == (
-        runtime.resolver.roots.data_root / "smplh"
-    ).resolve()
+    assert (
+        runtime.plcs.accad_root
+        == (runtime.resolver.roots.data_root / "ACCAD").resolve()
+    )
+    assert (
+        runtime.plcs.smplh_model_root
+        == (runtime.resolver.roots.data_root / "smplh").resolve()
+    )
     assert runtime.plcs.scene_splits == {
         "B00": "train",
         "B00-plcs-002": "train",
@@ -353,7 +370,9 @@ def test_blcs_and_plcs_production_inputs_are_typed_and_have_no_frame_subset() ->
     assert runtime.plcs.appearance.appearance_model == "rgb"
     assert runtime.plcs.appearance.appearance_space == "linear_rgb"
     assert len(runtime.plcs.appearance.colors) == 6
-    assert runtime.plcs.appearance.color_for_object(6) == runtime.plcs.appearance.colors[0]
+    assert (
+        runtime.plcs.appearance.color_for_object(6) == runtime.plcs.appearance.colors[0]
+    )
     assert runtime.plcs.render_timeout_seconds == runtime.nht.render_timeout_seconds
 
 
@@ -448,10 +467,7 @@ def _compose_with_nht_config_root(root: Path) -> DictConfig:
     source_video = data_root / "synthetic_data_generation/raw/B00.mp4"
     source_video.parent.mkdir(parents=True)
     source_video.write_bytes(b"configuration fixture")
-    backbone = (
-        root
-        / "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
-    )
+    backbone = root / "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
     backbone.parent.mkdir(parents=True, exist_ok=True)
     backbone.write_bytes(b"configuration fixture")
     OmegaConf.update(

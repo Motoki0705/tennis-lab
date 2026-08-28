@@ -30,6 +30,7 @@ from src.synthetic_data_generation.alignment.contracts import (
     MetricSceneAdapter,
     PartitionThresholds,
     ProposalSearchDiagnostics,
+    ProposalSearchStopReason,
 )
 from src.synthetic_data_generation.alignment.fitting import fit_alignment
 from src.synthetic_data_generation.alignment.handler import AlignmentStageHandler
@@ -196,8 +197,7 @@ def _evidence() -> AlignmentEvidence:
                 ownership_rule=(CameraOwnershipRule.FIXED_UNIT_EVEN_HOLDOUT_SLOTS_V1),
                 requested_camera_count=4,
                 available_camera_count=4,
-                candidate_count=2,
-                orientation_family_count=1,
+                partition_unit_count=2,
                 fit_cameras_per_unit=1,
                 holdout_cameras_per_unit=1,
                 camera_prefix_ids=("fit-0", "holdout-0", "fit-1", "holdout-1"),
@@ -244,7 +244,8 @@ def _evidence() -> AlignmentEvidence:
                 orientation_band_count=1,
                 center_tile_count=1,
                 maximum_center_tile_width_scene_units=1.0,
-                maximum_complete_branch_count=1,
+                maximum_candidate_count=2,
+                maximum_retained_state_count=1,
                 maximum_tile_state_count=2,
                 maximum_residual_state_count=2,
                 residual_state_count=2,
@@ -255,12 +256,23 @@ def _evidence() -> AlignmentEvidence:
                 duplicate_proposal_count=0,
                 retained_proposal_count=2,
                 expanded_state_count=2,
+                pruned_state_count=0,
                 feasible_complete_state_count=1,
+                inferred_candidate_count=2,
+                stopping_reason=(
+                    ProposalSearchStopReason.RESIDUAL_EVIDENCE_BELOW_MINIMUM
+                ),
+                minimum_explained_evidence_fraction=0.3,
                 selected_orientation_band_indices=(0, 0),
                 selected_center_tile_indices=(0, 0),
+                selected_candidate_explained_evidence_fractions=(0.4, 0.35),
                 original_point_count=100,
                 selected_residual_point_count=25,
                 selected_explained_point_count=75,
+                original_evidence_sum=100.0,
+                selected_residual_evidence_sum=25.0,
+                selected_explained_evidence_sum=75.0,
+                selected_explained_evidence_fraction=0.75,
                 selected_native_score_sum=1.7,
             ),
             excluded_cameras=(),
@@ -281,7 +293,7 @@ def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
             for item in selection.excluded_cameras
         }
     )
-    observed = set(selection.observed_camera_ids)
+    fit_ids = set(evidence.diagnostics.evaluation.fit_camera_ids)
     return AlignmentLineHeatmaps(
         bounds_uv=(-1.0, 1.0, -1.0, 1.0),
         grid_spacing=0.25,
@@ -300,10 +312,8 @@ def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
                 projected_probabilities=np.full(
                     counts[camera_id], 0.75, dtype=np.float32
                 ),
-                proximity_weights=np.full(
-                    counts[camera_id], 0.8, dtype=np.float64
-                ),
-                included_in_aggregate=camera_id in observed,
+                proximity_weights=np.full(counts[camera_id], 0.8, dtype=np.float64),
+                included_in_aggregate=camera_id in fit_ids,
             )
             for camera_id in selection.camera_prefix_ids
         ),
