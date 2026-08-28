@@ -43,7 +43,6 @@ from src.tasks.plcs.court_keypoint_contract import PLCS_GENERATED_DATASET_SCHEMA
 from src.tasks.plcs.model_io import (
     resolve_plcs_track_query_reference_contract,
     validate_plcs_checkpoint_court_keypoints,
-    validate_plcs_checkpoint_normalization,
     validate_plcs_checkpoint_track_query_reference,
 )
 from src.tasks.plcs.training.composition import (
@@ -62,7 +61,10 @@ from src.utils.configuration import (
     UnknownConfigurationKeyError,
 )
 from src.utils.hydra import register_boundary_validator
-from src.utils.schema.court_normalization import CourtCoordinateNormalization
+from src.utils.schema.court_normalization import (
+    denormalize_court_position,
+    validate_court_coordinate_normalization,
+)
 
 _PASS_NAMES = ("same_side", "opposite_side")
 _TRAINER_FIELDS = frozenset(
@@ -192,13 +194,6 @@ class PLCSReferenceCounterfactualConfig:
             raise SemanticConfigurationError(
                 "data.evaluation_reference_camera_id is owned by the persisted-side manifest."
             )
-        normalization = require_config_mapping(
-            root, "court_coordinate_normalization", path="configuration"
-        )
-        if normalization.get("version") != "v2":
-            raise SemanticConfigurationError(
-                "PLCS counterfactual evaluation requires normalization v2."
-            )
         runtime = PLCSTrainingConfig.from_config(task_config)
         if (
             runtime.shared.run.resume is not None
@@ -320,7 +315,6 @@ def build_plcs_counterfactual_pass(
     side: ReferenceCounterfactualSide,
     identity: ReferenceCounterfactualRunIdentity,
     manifest: ReferenceCounterfactualManifest,
-    normalization: CourtCoordinateNormalization,
     window_bounds: Mapping[str, tuple[int, int]],
 ) -> ReferenceCounterfactualPass:
     """Adapt one PLCS raw Lightning payload without reproducing pair metrics."""
@@ -385,8 +379,8 @@ def build_plcs_counterfactual_pass(
         )
     valid_mask = np.asarray(target_presence & frame_valid[..., None], dtype=np.bool_)
     rows: list[ReferenceCounterfactualPassRow] = []
-    target_metres = np.asarray(normalization.denormalize_position(target_norm))
-    prediction_metres = np.asarray(normalization.denormalize_position(prediction_norm))
+    target_metres = np.asarray(denormalize_court_position(target_norm))
+    prediction_metres = np.asarray(denormalize_court_position(prediction_norm))
     for index in range(batch_size):
         scene_id = str(scene_ids[index])
         scene = manifest.scene(scene_id)
@@ -640,8 +634,10 @@ def run_plcs_reference_counterfactual(
         raise ReferenceCounterfactualError(
             "PLCS counterfactual checkpoint root must be a mapping."
         )
-    normalization = plcs_runtime.court_coordinate_normalization.contract
-    validate_plcs_checkpoint_normalization(checkpoint, normalization)
+    validate_court_coordinate_normalization(
+        checkpoint,
+        artifact=f"PLCS counterfactual checkpoint {runtime.checkpoint_path}",
+    )
     validate_plcs_checkpoint_court_keypoints(
         checkpoint,
         plcs_runtime.court_keypoint_contract,
@@ -689,7 +685,6 @@ def run_plcs_reference_counterfactual(
             side=typed_side,
             identity=identity,
             manifest=manifest,
-            normalization=normalization,
             window_bounds=windows,
         )
     report = evaluate_reference_counterfactual(

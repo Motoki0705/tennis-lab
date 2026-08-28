@@ -292,7 +292,6 @@ def test_plcs_training_bundles_are_complete_and_matched_except_selector() -> Non
         argv = shlex.split(cast("str", metadata[selector_mode]["command"]))
         for invariant in (
             "CUDA_VISIBLE_DEVICES=0",
-            "court_coordinate_normalization=v2",
             "court_keypoints=camera_view_v2",
             "model.cswa.backend=cuda",
             "data.scene_dir=plcs/multi_object_camera_view_norm-v2",

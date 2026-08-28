@@ -139,7 +139,6 @@ def test_registered_runs_are_a_seeded_matched_pair() -> None:
     for argv in (reference_argv, selector_zero_argv):
         for invariant in (
             "CUDA_VISIBLE_DEVICES=0",
-            "court_coordinate_normalization=v2",
             "court_keypoints=camera_view_v2",
             "data.scene_dir=blcs/multi_object_camera_view_norm-v2",
             "data.seq_len_range=[128,128]",
@@ -233,7 +232,7 @@ def test_registered_prediction_bundles_have_bitwise_matched_evaluation_inputs() 
         ("plcs", "plcs_track_query", "plcs/multi_object_lifecycle_v2", "camera_1"),
     ],
 )
-def test_production_train_tracking_defaults_remain_v1(
+def test_production_train_tracking_defaults_keep_legacy_model_and_court_contract(
     task: str,
     model_name: str,
     scene_dir: str,
@@ -241,18 +240,16 @@ def test_production_train_tracking_defaults_remain_v1(
 ) -> None:
     config = _default_config(task)
     model = config["model"]
-    normalization = config["court_coordinate_normalization"]
     court_keypoints = config["court_keypoints"]
     data = config["data"]
     assert isinstance(model, dict)
-    assert isinstance(normalization, dict)
     assert isinstance(court_keypoints, dict)
     assert isinstance(data, dict)
 
     assert model["name"] == model_name
     assert model["role_rope_enabled"] is True
     assert "reference_selector_mode" not in model
-    assert normalization == {"version": "v1"}
+    assert "court_coordinate_normalization" not in config
     assert court_keypoints == {"selector": "physical_v1"}
     assert data["scene_dir"] == scene_dir
     assert data["evaluation_reference_camera_id"] == evaluation_reference_camera_id

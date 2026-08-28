@@ -13,7 +13,6 @@ import pytorch_lightning as pl
 from omegaconf import DictConfig, OmegaConf
 
 from src.tasks.base.configuration import (
-    CourtCoordinateNormalizationConfig,
     TrainingRuntimeConfig,
     as_config_mapping,
     require_config_mapping,
@@ -64,7 +63,10 @@ from src.utils.configuration import (
 )
 from src.utils.hydra import register_boundary_validator
 from src.utils.paths import PROJECT_ROOT
-from src.utils.schema.court_normalization import CourtCoordinateNormalization
+from src.utils.schema.court_normalization import (
+    denormalize_court_position,
+    denormalize_court_velocity,
+)
 
 _PASS_NAMES = ("same_side", "opposite_side")
 _TRAINER_FIELDS = frozenset(
@@ -198,13 +200,6 @@ class BLCSReferenceCounterfactualConfig:
             raise SemanticConfigurationError(
                 "data.evaluation_reference_camera_id is owned by the persisted-side manifest."
             )
-        normalization = require_config_mapping(
-            root, "court_coordinate_normalization", path="configuration"
-        )
-        if normalization.get("version") != "v2":
-            raise SemanticConfigurationError(
-                "BLCS counterfactual evaluation requires normalization v2."
-            )
         runtime = TrainingRuntimeConfig.from_config(
             task_config,
             repository_root=PROJECT_ROOT,
@@ -325,20 +320,18 @@ def _load_arrays(path: Path) -> dict[str, np.ndarray[Any, Any]]:
 
 def _as_physical_position(
     value: np.ndarray[Any, Any],
-    normalization: CourtCoordinateNormalization,
     provenance: Any,
 ) -> np.ndarray[Any, Any]:
-    metres = normalization.denormalize_position(value)
+    metres = denormalize_court_position(value)
     restored = court_points_target_to_physical(metres, provenance)
     return cast("np.ndarray[Any, Any]", np.asarray(restored))
 
 
 def _as_physical_velocity(
     value: np.ndarray[Any, Any],
-    normalization: CourtCoordinateNormalization,
     provenance: Any,
 ) -> np.ndarray[Any, Any]:
-    metres = normalization.denormalize_velocity(value)
+    metres = denormalize_court_velocity(value)
     restored = court_vectors_target_to_physical(metres, provenance)
     return cast("np.ndarray[Any, Any]", np.asarray(restored))
 
@@ -349,7 +342,6 @@ def build_blcs_counterfactual_pass(
     side: ReferenceCounterfactualSide,
     identity: ReferenceCounterfactualRunIdentity,
     manifest: ReferenceCounterfactualManifest,
-    normalization: CourtCoordinateNormalization,
     window_bounds: Mapping[str, tuple[int, int]],
 ) -> ReferenceCounterfactualPass:
     """Adapt one BLCS raw Lightning payload without reproducing pair metrics."""
@@ -404,8 +396,8 @@ def build_blcs_counterfactual_pass(
         )
     valid_mask = np.asarray(target_presence & frame_valid[..., None], dtype=np.bool_)
     rows: list[ReferenceCounterfactualPassRow] = []
-    target_metres = np.asarray(normalization.denormalize_position(target_norm))
-    prediction_metres = np.asarray(normalization.denormalize_position(prediction_norm))
+    target_metres = np.asarray(denormalize_court_position(target_norm))
+    prediction_metres = np.asarray(denormalize_court_position(prediction_norm))
     for index in range(batch_size):
         scene_id = str(scene_ids[index])
         scene = manifest.scene(scene_id)
@@ -460,11 +452,9 @@ def build_blcs_counterfactual_pass(
             raise ReferenceCounterfactualError(
                 f"BLCS raw row {index} has no exact test-window identity."
             ) from error
-        physical_target = _as_physical_position(
-            target_norm[index], normalization, expected.provenance
-        )
+        physical_target = _as_physical_position(target_norm[index], expected.provenance)
         physical_velocity = _as_physical_velocity(
-            target_velocity[index], normalization, expected.provenance
+            target_velocity[index], expected.provenance
         )
         row_valid = valid_mask[index]
         physical_target_digest = masked_counterfactual_quantity_for_digest(
@@ -630,11 +620,9 @@ def run_blcs_reference_counterfactual(
         raise ReferenceCounterfactualError(
             "BLCS counterfactual evaluation rejects legacy v1 checkpoints/configs."
         )
-    normalization = CourtCoordinateNormalizationConfig.from_config(task_config).contract
     validate_checkpoint_path(
         runtime.checkpoint_path,
-        normalization,
-        runtime_court_keypoints=parse_court_keypoint_contract(task_config),
+        parse_court_keypoint_contract(task_config),
         runtime_track_query_reference=contract,
     )
     data_root = shared_runtime.resolver.resolve(
@@ -682,7 +670,6 @@ def run_blcs_reference_counterfactual(
             side=typed_side,
             identity=identity,
             manifest=manifest,
-            normalization=normalization,
             window_bounds=windows,
         )
     report = evaluate_reference_counterfactual(
