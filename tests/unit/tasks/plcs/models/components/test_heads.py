@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.tasks.plcs.models.components.heads import (
@@ -44,8 +43,3 @@ def test_temporal_decomposition_preserves_static_mean_and_ignores_padding() -> N
     for batch_idx in range(2):
         valid_output = output[batch_idx, frame_valid[batch_idx]]
         torch.testing.assert_close(valid_output.mean(0), expected_static[batch_idx])
-
-
-def test_temporal_decomposition_rejects_sequence_without_valid_frame() -> None:
-    with pytest.raises(ValueError, match="at least one valid frame"):
-        _head()(torch.randn(1, 3, 8), torch.zeros(1, 3, dtype=torch.bool))

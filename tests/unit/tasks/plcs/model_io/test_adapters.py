@@ -198,6 +198,14 @@ def test_camera_token_profile_rejects_single_view_before_forward() -> None:
         adapter.build_call(_canonical_batch(views=1))
 
 
+def test_multiview_boundary_rejects_sequence_without_non_padding_frame() -> None:
+    batch = _canonical_batch()
+    batch["padding_mask"][0] = True
+
+    with pytest.raises(ModelInputContractError, match="non-padding frame"):
+        _standard_adapter().build_call(batch)
+
+
 def test_output_contract_rejects_unknown_or_malformed_outputs() -> None:
     adapter = _standard_adapter()
     with pytest.raises(ModelOutputContractError, match="unknown=.*legacy"):

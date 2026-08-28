@@ -128,21 +128,6 @@ class TemporalDecomposedCanonicalPoseHead(torch.nn.Module):
 
     def forward(self, features: Tensor, frame_valid: Tensor) -> Tensor:
         """Predict ``(B,T,J,3)`` canonical pose from valid sequence features."""
-        if features.ndim != 3:
-            raise ValueError(
-                "TemporalDecomposedCanonicalPoseHead features must have shape "
-                f"(B,T,D), got {tuple(features.shape)}."
-            )
-        if frame_valid.dtype is not torch.bool:
-            raise TypeError("frame_valid must have dtype torch.bool.")
-        if frame_valid.shape != features.shape[:2]:
-            raise ValueError(
-                "frame_valid must match the feature (B,T) axes, got "
-                f"{tuple(frame_valid.shape)} for {tuple(features.shape)}."
-            )
-        if bool((~frame_valid.any(dim=1)).any().item()):
-            raise ValueError("Every sequence must contain at least one valid frame.")
-
         feature_weight = frame_valid.to(dtype=features.dtype).unsqueeze(-1)
         valid_count = feature_weight.sum(dim=1, keepdim=True)
         mean_features = (features * feature_weight).sum(
