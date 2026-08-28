@@ -200,11 +200,14 @@ class GroundPlaneSettings:
 
 @dataclass(frozen=True, slots=True)
 class LineProjectionSettings:
-    """Required ray/plane projection and per-view evidence gates."""
+    """Required ray/plane projection, weighting, raster, and evidence gates."""
 
     minimum_ray_plane_cosine: float
     maximum_ray_distance: float
     bounds_margin: float
+    proximity_scale: float
+    proximity_power: float
+    grid_spacing: float
     minimum_projected_points_per_camera: int
 
     def __post_init__(self) -> None:
@@ -212,6 +215,9 @@ class LineProjectionSettings:
             "minimum_ray_plane_cosine",
             "maximum_ray_distance",
             "bounds_margin",
+            "proximity_scale",
+            "proximity_power",
+            "grid_spacing",
         ):
             _positive_float(getattr(self, name), name=name)
         if self.minimum_ray_plane_cosine >= 1.0:

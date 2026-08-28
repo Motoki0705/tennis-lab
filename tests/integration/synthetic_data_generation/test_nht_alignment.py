@@ -33,6 +33,10 @@ from src.synthetic_data_generation.alignment.contracts import (
 )
 from src.synthetic_data_generation.alignment.fitting import fit_alignment
 from src.synthetic_data_generation.alignment.handler import AlignmentStageHandler
+from src.synthetic_data_generation.alignment.heatmaps import (
+    AlignmentLineHeatmaps,
+    AlignmentLineHeatmapView,
+)
 from src.synthetic_data_generation.alignment.settings import WholeCourtEvidenceSettings
 from src.synthetic_data_generation.alignment.validation import (
     validate_alignment_outputs,
@@ -106,6 +110,7 @@ class _EvidenceSource:
         return EvaluatedAlignment(
             evidence=self.evidence,
             result=fit_alignment(self.evidence, policy=self.policy),
+            heatmaps=_line_heatmaps(self.evidence),
         )
 
 
@@ -261,6 +266,47 @@ def _evidence() -> AlignmentEvidence:
             excluded_cameras=(),
         ),
         whole_court_settings=whole_court_settings,
+    )
+
+
+def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
+    selection = evidence.diagnostics.selection
+    counts = {
+        item.camera_id: item.projected_line_point_count
+        for item in evidence.diagnostics.cameras
+    }
+    counts.update(
+        {
+            item.camera_id: item.projected_line_point_count
+            for item in selection.excluded_cameras
+        }
+    )
+    observed = set(selection.observed_camera_ids)
+    return AlignmentLineHeatmaps(
+        bounds_uv=(-1.0, 1.0, -1.0, 1.0),
+        grid_spacing=0.25,
+        proximity_scale=0.35,
+        proximity_power=2.0,
+        views=tuple(
+            AlignmentLineHeatmapView(
+                camera_id=camera_id,
+                probability=np.asarray([[0.0, 0.5], [0.75, 1.0]], dtype=np.float32),
+                points_uv=np.column_stack(
+                    (
+                        np.linspace(-0.8, 0.8, counts[camera_id]),
+                        np.linspace(0.8, -0.8, counts[camera_id]),
+                    )
+                ).astype(np.float64),
+                projected_probabilities=np.full(
+                    counts[camera_id], 0.75, dtype=np.float32
+                ),
+                proximity_weights=np.full(
+                    counts[camera_id], 0.8, dtype=np.float64
+                ),
+                included_in_aggregate=camera_id in observed,
+            )
+            for camera_id in selection.camera_prefix_ids
+        ),
     )
 
 

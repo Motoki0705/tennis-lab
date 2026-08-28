@@ -253,7 +253,15 @@ def test_production_alignment_evidence_and_acceptance_are_complete_typed_values(
         1.0,
         0.01,
     )
-    assert astuple(evidence.projection) == (0.05, 3.0, 0.05, 20)
+    assert astuple(evidence.projection) == (
+        0.05,
+        3.0,
+        0.05,
+        0.35,
+        2.0,
+        0.0025,
+        20,
+    )
     assert astuple(evidence.candidate_fit) == (
         2,
         6.0,
