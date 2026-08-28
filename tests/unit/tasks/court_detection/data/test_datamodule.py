@@ -115,3 +115,96 @@ def test_setup_test_requests_explicit_test_split_without_fallback(
     assert record_calls == ["test"]
     assert datamodule.test_dataset is not None
     assert datamodule.target_bundle_spec == bundle
+
+
+def test_pose_datamodule_scans_all_authority_before_model_or_workers(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    bundle = CourtTargetBundleSpec(
+        {
+            "kp": CourtTargetSpec(
+                kind="kp",
+                schema=(
+                    "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1"
+                ),
+                output_channels=14,
+                channel_names=tuple(f"kp_{index}" for index in range(14)),
+                target_dtype=torch.float32,
+                precomputed=False,
+            )
+        }
+    )
+    records = {
+        split: (
+            CourtSampleRecord(
+                sample_id=f"sample-{split}",
+                split=split,
+                image_path=tmp_path / "unused.npy",
+                annotation_path=tmp_path / "unused.json",
+                derived_key=f"test/{split}",
+                dense_target_refs={},
+                payload={},
+            ),
+        )
+        for split in ("train", "val", "test")
+    }
+    preflight_calls: list[tuple[bool, str]] = []
+
+    class _Input:
+        available_splits = ("train", "val", "test")
+
+        def records(self, split):
+            return records[split]
+
+    class _Pipeline:
+        target_bundle_spec = bundle
+        input_layer = _Input()
+
+        def __init__(self, is_train: bool) -> None:
+            self.is_train = is_train
+
+        def preflight(self, selected):
+            preflight_calls.append((self.is_train, selected[0].split))
+
+    def _factory(config, *, is_train, require_pose=False):
+        _ = config
+        assert require_pose
+        return _Pipeline(is_train)
+
+    monkeypatch.setattr(
+        datamodule_module,
+        "build_court_processing_pipeline",
+        _factory,
+    )
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        pose_config = compose(
+            config_name="train",
+            overrides=[
+                "data/source=synthetic_court",
+                "data.source.keypoint_court_scope=target_court",
+                "data/processing=kp",
+                "data/augmentation=pose_safe",
+                "model/encoder=dinov3",
+                "model/transformer_encoder=default",
+                "model/decoder=dpt",
+                "loss.pose.enabled=true",
+                "loss.pose.translation_weight=1.0",
+                "loss.pose.rotation_weight=1.0",
+                "loss.pose.focal_weight=1.0",
+            ],
+        )
+    pose_config.paths.project_root = str(tmp_path)
+    pose_config.paths.data_root = "data"
+    pose_config.paths.output_root = "outputs"
+    pose_config.paths.checkpoint_root = "checkpoints"
+    pose_config.paths.artifact_root = "artifacts"
+
+    datamodule = CourtDetectionDataModule(pose_config)
+
+    assert datamodule.num_workers == 4
+    assert preflight_calls == [
+        (True, "train"),
+        (False, "val"),
+        (False, "test"),
+    ]

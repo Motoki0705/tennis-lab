@@ -1,0 +1,14 @@
+{
+  "run_id": "1787764107565230259_78161_plcs_canonical_temporal_decomp_beta01_noaug",
+  "name": "plcs_canonical_temporal_decomp_beta01_noaug",
+  "command": "/home/kamimura/projects/tennis-lab/.venv/bin/python -m src.tasks.plcs.scripts.train model=multiview_axial_base_temporal_pose data=multiview_sequence loss=canonical_only paths.data_root=/home/kamimura/projects/tennis-lab/data paths.external_asset_root=/home/kamimura/projects/tennis-lab/data data.scene_dir=plcs_canonical_pose_beta data.seq_len_range=[125,125] data.num_views_range=[4,4] data.augmentation.enabled=false run.seed=42 run.gpus=1 run.test_after_fit=true training.trainer.max_epochs=50 training.trainer.check_val_every_n_epoch=1 training.early_stopping.enabled=false training.checkpoint.monitor=val/loss_canonical_pose training.checkpoint.mode=min training.checkpoint.save_top_k=1 training.qualitative_logging.enabled=false run.output_dir=plcs/plcs_multiview_axial_canonical_only_temporal_decomp_beta01_noaug",
+  "provider": "codex",
+  "session": "01a03ee0-c172-7d22-81d3-c07127757135",
+  "issue": "",
+  "commit": "e57e1d9f868e289135dc7881fba5ffc0ee6a0282",
+  "branch": "exp/plcs-canonical-pose-beta",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-canonical-pose-beta",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-canonical-pose-beta",
+  "captured_at": "2026-08-27T02:08:27+09:00"
+}

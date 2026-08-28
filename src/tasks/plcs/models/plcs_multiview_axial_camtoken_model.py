@@ -118,4 +118,5 @@ class PLCSMultiViewAxialCamTokenModel(PLCSMultiViewAxialModel):
 
         # Mirror the split-model EX10 recipe: canonical geometry rides the
         # rotation readout when that head was selected during construction.
-        return self._decode_readouts(pose_feat, rot_feat)
+        frame_valid = ~padding_mask.all(dim=1)
+        return self._decode_readouts(pose_feat, rot_feat, frame_valid)

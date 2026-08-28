@@ -72,6 +72,8 @@ class PLCSLossConfig:
         rotation_weight: Weight for rotation loss (1 - cosine on (cos, sin)).
         angle_weight: Weight for wrapped-angle smooth-L1 yaw loss.
         canonical_pose_weight: Weight for canonical pose loss.
+        canonical_pose_smooth_l1_beta: Smooth-L1 transition beta in metres for
+            canonical pose loss.
         reprojection_weight: Weight for clean 2D pose reprojection loss.
         reprojection_smooth_l1_beta: Smooth-L1 transition beta in normalized UV.
         joint_angle_weight: Weight for joint-angle loss.
@@ -89,6 +91,7 @@ class PLCSLossConfig:
     # jitter / inference velocity spikes). See src/utils/losses/temporal.py.
     position_smoothness_weight: float
     canonical_pose_weight: float
+    canonical_pose_smooth_l1_beta: float
     reprojection_weight: float
     reprojection_smooth_l1_beta: float
     joint_angle_weight: float
@@ -138,6 +141,10 @@ class PLCSLossConfig:
             raise SemanticConfigurationError(
                 "loss.position_smooth_l1_beta must be positive."
             )
+        if weights["canonical_pose_smooth_l1_beta"] <= 0.0:
+            raise SemanticConfigurationError(
+                "loss.canonical_pose_smooth_l1_beta must be positive."
+            )
         if weights["reprojection_smooth_l1_beta"] <= 0.0:
             raise SemanticConfigurationError(
                 "loss.reprojection_smooth_l1_beta must be positive."
@@ -185,6 +192,7 @@ class PLCSLossConfig:
             angle_weight=weights["angle_weight"],
             position_smoothness_weight=weights["position_smoothness_weight"],
             canonical_pose_weight=weights["canonical_pose_weight"],
+            canonical_pose_smooth_l1_beta=weights["canonical_pose_smooth_l1_beta"],
             reprojection_weight=weights["reprojection_weight"],
             reprojection_smooth_l1_beta=weights[
                 "reprojection_smooth_l1_beta"
@@ -516,8 +524,16 @@ def position_smoothness_loss_term(
     return cast("Tensor", penalty(inputs.pred_position, frame_mask))
 
 
-def canonical_pose_loss_term(inputs: PLCSLossInputs) -> Tensor:
-    """Canonical-pose term: masked smooth-L1 between canonical joint positions."""
+def canonical_pose_loss_term(
+    inputs: PLCSLossInputs,
+    *,
+    beta: float = 1.0,
+) -> Tensor:
+    """Canonical-pose term: masked smooth-L1 between canonical joint positions.
+
+    ``beta`` is expressed in metres because canonical pose coordinates remain
+    root-relative physical coordinates and are not court-coordinate normalized.
+    """
     if not inputs.has_canonical:
         return inputs.zero
     pred = cast(Tensor, inputs.pred_canonical_pose)
@@ -527,6 +543,7 @@ def canonical_pose_loss_term(inputs: PLCSLossInputs) -> Tensor:
         pred,
         target,
         reduction="none",
+        beta=beta,
     ).mean(dim=(-1, -2))
     return _masked_frame_mean(per_frame, inputs.frame_mask)
 
@@ -811,6 +828,13 @@ class PLCSLoss(nn.Module):
             self.loss_terms["position_smoothness"] = partial(
                 position_smoothness_loss_term,
                 penalty=self.position_smoothness_penalty,
+            )
+            self.loss_terms["canonical_pose"] = cast(
+                "PLCSLossTerm",
+                partial(
+                    canonical_pose_loss_term,
+                    beta=config.canonical_pose_smooth_l1_beta,
+                ),
             )
             self.loss_terms["reprojection"] = cast(
                 "PLCSLossTerm",

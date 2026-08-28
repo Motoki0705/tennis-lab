@@ -258,6 +258,14 @@ def test_training_boundary_validates_reprojection_camera_and_padding_values() ->
         _standard_adapter().prepare_training_batch(batch)
 
 
+def test_multiview_boundary_rejects_sequence_without_non_padding_frame() -> None:
+    batch = _canonical_batch()
+    batch["padding_mask"][0] = True
+
+    with pytest.raises(ModelInputContractError, match="non-padding frame"):
+        _standard_adapter().build_call(batch)
+
+
 def test_output_contract_rejects_unknown_or_malformed_outputs() -> None:
     adapter = _standard_adapter()
     with pytest.raises(ModelOutputContractError, match="unknown=.*legacy"):

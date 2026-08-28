@@ -55,10 +55,17 @@ class _StaticLogitModel(CourtHierarchicalModel):
         feature_2: torch.Tensor | None = None,
         feature_3: torch.Tensor | None = None,
         feature_4: torch.Tensor | None = None,
+        patch_valid_mask: torch.Tensor | None = None,
     ) -> dict[CourtTargetKind, torch.Tensor]:
         assert all(
             value is None
-            for value in (feature_1, feature_2, feature_3, feature_4)
+            for value in (
+                feature_1,
+                feature_2,
+                feature_3,
+                feature_4,
+                patch_valid_mask,
+            )
         )
         logits = cast(torch.Tensor, self._logits)
         return {"kp": logits.expand(image.shape[0], -1, -1, -1)}
@@ -78,14 +85,7 @@ def _predictor(
             in_channels=3,
             short_side=32,
         ),
-        loss_config=CourtLossConfig(
-            seg_ce_weight=1.0,
-            seg_dice_weight=1.0,
-            kp_focal_gamma=2.0,
-            line_bce_weight=1.0,
-            line_dice_weight=1.0,
-            line_pos_weight=1.0,
-        ),
+        loss_config=_loss_config(),
     )
     adapter.validate_model_pair(model)
     return CourtKeypointPredictor(
@@ -93,6 +93,38 @@ def _predictor(
         torch.device("cpu"),
         subpixel_refine=subpixel_refine,
         max_peaks=max_peaks,
+    )
+
+
+def _loss_config() -> CourtLossConfig:
+    return CourtLossConfig.from_mapping(
+        {
+            "seg": {"ce_weight": 1.0, "dice_weight": 1.0, "weight": 1.0},
+            "kp": {"focal_gamma": 2.0, "weight": 1.0},
+            "line": {
+                "bce_weight": 1.0,
+                "dice_weight": 1.0,
+                "pos_weight": 1.0,
+                "weight": 1.0,
+            },
+            "pose": {
+                "enabled": False,
+                "translation_weight": 0.0,
+                "rotation_weight": 0.0,
+                "focal_weight": 0.0,
+            },
+            "consistency": {
+                "enabled": False,
+                "weight": 0.0,
+                "temperature": 1.0,
+                "huber_delta": 0.01,
+                "min_depth_m": 0.1,
+                "depth_scale_m": 1.0,
+                "cheirality_weight": 0.0,
+                "warmup_fraction": 0.0,
+                "gradient_flow": "both",
+            },
+        }
     )
 
 

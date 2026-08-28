@@ -262,6 +262,11 @@ class PLCSModelIOAdapter:
                     f"PLCS input has {frames} frames, exceeding max_seq_len="
                     f"{self.max_sequence_length}."
                 )
+            if bool(padding_mask.all(dim=(1, 2)).any().item()):
+                raise ModelInputContractError(
+                    "Every multiview sequence must contain at least one "
+                    "non-padding frame."
+                )
         _normalized_uv("human_kp", human_kp)
         _normalized_uv("court_kp", court_kp)
         _binary_mask("human_vis", human_vis)

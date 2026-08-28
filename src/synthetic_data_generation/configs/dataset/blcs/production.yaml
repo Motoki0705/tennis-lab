@@ -114,21 +114,6 @@ generator:
     net_post_offset_x_range: [-0.3, 0.914]
 
 assets:
-  background:
-    schema: tennis_gaussian_asset_semantic_v1
-    asset_id: b00-nht-background
-    asset_class: reconstructed-tennis-complex
-    role: background
-    coordinates:
-      frame: scene
-      unit: scene_unit
-      convention: right_handed_normalized_scene
-    gaussian_count: 1000000
-    feature_dim: 3
-    floating_dtype: float32
-    appearance_model: nht-public-renderer
-    appearance_space: normalized-scene-radiance
-    tensor_encoding: raw_gaussian_parameters_v1
   ball:
     schema: tennis_gaussian_asset_semantic_v1
     asset_id: regulation-tennis-ball
@@ -141,10 +126,18 @@ assets:
     gaussian_count: 256
     feature_dim: 3
     floating_dtype: float32
-    appearance_model: nht-public-renderer
-    appearance_space: normalized-scene-radiance
+    appearance_model: rgb
+    appearance_space: linear_rgb
     tensor_encoding: raw_gaussian_parameters_v1
-  ball_radius_m: 0.0335
+  settings:
+    radius_m: 0.0335
+    radial_scale_m: 0.0018
+    tangential_scale_m: 0.0048
+    opacity: 0.94
+    base_color_linear_rgb: [0.72, 0.92, 0.08]
+    seam_color_linear_rgb: [0.92, 0.95, 0.80]
+    seam_width_radians: 0.08
+    visibility_threshold: 0.0001
 
 render_timeout_seconds: ${nht.render_timeout_seconds}
 
@@ -155,7 +148,8 @@ performance:
   maximum_nht_invocations: 3
   maximum_background_cache_misses: 18
   maximum_complete_array_scans_per_sample: 1
-  maximum_batch_frames: 64
+  # Composed NHT keeps the scene resident and rasterizes one complete frame at a time.
+  maximum_batch_frames: 1
   execution_device: cuda:0
   require_cuda: true
 

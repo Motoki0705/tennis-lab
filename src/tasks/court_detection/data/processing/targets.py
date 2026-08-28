@@ -90,7 +90,7 @@ class KeypointTargetBuilder:
                 float(max(height - 1, 1)),
             ]
         )
-        normalized = channels.points_xy / scale
+        normalized = (channels.points_xy / scale).to(dtype=self.spec.target_dtype)
         heatmap = generate_gaussian_heatmaps(
             (height, width),
             normalized,

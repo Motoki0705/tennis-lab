@@ -32,7 +32,10 @@ from src.synthetic_data_generation.dataset.plcs.handler import PLCSStageParamete
 from src.synthetic_data_generation.dataset.plcs.production import PLCSProductionMode
 from src.synthetic_data_generation.dataset.plcs.rendering import NHTPLCSRenderer
 from src.synthetic_data_generation.reconstruction import NHTReconstructionHandler
-from src.synthetic_data_generation.rendering.nht import NHTRenderClient
+from src.synthetic_data_generation.rendering.nht import (
+    NHTComposedRenderClient,
+    NHTRenderClient,
+)
 from src.synthetic_data_generation.scene_contract import CourtInstance, RigidTransform
 from src.utils.configuration import (
     PathRole,
@@ -248,6 +251,7 @@ def test_configured_paths_retain_their_declared_runtime_roles() -> None:
 def test_composition_root_can_construct_each_no_default_runtime_input() -> None:
     runtime = _compose()
     client = NHTRenderClient()
+    composed_client = NHTComposedRenderClient()
 
     reconstruction = NHTReconstructionHandler(
         executable=runtime.nht.reconstruct_executable,
@@ -267,7 +271,7 @@ def test_composition_root_can_construct_each_no_default_runtime_input() -> None:
     )
     blcs_renderer = BLCSNHTRenderer(
         assets=runtime.blcs.assets,
-        client=client,
+        client=composed_client,
         executable=runtime.nht.render_executable,
         environment=runtime.nht.environment,
         timeout_seconds=runtime.blcs.render_timeout_seconds,
