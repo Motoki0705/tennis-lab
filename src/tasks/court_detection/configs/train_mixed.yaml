@@ -18,5 +18,9 @@ mixed:
     synthetic_court: 4
     tennis_court_detector: 4
 
+data:
+  source:
+    keypoint_court_scope: target_court
+
 run:
   output_dir: court_detection/mixed

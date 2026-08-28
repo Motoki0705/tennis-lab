@@ -41,7 +41,9 @@ class MixedCourtPoseModelIOAdapter(CourtPoseModelIOAdapter):
         device: torch.device,
     ) -> Tensor:
         if value is None:
-            return torch.ones(batch_size, dtype=torch.bool, device=device)
+            raise CourtModelIOError(
+                "Mixed Court pose training requires pose_supervision_mask."
+            )
         if (
             not isinstance(value, Tensor)
             or value.shape != (batch_size,)
@@ -78,9 +80,7 @@ class MixedCourtPoseModelIOAdapter(CourtPoseModelIOAdapter):
                 raise CourtModelIOError(
                     "Court pose_target must be absent when no sample is supervised."
                 )
-            targets: dict[CourtTrainingTargetKind, object] = dict(
-                dense_call.targets
-            )
+            targets: dict[CourtTrainingTargetKind, object] = dict(dense_call.targets)
             image_size_value = batch.get("image_size")
             if image_size_value is not None:
                 targets["image_size"] = self._validate_image_size(
@@ -126,9 +126,7 @@ class MixedCourtPoseModelIOAdapter(CourtPoseModelIOAdapter):
         if isinstance(kp_target, Mapping) and "physical_indices" in kp_target:
             physical = cast(Tensor, kp_target["physical_indices"])
             if consistency_enabled and physical.shape[1:] != (14, 1):
-                raise CourtModelIOError(
-                    "Pose KP target must be singleton (B,14,1)."
-                )
+                raise CourtModelIOError("Pose KP target must be singleton (B,14,1).")
             if consistency_enabled and not torch.equal(
                 physical[mask, :, 0],
                 pose_target.semantic_to_physical,
@@ -279,10 +277,7 @@ class MixedCourtPoseModelIOAdapter(CourtPoseModelIOAdapter):
         supervised_call = self._supervised_call(call, mask=mask)
         supervised_output = CourtModelOutput(
             dense_logits=MappingProxyType(
-                {
-                    kind: value[mask]
-                    for kind, value in checked.dense_logits.items()
-                }
+                {kind: value[mask] for kind, value in checked.dense_logits.items()}
             ),
             pose=CourtRawPoseOutput(checked.pose.values[mask]),
         )
@@ -298,11 +293,7 @@ class MixedCourtPoseModelIOAdapter(CourtPoseModelIOAdapter):
             else dense_result.loss.new_zeros(())
         )
         return CourtPoseTrainingResult(
-            loss=(
-                dense_result.loss
-                + supervised_result.direct_pose_loss
-                + auxiliary
-            ),
+            loss=(dense_result.loss + supervised_result.direct_pose_loss + auxiliary),
             raw_dense_loss=dense_result.raw_loss,
             direct_dense_loss=dense_result.loss,
             direct_pose_loss=supervised_result.direct_pose_loss,

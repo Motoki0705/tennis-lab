@@ -432,6 +432,7 @@ class TennisCourtDetectorSourceConfig:
     kind: Literal["tennis_court_detector"]
     root: Path
     split_mapping: Mapping[CourtSourceSplit, str | None]
+    excluded_sample_ids: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if dict(self.split_mapping) != {
@@ -443,13 +444,21 @@ class TennisCourtDetectorSourceConfig:
                 "TennisCourtDetector requires train->train, val->val, and test->null; "
                 "validation cannot be reused as test."
             )
+        if len(set(self.excluded_sample_ids)) != len(self.excluded_sample_ids):
+            raise SemanticConfigurationError(
+                "TennisCourtDetector excluded_sample_ids must not contain duplicates."
+            )
 
     @classmethod
     def from_mapping(
         cls, value: object, *, resolver: PathResolver
     ) -> TennisCourtDetectorSourceConfig:
         mapping = as_config_mapping(value, path="data.source")
-        _exact(mapping, {"kind", "root", "split_mapping"}, path="data.source")
+        _exact(
+            mapping,
+            {"kind", "root", "split_mapping", "excluded_sample_ids"},
+            path="data.source",
+        )
         if _string(mapping, "kind", path="data.source") != "tennis_court_detector":
             raise SemanticConfigurationError(
                 "data.source.kind must be 'tennis_court_detector'."
@@ -473,12 +482,33 @@ class TennisCourtDetectorSourceConfig:
                     "test->null; validation cannot be reused as test."
                 )
             resolved[split] = value_at_split
+        raw_excluded = _sequence(mapping, "excluded_sample_ids", path="data.source")
+        excluded: list[str] = []
+        for sample_id in raw_excluded:
+            if (
+                type(sample_id) is not str
+                or not sample_id
+                or sample_id != sample_id.strip()
+                or sample_id in {".", ".."}
+                or "/" in sample_id
+                or "\\" in sample_id
+            ):
+                raise ConfigurationTypeError(
+                    "data.source.excluded_sample_ids must contain safe non-empty "
+                    "sample IDs."
+                )
+            excluded.append(sample_id)
+        if len(set(excluded)) != len(excluded):
+            raise SemanticConfigurationError(
+                "data.source.excluded_sample_ids must not contain duplicates."
+            )
         return cls(
             kind="tennis_court_detector",
             root=resolver.resolve(
                 PathRole.DATA, _string(mapping, "root", path="data.source")
             ),
             split_mapping=MappingProxyType(resolved),
+            excluded_sample_ids=tuple(excluded),
         )
 
 

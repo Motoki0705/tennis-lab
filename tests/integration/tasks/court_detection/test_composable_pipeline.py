@@ -33,6 +33,7 @@ from src.tasks.court_detection.configuration import CourtTrainingConfig
 from src.tasks.court_detection.data.contracts import CourtTargetKind
 from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
 from src.tasks.court_detection.data.inputs.factory import build_court_input
+from src.tasks.court_detection.data.mixed import MixedCourtDetectionDataModule
 from src.tasks.court_detection.data.target_generation.materializer import (
     CourtTargetMaterializer,
 )
@@ -41,6 +42,9 @@ from src.tasks.court_detection.data.target_generation.store import (
 )
 from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
 from src.tasks.court_detection.model_io.factory import build_court_detection_pair
+from src.tasks.court_detection.training.runner_mixed import (
+    resolve_mixed_training_config,
+)
 from src.tasks.court_detection.visualization.adapters.render_inputs import (
     build_court_qualitative_renderer,
 )
@@ -69,7 +73,7 @@ def _write_tennis_court_detector(root: Path) -> None:
     Image.fromarray(np.full((48, 64, 3), 127, dtype=np.uint8)).save(
         root / "images" / "court.png"
     )
-    payload = [{"id": "court", "kps": _image_points()}]
+    payload = [{"id": "court", "kps": _image_points(), "metric": 0.25}]
     for split in ("train", "val"):
         (root / f"data_{split}.json").write_text(
             json.dumps(payload), encoding="utf-8"
@@ -434,6 +438,38 @@ def _compose(
         config.data.source.scene_ids = ["V2"]
     elif source == "synthetic_court":
         config.data.source.scene_ids = ["V3"]
+    elif source == "tennis_court_detector":
+        config.data.source.excluded_sample_ids = []
+    return config
+
+
+def _compose_mixed(tmp_path: Path) -> DictConfig:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_mixed",
+            overrides=[
+                "data/augmentation=pose_safe",
+                "model/encoder=default",
+                "model/transformer_encoder=none",
+                "model/decoder=fpn",
+                "mixed.sources.tennis_court_detector.excluded_sample_ids=[]",
+            ],
+        )
+    config.paths.project_root = str(tmp_path)
+    config.paths.data_root = "data"
+    config.paths.checkpoint_root = "checkpoints"
+    config.paths.artifact_root = "artifacts"
+    config.paths.output_root = "outputs"
+    config.paths.cache_root = "cache"
+    config.paths.external_asset_root = "external"
+    config.data.source.scene_ids = ["V3"]
+    config.data.batch_size = 2
+    config.data.num_workers = 0
+    config.data.pin_memory = False
+    config.data.augmentation.train_scales = [32]
+    config.data.augmentation.val_short_side = 32
+    config.mixed.train_batch_counts.synthetic_court = 1
+    config.mixed.train_batch_counts.tennis_court_detector = 1
     return config
 
 
@@ -467,6 +503,53 @@ def court_roots(tmp_path: Path) -> Path:
     _write_synthetic_court_singleton(singleton_root, schema="v2")
     _write_synthetic_court_singleton(singleton_root, schema="v3")
     return tmp_path
+
+
+def test_mixed_datamodule_uses_both_real_input_pipelines_in_each_batch(
+    court_roots: Path,
+) -> None:
+    synthetic = _compose(
+        court_roots,
+        source="synthetic_court",
+        processing="all",
+        keypoint_court_scope="target_court",
+    )
+    tennis = _compose(
+        court_roots,
+        source="tennis_court_detector",
+        processing="all",
+    )
+    _materialize(synthetic)
+    _materialize(tennis)
+
+    config = _compose_mixed(court_roots)
+    standard, mixed = resolve_mixed_training_config(config)
+    datamodule = MixedCourtDetectionDataModule(standard, mixed_config=mixed)
+    datamodule.setup(None)
+
+    batch = next(iter(datamodule.train_dataloader()))
+    metadata = cast(list[Mapping[str, object]], batch["metadata"])
+    targets = cast(Mapping[str, object], batch["targets"])
+    kp = cast(Mapping[str, torch.Tensor], targets["kp"])
+
+    assert [item["source_kind"] for item in metadata].count("synthetic_court") == 1
+    assert [item["source_kind"] for item in metadata].count(
+        "tennis_court_detector"
+    ) == 1
+    assert tuple(targets) == ("kp", "seg", "line")
+    assert datamodule.target_bundle_spec.targets["kp"].channel_names == tuple(
+        COURT_KP_NAMES[:14]
+    )
+    assert kp["heatmap"].shape == (2, 14, 32, 32)
+    assert kp["points_xy"].shape == (2, 14, 1, 2)
+    torch.testing.assert_close(
+        cast(torch.Tensor, batch["pose_supervision_mask"]),
+        torch.tensor([False, False]),
+    )
+
+    test_batch = next(iter(datamodule.test_dataloader()))
+    test_metadata = cast(list[Mapping[str, object]], test_batch["metadata"])
+    assert {item["source_kind"] for item in test_metadata} == {"synthetic_court"}
 
 
 @pytest.mark.parametrize(

@@ -186,7 +186,7 @@ class SegmentationTargetBuilder(_PrecomputedDenseTargetBuilder):
     def _decode(self, array: np.ndarray) -> Tensor:
         if int(array.max(initial=0)) > 6:
             raise ValueError("Court segmentation labels must be in [0,6].")
-        return torch.from_numpy(np.ascontiguousarray(array)).long()
+        return torch.from_numpy(np.ascontiguousarray(array).copy()).long()
 
     def build(self, sample: CourtTransformedSample) -> object:
         mask = sample.dense_targets["seg"].long()

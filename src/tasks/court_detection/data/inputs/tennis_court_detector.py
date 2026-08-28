@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import cast
 
 import torch
 from PIL import Image
@@ -26,10 +28,13 @@ from src.tasks.court_detection.data.target_generation.store import (
     SEGMENTATION_TARGET_SCHEMA,
     CourtDerivedTargetStore,
 )
+from src.utils.schema.court import GROUND_COURT_KP_NAMES
 
 _TCD_KP_SCHEMA = "tennis_court_detector_kp14"
-_TCD_CHANNEL_NAMES = tuple(f"physical_{index}" for index in range(14))
+_TCD_CHANNEL_NAMES = GROUND_COURT_KP_NAMES
 _TCD_FLIP_PERMUTATION = (1, 0, 3, 2, 6, 7, 4, 5, 9, 8, 11, 10, 12, 13)
+_TCD_REQUIRED_RECORD_KEYS = frozenset({"id", "kps"})
+_TCD_OPTIONAL_RECORD_KEYS = frozenset({"metric"})
 
 
 class TennisCourtDetectorInput:
@@ -131,16 +136,39 @@ class TennisCourtDetectorInput:
                     "annotation": str(record.annotation_path),
                     "image": str(record.image_path),
                     "source_split": record.payload["source_split"],
+                    **(
+                        {"annotation_metric": record.payload["annotation_metric"]}
+                        if record.payload["annotation_metric"] is not None
+                        else {}
+                    ),
                 },
             ),
         )
 
     def _load_records(self) -> dict[CourtSourceSplit, tuple[CourtSampleRecord, ...]]:
         records: dict[CourtSourceSplit, tuple[CourtSampleRecord, ...]] = {}
+        excluded_counts = dict.fromkeys(self.config.excluded_sample_ids, 0)
         for split, source_split in self.config.split_mapping.items():
             if source_split is None:
                 continue
-            records[split] = self._read_source_split(split, source_split)
+            source_records = self._read_source_split(split, source_split)
+            retained: list[CourtSampleRecord] = []
+            for record in source_records:
+                if record.sample_id in excluded_counts:
+                    excluded_counts[record.sample_id] += 1
+                else:
+                    retained.append(record)
+            records[split] = tuple(retained)
+        invalid_exclusions = {
+            sample_id: count
+            for sample_id, count in excluded_counts.items()
+            if count != 1
+        }
+        if invalid_exclusions:
+            raise ValueError(
+                "Every TennisCourtDetector excluded_sample_id must match exactly "
+                f"one annotation record; got {invalid_exclusions}."
+            )
         return records
 
     def _read_source_split(
@@ -159,15 +187,30 @@ class TennisCourtDetectorInput:
         result: list[CourtSampleRecord] = []
         seen: set[str] = set()
         for index, value in enumerate(parsed):
-            if not isinstance(value, Mapping) or set(value) != {"id", "kps"}:
+            if not isinstance(value, Mapping):
                 raise ValueError(
-                    f"TennisCourtDetector record {index} must contain exactly id and kps."
+                    f"TennisCourtDetector record {index} must be a mapping."
+                )
+            keys = set(value)
+            if not _TCD_REQUIRED_RECORD_KEYS.issubset(keys) or not keys.issubset(
+                _TCD_REQUIRED_RECORD_KEYS | _TCD_OPTIONAL_RECORD_KEYS
+            ):
+                raise ValueError(
+                    f"TennisCourtDetector record {index} must contain id and kps, "
+                    "with only optional metric metadata."
                 )
             sample_id = value["id"]
             if not isinstance(sample_id, str) or not sample_id or sample_id in seen:
-                raise ValueError("TennisCourtDetector sample IDs must be non-empty and unique.")
+                raise ValueError(
+                    "TennisCourtDetector sample IDs must be non-empty and unique."
+                )
             seen.add(sample_id)
             keypoints = self._parse_keypoints(value["kps"], sample_id=sample_id)
+            annotation_metric = (
+                self._parse_annotation_metric(value["metric"], sample_id=sample_id)
+                if "metric" in value
+                else None
+            )
             image_path = self._resolve_image(sample_id)
             with Image.open(image_path) as handle:
                 width, height = handle.size
@@ -180,6 +223,7 @@ class TennisCourtDetectorInput:
                         "width": width,
                         "height": height,
                         "keypoints": keypoints,
+                        "annotation_metric": annotation_metric,
                     },
                     sort_keys=True,
                     separators=(",", ":"),
@@ -214,10 +258,24 @@ class TennisCourtDetectorInput:
                         "height": height,
                         "source_split": source_split,
                         "keypoints": keypoints,
+                        "annotation_metric": annotation_metric,
                     },
                 )
             )
         return tuple(result)
+
+    @staticmethod
+    def _parse_annotation_metric(value: object, *, sample_id: str) -> float:
+        if type(value) not in (float, int):
+            raise ValueError(
+                f"TennisCourtDetector {sample_id} metric must be a finite number."
+            )
+        metric = float(cast("float | int", value))
+        if not math.isfinite(metric) or metric < 0.0:
+            raise ValueError(
+                f"TennisCourtDetector {sample_id} metric must be finite and non-negative."
+            )
+        return metric
 
     @staticmethod
     def _parse_keypoints(value: object, *, sample_id: str) -> tuple[tuple[float, float], ...]:

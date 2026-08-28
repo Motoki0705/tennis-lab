@@ -7,10 +7,13 @@ Usage:
         loss.pose.translation_weight=1.0 \
         loss.pose.rotation_weight=1.0 \
         loss.pose.focal_weight=1.0 \
-        loss.consistency.enabled=true \
-        loss.consistency.weight=1.0 \
+        loss.consistency.enabled=false \
         data/augmentation=pose_safe \
         data.source.keypoint_court_scope=target_court
+
+Notes:
+    - Dense targets are learned from both configured sources in every batch.
+    - Pose targets are accepted only from Synthetic Court V3 samples.
 """
 
 from __future__ import annotations
