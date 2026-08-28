@@ -78,6 +78,22 @@ def test_task_local_generation_and_visualization_boundaries_remain_in_inventory(
         assert boundary.validator_callable == validator_callable
 
 
+def test_mixed_court_training_boundary_remains_explicitly_registered() -> None:
+    boundaries = {
+        boundary.module: boundary
+        for boundary in EXPECTED_RUNTIME_BOUNDARIES
+        if boundary.domain == "court_detection"
+    }
+    boundary = boundaries["src.tasks.court_detection.scripts.train_mixed"]
+
+    assert boundary.validator_key == "court_detection.train_mixed"
+    assert boundary.validator_callable == (
+        "src.tasks.court_detection.training.runner_mixed."
+        "validate_mixed_train_boundary"
+    )
+    assert boundary.executable_module
+
+
 def test_default_inventory_contains_only_current_policy() -> None:
     assert DEFAULT_AUDIT_INVENTORY.rules == tuple(AuditRule)
     assert DEFAULT_AUDIT_INVENTORY.boundaries == EXPECTED_RUNTIME_BOUNDARIES
