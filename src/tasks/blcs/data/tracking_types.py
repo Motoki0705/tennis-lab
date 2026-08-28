@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 from torch import Tensor
 
+from src.tasks.base.data import ReferenceViewSelection, StableCameraIdTable
 from src.tasks.base.generate_dataset import CourtReferenceFrameProvenance
 
 
@@ -34,6 +35,16 @@ class BLCSTrackingBatch(TypedDict):
     clean_ball_vis: Tensor
     candidate_gt_index: Tensor
     court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...]
+    selected_camera_ids: tuple[tuple[str, ...], ...]
+    reference_view_selection: NotRequired[tuple[ReferenceViewSelection, ...]]
+    stable_camera_id_table: NotRequired[tuple[StableCameraIdTable, ...]]
+    reference_camera_id_string: NotRequired[tuple[str, ...]]
+    reference_view_index: NotRequired[Tensor]
+    view_camera_ids: NotRequired[Tensor]
+    reference_camera_id: NotRequired[Tensor]
+    reference_from_physical: NotRequired[Tensor]
+    physical_from_reference: NotRequired[Tensor]
+    track_query_reference: NotRequired[dict[str, object]]
 
 
 class BLCSTrackingPrediction(TypedDict):

@@ -3,6 +3,7 @@ scene_path: blcs/scenes/scene_000000
 # Single-view camera index used to build predictor input.
 camera: 0
 cameras: null
+reference_camera_id: null
 device: auto
 animation_view: 3d   # 3d | 2d (create_comparison_animation)
 fps: 30.0

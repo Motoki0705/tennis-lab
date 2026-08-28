@@ -8,13 +8,15 @@ from typing import Any
 import torch
 from torch import Tensor
 
+from src.tasks.base.data import include_evaluation_reference_camera
 from src.tasks.base.data.canonical_tracking import (
     CanonicalTrackingDataset,
     pad_and_stack_tracking_batch,
 )
 from src.tasks.base.data.lifecycle_slots import build_fixed_lifecycle_assignment
-from src.tasks.base.data.scene_dataset import Scene
+from src.tasks.base.data.scene_dataset import CameraSelection, Scene
 from src.tasks.base.generate_dataset import (
+    CAMERA_VIEW_V2_SELECTOR,
     PHYSICAL_V1_SELECTOR,
     CourtReferenceFrameError,
     CourtReferenceFrameProvenance,
@@ -24,6 +26,9 @@ from src.tasks.base.generate_dataset import (
 from src.tasks.blcs.configuration import parse_court_keypoint_contract
 from src.tasks.blcs.data.court_view import (
     align_blcs_court_array,
+    blcs_reference_sample_fields,
+    blcs_track_query_reference_contract_document,
+    collate_blcs_reference_fields,
     court_views_by_scene,
     resolve_blcs_sample_court_frame,
     validate_blcs_dataset_court_keypoints,
@@ -57,9 +62,21 @@ BLCS_TRACKING_KEYS = (
 class BLCSTrackingDataset(CanonicalTrackingDataset):
     """Load ID-ordered objects, pack lifecycle slots, and corrupt observations."""
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *,
+        reference_camera_id: str | None = None,
+        **kwargs: Any,
+    ) -> None:
         config = kwargs.get("config")
+        self.reference_camera_id = reference_camera_id
         self.court_keypoint_contract = parse_court_keypoint_contract(config)
+        self.track_query_reference_document = (
+            blcs_track_query_reference_contract_document(
+                config,
+                self.court_keypoint_contract,
+            )
+        )
         scene_dir = Path(kwargs["scene_dir"])
         split_file = Path(kwargs["split_file"])
         court_dataset = validate_blcs_dataset_court_keypoints(
@@ -102,13 +119,29 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
             )
         window = self.select_window(scene, full_len=num_frames)
         cameras = self.select_cameras(scene)
+        court_views = self._court_views_by_scene.get(scene.path.name, ())
+        if (
+            not self.augment
+            and self.court_keypoint_contract.selector == CAMERA_VIEW_V2_SELECTOR
+        ):
+            cameras = CameraSelection(
+                indices=include_evaluation_reference_camera(
+                    tuple(view.camera_id for view in court_views),
+                    cameras.indices,
+                    requested_camera_id=self.reference_camera_id,
+                    rng=self.rng,
+                )
+            )
         frame = resolve_blcs_sample_court_frame(
             scene=scene,
             selected_camera_indices=cameras.indices,
-            court_views=self._court_views_by_scene.get(scene.path.name, ()),
+            court_views=court_views,
             contract=self.court_keypoint_contract,
             rng=self.rng,
             training=self.augment,
+            reference_camera_id=(
+                None if self.augment else self.reference_camera_id
+            ),
         )
         position = position[window.sl]
         velocity = velocity[window.sl]
@@ -208,18 +241,34 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
             "clean_ball_vis": observations.vis.clone(),
             "candidate_gt_index": observations.gt_index,
             "court_reference_provenance": frame.provenance,
+            "selected_camera_ids": tuple(
+                view.camera_id for view in frame.selected_views
+            )
+            or tuple(f"camera_{index}" for index in cameras.indices),
         }
+        if frame.reference_selection is not None:
+            sample.update(
+                blcs_reference_sample_fields(
+                    frame.reference_selection,
+                    dtype=position.dtype,
+                    track_query_reference_document=(
+                        self.track_query_reference_document
+                    ),
+                )
+            )
         return sample
 
     def augment_sample(self, sample: dict[str, Any]) -> dict[str, Any]:
         if not self.augment:
             return sample
-        provenance = sample["court_reference_provenance"]
+        metadata = {
+            key: value for key, value in sample.items() if not isinstance(value, Tensor)
+        }
         tensor_sample = {
             key: value for key, value in sample.items() if isinstance(value, Tensor)
         }
         augmented: dict[str, Tensor] = self.tracking_augmentation(tensor_sample)
-        return {**augmented, "court_reference_provenance": provenance}
+        return {**augmented, **metadata}
 
 
 def collate_blcs_tracking_batch(
@@ -258,8 +307,19 @@ def collate_blcs_tracking_batch(
                 "candidate width before collation."
             )
     provenances = tuple(provenance_rows)
+    reference_tensor_keys = {
+        "reference_view_index",
+        "view_camera_ids",
+        "reference_camera_id",
+        "reference_from_physical",
+        "physical_from_reference",
+    }
     tensor_batch = [
-        {key: value for key, value in sample.items() if isinstance(value, Tensor)}
+        {
+            key: value
+            for key, value in sample.items()
+            if isinstance(value, Tensor) and key not in reference_tensor_keys
+        }
         for sample in batch
     ]
     collated: dict[str, Any] = pad_and_stack_tracking_batch(
@@ -285,6 +345,27 @@ def collate_blcs_tracking_batch(
         },
     )
     collated["court_reference_provenance"] = provenances
+    for sample_index, sample in enumerate(batch):
+        camera_ids = sample.get("selected_camera_ids")
+        if not isinstance(camera_ids, tuple) or any(
+            type(camera_id) is not str or not camera_id
+            for camera_id in camera_ids
+        ):
+            raise ValueError(
+                "Every BLCS tracking sample must provide canonical "
+                f"selected_camera_ids; sample {sample_index} is invalid."
+            )
+    collated["selected_camera_ids"] = tuple(
+        sample["selected_camera_ids"] for sample in batch
+    )
+    collated.update(
+        collate_blcs_reference_fields(
+            batch,
+            max_views=int(collated["ball_uv"].shape[1]),
+            model_tensor_key="ball_uv",
+            transform_dtype_key="target_position",
+        )
+    )
     return collated
 
 

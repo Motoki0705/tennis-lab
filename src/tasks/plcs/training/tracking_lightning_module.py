@@ -16,8 +16,12 @@ from src.tasks.plcs.model_io import (
     PLCSTrackingBoundModelIO,
     PLCSTrackQueryIOAdapter,
     build_plcs_model_io,
+    plcs_reference_metadata_from_batch,
+    resolve_plcs_track_query_reference_contract,
     validate_plcs_checkpoint_court_keypoints,
+    validate_plcs_checkpoint_track_query_reference,
     write_plcs_checkpoint_court_keypoints,
+    write_plcs_checkpoint_track_query_reference,
 )
 from src.tasks.plcs.training.tracking_losses import PLCSTrackingLoss
 from src.tasks.plcs.training.tracking_metrics import plcs_tracking_metrics
@@ -27,7 +31,7 @@ from src.utils.schema.court_normalization import (
 )
 
 
-class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Tensor]]):
+class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Any]]):
     """Train and evaluate clip-local player slots."""
 
     def __init__(self, config: Any) -> None:
@@ -43,6 +47,12 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Tensor]]):
         self.model_io = cast(PLCSTrackingBoundModelIO, model_io)
         self.model = self.model_io.model
         self.plcs_runtime = runtime
+        self.track_query_reference_contract = (
+            resolve_plcs_track_query_reference_contract(
+                runtime.model,
+                runtime.court_keypoint_contract,
+            )
+        )
         self.criterion = PLCSTrackingLoss(config.loss)
         if runtime.tracking_metrics is None:
             raise ValueError("PLCS tracking requires tracking_metrics configuration.")
@@ -53,8 +63,9 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Tensor]]):
         batch: dict[str, Tensor],
         *,
         compute_metrics: bool,
-    ) -> TrackingStepResult[dict[str, Tensor]]:
+    ) -> TrackingStepResult[dict[str, Any]]:
         """Run PLCS model-I/O, matching, loss, and optional metrics."""
+        reference_metadata = plcs_reference_metadata_from_batch(batch)
         prepared = self.io_adapter.prepare_training_batch(batch)
         raw_prediction = self.model_io.execute_call(prepared.call)
         decoded = self.model_io.decode_output(raw_prediction)
@@ -72,14 +83,22 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Tensor]]):
                 assignments,
                 config=self.tracking_metric_config,
                 court_reference_provenance=prepared.court_reference_provenance,
+                reference_view_index=(
+                    reference_metadata.reference_view_index
+                    if reference_metadata is not None
+                    else None
+                ),
             )
             if compute_metrics
             else {}
         )
+        prediction_result: dict[str, Any] = dict(prediction)
+        if reference_metadata is not None:
+            prediction_result["reference_metadata"] = reference_metadata
         return TrackingStepResult(
             losses=losses,
             metrics=metrics,
-            prediction=prediction,
+            prediction=prediction_result,
         )
 
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
@@ -90,6 +109,10 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Tensor]]):
             checkpoint,
             self.plcs_runtime.court_keypoint_contract,
         )
+        write_plcs_checkpoint_track_query_reference(
+            checkpoint,
+            self.track_query_reference_contract,
+        )
 
     def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         validate_court_coordinate_normalization(
@@ -99,9 +122,13 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Tensor]]):
             checkpoint,
             self.plcs_runtime.court_keypoint_contract,
         )
+        validate_plcs_checkpoint_track_query_reference(
+            checkpoint,
+            self.track_query_reference_contract,
+        )
 
     def tracking_prediction_result(
-        self, prediction: dict[str, Tensor]
+        self, prediction: dict[str, Any]
     ) -> dict[str, Any]:
         """Return the canonical PLCS tensor mapping unchanged."""
         return prediction
@@ -109,7 +136,7 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Tensor]]):
     def test_prediction_payload(
         self, batch: Any, result: dict[str, Any]
     ) -> dict[str, np.ndarray]:
-        return {
+        payload: dict[str, np.ndarray] = {
             "pred_position": self._to_numpy(result["position"]),
             "pred_rotation": self._to_numpy(result["rotation"]),
             "pred_presence_logits": self._to_numpy(result["presence_logits"]),
@@ -119,3 +146,18 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Tensor]]):
             "target_instance_id": self._to_numpy(batch["target_instance_id"]),
             "padding_mask": self._to_numpy(batch["padding_mask"]),
         }
+        reference_metadata = plcs_reference_metadata_from_batch(batch)
+        if reference_metadata is not None:
+            num_views_range = cast(
+                "list[int] | tuple[int, int]",
+                self.plcs_runtime.data.values["num_views_range"],
+            )
+            payload.update(
+                {
+                    key: self._to_numpy(value)
+                    for key, value in reference_metadata.prediction_payload(
+                        max_views=int(num_views_range[1]),
+                    ).items()
+                }
+            )
+        return payload

@@ -18,6 +18,7 @@ from src.tasks.plcs.model_io.adapters import (
     PLCSAdapter,
     PLCSModelIOAdapter,
     PLCSTrackQueryIOAdapter,
+    PLCSTrackQueryReferenceIOAdapter,
 )
 from src.tasks.plcs.model_io.contracts import (
     PLCSDecodedPrediction,
@@ -37,6 +38,12 @@ from src.tasks.plcs.models.plcs_track_query_ablation_model import (
     PLCSTrackQueryAblationModel,
 )
 from src.tasks.plcs.models.plcs_track_query_model import PLCSTrackQueryModel
+from src.tasks.plcs.models.plcs_track_query_reference_ablation_model import (
+    PLCSTrackQueryReferenceAblationModel,
+)
+from src.tasks.plcs.models.plcs_track_query_reference_model import (
+    PLCSTrackQueryReferenceModel,
+)
 
 PLCSRawOutput = Mapping[str, object]
 PLCSStandardBoundModelIO: TypeAlias = BoundModelIO[
@@ -75,6 +82,26 @@ def bind_plcs_model_io(
             f"{expected.__module__}.{expected.__qualname__}, got "
             f"{type(model).__module__}.{type(model).__qualname__}."
         )
+    if adapter.model_type in {
+        PLCSTrackQueryReferenceModel,
+        PLCSTrackQueryReferenceAblationModel,
+    }:
+        actual_semantics = (
+            getattr(model, "target_frame_contract", None),
+            getattr(model, "track_query_rope_contract", None),
+            getattr(model, "reference_selector_mode", None),
+        )
+        expected_semantics = (
+            getattr(adapter, "target_frame_contract", None),
+            getattr(adapter, "track_query_rope_contract", None),
+            getattr(adapter, "reference_selector_mode", None),
+        )
+        if actual_semantics != expected_semantics:
+            raise ModelAdapterMismatchError(
+                "PLCS reference model and adapter court-target/RoPE/selector "
+                f"semantics do not match exactly: model={actual_semantics!r}, "
+                f"adapter={expected_semantics!r}."
+            )
     return bind_model_io(model, adapter)
 
 
@@ -205,6 +232,34 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
             num_court_tokens=14,
             num_joints=model_cfg.integer("num_joints"),
             court_keypoint_contract=runtime.court_keypoint_contract,
+        )
+    elif model_name == "plcs_track_query_reference":
+        model = PLCSTrackQueryReferenceModel(model_cfg)
+        adapter = PLCSTrackQueryReferenceIOAdapter(
+            model_type=PLCSTrackQueryReferenceModel,
+            num_queries=model_cfg.integer("num_queries"),
+            num_court_tokens=14,
+            num_joints=model_cfg.integer("num_joints"),
+            court_keypoint_contract=runtime.court_keypoint_contract,
+            target_frame_contract=model_cfg.string("target_frame_contract"),
+            track_query_rope_contract=model_cfg.string(
+                "track_query_rope_contract"
+            ),
+            reference_selector_mode=model_cfg.string("reference_selector_mode"),
+        )
+    elif model_name == "plcs_track_query_reference_ablation":
+        model = PLCSTrackQueryReferenceAblationModel(model_cfg)
+        adapter = PLCSTrackQueryReferenceIOAdapter(
+            model_type=PLCSTrackQueryReferenceAblationModel,
+            num_queries=model_cfg.integer("num_queries"),
+            num_court_tokens=14,
+            num_joints=model_cfg.integer("num_joints"),
+            court_keypoint_contract=runtime.court_keypoint_contract,
+            target_frame_contract=model_cfg.string("target_frame_contract"),
+            track_query_rope_contract=model_cfg.string(
+                "track_query_rope_contract"
+            ),
+            reference_selector_mode=model_cfg.string("reference_selector_mode"),
         )
     else:
         raise ValueError(f"Unsupported validated PLCS model {model_name!r}.")

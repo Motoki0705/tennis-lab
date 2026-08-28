@@ -71,6 +71,7 @@ def predict_scene(
     *,
     resolver: PathResolver,
     court_keypoint_contract: CourtKeypointContract,
+    reference_camera_id: str | None,
 ) -> Any:
     """Run PLCS prediction and return a scene whose pose is replaced by prediction.
 
@@ -96,17 +97,14 @@ def predict_scene(
         court_keypoint_contract=court_keypoint_contract,
     )
     logger.info(f"Model loaded successfully on {device}.")
-    reference_camera_id = None
     if court_keypoint_contract.selector == CAMERA_VIEW_V2_SELECTOR:
-        selected_ids: list[str] = []
-        for index in cameras:
-            view = scene.cameras[index].court_view
-            if view is None or not view.camera_id:
-                raise ValueError(
-                    "camera_view_v2 visualization requires camera metadata."
-                )
-            selected_ids.append(view.camera_id)
-        reference_camera_id = sorted(selected_ids)[0]
+        if not isinstance(reference_camera_id, str) or not reference_camera_id.strip():
+            raise ValueError(
+                "camera_view_v2 visualization requires an explicit stable "
+                "reference_camera_id."
+            )
+    elif reference_camera_id is not None:
+        raise ValueError("physical_v1 visualization must not specify a reference camera.")
     decoded = predictor.predict_scene(
         scene,
         cameras,

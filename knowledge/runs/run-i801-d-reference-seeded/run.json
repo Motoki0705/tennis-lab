@@ -1,0 +1,14 @@
+{
+  "run_id": "1787615604723446824_3420820_i801_normv2_camera_view_d_reference_b8_a4_eb32_e100_gpu0_retry4_seeded",
+  "name": "i801_normv2_camera_view_d_reference_b8_a4_eb32_e100_gpu0_retry4_seeded",
+  "command": "CUDA_VISIBLE_DEVICES=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.venv/bin/python -c 'import atexit,runpy,torch; atexit.register(lambda: print(\"TRAIN_PEAK_CUDA_ALLOCATED_BYTES=\"+str(torch.cuda.max_memory_allocated())+\" TRAIN_PEAK_CUDA_RESERVED_BYTES=\"+str(torch.cuda.max_memory_reserved()))); runpy.run_module(\"src.tasks.blcs.scripts.train\",run_name=\"__main__\")' --config-name train_tracking court_coordinate_normalization=v2 court_keypoints=camera_view_v2 model=track_query_ablation_d_v2_selector paths.data_root=/home/kamimura/projects/tennis-lab/data data.scene_dir=blcs/multi_object_camera_view_norm-v2 data.seq_len_range=[128,128] data.num_views_range=[4,4] data.batch_size=8 data.num_workers=16 data.evaluation_reference_camera_id=cam_1 training.compile.enabled=false training.trainer.accumulate_grad_batches=4 training.trainer.max_epochs=100 training.trainer.check_val_every_n_epoch=5 training.trainer.enable_progress_bar=false training.trainer.enable_model_summary=false training.early_stopping.enabled=false run.seed=42 run.fast_dev_run=false run.test_after_fit=true run.output_dir=blcs/norm-v2/issue-801/t128-v4/ablation-d-reference-selector-eb32-seeded-retry4",
+  "provider": "codex",
+  "session": "01a03207-0be4-72c1-ba60-a051d0d8d9b6",
+  "issue": "801",
+  "commit": "b392bbcbab877172b74c190af32b4dcc12366853",
+  "branch": "feat/issue-801-reference-camera-rope",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-801-reference-rope",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-801-reference-rope",
+  "captured_at": "2026-08-25T08:53:39+09:00"
+}

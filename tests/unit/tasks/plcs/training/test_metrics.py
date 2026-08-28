@@ -10,7 +10,11 @@ from src.tasks.base.generate_dataset import (
     build_reference_frame_provenance,
     resolve_court_keypoint_contract,
 )
-from src.tasks.plcs.training.metrics import PLCSMetrics
+from src.tasks.plcs.training.metrics import (
+    PLCSMetrics,
+    compute_plcs_reference_metric_evidence,
+)
+from src.utils.schema.court_normalization import denormalize_court_position
 
 
 def _positive_side_provenance():
@@ -60,3 +64,60 @@ def test_metrics_reject_provenance_cardinality_mismatch() -> None:
             target_rotation=torch.tensor([[[1.0, 0.0]], [[1.0, 0.0]]]),
             court_reference_provenance=(provenance, provenance, provenance),
         )
+
+
+def test_reference_metric_evidence_reports_y_sign_axes_heading_and_local_index() -> (
+    None
+):
+    target_position = torch.tensor([[[1.0, 2.0, 0.5]], [[-2.0, -3.0, 1.0]]])
+    prediction_position = target_position + torch.tensor([0.1, -0.2, 0.3])
+    target_heading = torch.tensor([[[1.0, 0.0]], [[0.0, 1.0]]])
+    prediction_heading = torch.tensor([[[0.0, 1.0]], [[0.0, 1.0]]])
+
+    evidence = compute_plcs_reference_metric_evidence(
+        prediction_position,
+        prediction_heading,
+        target_position,
+        target_heading,
+        torch.tensor([0, 1], dtype=torch.int64),
+    )
+    flattened = evidence.to_flat_dict()
+
+    assert flattened["y_sign_accuracy"] == pytest.approx(1.0)
+    assert flattened["x_error_m"] == pytest.approx(0.1)
+    assert flattened["y_error_m"] == pytest.approx(0.2)
+    assert flattened["z_error_m"] == pytest.approx(0.3)
+    assert flattened["heading_error_deg"] == pytest.approx(45.0)
+    assert flattened["reference_index_0_position_error_m"] == pytest.approx(0.3741657)
+    assert flattened["reference_index_1_position_error_m"] == pytest.approx(0.3741657)
+
+
+def test_reference_metrics_accept_bfloat16_prediction_and_float32_target() -> None:
+    target_position = torch.tensor([[[0.0, 0.5, 0.0]]], dtype=torch.float32)
+    prediction_position = target_position.to(torch.bfloat16)
+    target_heading = torch.tensor([[[1.0, 0.0]]], dtype=torch.float32)
+    prediction_heading = target_heading.to(torch.bfloat16)
+    prediction_m = denormalize_court_position(prediction_position)
+    target_m = denormalize_court_position(target_position)
+    assert isinstance(prediction_m, torch.Tensor)
+    assert isinstance(target_m, torch.Tensor)
+    expected_y_error = float((prediction_m.float() - target_m).abs()[0, 0, 1])
+
+    with torch.autocast(device_type="cpu", dtype=torch.bfloat16):
+        result = PLCSMetrics(
+            position_threshold_m=1.0,
+            angle_threshold_deg=10.0,
+        ).update(
+            prediction_position,
+            prediction_heading,
+            target_position,
+            target_heading,
+            court_reference_provenance=(_positive_side_provenance(),),
+            reference_view_index=torch.tensor([0], dtype=torch.int64),
+        )
+
+    assert result["x_error_m"] == pytest.approx(0.0)
+    assert result["y_error_m"] == pytest.approx(expected_y_error)
+    assert result["z_error_m"] == pytest.approx(0.0)
+    assert result["y_sign_accuracy"] == pytest.approx(1.0)
+    assert result["heading_error_deg"] == pytest.approx(0.0)

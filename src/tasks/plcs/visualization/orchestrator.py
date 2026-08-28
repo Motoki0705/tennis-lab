@@ -37,12 +37,17 @@ class RuntimeConfig(BaseVisualizationRuntimeConfig):
     canonical_pose_source: CanonicalPoseSource
     resolver: PathResolver
     court_keypoint_contract: CourtKeypointContract
+    reference_camera_id: str | None
 
 
 def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     """Resolve shared settings plus the PLCS canonical pose source."""
     base = build_scene_runtime_config(
-        cfg, visualization_extension_keys={"canonical_pose_source"}
+        cfg,
+        visualization_extension_keys={
+            "canonical_pose_source",
+            "reference_camera_id",
+        },
     )
     source = cast(
         "str",
@@ -76,6 +81,11 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         resolver=path_config.resolver,
         court_keypoint_contract=(
             PLCSCourtKeypointRuntimeConfig.from_config(cfg).contract
+        ),
+        reference_camera_id=(
+            None
+            if cfg.visualization.reference_camera_id is None
+            else str(cfg.visualization.reference_camera_id)
         ),
     )
 
@@ -125,6 +135,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
                 canonical_pose_source=cfg.canonical_pose_source,
                 resolver=cfg.resolver,
                 court_keypoint_contract=cfg.court_keypoint_contract,
+                reference_camera_id=cfg.reference_camera_id,
             )
         except ValueError as exc:
             logger.error(f"Error: {exc}")

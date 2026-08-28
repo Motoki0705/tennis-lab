@@ -277,6 +277,7 @@ def test_multi_ball_uses_physical_scenes_and_canonical_writer(tmp_path) -> None:
         scene_dir=dataset_root,
         split_file="train.txt",
         config=_tracking_config(),
+        seed=0,
     )[0]
     assert sample["ball_uv"].shape == (6, 12, 2, 2)
     candidate_ids = sample["candidate_gt_index"]

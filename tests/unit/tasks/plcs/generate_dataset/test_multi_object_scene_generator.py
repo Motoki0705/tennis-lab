@@ -232,6 +232,7 @@ def test_multi_person_uses_motion_scenes_and_canonical_writer(tmp_path) -> None:
         scene_dir=dataset_root,
         split_file="train.txt",
         config=_tracking_config(),
+        seed=0,
     )[0]
     assert sample["human_kp"].shape[:4] == (6, 12, 2, 17)
     assert "bbox" not in sample

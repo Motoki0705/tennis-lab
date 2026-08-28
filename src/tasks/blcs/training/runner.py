@@ -14,7 +14,10 @@ from src.tasks.blcs.configuration import (
     parse_court_keypoint_contract,
     validate_training_boundary,
 )
-from src.tasks.blcs.model_io.checkpoints import validate_checkpoint_path
+from src.tasks.blcs.model_io.checkpoints import (
+    resolve_config_track_query_reference_contract,
+    validate_checkpoint_path,
+)
 from src.tasks.blcs.model_io.training import (
     BLCSTrainingComposition,
     compose_blcs_training,
@@ -22,6 +25,7 @@ from src.tasks.blcs.model_io.training import (
 
 if TYPE_CHECKING:
     from src.tasks.base.generate_dataset import CourtKeypointContract
+    from src.tasks.base.model_io import TrackQueryReferenceContract
     from src.tasks.blcs.generate_dataset.scene_generator import GeneratorConfig
 
 
@@ -35,6 +39,9 @@ class BLCSTrainingRunner(BaseTrainingRunner):
         self.generator_config = generator_config
         self._composition: BLCSTrainingComposition | None = None
         self._court_keypoint_contract: CourtKeypointContract | None = None
+        self._track_query_reference_contract: (
+            TrackQueryReferenceContract | None
+        ) = None
 
     def _runtime(self, config: Any) -> BLCSTrainingComposition:
         if self._composition is None:
@@ -80,6 +87,9 @@ class BLCSTrainingRunner(BaseTrainingRunner):
         """Validate shared and BLCS-specific contracts before runner side effects."""
         validate_training_boundary(config)
         self._court_keypoint_contract = parse_court_keypoint_contract(config)
+        self._track_query_reference_contract = (
+            resolve_config_track_query_reference_contract(config)
+        )
         runtime: TrainingRuntimeConfig = super().validate_runtime_config(config)
         return runtime
 
@@ -95,6 +105,7 @@ class BLCSTrainingRunner(BaseTrainingRunner):
             validate_checkpoint_path(
                 resume_path,
                 self._require_court_keypoint_contract(),
+                self._track_query_reference_contract,
             )
         return path
 
@@ -108,6 +119,7 @@ class BLCSTrainingRunner(BaseTrainingRunner):
             validate_checkpoint_path(
                 config.run.init_weights,
                 self._require_court_keypoint_contract(),
+                self._track_query_reference_contract,
             )
         super().maybe_load_init_weights(config, lightning_module)
 

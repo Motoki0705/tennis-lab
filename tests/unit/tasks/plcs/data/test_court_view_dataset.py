@@ -4,8 +4,10 @@ from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
+import pytest
 import torch
 
+from src.tasks.base.data import ReferenceViewSelectionError
 from src.tasks.base.data.scene_dataset import Scene, SceneDatasetConfig
 from src.tasks.base.generate_dataset import (
     DatasetCourtKeypointContract,
@@ -15,6 +17,7 @@ from src.tasks.base.generate_dataset import (
     court_points_physical_to_target,
     resolve_court_keypoint_contract,
 )
+from src.tasks.plcs.court_keypoint_contract import choose_reference_selection
 from src.tasks.plcs.data.dataset import SceneDataset
 from src.tasks.plcs.data.tracking_dataset import PLCSTrackingDataset
 from src.utils.schema.court_normalization import normalize_court_position
@@ -85,6 +88,8 @@ def _dataset_and_scene() -> tuple[SceneDataset, Scene]:
     dataset = object.__new__(SceneDataset)
     dataset.rng = np.random.default_rng(0)
     dataset.augment = False
+    dataset.reference_camera_id = "camera_1"
+    dataset.track_query_reference_document = None
     dataset.court_keypoint_contract = contract
     dataset.court_keypoint_validation = DatasetCourtKeypointContract(
         contract=contract,
@@ -125,7 +130,7 @@ def test_standard_dataset_aligns_before_first20_and_rotates_court_targets() -> N
         "selected_camera_ids"
     ] == ("camera_1", "camera_0")
     # Reference selection is identity-based; camera ordering is independently random.
-    assert provenance.reference_camera_id == "camera_0"
+    assert provenance.reference_camera_id == "camera_1"
     assert sample["selected_camera_ids"][provenance.reference_camera_local_index] == (
         provenance.reference_camera_id
     )
@@ -173,6 +178,8 @@ def test_tracking_aligns_before_first14_and_keeps_canonical_pose_local() -> None
     dataset = object.__new__(PLCSTrackingDataset)
     dataset.rng = np.random.default_rng(0)
     dataset.augment = False
+    dataset.reference_camera_id = "camera_1"
+    dataset.track_query_reference_document = None
     dataset.court_keypoint_contract = standard.court_keypoint_contract
     dataset.court_keypoint_validation = standard.court_keypoint_validation
     dataset.num_queries = 1
@@ -191,6 +198,18 @@ def test_tracking_aligns_before_first14_and_keeps_canonical_pose_local() -> None
 
     sample = dataset.build_sample(scene)
     provenance = sample["court_reference_provenance"]
+    selection = sample["reference_view_selection"]
+    assert selection.provenance is provenance
+    assert sample["reference_view_index"].dtype == torch.int64
+    assert int(sample["reference_view_index"]) == (
+        sample["selected_camera_ids"].index("camera_1")
+    )
+    assert int(sample["reference_camera_id"]) == 1
+    assert sample["view_camera_ids"].tolist() in ([0, 1], [1, 0])
+    torch.testing.assert_close(
+        sample["physical_from_reference"],
+        sample["reference_from_physical"].T,
+    )
     assert sample["court_kp"].shape == (2, 2, 14, 2)
     torch.testing.assert_close(sample["court_kp"][0], sample["court_kp"][1])
     torch.testing.assert_close(
@@ -202,4 +221,58 @@ def test_tracking_aligns_before_first14_and_keeps_canonical_pose_local() -> None
     torch.testing.assert_close(
         sample["target_human_kp_3d"][:, 0],
         expected_world,
+    )
+
+
+def test_evaluation_reference_selection_fails_closed_for_multiview() -> None:
+    dataset, _ = _dataset_and_scene()
+    views = dataset.court_keypoint_validation.scenes[0].court_views
+
+    with pytest.raises(
+        ReferenceViewSelectionError,
+        match="requires an explicit canonical reference camera ID",
+    ):
+        choose_reference_selection(
+            dataset.court_keypoint_contract,
+            views,
+            views,
+            rng=None,
+            requested_camera_id=None,
+        )
+
+
+def test_single_view_and_seeded_reordering_resolve_reference_by_identity() -> None:
+    dataset, _ = _dataset_and_scene()
+    views = dataset.court_keypoint_validation.scenes[0].court_views
+    single = choose_reference_selection(
+        dataset.court_keypoint_contract,
+        views,
+        (views[1],),
+        rng=None,
+        requested_camera_id=None,
+    )
+    assert single is not None
+    assert single.reference_camera_id == "camera_1"
+    assert single.reference_view_index == 0
+
+    ordered = choose_reference_selection(
+        dataset.court_keypoint_contract,
+        views,
+        views,
+        rng=np.random.default_rng(9),
+        requested_camera_id=None,
+    )
+    reversed_order = choose_reference_selection(
+        dataset.court_keypoint_contract,
+        views,
+        tuple(reversed(views)),
+        rng=np.random.default_rng(9),
+        requested_camera_id=None,
+    )
+    assert ordered is not None and reversed_order is not None
+    assert ordered.reference_camera_id == reversed_order.reference_camera_id
+    assert (
+        ordered.selected_camera_ids[ordered.reference_view_index]
+        == reversed_order.selected_camera_ids[reversed_order.reference_view_index]
+        == ordered.reference_camera_id
     )

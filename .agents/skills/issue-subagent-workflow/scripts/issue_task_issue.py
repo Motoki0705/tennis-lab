@@ -9,15 +9,35 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 SOURCE_ACCEPTANCE_SECTION_RE = re.compile(
-    r"(?ms)^## Acceptance checklist\s*\n(.*?)(?=^##\s+|\Z)"
+    r"(?ms)^## Acceptance checklist[ \t]*\r?\n(.*?)(?=^##[ \t]+|\Z)"
 )
-TASK_LIST_RE = re.compile(r"(?m)^\s*[-*+]\s+\[([ xX])\]\s+(.+?)\s*$")
+TASK_LIST_RE = re.compile(
+    r"^(?P<indent>[ \t]*)[-*+][ \t]+\[(?P<mark>[ xX])\]"
+    r"(?:[ \t]+(?P<text>.*?))?[ \t]*$"
+)
+HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 
 
 class AcceptanceItem(NamedTuple):
     item_id: str
     text: str
     source_checked: bool
+
+
+class _SourceAcceptanceItem(NamedTuple):
+    indent: str
+    mark: str
+    summary: str
+    details: list[str]
+
+
+def _mask_html_comment(match: re.Match[str]) -> str:
+    """Remove template guidance without changing its physical line structure."""
+    return re.sub(r"[^\r\n]", " ", match.group(0))
+
+
+def _normalize_acceptance_text(value: str) -> str:
+    return " ".join(value.split())
 
 
 def canonical_json_bytes(payload: object) -> bytes:
@@ -42,13 +62,67 @@ def canonical_issue_hash(payload: dict[str, Any]) -> str:
 
 
 def extract_acceptance_items(body: str) -> list[AcceptanceItem]:
-    section = SOURCE_ACCEPTANCE_SECTION_RE.search(body)
+    section = SOURCE_ACCEPTANCE_SECTION_RE.search(
+        HTML_COMMENT_RE.sub(_mask_html_comment, body)
+    )
     if section is None:
         raise ValueError(
             "issue body must contain a `## Acceptance checklist` section with at least "
             "one Markdown task-list item"
         )
-    raw_items = TASK_LIST_RE.findall(section.group(1))
+
+    raw_items: list[tuple[str, str, list[str]]] = []
+    current: _SourceAcceptanceItem | None = None
+    continuation_open = False
+    for raw_line in section.group(1).splitlines():
+        task_match = TASK_LIST_RE.fullmatch(raw_line)
+        if task_match is not None:
+            if current is not None:
+                raw_items.append((current.mark, current.summary, current.details))
+            summary = _normalize_acceptance_text(task_match.group("text") or "")
+            current = None
+            continuation_open = False
+            if summary:
+                current = _SourceAcceptanceItem(
+                    task_match.group("indent"),
+                    task_match.group("mark"),
+                    summary,
+                    [],
+                )
+                continuation_open = True
+            continue
+
+        if not raw_line.strip():
+            if current is not None:
+                continuation_open = False
+            continue
+
+        if current is None:
+            if raw_items:
+                raise ValueError(
+                    "acceptance checklist prose after an item must be another task-list "
+                    "item; detailed context belongs on consecutive indented lines"
+                )
+            # Preserve support for introductory prose before the first checklist item.
+            continue
+
+        if not continuation_open:
+            raise ValueError(
+                "acceptance checklist detail must immediately follow its task-list item "
+                "without a blank line"
+            )
+        detail_prefix = current.indent + "  "
+        if not raw_line.startswith(detail_prefix):
+            raise ValueError(
+                "acceptance checklist detail must be indented by at least two ASCII "
+                "spaces more than its task-list item"
+            )
+        current.details.append(
+            _normalize_acceptance_text(raw_line[len(detail_prefix) :])
+        )
+
+    if current is not None:
+        raw_items.append((current.mark, current.summary, current.details))
     if not raw_items:
         raise ValueError(
             "the `## Acceptance checklist` section must contain at least one item"
@@ -56,10 +130,8 @@ def extract_acceptance_items(body: str) -> list[AcceptanceItem]:
 
     items: list[AcceptanceItem] = []
     seen_texts: set[str] = set()
-    for index, (mark, raw_text) in enumerate(raw_items, start=1):
-        text = " ".join(raw_text.split())
-        if not text:
-            raise ValueError("issue acceptance checklist cannot contain a blank item")
+    for index, (mark, summary, details) in enumerate(raw_items, start=1):
+        text = " ".join((summary, *details))
         if text in seen_texts:
             raise ValueError(f"issue acceptance checklist contains duplicate item: {text!r}")
         seen_texts.add(text)

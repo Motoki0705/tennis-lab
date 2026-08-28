@@ -30,6 +30,7 @@ sys.path.insert(0, str(SCRIPTS))
 init = load("init_issue_task")
 manage = load("manage_issue_task")
 candidate = load("issue_task_candidate")
+issue = sys.modules["issue_task_issue"]
 remote = sys.modules["issue_task_remote"]
 
 
@@ -506,6 +507,115 @@ else:
         ),
     )
     monkeypatch.setenv("PATH", f"{directory}:{os.environ.get('PATH', '')}")
+
+
+def test_multiline_acceptance_context_is_preserved_in_canonical_artifacts(
+    tmp_path: Path,
+) -> None:
+    body = """## Acceptance checklist
+
+<!--
+- [ ] This template example is not an acceptance item
+  Context from the template is ignored too.
+-->
+
+- [ ] 出力契約を満たす
+  文脈: 生成物を後続処理が入力として利用する。
+  下流への影響: consumer | renderer が追加変換なしで読み込める。
+  検証方法・証拠: 契約テストの結果を提示する。
+- [x] 従来の1行ACも維持する
+- [ ]
+"""
+    items = issue.extract_acceptance_items(body)
+    expected = (
+        "出力契約を満たす 文脈: 生成物を後続処理が入力として利用する。 "
+        "下流への影響: consumer | renderer が追加変換なしで読み込める。 "
+        "検証方法・証拠: 契約テストの結果を提示する。"
+    )
+    assert [(item.item_id, item.text, item.source_checked) for item in items] == [
+        ("AC-001", expected, False),
+        ("AC-002", "従来の1行ACも維持する", True),
+    ]
+    escaped_expected = issue.escape_table_cell(expected)
+    assert (
+        f"| AC-001 | {escaped_expected} | PENDING | PENDING |"
+        in init.render_plan_rows(items)
+    )
+
+    payload = {
+        "number": 7,
+        "title": "Detailed acceptance context",
+        "body": body,
+        "url": "https://github.com/example/repo/issues/7",
+        "state": "OPEN",
+        "labels": [],
+        "updatedAt": "2026-08-28T00:00:00Z",
+    }
+    issue_hash, issue_md_hash, checklist_hash, snapshot_items = (
+        issue.write_issue_snapshot(tmp_path, payload)
+    )
+    state = {
+        "candidate_binding_mode": "CONTENT",
+        "issue_sha256": issue_hash,
+        "issue_snapshot_sha256": issue_md_hash,
+        "acceptance_checklist_sha256": checklist_hash,
+        "acceptance_checklist_count": len(snapshot_items),
+        "issue_number": payload["number"],
+        "issue_url": payload["url"],
+    }
+    assert issue.validate_issue_snapshot(tmp_path, state) == []
+    issue_markdown = (tmp_path / "issue.md").read_text(encoding="utf-8")
+    assert f"- AC-001: {expected} (source checkbox: unchecked)" in issue_markdown
+    assert body in issue_markdown
+
+
+def test_multiline_acceptance_hash_uses_normalized_full_context() -> None:
+    compact = """## Acceptance checklist
+- [ ] Summary
+  Context: downstream contract
+  Evidence: focused test
+"""
+    reformatted = """## Acceptance checklist
+- [ ] Summary
+  Context:   downstream   contract
+  Evidence:\tfocused test
+"""
+    compact_items = issue.extract_acceptance_items(compact)
+    reformatted_items = issue.extract_acceptance_items(reformatted)
+    assert compact_items == reformatted_items
+    assert issue.acceptance_hash(compact_items) == issue.acceptance_hash(
+        reformatted_items
+    )
+
+
+@pytest.mark.parametrize(
+    ("detail", "message"),
+    [
+        ("detail without indentation", "at least two ASCII spaces"),
+        (" detail with one space", "at least two ASCII spaces"),
+        ("\tdetail with a tab", "at least two ASCII spaces"),
+        ("\n  detail after a blank line", "must immediately follow"),
+    ],
+)
+def test_acceptance_context_rejects_detail_that_cannot_be_safely_attached(
+    detail: str, message: str
+) -> None:
+    body = f"## Acceptance checklist\n- [ ] Summary\n{detail}\n"
+    with pytest.raises(ValueError, match=message):
+        issue.extract_acceptance_items(body)
+
+
+def test_indented_legacy_task_item_remains_a_separate_acceptance_item() -> None:
+    body = """## Acceptance checklist
+- [ ] Parent item
+  - [x] Indented item
+    Its own detailed context.
+"""
+    items = issue.extract_acceptance_items(body)
+    assert [(item.text, item.source_checked) for item in items] == [
+        ("Parent item", False),
+        ("Indented item Its own detailed context.", True),
+    ]
 
 
 def test_full_v6_flow_uses_validated_then_complete(

@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-801-reference-rope/outputs/plcs/norm-v2/issue-801/t128-v6/ablation-d-reference-selector-eb32-final/logs/version_0/checkpoints

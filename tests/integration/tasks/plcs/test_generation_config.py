@@ -58,10 +58,13 @@ def test_training_composes_court_keypoint_contract(
     court_selector: str,
 ) -> None:
     config_dir = Path("src/tasks/plcs/configs").resolve()
+    overrides = [f"court_keypoints={court_selector}"]
+    if config_name == "train_tracking" and court_selector == "camera_view_v2":
+        overrides.append("model=track_query_reference")
     with initialize_config_dir(config_dir=str(config_dir), version_base="1.3"):
         config = compose(
             config_name=config_name,
-            overrides=[f"court_keypoints={court_selector}"],
+            overrides=overrides,
         )
 
     runtime = PLCSTrainingConfig.from_config(config)

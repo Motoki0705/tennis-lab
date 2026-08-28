@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -24,6 +25,7 @@ from src.tasks.blcs.model_io import (
     BLCSTrajectoryPrediction,
     TrajectoryBoundModelIO,
     TrajectoryModelIOAdapter,
+    blcs_reference_metadata_from_batch,
 )
 from src.tasks.blcs.models import build_blcs_discriminator
 from src.tasks.blcs.training.losses import BLCSLoss
@@ -131,7 +133,10 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
     ) -> BLCSTrajectoryPrediction:
         """Delegate a validated model invocation to the bound adapter."""
         prediction: BLCSTrajectoryPrediction = self.model_io.run(batch)
-        return prediction
+        return replace(
+            prediction,
+            reference_metadata=blcs_reference_metadata_from_batch(batch),
+        )
 
     def _compute_supervised_result(
         self,
@@ -139,8 +144,11 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         stage: str,
     ) -> dict[str, Any]:
         """Compute forward pass, supervised losses, and metrics."""
+        reference_metadata = blcs_reference_metadata_from_batch(batch)
         prepared = self.io_adapter.build_training_batch(batch)
+        prepared = replace(prepared, reference_metadata=reference_metadata)
         outputs = self.model_io.decode_output(self.model_io.execute_call(prepared.call))
+        outputs = replace(outputs, reference_metadata=reference_metadata)
 
         losses = self.loss_fn(
             pred_position=outputs.position,
@@ -162,6 +170,11 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             prepared.position,
             prepared.loss_mask,
             prepared.court_reference_provenance,
+            reference_view_index=(
+                reference_metadata.reference_view_index
+                if reference_metadata is not None
+                else None
+            ),
         )
 
         return {
@@ -191,6 +204,12 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         mask = result.get("mask")
         if mask is not None:
             payload["mask"] = mask
+        if outputs.reference_metadata is not None:
+            payload.update(
+                outputs.reference_metadata.prediction_payload(
+                    max_views=int(self.config.data.num_views_range[1]),
+                )
+            )
         return payload
 
     def _log_stage_metrics(

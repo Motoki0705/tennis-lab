@@ -15,12 +15,18 @@ from src.tasks.base.generate_dataset import (
     build_reference_frame_provenance,
     resolve_court_keypoint_contract,
 )
-from src.tasks.base.model_io import ModelInputContractError
+from src.tasks.base.model_io import (
+    ModelInputContractError,
+    TrackQueryReferenceContract,
+    write_track_query_reference_contract,
+)
+from src.tasks.base.models import ReferenceSelectorMode
 from src.tasks.blcs.configuration import parse_model_config
 from src.tasks.blcs.model_io import (
     MultiViewTrajectoryModelIOAdapter,
     SingleTrajectoryModelIOAdapter,
     TrackQueryModelIOAdapter,
+    TrackQueryReferenceModelIOAdapter,
 )
 
 
@@ -74,6 +80,33 @@ def _tracking_training_batch() -> dict[str, object]:
         }
     )
     return batch
+
+
+def _reference_tracking_adapter() -> TrackQueryReferenceModelIOAdapter:
+    return TrackQueryReferenceModelIOAdapter(
+        num_court_tokens=14,
+        num_queries=2,
+        presence_threshold=0.5,
+        court_keypoint_contract=resolve_court_keypoint_contract("camera_view_v2"),
+        track_query_reference_contract=TrackQueryReferenceContract.reference_v2(
+            ReferenceSelectorMode.REFERENCE
+        ),
+    )
+
+
+def _add_reference_fields(batch: dict[str, object]) -> None:
+    batch.update(
+        {
+            "reference_view_index": torch.tensor([0], dtype=torch.int64),
+            "view_camera_ids": torch.tensor([[0, 1]], dtype=torch.int64),
+            "reference_camera_id": torch.tensor([0], dtype=torch.int64),
+            "reference_from_physical": torch.eye(3).unsqueeze(0),
+        }
+    )
+    write_track_query_reference_contract(
+        batch,
+        TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.REFERENCE),
+    )
 
 
 def _positive_side_provenance() -> CourtReferenceFrameProvenance:
@@ -190,14 +223,10 @@ def test_v2_tracking_adapter_rejects_missing_provenance(
     missing_value: object,
 ) -> None:
     batch = _tracking_training_batch()
+    _add_reference_fields(batch)
     if missing_value is not None:
         batch["court_reference_provenance"] = missing_value
-    adapter = TrackQueryModelIOAdapter(
-        num_court_tokens=14,
-        num_queries=2,
-        presence_threshold=0.5,
-        court_keypoint_contract=resolve_court_keypoint_contract("camera_view_v2"),
-    )
+    adapter = _reference_tracking_adapter()
 
     with pytest.raises(MissingCourtKeypointMetadataError):
         adapter.build_training_batch(batch)
@@ -205,12 +234,8 @@ def test_v2_tracking_adapter_rejects_missing_provenance(
 
 def test_v2_tracking_adapter_rejects_cardinality_and_contract_mismatch() -> None:
     batch = _tracking_training_batch()
-    adapter = TrackQueryModelIOAdapter(
-        num_court_tokens=14,
-        num_queries=2,
-        presence_threshold=0.5,
-        court_keypoint_contract=resolve_court_keypoint_contract("camera_view_v2"),
-    )
+    _add_reference_fields(batch)
+    adapter = _reference_tracking_adapter()
     provenance = _positive_side_provenance()
     batch["court_reference_provenance"] = (provenance, provenance)
     with pytest.raises(ValueError, match="one record per batch item"):

@@ -8,6 +8,7 @@ import pytest
 import torch
 from torch import Tensor, nn
 
+from src.tasks.base.data import ReferenceViewSelection, StableCameraIdTable
 from src.tasks.base.generate_dataset import (
     MissingCourtKeypointMetadataError,
     build_court_view_record,
@@ -20,6 +21,7 @@ from src.tasks.base.model_io import (
 )
 from src.tasks.blcs.inference.predictor import BLCSPredictor
 from src.tasks.blcs.model_io import (
+    BLCSReferenceMetadata,
     SingleTrajectoryModelIOAdapter,
     TrajectoryBoundModelIO,
     blcs_trajectory_prediction_to_physical,
@@ -142,12 +144,39 @@ def test_camera_view_direct_input_requires_marker_and_reversible_provenance() ->
         (view,),
         reference_camera_id=view.camera_id,
     )
+    with pytest.raises(ValueError, match="requires explicit typed"):
+        predictor.predict(
+            **kwargs,
+            court_keypoint_document=document,
+            court_reference_provenance=(provenance,),
+        )
+    table = StableCameraIdTable.from_complete_scene_camera_ids((view.camera_id,))
+    selection = ReferenceViewSelection(
+        stable_camera_id_table=table,
+        selected_views=(view,),
+        provenance=provenance,
+    )
+    fields = selection.to_tensor_fields(dtype=torch.float32)
+    forward = fields["reference_from_physical"].unsqueeze(0)
+    metadata = BLCSReferenceMetadata(
+        selections=(selection,),
+        stable_camera_id_tables=(table,),
+        reference_view_index=fields["reference_view_index"].unsqueeze(0),
+        view_camera_ids=fields["view_camera_ids"].unsqueeze(0),
+        reference_camera_id=fields["reference_camera_id"].unsqueeze(0),
+        reference_from_physical=forward,
+        physical_from_reference=forward.transpose(-1, -2),
+    )
     prediction = predictor.predict(
         **kwargs,
         court_keypoint_document=document,
         court_reference_provenance=(provenance,),
+        reference_metadata=metadata,
     )
     physical = blcs_trajectory_prediction_to_physical(prediction)
+    assert physical.reference_metadata is prediction.reference_metadata
+    assert physical.reference_metadata is not None
+    assert physical.reference_metadata.reference_camera_ids == (view.camera_id,)
     torch.testing.assert_close(
         physical.position,
         torch.tensor([-11.885, -11.885, 11.885]).expand(1, 3, 3),

@@ -15,6 +15,11 @@ from src.tasks.base.generate_dataset import (
     COURT_KEYPOINT_METADATA_KEY,
     resolve_court_keypoint_contract,
 )
+from src.tasks.base.model_io import (
+    TRACK_QUERY_REFERENCE_METADATA_KEY,
+    TrackQueryReferenceContract,
+    TrackQueryReferenceContractMetadata,
+)
 from src.tasks.blcs.training.lightning_module import BLCSLightningModule
 from src.tasks.blcs.training.tracking_lightning_module import (
     BLCSTrackingLightningModule,
@@ -56,6 +61,7 @@ def _container() -> dict[str, object]:
 _PHYSICAL_V1_COURT_KEYPOINT_CONTRACT = resolve_court_keypoint_contract(
     "physical_v1"
 )
+_LEGACY_TRACK_QUERY_REFERENCE_CONTRACT = TrackQueryReferenceContract.legacy_v1()
 
 
 def _checkpoint_container() -> dict[str, object]:
@@ -67,6 +73,17 @@ def _checkpoint_container() -> dict[str, object]:
             "target_frame_id": "physical_court_v1",
             "num_keypoints": 20,
         },
+    }
+
+
+def _tracking_checkpoint_container() -> dict[str, object]:
+    return {
+        **_checkpoint_container(),
+        TRACK_QUERY_REFERENCE_METADATA_KEY: (
+            TrackQueryReferenceContractMetadata.from_contract(
+                _LEGACY_TRACK_QUERY_REFERENCE_CONTRACT
+            ).to_dict()
+        ),
     }
 
 
@@ -252,19 +269,24 @@ def test_raw_checkpoint_validation_happens_without_inference(
 
 
 @pytest.mark.parametrize(
-    ("module_type", "receiver"),
+    ("module_type", "receiver", "expected"),
     [
         (
             BLCSLightningModule,
             SimpleNamespace(
                 court_keypoint_contract=_PHYSICAL_V1_COURT_KEYPOINT_CONTRACT
             ),
+            _checkpoint_container(),
         ),
         (
             BLCSTrackingLightningModule,
             SimpleNamespace(
-                court_keypoint_contract=_PHYSICAL_V1_COURT_KEYPOINT_CONTRACT
+                court_keypoint_contract=_PHYSICAL_V1_COURT_KEYPOINT_CONTRACT,
+                track_query_reference_contract=(
+                    _LEGACY_TRACK_QUERY_REFERENCE_CONTRACT
+                ),
             ),
+            _tracking_checkpoint_container(),
         ),
         (
             PLCSLightningModule,
@@ -273,24 +295,30 @@ def test_raw_checkpoint_validation_happens_without_inference(
                     court_keypoint_contract=_PHYSICAL_V1_COURT_KEYPOINT_CONTRACT
                 )
             ),
+            _checkpoint_container(),
         ),
         (
             PLCSTrackingLightningModule,
             SimpleNamespace(
                 plcs_runtime=SimpleNamespace(
                     court_keypoint_contract=_PHYSICAL_V1_COURT_KEYPOINT_CONTRACT
-                )
+                ),
+                track_query_reference_contract=(
+                    _LEGACY_TRACK_QUERY_REFERENCE_CONTRACT
+                ),
             ),
+            _tracking_checkpoint_container(),
         ),
     ],
 )
 def test_task_lightning_save_hooks_write_the_exact_contract(
     module_type: Any,
     receiver: object,
+    expected: dict[str, object],
 ) -> None:
     checkpoint: dict[str, object] = {}
     module_type.on_save_checkpoint(receiver, checkpoint)
-    assert checkpoint == _checkpoint_container()
+    assert checkpoint == expected
 
 
 @pytest.mark.parametrize(

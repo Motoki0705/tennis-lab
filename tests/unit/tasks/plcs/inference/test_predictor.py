@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
+from types import SimpleNamespace
 from typing import cast
 
 import numpy as np
@@ -11,7 +12,10 @@ import pytest
 import torch
 from torch import Tensor, nn
 
-from src.tasks.base.generate_dataset import resolve_court_keypoint_contract
+from src.tasks.base.generate_dataset import (
+    build_court_view_record,
+    resolve_court_keypoint_contract,
+)
 from src.tasks.plcs.inference.predictor import PLCSPredictor
 from src.tasks.plcs.model_io import PLCSInputProfile, PLCSModelIOAdapter
 from src.utils.configuration import PathResolver
@@ -112,3 +116,61 @@ def test_checkpoint_factory_rejects_missing_contract_before_composition(
             resolver=cast("PathResolver", object()),
             device="cpu",
         )
+
+
+def test_camera_view_scene_prediction_serializes_explicit_reference_identity() -> None:
+    court_contract = resolve_court_keypoint_contract("camera_view_v2")
+    views = (
+        build_court_view_record(
+            camera_id="camera_0",
+            camera_center_court_m=(0.0, -10.0, 3.0),
+            contract=court_contract,
+        ),
+        build_court_view_record(
+            camera_id="camera_1",
+            camera_center_court_m=(0.0, 10.0, 3.0),
+            contract=court_contract,
+        ),
+    )
+    cameras = tuple(
+        SimpleNamespace(
+            human_kp_uv=np.zeros((1, 17, 2), dtype=np.float32),
+            human_kp_vis=np.ones((1, 17), dtype=np.bool_),
+            court_kp_uv=np.zeros((1, 20, 2), dtype=np.float32),
+            court_kp_vis=np.ones((1, 20), dtype=np.bool_),
+            court_view=view,
+        )
+        for view in views
+    )
+    predictor = PLCSPredictor(
+        model=_FixedRotationModel(torch.tensor([[[1.0, 0.0]]])),
+        adapter=PLCSModelIOAdapter(
+            model_type=_FixedRotationModel,
+            profile=PLCSInputProfile.MULTIVIEW,
+            num_court_tokens=20,
+            camera_index=0,
+            output_rank=3,
+            predict_canonical_pose=False,
+            predict_auxiliary_position=False,
+            court_keypoint_contract=court_contract,
+        ),
+        device=torch.device("cpu"),
+    )
+
+    prediction = predictor.predict_scene(
+        SimpleNamespace(
+            cameras=cameras,
+            court_keypoint_contract=court_contract,
+        ),
+        (0, 1),
+        reference_camera_id="camera_1",
+    )
+
+    metadata = prediction.reference_metadata
+    assert metadata is not None
+    assert metadata.reference_camera_ids == ("camera_1",)
+    assert metadata.reference_view_index.tolist() == [1]
+    assert metadata.reference_camera_id.tolist() == [1]
+    assert metadata.target_frame_contracts == (
+        "reference_camera_court_rzpi_v1",
+    )

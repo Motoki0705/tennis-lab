@@ -279,6 +279,38 @@ class BLCSTrackQueryAblationModel(nn.Module):
     ) -> BLCSTrackingPrediction:
         """Predict fixed-width tracks; only padding controls attention validity."""
         batch_size, num_views, num_frames, _, _ = ball_uv.shape
+        coordinates = self.build_spatial_coordinates(
+            batch_size=batch_size,
+            num_frames=num_frames,
+            num_views=num_views,
+            num_detections=self.num_queries,
+            num_queries=self.num_queries,
+            mhc_writeback=self.mhc_writeback,
+            device=ball_uv.device,
+        )
+        rope_coordinates = coordinates.clone()
+        rope_coordinates[..., 2] *= self.role_rope_scale
+        return self._forward_with_spatial_coordinates(
+            ball_uv,
+            ball_vis,
+            court_kp,
+            court_vis,
+            padding_mask,
+            spatial_coordinates=rope_coordinates,
+        )
+
+    def _forward_with_spatial_coordinates(
+        self,
+        ball_uv: Tensor,
+        ball_vis: Tensor,
+        court_kp: Tensor,
+        court_vis: Tensor,
+        padding_mask: Tensor,
+        *,
+        spatial_coordinates: Tensor,
+    ) -> BLCSTrackingPrediction:
+        """Execute the ablation with validated spatial coordinates."""
+        batch_size, _num_views, num_frames, _, _ = ball_uv.shape
         masks = build_fixed_query_padding_masks(
             padding_mask,
             num_queries=self.num_queries,
@@ -320,18 +352,7 @@ class BLCSTrackQueryAblationModel(nn.Module):
             self.hidden_dim,
         ).expand(batch_size, num_frames, -1, -1)
         slots = slots * masks.frame_valid[:, :, None, None]
-        coordinates = self.build_spatial_coordinates(
-            batch_size=batch_size,
-            num_frames=num_frames,
-            num_views=num_views,
-            num_detections=self.num_queries,
-            num_queries=self.num_queries,
-            mhc_writeback=self.mhc_writeback,
-            device=ball_uv.device,
-        )
-        rope_coordinates = coordinates.clone()
-        rope_coordinates[..., 2] *= self.role_rope_scale
-        spatial_freqs = self.spatial_frequency_computer(rope_coordinates)
+        spatial_freqs = self.spatial_frequency_computer(spatial_coordinates)
         time_freqs = self.temporal_frequency_computer(
             torch.arange(num_frames, device=ball_uv.device).unsqueeze(-1)
         )

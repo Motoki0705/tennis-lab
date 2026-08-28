@@ -72,6 +72,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
         scene_dir=preview.scene_dir,
         split_file=f"{split_name}.txt",
         config=cfg,
+        seed=preview.seed,
         augment=False,
     )
     augmentation = BLCSBallObservationAugmentation(

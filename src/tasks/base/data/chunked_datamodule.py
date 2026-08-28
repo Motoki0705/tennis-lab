@@ -102,6 +102,7 @@ class BaseChunkedDataModule(SceneDirectoryDataModule):
             scene_dir=chunk.path,
             split_file="train.txt",
             augment=True,
+            seed=self._dataset_seed(chunk.path, "train.txt"),
         )
         self._current_chunk_id = chunk.chunk_id
         self._epochs_on_current_chunk = 0

@@ -8,7 +8,6 @@ AGENTS_DIR = ROOT / ".codex" / "agents"
 SKILL_DIR = ROOT / ".agents" / "skills" / "issue-subagent-workflow"
 
 EXPECTED_MODELS = {
-    "codebase-scout.toml": "gpt-5.6-luna",
     "codebase-explorer.toml": "gpt-5.6-terra",
     "issue-implementer.toml": "gpt-5.6-sol",
     "test-writer.toml": "gpt-5.6-sol",

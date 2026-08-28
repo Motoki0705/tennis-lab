@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any, Self
 
@@ -24,8 +24,10 @@ from src.tasks.plcs.court_keypoint_contract import (
 )
 from src.tasks.plcs.model_io import (
     PLCSPreparedBatch,
+    PLCSReferenceMetadata,
     PLCSTrackingBoundModelIO,
     PLCSTrackQueryIOAdapter,
+    PLCSTrackQueryReferenceIOAdapter,
     bind_plcs_model_io,
     prepare_plcs_checkpoint_court_keypoint_config,
 )
@@ -122,33 +124,84 @@ class PLCSTrackingPredictor(BasePredictor):
         tracking_metrics: TrackingMetricConfig,
         denormalize: bool,
         court_keypoint_metadata: dict[str, object] | None = None,
-        court_reference_provenance: CourtReferenceFrameProvenance | None = None,
-    ) -> dict[str, Tensor]:
+        court_reference_provenance: CourtReferenceFrameProvenance
+        | Sequence[CourtReferenceFrameProvenance]
+        | None = None,
+        reference_metadata: PLCSReferenceMetadata | None = None,
+    ) -> dict[str, object]:
         """Return query position/rotation and lifecycle presence outputs."""
         with torch.no_grad():
+            if isinstance(self.io_adapter, PLCSTrackQueryReferenceIOAdapter):
+                if reference_metadata is None:
+                    raise ModelInputContractError(
+                        "Reference-conditioned PLCS tracking inference requires "
+                        "explicit typed reference_metadata."
+                    )
+                if (
+                    reference_metadata.track_query_contract
+                    != self.io_adapter.reference_contract
+                ):
+                    raise ModelInputContractError(
+                        "PLCS tracking reference metadata and adapter contracts "
+                        "do not exactly match."
+                    )
+            elif reference_metadata is not None:
+                raise ModelInputContractError(
+                    "Legacy PLCS tracking inference cannot consume v2 reference "
+                    "metadata."
+                )
+            metadata_provenance = (
+                tuple(selection.provenance for selection in reference_metadata.selections)
+                if reference_metadata is not None
+                else None
+            )
             effective_provenance = court_reference_provenance
+            if metadata_provenance is not None:
+                if effective_provenance is not None:
+                    explicit = (
+                        (effective_provenance,)
+                        if isinstance(
+                            effective_provenance,
+                            CourtReferenceFrameProvenance,
+                        )
+                        else tuple(effective_provenance)
+                    )
+                    if explicit != metadata_provenance:
+                        raise ModelInputContractError(
+                            "PLCS tracking provenance and typed reference metadata "
+                            "do not match."
+                        )
+                effective_provenance = metadata_provenance
             if (
                 effective_provenance is None
                 and self.court_keypoint_contract.selector == PHYSICAL_V1_SELECTOR
             ):
                 effective_provenance = build_physical_court_provenance()
+            model_batch: dict[str, object] = {
+                "human_kp": human_kp,
+                "human_vis": human_vis,
+                "court_kp": court_kp,
+                "court_vis": court_vis,
+                "padding_mask": padding_mask,
+                "court_keypoint_metadata": court_keypoint_metadata,
+                "court_reference_provenance": effective_provenance,
+            }
+            if reference_metadata is not None:
+                model_batch.update(reference_metadata.to_batch_fields())
+            prepared_provenance: tuple[CourtReferenceFrameProvenance, ...] | None
+            if isinstance(
+                effective_provenance,
+                CourtReferenceFrameProvenance,
+            ):
+                prepared_provenance = (effective_provenance,)
+            elif effective_provenance is None:
+                prepared_provenance = None
+            else:
+                prepared_provenance = tuple(effective_provenance)
             prepared = PLCSPreparedBatch(
-                call=self.io_adapter.build_call(
-                    {
-                        "human_kp": human_kp,
-                        "human_vis": human_vis,
-                        "court_kp": court_kp,
-                        "court_vis": court_vis,
-                        "padding_mask": padding_mask,
-                        "court_keypoint_metadata": court_keypoint_metadata,
-                        "court_reference_provenance": effective_provenance,
-                    }
-                ),
-                court_reference_provenance=(
-                    (effective_provenance,)
-                    if effective_provenance is not None
-                    else None
-                ),
+                call=self.io_adapter.build_call(model_batch),
+                court_reference_provenance=prepared_provenance,
+                reference_metadata=reference_metadata,
             )
             moved = ModelCall(
                 kwargs={
@@ -160,7 +213,7 @@ class PLCSTrackingPredictor(BasePredictor):
             decoded = self.io_adapter.decode_prepared_output(raw_output, prepared)
             presence_logits = decoded.presence_logits
             probability = presence_logits.sigmoid()
-            result = {
+            result: dict[str, object] = {
                 "position": decoded.position,
                 "rotation": decoded.rotation,
                 "presence_logits": presence_logits,
@@ -168,22 +221,69 @@ class PLCSTrackingPredictor(BasePredictor):
                 "presence": probability >= tracking_metrics.presence_threshold,
             }
             if denormalize:
-                if effective_provenance is None:
+                provenance = prepared.court_reference_provenance
+                if provenance is None:
                     raise ModelInputContractError(
                         "PLCS tracking physical output requires provenance."
                     )
-                result["position_meters"] = normalized_points_target_to_physical(
+                physical_position, physical_heading = self._physical_outputs(
                     decoded.position,
-                    effective_provenance,
-                )
-                physical_heading = headings_target_to_physical(
                     decoded.rotation,
-                    effective_provenance,
+                    provenance,
                 )
+                result["position_meters"] = physical_position
                 result["yaw_radians"] = torch.atan2(
                     physical_heading[..., 1], physical_heading[..., 0]
                 )
-            return {key: value.detach().cpu() for key, value in result.items()}
+            cpu_result = {
+                key: value.detach().cpu() if isinstance(value, Tensor) else value
+                for key, value in result.items()
+            }
+            if reference_metadata is not None:
+                cpu_result["reference_metadata"] = reference_metadata.cpu()
+            return cpu_result
+
+    def _physical_outputs(
+        self,
+        position: Tensor,
+        rotation: Tensor,
+        provenance: Sequence[CourtReferenceFrameProvenance],
+    ) -> tuple[Tensor, Tensor]:
+        records = tuple(provenance)
+        if not records:
+            raise ModelInputContractError(
+                "PLCS tracking physical output provenance must not be empty."
+            )
+        if len(records) == 1:
+            return (
+                normalized_points_target_to_physical(
+                    position,
+                    records[0],
+                ),
+                headings_target_to_physical(rotation, records[0]),
+            )
+        if position.shape[0] != len(records):
+            raise ModelInputContractError(
+                "PLCS tracking prediction batch and provenance cardinality do "
+                "not match."
+            )
+        return (
+            torch.stack(
+                [
+                    normalized_points_target_to_physical(
+                        position[index],
+                        record,
+                    )
+                    for index, record in enumerate(records)
+                ]
+            ),
+            torch.stack(
+                [
+                    headings_target_to_physical(rotation[index], record)
+                    for index, record in enumerate(records)
+                ]
+            ),
+        )
 
 
 __all__ = ["PLCSTrackingPredictor"]
