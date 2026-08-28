@@ -109,6 +109,7 @@ class CourtMixedDataConfig:
                 raise SemanticConfigurationError(
                     f"mixed.sources.{name}.kind must be {name!r}."
                 )
+            source: CourtSourceConfig
             if kind == "synthetic_court":
                 source = SyntheticCourtSourceConfig.from_mapping(
                     raw_source,
