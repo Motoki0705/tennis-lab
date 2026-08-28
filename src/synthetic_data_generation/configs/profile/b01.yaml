@@ -1,0 +1,8 @@
+# @package _global_
+profile: b01-production
+
+request:
+  scene_id: B01
+  source_video: synthetic_data_generation/raw/B01.mp4
+  targets: [court, blcs, plcs]
+  from_stage: ingest
