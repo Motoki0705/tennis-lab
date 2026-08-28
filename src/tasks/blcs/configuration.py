@@ -38,6 +38,10 @@ from src.utils.configuration import (
 )
 from src.utils.device import resolve_device
 from src.utils.hydra import register_boundary_validator
+from src.utils.models.components.ffn_layers import (
+    SUPPORTED_FFN_TYPES,
+    FFNType,
+)
 from src.utils.paths import PROJECT_ROOT
 
 Scalar: TypeAlias = str | int | float | bool | None
@@ -239,7 +243,7 @@ class SingleModelConfig:
     num_layers: int
     num_heads: int
     ffn_dim: int
-    ffn_type: Literal["swiglu", "mlp"]
+    ffn_type: FFNType
     dropout: float
     max_seq_len: int
     invisible_init_std: float
@@ -260,7 +264,7 @@ class MultiViewModelConfig:
     num_layers: int
     num_heads: int
     ffn_dim: int
-    ffn_type: Literal["swiglu", "mlp"]
+    ffn_type: FFNType
     dropout: float
     rope_dim: int
     rope_theta: float
@@ -285,7 +289,7 @@ class AxialModelConfig:
     attention_type: Literal["mha", "gqa"]
     num_kv_heads: int | None
     ffn_dim: int
-    ffn_type: Literal["swiglu", "mlp"]
+    ffn_type: FFNType
     dropout: float
     rope_dim: int
     rope_theta_time: float
@@ -331,6 +335,7 @@ class TrackQueryModelConfig:
     invisible_init_std: float
     mhc: TrackQueryMHCConfig
     cswa: TrackQueryCSWAConfig
+    ffn_type: FFNType = "swiglu"
 
 
 @dataclass(frozen=True, slots=True)
@@ -350,6 +355,7 @@ class TrackQueryAblationModelConfig:
     query_ffn_after_spatial: bool
     mhc: TrackQueryMHCConfig
     cswa: TrackQueryCSWAConfig
+    ffn_type: FFNType = "swiglu"
 
 
 @dataclass(frozen=True, slots=True)
@@ -370,6 +376,7 @@ class TrackQueryReferenceModelConfig:
     reference_selector_mode: Literal["reference"]
     mhc: TrackQueryMHCConfig
     cswa: TrackQueryCSWAConfig
+    ffn_type: FFNType = "swiglu"
 
 
 @dataclass(frozen=True, slots=True)
@@ -393,6 +400,7 @@ class TrackQueryReferenceAblationModelConfig:
     query_ffn_after_spatial: bool
     mhc: TrackQueryMHCConfig
     cswa: TrackQueryCSWAConfig
+    ffn_type: FFNType = "swiglu"
 
 
 BLCSModelConfig: TypeAlias = (
@@ -485,7 +493,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             path="model",
         )
         profile = _io(model)
-        if profile != "single" or model["ffn_type"] not in {"swiglu", "mlp"}:
+        if profile != "single" or model["ffn_type"] not in SUPPORTED_FFN_TYPES:
             raise SemanticConfigurationError(
                 "Invalid single-view model profile or ffn_type."
             )
@@ -496,7 +504,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             num_layers=int(model["num_layers"]),
             num_heads=int(model["num_heads"]),
             ffn_dim=cast("int", model["ffn_dim"]),
-            ffn_type=cast("Literal['swiglu', 'mlp']", model["ffn_type"]),
+            ffn_type=cast("FFNType", model["ffn_type"]),
             dropout=float(model["dropout"]),
             max_seq_len=int(model["max_seq_len"]),
             invisible_init_std=float(model["invisible_init_std"]),
@@ -579,7 +587,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             },
             path="model",
         )
-        if _io(model) != "multiview" or model["ffn_type"] not in {"swiglu", "mlp"}:
+        if _io(model) != "multiview" or model["ffn_type"] not in SUPPORTED_FFN_TYPES:
             raise SemanticConfigurationError(
                 "Invalid multiview model profile or ffn_type."
             )
@@ -590,7 +598,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             num_layers=int(model["num_layers"]),
             num_heads=int(model["num_heads"]),
             ffn_dim=cast("int", model["ffn_dim"]),
-            ffn_type=cast("Literal['swiglu', 'mlp']", model["ffn_type"]),
+            ffn_type=cast("FFNType", model["ffn_type"]),
             dropout=float(model["dropout"]),
             rope_dim=cast("int", model["rope_dim"]),
             rope_theta=float(model["rope_theta"]),
@@ -690,7 +698,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
         if (
             _io(model) != "multiview"
             or model["attention_type"] not in {"mha", "gqa"}
-            or model["ffn_type"] not in {"swiglu", "mlp"}
+            or model["ffn_type"] not in SUPPORTED_FFN_TYPES
         ):
             raise SemanticConfigurationError(
                 "Invalid axial model profile, attention_type, or ffn_type."
@@ -704,7 +712,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             attention_type=cast("Literal['mha', 'gqa']", model["attention_type"]),
             num_kv_heads=cast("int | None", model["num_kv_heads"]),
             ffn_dim=cast("int", model["ffn_dim"]),
-            ffn_type=cast("Literal['swiglu', 'mlp']", model["ffn_type"]),
+            ffn_type=cast("FFNType", model["ffn_type"]),
             dropout=float(model["dropout"]),
             rope_dim=cast("int", model["rope_dim"]),
             rope_theta_time=float(model["rope_theta_time"]),
@@ -793,6 +801,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             "num_heads",
             "num_stages",
             "ffn_dim",
+            "ffn_type",
             "num_queries",
             "rope_dim",
             "dropout",
@@ -800,6 +809,12 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             "mhc",
             "cswa",
         }
+        raw_ffn_type = cast("str", model["ffn_type"])
+        if raw_ffn_type not in SUPPORTED_FFN_TYPES:
+            raise SemanticConfigurationError(
+                "model.ffn_type must be one of "
+                f"{sorted(SUPPORTED_FFN_TYPES)!r}."
+            )
         if is_reference:
             base_keys |= {
                 "target_frame_contract",
@@ -823,6 +838,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 "num_heads": int,
                 "num_stages": int,
                 "ffn_dim": int,
+                "ffn_type": str,
                 "num_queries": int,
                 "rope_dim": int,
                 "dropout": (float, int),
@@ -977,6 +993,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 num_heads=int(model["num_heads"]),
                 num_stages=int(model["num_stages"]),
                 ffn_dim=cast("int", model["ffn_dim"]),
+                ffn_type=cast("FFNType", model["ffn_type"]),
                 num_queries=int(model["num_queries"]),
                 rope_dim=cast("int", model["rope_dim"]),
                 dropout=float(model["dropout"]),
@@ -1013,6 +1030,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 num_heads=int(model["num_heads"]),
                 num_stages=int(model["num_stages"]),
                 ffn_dim=cast("int", model["ffn_dim"]),
+                ffn_type=cast("FFNType", model["ffn_type"]),
                 num_queries=int(model["num_queries"]),
                 rope_dim=cast("int", model["rope_dim"]),
                 dropout=float(model["dropout"]),
@@ -1038,6 +1056,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 num_heads=int(model["num_heads"]),
                 num_stages=int(model["num_stages"]),
                 ffn_dim=cast("int", model["ffn_dim"]),
+                ffn_type=cast("FFNType", model["ffn_type"]),
                 num_queries=int(model["num_queries"]),
                 rope_dim=cast("int", model["rope_dim"]),
                 dropout=float(model["dropout"]),
@@ -1061,6 +1080,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 num_heads=int(model["num_heads"]),
                 num_stages=int(model["num_stages"]),
                 ffn_dim=cast("int", model["ffn_dim"]),
+                ffn_type=cast("FFNType", model["ffn_type"]),
                 num_queries=int(model["num_queries"]),
                 rope_dim=cast("int", model["rope_dim"]),
                 dropout=float(model["dropout"]),

@@ -68,6 +68,7 @@ from src.utils.models import (
     validate_rope_dim,
 )
 from src.utils.models.axial_multiview_mixin import AxialMultiViewMixin
+from src.utils.models.components.ffn_layers import FFNType
 from src.utils.models.embeddings import (
     CourtBallGroupEmbedding,
     CourtPlayerGroupEmbedding,
@@ -141,7 +142,7 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         rope_theta_time: float,
         rope_theta_entity: float,
         attention_type: Literal["mha"],
-        ffn_type: Literal["swiglu", "mlp"],
+        ffn_type: FFNType,
         num_players: int,
         num_court_kp: int,
         max_seq_len: int,

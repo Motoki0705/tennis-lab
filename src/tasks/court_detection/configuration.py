@@ -26,6 +26,10 @@ from src.utils.configuration import (
     SemanticConfigurationError,
     UnknownConfigurationKeyError,
 )
+from src.utils.models.components.ffn_layers import (
+    SUPPORTED_FFN_TYPES,
+    FFNType,
+)
 from src.utils.paths import PROJECT_ROOT
 
 if TYPE_CHECKING:
@@ -930,7 +934,7 @@ class CourtTransformerEncoderConfig:
     dropout: float | None
     attention_type: Literal["mha"] | None
     n_kv_heads: int | None
-    ffn_type: Literal["swiglu"] | None
+    ffn_type: FFNType | None
 
     @classmethod
     def from_mapping(cls, value: object) -> CourtTransformerEncoderConfig:
@@ -1011,7 +1015,7 @@ class CourtTransformerEncoderConfig:
             dropout=_number(mapping, "dropout", path=path),
             attention_type=cast("Literal['mha']", attention_type),
             n_kv_heads=n_kv_heads,
-            ffn_type=cast("Literal['swiglu']", ffn_type),
+            ffn_type=cast("FFNType", ffn_type),
         )
         # This branch has just populated every optional field above; the
         # dataclass keeps them nullable for its explicit ``name='none'`` case.
@@ -1048,9 +1052,10 @@ class CourtTransformerEncoderConfig:
             raise SemanticConfigurationError(
                 "model.transformer_encoder uses MHA and requires n_kv_heads=null."
             )
-        if result.ffn_type != "swiglu":
+        if result.ffn_type not in SUPPORTED_FFN_TYPES:
             raise SemanticConfigurationError(
-                "model.transformer_encoder.ffn_type must be 'swiglu'."
+                "model.transformer_encoder.ffn_type must be one of "
+                f"{sorted(SUPPORTED_FFN_TYPES)!r}."
             )
         if not 0.0 <= dropout < 1.0:
             raise SemanticConfigurationError(

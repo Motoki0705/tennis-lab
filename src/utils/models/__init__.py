@@ -6,15 +6,18 @@ specialized APIs not listed here remain owned by their defining subpackage.
 """
 
 from src.utils.models.components import (
+    SUPPORTED_FFN_TYPES,
     CompressedSlidingWindowSelfAttention,
     CrossAttnBlock,
     CrossAttnBlockConfig,
     CSWAConfig,
+    FFNType,
     FixedQueryTrackStage,
     RMSNorm,
     RotaryFrequencyComputer,
     TransformerBlock,
     TransformerBlockConfig,
+    build_ffn,
     precompute_freqs_cis_nd,
 )
 from src.utils.models.kimi_delta_attention import kimi_delta_attention
@@ -47,4 +50,7 @@ __all__ = [
     "resolve_axial_rope_bases",
     "resolve_rope_bases",
     "validate_rope_dim",
+    "FFNType",
+    "SUPPORTED_FFN_TYPES",
+    "build_ffn",
 ]

@@ -22,6 +22,7 @@ from src.utils.models import (
     validate_rope_dim,
 )
 from src.utils.models.axial_multiview_mixin import AxialMultiViewMixin
+from src.utils.models.components.ffn_layers import FFNType
 from src.utils.models.embeddings import (
     CourtPlayerGroupEmbedding,
     InvisibleTokenEmbedding,
@@ -46,7 +47,7 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         rope_dim: int,
         rope_theta_time: float,
         rope_theta_camera: float,
-        ffn_type: Literal["swiglu", "mlp"],
+        ffn_type: FFNType,
         predict_canonical_pose: bool,
         max_views: int,
         max_seq_len: int,
@@ -224,7 +225,7 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             rope_dim=config.integer("rope_dim"),
             rope_theta_time=config.number("rope_theta_time"),
             rope_theta_camera=config.number("rope_theta_camera"),
-            ffn_type=cast(Literal["swiglu", "mlp"], config.string("ffn_type")),
+            ffn_type=cast(FFNType, config.string("ffn_type")),
             predict_canonical_pose=config.boolean("predict_canonical_pose"),
             max_views=config.integer("max_views"),
             max_seq_len=config.integer("max_seq_len"),

@@ -17,6 +17,7 @@ from src.utils.models import (
     TransformerBlock,
     TransformerBlockConfig,
 )
+from src.utils.models.components.ffn_layers import FFNType
 from src.utils.models.components.fixed_query_track_ablation_stage import (
     FFNMode,
     FixedQueryTrackAblationStage,
@@ -50,9 +51,6 @@ class PLCSTrackQueryAblationModel(nn.Module):
         cswa_config = config.track_query_cswa
         if mhc_config is None or cswa_config is None:
             raise ValueError("PLCS track-query mhc and cswa config must be validated.")
-        if config.string("ffn_type") != "swiglu":
-            raise ValueError("PLCS track-query ablation requires SwiGLU.")
-
         self.hidden_dim = config.integer("hidden_dim")
         self.num_heads = config.integer("num_heads")
         self.num_queries = config.integer("num_queries")
@@ -210,7 +208,7 @@ class PLCSTrackQueryAblationModel(nn.Module):
             attention_type=attention_type,
             n_kv_heads=None,
             rope_base=config.number("rope_theta"),
-            ffn_type="swiglu",
+            ffn_type=cast(FFNType, config.string("ffn_type")),
             cswa=cswa,
             ffn_enabled=self.ffn_mode == "per_attention",
         )

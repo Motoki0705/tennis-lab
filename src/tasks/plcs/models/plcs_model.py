@@ -20,7 +20,7 @@ Notes:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, cast
 
 import torch
 import torch.nn as nn
@@ -38,6 +38,7 @@ from src.utils.models import (
     precompute_freqs_cis_nd,
     resolve_rope_bases,
 )
+from src.utils.models.components.ffn_layers import FFNType
 from src.utils.models.embeddings import (
     CourtKPUVEmbedding,
     InvisibleTokenEmbedding,
@@ -92,7 +93,7 @@ class PLCSModel(nn.Module):
         num_register_tokens: int,
         use_kp_id_embedding: bool,
         use_rope: bool,
-        ffn_type: Literal["swiglu", "mlp"],
+        ffn_type: FFNType,
         predict_canonical_pose: bool,
         invisible_init_std: float,
         num_court_tokens: int,
@@ -263,7 +264,7 @@ class PLCSModel(nn.Module):
             num_register_tokens=config.integer("num_register_tokens"),
             use_kp_id_embedding=config.boolean("use_kp_id_embedding"),
             use_rope=config.boolean("use_rope"),
-            ffn_type=cast(Literal["swiglu", "mlp"], config.string("ffn_type")),
+            ffn_type=cast(FFNType, config.string("ffn_type")),
             predict_canonical_pose=config.boolean("predict_canonical_pose"),
             invisible_init_std=config.number("invisible_init_std"),
             num_court_tokens=num_court_tokens,
