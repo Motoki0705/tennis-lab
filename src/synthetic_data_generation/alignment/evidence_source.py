@@ -430,6 +430,21 @@ class _ProposalSearchState:
 
 
 @dataclass(frozen=True, slots=True)
+class _RefinedCompleteState:
+    """One ranked complete state after native and common-scale refinement."""
+
+    hypotheses: tuple[_CourtHypothesis, ...]
+    common_scale: float
+    maximum_scale_deviation: float
+    explained_evidence_fractions: tuple[float, ...]
+    residual: NDArray[np.float64]
+    residual_evidence_weights: NDArray[np.float64]
+    selected_orientation_band_indices: tuple[int, ...]
+    selected_center_tile_indices: tuple[int, ...]
+    native_score_sum: float
+
+
+@dataclass(frozen=True, slots=True)
 class _ResidualEvidenceContext:
     """Read-only residual points and their one reusable nearest-neighbour tree."""
 
@@ -1818,7 +1833,6 @@ def _fit_court_hypotheses(
         settings.minimum_explained_evidence_fraction * original_evidence_sum
     )
     template = sample_court_line_template(settings.samples_per_metre)
-    u_min, u_max, v_min, v_max = bounds
     orientation_bands = _orientation_search_bands(settings)
     maximum_tile_width = _maximum_center_tile_width_scene_units(settings)
     center_tiles = _center_space_tiles(bounds, maximum_width=maximum_tile_width)
@@ -2159,14 +2173,111 @@ def _fit_court_hypotheses(
             f"rejections=[{rendered}]."
         )
     complete_states.sort(key=_complete_proposal_state_sort_key)
-    (
-        selected_state,
-        common_scale,
-        maximum_deviation,
-        _selected_explained_evidence,
-        explained_count,
-        native_score_sum,
-    ) = complete_states[0]
+    refinement_rejection_reasons: list[str] = []
+    refined_state: _RefinedCompleteState | None = None
+    selected_complete_state_rank: int | None = None
+    for rank, (candidate_state, *_ranking_values) in enumerate(complete_states):
+        try:
+            refined_state = _refine_complete_proposal_state(
+                candidate_state,
+                points=original_points,
+                evidence_weights=original_weights,
+                bounds=bounds,
+                template=template,
+                orientation_bands=orientation_bands,
+                center_tiles=center_tiles,
+                seed=seed,
+                settings=settings,
+                stopping_reason=stopping_reason,
+                minimum_explained_evidence=minimum_explained_evidence,
+            )
+        except ValueError as error:
+            refinement_rejection_reasons.append(f"rank={rank}({error})")
+            continue
+        selected_complete_state_rank = rank
+        break
+    if refined_state is None or selected_complete_state_rank is None:
+        rendered = ";".join(refinement_rejection_reasons)
+        raise ValueError(
+            "Court-count inference rejected every common-scale complete state "
+            "during refinement: "
+            f"feasible_complete_states={len(complete_states)},"
+            f"rejections=[{rendered}]."
+        )
+
+    refitted = refined_state.hypotheses
+    common_scale = refined_state.common_scale
+    maximum_deviation = refined_state.maximum_scale_deviation
+    refined_explained_fractions = refined_state.explained_evidence_fractions
+    original_residual = refined_state.residual
+    original_residual_weights = refined_state.residual_evidence_weights
+    selected_orientation_band_indices = refined_state.selected_orientation_band_indices
+    selected_center_tile_indices = refined_state.selected_center_tile_indices
+    native_score_sum = refined_state.native_score_sum
+    explained_count = len(original_points) - len(original_residual)
+    explained_evidence = original_evidence_sum - float(
+        np.sum(original_residual_weights)
+    )
+    proposal_search = ProposalSearchDiagnostics(
+        orientation_band_count=len(orientation_bands),
+        center_tile_count=len(center_tiles),
+        maximum_center_tile_width_scene_units=maximum_tile_width,
+        maximum_candidate_count=settings.maximum_candidate_count,
+        maximum_retained_state_count=settings.maximum_retained_state_count,
+        maximum_tile_state_count=resources.maximum_tile_state_count,
+        maximum_residual_state_count=resources.maximum_residual_state_count,
+        residual_state_count=residual_state_count,
+        residual_tree_build_count=residual_tree_build_count,
+        explored_tile_state_count=explored_tile_state_count,
+        geometrically_impossible_tile_state_count=impossible_tile_state_count,
+        feasible_proposal_count_before_deduplication=feasible_proposal_count,
+        duplicate_proposal_count=duplicate_proposal_count,
+        retained_proposal_count=retained_proposal_count,
+        expanded_state_count=expanded_state_count,
+        pruned_state_count=pruned_state_count,
+        feasible_complete_state_count=len(complete_states),
+        refinement_attempt_count=selected_complete_state_rank + 1,
+        refinement_rejected_state_count=selected_complete_state_rank,
+        selected_complete_state_rank=selected_complete_state_rank,
+        inferred_candidate_count=len(refitted),
+        stopping_reason=stopping_reason,
+        minimum_explained_evidence_fraction=(
+            settings.minimum_explained_evidence_fraction
+        ),
+        selected_orientation_band_indices=selected_orientation_band_indices,
+        selected_center_tile_indices=selected_center_tile_indices,
+        selected_candidate_explained_evidence_fractions=tuple(
+            refined_explained_fractions
+        ),
+        original_point_count=len(original_points),
+        selected_residual_point_count=len(original_residual),
+        selected_explained_point_count=explained_count,
+        original_evidence_sum=original_evidence_sum,
+        selected_residual_evidence_sum=float(np.sum(original_residual_weights)),
+        selected_explained_evidence_sum=explained_evidence,
+        selected_explained_evidence_fraction=(
+            explained_evidence / original_evidence_sum
+        ),
+        selected_native_score_sum=native_score_sum,
+    )
+    return refitted, common_scale, maximum_deviation, proposal_search
+
+
+def _refine_complete_proposal_state(
+    selected_state: _ProposalSearchState,
+    *,
+    points: NDArray[np.float64],
+    evidence_weights: NDArray[np.float64],
+    bounds: tuple[float, float, float, float],
+    template: NDArray[np.float64],
+    orientation_bands: Sequence[tuple[float, float]],
+    center_tiles: Sequence[_CenterTile],
+    seed: int,
+    settings: CourtCandidateFitSettings,
+    stopping_reason: ProposalSearchStopReason,
+    minimum_explained_evidence: float,
+) -> _RefinedCompleteState:
+    """Refine and common-scale refit one ranked complete search state."""
     native_hypotheses = list(
         _refine_selected_native_hypotheses(
             selected_state,
@@ -2187,21 +2298,17 @@ def _fit_court_hypotheses(
     )
     (
         refined_explained_fractions,
-        original_residual,
-        original_residual_weights,
+        residual,
+        residual_evidence_weights,
     ) = _proposal_explanation_for_hypotheses(
         native_hypotheses,
-        points=original_points,
-        evidence_weights=original_weights,
+        points=points,
+        evidence_weights=evidence_weights,
         settings=settings,
-    )
-    explained_count = len(original_points) - len(original_residual)
-    explained_evidence = original_evidence_sum - float(
-        np.sum(original_residual_weights)
     )
     if (
         stopping_reason is ProposalSearchStopReason.RESIDUAL_EVIDENCE_BELOW_MINIMUM
-        and float(np.sum(original_residual_weights)) >= minimum_explained_evidence
+        and float(np.sum(residual_evidence_weights)) >= minimum_explained_evidence
     ):
         raise ValueError(
             "Common-scale refinement invalidated the residual-evidence stopping gate."
@@ -2252,6 +2359,7 @@ def _fit_court_hypotheses(
     ]
 
     refitted: list[_CourtHypothesis] = []
+    u_min, u_max, v_min, v_max = bounds
     maximum_displacement_metres = settings.maximum_center_refit_displacement_metres()
     maximum_displacement_scene = common_scale * maximum_displacement_metres
     for candidate_index, native in enumerate(native_hypotheses):
@@ -2333,46 +2441,17 @@ def _fit_court_hypotheses(
                 ),
             )
         )
-    proposal_search = ProposalSearchDiagnostics(
-        orientation_band_count=len(orientation_bands),
-        center_tile_count=len(center_tiles),
-        maximum_center_tile_width_scene_units=maximum_tile_width,
-        maximum_candidate_count=settings.maximum_candidate_count,
-        maximum_retained_state_count=settings.maximum_retained_state_count,
-        maximum_tile_state_count=resources.maximum_tile_state_count,
-        maximum_residual_state_count=resources.maximum_residual_state_count,
-        residual_state_count=residual_state_count,
-        residual_tree_build_count=residual_tree_build_count,
-        explored_tile_state_count=explored_tile_state_count,
-        geometrically_impossible_tile_state_count=impossible_tile_state_count,
-        feasible_proposal_count_before_deduplication=feasible_proposal_count,
-        duplicate_proposal_count=duplicate_proposal_count,
-        retained_proposal_count=retained_proposal_count,
-        expanded_state_count=expanded_state_count,
-        pruned_state_count=pruned_state_count,
-        feasible_complete_state_count=len(complete_states),
-        inferred_candidate_count=len(refitted),
-        stopping_reason=stopping_reason,
-        minimum_explained_evidence_fraction=(
-            settings.minimum_explained_evidence_fraction
-        ),
+    return _RefinedCompleteState(
+        hypotheses=tuple(refitted),
+        common_scale=common_scale,
+        maximum_scale_deviation=maximum_deviation,
+        explained_evidence_fractions=refined_explained_fractions,
+        residual=residual,
+        residual_evidence_weights=residual_evidence_weights,
         selected_orientation_band_indices=selected_orientation_band_indices,
         selected_center_tile_indices=selected_center_tile_indices,
-        selected_candidate_explained_evidence_fractions=tuple(
-            refined_explained_fractions
-        ),
-        original_point_count=len(original_points),
-        selected_residual_point_count=len(original_residual),
-        selected_explained_point_count=explained_count,
-        original_evidence_sum=original_evidence_sum,
-        selected_residual_evidence_sum=float(np.sum(original_residual_weights)),
-        selected_explained_evidence_sum=explained_evidence,
-        selected_explained_evidence_fraction=(
-            explained_evidence / original_evidence_sum
-        ),
-        selected_native_score_sum=native_score_sum,
+        native_score_sum=native_score_sum,
     )
-    return tuple(refitted), common_scale, maximum_deviation, proposal_search
 
 
 def _proposal_explanation_for_hypotheses(

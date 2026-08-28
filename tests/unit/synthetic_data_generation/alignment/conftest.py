@@ -268,6 +268,9 @@ def alignment_evidence() -> AlignmentEvidence:
                 expanded_state_count=2,
                 pruned_state_count=0,
                 feasible_complete_state_count=1,
+                refinement_attempt_count=1,
+                refinement_rejected_state_count=0,
+                selected_complete_state_rank=0,
                 inferred_candidate_count=2,
                 stopping_reason=(
                     ProposalSearchStopReason.RESIDUAL_EVIDENCE_BELOW_MINIMUM

@@ -50,6 +50,7 @@ from src.synthetic_data_generation.alignment.evidence_source import (
     _proposal_branch_seed,
     _proposal_search_resource_bounds,
     _proposal_topology_compatible,
+    _ProposalSearchState,
     _ResidualEvidenceContext,
     _resolve_common_scale,
     _retain_fit_reliable_hypotheses,
@@ -1084,6 +1085,92 @@ def test_three_court_proposal_search_infers_three_before_no_reliable_stop(
         fraction >= settings.minimum_explained_evidence_fraction
         for fraction in search.selected_candidate_explained_evidence_fractions
     )
+    assert search.refinement_attempt_count == 1
+    assert search.refinement_rejected_state_count == 0
+    assert search.selected_complete_state_rank == 0
+
+
+def test_ranked_complete_state_refinement_uses_next_valid_state(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _candidate_count_settings(
+        tmp_path,
+        maximum_candidate_count=3,
+    )
+    _stub_multiple_complete_state_search(monkeypatch)
+
+    refinement_calls: list[tuple[float, ...]] = []
+
+    def refine(
+        selected_state: _ProposalSearchState,
+        **_kwargs: object,
+    ) -> tuple[_CourtHypothesis, ...]:
+        selected = selected_state.selected
+        refinement_calls.append(tuple(item.center_uv[0] for item in selected))
+        if len(refinement_calls) == 1:
+            raise ValueError("ranked basin saturated during refinement")
+        return selected
+
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source."
+        "_refine_selected_native_hypotheses",
+        refine,
+    )
+
+    hypotheses, _scale, _deviation, search = _fit_court_hypotheses(
+        np.column_stack((np.linspace(-10.0, 10.0, 100), np.zeros(100))),
+        evidence_weights=np.ones(100, dtype=np.float64),
+        bounds=(-10.0, 10.0, -0.1, 0.1),
+        seed=42,
+        settings=settings,
+    )
+
+    assert len(refinement_calls) == 2
+    assert refinement_calls[0] == (-8.0,)
+    assert hypotheses[0].native_center_uv[0] == pytest.approx(8.0)
+    assert search.feasible_complete_state_count >= 2
+    assert search.refinement_attempt_count == 2
+    assert search.refinement_rejected_state_count == 1
+    assert search.selected_complete_state_rank == 1
+
+
+def test_complete_state_refinement_fails_closed_with_ranked_rejections(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _candidate_count_settings(
+        tmp_path,
+        maximum_candidate_count=3,
+    )
+    _stub_multiple_complete_state_search(monkeypatch)
+
+    def reject_refinement(
+        *_args: object,
+        **_kwargs: object,
+    ) -> tuple[_CourtHypothesis, ...]:
+        raise ValueError("refined basin rejected")
+
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source."
+        "_refine_selected_native_hypotheses",
+        reject_refinement,
+    )
+    points = np.column_stack((np.linspace(-10.0, 10.0, 100), np.zeros(100)))
+
+    with pytest.raises(ValueError) as captured:
+        _fit_court_hypotheses(
+            points,
+            evidence_weights=np.ones(len(points), dtype=np.float64),
+            bounds=(-10.0, 10.0, -0.1, 0.1),
+            seed=42,
+            settings=settings,
+        )
+
+    message = str(captured.value)
+    assert "rejected every common-scale complete state during refinement" in message
+    assert "rank=0(refined basin rejected)" in message
+    assert "rank=1(refined basin rejected)" in message
 
 
 def test_court_count_inference_rejects_zero_reliable_proposals(
@@ -1717,6 +1804,65 @@ def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
             )
             for camera_id in selection.camera_prefix_ids
         ),
+    )
+
+
+def _stub_multiple_complete_state_search(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def optimize(
+        *_args: object,
+        **kwargs: object,
+    ) -> tuple[NDArray[np.float64], float]:
+        search_bounds = cast(list[tuple[float, float]], kwargs["bounds"])
+        if kwargs.get("fixed_scale") is not None:
+            return (
+                np.asarray(
+                    tuple((lower + upper) / 2.0 for lower, upper in search_bounds),
+                    dtype=np.float64,
+                ),
+                0.9,
+            )
+        selected = cast(tuple[_CourtHypothesis, ...], kwargs.get("selected", ()))
+        center_lower, center_upper = search_bounds[0]
+        if selected:
+            center = (center_lower + center_upper) / 2.0
+            return np.asarray((center, 0.0, 0.0, 1.0)), 0.0
+        if center_lower <= -8.0 <= center_upper:
+            center, score = -8.0, 0.95
+        elif center_lower <= 8.0 <= center_upper:
+            center, score = 8.0, 0.9
+        elif center_lower <= 0.0 <= center_upper:
+            center, score = 0.0, 0.85
+        else:
+            center, score = (center_lower + center_upper) / 2.0, 0.0
+        return np.asarray((center, 0.0, 0.0, 1.0)), score
+
+    def suppress_evidence(
+        points: NDArray[np.float64],
+        evidence_weights: NDArray[np.float64],
+        *,
+        parameters: NDArray[np.float64],
+        **_kwargs: object,
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+        center = float(parameters[0])
+        removed = 30 if center < -4.0 else 25 if center > 4.0 else 20
+        offset = min(removed, len(points))
+        return points[offset:], evidence_weights[offset:]
+
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source._optimize_court",
+        optimize,
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source."
+        "_tile_is_geometrically_impossible",
+        lambda **_kwargs: False,
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source."
+        "_suppress_assigned_evidence",
+        suppress_evidence,
     )
 
 
