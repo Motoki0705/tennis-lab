@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from math import isfinite
 from typing import Literal, cast
 
@@ -29,7 +30,7 @@ def _positive_finite(name: str, value: float) -> float:
     return resolved
 
 
-class _GatedFFN(nn.Module):
+class _GatedFFN(nn.Module, ABC):
     """Projection layout shared by SwiGLU-family feed-forward networks."""
 
     def __init__(self, dim: int, ffn_dim: int, *, bias: bool = False) -> None:
@@ -38,8 +39,8 @@ class _GatedFFN(nn.Module):
         self.w2 = nn.Linear(ffn_dim, dim, bias=bias)
         self.w3 = nn.Linear(dim, ffn_dim, bias=bias)
 
-    def _combine(self, gate: Tensor, up: Tensor) -> Tensor:
-        raise NotImplementedError
+    @abstractmethod
+    def _combine(self, gate: Tensor, up: Tensor) -> Tensor: ...
 
     def forward(self, x: Tensor) -> Tensor:
         hidden = self._combine(self.w1(x), self.w3(x))
