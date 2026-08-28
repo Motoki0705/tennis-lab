@@ -29,6 +29,7 @@ from src.synthetic_data_generation.alignment.contracts import (
     MeasuredCameraLines,
     MetricSceneAdapter,
     PartitionThresholds,
+    ProposalScoreModel,
     ProposalSearchDiagnostics,
     ProposalSearchStopReason,
 )
@@ -241,6 +242,7 @@ def _evidence() -> AlignmentEvidence:
                 cross_hardware_bit_identity_claimed=False,
             ),
             proposal_search=ProposalSearchDiagnostics(
+                score_model=(ProposalScoreModel.WEIGHTED_COVERAGE_FLOOR_GAUSSIAN_V1),
                 orientation_band_count=1,
                 center_tile_count=1,
                 maximum_center_tile_width_scene_units=1.0,
@@ -258,9 +260,12 @@ def _evidence() -> AlignmentEvidence:
                 expanded_state_count=2,
                 pruned_state_count=0,
                 feasible_complete_state_count=1,
+                frontier_state_counts=(1, 1),
+                feasible_complete_state_counts=(0, 1),
                 refinement_attempt_count=1,
                 refinement_rejected_state_count=0,
                 selected_complete_state_rank=0,
+                selected_complete_state_candidate_count=2,
                 inferred_candidate_count=2,
                 stopping_reason=(
                     ProposalSearchStopReason.RESIDUAL_EVIDENCE_BELOW_MINIMUM

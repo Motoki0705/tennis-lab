@@ -85,6 +85,13 @@ class ProposalSearchStopReason(StrEnum):
 
     RESIDUAL_EVIDENCE_BELOW_MINIMUM = "residual_evidence_below_minimum"
     NO_RELIABLE_PROPOSAL = "no_reliable_proposal"
+    MAXIMUM_CANDIDATE_COUNT_REACHED = "maximum_candidate_count_reached"
+
+
+class ProposalScoreModel(StrEnum):
+    """Versioned objective used by every native and common-scale proposal fit."""
+
+    WEIGHTED_COVERAGE_FLOOR_GAUSSIAN_V1 = "weighted_coverage_floor_gaussian_v1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -744,6 +751,7 @@ class LineInferenceDeterminismDiagnostics:
 class ProposalSearchDiagnostics:
     """Bounded fit-only court-count inference and selected joint objective."""
 
+    score_model: ProposalScoreModel
     orientation_band_count: int
     center_tile_count: int
     maximum_center_tile_width_scene_units: float
@@ -761,9 +769,12 @@ class ProposalSearchDiagnostics:
     expanded_state_count: int
     pruned_state_count: int
     feasible_complete_state_count: int
+    frontier_state_counts: tuple[int, ...]
+    feasible_complete_state_counts: tuple[int, ...]
     refinement_attempt_count: int
     refinement_rejected_state_count: int
     selected_complete_state_rank: int
+    selected_complete_state_candidate_count: int
     inferred_candidate_count: int
     stopping_reason: ProposalSearchStopReason
     minimum_explained_evidence_fraction: float
@@ -780,6 +791,8 @@ class ProposalSearchDiagnostics:
     selected_native_score_sum: float
 
     def __post_init__(self) -> None:
+        if not isinstance(self.score_model, ProposalScoreModel):
+            raise TypeError("score_model must be a ProposalScoreModel.")
         bands = _integer(
             self.orientation_band_count,
             name="orientation_band_count",
@@ -862,6 +875,41 @@ class ProposalSearchDiagnostics:
             name="feasible_complete_state_count",
             minimum=1,
         )
+        frontier_counts = tuple(
+            _integer(item, name="frontier state count", minimum=1)
+            for item in self.frontier_state_counts
+        )
+        complete_counts = tuple(
+            _integer(item, name="feasible complete state count", minimum=0)
+            for item in self.feasible_complete_state_counts
+        )
+        if (
+            not frontier_counts
+            or len(frontier_counts) > maximum_candidates
+            or len(complete_counts) != len(frontier_counts)
+        ):
+            raise ValueError(
+                "Proposal frontier diagnostics must cover each explored candidate count."
+            )
+        if any(item > maximum_retained for item in frontier_counts):
+            raise ValueError("A proposal frontier exceeds the configured beam width.")
+        if any(
+            complete > frontier
+            for complete, frontier in zip(
+                complete_counts,
+                frontier_counts,
+                strict=True,
+            )
+        ):
+            raise ValueError("Feasible complete states exceed their frontier.")
+        if sum(complete_counts) != feasible:
+            raise ValueError(
+                "Per-depth feasible complete states disagree with their total."
+            )
+        if sum(frontier_counts) != expanded - pruned:
+            raise ValueError(
+                "Frontier history disagrees with expanded and pruned state counts."
+            )
         refinement_attempts = _integer(
             self.refinement_attempt_count,
             name="refinement_attempt_count",
@@ -889,6 +937,25 @@ class ProposalSearchDiagnostics:
             raise ValueError(
                 "Selected complete-state rank exceeds feasible complete states."
             )
+        selected_candidate_count = _integer(
+            self.selected_complete_state_candidate_count,
+            name="selected_complete_state_candidate_count",
+            minimum=1,
+        )
+        if selected_candidate_count > len(frontier_counts):
+            raise ValueError(
+                "Selected complete-state candidate count was not explored."
+            )
+        preceding_complete_states = sum(complete_counts[: selected_candidate_count - 1])
+        selected_depth_complete_states = complete_counts[selected_candidate_count - 1]
+        if not (
+            preceding_complete_states
+            <= selected_rank
+            < preceding_complete_states + selected_depth_complete_states
+        ):
+            raise ValueError(
+                "Selected complete-state rank disagrees with per-depth ordering."
+            )
         inferred = _integer(
             self.inferred_candidate_count,
             name="inferred_candidate_count",
@@ -896,8 +963,20 @@ class ProposalSearchDiagnostics:
         )
         if inferred > maximum_candidates:
             raise ValueError("Inferred candidate count exceeds the configured maximum.")
+        if inferred > selected_candidate_count:
+            raise ValueError(
+                "Fit reliability cannot add candidates after complete-state selection."
+            )
         if not isinstance(self.stopping_reason, ProposalSearchStopReason):
             raise TypeError("stopping_reason must be a ProposalSearchStopReason.")
+        if (
+            self.stopping_reason
+            is ProposalSearchStopReason.MAXIMUM_CANDIDATE_COUNT_REACHED
+            and len(frontier_counts) != maximum_candidates
+        ):
+            raise ValueError(
+                "Maximum-candidate stop requires a complete bounded frontier history."
+            )
         minimum_fraction = _finite_float(
             self.minimum_explained_evidence_fraction,
             name="minimum_explained_evidence_fraction",
@@ -944,8 +1023,8 @@ class ProposalSearchDiagnostics:
             raise ValueError("Expanded states exceed retained feasible proposals.")
         if pruned > expanded:
             raise ValueError("Pruned states exceed expanded search states.")
-        if feasible > maximum_retained:
-            raise ValueError("Complete states exceed the configured beam width.")
+        if feasible > maximum_candidates * maximum_retained:
+            raise ValueError("Complete states exceed the bounded frontier history.")
         candidate_fractions = tuple(
             _finite_float(item, name="candidate explained evidence fraction")
             for item in self.selected_candidate_explained_evidence_fractions
@@ -1021,7 +1100,10 @@ class ProposalSearchDiagnostics:
             raise ValueError("Explained-evidence fractions disagree with the sums.")
         if (
             self.stopping_reason
-            is ProposalSearchStopReason.RESIDUAL_EVIDENCE_BELOW_MINIMUM
+            in {
+                ProposalSearchStopReason.RESIDUAL_EVIDENCE_BELOW_MINIMUM,
+                ProposalSearchStopReason.MAXIMUM_CANDIDATE_COUNT_REACHED,
+            }
             and residual_evidence / original_evidence >= minimum_fraction
         ):
             raise ValueError(
@@ -1034,6 +1116,8 @@ class ProposalSearchDiagnostics:
             raise ValueError("Selected native score sum must be positive.")
         object.__setattr__(self, "selected_orientation_band_indices", branch)
         object.__setattr__(self, "selected_center_tile_indices", selected_tiles)
+        object.__setattr__(self, "frontier_state_counts", frontier_counts)
+        object.__setattr__(self, "feasible_complete_state_counts", complete_counts)
         object.__setattr__(
             self,
             "selected_candidate_explained_evidence_fractions",
@@ -1043,6 +1127,7 @@ class ProposalSearchDiagnostics:
     def to_dict(self) -> dict[str, object]:
         """Return strict proposal search diagnostics."""
         return {
+            "score_model": self.score_model.value,
             "orientation_band_count": self.orientation_band_count,
             "center_tile_count": self.center_tile_count,
             "maximum_center_tile_width_scene_units": (
@@ -1066,9 +1151,14 @@ class ProposalSearchDiagnostics:
             "expanded_state_count": self.expanded_state_count,
             "pruned_state_count": self.pruned_state_count,
             "feasible_complete_state_count": self.feasible_complete_state_count,
+            "frontier_state_counts": list(self.frontier_state_counts),
+            "feasible_complete_state_counts": list(self.feasible_complete_state_counts),
             "refinement_attempt_count": self.refinement_attempt_count,
             "refinement_rejected_state_count": (self.refinement_rejected_state_count),
             "selected_complete_state_rank": self.selected_complete_state_rank,
+            "selected_complete_state_candidate_count": (
+                self.selected_complete_state_candidate_count
+            ),
             "inferred_candidate_count": self.inferred_candidate_count,
             "stopping_reason": self.stopping_reason.value,
             "minimum_explained_evidence_fraction": (
@@ -1099,6 +1189,9 @@ class ProposalSearchDiagnostics:
         keys = set(cls.__dataclass_fields__)
         raw = _strict_mapping(value, keys=keys, name="proposal search diagnostics")
         return cls(
+            score_model=ProposalScoreModel(
+                _string(raw["score_model"], name="score_model")
+            ),
             orientation_band_count=_integer(
                 raw["orientation_band_count"], name="orientation_band_count", minimum=1
             ),
@@ -1175,6 +1268,20 @@ class ProposalSearchDiagnostics:
                 name="feasible_complete_state_count",
                 minimum=1,
             ),
+            frontier_state_counts=tuple(
+                _integer(item, name="frontier state count", minimum=1)
+                for item in _sequence(
+                    raw["frontier_state_counts"],
+                    name="frontier_state_counts",
+                )
+            ),
+            feasible_complete_state_counts=tuple(
+                _integer(item, name="feasible complete state count", minimum=0)
+                for item in _sequence(
+                    raw["feasible_complete_state_counts"],
+                    name="feasible_complete_state_counts",
+                )
+            ),
             refinement_attempt_count=_integer(
                 raw["refinement_attempt_count"],
                 name="refinement_attempt_count",
@@ -1189,6 +1296,11 @@ class ProposalSearchDiagnostics:
                 raw["selected_complete_state_rank"],
                 name="selected_complete_state_rank",
                 minimum=0,
+            ),
+            selected_complete_state_candidate_count=_integer(
+                raw["selected_complete_state_candidate_count"],
+                name="selected_complete_state_candidate_count",
+                minimum=1,
             ),
             inferred_candidate_count=_integer(
                 raw["inferred_candidate_count"],
@@ -1502,7 +1614,7 @@ class AlignmentEvidenceDiagnostics:
     def to_dict(self) -> dict[str, object]:
         """Return machine-readable measured evidence diagnostics."""
         return {
-            "schema": "alignment_measured_evidence_v10",
+            "schema": "alignment_measured_evidence_v11",
             "cameras": [item.to_dict() for item in self.cameras],
             "excluded_cameras": [item.to_dict() for item in self.excluded_cameras],
             "selection": self.selection.to_dict(),
@@ -2655,6 +2767,7 @@ __all__ = [
     "PartitionMetrics",
     "PartitionThresholds",
     "ProposalSearchDiagnostics",
+    "ProposalScoreModel",
     "ProposalSearchStopReason",
     "build_layout",
 ]

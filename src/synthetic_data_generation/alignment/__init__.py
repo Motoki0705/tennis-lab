@@ -28,6 +28,7 @@ from src.synthetic_data_generation.alignment.contracts import (
     PartitionAssessment,
     PartitionMetrics,
     PartitionThresholds,
+    ProposalScoreModel,
     ProposalSearchDiagnostics,
     ProposalSearchStopReason,
 )
@@ -122,6 +123,7 @@ __all__ = [
     "PartitionThresholds",
     "ProductionAlignmentEvidenceSource",
     "ProductionCourtLineDetector",
+    "ProposalScoreModel",
     "ProposalSearchDiagnostics",
     "ProposalSearchStopReason",
     "QualifyingOffsetPairMetrics",
