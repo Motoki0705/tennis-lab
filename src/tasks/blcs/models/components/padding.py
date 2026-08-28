@@ -9,9 +9,6 @@ import torch
 from torch import Tensor
 
 from src.utils.models import build_self_attn_mask
-from src.utils.models.components.ops.time_local import (
-    build_local_attention_keep_mask,
-)
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +65,21 @@ def _validate_num_court_tokens(num_court_tokens: int) -> None:
         raise TypeError("num_court_tokens must be exactly int.")
     if num_court_tokens <= 0:
         raise ValueError("num_court_tokens must be positive.")
+
+
+def _build_local_attention_keep_mask(
+    valid_mask: Tensor,
+    *,
+    window_radius: int,
+) -> Tensor:
+    """Restrict valid temporal keys to a symmetric local window."""
+    seq_len = valid_mask.shape[1]
+    positions = torch.arange(seq_len, device=valid_mask.device)
+    local_keep = (positions[:, None] - positions[None, :]).abs() <= window_radius
+    keep_mask = valid_mask[:, None, :] & local_keep.unsqueeze(0)
+    fallback_keep = valid_mask[:, None, :].expand_as(keep_mask)
+    has_key = keep_mask.any(dim=-1, keepdim=True)
+    return torch.where(has_key, keep_mask, fallback_keep)
 
 
 def build_single_view_padding_masks(
@@ -151,9 +163,9 @@ def build_axial_padding_masks(
     time_valid = context_valid.reshape(batch_size * num_views, num_frames)
     camera_attention_keep_mask, _ = build_self_attn_mask(camera_valid)
     time_attention_keep_mask, repaired_time_valid = build_self_attn_mask(time_valid)
-    sliding_attention_keep_mask = build_local_attention_keep_mask(
+    sliding_attention_keep_mask = _build_local_attention_keep_mask(
         repaired_time_valid,
-        time_window_radius,
+        window_radius=time_window_radius,
     )
     return AxialPaddingMasks(
         context_valid=context_valid,

@@ -57,6 +57,24 @@ def test_axial_all_padding_masks_are_finite_repairs_with_raw_frames_invalid() ->
     assert masks.sliding_attention_keep_mask.any(dim=-1).all()
 
 
+def test_axial_sliding_attention_restricts_valid_keys_to_configured_radius() -> None:
+    masks = build_axial_padding_masks(
+        torch.zeros(1, 1, 5, dtype=torch.bool),
+        time_window_radius=1,
+    )
+
+    expected = torch.tensor(
+        [
+            [True, True, False, False, False],
+            [True, True, True, False, False],
+            [False, True, True, True, False],
+            [False, False, True, True, True],
+            [False, False, False, True, True],
+        ]
+    )
+    assert torch.equal(masks.sliding_attention_keep_mask[0], expected)
+
+
 def test_mask_trajectory_outputs_zeros_only_padded_frames() -> None:
     value = torch.arange(18, dtype=torch.float32).reshape(2, 3, 3)
     frame_valid = torch.tensor([[True, False, True], [False, False, True]])

@@ -41,8 +41,6 @@ print(
             "source": "DINO/ops/src",
             "destination_role": "cache",
             "destination": "dino_ops/src",
-            "time_local_bindings": "src/utils/models/components/ops/time_local/csrc/time_local.cpp",
-            "time_local_kernels": "src/utils/models/components/ops/time_local/csrc/time_local_cuda.cu",
             "compressed_time_local_bindings": "src/utils/models/components/ops/compressed_time_local/bindings.cpp",
             "compressed_time_local_kernels": "src/utils/models/components/ops/compressed_time_local/kernels.cu",
         },
