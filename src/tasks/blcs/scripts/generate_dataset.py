@@ -10,6 +10,7 @@ Notes:
     - Hydra loads configuration from `src/tasks/blcs/configs/generate_dataset.yaml`.
     - The script generates scenes, writes splits, and persists dataset metadata.
     - Parallel scene generation uses ProcessPoolExecutor and currently supports CPU workers.
+    - Rejected stochastic full-physics proposals are retried within explicit finite budgets.
     - `generation` changes only object cardinality; both modes use the same simulator and writer.
 """
 
@@ -106,6 +107,11 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
                 OmegaConf.to_container(cfg.generation.timeline, resolve=True),
             )
             if generation_mode == "multi_object"
+            else None
+        ),
+        maximum_physics_attempts_per_scene=(
+            int(cfg.generation.maximum_physics_attempts_per_scene)
+            if generation_mode == "single_object"
             else None
         ),
         maximum_physics_attempts_per_object=(
