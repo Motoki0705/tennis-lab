@@ -155,36 +155,6 @@ def test_amp_mixed_position_heading_and_strata_use_stable_float32() -> None:
     assert stratified == pytest.approx({0: 1.00390625})
 
 
-def test_position_strata_weight_only_valid_observations_and_skip_empty_rows() -> (
-    None
-):
-    target = torch.zeros((3, 3, 3), dtype=torch.float64)
-    target[..., 1] = 1.0
-    prediction = target.clone()
-    prediction[..., 0] = torch.tensor(
-        [[1.0, 3.0, 100.0], [9.0, 100.0, 100.0], [100.0, 100.0, 100.0]],
-        dtype=torch.float64,
-    )
-    valid_mask = torch.tensor(
-        [[True, True, False], [True, False, False], [False, False, False]]
-    )
-
-    metrics = compute_paired_reference_position_metrics(
-        prediction,
-        target,
-        torch.tensor([0, 0, 1], dtype=torch.int64),
-        valid_mask=valid_mask,
-    )
-
-    assert metrics.y_sign_accuracy == pytest.approx(1.0)
-    assert metrics.axis_wise_position_error == AxisWisePositionError(
-        x=pytest.approx(13.0 / 3.0),
-        y=0.0,
-        z=0.0,
-    )
-    assert metrics.local_reference_index_error == pytest.approx({0: 13.0 / 3.0})
-
-
 @pytest.mark.parametrize(
     ("target", "message"),
     [

@@ -123,4 +123,4 @@ matched `run-i801-a2-plcs-d-selector-zero`に対しposition errorは`0.52%`低�
 
 ### 次に有効な実験
 
-paired評価でside別挙動を確認し、production v1は維持する。継続する場合は3 seeds以上とreference local-index均衡samplingで差の再現性を測る。
+production v1は維持する。継続する場合は3 seeds以上とreference local-index均衡samplingで差の再現性を測る。
