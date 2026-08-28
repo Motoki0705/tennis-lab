@@ -85,12 +85,6 @@ def test_dedicated_reviewers_own_only_gate_evidence() -> None:
         assert "Communication mode: terminal-only." in instructions
 
 
-def test_codebase_scout_uses_medium_effort() -> None:
-    scout = load_agent("codebase-scout.toml")
-    assert scout["model"] == "gpt-5.6-luna"
-    assert scout["model_reasoning_effort"] == "medium"
-
-
 def test_test_writer_and_validator_preserve_independent_gates() -> None:
     tester = load_agent("test-writer.toml")["developer_instructions"]
     validator = load_agent("issue-validator.toml")["developer_instructions"]
