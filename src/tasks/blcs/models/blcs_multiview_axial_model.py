@@ -22,6 +22,7 @@ from src.utils.models import (
     validate_rope_dim,
 )
 from src.utils.models.axial_multiview_mixin import AxialMultiViewMixin
+from src.utils.models.components.ffn_layers import FFNType
 from src.utils.models.embeddings import CourtBallGroupEmbedding, InvisibleTokenEmbedding
 
 
@@ -167,7 +168,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         attention_type: Literal["mha", "gqa"],
         num_kv_heads: int | None,
         ffn_dim: int,
-        ffn_type: Literal["swiglu", "mlp"],
+        ffn_type: FFNType,
         dropout: float,
         rope_dim: int,
         rope_theta_time: float,
@@ -379,13 +380,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             attention_type = "gqa"
         else:
             raise ValueError(f"Unsupported attention_type={raw_attention_type!r}")
-        raw_ffn_type = config.ffn_type
-        if raw_ffn_type == "swiglu":
-            ffn_type: Literal["swiglu", "mlp"] = "swiglu"
-        elif raw_ffn_type == "mlp":
-            ffn_type = "mlp"
-        else:
-            raise ValueError(f"Unsupported ffn_type={raw_ffn_type!r}")
+        ffn_type = config.ffn_type
 
         return cls(
             hidden_dim=config.hidden_dim,

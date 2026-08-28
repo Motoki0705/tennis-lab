@@ -18,6 +18,7 @@ from src.utils.models.components import (
     TransformerBlock,
     TransformerBlockConfig,
 )
+from src.utils.models.components.ffn_layers import FFNType
 from src.utils.models.loading import (
     DINOv3BackboneAdapter,
     DINOv3TrainMode,
@@ -156,7 +157,7 @@ class DINOv3RoPEBallDetector(nn.Module):
         decoder_dropout: float,
         decoder_attention_type: Literal["mha", "gqa"],
         decoder_n_kv_heads: int | None,
-        decoder_ffn_type: Literal["swiglu", "mlp"],
+        decoder_ffn_type: FFNType,
         decoder_gradient_checkpointing: bool,
         head_min_channels: int,
         backbone: DINOv3BackboneAdapter | None = None,
@@ -335,7 +336,7 @@ class DINOv3RoPEBallDetector(nn.Module):
                 Literal["mha", "gqa"], decoder_cfg["attention_type"]
             ),
             decoder_n_kv_heads=cast(int | None, decoder_cfg["n_kv_heads"]),
-            decoder_ffn_type=cast(Literal["swiglu", "mlp"], decoder_cfg["ffn_type"]),
+            decoder_ffn_type=cast(FFNType, decoder_cfg["ffn_type"]),
             decoder_gradient_checkpointing=bool(decoder_cfg["gradient_checkpointing"]),
             head_min_channels=int(cast(int, head_cfg["min_channels"])),
         )

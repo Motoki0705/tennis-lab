@@ -14,7 +14,7 @@ Uses shared components from src.utils.models.components.
 
 from __future__ import annotations
 
-from typing import Literal, cast
+from typing import cast
 
 import torch
 import torch.nn as nn
@@ -33,6 +33,7 @@ from src.utils.models import (
     precompute_freqs_cis_nd,
     resolve_rope_bases,
 )
+from src.utils.models.components.ffn_layers import FFNType
 from src.utils.models.embeddings import (
     BallUVEmbedding,
     CourtKPUVEmbedding,
@@ -76,7 +77,7 @@ class BLCSModel(nn.Module):
         rope_theta_time: float,
         rope_theta_camera: float,
         rope_theta_type: float,
-        ffn_type: Literal["swiglu", "mlp"],
+        ffn_type: FFNType,
         predict_velocity: bool,
         max_seq_len: int,
         invisible_init_std: float,

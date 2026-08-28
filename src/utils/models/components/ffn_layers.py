@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from math import isfinite
-from typing import Literal, cast
+from typing import Literal, cast, get_args
 
 import torch
 import torch.nn.functional as F
@@ -15,6 +15,8 @@ FFNType = Literal[
     "deepseek_v4_swiglu",
     "gpt_oss_swiglu",
 ]
+
+SUPPORTED_FFN_TYPES: frozenset[str] = frozenset(get_args(FFNType))
 
 
 def default_ffn_dim(hidden_dim: int) -> int:

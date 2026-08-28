@@ -29,6 +29,10 @@ from src.utils.configuration import (
     StrictConfigSchema,
 )
 from src.utils.hydra import register_boundary_validator
+from src.utils.models.components.ffn_layers import (
+    SUPPORTED_FFN_TYPES,
+    FFNType,
+)
 from src.utils.paths import PROJECT_ROOT
 
 Number = float | int
@@ -557,7 +561,7 @@ class SLCSModelConfig:
     rope_theta_time: float
     rope_theta_entity: float
     attention_type: Literal["mha"]
-    ffn_type: Literal["swiglu", "mlp"]
+    ffn_type: FFNType
     invisible_init_std: float
     dino_patch_downsample_factor: int
     dino_cross_attn_every: int
@@ -573,9 +577,10 @@ class SLCSModelConfig:
             raise SemanticConfigurationError(
                 f"model.name must be 'slcs_fusion'; got {name!r}."
             )
-        if ffn_type not in {"swiglu", "mlp"}:
+        if ffn_type not in SUPPORTED_FFN_TYPES:
             raise SemanticConfigurationError(
-                f"model.ffn_type must be 'swiglu' or 'mlp'; got {ffn_type!r}."
+                "model.ffn_type must be one of "
+                f"{sorted(SUPPORTED_FFN_TYPES)!r}; got {ffn_type!r}."
             )
         if attention_type != "mha":
             raise SemanticConfigurationError(
@@ -599,7 +604,7 @@ class SLCSModelConfig:
                 raw["rope_theta_entity"], path="model.rope_theta_entity"
             ),
             attention_type=cast(Literal["mha"], attention_type),
-            ffn_type=cast(Literal["swiglu", "mlp"], ffn_type),
+            ffn_type=cast(FFNType, ffn_type),
             invisible_init_std=_finite_number(
                 raw["invisible_init_std"], path="model.invisible_init_std"
             ),

@@ -31,6 +31,7 @@ from src.utils.models.components.cswa import (
 )
 from src.utils.models.components.ffn_layers import (
     MLP,
+    SUPPORTED_FFN_TYPES,
     DeepSeekV4SwiGLU,
     FFNType,
     GPTOSSSwiGLU,
@@ -91,4 +92,5 @@ __all__ = [
     "FixedQueryTrackAblationStage",
     "FixedQueryTrackStage",
     "MHCWriteback",
+    "SUPPORTED_FFN_TYPES",
 ]

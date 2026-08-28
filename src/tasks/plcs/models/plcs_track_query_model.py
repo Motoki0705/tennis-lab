@@ -17,6 +17,7 @@ from src.utils.models import (
     TransformerBlock,
     TransformerBlockConfig,
 )
+from src.utils.models.components.ffn_layers import FFNType
 from src.utils.models.components.fixed_query_track_stage import FixedQueryTrackStage
 from src.utils.models.components.mhc import (
     ManifoldConstrainedHyperConnection,
@@ -184,7 +185,7 @@ class PLCSTrackQueryModel(nn.Module):
             attention_type=attention_type,
             n_kv_heads=None,
             rope_base=config.number("rope_theta"),
-            ffn_type=cast(Literal["swiglu", "mlp"], config.string("ffn_type")),
+            ffn_type=cast(FFNType, config.string("ffn_type")),
             cswa=cswa,
         )
 

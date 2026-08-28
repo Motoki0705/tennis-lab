@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, cast
+from typing import cast
 
 import torch
 from torch import Tensor, nn
@@ -23,6 +23,7 @@ from src.utils.models import (
     resolve_rope_bases,
     validate_rope_dim,
 )
+from src.utils.models.components.ffn_layers import FFNType
 from src.utils.models.embeddings import (
     BallUVEmbedding,
     CourtKPUVEmbedding,
@@ -47,7 +48,7 @@ class BLCSMultiViewModel(nn.Module):
         hidden_dim: int,
         num_heads: int,
         ffn_dim: int,
-        ffn_type: Literal["swiglu", "mlp"],
+        ffn_type: FFNType,
         dropout: float,
         rope_dim: int,
         rope_theta: float,
