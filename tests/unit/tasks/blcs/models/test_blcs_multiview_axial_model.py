@@ -6,6 +6,7 @@ import torch
 from omegaconf import OmegaConf
 
 from src.tasks.base.model_io import ModelCall
+from src.tasks.blcs.configuration import AxialModelConfig, parse_model_config
 from src.tasks.blcs.model_io import compose_blcs_trajectory_model_io
 
 
@@ -57,6 +58,37 @@ def test_multiview_axial_model_forward_accepts_single_view() -> None:
         out = binding.execute_call(binding.build_call(inputs))
 
     assert out["position"].shape == (2, 4, 3)
+
+
+def test_multiview_axial_config_preserves_checkpoint_attention_contract() -> None:
+    config = OmegaConf.create(_config(max_num_cameras=1, max_seq_len=4))
+
+    parsed = parse_model_config(config)
+
+    assert isinstance(parsed, AxialModelConfig)
+    assert parsed.time_window_radius == 2
+    assert parsed.time_global_stage_mask == (False,)
+
+
+def test_multiview_axial_model_constructs_configured_local_global_schedule() -> None:
+    config = _config(max_num_cameras=1, max_seq_len=4)
+    model = config["model"]
+    assert isinstance(model, dict)
+    model["num_layers"] = 2
+    model["camera_layers_per_stage"] = [1, 1]
+    model["time_layers_per_stage"] = [2, 2]
+    model["time_global_stage_mask"] = [False, True]
+
+    binding = compose_blcs_trajectory_model_io(OmegaConf.create(config))
+
+    schedule = [
+        [type(layer).__name__ for layer in stage.time_layers]
+        for stage in binding.model.stages
+    ]
+    assert schedule == [
+        ["_SlidingTimeAttention", "_SlidingTimeAttention"],
+        ["_SlidingTimeAttention", "_GlobalTimeAttention"],
+    ]
 
 
 def test_multiview_axial_model_masks_invisible_court_coordinates() -> None:
