@@ -25,8 +25,8 @@ from src.utils.models.axial_multiview_mixin import AxialMultiViewMixin
 from src.utils.models.embeddings import CourtBallGroupEmbedding, InvisibleTokenEmbedding
 
 
-class _GlobalTimeAttention(nn.Module):
-    """Time attention implementation fixed to the full-sequence mask."""
+class _TimeAttention(nn.Module):
+    """Full-sequence time attention for one axial stage."""
 
     def __init__(self, block: TransformerBlock, hidden_dim: int) -> None:
         super().__init__()
@@ -36,12 +36,10 @@ class _GlobalTimeAttention(nn.Module):
     def forward(
         self,
         x: Tensor,
-        full_attention_keep_mask: Tensor,
-        sliding_attention_keep_mask: Tensor,
+        attention_keep_mask: Tensor,
         frequencies: Tensor,
     ) -> Tensor:
         """Apply full-sequence time attention."""
-        del sliding_attention_keep_mask
         batch_size, seq_len, num_cameras = x.shape[:3]
         values = x.permute(0, 2, 1, 3).reshape(
             batch_size * num_cameras,
@@ -53,46 +51,7 @@ class _GlobalTimeAttention(nn.Module):
             self.block(
                 values,
                 freqs_cis=frequencies,
-                attn_mask=full_attention_keep_mask,
-            ),
-        )
-        return values.reshape(
-            batch_size,
-            num_cameras,
-            seq_len,
-            self.hidden_dim,
-        ).permute(0, 2, 1, 3)
-
-
-class _SlidingTimeAttention(nn.Module):
-    """Time attention implementation fixed to the configured local mask."""
-
-    def __init__(self, block: TransformerBlock, hidden_dim: int) -> None:
-        super().__init__()
-        self.block = block
-        self.hidden_dim = hidden_dim
-
-    def forward(
-        self,
-        x: Tensor,
-        full_attention_keep_mask: Tensor,
-        sliding_attention_keep_mask: Tensor,
-        frequencies: Tensor,
-    ) -> Tensor:
-        """Apply sliding-window time attention."""
-        del full_attention_keep_mask
-        batch_size, seq_len, num_cameras = x.shape[:3]
-        values = x.permute(0, 2, 1, 3).reshape(
-            batch_size * num_cameras,
-            seq_len,
-            self.hidden_dim,
-        )
-        values = cast(
-            "Tensor",
-            self.block(
-                values,
-                freqs_cis=frequencies,
-                attn_mask=sliding_attention_keep_mask,
+                attn_mask=attention_keep_mask,
             ),
         )
         return values.reshape(
@@ -104,13 +63,13 @@ class _SlidingTimeAttention(nn.Module):
 
 
 class _AxialAttentionStage(nn.Module):
-    """One preconstructed camera/time stage without runtime implementation selection."""
+    """One preconstructed camera/time stage using global time attention."""
 
     def __init__(
         self,
         *,
         camera_layers: list[TransformerBlock],
-        time_layers: list[nn.Module],
+        time_layers: list[_TimeAttention],
         hidden_dim: int,
     ) -> None:
         super().__init__()
@@ -123,7 +82,6 @@ class _AxialAttentionStage(nn.Module):
         x: Tensor,
         camera_attention_keep_mask: Tensor,
         time_attention_keep_mask: Tensor,
-        sliding_attention_keep_mask: Tensor,
         camera_frequencies: Tensor,
         time_frequencies: Tensor,
     ) -> Tensor:
@@ -150,7 +108,6 @@ class _AxialAttentionStage(nn.Module):
             x = layer(
                 x,
                 time_attention_keep_mask,
-                sliding_attention_keep_mask,
                 time_frequencies,
             )
         return x
@@ -178,10 +135,8 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         max_num_cameras: int,
         invisible_init_std: float,
         num_court_tokens: int,
-        time_window_radius: int,
         camera_layers_per_stage: Sequence[int],
         time_layers_per_stage: Sequence[int],
-        time_global_stage_mask: Sequence[bool],
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -192,9 +147,6 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         time_layers_per_stage = self._normalize_stage_ints(
             time_layers_per_stage,
         )
-        time_global_stage_mask = self._normalize_stage_mask(
-            time_global_stage_mask,
-        )
 
         self._validate_init_args(
             hidden_dim=self.hidden_dim,
@@ -204,21 +156,14 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             num_layers=num_layers,
             camera_layers_per_stage=camera_layers_per_stage,
             time_layers_per_stage=time_layers_per_stage,
-            time_global_stage_mask=time_global_stage_mask,
         )
 
         self.num_layers = num_layers
         self.max_seq_len = int(max_seq_len)
         self.max_num_cameras = int(max_num_cameras)
         self.num_court_tokens = int(num_court_tokens)
-        self.time_window_radius = int(time_window_radius)
         self.camera_layers_per_stage = camera_layers_per_stage
         self.time_layers_per_stage = time_layers_per_stage
-        self.time_global_stage_mask = time_global_stage_mask
-        if self.time_window_radius < 0:
-            raise ValueError(
-                f"time_window_radius must be non-negative, got {self.time_window_radius}"
-            )
 
         head_dim = self.hidden_dim // num_heads
         validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
@@ -264,30 +209,24 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             ffn_type=ffn_type,
         )
         stages: list[_AxialAttentionStage] = []
-        for camera_count, time_count, global_last in zip(
+        for camera_count, time_count in zip(
             self.camera_layers_per_stage,
             self.time_layers_per_stage,
-            self.time_global_stage_mask,
             strict=True,
         ):
-            time_implementations: list[nn.Module] = []
-            for time_index in range(time_count):
-                block = TransformerBlock(time_block_config)
-                if global_last and time_index == time_count - 1:
-                    time_implementations.append(
-                        _GlobalTimeAttention(block, self.hidden_dim)
-                    )
-                else:
-                    time_implementations.append(
-                        _SlidingTimeAttention(block, self.hidden_dim)
-                    )
             stages.append(
                 _AxialAttentionStage(
                     camera_layers=[
                         TransformerBlock(camera_block_config)
                         for _ in range(camera_count)
                     ],
-                    time_layers=time_implementations,
+                    time_layers=[
+                        _TimeAttention(
+                            TransformerBlock(time_block_config),
+                            self.hidden_dim,
+                        )
+                        for _ in range(time_count)
+                    ],
                     hidden_dim=self.hidden_dim,
                 )
             )
@@ -321,7 +260,6 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         num_layers: int,
         camera_layers_per_stage: tuple[int, ...],
         time_layers_per_stage: tuple[int, ...],
-        time_global_stage_mask: tuple[bool, ...],
     ) -> None:
         if hidden_dim % num_heads != 0:
             raise ValueError(
@@ -343,11 +281,6 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 "time_layers_per_stage length must equal num_layers, got "
                 f"{len(time_layers_per_stage)} and {num_layers}"
             )
-        if len(time_global_stage_mask) != num_layers:
-            raise ValueError(
-                "time_global_stage_mask length must equal num_layers, got "
-                f"{len(time_global_stage_mask)} and {num_layers}"
-            )
         if any(layer_count <= 0 for layer_count in camera_layers_per_stage):
             raise ValueError(
                 "camera_layers_per_stage must contain only positive integers"
@@ -362,12 +295,6 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         values: Sequence[int],
     ) -> tuple[int, ...]:
         return tuple(int(value) for value in values)
-
-    @staticmethod
-    def _normalize_stage_mask(
-        values: Sequence[bool],
-    ) -> tuple[bool, ...]:
-        return tuple(bool(value) for value in values)
 
     @classmethod
     def from_config(cls, config: AxialModelConfig) -> BLCSMultiViewAxialModel:
@@ -404,10 +331,8 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             max_num_cameras=config.max_num_cameras,
             invisible_init_std=config.invisible_init_std,
             num_court_tokens=config.num_court_tokens,
-            time_window_radius=config.time_window_radius,
             camera_layers_per_stage=config.camera_layers_per_stage,
             time_layers_per_stage=config.time_layers_per_stage,
-            time_global_stage_mask=config.time_global_stage_mask,
         )
 
     def forward(
@@ -420,10 +345,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
     ) -> dict[str, Tensor]:
         """Forward pass for multi-view BLCS inputs."""
         batch_size, n_cams, seq_len_in = ball_uv.shape[:3]
-        masks = build_axial_padding_masks(
-            padding_mask,
-            time_window_radius=self.time_window_radius,
-        )
+        masks = build_axial_padding_masks(padding_mask)
         court_kp = court_kp.masked_fill(~court_vis.unsqueeze(-1), 0.0)
         court_flat = court_kp.reshape(
             batch_size * n_cams * seq_len_in, self.num_court_tokens, 2
@@ -457,7 +379,6 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 x,
                 masks.camera_attention_keep_mask,
                 masks.time_attention_keep_mask,
-                masks.sliding_attention_keep_mask,
                 camera_freqs,
                 time_freqs,
             )

@@ -89,16 +89,6 @@ def _int_sequence(value: object, *, path: str) -> tuple[int, ...]:
     return tuple(cast("int", item) for item in value)
 
 
-def _bool_sequence(value: object, *, path: str) -> tuple[bool, ...]:
-    if (
-        not isinstance(value, Sequence)
-        or isinstance(value, (str, bytes))
-        or any(type(item) is not bool for item in value)
-    ):
-        raise ConfigurationTypeError(f"{path}: expected a sequence of bool values.")
-    return tuple(cast("bool", item) for item in value)
-
-
 def _numeric_sequence(
     value: object, *, path: str, length: int | None = None
 ) -> tuple[float, ...]:
@@ -295,10 +285,8 @@ class AxialModelConfig:
     predict_velocity: bool
     invisible_init_std: float
     num_court_tokens: int
-    time_window_radius: int
     camera_layers_per_stage: tuple[int, ...]
     time_layers_per_stage: tuple[int, ...]
-    time_global_stage_mask: tuple[bool, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -653,10 +641,8 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             "predict_velocity",
             "invisible_init_std",
             "num_court_tokens",
-            "time_window_radius",
             "camera_layers_per_stage",
             "time_layers_per_stage",
-            "time_global_stage_mask",
         }
         _exact(model, keys, path="model")
         _validate_types(
@@ -680,10 +666,8 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 "predict_velocity": bool,
                 "invisible_init_std": (float, int),
                 "num_court_tokens": int,
-                "time_window_radius": int,
                 "camera_layers_per_stage": (list, tuple),
                 "time_layers_per_stage": (list, tuple),
-                "time_global_stage_mask": (list, tuple),
             },
             path="model",
         )
@@ -714,21 +698,16 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             predict_velocity=bool(model["predict_velocity"]),
             invisible_init_std=float(model["invisible_init_std"]),
             num_court_tokens=int(model["num_court_tokens"]),
-            time_window_radius=int(model["time_window_radius"]),
             camera_layers_per_stage=_int_sequence(
                 model["camera_layers_per_stage"], path="model.camera_layers_per_stage"
             ),
             time_layers_per_stage=_int_sequence(
                 model["time_layers_per_stage"], path="model.time_layers_per_stage"
             ),
-            time_global_stage_mask=_bool_sequence(
-                model["time_global_stage_mask"], path="model.time_global_stage_mask"
-            ),
         )
         if not (
             len(result.camera_layers_per_stage)
             == len(result.time_layers_per_stage)
-            == len(result.time_global_stage_mask)
             == result.num_layers
         ):
             raise SemanticConfigurationError(
@@ -748,10 +727,9 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             raise SemanticConfigurationError(
                 "model.max_seq_len and model.max_num_cameras must be positive."
             )
-        if result.num_court_tokens <= 0 or result.time_window_radius < 0:
+        if result.num_court_tokens <= 0:
             raise SemanticConfigurationError(
-                "model.num_court_tokens must be positive and time_window_radius "
-                "must be non-negative."
+                "model.num_court_tokens must be positive."
             )
         if any(value <= 0 for value in result.camera_layers_per_stage):
             raise SemanticConfigurationError(

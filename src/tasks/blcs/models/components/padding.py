@@ -9,9 +9,6 @@ import torch
 from torch import Tensor
 
 from src.utils.models import build_self_attn_mask
-from src.utils.models.components.ops.time_local import (
-    build_local_attention_keep_mask,
-)
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,7 +38,6 @@ class AxialPaddingMasks:
     frame_valid: Tensor
     camera_attention_keep_mask: Tensor
     time_attention_keep_mask: Tensor
-    sliding_attention_keep_mask: Tensor
 
 
 def _validate_padding_mask(padding_mask: Tensor, *, expected_rank: int) -> None:
@@ -130,17 +126,9 @@ def build_multiview_padding_masks(
     )
 
 
-def build_axial_padding_masks(
-    padding_mask: Tensor,
-    *,
-    time_window_radius: int,
-) -> AxialPaddingMasks:
+def build_axial_padding_masks(padding_mask: Tensor) -> AxialPaddingMasks:
     """Build axial camera/time attention masks from ``True=padding`` input."""
     _validate_padding_mask(padding_mask, expected_rank=3)
-    if type(time_window_radius) is not int:
-        raise TypeError("time_window_radius must be exactly int.")
-    if time_window_radius < 0:
-        raise ValueError("time_window_radius must be non-negative.")
     batch_size, num_views, num_frames = padding_mask.shape
     context_valid = ~padding_mask
     frame_valid = context_valid.any(dim=1)
@@ -150,17 +138,12 @@ def build_axial_padding_masks(
     )
     time_valid = context_valid.reshape(batch_size * num_views, num_frames)
     camera_attention_keep_mask, _ = build_self_attn_mask(camera_valid)
-    time_attention_keep_mask, repaired_time_valid = build_self_attn_mask(time_valid)
-    sliding_attention_keep_mask = build_local_attention_keep_mask(
-        repaired_time_valid,
-        time_window_radius,
-    )
+    time_attention_keep_mask, _ = build_self_attn_mask(time_valid)
     return AxialPaddingMasks(
         context_valid=context_valid,
         frame_valid=frame_valid,
         camera_attention_keep_mask=camera_attention_keep_mask,
         time_attention_keep_mask=time_attention_keep_mask,
-        sliding_attention_keep_mask=sliding_attention_keep_mask,
     )
 
 
