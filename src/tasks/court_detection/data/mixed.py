@@ -260,6 +260,7 @@ def mixed_court_detection_collate(
     batch: list[dict[str, object]],
     *,
     bundle: CourtTargetBundleSpec,
+    require_pose_supervision: bool,
 ) -> dict[str, object]:
     """Collate dense targets for all samples and pose targets for synthetic only."""
     if not batch:
@@ -273,9 +274,22 @@ def mixed_court_detection_collate(
         metadata = sample.get("metadata")
         if not isinstance(metadata, Mapping):
             raise ValueError("Mixed Court samples require metadata mappings.")
-        if payload is not None and metadata.get("source_kind") != "synthetic_court":
+        source_kind = metadata.get("source_kind")
+        if source_kind not in _SOURCE_ORDER:
+            raise ValueError("Mixed Court sample has an unknown source_kind.")
+        if payload is not None and source_kind != "synthetic_court":
             raise ValueError(
                 "Court pose supervision is restricted to synthetic_court samples."
+            )
+        if require_pose_supervision and source_kind == "synthetic_court":
+            if payload is None:
+                raise ValueError(
+                    "Pose-enabled mixed Court batches require every synthetic_court "
+                    "sample to provide pose_target."
+                )
+        elif payload is not None:
+            raise ValueError(
+                "Pose-disabled mixed Court batches must not provide pose_target."
             )
 
     dense_only_batch = [
@@ -477,6 +491,7 @@ class MixedCourtDetectionDataModule(pl.LightningDataModule):
             collate_fn=partial(
                 mixed_court_detection_collate,
                 bundle=self.target_bundle_spec,
+                require_pose_supervision=self.pose_variant,
             ),
         )
 
@@ -495,6 +510,7 @@ class MixedCourtDetectionDataModule(pl.LightningDataModule):
             collate_fn=partial(
                 mixed_court_detection_collate,
                 bundle=self.target_bundle_spec,
+                require_pose_supervision=self.pose_variant,
             ),
             drop_last=False,
         )
