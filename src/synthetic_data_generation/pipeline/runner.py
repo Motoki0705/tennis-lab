@@ -60,7 +60,13 @@ class ScenePipelineRunner:
             raise ValueError("Request scene_id disagrees with the resolved workspace.")
 
         manifest = self._load_or_create_manifest(request)
-        manifest.assert_request_compatible(request)
+        ingest_owner = self.workspace.owner_path(
+            self.registry.definition(StageName.INGEST)
+        )
+        manifest.assert_request_compatible(
+            request,
+            canonical_source_video=ingest_owner / "video.mp4",
+        )
         reusable_stages = self._reusable_stages(request, manifest)
         plan = self.registry.execution_for_request(
             request,
