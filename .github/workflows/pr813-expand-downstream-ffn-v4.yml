@@ -1,0 +1,126 @@
+name: PR813 downstream FFN value propagation
+
+on:
+  push:
+    branches:
+      - feat/swiglu-architecture-variants
+    paths:
+      - .github/scripts/pr813_expand_downstream_ffn_v4.py
+      - .github/workflows/pr813-expand-downstream-ffn-v4.yml
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Preserve migration programs and choose a clean base
+        id: base
+        shell: bash
+        run: |
+          cp .github/scripts/pr813_expand_downstream_ffn_v4.py /tmp/pr813_expand_downstream_ffn_v4.py
+          if [[ -f .github/scripts/pr813_expand_downstream_ffn_v3.py ]]; then
+            cp .github/scripts/pr813_expand_downstream_ffn_v3.py /tmp/pr813_expand_downstream_ffn_v3.py
+          fi
+          production=$(git log --format=%H --grep='^feat: expose SwiGLU variants across block consumers$' -1 || true)
+          if [[ -n "$production" ]]; then
+            git reset --hard "$production"
+            echo 'run_v3=false' >> "$GITHUB_OUTPUT"
+          else
+            git reset --hard a230ef4f182d4696366ef34298000e197dd76e4e
+            if [[ ! -f /tmp/pr813_expand_downstream_ffn_v3.py ]]; then
+              echo 'v3 migration program is unavailable' >&2
+              exit 1
+            fi
+            echo 'run_v3=true' >> "$GITHUB_OUTPUT"
+          fi
+          git clean -fdx
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.11'
+          activate-environment: false
+
+      - name: Apply clean recursive migration when needed
+        if: steps.base.outputs.run_v3 == 'true'
+        shell: bash
+        run: |
+          uv run --locked python -m py_compile /tmp/pr813_expand_downstream_ffn_v3.py
+          uv run --locked python /tmp/pr813_expand_downstream_ffn_v3.py
+
+      - name: Enforce config-value propagation
+        shell: bash
+        run: |
+          uv run --locked python -m py_compile /tmp/pr813_expand_downstream_ffn_v4.py
+          uv run --locked python /tmp/pr813_expand_downstream_ffn_v4.py
+
+      - name: Format and lint
+        shell: bash
+        run: |
+          uv run --locked ruff format src tests
+          uv run --locked ruff check --fix src tests
+          uv run --locked ruff check src tests
+          git diff --check
+
+      - name: Type-check changed source files
+        shell: bash
+        run: |
+          mapfile -t changed < <(git diff --name-only --diff-filter=ACM HEAD -- 'src/**/*.py')
+          if ((${#changed[@]})); then
+            uv run --locked mypy "${changed[@]}"
+          fi
+
+      - name: Run focused architecture and configuration tests
+        shell: bash
+        run: |
+          candidates=(
+            tests/unit/utils/models/components/test_ffn_layers.py
+            tests/unit/utils/models/components/test_ffn_downstream_configuration.py
+            tests/unit/utils/models/components/test_block.py
+            tests/e2e/development/test_architecture_boundaries.py
+            tests/integration/tasks/blcs/test_model_configs.py
+            tests/integration/tasks/plcs/test_model_configs.py
+            tests/unit/tasks/blcs/models/test_blcs_multiview_axial_model.py
+            tests/unit/tasks/blcs/models/test_blcs_track_query_model.py
+            tests/unit/tasks/plcs/models/test_plcs_multiview_axial_model.py
+            tests/unit/tasks/plcs/models/test_plcs_track_query_model.py
+            tests/unit/tasks/slcs/models/test_slcs_model.py
+            tests/unit/tasks/court_detection/models/test_transformer_encoder.py
+            tests/unit/tasks/ball_detection/models/test_dinov3_rope.py
+            tests/unit/utils/models/architectures/test_transformer_sequence_discriminator.py
+          )
+          for candidate in tests/unit/tasks/*/test_configuration.py tests/integration/tasks/*/test_model_configs.py; do
+            [[ -f "$candidate" ]] && candidates+=("$candidate")
+          done
+          selected=()
+          for candidate in "${candidates[@]}"; do
+            [[ -f "$candidate" ]] && selected+=("$candidate")
+          done
+          uv run --locked pytest "${selected[@]}" -q --no-cov -n auto
+
+      - name: Run complete Python CI lanes
+        shell: bash
+        run: |
+          uv run --locked spin ci --lane long-tail
+          uv run --locked spin ci --lane scene-pipeline
+          uv run --locked spin ci --lane remainder
+
+      - name: Commit the clean implementation
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No additional changes were required.'
+          else
+            git commit -m 'feat: configure SwiGLU variants across downstream models'
+          fi
+          git push --force origin HEAD:feat/swiglu-architecture-variants
