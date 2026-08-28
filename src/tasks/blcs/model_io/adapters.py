@@ -11,6 +11,10 @@ import torch
 from numpy.typing import NDArray
 from torch import Tensor, nn
 
+from src.tasks.base.data.track_query_reference import (
+    ReferenceViewBatchError,
+    validate_reference_view_batch,
+)
 from src.tasks.base.generate_dataset import (
     PHYSICAL_V1_SELECTOR,
     CourtKeypointContract,
@@ -25,8 +29,11 @@ from src.tasks.base.model_io import (
     ModelInputContractError,
     ModelOutputContractError,
     TensorSpec,
+    TrackQueryReferenceContract,
     require_tensor,
+    validate_track_query_reference_contract,
 )
+from src.tasks.base.models import ReferenceSelectorMode
 from src.tasks.blcs.data.types import (
     BLCSBatch,
     BLCSMultiViewBatch,
@@ -37,6 +44,7 @@ from src.tasks.blcs.model_io.contracts import (
     BLCSTrackQueryTrainingBatch,
     BLCSTrajectoryPrediction,
     BLCSTrajectoryTrainingBatch,
+    blcs_reference_metadata_from_batch,
 )
 from src.tasks.blcs.models.blcs_model import BLCSModel
 from src.tasks.blcs.models.blcs_multiview_axial_model import BLCSMultiViewAxialModel
@@ -45,6 +53,12 @@ from src.tasks.blcs.models.blcs_track_query_ablation_model import (
     BLCSTrackQueryAblationModel,
 )
 from src.tasks.blcs.models.blcs_track_query_model import BLCSTrackQueryModel
+from src.tasks.blcs.models.blcs_track_query_reference_ablation_model import (
+    BLCSTrackQueryReferenceAblationModel,
+)
+from src.tasks.blcs.models.blcs_track_query_reference_model import (
+    BLCSTrackQueryReferenceModel,
+)
 
 RawBLCSOutput = Mapping[str, Tensor]
 FloatDtypes = frozenset({torch.float16, torch.float32, torch.float64, torch.bfloat16})
@@ -360,6 +374,7 @@ class TrajectoryModelIOAdapter(ABC):
                 batch_size=batch_size,
                 court_keypoint_contract=self.court_keypoint_contract,
             ),
+            reference_metadata=blcs_reference_metadata_from_batch(batch),
         )
 
     @abstractmethod
@@ -584,7 +599,20 @@ class SingleTrajectoryModelIOAdapter(TrajectoryModelIOAdapter):
             "camera_w": batch["camera_w"][:, :1],
             "camera_h": batch["camera_h"][:, :1],
             "court_reference_provenance": provenance,
+            "selected_camera_ids": batch["selected_camera_ids"],
         }
+        for key in (
+            "reference_view_selection",
+            "stable_camera_id_table",
+            "reference_view_index",
+            "view_camera_ids",
+            "reference_camera_id",
+            "reference_from_physical",
+            "physical_from_reference",
+            "track_query_reference",
+        ):
+            if key in batch:
+                adapted[key] = batch[key]
         if "ball_uv_target" in batch and "ball_vis_target" in batch:
             adapted["ball_uv_target"] = batch["ball_uv_target"][:, 0]
             adapted["ball_vis_target"] = batch["ball_vis_target"][:, 0]
@@ -708,6 +736,7 @@ class TrackQueryModelIOAdapter:
     """Boundary adapter for lifecycle-query BLCS batches and outputs."""
 
     input_profile: Literal["tracking"] = "tracking"
+    _requires_legacy_contract = True
 
     def __init__(
         self,
@@ -730,6 +759,19 @@ class TrackQueryModelIOAdapter:
                 "BLCS tracking adapter CourtKP20 contract must be canonical."
             )
         self.court_keypoint_contract = canonical_contract
+        if self._requires_legacy_contract:
+            legacy_contract = TrackQueryReferenceContract.legacy_v1()
+            if (
+                canonical_contract.contract_id
+                != legacy_contract.court_keypoint_contract
+                or canonical_contract.target_frame_id
+                != legacy_contract.target_frame_contract
+            ):
+                raise CourtKeypointContractMismatchError(
+                    "Legacy BLCS tracking adapters require exact physical CourtKP20, "
+                    "physical target-frame, and role-RoPE semantics."
+                )
+            self.track_query_reference_contract = legacy_contract
 
     @property
     def model_type(self) -> type[nn.Module]:
@@ -901,6 +943,7 @@ class TrackQueryModelIOAdapter:
                 batch_size=batch_size,
                 court_keypoint_contract=self.court_keypoint_contract,
             ),
+            reference_metadata=blcs_reference_metadata_from_batch(batch),
         )
 
 
@@ -912,6 +955,141 @@ class TrackQueryAblationModelIOAdapter(TrackQueryModelIOAdapter):
         return cast("type[nn.Module]", BLCSTrackQueryAblationModel)
 
 
+class TrackQueryReferenceModelIOAdapter(TrackQueryModelIOAdapter):
+    """Exact six-input adapter for the normal BLCS reference-v2 model."""
+
+    _allows_selector_zero = False
+    _requires_legacy_contract = False
+
+    def __init__(
+        self,
+        *,
+        num_court_tokens: int,
+        num_queries: int,
+        presence_threshold: float,
+        court_keypoint_contract: CourtKeypointContract,
+        track_query_reference_contract: TrackQueryReferenceContract,
+    ) -> None:
+        super().__init__(
+            num_court_tokens=num_court_tokens,
+            num_queries=num_queries,
+            presence_threshold=presence_threshold,
+            court_keypoint_contract=court_keypoint_contract,
+        )
+        selector_mode = track_query_reference_contract.reference_selector_mode
+        if selector_mode is None:
+            raise ValueError(
+                "BLCS reference adapter requires an explicit selector mode."
+            )
+        if (
+            selector_mode is ReferenceSelectorMode.SELECTOR_ZERO
+            and not self._allows_selector_zero
+        ):
+            raise ValueError(
+                "The normal BLCS reference adapter does not allow selector_zero."
+            )
+        expected = TrackQueryReferenceContract.reference_v2(selector_mode)
+        if track_query_reference_contract != expected:
+            raise ValueError(
+                "BLCS reference adapter requires an exact reference-v2 contract."
+            )
+        if court_keypoint_contract.contract_id != expected.court_keypoint_contract:
+            raise CourtKeypointContractMismatchError(
+                "BLCS reference adapter CourtKP20 and track-query contracts "
+                "must match exactly."
+            )
+        self.track_query_reference_contract = expected
+
+    @property
+    def model_type(self) -> type[nn.Module]:
+        return cast("type[nn.Module]", BLCSTrackQueryReferenceModel)
+
+    def build_call(self, batch: Mapping[str, object]) -> ModelCall:
+        try:
+            validate_track_query_reference_contract(
+                batch,
+                self.track_query_reference_contract,
+                location="BLCS track-query input",
+            )
+        except ValueError as error:
+            raise ModelInputContractError(str(error)) from error
+        call = super().build_call(batch)
+        ball_uv = cast(Tensor, call.kwargs["ball_uv"])
+        padding_mask = cast(Tensor, call.kwargs["padding_mask"])
+        batch_size, num_views, num_frames = ball_uv.shape[:3]
+        reference_view_index = require_tensor(
+            batch,
+            "reference_view_index",
+            spec=TensorSpec(
+                shape=(batch_size,),
+                dtypes=frozenset({torch.int64}),
+            ),
+        )
+        view_camera_ids = require_tensor(
+            batch,
+            "view_camera_ids",
+            spec=TensorSpec(
+                shape=(batch_size, num_views),
+                dtypes=frozenset({torch.int64}),
+            ),
+        )
+        reference_camera_id = require_tensor(
+            batch,
+            "reference_camera_id",
+            spec=TensorSpec(
+                shape=(batch_size,),
+                dtypes=frozenset({torch.int64}),
+            ),
+        )
+        reference_from_physical = require_tensor(
+            batch,
+            "reference_from_physical",
+            spec=TensorSpec(
+                shape=(batch_size, 3, 3),
+                dtypes=FloatDtypes,
+            ),
+        )
+        try:
+            validate_reference_view_batch(
+                reference_view_index=reference_view_index,
+                view_camera_ids=view_camera_ids,
+                reference_camera_id=reference_camera_id,
+                reference_from_physical=reference_from_physical,
+                expected_device=ball_uv.device,
+            )
+        except (TypeError, ReferenceViewBatchError) as error:
+            raise ModelInputContractError(str(error)) from error
+        selected_padding = padding_mask.gather(
+            1,
+            reference_view_index[:, None, None].expand(
+                batch_size,
+                1,
+                num_frames,
+            ),
+        ).squeeze(1)
+        supervised_time = (~padding_mask).any(dim=1)
+        if bool((selected_padding & supervised_time).any().item()):
+            raise ModelInputContractError(
+                "Every non-padding time must retain an unmasked reference-view "
+                "context token."
+            )
+        kwargs = dict(call.kwargs)
+        kwargs["reference_view_index"] = reference_view_index
+        return ModelCall(kwargs=kwargs)
+
+
+class TrackQueryReferenceAblationModelIOAdapter(
+    TrackQueryReferenceModelIOAdapter
+):
+    """Exact six-input adapter for the BLCS reference-v2 ablation family."""
+
+    _allows_selector_zero = True
+
+    @property
+    def model_type(self) -> type[nn.Module]:
+        return cast("type[nn.Module]", BLCSTrackQueryReferenceAblationModel)
+
+
 __all__ = [
     "AxialTrajectoryModelIOAdapter",
     "MultiViewTrajectoryModelIOAdapter",
@@ -919,5 +1097,7 @@ __all__ = [
     "SingleTrajectoryModelIOAdapter",
     "TrackQueryAblationModelIOAdapter",
     "TrackQueryModelIOAdapter",
+    "TrackQueryReferenceAblationModelIOAdapter",
+    "TrackQueryReferenceModelIOAdapter",
     "TrajectoryModelIOAdapter",
 ]

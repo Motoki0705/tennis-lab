@@ -419,6 +419,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
         scene_dir=runtime.scene_dir,
         split_file=f"{split}.txt",
         config=cfg,
+        seed=seed,
         augment=False,
     )
 

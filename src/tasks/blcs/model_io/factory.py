@@ -6,7 +6,12 @@ from collections.abc import Mapping
 from typing import TypeAlias, cast
 
 from src.tasks.base.configuration import as_config_mapping, require_config_mapping
-from src.tasks.base.model_io import BoundModelIO, bind_model_io
+from src.tasks.base.model_io import (
+    BoundModelIO,
+    TrackQueryReferenceContract,
+    bind_model_io,
+)
+from src.tasks.base.models import resolve_reference_selector_mode
 from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
 from src.tasks.blcs.configuration import (
     AxialModelConfig,
@@ -14,6 +19,8 @@ from src.tasks.blcs.configuration import (
     SingleModelConfig,
     TrackQueryAblationModelConfig,
     TrackQueryModelConfig,
+    TrackQueryReferenceAblationModelConfig,
+    TrackQueryReferenceModelConfig,
     parse_court_keypoint_contract,
     parse_model_config,
 )
@@ -24,6 +31,8 @@ from src.tasks.blcs.model_io.adapters import (
     SingleTrajectoryModelIOAdapter,
     TrackQueryAblationModelIOAdapter,
     TrackQueryModelIOAdapter,
+    TrackQueryReferenceAblationModelIOAdapter,
+    TrackQueryReferenceModelIOAdapter,
     TrajectoryModelIOAdapter,
 )
 from src.tasks.blcs.model_io.contracts import (
@@ -37,6 +46,12 @@ from src.tasks.blcs.models.blcs_track_query_ablation_model import (
     BLCSTrackQueryAblationModel,
 )
 from src.tasks.blcs.models.blcs_track_query_model import BLCSTrackQueryModel
+from src.tasks.blcs.models.blcs_track_query_reference_ablation_model import (
+    BLCSTrackQueryReferenceAblationModel,
+)
+from src.tasks.blcs.models.blcs_track_query_reference_model import (
+    BLCSTrackQueryReferenceModel,
+)
 
 TrajectoryBoundModelIO: TypeAlias = BoundModelIO[
     Mapping[str, object], RawBLCSOutput, BLCSTrajectoryPrediction
@@ -97,6 +112,38 @@ def compose_blcs_model_io(config: object) -> BLCSBoundModelIO:
             court_keypoint_contract=court_keypoint_contract,
         )
         return cast("TrajectoryBoundModelIO", bind_model_io(axial_model, axial_adapter))
+    if isinstance(model_config, TrackQueryReferenceAblationModelConfig):
+        reference_ablation_model = BLCSTrackQueryReferenceAblationModel(model_config)
+        reference_contract = TrackQueryReferenceContract.reference_v2(
+            resolve_reference_selector_mode(model_config.reference_selector_mode)
+        )
+        reference_ablation_adapter = TrackQueryReferenceAblationModelIOAdapter(
+            num_court_tokens=reference_ablation_model.num_court_tokens,
+            num_queries=model_config.num_queries,
+            presence_threshold=_tracking_presence_threshold(config),
+            court_keypoint_contract=court_keypoint_contract,
+            track_query_reference_contract=reference_contract,
+        )
+        return cast(
+            "TrackQueryBoundModelIO",
+            bind_model_io(reference_ablation_model, reference_ablation_adapter),
+        )
+    if isinstance(model_config, TrackQueryReferenceModelConfig):
+        reference_model = BLCSTrackQueryReferenceModel(model_config)
+        reference_contract = TrackQueryReferenceContract.reference_v2(
+            resolve_reference_selector_mode(model_config.reference_selector_mode)
+        )
+        reference_adapter = TrackQueryReferenceModelIOAdapter(
+            num_court_tokens=reference_model.num_court_tokens,
+            num_queries=model_config.num_queries,
+            presence_threshold=_tracking_presence_threshold(config),
+            court_keypoint_contract=court_keypoint_contract,
+            track_query_reference_contract=reference_contract,
+        )
+        return cast(
+            "TrackQueryBoundModelIO",
+            bind_model_io(reference_model, reference_adapter),
+        )
     if isinstance(model_config, TrackQueryAblationModelConfig):
         ablation_model = BLCSTrackQueryAblationModel(model_config)
         ablation_adapter = TrackQueryAblationModelIOAdapter(

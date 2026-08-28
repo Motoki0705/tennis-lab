@@ -9,6 +9,11 @@ import pytest
 import torch
 from hydra import compose, initialize_config_dir
 
+from src.tasks.base.model_io import (
+    TrackQueryReferenceContract,
+    write_track_query_reference_contract,
+)
+from src.tasks.base.models import ReferenceSelectorMode
 from src.tasks.blcs.model_io import compose_blcs_track_query_model_io
 from src.tasks.blcs.models import BLCSTrackQueryModel
 
@@ -52,6 +57,46 @@ def _batch() -> dict[str, torch.Tensor]:
     }
 
 
+def _reference_config() -> object:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        return compose(
+            config_name="train_tracking",
+            overrides=[
+                "model=track_query_reference",
+                "court_keypoints=camera_view_v2",
+                "model.hidden_dim=24",
+                "model.num_heads=4",
+                "model.ffn_dim=48",
+                "model.rope_dim=6",
+                "model.num_queries=2",
+                "model.num_stages=4",
+                "model.dropout=0.0",
+                "model.mhc.coefficient_dim=8",
+                "model.mhc.sinkhorn_iters=5",
+                "model.cswa.compression_ratio=2",
+                "model.cswa.window_radius=1",
+                "model.cswa.backend=reference",
+            ],
+        )
+
+
+def _reference_batch() -> dict[str, object]:
+    result: dict[str, object] = dict(_batch())
+    result.update(
+        {
+            "reference_view_index": torch.tensor([1], dtype=torch.int64),
+            "view_camera_ids": torch.tensor([[10, 11]], dtype=torch.int64),
+            "reference_camera_id": torch.tensor([11], dtype=torch.int64),
+            "reference_from_physical": torch.eye(3).unsqueeze(0),
+        }
+    )
+    write_track_query_reference_contract(
+        result,
+        TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.REFERENCE),
+    )
+    return result
+
+
 def test_hybrid_candidate_runs_cpu_forward_backward_and_preserves_outputs() -> None:
     binding = compose_blcs_track_query_model_io(_config())
     call = binding.build_call(_batch())
@@ -71,6 +116,18 @@ def test_hybrid_candidate_runs_cpu_forward_backward_and_preserves_outputs() -> N
     ]
     assert gradients
     assert all(torch.isfinite(gradient).all() for gradient in gradients)
+
+
+def test_reference_v2_normal_runs_six_input_cpu_forward_backward() -> None:
+    binding = compose_blcs_track_query_model_io(_reference_config())
+    call = binding.build_call(_reference_batch())
+    assert len(call.kwargs) == 6
+    raw = binding.execute_call(call)
+    loss = raw["position"].square().mean() + raw["presence_logits"].square().mean()
+    loss.backward()
+    assert torch.isfinite(loss)
+    assert raw["position"].shape == (1, 4, 2, 3)
+    assert all(torch.isfinite(value).all() for value in raw.values())
 
 
 @pytest.mark.cuda

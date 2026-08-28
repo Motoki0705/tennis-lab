@@ -12,6 +12,10 @@ pin_memory: true
 # Long clips expose multiple birth/death events and query reuse opportunities.
 seq_len_range: [512, 1024]
 
+# Stable scene-artifact identity used only by validation/test. Training samples
+# select their reference from the chosen views with the worker-seeded RNG.
+evaluation_reference_camera_id: cam_1
+
 lifecycle:
   pack_to_query_slots: true
   min_reuse_gap_frames: 4

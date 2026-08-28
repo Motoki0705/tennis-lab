@@ -12,6 +12,10 @@ pin_memory: true
 
 seq_len_range: [512, 1024]
 
+# Stable scene-artifact identity used only by validation/test. Training uses
+# independent worker-seeded reference selection.
+evaluation_reference_camera_id: camera_1
+
 lifecycle:
   pack_to_query_slots: true
   min_reuse_gap_frames: 4

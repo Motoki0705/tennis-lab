@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -21,6 +22,7 @@ from src.tasks.plcs.model_io import (
     PLCSPreparedBatch,
     PLCSStandardBoundModelIO,
     build_plcs_model_io,
+    plcs_reference_metadata_from_batch,
     validate_plcs_checkpoint_court_keypoints,
     write_plcs_checkpoint_court_keypoints,
 )
@@ -145,8 +147,11 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         self, batch: dict[str, Tensor]
     ) -> tuple[PLCSDecodedPrediction, PLCSPreparedBatch]:
         prepared = self.io_adapter.prepare_training_batch(batch)
+        reference_metadata = plcs_reference_metadata_from_batch(batch)
+        prepared = replace(prepared, reference_metadata=reference_metadata)
         raw_output = self.model_io.execute_call(prepared.call)
-        return self.io_adapter.decode_prepared_output(raw_output, prepared), prepared
+        decoded = self.io_adapter.decode_prepared_output(raw_output, prepared)
+        return replace(decoded, reference_metadata=reference_metadata), prepared
 
     def _metric_tracker_for_stage(self, stage: str) -> PLCSMetrics:
         if stage == "train":
@@ -225,6 +230,11 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             target_rotation,
             padding_mask=padding_mask,
             court_reference_provenance=prepared.court_reference_provenance,
+            reference_view_index=(
+                prepared.reference_metadata.reference_view_index
+                if prepared.reference_metadata is not None
+                else None
+            ),
         )
 
         return {
@@ -318,6 +328,16 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
                 prepared.target_human_kp_3d,
                 target_position,
                 target_rotation,
+            )
+        if prepared.reference_metadata is not None:
+            num_views_range = cast(
+                "list[int] | tuple[int, int]",
+                self.plcs_runtime.data.values["num_views_range"],
+            )
+            payload.update(
+                prepared.reference_metadata.prediction_payload(
+                    max_views=int(num_views_range[1]),
+                )
             )
         return payload
 

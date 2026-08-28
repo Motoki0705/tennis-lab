@@ -18,13 +18,21 @@ from src.tasks.base.generate_dataset import (
     resolve_court_keypoint_contract,
 )
 from src.tasks.base.inference.predictor import BasePredictor
-from src.tasks.base.model_io import validate_model_artifact_court_keypoint_contract
+from src.tasks.base.model_io import (
+    ModelInputContractError,
+    validate_model_artifact_court_keypoint_contract,
+)
 from src.tasks.blcs.model_io import (
+    BLCSReferenceMetadata,
     BLCSTrackQueryPrediction,
     TrackQueryBoundModelIO,
+    blcs_reference_metadata_from_batch,
     compose_blcs_track_query_model_io,
 )
-from src.tasks.blcs.model_io.adapters import TrackQueryModelIOAdapter
+from src.tasks.blcs.model_io.adapters import (
+    TrackQueryModelIOAdapter,
+    TrackQueryReferenceModelIOAdapter,
+)
 from src.tasks.blcs.model_io.checkpoints import load_checkpoint_runtime
 from src.tasks.blcs.training.tracking_lightning_module import (
     BLCSTrackingLightningModule,
@@ -102,10 +110,34 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
         *,
         batch_size: int,
         explicit: tuple[CourtReferenceFrameProvenance, ...] | None,
+        reference_metadata: BLCSReferenceMetadata | None,
     ) -> tuple[CourtReferenceFrameProvenance, ...]:
-        raw = explicit if explicit is not None else batch.get(
-            "court_reference_provenance"
-        )
+        batch_provenance = batch.get("court_reference_provenance")
+        if (
+            explicit is not None
+            and batch_provenance is not None
+            and (
+                not isinstance(batch_provenance, (tuple, list))
+                or tuple(batch_provenance) != explicit
+            )
+        ):
+            raise ModelInputContractError(
+                "Explicit BLCS prediction provenance does not match the batch."
+            )
+        raw = explicit if explicit is not None else batch_provenance
+        if reference_metadata is not None:
+            metadata_provenance = tuple(
+                selection.provenance for selection in reference_metadata.selections
+            )
+            if raw is not None and (
+                not isinstance(raw, (tuple, list))
+                or tuple(raw) != metadata_provenance
+            ):
+                raise ModelInputContractError(
+                    "BLCS prediction provenance and typed reference metadata do "
+                    "not match."
+                )
+            raw = metadata_provenance
         if raw is None:
             if self.court_keypoint_contract.selector != PHYSICAL_V1_SELECTOR:
                 raise ValueError(
@@ -131,6 +163,64 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
             )
         return records
 
+    @staticmethod
+    def _same_reference_metadata(
+        left: BLCSReferenceMetadata,
+        right: BLCSReferenceMetadata,
+    ) -> bool:
+        """Compare typed metadata without relying on tensor dataclass equality."""
+        return (
+            left.selections == right.selections
+            and left.stable_camera_id_tables == right.stable_camera_id_tables
+            and left.track_query_contract == right.track_query_contract
+            and torch.equal(left.reference_view_index, right.reference_view_index)
+            and torch.equal(left.view_camera_ids, right.view_camera_ids)
+            and torch.equal(left.reference_camera_id, right.reference_camera_id)
+            and torch.equal(
+                left.reference_from_physical,
+                right.reference_from_physical,
+            )
+            and torch.equal(
+                left.physical_from_reference,
+                right.physical_from_reference,
+            )
+        )
+
+    def _resolve_reference_metadata(
+        self,
+        batch: Mapping[str, object],
+        explicit: BLCSReferenceMetadata | None,
+    ) -> BLCSReferenceMetadata | None:
+        parsed = blcs_reference_metadata_from_batch(batch)
+        if explicit is not None and parsed is not None and not self._same_reference_metadata(
+            explicit,
+            parsed,
+        ):
+            raise ModelInputContractError(
+                "Explicit BLCS reference metadata does not match the batch."
+            )
+        metadata = explicit if explicit is not None else parsed
+        if isinstance(self.model_io.adapter, TrackQueryReferenceModelIOAdapter):
+            if metadata is None:
+                raise ModelInputContractError(
+                    "Reference-conditioned BLCS tracking inference requires "
+                    "explicit typed reference_metadata."
+                )
+            if (
+                metadata.track_query_contract
+                != self.model_io.adapter.track_query_reference_contract
+            ):
+                raise ModelInputContractError(
+                    "BLCS tracking reference metadata and adapter contracts do "
+                    "not exactly match."
+                )
+        elif metadata is not None:
+            raise ModelInputContractError(
+                "Legacy BLCS tracking inference cannot consume v2 reference "
+                "metadata."
+            )
+        return metadata
+
     def predict_batch(
         self,
         batch: Mapping[str, object],
@@ -140,12 +230,17 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
             CourtReferenceFrameProvenance, ...
         ]
         | None = None,
+        reference_metadata: BLCSReferenceMetadata | None = None,
     ) -> BLCSTrackQueryPrediction:
         """Run one validated tracking call and return its typed decode."""
         with torch.no_grad():
+            metadata = self._resolve_reference_metadata(batch, reference_metadata)
+            model_batch = dict(batch)
+            if metadata is not None:
+                model_batch.update(metadata.to_batch_fields())
             moved = {
                 key: value.to(self.device) if isinstance(value, Tensor) else value
-                for key, value in batch.items()
+                for key, value in model_batch.items()
             }
             prediction = self.model_io.run(moved)
             position = prediction.position
@@ -153,6 +248,7 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
                 batch,
                 batch_size=int(position.shape[0]),
                 explicit=court_reference_provenance,
+                reference_metadata=metadata,
             )
             if denormalize:
                 position = self._denormalize_coords(position, COURT_COORD_SCALE_XYZ)
@@ -163,6 +259,7 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
                 presence=prediction.presence.detach().cpu(),
                 court_reference_provenance=provenance,
                 coordinates_in_metres=denormalize,
+                reference_metadata=metadata.cpu() if metadata is not None else None,
             )
 
     def predict(
@@ -179,6 +276,7 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
             CourtReferenceFrameProvenance, ...
         ]
         | None = None,
+        reference_metadata: BLCSReferenceMetadata | None = None,
     ) -> BLCSTrackQueryPrediction:
         """Pad an explicit short candidate set, then run the strict adapter."""
         validate_model_artifact_court_keypoint_contract(
@@ -224,6 +322,7 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
             inputs,
             denormalize=denormalize,
             court_reference_provenance=court_reference_provenance,
+            reference_metadata=reference_metadata,
         )
 
 

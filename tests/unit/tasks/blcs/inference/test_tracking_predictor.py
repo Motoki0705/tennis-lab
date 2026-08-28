@@ -9,22 +9,34 @@ import torch
 from hydra import compose, initialize_config_dir
 from torch import Tensor, nn
 
-from src.tasks.base.generate_dataset import resolve_court_keypoint_contract
+from src.tasks.base.data import ReferenceViewSelection, StableCameraIdTable
+from src.tasks.base.generate_dataset import (
+    build_court_view_record,
+    resolve_court_keypoint_contract,
+)
 from src.tasks.base.model_io import (
+    ModelInputContractError,
+    TrackQueryReferenceContract,
     bind_model_io,
     write_model_artifact_court_keypoint_contract,
 )
+from src.tasks.base.models import ReferenceSelectorMode
 from src.tasks.blcs.data.tracking_types import BLCSTrackingPrediction
 from src.tasks.blcs.inference.tracking_predictor import BLCSTrackingPredictor
 from src.tasks.blcs.model_io import (
+    BLCSReferenceMetadata,
     TrackQueryBoundModelIO,
     TrackQueryModelIOAdapter,
+    TrackQueryReferenceModelIOAdapter,
     compose_blcs_track_query_model_io,
 )
 from src.tasks.blcs.model_io.adapters import TrackQueryAblationModelIOAdapter
 from src.tasks.blcs.models import (
     BLCSTrackQueryAblationModel,
     BLCSTrackQueryModel,
+)
+from src.tasks.blcs.models.blcs_track_query_reference_model import (
+    BLCSTrackQueryReferenceModel,
 )
 from src.utils.configuration import PathResolver
 from src.utils.schema.court_normalization import (
@@ -57,6 +69,67 @@ class _FixedTrackingModel(BLCSTrackQueryModel):
                 batch, frames, -1
             ),
         }
+
+
+class _FixedReferenceTrackingModel(BLCSTrackQueryReferenceModel):
+    def __init__(self) -> None:
+        nn.Module.__init__(self)
+
+    def forward(  # type: ignore[override]
+        self,
+        ball_uv: Tensor,
+        ball_vis: Tensor,
+        court_kp: Tensor,
+        court_vis: Tensor,
+        padding_mask: Tensor,
+        reference_view_index: Tensor,
+    ) -> BLCSTrackingPrediction:
+        del ball_vis, court_kp, court_vis, padding_mask, reference_view_index
+        batch, _, frames = ball_uv.shape[:3]
+        return {
+            "position": torch.ones(batch, frames, 2, 3, device=ball_uv.device),
+            "presence_logits": torch.ones(batch, frames, 2, device=ball_uv.device),
+        }
+
+
+def _reference_metadata() -> BLCSReferenceMetadata:
+    contract = resolve_court_keypoint_contract("camera_view_v2")
+    views = (
+        build_court_view_record(
+            camera_id="camera_0",
+            camera_center_court_m=(0.0, -10.0, 3.0),
+            contract=contract,
+        ),
+        build_court_view_record(
+            camera_id="camera_1",
+            camera_center_court_m=(0.0, 10.0, 3.0),
+            contract=contract,
+        ),
+    )
+    table = StableCameraIdTable.from_complete_scene_camera_ids(
+        ("camera_0", "camera_1")
+    )
+    selection = ReferenceViewSelection.create(
+        stable_camera_id_table=table,
+        selected_views=views,
+        reference_camera_id="camera_1",
+    )
+    forward = torch.tensor(
+        selection.provenance.reference_from_physical,
+        dtype=torch.float32,
+    ).unsqueeze(0)
+    return BLCSReferenceMetadata(
+        selections=(selection,),
+        stable_camera_id_tables=(table,),
+        reference_view_index=torch.tensor([1], dtype=torch.int64),
+        view_camera_ids=torch.tensor([[0, 1]], dtype=torch.int64),
+        reference_camera_id=torch.tensor([1], dtype=torch.int64),
+        reference_from_physical=forward,
+        physical_from_reference=forward.transpose(-1, -2),
+        track_query_contract=TrackQueryReferenceContract.reference_v2(
+            ReferenceSelectorMode.REFERENCE
+        ),
+    )
 
 
 def test_predictor_returns_cpu_query_presence_and_positions() -> None:
@@ -103,6 +176,94 @@ def test_predictor_returns_cpu_query_presence_and_positions() -> None:
         denormalize=True,
     )
     torch.testing.assert_close(physical.position, torch.full((1, 3, 2, 3), 11.885))
+
+
+def test_reference_predictor_requires_and_round_trips_typed_metadata() -> None:
+    reference_contract = TrackQueryReferenceContract.reference_v2(
+        ReferenceSelectorMode.REFERENCE
+    )
+    court_contract = resolve_court_keypoint_contract("camera_view_v2")
+    binding = cast(
+        "TrackQueryBoundModelIO",
+        bind_model_io(
+            _FixedReferenceTrackingModel(),
+            TrackQueryReferenceModelIOAdapter(
+                num_court_tokens=14,
+                num_queries=2,
+                presence_threshold=0.5,
+                court_keypoint_contract=court_contract,
+                track_query_reference_contract=reference_contract,
+            ),
+        ),
+    )
+    predictor = BLCSTrackingPredictor(
+        binding,
+        torch.device("cpu"),
+        court_keypoint_contract=court_contract,
+    )
+    metadata = _reference_metadata()
+    document: dict[str, object] = {}
+    write_model_artifact_court_keypoint_contract(document, court_contract)
+    inputs = {
+        "ball_uv": torch.zeros(1, 2, 2, 2, 2),
+        "ball_vis": torch.ones(1, 2, 2, 2, dtype=torch.bool),
+        "court_kp": torch.zeros(1, 2, 2, 14, 2),
+        "court_vis": torch.ones(1, 2, 2, 14, dtype=torch.bool),
+        "padding_mask": torch.zeros(1, 2, 2, dtype=torch.bool),
+        "denormalize": False,
+        "court_keypoint_document": document,
+    }
+
+    result = predictor.predict(**inputs, reference_metadata=metadata)
+
+    assert result.reference_metadata is not None
+    assert result.reference_metadata.reference_camera_ids == ("camera_1",)
+    assert result.reference_metadata.reference_view_index.tolist() == [1]
+    assert result.reference_metadata.reference_view_index.device.type == "cpu"
+    assert result.court_reference_provenance == tuple(
+        selection.provenance for selection in metadata.selections
+    )
+
+    with pytest.raises(ModelInputContractError, match="requires explicit typed"):
+        predictor.predict(**inputs)
+
+    mismatched = ReferenceViewSelection.create(
+        stable_camera_id_table=metadata.stable_camera_id_tables[0],
+        selected_views=metadata.selections[0].selected_views,
+        reference_camera_id="camera_0",
+    )
+    with pytest.raises(ModelInputContractError, match="do not match"):
+        predictor.predict(
+            **inputs,
+            reference_metadata=metadata,
+            court_reference_provenance=(mismatched.provenance,),
+        )
+
+
+def test_legacy_tracking_predictor_rejects_v2_reference_metadata() -> None:
+    binding = cast(
+        "TrackQueryBoundModelIO",
+        bind_model_io(
+            _FixedTrackingModel(),
+            TrackQueryModelIOAdapter(
+                num_court_tokens=14,
+                num_queries=2,
+                presence_threshold=0.5,
+            ),
+        ),
+    )
+    predictor = BLCSTrackingPredictor(binding, torch.device("cpu"))
+
+    with pytest.raises(ModelInputContractError, match="Legacy BLCS"):
+        predictor.predict(
+            ball_uv=torch.zeros(1, 2, 2, 2, 2),
+            ball_vis=torch.ones(1, 2, 2, 2, dtype=torch.bool),
+            court_kp=torch.zeros(1, 2, 2, 14, 2),
+            court_vis=torch.ones(1, 2, 2, 14, dtype=torch.bool),
+            padding_mask=torch.zeros(1, 2, 2, dtype=torch.bool),
+            denormalize=False,
+            reference_metadata=_reference_metadata(),
+        )
 
 
 def test_predictor_is_the_only_boundary_that_pads_short_candidates() -> None:

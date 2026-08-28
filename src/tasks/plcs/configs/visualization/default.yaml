@@ -4,6 +4,7 @@ scene_path: plcs/scenes/scene_000000
 camera: 0
 # Optional multi-camera selector: "all" or comma-separated "0,1,2"
 cameras: [0]
+reference_camera_id: null
 animation_view: 3d  # 3d | 2d_topdown | camera
 fps: 30.0
 save: plcs/gt.gif           # Optional output file for comparison animation (e.g., .mp4, .gif)

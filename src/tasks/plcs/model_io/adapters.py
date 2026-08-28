@@ -10,6 +10,7 @@ import numpy as np
 import torch
 from torch import Tensor, nn
 
+from src.tasks.base.data import validate_reference_view_batch
 from src.tasks.base.generate_dataset import (
     CAMERA_VIEW_V2_SELECTOR,
     PHYSICAL_V1_SELECTOR,
@@ -25,9 +26,12 @@ from src.tasks.base.model_io import (
     ModelInputContractError,
     ModelOutputContractError,
     TensorSpec,
+    TrackQueryReferenceContract,
     require_tensor,
     validate_model_artifact_court_keypoint_contract,
+    validate_track_query_reference_contract,
 )
+from src.tasks.base.models import resolve_reference_selector_mode
 from src.tasks.plcs.court_keypoint_contract import (
     court_keypoint_contract_document,
     provenance_from_value,
@@ -42,6 +46,7 @@ from src.tasks.plcs.model_io.contracts import (
     PLCSPreparedBatch,
     PLCSReprojectionTarget,
     PLCSTrackingDecodedPrediction,
+    plcs_reference_metadata_from_batch,
 )
 from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
 from src.utils.schema.player import NUM_HUMAN_KP
@@ -161,13 +166,24 @@ def _finite(name: str, tensor: Tensor) -> None:
         raise ModelInputContractError(f"{name} must contain only finite values.")
 
 
-def _normalized_uv(name: str, tensor: Tensor) -> None:
+def _normalized_uv(name: str, tensor: Tensor, visibility: Tensor) -> None:
     _finite(name, tensor)
-    if tensor.numel() and (
-        bool((tensor < 0).any().item()) or bool((tensor > 1).any().item())
+    if visibility.shape != tensor.shape[:-1]:
+        raise ModelInputContractError(
+            f"{name} visibility must match {name} without its UV axis."
+        )
+    if visibility.device != tensor.device:
+        raise ModelInputContractError(
+            f"{name} visibility must share the UV tensor device."
+        )
+    _binary_mask(f"{name} visibility", visibility)
+    visible_uv = tensor[visibility.to(dtype=torch.bool)]
+    if visible_uv.numel() and (
+        bool((visible_uv < 0).any().item())
+        or bool((visible_uv > 1).any().item())
     ):
         raise ModelInputContractError(
-            f"{name} must use normalized UV coordinates within [0, 1]."
+            f"Visible {name} must use normalized UV coordinates within [0, 1]."
         )
 
 
@@ -363,11 +379,9 @@ class PLCSModelIOAdapter:
                     "Every multiview sequence must contain at least one "
                     "non-padding frame."
                 )
-        _normalized_uv("human_kp", human_kp)
-        _normalized_uv("court_kp", court_kp)
-        _binary_mask("human_vis", human_vis)
+        _normalized_uv("human_kp", human_kp, human_vis)
+        _normalized_uv("court_kp", court_kp, court_vis)
         _binary_mask("padding_mask", padding_mask)
-        _binary_mask("court_vis", court_vis)
         return human_kp, court_kp, human_vis, padding_mask, court_vis
 
     def build_call(self, batch: Mapping[str, object]) -> ModelCall:
@@ -463,6 +477,10 @@ class PLCSModelIOAdapter:
             self.court_keypoint_contract,
             batch_size=batch_size,
         )
+        try:
+            reference_metadata = plcs_reference_metadata_from_batch(batch)
+        except (TypeError, ValueError) as error:
+            raise ModelInputContractError(str(error)) from error
         if batch_size == 0 or views == 0 or frames == 0:
             raise ModelInputContractError(
                 "Canonical PLCS (B,V,T) axes must all be non-empty."
@@ -507,6 +525,7 @@ class PLCSModelIOAdapter:
                 target_padding_mask=padding_mask,
                 reprojection_target=reprojection_target,
                 court_reference_provenance=provenance,
+                reference_metadata=reference_metadata,
             )
         if self.camera_index >= views:
             raise ModelInputContractError(
@@ -560,6 +579,7 @@ class PLCSModelIOAdapter:
             target_human_kp_3d=target_human_kp_3d,
             target_padding_mask=target_padding_mask,
             court_reference_provenance=provenance,
+            reference_metadata=reference_metadata,
         )
 
     def _validate_canonical_axes(self, batch: Mapping[str, Tensor]) -> None:
@@ -579,11 +599,9 @@ class PLCSModelIOAdapter:
             )
         if batch["padding_mask"].shape != human_kp.shape[:3]:
             raise ModelInputContractError("padding_mask must have shape (B,V,T).")
-        _normalized_uv("human_kp", human_kp)
-        _normalized_uv("court_kp", court_kp)
-        _binary_mask("human_vis", batch["human_vis"])
+        _normalized_uv("human_kp", human_kp, batch["human_vis"])
+        _normalized_uv("court_kp", court_kp, batch["court_vis"])
         _binary_mask("padding_mask", batch["padding_mask"])
-        _binary_mask("court_vis", batch["court_vis"])
 
     def _prepare_reprojection_target(
         self,
@@ -654,7 +672,7 @@ class PLCSModelIOAdapter:
                 ),
             )
 
-        _normalized_uv("human_kp_target", target_uv)
+        _normalized_uv("human_kp_target", target_uv, target_vis)
         _binary_mask("human_vis_target", target_vis)
         for name, tensor in {
             "camera_R": camera_R,
@@ -753,6 +771,7 @@ class PLCSModelIOAdapter:
             return replace(
                 decoded,
                 court_reference_provenance=prepared.court_reference_provenance,
+                reference_metadata=prepared.reference_metadata,
             )
         batch_size, frames = prepared.sequence_shape
 
@@ -768,6 +787,7 @@ class PLCSModelIOAdapter:
             canonical_pose=restore(decoded.canonical_pose),
             auxiliary_position=restore(decoded.auxiliary_position),
             court_reference_provenance=prepared.court_reference_provenance,
+            reference_metadata=prepared.reference_metadata,
         )
 
     def prepare_scene(
@@ -1076,10 +1096,8 @@ class PLCSTrackQueryIOAdapter:
             )
         if padding_mask.shape != (batch_size, views, frames):
             raise ModelInputContractError("padding_mask must have shape (B,V,T).")
-        _normalized_uv("human_kp", human_kp)
-        _normalized_uv("court_kp", court_kp)
-        _binary_mask("human_vis", human_vis)
-        _binary_mask("court_vis", court_vis)
+        _normalized_uv("human_kp", human_kp, human_vis)
+        _normalized_uv("court_kp", court_kp, court_vis)
         _binary_mask("padding_mask", padding_mask)
         return ModelCall(
             kwargs={
@@ -1171,6 +1189,7 @@ class PLCSTrackQueryIOAdapter:
         return PLCSPreparedBatch(
             call=call,
             court_reference_provenance=provenance,
+            reference_metadata=plcs_reference_metadata_from_batch(batch),
         )
 
     def decode_output(
@@ -1219,9 +1238,157 @@ class PLCSTrackQueryIOAdapter:
         return replace(
             decoded,
             court_reference_provenance=prepared.court_reference_provenance,
+            reference_metadata=prepared.reference_metadata,
         )
 
 
-PLCSAdapter = PLCSModelIOAdapter | PLCSTrackQueryIOAdapter
+class PLCSTrackQueryReferenceIOAdapter(PLCSTrackQueryIOAdapter):
+    """Strict six-input adapter for reference-conditioned track-query v2."""
 
-__all__ = ["PLCSAdapter", "PLCSModelIOAdapter", "PLCSTrackQueryIOAdapter"]
+    def __init__(
+        self,
+        *,
+        model_type: type[nn.Module],
+        num_queries: int,
+        num_court_tokens: int,
+        num_joints: int,
+        court_keypoint_contract: CourtKeypointContract,
+        target_frame_contract: str,
+        track_query_rope_contract: str,
+        reference_selector_mode: str,
+    ) -> None:
+        super().__init__(
+            model_type=model_type,
+            num_queries=num_queries,
+            num_court_tokens=num_court_tokens,
+            num_joints=num_joints,
+            court_keypoint_contract=court_keypoint_contract,
+        )
+        selector_mode = resolve_reference_selector_mode(reference_selector_mode)
+        reference_contract = TrackQueryReferenceContract.reference_v2(selector_mode)
+        if court_keypoint_contract.contract_id != (
+            reference_contract.court_keypoint_contract
+        ):
+            raise ValueError(
+                "Reference track-query I/O CourtKP20 contract does not match "
+                "the shared reference-v2 contract."
+            )
+        if target_frame_contract != reference_contract.target_frame_contract:
+            raise ValueError(
+                "Reference track-query I/O target-frame contract does not match "
+                "the shared reference-v2 contract."
+            )
+        if track_query_rope_contract != (
+            reference_contract.track_query_rope_contract.value
+        ):
+            raise ValueError(
+                "Reference track-query I/O RoPE contract does not match the "
+                "shared reference-v2 contract."
+            )
+        self.reference_contract = reference_contract
+        self.target_frame_contract = reference_contract.target_frame_contract
+        self.track_query_rope_contract = (
+            reference_contract.track_query_rope_contract
+        )
+        self.reference_selector_mode = selector_mode
+
+    def build_call(self, batch: Mapping[str, object]) -> ModelCall:
+        """Build the exact six-tensor call after identity/index validation."""
+        try:
+            validate_track_query_reference_contract(
+                batch,
+                self.reference_contract,
+                location="PLCS track-query input",
+            )
+        except ValueError as error:
+            raise ModelInputContractError(str(error)) from error
+        call = super().build_call(batch)
+        human_kp = cast(Tensor, call.kwargs["human_kp"])
+        padding_mask = cast(Tensor, call.kwargs["padding_mask"])
+        batch_size, _num_views, num_frames = human_kp.shape[:3]
+        try:
+            reference_metadata = plcs_reference_metadata_from_batch(batch)
+            if reference_metadata is None:
+                raise ValueError(
+                    "Reference-v2 PLCS input requires complete typed reference "
+                    "metadata."
+                )
+            if reference_metadata.track_query_contract != self.reference_contract:
+                raise ValueError(
+                    "PLCS typed reference metadata and adapter contracts do not "
+                    "match exactly."
+                )
+            validate_reference_view_batch(
+                reference_view_index=reference_metadata.reference_view_index,
+                view_camera_ids=reference_metadata.view_camera_ids,
+                reference_camera_id=reference_metadata.reference_camera_id,
+                stable_camera_id_tables=(
+                    reference_metadata.stable_camera_id_tables
+                ),
+                reference_from_physical=(
+                    reference_metadata.reference_from_physical
+                ),
+                physical_from_reference=(
+                    reference_metadata.physical_from_reference
+                ),
+                expected_device=human_kp.device,
+            )
+        except (TypeError, ValueError) as error:
+            raise ModelInputContractError(str(error)) from error
+        reference_view_index = reference_metadata.reference_view_index
+        reference_from_physical = reference_metadata.reference_from_physical
+        if reference_from_physical.dtype != human_kp.dtype:
+            raise ModelInputContractError(
+                "reference_from_physical must share the model input floating dtype."
+            )
+        provenance = _court_context(
+            batch,
+            self.court_keypoint_contract,
+            batch_size=batch_size,
+        )
+        if len(provenance) != batch_size:
+            raise ModelInputContractError(
+                "Reference-v2 court_reference_provenance must contain exactly "
+                "one record per sample."
+            )
+        for sample_index, selection in enumerate(reference_metadata.selections):
+            if provenance[sample_index] != selection.provenance:
+                raise ModelInputContractError(
+                    f"sample {sample_index} Court/target provenance does not "
+                    "match its typed stable camera selection."
+                )
+
+        selected_padding = padding_mask.gather(
+            1,
+            reference_view_index[:, None, None].expand(
+                batch_size,
+                1,
+                num_frames,
+            ),
+        ).squeeze(1)
+        supervised_time = (~padding_mask).any(dim=1)
+        if bool((selected_padding & supervised_time).any().item()):
+            raise ModelInputContractError(
+                "Every non-padding time must retain an unmasked reference-view "
+                "context token."
+            )
+        return ModelCall(
+            kwargs={
+                **call.kwargs,
+                "reference_view_index": reference_view_index,
+            }
+        )
+
+
+PLCSAdapter = (
+    PLCSModelIOAdapter
+    | PLCSTrackQueryIOAdapter
+    | PLCSTrackQueryReferenceIOAdapter
+)
+
+__all__ = [
+    "PLCSAdapter",
+    "PLCSModelIOAdapter",
+    "PLCSTrackQueryIOAdapter",
+    "PLCSTrackQueryReferenceIOAdapter",
+]

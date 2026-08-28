@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Protocol, cast
@@ -26,6 +25,10 @@ from src.tasks.base.configuration import (
     as_config_mapping,
     require_config_mapping,
 )
+from src.tasks.base.training.batch_transfer import (
+    move_batch_to_device_preserving_frozen_metadata,
+)
+from src.tasks.base.training.repro import resolve_queue_repro_dir
 from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
 from src.utils.paths import PROJECT_ROOT
 from src.utils.tensor_utils import to_numpy
@@ -96,6 +99,16 @@ class BaseLightningModule(pl.LightningModule):
         self.max_epochs = optimizer.max_epochs
         self.min_lr = optimizer.min_lr
         self.optimizer_betas = optimizer.betas
+
+    def transfer_batch_to_device(
+        self,
+        batch: Any,
+        device: torch.device,
+        dataloader_idx: int,
+    ) -> Any:
+        """Move batch tensors without reconstructing frozen provenance records."""
+        del dataloader_idx
+        return move_batch_to_device_preserving_frozen_metadata(batch, device)
 
     def additional_compilation_targets(self) -> dict[str, nn.Module]:
         """Return task-owned models invoked outside the primary model forward.
@@ -279,13 +292,9 @@ class BaseLightningModule(pl.LightningModule):
             self._test_pred_arrays[key].append(arr)
 
     def _test_predictions_dir(self) -> Path:
-        queue_repro_dir = os.environ.get("TENNIS_REPRO_DIR")
+        queue_repro_dir = resolve_queue_repro_dir()
         if queue_repro_dir is not None:
-            if not queue_repro_dir or not Path(queue_repro_dir).is_absolute():
-                raise ValueError(
-                    "TENNIS_REPRO_DIR must be a non-empty absolute path when set."
-                )
-            return Path(queue_repro_dir) / "predictions"
+            return queue_repro_dir / "predictions"
         resolved: Path = self.path_resolver.resolve(
             PathRole.ARTIFACT, "test_predictions"
         )
@@ -296,8 +305,12 @@ class BaseLightningModule(pl.LightningModule):
     ) -> Path | None:
         """Write accumulated test predictions to ``pred_test.npz`` (+ metrics.json).
 
-        Returns the npz path, or ``None`` if there is nothing to save / no target
-        directory could be resolved.
+        Queue jobs write below their isolated
+        ``$TENNIS_REPRO_DIR/predictions`` directory. Non-queue runs retain the
+        configured artifact-root location. Invalid queue paths fail before any
+        files are written.
+
+        Returns the npz path, or ``None`` if there is nothing to save.
         """
         if not hasattr(self, "_test_pred_arrays") or not self._test_pred_arrays:
             return None

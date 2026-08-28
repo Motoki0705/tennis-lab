@@ -9,6 +9,8 @@ from omegaconf import open_dict
 from src.tasks.blcs.configuration import (
     TrackQueryAblationModelConfig,
     TrackQueryModelConfig,
+    TrackQueryReferenceAblationModelConfig,
+    TrackQueryReferenceModelConfig,
     parse_model_config,
     validate_training_boundary,
 )
@@ -20,6 +22,14 @@ from src.utils.configuration import (
 )
 
 _CONFIG_DIR = Path("src/tasks/blcs/configs").resolve()
+
+
+def test_legacy_non_track_training_config_needs_no_reference_only_data_key() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(config_name="train")
+
+    assert "evaluation_reference_camera_id" not in config.data
+    validate_training_boundary(config)
 
 
 @pytest.mark.parametrize(
@@ -231,3 +241,76 @@ def test_track_query_nested_contract_rejects_missing_unknown_and_invalid_values(
 
     with pytest.raises(error):
         parse_model_config(config)
+
+
+@pytest.mark.parametrize(
+    ("profile", "expected_type", "selector_mode"),
+    [
+        ("track_query_reference", TrackQueryReferenceModelConfig, "reference"),
+        (
+            "track_query_ablation_d_v2_selector",
+            TrackQueryReferenceAblationModelConfig,
+            "reference",
+        ),
+        (
+            "track_query_ablation_d_v2_selector_zero",
+            TrackQueryReferenceAblationModelConfig,
+            "selector_zero",
+        ),
+    ],
+)
+def test_reference_v2_profiles_compose_with_explicit_independent_contracts(
+    profile: str,
+    expected_type: type[object],
+    selector_mode: str,
+) -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_tracking",
+            overrides=[
+                f"model={profile}",
+                "court_keypoints=camera_view_v2",
+            ],
+        )
+
+    parsed = validate_training_boundary(config)
+    assert isinstance(parsed, expected_type)
+    assert isinstance(
+        parsed,
+        (TrackQueryReferenceModelConfig, TrackQueryReferenceAblationModelConfig),
+    )
+    assert parsed.target_frame_contract == "reference_camera_court_rzpi_v1"
+    assert parsed.track_query_rope_contract == "time_camera_reference_selector_v1"
+    assert parsed.reference_selector_mode == selector_mode
+    assert "role_rope_enabled" not in config.model
+
+
+@pytest.mark.parametrize(
+    "profile",
+    ["track_query_reference", "track_query_ablation_d_v2_selector"],
+)
+def test_reference_v2_rejects_dim4_role_reinterpretation_and_physical_court(
+    profile: str,
+) -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_tracking",
+            overrides=[f"model={profile}", "court_keypoints=camera_view_v2"],
+        )
+    config.model.rope_dim = 4
+    with pytest.raises(SemanticConfigurationError, match="at least 6"):
+        parse_model_config(config)
+
+    config.model.rope_dim = 6
+    with open_dict(config.model):
+        config.model.role_rope_enabled = True
+    with pytest.raises(UnknownConfigurationKeyError, match="role_rope_enabled"):
+        parse_model_config(config)
+
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        physical = compose(
+            config_name="train_tracking",
+            overrides=[f"model={profile}"],
+        )
+    with pytest.raises(SemanticConfigurationError, match="camera_view_v2"):
+        validate_training_boundary(physical)

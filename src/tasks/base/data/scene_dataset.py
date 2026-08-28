@@ -21,6 +21,7 @@ import numpy as np
 from torch.utils.data import Dataset
 
 from src.tasks.base.configuration import as_config_mapping, require_config_mapping
+from src.tasks.base.data.rng import derive_seed, validate_seed
 from src.utils.data.scene_io import load_scene_payload
 
 SampleT = TypeVar("SampleT")
@@ -227,7 +228,7 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
     2. ``self.augment = augment``
     3. ``data_cfg = self._resolve_data_cfg(self.hydra_cfg)``
     4. ``self._configure_task(data_cfg)``  — override per task
-    5. ``super().__init__(config=self._build_scene_dataset_config(...))``
+    5. ``super().__init__(config=..., seed=...)``
     """
 
     #: Whether augmentation is enabled. Set by subclass ``__init__`` before
@@ -240,11 +241,21 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
         self,
         *,
         config: SceneDatasetConfig,
+        seed: int,
         rng: np.random.Generator | None = None,
+        sample_local_rng: bool = False,
     ) -> None:
         super().__init__()
         self.config = config
-        self.rng = rng or np.random.default_rng()
+        self.seed = validate_seed(seed, path="dataset seed")
+        if rng is not None and not isinstance(rng, np.random.Generator):
+            raise TypeError(
+                "rng must be numpy.random.Generator, got "
+                f"{type(rng).__name__}."
+            )
+        self._managed_rng = np.random.default_rng(self.seed)
+        self.rng = self._managed_rng if rng is None else rng
+        self._sample_local_rng = bool(sample_local_rng)
         self.scene_dir = config.scene_dir
 
         self._validate_range(config.seq_len_range, name="seq_len_range")
@@ -463,6 +474,25 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
     def __len__(self) -> int:
         return len(self.scenes)
 
+    def seed_worker(self, *, worker_seed: int, worker_id: int) -> None:
+        """Install this DataLoader worker's deterministic NumPy stream."""
+        if worker_seed < 0:
+            raise ValueError(f"worker_seed must be non-negative, got {worker_seed}.")
+        if worker_id < 0:
+            raise ValueError(f"worker_id must be non-negative, got {worker_id}.")
+        seed = derive_seed(self.seed, "worker", worker_seed, worker_id)
+        self._managed_rng = np.random.default_rng(seed)
+        self.rng = self._managed_rng
+
+    def _sample_seed(self, idx: int) -> int:
+        resolved_idx = idx if idx >= 0 else len(self.scenes) + idx
+        path = self.scenes[idx]
+        try:
+            scene_identity = path.relative_to(self.scene_dir).as_posix()
+        except ValueError:
+            scene_identity = path.as_posix()
+        return derive_seed(self.seed, "sample", resolved_idx, scene_identity)
+
     def get_scene_header(self, path: Path) -> SceneHeader:
         """Return the pre-computed header for the given scene path."""
         try:
@@ -611,6 +641,17 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
         return sample
 
     def __getitem__(self, idx: int) -> SampleT:
-        scene = self._load_scene(self.scenes[idx])
-        sample = self.build_sample(scene)
-        return self.augment_sample(sample)
+        if not self._sample_local_rng or self.rng is not self._managed_rng:
+            scene = self._load_scene(self.scenes[idx])
+            sample = self.build_sample(scene)
+            return self.augment_sample(sample)
+
+        worker_rng = self._managed_rng
+        sample_rng = np.random.default_rng(self._sample_seed(idx))
+        self.rng = sample_rng
+        try:
+            scene = self._load_scene(self.scenes[idx])
+            sample = self.build_sample(scene)
+            return self.augment_sample(sample)
+        finally:
+            self.rng = worker_rng

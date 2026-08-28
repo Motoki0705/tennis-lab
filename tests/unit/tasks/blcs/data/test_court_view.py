@@ -5,16 +5,21 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pytest
 import torch
 from hydra import compose, initialize_config_dir
 
+from src.tasks.base.data import ReferenceViewSelectionError
 from src.tasks.base.generate_dataset import (
     CAMERA_VIEW_V2_SELECTOR,
     apply_court_view_record,
     build_court_view_record,
     resolve_court_keypoint_contract,
 )
-from src.tasks.blcs.data.dataset import BallTrajectoryDataset
+from src.tasks.blcs.data.dataset import (
+    BallTrajectoryDataset,
+    collate_multiview_trajectories,
+)
 from src.tasks.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter
 from src.tasks.blcs.generate_dataset.scene_generator import BLCSSceneData, CameraData
 from src.utils.schema.court import COURT_KP20_HALF_TURN_INDEX
@@ -106,11 +111,19 @@ def test_v2_dataset_aligns_reordered_views_targets_velocity_and_extrinsics(
     config.data.seq_len_range = [2, 2]
     config.data.num_views_range = [2, 2]
     config.data.camera_mode = 1
+    with pytest.raises(ReferenceViewSelectionError, match="requires an explicit"):
+        BallTrajectoryDataset(
+            scene_dir=tmp_path,
+            split_file="test.txt",
+            config=config,
+            augment=False,
+        )[0]
     sample = BallTrajectoryDataset(
         scene_dir=tmp_path,
         split_file="test.txt",
         config=config,
         augment=False,
+        reference_camera_id="cam_0",
     )[0]
 
     expected_court = torch.from_numpy(
@@ -121,6 +134,11 @@ def test_v2_dataset_aligns_reordered_views_targets_velocity_and_extrinsics(
     provenance = sample["court_reference_provenance"]
     assert provenance.reference_camera_id == "cam_0"
     assert provenance.reference_camera_local_index == 1
+    assert sample["selected_camera_ids"] == ("cam_1", "cam_0")
+    assert sample["reference_view_index"].item() == 1
+    assert sample["view_camera_ids"].tolist() == [1, 0]
+    assert sample["reference_camera_id"].item() == 0
+    assert sample["stable_camera_id_table"].camera_ids == ("cam_0", "cam_1")
 
     expected_position = normalize_court_position(
         scene.ball_pos_world * torch.tensor([-1.0, -1.0, 1.0])
@@ -138,3 +156,19 @@ def test_v2_dataset_aligns_reordered_views_targets_velocity_and_extrinsics(
         sample["camera_C"],
         torch.tensor([[0.0, 12.0, 5.0], [0.0, -12.0, 5.0]]),
     )
+
+    config.data.num_views_range = [1, 1]
+    single = BallTrajectoryDataset(
+        scene_dir=tmp_path,
+        split_file="test.txt",
+        config=config,
+        augment=False,
+    )[0]
+    assert single["reference_view_index"].item() == 0
+    assert single["reference_camera_id"].item() == single["view_camera_ids"][0].item()
+    assert single["stable_camera_id_table"].camera_ids == ("cam_0", "cam_1")
+
+    collated = collate_multiview_trajectories([single, sample])
+    assert collated["view_camera_ids"][0, 1].item() == -1
+    assert collated["view_camera_ids"][1].tolist() == [1, 0]
+    assert collated["reference_view_index"].tolist() == [0, 1]

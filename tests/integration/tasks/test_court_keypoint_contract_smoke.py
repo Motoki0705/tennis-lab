@@ -27,7 +27,7 @@ from src.tasks.base.generate_dataset import (
     resolve_court_keypoint_contract,
 )
 from src.tasks.blcs.configuration import (
-    TrackQueryAblationModelConfig,
+    TrackQueryReferenceAblationModelConfig,
     parse_model_config,
 )
 from src.tasks.blcs.data.dataset import (
@@ -46,8 +46,8 @@ from src.tasks.blcs.model_io import (
     blcs_trajectory_prediction_to_physical,
     compose_blcs_trajectory_model_io,
 )
-from src.tasks.blcs.models.blcs_track_query_ablation_model import (
-    BLCSTrackQueryAblationModel,
+from src.tasks.blcs.models.blcs_track_query_reference_ablation_model import (
+    BLCSTrackQueryReferenceAblationModel,
 )
 from src.tasks.blcs.training.lightning_module import BLCSLightningModule
 from src.tasks.plcs.configuration import PLCSModelConfig
@@ -62,8 +62,8 @@ from src.tasks.plcs.generate_dataset.scene_generator import (
 )
 from src.tasks.plcs.generate_dataset.scene_generator import SceneData as PLCSSceneData
 from src.tasks.plcs.model_io import PLCSDecodedPrediction, PLCSPhysicalPrediction
-from src.tasks.plcs.models.plcs_track_query_ablation_model import (
-    PLCSTrackQueryAblationModel,
+from src.tasks.plcs.models.plcs_track_query_reference_ablation_model import (
+    PLCSTrackQueryReferenceAblationModel,
 )
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.tennis_scene.pipeline.components.blcs import BLCSModule
@@ -353,6 +353,7 @@ def test_standard_datasets_models_losses_metrics_and_physical_predictions(
         split_file="test.txt",
         config=blcs_config,
         augment=False,
+        reference_camera_id=("cam_0" if selector == "camera_view_v2" else None),
     )
     blcs_sample = cast("dict[str, Any]", blcs_dataset[0])
     blcs_provenance = cast(
@@ -430,6 +431,9 @@ def test_standard_datasets_models_losses_metrics_and_physical_predictions(
         split_file="test.txt",
         config=plcs_config,
         augment=False,
+        reference_camera_id=(
+            "camera_0" if selector == "camera_view_v2" else None
+        ),
     )
     plcs_sample = plcs_dataset[0]
     plcs_provenance = cast(
@@ -567,20 +571,22 @@ def test_single_view_uses_selected_camera_as_the_complete_reference_frame(
     torch.testing.assert_close(plcs_sample["camera_R"][0], half_turn)
 
 
-def _blcs_tracking_model() -> BLCSTrackQueryAblationModel:
+def _blcs_tracking_model() -> BLCSTrackQueryReferenceAblationModel:
     config = parse_model_config(
         {
             "model": {
-                "name": "blcs_track_query_ablation",
-                "hidden_dim": 16,
+                "name": "blcs_track_query_reference_ablation",
+                "hidden_dim": 24,
                 "num_heads": 4,
                 "num_stages": 4,
                 "ffn_dim": 32,
                 "num_queries": 2,
-                "rope_dim": 4,
+                "rope_dim": 6,
                 "dropout": 0.0,
-                "role_rope_enabled": True,
                 "invisible_init_std": 0.02,
+                "target_frame_contract": "reference_camera_court_rzpi_v1",
+                "track_query_rope_contract": "time_camera_reference_selector_v1",
+                "reference_selector_mode": "reference",
                 "ffn_mode": "shared",
                 "mhc_writeback": "layer_end",
                 "query_ffn_after_spatial": False,
@@ -599,28 +605,30 @@ def _blcs_tracking_model() -> BLCSTrackQueryAblationModel:
             }
         }
     )
-    assert isinstance(config, TrackQueryAblationModelConfig)
-    model = BLCSTrackQueryAblationModel(config)
+    assert isinstance(config, TrackQueryReferenceAblationModelConfig)
+    model = BLCSTrackQueryReferenceAblationModel(config)
     model.eval()
     return model
 
 
-def _plcs_tracking_model() -> PLCSTrackQueryAblationModel:
+def _plcs_tracking_model() -> PLCSTrackQueryReferenceAblationModel:
     config = PLCSModelConfig.from_mapping(
         {
-            "name": "plcs_track_query_ablation",
-            "hidden_dim": 16,
+            "name": "plcs_track_query_reference_ablation",
+            "hidden_dim": 24,
             "num_heads": 4,
             "ffn_dim": 32,
             "num_queries": 2,
             "num_stages": 4,
             "num_joints": 17,
-            "rope_dim": 4,
+            "rope_dim": 6,
             "rope_theta": 10_000.0,
             "ffn_type": "swiglu",
             "dropout": 0.0,
-            "role_rope_enabled": True,
             "invisible_init_std": 0.02,
+            "target_frame_contract": "reference_camera_court_rzpi_v1",
+            "track_query_rope_contract": "time_camera_reference_selector_v1",
+            "reference_selector_mode": "reference",
             "ffn_mode": "shared",
             "mhc_writeback": "layer_end",
             "mhc": {
@@ -637,7 +645,7 @@ def _plcs_tracking_model() -> PLCSTrackQueryAblationModel:
             },
         }
     )
-    model = PLCSTrackQueryAblationModel(config)
+    model = PLCSTrackQueryReferenceAblationModel(config)
     model.eval()
     return model
 
@@ -652,6 +660,7 @@ def test_tracking_models_consume_reference_aligned_first14(
         split_file="test.txt",
         config=_blcs_config("camera_view_v2"),
         augment=False,
+        reference_camera_id="cam_1",
     )
     blcs_sample = cast("dict[str, Tensor]", blcs_dataset[0])
     court = blcs_sample["court_kp"][:, :, :14]
@@ -663,6 +672,7 @@ def test_tracking_models_consume_reference_aligned_first14(
             court.unsqueeze(0),
             torch.ones(1, 2, 2, 14, dtype=torch.bool),
             torch.zeros(1, 2, 2, dtype=torch.bool),
+            blcs_sample["reference_view_index"].reshape(1),
         )
     assert output["position"].shape == (1, 2, 2, 3)
 
@@ -672,6 +682,7 @@ def test_tracking_models_consume_reference_aligned_first14(
         split_file="test.txt",
         config=_plcs_config("camera_view_v2"),
         augment=False,
+        reference_camera_id="camera_1",
     )
     plcs_sample = plcs_dataset[0]
     court = plcs_sample["court_kp"][:, :, :14]
@@ -683,6 +694,7 @@ def test_tracking_models_consume_reference_aligned_first14(
             court.unsqueeze(0),
             torch.ones(1, 2, 2, 14, dtype=torch.bool),
             torch.zeros(1, 2, 2, dtype=torch.bool),
+            plcs_sample["reference_view_index"].reshape(1),
         )
     assert output["position"].shape == (1, 2, 2, 3)
 

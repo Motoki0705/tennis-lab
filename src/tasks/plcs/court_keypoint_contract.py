@@ -12,6 +12,12 @@ import numpy as np
 from torch import Tensor
 
 from src.tasks.base.configuration import as_config_mapping, require_config_mapping
+from src.tasks.base.data import (
+    ReferenceViewSelection,
+    StableCameraIdTable,
+    resolve_evaluation_reference_camera_id,
+    select_seeded_training_reference_camera_id,
+)
 from src.tasks.base.generate_dataset import (
     CAMERA_VIEW_V2_SELECTOR,
     PHYSICAL_V1_SELECTOR,
@@ -26,8 +32,6 @@ from src.tasks.base.generate_dataset import (
     InvalidCourtKeypointMetadataError,
     align_court_keypoints_to_reference,
     build_court_view_record,
-    build_physical_court_provenance,
-    build_reference_frame_provenance,
     court_headings_physical_to_target,
     court_headings_target_to_physical,
     court_points_physical_to_target,
@@ -35,6 +39,12 @@ from src.tasks.base.generate_dataset import (
     resolve_court_keypoint_contract,
     validate_dataset_court_keypoint_contract,
 )
+from src.tasks.base.model_io import (
+    TRACK_QUERY_REFERENCE_METADATA_KEY,
+    TrackQueryReferenceContract,
+    TrackQueryReferenceContractMetadata,
+)
+from src.tasks.base.models import resolve_reference_selector_mode
 from src.utils.configuration import (
     ConfigurationTypeError,
     UnknownConfigurationKeyError,
@@ -86,6 +96,60 @@ def court_keypoint_contract_document(
         "court_keypoints": CourtKeypointContractMetadata.from_contract(
             contract
         ).to_dict()
+    }
+
+
+def track_query_reference_contract_document(
+    value: object,
+    contract: CourtKeypointContract,
+) -> dict[str, object] | None:
+    """Build the exact v2 model-ready semantic marker from composed config.
+
+    Non-reference model families return ``None`` and retain their existing I/O
+    contracts. Reference track-query profiles must declare every independent
+    target/RoPE/selector marker; values are never inferred from the CourtKP20
+    array shape.
+    """
+    root = as_config_mapping(value, path="configuration")
+    model = require_config_mapping(root, "model", path="configuration")
+    model_name = model.get("name")
+    if model_name not in {
+        "plcs_track_query_reference",
+        "plcs_track_query_reference_ablation",
+    }:
+        return None
+    for key in (
+        "target_frame_contract",
+        "track_query_rope_contract",
+        "reference_selector_mode",
+    ):
+        if type(model.get(key)) is not str:
+            raise ConfigurationTypeError(
+                f"model.{key} must be an explicit string for reference "
+                "track-query data."
+            )
+    runtime = TrackQueryReferenceContract.reference_v2(
+        resolve_reference_selector_mode(cast(str, model["reference_selector_mode"]))
+    )
+    actual = (
+        contract.contract_id,
+        cast(str, model["target_frame_contract"]),
+        cast(str, model["track_query_rope_contract"]),
+    )
+    expected = (
+        runtime.court_keypoint_contract,
+        runtime.target_frame_contract,
+        runtime.track_query_rope_contract.value,
+    )
+    if actual != expected:
+        raise CourtKeypointContractMismatchError(
+            "PLCS reference track-query data contract does not match composed "
+            f"court/target/RoPE markers: expected {expected!r}, got {actual!r}."
+        )
+    return {
+        TRACK_QUERY_REFERENCE_METADATA_KEY: (
+            TrackQueryReferenceContractMetadata.from_contract(runtime).to_dict()
+        )
     }
 
 
@@ -233,7 +297,8 @@ def scene_court_views(
     scene_id = Path(scene_path).name
     for scene in validation.scenes:
         if scene.scene_id == scene_id:
-            return scene.court_views
+            views: tuple[CourtViewRecord, ...] = scene.court_views
+            return views
     raise CourtKeypointContractMismatchError(
         f"Validated CourtKP20 metadata has no scene {scene_id!r}."
     )
@@ -259,36 +324,54 @@ def selected_court_views(
     return tuple(selected)
 
 
-def choose_reference_provenance(
+def choose_reference_selection(
     contract: CourtKeypointContract,
+    complete_scene_views: Sequence[CourtViewRecord],
     selected_views: Sequence[CourtViewRecord],
     *,
     rng: np.random.Generator | None,
-) -> tuple[CourtReferenceFrameProvenance, CourtViewRecord | None]:
-    """Choose a stable v2 identity independently of selected view ordering.
+    requested_camera_id: str | None,
+) -> ReferenceViewSelection | None:
+    """Compose the sole v2 selection after camera subset/order resolution.
 
-    Training passes its seeded generator. Evaluation passes ``None`` and uses
-    the explicit deterministic policy of the lexicographically first stable ID.
+    Training passes its seeded worker generator. Evaluation/inference passes an
+    explicit canonical identity; only single-view evaluation may omit it.  The
+    collision-free tensor codec is always built from the complete scene table,
+    never from the selected subset.
     """
     if contract.selector == PHYSICAL_V1_SELECTOR:
-        return build_physical_court_provenance(), None
+        if requested_camera_id is not None:
+            raise CourtKeypointContractMismatchError(
+                "physical_v1 must not specify a reference camera ID."
+            )
+        return None
+    if rng is not None and requested_camera_id is not None:
+        raise CourtKeypointContractMismatchError(
+            "Training reference sampling and an explicit evaluation reference "
+            "camera are mutually exclusive."
+        )
+    complete_views = tuple(complete_scene_views)
     views = tuple(selected_views)
-    if not views:
+    if not complete_views or not views:
         raise CourtKeypointContractMismatchError(
             "camera_view_v2 requires persisted per-camera CourtKP20 metadata."
         )
-    stable_ids = tuple(sorted(view.camera_id for view in views))
+    complete_ids = tuple(view.camera_id for view in complete_views)
+    selected_ids = tuple(view.camera_id for view in views)
+    stable_table = StableCameraIdTable.from_complete_scene_camera_ids(complete_ids)
     reference_id = (
-        stable_ids[0]
-        if rng is None
-        else stable_ids[int(rng.integers(0, len(stable_ids)))]
+        select_seeded_training_reference_camera_id(selected_ids, rng=rng)
+        if rng is not None
+        else resolve_evaluation_reference_camera_id(
+            selected_ids,
+            requested_camera_id=requested_camera_id,
+        )
     )
-    provenance = build_reference_frame_provenance(
-        views,
+    return ReferenceViewSelection.create(
+        stable_camera_id_table=stable_table,
+        selected_views=views,
         reference_camera_id=reference_id,
     )
-    reference = next(view for view in views if view.camera_id == reference_id)
-    return provenance, reference
 
 
 def align_selected_court_array(
@@ -409,4 +492,4 @@ def validate_provenance_contract(
 
 def contract_requires_provenance(contract: CourtKeypointContract) -> bool:
     """Return whether identity cannot be assumed at a model boundary."""
-    return contract.selector == CAMERA_VIEW_V2_SELECTOR
+    return bool(contract.selector == CAMERA_VIEW_V2_SELECTOR)

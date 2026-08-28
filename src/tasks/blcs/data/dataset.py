@@ -9,12 +9,16 @@ from typing import cast
 import torch
 from torch import Tensor
 
+from src.tasks.base.data import include_evaluation_reference_camera
+from src.tasks.base.data.rng import require_run_seed
 from src.tasks.base.data.scene_dataset import (
+    CameraSelection,
     Scene,
     SceneDatasetBase,
     SceneDatasetConfig,
 )
 from src.tasks.base.generate_dataset import (
+    CAMERA_VIEW_V2_SELECTOR,
     PHYSICAL_V1_SELECTOR,
     camera_extrinsics_physical_to_target,
     court_points_physical_to_target,
@@ -24,6 +28,9 @@ from src.tasks.blcs.configuration import parse_court_keypoint_contract
 from src.tasks.blcs.data.augmentation import BLCSBallObservationAugmentation
 from src.tasks.blcs.data.court_view import (
     align_blcs_court_array,
+    blcs_reference_sample_fields,
+    blcs_track_query_reference_contract_document,
+    collate_blcs_reference_fields,
     court_views_by_scene,
     resolve_blcs_sample_court_frame,
     validate_blcs_dataset_court_keypoints,
@@ -53,11 +60,20 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
         scene_dir: str | Path,
         split_file: str | Path,
         config: object,
+        seed: int | None = None,
         augment: bool = True,
+        reference_camera_id: str | None = None,
     ) -> None:
         self.hydra_cfg = config
         self.augment = augment
+        self.reference_camera_id = reference_camera_id
         self.court_keypoint_contract = parse_court_keypoint_contract(config)
+        self.track_query_reference_document = (
+            blcs_track_query_reference_contract_document(
+                config,
+                self.court_keypoint_contract,
+            )
+        )
         court_dataset = validate_blcs_dataset_court_keypoints(
             scene_dir=scene_dir,
             split_file=split_file,
@@ -71,7 +87,9 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
                 scene_dir=scene_dir,
                 split_file=split_file,
                 data_cfg=data_cfg,
-            )
+            ),
+            seed=require_run_seed(config) if seed is None else seed,
+            sample_local_rng=not augment,
         )
 
     # -- Composed-method hooks ------------------------------------------
@@ -114,13 +132,29 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
         cams = self.select_cameras(
             scene, num_views_range=self.num_views_range, camera_mode=self.camera_mode
         )
+        court_views = self._court_views_by_scene.get(scene.path.name, ())
+        if (
+            not self.augment
+            and self.court_keypoint_contract.selector == CAMERA_VIEW_V2_SELECTOR
+        ):
+            cams = CameraSelection(
+                indices=include_evaluation_reference_camera(
+                    tuple(view.camera_id for view in court_views),
+                    cams.indices,
+                    requested_camera_id=self.reference_camera_id,
+                    rng=self.rng,
+                )
+            )
         frame = resolve_blcs_sample_court_frame(
             scene=scene,
             selected_camera_indices=cams.indices,
-            court_views=self._court_views_by_scene.get(scene.path.name, ()),
+            court_views=court_views,
             contract=self.court_keypoint_contract,
             rng=self.rng,
             training=self.augment,
+            reference_camera_id=(
+                None if self.augment else self.reference_camera_id
+            ),
         )
         # Use camera trajectory length to guard against metadata drift.
         primary_len = int(scene.get_camera_array(cams.primary, "ball_uv").shape[0])
@@ -237,7 +271,24 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
             "camera_w": torch.stack(cam_w_list, dim=0),
             "camera_h": torch.stack(cam_h_list, dim=0),
             "court_reference_provenance": frame.provenance,
+            "selected_camera_ids": tuple(
+                view.camera_id for view in frame.selected_views
+            )
+            or tuple(f"camera_{index}" for index in cams.indices),
         }
+        if frame.reference_selection is not None:
+            sample.update(
+                cast(
+                    "BLCSMultiViewSample",
+                    blcs_reference_sample_fields(
+                        frame.reference_selection,
+                        dtype=position_3d.dtype,
+                        track_query_reference_document=(
+                            self.track_query_reference_document
+                        ),
+                    ),
+                )
+            )
         return sample
 
     def _apply_augmentation_multiview(
@@ -413,7 +464,18 @@ def collate_multiview_trajectories(
         "court_reference_provenance": tuple(
             sample["court_reference_provenance"] for sample in batch
         ),
+        "selected_camera_ids": tuple(
+            sample["selected_camera_ids"] for sample in batch
+        ),
     }
+    collated.update(
+        collate_blcs_reference_fields(
+            cast("list[dict[str, object]]", batch),
+            max_views=max_views,
+            model_tensor_key="ball_uv",
+            transform_dtype_key="position_3d",
+        )
+    )
     if has_clean_targets:
         collated["ball_uv_target"] = torch.stack(ball_uv_target_batch, dim=0)
         collated["ball_vis_target"] = torch.stack(ball_vis_target_batch, dim=0)
