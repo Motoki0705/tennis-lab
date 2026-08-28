@@ -361,7 +361,7 @@ class CourtPairTopologyMetrics:
             "center_separation_metres": self.center_separation_metres,
             "footprint_overlap_fraction": self.footprint_overlap_fraction,
             "threshold_checks": checks,
-            "accepted": checks["maximum_footprint_overlap_fraction"],
+            "accepted": all(checks.values()),
         }
 
 

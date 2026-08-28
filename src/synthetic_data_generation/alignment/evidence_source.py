@@ -8,7 +8,7 @@ import os
 import warnings
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Protocol, cast
 
@@ -27,6 +27,7 @@ from src.synthetic_data_generation.alignment.contracts import (
     AlignmentEvidence,
     AlignmentEvidenceDiagnostics,
     AlignmentPartitions,
+    AlignmentStatus,
     CameraEvidencePartition,
     CameraExclusionReason,
     CameraLineDiagnostics,
@@ -42,12 +43,18 @@ from src.synthetic_data_generation.alignment.contracts import (
     MeasuredCameraLines,
     MetricSceneAdapter,
     ProposalSearchDiagnostics,
+    ProposalSearchStopReason,
 )
-from src.synthetic_data_generation.alignment.fitting import fit_alignment
+from src.synthetic_data_generation.alignment.evaluation import evaluate_partition
+from src.synthetic_data_generation.alignment.fitting import (
+    fit_alignment,
+    fit_rigid_transform,
+)
 from src.synthetic_data_generation.alignment.handler import AlignmentStageHandler
 from src.synthetic_data_generation.alignment.heatmaps import (
     AlignmentLineHeatmaps,
     AlignmentLineHeatmapView,
+    weighted_projection_samples,
 )
 from src.synthetic_data_generation.alignment.settings import (
     AlignmentEvidenceSettings,
@@ -58,6 +65,7 @@ from src.synthetic_data_generation.alignment.settings import (
 )
 from src.synthetic_data_generation.alignment.whole_court import (
     COURT_LINE_SEGMENTS,
+    evaluate_court_identifiability,
     evaluate_court_topology,
     sample_court_line_template,
     transform_template_2d,
@@ -92,24 +100,13 @@ from src.tasks.court_detection.models.hierarchical_model import CourtHierarchica
 from src.utils.configuration import PathResolver, PathRole
 from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 
-_MAXIMUM_PROPOSAL_CANDIDATE_COUNT = 2
 _MAXIMUM_ORIENTATION_BAND_COUNT = 2
 _REFERENCE_CENTER_TILE_COUNT = 64
-_MAXIMUM_BRANCH_FACTOR = (
-    _MAXIMUM_ORIENTATION_BAND_COUNT * _REFERENCE_CENTER_TILE_COUNT
-)
+_MAXIMUM_BRANCH_FACTOR = _MAXIMUM_ORIENTATION_BAND_COUNT * _REFERENCE_CENTER_TILE_COUNT
 _MAXIMUM_CENTER_TILE_COUNT = _MAXIMUM_BRANCH_FACTOR
-_MAXIMUM_COMPLETE_BRANCH_COUNT = (
-    _MAXIMUM_BRANCH_FACTOR**_MAXIMUM_PROPOSAL_CANDIDATE_COUNT
-)
-_MAXIMUM_TILE_STATE_COUNT = sum(
-    _MAXIMUM_BRANCH_FACTOR**depth
-    for depth in range(1, _MAXIMUM_PROPOSAL_CANDIDATE_COUNT + 1)
-)
-_MAXIMUM_RESIDUAL_STATE_COUNT = sum(
-    _MAXIMUM_BRANCH_FACTOR**depth
-    for depth in range(_MAXIMUM_PROPOSAL_CANDIDATE_COUNT)
-)
+_MAXIMUM_RETAINED_PROPOSAL_STATE_COUNT = 128
+_MAXIMUM_RESIDUAL_STATE_COUNT = 1024
+_MAXIMUM_TILE_STATE_COUNT = _MAXIMUM_BRANCH_FACTOR * _MAXIMUM_RESIDUAL_STATE_COUNT
 _MAXIMUM_TILE_OPTIMIZER_WORKERS = 8
 
 
@@ -426,6 +423,8 @@ class _ProposalSearchState:
 
     selected: tuple[_CourtHypothesis, ...]
     residual: NDArray[np.float64]
+    residual_evidence_weights: NDArray[np.float64]
+    explained_evidence_fractions: tuple[float, ...]
     orientation_band_indices: tuple[int, ...]
     center_tile_indices: tuple[int, ...]
 
@@ -443,7 +442,6 @@ class _ProposalResourceBounds:
     """Exact combinatorial bounds for one configured tiled proposal search."""
 
     branch_factor: int
-    maximum_complete_branch_count: int
     maximum_tile_state_count: int
     maximum_residual_state_count: int
 
@@ -587,10 +585,7 @@ class MeasuredAlignmentEvidenceSource:
             ownership_rule=CameraOwnershipRule.FIXED_UNIT_EVEN_HOLDOUT_SLOTS_V1,
             requested_camera_count=self._settings.camera_prefix_count,
             available_camera_count=len(scene.cameras),
-            candidate_count=self._settings.candidate_fit.candidate_count,
-            orientation_family_count=(
-                self._settings.candidate_fit.orientation_family_count()
-            ),
+            partition_unit_count=self._settings.camera_partition_unit_count(),
             fit_cameras_per_unit=self._settings.minimum_fit_cameras,
             holdout_cameras_per_unit=self._settings.minimum_holdout_cameras,
             camera_prefix_ids=tuple(camera.camera_id for camera in selected),
@@ -609,15 +604,17 @@ class MeasuredAlignmentEvidenceSource:
                 plane=plane,
                 fit_cameras=observable.fit,
                 holdout_cameras=observable.holdout,
+                probabilities=probabilities,
                 projected_by_camera=projected_by_camera,
                 settings=self._settings,
+                policy=self._policy,
                 selection=selection,
                 determinism=self._detector.determinism_diagnostics(),
             )
             result = fit_alignment(evidence, policy=self._policy)
         except ValueError as error:
             raise ValueError(
-                "Fixed 48-camera alignment evaluation failed without holdout-driven "
+                "Fixed-camera alignment evaluation failed without holdout-driven "
                 f"reselection or refit: {type(error).__name__}: {error}"
             ) from error
         heatmaps = _alignment_line_heatmaps(
@@ -626,7 +623,7 @@ class MeasuredAlignmentEvidenceSource:
             projected_by_camera=projected_by_camera,
             plane=plane,
             settings=self._settings.projection,
-            aggregate_camera_ids=selection.observed_camera_ids,
+            aggregate_camera_ids=tuple(camera.camera_id for camera in observable.fit),
         )
         return EvaluatedAlignment(
             evidence=evidence,
@@ -675,8 +672,10 @@ def _alignment_evidence_for_fixed_selection(
     plane: _GroundPlane,
     fit_cameras: tuple[SceneCamera, ...],
     holdout_cameras: tuple[SceneCamera, ...],
+    probabilities: Mapping[str, NDArray[np.float32]],
     projected_by_camera: Mapping[str, _ProjectedLineEvidence],
     settings: AlignmentEvidenceSettings,
+    policy: AlignmentAcceptancePolicy,
     selection: FixedCameraSelectionDiagnostics,
     determinism: LineInferenceDeterminismDiagnostics,
 ) -> AlignmentEvidence:
@@ -687,18 +686,39 @@ def _alignment_evidence_for_fixed_selection(
         camera.camera_id: projected_by_camera[camera.camera_id]
         for camera in camera_order
     }
-    fit_points_uv = np.concatenate(
-        [
-            observable_projected_by_camera[camera.camera_id].points_uv
-            for camera in fit_cameras
-        ]
+    fit_heatmaps = _alignment_line_heatmaps(
+        camera_prefix=camera_order,
+        probabilities=probabilities,
+        projected_by_camera=observable_projected_by_camera,
+        plane=plane,
+        settings=settings.projection,
+        aggregate_camera_ids=tuple(camera.camera_id for camera in fit_cameras),
     )
+    fit_points_uv, fit_evidence_weights = weighted_projection_samples(fit_heatmaps)
     hypotheses, common_scale, maximum_deviation, proposal_search = (
         _fit_court_hypotheses(
-        fit_points_uv,
-        bounds=plane.support_uv_bounds,
-        seed=settings.seed,
-        settings=settings.candidate_fit,
+            fit_points_uv,
+            evidence_weights=fit_evidence_weights,
+            bounds=plane.support_uv_bounds,
+            seed=settings.seed,
+            settings=settings.candidate_fit,
+        )
+    )
+    hypotheses, common_scale, maximum_deviation, proposal_search = (
+        _retain_fit_reliable_hypotheses(
+            hypotheses,
+            common_scale=common_scale,
+            maximum_deviation=maximum_deviation,
+            proposal_search=proposal_search,
+            fit_points_uv=fit_points_uv,
+            evidence_weights=fit_evidence_weights,
+            bounds=plane.support_uv_bounds,
+            seed=settings.seed,
+            plane=plane,
+            fit_cameras=fit_cameras,
+            projected_by_camera=observable_projected_by_camera,
+            settings=settings,
+            policy=policy,
         )
     )
     nht_from_metric = np.eye(4, dtype=np.float64)
@@ -769,9 +789,7 @@ def _alignment_evidence_for_fixed_selection(
         maximum_relative_scale_deviation=maximum_deviation,
         selection=selection,
         evaluation=AlignmentEvaluationDiagnostics(
-            policy=(
-                AlignmentEvaluationPolicy.FIT_SELECT_ONCE_HOLDOUT_EVALUATE_ONCE_V1
-            ),
+            policy=(AlignmentEvaluationPolicy.FIT_SELECT_ONCE_HOLDOUT_EVALUATE_ONCE_V1),
             evaluation_index=0,
             fit_camera_ids=tuple(camera.camera_id for camera in fit_cameras),
             holdout_camera_ids=tuple(camera.camera_id for camera in holdout_cameras),
@@ -804,9 +822,10 @@ def _alignment_evidence_for_fixed_selection(
         metric_adapter=metric_adapter,
         diagnostics=diagnostics,
         whole_court_settings=settings.candidate_fit.whole_court_evidence(
+            required_court_count=len(hypotheses),
             minimum_matches_per_offset_level=(
                 settings.correspondences.minimum_correspondences_per_camera
-            )
+            ),
         ),
     )
 
@@ -837,6 +856,363 @@ def _resolve_common_scale(
             f"{maximum_relative_deviation:.6f}."
         )
     return common_scale, deviation
+
+
+def _native_hypothesis(hypothesis: _CourtHypothesis) -> _CourtHypothesis:
+    """Restore the proposal pose retained inside a common-scale refit."""
+    return replace(
+        hypothesis,
+        candidate_id="proposal",
+        center_uv=hypothesis.native_center_uv,
+        orientation_radians=hypothesis.native_orientation_radians,
+        nht_scene_units_per_metre=(hypothesis.native_nht_scene_units_per_metre),
+        template_score=hypothesis.native_template_score,
+        common_scale_refit_center_displacement_metres=0.0,
+    )
+
+
+def _common_scale_refit_retained_hypotheses(
+    hypotheses: Sequence[_CourtHypothesis],
+    *,
+    points: NDArray[np.float64],
+    bounds: tuple[float, float, float, float],
+    seed: int,
+    settings: CourtCandidateFitSettings,
+) -> tuple[tuple[_CourtHypothesis, ...], float, float, tuple[int, ...]]:
+    """Re-resolve scale and pose after fit-only reliability removes proposals."""
+    native = tuple(_native_hypothesis(item) for item in hypotheses)
+    if not native:
+        raise ValueError("Common-scale refit requires at least one court hypothesis.")
+    sort_order = tuple(
+        sorted(
+            range(len(native)),
+            key=lambda index: _hypothesis_sort_key(native[index]),
+        )
+    )
+    ordered = tuple(native[index] for index in sort_order)
+    common_scale, maximum_deviation = _resolve_common_scale(
+        np.asarray(
+            [item.native_nht_scene_units_per_metre for item in ordered],
+            dtype=np.float64,
+        ),
+        maximum_relative_deviation=settings.common_scale_relative_tolerance,
+    )
+    u_min, u_max, v_min, v_max = bounds
+    maximum_displacement_metres = settings.maximum_center_refit_displacement_metres()
+    maximum_displacement_scene = common_scale * maximum_displacement_metres
+    template = sample_court_line_template(settings.samples_per_metre)
+    refitted: list[_CourtHypothesis] = []
+    for candidate_index, item in enumerate(ordered):
+        angle_tolerance = settings.family_orientation_tolerance_radians
+        pose_bounds = [
+            (
+                max(u_min, item.center_uv[0] - maximum_displacement_scene),
+                min(u_max, item.center_uv[0] + maximum_displacement_scene),
+            ),
+            (
+                max(v_min, item.center_uv[1] - maximum_displacement_scene),
+                min(v_max, item.center_uv[1] + maximum_displacement_scene),
+            ),
+            (
+                max(
+                    settings.orientation_minimum_radians,
+                    item.orientation_radians - angle_tolerance,
+                ),
+                min(
+                    settings.orientation_maximum_radians,
+                    item.orientation_radians + angle_tolerance,
+                ),
+            ),
+        ]
+        pose, refit_score = _optimize_court(
+            points,
+            template=template,
+            bounds=pose_bounds,
+            seed=seed + len(ordered) + candidate_index,
+            settings=settings,
+            fixed_scale=common_scale,
+            center_limit=(
+                np.asarray(item.center_uv, dtype=np.float64),
+                maximum_displacement_scene,
+            ),
+        )
+        if refit_score < settings.minimum_template_score:
+            raise ValueError(
+                f"Retained common-scale refit candidate {candidate_index} score "
+                f"{refit_score:.6f} is below {settings.minimum_template_score:.6f}."
+            )
+        center_displacement_metres = float(
+            np.linalg.norm(np.asarray(pose[:2]) - np.asarray(item.center_uv))
+            / common_scale
+        )
+        if center_displacement_metres > maximum_displacement_metres + 1.0e-10:
+            raise ValueError(
+                f"Retained common-scale refit candidate {candidate_index} moved "
+                f"{center_displacement_metres:.9g} m from its native center, above "
+                f"the derived bound {maximum_displacement_metres:.9g} m."
+            )
+        refitted.append(
+            replace(
+                item,
+                candidate_id=f"candidate-{candidate_index:03d}",
+                center_uv=(float(pose[0]), float(pose[1])),
+                orientation_radians=float(pose[2]),
+                nht_scene_units_per_metre=common_scale,
+                template_score=refit_score,
+                common_scale_refit_center_displacement_metres=(
+                    center_displacement_metres
+                ),
+                maximum_common_scale_refit_center_displacement_metres=(
+                    maximum_displacement_metres
+                ),
+            )
+        )
+    return tuple(refitted), common_scale, maximum_deviation, sort_order
+
+
+def _fit_reliable_hypothesis_indices(
+    hypotheses: tuple[_CourtHypothesis, ...],
+    *,
+    common_scale: float,
+    plane: _GroundPlane,
+    fit_cameras: tuple[SceneCamera, ...],
+    projected_by_camera: Mapping[str, _ProjectedLineEvidence],
+    settings: AlignmentEvidenceSettings,
+    policy: AlignmentAcceptancePolicy,
+) -> tuple[tuple[int, ...], tuple[RigidTransform, ...], tuple[str, ...]]:
+    """Gate court-count candidates with fit correspondences only."""
+    metric_adapter = MetricSceneAdapter.from_nht_scene_from_metric_scene(
+        np.diag((common_scale, common_scale, common_scale, 1.0))
+    )
+    fit_projection = {
+        camera.camera_id: projected_by_camera[camera.camera_id]
+        for camera in fit_cameras
+    }
+    assigned = _assign_candidate_evidence(
+        hypotheses,
+        plane=plane,
+        projected_by_camera=fit_projection,
+        settings=settings.candidate_fit,
+    )
+    whole_settings = settings.candidate_fit.whole_court_evidence(
+        required_court_count=len(hypotheses),
+        minimum_matches_per_offset_level=(
+            settings.correspondences.minimum_correspondences_per_camera
+        ),
+    )
+    retained_indices: list[int] = []
+    retained_transforms: list[RigidTransform] = []
+    rejection_reasons: list[str] = []
+    for index, hypothesis in enumerate(hypotheses):
+        try:
+            fit_correspondences = _candidate_correspondences(
+                hypothesis,
+                plane=plane,
+                metric_adapter=metric_adapter,
+                cameras=fit_cameras,
+                assigned_by_camera=assigned[hypothesis.candidate_id],
+                settings=settings,
+            )
+            scene_from_court = fit_rigid_transform(fit_correspondences)
+            fit_assessment = evaluate_partition(
+                fit_correspondences,
+                scene_from_court=scene_from_court,
+                thresholds=policy.fit,
+            )
+            identifiability = evaluate_court_identifiability(
+                fit_correspondences,
+                minimum_camera_count=policy.fit.minimum_camera_count,
+                settings=whole_settings,
+            ).to_dict(
+                minimum_camera_count=policy.fit.minimum_camera_count,
+                settings=whole_settings,
+            )
+        except ValueError as error:
+            rejection_reasons.append(
+                f"{hypothesis.candidate_id}:fit_evidence_error("
+                f"{type(error).__name__}:{error})"
+            )
+            continue
+        reasons: list[str] = []
+        if fit_assessment.status is not AlignmentStatus.ACCEPTED:
+            reasons.append("fit_partition_rejected")
+        if identifiability["accepted"] is not True:
+            reasons.append("semantic_identifiability_rejected")
+        if reasons:
+            rejection_reasons.append(f"{hypothesis.candidate_id}:{'+'.join(reasons)}")
+            continue
+        retained_indices.append(index)
+        retained_transforms.append(scene_from_court)
+    return (
+        tuple(retained_indices),
+        tuple(retained_transforms),
+        tuple(rejection_reasons),
+    )
+
+
+def _proposal_search_after_fit_reliability(
+    proposal_search: ProposalSearchDiagnostics,
+    hypotheses: tuple[_CourtHypothesis, ...],
+    *,
+    source_indices: tuple[int, ...],
+    fit_points_uv: NDArray[np.float64],
+    evidence_weights: NDArray[np.float64],
+    seed: int,
+    settings: CourtCandidateFitSettings,
+) -> ProposalSearchDiagnostics:
+    """Rebuild selected-branch diagnostics after rejecting fit-unreliable courts."""
+    points, weights = _bounded_fit_evidence(
+        fit_points_uv,
+        evidence_weights=evidence_weights,
+        seed=seed,
+        settings=settings,
+    )
+    depth_order = tuple(
+        sorted(
+            range(len(hypotheses)),
+            key=lambda index: (
+                -hypotheses[index].proposal_residual_point_count_before_suppression,
+                source_indices[index],
+            ),
+        )
+    )
+    ordered = tuple(hypotheses[index] for index in depth_order)
+    depth_fractions, residual, residual_weights = _proposal_explanation_for_hypotheses(
+        ordered,
+        points=points,
+        evidence_weights=weights,
+        settings=settings,
+    )
+    fractions = [0.0] * len(hypotheses)
+    for depth_index, candidate_index in enumerate(depth_order):
+        fractions[candidate_index] = depth_fractions[depth_index]
+    original_evidence_sum = float(np.sum(weights))
+    residual_evidence_sum = float(np.sum(residual_weights))
+    explained_evidence_sum = original_evidence_sum - residual_evidence_sum
+    return replace(
+        proposal_search,
+        inferred_candidate_count=len(hypotheses),
+        stopping_reason=ProposalSearchStopReason.NO_RELIABLE_PROPOSAL,
+        selected_orientation_band_indices=tuple(
+            proposal_search.selected_orientation_band_indices[index]
+            for index in source_indices
+        ),
+        selected_center_tile_indices=tuple(
+            proposal_search.selected_center_tile_indices[index]
+            for index in source_indices
+        ),
+        selected_candidate_explained_evidence_fractions=tuple(fractions),
+        original_point_count=len(points),
+        selected_residual_point_count=len(residual),
+        selected_explained_point_count=len(points) - len(residual),
+        original_evidence_sum=original_evidence_sum,
+        selected_residual_evidence_sum=residual_evidence_sum,
+        selected_explained_evidence_sum=explained_evidence_sum,
+        selected_explained_evidence_fraction=(
+            explained_evidence_sum / original_evidence_sum
+        ),
+        selected_native_score_sum=float(
+            sum(item.native_template_score for item in hypotheses)
+        ),
+    )
+
+
+def _retain_fit_reliable_hypotheses(
+    hypotheses: tuple[_CourtHypothesis, ...],
+    *,
+    common_scale: float,
+    maximum_deviation: float,
+    proposal_search: ProposalSearchDiagnostics,
+    fit_points_uv: NDArray[np.float64],
+    evidence_weights: NDArray[np.float64],
+    bounds: tuple[float, float, float, float],
+    seed: int,
+    plane: _GroundPlane,
+    fit_cameras: tuple[SceneCamera, ...],
+    projected_by_camera: Mapping[str, _ProjectedLineEvidence],
+    settings: AlignmentEvidenceSettings,
+    policy: AlignmentAcceptancePolicy,
+) -> tuple[tuple[_CourtHypothesis, ...], float, float, ProposalSearchDiagnostics]:
+    """Finalize court count without ever consulting holdout observations."""
+    retained = hypotheses
+    source_indices = tuple(range(len(hypotheses)))
+    search = proposal_search
+    for _iteration in range(len(hypotheses) + 1):
+        reliable_indices, transforms, rejection_reasons = (
+            _fit_reliable_hypothesis_indices(
+                retained,
+                common_scale=common_scale,
+                plane=plane,
+                fit_cameras=fit_cameras,
+                projected_by_camera=projected_by_camera,
+                settings=settings,
+                policy=policy,
+            )
+        )
+        if not reliable_indices:
+            raise ValueError(
+                "Fit-only court-count inference rejected every proposed court: "
+                f"rejections={list(rejection_reasons)}."
+            )
+        if len(reliable_indices) == len(retained):
+            whole_settings = settings.candidate_fit.whole_court_evidence(
+                required_court_count=len(retained),
+                minimum_matches_per_offset_level=(
+                    settings.correspondences.minimum_correspondences_per_camera
+                ),
+            )
+            topology = evaluate_court_topology(
+                tuple(
+                    (hypothesis.candidate_id, transform)
+                    for hypothesis, transform in zip(
+                        retained,
+                        transforms,
+                        strict=True,
+                    )
+                )
+            )
+            rejected_topology = tuple(
+                item.to_dict(settings=whole_settings)
+                for item in topology
+                if not all(item.threshold_checks(whole_settings).values())
+            )
+            if rejected_topology:
+                raise ValueError(
+                    "Fit-only court-count inference produced invalid court topology: "
+                    f"rejections={list(rejected_topology)}."
+                )
+            return retained, common_scale, maximum_deviation, search
+
+        selected_source_indices = tuple(
+            source_indices[index] for index in reliable_indices
+        )
+        selected_hypotheses = tuple(retained[index] for index in reliable_indices)
+        points, _weights = _bounded_fit_evidence(
+            fit_points_uv,
+            evidence_weights=evidence_weights,
+            seed=seed,
+            settings=settings.candidate_fit,
+        )
+        retained, common_scale, maximum_deviation, sort_order = (
+            _common_scale_refit_retained_hypotheses(
+                selected_hypotheses,
+                points=points,
+                bounds=bounds,
+                seed=seed,
+                settings=settings.candidate_fit,
+            )
+        )
+        source_indices = tuple(selected_source_indices[index] for index in sort_order)
+        search = _proposal_search_after_fit_reliability(
+            proposal_search,
+            retained,
+            source_indices=source_indices,
+            fit_points_uv=fit_points_uv,
+            evidence_weights=evidence_weights,
+            seed=seed,
+            settings=settings.candidate_fit,
+        )
+    raise RuntimeError("Fit-only court-count inference did not converge.")
 
 
 class ProductionAlignmentEvidenceSource(MeasuredAlignmentEvidenceSource):
@@ -922,9 +1298,7 @@ def _fixed_camera_selection(
     """Build exactly one evidence-independent nested-uniform prefix."""
     settings.require_available_cameras(available_camera_count=len(cameras))
     return _FixedCameraSelection(
-        ordered_cameras=_select_cameras(
-            cameras, maximum=settings.camera_prefix_count
-        ),
+        ordered_cameras=_select_cameras(cameras, maximum=settings.camera_prefix_count),
     )
 
 
@@ -1370,7 +1744,9 @@ def _project_probability_to_ground(
     return _ProjectedLineEvidence(
         points_nht_scene=np.asarray(points_nht[in_bounds], dtype=np.float64),
         points_uv=np.asarray(points_uv[in_bounds], dtype=np.float64),
-        probabilities=np.asarray(selected_probability[valid][in_bounds], dtype=np.float32),
+        probabilities=np.asarray(
+            selected_probability[valid][in_bounds], dtype=np.float32
+        ),
         proximity_weights=np.asarray(proximity_weights, dtype=np.float64),
         selected_line_pixel_count=len(pixels),
     )
@@ -1386,35 +1762,69 @@ def _projection_bounds(
     return u_min - margin, u_max + margin, v_min - margin, v_max + margin
 
 
-def _fit_court_hypotheses(
+def _bounded_fit_evidence(
     fit_points_uv: NDArray[np.float64],
     *,
-    bounds: tuple[float, float, float, float],
+    evidence_weights: NDArray[np.float64],
     seed: int,
     settings: CourtCandidateFitSettings,
-) -> tuple[tuple[_CourtHypothesis, ...], float, float, ProposalSearchDiagnostics]:
-    """Exhaust bounded topology-aware residual states, then refit at one scale."""
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Validate and deterministically cap the shared fit-only sample."""
     points = np.asarray(fit_points_uv, dtype=np.float64)
     if points.ndim != 2 or points.shape[1] != 2 or not np.isfinite(points).all():
         raise ValueError("Measured fit line points must be a finite (N, 2) array.")
+    weights = np.asarray(evidence_weights, dtype=np.float64)
+    if (
+        weights.shape != (len(points),)
+        or not np.isfinite(weights).all()
+        or np.any(weights <= 0.0)
+    ):
+        raise ValueError(
+            "Measured fit evidence weights must be one positive finite value per point."
+        )
     if len(points) < 3:
         raise ValueError(
             "Measured fit line evidence is insufficient for court fitting."
         )
-    original_points = points
     if len(points) > settings.maximum_fit_points:
         rng = np.random.default_rng(seed)
         indices = np.sort(
             rng.choice(len(points), size=settings.maximum_fit_points, replace=False)
         )
         points = points[indices]
+        weights = weights[indices]
+    return points, weights
+
+
+def _fit_court_hypotheses(
+    fit_points_uv: NDArray[np.float64],
+    *,
+    evidence_weights: NDArray[np.float64],
+    bounds: tuple[float, float, float, float],
+    seed: int,
+    settings: CourtCandidateFitSettings,
+) -> tuple[tuple[_CourtHypothesis, ...], float, float, ProposalSearchDiagnostics]:
+    """Infer a positive court count from bounded weighted residual search."""
+    points, weights = _bounded_fit_evidence(
+        fit_points_uv,
+        evidence_weights=evidence_weights,
+        seed=seed,
+        settings=settings,
+    )
+    original_points = points
+    original_weights = weights
+    original_evidence_sum = float(np.sum(original_weights))
+    minimum_explained_evidence = (
+        settings.minimum_explained_evidence_fraction * original_evidence_sum
+    )
     template = sample_court_line_template(settings.samples_per_metre)
     u_min, u_max, v_min, v_max = bounds
     orientation_bands = _orientation_search_bands(settings)
     maximum_tile_width = _maximum_center_tile_width_scene_units(settings)
     center_tiles = _center_space_tiles(bounds, maximum_width=maximum_tile_width)
     resources = _proposal_search_resource_bounds(
-        candidate_count=settings.candidate_count,
+        maximum_candidate_count=settings.maximum_candidate_count,
+        maximum_retained_state_count=settings.maximum_retained_state_count,
         orientation_band_count=len(orientation_bands),
         center_tile_count=len(center_tiles),
     )
@@ -1430,15 +1840,15 @@ def _fit_court_hypotheses(
     maximum_bound_magnitude = max(abs(float(item)) for item in bounds)
     center_tolerance = max(
         maximum_tile_width * 1.0e-9,
-        float(np.finfo(np.float64).eps)
-        * max(1.0, maximum_bound_magnitude)
-        * 64.0,
+        float(np.finfo(np.float64).eps) * max(1.0, maximum_bound_magnitude) * 64.0,
     )
     rejection_reasons: list[str] = []
     states: tuple[_ProposalSearchState, ...] = (
         _ProposalSearchState(
             selected=(),
             residual=points.copy(),
+            residual_evidence_weights=weights.copy(),
+            explained_evidence_fractions=(),
             orientation_band_indices=(),
             center_tile_indices=(),
         ),
@@ -1449,6 +1859,7 @@ def _fit_court_hypotheses(
     duplicate_proposal_count = 0
     retained_proposal_count = 0
     expanded_state_count = 0
+    pruned_state_count = 0
     residual_state_count = 0
     residual_tree_build_count = 0
     canonical_band_indices = {
@@ -1463,7 +1874,16 @@ def _fit_court_hypotheses(
         )
         for band in orientation_bands
     }
-    for _depth in range(settings.candidate_count):
+    stopping_reason: ProposalSearchStopReason | None = None
+    for depth in range(settings.maximum_candidate_count):
+        best_state = min(states, key=_proposal_state_sort_key)
+        if depth > 0 and (
+            float(np.sum(best_state.residual_evidence_weights))
+            < minimum_explained_evidence
+        ):
+            states = (best_state,)
+            stopping_reason = ProposalSearchStopReason.RESIDUAL_EVIDENCE_BELOW_MINIMUM
+            break
         expanded: list[_ProposalSearchState] = []
         for state in states:
             if len(state.residual) < 3:
@@ -1573,8 +1993,28 @@ def _fit_court_hypotheses(
             for tiled in unique_proposals:
                 proposal = tiled.proposal
                 parameters = proposal.parameters
-                suppressed = _suppress_assigned_points(
+                try:
+                    _resolve_common_scale(
+                        np.asarray(
+                            (
+                                *(
+                                    item.native_nht_scene_units_per_metre
+                                    for item in state.selected
+                                ),
+                                float(parameters[3]),
+                            ),
+                            dtype=np.float64,
+                        ),
+                        maximum_relative_deviation=(
+                            settings.common_scale_relative_tolerance
+                        ),
+                    )
+                except ValueError as error:
+                    rejection_reasons.append(f"scale_incompatible({error})")
+                    continue
+                suppressed, suppressed_weights = _suppress_assigned_evidence(
                     state.residual,
+                    state.residual_evidence_weights,
                     parameters=parameters,
                     assignment_distance_metres=(
                         settings.evidence_assignment_distance_metres
@@ -1586,15 +2026,30 @@ def _fit_court_hypotheses(
                         f"center={(float(parameters[0]), float(parameters[1]))})"
                     )
                     continue
+                explained_evidence_fraction = (
+                    float(
+                        np.sum(state.residual_evidence_weights)
+                        - np.sum(suppressed_weights)
+                    )
+                    / original_evidence_sum
+                )
+                if (
+                    explained_evidence_fraction + 1.0e-12
+                    < settings.minimum_explained_evidence_fraction
+                ):
+                    rejection_reasons.append(
+                        "explained_evidence_below_minimum("
+                        f"{explained_evidence_fraction:.6f}<"
+                        f"{settings.minimum_explained_evidence_fraction:.6f})"
+                    )
+                    continue
                 selected = _CourtHypothesis(
                     candidate_id="proposal",
                     center_uv=(float(parameters[0]), float(parameters[1])),
                     orientation_radians=float(parameters[2]),
                     nht_scene_units_per_metre=float(parameters[3]),
                     template_score=proposal.measured_score,
-                    native_nht_scene_units_per_metre=(
-                        float(parameters[3])
-                    ),
+                    native_nht_scene_units_per_metre=(float(parameters[3])),
                     native_template_score=proposal.measured_score,
                     native_center_uv=(float(parameters[0]), float(parameters[1])),
                     native_orientation_radians=float(parameters[2]),
@@ -1605,13 +2060,20 @@ def _fit_court_hypotheses(
                     proposal_orientation_band_radians=(
                         proposal.orientation_band_radians
                     ),
-                    proposal_residual_point_count_before_suppression=len(state.residual),
+                    proposal_residual_point_count_before_suppression=len(
+                        state.residual
+                    ),
                     proposal_residual_point_count_after_suppression=len(suppressed),
                 )
                 expanded.append(
                     _ProposalSearchState(
                         selected=(*state.selected, selected),
                         residual=suppressed,
+                        residual_evidence_weights=suppressed_weights,
+                        explained_evidence_fractions=(
+                            *state.explained_evidence_fractions,
+                            explained_evidence_fraction,
+                        ),
                         orientation_band_indices=(
                             *state.orientation_band_indices,
                             tiled.orientation_band_index,
@@ -1623,50 +2085,58 @@ def _fit_court_hypotheses(
                     )
                 )
                 expanded_state_count += 1
-        states = tuple(sorted(expanded, key=_proposal_state_sort_key))
-        if not states:
+        if not expanded:
+            if depth == 0:
+                rendered = ";".join(rejection_reasons)
+                raise ValueError(
+                    "Court-count inference found no reliable court proposal: "
+                    f"rejections=[{rendered}]."
+                )
+            stopping_reason = ProposalSearchStopReason.NO_RELIABLE_PROPOSAL
             break
+        expanded.sort(key=_proposal_state_sort_key)
+        retained_states = expanded[: settings.maximum_retained_state_count]
+        pruned_state_count += len(expanded) - len(retained_states)
+        states = tuple(retained_states)
+    else:
+        best_state = min(states, key=_proposal_state_sort_key)
+        if (
+            float(np.sum(best_state.residual_evidence_weights))
+            >= minimum_explained_evidence
+        ):
+            raise ValueError(
+                "Court-count inference reached maximum_candidate_count while "
+                "enough weighted residual evidence remained for another court: "
+                f"maximum={settings.maximum_candidate_count},"
+                f"residual_fraction="
+                f"{float(np.sum(best_state.residual_evidence_weights)) / original_evidence_sum:.6f},"
+                f"minimum={settings.minimum_explained_evidence_fraction:.6f}."
+            )
+        states = (best_state,)
+        stopping_reason = ProposalSearchStopReason.RESIDUAL_EVIDENCE_BELOW_MINIMUM
+
+    if stopping_reason is None:
+        raise RuntimeError("Court-count inference ended without a stopping reason.")
 
     complete_states: list[
-        tuple[_ProposalSearchState, float, float, int, float]
+        tuple[_ProposalSearchState, float, float, float, int, float]
     ] = []
     for state in states:
-        if len(state.selected) != settings.candidate_count:
-            continue
         try:
             common_scale, maximum_deviation = _resolve_common_scale(
                 np.asarray(
-                    [
-                        item.native_nht_scene_units_per_metre
-                        for item in state.selected
-                    ],
+                    [item.native_nht_scene_units_per_metre for item in state.selected],
                     dtype=np.float64,
                 ),
-                maximum_relative_deviation=(
-                    settings.common_scale_relative_tolerance
-                ),
+                maximum_relative_deviation=(settings.common_scale_relative_tolerance),
             )
         except ValueError as error:
             rejection_reasons.append(f"scale_incompatible({error})")
             continue
-        original_residual = original_points
-        for item in state.selected:
-            original_residual = _suppress_assigned_points(
-                original_residual,
-                parameters=np.asarray(
-                    (
-                        item.native_center_uv[0],
-                        item.native_center_uv[1],
-                        item.native_orientation_radians,
-                        item.native_nht_scene_units_per_metre,
-                    ),
-                    dtype=np.float64,
-                ),
-                assignment_distance_metres=(
-                    settings.evidence_assignment_distance_metres
-                ),
-            )
-        explained_count = len(original_points) - len(original_residual)
+        explained_evidence = original_evidence_sum - float(
+            np.sum(state.residual_evidence_weights)
+        )
+        explained_count = len(original_points) - len(state.residual)
         native_score_sum = float(
             sum(item.native_template_score for item in state.selected)
         )
@@ -1675,6 +2145,7 @@ def _fit_court_hypotheses(
                 state,
                 common_scale,
                 maximum_deviation,
+                explained_evidence,
                 explained_count,
                 native_score_sum,
             )
@@ -1683,8 +2154,7 @@ def _fit_court_hypotheses(
     if not complete_states:
         rendered = ";".join(rejection_reasons)
         raise ValueError(
-            "Deterministic multicourt proposal search exhausted before the "
-            f"required feasible complete set: required={settings.candidate_count}, "
+            "Court-count inference retained no common-scale complete state: "
             f"remaining_states={len(states)}, "
             f"rejections=[{rendered}]."
         )
@@ -1693,6 +2163,7 @@ def _fit_court_hypotheses(
         selected_state,
         common_scale,
         maximum_deviation,
+        _selected_explained_evidence,
         explained_count,
         native_score_sum,
     ) = complete_states[0]
@@ -1709,34 +2180,51 @@ def _fit_court_hypotheses(
     )
     common_scale, maximum_deviation = _resolve_common_scale(
         np.asarray(
-            [
-                item.native_nht_scene_units_per_metre
-                for item in native_hypotheses
-            ],
+            [item.native_nht_scene_units_per_metre for item in native_hypotheses],
             dtype=np.float64,
         ),
         maximum_relative_deviation=settings.common_scale_relative_tolerance,
     )
-    original_residual = original_points
-    for item in native_hypotheses:
-        original_residual = _suppress_assigned_points(
-            original_residual,
-            parameters=np.asarray(
-                (
-                    item.native_center_uv[0],
-                    item.native_center_uv[1],
-                    item.native_orientation_radians,
-                    item.native_nht_scene_units_per_metre,
-                ),
-                dtype=np.float64,
-            ),
-            assignment_distance_metres=settings.evidence_assignment_distance_metres,
-        )
+    (
+        refined_explained_fractions,
+        original_residual,
+        original_residual_weights,
+    ) = _proposal_explanation_for_hypotheses(
+        native_hypotheses,
+        points=original_points,
+        evidence_weights=original_weights,
+        settings=settings,
+    )
     explained_count = len(original_points) - len(original_residual)
+    explained_evidence = original_evidence_sum - float(
+        np.sum(original_residual_weights)
+    )
+    if (
+        stopping_reason is ProposalSearchStopReason.RESIDUAL_EVIDENCE_BELOW_MINIMUM
+        and float(np.sum(original_residual_weights)) >= minimum_explained_evidence
+    ):
+        raise ValueError(
+            "Common-scale refinement invalidated the residual-evidence stopping gate."
+        )
     native_score_sum = float(
         sum(item.native_template_score for item in native_hypotheses)
     )
-    native_hypotheses = sorted(native_hypotheses, key=_hypothesis_sort_key)
+    sort_order = tuple(
+        sorted(
+            range(len(native_hypotheses)),
+            key=lambda index: _hypothesis_sort_key(native_hypotheses[index]),
+        )
+    )
+    native_hypotheses = [native_hypotheses[index] for index in sort_order]
+    refined_explained_fractions = tuple(
+        refined_explained_fractions[index] for index in sort_order
+    )
+    selected_orientation_band_indices = tuple(
+        selected_state.orientation_band_indices[index] for index in sort_order
+    )
+    selected_center_tile_indices = tuple(
+        selected_state.center_tile_indices[index] for index in sort_order
+    )
     native_hypotheses = [
         _CourtHypothesis(
             candidate_id=f"candidate-{index:03d}",
@@ -1792,7 +2280,7 @@ def _fit_court_hypotheses(
             points,
             template=template,
             bounds=pose_bounds,
-            seed=seed + settings.candidate_count + candidate_index,
+            seed=seed + len(native_hypotheses) + candidate_index,
             settings=settings,
             fixed_scale=common_scale,
             center_limit=(
@@ -1849,7 +2337,8 @@ def _fit_court_hypotheses(
         orientation_band_count=len(orientation_bands),
         center_tile_count=len(center_tiles),
         maximum_center_tile_width_scene_units=maximum_tile_width,
-        maximum_complete_branch_count=resources.maximum_complete_branch_count,
+        maximum_candidate_count=settings.maximum_candidate_count,
+        maximum_retained_state_count=settings.maximum_retained_state_count,
         maximum_tile_state_count=resources.maximum_tile_state_count,
         maximum_residual_state_count=resources.maximum_residual_state_count,
         residual_state_count=residual_state_count,
@@ -1860,17 +2349,75 @@ def _fit_court_hypotheses(
         duplicate_proposal_count=duplicate_proposal_count,
         retained_proposal_count=retained_proposal_count,
         expanded_state_count=expanded_state_count,
+        pruned_state_count=pruned_state_count,
         feasible_complete_state_count=len(complete_states),
-        selected_orientation_band_indices=(
-            selected_state.orientation_band_indices
+        inferred_candidate_count=len(refitted),
+        stopping_reason=stopping_reason,
+        minimum_explained_evidence_fraction=(
+            settings.minimum_explained_evidence_fraction
         ),
-        selected_center_tile_indices=selected_state.center_tile_indices,
+        selected_orientation_band_indices=selected_orientation_band_indices,
+        selected_center_tile_indices=selected_center_tile_indices,
+        selected_candidate_explained_evidence_fractions=tuple(
+            refined_explained_fractions
+        ),
         original_point_count=len(original_points),
-        selected_residual_point_count=len(original_points) - explained_count,
+        selected_residual_point_count=len(original_residual),
         selected_explained_point_count=explained_count,
+        original_evidence_sum=original_evidence_sum,
+        selected_residual_evidence_sum=float(np.sum(original_residual_weights)),
+        selected_explained_evidence_sum=explained_evidence,
+        selected_explained_evidence_fraction=(
+            explained_evidence / original_evidence_sum
+        ),
         selected_native_score_sum=native_score_sum,
     )
     return tuple(refitted), common_scale, maximum_deviation, proposal_search
+
+
+def _proposal_explanation_for_hypotheses(
+    hypotheses: Sequence[_CourtHypothesis],
+    *,
+    points: NDArray[np.float64],
+    evidence_weights: NDArray[np.float64],
+    settings: CourtCandidateFitSettings,
+) -> tuple[
+    tuple[float, ...],
+    NDArray[np.float64],
+    NDArray[np.float64],
+]:
+    """Recompute weighted marginal explanations in the supplied search order."""
+    original_evidence_sum = float(np.sum(evidence_weights))
+    residual = np.asarray(points, dtype=np.float64)
+    residual_weights = np.asarray(evidence_weights, dtype=np.float64)
+    fractions: list[float] = []
+    for hypothesis in hypotheses:
+        residual_before = float(np.sum(residual_weights))
+        residual, residual_weights = _suppress_assigned_evidence(
+            residual,
+            residual_weights,
+            parameters=np.asarray(
+                (
+                    hypothesis.native_center_uv[0],
+                    hypothesis.native_center_uv[1],
+                    hypothesis.native_orientation_radians,
+                    hypothesis.native_nht_scene_units_per_metre,
+                ),
+                dtype=np.float64,
+            ),
+            assignment_distance_metres=settings.evidence_assignment_distance_metres,
+        )
+        explained_fraction = (
+            residual_before - float(np.sum(residual_weights))
+        ) / original_evidence_sum
+        if explained_fraction + 1.0e-12 < settings.minimum_explained_evidence_fraction:
+            raise ValueError(
+                "Refined inferred court no longer satisfies the weighted evidence "
+                f"gate: {explained_fraction:.6f} < "
+                f"{settings.minimum_explained_evidence_fraction:.6f}."
+            )
+        fractions.append(explained_fraction)
+    return tuple(fractions), residual, residual_weights
 
 
 def _refine_selected_native_hypotheses(
@@ -1889,6 +2436,7 @@ def _refine_selected_native_hypotheses(
         len(selected_state.selected)
         == len(selected_state.orientation_band_indices)
         == len(selected_state.center_tile_indices)
+        == len(selected_state.explained_evidence_fractions)
     ):
         raise RuntimeError("Selected proposal branch metadata is incomplete.")
     residual = points
@@ -2090,7 +2638,9 @@ def _optimize_court(
         valid: NDArray[np.bool_] = np.ones(len(parameters), dtype=np.bool_)
         if center_limit is not None:
             center, maximum_distance = center_limit
-            valid &= np.linalg.norm(parameters[:, :2] - center, axis=1) <= maximum_distance
+            valid &= (
+                np.linalg.norm(parameters[:, :2] - center, axis=1) <= maximum_distance
+            )
         if fixed_scale is None and selected:
             valid &= np.asarray(
                 [
@@ -2103,9 +2653,7 @@ def _optimize_court(
                 ],
                 dtype=np.bool_,
             )
-        result: NDArray[np.float64] = np.zeros(
-            len(parameters), dtype=np.float64
-        )
+        result: NDArray[np.float64] = np.zeros(len(parameters), dtype=np.float64)
         if not np.any(valid):
             return result
         active = parameters[valid]
@@ -2113,14 +2661,12 @@ def _optimize_court(
         sine = np.sin(active[:, 2])[:, None]
         template_x = template[:, 0][None, :]
         template_y = template[:, 1][None, :]
-        transformed_x = (
-            (template_x * cosine - template_y * sine) * active[:, 3, None]
-            + active[:, 0, None]
-        )
-        transformed_y = (
-            (template_x * sine + template_y * cosine) * active[:, 3, None]
-            + active[:, 1, None]
-        )
+        transformed_x = (template_x * cosine - template_y * sine) * active[
+            :, 3, None
+        ] + active[:, 0, None]
+        transformed_y = (template_x * sine + template_y * cosine) * active[
+            :, 3, None
+        ] + active[:, 1, None]
         transformed = np.stack((transformed_x, transformed_y), axis=2)
         distances, _indices = tree.query(
             transformed.reshape(-1, 2),
@@ -2186,38 +2732,36 @@ def _orientation_search_bands(
 
 def _proposal_search_resource_bounds(
     *,
-    candidate_count: int,
+    maximum_candidate_count: int,
+    maximum_retained_state_count: int,
     orientation_band_count: int,
     center_tile_count: int,
 ) -> _ProposalResourceBounds:
-    """Derive and enforce the exact configured tiled-search state bounds."""
+    """Derive and enforce bounded-beam tiled-search resource limits."""
     for value, name in (
-        (candidate_count, "candidate_count"),
+        (maximum_candidate_count, "maximum_candidate_count"),
+        (maximum_retained_state_count, "maximum_retained_state_count"),
         (orientation_band_count, "orientation_band_count"),
         (center_tile_count, "center_tile_count"),
     ):
         if isinstance(value, bool) or not isinstance(value, int) or value < 1:
             raise TypeError(f"{name} must be a positive integer.")
     branch_factor = orientation_band_count * center_tile_count
-    maximum_complete_branches = branch_factor**candidate_count
-    maximum_tile_states = sum(
-        branch_factor**depth for depth in range(1, candidate_count + 1)
+    maximum_residual_states = 1 + (
+        (maximum_candidate_count - 1) * maximum_retained_state_count
     )
-    maximum_residual_states = sum(
-        branch_factor**depth for depth in range(candidate_count)
-    )
+    maximum_tile_states = maximum_residual_states * branch_factor
     configured = {
-        "candidate_count": (candidate_count, _MAXIMUM_PROPOSAL_CANDIDATE_COUNT),
+        "maximum_retained_state_count": (
+            maximum_retained_state_count,
+            _MAXIMUM_RETAINED_PROPOSAL_STATE_COUNT,
+        ),
         "orientation_band_count": (
             orientation_band_count,
             _MAXIMUM_ORIENTATION_BAND_COUNT,
         ),
         "center_tile_count": (center_tile_count, _MAXIMUM_CENTER_TILE_COUNT),
         "branch_factor": (branch_factor, _MAXIMUM_BRANCH_FACTOR),
-        "maximum_complete_branch_count": (
-            maximum_complete_branches,
-            _MAXIMUM_COMPLETE_BRANCH_COUNT,
-        ),
         "maximum_tile_state_count": (
             maximum_tile_states,
             _MAXIMUM_TILE_STATE_COUNT,
@@ -2234,12 +2778,11 @@ def _proposal_search_resource_bounds(
     }
     if exceeded:
         raise ValueError(
-            "Configured spatial multicourt search exceeds its exact resource cap: "
+            "Configured spatial multicourt search exceeds its bounded resource cap: "
             f"{exceeded}."
         )
     return _ProposalResourceBounds(
         branch_factor=branch_factor,
-        maximum_complete_branch_count=maximum_complete_branches,
         maximum_tile_state_count=maximum_tile_states,
         maximum_residual_state_count=maximum_residual_states,
     )
@@ -2282,7 +2825,9 @@ def _center_space_tiles(
         raise ValueError("Center support bounds must contain four finite values.")
     u_min, u_max, v_min, v_max = (float(item) for item in values)
     if u_min >= u_max or v_min >= v_max:
-        raise ValueError("Center support bounds must have positive two-dimensional area.")
+        raise ValueError(
+            "Center support bounds must have positive two-dimensional area."
+        )
     if not math.isfinite(maximum_width) or maximum_width <= 0.0:
         raise ValueError("Maximum center tile width must be positive and finite.")
     u_count = int(math.ceil((u_max - u_min) / maximum_width))
@@ -2294,12 +2839,10 @@ def _center_space_tiles(
             f"{tile_count} > {_MAXIMUM_CENTER_TILE_COUNT}."
         )
     u_edges_list = [
-        u_min + (u_max - u_min) * index / u_count
-        for index in range(u_count + 1)
+        u_min + (u_max - u_min) * index / u_count for index in range(u_count + 1)
     ]
     v_edges_list = [
-        v_min + (v_max - v_min) * index / v_count
-        for index in range(v_count + 1)
+        v_min + (v_max - v_min) * index / v_count for index in range(v_count + 1)
     ]
     u_edges_list[-1] = u_max
     v_edges_list[-1] = v_max
@@ -2385,11 +2928,7 @@ def _tile_is_geometrically_impossible(
         settings.maximum_nht_scene_units_per_metre * settings.score_distance_metres
     )
     score_upper_bound = float(
-        np.mean(
-            np.exp(
-                -0.5 * np.square(distance_lower_bounds / maximum_score_width)
-            )
-        )
+        np.mean(np.exp(-0.5 * np.square(distance_lower_bounds / maximum_score_width)))
     )
     return bool(score_upper_bound < settings.minimum_template_score)
 
@@ -2411,13 +2950,13 @@ def _template_point_relative_bounds(
         for base in (-phase, math.pi / 2.0 - phase):
             minimum_k = math.ceil((lower - base) / math.pi)
             maximum_k = math.floor((upper - base) / math.pi)
-            angles.extend(
-                base + k * math.pi for k in range(minimum_k, maximum_k + 1)
-            )
+            angles.extend(base + k * math.pi for k in range(minimum_k, maximum_k + 1))
         coordinates = np.asarray(
             [
-                (x * math.cos(angle) - y * math.sin(angle),
-                 x * math.sin(angle) + y * math.cos(angle))
+                (
+                    x * math.cos(angle) - y * math.sin(angle),
+                    x * math.sin(angle) + y * math.cos(angle),
+                )
                 for angle in angles
             ],
             dtype=np.float64,
@@ -2458,8 +2997,7 @@ def _deduplicate_tiled_proposals(
             existing_values = existing.proposal.parameters
             center_distance = float(np.linalg.norm(values[:2] - existing_values[:2]))
             orientation_difference = abs(
-                (float(values[2] - existing_values[2]) + math.pi / 2.0)
-                % math.pi
+                (float(values[2] - existing_values[2]) + math.pi / 2.0) % math.pi
                 - math.pi / 2.0
             )
             scale_difference = abs(float(values[3] / existing_values[3] - 1.0))
@@ -2510,12 +3048,18 @@ def _proposal_branch_seed(
 def _proposal_state_sort_key(
     state: _ProposalSearchState,
 ) -> tuple[
+    float,
+    int,
+    float,
     tuple[int, ...],
     tuple[int, ...],
     tuple[tuple[float, float, float, float, float], ...],
 ]:
-    """Canonicalize retained state ordering between exhaustive depths."""
+    """Rank bounded-beam states by weighted explanation and native support."""
     return (
+        float(np.sum(state.residual_evidence_weights)),
+        len(state.residual),
+        -float(sum(item.native_template_score for item in state.selected)),
         state.orientation_band_indices,
         state.center_tile_indices,
         tuple(_hypothesis_sort_key(item) for item in state.selected),
@@ -2523,8 +3067,9 @@ def _proposal_state_sort_key(
 
 
 def _complete_proposal_state_sort_key(
-    value: tuple[_ProposalSearchState, float, float, int, float],
+    value: tuple[_ProposalSearchState, float, float, float, int, float],
 ) -> tuple[
+    float,
     int,
     float,
     tuple[tuple[float, float, float, float, float], ...],
@@ -2532,10 +3077,16 @@ def _complete_proposal_state_sort_key(
     tuple[int, ...],
 ]:
     """Rank feasible complete sets by explained evidence, then native score."""
-    state, _common_scale, _maximum_deviation, explained_count, native_score_sum = (
-        value
-    )
+    (
+        state,
+        _common_scale,
+        _maximum_deviation,
+        explained_evidence,
+        explained_count,
+        native_score_sum,
+    ) = value
     return (
+        -explained_evidence,
         -explained_count,
         -native_score_sum,
         tuple(sorted(_hypothesis_sort_key(item) for item in state.selected)),
@@ -2684,14 +3235,12 @@ def _native_rectangles_have_no_positive_overlap(
     half_width_scene = common_scale * HALF_DOUBLES_WIDTH
     half_length_scene = common_scale * HALF_LENGTH
     for axis in (*existing_axes, *proposal_axes):
-        existing_radius = (
-            half_width_scene * abs(float(axis @ existing_axes[0]))
-            + half_length_scene * abs(float(axis @ existing_axes[1]))
-        )
-        proposal_radius = (
-            half_width_scene * abs(float(axis @ proposal_axes[0]))
-            + half_length_scene * abs(float(axis @ proposal_axes[1]))
-        )
+        existing_radius = half_width_scene * abs(
+            float(axis @ existing_axes[0])
+        ) + half_length_scene * abs(float(axis @ existing_axes[1]))
+        proposal_radius = half_width_scene * abs(
+            float(axis @ proposal_axes[0])
+        ) + half_length_scene * abs(float(axis @ proposal_axes[1]))
         separation = abs(float(axis @ center_delta_scene))
         if separation >= existing_radius + proposal_radius - 1.0e-12:
             return True
@@ -2744,13 +3293,13 @@ def _scale_bound_saturation_reason(
     return None
 
 
-def _suppress_assigned_points(
+def _unassigned_point_mask(
     points: NDArray[np.float64],
     *,
     parameters: NDArray[np.float64],
     assignment_distance_metres: float,
-) -> NDArray[np.float64]:
-    """Suppress proposal evidence by exact distance to regulation segments."""
+) -> NDArray[np.bool_]:
+    """Return points outside the exact regulation-segment assignment corridor."""
     values = np.asarray(parameters, dtype=np.float64)
     center = values[:2]
     orientation = float(values[2])
@@ -2775,8 +3324,45 @@ def _suppress_assigned_points(
         distances = np.linalg.norm(points_court - closest, axis=1)
         minimum_distances = np.minimum(minimum_distances, distances)
     return np.asarray(
-        points[minimum_distances > assignment_distance_metres],
-        dtype=np.float64,
+        minimum_distances > assignment_distance_metres,
+        dtype=np.bool_,
+    )
+
+
+def _suppress_assigned_points(
+    points: NDArray[np.float64],
+    *,
+    parameters: NDArray[np.float64],
+    assignment_distance_metres: float,
+) -> NDArray[np.float64]:
+    """Suppress point evidence assigned to one regulation court."""
+    keep = _unassigned_point_mask(
+        points,
+        parameters=parameters,
+        assignment_distance_metres=assignment_distance_metres,
+    )
+    return np.asarray(points[keep], dtype=np.float64)
+
+
+def _suppress_assigned_evidence(
+    points: NDArray[np.float64],
+    evidence_weights: NDArray[np.float64],
+    *,
+    parameters: NDArray[np.float64],
+    assignment_distance_metres: float,
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Suppress aligned point/weight evidence without losing correspondence."""
+    weights = np.asarray(evidence_weights, dtype=np.float64)
+    if weights.shape != (len(points),):
+        raise ValueError("Evidence weights must align one-to-one with points.")
+    keep = _unassigned_point_mask(
+        points,
+        parameters=parameters,
+        assignment_distance_metres=assignment_distance_metres,
+    )
+    return (
+        np.asarray(points[keep], dtype=np.float64),
+        np.asarray(weights[keep], dtype=np.float64),
     )
 
 
@@ -2840,6 +3426,38 @@ def _candidate_evidence(
     assigned_by_camera: Mapping[str, NDArray[np.float64]],
     settings: AlignmentEvidenceSettings,
 ) -> CandidateEvidence:
+    return CandidateEvidence(
+        court_instance_id=hypothesis.candidate_id.replace("candidate", "court"),
+        candidate_id=hypothesis.candidate_id,
+        fit=_candidate_correspondences(
+            hypothesis,
+            plane=plane,
+            metric_adapter=metric_adapter,
+            cameras=fit_cameras,
+            assigned_by_camera=assigned_by_camera,
+            settings=settings,
+        ),
+        holdout=_candidate_correspondences(
+            hypothesis,
+            plane=plane,
+            metric_adapter=metric_adapter,
+            cameras=holdout_cameras,
+            assigned_by_camera=assigned_by_camera,
+            settings=settings,
+        ),
+    )
+
+
+def _candidate_correspondences(
+    hypothesis: _CourtHypothesis,
+    *,
+    plane: _GroundPlane,
+    metric_adapter: MetricSceneAdapter,
+    cameras: tuple[SceneCamera, ...],
+    assigned_by_camera: Mapping[str, NDArray[np.float64]],
+    settings: AlignmentEvidenceSettings,
+) -> CorrespondenceSet:
+    """Build one declared partition without consulting the other partition."""
     template = sample_court_line_template(settings.candidate_fit.samples_per_metre)
     points_court = np.column_stack((template, np.zeros(len(template))))
     parameters = np.asarray(
@@ -2852,61 +3470,46 @@ def _candidate_evidence(
         dtype=np.float64,
     )
     predicted_nht = plane.from_uv(transform_template_2d(template, parameters))
-
-    def correspondences(cameras: tuple[SceneCamera, ...]) -> CorrespondenceSet:
-        court_parts: list[NDArray[np.float64]] = []
-        metric_parts: list[NDArray[np.float64]] = []
-        camera_ids: list[str] = []
-        maximum_distance_nht = (
-            settings.correspondences.maximum_match_distance_metres
-            * metric_adapter.nht_scene_units_per_metre
+    court_parts: list[NDArray[np.float64]] = []
+    metric_parts: list[NDArray[np.float64]] = []
+    camera_ids: list[str] = []
+    maximum_distance_nht = (
+        settings.correspondences.maximum_match_distance_metres
+        * metric_adapter.nht_scene_units_per_metre
+    )
+    predicted_tree = cKDTree(predicted_nht)
+    for camera in cameras:
+        observed_nht = assigned_by_camera[camera.camera_id]
+        if len(observed_nht) == 0:
+            continue
+        distances, template_indices = predicted_tree.query(
+            observed_nht,
+            k=1,
+            workers=1,
         )
-        predicted_tree = cKDTree(predicted_nht)
-        for camera in cameras:
-            observed_nht = assigned_by_camera[camera.camera_id]
-            if len(observed_nht) == 0:
-                continue
-            distances, template_indices = predicted_tree.query(
-                observed_nht,
-                k=1,
-                workers=1,
+        matched = np.flatnonzero(distances <= maximum_distance_nht)
+        if len(matched) > settings.correspondences.maximum_correspondences_per_camera:
+            positions = _even_indices(
+                len(matched),
+                settings.correspondences.maximum_correspondences_per_camera,
             )
-            matched = np.flatnonzero(distances <= maximum_distance_nht)
-            if (
-                len(matched)
-                > settings.correspondences.maximum_correspondences_per_camera
-            ):
-                positions = _even_indices(
-                    len(matched),
-                    settings.correspondences.maximum_correspondences_per_camera,
-                )
-                matched = matched[np.asarray(positions, dtype=np.int64)]
-            if (
-                len(matched)
-                < settings.correspondences.minimum_correspondences_per_camera
-            ):
-                continue
-            observed = observed_nht[matched]
-            matched_template = np.asarray(template_indices[matched], dtype=np.int64)
-            court_parts.append(points_court[matched_template])
-            metric_parts.append(metric_adapter.metric_from_nht_points(observed))
-            camera_ids.extend([camera.camera_id] * len(matched))
-        if not court_parts:
-            raise ValueError(
-                f"Candidate {hypothesis.candidate_id!r} has no camera with the required "
-                "uniquely assigned measured line correspondences in this partition."
-            )
-        return CorrespondenceSet(
-            points_court=np.concatenate(court_parts),
-            points_scene=np.concatenate(metric_parts),
-            camera_ids=tuple(camera_ids),
+            matched = matched[np.asarray(positions, dtype=np.int64)]
+        if len(matched) < settings.correspondences.minimum_correspondences_per_camera:
+            continue
+        observed = observed_nht[matched]
+        matched_template = np.asarray(template_indices[matched], dtype=np.int64)
+        court_parts.append(points_court[matched_template])
+        metric_parts.append(metric_adapter.metric_from_nht_points(observed))
+        camera_ids.extend([camera.camera_id] * len(matched))
+    if not court_parts:
+        raise ValueError(
+            f"Candidate {hypothesis.candidate_id!r} has no camera with the required "
+            "uniquely assigned measured line correspondences in this partition."
         )
-
-    return CandidateEvidence(
-        court_instance_id=hypothesis.candidate_id.replace("candidate", "court"),
-        candidate_id=hypothesis.candidate_id,
-        fit=correspondences(fit_cameras),
-        holdout=correspondences(holdout_cameras),
+    return CorrespondenceSet(
+        points_court=np.concatenate(court_parts),
+        points_scene=np.concatenate(metric_parts),
+        camera_ids=tuple(camera_ids),
     )
 
 
@@ -2938,12 +3541,8 @@ def _court_line_model_state(
 
     legacy_keys = {"final_conv.weight", "final_conv.bias"}
     canonical_keys = {"heads.line.weight", "heads.line.bias"}
-    legacy_candidates = {
-        key for key in model_state if key.startswith("final_conv.")
-    }
-    canonical_candidates = {
-        key for key in model_state if key.startswith("heads.line.")
-    }
+    legacy_candidates = {key for key in model_state if key.startswith("final_conv.")}
+    canonical_candidates = {key for key in model_state if key.startswith("heads.line.")}
     if legacy_candidates:
         if legacy_candidates != legacy_keys or canonical_candidates:
             raise ValueError(
