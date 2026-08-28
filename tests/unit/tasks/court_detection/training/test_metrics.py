@@ -2,9 +2,24 @@
 
 from __future__ import annotations
 
+import pytest
 import torch
 
-from src.tasks.court_detection.training.metrics import CourtDetectionMetrics
+from src.tasks.court_detection.geometry.pose import (
+    CourtDecodedPose,
+    canonical_semantic_court_points_batched,
+    project_predicted_canonical_points,
+)
+from src.tasks.court_detection.model_io.contracts import (
+    CourtConsistencyResult,
+    CourtPoseTargetBatch,
+)
+from src.tasks.court_detection.training.metrics import (
+    CourtDetectionMetrics,
+    CourtPoseGeometryMetrics,
+    CourtPoseMetrics,
+    gradient_finite_status,
+)
 
 
 def _logits_with_peaks(
@@ -99,7 +114,7 @@ def test_kp_metric_all_invisible_is_zero() -> None:
 
 
 def test_target_court_metric_uses_single_point_capacity() -> None:
-    metrics = CourtDetectionMetrics("kp", 1)
+    metrics = CourtDetectionMetrics("kp", 1, singleton_kp=True)
     expected = torch.tensor([[[[4.0, 4.0]]]])
     target = _target(expected, visible=torch.tensor([[[True]]]))
     logits = torch.full((1, 1, 16, 16), -10.0)
@@ -112,4 +127,185 @@ def test_target_court_metric_uses_single_point_capacity() -> None:
         image_size=torch.tensor([[16, 16]], dtype=torch.long),
     )
 
-    assert metrics.compute()["mean_dist"] == 0.0
+    assert metrics.compute() == {
+        "mean_dist": 0.0,
+        "mean_distance_px": 0.0,
+        "median_distance_px": 0.0,
+    }
+
+
+def test_singleton_metric_uses_one_global_peak_not_nearest_fallback() -> None:
+    metrics = CourtDetectionMetrics("kp", 1, singleton_kp=True)
+    expected = torch.tensor([[[[4.0, 4.0]]]])
+    target = _target(expected, visible=torch.tensor([[[True]]]))
+    logits = torch.full((1, 1, 16, 16), -10.0)
+    logits[0, 0, 4, 4] = 9.0  # Correct, but not the singleton prediction.
+    logits[0, 0, 12, 12] = 10.0
+
+    metrics.update(
+        logits,
+        target,
+        image_size=torch.tensor([[16, 16]], dtype=torch.long),
+    )
+
+    assert metrics.compute()["mean_dist"] == pytest.approx(8.0 * 2.0**0.5)
+
+
+def test_singleton_metric_excludes_padding_and_reports_median_pixels() -> None:
+    metrics = CourtDetectionMetrics("kp", 2, singleton_kp=True)
+    expected = torch.tensor([[[[2.0, 1.0]], [[6.0, 3.0]]]])
+    target = _target(
+        expected,
+        visible=torch.ones(1, 2, 1, dtype=torch.bool),
+        height=4,
+        width=7,
+    )
+    logits = torch.full((1, 2, 8, 10), -10.0)
+    logits[0, 0, 1, 2] = 9.0
+    logits[0, 1, 3, 6] = 9.0
+    logits[:, :, 7, 9] = 100.0
+
+    metrics.update(
+        logits,
+        target,
+        image_size=torch.tensor([[4, 7]], dtype=torch.long),
+    )
+
+    assert metrics.compute() == {
+        "mean_dist": 0.0,
+        "mean_distance_px": 0.0,
+        "median_distance_px": 0.0,
+    }
+
+
+def test_pose_metrics_report_metric_translation_rotation_and_focal() -> None:
+    metrics = CourtPoseMetrics()
+    prediction = CourtDecodedPose(
+        translation_m=torch.tensor([[1.0, 2.0, 3.0]]),
+        rotation=torch.eye(3).unsqueeze(0),
+        focal_px=torch.tensor([200.0]),
+        log_focal=torch.log(torch.tensor([200.0])),
+    )
+    target = CourtPoseTargetBatch(
+        translation_m=torch.tensor([[1.0, 2.0, 3.0]]),
+        rotation=torch.eye(3).unsqueeze(0),
+        log_focal=torch.log(torch.tensor([200.0])),
+        intrinsics=torch.eye(3).unsqueeze(0),
+        semantic_to_physical=torch.arange(14).unsqueeze(0),
+        raw_pose10d=torch.zeros(1, 10),
+    )
+
+    metrics.update(prediction, target)
+
+    assert metrics.compute() == pytest.approx({
+        "translation_l2_m": 0.0,
+        "rotation_geodesic_deg": 0.0,
+        "focal_relative_error": 0.0,
+        "log_focal_abs_error": 0.0,
+    }, abs=1.0e-6)
+
+
+def test_pose_geometry_metrics_report_consistency_and_depth() -> None:
+    tracker = CourtPoseGeometryMetrics(min_depth_m=0.1)
+    ground_truth = torch.zeros(1, 14, 2)
+    ground_truth[:, :, 0] = 0.5
+    ground_truth[:, :, 1] = 0.5
+    pose = torch.tensor([[[5.0, 4.0]]]).expand(1, 14, 2).clone()
+    dense = pose.clone()
+    dense[:, :, 0] += 2.0
+    visible = torch.zeros(1, 14, dtype=torch.bool)
+    visible[:, :2] = True
+    depth = torch.ones(1, 14)
+    depth[:, 0] = 0.0
+    consistency = CourtConsistencyResult(
+        coordinate_loss=torch.tensor(0.0),
+        cheirality_loss=torch.tensor(0.0),
+        auxiliary_loss=torch.tensor(0.0),
+        weighted_auxiliary_loss=torch.tensor(0.0),
+        configured_weight=torch.tensor(1.0),
+        effective_weight=torch.tensor(1.0),
+        visible_point_count=torch.tensor(2),
+        mean_distance_px=torch.tensor(2.0),
+        invalid_depth_rate=torch.tensor(0.5),
+        dense_points_xy=dense,
+        pose_points_xy=pose,
+        pose_depth_m=depth,
+    )
+
+    tracker.update(
+        consistency,
+        ground_truth_points_normalized=ground_truth,
+        point_visible=visible,
+        image_size=torch.tensor([[9, 11]], dtype=torch.long),
+    )
+
+    assert tracker.compute() == pytest.approx(
+        {
+            "pose_reprojection_mean_distance_px": 0.0,
+            "kp_pose_consistency_distance_px": 2.0,
+            "invalid_depth_rate": 0.5,
+            "visible_point_count": 2.0,
+        }
+    )
+
+
+def test_pose_geometry_metrics_report_independent_pose_reprojection() -> None:
+    tracker = CourtPoseGeometryMetrics(min_depth_m=0.1)
+    prediction = CourtDecodedPose(
+        translation_m=torch.tensor([[0.0, 0.0, -10.0]]),
+        rotation=torch.eye(3).unsqueeze(0),
+        focal_px=torch.tensor([100.0]),
+        log_focal=torch.log(torch.tensor([100.0])),
+    )
+    target = CourtPoseTargetBatch(
+        translation_m=prediction.translation_m,
+        rotation=prediction.rotation,
+        log_focal=prediction.log_focal,
+        intrinsics=torch.tensor(
+            [[[100.0, 0.0, 60.0], [0.0, 100.0, 50.0], [0.0, 0.0, 1.0]]]
+        ),
+        semantic_to_physical=torch.arange(14).unsqueeze(0),
+        raw_pose10d=torch.zeros(1, 10),
+    )
+    image_size = torch.tensor([[100, 120]], dtype=torch.long)
+    canonical = canonical_semantic_court_points_batched(
+        target.semantic_to_physical,
+        dtype=prediction.translation_m.dtype,
+        device=prediction.translation_m.device,
+    )
+    projection = project_predicted_canonical_points(
+        prediction,
+        canonical,
+        target.intrinsics[:, :2, 2],
+    )
+    scale = torch.tensor([119.0, 99.0])
+    ground_truth = projection.points_xy / scale
+
+    tracker.update_pose_prediction(
+        prediction,
+        target,
+        ground_truth_points_normalized=ground_truth,
+        point_visible=torch.ones(1, 14, dtype=torch.bool),
+        image_size=image_size,
+    )
+
+    assert tracker.compute() == pytest.approx(
+        {
+            "pose_reprojection_mean_distance_px": 0.0,
+            "kp_pose_consistency_distance_px": 0.0,
+            "invalid_depth_rate": 0.0,
+            "visible_point_count": 14.0,
+        },
+        abs=1.0e-6,
+    )
+
+
+def test_gradient_finite_status_requires_present_finite_gradients() -> None:
+    parameter = torch.nn.Parameter(torch.tensor([1.0]))
+    assert gradient_finite_status([parameter]) == 0.0
+
+    parameter.grad = torch.tensor([2.0])
+    assert gradient_finite_status([parameter]) == 1.0
+
+    parameter.grad = torch.tensor([float("nan")])
+    assert gradient_finite_status([parameter]) == 0.0

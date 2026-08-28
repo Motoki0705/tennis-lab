@@ -28,6 +28,7 @@ from src.synthetic_data_generation.alignment.evidence_source import (
     _assign_candidate_evidence,
     _center_space_tiles,
     _CenterTile,
+    _court_line_model_config,
     _CourtHypothesis,
     _deduplicate_tiled_proposals,
     _fit_court_hypotheses,
@@ -108,6 +109,33 @@ class _Detector:
             device_name="cpu",
             cross_hardware_bit_identity_claimed=False,
         )
+
+
+def test_production_line_config_rebuilds_legacy_checkpoint_with_strict_fields(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path).line_model
+
+    config = _court_line_model_config(settings)
+
+    assert config.decoder.name == "dpt"
+    assert config.decoder.size == "base"
+    assert config.decoder.channels == 256
+    assert config.transformer_encoder.name == "none"
+    assert not config.transformer_encoder.enabled
+
+
+def test_production_line_config_rejects_channels_without_a_dpt_size(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path).line_model
+    settings = replace(
+        settings,
+        architecture=replace(settings.architecture, decoder_channels=96),
+    )
+
+    with pytest.raises(ValueError, match="strict DPT size preset"):
+        _court_line_model_config(settings)
 
 
 def test_measured_source_preflight_checks_real_images_and_detector(

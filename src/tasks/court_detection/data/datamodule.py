@@ -8,7 +8,9 @@ from typing import Any
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader, Dataset
 
-from src.tasks.court_detection.configuration import CourtTrainingConfig
+from src.tasks.court_detection.configuration import (
+    CourtTrainingConfig,
+)
 from src.tasks.court_detection.data.collate import court_detection_collate
 from src.tasks.court_detection.data.contracts import (
     CourtSourceSplit,
@@ -31,13 +33,26 @@ class CourtDetectionDataModule(pl.LightningDataModule):
         self.batch_size = runtime.data.batch_size
         self.num_workers = runtime.data.num_workers
         self.pin_memory = runtime.data.pin_memory
+        self.pose_variant = bool(getattr(runtime.loss.pose, "enabled", False))
 
-        self._train_pipeline = build_court_processing_pipeline(
-            self.data_config, is_train=True
-        )
-        self._eval_pipeline = build_court_processing_pipeline(
-            self.data_config, is_train=False
-        )
+        if self.pose_variant:
+            self._train_pipeline = build_court_processing_pipeline(
+                self.data_config,
+                is_train=True,
+                require_pose=True,
+            )
+            self._eval_pipeline = build_court_processing_pipeline(
+                self.data_config,
+                is_train=False,
+                require_pose=True,
+            )
+        else:
+            self._train_pipeline = build_court_processing_pipeline(
+                self.data_config, is_train=True
+            )
+            self._eval_pipeline = build_court_processing_pipeline(
+                self.data_config, is_train=False
+            )
         if (
             self._train_pipeline.target_bundle_spec
             != self._eval_pipeline.target_bundle_spec
@@ -46,6 +61,15 @@ class CourtDetectionDataModule(pl.LightningDataModule):
         self.target_bundle_spec: CourtTargetBundleSpec = (
             self._train_pipeline.target_bundle_spec
         )
+
+        # Pose authority is scanned synchronously here: Runner constructs this
+        # DataModule before the model, Trainer, accelerator selection, or workers.
+        if self.pose_variant:
+            for split in self._train_pipeline.input_layer.available_splits:
+                pipeline = (
+                    self._train_pipeline if split == "train" else self._eval_pipeline
+                )
+                pipeline.preflight(pipeline.input_layer.records(split))
 
         self.train_dataset: Dataset[Any] | None = None
         self.val_dataset: Dataset[Any] | None = None

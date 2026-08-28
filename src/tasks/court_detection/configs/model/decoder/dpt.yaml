@@ -1,3 +1,4 @@
 name: dpt
-channels: 256
+size: large
+channels: 512
 reassemble_factors: [4.0, 2.0, 1.0, 0.5]

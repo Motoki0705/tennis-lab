@@ -7,11 +7,17 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from types import MappingProxyType
-from typing import Literal, TypeAlias
+from typing import TYPE_CHECKING, Literal, TypeAlias
 
 import torch
 from PIL import Image
 from torch import Tensor
+
+from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
+from src.synthetic_data_generation.scene_contract import SceneCamera
+
+if TYPE_CHECKING:
+    from src.tasks.court_detection.geometry.pose import CourtPoseTarget
 
 CourtTargetKind: TypeAlias = Literal["kp", "seg", "line"]
 CourtDenseTargetKind: TypeAlias = Literal["seg", "line"]
@@ -26,6 +32,7 @@ class CourtInputCapability(StrEnum):
     COURT_INSTANCES = "court_instances"
     SEGMENTATION_REFERENCE = "segmentation_reference"
     LINE_REFERENCE = "line_reference"
+    V3_TARGET_COURT_POSE = "v3_target_court_pose"
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,6 +126,25 @@ class CourtInputSpec:
                 raise ValueError(
                     "Court keypoint horizontal_flip_permutation must be a bijection."
                 )
+
+
+@dataclass(frozen=True, slots=True)
+class CourtPoseAuthority:
+    """Typed Synthetic Court V3 camera and target-court authority."""
+
+    source_schema: Literal["canonical_court_dataset_v3"]
+    camera: SceneCamera
+    target_court: TargetCourtBinding
+
+    def __post_init__(self) -> None:
+        if self.source_schema != "canonical_court_dataset_v3":
+            raise ValueError("Court pose authority requires Synthetic Court V3.")
+        if not isinstance(self.camera, SceneCamera):
+            raise TypeError("Court pose authority camera must be a SceneCamera.")
+        if not isinstance(self.target_court, TargetCourtBinding):
+            raise TypeError(
+                "Court pose authority target_court must be a TargetCourtBinding."
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -239,6 +265,7 @@ class CourtRawSample:
     court_instances: tuple[CourtInstance2D, ...]
     dense_target_refs: Mapping[CourtDenseTargetKind, Path]
     metadata: CourtSampleMetadata
+    pose_authority: CourtPoseAuthority | None = None
 
     def __post_init__(self) -> None:
         if self.image.mode != "RGB":
@@ -250,7 +277,14 @@ class CourtRawSample:
 
 @dataclass(frozen=True, slots=True)
 class CourtTransformedSample:
-    """One shared-geometry result consumed by every selected target builder."""
+    """One shared-geometry result consumed by every selected target builder.
+
+    ``image_size`` is the complete per-sample tensor extent before the
+    DataLoader's batch envelope is added.  Pose-safe geometry may extend that
+    extent to a patch boundary on the right and bottom; ``content_size_hw`` is
+    the corresponding source-derived extent and is the only region that is
+    valid for spatial reductions.
+    """
 
     sample_id: str
     image_tensor: Tensor  # [3,H,W], ImageNet-normalized
@@ -260,12 +294,39 @@ class CourtTransformedSample:
     dense_targets: Mapping[CourtDenseTargetKind, Tensor]
     horizontal_flipped: bool
     metadata: CourtSampleMetadata
+    pose_target: CourtPoseTarget | None = None
+    content_size_hw: Tensor | None = None  # [2] = H,W before geometry padding
 
     def __post_init__(self) -> None:
         if self.image_tensor.ndim != 3 or self.image_tensor.shape[0] != 3:
             raise ValueError("Court transformed image must have shape (3,H,W).")
         if self.image_size.shape != (2,) or self.image_size.dtype != torch.long:
             raise ValueError("Court transformed image_size must be int64 [H,W].")
+        tensor_size = torch.tensor(
+            self.image_tensor.shape[-2:],
+            dtype=torch.long,
+            device=self.image_size.device,
+        )
+        if not torch.equal(self.image_size, tensor_size):
+            raise ValueError(
+                "Court transformed image_size must match image_tensor [H,W]."
+            )
+        content_size = (
+            self.image_size
+            if self.content_size_hw is None
+            else self.content_size_hw
+        )
+        if content_size.shape != (2,) or content_size.dtype != torch.long:
+            raise ValueError("Court content_size_hw must be int64 [H,W].")
+        if content_size.device != self.image_size.device:
+            raise ValueError("Court content_size_hw and image_size must share a device.")
+        if bool(torch.any(content_size <= 0)) or bool(
+            torch.any(content_size > self.image_size)
+        ):
+            raise ValueError(
+                "Court content_size_hw must be positive and within image_size."
+            )
+        object.__setattr__(self, "content_size_hw", content_size)
         object.__setattr__(
             self, "dense_targets", MappingProxyType(dict(self.dense_targets))
         )
@@ -277,6 +338,7 @@ __all__ = [
     "CourtInputSpec",
     "CourtInstance2D",
     "CourtKeypointChannels",
+    "CourtPoseAuthority",
     "CourtRawSample",
     "CourtSampleMetadata",
     "CourtSampleRecord",

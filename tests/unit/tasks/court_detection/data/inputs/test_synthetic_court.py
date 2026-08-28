@@ -308,6 +308,7 @@ def test_v2_keeps_semantic_multi_peaks_separate_from_physical_instances(
     assert raw.keypoint_channels is not None
     channels = raw.keypoint_channels
     assert channels.points_xy.shape == (14, 2, 2)
+    assert channels.points_xy.dtype == torch.float32
     assert channels.physical_indices[:, 0].tolist() == list(range(14))
     assert channels.physical_indices[:, 1].tolist() == list(_OPPOSITE_PHYSICAL)
     assert not bool(channels.point_visible[0, 0])  # in_front=False
@@ -317,6 +318,7 @@ def test_v2_keeps_semantic_multi_peaks_separate_from_physical_instances(
     assert len(raw.court_instances) == 2
     for instance in raw.court_instances:
         assert instance.physical_indices.tolist() == list(range(14))
+        assert instance.points_xy.dtype == torch.float32
     second = raw.court_instances[1]
     torch.testing.assert_close(second.points_xy[2], channels.points_xy[0, 1])
 
@@ -341,10 +343,18 @@ def test_v3_uses_distinct_schema_full_half_turn_and_one_flip_only(
     assert input_layer.spec.keypoint_flip_permutation == _FLIP
     raw = input_layer.load(input_layer.records("train")[0])
     assert raw.keypoint_channels is not None
+    assert raw.pose_authority is not None
+    assert raw.pose_authority.camera.camera_id == "sample-train"
+    assert raw.pose_authority.target_court.court_instance_id == "court-b"
     channels = raw.keypoint_channels
     assert channels.points_xy.shape == (14, 2, 2)
+    assert channels.points_xy.dtype == torch.float64
     assert channels.physical_indices[:, 0].tolist() == list(range(14))
     assert channels.physical_indices[:, 1].tolist() == list(_CAMERA_VIEW_PHYSICAL)
+    assert all(
+        instance.points_xy.dtype == torch.float32
+        for instance in raw.court_instances
+    )
 
     flipped = CourtProcessingGeometry._transform_channels(
         channels,
@@ -365,6 +375,42 @@ def test_v3_uses_distinct_schema_full_half_turn_and_one_flip_only(
         flipped.physical_indices,
         channels.physical_indices.index_select(0, permutation),
     )
+
+
+def test_v3_parser_preserves_court_sample_001588_serialized_precision(
+    tmp_path: Path,
+) -> None:
+    manifest_path, manifest = _write_v2_dataset(tmp_path, schema="v3")
+    record = cast(list[dict[str, object]], manifest["samples"])[0]
+    projection = cast(dict[str, object], record["projection"])
+    courts = cast(list[dict[str, object]], projection["courts"])
+    classes = cast(list[dict[str, object]], courts[1]["classes"])
+    point = cast(list[dict[str, object]], classes[5]["points"])[0]
+    serialized_uv = [387122.0463825724, 48177.58336823048]
+    point["uv"] = serialized_uv
+    labels_path = manifest_path.parent / cast(str, record["labels"])
+    labels = json.loads(labels_path.read_text(encoding="utf-8"))
+    assert isinstance(labels, dict)
+    labels["projection"] = deepcopy(projection)
+    labels_path.write_text(json.dumps(labels), encoding="utf-8")
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    input_layer = _input(
+        tmp_path,
+        schema="v3",
+        keypoint_court_scope="target_court",
+    )
+    raw = input_layer.load(input_layer.records("train")[0])
+
+    assert raw.keypoint_channels is not None
+    assert raw.keypoint_channels.points_xy.dtype == torch.float64
+    torch.testing.assert_close(
+        raw.keypoint_channels.points_xy[5, 0],
+        torch.tensor(serialized_uv, dtype=torch.float64),
+        rtol=0.0,
+        atol=0.0,
+    )
+    assert raw.court_instances[1].points_xy.dtype == torch.float32
 
 
 def test_v3_target_scope_preserves_distinct_bundle_identity_and_physical_mapping(

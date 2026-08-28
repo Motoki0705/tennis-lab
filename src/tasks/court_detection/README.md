@@ -53,6 +53,39 @@ Synthetic schema v1/v2/v3の生成・publication・semantic contractの正本は
 
 設定は `configs/data/default.yaml` をcomposition rootとし、`configs/data/source/` と `configs/data/processing/` を直交してoverrideします。syntheticの`schema=v1|v2|v3`はtyped configで必須で、directory内容から自動推測しません。v2/v3の`train / validation / test`は学習側`train / val / test`へ一意に変換し、空splitやtrajectory group leakageを拒否します。TennisCourtDetectorにtest splitがない既定設定は`data.source.split_mapping.test: null`であり、validationをtestとして代用しません。
 
+Model compositionは `model/hierarchical.yaml` をrootとし、encoder、transformer encoder、decoderを独立したHydra groupとして選択します。既定構成はDINOv3 ViT-B/16、8層のMHA + 2-D RoPE + SwiGLUによるtransformer encoder、DPT decoderです。DPT decoderの出力channelsは512です。
+
+Lossは `configs/loss/default.yaml` の単一schemaで管理し、KP/SEG/LINEのdense項、camera poseのtranslation/rotation/focal項、任意のKP–pose consistency項と各weightを同時に記述します。
+
+pose-only objectiveは専用loss presetを持ちません。`loss=default`をcomposeし、明示的なoverrideでKP/SEG/LINEのhead weightを0、poseのtranslation/rotation/focal weightを1、consistencyを無効にします。V3 target-court KP14のgeometry・data・head contractは保持されるためdense branchはforwardされますが、dense headにはdense loss由来のgradientは流れません。通常のdense-only設定では0 weightを許可しません。
+
+```bash
+# DINOv3 + DPT + LoRA
+python -m src.tasks.court_detection.scripts.train \
+  data/source=synthetic_court data/processing=kp \
+  model/encoder=dinov3 model/decoder=dpt training=lora
+
+# DINOv3 patch gridにtransformer refinementを有効化
+python -m src.tasks.court_detection.scripts.train \
+  data/source=synthetic_court data/processing=all \
+  model/encoder=dinov3 model/transformer_encoder=default model/decoder=dpt
+
+# KP14 contractを保持するpose-only objective
+python -m src.tasks.court_detection.scripts.train \
+  data/source=synthetic_court \
+  data.source.keypoint_court_scope=target_court \
+  data/processing=kp data/augmentation=pose_safe \
+  model/encoder=dinov3 model/transformer_encoder=default model/decoder=dpt \
+  loss=default \
+  loss.kp.weight=0.0 loss.seg.weight=0.0 loss.line.weight=0.0 \
+  loss.pose.enabled=true \
+  loss.pose.translation_weight=1.0 \
+  loss.pose.rotation_weight=1.0 loss.pose.focal_weight=1.0 \
+  loss.consistency.enabled=false
+```
+
+Synthetic V3の座標・camera authority・KP semanticの定義は、このconsumer READMEでは再定義しません。正本は上記のSynthetic Court READMEです。
+
 ## Utilities and scripts
 
 - `src/utils/data/heatmaps.py`: single-peakとall-court multi-peakを共通に扱うdomain-neutral Gaussian heatmap utility。

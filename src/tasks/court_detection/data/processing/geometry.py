@@ -24,6 +24,10 @@ from src.tasks.court_detection.data.contracts import (
     CourtRawSample,
     CourtTransformedSample,
 )
+from src.tasks.court_detection.geometry.pose import (
+    build_pose_target,
+    validate_projection_round_trip,
+)
 from src.utils.geometry.affine import build_centered_affine_matrix
 
 
@@ -34,6 +38,10 @@ class CourtGeometryPlan:
     matrix: Tensor
     output_size_hw: tuple[int, int]
     horizontal_flipped: bool
+    # ``output_size_hw`` includes any right/bottom patch alignment.  Keep the
+    # pre-alignment content extent separate so consumers can exclude the
+    # synthetic border from spatial reductions (for example, soft-argmax).
+    content_size_hw: tuple[int, int] | None = None
 
     def __post_init__(self) -> None:
         if self.matrix.shape != (3, 3) or not self.matrix.is_floating_point():
@@ -42,6 +50,19 @@ class CourtGeometryPlan:
             raise ValueError("Court geometry matrix must be finite.")
         if self.output_size_hw[0] <= 0 or self.output_size_hw[1] <= 0:
             raise ValueError("Court output geometry must be positive.")
+        content_size = (
+            self.output_size_hw
+            if self.content_size_hw is None
+            else self.content_size_hw
+        )
+        if len(content_size) != 2 or any(value <= 0 for value in content_size):
+            raise ValueError("Court content geometry must be positive.")
+        if any(
+            content > output
+            for content, output in zip(content_size, self.output_size_hw, strict=True)
+        ):
+            raise ValueError("Court content geometry cannot exceed output geometry.")
+        object.__setattr__(self, "content_size_hw", tuple(content_size))
 
 
 class CourtProcessingGeometry:
@@ -50,9 +71,20 @@ class CourtProcessingGeometry:
     _MEAN = (0.485, 0.456, 0.406)
     _STD = (0.229, 0.224, 0.225)
 
-    def __init__(self, config: CourtAugmentationConfig, *, is_train: bool) -> None:
+    def __init__(
+        self,
+        config: CourtAugmentationConfig,
+        *,
+        is_train: bool,
+        require_pose: bool = False,
+    ) -> None:
         self.config = config
         self.is_train = is_train
+        self.require_pose = require_pose
+        if require_pose and not config.preserve_fx_fy:
+            raise ValueError(
+                "Court pose geometry requires augmentation preserve_fx_fy=true."
+            )
         self.color_jitter = ColorJitter(*config.color_jitter)
 
     def sample(self, raw: CourtRawSample) -> CourtGeometryPlan:
@@ -78,24 +110,40 @@ class CourtProcessingGeometry:
         """Apply the same plan to RGB, points, instances, and dense targets."""
         selected = self.sample(raw) if plan is None else plan
         height, width = selected.output_size_hw
+        content_size_hw = selected.content_size_hw
+        assert content_size_hw is not None
+        content_height, content_width = content_size_hw
         matrix = selected.matrix.detach().cpu().numpy().astype(np.float64)
 
         image_array = np.asarray(raw.image, dtype=np.uint8)
-        warped = cv2.warpPerspective(
+        warped_content = cv2.warpPerspective(
             image_array,
             matrix,
-            (width, height),
+            (content_width, content_height),
             flags=cv2.INTER_LINEAR,
             borderMode=cv2.BORDER_CONSTANT,
             borderValue=(0, 0, 0),
         )
-        image = Image.fromarray(warped, mode="RGB")
+        image = Image.fromarray(warped_content, mode="RGB")
         if self.is_train:
             image = self.color_jitter(image)
             if random.random() < self.config.gaussian_blur_prob:
                 kernel = random.choice(self.config.gaussian_blur_kernel)
                 sigma = random.uniform(*self.config.gaussian_blur_sigma)
                 image = GaussianBlur(kernel_size=kernel, sigma=sigma)(image)
+        transformed_content = np.asarray(image, dtype=np.uint8)
+        pad_bottom = height - content_height
+        pad_right = width - content_width
+        if pad_bottom or pad_right:
+            transformed_content = cv2.copyMakeBorder(
+                transformed_content,
+                0,
+                pad_bottom,
+                0,
+                pad_right,
+                borderType=cv2.BORDER_REPLICATE,
+            )
+        image = Image.fromarray(transformed_content, mode="RGB")
         image_tensor = TF.normalize(TF.to_tensor(image), self._MEAN, self._STD)
 
         transformed_dense: dict[CourtDenseTargetKind, Tensor] = {}
@@ -125,19 +173,76 @@ class CourtProcessingGeometry:
             )
             for instance in raw.court_instances
         )
+        pose_target = None
+        if self.require_pose:
+            if raw.pose_authority is None:
+                raise ValueError("Court pose geometry received no typed V3 authority.")
+            if channels is None or channels.points_xy.shape != (14, 1, 2):
+                raise ValueError(
+                    "Court query pose geometry requires singleton target-court KP14."
+                )
+            pose_target = build_pose_target(
+                raw.pose_authority,
+                source_to_output=selected.matrix,
+            )
+            if not torch.equal(
+                channels.physical_indices[:, 0],
+                pose_target.semantic_to_physical,
+            ):
+                raise ValueError(
+                    "Court V3 KP14 physical order disagrees with pose authority."
+                )
+            validate_projection_round_trip(
+                pose_target,
+                channels.points_xy[:, 0],
+            )
         return CourtTransformedSample(
             sample_id=raw.sample_id,
             image_tensor=image_tensor,
             image_size=torch.tensor([height, width], dtype=torch.long),
+            content_size_hw=torch.tensor(
+                selected.content_size_hw,
+                dtype=torch.long,
+            ),
             keypoint_channels=channels,
             court_instances=instances,
             dense_targets=MappingProxyType(transformed_dense),
             horizontal_flipped=selected.horizontal_flipped,
             metadata=raw.metadata,
+            pose_target=pose_target,
         )
 
     def _sample_once(self, image_size_wh: tuple[int, int]) -> CourtGeometryPlan:
         width, height = image_size_wh
+        if self.require_pose:
+            # Pose-safe query inputs preserve the source aspect ratio.  The target
+            # size is the long side; only the minimal right/bottom patch alignment
+            # is added so DINOv3/16 receives an integral patch grid.  In particular,
+            # do not letterbox every portrait frame into a square canvas.
+            long_side = (
+                random.choice(self.config.train_scales)
+                if self.is_train
+                else self.config.val_short_side
+            )
+            scale = long_side / float(max(width, height))
+            resized_width = max(1, int(round(width * scale)))
+            resized_height = max(1, int(round(height * scale)))
+            padded_width = resized_width + (-resized_width) % self.config.patch_size
+            padded_height = resized_height + (-resized_height) % self.config.patch_size
+            matrix = torch.tensor(
+                [
+                    [scale, 0.0, 0.0],
+                    [0.0, scale, 0.0],
+                    [0.0, 0.0, 1.0],
+                ],
+                dtype=torch.float64,
+            )
+            return CourtGeometryPlan(
+                matrix,
+                (padded_height, padded_width),
+                False,
+                content_size_hw=(resized_height, resized_width),
+            )
         if not self.is_train:
             short_side = self.config.val_short_side
             scale = short_side / float(min(width, height))
@@ -147,7 +252,12 @@ class CourtProcessingGeometry:
                 [[scale, 0.0, 0.0], [0.0, scale, 0.0], [0.0, 0.0, 1.0]],
                 dtype=torch.float64,
             )
-            return CourtGeometryPlan(matrix, (out_height, out_width), False)
+            return CourtGeometryPlan(
+                matrix,
+                (out_height, out_width),
+                False,
+                content_size_hw=(out_height, out_width),
+            )
 
         output = random.choice(self.config.train_scales)
         top, left, crop_height, crop_width = self._random_resized_crop(height, width)
@@ -215,6 +325,7 @@ class CourtProcessingGeometry:
             matrix=torch.from_numpy(matrix),
             output_size_hw=(output, output),
             horizontal_flipped=flipped,
+            content_size_hw=(output, output),
         )
 
     def _random_resized_crop(self, height: int, width: int) -> tuple[int, int, int, int]:
@@ -264,15 +375,33 @@ class CourtProcessingGeometry:
 
     @staticmethod
     def _transform_points(points: Tensor, matrix: Tensor) -> Tensor:
+        if points.ndim < 2 or points.shape[-1] != 2:
+            raise ValueError("Court geometry points must have shape [...,2].")
+        if not points.is_floating_point():
+            raise TypeError("Court geometry points must use a floating dtype.")
+        if matrix.shape != (3, 3) or not matrix.is_floating_point():
+            raise ValueError("Court geometry matrix must be floating [3,3].")
+        if points.device != matrix.device:
+            raise ValueError("Court geometry points and matrix must share one device.")
+        if not bool(torch.isfinite(points).all()) or not bool(
+            torch.isfinite(matrix).all()
+        ):
+            raise ValueError("Court geometry points and matrix must be finite.")
         original_shape = points.shape
         flat = points.to(dtype=torch.float64).reshape(-1, 2)
-        ones = torch.ones((flat.shape[0], 1), dtype=torch.float64)
+        ones = torch.ones(
+            (flat.shape[0], 1),
+            dtype=torch.float64,
+            device=points.device,
+        )
         homogeneous = torch.cat((flat, ones), dim=1)
         transformed = homogeneous @ matrix.to(dtype=torch.float64).T
         denominator = transformed[:, 2:3]
         if bool(torch.any(torch.isclose(denominator, torch.zeros_like(denominator)))):
             raise ValueError("Court geometry produced a zero homogeneous denominator.")
-        return (transformed[:, :2] / denominator).reshape(original_shape).float()
+        return (transformed[:, :2] / denominator).reshape(original_shape).to(
+            dtype=points.dtype
+        )
 
     @classmethod
     def _transform_channels(
