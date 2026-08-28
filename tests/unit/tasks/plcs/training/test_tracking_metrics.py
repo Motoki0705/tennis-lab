@@ -47,6 +47,7 @@ def test_tracking_metrics_report_heading_y_sign_axes_and_local_index() -> None:
         config=TrackingMetricConfig(
             presence_threshold=0.5,
             duplicate_distance=0.05,
+            id_switch_distance=0.05,
         ),
         reference_view_index=torch.tensor([0, 1], dtype=torch.int64),
     )

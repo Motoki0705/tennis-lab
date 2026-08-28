@@ -149,6 +149,7 @@ def test_predictor_returns_cpu_lifecycle_and_yaw_outputs() -> None:
         tracking_metrics=TrackingMetricConfig(
             presence_threshold=0.5,
             duplicate_distance=0.05,
+            id_switch_distance=0.05,
         ),
         denormalize=True,
     )
@@ -204,6 +205,7 @@ def test_reference_tracking_predictor_requires_and_round_trips_typed_metadata() 
         "tracking_metrics": TrackingMetricConfig(
             presence_threshold=0.5,
             duplicate_distance=0.05,
+            id_switch_distance=0.05,
         ),
         "denormalize": True,
         "court_keypoint_metadata": court_keypoint_contract_document(
