@@ -27,7 +27,7 @@ def _runtime(tmp_path: Path) -> ScenePipelineConfiguration:
     data_root = tmp_path / "data"
     external_root = tmp_path / "third_party"
     data_root.mkdir()
-    source_video = data_root / "synthetic_data_generation/raw/tennis_court.mp4"
+    source_video = data_root / "synthetic_data_generation/raw/B00.mp4"
     source_video.parent.mkdir(parents=True)
     source_video.write_bytes(b"integration fixture")
     accad_root = data_root / "ACCAD"
