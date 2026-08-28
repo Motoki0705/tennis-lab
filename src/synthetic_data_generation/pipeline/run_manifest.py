@@ -14,6 +14,26 @@ from src.synthetic_data_generation.pipeline.contracts import (
 from src.utils.io import load_json, save_json_atomic, utc_now_iso
 
 RUN_MANIFEST_SCHEMA = "synthetic_scene_run_v1"
+_SOURCE_COMPARE_CHUNK_BYTES = 1024 * 1024
+
+
+def _same_file_contents(left: Path, right: Path) -> bool:
+    """Compare two source authorities without trusting host-specific paths."""
+    try:
+        if left.resolve(strict=True) == right.resolve(strict=True):
+            return True
+        if left.stat().st_size != right.stat().st_size:
+            return False
+        with left.open("rb") as left_stream, right.open("rb") as right_stream:
+            while True:
+                left_chunk = left_stream.read(_SOURCE_COMPARE_CHUNK_BYTES)
+                right_chunk = right_stream.read(_SOURCE_COMPARE_CHUNK_BYTES)
+                if left_chunk != right_chunk:
+                    return False
+                if not left_chunk:
+                    return True
+    except OSError:
+        return False
 
 
 @dataclass(slots=True)
@@ -119,13 +139,28 @@ class MutableRunManifest:
             updated_at=str(raw["updated_at"]),
         )
 
-    def assert_request_compatible(self, request: ScenePipelineRequest) -> None:
-        """Compare semantic request fields before destructive invalidation."""
+    def assert_request_compatible(
+        self,
+        request: ScenePipelineRequest,
+        *,
+        canonical_source_video: Path | None = None,
+    ) -> None:
+        """Compare semantic request fields before destructive invalidation.
+
+        Absolute source paths may legitimately change between the host and an
+        isolated execution environment. A mismatch is accepted only when the
+        requested file is byte-identical to the canonical ingested scene copy.
+        """
         if request.scene_id != self.scene_id:
             raise ValueError("Request scene_id disagrees with the canonical workspace.")
         if request.config_schema != self.config_schema:
             raise ValueError("Request config schema is incompatible with the current scene.")
-        if str(request.source_video) != self.source_video:
+        source_path_matches = str(request.source_video) == self.source_video
+        source_content_matches = (
+            canonical_source_video is not None
+            and _same_file_contents(request.source_video, canonical_source_video)
+        )
+        if not source_path_matches and not source_content_matches:
             raise ValueError("Request source video disagrees with the current scene.")
 
     def begin(self, stage: StageName) -> None:
