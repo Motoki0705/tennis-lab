@@ -8,13 +8,14 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.tasks.blcs.models.components.differentiable_projection import (
-    DifferentiableProjection,
-)
+from src.utils.geometry.court_pose import court_position_to_world_translation
 from src.utils.losses.temporal import (
     BallisticGravityPenalty,
     TemporalSmoothnessPenalty,
     ballistic_second_difference,
+)
+from src.utils.projection.differentiable_projection import (
+    DifferentiablePinholeProjection,
 )
 from src.utils.schema.court import COURT_COORD_SCALE_Z
 
@@ -67,7 +68,7 @@ def reprojection_loss(
     camera_cy: Tensor,
     camera_w: Tensor,
     camera_h: Tensor,
-    projector: DifferentiableProjection,
+    projector: DifferentiablePinholeProjection,
     mask: Tensor,
 ) -> Tensor:
     """Compute multi-view reprojection loss.
@@ -87,7 +88,7 @@ def reprojection_loss(
         Scalar reprojection loss.
     """
     pred_uv, in_front = projector(
-        position_norm=pred_position,
+        world_points=court_position_to_world_translation(pred_position),
         camera_R=camera_R,
         camera_C=camera_C,
         camera_f=camera_f,
@@ -224,7 +225,7 @@ class BLCSLoss(nn.Module):
             persistent=False,
         )
 
-        self.projector = DifferentiableProjection()
+        self.projector = DifferentiablePinholeProjection()
 
     def forward(
         self,

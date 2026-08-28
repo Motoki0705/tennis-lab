@@ -108,6 +108,27 @@ def _canonical_batch(
     }
 
 
+def _with_reprojection(batch: dict[str, Tensor]) -> dict[str, Tensor]:
+    batch_size, views = batch["human_kp"].shape[:2]
+    batch.update(
+        {
+            "human_kp_target": batch["human_kp"].clone(),
+            "human_vis_target": batch["human_vis"].clone(),
+            "camera_R": torch.eye(3)
+            .view(1, 1, 3, 3)
+            .expand(batch_size, views, -1, -1)
+            .clone(),
+            "camera_C": torch.zeros(batch_size, views, 3),
+            "camera_f": torch.full((batch_size, views), 800.0),
+            "camera_cx": torch.full((batch_size, views), 640.0),
+            "camera_cy": torch.full((batch_size, views), 360.0),
+            "camera_w": torch.full((batch_size, views), 1280.0),
+            "camera_h": torch.full((batch_size, views), 720.0),
+        }
+    )
+    return batch
+
+
 def test_exact_model_adapter_pair_is_bound_once() -> None:
     bound = bind_plcs_model_io(_StandardModel(), _standard_adapter())
     assert type(bound.model) is _StandardModel
@@ -196,6 +217,45 @@ def test_camera_token_profile_rejects_single_view_before_forward() -> None:
     adapter = _standard_adapter(min_views=2)
     with pytest.raises(ModelInputContractError, match="at least 2 views"):
         adapter.build_call(_canonical_batch(views=1))
+
+
+def test_training_boundary_prepares_strict_reprojection_bundle() -> None:
+    batch = _with_reprojection(_canonical_batch())
+
+    prepared = _standard_adapter().prepare_training_batch(batch)
+
+    assert prepared.reprojection_target is not None
+    assert prepared.reprojection_target.target_uv.shape == (2, 2, 3, 17, 2)
+    assert prepared.reprojection_target.camera_R.shape == (2, 2, 3, 3)
+    assert prepared.reprojection_target.padding_mask is batch["padding_mask"]
+
+
+def test_training_boundary_rejects_partial_reprojection_bundle() -> None:
+    batch = _with_reprojection(_canonical_batch())
+    batch.pop("camera_h")
+
+    with pytest.raises(ModelInputContractError, match="all-or-none"):
+        _standard_adapter().prepare_training_batch(batch)
+
+
+def test_training_boundary_validates_reprojection_camera_and_padding_values() -> None:
+    batch = _with_reprojection(_canonical_batch())
+    batch["camera_f"][0, 0] = 0.0
+    with pytest.raises(ModelInputContractError, match="camera_f must be positive"):
+        _standard_adapter().prepare_training_batch(batch)
+
+    batch = _with_reprojection(_canonical_batch())
+    batch["padding_mask"][:, 1] = True
+    batch["human_vis_target"][:, 1] = False
+    batch["camera_f"][:, 1] = 0.0
+    batch["camera_w"][:, 1] = 1.0
+    batch["camera_h"][:, 1] = 1.0
+    prepared = _standard_adapter().prepare_training_batch(batch)
+    assert prepared.reprojection_target is not None
+
+    batch["human_vis_target"][:, 1, 0, 0] = True
+    with pytest.raises(ModelInputContractError, match="zero at padded"):
+        _standard_adapter().prepare_training_batch(batch)
 
 
 def test_multiview_boundary_rejects_sequence_without_non_padding_frame() -> None:

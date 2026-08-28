@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -16,6 +17,7 @@ from src.tasks.base.data.scene_dataset import (
 from src.tasks.plcs.data.augmentation import PLCSObservationAugmentation
 from src.tasks.plcs.data.targets import build_coco17_world_targets
 from src.tasks.plcs.data.types import PLCSBatch
+from src.utils.projection.camera_projector import camera_from_mapping
 from src.utils.schema.court_normalization import (
     validate_court_coordinate_normalization,
 )
@@ -118,6 +120,15 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
         court_kp_list: list[Tensor] = []
         human_vis_list: list[Tensor] = []
         court_vis_list: list[Tensor] = []
+        human_kp_target_list: list[Tensor] = []
+        human_vis_target_list: list[Tensor] = []
+        camera_R_list: list[Tensor] = []
+        camera_C_list: list[Tensor] = []
+        camera_f_list: list[Tensor] = []
+        camera_cx_list: list[Tensor] = []
+        camera_cy_list: list[Tensor] = []
+        camera_w_list: list[Tensor] = []
+        camera_h_list: list[Tensor] = []
 
         for cam_idx in cams.indices:
             human_kp = torch.from_numpy(
@@ -142,6 +153,23 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
             court_kp_list.append(court_kp)
             human_vis_list.append(human_vis)
             court_vis_list.append(court_vis)
+            human_kp_target_list.append(human_kp.clone())
+            human_vis_target_list.append(human_vis.clone())
+
+            params_key = f"cam_{cam_idx}_params"
+            raw_camera = scene.data.get(params_key)
+            if not isinstance(raw_camera, Mapping):
+                raise TypeError(
+                    f"{scene.path}: {params_key} must be a camera-parameter mapping."
+                )
+            camera = camera_from_mapping(dict(raw_camera))
+            camera_R_list.append(camera.R)
+            camera_C_list.append(camera.C)
+            camera_f_list.append(torch.tensor(camera.f, dtype=torch.float32))
+            camera_cx_list.append(torch.tensor(camera.cx, dtype=torch.float32))
+            camera_cy_list.append(torch.tensor(camera.cy, dtype=torch.float32))
+            camera_w_list.append(torch.tensor(float(camera.w), dtype=torch.float32))
+            camera_h_list.append(torch.tensor(float(camera.h), dtype=torch.float32))
 
         position = torch.from_numpy(scene.get_array("position", window=window)).float()
         rotation = torch.from_numpy(scene.get_array("rotation", window=window)).float()
@@ -158,6 +186,15 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
             ),
             "position": position,
             "rotation": rotation,
+            "human_kp_target": torch.stack(human_kp_target_list, dim=0),
+            "human_vis_target": torch.stack(human_vis_target_list, dim=0),
+            "camera_R": torch.stack(camera_R_list, dim=0),
+            "camera_C": torch.stack(camera_C_list, dim=0),
+            "camera_f": torch.stack(camera_f_list, dim=0),
+            "camera_cx": torch.stack(camera_cx_list, dim=0),
+            "camera_cy": torch.stack(camera_cy_list, dim=0),
+            "camera_w": torch.stack(camera_w_list, dim=0),
+            "camera_h": torch.stack(camera_h_list, dim=0),
         }
 
         # Build COCO17 world targets from raw NPZ data
@@ -178,6 +215,31 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
 
 def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, Tensor]:
     """Collate variable-view/variable-length PLCS samples into a padded batch."""
+    reprojection_keys = (
+        "human_kp_target",
+        "human_vis_target",
+        "camera_R",
+        "camera_C",
+        "camera_f",
+        "camera_cx",
+        "camera_cy",
+        "camera_w",
+        "camera_h",
+    )
+    reprojection_presence = [
+        tuple(key in sample for key in reprojection_keys) for sample in batch
+    ]
+    if any(any(presence) and not all(presence) for presence in reprojection_presence):
+        raise ValueError(
+            "PLCS reprojection sample fields must be provided as one complete group."
+        )
+    complete_reprojection = [all(presence) for presence in reprojection_presence]
+    if any(complete_reprojection) and not all(complete_reprojection):
+        raise ValueError(
+            "PLCS batch cannot mix samples with and without reprojection targets."
+        )
+    has_reprojection = all(complete_reprojection)
+
     max_views = max(int(sample["human_kp"].shape[0]) for sample in batch)
     max_seq_len = max(int(sample["human_kp"].shape[1]) for sample in batch)
 
@@ -189,6 +251,15 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, 
     position_batch = []
     rotation_batch = []
     human_kp_3d_batch = []
+    human_kp_target_batch: list[Tensor] = []
+    human_vis_target_batch: list[Tensor] = []
+    camera_R_batch: list[Tensor] = []
+    camera_C_batch: list[Tensor] = []
+    camera_f_batch: list[Tensor] = []
+    camera_cx_batch: list[Tensor] = []
+    camera_cy_batch: list[Tensor] = []
+    camera_w_batch: list[Tensor] = []
+    camera_h_batch: list[Tensor] = []
 
     for sample in batch:
         n_views = int(sample["human_kp"].shape[0])
@@ -205,6 +276,16 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, 
         position = sample["position"]
         rotation = sample["rotation"]
         human_kp_3d = sample.get("human_kp_3d")
+        if has_reprojection:
+            human_kp_target = sample["human_kp_target"]
+            human_vis_target = sample["human_vis_target"]
+            camera_R = sample["camera_R"]
+            camera_C = sample["camera_C"]
+            camera_f = sample["camera_f"]
+            camera_cx = sample["camera_cx"]
+            camera_cy = sample["camera_cy"]
+            camera_w = sample["camera_w"]
+            camera_h = sample["camera_h"]
 
         if pad_seq > 0:
             human_kp = torch.cat(
@@ -225,6 +306,15 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, 
             if human_kp_3d is not None:
                 human_kp_3d = torch.cat(
                     [human_kp_3d, torch.zeros(pad_seq, 17, 3)], dim=0
+                )
+            if has_reprojection:
+                human_kp_target = torch.cat(
+                    [human_kp_target, torch.zeros(n_views, pad_seq, 17, 2)],
+                    dim=1,
+                )
+                human_vis_target = torch.cat(
+                    [human_vis_target, torch.zeros(n_views, pad_seq, 17)],
+                    dim=1,
                 )
 
         if pad_views > 0:
@@ -247,6 +337,27 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, 
                 ],
                 dim=0,
             )
+            if has_reprojection:
+                human_kp_target = torch.cat(
+                    [
+                        human_kp_target,
+                        torch.zeros(pad_views, max_seq_len, 17, 2),
+                    ],
+                    dim=0,
+                )
+                human_vis_target = torch.cat(
+                    [human_vis_target, torch.zeros(pad_views, max_seq_len, 17)],
+                    dim=0,
+                )
+                camera_R = torch.cat(
+                    [camera_R, torch.zeros(pad_views, 3, 3)], dim=0
+                )
+                camera_C = torch.cat([camera_C, torch.zeros(pad_views, 3)], dim=0)
+                camera_f = torch.cat([camera_f, torch.zeros(pad_views)], dim=0)
+                camera_cx = torch.cat([camera_cx, torch.zeros(pad_views)], dim=0)
+                camera_cy = torch.cat([camera_cy, torch.zeros(pad_views)], dim=0)
+                camera_w = torch.cat([camera_w, torch.ones(pad_views)], dim=0)
+                camera_h = torch.cat([camera_h, torch.ones(pad_views)], dim=0)
 
         human_kp_batch.append(human_kp)
         court_kp_batch.append(court_kp)
@@ -257,6 +368,16 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, 
         rotation_batch.append(rotation)
         if human_kp_3d is not None:
             human_kp_3d_batch.append(human_kp_3d)
+        if has_reprojection:
+            human_kp_target_batch.append(human_kp_target)
+            human_vis_target_batch.append(human_vis_target)
+            camera_R_batch.append(camera_R)
+            camera_C_batch.append(camera_C)
+            camera_f_batch.append(camera_f)
+            camera_cx_batch.append(camera_cx)
+            camera_cy_batch.append(camera_cy)
+            camera_w_batch.append(camera_w)
+            camera_h_batch.append(camera_h)
 
     collated: dict[str, Tensor] = {
         "human_kp": torch.stack(human_kp_batch, dim=0),
@@ -269,5 +390,19 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, 
     }
     if human_kp_3d_batch:
         collated["human_kp_3d"] = torch.stack(human_kp_3d_batch, dim=0)
+    if has_reprojection:
+        collated.update(
+            {
+                "human_kp_target": torch.stack(human_kp_target_batch, dim=0),
+                "human_vis_target": torch.stack(human_vis_target_batch, dim=0),
+                "camera_R": torch.stack(camera_R_batch, dim=0),
+                "camera_C": torch.stack(camera_C_batch, dim=0),
+                "camera_f": torch.stack(camera_f_batch, dim=0),
+                "camera_cx": torch.stack(camera_cx_batch, dim=0),
+                "camera_cy": torch.stack(camera_cy_batch, dim=0),
+                "camera_w": torch.stack(camera_w_batch, dim=0),
+                "camera_h": torch.stack(camera_h_batch, dim=0),
+            }
+        )
 
     return collated

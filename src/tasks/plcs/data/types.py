@@ -32,6 +32,16 @@ class PLCSBatch(TypedDict):
     court_vis: torch.Tensor
     position: torch.Tensor
     rotation: torch.Tensor
+    human_kp_3d: torch.Tensor
+    human_kp_target: torch.Tensor
+    human_vis_target: torch.Tensor
+    camera_R: torch.Tensor
+    camera_C: torch.Tensor
+    camera_f: torch.Tensor
+    camera_cx: torch.Tensor
+    camera_cy: torch.Tensor
+    camera_w: torch.Tensor
+    camera_h: torch.Tensor
 
 
 @dataclass(frozen=True)

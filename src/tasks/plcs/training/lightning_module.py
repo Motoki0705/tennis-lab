@@ -16,6 +16,7 @@ from src.tasks.base.training.qualitative_saving import save_qualitative_animatio
 from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.model_io import (
     PLCSDecodedPrediction,
+    PLCSInputProfile,
     PLCSModelIOAdapter,
     PLCSPreparedBatch,
     PLCSStandardBoundModelIO,
@@ -67,6 +68,15 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
         root = runtime.raw
         loss_cfg = PLCSLossConfig.from_dict(dict(root.loss))
+        if loss_cfg.reprojection_weight > 0.0:
+            if adapter.profile is not PLCSInputProfile.MULTIVIEW:
+                raise ValueError(
+                    "PLCS reprojection loss requires the multiview input profile."
+                )
+            if not adapter.predict_canonical_pose:
+                raise ValueError(
+                    "PLCS reprojection loss requires model.predict_canonical_pose=true."
+                )
         self.loss_fn = PLCSLoss(config=loss_cfg)
 
         # MCMC (SGLD) training strategy (issue #519): optional Langevin noise
@@ -187,6 +197,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             pred_canonical_pose=outputs.canonical_pose,
             target_human_kp_3d=prepared.target_human_kp_3d,
             padding_mask=padding_mask,
+            reprojection_target=prepared.reprojection_target,
         )
         losses = self.loss_fn(loss_inputs)
 
@@ -265,6 +276,8 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         )
         if "loss_canonical_pose" in metrics:
             self.log(f"{stage}/loss_canonical_pose", metrics["loss_canonical_pose"])
+        if "loss_reprojection" in metrics:
+            self.log(f"{stage}/loss_reprojection", metrics["loss_reprojection"])
         self._log_gan_metrics(stage, metrics)
 
     def test_prediction_payload(

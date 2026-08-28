@@ -24,6 +24,7 @@ from src.tasks.plcs.model_io.contracts import (
     PLCSDecodedPrediction,
     PLCSInputProfile,
     PLCSPreparedBatch,
+    PLCSReprojectionTarget,
     PLCSTrackingDecodedPrediction,
 )
 from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
@@ -44,6 +45,19 @@ _MASK_DTYPES = frozenset(
         torch.bfloat16,
         torch.float32,
         torch.float64,
+    }
+)
+_REPROJECTION_KEYS = frozenset(
+    {
+        "human_kp_target",
+        "human_vis_target",
+        "camera_R",
+        "camera_C",
+        "camera_f",
+        "camera_cx",
+        "camera_cy",
+        "camera_w",
+        "camera_h",
     }
 )
 
@@ -363,6 +377,13 @@ class PLCSModelIOAdapter:
                 ),
             )
             _finite("human_kp_3d", target_human_kp_3d)
+        reprojection_target = self._prepare_reprojection_target(
+            batch,
+            batch_size=batch_size,
+            views=views,
+            frames=frames,
+            padding_mask=padding_mask,
+        )
 
         if self.profile is PLCSInputProfile.MULTIVIEW:
             return PLCSPreparedBatch(
@@ -371,6 +392,7 @@ class PLCSModelIOAdapter:
                 target_rotation=target_rotation,
                 target_human_kp_3d=target_human_kp_3d,
                 target_padding_mask=padding_mask,
+                reprojection_target=reprojection_target,
             )
         if self.camera_index >= views:
             raise ModelInputContractError(
@@ -443,6 +465,109 @@ class PLCSModelIOAdapter:
         _binary_mask("human_vis", batch["human_vis"])
         _binary_mask("padding_mask", batch["padding_mask"])
         _binary_mask("court_vis", batch["court_vis"])
+
+    def _prepare_reprojection_target(
+        self,
+        batch: Mapping[str, object],
+        *,
+        batch_size: int,
+        views: int,
+        frames: int,
+        padding_mask: Tensor,
+    ) -> PLCSReprojectionTarget | None:
+        present = _REPROJECTION_KEYS.intersection(batch)
+        if present and present != _REPROJECTION_KEYS:
+            missing = sorted(_REPROJECTION_KEYS - present)
+            raise ModelInputContractError(
+                "PLCS reprojection fields are all-or-none; missing="
+                f"{missing}."
+            )
+        if not present:
+            return None
+
+        target_uv = require_tensor(
+            batch,
+            "human_kp_target",
+            spec=TensorSpec(
+                shape=(batch_size, views, frames, NUM_HUMAN_KP, 2),
+                dtypes=_FLOAT_DTYPES,
+            ),
+        )
+        target_vis = require_tensor(
+            batch,
+            "human_vis_target",
+            spec=TensorSpec(
+                shape=(batch_size, views, frames, NUM_HUMAN_KP),
+                dtypes=_MASK_DTYPES,
+            ),
+        )
+        camera_R = require_tensor(
+            batch,
+            "camera_R",
+            spec=TensorSpec(
+                shape=(batch_size, views, 3, 3),
+                dtypes=_FLOAT_DTYPES,
+            ),
+        )
+        camera_C = require_tensor(
+            batch,
+            "camera_C",
+            spec=TensorSpec(
+                shape=(batch_size, views, 3),
+                dtypes=_FLOAT_DTYPES,
+            ),
+        )
+
+        camera_scalars: dict[str, Tensor] = {}
+        for name in (
+            "camera_f",
+            "camera_cx",
+            "camera_cy",
+            "camera_w",
+            "camera_h",
+        ):
+            camera_scalars[name] = require_tensor(
+                batch,
+                name,
+                spec=TensorSpec(
+                    shape=(batch_size, views),
+                    dtypes=_FLOAT_DTYPES,
+                ),
+            )
+
+        _normalized_uv("human_kp_target", target_uv)
+        _binary_mask("human_vis_target", target_vis)
+        for name, tensor in {
+            "camera_R": camera_R,
+            "camera_C": camera_C,
+            **camera_scalars,
+        }.items():
+            _finite(name, tensor)
+
+        if bool(((target_vis > 0) & padding_mask.unsqueeze(-1)).any().item()):
+            raise ModelInputContractError(
+                "human_vis_target must be zero at padded view/time entries."
+            )
+
+        valid_views = ~padding_mask.all(dim=-1)
+        for name in ("camera_f", "camera_w", "camera_h"):
+            if bool((camera_scalars[name][valid_views] <= 0).any().item()):
+                raise ModelInputContractError(
+                    f"{name} must be positive for every non-padded camera view."
+                )
+
+        return PLCSReprojectionTarget(
+            target_uv=target_uv,
+            target_vis=target_vis,
+            padding_mask=padding_mask,
+            camera_R=camera_R,
+            camera_C=camera_C,
+            camera_f=camera_scalars["camera_f"],
+            camera_cx=camera_scalars["camera_cx"],
+            camera_cy=camera_scalars["camera_cy"],
+            camera_w=camera_scalars["camera_w"],
+            camera_h=camera_scalars["camera_h"],
+        )
 
     def decode_output(
         self, output: Mapping[str, object]

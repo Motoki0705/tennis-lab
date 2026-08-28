@@ -22,6 +22,22 @@ class PLCSInputProfile(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
+class PLCSReprojectionTarget:
+    """Clean 2D pose targets and fixed cameras for reprojection supervision."""
+
+    target_uv: Tensor
+    target_vis: Tensor
+    padding_mask: Tensor
+    camera_R: Tensor
+    camera_C: Tensor
+    camera_f: Tensor
+    camera_cx: Tensor
+    camera_cy: Tensor
+    camera_w: Tensor
+    camera_h: Tensor
+
+
+@dataclass(frozen=True, slots=True)
 class PLCSPreparedBatch:
     """Validated model call plus the output layout required by its consumer."""
 
@@ -31,6 +47,7 @@ class PLCSPreparedBatch:
     target_rotation: Tensor | None = None
     target_human_kp_3d: Tensor | None = None
     target_padding_mask: Tensor | None = None
+    reprojection_target: PLCSReprojectionTarget | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,5 +87,6 @@ __all__ = [
     "PLCSInputProfile",
     "PLCSPhysicalPrediction",
     "PLCSPreparedBatch",
+    "PLCSReprojectionTarget",
     "PLCSTrackingDecodedPrediction",
 ]

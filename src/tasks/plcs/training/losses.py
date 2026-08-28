@@ -17,12 +17,16 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+from src.tasks.plcs.model_io.contracts import PLCSReprojectionTarget
 from src.utils.configuration import (
     ConfigurationTypeError,
     SemanticConfigurationError,
 )
 from src.utils.geometry.angles import wrapped_angle_diff as _wrapped_angle_diff
-from src.utils.geometry.court_pose import world_pose_to_canonical_pose
+from src.utils.geometry.court_pose import (
+    canonical_pose_to_world_pose,
+    world_pose_to_canonical_pose,
+)
 from src.utils.geometry.skeleton import (
     compute_bone_lengths,
     compute_joint_angles,
@@ -30,6 +34,9 @@ from src.utils.geometry.skeleton import (
     compute_torso_twist,
 )
 from src.utils.losses.temporal import TemporalSmoothnessPenalty
+from src.utils.projection.differentiable_projection import (
+    DifferentiablePinholeProjection,
+)
 from src.utils.schema.player import (
     COCO17_BONE_LENGTH_EDGES as BONE_LENGTH_EDGES,
 )
@@ -60,11 +67,15 @@ class PLCSLossConfig:
 
     Attributes:
         position_weight: Weight for position loss.
+        position_smooth_l1_beta: Smooth-L1 transition beta in normalized court
+            coordinates for position loss.
         rotation_weight: Weight for rotation loss (1 - cosine on (cos, sin)).
         angle_weight: Weight for wrapped-angle smooth-L1 yaw loss.
         canonical_pose_weight: Weight for canonical pose loss.
         canonical_pose_smooth_l1_beta: Smooth-L1 transition beta in metres for
             canonical pose loss.
+        reprojection_weight: Weight for clean 2D pose reprojection loss.
+        reprojection_smooth_l1_beta: Smooth-L1 transition beta in normalized UV.
         joint_angle_weight: Weight for joint-angle loss.
         torsion_angle_weight: Weight for limb torsion / dihedral angle loss.
         torso_twist_weight: Weight for shoulder-hip twist loss.
@@ -73,6 +84,7 @@ class PLCSLossConfig:
     """
 
     position_weight: float
+    position_smooth_l1_beta: float
     rotation_weight: float
     angle_weight: float
     # Temporal jerk prior on predicted player position (removes per-frame
@@ -80,6 +92,8 @@ class PLCSLossConfig:
     position_smoothness_weight: float
     canonical_pose_weight: float
     canonical_pose_smooth_l1_beta: float
+    reprojection_weight: float
+    reprojection_smooth_l1_beta: float
     joint_angle_weight: float
     torsion_angle_weight: float
     torso_twist_weight: float
@@ -123,9 +137,17 @@ class PLCSLossConfig:
             return result
 
         weights = {key: _weight(key) for key in scalar_keys}
+        if weights["position_smooth_l1_beta"] <= 0.0:
+            raise SemanticConfigurationError(
+                "loss.position_smooth_l1_beta must be positive."
+            )
         if weights["canonical_pose_smooth_l1_beta"] <= 0.0:
             raise SemanticConfigurationError(
                 "loss.canonical_pose_smooth_l1_beta must be positive."
+            )
+        if weights["reprojection_smooth_l1_beta"] <= 0.0:
+            raise SemanticConfigurationError(
+                "loss.reprojection_smooth_l1_beta must be positive."
             )
 
         def _opt_weights(key: str, *, expected_length: int) -> tuple[float, ...] | None:
@@ -165,11 +187,16 @@ class PLCSLossConfig:
 
         return cls(
             position_weight=weights["position_weight"],
+            position_smooth_l1_beta=weights["position_smooth_l1_beta"],
             rotation_weight=weights["rotation_weight"],
             angle_weight=weights["angle_weight"],
             position_smoothness_weight=weights["position_smoothness_weight"],
             canonical_pose_weight=weights["canonical_pose_weight"],
             canonical_pose_smooth_l1_beta=weights["canonical_pose_smooth_l1_beta"],
+            reprojection_weight=weights["reprojection_weight"],
+            reprojection_smooth_l1_beta=weights[
+                "reprojection_smooth_l1_beta"
+            ],
             joint_angle_weight=weights["joint_angle_weight"],
             torsion_angle_weight=weights["torsion_angle_weight"],
             torso_twist_weight=weights["torso_twist_weight"],
@@ -382,6 +409,7 @@ class PLCSLossInputs:
         frame_mask: Optional per-frame validity mask for padded sequences.
         pred_canonical_pose: Predicted canonical joints, ``(..., J, 3)``.
         target_canonical_pose: Target canonical joints, ``(..., J, 3)``.
+        reprojection_target: Optional clean 2D pose and camera bundle.
 
     """
 
@@ -392,6 +420,7 @@ class PLCSLossInputs:
     frame_mask: Tensor | None = None
     pred_canonical_pose: Tensor | None = None
     target_canonical_pose: Tensor | None = None
+    reprojection_target: PLCSReprojectionTarget | None = None
 
     @property
     def zero(self) -> Tensor:
@@ -404,6 +433,14 @@ class PLCSLossInputs:
         return (
             self.pred_canonical_pose is not None
             and self.target_canonical_pose is not None
+        )
+
+    @property
+    def has_reprojection(self) -> bool:
+        """Whether predicted canonical pose and 2D/camera targets are available."""
+        return (
+            self.pred_canonical_pose is not None
+            and self.reprojection_target is not None
         )
 
 
@@ -422,12 +459,13 @@ def _masked_frame_mean(per_frame: Tensor, frame_mask: Tensor | None) -> Tensor:
     return per_frame.mean()
 
 
-def position_loss_term(inputs: PLCSLossInputs) -> Tensor:
-    """Position term: masked smooth-L1 between predicted and target positions."""
+def position_loss_term(inputs: PLCSLossInputs, *, beta: float = 1.0) -> Tensor:
+    """Position term in normalized court coordinates with configurable beta."""
     per_frame = nn.functional.smooth_l1_loss(
         inputs.pred_position,
         inputs.target_position,
         reduction="none",
+        beta=beta,
     ).mean(dim=-1)
     return _masked_frame_mean(per_frame, inputs.frame_mask)
 
@@ -508,6 +546,55 @@ def canonical_pose_loss_term(
         beta=beta,
     ).mean(dim=(-1, -2))
     return _masked_frame_mean(per_frame, inputs.frame_mask)
+
+
+def reprojection_loss_term(
+    inputs: PLCSLossInputs,
+    *,
+    projector: DifferentiablePinholeProjection,
+    beta: float,
+) -> Tensor:
+    """Project the composed predicted world pose and compare it to clean 2D pose."""
+    if not inputs.has_reprojection:
+        return inputs.zero
+    canonical_pose = cast(Tensor, inputs.pred_canonical_pose)
+    target = cast(PLCSReprojectionTarget, inputs.reprojection_target)
+    world_pose = canonical_pose_to_world_pose(
+        canonical_pose,
+        inputs.pred_position,
+        inputs.pred_rotation,
+    )
+    pred_uv, _in_front = projector(
+        world_points=world_pose,
+        camera_R=target.camera_R,
+        camera_C=target.camera_C,
+        camera_f=target.camera_f,
+        camera_cx=target.camera_cx,
+        camera_cy=target.camera_cy,
+        camera_w=target.camera_w,
+        camera_h=target.camera_h,
+    )
+    if pred_uv.shape != target.target_uv.shape:
+        raise ValueError(
+            "Projected PLCS pose and 2D target must share shape, got "
+            f"{tuple(pred_uv.shape)} and {tuple(target.target_uv.shape)}."
+        )
+
+    # Visibility is a property of the clean target. A prediction behind a
+    # camera remains supervised instead of silently escaping the objective.
+    valid = (target.target_vis > 0) & ~target.padding_mask.unsqueeze(-1)
+    per_coordinate = nn.functional.smooth_l1_loss(
+        pred_uv,
+        target.target_uv,
+        reduction="none",
+        beta=beta,
+    )
+    return masked_mean(
+        per_coordinate,
+        valid.unsqueeze(-1),
+        binarize=True,
+        denom_min=1.0,
+    )
 
 
 def joint_angle_loss_term(inputs: PLCSLossInputs) -> Tensor:
@@ -681,6 +768,7 @@ DEFAULT_LOSS_TERMS: dict[str, PLCSLossTerm] = {
     "angle": angle_loss_term,
     "position_smoothness": cast("PLCSLossTerm", position_smoothness_loss_term),
     "canonical_pose": canonical_pose_loss_term,
+    "reprojection": cast("PLCSLossTerm", reprojection_loss_term),
     "joint_angle": joint_angle_loss_term,
     "torsion_angle": torsion_angle_loss_term,
     "torso_twist": torso_twist_loss_term,
@@ -726,9 +814,17 @@ class PLCSLoss(nn.Module):
             beta=1e-3,
             axis_weights=(1.0, 1.0, 1.0),
         )
+        self.reprojection_projector = DifferentiablePinholeProjection()
         self.loss_terms: dict[str, PLCSLossTerm]
         if loss_terms is None:
             self.loss_terms = dict(DEFAULT_LOSS_TERMS)
+            self.loss_terms["position"] = cast(
+                "PLCSLossTerm",
+                partial(
+                    position_loss_term,
+                    beta=config.position_smooth_l1_beta,
+                ),
+            )
             self.loss_terms["position_smoothness"] = partial(
                 position_smoothness_loss_term,
                 penalty=self.position_smoothness_penalty,
@@ -738,6 +834,14 @@ class PLCSLoss(nn.Module):
                 partial(
                     canonical_pose_loss_term,
                     beta=config.canonical_pose_smooth_l1_beta,
+                ),
+            )
+            self.loss_terms["reprojection"] = cast(
+                "PLCSLossTerm",
+                partial(
+                    reprojection_loss_term,
+                    projector=self.reprojection_projector,
+                    beta=config.reprojection_smooth_l1_beta,
                 ),
             )
         else:
@@ -785,6 +889,12 @@ class PLCSLoss(nn.Module):
             for name in CANONICAL_DEPENDENT_TERM_NAMES
         )
 
+    def _requires_reprojection(self) -> bool:
+        return (
+            "reprojection" in self.loss_terms
+            and self.loss_weights["reprojection"] > 0.0
+        )
+
     def prepare_inputs(
         self,
         pred_position: Tensor,
@@ -795,6 +905,7 @@ class PLCSLoss(nn.Module):
         pred_canonical_pose: Tensor | None,
         target_human_kp_3d: Tensor | None,
         padding_mask: Tensor | None,
+        reprojection_target: PLCSReprojectionTarget | None = None,
     ) -> PLCSPreparedLossTerms:
         """Validate inputs and compute named scalar terms before ``forward``."""
         frame_mask = None
@@ -806,11 +917,15 @@ class PLCSLoss(nn.Module):
             )
 
         canonical_required = self._requires_canonical_pose()
-        if canonical_required and pred_canonical_pose is None:
+        reprojection_required = self._requires_reprojection()
+        if (canonical_required or reprojection_required) and pred_canonical_pose is None:
             raise ValueError(
-                "pred_canonical_pose is required when any canonical-dependent "
-                "loss weight is > 0. Enabled canonical-dependent terms include: "
-                f"{CANONICAL_DEPENDENT_TERM_NAMES}."
+                "pred_canonical_pose is required when canonical-dependent or "
+                "reprojection loss weight is > 0."
+            )
+        if reprojection_required and reprojection_target is None:
+            raise ValueError(
+                "reprojection_target is required when reprojection_weight is > 0."
             )
 
         target_canonical_pose: Tensor | None = None
@@ -837,6 +952,7 @@ class PLCSLoss(nn.Module):
             frame_mask=frame_mask,
             pred_canonical_pose=pred_canonical_pose,
             target_canonical_pose=target_canonical_pose,
+            reprojection_target=reprojection_target,
         )
         return PLCSPreparedLossTerms(
             terms=tuple(

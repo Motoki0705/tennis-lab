@@ -1,0 +1,10 @@
+# Joint PLCS supervision: position, rotation, wrapped yaw, and canonical pose.
+defaults:
+  - _base
+  - _self_
+
+position_weight: 1.0
+position_smooth_l1_beta: 0.1
+rotation_weight: 1.0
+angle_weight: 1.0
+canonical_pose_weight: 1.0

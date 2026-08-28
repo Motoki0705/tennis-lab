@@ -1,0 +1,14 @@
+{
+  "run_id": "1787847972019077668_797896_plcs-multiview-axial-all-outputs-beta01-v4-t128-bf16-gpu0",
+  "name": "plcs-multiview-axial-all-outputs-beta01-v4-t128-bf16-gpu0",
+  "command": "CUDA_VISIBLE_DEVICES=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.plcs.scripts.train model=multiview_axial_base loss=all_outputs_beta01 data.scene_dir=plcs_canonical_pose_beta data.batch_size=4 \"data.num_views_range=[4,4]\" \"data.seq_len_range=[128,128]\" data.num_workers=2 training.trainer.accumulate_grad_batches=1 training.trainer.precision=bf16-mixed training.trainer.max_epochs=50 training.compile.enabled=false training.qualitative_logging.enabled=false training.trainer.enable_progress_bar=false training.trainer.enable_model_summary=false run.output_dir=plcs/plcs_multiview_axial_all_outputs_beta01_v4_t128_bf16_gpu0 paths.project_root=/home/kamimura/projects/tennis-lab paths.artifact_root=$TENNIS_REPRO_DIR",
+  "provider": "codex",
+  "session": "01a03ee0-c172-7d22-81d3-c07127757135",
+  "issue": "",
+  "commit": "00a2bb2af251a86038600c871b1f30a3c664b9b8",
+  "branch": "exp/plcs-reprojection-loss",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-reprojection-loss",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-reprojection-loss",
+  "captured_at": "2026-08-28T01:26:12+09:00"
+}
