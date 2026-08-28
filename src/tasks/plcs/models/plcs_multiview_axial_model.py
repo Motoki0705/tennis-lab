@@ -11,6 +11,7 @@ from src.tasks.plcs.models.components.heads import (
     CanonicalPoseHead,
     PositionHead,
     RotationHead,
+    TemporalDecomposedCanonicalPoseHead,
 )
 from src.utils.models import (
     RMSNorm,
@@ -51,6 +52,7 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         max_seq_len: int,
         invisible_init_std: float,
         num_court_tokens: int,
+        canonical_pose_readout: Literal["direct", "temporal_decomposition"] = "direct",
     ) -> None:
         super().__init__()
 
@@ -59,6 +61,18 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         self.max_views = int(max_views)
         self.max_seq_len = int(max_seq_len)
         self.num_court_tokens = int(num_court_tokens)
+        self.canonical_pose_readout = canonical_pose_readout
+
+        if self.canonical_pose_readout not in {"direct", "temporal_decomposition"}:
+            raise ValueError(
+                "canonical_pose_readout must be 'direct' or "
+                f"'temporal_decomposition', got {self.canonical_pose_readout!r}."
+            )
+        if not self.predict_canonical_pose and self.canonical_pose_readout != "direct":
+            raise ValueError(
+                "canonical_pose_readout='temporal_decomposition' requires "
+                "predict_canonical_pose=True."
+            )
 
         self._validate_init_args(
             hidden_dim=self.hidden_dim,
@@ -142,15 +156,26 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             num_layers=2,
             dropout=dropout,
         )
-        self.canonical_pose_head = None
+        self.canonical_pose_head: (
+            CanonicalPoseHead | TemporalDecomposedCanonicalPoseHead | None
+        ) = None
         if self.predict_canonical_pose:
-            self.canonical_pose_head = CanonicalPoseHead(
-                input_dim=self.hidden_dim,
-                hidden_dim=self.hidden_dim // 2,
-                num_layers=2,
-                dropout=dropout,
-                num_keypoints=NUM_HUMAN_KP,
-            )
+            if self.canonical_pose_readout == "direct":
+                self.canonical_pose_head = CanonicalPoseHead(
+                    input_dim=self.hidden_dim,
+                    hidden_dim=self.hidden_dim // 2,
+                    num_layers=2,
+                    dropout=dropout,
+                    num_keypoints=NUM_HUMAN_KP,
+                )
+            else:
+                self.canonical_pose_head = TemporalDecomposedCanonicalPoseHead(
+                    input_dim=self.hidden_dim,
+                    hidden_dim=self.hidden_dim // 2,
+                    num_layers=2,
+                    dropout=dropout,
+                    num_keypoints=NUM_HUMAN_KP,
+                )
             self._decode_readouts = self._decode_readouts_with_canonical_pose
         else:
             self._decode_readouts = self._decode_readouts_without_canonical_pose
@@ -205,6 +230,10 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             max_seq_len=config.integer("max_seq_len"),
             invisible_init_std=config.number("invisible_init_std"),
             num_court_tokens=num_court_tokens,
+            canonical_pose_readout=cast(
+                Literal["direct", "temporal_decomposition"],
+                config.string("canonical_pose_readout"),
+            ),
         )
 
     def forward(
@@ -279,23 +308,42 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
 
         x = x[:, :, 0, :]
         x = self.final_norm(x)
+        frame_valid = ~padding_mask.all(dim=1)
 
-        return self._decode_readouts(x, x)
+        return self._decode_readouts(x, x, frame_valid)
 
     def _decode_readouts_without_canonical_pose(
-        self, pose_features: Tensor, rotation_features: Tensor
+        self,
+        pose_features: Tensor,
+        rotation_features: Tensor,
+        frame_valid: Tensor,
     ) -> dict[str, Tensor]:
+        del frame_valid
         return {
             "position": self.position_head(pose_features),
             "rotation": self.rotation_head(rotation_features),
         }
 
     def _decode_readouts_with_canonical_pose(
-        self, pose_features: Tensor, rotation_features: Tensor
+        self,
+        pose_features: Tensor,
+        rotation_features: Tensor,
+        frame_valid: Tensor,
     ) -> dict[str, Tensor]:
-        head = cast(CanonicalPoseHead, self.canonical_pose_head)
         return {
             "position": self.position_head(pose_features),
             "rotation": self.rotation_head(rotation_features),
-            "canonical_pose": head(rotation_features),
+            "canonical_pose": self._decode_canonical_pose(
+                rotation_features, frame_valid
+            ),
         }
+
+    def _decode_canonical_pose(self, features: Tensor, frame_valid: Tensor) -> Tensor:
+        """Decode canonical pose with the configured, explicit readout family."""
+        if self.canonical_pose_readout == "direct":
+            direct_head = cast(CanonicalPoseHead, self.canonical_pose_head)
+            return cast("Tensor", direct_head(features))
+        motion_head = cast(
+            TemporalDecomposedCanonicalPoseHead, self.canonical_pose_head
+        )
+        return cast("Tensor", motion_head(features, frame_valid))

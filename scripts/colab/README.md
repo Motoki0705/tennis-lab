@@ -1,8 +1,8 @@
-# Colab scripts
+# Colab setup scripts
 
-Colab では Google Drive を `/content/drive` にマウントした後、対象の train スクリプトを実行する。train の配置規則は [`train/README.md`](train/README.md) を参照する。
+Colab固有の学習起動スクリプトは廃止されました。現在このディレクトリで管理するのは、必要なセットアップ処理を明示的にsourceするための`setup/`モジュールだけです。Google Driveを `/content/drive` にマウントした後、各処理の実行入口から必要なモジュールをsourceします。
 
-`setup/` は train から `source` される内部モジュールであり、Colab から直接実行しない。
+`setup/` のシェルは単体の実行入口ではなく、呼び出し元から `source` して利用します。
 
 - `install_deps.sh`: 共通のシステム・Python 依存関係を導入する。
 - `path_contract.sh`: Hydra の role root と、その配下の相対パスを実行前に検証する。
@@ -11,10 +11,4 @@ Colab では Google Drive を `/content/drive` にマウントした後、対象
 
 ## パス設定
 
-Colab train スクリプトでは、Hydra の role-based path contract に合わせて root とその配下のパスを分ける。
-
-- `DATA_ROOT`, `ARTIFACT_ROOT`, `OUTPUT_ROOT`, `CHECKPOINT_ROOT`: 絶対パス。
-- `DATASET_DIR`, `CHUNKS_DIR`, `OUTPUT_DIR`: 対応する root 配下の相対パス。
-- `run.resume`, `run.init_weights`: `CHECKPOINT_ROOT` 配下の相対パス。
-
-絶対保存先を変更するときは leaf 側へ絶対パスを渡さず、対応する root を変更する。契約違反は依存導入・データ生成・学習より前にエラーにする。
+`path_contract.sh` は Hydra の role-based path contract を検証します。root は絶対パス、root配下のdataset・artifact・output・checkpointは相対パスとして呼び出し元から渡してください。絶対保存先を変更するときは leaf 側へ絶対パスを渡さず、対応する root を変更します。契約違反は依存導入・データ生成より前にエラーになります。

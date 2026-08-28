@@ -114,7 +114,7 @@ def test_b00_quantitative_and_full_timeline_values_are_config_owned() -> None:
         runtime.blcs.performance.maximum_background_cache_misses,
         runtime.blcs.performance.maximum_published_fraction_of_dense_reference,
         runtime.blcs.performance.maximum_batch_frames,
-    ) == (3_600.0, 3, 18, 0.2, 64)
+    ) == (3_600.0, 3, 18, 0.2, 1)
     assert (
         runtime.plcs.performance.maximum_wall_seconds,
         runtime.plcs.performance.maximum_nht_invocations,
@@ -312,18 +312,13 @@ def test_blcs_and_plcs_production_inputs_are_typed_and_have_no_frame_subset() ->
         "test": 1,
     }
     assert runtime.blcs.trajectory_source.timeline.num_frames == 1024
-    assert runtime.blcs.assets.background.role.value == "background"
     assert runtime.blcs.assets.ball.role.value == "movable"
     assert runtime.blcs.assets.ball.asset_class == "ball"
-    assert (
-        runtime.blcs.assets.ball.appearance_model
-        == runtime.blcs.assets.background.appearance_model
-    )
-    assert (
-        runtime.blcs.assets.ball.appearance_space
-        == runtime.blcs.assets.background.appearance_space
-    )
-    assert runtime.blcs.assets.ball_radius_m == 0.0335
+    assert runtime.blcs.assets.ball.floating_dtype == "float32"
+    assert runtime.blcs.assets.ball.appearance_model == "rgb"
+    assert runtime.blcs.assets.ball.appearance_space == "linear_rgb"
+    assert runtime.blcs.assets.settings.radius_m == 0.0335
+    assert runtime.blcs.assets.settings.visibility_threshold == 0.0001
     assert runtime.blcs.render_timeout_seconds == runtime.nht.render_timeout_seconds
 
     assert runtime.plcs.accad_root == (
@@ -377,6 +372,9 @@ def test_blcs_and_plcs_production_inputs_are_typed_and_have_no_frame_subset() ->
         ("dataset.plcs.foreground_rasterizer.maximum_alpha", 1.0),
         ("dataset.court.performance.maximum_complete_array_scans_per_sample", 0),
         ("dataset.blcs.performance.execution_device", ""),
+        ("dataset.blcs.performance.execution_device", "cuda:1"),
+        ("dataset.blcs.performance.maximum_batch_frames", 2),
+        ("dataset.blcs.assets.ball.floating_dtype", "float64"),
         ("dataset.blcs.performance.maximum_published_fraction_of_dense_reference", 1.1),
         ("dataset.plcs.performance.maximum_nht_invocations", 2),
     ],

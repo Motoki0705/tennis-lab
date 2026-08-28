@@ -4,6 +4,7 @@ rotation_weight: 1.0
 angle_weight: 0.0
 position_smoothness_weight: 0.0
 canonical_pose_weight: 0.0
+canonical_pose_smooth_l1_beta: 1.0
 reprojection_weight: 0.0
 reprojection_smooth_l1_beta: 0.01
 joint_angle_weight: 0.0

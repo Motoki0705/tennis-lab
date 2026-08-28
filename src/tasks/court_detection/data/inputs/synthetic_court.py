@@ -38,6 +38,7 @@ from src.tasks.court_detection.data.contracts import (
     CourtInputSpec,
     CourtInstance2D,
     CourtKeypointChannels,
+    CourtPoseAuthority,
     CourtRawSample,
     CourtSampleMetadata,
     CourtSampleRecord,
@@ -190,6 +191,11 @@ class SyntheticCourtInput:
                     CourtInputCapability.COURT_INSTANCES,
                     CourtInputCapability.SEGMENTATION_REFERENCE,
                     CourtInputCapability.LINE_REFERENCE,
+                    *(
+                        {CourtInputCapability.V3_TARGET_COURT_POSE}
+                        if config.schema == "v3"
+                        else set()
+                    ),
                 }
             ),
             keypoint_schema=keypoint_schema,
@@ -234,6 +240,20 @@ class SyntheticCourtInput:
             )
         source_sample_id = cast(str, record.payload["source_sample_id"])
         scene_id = cast(str, record.payload["scene_id"])
+        pose_authority = None
+        if self.config.schema == "v3":
+            target = cast(Mapping[str, object], labels["target_court"])
+            camera = SceneCamera.from_dict(labels["camera"])
+            binding = self._parse_target_court_binding(target)
+            if binding.court_instance_id != record.payload.get("target_court_id"):
+                raise ValueError(
+                    "Synthetic Court V3 pose target court disagrees with its record."
+                )
+            pose_authority = CourtPoseAuthority(
+                source_schema="canonical_court_dataset_v3",
+                camera=camera,
+                target_court=binding,
+            )
         return CourtRawSample(
             sample_id=record.sample_id,
             image=image,
@@ -268,6 +288,7 @@ class SyntheticCourtInput:
                     ),
                 },
             ),
+            pose_authority=pose_authority,
         )
 
     def _load_manifests(self) -> dict[CourtSourceSplit, tuple[CourtSampleRecord, ...]]:
@@ -738,6 +759,7 @@ class SyntheticCourtInput:
             visible=channel_visible,
             physical=channel_physical,
             flip=_V1_FLIP_PERMUTATION,
+            points_dtype=torch.float32,
         )
         return tuple(instances), channels
 
@@ -752,6 +774,7 @@ class SyntheticCourtInput:
             record=record,
             opposite_physical_indices=OPPOSITE_COURT_END_INDEX,
             schema_label="v2",
+            channel_points_dtype=torch.float32,
         )
 
     def _parse_projection_v3(
@@ -765,6 +788,7 @@ class SyntheticCourtInput:
             record=record,
             opposite_physical_indices=CAMERA_VIEW_HALF_TURN_INDEX,
             schema_label="v3",
+            channel_points_dtype=torch.float64,
         )
 
     def _parse_projection_singleton(
@@ -774,6 +798,7 @@ class SyntheticCourtInput:
         record: CourtSampleRecord,
         opposite_physical_indices: tuple[int, ...],
         schema_label: str,
+        channel_points_dtype: torch.dtype,
     ) -> tuple[tuple[CourtInstance2D, ...], CourtKeypointChannels]:
         expected_resolution = [
             cast(int, record.payload["width"]),
@@ -958,6 +983,7 @@ class SyntheticCourtInput:
             visible=channel_visible,
             physical=channel_physical,
             flip=_V2_FLIP_PERMUTATION,
+            points_dtype=channel_points_dtype,
         )
         return tuple(instances), channels
 
@@ -969,6 +995,7 @@ class SyntheticCourtInput:
         visible: list[list[bool]],
         physical: list[list[int]],
         flip: tuple[int, ...],
+        points_dtype: torch.dtype,
     ) -> CourtKeypointChannels:
         point_capacity = len(points[0])
         if point_capacity == 0 or any(len(values) != point_capacity for values in points):
@@ -977,7 +1004,7 @@ class SyntheticCourtInput:
             )
         return CourtKeypointChannels(
             channel_names=names,
-            points_xy=torch.tensor(points, dtype=torch.float32),
+            points_xy=torch.tensor(points, dtype=points_dtype),
             point_visible=torch.tensor(visible, dtype=torch.bool),
             physical_indices=torch.tensor(physical, dtype=torch.long),
             horizontal_flip_permutation=flip,
@@ -1008,6 +1035,24 @@ class SyntheticCourtInput:
                 "Synthetic Court v2 target distance must be finite and non-negative."
             )
         return court_id
+
+    @classmethod
+    def _parse_target_court_binding(cls, value: object) -> TargetCourtBinding:
+        target = cls._exact_mapping(
+            value,
+            {
+                "binding",
+                "resolution_policy",
+                "camera_to_court_center_distance_m",
+            },
+            name="target_court",
+        )
+        binding = TargetCourtBinding.from_dict(target["binding"])
+        # Reuse the complete envelope validation and assert one exact identity.
+        court_id = cls._parse_target_court(target)
+        if binding.court_instance_id != court_id:  # pragma: no cover - same parse
+            raise ValueError("Synthetic Court target binding identity changed.")
+        return binding
 
     @classmethod
     def _parse_point(cls, value: object) -> _ParsedPoint:

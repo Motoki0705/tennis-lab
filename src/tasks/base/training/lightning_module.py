@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Protocol, cast
@@ -278,6 +279,13 @@ class BaseLightningModule(pl.LightningModule):
             self._test_pred_arrays[key].append(arr)
 
     def _test_predictions_dir(self) -> Path:
+        queue_repro_dir = os.environ.get("TENNIS_REPRO_DIR")
+        if queue_repro_dir is not None:
+            if not queue_repro_dir or not Path(queue_repro_dir).is_absolute():
+                raise ValueError(
+                    "TENNIS_REPRO_DIR must be a non-empty absolute path when set."
+                )
+            return Path(queue_repro_dir) / "predictions"
         resolved: Path = self.path_resolver.resolve(
             PathRole.ARTIFACT, "test_predictions"
         )

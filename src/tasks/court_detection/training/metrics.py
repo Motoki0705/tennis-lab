@@ -2,24 +2,62 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import cast
+import math
+import statistics
+from collections.abc import Iterable, Mapping
+from typing import Protocol, cast
 
 import torch
-from torch import Tensor
+from torch import Tensor, nn
 
 from src.tasks.court_detection.data.contracts import CourtTargetKind
+from src.tasks.court_detection.geometry.pose import (
+    CourtDecodedPose,
+    canonical_semantic_court_points_batched,
+    project_predicted_canonical_points,
+)
+from src.tasks.court_detection.model_io.contracts import CourtConsistencyResult
+from src.tasks.court_detection.training.losses import rotation_geodesic_radians
 from src.utils.data.heatmaps import heatmaps_to_peaks
+
+COURT_RESULT_METRIC_NAMES = (
+    "kp_mean_distance_px",
+    "kp_median_distance_px",
+    "pose_reprojection_mean_distance_px",
+    "pose_translation_l2_m",
+    "pose_rotation_geodesic_deg",
+    "pose_focal_relative_error",
+    "line_dice",
+    "seg_miou",
+    "kp_pose_consistency_distance_px",
+    "invalid_depth_rate",
+    "visible_point_count",
+)
+COURT_TRAIN_DIAGNOSTIC_NAMES = (
+    "kp_gradient_finite",
+    "seg_gradient_finite",
+    "line_gradient_finite",
+    "pose_gradient_finite",
+    "train_step_time_ms",
+    "cuda_peak_memory_bytes",
+)
 
 
 class CourtDetectionMetrics:
     """Accumulate one metric under one resolved target-head contract."""
 
-    def __init__(self, kind: CourtTargetKind, output_channels: int) -> None:
+    def __init__(
+        self,
+        kind: CourtTargetKind,
+        output_channels: int,
+        *,
+        singleton_kp: bool = False,
+    ) -> None:
         if output_channels <= 0:
             raise ValueError("Court metric output_channels must be positive.")
         self.kind = kind
         self.output_channels = output_channels
+        self.singleton_kp = singleton_kp
         self.reset()
 
     def update(
@@ -79,6 +117,14 @@ class CourtDetectionMetrics:
         visible = target["point_visible"]
         if points.ndim != 4 or visible.shape != points.shape[:-1]:
             raise ValueError("Court KP metric target geometry is invalid.")
+        if self.singleton_kp:
+            self._update_singleton_kp(
+                logits,
+                points=points,
+                visible=visible,
+                image_size=image_size,
+            )
+            return
         max_peaks = points.shape[2]
         coordinates, _, predicted_valid = heatmaps_to_peaks(
             torch.sigmoid(logits),
@@ -126,6 +172,46 @@ class CourtDetectionMetrics:
                     pairwise.amin(dim=1).detach().cpu().tolist()
                 )
 
+    def _update_singleton_kp(
+        self,
+        logits: Tensor,
+        *,
+        points: Tensor,
+        visible: Tensor,
+        image_size: Tensor,
+    ) -> None:
+        if points.shape != (logits.shape[0], self.output_channels, 1, 2):
+            raise ValueError(
+                "Singleton Court KP metric requires exact target shape (B,C,1,2)."
+            )
+        for sample_index, size in enumerate(image_size.tolist()):
+            height, width = (int(value) for value in size)
+            if height <= 0 or width <= 0 or height > logits.shape[-2] or width > logits.shape[-1]:
+                raise ValueError(
+                    "Singleton Court KP metric image_size is outside logits bounds."
+                )
+            valid_logits = logits[sample_index, :, :height, :width]
+            flat_index = valid_logits.flatten(1).argmax(dim=-1)
+            predicted_pixels = torch.stack(
+                (
+                    (flat_index % width).to(dtype=points.dtype),
+                    torch.div(flat_index, width, rounding_mode="floor").to(
+                        dtype=points.dtype
+                    ),
+                ),
+                dim=-1,
+            )
+            target_scale = points.new_tensor(
+                [float(max(width - 1, 0)), float(max(height - 1, 0))]
+            )
+            target_pixels = points[sample_index, :, 0] * target_scale
+            accepted = visible[sample_index, :, 0]
+            distances = torch.linalg.vector_norm(
+                predicted_pixels - target_pixels,
+                dim=-1,
+            )
+            self._kp_distances.extend(distances[accepted].detach().cpu().tolist())
+
     def _update_line(
         self,
         logits: Tensor,
@@ -156,12 +242,20 @@ class CourtDetectionMetrics:
             ]
             return {"miou": sum(values) / len(values)}
         if self.kind == "kp":
+            mean_distance = (
+                sum(self._kp_distances) / len(self._kp_distances)
+                if self._kp_distances
+                else 0.0
+            )
+            median_distance = (
+                statistics.median(self._kp_distances)
+                if self._kp_distances
+                else 0.0
+            )
             return {
-                "mean_dist": (
-                    sum(self._kp_distances) / len(self._kp_distances)
-                    if self._kp_distances
-                    else 0.0
-                )
+                "mean_dist": mean_distance,
+                "mean_distance_px": mean_distance,
+                "median_distance_px": median_distance,
             }
         return {
             "dice": (
@@ -179,4 +273,294 @@ class CourtDetectionMetrics:
         self._line_dice_count = 0
 
 
-__all__ = ["CourtDetectionMetrics"]
+class _PoseMetricTarget(Protocol):
+    @property
+    def translation_m(self) -> Tensor: ...
+
+    @property
+    def rotation(self) -> Tensor: ...
+
+    @property
+    def log_focal(self) -> Tensor: ...
+
+
+class _PoseProjectionTarget(_PoseMetricTarget, Protocol):
+    @property
+    def intrinsics(self) -> Tensor: ...
+
+    @property
+    def semantic_to_physical(self) -> Tensor: ...
+
+
+class CourtPoseMetrics:
+    """Accumulate explicit camera-pose metrics for the hierarchy."""
+
+    def __init__(self) -> None:
+        self.reset()
+
+    def update(
+        self,
+        prediction: CourtDecodedPose,
+        target: _PoseMetricTarget,
+    ) -> None:
+        target_translation = target.translation_m.to(
+            device=prediction.translation_m.device,
+            dtype=prediction.translation_m.dtype,
+        )
+        target_rotation = target.rotation.to(
+            device=prediction.rotation.device,
+            dtype=prediction.rotation.dtype,
+        )
+        target_log = target.log_focal.to(
+            device=prediction.log_focal.device,
+            dtype=prediction.log_focal.dtype,
+        )
+        translation = torch.linalg.vector_norm(
+            prediction.translation_m - target_translation,
+            dim=-1,
+        )
+        rotation_deg = rotation_geodesic_radians(
+            prediction.rotation,
+            target_rotation,
+        ) * (180.0 / math.pi)
+        log_error = torch.abs(prediction.log_focal - target_log)
+        target_focal = torch.exp(target_log)
+        relative_focal = torch.abs(prediction.focal_px - target_focal) / target_focal
+        self._translation.extend(translation.detach().cpu().tolist())
+        self._rotation_deg.extend(rotation_deg.detach().cpu().tolist())
+        self._focal_relative.extend(relative_focal.detach().cpu().tolist())
+        self._log_focal.extend(log_error.detach().cpu().tolist())
+
+    def compute(self) -> dict[str, float]:
+        return {
+            "translation_l2_m": self._mean(self._translation),
+            "rotation_geodesic_deg": self._mean(self._rotation_deg),
+            "focal_relative_error": self._mean(self._focal_relative),
+            "log_focal_abs_error": self._mean(self._log_focal),
+        }
+
+    @staticmethod
+    def _mean(values: list[float]) -> float:
+        return sum(values) / len(values) if values else 0.0
+
+    def reset(self) -> None:
+        self._translation: list[float] = []
+        self._rotation_deg: list[float] = []
+        self._focal_relative: list[float] = []
+        self._log_focal: list[float] = []
+
+
+class CourtPoseGeometryMetrics:
+    """Accumulate pose-only and cross-branch pixel diagnostics."""
+
+    def __init__(self, *, min_depth_m: float) -> None:
+        if not math.isfinite(min_depth_m) or min_depth_m <= 0.0:
+            raise ValueError("min_depth_m must be finite and positive.")
+        self.min_depth_m = float(min_depth_m)
+        self.reset()
+
+    def update(
+        self,
+        consistency: CourtConsistencyResult,
+        *,
+        ground_truth_points_normalized: Tensor,
+        point_visible: Tensor,
+        image_size: Tensor,
+    ) -> None:
+        dense = consistency.dense_points_xy
+        pose = consistency.pose_points_xy
+        depth = consistency.pose_depth_m
+        if dense.shape != pose.shape or dense.ndim != 3 or dense.shape[1:] != (14, 2):
+            raise ValueError("Court pose metric points must share shape (B,14,2).")
+        batch_size = dense.shape[0]
+        if ground_truth_points_normalized.shape != (batch_size, 14, 2):
+            raise ValueError("Court pose GT metric points must have shape (B,14,2).")
+        if point_visible.shape != (batch_size, 14) or point_visible.dtype != torch.bool:
+            raise ValueError("Court pose GT metric visibility must be bool (B,14).")
+        if image_size.shape != (batch_size, 2) or image_size.dtype != torch.long:
+            raise ValueError("Court pose metric image_size must be int64 (B,2).")
+        if depth.shape != (batch_size, 14):
+            raise ValueError("Court pose metric depth must have shape (B,14).")
+        tensors = (
+            pose,
+            depth,
+            ground_truth_points_normalized,
+            point_visible,
+            image_size,
+        )
+        if any(value.device != dense.device for value in tensors):
+            raise ValueError("Court pose metric tensors must share one device.")
+        if bool(torch.any(image_size <= 0)):
+            raise ValueError("Court pose metric image_size must be positive.")
+        scale = torch.stack(
+            (
+                image_size[:, 1] - 1,
+                image_size[:, 0] - 1,
+            ),
+            dim=-1,
+        ).to(dtype=dense.dtype)
+        ground_truth_pixels = ground_truth_points_normalized.to(
+            dtype=dense.dtype
+        ) * scale[:, None, :]
+        pose_distance = torch.linalg.vector_norm(
+            pose - ground_truth_pixels,
+            dim=-1,
+        )
+        consistency_distance = torch.linalg.vector_norm(dense - pose, dim=-1)
+        self._record_pose_distances(
+            pose_distance,
+            depth,
+            point_visible,
+        )
+        self._consistency_distance.extend(
+            consistency_distance[point_visible].detach().cpu().tolist()
+        )
+
+    def update_pose_prediction(
+        self,
+        prediction: CourtDecodedPose,
+        target: _PoseProjectionTarget,
+        *,
+        ground_truth_points_normalized: Tensor,
+        point_visible: Tensor,
+        image_size: Tensor,
+    ) -> None:
+        """Record independent GT reprojection metrics for pose-only runs.
+
+        Pose-only supervision deliberately disables the KP--pose consistency
+        objective, but it still needs a pixel-space metric against the fixed
+        target-court geometry.  This path computes that metric directly from
+        the decoded pose and therefore does not manufacture a consistency
+        loss or depend on a dense prediction branch.
+        """
+        canonical_points = canonical_semantic_court_points_batched(
+            target.semantic_to_physical,
+            dtype=prediction.translation_m.dtype,
+            device=prediction.translation_m.device,
+        )
+        projection = project_predicted_canonical_points(
+            prediction,
+            canonical_points,
+            target.intrinsics[:, :2, 2],
+        )
+        self._validate_metric_inputs(
+            projection.points_xy,
+            projection.depth_m,
+            ground_truth_points_normalized,
+            point_visible,
+            image_size,
+        )
+        scale = torch.stack(
+            (
+                image_size[:, 1] - 1,
+                image_size[:, 0] - 1,
+            ),
+            dim=-1,
+        ).to(dtype=projection.points_xy.dtype)
+        ground_truth_pixels = ground_truth_points_normalized.to(
+            dtype=projection.points_xy.dtype
+        ) * scale[:, None, :]
+        pose_distance = torch.linalg.vector_norm(
+            projection.points_xy - ground_truth_pixels,
+            dim=-1,
+        )
+        self._record_pose_distances(
+            pose_distance,
+            projection.depth_m,
+            point_visible,
+        )
+
+    def _record_pose_distances(
+        self,
+        pose_distance: Tensor,
+        depth: Tensor,
+        point_visible: Tensor,
+    ) -> None:
+        accepted_pose = pose_distance[point_visible].detach().cpu().tolist()
+        self._pose_reprojection.extend(accepted_pose)
+        self._invalid_depth_count += int(
+            ((depth <= self.min_depth_m) & point_visible).sum().item()
+        )
+        self._visible_point_count += int(point_visible.sum().item())
+
+    @staticmethod
+    def _validate_metric_inputs(
+        pose_points: Tensor,
+        depth: Tensor,
+        ground_truth_points_normalized: Tensor,
+        point_visible: Tensor,
+        image_size: Tensor,
+    ) -> None:
+        batch_size = pose_points.shape[0]
+        if pose_points.shape != (batch_size, 14, 2):
+            raise ValueError("Court pose metric points must have shape (B,14,2).")
+        if depth.shape != (batch_size, 14):
+            raise ValueError("Court pose metric depth must have shape (B,14).")
+        if ground_truth_points_normalized.shape != (batch_size, 14, 2):
+            raise ValueError("Court pose GT metric points must have shape (B,14,2).")
+        if point_visible.shape != (batch_size, 14) or point_visible.dtype != torch.bool:
+            raise ValueError("Court pose GT metric visibility must be bool (B,14).")
+        if image_size.shape != (batch_size, 2) or image_size.dtype != torch.long:
+            raise ValueError("Court pose metric image_size must be int64 (B,2).")
+        if any(
+            value.device != pose_points.device
+            for value in (
+                depth,
+                ground_truth_points_normalized,
+                point_visible,
+                image_size,
+            )
+        ):
+            raise ValueError("Court pose metric tensors must share one device.")
+        if bool(torch.any(image_size <= 0)):
+            raise ValueError("Court pose metric image_size must be positive.")
+
+    def compute(self) -> dict[str, float]:
+        return {
+            "pose_reprojection_mean_distance_px": self._mean(
+                self._pose_reprojection
+            ),
+            "kp_pose_consistency_distance_px": self._mean(
+                self._consistency_distance
+            ),
+            "invalid_depth_rate": (
+                self._invalid_depth_count / self._visible_point_count
+                if self._visible_point_count
+                else 0.0
+            ),
+            "visible_point_count": float(self._visible_point_count),
+        }
+
+    @staticmethod
+    def _mean(values: list[float]) -> float:
+        return sum(values) / len(values) if values else 0.0
+
+    def reset(self) -> None:
+        self._pose_reprojection: list[float] = []
+        self._consistency_distance: list[float] = []
+        self._invalid_depth_count = 0
+        self._visible_point_count = 0
+
+
+def gradient_finite_status(parameters: Iterable[nn.Parameter]) -> float:
+    """Return 1 only when a branch has gradients and all of them are finite."""
+    trainable = [parameter for parameter in parameters if parameter.requires_grad]
+    if not trainable or any(parameter.grad is None for parameter in trainable):
+        return 0.0
+    gradients = [cast(Tensor, parameter.grad) for parameter in trainable]
+    return float(all(bool(torch.isfinite(gradient).all()) for gradient in gradients))
+
+
+# Deprecated source alias; both names resolve to the same unified tracker.
+CourtQueryGeometryMetrics = CourtPoseGeometryMetrics
+
+
+__all__ = [
+    "COURT_RESULT_METRIC_NAMES",
+    "COURT_TRAIN_DIAGNOSTIC_NAMES",
+    "CourtDetectionMetrics",
+    "CourtPoseMetrics",
+    "CourtPoseGeometryMetrics",
+    "CourtQueryGeometryMetrics",
+    "gradient_finite_status",
+]

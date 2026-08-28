@@ -115,7 +115,7 @@ def test_semantic_composition_round_trip_has_no_artifact_identity_fields() -> No
         assert forbidden not in serialized
 
 
-def test_foreground_composition_is_strictly_articulated_and_background_free() -> None:
+def test_foreground_composition_accepts_rigid_or_articulated_movable_objects() -> None:
     asset = _asset(asset_id="player-surface", role=GaussianAssetRole.MOVABLE)
     transform = _translation(0.0, 0.0, 0.0)
     foreground = GaussianForegroundComposition(
@@ -148,17 +148,18 @@ def test_foreground_composition_is_strictly_articulated_and_background_free() ->
     assert "background" not in payload
     assert GaussianForegroundComposition.from_dict(payload) == foreground
     assert {item.instance_id for item in foreground.objects} == {7, 8}
-    with pytest.raises(ValueError, match="declared articulated"):
-        replace(
-            foreground,
-            objects=(
-                replace(
-                    foreground.objects[0],
-                    deformation_kind=GaussianDeformationKind.RIGID,
-                ),
-                foreground.objects[1],
+    mixed = replace(
+        foreground,
+        objects=(
+            replace(
+                foreground.objects[0],
+                deformation_kind=GaussianDeformationKind.RIGID,
             ),
-        )
+            foreground.objects[1],
+        ),
+    )
+    assert mixed.objects[0].deformation_kind is GaussianDeformationKind.RIGID
+    assert mixed.objects[1].deformation_kind is GaussianDeformationKind.ARTICULATED
 
 
 def test_composition_rejects_incompatible_appearance_without_hashes() -> None:

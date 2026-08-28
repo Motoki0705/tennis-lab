@@ -97,7 +97,19 @@ their public domain source contracts.
 - [Court Detection dataset v1/v2/v3 contract](dataset/court/README.md).
 - BLCS preserves every source physics frame across multi-object planning,
   config-owned cameras, balanced court assignment, contiguous chunks, labels,
-  final assembly, and diagnostics.
+  final assembly, and diagnostics.  Its ball is a real asset-local metric
+  Gaussian surface.  The planner turns each 3D trajectory sample into a rigid
+  Gaussian transform, converts the complete timeline to canonical NHT scene
+  space, and calls the public `nht-render --composition` boundary.  NHT keeps
+  the reconstructed background resident and jointly rasterizes background and
+  moving balls with gsplat front-to-back transmittance.  The joint eval3d pass
+  directly accumulates the asset's configured linear RGB, instance response,
+  and expected depth, so felt/seam colors are not constrained by the frozen
+  background shader's learned color gamut.  It publishes RGB, alpha, expected
+  depth, and positive instance IDs.  BLCS then converts only those joint-rendered object
+  pixels to the existing compact foreground-delta store.  There is no 2D disc,
+  projected-radius compositor, background-depth comparison fallback, or CPU
+  disc oracle in the BLCS production path.
 - PLCS loads complete ACCAD motion clips, applies SMPL-H and per-frame Gaussian
   LBS, rejects rigid-only motion, composes the full multi-object global timeline,
   and publishes motion/camera/court diagnostics.
