@@ -247,7 +247,8 @@ class CourtTransformerEncoder(nn.Module):
         rope_theta: float | None = None,
         dropout: float = 0.0,
         attn_dropout: float | None = None,
-    ) -> None:
+            ffn_type: FFNType = "swiglu",
+) -> None:
         super().__init__()
         aliases = tuple(value for value in (channels, token_dim) if value is not None)
         if aliases and dim is not None and any(value != dim for value in aliases):
@@ -405,7 +406,8 @@ class CourtTransformerEncoder(nn.Module):
         features: Tensor,
         *,
         patch_valid_mask: Tensor | None = None,
-    ) -> TransformerEncoderOutput:
+            ffn_type: FFNType = "swiglu",
+) -> TransformerEncoderOutput:
         """Transform valid deepest-grid tokens and return map plus pose query."""
 
         batch, _, height, width = self._validate_input(features)
@@ -446,7 +448,8 @@ class CourtTransformerEncoder(nn.Module):
                 tokens,
                 freqs_cis=frequencies,
                 attn_mask=attention_mask,
-            )
+                            ffn_type=ffn_type,
+)
             tokens = torch.where(token_valid.unsqueeze(-1), tokens, 0.0)
         spatial = tokens[:, 1:].transpose(1, 2).reshape(batch, self.dim, height, width)
         return TransformerEncoderOutput(spatial=spatial, pose_query=tokens[:, 0])
