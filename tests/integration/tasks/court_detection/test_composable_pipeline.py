@@ -407,6 +407,9 @@ def _compose(
     overrides = [
         f"data/source={source}",
         f"data/processing={processing}",
+        "model/encoder=default",
+        "model/transformer_encoder=none",
+        "model/decoder=fpn",
     ]
     if keypoint_court_scope is not None:
         overrides.append(f"data.source.keypoint_court_scope={keypoint_court_scope}")
