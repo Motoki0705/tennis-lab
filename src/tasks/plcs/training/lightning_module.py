@@ -25,6 +25,7 @@ from src.tasks.plcs.models.discriminators import build_plcs_discriminator
 from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
 from src.tasks.plcs.training.mcmc import LangevinNoiseInjector, MCMCConfig
 from src.tasks.plcs.training.metrics import PLCSMetrics
+from src.utils.geometry.court_pose import world_pose_to_canonical_pose
 from src.utils.schema.court_normalization import (
     add_court_coordinate_normalization,
     validate_court_coordinate_normalization,
@@ -281,6 +282,19 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         mask = result.get("gan_padding_mask")
         if mask is not None:
             payload["padding_mask"] = mask
+        if outputs.canonical_pose is not None:
+            if prepared.target_human_kp_3d is None:
+                raise ValueError(
+                    "Canonical test predictions require target_human_kp_3d."
+                )
+            target_position = cast(Tensor, prepared.target_position)
+            target_rotation = cast(Tensor, prepared.target_rotation)
+            payload["pred_canonical_pose"] = outputs.canonical_pose
+            payload["target_canonical_pose"] = world_pose_to_canonical_pose(
+                prepared.target_human_kp_3d,
+                target_position,
+                target_rotation,
+            )
         return payload
 
     def configure_optimizers(self) -> Any:

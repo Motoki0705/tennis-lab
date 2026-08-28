@@ -1,0 +1,707 @@
+diff --git a/src/tasks/plcs/configs/loss/_base.yaml b/src/tasks/plcs/configs/loss/_base.yaml
+index 484e5b3d..947ad3c0 100644
+--- a/src/tasks/plcs/configs/loss/_base.yaml
++++ b/src/tasks/plcs/configs/loss/_base.yaml
+@@ -3,6 +3,7 @@ rotation_weight: 1.0
+ angle_weight: 0.0
+ position_smoothness_weight: 0.0
+ canonical_pose_weight: 0.0
++canonical_pose_smooth_l1_beta: 1.0
+ joint_angle_weight: 0.0
+ torsion_angle_weight: 0.0
+ torso_twist_weight: 0.0
+diff --git a/src/tasks/plcs/configs/model/_multiview_axial.yaml b/src/tasks/plcs/configs/model/_multiview_axial.yaml
+index c660e6a7..f7f4372e 100644
+--- a/src/tasks/plcs/configs/model/_multiview_axial.yaml
++++ b/src/tasks/plcs/configs/model/_multiview_axial.yaml
+@@ -21,3 +21,4 @@ rope_dim: ???
+ rope_theta_time: 1000.0
+ rope_theta_camera: 1000.0
+ predict_canonical_pose: true
++canonical_pose_readout: direct
+diff --git a/src/tasks/plcs/configuration.py b/src/tasks/plcs/configuration.py
+index ce544c62..864dc359 100644
+--- a/src/tasks/plcs/configuration.py
++++ b/src/tasks/plcs/configuration.py
+@@ -224,6 +224,7 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
+             "rope_theta_time",
+             "rope_theta_camera",
+             "predict_canonical_pose",
++            "canonical_pose_readout",
+         }
+     ),
+     "plcs_multiview_axial_split": frozenset(
+@@ -236,6 +237,7 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
+             "rope_theta_time",
+             "rope_theta_camera",
+             "predict_canonical_pose",
++            "canonical_pose_readout",
+             "num_task_layers",
+             "rot_num_task_layers",
+             "pose_num_task_layers",
+@@ -254,6 +256,7 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
+             "rope_theta_time",
+             "rope_theta_camera",
+             "predict_canonical_pose",
++            "canonical_pose_readout",
+         }
+     ),
+     "plcs_track_query": frozenset(
+@@ -434,6 +437,22 @@ class PLCSModelConfig:
+                 raise SemanticConfigurationError(
+                     "model.ffn_type must be 'swiglu' or 'mlp'."
+                 )
++        if "canonical_pose_readout" in mapping:
++            canonical_pose_readout = _string(
++                mapping, "canonical_pose_readout", path="model"
++            )
++            if canonical_pose_readout not in {"direct", "temporal_decomposition"}:
++                raise SemanticConfigurationError(
++                    "model.canonical_pose_readout must be 'direct' or "
++                    "'temporal_decomposition'."
++                )
++            if canonical_pose_readout == "temporal_decomposition" and not _boolean(
++                mapping, "predict_canonical_pose", path="model"
++            ):
++                raise SemanticConfigurationError(
++                    "model.canonical_pose_readout='temporal_decomposition' requires "
++                    "model.predict_canonical_pose=true."
++                )
+         if (
+             "num_joints" in mapping
+             and _integer(mapping, "num_joints", path="model") != NUM_HUMAN_KP
+diff --git a/src/tasks/plcs/models/components/heads.py b/src/tasks/plcs/models/components/heads.py
+index bc7623ae..19dbf58d 100644
+--- a/src/tasks/plcs/models/components/heads.py
++++ b/src/tasks/plcs/models/components/heads.py
+@@ -7,6 +7,7 @@ from typing import cast
+ import torch
+ from torch import Tensor
+
++from src.utils.models.components.norm import RMSNorm
+ from src.utils.models.heads import MLPHead
+
+
+@@ -86,3 +87,75 @@ class CanonicalPoseHead(MLPHead):
+         """Predict canonical joints with shape ``(..., K, 3)``."""
+         out = cast("Tensor", self.mlp(x))
+         return out.reshape(*x.shape[:-1], self.num_keypoints, 3)
++
++
++class TemporalDecomposedCanonicalPoseHead(torch.nn.Module):
++    """Decode a sequence into a static pose plus zero-mean motion residual.
++
++    The direct canonical head can spend almost all of its capacity on the
++    sequence-average body geometry because articulation is a comparatively
++    small component of the metre-space target. This head gives that small
++    component its own normalized path: the temporal mean feature predicts the
++    static pose, while RMS-normalized deviations predict a residual whose mean
++    is constrained to zero over valid frames.
++    """
++
++    def __init__(
++        self,
++        *,
++        input_dim: int,
++        hidden_dim: int,
++        num_layers: int,
++        dropout: float,
++        num_keypoints: int,
++    ) -> None:
++        super().__init__()
++        self.static_head = CanonicalPoseHead(
++            input_dim=input_dim,
++            hidden_dim=hidden_dim,
++            num_layers=num_layers,
++            dropout=dropout,
++            num_keypoints=num_keypoints,
++        )
++        self.motion_norm = RMSNorm(input_dim)
++        self.motion_head = CanonicalPoseHead(
++            input_dim=input_dim,
++            hidden_dim=hidden_dim,
++            num_layers=num_layers,
++            dropout=dropout,
++            num_keypoints=num_keypoints,
++        )
++
++    def forward(self, features: Tensor, frame_valid: Tensor) -> Tensor:
++        """Predict ``(B,T,J,3)`` canonical pose from valid sequence features."""
++        if features.ndim != 3:
++            raise ValueError(
++                "TemporalDecomposedCanonicalPoseHead features must have shape "
++                f"(B,T,D), got {tuple(features.shape)}."
++            )
++        if frame_valid.dtype is not torch.bool:
++            raise TypeError("frame_valid must have dtype torch.bool.")
++        if frame_valid.shape != features.shape[:2]:
++            raise ValueError(
++                "frame_valid must match the feature (B,T) axes, got "
++                f"{tuple(frame_valid.shape)} for {tuple(features.shape)}."
++            )
++        if bool((~frame_valid.any(dim=1)).any().item()):
++            raise ValueError("Every sequence must contain at least one valid frame.")
++
++        feature_weight = frame_valid.to(dtype=features.dtype).unsqueeze(-1)
++        valid_count = feature_weight.sum(dim=1, keepdim=True)
++        mean_features = (features * feature_weight).sum(
++            dim=1, keepdim=True
++        ) / valid_count
++
++        static_pose = self.static_head(mean_features.squeeze(1)).unsqueeze(1)
++        centered_features = (features - mean_features) * feature_weight
++        motion_pose = self.motion_head(self.motion_norm(centered_features))
++
++        pose_weight = feature_weight.unsqueeze(-1)
++        motion_mean = (motion_pose * pose_weight).sum(
++            dim=1, keepdim=True
++        ) / valid_count.unsqueeze(-1)
++        centered_motion = (motion_pose - motion_mean) * pose_weight
++        return cast("Tensor", static_pose + centered_motion)
+diff --git a/src/tasks/plcs/models/plcs_multiview_axial_camtoken_model.py b/src/tasks/plcs/models/plcs_multiview_axial_camtoken_model.py
+index e17f1d02..e9bcc9c1 100644
+--- a/src/tasks/plcs/models/plcs_multiview_axial_camtoken_model.py
++++ b/src/tasks/plcs/models/plcs_multiview_axial_camtoken_model.py
+@@ -118,4 +118,5 @@ class PLCSMultiViewAxialCamTokenModel(PLCSMultiViewAxialModel):
+
+         # Mirror the split-model EX10 recipe: canonical geometry rides the
+         # rotation readout when that head was selected during construction.
+-        return self._decode_readouts(pose_feat, rot_feat)
++        frame_valid = ~padding_mask.all(dim=1)
++        return self._decode_readouts(pose_feat, rot_feat, frame_valid)
+diff --git a/src/tasks/plcs/models/plcs_multiview_axial_model.py b/src/tasks/plcs/models/plcs_multiview_axial_model.py
+index 24422f51..a748eacb 100644
+--- a/src/tasks/plcs/models/plcs_multiview_axial_model.py
++++ b/src/tasks/plcs/models/plcs_multiview_axial_model.py
+@@ -11,6 +11,7 @@ from src.tasks.plcs.models.components.heads import (
+     CanonicalPoseHead,
+     PositionHead,
+     RotationHead,
++    TemporalDecomposedCanonicalPoseHead,
+ )
+ from src.utils.models import (
+     RMSNorm,
+@@ -51,6 +52,7 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
+         max_seq_len: int,
+         invisible_init_std: float,
+         num_court_tokens: int,
++        canonical_pose_readout: Literal["direct", "temporal_decomposition"] = "direct",
+     ) -> None:
+         super().__init__()
+
+@@ -59,6 +61,18 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
+         self.max_views = int(max_views)
+         self.max_seq_len = int(max_seq_len)
+         self.num_court_tokens = int(num_court_tokens)
++        self.canonical_pose_readout = canonical_pose_readout
++
++        if self.canonical_pose_readout not in {"direct", "temporal_decomposition"}:
++            raise ValueError(
++                "canonical_pose_readout must be 'direct' or "
++                f"'temporal_decomposition', got {self.canonical_pose_readout!r}."
++            )
++        if not self.predict_canonical_pose and self.canonical_pose_readout != "direct":
++            raise ValueError(
++                "canonical_pose_readout='temporal_decomposition' requires "
++                "predict_canonical_pose=True."
++            )
+
+         self._validate_init_args(
+             hidden_dim=self.hidden_dim,
+@@ -142,15 +156,26 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
+             num_layers=2,
+             dropout=dropout,
+         )
+-        self.canonical_pose_head = None
++        self.canonical_pose_head: (
++            CanonicalPoseHead | TemporalDecomposedCanonicalPoseHead | None
++        ) = None
+         if self.predict_canonical_pose:
+-            self.canonical_pose_head = CanonicalPoseHead(
+-                input_dim=self.hidden_dim,
+-                hidden_dim=self.hidden_dim // 2,
+-                num_layers=2,
+-                dropout=dropout,
+-                num_keypoints=NUM_HUMAN_KP,
+-            )
++            if self.canonical_pose_readout == "direct":
++                self.canonical_pose_head = CanonicalPoseHead(
++                    input_dim=self.hidden_dim,
++                    hidden_dim=self.hidden_dim // 2,
++                    num_layers=2,
++                    dropout=dropout,
++                    num_keypoints=NUM_HUMAN_KP,
++                )
++            else:
++                self.canonical_pose_head = TemporalDecomposedCanonicalPoseHead(
++                    input_dim=self.hidden_dim,
++                    hidden_dim=self.hidden_dim // 2,
++                    num_layers=2,
++                    dropout=dropout,
++                    num_keypoints=NUM_HUMAN_KP,
++                )
+             self._decode_readouts = self._decode_readouts_with_canonical_pose
+         else:
+             self._decode_readouts = self._decode_readouts_without_canonical_pose
+@@ -205,6 +230,10 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
+             max_seq_len=config.integer("max_seq_len"),
+             invisible_init_std=config.number("invisible_init_std"),
+             num_court_tokens=num_court_tokens,
++            canonical_pose_readout=cast(
++                Literal["direct", "temporal_decomposition"],
++                config.string("canonical_pose_readout"),
++            ),
+         )
+
+     def forward(
+@@ -279,23 +308,42 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
+
+         x = x[:, :, 0, :]
+         x = self.final_norm(x)
++        frame_valid = ~padding_mask.all(dim=1)
+
+-        return self._decode_readouts(x, x)
++        return self._decode_readouts(x, x, frame_valid)
+
+     def _decode_readouts_without_canonical_pose(
+-        self, pose_features: Tensor, rotation_features: Tensor
++        self,
++        pose_features: Tensor,
++        rotation_features: Tensor,
++        frame_valid: Tensor,
+     ) -> dict[str, Tensor]:
++        del frame_valid
+         return {
+             "position": self.position_head(pose_features),
+             "rotation": self.rotation_head(rotation_features),
+         }
+
+     def _decode_readouts_with_canonical_pose(
+-        self, pose_features: Tensor, rotation_features: Tensor
++        self,
++        pose_features: Tensor,
++        rotation_features: Tensor,
++        frame_valid: Tensor,
+     ) -> dict[str, Tensor]:
+-        head = cast(CanonicalPoseHead, self.canonical_pose_head)
+         return {
+             "position": self.position_head(pose_features),
+             "rotation": self.rotation_head(rotation_features),
+-            "canonical_pose": head(rotation_features),
++            "canonical_pose": self._decode_canonical_pose(
++                rotation_features, frame_valid
++            ),
+         }
++
++    def _decode_canonical_pose(self, features: Tensor, frame_valid: Tensor) -> Tensor:
++        """Decode canonical pose with the configured, explicit readout family."""
++        if self.canonical_pose_readout == "direct":
++            direct_head = cast(CanonicalPoseHead, self.canonical_pose_head)
++            return cast("Tensor", direct_head(features))
++        motion_head = cast(
++            TemporalDecomposedCanonicalPoseHead, self.canonical_pose_head
++        )
++        return cast("Tensor", motion_head(features, frame_valid))
+diff --git a/src/tasks/plcs/models/plcs_multiview_axial_split_model.py b/src/tasks/plcs/models/plcs_multiview_axial_split_model.py
+index fdc1b5c9..3516d23c 100644
+--- a/src/tasks/plcs/models/plcs_multiview_axial_split_model.py
++++ b/src/tasks/plcs/models/plcs_multiview_axial_split_model.py
+@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING, Literal, cast
+ import torch.nn as nn
+ from torch import Tensor
+
+-from src.tasks.plcs.models.components.heads import CanonicalPoseHead, PositionHead
++from src.tasks.plcs.models.components.heads import PositionHead
+ from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
+ from src.utils.models import (
+     RMSNorm,
+@@ -72,6 +72,7 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
+         max_seq_len: int,
+         invisible_init_std: float,
+         num_court_tokens: int,
++        canonical_pose_readout: Literal["direct", "temporal_decomposition"] = "direct",
+     ) -> None:
+         if num_task_layers <= 0:
+             raise ValueError(
+@@ -97,6 +98,7 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
+             max_seq_len=max_seq_len,
+             invisible_init_std=invisible_init_std,
+             num_court_tokens=num_court_tokens,
++            canonical_pose_readout=canonical_pose_readout,
+         )
+
+         self.num_task_layers = int(num_task_layers)
+@@ -157,7 +159,9 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
+                 dropout=dropout,
+             )
+         self._pose_branch_input = (
+-            self._detach_pose_branch if self.detach_pose_branch else self._share_pose_branch
++            self._detach_pose_branch
++            if self.detach_pose_branch
++            else self._share_pose_branch
+         )
+         self._canonical_feature = (
+             self._rotation_canonical_feature
+@@ -204,6 +208,10 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
+             max_seq_len=config.integer("max_seq_len"),
+             invisible_init_std=config.number("invisible_init_std"),
+             num_court_tokens=num_court_tokens,
++            canonical_pose_readout=cast(
++                Literal["direct", "temporal_decomposition"],
++                config.string("canonical_pose_readout"),
++            ),
+         )
+
+     def _run_axial_stack(
+@@ -314,39 +322,42 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
+
+         rot_feat = self.rot_final_norm(x_rot[:, :, 0, :])
+         pose_feat = self.pose_final_norm(x_pose[:, :, 0, :])
++        frame_valid = ~padding_mask.all(dim=1)
+
+-        return self._decode_split_outputs(rot_feat, pose_feat)
++        return self._decode_split_outputs(rot_feat, pose_feat, frame_valid)
+
+     def _decode_split_outputs_basic(
+-        self, rot_feat: Tensor, pose_feat: Tensor
++        self, rot_feat: Tensor, pose_feat: Tensor, frame_valid: Tensor
+     ) -> dict[str, Tensor]:
++        del frame_valid
+         return {
+             "position": self.position_head(pose_feat),
+             "rotation": self.rotation_head(rot_feat),
+         }
+
+     def _decode_split_outputs_with_canonical_pose(
+-        self, rot_feat: Tensor, pose_feat: Tensor
++        self, rot_feat: Tensor, pose_feat: Tensor, frame_valid: Tensor
+     ) -> dict[str, Tensor]:
+-        output = self._decode_split_outputs_basic(rot_feat, pose_feat)
+-        canonical_head = cast(CanonicalPoseHead, self.canonical_pose_head)
+-        output["canonical_pose"] = canonical_head(
+-            self._canonical_feature(rot_feat, pose_feat)
++        output = self._decode_split_outputs_basic(rot_feat, pose_feat, frame_valid)
++        output["canonical_pose"] = self._decode_canonical_pose(
++            self._canonical_feature(rot_feat, pose_feat), frame_valid
+         )
+         return output
+
+     def _decode_split_outputs_with_auxiliary_position(
+-        self, rot_feat: Tensor, pose_feat: Tensor
++        self, rot_feat: Tensor, pose_feat: Tensor, frame_valid: Tensor
+     ) -> dict[str, Tensor]:
+-        output = self._decode_split_outputs_basic(rot_feat, pose_feat)
++        output = self._decode_split_outputs_basic(rot_feat, pose_feat, frame_valid)
+         auxiliary_head = cast(PositionHead, self.aux_position_head)
+         output["aux_position"] = auxiliary_head(rot_feat)
+         return output
+
+     def _decode_split_outputs_with_all_heads(
+-        self, rot_feat: Tensor, pose_feat: Tensor
++        self, rot_feat: Tensor, pose_feat: Tensor, frame_valid: Tensor
+     ) -> dict[str, Tensor]:
+-        output = self._decode_split_outputs_with_canonical_pose(rot_feat, pose_feat)
++        output = self._decode_split_outputs_with_canonical_pose(
++            rot_feat, pose_feat, frame_valid
++        )
+         auxiliary_head = cast(PositionHead, self.aux_position_head)
+         output["aux_position"] = auxiliary_head(rot_feat)
+         return output
+diff --git a/src/tasks/plcs/training/lightning_module.py b/src/tasks/plcs/training/lightning_module.py
+index b4797d86..125fe521 100644
+--- a/src/tasks/plcs/training/lightning_module.py
++++ b/src/tasks/plcs/training/lightning_module.py
+@@ -25,6 +25,7 @@ from src.tasks.plcs.models.discriminators import build_plcs_discriminator
+ from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
+ from src.tasks.plcs.training.mcmc import LangevinNoiseInjector, MCMCConfig
+ from src.tasks.plcs.training.metrics import PLCSMetrics
++from src.utils.geometry.court_pose import world_pose_to_canonical_pose
+ from src.utils.schema.court_normalization import (
+     add_court_coordinate_normalization,
+     validate_court_coordinate_normalization,
+@@ -281,6 +282,19 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
+         mask = result.get("gan_padding_mask")
+         if mask is not None:
+             payload["padding_mask"] = mask
++        if outputs.canonical_pose is not None:
++            if prepared.target_human_kp_3d is None:
++                raise ValueError(
++                    "Canonical test predictions require target_human_kp_3d."
++                )
++            target_position = cast(Tensor, prepared.target_position)
++            target_rotation = cast(Tensor, prepared.target_rotation)
++            payload["pred_canonical_pose"] = outputs.canonical_pose
++            payload["target_canonical_pose"] = world_pose_to_canonical_pose(
++                prepared.target_human_kp_3d,
++                target_position,
++                target_rotation,
++            )
+         return payload
+
+     def configure_optimizers(self) -> Any:
+diff --git a/src/tasks/plcs/training/losses.py b/src/tasks/plcs/training/losses.py
+index ae295527..ee2c52f5 100644
+--- a/src/tasks/plcs/training/losses.py
++++ b/src/tasks/plcs/training/losses.py
+@@ -63,6 +63,8 @@ class PLCSLossConfig:
+         rotation_weight: Weight for rotation loss (1 - cosine on (cos, sin)).
+         angle_weight: Weight for wrapped-angle smooth-L1 yaw loss.
+         canonical_pose_weight: Weight for canonical pose loss.
++        canonical_pose_smooth_l1_beta: Smooth-L1 transition beta in metres for
++            canonical pose loss.
+         joint_angle_weight: Weight for joint-angle loss.
+         torsion_angle_weight: Weight for limb torsion / dihedral angle loss.
+         torso_twist_weight: Weight for shoulder-hip twist loss.
+@@ -77,6 +79,7 @@ class PLCSLossConfig:
+     # jitter / inference velocity spikes). See src/utils/losses/temporal.py.
+     position_smoothness_weight: float
+     canonical_pose_weight: float
++    canonical_pose_smooth_l1_beta: float
+     joint_angle_weight: float
+     torsion_angle_weight: float
+     torso_twist_weight: float
+@@ -120,6 +123,10 @@ class PLCSLossConfig:
+             return result
+
+         weights = {key: _weight(key) for key in scalar_keys}
++        if weights["canonical_pose_smooth_l1_beta"] <= 0.0:
++            raise SemanticConfigurationError(
++                "loss.canonical_pose_smooth_l1_beta must be positive."
++            )
+
+         def _opt_weights(key: str, *, expected_length: int) -> tuple[float, ...] | None:
+             value = cfg[key]
+@@ -162,6 +169,7 @@ class PLCSLossConfig:
+             angle_weight=weights["angle_weight"],
+             position_smoothness_weight=weights["position_smoothness_weight"],
+             canonical_pose_weight=weights["canonical_pose_weight"],
++            canonical_pose_smooth_l1_beta=weights["canonical_pose_smooth_l1_beta"],
+             joint_angle_weight=weights["joint_angle_weight"],
+             torsion_angle_weight=weights["torsion_angle_weight"],
+             torso_twist_weight=weights["torso_twist_weight"],
+@@ -478,8 +486,16 @@ def position_smoothness_loss_term(
+     return cast("Tensor", penalty(inputs.pred_position, frame_mask))
+
+
+-def canonical_pose_loss_term(inputs: PLCSLossInputs) -> Tensor:
+-    """Canonical-pose term: masked smooth-L1 between canonical joint positions."""
++def canonical_pose_loss_term(
++    inputs: PLCSLossInputs,
++    *,
++    beta: float = 1.0,
++) -> Tensor:
++    """Canonical-pose term: masked smooth-L1 between canonical joint positions.
++
++    ``beta`` is expressed in metres because canonical pose coordinates remain
++    root-relative physical coordinates and are not court-coordinate normalized.
++    """
+     if not inputs.has_canonical:
+         return inputs.zero
+     pred = cast(Tensor, inputs.pred_canonical_pose)
+@@ -489,6 +505,7 @@ def canonical_pose_loss_term(inputs: PLCSLossInputs) -> Tensor:
+         pred,
+         target,
+         reduction="none",
++        beta=beta,
+     ).mean(dim=(-1, -2))
+     return _masked_frame_mean(per_frame, inputs.frame_mask)
+
+@@ -716,6 +733,13 @@ class PLCSLoss(nn.Module):
+                 position_smoothness_loss_term,
+                 penalty=self.position_smoothness_penalty,
+             )
++            self.loss_terms["canonical_pose"] = cast(
++                "PLCSLossTerm",
++                partial(
++                    canonical_pose_loss_term,
++                    beta=config.canonical_pose_smooth_l1_beta,
++                ),
++            )
+         else:
+             self.loss_terms = dict(loss_terms)
+         self.loss_weights = {
+diff --git a/tests/integration/tasks/plcs/test_model_configs.py b/tests/integration/tasks/plcs/test_model_configs.py
+index 3232d358..ac41e484 100644
+--- a/tests/integration/tasks/plcs/test_model_configs.py
++++ b/tests/integration/tasks/plcs/test_model_configs.py
+@@ -7,6 +7,10 @@ from hydra import compose, initialize_config_dir
+ from omegaconf import open_dict
+
+ from src.tasks.plcs.configuration import PLCSModelConfig, PLCSTrainingConfig
++from src.tasks.plcs.models.components.heads import (
++    TemporalDecomposedCanonicalPoseHead,
++)
++from src.tasks.plcs.training.composition import build_plcs_lightning_module
+ from src.utils.configuration import (
+     MissingConfigurationKeyError,
+     SemanticConfigurationError,
+@@ -16,6 +20,30 @@ from src.utils.configuration import (
+ _CONFIG_DIR = Path("src/tasks/plcs/configs").resolve()
+
+
++def test_temporal_canonical_pose_model_config_composes_and_binds_head() -> None:
++    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
++        config = compose(
++            config_name="train",
++            overrides=[
++                "model=multiview_axial_base_temporal_pose",
++                "loss=canonical_only",
++                "model.hidden_dim=16",
++                "model.num_heads=4",
++                "model.ffn_dim=32",
++                "model.rope_dim=4",
++                "model.num_layers=1",
++            ],
++        )
++
++    runtime = PLCSTrainingConfig.from_config(config)
++    module = build_plcs_lightning_module(config)
++
++    assert runtime.model.string("canonical_pose_readout") == "temporal_decomposition"
++    assert isinstance(
++        module.model.canonical_pose_head, TemporalDecomposedCanonicalPoseHead
++    )
++
++
+ @pytest.mark.parametrize(
+     (
+         "model_name",
+diff --git a/tests/unit/tasks/plcs/models/test_plcs_multiview_axial_model.py b/tests/unit/tasks/plcs/models/test_plcs_multiview_axial_model.py
+index 2484d195..f33ef726 100644
+--- a/tests/unit/tasks/plcs/models/test_plcs_multiview_axial_model.py
++++ b/tests/unit/tasks/plcs/models/test_plcs_multiview_axial_model.py
+@@ -42,3 +42,40 @@ def test_multiview_axial_model_forward_accepts_single_view() -> None:
+
+     assert out["position"].shape == (2, 4, 3)
+     assert out["rotation"].shape == (2, 4, 2)
++
++
++def test_temporal_canonical_readout_returns_frame_aligned_pose() -> None:
++    torch.manual_seed(0)
++    model = PLCSMultiViewAxialModel(
++        hidden_dim=16,
++        num_layers=1,
++        num_heads=4,
++        ffn_dim=64,
++        dropout=0.0,
++        rope_dim=4,
++        rope_theta_time=10000.0,
++        rope_theta_camera=10000.0,
++        ffn_type="swiglu",
++        predict_canonical_pose=True,
++        max_views=2,
++        max_seq_len=4,
++        invisible_init_std=0.02,
++        num_court_tokens=20,
++        canonical_pose_readout="temporal_decomposition",
++    ).eval()
++
++    padding_mask = torch.zeros(2, 2, 4, dtype=torch.bool)
++    padding_mask[0, :, 3] = True
++    camera_mask, time_mask = prepare_axial_attention_masks(padding_mask)
++    with torch.no_grad():
++        out = model(
++            human_kp=torch.rand(2, 2, 4, 17, 2),
++            court_kp=torch.rand(2, 2, 4, 20, 2),
++            human_vis=torch.ones(2, 2, 4, 17),
++            padding_mask=padding_mask,
++            court_vis=torch.ones(2, 2, 4, 20),
++            camera_attention_mask=camera_mask,
++            time_attention_mask=time_mask,
++        )
++
++    assert out["canonical_pose"].shape == (2, 4, 17, 3)
+diff --git a/tests/unit/tasks/plcs/training/test_losses.py b/tests/unit/tasks/plcs/training/test_losses.py
+index 780f2da3..b0d66674 100644
+--- a/tests/unit/tasks/plcs/training/test_losses.py
++++ b/tests/unit/tasks/plcs/training/test_losses.py
+@@ -1,9 +1,10 @@
+-"""Unit tests for the PLCS position-smoothness loss term."""
++"""Unit tests for PLCS loss terms."""
+
+ from __future__ import annotations
+
+ from dataclasses import asdict, replace
+
++import pytest
+ import torch
+
+ from src.tasks.plcs.training.losses import (
+@@ -11,8 +12,10 @@ from src.tasks.plcs.training.losses import (
+     PLCSLoss,
+     PLCSLossConfig,
+     PLCSLossInputs,
++    canonical_pose_loss_term,
+     position_smoothness_loss_term,
+ )
++from src.utils.configuration import SemanticConfigurationError
+ from src.utils.losses.temporal import TemporalSmoothnessPenalty
+ from src.utils.schema.court_normalization import normalize_court_position
+
+@@ -24,6 +27,7 @@ def _loss_config() -> PLCSLossConfig:
+         angle_weight=0.0,
+         position_smoothness_weight=0.0,
+         canonical_pose_weight=0.0,
++        canonical_pose_smooth_l1_beta=1.0,
+         joint_angle_weight=0.0,
+         torsion_angle_weight=0.0,
+         torso_twist_weight=0.0,
+@@ -73,6 +77,58 @@ def test_from_dict_parses_weight() -> None:
+     assert cfg.position_smoothness_weight == 4.0
+
+
++def test_canonical_pose_smooth_l1_beta_is_configurable_in_metres() -> None:
++    target_pose = torch.zeros(1, 1, 1, 3)
++    pred_pose = torch.full_like(target_pose, 0.2)
++    inputs = PLCSLossInputs(
++        pred_position=torch.zeros(1, 1, 3),
++        pred_rotation=torch.zeros(1, 1, 2),
++        target_position=torch.zeros(1, 1, 3),
++        target_rotation=torch.zeros(1, 1, 2),
++        pred_canonical_pose=pred_pose,
++        target_canonical_pose=target_pose,
++    )
++
++    # smooth-L1(0.2; beta=1.0) = 0.5 * 0.2**2, while the beta=0.1
++    # branch is linear: 0.2 - 0.5 * 0.1.
++    torch.testing.assert_close(
++        canonical_pose_loss_term(inputs, beta=1.0), torch.tensor(0.02)
++    )
++    torch.testing.assert_close(
++        canonical_pose_loss_term(inputs, beta=0.1), torch.tensor(0.15)
++    )
++
++
++def test_canonical_pose_beta_is_bound_to_combined_loss() -> None:
++    raw = asdict(_loss_config())
++    raw.update(
++        canonical_pose_weight=1.0,
++        canonical_pose_smooth_l1_beta=0.1,
++    )
++    loss_fn = PLCSLoss(PLCSLossConfig.from_dict(raw))
++    target_pose = torch.zeros(1, 1, 1, 3)
++    pred_pose = torch.full_like(target_pose, 0.2)
++    inputs = PLCSLossInputs(
++        pred_position=torch.zeros(1, 1, 3),
++        pred_rotation=torch.zeros(1, 1, 2),
++        target_position=torch.zeros(1, 1, 3),
++        target_rotation=torch.zeros(1, 1, 2),
++        pred_canonical_pose=pred_pose,
++        target_canonical_pose=target_pose,
++    )
++
++    torch.testing.assert_close(
++        loss_fn.loss_terms["canonical_pose"](inputs), torch.tensor(0.15)
++    )
++
++
++def test_canonical_pose_beta_must_be_positive() -> None:
++    raw = asdict(_loss_config())
++    raw["canonical_pose_smooth_l1_beta"] = 0.0
++    with pytest.raises(SemanticConfigurationError, match="must be positive"):
++        PLCSLossConfig.from_dict(raw)
++
++
+ def test_frame_level_input_is_noop() -> None:
+     # (B, 3): no temporal axis -> term must be a no-op, not misread coords as time.
+     pred = torch.randn(5, 3)

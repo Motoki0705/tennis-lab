@@ -7,6 +7,11 @@ from hydra import compose, initialize_config_dir
 from omegaconf import open_dict
 
 from src.tasks.plcs.configuration import PLCSModelConfig, PLCSTrainingConfig
+from src.tasks.plcs.models.components.heads import (
+    TemporalDecomposedCanonicalPoseHead,
+)
+from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
+from src.tasks.plcs.training.composition import build_plcs_lightning_module
 from src.utils.configuration import (
     MissingConfigurationKeyError,
     SemanticConfigurationError,
@@ -14,6 +19,31 @@ from src.utils.configuration import (
 )
 
 _CONFIG_DIR = Path("src/tasks/plcs/configs").resolve()
+
+
+def test_temporal_canonical_pose_model_config_composes_and_binds_head() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train",
+            overrides=[
+                "model=multiview_axial_base_temporal_pose",
+                "loss=canonical_only",
+                "model.hidden_dim=16",
+                "model.num_heads=4",
+                "model.ffn_dim=32",
+                "model.rope_dim=4",
+                "model.num_layers=1",
+            ],
+        )
+
+    runtime = PLCSTrainingConfig.from_config(config)
+    module = build_plcs_lightning_module(config)
+
+    assert runtime.model.string("canonical_pose_readout") == "temporal_decomposition"
+    assert isinstance(module.model, PLCSMultiViewAxialModel)
+    assert isinstance(
+        module.model.canonical_pose_head, TemporalDecomposedCanonicalPoseHead
+    )
 
 
 @pytest.mark.parametrize(

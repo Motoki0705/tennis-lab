@@ -1,9 +1,10 @@
-"""Unit tests for the PLCS position-smoothness loss term."""
+"""Unit tests for PLCS loss terms."""
 
 from __future__ import annotations
 
 from dataclasses import asdict, replace
 
+import pytest
 import torch
 
 from src.tasks.plcs.training.losses import (
@@ -11,8 +12,10 @@ from src.tasks.plcs.training.losses import (
     PLCSLoss,
     PLCSLossConfig,
     PLCSLossInputs,
+    canonical_pose_loss_term,
     position_smoothness_loss_term,
 )
+from src.utils.configuration import SemanticConfigurationError
 from src.utils.losses.temporal import TemporalSmoothnessPenalty
 from src.utils.schema.court_normalization import normalize_court_position
 
@@ -24,6 +27,7 @@ def _loss_config() -> PLCSLossConfig:
         angle_weight=0.0,
         position_smoothness_weight=0.0,
         canonical_pose_weight=0.0,
+        canonical_pose_smooth_l1_beta=1.0,
         joint_angle_weight=0.0,
         torsion_angle_weight=0.0,
         torso_twist_weight=0.0,
@@ -71,6 +75,58 @@ def test_from_dict_parses_weight() -> None:
     raw["position_smoothness_weight"] = 4.0
     cfg = PLCSLossConfig.from_dict(raw)
     assert cfg.position_smoothness_weight == 4.0
+
+
+def test_canonical_pose_smooth_l1_beta_is_configurable_in_metres() -> None:
+    target_pose = torch.zeros(1, 1, 1, 3)
+    pred_pose = torch.full_like(target_pose, 0.2)
+    inputs = PLCSLossInputs(
+        pred_position=torch.zeros(1, 1, 3),
+        pred_rotation=torch.zeros(1, 1, 2),
+        target_position=torch.zeros(1, 1, 3),
+        target_rotation=torch.zeros(1, 1, 2),
+        pred_canonical_pose=pred_pose,
+        target_canonical_pose=target_pose,
+    )
+
+    # smooth-L1(0.2; beta=1.0) = 0.5 * 0.2**2, while the beta=0.1
+    # branch is linear: 0.2 - 0.5 * 0.1.
+    torch.testing.assert_close(
+        canonical_pose_loss_term(inputs, beta=1.0), torch.tensor(0.02)
+    )
+    torch.testing.assert_close(
+        canonical_pose_loss_term(inputs, beta=0.1), torch.tensor(0.15)
+    )
+
+
+def test_canonical_pose_beta_is_bound_to_combined_loss() -> None:
+    raw = asdict(_loss_config())
+    raw.update(
+        canonical_pose_weight=1.0,
+        canonical_pose_smooth_l1_beta=0.1,
+    )
+    loss_fn = PLCSLoss(PLCSLossConfig.from_dict(raw))
+    target_pose = torch.zeros(1, 1, 1, 3)
+    pred_pose = torch.full_like(target_pose, 0.2)
+    inputs = PLCSLossInputs(
+        pred_position=torch.zeros(1, 1, 3),
+        pred_rotation=torch.zeros(1, 1, 2),
+        target_position=torch.zeros(1, 1, 3),
+        target_rotation=torch.zeros(1, 1, 2),
+        pred_canonical_pose=pred_pose,
+        target_canonical_pose=target_pose,
+    )
+
+    torch.testing.assert_close(
+        loss_fn.loss_terms["canonical_pose"](inputs), torch.tensor(0.15)
+    )
+
+
+def test_canonical_pose_beta_must_be_positive() -> None:
+    raw = asdict(_loss_config())
+    raw["canonical_pose_smooth_l1_beta"] = 0.0
+    with pytest.raises(SemanticConfigurationError, match="must be positive"):
+        PLCSLossConfig.from_dict(raw)
 
 
 def test_frame_level_input_is_noop() -> None:
