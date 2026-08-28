@@ -17,29 +17,33 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Inspect failed queue job without acquiring the GPU lock
+      - name: Grant the queue service read-only access to B00 Court V3
         shell: bash
         env:
-          QUEUE: /opt/tennis-lab-actions/bin/training_queue.sh
-          QUEUE_DIR: /var/lib/tennis-lab-actions/training-queue
+          DATASET_PARENT: /var/lib/tennis-lab-actions/assets/data/synthetic_data_generation/scenes/B00/datasets
+          DATASET_ROOT: /var/lib/tennis-lab-actions/assets/data/synthetic_data_generation/scenes/B00/datasets/court
+          MANIFEST: /var/lib/tennis-lab-actions/assets/data/synthetic_data_generation/scenes/B00/datasets/court/dataset.json
         run: |
           set -euo pipefail
-          systemctl is-active tennis-lab-training-queue.service
-          TRAINING_QUEUE_DIR="$QUEUE_DIR" "$QUEUE" status
-          echo "-- failed jobs --"
-          mapfile -t failed < <(
-            find "$QUEUE_DIR/failed" -maxdepth 1 -type f -printf '%f\n' | sort
-          )
-          printf '%s\n' "${failed[@]}"
-          for job in "${failed[@]}"; do
-            stem="${job%.job}"
-            echo "===== $job ====="
-            echo "-- job spec --"
-            cat "$QUEUE_DIR/failed/$job" || true
-            echo "-- job log --"
-            cat "$QUEUE_DIR/logs/${stem}.log" || true
-            echo "-- repro metadata --"
-            cat "$QUEUE_DIR/repro/${stem}/run.json" || true
-          done
-          echo "-- queue filesystem --"
-          find "$QUEUE_DIR" -maxdepth 2 -printf '%M %u:%g %p\n' | sort | tail -200
+          sudo -n true
+          command -v setfacl
+          sudo -n setfacl -m u:tennis-actions:x "$DATASET_PARENT"
+          sudo -n setfacl -R -m u:tennis-actions:rX "$DATASET_ROOT"
+          sudo -n find "$DATASET_ROOT" -type d -exec setfacl -m d:u:tennis-actions:rX {} +
+          namei -l "$MANIFEST"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("/var/lib/tennis-lab-actions/assets/data/synthetic_data_generation/scenes/B00/datasets/court/dataset.json")
+          payload = json.loads(path.read_text(encoding="utf-8"))
+          accepted = len(payload.get("samples", []))
+          rejected = len(payload.get("rejected_samples", []))
+          proposals = accepted + rejected
+          assert payload.get("schema") == "canonical_court_dataset_v3"
+          assert payload.get("status") == "completed"
+          assert payload.get("seed") == 695
+          assert payload.get("profile") == "b00-production"
+          assert (proposals, accepted, rejected) == (3336, 3293, 43)
+          print(f"B00 Court V3 accessible: proposals={proposals} accepted={accepted} rejected={rejected}")
+          PY
