@@ -2035,10 +2035,24 @@ def validate_generator_sections(
     generation = require_config_mapping(root, "generation", path="configuration")
     mode = cast("str", _value(generation, "mode", str, path="generation"))
     if mode == "single_object":
-        _exact(generation, {"mode", "min_balls", "max_balls"}, path="generation")
+        _exact(
+            generation,
+            {
+                "mode",
+                "min_balls",
+                "max_balls",
+                "maximum_physics_attempts_per_scene",
+            },
+            path="generation",
+        )
         _validate_types(
             generation,
-            {"mode": str, "min_balls": int, "max_balls": int},
+            {
+                "mode": str,
+                "min_balls": int,
+                "max_balls": int,
+                "maximum_physics_attempts_per_scene": int,
+            },
             path="generation",
         )
         min_balls = cast("int", generation["min_balls"])
@@ -2046,6 +2060,19 @@ def validate_generator_sections(
         if min_balls <= 0 or max_balls < min_balls:
             raise SemanticConfigurationError(
                 "generation ball counts must satisfy 1 <= min_balls <= max_balls."
+            )
+        maximum_attempts = cast(
+            "int",
+            _value(
+                generation,
+                "maximum_physics_attempts_per_scene",
+                int,
+                path="generation",
+            ),
+        )
+        if maximum_attempts <= 0:
+            raise SemanticConfigurationError(
+                "generation.maximum_physics_attempts_per_scene must be positive."
             )
     elif mode == "multi_object":
         _exact(
