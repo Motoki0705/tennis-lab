@@ -11,11 +11,20 @@ Always read [workflow](references/workflow.md) and [document contracts](referenc
 
 ## Initialize
 
+1. Select and fix the GitHub Issue number that will be frozen.
+2. Create, enter, and verify a dedicated linked worktree by following the
+   [worktree-create skill](../worktree-create/SKILL.md). Do not run the initializer
+   from the primary worktree.
+3. After entering the verified linked worktree, run:
+
 ```bash
 TASK=.codex/tasks/issue-<number>
 MANAGE=.agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py
 python .agents/skills/issue-subagent-workflow/scripts/init_issue_task.py <issue>
 ```
+
+The omitted `--root` resolves to `.codex/tasks` under the active linked-worktree
+top level. An explicit `--root` must also remain inside that same worktree.
 
 This freezes canonical `issue.json`, renders `issue.md`, records both hashes, creates schema-v6 state, and scaffolds all formal artifacts. Refresh only after the upstream Issue changes; it restarts feasibility and replaces stale artifacts. Loaded schema-v5 tasks retain their legacy Tester contract while new tasks enforce adversarial testing.
 

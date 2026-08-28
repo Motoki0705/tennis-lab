@@ -23,6 +23,10 @@ from issue_task_state import CURRENT_SCHEMA_VERSION
 
 DEFAULT_REPO = "Motoki0705/tennis-lab"
 ISSUE_NUMBER_RE = re.compile(r"(?:^|/issues/)(\d+)(?:$|[/?#])")
+WORKTREE_REMEDIATION = (
+    "Create and enter a dedicated linked worktree, verify that it is active, "
+    "then rerun the initializer."
+)
 
 TEMPLATES = {
     "00-feasibility/feasibility.md": """# Feasibility
@@ -326,7 +330,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("issue", help="GitHub issue number or URL")
     parser.add_argument("--repo", default=DEFAULT_REPO)
-    parser.add_argument("--root", type=Path, default=Path(".codex/tasks"))
+    parser.add_argument("--root", type=Path)
     parser.add_argument(
         "--refresh-issue",
         action="store_true",
@@ -342,6 +346,107 @@ def issue_number(value: str) -> int:
     if match is None:
         raise ValueError(f"cannot parse issue number from {value!r}")
     return int(match.group(1))
+
+
+def discover_linked_worktree_root(cwd: Path) -> Path:
+    try:
+        completed = subprocess.run(
+            [
+                "git",
+                "rev-parse",
+                "--is-inside-work-tree",
+                "--path-format=absolute",
+                "--show-toplevel",
+                "--git-dir",
+                "--git-common-dir",
+            ],
+            cwd=cwd,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError as exc:
+        raise RuntimeError(
+            f"cannot verify the active Git linked worktree: {exc}. "
+            f"{WORKTREE_REMEDIATION}"
+        ) from exc
+
+    if completed.returncode != 0:
+        detail = completed.stderr.strip() or "git rev-parse failed"
+        raise RuntimeError(
+            f"cannot verify the active Git linked worktree: {detail}. "
+            f"{WORKTREE_REMEDIATION}"
+        )
+
+    lines = completed.stdout.splitlines()
+    if len(lines) != 4 or lines[0].strip() != "true" or any(
+        not line.strip() for line in lines[1:]
+    ):
+        raise RuntimeError(
+            "cannot verify the active Git linked worktree: Git returned malformed "
+            f"worktree metadata. {WORKTREE_REMEDIATION}"
+        )
+
+    metadata_paths = tuple(Path(line) for line in lines[1:])
+    if not all(path.is_absolute() for path in metadata_paths):
+        raise RuntimeError(
+            "cannot verify the active Git linked worktree: Git returned non-absolute "
+            f"worktree paths. {WORKTREE_REMEDIATION}"
+        )
+
+    try:
+        resolved_cwd = cwd.resolve(strict=True)
+        top_level, git_dir, git_common_dir = (
+            path.resolve(strict=True) for path in metadata_paths
+        )
+        resolved_cwd.relative_to(top_level)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise RuntimeError(
+            "cannot verify the active Git linked worktree: Git returned invalid "
+            f"worktree paths. {WORKTREE_REMEDIATION}"
+        ) from exc
+
+    if not top_level.is_dir() or not git_dir.is_dir() or not git_common_dir.is_dir():
+        raise RuntimeError(
+            "cannot verify the active Git linked worktree: Git metadata paths are "
+            f"not directories. {WORKTREE_REMEDIATION}"
+        )
+    if git_dir == git_common_dir:
+        raise RuntimeError(
+            "Issue workflow initialization is not allowed in the primary worktree. "
+            f"{WORKTREE_REMEDIATION}"
+        )
+    return top_level
+
+
+def resolve_task_root(root: Path | None, cwd: Path, worktree_root: Path) -> Path:
+    if root is None:
+        unresolved = worktree_root / ".codex/tasks"
+        description = "the default task root"
+    else:
+        unresolved = root if root.is_absolute() else cwd / root
+        description = "--root"
+    try:
+        resolved = unresolved.resolve(strict=False)
+        resolved.relative_to(worktree_root)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise RuntimeError(
+            f"{description} must resolve within the active dedicated linked worktree; "
+            "choose an in-worktree path and rerun the initializer"
+        ) from exc
+    return resolved
+
+
+def resolve_task_dir(task_root: Path, number: int, worktree_root: Path) -> Path:
+    try:
+        resolved = (task_root / f"issue-{number}").resolve(strict=False)
+        resolved.relative_to(worktree_root)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise RuntimeError(
+            "the issue task directory must resolve within the active dedicated "
+            "linked worktree; remove any escaping symlink and rerun the initializer"
+        ) from exc
+    return resolved
 
 
 def run_gh(number: int, repo: str) -> dict[str, Any]:
@@ -491,8 +596,11 @@ def main() -> int:
     args = parse_args()
     try:
         number = issue_number(args.issue)
+        cwd = Path.cwd()
+        worktree_root = discover_linked_worktree_root(cwd)
+        task_root = resolve_task_root(args.root, cwd, worktree_root)
+        task_dir = resolve_task_dir(task_root, number, worktree_root)
         payload = run_gh(number, args.repo)
-        task_dir = args.root / f"issue-{number}"
         state_path = task_dir / "state.toml"
         if task_dir.exists() and not args.refresh_issue:
             raise RuntimeError(
