@@ -1,9 +1,11 @@
 # タスク別ベースライン台帳
 
-更新日: 2026-08-22  
-調査基準commit: `bc25819eb99fad90b19a5ac5449243d7beb90f5d`
+更新日: 2026-08-28  
+調査基準commit: `bb5a7c1460b5b9b6e3cdc934e1f4cdcbecae1387`
 
-この文書は、`knowledge/nodes/` の全group node、主要なdeploy / baseline run node、proposal nodeのbaseline参照、および実際のpipeline checkpoint設定を照合して作成した**運用用の派生インデックス**です。正式知識グラフのnodeではなく、各runの数値・再現手順・因果主張の正本は個別nodeです。
+この文書は、`knowledge/nodes/` の全group node、主要なdeploy / benchmark / family run node、および実際のpipeline checkpoint設定を照合して作成した**運用用の派生インデックス**です。正式知識グラフのnodeではなく、各runの数値・再現手順・因果主張の正本は個別nodeです。
+
+現行knowledge graphはrun nodeとgroup nodeだけを正式対象とします。2026-08-28までにproposal / paper nodeは削除されたため、この台帳も削除済みnodeへの参照を持たず、実験として登録済みの証拠だけをbaselineとして扱います。
 
 `src/tasks/base` は共通基盤であり独立した予測タスクではないため、baselineを割り当てません。コアタスクは `ball_detection`、`court_detection`、`plcs`、`blcs`、`slcs` の5つです。multi-person / multi-ball、3DGS synthetic、segmentation、compile性能は出力・データ・評価契約が異なるため、コアbaselineと混ぜず後半の「拡張契約」に分離します。
 
@@ -25,6 +27,7 @@
 4. view数、court keypoint数、single/multi-object、split、metric、実写/合成が異なるrunを直接順位付けしないこと。
 5. no-op、作業tree取り違え、failed qualification、holdout rejectをbaselineへ昇格しないこと。
 6. multi-objectiveでは単一の最高値へ潰さず、deploy baselineとPareto challengerを併記すること。
+7. normalization、loss beta、artifact schema、runtime contractが現行mainと異なるrunは、数値が再現可能でも**historical family evidence**として明示し、現行mainのbaselineへ読み替えないこと。
 
 ## 現行コアbaseline一覧
 
@@ -75,7 +78,7 @@
 
 [`group-i524-dinov3-ssl-court`](nodes/group-i524-dinov3-ssl-court.md) のcourt segmentationは別出力契約です。凍結backbone条件で非SSL baseline `0.517 mIoU`に対しSSL treatment `0.800 mIoU`ですが、KP14 deploy modelの代替値として比較しません。
 
-point RANSACを点・線共同残差へ変える [`proposal-court-pnl-line-refinement`](nodes/proposal-court-pnl-line-refinement.md) は `baseline_nodes: []` のままです。detector checkpointとしては `run-i621-court-kp512-resume-r4` を固定できますが、proposalが必要とする `line_edge_support`、geometry valid率、wall timeを持つ**postprocess-only baseline run**は別途登録する必要があります。
+point RANSACを点・線共同残差へ変えるpostprocessは、現行knowledge graphに正式run / groupがありません。detector checkpointとしては `run-i621-court-kp512-resume-r4` を固定できますが、`line_edge_support`、geometry valid率、wall timeを持つ**postprocess-only baseline run**を別途登録するまで、KP14 deploy baselineの改善として扱いません。
 
 ### 置換条件
 
@@ -108,13 +111,24 @@ point RANSACを点・線共同残差へ変える [`proposal-court-pnl-line-refin
 
 [`group-i535-asym-capacity`](nodes/group-i535-asym-capacity.md) で取り違えによりno-opだったrunは、数値が良くてもbaseline候補から除外します。valid rerunでもEX10を上回っていません。
 
+### 2026-08-27以降のfamily / diagnostic baseline
+
+| 契約 | baseline / treatment | 固定結果 | 判定 |
+|---|---|---|---|
+| canonical-only temporal motion | [`run-plcs-canonical-temporal-decomp-beta01-noaug`](nodes/run-plcs-canonical-temporal-decomp-beta01-noaug.md) | canonical MPJPE `0.091136 m`、motion amplitude ratio `1.174967`、centered Pearson `0.795146`、high-frequency fraction `0.391067`（GT `0.068930`） | 平均pose固定から入力依存motionへ移行したfamily diagnostic。jitterが大きく、position / rotation headは未学習なのでdeploy比較には使わない |
+| interleaved V=2 / T=16 reprojection | [`group-plcs-reprojection-loss-w1`](nodes/group-plcs-reprojection-loss-w1.md) | position `6.605493 → 6.603486 m`、angle `91.731071 → 88.649841°`、Z `0.093369 → 0.275332 m` | 2D整合と向きは改善したがdepth悪化。default不採用 |
+| axial V=4 / T=128 reprojection | [`group-plcs-multiview-axial-reprojection-loss-w1-v4-t128`](nodes/group-plcs-multiview-axial-reprojection-loss-w1-v4-t128.md) | position `1.386235 → 1.352761 m`、angle `66.968224 → 63.600704°`、0.5 m以内率 `0.118984 → 0.088828` | mean / medianと向きは改善した単一seed challenger。近距離率・X誤差・分散の悪化があり、複数seed前は昇格しない |
+| camera-view v2 selector | [`run-i801-a2-plcs-d-reference`](nodes/run-i801-a2-plcs-d-reference.md) / [`selector-zero`](nodes/run-i801-a2-plcs-d-selector-zero.md) | reference: position `5.115064 m`、Y-sign `0.680313`、heading `35.71°`、ID switches `24.76`; zero: `5.141654 m`、`0.684531`、`34.32°`、`36.68` | 指標ごとに優位が逆転。reference-camera selectorの一方向な効果はなく、production v1を維持 |
+
+これらはdataset、出力、loss、sequence length、view数がdeploy PLCSと異なるため、`run-deploy-multiview-plcs-i590-courtkp14-v2`を置き換えません。特にcanonical-only runのposition / rotation値と、camera-view v2 track-query runのmulti-person tracking値をsingle-person deploy値へ直接比較しません。
+
 ### multi-personは別契約
 
 [`run-issue-643-multiperson-baseline`](nodes/run-issue-643-multiperson-baseline.md) はtrack query、Hungarian matching、presenceを含むmulti-person diagnostic baselineです。position `0.267685 m`、yaw `41.522079°`、presence F1 `0.762981`ですが、single-person PLCSと出力・データ・metricが違うため直接比較しません。
 
-### proposal参照の扱い
+### 現行比較の境界
 
-[`proposal-plcs-pmpose-adapter`](nodes/proposal-plcs-pmpose-adapter.md) と [`proposal-plcs-caltennis-cross-view-eval`](nodes/proposal-plcs-caltennis-cross-view-eval.md) は `run-i518-baseline` を参照しています。歴史的再現を目的とする場合は妥当ですが、**現行pipelineの改善判定**にはdeploy nodeとepoch197 checkpointを固定するべきです。
+PLCSの現行pipeline改善判定では、deploy nodeとepoch197 checkpointを固定します。新しいarchitecture / loss / camera-view contractは、それぞれ同一protocolの対照runをfamily baselineとして持ち、deploy置換を主張する場合にだけ3–6 camera・court KP14・実pipeline互換recipeで再評価します。
 
 ## `blcs`
 
@@ -138,11 +152,17 @@ point RANSACを点・線共同残差へ変える [`proposal-court-pnl-line-refin
 - [`group-i593-physics-prior`](nodes/group-i593-physics-prior.md) のphysics ftCは実clip ball jerkを `0.280 → 0.106`へ改善した一方、in-distribution positionを `1.845 → 1.947 m`へ悪化させました。機能は採用されてもdefault checkpointはrevertされており、smoothness family baselineとしてのみ保持します。
 - [`group-blcs-compile-training-abba-v4`](nodes/group-blcs-compile-training-abba-v4.md) は学習loop性能のbaselineです。compiledはsteady-state `1.90×`高速、peak CUDA allocated `19.6%`減ですが、cold-start込み3 epochは `2.98×`遅く、break-evenは約18 epochです。trajectory精度baselineではありません。
 
+### normalization v2 / track-query family
+
+[`group-i786-normv2-large-cuda-ablation-eb32`](nodes/group-i786-normv2-large-cuda-ablation-eb32.md) はT=128、V=4、effective batch 32、100 epochのsingle-seed architecture familyです。positionはA `3.522323 m`、identity continuityはB `17.04 ID switches`、presence / lifecycleはD `0.972115 F1`・birth/death `4.43 / 5.36 frames`が最良で、単一の総合勝者はありません。さらに旧versioned-v2 runtimeと現行mainではtracking Smooth-L1 / Hungarian betaおよびartifact schemaが異なるため、これはhistorical family evidenceであり、現行mainの再現baselineではありません。
+
+[`group-i801-reference-selector-ablation`](nodes/group-i801-reference-selector-ablation.md) はcamera-view v2上で第三RoPE軸のreference selectorだけを変えたmatched comparisonです。selector-zeroはreferenceよりpositionが `3.721058 < 3.813505 m`、Y-sign accuracyが `0.877656 > 0.871094`で、reference selectorの明確な寄与は確認できませんでした。dataset / target frame自体がv1 deployと異なるため、production defaultはv1のまま維持します。
+
 ### multi-ballは別契約
 
 短clipの最初のtrack-query diagnosticは [`run-issue-648-multiball-baseline`](nodes/run-issue-648-multiball-baseline.md)（position `0.337709 m`、presence F1 `0.847570`）です。512-frame lifecycleの現行比較起点は [`run-i648-blcs-lifecycle-v4-large-pointattn32-rope2d-t512-b1-100ep`](nodes/run-i648-blcs-lifecycle-v4-large-pointattn32-rope2d-t512-b1-100ep.md)（position `1.125558 m`、presence F1 `0.751386`）です。前者と後者もsequence length、data、training budgetが違うため、改善・悪化として直接比較しません。
 
-[`proposal-blcs-arc-physics-refinement`](nodes/proposal-blcs-arc-physics-refinement.md) はlifecycle runをbaselineにしています。multi-ball lifecycle arcを対象とするなら維持できますが、single-ball deploy trajectoryの後処理を対象とする場合は、現行multiview deploy checkpointから専用baseline runを作る必要があります。
+今後multi-ball lifecycle arcを改善する場合はlong lifecycle runを対照に固定します。single-ball deploy trajectoryの後処理を対象とする場合は、現行multiview deploy checkpointから専用baseline runを作り、両契約を混ぜません。
 
 ## `slcs`
 
@@ -179,9 +199,14 @@ SLCSにはdeploy baselineもrecording-disjointな汎化baselineもありませ�
 | multi-person PLCS | [`run-issue-643-multiperson-baseline`](nodes/run-issue-643-multiperson-baseline.md) | 初期diagnostic。single-personとは非互換 |
 | short multi-ball BLCS | [`run-issue-648-multiball-baseline`](nodes/run-issue-648-multiball-baseline.md) | 初期diagnostic。lifecycleとは非互換 |
 | long lifecycle multi-ball | [`run-i648-blcs-lifecycle-v4-large-pointattn32-rope2d-t512-b1-100ep`](nodes/run-i648-blcs-lifecycle-v4-large-pointattn32-rope2d-t512-b1-100ep.md) | 512-frame比較起点 |
+| BLCS normalization-v2 architecture | [`group-i786-normv2-large-cuda-ablation-eb32`](nodes/group-i786-normv2-large-cuda-ablation-eb32.md) | A=position、B=identity、D=lifecycle。旧runtimeのhistorical family evidence |
+| BLCS camera-view v2 selector | [`group-i801-reference-selector-ablation`](nodes/group-i801-reference-selector-ablation.md) | selector-zeroがposition / Y-signで僅差優位。production v1維持 |
+| PLCS canonical temporal motion | [`run-plcs-canonical-temporal-decomp-beta01-noaug`](nodes/run-plcs-canonical-temporal-decomp-beta01-noaug.md) | mean-collapse解消のdiagnostic。高周波jitter未解決 |
+| PLCS reprojection V=2 / T=16 | [`group-plcs-reprojection-loss-w1`](nodes/group-plcs-reprojection-loss-w1.md) | 向き・2D整合改善、Z悪化 |
+| PLCS axial reprojection V=4 / T=128 | [`group-plcs-multiview-axial-reprojection-loss-w1-v4-t128`](nodes/group-plcs-multiview-axial-reprojection-loss-w1-v4-t128.md) | mean / median改善、近距離率・tailにtrade-off |
 | BLCS compile性能 | [`group-blcs-compile-training-abba-v4`](nodes/group-blcs-compile-training-abba-v4.md) | eagerをruntime baseline、compiledをtreatmentとする |
 
-synthetic avatarのbody-anchored layerとsub-frame motion blur proposalは、どちらも `baseline_nodes: []` です。既存renderer pathを固定した正式runがないため、現状はcandidateのままが正しい状態です。
+正式run / group nodeがない構想は、この台帳へbaselineとして登録しません。まず固定対照・再現情報・評価値を持つrunを登録し、その後にfamilyまたはbenchmark baselineへ昇格します。
 
 ## 全group node監査
 
@@ -206,18 +231,15 @@ synthetic avatarのbody-anchored layerとsub-frame motion blur proposalは、ど
 | [`group-i593-physics-prior`](nodes/group-i593-physics-prior.md) | accuracy / smoothnessの目的別challenger。defaultは置換しない結論 |
 | [`group-i634-slcs-dino-overfit`](nodes/group-i634-slcs-dino-overfit.md) | SLCS diagnosticでDINO有効性を確認。汎化主張不可 |
 | [`group-i634-slcs-compression-split-ablation`](nodes/group-i634-slcs-compression-split-ablation.md) | SLCS diagnostic Pareto。split DINOがyaw / ball最良 |
+| [`group-i786-normv2-large-cuda-ablation-eb32`](nodes/group-i786-normv2-large-cuda-ablation-eb32.md) | BLCS track-query family。A=position、B=identity、D=presence/lifecycle。旧runtimeのためhistorical扱い |
+| [`group-i801-reference-selector-ablation`](nodes/group-i801-reference-selector-ablation.md) | matched BLCS selector比較。reference selectorの改善なし、production v1維持 |
+| [`group-plcs-reprojection-loss-w1`](nodes/group-plcs-reprojection-loss-w1.md) | V=2 / T=16のreprojection family。向き改善とZ悪化のtrade-off |
+| [`group-plcs-multiview-axial-reprojection-loss-w1-v4-t128`](nodes/group-plcs-multiview-axial-reprojection-loss-w1-v4-t128.md) | axial V=4 / T=128 family。mean / median改善だが単一seed・tail悪化あり |
 | [`group-blcs-compile-training-abba-v4`](nodes/group-blcs-compile-training-abba-v4.md) | runtime / memory baseline。精度baselineではない |
 
-## proposal baseline参照の監査
+## 現行knowledge graphの監査境界
 
-| proposal | 現在の参照 | 判定 |
-|---|---|---|
-| [`proposal-ball-blur-aware-targets`](nodes/proposal-ball-blur-aware-targets.md) | `run-i551-dinov3-rope-tracknet-train-retry1` | DINO family内のtarget-only比較なら可。現行detector改善なら`run-i618-3dgs-blcs-real-baseline-v1`へrebase |
-| [`proposal-plcs-pmpose-adapter`](nodes/proposal-plcs-pmpose-adapter.md) | `run-i518-baseline` | 歴史的比較なら可。現行pipeline評価にはdeploy PLCSを使用 |
-| [`proposal-plcs-caltennis-cross-view-eval`](nodes/proposal-plcs-caltennis-cross-view-eval.md) | `run-i518-baseline` | external evaluation対象checkpointを現行deployへ固定するのが望ましい |
-| [`proposal-court-pnl-line-refinement`](nodes/proposal-court-pnl-line-refinement.md) | 空 | detectorとは別にpostprocess-only baseline runが必要 |
-| [`proposal-blcs-arc-physics-refinement`](nodes/proposal-blcs-arc-physics-refinement.md) | lifecycle multi-ball run | lifecycle対象なら可。single-ball deploy対象なら専用baselineへ変更 |
-| synthetic avatar proposals | 空 | matching renderer baseline未登録のためcandidate維持 |
+2026-08-28時点の正式node typeはrun / groupです。以前のproposal / paper nodeと`baseline_nodes`監査はknowledge graphから削除されたため、この台帳からも撤去しました。issue、PR、研究案だけではbaselineとみなさず、固定対照・再現情報・評価値を持つrunと、それを束ねるgroupだけを監査対象にします。
 
 ## 更新ルール
 
@@ -227,6 +249,7 @@ synthetic avatarのbody-anchored layerとsub-frame motion blur proposalは、ど
 2. 新runが現行baselineを`supersedes`し、同一評価契約で再現された。
 3. evaluation manifest、split、decode、metric定義が変わった。
 4. diagnostic taskに初めてheld-out baselineが登録された。
-5. proposalの`baseline_nodes`が現行deployまたは明示的なfamily baselineと不整合になった。
+5. 新しいrun / groupが、既存とは異なる評価契約のbenchmarkまたはfamily baselineを確立した。
+6. knowledge graphのnode type、schema、runtime contractが変わり、この台帳の参照または比較境界が古くなった。
 
 baseline変更時は、旧nodeを削除せず、旧baseline、置換run、評価契約差、置換理由をこの文書へ残します。単一metricの最高値だけでbaselineを動かしません。
