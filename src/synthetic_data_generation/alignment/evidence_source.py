@@ -621,7 +621,7 @@ class MeasuredAlignmentEvidenceSource:
                 f"reselection or refit: {type(error).__name__}: {error}"
             ) from error
         heatmaps = _alignment_line_heatmaps(
-            selected_cameras=selected,
+            camera_prefix=selected,
             probabilities=probabilities,
             projected_by_camera=projected_by_camera,
             plane=plane,
@@ -637,7 +637,7 @@ class MeasuredAlignmentEvidenceSource:
 
 def _alignment_line_heatmaps(
     *,
-    selected_cameras: tuple[SceneCamera, ...],
+    camera_prefix: tuple[SceneCamera, ...],
     probabilities: Mapping[str, NDArray[np.float32]],
     projected_by_camera: Mapping[str, _ProjectedLineEvidence],
     plane: _GroundPlane,
@@ -664,7 +664,7 @@ def _alignment_line_heatmaps(
                 ),
                 included_in_aggregate=camera.camera_id in aggregate_ids,
             )
-            for camera in selected_cameras
+            for camera in camera_prefix
         ),
     )
 
