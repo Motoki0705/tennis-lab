@@ -8,6 +8,7 @@ Claude / Codex / Gemini など各プロバイダのセッションが回す「�
 - **エッジは有向**（親 → 子）。どちらが親（baseline / 前提）かを区別できる。
 - すべて **git 管理**。1 ノード = 1 Markdown ファイルなので diff・レビューが容易。
 - 各プロバイダ AI からの読み書きは [`knowledge-control` SKILL](../.agents/skills/knowledge-control/SKILL.md) 経由。
+- 現在の到達点と未解決課題は [`summary.md`](./summary.md)。
 - 閲覧は [`webui/`](./webui)（Next.js + React Flow）。
 
 関連 issue: #529。
@@ -17,6 +18,7 @@ Claude / Codex / Gemini など各プロバイダのセッションが回す「�
 ```
 knowledge/
   README.md      # このファイル（仕様）
+  summary.md     # 現在の到達点・主要な知見・未解決課題の横断要約
   nodes/         # 1 ノード = 1 .md（frontmatter + 考察本文）
   runs/          # 1 run = 1 dir。再現性バンドル + test split 推論（issue #533, git 管理）
                  #   <run-id>/{run.json, repro.sh, uncommitted.patch, pred_test.npz, metrics.json}
