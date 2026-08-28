@@ -115,16 +115,16 @@ def _resolve_config(
     ffn_dim: int | None,
     rope_base: float | Sequence[float],
     dropout: float,
-    ) -> tuple[
-        int,
-        int | None,
-        int,
-        int,
-        int,
-        int,
-        float | tuple[float, ...],
-        float,
-    ]:
+) -> tuple[
+    int,
+    int | None,
+    int,
+    int,
+    int,
+    int,
+    float | tuple[float, ...],
+    float,
+]:
     """Resolve supported config spellings at one strict construction boundary.
 
     ``intermediate_transformer`` config has intentionally been kept separate
@@ -247,8 +247,8 @@ class CourtTransformerEncoder(nn.Module):
         rope_theta: float | None = None,
         dropout: float = 0.0,
         attn_dropout: float | None = None,
-            ffn_type: FFNType = "swiglu",
-) -> None:
+        ffn_type: FFNType = "swiglu",
+    ) -> None:
         super().__init__()
         aliases = tuple(value for value in (channels, token_dim) if value is not None)
         if aliases and dim is not None and any(value != dim for value in aliases):
@@ -291,11 +291,12 @@ class CourtTransformerEncoder(nn.Module):
             rope_base=rope_base,
             dropout=dropout,
         )
-        raw_ffn_type = (
-            _config_value(config, "ffn_type", "swiglu")
-            if config is not None
-            else "swiglu"
-        )
+        raw_ffn_type = _config_value(config, "ffn_type", ffn_type)
+        if type(raw_ffn_type) is not str or raw_ffn_type not in SUPPORTED_FFN_TYPES:
+            raise ValueError(
+                "Court intermediate Transformer ffn_type must be one of "
+                f"{sorted(SUPPORTED_FFN_TYPES)!r}."
+            )
         self.ffn_type = cast(FFNType, raw_ffn_type)
 
         # The identity configuration intentionally creates neither blocks nor
@@ -406,8 +407,7 @@ class CourtTransformerEncoder(nn.Module):
         features: Tensor,
         *,
         patch_valid_mask: Tensor | None = None,
-            ffn_type: FFNType = "swiglu",
-) -> TransformerEncoderOutput:
+    ) -> TransformerEncoderOutput:
         """Transform valid deepest-grid tokens and return map plus pose query."""
 
         batch, _, height, width = self._validate_input(features)
@@ -448,8 +448,7 @@ class CourtTransformerEncoder(nn.Module):
                 tokens,
                 freqs_cis=frequencies,
                 attn_mask=attention_mask,
-                            ffn_type=ffn_type,
-)
+            )
             tokens = torch.where(token_valid.unsqueeze(-1), tokens, 0.0)
         spatial = tokens[:, 1:].transpose(1, 2).reshape(batch, self.dim, height, width)
         return TransformerEncoderOutput(spatial=spatial, pose_query=tokens[:, 0])

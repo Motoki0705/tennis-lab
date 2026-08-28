@@ -109,7 +109,7 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
         self.aux_position_on_rotation_branch = bool(aux_position_on_rotation_branch)
         self.detach_pose_branch = bool(detach_pose_branch)
 
-        def _axial_stack(rope_base: float, depth: int, ffn_type: FFNType = "swiglu") -> nn.ModuleList:
+        def _axial_stack(rope_base: float, depth: int) -> nn.ModuleList:
             return nn.ModuleList(
                 [
                     TransformerBlock(

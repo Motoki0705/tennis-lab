@@ -14,7 +14,6 @@ from src.utils.configuration import (
     BUILD_CUDA_OPS,
     CUDA_OPS_BUILD_TARGET,
     DINO_OPS_BUILD_CONFIG,
-    FORCE_MOE_REFERENCE,
     FORCE_TIME_LOCAL_REFERENCE,
     USE_TIME_LOCAL_CUDA,
     ConfigurationError,
@@ -51,8 +50,6 @@ def _build_mapping(root: Path) -> dict[str, object]:
         "source": "DINO/ops/src",
         "destination_role": "cache",
         "destination": "dino_ops/src",
-        "moe_bindings": "src/utils/models/components/ops/moe/csrc/moe.cpp",
-        "moe_kernels": "src/utils/models/components/ops/moe/csrc/moe_cuda.cu",
         "time_local_bindings": (
             "src/utils/models/components/ops/time_local/csrc/time_local.cpp"
         ),
@@ -71,7 +68,6 @@ def _build_mapping(root: Path) -> dict[str, object]:
 def _operation_environment(**overrides: str) -> dict[str, str]:
     values = {
         BUILD_CUDA_OPS: "0",
-        FORCE_MOE_REFERENCE: "0",
         FORCE_TIME_LOCAL_REFERENCE: "0",
         USE_TIME_LOCAL_CUDA: "0",
     }
@@ -83,7 +79,6 @@ def _operation_environment(**overrides: str) -> dict[str, str]:
     "name",
     [
         BUILD_CUDA_OPS,
-        FORCE_MOE_REFERENCE,
         FORCE_TIME_LOCAL_REFERENCE,
         USE_TIME_LOCAL_CUDA,
     ],
@@ -186,8 +181,8 @@ def test_dino_build_contract_resolves_all_roles(tmp_path: Path) -> None:
 
     assert config.source == tmp_path / "third_party/DINO/ops/src"
     assert config.destination == tmp_path / ".cache/dino_ops/src"
-    assert config.moe_bindings == (
-        tmp_path / "src/utils/models/components/ops/moe/csrc/moe.cpp"
+    assert config.time_local_bindings == (
+        tmp_path / "src/utils/models/components/ops/time_local/csrc/time_local.cpp"
     )
     assert config.compressed_time_local_kernels == (
         tmp_path / "src/utils/models/components/ops/compressed_time_local/kernels.cu"
@@ -230,7 +225,7 @@ def test_dino_build_contract_rejects_noncanonical_serialized_project_root(
         ({"destination_role": "project"}, "destination_role"),
         ({"source": "/tmp/outside"}, "relative"),
         ({"destination": "../outside"}, "escapes"),
-        ({"moe_bindings": 3}, "expected str"),
+        ({"time_local_bindings": 3}, "expected str"),
     ],
 )
 def test_dino_build_contract_rejects_invalid_inputs(

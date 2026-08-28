@@ -257,7 +257,10 @@ class BLCSModel(nn.Module):
         x = self.final_norm(x)
         ball_out = x[:, num_court_tokens:, :]  # (B, T, D)
         outputs = cast("dict[str, Tensor]", self.output_head(ball_out))
-        return mask_trajectory_outputs(outputs, masks.frame_valid)
+        return cast(
+            "dict[str, Tensor]",
+            mask_trajectory_outputs(outputs, masks.frame_valid),
+        )
 
     def get_num_params(self) -> int:
         """Get total number of trainable parameters."""

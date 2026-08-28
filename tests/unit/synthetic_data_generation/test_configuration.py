@@ -253,7 +253,15 @@ def test_production_alignment_evidence_and_acceptance_are_complete_typed_values(
         1.0,
         0.01,
     )
-    assert astuple(evidence.projection) == (0.05, 3.0, 0.05, 20)
+    assert astuple(evidence.projection) == (
+        0.05,
+        3.0,
+        0.05,
+        0.35,
+        2.0,
+        0.0025,
+        20,
+    )
     assert astuple(evidence.candidate_fit) == (
         2,
         6.0,
@@ -437,7 +445,7 @@ def _compose_with_nht_config_root(root: Path) -> DictConfig:
     config = _compose()
     data_root = root.parent / "data"
     data_root.mkdir(exist_ok=True)
-    source_video = data_root / "synthetic_data_generation/raw/tennis_court.mp4"
+    source_video = data_root / "synthetic_data_generation/raw/B00.mp4"
     source_video.parent.mkdir(parents=True)
     source_video.write_bytes(b"configuration fixture")
     backbone = (

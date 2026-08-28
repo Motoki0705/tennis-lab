@@ -119,8 +119,36 @@ def test_default_track_query_config_completes_one_cccg_cycle() -> None:
     parsed = parse_model_config(config)
     assert isinstance(parsed, TrackQueryModelConfig)
     assert parsed.num_stages == 4
+    assert parsed.ffn_type == "swiglu"
     assert parsed.mhc.sinkhorn_iters == 20
     assert parsed.cswa.backend == "reference"
+
+
+@pytest.mark.parametrize(
+    ("violation", "error"),
+    [
+        ("missing", MissingConfigurationKeyError),
+        ("wrong_type", ConfigurationTypeError),
+        ("unsupported", SemanticConfigurationError),
+    ],
+)
+def test_track_query_ffn_type_is_required_typed_and_supported(
+    violation: str,
+    error: type[Exception],
+) -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(config_name="train_tracking")
+
+    with open_dict(config.model):
+        if violation == "missing":
+            del config.model["ffn_type"]
+        elif violation == "wrong_type":
+            config.model.ffn_type = 1
+        else:
+            config.model.ffn_type = "unknown"
+
+    with pytest.raises(error, match="ffn_type"):
+        parse_model_config(config)
 
 
 @pytest.mark.parametrize(

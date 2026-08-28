@@ -5,7 +5,7 @@ This package provides reusable building blocks used across tasks:
 - Attention: `MultiHeadSelfAttention`, `MultiHeadCrossAttention`
 - Norm: `RMSNorm`, `LayerNorm`
 - RoPE: 1D (`precompute_freqs_cis`) and interleaved N-D (`precompute_freqs_cis_nd`, `apply_rotary_emb`)
-- FFN/MoE: SwiGLU variants, `MLP`, `default_ffn_dim`, `TopKRouter`, `MoELayer`
+- FFN: SwiGLU variants, `MLP`, `build_ffn`, `default_ffn_dim`
 - Blocks: `TransformerBlock`, `TransformerBlockConfig`, `CrossAttnBlockConfig`, `CrossAttnBlock`
 - Compressed temporal attention: `CSWAConfig`, `CompressedSlidingWindowSelfAttention`
 
@@ -39,7 +39,6 @@ from src.utils.models.components.ffn_layers import (
     SwiGLU,
     build_ffn,
     default_ffn_dim,
-    resolve_ffn_type,
 )
 from src.utils.models.components.fixed_query_track_ablation_stage import (
     FFNMode,
@@ -47,7 +46,6 @@ from src.utils.models.components.fixed_query_track_ablation_stage import (
     MHCWriteback,
 )
 from src.utils.models.components.fixed_query_track_stage import FixedQueryTrackStage
-from src.utils.models.components.moe import MoEConfig, MoELayer, MoERouting, TopKRouter
 from src.utils.models.components.norm import LayerNorm, RMSNorm
 from src.utils.models.components.rope import (
     RotaryFrequencyComputer,
@@ -80,11 +78,6 @@ __all__ = [
     "SwiGLU",
     "build_ffn",
     "default_ffn_dim",
-    "resolve_ffn_type",
-    "MoEConfig",
-    "MoELayer",
-    "MoERouting",
-    "TopKRouter",
     # Blocks
     "TransformerBlockConfig",
     "TransformerBlock",

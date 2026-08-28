@@ -26,7 +26,7 @@ class FixedQueryTrackAblationStage(nn.Module):
     stages use three normal Transformer blocks. Shared stages use three
     attention-only blocks and exactly one stage-owned pre-norm configured-FFN residual
     over the latest query and object tokens after all attention operations.
-    Variant E additionally inserts a separate query-only pre-norm SwiGLU
+    Variant E additionally inserts a separate query-only pre-norm configured-FFN
     residual between spatial and query-temporal attention.
     """
 

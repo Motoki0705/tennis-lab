@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from src.utils.models.components.ffn_layers import FFNType
-
 from typing import Literal, cast
 
 import torch
@@ -151,8 +149,7 @@ class BLCSTrackQueryAblationModel(nn.Module):
         config: TrackQueryAblationModelConfig,
         head_dim: int,
         temporal_cswa: bool,
-            ffn_type: FFNType = "swiglu",
-) -> TransformerBlockConfig:
+    ) -> TransformerBlockConfig:
         attention_type: Literal["mha", "cswa"] = (
             "cswa" if temporal_cswa else "mha"
         )
@@ -191,21 +188,18 @@ class BLCSTrackQueryAblationModel(nn.Module):
         stage_index: int,
         config: TrackQueryAblationModelConfig,
         head_dim: int,
-            ffn_type: FFNType = "swiglu",
-) -> FixedQueryTrackAblationStage:
+    ) -> FixedQueryTrackAblationStage:
         temporal_cswa = stage_index % 4 < 3
         temporal_config = self._block_config(
             config=config,
             head_dim=head_dim,
             temporal_cswa=temporal_cswa,
-                    ffn_type=ffn_type,
-)
+        )
         spatial_config = self._block_config(
             config=config,
             head_dim=head_dim,
             temporal_cswa=False,
-                    ffn_type=ffn_type,
-)
+        )
         return FixedQueryTrackAblationStage(
             stage_index=stage_index,
             mhc=ManifoldConstrainedHyperConnection(
