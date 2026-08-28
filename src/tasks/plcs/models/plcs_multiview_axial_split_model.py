@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING, Literal, cast
 import torch.nn as nn
 from torch import Tensor
 
-from src.tasks.plcs.models.components.heads import CanonicalPoseHead, PositionHead
+from src.tasks.plcs.models.components.heads import PositionHead
 from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
 from src.utils.models import (
     RMSNorm,
@@ -72,6 +72,7 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
         max_seq_len: int,
         invisible_init_std: float,
         num_court_tokens: int,
+        canonical_pose_readout: Literal["direct", "temporal_decomposition"] = "direct",
     ) -> None:
         if num_task_layers <= 0:
             raise ValueError(
@@ -97,6 +98,7 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
             max_seq_len=max_seq_len,
             invisible_init_std=invisible_init_std,
             num_court_tokens=num_court_tokens,
+            canonical_pose_readout=canonical_pose_readout,
         )
 
         self.num_task_layers = int(num_task_layers)
@@ -157,7 +159,9 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
                 dropout=dropout,
             )
         self._pose_branch_input = (
-            self._detach_pose_branch if self.detach_pose_branch else self._share_pose_branch
+            self._detach_pose_branch
+            if self.detach_pose_branch
+            else self._share_pose_branch
         )
         self._canonical_feature = (
             self._rotation_canonical_feature
@@ -204,6 +208,10 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
             max_seq_len=config.integer("max_seq_len"),
             invisible_init_std=config.number("invisible_init_std"),
             num_court_tokens=num_court_tokens,
+            canonical_pose_readout=cast(
+                Literal["direct", "temporal_decomposition"],
+                config.string("canonical_pose_readout"),
+            ),
         )
 
     def _run_axial_stack(
@@ -314,39 +322,42 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
 
         rot_feat = self.rot_final_norm(x_rot[:, :, 0, :])
         pose_feat = self.pose_final_norm(x_pose[:, :, 0, :])
+        frame_valid = ~padding_mask.all(dim=1)
 
-        return self._decode_split_outputs(rot_feat, pose_feat)
+        return self._decode_split_outputs(rot_feat, pose_feat, frame_valid)
 
     def _decode_split_outputs_basic(
-        self, rot_feat: Tensor, pose_feat: Tensor
+        self, rot_feat: Tensor, pose_feat: Tensor, frame_valid: Tensor
     ) -> dict[str, Tensor]:
+        del frame_valid
         return {
             "position": self.position_head(pose_feat),
             "rotation": self.rotation_head(rot_feat),
         }
 
     def _decode_split_outputs_with_canonical_pose(
-        self, rot_feat: Tensor, pose_feat: Tensor
+        self, rot_feat: Tensor, pose_feat: Tensor, frame_valid: Tensor
     ) -> dict[str, Tensor]:
-        output = self._decode_split_outputs_basic(rot_feat, pose_feat)
-        canonical_head = cast(CanonicalPoseHead, self.canonical_pose_head)
-        output["canonical_pose"] = canonical_head(
-            self._canonical_feature(rot_feat, pose_feat)
+        output = self._decode_split_outputs_basic(rot_feat, pose_feat, frame_valid)
+        output["canonical_pose"] = self._decode_canonical_pose(
+            self._canonical_feature(rot_feat, pose_feat), frame_valid
         )
         return output
 
     def _decode_split_outputs_with_auxiliary_position(
-        self, rot_feat: Tensor, pose_feat: Tensor
+        self, rot_feat: Tensor, pose_feat: Tensor, frame_valid: Tensor
     ) -> dict[str, Tensor]:
-        output = self._decode_split_outputs_basic(rot_feat, pose_feat)
+        output = self._decode_split_outputs_basic(rot_feat, pose_feat, frame_valid)
         auxiliary_head = cast(PositionHead, self.aux_position_head)
         output["aux_position"] = auxiliary_head(rot_feat)
         return output
 
     def _decode_split_outputs_with_all_heads(
-        self, rot_feat: Tensor, pose_feat: Tensor
+        self, rot_feat: Tensor, pose_feat: Tensor, frame_valid: Tensor
     ) -> dict[str, Tensor]:
-        output = self._decode_split_outputs_with_canonical_pose(rot_feat, pose_feat)
+        output = self._decode_split_outputs_with_canonical_pose(
+            rot_feat, pose_feat, frame_valid
+        )
         auxiliary_head = cast(PositionHead, self.aux_position_head)
         output["aux_position"] = auxiliary_head(rot_feat)
         return output

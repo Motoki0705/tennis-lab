@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-canonical-pose-beta/outputs/plcs/plcs_multiview_axial_canonical_only_temporal_decomp_beta01_noaug/logs/version_0/checkpoints

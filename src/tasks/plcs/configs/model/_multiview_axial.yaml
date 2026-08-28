@@ -21,3 +21,4 @@ rope_dim: ???
 rope_theta_time: 1000.0
 rope_theta_camera: 1000.0
 predict_canonical_pose: true
+canonical_pose_readout: direct
