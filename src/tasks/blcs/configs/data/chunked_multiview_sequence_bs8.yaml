@@ -4,7 +4,7 @@ defaults:
   - _multiview
   - _self_
 
-scene_dir: blcs
+scene_dir: blcs/single_object
 num_court_kp: 20
 
 batch_size: 8

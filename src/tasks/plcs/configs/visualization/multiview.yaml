@@ -1,5 +1,5 @@
 mode: visualize  # visualize | predict
-scene_path: plcs/scenes/scene_000001
+scene_path: plcs/single_object/scenes/scene_000001
 camera: 0
 cameras: [0, 1, 2, 3, 4, 5]
 reference_camera_id: null

@@ -4,7 +4,7 @@ defaults:
   - _singleview
   - _self_
 
-scene_dir: plcs
+scene_dir: plcs/single_object
 adapter_camera_index: 0
 num_court_kp: 20
 

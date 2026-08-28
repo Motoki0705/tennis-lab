@@ -101,7 +101,7 @@ multi-object generatorは1024-frame global timelineに3〜10個のAMASS/SMPL-H s
 ```bash
 # 固定train/val/testデータを事前生成
 .venv/bin/python -m src.tasks.plcs.scripts.generate_dataset \
-  generation=multi_object run.output_dir=data/plcs/multi_object
+  generation=multi_object run.output_dir=plcs/multi_object
 
 # 事前生成データで学習
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking
@@ -110,7 +110,7 @@ multi-object generatorは1024-frame global timelineに3〜10個のAMASS/SMPL-H s
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking \
   model=track_query_ablation_d
 
-# camera-view v2 D selector / selector-zero（CPU functional evidence、GPUならqueue経由）
+# camera-view v2 D selector / selector-zero（別途生成したopt-inデータ、CPU functional evidence、GPUならqueue経由）
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking \
   court_keypoints=camera_view_v2 data.scene_dir=plcs/multi_object_camera_view_v2 \
   model=track_query_ablation_d_v2_selector
