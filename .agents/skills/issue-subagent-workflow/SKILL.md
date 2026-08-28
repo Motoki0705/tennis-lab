@@ -30,7 +30,6 @@ This freezes canonical `issue.json`, renders `issue.md`, records both hashes, cr
 7. After Tester PASS, run one independent `seal_reviewer` with no source/test edits. Seal verifies candidate identity, approved scope, repository rules, evidence completeness, and canonical seal checks; it is not another open-ended semantic review. Any Seal RETURN requires `return-review`, and every content repair requires fresh Preflight/Test before resealing.
 8. Enter validation only after Tester and Seal PASS. The Validator receives the frozen Issue and sealed candidate identity, not prior narratives.
 9. Validator PASS sets `status = "validated"`, `phase = "packaging"`—not completion. Create/update the PR, check out its final head, run `capture-pr`, write `packaging.md` with the evidence digest, then run `finalize-pr`. `capture-pr` records real PR metadata, all paginated changed files, and remote checks in state; only `finalize-pr` sets `status = "complete"`.
-10. If packaging exposes a content defect, run `packaging-repair ... --reason "..."` before editing further. It preserves the frozen Issue, attempt, exploration, and plan, invalidates all candidate/PR bindings, returns to in-progress implementation, and requires fresh Preflight/Test/Seal/Validation. History-only packaging does not use this transition.
 
 ## Delegation
 
@@ -52,7 +51,6 @@ python $MANAGE preflight-verdict $TASK <PASS|RETURN>
 python $MANAGE test-verdict $TASK <PASS|RETURN>
 python $MANAGE seal-verdict $TASK <PASS|RETURN>
 python $MANAGE return-review $TASK <implementation|exploration> --reason "<classification>"
-python $MANAGE packaging-repair $TASK --reason "<content defect requiring repair>"
 python $MANAGE block $TASK <constraint_conflict|external_dependency|missing_authority|environment> --reason "<blocker>"
 python $MANAGE verdict $TASK <PASS|RETURN>
 python $MANAGE capture-pr $TASK --pr-number <n>
