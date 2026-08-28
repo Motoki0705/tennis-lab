@@ -81,9 +81,10 @@ def test_projection_preserves_arbitrary_point_axes_and_backpropagates() -> None:
 def test_projection_rejects_mismatched_camera_shapes() -> None:
     points = torch.zeros(2, 3, 3)
     rotation, center, focal, center_x, center_y, width, height = _camera_batch()
+    projector = DifferentiablePinholeProjection()
 
     with pytest.raises(ValueError, match="share the batch axis"):
-        DifferentiablePinholeProjection()(
+        projector.validate_inputs(
             points,
             rotation,
             center,

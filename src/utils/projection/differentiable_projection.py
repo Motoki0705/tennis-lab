@@ -22,7 +22,7 @@ class DifferentiablePinholeProjection(nn.Module):
         self.depth_eps = float(depth_eps)
 
     @staticmethod
-    def _validate_shapes(
+    def validate_inputs(
         world_points: Tensor,
         camera_R: Tensor,
         camera_C: Tensor,
@@ -32,6 +32,7 @@ class DifferentiablePinholeProjection(nn.Module):
         camera_w: Tensor,
         camera_h: Tensor,
     ) -> tuple[int, int, int]:
+        """Validate tensor shapes and return projection layout dimensions."""
         if world_points.ndim < 2 or world_points.shape[-1] != 3:
             raise ValueError(
                 "world_points must have shape (B, ..., 3), got "
@@ -88,16 +89,9 @@ class DifferentiablePinholeProjection(nn.Module):
         camera_h: Tensor,
     ) -> tuple[Tensor, Tensor]:
         """Return normalized UV and a positive-depth mask for each camera."""
-        batch_size, num_views, point_rank = self._validate_shapes(
-            world_points,
-            camera_R,
-            camera_C,
-            camera_f,
-            camera_cx,
-            camera_cy,
-            camera_w,
-            camera_h,
-        )
+        batch_size = world_points.shape[0]
+        num_views = camera_R.shape[1]
+        point_rank = world_points.ndim - 2
         device = world_points.device
         dtype = world_points.dtype
 
