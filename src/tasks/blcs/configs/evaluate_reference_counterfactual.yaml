@@ -1,5 +1,4 @@
 defaults:
-  - court_coordinate_normalization: v2
   - court_keypoints: camera_view_v2
   - paths: default
   - model: track_query_ablation_d_v2_selector
@@ -8,11 +7,6 @@ defaults:
   - loss: tracking
   - tracking_metrics: default
   - run: train
-  - physics: default
-  - rally: default
-  - camera: default
-  - targeted_velocity: default
-  - generator: default
   - _self_
 
 data:

@@ -54,7 +54,10 @@ from src.tasks.plcs.training.tracking_lightning_module import (
 )
 from src.utils.configuration import PathContractError, SemanticConfigurationError
 from src.utils.paths import PROJECT_ROOT
-from src.utils.schema.court_normalization import resolve_court_coordinate_normalization
+from src.utils.schema.court_normalization import (
+    normalize_court_position,
+    normalize_court_velocity,
+)
 
 _SCHEMA = "synthetic_task_adapter_v2"
 _Runner = Callable[[DictConfig], ReferenceCounterfactualReportPaths]
@@ -168,17 +171,14 @@ def _blcs_payload(
     side: str,
 ) -> dict[str, np.ndarray[Any, Any]]:
     selection = manifest.scenes[0].selection(cast("Any", side))
-    normalization = resolve_court_coordinate_normalization("v2")
     physical = np.asarray([[[[1.0, 2.0, 0.5]], [[-1.0, -2.0, 1.0]]]])
     target = np.asarray(court_points_physical_to_target(physical, selection.provenance))
-    target_norm = np.asarray(normalization.normalize_position(target), dtype=np.float32)
+    target_norm = np.asarray(normalize_court_position(target), dtype=np.float32)
     velocity_physical = np.asarray([[[[0.2, 0.4, 0.1]], [[0.1, -0.2, 0.0]]]])
     velocity = np.asarray(
         court_points_physical_to_target(velocity_physical, selection.provenance)
     )
-    velocity_norm = np.asarray(
-        normalization.normalize_velocity(velocity), dtype=np.float32
-    )
+    velocity_norm = np.asarray(normalize_court_velocity(velocity), dtype=np.float32)
     uv: np.ndarray[Any, Any] = np.arange(24, dtype=np.float32).reshape(1, 6, 2, 1, 2)
     visible: np.ndarray[Any, Any] = np.ones((1, 6, 2, 1), dtype=np.bool_)
     payload = {
@@ -208,10 +208,9 @@ def _plcs_payload(
     side: str,
 ) -> dict[str, np.ndarray[Any, Any]]:
     selection = manifest.scenes[0].selection(cast("Any", side))
-    normalization = resolve_court_coordinate_normalization("v2")
     physical = np.asarray([[[[1.0, 2.0, 0.5]], [[-1.0, -2.0, 1.0]]]])
     target = np.asarray(court_points_physical_to_target(physical, selection.provenance))
-    target_norm = np.asarray(normalization.normalize_position(target), dtype=np.float32)
+    target_norm = np.asarray(normalize_court_position(target), dtype=np.float32)
     physical_heading = np.asarray([[[[1.0, 0.0]], [[0.0, 1.0]]]])
     heading = np.asarray(
         court_headings_physical_to_target(physical_heading, selection.provenance),
@@ -279,7 +278,6 @@ def test_task_adapters_build_and_join_reference_only_passes(
     task: str,
 ) -> None:
     manifest = _manifest()
-    normalization = resolve_court_coordinate_normalization("v2")
     identity = _identity(manifest, task)
     passes = []
     for side in ("same_side", "opposite_side"):
@@ -301,7 +299,6 @@ def test_task_adapters_build_and_join_reference_only_passes(
                 side=cast("Any", side),
                 identity=identity,
                 manifest=manifest,
-                normalization=normalization,
                 window_bounds={"scene_a": (5, 7)},
             )
         )
@@ -379,7 +376,6 @@ def test_task_adapter_raw_scene_permutation_is_canonicalized_with_arrays(
 ) -> None:
     manifest = _two_scene_manifest()
     identity = _identity(manifest, task)
-    normalization = resolve_court_coordinate_normalization("v2")
     adapter = (
         build_blcs_counterfactual_pass
         if task == "blcs"
@@ -400,7 +396,6 @@ def test_task_adapter_raw_scene_permutation_is_canonicalized_with_arrays(
             "side": cast("Any", side),
             "identity": identity,
             "manifest": manifest,
-            "normalization": normalization,
             "window_bounds": {"scene_a": (5, 7), "scene_b": (11, 13)},
         }
         canonical_passes.append(adapter(canonical_path, **cast("Any", arguments)))
@@ -431,7 +426,6 @@ def test_task_adapter_raw_scene_permutation_is_canonicalized_with_arrays(
 def test_task_adapter_digest_makes_changed_uv_fail_strict_join(tmp_path: Path) -> None:
     manifest = _manifest()
     identity = _identity(manifest, "blcs")
-    normalization = resolve_court_coordinate_normalization("v2")
     built = []
     for side in ("same_side", "opposite_side"):
         payload = _blcs_payload(manifest, side)
@@ -445,7 +439,6 @@ def test_task_adapter_digest_makes_changed_uv_fail_strict_join(tmp_path: Path) -
                 side=cast("Any", side),
                 identity=identity,
                 manifest=manifest,
-                normalization=normalization,
                 window_bounds={"scene_a": (5, 7)},
             )
         )
@@ -458,7 +451,6 @@ def test_plcs_inactive_heading_fill_is_excluded_from_physical_target_parity(
 ) -> None:
     manifest = _manifest()
     identity = _identity(manifest, "plcs")
-    normalization = resolve_court_coordinate_normalization("v2")
     passes = []
     for side in ("same_side", "opposite_side"):
         payload = _plcs_payload(manifest, side)
@@ -475,7 +467,6 @@ def test_plcs_inactive_heading_fill_is_excluded_from_physical_target_parity(
                 side=cast("Any", side),
                 identity=identity,
                 manifest=manifest,
-                normalization=normalization,
                 window_bounds={"scene_a": (5, 7)},
             )
         )
@@ -498,7 +489,6 @@ def test_task_adapter_rejects_metadata_free_raw_payload(tmp_path: Path) -> None:
             side="same_side",
             identity=_identity(manifest, "blcs"),
             manifest=manifest,
-            normalization=resolve_court_coordinate_normalization("v2"),
             window_bounds={"scene_a": (5, 7)},
         )
 
@@ -557,7 +547,6 @@ def test_task_adapter_rejects_malformed_or_nonfinite_raw_queue_payload(
             side="same_side",
             identity=_identity(manifest, task),
             manifest=manifest,
-            normalization=resolve_court_coordinate_normalization("v2"),
             window_bounds={"scene_a": (5, 7)},
         )
 
@@ -571,7 +560,6 @@ def test_minimal_reference_v2_checkpoint_boundary_rejects_metadata_free_v1(
         config = compose(
             config_name="train_tracking",
             overrides=[
-                "court_coordinate_normalization=v2",
                 "court_keypoints=camera_view_v2",
                 "model=track_query_ablation_d_v2_selector",
                 "model.cswa.backend=reference",
@@ -614,7 +602,7 @@ def test_counterfactual_evaluator_validates_checkpoint_before_writing_output(
     checkpoint = tmp_path / f"{task}.ckpt"
     torch.save({"state_dict": {}}, checkpoint)
 
-    with pytest.raises(ValueError, match="normalization metadata"):
+    with pytest.raises(ValueError, match="court_coordinate_normalization"):
         runner(_evaluation_config(task, checkpoint))
 
     assert not (repro_dir / "predictions").exists()
@@ -635,7 +623,6 @@ def test_blcs_evaluator_passes_typed_court_contract_to_checkpoint_boundary(
 
     def _capture_checkpoint_boundary(
         path: Path,
-        normalization: object,
         runtime_court_keypoints: object,
         runtime_track_query_reference: object,
     ) -> None:

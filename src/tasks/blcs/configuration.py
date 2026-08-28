@@ -2505,7 +2505,6 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             path=f"training.gan.discriminator.{key}",
         )
     if model.name in _TRACK_QUERY_MODEL_NAMES:
-        validate_generator_sections(config, include_generation=backend == "chunked")
         loss = require_config_mapping(root, "loss", path="configuration")
         _exact(
             loss,

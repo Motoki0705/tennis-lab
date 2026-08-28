@@ -19,7 +19,7 @@ from src.tasks.base.generate_dataset import (
     court_vectors_target_to_physical,
     resolve_court_keypoint_contract,
 )
-from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+from src.utils.schema.court_normalization import denormalize_court_position
 
 _PHYSICAL_COURT_KEYPOINT_CONTRACT = resolve_court_keypoint_contract(
     PHYSICAL_V1_SELECTOR
@@ -37,7 +37,6 @@ class BLCSMetrics:
         *,
         position_threshold_m: float,
         endpoint_threshold_m: float,
-        scale_xyz: tuple[float, float, float] = COURT_COORD_SCALE_XYZ,
         court_keypoint_contract: CourtKeypointContract = (
             _PHYSICAL_COURT_KEYPOINT_CONTRACT
         ),
@@ -51,7 +50,6 @@ class BLCSMetrics:
         """
         self.position_threshold_m = position_threshold_m
         self.endpoint_threshold_m = endpoint_threshold_m
-        self.scale_xyz = scale_xyz
         canonical_contract = resolve_court_keypoint_contract(
             court_keypoint_contract.selector
         )
@@ -110,13 +108,8 @@ class BLCSMetrics:
         """
         batch_size, seq_len, _ = pred_position.shape
 
-        # Denormalize to meters
-        scale = torch.tensor(
-            list(self.scale_xyz),
-            device=pred_position.device,
-        )
-        pred_m = pred_position * scale
-        target_m = target_position * scale
+        pred_m = denormalize_court_position(pred_position)
+        target_m = denormalize_court_position(target_position)
         target_frame_pred_m = pred_m
         target_frame_target_m = target_m
 

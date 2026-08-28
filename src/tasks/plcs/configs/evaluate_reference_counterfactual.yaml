@@ -1,6 +1,5 @@
 defaults:
   - court_keypoints: camera_view_v2
-  - court_coordinate_normalization: v2
   - model: track_query_ablation_d_v2_selector
   - data: tracking
   - training: default

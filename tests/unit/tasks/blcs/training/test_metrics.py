@@ -19,7 +19,10 @@ from src.tasks.blcs.model_io import (
     blcs_trajectory_prediction_to_physical,
 )
 from src.tasks.blcs.training.metrics import BLCSMetrics
-from src.utils.schema.court_normalization import normalize_court_position
+from src.utils.schema.court_normalization import (
+    denormalize_court_position,
+    normalize_court_position,
+)
 
 
 def _positive_side_provenance() -> CourtReferenceFrameProvenance:
@@ -188,21 +191,17 @@ def test_reference_metrics_report_target_frame_axes_y_sign_and_local_index_strat
 
 
 def test_reference_metrics_accept_bfloat16_prediction_and_float32_target() -> None:
-    normalization = resolve_court_coordinate_normalization("v2")
     target = torch.tensor([[[0.0, 0.5, 0.0]]], dtype=torch.float32)
     prediction = target.to(torch.bfloat16)
     provenance = _positive_side_provenance()
-    prediction_m = normalization.denormalize_position(prediction)
-    target_m = normalization.denormalize_position(target)
-    assert isinstance(prediction_m, Tensor)
-    assert isinstance(target_m, Tensor)
+    prediction_m = denormalize_court_position(prediction)
+    target_m = denormalize_court_position(target)
     expected_y_error = float((prediction_m.float() - target_m).abs()[0, 0, 1])
 
     with torch.autocast(device_type="cpu", dtype=torch.bfloat16):
         result = BLCSMetrics(
             position_threshold_m=0.3,
             endpoint_threshold_m=0.5,
-            normalization=normalization,
             court_keypoint_contract=provenance.contract,
         ).update(
             prediction,

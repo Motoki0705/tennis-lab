@@ -15,6 +15,7 @@ from src.tasks.plcs.training.metrics import (
     compute_plcs_reference_metric_evidence,
     compute_plcs_reference_transform_consistency,
 )
+from src.utils.schema.court_normalization import denormalize_court_position
 
 
 def _positive_side_provenance():
@@ -110,13 +111,12 @@ def test_reference_metric_evidence_reports_y_sign_axes_heading_and_local_index()
 
 
 def test_reference_metrics_accept_bfloat16_prediction_and_float32_target() -> None:
-    normalization = resolve_court_coordinate_normalization("v2")
     target_position = torch.tensor([[[0.0, 0.5, 0.0]]], dtype=torch.float32)
     prediction_position = target_position.to(torch.bfloat16)
     target_heading = torch.tensor([[[1.0, 0.0]]], dtype=torch.float32)
     prediction_heading = target_heading.to(torch.bfloat16)
-    prediction_m = normalization.denormalize_position(prediction_position)
-    target_m = normalization.denormalize_position(target_position)
+    prediction_m = denormalize_court_position(prediction_position)
+    target_m = denormalize_court_position(target_position)
     assert isinstance(prediction_m, torch.Tensor)
     assert isinstance(target_m, torch.Tensor)
     expected_y_error = float((prediction_m.float() - target_m).abs()[0, 0, 1])
@@ -125,7 +125,6 @@ def test_reference_metrics_accept_bfloat16_prediction_and_float32_target() -> No
         result = PLCSMetrics(
             position_threshold_m=1.0,
             angle_threshold_deg=10.0,
-            normalization=normalization,
         ).update(
             prediction_position,
             prediction_heading,
