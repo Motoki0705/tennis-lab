@@ -13,7 +13,6 @@ from src.tasks.base.evaluation import (
     PairedReferencePositionMetrics,
     compute_heading_error_radians,
     compute_paired_reference_position_metrics,
-    compute_reference_transform_consistency_error,
 )
 from src.tasks.base.generate_dataset import CourtReferenceFrameProvenance
 from src.tasks.plcs.court_keypoint_contract import (
@@ -70,7 +69,7 @@ def _physical_metric_values(
 
 @dataclass(frozen=True, slots=True)
 class PLCSReferenceMetricEvidence:
-    """Counterfactual-ready target-frame PLCS evaluation evidence."""
+    """Target-frame PLCS training metric evidence."""
 
     position: PairedReferencePositionMetrics
     heading_error_radians: float
@@ -92,14 +91,6 @@ class PLCSReferenceMetricEvidence:
             }
         )
         return result
-
-
-@dataclass(frozen=True, slots=True)
-class PLCSReferenceTransformConsistency:
-    """Physical-frame disagreement between opposite-reference predictions."""
-
-    position_error_m: float
-    heading_error_radians: float
 
 
 def compute_plcs_reference_metric_evidence(
@@ -124,37 +115,6 @@ def compute_plcs_reference_metric_evidence(
         heading_error_radians=compute_heading_error_radians(
             prediction_heading,
             target_heading,
-            valid_mask=valid_mask,
-        ),
-    )
-
-
-def compute_plcs_reference_transform_consistency(
-    first_position_m: Tensor,
-    first_heading: Tensor,
-    first_provenance: CourtReferenceFrameProvenance,
-    second_position_m: Tensor,
-    second_heading: Tensor,
-    second_provenance: CourtReferenceFrameProvenance,
-    *,
-    valid_mask: Tensor | None = None,
-) -> PLCSReferenceTransformConsistency:
-    """Compare paired PLCS outputs after authoritative physical restoration."""
-    return PLCSReferenceTransformConsistency(
-        position_error_m=compute_reference_transform_consistency_error(
-            first_position_m,
-            first_provenance,
-            second_position_m,
-            second_provenance,
-            quantity="point",
-            valid_mask=valid_mask,
-        ),
-        heading_error_radians=compute_reference_transform_consistency_error(
-            first_heading,
-            first_provenance,
-            second_heading,
-            second_provenance,
-            quantity="heading",
             valid_mask=valid_mask,
         ),
     )
@@ -204,9 +164,7 @@ class PLCSMetrics:
         target_rotation: Tensor,
         *,
         padding_mask: Tensor | None = None,
-        court_reference_provenance: Sequence[
-            CourtReferenceFrameProvenance
-        ]
+        court_reference_provenance: Sequence[CourtReferenceFrameProvenance]
         | None = None,
         reference_view_index: Tensor | None = None,
     ) -> dict[str, float]:
@@ -232,9 +190,7 @@ class PLCSMetrics:
         frame_valid: Tensor | None = None
         if padding_mask is not None:
             frame_padding = (
-                padding_mask.all(dim=1)
-                if padding_mask.ndim == 3
-                else padding_mask
+                padding_mask.all(dim=1) if padding_mask.ndim == 3 else padding_mask
             )
             frame_valid = ~frame_padding
         if reference_view_index is not None and (
@@ -391,7 +347,5 @@ class PLCSMetrics:
 __all__ = [
     "PLCSMetrics",
     "PLCSReferenceMetricEvidence",
-    "PLCSReferenceTransformConsistency",
     "compute_plcs_reference_metric_evidence",
-    "compute_plcs_reference_transform_consistency",
 ]
