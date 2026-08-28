@@ -14,43 +14,52 @@ jobs:
   diagnose:
     if: ${{ github.actor == github.repository_owner }}
     runs-on: [self-hosted, linux, x64, local-gpu, cuda, wsl2, tennis-lab]
-    timeout-minutes: 10
+    timeout-minutes: 30
 
     steps:
-      - name: Inspect trusted local runtime
+      - name: Checkout feature revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: feat/court-mixed-source-batches
+          fetch-depth: 1
+          persist-credentials: false
+          submodules: false
+
+      - name: Inspect isolated uv and asset runtime
         shell: bash
         run: |
-          set -u
+          set -euo pipefail
           id
           printf 'PATH=%s\n' "$PATH"
-          printf '\n-- candidate roots --\n'
-          for path in \
-            /home/kamimura/projects/tennis-lab \
-            /home/kamimura/projects/tennis-lab/.venv/bin/python \
-            /home/kamimura/.local/share/tennis-lab-chatgpt-mcp/venv/bin/python \
-            /opt/tennis-lab-actions/bin/training_queue.sh \
-            /var/lib/tennis-lab-actions \
-            /var/lib/tennis-lab-actions/assets/data \
-            /var/lib/tennis-lab-actions/assets/ckpt; do
-            if [[ -e "$path" || -L "$path" ]]; then
-              ls -ld "$path"
-            else
-              echo "MISSING $path"
-            fi
-          done
-          printf '\n-- commands --\n'
-          command -v python || true
-          command -v python3 || true
-          python3 -V || true
-          printf '\n-- project python candidates --\n'
-          find /home/kamimura -maxdepth 7 -type f -o -type l 2>/dev/null \
-            | grep -E '/(\.venv|venv)/bin/python(3(\.11)?)?$' \
-            | head -100 || true
-          printf '\n-- queue service --\n'
-          systemctl is-active tennis-lab-training-queue.service || true
+          command -v uv
+          uv --version
+          command -v python3
+          python3 -V
+
+          printf '\n-- queue --\n'
+          test -x /opt/tennis-lab-actions/bin/training_queue.sh
+          systemctl is-active tennis-lab-training-queue.service
           systemctl show tennis-lab-training-queue.service \
-            -p ExecStart -p Environment -p WorkingDirectory --no-pager || true
-          printf '\n-- queue binary --\n'
-          ls -la /opt/tennis-lab-actions/bin 2>/dev/null || true
-          printf '\n-- GPU --\n'
-          nvidia-smi --query-gpu=index,name,memory.total,memory.used --format=csv,noheader || true
+            -p ExecStart -p Environment -p WorkingDirectory --no-pager
+
+          printf '\n-- checkpoint assets --\n'
+          find /var/lib/tennis-lab-actions/assets/ckpt \
+            -maxdepth 4 -type f -printf '%P\n' | sort | head -100
+
+          printf '\n-- data authority --\n'
+          ls -l /var/lib/tennis-lab-actions/assets/data/synthetic_data_generation/scenes/B00/datasets/court/dataset.json
+          ls -ld /var/lib/tennis-lab-actions/assets/data/court
+
+          printf '\n-- locked environment --\n'
+          uv run --locked python - <<'PY'
+          import hydra
+          import pytorch_lightning
+          import torch
+          import yaml
+
+          print("torch", torch.__version__)
+          print("cuda", torch.cuda.is_available())
+          print("hydra", hydra.__version__)
+          print("lightning", pytorch_lightning.__version__)
+          print("yaml", yaml.__version__)
+          PY
