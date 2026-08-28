@@ -41,6 +41,12 @@ from src.utils.configuration import (
 )
 
 _SOURCE_ORDER = ("synthetic_court", "tennis_court_detector")
+_MIXED_KP_TARGET_SCHEMAS = frozenset(
+    {
+        "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+        "tennis_court_detector_kp14:gaussian_max_v1",
+    }
+)
 _POSE_FIELDS = {
     "translation_m",
     "rotation",
@@ -151,12 +157,14 @@ class CourtMixedDataConfig:
             )
 
         synthetic = cast(SyntheticCourtSourceConfig, sources["synthetic_court"])
-        if runtime.loss.pose.enabled and (
-            synthetic.schema != "v3"
-            or synthetic.keypoint_court_scope != "target_court"
+        mixes_keypoints = any(
+            target.kind == "kp" for target in runtime.data.processing.targets
+        )
+        if mixes_keypoints and (
+            synthetic.schema != "v3" or synthetic.keypoint_court_scope != "target_court"
         ):
             raise SemanticConfigurationError(
-                "Pose-enabled mixed training requires Synthetic Court V3 with "
+                "Mixed KP training requires Synthetic Court V3 with "
                 "keypoint_court_scope='target_court'."
             )
         return cls(
@@ -201,8 +209,7 @@ class MixedSourceBatchSampler(Sampler[list[int]]):
             offset += source_lengths[name]
         self.offsets = MappingProxyType(offsets)
         self._num_batches = max(
-            math.ceil(source_lengths[name] / batch_counts[name])
-            for name in names
+            math.ceil(source_lengths[name] / batch_counts[name]) for name in names
         )
         self._epoch = 0
 
@@ -212,7 +219,7 @@ class MixedSourceBatchSampler(Sampler[list[int]]):
     def _order(self, length: int, generator: torch.Generator) -> list[int]:
         if not self.shuffle:
             return list(range(length))
-        return torch.randperm(length, generator=generator).tolist()
+        return cast(list[int], torch.randperm(length, generator=generator).tolist())
 
     def __iter__(self) -> Iterator[list[int]]:
         epoch = self._epoch
@@ -238,13 +245,13 @@ class MixedSourceBatchSampler(Sampler[list[int]]):
                         cursor = 0
                     take = min(remaining, len(order) - cursor)
                     offset = self.offsets[name]
-                    batch.extend(offset + index for index in order[cursor : cursor + take])
+                    batch.extend(
+                        offset + index for index in order[cursor : cursor + take]
+                    )
                     cursors[name] = cursor + take
                     remaining -= take
             if self.shuffle:
-                permutation = torch.randperm(
-                    len(batch), generator=generator
-                ).tolist()
+                permutation = torch.randperm(len(batch), generator=generator).tolist()
                 batch = [batch[index] for index in permutation]
             yield batch
 
@@ -275,7 +282,10 @@ def mixed_court_detection_collate(
         {key: value for key, value in sample.items() if key != "pose_target"}
         for sample in batch
     ]
-    output = court_detection_collate(dense_only_batch, bundle=bundle)
+    output = cast(
+        dict[str, object],
+        court_detection_collate(dense_only_batch, bundle=bundle),
+    )
     output["pose_supervision_mask"] = mask
 
     selected = [payload for payload in pose_payloads if payload is not None]
@@ -304,9 +314,15 @@ def _compatible_bundle(
     for kind in canonical.kinds:
         left = canonical.targets[kind]
         right = candidate.targets[kind]
+        if left == right:
+            continue
         if (
-            left.output_channels != right.output_channels
+            kind != "kp"
+            or frozenset({left.schema, right.schema}) != _MIXED_KP_TARGET_SCHEMAS
+            or left.output_channels != right.output_channels
+            or left.channel_names != right.channel_names
             or left.target_dtype != right.target_dtype
+            or left.precomputed != right.precomputed
         ):
             return False
     return True
@@ -355,7 +371,8 @@ class MixedCourtDetectionDataModule(pl.LightningDataModule):
         ):
             if not _compatible_bundle(canonical, pipeline.target_bundle_spec):
                 raise ValueError(
-                    "Mixed Court sources expose incompatible target/head contracts."
+                    "Mixed Court sources expose incompatible target/head contracts: "
+                    f"canonical={canonical!r}, candidate={pipeline.target_bundle_spec!r}."
                 )
         if "kp" in canonical.kinds:
             flip_permutations = {
@@ -399,9 +416,7 @@ class MixedCourtDetectionDataModule(pl.LightningDataModule):
         self,
         split: CourtSourceSplit,
     ) -> dict[str, CourtDetectionDataset]:
-        pipelines = (
-            self._train_pipelines if split == "train" else self._eval_pipelines
-        )
+        pipelines = self._train_pipelines if split == "train" else self._eval_pipelines
         datasets: dict[str, CourtDetectionDataset] = {}
         for name in _SOURCE_ORDER:
             dataset = self._source_dataset(split=split, pipeline=pipelines[name])
@@ -421,7 +436,9 @@ class MixedCourtDetectionDataModule(pl.LightningDataModule):
         if stage in ("fit", None):
             train = self._datasets_for_split("train")
             if tuple(train) != _SOURCE_ORDER:
-                raise ValueError("Every configured mixed source requires train samples.")
+                raise ValueError(
+                    "Every configured mixed source requires train samples."
+                )
             self.train_dataset = self._concat(train)
             self._train_source_lengths = MappingProxyType(
                 {name: len(dataset) for name, dataset in train.items()}
