@@ -375,7 +375,7 @@ def _court_report_scoped_authority(
     *,
     require_court_target: bool,
 ) -> Mapping[str, object] | None:
-    """Remove only fields owned by a Court-only cursor and its report."""
+    """Remove only authorities owned by dataset stages and the Court-only request."""
     scoped = deepcopy(dict(authority))
     dataset = scoped.get("dataset")
     request = scoped.get("request")
@@ -386,9 +386,7 @@ def _court_report_scoped_authority(
     targets = request.get("targets")
     if require_court_target and targets != [DatasetTarget.COURT.value]:
         return None
-    dataset = dict(dataset)
-    del dataset["court"]
-    scoped["dataset"] = dataset
+    del scoped["dataset"]
     request = dict(request)
     request.pop("targets", None)
     scoped["request"] = request
