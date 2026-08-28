@@ -242,6 +242,7 @@ def _sample(*, views: int, frames: int, queries: int) -> dict[str, object]:
         "clean_ball_vis": torch.zeros(candidate_shape, dtype=torch.bool),
         "candidate_gt_index": torch.full(candidate_shape, -1),
         "court_reference_provenance": build_physical_court_provenance(),
+        "selected_camera_ids": tuple(f"camera_{index}" for index in range(views)),
     }
 
 

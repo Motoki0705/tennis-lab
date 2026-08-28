@@ -9,6 +9,7 @@ from typing import Any
 from torch.utils.data import Dataset
 
 from src.tasks.base.data.datamodule import SceneDirectoryDataModule
+from src.tasks.base.generate_dataset import CAMERA_VIEW_V2_SELECTOR
 from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.data.dataset import SceneDataset, collate_plcs_batch
 
@@ -28,12 +29,25 @@ class PLCSDataModule(SceneDirectoryDataModule):
         scene_dir: Path,
         split_file: str,
         augment: bool,
+        seed: int | None = None,
     ) -> Dataset:
         return SceneDataset(
             scene_dir=scene_dir,
             split_file=split_file,
             config=self.plcs_runtime.raw,
+            seed=(
+                self._dataset_seed(scene_dir, split_file) if seed is None else seed
+            ),
             augment=augment,
+            reference_camera_id=(
+                self.plcs_runtime.data.evaluation_reference_camera_id
+                if (
+                    not augment
+                    and self.plcs_runtime.court_keypoint_contract.selector
+                    == CAMERA_VIEW_V2_SELECTOR
+                )
+                else None
+            ),
         )
 
     def _dataset_name(self) -> str:

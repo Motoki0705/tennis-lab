@@ -53,12 +53,16 @@ class _DummyDataset(Dataset):
     def __getitem__(self, idx):
         return idx
 
+    def seed_worker(self, *, worker_seed: int, worker_id: int) -> None:
+        del worker_seed, worker_id
+
 
 class _DM(BaseChunkedDataModule):
     def _build_collate_fn(self):
         return None
 
-    def _build_dataset(self, scene_dir, split_file, augment):
+    def _build_dataset(self, scene_dir, split_file, augment, seed=None):
+        del split_file, augment, seed
         return _DummyDataset(scene_dir)
 
     def _dataset_name(self) -> str:
@@ -101,6 +105,7 @@ def _config(
             },
             "generator_device": generator_device,
         },
+        "run": {"seed": 42},
     }
 
 

@@ -6,7 +6,10 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import torch
+from torch.utils.data import DataLoader
 
+from src.tasks.base.data.rng import seed_scene_dataset_worker
 from src.tasks.base.data.scene_dataset import (
     CameraSelection,
     Scene,
@@ -297,6 +300,132 @@ def test_dataset_getitem_builds_sample(make_scene_dataset) -> None:
     sample = ds[0]
     assert sample["num_frames"] == 6
     assert "path" in sample
+
+
+def test_training_rng_replays_across_datasets_and_advances_across_epochs(
+    make_scene_dataset,
+) -> None:
+    first = make_scene_dataset(n_scenes=6, num_cameras=5, seed=753)
+    replay = type(first)(config=first.config, seed=753)
+
+    def _signature(sample):
+        return (
+            sample["random_draw"],
+            sample["camera_indices"],
+            sample["window_start"],
+            sample["window_length"],
+        )
+
+    first_epoch = [_signature(first[index]) for index in range(len(first))]
+    second_epoch = [_signature(first[index]) for index in range(len(first))]
+    replay_epoch = [_signature(replay[index]) for index in range(len(replay))]
+
+    assert first_epoch == replay_epoch
+    assert first_epoch != second_epoch
+
+
+def test_evaluation_rng_is_sample_local_and_order_independent(
+    make_scene_dataset,
+) -> None:
+    dataset = make_scene_dataset(
+        n_scenes=6,
+        seed=753,
+        sample_local_rng=True,
+    )
+
+    expected = dataset[4]["random_draw"]
+    _ = dataset[0]
+    _ = dataset[5]
+
+    assert dataset[4]["random_draw"] == expected
+
+
+def test_public_rng_override_remains_available_for_manual_sampling(
+    make_scene_dataset,
+) -> None:
+    dataset = make_scene_dataset(
+        n_scenes=2,
+        seed=753,
+        sample_local_rng=True,
+    )
+    replay = type(dataset)(
+        config=dataset.config,
+        seed=753,
+        sample_local_rng=True,
+    )
+    dataset.rng = np.random.default_rng(19)
+    replay.rng = np.random.default_rng(19)
+
+    actual = [dataset[0]["random_draw"] for _ in range(2)]
+    expected = [replay[0]["random_draw"] for _ in range(2)]
+
+    assert actual == expected
+    assert actual[0] != actual[1]
+
+
+def test_worker_rng_streams_are_replayable_and_decorrelated(
+    make_scene_dataset,
+) -> None:
+    dataset = make_scene_dataset(n_scenes=1, seed=753)
+
+    dataset.seed_worker(worker_seed=1000, worker_id=0)
+    worker_zero = dataset.rng.integers(0, 2**31, size=8).tolist()
+    dataset.seed_worker(worker_seed=1000, worker_id=0)
+    worker_zero_replay = dataset.rng.integers(0, 2**31, size=8).tolist()
+    dataset.seed_worker(worker_seed=1001, worker_id=1)
+    worker_one = dataset.rng.integers(0, 2**31, size=8).tolist()
+
+    assert worker_zero == worker_zero_replay
+    assert worker_zero != worker_one
+
+
+def test_evaluation_samples_match_with_and_without_workers(
+    make_scene_dataset,
+) -> None:
+    main_process = make_scene_dataset(
+        n_scenes=8,
+        num_cameras=5,
+        seed=753,
+        sample_local_rng=True,
+    )
+    worker_processes = type(main_process)(
+        config=main_process.config,
+        seed=753,
+        sample_local_rng=True,
+    )
+    generator_main = torch.Generator().manual_seed(19)
+    generator_workers = torch.Generator().manual_seed(19)
+
+    without_workers = list(
+        DataLoader(
+            main_process,
+            batch_size=1,
+            num_workers=0,
+            generator=generator_main,
+            worker_init_fn=seed_scene_dataset_worker,
+        )
+    )
+    with_workers = list(
+        DataLoader(
+            worker_processes,
+            batch_size=1,
+            num_workers=2,
+            generator=generator_workers,
+            worker_init_fn=seed_scene_dataset_worker,
+        )
+    )
+
+    def _signature(batch):
+        return (
+            int(batch["random_draw"]),
+            tuple(int(index) for index in batch["camera_indices"]),
+            int(batch["window_start"]),
+            int(batch["window_length"]),
+        )
+
+    assert [_signature(batch) for batch in without_workers] == [
+        _signature(batch) for batch in with_workers
+    ]
 
 
 def test_dataset_filters_short_scenes(
