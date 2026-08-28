@@ -31,7 +31,7 @@ def resolve_mixed_training_config(
         raise ValueError("Mixed Court training requires a top-level mixed section.")
     standard_mapping = dict(unresolved)
     standard_mapping.pop("mixed")
-    standard = cast(DictConfig, OmegaConf.create(standard_mapping))
+    standard = OmegaConf.create(standard_mapping)
     runtime = CourtTrainingConfig.from_config(standard)
 
     mixed_node = config.get("mixed")
