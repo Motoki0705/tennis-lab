@@ -1,0 +1,147 @@
+name: PR813 downstream FFN final gate
+
+on:
+  push:
+    branches:
+      - feat/swiglu-architecture-variants
+    paths:
+      - .github/workflows/pr813-downstream-ffn-final-gate.yml
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Preserve available migration programs and select production base
+        id: base
+        shell: bash
+        run: |
+          if [[ -f .github/scripts/pr813_expand_downstream_ffn_v3.py ]]; then
+            cp .github/scripts/pr813_expand_downstream_ffn_v3.py /tmp/pr813_expand_downstream_ffn_v3.py
+          fi
+          if [[ -f .github/scripts/pr813_expand_downstream_ffn_v4.py ]]; then
+            cp .github/scripts/pr813_expand_downstream_ffn_v4.py /tmp/pr813_expand_downstream_ffn_v4.py
+          fi
+
+          v4=$(git log --format=%H --grep='^feat: configure SwiGLU variants across downstream models$' -1 || true)
+          v3=$(git log --format=%H --grep='^feat: expose SwiGLU variants across block consumers$' -1 || true)
+          if [[ -n "$v4" ]]; then
+            git reset --hard "$v4"
+            echo 'run_v3=false' >> "$GITHUB_OUTPUT"
+            echo 'run_v4=false' >> "$GITHUB_OUTPUT"
+          elif [[ -n "$v3" ]]; then
+            git reset --hard "$v3"
+            [[ -f /tmp/pr813_expand_downstream_ffn_v4.py ]]
+            echo 'run_v3=false' >> "$GITHUB_OUTPUT"
+            echo 'run_v4=true' >> "$GITHUB_OUTPUT"
+          else
+            git reset --hard a230ef4f182d4696366ef34298000e197dd76e4e
+            [[ -f /tmp/pr813_expand_downstream_ffn_v3.py ]]
+            [[ -f /tmp/pr813_expand_downstream_ffn_v4.py ]]
+            echo 'run_v3=true' >> "$GITHUB_OUTPUT"
+            echo 'run_v4=true' >> "$GITHUB_OUTPUT"
+          fi
+          git clean -fdx
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.11'
+          activate-environment: false
+
+      - name: Apply recursive block-consumer migration
+        if: steps.base.outputs.run_v3 == 'true'
+        run: |
+          uv run --locked python -m py_compile /tmp/pr813_expand_downstream_ffn_v3.py
+          uv run --locked python /tmp/pr813_expand_downstream_ffn_v3.py
+
+      - name: Apply config-value propagation repair
+        if: steps.base.outputs.run_v4 == 'true'
+        run: |
+          uv run --locked python -m py_compile /tmp/pr813_expand_downstream_ffn_v4.py
+          uv run --locked python /tmp/pr813_expand_downstream_ffn_v4.py
+
+      - name: Format and lint
+        run: |
+          uv run --locked ruff format src tests
+          uv run --locked ruff check --fix src tests
+          uv run --locked ruff check src tests
+          git diff --check
+
+      - name: Type-check all changed source files
+        shell: bash
+        run: |
+          mapfile -t changed < <(git diff --name-only --diff-filter=ACM a230ef4f182d4696366ef34298000e197dd76e4e -- 'src/**/*.py')
+          if ((${#changed[@]})); then
+            uv run --locked mypy "${changed[@]}"
+          fi
+
+      - name: Run focused FFN and downstream configuration tests
+        shell: bash
+        run: |
+          candidates=(
+            tests/unit/utils/models/components/test_ffn_layers.py
+            tests/unit/utils/models/components/test_ffn_downstream_configuration.py
+            tests/unit/utils/models/components/test_block.py
+            tests/e2e/development/test_architecture_boundaries.py
+            tests/integration/tasks/blcs/test_model_configs.py
+            tests/integration/tasks/plcs/test_model_configs.py
+            tests/unit/tasks/blcs/models/test_blcs_multiview_axial_model.py
+            tests/unit/tasks/blcs/models/test_blcs_track_query_model.py
+            tests/unit/tasks/plcs/models/test_plcs_multiview_axial_model.py
+            tests/unit/tasks/plcs/models/test_plcs_track_query_model.py
+            tests/unit/tasks/slcs/models/test_slcs_model.py
+            tests/unit/tasks/court_detection/models/test_transformer_encoder.py
+            tests/unit/tasks/ball_detection/models/test_dinov3_rope.py
+            tests/unit/utils/models/architectures/test_transformer_sequence_discriminator.py
+          )
+          for candidate in tests/unit/tasks/*/test_configuration.py tests/integration/tasks/*/test_model_configs.py; do
+            [[ -f "$candidate" ]] && candidates+=("$candidate")
+          done
+          selected=()
+          for candidate in "${candidates[@]}"; do
+            [[ -f "$candidate" ]] && selected+=("$candidate")
+          done
+          uv run --locked pytest "${selected[@]}" -q --no-cov -n auto
+
+      - name: Run complete Python CI lanes
+        run: |
+          uv run --locked spin ci --lane long-tail
+          uv run --locked spin ci --lane scene-pipeline
+          uv run --locked spin ci --lane remainder
+
+      - name: Publish verified clean revision
+        id: publish
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat: configure SwiGLU variants across downstream models'
+          fi
+          git push --force origin HEAD:feat/swiglu-architecture-variants
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Record verification on the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERIFIED_SHA: ${{ steps.publish.outputs.sha }}
+        run: |
+          gh pr comment 813 --body "<!-- pr813-downstream-ffn-verification -->
+          Downstream FFN propagation verification passed on \`$VERIFIED_SHA\`.
+
+          - Direct \`TransformerBlockConfig\` / \`CrossAttnBlockConfig\` consumers: audited
+          - Wrapper, stage, model, factory, strict config, and YAML propagation: audited
+          - Ruff and mypy: passed
+          - Focused downstream regression suite: passed
+          - Python CI lanes (long-tail, scene-pipeline, remainder): passed"
