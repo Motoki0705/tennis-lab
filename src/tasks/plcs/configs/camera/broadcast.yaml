@@ -5,7 +5,8 @@
 # generate a monocular training set that transfers to real broadcast footage
 # (e.g. data/samples/tennis_clip.mp4):
 #
-#     python -m src.tasks.plcs.scripts.generate_dataset camera=broadcast
+#     .venv/bin/python -m src.tasks.plcs.scripts.generate_dataset \
+#         camera=broadcast run.output_dir=plcs/single_object_broadcast
 #
 # Sim-to-real note (2026-07-05): the real tennis_clip camera PnP-fits to
 # setback 32.7 m / height 11.4 m / HFOV 28 deg -- far outside the previous

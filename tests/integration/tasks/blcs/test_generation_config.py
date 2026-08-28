@@ -8,12 +8,101 @@ from omegaconf import open_dict
 
 from src.tasks.blcs.configuration import (
     parse_court_keypoint_contract,
+    parse_generation_run,
     validate_generation_boundary,
     validate_training_boundary,
 )
 from src.utils.configuration import ConfigurationTypeError, SemanticConfigurationError
 
 _CONFIG_DIR = Path("src/tasks/blcs/configs").resolve()
+
+
+def test_generation_default_uses_canonical_single_object_path() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(config_name="generate_dataset")
+
+    runtime, _resolver = parse_generation_run(config)
+
+    assert runtime.output_dir == _CONFIG_DIR.parents[3] / "data/blcs/single_object"
+
+
+@pytest.mark.parametrize(
+    ("generation", "camera", "output_dir", "camera_layout"),
+    (
+        ("single_object", "default", "blcs/single_object", "fixed"),
+        ("multi_object", "default", "blcs/multi_object", "fixed"),
+        (
+            "single_object",
+            "broadcast",
+            "blcs/single_object_broadcast",
+            "broadcast",
+        ),
+        (
+            "multi_object",
+            "broadcast",
+            "blcs/multi_object_broadcast",
+            "broadcast",
+        ),
+    ),
+)
+def test_generation_variants_resolve_canonical_dataset_paths(
+    tmp_path: Path,
+    generation: str,
+    camera: str,
+    output_dir: str,
+    camera_layout: str,
+) -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="generate_dataset",
+            overrides=[
+                f"paths.data_root={tmp_path.as_posix()}",
+                f"generation={generation}",
+                f"camera={camera}",
+                f"run.output_dir={output_dir}",
+            ],
+        )
+
+    runtime, _resolver = parse_generation_run(config)
+
+    assert runtime.output_dir == tmp_path / output_dir
+    assert config.court_keypoints.selector == "physical_v1"
+    assert config.generation.mode == generation
+    assert config.camera.layout == camera_layout
+
+
+@pytest.mark.parametrize(
+    ("config_name", "scene_dir", "chunks_dir"),
+    (
+        ("train", "blcs/single_object", None),
+        (
+            "train_chunked",
+            "blcs/single_object",
+            "blcs/single_object/chunks",
+        ),
+        ("train_tracking", "blcs/multi_object", None),
+        (
+            "train_tracking_chunked",
+            "blcs/multi_object",
+            "blcs/multi_object/chunks",
+        ),
+    ),
+)
+def test_training_profiles_use_canonical_dataset_paths(
+    config_name: str,
+    scene_dir: str,
+    chunks_dir: str | None,
+) -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(config_name=config_name)
+
+    validate_training_boundary(config)
+
+    assert config.data.scene_dir == scene_dir
+    if chunks_dir is None:
+        assert "chunk" not in config.data
+    else:
+        assert config.data.chunk.chunks_dir == chunks_dir
 
 
 @pytest.mark.parametrize(

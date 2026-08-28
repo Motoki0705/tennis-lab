@@ -1,14 +1,15 @@
 """Generate a BLCS dataset with Hydra-managed configuration.
 
 Usage:
-    python -m src.tasks.blcs.scripts.generate_dataset
-    python -m src.tasks.blcs.scripts.generate_dataset generator.num_scenes=100
-    python -m src.tasks.blcs.scripts.generate_dataset run.output_dir=blcs generator.num_scenes=500
-    python -m src.tasks.blcs.scripts.generate_dataset run.num_workers=4
+    .venv/bin/python -m src.tasks.blcs.scripts.generate_dataset
+    .venv/bin/python -m src.tasks.blcs.scripts.generate_dataset generation=multi_object run.output_dir=blcs/multi_object
+    .venv/bin/python -m src.tasks.blcs.scripts.generate_dataset camera=broadcast run.output_dir=blcs/single_object_broadcast
+    .venv/bin/python -m src.tasks.blcs.scripts.generate_dataset generation=multi_object camera=broadcast run.output_dir=blcs/multi_object_broadcast
 
 Notes:
     - Hydra loads configuration from `src/tasks/blcs/configs/generate_dataset.yaml`.
     - The script generates scenes, writes splits, and persists dataset metadata.
+    - The default output is `data/blcs/single_object`; overrides are relative to `paths.data_root`.
     - Parallel scene generation uses ProcessPoolExecutor and currently supports CPU workers.
     - Rejected stochastic full-physics proposals are retried within explicit finite budgets.
     - `generation` changes only object cardinality; both modes use the same simulator and writer.

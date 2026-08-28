@@ -20,7 +20,8 @@ from src.utils.rendering.camera_view import CAMERA_PRESETS
 
 pytestmark = [pytest.mark.integration]
 
-_CONFIG_DIR = Path(__file__).resolve().parents[4] / "src" / "tasks" / "plcs" / "configs"
+_PROJECT_ROOT = Path(__file__).resolve().parents[4]
+_CONFIG_DIR = _PROJECT_ROOT / "src" / "tasks" / "plcs" / "configs"
 
 
 def _build(overrides: list[str]) -> RuntimeConfig:
@@ -34,12 +35,25 @@ def test_default_config_parses_style_and_view() -> None:
     runtime = _build([])
 
     assert runtime.mode == "visualize"
+    assert (
+        runtime.scene_path
+        == _PROJECT_ROOT / "data/plcs/single_object/scenes/scene_000000"
+    )
     assert runtime.animation_view == "3d"
     assert runtime.canonical_pose_source == "gt"
     assert runtime.style.theme == "dark"
     assert runtime.style.show_minimap is True
     assert runtime.view_3d.mode == "static"
     assert runtime.view_3d.base == CAMERA_PRESETS["broadcast"]
+
+
+def test_multiview_config_uses_canonical_single_object_scene() -> None:
+    runtime = _build(["visualization=multiview"])
+
+    assert (
+        runtime.scene_path
+        == _PROJECT_ROOT / "data/plcs/single_object/scenes/scene_000001"
+    )
 
 
 def test_style_and_view_hydra_overrides() -> None:

@@ -4,7 +4,7 @@ defaults:
   - _chunked
   - _self_
 
-scene_dir: blcs/multi_object_lifecycle_v2
+scene_dir: blcs/multi_object
 batch_size: 1
 num_workers: 4
 pin_memory: true
@@ -23,6 +23,6 @@ chunk:
   scenes_per_chunk: 1000
   epochs_per_chunk: 20
   prefetch_chunks: 5
-  chunks_dir: blcs/multi_object_chunks
+  chunks_dir: blcs/multi_object/chunks
   generation_workers: 16
   generation_chunksize: 1
