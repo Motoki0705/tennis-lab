@@ -11,6 +11,7 @@ from typing import cast
 
 import numpy as np
 import pytest
+import torch
 from numpy.typing import NDArray
 from PIL import Image
 
@@ -29,6 +30,7 @@ from src.synthetic_data_generation.alignment.evidence_source import (
     _center_space_tiles,
     _CenterTile,
     _court_line_model_config,
+    _court_line_model_state,
     _CourtHypothesis,
     _deduplicate_tiled_proposals,
     _fit_court_hypotheses,
@@ -52,6 +54,10 @@ from src.synthetic_data_generation.alignment.evidence_source import (
     _TiledProposal,
 )
 from src.synthetic_data_generation.alignment.fitting import fit_alignment
+from src.synthetic_data_generation.alignment.heatmaps import (
+    AlignmentLineHeatmaps,
+    AlignmentLineHeatmapView,
+)
 from src.synthetic_data_generation.alignment.settings import (
     AlignmentEvidenceSettings,
     CorrespondenceSettings,
@@ -123,6 +129,87 @@ def test_production_line_config_rebuilds_legacy_checkpoint_with_strict_fields(
     assert config.decoder.channels == 256
     assert config.transformer_encoder.name == "none"
     assert not config.transformer_encoder.enabled
+
+
+def test_line_checkpoint_maps_only_the_exact_historical_single_head() -> None:
+    weight = torch.ones((1, 4, 1, 1))
+    bias = torch.ones(1)
+
+    with pytest.warns(UserWarning, match="historical court-line final_conv"):
+        state = _court_line_model_state(
+            {
+                "model.encoder.value": torch.ones(1),
+                "model.final_conv.weight": weight,
+                "model.final_conv.bias": bias,
+                "optimizer.value": "ignored",
+            }
+        )
+
+    assert state["heads.line.weight"] is weight
+    assert state["heads.line.bias"] is bias
+    assert "final_conv.weight" not in state
+    assert "final_conv.bias" not in state
+
+
+def test_line_checkpoint_rejects_mixed_head_schemas() -> None:
+    with pytest.raises(ValueError, match="mixes or incompletely defines"):
+        _court_line_model_state(
+            {
+                "model.final_conv.weight": torch.ones((1, 4, 1, 1)),
+                "model.final_conv.bias": torch.ones(1),
+                "model.heads.line.weight": torch.ones((1, 4, 1, 1)),
+                "model.heads.line.bias": torch.ones(1),
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    "head_state",
+    (
+        {"model.final_conv.weight": torch.ones((1, 4, 1, 1))},
+        {"model.final_conv.bias": torch.ones(1)},
+    ),
+)
+def test_line_checkpoint_rejects_incomplete_historical_head(
+    head_state: dict[str, torch.Tensor],
+) -> None:
+    with pytest.raises(ValueError, match="incompletely defines"):
+        _court_line_model_state(head_state)
+
+
+def test_line_checkpoint_accepts_complete_canonical_head_without_remapping() -> None:
+    weight = torch.ones((1, 4, 1, 1))
+    bias = torch.ones(1)
+
+    state = _court_line_model_state(
+        {
+            "model.heads.line.weight": weight,
+            "model.heads.line.bias": bias,
+        }
+    )
+
+    assert set(state) == {"heads.line.weight", "heads.line.bias"}
+    assert state["heads.line.weight"] is weight
+    assert state["heads.line.bias"] is bias
+
+
+@pytest.mark.parametrize(
+    "head_state",
+    (
+        {"model.encoder.value": torch.ones(1)},
+        {"model.heads.line.weight": torch.ones((1, 4, 1, 1))},
+        {
+            "model.heads.line.weight": torch.ones((1, 4, 1, 1)),
+            "model.heads.line.bias": torch.ones(1),
+            "model.heads.line.extra": torch.ones(1),
+        },
+    ),
+)
+def test_line_checkpoint_rejects_noncanonical_current_head(
+    head_state: dict[str, torch.Tensor],
+) -> None:
+    with pytest.raises(ValueError, match="exactly one complete heads.line"):
+        _court_line_model_state(head_state)
 
 
 def test_production_line_config_rejects_channels_without_a_dpt_size(
@@ -262,6 +349,11 @@ def test_fixed_collection_measures_once_and_evaluates_holdout_once(
     monkeypatch.setattr(
         "src.synthetic_data_generation.alignment.evidence_source.fit_alignment",
         validate,
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source."
+        "_alignment_line_heatmaps",
+        lambda **_kwargs: _line_heatmaps(alignment_evidence),
     )
 
     assert source.collect(_scene(tmp_path, camera_count=60)) is alignment_evidence
@@ -440,6 +532,48 @@ def test_empty_probability_is_explicit_projected_evidence_not_an_exception(
     assert projected.selected_line_pixel_count == 0
     assert projected.points_nht_scene.shape == (0, 3)
     assert projected.points_uv.shape == (0, 2)
+    assert projected.probabilities.shape == (0,)
+    assert projected.proximity_weights.shape == (0,)
+
+
+def test_projection_retains_probability_and_applies_camera_range_weight(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path)
+    camera = _scene(tmp_path, camera_count=3).cameras[0]
+    plane = _GroundPlane(
+        normal=np.asarray((0.0, 0.0, 1.0), dtype=np.float64),
+        offset=-1.0,
+        origin=np.asarray((0.0, 0.0, 1.0), dtype=np.float64),
+        basis_u=np.asarray((1.0, 0.0, 0.0), dtype=np.float64),
+        basis_v=np.asarray((0.0, 1.0, 0.0), dtype=np.float64),
+        support_uv_bounds=(-10.0, 10.0, -10.0, 10.0),
+    )
+    probability: NDArray[np.float32] = np.zeros((8, 8), dtype=np.float32)
+    probability[4, 4] = 0.8
+    probability[4, 5] = 0.9
+
+    projected = _project_probability_to_ground(
+        probability,
+        camera=camera,
+        plane=plane,
+        model_settings=settings.line_model,
+        projection_settings=settings.projection,
+    )
+
+    ranges = np.linalg.norm(projected.points_nht_scene, axis=1)
+    expected_weights = 1.0 / (
+        1.0
+        + np.power(
+            ranges / settings.projection.proximity_scale,
+            settings.projection.proximity_power,
+        )
+    )
+    np.testing.assert_array_equal(
+        projected.probabilities,
+        np.asarray((0.8, 0.9), dtype=np.float32),
+    )
+    np.testing.assert_allclose(projected.proximity_weights, expected_weights)
 
 
 @pytest.mark.parametrize("assignment_distance", (0.24, 0.685))
@@ -1094,6 +1228,8 @@ def test_two_side_by_side_courts_are_deterministic_under_clutter(
         "camera-0": _ProjectedLineEvidence(
             points_nht_scene=observed_3d,
             points_uv=observed,
+            probabilities=np.ones(len(observed), dtype=np.float32),
+            proximity_weights=np.ones(len(observed), dtype=np.float64),
             selected_line_pixel_count=len(observed),
         )
     }
@@ -1176,10 +1312,58 @@ def _projected_evidence(
     return _ProjectedLineEvidence(
         points_nht_scene=np.asarray(points, dtype=np.float64),
         points_uv=np.asarray(points[:, :2], dtype=np.float64),
+        probabilities=np.full(projected_count, 0.75, dtype=np.float32),
+        proximity_weights=np.full(projected_count, 0.8, dtype=np.float64),
         selected_line_pixel_count=selected_count,
     )
 
 
+def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
+    selection = evidence.diagnostics.selection
+    projected_counts = {
+        item.camera_id: item.projected_line_point_count
+        for item in evidence.diagnostics.cameras
+    }
+    projected_counts.update(
+        {
+            item.camera_id: item.projected_line_point_count
+            for item in selection.excluded_cameras
+        }
+    )
+    observed_ids = set(selection.observed_camera_ids)
+    return AlignmentLineHeatmaps(
+        bounds_uv=(-1.0, 1.0, -1.0, 1.0),
+        grid_spacing=0.25,
+        proximity_scale=0.35,
+        proximity_power=2.0,
+        views=tuple(
+            AlignmentLineHeatmapView(
+                camera_id=camera_id,
+                probability=np.asarray(
+                    ((0.0, 0.25), (0.5, 1.0)),
+                    dtype=np.float32,
+                ),
+                points_uv=np.column_stack(
+                    (
+                        np.linspace(-0.9, 0.9, projected_counts[camera_id]),
+                        np.linspace(0.9, -0.9, projected_counts[camera_id]),
+                    )
+                ).astype(np.float64),
+                projected_probabilities=np.full(
+                    projected_counts[camera_id],
+                    0.75,
+                    dtype=np.float32,
+                ),
+                proximity_weights=np.full(
+                    projected_counts[camera_id],
+                    0.8,
+                    dtype=np.float64,
+                ),
+                included_in_aggregate=camera_id in observed_ids,
+            )
+            for camera_id in selection.camera_prefix_ids
+        ),
+    )
 def _hypothesis_for_topology(
     *,
     center: tuple[float, float],
@@ -1303,6 +1487,9 @@ def _settings(tmp_path: Path) -> AlignmentEvidenceSettings:
             minimum_ray_plane_cosine=0.01,
             maximum_ray_distance=10.0,
             bounds_margin=1.0,
+            proximity_scale=0.35,
+            proximity_power=2.0,
+            grid_spacing=0.25,
             minimum_projected_points_per_camera=3,
         ),
         candidate_fit=CourtCandidateFitSettings(

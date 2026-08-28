@@ -51,6 +51,11 @@ REMOVED_MODULES = (
     "src.utils.configuration.migration_data",
     "src.utils.configuration.source_oracle",
     "src.utils.configuration.validation",
+    "src.utils.models.components.moe",
+    "src.utils.models.components.ops.moe",
+    "src.utils.models.components.ops.moe._autograd",
+    "src.utils.models.components.ops.moe.api",
+    "src.utils.models.components.ops.moe.reference",
 )
 PROHIBITED_SYMBOLS = frozenset(
     {

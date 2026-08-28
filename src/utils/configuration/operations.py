@@ -19,19 +19,16 @@ from src.utils.configuration.schema import ConfigField, StrictConfigSchema
 
 BUILD_CUDA_OPS = "TENNIS_LAB_BUILD_CUDA_OPS"
 CUDA_OPS_BUILD_TARGET = "TENNIS_LAB_CUDA_OPS_BUILD_TARGET"
-FORCE_MOE_REFERENCE = "TENNIS_LAB_FORCE_MOE_REFERENCE"
 FORCE_TIME_LOCAL_REFERENCE = "TENNIS_LAB_FORCE_TIME_LOCAL_REFERENCE"
 USE_TIME_LOCAL_CUDA = "TENNIS_LAB_USE_TIME_LOCAL_CUDA"
 DINO_OPS_BUILD_CONFIG = "TENNIS_LAB_DINO_OPS_BUILD_CONFIG"
 
 _BOOLEAN_NAMES = (
     BUILD_CUDA_OPS,
-    FORCE_MOE_REFERENCE,
     FORCE_TIME_LOCAL_REFERENCE,
     USE_TIME_LOCAL_CUDA,
 )
 _RUNTIME_BOOLEAN_NAMES = (
-    FORCE_MOE_REFERENCE,
     FORCE_TIME_LOCAL_REFERENCE,
     USE_TIME_LOCAL_CUDA,
 )
@@ -80,7 +77,6 @@ class OperationEnvironmentConfig:
 
     build_cuda_ops: bool
     cuda_ops_build_target: str
-    force_moe_reference: bool
     force_time_local_reference: bool
     use_time_local_cuda: bool
     dino_ops_build_config: str | None = field(
@@ -130,7 +126,6 @@ class OperationEnvironmentConfig:
         return cls(
             build_cuda_ops=parsed[BUILD_CUDA_OPS],
             cuda_ops_build_target=build_target,
-            force_moe_reference=parsed[FORCE_MOE_REFERENCE],
             force_time_local_reference=parsed[FORCE_TIME_LOCAL_REFERENCE],
             use_time_local_cuda=parsed[USE_TIME_LOCAL_CUDA],
             dino_ops_build_config=build_json,
@@ -173,8 +168,6 @@ _DINO_BUILD_SCHEMA = StrictConfigSchema(
         "source": ConfigField.of(str),
         "destination_role": ConfigField.of(str),
         "destination": ConfigField.of(str),
-        "moe_bindings": ConfigField.of(str),
-        "moe_kernels": ConfigField.of(str),
         "time_local_bindings": ConfigField.of(str),
         "time_local_kernels": ConfigField.of(str),
         "compressed_time_local_bindings": ConfigField.of(str),
@@ -191,8 +184,6 @@ class DinoOpsBuildConfig:
     source: Path
     destination: Path
     destination_role: PathRole
-    moe_bindings: Path
-    moe_kernels: Path
     time_local_bindings: Path
     time_local_kernels: Path
     compressed_time_local_bindings: Path
@@ -205,8 +196,6 @@ class DinoOpsBuildConfig:
                 f"DINO operation source directory is missing: {self.source}"
             )
         for path in (
-            self.moe_bindings,
-            self.moe_kernels,
             self.time_local_bindings,
             self.time_local_kernels,
             self.compressed_time_local_bindings,
@@ -311,8 +300,6 @@ class DinoOpsBuildConfig:
             source=source,
             destination=destination,
             destination_role=destination_role,
-            moe_bindings=resolve(PathRole.PROJECT, "moe_bindings"),
-            moe_kernels=resolve(PathRole.PROJECT, "moe_kernels"),
             time_local_bindings=resolve(PathRole.PROJECT, "time_local_bindings"),
             time_local_kernels=resolve(PathRole.PROJECT, "time_local_kernels"),
             compressed_time_local_bindings=resolve(
@@ -334,7 +321,6 @@ __all__ = [
     "CUDA_OPS_BUILD_TARGET",
     "DINO_OPS_BUILD_CONFIG",
     "DinoOpsBuildConfig",
-    "FORCE_MOE_REFERENCE",
     "FORCE_TIME_LOCAL_REFERENCE",
     "OperationEnvironmentConfig",
     "USE_TIME_LOCAL_CUDA",

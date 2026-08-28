@@ -15,6 +15,7 @@ from typing import Any, Self
 import numpy as np
 from numpy.typing import NDArray
 
+from src.synthetic_data_generation.alignment.heatmaps import AlignmentLineHeatmaps
 from src.synthetic_data_generation.alignment.settings import WholeCourtEvidenceSettings
 from src.synthetic_data_generation.scene_contract import (
     COURT_AXES_METRES,
@@ -2042,16 +2043,19 @@ class AlignmentResult:
 
 @dataclass(frozen=True, slots=True)
 class EvaluatedAlignment:
-    """One immutable evidence/result pair produced by the one-shot gate."""
+    """One immutable evidence/result/heatmap bundle produced by the one-shot gate."""
 
     evidence: AlignmentEvidence
     result: AlignmentResult
+    heatmaps: AlignmentLineHeatmaps
 
     def __post_init__(self) -> None:
         if not isinstance(self.evidence, AlignmentEvidence):
             raise TypeError("evidence must be AlignmentEvidence.")
         if not isinstance(self.result, AlignmentResult):
             raise TypeError("result must be AlignmentResult.")
+        if not isinstance(self.heatmaps, AlignmentLineHeatmaps):
+            raise TypeError("heatmaps must be AlignmentLineHeatmaps.")
         if self.result.partitions != self.evidence.partitions:
             raise ValueError("Evaluated result partitions disagree with evidence.")
         if self.result.metric_adapter != self.evidence.metric_adapter:
@@ -2066,6 +2070,28 @@ class EvaluatedAlignment:
         )
         if result_ids != evidence_ids:
             raise ValueError("Evaluated result candidates disagree with evidence.")
+        selection = self.evidence.diagnostics.selection
+        if self.heatmaps.camera_ids != selection.camera_prefix_ids:
+            raise ValueError("Evaluated heatmaps disagree with the fixed camera prefix.")
+        if self.heatmaps.aggregate_camera_ids != selection.observed_camera_ids:
+            raise ValueError("Evaluated heatmaps disagree with observable cameras.")
+        projected_counts = {
+            item.camera_id: item.projected_line_point_count
+            for item in self.evidence.diagnostics.cameras
+        }
+        projected_counts.update(
+            {
+                item.camera_id: item.projected_line_point_count
+                for item in selection.excluded_cameras
+            }
+        )
+        if set(projected_counts) != set(selection.camera_prefix_ids):
+            raise ValueError("Evidence diagnostics do not cover the heatmap camera prefix.")
+        if any(
+            len(view.points_uv) != projected_counts[view.camera_id]
+            for view in self.heatmaps.views
+        ):
+            raise ValueError("Evaluated heatmap point counts disagree with diagnostics.")
 
 
 def build_layout(
