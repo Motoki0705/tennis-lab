@@ -7,10 +7,7 @@ from typing import cast
 
 from torch import Tensor
 
-from src.tasks.court_detection.data.contracts import (
-    CourtTargetBundleSpec,
-    CourtTargetKind,
-)
+from src.tasks.court_detection.data.contracts import CourtTargetBundleSpec
 from src.tasks.court_detection.model_io.adapters import CourtPoseModelIOAdapter
 from src.tasks.court_detection.model_io.contracts import (
     CourtModelOutput,
@@ -43,13 +40,13 @@ class MixedCourtDetectionLightningModule(CourtDetectionLightningModule):
         )
         if not self.pose_variant:
             return
-        if not isinstance(self.model_io, CourtPoseModelIOAdapter):
+        raw_model_io = cast(object, self.model_io)
+        if not isinstance(raw_model_io, CourtPoseModelIOAdapter):
             raise TypeError("Pose-enabled mixed Court training requires a pose adapter.")
-        previous = self.model_io
         mixed = MixedCourtPoseModelIOAdapter(
-            previous.spec,
-            loss_config=previous.pose_loss_config,
-            execution_boundary=previous.execution_boundary,
+            raw_model_io.spec,
+            loss_config=raw_model_io.pose_loss_config,
+            execution_boundary=raw_model_io.execution_boundary,
         )
         mixed.validate_model_pair(self.model)
         self.model_io = mixed
@@ -60,20 +57,22 @@ class MixedCourtDetectionLightningModule(CourtDetectionLightningModule):
         batch: Mapping[str, object],
         stage: str,
     ) -> CourtTrainingResult | CourtPoseTrainingResult:
-        if not isinstance(self.model_io, MixedCourtPoseModelIOAdapter):
+        raw_model_io = cast(object, self.model_io)
+        if not isinstance(raw_model_io, MixedCourtPoseModelIOAdapter):
             return super()._shared_step(batch, stage)
+        model_io = raw_model_io
 
-        pose_call = self.model_io.prepare_training_batch(batch)
+        pose_call = model_io.prepare_training_batch(batch)
         output = cast(
             CourtModelOutput,
             self.model(*pose_call.model_call.model_args),
         )
         progress_fraction = (
             self._progress_fraction(stage)
-            if self.model_io.consistency_instrumented
+            if model_io.consistency_instrumented
             else None
         )
-        result = self.model_io.training_result(
+        result = model_io.training_result(
             output,
             pose_call,
             progress_fraction=progress_fraction,
@@ -86,13 +85,13 @@ class MixedCourtDetectionLightningModule(CourtDetectionLightningModule):
         if not isinstance(image_size, Tensor):
             raise ValueError("Court batch image_size must be a Tensor.")
         for kind in self.target_bundle.kinds:
-            self._stage_metrics[stage][cast(CourtTargetKind, kind)].update(
+            self._stage_metrics[stage][kind].update(
                 result.output.dense_logits[kind],
                 pose_call.targets[kind],
                 image_size=image_size,
             )
 
-        mask = self.model_io.pose_supervision_mask(pose_call)
+        mask = model_io.pose_supervision_mask(pose_call)
         if not bool(mask.any()):
             return result
         target_pose = pose_call.targets.get("pose")
