@@ -1,0 +1,57 @@
+name: FFN downstream inventory
+
+on:
+  push:
+    branches:
+      - feat/swiglu-architecture-variants
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inventory block consumers and configuration surfaces
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          print("=== PYTHON BLOCK CONSUMERS ===")
+          consumers = []
+          for path in sorted(Path("src").rglob("*.py")):
+              text = path.read_text(encoding="utf-8")
+              if "TransformerBlockConfig(" not in text and "CrossAttnBlockConfig(" not in text:
+                  continue
+              consumers.append(path)
+              print(f"\n--- {path} ---")
+              for number, line in enumerate(text.splitlines(), 1):
+                  if any(token in line for token in ("TransformerBlock", "CrossAttnBlock", "ffn_type", "from_config")):
+                      print(f"{number}: {line}")
+          print(f"\nconsumer_count={len(consumers)}")
+
+          print("\n=== STRICT FFN VALIDATORS / TYPE SURFACES ===")
+          for path in sorted(Path("src").rglob("*.py")):
+              text = path.read_text(encoding="utf-8")
+              matching = [
+                  (number, line)
+                  for number, line in enumerate(text.splitlines(), 1)
+                  if "ffn_type" in line
+                  and any(token in line for token in ("Literal", "swiglu", "model[", "mapping", "config."))
+              ]
+              if matching:
+                  print(f"\n--- {path} ---")
+                  for number, line in matching:
+                      print(f"{number}: {line}")
+
+          print("\n=== YAML FFN SETTINGS ===")
+          yaml_paths = list(Path("src").rglob("*.yaml")) + list(Path("src").rglob("*.yml"))
+          for path in sorted(yaml_paths):
+              lines = path.read_text(encoding="utf-8").splitlines()
+              matches = [(number, line) for number, line in enumerate(lines, 1) if "ffn_type" in line]
+              if matches:
+                  print(f"\n--- {path} ---")
+                  for number, line in matches:
+                      print(f"{number}: {line}")
+          PY
