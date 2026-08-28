@@ -31,7 +31,7 @@ def resolve_mixed_training_config(
         raise ValueError("Mixed Court training requires a top-level mixed section.")
     standard_mapping = dict(unresolved)
     standard_mapping.pop("mixed")
-    standard = OmegaConf.create(standard_mapping)
+    standard = cast(DictConfig, OmegaConf.create(standard_mapping))
     runtime = CourtTrainingConfig.from_config(standard)
 
     mixed_node = config.get("mixed")
@@ -55,8 +55,9 @@ class MixedCourtDetectionTrainingRunner(CourtDetectionTrainingRunner):
     def run(self, config: Any) -> None:
         standard, mixed = resolve_mixed_training_config(config)
         self._mixed_config = mixed
-        self._full_config = OmegaConf.create(
-            OmegaConf.to_container(config, resolve=False)
+        self._full_config = cast(
+            DictConfig,
+            OmegaConf.create(OmegaConf.to_container(config, resolve=False)),
         )
         super().run(standard)
 
@@ -100,7 +101,7 @@ class MixedCourtDetectionTrainingRunner(CourtDetectionTrainingRunner):
             output_dir,
             "config.yaml",
         )
-        OmegaConf.save(cast(DictConfig, self._full_config), config_path)
+        OmegaConf.save(self._full_config, config_path)
 
 
 __all__ = [
