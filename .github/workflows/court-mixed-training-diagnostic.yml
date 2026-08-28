@@ -17,49 +17,35 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout feature revision
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: feat/court-mixed-source-batches
-          fetch-depth: 1
-          persist-credentials: false
-          submodules: false
-
-      - name: Inspect isolated uv and asset runtime
+      - name: Diagnose V3 access inside queue service
         shell: bash
+        env:
+          QUEUE: /opt/tennis-lab-actions/bin/training_queue.sh
+          QUEUE_DIR: /var/lib/tennis-lab-actions/training-queue
         run: |
           set -euo pipefail
-          id
-          printf 'PATH=%s\n' "$PATH"
-          command -v uv
-          uv --version
-          command -v python3
-          python3 -V
-
-          printf '\n-- queue --\n'
-          test -x /opt/tennis-lab-actions/bin/training_queue.sh
-          systemctl is-active tennis-lab-training-queue.service
-          systemctl show tennis-lab-training-queue.service \
-            -p ExecStart -p Environment -p WorkingDirectory --no-pager
-
-          printf '\n-- checkpoint assets --\n'
-          find /var/lib/tennis-lab-actions/assets/ckpt \
-            -maxdepth 4 -type f -printf '%P\n' | sort | head -100
-
-          printf '\n-- data authority --\n'
-          ls -l /var/lib/tennis-lab-actions/assets/data/synthetic_data_generation/scenes/B00/datasets/court/dataset.json
-          ls -ld /var/lib/tennis-lab-actions/assets/data/court
-
-          printf '\n-- locked environment --\n'
-          uv run --locked python - <<'PY'
-          import hydra
-          import pytorch_lightning
-          import torch
-          import yaml
-
-          print("torch", torch.__version__)
-          print("cuda", torch.cuda.is_available())
-          print("hydra", hydra.__version__)
-          print("lightning", pytorch_lightning.__version__)
-          print("yaml", yaml.__version__)
-          PY
+          test -x "$QUEUE"
+          systemctl is-active --quiet tennis-lab-training-queue.service
+          name="court_v3_queue_access_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          command="set -euo pipefail; id; command -v uv; uv --version; namei -l /var/lib/tennis-lab-actions/assets/data/synthetic_data_generation/scenes/B00/datasets/court/dataset.json; python3 -c 'import json,pathlib; p=pathlib.Path(\"/var/lib/tennis-lab-actions/assets/data/synthetic_data_generation/scenes/B00/datasets/court/dataset.json\"); d=json.loads(p.read_text()); print(d[\"schema\"], len(d.get(\"samples\", [])), len(d.get(\"rejected_samples\", [])))'; find /var/lib/tennis-lab-actions/assets/ckpt -maxdepth 5 -type f -name 'dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth' -print"
+          output="$(
+            TRAINING_QUEUE_DIR="$QUEUE_DIR" \
+              "$QUEUE" add "$command" \
+                --name "$name" \
+                --provider github-actions \
+                --session "$GITHUB_RUN_ID"
+          )"
+          echo "$output"
+          job="${output#queued: }"
+          [[ "$job" != "$output" && "$job" == *.job ]]
+          stem="${job%.job}"
+          if [[ ! -f "$QUEUE_DIR/done/$job" && ! -f "$QUEUE_DIR/failed/$job" ]]; then
+            set +o pipefail
+            tail -n 20000 -F "$QUEUE_DIR/worker.log" \
+              | grep -m1 -E "done: ${job}|FAILED.*${job}"
+            status=$?
+            set -o pipefail
+            [[ "$status" -eq 0 ]]
+          fi
+          cat "$QUEUE_DIR/logs/${stem}.log"
+          test -f "$QUEUE_DIR/done/$job"
