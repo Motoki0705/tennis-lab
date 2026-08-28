@@ -15,15 +15,22 @@ from __future__ import annotations
 from abc import abstractmethod
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import pytorch_lightning as pl
+import torch
 from torch.utils.data import DataLoader, Dataset
 
 from src.tasks.base.configuration import (
     BaseDataConfig,
     as_config_mapping,
     require_config_mapping,
+)
+from src.tasks.base.data.rng import (
+    derive_seed,
+    require_run_seed,
+    require_worker_seeded_dataset,
+    seed_scene_dataset_worker,
 )
 from src.utils.configuration import PathResolver, RuntimePathRoots
 from src.utils.paths import PROJECT_ROOT
@@ -50,6 +57,7 @@ class SceneDirectoryDataModule(pl.LightningDataModule):
             require_config_mapping(root, "data", path="configuration"),
             resolver=resolver,
         )
+        self.seed = require_run_seed(config)
 
         self.batch_size = self.data_config.batch_size
         self.num_workers = self.data_config.num_workers
@@ -61,6 +69,12 @@ class SceneDirectoryDataModule(pl.LightningDataModule):
         self.train_dataset: Dataset | None = None
         self.val_dataset: Dataset | None = None
         self.test_dataset: Dataset | None = None
+        self._loader_generators = {
+            stage: torch.Generator().manual_seed(
+                derive_seed(self.seed, "loader", stage)
+            )
+            for stage in ("train", "val", "test")
+        }
 
     # -- abstract hooks --------------------------------------------------------
 
@@ -74,12 +88,22 @@ class SceneDirectoryDataModule(pl.LightningDataModule):
         scene_dir: Path,
         split_file: str,
         augment: bool,
+        seed: int | None = None,
     ) -> Dataset:
         """Build a task-specific dataset for the given split."""
 
     @abstractmethod
     def _dataset_name(self) -> str:
         """Return the task name used in error messages (e.g. ``'plcs'``)."""
+
+    def _dataset_seed(self, scene_dir: Path, split_file: str) -> int:
+        """Derive one stable dataset stream from run seed and persisted split."""
+        return derive_seed(
+            self.seed,
+            "dataset",
+            split_file,
+            scene_dir.resolve().as_posix(),
+        )
 
     # -- shared lifecycle ------------------------------------------------------
 
@@ -99,6 +123,7 @@ class SceneDirectoryDataModule(pl.LightningDataModule):
                 scene_dir=self.scene_dir,
                 split_file="train.txt",
                 augment=True,
+                seed=self._dataset_seed(self.scene_dir, "train.txt"),
             )
 
             val_split = self.scene_dir / "val.txt"
@@ -108,6 +133,7 @@ class SceneDirectoryDataModule(pl.LightningDataModule):
                 scene_dir=self.scene_dir,
                 split_file="val.txt",
                 augment=False,
+                seed=self._dataset_seed(self.scene_dir, "val.txt"),
             )
 
         if stage == "test" or stage is None:
@@ -118,9 +144,17 @@ class SceneDirectoryDataModule(pl.LightningDataModule):
                 scene_dir=self.scene_dir,
                 split_file="test.txt",
                 augment=False,
+                seed=self._dataset_seed(self.scene_dir, "test.txt"),
             )
 
-    def _build_loader(self, dataset: Dataset, *, train: bool) -> DataLoader:
+    def _build_loader(
+        self,
+        dataset: Dataset,
+        *,
+        stage: Literal["train", "val", "test"],
+    ) -> DataLoader:
+        require_worker_seeded_dataset(dataset)
+        train = stage == "train"
         return DataLoader(
             dataset,
             batch_size=self.batch_size,
@@ -129,19 +163,21 @@ class SceneDirectoryDataModule(pl.LightningDataModule):
             pin_memory=self.pin_memory,
             drop_last=train,
             collate_fn=self.collate_fn,
+            generator=self._loader_generators[stage],
+            worker_init_fn=seed_scene_dataset_worker,
         )
 
     def train_dataloader(self) -> DataLoader:
         if self.train_dataset is None:
             raise RuntimeError("Call setup('fit') before train_dataloader()")
-        return self._build_loader(self.train_dataset, train=True)
+        return self._build_loader(self.train_dataset, stage="train")
 
     def val_dataloader(self) -> DataLoader:
         if self.val_dataset is None:
             raise RuntimeError("Call setup('fit') before val_dataloader()")
-        return self._build_loader(self.val_dataset, train=False)
+        return self._build_loader(self.val_dataset, stage="val")
 
     def test_dataloader(self) -> DataLoader:
         if self.test_dataset is None:
             raise RuntimeError("Call setup('test') before test_dataloader()")
-        return self._build_loader(self.test_dataset, train=False)
+        return self._build_loader(self.test_dataset, stage="test")

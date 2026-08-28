@@ -165,7 +165,17 @@ class _ConcreteSceneDataset(SceneDatasetBase[dict]):
     """Minimal concrete dataset whose sample is just scene metadata."""
 
     def build_sample(self, scene: Scene) -> dict:
-        return {"path": str(scene.path), "num_frames": scene.num_frames}
+        random_draw = int(self.rng.integers(0, 2**31))
+        cameras = self.select_cameras(scene)
+        window = self.select_window(scene)
+        return {
+            "path": str(scene.path),
+            "num_frames": scene.num_frames,
+            "random_draw": random_draw,
+            "camera_indices": cameras.indices,
+            "window_start": window.start,
+            "window_length": window.seq_len,
+        }
 
 
 @pytest.fixture
@@ -184,7 +194,9 @@ def make_scene_dataset(tmp_path: Path):
         num_frames: int = 8,
         num_cameras: int = 1,
         config: SceneDatasetConfig | None = None,
+        seed: int = 0,
         rng: np.random.Generator | None = None,
+        sample_local_rng: bool = False,
         root: Path | None = None,
     ) -> SceneDatasetBase:
         root = root or (tmp_path / f"ds_{n_scenes}_{num_frames}_{num_cameras}")
@@ -214,7 +226,12 @@ def make_scene_dataset(tmp_path: Path):
             )
         if cfg is None:
             raise ValueError("config is required when n_scenes == 0")
-        return _ConcreteSceneDataset(config=cfg, rng=rng or np.random.default_rng(0))
+        return _ConcreteSceneDataset(
+            config=cfg,
+            seed=seed,
+            rng=rng,
+            sample_local_rng=sample_local_rng,
+        )
 
     return _factory
 

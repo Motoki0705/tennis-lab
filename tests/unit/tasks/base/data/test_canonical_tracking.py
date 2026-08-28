@@ -36,6 +36,7 @@ def test_dataset_resolves_explicit_scene_split(tmp_path) -> None:
     dataset = CanonicalTrackingDataset(
         scene_dir=tmp_path,
         split_file="train.txt",
+        seed=0,
         config={
             "data": {
                 "seq_len_range": [1, 2],

@@ -19,7 +19,10 @@ from src.tasks.blcs.model_io import (
     blcs_trajectory_prediction_to_physical,
 )
 from src.tasks.blcs.training.metrics import BLCSMetrics
-from src.utils.schema.court_normalization import normalize_court_position
+from src.utils.schema.court_normalization import (
+    denormalize_court_position,
+    normalize_court_position,
+)
 
 
 def _positive_side_provenance() -> CourtReferenceFrameProvenance:
@@ -147,3 +150,67 @@ def test_court_contract_is_independent_of_fixed_coordinate_normalization(
     assert result["x_error_m"] == pytest.approx(0.25)
     assert result["y_error_m"] == pytest.approx(0.5)
     assert result["z_error_m"] == pytest.approx(0.75)
+
+
+def test_reference_metrics_report_target_frame_axes_y_sign_and_local_index_strata() -> None:
+    target_m = torch.tensor(
+        [
+            [[1.0, 2.0, 0.5], [1.0, -2.0, 0.5]],
+            [[2.0, 4.0, 1.0], [2.0, -4.0, 1.0]],
+        ]
+    )
+    prediction_m = target_m + torch.tensor(
+        [
+            [[1.0, 1.0, 3.0], [1.0, 3.0, 3.0]],
+            [[2.0, -1.0, 0.0], [2.0, -1.0, 0.0]],
+        ]
+    )
+
+    result = BLCSMetrics(
+        position_threshold_m=0.3,
+        endpoint_threshold_m=0.5,
+        court_keypoint_contract=_positive_side_provenance().contract,
+    ).update(
+        normalize_court_position(prediction_m),
+        normalize_court_position(target_m),
+        court_reference_provenance=(
+            _positive_side_provenance(),
+            _positive_side_provenance(),
+        ),
+        reference_view_index=torch.tensor([1, 0], dtype=torch.int64),
+    )
+
+    assert result["x_error_m"] == pytest.approx(1.5)
+    assert result["y_error_m"] == pytest.approx(1.5)
+    assert result["z_error_m"] == pytest.approx(1.5)
+    assert result["y_sign_accuracy"] == pytest.approx(0.75)
+    assert set(result) >= {
+        "reference_index_0_position_error_m",
+        "reference_index_1_position_error_m",
+    }
+
+
+def test_reference_metrics_accept_bfloat16_prediction_and_float32_target() -> None:
+    target = torch.tensor([[[0.0, 0.5, 0.0]]], dtype=torch.float32)
+    prediction = target.to(torch.bfloat16)
+    provenance = _positive_side_provenance()
+    prediction_m = denormalize_court_position(prediction)
+    target_m = denormalize_court_position(target)
+    expected_y_error = float((prediction_m.float() - target_m).abs()[0, 0, 1])
+
+    with torch.autocast(device_type="cpu", dtype=torch.bfloat16):
+        result = BLCSMetrics(
+            position_threshold_m=0.3,
+            endpoint_threshold_m=0.5,
+            court_keypoint_contract=provenance.contract,
+        ).update(
+            prediction,
+            target,
+            court_reference_provenance=(provenance,),
+            reference_view_index=torch.tensor([0], dtype=torch.int64),
+        )
+
+    assert result["x_error_m"] == pytest.approx(0.0)
+    assert result["y_error_m"] == pytest.approx(expected_y_error)
+    assert result["z_error_m"] == pytest.approx(0.0)
+    assert result["y_sign_accuracy"] == pytest.approx(1.0)

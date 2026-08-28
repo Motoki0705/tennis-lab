@@ -104,6 +104,7 @@ def _score_scene(
     cameras_cfg: Any,
     candidates_per_scene: int,
     court_keypoint_contract: CourtKeypointContract,
+    reference_camera_id: str | None,
 ) -> list[dict[str, Any]]:
     scene: Any = load_scene(
         scene_path,
@@ -111,14 +112,14 @@ def _score_scene(
     )
     cameras = _resolve_cameras(cameras_cfg, int(scene.num_cameras))
     predictor.require_input_profile("multiview")
-    reference_camera_id = None
     if court_keypoint_contract.selector == CAMERA_VIEW_V2_SELECTOR:
-        selected_ids = tuple(
-            scene.cameras[index].court_view.camera_id for index in cameras
-        )
-        if any(not camera_id for camera_id in selected_ids):
-            raise ValueError("camera_view_v2 analysis requires camera metadata.")
-        reference_camera_id = sorted(selected_ids)[0]
+        if not isinstance(reference_camera_id, str) or not reference_camera_id.strip():
+            raise ValueError(
+                "camera_view_v2 analysis requires explicit "
+                "visualization.reference_camera_id."
+            )
+    elif reference_camera_id is not None:
+        raise ValueError("physical_v1 analysis must not specify a reference camera.")
     outputs = predictor.predict_scene(
         scene,
         cameras,
@@ -302,6 +303,7 @@ def _render_sample(
     style: SceneStyleConfig,
     view_3d: CameraController,
     court_keypoint_contract: CourtKeypointContract,
+    reference_camera_id: str | None,
 ) -> None:
     runtime = RuntimeConfig(
         mode="predict",
@@ -319,6 +321,7 @@ def _render_sample(
         canonical_pose_source="gt",
         resolver=resolver,
         court_keypoint_contract=court_keypoint_contract,
+        reference_camera_id=reference_camera_id,
     )
     exit_code = run_visualization(runtime)
     if exit_code != 0:
@@ -373,6 +376,11 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
                 cfg.analysis.cameras,
                 candidates_per_scene=int(cfg.analysis.candidates_per_scene),
                 court_keypoint_contract=court_keypoint_contract,
+                reference_camera_id=(
+                    None
+                    if cfg.visualization.reference_camera_id is None
+                    else str(cfg.visualization.reference_camera_id)
+                ),
             )
         )
 
@@ -416,6 +424,11 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
                 style=parse_scene_style(cfg.visualization.style),
                 view_3d=parse_view_3d(cfg.visualization.view_3d),
                 court_keypoint_contract=court_keypoint_contract,
+                reference_camera_id=(
+                    None
+                    if cfg.visualization.reference_camera_id is None
+                    else str(cfg.visualization.reference_camera_id)
+                ),
             )
 
     report = {

@@ -10,6 +10,8 @@ from torch.utils.data import Dataset
 from src.tasks.base.data.canonical_tracking import validate_lifecycle_capacity
 from src.tasks.base.data.chunked_datamodule import BaseChunkedDataModule
 from src.tasks.base.data.datamodule import SceneDirectoryDataModule
+from src.tasks.base.generate_dataset import CAMERA_VIEW_V2_SELECTOR
+from src.tasks.blcs.configuration import parse_court_keypoint_contract
 from src.tasks.blcs.data.chunk_manager import ChunkManager
 from src.tasks.blcs.data.tracking_dataset import (
     BLCSTrackingDataset,
@@ -24,17 +26,32 @@ if TYPE_CHECKING:
 class BLCSTrackingDataModule(SceneDirectoryDataModule):
     """Read fixed train/val/test multi-ball scenes from disk."""
 
+    config: Any
+
     def _build_collate_fn(self) -> Any:
         return collate_blcs_tracking_batch
 
     def _build_dataset(
-        self, scene_dir: Path, split_file: str, augment: bool
+        self,
+        scene_dir: Path,
+        split_file: str,
+        augment: bool,
+        seed: int | None = None,
     ) -> Dataset:
+        contract = parse_court_keypoint_contract(self.config)
         return BLCSTrackingDataset(
             scene_dir=scene_dir,
             split_file=split_file,
             config=self.config,
+            seed=(
+                self._dataset_seed(scene_dir, split_file) if seed is None else seed
+            ),
             augment=augment,
+            reference_camera_id=(
+                str(self.config.data.evaluation_reference_camera_id)
+                if not augment and contract.selector == CAMERA_VIEW_V2_SELECTOR
+                else None
+            ),
         )
 
     def _dataset_name(self) -> str:

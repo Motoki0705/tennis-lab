@@ -7,16 +7,24 @@ from typing import cast
 
 import pytest
 from hydra import compose, initialize_config_dir
+from torch import nn
 
 from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.model_io import (
     PLCSAdapter,
     PLCSInputProfile,
     PLCSTrackQueryIOAdapter,
+    PLCSTrackQueryReferenceIOAdapter,
     build_plcs_model_io,
 )
 from src.tasks.plcs.models.plcs_track_query_ablation_model import (
     PLCSTrackQueryAblationModel,
+)
+from src.tasks.plcs.models.plcs_track_query_reference_ablation_model import (
+    PLCSTrackQueryReferenceAblationModel,
+)
+from src.tasks.plcs.models.plcs_track_query_reference_model import (
+    PLCSTrackQueryReferenceModel,
 )
 from src.tasks.plcs.training.composition import (
     build_plcs_datamodule,
@@ -198,3 +206,53 @@ def test_ablation_uses_tracking_training_composition(
     assert type(lightning_module) is _LightningModule
     assert datamodule.received is config
     assert lightning_module.received is config
+
+
+@pytest.mark.parametrize(
+    ("profile", "model_type", "selector_mode"),
+    [
+        (
+            "track_query_reference",
+            PLCSTrackQueryReferenceModel,
+            "reference",
+        ),
+        (
+            "track_query_ablation_d_v2_selector",
+            PLCSTrackQueryReferenceAblationModel,
+            "reference",
+        ),
+        (
+            "track_query_ablation_d_v2_selector_zero",
+            PLCSTrackQueryReferenceAblationModel,
+            "selector_zero",
+        ),
+    ],
+)
+def test_factory_binds_reference_v2_model_and_exact_six_input_adapter(
+    profile: str,
+    model_type: type[nn.Module],
+    selector_mode: str,
+) -> None:
+    with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_DIR)):
+        config = compose(
+            config_name="train_tracking",
+            overrides=[
+                f"model={profile}",
+                "court_keypoints=camera_view_v2",
+                "model.hidden_dim=24",
+                "model.num_heads=4",
+                "model.ffn_dim=48",
+                "model.rope_dim=6",
+                "model.num_stages=4",
+                "model.mhc.coefficient_dim=8",
+                "model.mhc.sinkhorn_iters=5",
+                "model.cswa.compression_ratio=2",
+                "model.cswa.window_radius=1",
+            ],
+        )
+    binding = build_plcs_model_io(PLCSTrainingConfig.from_config(config))
+
+    assert type(binding.model) is model_type
+    assert type(binding.adapter) is PLCSTrackQueryReferenceIOAdapter
+    assert binding.adapter.model_type is model_type
+    assert binding.adapter.reference_selector_mode.value == selector_mode

@@ -12,7 +12,10 @@ from src.tasks.base.generate_dataset import resolve_court_keypoint_contract
 from src.tasks.blcs.model_io import (
     TrackQueryAblationModelIOAdapter as PublicTrackQueryAblationModelIOAdapter,
 )
-from src.tasks.blcs.model_io.adapters import TrackQueryAblationModelIOAdapter
+from src.tasks.blcs.model_io.adapters import (
+    TrackQueryAblationModelIOAdapter,
+    TrackQueryReferenceAblationModelIOAdapter,
+)
 from src.tasks.blcs.model_io.factory import (
     TrackQueryBoundModelIO,
     compose_blcs_track_query_model_io,
@@ -20,6 +23,9 @@ from src.tasks.blcs.model_io.factory import (
 from src.tasks.blcs.model_io.training import compose_blcs_training
 from src.tasks.blcs.models.blcs_track_query_ablation_model import (
     BLCSTrackQueryAblationModel,
+)
+from src.tasks.blcs.models.blcs_track_query_reference_ablation_model import (
+    BLCSTrackQueryReferenceAblationModel,
 )
 
 _CONFIG_DIR = Path("src/tasks/blcs/configs").resolve()
@@ -65,12 +71,22 @@ def test_factory_binds_every_ablation_config_to_exact_model_and_adapter(
     assert binding.adapter.num_queries == 4
 
 
-def test_tracking_factory_injects_camera_view_contract_into_adapter() -> None:
-    binding = compose_blcs_track_query_model_io(
-        _config("d", court_keypoints="camera_view_v2")
-    )
+def test_reference_factory_injects_exact_camera_view_contract_into_adapter() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_tracking",
+            overrides=[
+                "model=track_query_ablation_d_v2_selector",
+                "court_keypoints=camera_view_v2",
+                *_SMALL,
+                "model.hidden_dim=24",
+                "model.rope_dim=6",
+            ],
+        )
+    binding = compose_blcs_track_query_model_io(config)
 
-    assert isinstance(binding.adapter, TrackQueryAblationModelIOAdapter)
+    assert type(binding.model) is BLCSTrackQueryReferenceAblationModel
+    assert type(binding.adapter) is TrackQueryReferenceAblationModelIOAdapter
     assert binding.adapter.court_keypoint_contract == resolve_court_keypoint_contract(
         "camera_view_v2"
     )

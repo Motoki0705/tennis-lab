@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import replace
 from typing import Any, cast
 
 import numpy as np
@@ -23,6 +24,12 @@ from src.tasks.blcs.model_io import (
     BLCSTrackQueryPrediction,
     TrackQueryBoundModelIO,
     TrackQueryModelIOAdapter,
+    blcs_reference_metadata_from_batch,
+)
+from src.tasks.blcs.model_io.checkpoints import (
+    resolve_blcs_track_query_reference_contract,
+    validate_blcs_checkpoint_track_query_reference,
+    write_blcs_checkpoint_track_query_reference,
 )
 from src.tasks.blcs.training.tracking_losses import BLCSTrackingLoss
 from src.tasks.blcs.training.tracking_metrics import blcs_tracking_metrics
@@ -46,6 +53,9 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
         self.model = model_io.model
         self.io_adapter = cast("TrackQueryModelIOAdapter", model_io.adapter)
         self.court_keypoint_contract = parse_court_keypoint_contract(config)
+        self.track_query_reference_contract = (
+            resolve_blcs_track_query_reference_contract(config)
+        )
         self.criterion = BLCSTrackingLoss(config.loss)
         root = as_config_mapping(config, path="configuration")
         self.tracking_metrics = TrackingMetricConfig.from_mapping(
@@ -73,6 +83,16 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
             self.court_keypoint_contract,
             location="BLCS tracking checkpoint",
         )
+        track_query_reference = getattr(
+            self,
+            "track_query_reference_contract",
+            None,
+        )
+        if track_query_reference is not None:
+            validate_blcs_checkpoint_track_query_reference(
+                checkpoint,
+                track_query_reference,
+            )
 
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         add_court_coordinate_normalization(
@@ -83,6 +103,16 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
             self.court_keypoint_contract,
             location="BLCS tracking checkpoint",
         )
+        track_query_reference = getattr(
+            self,
+            "track_query_reference_contract",
+            None,
+        )
+        if track_query_reference is not None:
+            write_blcs_checkpoint_track_query_reference(
+                checkpoint,
+                track_query_reference,
+            )
 
     def compute_tracking_step(
         self,
@@ -91,10 +121,13 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
         compute_metrics: bool,
     ) -> TrackingStepResult[BLCSTrackQueryPrediction]:
         """Run BLCS model-I/O, matching, loss, and optional metrics."""
+        reference_metadata = blcs_reference_metadata_from_batch(batch)
         prepared = self.io_adapter.build_training_batch(batch)
+        prepared = replace(prepared, reference_metadata=reference_metadata)
         prediction = self.model_io.decode_output(
             self.model_io.execute_call(prepared.call)
         )
+        prediction = replace(prediction, reference_metadata=reference_metadata)
         loss_inputs, assignments = self.criterion.prepare_inputs(prediction, prepared)
         losses = self.criterion(loss_inputs)
         metrics = (
@@ -104,6 +137,11 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
                 assignments,
                 config=self.tracking_metrics,
                 court_keypoint_contract=self.court_keypoint_contract,
+                reference_view_index=(
+                    reference_metadata.reference_view_index
+                    if reference_metadata is not None
+                    else None
+                ),
             )
             if compute_metrics
             else {}
@@ -125,7 +163,7 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
     ) -> dict[str, np.ndarray]:
         prediction = cast("BLCSTrackQueryPrediction", result["prediction"])
         prepared = self.io_adapter.build_training_batch(batch)
-        return {
+        payload: dict[str, np.ndarray] = {
             "pred_position": self._to_numpy(prediction.position),
             "pred_presence_logits": self._to_numpy(prediction.presence_logits),
             "target_position": self._to_numpy(prepared.target_position),
@@ -133,3 +171,14 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
             "target_instance_id": self._to_numpy(prepared.target_instance_id),
             "frame_valid": self._to_numpy(prepared.frame_valid),
         }
+        if prediction.reference_metadata is not None:
+            metadata_payload = prediction.reference_metadata.prediction_payload(
+                max_views=int(self.config.data.num_views_range[1]),
+            )
+            payload.update(
+                {
+                    key: self._to_numpy(value)
+                    for key, value in metadata_payload.items()
+                }
+            )
+        return payload
