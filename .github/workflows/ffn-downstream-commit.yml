@@ -1,0 +1,87 @@
+name: Commit downstream FFN implementation
+
+on:
+  push:
+    branches:
+      - feat/swiglu-architecture-variants
+
+permissions:
+  contents: write
+
+jobs:
+  commit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/swiglu-architecture-variants
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+      - name: Apply implementation and permanent regression test
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from textwrap import dedent
+
+          inventory = Path(".github/workflows/ffn-downstream-inventory.yml")
+          lines = inventory.read_text(encoding="utf-8").splitlines()
+          start = next(
+              index for index, line in enumerate(lines) if line.strip() == "python - <<'PY'"
+          )
+          end = next(
+              index
+              for index in range(start + 1, len(lines))
+              if lines[index].strip() == "PY"
+          )
+          source = dedent("\n".join(lines[start + 1 : end]))
+          exec(compile(source, str(inventory), "exec"))
+
+          verifier = Path(".github/workflows/ffn-downstream-apply-v2.yml")
+          lines = verifier.read_text(encoding="utf-8").splitlines()
+          marker = "cat > tests/e2e/development/test_ffn_downstream_selection.py <<'PY'"
+          start = next(index for index, line in enumerate(lines) if line.strip() == marker)
+          end = next(
+              index
+              for index in range(start + 1, len(lines))
+              if lines[index].strip() == "PY"
+          )
+          test_source = dedent("\n".join(lines[start + 1 : end])) + "\n"
+          Path("tests/e2e/development/test_ffn_downstream_selection.py").write_text(
+              test_source,
+              encoding="utf-8",
+          )
+          PY
+      - name: Format and lint
+        run: |
+          uv run --locked ruff check --fix src tests
+          uv run --locked ruff check src tests
+          git diff --check
+      - name: Run focused downstream suite
+        run: |
+          uv run --locked pytest -q -n auto --no-cov \
+            tests/e2e/development/test_ffn_downstream_selection.py \
+            tests/unit/utils/models/components/test_ffn_layers.py \
+            tests/unit/utils/models/components/test_block.py \
+            tests/unit/utils/models/components/test_fixed_query_track_ablation_stage.py \
+            tests/unit/utils/models/architectures/test_transformer_sequence_discriminator.py \
+            tests/integration/tasks/blcs/test_model_configs.py \
+            tests/integration/tasks/plcs/test_model_configs.py \
+            tests/unit/tasks/ball_detection/test_configuration_semantics.py \
+            tests/unit/tasks/ball_detection/models/test_dinov3_rope.py \
+            tests/unit/tasks/court_detection/test_configuration.py \
+            tests/unit/tasks/court_detection/models/test_transformer_encoder.py \
+            tests/unit/tasks/slcs/models/test_slcs_model.py \
+            tests/integration/tasks/slcs/test_training_config.py
+      - name: Commit implementation
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src tests
+          if git diff --cached --quiet; then
+            echo "No implementation changes to commit"
+            exit 0
+          fi
+          git commit -m "feat: expose FFN variants across downstream block models"
+          git push origin HEAD:feat/swiglu-architecture-variants
