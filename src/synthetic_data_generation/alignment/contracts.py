@@ -64,6 +64,7 @@ class CameraOwnershipRule(StrEnum):
     """Versioned slot rule assigning the fixed prefix before measurement."""
 
     FIXED_UNIT_EVEN_HOLDOUT_SLOTS_V1 = "fixed_unit_even_holdout_slots_v1"
+    FIXED_UNIT_EVEN_HOLDOUT_TAIL_V1 = "fixed_unit_even_holdout_tail_v1"
 
 
 class AlignmentEvaluationPolicy(StrEnum):
@@ -382,10 +383,10 @@ class FixedCameraSelectionDiagnostics:
     def __post_init__(self) -> None:
         if not isinstance(self.policy, CameraSelectionPolicy):
             raise TypeError("policy must be a CameraSelectionPolicy.")
-        if (
-            self.ownership_rule
-            is not CameraOwnershipRule.FIXED_UNIT_EVEN_HOLDOUT_SLOTS_V1
-        ):
+        if self.ownership_rule not in {
+            CameraOwnershipRule.FIXED_UNIT_EVEN_HOLDOUT_SLOTS_V1,
+            CameraOwnershipRule.FIXED_UNIT_EVEN_HOLDOUT_TAIL_V1,
+        }:
             raise ValueError("Unsupported fixed camera ownership rule.")
         requested = _integer(
             self.requested_camera_count,
@@ -412,9 +413,16 @@ class FixedCameraSelectionDiagnostics:
             name="holdout_cameras_per_unit",
             minimum=1,
         )
-        if requested != unit_count * (fit_per_unit + holdout_per_unit):
+        fixed_prefix_count = unit_count * (fit_per_unit + holdout_per_unit)
+        if self.ownership_rule is CameraOwnershipRule.FIXED_UNIT_EVEN_HOLDOUT_SLOTS_V1:
+            if requested != fixed_prefix_count:
+                raise ValueError(
+                    "Requested camera count disagrees with immutable partition units."
+                )
+        elif requested <= fixed_prefix_count:
             raise ValueError(
-                "Requested camera count disagrees with immutable partition units."
+                "Holdout-tail ownership requires cameras beyond the immutable fit "
+                "prefix."
             )
         selected = _camera_ids(
             self.camera_prefix_ids, name="selection camera_prefix_ids"
@@ -428,15 +436,20 @@ class FixedCameraSelectionDiagnostics:
         )
         if len(selected) != requested:
             raise ValueError("Selected camera IDs do not match the requested count.")
+        expected_holdout_count = (
+            unit_count * holdout_per_unit + requested - fixed_prefix_count
+        )
         if len(fit) != unit_count * fit_per_unit or len(holdout) != (
-            unit_count * holdout_per_unit
+            expected_holdout_count
         ):
             raise ValueError("Fit/holdout ownership counts disagree with fixed units.")
         expected_fit, expected_holdout = _fixed_unit_camera_ownership(
-            selected,
+            selected[:fixed_prefix_count],
             fit_cameras_per_unit=fit_per_unit,
             holdout_cameras_per_unit=holdout_per_unit,
         )
+        if self.ownership_rule is CameraOwnershipRule.FIXED_UNIT_EVEN_HOLDOUT_TAIL_V1:
+            expected_holdout = (*expected_holdout, *selected[fixed_prefix_count:])
         if fit != expected_fit or holdout != expected_holdout:
             raise ValueError(
                 "Fixed fit/holdout ownership violates the persisted unit slot rule."

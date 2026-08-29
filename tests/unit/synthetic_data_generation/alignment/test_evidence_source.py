@@ -46,6 +46,7 @@ from src.synthetic_data_generation.alignment.evidence_source import (
     _optimize_court,
     _orientation_search_bands,
     _partition_cameras,
+    _partition_cameras_with_holdout_tail,
     _prepare_residual_evidence,
     _project_probability_to_ground,
     _ProjectedLineEvidence,
@@ -171,10 +172,10 @@ def test_production_line_detector_rejects_unknown_runtime_override(
         )
 
 
-def test_production_source_accepts_audited_camera_prefix_expansion(
+def test_production_source_accepts_audited_holdout_prefix_expansion(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("TENNIS_LAB_ALIGNMENT_CAMERA_PREFIX_COUNT", "72")
+    monkeypatch.setenv("TENNIS_LAB_ALIGNMENT_HOLDOUT_CAMERA_PREFIX_COUNT", "72")
 
     source = ProductionAlignmentEvidenceSource(
         _settings(tmp_path),
@@ -182,13 +183,14 @@ def test_production_source_accepts_audited_camera_prefix_expansion(
         cast(Any, object()),
     )
 
-    assert source._settings.camera_prefix_count == 72
+    assert source._settings.camera_prefix_count == 3
+    assert source._holdout_camera_prefix_count == 72
 
 
-def test_production_source_rejects_unbounded_camera_prefix_expansion(
+def test_production_source_rejects_unbounded_holdout_prefix_expansion(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("TENNIS_LAB_ALIGNMENT_CAMERA_PREFIX_COUNT", "120")
+    monkeypatch.setenv("TENNIS_LAB_ALIGNMENT_HOLDOUT_CAMERA_PREFIX_COUNT", "120")
 
     with pytest.raises(ValueError, match="must lie between 3 and 96"):
         ProductionAlignmentEvidenceSource(
@@ -372,6 +374,33 @@ def test_fixed_selection_is_candidate_count_independent_with_stable_ownership(
     )
     assert settings.camera_partition_unit_count() == 4
     assert settings.candidate_fit.maximum_candidate_count == 8
+
+
+def test_holdout_tail_preserves_fixed_fit_prefix_and_adds_only_evaluation_cameras(
+    tmp_path: Path,
+) -> None:
+    base = _settings(tmp_path)
+    settings = replace(
+        base,
+        minimum_fit_cameras=8,
+        minimum_holdout_cameras=4,
+        camera_prefix_count=48,
+    )
+    selected = _fixed_camera_selection(
+        _scene(tmp_path, camera_count=100).cameras,
+        settings=settings,
+        camera_prefix_count=72,
+    ).ordered_cameras
+
+    fit, holdout = _partition_cameras_with_holdout_tail(selected, settings=settings)
+    original_fit, original_holdout = _partition_cameras(
+        selected[:48], settings=settings
+    )
+
+    assert fit == original_fit
+    assert holdout == (*original_holdout, *selected[48:])
+    assert len(fit) == 32
+    assert len(holdout) == 40
 
 
 def test_fixed_collection_measures_once_and_evaluates_holdout_once(

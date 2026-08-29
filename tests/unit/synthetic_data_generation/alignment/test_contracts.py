@@ -81,6 +81,49 @@ def test_fixed_48_camera_ownership_rejects_contiguous_fit_holdout_claim() -> Non
         )
 
 
+def test_holdout_tail_ownership_preserves_fit_prefix_and_audits_extra_views() -> None:
+    prefix = tuple(f"c{index:02d}" for index in range(72))
+    fixed = prefix[:48]
+    holdout_slots = {1, 4, 7, 10}
+    expected_fit = tuple(
+        camera_id
+        for index, camera_id in enumerate(fixed)
+        if index % 12 not in holdout_slots
+    )
+    expected_holdout = (
+        *(
+            camera_id
+            for index, camera_id in enumerate(fixed)
+            if index % 12 in holdout_slots
+        ),
+        *prefix[48:],
+    )
+    selection = FixedCameraSelectionDiagnostics(
+        policy=CameraSelectionPolicy.NESTED_UNIFORM_PREFIX_V1,
+        ownership_rule=CameraOwnershipRule.FIXED_UNIT_EVEN_HOLDOUT_TAIL_V1,
+        requested_camera_count=72,
+        available_camera_count=491,
+        partition_unit_count=4,
+        fit_cameras_per_unit=8,
+        holdout_cameras_per_unit=4,
+        camera_prefix_ids=prefix,
+        fit_camera_ids=expected_fit,
+        holdout_camera_ids=expected_holdout,
+        observed_camera_ids=prefix,
+        excluded_cameras=(),
+    )
+
+    assert FixedCameraSelectionDiagnostics.from_dict(selection.to_dict()) == selection
+    with pytest.raises(ValueError, match="Holdout-tail ownership"):
+        replace(
+            selection,
+            requested_camera_count=48,
+            camera_prefix_ids=prefix[:48],
+            holdout_camera_ids=expected_holdout[:16],
+            observed_camera_ids=prefix[:48],
+        )
+
+
 def test_all_accepted_courts_have_unique_ids_bounds_and_reciprocal_transforms(
     alignment_evidence: AlignmentEvidence,
     alignment_policy: AlignmentAcceptancePolicy,
