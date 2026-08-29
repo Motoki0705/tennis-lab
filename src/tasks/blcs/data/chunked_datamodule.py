@@ -2,7 +2,7 @@
 
 The training set is backed by :class:`ChunkManager` which generates scene
 chunks in a background thread.  Validation and test sets are fixed NPZ
-datasets loaded from ``data/blcs/``.
+datasets loaded from ``data/blcs/single_object/``.
 """
 
 from __future__ import annotations

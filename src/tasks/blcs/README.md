@@ -71,6 +71,7 @@ reference frame へ position と court-space velocity を同じ proper rotation 
 
 ### scripts/
 - **`generate_dataset.py`**: 合成データ生成エントリポイント。
+- **`generate_dataset_samples.py`**: 生成済み各datasetへ層化されたcamera-view GIFとmanifestを作成。
 - **`train.py`**: 学習エントリポイント(chunked/GAN切替可)。
 - **`visualize.py`**: 可視化エントリポイント。
 
@@ -96,7 +97,7 @@ multi-object generatorは1024-frame global timelineに3〜10個のsource rally s
 ```bash
 # 固定train/val/testデータを事前生成
 .venv/bin/python -m src.tasks.blcs.scripts.generate_dataset \
-  generation=multi_object run.output_dir=data/blcs/multi_object
+  generation=multi_object run.output_dir=blcs/multi_object
 
 # 事前生成データで学習
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking
@@ -105,7 +106,7 @@ multi-object generatorは1024-frame global timelineに3〜10個のsource rally s
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking \
   model=track_query_ablation_e
 
-# camera-view v2 D selector / selector-zero（GPU実行はtraining queue経由）
+# camera-view v2 D selector / selector-zero（別途生成したopt-inデータ、GPU実行はtraining queue経由）
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking \
   court_keypoints=camera_view_v2 data.scene_dir=blcs/multi_object_camera_view_v2 \
   model=track_query_ablation_d_v2_selector

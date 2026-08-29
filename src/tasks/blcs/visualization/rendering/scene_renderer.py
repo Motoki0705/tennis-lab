@@ -721,13 +721,14 @@ class BLCSSceneRenderer:
             fig, ax = plt.subplots(figsize=figsize)
             self.court_renderer.render_2d(ax, show_fence=True, set_limits=False)
 
+            track_colors = [
+                _BALL_COLORS[index % len(_BALL_COLORS)] for index in range(len(tracks))
+            ]
             lines = [
-                ax.plot([], [], color=color, linewidth=2)[0]
-                for color in _BALL_COLORS[: len(tracks)]
+                ax.plot([], [], color=color, linewidth=2)[0] for color in track_colors
             ]
             points = [
-                ax.scatter([], [], c=color, s=100, zorder=10)
-                for color in _BALL_COLORS[: len(tracks)]
+                ax.scatter([], [], c=color, s=100, zorder=10) for color in track_colors
             ]
 
             ax.set_xlim(-HALF_DOUBLES_WIDTH - 2, HALF_DOUBLES_WIDTH + 2)
@@ -774,13 +775,16 @@ class BLCSSceneRenderer:
                 keypoint_marker="s",
             )
 
+            track_colors = [
+                _BALL_COLORS[index % len(_BALL_COLORS)]
+                for index in range(len(uv_tracks))
+            ]
             lines = [
                 ax.plot([], [], color=color, linewidth=1, alpha=0.5)[0]
-                for color in _BALL_COLORS[: len(uv_tracks)]
+                for color in track_colors
             ]
             points = [
-                ax.scatter([], [], c=color, s=100, zorder=10)
-                for color in _BALL_COLORS[: len(uv_tracks)]
+                ax.scatter([], [], c=color, s=100, zorder=10) for color in track_colors
             ]
 
             ax.set_xlim(0, 1)

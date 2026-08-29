@@ -228,8 +228,8 @@ def test_registered_prediction_bundles_have_bitwise_matched_evaluation_inputs() 
 @pytest.mark.parametrize(
     ("task", "model_name", "scene_dir", "evaluation_reference_camera_id"),
     [
-        ("blcs", "blcs_track_query", "blcs/multi_object_lifecycle_v2", "cam_1"),
-        ("plcs", "plcs_track_query", "plcs/multi_object_lifecycle_v2", "camera_1"),
+        ("blcs", "blcs_track_query", "blcs/multi_object", "cam_1"),
+        ("plcs", "plcs_track_query", "plcs/multi_object", "camera_1"),
     ],
 )
 def test_production_train_tracking_defaults_keep_legacy_model_and_court_contract(
