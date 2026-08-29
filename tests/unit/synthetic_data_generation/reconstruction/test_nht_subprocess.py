@@ -28,6 +28,18 @@ def _pipeline_config(tmp_path: Path) -> NHTPipelineConfig:
     return NHTPipelineConfig.load(path.resolve())
 
 
+def _sfm_pipeline_config(tmp_path: Path) -> NHTPipelineConfig:
+    path = tmp_path / "nht-sfm-pipeline.yaml"
+    path.write_text(
+        "schema: nht_pipeline_config_v1\n"
+        "sfm:\n"
+        "  quality_gates:\n"
+        "    minimum_median_track_length: 3.0\n",
+        encoding="utf-8",
+    )
+    return NHTPipelineConfig.load(path.resolve())
+
+
 def _request(tmp_path: Path) -> ReconstructionCommandRequest:
     scene_root = tmp_path / "scenes/B00"
     source = scene_root / "source/video.mp4"
@@ -168,6 +180,24 @@ def test_runner_rejects_private_subprocess_environment(tmp_path: Path) -> None:
             _request(tmp_path),
             environment={"PYTHONPATH": "/provider/private/modules"},
         )
+
+
+def test_runtime_binds_audited_median_track_override(tmp_path: Path) -> None:
+    request = _request(tmp_path)
+    request = ReconstructionCommandRequest(
+        scene_id=request.scene_id,
+        input_video=request.input_video,
+        workspace=request.workspace,
+        pipeline_config=_sfm_pipeline_config(tmp_path),
+    )
+
+    with nht_subprocess._runtime_bound_request(
+        request,
+        None,
+        environment={"TENNIS_LAB_NHT_MINIMUM_MEDIAN_TRACK_LENGTH": "2.0"},
+    ) as effective:
+        loaded = yaml.safe_load(effective.pipeline_config.path.read_text())
+        assert loaded["sfm"]["quality_gates"]["minimum_median_track_length"] == 2.0
 
 
 def test_runner_rejects_command_success_without_public_run_manifest(

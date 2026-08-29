@@ -444,7 +444,13 @@ class NHTCommandPaths:
         pipeline_config = _nht_pipeline_config(raw, resolver=resolver)
         training_runtime = _nht_training_runtime(raw, resolver=resolver)
         environment_raw = _mapping(raw["environment"], path="nht.environment")
-        unknown_environment = sorted(set(environment_raw) - {"CUDA_VISIBLE_DEVICES"})
+        unknown_environment = sorted(
+            set(environment_raw)
+            - {
+                "CUDA_VISIBLE_DEVICES",
+                "TENNIS_LAB_NHT_MINIMUM_MEDIAN_TRACK_LENGTH",
+            }
+        )
         if unknown_environment:
             raise UnknownConfigurationKeyError(
                 "Unknown NHT public environment key(s): "

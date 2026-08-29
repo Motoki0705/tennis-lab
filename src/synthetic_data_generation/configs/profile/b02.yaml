@@ -7,3 +7,7 @@ request:
   targets: [court, blcs, plcs]
   from_stage: ingest
   through_stage: report
+
+nht:
+  environment:
+    TENNIS_LAB_NHT_MINIMUM_MEDIAN_TRACK_LENGTH: "2.0"

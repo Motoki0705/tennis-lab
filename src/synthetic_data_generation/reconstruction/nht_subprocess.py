@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 import subprocess
 import tempfile
@@ -46,7 +47,9 @@ def run_nht_reconstruction(
     if public_environment:
         child_environment = dict(os.environ)
         child_environment.update(public_environment)
-    with _runtime_bound_request(request, training_runtime) as effective_request:
+    with _runtime_bound_request(
+        request, training_runtime, environment=public_environment
+    ) as effective_request:
         subprocess.run(
             list(effective_request.argv()),
             check=True,
@@ -147,7 +150,13 @@ def _public_environment(
 ) -> dict[str, str]:
     if environment is None:
         return {}
-    unknown = sorted(set(environment) - {"CUDA_VISIBLE_DEVICES"})
+    unknown = sorted(
+        set(environment)
+        - {
+            "CUDA_VISIBLE_DEVICES",
+            "TENNIS_LAB_NHT_MINIMUM_MEDIAN_TRACK_LENGTH",
+        }
+    )
     if unknown:
         raise ValueError(
             "nht-reconstruct environment contains unsupported private key(s): "
@@ -168,29 +177,56 @@ def _public_environment(
 def _runtime_bound_request(
     request: ReconstructionCommandRequest,
     runtime: NHTTrainingRuntime | None,
+    *,
+    environment: Mapping[str, str],
 ) -> Iterator[ReconstructionCommandRequest]:
     """Bind the portable NHT config to one machine-local trainer environment."""
-    if runtime is None:
+    track_override = environment.get(
+        "TENNIS_LAB_NHT_MINIMUM_MEDIAN_TRACK_LENGTH"
+    )
+    if runtime is None and track_override is None:
         yield request
         return
-    runtime.validate()
+    if runtime is not None:
+        runtime.validate()
     loaded: object = yaml.safe_load(
         request.pipeline_config.path.read_text(encoding="utf-8")
     )
     if not isinstance(loaded, Mapping):  # pragma: no cover - validated by contract
         raise TypeError("NHT pipeline config must contain a mapping.")
     effective = dict(loaded)
-    training_value = effective.get("nht_training", {})
-    if not isinstance(training_value, Mapping):
-        raise TypeError("NHT pipeline config nht_training must be a mapping.")
-    training = dict(training_value)
-    training.update(
-        {
-            "python": str(runtime.python),
-            "trainer": str(runtime.trainer),
-        }
-    )
-    effective["nht_training"] = training
+    if runtime is not None:
+        training_value = effective.get("nht_training", {})
+        if not isinstance(training_value, Mapping):
+            raise TypeError("NHT pipeline config nht_training must be a mapping.")
+        training = dict(training_value)
+        training.update(
+            {
+                "python": str(runtime.python),
+                "trainer": str(runtime.trainer),
+            }
+        )
+        effective["nht_training"] = training
+    if track_override is not None:
+        minimum_track_length = float(track_override)
+        if not math.isfinite(minimum_track_length) or not (
+            2.0 <= minimum_track_length <= 3.0
+        ):
+            raise ValueError(
+                "TENNIS_LAB_NHT_MINIMUM_MEDIAN_TRACK_LENGTH must be between "
+                "2.0 and 3.0."
+            )
+        sfm_value = effective.get("sfm")
+        if not isinstance(sfm_value, Mapping):
+            raise TypeError("NHT pipeline config sfm must be a mapping.")
+        sfm = dict(sfm_value)
+        gates_value = sfm.get("quality_gates")
+        if not isinstance(gates_value, Mapping):
+            raise TypeError("NHT pipeline config sfm.quality_gates must be a mapping.")
+        gates = dict(gates_value)
+        gates["minimum_median_track_length"] = minimum_track_length
+        sfm["quality_gates"] = gates
+        effective["sfm"] = sfm
     with tempfile.TemporaryDirectory(prefix="tennis-lab-nht-") as directory:
         path = Path(directory).joinpath("pipeline.yaml")
         path.write_text(

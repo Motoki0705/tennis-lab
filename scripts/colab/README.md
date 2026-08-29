@@ -8,7 +8,7 @@
 !bash scripts/colab/run_b01_b03_alignment.sh
 ```
 
-`run_b01_b03_alignment.sh`はGoogle Driveのmount、locked依存関係、NHT、DINOv3、入力配置をすべて処理し、B01→B02→B03を逐次実行する。各シーンは`ingest → reconstruction → alignment`で終了し、datasetとreportは生成しない。終了時にはraw・視点別weighted・weighted射影のラインヒートマップを本体validatorで再検証する。
+`run_b01_b03_alignment.sh`はGoogle Driveのmount、locked依存関係、NHT、DINOv3、入力配置をすべて処理する。GPUでB01→B02→B03の`ingest → reconstruction`を逐次実行し、その裏で直前シーンのライン推論と`alignment`をCPU実行する。各シーンはalignmentで終了し、datasetとreportは生成しない。終了時にはraw・視点別weighted・weighted射影のラインヒートマップを本体validatorで再検証する。
 
 入力動画、ライン検出checkpoint、DINOv3 checkpointは`/content/drive/MyDrive/tennis_lab/`配下から読み、固定SHA-256と一致しない入力は実行前に拒否する。学習とatomic publishはColab VMのローカルfilesystemで行い、完了した`reconstruction/`と`alignment/`をシーンごとに次へ保存する。
 

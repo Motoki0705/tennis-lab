@@ -109,6 +109,10 @@ _MAXIMUM_RETAINED_PROPOSAL_STATE_COUNT = 128
 _MAXIMUM_RESIDUAL_STATE_COUNT = 1024
 _MAXIMUM_TILE_STATE_COUNT = _MAXIMUM_BRANCH_FACTOR * _MAXIMUM_RESIDUAL_STATE_COUNT
 _MAXIMUM_TILE_OPTIMIZER_WORKERS = 8
+_LINE_DEVICE_OVERRIDE_ENV = "TENNIS_LAB_ALIGNMENT_LINE_DEVICE"
+_MAXIMUM_UNEXPLAINED_EVIDENCE_ENV = (
+    "TENNIS_LAB_ALIGNMENT_MAXIMUM_UNEXPLAINED_EVIDENCE_FRACTION"
+)
 
 
 class LineProbabilityDetector(Protocol):
@@ -133,7 +137,17 @@ class ProductionCourtLineDetector:
     def __init__(
         self, settings: CourtLineModelSettings, resolver: PathResolver, *, seed: int
     ) -> None:
-        self._settings = settings
+        device_override = os.environ.get(_LINE_DEVICE_OVERRIDE_ENV)
+        if device_override not in {None, "cpu"}:
+            raise ValueError(
+                f"{_LINE_DEVICE_OVERRIDE_ENV} must be unset or 'cpu', got "
+                f"{device_override!r}."
+            )
+        self._settings = (
+            replace(settings, device=device_override)
+            if device_override is not None
+            else settings
+        )
         self._resolver = resolver
         self._predictor: CourtLinePredictor | None = None
         self._seed = seed
@@ -1878,6 +1892,18 @@ def _fit_court_hypotheses(
     minimum_explained_evidence = (
         settings.minimum_explained_evidence_fraction * original_evidence_sum
     )
+    maximum_unexplained_fraction_text = os.environ.get(
+        _MAXIMUM_UNEXPLAINED_EVIDENCE_ENV
+    )
+    maximum_unexplained_fraction = settings.minimum_explained_evidence_fraction
+    if maximum_unexplained_fraction_text is not None:
+        maximum_unexplained_fraction = float(maximum_unexplained_fraction_text)
+        if not math.isfinite(maximum_unexplained_fraction) or not (
+            0.0 < maximum_unexplained_fraction < 1.0
+        ):
+            raise ValueError(
+                f"{_MAXIMUM_UNEXPLAINED_EVIDENCE_ENV} must lie in (0, 1)."
+            )
     template = sample_court_line_template(settings.samples_per_metre)
     orientation_bands = _orientation_search_bands(settings)
     maximum_tile_width = _maximum_center_tile_width_scene_units(settings)
@@ -2256,7 +2282,8 @@ def _fit_court_hypotheses(
                 and candidate_count == terminal_candidate_count
             )
             if (
-                refined_residual_evidence >= minimum_explained_evidence
+                refined_residual_evidence
+                >= (maximum_unexplained_fraction * original_evidence_sum)
                 and not terminal_no_proposal
             ):
                 raise ValueError(
@@ -2265,7 +2292,8 @@ def _fit_court_hypotheses(
                     f"candidate_count={candidate_count},"
                     f"residual_fraction="
                     f"{refined_residual_evidence / original_evidence_sum:.6f},"
-                    f"minimum={settings.minimum_explained_evidence_fraction:.6f}."
+                    "maximum_unexplained="
+                    f"{maximum_unexplained_fraction:.6f}."
                 )
         except ValueError as error:
             refinement_rejection_reasons.append(f"rank={rank}({error})")
