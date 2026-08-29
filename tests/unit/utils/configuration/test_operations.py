@@ -14,8 +14,6 @@ from src.utils.configuration import (
     BUILD_CUDA_OPS,
     CUDA_OPS_BUILD_TARGET,
     DINO_OPS_BUILD_CONFIG,
-    FORCE_TIME_LOCAL_REFERENCE,
-    USE_TIME_LOCAL_CUDA,
     ConfigurationError,
     DinoOpsBuildConfig,
     OperationEnvironmentConfig,
@@ -50,12 +48,6 @@ def _build_mapping(root: Path) -> dict[str, object]:
         "source": "DINO/ops/src",
         "destination_role": "cache",
         "destination": "dino_ops/src",
-        "time_local_bindings": (
-            "src/utils/models/components/ops/time_local/csrc/time_local.cpp"
-        ),
-        "time_local_kernels": (
-            "src/utils/models/components/ops/time_local/csrc/time_local_cuda.cu"
-        ),
         "compressed_time_local_bindings": (
             "src/utils/models/components/ops/compressed_time_local/bindings.cpp"
         ),
@@ -66,42 +58,31 @@ def _build_mapping(root: Path) -> dict[str, object]:
 
 
 def _operation_environment(**overrides: str) -> dict[str, str]:
-    values = {
-        BUILD_CUDA_OPS: "0",
-        FORCE_TIME_LOCAL_REFERENCE: "0",
-        USE_TIME_LOCAL_CUDA: "0",
-    }
+    values = {BUILD_CUDA_OPS: "0"}
     values.update(overrides)
     return values
+
+
+@pytest.mark.parametrize("raw", ["", "true", "yes", "2", " 0"])
+def test_boolean_environment_tokens_are_exact(raw: str) -> None:
+    with pytest.raises(ConfigurationError, match="exactly '0' or '1'"):
+        OperationEnvironmentConfig.from_mapping(
+            _operation_environment(**{BUILD_CUDA_OPS: raw})
+        )
 
 
 @pytest.mark.parametrize(
     "name",
     [
-        BUILD_CUDA_OPS,
-        FORCE_TIME_LOCAL_REFERENCE,
-        USE_TIME_LOCAL_CUDA,
+        "TENNIS_LAB_TYPO",
+        "TENNIS_LAB_FORCE_MOE_REFERENCE",
+        "TENNIS_LAB_FORCE_TIME_LOCAL_REFERENCE",
+        "TENNIS_LAB_USE_TIME_LOCAL_CUDA",
     ],
 )
-def test_boolean_environment_tokens_are_exact(name: str) -> None:
-    with pytest.raises(ConfigurationError, match="exactly '0' or '1'"):
-        OperationEnvironmentConfig.from_mapping(
-            _operation_environment(**{name: "true"})
-        )
-
-
-def test_operation_environment_rejects_unknown_and_conflicting_inputs() -> None:
+def test_operation_environment_rejects_unknown_inputs(name: str) -> None:
     with pytest.raises(ConfigurationError, match="Unknown configuration"):
-        OperationEnvironmentConfig.from_mapping({"TENNIS_LAB_TYPO": "1"})
-    with pytest.raises(ConfigurationError, match="conflicts"):
-        OperationEnvironmentConfig.from_mapping(
-            _operation_environment(
-                **{
-                    FORCE_TIME_LOCAL_REFERENCE: "1",
-                    USE_TIME_LOCAL_CUDA: "1",
-                }
-            )
-        )
+        OperationEnvironmentConfig.from_mapping({name: "1"})
 
 
 @pytest.mark.parametrize(
@@ -181,9 +162,6 @@ def test_dino_build_contract_resolves_all_roles(tmp_path: Path) -> None:
 
     assert config.source == tmp_path / "third_party/DINO/ops/src"
     assert config.destination == tmp_path / ".cache/dino_ops/src"
-    assert config.time_local_bindings == (
-        tmp_path / "src/utils/models/components/ops/time_local/csrc/time_local.cpp"
-    )
     assert config.compressed_time_local_kernels == (
         tmp_path / "src/utils/models/components/ops/compressed_time_local/kernels.cu"
     )
@@ -225,7 +203,9 @@ def test_dino_build_contract_rejects_noncanonical_serialized_project_root(
         ({"destination_role": "project"}, "destination_role"),
         ({"source": "/tmp/outside"}, "relative"),
         ({"destination": "../outside"}, "escapes"),
-        ({"time_local_bindings": 3}, "expected str"),
+        ({"compressed_time_local_bindings": 3}, "expected str"),
+        ({"moe_bindings": "legacy"}, "Unknown"),
+        ({"time_local_bindings": "legacy"}, "Unknown"),
     ],
 )
 def test_dino_build_contract_rejects_invalid_inputs(

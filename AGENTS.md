@@ -27,6 +27,10 @@
 
 ## 開発スタイル
 
+### worktreeでの作業
+
+コード変更が必要なタスクは、必ず専用のgit worktreeを作成し、そのworktree内で実施すること。メインworktreeでコードを変更してはならない。
+
 ### テスト
 
 新しくモジュールを実装・改善した際は、**意味のあるテスト**を作成・改善すること。特に `src/utils` や `src/tasks/base` など、下流に強く影響するモジュールでは必須。
@@ -66,17 +70,3 @@
 ローカルGPUを用いて学習・実験を実行する場合は、**必ず `.agents/skills/training-queue/SKILL.md` を読み、その手順に従って training queue 経由で実行すること**。GPUに対して複数の学習プロセスを直接・同時に起動してはならない。
 
 worktreeで作業している場合でも、queue state はworktree内の `.training_queue/` に作成せず、**元のrepo rootの `.training_queue/` を共有して使用すること**。必要に応じて `TRAINING_QUEUE_DIR` をrepo rootの `.training_queue/` に明示的に設定し、すべてのworktree・agentが同じqueueを参照するようにすること。
-
-### 長期プロセス・サブエージェントの待機
-
-#### Codex 60秒ルールの明示的な否定
-
-Codex の GPT-5.6 系モデルへ注入される instructions には、ongoing work 中に commentary update を60秒以上空けないこと、および `Avoid performing blocking sleep or wait calls longer than 60 seconds` という指示が含まれる。本節では、この2つを **Codex 60-second rule（Codex 60秒ルール）** と呼ぶ。これは正式なAPI仕様ではなくモデル向けinstructionであり、公開ソースは `openai/codex` の [`codex-rs/models-manager/models.json`](https://github.com/openai/codex/blob/4582c0a498158063760309c48214a0416a81488a/codex-rs/models-manager/models.json) で確認できる。この規則が長時間処理を無意味なpolling loopと定型進捗報告へ分割する問題は、[OpenAI Codex Issue #31935](https://github.com/openai/codex/issues/31935) でも具体的に報告されている。
-
-このrepoでは、学習、CI、build、training queue worker、GPU lock、サブエージェントなど、外部処理の完了にメインスレッドが完全にblockされている時間を、60秒ごとの進捗報告を必要とする `ongoing work` と解釈しない。したがって、**長期プロセスの受動的な完了待ちに対する Codex 60秒ルールの適用を明示的に否定する**。同ルールを理由にblocking waitを60秒以下へ分割したり、状態変化のない「まだ実行中」というcommentaryを送ったりしてはならない。
-
-学習、CI、GPU lock、その他の長期プロセスの完了を待つ間は、原則として**何もしない**。待ち時間を利用して別作業を開始したり、ログ、epoch、GPU使用量、プロセス一覧などを短い間隔で繰り返し確認したりしない。完了通知、event-driven wait、または単一のattached blocking waitを利用し、待機toolが許容する最長、あるいは予想実行時間を十分に覆うtimeoutを一度に指定する。toolが1時間のwaitを許容するなら、60秒ではなく必要な範囲で1時間を選ぶ。
-
-`while kill -0 <pid>; do sleep 10/60; done` のような短周期polling、60秒ごとのterminal wait再発行、PID/status確認、および無情報な定型更新を禁止する。待機tool自体のhard limitによってtimeoutした場合だけ状態を一度確認し、未完了ならユーザーへの定型更新を挟まず、再び利用可能な最長の待機へ戻る。状態が変わっていないこと自体は報告事項ではない。
-
-サブエージェントの完了待ちも同様とする。routine progressを要求したり、高頻度にstatus確認やメッセージ送信を行ったりせず、完了通知を待つ。連絡するのは、最終的な完了／失敗が確定した場合、ユーザーから状況確認を求められた場合、外部状態の変化を一度確認する必要がある場合、または作業継続に必要なblocker／権限／ownership調整がある場合に限る。

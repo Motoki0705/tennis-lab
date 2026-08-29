@@ -1,5 +1,5 @@
 mode: visualize  # visualize | predict
-scene_path: blcs/scenes/scene_000000
+scene_path: blcs/single_object/scenes/scene_000000
 # Multi-view camera selection for predictor input.
 cameras: all
 camera: 0

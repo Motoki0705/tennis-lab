@@ -154,7 +154,7 @@ class BLCSTrackQueryModel(nn.Module):
             attention_type=attention_type,
             n_kv_heads=None,
             rope_base=10000.0,
-            ffn_type="swiglu",
+            ffn_type=config.ffn_type,
             cswa=cswa_config,
         )
 

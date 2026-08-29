@@ -21,8 +21,7 @@ _OPERATION_ENVIRONMENT_NAMES = (
     build_module.BUILD_CUDA_OPS,
     build_module.CUDA_OPS_BUILD_TARGET,
     build_module.DINO_OPS_BUILD_CONFIG,
-    "TENNIS_LAB_FORCE_TIME_LOCAL_REFERENCE",
-    "TENNIS_LAB_USE_TIME_LOCAL_CUDA",
+    "TENNIS_LAB_FORCE_MOE_REFERENCE",
 )
 _SPEC_LOAD_SCRIPT = """
 import importlib.util
@@ -79,10 +78,12 @@ def _build_mapping(project_root: Path) -> dict[str, object]:
         "source": "DINO/ops/src",
         "destination_role": "cache",
         "destination": "dino_ops/src",
-        "time_local_bindings": "src/utils/models/components/ops/time_local/csrc/time_local.cpp",
-        "time_local_kernels": "src/utils/models/components/ops/time_local/csrc/time_local_cuda.cu",
-        "compressed_time_local_bindings": "src/utils/models/components/ops/compressed_time_local/bindings.cpp",
-        "compressed_time_local_kernels": "src/utils/models/components/ops/compressed_time_local/kernels.cu",
+        "compressed_time_local_bindings": (
+            "src/utils/models/components/ops/compressed_time_local/bindings.cpp"
+        ),
+        "compressed_time_local_kernels": (
+            "src/utils/models/components/ops/compressed_time_local/kernels.cu"
+        ),
     }
 
 
@@ -310,24 +311,6 @@ def test_enabled_setup_spec_load_delegates_canonical_validation(
     assert completed.returncode != 0
     assert "dino_ops_build.source_role" in completed.stderr
 
-
-def test_enabled_setup_spec_load_delegates_environment_conflicts(
-    tmp_path: Path,
-) -> None:
-    completed = _spec_loaded_build(
-        tmp_path,
-        {
-            build_module.BUILD_CUDA_OPS: "1",
-            build_module.DINO_OPS_BUILD_CONFIG: json.dumps(
-                _build_mapping(_PROJECT_ROOT)
-            ),
-            "TENNIS_LAB_FORCE_TIME_LOCAL_REFERENCE": "1",
-            "TENNIS_LAB_USE_TIME_LOCAL_CUDA": "1",
-        },
-    )
-
-    assert completed.returncode != 0
-    assert "conflicts" in completed.stderr
 
 
 def test_operation_loader_rejects_preloaded_module_from_another_root(

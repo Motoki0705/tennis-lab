@@ -66,6 +66,7 @@ class _BLCSChunkGenerator:
             seed=self.generation_seed,
             multi_object=self.multi_object,
             timeline_config=self.timeline_config,
+            maximum_physics_attempts_per_scene=None,
             maximum_physics_attempts_per_object=(
                 self.maximum_physics_attempts_per_object
             ),

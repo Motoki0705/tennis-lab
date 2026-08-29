@@ -6,7 +6,7 @@ defaults:
 # Only position + rotation are supervised; the pose-naturalness terms require a
 # canonical pose and are therefore omitted here (left at their 0.0 default).
 #
-# Why these weights (derived from the loss-dominance analysis on data/plcs
+# Why these weights (derived from the loss-dominance analysis on data/plcs/single_object
 # test.txt with the issue_430 checkpoint, see scripts/analysis/
 # analyze_loss_dominance.py):
 #   Mean raw losses were rotation ~0.46 (1 - cos, range 0..2) vs position

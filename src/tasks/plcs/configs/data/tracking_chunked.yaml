@@ -4,7 +4,7 @@ defaults:
   - _chunked
   - _self_
 
-scene_dir: plcs/multi_object_lifecycle_v2
+scene_dir: plcs/multi_object
 adapter_camera_index: 0
 batch_size: 8
 num_workers: 4
@@ -24,5 +24,5 @@ chunk:
   scenes_per_chunk: 1000
   epochs_per_chunk: 20
   prefetch_chunks: 5
-  chunks_dir: plcs/multi_object_chunks
+  chunks_dir: plcs/multi_object/chunks
   generation_workers: 16

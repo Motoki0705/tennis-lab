@@ -10,19 +10,24 @@ from hydra import compose, initialize_config_dir
 
 from src.tasks.plcs.configuration import PLCSModelConfig
 from src.tasks.plcs.models.plcs_track_query_model import PLCSTrackQueryModel
+from src.utils.models.components.ffn_layers import DeepSeekV4SwiGLU, FFNType
 from src.utils.models.components.fixed_query_track_stage import FixedQueryTrackStage
 from src.utils.models.embeddings import CourtPlayerGroupEmbedding
 
 MODEL_CONFIG_DIR = Path(__file__).parents[5] / "src/tasks/plcs/configs/model"
 
 
-def _model(*, backend: str = "reference") -> PLCSTrackQueryModel:
+def _model(
+    *,
+    backend: str = "reference",
+    ffn_type: FFNType = "swiglu",
+) -> PLCSTrackQueryModel:
     with initialize_config_dir(
         config_dir=str(MODEL_CONFIG_DIR), version_base="1.3"
     ):
         raw = compose(
             config_name="track_query",
-            overrides=[f"cswa.backend={backend}"],
+            overrides=[f"cswa.backend={backend}", f"ffn_type={ffn_type}"],
         )
     config = PLCSModelConfig.from_mapping(raw)
     model = PLCSTrackQueryModel(config)
@@ -111,6 +116,22 @@ def test_model_uses_shared_stages_with_fixed_cswa_global_cycle() -> None:
         "cswa",
         "mha",
     ]
+
+
+def test_configured_ffn_reaches_every_track_query_block() -> None:
+    model = _model(ffn_type="deepseek_v4_swiglu")
+    blocks = [
+        block
+        for stage in model.stages
+        for block in (
+            stage.object_temporal_block,
+            stage.spatial_block,
+            stage.query_temporal_block,
+        )
+    ]
+
+    assert blocks
+    assert all(isinstance(block.ffn, DeepSeekV4SwiGLU) for block in blocks)
 
 
 def test_invisible_joint_coordinates_do_not_affect_predictions() -> None:

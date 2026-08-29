@@ -188,7 +188,7 @@ def test_all_four_track_query_ablation_configs_compose_and_validate(
         ("unknown", UnknownConfigurationKeyError),
         ("invalid_ffn", SemanticConfigurationError),
         ("invalid_writeback", SemanticConfigurationError),
-        ("non_swiglu", SemanticConfigurationError),
+        ("unknown_ffn_type", SemanticConfigurationError),
     ],
 )
 def test_ablation_axes_reject_missing_unknown_invalid_and_inconsistent_values(
@@ -213,7 +213,7 @@ def test_ablation_axes_reject_missing_unknown_invalid_and_inconsistent_values(
         elif violation == "invalid_writeback":
             config.model.mhc_writeback = "before_spatial"
         else:
-            config.model.ffn_type = "mlp"
+            config.model.ffn_type = "unknown"
 
     with pytest.raises(error):
         PLCSModelConfig.from_mapping(config.model)

@@ -8,7 +8,7 @@ where each frame block is:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, cast
 
 import torch
 import torch.nn as nn
@@ -26,6 +26,7 @@ from src.utils.models import (
     TransformerBlockConfig,
     resolve_rope_bases,
 )
+from src.utils.models.components.ffn_layers import FFNType
 from src.utils.models.embeddings import (
     CourtKPUVEmbedding,
     InvisibleTokenEmbedding,
@@ -53,7 +54,7 @@ class PLCSMultiViewModel(nn.Module):
         rope_theta_time: float,
         rope_theta_camera: float,
         rope_theta_type: float,
-        ffn_type: Literal["swiglu", "mlp"],
+        ffn_type: FFNType,
         predict_canonical_pose: bool,
         max_views: int,
         max_seq_len: int,
@@ -171,7 +172,7 @@ class PLCSMultiViewModel(nn.Module):
             rope_theta_time=config.number("rope_theta_time"),
             rope_theta_camera=config.number("rope_theta_camera"),
             rope_theta_type=config.number("rope_theta_type"),
-            ffn_type=cast(Literal["swiglu", "mlp"], config.string("ffn_type")),
+            ffn_type=cast(FFNType, config.string("ffn_type")),
             predict_canonical_pose=config.boolean("predict_canonical_pose"),
             max_views=config.integer("max_views"),
             max_seq_len=config.integer("max_seq_len"),

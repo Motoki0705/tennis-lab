@@ -26,7 +26,11 @@ from src.utils.models.components import (
     TransformerBlockConfig,
     apply_rotary_emb,
 )
-from src.utils.models.components.ffn_layers import default_ffn_dim
+from src.utils.models.components.ffn_layers import (
+    SUPPORTED_FFN_TYPES,
+    FFNType,
+    default_ffn_dim,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,16 +115,16 @@ def _resolve_config(
     ffn_dim: int | None,
     rope_base: float | Sequence[float],
     dropout: float,
-    ) -> tuple[
-        int,
-        int | None,
-        int,
-        int,
-        int,
-        int,
-        float | tuple[float, ...],
-        float,
-    ]:
+) -> tuple[
+    int,
+    int | None,
+    int,
+    int,
+    int,
+    int,
+    float | tuple[float, ...],
+    float,
+]:
     """Resolve supported config spellings at one strict construction boundary.
 
     ``intermediate_transformer`` config has intentionally been kept separate
@@ -156,8 +160,11 @@ def _resolve_config(
         rope_type = _config_value(config, "rope_type", "2d")
         if attention_type != "mha":
             raise ValueError("Court intermediate Transformer requires attention_type='mha'.")
-        if ffn_type != "swiglu":
-            raise ValueError("Court intermediate Transformer requires ffn_type='swiglu'.")
+        if type(ffn_type) is not str or ffn_type not in SUPPORTED_FFN_TYPES:
+            raise ValueError(
+                "Court intermediate Transformer ffn_type must be one of "
+                f"{sorted(SUPPORTED_FFN_TYPES)!r}."
+            )
         if rope_type != "2d":
             raise ValueError("Court intermediate Transformer requires rope_type='2d'.")
 
@@ -240,6 +247,7 @@ class CourtTransformerEncoder(nn.Module):
         rope_theta: float | None = None,
         dropout: float = 0.0,
         attn_dropout: float | None = None,
+        ffn_type: FFNType = "swiglu",
     ) -> None:
         super().__init__()
         aliases = tuple(value for value in (channels, token_dim) if value is not None)
@@ -283,6 +291,13 @@ class CourtTransformerEncoder(nn.Module):
             rope_base=rope_base,
             dropout=dropout,
         )
+        raw_ffn_type = _config_value(config, "ffn_type", ffn_type)
+        if type(raw_ffn_type) is not str or raw_ffn_type not in SUPPORTED_FFN_TYPES:
+            raise ValueError(
+                "Court intermediate Transformer ffn_type must be one of "
+                f"{sorted(SUPPORTED_FFN_TYPES)!r}."
+            )
+        self.ffn_type = cast(FFNType, raw_ffn_type)
 
         # The identity configuration intentionally creates neither blocks nor
         # a frequency computer/query parameter.  This matters for exact legacy
@@ -313,7 +328,7 @@ class CourtTransformerEncoder(nn.Module):
                 if isinstance(self.rope_base, tuple)
                 else self.rope_base
             ),
-            ffn_type="swiglu",
+            ffn_type=self.ffn_type,
         )
         self.blocks = nn.ModuleList(
             TransformerBlock(block_config) for _ in range(self.depth)

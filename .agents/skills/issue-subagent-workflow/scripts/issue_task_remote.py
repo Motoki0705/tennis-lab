@@ -14,7 +14,7 @@ from issue_task_candidate import (
     compute_candidate_fingerprint,
     compute_revision_fingerprint,
     current_revision,
-    revision_path_inventory,
+    pr_evidence_path_inventory,
 )
 from issue_task_issue import canonical_json_bytes, sha256_bytes
 from issue_task_state import load_state, validate_state, write_state
@@ -194,7 +194,7 @@ def capture_pr_evidence(task_dir: Path, *, pr_number: int) -> None:
     revision_candidate = compute_revision_fingerprint(task_dir, state, head_sha)
     if revision_candidate != validated_candidate:
         raise ValueError("remote PR head content differs from the validated candidate")
-    local_files = revision_path_inventory(task_dir, base_sha, head_sha)
+    local_files = pr_evidence_path_inventory(task_dir, base_sha, head_sha)
     if files != local_files:
         raise ValueError(
             "complete paginated PR file list differs from the remote PR base revision"
@@ -294,7 +294,7 @@ def pr_evidence_errors(task_dir: Path, state: dict[str, Any]) -> list[str]:
         and _GIT_SHA_RE.fullmatch(head_sha) is not None
     ):
         try:
-            expected_files = revision_path_inventory(task_dir, base_sha, head_sha)
+            expected_files = pr_evidence_path_inventory(task_dir, base_sha, head_sha)
         except ValueError as exc:
             errors.append(str(exc))
         else:
