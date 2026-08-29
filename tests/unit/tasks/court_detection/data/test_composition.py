@@ -164,6 +164,7 @@ def test_tennis_court_detector_input_emits_ordered_14_by_1_channels(tmp_path) ->
             split_mapping=MappingProxyType(
                 {"train": "train", "val": "val", "test": None}
             ),
+            excluded_sample_ids=(),
         ),
         target_store=CourtDerivedTargetStore(tmp_path / "derived"),
     )
