@@ -163,6 +163,7 @@ def test_tennis_default_has_no_validation_as_test_mapping() -> None:
 
     assert runtime.data.source.kind == "tennis_court_detector"
     assert runtime.data.source.split_mapping["test"] is None
+    assert runtime.data.source.excluded_sample_ids == ("QszoUKyCOHo_600",)
 
 
 def test_tennis_rejects_validation_as_test_mapping() -> None:

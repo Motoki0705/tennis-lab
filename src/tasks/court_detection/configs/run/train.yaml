@@ -1,8 +1,5 @@
+defaults:
+  - train_base
+  - _self_
+
 output_dir: court_detection/${data.source.kind}
-seed: 42
-gpus: 1
-resume: null
-init_weights: null
-fast_dev_run: false
-dry_run: false
-test_after_fit: false

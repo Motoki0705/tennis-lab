@@ -161,6 +161,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.court_detection.scripts.preview_augmentation": "court_detection.preview_augmentation",
     "src.tasks.court_detection.scripts.preview_heatmaps": "court_detection.preview_heatmaps",
     "src.tasks.court_detection.scripts.train": "court_detection.train",
+    "src.tasks.court_detection.scripts.train_mixed": "court_detection.train_mixed",
     "src.tasks.court_detection.scripts.visualize": "court_detection.visualize",
     "src.tasks.blcs.generate_dataset.api_server.__main__": "blcs.api_server",
     "src.tasks.blcs.scripts.generate_dataset": "blcs.generate_dataset",
@@ -222,6 +223,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.court_detection.scripts.preview_augmentation": "src.tasks.court_detection.scripts.preview_augmentation._validate_boundary",
     "src.tasks.court_detection.scripts.preview_heatmaps": "src.tasks.court_detection.scripts.preview_heatmaps._validate_boundary",
     "src.tasks.court_detection.scripts.train": "src.tasks.court_detection.configuration.validate_train_boundary",
+    "src.tasks.court_detection.scripts.train_mixed": "src.tasks.court_detection.training.runner_mixed.validate_mixed_train_boundary",
     "src.tasks.court_detection.scripts.visualize": "src.tasks.court_detection.scripts.visualize._validate_boundary",
     "src.tasks.blcs.generate_dataset.api_server.__main__": "src.tasks.blcs.configuration.validate_api_boundary",
     "src.tasks.blcs.scripts.generate_dataset": "src.tasks.blcs.configuration.validate_generation_boundary",
@@ -400,6 +402,9 @@ _RUNTIME_BOUNDARIES = (
         "court_detection", "src.tasks.court_detection.scripts.preview_heatmaps"
     ),
     _runtime_boundary("court_detection", "src.tasks.court_detection.scripts.train"),
+    _runtime_boundary(
+        "court_detection", "src.tasks.court_detection.scripts.train_mixed"
+    ),
     _runtime_boundary("court_detection", "src.tasks.court_detection.scripts.visualize"),
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.analysis.analyze_angle_velocity"),
     _runtime_boundary(

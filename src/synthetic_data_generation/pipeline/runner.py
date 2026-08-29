@@ -60,7 +60,13 @@ class ScenePipelineRunner:
             raise ValueError("Request scene_id disagrees with the resolved workspace.")
 
         manifest = self._load_or_create_manifest(request)
-        manifest.assert_request_compatible(request)
+        ingest_owner = self.workspace.owner_path(
+            self.registry.definition(StageName.INGEST)
+        )
+        manifest.assert_request_compatible(
+            request,
+            canonical_source_video=ingest_owner / "video.mp4",
+        )
         reusable_stages = self._reusable_stages(request, manifest)
         plan = self.registry.execution_for_request(
             request,
@@ -277,7 +283,7 @@ class ScenePipelineRunner:
 
 
 def _configuration_authority(resolved_yaml: str) -> Mapping[str, object]:
-    """Exclude only the per-invocation rerun cursor from config comparison."""
+    """Exclude invocation-local cursor and host-specific source location."""
     loaded: object = yaml.safe_load(resolved_yaml)
     if not isinstance(loaded, Mapping) or any(
         not isinstance(key, str) for key in loaded
@@ -295,6 +301,7 @@ def _configuration_authority(resolved_yaml: str) -> Mapping[str, object]:
     if "from_stage" not in stable_request:
         raise ValueError("resolved-config.yaml must contain request.from_stage.")
     del stable_request["from_stage"]
+    stable_request.pop("source_video", None)
     authority["request"] = stable_request
     return authority
 
@@ -369,7 +376,7 @@ def _court_report_scoped_authority(
     *,
     require_court_target: bool,
 ) -> Mapping[str, object] | None:
-    """Remove only fields owned by a Court-only cursor and its report."""
+    """Remove only authorities owned by dataset stages and the Court-only request."""
     scoped = deepcopy(dict(authority))
     dataset = scoped.get("dataset")
     request = scoped.get("request")
@@ -380,9 +387,7 @@ def _court_report_scoped_authority(
     targets = request.get("targets")
     if require_court_target and targets != [DatasetTarget.COURT.value]:
         return None
-    dataset = dict(dataset)
-    del dataset["court"]
-    scoped["dataset"] = dataset
+    del scoped["dataset"]
     request = dict(request)
     request.pop("targets", None)
     scoped["request"] = request
