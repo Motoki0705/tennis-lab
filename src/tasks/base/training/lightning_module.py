@@ -292,7 +292,7 @@ class BaseLightningModule(pl.LightningModule):
             self._test_pred_arrays[key].append(arr)
 
     def _test_predictions_dir(self) -> Path:
-        queue_repro_dir = resolve_queue_repro_dir()
+        queue_repro_dir: Path | None = resolve_queue_repro_dir()
         if queue_repro_dir is not None:
             return queue_repro_dir / "predictions"
         resolved: Path = self.path_resolver.resolve(
@@ -301,9 +301,11 @@ class BaseLightningModule(pl.LightningModule):
         return resolved
 
     def save_test_predictions(
-        self, metrics: dict[str, Any] | None = None
+        self,
+        metrics: dict[str, Any] | None = None,
+        diagnostic_metrics: dict[str, Any] | None = None,
     ) -> Path | None:
-        """Write accumulated test predictions to ``pred_test.npz`` (+ metrics.json).
+        """Write predictions plus separated headline/diagnostic metric artifacts.
 
         Queue jobs write below their isolated
         ``$TENNIS_REPRO_DIR/predictions`` directory. Non-queue runs retain the
@@ -312,6 +314,13 @@ class BaseLightningModule(pl.LightningModule):
 
         Returns the npz path, or ``None`` if there is nothing to save.
         """
+        overlap = set(metrics or {}).intersection(diagnostic_metrics or {})
+        if overlap:
+            rendered = ", ".join(sorted(overlap))
+            raise ValueError(
+                "Headline and diagnostic test metrics must be disjoint; "
+                f"overlap: {rendered}."
+            )
         if not hasattr(self, "_test_pred_arrays") or not self._test_pred_arrays:
             return None
         out_dir = self._test_predictions_dir()
@@ -327,6 +336,11 @@ class BaseLightningModule(pl.LightningModule):
         if metrics is not None:
             (out_dir / "metrics.json").write_text(
                 json.dumps(metrics, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
+        if diagnostic_metrics is not None:
+            (out_dir / "diagnostic_metrics.json").write_text(
+                json.dumps(diagnostic_metrics, indent=2, ensure_ascii=False),
+                encoding="utf-8",
             )
         return npz_path
 

@@ -7,6 +7,10 @@ from typing import Any, cast
 import numpy as np
 from torch import Tensor
 
+from src.tasks.base.training.metric_logging import (
+    compute_scalar_metric_statistics,
+    evaluation_only_metric_logging_contract,
+)
 from src.tasks.base.training.tracking_lightning_module import (
     TrackingLightningModule,
     TrackingStepResult,
@@ -24,15 +28,28 @@ from src.tasks.plcs.model_io import (
     write_plcs_checkpoint_track_query_reference,
 )
 from src.tasks.plcs.training.tracking_losses import PLCSTrackingLoss
-from src.tasks.plcs.training.tracking_metrics import plcs_tracking_metrics
+from src.tasks.plcs.training.tracking_metrics import plcs_tracking_statistics
 from src.utils.schema.court_normalization import (
     add_court_coordinate_normalization,
     validate_court_coordinate_normalization,
 )
 
+PLCS_TRACKING_METRIC_CONTRACT = evaluation_only_metric_logging_contract(
+    "PLCS tracking",
+    headline_keys=(
+        "position_error_m",
+        "angular_error_deg",
+        "presence_f1",
+        "id_switches",
+    ),
+    progress_bar_keys=("position_error_m", "angular_error_deg"),
+)
+
 
 class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Any]]):
     """Train and evaluate clip-local player slots."""
+
+    metric_logging_contract = PLCS_TRACKING_METRIC_CONTRACT
 
     def __init__(self, config: Any) -> None:
         runtime = PLCSTrainingConfig.from_config(config)
@@ -76,8 +93,8 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Any]]):
         }
         loss_inputs, assignments = self.criterion.prepare_inputs(prediction, batch)
         losses = self.criterion(loss_inputs)
-        metrics = (
-            plcs_tracking_metrics(
+        statistics = (
+            plcs_tracking_statistics(
                 prediction,
                 batch,
                 assignments,
@@ -90,6 +107,14 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Any]]):
                 ),
             )
             if compute_metrics
+            else None
+        )
+        metrics = (
+            compute_scalar_metric_statistics(
+                statistics,
+                zero_denominator_value=0.0,
+            )
+            if statistics is not None
             else {}
         )
         prediction_result: dict[str, Any] = dict(prediction)
@@ -99,6 +124,7 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Any]]):
             losses=losses,
             metrics=metrics,
             prediction=prediction_result,
+            statistics=statistics,
         )
 
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:

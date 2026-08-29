@@ -42,14 +42,14 @@ allow_tf32: true
 checkpoint:
   enabled: true
   filename: "plcs-{epoch:02d}"
-  monitor: val/pos_error_m
+  monitor: val/position_error_m
   mode: min
   save_top_k: 3
   save_last: true
 
 early_stopping:
   enabled: true
-  monitor: val/pos_error_m
+  monitor: val/position_error_m
   mode: min
   patience: 10
   min_delta: 2.0e-5

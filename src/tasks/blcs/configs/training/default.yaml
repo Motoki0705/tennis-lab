@@ -64,7 +64,7 @@ checkpoint:
 
 early_stopping:
   enabled: true
-  monitor: val/pos_error_m
+  monitor: val/position_error_m
   mode: min
   patience: 10
   min_delta: 1.0e-3

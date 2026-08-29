@@ -11,8 +11,12 @@ import torch
 from torch import Tensor, nn
 
 from src.tasks.base.configuration import require_config_mapping, require_config_value
-from src.tasks.base.training.gan_training import ManualGANSupportMixin
+from src.tasks.base.training.gan_training import (
+    ManualGANSupportMixin,
+    loss_component_metrics,
+)
 from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.base.training.metric_logging import uniform_metric_logging_contract
 from src.tasks.base.training.qualitative_saving import save_qualitative_animation
 from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.model_io import (
@@ -47,8 +51,22 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+PLCS_TRAJECTORY_METRIC_CONTRACT = uniform_metric_logging_contract(
+    "PLCS trajectory",
+    headline_keys=(
+        "position_error_m",
+        "angular_error_deg",
+        "position_accuracy_0.5m",
+        "angle_accuracy_15deg",
+    ),
+    progress_bar_keys=("position_error_m", "angular_error_deg"),
+)
+
+
 class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
     """Lightning module for unified PLCS I/O training."""
+
+    metric_logging_contract = PLCS_TRAJECTORY_METRIC_CONTRACT
 
     def __init__(self, config: DictConfig) -> None:
         runtime = PLCSTrainingConfig.from_config(config)
@@ -158,7 +176,9 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             return self.train_metrics
         if stage == "val":
             return self.val_metrics
-        return self.test_metrics
+        if stage == "test":
+            return self.test_metrics
+        raise ValueError(f"Unknown PLCS metric stage: {stage!r}.")
 
     def _aux_loss(
         self,
@@ -241,7 +261,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             "loss": losses["total"],
             "metrics": {
                 **metrics,
-                **{f"loss_{k}": float(v.item()) for k, v in losses.items()},
+                **loss_component_metrics(losses),
             },
             "outputs": outputs,
             "prepared": prepared,
@@ -283,23 +303,14 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
     def _log_stage_metrics(
         self, stage: str, loss: Tensor, metrics: dict[str, Any]
     ) -> None:
-        prog_bar = stage != "test"
-        self.log(f"{stage}/loss", loss, prog_bar=prog_bar)
+        self.metric_logging_contract.for_stage(stage)
         self.log(
-            f"{stage}/pos_error_m",
-            metrics.get("position_error_m", 0.0),
-            prog_bar=prog_bar,
+            f"{stage}/loss",
+            loss,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=stage != "test",
         )
-        self.log(
-            f"{stage}/ang_error_deg",
-            metrics.get("angular_error_deg", 0.0),
-            prog_bar=prog_bar,
-        )
-        if "loss_canonical_pose" in metrics:
-            self.log(f"{stage}/loss_canonical_pose", metrics["loss_canonical_pose"])
-        if "loss_reprojection" in metrics:
-            self.log(f"{stage}/loss_reprojection", metrics["loss_reprojection"])
-        self._log_gan_metrics(stage, metrics)
 
     def test_prediction_payload(
         self, batch: dict[str, Tensor], result: dict[str, Any]
@@ -359,13 +370,12 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         lr = float(optimizer.param_groups[0]["lr"])
         total_steps = max(self._estimate_total_steps(), 1)
         progress = float(self.global_step) / float(total_steps)
-        std = self.mcmc_injector.inject(
+        self.mcmc_injector.inject(
             self.model,
             lr=lr,
             epoch=int(self.current_epoch),
             progress=progress,
         )
-        self.log("train/mcmc_noise_std", std)
 
     # ------------------------------------------------------------------
     # Qualitative validation logging
