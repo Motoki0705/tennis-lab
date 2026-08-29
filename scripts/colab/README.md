@@ -12,6 +12,8 @@
 
 入力動画、ライン検出checkpoint、DINOv3 checkpointは`/content/drive/MyDrive/tennis_lab/`配下から読み、固定SHA-256と一致しない入力は実行前に拒否する。学習とatomic publishはColab VMのローカルfilesystemで行う。各GPU学習の完了直後に`reconstruction/`をシーンごとのDrive出力へ確定保存し、検証を通過した`alignment/`を同じ出力へ追記する。
 
+court detectionの生確率マップは`<scene>/court-line-inference/<fingerprint>/`へ視点単位で原子的にキャッシュする。fingerprintはモデル・backbone・前処理・実行deviceだけに依存し、後段の投影、コート数探索、受理閾値を変更しても再推論しない。各NPY、閲覧用PNG、進捗manifestは生成直後にDriveの同名ディレクトリへミラーし、各alignment試行ログも`alignment-attempts/`へ保存する。
+
 ```text
 /content/drive/MyDrive/tennis_lab/outputs/synthetic_data_generation/
   alignment-runs/<UTC時刻>-<commit>/<scene>/

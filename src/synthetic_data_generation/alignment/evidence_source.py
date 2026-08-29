@@ -57,6 +57,10 @@ from src.synthetic_data_generation.alignment.heatmaps import (
     AlignmentLineHeatmapView,
     weighted_projection_samples,
 )
+from src.synthetic_data_generation.alignment.line_inference_cache import (
+    court_line_inference_identity,
+    load_or_predict_line_probabilities,
+)
 from src.synthetic_data_generation.alignment.settings import (
     AlignmentEvidenceSettings,
     CourtCandidateFitSettings,
@@ -129,6 +133,9 @@ class LineProbabilityDetector(Protocol):
 
     def determinism_diagnostics(self) -> LineInferenceDeterminismDiagnostics:
         """Return the strict inference policy/environment after preflight."""
+
+    def inference_cache_identity(self) -> Mapping[str, object]:
+        """Return only authorities that can change raw line probabilities."""
 
 
 class ProductionCourtLineDetector:
@@ -369,6 +376,10 @@ class ProductionCourtLineDetector:
             raise RuntimeError("Line-detector preflight did not record determinism.")
         return diagnostics
 
+    def inference_cache_identity(self) -> Mapping[str, object]:
+        """Return a stable identity independent of downstream alignment settings."""
+        return court_line_inference_identity(self._settings, seed=self._seed)
+
 
 @dataclass(frozen=True, slots=True)
 class _GroundPlane:
@@ -605,12 +616,7 @@ class MeasuredAlignmentEvidenceSource:
         """Collect after input/model checks; production preflight caches this result."""
         fixed = _fixed_camera_selection(scene.cameras, settings=self._settings)
         selected = fixed.ordered_cameras
-        probabilities = {
-            camera.camera_id: self._detector.predict_probability(
-                _load_rgb_image(camera)
-            )
-            for camera in selected
-        }
+        probabilities = self._predict_probabilities(scene, selected)
         fit_assigned, holdout_assigned = _partition_cameras(
             selected,
             settings=self._settings,
@@ -689,6 +695,19 @@ class MeasuredAlignmentEvidenceSource:
             result=result,
             heatmaps=heatmaps,
         )
+
+    def _predict_probabilities(
+        self,
+        scene: StandardSceneExport,
+        cameras: tuple[SceneCamera, ...],
+    ) -> dict[str, NDArray[np.float32]]:
+        del scene
+        return {
+            camera.camera_id: self._detector.predict_probability(
+                _load_rgb_image(camera)
+            )
+            for camera in cameras
+        }
 
 
 def _alignment_line_heatmaps(
@@ -1320,6 +1339,20 @@ class ProductionAlignmentEvidenceSource(MeasuredAlignmentEvidenceSource):
     def collect(self, scene: StandardSceneExport) -> AlignmentEvidence:
         """Return evidence proven during preflight, measuring if called standalone."""
         return self.collect_evaluated(scene).evidence
+
+    def _predict_probabilities(
+        self,
+        scene: StandardSceneExport,
+        cameras: tuple[SceneCamera, ...],
+    ) -> dict[str, NDArray[np.float32]]:
+        """Persist raw detector outputs outside the alignment transaction."""
+        return load_or_predict_line_probabilities(
+            scene=scene,
+            cameras=cameras,
+            inference_identity=self._detector.inference_cache_identity(),
+            predict_probability=self._detector.predict_probability,
+            load_image=_load_rgb_image,
+        )
 
 
 def create_production_alignment_handler(
