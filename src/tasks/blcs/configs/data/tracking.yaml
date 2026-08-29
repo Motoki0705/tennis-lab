@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 backend: default
-scene_dir: blcs/multi_object_lifecycle_v2
+scene_dir: blcs/multi_object
 batch_size: 1
 num_workers: 4
 pin_memory: true

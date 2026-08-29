@@ -1,4 +1,4 @@
-output_dir: blcs
+output_dir: blcs/single_object
 seed: 42
 device: cpu
 num_workers: 4

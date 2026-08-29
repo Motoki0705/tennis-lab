@@ -1,5 +1,5 @@
 mode: visualize  # visualize | predict
-scene_path: plcs/scenes/scene_000000
+scene_path: plcs/single_object/scenes/scene_000000
 # Single-view camera index used when cameras is unset.
 camera: 0
 # Optional multi-camera selector: "all" or comma-separated "0,1,2"

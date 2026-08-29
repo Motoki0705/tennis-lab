@@ -21,6 +21,7 @@ import numpy as np
 import pytest
 import torch
 from matplotlib.animation import PillowWriter
+from numpy.typing import NDArray
 
 from src.tasks.base.visualization.style import SceneStyleConfig
 from src.tasks.blcs.visualization.rendering import BLCSSceneRenderer
@@ -131,6 +132,32 @@ def _multi_ball_blcs_scene(num_frames: int = _NUM_FRAMES) -> dict[str, Any]:
     return scene
 
 
+def _five_ball_camera_scene(num_frames: int = _NUM_FRAMES) -> dict[str, Any]:
+    scene = _blcs_scene(num_frames)
+    first = scene["ball_pos_world"]
+    num_balls = 5
+    scene["ball_pos_world"] = np.stack(
+        [first + np.array([index * 0.2, 0.0, 0.0]) for index in range(num_balls)],
+        axis=1,
+    )
+    ball_uv: NDArray[np.float32] = np.zeros(
+        (num_frames, num_balls, 2), dtype=np.float32
+    )
+    for index in range(num_balls):
+        ball_uv[:, index, 0] = np.linspace(0.1, 0.9, num_frames)
+        ball_uv[:, index, 1] = 0.1 + index * 0.15
+    scene["num_balls"] = num_balls
+    scene["num_cameras"] = 1
+    scene["cameras"] = [
+        {
+            "ball_uv": ball_uv,
+            "court_kp_uv": np.zeros((20, 2), dtype=np.float32),
+            "court_kp_vis": np.zeros(20, dtype=np.bool_),
+        }
+    ]
+    return scene
+
+
 def _plcs_scene(num_frames: int = _NUM_FRAMES) -> PoseRenderScene:
     position: np.ndarray = np.zeros((num_frames, 3), dtype=np.float32)
     position[:, 0] = np.linspace(-0.5, 0.5, num_frames)
@@ -217,6 +244,23 @@ class TestBLCSSceneRenderer:
         anim.save(str(out), writer=PillowWriter(fps=int(_FPS)))
         assert out.stat().st_size > 0
 
+    def test_camera_animation_cycles_colors_beyond_four_tracks(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        renderer = BLCSSceneRenderer(style=_style("dark"))
+
+        anim = renderer.create_animation(
+            _five_ball_camera_scene(),
+            view="camera",
+            fps=_FPS,
+        )
+
+        assert anim is not None
+        figure, axes = _save_and_get_axes(anim, tmp_path)
+        assert len(figure.axes) == 1
+        assert len(axes.lines) >= 5
+
 
 class TestPLCSSceneRenderer:
     def test_dark_3d_animation_full_overlays(self, tmp_path: Path) -> None:
@@ -236,9 +280,7 @@ class TestPLCSSceneRenderer:
         gt = _plcs_scene()
         pred = _plcs_scene()
         pred.position = pred.position + np.float32(0.05)
-        renderer = PLCSSceneRenderer(
-            style=_style("light", show_minimap=False)
-        )
+        renderer = PLCSSceneRenderer(style=_style("light", show_minimap=False))
 
         anim = renderer.create_comparison_animation(gt, pred, view="3d", fps=_FPS)
 
