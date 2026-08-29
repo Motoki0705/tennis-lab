@@ -12,6 +12,14 @@ from src.tasks.base.training.gan_training import (
 )
 from src.tasks.base.training.gan_transition_callback import GANTransitionCallback
 from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.base.training.metric_logging import (
+    MetricContractError,
+    MetricLoggingContract,
+    StageMetricContract,
+    WeightedMetricAccumulator,
+    evaluation_only_metric_logging_contract,
+    uniform_metric_logging_contract,
+)
 from src.tasks.base.training.qualitative_callback import QualitativeLoggingCallback
 from src.tasks.base.training.runner import BaseTrainingRunner
 from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
@@ -25,8 +33,14 @@ __all__ = [
     "LSGANLoss",
     "ManualGANSupportMixin",
     "ManualGANTrainingStrategy",
+    "MetricContractError",
+    "MetricLoggingContract",
     "QualitativeLoggingCallback",
+    "StageMetricContract",
     "TrackingMetricConfig",
+    "WeightedMetricAccumulator",
     "compile_modules",
+    "evaluation_only_metric_logging_contract",
     "move_batch_to_device_preserving_frozen_metadata",
+    "uniform_metric_logging_contract",
 ]

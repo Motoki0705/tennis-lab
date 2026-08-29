@@ -6,7 +6,8 @@ name (or an explicit ``--repro-dir``) it:
 
 1. Copies the reproducibility bundle (``run.json`` / ``repro.sh`` /
    ``uncommitted.patch`` / ``git_status.txt``) and the test-split predictions
-   (``pred_test.npz`` / ``metrics.json``) out of the gitignored
+   (``pred_test.npz`` / ``metrics.json`` / ``diagnostic_metrics.json``) out of
+   the gitignored
    ``.training_queue/`` staging area into git-tracked
    ``knowledge/runs/<run-id>/``.
 2. Scaffolds a run node ``knowledge/nodes/<run-id>.md`` with frontmatter filled
@@ -41,7 +42,11 @@ OVERRIDE_RE = re.compile(r"(?:^|\s)([\w.]+)=([^\s]+)")
 CONFIG_KEYS = ("model", "loss", "data")
 METRIC_ROW_RE = re.compile(r"^[│|]\s*(test/\S+)\s*[│|]\s*([0-9.eE+-]+)\s*[│|]\s*$")
 BUNDLE_FILES = ("run.json", "repro.sh", "uncommitted.patch", "git_status.txt", "output_dir.txt")
-PREDICTION_FILES = ("pred_test.npz", "metrics.json")
+PREDICTION_FILES = (
+    "pred_test.npz",
+    "metrics.json",
+    "diagnostic_metrics.json",
+)
 
 
 def portable_output_dir(raw: str, run: dict) -> str:

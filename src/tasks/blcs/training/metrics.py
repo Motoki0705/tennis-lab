@@ -19,6 +19,7 @@ from src.tasks.base.generate_dataset import (
     court_vectors_target_to_physical,
     resolve_court_keypoint_contract,
 )
+from src.tasks.base.training.metric_logging import format_metric_threshold
 from src.utils.schema.court_normalization import denormalize_court_position
 
 _PHYSICAL_COURT_KEYPOINT_CONTRACT = resolve_court_keypoint_contract(
@@ -58,10 +59,15 @@ class BLCSMetrics:
                 "BLCS metric CourtKP20 contract must be canonical."
             )
         self.court_keypoint_contract = canonical_contract
-        self.position_thresholds_m = (
-            self.position_threshold_m,
-            2.0 * self.position_threshold_m,
-            4.0 * self.position_threshold_m,
+        self.position_thresholds_m = tuple(
+            dict.fromkeys(
+                (
+                    0.3,
+                    self.position_threshold_m,
+                    2.0 * self.position_threshold_m,
+                    4.0 * self.position_threshold_m,
+                )
+            )
         )
         self.endpoint_thresholds_m = (
             self.endpoint_threshold_m,
@@ -77,7 +83,7 @@ class BLCSMetrics:
         self.total_z_error = 0.0
         self.total_endpoint_error = 0.0
         self.num_frames: float = 0.0
-        self.num_sequences = 0
+        self.num_endpoint_sequences = 0
         self.num_correct_frames = [0.0 for _ in self.position_thresholds_m]
         self.num_correct_endpoints = [0.0 for _ in self.endpoint_thresholds_m]
         self.num_y_sign_correct = 0.0
@@ -89,9 +95,7 @@ class BLCSMetrics:
         pred_position: Tensor,
         target_position: Tensor,
         mask: Tensor | None = None,
-        court_reference_provenance: tuple[
-            CourtReferenceFrameProvenance, ...
-        ]
+        court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...]
         | None = None,
         reference_view_index: Tensor | None = None,
     ) -> dict[str, float]:
@@ -137,16 +141,16 @@ class BLCSMetrics:
                         f"{provenance.contract_id!r} does not match runtime "
                         f"{self.court_keypoint_contract.contract_id!r}."
                     )
-                pred_row = court_vectors_target_to_physical(
-                    pred_m[index], provenance
-                )
+                pred_row = court_vectors_target_to_physical(pred_m[index], provenance)
                 target_row = court_vectors_target_to_physical(
                     target_m[index], provenance
                 )
                 if not isinstance(pred_row, Tensor) or not isinstance(
                     target_row, Tensor
                 ):
-                    raise TypeError("BLCS metric frame conversion returned non-tensors.")
+                    raise TypeError(
+                        "BLCS metric frame conversion returned non-tensors."
+                    )
                 pred_rows.append(pred_row)
                 target_rows.append(target_row)
             pred_m = torch.stack(pred_rows)
@@ -221,9 +225,9 @@ class BLCSMetrics:
                     reference_view_index[sample_index_tensor],
                 )
                 for index, value in strata.items():
-                    reference_metrics[
-                        f"reference_index_{index}_position_error_m"
-                    ] = value
+                    reference_metrics[f"reference_index_{index}_position_error_m"] = (
+                        value
+                    )
                 for sample_index, sample_error in zip(
                     sample_indices,
                     sample_errors,
@@ -235,28 +239,31 @@ class BLCSMetrics:
                         [],
                     ).append(float(sample_error.item()))
 
-        # Count valid frames
-        num_valid = mask.sum().item()
+        # Aggregate only actual observations. Padding-only sequences do not
+        # contribute either frames or endpoints.
+        num_valid = valid_mask.sum().item()
+        if num_valid == 0:
+            return {}
         self.num_frames += num_valid
-        self.num_sequences += batch_size
+        self.num_endpoint_sequences += int(valid_mask.any(dim=1).sum().item())
 
         # Position errors
-        masked_error = (error_norm * mask).sum().item()
+        masked_error = (error_norm * valid_mask).sum().item()
         self.total_position_error += masked_error
 
         # Per-axis errors
-        self.total_x_error += (metric_error[:, :, 0].abs() * mask).sum().item()
-        self.total_y_error += (metric_error[:, :, 1].abs() * mask).sum().item()
-        self.total_z_error += (metric_error[:, :, 2].abs() * mask).sum().item()
+        self.total_x_error += (metric_error[:, :, 0].abs() * valid_mask).sum().item()
+        self.total_y_error += (metric_error[:, :, 1].abs() * valid_mask).sum().item()
+        self.total_z_error += (metric_error[:, :, 2].abs() * valid_mask).sum().item()
 
         # Accuracy (within thresholds)
         for i, threshold in enumerate(self.position_thresholds_m):
             within = (error_norm < threshold).float()
-            self.num_correct_frames[i] += (within * mask).sum().item()
+            self.num_correct_frames[i] += (within * valid_mask).sum().item()
 
         # Endpoint error (last valid frame per sequence)
         for b in range(batch_size):
-            valid_indices = mask[b].nonzero(as_tuple=True)[0]
+            valid_indices = valid_mask[b].nonzero(as_tuple=True)[0]
             if len(valid_indices) > 0:
                 last_idx = valid_indices[-1]
                 endpoint_error = error_norm[b, last_idx].item()
@@ -267,13 +274,13 @@ class BLCSMetrics:
 
         # Return current batch metrics
         batch_metrics = {
-            "position_error_m": masked_error / (num_valid + 1e-8),
-            "x_error_m": (metric_error[:, :, 0].abs() * mask).sum().item()
-            / (num_valid + 1e-8),
-            "y_error_m": (metric_error[:, :, 1].abs() * mask).sum().item()
-            / (num_valid + 1e-8),
-            "z_error_m": (metric_error[:, :, 2].abs() * mask).sum().item()
-            / (num_valid + 1e-8),
+            "position_error_m": masked_error / num_valid,
+            "x_error_m": (metric_error[:, :, 0].abs() * valid_mask).sum().item()
+            / num_valid,
+            "y_error_m": (metric_error[:, :, 1].abs() * valid_mask).sum().item()
+            / num_valid,
+            "z_error_m": (metric_error[:, :, 2].abs() * valid_mask).sum().item()
+            / num_valid,
         }
         batch_metrics.update(reference_metrics)
         return batch_metrics
@@ -285,36 +292,35 @@ class BLCSMetrics:
             dict: Aggregated metrics.
 
         """
+        if self.num_frames == 0:
+            raise RuntimeError(
+                "BLCSMetrics.compute() requires at least one valid frame; "
+                "the epoch contained no metric observations."
+            )
+
         metrics: dict[str, float] = {
-            "mean_position_error_m": self.total_position_error
-            / (self.num_frames + 1e-8),
-            "mean_x_error_m": self.total_x_error / (self.num_frames + 1e-8),
-            "mean_y_error_m": self.total_y_error / (self.num_frames + 1e-8),
-            "mean_z_error_m": self.total_z_error / (self.num_frames + 1e-8),
-            "mean_endpoint_error_m": self.total_endpoint_error
-            / (self.num_sequences + 1e-8),
+            "position_error_m": self.total_position_error / self.num_frames,
+            "x_error_m": self.total_x_error / self.num_frames,
+            "y_error_m": self.total_y_error / self.num_frames,
+            "z_error_m": self.total_z_error / self.num_frames,
+            "endpoint_error_m": self.total_endpoint_error / self.num_endpoint_sequences,
         }
 
-        def _format_threshold(value: float) -> str:
-            formatted = f"{value:.3f}".rstrip("0").rstrip(".")
-            return formatted.replace(".", "_")
-
         for i, threshold in enumerate(self.position_thresholds_m):
-            key = f"position_accuracy_{_format_threshold(threshold)}m"
-            metrics[key] = self.num_correct_frames[i] / (self.num_frames + 1e-8)
+            key = f"position_accuracy_{format_metric_threshold(threshold)}m"
+            metrics[key] = self.num_correct_frames[i] / self.num_frames
 
         for i, threshold in enumerate(self.endpoint_thresholds_m):
-            key = f"endpoint_accuracy_{_format_threshold(threshold)}m"
-            metrics[key] = self.num_correct_endpoints[i] / (self.num_sequences + 1e-8)
+            key = f"endpoint_accuracy_{format_metric_threshold(threshold)}m"
+            metrics[key] = self.num_correct_endpoints[i] / self.num_endpoint_sequences
 
         if self.num_y_sign_targets:
-            metrics["mean_y_sign_accuracy"] = (
+            metrics["y_sign_accuracy"] = (
                 self.num_y_sign_correct / self.num_y_sign_targets
             )
         metrics.update(
             {
-                f"mean_reference_index_{index}_position_error_m": sum(values)
-                / len(values)
+                f"reference_index_{index}_position_error_m": sum(values) / len(values)
                 for index, values in self.reference_index_errors.items()
             }
         )

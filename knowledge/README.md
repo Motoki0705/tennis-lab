@@ -21,7 +21,8 @@ knowledge/
   summary.md     # 現在の到達点・主要な知見・未解決課題の横断要約
   nodes/         # 1 ノード = 1 .md（frontmatter + 考察本文）
   runs/          # 1 run = 1 dir。再現性バンドル + test split 推論（issue #533, git 管理）
-                 #   <run-id>/{run.json, repro.sh, uncommitted.patch, pred_test.npz, metrics.json}
+                 #   <run-id>/{run.json, repro.sh, uncommitted.patch, pred_test.npz, metrics.json,
+                 #            diagnostic_metrics.json}
                  #   <run-id>/curves.png  # train/val 収束カーブ（kg_curves.py が生成）
   webui/         # Next.js 14 + React Flow 閲覧 UI
 ```
@@ -55,7 +56,7 @@ config:                          # 主要な Hydra オーバーライド
   loss: canonical_rot
   data: multiview_sequence
 metrics:                         # 主要 test メトリクス（ログ実値 / metrics.json）
-  ang_error_deg: 15.9
+  angular_error_deg: 15.9
   position_error_m: 0.353
 repro:                           # 再現性（issue #533）. repro.sh で再走可能
   commit: a3469ce...
