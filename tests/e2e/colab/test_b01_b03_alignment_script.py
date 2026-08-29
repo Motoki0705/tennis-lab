@@ -34,15 +34,15 @@ def test_dry_run_fixes_scene_order_terminal_stage_and_input_hashes() -> None:
             "request.through_stage=reconstruction"
         )
         assert output.count(command) == 1
-        cpu_command = (
-            "TENNIS_LAB_ALIGNMENT_LINE_DEVICE=cpu "
+        alignment_command = (
             "TENNIS_LAB_ALIGNMENT_MAXIMUM_UNEXPLAINED_EVIDENCE_FRACTION=0.5 "
             ".venv/bin/python -m "
             "src.synthetic_data_generation.scripts.run_scene_pipeline "
             f"profile={profile} request.from_stage=alignment "
             "request.through_stage=alignment"
         )
-        assert output.count(cpu_command) == 1
+        assert output.count(alignment_command) == 1
+    assert "TENNIS_LAB_ALIGNMENT_LINE_DEVICE=cpu" not in output
     assert output.count("save-after=reconstruction,alignment") == 3
     for expected_hash in (
         "c9608e911f86274a862a289927ff9d0cc587543f836ffbdcad127f8ce61b5d56",
