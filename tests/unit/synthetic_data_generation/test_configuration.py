@@ -72,6 +72,7 @@ def test_b00_configuration_is_the_canonical_scene_request() -> None:
     assert runtime.request.scene_id == "B00"
     assert runtime.request.config_schema == SCENE_PIPELINE_SCHEMA
     assert runtime.request.from_stage is StageName.INGEST
+    assert runtime.request.through_stage is StageName.REPORT
     assert runtime.request.targets == frozenset(DatasetTarget)
     assert (
         runtime.workspace.root
@@ -96,6 +97,37 @@ def test_b00_configuration_is_the_canonical_scene_request() -> None:
             / "nht/gsplat/examples/simple_trainer_nht.py"
         ).resolve()
     )
+
+
+@pytest.mark.parametrize(
+    ("profile", "scene_id"),
+    [("b01", "B01"), ("b02", "B02"), ("b03", "B03")],
+)
+def test_alignment_terminal_profiles_do_not_require_plcs_scene_split(
+    profile: str,
+    scene_id: str,
+) -> None:
+    runtime = ScenePipelineConfiguration.from_config(
+        _compose(
+            f"profile={profile}",
+            "request.through_stage=alignment",
+        )
+    )
+
+    assert runtime.request.scene_id == scene_id
+    assert runtime.request.through_stage is StageName.ALIGNMENT
+    assert runtime.request.active_targets == frozenset()
+    assert scene_id not in runtime.plcs.scene_splits
+
+
+def test_dataset_terminal_must_belong_to_explicit_targets() -> None:
+    config = _compose(
+        "request.targets=[court]",
+        "request.through_stage=plcs_dataset",
+    )
+
+    with pytest.raises(ValueError, match="requires the 'plcs' dataset target"):
+        ScenePipelineConfiguration.from_config(config)
 
 
 def test_b00_quantitative_and_full_timeline_values_are_config_owned() -> None:
@@ -382,6 +414,7 @@ def test_blcs_and_plcs_production_inputs_are_typed_and_have_no_frame_subset() ->
         ("request.targets", []),
         ("request.targets", ["court", "unknown"]),
         ("request.from_stage", "legacy_pipeline"),
+        ("request.through_stage", "legacy_pipeline"),
         ("pipeline.config_schema", "legacy"),
         ("pipeline.preflight_before_invalidation", False),
         ("camera.slots.0.hfov_degrees", [0.0, 20.0]),

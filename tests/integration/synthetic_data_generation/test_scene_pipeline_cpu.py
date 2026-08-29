@@ -632,6 +632,7 @@ class _Fixture:
             source_video=self.source_video,
             targets=frozenset(DatasetTarget),
             from_stage=from_stage,
+            through_stage=StageName.REPORT,
             config_schema="canonical_scene_pipeline_v1",
         )
 
@@ -721,6 +722,7 @@ class _Fixture:
                 "schema: canonical_scene_pipeline_v1\n"
                 "request:\n"
                 "  from_stage: ingest\n"
+                "  through_stage: report\n"
                 "fixture: real-domain-cpu\n"
             ),
         )

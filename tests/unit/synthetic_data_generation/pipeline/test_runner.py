@@ -19,6 +19,7 @@ from src.synthetic_data_generation.dataset.plcs.coordinates import (
 from src.synthetic_data_generation.pipeline import (
     CanonicalStageHandlers,
     DatasetTarget,
+    DeferredStageHandler,
     ScenePipelineRequest,
     ScenePipelineRunner,
     SceneWorkspace,
@@ -143,6 +144,7 @@ def _request(
     tmp_path: Path,
     *,
     from_stage: StageName = StageName.INGEST,
+    through_stage: StageName = StageName.REPORT,
     targets: frozenset[DatasetTarget] = frozenset({DatasetTarget.COURT}),
 ) -> ScenePipelineRequest:
     source = tmp_path / "source.mp4"
@@ -152,6 +154,7 @@ def _request(
         source_video=source.resolve(),
         targets=targets,
         from_stage=from_stage,
+        through_stage=through_stage,
         config_schema="scene_pipeline_v1",
     )
 
@@ -182,7 +185,10 @@ def _runner(
     registry: StageRegistry,
     *,
     resolved_config_yaml: str = (
-        "schema: scene_pipeline_v1\nrequest:\n  from_stage: ingest\n"
+        "schema: scene_pipeline_v1\n"
+        "request:\n"
+        "  from_stage: ingest\n"
+        "  through_stage: report\n"
     ),
 ) -> ScenePipelineRunner:
     return ScenePipelineRunner(
@@ -205,6 +211,7 @@ def _court_reuse_config_yaml(
         {
             "request": {
                 "from_stage": from_stage.value,
+                "through_stage": StageName.REPORT.value,
                 "targets": sorted(target.value for target in targets),
             },
             "dataset": {
@@ -243,6 +250,63 @@ def test_runner_generates_only_explicit_target_and_report(tmp_path: Path) -> Non
     )
     assert persisted["stages"]["report"]["status"] == "completed"
     assert not runner.workspace.transaction_root.exists()
+
+
+def test_alignment_terminal_runs_only_its_dependency_closure(
+    tmp_path: Path,
+) -> None:
+    execution_order: list[StageName] = []
+    construction_calls = {
+        stage: 0
+        for stage in (
+            StageName.COURT_DATASET,
+            StageName.BLCS_DATASET,
+            StageName.PLCS_DATASET,
+            StageName.REPORT,
+        )
+    }
+
+    def deferred(stage: StageName) -> DeferredStageHandler:
+        def factory() -> _FakeHandler:
+            construction_calls[stage] += 1
+            return _FakeHandler("unexpected", execution_order=execution_order)
+
+        return DeferredStageHandler(factory)
+
+    handlers = CanonicalStageHandlers(
+        ingest=_FakeHandler("alignment-only", execution_order=execution_order),
+        reconstruction=_FakeHandler(
+            "alignment-only",
+            execution_order=execution_order,
+        ),
+        alignment=_FakeHandler("alignment-only", execution_order=execution_order),
+        court_dataset=deferred(StageName.COURT_DATASET),
+        blcs_dataset=deferred(StageName.BLCS_DATASET),
+        plcs_dataset=deferred(StageName.PLCS_DATASET),
+        report=deferred(StageName.REPORT),
+    )
+    runner = _runner(tmp_path, canonical_registry(handlers))
+
+    manifest = runner.run(
+        _request(
+            tmp_path,
+            through_stage=StageName.ALIGNMENT,
+            targets=frozenset(DatasetTarget),
+        )
+    )
+
+    assert execution_order == [
+        StageName.INGEST,
+        StageName.RECONSTRUCTION,
+        StageName.ALIGNMENT,
+    ]
+    assert all(calls == 0 for calls in construction_calls.values())
+    assert all(
+        manifest.stages[stage].status is StageStatus.COMPLETED
+        for stage in execution_order
+    )
+    assert not (runner.workspace.root / "datasets").exists()
+    assert not (runner.workspace.root / "report").exists()
 
 
 def test_incompatible_cursor_is_rejected_without_workspace_mutation(
@@ -629,9 +693,27 @@ def test_alignment_rerun_preserves_reconstruction_and_atomically_replaces_cursor
 def test_rerun_cursor_can_change_but_production_configuration_cannot(
     tmp_path: Path,
 ) -> None:
-    ingest_config = "request:\n  from_stage: ingest\nsettings:\n  seed: 695\n"
-    alignment_config = "request:\n  from_stage: alignment\nsettings:\n  seed: 695\n"
-    changed_config = "request:\n  from_stage: alignment\nsettings:\n  seed: 696\n"
+    ingest_config = (
+        "request:\n"
+        "  from_stage: ingest\n"
+        "  through_stage: report\n"
+        "settings:\n"
+        "  seed: 695\n"
+    )
+    alignment_config = (
+        "request:\n"
+        "  from_stage: alignment\n"
+        "  through_stage: report\n"
+        "settings:\n"
+        "  seed: 695\n"
+    )
+    changed_config = (
+        "request:\n"
+        "  from_stage: alignment\n"
+        "  through_stage: report\n"
+        "settings:\n"
+        "  seed: 696\n"
+    )
     first_registry, _ = _registry(payload="first")
     first = _runner(
         tmp_path,

@@ -6,3 +6,4 @@ request:
   source_video: synthetic_data_generation/raw/B03.mp4
   targets: [court, blcs, plcs]
   from_stage: ingest
+  through_stage: report

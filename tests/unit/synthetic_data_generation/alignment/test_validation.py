@@ -700,6 +700,7 @@ def _context(tmp_path: Path) -> _Context:
         source_video=video,
         targets=frozenset({DatasetTarget.COURT}),
         from_stage=StageName.ALIGNMENT,
+        through_stage=StageName.ALIGNMENT,
         config_schema="test-v1",
     )
     definition = StageDefinition(

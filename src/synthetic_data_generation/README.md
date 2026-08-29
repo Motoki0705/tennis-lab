@@ -38,14 +38,27 @@ The sole production entrypoint is:
 ```
 
 Hydra composition starts at `configs/run_scene_pipeline.yaml`. The typed path
-roots, requested dataset targets, camera profile, NHT commands, alignment gates,
-and domain policies are all explicit config authority. To rerun a valid
-downstream suffix, set `request.from_stage`, for example:
+roots, requested dataset targets, start/terminal stages, camera profile, NHT
+commands, alignment gates, and domain policies are all explicit config authority.
+To rerun a valid downstream suffix, set `request.from_stage`, for example:
 
 ```bash
 .venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
   request.from_stage=alignment
 ```
+
+To stop after court alignment without constructing or running dataset/report
+handlers, set the explicit terminal stage:
+
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
+  profile=b01 request.from_stage=ingest request.through_stage=alignment
+```
+
+The selected plan is the requested terminal stage and its dependency closure.
+For `through_stage=alignment`, it is exactly `ingest → reconstruction →
+alignment`; any stale dataset/report descendants are unpublished and no new
+`datasets/` or `report/` owner is created.
 
 ## Workspace and stages
 
