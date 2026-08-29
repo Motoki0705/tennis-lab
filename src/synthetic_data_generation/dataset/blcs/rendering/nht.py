@@ -11,8 +11,12 @@ from pathlib import Path
 import numpy as np
 
 from src.synthetic_data_generation.alignment import MetricSceneAdapter
+from src.synthetic_data_generation.dataset.blcs.ball_asset import (
+    build_ball_gaussian_asset,
+)
 from src.synthetic_data_generation.dataset.blcs.contracts import (
     BLCS_SAMPLE_SCHEMA,
+    BLCSBallRendering,
     BLCSCompositionAssets,
 )
 from src.synthetic_data_generation.dataset.blcs.rendering.request import (
@@ -78,12 +82,18 @@ class BLCSNHTRenderer:
     maximum_batch_frames: int
 
     def __post_init__(self) -> None:
+        if self.assets.rendering is not BLCSBallRendering.GAUSSIAN:
+            raise ValueError("BLCSNHTRenderer requires assets.rendering=gaussian.")
         if not isinstance(self.client, NHTComposedRenderClient):
             raise TypeError("BLCS renderer requires NHTComposedRenderClient.")
         if self.execution_device != "cuda:0":
             raise ValueError("The public composed NHT renderer currently owns cuda:0.")
         if self.maximum_batch_frames != 1:
             raise ValueError("The public composed NHT renderer rasterizes one frame at a time.")
+
+    def validate_asset(self) -> None:
+        """Build and validate the complete Gaussian asset before stage invalidation."""
+        build_ball_gaussian_asset(self.assets)
 
     def render(
         self,

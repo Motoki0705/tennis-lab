@@ -17,6 +17,7 @@ from src.synthetic_data_generation.dataset.blcs.assembler import (
 )
 from src.synthetic_data_generation.dataset.blcs.contracts import (
     BLCS_DATASET_SCHEMA,
+    BLCS_DATASET_SCHEMA_V3,
     BLCS_SAMPLE_SCHEMA,
     BLCSSampleRecord,
 )
@@ -269,12 +270,13 @@ class BLCSVisualizationSource:
                 "samples",
             },
         )
-        if (
-            manifest.get("schema") != BLCS_DATASET_SCHEMA
-            or manifest.get("domain") != "blcs"
-        ):
+        dataset_schema = _text(manifest.get("schema"), name="BLCS schema")
+        if dataset_schema not in {
+            BLCS_DATASET_SCHEMA,
+            BLCS_DATASET_SCHEMA_V3,
+        } or manifest.get("domain") != "blcs":
             raise ValueError("Unsupported canonical compact BLCS schema/domain.")
-        self.dataset_schema = BLCS_DATASET_SCHEMA
+        self.dataset_schema = dataset_schema
         self.dataset_scene_id = _text(manifest.get("scene_id"), name="BLCS scene_id")
         trajectories = tuple(
             _exact_object(
