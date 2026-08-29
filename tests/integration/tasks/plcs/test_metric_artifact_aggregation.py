@@ -8,17 +8,33 @@ import pytest
 import torch
 
 from src.tasks.base.training.gan_training import ManualGANSupportMixin
-from src.tasks.base.training.metric_logging import WeightedMetricAccumulator
-from src.tasks.plcs.training.lightning_module import PLCS_TRAJECTORY_METRIC_CONTRACT
-from src.tasks.plcs.training.metrics import PLCSMetrics
+from src.tasks.base.training.metric_logging import (
+    MetricLoggingContract,
+    WeightedMetricAccumulator,
+)
+from src.tasks.plcs.training.lightning_module import (
+    PLCS_TRAJECTORY_METRIC_CONTRACT,
+    build_plcs_metric_logging_contract,
+)
+from src.tasks.plcs.training.metrics import (
+    CANONICAL_POSE_DIAGNOSTIC_KEYS,
+    CANONICAL_POSE_HEADLINE_KEYS,
+    PLCSMetrics,
+)
 from src.utils.schema.court_normalization import normalize_court_position
 
 
 class _ArtifactModule(ManualGANSupportMixin):
     metric_logging_contract = PLCS_TRAJECTORY_METRIC_CONTRACT
 
-    def __init__(self, tracker: PLCSMetrics) -> None:
+    def __init__(
+        self,
+        tracker: PLCSMetrics,
+        *,
+        contract: MetricLoggingContract = PLCS_TRAJECTORY_METRIC_CONTRACT,
+    ) -> None:
         self.tracker = tracker
+        self.metric_logging_contract = contract
         self._test_metric_diagnostic_accumulator = WeightedMetricAccumulator()
         self.saved: dict[str, Any] = {}
 
@@ -186,9 +202,7 @@ def test_reference_strata_artifact_is_invariant_to_batch_partition() -> None:
 
     assert batch_size_two == pytest.approx(batch_size_one)
     assert batch_size_two["reference_index_0_position_error_m"] == pytest.approx(3.0)
-    assert batch_size_two["reference_index_1_position_error_m"] == pytest.approx(
-        10.0
-    )
+    assert batch_size_two["reference_index_1_position_error_m"] == pytest.approx(10.0)
     assert "heading_error_deg" not in batch_size_two
 
 
@@ -238,3 +252,64 @@ def test_all_mid_plane_epoch_omits_only_undefined_y_sign_evidence() -> None:
     assert "x_error_m" in combined_diagnostics
     assert "reference_index_0_position_error_m" in combined_diagnostics
     assert "reference_index_1_position_error_m" in combined_diagnostics
+
+
+def _canonical_pose_artifacts(
+    partitions: tuple[tuple[int, ...], ...],
+) -> tuple[dict[str, float], dict[str, float]]:
+    tracker = PLCSMetrics(
+        position_threshold_m=0.5,
+        angle_threshold_deg=15.0,
+        predict_canonical_pose=True,
+    )
+    module = _ArtifactModule(
+        tracker,
+        contract=build_plcs_metric_logging_contract(predict_canonical_pose=True),
+    )
+    position = torch.zeros(2, 3, 3)
+    rotation = torch.zeros(2, 3, 2)
+    rotation[..., 0] = 1.0
+    target_pose = torch.zeros(2, 3, 17, 3)
+    pred_pose = target_pose.clone()
+    pred_pose[..., 0] = torch.tensor(
+        [[0.01, 100.0, 100.0], [0.20, 0.04, 100.0]]
+    ).unsqueeze(-1)
+    padding_mask = torch.tensor(
+        [[False, True, True], [False, False, True]], dtype=torch.bool
+    )
+
+    for partition in partitions:
+        indices = torch.tensor(partition, dtype=torch.int64)
+        batch_metrics = tracker.update(
+            position[indices],
+            rotation[indices],
+            position[indices],
+            rotation[indices],
+            padding_mask=padding_mask[indices],
+            pred_canonical_pose=pred_pose[indices],
+            target_canonical_pose=target_pose[indices],
+        )
+        module._test_metric_diagnostic_accumulator.update(
+            batch_metrics,
+            weight=len(partition),
+        )
+
+    module.on_test_epoch_end()
+    return (
+        cast("dict[str, float]", module.saved["metrics"]),
+        cast("dict[str, float]", module.saved["diagnostic_metrics"]),
+    )
+
+
+def test_canonical_pose_headlines_and_diagnostics_are_separated_and_invariant() -> None:
+    combined_headlines, combined_diagnostics = _canonical_pose_artifacts(((0, 1),))
+    split_headlines, split_diagnostics = _canonical_pose_artifacts(((0,), (1,)))
+
+    assert combined_headlines == pytest.approx(split_headlines)
+    assert combined_diagnostics == pytest.approx(split_diagnostics)
+    assert set(CANONICAL_POSE_HEADLINE_KEYS) <= set(combined_headlines)
+    assert not set(CANONICAL_POSE_DIAGNOSTIC_KEYS).intersection(combined_headlines)
+    assert set(CANONICAL_POSE_DIAGNOSTIC_KEYS) <= set(combined_diagnostics)
+    assert not set(CANONICAL_POSE_HEADLINE_KEYS).intersection(combined_diagnostics)
+    assert combined_headlines["canonical_mpjpe_m"] == pytest.approx(0.25 / 3.0)
+    assert combined_headlines["canonical_pck_0.1m"] == pytest.approx(2.0 / 3.0)
