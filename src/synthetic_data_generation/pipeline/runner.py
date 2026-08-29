@@ -283,7 +283,7 @@ class ScenePipelineRunner:
 
 
 def _configuration_authority(resolved_yaml: str) -> Mapping[str, object]:
-    """Exclude only the per-invocation rerun cursor from config comparison."""
+    """Exclude invocation-local cursor and host-specific source location."""
     loaded: object = yaml.safe_load(resolved_yaml)
     if not isinstance(loaded, Mapping) or any(
         not isinstance(key, str) for key in loaded
@@ -301,6 +301,7 @@ def _configuration_authority(resolved_yaml: str) -> Mapping[str, object]:
     if "from_stage" not in stable_request:
         raise ValueError("resolved-config.yaml must contain request.from_stage.")
     del stable_request["from_stage"]
+    stable_request.pop("source_video", None)
     authority["request"] = stable_request
     return authority
 

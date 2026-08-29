@@ -343,9 +343,7 @@ class CourtAugmentationConfig:
             visibility_max_retries=_integer(
                 mapping, "visibility_max_retries", path="data.augmentation"
             ),
-            preserve_fx_fy=_bool(
-                mapping, "preserve_fx_fy", path="data.augmentation"
-            ),
+            preserve_fx_fy=_bool(mapping, "preserve_fx_fy", path="data.augmentation"),
             canvas_size=cast(
                 "int | None",
                 require_config_value(
@@ -406,8 +404,7 @@ class CourtAugmentationConfig:
                 "be non-negative and hue must be in [0, 0.5]."
             )
         if not result.gaussian_blur_kernel or any(
-            kernel <= 0 or kernel % 2 == 0
-            for kernel in result.gaussian_blur_kernel
+            kernel <= 0 or kernel % 2 == 0 for kernel in result.gaussian_blur_kernel
         ):
             raise SemanticConfigurationError(
                 "data.augmentation.gaussian_blur_kernel must contain positive odd values."
@@ -477,9 +474,7 @@ class TennisCourtDetectorSourceConfig:
                 (str, type(None)),
                 path="data.source.split_mapping",
             )
-            expected_value = {"train": "train", "val": "val", "test": None}[
-                split
-            ]
+            expected_value = {"train": "train", "val": "val", "test": None}[split]
             if value_at_split != expected_value:
                 raise SemanticConfigurationError(
                     "TennisCourtDetector requires train->train, val->val, and "
@@ -630,7 +625,9 @@ class CourtTargetConfig:
             _exact(mapping, {"kind", "sigma_ratio"}, path=path)
             sigma = _number(mapping, "sigma_ratio", path=path)
             if sigma <= 0.0:
-                raise SemanticConfigurationError(f"{path}.sigma_ratio must be positive.")
+                raise SemanticConfigurationError(
+                    f"{path}.sigma_ratio must be positive."
+                )
             return cls(kind="kp", sigma_ratio=sigma, target_schema=None)
         if kind in {"seg", "line"}:
             _exact(mapping, {"kind", "target_schema"}, path=path)
@@ -776,9 +773,7 @@ class CourtLoRAConfig:
             target_modules=tuple(cast("str", item) for item in raw_targets),
         )
         if result.rank <= 0 or result.alpha <= 0 or not 0.0 <= result.dropout < 1.0:
-            raise SemanticConfigurationError(
-                f"Invalid {path} rank/alpha/dropout."
-            )
+            raise SemanticConfigurationError(f"Invalid {path} rank/alpha/dropout.")
         return result
 
 
@@ -1103,9 +1098,7 @@ class CourtModelConfig:
     transformer_encoder: CourtTransformerEncoderConfig
 
     @classmethod
-    def from_mapping(
-        cls, value: object, *, resolver: PathResolver
-    ) -> CourtModelConfig:
+    def from_mapping(cls, value: object, *, resolver: PathResolver) -> CourtModelConfig:
         mapping = as_config_mapping(value, path="model")
         _exact(
             mapping,
@@ -1320,9 +1313,7 @@ class CourtLossConfig:
                 }
             ),
             pose=CourtPoseLossConfig.from_mapping(mapping["pose"]),
-            consistency=CourtConsistencyLossConfig.from_mapping(
-                mapping["consistency"]
-            ),
+            consistency=CourtConsistencyLossConfig.from_mapping(mapping["consistency"]),
         )
         dense_terms = (
             result.seg_ce_weight,
@@ -1506,9 +1497,7 @@ class CourtTrainingConfig:
             training_mapping, "optimizer", path="training"
         )
         if _string(optimizer, "name", path="training.optimizer") != "adamw":
-            raise SemanticConfigurationError(
-                "training.optimizer.name must be 'adamw'."
-            )
+            raise SemanticConfigurationError("training.optimizer.name must be 'adamw'.")
         qualitative = require_config_mapping(
             training_mapping, "qualitative_logging", path="training"
         )
@@ -1590,12 +1579,8 @@ class CourtTrainingConfig:
             raise SemanticConfigurationError(
                 "Enabled model.transformer_encoder requires the DINOv3 encoder."
             )
-        if (
-            loss.pose.enabled
-            and (
-                model.transformer_encoder is None
-                or not model.transformer_encoder.enabled
-            )
+        if loss.pose.enabled and (
+            model.transformer_encoder is None or not model.transformer_encoder.enabled
         ):
             raise SemanticConfigurationError(
                 "Enabled pose supervision requires an enabled model.transformer_encoder."
@@ -1620,9 +1605,7 @@ class CourtTrainingConfig:
             )
         if (
             loss.pose.enabled
-            and not any(
-                loss.dense_weights[kind] > 0.0 for kind in configured_targets
-            )
+            and not any(loss.dense_weights[kind] > 0.0 for kind in configured_targets)
             and "kp" not in configured_targets
         ):
             raise SemanticConfigurationError(

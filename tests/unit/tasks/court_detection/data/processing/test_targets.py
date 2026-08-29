@@ -24,9 +24,7 @@ def test_segmentation_decode_copies_read_only_image_buffer() -> None:
         input_spec=CourtInputSpec(
             source_kind="tennis_court_detector",
             source_schema="fixture",
-            capabilities=frozenset(
-                {CourtInputCapability.SEGMENTATION_REFERENCE}
-            ),
+            capabilities=frozenset({CourtInputCapability.SEGMENTATION_REFERENCE}),
         ),
     )
     array = np.frombuffer(bytes([0, 1, 2, 3]), dtype=np.uint8).reshape(2, 2)

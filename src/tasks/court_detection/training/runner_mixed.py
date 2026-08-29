@@ -17,7 +17,7 @@ from src.tasks.court_detection.training.lightning_module_mixed import (
     MixedCourtDetectionLightningModule,
 )
 from src.tasks.court_detection.training.runner import CourtDetectionTrainingRunner
-from src.utils.configuration import PathRole
+from src.utils.configuration import PathRole, SemanticConfigurationError
 
 
 def resolve_mixed_training_config(
@@ -26,6 +26,13 @@ def resolve_mixed_training_config(
     """Split the task-standard config from the additional mixed-source section."""
     if not isinstance(config, DictConfig):
         raise TypeError("Mixed Court training requires a Hydra DictConfig.")
+    run_node = config.get("run")
+    if not isinstance(run_node, DictConfig) or OmegaConf.is_missing(
+        run_node, "output_dir"
+    ):
+        raise SemanticConfigurationError(
+            "Mixed Court training requires an explicit variant-specific run.output_dir."
+        )
     unresolved = OmegaConf.to_container(config, resolve=False)
     if not isinstance(unresolved, dict) or "mixed" not in unresolved:
         raise ValueError("Mixed Court training requires a top-level mixed section.")

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import cast
@@ -35,6 +36,7 @@ _TCD_CHANNEL_NAMES = GROUND_COURT_KP_NAMES
 _TCD_FLIP_PERMUTATION = (1, 0, 3, 2, 6, 7, 4, 5, 9, 8, 11, 10, 12, 13)
 _TCD_REQUIRED_RECORD_KEYS = frozenset({"id", "kps"})
 _TCD_OPTIONAL_RECORD_KEYS = frozenset({"metric"})
+_TCD_SAMPLE_ID_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
 
 
 class TennisCourtDetectorInput:
@@ -83,7 +85,9 @@ class TennisCourtDetectorInput:
 
     def load(self, record: CourtSampleRecord) -> CourtRawSample:
         if record.payload.get("source_schema") != self.spec.source_schema:
-            raise ValueError("TennisCourtDetector record belongs to another input schema.")
+            raise ValueError(
+                "TennisCourtDetector record belongs to another input schema."
+            )
         with Image.open(record.image_path) as handle:
             image = handle.convert("RGB")
         width, height = image.size
@@ -148,12 +152,22 @@ class TennisCourtDetectorInput:
     def _load_records(self) -> dict[CourtSourceSplit, tuple[CourtSampleRecord, ...]]:
         records: dict[CourtSourceSplit, tuple[CourtSampleRecord, ...]] = {}
         excluded_counts = dict.fromkeys(self.config.excluded_sample_ids, 0)
+        sample_splits: dict[str, CourtSourceSplit] = {}
         for split, source_split in self.config.split_mapping.items():
             if source_split is None:
                 continue
             source_records = self._read_source_split(split, source_split)
             retained: list[CourtSampleRecord] = []
             for record in source_records:
+                previous_split = sample_splits.get(record.sample_id)
+                if previous_split is not None:
+                    raise ValueError(
+                        "TennisCourtDetector sample IDs must be unique across "
+                        "configured splits; "
+                        f"{record.sample_id!r} appears in {previous_split!r} "
+                        f"and {split!r}."
+                    )
+                sample_splits[record.sample_id] = split
                 if record.sample_id in excluded_counts:
                     excluded_counts[record.sample_id] += 1
                 else:
@@ -199,10 +213,10 @@ class TennisCourtDetectorInput:
                     f"TennisCourtDetector record {index} must contain id and kps, "
                     "with only optional metric metadata."
                 )
-            sample_id = value["id"]
-            if not isinstance(sample_id, str) or not sample_id or sample_id in seen:
+            sample_id = self._parse_sample_id(value["id"], record_index=index)
+            if sample_id in seen:
                 raise ValueError(
-                    "TennisCourtDetector sample IDs must be non-empty and unique."
+                    "TennisCourtDetector sample IDs must be unique within a split."
                 )
             seen.add(sample_id)
             keypoints = self._parse_keypoints(value["kps"], sample_id=sample_id)
@@ -265,6 +279,20 @@ class TennisCourtDetectorInput:
         return tuple(result)
 
     @staticmethod
+    def _parse_sample_id(value: object, *, record_index: int) -> str:
+        if (
+            not isinstance(value, str)
+            or value != value.strip()
+            or _TCD_SAMPLE_ID_PATTERN.fullmatch(value) is None
+        ):
+            raise ValueError(
+                f"TennisCourtDetector record {record_index} id must be a portable "
+                "filename stem containing only ASCII letters, digits, underscores, "
+                "and hyphens."
+            )
+        return value
+
+    @staticmethod
     def _parse_annotation_metric(value: object, *, sample_id: str) -> float:
         if type(value) not in (float, int):
             raise ValueError(
@@ -278,9 +306,17 @@ class TennisCourtDetectorInput:
         return metric
 
     @staticmethod
-    def _parse_keypoints(value: object, *, sample_id: str) -> tuple[tuple[float, float], ...]:
-        if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or len(value) != 14:
-            raise ValueError(f"TennisCourtDetector {sample_id} requires exactly 14 keypoints.")
+    def _parse_keypoints(
+        value: object, *, sample_id: str
+    ) -> tuple[tuple[float, float], ...]:
+        if (
+            not isinstance(value, Sequence)
+            or isinstance(value, (str, bytes))
+            or len(value) != 14
+        ):
+            raise ValueError(
+                f"TennisCourtDetector {sample_id} requires exactly 14 keypoints."
+            )
         points: list[tuple[float, float]] = []
         for point in value:
             if (
@@ -289,21 +325,45 @@ class TennisCourtDetectorInput:
                 or len(point) != 2
                 or any(type(item) not in (float, int) for item in point)
             ):
-                raise ValueError(f"TennisCourtDetector {sample_id} has an invalid keypoint.")
+                raise ValueError(
+                    f"TennisCourtDetector {sample_id} has an invalid keypoint."
+                )
             points.append((float(point[0]), float(point[1])))
         tensor = torch.tensor(points, dtype=torch.float32)
         if not bool(torch.isfinite(tensor).all()):
-            raise ValueError(f"TennisCourtDetector {sample_id} keypoints must be finite.")
+            raise ValueError(
+                f"TennisCourtDetector {sample_id} keypoints must be finite."
+            )
         return tuple(points)
 
     def _resolve_image(self, sample_id: str) -> Path:
         images = self.root / "images"
+        source_root = self.root.resolve(strict=True)
+        image_root = images.resolve(strict=True)
+        if not image_root.is_relative_to(source_root):
+            raise ValueError(
+                "TennisCourtDetector images directory must remain beneath the "
+                "configured source root."
+            )
         candidates: list[Path] = [
             images / f"{sample_id}.png",
             images / f"{sample_id}.jpg",
             images / f"{sample_id}.jpeg",
         ]
-        existing = [path for path in candidates if path.is_file()]
+        existing: list[Path] = []
+        for path in candidates:
+            if path.is_symlink():
+                raise ValueError(
+                    f"TennisCourtDetector image must not be a symlink: {path}"
+                )
+            if not path.is_file():
+                continue
+            resolved = path.resolve(strict=True)
+            if not resolved.is_relative_to(image_root):
+                raise ValueError(
+                    "TennisCourtDetector image must remain beneath the images root."
+                )
+            existing.append(resolved)
         if len(existing) != 1:
             raise FileNotFoundError(
                 f"TennisCourtDetector {sample_id} requires exactly one image; found {existing}."

@@ -95,6 +95,79 @@ def test_annotation_rejects_unknown_record_keys(tmp_path: Path) -> None:
         _input(root)
 
 
+@pytest.mark.parametrize(
+    "sample_id",
+    [
+        "/tmp/outside",
+        "../outside",
+        "a/b",
+        "a\\b",
+        "sample.png",
+        ".",
+        "..",
+        " sample",
+        "sample ",
+        "sample\x00suffix",
+    ],
+)
+def test_annotation_id_must_be_a_portable_filename_stem(
+    tmp_path: Path,
+    sample_id: str,
+) -> None:
+    root = tmp_path / "court"
+    _write_source(root, _record(id=sample_id))
+
+    with pytest.raises(ValueError, match="portable filename stem"):
+        _input(root)
+
+
+@pytest.mark.parametrize(
+    "sample_id", ["sample", "-0M6ixK7aIU_1050", "_vnC7WQazMM_3950"]
+)
+def test_annotation_accepts_portable_filename_stems(
+    tmp_path: Path,
+    sample_id: str,
+) -> None:
+    root = tmp_path / "court"
+    images = root / "images"
+    images.mkdir(parents=True)
+    Image.new("RGB", (32, 24)).save(images / f"{sample_id}.png")
+    Image.new("RGB", (32, 24)).save(images / "validation.png")
+    record = _record(id=sample_id)
+    validation = {**record, "id": "validation"}
+    (root / "data_train.json").write_text(json.dumps([record]), encoding="utf-8")
+    (root / "data_val.json").write_text(json.dumps([validation]), encoding="utf-8")
+
+    input_layer = _input(root)
+
+    assert input_layer.records("train")[0].sample_id == sample_id
+
+
+def test_annotation_rejects_symlinked_image(tmp_path: Path) -> None:
+    root = tmp_path / "court"
+    _write_source(root, _record())
+    outside = tmp_path / "outside.png"
+    Image.new("RGB", (32, 24)).save(outside)
+    sample_image = root / "images" / "sample.png"
+    sample_image.unlink()
+    sample_image.symlink_to(outside)
+
+    with pytest.raises(ValueError, match="must not be a symlink"):
+        _input(root)
+
+
+def test_annotation_ids_must_be_unique_across_configured_splits(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "court"
+    record = _record()
+    _write_source(root, record)
+    (root / "data_val.json").write_text(json.dumps([record]), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="unique across configured splits"):
+        _input(root)
+
+
 def test_configured_sample_quarantine_must_match_exactly_one_record(
     tmp_path: Path,
 ) -> None:
