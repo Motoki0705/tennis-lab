@@ -37,6 +37,7 @@ files live there, not in the worktree).
 from __future__ import annotations
 
 import argparse
+import contextlib
 import glob
 import json
 import subprocess
@@ -47,25 +48,36 @@ from kg_lib import dump_frontmatter, load_nodes, nodes_dir, parse_node, repo_roo
 
 # Metrics to draw, in priority order. Only bases that actually exist as a
 # ``train/<base>`` or ``val/<base>`` series are plotted; we keep at most MAX_PANELS.
+# Each tuple is ordered current name first, followed by read-only legacy aliases.
+# The selected source tag keeps its recorded name, but aliases occupy one panel.
 CURVE_PRIORITY = [
-    "loss",
-    "pos_error_m",
-    "position_error_m",
-    "ang_error_deg",
-    "angular_error_deg",
-    "miou",
-    "mean_iou",
-    "iou",
-    "dice",
-    "best_val_miou",
-    "accuracy",
-    "acc",
-    "mAP",
-    "psnr",
+    ("loss",),
+    ("position_error_m", "pos_error_m"),
+    ("angular_error_deg", "ang_error_deg"),
+    ("canonical_mpjpe_m", "canonical_mpjpe"),
+    ("canonical_pck_0.1m",),
+    ("miou",),
+    ("mean_iou",),
+    ("iou",),
+    ("dice",),
+    ("best_val_miou",),
+    ("accuracy",),
+    ("acc",),
+    ("mAP",),
+    ("psnr",),
 ]
-MAX_PANELS = 4
+MAX_PANELS = 5
 # Tags that are never interesting as convergence panels.
 SKIP_BASES = {"epoch", "hp_metric", "step"}
+
+# TensorBoard fingerprints use current metric names even when a stored node or
+# an older event file still carries a legacy key. Values are never duplicated.
+METRIC_KEY_ALIASES = {
+    "pos_error_m": "position_error_m",
+    "ang_error_deg": "angular_error_deg",
+    "canonical_mpjpe": "canonical_mpjpe_m",
+}
+_FINAL_TEST_METRICS_CACHE: dict[Path, dict[str, float]] = {}
 
 # Fingerprint matching thresholds.
 REL_TOL = 0.02       # a metric "matches" within 2% relative error
@@ -215,32 +227,44 @@ def _accumulator(event_dir: Path):
     return acc
 
 
-def final_test_metrics(event_dir: Path, _cache: dict[Path, dict] = {}) -> dict[str, float]:
+def _canonicalize_metric_keys(metrics: dict[str, float]) -> dict[str, float]:
+    """Normalize read-only aliases, preferring an explicitly current key."""
+    normalized = {
+        key: value for key, value in metrics.items() if key not in METRIC_KEY_ALIASES
+    }
+    for key, value in metrics.items():
+        canonical = METRIC_KEY_ALIASES.get(key)
+        if canonical is not None and canonical not in normalized:
+            normalized[canonical] = value
+    return normalized
+
+
+def final_test_metrics(event_dir: Path) -> dict[str, float]:
     """Final value of every ``test/<key>`` scalar in an event dir (cached)."""
-    if event_dir in _cache:
-        return _cache[event_dir]
+    if event_dir in _FINAL_TEST_METRICS_CACHE:
+        return _FINAL_TEST_METRICS_CACHE[event_dir]
     out: dict[str, float] = {}
     try:
         acc = _accumulator(event_dir)
         for tag in acc.Tags().get("scalars", []):
             if tag.startswith("test/"):
-                try:
+                with contextlib.suppress(ValueError, IndexError):
                     out[tag[len("test/"):]] = float(acc.Scalars(tag)[-1].value)
-                except (ValueError, IndexError):
-                    pass
     except Exception as exc:  # noqa: BLE001 - one bad event file shouldn't abort
         print(f"  warn: could not read {event_dir}: {exc}", file=sys.stderr)
-    _cache[event_dir] = out
-    return out
+    normalized = _canonicalize_metric_keys(out)
+    _FINAL_TEST_METRICS_CACHE[event_dir] = normalized
+    return normalized
 
 
 def match_event_dir(
     metrics: dict[str, float], event_dirs: list[Path]
 ) -> tuple[Path | None, float, int]:
     """Best-matching event dir for a node's test metrics (fingerprint match)."""
+    metrics = _canonicalize_metric_keys(metrics)
     best: tuple[Path | None, float, int] = (None, 1e9, 0)
     for d in event_dirs:
-        tm = final_test_metrics(d)
+        tm = _canonicalize_metric_keys(final_test_metrics(d))
         shared = [k for k in metrics if k in tm and isinstance(metrics[k], (int, float))]
         if len(shared) < MIN_SHARED:
             continue
@@ -279,16 +303,18 @@ def select_bases(acc) -> list[str]:
             if t.startswith(split):
                 bases_available.add(t[len(split):])
     chosen: list[str] = []
-    for base in CURVE_PRIORITY:
-        if base in bases_available and base not in chosen:
+    for aliases in CURVE_PRIORITY:
+        base = next((candidate for candidate in aliases if candidate in bases_available), None)
+        if base is not None and base not in chosen:
             chosen.append(base)
         if len(chosen) >= MAX_PANELS:
             return chosen
     # fall back to any remaining base that has both train & val, alphabetical
+    prioritized_bases = {base for aliases in CURVE_PRIORITY for base in aliases}
     for base in sorted(bases_available):
         if len(chosen) >= MAX_PANELS:
             break
-        if base in SKIP_BASES or base.startswith("lr") or base in chosen:
+        if base in SKIP_BASES or base.startswith("lr") or base in prioritized_bases:
             continue
         if f"train/{base}" in tags and f"val/{base}" in tags:
             chosen.append(base)
@@ -309,7 +335,7 @@ def plot_curves(acc, node_id: str, out_png: Path) -> bool:
     rows = (n + cols - 1) // cols
     fig, axes = plt.subplots(rows, cols, figsize=(5.2 * cols, 3.4 * rows), squeeze=False)
     flat = [ax for row in axes for ax in row]
-    for ax, base in zip(flat, bases):
+    for ax, base in zip(flat, bases, strict=False):
         series = _series(acc, base)
         for split, color in (("train", "#d97757"), ("val", "#4285f4")):
             if split in series:
