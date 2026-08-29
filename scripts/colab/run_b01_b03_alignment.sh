@@ -5,7 +5,9 @@ set -euo pipefail
 #
 # The script mounts Google Drive, installs the locked repository and NHT
 # runtimes, verifies every Drive input by SHA-256, stages inputs onto the Colab
-# VM, and runs the three scenes serially. Canonical pipeline publication stays
+# VM, and pipelines the three scenes. Each reconstruction trains on GPU while
+# the preceding scene performs line inference and alignment on CPU. Canonical
+# pipeline publication stays
 # on the VM because Google Drive FUSE does not provide the filesystem semantics
 # required by atomic stage replacement. Each completed reconstruction and
 # alignment is copied to a unique Drive result directory before the next scene.
@@ -97,7 +99,8 @@ print_dry_run() {
     for scene in "${SCENES[@]}"; do
         profile="${scene,,}"
         log "dry-run asset=${DRIVE_DATA_ROOT}/synthetic_data_generation/raw/${scene}.mp4 sha256=${VIDEO_SHA256[${scene}]}"
-        log "dry-run scene=${scene} command=.venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline profile=${profile} request.from_stage=ingest request.through_stage=alignment"
+        log "dry-run scene=${scene} gpu-command=.venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline profile=${profile} request.from_stage=ingest request.through_stage=reconstruction"
+        log "dry-run scene=${scene} cpu-command=TENNIS_LAB_ALIGNMENT_LINE_DEVICE=cpu TENNIS_LAB_ALIGNMENT_MAXIMUM_UNEXPLAINED_EVIDENCE_FRACTION=0.5 .venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline profile=${profile} request.from_stage=alignment request.through_stage=alignment"
         log "dry-run scene=${scene} verify=alignment,line-heatmaps,no-datasets,no-report"
     done
 }
@@ -160,11 +163,20 @@ install_python_and_nht() {
     uv_tool_bin="$(uv tool dir --bin)"
     [[ -n "${uv_tool_bin}" ]] || fail "uv did not resolve its tool bin directory"
     export PATH="${uv_tool_bin}:${PATH}"
-    log "installing the pinned NHT public CLI and trainer runtime..."
-    (
-        cd "${REPO_ROOT}"
-        .venv/bin/python -m spin setup-nht
-    )
+    local trainer_python="${REPO_ROOT}/third_party/nht/.trainer-venv/bin/python"
+    if command -v nht-reconstruct >/dev/null 2>&1 \
+        && command -v nht-render >/dev/null 2>&1 \
+        && [[ -x "${trainer_python}" ]] \
+        && "$(command -v nht-reconstruct | xargs dirname)/../share/uv/tools/nht/bin/python" -c 'import hloc' >/dev/null 2>&1 \
+        && "${trainer_python}" -c 'from gsplat.nht.deferred_shader import DeferredShaderModule' >/dev/null 2>&1; then
+        log "reusing the verified NHT public CLI and trainer runtime"
+    else
+        log "installing the pinned NHT public CLI and trainer runtime..."
+        (
+            cd "${REPO_ROOT}"
+            .venv/bin/python -m spin setup-nht --with-sfm-learned
+        )
+    fi
     (
         cd "${REPO_ROOT}"
         .venv/bin/python - <<'PY'
@@ -298,10 +310,22 @@ persist_scene_output() {
     log "saved ${scene} reconstruction and alignment to ${destination}"
 }
 
-run_scene() {
+run_reconstruction() {
     local scene="$1"
     local profile="${scene,,}"
-    log "starting ${scene}: ingest -> reconstruction -> alignment"
+    local scene_manifest="${REPO_ROOT}/data/synthetic_data_generation/scenes/${scene}/run.json"
+    if [[ -f "${scene_manifest}" ]] && .venv/bin/python - "${scene_manifest}" <<'PY'
+import json
+import sys
+
+manifest = json.load(open(sys.argv[1], encoding="utf-8"))
+raise SystemExit(0 if manifest["stages"]["reconstruction"]["status"] == "completed" else 1)
+PY
+    then
+        log "reusing completed ${scene} GPU reconstruction"
+        return
+    fi
+    log "starting ${scene} GPU work: ingest -> reconstruction"
     (
         cd "${REPO_ROOT}"
         MPLBACKEND="${MPLBACKEND:-Agg}" \
@@ -309,6 +333,22 @@ run_scene() {
         .venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
             "profile=${profile}" \
             request.from_stage=ingest \
+            request.through_stage=reconstruction
+    )
+}
+
+run_alignment() {
+    local scene="$1"
+    local profile="${scene,,}"
+    log "starting ${scene} CPU work: alignment"
+    (
+        cd "${REPO_ROOT}"
+        MPLBACKEND="${MPLBACKEND:-Agg}" \
+        TENNIS_LAB_ALIGNMENT_LINE_DEVICE=cpu \
+        TENNIS_LAB_ALIGNMENT_MAXIMUM_UNEXPLAINED_EVIDENCE_FRACTION=0.5 \
+        .venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
+            "profile=${profile}" \
+            request.from_stage=alignment \
             request.through_stage=alignment
     )
     validate_scene_output "${scene}"
@@ -330,7 +370,21 @@ install_python_and_nht
 mkdir -p "${RESULT_RUN_ROOT}"
 
 log "Drive result root: ${RESULT_RUN_ROOT}"
+alignment_pid=""
+alignment_scene=""
 for scene in "${SCENES[@]}"; do
-    run_scene "${scene}"
+    run_reconstruction "${scene}"
+    if [[ -n "${alignment_pid}" ]]; then
+        log "waiting for ${alignment_scene} CPU alignment after ${scene} GPU reconstruction"
+        wait "${alignment_pid}"
+        log "completed ${alignment_scene} CPU alignment"
+    fi
+    run_alignment "${scene}" &
+    alignment_pid="$!"
+    alignment_scene="${scene}"
+    log "overlap enabled: ${scene} CPU alignment pid=${alignment_pid}; next GPU reconstruction may start"
 done
+[[ -n "${alignment_pid}" ]] || fail "no alignment process was started"
+wait "${alignment_pid}"
+log "completed ${alignment_scene} CPU alignment"
 log "all B01-B03 alignment runs completed: ${RESULT_RUN_ROOT}"

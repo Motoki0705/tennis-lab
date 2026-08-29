@@ -7,7 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
 from types import SimpleNamespace
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 import pytest
@@ -28,6 +28,7 @@ from src.synthetic_data_generation.alignment.evidence_source import (
     _MAXIMUM_RETAINED_PROPOSAL_STATE_COUNT,
     _MAXIMUM_TILE_STATE_COUNT,
     MeasuredAlignmentEvidenceSource,
+    ProductionCourtLineDetector,
     _assign_candidate_evidence,
     _center_space_tiles,
     _CenterTile,
@@ -139,6 +140,34 @@ def test_production_line_config_rebuilds_legacy_checkpoint_with_strict_fields(
     assert config.decoder.channels == 256
     assert config.transformer_encoder.name == "none"
     assert not config.transformer_encoder.enabled
+
+
+def test_production_line_detector_accepts_explicit_cpu_runtime_override(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = _settings(tmp_path).line_model
+    monkeypatch.setenv("TENNIS_LAB_ALIGNMENT_LINE_DEVICE", "cpu")
+
+    detector = ProductionCourtLineDetector(
+        settings,
+        cast(Any, object()),
+        seed=42,
+    )
+
+    assert detector._settings.device == "cpu"
+
+
+def test_production_line_detector_rejects_unknown_runtime_override(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("TENNIS_LAB_ALIGNMENT_LINE_DEVICE", "cuda:1")
+
+    with pytest.raises(ValueError, match="must be unset or 'cpu'"):
+        ProductionCourtLineDetector(
+            _settings(tmp_path).line_model,
+            cast(Any, object()),
+            seed=42,
+        )
 
 
 def test_line_checkpoint_maps_only_the_exact_historical_single_head() -> None:
