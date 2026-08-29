@@ -2354,12 +2354,21 @@ class ScenePipelineConfiguration:
         request_raw = _exact(
             root["request"],
             path="request",
-            keys={"scene_id", "source_video", "targets", "from_stage"},
+            keys={
+                "scene_id",
+                "source_video",
+                "targets",
+                "from_stage",
+                "through_stage",
+            },
         )
         target_values = _text_sequence(request_raw, "targets", path="request")
         try:
             targets = tuple(DatasetTarget(item) for item in target_values)
             from_stage = StageName(_text(request_raw, "from_stage", path="request"))
+            through_stage = StageName(
+                _text(request_raw, "through_stage", path="request")
+            )
         except ValueError as error:
             raise SemanticConfigurationError(
                 f"request contains an unknown target or stage: {error}"
@@ -2377,6 +2386,7 @@ class ScenePipelineConfiguration:
             source_video=source_video,
             targets=frozenset(targets),
             from_stage=from_stage,
+            through_stage=through_stage,
             config_schema=stages.config_schema,
         )
         dataset = _exact(
@@ -2387,8 +2397,11 @@ class ScenePipelineConfiguration:
             resolver=resolver,
         )
         if (
-            request.scene_id not in plcs.scene_splits
-            or plcs.scene_splits[request.scene_id] != plcs.split
+            DatasetTarget.PLCS in request.active_targets
+            and (
+                request.scene_id not in plcs.scene_splits
+                or plcs.scene_splits[request.scene_id] != plcs.split
+            )
         ):
             raise SemanticConfigurationError(
                 "dataset.plcs.scene_splits must explicitly bind request.scene_id "

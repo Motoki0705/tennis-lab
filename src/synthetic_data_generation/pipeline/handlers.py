@@ -5,7 +5,7 @@ from __future__ import annotations
 import html
 import json
 import shutil
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -32,6 +32,7 @@ from src.synthetic_data_generation.pipeline.contracts import (
     DatasetTarget,
     StageExecutionContext,
     StageExecutionSummary,
+    StageHandler,
     StageName,
 )
 
@@ -42,6 +43,49 @@ if TYPE_CHECKING:
     from src.synthetic_data_generation.dataset.court.assembler import (
         CourtAssemblyReport,
     )
+
+
+@dataclass(slots=True)
+class DeferredStageHandler:
+    """Construct one heavyweight handler only when its stage is first selected."""
+
+    factory: Callable[[], StageHandler[StageExecutionSummary]]
+    _resolved: StageHandler[StageExecutionSummary] | None = field(
+        default=None,
+        init=False,
+        repr=False,
+    )
+
+    def __post_init__(self) -> None:
+        if not callable(self.factory):
+            raise TypeError("Deferred stage handler factory must be callable.")
+
+    def preflight(self, context: StageExecutionContext) -> None:
+        """Resolve once and delegate preflight to the concrete handler."""
+        self._resolve().preflight(context)
+
+    def execute(self, context: StageExecutionContext) -> StageExecutionSummary:
+        """Delegate execution to the same concrete handler instance."""
+        return self._resolve().execute(context)
+
+    def validate(self, context: StageExecutionContext) -> None:
+        """Delegate validation to the same concrete handler instance."""
+        self._resolve().validate(context)
+
+    def _resolve(self) -> StageHandler[StageExecutionSummary]:
+        resolved = self._resolved
+        if resolved is not None:
+            return resolved
+        resolved = self.factory()
+        if resolved is self:
+            raise TypeError("Deferred stage handler factory returned its own proxy.")
+        for method in ("preflight", "execute", "validate"):
+            if not callable(getattr(resolved, method, None)):
+                raise TypeError(
+                    "Deferred stage handler factory returned an incomplete lifecycle."
+                )
+        self._resolved = resolved
+        return resolved
 
 
 @dataclass(frozen=True, slots=True)
@@ -422,4 +466,9 @@ def _write_json(path: Path, value: Mapping[str, object]) -> None:
     )
 
 
-__all__ = ["IngestStageHandler", "ReportStageHandler", "VideoProperties"]
+__all__ = [
+    "DeferredStageHandler",
+    "IngestStageHandler",
+    "ReportStageHandler",
+    "VideoProperties",
+]

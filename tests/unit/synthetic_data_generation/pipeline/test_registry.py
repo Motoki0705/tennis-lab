@@ -62,6 +62,7 @@ def test_registry_binds_complete_lifecycle_inputs_and_derived_descendants(
         source_video=source,
         targets=frozenset({DatasetTarget.COURT}),
         from_stage=StageName.INGEST,
+        through_stage=StageName.REPORT,
         config_schema="scene_pipeline_v1",
     )
     registry = canonical_registry(_handlers())
@@ -94,6 +95,46 @@ def test_registry_binds_complete_lifecycle_inputs_and_derived_descendants(
     )
 
 
+def test_alignment_terminal_selects_exactly_three_stages(tmp_path: Path) -> None:
+    source = tmp_path / "video.mp4"
+    source.write_bytes(b"video")
+    request = ScenePipelineRequest(
+        scene_id="scene-a",
+        source_video=source,
+        targets=frozenset(DatasetTarget),
+        from_stage=StageName.INGEST,
+        through_stage=StageName.ALIGNMENT,
+        config_schema="scene_pipeline_v1",
+    )
+
+    selected = canonical_registry(_handlers()).selected_for_request(request)
+
+    assert tuple(definition.name for definition in selected) == (
+        StageName.INGEST,
+        StageName.RECONSTRUCTION,
+        StageName.ALIGNMENT,
+    )
+
+
+def test_execution_plan_rejects_cursor_after_terminal_stage(tmp_path: Path) -> None:
+    source = tmp_path / "video.mp4"
+    source.write_bytes(b"video")
+    request = ScenePipelineRequest(
+        scene_id="scene-a",
+        source_video=source,
+        targets=frozenset(DatasetTarget),
+        from_stage=StageName.REPORT,
+        through_stage=StageName.ALIGNMENT,
+        config_schema="scene_pipeline_v1",
+    )
+
+    with pytest.raises(ValueError, match="not selected by request targets"):
+        canonical_registry(_handlers()).execution_for_request(
+            request,
+            reusable_stages=(),
+        )
+
+
 def test_execution_plan_rejects_cursor_outside_explicit_targets(tmp_path: Path) -> None:
     source = tmp_path / "video.mp4"
     source.write_bytes(b"video")
@@ -102,6 +143,7 @@ def test_execution_plan_rejects_cursor_outside_explicit_targets(tmp_path: Path) 
         source_video=source,
         targets=frozenset({DatasetTarget.COURT}),
         from_stage=StageName.PLCS_DATASET,
+        through_stage=StageName.REPORT,
         config_schema="scene_pipeline_v1",
     )
 
@@ -120,6 +162,7 @@ def test_execution_plan_uses_cursor_descendants_for_execution(tmp_path: Path) ->
         source_video=source,
         targets=frozenset(DatasetTarget),
         from_stage=StageName.COURT_DATASET,
+        through_stage=StageName.REPORT,
         config_schema="scene_pipeline_v1",
     )
 
@@ -155,6 +198,7 @@ def test_execution_plan_keeps_unselected_descendants_for_stale_cleanup(
         source_video=source,
         targets=frozenset({DatasetTarget.COURT}),
         from_stage=StageName.ALIGNMENT,
+        through_stage=StageName.REPORT,
         config_schema="scene_pipeline_v1",
     )
 
@@ -194,6 +238,7 @@ def test_execution_plan_repairs_invalidated_plcs_before_report_from_blcs(
         source_video=source,
         targets=frozenset(DatasetTarget),
         from_stage=StageName.BLCS_DATASET,
+        through_stage=StageName.REPORT,
         config_schema="scene_pipeline_v1",
     )
 
@@ -231,6 +276,7 @@ def test_execution_plan_repairs_invalidated_blcs_before_report_from_plcs(
         source_video=source,
         targets=frozenset({DatasetTarget.BLCS, DatasetTarget.PLCS}),
         from_stage=StageName.PLCS_DATASET,
+        through_stage=StageName.REPORT,
         config_schema="scene_pipeline_v1",
     )
 
@@ -289,6 +335,7 @@ def test_execution_plan_reuses_valid_target_subset_siblings(
         source_video=source,
         targets=targets,
         from_stage=cursor,
+        through_stage=StageName.REPORT,
         config_schema="scene_pipeline_v1",
     )
     registry = canonical_registry(_handlers())

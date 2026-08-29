@@ -232,6 +232,7 @@ def test_blcs_stage_carries_all_frames_through_chunks_and_balanced_courts(
         source_video=source_video.resolve(),
         targets=frozenset({DatasetTarget.BLCS}),
         from_stage=StageName.BLCS_DATASET,
+        through_stage=StageName.BLCS_DATASET,
         config_schema="canonical_scene_pipeline_v1",
     )
     handler_module = importlib.import_module(
