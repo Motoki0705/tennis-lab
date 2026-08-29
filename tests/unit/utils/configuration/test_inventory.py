@@ -39,7 +39,9 @@ def test_synthetic_inventory_has_only_the_canonical_production_clis() -> None:
         assert boundaries[module].validator_callable == validator_callable
 
 
-def test_task_local_generation_and_visualization_boundaries_remain_in_inventory() -> None:
+def test_task_local_generation_and_visualization_boundaries_remain_in_inventory() -> (
+    None
+):
     boundaries = {
         boundary.module: boundary
         for boundary in EXPECTED_RUNTIME_BOUNDARIES
@@ -49,6 +51,10 @@ def test_task_local_generation_and_visualization_boundaries_remain_in_inventory(
         "src.tasks.blcs.scripts.generate_dataset": (
             "blcs.generate_dataset",
             "src.tasks.blcs.configuration.validate_generation_boundary",
+        ),
+        "src.tasks.blcs.scripts.generate_dataset_samples": (
+            "blcs.generate_dataset_samples",
+            "src.tasks.blcs.generate_dataset.samples.validate_dataset_samples_boundary",
         ),
         "src.tasks.blcs.scripts.preview_augmentation": (
             "blcs.preview_augmentation",
@@ -61,6 +67,10 @@ def test_task_local_generation_and_visualization_boundaries_remain_in_inventory(
         "src.tasks.plcs.scripts.generate_dataset": (
             "plcs.generate_dataset",
             "src.tasks.plcs.generate_dataset.config._validate_boundary",
+        ),
+        "src.tasks.plcs.scripts.generate_dataset_samples": (
+            "plcs.generate_dataset_samples",
+            "src.tasks.plcs.generate_dataset.samples.validate_dataset_samples_boundary",
         ),
         "src.tasks.plcs.scripts.preview_augmentation": (
             "plcs.preview_augmentation",

@@ -19,26 +19,14 @@ from src.utils.configuration.schema import ConfigField, StrictConfigSchema
 
 BUILD_CUDA_OPS = "TENNIS_LAB_BUILD_CUDA_OPS"
 CUDA_OPS_BUILD_TARGET = "TENNIS_LAB_CUDA_OPS_BUILD_TARGET"
-FORCE_TIME_LOCAL_REFERENCE = "TENNIS_LAB_FORCE_TIME_LOCAL_REFERENCE"
-USE_TIME_LOCAL_CUDA = "TENNIS_LAB_USE_TIME_LOCAL_CUDA"
 DINO_OPS_BUILD_CONFIG = "TENNIS_LAB_DINO_OPS_BUILD_CONFIG"
 
-_BOOLEAN_NAMES = (
-    BUILD_CUDA_OPS,
-    FORCE_TIME_LOCAL_REFERENCE,
-    USE_TIME_LOCAL_CUDA,
-)
-_RUNTIME_BOOLEAN_NAMES = (
-    FORCE_TIME_LOCAL_REFERENCE,
-    USE_TIME_LOCAL_CUDA,
-)
-_OPERATION_ENVIRONMENT_DEFAULTS = {name: "0" for name in _RUNTIME_BOOLEAN_NAMES}
+_BOOLEAN_NAMES = (BUILD_CUDA_OPS,)
 _OPERATION_ENVIRONMENT_SCHEMA = StrictConfigSchema(
     name="operation_environment",
     fields={
         BUILD_CUDA_OPS: ConfigField.of(str, required=False),
         CUDA_OPS_BUILD_TARGET: ConfigField.of(str, required=False),
-        **{name: ConfigField.of(str) for name in _RUNTIME_BOOLEAN_NAMES},
         DINO_OPS_BUILD_CONFIG: ConfigField.of(str, required=False),
     },
 )
@@ -73,12 +61,10 @@ def _parse_cuda_ops_build_target(raw: str | None) -> str:
 
 @dataclass(frozen=True, slots=True)
 class OperationEnvironmentConfig:
-    """Validated process inputs controlling optional CUDA operation routes."""
+    """Validated process inputs controlling optional CUDA operation builds."""
 
     build_cuda_ops: bool
     cuda_ops_build_target: str
-    force_time_local_reference: bool
-    use_time_local_cuda: bool
     dino_ops_build_config: str | None = field(
         metadata={
             "configuration_required": False,
@@ -88,32 +74,18 @@ class OperationEnvironmentConfig:
 
     @classmethod
     def from_mapping(cls, values: Mapping[str, str]) -> OperationEnvironmentConfig:
-        """Reject unknown names and accept only exact ``"0"``/``"1"`` tokens."""
+        """Reject unknown names and accept only exact build-switch tokens."""
         validated = _OPERATION_ENVIRONMENT_SCHEMA.validate(values)
-        parsed = {
-            BUILD_CUDA_OPS: _parse_build_cuda_ops(
-                cast(str, validated[BUILD_CUDA_OPS])
-                if BUILD_CUDA_OPS in validated
-                else None
-            )
-        }
+        build_cuda_ops = _parse_build_cuda_ops(
+            cast(str, validated[BUILD_CUDA_OPS])
+            if BUILD_CUDA_OPS in validated
+            else None
+        )
         build_target = _parse_cuda_ops_build_target(
             cast(str, validated[CUDA_OPS_BUILD_TARGET])
             if CUDA_OPS_BUILD_TARGET in validated
             else None
         )
-        for name in _RUNTIME_BOOLEAN_NAMES:
-            raw = cast(str, validated[name])
-            if raw not in {"0", "1"}:
-                raise SemanticConfigurationError(
-                    f"{name} must be exactly '0' or '1'; got {raw!r}."
-                )
-            parsed[name] = raw == "1"
-        if parsed[FORCE_TIME_LOCAL_REFERENCE] and parsed[USE_TIME_LOCAL_CUDA]:
-            raise SemanticConfigurationError(
-                f"{FORCE_TIME_LOCAL_REFERENCE}=1 conflicts with "
-                f"{USE_TIME_LOCAL_CUDA}=1."
-            )
         build_json = (
             cast(str, validated[DINO_OPS_BUILD_CONFIG])
             if DINO_OPS_BUILD_CONFIG in validated
@@ -124,20 +96,17 @@ class OperationEnvironmentConfig:
                 f"{DINO_OPS_BUILD_CONFIG} must be a non-empty JSON string."
             )
         return cls(
-            build_cuda_ops=parsed[BUILD_CUDA_OPS],
+            build_cuda_ops=build_cuda_ops,
             cuda_ops_build_target=build_target,
-            force_time_local_reference=parsed[FORCE_TIME_LOCAL_REFERENCE],
-            use_time_local_cuda=parsed[USE_TIME_LOCAL_CUDA],
             dino_ops_build_config=build_json,
         )
 
     @classmethod
     def from_process_environment(cls) -> OperationEnvironmentConfig:
         """Read the one documented allow-list from the process environment."""
-        selected = dict(_OPERATION_ENVIRONMENT_DEFAULTS)
-        selected.update(
-            {name: os.environ[name] for name in _BOOLEAN_NAMES if name in os.environ}
-        )
+        selected = {
+            name: os.environ[name] for name in _BOOLEAN_NAMES if name in os.environ
+        }
         if DINO_OPS_BUILD_CONFIG in os.environ:
             selected[DINO_OPS_BUILD_CONFIG] = os.environ[DINO_OPS_BUILD_CONFIG]
         if CUDA_OPS_BUILD_TARGET in os.environ:
@@ -168,8 +137,6 @@ _DINO_BUILD_SCHEMA = StrictConfigSchema(
         "source": ConfigField.of(str),
         "destination_role": ConfigField.of(str),
         "destination": ConfigField.of(str),
-        "time_local_bindings": ConfigField.of(str),
-        "time_local_kernels": ConfigField.of(str),
         "compressed_time_local_bindings": ConfigField.of(str),
         "compressed_time_local_kernels": ConfigField.of(str),
     },
@@ -184,8 +151,6 @@ class DinoOpsBuildConfig:
     source: Path
     destination: Path
     destination_role: PathRole
-    time_local_bindings: Path
-    time_local_kernels: Path
     compressed_time_local_bindings: Path
     compressed_time_local_kernels: Path
 
@@ -196,8 +161,6 @@ class DinoOpsBuildConfig:
                 f"DINO operation source directory is missing: {self.source}"
             )
         for path in (
-            self.time_local_bindings,
-            self.time_local_kernels,
             self.compressed_time_local_bindings,
             self.compressed_time_local_kernels,
         ):
@@ -300,8 +263,6 @@ class DinoOpsBuildConfig:
             source=source,
             destination=destination,
             destination_role=destination_role,
-            time_local_bindings=resolve(PathRole.PROJECT, "time_local_bindings"),
-            time_local_kernels=resolve(PathRole.PROJECT, "time_local_kernels"),
             compressed_time_local_bindings=resolve(
                 PathRole.PROJECT, "compressed_time_local_bindings"
             ),
@@ -321,8 +282,6 @@ __all__ = [
     "CUDA_OPS_BUILD_TARGET",
     "DINO_OPS_BUILD_CONFIG",
     "DinoOpsBuildConfig",
-    "FORCE_TIME_LOCAL_REFERENCE",
     "OperationEnvironmentConfig",
-    "USE_TIME_LOCAL_CUDA",
     "operation_environment",
 ]

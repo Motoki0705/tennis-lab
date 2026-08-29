@@ -44,6 +44,7 @@ def _config(
                 "num_heads": 4,
                 "num_stages": 4,
                 "ffn_dim": 32,
+                "ffn_type": "swiglu",
                 "num_queries": 4,
                 "rope_dim": 4,
                 "dropout": 0.0,

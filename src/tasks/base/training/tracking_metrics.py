@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import cast
 
+import numpy as np
 import torch
+from scipy.optimize import linear_sum_assignment
 from torch import Tensor
 
 from src.tasks.base.configuration import exact_config_mapping, require_config_value
@@ -21,9 +24,14 @@ class TrackingMetricConfig:
 
     presence_threshold: float
     duplicate_distance: float
+    id_switch_distance: float
 
     def __post_init__(self) -> None:
-        for name in ("presence_threshold", "duplicate_distance"):
+        for name in (
+            "presence_threshold",
+            "duplicate_distance",
+            "id_switch_distance",
+        ):
             value = getattr(self, name)
             if type(value) is not float:
                 raise ConfigurationTypeError(
@@ -38,14 +46,28 @@ class TrackingMetricConfig:
             raise SemanticConfigurationError(
                 "tracking_metrics.duplicate_distance must be > 0."
             )
+        if not math.isfinite(self.id_switch_distance):
+            raise SemanticConfigurationError(
+                "tracking_metrics.id_switch_distance must be finite."
+            )
+        if self.id_switch_distance <= 0.0:
+            raise SemanticConfigurationError(
+                "tracking_metrics.id_switch_distance must be > 0."
+            )
 
     @classmethod
     def from_mapping(cls, value: object) -> TrackingMetricConfig:
-        """Parse the exact two-key tracking-metric mapping with no defaults."""
+        """Parse the exact tracking-metric mapping with no defaults."""
         mapping = exact_config_mapping(
             value,
             path="tracking_metrics",
-            required_keys=frozenset({"presence_threshold", "duplicate_distance"}),
+            required_keys=frozenset(
+                {
+                    "presence_threshold",
+                    "duplicate_distance",
+                    "id_switch_distance",
+                }
+            ),
         )
         return cls(
             presence_threshold=cast(
@@ -58,6 +80,12 @@ class TrackingMetricConfig:
                 "float",
                 require_config_value(
                     mapping, "duplicate_distance", float, path="tracking_metrics"
+                ),
+            ),
+            id_switch_distance=cast(
+                "float",
+                require_config_value(
+                    mapping, "id_switch_distance", float, path="tracking_metrics"
                 ),
             ),
         )
@@ -165,6 +193,163 @@ def _match_predicted_segments(
     return birth_errors, death_errors, reuse
 
 
+def _gated_one_to_one_assignment(
+    distances: Tensor,
+    *,
+    max_distance: float,
+) -> list[tuple[int, int]]:
+    """Return a deterministic maximum-cardinality gated Hungarian match."""
+    num_targets, num_queries = distances.shape
+    if num_targets == 0 or num_queries == 0:
+        return []
+
+    distance_values = distances.detach().to(device="cpu", dtype=torch.float64).numpy()
+    typed_max_distance = float(
+        torch.as_tensor(max_distance, dtype=distances.dtype).item()
+    )
+    gated = np.isfinite(distance_values) & (distance_values <= typed_max_distance)
+
+    # Each target owns one dummy column, so it can remain unmatched without
+    # making the assignment infeasible.  Keep the penalty in raw-distance units
+    # and above every possible real-pair total, making cardinality primary
+    # without transforming or perturbing the secondary distance objective.
+    unmatched_penalty = float(num_targets + 1) * typed_max_distance
+    if not math.isfinite(unmatched_penalty):
+        raise OverflowError(
+            "gated assignment unmatched penalty is not representable as a "
+            "finite float64 value."
+        )
+    costs = np.full(
+        (num_targets, num_queries + num_targets),
+        np.inf,
+        dtype=np.float64,
+    )
+    costs[:, :num_queries][gated] = distance_values[gated]
+
+    # Keep the real distance objective unperturbed so every representably lower
+    # total wins.  SciPy provides deterministic ordering for equal-cost input.
+    for target_index in range(num_targets):
+        costs[target_index, num_queries + target_index] = unmatched_penalty
+
+    target_indices, assigned_columns = linear_sum_assignment(costs)
+    return [
+        (int(target_index), int(column_index))
+        for target_index, column_index in zip(
+            target_indices.tolist(), assigned_columns.tolist(), strict=True
+        )
+        if column_index < num_queries
+    ]
+
+
+def _lifecycle_id_switch_count(
+    pred_position: Tensor,
+    pred_active: Tensor,
+    target_position: Tensor,
+    target_presence: Tensor,
+    target_instance_id: Tensor,
+    valid_frames: Tensor,
+    *,
+    max_distance: float,
+) -> Tensor:
+    """Count lifecycle-local switches under frame-wise MOT correspondence."""
+    num_frames, num_targets = target_instance_id.shape
+    lifecycle_at_frame = torch.full(
+        (num_frames, num_targets),
+        -1,
+        dtype=torch.long,
+        device=target_instance_id.device,
+    )
+    next_lifecycle = 0
+    for target_index in range(num_targets):
+        for birth, death, _ in _instance_segments(
+            target_instance_id[:, target_index],
+            valid_frames,
+        ):
+            active_segment_frames = torch.nonzero(
+                target_presence[birth:death, target_index],
+                as_tuple=False,
+            ).flatten()
+            lifecycle_at_frame[
+                active_segment_frames + birth,
+                target_index,
+            ] = next_lifecycle
+            next_lifecycle += 1
+
+    switches = pred_position.new_zeros(())
+    previous_frame_matches: dict[int, int] = {}
+    last_valid_matches: dict[int, int] = {}
+    for frame_index in range(num_frames):
+        if not bool(valid_frames[frame_index]):
+            previous_frame_matches = {}
+            continue
+
+        active_targets = torch.nonzero(
+            lifecycle_at_frame[frame_index] >= 0,
+            as_tuple=False,
+        ).flatten()
+        active_queries = torch.nonzero(
+            pred_active[frame_index],
+            as_tuple=False,
+        ).flatten()
+        current_matches: dict[int, int] = {}
+        used_queries: set[int] = set()
+
+        # Preserve only immediately previous frame correspondences which remain
+        # active and within the gate.  These pairs are already one-to-one.
+        for target_index in active_targets.tolist():
+            lifecycle = int(lifecycle_at_frame[frame_index, target_index])
+            query_index = previous_frame_matches.get(lifecycle)
+            if query_index is None or query_index in used_queries:
+                continue
+            if not bool(pred_active[frame_index, query_index]):
+                continue
+            distance = torch.linalg.vector_norm(
+                pred_position[frame_index, query_index]
+                - target_position[frame_index, target_index]
+            )
+            typed_max_distance = torch.as_tensor(
+                max_distance,
+                dtype=distance.dtype,
+                device=distance.device,
+            )
+            if bool(torch.isfinite(distance) & (distance <= typed_max_distance)):
+                current_matches[lifecycle] = query_index
+                used_queries.add(query_index)
+
+        remaining_targets = [
+            target_index
+            for target_index in active_targets.tolist()
+            if int(lifecycle_at_frame[frame_index, target_index])
+            not in current_matches
+        ]
+        remaining_queries = [
+            query_index
+            for query_index in active_queries.tolist()
+            if query_index not in used_queries
+        ]
+        if remaining_targets and remaining_queries:
+            distances = torch.cdist(
+                target_position[frame_index, remaining_targets],
+                pred_position[frame_index, remaining_queries],
+            )
+            for target_row, query_column in _gated_one_to_one_assignment(
+                distances,
+                max_distance=max_distance,
+            ):
+                target_index = remaining_targets[target_row]
+                lifecycle = int(lifecycle_at_frame[frame_index, target_index])
+                current_matches[lifecycle] = remaining_queries[query_column]
+
+        for lifecycle, query_index in current_matches.items():
+            previous_query = last_valid_matches.get(lifecycle)
+            if previous_query is not None and previous_query != query_index:
+                switches += 1.0
+            last_valid_matches[lifecycle] = query_index
+        previous_frame_matches = current_matches
+
+    return switches
+
+
 def common_lifecycle_tracking_metrics(
     prediction: dict[str, Tensor],
     batch: dict[str, Tensor],
@@ -172,9 +357,12 @@ def common_lifecycle_tracking_metrics(
     *,
     config: TrackingMetricConfig,
 ) -> dict[str, Tensor]:
-    """Compute common metrics without connecting IDs across inactive gaps."""
+    """Compute shared lifecycle metrics as means over evaluated sequences."""
     pred_position = prediction["position"]
     pred_active = prediction["presence_logits"].sigmoid() >= config.presence_threshold
+    batch_size = int(pred_position.shape[0])
+    if batch_size <= 0:
+        raise ValueError("tracking metrics require a non-empty batch.")
     aligned_presence = torch.zeros_like(pred_active)
     position_errors: list[Tensor] = []
     birth_errors: list[Tensor] = []
@@ -217,22 +405,16 @@ def common_lifecycle_tracking_metrics(
             death_errors.extend(segment_death)
             query_reuse += reuse
 
-            for birth, death, _ in target_segments:
-                segment_range = torch.arange(birth, death, device=pred_position.device)
-                distances = torch.linalg.vector_norm(
-                    pred_position[batch_index, segment_range]
-                    - batch["target_position"][
-                        batch_index, segment_range, target_index, None
-                    ],
-                    dim=-1,
-                ).masked_fill(~pred_active[batch_index, segment_range], float("inf"))
-                has_prediction = pred_active[batch_index, segment_range].any(-1)
-                nearest = distances.argmin(-1)
-                consecutive = has_prediction[:-1] & has_prediction[1:]
-                if consecutive.any():
-                    segment_switches += (
-                        (nearest[1:] != nearest[:-1]) & consecutive
-                    ).sum()
+    for batch_index in range(batch_size):
+        segment_switches += _lifecycle_id_switch_count(
+            pred_position[batch_index],
+            pred_active[batch_index],
+            batch["target_position"][batch_index],
+            batch["target_presence"][batch_index],
+            batch["target_instance_id"][batch_index],
+            batch["frame_mask"][batch_index],
+            max_distance=config.id_switch_distance,
+        )
 
     valid = batch["frame_mask"].unsqueeze(-1)
     true_positive = (pred_active & aligned_presence & valid).sum()
@@ -287,6 +469,12 @@ def common_lifecycle_tracking_metrics(
                 illegal_overlap += active_ids.numel() - active_ids.unique().numel()
 
     zero = pred_position.new_zeros(())
+    normalized_query_reuse = query_reuse / batch_size
+    normalized_illegal_overlap = illegal_overlap / batch_size
+    normalized_segment_switches = segment_switches / batch_size
+    normalized_duplicate = duplicate / batch_size
+    normalized_missed = missed / batch_size
+    normalized_inactive_false_positive = inactive_false_positive / batch_size
     return {
         "position_error": (
             torch.stack(position_errors).mean() if position_errors else zero
@@ -301,13 +489,13 @@ def common_lifecycle_tracking_metrics(
         "death_frame_error": (
             torch.stack(death_errors).mean() if death_errors else zero
         ),
-        "query_reuse_count": query_reuse,
-        "illegal_overlap_count": illegal_overlap,
-        "segment_id_switches": segment_switches,
-        "id_switches": segment_switches,
-        "duplicate_active_tracks": duplicate,
-        "missed_gt_frames": missed,
-        "inactive_query_false_positives": inactive_false_positive,
+        "query_reuse_count": normalized_query_reuse,
+        "illegal_overlap_count": normalized_illegal_overlap,
+        "segment_id_switches": normalized_segment_switches,
+        "id_switches": normalized_segment_switches,
+        "duplicate_active_tracks": normalized_duplicate,
+        "missed_gt_frames": normalized_missed,
+        "inactive_query_false_positives": normalized_inactive_false_positive,
     }
 
 

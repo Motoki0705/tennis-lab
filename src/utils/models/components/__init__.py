@@ -5,7 +5,7 @@ This package provides reusable building blocks used across tasks:
 - Attention: `MultiHeadSelfAttention`, `MultiHeadCrossAttention`
 - Norm: `RMSNorm`, `LayerNorm`
 - RoPE: 1D (`precompute_freqs_cis`) and interleaved N-D (`precompute_freqs_cis_nd`, `apply_rotary_emb`)
-- FFN: `SwiGLU`, `MLP`, `default_ffn_dim`
+- FFN: SwiGLU variants, `MLP`, `build_ffn`, `default_ffn_dim`
 - Blocks: `TransformerBlock`, `TransformerBlockConfig`, `CrossAttnBlockConfig`, `CrossAttnBlock`
 - Compressed temporal attention: `CSWAConfig`, `CompressedSlidingWindowSelfAttention`
 
@@ -29,7 +29,17 @@ from src.utils.models.components.cswa import (
     CompressedSlidingWindowSelfAttention,
     CSWAConfig,
 )
-from src.utils.models.components.ffn_layers import MLP, SwiGLU, default_ffn_dim
+from src.utils.models.components.ffn_layers import (
+    MLP,
+    SUPPORTED_FFN_TYPES,
+    DeepSeekV4SwiGLU,
+    FFNType,
+    GPTOSSSwiGLU,
+    KimiK3SiTUGLU,
+    SwiGLU,
+    build_ffn,
+    default_ffn_dim,
+)
 from src.utils.models.components.fixed_query_track_ablation_stage import (
     FFNMode,
     FixedQueryTrackAblationStage,
@@ -60,8 +70,13 @@ __all__ = [
     "precompute_freqs_cis_nd",
     "apply_rotary_emb",
     # FFN
+    "DeepSeekV4SwiGLU",
+    "FFNType",
+    "GPTOSSSwiGLU",
+    "KimiK3SiTUGLU",
     "MLP",
     "SwiGLU",
+    "build_ffn",
     "default_ffn_dim",
     # Blocks
     "TransformerBlockConfig",
@@ -72,4 +87,5 @@ __all__ = [
     "FixedQueryTrackAblationStage",
     "FixedQueryTrackStage",
     "MHCWriteback",
+    "SUPPORTED_FFN_TYPES",
 ]

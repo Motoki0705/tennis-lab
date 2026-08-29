@@ -198,17 +198,6 @@ def get_extensions() -> list[Any]:
         "nvcc": ["-O3", "--use_fast_math"],
     }
     extensions = []
-    if build_target == ALL_CUDA_OPS:
-        extensions.append(
-            CUDAExtension(
-                name="src.utils.models.components.ops.time_local._C",
-                sources=[
-                    str(build_paths.time_local_bindings),
-                    str(build_paths.time_local_kernels),
-                ],
-                extra_compile_args=common_compile_args,
-            )
-        )
     extensions.append(
         CUDAExtension(
             name="src.utils.models.components.ops.compressed_time_local._C",

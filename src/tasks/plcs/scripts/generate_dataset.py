@@ -1,13 +1,15 @@
 """Generate PLCS scenes for training with Hydra-managed configuration.
 
 Usage:
-    python -m src.tasks.plcs.scripts.generate_dataset
-    python -m src.tasks.plcs.scripts.generate_dataset run.output_dir=plcs simulation.num_scenes=10
-    python -m src.tasks.plcs.scripts.generate_dataset run.device=cpu run.num_workers=4
+    .venv/bin/python -m src.tasks.plcs.scripts.generate_dataset
+    .venv/bin/python -m src.tasks.plcs.scripts.generate_dataset generation=multi_object run.output_dir=plcs/multi_object
+    .venv/bin/python -m src.tasks.plcs.scripts.generate_dataset camera=broadcast run.output_dir=plcs/single_object_broadcast
+    .venv/bin/python -m src.tasks.plcs.scripts.generate_dataset generation=multi_object camera=broadcast run.output_dir=plcs/multi_object_broadcast
 
 Notes:
     - Configuration is loaded from `src/tasks/plcs/configs/generate_dataset.yaml`.
     - The script uses Hydra for configuration loading.
+    - The default output is `data/plcs/single_object`; overrides are relative to `paths.data_root`.
     - Parallel scene generation uses worker processes for scene synthesis only.
     - `generation` changes only object cardinality; both modes use the same simulator and writer.
 """

@@ -103,6 +103,38 @@ weights are not auto-remapped, dual-written, or upgraded in place. Changing
 semantics requires dataset regeneration and model retraining; rollback is an
 explicit return to `physical_v1` with matching v1 artifacts.
 
+## Human-readable dataset samples
+
+Generated PLCS and BLCS datasets keep machine payloads under `scenes/` and a
+small human-inspection surface beside it:
+
+```text
+<dataset>/
+├── scenes/
+└── samples/
+    ├── *.gif
+    └── manifest.json
+```
+
+`src.tasks.{plcs,blcs}.scripts.generate_dataset_samples` are the canonical
+entry points. Their default configs cover the four physical-v1 production
+layouts plus `multi_object_camera_view_v2`. Each dataset contributes one scene
+from every cell of a 3×3 stratification rather than the first N scene IDs.
+
+- PLCS single: motion category × within-category frame-count tercile.
+- BLCS single: deuce/ad/behind-baseline first-hit region × within-region
+  frame-count tercile.
+- PLCS/BLCS multi: track-count tercile × within-band total-active-frame
+  tercile.
+
+Visibility and a task-owned auxiliary statistic are offset quantile tie-breaks,
+and the rendered camera itself is selected at a low/mid/high visibility rank.
+GIF timelines include both endpoints and at most 120 evenly spaced frames;
+playback FPS is bounded while approximately preserving source duration.
+`manifest.json` records every threshold, stratum population, scene metric,
+camera choice, and exact source-frame index. Missing strata, malformed timing,
+and invisible-only camera sets are errors rather than fallback selections.
+
 ## Reference-camera track-query model contract
 
 CourtKP and track-query RoPE are independently versioned. Only these exact

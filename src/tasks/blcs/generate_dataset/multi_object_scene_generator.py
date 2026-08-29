@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import random
 from collections.abc import Iterator, Mapping
 from typing import Any, Protocol
@@ -16,19 +15,17 @@ from src.tasks.base.generate_dataset.timeline_composer import (
     TimelineConfig,
     TrackPlacement,
 )
+from src.tasks.blcs.generate_dataset.physics_retry import (
+    generate_with_bounded_physics_resampling,
+)
 from src.tasks.blcs.generate_dataset.scene_generator import (
     BLCSSceneData,
     CameraData,
-)
-from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
-    is_retryable_full_physics_rejection,
 )
 from src.utils.projection.camera_projector import (
     CameraProjector,
     camera_from_mapping,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class _BLCSSceneSource(Protocol):
@@ -100,43 +97,15 @@ class MultiBallSceneGenerator:
         self.composer = TimelineComposer(self.timeline, rng=rng)
 
     def _generate_ball(self, scene_id: str) -> BLCSSceneData:
-        last_rejection: RuntimeError | None = None
-        last_reason = "BLCS physical scene generation returned no scene."
-        for attempt in range(1, self.maximum_physics_attempts_per_object + 1):
-            try:
-                scene = self.scene_generator.generate_scene(
-                    self.scene_generator.sample_from_cell(),
-                    self.scene_generator.sample_side(),
-                    scene_id,
-                )
-            except RuntimeError as error:
-                if not is_retryable_full_physics_rejection(error):
-                    raise
-                last_rejection = error
-                last_reason = str(error)
-                continue
-            if scene is not None:
-                if attempt > 1:
-                    logger.info(
-                        "Accepted BLCS physics proposal for %s after bounded "
-                        "resampling (attempt %s/%s); last_rejection=%s",
-                        scene_id,
-                        attempt,
-                        self.maximum_physics_attempts_per_object,
-                        last_reason,
-                    )
-                return scene
-            last_rejection = None
-            last_reason = "BLCS physical scene generation returned no scene."
-
-        exhausted = RuntimeError(
-            "BLCS physical scene generation exhausted "
-            f"{self.maximum_physics_attempts_per_object} bounded attempts for "
-            f"{scene_id!r}; last_rejection={last_reason}"
+        return generate_with_bounded_physics_resampling(
+            lambda: self.scene_generator.generate_scene(
+                self.scene_generator.sample_from_cell(),
+                self.scene_generator.sample_side(),
+                scene_id,
+            ),
+            scene_id=scene_id,
+            maximum_attempts=self.maximum_physics_attempts_per_object,
         )
-        if last_rejection is not None:
-            raise exhausted from last_rejection
-        raise exhausted
 
     def generate_scene(self, scene_id: str) -> BLCSSceneData:
         """Generate one fixed-length multi-ball lifecycle scene."""

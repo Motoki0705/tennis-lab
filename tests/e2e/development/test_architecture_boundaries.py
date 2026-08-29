@@ -56,6 +56,11 @@ REMOVED_MODULES = (
     "src.utils.models.components.ops.moe._autograd",
     "src.utils.models.components.ops.moe.api",
     "src.utils.models.components.ops.moe.reference",
+    "src.utils.models.components.ops.time_local",
+    "src.utils.models.components.ops.time_local._autograd",
+    "src.utils.models.components.ops.time_local.api",
+    "src.utils.models.components.ops.time_local.layout",
+    "src.utils.models.components.ops.time_local.reference",
 )
 PROHIBITED_SYMBOLS = frozenset(
     {

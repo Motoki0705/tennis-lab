@@ -8,6 +8,8 @@ import torch
 from torch import nn
 
 from src.tasks.slcs.models.slcs_model import SLCSFusionModel
+from src.utils.models.components import CrossAttnBlock, TransformerBlock
+from src.utils.models.components.ffn_layers import DeepSeekV4SwiGLU, FFNType
 
 
 def _model(
@@ -15,6 +17,7 @@ def _model(
     num_shared_layers: int,
     num_position_layers: int = 0,
     num_rotation_layers: int = 0,
+    ffn_type: FFNType = "swiglu",
 ) -> SLCSFusionModel:
     return SLCSFusionModel(
         hidden_dim=32,
@@ -28,7 +31,7 @@ def _model(
         rope_theta_time=10000.0,
         rope_theta_entity=10000.0,
         attention_type="mha",
-        ffn_type="swiglu",
+        ffn_type=ffn_type,
         num_players=2,
         num_court_kp=14,
         max_seq_len=8,
@@ -41,6 +44,23 @@ def _model(
         log_b_min=-6.0,
         log_b_max=3.0,
     )
+
+
+def test_configured_ffn_reaches_shared_split_and_cross_attention_layers() -> None:
+    model = _model(
+        num_shared_layers=1,
+        num_position_layers=1,
+        num_rotation_layers=1,
+        ffn_type="deepseek_v4_swiglu",
+    )
+
+    blocks = [
+        module
+        for module in model.modules()
+        if isinstance(module, (TransformerBlock, CrossAttnBlock))
+    ]
+    assert blocks
+    assert all(isinstance(block.ffn, DeepSeekV4SwiGLU) for block in blocks)
 
 
 def _inputs() -> dict[str, torch.Tensor]:

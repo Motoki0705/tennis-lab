@@ -1,3 +1,8 @@
 mode: single_object
 min_balls: 1
 max_balls: 1
+
+# A rejected full-physics rally is one stochastic scene proposal. Re-sample
+# the complete proposal within this explicit finite budget; exhaustion is a
+# hard error and unexpected failures are never retried.
+maximum_physics_attempts_per_scene: 64

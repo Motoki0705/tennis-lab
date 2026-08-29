@@ -19,7 +19,7 @@ from src.tasks.blcs.models.blcs_track_query_ablation_model import (
     BLCSTrackQueryAblationModel,
 )
 from src.tasks.blcs.models.blcs_track_query_model import BLCSTrackQueryModel
-from src.utils.models.components.ffn_layers import SwiGLU
+from src.utils.models.components.ffn_layers import FFNType, GPTOSSSwiGLU, SwiGLU
 from src.utils.models.components.fixed_query_track_ablation_stage import (
     FFNMode,
     FixedQueryTrackAblationStage,
@@ -42,6 +42,7 @@ def _raw_model() -> dict[str, object]:
         "num_heads": 4,
         "num_stages": 4,
         "ffn_dim": 32,
+        "ffn_type": "swiglu",
         "num_queries": 4,
         "rope_dim": 4,
         "dropout": 0.0,
@@ -69,8 +70,11 @@ def _config(
     ffn_mode: FFNMode,
     mhc_writeback: MHCWriteback,
     query_ffn_after_spatial: bool = False,
+    *,
+    ffn_type: FFNType = "swiglu",
 ) -> TrackQueryAblationModelConfig:
     raw = _raw_model()
+    raw["ffn_type"] = ffn_type
     raw["ffn_mode"] = ffn_mode
     raw["mhc_writeback"] = mhc_writeback
     raw["query_ffn_after_spatial"] = query_ffn_after_spatial
@@ -94,9 +98,16 @@ def _model(
     ffn_mode: FFNMode,
     mhc_writeback: MHCWriteback,
     query_ffn_after_spatial: bool = False,
+    *,
+    ffn_type: FFNType = "swiglu",
 ) -> BLCSTrackQueryAblationModel:
     model = BLCSTrackQueryAblationModel(
-        _config(ffn_mode, mhc_writeback, query_ffn_after_spatial)
+        _config(
+            ffn_mode,
+            mhc_writeback,
+            query_ffn_after_spatial,
+            ffn_type=ffn_type,
+        )
     )
     model.eval()
     return model
@@ -134,7 +145,6 @@ def _forward(
 
 
 def test_ablation_model_is_a_distinct_named_public_architecture() -> None:
-    assert BLCSTrackQueryAblationModel is not BLCSTrackQueryModel
     assert BLCSTrackQueryAblationModel.__name__ == "BLCSTrackQueryAblationModel"
     assert BLCSTrackQueryAblationModel.__module__.endswith(
         ".blcs_track_query_ablation_model"
@@ -193,6 +203,21 @@ def test_five_conditions_build_exact_stage_ffn_ownership_and_parameter_counts() 
     assert parameter_counts["B"] == parameter_counts["D"]
     assert parameter_counts["A"] > parameter_counts["B"]
     assert parameter_counts["D"] < parameter_counts["E"] < parameter_counts["A"]
+
+
+def test_configured_ffn_reaches_shared_and_query_only_stage_ffns() -> None:
+    model = _model(
+        "shared",
+        "layer_end",
+        True,
+        ffn_type="gpt_oss_swiglu",
+    )
+
+    assert all(isinstance(stage.shared_ffn, GPTOSSSwiGLU) for stage in model.stages)
+    assert all(
+        isinstance(stage.query_ffn_after_spatial, GPTOSSSwiGLU)
+        for stage in model.stages
+    )
 
 
 @pytest.mark.parametrize(
