@@ -34,9 +34,7 @@ def court_line_inference_identity(
     return {
         "schema": "court_line_inference_identity_v1",
         "checkpoint_sha256": _sha256_file(settings.checkpoint_path),
-        "backbone_checkpoint_sha256": _sha256_file(
-            settings.backbone_checkpoint_path
-        ),
+        "backbone_checkpoint_sha256": _sha256_file(settings.backbone_checkpoint_path),
         "architecture": asdict(settings.architecture),
         "expected_short_side": settings.expected_short_side,
         "device": settings.device,
@@ -113,7 +111,9 @@ def load_or_predict_line_probabilities(
 def _cache_base(scene: StandardSceneExport) -> Path:
     export_root = scene.export_root
     if export_root.name != "export" or export_root.parent.name != "reconstruction":
-        raise ValueError("Court-line cache requires the canonical reconstruction export.")
+        raise ValueError(
+            "Court-line cache requires the canonical reconstruction export."
+        )
     return _ordinary_directory(export_root.parent.parent / "court-line-inference")
 
 
@@ -175,9 +175,7 @@ def _atomic_save_array(path: Path, probability: NDArray[np.float32]) -> None:
 def _render_probability(probability: NDArray[np.float32]) -> NDArray[np.uint8]:
     intensity = np.rint(np.clip(probability, 0.0, 1.0) * 255.0).astype(np.uint8)
     colored_bgr = cv2.applyColorMap(intensity, cv2.COLORMAP_TURBO)
-    colored = np.asarray(
-        cv2.cvtColor(colored_bgr, cv2.COLOR_BGR2RGB), dtype=np.uint8
-    )
+    colored = np.asarray(cv2.cvtColor(colored_bgr, cv2.COLOR_BGR2RGB), dtype=np.uint8)
     colored[probability <= 0.0] = 0
     return cast(NDArray[np.uint8], colored)
 
@@ -221,6 +219,15 @@ def _atomic_write_json(path: Path, payload: Mapping[str, object]) -> None:
 
 
 def _mirror_file(source: Path, destination: Path) -> None:
+    if destination.exists() or destination.is_symlink():
+        if destination.is_symlink() or not destination.is_file():
+            raise ValueError(
+                f"Court-line inference mirror must be an ordinary file: {destination}"
+            )
+        if source.stat().st_size == destination.stat().st_size and _sha256_file(
+            source
+        ) == _sha256_file(destination):
+            return
     descriptor, temporary_name = tempfile.mkstemp(
         prefix=f".{destination.name}.", suffix=".uploading", dir=destination.parent
     )

@@ -24,7 +24,9 @@ def test_dry_run_fixes_scene_order_terminal_stage_and_input_hashes() -> None:
 
     assert completed.returncode == 0, completed.stderr
     output = completed.stdout
-    scene_positions = [output.index(f"scene={scene} gpu-command=") for scene in ("B01", "B02", "B03")]
+    scene_positions = [
+        output.index(f"scene={scene} gpu-command=") for scene in ("B01", "B02", "B03")
+    ]
     assert scene_positions == sorted(scene_positions)
     for profile in ("b01", "b02", "b03"):
         command = (
@@ -38,7 +40,6 @@ def test_dry_run_fixes_scene_order_terminal_stage_and_input_hashes() -> None:
             "TENNIS_LAB_ALIGNMENT_INFERENCE_MIRROR_ROOT=<run>/"
             f"{profile.upper()}/court-line-inference "
             "TENNIS_LAB_ALIGNMENT_HOLDOUT_CAMERA_PREFIX_COUNT=72 "
-            "TENNIS_LAB_ALIGNMENT_MAXIMUM_UNEXPLAINED_EVIDENCE_FRACTION=0.5 "
             ".venv/bin/python -m "
             "src.synthetic_data_generation.scripts.run_scene_pipeline "
             f"profile={profile} request.from_stage=alignment "
@@ -46,6 +47,7 @@ def test_dry_run_fixes_scene_order_terminal_stage_and_input_hashes() -> None:
         )
         assert output.count(alignment_command) == 1
     assert "TENNIS_LAB_ALIGNMENT_LINE_DEVICE=cpu" not in output
+    assert "TENNIS_LAB_ALIGNMENT_MAXIMUM_UNEXPLAINED" not in output
     assert output.count("save-after=reconstruction,alignment") == 3
     for expected_hash in (
         "c9608e911f86274a862a289927ff9d0cc587543f836ffbdcad127f8ce61b5d56",

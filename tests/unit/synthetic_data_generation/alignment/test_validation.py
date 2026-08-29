@@ -223,7 +223,7 @@ def test_excluded_camera_diagnostics_round_trip_and_reject_reason_tampering(
     )
 
     assert validated.to_dict() == result.to_dict()
-    assert persisted_evidence["schema"] == "alignment_measured_evidence_v11"
+    assert persisted_evidence["schema"] == "alignment_measured_evidence_v12"
     assert persisted_evidence["excluded_cameras"] == [
         item.to_dict() for item in exclusions
     ]

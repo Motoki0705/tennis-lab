@@ -38,9 +38,7 @@ def test_raw_probabilities_are_reused_and_mirrored(
         )
     scene = SimpleNamespace(scene_id="B01", export_root=export_root)
     mirror = tmp_path / "drive/B01/court-line-inference"
-    monkeypatch.setenv(
-        "TENNIS_LAB_ALIGNMENT_INFERENCE_MIRROR_ROOT", str(mirror)
-    )
+    monkeypatch.setenv("TENNIS_LAB_ALIGNMENT_INFERENCE_MIRROR_ROOT", str(mirror))
     calls = 0
 
     def predict(_image: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
@@ -65,6 +63,10 @@ def test_raw_probabilities_are_reused_and_mirrored(
     mirror_manifest = mirror / cache_versions[0].name / "manifest.json"
     assert json.loads(mirror_manifest.read_text()) == manifest
     assert len(list((mirror_manifest.parent / "views").glob("*.png"))) == 2
+    mirrored_probabilities = sorted((mirror_manifest.parent / "views").glob("*.npy"))
+    mirrored_probability_mtimes = tuple(
+        path.stat().st_mtime_ns for path in mirrored_probabilities
+    )
 
     def reject_regeneration(_image: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
         raise AssertionError("cached court detection must not be regenerated")
@@ -79,15 +81,16 @@ def test_raw_probabilities_are_reused_and_mirrored(
 
     for camera_id in first:
         assert np.array_equal(second[camera_id], first[camera_id])
+    assert tuple(path.stat().st_mtime_ns for path in mirrored_probabilities) == (
+        mirrored_probability_mtimes
+    )
 
 
 def test_corrupt_probability_cache_fails_without_regeneration(tmp_path: Path) -> None:
     export_root = tmp_path / "B01/reconstruction/export"
     image_path = export_root / "images/frame.png"
     image_path.parent.mkdir(parents=True)
-    Image.fromarray(np.zeros((4, 6, 3), dtype=np.uint8), mode="RGB").save(
-        image_path
-    )
+    Image.fromarray(np.zeros((4, 6, 3), dtype=np.uint8), mode="RGB").save(image_path)
     scene = SimpleNamespace(scene_id="B01", export_root=export_root)
     camera = SimpleNamespace(
         camera_id="camera-0", source_frame_index=0, image_path=str(image_path)
