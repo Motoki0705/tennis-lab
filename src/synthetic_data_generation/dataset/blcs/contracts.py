@@ -4,20 +4,31 @@ from __future__ import annotations
 
 import math
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Protocol
+from enum import StrEnum
+from pathlib import Path
+from typing import Any, Protocol, TypeVar
 
 import numpy as np
 from numpy.typing import NDArray
 from torch import Tensor
 
-from src.synthetic_data_generation.composition import GaussianAsset
+from src.synthetic_data_generation.composition import (
+    GaussianAsset,
+    GaussianDeformationKind,
+    GaussianFrame,
+    GaussianSceneObject,
+)
 
-BLCS_DATASET_SCHEMA = "canonical_blcs_compact_dataset_v3"
+BLCS_DATASET_SCHEMA = "canonical_blcs_compact_dataset_v4"
+BLCS_DATASET_SCHEMA_V3 = "canonical_blcs_compact_dataset_v3"
 BLCS_SAMPLE_SCHEMA = "canonical_blcs_compact_sample_v1"
+BLCS_BALL_ASSET_SCHEMA = "canonical_blcs_ball_asset_v1"
+BLCS_BALL_COMPOSITION_SCHEMA = "canonical_blcs_ball_composition_v1"
 
 _PORTABLE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+_ParsedT = TypeVar("_ParsedT")
 
 
 class BLCSSceneLike(Protocol):
@@ -255,12 +266,268 @@ class BLCSBallGaussianSettings:
         object.__setattr__(self, "visibility_threshold", visibility)
 
 
+class BLCSBallRendering(StrEnum):
+    """Explicit rendering implementation selected for the physical ball asset."""
+
+    GAUSSIAN = "gaussian"
+    MESH = "mesh"
+
+
+@dataclass(frozen=True, slots=True)
+class BLCSBallMeshAsset:
+    """One validated data-root-owned GLB mesh source."""
+
+    path: Path
+    data_root_relative_path: str
+    maximum_file_bytes: int
+    maximum_source_vertices: int
+    maximum_source_faces: int
+    maximum_faces: int
+
+    def __post_init__(self) -> None:
+        path = self.path
+        if not isinstance(path, Path) or not path.is_absolute():
+            raise ValueError("BLCS mesh asset path must be an absolute pathlib.Path.")
+        if path.suffix.lower() != ".glb":
+            raise ValueError("BLCS mesh asset must use the .glb format.")
+        if path.is_symlink() or not path.is_file():
+            raise FileNotFoundError(
+                f"BLCS mesh asset must be an ordinary existing .glb file: {path}"
+            )
+        relative = _relative_file(
+            self.data_root_relative_path,
+            name="data_root_relative_path",
+        )
+        if Path(relative).suffix.lower() != ".glb":
+            raise ValueError("BLCS mesh asset relative path must end in .glb.")
+        if (
+            isinstance(self.maximum_file_bytes, bool)
+            or not isinstance(self.maximum_file_bytes, int)
+            or self.maximum_file_bytes < 1
+        ):
+            raise ValueError("BLCS mesh maximum_file_bytes must be a positive integer.")
+        if (
+            isinstance(self.maximum_source_vertices, bool)
+            or not isinstance(self.maximum_source_vertices, int)
+            or self.maximum_source_vertices < 4
+        ):
+            raise ValueError(
+                "BLCS mesh maximum_source_vertices must be an integer >= 4."
+            )
+        if (
+            isinstance(self.maximum_source_faces, bool)
+            or not isinstance(self.maximum_source_faces, int)
+            or self.maximum_source_faces < 4
+        ):
+            raise ValueError("BLCS mesh maximum_source_faces must be an integer >= 4.")
+        if (
+            isinstance(self.maximum_faces, bool)
+            or not isinstance(self.maximum_faces, int)
+            or self.maximum_faces < 4
+        ):
+            raise ValueError("BLCS mesh maximum_faces must be an integer >= 4.")
+        if path.stat().st_size > self.maximum_file_bytes:
+            raise ValueError(
+                "BLCS mesh asset exceeds its configured maximum_file_bytes limit."
+            )
+        object.__setattr__(self, "path", path.resolve(strict=True))
+        object.__setattr__(self, "data_root_relative_path", relative)
+
+
+@dataclass(frozen=True, slots=True)
+class BLCSBallAssetMetadata:
+    """Serializable authority for the exact ball geometry used by a plan."""
+
+    rendering: BLCSBallRendering
+    asset_id: str
+    radius_m: float
+    gaussian: GaussianAsset | None = None
+    mesh_data_root_relative_path: str | None = None
+    mesh_maximum_file_bytes: int | None = None
+    mesh_maximum_source_vertices: int | None = None
+    mesh_maximum_source_faces: int | None = None
+    mesh_maximum_faces: int | None = None
+    schema: str = BLCS_BALL_ASSET_SCHEMA
+
+    def __post_init__(self) -> None:
+        if self.schema != BLCS_BALL_ASSET_SCHEMA:
+            raise ValueError(f"Unsupported BLCS ball asset schema: {self.schema!r}.")
+        if not isinstance(self.rendering, BLCSBallRendering):
+            raise TypeError("rendering must be BLCSBallRendering.")
+        _identifier(self.asset_id, name="asset_id")
+        radius = _positive_float(self.radius_m, name="radius_m")
+        if self.rendering is BLCSBallRendering.GAUSSIAN:
+            if not isinstance(self.gaussian, GaussianAsset):
+                raise TypeError("Gaussian BLCS metadata requires one GaussianAsset.")
+            if self.gaussian.asset_id != self.asset_id:
+                raise ValueError("BLCS Gaussian metadata asset IDs disagree.")
+            if (
+                self.mesh_data_root_relative_path is not None
+                or self.mesh_maximum_file_bytes is not None
+                or self.mesh_maximum_source_vertices is not None
+                or self.mesh_maximum_source_faces is not None
+                or self.mesh_maximum_faces is not None
+            ):
+                raise ValueError("Gaussian BLCS metadata cannot declare a mesh source.")
+        else:
+            if self.gaussian is not None:
+                raise ValueError("Mesh BLCS metadata cannot contain Gaussian metadata.")
+            relative = _relative_file(
+                self.mesh_data_root_relative_path,
+                name="mesh_data_root_relative_path",
+            )
+            if Path(relative).suffix.lower() != ".glb":
+                raise ValueError("BLCS mesh metadata path must end in .glb.")
+            if (
+                isinstance(self.mesh_maximum_file_bytes, bool)
+                or not isinstance(self.mesh_maximum_file_bytes, int)
+                or self.mesh_maximum_file_bytes < 1
+            ):
+                raise ValueError(
+                    "BLCS mesh metadata maximum_file_bytes must be positive."
+                )
+            if (
+                isinstance(self.mesh_maximum_source_vertices, bool)
+                or not isinstance(self.mesh_maximum_source_vertices, int)
+                or self.mesh_maximum_source_vertices < 4
+            ):
+                raise ValueError(
+                    "BLCS mesh metadata maximum_source_vertices must be >= 4."
+                )
+            if (
+                isinstance(self.mesh_maximum_source_faces, bool)
+                or not isinstance(self.mesh_maximum_source_faces, int)
+                or self.mesh_maximum_source_faces < 4
+            ):
+                raise ValueError(
+                    "BLCS mesh metadata maximum_source_faces must be >= 4."
+                )
+            if (
+                isinstance(self.mesh_maximum_faces, bool)
+                or not isinstance(self.mesh_maximum_faces, int)
+                or self.mesh_maximum_faces < 4
+            ):
+                raise ValueError("BLCS mesh metadata maximum_faces must be >= 4.")
+            object.__setattr__(self, "mesh_data_root_relative_path", relative)
+        object.__setattr__(self, "radius_m", radius)
+
+    def to_dict(self) -> dict[str, object]:
+        """Return the strict source record persisted in every trajectory plan."""
+        source: dict[str, object]
+        if self.rendering is BLCSBallRendering.GAUSSIAN:
+            assert self.gaussian is not None
+            source = {"gaussian": self.gaussian.to_dict()}
+        else:
+            assert self.mesh_data_root_relative_path is not None
+            assert self.mesh_maximum_file_bytes is not None
+            assert self.mesh_maximum_source_vertices is not None
+            assert self.mesh_maximum_source_faces is not None
+            assert self.mesh_maximum_faces is not None
+            source = {
+                "format": "glb",
+                "appearance_model": "glb_base_color_lambertian_v1",
+                "data_root_relative_path": self.mesh_data_root_relative_path,
+                "maximum_file_bytes": self.mesh_maximum_file_bytes,
+                "maximum_source_vertices": self.mesh_maximum_source_vertices,
+                "maximum_source_faces": self.mesh_maximum_source_faces,
+                "maximum_faces": self.mesh_maximum_faces,
+            }
+        return {
+            "schema": self.schema,
+            "rendering": self.rendering.value,
+            "asset_id": self.asset_id,
+            "asset_class": "ball",
+            "coordinate_space": "right_handed_asset_local_metres",
+            "radius_m": self.radius_m,
+            "source": source,
+        }
+
+    @classmethod
+    def from_dict(cls, value: object) -> BLCSBallAssetMetadata:
+        """Parse the strict plan metadata without reopening the source asset."""
+        raw = _strict_mapping(
+            value,
+            name="BLCS ball asset metadata",
+            keys={
+                "schema",
+                "rendering",
+                "asset_id",
+                "asset_class",
+                "coordinate_space",
+                "radius_m",
+                "source",
+            },
+        )
+        if raw["asset_class"] != "ball":
+            raise ValueError("BLCS asset metadata requires asset_class='ball'.")
+        if raw["coordinate_space"] != "right_handed_asset_local_metres":
+            raise ValueError("BLCS asset metadata uses an unknown coordinate space.")
+        try:
+            rendering = BLCSBallRendering(
+                _string_value(raw["rendering"], name="rendering")
+            )
+        except (TypeError, ValueError) as error:
+            raise ValueError(
+                "BLCS asset metadata has an unknown rendering mode."
+            ) from error
+        source = _strict_mapping(
+            raw["source"],
+            name="BLCS ball asset source",
+            keys={"gaussian"}
+            if rendering is BLCSBallRendering.GAUSSIAN
+            else {
+                "format",
+                "appearance_model",
+                "data_root_relative_path",
+                "maximum_file_bytes",
+                "maximum_source_vertices",
+                "maximum_source_faces",
+                "maximum_faces",
+            },
+        )
+        if rendering is BLCSBallRendering.GAUSSIAN:
+            return cls(
+                schema=_string_value(raw["schema"], name="schema"),
+                rendering=rendering,
+                asset_id=_string_value(raw["asset_id"], name="asset_id"),
+                radius_m=_positive_float(raw["radius_m"], name="radius_m"),
+                gaussian=GaussianAsset.from_dict(source["gaussian"]),
+            )
+        if source["format"] != "glb":
+            raise ValueError("BLCS mesh metadata requires format='glb'.")
+        if source["appearance_model"] != "glb_base_color_lambertian_v1":
+            raise ValueError("BLCS mesh metadata has an unknown appearance model.")
+        return cls(
+            schema=_string_value(raw["schema"], name="schema"),
+            rendering=rendering,
+            asset_id=_string_value(raw["asset_id"], name="asset_id"),
+            radius_m=_positive_float(raw["radius_m"], name="radius_m"),
+            mesh_data_root_relative_path=_string_value(
+                source["data_root_relative_path"], name="data_root_relative_path"
+            ),
+            mesh_maximum_file_bytes=_positive_integer(
+                source["maximum_file_bytes"], name="maximum_file_bytes"
+            ),
+            mesh_maximum_source_vertices=_positive_integer(
+                source["maximum_source_vertices"], name="maximum_source_vertices"
+            ),
+            mesh_maximum_source_faces=_positive_integer(
+                source["maximum_source_faces"], name="maximum_source_faces"
+            ),
+            mesh_maximum_faces=_positive_integer(
+                source["maximum_faces"], name="maximum_faces"
+            ),
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class BLCSCompositionAssets:
-    """The real movable Gaussian asset used by every BLCS render."""
+    """The explicit Gaussian or GLB ball asset used by every BLCS render."""
 
     ball: GaussianAsset
     settings: BLCSBallGaussianSettings
+    rendering: BLCSBallRendering = BLCSBallRendering.GAUSSIAN
+    mesh: BLCSBallMeshAsset | None = None
 
     def __post_init__(self) -> None:
         from src.synthetic_data_generation.composition import GaussianAssetRole
@@ -277,6 +544,126 @@ class BLCSCompositionAssets:
             raise ValueError("BLCS ball assets must use the rgb/linear_rgb appearance contract.")
         if not isinstance(self.settings, BLCSBallGaussianSettings):
             raise TypeError("settings must be BLCSBallGaussianSettings.")
+        if not isinstance(self.rendering, BLCSBallRendering):
+            raise TypeError("rendering must be BLCSBallRendering.")
+        if self.rendering is BLCSBallRendering.GAUSSIAN:
+            if self.mesh is not None:
+                raise ValueError("Gaussian BLCS rendering cannot declare a mesh asset.")
+        elif not isinstance(self.mesh, BLCSBallMeshAsset):
+            raise TypeError("Mesh BLCS rendering requires one BLCSBallMeshAsset.")
+
+    def metadata(self) -> BLCSBallAssetMetadata:
+        """Return the serializable render-source contract for trajectory plans."""
+        if self.rendering is BLCSBallRendering.GAUSSIAN:
+            return BLCSBallAssetMetadata(
+                rendering=self.rendering,
+                asset_id=self.ball.asset_id,
+                radius_m=self.settings.radius_m,
+                gaussian=self.ball,
+            )
+        assert self.mesh is not None
+        return BLCSBallAssetMetadata(
+            rendering=self.rendering,
+            asset_id=self.ball.asset_id,
+            radius_m=self.settings.radius_m,
+            mesh_data_root_relative_path=self.mesh.data_root_relative_path,
+            mesh_maximum_file_bytes=self.mesh.maximum_file_bytes,
+            mesh_maximum_source_vertices=self.mesh.maximum_source_vertices,
+            mesh_maximum_source_faces=self.mesh.maximum_source_faces,
+            mesh_maximum_faces=self.mesh.maximum_faces,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class BLCSBallComposition:
+    """Renderer-neutral rigid ball placement timeline persisted by BLCS."""
+
+    scene_id: str
+    composition_id: str
+    asset: BLCSBallAssetMetadata
+    objects: tuple[GaussianSceneObject, ...]
+    frames: tuple[GaussianFrame, ...]
+    schema: str = BLCS_BALL_COMPOSITION_SCHEMA
+
+    def __post_init__(self) -> None:
+        if self.schema != BLCS_BALL_COMPOSITION_SCHEMA:
+            raise ValueError(
+                f"Unsupported BLCS ball composition schema: {self.schema!r}."
+            )
+        _identifier(self.scene_id, name="scene_id")
+        _identifier(self.composition_id, name="composition_id")
+        if not isinstance(self.asset, BLCSBallAssetMetadata):
+            raise TypeError("asset must be BLCSBallAssetMetadata.")
+        objects = tuple(self.objects)
+        frames = tuple(self.frames)
+        if not objects or any(
+            not isinstance(item, GaussianSceneObject) for item in objects
+        ):
+            raise TypeError("BLCS composition objects must be non-empty scene objects.")
+        if not frames or any(not isinstance(frame, GaussianFrame) for frame in frames):
+            raise TypeError(
+                "BLCS composition frames must be non-empty GaussianFrame values."
+            )
+        if len({item.object_id for item in objects}) != len(objects):
+            raise ValueError("BLCS composition object IDs must be unique.")
+        if len({item.instance_id for item in objects}) != len(objects):
+            raise ValueError("BLCS composition instance IDs must be unique.")
+        if any(item.asset_id != self.asset.asset_id for item in objects):
+            raise ValueError(
+                "BLCS composition objects reference an unknown ball asset."
+            )
+        if any(
+            item.deformation_kind is not GaussianDeformationKind.RIGID
+            for item in objects
+        ):
+            raise ValueError("BLCS ball objects must use rigid deformation.")
+        if tuple(frame.frame_index for frame in frames) != tuple(range(len(frames))):
+            raise ValueError("BLCS composition frames must exactly equal 0..T-1.")
+        object_ids = {item.object_id for item in objects}
+        used: set[str] = set()
+        for frame in frames:
+            for instance in frame.instances:
+                if instance.object_id not in object_ids:
+                    raise ValueError("BLCS frame references an unknown ball object.")
+                used.add(instance.object_id)
+        if used != object_ids:
+            raise ValueError(
+                "Every declared BLCS ball object must appear in the timeline."
+            )
+        object.__setattr__(self, "objects", objects)
+        object.__setattr__(self, "frames", frames)
+
+    def to_dict(self) -> dict[str, object]:
+        """Return the renderer-neutral plan record."""
+        return {
+            "schema": self.schema,
+            "scene_id": self.scene_id,
+            "composition_id": self.composition_id,
+            "asset": self.asset.to_dict(),
+            "objects": [item.to_dict() for item in self.objects],
+            "frames": [frame.to_dict() for frame in self.frames],
+        }
+
+    @classmethod
+    def from_dict(cls, value: object) -> BLCSBallComposition:
+        """Parse one strict renderer-neutral BLCS composition."""
+        raw = _strict_mapping(
+            value,
+            name="BLCS ball composition",
+            keys={"schema", "scene_id", "composition_id", "asset", "objects", "frames"},
+        )
+        return cls(
+            schema=_string_value(raw["schema"], name="schema"),
+            scene_id=_string_value(raw["scene_id"], name="scene_id"),
+            composition_id=_string_value(raw["composition_id"], name="composition_id"),
+            asset=BLCSBallAssetMetadata.from_dict(raw["asset"]),
+            objects=_typed_sequence(
+                raw["objects"], GaussianSceneObject.from_dict, name="objects"
+            ),
+            frames=_typed_sequence(
+                raw["frames"], GaussianFrame.from_dict, name="frames"
+            ),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -501,6 +888,47 @@ def _int_value(value: object, *, name: str) -> int:
     return value
 
 
+def _positive_integer(value: object, *, name: str) -> int:
+    result = _int_value(value, name=name)
+    if result <= 0:
+        raise ValueError(f"{name} must be a positive integer.")
+    return result
+
+
+def _string_value(value: object, *, name: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError(f"{name} must be a string.")
+    return value
+
+
+def _strict_mapping(
+    value: object,
+    *,
+    name: str,
+    keys: set[str],
+) -> Mapping[str, object]:
+    if not isinstance(value, Mapping) or any(not isinstance(key, str) for key in value):
+        raise TypeError(f"{name} must be a string-keyed mapping.")
+    actual = set(value)
+    if actual != keys:
+        raise ValueError(
+            f"{name} has unknown or missing keys: expected={sorted(keys)}, "
+            f"actual={sorted(actual)}."
+        )
+    return value
+
+
+def _typed_sequence(
+    value: object,
+    parser: Callable[[object], _ParsedT],
+    *,
+    name: str,
+) -> tuple[_ParsedT, ...]:
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+        raise TypeError(f"{name} must be an array.")
+    return tuple(parser(item) for item in value)
+
+
 def _relative_file(value: object, *, name: str) -> str:
     if (
         not isinstance(value, str)
@@ -538,10 +966,17 @@ def _json_value(value: object, *, name: str) -> object:
 
 
 __all__ = [
+    "BLCS_BALL_ASSET_SCHEMA",
+    "BLCS_BALL_COMPOSITION_SCHEMA",
     "BLCS_DATASET_SCHEMA",
+    "BLCS_DATASET_SCHEMA_V3",
     "BLCS_SAMPLE_SCHEMA",
+    "BLCSBallAssetMetadata",
+    "BLCSBallComposition",
     "BLCSChunk",
     "BLCSBallGaussianSettings",
+    "BLCSBallMeshAsset",
+    "BLCSBallRendering",
     "BLCSCompositionAssets",
     "BLCSSampleRecord",
     "BLCSSceneLike",

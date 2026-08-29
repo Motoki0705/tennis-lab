@@ -21,7 +21,10 @@ from src.synthetic_data_generation.dataset.blcs.contracts import (
     BLCSCompositionAssets,
     BLCSTrajectory,
 )
-from src.synthetic_data_generation.dataset.blcs.rendering import BLCSNHTRenderer
+from src.synthetic_data_generation.dataset.blcs.rendering import (
+    BLCSMeshNHTRenderer,
+    BLCSNHTRenderer,
+)
 from src.synthetic_data_generation.dataset.blcs.source import BLCSTrajectoryProvider
 from src.synthetic_data_generation.dataset.blcs.timeline import build_blcs_plans
 from src.synthetic_data_generation.dataset.camera_profiles import CameraProfileConfig
@@ -55,7 +58,7 @@ class BLCSDatasetStageHandler:
     seed: int
     assets: BLCSCompositionAssets
     trajectory_provider: BLCSTrajectoryProvider
-    renderer: BLCSNHTRenderer
+    renderer: BLCSNHTRenderer | BLCSMeshNHTRenderer
     _attempt_result: BLCSAssemblyResult | None = field(
         default=None,
         init=False,
@@ -84,6 +87,7 @@ class BLCSDatasetStageHandler:
             raise ValueError(
                 "BLCS metadata_fields must exactly match the emitted canonical provenance."
             )
+        self.renderer.validate_asset()
         alignment = self._load_alignment()
         if not alignment.layout.courts:
             raise ValueError("BLCS requires at least one fit/holdout-accepted court.")
