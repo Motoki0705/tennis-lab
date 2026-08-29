@@ -117,6 +117,7 @@ _LINE_DEVICE_OVERRIDE_ENV = "TENNIS_LAB_ALIGNMENT_LINE_DEVICE"
 _MAXIMUM_UNEXPLAINED_EVIDENCE_ENV = (
     "TENNIS_LAB_ALIGNMENT_MAXIMUM_UNEXPLAINED_EVIDENCE_FRACTION"
 )
+_CAMERA_PREFIX_COUNT_OVERRIDE_ENV = "TENNIS_LAB_ALIGNMENT_CAMERA_PREFIX_COUNT"
 
 
 class LineProbabilityDetector(Protocol):
@@ -1304,6 +1305,20 @@ class ProductionAlignmentEvidenceSource(MeasuredAlignmentEvidenceSource):
         resolver: PathResolver,
         policy: AlignmentAcceptancePolicy,
     ) -> None:
+        camera_prefix_count_text = os.environ.get(_CAMERA_PREFIX_COUNT_OVERRIDE_ENV)
+        if camera_prefix_count_text is not None:
+            try:
+                camera_prefix_count = int(camera_prefix_count_text)
+            except ValueError as error:
+                raise ValueError(
+                    f"{_CAMERA_PREFIX_COUNT_OVERRIDE_ENV} must be an integer."
+                ) from error
+            if not settings.camera_prefix_count <= camera_prefix_count <= 96:
+                raise ValueError(
+                    f"{_CAMERA_PREFIX_COUNT_OVERRIDE_ENV} must lie between "
+                    f"{settings.camera_prefix_count} and 96."
+                )
+            settings = replace(settings, camera_prefix_count=camera_prefix_count)
         super().__init__(
             settings,
             ProductionCourtLineDetector(

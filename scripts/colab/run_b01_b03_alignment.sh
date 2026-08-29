@@ -100,7 +100,7 @@ print_dry_run() {
         profile="${scene,,}"
         log "dry-run asset=${DRIVE_DATA_ROOT}/synthetic_data_generation/raw/${scene}.mp4 sha256=${VIDEO_SHA256[${scene}]}"
         log "dry-run scene=${scene} gpu-command=.venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline profile=${profile} request.from_stage=ingest request.through_stage=reconstruction"
-        log "dry-run scene=${scene} shared-gpu-command=TENNIS_LAB_ALIGNMENT_INFERENCE_MIRROR_ROOT=<run>/${scene}/court-line-inference TENNIS_LAB_ALIGNMENT_MAXIMUM_UNEXPLAINED_EVIDENCE_FRACTION=0.5 .venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline profile=${profile} request.from_stage=alignment request.through_stage=alignment"
+        log "dry-run scene=${scene} shared-gpu-command=TENNIS_LAB_ALIGNMENT_INFERENCE_MIRROR_ROOT=<run>/${scene}/court-line-inference TENNIS_LAB_ALIGNMENT_CAMERA_PREFIX_COUNT=72 TENNIS_LAB_ALIGNMENT_MAXIMUM_UNEXPLAINED_EVIDENCE_FRACTION=0.5 .venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline profile=${profile} request.from_stage=alignment request.through_stage=alignment"
         log "dry-run scene=${scene} save-after=reconstruction,alignment"
         log "dry-run scene=${scene} verify=alignment,line-heatmaps,no-datasets,no-report"
     done
@@ -379,6 +379,7 @@ run_alignment() {
         MPLBACKEND="${MPLBACKEND:-Agg}" \
         PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}" \
         TENNIS_LAB_ALIGNMENT_INFERENCE_MIRROR_ROOT="${destination}/court-line-inference" \
+        TENNIS_LAB_ALIGNMENT_CAMERA_PREFIX_COUNT=72 \
         TENNIS_LAB_ALIGNMENT_MAXIMUM_UNEXPLAINED_EVIDENCE_FRACTION=0.5 \
         .venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
             "profile=${profile}" \

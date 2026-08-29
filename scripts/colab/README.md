@@ -14,6 +14,8 @@
 
 court detectionの生確率マップは`<scene>/court-line-inference/<fingerprint>/`へ視点単位で原子的にキャッシュする。fingerprintはモデル・backbone・前処理・実行deviceだけに依存し、後段の投影、コート数探索、受理閾値を変更しても再推論しない。各NPY、閲覧用PNG、進捗manifestは生成直後にDriveの同名ディレクトリへミラーし、各alignment試行ログも`alignment-attempts/`へ保存する。
 
+Colab実行では固定カメラprefixを72視点（fit 48、holdout 24）へ拡張する。既存prefixと同じnested-uniform順序を保つため、48視点キャッシュがある場合は先頭48視点を再利用し、追加24視点だけを推論する。
+
 ```text
 /content/drive/MyDrive/tennis_lab/outputs/synthetic_data_generation/
   alignment-runs/<UTC時刻>-<commit>/<scene>/

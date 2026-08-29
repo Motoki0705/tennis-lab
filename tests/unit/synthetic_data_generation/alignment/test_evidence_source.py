@@ -28,6 +28,7 @@ from src.synthetic_data_generation.alignment.evidence_source import (
     _MAXIMUM_RETAINED_PROPOSAL_STATE_COUNT,
     _MAXIMUM_TILE_STATE_COUNT,
     MeasuredAlignmentEvidenceSource,
+    ProductionAlignmentEvidenceSource,
     ProductionCourtLineDetector,
     _assign_candidate_evidence,
     _center_space_tiles,
@@ -167,6 +168,33 @@ def test_production_line_detector_rejects_unknown_runtime_override(
             _settings(tmp_path).line_model,
             cast(Any, object()),
             seed=42,
+        )
+
+
+def test_production_source_accepts_audited_camera_prefix_expansion(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("TENNIS_LAB_ALIGNMENT_CAMERA_PREFIX_COUNT", "72")
+
+    source = ProductionAlignmentEvidenceSource(
+        _settings(tmp_path),
+        cast(Any, object()),
+        cast(Any, object()),
+    )
+
+    assert source._settings.camera_prefix_count == 72
+
+
+def test_production_source_rejects_unbounded_camera_prefix_expansion(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("TENNIS_LAB_ALIGNMENT_CAMERA_PREFIX_COUNT", "120")
+
+    with pytest.raises(ValueError, match="must lie between 3 and 96"):
+        ProductionAlignmentEvidenceSource(
+            _settings(tmp_path),
+            cast(Any, object()),
+            cast(Any, object()),
         )
 
 
