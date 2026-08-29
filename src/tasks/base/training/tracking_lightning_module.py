@@ -10,6 +10,13 @@ from typing import Any, Generic, TypeVar
 from torch import Tensor
 
 from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.base.training.metric_logging import (
+    MetricContractError,
+    MetricLoggingContract,
+    MetricPartition,
+    MetricStatisticsAccumulator,
+    ScalarMetricStatistic,
+)
 
 PredictionT = TypeVar("PredictionT")
 
@@ -21,6 +28,7 @@ class TrackingStepResult(Generic[PredictionT]):
     losses: Mapping[str, Tensor]
     metrics: Mapping[str, Tensor]
     prediction: PredictionT
+    statistics: Mapping[str, ScalarMetricStatistic] | None = None
 
 
 class TrackingLightningModule(BaseLightningModule, ABC, Generic[PredictionT]):
@@ -29,6 +37,18 @@ class TrackingLightningModule(BaseLightningModule, ABC, Generic[PredictionT]):
     Task subclasses retain model-I/O preparation, matching, losses, metrics, and
     prediction payload schemas behind the two hooks below.
     """
+
+    metric_logging_contract: MetricLoggingContract
+
+    def __init__(self, config: Any) -> None:
+        super().__init__(config)
+        contract = getattr(self, "metric_logging_contract", None)
+        if not isinstance(contract, MetricLoggingContract):
+            raise TypeError(
+                f"{type(self).__name__} must define a MetricLoggingContract."
+            )
+        self._validation_metric_accumulator = MetricStatisticsAccumulator()
+        self._test_metric_accumulator = MetricStatisticsAccumulator()
 
     @abstractmethod
     def compute_tracking_step(
@@ -69,26 +89,36 @@ class TrackingLightningModule(BaseLightningModule, ABC, Generic[PredictionT]):
         self.log(
             f"{stage}/loss",
             result.losses["total"],
-            on_step=stage == "train",
+            on_step=False,
             on_epoch=True,
             batch_size=batch_size,
+            prog_bar=stage != "test",
         )
-        for name, value in result.losses.items():
-            if name != "total":
-                self.log(
-                    f"{stage}/loss_{name}",
-                    value,
-                    on_step=False,
-                    on_epoch=True,
-                    batch_size=batch_size,
+        if stage == "train":
+            if result.statistics:
+                raise MetricContractError(
+                    "Tracking training steps must not compute metric statistics."
                 )
-        for name, value in result.metrics.items():
-            self.log(
-                f"{stage}/{name}",
-                value,
-                on_step=False,
-                on_epoch=True,
-                batch_size=batch_size,
+            return result
+        if result.statistics is None:
+            raise MetricContractError(
+                f"Tracking {stage} step did not provide metric statistics."
+            )
+        accumulator = (
+            self._validation_metric_accumulator
+            if stage == "val"
+            else self._test_metric_accumulator
+        )
+        accumulator.update(result.statistics)
+        if stage == "test":
+            accumulator.update(
+                {
+                    f"loss_{name}": ScalarMetricStatistic.from_mean(
+                        value, weight=batch_size
+                    )
+                    for name, value in result.losses.items()
+                    if name != "total"
+                }
             )
         return result
 
@@ -112,13 +142,45 @@ class TrackingLightningModule(BaseLightningModule, ABC, Generic[PredictionT]):
         self.collect_test_predictions(batch, output)
         return output
 
+    def on_test_epoch_start(self) -> None:
+        self._reset_test_prediction_buffer()
+        self._test_metric_accumulator.reset()
+
+    def on_validation_epoch_start(self) -> None:
+        self._validation_metric_accumulator.reset()
+
+    def _finalize_tracking_metrics(self, stage: str) -> MetricPartition:
+        accumulator = (
+            self._validation_metric_accumulator
+            if stage == "val"
+            else self._test_metric_accumulator
+        )
+        partition = self.metric_logging_contract.partition(
+            stage,
+            accumulator.compute(),
+        )
+        stage_contract = self.metric_logging_contract.for_stage(stage)
+        for name, value in partition.headline.items():
+            self.log(
+                f"{stage}/{name}",
+                value,
+                on_step=False,
+                on_epoch=True,
+                prog_bar=name in stage_contract.progress_bar_keys,
+            )
+        return partition
+
+    def on_validation_epoch_end(self) -> None:
+        self._finalize_tracking_metrics("val")
+
     def on_test_epoch_end(self) -> None:
-        metrics = {
-            key.removeprefix("test/"): float(value.detach().cpu())
-            for key, value in self.trainer.callback_metrics.items()
-            if key.startswith("test/") and isinstance(value, Tensor)
-        }
-        self.save_test_predictions(metrics)
+        partition = self._finalize_tracking_metrics("test")
+        self.save_test_predictions(
+            metrics={key: float(value) for key, value in partition.headline.items()},
+            diagnostic_metrics={
+                key: float(value) for key, value in partition.diagnostics.items()
+            },
+        )
 
 
 __all__ = ["TrackingLightningModule", "TrackingStepResult"]

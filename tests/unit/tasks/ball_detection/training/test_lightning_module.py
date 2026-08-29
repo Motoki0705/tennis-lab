@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 import torch
 
@@ -12,8 +14,77 @@ from src.tasks.ball_detection.model_io.contracts import (
 from src.tasks.ball_detection.training.lightning_module import (
     BallDetectionLightningModule,
 )
+from src.tasks.ball_detection.training.metrics import BallDetectionMetrics
+from src.tasks.ball_detection.training.staged_lightning_module import (
+    StagedBallDetectionLightningModule,
+)
+from src.tasks.base.training.metric_logging import WeightedMetricAccumulator
 
 pytestmark = pytest.mark.unit
+
+
+def test_metric_logging_contract_covers_all_ball_metrics_and_staged_inherits_it() -> (
+    None
+):
+    contract = BallDetectionLightningModule.metric_logging_contract
+
+    for stage in ("train", "val", "test"):
+        assert contract.for_stage(stage).headline_keys == (
+            "precision",
+            "recall",
+            "f1",
+            "mean_distance_px",
+        )
+    assert StagedBallDetectionLightningModule.metric_logging_contract is contract
+
+
+def test_test_artifact_path_uses_ball_metric_logging_contract() -> None:
+    class _ArtifactBallModule(BallDetectionLightningModule):
+        def __init__(self) -> None:
+            torch.nn.Module.__init__(self)
+            self.test_metrics = BallDetectionMetrics(
+                peak_threshold=0.5,
+                ball_distance_threshold=5.0,
+                nms_kernel=3,
+                max_predictions_per_frame=1,
+                subpixel_refine=False,
+            )
+            self.test_metrics.tp += 3
+            self.test_metrics.fp += 1
+            self.test_metrics.fn += 2
+            self.test_metrics.distance_sum += 10.5
+            self.test_metrics.distance_count += 3
+            self._test_metric_diagnostic_accumulator = WeightedMetricAccumulator()
+            self.saved: dict[str, Any] = {}
+
+        def save_test_predictions(
+            self,
+            metrics: dict[str, Any] | None = None,
+            diagnostic_metrics: dict[str, Any] | None = None,
+        ) -> None:
+            self.saved = {
+                "metrics": metrics,
+                "diagnostic_metrics": diagnostic_metrics,
+            }
+
+        def _flush_stage_metrics(self, stage: str) -> None:
+            assert stage == "test"
+            self.test_metrics.reset()
+
+    module = _ArtifactBallModule()
+
+    module.on_test_epoch_end()
+
+    assert module.saved["diagnostic_metrics"] == {}
+    assert module.saved["metrics"] == pytest.approx(
+        {
+            "precision": 0.75,
+            "recall": 0.6,
+            "f1": 2 * 0.75 * 0.6 / (0.75 + 0.6),
+            "mean_distance_px": 3.5,
+        }
+    )
+    assert module.test_metrics.tp.item() == 0.0
 
 
 def test_gt_trajectory_marks_frames_without_a_visible_ball_as_padding() -> None:

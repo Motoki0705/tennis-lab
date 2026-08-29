@@ -55,7 +55,8 @@ Run everything from the repo root.
 
    This writes `knowledge/nodes/run-i521-base-vel.md` (config/metrics/repro/
    session/artifacts filled) plus `knowledge/runs/run-i521-base-vel/`
-   (`run.json`, `repro.sh`, `uncommitted.patch`, `pred_test.npz`, `metrics.json`).
+   (`run.json`, `repro.sh`, `uncommitted.patch`, `pred_test.npz`, `metrics.json`,
+   `diagnostic_metrics.json`).
    For an older run with no repro bundle, fall back to
    `kg_from_run.py ... --write`; with no queue log, scaffold via `kg_new.py`.
 
