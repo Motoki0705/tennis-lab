@@ -43,6 +43,7 @@ def test_dry_run_fixes_scene_order_terminal_stage_and_input_hashes() -> None:
             "request.through_stage=alignment"
         )
         assert output.count(cpu_command) == 1
+    assert output.count("save-after=reconstruction,alignment") == 3
     for expected_hash in (
         "c9608e911f86274a862a289927ff9d0cc587543f836ffbdcad127f8ce61b5d56",
         "035a3e79637583d0794e598808fcdd46aac9d3f8e374599f453718a3d6c8615a",
