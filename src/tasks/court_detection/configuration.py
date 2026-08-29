@@ -433,7 +433,7 @@ class TennisCourtDetectorSourceConfig:
     kind: Literal["tennis_court_detector"]
     root: Path
     split_mapping: Mapping[CourtSourceSplit, str | None]
-    excluded_sample_ids: tuple[str, ...] = ()
+    excluded_sample_ids: tuple[str, ...]
 
     def __post_init__(self) -> None:
         if dict(self.split_mapping) != {
