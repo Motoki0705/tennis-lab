@@ -222,3 +222,5 @@ def test_deferred_stage_handler_constructs_one_lifecycle_once() -> None:
 
     assert factory_calls == 1
     assert calls == ["preflight", "execute", "validate"]
+    assert deferred.resolve() is deferred.resolve()
+    assert factory_calls == 1

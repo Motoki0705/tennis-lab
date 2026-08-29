@@ -62,17 +62,18 @@ class DeferredStageHandler:
 
     def preflight(self, context: StageExecutionContext) -> None:
         """Resolve once and delegate preflight to the concrete handler."""
-        self._resolve().preflight(context)
+        self.resolve().preflight(context)
 
     def execute(self, context: StageExecutionContext) -> StageExecutionSummary:
         """Delegate execution to the same concrete handler instance."""
-        return self._resolve().execute(context)
+        return self.resolve().execute(context)
 
     def validate(self, context: StageExecutionContext) -> None:
         """Delegate validation to the same concrete handler instance."""
-        self._resolve().validate(context)
+        self.resolve().validate(context)
 
-    def _resolve(self) -> StageHandler[StageExecutionSummary]:
+    def resolve(self) -> StageHandler[StageExecutionSummary]:
+        """Construct once and expose the concrete lifecycle for inspection."""
         resolved = self._resolved
         if resolved is not None:
             return resolved
