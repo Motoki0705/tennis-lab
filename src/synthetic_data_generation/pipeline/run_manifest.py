@@ -99,7 +99,9 @@ class MutableRunManifest:
         if not isinstance(stages_raw, Mapping) or set(stages_raw) != {
             stage.value for stage in StageName
         }:
-            raise ValueError("run.json must contain exactly one record for every stage.")
+            raise ValueError(
+                "run.json must contain exactly one record for every stage."
+            )
         stages: dict[StageName, StageRecord] = {}
         for stage in StageName:
             value = stages_raw[stage.value]
@@ -128,7 +130,9 @@ class MutableRunManifest:
                 updated_at=str(value["updated_at"]),
             )
         targets = raw["targets"]
-        if not isinstance(targets, list) or any(not isinstance(item, str) for item in targets):
+        if not isinstance(targets, list) or any(
+            not isinstance(item, str) for item in targets
+        ):
             raise TypeError("run.json targets must be a string list.")
         return cls(
             scene_id=str(raw["scene_id"]),
@@ -154,7 +158,9 @@ class MutableRunManifest:
         if request.scene_id != self.scene_id:
             raise ValueError("Request scene_id disagrees with the canonical workspace.")
         if request.config_schema != self.config_schema:
-            raise ValueError("Request config schema is incompatible with the current scene.")
+            raise ValueError(
+                "Request config schema is incompatible with the current scene."
+            )
         source_path_matches = str(request.source_video) == self.source_video
         source_content_matches = (
             canonical_source_video is not None
@@ -237,7 +243,9 @@ class MutableRunManifest:
             "config_schema": self.config_schema,
             "source_video": self.source_video,
             "targets": self.targets,
-            "stages": {stage.value: self.stages[stage].to_dict() for stage in StageName},
+            "stages": {
+                stage.value: self.stages[stage].to_dict() for stage in StageName
+            },
             "updated_at": self.updated_at,
         }
         save_json_atomic(payload, path)

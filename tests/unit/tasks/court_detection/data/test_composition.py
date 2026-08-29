@@ -149,10 +149,14 @@ def test_tennis_court_detector_input_emits_ordered_14_by_1_channels(tmp_path) ->
     root = tmp_path / "tcd"
     (root / "images").mkdir(parents=True)
     Image.new("RGB", (32, 24)).save(root / "images" / "sample.png")
+    Image.new("RGB", (32, 24)).save(root / "images" / "validation.png")
     keypoints = [[float(index + 1), float(index + 2)] for index in range(14)]
-    payload = [{"id": "sample", "kps": keypoints}]
-    (root / "data_train.json").write_text(json.dumps(payload), encoding="utf-8")
-    (root / "data_val.json").write_text(json.dumps(payload), encoding="utf-8")
+    (root / "data_train.json").write_text(
+        json.dumps([{"id": "sample", "kps": keypoints}]), encoding="utf-8"
+    )
+    (root / "data_val.json").write_text(
+        json.dumps([{"id": "validation", "kps": keypoints}]), encoding="utf-8"
+    )
     input_layer = TennisCourtDetectorInput(
         TennisCourtDetectorSourceConfig(
             kind="tennis_court_detector",

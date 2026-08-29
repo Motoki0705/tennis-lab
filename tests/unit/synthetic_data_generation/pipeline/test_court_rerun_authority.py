@@ -55,9 +55,7 @@ def _scoped(authority: Mapping[str, object]) -> Mapping[str, object]:
 
 
 def test_court_rerun_ignores_all_dataset_stage_config_changes() -> None:
-    existing = _scoped(
-        _authority(court="v2", blcs="legacy-blcs", plcs="legacy-plcs")
-    )
+    existing = _scoped(_authority(court="v2", blcs="legacy-blcs", plcs="legacy-plcs"))
     requested = _scoped(
         _authority(court="v3", blcs="current-blcs", plcs="current-plcs")
     )
@@ -68,9 +66,7 @@ def test_court_rerun_ignores_all_dataset_stage_config_changes() -> None:
 
 
 def test_court_rerun_still_rejects_shared_pipeline_changes() -> None:
-    existing = _scoped(
-        _authority(court="v2", blcs="legacy-blcs", plcs="legacy-plcs")
-    )
+    existing = _scoped(_authority(court="v2", blcs="legacy-blcs", plcs="legacy-plcs"))
     requested = _scoped(
         _authority(
             court="v3",

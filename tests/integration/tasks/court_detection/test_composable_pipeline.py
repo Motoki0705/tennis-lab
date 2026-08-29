@@ -70,14 +70,13 @@ def _image_points() -> list[list[float]]:
 
 def _write_tennis_court_detector(root: Path) -> None:
     (root / "images").mkdir(parents=True)
-    Image.fromarray(np.full((48, 64, 3), 127, dtype=np.uint8)).save(
-        root / "images" / "court.png"
-    )
-    payload = [{"id": "court", "kps": _image_points(), "metric": 0.25}]
     for split in ("train", "val"):
-        (root / f"data_{split}.json").write_text(
-            json.dumps(payload), encoding="utf-8"
+        sample_id = f"court_{split}"
+        Image.fromarray(np.full((48, 64, 3), 127, dtype=np.uint8)).save(
+            root / "images" / f"{sample_id}.png"
         )
+        payload = [{"id": sample_id, "kps": _image_points(), "metric": 0.25}]
+        (root / f"data_{split}.json").write_text(json.dumps(payload), encoding="utf-8")
 
 
 def _projection() -> dict[str, object]:
@@ -150,9 +149,7 @@ def _write_synthetic_court(workspace_root: Path) -> None:
             "projection": projection,
             "metadata": metadata,
         }
-        (sample_root / "labels.json").write_text(
-            json.dumps(labels), encoding="utf-8"
-        )
+        (sample_root / "labels.json").write_text(json.dumps(labels), encoding="utf-8")
         records.append(
             {
                 "sample_index": sample_index,
@@ -262,11 +259,7 @@ def _singleton_projection(
     points = _image_points()
     physical_orders = (
         tuple(range(14)),
-        (
-            OPPOSITE_COURT_END_INDEX
-            if schema == "v2"
-            else CAMERA_VIEW_HALF_TURN_INDEX
-        ),
+        (OPPOSITE_COURT_END_INDEX if schema == "v2" else CAMERA_VIEW_HALF_TURN_INDEX),
     )
     courts: list[dict[str, object]] = []
     for court_index, physical_order in enumerate(physical_orders):
@@ -322,9 +315,7 @@ def _write_synthetic_court_singleton(
     dataset_schema = (
         COURT_DATASET_SCHEMA_V2 if schema == "v2" else COURT_DATASET_SCHEMA_V3
     )
-    sample_schema = (
-        COURT_SAMPLE_SCHEMA_V2 if schema == "v2" else COURT_SAMPLE_SCHEMA_V3
-    )
+    sample_schema = COURT_SAMPLE_SCHEMA_V2 if schema == "v2" else COURT_SAMPLE_SCHEMA_V3
     root = workspace_root / scene_id / "datasets" / "court"
     records: list[dict[str, object]] = []
     for sample_index, split in enumerate(("train", "validation", "test")):
@@ -355,9 +346,7 @@ def _write_synthetic_court_singleton(
             "target_court": target,
             "metadata": metadata,
         }
-        (sample_root / "labels.json").write_text(
-            json.dumps(labels), encoding="utf-8"
-        )
+        (sample_root / "labels.json").write_text(json.dumps(labels), encoding="utf-8")
         records.append(
             {
                 "sample_index": sample_index,
@@ -453,6 +442,7 @@ def _compose_mixed(tmp_path: Path) -> DictConfig:
                 "model/transformer_encoder=none",
                 "model/decoder=fpn",
                 "mixed.sources.tennis_court_detector.excluded_sample_ids=[]",
+                "run.output_dir=court_detection/mixed-source/integration-test",
             ],
         )
     config.paths.project_root = str(tmp_path)
@@ -607,9 +597,7 @@ def test_real_three_target_dataset_dataloader_contract(
     datamodule.setup("validate")
 
     batch = next(iter(datamodule.val_dataloader()))
-    targets = cast(
-        Mapping[str, object], batch["targets"]
-    )
+    targets = cast(Mapping[str, object], batch["targets"])
     kp = cast(Mapping[str, torch.Tensor], targets["kp"])
 
     assert tuple(targets) == ("kp", "seg", "line")
@@ -680,10 +668,13 @@ def test_v3_target_court_scope_composes_through_pipeline_and_preserves_dense_tar
         int(value)
         for value in all_raw.keypoint_channels.physical_indices[:, 0].tolist()
     ) == tuple(range(14))
-    assert tuple(
-        int(value)
-        for value in all_raw.keypoint_channels.physical_indices[:, 1].tolist()
-    ) == CAMERA_VIEW_HALF_TURN_INDEX
+    assert (
+        tuple(
+            int(value)
+            for value in all_raw.keypoint_channels.physical_indices[:, 1].tolist()
+        )
+        == CAMERA_VIEW_HALF_TURN_INDEX
+    )
 
     _materialize(all_config)
     derived_root = court_roots / "data/court_detection/derived_targets"
@@ -898,9 +889,10 @@ def test_shared_geometry_keeps_kp_and_line_correspondence(
     kp = cast(Mapping[str, torch.Tensor], targets["kp"])
     line = cast(torch.Tensor, targets["line"])[0, 0]
     image_height, image_width = cast(torch.Tensor, batch["image_size"])[0]
-    points = kp["points_xy"][0, :, 0] * torch.stack(
-        (image_width - 1, image_height - 1)
-    ).float()
+    points = (
+        kp["points_xy"][0, :, 0]
+        * torch.stack((image_width - 1, image_height - 1)).float()
+    )
     visible = kp["point_visible"][0, :, 0]
 
     for point in points[visible]:

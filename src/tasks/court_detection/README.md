@@ -108,6 +108,7 @@ YouTube annotation UIは20点を収集しますが、TennisCourtDetector学習�
 python -m src.tasks.court_detection.scripts.train_mixed \
   data/processing=all data/augmentation=pose_safe \
   loss.pose.enabled=false loss.consistency.enabled=false \
+  run.output_dir=court_detection/mixed-source/dense-only \
   run.test_after_fit=true
 
 # dense lossは全sample、pose lossはSynthetic Court V3 sampleだけで学習
@@ -117,7 +118,10 @@ python -m src.tasks.court_detection.scripts.train_mixed \
   loss.pose.translation_weight=1.0 \
   loss.pose.rotation_weight=1.0 loss.pose.focal_weight=1.0 \
   loss.consistency.enabled=false \
+  run.output_dir=court_detection/mixed-source/dense-pose \
   run.test_after_fit=true
 ```
 
 pose有効時はcollateが必須の`pose_supervision_mask`を生成します。Synthetic Court V3だけが`true`となり、TennisCourtDetector sampleはpose lossとpose metricの双方から除外されます。mask欠落時に全sampleをpose教師として扱うfallbackはありません。TennisCourtDetectorにはtest splitがないため、`test_after_fit`はSynthetic Court V3の明示的test splitだけを評価します。
+
+`run.output_dir`はvariantごとに明示が必須です。config、非queue実行時のtest prediction、その他のrun artifactを異なる学習条件間で上書きしないため、同じ出力先を再利用しないでください。

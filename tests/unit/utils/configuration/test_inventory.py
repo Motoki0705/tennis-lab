@@ -98,8 +98,7 @@ def test_mixed_court_training_boundary_remains_explicitly_registered() -> None:
 
     assert boundary.validator_key == "court_detection.train_mixed"
     assert boundary.validator_callable == (
-        "src.tasks.court_detection.training.runner_mixed."
-        "validate_mixed_train_boundary"
+        "src.tasks.court_detection.training.runner_mixed.validate_mixed_train_boundary"
     )
     assert boundary.executable_module
 

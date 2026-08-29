@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any, cast
 
 from torch import Tensor
 
+from src.tasks.base.training.repro import resolve_queue_repro_dir
+from src.tasks.court_detection.configuration import CourtTrainingConfig
 from src.tasks.court_detection.data.contracts import CourtTargetBundleSpec
 from src.tasks.court_detection.model_io.adapters import CourtPoseModelIOAdapter
 from src.tasks.court_detection.model_io.contracts import (
@@ -21,6 +24,7 @@ from src.tasks.court_detection.model_io.mixed_adapter import (
 from src.tasks.court_detection.training.lightning_module import (
     CourtDetectionLightningModule,
 )
+from src.utils.configuration import PathRole
 
 
 class MixedCourtDetectionLightningModule(CourtDetectionLightningModule):
@@ -38,11 +42,17 @@ class MixedCourtDetectionLightningModule(CourtDetectionLightningModule):
             target_bundle=target_bundle,
             target_bundle_state=target_bundle_state,
         )
+        runtime = CourtTrainingConfig.from_config(config).shared
+        self._test_prediction_output_key = runtime.run.output_dir.relative_to(
+            runtime.resolver.roots.output_root
+        )
         if not self.pose_variant:
             return
         raw_model_io = cast(object, self.model_io)
         if not isinstance(raw_model_io, CourtPoseModelIOAdapter):
-            raise TypeError("Pose-enabled mixed Court training requires a pose adapter.")
+            raise TypeError(
+                "Pose-enabled mixed Court training requires a pose adapter."
+            )
         mixed = MixedCourtPoseModelIOAdapter(
             raw_model_io.spec,
             loss_config=raw_model_io.pose_loss_config,
@@ -51,6 +61,18 @@ class MixedCourtDetectionLightningModule(CourtDetectionLightningModule):
         mixed.validate_model_pair(self.model)
         cast(Any, self).model_io = mixed
         self.consistency_instrumented = mixed.consistency_instrumented
+
+    def _test_predictions_dir(self) -> Path:
+        queue_repro_dir = resolve_queue_repro_dir()
+        if queue_repro_dir is not None:
+            queue_predictions: Path = queue_repro_dir / "predictions"
+            return queue_predictions
+        artifact_predictions: Path = self.path_resolver.resolve(
+            PathRole.ARTIFACT,
+            "test_predictions",
+            self._test_prediction_output_key,
+        )
+        return artifact_predictions
 
     def _shared_step(
         self,
@@ -109,12 +131,8 @@ class MixedCourtDetectionLightningModule(CourtDetectionLightningModule):
             full_image_size = pose_call.targets.get("image_size")
             if not isinstance(full_image_size, Tensor):
                 raise ValueError("Pose metrics require a typed image_size target.")
-            ground_truth_points = cast(Tensor, kp_target["points_xy"])[
-                mask
-            ].squeeze(2)
-            point_visible = cast(Tensor, kp_target["point_visible"])[
-                mask
-            ].squeeze(2)
+            ground_truth_points = cast(Tensor, kp_target["points_xy"])[mask].squeeze(2)
+            point_visible = cast(Tensor, kp_target["point_visible"])[mask].squeeze(2)
             supervised_image_size = full_image_size[mask]
             if result.consistency is not None:
                 geometry_tracker.update(

@@ -1,8 +1,10 @@
 """Train Court detection with synthetic and real samples in every batch.
 
 Usage:
-    python -m src.tasks.court_detection.scripts.train_mixed
     python -m src.tasks.court_detection.scripts.train_mixed \
+        run.output_dir=court_detection/mixed-source/dense-only
+    python -m src.tasks.court_detection.scripts.train_mixed \
+        run.output_dir=court_detection/mixed-source/dense-pose \
         loss.pose.enabled=true \
         loss.pose.translation_weight=1.0 \
         loss.pose.rotation_weight=1.0 \
