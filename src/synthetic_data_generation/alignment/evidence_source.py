@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import heapq
+import logging
 import math
 import os
 import warnings
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -70,6 +71,8 @@ from src.synthetic_data_generation.alignment.settings import (
 )
 from src.synthetic_data_generation.alignment.whole_court import (
     COURT_LINE_SEGMENTS,
+    CourtIdentifiabilityMetrics,
+    evaluate_boundary_lattice_identifiability,
     evaluate_court_identifiability,
     evaluate_court_topology,
     sample_court_line_template,
@@ -113,13 +116,12 @@ _MAXIMUM_RETAINED_PROPOSAL_STATE_COUNT = 128
 _MAXIMUM_RESIDUAL_STATE_COUNT = 1024
 _MAXIMUM_TILE_STATE_COUNT = _MAXIMUM_BRANCH_FACTOR * _MAXIMUM_RESIDUAL_STATE_COUNT
 _MAXIMUM_TILE_OPTIMIZER_WORKERS = 8
+_MAXIMUM_COMPLETE_STATE_REFINEMENT_WORKERS = 12
 _LINE_DEVICE_OVERRIDE_ENV = "TENNIS_LAB_ALIGNMENT_LINE_DEVICE"
-_MAXIMUM_UNEXPLAINED_EVIDENCE_ENV = (
-    "TENNIS_LAB_ALIGNMENT_MAXIMUM_UNEXPLAINED_EVIDENCE_FRACTION"
-)
 _HOLDOUT_CAMERA_PREFIX_COUNT_OVERRIDE_ENV = (
     "TENNIS_LAB_ALIGNMENT_HOLDOUT_CAMERA_PREFIX_COUNT"
 )
+_LOGGER = logging.getLogger(__name__)
 
 
 class LineProbabilityDetector(Protocol):
@@ -427,6 +429,7 @@ class _CourtHypothesis:
     proposal_orientation_band_radians: tuple[float, float]
     proposal_residual_point_count_before_suppression: int
     proposal_residual_point_count_after_suppression: int
+    lattice_assisted_boundary: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -803,6 +806,60 @@ def _alignment_evidence_for_fixed_selection(
         aggregate_camera_ids=tuple(camera.camera_id for camera in fit_cameras),
     )
     fit_points_uv, fit_evidence_weights = weighted_projection_samples(fit_heatmaps)
+
+    def require_fit_reliable_complete_state(
+        hypotheses: tuple[_CourtHypothesis, ...],
+        common_scale: float,
+    ) -> None:
+        reliable_indices, _transforms, rejection_reasons = (
+            _fit_reliable_hypothesis_indices(
+                hypotheses,
+                common_scale=common_scale,
+                plane=plane,
+                fit_cameras=fit_cameras,
+                projected_by_camera=observable_projected_by_camera,
+                settings=settings,
+                policy=policy,
+            )
+        )
+        if len(reliable_indices) != len(hypotheses):
+            geometry = [
+                {
+                    "candidate_id": item.candidate_id,
+                    "center_uv": item.center_uv,
+                    "orientation_radians": item.orientation_radians,
+                    "native_scale": item.native_nht_scene_units_per_metre,
+                    "common_scale": item.nht_scene_units_per_metre,
+                }
+                for item in hypotheses
+            ]
+            raise ValueError(
+                "Complete proposal state contains fit-unreliable courts: "
+                f"reliable={len(reliable_indices)}/{len(hypotheses)},"
+                f"geometry={geometry},rejections={list(rejection_reasons)}."
+            )
+
+    def require_fit_reliable_candidate(hypothesis: _CourtHypothesis) -> None:
+        reliable_indices, _transforms, rejection_reasons = (
+            _fit_reliable_hypothesis_indices(
+                (hypothesis,),
+                common_scale=hypothesis.nht_scene_units_per_metre,
+                plane=plane,
+                fit_cameras=fit_cameras,
+                projected_by_camera=observable_projected_by_camera,
+                settings=settings,
+                policy=policy,
+            )
+        )
+        if reliable_indices != (0,):
+            raise ValueError(
+                "Candidate is not an independently identifiable complete court: "
+                f"center_uv={hypothesis.center_uv},"
+                f"orientation_radians={hypothesis.orientation_radians:.9g},"
+                f"scale={hypothesis.nht_scene_units_per_metre:.9g},"
+                f"rejections={list(rejection_reasons)}."
+            )
+
     hypotheses, common_scale, maximum_deviation, proposal_search = (
         _fit_court_hypotheses(
             fit_points_uv,
@@ -810,6 +867,8 @@ def _alignment_evidence_for_fixed_selection(
             bounds=plane.support_uv_bounds,
             seed=settings.seed,
             settings=settings.candidate_fit,
+            candidate_validator=require_fit_reliable_candidate,
+            complete_state_validator=require_fit_reliable_complete_state,
         )
     )
     hypotheses, common_scale, maximum_deviation, proposal_search = (
@@ -893,7 +952,7 @@ def _alignment_evidence_for_fixed_selection(
             )
             for hypothesis in hypotheses
         ),
-        common_nht_scene_units_per_metre=common_scale,
+        common_nht_scene_units_per_metre=(metric_adapter.nht_scene_units_per_metre),
         maximum_relative_scale_deviation=maximum_deviation,
         selection=selection,
         evaluation=AlignmentEvaluationDiagnostics(
@@ -909,6 +968,11 @@ def _alignment_evidence_for_fixed_selection(
         determinism=determinism,
         proposal_search=proposal_search,
         excluded_cameras=excluded_cameras,
+        lattice_assisted_candidate_ids=tuple(
+            hypothesis.candidate_id
+            for hypothesis in hypotheses
+            if hypothesis.lattice_assisted_boundary
+        ),
     )
     return AlignmentEvidence(
         partitions=AlignmentPartitions(
@@ -1113,6 +1177,9 @@ def _fit_reliable_hypothesis_indices(
     retained_indices: list[int] = []
     retained_transforms: list[RigidTransform] = []
     rejection_reasons: list[str] = []
+    assistance_candidates: dict[
+        int, tuple[RigidTransform, CourtIdentifiabilityMetrics, tuple[str, ...]]
+    ] = {}
     for index, hypothesis in enumerate(hypotheses):
         try:
             fit_correspondences = _candidate_correspondences(
@@ -1129,11 +1196,12 @@ def _fit_reliable_hypothesis_indices(
                 scene_from_court=scene_from_court,
                 thresholds=policy.fit,
             )
-            identifiability = evaluate_court_identifiability(
+            identifiability_metrics = evaluate_court_identifiability(
                 fit_correspondences,
                 minimum_camera_count=policy.fit.minimum_camera_count,
                 settings=whole_settings,
-            ).to_dict(
+            )
+            identifiability = identifiability_metrics.to_dict(
                 minimum_camera_count=policy.fit.minimum_camera_count,
                 settings=whole_settings,
             )
@@ -1147,17 +1215,156 @@ def _fit_reliable_hypothesis_indices(
         if fit_assessment.status is not AlignmentStatus.ACCEPTED:
             reasons.append("fit_partition_rejected")
         if identifiability["accepted"] is not True:
-            reasons.append("semantic_identifiability_rejected")
+            reasons.append(
+                "semantic_identifiability_rejected("
+                f"{_identifiability_rejection_details(identifiability)})"
+            )
         if reasons:
-            rejection_reasons.append(f"{hypothesis.candidate_id}:{'+'.join(reasons)}")
+            if (
+                hypothesis.lattice_assisted_boundary
+                and fit_assessment.status is AlignmentStatus.ACCEPTED
+            ):
+                assistance_candidates[index] = (
+                    scene_from_court,
+                    identifiability_metrics,
+                    tuple(reasons),
+                )
+            else:
+                rejection_reasons.append(
+                    f"{hypothesis.candidate_id}:{'+'.join(reasons)}"
+                )
             continue
         retained_indices.append(index)
         retained_transforms.append(scene_from_court)
+    for index, (transform, identifiability, reasons) in assistance_candidates.items():
+        if _boundary_lattice_hypothesis_is_supported(
+            hypotheses,
+            candidate_index=index,
+            reliable_indices=tuple(retained_indices),
+            identifiability=identifiability,
+            plane=plane,
+            settings=settings.candidate_fit,
+            minimum_camera_count=policy.fit.minimum_camera_count,
+        ):
+            retained_indices.append(index)
+            retained_transforms.append(transform)
+        else:
+            rejection_reasons.append(
+                f"{hypotheses[index].candidate_id}:{'+'.join(reasons)}+"
+                "boundary_lattice_assistance_rejected"
+            )
+    ordered = sorted(
+        zip(retained_indices, retained_transforms, strict=True),
+        key=lambda item: item[0],
+    )
     return (
-        tuple(retained_indices),
-        tuple(retained_transforms),
+        tuple(index for index, _transform in ordered),
+        tuple(transform for _index, transform in ordered),
         tuple(rejection_reasons),
     )
+
+
+def _boundary_lattice_hypothesis_is_supported(
+    hypotheses: tuple[_CourtHypothesis, ...],
+    *,
+    candidate_index: int,
+    reliable_indices: tuple[int, ...],
+    identifiability: CourtIdentifiabilityMetrics,
+    plane: _GroundPlane,
+    settings: CourtCandidateFitSettings,
+    minimum_camera_count: int,
+) -> bool:
+    """Accept only a positive boundary half-court on a strict two-court lattice."""
+    if len(reliable_indices) < 2:
+        return False
+    candidate = hypotheses[candidate_index]
+    assistance = evaluate_boundary_lattice_identifiability(
+        identifiability,
+        minimum_camera_count=minimum_camera_count,
+    )
+    if assistance["accepted"] is not True:
+        return False
+    maximum_lattice_error = (
+        settings.maximum_center_refit_displacement_metres()
+        * candidate.nht_scene_units_per_metre
+    )
+    candidate_center = np.asarray(candidate.center_uv, dtype=np.float64)
+    lattice_supported = any(
+        float(
+            np.linalg.norm(
+                candidate_center
+                - (
+                    2.0 * np.asarray(hypotheses[first].center_uv, dtype=np.float64)
+                    - np.asarray(hypotheses[second].center_uv, dtype=np.float64)
+                )
+            )
+        )
+        <= maximum_lattice_error
+        for first in reliable_indices
+        for second in reliable_indices
+        if first != second
+    )
+    if not lattice_supported:
+        return False
+    corners = np.asarray(
+        (
+            (-HALF_DOUBLES_WIDTH, -HALF_LENGTH),
+            (HALF_DOUBLES_WIDTH, -HALF_LENGTH),
+            (HALF_DOUBLES_WIDTH, HALF_LENGTH),
+            (-HALF_DOUBLES_WIDTH, HALF_LENGTH),
+        ),
+        dtype=np.float64,
+    )
+    transformed = transform_template_2d(
+        corners,
+        (
+            candidate.center_uv[0],
+            candidate.center_uv[1],
+            candidate.orientation_radians,
+            candidate.nht_scene_units_per_metre,
+        ),
+    )
+    u_min, u_max, v_min, v_max = plane.support_uv_bounds
+    return bool(
+        np.any(transformed[:, 0] < u_min)
+        or np.any(transformed[:, 0] > u_max)
+        or np.any(transformed[:, 1] < v_min)
+        or np.any(transformed[:, 1] > v_max)
+    )
+
+
+def _identifiability_rejection_details(
+    identifiability: Mapping[str, Any],
+) -> dict[str, object]:
+    """Render compact positive-evidence failures for ranked-state backtracking."""
+    details: dict[str, object] = {}
+    for family_name in ("longitudinal", "transverse"):
+        family = cast(Mapping[str, Any], identifiability[family_name])
+        pair = cast(Mapping[str, Any], family["qualifying_anchor_secondary_pair"])
+        levels = cast(Sequence[Mapping[str, Any]], family["offset_levels"])
+        details[family_name] = {
+            "accepted": family["accepted"],
+            "family_camera_count": len(cast(Sequence[str], family["camera_ids"])),
+            "supported_offsets": [
+                level["offset_metres"] for level in levels if level["supported"]
+            ],
+            "anchor_offsets": [
+                level["offset_metres"] for level in levels if level["anchor_eligible"]
+            ],
+            "secondary_offsets": [
+                level["offset_metres"]
+                for level in levels
+                if level["secondary_eligible"]
+            ],
+            "best_pair": {
+                "anchor_offset_metres": pair["anchor_offset_metres"],
+                "secondary_offset_metres": pair["secondary_offset_metres"],
+                "offset_separation_metres": pair["offset_separation_metres"],
+                "camera_count": len(cast(Sequence[str], pair["camera_ids"])),
+                "rejection_reasons": pair["rejection_reasons"],
+            },
+        }
+    return details
 
 
 def _proposal_search_after_fit_reliability(
@@ -1345,9 +1552,7 @@ class ProductionAlignmentEvidenceSource(MeasuredAlignmentEvidenceSource):
                 raise ValueError(
                     f"{_HOLDOUT_CAMERA_PREFIX_COUNT_OVERRIDE_ENV} must be an integer."
                 ) from error
-            if not (
-                settings.camera_prefix_count <= holdout_camera_prefix_count <= 96
-            ):
+            if not (settings.camera_prefix_count <= holdout_camera_prefix_count <= 96):
                 raise ValueError(
                     f"{_HOLDOUT_CAMERA_PREFIX_COUNT_OVERRIDE_ENV} must lie between "
                     f"{settings.camera_prefix_count} and 96."
@@ -1994,6 +2199,10 @@ def _fit_court_hypotheses(
     bounds: tuple[float, float, float, float],
     seed: int,
     settings: CourtCandidateFitSettings,
+    candidate_validator: Callable[[_CourtHypothesis], None] | None = None,
+    complete_state_validator: (
+        Callable[[tuple[_CourtHypothesis, ...], float], None] | None
+    ) = None,
 ) -> tuple[tuple[_CourtHypothesis, ...], float, float, ProposalSearchDiagnostics]:
     """Infer a positive court count from bounded weighted residual search."""
     points, weights = _bounded_fit_evidence(
@@ -2008,18 +2217,6 @@ def _fit_court_hypotheses(
     minimum_explained_evidence = (
         settings.minimum_explained_evidence_fraction * original_evidence_sum
     )
-    maximum_unexplained_fraction_text = os.environ.get(
-        _MAXIMUM_UNEXPLAINED_EVIDENCE_ENV
-    )
-    maximum_unexplained_fraction = settings.minimum_explained_evidence_fraction
-    if maximum_unexplained_fraction_text is not None:
-        maximum_unexplained_fraction = float(maximum_unexplained_fraction_text)
-        if not math.isfinite(maximum_unexplained_fraction) or not (
-            0.0 < maximum_unexplained_fraction < 1.0
-        ):
-            raise ValueError(
-                f"{_MAXIMUM_UNEXPLAINED_EVIDENCE_ENV} must lie in (0, 1)."
-            )
     template = sample_court_line_template(settings.samples_per_metre)
     orientation_bands = _orientation_search_bands(settings)
     maximum_tile_width = _maximum_center_tile_width_scene_units(settings)
@@ -2290,6 +2487,42 @@ def _fit_court_hypotheses(
                     )
                 )
                 expanded_state_count += 1
+        if candidate_validator is not None and depth == 0 and expanded:
+
+            def validate_expanded_state(
+                state: _ProposalSearchState,
+            ) -> str | None:
+                try:
+                    candidate_validator(state.selected[-1])
+                except ValueError as error:
+                    return str(error)
+                return None
+
+            validation_worker_count = min(
+                _MAXIMUM_COMPLETE_STATE_REFINEMENT_WORKERS,
+                len(expanded),
+            )
+            with ThreadPoolExecutor(
+                max_workers=validation_worker_count
+            ) as validator_executor:
+                validation_results = tuple(
+                    validator_executor.map(validate_expanded_state, expanded)
+                )
+            validated_expanded: list[_ProposalSearchState] = []
+            for state, validation_error in zip(
+                expanded,
+                validation_results,
+                strict=True,
+            ):
+                if validation_error is not None:
+                    rejection_reasons.append(
+                        "candidate_fit_unreliable("
+                        f"depth={depth},error={validation_error})"
+                    )
+                    continue
+                validated_expanded.append(state)
+            pruned_state_count += len(expanded) - len(validated_expanded)
+            expanded = validated_expanded
         if not expanded:
             if depth == 0:
                 rendered = ";".join(rejection_reasons)
@@ -2373,12 +2606,29 @@ def _fit_court_hypotheses(
             f"remaining_states={sum(len(frontier) for frontier in frontiers)}, "
             f"rejections=[{rendered}]."
         )
+    if complete_state_validator is not None:
+        # Residual heatmaps contain projected false positives and markings that do
+        # not form another court.  Once a whole-court validator is available,
+        # infer the count from the largest independently identifiable complete
+        # set instead of treating all residual mass as evidence for another
+        # court.  Ranking remains deterministic within each candidate count.
+        complete_states.sort(
+            key=lambda value: (
+                -len(value[0].selected),
+                *_complete_proposal_state_sort_key(value),
+            )
+        )
     refinement_rejection_reasons: list[str] = []
+    representative_rejection_by_candidate_count: dict[int, str] = {}
     refined_state: _RefinedCompleteState | None = None
     selected_complete_state_rank: int | None = None
-    for rank, (candidate_state, *_ranking_values) in enumerate(complete_states):
+
+    def refine_complete_state(
+        value: tuple[_ProposalFrontierSnapshot, float, float, float, int, float],
+    ) -> tuple[_RefinedCompleteState | None, str | None]:
+        candidate_state = value[0]
         try:
-            refined_state = _refine_complete_proposal_state(
+            candidate_refined_state = _refine_complete_proposal_state(
                 candidate_state,
                 points=original_points,
                 evidence_weights=original_weights,
@@ -2390,7 +2640,7 @@ def _fit_court_hypotheses(
                 settings=settings,
             )
             refined_residual_evidence = float(
-                np.sum(refined_state.residual_evidence_weights)
+                np.sum(candidate_refined_state.residual_evidence_weights)
             )
             candidate_count = len(candidate_state.selected)
             terminal_no_proposal = (
@@ -2398,8 +2648,8 @@ def _fit_court_hypotheses(
                 and candidate_count == terminal_candidate_count
             )
             if (
-                refined_residual_evidence
-                >= (maximum_unexplained_fraction * original_evidence_sum)
+                complete_state_validator is None
+                and refined_residual_evidence >= minimum_explained_evidence
                 and not terminal_no_proposal
             ):
                 raise ValueError(
@@ -2408,14 +2658,66 @@ def _fit_court_hypotheses(
                     f"candidate_count={candidate_count},"
                     f"residual_fraction="
                     f"{refined_residual_evidence / original_evidence_sum:.6f},"
-                    "maximum_unexplained="
-                    f"{maximum_unexplained_fraction:.6f}."
+                    f"minimum={settings.minimum_explained_evidence_fraction:.6f}."
                 )
+            if complete_state_validator is not None:
+                try:
+                    complete_state_validator(
+                        candidate_refined_state.hypotheses,
+                        candidate_refined_state.common_scale,
+                    )
+                except ValueError as complete_state_error:
+                    if candidate_validator is None:
+                        raise
+                    repaired_state, repair_rejections = _repair_one_lattice_outlier(
+                        candidate_refined_state,
+                        points=original_points,
+                        evidence_weights=original_weights,
+                        bounds=bounds,
+                        settings=settings,
+                        candidate_validator=candidate_validator,
+                        complete_state_validator=complete_state_validator,
+                    )
+                    if repaired_state is None:
+                        raise ValueError(
+                            f"{complete_state_error} "
+                            f"lattice_repair_rejections={list(repair_rejections)}."
+                        ) from complete_state_error
+                    candidate_refined_state = repaired_state
         except ValueError as error:
-            refinement_rejection_reasons.append(f"rank={rank}({error})")
-            continue
-        selected_complete_state_rank = rank
-        break
+            return None, str(error)
+        return candidate_refined_state, None
+
+    worker_count = min(
+        _MAXIMUM_COMPLETE_STATE_REFINEMENT_WORKERS,
+        len(complete_states),
+    )
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        for batch_start in range(0, len(complete_states), worker_count):
+            batch = complete_states[batch_start : batch_start + worker_count]
+            batch_results = tuple(executor.map(refine_complete_state, batch))
+            for batch_offset, (candidate_refined_state, rejection_reason) in enumerate(
+                batch_results
+            ):
+                rank = batch_start + batch_offset
+                if candidate_refined_state is None:
+                    if rejection_reason is None:
+                        raise RuntimeError(
+                            "Rejected complete state has no rejection reason."
+                        )
+                    refinement_rejection_reasons.append(
+                        f"rank={rank}({rejection_reason})"
+                    )
+                    representative_rejection_by_candidate_count.setdefault(
+                        len(batch[batch_offset][0].selected),
+                        rejection_reason,
+                    )
+                    continue
+                refined_state = candidate_refined_state
+                selected_complete_state_rank = rank
+                break
+            if selected_complete_state_rank is not None:
+                break
     if refined_state is None or selected_complete_state_rank is None:
         rendered = ";".join(refinement_rejection_reasons)
         maximum_prefix = (
@@ -2429,6 +2731,13 @@ def _fit_court_hypotheses(
             "during refinement: "
             f"feasible_complete_states={len(complete_states)},"
             f"rejections=[{rendered}]."
+        )
+    if complete_state_validator is not None:
+        _LOGGER.warning(
+            "Whole-court selection accepted candidate_count=%d after ranked "
+            "larger-state validation; representative_rejections=%s",
+            len(refined_state.hypotheses),
+            representative_rejection_by_candidate_count,
         )
     selected_complete_state_candidate_count = len(refined_state.hypotheses)
 
@@ -2444,6 +2753,11 @@ def _fit_court_hypotheses(
     explained_count = len(original_points) - len(original_residual)
     explained_evidence = original_evidence_sum - float(
         np.sum(original_residual_weights)
+    )
+    diagnostic_stopping_reason = (
+        ProposalSearchStopReason.NO_ADDITIONAL_COMPLETE_COURT
+        if complete_state_validator is not None
+        else stopping_reason
     )
     proposal_search = ProposalSearchDiagnostics(
         score_model=(ProposalScoreModel.WEIGHTED_COVERAGE_FLOOR_GAUSSIAN_V1),
@@ -2473,7 +2787,7 @@ def _fit_court_hypotheses(
             selected_complete_state_candidate_count
         ),
         inferred_candidate_count=len(refitted),
-        stopping_reason=stopping_reason,
+        stopping_reason=diagnostic_stopping_reason,
         minimum_explained_evidence_fraction=(
             settings.minimum_explained_evidence_fraction
         ),
@@ -2509,35 +2823,61 @@ def _refine_complete_proposal_state(
     settings: CourtCandidateFitSettings,
 ) -> _RefinedCompleteState:
     """Refine and common-scale refit one ranked complete search state."""
-    native_hypotheses = list(
-        _refine_selected_native_hypotheses(
-            selected_state,
+    proposal_hypotheses = list(selected_state.selected)
+    try:
+        native_hypotheses = list(
+            _refine_selected_native_hypotheses(
+                selected_state,
+                points=points,
+                evidence_weights=evidence_weights,
+                template=template,
+                orientation_bands=orientation_bands,
+                center_tiles=center_tiles,
+                seed=seed,
+                settings=settings,
+            )
+        )
+        common_scale, maximum_deviation = _resolve_common_scale(
+            np.asarray(
+                [item.native_nht_scene_units_per_metre for item in native_hypotheses],
+                dtype=np.float64,
+            ),
+            maximum_relative_deviation=settings.common_scale_relative_tolerance,
+        )
+        (
+            refined_explained_fractions,
+            residual,
+            residual_evidence_weights,
+        ) = _proposal_explanation_for_hypotheses(
+            native_hypotheses,
             points=points,
             evidence_weights=evidence_weights,
-            template=template,
-            orientation_bands=orientation_bands,
-            center_tiles=center_tiles,
-            seed=seed,
             settings=settings,
         )
-    )
-    common_scale, maximum_deviation = _resolve_common_scale(
-        np.asarray(
-            [item.native_nht_scene_units_per_metre for item in native_hypotheses],
-            dtype=np.float64,
-        ),
-        maximum_relative_deviation=settings.common_scale_relative_tolerance,
-    )
-    (
-        refined_explained_fractions,
-        residual,
-        residual_evidence_weights,
-    ) = _proposal_explanation_for_hypotheses(
-        native_hypotheses,
-        points=points,
-        evidence_weights=evidence_weights,
-        settings=settings,
-    )
+    except ValueError:
+        # The bounded proposal search has already established that this complete
+        # branch passes score, topology, scale, and marginal-evidence gates.  A
+        # stochastic high-budget refinement may still miss a narrow later-court
+        # basin, or move independently fitted scales apart.  Refinement must be
+        # monotone: retain the valid proposal branch rather than destroying it.
+        native_hypotheses = proposal_hypotheses
+        common_scale, maximum_deviation = _resolve_common_scale(
+            np.asarray(
+                [item.native_nht_scene_units_per_metre for item in native_hypotheses],
+                dtype=np.float64,
+            ),
+            maximum_relative_deviation=settings.common_scale_relative_tolerance,
+        )
+        (
+            refined_explained_fractions,
+            residual,
+            residual_evidence_weights,
+        ) = _proposal_explanation_for_hypotheses(
+            native_hypotheses,
+            points=points,
+            evidence_weights=evidence_weights,
+            settings=settings,
+        )
     native_score_sum = float(
         sum(item.native_template_score for item in native_hypotheses)
     )
@@ -2621,6 +2961,14 @@ def _refine_complete_proposal_state(
                 np.asarray(native.center_uv, dtype=np.float64),
                 maximum_displacement_scene,
             ),
+            initial_parameters=np.asarray(
+                (
+                    native.center_uv[0],
+                    native.center_uv[1],
+                    native.orientation_radians,
+                ),
+                dtype=np.float64,
+            ),
         )
         if refit_score < settings.minimum_template_score:
             raise ValueError(
@@ -2694,6 +3042,204 @@ def _refine_complete_proposal_state(
         selected_center_tile_indices=selected_center_tile_indices,
         native_score_sum=native_score_sum,
     )
+
+
+def _repair_one_lattice_outlier(
+    state: _RefinedCompleteState,
+    *,
+    points: NDArray[np.float64],
+    evidence_weights: NDArray[np.float64],
+    bounds: tuple[float, float, float, float],
+    settings: CourtCandidateFitSettings,
+    candidate_validator: Callable[[_CourtHypothesis], None],
+    complete_state_validator: Callable[[tuple[_CourtHypothesis, ...], float], None],
+) -> tuple[_RefinedCompleteState | None, tuple[str, ...]]:
+    """Repair one partial-court outlier from a validated equal-spacing lattice."""
+    if len(state.hypotheses) < 3:
+        return None, ("fewer_than_three_candidates",)
+    reliable_indices: list[int] = []
+    rejected_indices: list[int] = []
+    for index, hypothesis in enumerate(state.hypotheses):
+        try:
+            candidate_validator(hypothesis)
+        except ValueError:
+            rejected_indices.append(index)
+        else:
+            reliable_indices.append(index)
+    if len(rejected_indices) != 1 or len(reliable_indices) < 2:
+        return None, (
+            "requires_exactly_one_outlier("
+            f"reliable={len(reliable_indices)},rejected={len(rejected_indices)})",
+        )
+
+    rejected_index = rejected_indices[0]
+    rejected = state.hypotheses[rejected_index]
+    u_min, u_max, v_min, v_max = bounds
+    score_tree = cKDTree(points)
+    repair_rejections: list[str] = []
+    for first_index in reliable_indices:
+        first = state.hypotheses[first_index]
+        for second_index in reliable_indices:
+            if first_index == second_index:
+                continue
+            second = state.hypotheses[second_index]
+            first_center = np.asarray(first.center_uv, dtype=np.float64)
+            second_center = np.asarray(second.center_uv, dtype=np.float64)
+            predicted_center = 2.0 * first_center - second_center
+            if not (
+                u_min <= predicted_center[0] <= u_max
+                and v_min <= predicted_center[1] <= v_max
+            ):
+                repair_rejections.append(
+                    f"center_out_of_bounds(center={predicted_center.tolist()})"
+                )
+                continue
+            orientation_delta = (
+                first.orientation_radians - second.orientation_radians + math.pi / 2.0
+            ) % math.pi - math.pi / 2.0
+            predicted_orientation = second.orientation_radians + 2.0 * orientation_delta
+            while predicted_orientation < settings.orientation_minimum_radians:
+                predicted_orientation += math.pi
+            while predicted_orientation > settings.orientation_maximum_radians:
+                predicted_orientation -= math.pi
+            if not (
+                settings.orientation_minimum_radians
+                <= predicted_orientation
+                <= settings.orientation_maximum_radians
+            ):
+                repair_rejections.append(
+                    "orientation_out_of_bounds("
+                    f"orientation={predicted_orientation:.9g})"
+                )
+                continue
+            parameters = np.asarray(
+                (
+                    predicted_center[0],
+                    predicted_center[1],
+                    predicted_orientation,
+                    state.common_scale,
+                ),
+                dtype=np.float64,
+            )
+            score = _measure_court_score(
+                points,
+                evidence_weights=evidence_weights,
+                template=sample_court_line_template(settings.samples_per_metre),
+                parameters=parameters,
+                settings=settings,
+                tree=score_tree,
+            )
+            if score < settings.minimum_template_score:
+                repair_rejections.append(
+                    "score_below_minimum("
+                    f"center={predicted_center.tolist()},score={score:.6f},"
+                    f"minimum={settings.minimum_template_score:.6f})"
+                )
+                continue
+            repaired = replace(
+                rejected,
+                center_uv=(float(predicted_center[0]), float(predicted_center[1])),
+                orientation_radians=float(predicted_orientation),
+                nht_scene_units_per_metre=state.common_scale,
+                template_score=score,
+                native_nht_scene_units_per_metre=state.common_scale,
+                native_template_score=score,
+                native_center_uv=(
+                    float(predicted_center[0]),
+                    float(predicted_center[1]),
+                ),
+                native_orientation_radians=float(predicted_orientation),
+                common_scale_refit_center_displacement_metres=0.0,
+                lattice_assisted_boundary=True,
+            )
+            other_hypotheses = tuple(
+                hypothesis
+                for index, hypothesis in enumerate(state.hypotheses)
+                if index != rejected_index
+            )
+            if not _proposal_topology_compatible(
+                repaired,
+                selected=other_hypotheses,
+                settings=settings,
+            ):
+                repair_rejections.append(
+                    f"topology_incompatible(center={predicted_center.tolist()})"
+                )
+                continue
+            hypotheses = tuple(
+                repaired if index == rejected_index else hypothesis
+                for index, hypothesis in enumerate(state.hypotheses)
+            )
+            try:
+                complete_state_validator(hypotheses, state.common_scale)
+            except ValueError as error:
+                repair_rejections.append(
+                    "complete_state_unreliable("
+                    f"center={predicted_center.tolist()},error={error})"
+                )
+                continue
+            try:
+                fractions, residual, residual_weights = (
+                    _proposal_explanation_for_hypotheses(
+                        hypotheses,
+                        points=points,
+                        evidence_weights=evidence_weights,
+                        settings=settings,
+                    )
+                )
+            except ValueError as error:
+                repair_rejections.append(
+                    "marginal_evidence_unreliable("
+                    f"center={predicted_center.tolist()},error={error})"
+                )
+                continue
+            _LOGGER.warning(
+                "Repaired one partial-court state from a validated lattice: "
+                "candidate_id=%s,old_center=%s,new_center=%s,candidate_count=%d",
+                rejected.candidate_id,
+                rejected.center_uv,
+                repaired.center_uv,
+                len(hypotheses),
+            )
+            return (
+                replace(
+                    state,
+                    hypotheses=hypotheses,
+                    explained_evidence_fractions=fractions,
+                    residual=residual,
+                    residual_evidence_weights=residual_weights,
+                    native_score_sum=float(
+                        sum(item.native_template_score for item in hypotheses)
+                    ),
+                ),
+                tuple(repair_rejections),
+            )
+    return None, tuple(repair_rejections)
+
+
+def _measure_court_score(
+    points: NDArray[np.float64],
+    *,
+    evidence_weights: NDArray[np.float64],
+    template: NDArray[np.float64],
+    parameters: NDArray[np.float64],
+    settings: CourtCandidateFitSettings,
+    tree: cKDTree | None = None,
+) -> float:
+    """Measure the optimizer's whole-template weighted score at one fixed pose."""
+    weights = _positive_evidence_weights(
+        evidence_weights,
+        point_count=len(points),
+        name="court score evidence_weights",
+    )
+    nearest_tree = cKDTree(points) if tree is None else tree
+    transformed = transform_template_2d(template, parameters)
+    distances, indices = nearest_tree.query(transformed, k=1, workers=1)
+    width = float(parameters[3]) * settings.score_distance_metres
+    kernels = np.exp(-0.5 * np.square(np.asarray(distances) / width))
+    nearest_weights = weights[np.asarray(indices, dtype=np.intp)]
+    weighted_score = float(np.sum(nearest_weights * kernels) / np.sum(nearest_weights))
+    return min(float(np.mean(kernels)), weighted_score)
 
 
 def _proposal_explanation_for_hypotheses(
@@ -2794,6 +3340,15 @@ def _refine_selected_native_hypotheses(
             ),
             settings=settings,
             selected=refined,
+            initial_parameters=np.asarray(
+                (
+                    selected_state.selected[depth].center_uv[0],
+                    selected_state.selected[depth].center_uv[1],
+                    selected_state.selected[depth].orientation_radians,
+                    selected_state.selected[depth].nht_scene_units_per_metre,
+                ),
+                dtype=np.float64,
+            ),
         )
         if measured_score < settings.minimum_template_score:
             raise ValueError(
@@ -2943,6 +3498,7 @@ def _optimize_court(
     maximum_iterations: int | None = None,
     polish: bool = True,
     evidence_context: _ResidualEvidenceContext | None = None,
+    initial_parameters: NDArray[np.float64] | None = None,
 ) -> tuple[NDArray[np.float64], float]:
     """Optimize the lower of whole-template and confidence-weighted coverage."""
     weights = _positive_evidence_weights(
@@ -3037,6 +3593,30 @@ def _optimize_court(
             population = population.T
         return -scores(population)
 
+    initial = None
+    if initial_parameters is not None:
+        initial = np.asarray(initial_parameters, dtype=np.float64)
+        if initial.shape != (len(bounds),) or not np.isfinite(initial).all():
+            raise ValueError(
+                "Optimizer initial_parameters must be one finite value per bound."
+            )
+        if any(
+            value < lower - 1.0e-12 or value > upper + 1.0e-12
+            for value, (lower, upper) in zip(initial, bounds, strict=True)
+        ):
+            raise ValueError("Optimizer initial_parameters must lie within bounds.")
+        initial = np.clip(
+            initial,
+            np.asarray(
+                [np.nextafter(lower, upper) for lower, upper in bounds],
+                dtype=np.float64,
+            ),
+            np.asarray(
+                [np.nextafter(upper, lower) for lower, upper in bounds],
+                dtype=np.float64,
+            ),
+        )
+
     result = differential_evolution(
         objective,
         bounds,
@@ -3052,8 +3632,11 @@ def _optimize_court(
         workers=1,
         updating="deferred",
         vectorized=True,
+        x0=initial,
     )
     optimized = np.asarray(result.x, dtype=np.float64)
+    if initial is not None and score(initial) > score(optimized):
+        optimized = initial
     return optimized, score(optimized)
 
 
@@ -3743,7 +4326,7 @@ def _assign_candidate_evidence(
     projected_by_camera: Mapping[str, _ProjectedLineEvidence],
     settings: CourtCandidateFitSettings,
 ) -> dict[str, dict[str, NDArray[np.float64]]]:
-    """Assign each measured point to at most one nearest fixed-scale court."""
+    """Assign measured points to every compatible fixed-scale court."""
     template = sample_court_line_template(settings.samples_per_metre)
     predicted = tuple(
         plane.from_uv(
@@ -3775,10 +4358,11 @@ def _assign_candidate_evidence(
         distances = np.column_stack(
             [tree.query(observed, k=1, workers=1)[0] for tree in trees]
         )
-        winner = np.argmin(distances, axis=1)
-        winner_distance = distances[np.arange(len(observed)), winner]
         for index, hypothesis in enumerate(hypotheses):
-            mask = (winner == index) & (winner_distance <= maximum_distance)
+            # Exactly adjacent regulation courts share one sideline. That line
+            # is semantically owned by both courts; exclusive argmin ownership
+            # makes the later candidate lose required identifiability evidence.
+            mask = distances[:, index] <= maximum_distance
             assigned[hypothesis.candidate_id][camera_id] = np.asarray(
                 observed[mask],
                 dtype=np.float64,

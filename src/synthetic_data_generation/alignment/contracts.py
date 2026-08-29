@@ -87,6 +87,7 @@ class ProposalSearchStopReason(StrEnum):
     RESIDUAL_EVIDENCE_BELOW_MINIMUM = "residual_evidence_below_minimum"
     NO_RELIABLE_PROPOSAL = "no_reliable_proposal"
     MAXIMUM_CANDIDATE_COUNT_REACHED = "maximum_candidate_count_reached"
+    NO_ADDITIONAL_COMPLETE_COURT = "no_additional_complete_court"
 
 
 class ProposalScoreModel(StrEnum):
@@ -959,7 +960,15 @@ class ProposalSearchDiagnostics:
             raise ValueError(
                 "Selected complete-state candidate count was not explored."
             )
-        preceding_complete_states = sum(complete_counts[: selected_candidate_count - 1])
+        if (
+            self.stopping_reason
+            is ProposalSearchStopReason.NO_ADDITIONAL_COMPLETE_COURT
+        ):
+            preceding_complete_states = sum(complete_counts[selected_candidate_count:])
+        else:
+            preceding_complete_states = sum(
+                complete_counts[: selected_candidate_count - 1]
+            )
         selected_depth_complete_states = complete_counts[selected_candidate_count - 1]
         if not (
             preceding_complete_states
@@ -1539,11 +1548,16 @@ class AlignmentEvidenceDiagnostics:
     determinism: LineInferenceDeterminismDiagnostics
     proposal_search: ProposalSearchDiagnostics
     excluded_cameras: tuple[ExcludedCameraDiagnostics, ...]
+    lattice_assisted_candidate_ids: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         cameras = tuple(self.cameras)
         candidate_scales = tuple(self.candidate_scales)
         excluded_cameras = tuple(self.excluded_cameras)
+        lattice_assisted_candidate_ids = _string_tuple(
+            self.lattice_assisted_candidate_ids,
+            name="lattice_assisted_candidate_ids",
+        )
         if not cameras or not candidate_scales:
             raise ValueError(
                 "Evidence diagnostics must include cameras and candidates."
@@ -1554,6 +1568,12 @@ class AlignmentEvidenceDiagnostics:
             raise ValueError("Diagnostic camera IDs must be unique.")
         if len(candidate_ids) != len(set(candidate_ids)):
             raise ValueError("Diagnostic candidate IDs must be unique.")
+        if len(lattice_assisted_candidate_ids) != len(
+            set(lattice_assisted_candidate_ids)
+        ) or not set(lattice_assisted_candidate_ids).issubset(candidate_ids):
+            raise ValueError(
+                "Lattice-assisted candidate IDs must be a unique candidate subset."
+            )
         excluded_camera_ids = [item.camera_id for item in excluded_cameras]
         if len(excluded_camera_ids) != len(set(excluded_camera_ids)):
             raise ValueError("Excluded diagnostic camera IDs must be unique.")
@@ -1621,13 +1641,18 @@ class AlignmentEvidenceDiagnostics:
         object.__setattr__(self, "cameras", cameras)
         object.__setattr__(self, "candidate_scales", candidate_scales)
         object.__setattr__(self, "excluded_cameras", excluded_cameras)
+        object.__setattr__(
+            self,
+            "lattice_assisted_candidate_ids",
+            lattice_assisted_candidate_ids,
+        )
         object.__setattr__(self, "common_nht_scene_units_per_metre", common_scale)
         object.__setattr__(self, "maximum_relative_scale_deviation", maximum_deviation)
 
     def to_dict(self) -> dict[str, object]:
         """Return machine-readable measured evidence diagnostics."""
         return {
-            "schema": "alignment_measured_evidence_v11",
+            "schema": "alignment_measured_evidence_v12",
             "cameras": [item.to_dict() for item in self.cameras],
             "excluded_cameras": [item.to_dict() for item in self.excluded_cameras],
             "selection": self.selection.to_dict(),
@@ -1637,6 +1662,7 @@ class AlignmentEvidenceDiagnostics:
             "candidate_scales": [item.to_dict() for item in self.candidate_scales],
             "common_nht_scene_units_per_metre": self.common_nht_scene_units_per_metre,
             "maximum_relative_scale_deviation": self.maximum_relative_scale_deviation,
+            "lattice_assisted_candidate_ids": list(self.lattice_assisted_candidate_ids),
         }
 
 

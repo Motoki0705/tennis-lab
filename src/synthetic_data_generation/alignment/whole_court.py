@@ -416,6 +416,55 @@ def evaluate_court_identifiability(
     )
 
 
+def evaluate_boundary_lattice_identifiability(
+    metrics: CourtIdentifiabilityMetrics,
+    *,
+    minimum_camera_count: int,
+) -> dict[str, object]:
+    """Require positive half-court semantics for a boundary-clipped lattice court."""
+    if (
+        isinstance(minimum_camera_count, bool)
+        or not isinstance(minimum_camera_count, int)
+        or minimum_camera_count < 1
+    ):
+        raise TypeError("minimum_camera_count must be a positive integer.")
+
+    def supported_offsets(family: LineFamilyIdentifiabilityMetrics) -> set[float]:
+        return {item.offset_metres for item in family.offset_levels if item.supported}
+
+    longitudinal_offsets = supported_offsets(metrics.longitudinal)
+    transverse_offsets = supported_offsets(metrics.transverse)
+    longitudinal_nested_side = any(
+        singles in longitudinal_offsets and doubles in longitudinal_offsets
+        for singles, doubles in (
+            (-HALF_SINGLES_WIDTH, -HALF_DOUBLES_WIDTH),
+            (HALF_SINGLES_WIDTH, HALF_DOUBLES_WIDTH),
+        )
+    )
+    checks = {
+        "minimum_longitudinal_camera_count": bool(
+            len(metrics.longitudinal.camera_ids) >= minimum_camera_count
+        ),
+        "minimum_transverse_camera_count": bool(
+            len(metrics.transverse.camera_ids) >= minimum_camera_count
+        ),
+        "center_service_line_supported": 0.0 in longitudinal_offsets,
+        "nested_singles_and_doubles_side_supported": longitudinal_nested_side,
+        "baseline_supported": any(
+            offset in transverse_offsets for offset in (-HALF_LENGTH, HALF_LENGTH)
+        ),
+        "service_line_supported": any(
+            offset in transverse_offsets
+            for offset in (-SERVICE_LINE_DISTANCE, SERVICE_LINE_DISTANCE)
+        ),
+    }
+    return {
+        "mode": "boundary_lattice_assisted",
+        "threshold_checks": checks,
+        "accepted": all(checks.values()),
+    }
+
+
 def _longitudinal_membership(
     points: NDArray[np.float64],
 ) -> NDArray[np.bool_]:
@@ -880,6 +929,7 @@ __all__ = [
     "QualifyingOffsetPairMetrics",
     "SemanticOffsetLevelMetrics",
     "WholeTemplateMetrics",
+    "evaluate_boundary_lattice_identifiability",
     "evaluate_court_identifiability",
     "evaluate_court_topology",
     "evaluate_whole_template",

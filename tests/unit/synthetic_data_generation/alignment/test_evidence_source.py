@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -57,6 +58,8 @@ from src.synthetic_data_generation.alignment.evidence_source import (
     _proposal_topology_compatible,
     _ProposalSearchState,
     _refine_complete_proposal_state,
+    _RefinedCompleteState,
+    _repair_one_lattice_outlier,
     _ResidualEvidenceContext,
     _resolve_common_scale,
     _retain_fit_reliable_hypotheses,
@@ -80,6 +83,8 @@ from src.synthetic_data_generation.alignment.settings import (
     LineProjectionSettings,
 )
 from src.synthetic_data_generation.alignment.whole_court import (
+    evaluate_boundary_lattice_identifiability,
+    evaluate_court_identifiability,
     evaluate_court_topology,
     evaluate_whole_template,
     sample_court_line_template,
@@ -1221,6 +1226,43 @@ def test_native_optimizer_penalizes_duplicate_basin_inside_objective(
     assert score > 0.0
 
 
+def test_optimizer_retains_a_better_valid_initial_proposal(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _settings(tmp_path).candidate_fit
+    template = sample_court_line_template(settings.samples_per_metre)
+    initial = np.asarray((0.0, 0.0, 0.0, 0.07), dtype=np.float64)
+    missed = np.asarray((0.8, 0.8, 0.4, 0.06), dtype=np.float64)
+    points = transform_template_2d(template, initial)
+
+    def fake_differential_evolution(
+        _objective: Callable[[NDArray[np.float64]], float],
+        _bounds: object,
+        **kwargs: object,
+    ) -> SimpleNamespace:
+        np.testing.assert_array_equal(kwargs["x0"], initial)
+        return SimpleNamespace(x=missed)
+
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source.differential_evolution",
+        fake_differential_evolution,
+    )
+
+    optimized, score = _optimize_court(
+        points,
+        evidence_weights=np.ones(len(points), dtype=np.float64),
+        template=template,
+        bounds=((-1.0, 1.0), (-1.0, 1.0), (-0.5, 0.5), (0.05, 0.1)),
+        seed=42,
+        settings=settings,
+        initial_parameters=initial,
+    )
+
+    np.testing.assert_array_equal(optimized, initial)
+    assert score > settings.minimum_template_score
+
+
 def test_one_court_proposal_search_infers_one_and_stops_from_residual(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -1493,7 +1535,7 @@ def test_complete_state_residual_is_recomputed_after_common_scale_refit(
     assert np.sum(refined.residual_evidence_weights) == pytest.approx(50.0)
 
 
-def test_ranked_complete_state_refinement_uses_next_valid_state(
+def test_ranked_complete_state_refinement_runs_in_parallel_and_retains_proposal(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1504,6 +1546,8 @@ def test_ranked_complete_state_refinement_uses_next_valid_state(
     _stub_multiple_complete_state_search(monkeypatch)
 
     refinement_calls: list[tuple[float, ...]] = []
+    refinement_threads: set[int] = set()
+    refinement_barrier = threading.Barrier(3)
 
     def refine(
         selected_state: _ProposalSearchState,
@@ -1511,7 +1555,9 @@ def test_ranked_complete_state_refinement_uses_next_valid_state(
     ) -> tuple[_CourtHypothesis, ...]:
         selected = selected_state.selected
         refinement_calls.append(tuple(item.center_uv[0] for item in selected))
-        if len(refinement_calls) == 1:
+        refinement_threads.add(threading.get_ident())
+        refinement_barrier.wait(timeout=2.0)
+        if selected[0].center_uv[0] < 0.0:
             raise ValueError("ranked basin saturated during refinement")
         return selected
 
@@ -1529,16 +1575,289 @@ def test_ranked_complete_state_refinement_uses_next_valid_state(
         settings=settings,
     )
 
-    assert len(refinement_calls) == 2
-    assert refinement_calls[0] == (-8.0,)
-    assert hypotheses[0].native_center_uv[0] == pytest.approx(8.0)
+    assert sorted(refinement_calls) == [(-8.0,), (0.0,), (8.0,)]
+    assert len(refinement_threads) == 3
+    assert hypotheses[0].native_center_uv[0] == pytest.approx(-8.0)
     assert search.feasible_complete_state_count >= 2
+    assert search.refinement_attempt_count == 1
+    assert search.refinement_rejected_state_count == 0
+    assert search.selected_complete_state_rank == 0
+
+
+def test_fit_validator_backtracks_to_next_complete_state(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _candidate_count_settings(
+        tmp_path,
+        maximum_candidate_count=3,
+    )
+    _stub_multiple_complete_state_search(monkeypatch)
+    validated_centers: list[float] = []
+
+    def require_reliable(
+        hypotheses: tuple[_CourtHypothesis, ...],
+        _common_scale: float,
+    ) -> None:
+        center = hypotheses[0].native_center_uv[0]
+        validated_centers.append(center)
+        if center < 0.0:
+            raise ValueError("fit-unreliable complete state")
+
+    hypotheses, _scale, _deviation, search = _fit_court_hypotheses(
+        np.column_stack((np.linspace(-10.0, 10.0, 100), np.zeros(100))),
+        evidence_weights=np.ones(100, dtype=np.float64),
+        bounds=(-10.0, 10.0, -0.1, 0.1),
+        seed=42,
+        settings=settings,
+        complete_state_validator=require_reliable,
+    )
+
+    assert sorted(validated_centers) == pytest.approx([-8.0, 0.0, 8.0])
+    assert hypotheses[0].native_center_uv[0] == pytest.approx(8.0)
     assert search.refinement_attempt_count == 2
     assert search.refinement_rejected_state_count == 1
     assert search.selected_complete_state_rank == 1
 
 
-def test_complete_state_refinement_fails_closed_with_ranked_rejections(
+def test_fit_validator_selects_largest_complete_set_despite_noise_residual(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _candidate_count_settings(
+        tmp_path,
+        maximum_candidate_count=3,
+    )
+    _stub_linear_candidate_search(
+        monkeypatch,
+        reliable_candidate_count=4,
+    )
+    validated_counts: list[int] = []
+
+    def require_three_complete_courts(
+        hypotheses: tuple[_CourtHypothesis, ...],
+        _common_scale: float,
+    ) -> None:
+        validated_counts.append(len(hypotheses))
+        if len(hypotheses) != 3:
+            raise ValueError("not the largest independently complete court set")
+
+    hypotheses, _scale, _deviation, search = _fit_court_hypotheses(
+        np.column_stack((np.linspace(-40.0, 40.0, 270), np.linspace(-10.0, 10.0, 270))),
+        evidence_weights=np.ones(270, dtype=np.float64),
+        bounds=(-60.0, 60.0, -20.0, 20.0),
+        seed=42,
+        settings=settings,
+        complete_state_validator=require_three_complete_courts,
+    )
+
+    assert len(hypotheses) == 3
+    assert validated_counts
+    assert max(validated_counts) == 3
+    assert len(search.frontier_state_counts) == 3
+    assert search.selected_complete_state_candidate_count == 3
+    assert (
+        search.stopping_reason is ProposalSearchStopReason.NO_ADDITIONAL_COMPLETE_COURT
+    )
+    assert (
+        search.selected_residual_evidence_sum / search.original_evidence_sum
+        > settings.minimum_explained_evidence_fraction
+    )
+
+
+def test_one_partial_court_is_repaired_from_two_valid_lattice_centers(
+    tmp_path: Path,
+) -> None:
+    settings = _candidate_count_settings(tmp_path, maximum_candidate_count=4)
+    template = sample_court_line_template(settings.samples_per_metre)
+
+    def hypothesis(candidate_id: str, center: tuple[float, float]) -> _CourtHypothesis:
+        return replace(
+            _hypothesis_for_topology(center=center),
+            candidate_id=candidate_id,
+            nht_scene_units_per_metre=1.0,
+            native_nht_scene_units_per_metre=1.0,
+            template_score=1.0,
+            native_template_score=1.0,
+            native_center_uv=center,
+            proposal_orientation_band_radians=(-0.2, 0.2),
+        )
+
+    hypotheses = (
+        hypothesis("candidate-000", (0.0, 0.0)),
+        hypothesis("candidate-001", (12.0, 0.0)),
+        hypothesis("candidate-002", (60.0, 0.0)),
+    )
+    points = np.concatenate(
+        [
+            transform_template_2d(template, (center, 0.0, 0.0, 1.0))
+            for center in (0.0, 12.0, 24.0)
+        ]
+    )
+    weights = np.ones(len(points), dtype=np.float64)
+    state = _RefinedCompleteState(
+        hypotheses=hypotheses,
+        common_scale=1.0,
+        maximum_scale_deviation=0.0,
+        explained_evidence_fractions=(0.2, 0.2, 0.2),
+        residual=points,
+        residual_evidence_weights=weights,
+        selected_orientation_band_indices=(0, 0, 0),
+        selected_center_tile_indices=(0, 1, 2),
+        native_score_sum=3.0,
+    )
+
+    def require_lattice_court(candidate: _CourtHypothesis) -> None:
+        if (
+            min(abs(candidate.center_uv[0] - value) for value in (0.0, 12.0, 24.0))
+            > 1e-9
+        ):
+            raise ValueError("not a complete lattice court")
+
+    def require_complete_lattice(
+        candidates: tuple[_CourtHypothesis, ...], _common_scale: float
+    ) -> None:
+        for candidate in candidates:
+            require_lattice_court(candidate)
+
+    repaired, _rejections = _repair_one_lattice_outlier(
+        state,
+        points=points,
+        evidence_weights=weights,
+        bounds=(-10.0, 70.0, -20.0, 20.0),
+        settings=settings,
+        candidate_validator=require_lattice_court,
+        complete_state_validator=require_complete_lattice,
+    )
+
+    assert repaired is not None
+    assert repaired.hypotheses[2].center_uv == pytest.approx((24.0, 0.0))
+    assert len(repaired.residual) < len(points)
+
+
+def test_boundary_lattice_assistance_requires_positive_half_court_semantics(
+    tmp_path: Path,
+) -> None:
+    longitudinal = np.concatenate(
+        [
+            np.column_stack(
+                (
+                    np.full(7, offset),
+                    np.linspace(-6.0, 6.0, 7),
+                    np.zeros(7),
+                )
+            )
+            for offset in (0.0, 4.115, 5.485)
+        ]
+    )
+    transverse = np.concatenate(
+        [
+            np.column_stack(
+                (
+                    np.linspace(-4.0, 4.0, 7),
+                    np.full(7, offset),
+                    np.zeros(7),
+                )
+            )
+            for offset in (-11.885, -6.4, 6.4)
+        ]
+    )
+    points = np.concatenate((longitudinal, transverse))
+    camera_ids = tuple(f"camera-{index % 4}" for index in range(len(points)))
+    correspondences = CorrespondenceSet(
+        points_court=points,
+        points_scene=points,
+        camera_ids=camera_ids,
+    )
+    settings = replace(
+        _settings(tmp_path).candidate_fit,
+        common_scale_relative_tolerance=0.07,
+    ).whole_court_evidence(
+        required_court_count=3,
+        minimum_matches_per_offset_level=3,
+    )
+    metrics = evaluate_court_identifiability(
+        correspondences,
+        minimum_camera_count=4,
+        settings=settings,
+    )
+
+    assert (
+        metrics.to_dict(
+            minimum_camera_count=4,
+            settings=settings,
+        )["accepted"]
+        is False
+    )
+    assistance = evaluate_boundary_lattice_identifiability(
+        metrics,
+        minimum_camera_count=4,
+    )
+    assert assistance["accepted"] is True
+    assert all(cast(dict[str, bool], assistance["threshold_checks"]).values())
+
+
+def test_candidate_validator_filters_partial_court_before_beam_retention(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _candidate_count_settings(
+        tmp_path,
+        maximum_candidate_count=3,
+    )
+    _stub_multiple_complete_state_search(monkeypatch)
+    validated_centers: list[float] = []
+
+    def require_complete_court(hypothesis: _CourtHypothesis) -> None:
+        center = hypothesis.center_uv[0]
+        validated_centers.append(center)
+        if center < 0.0:
+            raise ValueError("partial-court proposal")
+
+    hypotheses, _scale, _deviation, search = _fit_court_hypotheses(
+        np.column_stack((np.linspace(-10.0, 10.0, 100), np.zeros(100))),
+        evidence_weights=np.ones(100, dtype=np.float64),
+        bounds=(-10.0, 10.0, -0.1, 0.1),
+        seed=42,
+        settings=settings,
+        candidate_validator=require_complete_court,
+    )
+
+    assert sorted(validated_centers) == pytest.approx([-8.0, 0.0, 8.0])
+    assert hypotheses[0].native_center_uv[0] == pytest.approx(8.0)
+    assert search.frontier_state_counts == (2,)
+
+
+def test_candidate_validator_does_not_reject_coarse_residual_proposals(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _candidate_count_settings(
+        tmp_path,
+        maximum_candidate_count=4,
+    )
+    _stub_linear_candidate_search(
+        monkeypatch,
+        reliable_candidate_count=3,
+    )
+    validated_centers: list[float] = []
+
+    hypotheses, _scale, _deviation, _search = _fit_court_hypotheses(
+        np.column_stack((np.linspace(-40.0, 40.0, 270), np.linspace(-10.0, 10.0, 270))),
+        evidence_weights=np.ones(270, dtype=np.float64),
+        bounds=(-50.0, 50.0, -20.0, 20.0),
+        seed=42,
+        settings=settings,
+        candidate_validator=lambda hypothesis: validated_centers.append(
+            hypothesis.center_uv[0]
+        ),
+    )
+
+    assert len(hypotheses) == 3
+    assert validated_centers == pytest.approx([24.0])
+
+
+def test_complete_state_refinement_falls_back_to_valid_ranked_proposal(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1561,19 +1880,18 @@ def test_complete_state_refinement_fails_closed_with_ranked_rejections(
     )
     points = np.column_stack((np.linspace(-10.0, 10.0, 100), np.zeros(100)))
 
-    with pytest.raises(ValueError) as captured:
-        _fit_court_hypotheses(
-            points,
-            evidence_weights=np.ones(len(points), dtype=np.float64),
-            bounds=(-10.0, 10.0, -0.1, 0.1),
-            seed=42,
-            settings=settings,
-        )
+    hypotheses, _scale, _deviation, search = _fit_court_hypotheses(
+        points,
+        evidence_weights=np.ones(len(points), dtype=np.float64),
+        bounds=(-10.0, 10.0, -0.1, 0.1),
+        seed=42,
+        settings=settings,
+    )
 
-    message = str(captured.value)
-    assert "rejected every common-scale complete state during refinement" in message
-    assert "rank=0(refined basin rejected)" in message
-    assert "rank=1(refined basin rejected)" in message
+    assert len(hypotheses) == 1
+    assert hypotheses[0].native_center_uv[0] == pytest.approx(-8.0)
+    assert search.selected_complete_state_rank == 0
+    assert search.refinement_rejected_state_count == 0
 
 
 def test_court_count_inference_rejects_zero_reliable_proposals(
@@ -1712,7 +2030,10 @@ def test_fit_only_reliability_rejects_semantically_incomplete_candidate(
 
     assert retained == (0,)
     assert len(transforms) == 1
-    assert rejections == ("candidate-001:semantic_identifiability_rejected",)
+    assert len(rejections) == 1
+    assert rejections[0].startswith("candidate-001:semantic_identifiability_rejected(")
+    assert "'longitudinal'" in rejections[0]
+    assert "'transverse'" in rejections[0]
 
 
 def test_fit_only_reliability_refits_and_rebuilds_selected_diagnostics(
@@ -2165,6 +2486,58 @@ def test_two_side_by_side_courts_are_deterministic_under_clutter(
         )
         .values()
     )
+
+
+def test_adjacent_courts_both_receive_their_shared_sideline(
+    tmp_path: Path,
+) -> None:
+    settings = _settings(tmp_path).candidate_fit
+    scale = 0.07
+    separation = 2.0 * HALF_DOUBLES_WIDTH * scale
+    first = replace(
+        _hypothesis_for_topology(center=(0.0, 0.0)),
+        candidate_id="candidate-000",
+    )
+    second = replace(
+        _hypothesis_for_topology(center=(separation, 0.0)),
+        candidate_id="candidate-001",
+        native_center_uv=(separation, 0.0),
+    )
+    template = sample_court_line_template(settings.samples_per_metre)
+    shared_template = template[
+        np.isclose(template[:, 0], HALF_DOUBLES_WIDTH, atol=1.0e-12, rtol=0.0)
+    ]
+    assert len(shared_template) > 0
+    shared_uv = transform_template_2d(
+        shared_template,
+        np.asarray((0.0, 0.0, 0.0, scale), dtype=np.float64),
+    )
+    shared_nht = np.column_stack((shared_uv, np.zeros(len(shared_uv))))
+    plane = _GroundPlane(
+        normal=np.asarray((0.0, 0.0, 1.0), dtype=np.float64),
+        offset=0.0,
+        origin=np.zeros(3, dtype=np.float64),
+        basis_u=np.asarray((1.0, 0.0, 0.0), dtype=np.float64),
+        basis_v=np.asarray((0.0, 1.0, 0.0), dtype=np.float64),
+        support_uv_bounds=(-2.0, 2.0, -2.0, 2.0),
+    )
+    projected = _ProjectedLineEvidence(
+        points_nht_scene=shared_nht,
+        points_uv=shared_uv,
+        probabilities=np.ones(len(shared_uv), dtype=np.float32),
+        proximity_weights=np.ones(len(shared_uv), dtype=np.float64),
+        selected_line_pixel_count=len(shared_uv),
+    )
+
+    assigned = _assign_candidate_evidence(
+        (first, second),
+        plane=plane,
+        projected_by_camera={"camera-0": projected},
+        settings=settings,
+    )
+
+    np.testing.assert_array_equal(assigned[first.candidate_id]["camera-0"], shared_nht)
+    np.testing.assert_array_equal(assigned[second.candidate_id]["camera-0"], shared_nht)
 
 
 def _stub_fixed_geometry(monkeypatch: pytest.MonkeyPatch) -> None:
