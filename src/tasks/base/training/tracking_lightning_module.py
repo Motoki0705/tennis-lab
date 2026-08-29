@@ -50,6 +50,18 @@ class TrackingLightningModule(BaseLightningModule, ABC, Generic[PredictionT]):
         batch: dict[str, Tensor],
         stage: str,
     ) -> TrackingStepResult[PredictionT]:
+        target_position = batch.get("target_position")
+        if target_position is None:
+            raise ValueError(
+                "tracking batch must contain target_position with a batch axis."
+            )
+        if not isinstance(target_position, Tensor):
+            raise ValueError("tracking batch target_position must be a Tensor.")
+        if target_position.ndim == 0 or target_position.shape[0] <= 0:
+            raise ValueError(
+                "tracking batch target_position must have a non-empty batch axis."
+            )
+        batch_size = int(target_position.shape[0])
         result = self.compute_tracking_step(
             batch,
             compute_metrics=stage != "train",
@@ -59,6 +71,7 @@ class TrackingLightningModule(BaseLightningModule, ABC, Generic[PredictionT]):
             result.losses["total"],
             on_step=stage == "train",
             on_epoch=True,
+            batch_size=batch_size,
         )
         for name, value in result.losses.items():
             if name != "total":
@@ -67,9 +80,16 @@ class TrackingLightningModule(BaseLightningModule, ABC, Generic[PredictionT]):
                     value,
                     on_step=False,
                     on_epoch=True,
+                    batch_size=batch_size,
                 )
         for name, value in result.metrics.items():
-            self.log(f"{stage}/{name}", value, on_step=False, on_epoch=True)
+            self.log(
+                f"{stage}/{name}",
+                value,
+                on_step=False,
+                on_epoch=True,
+                batch_size=batch_size,
+            )
         return result
 
     def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:
