@@ -16,7 +16,10 @@ from src.tasks.base.training.gan_training import (
     loss_component_metrics,
 )
 from src.tasks.base.training.lightning_module import BaseLightningModule
-from src.tasks.base.training.metric_logging import uniform_metric_logging_contract
+from src.tasks.base.training.metric_logging import (
+    MetricLoggingContract,
+    uniform_metric_logging_contract,
+)
 from src.tasks.base.training.qualitative_saving import save_qualitative_animation
 from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.model_io import (
@@ -33,7 +36,7 @@ from src.tasks.plcs.model_io import (
 from src.tasks.plcs.models.discriminators import build_plcs_discriminator
 from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
 from src.tasks.plcs.training.mcmc import LangevinNoiseInjector, MCMCConfig
-from src.tasks.plcs.training.metrics import PLCSMetrics
+from src.tasks.plcs.training.metrics import CANONICAL_POSE_HEADLINE_KEYS, PLCSMetrics
 from src.utils.geometry.court_pose import world_pose_to_canonical_pose
 from src.utils.schema.court_normalization import (
     add_court_coordinate_normalization,
@@ -51,15 +54,32 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-PLCS_TRAJECTORY_METRIC_CONTRACT = uniform_metric_logging_contract(
-    "PLCS trajectory",
-    headline_keys=(
-        "position_error_m",
-        "angular_error_deg",
-        "position_accuracy_0.5m",
-        "angle_accuracy_15deg",
-    ),
-    progress_bar_keys=("position_error_m", "angular_error_deg"),
+PLCS_TRAJECTORY_HEADLINE_KEYS = (
+    "position_error_m",
+    "angular_error_deg",
+    "position_accuracy_0.5m",
+    "angle_accuracy_15deg",
+)
+PLCS_TRAJECTORY_PROGRESS_BAR_KEYS = ("position_error_m", "angular_error_deg")
+
+
+def build_plcs_metric_logging_contract(
+    *, predict_canonical_pose: bool
+) -> MetricLoggingContract:
+    """Build the standard PLCS metric contract from the resolved model capability."""
+    pose_headlines = CANONICAL_POSE_HEADLINE_KEYS if predict_canonical_pose else ()
+    pose_progress = ("canonical_mpjpe_m",) if predict_canonical_pose else ()
+    return uniform_metric_logging_contract(
+        "PLCS trajectory + canonical pose"
+        if predict_canonical_pose
+        else "PLCS trajectory",
+        headline_keys=(*PLCS_TRAJECTORY_HEADLINE_KEYS, *pose_headlines),
+        progress_bar_keys=(*PLCS_TRAJECTORY_PROGRESS_BAR_KEYS, *pose_progress),
+    )
+
+
+PLCS_TRAJECTORY_METRIC_CONTRACT = build_plcs_metric_logging_contract(
+    predict_canonical_pose=False
 )
 
 
@@ -82,6 +102,9 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         self.io_adapter = adapter
         self.model_io = cast(PLCSStandardBoundModelIO, model_io)
         self.model: nn.Module = self.model_io.model
+        self.metric_logging_contract = build_plcs_metric_logging_contract(
+            predict_canonical_pose=adapter.predict_canonical_pose
+        )
         self._add_auxiliary_supervision = (
             self._add_position_auxiliary_supervision
             if self.io_adapter.predict_auxiliary_position
@@ -135,6 +158,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             return PLCSMetrics(
                 position_threshold_m=position_threshold,
                 angle_threshold_deg=angle_threshold,
+                predict_canonical_pose=adapter.predict_canonical_pose,
             )
 
         self.train_metrics = _build_metrics()
@@ -179,6 +203,38 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         if stage == "test":
             return self.test_metrics
         raise ValueError(f"Unknown PLCS metric stage: {stage!r}.")
+
+    def _canonical_pose_metric_inputs(
+        self,
+        outputs: PLCSDecodedPrediction,
+        prepared: PLCSPreparedBatch,
+        target_position: Tensor,
+        target_rotation: Tensor,
+    ) -> tuple[Tensor | None, Tensor | None]:
+        """Resolve strict canonical metric tensors from the model capability."""
+        if not self.io_adapter.predict_canonical_pose:
+            if outputs.canonical_pose is not None:
+                raise ValueError(
+                    "Non-canonical PLCS produced canonical_pose despite the resolved "
+                    "model-I/O capability."
+                )
+            return None, None
+        if outputs.canonical_pose is None:
+            raise ValueError(
+                "Canonical-enabled PLCS must produce canonical_pose for metrics."
+            )
+        if prepared.target_human_kp_3d is None:
+            raise ValueError(
+                "Canonical-enabled PLCS metrics require target_human_kp_3d."
+            )
+        return (
+            outputs.canonical_pose,
+            world_pose_to_canonical_pose(
+                prepared.target_human_kp_3d,
+                target_position,
+                target_rotation,
+            ),
+        )
 
     def _aux_loss(
         self,
@@ -243,6 +299,13 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             frame_mask,
         )
 
+        pred_canonical_pose, target_canonical_pose = self._canonical_pose_metric_inputs(
+            outputs,
+            prepared,
+            target_position,
+            target_rotation,
+        )
+
         metrics = self._metric_tracker_for_stage(stage).update(
             outputs.position,
             outputs.rotation,
@@ -255,6 +318,8 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
                 if prepared.reference_metadata is not None
                 else None
             ),
+            pred_canonical_pose=pred_canonical_pose,
+            target_canonical_pose=target_canonical_pose,
         )
 
         return {
