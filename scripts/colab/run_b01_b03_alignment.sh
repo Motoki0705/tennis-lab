@@ -101,6 +101,7 @@ print_dry_run() {
         log "dry-run asset=${DRIVE_DATA_ROOT}/synthetic_data_generation/raw/${scene}.mp4 sha256=${VIDEO_SHA256[${scene}]}"
         log "dry-run scene=${scene} gpu-command=.venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline profile=${profile} request.from_stage=ingest request.through_stage=reconstruction"
         log "dry-run scene=${scene} cpu-command=TENNIS_LAB_ALIGNMENT_LINE_DEVICE=cpu TENNIS_LAB_ALIGNMENT_MAXIMUM_UNEXPLAINED_EVIDENCE_FRACTION=0.5 .venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline profile=${profile} request.from_stage=alignment request.through_stage=alignment"
+        log "dry-run scene=${scene} save-after=reconstruction,alignment"
         log "dry-run scene=${scene} verify=alignment,line-heatmaps,no-datasets,no-report"
     done
 }
@@ -295,18 +296,39 @@ PY
     )
 }
 
-persist_scene_output() {
+persist_reconstruction_output() {
     local scene="$1"
     local scene_root="${REPO_ROOT}/data/synthetic_data_generation/scenes/${scene}"
     local destination="${RESULT_RUN_ROOT}/${scene}"
+    local staging="${destination}.reconstruction-uploading"
     [[ ! -e "${destination}" && ! -L "${destination}" ]] \
         || fail "Drive result destination already exists: ${destination}"
-    mkdir -p "${destination}/source"
+    [[ ! -e "${staging}" && ! -L "${staging}" ]] \
+        || fail "Drive reconstruction staging destination already exists: ${staging}"
+    mkdir -p "${staging}/source"
+    cp "${scene_root}/run.json" "${staging}/run.json"
+    cp "${scene_root}/resolved-config.yaml" "${staging}/resolved-config.yaml"
+    cp "${scene_root}/source/metadata.json" "${staging}/source/metadata.json"
+    cp -RL "${scene_root}/reconstruction" "${staging}/reconstruction"
+    mv "${staging}" "${destination}"
+    log "saved ${scene} completed reconstruction to ${destination}"
+}
+
+persist_alignment_output() {
+    local scene="$1"
+    local scene_root="${REPO_ROOT}/data/synthetic_data_generation/scenes/${scene}"
+    local destination="${RESULT_RUN_ROOT}/${scene}"
+    local staging="${destination}/alignment.uploading"
+    [[ -d "${destination}/reconstruction" ]] \
+        || fail "Drive reconstruction checkpoint is missing: ${destination}"
+    [[ ! -e "${destination}/alignment" && ! -L "${destination}/alignment" ]] \
+        || fail "Drive alignment destination already exists: ${destination}/alignment"
+    [[ ! -e "${staging}" && ! -L "${staging}" ]] \
+        || fail "Drive alignment staging destination already exists: ${staging}"
+    cp -RL "${scene_root}/alignment" "${staging}"
+    mv "${staging}" "${destination}/alignment"
     cp "${scene_root}/run.json" "${destination}/run.json"
     cp "${scene_root}/resolved-config.yaml" "${destination}/resolved-config.yaml"
-    cp "${scene_root}/source/metadata.json" "${destination}/source/metadata.json"
-    cp -RL "${scene_root}/reconstruction" "${destination}/reconstruction"
-    cp -RL "${scene_root}/alignment" "${destination}/alignment"
     log "saved ${scene} reconstruction and alignment to ${destination}"
 }
 
@@ -352,7 +374,7 @@ run_alignment() {
             request.through_stage=alignment
     )
     validate_scene_output "${scene}"
-    persist_scene_output "${scene}"
+    persist_alignment_output "${scene}"
 }
 
 require_repository
@@ -374,6 +396,7 @@ alignment_pid=""
 alignment_scene=""
 for scene in "${SCENES[@]}"; do
     run_reconstruction "${scene}"
+    persist_reconstruction_output "${scene}"
     if [[ -n "${alignment_pid}" ]]; then
         log "waiting for ${alignment_scene} CPU alignment after ${scene} GPU reconstruction"
         wait "${alignment_pid}"
