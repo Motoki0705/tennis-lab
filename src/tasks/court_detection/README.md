@@ -14,6 +14,8 @@ Synthetic schema v2/v3では`data.source.keypoint_court_scope=all_courts|target_
 
 source固有のmanifest・annotation・path解決は `data/inputs/`、target固有の構築は `data/processing/targets.py` が所有します。`data/processing/geometry.py` はRGB、KP、seg、lineに適用する幾何変換をsampleごとに一度だけ決定します。seg/lineはDataset内で生成せず、`data/target_generation/` で事前生成します。
 
+TennisCourtDetector presetは、14点中8点しか一意でなくcourt planeを構成できない`QszoUKyCOHo_600`を`excluded_sample_ids`で明示的にquarantineします。設定したIDがannotation内のちょうど1件に一致しなければsource初期化時に停止するため、データ更新後も古い除外を静かに引き継ぎません。
+
 ```bash
 # 両dense targetをsource外のderived storeへ生成
 python -m src.tasks.court_detection.scripts.materialize_targets \
@@ -96,3 +98,30 @@ Synthetic V3の座標・camera authority・KP semanticの定義は、このconsu
 - `scripts/visualize.py`: checkpointに保存されたtarget bundleを使うprediction visualization。
 
 YouTube annotation UIは20点を収集しますが、TennisCourtDetector学習契約はordered KP14です。20点annotationからKP14への変換は別の明示的なデータ準備工程を必要とします。
+
+## Mixed-source training
+
+`train_mixed`はSynthetic Court V3とTennisCourtDetectorを各train batchへ固定比率で入れます。既定は`synthetic_court=4`、`tennis_court_detector=4`です。KP14は両sourceとも`COURT_KP_NAMES[:14]`へ明示的に正規化され、Synthetic側は1面だけを教師にする`keypoint_court_scope=target_court`を必須とします。source固有schemaの組合せ、semantic channel名、flip permutationのいずれかが変わった場合はmodel構築前に停止します。
+
+```bash
+# 両sourceのKP / SEG / LINEだけを学習
+python -m src.tasks.court_detection.scripts.train_mixed \
+  data/processing=all data/augmentation=pose_safe \
+  loss.pose.enabled=false loss.consistency.enabled=false \
+  run.output_dir=court_detection/mixed-source/dense-only \
+  run.test_after_fit=true
+
+# dense lossは全sample、pose lossはSynthetic Court V3 sampleだけで学習
+python -m src.tasks.court_detection.scripts.train_mixed \
+  data/processing=all data/augmentation=pose_safe \
+  loss.pose.enabled=true \
+  loss.pose.translation_weight=1.0 \
+  loss.pose.rotation_weight=1.0 loss.pose.focal_weight=1.0 \
+  loss.consistency.enabled=false \
+  run.output_dir=court_detection/mixed-source/dense-pose \
+  run.test_after_fit=true
+```
+
+pose有効時はcollateが必須の`pose_supervision_mask`を生成します。Synthetic Court V3だけが`true`となり、TennisCourtDetector sampleはpose lossとpose metricの双方から除外されます。mask欠落時に全sampleをpose教師として扱うfallbackはありません。TennisCourtDetectorにはtest splitがないため、`test_after_fit`はSynthetic Court V3の明示的test splitだけを評価します。
+
+`run.output_dir`はvariantごとに明示が必須です。config、非queue実行時のtest prediction、その他のrun artifactを異なる学習条件間で上書きしないため、同じ出力先を再利用しないでください。

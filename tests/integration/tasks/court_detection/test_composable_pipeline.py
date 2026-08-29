@@ -33,6 +33,7 @@ from src.tasks.court_detection.configuration import CourtTrainingConfig
 from src.tasks.court_detection.data.contracts import CourtTargetKind
 from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
 from src.tasks.court_detection.data.inputs.factory import build_court_input
+from src.tasks.court_detection.data.mixed import MixedCourtDetectionDataModule
 from src.tasks.court_detection.data.target_generation.materializer import (
     CourtTargetMaterializer,
 )
@@ -41,6 +42,9 @@ from src.tasks.court_detection.data.target_generation.store import (
 )
 from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
 from src.tasks.court_detection.model_io.factory import build_court_detection_pair
+from src.tasks.court_detection.training.runner_mixed import (
+    resolve_mixed_training_config,
+)
 from src.tasks.court_detection.visualization.adapters.render_inputs import (
     build_court_qualitative_renderer,
 )
@@ -66,14 +70,13 @@ def _image_points() -> list[list[float]]:
 
 def _write_tennis_court_detector(root: Path) -> None:
     (root / "images").mkdir(parents=True)
-    Image.fromarray(np.full((48, 64, 3), 127, dtype=np.uint8)).save(
-        root / "images" / "court.png"
-    )
-    payload = [{"id": "court", "kps": _image_points()}]
     for split in ("train", "val"):
-        (root / f"data_{split}.json").write_text(
-            json.dumps(payload), encoding="utf-8"
+        sample_id = f"court_{split}"
+        Image.fromarray(np.full((48, 64, 3), 127, dtype=np.uint8)).save(
+            root / "images" / f"{sample_id}.png"
         )
+        payload = [{"id": sample_id, "kps": _image_points(), "metric": 0.25}]
+        (root / f"data_{split}.json").write_text(json.dumps(payload), encoding="utf-8")
 
 
 def _projection() -> dict[str, object]:
@@ -146,9 +149,7 @@ def _write_synthetic_court(workspace_root: Path) -> None:
             "projection": projection,
             "metadata": metadata,
         }
-        (sample_root / "labels.json").write_text(
-            json.dumps(labels), encoding="utf-8"
-        )
+        (sample_root / "labels.json").write_text(json.dumps(labels), encoding="utf-8")
         records.append(
             {
                 "sample_index": sample_index,
@@ -258,11 +259,7 @@ def _singleton_projection(
     points = _image_points()
     physical_orders = (
         tuple(range(14)),
-        (
-            OPPOSITE_COURT_END_INDEX
-            if schema == "v2"
-            else CAMERA_VIEW_HALF_TURN_INDEX
-        ),
+        (OPPOSITE_COURT_END_INDEX if schema == "v2" else CAMERA_VIEW_HALF_TURN_INDEX),
     )
     courts: list[dict[str, object]] = []
     for court_index, physical_order in enumerate(physical_orders):
@@ -318,9 +315,7 @@ def _write_synthetic_court_singleton(
     dataset_schema = (
         COURT_DATASET_SCHEMA_V2 if schema == "v2" else COURT_DATASET_SCHEMA_V3
     )
-    sample_schema = (
-        COURT_SAMPLE_SCHEMA_V2 if schema == "v2" else COURT_SAMPLE_SCHEMA_V3
-    )
+    sample_schema = COURT_SAMPLE_SCHEMA_V2 if schema == "v2" else COURT_SAMPLE_SCHEMA_V3
     root = workspace_root / scene_id / "datasets" / "court"
     records: list[dict[str, object]] = []
     for sample_index, split in enumerate(("train", "validation", "test")):
@@ -351,9 +346,7 @@ def _write_synthetic_court_singleton(
             "target_court": target,
             "metadata": metadata,
         }
-        (sample_root / "labels.json").write_text(
-            json.dumps(labels), encoding="utf-8"
-        )
+        (sample_root / "labels.json").write_text(json.dumps(labels), encoding="utf-8")
         records.append(
             {
                 "sample_index": sample_index,
@@ -434,6 +427,39 @@ def _compose(
         config.data.source.scene_ids = ["V2"]
     elif source == "synthetic_court":
         config.data.source.scene_ids = ["V3"]
+    elif source == "tennis_court_detector":
+        config.data.source.excluded_sample_ids = []
+    return config
+
+
+def _compose_mixed(tmp_path: Path) -> DictConfig:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_mixed",
+            overrides=[
+                "data/augmentation=pose_safe",
+                "model/encoder=default",
+                "model/transformer_encoder=none",
+                "model/decoder=fpn",
+                "mixed.sources.tennis_court_detector.excluded_sample_ids=[]",
+                "run.output_dir=court_detection/mixed-source/integration-test",
+            ],
+        )
+    config.paths.project_root = str(tmp_path)
+    config.paths.data_root = "data"
+    config.paths.checkpoint_root = "checkpoints"
+    config.paths.artifact_root = "artifacts"
+    config.paths.output_root = "outputs"
+    config.paths.cache_root = "cache"
+    config.paths.external_asset_root = "external"
+    config.data.source.scene_ids = ["V3"]
+    config.data.batch_size = 2
+    config.data.num_workers = 0
+    config.data.pin_memory = False
+    config.data.augmentation.train_scales = [32]
+    config.data.augmentation.val_short_side = 32
+    config.mixed.train_batch_counts.synthetic_court = 1
+    config.mixed.train_batch_counts.tennis_court_detector = 1
     return config
 
 
@@ -467,6 +493,53 @@ def court_roots(tmp_path: Path) -> Path:
     _write_synthetic_court_singleton(singleton_root, schema="v2")
     _write_synthetic_court_singleton(singleton_root, schema="v3")
     return tmp_path
+
+
+def test_mixed_datamodule_uses_both_real_input_pipelines_in_each_batch(
+    court_roots: Path,
+) -> None:
+    synthetic = _compose(
+        court_roots,
+        source="synthetic_court",
+        processing="all",
+        keypoint_court_scope="target_court",
+    )
+    tennis = _compose(
+        court_roots,
+        source="tennis_court_detector",
+        processing="all",
+    )
+    _materialize(synthetic)
+    _materialize(tennis)
+
+    config = _compose_mixed(court_roots)
+    standard, mixed = resolve_mixed_training_config(config)
+    datamodule = MixedCourtDetectionDataModule(standard, mixed_config=mixed)
+    datamodule.setup(None)
+
+    batch = next(iter(datamodule.train_dataloader()))
+    metadata = cast(list[Mapping[str, object]], batch["metadata"])
+    targets = cast(Mapping[str, object], batch["targets"])
+    kp = cast(Mapping[str, torch.Tensor], targets["kp"])
+
+    assert [item["source_kind"] for item in metadata].count("synthetic_court") == 1
+    assert [item["source_kind"] for item in metadata].count(
+        "tennis_court_detector"
+    ) == 1
+    assert tuple(targets) == ("kp", "seg", "line")
+    assert datamodule.target_bundle_spec.targets["kp"].channel_names == tuple(
+        COURT_KP_NAMES[:14]
+    )
+    assert kp["heatmap"].shape == (2, 14, 32, 32)
+    assert kp["points_xy"].shape == (2, 14, 1, 2)
+    torch.testing.assert_close(
+        cast(torch.Tensor, batch["pose_supervision_mask"]),
+        torch.tensor([False, False]),
+    )
+
+    test_batch = next(iter(datamodule.test_dataloader()))
+    test_metadata = cast(list[Mapping[str, object]], test_batch["metadata"])
+    assert {item["source_kind"] for item in test_metadata} == {"synthetic_court"}
 
 
 @pytest.mark.parametrize(
@@ -524,9 +597,7 @@ def test_real_three_target_dataset_dataloader_contract(
     datamodule.setup("validate")
 
     batch = next(iter(datamodule.val_dataloader()))
-    targets = cast(
-        Mapping[str, object], batch["targets"]
-    )
+    targets = cast(Mapping[str, object], batch["targets"])
     kp = cast(Mapping[str, torch.Tensor], targets["kp"])
 
     assert tuple(targets) == ("kp", "seg", "line")
@@ -597,10 +668,13 @@ def test_v3_target_court_scope_composes_through_pipeline_and_preserves_dense_tar
         int(value)
         for value in all_raw.keypoint_channels.physical_indices[:, 0].tolist()
     ) == tuple(range(14))
-    assert tuple(
-        int(value)
-        for value in all_raw.keypoint_channels.physical_indices[:, 1].tolist()
-    ) == CAMERA_VIEW_HALF_TURN_INDEX
+    assert (
+        tuple(
+            int(value)
+            for value in all_raw.keypoint_channels.physical_indices[:, 1].tolist()
+        )
+        == CAMERA_VIEW_HALF_TURN_INDEX
+    )
 
     _materialize(all_config)
     derived_root = court_roots / "data/court_detection/derived_targets"
@@ -815,9 +889,10 @@ def test_shared_geometry_keeps_kp_and_line_correspondence(
     kp = cast(Mapping[str, torch.Tensor], targets["kp"])
     line = cast(torch.Tensor, targets["line"])[0, 0]
     image_height, image_width = cast(torch.Tensor, batch["image_size"])[0]
-    points = kp["points_xy"][0, :, 0] * torch.stack(
-        (image_width - 1, image_height - 1)
-    ).float()
+    points = (
+        kp["points_xy"][0, :, 0]
+        * torch.stack((image_width - 1, image_height - 1)).float()
+    )
     visible = kp["point_visible"][0, :, 0]
 
     for point in points[visible]:

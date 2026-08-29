@@ -144,9 +144,11 @@ def _request(
     *,
     from_stage: StageName = StageName.INGEST,
     targets: frozenset[DatasetTarget] = frozenset({DatasetTarget.COURT}),
+    source_video: Path | None = None,
 ) -> ScenePipelineRequest:
-    source = tmp_path / "source.mp4"
-    source.write_bytes(b"video")
+    source = source_video or tmp_path / "source.mp4"
+    if source_video is None:
+        source.write_bytes(b"video")
     return ScenePipelineRequest(
         scene_id="scene-a",
         source_video=source.resolve(),
@@ -199,14 +201,18 @@ def _court_reuse_config_yaml(
     court_schema_version: str,
     nht: dict[str, object],
     pipeline_seed: int = 695,
+    source_video: Path | None = None,
 ) -> str:
     """Build the minimal resolved authority used by Court-only reuse tests."""
+    request: dict[str, object] = {
+        "from_stage": from_stage.value,
+        "targets": sorted(target.value for target in targets),
+    }
+    if source_video is not None:
+        request["source_video"] = str(source_video.resolve())
     return yaml.safe_dump(
         {
-            "request": {
-                "from_stage": from_stage.value,
-                "targets": sorted(target.value for target in targets),
-            },
+            "request": request,
             "dataset": {
                 "court": {
                     "schema_version": court_schema_version,
@@ -665,15 +671,145 @@ def test_rerun_cursor_can_change_but_production_configuration_cannot(
     ) == "second"
 
 
+def test_relocated_identical_source_is_reusable_outside_court_exception(
+    tmp_path: Path,
+) -> None:
+    original = tmp_path / "original" / "source.mp4"
+    original.parent.mkdir()
+    original.write_bytes(b"portable-video")
+    relocated = tmp_path / "relocated" / "source.mp4"
+    relocated.parent.mkdir()
+    relocated.write_bytes(original.read_bytes())
+    first_config = yaml.safe_dump(
+        {
+            "request": {
+                "from_stage": StageName.INGEST.value,
+                "source_video": str(original.resolve()),
+            },
+            "settings": {"seed": 695},
+        },
+        sort_keys=False,
+    )
+    rerun_config = yaml.safe_dump(
+        {
+            "request": {
+                "from_stage": StageName.ALIGNMENT.value,
+                "source_video": str(relocated.resolve()),
+            },
+            "settings": {"seed": 695},
+        },
+        sort_keys=False,
+    )
+    first_registry, _ = _registry(payload="first")
+    first = _runner(
+        tmp_path,
+        first_registry,
+        resolved_config_yaml=first_config,
+    )
+    first.run(_request(tmp_path, source_video=original))
+    canonical_source = first.workspace.root / "source/video.mp4"
+    canonical_source.write_bytes(original.read_bytes())
+    reconstruction = first.workspace.root / "reconstruction/export/scene.json"
+    retained = reconstruction.read_bytes()
+
+    rerun_registry, handlers = _registry(payload="relocated")
+    rerun = _runner(
+        tmp_path,
+        rerun_registry,
+        resolved_config_yaml=rerun_config,
+    )
+    rerun.run(
+        _request(
+            tmp_path,
+            from_stage=StageName.ALIGNMENT,
+            source_video=relocated,
+        )
+    )
+
+    assert reconstruction.read_bytes() == retained
+    assert handlers[StageName.INGEST].execute_calls == 0
+    assert handlers[StageName.RECONSTRUCTION].execute_calls == 0
+    assert handlers[StageName.ALIGNMENT].execute_calls == 1
+
+
+def test_relocated_source_with_different_bytes_fails_before_mutation(
+    tmp_path: Path,
+) -> None:
+    original = tmp_path / "original" / "source.mp4"
+    original.parent.mkdir()
+    original.write_bytes(b"canonical-video")
+    first_config = yaml.safe_dump(
+        {
+            "request": {
+                "from_stage": StageName.INGEST.value,
+                "source_video": str(original.resolve()),
+            },
+            "settings": {"seed": 695},
+        },
+        sort_keys=False,
+    )
+    first_registry, _ = _registry(payload="first")
+    first = _runner(
+        tmp_path,
+        first_registry,
+        resolved_config_yaml=first_config,
+    )
+    first.run(_request(tmp_path, source_video=original))
+    canonical_source = first.workspace.root / "source/video.mp4"
+    canonical_source.write_bytes(original.read_bytes())
+    manifest_before = first.workspace.run_manifest_path.read_bytes()
+    config_before = first.workspace.resolved_config_path.read_bytes()
+
+    relocated = tmp_path / "relocated" / "source.mp4"
+    relocated.parent.mkdir()
+    relocated.write_bytes(b"different-video")
+    rerun_config = yaml.safe_dump(
+        {
+            "request": {
+                "from_stage": StageName.ALIGNMENT.value,
+                "source_video": str(relocated.resolve()),
+            },
+            "settings": {"seed": 695},
+        },
+        sort_keys=False,
+    )
+    rerun_registry, handlers = _registry(payload="forbidden")
+    rerun = _runner(
+        tmp_path,
+        rerun_registry,
+        resolved_config_yaml=rerun_config,
+    )
+
+    with pytest.raises(ValueError, match="source video disagrees"):
+        rerun.run(
+            _request(
+                tmp_path,
+                from_stage=StageName.ALIGNMENT,
+                source_video=relocated,
+            )
+        )
+
+    assert all(handler.execute_calls == 0 for handler in handlers.values())
+    assert rerun.workspace.run_manifest_path.read_bytes() == manifest_before
+    assert rerun.workspace.resolved_config_path.read_bytes() == config_before
+
+
 def test_court_only_cursor_allows_only_court_config_change_and_reuses_upstream(
     tmp_path: Path,
 ) -> None:
     all_targets = frozenset(DatasetTarget)
+    original_source = tmp_path / "original" / "source.mp4"
+    original_source.parent.mkdir()
+    original_source.write_bytes(b"portable-court-video")
+    relocated_source = tmp_path / "relocated" / "source.mp4"
+    relocated_source.parent.mkdir()
+    relocated_source.write_bytes(original_source.read_bytes())
     first_yaml = _court_reuse_config_yaml(
         from_stage=StageName.INGEST,
         targets=all_targets,
         court_schema_version="v1",
         nht={"backend": "public-cli"},
+        source_video=original_source,
     )
     court_v2_yaml = _court_reuse_config_yaml(
         from_stage=StageName.COURT_DATASET,
@@ -684,10 +820,20 @@ def test_court_only_cursor_allows_only_court_config_change_and_reuses_upstream(
             "training_python_path": "/runtime/python",
             "trainer_path": "/runtime/nht/train.py",
         },
+        source_video=relocated_source,
     )
     first_registry, _ = _registry(payload="retained")
     first = _runner(tmp_path, first_registry, resolved_config_yaml=first_yaml)
-    first.run(_request(tmp_path, targets=all_targets))
+    first.run(
+        _request(
+            tmp_path,
+            targets=all_targets,
+            source_video=original_source,
+        )
+    )
+    (first.workspace.root / "source/video.mp4").write_bytes(
+        original_source.read_bytes()
+    )
     retained_paths = {
         StageName.RECONSTRUCTION: first.workspace.root
         / "reconstruction/export/scene.json",
@@ -704,6 +850,7 @@ def test_court_only_cursor_allows_only_court_config_change_and_reuses_upstream(
             tmp_path,
             from_stage=StageName.COURT_DATASET,
             targets=frozenset({DatasetTarget.COURT}),
+            source_video=relocated_source,
         )
     )
 
@@ -734,6 +881,7 @@ def test_court_only_cursor_allows_only_court_config_change_and_reuses_upstream(
             "trainer_path": "/runtime/nht/train.py",
         },
         pipeline_seed=696,
+        source_video=relocated_source,
     )
     forbidden_registry, forbidden_handlers = _registry(payload="forbidden")
     forbidden = _runner(
@@ -747,6 +895,7 @@ def test_court_only_cursor_allows_only_court_config_change_and_reuses_upstream(
                 tmp_path,
                 from_stage=StageName.COURT_DATASET,
                 targets=frozenset({DatasetTarget.COURT}),
+                source_video=relocated_source,
             )
         )
     assert all(handler.execute_calls == 0 for handler in forbidden_handlers.values())
