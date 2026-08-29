@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import cast
 
 import torch
 from torch import Tensor
@@ -23,6 +24,17 @@ from src.tasks.plcs.court_keypoint_contract import (
 )
 from src.utils.geometry.angles import angular_error
 from src.utils.schema.court_normalization import denormalize_court_position
+from src.utils.schema.player import COCO_KP_NAMES, NUM_HUMAN_KP
+
+CANONICAL_PCK_THRESHOLD_M = 0.1
+CANONICAL_POSE_HEADLINE_KEYS = (
+    "canonical_mpjpe_m",
+    "canonical_pck_0.1m",
+)
+CANONICAL_POSE_DIAGNOSTIC_KEYS = (
+    "canonical_joint_error_median_m",
+    *(f"canonical_joint_error_{name}_m" for name in COCO_KP_NAMES),
+)
 
 
 def _flatten_valid(valid: Tensor, values: Tensor) -> Tensor:
@@ -122,6 +134,7 @@ class PLCSMetrics:
     - Per-axis position errors
     - Position accuracy (within threshold)
     - Angular accuracy (within threshold)
+    - Optional canonical-pose MPJPE, PCK, median, and fixed COCO-17 joint errors
     """
 
     def __init__(
@@ -129,16 +142,19 @@ class PLCSMetrics:
         *,
         position_threshold_m: float,
         angle_threshold_deg: float,
+        predict_canonical_pose: bool = False,
     ) -> None:
         """Initialize the metrics tracker.
 
         Args:
             position_threshold_m: Threshold for position accuracy (meters).
             angle_threshold_deg: Threshold for angular accuracy (degrees).
+            predict_canonical_pose: Whether canonical-pose metrics are required.
 
         """
         self.position_threshold_m = position_threshold_m
         self.angle_threshold_deg = angle_threshold_deg
+        self.predict_canonical_pose = predict_canonical_pose
         self.reset()
 
     def reset(self) -> None:
@@ -152,6 +168,129 @@ class PLCSMetrics:
         self._reference_index_error_counts: dict[int, int] = {}
         self._num_y_sign_correct = 0
         self._num_y_sign_targets = 0
+        self._canonical_error_sum = 0.0
+        self._canonical_error_count = 0
+        self._canonical_pck_correct = 0
+        self._canonical_joint_error_sums = [0.0] * NUM_HUMAN_KP
+        self._canonical_joint_error_counts = [0] * NUM_HUMAN_KP
+        self._canonical_errors_for_median: list[Tensor] = []
+
+    def _update_canonical_pose_metrics(
+        self,
+        pred_canonical_pose: Tensor | None,
+        target_canonical_pose: Tensor | None,
+        *,
+        expected_frame_shape: torch.Size,
+        frame_valid: Tensor | None,
+    ) -> dict[str, float]:
+        """Validate and accumulate optional canonical-pose metric observations."""
+        pose_args_present = (
+            pred_canonical_pose is not None,
+            target_canonical_pose is not None,
+        )
+        if pose_args_present[0] != pose_args_present[1]:
+            raise ValueError(
+                "PLCS canonical pose metrics require pred_canonical_pose and "
+                "target_canonical_pose together."
+            )
+        if not self.predict_canonical_pose:
+            if any(pose_args_present):
+                raise ValueError(
+                    "PLCS canonical pose metric inputs were provided while "
+                    "predict_canonical_pose=False."
+                )
+            return {}
+        if not all(pose_args_present):
+            raise ValueError(
+                "PLCS canonical pose metrics require pred_canonical_pose and "
+                "target_canonical_pose when predict_canonical_pose=True."
+            )
+
+        pred_pose = cast(Tensor, pred_canonical_pose)
+        target_pose = cast(Tensor, target_canonical_pose)
+        if pred_pose.shape != target_pose.shape:
+            raise ValueError(
+                "PLCS canonical pose prediction and target shapes must match, got "
+                f"{tuple(pred_pose.shape)} and {tuple(target_pose.shape)}."
+            )
+        if pred_pose.ndim not in {3, 4} or pred_pose.shape[-2:] != (
+            NUM_HUMAN_KP,
+            3,
+        ):
+            raise ValueError(
+                "PLCS canonical pose metrics require shape (B, 17, 3) or "
+                f"(B, T, 17, 3), got {tuple(pred_pose.shape)}."
+            )
+        if pred_pose.shape[:-2] != expected_frame_shape:
+            raise ValueError(
+                "PLCS canonical pose leading axes must match position leading axes, "
+                f"got {tuple(pred_pose.shape[:-2])} and "
+                f"{tuple(expected_frame_shape)}."
+            )
+        if pred_pose.device != target_pose.device:
+            raise ValueError(
+                "PLCS canonical pose prediction and target must share a device."
+            )
+        if frame_valid is not None and frame_valid.shape != pred_pose.shape[:-2]:
+            raise ValueError(
+                "PLCS canonical pose valid-frame mask must match pose leading axes, "
+                f"got {tuple(frame_valid.shape)} and "
+                f"{tuple(pred_pose.shape[:-2])}."
+            )
+
+        metric_dtype = (
+            torch.float64
+            if torch.float64 in (pred_pose.dtype, target_pose.dtype)
+            else torch.float32
+        )
+        errors = torch.linalg.vector_norm(
+            pred_pose.detach().to(dtype=metric_dtype)
+            - target_pose.detach().to(dtype=metric_dtype),
+            dim=-1,
+        )
+        valid_errors = (
+            errors.reshape(-1, NUM_HUMAN_KP)
+            if frame_valid is None
+            else errors[frame_valid]
+        )
+        if valid_errors.numel() == 0:
+            return {}
+
+        error_sum = float(valid_errors.to(dtype=torch.float64).sum().cpu().item())
+        observation_count = int(valid_errors.numel())
+        pck_correct = int(
+            (valid_errors <= valid_errors.new_tensor(CANONICAL_PCK_THRESHOLD_M))
+            .sum()
+            .cpu()
+            .item()
+        )
+        joint_error_sums = (
+            valid_errors.to(dtype=torch.float64).sum(dim=0).cpu().tolist()
+        )
+        joint_observation_count = int(valid_errors.shape[0])
+
+        self._canonical_error_sum += error_sum
+        self._canonical_error_count += observation_count
+        self._canonical_pck_correct += pck_correct
+        for index, joint_error_sum in enumerate(joint_error_sums):
+            self._canonical_joint_error_sums[index] += float(joint_error_sum)
+            self._canonical_joint_error_counts[index] += joint_observation_count
+        self._canonical_errors_for_median.append(valid_errors.reshape(-1).cpu())
+
+        metrics = {
+            "canonical_mpjpe_m": error_sum / observation_count,
+            "canonical_pck_0.1m": pck_correct / observation_count,
+            "canonical_joint_error_median_m": float(valid_errors.median().cpu().item()),
+        }
+        metrics.update(
+            {
+                f"canonical_joint_error_{name}_m": (
+                    float(joint_error_sums[index]) / joint_observation_count
+                )
+                for index, name in enumerate(COCO_KP_NAMES)
+            }
+        )
+        return metrics
 
     def update(
         self,
@@ -164,6 +303,8 @@ class PLCSMetrics:
         court_reference_provenance: Sequence[CourtReferenceFrameProvenance]
         | None = None,
         reference_view_index: Tensor | None = None,
+        pred_canonical_pose: Tensor | None = None,
+        target_canonical_pose: Tensor | None = None,
     ) -> dict[str, float]:
         """Update metrics with new predictions.
 
@@ -172,6 +313,8 @@ class PLCSMetrics:
             pred_rotation: Predicted rotation (cos, sin), shape (B, 2) or (B, T, 2).
             target_position: Target normalized position, shape (B, 3) or (B, T, 3).
             target_rotation: Target rotation (cos, sin), shape (B, 2) or (B, T, 2).
+            pred_canonical_pose: Optional predicted canonical COCO-17 pose.
+            target_canonical_pose: Optional target canonical COCO-17 pose.
 
         Returns:
             dict: Current batch metrics.
@@ -190,6 +333,12 @@ class PLCSMetrics:
                 padding_mask.all(dim=1) if padding_mask.ndim == 3 else padding_mask
             )
             frame_valid = ~frame_padding
+        canonical_metrics = self._update_canonical_pose_metrics(
+            pred_canonical_pose,
+            target_canonical_pose,
+            expected_frame_shape=pred_position.shape[:-1],
+            frame_valid=frame_valid,
+        )
         if reference_view_index is not None:
             sample_valid = (
                 torch.ones(
@@ -210,9 +359,9 @@ class PLCSMetrics:
                 y_sign_eligible = valid_reference_target[..., 1].abs() > 0.0
                 if reference_valid is not None:
                     y_sign_eligible &= reference_valid
-                y_sign_correct = torch.sign(
-                    valid_reference_prediction[..., 1]
-                ).eq(torch.sign(valid_reference_target[..., 1]))
+                y_sign_correct = torch.sign(valid_reference_prediction[..., 1]).eq(
+                    torch.sign(valid_reference_target[..., 1])
+                )
                 if bool(y_sign_eligible.any().item()):
                     reference_metrics = compute_plcs_reference_metric_evidence(
                         valid_reference_prediction,
@@ -253,10 +402,9 @@ class PLCSMetrics:
                     flat_reference_valid = reference_valid.reshape(
                         valid_reference_indices.shape[0], -1
                     )
-                    sample_errors = (
-                        sample_errors.masked_fill(~flat_reference_valid, 0.0).sum(dim=1)
-                        / flat_reference_valid.sum(dim=1)
-                    )
+                    sample_errors = sample_errors.masked_fill(
+                        ~flat_reference_valid, 0.0
+                    ).sum(dim=1) / flat_reference_valid.sum(dim=1)
                 else:
                     sample_errors = sample_errors.mean(dim=1)
                 reference_metrics.update(
@@ -359,6 +507,7 @@ class PLCSMetrics:
             "y_error_m": y_error.mean().item(),
             "z_error_m": z_error.mean().item(),
             **reference_metrics,
+            **canonical_metrics,
         }
 
     def compute(self) -> dict[str, float]:
@@ -375,8 +524,7 @@ class PLCSMetrics:
             )
 
         position_accuracy_key = (
-            "position_accuracy_"
-            f"{format_metric_threshold(self.position_threshold_m)}m"
+            f"position_accuracy_{format_metric_threshold(self.position_threshold_m)}m"
         )
         angle_accuracy_key = (
             f"angle_accuracy_{format_metric_threshold(self.angle_threshold_deg)}deg"
@@ -434,10 +582,42 @@ class PLCSMetrics:
                 for index, total in self._reference_index_error_sums.items()
             }
         )
+        if self.predict_canonical_pose:
+            if self._canonical_error_count == 0:
+                raise RuntimeError(
+                    "PLCSMetrics.compute() requires at least one valid canonical "
+                    "pose joint when predict_canonical_pose=True."
+                )
+            canonical_errors = torch.cat(self._canonical_errors_for_median)
+            metrics.update(
+                {
+                    "canonical_mpjpe_m": (
+                        self._canonical_error_sum / self._canonical_error_count
+                    ),
+                    "canonical_pck_0.1m": (
+                        self._canonical_pck_correct / self._canonical_error_count
+                    ),
+                    "canonical_joint_error_median_m": float(
+                        canonical_errors.median().item()
+                    ),
+                }
+            )
+            metrics.update(
+                {
+                    f"canonical_joint_error_{name}_m": (
+                        self._canonical_joint_error_sums[index]
+                        / self._canonical_joint_error_counts[index]
+                    )
+                    for index, name in enumerate(COCO_KP_NAMES)
+                }
+            )
         return metrics
 
 
 __all__ = [
+    "CANONICAL_PCK_THRESHOLD_M",
+    "CANONICAL_POSE_DIAGNOSTIC_KEYS",
+    "CANONICAL_POSE_HEADLINE_KEYS",
     "PLCSMetrics",
     "PLCSReferenceMetricEvidence",
     "compute_plcs_reference_metric_evidence",

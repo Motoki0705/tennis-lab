@@ -14,6 +14,7 @@ from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialM
 from src.tasks.plcs.models.plcs_multiview_model import PLCSMultiViewModel
 from src.tasks.plcs.training.composition import build_plcs_lightning_module
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
+from src.tasks.plcs.training.metrics import CANONICAL_POSE_HEADLINE_KEYS
 from src.utils.configuration import (
     MissingConfigurationKeyError,
     SemanticConfigurationError,
@@ -52,6 +53,35 @@ def test_multiview_all_outputs_beta01_config_composes_and_binds_model() -> None:
     assert module.loss_fn.config.angle_weight == 1.0
     assert module.loss_fn.config.canonical_pose_weight == 1.0
     assert module.loss_fn.config.reprojection_weight == 0.0
+    assert module.train_metrics.predict_canonical_pose
+    assert set(CANONICAL_POSE_HEADLINE_KEYS) <= set(
+        module.metric_logging_contract.for_stage("train").headline_keys
+    )
+
+
+def test_noncanonical_model_keeps_trajectory_only_metric_contract() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train",
+            overrides=[
+                "model=multiview",
+                "loss=no_canonical",
+                "model.hidden_dim=16",
+                "model.num_heads=4",
+                "model.ffn_dim=32",
+                "model.rope_dim=4",
+                "model.num_layers=1",
+            ],
+        )
+
+    module = build_plcs_lightning_module(config)
+
+    assert isinstance(module, PLCSLightningModule)
+    assert not module.io_adapter.predict_canonical_pose
+    assert not module.train_metrics.predict_canonical_pose
+    assert not set(CANONICAL_POSE_HEADLINE_KEYS).intersection(
+        module.metric_logging_contract.for_stage("train").headline_keys
+    )
 
 
 def test_multiview_reprojection_config_composes_and_binds_loss() -> None:
