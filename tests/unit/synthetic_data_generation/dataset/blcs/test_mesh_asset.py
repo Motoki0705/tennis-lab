@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import io
 import json
-import struct
 from dataclasses import replace
 from pathlib import Path
 
@@ -21,6 +20,7 @@ from src.synthetic_data_generation.dataset.blcs.mesh_asset import (
     _primitive_colors,
     load_ball_mesh_asset,
 )
+from tests.support.synthetic_data_generation.glb import write_tetrahedron_glb
 
 
 def test_glb_mesh_is_recentered_and_scaled_to_physical_radius(
@@ -28,7 +28,7 @@ def test_glb_mesh_is_recentered_and_scaled_to_physical_radius(
     blcs_assets,
 ) -> None:
     path = tmp_path / "offset tennis ball.glb"
-    _write_tetrahedron_glb(path, translation=(4.0, -3.0, 8.0))
+    write_tetrahedron_glb(path, translation=(4.0, -3.0, 8.0))
     assets = replace(
         blcs_assets,
         rendering=BLCSBallRendering.MESH,
@@ -69,7 +69,7 @@ def test_mesh_metadata_records_only_the_data_root_relative_glb_source(
     blcs_assets,
 ) -> None:
     path = tmp_path / "ball.glb"
-    _write_tetrahedron_glb(path)
+    write_tetrahedron_glb(path)
     assets = replace(
         blcs_assets,
         rendering=BLCSBallRendering.MESH,
@@ -134,7 +134,7 @@ def test_mesh_resource_limits_reject_file_and_instanced_geometry_before_accessor
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     path = tmp_path / "instanced.glb"
-    _write_tetrahedron_glb(path, node_count=2)
+    write_tetrahedron_glb(path, node_count=2)
     with pytest.raises(ValueError, match="maximum_file_bytes"):
         BLCSBallMeshAsset(
             path=path,
@@ -272,88 +272,6 @@ def test_color_zero_rejects_ambiguous_or_non_opaque_values(
             {"COLOR_0": 0},
             vertex_count=1,
         )
-
-
-def _write_tetrahedron_glb(
-    path: Path,
-    *,
-    translation: tuple[float, float, float] = (0.0, 0.0, 0.0),
-    node_count: int = 1,
-) -> None:
-    positions = np.asarray(
-        (
-            (1.0, 1.0, 1.0),
-            (-1.0, -1.0, 1.0),
-            (-1.0, 1.0, -1.0),
-            (1.0, -1.0, -1.0),
-        ),
-        dtype=np.float32,
-    )
-    indices = np.asarray(
-        ((0, 2, 1), (0, 1, 3), (0, 3, 2), (1, 2, 3)),
-        dtype=np.uint16,
-    ).reshape(-1)
-    position_bytes = positions.tobytes()
-    index_offset = len(position_bytes)
-    binary = position_bytes + indices.tobytes()
-    while len(binary) % 4:
-        binary += b"\x00"
-    document = {
-        "asset": {"version": "2.0"},
-        "scene": 0,
-        "scenes": [{"nodes": list(range(node_count))}],
-        "nodes": [
-            {"mesh": 0, "translation": list(translation)}
-            for _index in range(node_count)
-        ],
-        "meshes": [
-            {
-                "primitives": [
-                    {
-                        "attributes": {"POSITION": 0},
-                        "indices": 1,
-                        "material": 0,
-                    }
-                ]
-            }
-        ],
-        "materials": [
-            {"pbrMetallicRoughness": {"baseColorFactor": [0.5, 0.75, 0.25, 1.0]}}
-        ],
-        "accessors": [
-            {
-                "bufferView": 0,
-                "componentType": 5126,
-                "count": 4,
-                "type": "VEC3",
-            },
-            {
-                "bufferView": 1,
-                "componentType": 5123,
-                "count": 12,
-                "type": "SCALAR",
-            },
-        ],
-        "bufferViews": [
-            {"buffer": 0, "byteOffset": 0, "byteLength": len(position_bytes)},
-            {
-                "buffer": 0,
-                "byteOffset": index_offset,
-                "byteLength": indices.nbytes,
-            },
-        ],
-        "buffers": [{"byteLength": len(binary)}],
-    }
-    encoded_json = json.dumps(document, separators=(",", ":")).encode("utf-8")
-    encoded_json += b" " * ((-len(encoded_json)) % 4)
-    total_length = 12 + 8 + len(encoded_json) + 8 + len(binary)
-    path.write_bytes(
-        struct.pack("<4sII", b"glTF", 2, total_length)
-        + struct.pack("<II", len(encoded_json), 0x4E4F534A)
-        + encoded_json
-        + struct.pack("<II", len(binary), 0x004E4942)
-        + binary
-    )
 
 
 def _textured_color_document(

@@ -38,7 +38,7 @@ from src.synthetic_data_generation.scene_contract import (
     MultiCourtLayout,
     RigidTransform,
 )
-from src.utils.paths import PROJECT_ROOT
+from tests.support.synthetic_data_generation.glb import write_tetrahedron_glb
 
 
 class _StaticBackgroundNHTClient(NHTRenderClient):
@@ -94,9 +94,8 @@ class _StaticBackgroundNHTClient(NHTRenderClient):
 def test_glb_mesh_path_produces_compact_blcs_pixels_depth_and_metadata(
     tmp_path: Path,
 ) -> None:
-    asset_path = _resource_repository_root() / (
-        "data/synthetic_data_generation/assets/blcs/tennis ball 3d model.glb"
-    )
+    asset_path = tmp_path / "tennis ball 3d model.glb"
+    write_tetrahedron_glb(asset_path)
     assets = _mesh_assets(asset_path)
     plan = build_blcs_plans(
         (_trajectory(),),
@@ -155,16 +154,6 @@ def test_glb_mesh_path_produces_compact_blcs_pixels_depth_and_metadata(
     assert source["maximum_source_vertices"] == 500000
     assert source["maximum_source_faces"] == 1000000
     assert source["maximum_faces"] == 4096
-
-
-def _resource_repository_root() -> Path:
-    for candidate in (PROJECT_ROOT, *PROJECT_ROOT.parents):
-        if (
-            candidate
-            / "data/synthetic_data_generation/assets/blcs/tennis ball 3d model.glb"
-        ).is_file():
-            return Path(candidate)
-    raise FileNotFoundError("BLCS tennis-ball GLB test asset is unavailable.")
 
 
 def _mesh_assets(path: Path) -> BLCSCompositionAssets:

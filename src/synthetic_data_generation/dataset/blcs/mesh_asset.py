@@ -168,7 +168,7 @@ def _read_glb(path: Path) -> tuple[Mapping[str, object], bytes]:
     asset = _mapping(decoded["asset"], name="asset")
     if asset.get("version") != "2.0":
         raise ValueError("BLCS GLB asset.version must be exactly '2.0'.")
-    required = decoded.get("extensionsRequired", [])
+    required = _mapping_value(decoded, "extensionsRequired", [])
     if required:
         raise ValueError(
             f"BLCS GLB requires unsupported extensions: {_string_sequence(required)}."
@@ -178,7 +178,8 @@ def _read_glb(path: Path) -> tuple[Mapping[str, object], bytes]:
         raise ValueError("BLCS GLB must contain exactly one embedded binary buffer.")
     buffer_record = _mapping(buffers[0], name="buffers[0]")
     if "uri" in buffer_record or _integer(
-        buffer_record.get("byteLength", -1), name="buffers[0].byteLength"
+        _mapping_value(buffer_record, "byteLength", -1),
+        name="buffers[0].byteLength",
     ) > len(chunks[_GLB_BINARY_CHUNK]):
         raise ValueError("BLCS GLB buffer must be fully embedded in the binary chunk.")
     return cast(Mapping[str, object], decoded), chunks[_GLB_BINARY_CHUNK]
@@ -240,7 +241,10 @@ def _validate_scene_resource_limits(
                     value,
                     name=f"mesh.primitives[{primitive_index}]",
                 )
-                if primitive.get("mode", _TRIANGLES_MODE) != _TRIANGLES_MODE:
+                if (
+                    _mapping_value(primitive, "mode", _TRIANGLES_MODE)
+                    != _TRIANGLES_MODE
+                ):
                     raise ValueError(
                         "BLCS GLB supports only indexed triangle primitives."
                     )
@@ -275,7 +279,9 @@ def _validate_scene_resource_limits(
                     raise ValueError(
                         "BLCS GLB exceeds maximum_source_faces after scene instancing."
                     )
-        for child in _integer_sequence(node.get("children", []), name="node.children"):
+        for child in _integer_sequence(
+            _mapping_value(node, "children", []), name="node.children"
+        ):
             visit(child)
         active.remove(node_index)
 
@@ -326,7 +332,9 @@ def _collect_scene_mesh(
             vertices.append(mesh_vertices)
             faces.append(mesh_faces + vertex_offset)
             colors.append(mesh_colors)
-        for child in _integer_sequence(node.get("children", []), name="node.children"):
+        for child in _integer_sequence(
+            _mapping_value(node, "children", []), name="node.children"
+        ):
             visit(child, scene_from_node)
         active.remove(node_index)
 
@@ -354,7 +362,7 @@ def _mesh_data(
     color_parts: list[NDArray[np.float64]] = []
     for primitive_index, value in enumerate(primitives):
         primitive = _mapping(value, name=f"mesh.primitives[{primitive_index}]")
-        if primitive.get("mode", _TRIANGLES_MODE) != _TRIANGLES_MODE:
+        if _mapping_value(primitive, "mode", _TRIANGLES_MODE) != _TRIANGLES_MODE:
             raise ValueError("BLCS GLB supports only indexed triangle primitives.")
         if primitive.get("extensions"):
             raise ValueError("BLCS GLB primitive extensions are unsupported.")
@@ -424,7 +432,7 @@ def _primitive_colors(
     *,
     vertex_count: int,
 ) -> NDArray[np.float64]:
-    materials = _sequence(document.get("materials", []), name="materials")
+    materials = _sequence(_mapping_value(document, "materials", []), name="materials")
     factor: NDArray[np.float64] = np.ones(4, dtype=np.float64)
     texture_record: object | None = None
     if "material" not in primitive:
@@ -434,13 +442,13 @@ def _primitive_colors(
         if material_index < 0 or material_index >= len(materials):
             raise ValueError("BLCS GLB material index is out of range.")
         material = _mapping(materials[material_index], name="material")
-        if material.get("alphaMode", "OPAQUE") != "OPAQUE":
+        if _mapping_value(material, "alphaMode", "OPAQUE") != "OPAQUE":
             raise ValueError("BLCS mesh rendering supports only opaque GLB materials.")
         pbr = _mapping(
-            material.get("pbrMetallicRoughness", {}),
+            _mapping_value(material, "pbrMetallicRoughness", {}),
             name="material.pbr",
         )
-        factor_values = pbr.get("baseColorFactor", (1.0, 1.0, 1.0, 1.0))
+        factor_values = _mapping_value(pbr, "baseColorFactor", (1.0, 1.0, 1.0, 1.0))
         factor = np.asarray(
             _number_sequence(factor_values, name="baseColorFactor"),
             dtype=np.float64,
@@ -459,7 +467,7 @@ def _primitive_colors(
         texture_info = _mapping(texture_record, name="baseColorTexture")
         if texture_info.get("extensions"):
             raise ValueError("BLCS GLB base-color texture extensions are unsupported.")
-        texcoord_set = texture_info.get("texCoord", 0)
+        texcoord_set = _mapping_value(texture_info, "texCoord", 0)
         if texcoord_set != 0 or "TEXCOORD_0" not in attributes:
             raise ValueError("BLCS GLB textured material requires TEXCOORD_0.")
         uv = _accessor(
@@ -510,7 +518,7 @@ def _vertex_colors(
     accessors = _sequence(document.get("accessors"), name="accessors")
     accessor = _mapping(accessors[accessor_index], name="COLOR_0 accessor")
     if values.dtype == np.float32:
-        if accessor.get("normalized", False) is not False:
+        if _mapping_value(accessor, "normalized", False) is not False:
             raise ValueError("Float BLCS GLB COLOR_0 cannot be normalized.")
         colors = values.astype(np.float64)
     elif values.dtype in {np.dtype(np.uint8), np.dtype(np.uint16)}:
@@ -570,8 +578,8 @@ def _base_color_image(
         sampler = _mapping(samplers[index], name="sampler")
     return (
         image,
-        _integer(sampler.get("wrapS", 10497), name="sampler.wrapS"),
-        _integer(sampler.get("wrapT", 10497), name="sampler.wrapT"),
+        _integer(_mapping_value(sampler, "wrapS", 10497), name="sampler.wrapS"),
+        _integer(_mapping_value(sampler, "wrapT", 10497), name="sampler.wrapT"),
     )
 
 
@@ -635,14 +643,17 @@ def _accessor(
     view = _mapping(buffer_views[view_index], name=f"bufferViews[{view_index}]")
     if _integer(view.get("buffer"), name="bufferView.buffer") != 0:
         raise ValueError("BLCS GLB accessors must reference the embedded buffer.")
-    view_offset = _integer(view.get("byteOffset", 0), name="bufferView.byteOffset")
+    view_offset = _integer(
+        _mapping_value(view, "byteOffset", 0), name="bufferView.byteOffset"
+    )
     accessor_offset = _integer(
-        accessor.get("byteOffset", 0), name="accessor.byteOffset"
+        _mapping_value(accessor, "byteOffset", 0), name="accessor.byteOffset"
     )
     offset = view_offset + accessor_offset
     packed_width = dtype.itemsize * width
     stride = _integer(
-        view.get("byteStride", packed_width), name="bufferView.byteStride"
+        _mapping_value(view, "byteStride", packed_width),
+        name="bufferView.byteStride",
     )
     if stride < packed_width or stride % dtype.itemsize != 0:
         raise ValueError("BLCS GLB accessor byteStride is invalid.")
@@ -692,7 +703,9 @@ def _buffer_view(
     view = _mapping(views[view_index], name="bufferView")
     if _integer(view.get("buffer"), name="bufferView.buffer") != 0:
         raise ValueError("BLCS GLB bufferView must reference buffer zero.")
-    start = _integer(view.get("byteOffset", 0), name="bufferView.byteOffset")
+    start = _integer(
+        _mapping_value(view, "byteOffset", 0), name="bufferView.byteOffset"
+    )
     stop = start + _integer(view.get("byteLength"), name="bufferView.byteLength")
     if start < 0 or stop > len(binary):
         raise ValueError("BLCS GLB bufferView exceeds its binary chunk.")
@@ -710,16 +723,20 @@ def _node_transform(node: Mapping[str, object]) -> NDArray[np.float64]:
     else:
         translation = np.asarray(
             _number_sequence(
-                node.get("translation", (0.0, 0.0, 0.0)), name="translation"
+                _mapping_value(node, "translation", (0.0, 0.0, 0.0)),
+                name="translation",
             )
         )
         rotation = np.asarray(
             _number_sequence(
-                node.get("rotation", (0.0, 0.0, 0.0, 1.0)), name="rotation"
+                _mapping_value(node, "rotation", (0.0, 0.0, 0.0, 1.0)),
+                name="rotation",
             )
         )
         scale = np.asarray(
-            _number_sequence(node.get("scale", (1.0, 1.0, 1.0)), name="scale")
+            _number_sequence(
+                _mapping_value(node, "scale", (1.0, 1.0, 1.0)), name="scale"
+            )
         )
         if translation.shape != (3,) or rotation.shape != (4,) or scale.shape != (3,):
             raise ValueError("BLCS GLB node TRS fields have invalid dimensions.")
@@ -895,6 +912,13 @@ def _mapping(value: object, *, name: str) -> Mapping[str, object]:
     if not isinstance(value, Mapping) or any(not isinstance(key, str) for key in value):
         raise TypeError(f"BLCS GLB {name} must be a string-keyed object.")
     return cast(Mapping[str, object], value)
+
+
+def _mapping_value(mapping: Mapping[str, object], key: str, default: object) -> object:
+    """Read an optional GLB field with an explicit default."""
+    if key in mapping:
+        return mapping[key]
+    return default
 
 
 def _sequence(value: object, *, name: str) -> Sequence[object]:
