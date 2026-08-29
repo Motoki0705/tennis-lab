@@ -155,6 +155,7 @@ def _public_environment(
         - {
             "CUDA_VISIBLE_DEVICES",
             "TENNIS_LAB_NHT_MINIMUM_MEDIAN_TRACK_LENGTH",
+            "TENNIS_LAB_NHT_MINIMUM_SPARSE_POINTS",
         }
     )
     if unknown:
@@ -184,7 +185,10 @@ def _runtime_bound_request(
     track_override = environment.get(
         "TENNIS_LAB_NHT_MINIMUM_MEDIAN_TRACK_LENGTH"
     )
-    if runtime is None and track_override is None:
+    sparse_points_override = environment.get(
+        "TENNIS_LAB_NHT_MINIMUM_SPARSE_POINTS"
+    )
+    if runtime is None and track_override is None and sparse_points_override is None:
         yield request
         return
     if runtime is not None:
@@ -225,6 +229,29 @@ def _runtime_bound_request(
             raise TypeError("NHT pipeline config sfm.quality_gates must be a mapping.")
         gates = dict(gates_value)
         gates["minimum_median_track_length"] = minimum_track_length
+        sfm["quality_gates"] = gates
+        effective["sfm"] = sfm
+    if sparse_points_override is not None:
+        try:
+            minimum_sparse_points = int(sparse_points_override)
+        except ValueError as error:
+            raise ValueError(
+                "TENNIS_LAB_NHT_MINIMUM_SPARSE_POINTS must be an integer."
+            ) from error
+        if not 40_000 <= minimum_sparse_points <= 50_000:
+            raise ValueError(
+                "TENNIS_LAB_NHT_MINIMUM_SPARSE_POINTS must be between "
+                "40000 and 50000."
+            )
+        sfm_value = effective.get("sfm")
+        if not isinstance(sfm_value, Mapping):
+            raise TypeError("NHT pipeline config sfm must be a mapping.")
+        sfm = dict(sfm_value)
+        gates_value = sfm.get("quality_gates")
+        if not isinstance(gates_value, Mapping):
+            raise TypeError("NHT pipeline config sfm.quality_gates must be a mapping.")
+        gates = dict(gates_value)
+        gates["minimum_sparse_points"] = minimum_sparse_points
         sfm["quality_gates"] = gates
         effective["sfm"] = sfm
     with tempfile.TemporaryDirectory(prefix="tennis-lab-nht-") as directory:

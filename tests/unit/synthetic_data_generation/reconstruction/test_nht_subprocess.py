@@ -200,6 +200,47 @@ def test_runtime_binds_audited_median_track_override(tmp_path: Path) -> None:
         assert loaded["sfm"]["quality_gates"]["minimum_median_track_length"] == 2.0
 
 
+def test_runtime_binds_audited_sparse_point_override(tmp_path: Path) -> None:
+    request = _request(tmp_path)
+    request = ReconstructionCommandRequest(
+        scene_id=request.scene_id,
+        input_video=request.input_video,
+        workspace=request.workspace,
+        pipeline_config=_sfm_pipeline_config(tmp_path),
+    )
+
+    with nht_subprocess._runtime_bound_request(
+        request,
+        None,
+        environment={"TENNIS_LAB_NHT_MINIMUM_SPARSE_POINTS": "40000"},
+    ) as effective:
+        loaded = yaml.safe_load(effective.pipeline_config.path.read_text())
+        assert loaded["sfm"]["quality_gates"]["minimum_sparse_points"] == 40000
+
+
+@pytest.mark.parametrize("value", ["39999", "50001", "not-an-integer"])
+def test_runtime_rejects_unsafe_sparse_point_override(
+    tmp_path: Path, value: str
+) -> None:
+    request = _request(tmp_path)
+    request = ReconstructionCommandRequest(
+        scene_id=request.scene_id,
+        input_video=request.input_video,
+        workspace=request.workspace,
+        pipeline_config=_sfm_pipeline_config(tmp_path),
+    )
+
+    with (
+        pytest.raises(ValueError, match="MINIMUM_SPARSE_POINTS"),
+        nht_subprocess._runtime_bound_request(
+            request,
+            None,
+            environment={"TENNIS_LAB_NHT_MINIMUM_SPARSE_POINTS": value},
+        ),
+    ):
+        pass
+
+
 def test_runner_rejects_command_success_without_public_run_manifest(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

@@ -37,7 +37,7 @@ def test_dry_run_fixes_scene_order_terminal_stage_and_input_hashes() -> None:
         alignment_command = (
             "TENNIS_LAB_ALIGNMENT_INFERENCE_MIRROR_ROOT=<run>/"
             f"{profile.upper()}/court-line-inference "
-            "TENNIS_LAB_ALIGNMENT_CAMERA_PREFIX_COUNT=72 "
+            "TENNIS_LAB_ALIGNMENT_HOLDOUT_CAMERA_PREFIX_COUNT=72 "
             "TENNIS_LAB_ALIGNMENT_MAXIMUM_UNEXPLAINED_EVIDENCE_FRACTION=0.5 "
             ".venv/bin/python -m "
             "src.synthetic_data_generation.scripts.run_scene_pipeline "

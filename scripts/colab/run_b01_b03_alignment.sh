@@ -71,6 +71,9 @@ declare -A VIDEO_SHA256=(
     [B02]="035a3e79637583d0794e598808fcdd46aac9d3f8e374599f453718a3d6c8615a"
     [B03]="80ec1676b420b05f22fc9c4ed5db9257e1c35b9e9bb9596dd1be3f479c7287ac"
 )
+declare -A EXPECTED_COURT_COUNT=(
+    [B01]="2"
+)
 
 log() {
     echo "[run_b01_b03_alignment] $*"
@@ -100,7 +103,7 @@ print_dry_run() {
         profile="${scene,,}"
         log "dry-run asset=${DRIVE_DATA_ROOT}/synthetic_data_generation/raw/${scene}.mp4 sha256=${VIDEO_SHA256[${scene}]}"
         log "dry-run scene=${scene} gpu-command=.venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline profile=${profile} request.from_stage=ingest request.through_stage=reconstruction"
-        log "dry-run scene=${scene} shared-gpu-command=TENNIS_LAB_ALIGNMENT_INFERENCE_MIRROR_ROOT=<run>/${scene}/court-line-inference TENNIS_LAB_ALIGNMENT_CAMERA_PREFIX_COUNT=72 TENNIS_LAB_ALIGNMENT_MAXIMUM_UNEXPLAINED_EVIDENCE_FRACTION=0.5 .venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline profile=${profile} request.from_stage=alignment request.through_stage=alignment"
+        log "dry-run scene=${scene} shared-gpu-command=TENNIS_LAB_ALIGNMENT_INFERENCE_MIRROR_ROOT=<run>/${scene}/court-line-inference TENNIS_LAB_ALIGNMENT_HOLDOUT_CAMERA_PREFIX_COUNT=72 TENNIS_LAB_ALIGNMENT_MAXIMUM_UNEXPLAINED_EVIDENCE_FRACTION=0.5 .venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline profile=${profile} request.from_stage=alignment request.through_stage=alignment"
         log "dry-run scene=${scene} save-after=reconstruction,alignment"
         log "dry-run scene=${scene} verify=alignment,line-heatmaps,no-datasets,no-report"
     done
@@ -259,7 +262,7 @@ validate_scene_output() {
     local scene_root="${REPO_ROOT}/data/synthetic_data_generation/scenes/${scene}"
     (
         cd "${REPO_ROOT}"
-        .venv/bin/python - "${scene_root}" "${scene}" <<'PY'
+        .venv/bin/python - "${scene_root}" "${scene}" "${EXPECTED_COURT_COUNT[${scene}]-}" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -268,6 +271,7 @@ from src.synthetic_data_generation.alignment.heatmaps import validate_line_heatm
 
 scene_root = Path(sys.argv[1])
 scene_id = sys.argv[2]
+expected_court_count = int(sys.argv[3]) if sys.argv[3] else None
 run_manifest = json.loads((scene_root / "run.json").read_text(encoding="utf-8"))
 if run_manifest["scene_id"] != scene_id:
     raise RuntimeError("run.json scene_id disagrees with the requested scene")
@@ -287,10 +291,21 @@ alignment = scene_root / "alignment"
 for required in ("alignment.json", "court-geometry.json", "ground-line-map.npz"):
     if not (alignment / required).is_file():
         raise RuntimeError(f"alignment output is missing: {required}")
+alignment_result = json.loads((alignment / "alignment.json").read_text())
+accepted_court_count = len(alignment_result["layout"]["courts"])
+if (
+    expected_court_count is not None
+    and accepted_court_count != expected_court_count
+):
+    raise RuntimeError(
+        f"{scene_id} accepted {accepted_court_count} courts; "
+        f"expected {expected_court_count}"
+    )
 heatmaps = validate_line_heatmaps(alignment / "line-heatmaps")
 print(
     f"validated {scene_id}: {len(heatmaps.views)} raw heatmaps, "
-    f"{len(heatmaps.views)} weighted heatmaps, one weighted projection"
+    f"{len(heatmaps.views)} weighted heatmaps, one weighted projection, "
+    f"{accepted_court_count} accepted courts"
 )
 PY
     )
@@ -319,13 +334,19 @@ persist_alignment_output() {
     local scene_root="${REPO_ROOT}/data/synthetic_data_generation/scenes/${scene}"
     local destination="${RESULT_RUN_ROOT}/${scene}"
     local staging="${destination}/alignment.uploading"
+    local archive="${destination}/alignment-attempts/$(date -u +%Y%m%dT%H%M%SZ)-superseded-output"
     [[ -d "${destination}/reconstruction" ]] \
         || fail "Drive reconstruction checkpoint is missing: ${destination}"
-    [[ ! -e "${destination}/alignment" && ! -L "${destination}/alignment" ]] \
-        || fail "Drive alignment destination already exists: ${destination}/alignment"
     [[ ! -e "${staging}" && ! -L "${staging}" ]] \
         || fail "Drive alignment staging destination already exists: ${staging}"
     cp -RL "${scene_root}/alignment" "${staging}"
+    if [[ -e "${destination}/alignment" || -L "${destination}/alignment" ]]; then
+        [[ ! -e "${archive}" && ! -L "${archive}" ]] \
+            || fail "Drive alignment archive destination already exists: ${archive}"
+        mkdir -p "$(dirname "${archive}")"
+        mv "${destination}/alignment" "${archive}"
+        log "archived prior ${scene} alignment to ${archive}"
+    fi
     mv "${staging}" "${destination}/alignment"
     cp "${scene_root}/run.json" "${destination}/run.json"
     cp "${scene_root}/resolved-config.yaml" "${destination}/resolved-config.yaml"
@@ -379,7 +400,7 @@ run_alignment() {
         MPLBACKEND="${MPLBACKEND:-Agg}" \
         PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}" \
         TENNIS_LAB_ALIGNMENT_INFERENCE_MIRROR_ROOT="${destination}/court-line-inference" \
-        TENNIS_LAB_ALIGNMENT_CAMERA_PREFIX_COUNT=72 \
+        TENNIS_LAB_ALIGNMENT_HOLDOUT_CAMERA_PREFIX_COUNT=72 \
         TENNIS_LAB_ALIGNMENT_MAXIMUM_UNEXPLAINED_EVIDENCE_FRACTION=0.5 \
         .venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
             "profile=${profile}" \

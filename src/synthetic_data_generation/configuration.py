@@ -449,6 +449,7 @@ class NHTCommandPaths:
             - {
                 "CUDA_VISIBLE_DEVICES",
                 "TENNIS_LAB_NHT_MINIMUM_MEDIAN_TRACK_LENGTH",
+                "TENNIS_LAB_NHT_MINIMUM_SPARSE_POINTS",
             }
         )
         if unknown_environment:

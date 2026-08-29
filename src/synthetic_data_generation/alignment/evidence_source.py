@@ -117,7 +117,9 @@ _LINE_DEVICE_OVERRIDE_ENV = "TENNIS_LAB_ALIGNMENT_LINE_DEVICE"
 _MAXIMUM_UNEXPLAINED_EVIDENCE_ENV = (
     "TENNIS_LAB_ALIGNMENT_MAXIMUM_UNEXPLAINED_EVIDENCE_FRACTION"
 )
-_CAMERA_PREFIX_COUNT_OVERRIDE_ENV = "TENNIS_LAB_ALIGNMENT_CAMERA_PREFIX_COUNT"
+_HOLDOUT_CAMERA_PREFIX_COUNT_OVERRIDE_ENV = (
+    "TENNIS_LAB_ALIGNMENT_HOLDOUT_CAMERA_PREFIX_COUNT"
+)
 
 
 class LineProbabilityDetector(Protocol):
@@ -556,18 +558,36 @@ class MeasuredAlignmentEvidenceSource:
         settings: AlignmentEvidenceSettings,
         detector: LineProbabilityDetector,
         policy: AlignmentAcceptancePolicy,
+        *,
+        holdout_camera_prefix_count: int | None = None,
     ) -> None:
         self._settings = settings
         self._detector = detector
         self._policy = policy
+        selected_count = (
+            settings.camera_prefix_count
+            if holdout_camera_prefix_count is None
+            else holdout_camera_prefix_count
+        )
+        if (
+            isinstance(selected_count, bool)
+            or not isinstance(selected_count, int)
+            or not settings.camera_prefix_count <= selected_count <= 96
+        ):
+            raise ValueError(
+                "holdout_camera_prefix_count must lie between "
+                f"{settings.camera_prefix_count} and 96."
+            )
+        self._holdout_camera_prefix_count = selected_count
 
     def preflight(self, scene: StandardSceneExport) -> None:
         """Validate all real evidence and model requirements before mutation."""
         selected = _fixed_camera_selection(
             scene.cameras,
             settings=self._settings,
+            camera_prefix_count=self._holdout_camera_prefix_count,
         ).ordered_cameras
-        _partition_cameras(selected, settings=self._settings)
+        _partition_cameras_with_holdout_tail(selected, settings=self._settings)
         minimum_points = max(
             self._settings.ground_plane.minimum_candidate_points,
             self._settings.ground_plane.minimum_support_points,
@@ -615,10 +635,14 @@ class MeasuredAlignmentEvidenceSource:
         scene: StandardSceneExport,
     ) -> EvaluatedAlignment:
         """Collect after input/model checks; production preflight caches this result."""
-        fixed = _fixed_camera_selection(scene.cameras, settings=self._settings)
+        fixed = _fixed_camera_selection(
+            scene.cameras,
+            settings=self._settings,
+            camera_prefix_count=self._holdout_camera_prefix_count,
+        )
         selected = fixed.ordered_cameras
         probabilities = self._predict_probabilities(scene, selected)
-        fit_assigned, holdout_assigned = _partition_cameras(
+        fit_assigned, holdout_assigned = _partition_cameras_with_holdout_tail(
             selected,
             settings=self._settings,
         )
@@ -648,8 +672,13 @@ class MeasuredAlignmentEvidenceSource:
         excluded_ids = {item.camera_id for item in observable.exclusions}
         selection = FixedCameraSelectionDiagnostics(
             policy=CameraSelectionPolicy.NESTED_UNIFORM_PREFIX_V1,
-            ownership_rule=CameraOwnershipRule.FIXED_UNIT_EVEN_HOLDOUT_SLOTS_V1,
-            requested_camera_count=self._settings.camera_prefix_count,
+            ownership_rule=(
+                CameraOwnershipRule.FIXED_UNIT_EVEN_HOLDOUT_SLOTS_V1
+                if self._holdout_camera_prefix_count
+                == self._settings.camera_prefix_count
+                else CameraOwnershipRule.FIXED_UNIT_EVEN_HOLDOUT_TAIL_V1
+            ),
+            requested_camera_count=self._holdout_camera_prefix_count,
             available_camera_count=len(scene.cameras),
             partition_unit_count=self._settings.camera_partition_unit_count(),
             fit_cameras_per_unit=self._settings.minimum_fit_cameras,
@@ -1305,26 +1334,31 @@ class ProductionAlignmentEvidenceSource(MeasuredAlignmentEvidenceSource):
         resolver: PathResolver,
         policy: AlignmentAcceptancePolicy,
     ) -> None:
-        camera_prefix_count_text = os.environ.get(_CAMERA_PREFIX_COUNT_OVERRIDE_ENV)
+        camera_prefix_count_text = os.environ.get(
+            _HOLDOUT_CAMERA_PREFIX_COUNT_OVERRIDE_ENV
+        )
+        holdout_camera_prefix_count: int | None = None
         if camera_prefix_count_text is not None:
             try:
-                camera_prefix_count = int(camera_prefix_count_text)
+                holdout_camera_prefix_count = int(camera_prefix_count_text)
             except ValueError as error:
                 raise ValueError(
-                    f"{_CAMERA_PREFIX_COUNT_OVERRIDE_ENV} must be an integer."
+                    f"{_HOLDOUT_CAMERA_PREFIX_COUNT_OVERRIDE_ENV} must be an integer."
                 ) from error
-            if not settings.camera_prefix_count <= camera_prefix_count <= 96:
+            if not (
+                settings.camera_prefix_count <= holdout_camera_prefix_count <= 96
+            ):
                 raise ValueError(
-                    f"{_CAMERA_PREFIX_COUNT_OVERRIDE_ENV} must lie between "
+                    f"{_HOLDOUT_CAMERA_PREFIX_COUNT_OVERRIDE_ENV} must lie between "
                     f"{settings.camera_prefix_count} and 96."
                 )
-            settings = replace(settings, camera_prefix_count=camera_prefix_count)
         super().__init__(
             settings,
             ProductionCourtLineDetector(
                 settings.line_model, resolver, seed=settings.seed
             ),
             policy,
+            holdout_camera_prefix_count=holdout_camera_prefix_count,
         )
         self._cached_scene_key: tuple[str, Path] | None = None
         self._cached_evaluation: EvaluatedAlignment | None = None
@@ -1403,11 +1437,29 @@ def _fixed_camera_selection(
     cameras: tuple[SceneCamera, ...],
     *,
     settings: AlignmentEvidenceSettings,
+    camera_prefix_count: int | None = None,
 ) -> _FixedCameraSelection:
     """Build exactly one evidence-independent nested-uniform prefix."""
-    settings.require_available_cameras(available_camera_count=len(cameras))
+    requested = (
+        settings.camera_prefix_count
+        if camera_prefix_count is None
+        else camera_prefix_count
+    )
+    if (
+        isinstance(requested, bool)
+        or not isinstance(requested, int)
+        or requested < settings.camera_prefix_count
+    ):
+        raise ValueError(
+            "camera_prefix_count must be at least the configured fit prefix count."
+        )
+    if len(cameras) < requested:
+        raise ValueError(
+            "NHT scene has too few cameras for fixed alignment selection: "
+            f"{len(cameras)} < {requested}."
+        )
     return _FixedCameraSelection(
-        ordered_cameras=_select_cameras(cameras, maximum=settings.camera_prefix_count),
+        ordered_cameras=_select_cameras(cameras, maximum=requested),
     )
 
 
@@ -1470,6 +1522,22 @@ def _partition_cameras(
             "Deterministic camera partitioning violated fixed-unit ownership."
         )
     return fit, holdout
+
+
+def _partition_cameras_with_holdout_tail(
+    cameras: tuple[SceneCamera, ...],
+    *,
+    settings: AlignmentEvidenceSettings,
+) -> tuple[tuple[SceneCamera, ...], tuple[SceneCamera, ...]]:
+    """Keep the configured fit prefix immutable and assign its tail to holdout."""
+    if len(cameras) < settings.camera_prefix_count:
+        raise ValueError(
+            "Holdout-expanded alignment selection is shorter than its fit prefix: "
+            f"{len(cameras)} < {settings.camera_prefix_count}."
+        )
+    fixed_prefix = cameras[: settings.camera_prefix_count]
+    fit, holdout = _partition_cameras(fixed_prefix, settings=settings)
+    return fit, (*holdout, *cameras[settings.camera_prefix_count :])
 
 
 def _retain_observable_cameras(
