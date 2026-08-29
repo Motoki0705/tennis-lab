@@ -33,6 +33,12 @@
 - **`tracking_lightning_module.py`**: BLCS/PLCSに共通するtracking stage dispatch、loss/metric logging、test prediction収集・保存を所有し、task固有adapter/loss/metrics/payloadはhookへ委譲する。
 - **`tracking_metrics.py`**: lifecycle segment単位のbirth/death誤差・presence F1・query再利用・ID switch診断。
 
+#### Tracking metric migration note (#820)
+
+Trackingのcount系metricは、batch内合計のepoch平均ではなく、評価した全sequenceに対する1 sequence当たり平均として記録する。したがって、旧実装の値（batch内合計の平均、かつ各targetが独立に選んだ最近傍queryによるID switch）とは互換性がなく、過去runと比較またはcheckpointを再選択する場合は新実装で再評価が必要になる。保存済みの過去metricは書き換えない。
+
+`id_switches`（`segment_id_switches`は同値alias）はtarget lifecycle内だけで計測する。直前frameの対応が現在も距離gate内ならその1対1対応を優先し、残りをgate付きの決定的な1対1 Hungarian assignmentで対応する。prediction欠落中も同じlifecycleのlast-valid queryを保持し、再対応先が変わったときだけswitchを1件数え、lifecycle境界でresetする。`id_switch_distance=0.05`は正規化court座標単位（約0.59425 m）の必須設定で、近接重複を測る`duplicate_distance`とは独立である。通常のBLCS/PLCS可視化はこのtracking metric専用assignmentを描画しないため、見た目とmetricは直接対応しない。
+
 ## Training model compilation
 
 全taskのtraining configは次の共有契約を明示し、標準ではcompileを有効にする。
