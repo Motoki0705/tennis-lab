@@ -6,8 +6,12 @@ from src.synthetic_data_generation.alignment import (
     create_production_alignment_handler,
 )
 from src.synthetic_data_generation.configuration import ScenePipelineConfiguration
+from src.synthetic_data_generation.dataset.blcs.contracts import BLCSBallRendering
 from src.synthetic_data_generation.dataset.blcs.handler import BLCSDatasetStageHandler
-from src.synthetic_data_generation.dataset.blcs.rendering import BLCSNHTRenderer
+from src.synthetic_data_generation.dataset.blcs.rendering import (
+    BLCSMeshNHTRenderer,
+    BLCSNHTRenderer,
+)
 from src.synthetic_data_generation.dataset.blcs.source import (
     PhysicsBLCSTrajectoryProvider,
 )
@@ -67,14 +71,26 @@ def build_stage_registry(
             generator_config=runtime.blcs.generator,
             settings=runtime.blcs.trajectory_source,
         ),
-        renderer=BLCSNHTRenderer(
-            assets=runtime.blcs.assets,
-            client=NHTComposedRenderClient(),
-            executable=nht.render_executable,
-            environment=render_environment,
-            timeout_seconds=runtime.blcs.render_timeout_seconds,
-            execution_device=runtime.blcs.performance.execution_device,
-            maximum_batch_frames=runtime.blcs.performance.maximum_batch_frames,
+        renderer=(
+            BLCSNHTRenderer(
+                assets=runtime.blcs.assets,
+                client=NHTComposedRenderClient(),
+                executable=nht.render_executable,
+                environment=render_environment,
+                timeout_seconds=runtime.blcs.render_timeout_seconds,
+                execution_device=runtime.blcs.performance.execution_device,
+                maximum_batch_frames=runtime.blcs.performance.maximum_batch_frames,
+            )
+            if runtime.blcs.assets.rendering is BLCSBallRendering.GAUSSIAN
+            else BLCSMeshNHTRenderer(
+                assets=runtime.blcs.assets,
+                client=NHTRenderClient(),
+                executable=nht.render_executable,
+                environment=render_environment,
+                timeout_seconds=runtime.blcs.render_timeout_seconds,
+                execution_device=runtime.blcs.performance.execution_device,
+                maximum_batch_frames=runtime.blcs.performance.maximum_batch_frames,
+            )
         ),
     )
     plcs = PLCSStageHandler(

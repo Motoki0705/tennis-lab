@@ -100,19 +100,34 @@ their public domain source contracts.
 - [Court Detection dataset v1/v2/v3 contract](dataset/court/README.md).
 - BLCS preserves every source physics frame across multi-object planning,
   config-owned cameras, balanced court assignment, contiguous chunks, labels,
-  final assembly, and diagnostics.  Its ball is a real asset-local metric
-  Gaussian surface.  The planner turns each 3D trajectory sample into a rigid
-  Gaussian transform, converts the complete timeline to canonical NHT scene
-  space, and calls the public `nht-render --composition` boundary.  NHT keeps
-  the reconstructed background resident and jointly rasterizes background and
-  moving balls with gsplat front-to-back transmittance.  The joint eval3d pass
-  directly accumulates the asset's configured linear RGB, instance response,
-  and expected depth, so felt/seam colors are not constrained by the frozen
-  background shader's learned color gamut.  It publishes RGB, alpha, expected
-  depth, and positive instance IDs.  BLCS then converts only those joint-rendered object
-  pixels to the existing compact foreground-delta store.  There is no 2D disc,
-  projected-radius compositor, background-depth comparison fallback, or CPU
-  disc oracle in the BLCS production path.
+  final assembly, and diagnostics. The default ball remains the deterministic
+  asset-local metric Gaussian surface and uses the public composed NHT boundary.
+  `dataset.blcs.assets.rendering=mesh` instead requires an explicit data-root-relative
+  `.glb` path. The GLB loader rejects unsupported/ambiguous sources, samples its
+  sRGB base-color material into an explicit `glb_base_color_lambertian_v1`
+  appearance (normal/metallic maps do not silently change this contract),
+  applies glTF linear `baseColorFactor` and `COLOR_0` semantics, then recenters
+  the geometry and scales its outer radius to
+  `dataset.blcs.assets.settings.radius_m`. Mesh mode asks ordinary public
+  `nht-render` for the existing 3DGS RGB/metric depth once per generated camera,
+  ray-rasterizes the moving triangles with camera-axis metric depth, and performs
+  mesh/mesh plus mesh/3DGS z-buffering before publishing the same compact RGB,
+  alpha, depth, positive instance-ID, semantic-array, and metadata outputs. It
+  never substitutes the Gaussian asset, a 2D disc, or a projected-radius
+  primitive when the configured GLB is missing or invalid.
+  `assets.mesh.maximum_file_bytes`, `maximum_source_vertices`, and
+  `maximum_source_faces` bound the source before geometry arrays are allocated;
+  `maximum_faces` separately bounds the simplified runtime mesh. All four limits
+  are persisted in each plan's mesh provenance.
+
+For the local tennis-ball asset, generate only the BLCS suffix with:
+
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
+  request.from_stage=blcs_dataset request.targets='[blcs]' \
+  dataset.blcs.assets.rendering=mesh \
+  'dataset.blcs.assets.mesh.path=synthetic_data_generation/assets/blcs/tennis ball 3d model.glb'
+```
 - PLCS loads complete ACCAD motion clips, applies SMPL-H and per-frame Gaussian
   LBS, rejects rigid-only motion, composes the full multi-object global timeline,
   and publishes motion/camera/court diagnostics.

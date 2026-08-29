@@ -10,13 +10,13 @@ from numpy.typing import NDArray
 
 from src.synthetic_data_generation.composition import (
     GaussianDeformationKind,
-    GaussianForegroundComposition,
     GaussianFrame,
     GaussianInstance,
     GaussianSceneObject,
     GaussianTransform,
 )
 from src.synthetic_data_generation.dataset.blcs.contracts import (
+    BLCSBallComposition,
     BLCSChunk,
     BLCSCompositionAssets,
     BLCSTrajectory,
@@ -47,7 +47,7 @@ class BLCSTrajectoryPlan:
     global_frame_offset: int
     target_court: TargetCourtBinding
     camera_rig: SampledCameraRig
-    composition: GaussianForegroundComposition
+    composition: BLCSBallComposition
     chunks: tuple[BLCSChunk, ...]
     positions_scene: NDArray[np.float64]
     camera_uv: NDArray[np.float64]
@@ -269,7 +269,7 @@ def _build_composition(
     positions_scene: NDArray[np.float64],
     court_transform: RigidTransform,
     assets: BLCSCompositionAssets,
-) -> GaussianForegroundComposition:
+) -> BLCSBallComposition:
     objects = tuple(
         GaussianSceneObject(
             object_id=track.object_id,
@@ -303,10 +303,10 @@ def _build_composition(
         frames.append(
             GaussianFrame(frame_index=frame_index, instances=tuple(instances))
         )
-    return GaussianForegroundComposition(
+    return BLCSBallComposition(
         scene_id=dataset_scene_id,
         composition_id=f"blcs-{source.trajectory_id}",
-        assets=(assets.ball,),
+        asset=assets.metadata(),
         objects=objects,
         frames=tuple(frames),
     )

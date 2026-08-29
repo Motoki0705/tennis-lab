@@ -10,6 +10,7 @@ from hydra import compose, initialize_config_dir
 from src.synthetic_data_generation.alignment.contracts import AlignmentAcceptancePolicy
 from src.synthetic_data_generation.alignment.settings import AlignmentEvidenceSettings
 from src.synthetic_data_generation.configuration import ScenePipelineConfiguration
+from src.synthetic_data_generation.dataset.blcs.contracts import BLCSBallRendering
 from src.synthetic_data_generation.dataset.blcs.rendering import BLCSNHTRenderer
 from src.synthetic_data_generation.dataset.blcs.source import (
     PhysicsBLCSTrajectoryProvider,
@@ -87,6 +88,51 @@ def test_default_profile_composes_exactly_six_shared_camera_slots() -> None:
     assert runtime.camera.profile == "default"
     assert runtime.camera.expected_camera_count == 6
     assert len(runtime.camera.slots) == 6
+
+
+def test_blcs_glb_ball_is_an_explicit_data_root_relative_option() -> None:
+    runtime = _compose(
+        "dataset.blcs.assets.rendering=mesh",
+        (
+            'dataset.blcs.assets.mesh.path="synthetic_data_generation/assets/blcs/'
+            'tennis ball 3d model.glb"'
+        ),
+    )
+
+    assert runtime.blcs.assets.rendering is BLCSBallRendering.MESH
+    assert runtime.blcs.assets.mesh is not None
+    assert runtime.blcs.assets.mesh.data_root_relative_path == (
+        "synthetic_data_generation/assets/blcs/tennis ball 3d model.glb"
+    )
+    assert runtime.blcs.assets.mesh.maximum_file_bytes == 33554432
+    assert runtime.blcs.assets.mesh.maximum_source_vertices == 500000
+    assert runtime.blcs.assets.mesh.maximum_source_faces == 1000000
+    assert runtime.blcs.assets.mesh.maximum_faces == 4096
+    assert (
+        runtime.blcs.assets.mesh.path
+        == (
+            runtime.resolver.roots.data_root
+            / "synthetic_data_generation/assets/blcs/tennis ball 3d model.glb"
+        ).resolve()
+    )
+    assert runtime.blcs.assets.settings.radius_m == 0.0335
+
+
+def test_blcs_gaussian_ball_remains_the_default_without_mesh_fallback() -> None:
+    assets = _compose().blcs.assets
+
+    assert assets.rendering is BLCSBallRendering.GAUSSIAN
+    assert assets.mesh is None
+
+
+def test_blcs_mesh_mode_never_falls_back_when_glb_path_is_missing() -> None:
+    with pytest.raises(TypeError, match="data-root-relative string"):
+        _compose("dataset.blcs.assets.rendering=mesh")
+    with pytest.raises(FileNotFoundError, match="ordinary existing"):
+        _compose(
+            "dataset.blcs.assets.rendering=mesh",
+            "dataset.blcs.assets.mesh.path=synthetic_data_generation/assets/blcs/missing.glb",
+        )
 
 
 def test_broadcast_profile_composes_exactly_two_shared_camera_slots() -> None:
