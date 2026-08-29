@@ -11,10 +11,12 @@ from torch import Tensor
 
 from src.tasks.base.evaluation import (
     PairedReferencePositionMetrics,
-    compute_heading_error_radians,
+    compute_axis_wise_position_error,
     compute_paired_reference_position_metrics,
+    stratify_metric_by_reference_view_index,
 )
 from src.tasks.base.generate_dataset import CourtReferenceFrameProvenance
+from src.tasks.base.training.metric_logging import format_metric_threshold
 from src.tasks.plcs.court_keypoint_contract import (
     headings_target_to_physical,
     normalized_points_target_to_physical,
@@ -72,7 +74,6 @@ class PLCSReferenceMetricEvidence:
     """Target-frame PLCS training metric evidence."""
 
     position: PairedReferencePositionMetrics
-    heading_error_radians: float
 
     def to_flat_dict(self) -> dict[str, float]:
         """Return stable scalar names, including local-reference strata."""
@@ -82,7 +83,6 @@ class PLCSReferenceMetricEvidence:
             "x_error_m": axis.x,
             "y_error_m": axis.y,
             "z_error_m": axis.z,
-            "heading_error_deg": self.heading_error_radians * 180.0 / math.pi,
         }
         result.update(
             {
@@ -95,15 +95,13 @@ class PLCSReferenceMetricEvidence:
 
 def compute_plcs_reference_metric_evidence(
     prediction_position_m: Tensor,
-    prediction_heading: Tensor,
     target_position_m: Tensor,
-    target_heading: Tensor,
     reference_view_index: Tensor,
     *,
     valid_mask: Tensor | None = None,
     y_zero_tolerance_m: float = 0.0,
 ) -> PLCSReferenceMetricEvidence:
-    """Compute PLCS position, Y-sign, heading, and local-index evidence."""
+    """Compute PLCS position, Y-sign, axis, and local-index evidence."""
     return PLCSReferenceMetricEvidence(
         position=compute_paired_reference_position_metrics(
             prediction_position_m,
@@ -111,11 +109,6 @@ def compute_plcs_reference_metric_evidence(
             reference_view_index,
             valid_mask=valid_mask,
             zero_tolerance=y_zero_tolerance_m,
-        ),
-        heading_error_radians=compute_heading_error_radians(
-            prediction_heading,
-            target_heading,
-            valid_mask=valid_mask,
         ),
     )
 
@@ -155,6 +148,10 @@ class PLCSMetrics:
         self._x_errors: list[Tensor] = []
         self._y_errors: list[Tensor] = []
         self._z_errors: list[Tensor] = []
+        self._reference_index_error_sums: dict[int, float] = {}
+        self._reference_index_error_counts: dict[int, int] = {}
+        self._num_y_sign_correct = 0
+        self._num_y_sign_targets = 0
 
     def update(
         self,
@@ -193,17 +190,96 @@ class PLCSMetrics:
                 padding_mask.all(dim=1) if padding_mask.ndim == 3 else padding_mask
             )
             frame_valid = ~frame_padding
-        if reference_view_index is not None and (
-            frame_valid is None or bool(frame_valid.any().item())
-        ):
-            reference_metrics = compute_plcs_reference_metric_evidence(
-                reference_pred_position,
-                pred_rotation,
-                reference_target_position,
-                target_rotation,
-                reference_view_index,
-                valid_mask=frame_valid,
-            ).to_flat_dict()
+        if reference_view_index is not None:
+            sample_valid = (
+                torch.ones(
+                    pred_position.shape[0],
+                    dtype=torch.bool,
+                    device=pred_position.device,
+                )
+                if frame_valid is None
+                else frame_valid.reshape(frame_valid.shape[0], -1).any(dim=1)
+            )
+            if bool(sample_valid.any().item()):
+                reference_valid = (
+                    None if frame_valid is None else frame_valid[sample_valid]
+                )
+                valid_reference_indices = reference_view_index[sample_valid]
+                valid_reference_prediction = reference_pred_position[sample_valid]
+                valid_reference_target = reference_target_position[sample_valid]
+                y_sign_eligible = valid_reference_target[..., 1].abs() > 0.0
+                if reference_valid is not None:
+                    y_sign_eligible &= reference_valid
+                y_sign_correct = torch.sign(
+                    valid_reference_prediction[..., 1]
+                ).eq(torch.sign(valid_reference_target[..., 1]))
+                if bool(y_sign_eligible.any().item()):
+                    reference_metrics = compute_plcs_reference_metric_evidence(
+                        valid_reference_prediction,
+                        valid_reference_target,
+                        valid_reference_indices,
+                        valid_mask=reference_valid,
+                    ).to_flat_dict()
+                else:
+                    axis_error = compute_axis_wise_position_error(
+                        valid_reference_prediction,
+                        valid_reference_target,
+                        valid_mask=reference_valid,
+                    )
+                    reference_metrics = {
+                        "x_error_m": axis_error.x,
+                        "y_error_m": axis_error.y,
+                        "z_error_m": axis_error.z,
+                    }
+                self._num_y_sign_correct += int(
+                    y_sign_correct[y_sign_eligible].sum().item()
+                )
+                self._num_y_sign_targets += int(y_sign_eligible.sum().item())
+                reference_metric_dtype = (
+                    torch.float64
+                    if torch.float64
+                    in (
+                        valid_reference_prediction.dtype,
+                        valid_reference_target.dtype,
+                    )
+                    else torch.float32
+                )
+                sample_errors = torch.linalg.vector_norm(
+                    valid_reference_prediction.to(dtype=reference_metric_dtype)
+                    - valid_reference_target.to(dtype=reference_metric_dtype),
+                    dim=-1,
+                ).reshape(valid_reference_indices.shape[0], -1)
+                if reference_valid is not None:
+                    flat_reference_valid = reference_valid.reshape(
+                        valid_reference_indices.shape[0], -1
+                    )
+                    sample_errors = (
+                        sample_errors.masked_fill(~flat_reference_valid, 0.0).sum(dim=1)
+                        / flat_reference_valid.sum(dim=1)
+                    )
+                else:
+                    sample_errors = sample_errors.mean(dim=1)
+                reference_metrics.update(
+                    {
+                        f"reference_index_{index}_position_error_m": value
+                        for index, value in stratify_metric_by_reference_view_index(
+                            sample_errors,
+                            valid_reference_indices,
+                        ).items()
+                    }
+                )
+                for index, sample_error in zip(
+                    valid_reference_indices.detach().cpu().tolist(),
+                    sample_errors.detach().cpu().tolist(),
+                    strict=True,
+                ):
+                    self._reference_index_error_sums[index] = (
+                        self._reference_index_error_sums.get(index, 0.0)
+                        + float(sample_error)
+                    )
+                    self._reference_index_error_counts[index] = (
+                        self._reference_index_error_counts.get(index, 0) + 1
+                    )
 
         positions_are_meters = court_reference_provenance is not None
         if court_reference_provenance is not None:
@@ -220,22 +296,22 @@ class PLCSMetrics:
 
         valid = frame_valid.reshape(-1) if frame_valid is not None else None
 
-        # Flatten temporal dimension if present: (B, T, D) -> (B*T, D)
+        if valid is not None and not bool(valid.any().item()):
+            return {}
+
+        # Flatten temporal dimension if present: (B, T, D) -> (B*T, D).
+        # Frame-profile tensors have no temporal axis, but still need their
+        # padding-only samples removed.
         if pred_position.dim() == 3:
             if valid is not None:
-                if not valid.any():
-                    return {
-                        "position_error_m": 0.0,
-                        "angular_error_deg": 0.0,
-                        "x_error_m": 0.0,
-                        "y_error_m": 0.0,
-                        "z_error_m": 0.0,
-                    }
                 pred_position = _flatten_valid(valid, pred_position)
                 target_position = _flatten_valid(valid, target_position)
             else:
                 pred_position = pred_position.flatten(0, 1)
                 target_position = target_position.flatten(0, 1)
+        elif valid is not None:
+            pred_position = pred_position[valid]
+            target_position = target_position[valid]
         if pred_rotation.dim() == 3:
             if valid is not None:
                 pred_rotation = _flatten_valid(valid, pred_rotation)
@@ -243,6 +319,9 @@ class PLCSMetrics:
             else:
                 pred_rotation = pred_rotation.flatten(0, 1)
                 target_rotation = target_rotation.flatten(0, 1)
+        elif valid is not None:
+            pred_rotation = pred_rotation[valid]
+            target_rotation = target_rotation[valid]
 
         # Denormalize positions to meters
         pred_meters = (
@@ -290,16 +369,18 @@ class PLCSMetrics:
 
         """
         if not self._position_errors:
-            return {
-                "position_error_m": 0.0,
-                "angular_error_deg": 0.0,
-                "x_error_m": 0.0,
-                "y_error_m": 0.0,
-                "z_error_m": 0.0,
-                "position_accuracy": 0.0,
-                "angle_accuracy": 0.0,
-            }
+            raise RuntimeError(
+                "PLCSMetrics.compute() requires at least one valid position; "
+                "the epoch contained no metric observations."
+            )
 
+        position_accuracy_key = (
+            "position_accuracy_"
+            f"{format_metric_threshold(self.position_threshold_m)}m"
+        )
+        angle_accuracy_key = (
+            f"angle_accuracy_{format_metric_threshold(self.angle_threshold_deg)}deg"
+        )
         pos_errors = torch.cat(self._position_errors)
         angular_errors = torch.cat(self._angular_errors)
         x_errors = torch.cat(self._x_errors)
@@ -320,7 +401,7 @@ class PLCSMetrics:
         angle_acc_15deg = (angular_errors <= 15.0).float().mean().item()
         angle_acc_30deg = (angular_errors <= 30.0).float().mean().item()
 
-        return {
+        metrics = {
             # Error metrics
             "position_error_m": pos_errors.mean().item(),
             "position_error_std_m": pos_errors.std().item(),
@@ -331,9 +412,6 @@ class PLCSMetrics:
             "x_error_m": x_errors.mean().item(),
             "y_error_m": y_errors.mean().item(),
             "z_error_m": z_errors.mean().item(),
-            # Configurable accuracy
-            "position_accuracy": pos_accuracy,
-            "angle_accuracy": angle_accuracy,
             # Fixed threshold accuracies
             "position_accuracy_0.5m": pos_acc_0_5m,
             "position_accuracy_1m": pos_acc_1m,
@@ -342,6 +420,21 @@ class PLCSMetrics:
             "angle_accuracy_15deg": angle_acc_15deg,
             "angle_accuracy_30deg": angle_acc_30deg,
         }
+        metrics[position_accuracy_key] = pos_accuracy
+        metrics[angle_accuracy_key] = angle_accuracy
+        if self._num_y_sign_targets:
+            metrics["y_sign_accuracy"] = (
+                self._num_y_sign_correct / self._num_y_sign_targets
+            )
+        metrics.update(
+            {
+                f"reference_index_{index}_position_error_m": (
+                    total / self._reference_index_error_counts[index]
+                )
+                for index, total in self._reference_index_error_sums.items()
+            }
+        )
+        return metrics
 
 
 __all__ = [

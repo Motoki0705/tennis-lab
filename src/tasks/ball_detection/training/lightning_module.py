@@ -20,6 +20,10 @@ from src.tasks.base.training.losses import (
     FocalBCEWithLogitsLoss,
     validate_focal_bce_inputs,
 )
+from src.tasks.base.training.metric_logging import (
+    MetricLoggingContract,
+    uniform_metric_logging_contract,
+)
 from src.tasks.base.training.qualitative_saving import save_qualitative_clip
 from src.utils.data.heatmaps import heatmaps_to_soft_argmax
 
@@ -64,6 +68,12 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
     ground-truth coordinate sequences, and the binary real/fake signal is fed
     back to the heatmap model as an adversarial loss.
     """
+
+    metric_logging_contract: MetricLoggingContract = uniform_metric_logging_contract(
+        "ball_detection",
+        headline_keys=("precision", "recall", "f1", "mean_distance_px"),
+        progress_bar_keys=("f1",),
+    )
 
     def __init__(self, config: DictConfig) -> None:
         super().__init__(config)

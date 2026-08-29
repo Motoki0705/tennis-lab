@@ -27,8 +27,11 @@ function issueLabel(issue?: number | number[]): string | null {
 /** Pick up to two headline metrics that exist, for the card preview. */
 function headlineMetrics(metrics?: Record<string, number | string>): [string, string][] {
   if (!metrics) return [];
+  const angularErrorKey = "angular_error_deg" in metrics
+    ? "angular_error_deg"
+    : "ang_error_deg";
   const priority = [
-    "ang_error_deg",
+    angularErrorKey,
     "position_error_m",
     "best_val_miou",
     "loss",

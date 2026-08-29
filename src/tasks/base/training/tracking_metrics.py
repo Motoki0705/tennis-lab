@@ -13,6 +13,10 @@ from scipy.optimize import linear_sum_assignment
 from torch import Tensor
 
 from src.tasks.base.configuration import exact_config_mapping, require_config_value
+from src.tasks.base.training.metric_logging import (
+    ScalarMetricStatistic,
+    compute_scalar_metric_statistics,
+)
 from src.utils.configuration import ConfigurationTypeError, SemanticConfigurationError
 
 Assignment = tuple[Tensor, Tensor]
@@ -350,14 +354,14 @@ def _lifecycle_id_switch_count(
     return switches
 
 
-def common_lifecycle_tracking_metrics(
+def common_lifecycle_tracking_statistics(
     prediction: dict[str, Tensor],
     batch: dict[str, Tensor],
     assignments: Sequence[Assignment],
     *,
     config: TrackingMetricConfig,
-) -> dict[str, Tensor]:
-    """Compute shared lifecycle metrics as means over evaluated sequences."""
+) -> dict[str, ScalarMetricStatistic]:
+    """Return additive sufficient statistics for shared lifecycle metrics."""
     pred_position = prediction["position"]
     pred_active = prediction["presence_logits"].sigmoid() >= config.presence_threshold
     batch_size = int(pred_position.shape[0])
@@ -388,7 +392,7 @@ def common_lifecycle_tracking_metrics(
                         pred_position[batch_index, active, query_index]
                         - batch["target_position"][batch_index, active, target_index],
                         dim=-1,
-                    ).mean()
+                    )
                 )
                 missed += (~pred_active[batch_index, active, query_index]).sum()
 
@@ -420,10 +424,6 @@ def common_lifecycle_tracking_metrics(
     true_positive = (pred_active & aligned_presence & valid).sum()
     false_positive = (pred_active & ~aligned_presence & valid).sum()
     false_negative = (~pred_active & aligned_presence & valid).sum()
-    precision = true_positive / (true_positive + false_positive).clamp_min(1)
-    recall = true_positive / (true_positive + false_negative).clamp_min(1)
-    f1 = 2.0 * precision * recall / (precision + recall).clamp_min(1e-8)
-
     duplicate = pred_position.new_zeros(())
     inactive_false_positive = pred_position.new_zeros(())
     for batch_index in range(pred_active.shape[0]):
@@ -469,38 +469,80 @@ def common_lifecycle_tracking_metrics(
                 illegal_overlap += active_ids.numel() - active_ids.unique().numel()
 
     zero = pred_position.new_zeros(())
-    normalized_query_reuse = query_reuse / batch_size
-    normalized_illegal_overlap = illegal_overlap / batch_size
-    normalized_segment_switches = segment_switches / batch_size
-    normalized_duplicate = duplicate / batch_size
-    normalized_missed = missed / batch_size
-    normalized_inactive_false_positive = inactive_false_positive / batch_size
+    position_error_sum = (
+        torch.cat(position_errors).sum() if position_errors else zero
+    )
+    position_frame_count = zero.new_tensor(
+        float(sum(error.numel() for error in position_errors))
+    )
+    birth_error_sum = torch.stack(birth_errors).sum() if birth_errors else zero
+    death_error_sum = torch.stack(death_errors).sum() if death_errors else zero
+    segment_count = zero.new_tensor(float(len(birth_errors)))
+    valid_sequence_count = batch["frame_mask"].any(dim=1).sum().to(zero.dtype)
+    true_positive = true_positive.to(zero.dtype)
+    false_positive = false_positive.to(zero.dtype)
+    false_negative = false_negative.to(zero.dtype)
     return {
-        "position_error": (
-            torch.stack(position_errors).mean() if position_errors else zero
+        "position_error": ScalarMetricStatistic(
+            position_error_sum, position_frame_count
         ),
-        "presence_precision": precision,
-        "presence_recall": recall,
-        "presence_f1": f1,
-        "lifecycle_presence_f1": f1,
-        "birth_frame_error": (
-            torch.stack(birth_errors).mean() if birth_errors else zero
+        "presence_precision": ScalarMetricStatistic(
+            true_positive, true_positive + false_positive
         ),
-        "death_frame_error": (
-            torch.stack(death_errors).mean() if death_errors else zero
+        "presence_recall": ScalarMetricStatistic(
+            true_positive, true_positive + false_negative
         ),
-        "query_reuse_count": normalized_query_reuse,
-        "illegal_overlap_count": normalized_illegal_overlap,
-        "segment_id_switches": normalized_segment_switches,
-        "id_switches": normalized_segment_switches,
-        "duplicate_active_tracks": normalized_duplicate,
-        "missed_gt_frames": normalized_missed,
-        "inactive_query_false_positives": normalized_inactive_false_positive,
+        "presence_f1": ScalarMetricStatistic(
+            2.0 * true_positive,
+            2.0 * true_positive + false_positive + false_negative,
+        ),
+        "birth_frame_error": ScalarMetricStatistic(
+            birth_error_sum, segment_count
+        ),
+        "death_frame_error": ScalarMetricStatistic(
+            death_error_sum, segment_count
+        ),
+        "query_reuse_count": ScalarMetricStatistic(
+            query_reuse, valid_sequence_count
+        ),
+        "illegal_overlap_count": ScalarMetricStatistic(
+            illegal_overlap, valid_sequence_count
+        ),
+        "id_switches": ScalarMetricStatistic(
+            segment_switches, valid_sequence_count
+        ),
+        "duplicate_active_tracks": ScalarMetricStatistic(
+            duplicate, valid_sequence_count
+        ),
+        "missed_gt_frames": ScalarMetricStatistic(missed, valid_sequence_count),
+        "inactive_query_false_positives": ScalarMetricStatistic(
+            inactive_false_positive, valid_sequence_count
+        ),
     }
+
+
+def common_lifecycle_tracking_metrics(
+    prediction: dict[str, Tensor],
+    batch: dict[str, Tensor],
+    assignments: Sequence[Assignment],
+    *,
+    config: TrackingMetricConfig,
+) -> dict[str, Tensor]:
+    """Compute batch-local lifecycle ratios for direct metric consumers."""
+    return compute_scalar_metric_statistics(
+        common_lifecycle_tracking_statistics(
+            prediction,
+            batch,
+            assignments,
+            config=config,
+        ),
+        zero_denominator_value=0.0,
+    )
 
 
 __all__ = [
     "Assignment",
     "TrackingMetricConfig",
     "common_lifecycle_tracking_metrics",
+    "common_lifecycle_tracking_statistics",
 ]

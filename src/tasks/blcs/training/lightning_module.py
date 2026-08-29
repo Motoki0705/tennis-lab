@@ -14,8 +14,12 @@ from src.tasks.base.model_io import (
     validate_model_artifact_court_keypoint_contract,
     write_model_artifact_court_keypoint_contract,
 )
-from src.tasks.base.training.gan_training import ManualGANSupportMixin
+from src.tasks.base.training.gan_training import (
+    ManualGANSupportMixin,
+    loss_component_metrics,
+)
 from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.base.training.metric_logging import uniform_metric_logging_contract
 from src.tasks.base.training.qualitative_saving import save_qualitative_animation
 from src.tasks.blcs.configuration import (
     parse_court_keypoint_contract,
@@ -39,11 +43,24 @@ if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
+BLCS_TRAJECTORY_METRIC_CONTRACT = uniform_metric_logging_contract(
+    "BLCS trajectory",
+    headline_keys=(
+        "position_error_m",
+        "position_accuracy_0.3m",
+        "endpoint_error_m",
+    ),
+    progress_bar_keys=("position_error_m",),
+)
+
+
 class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
     """Lightning module for BLCS models.
 
     This module supports both single-view and multiview BLCS training.
     """
+
+    metric_logging_contract = BLCS_TRAJECTORY_METRIC_CONTRACT
 
     def __init__(
         self,
@@ -182,7 +199,7 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             "losses": losses,
             "metrics": {
                 **metrics,
-                **{f"loss_{k}": v.item() for k, v in losses.items()},
+                **loss_component_metrics(losses),
             },
             "outputs": outputs,
             "mask": prepared.loss_mask,
@@ -215,21 +232,23 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
     def _log_stage_metrics(
         self, stage: str, loss: Tensor, metrics: dict[str, Any]
     ) -> None:
-        prog_bar = stage != "test"
-        self.log(f"{stage}/loss", loss, prog_bar=prog_bar)
+        self.metric_logging_contract.for_stage(stage)
         self.log(
-            f"{stage}/pos_error_m",
-            metrics["position_error_m"],
-            prog_bar=prog_bar,
+            f"{stage}/loss",
+            loss,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=stage != "test",
         )
-        self._log_gan_metrics(stage, metrics)
 
     def _metric_tracker_for_stage(self, stage: str) -> BLCSMetrics:
         if stage == "train":
             return self.train_metrics
         if stage == "val":
             return self.val_metrics
-        return self.test_metrics
+        if stage == "test":
+            return self.test_metrics
+        raise ValueError(f"Unknown BLCS metric stage: {stage!r}.")
 
     def configure_optimizers(self) -> Any:
         """Configure generator/discriminator optimizers through the shared GAN helper."""
