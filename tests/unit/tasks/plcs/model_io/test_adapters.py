@@ -448,7 +448,9 @@ def test_tracking_model_call_excludes_association_debug_and_clean_tensors() -> N
         "court_vis",
         "padding_mask",
     }
-    assert call.kwargs["human_kp"].shape[3] == 3
+    human_kp = call.kwargs["human_kp"]
+    assert isinstance(human_kp, Tensor)
+    assert human_kp.shape[3] == 3
 
 
 def test_tracking_boundary_rejects_incomplete_court_and_visibility_dtype() -> None:

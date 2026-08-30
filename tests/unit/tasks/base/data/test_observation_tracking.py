@@ -98,10 +98,21 @@ def test_exact_assignment_tie_uses_lexicographically_smallest_pairs() -> None:
             [(0.50, 0.25), (0.50, 0.75)],
         ]
     )
+    permuted_values, permuted_visibility = _permute_carriers(
+        values,
+        visibility,
+        [[1, 0], [1, 0]],
+    )
 
     tracked = track_camera_observations(
         values,
         visibility,
+        num_slots=2,
+        config=_config(max_distance=0.50),
+    )
+    permuted = track_camera_observations(
+        permuted_values,
+        permuted_visibility,
         num_slots=2,
         config=_config(max_distance=0.50),
     )
@@ -110,6 +121,55 @@ def test_exact_assignment_tie_uses_lexicographically_smallest_pairs() -> None:
     torch.testing.assert_close(
         tracked.values[1, :, 0],
         torch.tensor([[0.50, 0.25], [0.50, 0.75]]),
+    )
+    torch.testing.assert_close(tracked.values, permuted.values)
+    torch.testing.assert_close(tracked.visibility, permuted.visibility)
+
+
+def test_pose_equal_cost_tie_is_independent_of_carrier_order() -> None:
+    values = torch.tensor(
+        [
+            [
+                [[0.25, 0.50]] * 4,
+                [[0.75, 0.50]] * 4,
+            ],
+            [
+                [[0.50, 0.25]] * 4,
+                [[0.50, 0.75]] * 4,
+            ],
+        ],
+        dtype=torch.float32,
+    )
+    visibility = torch.ones(values.shape[:-1], dtype=torch.bool)
+    permuted_values, permuted_visibility = _permute_carriers(
+        values,
+        visibility,
+        [[1, 0], [1, 0]],
+    )
+    config = _config(
+        max_distance=0.50,
+        min_common_keypoints=4,
+        cost_reduction="median",
+    )
+
+    tracked = track_camera_observations(
+        values,
+        visibility,
+        num_slots=2,
+        config=config,
+    )
+    permuted = track_camera_observations(
+        permuted_values,
+        permuted_visibility,
+        num_slots=2,
+        config=config,
+    )
+
+    torch.testing.assert_close(tracked.values, permuted.values)
+    torch.testing.assert_close(tracked.visibility, permuted.visibility)
+    torch.testing.assert_close(
+        tracked.values[1, :, :, 1],
+        torch.tensor([[0.25] * 4, [0.75] * 4]),
     )
 
 

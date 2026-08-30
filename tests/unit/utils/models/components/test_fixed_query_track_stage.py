@@ -223,16 +223,19 @@ def test_global_stage_uses_dense_temporal_keep_masks() -> None:
     assert query_temporal.calls[0]["state_valid"] is None
 
 
-def test_mhc_writeback_casts_temporal_update_to_object_token_dtype() -> None:
+@pytest.mark.parametrize("temporal_dtype", [torch.bfloat16, torch.float16])
+def test_mhc_writeback_casts_temporal_update_to_object_token_dtype(
+    temporal_dtype: torch.dtype,
+) -> None:
     stage, mhc, object_temporal, _, _, _ = _stage(0)
     inputs = _inputs()
     object_tokens = cast(torch.Tensor, inputs["object_tokens"])
-    object_temporal.output_dtype = torch.bfloat16
+    object_temporal.output_dtype = temporal_dtype
 
     stage(**inputs)
 
     assert object_tokens.dtype is torch.float32
-    assert object_temporal.forward_update_output_dtypes == [torch.bfloat16]
+    assert object_temporal.forward_update_output_dtypes == [temporal_dtype]
     assert mhc.post_dtypes == [(torch.float32, torch.float32)]
 
 
