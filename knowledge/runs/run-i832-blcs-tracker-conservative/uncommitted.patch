@@ -1,0 +1,3807 @@
+diff --git a/src/tasks/base/README.md b/src/tasks/base/README.md
+index 2d3bbb68..6fa755e6 100644
+--- a/src/tasks/base/README.md
++++ b/src/tasks/base/README.md
+@@ -38,11 +38,50 @@
+ 
+ 通常logger/progress barにはtaskごとの少数のheadlineと`stage/loss`だけを出し、metric実装が計算するaxis/lifecycle/reference index/loss component等は診断値として分離する。trackingのval/test metricはbatch scalarを平均せず、metricごとの加算可能なnumerator/denominator（frame、segment、有効sequence、reference stratum等）をepoch全体で合算してから比率を求めるため、batch分割とpaddingに依存しない。分母がない診断値は出力せず、必須headlineの分母がないepochは失敗する。test成果物の`metrics.json`はknowledge-control向けheadlineのみ、`diagnostic_metrics.json`はheadlineと重複しない詳細値、`pred_test.npz`は再評価用predictionを保持する。headline欠落や未知stageはfallbackせず失敗する。
+ 
+-#### Tracking metric migration note (#820)
++## 実2D観測からfixed-Q inputまでの正本契約 (#832)
+ 
+-Trackingのcount系metricは、batch内合計のepoch平均ではなく、評価した全sequenceに対する1 sequence当たり平均として記録する。したがって、旧実装の値（batch内合計の平均、かつ各targetが独立に選んだ最近傍queryによるID switch）とは互換性がなく、過去runと比較またはcheckpointを再選択する場合は新実装で再評価が必要になる。保存済みの過去metricは書き換えない。
++この節を、BLCS/PLCSの観測association、debug metadata、metric、破壊的migrationに関する唯一の完全な正本とする。task固有READMEはentrypointやtask固有shapeだけを記述し、同じ契約を複製しない。
+ 
+-`id_switches`はtarget lifecycle内だけで計測する。直前frameの対応が現在も距離gate内ならその1対1対応を優先し、残りをgate付きの決定的な1対1 Hungarian assignmentで対応する。prediction欠落中も同じlifecycleのlast-valid queryを保持し、再対応先が変わったときだけswitchを1件数え、lifecycle境界でresetする。`id_switch_distance=0.05`は正規化court座標単位（約0.59425 m）の必須設定で、近接重複を測る`duplicate_distance`とは独立である。通常のBLCS/PLCS可視化はこのtracking metric専用assignmentを描画しないため、見た目とmetricは直接対応しない。
++### 実推論wrapperの出力境界
++
++| 観測 | 実wrapperの出力 | IDと欠測の意味 | synthetic pre-Q observationへの対応 |
++|---|---|---|---|
++| ball | `BallDetectionModule`はcameraごとに高々1点を返し、`ball_uv`/`ball_uv_px`は`(N,T,2)`、`visibility`/`score`は`(N,T)`。archive境界は`SceneResult.ball_uv (N,T,2)`と`ball_vis (N,T)`。 | ball tracking IDは存在しない。thresholdまたはtrajectory gateで無効になったframeはvisibilityがfalseで、座標とscoreは0。 | visibleな正規化UVを`K=1`の1 detectionとしてcarrier軸`D`へ入れる。dropout/noise/false positiveはこのpre-Q setに適用し、元の単一streamやGT slotを先に`Q`へ割り当てない。 |
++| person | `DinoPersonDetector`はBGR `uint8 (H,W,3)`の1 frameからpixel `boxes_xyxy (D,4)`と`scores (D)`を返す。`BotSortAssociator`は各frameについてinteger `id`とpixel `bbx_xyxy (4,)`を返し、`DinoPersonTracker`が選択した各trackを`TrackResult.tracks[id] (F,4)`へ完成させる。ViTPoseはその1 trackのpixel `(center_x,center_y,size) (F,3)`を受け、COCO-17 pixel `(x,y,confidence) (F,17,3)`を返す。 | detector出力とViTPose result自体にはIDがない。BoT-SORT IDは1 video/cameraの1 tracker run内だけで有効で、global/canonical player IDではない。`DinoPersonTracker`は欠けたboxを補間して平滑化するため、完成後のboxからraw detector missingnessを復元・仮定してはならない。 | ViTPoseのpixel座標をimage sizeで正規化し、joint visibilityとともに`K=17`のunordered detection carrierへ入れる。BoT-SORT ID、補間boxの見かけ上の連続性、manual canonical IDはtracking costやmodel input slot labelにしない。 |
++
++multi-camera playerのcanonicalizationは、この境界より後段の`PlayerAssociationModule`/`apply_player_association()`がmanualな時間区間mappingとして所有する。これはcamera-local GVHMR軸をcanonical player軸へ並べ替えるscene reconstruction処理であり、pre-Q observation trackingとは別契約である。同じBoT-SORT番号や同じquery番号が別cameraで現れても同一人物を意味しない。
++
++### pre-Q augmentation、camera-local tracking、fixed Q
++
++共通trackerの入力は、cameraごとのunordered carrier `values (T,D,K,2)`と`visibility (T,D,K)`だけである。座標は有限な正規化UV `[0,1]`とし、物理/GT ID、clean slot、target slot、debug provenance、別cameraのstate、RNGをassociation featureへ入れない。処理順序は次で固定する。
++
++1. 物理観測とdebug provenanceをpre-Q carrierとして抽出する。
++2. 設定済みの座標noise、dropout、false positive、時間augmentationをcarrierへ適用する。
++3. false positive有効時は`limit_synthetic_false_positive_carriers()`へnoisyなmodel-visible values/visibilityとfalse-positive適用直前のvisibilityを渡し、新規synthetic-only carrierだけを残り`Q`容量へ制限する。
++4. `track_camera_observations()`、またはviewごとに独立stateを作る`track_multiview_observations()`で、破損後のvisible UVだけをassociationする。
++5. 結果をexact `Q`へ配置し、その後に独立したGT target packingとcollateを行う。
++
++`ObservationTrackingConfig`は`max_distance`、`max_missed_frames`、`min_reuse_gap_frames`、`use_velocity_prediction`、`min_common_keypoints`、`cost_reduction`、literal `overflow_policy: error`をexact keyとして要求する。ball (`K=1`) costは正規化UVのEuclidean distance、pose (`K=17`) costは共通visible jointの距離を設定どおりreduceし、PLCSは最低4 jointのmedianを用いる。gate外または共通joint不足のpairは一致不可である。valid pairから最大cardinality、最小total cost、辞書順 `(slot, canonical_detection_rank)`の順で決定的なone-to-one対応を選ぶ。2観測があればconstant-velocity prediction、なければlast observationをassociation予測に使うが、この予測値はmodel-visible observationを補間しない。
++
++miss中は設定frame数までslot stateを保持し、再出現がgate内なら同じcamera-local slotを再使用する。spare capacityがある通常時は、retire後に`min_reuse_gap_frames`を満たしたslotだけをbirthへ再利用する。現在frameの`visible_count <= Q`なのにbirth用slotが不足するpressure時は、現在matchしたslotを決して奪わず、必要なslot deficitだけを強制再利用する。victimはcooldown/retired slotを`(reusable_after_frame, slot)`順、その後にunmatched retained stateを`(-missed_frames, last_frame, slot)`順で選ぶ。このpressure経路だけは明示的にreuse gapを迂回し、canonical detection順の全birthを、freeと選択済みvictimを合わせた昇順slotへ割り当てる。`TrackingCapacityError`を送出するのは現在frameの`visible_count > Q`だけであり、camera/frame/free-slotを証拠として持つ。切り捨て、暗黙の`Q`拡張、legacy fallbackは行わない。
++
++false-positive容量制限はruntime trackerのoverflow fallbackではなく、augmentationが新しく合成したFP-only carrierだけに適用する明示的なtraining-corruption契約である。false-positive適用直前に1 joint以上visibleだったcarrierはgenuineとして、FP追加後の全model-visible値を変更せず保持する（同一frameのgenuineだけで`Q`を超える場合も保持し、trackerがtyped errorで拒否する）。pre-FP visibilityが全falseで、FP追加後に一部または全部のjointがvisibleになったcarrierだけをsynthetic-onlyと数え、genuine visible carrier後の残り容量まで、noisy visibility maskとvisible UVによるcanonical順で決定的に選ぶ。carrier permutationでcanonicalな選択値は変わらず、rejectしたsynthetic carrierはvaluesを0、visibilityをfalseにする。pre-FP visibilityはこのsynthetic provenance判定専用であり、association cost、gate、slot tie-break、model inputには入れない。
++
++共通の固定幅出力は`TrackedObservations.values (V,T,Q,K,2)`、`visibility (V,T,Q,K)`、`detection_indices (V,T,Q)`である。BLCSは`K=1`を`(V,T,Q,2)/(V,T,Q)`へ、PLCSは`K=17`を`(V,T,Q,17,2)/(V,T,Q,17)`へ渡す。未観測/paddingは0かつvisibility falseで、miss保持中も観測を捏造しない。query番号はcamera-local lifecycle slotであり、別camera、再利用後の別lifecycle、BoT-SORT ID、GT target slotとの恒久的identity対応を持たない。既存head/output rank、mask、V/T collate、prediction-to-target matchingは変更しない。
++
++### debug metadataとpost-#824 metric
++
++`candidate_gt_index`、`detection_gt_index`、`TrackedObservations.detection_indices`/`debug_provenance`、clean observationは評価、renderer、sample inspectionのためだけに保持する。provenanceはassociation後にcarrier indexでgatherし、false positive、dropout、unmatched/paddingを`-1`とする。これらをcost/gate/tie-break、track state、`ModelCall` inputへ渡してはならない。GT target packingもmodel-visible observation packingから独立させる。
++
++input observation trackingとtarget/prediction metric assignmentは別物である。post-#824の`id_switches`はtarget lifecycle内だけで計測し、直前frameの対応が現在も距離gate内ならその1対1対応を優先し、残りをgate付きの決定的な1対1 Hungarian assignmentで対応する。prediction欠落中も同じlifecycleのlast-valid queryを保持し、再対応先が変わったときだけswitchを1件数え、lifecycle境界でresetする。`id_switch_distance=0.05`は正規化court座標単位（約0.59425 m）の必須設定で、近接重複用`duplicate_distance`とは独立である。通常の可視化はmetric専用assignmentを描画しないため、見た目と値は直接対応しない。
++
++#820以後、count系metricはbatch内合計のepoch平均ではなく、評価した全sequenceに対する1 sequence当たり平均で記録する。旧batch集計および各targetが独立に最近傍queryを選んだpre-#824 `id_switches`とは数値互換性がない。保存済みmetricは書き換えず、比較やcheckpoint再選択には現行metricでの再評価が必要である。
++
++### #650系random slotからの破壊的migration
++
++#832は、#650までのGT physical lifecycleを先に`Q`へpackしてからslot randomization/noiseを適用するpipelineを置換する破壊的変更である。`randomize_slots_train`と旧random relabel APIは削除し、`data.association`のexact configだけを受け付ける。旧key、未知key、容量超過を読み替えるcompatibility modeは提供しない。
++
++固定`Q` tensor shapeが同じため旧checkpointが構造上loadできる場合でも、slot identityとaugmentation順序が異なるため、旧checkpointを#832のcontinued trainingや比較へ使用してはならず再学習が必要である。#643/#648/#650のrunは旧associationに加えてpre-#824 metric解釈を含むため、新pipelineの定量baselineとして直接比較しない。同一split、seed、model、学習budgetと現行position/presence/association metricで再実行したrunだけを比較根拠とする。
+ 
+ ## Training model compilation
+ 
+diff --git a/src/tasks/base/data/__init__.py b/src/tasks/base/data/__init__.py
+index ecb559c8..e6e7412b 100644
+--- a/src/tasks/base/data/__init__.py
++++ b/src/tasks/base/data/__init__.py
+@@ -12,6 +12,15 @@ from src.tasks.base.data.lifecycle_slots import (
+     build_fixed_lifecycle_assignment,
+     pack_lifecycle_slots,
+ )
++from src.tasks.base.data.observation_tracking import (
++    ObservationTrackingConfig,
++    TrackedObservations,
++    TrackingCapacityError,
++    gather_tracked_debug_provenance,
++    limit_synthetic_false_positive_carriers,
++    track_camera_observations,
++    track_multiview_observations,
++)
+ from src.tasks.base.data.scene_dataset import (
+     CameraSelection,
+     Scene,
+@@ -45,6 +54,7 @@ __all__ = [
+     "CAMERA_ID_PADDING_VALUE",
+     "BaseDatasetWriter",
+     "LifecycleSlotAssignment",
++    "ObservationTrackingConfig",
+     "CameraSelection",
+     "Scene",
+     "SceneDataContractError",
+@@ -53,6 +63,8 @@ __all__ = [
+     "SceneDatasetConfig",
+     "STABLE_CAMERA_ID_TABLE_SCHEMA_VERSION",
+     "TemporalWindow",
++    "TrackedObservations",
++    "TrackingCapacityError",
+     "ReferenceViewBatchError",
+     "ReferenceViewSelection",
+     "ReferenceViewSelectionError",
+@@ -60,10 +72,14 @@ __all__ = [
+     "StableCameraIdTableError",
+     "TrackQueryReferenceDataError",
+     "build_fixed_lifecycle_assignment",
++    "gather_tracked_debug_provenance",
++    "limit_synthetic_false_positive_carriers",
+     "pack_lifecycle_slots",
+     "include_evaluation_reference_camera",
+     "resolve_evaluation_reference_camera_id",
+     "select_seeded_training_reference_camera_id",
++    "track_camera_observations",
++    "track_multiview_observations",
+     "validate_reference_view_batch",
+     "validate_reference_view_index",
+ ]
+diff --git a/src/tasks/base/data/canonical_tracking.py b/src/tasks/base/data/canonical_tracking.py
+index 0ac9defc..14a89c5b 100644
+--- a/src/tasks/base/data/canonical_tracking.py
++++ b/src/tasks/base/data/canonical_tracking.py
+@@ -4,16 +4,22 @@ from __future__ import annotations
+ 
+ from collections.abc import Mapping, Sequence
+ from pathlib import Path
+-from typing import Any
++from typing import Any, cast
+ 
+ import numpy as np
+ import torch
+ from torch import Tensor
+ 
++from src.tasks.base.configuration import (
++    exact_config_mapping,
++    require_config_mapping,
++    require_config_value,
++)
+ from src.tasks.base.data.lifecycle_slots import (
+     LifecycleSlotAssignment,
+     pack_lifecycle_slots,
+ )
++from src.tasks.base.data.observation_tracking import ObservationTrackingConfig
+ from src.tasks.base.data.rng import require_run_seed
+ from src.tasks.base.data.scene_dataset import SceneDatasetBase, SceneDatasetConfig
+ from src.utils.schema.court_normalization import (
+@@ -65,10 +71,31 @@ class CanonicalTrackingDataset(SceneDatasetBase[dict[str, Tensor]]):
+         data_cfg = self._resolve_data_cfg(self.hydra_cfg)
+         seq_len_range = self._parse_int_range(data_cfg, "seq_len_range")
+         num_views_range = self._parse_int_range(data_cfg, "num_views_range")
+-        lifecycle_cfg = data_cfg["lifecycle"]
+-        self.pack_to_query_slots = bool(lifecycle_cfg["pack_to_query_slots"])
+-        self.min_reuse_gap_frames = int(lifecycle_cfg["min_reuse_gap_frames"])
+-        self.randomize_slots_train = bool(lifecycle_cfg["randomize_slots_train"])
++        lifecycle_cfg = exact_config_mapping(
++            require_config_mapping(data_cfg, "lifecycle", path="data"),
++            path="data.lifecycle",
++            required_keys=frozenset(
++                {"pack_to_query_slots", "min_reuse_gap_frames"}
++            ),
++        )
++        self.pack_to_query_slots = cast(
++            "bool",
++            require_config_value(
++                lifecycle_cfg, "pack_to_query_slots", bool, path="data.lifecycle"
++            ),
++        )
++        self.min_reuse_gap_frames = cast(
++            "int",
++            require_config_value(
++                lifecycle_cfg,
++                "min_reuse_gap_frames",
++                int,
++                path="data.lifecycle",
++            ),
++        )
++        self.observation_tracking_config = ObservationTrackingConfig.from_mapping(
++            require_config_mapping(data_cfg, "association", path="data")
++        )
+         model_cfg = self.hydra_cfg["model"]
+         raw_num_queries = model_cfg["num_queries"]
+         self.num_queries = int(raw_num_queries) if raw_num_queries is not None else None
+@@ -143,8 +170,6 @@ class CanonicalTrackingDataset(SceneDatasetBase[dict[str, Tensor]]):
+             physical_presence,
+             num_slots=num_slots,
+             min_reuse_gap_frames=self.min_reuse_gap_frames,
+-            randomize_slots=self.augment and self.randomize_slots_train,
+-            rng=self.rng,
+         )
+ 
+ 
+@@ -197,4 +222,8 @@ def pad_and_stack_tracking_batch(
+     return collated
+ 
+ 
+-__all__ = ["CanonicalTrackingDataset", "pad_and_stack_tracking_batch"]
++__all__ = [
++    "CanonicalTrackingDataset",
++    "pad_and_stack_tracking_batch",
++    "validate_lifecycle_capacity",
++]
+diff --git a/src/tasks/base/data/lifecycle_slots.py b/src/tasks/base/data/lifecycle_slots.py
+index eff64c75..17d54a5d 100644
+--- a/src/tasks/base/data/lifecycle_slots.py
++++ b/src/tasks/base/data/lifecycle_slots.py
+@@ -4,7 +4,6 @@ from __future__ import annotations
+ 
+ from dataclasses import dataclass
+ 
+-import numpy as np
+ import torch
+ from torch import Tensor
+ 
+@@ -89,8 +88,6 @@ def pack_lifecycle_slots(
+     *,
+     num_slots: int,
+     min_reuse_gap_frames: int = 0,
+-    randomize_slots: bool = False,
+-    rng: np.random.Generator | None = None,
+ ) -> LifecycleSlotAssignment:
+     """Color physical intervals into reusable slots without illegal overlap."""
+     if physical_presence.ndim != 2:
+@@ -114,8 +111,6 @@ def pack_lifecycle_slots(
+         device=presence.device,
+     )
+     slot_death = [-min_reuse_gap_frames] * num_slots
+-    generator = rng or np.random.default_rng()
+-
+     for interval in intervals:
+         available = [
+             slot
+@@ -128,10 +123,7 @@ def pack_lifecycle_slots(
+                 f"track={interval.track_index}, birth={interval.birth_frame}, "
+                 f"num_slots={num_slots}."
+             )
+-        if randomize_slots:
+-            slot_index = int(generator.choice(np.asarray(available)))
+-        else:
+-            slot_index = available[0]
++        slot_index = available[0]
+         track_to_slot[interval.track_index] = slot_index
+         target_presence[
+             interval.birth_frame : interval.death_frame, slot_index
+@@ -153,38 +145,12 @@ def build_fixed_lifecycle_assignment(
+     *,
+     num_slots: int,
+     min_reuse_gap_frames: int,
+-    randomize_slots: bool,
+-    generator: torch.Generator | None,
+ ) -> LifecycleSlotAssignment:
+-    """Build an exact-width lifecycle assignment with optional slot relabeling.
+-
+-    Interval coloring is always deterministic.  When ``randomize_slots`` is
+-    enabled, one ``torch.randperm`` draw relabels the complete fixed-width slot
+-    axis.  Passing a ``generator`` makes that draw explicit; passing ``None``
+-    selects PyTorch's current worker-seeded RNG.
+-    """
+-    assignment = pack_lifecycle_slots(
++    """Build an exact-width deterministic lifecycle assignment."""
++    return pack_lifecycle_slots(
+         physical_presence,
+         num_slots=num_slots,
+         min_reuse_gap_frames=min_reuse_gap_frames,
+-        randomize_slots=False,
+-    )
+-    if not randomize_slots:
+-        return assignment
+-
+-    permutation = torch.randperm(
+-        num_slots,
+-        device=physical_presence.device,
+-        generator=generator,
+-    )
+-    track_to_slot = assignment.track_to_slot.clone()
+-    assigned = track_to_slot >= 0
+-    track_to_slot[assigned] = permutation[track_to_slot[assigned]]
+-    inverse_permutation = permutation.argsort()
+-    return LifecycleSlotAssignment(
+-        track_to_slot=track_to_slot,
+-        target_presence=assignment.target_presence[:, inverse_permutation],
+-        target_instance_id=assignment.target_instance_id[:, inverse_permutation],
+     )
+ 
+ 
+diff --git a/src/tasks/blcs/README.md b/src/tasks/blcs/README.md
+index 0e66d210..621e005a 100644
+--- a/src/tasks/blcs/README.md
++++ b/src/tasks/blcs/README.md
+@@ -31,8 +31,8 @@ reference frame へ position と court-space velocity を同じ proper rotation
+ - **`datamodule.py`**: `BLCSDataModule`。composition rootで選択済みのcollateを受け取り、model variantを認識しない。
+ - **`augmentation.py`**: `BLCSBallObservationAugmentation`。detector誤差を模した8段のUVノイズパイプライン。
+ - **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
+-- **`tracking_dataset.py` / `tracking_datamodule.py`**: scene読込後にclip/viewをsampleし、physical observationとtargetを独立したfixed-Q lifecycle slotへpackingするDataset/DataModule。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成する。val/testは常に`scene_dir`上の固定splitを使う。
+-- **`tracking_augmentation.py`**: fixed-Q lifecycle列を並べ替えず、clean GTを保持したまま観測だけへdetector noise/dropout/false-positiveを適用するshape adapter。
++- **`tracking_dataset.py` / `tracking_datamodule.py`**: scene読込後にclip/viewをsampleし、physical-width観測をcorruptしてcamera-local trackingしたfixed-Q入力と、独立にpackingしたtargetを構成するDataset/DataModule。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成する。val/testは常に`scene_dir`上の固定splitを使う。
++- **`tracking_augmentation.py`**: query slotを作る前のphysical detectionへdetector noise/dropout/false-positiveを適用し、debug provenanceを更新するadapter。
+ 
+ ### models/
+ - **`blcs_model.py`**: `BLCSModel`。single-view用decoder-only Transformer(court+ballトークン)。
+@@ -80,7 +80,13 @@ reference frame へ position と court-space velocity を同じ proper rotation
+ 
+ ## Multi-ball tracking
+ 
+-tracking modelの観測幅は常に `P=Q=model.num_queries` です。BLCS固有の5観測tensor shapeは `ball_uv (B,V,T,Q,2)`、`ball_vis (B,V,T,Q)`、`court_kp (B,V,T,14,2)`、`court_vis (B,V,T,14)`、`padding_mask (B,V,T)` です。v1 / v2のforward差分、reference field、selector座標、checkpoint・推論指定は共有正本を参照してください。physical scene入力は全viewで同期したlifecycle assignmentによってfixed-Qへpackingします。clip全体のphysical object数はQを超えても構いませんが、同時存在数がQを超える入力は切り捨てずrejectします。target lifecycle assignmentとobservation assignmentは別物であり、trainingではDataLoader workerのTorch RNGから独立にslot permutationをdrawし、evaluationではdeterministicに割り当てます。collateはview/timeだけをpaddingし、Q軸はpaddingしません。
++実観測、noise後association、camera-local slot、capacity error、debug metadata、設定と移行の完全な契約は [`tasks/base/README.md`](../base/README.md) を単一の正本とします。
++
++BLCSでは1 detectionを1個のnormalized UV point（`K=1`）として扱い、`min_common_keypoints=1`、`cost_reduction=mean`を必須とします。pre-Q augmentationには`model.num_queries`をsynthetic false-positive容量として明示的に渡しますが、元からvisibleなcarrierは制限しません。既定の`data.association`は`max_distance=0.04`、`max_missed_frames=2`、`min_reuse_gap_frames=4`、velocity prediction有効、overflow errorです。通常版とchunked版は同じassociation configをcomposeします。完全な容量契約は共有正本を参照してください。
++
++modelへ渡すBLCS固有の5観測tensor shapeは `ball_uv (B,V,T,Q,2)`、`ball_vis (B,V,T,Q)`、`court_kp (B,V,T,14,2)`、`court_vis (B,V,T,14)`、`padding_mask (B,V,T)` のままです。`candidate_gt_index`と`clean_ball_uv/clean_ball_vis`はdebug/evaluation専用tensorで、model入力ではありません。
++
++Issue #832より前のtracking checkpoint/resultは新しいassociation学習契約と意味的に互換ではないため、必ず再学習・再評価してください。旧設定とmetricの詳しい移行条件は共有正本を参照してください。
+ 
+ `ball_vis`は観測tokenとlearned invisible tokenの選択だけに使います。非padding位置では`ball_vis=False`のQ tokenもattentionへ参加します。各stageは `mHC object temporal -> global spatial(Q+VQ) -> query temporal` の順で、temporal modeはconstructor時に `CSWA, CSWA, CSWA, Global` のcycleへ固定されます。nested `model.mhc` / `model.cswa` configはunknown/missing/invalid値をrejectし、`model.cswa.backend=cuda`はextensionが利用不能ならreferenceへfallbackせずconstruction時に失敗します。
+ 
+diff --git a/src/tasks/blcs/configs/data/tracking.yaml b/src/tasks/blcs/configs/data/tracking.yaml
+index c3850730..cfe6a32c 100644
+--- a/src/tasks/blcs/configs/data/tracking.yaml
++++ b/src/tasks/blcs/configs/data/tracking.yaml
+@@ -1,6 +1,7 @@
+ defaults:
+   - _augmentation
+   - _multiview
++  - _observation_tracking
+   - _self_
+ 
+ backend: default
+@@ -19,4 +20,3 @@ evaluation_reference_camera_id: cam_1
+ lifecycle:
+   pack_to_query_slots: true
+   min_reuse_gap_frames: 4
+-  randomize_slots_train: true
+diff --git a/src/tasks/blcs/configs/data/tracking_chunked.yaml b/src/tasks/blcs/configs/data/tracking_chunked.yaml
+index 39ab4f68..34b10936 100644
+--- a/src/tasks/blcs/configs/data/tracking_chunked.yaml
++++ b/src/tasks/blcs/configs/data/tracking_chunked.yaml
+@@ -1,6 +1,7 @@
+ defaults:
+   - _augmentation
+   - _multiview
++  - _observation_tracking
+   - _chunked
+   - _self_
+ 
+@@ -17,7 +18,6 @@ evaluation_reference_camera_id: cam_1
+ lifecycle:
+   pack_to_query_slots: true
+   min_reuse_gap_frames: 4
+-  randomize_slots_train: true
+ 
+ chunk:
+   scenes_per_chunk: 1000
+diff --git a/src/tasks/blcs/configuration.py b/src/tasks/blcs/configuration.py
+index 373118d7..913d7c57 100644
+--- a/src/tasks/blcs/configuration.py
++++ b/src/tasks/blcs/configuration.py
+@@ -16,6 +16,7 @@ from src.tasks.base.configuration import (
+     as_config_mapping,
+     require_config_mapping,
+ )
++from src.tasks.base.data.observation_tracking import ObservationTrackingConfig
+ from src.tasks.base.generate_dataset import (
+     CourtKeypointContract,
+     resolve_court_keypoint_contract,
+@@ -2227,13 +2228,18 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
+         "augmentation",
+     }
+     if isinstance(model, _TRACK_QUERY_MODEL_CONFIG_TYPES):
+-        data_keys.update({"lifecycle", "evaluation_reference_camera_id"})
++        data_keys.update(
++            {"association", "lifecycle", "evaluation_reference_camera_id"}
++        )
+         lifecycle = require_config_mapping(data, "lifecycle", path="data")
+         _exact(
+             lifecycle,
+-            {"pack_to_query_slots", "min_reuse_gap_frames", "randomize_slots_train"},
++            {"pack_to_query_slots", "min_reuse_gap_frames"},
+             path="data.lifecycle",
+         )
++        association = ObservationTrackingConfig.from_mapping(
++            require_config_mapping(data, "association", path="data")
++        )
+     else:
+         data_keys.add("num_court_kp")
+     if backend == "chunked":
+@@ -2380,7 +2386,6 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
+             {
+                 "pack_to_query_slots": bool,
+                 "min_reuse_gap_frames": int,
+-                "randomize_slots_train": bool,
+             },
+             path="data.lifecycle",
+         )
+@@ -2393,6 +2398,14 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
+             raise SemanticConfigurationError(
+                 "data.lifecycle.min_reuse_gap_frames must be non-negative."
+             )
++        if association.min_common_keypoints != 1:
++            raise SemanticConfigurationError(
++                "BLCS point tracking requires data.association.min_common_keypoints=1."
++            )
++        if association.cost_reduction != "mean":
++            raise SemanticConfigurationError(
++                "BLCS point tracking requires data.association.cost_reduction='mean'."
++            )
+     else:
+         num_court_kp = cast("int", _value(data, "num_court_kp", int, path="data"))
+         if num_court_kp <= 0 or num_court_kp != model.num_court_tokens:
+diff --git a/src/tasks/blcs/data/observation_candidates.py b/src/tasks/blcs/data/observation_candidates.py
+index 54766a33..e97ad3f9 100644
+--- a/src/tasks/blcs/data/observation_candidates.py
++++ b/src/tasks/blcs/data/observation_candidates.py
+@@ -1,4 +1,4 @@
+-"""Fixed-width lifecycle packing for BLCS observation candidates."""
++"""Physical-width BLCS observations and post-association debug alignment."""
+ 
+ from __future__ import annotations
+ 
+@@ -7,29 +7,36 @@ from dataclasses import dataclass
+ import torch
+ from torch import Tensor
+ 
+-from src.tasks.base.data.lifecycle_slots import build_fixed_lifecycle_assignment
+-
+ 
+ @dataclass(frozen=True, slots=True)
+-class PackedObservationCandidates:
+-    """All-view synchronized observation candidates with an exact slot width."""
++class PhysicalObservationCandidates:
++    """Unpacked camera observations carried on the physical ``P`` axis.
++
++    ``gt_index`` is debug provenance only. Association callers must pass only
++    ``uv`` and ``vis`` to the shared observation tracker.
++    """
+ 
+     uv: Tensor
+     vis: Tensor
+     gt_index: Tensor
+ 
+ 
+-def pack_observation_candidates(
++@dataclass(frozen=True, slots=True)
++class AlignedObservationDebug:
++    """Clean values and provenance aligned to a tracked exact-``Q`` axis."""
++
++    clean_uv: Tensor
++    clean_vis: Tensor
++    gt_index: Tensor
++
++
++def build_physical_observation_candidates(
+     *,
+     ball_uv: Tensor,
+     ball_vis: Tensor,
+     physical_presence: Tensor,
+-    num_slots: int,
+-    min_reuse_gap_frames: int,
+-    randomize_slots: bool,
+-    generator: torch.Generator | None = None,
+-) -> PackedObservationCandidates:
+-    """Pack physical observations ``[V,T,P]`` into exact ``[V,T,Q]`` streams."""
++) -> PhysicalObservationCandidates:
++    """Build clean ``(V,T,P)`` carriers without assigning query slots."""
+     if ball_uv.ndim != 4 or ball_uv.shape[-1] != 2:
+         raise ValueError("ball_uv must have shape (V,T,P,2).")
+     if ball_vis.shape != ball_uv.shape[:-1]:
+@@ -39,36 +46,79 @@ def pack_observation_candidates(
+     if ball_vis.dtype != torch.bool or physical_presence.dtype != torch.bool:
+         raise TypeError("ball_vis and physical_presence must have dtype bool.")
+     if ball_uv.device != ball_vis.device or ball_uv.device != physical_presence.device:
+-        raise ValueError("candidate packing tensors must share one device.")
++        raise ValueError("physical observation tensors must share one device.")
++    if ball_uv.shape[2] <= 0:
++        raise ValueError("physical observations must contain at least one carrier.")
+     if bool((ball_vis & ~physical_presence.unsqueeze(0)).any()):
+         raise ValueError("ball_vis cannot be true for an absent physical object.")
+ 
+-    assignment = build_fixed_lifecycle_assignment(
+-        physical_presence,
+-        num_slots=num_slots,
+-        min_reuse_gap_frames=min_reuse_gap_frames,
+-        randomize_slots=randomize_slots,
+-        generator=generator,
+-    )
+-    packed_uv = assignment.pack_tensor(
+-        ball_uv.permute(1, 2, 0, 3),
+-        physical_presence,
+-    ).permute(2, 0, 1, 3)
+-    packed_visible = assignment.pack_tensor(
+-        ball_vis.permute(1, 2, 0),
+-        physical_presence,
+-    ).permute(2, 0, 1)
+-    gt_index = assignment.target_instance_id.unsqueeze(0).expand(
+-        ball_uv.shape[0], -1, -1
++    visible = ball_vis & physical_presence.unsqueeze(0)
++    clean_uv = torch.where(visible.unsqueeze(-1), ball_uv, torch.zeros_like(ball_uv))
++    physical_ids = torch.arange(
++        ball_uv.shape[2], dtype=torch.long, device=ball_uv.device
++    ).view(1, 1, -1)
++    gt_index = torch.where(
++        visible,
++        physical_ids.expand_as(visible),
++        torch.full_like(visible, -1, dtype=torch.long),
+     )
+-    return PackedObservationCandidates(
+-        uv=packed_uv,
+-        vis=packed_visible,
++    return PhysicalObservationCandidates(
++        uv=clean_uv,
++        vis=visible,
+         gt_index=gt_index,
+     )
+ 
+ 
++def align_clean_observations_after_tracking(
++    *,
++    clean: PhysicalObservationCandidates,
++    detection_indices: Tensor,
++    candidate_gt_index: Tensor,
++) -> AlignedObservationDebug:
++    """Gather clean debug values only after noisy observation association."""
++    if detection_indices.ndim != 3:
++        raise ValueError("detection_indices must have shape (V,T,Q).")
++    if detection_indices.dtype != torch.long:
++        raise TypeError("detection_indices must have dtype torch.long.")
++    if candidate_gt_index.shape != detection_indices.shape:
++        raise ValueError("candidate_gt_index must match detection_indices.")
++    if candidate_gt_index.dtype != torch.long:
++        raise TypeError("candidate_gt_index must have dtype torch.long.")
++    if clean.uv.shape[:2] != detection_indices.shape[:2]:
++        raise ValueError("Clean and tracked view/time axes must match.")
++    num_carriers = clean.uv.shape[2]
++    if bool((detection_indices < -1).any()) or bool(
++        (detection_indices >= num_carriers).any()
++    ):
++        raise ValueError("detection_indices contain an out-of-range carrier index.")
++
++    safe_indices = detection_indices.clamp_min(0)
++    gathered_uv = torch.gather(
++        clean.uv,
++        2,
++        safe_indices.unsqueeze(-1).expand(*safe_indices.shape, 2),
++    )
++    gathered_vis = torch.gather(clean.vis, 2, safe_indices)
++    valid_debug = (detection_indices >= 0) & (candidate_gt_index >= 0)
++    aligned_vis = gathered_vis & valid_debug
++    aligned_uv = torch.where(
++        aligned_vis.unsqueeze(-1), gathered_uv, torch.zeros_like(gathered_uv)
++    )
++    aligned_gt_index = torch.where(
++        aligned_vis,
++        candidate_gt_index,
++        torch.full_like(candidate_gt_index, -1),
++    )
++    return AlignedObservationDebug(
++        clean_uv=aligned_uv,
++        clean_vis=aligned_vis,
++        gt_index=aligned_gt_index,
++    )
++
++
+ __all__ = [
+-    "PackedObservationCandidates",
+-    "pack_observation_candidates",
++    "AlignedObservationDebug",
++    "PhysicalObservationCandidates",
++    "align_clean_observations_after_tracking",
++    "build_physical_observation_candidates",
+ ]
+diff --git a/src/tasks/blcs/data/tracking_augmentation.py b/src/tasks/blcs/data/tracking_augmentation.py
+index a46c5939..aec2f08f 100644
+--- a/src/tasks/blcs/data/tracking_augmentation.py
++++ b/src/tasks/blcs/data/tracking_augmentation.py
+@@ -1,61 +1,139 @@
+-"""Shape adapter for fixed-width BLCS candidate observation augmentation."""
++"""Pre-query corruption boundary for physical-width BLCS detections."""
+ 
+ from __future__ import annotations
+ 
+ from collections.abc import Mapping
+ from typing import Any, cast
+ 
++import torch
+ from torch import Tensor
+ 
++from src.tasks.base.data.observation_tracking import (
++    limit_synthetic_false_positive_carriers,
++)
+ from src.tasks.blcs.data.augmentation import BLCSBallObservationAugmentation
++from src.tasks.blcs.data.observation_candidates import PhysicalObservationCandidates
+ from src.tasks.blcs.data.types import BLCSMultiViewSample
+-from src.utils.tensor_utils import clone_tensor_dict
+ 
+ 
+-class BLCSTrackingCandidateAugmentation:
+-    """Apply single-ball corruption along every candidate's time axis."""
++class _ProvenanceAwareBallObservationAugmentation(BLCSBallObservationAugmentation):
++    """Expose genuine visibility immediately before false-positive injection."""
+ 
+-    def __init__(self, config: Mapping[str, Any]) -> None:
++    visibility_before_false_positive: Tensor | None
++
++    def forward(self, sample: BLCSMultiViewSample) -> BLCSMultiViewSample:
++        self.visibility_before_false_positive = None
++        result = super().forward(sample)
++        if self.visibility_before_false_positive is None:
++            self.visibility_before_false_positive = sample["ball_vis"].bool().clone()
++        return result
++
++    def _apply_false_positive(
++        self,
++        ball_uv: Tensor,
++        ball_vis: Tensor,
++        *,
++        dropped_mask: Tensor,
++    ) -> tuple[Tensor, Tensor]:
++        self.visibility_before_false_positive = ball_vis.bool().clone()
++        return cast(
++            "tuple[Tensor, Tensor]",
++            super()._apply_false_positive(
++                ball_uv,
++                ball_vis,
++                dropped_mask=dropped_mask,
++            ),
++        )
++
++
++class BLCSTrackingDetectionAugmentation:
++    """Corrupt ``P`` detection carriers before camera-local Q association."""
++
++    def __init__(self, config: Mapping[str, Any], *, num_slots: int) -> None:
++        if type(num_slots) is not int:
++            raise TypeError(f"num_slots must be int, got {type(num_slots).__name__}.")
++        if num_slots <= 0:
++            raise ValueError("num_slots must be positive.")
+         self.config = config
+-        self.observation = BLCSBallObservationAugmentation(self.config)
+-
+-    def forward(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
+-        """Corrupt only candidate/court inputs and preserve clean GT tensors."""
+-        output: dict[str, Tensor] = clone_tensor_dict(sample)
+-        views, frames, detections, _ = output["ball_uv"].shape
+-        court_keypoints = output["court_kp"].clone()
+-        court_vis = output["court_vis"].clone()
++        self.num_slots = num_slots
++        self.observation = _ProvenanceAwareBallObservationAugmentation(self.config)
++
++    def forward(
++        self,
++        detections: PhysicalObservationCandidates,
++        *,
++        court_kp: Tensor,
++        court_vis: Tensor,
++    ) -> PhysicalObservationCandidates:
++        """Return noisy physical carriers with post-corruption provenance."""
++        views, frames, carriers, _ = detections.uv.shape
+         adapted = {
+-            "ball_uv": output["ball_uv"]
+-            .permute(0, 2, 1, 3)
+-            .reshape(views * detections, frames, 2),
+-            "ball_vis": output["ball_vis"]
+-            .permute(0, 2, 1)
+-            .reshape(views * detections, frames),
+-            "court_kp": output["court_kp"],
+-            "court_vis": output["court_vis"],
++            "ball_uv": detections.uv.permute(0, 2, 1, 3).reshape(
++                views * carriers, frames, 2
++            ),
++            "ball_vis": detections.vis.permute(0, 2, 1).reshape(
++                views * carriers, frames
++            ),
++            "court_kp": court_kp,
++            "court_vis": court_vis,
+         }
+         augmented = self.observation.forward(cast("BLCSMultiViewSample", adapted))
+-        output["ball_uv"] = (
+-            augmented["ball_uv"]
+-            .reshape(views, detections, frames, 2)
+-            .permute(0, 2, 1, 3)
++        noisy_uv = (
++            augmented["ball_uv"].reshape(views, carriers, frames, 2).permute(0, 2, 1, 3)
+         )
+-        output["ball_vis"] = (
++        noisy_vis = (
+             augmented["ball_vis"]
+-            .reshape(views, detections, frames)
++            .reshape(views, carriers, frames)
+             .permute(0, 2, 1)
+             .bool()
+         )
+-        # Court input is geometric projection/manual annotation, not a detector
+-        # confidence stream.
+-        output["court_kp"] = court_keypoints
+-        output["court_vis"] = court_vis
+-        return output
++        visibility_before_false_positive = (
++            self.observation.visibility_before_false_positive
++        )
++        if visibility_before_false_positive is None:
++            raise RuntimeError(
++                "BLCS corruption did not expose pre-false-positive visibility."
++            )
++        visibility_before_false_positive = (
++            visibility_before_false_positive.reshape(views, carriers, frames)
++            .permute(0, 2, 1)
++            .bool()
++        )
++        limited_uv, limited_vis = limit_synthetic_false_positive_carriers(
++            noisy_uv.unsqueeze(-2),
++            noisy_vis.unsqueeze(-1),
++            visibility_before_false_positive.unsqueeze(-1),
++            num_slots=self.num_slots,
++        )
++        noisy_uv = limited_uv[..., 0, :]
++        noisy_vis = limited_vis[..., 0]
++        genuine_observation = noisy_vis & visibility_before_false_positive
++        noisy_gt_index = torch.where(
++            genuine_observation,
++            detections.gt_index,
++            torch.full_like(detections.gt_index, -1),
++        )
++        return PhysicalObservationCandidates(
++            uv=torch.where(
++                noisy_vis.unsqueeze(-1), noisy_uv, torch.zeros_like(noisy_uv)
++            ),
++            vis=noisy_vis,
++            gt_index=noisy_gt_index,
++        )
+ 
+-    def __call__(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
++    def __call__(
++        self,
++        detections: PhysicalObservationCandidates,
++        *,
++        court_kp: Tensor,
++        court_vis: Tensor,
++    ) -> PhysicalObservationCandidates:
+         """Delegate callable use to :meth:`forward` with a typed contract."""
+-        return self.forward(sample)
++        return self.forward(
++            detections,
++            court_kp=court_kp,
++            court_vis=court_vis,
++        )
+ 
+ 
+-__all__ = ["BLCSTrackingCandidateAugmentation"]
++__all__ = ["BLCSTrackingDetectionAugmentation"]
+diff --git a/src/tasks/blcs/data/tracking_dataset.py b/src/tasks/blcs/data/tracking_dataset.py
+index 6d04a466..eb69eae5 100644
+--- a/src/tasks/blcs/data/tracking_dataset.py
++++ b/src/tasks/blcs/data/tracking_dataset.py
+@@ -14,6 +14,7 @@ from src.tasks.base.data.canonical_tracking import (
+     pad_and_stack_tracking_batch,
+ )
+ from src.tasks.base.data.lifecycle_slots import build_fixed_lifecycle_assignment
++from src.tasks.base.data.observation_tracking import track_multiview_observations
+ from src.tasks.base.data.scene_dataset import CameraSelection, Scene
+ from src.tasks.base.generate_dataset import (
+     CAMERA_VIEW_V2_SELECTOR,
+@@ -34,10 +35,12 @@ from src.tasks.blcs.data.court_view import (
+     validate_blcs_dataset_court_keypoints,
+ )
+ from src.tasks.blcs.data.observation_candidates import (
+-    pack_observation_candidates,
++    PhysicalObservationCandidates,
++    align_clean_observations_after_tracking,
++    build_physical_observation_candidates,
+ )
+ from src.tasks.blcs.data.tracking_augmentation import (
+-    BLCSTrackingCandidateAugmentation,
++    BLCSTrackingDetectionAugmentation,
+ )
+ 
+ BLCS_TRACKING_KEYS = (
+@@ -60,7 +63,7 @@ BLCS_TRACKING_KEYS = (
+ 
+ 
+ class BLCSTrackingDataset(CanonicalTrackingDataset):
+-    """Load ID-ordered objects, pack lifecycle slots, and corrupt observations."""
++    """Corrupt physical detections, track per camera, and pack targets separately."""
+ 
+     def __init__(
+         self,
+@@ -86,16 +89,25 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
+         )
+         self._court_views_by_scene = court_views_by_scene(court_dataset)
+         super().__init__(**kwargs)
+-        data_cfg = self._resolve_data_cfg(self.hydra_cfg)
+-        self.tracking_augmentation = BLCSTrackingCandidateAugmentation(
+-            data_cfg["augmentation"]
+-        )
+         if self.num_queries is None:
+             raise ValueError("BLCS tracking requires model.num_queries.")
+         if not self.pack_to_query_slots:
+             raise ValueError(
+                 "BLCS tracking requires data.lifecycle.pack_to_query_slots=true."
+             )
++        if self.observation_tracking_config.min_common_keypoints != 1:
++            raise ValueError(
++                "BLCS point tracking requires data.association.min_common_keypoints=1."
++            )
++        if self.observation_tracking_config.cost_reduction != "mean":
++            raise ValueError(
++                "BLCS point tracking requires data.association.cost_reduction='mean'."
++            )
++        data_cfg = self._resolve_data_cfg(self.hydra_cfg)
++        self.tracking_augmentation = BLCSTrackingDetectionAugmentation(
++            data_cfg["augmentation"],
++            num_slots=self.num_queries,
++        )
+ 
+     def build_sample(self, scene: Scene) -> dict[str, Any]:
+         if self.num_queries is None:
+@@ -149,13 +161,10 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
+             position = court_points_physical_to_target(position, frame.provenance)
+             velocity = court_vectors_physical_to_target(velocity, frame.provenance)
+         physical_presence = physical_presence[window.sl]
+-        randomize_slots = self.augment and self.randomize_slots_train
+         target_packing = build_fixed_lifecycle_assignment(
+             physical_presence,
+             num_slots=num_queries,
+             min_reuse_gap_frames=self.min_reuse_gap_frames,
+-            randomize_slots=randomize_slots,
+-            generator=None,
+         )
+ 
+         uv_rows: list[Tensor] = []
+@@ -215,18 +224,17 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
+ 
+         physical_uv = torch.stack(uv_rows)
+         physical_vis = torch.stack(vis_rows)
+-        observations = pack_observation_candidates(
++        observations = build_physical_observation_candidates(
+             ball_uv=physical_uv,
+             ball_vis=physical_vis,
+             physical_presence=physical_presence,
+-            num_slots=num_queries,
+-            min_reuse_gap_frames=self.min_reuse_gap_frames,
+-            randomize_slots=randomize_slots,
+         )
+         sample = {
+             "scene_format_version": torch.tensor(4),
+-            "ball_uv": observations.uv,
+-            "ball_vis": observations.vis,
++            "_physical_ball_uv": observations.uv,
++            "_physical_ball_vis": observations.vis,
++            "_physical_gt_index": observations.gt_index,
++            "_selected_camera_indices": tuple(int(index) for index in cameras.indices),
+             "court_kp": torch.stack(court_rows),
+             "court_vis": torch.stack(court_vis_rows),
+             "padding_mask": torch.zeros(
+@@ -237,9 +245,6 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
+             "target_presence": target_packing.target_presence,
+             "target_instance_id": target_packing.target_instance_id,
+             "target_slot_mask": target_packing.target_presence.any(0),
+-            "clean_ball_uv": observations.uv.clone(),
+-            "clean_ball_vis": observations.vis.clone(),
+-            "candidate_gt_index": observations.gt_index,
+             "court_reference_provenance": frame.provenance,
+             "selected_camera_ids": tuple(
+                 view.camera_id for view in frame.selected_views
+@@ -259,16 +264,66 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
+         return sample
+ 
+     def augment_sample(self, sample: dict[str, Any]) -> dict[str, Any]:
+-        if not self.augment:
+-            return sample
+-        metadata = {
+-            key: value for key, value in sample.items() if not isinstance(value, Tensor)
+-        }
+-        tensor_sample = {
+-            key: value for key, value in sample.items() if isinstance(value, Tensor)
+-        }
+-        augmented: dict[str, Tensor] = self.tracking_augmentation(tensor_sample)
+-        return {**augmented, **metadata}
++        """Apply optional corruption before deterministic camera-local tracking."""
++        if self.num_queries is None:
++            raise RuntimeError("BLCS tracking dataset lost its fixed query width.")
++        court_vis = sample["court_vis"]
++        court_kp = sample["court_kp"].masked_fill(
++            ~court_vis.unsqueeze(-1),
++            0.0,
++        )
++        physical = PhysicalObservationCandidates(
++            uv=sample["_physical_ball_uv"],
++            vis=sample["_physical_ball_vis"],
++            gt_index=sample["_physical_gt_index"],
++        )
++        detections = (
++            self.tracking_augmentation(
++                physical,
++                court_kp=court_kp,
++                court_vis=court_vis,
++            )
++            if self.augment
++            else physical
++        )
++        camera_indices = sample["_selected_camera_indices"]
++        if not isinstance(camera_indices, tuple):
++            raise TypeError("Selected camera indices must be an immutable tuple.")
++        tracked = track_multiview_observations(
++            detections.uv.unsqueeze(-2),
++            detections.vis.unsqueeze(-1),
++            num_slots=self.num_queries,
++            config=self.observation_tracking_config,
++            camera_indices=camera_indices,
++            debug_provenance=detections.gt_index,
++        )
++        if tracked.debug_provenance is None:
++            raise RuntimeError("BLCS observation tracking lost debug provenance.")
++        aligned_debug = align_clean_observations_after_tracking(
++            clean=physical,
++            detection_indices=tracked.detection_indices,
++            candidate_gt_index=tracked.debug_provenance,
++        )
++
++        output = dict(sample)
++        for internal_key in (
++            "_physical_ball_uv",
++            "_physical_ball_vis",
++            "_physical_gt_index",
++            "_selected_camera_indices",
++        ):
++            del output[internal_key]
++        output.update(
++            {
++                "ball_uv": tracked.values[..., 0, :],
++                "ball_vis": tracked.visibility[..., 0],
++                "court_kp": court_kp,
++                "clean_ball_uv": aligned_debug.clean_uv,
++                "clean_ball_vis": aligned_debug.clean_vis,
++                "candidate_gt_index": aligned_debug.gt_index,
++            }
++        )
++        return output
+ 
+ 
+ def collate_blcs_tracking_batch(
+diff --git a/src/tasks/blcs/data/tracking_types.py b/src/tasks/blcs/data/tracking_types.py
+index 6105bbb3..d9480433 100644
+--- a/src/tasks/blcs/data/tracking_types.py
++++ b/src/tasks/blcs/data/tracking_types.py
+@@ -15,9 +15,9 @@ class BLCSTrackingBatch(TypedDict):
+ 
+     The authoritative shapes and mask semantics are documented in
+     ``src/tasks/blcs/README.md``. ``candidate_gt_index`` validates the
+-    lifecycle-packed observation axis and must never be passed to the tracking
+-    model. Visibility selects observed/invisible embeddings only; padding alone
+-    controls attention participation.
++    post-association observation-slot axis and must never be passed to the
++    tracking model. Visibility selects observed/invisible embeddings only;
++    padding alone controls attention participation.
+     """
+ 
+     scene_format_version: Tensor
+diff --git a/src/tasks/blcs/inference/tracking_predictor.py b/src/tasks/blcs/inference/tracking_predictor.py
+index fae4e15a..03eda582 100644
+--- a/src/tasks/blcs/inference/tracking_predictor.py
++++ b/src/tasks/blcs/inference/tracking_predictor.py
+@@ -4,7 +4,7 @@ from __future__ import annotations
+ 
+ from collections.abc import Iterable, Mapping
+ from pathlib import Path
+-from typing import Any, Self
++from typing import Any, Self, cast
+ 
+ import torch
+ from torch import Tensor
+@@ -42,7 +42,7 @@ from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+ 
+ 
+ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
+-    """Predict fixed lifecycle queries from ID-ordered per-camera observations."""
++    """Predict fixed queries from caller-provided per-camera slot observations."""
+ 
+     def __init__(
+         self,
+@@ -169,7 +169,8 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
+         right: BLCSReferenceMetadata,
+     ) -> bool:
+         """Compare typed metadata without relying on tensor dataclass equality."""
+-        return (
++        return cast(
++            "bool",
+             left.selections == right.selections
+             and left.stable_camera_id_tables == right.stable_camera_id_tables
+             and left.track_query_contract == right.track_query_contract
+@@ -183,7 +184,7 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
+             and torch.equal(
+                 left.physical_from_reference,
+                 right.physical_from_reference,
+-            )
++            ),
+         )
+ 
+     def _resolve_reference_metadata(
+diff --git a/src/tasks/plcs/README.md b/src/tasks/plcs/README.md
+index ac717867..4a2ca14e 100644
+--- a/src/tasks/plcs/README.md
++++ b/src/tasks/plcs/README.md
+@@ -25,8 +25,8 @@ human UV/visibility には適用しません。
+ - **`augmentation.py`**: `PLCSObservationAugmentation`。UVノイズ・時間jitter・可視性dropout等8段のパイプライン。
+ - **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
+ - **`targets.py`**: `build_coco17_world_targets()`。canonical poseまたはAthletePose3DからCOCO17ワールド座標targetを構築。
+-- **`tracking_dataset.py` / `tracking_datamodule.py`**: scene読込後にclip/viewをsampleし、物理trackを固定幅lifecycle observation slotへpackingするDataset/DataModule。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成する。val/testは常に`scene_dir`上の固定splitを使う。
+-- **`tracking_augmentation.py`**: object列を並べ替えず、clean GTを保持したまま観測だけへpose noise/dropout/false-positiveを適用するshape adapter。
++- **`tracking_dataset.py` / `tracking_datamodule.py`**: scene読込後にclip/viewをsampleし、pose観測をnoise/dropout/false-positiveで破損してからcamera-local trackingにより固定幅`Q`へ変換するDataset/DataModule。target lifecycle packingは観測associationと独立です。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成します。val/testは常に`scene_dir`上の固定splitを使います。
++- **`tracking_augmentation.py`**: 固定`Q`へ変換する前の物理幅pose detectionへcorruptionを適用し、false-positive provenanceを`-1`にするadapter。synthetic-only carrierの容量制御は[共有tracking contract](../base/README.md)に委譲する。
+ - **`types.py`**: `PLCSBatch`/`PLCSSceneMeta` のバッチ・meta契約。
+ 
+ ### models/
+@@ -36,7 +36,7 @@ human UV/visibility には適用しません。
+ - **`plcs_multiview_axial_model.py`**: `PLCSMultiViewAxialModel`。camera軸/time軸交互self-attention(共有readout)。
+ - **`plcs_multiview_axial_split_model.py`**: `PLCSMultiViewAxialSplitModel`(issue #518)。rotation/pose trunkを分離。
+ - **`plcs_multiview_axial_camtoken_model.py`**: `PLCSMultiViewAxialCamTokenModel`(issue #576)。head別に別camera tokenを読む。
+-- **`plcs_track_query_model.py`**: `PLCSTrackQueryModel`。object ID順のcamera pose観測からclip-localな固定query slotで複数playerの位置・rotation・presenceを推定する。
++- **`plcs_track_query_model.py`**: `PLCSTrackQueryModel`。camera-localにtrackingされた固定幅pose観測からclip-localなqueryで複数playerの位置・rotation・presenceを推定する。
+ - **`plcs_track_query_ablation_model.py`**: `PLCSTrackQueryAblationModel`。legacy v1 (`time_camera_role_v1`) の`plcs_track_query_ablation` architectureとして、SwiGLU配置とmHC writeback位置の4条件を同じ5入力・3出力契約で比較する。
+ - **`plcs_track_query_reference_model.py` / `plcs_track_query_reference_ablation_model.py`**: camera-view target frame用の明示的v2 family。PLCS固有出力はposition / heading / presenceのままselector条件を追加する。
+ - **`components/heads.py`**: `PositionHead`/`RotationHead`/`CanonicalPoseHead`。
+@@ -89,9 +89,13 @@ human UV/visibility には適用しません。
+ 
+ ## Multi-person tracking
+ 
+-PLCS固有の5観測tensor shapeは `human_kp (B,V,T,Q,17,2)`、`human_vis (B,V,T,Q,17)`、`court_kp (B,V,T,14,2)`、`court_vis (B,V,T,14)`、`padding_mask (B,V,T)` です。v1 / v2のforward差分、reference field、selector座標、checkpoint・推論指定は共有正本を参照してください。各sceneの物理trackはDatasetで固定幅`Q`のlifecycle slotへpackされるため、観測軸とquery軸は常に`P=Q`です。`human_vis.any(-1)`がfalseの非padding slotはlearned invisible tokenになりますがattentionには参加し、時間・camera文脈から更新されます。debug用の`detection_gt_index`は実object由来なら物理instance ID、不可視またはfalse positiveなら`-1`で、モデルへは渡しません。欠損joint UVは0にします。出力は `position (B,T,Q,3)`、`rotation (B,T,Q,2)`、`presence_logits (B,T,Q)` です。教師は `target_position`、`target_rotation`、`target_presence`、`target_instance_id` で、inactive rotationはidentity、instance IDは`-1`です。重ならないbirth/death区間を同じslotへ詰めるため、同一queryはdeath後に別instanceへ再利用できます。
++共有の2D observation tracking contract、camera-local slotの意味、overflow、および破壊的migrationの正本は [`src/tasks/base/README.md`](../base/README.md) です。PLCS固有の5観測tensor shapeは `human_kp (B,V,T,Q,17,2)`、`human_vis (B,V,T,Q,17)`、`court_kp (B,V,T,14,2)`、`court_vis (B,V,T,14)`、`padding_mask (B,V,T)` です。`human_vis.any(-1)`がfalseの非padding slotはlearned invisible tokenになりますがattentionには参加します。`detection_gt_index`と`clean_human_kp`/`clean_human_vis`は評価・可視化専用fieldで、モデルへは渡しません。
+ 
+-14 court UVは共有Court contractでreference整列した後の先頭14点を使い、`court_vis`で不可視点を0化します。各lifecycle slotのperson keypointsとcourtを連結し、BLCSと同じ`src/utils/models/embeddings/group_tokens.py`の共有`CourtPlayerGroupEmbedding`により1 slot = 1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*Q, D)` です。v1 / v2のM-RoPE座標と第3軸の意味は共有正本を参照してください。
++PLCSの`data.association`は `max_distance=0.08`、`max_missed_frames=8`、`min_reuse_gap_frames=4`、velocity prediction有効、`min_common_keypoints=4`、`cost_reduction=median`、`overflow_policy=error`を初期値とします。Issue #832より前のtracking checkpoint/resultは新しいassociation意味論と互換ではないため、必ず再学習・再評価してください。旧設定とmetricの詳しい移行条件は共有正本を参照してください。
++
++出力は `position (B,T,Q,3)`、`rotation (B,T,Q,2)`、`presence_logits (B,T,Q)` です。教師は独立したtarget lifecycle packingによる `target_position`、`target_rotation`、`target_presence`、`target_instance_id` で、inactive rotationはidentity、instance IDは`-1`です。重ならないbirth/death区間を同じtarget slotへ詰めるため、同一queryはdeath後に別instanceへ再利用できます。
++
++14 court UVは共有Court contractでreference整列した後の先頭14点を使い、`court_vis`で不可視点を0化します。各observation slotのperson keypointsとcourtを連結し、BLCSと同じ`src/utils/models/embeddings/group_tokens.py`の共有`CourtPlayerGroupEmbedding`により1 slot = 1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*Q, D)` です。v1 / v2のM-RoPE座標と第3軸の意味は共有正本を参照してください。
+ 
+ BLCSと共有する各stageは `mHC object temporal -> global spatial(Q+VQ) -> query temporal` の順で更新し、temporal modeを `CSWA, CSWA, CSWA, Global MHA` のcycleへ固定します。`object_state_valid`を含む全state/attention maskは共有`build_fixed_query_padding_masks()`が`padding_mask`だけから生成します。nested `model.mhc` / `model.cswa`はstrictに検証し、旧`spatial_blocks` / `temporal_blocks` checkpointは自動変換せずstrict load errorとします。
+ 
+diff --git a/src/tasks/plcs/configs/data/tracking.yaml b/src/tasks/plcs/configs/data/tracking.yaml
+index 645c784e..d981626f 100644
+--- a/src/tasks/plcs/configs/data/tracking.yaml
++++ b/src/tasks/plcs/configs/data/tracking.yaml
+@@ -1,6 +1,7 @@
+ defaults:
+   - _augmentation
+   - _multiview
++  - _observation_tracking
+   - _self_
+ 
+ backend: default
+@@ -19,4 +20,3 @@ evaluation_reference_camera_id: camera_1
+ lifecycle:
+   pack_to_query_slots: true
+   min_reuse_gap_frames: 4
+-  randomize_slots_train: true
+diff --git a/src/tasks/plcs/configs/data/tracking_chunked.yaml b/src/tasks/plcs/configs/data/tracking_chunked.yaml
+index 09b200a0..a78c4d18 100644
+--- a/src/tasks/plcs/configs/data/tracking_chunked.yaml
++++ b/src/tasks/plcs/configs/data/tracking_chunked.yaml
+@@ -1,6 +1,7 @@
+ defaults:
+   - _augmentation
+   - _multiview
++  - _observation_tracking
+   - _chunked
+   - _self_
+ 
+@@ -18,7 +19,6 @@ evaluation_reference_camera_id: camera_1
+ lifecycle:
+   pack_to_query_slots: true
+   min_reuse_gap_frames: 4
+-  randomize_slots_train: true
+ 
+ chunk:
+   scenes_per_chunk: 1000
+diff --git a/src/tasks/plcs/configuration.py b/src/tasks/plcs/configuration.py
+index 63a8a634..cfff93c4 100644
+--- a/src/tasks/plcs/configuration.py
++++ b/src/tasks/plcs/configuration.py
+@@ -20,6 +20,7 @@ from src.tasks.base.configuration import (
+     require_config_mapping,
+     require_config_value,
+ )
++from src.tasks.base.data.observation_tracking import ObservationTrackingConfig
+ from src.tasks.base.generate_dataset import CourtKeypointContract
+ from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
+ from src.tasks.base.visualization.style import (
+@@ -867,7 +868,7 @@ class PLCSDataConfig:
+         tracking = model.name in _TRACK_QUERY_MODEL_NAMES
+         allowed = set(_DATA_COMMON)
+         if tracking:
+-            allowed.add("lifecycle")
++            allowed.update({"association", "lifecycle"})
+         else:
+             allowed.update({"mode", "num_court_kp"})
+             if model.input_profile == "multiview":
+@@ -991,7 +992,6 @@ class PLCSDataConfig:
+             lifecycle_fields = {
+                 "pack_to_query_slots",
+                 "min_reuse_gap_frames",
+-                "randomize_slots_train",
+             }
+             lifecycle = _exact(
+                 mapping["lifecycle"],
+@@ -1005,11 +1005,22 @@ class PLCSDataConfig:
+                     "PLCS tracking."
+                 )
+             _integer(lifecycle, "min_reuse_gap_frames", path="data.lifecycle")
+-            _boolean(lifecycle, "randomize_slots_train", path="data.lifecycle")
+             if _integer(lifecycle, "min_reuse_gap_frames", path="data.lifecycle") < 0:
+                 raise SemanticConfigurationError(
+                     "data.lifecycle.min_reuse_gap_frames must be non-negative."
+                 )
++            association = ObservationTrackingConfig.from_mapping(
++                mapping["association"]
++            )
++            if association.cost_reduction != "median":
++                raise SemanticConfigurationError(
++                    "PLCS data.association.cost_reduction must be 'median'."
++                )
++            if not 4 <= association.min_common_keypoints <= NUM_HUMAN_KP:
++                raise SemanticConfigurationError(
++                    "PLCS data.association.min_common_keypoints must be within "
++                    f"[4, {NUM_HUMAN_KP}]."
++                )
+         scene_dir = _string(mapping, "scene_dir", path="data")
+         batch_size = _integer(mapping, "batch_size", path="data")
+         workers = _integer(mapping, "num_workers", path="data")
+diff --git a/src/tasks/plcs/data/tracking_augmentation.py b/src/tasks/plcs/data/tracking_augmentation.py
+index b70a7dcb..9b201270 100644
+--- a/src/tasks/plcs/data/tracking_augmentation.py
++++ b/src/tasks/plcs/data/tracking_augmentation.py
+@@ -1,29 +1,91 @@
+-"""Shape adapter for PLCS ID-ordered detection observation augmentation."""
++"""Pre-tracking corruption boundary for physical-width PLCS detections."""
+ 
+ from __future__ import annotations
+ 
+ from collections.abc import Mapping
+-from typing import Any
++from typing import Any, Literal, cast
+ 
+ import torch
+ from torch import Tensor
+ 
++from src.tasks.base.data import limit_synthetic_false_positive_carriers
+ from src.tasks.plcs.data.augmentation import PLCSObservationAugmentation
+ from src.utils.tensor_utils import clone_tensor_dict
+ 
+ 
++class _ProvenanceAwareObservationAugmentation(PLCSObservationAugmentation):
++    """Expose genuine visibility immediately before false-positive injection."""
++
++    human_visibility_before_false_positive: Tensor | None
++
++    def forward(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
++        self.human_visibility_before_false_positive = None
++        output = cast("dict[str, Tensor]", super().forward(sample))
++        if self.human_visibility_before_false_positive is None:
++            self.human_visibility_before_false_positive = sample["human_vis"].clone()
++        return output
++
++    def _apply_false_positive(
++        self,
++        keypoints: Tensor,
++        visibility: Tensor,
++        *,
++        entity: Literal["human", "court"],
++        dropped_mask: Tensor,
++    ) -> tuple[Tensor, Tensor]:
++        if entity == "human":
++            self.human_visibility_before_false_positive = visibility.clone()
++        return cast(
++            "tuple[Tensor, Tensor]",
++            super()._apply_false_positive(
++                keypoints,
++                visibility,
++                entity=entity,
++                dropped_mask=dropped_mask,
++            ),
++        )
++
++
+ class PLCSTrackingDetectionAugmentation:
+-    """Apply single-person corruption after flattening detection/joint axes."""
++    """Corrupt physical detection carriers before fixed-Q association.
++
++    The carrier axis is deliberately not a query axis.  Scalar provenance is
++    retained only when at least one clean joint survives the corruption; an
++    observation made exclusively from injected false-positive joints receives
++    provenance ``-1``.
++    """
+ 
+-    def __init__(self, config: Mapping[str, Any]) -> None:
++    def __init__(self, config: Mapping[str, Any], *, num_slots: int) -> None:
++        if type(num_slots) is not int:
++            raise TypeError(
++                f"num_slots must be int, got {type(num_slots).__name__}."
++            )
++        if num_slots <= 0:
++            raise ValueError("num_slots must be positive.")
+         self.config = config
+-        self.observation = PLCSObservationAugmentation(self.config)
++        self.num_slots = num_slots
++        self.observation = _ProvenanceAwareObservationAugmentation(self.config)
+ 
+     def forward(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
+-        """Corrupt only detection/court inputs and preserve clean GT tensors."""
++        """Corrupt a physical-width ``(V,T,D,17,2)`` detection set."""
+         output: dict[str, Tensor] = clone_tensor_dict(sample)
++        if output["human_kp"].ndim != 5 or output["human_kp"].shape[-1] != 2:
++            raise ValueError("human_kp must have shape (V,T,D,17,2).")
+         views, frames, detections, joints, _ = output["human_kp"].shape
+-        clean_detection = output["human_vis"].any(-1)
++        if joints != 17:
++            raise ValueError(
++                "PLCS tracking corruption requires exactly 17 COCO keypoints."
++            )
++        if output["human_vis"].shape != (views, frames, detections, joints):
++            raise ValueError("human_vis must match human_kp without the UV axis.")
++        if output["human_vis"].dtype != torch.bool:
++            raise TypeError("human_vis must have dtype torch.bool.")
++        if output["detection_gt_index"].shape != (views, frames, detections):
++            raise ValueError(
++                "detection_gt_index must match the physical detection carrier axis."
++            )
++        if output["detection_gt_index"].dtype != torch.long:
++            raise TypeError("detection_gt_index must have dtype torch.long.")
+         court_keypoints = output["court_kp"].clone()
+         court_visible = output["court_vis"].clone()
+         adapted = {
+@@ -37,18 +99,35 @@ class PLCSTrackingDetectionAugmentation:
+             "court_vis": output["court_vis"],
+         }
+         augmented = self.observation.forward(adapted)
+-        output["human_kp"] = augmented["human_kp"].reshape(
++        genuine_visibility = self.observation.human_visibility_before_false_positive
++        if genuine_visibility is None:
++            raise RuntimeError(
++                "PLCS corruption did not expose pre-false-positive visibility."
++            )
++        augmented_human_kp = augmented["human_kp"].reshape(
+             views, frames, detections, joints, 2
+         )
+-        output["human_vis"] = (
+-            augmented["human_vis"].reshape(views, frames, detections, joints).bool()
++        augmented_human_vis = augmented["human_vis"].reshape(
++            views, frames, detections, joints
++        ).bool()
++        visibility_before_false_positive = genuine_visibility.reshape(
++            views, frames, detections, joints
++        ).bool()
++        output["human_kp"], output["human_vis"] = (
++            limit_synthetic_false_positive_carriers(
++                augmented_human_kp,
++                augmented_human_vis,
++                visibility_before_false_positive,
++                num_slots=self.num_slots,
++            )
+         )
+         # Court input is geometric projection/manual annotation, not a detector
+         # confidence stream.
+         output["court_kp"] = court_keypoints
+         output["court_vis"] = court_visible
++        genuine_joint_survives = visibility_before_false_positive.any(-1)
+         output["detection_gt_index"] = torch.where(
+-            output["human_vis"].any(-1) & clean_detection,
++            output["human_vis"].any(-1) & genuine_joint_survives,
+             output["detection_gt_index"],
+             -1,
+         )
+diff --git a/src/tasks/plcs/data/tracking_dataset.py b/src/tasks/plcs/data/tracking_dataset.py
+index 262d0fb3..7801bfc4 100644
+--- a/src/tasks/plcs/data/tracking_dataset.py
++++ b/src/tasks/plcs/data/tracking_dataset.py
+@@ -13,6 +13,7 @@ from src.tasks.base.data import (
+     ReferenceViewSelection,
+     StableCameraIdTable,
+     include_evaluation_reference_camera,
++    track_multiview_observations,
+     validate_reference_view_batch,
+ )
+ from src.tasks.base.data.canonical_tracking import (
+@@ -64,7 +65,7 @@ PLCS_TRACKING_KEYS = (
+ 
+ 
+ class PLCSTrackingDataset(CanonicalTrackingDataset):
+-    """Load ID-ordered objects, pack lifecycle slots, and corrupt observations."""
++    """Build targets separately from post-corruption camera-local observations."""
+ 
+     def __init__(
+         self,
+@@ -87,9 +88,18 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
+             self.court_keypoint_contract,
+         )
+         super().__init__(**kwargs)
++        if self.num_queries is None:
++            raise ValueError("PLCS tracking requires model.num_queries.")
++        if self.num_queries <= 0:
++            raise ValueError("PLCS tracking requires positive model.num_queries.")
++        if not self.pack_to_query_slots:
++            raise ValueError(
++                "PLCS tracking requires data.lifecycle.pack_to_query_slots=true."
++            )
+         data_cfg = self._resolve_data_cfg(self.hydra_cfg)
+         self.tracking_augmentation = PLCSTrackingDetectionAugmentation(
+-            data_cfg["augmentation"]
++            data_cfg["augmentation"],
++            num_slots=self.num_queries,
+         )
+ 
+     def build_sample(self, scene: Scene) -> dict[str, Any]:
+@@ -109,6 +119,8 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
+             ).bool()
+         else:
+             physical_presence = torch.ones((num_frames, num_physical), dtype=torch.bool)
++        if physical_presence.shape != (num_frames, num_physical):
++            raise ValueError("person_present must match the physical (T,P) axes.")
+         window = self.select_window(scene, full_len=num_frames)
+         cameras = self.select_cameras(scene)
+         complete_views = scene_court_views(
+@@ -164,12 +176,10 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
+         world_joints = world_joints_physical_to_target(world_joints, provenance)
+         if self.num_queries is None:
+             raise ValueError("PLCS tracking requires model.num_queries.")
+-        packing = build_fixed_lifecycle_assignment(
++        target_packing = build_fixed_lifecycle_assignment(
+             physical_presence,
+             num_slots=self.num_queries,
+             min_reuse_gap_frames=self.min_reuse_gap_frames,
+-            randomize_slots=self.augment and self.randomize_slots_train,
+-            generator=None,
+         )
+ 
+         kp_rows: list[Tensor] = []
+@@ -191,17 +201,30 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
+             if keypoints.ndim == 3:
+                 keypoints = keypoints[:, None]
+                 visible = visible[:, None]
++            if keypoints.shape != (window.seq_len, num_physical, 17, 2):
++                raise ValueError(
++                    "PLCS tracking human_kp_uv must have shape (T,P,17,2)."
++                )
++            if visible.shape != (window.seq_len, num_physical, 17):
++                raise ValueError(
++                    "PLCS tracking human_kp_vis must have shape (T,P,17)."
++                )
+             visible &= physical_presence[..., None]
+             keypoints[~visible] = 0.0
+-            packed_keypoints = packing.pack_tensor(keypoints, physical_presence)
+-            packed_visible = packing.pack_tensor(visible, physical_presence)
+-            clean_kp_rows.append(packed_keypoints.clone())
+-            clean_visible_rows.append(packed_visible.clone())
++            clean_kp_rows.append(keypoints.clone())
++            clean_visible_rows.append(visible.clone())
++            physical_ids = torch.arange(
++                num_physical,
++                dtype=torch.long,
++                device=keypoints.device,
++            ).view(1, num_physical)
+             detection_index = torch.where(
+-                packed_visible.any(-1), packing.target_instance_id, -1
++                visible.any(-1),
++                physical_ids.expand(window.seq_len, num_physical),
++                -1,
+             )
+-            kp_rows.append(packed_keypoints)
+-            visible_rows.append(packed_visible)
++            kp_rows.append(keypoints)
++            visible_rows.append(visible)
+             index_rows.append(detection_index)
+             source_view = views[local_index] if views else None
+             court_rows.append(
+@@ -253,24 +276,29 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
+             "padding_mask": torch.zeros(
+                 len(cameras.indices), window.seq_len, dtype=torch.bool
+             ),
+-            "target_position": packing.pack_tensor(position, physical_presence),
+-            "target_rotation": packing.pack_tensor(
++            "target_position": target_packing.pack_tensor(position, physical_presence),
++            "target_rotation": target_packing.pack_tensor(
+                 rotation,
+                 physical_presence,
+                 fill_value=rotation_fill,
+             ),
+-            "target_canonical_pose_3d": packing.pack_tensor(
++            "target_canonical_pose_3d": target_packing.pack_tensor(
+                 canonical_pose, physical_presence
+             ),
+-            "target_human_kp_3d": packing.pack_tensor(world_joints, physical_presence),
+-            "target_presence": packing.target_presence,
+-            "target_instance_id": packing.target_instance_id,
+-            "target_slot_mask": packing.target_presence.any(0),
++            "target_human_kp_3d": target_packing.pack_tensor(
++                world_joints, physical_presence
++            ),
++            "target_presence": target_packing.target_presence,
++            "target_instance_id": target_packing.target_instance_id,
++            "target_slot_mask": target_packing.target_presence.any(0),
+             "clean_human_kp": torch.stack(clean_kp_rows),
+             "clean_human_vis": torch.stack(clean_visible_rows),
+             "detection_gt_index": torch.stack(index_rows),
+             "camera_C": torch.stack(camera_center_rows),
+             "camera_R": torch.stack(camera_rotation_rows),
++            # Consumed by ``augment_sample`` so overflow evidence reports the
++            # selected source camera rather than the local view row.
++            "_observation_camera_indices": tuple(int(i) for i in cameras.indices),
+         }
+         sample["court_keypoint_metadata"] = court_keypoint_contract_document(
+             self.court_keypoint_contract
+@@ -293,19 +321,109 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
+         return sample
+ 
+     def augment_sample(self, sample: dict[str, Any]) -> dict[str, Any]:
+-        if not self.augment:
+-            return sample
+-        metadata_keys = (
+-            "court_keypoint_metadata",
+-            "court_reference_provenance",
+-            "selected_camera_ids",
+-        )
+-        metadata = {key: sample[key] for key in metadata_keys}
+-        tensor_sample: dict[str, Tensor] = {
++        if self.num_queries is None:
++            raise RuntimeError("PLCS tracking dataset lost its fixed query width.")
++        raw_camera_indices = sample.get("_observation_camera_indices")
++        if not isinstance(raw_camera_indices, tuple) or not all(
++            type(index) is int for index in raw_camera_indices
++        ):
++            raise TypeError(
++                "PLCS physical observations require selected camera indices."
++            )
++        camera_indices = tuple(int(index) for index in raw_camera_indices)
++        metadata = {
++            key: value
++            for key, value in sample.items()
++            if not isinstance(value, Tensor) and key != "_observation_camera_indices"
++        }
++        physical_sample: dict[str, Tensor] = {
+             key: value for key, value in sample.items() if isinstance(value, Tensor)
+         }
+-        augmented = self.tracking_augmentation(tensor_sample)
+-        return {**augmented, **metadata}
++        physical_sample["court_kp"] = physical_sample["court_kp"].masked_fill(
++            ~physical_sample["court_vis"].unsqueeze(-1),
++            0.0,
++        )
++        corrupted = (
++            self.tracking_augmentation(physical_sample)
++            if self.augment
++            else {key: value.clone() for key, value in physical_sample.items()}
++        )
++        tracked = track_multiview_observations(
++            corrupted["human_kp"],
++            corrupted["human_vis"],
++            num_slots=self.num_queries,
++            config=self.observation_tracking_config,
++            camera_indices=camera_indices,
++            debug_provenance=corrupted["detection_gt_index"],
++        )
++        if tracked.debug_provenance is None:
++            raise RuntimeError("PLCS tracking unexpectedly lost debug provenance.")
++        clean_human_kp, clean_human_vis = _gather_tracked_clean_pose(
++            physical_sample["clean_human_kp"],
++            physical_sample["clean_human_vis"],
++            tracked.detection_indices,
++            tracked.debug_provenance,
++        )
++        corrupted["human_kp"] = tracked.values
++        corrupted["human_vis"] = tracked.visibility
++        corrupted["detection_gt_index"] = tracked.debug_provenance
++        corrupted["clean_human_kp"] = clean_human_kp
++        corrupted["clean_human_vis"] = clean_human_vis
++        return {**corrupted, **metadata}
++
++
++def _gather_tracked_clean_pose(
++    clean_human_kp: Tensor,
++    clean_human_vis: Tensor,
++    detection_indices: Tensor,
++    detection_gt_index: Tensor,
++) -> tuple[Tensor, Tensor]:
++    """Gather clean physical poses strictly after noisy association."""
++    if clean_human_kp.ndim != 5 or clean_human_kp.shape[-2:] != (17, 2):
++        raise ValueError("clean_human_kp must have shape (V,T,D,17,2).")
++    if clean_human_vis.shape != clean_human_kp.shape[:-1]:
++        raise ValueError("clean_human_vis must match clean_human_kp without UV.")
++    if clean_human_vis.dtype != torch.bool:
++        raise TypeError("clean_human_vis must have dtype torch.bool.")
++    if detection_indices.shape != detection_gt_index.shape or detection_indices.ndim != 3:
++        raise ValueError(
++            "Tracked detection indices and provenance must share shape (V,T,Q)."
++        )
++    if detection_indices.dtype != torch.long or detection_gt_index.dtype != torch.long:
++        raise TypeError("Tracked detection indices and provenance must be torch.long.")
++    if clean_human_kp.shape[:2] != detection_indices.shape[:2]:
++        raise ValueError("Clean pose and tracked detection view/time axes must match.")
++
++    views, frames, num_detections, _, _ = clean_human_kp.shape
++    num_queries = detection_indices.shape[2]
++    if num_detections == 0:
++        return (
++            torch.zeros(
++                (views, frames, num_queries, 17, 2),
++                dtype=clean_human_kp.dtype,
++                device=clean_human_kp.device,
++            ),
++            torch.zeros(
++                (views, frames, num_queries, 17),
++                dtype=torch.bool,
++                device=clean_human_vis.device,
++            ),
++        )
++    safe_indices = detection_indices.clamp_min(0)
++    value_indices = safe_indices[..., None, None].expand(-1, -1, -1, 17, 2)
++    visibility_indices = safe_indices[..., None].expand(-1, -1, -1, 17)
++    gathered_values = torch.gather(clean_human_kp, 2, value_indices)
++    gathered_visibility = torch.gather(
++        clean_human_vis, 2, visibility_indices
++    )
++    real_detection = (detection_indices >= 0) & (detection_gt_index >= 0)
++    gathered_visibility &= real_detection[..., None]
++    gathered_values = torch.where(
++        gathered_visibility[..., None],
++        gathered_values,
++        torch.zeros_like(gathered_values),
++    )
++    return gathered_values, gathered_visibility
+ 
+ 
+ def collate_plcs_tracking_batch(
+diff --git a/src/utils/README.md b/src/utils/README.md
+index a291543d..29c4ed69 100644
+--- a/src/utils/README.md
++++ b/src/utils/README.md
+@@ -95,7 +95,7 @@ metadata欠落、不明なidentity、scale/単位不一致はload/resume/evaluat
+ - **`__init__.py`**: `__all__`に列挙した高頻度model primitiveのcanonical public API。列挙外の専門APIは責務別sub-packageが公開元となる。
+ - **`components/`**: Transformer の基本部品。attention、RoPE、FFN、norm、`TransformerBlock`、`CrossAttnBlock` に加え、fixed-query multi-view modelで共有するmHC object-temporal → global spatial → query-temporalの`FixedQueryTrackStage`がここにある。ablation専用の`FixedQueryTrackAblationStage`は既存stageを変更せず、`ffn_mode=per_attention|shared`と`mhc_writeback=after_object_temporal|layer_end`を必須にする。前者はAttentionごとの3個のSwiGLUまたはstage末尾の共有SwiGLU 1個、後者はspatial幅`Q+V×P`または`Q+V`を選ぶ。BLCS Eだけが`query_ffn_after_spatial=true`を指定し、shared/layer-end構成のspatial後・query-temporal前へquery-only SwiGLUを追加する。attention forwardはboundaryで検証済みのsame-device `(B,Q,K)` maskと、`RotaryFrequencyComputer`がconstructor時に固定した`(...,T,1,D/2)` complex RoPEだけを受け取り、rank/dtype/device補完や実装選択を行わない。
+ - **`components/ops/`**: compressed time-local attention の CUDA / reference 実装、autograd bridge、extension loader/build。backendはCSWAの構築時に固定する。
+-- **`embeddings/`**: court / player / ball の埋め込みとgroup token系の構成要素。`CourtBallGroupEmbedding` / `CourtPlayerGroupEmbedding`はcourtとobject観測を1 object = 1 tokenへ写像し、呼び出し側のobject ID順を変えずにtoken軸へ保持する。入力はadapterで検証済みの構造化shape（court/playerは末尾`(K,2)`、ballは末尾`2`、visibilityはleading shape）に統一し、flattened旧variantやrank補完は受け付けない。
++- **`embeddings/`**: court / player / ball の埋め込みとgroup token系の構成要素。`CourtBallGroupEmbedding` / `CourtPlayerGroupEmbedding`はcourtとobject観測を1 element = 1 tokenへ写像し、呼び出し側が与えたleading-axis順を変えずにtoken軸へ保持する。入力はadapterで検証済みの構造化shape（court/playerは末尾`(K,2)`、ballは末尾`2`、visibilityはleading shape）に統一し、flattened旧variantやrank補完は受け付けない。
+ - **`loading/`**: DINOv3 backbone 読み込み、LoRA 適用、trainability 切り替え。dynamic `forward_features` responseはmodel forward内で検査せず、外部model-I/O boundaryの`require_dinov3_patch_tokens()`が型・key・shapeを検証する。
+ - **`multiview_padding.py`**: `padding_mask[B,V,T]`（`True=padding`、viewごとに異なる非矩形padding可）からfixed-Q model用のcontext/frame/state validityとdense attention keep-mask（`True=keep`）を一意に構築する。delayed mHC writeback用の`build_compressed_spatial_attention_keep_mask()`も同じpadding-only validityとtoken-0 repairで`Q+V` maskを構築する。
+ - **`architectures/`**: 現状は `TransformerSequenceDiscriminator` を配置。公開forwardは`sequence[B,T,F]`と`padding_mask[B,T]`（`True=padding`）だけを受け、invalid-token置換、CLS validity、dense attention keep-maskを内部で構築する。
+diff --git a/src/utils/models/components/fixed_query_track_stage.py b/src/utils/models/components/fixed_query_track_stage.py
+index 33a153af..e0807d5b 100644
+--- a/src/utils/models/components/fixed_query_track_stage.py
++++ b/src/utils/models/components/fixed_query_track_stage.py
+@@ -128,7 +128,7 @@ class FixedQueryTrackStage(nn.Module):
+             batch_size, num_views, num_frames, 1, hidden_dim
+         )
+         temporal_objects = self.mhc.post(
+-            object_update,
++            object_update.to(dtype=object_tokens.dtype),
+             residual=object_tokens,
+             state=mhc_state,
+         )
+diff --git a/src/utils/models/embeddings/group_tokens.py b/src/utils/models/embeddings/group_tokens.py
+index 047f9977..aebbdfa1 100644
+--- a/src/utils/models/embeddings/group_tokens.py
++++ b/src/utils/models/embeddings/group_tokens.py
+@@ -49,9 +49,8 @@ class CourtBallGroupEmbedding(_CourtContextGroupEmbedding):
+ 
+     The token visibility is controlled only by ``group_vis``. Callers should
+     provide one visibility flag per output token. Leading dimensions are
+-    preserved exactly: for multi-object input, callers must place objects in
+-    ascending scene object-ID order and the returned token at each position
+-    remains aligned with that object.
++    preserved exactly: the returned token at each position remains aligned
++    with the caller-provided leading-axis element at that position.
+     """
+ 
+     def __init__(
+@@ -88,9 +87,8 @@ class CourtPlayerGroupEmbedding(_CourtContextGroupEmbedding):
+ 
+     The token visibility is controlled only by ``group_vis``. Callers should
+     provide one visibility flag per output token. Leading dimensions are
+-    preserved exactly: for multi-object input, callers must place objects in
+-    ascending scene object-ID order and the returned token at each position
+-    remains aligned with that object.
++    preserved exactly: the returned token at each position remains aligned
++    with the caller-provided leading-axis element at that position.
+     """
+ 
+     def __init__(
+diff --git a/tests/integration/tasks/tracking/test_training_smoke.py b/tests/integration/tasks/tracking/test_training_smoke.py
+index a8aef1b7..8753461f 100644
+--- a/tests/integration/tasks/tracking/test_training_smoke.py
++++ b/tests/integration/tasks/tracking/test_training_smoke.py
+@@ -92,11 +92,13 @@ def _materialize_blcs(root: Path) -> None:
+         for index in range(4):
+             scene_id = f"scene_{split}_{index:03d}"
+             names[split].append(scene_id)
+-            frames, objects, cameras = 8, 3, 2
++            frames, objects, cameras = 8, 2, 2
+             positions_m = (
+                 torch.rand(frames, objects, 3) * 4.0 - 2.0 + split_index / 100.0
+             )
+             velocities_mps = torch.full_like(positions_m, 3.0)
++            frame_index = np.arange(frames, dtype=np.float32)[:, None]
++            object_index = np.arange(objects, dtype=np.float32)[None, :]
+             camera_rows = [
+                 BLCSCameraData(
+                     camera_params={
+@@ -108,8 +110,18 @@ def _materialize_blcs(root: Path) -> None:
+                         "w": 1,
+                         "h": 1,
+                     },
+-                    ball_uv=np.random.default_rng(index + camera).random(
+-                        (frames, objects, 2), dtype=np.float32
++                    ball_uv=np.stack(
++                        (
++                            0.20
++                            + 0.30 * object_index
++                            + (0.0010 + 0.0002 * object_index) * frame_index
++                            + 0.01 * camera,
++                            0.25
++                            + 0.15 * object_index
++                            + (0.0008 + 0.0001 * object_index) * frame_index
++                            - 0.005 * camera,
++                        ),
++                        axis=-1,
+                     ),
+                     ball_vis=np.ones((frames, objects), dtype=bool),
+                     ball_visibility_ratio=1.0,
+@@ -162,6 +174,9 @@ def _materialize_plcs(root: Path) -> None:
+             )
+             rotation: np.ndarray = np.zeros((frames, objects, 2), dtype=np.float32)
+             rotation[..., 0] = 1.0
++            frame_index = np.arange(frames, dtype=np.float32)[:, None, None]
++            object_index = np.arange(objects, dtype=np.float32)[None, :, None]
++            joint_index = np.arange(17, dtype=np.float32)[None, None, :]
+             camera_rows = [
+                 PLCSCameraData(
+                     camera_params={
+@@ -173,8 +188,20 @@ def _materialize_plcs(root: Path) -> None:
+                         "w": 1,
+                         "h": 1,
+                     },
+-                    human_kp_uv=np.random.default_rng(index + camera).random(
+-                        (frames, objects, 17, 2), dtype=np.float32
++                    human_kp_uv=np.stack(
++                        (
++                            0.15
++                            + 0.30 * object_index
++                            + 0.008 * np.remainder(joint_index, 5)
++                            + (0.0010 + 0.0003 * object_index) * frame_index
++                            + 0.01 * camera,
++                            0.20
++                            + 0.15 * object_index
++                            + 0.015 * np.floor_divide(joint_index, 5)
++                            + (0.0007 + 0.0002 * object_index) * frame_index
++                            - 0.005 * camera,
++                        ),
++                        axis=-1,
+                     ),
+                     court_kp_uv=np.zeros((frames, 20, 2), dtype=np.float32),
+                     human_kp_vis=np.ones((frames, objects, 17), dtype=bool),
+diff --git a/tests/unit/submodules/models/dino/test_person_detector.py b/tests/unit/submodules/models/dino/test_person_detector.py
+index 264108c3..45e6bc2e 100644
+--- a/tests/unit/submodules/models/dino/test_person_detector.py
++++ b/tests/unit/submodules/models/dino/test_person_detector.py
+@@ -34,7 +34,12 @@ def test_decode_person_detections_filters_sorts_and_scales() -> None:
+         result.boxes_xyxy,
+         np.array([[30, 40, 70, 60], [150, 40, 170, 60]], dtype=np.float32),
+     )
++    assert result.boxes_xyxy.shape == (2, 4)
++    assert result.boxes_xyxy.dtype == np.float32
++    assert result.scores.shape == (2,)
++    assert result.scores.dtype == np.float32
+     assert result.scores[0] > result.scores[1] > 0.6
++    assert set(vars(result)) == {"boxes_xyxy", "scores"}
+ 
+ 
+ def test_decode_person_detections_returns_shaped_empty_arrays() -> None:
+diff --git a/tests/unit/submodules/models/tracker/test_dino_tracker.py b/tests/unit/submodules/models/tracker/test_dino_tracker.py
+index 1451d1f2..5eaf7a01 100644
+--- a/tests/unit/submodules/models/tracker/test_dino_tracker.py
++++ b/tests/unit/submodules/models/tracker/test_dino_tracker.py
+@@ -1,9 +1,16 @@
+-"""Tests for DINO detection association through Ultralytics BoT-SORT."""
++"""Contract tests for DINO association and completed person tracks."""
+ 
+ import numpy as np
++import pytest
++import torch
+ from numpy.typing import NDArray
+ 
++import src.submodules.models.tracker.common as tracker_common
+ from src.submodules.models import PersonDetectionResult
++from src.submodules.models.tracker.common import (
++    TrackRequest,
++    select_and_complete_tracks,
++)
+ from src.submodules.models.tracker.dino_tracker import BotSortAssociator
+ 
+ 
+@@ -16,14 +23,84 @@ def _detections(x_offset: float) -> PersonDetectionResult:
+     )
+ 
+ 
+-def test_bot_sort_keeps_id_for_adjacent_dino_boxes() -> None:
+-    associator = BotSortAssociator()
++class _FakeBotSortBackend:
++    def __init__(self, track_id: int) -> None:
++        self.track_id = track_id
++        self.inputs: list[NDArray[np.float32]] = []
++
++    def update(self, boxes, _frame: NDArray[np.uint8]) -> NDArray[np.float32]:
++        box_data = np.asarray(boxes.data, dtype=np.float32).copy()
++        self.inputs.append(box_data)
++        if box_data.shape[0] == 0:
++            return np.empty((0, 8), dtype=np.float32)
++        return np.array(
++            [[*box_data[0, :4], float(self.track_id), box_data[0, 4], 0.0, 0.0]],
++            dtype=np.float32,
++        )
++
++
++def _fake_associator(backend: _FakeBotSortBackend) -> BotSortAssociator:
++    associator = BotSortAssociator.__new__(BotSortAssociator)
++    associator._tracker = backend
++    return associator
++
++
++def test_bot_sort_exposes_integer_ids_and_pixel_boxes_per_local_run() -> None:
+     frame: NDArray[np.uint8] = np.zeros((120, 160, 3), dtype=np.uint8)
++    near_backend = _FakeBotSortBackend(track_id=3)
++    far_backend = _FakeBotSortBackend(track_id=3)
++    near_camera = _fake_associator(near_backend)
++    far_camera = _fake_associator(far_backend)
++
++    near = near_camera.update(_detections(0), frame)
++    far = far_camera.update(_detections(40), frame)
++
++    assert near[0]["id"] == far[0]["id"] == 3
++    assert type(near[0]["id"]) is int
++    assert near[0]["bbx_xyxy"].dtype == np.float32
++    np.testing.assert_array_equal(near[0]["bbx_xyxy"], [10, 20, 50, 100])
++    np.testing.assert_array_equal(far[0]["bbx_xyxy"], [50, 20, 90, 100])
++    np.testing.assert_array_equal(
++        near_backend.inputs[0],
++        np.array([[10, 20, 50, 100, 0.95, 0.0]], dtype=np.float32),
++    )
++
++
++def test_completed_dino_track_interpolates_then_smooths_missing_frames(
++    monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    smoothing_inputs: list[torch.Tensor] = []
++
++    def _fake_smooth(
++        track: torch.Tensor, *, window_size: int, dim: int
++    ) -> torch.Tensor:
++        assert window_size == 5
++        assert dim == 0
++        smoothing_inputs.append(track.clone())
++        return track + 0.25
+ 
+-    first = associator.update(_detections(0), frame)
+-    second = associator.update(_detections(2), frame)
++    monkeypatch.setattr(tracker_common, "moving_average_smooth", _fake_smooth)
++    history = [
++        [{"id": 7, "bbx_xyxy": np.array([10, 20, 30, 50], dtype=np.float32)}],
++        [],
++        [{"id": 7, "bbx_xyxy": np.array([14, 24, 34, 54], dtype=np.float32)}],
++    ]
+ 
+-    assert len(first) == 1
+-    assert len(second) == 1
+-    assert first[0]["id"] == second[0]["id"]
+-    np.testing.assert_allclose(second[0]["bbx_xyxy"], [12, 20, 52, 100], atol=2)
++    result = select_and_complete_tracks(
++        history,
++        TrackRequest("camera-near.mp4", num_tracks=1, interactive=False),
++        num_frames=3,
++    )
++
++    interpolated = torch.tensor(
++        [
++            [10.0, 20.0, 30.0, 50.0],
++            [12.0, 22.0, 32.0, 52.0],
++            [14.0, 24.0, 34.0, 54.0],
++        ]
++    )
++    assert result.track_ids == [7]
++    assert result.tracks[7].shape == (3, 4)
++    torch.testing.assert_close(smoothing_inputs[0], interpolated)
++    torch.testing.assert_close(smoothing_inputs[1], interpolated + 0.25)
++    torch.testing.assert_close(result.tracks[7], interpolated + 0.5)
+diff --git a/tests/unit/tasks/base/data/test_canonical_tracking.py b/tests/unit/tasks/base/data/test_canonical_tracking.py
+index 5f818e4f..06e61358 100644
+--- a/tests/unit/tasks/base/data/test_canonical_tracking.py
++++ b/tests/unit/tasks/base/data/test_canonical_tracking.py
+@@ -11,6 +11,10 @@ from src.tasks.base.data.canonical_tracking import (
+     pad_and_stack_tracking_batch,
+     validate_lifecycle_capacity,
+ )
++from src.utils.configuration import (
++    MissingConfigurationKeyError,
++    UnknownConfigurationKeyError,
++)
+ from src.utils.schema.court_normalization import (
+     COURT_COORDINATE_NORMALIZATION_KEY,
+     court_coordinate_normalization_metadata,
+@@ -45,7 +49,15 @@ def test_dataset_resolves_explicit_scene_split(tmp_path) -> None:
+                 "lifecycle": {
+                     "pack_to_query_slots": True,
+                     "min_reuse_gap_frames": 0,
+-                    "randomize_slots_train": False,
++                },
++                "association": {
++                    "max_distance": 0.1,
++                    "max_missed_frames": 2,
++                    "min_reuse_gap_frames": 0,
++                    "use_velocity_prediction": True,
++                    "min_common_keypoints": 1,
++                    "cost_reduction": "mean",
++                    "overflow_policy": "error",
+                 },
+             },
+             "model": {"num_queries": 1},
+@@ -53,6 +65,55 @@ def test_dataset_resolves_explicit_scene_split(tmp_path) -> None:
+     )
+     assert len(dataset) == 1
+     assert dataset.scenes == [tmp_path / "scenes" / "scene_a"]
++    assert dataset.observation_tracking_config.max_distance == 0.1
++    assert not hasattr(dataset, "randomize_slots_train")
++
++
++def _minimal_dataset_config() -> dict[str, object]:
++    return {
++        "data": {
++            "seq_len_range": [1, 2],
++            "num_views_range": [1, 1],
++            "camera_mode": "first",
++            "lifecycle": {
++                "pack_to_query_slots": True,
++                "min_reuse_gap_frames": 0,
++            },
++            "association": {
++                "max_distance": 0.1,
++                "max_missed_frames": 2,
++                "min_reuse_gap_frames": 0,
++                "use_velocity_prediction": True,
++                "min_common_keypoints": 1,
++                "cost_reduction": "mean",
++                "overflow_policy": "error",
++            },
++        },
++        "model": {"num_queries": 1},
++    }
++
++
++def test_dataset_rejects_legacy_randomization_and_missing_association(tmp_path) -> None:
++    legacy_config = _minimal_dataset_config()
++    lifecycle = legacy_config["data"]["lifecycle"]  # type: ignore[index]
++    lifecycle["randomize_slots_train"] = True  # type: ignore[index]
++    with pytest.raises(UnknownConfigurationKeyError, match="randomize_slots_train"):
++        CanonicalTrackingDataset(
++            scene_dir=tmp_path,
++            split_file="unused.txt",
++            seed=0,
++            config=legacy_config,
++        )
++
++    missing_config = _minimal_dataset_config()
++    missing_config["data"].pop("association")  # type: ignore[union-attr]
++    with pytest.raises(MissingConfigurationKeyError, match="association"):
++        CanonicalTrackingDataset(
++            scene_dir=tmp_path,
++            split_file="unused.txt",
++            seed=0,
++            config=missing_config,
++        )
+ 
+ 
+ def test_collate_pads_only_declared_time_dimensions() -> None:
+@@ -68,6 +129,16 @@ def test_collate_pads_only_declared_time_dimensions() -> None:
+     assert not collated["frame_mask"][0, 2:].any()
+ 
+ 
++def test_collate_never_pads_an_undeclared_query_axis() -> None:
++    batch = [
++        {"value": torch.ones(1, 2, 2)},
++        {"value": torch.ones(1, 2, 3)},
++    ]
++
++    with pytest.raises(RuntimeError, match="stack"):
++        pad_and_stack_tracking_batch(batch, time_dimensions={"value": 1})
++
++
+ def test_lifecycle_capacity_rejects_generation_gap_shorter_than_packing_gap() -> None:
+     with pytest.raises(ValueError, match="min_reuse_gap_frames"):
+         validate_lifecycle_capacity(
+diff --git a/tests/unit/tasks/base/data/test_lifecycle_slots.py b/tests/unit/tasks/base/data/test_lifecycle_slots.py
+index 2a63bb3f..bb21d343 100644
+--- a/tests/unit/tasks/base/data/test_lifecycle_slots.py
++++ b/tests/unit/tasks/base/data/test_lifecycle_slots.py
+@@ -1,6 +1,5 @@
+ from __future__ import annotations
+ 
+-import numpy as np
+ import pytest
+ import torch
+ 
+@@ -21,7 +20,6 @@ def test_interval_coloring_reuses_slot_after_gap_and_preserves_instance_ids() ->
+         presence,
+         num_slots=2,
+         min_reuse_gap_frames=2,
+-        randomize_slots=False,
+     )
+ 
+     assert packed.track_to_slot.tolist() == [0, 1, 0, 0]
+@@ -36,26 +34,19 @@ def test_interval_coloring_reuses_slot_after_gap_and_preserves_instance_ids() ->
+     assert target[10, 0].eq(0).all()
+ 
+ 
+-def test_train_slot_randomization_is_seeded_and_val_packing_is_deterministic() -> None:
+-    presence = torch.zeros(12, 2, dtype=torch.bool)
+-    presence[0:3, 0] = True
+-    presence[6:9, 1] = True
+-    first = pack_lifecycle_slots(
+-        presence,
+-        num_slots=4,
+-        randomize_slots=True,
+-        rng=np.random.default_rng(5),
+-    )
+-    second = pack_lifecycle_slots(
+-        presence,
+-        num_slots=4,
+-        randomize_slots=True,
+-        rng=np.random.default_rng(5),
+-    )
+-    deterministic = pack_lifecycle_slots(presence, num_slots=4)
++def test_interval_coloring_is_replayable_and_ties_use_physical_index_order() -> None:
++    presence = torch.zeros(12, 3, dtype=torch.bool)
++    presence[0:3, 1] = True
++    presence[0:3, 2] = True
++    presence[6:9, 0] = True
++
++    first = pack_lifecycle_slots(presence, num_slots=4)
++    second = pack_lifecycle_slots(presence, num_slots=4)
+ 
+-    assert torch.equal(first.track_to_slot, second.track_to_slot)
+-    assert deterministic.track_to_slot.tolist() == [0, 0]
++    assert first.track_to_slot.tolist() == [0, 0, 1]
++    torch.testing.assert_close(first.track_to_slot, second.track_to_slot)
++    torch.testing.assert_close(first.target_presence, second.target_presence)
++    torch.testing.assert_close(first.target_instance_id, second.target_instance_id)
+ 
+ 
+ def test_disjoint_physical_track_and_insufficient_slots_are_rejected() -> None:
+@@ -78,15 +69,11 @@ def test_fixed_assignment_has_exact_width_and_deterministic_interval_packing() -
+         presence,
+         num_slots=4,
+         min_reuse_gap_frames=0,
+-        randomize_slots=False,
+-        generator=None,
+     )
+     second = build_fixed_lifecycle_assignment(
+         presence,
+         num_slots=4,
+         min_reuse_gap_frames=0,
+-        randomize_slots=False,
+-        generator=None,
+     )
+ 
+     assert first.track_to_slot.tolist() == [0, 1, 0]
+@@ -97,81 +84,22 @@ def test_fixed_assignment_has_exact_width_and_deterministic_interval_packing() -
+     torch.testing.assert_close(first.target_instance_id, second.target_instance_id)
+ 
+ 
+-def test_fixed_assignment_relabels_all_outputs_with_explicit_torch_generator() -> None:
+-    presence = torch.ones(3, 3, dtype=torch.bool)
+-    deterministic = build_fixed_lifecycle_assignment(
+-        presence,
+-        num_slots=5,
+-        min_reuse_gap_frames=0,
+-        randomize_slots=False,
+-        generator=None,
+-    )
+-    expected_permutation = torch.randperm(
+-        5,
+-        generator=torch.Generator().manual_seed(753),
+-    )
+-
+-    randomized = build_fixed_lifecycle_assignment(
+-        presence,
+-        num_slots=5,
+-        min_reuse_gap_frames=0,
+-        randomize_slots=True,
+-        generator=torch.Generator().manual_seed(753),
+-    )
+-
+-    torch.testing.assert_close(
+-        randomized.track_to_slot,
+-        expected_permutation[deterministic.track_to_slot],
+-    )
+-    inverse_permutation = expected_permutation.argsort()
+-    torch.testing.assert_close(
+-        randomized.target_presence,
+-        deterministic.target_presence[:, inverse_permutation],
+-    )
+-    torch.testing.assert_close(
+-        randomized.target_instance_id,
+-        deterministic.target_instance_id[:, inverse_permutation],
+-    )
+-
+-
+-def test_fixed_assignment_uses_current_torch_rng_for_independent_draws() -> None:
+-    presence = torch.ones(2, 4, dtype=torch.bool)
++def test_random_relabel_arguments_are_destructively_removed() -> None:
++    presence = torch.ones(2, 1, dtype=torch.bool)
+ 
+-    torch.manual_seed(753)
+-    first = build_fixed_lifecycle_assignment(
+-        presence,
+-        num_slots=4,
+-        min_reuse_gap_frames=0,
+-        randomize_slots=True,
+-        generator=None,
+-    )
+-    second = build_fixed_lifecycle_assignment(
+-        presence,
+-        num_slots=4,
+-        min_reuse_gap_frames=0,
+-        randomize_slots=True,
+-        generator=None,
+-    )
+-
+-    torch.manual_seed(753)
+-    replay_first = build_fixed_lifecycle_assignment(
+-        presence,
+-        num_slots=4,
+-        min_reuse_gap_frames=0,
+-        randomize_slots=True,
+-        generator=None,
+-    )
+-    replay_second = build_fixed_lifecycle_assignment(
+-        presence,
+-        num_slots=4,
+-        min_reuse_gap_frames=0,
+-        randomize_slots=True,
+-        generator=None,
+-    )
+-
+-    torch.testing.assert_close(first.track_to_slot, replay_first.track_to_slot)
+-    torch.testing.assert_close(second.track_to_slot, replay_second.track_to_slot)
+-    assert not torch.equal(first.track_to_slot, second.track_to_slot)
++    with pytest.raises(TypeError, match="randomize_slots"):
++        pack_lifecycle_slots(
++            presence,
++            num_slots=1,
++            randomize_slots=True,  # type: ignore[call-arg]
++        )
++    with pytest.raises(TypeError, match="generator"):
++        build_fixed_lifecycle_assignment(
++            presence,
++            num_slots=1,
++            min_reuse_gap_frames=0,
++            generator=torch.Generator(),  # type: ignore[call-arg]
++        )
+ 
+ 
+ def test_fixed_assignment_rejects_capacity_overflow_without_truncation() -> None:
+@@ -182,6 +110,26 @@ def test_fixed_assignment_rejects_capacity_overflow_without_truncation() -> None
+             presence,
+             num_slots=2,
+             min_reuse_gap_frames=0,
+-            randomize_slots=False,
+-            generator=None,
++        )
++
++
++@pytest.mark.parametrize(
++    ("presence", "num_slots", "gap", "message"),
++    [
++        (torch.ones(2, dtype=torch.bool), 1, 0, "shape"),
++        (torch.ones(2, 1, dtype=torch.bool), 0, 0, "positive"),
++        (torch.ones(2, 1, dtype=torch.bool), 1, -1, "non-negative"),
++    ],
++)
++def test_lifecycle_assignment_validates_shape_capacity_and_gap(
++    presence: torch.Tensor,
++    num_slots: int,
++    gap: int,
++    message: str,
++) -> None:
++    with pytest.raises(ValueError, match=message):
++        pack_lifecycle_slots(
++            presence,
++            num_slots=num_slots,
++            min_reuse_gap_frames=gap,
+         )
+diff --git a/tests/unit/tasks/blcs/data/test_tracking_augmentation.py b/tests/unit/tasks/blcs/data/test_tracking_augmentation.py
+index f18ade8b..035585e8 100644
+--- a/tests/unit/tasks/blcs/data/test_tracking_augmentation.py
++++ b/tests/unit/tasks/blcs/data/test_tracking_augmentation.py
+@@ -1,12 +1,17 @@
+ from __future__ import annotations
+ 
++from inspect import Parameter, signature
+ from pathlib import Path
+ 
++import pytest
+ import torch
+ from omegaconf import DictConfig, OmegaConf
+ 
++from src.tasks.blcs.data.observation_candidates import (
++    PhysicalObservationCandidates,
++)
+ from src.tasks.blcs.data.tracking_augmentation import (
+-    BLCSTrackingCandidateAugmentation,
++    BLCSTrackingDetectionAugmentation,
+ )
+ 
+ _AUGMENTATION_CONFIG = (
+@@ -15,7 +20,13 @@ _AUGMENTATION_CONFIG = (
+ )
+ 
+ 
+-def _augmentation_config(*, enabled: bool, gaussian_noise: bool = False) -> DictConfig:
++def _augmentation_config(
++    *,
++    enabled: bool,
++    gaussian_noise: bool = False,
++    visibility_dropout: bool = False,
++    false_positive: bool = False,
++) -> DictConfig:
+     config = OmegaConf.load(_AUGMENTATION_CONFIG).augmentation
+     if not isinstance(config, DictConfig):
+         raise AssertionError("BLCS augmentation config must be a mapping.")
+@@ -35,74 +46,262 @@ def _augmentation_config(*, enabled: bool, gaussian_noise: bool = False) -> Dict
+     config.gaussian_noise.prob = 1.0
+     config.gaussian_noise.ball_std = 0.001
+     config.gaussian_noise.court_std = 0.001
++    config.visibility_dropout.enabled = visibility_dropout
++    config.visibility_dropout.prob = 1.0
++    config.visibility_dropout.drop_prob = 1.0
++    config.false_positive.enabled = false_positive
++    config.false_positive.prob = 1.0
++    config.false_positive.prob_absent = 1.0
++    config.false_positive.prob_after_dropout = 1.0
++    config.false_positive.after_dropout_window = 1
+     return config
+ 
+ 
+-def test_tracking_augmentation_preserves_id_order_without_permutation() -> None:
+-    torch.manual_seed(21)
++def _detections(*, visible: bool = True) -> PhysicalObservationCandidates:
+     uv = torch.tensor([[[[0.1, 0.2], [0.3, 0.4]], [[0.5, 0.6], [0.7, 0.8]]]])
+-    sample = {
+-        "ball_uv": uv.clone(),
+-        "ball_vis": torch.ones(1, 2, 2, dtype=torch.bool),
+-        "candidate_gt_index": torch.tensor([[[0, 1], [0, 1]]]),
+-        "court_kp": torch.rand(1, 2, 14, 2),
+-        "court_vis": torch.ones(1, 2, 14, dtype=torch.bool),
+-        "target_position": torch.rand(2, 2, 3),
+-        "clean_ball_uv": uv.clone(),
+-    }
+-    augmentation = BLCSTrackingCandidateAugmentation(
+-        _augmentation_config(enabled=False)
++    vis = torch.full((1, 2, 2), visible, dtype=torch.bool)
++    ids = torch.arange(2).view(1, 1, 2).expand_as(vis)
++    return PhysicalObservationCandidates(
++        uv=torch.where(vis.unsqueeze(-1), uv, torch.zeros_like(uv)),
++        vis=vis,
++        gt_index=torch.where(vis, ids, -1),
+     )
+ 
+-    result = augmentation(sample)
+ 
+-    torch.testing.assert_close(result["target_position"], sample["target_position"])
+-    torch.testing.assert_close(result["clean_ball_uv"], sample["clean_ball_uv"])
+-    torch.testing.assert_close(result["court_kp"], sample["court_kp"])
+-    torch.testing.assert_close(result["court_vis"], sample["court_vis"])
+-    torch.testing.assert_close(
+-        result["candidate_gt_index"], sample["candidate_gt_index"]
++def _apply(
++    augmentation: BLCSTrackingDetectionAugmentation,
++    detections: PhysicalObservationCandidates,
++) -> PhysicalObservationCandidates:
++    views, frames = detections.vis.shape[:2]
++    return augmentation(
++        detections,
++        court_kp=torch.rand(views, frames, 14, 2),
++        court_vis=torch.ones(views, frames, 14, dtype=torch.bool),
++    )
++
++
++def _single_frame_detections(
++    x_coordinates: list[float],
++    *,
++    visible: bool,
++) -> PhysicalObservationCandidates:
++    uv = torch.tensor([[[[x, 0.5] for x in x_coordinates]]], dtype=torch.float32)
++    vis = torch.full((1, 1, len(x_coordinates)), visible, dtype=torch.bool)
++    ids = torch.arange(len(x_coordinates)).view(1, 1, -1)
++    return PhysicalObservationCandidates(
++        uv=torch.where(vis.unsqueeze(-1), uv, torch.zeros_like(uv)),
++        vis=vis,
++        gt_index=torch.where(vis, ids, -1),
++    )
++
++
++def test_num_slots_is_required_and_must_be_a_positive_integer() -> None:
++    config = _augmentation_config(enabled=False)
++    parameter = signature(BLCSTrackingDetectionAugmentation).parameters["num_slots"]
++    assert parameter.kind is Parameter.KEYWORD_ONLY
++    assert parameter.default is Parameter.empty
++
++    for invalid_num_slots in (0, -1, True, 1.5):
++        with pytest.raises((TypeError, ValueError), match="num_slots"):
++            BLCSTrackingDetectionAugmentation(
++                config,
++                num_slots=invalid_num_slots,  # type: ignore[arg-type]
++            )
++
++
++def test_disabled_tracking_augmentation_is_identity_on_physical_width() -> None:
++    detections = _detections()
++    augmentation = BLCSTrackingDetectionAugmentation(
++        _augmentation_config(enabled=False),
++        num_slots=2,
+     )
+-    torch.testing.assert_close(result["ball_uv"], sample["ball_uv"])
+-    torch.testing.assert_close(result["ball_vis"], sample["ball_vis"])
+ 
++    result = _apply(augmentation, detections)
+ 
+-def test_tracking_noise_changes_coordinates_without_reordering_object_ids() -> None:
++    assert result.uv.shape == (1, 2, 2, 2)
++    torch.testing.assert_close(result.uv, detections.uv)
++    torch.testing.assert_close(result.vis, detections.vis)
++    torch.testing.assert_close(result.gt_index, detections.gt_index)
++
++
++def test_tracking_noise_changes_coordinates_before_any_q_axis_exists() -> None:
+     torch.manual_seed(23)
+-    uv = torch.tensor([[[[0.2, 0.2], [0.8, 0.8]], [[0.25, 0.25], [0.75, 0.75]]]])
+-    sample = {
+-        "ball_uv": uv.clone(),
+-        "ball_vis": torch.ones(1, 2, 2, dtype=torch.bool),
+-        "candidate_gt_index": torch.tensor([[[0, 1], [0, 1]]]),
+-        "court_kp": torch.rand(1, 2, 14, 2),
+-        "court_vis": torch.ones(1, 2, 14, dtype=torch.bool),
+-    }
+-    augmentation = BLCSTrackingCandidateAugmentation(
+-        _augmentation_config(enabled=True, gaussian_noise=True)
++    detections = _detections()
++    augmentation = BLCSTrackingDetectionAugmentation(
++        _augmentation_config(enabled=True, gaussian_noise=True),
++        num_slots=2,
+     )
+ 
+-    result = augmentation(sample)
++    result = _apply(augmentation, detections)
++
++    assert not torch.equal(result.uv, detections.uv)
++    assert bool(((result.uv - detections.uv).abs() < 0.01).all())
++    torch.testing.assert_close(result.gt_index, detections.gt_index)
++
++
++def test_dropout_clears_visibility_coordinates_and_provenance() -> None:
++    detections = _detections()
++    augmentation = BLCSTrackingDetectionAugmentation(
++        _augmentation_config(enabled=True, visibility_dropout=True),
++        num_slots=2,
++    )
++
++    result = _apply(augmentation, detections)
++
++    assert not result.vis.any()
++    assert not result.uv.any()
++    assert (result.gt_index == -1).all()
++
++
++def test_false_positives_have_negative_provenance() -> None:
++    torch.manual_seed(31)
++    detections = _detections(visible=False)
++    augmentation = BLCSTrackingDetectionAugmentation(
++        _augmentation_config(enabled=True, false_positive=True),
++        num_slots=2,
++    )
+ 
+-    assert not torch.equal(result["ball_uv"], sample["ball_uv"])
+-    assert bool(((result["ball_uv"] - sample["ball_uv"]).abs() < 0.01).all())
++    result = _apply(augmentation, detections)
++
++    assert result.vis.all()
++    assert bool(((result.uv >= 0.0) & (result.uv <= 1.0)).all())
++    assert (result.gt_index == -1).all()
++
++
++def test_false_positive_after_dropout_does_not_recover_gt_provenance() -> None:
++    torch.manual_seed(37)
++    detections = _detections()
++    augmentation = BLCSTrackingDetectionAugmentation(
++        _augmentation_config(
++            enabled=True,
++            visibility_dropout=True,
++            false_positive=True,
++        ),
++        num_slots=2,
++    )
++
++    result = _apply(augmentation, detections)
++
++    assert result.vis.all()
++    assert (result.gt_index == -1).all()
++
++
++def test_synthetic_false_positives_are_bounded_to_q_with_fixed_carrier_shapes() -> None:
++    torch.manual_seed(41)
++    detections = PhysicalObservationCandidates(
++        uv=torch.zeros(1, 2, 4, 2),
++        vis=torch.zeros(1, 2, 4, dtype=torch.bool),
++        gt_index=torch.full((1, 2, 4), -1, dtype=torch.long),
++    )
++    augmentation = BLCSTrackingDetectionAugmentation(
++        _augmentation_config(enabled=True, false_positive=True),
++        num_slots=2,
++    )
++
++    result = _apply(augmentation, detections)
++
++    assert result.uv.shape == detections.uv.shape
++    assert result.vis.shape == detections.vis.shape
++    assert result.vis.sum(dim=-1).tolist() == [[2, 2]]
++    assert result.uv[~result.vis].eq(0).all()
++    assert result.gt_index.eq(-1).all()
++
++
++def test_false_positive_capacity_selection_is_deterministic_and_permutation_invariant() -> None:
++    class _FixedFalsePositiveObservation:
++        def __init__(self, post_false_positive_uv: torch.Tensor) -> None:
++            self.post_false_positive_uv = post_false_positive_uv
++            self.visibility_before_false_positive: torch.Tensor | None = None
++
++        def forward(
++            self, sample: dict[str, torch.Tensor]
++        ) -> dict[str, torch.Tensor]:
++            self.visibility_before_false_positive = sample["ball_vis"].clone()
++            return {
++                **sample,
++                "ball_uv": self.post_false_positive_uv.clone(),
++                "ball_vis": torch.ones_like(sample["ball_vis"], dtype=torch.bool),
++            }
++
++    def run(post_false_positive_uv: torch.Tensor) -> PhysicalObservationCandidates:
++        views, frames, carriers, _ = post_false_positive_uv.shape
++        detections = PhysicalObservationCandidates(
++            uv=torch.zeros_like(post_false_positive_uv),
++            vis=torch.zeros(post_false_positive_uv.shape[:-1], dtype=torch.bool),
++            gt_index=torch.full(
++                post_false_positive_uv.shape[:-1], -1, dtype=torch.long
++            ),
++        )
++        augmentation = BLCSTrackingDetectionAugmentation(
++            _augmentation_config(enabled=True),
++            num_slots=2,
++        )
++        flattened_uv = post_false_positive_uv.permute(0, 2, 1, 3).reshape(
++            -1, frames, 2
++        )
++        production_uv = flattened_uv.reshape(views, carriers, frames, 2).permute(
++            0, 2, 1, 3
++        )
++        production_vis = (
++            torch.ones((views * carriers, frames), dtype=torch.bool)
++            .reshape(views, carriers, frames)
++            .permute(0, 2, 1)
++        )
++        layout_preserving_uv_clone = production_uv.unsqueeze(-2).clone()
++        layout_preserving_vis_clone = production_vis.unsqueeze(-1).clone()
++        assert not layout_preserving_uv_clone.is_contiguous()
++        assert not layout_preserving_vis_clone.is_contiguous()
++        assert (
++            layout_preserving_uv_clone.reshape(
++                -1, carriers, 1, 2
++            ).untyped_storage().data_ptr()
++            != layout_preserving_uv_clone.untyped_storage().data_ptr()
++        )
++        assert (
++            layout_preserving_vis_clone.reshape(
++                -1, carriers, 1
++            ).untyped_storage().data_ptr()
++            != layout_preserving_vis_clone.untyped_storage().data_ptr()
++        )
++        augmentation.observation = _FixedFalsePositiveObservation(flattened_uv)  # type: ignore[assignment]
++        return _apply(augmentation, detections)
++
++    x_coordinates = (
++        torch.tensor([0.8, 0.3, 0.6, 0.1], dtype=torch.float32)
++        .view(1, 1, 4, 1)
++        .expand(2, 3, -1, -1)
++    )
++    values = torch.cat(
++        [x_coordinates, torch.full_like(x_coordinates, 0.5)], dim=-1
++    )
++    first = run(values)
++    replay = run(values)
++    permuted = run(values[:, :, [2, 0, 3, 1]])
++
++    torch.testing.assert_close(first.uv, replay.uv)
++    torch.testing.assert_close(first.vis, replay.vis)
++    first_selected = first.uv[..., 0].masked_select(first.vis).reshape(2, 3, 2)
++    first_selected = first_selected.sort(dim=-1).values
++    permuted_selected = permuted.uv[..., 0].masked_select(permuted.vis)
++    permuted_selected = permuted_selected.reshape(2, 3, 2).sort(dim=-1).values
+     torch.testing.assert_close(
+-        result["candidate_gt_index"], sample["candidate_gt_index"]
++        first_selected, torch.tensor([0.1, 0.3]).expand(2, 3, 2)
+     )
+-    torch.testing.assert_close(result["court_kp"], sample["court_kp"])
+-    torch.testing.assert_close(result["court_vis"], sample["court_vis"])
++    torch.testing.assert_close(first_selected, permuted_selected)
++    assert first.uv[~first.vis].eq(0).all()
++    assert first.gt_index.eq(-1).all()
++    assert permuted.gt_index.eq(-1).all()
+ 
+ 
+-def test_tracking_augmentation_preserves_invisible_query_slots() -> None:
+-    uv = torch.rand(1, 2, 2, 2)
+-    sample = {
+-        "ball_uv": uv,
+-        "ball_vis": torch.tensor([[[True, False], [True, False]]]),
+-        "candidate_gt_index": torch.tensor([[[3, -1], [3, -1]]]),
+-        "court_kp": torch.rand(1, 2, 14, 2),
+-        "court_vis": torch.ones(1, 2, 14, dtype=torch.bool),
+-    }
+-    augmentation = BLCSTrackingCandidateAugmentation(_augmentation_config(enabled=True))
++def test_genuine_overflow_is_preserved_for_tracker_rejection() -> None:
++    detections = _single_frame_detections([0.1, 0.4, 0.8], visible=True)
++    augmentation = BLCSTrackingDetectionAugmentation(
++        _augmentation_config(enabled=True, false_positive=True),
++        num_slots=2,
++    )
+ 
+-    result = augmentation(sample)
++    result = _apply(augmentation, detections)
+ 
+-    assert not result["ball_vis"][..., 1].any()
++    torch.testing.assert_close(result.uv, detections.uv)
++    torch.testing.assert_close(result.vis, detections.vis)
++    torch.testing.assert_close(result.gt_index, detections.gt_index)
+diff --git a/tests/unit/tasks/blcs/data/test_tracking_dataset.py b/tests/unit/tasks/blcs/data/test_tracking_dataset.py
+index 321202d1..64d96cf0 100644
+--- a/tests/unit/tasks/blcs/data/test_tracking_dataset.py
++++ b/tests/unit/tasks/blcs/data/test_tracking_dataset.py
+@@ -9,9 +9,14 @@ import numpy as np
+ import pytest
+ import torch
+ from hydra import compose, initialize_config_dir
+-from omegaconf import open_dict
++from omegaconf import DictConfig, OmegaConf, open_dict
+ 
++import src.tasks.blcs.data.tracking_dataset as tracking_dataset_module
+ from src.tasks.base.data.lifecycle_slots import build_fixed_lifecycle_assignment
++from src.tasks.base.data.observation_tracking import (
++    ObservationTrackingConfig,
++    TrackingCapacityError,
++)
+ from src.tasks.base.generate_dataset import (
+     CourtReferenceFrameError,
+     CourtReferenceFrameProvenance,
+@@ -21,18 +26,48 @@ from src.tasks.base.generate_dataset import (
+     resolve_court_keypoint_contract,
+ )
+ from src.tasks.blcs.data.observation_candidates import (
+-    pack_observation_candidates,
++    PhysicalObservationCandidates,
++    build_physical_observation_candidates,
++)
++from src.tasks.blcs.data.tracking_augmentation import (
++    BLCSTrackingDetectionAugmentation,
+ )
+ from src.tasks.blcs.data.tracking_dataset import (
+     BLCSTrackingDataset,
+     collate_blcs_tracking_batch,
+ )
++from src.tasks.blcs.model_io import TrackQueryModelIOAdapter
+ from src.utils.configuration import MissingConfigurationKeyError
+ from src.utils.schema.court_normalization import (
+     court_coordinate_normalization_metadata,
+ )
+ 
+ _CONFIG_DIR = Path("src/tasks/blcs/configs").resolve()
++_AUGMENTATION_CONFIG = _CONFIG_DIR / "data/_augmentation.yaml"
++
++
++def _false_positive_only_augmentation_config() -> DictConfig:
++    config = OmegaConf.load(_AUGMENTATION_CONFIG).augmentation
++    if not isinstance(config, DictConfig):
++        raise AssertionError("BLCS augmentation config must be a mapping.")
++    config.enabled = True
++    for block_name in (
++        "uv_scale",
++        "gaussian_noise",
++        "visibility_dropout",
++        "temporal_jitter",
++        "burst_dropout",
++        "false_positive",
++        "edge_degradation",
++        "speed_conditioned",
++    ):
++        config[block_name].enabled = False
++    config.false_positive.enabled = True
++    config.false_positive.prob = 1.0
++    config.false_positive.prob_absent = 1.0
++    config.false_positive.prob_after_dropout = 1.0
++    config.false_positive.after_dropout_window = 1
++    return config
+ 
+ 
+ def test_dataset_rejects_missing_court_keypoint_selector(tmp_path: Path) -> None:
+@@ -53,7 +88,79 @@ def test_dataset_rejects_missing_court_keypoint_selector(tmp_path: Path) -> None
+         )
+ 
+ 
+-def test_observations_pack_all_views_to_exact_width_with_lifecycle_reuse() -> None:
++def test_dataset_rejects_missing_num_queries_before_augmentation_construction(
++    monkeypatch: pytest.MonkeyPatch,
++    tmp_path: Path,
++) -> None:
++    def initialize_without_queries(dataset: object, **kwargs: object) -> None:
++        del kwargs
++        dataset.hydra_cfg = {"data": {"augmentation": {}}}  # type: ignore[attr-defined]
++        dataset.num_queries = None  # type: ignore[attr-defined]
++        dataset.pack_to_query_slots = True  # type: ignore[attr-defined]
++        dataset.observation_tracking_config = _association_config()  # type: ignore[attr-defined]
++
++    def forbid_augmentation_construction(*args: object, **kwargs: object) -> None:
++        del args, kwargs
++        raise AssertionError("augmentation was constructed before Q validation")
++
++    monkeypatch.setattr(
++        tracking_dataset_module,
++        "parse_court_keypoint_contract",
++        lambda config: object(),
++    )
++    monkeypatch.setattr(
++        tracking_dataset_module,
++        "blcs_track_query_reference_contract_document",
++        lambda config, contract: {},
++    )
++    monkeypatch.setattr(
++        tracking_dataset_module,
++        "validate_blcs_dataset_court_keypoints",
++        lambda **kwargs: object(),
++    )
++    monkeypatch.setattr(
++        tracking_dataset_module,
++        "court_views_by_scene",
++        lambda dataset: {},
++    )
++    monkeypatch.setattr(
++        tracking_dataset_module.CanonicalTrackingDataset,
++        "__init__",
++        initialize_without_queries,
++    )
++    monkeypatch.setattr(
++        tracking_dataset_module,
++        "BLCSTrackingDetectionAugmentation",
++        forbid_augmentation_construction,
++    )
++
++    with pytest.raises(ValueError, match=r"requires model\.num_queries"):
++        BLCSTrackingDataset(
++            scene_dir=tmp_path,
++            split_file=tmp_path / "train.txt",
++            config={},
++            augment=False,
++        )
++
++
++def _association_config(
++    *,
++    max_distance: float = 0.04,
++    max_missed_frames: int = 2,
++    min_reuse_gap_frames: int = 4,
++) -> ObservationTrackingConfig:
++    return ObservationTrackingConfig(
++        max_distance=max_distance,
++        max_missed_frames=max_missed_frames,
++        min_reuse_gap_frames=min_reuse_gap_frames,
++        use_velocity_prediction=True,
++        min_common_keypoints=1,
++        cost_reduction="mean",
++        overflow_policy="error",
++    )
++
++
++def test_physical_observations_remain_unpacked_before_tracking() -> None:
+     presence = torch.tensor(
+         [
+             [True, True, False],
+@@ -66,74 +173,309 @@ def test_observations_pack_all_views_to_exact_width_with_lifecycle_reuse() -> No
+     vis[1, 0, 1] = False
+     uv = torch.arange(2 * 4 * 3 * 2, dtype=torch.float32).reshape(2, 4, 3, 2)
+ 
+-    packed = pack_observation_candidates(
++    candidates = build_physical_observation_candidates(
+         ball_uv=uv,
+         ball_vis=vis,
+         physical_presence=presence,
+-        num_slots=2,
+-        min_reuse_gap_frames=0,
+-        randomize_slots=False,
+     )
+ 
+-    assert packed.uv.shape == (2, 4, 2, 2)
+-    assert packed.vis.shape == (2, 4, 2)
+-    torch.testing.assert_close(packed.gt_index[0], packed.gt_index[1])
+-    assert packed.gt_index[0, 0, 0] == 0
+-    assert packed.gt_index[0, 2, 0] == 2
+-    assert not packed.vis[1, 0, 1]
++    assert candidates.uv.shape == (2, 4, 3, 2)
++    assert candidates.vis.shape == (2, 4, 3)
++    assert candidates.gt_index[0, 0].tolist() == [0, 1, -1]
++    assert candidates.gt_index[1, 0].tolist() == [0, -1, -1]
++    assert not candidates.vis[1, 0, 1]
++    assert not candidates.uv[1, 0, 1].any()
+ 
+ 
+-def test_concurrent_candidate_overflow_is_rejected_without_truncation() -> None:
+-    presence = torch.ones(2, 3, dtype=torch.bool)
++def _internal_sample(
++    *,
++    uv: torch.Tensor,
++    vis: torch.Tensor,
++    gt_index: torch.Tensor | None = None,
++    camera_indices: tuple[int, ...] | None = None,
++    target_queries: int = 2,
++) -> dict[str, object]:
++    views, frames, carriers = vis.shape
++    if gt_index is None:
++        ids = torch.arange(carriers).view(1, 1, carriers)
++        gt_index = torch.where(vis, ids.expand_as(vis), -1)
++    return {
++        "scene_format_version": torch.tensor(4),
++        "_physical_ball_uv": uv,
++        "_physical_ball_vis": vis,
++        "_physical_gt_index": gt_index,
++        "_selected_camera_indices": camera_indices or tuple(range(views)),
++        "court_kp": torch.zeros(views, frames, 14, 2),
++        "court_vis": torch.ones(views, frames, 14, dtype=torch.bool),
++        "padding_mask": torch.zeros(views, frames, dtype=torch.bool),
++        "target_position": torch.zeros(frames, target_queries, 3),
++        "target_velocity": torch.zeros(frames, target_queries, 3),
++        "target_presence": torch.zeros(frames, target_queries, dtype=torch.bool),
++        "target_instance_id": torch.full((frames, target_queries), -1),
++        "target_slot_mask": torch.zeros(target_queries, dtype=torch.bool),
++        "court_reference_provenance": build_physical_court_provenance(),
++        "selected_camera_ids": tuple(f"camera_{index}" for index in range(views)),
++    }
+ 
+-    with pytest.raises(ValueError, match="cannot be packed"):
+-        pack_observation_candidates(
+-            ball_uv=torch.rand(1, 2, 3, 2),
+-            ball_vis=presence.unsqueeze(0),
+-            physical_presence=presence,
+-            num_slots=2,
+-            min_reuse_gap_frames=0,
+-            randomize_slots=False,
+-        )
+ 
++def _bare_dataset(
++    *,
++    num_queries: int,
++    augment: bool,
++    association: ObservationTrackingConfig | None = None,
++) -> BLCSTrackingDataset:
++    dataset = object.__new__(BLCSTrackingDataset)
++    dataset.num_queries = num_queries
++    dataset.augment = augment
++    dataset.observation_tracking_config = association or _association_config()
++    return dataset
++
++
++def test_augment_sample_corrupts_before_tracking_and_returns_exact_q(
++    monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    uv = torch.tensor([[[[0.10, 0.20]], [[0.12, 0.22]]]])
++    vis = torch.ones(1, 2, 1, dtype=torch.bool)
++    sample = _internal_sample(uv=uv, vis=vis, camera_indices=(7,))
++    dataset = _bare_dataset(num_queries=2, augment=True)
++    events: list[str] = []
++
++    class _Noise:
++        def __call__(
++            self,
++            detections: PhysicalObservationCandidates,
++            *,
++            court_kp: torch.Tensor,
++            court_vis: torch.Tensor,
++        ) -> PhysicalObservationCandidates:
++            del court_kp, court_vis
++            events.append("noise")
++            return PhysicalObservationCandidates(
++                uv=detections.uv + 0.01,
++                vis=detections.vis,
++                gt_index=detections.gt_index,
++            )
++
++    dataset.tracking_augmentation = _Noise()
++    real_tracker = tracking_dataset_module.track_multiview_observations
++
++    def _tracking_spy(
++        values: torch.Tensor,
++        visibility: torch.Tensor,
++        **kwargs: object,
++    ) -> object:
++        events.append("track")
++        torch.testing.assert_close(values[..., 0, :], uv + 0.01)
++        assert kwargs["camera_indices"] == (7,)
++        return real_tracker(values, visibility, **kwargs)
+ 
+-def test_training_assignments_use_independent_torch_draws_and_eval_is_stable() -> None:
+-    presence = torch.ones(2, 4, dtype=torch.bool)
+-    torch.manual_seed(753)
+-    target = build_fixed_lifecycle_assignment(
+-        presence,
+-        num_slots=4,
+-        min_reuse_gap_frames=0,
+-        randomize_slots=True,
+-        generator=None,
++    monkeypatch.setattr(
++        tracking_dataset_module, "track_multiview_observations", _tracking_spy
+     )
+-    observation = build_fixed_lifecycle_assignment(
+-        presence,
+-        num_slots=4,
+-        min_reuse_gap_frames=0,
+-        randomize_slots=True,
+-        generator=None,
++
++    result = dataset.augment_sample(sample)
++
++    assert events == ["noise", "track"]
++    assert result["ball_uv"].shape == (1, 2, 2, 2)
++    assert result["ball_vis"].shape == (1, 2, 2)
++    torch.testing.assert_close(result["ball_uv"][0, :, 0], uv[0, :, 0] + 0.01)
++    torch.testing.assert_close(result["clean_ball_uv"][0, :, 0], uv[0, :, 0])
++    assert result["candidate_gt_index"][0, :, 0].tolist() == [0, 0]
++    assert not any(key.startswith("_") for key in result)
++
++
++def test_public_sample_zeroes_only_invisible_court_uv_before_model_call() -> None:
++    sample = _internal_sample(
++        uv=torch.tensor([[[[0.2, 0.3]]]]),
++        vis=torch.ones(1, 1, 1, dtype=torch.bool),
++    )
++    court_kp = sample["court_kp"]
++    court_vis = sample["court_vis"]
++    assert isinstance(court_kp, torch.Tensor)
++    assert isinstance(court_vis, torch.Tensor)
++    court_kp[0, 0, :4] = torch.tensor(
++        [
++            [0.25, 0.75],
++            [0.10, 0.90],
++            [-0.25, 1.25],
++            [float("nan"), float("nan")],
++        ]
++    )
++    court_vis[0, 0, 1:4] = False
++
++    result = _bare_dataset(num_queries=2, augment=False).augment_sample(sample)
++
++    assert result["ball_uv"].shape == (1, 1, 2, 2)
++    assert result["court_kp"].shape == (1, 1, 14, 2)
++    torch.testing.assert_close(
++        result["court_kp"][0, 0, 0],
++        torch.tensor([0.25, 0.75]),
++    )
++    assert result["court_kp"][0, 0, 1:4].eq(0.0).all()
++    assert torch.isfinite(result["court_kp"]).all()
++
++    batch = collate_blcs_tracking_batch([result])
++    call = TrackQueryModelIOAdapter(
++        num_court_tokens=14,
++        num_queries=2,
++        presence_threshold=0.5,
++    ).build_call(batch)
++    assert call.kwargs["ball_uv"].shape == (1, 1, 1, 2, 2)
++    assert call.kwargs["court_kp"].shape == (1, 1, 1, 14, 2)
++
++
++def test_model_visible_tracking_is_independent_of_carrier_and_gt_order() -> None:
++    first_uv = torch.tensor([[[[0.20, 0.20], [0.80, 0.80]]]])
++    second_uv = first_uv.flip(2)
++    vis = torch.ones(1, 1, 2, dtype=torch.bool)
++    first = _internal_sample(
++        uv=first_uv,
++        vis=vis,
++        gt_index=torch.tensor([[[3, 7]]]),
+     )
+-    assert not torch.equal(target.track_to_slot, observation.track_to_slot)
++    second = _internal_sample(
++        uv=second_uv,
++        vis=vis,
++        gt_index=torch.tensor([[[41, 29]]]),
++    )
++    first["target_position"] = torch.ones(1, 2, 3)
++    second["target_position"] = torch.full((1, 2, 3), 9.0)
++
++    dataset = _bare_dataset(num_queries=2, augment=False)
++    first_result = dataset.augment_sample(first)
++    second_result = dataset.augment_sample(second)
++
++    torch.testing.assert_close(first_result["ball_uv"], second_result["ball_uv"])
++    torch.testing.assert_close(first_result["ball_vis"], second_result["ball_vis"])
++    assert not torch.equal(
++        first_result["candidate_gt_index"], second_result["candidate_gt_index"]
++    )
++    assert not torch.equal(
++        first_result["target_position"], second_result["target_position"]
++    )
++
++
++def test_tracking_slots_are_camera_local() -> None:
++    uv = torch.tensor(
++        [
++            [[[0.10, 0.10], [0.80, 0.80]]],
++            [[[0.80, 0.80], [0.10, 0.10]]],
++        ]
++    )
++    vis = torch.ones(2, 1, 2, dtype=torch.bool)
++    dataset = _bare_dataset(num_queries=2, augment=False)
++
++    result = dataset.augment_sample(_internal_sample(uv=uv, vis=vis))
+ 
+-    first_eval = build_fixed_lifecycle_assignment(
++    torch.testing.assert_close(result["ball_uv"][0, 0], result["ball_uv"][1, 0])
++    assert result["candidate_gt_index"][:, 0, 0].tolist() == [0, 1]
++
++
++def test_all_detections_dropped_still_returns_zero_filled_exact_q() -> None:
++    uv = torch.rand(1, 3, 1, 2)
++    vis = torch.zeros(1, 3, 1, dtype=torch.bool)
++    dataset = _bare_dataset(num_queries=3, augment=False)
++
++    result = dataset.augment_sample(
++        _internal_sample(uv=uv, vis=vis, target_queries=3)
++    )
++
++    assert result["ball_uv"].shape == (1, 3, 3, 2)
++    assert result["ball_vis"].shape == (1, 3, 3)
++    assert not result["ball_uv"].any()
++    assert not result["ball_vis"].any()
++    assert (result["candidate_gt_index"] == -1).all()
++    assert not result["clean_ball_vis"].any()
++
++
++def test_false_positive_debug_alignment_is_zero_and_invisible() -> None:
++    uv = torch.zeros(1, 1, 1, 2)
++    vis = torch.zeros(1, 1, 1, dtype=torch.bool)
++    dataset = _bare_dataset(num_queries=2, augment=True)
++
++    class _FalsePositive:
++        def __call__(
++            self,
++            detections: PhysicalObservationCandidates,
++            *,
++            court_kp: torch.Tensor,
++            court_vis: torch.Tensor,
++        ) -> PhysicalObservationCandidates:
++            del court_kp, court_vis
++            return PhysicalObservationCandidates(
++                uv=torch.full_like(detections.uv, 0.5),
++                vis=torch.ones_like(detections.vis),
++                gt_index=torch.full_like(detections.gt_index, -1),
++            )
++
++    dataset.tracking_augmentation = _FalsePositive()
++    result = dataset.augment_sample(_internal_sample(uv=uv, vis=vis))
++
++    assert result["ball_vis"][0, 0, 0]
++    assert result["candidate_gt_index"][0, 0, 0] == -1
++    assert not result["clean_ball_vis"][0, 0, 0]
++    assert not result["clean_ball_uv"][0, 0, 0].any()
++
++
++def test_synthetic_false_positives_are_limited_before_dataset_tracking() -> None:
++    torch.manual_seed(43)
++    uv = torch.zeros(1, 1, 4, 2)
++    vis = torch.zeros(1, 1, 4, dtype=torch.bool)
++    dataset = _bare_dataset(num_queries=2, augment=True)
++    dataset.tracking_augmentation = BLCSTrackingDetectionAugmentation(
++        _false_positive_only_augmentation_config(),
++        num_slots=2,
++    )
++
++    result = dataset.augment_sample(_internal_sample(uv=uv, vis=vis))
++
++    assert result["ball_uv"].shape == (1, 1, 2, 2)
++    assert result["ball_vis"].shape == (1, 1, 2)
++    assert result["ball_vis"].sum().item() == 2
++    assert result["candidate_gt_index"].eq(-1).all()
++    assert not result["clean_ball_vis"].any()
++
++
++def test_inherited_genuine_overflow_reaches_tracker_without_truncation() -> None:
++    uv = torch.tensor([[[[0.1, 0.1], [0.5, 0.5], [0.9, 0.9]]]])
++    vis = torch.ones(1, 1, 3, dtype=torch.bool)
++    dataset = _bare_dataset(num_queries=2, augment=True)
++    dataset.tracking_augmentation = BLCSTrackingDetectionAugmentation(
++        _false_positive_only_augmentation_config(),
++        num_slots=2,
++    )
++
++    with pytest.raises(TrackingCapacityError) as exc_info:
++        dataset.augment_sample(
++            _internal_sample(
++                uv=uv,
++                vis=vis,
++                camera_indices=(11,),
++            )
++        )
++
++    assert exc_info.value.camera_index == 11
++    assert exc_info.value.frame_index == 0
++    assert exc_info.value.num_slots == 2
++
++
++def test_target_lifecycle_assignment_is_separate_and_deterministic() -> None:
++    presence = torch.ones(2, 4, dtype=torch.bool)
++    first = build_fixed_lifecycle_assignment(
+         presence,
+         num_slots=4,
+         min_reuse_gap_frames=0,
+-        randomize_slots=False,
+-        generator=None,
+     )
+-    second_eval = build_fixed_lifecycle_assignment(
++    second = build_fixed_lifecycle_assignment(
+         presence,
+         num_slots=4,
+         min_reuse_gap_frames=0,
+-        randomize_slots=False,
+-        generator=None,
+     )
+-    torch.testing.assert_close(first_eval.track_to_slot, second_eval.track_to_slot)
++    torch.testing.assert_close(first.track_to_slot, second.track_to_slot)
++    torch.testing.assert_close(first.target_instance_id, second.target_instance_id)
+ 
+ 
+-def test_dataset_packs_more_physical_tracks_than_q_with_independent_assignments(
++def test_dataset_tracks_more_physical_lifecycles_than_q_without_random_slots(
+     tmp_path: Path,
+     monkeypatch: pytest.MonkeyPatch,
+ ) -> None:
+@@ -191,21 +533,25 @@ def test_dataset_packs_more_physical_tracks_than_q_with_independent_assignments(
+     config.data.num_views_range = [2, 2]
+     config.data.camera_mode = "first"
+     config.data.lifecycle.min_reuse_gap_frames = 0
++    config.data.association.max_missed_frames = 0
++    config.data.association.min_reuse_gap_frames = 0
+     config.data.augmentation.enabled = False
++    constructed_num_slots: list[int] = []
++    real_augmentation = tracking_dataset_module.BLCSTrackingDetectionAugmentation
+ 
+-    permutations = iter((torch.tensor([0, 1]), torch.tensor([1, 0])))
+-
+-    def next_permutation(
+-        width: int,
++    def build_augmentation(
++        augmentation_config: DictConfig,
+         *,
+-        device: torch.device,
+-        generator: torch.Generator | None,
+-    ) -> torch.Tensor:
+-        del generator
+-        assert width == 2
+-        return next(permutations).to(device=device)
+-
+-    monkeypatch.setattr(torch, "randperm", next_permutation)
++        num_slots: int,
++    ) -> BLCSTrackingDetectionAugmentation:
++        constructed_num_slots.append(num_slots)
++        return real_augmentation(augmentation_config, num_slots=num_slots)
++
++    monkeypatch.setattr(
++        tracking_dataset_module,
++        "BLCSTrackingDetectionAugmentation",
++        build_augmentation,
++    )
+     sample = BLCSTrackingDataset(
+         scene_dir=tmp_path,
+         split_file="train.txt",
+@@ -217,11 +563,9 @@ def test_dataset_packs_more_physical_tracks_than_q_with_independent_assignments(
+     assert sample["ball_vis"].shape == (2, 4, 2)
+     assert set(sample["candidate_gt_index"].unique().tolist()) == {-1, 0, 1, 2}
+     assert set(sample["target_instance_id"].unique().tolist()) == {-1, 0, 1, 2}
+-    assert not torch.equal(
+-        sample["candidate_gt_index"][0], sample["target_instance_id"]
+-    )
+-    assert not sample["ball_vis"][1, 0, 0]
++    assert not sample["ball_vis"][1, 0, 1]
+     assert not sample["padding_mask"].any()
++    assert constructed_num_slots == [2]
+ 
+ 
+ def _sample(*, views: int, frames: int, queries: int) -> dict[str, object]:
+diff --git a/tests/unit/tasks/blcs/generate_dataset/test_multi_object_scene_generator.py b/tests/unit/tasks/blcs/generate_dataset/test_multi_object_scene_generator.py
+index a26baab6..8ae13926 100644
+--- a/tests/unit/tasks/blcs/generate_dataset/test_multi_object_scene_generator.py
++++ b/tests/unit/tasks/blcs/generate_dataset/test_multi_object_scene_generator.py
+@@ -86,7 +86,15 @@ def _tracking_config() -> dict[str, object]:
+             "lifecycle": {
+                 "pack_to_query_slots": True,
+                 "min_reuse_gap_frames": 0,
+-                "randomize_slots_train": False,
++            },
++            "association": {
++                "max_distance": 0.04,
++                "max_missed_frames": 2,
++                "min_reuse_gap_frames": 4,
++                "use_velocity_prediction": True,
++                "min_common_keypoints": 1,
++                "cost_reduction": "mean",
++                "overflow_policy": "error",
+             },
+             "augmentation": OmegaConf.load(_AUGMENTATION_CONFIG).augmentation,
+         },
+@@ -120,9 +128,9 @@ class _PhysicalSceneStub:
+         self.calls += 1
+         trajectory = torch.tensor(
+             [
+-                [-1.0 + offset, -3.0, 1.0],
+-                [0.0 + offset, 0.0, 1.5],
+-                [1.0 + offset, 3.0, 0.8],
++                [-0.02 + offset, -0.05, 1.00],
++                [0.00 + offset, 0.00, 1.02],
++                [0.02 + offset, 0.05, 0.98],
+             ]
+         )
+         projector = CameraProjector(
+@@ -283,18 +291,21 @@ def test_multi_ball_uses_physical_scenes_and_canonical_writer(tmp_path) -> None:
+     candidate_ids = sample["candidate_gt_index"]
+     assigned = candidate_ids >= 0
+     assert candidate_ids.shape == assigned.shape == (6, 12, 2)
+-    torch.testing.assert_close(
+-        candidate_ids,
+-        candidate_ids[:1].expand_as(candidate_ids),
+-    )
+-    torch.testing.assert_close(
+-        assigned,
+-        assigned[:1].expand_as(assigned),
+-    )
+     assert not bool((sample["ball_vis"] & ~assigned).any())
+     assert not bool((sample["clean_ball_vis"] & ~assigned).any())
+ 
+     physical_presence = scene.ball_present[:, : scene.num_balls]
++    for view_index, camera in enumerate(scene.cameras):
++        expected_visible = torch.from_numpy(camera.ball_vis)
++        tracked_visible = torch.stack(
++            [
++                (candidate_ids[view_index] == object_id).any(dim=1)
++                for object_id in range(scene.num_balls)
++            ],
++            dim=1,
++        )
++        torch.testing.assert_close(tracked_visible, expected_visible)
++
+     view_candidate_ids = candidate_ids[0]
+     candidate_physical_presence = torch.stack(
+         [
+diff --git a/tests/unit/tasks/blcs/model_io/test_adapters.py b/tests/unit/tasks/blcs/model_io/test_adapters.py
+index 96757e74..56dbf8a9 100644
+--- a/tests/unit/tasks/blcs/model_io/test_adapters.py
++++ b/tests/unit/tasks/blcs/model_io/test_adapters.py
+@@ -178,7 +178,15 @@ def test_multiview_adapter_builds_exact_five_tensor_all_padding_call() -> None:
+ 
+ 
+ def test_tracking_adapter_builds_exact_five_tensor_call() -> None:
+-    call = _tracking_adapter().build_call(_tracking_batch())
++    batch = _tracking_batch()
++    batch.update(
++        {
++            "candidate_gt_index": torch.full((1, 2, 3, 2), -1),
++            "clean_ball_uv": torch.zeros(1, 2, 3, 2, 2),
++            "clean_ball_vis": torch.zeros(1, 2, 3, 2, dtype=torch.bool),
++        }
++    )
++    call = _tracking_adapter().build_call(batch)
+     assert set(call.kwargs) == {
+         "ball_uv",
+         "ball_vis",
+diff --git a/tests/unit/tasks/plcs/data/test_court_view_dataset.py b/tests/unit/tasks/plcs/data/test_court_view_dataset.py
+index eeb05f9c..e03bb691 100644
+--- a/tests/unit/tasks/plcs/data/test_court_view_dataset.py
++++ b/tests/unit/tasks/plcs/data/test_court_view_dataset.py
+@@ -7,7 +7,7 @@ import numpy as np
+ import pytest
+ import torch
+ 
+-from src.tasks.base.data import ReferenceViewSelectionError
++from src.tasks.base.data import ObservationTrackingConfig, ReferenceViewSelectionError
+ from src.tasks.base.data.scene_dataset import Scene, SceneDatasetConfig
+ from src.tasks.base.generate_dataset import (
+     DatasetCourtKeypointContract,
+@@ -184,7 +184,17 @@ def test_tracking_aligns_before_first14_and_keeps_canonical_pose_local() -> None
+     dataset.court_keypoint_validation = standard.court_keypoint_validation
+     dataset.num_queries = 1
+     dataset.min_reuse_gap_frames = 0
+-    dataset.randomize_slots_train = False
++    dataset.observation_tracking_config = ObservationTrackingConfig.from_mapping(
++        {
++            "max_distance": 0.08,
++            "max_missed_frames": 8,
++            "min_reuse_gap_frames": 4,
++            "use_velocity_prediction": True,
++            "min_common_keypoints": 4,
++            "cost_reduction": "median",
++            "overflow_policy": "error",
++        }
++    )
+     dataset.config = SceneDatasetConfig(
+         scene_dir=Path("/dataset"),
+         split_file=Path("train.txt"),
+@@ -196,7 +206,7 @@ def test_tracking_aligns_before_first14_and_keeps_canonical_pose_local() -> None
+         min_num_cameras=2,
+     )
+ 
+-    sample = dataset.build_sample(scene)
++    sample = dataset.augment_sample(dataset.build_sample(scene))
+     provenance = sample["court_reference_provenance"]
+     selection = sample["reference_view_selection"]
+     assert selection.provenance is provenance
+diff --git a/tests/unit/tasks/plcs/data/test_tracking_augmentation.py b/tests/unit/tasks/plcs/data/test_tracking_augmentation.py
+index 8eee8437..5e2c34cd 100644
+--- a/tests/unit/tasks/plcs/data/test_tracking_augmentation.py
++++ b/tests/unit/tasks/plcs/data/test_tracking_augmentation.py
+@@ -1,7 +1,11 @@
++"""PLCS physical-detection corruption boundary tests."""
++
+ from __future__ import annotations
+ 
+ from pathlib import Path
++from typing import Any
+ 
++import pytest
+ import torch
+ from omegaconf import DictConfig, OmegaConf
+ 
+@@ -15,7 +19,13 @@ _AUGMENTATION_CONFIG = (
+ )
+ 
+ 
+-def _augmentation_config(*, enabled: bool, gaussian_noise: bool = False) -> DictConfig:
++def _augmentation_config(
++    *,
++    enabled: bool,
++    gaussian_noise: bool = False,
++    visibility_dropout: bool = False,
++    false_positive: bool = False,
++) -> DictConfig:
+     config = OmegaConf.load(_AUGMENTATION_CONFIG).augmentation
+     if not isinstance(config, DictConfig):
+         raise AssertionError("PLCS augmentation config must be a mapping.")
+@@ -35,27 +45,82 @@ def _augmentation_config(*, enabled: bool, gaussian_noise: bool = False) -> Dict
+     config.gaussian_noise.prob = 1.0
+     config.gaussian_noise.human_std = 0.001
+     config.gaussian_noise.court_std = 0.001
++    config.visibility_dropout.enabled = visibility_dropout
++    config.visibility_dropout.prob = 1.0
++    config.visibility_dropout.human_drop_prob = 1.0
++    config.visibility_dropout.court_drop_prob = 0.0
++    config.false_positive.enabled = false_positive
++    config.false_positive.prob = 1.0
++    config.false_positive.human_prob_absent = 1.0
++    config.false_positive.human_prob_after_dropout = 1.0
++    config.false_positive.human_after_dropout_window = 0
++    config.false_positive.court_prob_absent = 0.0
++    config.false_positive.court_prob_after_dropout = 0.0
+     return config
+ 
+ 
+-def test_tracking_augmentation_preserves_id_order_without_permutation() -> None:
+-    torch.manual_seed(22)
+-    human_kp = torch.rand(1, 2, 2, 17, 2)
+-    sample = {
+-        "human_kp": human_kp.clone(),
+-        "human_vis": torch.ones(1, 2, 2, 17, dtype=torch.bool),
+-        "detection_gt_index": torch.tensor([[[0, 1], [0, 1]]]),
+-        "court_kp": torch.rand(1, 2, 14, 2),
+-        "court_vis": torch.ones(1, 2, 14, dtype=torch.bool),
+-        "target_position": torch.rand(2, 2, 3),
++def _sample(
++    *,
++    visible: bool = True,
++    num_detections: int = 2,
++    views: int = 1,
++    frames: int = 2,
++) -> dict[str, torch.Tensor]:
++    human_kp = torch.zeros(views, frames, num_detections, 17, 2)
++    for detection_index in range(num_detections):
++        human_kp[:, :, detection_index] = (detection_index + 1) / (
++            num_detections + 1
++        )
++    human_vis = torch.full(
++        (views, frames, num_detections, 17), visible, dtype=torch.bool
++    )
++    if not visible:
++        human_kp.zero_()
++    provenance = (
++        torch.arange(num_detections, dtype=torch.long)
++        .add(7)
++        .view(1, 1, num_detections)
++        .expand(views, frames, -1)
++        .clone()
++    )
++    if not visible:
++        provenance.fill_(-1)
++    return {
++        "human_kp": human_kp,
++        "human_vis": human_vis,
++        "detection_gt_index": provenance,
++        "court_kp": torch.rand(views, frames, 14, 2),
++        "court_vis": torch.ones(views, frames, 14, dtype=torch.bool),
++        "target_position": torch.rand(frames, num_detections, 3),
+         "clean_human_kp": human_kp.clone(),
+     }
++
++
++@pytest.mark.parametrize(
++    ("num_slots", "error_type"),
++    [(True, TypeError), (0, ValueError)],
++)
++def test_tracking_augmentation_rejects_invalid_query_capacity(
++    num_slots: Any,
++    error_type: type[Exception],
++) -> None:
++    with pytest.raises(error_type, match="num_slots"):
++        PLCSTrackingDetectionAugmentation(
++            _augmentation_config(enabled=False),
++            num_slots=num_slots,
++        )
++
++
++def test_tracking_augmentation_preserves_physical_width_and_non_inputs() -> None:
++    sample = _sample()
+     augmentation = PLCSTrackingDetectionAugmentation(
+-        _augmentation_config(enabled=False)
++        _augmentation_config(enabled=False),
++        num_slots=1,
+     )
+ 
+     result = augmentation(sample)
+ 
++    assert result["human_kp"].shape == (1, 2, 2, 17, 2)
+     torch.testing.assert_close(result["target_position"], sample["target_position"])
+     torch.testing.assert_close(result["clean_human_kp"], sample["clean_human_kp"])
+     torch.testing.assert_close(result["court_kp"], sample["court_kp"])
+@@ -65,22 +130,15 @@ def test_tracking_augmentation_preserves_id_order_without_permutation() -> None:
+     )
+     torch.testing.assert_close(result["human_kp"], sample["human_kp"])
+     torch.testing.assert_close(result["human_vis"], sample["human_vis"])
++    assert result["human_vis"].any(-1).sum(-1).eq(2).all()
+ 
+ 
+-def test_tracking_noise_changes_keypoints_without_reordering_object_ids() -> None:
++def test_tracking_noise_changes_physical_keypoints_without_carrier_reordering() -> None:
+     torch.manual_seed(24)
+-    human_kp = torch.empty(1, 2, 2, 17, 2)
+-    human_kp[:, :, 0] = 0.2
+-    human_kp[:, :, 1] = 0.8
+-    sample = {
+-        "human_kp": human_kp.clone(),
+-        "human_vis": torch.ones(1, 2, 2, 17, dtype=torch.bool),
+-        "detection_gt_index": torch.tensor([[[0, 1], [0, 1]]]),
+-        "court_kp": torch.rand(1, 2, 14, 2),
+-        "court_vis": torch.ones(1, 2, 14, dtype=torch.bool),
+-    }
++    sample = _sample()
+     augmentation = PLCSTrackingDetectionAugmentation(
+-        _augmentation_config(enabled=True, gaussian_noise=True)
++        _augmentation_config(enabled=True, gaussian_noise=True),
++        num_slots=2,
+     )
+ 
+     result = augmentation(sample)
+@@ -92,3 +150,229 @@ def test_tracking_noise_changes_keypoints_without_reordering_object_ids() -> Non
+     )
+     torch.testing.assert_close(result["court_kp"], sample["court_kp"])
+     torch.testing.assert_close(result["court_vis"], sample["court_vis"])
++
++
++def test_false_positive_only_carriers_are_capped_at_q_with_negative_provenance() -> None:
++    torch.manual_seed(25)
++    sample = _sample(visible=False)
++    augmentation = PLCSTrackingDetectionAugmentation(
++        _augmentation_config(enabled=True, false_positive=True),
++        num_slots=1,
++    )
++
++    result = augmentation(sample)
++
++    carrier_visible = result["human_vis"].any(-1)
++    assert carrier_visible.sum(-1).eq(1).all()
++    assert result["human_kp"][~result["human_vis"]].eq(0).all()
++    assert result["detection_gt_index"].eq(-1).all()
++    torch.testing.assert_close(result["court_kp"], sample["court_kp"])
++    torch.testing.assert_close(result["court_vis"], sample["court_vis"])
++
++
++def test_false_positive_after_complete_dropout_does_not_restore_gt_provenance() -> None:
++    torch.manual_seed(26)
++    sample = _sample()
++    augmentation = PLCSTrackingDetectionAugmentation(
++        _augmentation_config(
++            enabled=True,
++            visibility_dropout=True,
++            false_positive=True,
++        ),
++        num_slots=2,
++    )
++
++    result = augmentation(sample)
++
++    assert bool(result["human_vis"].all())
++    assert result["detection_gt_index"].eq(-1).all()
++
++
++def _run_controlled_false_positive_capacity(
++    sample: dict[str, torch.Tensor],
++    augmented_keypoints: torch.Tensor,
++    augmented_visibility: torch.Tensor,
++    visibility_before_false_positive: torch.Tensor,
++    *,
++    num_slots: int,
++    strided_output: bool = False,
++) -> dict[str, torch.Tensor]:
++    augmentation = PLCSTrackingDetectionAugmentation(
++        _augmentation_config(enabled=False),
++        num_slots=num_slots,
++    )
++    views, frames, detections, joints = augmented_visibility.shape
++
++    def controlled_forward(adapted: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
++        flattened_keypoints = augmented_keypoints.reshape(
++            views, frames, detections * joints, 2
++        )
++        flattened_visibility = augmented_visibility.reshape(
++            views, frames, detections * joints
++        )
++        flattened_genuine = visibility_before_false_positive.reshape(
++            views, frames, detections * joints
++        )
++        if strided_output:
++            flattened_keypoints = (
++                augmented_keypoints.permute(0, 2, 3, 1, 4)
++                .contiguous()
++                .reshape(views, detections * joints, frames, 2)
++                .permute(0, 2, 1, 3)
++            )
++            flattened_visibility = (
++                augmented_visibility.permute(0, 2, 3, 1)
++                .contiguous()
++                .reshape(views, detections * joints, frames)
++                .permute(0, 2, 1)
++            )
++            flattened_genuine = (
++                visibility_before_false_positive.permute(0, 2, 3, 1)
++                .contiguous()
++                .reshape(views, detections * joints, frames)
++                .permute(0, 2, 1)
++            )
++        augmentation.observation.human_visibility_before_false_positive = (
++            flattened_genuine
++        )
++        return {
++            **adapted,
++            "human_kp": flattened_keypoints,
++            "human_vis": flattened_visibility,
++        }
++
++    augmentation.observation.forward = controlled_forward  # type: ignore[assignment]
++    return augmentation(sample)
++
++
++def test_capacity_is_permutation_invariant_and_preserves_mixed_partial_pose() -> None:
++    sample = _sample(visible=False, num_detections=4)
++    augmented_keypoints = torch.zeros((1, 2, 4, 17, 2))
++    augmented_visibility = torch.zeros((1, 2, 4, 17), dtype=torch.bool)
++    visibility_before_false_positive = torch.zeros_like(augmented_visibility)
++
++    augmented_keypoints[:, :, 0] = 0.90
++    augmented_visibility[:, :, 0] = True
++    visibility_before_false_positive[:, :, 0, 0] = True
++    sample["human_kp"][:, :, 0, 0] = 0.90
++    sample["human_vis"][:, :, 0, 0] = True
++    sample["detection_gt_index"][:, :, 0] = 7
++
++    augmented_keypoints[:, :, 1, :4] = 0.40
++    augmented_visibility[:, :, 1, :4] = True
++    augmented_keypoints[:, :, 2, 4:8] = 0.20
++    augmented_visibility[:, :, 2, 4:8] = True
++    augmented_keypoints[:, :, 3] = 0.60
++    augmented_visibility[:, :, 3] = True
++
++    result = _run_controlled_false_positive_capacity(
++        sample,
++        augmented_keypoints,
++        augmented_visibility,
++        visibility_before_false_positive,
++        num_slots=2,
++    )
++
++    permutation = torch.tensor([2, 0, 3, 1])
++    inverse_permutation = torch.argsort(permutation)
++    permuted_sample = {
++        key: value.clone() for key, value in sample.items()
++    }
++    permuted_sample["human_kp"] = sample["human_kp"][:, :, permutation]
++    permuted_sample["human_vis"] = sample["human_vis"][:, :, permutation]
++    permuted_sample["detection_gt_index"] = sample["detection_gt_index"][
++        :, :, permutation
++    ]
++    permuted_result = _run_controlled_false_positive_capacity(
++        permuted_sample,
++        augmented_keypoints[:, :, permutation],
++        augmented_visibility[:, :, permutation],
++        visibility_before_false_positive[:, :, permutation],
++        num_slots=2,
++    )
++
++    torch.testing.assert_close(
++        result["human_kp"],
++        permuted_result["human_kp"][:, :, inverse_permutation],
++    )
++    torch.testing.assert_close(
++        result["human_vis"],
++        permuted_result["human_vis"][:, :, inverse_permutation],
++    )
++    torch.testing.assert_close(
++        result["detection_gt_index"],
++        permuted_result["detection_gt_index"][:, :, inverse_permutation],
++    )
++    assert result["human_vis"].any(-1).sum(-1).eq(2).all()
++    assert result["human_vis"][:, :, 0].all()
++    torch.testing.assert_close(result["human_kp"][:, :, 0], augmented_keypoints[:, :, 0])
++    assert result["detection_gt_index"][:, :, 0].eq(7).all()
++    assert result["detection_gt_index"][:, :, 1:].eq(-1).all()
++
++
++def test_capacity_limit_handles_non_contiguous_pose_layout() -> None:
++    views, frames, detections, joints = 2, 3, 4, 17
++    sample = _sample(
++        visible=False,
++        num_detections=detections,
++        views=views,
++        frames=frames,
++    )
++    augmented_keypoints = torch.zeros((views, frames, detections, joints, 2))
++    augmented_visibility = torch.ones(
++        (views, frames, detections, joints), dtype=torch.bool
++    )
++    visibility_before_false_positive = torch.zeros_like(augmented_visibility)
++    for detection_index, coordinate in enumerate((0.90, 0.40, 0.20, 0.60)):
++        augmented_keypoints[:, :, detection_index] = coordinate
++    visibility_before_false_positive[:, :, 0, 0] = True
++    sample["human_kp"][:, :, 0, 0] = 0.90
++    sample["human_vis"][:, :, 0, 0] = True
++    sample["detection_gt_index"][:, :, 0] = 7
++
++    strided_values = (
++        augmented_keypoints.permute(0, 2, 3, 1, 4)
++        .contiguous()
++        .reshape(views, detections * joints, frames, 2)
++        .permute(0, 2, 1, 3)
++        .reshape(views, frames, detections, joints, 2)
++    )
++    strided_visibility = (
++        augmented_visibility.permute(0, 2, 3, 1)
++        .contiguous()
++        .reshape(views, detections * joints, frames)
++        .permute(0, 2, 1)
++        .reshape(views, frames, detections, joints)
++    )
++    values_clone = strided_values.clone()
++    visibility_clone = strided_visibility.clone()
++    assert not values_clone.is_contiguous()
++    assert not visibility_clone.is_contiguous()
++    assert (
++        values_clone.reshape(-1, detections, joints, 2)
++        .untyped_storage()
++        .data_ptr()
++        != values_clone.untyped_storage().data_ptr()
++    )
++    assert (
++        visibility_clone.reshape(-1, detections, joints)
++        .untyped_storage()
++        .data_ptr()
++        != visibility_clone.untyped_storage().data_ptr()
++    )
++
++    result = _run_controlled_false_positive_capacity(
++        sample,
++        augmented_keypoints,
++        augmented_visibility,
++        visibility_before_false_positive,
++        num_slots=2,
++        strided_output=True,
++    )
++
++    carrier_visible = result["human_vis"].any(-1)
++    assert carrier_visible[..., [0, 2]].all()
++    assert not carrier_visible[..., [1, 3]].any()
++    assert result["human_kp"][..., [1, 3], :, :].eq(0).all()
++    assert result["detection_gt_index"][..., 0].eq(7).all()
++    assert result["detection_gt_index"][..., 1:].eq(-1).all()
+diff --git a/tests/unit/tasks/plcs/generate_dataset/test_multi_object_scene_generator.py b/tests/unit/tasks/plcs/generate_dataset/test_multi_object_scene_generator.py
+index 2f2fe535..958d47fa 100644
+--- a/tests/unit/tasks/plcs/generate_dataset/test_multi_object_scene_generator.py
++++ b/tests/unit/tasks/plcs/generate_dataset/test_multi_object_scene_generator.py
+@@ -79,7 +79,15 @@ def _tracking_config() -> dict[str, object]:
+             "lifecycle": {
+                 "pack_to_query_slots": True,
+                 "min_reuse_gap_frames": 0,
+-                "randomize_slots_train": False,
++            },
++            "association": {
++                "max_distance": 0.08,
++                "max_missed_frames": 8,
++                "min_reuse_gap_frames": 4,
++                "use_velocity_prediction": True,
++                "min_common_keypoints": 4,
++                "cost_reduction": "median",
++                "overflow_policy": "error",
+             },
+             "augmentation": OmegaConf.load(_AUGMENTATION_CONFIG).augmentation,
+         },
+@@ -245,9 +253,9 @@ def test_multi_person_uses_motion_scenes_and_canonical_writer(tmp_path) -> None:
+     )
+     detection_ids = sample["detection_gt_index"][0]
+     target_ids = sample["target_instance_id"]
+-    assert bool(((detection_ids == target_ids) | (detection_ids == -1)).all())
+     for object_id in range(2):
+         assert bool((detection_ids == object_id).any())
++        assert bool((target_ids == object_id).any())
+ 
+ 
+ def test_invalid_person_cardinality_is_rejected() -> None:
+diff --git a/tests/unit/tasks/plcs/model_io/test_adapters.py b/tests/unit/tasks/plcs/model_io/test_adapters.py
+index 527a99ae..fd1d683e 100644
+--- a/tests/unit/tasks/plcs/model_io/test_adapters.py
++++ b/tests/unit/tasks/plcs/model_io/test_adapters.py
+@@ -431,6 +431,26 @@ def test_tracking_boundary_validates_inputs_targets_and_decodes_required_presenc
+     assert decoded.presence_logits.shape == (1, 3, 3)
+ 
+ 
++def test_tracking_model_call_excludes_association_debug_and_clean_tensors() -> None:
++    batch = _tracking_batch()
++    batch["detection_gt_index"] = torch.full(
++        (1, 2, 3, 3), -1, dtype=torch.long
++    )
++    batch["clean_human_kp"] = batch["human_kp"].clone()
++    batch["clean_human_vis"] = batch["human_vis"].clone()
++
++    call = _tracking_adapter().build_call(batch)
++
++    assert set(call.kwargs) == {
++        "human_kp",
++        "human_vis",
++        "court_kp",
++        "court_vis",
++        "padding_mask",
++    }
++    assert call.kwargs["human_kp"].shape[3] == 3
++
++
+ def test_tracking_boundary_rejects_incomplete_court_and_visibility_dtype() -> None:
+     adapter = _tracking_adapter()
+     batch = _tracking_batch()
+diff --git a/tests/unit/tennis_scene/pipeline/components/test_ball_detection.py b/tests/unit/tennis_scene/pipeline/components/test_ball_detection.py
+index f589bf92..42cee7f8 100644
+--- a/tests/unit/tennis_scene/pipeline/components/test_ball_detection.py
++++ b/tests/unit/tennis_scene/pipeline/components/test_ball_detection.py
+@@ -4,6 +4,7 @@ from __future__ import annotations
+ 
+ from dataclasses import replace
+ from pathlib import Path
++from types import SimpleNamespace
+ 
+ import numpy as np
+ import pytest
+@@ -94,3 +95,55 @@ def test_predict_video_consumes_typed_task_prediction(
+ 
+     np.testing.assert_allclose(coords, [[0.1, 0.2], [0.3, 0.4]])
+     np.testing.assert_allclose(confidence, [0.6, 0.8])
++
++
++def test_process_exposes_one_unidentified_observation_stream_per_camera(
++    tmp_path: Path,
++    monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    packets: list[FramePacket] = [
++        FramePacket(
++            index=index,
++            frame=np.zeros((4, 6, 3), dtype=np.uint8),
++            original_size=(6, 4),
++        )
++        for index in range(2)
++    ]
++    monkeypatch.setattr(
++        ball_component,
++        "OpenCVVideoFrameReader",
++        lambda _path, *, max_frames: packets[:max_frames],
++    )
++    monkeypatch.setattr(
++        ball_component,
++        "probe_video_info",
++        lambda _path: SimpleNamespace(width=6, height=4),
++    )
++    base_config = make_ball_config(tmp_path)
++    config = replace(
++        base_config,
++        image_size=(4, 6),
++        score_threshold=0.7,
++        trajectory_gate=replace(base_config.trajectory_gate, enabled=False),
++    )
++    module = BallDetectionModule(config)
++    module._pipeline = _TypedBallPredictor()  # type: ignore[assignment]
++
++    result = module.process(
++        [Path("camera-near.mp4"), Path("camera-far.mp4")],
++        max_frames=2,
++    )
++
++    assert result.ball_uv.shape == (2, 2, 2)
++    assert result.ball_uv_px.shape == (2, 2, 2)
++    assert result.visibility.shape == (2, 2)
++    assert result.score.shape == (2, 2)
++    np.testing.assert_array_equal(
++        result.visibility,
++        np.array([[False, True], [False, True]], dtype=np.bool_),
++    )
++    np.testing.assert_array_equal(result.ball_uv[:, 0], np.zeros((2, 2)))
++    np.testing.assert_allclose(result.ball_uv[:, 1], [[0.3, 0.4], [0.3, 0.4]])
++    np.testing.assert_allclose(result.ball_uv_px[:, 1], [[1.5, 1.2], [1.5, 1.2]])
++    assert set(vars(result)) == {"ball_uv", "ball_uv_px", "visibility", "score"}
++    assert result.validate() == (True, [])
+diff --git a/tests/unit/tennis_scene/test_archive.py b/tests/unit/tennis_scene/test_archive.py
+index a4870a48..be91b729 100644
+--- a/tests/unit/tennis_scene/test_archive.py
++++ b/tests/unit/tennis_scene/test_archive.py
+@@ -75,6 +75,37 @@ def test_archive_round_trip_preserves_every_array_and_metadata(tmp_path: Path) -
+     assert path.with_suffix(".metadata.json").is_file()
+ 
+ 
++def test_ball_archive_contract_has_camera_time_streams_but_no_ball_ids(
++    tmp_path: Path,
++) -> None:
++    expected = _scene()
++    expected.ball_uv = np.array(
++        [
++            [[0.1, 0.2], [0.0, 0.0], [0.3, 0.4]],
++            [[0.5, 0.6], [0.7, 0.8], [0.0, 0.0]],
++        ],
++        dtype=np.float32,
++    )
++    path = tmp_path / "ball-streams.npz"
++
++    save_scene_result(expected, path)
++    actual = load_scene_result(path)
++
++    assert actual.ball_uv is not None
++    assert actual.ball_vis is not None
++    assert actual.ball_uv.shape == (2, 3, 2)
++    assert actual.ball_vis.shape == (2, 3)
++    assert actual.ball_uv.dtype == np.float32
++    assert actual.ball_vis.dtype == np.bool_
++    assert actual.player_track_ids is not None
++    assert not hasattr(actual, "ball_track_ids")
++    with np.load(path, allow_pickle=False) as archive:
++        assert archive["ball_uv"].shape == (2, 3, 2)
++        assert archive["ball_vis"].shape == (2, 3)
++        assert "player_track_ids" in archive.files
++        assert "ball_track_ids" not in archive.files
++
++
+ def test_archive_preserves_absent_optional_arrays(tmp_path: Path) -> None:
+     expected = _scene()
+     expected.smpl_vertices_local = None
+diff --git a/tests/unit/utils/models/components/test_fixed_query_track_stage.py b/tests/unit/utils/models/components/test_fixed_query_track_stage.py
+index 52cf9328..0a077ce0 100644
+--- a/tests/unit/utils/models/components/test_fixed_query_track_stage.py
++++ b/tests/unit/utils/models/components/test_fixed_query_track_stage.py
+@@ -19,6 +19,7 @@ class _RecordingMHC(nn.Module):
+         super().__init__()
+         self.events = events
+         self.valid_mask: torch.Tensor | None = None
++        self.post_dtypes: list[tuple[torch.dtype, torch.dtype]] = []
+ 
+     def pre(
+         self,
+@@ -36,8 +37,9 @@ class _RecordingMHC(nn.Module):
+         residual: torch.Tensor,
+         state: object,
+     ) -> torch.Tensor:
+-        del update, state
++        del state
+         self.events.append("mhc.post")
++        self.post_dtypes.append((update.dtype, residual.dtype))
+         return residual
+ 
+ 
+@@ -53,6 +55,8 @@ class _RecordingBlock(nn.Module):
+         self.name = name
+         self.events = events
+         self.calls: list[dict[str, torch.Tensor | None]] = []
++        self.output_dtype: torch.dtype | None = None
++        self.forward_update_output_dtypes: list[torch.dtype] = []
+ 
+     def _record(
+         self,
+@@ -85,7 +89,9 @@ class _RecordingBlock(nn.Module):
+             attn_mask=attn_mask,
+             state_valid=state_valid,
+         )
+-        return torch.zeros_like(values)
++        update = torch.zeros_like(values, dtype=self.output_dtype)
++        self.forward_update_output_dtypes.append(update.dtype)
++        return update
+ 
+     def forward(
+         self,
+@@ -217,6 +223,19 @@ def test_global_stage_uses_dense_temporal_keep_masks() -> None:
+     assert query_temporal.calls[0]["state_valid"] is None
+ 
+ 
++def test_mhc_writeback_casts_temporal_update_to_object_token_dtype() -> None:
++    stage, mhc, object_temporal, _, _, _ = _stage(0)
++    inputs = _inputs()
++    object_tokens = cast(torch.Tensor, inputs["object_tokens"])
++    object_temporal.output_dtype = torch.bfloat16
++
++    stage(**inputs)
++
++    assert object_tokens.dtype is torch.float32
++    assert object_temporal.forward_update_output_dtypes == [torch.bfloat16]
++    assert mhc.post_dtypes == [(torch.float32, torch.float32)]
++
++
+ @pytest.mark.parametrize(
+     ("stage_index", "temporal_type"),
+     [(0, "mha"), (3, "cswa")],
+diff --git a/tests/unit/utils/models/embeddings/test_group_tokens.py b/tests/unit/utils/models/embeddings/test_group_tokens.py
+index b346c467..30e88845 100644
+--- a/tests/unit/utils/models/embeddings/test_group_tokens.py
++++ b/tests/unit/utils/models/embeddings/test_group_tokens.py
+@@ -1,4 +1,4 @@
+-"""Tests for ID-ordered court/object group-token embeddings."""
++"""Tests for caller-ordered court/object group-token embeddings."""
+ 
+ from __future__ import annotations
+ 
+@@ -11,7 +11,7 @@ from src.utils.models.embeddings import (
+ )
+ 
+ 
+-def test_ball_group_tokens_preserve_object_id_axis_alignment() -> None:
++def test_ball_group_tokens_preserve_caller_axis_alignment() -> None:
+     torch.manual_seed(31)
+     embedding = CourtBallGroupEmbedding(
+         dim=8,
+@@ -19,19 +19,19 @@ def test_ball_group_tokens_preserve_object_id_axis_alignment() -> None:
+         num_court_tokens=14,
+     ).eval()
+     court = torch.rand(1, 2, 14, 2)
+-    balls_by_object_id = torch.tensor([[[0.1, 0.2], [0.8, 0.9]]])
++    balls_in_slot_order = torch.tensor([[[0.1, 0.2], [0.8, 0.9]]])
+     visible = torch.ones(1, 2, dtype=torch.bool)
+ 
+     with torch.no_grad():
+-        ordered = embedding(court, balls_by_object_id, visible)
+-        expected_by_object_id = embedding.proj(
+-            torch.cat((court.flatten(-2), balls_by_object_id), dim=-1)
++        tokens = embedding(court, balls_in_slot_order, visible)
++        expected = embedding.proj(
++            torch.cat((court.flatten(-2), balls_in_slot_order), dim=-1)
+         )
+ 
+-    torch.testing.assert_close(ordered, expected_by_object_id)
++    torch.testing.assert_close(tokens, expected)
+ 
+ 
+-def test_player_group_tokens_preserve_object_id_axis_alignment() -> None:
++def test_player_group_tokens_preserve_caller_axis_alignment() -> None:
+     torch.manual_seed(32)
+     embedding = CourtPlayerGroupEmbedding(
+         dim=8,
+@@ -39,16 +39,16 @@ def test_player_group_tokens_preserve_object_id_axis_alignment() -> None:
+         num_court_tokens=14,
+     ).eval()
+     court = torch.rand(1, 2, 14, 2)
+-    players_by_object_id = torch.rand(1, 2, 17, 2)
++    players_in_slot_order = torch.rand(1, 2, 17, 2)
+     visible = torch.ones(1, 2, dtype=torch.bool)
+ 
+     with torch.no_grad():
+-        ordered = embedding(court, players_by_object_id, visible)
+-        expected_by_object_id = embedding.proj(
++        tokens = embedding(court, players_in_slot_order, visible)
++        expected = embedding.proj(
+             torch.cat(
+-                (court.flatten(-2), players_by_object_id.flatten(-2)),
++                (court.flatten(-2), players_in_slot_order.flatten(-2)),
+                 dim=-1,
+             )
+         )
+ 
+-    torch.testing.assert_close(ordered, expected_by_object_id)
++    torch.testing.assert_close(tokens, expected)
