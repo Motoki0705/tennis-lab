@@ -7,6 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[3]
 SCRIPT = ROOT / "scripts/colab/train/20260829T150257Z/run_b01_b03_alignment.sh"
+REPORT = SCRIPT.with_name("REPORT.md")
 
 
 def test_b01_b03_alignment_script_has_valid_bash_syntax() -> None:
@@ -72,3 +73,17 @@ def test_unknown_argument_fails_before_environment_setup() -> None:
     assert completed.returncode == 2
     assert completed.stdout == ""
     assert "Usage:" in completed.stderr
+
+
+def test_timestamped_run_keeps_its_auditable_execution_report() -> None:
+    report = REPORT.read_text(encoding="utf-8")
+
+    for required in (
+        "B01–B03 3DGS学習・コートアライメント改善 実施報告書",
+        "20260829T150257Z-f72f860df71e",
+        "boundary-lattice-assisted identifiability",
+        "B01 | 3 / 3 | 32 / 40",
+        "#829は同じ自動コート数対応の旧PR",
+        "`.spin/cmds.py`はmainの`cu130`版へ戻し",
+    ):
+        assert required in report
