@@ -13,6 +13,10 @@ from src.synthetic_data_generation.alignment.contracts import (
     AlignmentEvidence,
     AlignmentEvidenceDiagnostics,
     AlignmentPartitions,
+    AlignmentTrace,
+    AlignmentTraceCandidateState,
+    AlignmentTracePhase,
+    AlignmentTraceStep,
     CameraLineDiagnostics,
     CameraOwnershipRule,
     CameraSelectionPolicy,
@@ -20,6 +24,7 @@ from src.synthetic_data_generation.alignment.contracts import (
     CandidateScaleDiagnostics,
     CorrespondenceSet,
     FixedCameraSelectionDiagnostics,
+    GroundPlaneFrame,
     LineInferenceDeterminismDiagnostics,
     MeasuredCameraLines,
     MetricSceneAdapter,
@@ -117,12 +122,12 @@ def alignment_evidence() -> AlignmentEvidence:
     first = _candidate(
         court_id="court-a",
         candidate_id="candidate-a",
-        transform=_rigid(angle=0.2, translation=(1.0, 2.0, 0.5)),
+        transform=_rigid(angle=0.2, translation=(1.0, 2.0, 0.0)),
     )
     second = _candidate(
         court_id="court-b",
         candidate_id="candidate-b",
-        transform=_rigid(angle=-0.15, translation=(20.0, 1.0, 0.7)),
+        transform=_rigid(angle=-0.15, translation=(20.0, 1.0, 0.0)),
     )
     whole_court_settings = _whole_court_settings()
     return AlignmentEvidence(
@@ -138,7 +143,7 @@ def alignment_evidence() -> AlignmentEvidence:
                     (
                         np.linspace(-1.0, 1.0, 80),
                         np.linspace(1.0, -1.0, 80),
-                        np.full(80, index, dtype=np.float64),
+                        np.zeros(80, dtype=np.float64),
                     )
                 ),
             )
@@ -167,6 +172,9 @@ def alignment_evidence() -> AlignmentEvidence:
                     candidate_id="candidate-a",
                     nht_scene_units_per_metre=1.0,
                     template_score=0.8,
+                    common_scale_refit_template_score=0.82,
+                    common_scale_refit_center_uv_metres=(1.0, 2.0),
+                    common_scale_refit_orientation_radians=0.2,
                     common_scale_refit_center_displacement_metres=0.0,
                     maximum_common_scale_refit_center_displacement_metres=(
                         whole_court_settings.maximum_center_refit_displacement_metres
@@ -175,13 +183,16 @@ def alignment_evidence() -> AlignmentEvidence:
                     proposal_orientation_band_maximum_radians=0.5,
                     proposal_residual_point_count_before_suppression=100,
                     proposal_residual_point_count_after_suppression=50,
-                    native_center_uv=(0.0, 0.0),
-                    native_orientation_radians=0.0,
+                    native_center_uv_metres=(1.0, 2.0),
+                    native_orientation_radians=0.2,
                 ),
                 CandidateScaleDiagnostics(
                     candidate_id="candidate-b",
                     nht_scene_units_per_metre=1.0,
                     template_score=0.7,
+                    common_scale_refit_template_score=0.72,
+                    common_scale_refit_center_uv_metres=(20.0, 1.0),
+                    common_scale_refit_orientation_radians=-0.15,
                     common_scale_refit_center_displacement_metres=0.0,
                     maximum_common_scale_refit_center_displacement_metres=(
                         whole_court_settings.maximum_center_refit_displacement_metres
@@ -190,8 +201,8 @@ def alignment_evidence() -> AlignmentEvidence:
                     proposal_orientation_band_maximum_radians=0.5,
                     proposal_residual_point_count_before_suppression=50,
                     proposal_residual_point_count_after_suppression=25,
-                    native_center_uv=(30.0, 0.0),
-                    native_orientation_radians=0.0,
+                    native_center_uv_metres=(20.0, 1.0),
+                    native_orientation_radians=-0.15,
                 ),
             ),
             common_nht_scene_units_per_metre=1.0,
@@ -276,9 +287,65 @@ def alignment_evidence() -> AlignmentEvidence:
                 selected_native_score_sum=1.5,
             ),
             excluded_cameras=(),
+            ground_plane_frame=GroundPlaneFrame(
+                origin_metric_scene=(0.0, 0.0, 0.0),
+                basis_u_metric_scene=(1.0, 0.0, 0.0),
+                basis_v_metric_scene=(0.0, 1.0, 0.0),
+                normal_metric_scene=(0.0, 0.0, 1.0),
+                bounds_uv_metres=(-10.0, 35.0, -20.0, 20.0),
+            ),
+            alignment_trace=_alignment_trace(),
         ),
         whole_court_settings=whole_court_settings,
     )
+
+
+def _alignment_trace() -> AlignmentTrace:
+    candidate_ids = ("candidate-a", "candidate-b")
+    phase_values = (
+        (
+            AlignmentTracePhase.PROPOSAL_SELECTION,
+            ((0.8, 2.2, 0.18, 0.75), (19.8, 1.2, -0.12, 0.65)),
+        ),
+        (
+            AlignmentTracePhase.NATIVE_REFINEMENT,
+            ((1.0, 2.0, 0.2, 0.8), (20.0, 1.0, -0.15, 0.7)),
+        ),
+        (
+            AlignmentTracePhase.COMMON_SCALE_REFIT,
+            ((1.0, 2.0, 0.2, 0.82), (20.0, 1.0, -0.15, 0.72)),
+        ),
+        (
+            AlignmentTracePhase.FINAL_ALIGNMENT,
+            ((1.0, 2.0, 0.2, 0.82), (20.0, 1.0, -0.15, 0.72)),
+        ),
+    )
+    residual_counts = ((100, 50), (50, 25))
+    steps = tuple(
+        AlignmentTraceStep(
+            step_index=step_index,
+            phase=phase,
+            candidates=tuple(
+                AlignmentTraceCandidateState(
+                    candidate_id=candidate_id,
+                    center_uv_metres=(values[0], values[1]),
+                    orientation_radians=values[2],
+                    nht_scene_units_per_metre=1.0,
+                    template_score=values[3],
+                    orientation_band_index=0,
+                    center_tile_index=0,
+                    residual_point_count_before_suppression=residual_counts[index][0],
+                    residual_point_count_after_suppression=residual_counts[index][1],
+                )
+                for index, (candidate_id, values) in enumerate(
+                    zip(candidate_ids, states, strict=True)
+                )
+            ),
+            score_sum=sum(values[3] for values in states),
+        )
+        for step_index, (phase, states) in enumerate(phase_values)
+    )
+    return AlignmentTrace(final_candidate_ids=candidate_ids, steps=steps)
 
 
 def _whole_court_settings() -> WholeCourtEvidenceSettings:

@@ -22,6 +22,14 @@ Example:
 """
 
 from src.utils.rendering.ball_renderer import BallRenderer
+from src.utils.rendering.camera_geometry import (
+    camera_coverage_segments,
+    camera_frustum_corners,
+    camera_frustum_segments,
+    camera_trajectory_points,
+    camera_trajectory_segments,
+    camera_view_direction_segments,
+)
 from src.utils.rendering.camera_view import (
     CAMERA_PRESETS,
     CameraController,
@@ -74,6 +82,12 @@ __all__ = [
     "CameraView3D",
     "apply_scene_camera",
     "resolve_camera_view",
+    "camera_coverage_segments",
+    "camera_frustum_corners",
+    "camera_frustum_segments",
+    "camera_trajectory_points",
+    "camera_trajectory_segments",
+    "camera_view_direction_segments",
     # Theme
     "SceneTheme",
     "LIGHT_THEME",

@@ -710,7 +710,7 @@ def test_spatial_tiles_recover_valid_pair_when_both_band_global_maxima_are_false
         fake_suppress,
     )
 
-    hypotheses, common_scale, _deviation, search = _fit_court_hypotheses(
+    hypotheses, common_scale, _deviation, search, _trace = _fit_court_hypotheses(
         np.column_stack((np.linspace(-4.0, 4.0, 100), np.zeros(100))),
         bounds=(-10.0, 10.0, -0.1, 0.1),
         seed=42,
@@ -1057,7 +1057,7 @@ def test_common_scale_replacement_refits_pose_and_recomputes_score(
         (np.linspace(-10.0, 10.0, 200), np.linspace(-8.0, 8.0, 200))
     )
 
-    hypotheses, common_scale, _deviation, _search = _fit_court_hypotheses(
+    hypotheses, common_scale, _deviation, _search, _trace = _fit_court_hypotheses(
         points,
         bounds=(-12.0, 12.0, -10.0, 10.0),
         seed=42,
@@ -1132,7 +1132,7 @@ def test_common_scale_refit_bounds_preserve_parallel_court_identity(
         (np.linspace(-10.0, 10.0, 200), np.linspace(-8.0, 8.0, 200))
     )
 
-    hypotheses, common_scale, _deviation, _search = _fit_court_hypotheses(
+    hypotheses, common_scale, _deviation, _search, _trace = _fit_court_hypotheses(
         points,
         bounds=(-12.0, 12.0, -10.0, 10.0),
         seed=42,
@@ -1207,8 +1207,9 @@ def test_two_side_by_side_courts_are_deterministic_under_clutter(
         settings=settings,
     )
 
-    hypotheses, common_scale, maximum_deviation, proposal_search = first_run
+    hypotheses, common_scale, maximum_deviation, proposal_search, trace = first_run
     assert first_run == second_run
+    assert trace.common_scale_refitted == hypotheses
     assert common_scale == pytest.approx(1.0, abs=0.03)
     assert maximum_deviation < settings.common_scale_relative_tolerance
     assert proposal_search.feasible_complete_state_count >= 1
@@ -1331,8 +1332,14 @@ def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
         }
     )
     observed_ids = set(selection.observed_camera_ids)
+    measured = {
+        item.camera_id: evidence.ground_plane_frame.to_uv(
+            evidence.metric_adapter.metric_from_nht_points(item.points_nht_scene)
+        )
+        for item in evidence.measured_camera_lines
+    }
     return AlignmentLineHeatmaps(
-        bounds_uv=(-1.0, 1.0, -1.0, 1.0),
+        bounds_uv=evidence.ground_plane_frame.bounds_uv_metres,
         grid_spacing=0.25,
         proximity_scale=0.35,
         proximity_power=2.0,
@@ -1343,12 +1350,15 @@ def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
                     ((0.0, 0.25), (0.5, 1.0)),
                     dtype=np.float32,
                 ),
-                points_uv=np.column_stack(
-                    (
-                        np.linspace(-0.9, 0.9, projected_counts[camera_id]),
-                        np.linspace(0.9, -0.9, projected_counts[camera_id]),
-                    )
-                ).astype(np.float64),
+                points_uv=measured.get(
+                    camera_id,
+                    np.column_stack(
+                        (
+                            np.linspace(-0.9, 0.9, projected_counts[camera_id]),
+                            np.linspace(0.9, -0.9, projected_counts[camera_id]),
+                        )
+                    ).astype(np.float64),
+                ),
                 projected_probabilities=np.full(
                     projected_counts[camera_id],
                     0.75,
@@ -1364,6 +1374,8 @@ def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
             for camera_id in selection.camera_prefix_ids
         ),
     )
+
+
 def _hypothesis_for_topology(
     *,
     center: tuple[float, float],

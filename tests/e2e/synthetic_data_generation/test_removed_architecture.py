@@ -40,9 +40,7 @@ APPROVED_TASK_BOUNDARIES = frozenset(
 
 
 def _active_python_files() -> tuple[Path, ...]:
-    roots = (
-        PROJECT_ROOT / "src/synthetic_data_generation",
-    )
+    roots = (PROJECT_ROOT / "src/synthetic_data_generation",)
     return tuple(
         path
         for root in roots
@@ -65,6 +63,7 @@ def test_old_files_and_production_entrypoints_are_deleted() -> None:
     }
     assert scripts == {
         "__init__.py",
+        "generate_publication_visualizations.py",
         "run_scene_pipeline.py",
         "visualize_dataset.py",
     }
