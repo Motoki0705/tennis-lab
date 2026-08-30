@@ -1,0 +1,24 @@
+# @package _global_
+# Fine-tune only presence logits while preserving converged tracking + pose heads.
+defaults:
+  - train_tracking_pose
+  - _self_
+
+training:
+  fine_tune_mode: presence_head
+  checkpoint:
+    monitor: val/presence_f1
+    mode: max
+  early_stopping:
+    monitor: val/presence_f1
+    mode: max
+
+loss:
+  # Keep assignment fixed to position/rotation while presence logits adapt.
+  match_presence_weight: 0.0
+
+run:
+  # Required CLI override, relative to paths.checkpoint_root:
+  # run.init_weights=<path/to/source.ckpt>
+  init_weights: null
+  output_dir: plcs/${model.name}_tracking_pose_presence_head

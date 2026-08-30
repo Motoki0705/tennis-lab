@@ -46,6 +46,7 @@ from src.utils.schema.player import NUM_HUMAN_KP
 PLCSValue: TypeAlias = (
     str | int | float | bool | None | tuple[object, ...] | Mapping[str, object]
 )
+PLCSFineTuneMode: TypeAlias = Literal["all", "presence_head"]
 
 
 def _plain(value: object, *, path: str) -> Mapping[str, object]:
@@ -78,7 +79,10 @@ def _exact(
 
 def _number(mapping: Mapping[str, object], key: str, *, path: str) -> float:
     value = require_config_value(mapping, key, (float, int), path=path)
-    number = float(cast("float | int", value))
+    try:
+        number = float(cast("float | int", value))
+    except OverflowError as error:
+        raise SemanticConfigurationError(f"{path}.{key} must be finite.") from error
     if not math.isfinite(number):
         raise SemanticConfigurationError(f"{path}.{key} must be finite.")
     return number
@@ -275,6 +279,7 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "rope_theta",
             "ffn_type",
             "dropout",
+            "predict_canonical_pose",
             "role_rope_enabled",
             "invisible_init_std",
             "mhc",
@@ -294,6 +299,7 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "rope_theta",
             "ffn_type",
             "dropout",
+            "predict_canonical_pose",
             "role_rope_enabled",
             "invisible_init_std",
             "ffn_mode",
@@ -315,6 +321,7 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "rope_theta",
             "ffn_type",
             "dropout",
+            "predict_canonical_pose",
             "invisible_init_std",
             "target_frame_contract",
             "track_query_rope_contract",
@@ -336,6 +343,7 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "rope_theta",
             "ffn_type",
             "dropout",
+            "predict_canonical_pose",
             "invisible_init_std",
             "target_frame_contract",
             "track_query_rope_contract",
@@ -356,6 +364,7 @@ _TRACK_QUERY_MODEL_NAMES = frozenset(
         "plcs_track_query_reference_ablation",
     }
 )
+_TRACK_QUERY_OPTIONAL_MODEL_FIELDS = frozenset({"predict_canonical_pose"})
 _REFERENCE_TRACK_QUERY_MODEL_NAMES = frozenset(
     {
         "plcs_track_query_reference",
@@ -410,10 +419,15 @@ class PLCSModelConfig:
             raise SemanticConfigurationError(
                 f"model.name: unsupported PLCS model {name!r}."
             ) from error
+        optional_fields = (
+            _TRACK_QUERY_OPTIONAL_MODEL_FIELDS
+            if name in _TRACK_QUERY_MODEL_NAMES
+            else frozenset()
+        )
         mapping = _exact(
             initial,
             path="model",
-            required=fields,
+            required=fields - optional_fields,
             allowed=fields,
         )
         input_profile: str | None = None
@@ -1061,6 +1075,8 @@ class PLCSTrainingConfig:
     paths: configuration_contracts.PLCSPathConfig
     model: PLCSModelConfig
     data: PLCSDataConfig
+    fine_tune_mode: PLCSFineTuneMode
+    tracking_reprojection_enabled: bool
     tracking_metrics: TrackingMetricConfig | None
     qualitative_style: SceneStyleConfig
     qualitative_view_3d: CameraController
@@ -1171,12 +1187,32 @@ class PLCSTrainingConfig:
             "gan",
             "mcmc",
         }
+        training_optional_fields = {"fine_tune_mode"}
         training_mapping = _exact(
             require_config_mapping(root, "training", path="configuration"),
             path="training",
             required=training_fields,
-            allowed=training_fields,
+            allowed=training_fields | training_optional_fields,
         )
+        fine_tune_mode_value = (
+            _string(training_mapping, "fine_tune_mode", path="training")
+            if "fine_tune_mode" in training_mapping
+            else "all"
+        )
+        if fine_tune_mode_value not in {"all", "presence_head"}:
+            raise SemanticConfigurationError(
+                "training.fine_tune_mode must be one of 'all', 'presence_head'; "
+                f"got {fine_tune_mode_value!r}."
+            )
+        fine_tune_mode = cast("PLCSFineTuneMode", fine_tune_mode_value)
+        if (
+            fine_tune_mode == "presence_head"
+            and model.name not in _TRACK_QUERY_MODEL_NAMES
+        ):
+            raise SemanticConfigurationError(
+                "training.fine_tune_mode='presence_head' requires a PLCS "
+                "track-query model with an independent presence_head."
+            )
         gan_fields = {
             "enabled",
             "target_weight",
@@ -1208,6 +1244,17 @@ class PLCSTrainingConfig:
             allowed=run_fields,
         )
         shared = TrainingRuntimeConfig.from_config(value, repository_root=PROJECT_ROOT)
+        if fine_tune_mode == "presence_head":
+            if shared.run.resume is not None:
+                raise SemanticConfigurationError(
+                    "training.fine_tune_mode='presence_head' forbids run.resume; "
+                    "use run.init_weights with a fresh optimizer."
+                )
+            if shared.run.init_weights is None:
+                raise SemanticConfigurationError(
+                    "training.fine_tune_mode='presence_head' requires "
+                    "run.init_weights."
+                )
         external_assets = _exact(
             require_config_mapping(root, "external_assets", path="configuration"),
             path="external_assets",
@@ -1276,6 +1323,7 @@ class PLCSTrainingConfig:
             dict(require_config_mapping(training_mapping, "mcmc", path="training"))
         )
         tracking_metric_config: TrackingMetricConfig | None = None
+        tracking_reprojection_enabled = False
         if model.name not in _TRACK_QUERY_MODEL_NAMES:
             from src.tasks.plcs.training.losses import PLCSLossConfig
 
@@ -1312,13 +1360,59 @@ class PLCSTrainingConfig:
                 "match_rotation_weight",
                 "match_presence_weight",
             }
+            tracking_optional_loss_fields = {
+                "match_presence_inactive_weight",
+                "cardinality_weight",
+                "cardinality_nll_weight",
+                "presence_hard_negative_weight",
+                "presence_hard_negative_gamma",
+                "presence_pairwise_weight",
+                "presence_pairwise_margin",
+            }
+            tracking_allowed_loss_fields = (
+                tracking_loss_fields | tracking_optional_loss_fields
+            )
+            tracking_pose_loss_fields = {
+                "position_smooth_l1_beta",
+                "angle_weight",
+                "position_smoothness_weight",
+                "canonical_pose_weight",
+                "canonical_pose_smooth_l1_beta",
+                "reprojection_weight",
+                "reprojection_smooth_l1_beta",
+                "joint_angle_weight",
+                "torsion_angle_weight",
+                "torso_twist_weight",
+                "bone_length_weight",
+                "joint_angle_velocity_weight",
+                "torsion_angle_velocity_weight",
+                "torso_twist_velocity_weight",
+                "joint_angle_velocity_angle_weights",
+                "torsion_angle_velocity_angle_weights",
+            }
             tracking_loss = _exact(
                 require_config_mapping(root, "loss", path="configuration"),
                 path="loss",
                 required=tracking_loss_fields,
-                allowed=tracking_loss_fields,
+                allowed=tracking_allowed_loss_fields | tracking_pose_loss_fields,
             )
-            for key in tracking_loss_fields - {"transition_radius"}:
+            present_pose_fields = tracking_pose_loss_fields & set(tracking_loss)
+            if present_pose_fields != tracking_pose_loss_fields and present_pose_fields:
+                missing_pose_fields = sorted(
+                    tracking_pose_loss_fields - present_pose_fields
+                )
+                raise MissingConfigurationKeyError(
+                    "Tracking pose supervision requires the complete standard "
+                    "PLCS loss contract; missing configuration key(s): "
+                    + ", ".join(f"loss.{key}" for key in missing_pose_fields)
+                    + "."
+                )
+            # ``match_presence_inactive_weight`` was introduced after tracking
+            # checkpoints already existed. An otherwise complete v1 mapping is
+            # the sole supported legacy shape; all other missing/unknown fields
+            # remain rejected by the exact contracts above.
+            validated_weight_fields = tracking_allowed_loss_fields & set(tracking_loss)
+            for key in validated_weight_fields - {"transition_radius"}:
                 _positive(
                     _number(tracking_loss, key, path="loss"),
                     path=f"loss.{key}",
@@ -1328,6 +1422,31 @@ class PLCSTrainingConfig:
                 raise SemanticConfigurationError(
                     "loss.transition_radius must be non-negative."
                 )
+            if present_pose_fields:
+                from src.tasks.plcs.training.losses import PLCSLossConfig
+
+                standard_loss_fields = tracking_pose_loss_fields | {
+                    "position_weight",
+                    "rotation_weight",
+                }
+                PLCSLossConfig.from_dict(
+                    {key: tracking_loss[key] for key in standard_loss_fields}
+                )
+                tracking_reprojection_enabled = (
+                    _number(tracking_loss, "reprojection_weight", path="loss") > 0.0
+                )
+                canonical_pose_required = (
+                    _number(tracking_loss, "canonical_pose_weight", path="loss")
+                    > 0.0
+                    or tracking_reprojection_enabled
+                )
+                if canonical_pose_required and not bool(
+                    model.values.get("predict_canonical_pose", False)
+                ):
+                    raise SemanticConfigurationError(
+                        "Tracking canonical-pose or reprojection supervision requires "
+                        "model.predict_canonical_pose=true."
+                    )
             if all(
                 _number(tracking_loss, key, path="loss") == 0.0
                 for key in {
@@ -1449,6 +1568,8 @@ class PLCSTrainingConfig:
             paths=paths,
             model=model,
             data=data,
+            fine_tune_mode=fine_tune_mode,
+            tracking_reprojection_enabled=tracking_reprojection_enabled,
             tracking_metrics=tracking_metric_config,
             qualitative_style=qualitative_style,
             qualitative_view_3d=qualitative_view_3d,

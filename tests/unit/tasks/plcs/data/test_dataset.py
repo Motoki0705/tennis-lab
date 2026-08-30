@@ -106,6 +106,82 @@ def test_collate_rejects_missing_court_provenance() -> None:
         collate_plcs_batch([sample])
 
 
+def _tracking_reprojection_sample(
+    *, views: int, frames: int, value: float
+) -> dict[str, Any]:
+    contract = resolve_court_keypoint_contract("physical_v1")
+    clean_human_kp = torch.full((views, frames, 1, 17, 2), value)
+    clean_human_vis = torch.ones(views, frames, 1, 17, dtype=torch.bool)
+    camera_index = torch.arange(views, dtype=torch.float32)
+    return {
+        "scene_format_version": torch.tensor(4),
+        "human_kp": clean_human_kp.clone(),
+        "human_vis": clean_human_vis.clone(),
+        "court_kp": torch.full((views, frames, 14, 2), value),
+        "court_vis": torch.ones(views, frames, 14, dtype=torch.bool),
+        "padding_mask": torch.zeros(views, frames, dtype=torch.bool),
+        "target_position": torch.full((frames, 1, 3), value),
+        "target_rotation": torch.full((frames, 1, 2), value),
+        "target_canonical_pose_3d": torch.full((frames, 1, 17, 3), value),
+        "target_human_kp_3d": torch.full((frames, 1, 17, 3), value),
+        "target_presence": torch.ones(frames, 1, dtype=torch.bool),
+        "target_instance_id": torch.zeros(frames, 1, dtype=torch.long),
+        "target_slot_mask": torch.ones(1, dtype=torch.bool),
+        "clean_human_kp": clean_human_kp,
+        "clean_human_vis": clean_human_vis,
+        "human_kp_target": clean_human_kp.clone(),
+        "human_vis_target": clean_human_vis.clone(),
+        "detection_gt_index": torch.zeros(views, frames, 1, dtype=torch.long),
+        "camera_C": torch.zeros(views, 3),
+        "camera_R": torch.eye(3).expand(views, 3, 3).clone(),
+        "camera_f": 800.0 + camera_index,
+        "camera_cx": 640.0 + camera_index,
+        "camera_cy": 360.0 + camera_index,
+        "camera_w": 1280.0 + camera_index,
+        "camera_h": 720.0 + camera_index,
+        "court_keypoint_metadata": court_keypoint_contract_document(contract),
+        "court_reference_provenance": build_physical_court_provenance(),
+        "selected_camera_ids": tuple(f"camera_{index}" for index in range(views)),
+    }
+
+
+def test_tracking_collate_pads_clean_targets_and_camera_intrinsics() -> None:
+    result = collate_plcs_tracking_batch(
+        [
+            _tracking_reprojection_sample(views=1, frames=2, value=0.25),
+            _tracking_reprojection_sample(views=2, frames=3, value=0.75),
+        ]
+    )
+
+    assert result["clean_human_kp"].shape == (2, 2, 3, 1, 17, 2)
+    assert result["clean_human_vis"].shape == (2, 2, 3, 1, 17)
+    assert result["human_kp_target"].shape == (2, 2, 3, 1, 17, 2)
+    assert result["human_vis_target"].shape == (2, 2, 3, 1, 17)
+    torch.testing.assert_close(result["human_kp_target"], result["clean_human_kp"])
+    torch.testing.assert_close(
+        result["human_vis_target"], result["clean_human_vis"]
+    )
+    assert result["human_kp_target"].data_ptr() != result["clean_human_kp"].data_ptr()
+    assert (
+        result["human_vis_target"].data_ptr()
+        != result["clean_human_vis"].data_ptr()
+    )
+    assert not result["human_vis_target"][0, 0, 2].any()
+    assert not result["human_vis_target"][0, 1].any()
+    assert result["padding_mask"][0, 0, 2]
+    assert result["padding_mask"][0, 1].all()
+
+    for key in ("camera_f", "camera_cx", "camera_cy", "camera_w", "camera_h"):
+        assert result[key].shape == (2, 2)
+        assert result[key].dtype == torch.float32
+    torch.testing.assert_close(result["camera_f"][0], torch.tensor([800.0, 0.0]))
+    torch.testing.assert_close(result["camera_cx"][0], torch.tensor([640.0, 0.0]))
+    torch.testing.assert_close(result["camera_cy"][0], torch.tensor([360.0, 0.0]))
+    torch.testing.assert_close(result["camera_w"][0], torch.tensor([1280.0, 1.0]))
+    torch.testing.assert_close(result["camera_h"][0], torch.tensor([720.0, 1.0]))
+    torch.testing.assert_close(result["camera_f"][1], torch.tensor([800.0, 801.0]))
+
+
 def _attach_reference(
     sample: dict[str, Any],
     *,

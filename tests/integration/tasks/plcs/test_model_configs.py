@@ -15,6 +15,9 @@ from src.tasks.plcs.models.plcs_multiview_model import PLCSMultiViewModel
 from src.tasks.plcs.training.composition import build_plcs_lightning_module
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.tasks.plcs.training.metrics import CANONICAL_POSE_HEADLINE_KEYS
+from src.tasks.plcs.training.tracking_lightning_module import (
+    PLCSTrackingLightningModule,
+)
 from src.utils.configuration import (
     MissingConfigurationKeyError,
     SemanticConfigurationError,
@@ -109,6 +112,95 @@ def test_multiview_reprojection_config_composes_and_binds_loss() -> None:
     assert module.loss_fn.config.canonical_pose_weight == 1.0
     assert module.loss_fn.config.reprojection_weight == 1.0
     assert module.loss_fn.config.reprojection_smooth_l1_beta == 0.01
+
+
+def test_tracking_all_outputs_beta01_reprojection_config_composes_strictly() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_tracking_pose",
+            overrides=[
+                "loss.cardinality_weight=0.75",
+                "loss.cardinality_nll_weight=0.4",
+                "loss.presence_hard_negative_weight=0.6",
+                "loss.presence_hard_negative_gamma=1.5",
+                "loss.presence_pairwise_weight=0.8",
+                "loss.presence_pairwise_margin=0.25",
+            ],
+        )
+
+    runtime = PLCSTrainingConfig.from_config(config)
+    module = build_plcs_lightning_module(config)
+
+    assert isinstance(module, PLCSTrackingLightningModule)
+    assert module.criterion.cardinality_weight == 0.75
+    assert module.criterion.cardinality_nll_weight == 0.4
+    assert module.criterion.presence_hard_negative_weight == 0.6
+    assert module.criterion.presence_hard_negative_gamma == 1.5
+    assert module.criterion.presence_pairwise_weight == 0.8
+    assert module.criterion.presence_pairwise_margin == 0.25
+    assert runtime.model.boolean("predict_canonical_pose")
+    assert config.loss.position_weight == 1.0
+    assert config.loss.position_smooth_l1_beta == 0.1
+    assert config.loss.rotation_weight == 0.05
+    assert config.loss.angle_weight == 0.05
+    assert config.loss.cardinality_weight == 0.75
+    assert config.loss.cardinality_nll_weight == 0.4
+    assert config.loss.presence_hard_negative_weight == 0.6
+    assert config.loss.presence_hard_negative_gamma == 1.5
+    assert config.loss.presence_pairwise_weight == 0.8
+    assert config.loss.presence_pairwise_margin == 0.25
+    assert config.loss.canonical_pose_weight == 1.0
+    assert config.loss.reprojection_weight == 1.0
+    assert config.loss.reprojection_smooth_l1_beta == 0.01
+    assert config.loss.presence_weight == 1.0
+    assert config.loss.match_position_weight == 1.0
+    assert config.loss.match_rotation_weight == 0.5
+    assert config.loss.match_presence_weight == 0.5
+    assert config.loss.match_presence_inactive_weight == 0.25
+    assert config.run.output_dir == "plcs/plcs_track_query_tracking_pose_beta005"
+
+
+def test_tracking_pose_presence_head_config_binds_strict_fine_tune_contract() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_tracking_pose_presence_head",
+            overrides=[
+                "run.init_weights=source.ckpt",
+                "loss.presence_inactive_weight=0.75",
+            ],
+        )
+
+    runtime = PLCSTrainingConfig.from_config(config)
+    module = build_plcs_lightning_module(config)
+
+    assert isinstance(module, PLCSTrackingLightningModule)
+    assert runtime.fine_tune_mode == "presence_head"
+    assert config.loss.match_presence_weight == 0.0
+    assert config.loss.presence_inactive_weight == 0.75
+    assert config.loss.rotation_weight == 0.05
+    assert config.loss.angle_weight == 0.05
+    assert config.training.checkpoint.monitor == "val/presence_f1"
+    assert config.training.checkpoint.mode == "max"
+    assert config.training.early_stopping.monitor == "val/presence_f1"
+    assert config.training.early_stopping.mode == "max"
+
+
+def test_tracking_pose_config_keeps_head_enabled_for_reference_ablation() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_tracking_pose",
+            overrides=[
+                "model=track_query_ablation_d_v2_selector",
+                "court_keypoints=camera_view_v2",
+            ],
+        )
+
+    runtime = PLCSTrainingConfig.from_config(config)
+
+    assert runtime.model.name == "plcs_track_query_reference_ablation"
+    assert runtime.model.boolean("predict_canonical_pose")
+    assert config.loss.canonical_pose_weight == 1.0
+    assert config.loss.reprojection_weight == 1.0
 
 
 def test_temporal_canonical_pose_model_config_composes_and_binds_head() -> None:

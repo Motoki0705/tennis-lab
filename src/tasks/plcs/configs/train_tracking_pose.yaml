@@ -1,0 +1,12 @@
+# @package _global_
+# Hybrid fixed-query tracking, 3D pose, and clean 2D reprojection training.
+defaults:
+  - train_tracking
+  - override /loss: tracking_all_outputs_beta01_reprojection
+  - _self_
+
+model:
+  predict_canonical_pose: true
+
+run:
+  output_dir: plcs/${model.name}_tracking_pose_beta005

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 import pytorch_lightning as pl
@@ -78,6 +79,29 @@ class PLCSTrainingRunner(BaseTrainingRunner):
                         runtime.court_keypoint_contract,
                     ),
                 )
+            if runtime.fine_tune_mode == "presence_head":
+                source_state = checkpoint.get("state_dict")
+                if not isinstance(source_state, Mapping):
+                    raise TypeError(
+                        "PLCS presence-head init_weights checkpoint requires a "
+                        "mapping 'state_dict'."
+                    )
+                target_model_keys = {
+                    key
+                    for key in lightning_module.state_dict()
+                    if key.startswith("model.")
+                }
+                source_keys = {
+                    key for key in source_state if isinstance(key, str)
+                }
+                missing_keys = sorted(target_model_keys - source_keys)
+                if missing_keys:
+                    raise RuntimeError(
+                        "PLCS presence-head init_weights must initialize every "
+                        "model parameter and buffer before freezing; checkpoint "
+                        f"{init_path} is missing {len(missing_keys)} required "
+                        f"target key(s): {missing_keys[:5]}."
+                    )
         super().maybe_load_init_weights(config, lightning_module)
 
     def callbacks_extra(

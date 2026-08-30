@@ -81,8 +81,6 @@ _REPROJECTION_KEYS = frozenset(
         "camera_h",
     }
 )
-
-
 def _court_context(
     batch: Mapping[str, object],
     contract: CourtKeypointContract,
@@ -1004,6 +1002,8 @@ class PLCSTrackQueryIOAdapter:
         num_court_tokens: int,
         num_joints: int,
         court_keypoint_contract: CourtKeypointContract,
+        predict_canonical_pose: bool = False,
+        reprojection_enabled: bool = False,
     ) -> None:
         self._model_type = model_type
         self.profile = PLCSInputProfile.TRACK_QUERY
@@ -1011,6 +1011,8 @@ class PLCSTrackQueryIOAdapter:
         self.num_court_tokens = num_court_tokens
         self.num_joints = num_joints
         self.court_keypoint_contract = court_keypoint_contract
+        self.predict_canonical_pose = predict_canonical_pose
+        self.reprojection_enabled = reprojection_enabled
 
     @property
     def model_type(self) -> type[nn.Module]:
@@ -1114,7 +1116,8 @@ class PLCSTrackQueryIOAdapter:
     ) -> PLCSPreparedBatch:
         call = self.build_call(batch)
         human_kp = cast(Tensor, call.kwargs["human_kp"])
-        batch_size, _, frames = human_kp.shape[:3]
+        padding_mask = cast(Tensor, call.kwargs["padding_mask"])
+        batch_size, views, frames = human_kp.shape[:3]
         provenance = _court_context(
             batch,
             self.court_keypoint_contract,
@@ -1160,6 +1163,22 @@ class PLCSTrackQueryIOAdapter:
                 dtypes=frozenset({torch.int64}),
             ),
         )
+        if self.predict_canonical_pose:
+            target_human_kp_3d = require_tensor(
+                batch,
+                "target_human_kp_3d",
+                spec=TensorSpec(
+                    shape=(
+                        batch_size,
+                        frames,
+                        self.num_queries,
+                        self.num_joints,
+                        3,
+                    ),
+                    dtypes=_FLOAT_DTYPES,
+                ),
+            )
+            _finite("target_human_kp_3d", target_human_kp_3d)
         if target_position.shape[:-1] != target_rotation.shape[:-1]:
             raise ModelInputContractError(
                 "Tracking target_position/target_rotation must share (B,T,S)."
@@ -1186,10 +1205,140 @@ class PLCSTrackQueryIOAdapter:
             raise ModelInputContractError(
                 "Inactive tracking targets must use target_instance_id=-1."
             )
+        reprojection_target = self._prepare_reprojection_target(
+            batch,
+            batch_size=batch_size,
+            views=views,
+            frames=frames,
+            padding_mask=padding_mask,
+        )
         return PLCSPreparedBatch(
             call=call,
+            reprojection_target=reprojection_target,
             court_reference_provenance=provenance,
             reference_metadata=plcs_reference_metadata_from_batch(batch),
+        )
+
+    def _prepare_reprojection_target(
+        self,
+        batch: Mapping[str, object],
+        *,
+        batch_size: int,
+        views: int,
+        frames: int,
+        padding_mask: Tensor,
+    ) -> PLCSReprojectionTarget | None:
+        present = _REPROJECTION_KEYS.intersection(batch)
+        if not present and not self.reprojection_enabled:
+            return None
+        if present != _REPROJECTION_KEYS:
+            missing = sorted(_REPROJECTION_KEYS - present)
+            requirement = (
+                "required when reprojection_enabled=True"
+                if self.reprojection_enabled
+                else "all-or-none once any reprojection field is supplied"
+            )
+            raise ModelInputContractError(
+                "PLCS tracking reprojection fields are "
+                f"{requirement}; missing={missing}."
+            )
+
+        target_uv = require_tensor(
+            batch,
+            "human_kp_target",
+            spec=TensorSpec(
+                shape=(
+                    batch_size,
+                    views,
+                    frames,
+                    self.num_queries,
+                    self.num_joints,
+                    2,
+                ),
+                dtypes=_FLOAT_DTYPES,
+            ),
+        )
+        target_vis = require_tensor(
+            batch,
+            "human_vis_target",
+            spec=TensorSpec(
+                shape=(
+                    batch_size,
+                    views,
+                    frames,
+                    self.num_queries,
+                    self.num_joints,
+                ),
+                dtypes=frozenset({torch.bool}),
+            ),
+        )
+        camera_R = require_tensor(
+            batch,
+            "camera_R",
+            spec=TensorSpec(
+                shape=(batch_size, views, 3, 3),
+                dtypes=_FLOAT_DTYPES,
+            ),
+        )
+        camera_C = require_tensor(
+            batch,
+            "camera_C",
+            spec=TensorSpec(
+                shape=(batch_size, views, 3),
+                dtypes=_FLOAT_DTYPES,
+            ),
+        )
+
+        camera_scalars: dict[str, Tensor] = {}
+        for name in (
+            "camera_f",
+            "camera_cx",
+            "camera_cy",
+            "camera_w",
+            "camera_h",
+        ):
+            camera_scalars[name] = require_tensor(
+                batch,
+                name,
+                spec=TensorSpec(
+                    shape=(batch_size, views),
+                    dtypes=_FLOAT_DTYPES,
+                ),
+            )
+
+        _normalized_uv("human_kp_target", target_uv, target_vis)
+        _binary_mask("human_vis_target", target_vis)
+        for name, tensor in {
+            "camera_R": camera_R,
+            "camera_C": camera_C,
+            **camera_scalars,
+        }.items():
+            _finite(name, tensor)
+
+        padded_targets = padding_mask.unsqueeze(-1).unsqueeze(-1)
+        if bool((target_vis & padded_targets).any().item()):
+            raise ModelInputContractError(
+                "human_vis_target must be zero at padded view/time entries."
+            )
+
+        valid_views = ~padding_mask.all(dim=-1)
+        for name in ("camera_f", "camera_w", "camera_h"):
+            if bool((camera_scalars[name][valid_views] <= 0).any().item()):
+                raise ModelInputContractError(
+                    f"{name} must be positive for every non-padded camera view."
+                )
+
+        return PLCSReprojectionTarget(
+            target_uv=target_uv,
+            target_vis=target_vis,
+            padding_mask=padding_mask,
+            camera_R=camera_R,
+            camera_C=camera_C,
+            camera_f=camera_scalars["camera_f"],
+            camera_cx=camera_scalars["camera_cx"],
+            camera_cy=camera_scalars["camera_cy"],
+            camera_w=camera_scalars["camera_w"],
+            camera_h=camera_scalars["camera_h"],
         )
 
     def decode_output(
@@ -1200,6 +1349,8 @@ class PLCSTrackQueryIOAdapter:
                 f"PLCS tracking output must be a mapping, got {type(output).__name__}."
             )
         expected = {"position", "rotation", "presence_logits"}
+        if self.predict_canonical_pose:
+            expected.add("canonical_pose")
         if set(output) != expected:
             raise ModelOutputContractError(
                 "PLCS tracking output keys do not match the paired adapter: "
@@ -1215,6 +1366,13 @@ class PLCSTrackQueryIOAdapter:
         presence_logits = _required_output(
             output, "presence_logits", shape=(None, None, self.num_queries)
         )
+        canonical_pose = None
+        if self.predict_canonical_pose:
+            canonical_pose = _required_output(
+                output,
+                "canonical_pose",
+                shape=(None, None, self.num_queries, self.num_joints, 3),
+            )
         if position.shape[:-1] != rotation.shape[:-1]:
             raise ModelOutputContractError(
                 "Tracking position and rotation must share (B,T,Q)."
@@ -1223,10 +1381,15 @@ class PLCSTrackQueryIOAdapter:
             raise ModelOutputContractError(
                 "presence_logits must match tracking output (B,T,Q)."
             )
+        if canonical_pose is not None and canonical_pose.shape[:3] != position.shape[:-1]:
+            raise ModelOutputContractError(
+                "canonical_pose must share tracking output (B,T,Q)."
+            )
         return PLCSTrackingDecodedPrediction(
             position=position,
             rotation=rotation,
             presence_logits=presence_logits,
+            canonical_pose=canonical_pose,
         )
 
     def decode_prepared_output(
@@ -1256,6 +1419,8 @@ class PLCSTrackQueryReferenceIOAdapter(PLCSTrackQueryIOAdapter):
         target_frame_contract: str,
         track_query_rope_contract: str,
         reference_selector_mode: str,
+        predict_canonical_pose: bool = False,
+        reprojection_enabled: bool = False,
     ) -> None:
         super().__init__(
             model_type=model_type,
@@ -1263,6 +1428,8 @@ class PLCSTrackQueryReferenceIOAdapter(PLCSTrackQueryIOAdapter):
             num_court_tokens=num_court_tokens,
             num_joints=num_joints,
             court_keypoint_contract=court_keypoint_contract,
+            predict_canonical_pose=predict_canonical_pose,
+            reprojection_enabled=reprojection_enabled,
         )
         selector_mode = resolve_reference_selector_mode(reference_selector_mode)
         reference_contract = TrackQueryReferenceContract.reference_v2(selector_mode)

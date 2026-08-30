@@ -26,6 +26,7 @@ def _raw_config(*, rope_dim: int = 6) -> dict[str, object]:
         "num_queries": 2,
         "num_stages": 4,
         "num_joints": 17,
+        "predict_canonical_pose": True,
         "rope_dim": rope_dim,
         "rope_theta": 10_000.0,
         "ffn_type": "swiglu",
@@ -152,6 +153,7 @@ def test_forward_uses_exact_shared_coordinates_and_frequencies() -> None:
     assert output["position"].shape == (2, 2, 2, 3)
     assert output["rotation"].shape == (2, 2, 2, 2)
     assert output["presence_logits"].shape == (2, 2, 2)
+    assert output["canonical_pose"].shape == (2, 2, 2, 17, 3)
 
 
 @pytest.mark.parametrize(

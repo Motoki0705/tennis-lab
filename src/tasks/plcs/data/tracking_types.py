@@ -34,7 +34,16 @@ class PLCSTrackingBatch(TypedDict):
     target_slot_mask: Tensor
     clean_human_kp: Tensor
     clean_human_vis: Tensor
+    human_kp_target: Tensor
+    human_vis_target: Tensor
     detection_gt_index: Tensor
+    camera_C: Tensor
+    camera_R: Tensor
+    camera_f: Tensor
+    camera_cx: Tensor
+    camera_cy: Tensor
+    camera_w: Tensor
+    camera_h: Tensor
     court_keypoint_metadata: NotRequired[tuple[Mapping[str, object], ...]]
     court_reference_provenance: NotRequired[
         tuple[CourtReferenceFrameProvenance, ...]
@@ -57,3 +66,4 @@ class PLCSTrackingPrediction(TypedDict):
     position: Tensor
     rotation: Tensor
     presence_logits: Tensor
+    canonical_pose: NotRequired[Tensor]

@@ -6,6 +6,7 @@ from typing import Any, cast
 import numpy as np
 import pytest
 import torch
+from omegaconf import OmegaConf
 
 from src.tasks.base.data import ReferenceViewSelectionError
 from src.tasks.base.data.scene_dataset import Scene, SceneDatasetConfig
@@ -17,9 +18,18 @@ from src.tasks.base.generate_dataset import (
     court_points_physical_to_target,
     resolve_court_keypoint_contract,
 )
-from src.tasks.plcs.court_keypoint_contract import choose_reference_selection
+from src.tasks.plcs.court_keypoint_contract import (
+    choose_reference_selection,
+    track_query_reference_contract_document,
+)
 from src.tasks.plcs.data.dataset import SceneDataset
-from src.tasks.plcs.data.tracking_dataset import PLCSTrackingDataset
+from src.tasks.plcs.data.tracking_augmentation import (
+    PLCSTrackingDetectionAugmentation,
+)
+from src.tasks.plcs.data.tracking_dataset import (
+    PLCSTrackingDataset,
+    collate_plcs_tracking_batch,
+)
 from src.utils.schema.court_normalization import normalize_court_position
 
 
@@ -72,11 +82,11 @@ def _dataset_and_scene() -> tuple[SceneDataset, Scene]:
         data[f"cam_{index}_params"] = {
             "C": list(view.camera_center_court_m),
             "R": np.eye(3, dtype=np.float32).tolist(),
-            "f": 800.0,
-            "cx": 640.0,
-            "cy": 360.0,
-            "w": 1280,
-            "h": 720,
+            "f": 800.0 + 100.0 * index,
+            "cx": 640.0 + 10.0 * index,
+            "cy": 360.0 + 5.0 * index,
+            "w": 1280 + 640 * index,
+            "h": 720 + 360 * index,
         }
     scene = Scene(
         path=Path("/dataset/scenes/scene_000000"),
@@ -117,6 +127,35 @@ def _dataset_and_scene() -> tuple[SceneDataset, Scene]:
         min_num_cameras=2,
     )
     return dataset, scene
+
+
+def _tracking_dataset(
+    standard: SceneDataset,
+    *,
+    augment: bool,
+    track_query_reference_document: dict[str, object] | None = None,
+) -> PLCSTrackingDataset:
+    dataset = object.__new__(PLCSTrackingDataset)
+    dataset.rng = np.random.default_rng(0)
+    dataset.augment = augment
+    dataset.reference_camera_id = "camera_1"
+    dataset.track_query_reference_document = track_query_reference_document
+    dataset.court_keypoint_contract = standard.court_keypoint_contract
+    dataset.court_keypoint_validation = standard.court_keypoint_validation
+    dataset.num_queries = 1
+    dataset.min_reuse_gap_frames = 0
+    dataset.randomize_slots_train = False
+    dataset.config = SceneDatasetConfig(
+        scene_dir=Path("/dataset"),
+        split_file=Path("train.txt"),
+        seq_len_range=(2, 2),
+        num_views_range=(2, 2),
+        camera_mode="random",
+        crop_mode="center",
+        min_num_frames=2,
+        min_num_cameras=2,
+    )
+    return dataset
 
 
 def test_standard_dataset_aligns_before_first20_and_rotates_court_targets() -> None:
@@ -175,26 +214,7 @@ def test_object_uv_is_invariant_under_reference_transform() -> None:
 
 def test_tracking_aligns_before_first14_and_keeps_canonical_pose_local() -> None:
     standard, scene = _dataset_and_scene()
-    dataset = object.__new__(PLCSTrackingDataset)
-    dataset.rng = np.random.default_rng(0)
-    dataset.augment = False
-    dataset.reference_camera_id = "camera_1"
-    dataset.track_query_reference_document = None
-    dataset.court_keypoint_contract = standard.court_keypoint_contract
-    dataset.court_keypoint_validation = standard.court_keypoint_validation
-    dataset.num_queries = 1
-    dataset.min_reuse_gap_frames = 0
-    dataset.randomize_slots_train = False
-    dataset.config = SceneDatasetConfig(
-        scene_dir=Path("/dataset"),
-        split_file=Path("train.txt"),
-        seq_len_range=(2, 2),
-        num_views_range=(2, 2),
-        camera_mode="random",
-        crop_mode="center",
-        min_num_frames=2,
-        min_num_cameras=2,
-    )
+    dataset = _tracking_dataset(standard, augment=False)
 
     sample = dataset.build_sample(scene)
     provenance = sample["court_reference_provenance"]
@@ -221,6 +241,119 @@ def test_tracking_aligns_before_first14_and_keeps_canonical_pose_local() -> None
     torch.testing.assert_close(
         sample["target_human_kp_3d"][:, 0],
         expected_world,
+    )
+    assert sample["clean_human_kp"].shape == (2, 2, 1, 17, 2)
+    assert sample["clean_human_vis"].shape == (2, 2, 1, 17)
+    torch.testing.assert_close(sample["human_kp_target"], sample["clean_human_kp"])
+    torch.testing.assert_close(
+        sample["human_vis_target"], sample["clean_human_vis"]
+    )
+    assert sample["human_kp_target"].data_ptr() != sample["clean_human_kp"].data_ptr()
+    assert (
+        sample["human_vis_target"].data_ptr()
+        != sample["clean_human_vis"].data_ptr()
+    )
+
+    expected_intrinsics = {
+        "camera_0": (800.0, 640.0, 360.0, 1280.0, 720.0),
+        "camera_1": (900.0, 650.0, 365.0, 1920.0, 1080.0),
+    }
+    for local_index, camera_id in enumerate(sample["selected_camera_ids"]):
+        actual = torch.stack(
+            [
+                sample["camera_f"][local_index],
+                sample["camera_cx"][local_index],
+                sample["camera_cy"][local_index],
+                sample["camera_w"][local_index],
+                sample["camera_h"][local_index],
+            ]
+        )
+        torch.testing.assert_close(
+            actual,
+            torch.tensor(expected_intrinsics[camera_id]),
+        )
+
+
+def test_tracking_build_augment_collate_preserves_reference_contract() -> None:
+    standard, scene = _dataset_and_scene()
+    document = track_query_reference_contract_document(
+        {
+            "model": {
+                "name": "plcs_track_query_reference",
+                "target_frame_contract": "reference_camera_court_rzpi_v1",
+                "track_query_rope_contract": (
+                    "time_camera_reference_selector_v1"
+                ),
+                "reference_selector_mode": "reference",
+            }
+        },
+        standard.court_keypoint_contract,
+    )
+    assert document is not None
+    dataset = _tracking_dataset(
+        standard,
+        augment=True,
+        track_query_reference_document=document,
+    )
+    augmentation_config = OmegaConf.load(
+        Path(__file__).resolve().parents[5]
+        / "src/tasks/plcs/configs/data/_augmentation.yaml"
+    ).augmentation
+    augmentation_config.enabled = False
+    dataset.tracking_augmentation = PLCSTrackingDetectionAugmentation(
+        augmentation_config
+    )
+
+    sample = dataset.build_sample(scene)
+    augmented = dataset.augment_sample(sample)
+
+    assert set(augmented) == set(sample)
+    for key in (
+        "reference_view_index",
+        "view_camera_ids",
+        "reference_camera_id",
+        "reference_from_physical",
+        "physical_from_reference",
+    ):
+        torch.testing.assert_close(augmented[key], sample[key])
+        assert augmented[key].data_ptr() != sample[key].data_ptr()
+    assert augmented["reference_view_selection"].provenance is augmented[
+        "court_reference_provenance"
+    ]
+    assert augmented["reference_view_selection"].stable_camera_id_table is augmented[
+        "stable_camera_id_table"
+    ]
+    assert augmented["reference_camera_id_string"] == sample[
+        "reference_camera_id_string"
+    ]
+    assert augmented["track_query_reference"] == sample["track_query_reference"]
+    assert augmented["track_query_reference"] is not sample["track_query_reference"]
+    assert augmented["court_keypoint_metadata"] is not sample[
+        "court_keypoint_metadata"
+    ]
+
+    augmented_document = cast("dict[str, object]", augmented["track_query_reference"])
+    sample_document = cast("dict[str, object]", sample["track_query_reference"])
+    schema_version = augmented_document["schema_version"]
+    augmented_document["schema_version"] = -1
+    assert sample_document["schema_version"] == schema_version
+    augmented_document["schema_version"] = schema_version
+
+    batch = collate_plcs_tracking_batch([augmented])
+
+    assert batch["reference_view_selection"] == (
+        augmented["reference_view_selection"],
+    )
+    assert batch["stable_camera_id_table"] == (
+        augmented["stable_camera_id_table"],
+    )
+    assert batch["reference_camera_id_string"] == (
+        augmented["reference_camera_id_string"],
+    )
+    assert batch["track_query_reference"] == augmented["track_query_reference"]
+    torch.testing.assert_close(
+        batch["reference_from_physical"][0],
+        augmented["reference_from_physical"],
     )
 
 

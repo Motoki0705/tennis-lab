@@ -39,6 +39,7 @@ def _raw_model() -> dict[str, object]:
         "num_queries": 4,
         "num_stages": 4,
         "num_joints": 17,
+        "predict_canonical_pose": True,
         "rope_dim": 4,
         "rope_theta": 10_000.0,
         "ffn_type": "swiglu",
@@ -75,11 +76,13 @@ def _config(
     return PLCSModelConfig.from_mapping(raw)
 
 
-def _baseline_config() -> PLCSModelConfig:
+def _baseline_config(*, predict_canonical_pose: bool = True) -> PLCSModelConfig:
     raw = _raw_model()
     raw["name"] = "plcs_track_query"
     del raw["ffn_mode"]
     del raw["mhc_writeback"]
+    if not predict_canonical_pose:
+        del raw["predict_canonical_pose"]
     return PLCSModelConfig.from_mapping(raw)
 
 
@@ -240,10 +243,16 @@ def test_four_conditions_preserve_io_padding_visibility_and_rope_contracts(
     finally:
         hook.remove()
 
-    assert set(output) == {"position", "rotation", "presence_logits"}
+    assert set(output) == {
+        "position",
+        "rotation",
+        "presence_logits",
+        "canonical_pose",
+    }
     assert output["position"].shape == (2, 3, 4, 3)
     assert output["rotation"].shape == (2, 3, 4, 2)
     assert output["presence_logits"].shape == (2, 3, 4)
+    assert output["canonical_pose"].shape == (2, 3, 4, 17, 3)
     expected_valid = (~padding_mask).unsqueeze(-1).expand(-1, -1, -1, 4)
     assert torch.equal(captured["object_state_valid"], expected_valid)
     assert captured["spatial_attention_keep_mask"].shape == (
@@ -265,9 +274,11 @@ def test_four_conditions_preserve_io_padding_visibility_and_rope_contracts(
     assert not output["position"][:, 2].any()
     assert not output["rotation"][:, 2].any()
     assert not output["presence_logits"][:, 2].any()
+    assert not output["canonical_pose"][:, 2].any()
     assert not output["position"][1].any()
     assert not output["rotation"][1].any()
     assert not output["presence_logits"][1].any()
+    assert not output["canonical_pose"][1].any()
 
 
 def test_baseline_and_ablation_checkpoints_are_strictly_incompatible_both_ways() -> None:
@@ -281,7 +292,7 @@ def test_baseline_and_ablation_checkpoints_are_strictly_incompatible_both_ways()
 
 
 def test_legacy_baseline_state_key_inventory_is_preserved() -> None:
-    baseline = PLCSTrackQueryModel(_baseline_config())
+    baseline = PLCSTrackQueryModel(_baseline_config(predict_canonical_pose=False))
     serialized_keys = "\n".join(sorted(baseline.state_dict()))
 
     assert len(baseline.state_dict()) == 194

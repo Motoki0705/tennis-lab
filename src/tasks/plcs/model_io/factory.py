@@ -223,6 +223,10 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
             num_court_tokens=14,
             num_joints=model_cfg.integer("num_joints"),
             court_keypoint_contract=runtime.court_keypoint_contract,
+            predict_canonical_pose=bool(
+                model_cfg.values.get("predict_canonical_pose", False)
+            ),
+            reprojection_enabled=runtime.tracking_reprojection_enabled,
         )
     elif model_name == "plcs_track_query_ablation":
         model = PLCSTrackQueryAblationModel(model_cfg)
@@ -232,6 +236,10 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
             num_court_tokens=14,
             num_joints=model_cfg.integer("num_joints"),
             court_keypoint_contract=runtime.court_keypoint_contract,
+            predict_canonical_pose=bool(
+                model_cfg.values.get("predict_canonical_pose", False)
+            ),
+            reprojection_enabled=runtime.tracking_reprojection_enabled,
         )
     elif model_name == "plcs_track_query_reference":
         model = PLCSTrackQueryReferenceModel(model_cfg)
@@ -246,6 +254,10 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
                 "track_query_rope_contract"
             ),
             reference_selector_mode=model_cfg.string("reference_selector_mode"),
+            predict_canonical_pose=bool(
+                model_cfg.values.get("predict_canonical_pose", False)
+            ),
+            reprojection_enabled=runtime.tracking_reprojection_enabled,
         )
     elif model_name == "plcs_track_query_reference_ablation":
         model = PLCSTrackQueryReferenceAblationModel(model_cfg)
@@ -260,6 +272,10 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
                 "track_query_rope_contract"
             ),
             reference_selector_mode=model_cfg.string("reference_selector_mode"),
+            predict_canonical_pose=bool(
+                model_cfg.values.get("predict_canonical_pose", False)
+            ),
+            reprojection_enabled=runtime.tracking_reprojection_enabled,
         )
     else:
         raise ValueError(f"Unsupported validated PLCS model {model_name!r}.")

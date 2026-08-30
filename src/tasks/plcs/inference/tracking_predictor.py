@@ -129,7 +129,7 @@ class PLCSTrackingPredictor(BasePredictor):
         | None = None,
         reference_metadata: PLCSReferenceMetadata | None = None,
     ) -> dict[str, object]:
-        """Return query position/rotation and lifecycle presence outputs."""
+        """Return query tracking outputs and optional per-query canonical pose."""
         with torch.no_grad():
             if isinstance(self.io_adapter, PLCSTrackQueryReferenceIOAdapter):
                 if reference_metadata is None:
@@ -213,13 +213,19 @@ class PLCSTrackingPredictor(BasePredictor):
             decoded = self.io_adapter.decode_prepared_output(raw_output, prepared)
             presence_logits = decoded.presence_logits
             probability = presence_logits.sigmoid()
+            frame_valid = (~padding_mask).any(dim=1).to(probability.device)
             result: dict[str, object] = {
                 "position": decoded.position,
                 "rotation": decoded.rotation,
                 "presence_logits": presence_logits,
                 "presence_probability": probability,
-                "presence": probability >= tracking_metrics.presence_threshold,
+                "presence": (
+                    probability >= tracking_metrics.presence_threshold
+                )
+                & frame_valid.unsqueeze(-1),
             }
+            if decoded.canonical_pose is not None:
+                result["canonical_pose"] = decoded.canonical_pose
             if denormalize:
                 provenance = prepared.court_reference_provenance
                 if provenance is None:

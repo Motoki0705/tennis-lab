@@ -1,0 +1,27 @@
+# Fixed-query tracking plus all PLCS outputs and clean 2D reprojection.
+defaults:
+  - all_outputs_beta01_reprojection
+  - _self_
+
+# Keep position/canonical/reprojection supervision from the source config while
+# preventing the two yaw objectives from dominating the shared query features.
+rotation_weight: 0.05
+angle_weight: 0.05
+
+# Preserve the tracking lifecycle and Hungarian matching contract unchanged.
+presence_weight: 1.0
+cardinality_weight: 0.0
+cardinality_nll_weight: 0.0
+presence_hard_negative_weight: 0.0
+presence_hard_negative_gamma: 2.0
+presence_pairwise_weight: 0.0
+presence_pairwise_margin: 0.5
+presence_inactive_weight: 0.25
+presence_active_weight: 1.0
+presence_transition_weight: 2.0
+transition_radius: 2
+track_smoothness_weight: 0.0
+match_position_weight: 1.0
+match_rotation_weight: 0.5
+match_presence_weight: 0.5
+match_presence_inactive_weight: 0.25

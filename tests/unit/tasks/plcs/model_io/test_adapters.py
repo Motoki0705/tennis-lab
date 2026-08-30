@@ -71,6 +71,7 @@ class _TrackingModel(nn.Module):
             "position": human_kp.new_zeros(batch_size, frames, 3, 3),
             "rotation": human_kp.new_zeros(batch_size, frames, 3, 2),
             "presence_logits": human_kp.new_zeros(batch_size, frames, 3),
+            "canonical_pose": human_kp.new_zeros(batch_size, frames, 3, 17, 3),
         }
 
 
@@ -299,18 +300,24 @@ def test_numpy_multiview_boundary_broadcasts_explicit_shared_court() -> None:
     assert court_kp.shape == (2, 2, 3, 20, 2)
 
 
-def _tracking_adapter() -> PLCSTrackQueryIOAdapter:
+def _tracking_adapter(
+    *,
+    predict_canonical_pose: bool = True,
+    reprojection_enabled: bool = True,
+) -> PLCSTrackQueryIOAdapter:
     return PLCSTrackQueryIOAdapter(
         model_type=_TrackingModel,
         num_queries=3,
         num_court_tokens=14,
         num_joints=17,
         court_keypoint_contract=resolve_court_keypoint_contract("physical_v1"),
+        predict_canonical_pose=predict_canonical_pose,
+        reprojection_enabled=reprojection_enabled,
     )
 
 
 def _tracking_batch() -> dict[str, Tensor]:
-    return {
+    batch = {
         "human_kp": torch.rand(1, 2, 3, 3, 17, 2),
         "human_vis": torch.ones(1, 2, 3, 3, 17, dtype=torch.bool),
         "court_kp": torch.rand(1, 2, 3, 14, 2),
@@ -318,10 +325,41 @@ def _tracking_batch() -> dict[str, Tensor]:
         "padding_mask": torch.zeros(1, 2, 3, dtype=torch.bool),
         "target_position": torch.rand(1, 3, 3, 3),
         "target_rotation": torch.rand(1, 3, 3, 2),
+        "target_human_kp_3d": torch.rand(1, 3, 3, 17, 3),
         "target_presence": torch.ones(1, 3, 3, dtype=torch.bool),
         "target_slot_mask": torch.ones(1, 3, dtype=torch.bool),
         "target_instance_id": torch.ones(1, 3, 3, dtype=torch.int64),
     }
+    batch.update(
+        {
+            "human_kp_target": batch["human_kp"].clone(),
+            "human_vis_target": batch["human_vis"].clone(),
+            "camera_R": torch.eye(3)
+            .view(1, 1, 3, 3)
+            .expand(1, 2, -1, -1)
+            .clone(),
+            "camera_C": torch.zeros(1, 2, 3),
+            "camera_f": torch.full((1, 2), 800.0),
+            "camera_cx": torch.full((1, 2), 640.0),
+            "camera_cy": torch.full((1, 2), 360.0),
+            "camera_w": torch.full((1, 2), 1280.0),
+            "camera_h": torch.full((1, 2), 720.0),
+        }
+    )
+    return batch
+
+
+_TRACKING_REPROJECTION_KEYS = (
+    "human_kp_target",
+    "human_vis_target",
+    "camera_R",
+    "camera_C",
+    "camera_f",
+    "camera_cx",
+    "camera_cy",
+    "camera_w",
+    "camera_h",
+)
 
 
 def _uv_boundary_profile(
@@ -425,10 +463,191 @@ def test_tracking_boundary_validates_inputs_targets_and_decodes_required_presenc
             "position": torch.zeros(1, 3, 3, 3),
             "rotation": torch.zeros(1, 3, 3, 2),
             "presence_logits": torch.zeros(1, 3, 3),
+            "canonical_pose": torch.zeros(1, 3, 3, 17, 3),
         },
         prepared,
     )
     assert decoded.presence_logits.shape == (1, 3, 3)
+    assert decoded.canonical_pose is not None
+    assert decoded.canonical_pose.shape == (1, 3, 3, 17, 3)
+    assert prepared.reprojection_target is not None
+    assert prepared.reprojection_target.target_uv.shape == (1, 2, 3, 3, 17, 2)
+    assert prepared.reprojection_target.target_vis.shape == (1, 2, 3, 3, 17)
+    assert prepared.reprojection_target.camera_R.shape == (1, 2, 3, 3)
+
+
+def test_tracking_boundary_accepts_canonical_only_batch_without_reprojection() -> None:
+    batch = _tracking_batch()
+    for key in _TRACKING_REPROJECTION_KEYS:
+        batch.pop(key)
+
+    prepared = _tracking_adapter(
+        predict_canonical_pose=True,
+        reprojection_enabled=False,
+    ).prepare_training_batch(batch)
+
+    assert prepared.reprojection_target is None
+
+
+def test_tracking_boundary_requires_reprojection_bundle_when_enabled() -> None:
+    batch = _tracking_batch()
+    for key in _TRACKING_REPROJECTION_KEYS:
+        batch.pop(key)
+
+    with pytest.raises(
+        ModelInputContractError,
+        match="tracking reprojection fields.*reprojection_enabled=True.*missing",
+    ):
+        _tracking_adapter(reprojection_enabled=True).prepare_training_batch(batch)
+
+
+def test_tracking_boundary_rejects_partial_reprojection_bundle_after_trigger() -> None:
+    batch = _tracking_batch()
+    batch.pop("camera_h")
+    with pytest.raises(ModelInputContractError, match="tracking reprojection.*missing"):
+        _tracking_adapter().prepare_training_batch(batch)
+
+    legacy_batch = _tracking_batch()
+    for key in _TRACKING_REPROJECTION_KEYS:
+        if key not in {"camera_R", "camera_C", "camera_f"}:
+            legacy_batch.pop(key)
+    with pytest.raises(ModelInputContractError, match="all-or-none.*missing"):
+        _tracking_adapter(
+            predict_canonical_pose=False,
+            reprojection_enabled=False,
+        ).prepare_training_batch(legacy_batch)
+
+
+@pytest.mark.parametrize(
+    ("key", "value", "message"),
+    [
+        (
+            "human_kp_target",
+            torch.rand(1, 2, 3, 2, 17, 2),
+            "human_kp_target.*axis 3",
+        ),
+        (
+            "human_kp_target",
+            torch.rand(1, 2, 3, 3, 16, 2),
+            "human_kp_target.*axis 4",
+        ),
+        (
+            "human_vis_target",
+            torch.ones(1, 2, 3, 3, 17),
+            "human_vis_target.*torch.bool",
+        ),
+        (
+            "camera_R",
+            torch.eye(3).view(1, 1, 3, 3),
+            "camera_R.*axis 1",
+        ),
+    ],
+)
+def test_tracking_boundary_rejects_malformed_reprojection_shapes_and_dtype(
+    key: str,
+    value: Tensor,
+    message: str,
+) -> None:
+    batch = _tracking_batch()
+    batch[key] = value
+
+    with pytest.raises(ModelInputContractError, match=message):
+        _tracking_adapter().prepare_training_batch(batch)
+
+
+@pytest.mark.parametrize(
+    ("key", "value", "message"),
+    [
+        ("camera_R", float("nan"), "camera_R.*finite"),
+        ("camera_C", float("inf"), "camera_C.*finite"),
+        ("camera_cx", float("nan"), "camera_cx.*finite"),
+        ("camera_f", 0.0, "camera_f must be positive"),
+        ("camera_w", -1.0, "camera_w must be positive"),
+        ("camera_h", 0.0, "camera_h must be positive"),
+    ],
+)
+def test_tracking_boundary_rejects_invalid_reprojection_camera_values(
+    key: str,
+    value: float,
+    message: str,
+) -> None:
+    batch = _tracking_batch()
+    batch[key].flatten()[0] = value
+
+    with pytest.raises(ModelInputContractError, match=message):
+        _tracking_adapter().prepare_training_batch(batch)
+
+
+def test_tracking_boundary_rejects_invalid_reprojection_uv() -> None:
+    batch = _tracking_batch()
+    batch["human_kp_target"][0, 0, 0, 0, 0, 0] = 1.1
+
+    with pytest.raises(ModelInputContractError, match="normalized UV"):
+        _tracking_adapter().prepare_training_batch(batch)
+
+
+def test_tracking_boundary_validates_reprojection_padding_per_query() -> None:
+    batch = _tracking_batch()
+    batch["padding_mask"][0, 1] = True
+    batch["human_vis_target"][0, 1] = False
+    batch["camera_f"][0, 1] = 0.0
+    batch["camera_w"][0, 1] = 0.0
+    batch["camera_h"][0, 1] = 0.0
+
+    prepared = _tracking_adapter().prepare_training_batch(batch)
+    assert prepared.reprojection_target is not None
+
+    batch["human_vis_target"][0, 1, 0, 2, 16] = True
+    with pytest.raises(ModelInputContractError, match="zero at padded"):
+        _tracking_adapter().prepare_training_batch(batch)
+
+
+def test_legacy_tracking_boundary_rejects_camera_only_reprojection_fields() -> None:
+    adapter = _tracking_adapter(
+        predict_canonical_pose=False,
+        reprojection_enabled=False,
+    )
+    camera_only_batch = _tracking_batch()
+    for key in _TRACKING_REPROJECTION_KEYS:
+        if key not in {"camera_R", "camera_C"}:
+            camera_only_batch.pop(key)
+
+    with pytest.raises(ModelInputContractError, match="all-or-none.*missing"):
+        adapter.prepare_training_batch(camera_only_batch)
+
+    camera_only_batch.pop("camera_R")
+    camera_only_batch.pop("camera_C")
+    prepared = adapter.prepare_training_batch(camera_only_batch)
+    assert prepared.reprojection_target is None
+
+
+def test_legacy_tracking_boundary_validates_complete_optional_reprojection() -> None:
+    prepared = _tracking_adapter(
+        predict_canonical_pose=False,
+        reprojection_enabled=False,
+    ).prepare_training_batch(_tracking_batch())
+
+    assert prepared.reprojection_target is not None
+    assert prepared.reprojection_target.target_uv.shape == (1, 2, 3, 3, 17, 2)
+
+
+def test_tracking_adapter_legacy_constructor_defaults_reprojection_off() -> None:
+    adapter = PLCSTrackQueryIOAdapter(
+        model_type=_TrackingModel,
+        num_queries=3,
+        num_court_tokens=14,
+        num_joints=17,
+        court_keypoint_contract=resolve_court_keypoint_contract("physical_v1"),
+        predict_canonical_pose=False,
+    )
+    batch = _tracking_batch()
+    for key in _TRACKING_REPROJECTION_KEYS:
+        batch.pop(key)
+
+    prepared = adapter.prepare_training_batch(batch)
+
+    assert not adapter.reprojection_enabled
+    assert prepared.reprojection_target is None
 
 
 def test_tracking_boundary_rejects_incomplete_court_and_visibility_dtype() -> None:
@@ -489,3 +708,34 @@ def test_tracking_output_rejects_missing_presence() -> None:
     }
     with pytest.raises(ModelOutputContractError, match="presence_logits"):
         _tracking_adapter().decode_output(output)
+
+
+def test_tracking_output_rejects_missing_or_misshaped_canonical_pose() -> None:
+    output: dict[str, object] = {
+        "position": torch.zeros(1, 3, 3, 3),
+        "rotation": torch.zeros(1, 3, 3, 2),
+        "presence_logits": torch.zeros(1, 3, 3),
+    }
+    with pytest.raises(ModelOutputContractError, match="canonical_pose"):
+        _tracking_adapter().decode_output(output)
+
+    output["canonical_pose"] = torch.zeros(1, 3, 3, 16, 3)
+    with pytest.raises(ModelOutputContractError, match="axis 3"):
+        _tracking_adapter().decode_output(output)
+
+
+def test_tracking_adapter_preserves_explicit_legacy_three_output_contract() -> None:
+    adapter = _tracking_adapter(predict_canonical_pose=False)
+    output = {
+        "position": torch.zeros(1, 3, 3, 3),
+        "rotation": torch.zeros(1, 3, 3, 2),
+        "presence_logits": torch.zeros(1, 3, 3),
+    }
+
+    decoded = adapter.decode_output(output)
+
+    assert decoded.canonical_pose is None
+    with pytest.raises(ModelOutputContractError, match="unknown=.*canonical_pose"):
+        adapter.decode_output(
+            {**output, "canonical_pose": torch.zeros(1, 3, 3, 17, 3)}
+        )
