@@ -1,0 +1,48 @@
+ M src/tasks/plcs/configs/loss/tracking.yaml
+ M src/tasks/plcs/configs/training/default.yaml
+ M src/tasks/plcs/configuration.py
+ M src/tasks/plcs/data/tracking_dataset.py
+ M src/tasks/plcs/data/tracking_types.py
+ M src/tasks/plcs/inference/tracking_predictor.py
+ M src/tasks/plcs/model_io/adapters.py
+ M src/tasks/plcs/model_io/contracts.py
+ M src/tasks/plcs/model_io/factory.py
+ M src/tasks/plcs/models/plcs_track_query_ablation_model.py
+ M src/tasks/plcs/models/plcs_track_query_model.py
+ M src/tasks/plcs/training/runner.py
+ M src/tasks/plcs/training/tracking_lightning_module.py
+ M src/tasks/plcs/training/tracking_losses.py
+ M src/tasks/plcs/training/tracking_matching.py
+ M src/tasks/plcs/training/tracking_metrics.py
+ M tests/integration/tasks/plcs/test_model_configs.py
+ M tests/unit/tasks/plcs/data/test_court_view_dataset.py
+ M tests/unit/tasks/plcs/data/test_dataset.py
+ M tests/unit/tasks/plcs/inference/test_tracking_predictor.py
+ M tests/unit/tasks/plcs/model_io/test_adapters.py
+ M tests/unit/tasks/plcs/model_io/test_factory.py
+ M tests/unit/tasks/plcs/models/test_plcs_track_query_ablation_model.py
+ M tests/unit/tasks/plcs/models/test_plcs_track_query_model.py
+ M tests/unit/tasks/plcs/models/test_plcs_track_query_reference_ablation_model.py
+ M tests/unit/tasks/plcs/models/test_plcs_track_query_reference_model.py
+ M tests/unit/tasks/plcs/test_configuration.py
+ M tests/unit/tasks/plcs/training/test_tracking_losses.py
+ M tests/unit/tasks/plcs/training/test_tracking_metrics.py
+?? knowledge/nodes/run-i801-dref-pose-beta005-cardw010-s42-r1.md
+?? knowledge/nodes/run-i801-dref-pose-beta005-cardw025-s42-r1.md
+?? knowledge/nodes/run-i801-dref-pose-beta005-inact05-s42.md
+?? knowledge/nodes/run-i801-dref-pose-beta005-inact1-match025-s42-r1.md
+?? knowledge/nodes/run-i801-dref-pose-beta005-matchinact0-s42.md
+?? knowledge/nodes/run-i801-dref-pose-beta005-matchp0-s42.md
+?? knowledge/nodes/run-i801-dref-pose-beta005-s42-r1.md
+?? knowledge/runs/run-i801-dref-pose-beta005-cardw010-s42-r1/
+?? knowledge/runs/run-i801-dref-pose-beta005-cardw025-s42-r1/
+?? knowledge/runs/run-i801-dref-pose-beta005-inact05-s42/
+?? knowledge/runs/run-i801-dref-pose-beta005-inact1-match025-s42-r1/
+?? knowledge/runs/run-i801-dref-pose-beta005-matchinact0-s42/
+?? knowledge/runs/run-i801-dref-pose-beta005-matchp0-s42/
+?? knowledge/runs/run-i801-dref-pose-beta005-s42-r1/
+?? src/tasks/plcs/configs/loss/tracking_all_outputs_beta01_reprojection.yaml
+?? src/tasks/plcs/configs/train_tracking_pose.yaml
+?? src/tasks/plcs/configs/train_tracking_pose_presence_head.yaml
+?? tests/unit/tasks/plcs/training/test_runner.py
+?? tests/unit/tasks/plcs/training/test_tracking_lightning_module.py

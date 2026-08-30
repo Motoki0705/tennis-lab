@@ -1,0 +1,2960 @@
+diff --git a/src/tasks/plcs/configuration.py b/src/tasks/plcs/configuration.py
+index 63a8a634..4ba2a508 100644
+--- a/src/tasks/plcs/configuration.py
++++ b/src/tasks/plcs/configuration.py
+@@ -275,6 +275,7 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
+             "rope_theta",
+             "ffn_type",
+             "dropout",
++            "predict_canonical_pose",
+             "role_rope_enabled",
+             "invisible_init_std",
+             "mhc",
+@@ -294,6 +295,7 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
+             "rope_theta",
+             "ffn_type",
+             "dropout",
++            "predict_canonical_pose",
+             "role_rope_enabled",
+             "invisible_init_std",
+             "ffn_mode",
+@@ -315,6 +317,7 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
+             "rope_theta",
+             "ffn_type",
+             "dropout",
++            "predict_canonical_pose",
+             "invisible_init_std",
+             "target_frame_contract",
+             "track_query_rope_contract",
+@@ -336,6 +339,7 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
+             "rope_theta",
+             "ffn_type",
+             "dropout",
++            "predict_canonical_pose",
+             "invisible_init_std",
+             "target_frame_contract",
+             "track_query_rope_contract",
+@@ -356,6 +360,7 @@ _TRACK_QUERY_MODEL_NAMES = frozenset(
+         "plcs_track_query_reference_ablation",
+     }
+ )
++_TRACK_QUERY_OPTIONAL_MODEL_FIELDS = frozenset({"predict_canonical_pose"})
+ _REFERENCE_TRACK_QUERY_MODEL_NAMES = frozenset(
+     {
+         "plcs_track_query_reference",
+@@ -410,10 +415,15 @@ class PLCSModelConfig:
+             raise SemanticConfigurationError(
+                 f"model.name: unsupported PLCS model {name!r}."
+             ) from error
++        optional_fields = (
++            _TRACK_QUERY_OPTIONAL_MODEL_FIELDS
++            if name in _TRACK_QUERY_MODEL_NAMES
++            else frozenset()
++        )
+         mapping = _exact(
+             initial,
+             path="model",
+-            required=fields,
++            required=fields - optional_fields,
+             allowed=fields,
+         )
+         input_profile: str | None = None
+@@ -1312,12 +1322,41 @@ class PLCSTrainingConfig:
+                 "match_rotation_weight",
+                 "match_presence_weight",
+             }
++            tracking_pose_loss_fields = {
++                "position_smooth_l1_beta",
++                "angle_weight",
++                "position_smoothness_weight",
++                "canonical_pose_weight",
++                "canonical_pose_smooth_l1_beta",
++                "reprojection_weight",
++                "reprojection_smooth_l1_beta",
++                "joint_angle_weight",
++                "torsion_angle_weight",
++                "torso_twist_weight",
++                "bone_length_weight",
++                "joint_angle_velocity_weight",
++                "torsion_angle_velocity_weight",
++                "torso_twist_velocity_weight",
++                "joint_angle_velocity_angle_weights",
++                "torsion_angle_velocity_angle_weights",
++            }
+             tracking_loss = _exact(
+                 require_config_mapping(root, "loss", path="configuration"),
+                 path="loss",
+                 required=tracking_loss_fields,
+-                allowed=tracking_loss_fields,
++                allowed=tracking_loss_fields | tracking_pose_loss_fields,
+             )
++            present_pose_fields = tracking_pose_loss_fields & set(tracking_loss)
++            if present_pose_fields != tracking_pose_loss_fields and present_pose_fields:
++                missing_pose_fields = sorted(
++                    tracking_pose_loss_fields - present_pose_fields
++                )
++                raise MissingConfigurationKeyError(
++                    "Tracking pose supervision requires the complete standard "
++                    "PLCS loss contract; missing configuration key(s): "
++                    + ", ".join(f"loss.{key}" for key in missing_pose_fields)
++                    + "."
++                )
+             for key in tracking_loss_fields - {"transition_radius"}:
+                 _positive(
+                     _number(tracking_loss, key, path="loss"),
+@@ -1328,6 +1367,27 @@ class PLCSTrainingConfig:
+                 raise SemanticConfigurationError(
+                     "loss.transition_radius must be non-negative."
+                 )
++            if present_pose_fields:
++                from src.tasks.plcs.training.losses import PLCSLossConfig
++
++                standard_loss_fields = tracking_pose_loss_fields | {
++                    "position_weight",
++                    "rotation_weight",
++                }
++                PLCSLossConfig.from_dict(
++                    {key: tracking_loss[key] for key in standard_loss_fields}
++                )
++                canonical_pose_required = any(
++                    _number(tracking_loss, key, path="loss") > 0.0
++                    for key in {"canonical_pose_weight", "reprojection_weight"}
++                )
++                if canonical_pose_required and not bool(
++                    model.values.get("predict_canonical_pose", False)
++                ):
++                    raise SemanticConfigurationError(
++                        "Tracking canonical-pose or reprojection supervision requires "
++                        "model.predict_canonical_pose=true."
++                    )
+             if all(
+                 _number(tracking_loss, key, path="loss") == 0.0
+                 for key in {
+diff --git a/src/tasks/plcs/data/tracking_dataset.py b/src/tasks/plcs/data/tracking_dataset.py
+index 262d0fb3..f59e81cd 100644
+--- a/src/tasks/plcs/data/tracking_dataset.py
++++ b/src/tasks/plcs/data/tracking_dataset.py
+@@ -3,6 +3,7 @@
+ from __future__ import annotations
+ 
+ from collections.abc import Mapping
++from copy import deepcopy
+ from typing import Any
+ 
+ import torch
+@@ -42,6 +43,7 @@ from src.tasks.plcs.court_keypoint_contract import (
+ from src.tasks.plcs.data.tracking_augmentation import (
+     PLCSTrackingDetectionAugmentation,
+ )
++from src.utils.projection.camera_projector import camera_from_mapping
+ 
+ PLCS_TRACKING_KEYS = (
+     "scene_format_version",
+@@ -59,7 +61,16 @@ PLCS_TRACKING_KEYS = (
+     "target_slot_mask",
+     "clean_human_kp",
+     "clean_human_vis",
++    "human_kp_target",
++    "human_vis_target",
+     "detection_gt_index",
++    "camera_C",
++    "camera_R",
++    "camera_f",
++    "camera_cx",
++    "camera_cy",
++    "camera_w",
++    "camera_h",
+ )
+ 
+ 
+@@ -181,6 +192,11 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
+         court_vis_rows: list[Tensor] = []
+         camera_center_rows: list[Tensor] = []
+         camera_rotation_rows: list[Tensor] = []
++        camera_f_rows: list[Tensor] = []
++        camera_cx_rows: list[Tensor] = []
++        camera_cy_rows: list[Tensor] = []
++        camera_w_rows: list[Tensor] = []
++        camera_h_rows: list[Tensor] = []
+         for local_index, camera_index in enumerate(cameras.indices):
+             keypoints = torch.from_numpy(
+                 scene.get_camera_array(camera_index, "human_kp_uv", window=window)
+@@ -233,16 +249,24 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
+                 raise ValueError(
+                     f"Scene {scene.path} camera {camera_index} has invalid params metadata."
+                 )
++            camera = camera_from_mapping(dict(params))
+             center, camera_rotation = camera_extrinsics_physical_to_target(
+-                torch.as_tensor(params.get("C"), dtype=torch.float32),
+-                torch.as_tensor(params.get("R"), dtype=torch.float32),
++                camera.C,
++                camera.R,
+                 provenance,
+             )
+             camera_center_rows.append(center)
+             camera_rotation_rows.append(camera_rotation)
++            camera_f_rows.append(torch.tensor(camera.f, dtype=torch.float32))
++            camera_cx_rows.append(torch.tensor(camera.cx, dtype=torch.float32))
++            camera_cy_rows.append(torch.tensor(camera.cy, dtype=torch.float32))
++            camera_w_rows.append(torch.tensor(float(camera.w), dtype=torch.float32))
++            camera_h_rows.append(torch.tensor(float(camera.h), dtype=torch.float32))
+ 
+         human_kp = torch.stack(kp_rows)
+         human_vis = torch.stack(visible_rows)
++        clean_human_kp = torch.stack(clean_kp_rows)
++        clean_human_vis = torch.stack(clean_visible_rows)
+         rotation_fill = torch.tensor([1.0, 0.0], dtype=rotation.dtype)
+         sample: dict[str, Any] = {
+             "scene_format_version": torch.tensor(4),
+@@ -266,11 +290,18 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
+             "target_presence": packing.target_presence,
+             "target_instance_id": packing.target_instance_id,
+             "target_slot_mask": packing.target_presence.any(0),
+-            "clean_human_kp": torch.stack(clean_kp_rows),
+-            "clean_human_vis": torch.stack(clean_visible_rows),
++            "clean_human_kp": clean_human_kp,
++            "clean_human_vis": clean_human_vis,
++            "human_kp_target": clean_human_kp.clone(),
++            "human_vis_target": clean_human_vis.clone(),
+             "detection_gt_index": torch.stack(index_rows),
+             "camera_C": torch.stack(camera_center_rows),
+             "camera_R": torch.stack(camera_rotation_rows),
++            "camera_f": torch.stack(camera_f_rows),
++            "camera_cx": torch.stack(camera_cx_rows),
++            "camera_cy": torch.stack(camera_cy_rows),
++            "camera_w": torch.stack(camera_w_rows),
++            "camera_h": torch.stack(camera_h_rows),
+         }
+         sample["court_keypoint_metadata"] = court_keypoint_contract_document(
+             self.court_keypoint_contract
+@@ -295,12 +326,13 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
+     def augment_sample(self, sample: dict[str, Any]) -> dict[str, Any]:
+         if not self.augment:
+             return sample
+-        metadata_keys = (
+-            "court_keypoint_metadata",
+-            "court_reference_provenance",
+-            "selected_camera_ids",
++        metadata = deepcopy(
++            {
++                key: value
++                for key, value in sample.items()
++                if not isinstance(value, Tensor)
++            }
+         )
+-        metadata = {key: sample[key] for key in metadata_keys}
+         tensor_sample: dict[str, Tensor] = {
+             key: value for key, value in sample.items() if isinstance(value, Tensor)
+         }
+@@ -416,15 +448,24 @@ def collate_plcs_tracking_batch(
+             "target_instance_id": (0,),
+             "clean_human_kp": (0, 1),
+             "clean_human_vis": (0, 1),
++            "human_kp_target": (0, 1),
++            "human_vis_target": (0, 1),
+             "detection_gt_index": (0, 1),
+             "camera_C": (0,),
+             "camera_R": (0,),
++            "camera_f": (0,),
++            "camera_cx": (0,),
++            "camera_cy": (0,),
++            "camera_w": (0,),
++            "camera_h": (0,),
+             "view_camera_ids": (0,),
+         },
+         pad_values={
+             "padding_mask": True,
+             "target_instance_id": -1,
+             "detection_gt_index": -1,
++            "camera_w": 1.0,
++            "camera_h": 1.0,
+             "view_camera_ids": CAMERA_ID_PADDING_VALUE,
+         },
+     )
+diff --git a/src/tasks/plcs/data/tracking_types.py b/src/tasks/plcs/data/tracking_types.py
+index b85e3f55..994fafe7 100644
+--- a/src/tasks/plcs/data/tracking_types.py
++++ b/src/tasks/plcs/data/tracking_types.py
+@@ -34,7 +34,16 @@ class PLCSTrackingBatch(TypedDict):
+     target_slot_mask: Tensor
+     clean_human_kp: Tensor
+     clean_human_vis: Tensor
++    human_kp_target: Tensor
++    human_vis_target: Tensor
+     detection_gt_index: Tensor
++    camera_C: Tensor
++    camera_R: Tensor
++    camera_f: Tensor
++    camera_cx: Tensor
++    camera_cy: Tensor
++    camera_w: Tensor
++    camera_h: Tensor
+     court_keypoint_metadata: NotRequired[tuple[Mapping[str, object], ...]]
+     court_reference_provenance: NotRequired[
+         tuple[CourtReferenceFrameProvenance, ...]
+@@ -57,3 +66,4 @@ class PLCSTrackingPrediction(TypedDict):
+     position: Tensor
+     rotation: Tensor
+     presence_logits: Tensor
++    canonical_pose: NotRequired[Tensor]
+diff --git a/src/tasks/plcs/inference/tracking_predictor.py b/src/tasks/plcs/inference/tracking_predictor.py
+index 1ae27311..c5582e83 100644
+--- a/src/tasks/plcs/inference/tracking_predictor.py
++++ b/src/tasks/plcs/inference/tracking_predictor.py
+@@ -129,7 +129,7 @@ class PLCSTrackingPredictor(BasePredictor):
+         | None = None,
+         reference_metadata: PLCSReferenceMetadata | None = None,
+     ) -> dict[str, object]:
+-        """Return query position/rotation and lifecycle presence outputs."""
++        """Return query tracking outputs and optional per-query canonical pose."""
+         with torch.no_grad():
+             if isinstance(self.io_adapter, PLCSTrackQueryReferenceIOAdapter):
+                 if reference_metadata is None:
+@@ -220,6 +220,8 @@ class PLCSTrackingPredictor(BasePredictor):
+                 "presence_probability": probability,
+                 "presence": probability >= tracking_metrics.presence_threshold,
+             }
++            if decoded.canonical_pose is not None:
++                result["canonical_pose"] = decoded.canonical_pose
+             if denormalize:
+                 provenance = prepared.court_reference_provenance
+                 if provenance is None:
+diff --git a/src/tasks/plcs/model_io/adapters.py b/src/tasks/plcs/model_io/adapters.py
+index 77c3e378..b1d34f92 100644
+--- a/src/tasks/plcs/model_io/adapters.py
++++ b/src/tasks/plcs/model_io/adapters.py
+@@ -81,6 +81,9 @@ _REPROJECTION_KEYS = frozenset(
+         "camera_h",
+     }
+ )
++_TRACKING_REPROJECTION_TRIGGER_KEYS = _REPROJECTION_KEYS.difference(
++    {"camera_R", "camera_C"}
++)
+ 
+ 
+ def _court_context(
+@@ -1004,6 +1007,7 @@ class PLCSTrackQueryIOAdapter:
+         num_court_tokens: int,
+         num_joints: int,
+         court_keypoint_contract: CourtKeypointContract,
++        predict_canonical_pose: bool = False,
+     ) -> None:
+         self._model_type = model_type
+         self.profile = PLCSInputProfile.TRACK_QUERY
+@@ -1011,6 +1015,7 @@ class PLCSTrackQueryIOAdapter:
+         self.num_court_tokens = num_court_tokens
+         self.num_joints = num_joints
+         self.court_keypoint_contract = court_keypoint_contract
++        self.predict_canonical_pose = predict_canonical_pose
+ 
+     @property
+     def model_type(self) -> type[nn.Module]:
+@@ -1114,7 +1119,8 @@ class PLCSTrackQueryIOAdapter:
+     ) -> PLCSPreparedBatch:
+         call = self.build_call(batch)
+         human_kp = cast(Tensor, call.kwargs["human_kp"])
+-        batch_size, _, frames = human_kp.shape[:3]
++        padding_mask = cast(Tensor, call.kwargs["padding_mask"])
++        batch_size, views, frames = human_kp.shape[:3]
+         provenance = _court_context(
+             batch,
+             self.court_keypoint_contract,
+@@ -1160,6 +1166,22 @@ class PLCSTrackQueryIOAdapter:
+                 dtypes=frozenset({torch.int64}),
+             ),
+         )
++        if self.predict_canonical_pose:
++            target_human_kp_3d = require_tensor(
++                batch,
++                "target_human_kp_3d",
++                spec=TensorSpec(
++                    shape=(
++                        batch_size,
++                        frames,
++                        self.num_queries,
++                        self.num_joints,
++                        3,
++                    ),
++                    dtypes=_FLOAT_DTYPES,
++                ),
++            )
++            _finite("target_human_kp_3d", target_human_kp_3d)
+         if target_position.shape[:-1] != target_rotation.shape[:-1]:
+             raise ModelInputContractError(
+                 "Tracking target_position/target_rotation must share (B,T,S)."
+@@ -1186,12 +1208,145 @@ class PLCSTrackQueryIOAdapter:
+             raise ModelInputContractError(
+                 "Inactive tracking targets must use target_instance_id=-1."
+             )
++        reprojection_target = self._prepare_reprojection_target(
++            batch,
++            batch_size=batch_size,
++            views=views,
++            frames=frames,
++            padding_mask=padding_mask,
++        )
+         return PLCSPreparedBatch(
+             call=call,
++            reprojection_target=reprojection_target,
+             court_reference_provenance=provenance,
+             reference_metadata=plcs_reference_metadata_from_batch(batch),
+         )
+ 
++    def _prepare_reprojection_target(
++        self,
++        batch: Mapping[str, object],
++        *,
++        batch_size: int,
++        views: int,
++        frames: int,
++        padding_mask: Tensor,
++    ) -> PLCSReprojectionTarget | None:
++        present = _REPROJECTION_KEYS.intersection(batch)
++        has_tracking_target = bool(
++            _TRACKING_REPROJECTION_TRIGGER_KEYS.intersection(batch)
++        )
++        if not self.predict_canonical_pose and not has_tracking_target:
++            return None
++        if present != _REPROJECTION_KEYS:
++            missing = sorted(_REPROJECTION_KEYS - present)
++            requirement = (
++                "required when predict_canonical_pose=True"
++                if self.predict_canonical_pose
++                else "all-or-none once pose targets or intrinsics are supplied"
++            )
++            raise ModelInputContractError(
++                "PLCS tracking reprojection fields are "
++                f"{requirement}; missing={missing}."
++            )
++
++        target_uv = require_tensor(
++            batch,
++            "human_kp_target",
++            spec=TensorSpec(
++                shape=(
++                    batch_size,
++                    views,
++                    frames,
++                    self.num_queries,
++                    self.num_joints,
++                    2,
++                ),
++                dtypes=_FLOAT_DTYPES,
++            ),
++        )
++        target_vis = require_tensor(
++            batch,
++            "human_vis_target",
++            spec=TensorSpec(
++                shape=(
++                    batch_size,
++                    views,
++                    frames,
++                    self.num_queries,
++                    self.num_joints,
++                ),
++                dtypes=frozenset({torch.bool}),
++            ),
++        )
++        camera_R = require_tensor(
++            batch,
++            "camera_R",
++            spec=TensorSpec(
++                shape=(batch_size, views, 3, 3),
++                dtypes=_FLOAT_DTYPES,
++            ),
++        )
++        camera_C = require_tensor(
++            batch,
++            "camera_C",
++            spec=TensorSpec(
++                shape=(batch_size, views, 3),
++                dtypes=_FLOAT_DTYPES,
++            ),
++        )
++
++        camera_scalars: dict[str, Tensor] = {}
++        for name in (
++            "camera_f",
++            "camera_cx",
++            "camera_cy",
++            "camera_w",
++            "camera_h",
++        ):
++            camera_scalars[name] = require_tensor(
++                batch,
++                name,
++                spec=TensorSpec(
++                    shape=(batch_size, views),
++                    dtypes=_FLOAT_DTYPES,
++                ),
++            )
++
++        _normalized_uv("human_kp_target", target_uv, target_vis)
++        _binary_mask("human_vis_target", target_vis)
++        for name, tensor in {
++            "camera_R": camera_R,
++            "camera_C": camera_C,
++            **camera_scalars,
++        }.items():
++            _finite(name, tensor)
++
++        padded_targets = padding_mask.unsqueeze(-1).unsqueeze(-1)
++        if bool((target_vis & padded_targets).any().item()):
++            raise ModelInputContractError(
++                "human_vis_target must be zero at padded view/time entries."
++            )
++
++        valid_views = ~padding_mask.all(dim=-1)
++        for name in ("camera_f", "camera_w", "camera_h"):
++            if bool((camera_scalars[name][valid_views] <= 0).any().item()):
++                raise ModelInputContractError(
++                    f"{name} must be positive for every non-padded camera view."
++                )
++
++        return PLCSReprojectionTarget(
++            target_uv=target_uv,
++            target_vis=target_vis,
++            padding_mask=padding_mask,
++            camera_R=camera_R,
++            camera_C=camera_C,
++            camera_f=camera_scalars["camera_f"],
++            camera_cx=camera_scalars["camera_cx"],
++            camera_cy=camera_scalars["camera_cy"],
++            camera_w=camera_scalars["camera_w"],
++            camera_h=camera_scalars["camera_h"],
++        )
++
+     def decode_output(
+         self, output: Mapping[str, object]
+     ) -> PLCSTrackingDecodedPrediction:
+@@ -1200,6 +1355,8 @@ class PLCSTrackQueryIOAdapter:
+                 f"PLCS tracking output must be a mapping, got {type(output).__name__}."
+             )
+         expected = {"position", "rotation", "presence_logits"}
++        if self.predict_canonical_pose:
++            expected.add("canonical_pose")
+         if set(output) != expected:
+             raise ModelOutputContractError(
+                 "PLCS tracking output keys do not match the paired adapter: "
+@@ -1215,6 +1372,13 @@ class PLCSTrackQueryIOAdapter:
+         presence_logits = _required_output(
+             output, "presence_logits", shape=(None, None, self.num_queries)
+         )
++        canonical_pose = None
++        if self.predict_canonical_pose:
++            canonical_pose = _required_output(
++                output,
++                "canonical_pose",
++                shape=(None, None, self.num_queries, self.num_joints, 3),
++            )
+         if position.shape[:-1] != rotation.shape[:-1]:
+             raise ModelOutputContractError(
+                 "Tracking position and rotation must share (B,T,Q)."
+@@ -1223,10 +1387,15 @@ class PLCSTrackQueryIOAdapter:
+             raise ModelOutputContractError(
+                 "presence_logits must match tracking output (B,T,Q)."
+             )
++        if canonical_pose is not None and canonical_pose.shape[:3] != position.shape[:-1]:
++            raise ModelOutputContractError(
++                "canonical_pose must share tracking output (B,T,Q)."
++            )
+         return PLCSTrackingDecodedPrediction(
+             position=position,
+             rotation=rotation,
+             presence_logits=presence_logits,
++            canonical_pose=canonical_pose,
+         )
+ 
+     def decode_prepared_output(
+@@ -1256,6 +1425,7 @@ class PLCSTrackQueryReferenceIOAdapter(PLCSTrackQueryIOAdapter):
+         target_frame_contract: str,
+         track_query_rope_contract: str,
+         reference_selector_mode: str,
++        predict_canonical_pose: bool = False,
+     ) -> None:
+         super().__init__(
+             model_type=model_type,
+@@ -1263,6 +1433,7 @@ class PLCSTrackQueryReferenceIOAdapter(PLCSTrackQueryIOAdapter):
+             num_court_tokens=num_court_tokens,
+             num_joints=num_joints,
+             court_keypoint_contract=court_keypoint_contract,
++            predict_canonical_pose=predict_canonical_pose,
+         )
+         selector_mode = resolve_reference_selector_mode(reference_selector_mode)
+         reference_contract = TrackQueryReferenceContract.reference_v2(selector_mode)
+diff --git a/src/tasks/plcs/model_io/contracts.py b/src/tasks/plcs/model_io/contracts.py
+index 8d48cc20..1075aecb 100644
+--- a/src/tasks/plcs/model_io/contracts.py
++++ b/src/tasks/plcs/model_io/contracts.py
+@@ -36,7 +36,12 @@ class PLCSInputProfile(StrEnum):
+ 
+ @dataclass(frozen=True, slots=True)
+ class PLCSReprojectionTarget:
+-    """Clean 2D pose targets and fixed cameras for reprojection supervision."""
++    """Validated 2D targets and cameras for reprojection supervision.
++
++    Tracking targets retain their query axis here. The tracking loss still
++    consumes the raw batch because Hungarian assignment indexes that axis;
++    this object certifies that the batch crossed the strict adapter boundary.
++    """
+ 
+     target_uv: Tensor
+     target_vis: Tensor
+@@ -392,6 +397,7 @@ class PLCSTrackingDecodedPrediction:
+     position: Tensor
+     rotation: Tensor
+     presence_logits: Tensor
++    canonical_pose: Tensor | None = None
+     court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...] | None = None
+     reference_metadata: PLCSReferenceMetadata | None = None
+ 
+diff --git a/src/tasks/plcs/model_io/factory.py b/src/tasks/plcs/model_io/factory.py
+index 35fa999c..cff07a27 100644
+--- a/src/tasks/plcs/model_io/factory.py
++++ b/src/tasks/plcs/model_io/factory.py
+@@ -223,6 +223,9 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
+             num_court_tokens=14,
+             num_joints=model_cfg.integer("num_joints"),
+             court_keypoint_contract=runtime.court_keypoint_contract,
++            predict_canonical_pose=bool(
++                model_cfg.values.get("predict_canonical_pose", False)
++            ),
+         )
+     elif model_name == "plcs_track_query_ablation":
+         model = PLCSTrackQueryAblationModel(model_cfg)
+@@ -232,6 +235,9 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
+             num_court_tokens=14,
+             num_joints=model_cfg.integer("num_joints"),
+             court_keypoint_contract=runtime.court_keypoint_contract,
++            predict_canonical_pose=bool(
++                model_cfg.values.get("predict_canonical_pose", False)
++            ),
+         )
+     elif model_name == "plcs_track_query_reference":
+         model = PLCSTrackQueryReferenceModel(model_cfg)
+@@ -246,6 +252,9 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
+                 "track_query_rope_contract"
+             ),
+             reference_selector_mode=model_cfg.string("reference_selector_mode"),
++            predict_canonical_pose=bool(
++                model_cfg.values.get("predict_canonical_pose", False)
++            ),
+         )
+     elif model_name == "plcs_track_query_reference_ablation":
+         model = PLCSTrackQueryReferenceAblationModel(model_cfg)
+@@ -260,6 +269,9 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
+                 "track_query_rope_contract"
+             ),
+             reference_selector_mode=model_cfg.string("reference_selector_mode"),
++            predict_canonical_pose=bool(
++                model_cfg.values.get("predict_canonical_pose", False)
++            ),
+         )
+     else:
+         raise ValueError(f"Unsupported validated PLCS model {model_name!r}.")
+diff --git a/src/tasks/plcs/models/plcs_track_query_ablation_model.py b/src/tasks/plcs/models/plcs_track_query_ablation_model.py
+index fe9420fe..6b09e4d3 100644
+--- a/src/tasks/plcs/models/plcs_track_query_ablation_model.py
++++ b/src/tasks/plcs/models/plcs_track_query_ablation_model.py
+@@ -10,6 +10,10 @@ from torch import Tensor, nn
+ 
+ from src.tasks.plcs.configuration import PLCSModelConfig
+ from src.tasks.plcs.data.tracking_types import PLCSTrackingPrediction
++from src.tasks.plcs.models.plcs_track_query_model import (
++    build_track_query_canonical_pose_head,
++    decode_track_query_canonical_pose,
++)
+ from src.utils.models import (
+     CSWAConfig,
+     RMSNorm,
+@@ -119,6 +123,11 @@ class PLCSTrackQueryAblationModel(nn.Module):
+         self.position_head = nn.Linear(self.hidden_dim, 3)
+         self.rotation_head = nn.Linear(self.hidden_dim, 2)
+         self.presence_head = nn.Linear(self.hidden_dim, 1)
++        self.canonical_pose_head = build_track_query_canonical_pose_head(
++            config,
++            hidden_dim=self.hidden_dim,
++            num_joints=self.num_joints,
++        )
+         self.register_forward_pre_hook(
+             self._validate_forward_inputs,
+             with_kwargs=True,
+@@ -418,11 +427,19 @@ class PLCSTrackQueryAblationModel(nn.Module):
+         rotation = F.normalize(self.rotation_head(query_tokens), dim=-1)
+         rotation = rotation * output_valid.unsqueeze(-1)
+         presence_logits = self.presence_head(query_tokens).squeeze(-1) * output_valid
+-        return {
++        canonical_pose = decode_track_query_canonical_pose(
++            self.canonical_pose_head,
++            query_tokens,
++            frame_valid=masks.frame_valid,
++        )
++        prediction: PLCSTrackingPrediction = {
+             "position": position,
+             "rotation": rotation,
+             "presence_logits": presence_logits,
+         }
++        if canonical_pose is not None:
++            prediction["canonical_pose"] = canonical_pose
++        return prediction
+ 
+ 
+ __all__ = ["PLCSTrackQueryAblationModel"]
+diff --git a/src/tasks/plcs/models/plcs_track_query_model.py b/src/tasks/plcs/models/plcs_track_query_model.py
+index 264d01bb..77846e37 100644
+--- a/src/tasks/plcs/models/plcs_track_query_model.py
++++ b/src/tasks/plcs/models/plcs_track_query_model.py
+@@ -10,6 +10,7 @@ from torch import Tensor, nn
+ 
+ from src.tasks.plcs.configuration import PLCSModelConfig
+ from src.tasks.plcs.data.tracking_types import PLCSTrackingPrediction
++from src.tasks.plcs.models.components.heads import CanonicalPoseHead
+ from src.utils.models import (
+     CSWAConfig,
+     RMSNorm,
+@@ -30,6 +31,40 @@ from src.utils.models.embeddings import (
+ from src.utils.models.multiview_padding import build_fixed_query_padding_masks
+ 
+ 
++def build_track_query_canonical_pose_head(
++    config: PLCSModelConfig,
++    *,
++    hidden_dim: int,
++    num_joints: int,
++) -> CanonicalPoseHead | None:
++    """Build the optional shared per-query canonical-pose readout."""
++    if not bool(config.values.get("predict_canonical_pose", False)):
++        return None
++    return CanonicalPoseHead(
++        input_dim=hidden_dim,
++        hidden_dim=hidden_dim // 2,
++        num_layers=2,
++        dropout=config.number("dropout"),
++        num_keypoints=num_joints,
++    )
++
++
++def decode_track_query_canonical_pose(
++    head: CanonicalPoseHead | None,
++    query_tokens: Tensor,
++    *,
++    frame_valid: Tensor,
++) -> Tensor | None:
++    """Decode and mask ``(B,T,Q,J,3)`` pose from shared query features."""
++    if head is None:
++        return None
++    canonical_pose = head(query_tokens)
++    return cast(
++        "Tensor",
++        canonical_pose * frame_valid[:, :, None, None, None],
++    )
++
++
+ class PLCSTrackQueryModel(nn.Module):
+     """Predict persistent player queries with a fixed ``C,C,C,G`` cycle."""
+ 
+@@ -99,6 +134,11 @@ class PLCSTrackQueryModel(nn.Module):
+         self.position_head = nn.Linear(self.hidden_dim, 3)
+         self.rotation_head = nn.Linear(self.hidden_dim, 2)
+         self.presence_head = nn.Linear(self.hidden_dim, 1)
++        self.canonical_pose_head = build_track_query_canonical_pose_head(
++            config,
++            hidden_dim=self.hidden_dim,
++            num_joints=self.num_joints,
++        )
+         self.register_forward_pre_hook(
+             self._validate_forward_inputs,
+             with_kwargs=True,
+@@ -362,11 +402,23 @@ class PLCSTrackQueryModel(nn.Module):
+         rotation = F.normalize(self.rotation_head(query_tokens), dim=-1)
+         rotation = rotation * output_valid.unsqueeze(-1)
+         presence_logits = self.presence_head(query_tokens).squeeze(-1) * output_valid
+-        return {
++        canonical_pose = decode_track_query_canonical_pose(
++            self.canonical_pose_head,
++            query_tokens,
++            frame_valid=masks.frame_valid,
++        )
++        prediction: PLCSTrackingPrediction = {
+             "position": position,
+             "rotation": rotation,
+             "presence_logits": presence_logits,
+         }
++        if canonical_pose is not None:
++            prediction["canonical_pose"] = canonical_pose
++        return prediction
+ 
+ 
+-__all__ = ["PLCSTrackQueryModel"]
++__all__ = [
++    "PLCSTrackQueryModel",
++    "build_track_query_canonical_pose_head",
++    "decode_track_query_canonical_pose",
++]
+diff --git a/src/tasks/plcs/training/tracking_lightning_module.py b/src/tasks/plcs/training/tracking_lightning_module.py
+index c2bbf831..dd378f55 100644
+--- a/src/tasks/plcs/training/tracking_lightning_module.py
++++ b/src/tasks/plcs/training/tracking_lightning_module.py
+@@ -25,6 +25,7 @@ from src.tasks.plcs.model_io import (
+ )
+ from src.tasks.plcs.training.tracking_losses import PLCSTrackingLoss
+ from src.tasks.plcs.training.tracking_metrics import plcs_tracking_metrics
++from src.utils.geometry.court_pose import world_pose_to_canonical_pose
+ from src.utils.schema.court_normalization import (
+     add_court_coordinate_normalization,
+     validate_court_coordinate_normalization,
+@@ -74,6 +75,8 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Any]]):
+             "rotation": decoded.rotation,
+             "presence_logits": decoded.presence_logits,
+         }
++        if decoded.canonical_pose is not None:
++            prediction["canonical_pose"] = decoded.canonical_pose
+         loss_inputs, assignments = self.criterion.prepare_inputs(prediction, batch)
+         losses = self.criterion(loss_inputs)
+         metrics = (
+@@ -146,6 +149,22 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Any]]):
+             "target_instance_id": self._to_numpy(batch["target_instance_id"]),
+             "padding_mask": self._to_numpy(batch["padding_mask"]),
+         }
++        canonical_pose = result.get("canonical_pose")
++        if canonical_pose is not None:
++            if "target_human_kp_3d" not in batch:
++                raise ValueError(
++                    "Canonical tracking test predictions require "
++                    "batch['target_human_kp_3d']."
++                )
++            target_canonical_pose = world_pose_to_canonical_pose(
++                batch["target_human_kp_3d"],
++                batch["target_position"],
++                batch["target_rotation"],
++            )
++            payload["pred_canonical_pose"] = self._to_numpy(canonical_pose)
++            payload["target_canonical_pose"] = self._to_numpy(
++                target_canonical_pose
++            )
+         reference_metadata = plcs_reference_metadata_from_batch(batch)
+         if reference_metadata is not None:
+             num_views_range = cast(
+diff --git a/src/tasks/plcs/training/tracking_losses.py b/src/tasks/plcs/training/tracking_losses.py
+index c6267f31..ef1342cc 100644
+--- a/src/tasks/plcs/training/tracking_losses.py
++++ b/src/tasks/plcs/training/tracking_losses.py
+@@ -1,9 +1,10 @@
+-"""Post-matching losses for multi-person position, rotation, and presence."""
++"""Post-matching losses for multi-person tracking and canonical pose."""
+ 
+ from __future__ import annotations
+ 
++from collections.abc import Mapping
+ from dataclasses import dataclass
+-from typing import Any
++from typing import Any, cast
+ 
+ import torch
+ import torch.nn.functional as F
+@@ -13,6 +14,15 @@ from src.tasks.base.training.tracking_lifecycle import (
+     weighted_presence_bce_with_logits,
+ )
+ from src.tasks.plcs.training.tracking_matching import match_player_tracks
++from src.utils.geometry.angles import wrapped_angle_diff
++from src.utils.geometry.court_pose import (
++    canonical_pose_to_world_pose,
++    world_pose_to_canonical_pose,
++)
++from src.utils.projection.differentiable_projection import (
++    DifferentiablePinholeProjection,
++)
++from src.utils.tensor_utils import masked_mean
+ 
+ Assignment = tuple[torch.Tensor, torch.Tensor]
+ 
+@@ -23,17 +33,123 @@ class PLCSTrackingLossInputs:
+ 
+     position: torch.Tensor
+     rotation: torch.Tensor
++    angle: torch.Tensor
++    canonical_pose: torch.Tensor
++    reprojection: torch.Tensor
+     presence: torch.Tensor
+     track_smoothness: torch.Tensor
+ 
+ 
++_SUPPORTED_WEIGHT_FIELDS = frozenset(
++    {
++        "position_weight",
++        "rotation_weight",
++        "angle_weight",
++        "canonical_pose_weight",
++        "reprojection_weight",
++        "presence_weight",
++        "presence_inactive_weight",
++        "presence_active_weight",
++        "presence_transition_weight",
++        "track_smoothness_weight",
++        "match_position_weight",
++        "match_rotation_weight",
++        "match_presence_weight",
++    }
++)
++
++
++def _config_value(config: Any, name: str, default: object) -> object:
++    """Read a loss setting from mappings and Hydra objects uniformly."""
++    if isinstance(config, Mapping):
++        return config.get(name, default)
++    return getattr(config, name, default)
++
++
++def _config_items(config: Any) -> tuple[tuple[str, object], ...]:
++    """Return top-level loss settings when the configuration exposes them."""
++    if isinstance(config, Mapping):
++        return tuple((str(key), value) for key, value in config.items())
++    attributes = getattr(config, "__dict__", None)
++    if isinstance(attributes, Mapping):
++        return tuple((str(key), value) for key, value in attributes.items())
++    return ()
++
++
++def _require_positive_beta(config: Any, name: str, default: float) -> float:
++    value = float(cast("Any", _config_value(config, name, default)))
++    if value <= 0.0:
++        raise ValueError(f"loss.{name} must be positive, got {value}.")
++    return value
++
++
++def _validate_canonical_pose(name: str, value: torch.Tensor) -> None:
++    if value.ndim != 5 or value.shape[-2:] != (17, 3):
++        raise ValueError(
++            f"{name} must have shape (B,T,Q,17,3), got {tuple(value.shape)}."
++        )
++
++
++def validate_tracking_projection_shapes(
++    pred_uv: torch.Tensor,
++    in_front: torch.Tensor,
++    prediction: dict[str, torch.Tensor],
++    batch: dict[str, torch.Tensor],
++) -> None:
++    """Validate query projections and slot-aligned clean 2D supervision shapes."""
++    batch_size, frames, queries = prediction["position"].shape[:3]
++    views = batch["camera_R"].shape[1]
++    target_slots = batch["target_presence"].shape[2]
++    expected = {
++        "pred_uv": (batch_size, views, frames, queries, 17, 2),
++        "in_front": (batch_size, views, frames, queries, 17),
++        "human_kp_target": (batch_size, views, frames, target_slots, 17, 2),
++        "human_vis_target": (batch_size, views, frames, target_slots, 17),
++        "padding_mask": (batch_size, views, frames),
++    }
++    actual = {
++        "pred_uv": tuple(pred_uv.shape),
++        "in_front": tuple(in_front.shape),
++        "human_kp_target": tuple(batch["human_kp_target"].shape),
++        "human_vis_target": tuple(batch["human_vis_target"].shape),
++        "padding_mask": tuple(batch["padding_mask"].shape),
++    }
++    mismatches = [
++        f"{name}: expected {expected[name]}, got {shape}"
++        for name, shape in actual.items()
++        if shape != expected[name]
++    ]
++    if mismatches:
++        raise ValueError(
++            "Invalid tracking projection tensor shape(s): " + "; ".join(mismatches)
++        )
++
++
+ class PLCSTrackingLoss(nn.Module):
+     """Supervise fixed queries after clip-level assignment."""
+ 
+     def __init__(self, config: Any) -> None:
+         super().__init__()
+         self.position_weight = float(config.position_weight)
++        self.position_smooth_l1_beta = _require_positive_beta(
++            config, "position_smooth_l1_beta", 1.0
++        )
+         self.rotation_weight = float(config.rotation_weight)
++        self.angle_weight = float(
++            cast("Any", _config_value(config, "angle_weight", 0.0))
++        )
++        self.canonical_pose_weight = float(
++            cast("Any", _config_value(config, "canonical_pose_weight", 0.0))
++        )
++        self.canonical_pose_smooth_l1_beta = _require_positive_beta(
++            config, "canonical_pose_smooth_l1_beta", 1.0
++        )
++        self.reprojection_weight = float(
++            cast("Any", _config_value(config, "reprojection_weight", 0.0))
++        )
++        self.reprojection_smooth_l1_beta = _require_positive_beta(
++            config, "reprojection_smooth_l1_beta", 0.01
++        )
+         self.presence_weight = float(config.presence_weight)
+         self.presence_inactive_weight = float(config.presence_inactive_weight)
+         self.presence_active_weight = float(config.presence_active_weight)
+@@ -43,6 +159,29 @@ class PLCSTrackingLoss(nn.Module):
+         self.match_position_weight = float(config.match_position_weight)
+         self.match_rotation_weight = float(config.match_rotation_weight)
+         self.match_presence_weight = float(config.match_presence_weight)
++        self._include_angle = self.angle_weight > 0.0 or any(
++            name == "angle_weight" for name, _ in _config_items(config)
++        )
++        self._include_canonical_pose = self.canonical_pose_weight > 0.0 or any(
++            name == "canonical_pose_weight" for name, _ in _config_items(config)
++        )
++        self._include_reprojection = self.reprojection_weight > 0.0 or any(
++            name == "reprojection_weight" for name, _ in _config_items(config)
++        )
++        self.reprojection_projector = DifferentiablePinholeProjection()
++
++        for name, raw_value in _config_items(config):
++            if not name.endswith("_weight") or name in _SUPPORTED_WEIGHT_FIELDS:
++                continue
++            try:
++                value = float(cast("Any", raw_value))
++            except (TypeError, ValueError):
++                continue
++            if value != 0.0:
++                raise ValueError(
++                    "PLCSTrackingLoss does not support nonzero "
++                    f"loss.{name}={value}."
++                )
+ 
+     def prepare_inputs(
+         self,
+@@ -64,9 +203,46 @@ class PLCSTrackingLoss(nn.Module):
+         pred_position = prediction["position"]
+         pred_rotation = F.normalize(prediction["rotation"], dim=-1)
+         pred_presence = prediction["presence_logits"]
++        pred_canonical_pose = prediction.get("canonical_pose")
++        canonical_required = self.canonical_pose_weight > 0.0
++        reprojection_required = self.reprojection_weight > 0.0
++        if canonical_required or reprojection_required:
++            if pred_canonical_pose is None:
++                raise ValueError(
++                    "prediction['canonical_pose'] is required when canonical-pose "
++                    "or reprojection supervision is enabled."
++                )
++            _validate_canonical_pose("prediction['canonical_pose']", pred_canonical_pose)
++        if canonical_required and "target_human_kp_3d" not in batch:
++            raise ValueError(
++                "batch['target_human_kp_3d'] is required when "
++                "canonical_pose_weight is > 0."
++            )
++        if reprojection_required:
++            required_reprojection_fields = (
++                "human_kp_target",
++                "human_vis_target",
++                "camera_R",
++                "camera_C",
++                "camera_f",
++                "camera_cx",
++                "camera_cy",
++                "camera_w",
++                "camera_h",
++            )
++            missing = [
++                name for name in required_reprojection_fields if name not in batch
++            ]
++            if missing:
++                raise ValueError(
++                    "Tracking reprojection supervision requires batch fields "
++                    f"{missing}."
++                )
+         presence_target = torch.zeros_like(pred_presence)
+         position_terms: list[torch.Tensor] = []
+         rotation_terms: list[torch.Tensor] = []
++        angle_terms: list[torch.Tensor] = []
++        canonical_pose_terms: list[torch.Tensor] = []
+         smoothness_terms: list[torch.Tensor] = []
+         for batch_index, (query_indices, target_indices) in enumerate(assignments):
+             for query_index, target_index in zip(
+@@ -84,6 +260,7 @@ class PLCSTrackingLoss(nn.Module):
+                         F.smooth_l1_loss(
+                             pred_position[batch_index, active, query_index],
+                             batch["target_position"][batch_index, active, target_index],
++                            beta=self.position_smooth_l1_beta,
+                         )
+                     )
+                     target_rotation = F.normalize(
+@@ -99,6 +276,58 @@ class PLCSTrackingLoss(nn.Module):
+                             ).sum(-1)
+                         ).mean()
+                     )
++                    if self.angle_weight > 0.0:
++                        pred_angle = torch.atan2(
++                            prediction["rotation"][
++                                batch_index, active, query_index, 1
++                            ],
++                            prediction["rotation"][
++                                batch_index, active, query_index, 0
++                            ],
++                        )
++                        target_angle = torch.atan2(
++                            batch["target_rotation"][
++                                batch_index, active, target_index, 1
++                            ],
++                            batch["target_rotation"][
++                                batch_index, active, target_index, 0
++                            ],
++                        )
++                        angle_error = wrapped_angle_diff(pred_angle, target_angle)
++                        angle_terms.append(
++                            F.smooth_l1_loss(
++                                angle_error,
++                                torch.zeros_like(angle_error),
++                            )
++                        )
++                    if canonical_required:
++                        assert pred_canonical_pose is not None
++                        target_world_pose = batch["target_human_kp_3d"][
++                            batch_index, active, target_index
++                        ]
++                        if target_world_pose.shape[-2:] != (17, 3):
++                            raise ValueError(
++                                "batch['target_human_kp_3d'] must contain exactly "
++                                "17 XYZ joints."
++                            )
++                        target_canonical_pose = world_pose_to_canonical_pose(
++                            target_world_pose,
++                            batch["target_position"][
++                                batch_index, active, target_index
++                            ],
++                            batch["target_rotation"][
++                                batch_index, active, target_index
++                            ],
++                        )
++                        canonical_pose_terms.append(
++                            F.smooth_l1_loss(
++                                pred_canonical_pose[
++                                    batch_index, active, query_index
++                                ],
++                                target_canonical_pose,
++                                beta=self.canonical_pose_smooth_l1_beta,
++                            )
++                        )
+                 if active.sum() >= 3 and self.track_smoothness_weight > 0.0:
+                     consecutive = active[:-2] & active[1:-1] & active[2:]
+                     if consecutive.any():
+@@ -125,14 +354,108 @@ class PLCSTrackingLoss(nn.Module):
+         zero = pred_position.sum() * 0.0
+         position = torch.stack(position_terms).mean() if position_terms else zero
+         rotation = torch.stack(rotation_terms).mean() if rotation_terms else zero
++        angle = torch.stack(angle_terms).mean() if angle_terms else zero
++        canonical_zero = (
++            pred_canonical_pose.sum() * 0.0
++            if pred_canonical_pose is not None
++            else zero
++        )
++        canonical_pose = (
++            torch.stack(canonical_pose_terms).mean()
++            if canonical_pose_terms
++            else canonical_zero
++        )
++        reprojection = self._reprojection_loss(
++            prediction,
++            batch,
++            assignments,
++            zero=canonical_zero,
++        )
+         smoothness = torch.stack(smoothness_terms).mean() if smoothness_terms else zero
+         return PLCSTrackingLossInputs(
+             position=position,
+             rotation=rotation,
++            angle=angle,
++            canonical_pose=canonical_pose,
++            reprojection=reprojection,
+             presence=presence,
+             track_smoothness=smoothness,
+         ), assignments
+ 
++    def _reprojection_loss(
++        self,
++        prediction: dict[str, torch.Tensor],
++        batch: dict[str, torch.Tensor],
++        assignments: list[Assignment],
++        *,
++        zero: torch.Tensor,
++    ) -> torch.Tensor:
++        """Project matched query poses and compare them with clean slot-aligned UV."""
++        if self.reprojection_weight <= 0.0:
++            return zero
++        canonical_pose = prediction.get("canonical_pose")
++        if canonical_pose is None:
++            raise ValueError(
++                "prediction['canonical_pose'] is required for reprojection."
++            )
++        world_pose = canonical_pose_to_world_pose(
++            canonical_pose,
++            prediction["position"],
++            prediction["rotation"],
++        )
++        pred_uv, in_front = self.reprojection_projector(
++            world_points=world_pose,
++            camera_R=batch["camera_R"],
++            camera_C=batch["camera_C"],
++            camera_f=batch["camera_f"],
++            camera_cx=batch["camera_cx"],
++            camera_cy=batch["camera_cy"],
++            camera_w=batch["camera_w"],
++            camera_h=batch["camera_h"],
++        )
++        validate_tracking_projection_shapes(pred_uv, in_front, prediction, batch)
++        terms: list[torch.Tensor] = []
++        for batch_index, (query_indices, target_indices) in enumerate(assignments):
++            for query_index, target_index in zip(
++                query_indices.tolist(), target_indices.tolist(), strict=True
++            ):
++                target_uv = batch["human_kp_target"][
++                    batch_index, :, :, target_index
++                ]
++                target_vis = batch["human_vis_target"][
++                    batch_index, :, :, target_index
++                ]
++                if target_uv.shape != pred_uv[batch_index, :, :, query_index].shape:
++                    raise ValueError(
++                        "Matched tracking reprojection tensors must share "
++                        "(V,T,17,2), got "
++                        f"{tuple(pred_uv[batch_index, :, :, query_index].shape)} "
++                        f"and {tuple(target_uv.shape)}."
++                    )
++                active = batch["target_presence"][
++                    batch_index, :, target_index
++                ]
++                valid = (
++                    (target_vis > 0)
++                    & (~batch["padding_mask"][batch_index]).unsqueeze(-1)
++                    & active.unsqueeze(0).unsqueeze(-1)
++                )
++                per_coordinate = F.smooth_l1_loss(
++                    pred_uv[batch_index, :, :, query_index],
++                    target_uv,
++                    reduction="none",
++                    beta=self.reprojection_smooth_l1_beta,
++                )
++                terms.append(
++                    masked_mean(
++                        per_coordinate,
++                        valid.unsqueeze(-1),
++                        binarize=True,
++                        denom_min=1.0,
++                    )
++                )
++        return torch.stack(terms).mean() if terms else zero
++
+     def forward(self, inputs: PLCSTrackingLossInputs) -> dict[str, torch.Tensor]:
+         """Combine boundary-prepared tensor terms with configured weights."""
+         total = (
+@@ -141,10 +464,21 @@ class PLCSTrackingLoss(nn.Module):
+             + self.presence_weight * inputs.presence
+             + self.track_smoothness_weight * inputs.track_smoothness
+         )
+-        return {
++        losses = {
+             "total": total,
+             "position": inputs.position,
+             "rotation": inputs.rotation,
+             "presence": inputs.presence,
+             "track_smoothness": inputs.track_smoothness,
+         }
++        if self._include_angle:
++            losses["angle"] = inputs.angle
++            total = total + self.angle_weight * inputs.angle
++        if self._include_canonical_pose:
++            losses["canonical_pose"] = inputs.canonical_pose
++            total = total + self.canonical_pose_weight * inputs.canonical_pose
++        if self._include_reprojection:
++            losses["reprojection"] = inputs.reprojection
++            total = total + self.reprojection_weight * inputs.reprojection
++        losses["total"] = total
++        return losses
+diff --git a/src/tasks/plcs/training/tracking_metrics.py b/src/tasks/plcs/training/tracking_metrics.py
+index 0956573b..436aabf6 100644
+--- a/src/tasks/plcs/training/tracking_metrics.py
++++ b/src/tasks/plcs/training/tracking_metrics.py
+@@ -23,9 +23,33 @@ from src.tasks.plcs.court_keypoint_contract import (
+     headings_target_to_physical,
+     normalized_points_target_to_physical,
+ )
+-from src.tasks.plcs.training.tracking_losses import Assignment
++from src.tasks.plcs.training.tracking_losses import (
++    Assignment,
++    validate_tracking_projection_shapes,
++)
++from src.utils.geometry.court_pose import (
++    canonical_pose_to_world_pose,
++    world_pose_to_canonical_pose,
++)
++from src.utils.projection.differentiable_projection import (
++    DifferentiablePinholeProjection,
++)
+ from src.utils.schema.court_normalization import denormalize_court_position
+ 
++_REPROJECTION_BATCH_FIELDS = frozenset(
++    {
++        "human_kp_target",
++        "human_vis_target",
++        "camera_R",
++        "camera_C",
++        "camera_f",
++        "camera_cx",
++        "camera_cy",
++        "camera_w",
++        "camera_h",
++    }
++)
++
+ 
+ def plcs_tracking_metrics(
+     prediction: dict[str, torch.Tensor],
+@@ -39,7 +63,7 @@ def plcs_tracking_metrics(
+     | None = None,
+     reference_view_index: torch.Tensor | None = None,
+ ) -> dict[str, torch.Tensor]:
+-    """Compute shared lifecycle metrics plus matched angular error."""
++    """Compute lifecycle, localization, and assignment-aware pose metrics."""
+     frame_valid = (~batch["padding_mask"]).any(dim=1)
+     metrics: dict[str, torch.Tensor] = common_lifecycle_tracking_metrics(
+         prediction,
+@@ -236,4 +260,152 @@ def plcs_tracking_metrics(
+             )
+         else:
+             metrics["y_sign_accuracy"] = zero
++    _add_pose_metrics(
++        metrics,
++        prediction,
++        batch,
++        assignments,
++        frame_valid=frame_valid,
++        zero=zero,
++    )
+     return metrics
++
++
++def _add_pose_metrics(
++    metrics: dict[str, torch.Tensor],
++    prediction: dict[str, torch.Tensor],
++    batch: dict[str, torch.Tensor],
++    assignments: list[Assignment],
++    *,
++    frame_valid: torch.Tensor,
++    zero: torch.Tensor,
++) -> None:
++    """Add matched canonical/world MPJPE and clean reprojection error."""
++    canonical_pose = prediction.get("canonical_pose")
++    target_world_pose = batch.get("target_human_kp_3d")
++    if canonical_pose is None or target_world_pose is None:
++        return
++    if canonical_pose.ndim != 5 or canonical_pose.shape[-2:] != (17, 3):
++        raise ValueError(
++            "prediction['canonical_pose'] must have shape (B,T,Q,17,3) for "
++            f"tracking pose metrics, got {tuple(canonical_pose.shape)}."
++        )
++    if target_world_pose.ndim != 5 or target_world_pose.shape[-2:] != (17, 3):
++        raise ValueError(
++            "batch['target_human_kp_3d'] must have shape (B,T,S,17,3) for "
++            f"tracking pose metrics, got {tuple(target_world_pose.shape)}."
++        )
++
++    pred_world_pose = canonical_pose_to_world_pose(
++        canonical_pose,
++        prediction["position"],
++        prediction["rotation"],
++    )
++    canonical_errors: list[torch.Tensor] = []
++    world_errors: list[torch.Tensor] = []
++    for batch_index, (query_indices, target_indices) in enumerate(assignments):
++        for query_index, target_index in zip(
++            query_indices.tolist(), target_indices.tolist(), strict=True
++        ):
++            active = (
++                batch["target_presence"][batch_index, :, target_index]
++                & frame_valid[batch_index]
++            )
++            if not active.any():
++                continue
++            target_world = target_world_pose[batch_index, active, target_index]
++            target_canonical = world_pose_to_canonical_pose(
++                target_world,
++                batch["target_position"][batch_index, active, target_index],
++                batch["target_rotation"][batch_index, active, target_index],
++            )
++            canonical_errors.append(
++                torch.linalg.vector_norm(
++                    canonical_pose[batch_index, active, query_index]
++                    - target_canonical,
++                    dim=-1,
++                ).reshape(-1)
++            )
++            world_errors.append(
++                torch.linalg.vector_norm(
++                    pred_world_pose[batch_index, active, query_index]
++                    - target_world,
++                    dim=-1,
++                ).reshape(-1)
++            )
++    metrics["canonical_mpjpe_m"] = (
++        torch.cat(canonical_errors).mean() if canonical_errors else zero
++    )
++    metrics["world_mpjpe_m"] = (
++        torch.cat(world_errors).mean() if world_errors else zero
++    )
++
++    if not _REPROJECTION_BATCH_FIELDS.issubset(batch):
++        return
++    pred_uv, in_front = DifferentiablePinholeProjection()(
++        world_points=pred_world_pose,
++        camera_R=batch["camera_R"],
++        camera_C=batch["camera_C"],
++        camera_f=batch["camera_f"],
++        camera_cx=batch["camera_cx"],
++        camera_cy=batch["camera_cy"],
++        camera_w=batch["camera_w"],
++        camera_h=batch["camera_h"],
++    )
++    validate_tracking_projection_shapes(pred_uv, in_front, prediction, batch)
++    reprojection_errors_px: list[torch.Tensor] = []
++    behind_camera_indicators: list[torch.Tensor] = []
++    for batch_index, (query_indices, target_indices) in enumerate(assignments):
++        image_size = torch.stack(
++            (batch["camera_w"][batch_index], batch["camera_h"][batch_index]),
++            dim=-1,
++        )
++        for query_index, target_index in zip(
++            query_indices.tolist(), target_indices.tolist(), strict=True
++        ):
++            target_uv = batch["human_kp_target"][
++                batch_index, :, :, target_index
++            ]
++            target_vis = batch["human_vis_target"][
++                batch_index, :, :, target_index
++            ]
++            predicted_uv = pred_uv[batch_index, :, :, query_index]
++            if predicted_uv.shape != target_uv.shape:
++                raise ValueError(
++                    "Matched pose-metric reprojection tensors must share "
++                    f"shape, got {tuple(predicted_uv.shape)} and "
++                    f"{tuple(target_uv.shape)}."
++                )
++            active = batch["target_presence"][
++                batch_index, :, target_index
++            ]
++            valid = (
++                (target_vis > 0)
++                & (~batch["padding_mask"][batch_index]).unsqueeze(-1)
++                & active.unsqueeze(0).unsqueeze(-1)
++            )
++            error_px = torch.linalg.vector_norm(
++                (predicted_uv - target_uv)
++                * image_size[:, None, None, :].to(
++                    device=predicted_uv.device,
++                    dtype=predicted_uv.dtype,
++                ),
++                dim=-1,
++            )
++            if valid.any():
++                reprojection_errors_px.append(error_px[valid])
++                behind_camera_indicators.append(
++                    (~in_front[batch_index, :, :, query_index])[valid].to(
++                        dtype=zero.dtype
++                    )
++                )
++    metrics["reprojection_error_px"] = (
++        torch.cat(reprojection_errors_px).mean()
++        if reprojection_errors_px
++        else zero
++    )
++    metrics["behind_camera_fraction"] = (
++        torch.cat(behind_camera_indicators).mean()
++        if behind_camera_indicators
++        else zero
++    )
+diff --git a/tests/integration/tasks/plcs/test_model_configs.py b/tests/integration/tasks/plcs/test_model_configs.py
+index bf37bfc0..1bfec8cf 100644
+--- a/tests/integration/tasks/plcs/test_model_configs.py
++++ b/tests/integration/tasks/plcs/test_model_configs.py
+@@ -81,6 +81,47 @@ def test_multiview_reprojection_config_composes_and_binds_loss() -> None:
+     assert module.loss_fn.config.reprojection_smooth_l1_beta == 0.01
+ 
+ 
++def test_tracking_all_outputs_beta01_reprojection_config_composes_strictly() -> None:
++    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
++        config = compose(
++            config_name="train_tracking_pose",
++        )
++
++    runtime = PLCSTrainingConfig.from_config(config)
++
++    assert runtime.model.boolean("predict_canonical_pose")
++    assert config.loss.position_weight == 1.0
++    assert config.loss.position_smooth_l1_beta == 0.1
++    assert config.loss.rotation_weight == 0.05
++    assert config.loss.angle_weight == 0.05
++    assert config.loss.canonical_pose_weight == 1.0
++    assert config.loss.reprojection_weight == 1.0
++    assert config.loss.reprojection_smooth_l1_beta == 0.01
++    assert config.loss.presence_weight == 1.0
++    assert config.loss.match_position_weight == 1.0
++    assert config.loss.match_rotation_weight == 0.5
++    assert config.loss.match_presence_weight == 0.5
++    assert config.run.output_dir == "plcs/plcs_track_query_tracking_pose_beta005"
++
++
++def test_tracking_pose_config_keeps_head_enabled_for_reference_ablation() -> None:
++    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
++        config = compose(
++            config_name="train_tracking_pose",
++            overrides=[
++                "model=track_query_ablation_d_v2_selector",
++                "court_keypoints=camera_view_v2",
++            ],
++        )
++
++    runtime = PLCSTrainingConfig.from_config(config)
++
++    assert runtime.model.name == "plcs_track_query_reference_ablation"
++    assert runtime.model.boolean("predict_canonical_pose")
++    assert config.loss.canonical_pose_weight == 1.0
++    assert config.loss.reprojection_weight == 1.0
++
++
+ def test_temporal_canonical_pose_model_config_composes_and_binds_head() -> None:
+     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+         config = compose(
+diff --git a/tests/unit/tasks/plcs/data/test_court_view_dataset.py b/tests/unit/tasks/plcs/data/test_court_view_dataset.py
+index eeb05f9c..f06b72a7 100644
+--- a/tests/unit/tasks/plcs/data/test_court_view_dataset.py
++++ b/tests/unit/tasks/plcs/data/test_court_view_dataset.py
+@@ -6,6 +6,7 @@ from typing import Any, cast
+ import numpy as np
+ import pytest
+ import torch
++from omegaconf import OmegaConf
+ 
+ from src.tasks.base.data import ReferenceViewSelectionError
+ from src.tasks.base.data.scene_dataset import Scene, SceneDatasetConfig
+@@ -17,9 +18,18 @@ from src.tasks.base.generate_dataset import (
+     court_points_physical_to_target,
+     resolve_court_keypoint_contract,
+ )
+-from src.tasks.plcs.court_keypoint_contract import choose_reference_selection
++from src.tasks.plcs.court_keypoint_contract import (
++    choose_reference_selection,
++    track_query_reference_contract_document,
++)
+ from src.tasks.plcs.data.dataset import SceneDataset
+-from src.tasks.plcs.data.tracking_dataset import PLCSTrackingDataset
++from src.tasks.plcs.data.tracking_augmentation import (
++    PLCSTrackingDetectionAugmentation,
++)
++from src.tasks.plcs.data.tracking_dataset import (
++    PLCSTrackingDataset,
++    collate_plcs_tracking_batch,
++)
+ from src.utils.schema.court_normalization import normalize_court_position
+ 
+ 
+@@ -72,11 +82,11 @@ def _dataset_and_scene() -> tuple[SceneDataset, Scene]:
+         data[f"cam_{index}_params"] = {
+             "C": list(view.camera_center_court_m),
+             "R": np.eye(3, dtype=np.float32).tolist(),
+-            "f": 800.0,
+-            "cx": 640.0,
+-            "cy": 360.0,
+-            "w": 1280,
+-            "h": 720,
++            "f": 800.0 + 100.0 * index,
++            "cx": 640.0 + 10.0 * index,
++            "cy": 360.0 + 5.0 * index,
++            "w": 1280 + 640 * index,
++            "h": 720 + 360 * index,
+         }
+     scene = Scene(
+         path=Path("/dataset/scenes/scene_000000"),
+@@ -119,6 +129,35 @@ def _dataset_and_scene() -> tuple[SceneDataset, Scene]:
+     return dataset, scene
+ 
+ 
++def _tracking_dataset(
++    standard: SceneDataset,
++    *,
++    augment: bool,
++    track_query_reference_document: dict[str, object] | None = None,
++) -> PLCSTrackingDataset:
++    dataset = object.__new__(PLCSTrackingDataset)
++    dataset.rng = np.random.default_rng(0)
++    dataset.augment = augment
++    dataset.reference_camera_id = "camera_1"
++    dataset.track_query_reference_document = track_query_reference_document
++    dataset.court_keypoint_contract = standard.court_keypoint_contract
++    dataset.court_keypoint_validation = standard.court_keypoint_validation
++    dataset.num_queries = 1
++    dataset.min_reuse_gap_frames = 0
++    dataset.randomize_slots_train = False
++    dataset.config = SceneDatasetConfig(
++        scene_dir=Path("/dataset"),
++        split_file=Path("train.txt"),
++        seq_len_range=(2, 2),
++        num_views_range=(2, 2),
++        camera_mode="random",
++        crop_mode="center",
++        min_num_frames=2,
++        min_num_cameras=2,
++    )
++    return dataset
++
++
+ def test_standard_dataset_aligns_before_first20_and_rotates_court_targets() -> None:
+     dataset, scene = _dataset_and_scene()
+     sample = dataset.build_sample(scene)
+@@ -175,26 +214,7 @@ def test_object_uv_is_invariant_under_reference_transform() -> None:
+ 
+ def test_tracking_aligns_before_first14_and_keeps_canonical_pose_local() -> None:
+     standard, scene = _dataset_and_scene()
+-    dataset = object.__new__(PLCSTrackingDataset)
+-    dataset.rng = np.random.default_rng(0)
+-    dataset.augment = False
+-    dataset.reference_camera_id = "camera_1"
+-    dataset.track_query_reference_document = None
+-    dataset.court_keypoint_contract = standard.court_keypoint_contract
+-    dataset.court_keypoint_validation = standard.court_keypoint_validation
+-    dataset.num_queries = 1
+-    dataset.min_reuse_gap_frames = 0
+-    dataset.randomize_slots_train = False
+-    dataset.config = SceneDatasetConfig(
+-        scene_dir=Path("/dataset"),
+-        split_file=Path("train.txt"),
+-        seq_len_range=(2, 2),
+-        num_views_range=(2, 2),
+-        camera_mode="random",
+-        crop_mode="center",
+-        min_num_frames=2,
+-        min_num_cameras=2,
+-    )
++    dataset = _tracking_dataset(standard, augment=False)
+ 
+     sample = dataset.build_sample(scene)
+     provenance = sample["court_reference_provenance"]
+@@ -222,6 +242,119 @@ def test_tracking_aligns_before_first14_and_keeps_canonical_pose_local() -> None
+         sample["target_human_kp_3d"][:, 0],
+         expected_world,
+     )
++    assert sample["clean_human_kp"].shape == (2, 2, 1, 17, 2)
++    assert sample["clean_human_vis"].shape == (2, 2, 1, 17)
++    torch.testing.assert_close(sample["human_kp_target"], sample["clean_human_kp"])
++    torch.testing.assert_close(
++        sample["human_vis_target"], sample["clean_human_vis"]
++    )
++    assert sample["human_kp_target"].data_ptr() != sample["clean_human_kp"].data_ptr()
++    assert (
++        sample["human_vis_target"].data_ptr()
++        != sample["clean_human_vis"].data_ptr()
++    )
++
++    expected_intrinsics = {
++        "camera_0": (800.0, 640.0, 360.0, 1280.0, 720.0),
++        "camera_1": (900.0, 650.0, 365.0, 1920.0, 1080.0),
++    }
++    for local_index, camera_id in enumerate(sample["selected_camera_ids"]):
++        actual = torch.stack(
++            [
++                sample["camera_f"][local_index],
++                sample["camera_cx"][local_index],
++                sample["camera_cy"][local_index],
++                sample["camera_w"][local_index],
++                sample["camera_h"][local_index],
++            ]
++        )
++        torch.testing.assert_close(
++            actual,
++            torch.tensor(expected_intrinsics[camera_id]),
++        )
++
++
++def test_tracking_build_augment_collate_preserves_reference_contract() -> None:
++    standard, scene = _dataset_and_scene()
++    document = track_query_reference_contract_document(
++        {
++            "model": {
++                "name": "plcs_track_query_reference",
++                "target_frame_contract": "reference_camera_court_rzpi_v1",
++                "track_query_rope_contract": (
++                    "time_camera_reference_selector_v1"
++                ),
++                "reference_selector_mode": "reference",
++            }
++        },
++        standard.court_keypoint_contract,
++    )
++    assert document is not None
++    dataset = _tracking_dataset(
++        standard,
++        augment=True,
++        track_query_reference_document=document,
++    )
++    augmentation_config = OmegaConf.load(
++        Path(__file__).resolve().parents[5]
++        / "src/tasks/plcs/configs/data/_augmentation.yaml"
++    ).augmentation
++    augmentation_config.enabled = False
++    dataset.tracking_augmentation = PLCSTrackingDetectionAugmentation(
++        augmentation_config
++    )
++
++    sample = dataset.build_sample(scene)
++    augmented = dataset.augment_sample(sample)
++
++    assert set(augmented) == set(sample)
++    for key in (
++        "reference_view_index",
++        "view_camera_ids",
++        "reference_camera_id",
++        "reference_from_physical",
++        "physical_from_reference",
++    ):
++        torch.testing.assert_close(augmented[key], sample[key])
++        assert augmented[key].data_ptr() != sample[key].data_ptr()
++    assert augmented["reference_view_selection"].provenance is augmented[
++        "court_reference_provenance"
++    ]
++    assert augmented["reference_view_selection"].stable_camera_id_table is augmented[
++        "stable_camera_id_table"
++    ]
++    assert augmented["reference_camera_id_string"] == sample[
++        "reference_camera_id_string"
++    ]
++    assert augmented["track_query_reference"] == sample["track_query_reference"]
++    assert augmented["track_query_reference"] is not sample["track_query_reference"]
++    assert augmented["court_keypoint_metadata"] is not sample[
++        "court_keypoint_metadata"
++    ]
++
++    augmented_document = cast("dict[str, object]", augmented["track_query_reference"])
++    sample_document = cast("dict[str, object]", sample["track_query_reference"])
++    schema_version = augmented_document["schema_version"]
++    augmented_document["schema_version"] = -1
++    assert sample_document["schema_version"] == schema_version
++    augmented_document["schema_version"] = schema_version
++
++    batch = collate_plcs_tracking_batch([augmented])
++
++    assert batch["reference_view_selection"] == (
++        augmented["reference_view_selection"],
++    )
++    assert batch["stable_camera_id_table"] == (
++        augmented["stable_camera_id_table"],
++    )
++    assert batch["reference_camera_id_string"] == (
++        augmented["reference_camera_id_string"],
++    )
++    assert batch["track_query_reference"] == augmented["track_query_reference"]
++    torch.testing.assert_close(
++        batch["reference_from_physical"][0],
++        augmented["reference_from_physical"],
++    )
+ 
+ 
+ def test_evaluation_reference_selection_fails_closed_for_multiview() -> None:
+diff --git a/tests/unit/tasks/plcs/data/test_dataset.py b/tests/unit/tasks/plcs/data/test_dataset.py
+index 1ad445d3..bc757c4c 100644
+--- a/tests/unit/tasks/plcs/data/test_dataset.py
++++ b/tests/unit/tasks/plcs/data/test_dataset.py
+@@ -106,6 +106,82 @@ def test_collate_rejects_missing_court_provenance() -> None:
+         collate_plcs_batch([sample])
+ 
+ 
++def _tracking_reprojection_sample(
++    *, views: int, frames: int, value: float
++) -> dict[str, Any]:
++    contract = resolve_court_keypoint_contract("physical_v1")
++    clean_human_kp = torch.full((views, frames, 1, 17, 2), value)
++    clean_human_vis = torch.ones(views, frames, 1, 17, dtype=torch.bool)
++    camera_index = torch.arange(views, dtype=torch.float32)
++    return {
++        "scene_format_version": torch.tensor(4),
++        "human_kp": clean_human_kp.clone(),
++        "human_vis": clean_human_vis.clone(),
++        "court_kp": torch.full((views, frames, 14, 2), value),
++        "court_vis": torch.ones(views, frames, 14, dtype=torch.bool),
++        "padding_mask": torch.zeros(views, frames, dtype=torch.bool),
++        "target_position": torch.full((frames, 1, 3), value),
++        "target_rotation": torch.full((frames, 1, 2), value),
++        "target_canonical_pose_3d": torch.full((frames, 1, 17, 3), value),
++        "target_human_kp_3d": torch.full((frames, 1, 17, 3), value),
++        "target_presence": torch.ones(frames, 1, dtype=torch.bool),
++        "target_instance_id": torch.zeros(frames, 1, dtype=torch.long),
++        "target_slot_mask": torch.ones(1, dtype=torch.bool),
++        "clean_human_kp": clean_human_kp,
++        "clean_human_vis": clean_human_vis,
++        "human_kp_target": clean_human_kp.clone(),
++        "human_vis_target": clean_human_vis.clone(),
++        "detection_gt_index": torch.zeros(views, frames, 1, dtype=torch.long),
++        "camera_C": torch.zeros(views, 3),
++        "camera_R": torch.eye(3).expand(views, 3, 3).clone(),
++        "camera_f": 800.0 + camera_index,
++        "camera_cx": 640.0 + camera_index,
++        "camera_cy": 360.0 + camera_index,
++        "camera_w": 1280.0 + camera_index,
++        "camera_h": 720.0 + camera_index,
++        "court_keypoint_metadata": court_keypoint_contract_document(contract),
++        "court_reference_provenance": build_physical_court_provenance(),
++        "selected_camera_ids": tuple(f"camera_{index}" for index in range(views)),
++    }
++
++
++def test_tracking_collate_pads_clean_targets_and_camera_intrinsics() -> None:
++    result = collate_plcs_tracking_batch(
++        [
++            _tracking_reprojection_sample(views=1, frames=2, value=0.25),
++            _tracking_reprojection_sample(views=2, frames=3, value=0.75),
++        ]
++    )
++
++    assert result["clean_human_kp"].shape == (2, 2, 3, 1, 17, 2)
++    assert result["clean_human_vis"].shape == (2, 2, 3, 1, 17)
++    assert result["human_kp_target"].shape == (2, 2, 3, 1, 17, 2)
++    assert result["human_vis_target"].shape == (2, 2, 3, 1, 17)
++    torch.testing.assert_close(result["human_kp_target"], result["clean_human_kp"])
++    torch.testing.assert_close(
++        result["human_vis_target"], result["clean_human_vis"]
++    )
++    assert result["human_kp_target"].data_ptr() != result["clean_human_kp"].data_ptr()
++    assert (
++        result["human_vis_target"].data_ptr()
++        != result["clean_human_vis"].data_ptr()
++    )
++    assert not result["human_vis_target"][0, 0, 2].any()
++    assert not result["human_vis_target"][0, 1].any()
++    assert result["padding_mask"][0, 0, 2]
++    assert result["padding_mask"][0, 1].all()
++
++    for key in ("camera_f", "camera_cx", "camera_cy", "camera_w", "camera_h"):
++        assert result[key].shape == (2, 2)
++        assert result[key].dtype == torch.float32
++    torch.testing.assert_close(result["camera_f"][0], torch.tensor([800.0, 0.0]))
++    torch.testing.assert_close(result["camera_cx"][0], torch.tensor([640.0, 0.0]))
++    torch.testing.assert_close(result["camera_cy"][0], torch.tensor([360.0, 0.0]))
++    torch.testing.assert_close(result["camera_w"][0], torch.tensor([1280.0, 1.0]))
++    torch.testing.assert_close(result["camera_h"][0], torch.tensor([720.0, 1.0]))
++    torch.testing.assert_close(result["camera_f"][1], torch.tensor([800.0, 801.0]))
++
++
+ def _attach_reference(
+     sample: dict[str, Any],
+     *,
+diff --git a/tests/unit/tasks/plcs/inference/test_tracking_predictor.py b/tests/unit/tasks/plcs/inference/test_tracking_predictor.py
+index b103a1d1..815e1cab 100644
+--- a/tests/unit/tasks/plcs/inference/test_tracking_predictor.py
++++ b/tests/unit/tasks/plcs/inference/test_tracking_predictor.py
+@@ -63,6 +63,35 @@ class _FixedTrackingModel(nn.Module):
+         }
+ 
+ 
++class _FixedTrackingPoseModel(_FixedTrackingModel):
++    def forward(
++        self,
++        *,
++        human_kp: Tensor,
++        human_vis: Tensor,
++        court_kp: Tensor,
++        court_vis: Tensor,
++        padding_mask: Tensor,
++    ) -> dict[str, Tensor]:
++        output = super().forward(
++            human_kp=human_kp,
++            human_vis=human_vis,
++            court_kp=court_kp,
++            court_vis=court_vis,
++            padding_mask=padding_mask,
++        )
++        batch, _, frames = human_kp.shape[:3]
++        canonical_pose = torch.arange(
++            17 * 3,
++            dtype=human_kp.dtype,
++            device=human_kp.device,
++        ).reshape(1, 1, 1, 17, 3)
++        output["canonical_pose"] = canonical_pose.expand(
++            batch, frames, 2, -1, -1
++        )
++        return output
++
++
+ class _FixedReferenceTrackingModel(nn.Module):
+     def forward(
+         self,
+@@ -171,6 +200,41 @@ def test_predictor_returns_cpu_lifecycle_and_yaw_outputs() -> None:
+         for value in result.values()
+         if isinstance(value, Tensor)
+     )
++    assert "canonical_pose" not in result
++
++
++def test_tracking_predictor_returns_canonical_pose_when_enabled() -> None:
++    predictor = PLCSTrackingPredictor(
++        model=_FixedTrackingPoseModel(),
++        adapter=PLCSTrackQueryIOAdapter(
++            model_type=_FixedTrackingPoseModel,
++            num_queries=2,
++            num_court_tokens=14,
++            num_joints=17,
++            court_keypoint_contract=resolve_court_keypoint_contract("physical_v1"),
++            predict_canonical_pose=True,
++        ),
++        device=torch.device("cpu"),
++    )
++
++    result = predictor.predict(
++        human_kp=torch.zeros(1, 2, 3, 2, 17, 2),
++        human_vis=torch.ones(1, 2, 3, 2, 17, dtype=torch.bool),
++        court_kp=torch.zeros(1, 2, 3, 14, 2),
++        court_vis=torch.ones(1, 2, 3, 14, dtype=torch.bool),
++        padding_mask=torch.zeros(1, 2, 3, dtype=torch.bool),
++        tracking_metrics=TrackingMetricConfig(
++            presence_threshold=0.5,
++            duplicate_distance=0.05,
++        ),
++        denormalize=False,
++    )
++
++    canonical_pose = cast("Tensor", result["canonical_pose"])
++    assert canonical_pose.shape == (1, 3, 2, 17, 3)
++    assert canonical_pose.device.type == "cpu"
++    expected = torch.arange(17 * 3, dtype=torch.float32).reshape(17, 3)
++    torch.testing.assert_close(canonical_pose[0, 0, 0], expected)
+ 
+ 
+ def test_reference_tracking_predictor_requires_and_round_trips_typed_metadata() -> None:
+diff --git a/tests/unit/tasks/plcs/model_io/test_adapters.py b/tests/unit/tasks/plcs/model_io/test_adapters.py
+index 527a99ae..39257757 100644
+--- a/tests/unit/tasks/plcs/model_io/test_adapters.py
++++ b/tests/unit/tasks/plcs/model_io/test_adapters.py
+@@ -71,6 +71,7 @@ class _TrackingModel(nn.Module):
+             "position": human_kp.new_zeros(batch_size, frames, 3, 3),
+             "rotation": human_kp.new_zeros(batch_size, frames, 3, 2),
+             "presence_logits": human_kp.new_zeros(batch_size, frames, 3),
++            "canonical_pose": human_kp.new_zeros(batch_size, frames, 3, 17, 3),
+         }
+ 
+ 
+@@ -299,18 +300,21 @@ def test_numpy_multiview_boundary_broadcasts_explicit_shared_court() -> None:
+     assert court_kp.shape == (2, 2, 3, 20, 2)
+ 
+ 
+-def _tracking_adapter() -> PLCSTrackQueryIOAdapter:
++def _tracking_adapter(
++    *, predict_canonical_pose: bool = True
++) -> PLCSTrackQueryIOAdapter:
+     return PLCSTrackQueryIOAdapter(
+         model_type=_TrackingModel,
+         num_queries=3,
+         num_court_tokens=14,
+         num_joints=17,
+         court_keypoint_contract=resolve_court_keypoint_contract("physical_v1"),
++        predict_canonical_pose=predict_canonical_pose,
+     )
+ 
+ 
+ def _tracking_batch() -> dict[str, Tensor]:
+-    return {
++    batch = {
+         "human_kp": torch.rand(1, 2, 3, 3, 17, 2),
+         "human_vis": torch.ones(1, 2, 3, 3, 17, dtype=torch.bool),
+         "court_kp": torch.rand(1, 2, 3, 14, 2),
+@@ -318,10 +322,41 @@ def _tracking_batch() -> dict[str, Tensor]:
+         "padding_mask": torch.zeros(1, 2, 3, dtype=torch.bool),
+         "target_position": torch.rand(1, 3, 3, 3),
+         "target_rotation": torch.rand(1, 3, 3, 2),
++        "target_human_kp_3d": torch.rand(1, 3, 3, 17, 3),
+         "target_presence": torch.ones(1, 3, 3, dtype=torch.bool),
+         "target_slot_mask": torch.ones(1, 3, dtype=torch.bool),
+         "target_instance_id": torch.ones(1, 3, 3, dtype=torch.int64),
+     }
++    batch.update(
++        {
++            "human_kp_target": batch["human_kp"].clone(),
++            "human_vis_target": batch["human_vis"].clone(),
++            "camera_R": torch.eye(3)
++            .view(1, 1, 3, 3)
++            .expand(1, 2, -1, -1)
++            .clone(),
++            "camera_C": torch.zeros(1, 2, 3),
++            "camera_f": torch.full((1, 2), 800.0),
++            "camera_cx": torch.full((1, 2), 640.0),
++            "camera_cy": torch.full((1, 2), 360.0),
++            "camera_w": torch.full((1, 2), 1280.0),
++            "camera_h": torch.full((1, 2), 720.0),
++        }
++    )
++    return batch
++
++
++_TRACKING_REPROJECTION_KEYS = (
++    "human_kp_target",
++    "human_vis_target",
++    "camera_R",
++    "camera_C",
++    "camera_f",
++    "camera_cx",
++    "camera_cy",
++    "camera_w",
++    "camera_h",
++)
+ 
+ 
+ def _uv_boundary_profile(
+@@ -425,10 +460,154 @@ def test_tracking_boundary_validates_inputs_targets_and_decodes_required_presenc
+             "position": torch.zeros(1, 3, 3, 3),
+             "rotation": torch.zeros(1, 3, 3, 2),
+             "presence_logits": torch.zeros(1, 3, 3),
++            "canonical_pose": torch.zeros(1, 3, 3, 17, 3),
+         },
+         prepared,
+     )
+     assert decoded.presence_logits.shape == (1, 3, 3)
++    assert decoded.canonical_pose is not None
++    assert decoded.canonical_pose.shape == (1, 3, 3, 17, 3)
++    assert prepared.reprojection_target is not None
++    assert prepared.reprojection_target.target_uv.shape == (1, 2, 3, 3, 17, 2)
++    assert prepared.reprojection_target.target_vis.shape == (1, 2, 3, 3, 17)
++    assert prepared.reprojection_target.camera_R.shape == (1, 2, 3, 3)
++
++
++def test_tracking_boundary_requires_reprojection_bundle_when_pose_head_enabled() -> None:
++    batch = _tracking_batch()
++    for key in _TRACKING_REPROJECTION_KEYS:
++        batch.pop(key)
++
++    with pytest.raises(
++        ModelInputContractError,
++        match="tracking reprojection fields.*predict_canonical_pose=True.*missing",
++    ):
++        _tracking_adapter().prepare_training_batch(batch)
++
++
++def test_tracking_boundary_rejects_partial_reprojection_bundle_after_trigger() -> None:
++    batch = _tracking_batch()
++    batch.pop("camera_h")
++    with pytest.raises(ModelInputContractError, match="tracking reprojection.*missing"):
++        _tracking_adapter().prepare_training_batch(batch)
++
++    legacy_batch = _tracking_batch()
++    for key in _TRACKING_REPROJECTION_KEYS:
++        if key not in {"camera_R", "camera_C", "camera_f"}:
++            legacy_batch.pop(key)
++    with pytest.raises(ModelInputContractError, match="all-or-none.*missing"):
++        _tracking_adapter(
++            predict_canonical_pose=False
++        ).prepare_training_batch(legacy_batch)
++
++
++@pytest.mark.parametrize(
++    ("key", "value", "message"),
++    [
++        (
++            "human_kp_target",
++            torch.rand(1, 2, 3, 2, 17, 2),
++            "human_kp_target.*axis 3",
++        ),
++        (
++            "human_kp_target",
++            torch.rand(1, 2, 3, 3, 16, 2),
++            "human_kp_target.*axis 4",
++        ),
++        (
++            "human_vis_target",
++            torch.ones(1, 2, 3, 3, 17),
++            "human_vis_target.*torch.bool",
++        ),
++        (
++            "camera_R",
++            torch.eye(3).view(1, 1, 3, 3),
++            "camera_R.*axis 1",
++        ),
++    ],
++)
++def test_tracking_boundary_rejects_malformed_reprojection_shapes_and_dtype(
++    key: str,
++    value: Tensor,
++    message: str,
++) -> None:
++    batch = _tracking_batch()
++    batch[key] = value
++
++    with pytest.raises(ModelInputContractError, match=message):
++        _tracking_adapter().prepare_training_batch(batch)
++
++
++@pytest.mark.parametrize(
++    ("key", "value", "message"),
++    [
++        ("camera_R", float("nan"), "camera_R.*finite"),
++        ("camera_C", float("inf"), "camera_C.*finite"),
++        ("camera_cx", float("nan"), "camera_cx.*finite"),
++        ("camera_f", 0.0, "camera_f must be positive"),
++        ("camera_w", -1.0, "camera_w must be positive"),
++        ("camera_h", 0.0, "camera_h must be positive"),
++    ],
++)
++def test_tracking_boundary_rejects_invalid_reprojection_camera_values(
++    key: str,
++    value: float,
++    message: str,
++) -> None:
++    batch = _tracking_batch()
++    batch[key].flatten()[0] = value
++
++    with pytest.raises(ModelInputContractError, match=message):
++        _tracking_adapter().prepare_training_batch(batch)
++
++
++def test_tracking_boundary_rejects_invalid_reprojection_uv() -> None:
++    batch = _tracking_batch()
++    batch["human_kp_target"][0, 0, 0, 0, 0, 0] = 1.1
++
++    with pytest.raises(ModelInputContractError, match="normalized UV"):
++        _tracking_adapter().prepare_training_batch(batch)
++
++
++def test_tracking_boundary_validates_reprojection_padding_per_query() -> None:
++    batch = _tracking_batch()
++    batch["padding_mask"][0, 1] = True
++    batch["human_vis_target"][0, 1] = False
++    batch["camera_f"][0, 1] = 0.0
++    batch["camera_w"][0, 1] = 0.0
++    batch["camera_h"][0, 1] = 0.0
++
++    prepared = _tracking_adapter().prepare_training_batch(batch)
++    assert prepared.reprojection_target is not None
++
++    batch["human_vis_target"][0, 1, 0, 2, 16] = True
++    with pytest.raises(ModelInputContractError, match="zero at padded"):
++        _tracking_adapter().prepare_training_batch(batch)
++
++
++def test_legacy_tracking_boundary_ignores_camera_only_reprojection_fields() -> None:
++    adapter = _tracking_adapter(predict_canonical_pose=False)
++    camera_only_batch = _tracking_batch()
++    for key in _TRACKING_REPROJECTION_KEYS:
++        if key not in {"camera_R", "camera_C"}:
++            camera_only_batch.pop(key)
++
++    prepared = adapter.prepare_training_batch(camera_only_batch)
++    assert prepared.reprojection_target is None
++
++    camera_only_batch.pop("camera_R")
++    camera_only_batch.pop("camera_C")
++    prepared = adapter.prepare_training_batch(camera_only_batch)
++    assert prepared.reprojection_target is None
++
++
++def test_legacy_tracking_boundary_validates_complete_optional_reprojection() -> None:
++    prepared = _tracking_adapter(
++        predict_canonical_pose=False
++    ).prepare_training_batch(_tracking_batch())
++
++    assert prepared.reprojection_target is not None
++    assert prepared.reprojection_target.target_uv.shape == (1, 2, 3, 3, 17, 2)
+ 
+ 
+ def test_tracking_boundary_rejects_incomplete_court_and_visibility_dtype() -> None:
+@@ -489,3 +668,34 @@ def test_tracking_output_rejects_missing_presence() -> None:
+     }
+     with pytest.raises(ModelOutputContractError, match="presence_logits"):
+         _tracking_adapter().decode_output(output)
++
++
++def test_tracking_output_rejects_missing_or_misshaped_canonical_pose() -> None:
++    output: dict[str, object] = {
++        "position": torch.zeros(1, 3, 3, 3),
++        "rotation": torch.zeros(1, 3, 3, 2),
++        "presence_logits": torch.zeros(1, 3, 3),
++    }
++    with pytest.raises(ModelOutputContractError, match="canonical_pose"):
++        _tracking_adapter().decode_output(output)
++
++    output["canonical_pose"] = torch.zeros(1, 3, 3, 16, 3)
++    with pytest.raises(ModelOutputContractError, match="axis 3"):
++        _tracking_adapter().decode_output(output)
++
++
++def test_tracking_adapter_preserves_explicit_legacy_three_output_contract() -> None:
++    adapter = _tracking_adapter(predict_canonical_pose=False)
++    output = {
++        "position": torch.zeros(1, 3, 3, 3),
++        "rotation": torch.zeros(1, 3, 3, 2),
++        "presence_logits": torch.zeros(1, 3, 3),
++    }
++
++    decoded = adapter.decode_output(output)
++
++    assert decoded.canonical_pose is None
++    with pytest.raises(ModelOutputContractError, match="unknown=.*canonical_pose"):
++        adapter.decode_output(
++            {**output, "canonical_pose": torch.zeros(1, 3, 3, 17, 3)}
++        )
+diff --git a/tests/unit/tasks/plcs/model_io/test_factory.py b/tests/unit/tasks/plcs/model_io/test_factory.py
+index ba9bb11e..3221feea 100644
+--- a/tests/unit/tasks/plcs/model_io/test_factory.py
++++ b/tests/unit/tasks/plcs/model_io/test_factory.py
+@@ -153,6 +153,10 @@ def test_factory_binds_each_validated_model_profile_once(
+     assert type(bound.model).__name__ == model_name
+     assert adapter.profile is profile
+     assert type(bound.model) is adapter.model_type
++    if profile is PLCSInputProfile.TRACK_QUERY:
++        assert isinstance(adapter, PLCSTrackQueryIOAdapter)
++        assert not adapter.predict_canonical_pose
++        assert bound.model.canonical_pose_head is None
+ 
+ 
+ def _tracking_config(condition: str) -> object:
+@@ -175,6 +179,8 @@ def test_factory_binds_every_ablation_config_to_exact_model_and_adapter(
+     assert type(binding.adapter) is PLCSTrackQueryIOAdapter
+     assert binding.adapter.model_type is PLCSTrackQueryAblationModel
+     assert binding.adapter.profile is PLCSInputProfile.TRACK_QUERY
++    assert not binding.adapter.predict_canonical_pose
++    assert binding.model.canonical_pose_head is None
+ 
+ 
+ def test_ablation_uses_tracking_training_composition(
+@@ -256,3 +262,19 @@ def test_factory_binds_reference_v2_model_and_exact_six_input_adapter(
+     assert type(binding.adapter) is PLCSTrackQueryReferenceIOAdapter
+     assert binding.adapter.model_type is model_type
+     assert binding.adapter.reference_selector_mode.value == selector_mode
++    assert not binding.adapter.predict_canonical_pose
++    assert binding.model.canonical_pose_head is None
++
++
++def test_factory_enables_canonical_pose_only_for_hybrid_training_config() -> None:
++    with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_DIR)):
++        config = compose(
++            config_name="train_tracking_pose",
++            overrides=list(_TRACKING_SMALL),
++        )
++
++    binding = build_plcs_model_io(PLCSTrainingConfig.from_config(config))
++
++    assert isinstance(binding.adapter, PLCSTrackQueryIOAdapter)
++    assert binding.adapter.predict_canonical_pose
++    assert binding.model.canonical_pose_head is not None
+diff --git a/tests/unit/tasks/plcs/models/test_plcs_track_query_ablation_model.py b/tests/unit/tasks/plcs/models/test_plcs_track_query_ablation_model.py
+index dec41c5f..2a5a181d 100644
+--- a/tests/unit/tasks/plcs/models/test_plcs_track_query_ablation_model.py
++++ b/tests/unit/tasks/plcs/models/test_plcs_track_query_ablation_model.py
+@@ -39,6 +39,7 @@ def _raw_model() -> dict[str, object]:
+         "num_queries": 4,
+         "num_stages": 4,
+         "num_joints": 17,
++        "predict_canonical_pose": True,
+         "rope_dim": 4,
+         "rope_theta": 10_000.0,
+         "ffn_type": "swiglu",
+@@ -75,11 +76,13 @@ def _config(
+     return PLCSModelConfig.from_mapping(raw)
+ 
+ 
+-def _baseline_config() -> PLCSModelConfig:
++def _baseline_config(*, predict_canonical_pose: bool = True) -> PLCSModelConfig:
+     raw = _raw_model()
+     raw["name"] = "plcs_track_query"
+     del raw["ffn_mode"]
+     del raw["mhc_writeback"]
++    if not predict_canonical_pose:
++        del raw["predict_canonical_pose"]
+     return PLCSModelConfig.from_mapping(raw)
+ 
+ 
+@@ -240,10 +243,16 @@ def test_four_conditions_preserve_io_padding_visibility_and_rope_contracts(
+     finally:
+         hook.remove()
+ 
+-    assert set(output) == {"position", "rotation", "presence_logits"}
++    assert set(output) == {
++        "position",
++        "rotation",
++        "presence_logits",
++        "canonical_pose",
++    }
+     assert output["position"].shape == (2, 3, 4, 3)
+     assert output["rotation"].shape == (2, 3, 4, 2)
+     assert output["presence_logits"].shape == (2, 3, 4)
++    assert output["canonical_pose"].shape == (2, 3, 4, 17, 3)
+     expected_valid = (~padding_mask).unsqueeze(-1).expand(-1, -1, -1, 4)
+     assert torch.equal(captured["object_state_valid"], expected_valid)
+     assert captured["spatial_attention_keep_mask"].shape == (
+@@ -265,9 +274,11 @@ def test_four_conditions_preserve_io_padding_visibility_and_rope_contracts(
+     assert not output["position"][:, 2].any()
+     assert not output["rotation"][:, 2].any()
+     assert not output["presence_logits"][:, 2].any()
++    assert not output["canonical_pose"][:, 2].any()
+     assert not output["position"][1].any()
+     assert not output["rotation"][1].any()
+     assert not output["presence_logits"][1].any()
++    assert not output["canonical_pose"][1].any()
+ 
+ 
+ def test_baseline_and_ablation_checkpoints_are_strictly_incompatible_both_ways() -> None:
+@@ -281,7 +292,7 @@ def test_baseline_and_ablation_checkpoints_are_strictly_incompatible_both_ways()
+ 
+ 
+ def test_legacy_baseline_state_key_inventory_is_preserved() -> None:
+-    baseline = PLCSTrackQueryModel(_baseline_config())
++    baseline = PLCSTrackQueryModel(_baseline_config(predict_canonical_pose=False))
+     serialized_keys = "\n".join(sorted(baseline.state_dict()))
+ 
+     assert len(baseline.state_dict()) == 194
+diff --git a/tests/unit/tasks/plcs/models/test_plcs_track_query_model.py b/tests/unit/tasks/plcs/models/test_plcs_track_query_model.py
+index 8042bcf7..ac1a9b9d 100644
+--- a/tests/unit/tasks/plcs/models/test_plcs_track_query_model.py
++++ b/tests/unit/tasks/plcs/models/test_plcs_track_query_model.py
+@@ -21,14 +21,15 @@ def _model(
+     *,
+     backend: str = "reference",
+     ffn_type: FFNType = "swiglu",
++    predict_canonical_pose: bool = True,
+ ) -> PLCSTrackQueryModel:
+     with initialize_config_dir(
+         config_dir=str(MODEL_CONFIG_DIR), version_base="1.3"
+     ):
+-        raw = compose(
+-            config_name="track_query",
+-            overrides=[f"cswa.backend={backend}", f"ffn_type={ffn_type}"],
+-        )
++        overrides = [f"cswa.backend={backend}", f"ffn_type={ffn_type}"]
++        if predict_canonical_pose:
++            overrides.append("+predict_canonical_pose=true")
++        raw = compose(config_name="track_query", overrides=overrides)
+     config = PLCSModelConfig.from_mapping(raw)
+     model = PLCSTrackQueryModel(config)
+     model.eval()
+@@ -92,7 +93,19 @@ def test_forward_public_contract_has_exactly_five_tensors() -> None:
+ 
+ 
+ def test_model_uses_shared_court_player_group_embedding() -> None:
+-    assert isinstance(_model().group_embed, CourtPlayerGroupEmbedding)
++    model = _model()
++    assert isinstance(model.group_embed, CourtPlayerGroupEmbedding)
++    assert model.canonical_pose_head is not None
++
++
++def test_legacy_model_omits_canonical_head_and_output() -> None:
++    model = _model(predict_canonical_pose=False)
++
++    with torch.no_grad():
++        output = _forward(model, _inputs(model))
++
++    assert model.canonical_pose_head is None
++    assert set(output) == {"position", "rotation", "presence_logits"}
+ 
+ 
+ def test_model_uses_shared_stages_with_fixed_cswa_global_cycle() -> None:
+@@ -248,6 +261,13 @@ def test_all_padding_outputs_are_finite_and_zero() -> None:
+     with torch.no_grad():
+         output = _forward(model, inputs)
+ 
++    assert set(output) == {
++        "position",
++        "rotation",
++        "presence_logits",
++        "canonical_pose",
++    }
++    assert output["canonical_pose"].shape == (1, 3, model.num_queries, 17, 3)
+     for value in output.values():
+         assert torch.isfinite(value).all()
+         assert torch.count_nonzero(value) == 0
+diff --git a/tests/unit/tasks/plcs/models/test_plcs_track_query_reference_ablation_model.py b/tests/unit/tasks/plcs/models/test_plcs_track_query_reference_ablation_model.py
+index a718cbc9..7f1b0d78 100644
+--- a/tests/unit/tasks/plcs/models/test_plcs_track_query_reference_ablation_model.py
++++ b/tests/unit/tasks/plcs/models/test_plcs_track_query_reference_ablation_model.py
+@@ -46,6 +46,7 @@ def _raw_config(
+         "num_queries": 2,
+         "num_stages": 4,
+         "num_joints": 17,
++        "predict_canonical_pose": True,
+         "rope_dim": rope_dim,
+         "rope_theta": 10_000.0,
+         "ffn_type": "swiglu",
+@@ -220,6 +221,7 @@ def test_generic_ablation_forward_backward_is_finite(
+ 
+     assert torch.isfinite(loss)
+     assert all(torch.isfinite(value).all() for value in output.values())
++    assert output["canonical_pose"].shape == (2, 2, 2, 17, 3)
+     assert inputs["human_kp"].grad is not None
+     assert inputs["court_kp"].grad is not None
+ 
+diff --git a/tests/unit/tasks/plcs/models/test_plcs_track_query_reference_model.py b/tests/unit/tasks/plcs/models/test_plcs_track_query_reference_model.py
+index 32d874bc..476393b7 100644
+--- a/tests/unit/tasks/plcs/models/test_plcs_track_query_reference_model.py
++++ b/tests/unit/tasks/plcs/models/test_plcs_track_query_reference_model.py
+@@ -26,6 +26,7 @@ def _raw_config(*, rope_dim: int = 6) -> dict[str, object]:
+         "num_queries": 2,
+         "num_stages": 4,
+         "num_joints": 17,
++        "predict_canonical_pose": True,
+         "rope_dim": rope_dim,
+         "rope_theta": 10_000.0,
+         "ffn_type": "swiglu",
+@@ -152,6 +153,7 @@ def test_forward_uses_exact_shared_coordinates_and_frequencies() -> None:
+     assert output["position"].shape == (2, 2, 2, 3)
+     assert output["rotation"].shape == (2, 2, 2, 2)
+     assert output["presence_logits"].shape == (2, 2, 2)
++    assert output["canonical_pose"].shape == (2, 2, 2, 17, 3)
+ 
+ 
+ @pytest.mark.parametrize(
+diff --git a/tests/unit/tasks/plcs/test_configuration.py b/tests/unit/tasks/plcs/test_configuration.py
+index 4b9b3d19..470b3cb8 100644
+--- a/tests/unit/tasks/plcs/test_configuration.py
++++ b/tests/unit/tasks/plcs/test_configuration.py
+@@ -129,3 +129,41 @@ def test_tracking_rejects_unknown_cswa_backend() -> None:
+ 
+     with pytest.raises(SemanticConfigurationError, match="reference.*cuda"):
+         PLCSTrainingConfig.from_config(config)
++
++
++def test_tracking_legacy_loss_contract_remains_valid() -> None:
++    runtime = PLCSTrainingConfig.from_config(_config("train_tracking"))
++
++    assert "predict_canonical_pose" not in runtime.model.values
++
++
++def test_tracking_pose_loss_requires_canonical_pose_model_output() -> None:
++    config_dir = PROJECT_ROOT / "src/tasks/plcs/configs"
++    with initialize_config_dir(version_base="1.3", config_dir=str(config_dir)):
++        config = compose(
++            config_name="train_tracking",
++            overrides=["loss=tracking_all_outputs_beta01_reprojection"],
++        )
++
++    with pytest.raises(
++        SemanticConfigurationError,
++        match="model.predict_canonical_pose=true",
++    ):
++        PLCSTrainingConfig.from_config(config)
++
++
++def test_tracking_pose_loss_rejects_partial_standard_contract() -> None:
++    config_dir = PROJECT_ROOT / "src/tasks/plcs/configs"
++    with initialize_config_dir(version_base="1.3", config_dir=str(config_dir)):
++        config = compose(
++            config_name="train_tracking",
++            overrides=["loss=tracking_all_outputs_beta01_reprojection"],
++        )
++    with open_dict(config.loss):
++        del config.loss["canonical_pose_smooth_l1_beta"]
++
++    with pytest.raises(
++        MissingConfigurationKeyError,
++        match="loss.canonical_pose_smooth_l1_beta",
++    ):
++        PLCSTrainingConfig.from_config(config)
+diff --git a/tests/unit/tasks/plcs/training/test_tracking_losses.py b/tests/unit/tasks/plcs/training/test_tracking_losses.py
+index 0541ea8e..00f82a6b 100644
+--- a/tests/unit/tasks/plcs/training/test_tracking_losses.py
++++ b/tests/unit/tasks/plcs/training/test_tracking_losses.py
+@@ -1,11 +1,17 @@
+ from __future__ import annotations
+ 
+ from pathlib import Path
++from types import SimpleNamespace
+ 
++import pytest
+ import torch
+ from omegaconf import OmegaConf
+ 
+ from src.tasks.plcs.training.tracking_losses import PLCSTrackingLoss
++from src.utils.geometry.court_pose import canonical_pose_to_world_pose
++from src.utils.projection.differentiable_projection import (
++    DifferentiablePinholeProjection,
++)
+ from src.utils.schema.court_normalization import normalize_court_position
+ 
+ 
+@@ -14,6 +20,26 @@ def _criterion() -> PLCSTrackingLoss:
+     return PLCSTrackingLoss(config)
+ 
+ 
++def _hybrid_config():
++    return OmegaConf.merge(
++        OmegaConf.load(Path("src/tasks/plcs/configs/loss/tracking.yaml")),
++        OmegaConf.load(Path("src/tasks/plcs/configs/loss/_base.yaml")),
++        {
++            "position_weight": 1.0,
++            "position_smooth_l1_beta": 0.1,
++            "rotation_weight": 0.05,
++            "angle_weight": 0.05,
++            "canonical_pose_weight": 1.0,
++            "reprojection_weight": 1.0,
++            "reprojection_smooth_l1_beta": 0.01,
++        },
++    )
++
++
++def _hybrid_criterion() -> PLCSTrackingLoss:
++    return PLCSTrackingLoss(_hybrid_config())
++
++
+ def _fixture():
+     torch.manual_seed(8)
+     prediction = {
+@@ -37,6 +63,105 @@ def _fixture():
+     return prediction, batch
+ 
+ 
++def _hybrid_fixture():
++    frames = 4
++    queries = 2
++    joints = 17
++    views = 2
++    target_position = torch.tensor(
++        [
++            [
++                [[0.05, -0.08, 0.02], [-0.20, 0.12, 0.04]],
++                [[0.06, -0.07, 0.02], [-0.19, 0.11, 0.04]],
++                [[0.07, -0.06, 0.02], [-0.18, 0.10, 0.04]],
++                [[0.08, -0.05, 0.02], [-0.17, 0.09, 0.04]],
++            ]
++        ]
++    )
++    target_rotation = torch.nn.functional.normalize(
++        torch.tensor(
++            [
++                [
++                    [[1.0, 0.1], [0.6, 0.8]],
++                    [[0.98, 0.2], [0.5, 0.86]],
++                    [[0.95, 0.3], [0.4, 0.92]],
++                    [[0.9, 0.4], [0.3, 0.95]],
++                ]
++            ]
++        ),
++        dim=-1,
++    )
++    canonical = torch.linspace(
++        -0.7,
++        0.9,
++        frames * queries * joints * 3,
++    ).reshape(1, frames, queries, joints, 3)
++    canonical = canonical.clone()
++    canonical[..., 2] += 1.2
++    target_world = canonical_pose_to_world_pose(
++        canonical,
++        target_position,
++        target_rotation,
++    )
++    camera_R = torch.eye(3).view(1, 1, 3, 3).expand(1, views, -1, -1)
++    camera_C = torch.tensor([[[0.0, 0.0, -20.0], [1.0, -1.0, -18.0]]])
++    camera_f = torch.tensor([[800.0, 900.0]])
++    camera_cx = torch.full((1, views), 640.0)
++    camera_cy = torch.full((1, views), 360.0)
++    camera_w = torch.full((1, views), 1280.0)
++    camera_h = torch.full((1, views), 720.0)
++    target_uv, in_front = DifferentiablePinholeProjection()(
++        target_world,
++        camera_R,
++        camera_C,
++        camera_f,
++        camera_cx,
++        camera_cy,
++        camera_w,
++        camera_h,
++    )
++    assert in_front.all()
++    target_presence = torch.tensor(
++        [[[1, 1], [1, 1], [1, 0], [1, 1]]], dtype=torch.bool
++    )
++    target_vis = target_presence[:, None, :, :, None].expand(
++        -1, views, -1, -1, joints
++    ).clone()
++    prediction = {
++        "position": target_position.clone().requires_grad_(),
++        "rotation": target_rotation.clone().requires_grad_(),
++        "presence_logits": torch.where(
++            target_presence,
++            torch.full_like(target_presence, 12.0, dtype=torch.float32),
++            torch.full_like(target_presence, -12.0, dtype=torch.float32),
++        ).requires_grad_(),
++        "canonical_pose": canonical.clone().requires_grad_(),
++    }
++    batch = {
++        "target_position": target_position,
++        "target_rotation": target_rotation,
++        # Deliberately wrong: the loss must derive canonical pose from world joints.
++        "target_canonical_pose_3d": torch.full_like(canonical, 999.0),
++        "target_human_kp_3d": target_world,
++        "target_presence": target_presence,
++        "target_slot_mask": torch.ones(1, queries, dtype=torch.bool),
++        "target_instance_id": torch.tensor(
++            [[[10, 20], [10, 20], [10, -1], [10, 20]]]
++        ),
++        "padding_mask": torch.zeros(1, views, frames, dtype=torch.bool),
++        "human_kp_target": target_uv.detach(),
++        "human_vis_target": target_vis,
++        "camera_R": camera_R,
++        "camera_C": camera_C,
++        "camera_f": camera_f,
++        "camera_cx": camera_cx,
++        "camera_cy": camera_cy,
++        "camera_w": camera_w,
++        "camera_h": camera_h,
++    }
++    return prediction, batch
++
++
+ def _compute(
+     criterion: PLCSTrackingLoss,
+     prediction: dict[str, torch.Tensor],
+@@ -105,3 +230,147 @@ def test_tracking_position_loss_is_equal_for_same_physical_xyz_error() -> None:
+         values.append(_compute(criterion, prediction, batch)[0]["position"])
+ 
+     torch.testing.assert_close(torch.stack(values), values[0].expand(3))
++
++
++def test_legacy_tracking_config_retains_original_loss_contract() -> None:
++    losses, _assignments = _compute(_criterion(), *_fixture())
++
++    assert set(losses) == {
++        "total",
++        "position",
++        "rotation",
++        "presence",
++        "track_smoothness",
++    }
++
++
++def test_hybrid_loss_is_zero_for_exact_matched_pose_and_ignores_raw_canonical() -> None:
++    losses, _assignments = _compute(_hybrid_criterion(), *_hybrid_fixture())
++
++    for name in ("position", "rotation", "angle", "canonical_pose", "reprojection"):
++        torch.testing.assert_close(
++            losses[name],
++            torch.zeros_like(losses[name]),
++            atol=1e-6,
++            rtol=0.0,
++        )
++
++
++def test_hybrid_loss_is_invariant_to_prediction_query_permutation() -> None:
++    prediction, batch = _hybrid_fixture()
++    original, _ = _compute(_hybrid_criterion(), prediction, batch)
++    permutation = torch.tensor([1, 0])
++    permuted_prediction = {
++        key: value.detach()[:, :, permutation].clone()
++        for key, value in prediction.items()
++    }
++
++    permuted, _ = _compute(_hybrid_criterion(), permuted_prediction, batch)
++
++    for name in original:
++        torch.testing.assert_close(original[name], permuted[name])
++
++
++def test_reprojection_excludes_inactive_padded_and_invisible_targets() -> None:
++    prediction, batch = _hybrid_fixture()
++    batch = {
++        key: value.clone() if isinstance(value, torch.Tensor) else value
++        for key, value in batch.items()
++    }
++    # Invisible joint in a valid view/frame.
++    batch["human_vis_target"][0, 0, 0, 0, 0] = False
++    batch["human_kp_target"][0, 0, 0, 0, 0] += 100.0
++    # One padded view does not supervise either target at this frame.
++    batch["padding_mask"][0, 1, 1] = True
++    batch["human_kp_target"][0, 1, 1] += 100.0
++    # Target slot 1 is inactive at frame 2 even if malformed visibility says true.
++    batch["human_vis_target"][0, :, 2, 1] = True
++    batch["human_kp_target"][0, :, 2, 1] += 100.0
++    # A completely padded frame is excluded from both canonical and reprojection.
++    batch["padding_mask"][0, :, 3] = True
++    batch["human_kp_target"][0, :, 3] += 100.0
++    batch["target_human_kp_3d"][0, 3] += 100.0
++
++    losses, _assignments = _compute(_hybrid_criterion(), prediction, batch)
++
++    torch.testing.assert_close(
++        losses["canonical_pose"],
++        torch.zeros_like(losses["canonical_pose"]),
++        atol=1e-6,
++        rtol=0.0,
++    )
++    torch.testing.assert_close(
++        losses["reprojection"],
++        torch.zeros_like(losses["reprojection"]),
++        atol=1e-6,
++        rtol=0.0,
++    )
++
++
++def test_reprojection_keeps_visible_predictions_behind_camera_supervised() -> None:
++    exact, batch = _hybrid_fixture()
++    behind_camera_pose = exact["canonical_pose"].detach().clone()
++    behind_camera_pose[..., 2] = -30.0
++    prediction = dict(exact)
++    prediction["canonical_pose"] = behind_camera_pose.requires_grad_()
++
++    losses, _assignments = _compute(_hybrid_criterion(), prediction, batch)
++
++    assert losses["reprojection"] > 0.0
++    losses["reprojection"].backward()
++    gradient = prediction["canonical_pose"].grad
++    assert gradient is not None
++    assert torch.isfinite(gradient).all()
++
++
++def test_reprojection_rejects_misaligned_clean_visibility_shape() -> None:
++    prediction, batch = _hybrid_fixture()
++    batch = dict(batch)
++    batch["human_vis_target"] = batch["human_vis_target"][..., :-1]
++
++    with pytest.raises(
++        ValueError,
++        match=r"human_vis_target: expected .*17.* got",
++    ):
++        _compute(_hybrid_criterion(), prediction, batch)
++
++
++def test_hybrid_loss_backpropagates_to_position_rotation_and_canonical() -> None:
++    exact, batch = _hybrid_fixture()
++    prediction = {
++        "position": (exact["position"].detach() + 0.01).requires_grad_(),
++        "rotation": (
++            exact["rotation"].detach() + torch.tensor([0.02, -0.01])
++        ).requires_grad_(),
++        "presence_logits": exact["presence_logits"].detach().requires_grad_(),
++        "canonical_pose": (
++            exact["canonical_pose"].detach() + 0.015
++        ).requires_grad_(),
++    }
++
++    losses, _assignments = _compute(_hybrid_criterion(), prediction, batch)
++    losses["total"].backward()
++
++    for name in ("position", "rotation", "canonical_pose"):
++        gradient = prediction[name].grad
++        assert gradient is not None
++        assert torch.isfinite(gradient).all()
++        assert gradient.abs().sum() > 0.0
++
++
++def test_nonzero_unsupported_regularizer_is_rejected() -> None:
++    config = OmegaConf.merge(_hybrid_config(), {"joint_angle_weight": 0.1})
++
++    with pytest.raises(ValueError, match=r"nonzero loss\.joint_angle_weight"):
++        PLCSTrackingLoss(config)
++
++
++def test_object_config_enables_declared_pose_loss_outputs() -> None:
++    config = SimpleNamespace(**OmegaConf.to_container(_hybrid_config()))
++
++    losses, _assignments = _compute(
++        PLCSTrackingLoss(config),
++        *_hybrid_fixture(),
++    )
++
++    assert {"angle", "canonical_pose", "reprojection"}.issubset(losses)
+diff --git a/tests/unit/tasks/plcs/training/test_tracking_metrics.py b/tests/unit/tasks/plcs/training/test_tracking_metrics.py
+index f8ebb586..4227707c 100644
+--- a/tests/unit/tasks/plcs/training/test_tracking_metrics.py
++++ b/tests/unit/tasks/plcs/training/test_tracking_metrics.py
+@@ -7,6 +7,10 @@ import torch
+ 
+ from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
+ from src.tasks.plcs.training.tracking_metrics import plcs_tracking_metrics
++from src.utils.geometry.court_pose import canonical_pose_to_world_pose
++from src.utils.projection.differentiable_projection import (
++    DifferentiablePinholeProjection,
++)
+ 
+ 
+ def test_tracking_metrics_report_heading_y_sign_axes_and_local_index() -> None:
+@@ -58,3 +62,191 @@ def test_tracking_metrics_report_heading_y_sign_axes_and_local_index() -> None:
+     assert metrics["x_error_m"].item() > 0.0
+     assert metrics["y_error_m"].item() > 0.0
+     assert metrics["z_error_m"].item() > 0.0
++
++
++def test_pose_metrics_follow_assignment_and_exclude_invalid_reprojection() -> None:
++    frames = 3
++    joints = 17
++    target_position = torch.tensor(
++        [
++            [
++                [[0.10, -0.20, 0.02], [-0.20, 0.15, 0.03]],
++                [[0.11, -0.19, 0.02], [-0.19, 0.14, 0.03]],
++                [[0.12, -0.18, 0.02], [-0.18, 0.13, 0.03]],
++            ]
++        ]
++    )
++    target_rotation = torch.nn.functional.normalize(
++        torch.tensor(
++            [
++                [
++                    [[1.0, 0.1], [0.6, 0.8]],
++                    [[0.98, 0.2], [0.5, 0.86]],
++                    [[0.95, 0.3], [0.4, 0.92]],
++                ]
++            ]
++        ),
++        dim=-1,
++    )
++    target_canonical = torch.linspace(
++        -0.5,
++        0.8,
++        frames * 2 * joints * 3,
++    ).reshape(1, frames, 2, joints, 3)
++    target_canonical = target_canonical.clone()
++    target_canonical[..., 2] += 1.0
++    target_world = canonical_pose_to_world_pose(
++        target_canonical,
++        target_position,
++        target_rotation,
++    )
++    views = 2
++    camera_R = torch.eye(3).view(1, 1, 3, 3).expand(1, views, -1, -1)
++    camera_C = torch.tensor([[[0.0, 0.0, -20.0], [1.0, -1.0, -18.0]]])
++    camera_f = torch.tensor([[800.0, 900.0]])
++    camera_cx = torch.full((1, views), 640.0)
++    camera_cy = torch.full((1, views), 360.0)
++    camera_w = torch.full((1, views), 1280.0)
++    camera_h = torch.full((1, views), 720.0)
++    target_uv, _in_front = DifferentiablePinholeProjection()(
++        target_world,
++        camera_R,
++        camera_C,
++        camera_f,
++        camera_cx,
++        camera_cy,
++        camera_w,
++        camera_h,
++    )
++    target_presence = torch.tensor(
++        [[[1, 1], [1, 0], [1, 1]]], dtype=torch.bool
++    )
++    target_vis = target_presence[:, None, :, :, None].expand(
++        -1, views, -1, -1, joints
++    ).clone()
++    padding_mask = torch.zeros(1, views, frames, dtype=torch.bool)
++    # These deliberately corrupted targets are all invalid and must be ignored.
++    target_vis[0, 0, 0, 0, 0] = False
++    target_uv[0, 0, 0, 0, 0] += 100.0
++    padding_mask[0, 1, 1] = True
++    target_uv[0, 1, 1] += 100.0
++    target_vis[0, :, 1, 1] = True
++    target_uv[0, :, 1, 1] += 100.0
++    padding_mask[0, :, 2] = True
++    target_uv[0, :, 2] += 100.0
++    prediction = {
++        "position": target_position[:, :, [1, 0]],
++        "rotation": target_rotation[:, :, [1, 0]],
++        "presence_logits": torch.full((1, frames, 2), 10.0),
++        "canonical_pose": target_canonical[:, :, [1, 0]],
++    }
++    batch = {
++        "target_position": target_position,
++        "target_rotation": target_rotation,
++        "target_human_kp_3d": target_world,
++        "target_presence": target_presence,
++        "target_instance_id": torch.tensor(
++            [[[10, 20], [10, -1], [10, 20]]], dtype=torch.int64
++        ),
++        "padding_mask": padding_mask,
++        "human_kp_target": target_uv,
++        "human_vis_target": target_vis,
++        "camera_R": camera_R,
++        "camera_C": camera_C,
++        "camera_f": camera_f,
++        "camera_cx": camera_cx,
++        "camera_cy": camera_cy,
++        "camera_w": camera_w,
++        "camera_h": camera_h,
++    }
++    assignments = [(torch.tensor([0, 1]), torch.tensor([1, 0]))]
++
++    metrics = plcs_tracking_metrics(
++        prediction,
++        batch,
++        assignments,
++        config=TrackingMetricConfig(
++            presence_threshold=0.5,
++            duplicate_distance=0.05,
++        ),
++    )
++
++    for name in (
++        "canonical_mpjpe_m",
++        "world_mpjpe_m",
++        "reprojection_error_px",
++        "behind_camera_fraction",
++    ):
++        torch.testing.assert_close(
++            metrics[name],
++            torch.zeros_like(metrics[name]),
++            atol=1e-4,
++            rtol=0.0,
++        )
++
++
++def test_pose_metrics_report_visible_predictions_behind_camera() -> None:
++    target_position = torch.zeros(1, 1, 1, 3)
++    target_rotation = torch.tensor([[[[1.0, 0.0]]]])
++    target_canonical = torch.zeros(1, 1, 1, 17, 3)
++    target_canonical[..., 2] = 1.0
++    target_world = canonical_pose_to_world_pose(
++        target_canonical,
++        target_position,
++        target_rotation,
++    )
++    camera_R = torch.eye(3).view(1, 1, 3, 3)
++    camera_C = torch.zeros(1, 1, 3)
++    camera_f = torch.full((1, 1), 800.0)
++    camera_cx = torch.full((1, 1), 640.0)
++    camera_cy = torch.full((1, 1), 360.0)
++    camera_w = torch.full((1, 1), 1280.0)
++    camera_h = torch.full((1, 1), 720.0)
++    target_uv, target_in_front = DifferentiablePinholeProjection()(
++        target_world,
++        camera_R,
++        camera_C,
++        camera_f,
++        camera_cx,
++        camera_cy,
++        camera_w,
++        camera_h,
++    )
++    assert target_in_front.all()
++    predicted_canonical = target_canonical.clone()
++    predicted_canonical[..., 2] = -1.0
++    prediction = {
++        "position": target_position,
++        "rotation": target_rotation,
++        "presence_logits": torch.full((1, 1, 1), 10.0),
++        "canonical_pose": predicted_canonical,
++    }
++    batch = {
++        "target_position": target_position,
++        "target_rotation": target_rotation,
++        "target_human_kp_3d": target_world,
++        "target_presence": torch.ones(1, 1, 1, dtype=torch.bool),
++        "target_instance_id": torch.ones(1, 1, 1, dtype=torch.int64),
++        "padding_mask": torch.zeros(1, 1, 1, dtype=torch.bool),
++        "human_kp_target": target_uv,
++        "human_vis_target": torch.ones(1, 1, 1, 1, 17, dtype=torch.bool),
++        "camera_R": camera_R,
++        "camera_C": camera_C,
++        "camera_f": camera_f,
++        "camera_cx": camera_cx,
++        "camera_cy": camera_cy,
++        "camera_w": camera_w,
++        "camera_h": camera_h,
++    }
++
++    metrics = plcs_tracking_metrics(
++        prediction,
++        batch,
++        [(torch.tensor([0]), torch.tensor([0]))],
++        config=TrackingMetricConfig(
++            presence_threshold=0.5,
++            duplicate_distance=0.05,
++        ),
++    )
++
++    assert metrics["behind_camera_fraction"].item() == pytest.approx(1.0)
