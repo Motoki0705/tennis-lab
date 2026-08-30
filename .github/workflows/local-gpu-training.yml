@@ -11,6 +11,14 @@ on:
         description: Exact training command; do not include secrets
         required: true
         type: string
+      resource:
+        description: Logical GPU reservation (half does not enforce a VRAM cap)
+        required: false
+        default: all
+        type: choice
+        options:
+          - all
+          - half
       issue:
         description: Related GitHub issue number (optional)
         required: false
@@ -47,4 +55,5 @@ jobs:
           TRAINING_COMMAND: ${{ inputs.command }}
           TRAINING_ISSUE: ${{ inputs.issue }}
           TRAINING_NAME: ${{ inputs.name }}
+          TRAINING_RESOURCE: ${{ inputs.resource }}
         run: bash scripts/github_actions/enqueue_training.sh

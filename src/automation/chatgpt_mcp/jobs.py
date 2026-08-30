@@ -9,11 +9,13 @@ import os
 import re
 import secrets
 import shlex
+import signal
 import stat
 import subprocess
 import threading
 import time
 from pathlib import Path, PurePosixPath
+from types import FrameType
 from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, Field, field_validator
@@ -47,6 +49,9 @@ _PERSISTENT_PROJECT_ROOTS = (
     "third_party",
     ".training_queue",
 )
+_DOCKER_STOP_SECONDS = 10
+_DOCKER_STOP_VERIFY_SECONDS = 2.0
+_DOCKER_KILL_VERIFY_SECONDS = 5.0
 
 _SECRET_PATTERNS = (
     re.compile(r"\bsk-[A-Za-z0-9_-]{16,}\b"),
@@ -94,14 +99,14 @@ class SandboxSpec(BaseModel):
     use_gpu: bool = False
     timeout_seconds: int = Field(default=900, ge=1, le=7 * 24 * 3600)
 
-    @field_validator("command")
+    @field_validator("command")  # type: ignore[untyped-decorator]
     @classmethod
     def reject_nul_command(cls, value: str) -> str:
         if "\x00" in value:
             raise ValueError("command may not contain NUL")
         return value
 
-    @field_validator("working_directory")
+    @field_validator("working_directory")  # type: ignore[untyped-decorator]
     @classmethod
     def validate_working_directory(cls, value: str) -> str:
         return _normalize_working_directory(value)
@@ -153,6 +158,68 @@ def _write_private_file(path: Path, value: str) -> None:
         raise
 
 
+def _external_teardown_ack_path(settings: GatewaySettings, queue_file: str) -> Path:
+    if not _QUEUE_FILE.fullmatch(queue_file) or Path(queue_file).name != queue_file:
+        raise JobError("invalid training queue filename")
+    return (
+        Path(settings.trusted_queue_dir)
+        / "control"
+        / "external-acks"
+        / f"{queue_file.removesuffix('.job')}.ack"
+    )
+
+
+def _validate_external_teardown_ack_path(
+    settings: GatewaySettings, ack_path: Path
+) -> Path:
+    control_root = settings.trusted_queue_dir / "control"
+    ack_root = control_root / "external-acks"
+    if (
+        control_root.is_symlink()
+        or not control_root.is_dir()
+        or ack_root.is_symlink()
+        or not ack_root.is_dir()
+    ):
+        raise JobError("training queue external acknowledgement directory is unsafe")
+    for private_directory in (control_root, ack_root):
+        root_stat = private_directory.stat()
+        if root_stat.st_uid != os.getuid() or stat.S_IMODE(root_stat.st_mode) & 0o077:
+            raise JobError(
+                "training queue external acknowledgement directory is not private"
+            )
+    if ack_path.parent != ack_root or ack_path.name != Path(ack_path.name).name:
+        raise JobError("training queue external acknowledgement path escaped its queue")
+    queue_file = f"{ack_path.name.removesuffix('.ack')}.job"
+    if not ack_path.name.endswith(".ack") or not _QUEUE_FILE.fullmatch(queue_file):
+        raise JobError("invalid training queue external acknowledgement filename")
+    return ack_path
+
+
+def _publish_external_teardown_ack(
+    settings: GatewaySettings, ack_path: Path
+) -> None:
+    validated = _validate_external_teardown_ack_path(settings, ack_path)
+    queue_file = f"{validated.name.removesuffix('.ack')}.job"
+    temporary = validated.parent / f".tmp.{validated.name}.{os.getpid()}.{secrets.token_hex(4)}"
+    descriptor = os.open(
+        temporary,
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+        0o600,
+    )
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(f"{queue_file}\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, validated)
+        published = validated.lstat()
+        if not stat.S_ISREG(published.st_mode) or validated.is_symlink():
+            raise JobError("external teardown acknowledgement is not a regular file")
+    except BaseException:
+        temporary.unlink(missing_ok=True)
+        raise
+
+
 class DockerSandbox:
     """Expose all of tennis-lab RW while keeping the host control plane outside."""
 
@@ -176,7 +243,10 @@ class DockerSandbox:
                 "to the read-write project tree"
             ),
             "network": "disabled",
-            "gpu": "available only through the serial training queue",
+            "gpu": (
+                "available only through the logical two-slot training queue; "
+                "half is reservation metadata, not a MIG or VRAM hard cap"
+            ),
             "direct_timeout_max_seconds": _DIRECT_COMMAND_MAX_SECONDS,
             "direct_concurrency": _MAX_CONCURRENT_DIRECT_JOBS,
             "direct_memory_limit_gb": _DIRECT_MEMORY_GB,
@@ -214,7 +284,7 @@ class DockerSandbox:
         return job_root, workspace_copy, artifacts, command_path
 
     def _command_file(self, job_id: str) -> Path:
-        return self.settings.sandbox_jobs_dir / job_id / _COMMAND_FILE_NAME
+        return Path(self.settings.sandbox_jobs_dir) / job_id / _COMMAND_FILE_NAME
 
     def _wrapper(self, spec: SandboxSpec) -> str:
         selected_root = (
@@ -423,18 +493,35 @@ class DockerSandbox:
             )
         return result.stdout.strip()
 
-    def run_foreground(self, spec: SandboxSpec) -> int:
+    def run_foreground(
+        self,
+        spec: SandboxSpec,
+        *,
+        shutdown_requested: threading.Event | None = None,
+    ) -> int:
         arguments = self.command(spec, detached=False)
         command_path = self._command_file(spec.job_id)
         try:
-            process = subprocess.run(
-                arguments,
-                check=False,
-                timeout=spec.timeout_seconds + 180,
-            )
+            if shutdown_requested is None:
+                completed = subprocess.run(
+                    arguments,
+                    check=False,
+                    timeout=spec.timeout_seconds + 180,
+                )
+                return completed.returncode
+            process = subprocess.Popen(arguments)
+            while True:
+                if shutdown_requested.is_set():
+                    self.stop(spec.job_id)
+                    with contextlib.suppress(subprocess.TimeoutExpired):
+                        return process.wait(timeout=30)
+                    raise JobError("docker run client did not exit after container teardown")
+                try:
+                    return process.wait(timeout=0.1)
+                except subprocess.TimeoutExpired:
+                    continue
         finally:
             command_path.unlink(missing_ok=True)
-        return process.returncode
 
     def inspect(self, job_id: str) -> dict[str, Any]:
         result = subprocess.run(
@@ -477,17 +564,55 @@ class DockerSandbox:
         state = self.inspect(job_id)
         if not state["running"]:
             return
-        result = subprocess.run(
-            ["docker", "stop", "--time", "10", self.container_name(job_id)],
+        stop_result = subprocess.run(
+            [
+                "docker",
+                "stop",
+                "--time",
+                str(_DOCKER_STOP_SECONDS),
+                self.container_name(job_id),
+            ],
             text=True,
             capture_output=True,
             check=False,
             timeout=30,
         )
-        if result.returncode != 0:
+        if stop_result.returncode == 0 and self._wait_until_not_running(
+            job_id, timeout_seconds=_DOCKER_STOP_VERIFY_SECONDS
+        ):
+            return
+        kill_result = subprocess.run(
+            ["docker", "kill", self.container_name(job_id)],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=15,
+        )
+        if kill_result.returncode != 0:
             raise JobError(
-                _redact_secrets(result.stderr.strip()) or "docker stop failed"
+                _redact_secrets(
+                    kill_result.stderr.strip() or stop_result.stderr.strip()
+                )
+                or "docker stop and kill failed"
             )
+        if not self._wait_until_not_running(
+            job_id, timeout_seconds=_DOCKER_KILL_VERIFY_SECONDS
+        ):
+            raise JobError("sandbox container remained running after docker kill")
+
+    def _wait_until_not_running(self, job_id: str, *, timeout_seconds: float) -> bool:
+        deadline = time.monotonic() + timeout_seconds
+        while time.monotonic() < deadline:
+            if not self.inspect(job_id)["running"]:
+                return True
+            time.sleep(0.1)
+        return not self.inspect(job_id)["running"]
+
+    def require_not_running(self, job_id: str) -> None:
+        """Fail unless the deterministic container is observably non-running."""
+
+        if self.inspect(job_id)["running"]:
+            raise JobError("sandbox container is still running")
 
 
 class JobManager:
@@ -598,7 +723,7 @@ class JobManager:
 
 
 class TrainingQueueManager:
-    """Queue every GPU command through an external trusted serial queue runner."""
+    """Queue GPU commands through an external logical-capacity queue runner."""
 
     def __init__(
         self,
@@ -635,6 +760,7 @@ class TrainingQueueManager:
         working_directory: str,
         issue: int | None,
         timeout_seconds: int,
+        resource: Literal["half", "all"] = "all",
     ) -> dict[str, Any]:
         if not self.queue_script.is_file():
             raise JobError(f"trusted queue runner is missing: {self.queue_script}")
@@ -645,6 +771,8 @@ class TrainingQueueManager:
             )
         if issue is not None and issue <= 0:
             raise JobError("issue must be a positive integer")
+        if resource not in {"half", "all"}:
+            raise JobError("training resource must be half or all")
         workspace = self.workspaces.assert_execution_ready(
             workspace_id=workspace_id,
             expected_sha=expected_sha,
@@ -697,6 +825,9 @@ class TrainingQueueManager:
             "chatgpt-wsl-mcp",
             "--session",
             job_id,
+            "--resource",
+            resource,
+            "--require-external-teardown-ack",
         ]
         if issue is not None:
             arguments.extend(["--issue", str(issue)])
@@ -727,6 +858,7 @@ class TrainingQueueManager:
             "job_id": job_id,
             "name": name,
             "issue": issue,
+            "resource": resource,
             "workspace_id": workspace_id,
             "revision": spec.expected_sha,
             "execution_root": spec.execution_root,
@@ -746,6 +878,7 @@ class TrainingQueueManager:
             "job_id": job_id,
             "queue_file": queue_file,
             "status": "queued",
+            "resource": resource,
             "revision": spec.expected_sha,
             "execution_root": spec.execution_root,
         }
@@ -786,7 +919,29 @@ class TrainingQueueManager:
             if path.exists():
                 queue_status = candidate_status
                 break
-        result: dict[str, Any] = {**payload, "status": queue_status}
+        result: dict[str, Any] = {
+            **payload,
+            "resource": payload.get("resource", "all"),
+            "status": queue_status,
+        }
+        state_path = self.queue_dir / "state" / f"{queue_file.removesuffix('.job')}.state"
+        if state_path.is_file() and not state_path.is_symlink():
+            queue_state: dict[str, str] = {}
+            for line in state_path.read_text(encoding="utf-8").splitlines():
+                key, separator, value = line.partition("=")
+                if separator and key in {"state", "resource", "slot", "pid", "pgid", "wait"}:
+                    queue_state[key] = value
+            result.update(
+                {
+                    "queue_state": queue_state.get("state", queue_status),
+                    "slot": queue_state.get("slot", "-"),
+                    "pid": queue_state.get("pid", "-"),
+                    "pgid": queue_state.get("pgid", "-"),
+                    "wait": queue_state.get("wait", "none"),
+                }
+            )
+            if queue_status == "running" and queue_state.get("state") == "terminating":
+                result["status"] = "terminating"
         if queue_status in {"running", "succeeded", "failed"}:
             with contextlib.suppress(JobError):
                 container = self.sandbox.inspect(job_id)
@@ -808,17 +963,35 @@ class TrainingQueueManager:
             for payload in self.store.list("training_jobs", limit=limit)
         ]
 
+    def _request_queue_cancellation(self, queue_file: str) -> str:
+        result = subprocess.run(
+            ["bash", str(self.queue_script), "cancel", queue_file],
+            cwd=self.settings.control_dir,
+            env=self._queue_environment(),
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=10,
+        )
+        if result.returncode != 0:
+            raise JobError(
+                _redact_secrets(result.stderr.strip())
+                or "training queue cancellation failed"
+            )
+        output = result.stdout.strip().splitlines()
+        state = output[-1] if output else ""
+        if state not in {"cancelled", "running", "terminating", "done", "failed"}:
+            raise JobError("training queue returned an invalid cancellation state")
+        return state
+
     def cancel(self, job_id: str) -> dict[str, str]:
         payload = self.store.get("training_jobs", job_id)
         if payload is None:
             raise JobError("training job id was not found")
         queue_file = str(payload["queue_file"])
-        locations = self._queue_locations(queue_file)
-        cancelled_dir = locations["cancelled"].parent
-        cancelled_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        queue_state = self._request_queue_cancellation(queue_file)
 
-        if locations["queued"].is_file():
-            os.replace(locations["queued"], locations["cancelled"])
+        if queue_state == "cancelled":
             (self.settings.job_specs_dir / f"{job_id}.json").unlink(missing_ok=True)
             payload["cancelled_at"] = time.time()
             self.store.put(
@@ -829,9 +1002,10 @@ class TrainingQueueManager:
             )
             return {"job_id": job_id, "status": "cancelled"}
 
-        if locations["running"].is_file():
-            with contextlib.suppress(JobError):
-                self.sandbox.stop(job_id)
+        if queue_state in {"running", "terminating"}:
+            self.sandbox.stop(job_id)
+            ack_path = _external_teardown_ack_path(self.settings, queue_file)
+            _publish_external_teardown_ack(self.settings, ack_path)
             return {"job_id": job_id, "status": "cancellation-requested"}
 
         return {"job_id": job_id, "status": self.status(job_id)["status"]}
@@ -850,7 +1024,12 @@ class TrainingQueueManager:
         return _redact_secrets("\n".join(lines[-tail:])[-200_000:])
 
 
-def execute_sandbox_spec(settings: GatewaySettings, spec_path: Path) -> int:
+def execute_sandbox_spec(
+    settings: GatewaySettings,
+    spec_path: Path,
+    *,
+    teardown_ack_path: Path | None = None,
+) -> int:
     """Execute one owner-only spec through the project-bounded Docker sandbox."""
 
     resolved = spec_path.resolve()
@@ -864,6 +1043,24 @@ def execute_sandbox_spec(settings: GatewaySettings, spec_path: Path) -> int:
     file_stat = resolved.stat()
     if file_stat.st_uid != os.getuid() or stat.S_IMODE(file_stat.st_mode) & 0o077:
         raise JobError("sandbox spec ownership or permissions are unsafe")
+    validated_ack = (
+        _validate_external_teardown_ack_path(settings, teardown_ack_path)
+        if teardown_ack_path is not None
+        else None
+    )
+    shutdown_requested = threading.Event()
+    requested_signal: int | None = None
+    previous_handlers: dict[int, Any] = {}
+
+    def request_shutdown(signum: int, _frame: FrameType | None) -> None:
+        nonlocal requested_signal
+        requested_signal = signum
+        shutdown_requested.set()
+
+    for handled_signal in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        previous_handlers[handled_signal] = signal.getsignal(handled_signal)
+        signal.signal(handled_signal, request_shutdown)
+
     try:
         spec = SandboxSpec.model_validate_json(resolved.read_text(encoding="utf-8"))
         store = SqliteStore(settings.database_path)
@@ -872,6 +1069,15 @@ def execute_sandbox_spec(settings: GatewaySettings, spec_path: Path) -> int:
             settings.revision_workspace_dir,
             store,
         )
-        return DockerSandbox(settings, workspaces).run_foreground(spec)
+        sandbox = DockerSandbox(settings, workspaces)
+        result = sandbox.run_foreground(spec, shutdown_requested=shutdown_requested)
+        sandbox.require_not_running(spec.job_id)
+        if validated_ack is not None:
+            _publish_external_teardown_ack(settings, validated_ack)
+        if requested_signal is not None:
+            return 128 + requested_signal
+        return result
     finally:
+        for restored_signal, previous_handler in previous_handlers.items():
+            signal.signal(restored_signal, previous_handler)
         resolved.unlink(missing_ok=True)
