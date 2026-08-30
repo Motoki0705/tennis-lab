@@ -39,7 +39,7 @@ ConfigMapping: TypeAlias = Mapping[str, object]
 CourtSourceKind: TypeAlias = Literal["tennis_court_detector", "synthetic_court"]
 CourtSourceSplit: TypeAlias = Literal["train", "val", "test"]
 CourtTargetKind: TypeAlias = Literal["kp", "seg", "line"]
-SyntheticCourtSchemaVersion: TypeAlias = Literal["v1", "v2", "v3"]
+SyntheticCourtSchemaVersion: TypeAlias = Literal["v1", "v2", "v3", "v4"]
 KeypointCourtScope: TypeAlias = Literal["all_courts", "target_court"]
 CourtDecoderName: TypeAlias = Literal["fpn", "unet", "dpt"]
 CourtDPTSize: TypeAlias = Literal["tiny", "small", "base", "large"]
@@ -540,9 +540,9 @@ class SyntheticCourtSourceConfig:
                 "data.source.kind must be 'synthetic_court'."
             )
         schema = _string(mapping, "schema", path="data.source")
-        if schema not in {"v1", "v2", "v3"}:
+        if schema not in {"v1", "v2", "v3", "v4"}:
             raise SemanticConfigurationError(
-                "data.source.schema must be explicitly 'v1', 'v2', or 'v3'."
+                "data.source.schema must be explicitly 'v1', 'v2', 'v3', or 'v4'."
             )
         keypoint_court_scope = _string(
             mapping, "keypoint_court_scope", path="data.source"
@@ -555,7 +555,7 @@ class SyntheticCourtSourceConfig:
         if schema == "v1" and keypoint_court_scope == "target_court":
             raise SemanticConfigurationError(
                 "data.source.keypoint_court_scope='target_court' requires "
-                "data.source.schema='v2' or 'v3'."
+                "data.source.schema='v2', 'v3', or 'v4'."
             )
         raw_ids = _sequence(mapping, "scene_ids", path="data.source")
         scene_ids_list: list[str] = []

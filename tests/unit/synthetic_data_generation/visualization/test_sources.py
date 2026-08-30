@@ -155,7 +155,7 @@ def test_court_source_rejects_unknown_dataset_schema_without_shape_fallback(
     _write_court_fixture(
         tmp_path,
         indices=(0, 1),
-        dataset_schema="canonical_court_dataset_v4",
+        dataset_schema="canonical_court_dataset_v5",
         label_schema="canonical_court_sample_v2",
     )
     monkeypatch.setattr(
@@ -164,9 +164,31 @@ def test_court_source_rejects_unknown_dataset_schema_without_shape_fallback(
 
     with pytest.raises(
         ValueError,
-        match=r"^Unknown Court dataset schema: 'canonical_court_dataset_v4'\.$",
+        match=r"^Unknown Court dataset schema: 'canonical_court_dataset_v5'\.$",
     ):
         CourtVisualizationSource(tmp_path, trajectory_id="orbit-0")
+
+
+def test_court_source_dispatches_explicit_v4_sample_schema(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _write_court_fixture(
+        tmp_path,
+        indices=(0, 1),
+        dataset_schema="canonical_court_dataset_v4",
+        label_schema="canonical_court_sample_v4",
+    )
+    monkeypatch.setattr(
+        sources_module, "validate_court_dataset", lambda *args, **kwargs: None
+    )
+
+    source = CourtVisualizationSource(tmp_path, trajectory_id="orbit-0")
+
+    assert tuple(frame.schema_version.value for frame in source.frames()) == (
+        "v4",
+        "v4",
+    )
 
 
 def test_blcs_stream_rejects_chunk_replaced_by_a_foreign_attempt(

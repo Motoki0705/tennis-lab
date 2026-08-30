@@ -4,27 +4,50 @@ from __future__ import annotations
 
 import os
 import shutil
+from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
+
 from src.synthetic_data_generation.alignment.contracts import AlignmentResult
+from src.synthetic_data_generation.dataset.court.components.camera_sampling.anchored_paths import (
+    validate_anchored_trajectory_provenance,
+)
+from src.synthetic_data_generation.dataset.court.components.camera_sampling.sampling import (
+    sample_uniform_arc_length,
+)
+from src.synthetic_data_generation.dataset.court.components.camera_sampling.support import (
+    TrajectorySupportModel,
+    build_trajectory_support_model,
+    evaluate_trajectory_safety,
+)
 from src.synthetic_data_generation.dataset.court.components.camera_sampling.targeting import (
     validate_camera_looks_at_resolved_court,
     validate_resolved_target_court,
 )
 from src.synthetic_data_generation.dataset.court.components.labels import (
-    AmbiguousCameraRelativeNearFarError,
     MultiCourtProjectionAny,
-    project_court_semantics_for_version,
 )
 from src.synthetic_data_generation.dataset.court.contracts import (
     CourtDatasetPlan,
     CourtDatasetPlanAny,
     CourtDatasetPlanV2,
+    CourtDatasetPlanV4,
+    PathConstructorV4,
+    TrajectorySafetyEvaluation,
+    TrajectorySemanticPhaseEvaluation,
+    build_selected_trajectory_coverage,
+    required_coverage_shortfall,
 )
 from src.synthetic_data_generation.dataset.court.schema import (
     CourtDatasetSchemaVersion,
+)
+from src.synthetic_data_generation.dataset.court.semantic_pre_render import (
+    CourtSemanticFrameDisposition,
+    court_semantic_phase_disposition_digest,
+    evaluate_court_semantic_pre_render,
 )
 from src.synthetic_data_generation.dataset.court.shards import (
     CourtRenderedSample,
@@ -56,6 +79,8 @@ class CourtPreRenderEvaluation:
     projections: tuple[MultiCourtProjectionAny, ...]
     rejected_sample_ids: tuple[str, ...]
     rejection_reasons: tuple[tuple[str, tuple[str, ...]], ...]
+    trajectory_safety_evaluations: tuple[TrajectorySafetyEvaluation, ...]
+    trajectory_semantic_phase_evaluations: tuple[TrajectorySemanticPhaseEvaluation, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,7 +128,16 @@ class CourtNHTRenderer:
         if scene.scene_id != plan.scene_id:
             raise ValueError("Court plan scene_id disagrees with NHT scene export.")
         _validate_plan_alignment(plan, alignment)
-        pre_render = validate_pre_render_plan(plan, alignment=alignment)
+        support_model = _v4_support_model(
+            plan,
+            scene=scene,
+            alignment=alignment,
+        )
+        pre_render = validate_pre_render_plan(
+            plan,
+            alignment=alignment,
+            support_model=support_model,
+        )
         rejected_ids = set(pre_render.rejected_sample_ids)
         renderable_samples = tuple(
             sample for sample in plan.samples if sample.sample_id not in rejected_ids
@@ -233,6 +267,7 @@ def validate_pre_render_plan(
     plan: CourtDatasetPlanAny,
     *,
     alignment: AlignmentResult,
+    support_model: TrajectorySupportModel | None = None,
 ) -> CourtPreRenderEvaluation:
     """Classify invalid cameras before NHT while preserving proposal accounting."""
     _validate_plan_alignment(plan, alignment)
@@ -241,33 +276,202 @@ def validate_pre_render_plan(
     projections: list[MultiCourtProjectionAny] = []
     rejected: list[str] = []
     rejection_reasons: list[tuple[str, tuple[str, ...]]] = []
+    semantic_dispositions_by_group: dict[str, list[CourtSemanticFrameDisposition]] = {}
+    safety_evaluations: tuple[TrajectorySafetyEvaluation, ...] = ()
+    if isinstance(plan, CourtDatasetPlanV4):
+        if support_model is None:
+            raise ValueError(
+                "missing_support_capability: V4 pre-render requires its public support model"
+            )
+        if (
+            support_model.policy != plan.support_policy
+            or support_model.summary != plan.support_summary
+        ):
+            raise ValueError("V4 pre-render support authority disagrees with the plan.")
+        selected_coverage = build_selected_trajectory_coverage(
+            plan.groups,
+            required_raised_lift_m=plan.required_coverage.required_raised_lift_m,
+        )
+        required_shortfall = required_coverage_shortfall(
+            plan.required_coverage,
+            selected_coverage,
+        )
+        if (
+            selected_coverage != plan.selected_coverage
+            or required_shortfall != plan.required_coverage_shortfall
+            or required_shortfall
+        ):
+            raise ValueError(
+                "V4 pre-render required coverage authority disagrees or is incomplete."
+            )
+        recomputed: list[TrajectorySafetyEvaluation] = []
+        for group in plan.groups:
+            if (
+                group.trajectory.constructor
+                is PathConstructorV4.ANCHORED_ROUNDED_RECTANGLE
+            ):
+                validate_anchored_trajectory_provenance(
+                    group.trajectory,
+                    center=group.center,
+                    support_model=support_model,
+                )
+            path = sample_uniform_arc_length(
+                group.trajectory, group.center, plan.policy
+            )
+            evaluation = evaluate_trajectory_safety(
+                trajectory_id=group.trajectory.trajectory_id,
+                trajectory_group_id=group.trajectory_group_id,
+                path=path,
+                support_model=support_model,
+            )
+            if evaluation != group.safety_evaluation or not evaluation.safe:
+                raise ValueError(
+                    "V4 pre-render safety evaluation disagrees with selected plan authority."
+                )
+            group_samples = tuple(
+                group_sample
+                for group_sample in plan.samples
+                if group_sample.trajectory_group_id == group.trajectory_group_id
+            )
+            expected_frame_indices = tuple(range(len(path.points_scene_m)))
+            if (
+                len(group_samples) != len(path.points_scene_m)
+                or tuple(
+                    group_sample.trajectory_frame_index
+                    for group_sample in group_samples
+                )
+                != expected_frame_indices
+            ):
+                raise ValueError(
+                    "V4 pre-render safety/path binding requires the exact canonical "
+                    "frame range for every selected group."
+                )
+            for group_sample in group_samples:
+                expected_center = path.points_scene_m[
+                    group_sample.trajectory_frame_index
+                ]
+                if not np.allclose(
+                    group_sample.camera_center_scene_m,
+                    expected_center,
+                    atol=1.0e-9,
+                    rtol=0.0,
+                ) or not np.allclose(
+                    group_sample.camera.camera_to_scene.matrix()[:3, 3],
+                    expected_center,
+                    atol=1.0e-9,
+                    rtol=0.0,
+                ):
+                    raise ValueError(
+                        "V4 pre-render safety/path binding disagrees with a consumed "
+                        "sample camera centre."
+                    )
+            recomputed.append(evaluation)
+        safety_evaluations = tuple(recomputed)
     schema_version = (
         plan.schema_version
         if isinstance(plan, CourtDatasetPlan | CourtDatasetPlanV2)
         else CourtDatasetSchemaVersion.V1
     )
     for sample in plan.samples:
-        try:
-            projection = project_court_semantics_for_version(
-                sample.camera,
-                alignment.layout,
-                schema_version=schema_version,
-            )
-        except AmbiguousCameraRelativeNearFarError as error:
+        decision = evaluate_court_semantic_pre_render(
+            sample.camera,
+            alignment.layout,
+            schema_version=schema_version,
+        )
+        if not decision.accepted:
             rejected.append(sample.sample_id)
-            rejection_reasons.append((sample.sample_id, (error.reason,)))
-            continue
-        in_frame_points = sum(court.in_frame_point_count for court in projection.courts)
-        if in_frame_points < 4:
-            rejected.append(sample.sample_id)
-            rejection_reasons.append(
-                (sample.sample_id, ("insufficient_pre_render_semantic_coverage",))
+            rejection_reasons.append((sample.sample_id, decision.rejection_reasons))
+        if decision.projection is not None:
+            projections.append(decision.projection)
+        if isinstance(plan, CourtDatasetPlanV4):
+            semantic_dispositions_by_group.setdefault(
+                sample.trajectory_group_id, []
+            ).append(
+                CourtSemanticFrameDisposition(
+                    trajectory_frame_index=sample.trajectory_frame_index,
+                    camera=sample.camera,
+                    decision=decision,
+                )
             )
-        projections.append(projection)
+    semantic_phase_evaluations: list[TrajectorySemanticPhaseEvaluation] = []
+    if isinstance(plan, CourtDatasetPlanV4):
+        for group in plan.groups:
+            expected = group.semantic_phase_evaluation
+            dispositions = semantic_dispositions_by_group.get(
+                group.trajectory_group_id, []
+            )
+            rejection_counts: Counter[str] = Counter()
+            valid_count = 0
+            for disposition in dispositions:
+                if disposition.decision.accepted:
+                    valid_count += 1
+                else:
+                    if len(disposition.decision.rejection_reasons) != 1:
+                        raise ValueError(
+                            "V4 semantic phase requires one rejection reason per frame."
+                        )
+                    rejection_counts.update(disposition.decision.rejection_reasons)
+            observed = TrajectorySemanticPhaseEvaluation(
+                trajectory_id=group.trajectory.trajectory_id,
+                trajectory_group_id=group.trajectory_group_id,
+                phase_index=expected.phase_index,
+                phase_count=expected.phase_count,
+                view=group.views[0],
+                expected_frame_count=len(dispositions),
+                expected_valid_frame_count=valid_count,
+                semantically_viable=valid_count > 0,
+                rejection_counts=tuple(sorted(rejection_counts.items())),
+                disposition_digest=court_semantic_phase_disposition_digest(
+                    dispositions,
+                    schema_version=CourtDatasetSchemaVersion.V4,
+                    trajectory_group_id=group.trajectory_group_id,
+                    phase_index=expected.phase_index,
+                    phase_count=expected.phase_count,
+                ),
+            )
+            if observed != expected:
+                raise ValueError(
+                    "V4 pre-render semantic phase disagrees with selection authority."
+                )
+            semantic_phase_evaluations.append(observed)
     return CourtPreRenderEvaluation(
         projections=tuple(projections),
         rejected_sample_ids=tuple(rejected),
         rejection_reasons=tuple(rejection_reasons),
+        trajectory_safety_evaluations=safety_evaluations,
+        trajectory_semantic_phase_evaluations=tuple(semantic_phase_evaluations),
+    )
+
+
+def _v4_support_model(
+    plan: CourtDatasetPlanAny,
+    *,
+    scene: StandardSceneExport,
+    alignment: AlignmentResult,
+) -> TrajectorySupportModel | None:
+    if not isinstance(plan, CourtDatasetPlanV4):
+        return None
+    metric_cameras = tuple(
+        SceneCamera(
+            camera_id=camera.camera_id,
+            source_frame_index=camera.source_frame_index,
+            width=camera.width,
+            height=camera.height,
+            intrinsics=camera.intrinsics,
+            camera_to_scene=alignment.metric_adapter.metric_from_nht_camera(
+                camera.camera_to_scene
+            ),
+            image_path=camera.image_path,
+        )
+        for camera in scene.cameras
+    )
+    metric_points = alignment.metric_adapter.metric_from_nht_points(
+        scene.points_scene[:, :3]
+    )
+    return build_trajectory_support_model(
+        cameras=metric_cameras,
+        points_scene_m=metric_points,
+        policy=plan.support_policy,
     )
 
 

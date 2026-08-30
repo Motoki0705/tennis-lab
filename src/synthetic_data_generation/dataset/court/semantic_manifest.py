@@ -91,6 +91,8 @@ def build_court_semantic_manifest(
         published_court_geometry = validate_v2_published_court_geometry(dataset)
     elif definition.version is CourtDatasetSchemaVersion.V3:
         published_court_geometry = validate_v3_published_court_geometry(dataset)
+    elif definition.version is CourtDatasetSchemaVersion.V4:
+        published_court_geometry = validate_v4_published_court_geometry(dataset)
     else:  # pragma: no cover - exact schema registry is exhaustive
         raise TypeError("Unsupported Court semantic manifest version.")
 
@@ -259,9 +261,7 @@ def _validate_singleton_published_court_geometry(
 ) -> dict[str, RigidTransform]:
     """Validate singleton geometry and select its versioned transform authority."""
     accepted = _mapping_sequence(dataset["samples"], name="samples")
-    rejected = _mapping_sequence(
-        dataset["rejected_samples"], name="rejected_samples"
-    )
+    rejected = _mapping_sequence(dataset["rejected_samples"], name="rejected_samples")
     records = (*accepted, *rejected)
     geometry_by_court: dict[str, RigidTransform] = {}
     points_scene_by_court: dict[str, list[NDArray[np.float64]]] = {}
@@ -286,9 +286,7 @@ def _validate_singleton_published_court_geometry(
             },
             name="sample.projection",
         )
-        courts = _mapping_sequence(
-            raw_projection["courts"], name="projection.courts"
-        )
+        courts = _mapping_sequence(raw_projection["courts"], name="projection.courts")
         court_inventory: list[str] = []
         for court in courts:
             raw_court = _exact_mapping(
@@ -296,9 +294,7 @@ def _validate_singleton_published_court_geometry(
                 keys={"court_instance_id", "coverage_mode", "classes"},
                 name="projection.court",
             )
-            court_id = _text(
-                raw_court["court_instance_id"], name="court_instance_id"
-            )
+            court_id = _text(raw_court["court_instance_id"], name="court_instance_id")
             if court_id in court_inventory:
                 raise ValueError(
                     "Court v2 projection contains duplicate court geometry."
@@ -310,8 +306,8 @@ def _validate_singleton_published_court_geometry(
                 dtype=np.float64,
             )
             if court_id not in geometry_by_court:
-                geometry_by_court[court_id] = (
-                    scene_from_court_from_published_points(points_by_index)
+                geometry_by_court[court_id] = scene_from_court_from_published_points(
+                    points_by_index
                 )
             elif not np.allclose(
                 geometry_by_court[court_id].apply(points_court),
@@ -331,7 +327,9 @@ def _validate_singleton_published_court_geometry(
                 "Court v2 published court geometry inventory changed across samples."
             )
     if not geometry_by_court or expected_court_inventory is None:
-        raise ValueError("Court v2 requires published physical geometry for every court.")
+        raise ValueError(
+            "Court v2 requires published physical geometry for every court."
+        )
 
     candidate_by_court: dict[str, str] = {}
     binding_geometry_by_court: dict[str, RigidTransform] = {}
@@ -360,9 +358,7 @@ def _validate_singleton_published_court_geometry(
                 "Court v2 target candidate disagrees across published samples."
             )
         if use_binding_authority:
-            existing_binding = binding_geometry_by_court.get(
-                binding.court_instance_id
-            )
+            existing_binding = binding_geometry_by_court.get(binding.court_instance_id)
             if existing_binding is None:
                 binding_geometry_by_court[binding.court_instance_id] = (
                     binding.scene_from_court
@@ -428,6 +424,19 @@ def validate_v3_published_court_geometry(
     )
 
 
+def validate_v4_published_court_geometry(
+    dataset: Mapping[str, object],
+) -> dict[str, RigidTransform]:
+    """Validate exact corrected V4 published physical geometry."""
+    definition = court_schema_from_dataset_schema(dataset.get("schema"))
+    if definition.version is not CourtDatasetSchemaVersion.V4:
+        raise ValueError("Corrected V4 geometry validation requires a V4 dataset.")
+    return _validate_singleton_published_court_geometry(
+        dataset,
+        use_binding_authority=True,
+    )
+
+
 def _sample_entry(
     record: Mapping[str, object],
     *,
@@ -453,7 +462,11 @@ def _sample_entry(
     if raw_projection is None:
         if (
             definition.version
-            not in (CourtDatasetSchemaVersion.V2, CourtDatasetSchemaVersion.V3)
+            not in (
+                CourtDatasetSchemaVersion.V2,
+                CourtDatasetSchemaVersion.V3,
+                CourtDatasetSchemaVersion.V4,
+            )
             or disposition != "rejected"
             or published_court_geometry is None
         ):
@@ -511,10 +524,25 @@ def _sample_entry(
     if definition.version in (
         CourtDatasetSchemaVersion.V2,
         CourtDatasetSchemaVersion.V3,
+        CourtDatasetSchemaVersion.V4,
     ):
         entry["target_court"] = ResolvedTargetCourtV2.from_mapping(
             record.get("target_court")
         ).to_dict()
+    if definition.version is CourtDatasetSchemaVersion.V4:
+        entry["safety_support_input_digest"] = _text(
+            record.get("safety_support_input_digest"),
+            name="safety_support_input_digest",
+        )
+        entry["semantic_phase_index"] = _integer(
+            record.get("semantic_phase_index"),
+            name="semantic_phase_index",
+            minimum=0,
+        )
+        entry["semantic_phase_disposition_digest"] = _text(
+            record.get("semantic_phase_disposition_digest"),
+            name="semantic_phase_disposition_digest",
+        )
     return entry, visibility, coverage
 
 
@@ -601,6 +629,7 @@ def _projection_summary(
             elif definition.version in (
                 CourtDatasetSchemaVersion.V2,
                 CourtDatasetSchemaVersion.V3,
+                CourtDatasetSchemaVersion.V4,
             ):
                 physical_indices = (
                     _integer(
@@ -665,6 +694,7 @@ def _projection_summary(
         if definition.version in (
             CourtDatasetSchemaVersion.V2,
             CourtDatasetSchemaVersion.V3,
+            CourtDatasetSchemaVersion.V4,
         ):
             if published_court_geometry is None:
                 raise ValueError("Court v2 published geometry is unavailable.")
@@ -690,7 +720,10 @@ def _projection_summary(
                     camera,
                     scene_from_court,
                 )
-            elif definition.version is CourtDatasetSchemaVersion.V3:
+            elif definition.version in (
+                CourtDatasetSchemaVersion.V3,
+                CourtDatasetSchemaVersion.V4,
+            ):
                 expected_indices = _camera_relative_v3_indices(
                     camera,
                     scene_from_court,
@@ -850,9 +883,7 @@ def _validate_v3_projected_geometry(
     )
     for class_id, physical_index in enumerate(expected_indices):
         raw_class = _mapping(classes[class_id], name="projection.class")
-        raw_point = _mapping_sequence(
-            raw_class["points"], name="projection.points"
-        )[0]
+        raw_point = _mapping_sequence(raw_class["points"], name="projection.points")[0]
         observed_index = _integer(
             raw_point.get("physical_index"), name="physical_index", minimum=0
         )
@@ -865,7 +896,9 @@ def _validate_v3_projected_geometry(
         )
         if observed_index != physical_index:
             raise ValueError("Court v3 semantic physical identity changed.")
-        if not np.allclose(observed_scene, points_scene[physical_index], atol=1.0e-6, rtol=0.0):
+        if not np.allclose(
+            observed_scene, points_scene[physical_index], atol=1.0e-6, rtol=0.0
+        ):
             raise ValueError("Court v3 scene point disagrees with physical identity.")
         if not np.allclose(observed_uv, uv[physical_index], atol=1.0e-6, rtol=0.0):
             raise ValueError("Court v3 UV disagrees with the selected physical point.")
@@ -875,15 +908,21 @@ def _validate_v3_projected_geometry(
             abs_tol=1.0e-6,
             rel_tol=0.0,
         ):
-            raise ValueError("Court v3 depth disagrees with the selected physical point.")
+            raise ValueError(
+                "Court v3 depth disagrees with the selected physical point."
+            )
         if _boolean(raw_point.get("in_front"), name="point.in_front") is not bool(
             in_front[physical_index]
         ):
-            raise ValueError("Court v3 in_front disagrees with selected physical point.")
+            raise ValueError(
+                "Court v3 in_front disagrees with selected physical point."
+            )
         if _boolean(raw_point.get("in_frame"), name="point.in_frame") is not bool(
             in_frame[physical_index]
         ):
-            raise ValueError("Court v3 in_frame disagrees with selected physical point.")
+            raise ValueError(
+                "Court v3 in_frame disagrees with selected physical point."
+            )
 
 
 def _published_scene_points_by_physical_index(
@@ -935,9 +974,7 @@ def _validate_null_projection_ambiguity(
             "A null Court v2/v3 projection requires exactly one ambiguity reason."
         )
     reason = reasons[0]
-    court_id = reason.removeprefix(
-        f"{AMBIGUOUS_CAMERA_RELATIVE_NEAR_FAR_REASON}:"
-    )
+    court_id = reason.removeprefix(f"{AMBIGUOUS_CAMERA_RELATIVE_NEAR_FAR_REASON}:")
     try:
         scene_from_court = published_court_geometry[court_id]
     except KeyError as error:
@@ -1093,4 +1130,5 @@ __all__ = [
     "validate_court_semantic_manifest",
     "validate_v2_published_court_geometry",
     "validate_v3_published_court_geometry",
+    "validate_v4_published_court_geometry",
 ]

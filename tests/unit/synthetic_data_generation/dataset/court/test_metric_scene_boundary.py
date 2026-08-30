@@ -53,7 +53,6 @@ def test_captured_and_planned_cameras_round_trip_at_nht_boundary() -> None:
         atol=1.0e-9,
         rtol=0.0,
     )
-
     request_camera = _nht_camera_from_metric_plan(
         converted[0],
         alignment=alignment,
@@ -72,6 +71,28 @@ def test_captured_and_planned_cameras_round_trip_at_nht_boundary() -> None:
         atol=1.0e-9,
         rtol=0.0,
     )
+
+
+def test_camera_translation_ratio_is_the_public_similarity_reciprocal() -> None:
+    adapter = _alignment().metric_adapter
+    nht_points = np.asarray(((0.0, 0.0, 0.0), (1.0, -2.0, 3.0)))
+    metric_points = adapter.metric_from_nht_points(nht_points)
+    nht_distance = float(np.linalg.norm(nht_points[1] - nht_points[0]))
+    metric_distance = float(np.linalg.norm(metric_points[1] - metric_points[0]))
+
+    assert metric_distance / nht_distance == pytest.approx(
+        1.0 / adapter.nht_scene_units_per_metre
+    )
+
+    nht_camera = _camera(_rigid(angle=0.2, translation=(1.0, -2.0, 3.0)))
+    metric_camera = adapter.metric_from_nht_camera(nht_camera.camera_to_scene)
+    nht_origin_metric = adapter.metric_from_nht_points(
+        np.zeros((1, 3), dtype=np.float64)
+    )[0]
+    camera_translation_metric = metric_camera.matrix()[:3, 3] - nht_origin_metric
+    assert np.linalg.norm(camera_translation_metric) / np.linalg.norm(
+        nht_camera.camera_to_scene.matrix()[:3, 3]
+    ) == pytest.approx(1.0 / adapter.nht_scene_units_per_metre)
 
 
 def test_boundary_requires_complete_matching_alignment_inventory() -> None:
@@ -171,9 +192,7 @@ def _alignment() -> AlignmentResult:
         policy=policy,
         candidates=(candidate,),
         layout=layout,
-        metric_adapter=MetricSceneAdapter.from_nht_scene_from_metric_scene(
-            similarity
-        ),
+        metric_adapter=MetricSceneAdapter.from_nht_scene_from_metric_scene(similarity),
     )
 
 

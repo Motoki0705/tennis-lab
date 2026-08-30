@@ -24,7 +24,10 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     OrbitSamplingMode,
     OrbitShape,
     OrbitStableField,
+    OrbitStableFieldV4,
     OrbitTargetMode,
+    PathFamilyV4,
+    VerticalProfileV4,
 )
 from src.synthetic_data_generation.dataset.court.schema import (
     CourtDatasetSchemaVersion,
@@ -156,9 +159,14 @@ def test_broadcast_profile_composes_exactly_two_shared_camera_slots() -> None:
             CourtDatasetSchemaVersion.V2,
             {OrbitTargetMode.COURT_CENTER},
         ),
+        (
+            "dataset/court=v3",
+            CourtDatasetSchemaVersion.V3,
+            {OrbitTargetMode.COURT_CENTER},
+        ),
     ],
 )
-def test_court_selectors_compose_and_validate_exact_typed_versions(
+def test_legacy_court_selectors_compose_and_validate_exact_typed_versions(
     selector: str,
     version: CourtDatasetSchemaVersion,
     target_modes: set[OrbitTargetMode],
@@ -176,14 +184,40 @@ def test_court_selectors_compose_and_validate_exact_typed_versions(
     assert set(court.sampling.coverage_objective) == set(OrbitCoverageObjective)
 
 
-def test_default_and_compatibility_train_selectors_remain_exact_v1() -> None:
+def test_default_and_explicit_v4_selectors_compose_exact_safe_policy() -> None:
     default = _compose().court
-    compatibility = _compose("dataset/court=train").court
+    explicit = _compose("dataset/court=v4").court
 
-    assert default.schema_version is CourtDatasetSchemaVersion.V1
+    assert default == explicit
+    assert default.schema_version is CourtDatasetSchemaVersion.V4
+    assert set(default.trajectory.shapes) == {
+        PathFamilyV4.CIRCLE,
+        PathFamilyV4.ELLIPSE,
+        PathFamilyV4.ROUNDED_RECTANGLE,
+    }
+    assert set(default.trajectory.center_kinds) == set(OrbitCenterKind)
+    assert set(default.trajectory.curve_modes) == {
+        VerticalProfileV4.PLANAR,
+        VerticalProfileV4.SINUSOIDAL_HEIGHT,
+        VerticalProfileV4.RAISED_PHASES,
+    }
+    assert tuple(default.view.target_modes) == (OrbitTargetMode.COURT_CENTER,)
+    assert set(default.view.coverage_modes) == set(OrbitCoverageMode)
+    assert default.sampling.mode is OrbitSamplingMode.UNIFORM_ARC_LENGTH
+    assert set(default.sampling.stable_field_order) == set(OrbitStableFieldV4)
+    assert set(default.sampling.coverage_objective) == set(OrbitCoverageObjective)
+    assert default.support is not None
+    assert default.benchmark_decision_id == "b00_court_support_pilot_v1"
+    assert default.support.decision_id == default.benchmark_decision_id
+
+
+def test_compatibility_train_selector_remains_exact_explicit_v1() -> None:
+    compatibility = _compose("dataset/court=train").court
+    explicit = _compose("dataset/court=v1").court
+
     assert compatibility.schema_version is CourtDatasetSchemaVersion.V1
-    assert default == compatibility
-    assert tuple(default.view.target_modes) == (
+    assert compatibility == explicit
+    assert tuple(compatibility.view.target_modes) == (
         OrbitTargetMode.COURT_CENTER,
         OrbitTargetMode.COMPLEX_CENTER,
         OrbitTargetMode.NEAR_BASELINE,

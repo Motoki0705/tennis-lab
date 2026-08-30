@@ -19,6 +19,7 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     CourtDatasetPlan,
     CourtDatasetPlanAny,
     CourtDatasetPlanV2,
+    CourtDatasetPlanV4,
     PlannedCourtSampleV2,
 )
 from src.synthetic_data_generation.dataset.court.schema import (
@@ -40,6 +41,26 @@ DIAGNOSTIC_FILES: tuple[str, ...] = (
     "performance.json",
     "summary.txt",
 )
+DIAGNOSTIC_FILES_V4: tuple[str, ...] = (
+    *DIAGNOSTIC_FILES[:-1],
+    "trajectory-safety.json",
+    DIAGNOSTIC_FILES[-1],
+)
+
+
+def diagnostic_files_for_version(
+    version: CourtDatasetSchemaVersion,
+) -> tuple[str, ...]:
+    """Return the exact fixed inventory without changing V1--V3 artifacts."""
+    if version is CourtDatasetSchemaVersion.V4:
+        return DIAGNOSTIC_FILES_V4
+    if version in (
+        CourtDatasetSchemaVersion.V1,
+        CourtDatasetSchemaVersion.V2,
+        CourtDatasetSchemaVersion.V3,
+    ):
+        return DIAGNOSTIC_FILES
+    raise TypeError("Unsupported Court dataset schema version.")
 
 
 def write_court_diagnostics(
@@ -108,11 +129,14 @@ def write_court_diagnostics(
     if plan.schema_version in (
         CourtDatasetSchemaVersion.V2,
         CourtDatasetSchemaVersion.V3,
+        CourtDatasetSchemaVersion.V4,
     ):
         if not isinstance(plan, CourtDatasetPlanV2):
-            raise TypeError("V2/V3 Court diagnostics require a resolved-target plan.")
+            raise TypeError(
+                "V2/V3/V4 Court diagnostics require a resolved-target plan."
+            )
         if layout is None:
-            raise ValueError("V2/V3 Court diagnostics require the accepted layout.")
+            raise ValueError("V2/V3/V4 Court diagnostics require the accepted layout.")
         resolution = _v2_target_resolution_diagnostics(plan, layout=layout)
         split_groups = {
             group.trajectory_group_id: {
@@ -183,6 +207,59 @@ def write_court_diagnostics(
         },
         root / "semantic-visibility.json",
     )
+    if plan.schema_version is CourtDatasetSchemaVersion.V4:
+        if not isinstance(plan, CourtDatasetPlanV4):
+            raise TypeError("V4 diagnostics require CourtDatasetPlanV4.")
+        if definition.safety_diagnostics_schema is None:
+            raise RuntimeError("V4 safety diagnostics schema is unavailable.")
+        selected_evaluations = tuple(group.safety_evaluation for group in plan.groups)
+        if any(not evaluation.safe for evaluation in selected_evaluations):
+            raise ValueError("V4 diagnostics cannot publish an unsafe selected group.")
+        save_json_atomic(
+            {
+                "schema": definition.safety_diagnostics_schema,
+                "support_policy": plan.support_policy.to_dict(),
+                "support_summary": plan.support_summary.to_dict(),
+                "candidate_safety_evaluations": [
+                    evaluation.to_dict()
+                    for evaluation in plan.candidate_safety_evaluations
+                ],
+                "candidate_semantic_phase_evaluations": [
+                    evaluation.to_dict()
+                    for evaluation in plan.candidate_semantic_phase_evaluations
+                ],
+                "semantic_phase_inventory_digest": (
+                    plan.semantic_phase_inventory_digest
+                ),
+                "projected_semantic_valid_frame_count": (
+                    plan.projected_semantic_valid_frame_count
+                ),
+                "projected_semantic_valid_fraction": (
+                    plan.projected_semantic_valid_fraction
+                ),
+                "selected_trajectory_group_ids": [
+                    group.trajectory_group_id for group in plan.groups
+                ],
+                "required_coverage": plan.required_coverage.to_dict(),
+                "selected_coverage": plan.selected_coverage.to_dict(),
+                "required_coverage_shortfall": list(
+                    plan.required_coverage_shortfall
+                ),
+                "optional_candidate_coverage_shortfall": list(
+                    plan.optional_candidate_coverage_shortfall
+                ),
+                "selected_point_violation_count": sum(
+                    len(evaluation.violating_point_indices)
+                    for evaluation in selected_evaluations
+                ),
+                "selected_segment_violation_count": sum(
+                    len(evaluation.violating_segment_indices)
+                    for evaluation in selected_evaluations
+                ),
+                "zero_selected_safety_violations": True,
+            },
+            root / "trajectory-safety.json",
+        )
     summary = (
         "Canonical Court dataset diagnostics\n"
         f"scene: {plan.scene_id}\n"
@@ -196,8 +273,24 @@ def write_court_diagnostics(
         f"coverage: {dict(sorted(coverage_counts.items()))}\n"
         f"renderer-visible semantic classes: {dict(sorted(visible_by_class.items()))}\n"
     )
+    if isinstance(plan, CourtDatasetPlanV4):
+        summary += (
+            f"support input digest: {plan.support_summary.input_digest}\n"
+            f"semantic phase inventory digest: {plan.semantic_phase_inventory_digest}\n"
+            f"projected semantic valid frames: {plan.projected_semantic_valid_frame_count}\n"
+            f"projected semantic valid fraction: {plan.projected_semantic_valid_fraction:.6f}\n"
+            "selected support violations: 0\n"
+            f"required coverage: {plan.required_coverage.to_dict()}\n"
+            f"selected coverage: {plan.selected_coverage.to_dict()}\n"
+            "required coverage shortfall: []\n"
+            "optional candidate coverage shortfall: "
+            f"{list(plan.optional_candidate_coverage_shortfall)}\n"
+        )
     (root / "summary.txt").write_text(summary, encoding="utf-8")
-    return tuple(f"diagnostics/{name}" for name in DIAGNOSTIC_FILES)
+    return tuple(
+        f"diagnostics/{name}"
+        for name in diagnostic_files_for_version(plan.schema_version)
+    )
 
 
 def _validate_acceptance_inventory(
@@ -210,11 +303,15 @@ def _validate_acceptance_inventory(
     """Fail before writing a mixed-version or incomplete disposition payload."""
     accepted = tuple(accepted_sample_ids)
     rejected_tuple = tuple(rejected)
-    if not accepted or len(accepted) != len(set(accepted)) or any(
-        not isinstance(sample_id, str)
-        or not sample_id
-        or sample_id != sample_id.strip()
-        for sample_id in accepted
+    if (
+        not accepted
+        or len(accepted) != len(set(accepted))
+        or any(
+            not isinstance(sample_id, str)
+            or not sample_id
+            or sample_id != sample_id.strip()
+            for sample_id in accepted
+        )
     ):
         raise ValueError("Court acceptance IDs must be unique trimmed strings.")
     rejected_keys = {
@@ -236,8 +333,17 @@ def _validate_acceptance_inventory(
     if plan.schema_version in (
         CourtDatasetSchemaVersion.V2,
         CourtDatasetSchemaVersion.V3,
+        CourtDatasetSchemaVersion.V4,
     ):
         rejected_keys.add("target_court")
+    if plan.schema_version is CourtDatasetSchemaVersion.V4:
+        rejected_keys.update(
+            {
+                "safety_support_input_digest",
+                "semantic_phase_index",
+                "semantic_phase_disposition_digest",
+            }
+        )
     planned_by_id = {sample.sample_id: sample for sample in plan.samples}
     rejected_ids: list[str] = []
     for record in rejected_tuple:
@@ -250,17 +356,20 @@ def _validate_acceptance_inventory(
         projection = record["projection"]
         if not isinstance(sample_id, str) or sample_id not in planned_by_id:
             raise ValueError("Court acceptance rejection references an unknown sample.")
-        if not isinstance(reasons, list) or not reasons or any(
-            not isinstance(reason, str)
-            or not reason
-            or reason != reason.strip()
-            for reason in reasons
+        if (
+            not isinstance(reasons, list)
+            or not reasons
+            or any(
+                not isinstance(reason, str) or not reason or reason != reason.strip()
+                for reason in reasons
+            )
         ):
             raise ValueError("Court acceptance rejection reasons are incomplete.")
         if projection is None:
             if plan.schema_version not in (
                 CourtDatasetSchemaVersion.V2,
                 CourtDatasetSchemaVersion.V3,
+                CourtDatasetSchemaVersion.V4,
             ) or not any(
                 reason.startswith(f"{AMBIGUOUS_CAMERA_RELATIVE_NEAR_FAR_REASON}:")
                 for reason in reasons
@@ -288,6 +397,10 @@ def _validate_acceptance_inventory(
             record["target_court"] != planned.target_court.to_dict()
         ):
             raise ValueError("Court v2/v3 acceptance rejection target is invalid.")
+        if isinstance(plan, CourtDatasetPlanV4) and (
+            record["safety_support_input_digest"] != plan.support_summary.input_digest
+        ):
+            raise ValueError("Court V4 acceptance rejection safety digest is invalid.")
         rejected_ids.append(sample_id)
     if len(rejected_ids) != len(set(rejected_ids)):
         raise ValueError("Court acceptance rejection IDs must be unique.")
@@ -367,4 +480,9 @@ def _quantiles(values: NDArray[np.float64]) -> dict[str, float]:
     }
 
 
-__all__ = ["DIAGNOSTIC_FILES", "write_court_diagnostics"]
+__all__ = [
+    "DIAGNOSTIC_FILES",
+    "DIAGNOSTIC_FILES_V4",
+    "diagnostic_files_for_version",
+    "write_court_diagnostics",
+]

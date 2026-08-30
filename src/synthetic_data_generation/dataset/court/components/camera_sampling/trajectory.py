@@ -8,14 +8,22 @@ from dataclasses import replace
 
 import numpy as np
 
-from src.synthetic_data_generation.configuration import CourtTrajectoryPolicy
+from src.synthetic_data_generation.configuration import (
+    CourtTrajectoryPolicy,
+    CourtTrajectoryPolicyV4,
+)
 from src.synthetic_data_generation.dataset.court.contracts import (
     OrbitCenter,
     OrbitCenterKind,
     OrbitCurveMode,
     OrbitShape,
     OrbitStableField,
+    OrbitStableFieldV4,
     OrbitTrajectorySpec,
+    OrbitTrajectorySpecV4,
+    PathConstructorV4,
+    PathFamilyV4,
+    VerticalProfileV4,
 )
 from src.synthetic_data_generation.scene_contract import (
     CourtInstance,
@@ -110,7 +118,7 @@ def generate_trajectory_candidates(
     centers: Sequence[OrbitCenter],
     *,
     seed: int,
-    stable_field_order: Sequence[OrbitStableField],
+    stable_field_order: Sequence[OrbitStableField | OrbitStableFieldV4],
 ) -> tuple[OrbitTrajectorySpec, ...]:
     """Generate a finite typed candidate inventory in explicit stable order."""
     if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
@@ -122,7 +130,9 @@ def generate_trajectory_candidates(
         raise ValueError("Orbit centre candidates must be unique.")
     configured_center_kinds = set(policy.center_kinds)
     center_tuple = tuple(
-        center for center in all_centers if center.center_kind in configured_center_kinds
+        center
+        for center in all_centers
+        if center.center_kind in configured_center_kinds
     )
     if {center.center_kind for center in center_tuple} != configured_center_kinds:
         raise ValueError("Resolved centres do not cover every configured center kind.")
@@ -201,7 +211,9 @@ def generate_trajectory_candidates(
     if len({candidate.semantic_key() for candidate in raw}) != len(raw):
         raise ValueError("Trajectory policy generated duplicate typed candidates.")
     if {candidate.shape for candidate in raw} != set(policy.shapes):
-        raise ValueError("Trajectory generation did not consume configured shapes exactly.")
+        raise ValueError(
+            "Trajectory generation did not consume configured shapes exactly."
+        )
     if {candidate.center_kind for candidate in raw} != set(policy.center_kinds):
         raise ValueError(
             "Trajectory generation did not consume configured center kinds exactly."
@@ -224,43 +236,213 @@ def generate_trajectory_candidates(
     )
 
 
+def generate_trajectory_candidates_v4(
+    policy: CourtTrajectoryPolicyV4,
+    centers: Sequence[OrbitCenter],
+    *,
+    seed: int,
+    stable_field_order: Sequence[OrbitStableField | OrbitStableFieldV4],
+) -> tuple[OrbitTrajectorySpecV4, ...]:
+    """Generate the strict V4 shape/corner/vertical-phase candidate inventory."""
+    if not isinstance(policy, CourtTrajectoryPolicyV4):
+        raise TypeError("V4 candidate generation requires CourtTrajectoryPolicyV4.")
+    all_centers = tuple(centers)
+    if not all_centers or len({center.key() for center in all_centers}) != len(
+        all_centers
+    ):
+        raise ValueError("V4 orbit centres must be non-empty and unique.")
+    center_tuple = tuple(
+        center for center in all_centers if center.center_kind in policy.center_kinds
+    )
+    if {center.center_kind for center in center_tuple} != set(policy.center_kinds):
+        raise ValueError("V4 centres do not cover every configured center kind.")
+    radius_scales = tuple(
+        float(value)
+        for value in np.linspace(
+            policy.captured_offset_scale_range[0],
+            policy.captured_offset_scale_range[1],
+            num=3,
+        )
+    )
+    shapes: list[tuple[PathFamilyV4, float, float | None]] = []
+    for shape in policy.shapes:
+        if shape is PathFamilyV4.CIRCLE:
+            shapes.append((shape, 1.0, None))
+        elif shape is PathFamilyV4.ELLIPSE:
+            shapes.extend(
+                (shape, ratio, None) for ratio in policy.axis_ratios if ratio <= 0.8
+            )
+        elif shape is PathFamilyV4.ROUNDED_RECTANGLE:
+            shapes.extend(
+                (shape, ratio, corner_ratio)
+                for ratio in policy.axis_ratios
+                if ratio <= 0.8
+                for corner_ratio in policy.corner_radius_ratios
+            )
+        else:  # pragma: no cover - finite enum construction is exhaustive
+            raise ValueError(f"Unsupported V4 shape: {shape!r}.")
+    vertical_profiles: list[
+        tuple[VerticalProfileV4, float, int, float, tuple[float, ...]]
+    ] = []
+    positive_amplitudes = tuple(
+        value for value in policy.vertical_modulations_m if value > 0.0
+    )
+    for curve_mode in policy.curve_modes:
+        if curve_mode is VerticalProfileV4.PLANAR:
+            vertical_profiles.append((curve_mode, 0.0, 0, 0.0, (0.0,)))
+        elif curve_mode is VerticalProfileV4.SINUSOIDAL_HEIGHT:
+            for index, amplitude in enumerate(positive_amplitudes):
+                vertical_profiles.append(
+                    (
+                        curve_mode,
+                        amplitude,
+                        1 + index % 2,
+                        (seed % 8 + index) * math.pi / 4.0,
+                        (0.0,),
+                    )
+                )
+        elif curve_mode is VerticalProfileV4.RAISED_PHASES:
+            vertical_profiles.extend(
+                (curve_mode, max(offsets), 0, 0.0, offsets)
+                for offsets in policy.vertical_phase_offsets_m
+            )
+        else:  # pragma: no cover - finite enum construction is exhaustive
+            raise ValueError(f"Unsupported V4 curve mode: {curve_mode!r}.")
+    raw: list[OrbitTrajectorySpecV4] = []
+    for center in center_tuple:
+        for shape, axis_ratio, corner_ratio in shapes:
+            for orientation_degrees in policy.orientations_degrees:
+                for radius_scale in radius_scales:
+                    for base_height_m in policy.base_heights_m:
+                        for (
+                            curve_mode,
+                            amplitude,
+                            cycles,
+                            phase,
+                            offsets,
+                        ) in vertical_profiles:
+                            raw.append(
+                                OrbitTrajectorySpecV4(
+                                    trajectory_id="pending",
+                                    trajectory_group_id="pending",
+                                    shape=shape,
+                                    center_kind=center.center_kind,
+                                    center_court_instance_id=center.court_instance_id,
+                                    base_radius_m=center.base_radius_m,
+                                    radius_scale=radius_scale,
+                                    axis_ratio=axis_ratio,
+                                    orientation_radians=math.radians(
+                                        orientation_degrees
+                                    ),
+                                    base_height_m=base_height_m,
+                                    vertical_amplitude_m=amplitude,
+                                    vertical_cycles=cycles,
+                                    vertical_phase_radians=phase,
+                                    curve_mode=curve_mode,
+                                    constructor=PathConstructorV4.ANALYTIC_GLOBAL,
+                                    corner_radius_ratio=corner_ratio,
+                                    vertical_phase_offsets_m=offsets,
+                                )
+                            )
+    if len({candidate.semantic_key() for candidate in raw}) != len(raw):
+        raise ValueError("V4 trajectory policy generated duplicate candidates.")
+    if {candidate.shape for candidate in raw} != set(policy.shapes):
+        raise ValueError("V4 trajectory generation omitted a configured shape.")
+    if {candidate.curve_mode for candidate in raw} != set(policy.curve_modes):
+        raise ValueError("V4 trajectory generation omitted a configured curve mode.")
+    ordered = sorted(
+        raw, key=lambda candidate: _stable_key(candidate, stable_field_order)
+    )
+    return tuple(
+        replace(
+            candidate,
+            trajectory_id=f"trajectory-{index:05d}",
+            trajectory_group_id=f"group-{index:05d}",
+        )
+        for index, candidate in enumerate(ordered)
+    )
+
+
 def trajectory_field_value(
     candidate: OrbitTrajectorySpec,
-    field: OrbitStableField,
+    field: OrbitStableField | OrbitStableFieldV4,
 ) -> object:
     """Read one declared typed selector field without parsing an ID."""
-    values: dict[OrbitStableField, object] = {
-        OrbitStableField.SHAPE: candidate.shape.value,
-        OrbitStableField.CENTER_KIND: (
+    values: dict[str, object] = {
+        "shape": candidate.shape.value,
+        "center_kind": (
             candidate.center_kind.value,
             candidate.center_court_instance_id,
         ),
-        OrbitStableField.RADIUS_SCALE: candidate.radius_scale,
-        OrbitStableField.AXIS_RATIO: candidate.axis_ratio,
-        OrbitStableField.ORIENTATION_DEGREES: round(
+        "radius_scale": candidate.radius_scale,
+        "axis_ratio": candidate.axis_ratio,
+        "orientation_degrees": round(
             math.degrees(candidate.orientation_radians) % 360.0,
             9,
         ),
-        OrbitStableField.BASE_HEIGHT_M: candidate.base_height_m,
-        OrbitStableField.VERTICAL_MODULATION_M: candidate.vertical_amplitude_m,
-        OrbitStableField.CURVE_MODE: candidate.curve_mode.value,
+        "base_height_m": candidate.base_height_m,
+        "vertical_modulation_m": candidate.vertical_amplitude_m,
+        "curve_mode": candidate.curve_mode.value,
+        "corner_radius_ratio": (
+            candidate.corner_radius_ratio
+            if isinstance(candidate, OrbitTrajectorySpecV4)
+            else None
+        ),
+        "vertical_phase": (
+            candidate.vertical_phase_offsets_m
+            if isinstance(candidate, OrbitTrajectorySpecV4)
+            else (0.0,)
+        ),
+        "constructor": (
+            candidate.constructor.value
+            if isinstance(candidate, OrbitTrajectorySpecV4)
+            else "legacy_analytic"
+        ),
     }
     try:
-        return values[field]
+        return values[field.value]
     except KeyError as error:
         raise ValueError(f"Unknown typed selector field: {field!r}.") from error
 
 
+def identify_trajectory_candidates_v4(
+    candidates: Sequence[OrbitTrajectorySpecV4],
+    *,
+    stable_field_order: Sequence[OrbitStableField | OrbitStableFieldV4],
+) -> tuple[OrbitTrajectorySpecV4, ...]:
+    """Assign one exact deterministic ID inventory after all V4 families exist."""
+    values = tuple(candidates)
+    if not values or len({item.semantic_key() for item in values}) != len(values):
+        raise ValueError(
+            "V4 trajectory candidate inventory must be unique and non-empty."
+        )
+    ordered = sorted(
+        values, key=lambda candidate: _stable_key(candidate, stable_field_order)
+    )
+    return tuple(
+        replace(
+            candidate,
+            trajectory_id=f"trajectory-{index:05d}",
+            trajectory_group_id=f"group-{index:05d}",
+        )
+        for index, candidate in enumerate(ordered)
+    )
+
+
 def _stable_key(
     candidate: OrbitTrajectorySpec,
-    field_order: Sequence[OrbitStableField],
+    field_order: Sequence[OrbitStableField | OrbitStableFieldV4],
 ) -> tuple[str, ...]:
-    values = tuple(repr(trajectory_field_value(candidate, field)) for field in field_order)
+    values = tuple(
+        repr(trajectory_field_value(candidate, field)) for field in field_order
+    )
     return (*values, repr(candidate.semantic_key()))
 
 
 __all__ = [
     "derive_orbit_centers",
     "generate_trajectory_candidates",
+    "generate_trajectory_candidates_v4",
+    "identify_trajectory_candidates_v4",
     "trajectory_field_value",
 ]

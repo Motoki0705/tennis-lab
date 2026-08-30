@@ -9,15 +9,29 @@ from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
 from src.synthetic_data_generation.alignment.contracts import MetricSceneAdapter
-from src.synthetic_data_generation.configuration import CourtDatasetConfiguration
+from src.synthetic_data_generation.configuration import (
+    CourtDatasetConfiguration,
+    CourtTrajectoryPolicyV4,
+)
+from src.synthetic_data_generation.dataset.court.components.camera_sampling import (
+    selection as selection_module,
+)
+from src.synthetic_data_generation.dataset.court.components.camera_sampling.sampling import (
+    sample_uniform_arc_length,
+)
 from src.synthetic_data_generation.dataset.court.components.camera_sampling.selection import (
+    SafeCandidateExhaustionError,
+    SelectedTrajectory,
     assign_group_shards,
     build_court_dataset_plan,
     select_budgeted_coverage,
+    select_safe_budgeted_coverage,
+    select_semantic_phase_budgeted_coverage,
 )
 from src.synthetic_data_generation.dataset.court.components.camera_sampling.trajectory import (
     derive_orbit_centers,
     generate_trajectory_candidates,
+    generate_trajectory_candidates_v4,
 )
 from src.synthetic_data_generation.dataset.court.contracts import (
     CourtDatasetPlan,
@@ -27,7 +41,14 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     OrbitCenterKind,
     OrbitCoverageObjective,
     OrbitSamplingPolicy,
+    OrbitStableFieldV4,
+    OrbitViewSpecV2,
+    PathFamilyV4,
+    RequiredTrajectoryCoverage,
     TargetCourtResolutionPolicy,
+    TrajectorySafetyEvaluation,
+    TrajectorySemanticPhaseEvaluation,
+    VerticalProfileV4,
 )
 from src.synthetic_data_generation.dataset.court.schema import (
     CourtDatasetSchemaVersion,
@@ -236,6 +257,324 @@ def test_v2_v3_plans_share_unchanged_sampling_and_per_sample_geometric_targets(
     assert any(
         len(set(targets_by_group[group_id])) > 1 for group_id in complex_group_ids
     )
+
+
+def test_v4_hydra_selector_is_explicit_and_missing_support_fails_closed(
+    captured_cameras: tuple[SceneCamera, ...],
+    multi_court_layout: MultiCourtLayout,
+    identity_metric_adapter: MetricSceneAdapter,
+) -> None:
+    default = _composed_configuration("train")
+    configuration = _composed_configuration("v4")
+
+    assert default.schema_version is CourtDatasetSchemaVersion.V1
+    assert configuration.schema_version is CourtDatasetSchemaVersion.V4
+    assert isinstance(configuration.trajectory, CourtTrajectoryPolicyV4)
+    assert set(configuration.trajectory.shapes) == {
+        PathFamilyV4.CIRCLE,
+        PathFamilyV4.ELLIPSE,
+        PathFamilyV4.ROUNDED_RECTANGLE,
+    }
+    assert set(configuration.trajectory.curve_modes) == {
+        VerticalProfileV4.PLANAR,
+        VerticalProfileV4.SINUSOIDAL_HEIGHT,
+        VerticalProfileV4.RAISED_PHASES,
+    }
+    assert PathFamilyV4.FREE_SPACE_CYCLE not in configuration.trajectory.shapes
+    assert set(configuration.sampling.stable_field_order) == set(OrbitStableFieldV4)
+    assert configuration.support is not None
+    assert configuration.benchmark_decision_id == configuration.support.decision_id
+
+    with pytest.raises(ValueError, match="missing_support_capability"):
+        build_court_dataset_plan(
+            scene_id="B00",
+            profile="v4",
+            cameras=captured_cameras,
+            layout=multi_court_layout,
+            configuration=configuration,
+            metric_adapter=identity_metric_adapter,
+            points_scene=None,
+        )
+
+
+def test_v4_safe_selection_samples_each_candidate_exactly_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    configuration = _composed_configuration("v4")
+    assert isinstance(configuration.trajectory, CourtTrajectoryPolicyV4)
+    policy = OrbitSamplingPolicy.from_configuration(configuration.sampling)
+    centers = (
+        OrbitCenter(
+            center_kind=OrbitCenterKind.COMPLEX,
+            court_instance_id=None,
+            reference_court_instance_id="court-0",
+            scene_from_center=RigidTransform.identity(),
+            base_radius_m=20.0,
+            captured_offset_median_m=18.0,
+            captured_offset_q90_m=20.0,
+            captured_camera_count=100,
+        ),
+        OrbitCenter(
+            center_kind=OrbitCenterKind.COURT,
+            court_instance_id="court-0",
+            reference_court_instance_id="court-0",
+            scene_from_center=RigidTransform.identity(),
+            base_radius_m=20.0,
+            captured_offset_median_m=18.0,
+            captured_offset_q90_m=20.0,
+            captured_camera_count=100,
+        ),
+    )
+    candidates = generate_trajectory_candidates_v4(
+        configuration.trajectory,
+        centers,
+        seed=policy.seed,
+        stable_field_order=policy.stable_field_order,
+    )[: policy.minimum_trajectory_groups]
+    sampled_ids: list[str] = []
+    real_sample = selection_module.sample_uniform_arc_length
+
+    def counting_sample(candidate, center, sampling_policy):
+        sampled_ids.append(candidate.trajectory_id)
+        return real_sample(candidate, center, sampling_policy)
+
+    def safe_evaluation(*, trajectory_id, trajectory_group_id, path, support_model):
+        del support_model
+        point_count = len(path.theta_radians)
+        return TrajectorySafetyEvaluation(
+            trajectory_id=trajectory_id,
+            trajectory_group_id=trajectory_group_id,
+            support_input_digest="a" * 64,
+            safe=True,
+            reasons=(),
+            path_point_count=point_count,
+            closed_segment_count=point_count,
+            swept_sample_count=point_count,
+            violating_point_indices=(),
+            violating_segment_indices=(),
+            minimum_support_margin_m=1.0,
+            minimum_obstacle_clearance_m=1.0,
+        )
+
+    monkeypatch.setattr(selection_module, "sample_uniform_arc_length", counting_sample)
+    monkeypatch.setattr(selection_module, "evaluate_trajectory_safety", safe_evaluation)
+
+    def semantic_evaluations(items, **_kwargs):
+        result = []
+        for item in items:
+            frame_count = len(item.path.theta_radians)
+            for phase_index in range(6):
+                result.append(
+                    TrajectorySemanticPhaseEvaluation(
+                        trajectory_id=item.trajectory.trajectory_id,
+                        trajectory_group_id=item.trajectory.trajectory_group_id,
+                        phase_index=phase_index,
+                        phase_count=6,
+                        view=OrbitViewSpecV2(
+                            view_id=(
+                                f"view-{item.trajectory.trajectory_group_id}-{phase_index}"
+                            ),
+                            target_kind=selection_module.OrbitTargetKind.COURT,
+                            target_mode=selection_module.OrbitTargetMode.COURT_CENTER,
+                            coverage_mode=configuration.view.coverage_modes[
+                                phase_index % 3
+                            ],
+                            look_at_height_m=configuration.view.look_at_height_m[
+                                phase_index % 2
+                            ],
+                            hfov_degrees=75.0,
+                        ),
+                        expected_frame_count=frame_count,
+                        expected_valid_frame_count=frame_count,
+                        semantically_viable=True,
+                        rejection_counts=(),
+                        disposition_digest=(f"{phase_index:x}" * 64)[:64],
+                    )
+                )
+        return tuple(result)
+
+    monkeypatch.setattr(
+        selection_module,
+        "_evaluate_semantic_phases",
+        semantic_evaluations,
+    )
+
+    with pytest.raises(
+        SafeCandidateExhaustionError,
+        match="anchored_rounded_rectangle",
+    ):
+        select_safe_budgeted_coverage(
+            candidates,
+            centers=centers,
+            policy=policy,
+            support_model=object(),  # type: ignore[arg-type]
+            cameras=(),
+            layout=object(),  # type: ignore[arg-type]
+            configuration=configuration,
+        )
+
+    assert sampled_ids == [candidate.trajectory_id for candidate in candidates]
+
+
+def test_joint_semantic_phase_assignment_is_order_independent_and_phase_sensitive() -> (
+    None
+):
+    items, evaluations, policy, required_coverage = _semantic_phase_fixture()
+
+    errors: list[SafeCandidateExhaustionError] = []
+    for ordered_items, ordered_evaluations in (
+        (items, evaluations),
+        (tuple(reversed(items)), tuple(reversed(evaluations))),
+    ):
+        with pytest.raises(SafeCandidateExhaustionError) as caught:
+            select_semantic_phase_budgeted_coverage(
+                ordered_items,
+                semantic_phase_evaluations=ordered_evaluations,
+                policy=policy,
+                required_coverage=required_coverage,
+            )
+        errors.append(caught.value)
+    assert errors[0].coverage_shortfall == errors[1].coverage_shortfall
+    assert "minimum_anchored_rounded_rectangle_groups" in (
+        errors[0].coverage_shortfall
+    )
+
+
+def test_joint_semantic_phase_assignment_fails_closed_when_too_few_candidates_are_compatible() -> (
+    None
+):
+    items, evaluations, policy, required_coverage = _semantic_phase_fixture()
+    compatible_groups = {
+        item.trajectory.trajectory_group_id
+        for item in items[: policy.minimum_trajectory_groups - 1]
+    }
+    incompatible = tuple(
+        replace(
+            evaluation,
+            expected_valid_frame_count=0,
+            semantically_viable=False,
+            rejection_counts=(
+                (
+                    "insufficient_pre_render_semantic_coverage",
+                    evaluation.expected_frame_count,
+                ),
+            ),
+        )
+        if evaluation.trajectory_group_id not in compatible_groups
+        else evaluation
+        for evaluation in evaluations
+    )
+
+    with pytest.raises(
+        SafeCandidateExhaustionError,
+        match="insufficient candidates have a compatible semantic phase",
+    ):
+        select_semantic_phase_budgeted_coverage(
+            items,
+            semantic_phase_evaluations=incompatible,
+            policy=policy,
+            required_coverage=required_coverage,
+        )
+
+
+def _semantic_phase_fixture() -> tuple[
+    tuple[SelectedTrajectory, ...],
+    tuple[TrajectorySemanticPhaseEvaluation, ...],
+    OrbitSamplingPolicy,
+    RequiredTrajectoryCoverage,
+]:
+    configuration = _composed_configuration("v4")
+    assert isinstance(configuration.trajectory, CourtTrajectoryPolicyV4)
+    assert configuration.required_coverage is not None
+    policy = OrbitSamplingPolicy.from_configuration(configuration.sampling)
+    centers = (
+        OrbitCenter(
+            center_kind=OrbitCenterKind.COMPLEX,
+            court_instance_id=None,
+            reference_court_instance_id="court-0",
+            scene_from_center=RigidTransform.identity(),
+            base_radius_m=20.0,
+            captured_offset_median_m=18.0,
+            captured_offset_q90_m=20.0,
+            captured_camera_count=100,
+        ),
+        OrbitCenter(
+            center_kind=OrbitCenterKind.COURT,
+            court_instance_id="court-0",
+            reference_court_instance_id="court-0",
+            scene_from_center=RigidTransform.identity(),
+            base_radius_m=20.0,
+            captured_offset_median_m=18.0,
+            captured_offset_q90_m=20.0,
+            captured_camera_count=100,
+        ),
+    )
+    candidates = generate_trajectory_candidates_v4(
+        configuration.trajectory,
+        centers,
+        seed=policy.seed,
+        stable_field_order=policy.stable_field_order,
+    )[: policy.minimum_trajectory_groups]
+    center_by_key = {center.key(): center for center in centers}
+    items = tuple(
+        SelectedTrajectory(
+            trajectory=candidate,
+            center=center_by_key[
+                candidate.center_kind, candidate.center_court_instance_id
+            ],
+            path=sample_uniform_arc_length(
+                candidate,
+                center_by_key[
+                    candidate.center_kind, candidate.center_court_instance_id
+                ],
+                policy,
+            ),
+        )
+        for candidate in candidates
+    )
+    evaluations: list[TrajectorySemanticPhaseEvaluation] = []
+    for candidate_index, item in enumerate(items):
+        frame_count = len(item.path.theta_radians)
+        compatible_phase = candidate_index % 6
+        for phase_index in range(6):
+            valid_count = frame_count if phase_index == compatible_phase else 0
+            evaluations.append(
+                TrajectorySemanticPhaseEvaluation(
+                    trajectory_id=item.trajectory.trajectory_id,
+                    trajectory_group_id=item.trajectory.trajectory_group_id,
+                    phase_index=phase_index,
+                    phase_count=6,
+                    view=OrbitViewSpecV2(
+                        view_id=(
+                            f"view-{item.trajectory.trajectory_group_id}-{phase_index}"
+                        ),
+                        target_kind=selection_module.OrbitTargetKind.COURT,
+                        target_mode=selection_module.OrbitTargetMode.COURT_CENTER,
+                        coverage_mode=configuration.view.coverage_modes[
+                            phase_index % 3
+                        ],
+                        look_at_height_m=configuration.view.look_at_height_m[
+                            phase_index % 2
+                        ],
+                        hfov_degrees=75.0,
+                    ),
+                    expected_frame_count=frame_count,
+                    expected_valid_frame_count=valid_count,
+                    semantically_viable=valid_count > 0,
+                    rejection_counts=(
+                        ()
+                        if valid_count
+                        else (
+                            (
+                                "insufficient_pre_render_semantic_coverage",
+                                frame_count,
+                            ),
+                        )
+                    ),
+                    disposition_digest=(f"{candidate_index:02x}{phase_index:02x}" * 16),
+                )
+            )
+    return items, tuple(evaluations), policy, configuration.required_coverage
 
 
 def test_selector_reserves_group_budget_for_a_long_captured_complex_orbit() -> None:

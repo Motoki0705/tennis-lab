@@ -141,7 +141,7 @@ def _projection(
     *,
     court_order: tuple[str, str] = ("court-a", "court-b"),
     invisible_court_id: str | None = None,
-    schema: Literal["v2", "v3"] = "v2",
+    schema: Literal["v2", "v3", "v4"] = "v2",
 ) -> dict[str, object]:
     court_specs = {
         "court-a": (_IDENTITY_PHYSICAL, 0.0),
@@ -156,7 +156,7 @@ def _projection(
             physical_order=court_specs[court_id][0],
             x_offset=court_specs[court_id][1],
             all_invisible=court_id == invisible_court_id,
-            camera_view_uv=schema == "v3",
+            camera_view_uv=schema in {"v3", "v4"},
         )
         for court_id in court_order
     ]
@@ -182,7 +182,7 @@ def _write_v2_dataset(
     court_order: tuple[str, str] = ("court-a", "court-b"),
     target_court_id: str = "court-b",
     invisible_court_id: str | None = None,
-    schema: Literal["v2", "v3"] = "v2",
+    schema: Literal["v2", "v3", "v4"] = "v2",
 ) -> tuple[Path, dict[str, object]]:
     dataset_root = root / "B00" / "datasets" / "court"
     records: list[dict[str, object]] = []
@@ -219,35 +219,36 @@ def _write_v2_dataset(
             "target_court": target,
             "metadata": metadata,
         }
-        (sample_root / "labels.json").write_text(
-            json.dumps(labels), encoding="utf-8"
-        )
-        records.append(
-            {
-                "sample_index": sample_index,
-                "sample_id": sample_id,
-                "trajectory_group_id": f"group-{split}",
-                "trajectory_id": f"trajectory-{split}",
-                "view_id": "view-a",
-                "trajectory_frame_index": 0,
-                "split": split,
-                "shard_id": "shard-a",
-                "width": 64,
-                "height": 48,
-                "camera": camera,
-                "projection": projection,
-                "target_court": target,
-                "directory": relative.as_posix(),
-                "rgb": (relative / "rgb.npy").as_posix(),
-                "rgb_preview": (relative / "rgb.png").as_posix(),
-                "alpha": (relative / "alpha.npy").as_posix(),
-                "alpha_preview": (relative / "alpha.png").as_posix(),
-                "depth": (relative / "depth.npy").as_posix(),
-                "depth_coordinate_space": "metric_scene_metres",
-                "labels": (relative / "labels.json").as_posix(),
-                "metadata": metadata,
-            }
-        )
+        if schema == "v4":
+            labels["safety_support_input_digest"] = "a" * 64
+        (sample_root / "labels.json").write_text(json.dumps(labels), encoding="utf-8")
+        record = {
+            "sample_index": sample_index,
+            "sample_id": sample_id,
+            "trajectory_group_id": f"group-{split}",
+            "trajectory_id": f"trajectory-{split}",
+            "view_id": "view-a",
+            "trajectory_frame_index": 0,
+            "split": split,
+            "shard_id": "shard-a",
+            "width": 64,
+            "height": 48,
+            "camera": camera,
+            "projection": projection,
+            "target_court": target,
+            "directory": relative.as_posix(),
+            "rgb": (relative / "rgb.npy").as_posix(),
+            "rgb_preview": (relative / "rgb.png").as_posix(),
+            "alpha": (relative / "alpha.npy").as_posix(),
+            "alpha_preview": (relative / "alpha.png").as_posix(),
+            "depth": (relative / "depth.npy").as_posix(),
+            "depth_coordinate_space": "metric_scene_metres",
+            "labels": (relative / "labels.json").as_posix(),
+            "metadata": metadata,
+        }
+        if schema == "v4":
+            record["safety_support_input_digest"] = "a" * 64
+        records.append(record)
     manifest: dict[str, object] = {
         "schema": f"canonical_court_dataset_{schema}",
         "status": "completed",
@@ -270,7 +271,7 @@ def _write_v2_dataset(
 def _input(
     root: Path,
     *,
-    schema: Literal["v1", "v2", "v3"] = "v2",
+    schema: Literal["v1", "v2", "v3", "v4"] = "v2",
     keypoint_court_scope: Literal["all_courts", "target_court"] = "all_courts",
 ) -> SyntheticCourtInput:
     return SyntheticCourtInput(
@@ -352,8 +353,7 @@ def test_v3_uses_distinct_schema_full_half_turn_and_one_flip_only(
     assert channels.physical_indices[:, 0].tolist() == list(range(14))
     assert channels.physical_indices[:, 1].tolist() == list(_CAMERA_VIEW_PHYSICAL)
     assert all(
-        instance.points_xy.dtype == torch.float32
-        for instance in raw.court_instances
+        instance.points_xy.dtype == torch.float32 for instance in raw.court_instances
     )
 
     flipped = CourtProcessingGeometry._transform_channels(
@@ -375,6 +375,28 @@ def test_v3_uses_distinct_schema_full_half_turn_and_one_flip_only(
         flipped.physical_indices,
         channels.physical_indices.index_select(0, permutation),
     )
+
+
+def test_v4_requires_and_preserves_safe_path_digest(
+    tmp_path: Path,
+) -> None:
+    _write_v2_dataset(tmp_path, schema="v4")
+    input_layer = _input(tmp_path, schema="v4")
+
+    assert input_layer.spec.source_schema == "canonical_court_dataset_v4"
+    assert input_layer.spec.keypoint_schema == "synthetic_camera_view_kp14_v4"
+    raw = input_layer.load(input_layer.records("train")[0])
+    assert raw.pose_authority is not None
+    assert raw.pose_authority.source_schema == "canonical_court_dataset_v4"
+
+    labels_path = input_layer.records("train")[0].annotation_path
+
+    def remove_safety_digest(labels: dict[str, object]) -> None:
+        labels.pop("safety_support_input_digest")
+
+    _rewrite(labels_path, remove_safety_digest)
+    with pytest.raises(ValueError, match="schema/fields changed"):
+        input_layer.load(input_layer.records("train")[0])
 
 
 def test_v3_parser_preserves_court_sample_001588_serialized_precision(
@@ -440,9 +462,10 @@ def test_v3_target_scope_preserves_distinct_bundle_identity_and_physical_mapping
         "court-a",
         "court-b",
     ]
-    assert target_input.records("train")[0].dense_target_refs == all_input.records(
-        "train"
-    )[0].dense_target_refs
+    assert (
+        target_input.records("train")[0].dense_target_refs
+        == all_input.records("train")[0].dense_target_refs
+    )
 
 
 @pytest.mark.parametrize(
@@ -502,8 +525,9 @@ def test_v3_accepts_finite_lateral_projected_u_reversal(tmp_path: Path) -> None:
     loaded = input_layer.load(input_layer.records("train")[0])
 
     assert loaded.keypoint_channels is not None
-    assert loaded.keypoint_channels.points_xy[2, 1, 0] > (
-        loaded.keypoint_channels.points_xy[3, 1, 0]
+    assert (
+        loaded.keypoint_channels.points_xy[2, 1, 0]
+        > (loaded.keypoint_channels.points_xy[3, 1, 0])
     )
 
 

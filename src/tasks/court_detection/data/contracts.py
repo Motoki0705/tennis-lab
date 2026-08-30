@@ -115,7 +115,9 @@ class CourtInputSpec:
             raise ValueError("Court source schema must be non-empty.")
         has_keypoints = CourtInputCapability.KEYPOINT_CHANNELS in self.capabilities
         if has_keypoints != (self.keypoint_schema is not None):
-            raise ValueError("Court keypoint capability and schema must be declared together.")
+            raise ValueError(
+                "Court keypoint capability and schema must be declared together."
+            )
         if has_keypoints:
             channel_count = len(self.keypoint_channel_names)
             if channel_count == 0:
@@ -132,13 +134,16 @@ class CourtInputSpec:
 class CourtPoseAuthority:
     """Typed Synthetic Court V3 camera and target-court authority."""
 
-    source_schema: Literal["canonical_court_dataset_v3"]
+    source_schema: Literal["canonical_court_dataset_v3", "canonical_court_dataset_v4"]
     camera: SceneCamera
     target_court: TargetCourtBinding
 
     def __post_init__(self) -> None:
-        if self.source_schema != "canonical_court_dataset_v3":
-            raise ValueError("Court pose authority requires Synthetic Court V3.")
+        if self.source_schema not in {
+            "canonical_court_dataset_v3",
+            "canonical_court_dataset_v4",
+        }:
+            raise ValueError("Court pose authority requires Synthetic Court V3/V4.")
         if not isinstance(self.camera, SceneCamera):
             raise TypeError("Court pose authority camera must be a SceneCamera.")
         if not isinstance(self.target_court, TargetCourtBinding):
@@ -186,20 +191,35 @@ class CourtInstance2D:
         if not self.court_instance_id:
             raise ValueError("Court instance ID must be non-empty.")
         count = self.physical_indices.numel()
-        if self.physical_indices.shape != (count,) or self.physical_indices.dtype != torch.long:
+        if (
+            self.physical_indices.shape != (count,)
+            or self.physical_indices.dtype != torch.long
+        ):
             raise ValueError("physical_indices must be an int64 vector.")
         if self.points_xy.shape != (count, 2) or not self.points_xy.is_floating_point():
-            raise ValueError("Court instance points_xy must have shape (N, 2) and float dtype.")
-        if self.point_in_front.shape != (count,) or self.point_in_front.dtype != torch.bool:
+            raise ValueError(
+                "Court instance points_xy must have shape (N, 2) and float dtype."
+            )
+        if (
+            self.point_in_front.shape != (count,)
+            or self.point_in_front.dtype != torch.bool
+        ):
             raise ValueError("Court instance point_in_front must be a boolean vector.")
-        if self.point_visible.shape != (count,) or self.point_visible.dtype != torch.bool:
+        if (
+            self.point_visible.shape != (count,)
+            or self.point_visible.dtype != torch.bool
+        ):
             raise ValueError("Court instance point_visible must be a boolean vector.")
         if bool(torch.any(self.point_visible & ~self.point_in_front)):
-            raise ValueError("Visible Court instance points must be in front of the camera.")
+            raise ValueError(
+                "Visible Court instance points must be in front of the camera."
+            )
         if not bool(torch.isfinite(self.points_xy).all()):
             raise ValueError("Court instance points_xy must be finite.")
         if count == 0 or len(set(self.physical_indices.tolist())) != count:
-            raise ValueError("Court instance physical point IDs must be non-empty and unique.")
+            raise ValueError(
+                "Court instance physical point IDs must be non-empty and unique."
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -217,17 +237,31 @@ class CourtKeypointChannels:
             raise ValueError("Court keypoint points_xy must have shape (C, P, 2).")
         channels, points, _ = self.points_xy.shape
         if channels == 0 or points == 0 or len(self.channel_names) != channels:
-            raise ValueError("Court keypoint channels and point capacity must be non-empty.")
+            raise ValueError(
+                "Court keypoint channels and point capacity must be non-empty."
+            )
         if not self.points_xy.is_floating_point() or not bool(
             torch.isfinite(self.points_xy).all()
         ):
             raise ValueError("Court keypoint points_xy must be finite floating values.")
-        if self.point_visible.shape != (channels, points) or self.point_visible.dtype != torch.bool:
-            raise ValueError("Court keypoint point_visible must have shape (C, P) and bool dtype.")
-        if self.physical_indices.shape != (channels, points) or self.physical_indices.dtype != torch.long:
-            raise ValueError("Court keypoint physical_indices must have shape (C, P) and int64 dtype.")
+        if (
+            self.point_visible.shape != (channels, points)
+            or self.point_visible.dtype != torch.bool
+        ):
+            raise ValueError(
+                "Court keypoint point_visible must have shape (C, P) and bool dtype."
+            )
+        if (
+            self.physical_indices.shape != (channels, points)
+            or self.physical_indices.dtype != torch.long
+        ):
+            raise ValueError(
+                "Court keypoint physical_indices must have shape (C, P) and int64 dtype."
+            )
         if tuple(sorted(self.horizontal_flip_permutation)) != tuple(range(channels)):
-            raise ValueError("Court keypoint flip permutation must be a channel bijection.")
+            raise ValueError(
+                "Court keypoint flip permutation must be a channel bijection."
+            )
         if bool(torch.any((self.physical_indices < 0) & self.point_visible)):
             raise ValueError("Padded Court keypoint slots cannot be visible.")
 
@@ -312,14 +346,14 @@ class CourtTransformedSample:
                 "Court transformed image_size must match image_tensor [H,W]."
             )
         content_size = (
-            self.image_size
-            if self.content_size_hw is None
-            else self.content_size_hw
+            self.image_size if self.content_size_hw is None else self.content_size_hw
         )
         if content_size.shape != (2,) or content_size.dtype != torch.long:
             raise ValueError("Court content_size_hw must be int64 [H,W].")
         if content_size.device != self.image_size.device:
-            raise ValueError("Court content_size_hw and image_size must share a device.")
+            raise ValueError(
+                "Court content_size_hw and image_size must share a device."
+            )
         if bool(torch.any(content_size <= 0)) or bool(
             torch.any(content_size > self.image_size)
         ):

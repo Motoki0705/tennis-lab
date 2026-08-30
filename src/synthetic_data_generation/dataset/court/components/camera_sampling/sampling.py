@@ -7,12 +7,16 @@ import math
 import numpy as np
 from numpy.typing import NDArray
 
+from src.synthetic_data_generation.dataset.court.components.camera_sampling.path_geometry import (
+    closed_path_points_local,
+)
 from src.synthetic_data_generation.dataset.court.contracts import (
     OrbitCenter,
     OrbitPathSamples,
     OrbitSamplingMode,
     OrbitSamplingPolicy,
     OrbitTrajectorySpec,
+    OrbitTrajectorySpecV4,
 )
 
 _DENSE_SAMPLE_COUNT = 4_096
@@ -42,9 +46,7 @@ def sample_uniform_arc_length(
     dense_steps = np.linalg.norm(np.diff(dense_points, axis=0), axis=1)
     if np.any(dense_steps <= 0.0) or not np.isfinite(dense_steps).all():
         raise ValueError("Trajectory does not define a finite positive-length curve.")
-    cumulative = np.concatenate(
-        (np.zeros(1, dtype=np.float64), np.cumsum(dense_steps))
-    )
+    cumulative = np.concatenate((np.zeros(1, dtype=np.float64), np.cumsum(dense_steps)))
     total_length = float(cumulative[-1])
     count = max(
         policy.minimum_sample_count,
@@ -76,6 +78,10 @@ def _points_local(
     trajectory: OrbitTrajectorySpec,
     theta: NDArray[np.float64],
 ) -> NDArray[np.float64]:
+    if isinstance(trajectory, OrbitTrajectorySpecV4):
+        fractions = np.mod(theta, 2.0 * math.pi) / (2.0 * math.pi)
+        fractions = np.where(np.isclose(theta, 2.0 * math.pi), 1.0, fractions)
+        return closed_path_points_local(trajectory, fractions)
     major = trajectory.radius_x_m
     minor = trajectory.radius_y_m
     unrotated = np.stack(
@@ -94,7 +100,9 @@ def _points_local(
         )
     points = np.column_stack((xy, vertical))
     if not np.isfinite(points).all() or np.any(points[:, 2] <= 0.0):
-        raise ValueError("Trajectory produces a non-finite or non-positive camera height.")
+        raise ValueError(
+            "Trajectory produces a non-finite or non-positive camera height."
+        )
     return points
 
 

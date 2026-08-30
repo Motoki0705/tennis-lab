@@ -399,6 +399,7 @@ def write_attempt_shard_marker(
     if schema_version in (
         CourtDatasetSchemaVersion.V2,
         CourtDatasetSchemaVersion.V3,
+        CourtDatasetSchemaVersion.V4,
     ):
         payload["dataset_schema"] = definition.dataset_schema
     return Path(save_json_atomic(payload, shard_root / "court-shard.json"))
@@ -430,6 +431,7 @@ def load_attempt_local_shard(
     if schema_version in (
         CourtDatasetSchemaVersion.V2,
         CourtDatasetSchemaVersion.V3,
+        CourtDatasetSchemaVersion.V4,
     ):
         keys.add("dataset_schema")
     if not isinstance(raw, Mapping) or set(raw) != keys:
@@ -438,7 +440,12 @@ def load_attempt_local_shard(
     if observed_definition is not definition or raw["shard_id"] != shard_id:
         raise ValueError("Court shard marker schema/shard identity is invalid.")
     if (
-        schema_version in (CourtDatasetSchemaVersion.V2, CourtDatasetSchemaVersion.V3)
+        schema_version
+        in (
+            CourtDatasetSchemaVersion.V2,
+            CourtDatasetSchemaVersion.V3,
+            CourtDatasetSchemaVersion.V4,
+        )
         and raw["dataset_schema"] != definition.dataset_schema
     ):
         raise ValueError("Court shard marker dataset schema is invalid.")

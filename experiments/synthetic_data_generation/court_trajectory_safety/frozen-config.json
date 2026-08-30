@@ -1,0 +1,36 @@
+{
+  "schema": "court_trajectory_safety_frozen_config_v2",
+  "scene_id": "B00",
+  "observation_lock": null,
+  "pilot_seed": 823,
+  "minimum_pilot_views": 128,
+  "required_strata": [
+    "captured_control",
+    "legacy_orbit",
+    "safe_v4_candidate",
+    "support_boundary",
+    "support_exterior",
+    "support_interior"
+  ],
+  "feature_definition_id": "court_public_quality_features_v1",
+  "group_split": {
+    "calibration_fraction": 0.5,
+    "held_out_fraction": 0.5
+  },
+  "quality_only_thresholds": {
+    "minimum_recall": 0.9,
+    "minimum_precision": 0.8,
+    "maximum_valid_control_false_positive_rate": 0.1,
+    "minimum_positive_labels": 12,
+    "minimum_negative_labels": 12
+  },
+  "geometry_release_gates": {
+    "minimum_frames": 2000,
+    "maximum_frames": 5000,
+    "minimum_accepted_fraction": 0.9,
+    "minimum_trajectory_groups": 24,
+    "maximum_candidate_to_legacy_artifact_rate_ratio": 0.5,
+    "required_selected_support_violations": 0,
+    "require_group_disjoint_splits": true
+  }
+}
