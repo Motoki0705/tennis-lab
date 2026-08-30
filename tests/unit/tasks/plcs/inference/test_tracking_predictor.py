@@ -50,17 +50,49 @@ class _FixedTrackingModel(nn.Module):
             human_vis,
             court_kp,
             court_vis,
-            padding_mask,
         )
         batch, _, frames = human_kp.shape[:3]
         rotation = torch.tensor([0.0, 1.0], device=human_kp.device)
+        frame_valid = (~padding_mask).any(dim=1).unsqueeze(-1)
         return {
             "position": torch.ones(batch, frames, 2, 3, device=human_kp.device),
             "rotation": rotation.expand(batch, frames, 2, -1),
-            "presence_logits": torch.tensor([2.0, -2.0], device=human_kp.device).expand(
-                batch, frames, -1
+            "presence_logits": (
+                torch.tensor([0.0, -2.0], device=human_kp.device).expand(
+                    batch, frames, -1
+                )
+                * frame_valid
             ),
         }
+
+
+class _FixedTrackingPoseModel(_FixedTrackingModel):
+    def forward(
+        self,
+        *,
+        human_kp: Tensor,
+        human_vis: Tensor,
+        court_kp: Tensor,
+        court_vis: Tensor,
+        padding_mask: Tensor,
+    ) -> dict[str, Tensor]:
+        output = super().forward(
+            human_kp=human_kp,
+            human_vis=human_vis,
+            court_kp=court_kp,
+            court_vis=court_vis,
+            padding_mask=padding_mask,
+        )
+        batch, _, frames = human_kp.shape[:3]
+        canonical_pose = torch.arange(
+            17 * 3,
+            dtype=human_kp.dtype,
+            device=human_kp.device,
+        ).reshape(1, 1, 1, 17, 3)
+        output["canonical_pose"] = canonical_pose.expand(
+            batch, frames, 2, -1, -1
+        )
+        return output
 
 
 class _FixedReferenceTrackingModel(nn.Module):
@@ -172,6 +204,110 @@ def test_predictor_returns_cpu_lifecycle_and_yaw_outputs() -> None:
         for value in result.values()
         if isinstance(value, Tensor)
     )
+    assert "canonical_pose" not in result
+
+
+def test_tracking_predictor_returns_canonical_pose_when_enabled() -> None:
+    predictor = PLCSTrackingPredictor(
+        model=_FixedTrackingPoseModel(),
+        adapter=PLCSTrackQueryIOAdapter(
+            model_type=_FixedTrackingPoseModel,
+            num_queries=2,
+            num_court_tokens=14,
+            num_joints=17,
+            court_keypoint_contract=resolve_court_keypoint_contract("physical_v1"),
+            predict_canonical_pose=True,
+        ),
+        device=torch.device("cpu"),
+    )
+
+    result = predictor.predict(
+        human_kp=torch.zeros(1, 2, 3, 2, 17, 2),
+        human_vis=torch.ones(1, 2, 3, 2, 17, dtype=torch.bool),
+        court_kp=torch.zeros(1, 2, 3, 14, 2),
+        court_vis=torch.ones(1, 2, 3, 14, dtype=torch.bool),
+        padding_mask=torch.zeros(1, 2, 3, dtype=torch.bool),
+        tracking_metrics=TrackingMetricConfig(
+            presence_threshold=0.5,
+            duplicate_distance=0.05,
+            id_switch_distance=0.05,
+        ),
+        denormalize=False,
+    )
+
+    canonical_pose = cast("Tensor", result["canonical_pose"])
+    assert canonical_pose.shape == (1, 3, 2, 17, 3)
+    assert canonical_pose.device.type == "cpu"
+    expected = torch.arange(17 * 3, dtype=torch.float32).reshape(17, 3)
+    torch.testing.assert_close(canonical_pose[0, 0, 0], expected)
+
+
+@pytest.mark.parametrize(
+    ("model_type", "predict_canonical_pose"),
+    [
+        (_FixedTrackingModel, False),
+        (_FixedTrackingPoseModel, True),
+    ],
+)
+def test_tracking_predictor_masks_presence_on_fully_padded_frames(
+    model_type: type[_FixedTrackingModel],
+    predict_canonical_pose: bool,
+) -> None:
+    predictor = PLCSTrackingPredictor(
+        model=model_type(),
+        adapter=PLCSTrackQueryIOAdapter(
+            model_type=model_type,
+            num_queries=2,
+            num_court_tokens=14,
+            num_joints=17,
+            court_keypoint_contract=resolve_court_keypoint_contract("physical_v1"),
+            predict_canonical_pose=predict_canonical_pose,
+        ),
+        device=torch.device("cpu"),
+    )
+    padding_mask = torch.tensor(
+        [
+            [[False, True, True, False], [False, False, True, True]],
+            [[True, True, False, True], [False, True, False, False]],
+        ]
+    )
+
+    result = predictor.predict(
+        human_kp=torch.zeros(2, 2, 4, 2, 17, 2),
+        human_vis=torch.ones(2, 2, 4, 2, 17, dtype=torch.bool),
+        court_kp=torch.zeros(2, 2, 4, 14, 2),
+        court_vis=torch.ones(2, 2, 4, 14, dtype=torch.bool),
+        padding_mask=padding_mask,
+        tracking_metrics=TrackingMetricConfig(
+            presence_threshold=0.5,
+            duplicate_distance=0.05,
+            id_switch_distance=0.05,
+        ),
+        denormalize=False,
+    )
+
+    frame_valid = (~padding_mask).any(dim=1)
+    probability = cast("Tensor", result["presence_probability"])
+    presence = cast("Tensor", result["presence"])
+    expected_presence = torch.stack(
+        (frame_valid, torch.zeros_like(frame_valid)), dim=-1
+    )
+    torch.testing.assert_close(
+        probability[~frame_valid],
+        torch.full_like(probability[~frame_valid], 0.5),
+    )
+    torch.testing.assert_close(
+        probability[..., 0],
+        torch.full_like(probability[..., 0], 0.5),
+    )
+    torch.testing.assert_close(presence, expected_presence)
+
+    if predict_canonical_pose:
+        canonical_pose = cast("Tensor", result["canonical_pose"])
+        expected_pose = torch.arange(17 * 3, dtype=torch.float32).reshape(17, 3)
+        torch.testing.assert_close(canonical_pose[0, 2, 0], expected_pose)
+    else:
+        assert "canonical_pose" not in result
 
 
 def test_reference_tracking_predictor_requires_and_round_trips_typed_metadata() -> None:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from copy import deepcopy
 from typing import Any
 
 import torch
@@ -42,6 +43,7 @@ from src.tasks.plcs.court_keypoint_contract import (
 from src.tasks.plcs.data.tracking_augmentation import (
     PLCSTrackingDetectionAugmentation,
 )
+from src.utils.projection.camera_projector import camera_from_mapping
 
 PLCS_TRACKING_KEYS = (
     "scene_format_version",
@@ -59,7 +61,16 @@ PLCS_TRACKING_KEYS = (
     "target_slot_mask",
     "clean_human_kp",
     "clean_human_vis",
+    "human_kp_target",
+    "human_vis_target",
     "detection_gt_index",
+    "camera_C",
+    "camera_R",
+    "camera_f",
+    "camera_cx",
+    "camera_cy",
+    "camera_w",
+    "camera_h",
 )
 
 
@@ -181,6 +192,11 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
         court_vis_rows: list[Tensor] = []
         camera_center_rows: list[Tensor] = []
         camera_rotation_rows: list[Tensor] = []
+        camera_f_rows: list[Tensor] = []
+        camera_cx_rows: list[Tensor] = []
+        camera_cy_rows: list[Tensor] = []
+        camera_w_rows: list[Tensor] = []
+        camera_h_rows: list[Tensor] = []
         for local_index, camera_index in enumerate(cameras.indices):
             keypoints = torch.from_numpy(
                 scene.get_camera_array(camera_index, "human_kp_uv", window=window)
@@ -233,16 +249,24 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
                 raise ValueError(
                     f"Scene {scene.path} camera {camera_index} has invalid params metadata."
                 )
+            camera = camera_from_mapping(dict(params))
             center, camera_rotation = camera_extrinsics_physical_to_target(
-                torch.as_tensor(params.get("C"), dtype=torch.float32),
-                torch.as_tensor(params.get("R"), dtype=torch.float32),
+                camera.C,
+                camera.R,
                 provenance,
             )
             camera_center_rows.append(center)
             camera_rotation_rows.append(camera_rotation)
+            camera_f_rows.append(torch.tensor(camera.f, dtype=torch.float32))
+            camera_cx_rows.append(torch.tensor(camera.cx, dtype=torch.float32))
+            camera_cy_rows.append(torch.tensor(camera.cy, dtype=torch.float32))
+            camera_w_rows.append(torch.tensor(float(camera.w), dtype=torch.float32))
+            camera_h_rows.append(torch.tensor(float(camera.h), dtype=torch.float32))
 
         human_kp = torch.stack(kp_rows)
         human_vis = torch.stack(visible_rows)
+        clean_human_kp = torch.stack(clean_kp_rows)
+        clean_human_vis = torch.stack(clean_visible_rows)
         rotation_fill = torch.tensor([1.0, 0.0], dtype=rotation.dtype)
         sample: dict[str, Any] = {
             "scene_format_version": torch.tensor(4),
@@ -266,11 +290,18 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
             "target_presence": packing.target_presence,
             "target_instance_id": packing.target_instance_id,
             "target_slot_mask": packing.target_presence.any(0),
-            "clean_human_kp": torch.stack(clean_kp_rows),
-            "clean_human_vis": torch.stack(clean_visible_rows),
+            "clean_human_kp": clean_human_kp,
+            "clean_human_vis": clean_human_vis,
+            "human_kp_target": clean_human_kp.clone(),
+            "human_vis_target": clean_human_vis.clone(),
             "detection_gt_index": torch.stack(index_rows),
             "camera_C": torch.stack(camera_center_rows),
             "camera_R": torch.stack(camera_rotation_rows),
+            "camera_f": torch.stack(camera_f_rows),
+            "camera_cx": torch.stack(camera_cx_rows),
+            "camera_cy": torch.stack(camera_cy_rows),
+            "camera_w": torch.stack(camera_w_rows),
+            "camera_h": torch.stack(camera_h_rows),
         }
         sample["court_keypoint_metadata"] = court_keypoint_contract_document(
             self.court_keypoint_contract
@@ -295,12 +326,13 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
     def augment_sample(self, sample: dict[str, Any]) -> dict[str, Any]:
         if not self.augment:
             return sample
-        metadata_keys = (
-            "court_keypoint_metadata",
-            "court_reference_provenance",
-            "selected_camera_ids",
+        metadata = deepcopy(
+            {
+                key: value
+                for key, value in sample.items()
+                if not isinstance(value, Tensor)
+            }
         )
-        metadata = {key: sample[key] for key in metadata_keys}
         tensor_sample: dict[str, Tensor] = {
             key: value for key, value in sample.items() if isinstance(value, Tensor)
         }
@@ -416,15 +448,24 @@ def collate_plcs_tracking_batch(
             "target_instance_id": (0,),
             "clean_human_kp": (0, 1),
             "clean_human_vis": (0, 1),
+            "human_kp_target": (0, 1),
+            "human_vis_target": (0, 1),
             "detection_gt_index": (0, 1),
             "camera_C": (0,),
             "camera_R": (0,),
+            "camera_f": (0,),
+            "camera_cx": (0,),
+            "camera_cy": (0,),
+            "camera_w": (0,),
+            "camera_h": (0,),
             "view_camera_ids": (0,),
         },
         pad_values={
             "padding_mask": True,
             "target_instance_id": -1,
             "detection_gt_index": -1,
+            "camera_w": 1.0,
+            "camera_h": 1.0,
             "view_camera_ids": CAMERA_ID_PADDING_VALUE,
         },
     )

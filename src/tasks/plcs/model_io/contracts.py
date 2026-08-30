@@ -36,7 +36,12 @@ class PLCSInputProfile(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class PLCSReprojectionTarget:
-    """Clean 2D pose targets and fixed cameras for reprojection supervision."""
+    """Validated 2D targets and cameras for reprojection supervision.
+
+    Tracking targets retain their query axis here. The tracking loss still
+    consumes the raw batch because Hungarian assignment indexes that axis;
+    this object certifies that the batch crossed the strict adapter boundary.
+    """
 
     target_uv: Tensor
     target_vis: Tensor
@@ -392,6 +397,7 @@ class PLCSTrackingDecodedPrediction:
     position: Tensor
     rotation: Tensor
     presence_logits: Tensor
+    canonical_pose: Tensor | None = None
     court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...] | None = None
     reference_metadata: PLCSReferenceMetadata | None = None
 

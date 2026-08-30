@@ -10,6 +10,7 @@ from torch import Tensor, nn
 
 from src.tasks.plcs.configuration import PLCSModelConfig
 from src.tasks.plcs.data.tracking_types import PLCSTrackingPrediction
+from src.tasks.plcs.models.components.heads import CanonicalPoseHead
 from src.utils.models import (
     CSWAConfig,
     RMSNorm,
@@ -28,6 +29,40 @@ from src.utils.models.embeddings import (
     InvisibleTokenEmbedding,
 )
 from src.utils.models.multiview_padding import build_fixed_query_padding_masks
+
+
+def build_track_query_canonical_pose_head(
+    config: PLCSModelConfig,
+    *,
+    hidden_dim: int,
+    num_joints: int,
+) -> CanonicalPoseHead | None:
+    """Build the optional shared per-query canonical-pose readout."""
+    if not bool(config.values.get("predict_canonical_pose", False)):
+        return None
+    return CanonicalPoseHead(
+        input_dim=hidden_dim,
+        hidden_dim=hidden_dim // 2,
+        num_layers=2,
+        dropout=config.number("dropout"),
+        num_keypoints=num_joints,
+    )
+
+
+def decode_track_query_canonical_pose(
+    head: CanonicalPoseHead | None,
+    query_tokens: Tensor,
+    *,
+    frame_valid: Tensor,
+) -> Tensor | None:
+    """Decode and mask ``(B,T,Q,J,3)`` pose from shared query features."""
+    if head is None:
+        return None
+    canonical_pose = head(query_tokens)
+    return cast(
+        "Tensor",
+        canonical_pose * frame_valid[:, :, None, None, None],
+    )
 
 
 class PLCSTrackQueryModel(nn.Module):
@@ -99,6 +134,11 @@ class PLCSTrackQueryModel(nn.Module):
         self.position_head = nn.Linear(self.hidden_dim, 3)
         self.rotation_head = nn.Linear(self.hidden_dim, 2)
         self.presence_head = nn.Linear(self.hidden_dim, 1)
+        self.canonical_pose_head = build_track_query_canonical_pose_head(
+            config,
+            hidden_dim=self.hidden_dim,
+            num_joints=self.num_joints,
+        )
         self.register_forward_pre_hook(
             self._validate_forward_inputs,
             with_kwargs=True,
@@ -362,11 +402,23 @@ class PLCSTrackQueryModel(nn.Module):
         rotation = F.normalize(self.rotation_head(query_tokens), dim=-1)
         rotation = rotation * output_valid.unsqueeze(-1)
         presence_logits = self.presence_head(query_tokens).squeeze(-1) * output_valid
-        return {
+        canonical_pose = decode_track_query_canonical_pose(
+            self.canonical_pose_head,
+            query_tokens,
+            frame_valid=masks.frame_valid,
+        )
+        prediction: PLCSTrackingPrediction = {
             "position": position,
             "rotation": rotation,
             "presence_logits": presence_logits,
         }
+        if canonical_pose is not None:
+            prediction["canonical_pose"] = canonical_pose
+        return prediction
 
 
-__all__ = ["PLCSTrackQueryModel"]
+__all__ = [
+    "PLCSTrackQueryModel",
+    "build_track_query_canonical_pose_head",
+    "decode_track_query_canonical_pose",
+]

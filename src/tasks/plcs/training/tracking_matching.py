@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 import torch
 import torch.nn.functional as F
 from scipy.optimize import linear_sum_assignment
@@ -18,12 +20,19 @@ def match_player_tracks(
     position_cost_weight: float,
     rotation_cost_weight: float,
     presence_cost_weight: float,
-    presence_inactive_weight: float,
+    match_presence_inactive_weight: float,
     presence_active_weight: float,
     presence_transition_weight: float,
     transition_radius: int,
 ) -> list[tuple[torch.Tensor, torch.Tensor]]:
     """Match query slots to valid GT persons with padded frames excluded."""
+    if (
+        not math.isfinite(match_presence_inactive_weight)
+        or match_presence_inactive_weight < 0.0
+    ):
+        raise ValueError(
+            "match_presence_inactive_weight must be finite and non-negative."
+        )
     pred_position = prediction["position"]
     pred_rotation = prediction["rotation"]
     pred_presence = prediction["presence_logits"]
@@ -52,7 +61,7 @@ def match_player_tracks(
                         pred_presence[batch_index, :, query_index],
                         target_presence.bool(),
                         valid_frames,
-                        inactive_weight=presence_inactive_weight,
+                        inactive_weight=match_presence_inactive_weight,
                         active_weight=presence_active_weight,
                         transition_weight=presence_transition_weight,
                         transition_radius=transition_radius,

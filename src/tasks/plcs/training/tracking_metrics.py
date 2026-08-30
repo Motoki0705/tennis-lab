@@ -21,8 +21,32 @@ from src.tasks.plcs.court_keypoint_contract import (
     headings_target_to_physical,
     normalized_points_target_to_physical,
 )
-from src.tasks.plcs.training.tracking_losses import Assignment
+from src.tasks.plcs.training.tracking_losses import (
+    Assignment,
+    validate_tracking_projection_shapes,
+)
+from src.utils.geometry.court_pose import (
+    canonical_pose_to_world_pose,
+    world_pose_to_canonical_pose,
+)
+from src.utils.projection.differentiable_projection import (
+    DifferentiablePinholeProjection,
+)
 from src.utils.schema.court_normalization import denormalize_court_position
+
+_REPROJECTION_BATCH_FIELDS = frozenset(
+    {
+        "human_kp_target",
+        "human_vis_target",
+        "camera_R",
+        "camera_C",
+        "camera_f",
+        "camera_cx",
+        "camera_cy",
+        "camera_w",
+        "camera_h",
+    }
+)
 
 
 def _scalar_statistic(
@@ -274,6 +298,15 @@ def plcs_tracking_statistics(
             else:
                 statistics[key] = _scalar_statistic(sample_error, 1)
 
+    statistics.update(
+        _pose_metric_statistics(
+            prediction,
+            batch,
+            assignments,
+            frame_valid=frame_valid,
+            zero=zero,
+        )
+    )
     return statistics
 
 
@@ -301,3 +334,165 @@ def plcs_tracking_metrics(
         ),
         zero_denominator_value=0.0,
     )
+
+
+def _pose_metric_statistics(
+    prediction: dict[str, torch.Tensor],
+    batch: dict[str, torch.Tensor],
+    assignments: list[Assignment],
+    *,
+    frame_valid: torch.Tensor,
+    zero: torch.Tensor,
+) -> dict[str, ScalarMetricStatistic]:
+    """Return additive matched pose and clean reprojection statistics."""
+    canonical_pose = prediction.get("canonical_pose")
+    target_world_pose = batch.get("target_human_kp_3d")
+    if canonical_pose is None or target_world_pose is None:
+        return {}
+    if canonical_pose.ndim != 5 or canonical_pose.shape[-2:] != (17, 3):
+        raise ValueError(
+            "prediction['canonical_pose'] must have shape (B,T,Q,17,3) for "
+            f"tracking pose metrics, got {tuple(canonical_pose.shape)}."
+        )
+    if target_world_pose.ndim != 5 or target_world_pose.shape[-2:] != (17, 3):
+        raise ValueError(
+            "batch['target_human_kp_3d'] must have shape (B,T,S,17,3) for "
+            f"tracking pose metrics, got {tuple(target_world_pose.shape)}."
+        )
+
+    pred_world_pose = canonical_pose_to_world_pose(
+        canonical_pose,
+        prediction["position"],
+        prediction["rotation"],
+    )
+    canonical_errors: list[torch.Tensor] = []
+    world_errors: list[torch.Tensor] = []
+    for batch_index, (query_indices, target_indices) in enumerate(assignments):
+        for query_index, target_index in zip(
+            query_indices.tolist(), target_indices.tolist(), strict=True
+        ):
+            active = (
+                batch["target_presence"][batch_index, :, target_index]
+                & frame_valid[batch_index]
+            )
+            if not active.any():
+                continue
+            target_world = target_world_pose[batch_index, active, target_index]
+            target_canonical = world_pose_to_canonical_pose(
+                target_world,
+                batch["target_position"][batch_index, active, target_index],
+                batch["target_rotation"][batch_index, active, target_index],
+            )
+            canonical_errors.append(
+                torch.linalg.vector_norm(
+                    canonical_pose[batch_index, active, query_index]
+                    - target_canonical,
+                    dim=-1,
+                ).reshape(-1)
+            )
+            world_errors.append(
+                torch.linalg.vector_norm(
+                    pred_world_pose[batch_index, active, query_index]
+                    - target_world,
+                    dim=-1,
+                ).reshape(-1)
+            )
+    if canonical_errors:
+        all_canonical_errors = torch.cat(canonical_errors)
+        all_world_errors = torch.cat(world_errors)
+        statistics = {
+            "canonical_mpjpe_m": _scalar_statistic(
+                all_canonical_errors.sum(), all_canonical_errors.numel()
+            ),
+            "world_mpjpe_m": _scalar_statistic(
+                all_world_errors.sum(), all_world_errors.numel()
+            ),
+        }
+    else:
+        statistics = {
+            "canonical_mpjpe_m": _zero_statistic(zero),
+            "world_mpjpe_m": _zero_statistic(zero),
+        }
+
+    if not _REPROJECTION_BATCH_FIELDS.issubset(batch):
+        return statistics
+    pred_uv, in_front = DifferentiablePinholeProjection()(
+        world_points=pred_world_pose,
+        camera_R=batch["camera_R"],
+        camera_C=batch["camera_C"],
+        camera_f=batch["camera_f"],
+        camera_cx=batch["camera_cx"],
+        camera_cy=batch["camera_cy"],
+        camera_w=batch["camera_w"],
+        camera_h=batch["camera_h"],
+    )
+    validate_tracking_projection_shapes(pred_uv, in_front, prediction, batch)
+    reprojection_errors_px: list[torch.Tensor] = []
+    behind_camera_indicators: list[torch.Tensor] = []
+    for batch_index, (query_indices, target_indices) in enumerate(assignments):
+        image_size = torch.stack(
+            (batch["camera_w"][batch_index], batch["camera_h"][batch_index]),
+            dim=-1,
+        )
+        for query_index, target_index in zip(
+            query_indices.tolist(), target_indices.tolist(), strict=True
+        ):
+            target_uv = batch["human_kp_target"][
+                batch_index, :, :, target_index
+            ]
+            target_vis = batch["human_vis_target"][
+                batch_index, :, :, target_index
+            ]
+            predicted_uv = pred_uv[batch_index, :, :, query_index]
+            if predicted_uv.shape != target_uv.shape:
+                raise ValueError(
+                    "Matched pose-metric reprojection tensors must share "
+                    f"shape, got {tuple(predicted_uv.shape)} and "
+                    f"{tuple(target_uv.shape)}."
+                )
+            active = batch["target_presence"][
+                batch_index, :, target_index
+            ]
+            valid = (
+                (target_vis > 0)
+                & (~batch["padding_mask"][batch_index]).unsqueeze(-1)
+                & active.unsqueeze(0).unsqueeze(-1)
+            )
+            error_px = torch.linalg.vector_norm(
+                (predicted_uv - target_uv)
+                * image_size[:, None, None, :].to(
+                    device=predicted_uv.device,
+                    dtype=predicted_uv.dtype,
+                ),
+                dim=-1,
+            )
+            if valid.any():
+                reprojection_errors_px.append(error_px[valid])
+                behind_camera_indicators.append(
+                    (~in_front[batch_index, :, :, query_index])[valid].to(
+                        dtype=zero.dtype
+                    )
+                )
+    if reprojection_errors_px:
+        all_reprojection_errors_px = torch.cat(reprojection_errors_px)
+        all_behind_camera_indicators = torch.cat(behind_camera_indicators)
+        statistics.update(
+            {
+                "reprojection_error_px": _scalar_statistic(
+                    all_reprojection_errors_px.sum(),
+                    all_reprojection_errors_px.numel(),
+                ),
+                "behind_camera_fraction": _scalar_statistic(
+                    all_behind_camera_indicators.sum(),
+                    all_behind_camera_indicators.numel(),
+                ),
+            }
+        )
+    else:
+        statistics.update(
+            {
+                "reprojection_error_px": _zero_statistic(zero),
+                "behind_camera_fraction": _zero_statistic(zero),
+            }
+        )
+    return statistics

@@ -46,6 +46,7 @@ def _raw_config(
         "num_queries": 2,
         "num_stages": 4,
         "num_joints": 17,
+        "predict_canonical_pose": True,
         "rope_dim": rope_dim,
         "rope_theta": 10_000.0,
         "ffn_type": "swiglu",
@@ -220,6 +221,7 @@ def test_generic_ablation_forward_backward_is_finite(
 
     assert torch.isfinite(loss)
     assert all(torch.isfinite(value).all() for value in output.values())
+    assert output["canonical_pose"].shape == (2, 2, 2, 17, 3)
     assert inputs["human_kp"].grad is not None
     assert inputs["court_kp"].grad is not None
 

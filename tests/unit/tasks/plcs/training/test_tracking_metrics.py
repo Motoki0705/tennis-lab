@@ -14,6 +14,10 @@ from src.tasks.plcs.training.tracking_metrics import (
     plcs_tracking_metrics,
     plcs_tracking_statistics,
 )
+from src.utils.geometry.court_pose import canonical_pose_to_world_pose
+from src.utils.projection.differentiable_projection import (
+    DifferentiablePinholeProjection,
+)
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 
@@ -290,3 +294,193 @@ def test_tracking_metrics_report_y_sign_axes_and_local_index_without_heading_ali
     assert metrics["x_error_m"].item() > 0.0
     assert metrics["y_error_m"].item() > 0.0
     assert metrics["z_error_m"].item() > 0.0
+
+
+def test_pose_metrics_follow_assignment_and_exclude_invalid_reprojection() -> None:
+    frames = 3
+    joints = 17
+    target_position = torch.tensor(
+        [
+            [
+                [[0.10, -0.20, 0.02], [-0.20, 0.15, 0.03]],
+                [[0.11, -0.19, 0.02], [-0.19, 0.14, 0.03]],
+                [[0.12, -0.18, 0.02], [-0.18, 0.13, 0.03]],
+            ]
+        ]
+    )
+    target_rotation = torch.nn.functional.normalize(
+        torch.tensor(
+            [
+                [
+                    [[1.0, 0.1], [0.6, 0.8]],
+                    [[0.98, 0.2], [0.5, 0.86]],
+                    [[0.95, 0.3], [0.4, 0.92]],
+                ]
+            ]
+        ),
+        dim=-1,
+    )
+    target_canonical = torch.linspace(
+        -0.5,
+        0.8,
+        frames * 2 * joints * 3,
+    ).reshape(1, frames, 2, joints, 3)
+    target_canonical = target_canonical.clone()
+    target_canonical[..., 2] += 1.0
+    target_world = canonical_pose_to_world_pose(
+        target_canonical,
+        target_position,
+        target_rotation,
+    )
+    views = 2
+    camera_R = torch.eye(3).view(1, 1, 3, 3).expand(1, views, -1, -1)
+    camera_C = torch.tensor([[[0.0, 0.0, -20.0], [1.0, -1.0, -18.0]]])
+    camera_f = torch.tensor([[800.0, 900.0]])
+    camera_cx = torch.full((1, views), 640.0)
+    camera_cy = torch.full((1, views), 360.0)
+    camera_w = torch.full((1, views), 1280.0)
+    camera_h = torch.full((1, views), 720.0)
+    target_uv, _in_front = DifferentiablePinholeProjection()(
+        target_world,
+        camera_R,
+        camera_C,
+        camera_f,
+        camera_cx,
+        camera_cy,
+        camera_w,
+        camera_h,
+    )
+    target_presence = torch.tensor(
+        [[[1, 1], [1, 0], [1, 1]]], dtype=torch.bool
+    )
+    target_vis = target_presence[:, None, :, :, None].expand(
+        -1, views, -1, -1, joints
+    ).clone()
+    padding_mask = torch.zeros(1, views, frames, dtype=torch.bool)
+    # These deliberately corrupted targets are all invalid and must be ignored.
+    target_vis[0, 0, 0, 0, 0] = False
+    target_uv[0, 0, 0, 0, 0] += 100.0
+    padding_mask[0, 1, 1] = True
+    target_uv[0, 1, 1] += 100.0
+    target_vis[0, :, 1, 1] = True
+    target_uv[0, :, 1, 1] += 100.0
+    padding_mask[0, :, 2] = True
+    target_uv[0, :, 2] += 100.0
+    prediction = {
+        "position": target_position[:, :, [1, 0]],
+        "rotation": target_rotation[:, :, [1, 0]],
+        "presence_logits": torch.full((1, frames, 2), 10.0),
+        "canonical_pose": target_canonical[:, :, [1, 0]],
+    }
+    batch = {
+        "target_position": target_position,
+        "target_rotation": target_rotation,
+        "target_human_kp_3d": target_world,
+        "target_presence": target_presence,
+        "target_instance_id": torch.tensor(
+            [[[10, 20], [10, -1], [10, 20]]], dtype=torch.int64
+        ),
+        "padding_mask": padding_mask,
+        "human_kp_target": target_uv,
+        "human_vis_target": target_vis,
+        "camera_R": camera_R,
+        "camera_C": camera_C,
+        "camera_f": camera_f,
+        "camera_cx": camera_cx,
+        "camera_cy": camera_cy,
+        "camera_w": camera_w,
+        "camera_h": camera_h,
+    }
+    assignments = [(torch.tensor([0, 1]), torch.tensor([1, 0]))]
+
+    metrics = plcs_tracking_metrics(
+        prediction,
+        batch,
+        assignments,
+        config=TrackingMetricConfig(
+            presence_threshold=0.5,
+            duplicate_distance=0.05,
+            id_switch_distance=0.05,
+        ),
+    )
+
+    for name in (
+        "canonical_mpjpe_m",
+        "world_mpjpe_m",
+        "reprojection_error_px",
+        "behind_camera_fraction",
+    ):
+        torch.testing.assert_close(
+            metrics[name],
+            torch.zeros_like(metrics[name]),
+            atol=1e-4,
+            rtol=0.0,
+        )
+
+
+def test_pose_metrics_report_visible_predictions_behind_camera() -> None:
+    target_position = torch.zeros(1, 1, 1, 3)
+    target_rotation = torch.tensor([[[[1.0, 0.0]]]])
+    target_canonical = torch.zeros(1, 1, 1, 17, 3)
+    target_canonical[..., 2] = 1.0
+    target_world = canonical_pose_to_world_pose(
+        target_canonical,
+        target_position,
+        target_rotation,
+    )
+    camera_R = torch.eye(3).view(1, 1, 3, 3)
+    camera_C = torch.zeros(1, 1, 3)
+    camera_f = torch.full((1, 1), 800.0)
+    camera_cx = torch.full((1, 1), 640.0)
+    camera_cy = torch.full((1, 1), 360.0)
+    camera_w = torch.full((1, 1), 1280.0)
+    camera_h = torch.full((1, 1), 720.0)
+    target_uv, target_in_front = DifferentiablePinholeProjection()(
+        target_world,
+        camera_R,
+        camera_C,
+        camera_f,
+        camera_cx,
+        camera_cy,
+        camera_w,
+        camera_h,
+    )
+    assert target_in_front.all()
+    predicted_canonical = target_canonical.clone()
+    predicted_canonical[..., 2] = -1.0
+    prediction = {
+        "position": target_position,
+        "rotation": target_rotation,
+        "presence_logits": torch.full((1, 1, 1), 10.0),
+        "canonical_pose": predicted_canonical,
+    }
+    batch = {
+        "target_position": target_position,
+        "target_rotation": target_rotation,
+        "target_human_kp_3d": target_world,
+        "target_presence": torch.ones(1, 1, 1, dtype=torch.bool),
+        "target_instance_id": torch.ones(1, 1, 1, dtype=torch.int64),
+        "padding_mask": torch.zeros(1, 1, 1, dtype=torch.bool),
+        "human_kp_target": target_uv,
+        "human_vis_target": torch.ones(1, 1, 1, 1, 17, dtype=torch.bool),
+        "camera_R": camera_R,
+        "camera_C": camera_C,
+        "camera_f": camera_f,
+        "camera_cx": camera_cx,
+        "camera_cy": camera_cy,
+        "camera_w": camera_w,
+        "camera_h": camera_h,
+    }
+
+    metrics = plcs_tracking_metrics(
+        prediction,
+        batch,
+        [(torch.tensor([0]), torch.tensor([0]))],
+        config=TrackingMetricConfig(
+            presence_threshold=0.5,
+            duplicate_distance=0.05,
+            id_switch_distance=0.05,
+        ),
+    )
+
+    assert metrics["behind_camera_fraction"].item() == pytest.approx(1.0)

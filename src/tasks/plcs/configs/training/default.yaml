@@ -2,6 +2,10 @@ defaults:
   - _mcmc
   - _self_
 
+# Train every parameter by default. `presence_head` is a strict weight-only
+# fine-tune mode and requires run.init_weights.
+fine_tune_mode: all
+
 # ---- Trainer (Lightning Trainer settings) ----
 trainer:
   max_epochs: 200

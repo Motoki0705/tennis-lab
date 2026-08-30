@@ -174,6 +174,7 @@ def test_v2_adapter_builds_exact_six_tensor_call() -> None:
     call = adapter.build_call(_batch())
 
     assert adapter.profile is PLCSInputProfile.TRACK_QUERY
+    assert not adapter.reprojection_enabled
     assert tuple(call.kwargs) == (
         "human_kp",
         "human_vis",

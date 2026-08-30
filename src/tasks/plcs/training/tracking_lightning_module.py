@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any, Self, cast
 
 import numpy as np
-from torch import Tensor
+from torch import Tensor, nn
 
 from src.tasks.base.training.metric_logging import (
     compute_scalar_metric_statistics,
@@ -29,6 +29,7 @@ from src.tasks.plcs.model_io import (
 )
 from src.tasks.plcs.training.tracking_losses import PLCSTrackingLoss
 from src.tasks.plcs.training.tracking_metrics import plcs_tracking_statistics
+from src.utils.geometry.court_pose import world_pose_to_canonical_pose
 from src.utils.schema.court_normalization import (
     add_court_coordinate_normalization,
     validate_court_coordinate_normalization,
@@ -44,6 +45,19 @@ PLCS_TRACKING_METRIC_CONTRACT = evaluation_only_metric_logging_contract(
     ),
     progress_bar_keys=("position_error_m", "angular_error_deg"),
 )
+
+
+def _require_independent_presence_head(model: nn.Module) -> nn.Module:
+    """Return a direct presence head or fail before fine-tuning can start."""
+    presence_head = getattr(model, "presence_head", None)
+    registered_head = dict(model.named_children()).get("presence_head")
+    if not isinstance(presence_head, nn.Module) or registered_head is not presence_head:
+        raise ValueError(
+            "training.fine_tune_mode='presence_head' requires the configured "
+            "model to expose an independent registered nn.Module named "
+            f"'presence_head'; got {type(model).__name__}."
+        )
+    return presence_head
 
 
 class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Any]]):
@@ -74,6 +88,39 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Any]]):
         if runtime.tracking_metrics is None:
             raise ValueError("PLCS tracking requires tracking_metrics configuration.")
         self.tracking_metric_config = runtime.tracking_metrics
+        self.fine_tune_mode = runtime.fine_tune_mode
+        if self.fine_tune_mode == "presence_head":
+            self._configure_presence_head_fine_tuning()
+
+    def _configure_presence_head_fine_tuning(self) -> None:
+        """Freeze all state except the independently registered presence head."""
+        presence_head = _require_independent_presence_head(self.model)
+        self.requires_grad_(False)
+        presence_head.requires_grad_(True)
+        self.model.eval()
+        presence_head.train()
+
+    def train(self, mode: bool = True) -> Self:
+        """Keep the frozen trunk deterministic while training the presence head."""
+        super().train(mode)
+        if self.fine_tune_mode == "presence_head":
+            presence_head = _require_independent_presence_head(self.model)
+            self.model.eval()
+            presence_head.train(mode)
+        return self
+
+    def optimizer_param_groups(self) -> list[dict[str, Any]] | None:
+        """Optimize only explicitly trainable parameters during head fine-tuning."""
+        if self.fine_tune_mode == "all":
+            return None
+        trainable_parameters = [
+            parameter for parameter in self.parameters() if parameter.requires_grad
+        ]
+        if not trainable_parameters:
+            raise RuntimeError(
+                "presence-head fine-tuning resolved no trainable parameters."
+            )
+        return [{"params": trainable_parameters}]
 
     def compute_tracking_step(
         self,
@@ -91,6 +138,8 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Any]]):
             "rotation": decoded.rotation,
             "presence_logits": decoded.presence_logits,
         }
+        if decoded.canonical_pose is not None:
+            prediction["canonical_pose"] = decoded.canonical_pose
         loss_inputs, assignments = self.criterion.prepare_inputs(prediction, batch)
         losses = self.criterion(loss_inputs)
         statistics = (
@@ -172,6 +221,22 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Any]]):
             "target_instance_id": self._to_numpy(batch["target_instance_id"]),
             "padding_mask": self._to_numpy(batch["padding_mask"]),
         }
+        canonical_pose = result.get("canonical_pose")
+        if canonical_pose is not None:
+            if "target_human_kp_3d" not in batch:
+                raise ValueError(
+                    "Canonical tracking test predictions require "
+                    "batch['target_human_kp_3d']."
+                )
+            target_canonical_pose = world_pose_to_canonical_pose(
+                batch["target_human_kp_3d"],
+                batch["target_position"],
+                batch["target_rotation"],
+            )
+            payload["pred_canonical_pose"] = self._to_numpy(canonical_pose)
+            payload["target_canonical_pose"] = self._to_numpy(
+                target_canonical_pose
+            )
         reference_metadata = plcs_reference_metadata_from_batch(batch)
         if reference_metadata is not None:
             num_views_range = cast(

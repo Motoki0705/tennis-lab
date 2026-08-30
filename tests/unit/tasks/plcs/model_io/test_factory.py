@@ -153,6 +153,11 @@ def test_factory_binds_each_validated_model_profile_once(
     assert type(bound.model).__name__ == model_name
     assert adapter.profile is profile
     assert type(bound.model) is adapter.model_type
+    if profile is PLCSInputProfile.TRACK_QUERY:
+        assert isinstance(adapter, PLCSTrackQueryIOAdapter)
+        assert not adapter.predict_canonical_pose
+        assert not adapter.reprojection_enabled
+        assert bound.model.canonical_pose_head is None
 
 
 def _tracking_config(condition: str) -> object:
@@ -175,6 +180,9 @@ def test_factory_binds_every_ablation_config_to_exact_model_and_adapter(
     assert type(binding.adapter) is PLCSTrackQueryIOAdapter
     assert binding.adapter.model_type is PLCSTrackQueryAblationModel
     assert binding.adapter.profile is PLCSInputProfile.TRACK_QUERY
+    assert not binding.adapter.predict_canonical_pose
+    assert not binding.adapter.reprojection_enabled
+    assert binding.model.canonical_pose_head is None
 
 
 def test_ablation_uses_tracking_training_composition(
@@ -256,3 +264,33 @@ def test_factory_binds_reference_v2_model_and_exact_six_input_adapter(
     assert type(binding.adapter) is PLCSTrackQueryReferenceIOAdapter
     assert binding.adapter.model_type is model_type
     assert binding.adapter.reference_selector_mode.value == selector_mode
+    assert not binding.adapter.predict_canonical_pose
+    assert not binding.adapter.reprojection_enabled
+    assert binding.model.canonical_pose_head is None
+
+
+@pytest.mark.parametrize(
+    ("reprojection_weight", "expected_reprojection_enabled"),
+    [(1.0, True), (0.0, False)],
+)
+def test_factory_derives_reprojection_contract_from_validated_loss(
+    reprojection_weight: float,
+    expected_reprojection_enabled: bool,
+) -> None:
+    with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_DIR)):
+        config = compose(
+            config_name="train_tracking_pose",
+            overrides=[
+                *_TRACKING_SMALL,
+                f"loss.reprojection_weight={reprojection_weight}",
+            ],
+        )
+
+    binding = build_plcs_model_io(PLCSTrainingConfig.from_config(config))
+
+    assert isinstance(binding.adapter, PLCSTrackQueryIOAdapter)
+    assert binding.adapter.predict_canonical_pose
+    assert (
+        binding.adapter.reprojection_enabled is expected_reprojection_enabled
+    )
+    assert binding.model.canonical_pose_head is not None

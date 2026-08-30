@@ -21,14 +21,15 @@ def _model(
     *,
     backend: str = "reference",
     ffn_type: FFNType = "swiglu",
+    predict_canonical_pose: bool = True,
 ) -> PLCSTrackQueryModel:
     with initialize_config_dir(
         config_dir=str(MODEL_CONFIG_DIR), version_base="1.3"
     ):
-        raw = compose(
-            config_name="track_query",
-            overrides=[f"cswa.backend={backend}", f"ffn_type={ffn_type}"],
-        )
+        overrides = [f"cswa.backend={backend}", f"ffn_type={ffn_type}"]
+        if predict_canonical_pose:
+            overrides.append("+predict_canonical_pose=true")
+        raw = compose(config_name="track_query", overrides=overrides)
     config = PLCSModelConfig.from_mapping(raw)
     model = PLCSTrackQueryModel(config)
     model.eval()
@@ -92,7 +93,19 @@ def test_forward_public_contract_has_exactly_five_tensors() -> None:
 
 
 def test_model_uses_shared_court_player_group_embedding() -> None:
-    assert isinstance(_model().group_embed, CourtPlayerGroupEmbedding)
+    model = _model()
+    assert isinstance(model.group_embed, CourtPlayerGroupEmbedding)
+    assert model.canonical_pose_head is not None
+
+
+def test_legacy_model_omits_canonical_head_and_output() -> None:
+    model = _model(predict_canonical_pose=False)
+
+    with torch.no_grad():
+        output = _forward(model, _inputs(model))
+
+    assert model.canonical_pose_head is None
+    assert set(output) == {"position", "rotation", "presence_logits"}
 
 
 def test_model_uses_shared_stages_with_fixed_cswa_global_cycle() -> None:
@@ -248,6 +261,13 @@ def test_all_padding_outputs_are_finite_and_zero() -> None:
     with torch.no_grad():
         output = _forward(model, inputs)
 
+    assert set(output) == {
+        "position",
+        "rotation",
+        "presence_logits",
+        "canonical_pose",
+    }
+    assert output["canonical_pose"].shape == (1, 3, model.num_queries, 17, 3)
     for value in output.values():
         assert torch.isfinite(value).all()
         assert torch.count_nonzero(value) == 0
