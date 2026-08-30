@@ -12,6 +12,15 @@ from src.tasks.base.data.lifecycle_slots import (
     build_fixed_lifecycle_assignment,
     pack_lifecycle_slots,
 )
+from src.tasks.base.data.observation_tracking import (
+    ObservationTrackingConfig,
+    TrackedObservations,
+    TrackingCapacityError,
+    gather_tracked_debug_provenance,
+    limit_synthetic_false_positive_carriers,
+    track_camera_observations,
+    track_multiview_observations,
+)
 from src.tasks.base.data.scene_dataset import (
     CameraSelection,
     Scene,
@@ -45,6 +54,7 @@ __all__ = [
     "CAMERA_ID_PADDING_VALUE",
     "BaseDatasetWriter",
     "LifecycleSlotAssignment",
+    "ObservationTrackingConfig",
     "CameraSelection",
     "Scene",
     "SceneDataContractError",
@@ -53,6 +63,8 @@ __all__ = [
     "SceneDatasetConfig",
     "STABLE_CAMERA_ID_TABLE_SCHEMA_VERSION",
     "TemporalWindow",
+    "TrackedObservations",
+    "TrackingCapacityError",
     "ReferenceViewBatchError",
     "ReferenceViewSelection",
     "ReferenceViewSelectionError",
@@ -60,10 +72,14 @@ __all__ = [
     "StableCameraIdTableError",
     "TrackQueryReferenceDataError",
     "build_fixed_lifecycle_assignment",
+    "gather_tracked_debug_provenance",
+    "limit_synthetic_false_positive_carriers",
     "pack_lifecycle_slots",
     "include_evaluation_reference_camera",
     "resolve_evaluation_reference_camera_id",
     "select_seeded_training_reference_camera_id",
+    "track_camera_observations",
+    "track_multiview_observations",
     "validate_reference_view_batch",
     "validate_reference_view_index",
 ]

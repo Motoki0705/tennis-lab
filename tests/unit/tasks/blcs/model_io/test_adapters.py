@@ -178,7 +178,15 @@ def test_multiview_adapter_builds_exact_five_tensor_all_padding_call() -> None:
 
 
 def test_tracking_adapter_builds_exact_five_tensor_call() -> None:
-    call = _tracking_adapter().build_call(_tracking_batch())
+    batch = _tracking_batch()
+    batch.update(
+        {
+            "candidate_gt_index": torch.full((1, 2, 3, 2), -1),
+            "clean_ball_uv": torch.zeros(1, 2, 3, 2, 2),
+            "clean_ball_vis": torch.zeros(1, 2, 3, 2, dtype=torch.bool),
+        }
+    )
+    call = _tracking_adapter().build_call(batch)
     assert set(call.kwargs) == {
         "ball_uv",
         "ball_vis",

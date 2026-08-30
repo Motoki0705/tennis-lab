@@ -128,7 +128,7 @@ class FixedQueryTrackStage(nn.Module):
             batch_size, num_views, num_frames, 1, hidden_dim
         )
         temporal_objects = self.mhc.post(
-            object_update,
+            object_update.to(dtype=object_tokens.dtype),
             residual=object_tokens,
             state=mhc_state,
         )

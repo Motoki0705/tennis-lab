@@ -49,9 +49,8 @@ class CourtBallGroupEmbedding(_CourtContextGroupEmbedding):
 
     The token visibility is controlled only by ``group_vis``. Callers should
     provide one visibility flag per output token. Leading dimensions are
-    preserved exactly: for multi-object input, callers must place objects in
-    ascending scene object-ID order and the returned token at each position
-    remains aligned with that object.
+    preserved exactly: the returned token at each position remains aligned
+    with the caller-provided leading-axis element at that position.
     """
 
     def __init__(
@@ -88,9 +87,8 @@ class CourtPlayerGroupEmbedding(_CourtContextGroupEmbedding):
 
     The token visibility is controlled only by ``group_vis``. Callers should
     provide one visibility flag per output token. Leading dimensions are
-    preserved exactly: for multi-object input, callers must place objects in
-    ascending scene object-ID order and the returned token at each position
-    remains aligned with that object.
+    preserved exactly: the returned token at each position remains aligned
+    with the caller-provided leading-axis element at that position.
     """
 
     def __init__(
