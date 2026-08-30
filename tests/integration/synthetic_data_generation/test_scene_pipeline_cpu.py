@@ -613,7 +613,7 @@ class _Fixture:
                 policy=_alignment_policy(),
             ),
             court_configuration=_court_configuration(),
-            blcs_configuration=_blcs_configuration(),
+            blcs_configuration=_blcs_configuration(resolver),
             plcs_configuration=_plcs_configuration(
                 resolver,
                 accad_root=accad_root,
@@ -847,13 +847,13 @@ def _court_configuration() -> CourtDatasetConfiguration:
     )
 
 
-def _blcs_configuration() -> BLCSDatasetConfiguration:
+def _blcs_configuration(resolver: PathResolver) -> BLCSDatasetConfiguration:
     config = OmegaConf.load(
         Path("src/synthetic_data_generation/configs/dataset/blcs/production.yaml")
     )
     config.generator.targeted_velocity.gravity = 9.81
     config.render_timeout_seconds = 180.0
-    result = BLCSDatasetConfiguration.from_mapping(config)
+    result = BLCSDatasetConfiguration.from_mapping(config, resolver=resolver)
     return replace(
         result,
         timeline=replace(result.timeline, chunk_size_frames=2),

@@ -38,6 +38,15 @@
 
 通常logger/progress barにはtaskごとの少数のheadlineと`stage/loss`だけを出し、metric実装が計算するaxis/lifecycle/reference index/loss component等は診断値として分離する。trackingのval/test metricはbatch scalarを平均せず、metricごとの加算可能なnumerator/denominator（frame、segment、有効sequence、reference stratum等）をepoch全体で合算してから比率を求めるため、batch分割とpaddingに依存しない。分母がない診断値は出力せず、必須headlineの分母がないepochは失敗する。test成果物の`metrics.json`はknowledge-control向けheadlineのみ、`diagnostic_metrics.json`はheadlineと重複しない詳細値、`pred_test.npz`は再評価用predictionを保持する。headline欠落や未知stageはfallbackせず失敗する。
 
+| task / model | train headline | val / test headline |
+|---|---|---|
+| BLCS standard | `loss`, `position_error_m`, `position_accuracy_0.3m`, `endpoint_error_m` | trainと同じ |
+| PLCS standard | `loss`, `position_error_m`, `angular_error_deg`, `position_accuracy_0.5m`, `angle_accuracy_15deg` | trainと同じ |
+| BLCS tracking | `loss` | `loss`, `position_error_m`, `presence_f1`, `id_switches` |
+| PLCS tracking | `loss` | `loss`, `position_error_m`, `angular_error_deg`, `presence_f1`, `id_switches` |
+
+PLCS standardでcanonical pose headが有効かつ有効なcanonical pose教師がある場合に限り、全stageの上記headlineへ`canonical_mpjpe_m`（関節距離の平均、低いほど良い）と`canonical_pck_0.1m`（誤差0.1 m以内の関節割合、高いほど良い）を追加する。pose教師がないbatch/epochへ0を補完しない。testの診断値には`canonical_joint_error_median_m`と、17関節それぞれの`canonical_joint_error_<name>_m`を保存する。tracking modelはpose headを持たないため対象外である。PA-MPJPEはProcrustes整列がcanonical poseの回転・scale誤差を消して世界座標再構成の品質を過大評価し得るため、headline/診断値のどちらにも出さない。旧`canonical_mpjpe`はknowledge artifactの読み込み互換だけに使い、新規出力は`canonical_mpjpe_m`へ統一する。
+
 ## 実2D観測からfixed-Q inputまでの正本契約 (#832)
 
 この節を、BLCS/PLCSの観測association、debug metadata、metric、破壊的migrationに関する唯一の完全な正本とする。task固有READMEはentrypointやtask固有shapeだけを記述し、同じ契約を複製しない。
