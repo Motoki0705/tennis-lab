@@ -14,6 +14,10 @@ from src.tasks.base.model_io import (
     validate_model_artifact_court_keypoint_contract,
     write_model_artifact_court_keypoint_contract,
 )
+from src.tasks.base.training.metric_logging import (
+    compute_scalar_metric_statistics,
+    evaluation_only_metric_logging_contract,
+)
 from src.tasks.base.training.tracking_lightning_module import (
     TrackingLightningModule,
     TrackingStepResult,
@@ -32,15 +36,23 @@ from src.tasks.blcs.model_io.checkpoints import (
     write_blcs_checkpoint_track_query_reference,
 )
 from src.tasks.blcs.training.tracking_losses import BLCSTrackingLoss
-from src.tasks.blcs.training.tracking_metrics import blcs_tracking_metrics
+from src.tasks.blcs.training.tracking_metrics import blcs_tracking_statistics
 from src.utils.schema.court_normalization import (
     add_court_coordinate_normalization,
     validate_court_coordinate_normalization,
 )
 
+BLCS_TRACKING_METRIC_CONTRACT = evaluation_only_metric_logging_contract(
+    "BLCS tracking",
+    headline_keys=("position_error_m", "presence_f1", "id_switches"),
+    progress_bar_keys=("position_error_m",),
+)
+
 
 class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPrediction]):
     """Train and evaluate multi-ball clip-local slots."""
+
+    metric_logging_contract = BLCS_TRACKING_METRIC_CONTRACT
 
     def __init__(
         self,
@@ -130,8 +142,8 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
         prediction = replace(prediction, reference_metadata=reference_metadata)
         loss_inputs, assignments = self.criterion.prepare_inputs(prediction, prepared)
         losses = self.criterion(loss_inputs)
-        metrics = (
-            blcs_tracking_metrics(
+        statistics = (
+            blcs_tracking_statistics(
                 prediction,
                 prepared,
                 assignments,
@@ -144,12 +156,21 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
                 ),
             )
             if compute_metrics
+            else None
+        )
+        metrics = (
+            compute_scalar_metric_statistics(
+                statistics,
+                zero_denominator_value=0.0,
+            )
+            if statistics is not None
             else {}
         )
         return TrackingStepResult(
             losses=losses,
             metrics=metrics,
             prediction=prediction,
+            statistics=statistics,
         )
 
     def tracking_prediction_result(

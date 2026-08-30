@@ -20,12 +20,18 @@ from src.synthetic_data_generation.composition import (
     GaussianAssetRole,
     GaussianCoordinates,
 )
+from src.synthetic_data_generation.composition.contracts import (
+    GAUSSIAN_FOREGROUND_SCHEMA,
+)
 from src.synthetic_data_generation.configuration import BLCSDatasetConfiguration
 from src.synthetic_data_generation.dataset.blcs.assembler import (
+    BLCSAssemblyResult,
     BLCSCompactDatasetReader,
     validate_blcs_dataset,
+    validate_blcs_dataset_envelope,
 )
 from src.synthetic_data_generation.dataset.blcs.contracts import (
+    BLCS_DATASET_SCHEMA_V3,
     BLCSBallGaussianSettings,
     BLCSCompositionAssets,
     BLCSTrack,
@@ -36,6 +42,7 @@ from src.synthetic_data_generation.dataset.blcs.rendering.nht import (
     BLCSNHTRenderer,
 )
 from src.synthetic_data_generation.dataset.camera_profiles import CameraProfileConfig
+from src.synthetic_data_generation.dataset.runtime import directory_size_bytes
 from src.synthetic_data_generation.pipeline import (
     CanonicalStageHandlers,
     DatasetTarget,
@@ -52,6 +59,8 @@ from src.synthetic_data_generation.scene_contract import (
     MultiCourtLayout,
     RigidTransform,
 )
+from src.synthetic_data_generation.visualization.sources import BLCSVisualizationSource
+from src.utils.configuration import PathResolver, RuntimePathRoots
 from tests.support.synthetic_data_generation.composed_nht import (
     FakeComposedNHTClient,
 )
@@ -93,6 +102,17 @@ class _StaticProvider:
     def load(self, *, scene_id: str, seed: int) -> tuple[BLCSTrajectory, ...]:
         del scene_id, seed
         return self.trajectories
+
+
+@dataclass(frozen=True)
+class _GeneratedDataset:
+    staging: Path
+    context: _Context
+    handler: BLCSDatasetStageHandler
+    summary: StageExecutionSummary
+    result: BLCSAssemblyResult
+    client: FakeComposedNHTClient
+    alignment: SimpleNamespace
 
 
 def _layout() -> MultiCourtLayout:
@@ -217,10 +237,11 @@ def _trajectory(index: int) -> BLCSTrajectory:
     )
 
 
-def test_blcs_stage_carries_all_frames_through_chunks_and_balanced_courts(
-    tmp_path,
-    monkeypatch,
-) -> None:
+@pytest.fixture
+def generated_blcs_dataset(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> _GeneratedDataset:
     workspace = SceneWorkspace(scene_id="B00", root=tmp_path / "B00")
     scene_path = workspace.root / "reconstruction" / "export" / "scene.json"
     scene_path.parent.mkdir(parents=True)
@@ -251,7 +272,19 @@ def test_blcs_stage_carries_all_frames_through_chunks_and_balanced_courts(
     config.generator.targeted_velocity.gravity = 9.81
     config.render_timeout_seconds = 60.0
     config.performance.maximum_batch_frames = 1
-    configuration = BLCSDatasetConfiguration.from_mapping(config)
+    roots = RuntimePathRoots(
+        project_root=(tmp_path / "project").resolve(),
+        data_root=(tmp_path / "data").resolve(),
+        checkpoint_root=(tmp_path / "checkpoint").resolve(),
+        artifact_root=(tmp_path / "artifact").resolve(),
+        output_root=(tmp_path / "output").resolve(),
+        cache_root=(tmp_path / "cache").resolve(),
+        external_asset_root=(tmp_path / "external").resolve(),
+    )
+    configuration = BLCSDatasetConfiguration.from_mapping(
+        config,
+        resolver=PathResolver(roots),
+    )
     client = FakeComposedNHTClient()
     renderer = BLCSNHTRenderer(
         assets=_assets(),
@@ -285,20 +318,42 @@ def test_blcs_stage_carries_all_frames_through_chunks_and_balanced_courts(
         )
     )
     definition = registry.definition(StageName.BLCS_DATASET)
-    owner = workspace.owner_path(definition)
     staging = workspace.staging_path(definition)
     staging.mkdir(parents=True)
     context = _Context(
         request=request,
         stage=definition,
-        owner_path=owner,
+        owner_path=workspace.owner_path(definition),
         staging_path=staging,
     )
-
     handler.preflight(context)
     summary = handler.execute(context)
     handler.validate(context)
-    result = validate_blcs_dataset(staging)
+    return _GeneratedDataset(
+        staging=staging,
+        context=context,
+        handler=handler,
+        summary=summary,
+        result=validate_blcs_dataset(staging),
+        client=client,
+        alignment=alignment,
+    )
+
+
+def test_blcs_stage_carries_all_frames_through_chunks_and_balanced_courts(
+    generated_blcs_dataset: _GeneratedDataset,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    handler_module = importlib.import_module(
+        "src.synthetic_data_generation.dataset.blcs.handler"
+    )
+    staging = generated_blcs_dataset.staging
+    context = generated_blcs_dataset.context
+    handler = generated_blcs_dataset.handler
+    summary = generated_blcs_dataset.summary
+    result = generated_blcs_dataset.result
+    client = generated_blcs_dataset.client
+    alignment = generated_blcs_dataset.alignment
 
     assert summary.values["source_frame_count"] == 9
     assert summary.values["planned_frame_count"] == 9
@@ -417,3 +472,90 @@ def test_blcs_stage_carries_all_frames_through_chunks_and_balanced_courts(
     )
     with pytest.raises(ValueError, match="accepted alignment inventory"):
         handler.validate(context)
+
+
+def test_v3_gaussian_dataset_remains_strictly_readable(
+    generated_blcs_dataset: _GeneratedDataset,
+) -> None:
+    staging = generated_blcs_dataset.staging
+    dataset_path = staging / "dataset.json"
+    dataset = json.loads(dataset_path.read_text(encoding="utf-8"))
+    dataset["schema"] = BLCS_DATASET_SCHEMA_V3
+    _write_test_json(dataset_path, dataset)
+    plan_paths = sorted((staging / "samples").glob("*/plan.json"))
+    for plan_path in plan_paths:
+        plan = json.loads(plan_path.read_text(encoding="utf-8"))
+        composition = plan["composition"]
+        source = composition["asset"]["source"]
+        assert composition["asset"]["rendering"] == "gaussian"
+        plan["composition"] = {
+            "schema": GAUSSIAN_FOREGROUND_SCHEMA,
+            "scene_id": composition["scene_id"],
+            "composition_id": composition["composition_id"],
+            "assets": [source["gaussian"]],
+            "objects": composition["objects"],
+            "frames": composition["frames"],
+        }
+        _write_test_json(plan_path, plan)
+    _synchronize_published_bytes(staging)
+
+    result = validate_blcs_dataset(staging)
+    envelope = validate_blcs_dataset_envelope(staging)
+    reader = BLCSCompactDatasetReader(staging)
+    first_sample = result.sample_records[0]
+    logical = reader.materialize(
+        trajectory_id=first_sample.trajectory_id,
+        source_frame_index=first_sample.source_frame_index,
+        camera_id=first_sample.camera_id,
+    )
+    visualization = BLCSVisualizationSource(
+        staging,
+        logical_scene_id=first_sample.trajectory_id,
+        camera_id=first_sample.camera_id,
+    )
+    visualized = next(visualization.frames())
+
+    assert result.manifest.schema == BLCS_DATASET_SCHEMA_V3
+    assert reader.result.manifest.schema == BLCS_DATASET_SCHEMA_V3
+    assert logical.record == first_sample
+    assert envelope == result.performance
+    assert visualization.dataset_schema == BLCS_DATASET_SCHEMA_V3
+    assert visualized.source_frame_index == first_sample.source_frame_index
+    assert visualized.global_frame_index == first_sample.global_frame_index
+
+    corrupted = json.loads(plan_paths[0].read_text(encoding="utf-8"))
+    corrupted["composition"]["unexpected"] = True
+    _write_test_json(plan_paths[0], corrupted)
+    with pytest.raises(ValueError, match="keys differ"):
+        validate_blcs_dataset(staging)
+
+    dataset["schema"] = "canonical_blcs_compact_dataset_v2"
+    _write_test_json(dataset_path, dataset)
+    with pytest.raises(
+        ValueError,
+        match="Unsupported canonical compact BLCS schema/domain",
+    ):
+        BLCSVisualizationSource(
+            staging,
+            logical_scene_id=first_sample.trajectory_id,
+            camera_id=first_sample.camera_id,
+        )
+
+
+def _synchronize_published_bytes(dataset_root: Path) -> None:
+    performance_path = dataset_root / "diagnostics/performance.json"
+    performance = json.loads(performance_path.read_text(encoding="utf-8"))
+    for _attempt in range(8):
+        performance["published_bytes"] = directory_size_bytes(dataset_root)
+        _write_test_json(performance_path, performance)
+        measured = directory_size_bytes(dataset_root)
+        if measured == performance["published_bytes"]:
+            return
+    raise AssertionError("Published byte accounting did not converge.")
+
+
+def _write_test_json(path: Path, value: Mapping[str, object]) -> None:
+    path.write_text(
+        json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )

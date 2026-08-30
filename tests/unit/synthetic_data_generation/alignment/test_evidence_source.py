@@ -115,6 +115,9 @@ class _Detector:
         self.predict_calls += 1
         return np.ones(image_rgb.shape[:2], dtype=np.float32)
 
+    def inference_cache_identity(self) -> dict[str, object]:
+        return {"schema": "test_line_inference_identity_v1"}
+
     def determinism_diagnostics(self) -> LineInferenceDeterminismDiagnostics:
         return LineInferenceDeterminismDiagnostics(
             seed=42,
@@ -1694,7 +1697,7 @@ def test_one_partial_court_is_repaired_from_two_valid_lattice_centers(
             for center in (0.0, 12.0, 24.0)
         ]
     )
-    weights = np.ones(len(points), dtype=np.float64)
+    weights: NDArray[np.float64] = np.ones(len(points), dtype=np.float64)
     state = _RefinedCompleteState(
         hypotheses=hypotheses,
         common_scale=1.0,

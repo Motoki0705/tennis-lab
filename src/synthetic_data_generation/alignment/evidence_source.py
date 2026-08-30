@@ -1236,12 +1236,16 @@ def _fit_reliable_hypothesis_indices(
             continue
         retained_indices.append(index)
         retained_transforms.append(scene_from_court)
-    for index, (transform, identifiability, reasons) in assistance_candidates.items():
+    for index, (
+        transform,
+        assisted_identifiability,
+        assisted_reasons,
+    ) in assistance_candidates.items():
         if _boundary_lattice_hypothesis_is_supported(
             hypotheses,
             candidate_index=index,
             reliable_indices=tuple(retained_indices),
-            identifiability=identifiability,
+            identifiability=assisted_identifiability,
             plane=plane,
             settings=settings.candidate_fit,
             minimum_camera_count=policy.fit.minimum_camera_count,
@@ -1250,7 +1254,7 @@ def _fit_reliable_hypothesis_indices(
             retained_transforms.append(transform)
         else:
             rejection_reasons.append(
-                f"{hypotheses[index].candidate_id}:{'+'.join(reasons)}+"
+                f"{hypotheses[index].candidate_id}:{'+'.join(assisted_reasons)}+"
                 "boundary_lattice_assistance_rejected"
             )
     ordered = sorted(

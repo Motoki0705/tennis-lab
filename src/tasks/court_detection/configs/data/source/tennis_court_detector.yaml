@@ -4,3 +4,5 @@ split_mapping:
   train: train
   val: val
   test: null
+# Degenerate KP14 annotation: only 8 unique points, so no valid court plane.
+excluded_sample_ids: [QszoUKyCOHo_600]

@@ -32,12 +32,26 @@
 - **`tracking_lifecycle.py`**: active/inactive/birth/death近傍を重み付けするpresence BCE。
 - **`tracking_lightning_module.py`**: BLCS/PLCSに共通するtracking stage dispatch、loss/metric logging、test prediction収集・保存を所有し、task固有adapter/loss/metrics/payloadはhookへ委譲する。
 - **`tracking_metrics.py`**: lifecycle segment単位のbirth/death誤差・presence F1・query再利用・ID switch診断。
+- **`metric_logging.py`**: train/val/testのheadline allowlist、必須key検証、scalar metricのnumerator/denominatorによるepoch集計を持つstrict contract。
+
+#### Metric visibility and test artifacts
+
+通常logger/progress barにはtaskごとの少数のheadlineと`stage/loss`だけを出し、metric実装が計算するaxis/lifecycle/reference index/loss component等は診断値として分離する。trackingのval/test metricはbatch scalarを平均せず、metricごとの加算可能なnumerator/denominator（frame、segment、有効sequence、reference stratum等）をepoch全体で合算してから比率を求めるため、batch分割とpaddingに依存しない。分母がない診断値は出力せず、必須headlineの分母がないepochは失敗する。test成果物の`metrics.json`はknowledge-control向けheadlineのみ、`diagnostic_metrics.json`はheadlineと重複しない詳細値、`pred_test.npz`は再評価用predictionを保持する。headline欠落や未知stageはfallbackせず失敗する。
+
+| task / model | train headline | val / test headline |
+|---|---|---|
+| BLCS standard | `loss`, `position_error_m`, `position_accuracy_0.3m`, `endpoint_error_m` | trainと同じ |
+| PLCS standard | `loss`, `position_error_m`, `angular_error_deg`, `position_accuracy_0.5m`, `angle_accuracy_15deg` | trainと同じ |
+| BLCS tracking | `loss` | `loss`, `position_error_m`, `presence_f1`, `id_switches` |
+| PLCS tracking | `loss` | `loss`, `position_error_m`, `angular_error_deg`, `presence_f1`, `id_switches` |
+
+PLCS standardでcanonical pose headが有効かつ有効なcanonical pose教師がある場合に限り、全stageの上記headlineへ`canonical_mpjpe_m`（関節距離の平均、低いほど良い）と`canonical_pck_0.1m`（誤差0.1 m以内の関節割合、高いほど良い）を追加する。pose教師がないbatch/epochへ0を補完しない。testの診断値には`canonical_joint_error_median_m`と、17関節それぞれの`canonical_joint_error_<name>_m`を保存する。tracking modelはpose headを持たないため対象外である。PA-MPJPEはProcrustes整列がcanonical poseの回転・scale誤差を消して世界座標再構成の品質を過大評価し得るため、headline/診断値のどちらにも出さない。旧`canonical_mpjpe`はknowledge artifactの読み込み互換だけに使い、新規出力は`canonical_mpjpe_m`へ統一する。
 
 #### Tracking metric migration note (#820)
 
 Trackingのcount系metricは、batch内合計のepoch平均ではなく、評価した全sequenceに対する1 sequence当たり平均として記録する。したがって、旧実装の値（batch内合計の平均、かつ各targetが独立に選んだ最近傍queryによるID switch）とは互換性がなく、過去runと比較またはcheckpointを再選択する場合は新実装で再評価が必要になる。保存済みの過去metricは書き換えない。
 
-`id_switches`（`segment_id_switches`は同値alias）はtarget lifecycle内だけで計測する。直前frameの対応が現在も距離gate内ならその1対1対応を優先し、残りをgate付きの決定的な1対1 Hungarian assignmentで対応する。prediction欠落中も同じlifecycleのlast-valid queryを保持し、再対応先が変わったときだけswitchを1件数え、lifecycle境界でresetする。`id_switch_distance=0.05`は正規化court座標単位（約0.59425 m）の必須設定で、近接重複を測る`duplicate_distance`とは独立である。通常のBLCS/PLCS可視化はこのtracking metric専用assignmentを描画しないため、見た目とmetricは直接対応しない。
+`id_switches`はtarget lifecycle内だけで計測する。直前frameの対応が現在も距離gate内ならその1対1対応を優先し、残りをgate付きの決定的な1対1 Hungarian assignmentで対応する。prediction欠落中も同じlifecycleのlast-valid queryを保持し、再対応先が変わったときだけswitchを1件数え、lifecycle境界でresetする。`id_switch_distance=0.05`は正規化court座標単位（約0.59425 m）の必須設定で、近接重複を測る`duplicate_distance`とは独立である。通常のBLCS/PLCS可視化はこのtracking metric専用assignmentを描画しないため、見た目とmetricは直接対応しない。
 
 ## Training model compilation
 

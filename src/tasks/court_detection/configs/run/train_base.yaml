@@ -1,0 +1,7 @@
+seed: 42
+gpus: 1
+resume: null
+init_weights: null
+fast_dev_run: false
+dry_run: false
+test_after_fit: false

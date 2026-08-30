@@ -24,11 +24,14 @@ function issueLabel(issue?: number | number[]): string | null {
   return Array.isArray(issue) ? issue.map((i) => `#${i}`).join(" ") : `#${issue}`;
 }
 
-/** Pick up to two headline metrics that exist, for the card preview. */
+/** Pick the usual two headlines plus conditional canonical-pose metrics. */
 function headlineMetrics(metrics?: Record<string, number | string>): [string, string][] {
   if (!metrics) return [];
+  const angularErrorKey = "angular_error_deg" in metrics
+    ? "angular_error_deg"
+    : "ang_error_deg";
   const priority = [
-    "ang_error_deg",
+    angularErrorKey,
     "position_error_m",
     "best_val_miou",
     "loss",
@@ -38,6 +41,17 @@ function headlineMetrics(metrics?: Record<string, number | string>): [string, st
   for (const k of priority) {
     if (k in metrics) out.push([k, String(metrics[k])]);
     if (out.length === 2) break;
+  }
+  const canonicalMpjpeKey = "canonical_mpjpe_m" in metrics
+    ? "canonical_mpjpe_m"
+    : "canonical_mpjpe" in metrics
+      ? "canonical_mpjpe"
+      : null;
+  if (canonicalMpjpeKey) {
+    out.push(["canonical_mpjpe_m", String(metrics[canonicalMpjpeKey])]);
+  }
+  if ("canonical_pck_0.1m" in metrics) {
+    out.push(["canonical_pck_0.1m", String(metrics["canonical_pck_0.1m"])]);
   }
   return out;
 }

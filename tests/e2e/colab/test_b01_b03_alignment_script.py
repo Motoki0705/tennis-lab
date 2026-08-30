@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).parents[3]
-SCRIPT = ROOT / "scripts/colab/run_b01_b03_alignment.sh"
+SCRIPT = ROOT / "scripts/colab/train/20260829T150257Z/run_b01_b03_alignment.sh"
 
 
 def test_b01_b03_alignment_script_has_valid_bash_syntax() -> None:

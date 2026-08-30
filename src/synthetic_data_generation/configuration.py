@@ -39,6 +39,8 @@ from src.synthetic_data_generation.composition.contracts import (
 )
 from src.synthetic_data_generation.dataset.blcs.contracts import (
     BLCSBallGaussianSettings,
+    BLCSBallMeshAsset,
+    BLCSBallRendering,
     BLCSCompositionAssets,
 )
 from src.synthetic_data_generation.dataset.blcs.source import (
@@ -1765,13 +1767,78 @@ def _gaussian_asset(value: object, *, path: str) -> GaussianAsset:
     )
 
 
-def _blcs_assets(value: object) -> BLCSCompositionAssets:
+def _blcs_assets(
+    value: object,
+    *,
+    resolver: PathResolver,
+) -> BLCSCompositionAssets:
     path = "dataset.blcs.assets"
     raw = _exact(
         value,
         path=path,
-        keys={"ball", "settings"},
+        keys={"rendering", "mesh", "ball", "settings"},
     )
+    try:
+        rendering = BLCSBallRendering(_text(raw, "rendering", path=path))
+    except ValueError as error:
+        raise SemanticConfigurationError(
+            f"{path}.rendering must be gaussian or mesh."
+        ) from error
+    mesh_path = f"{path}.mesh"
+    mesh_raw = _exact(
+        raw["mesh"],
+        path=mesh_path,
+        keys={
+            "path",
+            "maximum_file_bytes",
+            "maximum_source_vertices",
+            "maximum_source_faces",
+            "maximum_faces",
+        },
+    )
+    configured_mesh_path = mesh_raw["path"]
+    mesh: BLCSBallMeshAsset | None
+    if rendering is BLCSBallRendering.GAUSSIAN:
+        if configured_mesh_path is not None:
+            raise SemanticConfigurationError(
+                f"{mesh_path}.path must be null when {path}.rendering=gaussian."
+            )
+        mesh = None
+    else:
+        if not isinstance(configured_mesh_path, str):
+            raise ConfigurationTypeError(
+                f"{mesh_path}.path must be a data-root-relative string for mesh rendering."
+            )
+        relative_mesh_path = configured_mesh_path
+        resolved_mesh_path = resolver.resolve(PathRole.DATA, relative_mesh_path)
+        mesh = BLCSBallMeshAsset(
+            path=resolved_mesh_path,
+            data_root_relative_path=relative_mesh_path,
+            maximum_file_bytes=_integer(
+                mesh_raw,
+                "maximum_file_bytes",
+                path=mesh_path,
+                minimum=1,
+            ),
+            maximum_source_vertices=_integer(
+                mesh_raw,
+                "maximum_source_vertices",
+                path=mesh_path,
+                minimum=4,
+            ),
+            maximum_source_faces=_integer(
+                mesh_raw,
+                "maximum_source_faces",
+                path=mesh_path,
+                minimum=4,
+            ),
+            maximum_faces=_integer(
+                mesh_raw,
+                "maximum_faces",
+                path=mesh_path,
+                minimum=4,
+            ),
+        )
     settings_path = f"{path}.settings"
     settings_raw = _exact(
         raw["settings"],
@@ -1824,6 +1891,8 @@ def _blcs_assets(value: object) -> BLCSCompositionAssets:
                 path=settings_path,
             ),
         ),
+        rendering=rendering,
+        mesh=mesh,
     )
 
 
@@ -1840,7 +1909,12 @@ class BLCSDatasetConfiguration:
     metadata_fields: tuple[str, ...]
 
     @classmethod
-    def from_mapping(cls, value: object) -> BLCSDatasetConfiguration:
+    def from_mapping(
+        cls,
+        value: object,
+        *,
+        resolver: PathResolver,
+    ) -> BLCSDatasetConfiguration:
         raw = _exact(
             value,
             path="dataset.blcs",
@@ -1861,7 +1935,7 @@ class BLCSDatasetConfiguration:
             )
         source = _blcs_source_settings(raw["trajectory_source"])
         generator = _blcs_generator_config(raw["generator"])
-        assets = _blcs_assets(raw["assets"])
+        assets = _blcs_assets(raw["assets"], resolver=resolver)
         timeout = _number(raw, "render_timeout_seconds", path="dataset.blcs")
         if timeout <= 0.0:
             raise SemanticConfigurationError(
@@ -2427,7 +2501,10 @@ class ScenePipelineConfiguration:
                 resolver=resolver,
             ),
             court=CourtDatasetConfiguration.from_mapping(dataset["court"]),
-            blcs=BLCSDatasetConfiguration.from_mapping(dataset["blcs"]),
+            blcs=BLCSDatasetConfiguration.from_mapping(
+                dataset["blcs"],
+                resolver=resolver,
+            ),
             plcs=plcs,
         )
 

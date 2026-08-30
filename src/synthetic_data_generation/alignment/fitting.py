@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
-from typing import Any
+from collections.abc import Mapping, Sequence
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -336,7 +336,7 @@ def _identifiability_acceptance(
         metrics,
         minimum_camera_count=minimum_camera_count,
     )
-    checks = dict(assistance["threshold_checks"])
+    checks = dict(cast(Mapping[str, bool], assistance["threshold_checks"]))
     checks["equal_spacing_from_two_other_courts"] = lattice_geometry_supported
     return {
         **assistance,

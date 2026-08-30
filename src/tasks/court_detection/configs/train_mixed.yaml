@@ -1,0 +1,30 @@
+defaults:
+  - paths: default
+  - data: default
+  - model: hierarchical
+  - loss: default
+  - training: default
+  - run: train_mixed
+  - render_style: default
+  - data/source@mixed.sources.tennis_court_detector: tennis_court_detector
+  - override data/source: synthetic_court
+  - override data/processing: all
+  - _self_
+
+mixed:
+  sources:
+    synthetic_court: ${data.source}
+  train_batch_counts:
+    synthetic_court: 4
+    tennis_court_detector: 4
+
+data:
+  source:
+    keypoint_court_scope: target_court
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
+  output_subdir: null
+  job:
+    chdir: false

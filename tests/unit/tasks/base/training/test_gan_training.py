@@ -18,6 +18,11 @@ from src.tasks.base.training.gan_loss import LSGANLoss
 from src.tasks.base.training.gan_training import (
     ManualGANSupportMixin,
     ManualGANTrainingStrategy,
+    loss_component_metrics,
+)
+from src.tasks.base.training.metric_logging import (
+    WeightedMetricAccumulator,
+    uniform_metric_logging_contract,
 )
 
 pytestmark = pytest.mark.unit
@@ -55,6 +60,164 @@ def test_gan_mixin_has_no_additional_target_when_disabled() -> None:
     mixin.discriminator = None
 
     assert mixin.additional_compilation_targets() == {}
+
+
+def test_loss_component_metrics_omits_exact_total_alias() -> None:
+    assert loss_component_metrics(
+        {
+            "total": torch.tensor(1.5),
+            "position": torch.tensor(1.0),
+            "reprojection": torch.tensor(0.5),
+        }
+    ) == {
+        "loss_position": 1.0,
+        "loss_reprojection": 0.5,
+    }
+
+
+def test_shared_gan_logger_keeps_ball_compatible_enabled_metrics() -> None:
+    class _Module(ManualGANSupportMixin):
+        def __init__(self) -> None:
+            self.gan_enabled = True
+            self.gan_training = _strategy()
+            self.gan_training.activate_phase(0)
+            self.gan_training.set_weight(0.2)
+            self.names: list[str] = []
+
+        def log(self, name: str, value: Any, **kwargs: Any) -> None:
+            del value, kwargs
+            self.names.append(name)
+
+    module = _Module()
+
+    module._log_gan_metrics(
+        "train",
+        {
+            "loss_gan_generator": torch.tensor(0.1),
+            "loss_gan_discriminator": torch.tensor(0.3),
+        },
+    )
+
+    assert module.names == [
+        "train/gan_weight",
+        "train/gan_phase_active",
+        "train/loss_gan_generator",
+        "train/loss_gan_discriminator",
+    ]
+
+
+def test_standard_test_artifact_uses_headlines_and_separate_diagnostics() -> None:
+    class _Tracker:
+        def __init__(self) -> None:
+            self.reset_count = 0
+
+        def compute(self) -> dict[str, float]:
+            return {
+                "position_error_m": 0.2,
+                "position_accuracy_0.3m": 0.8,
+                "endpoint_error_m": 0.4,
+                "x_error_m": 0.1,
+            }
+
+        def reset(self) -> None:
+            self.reset_count += 1
+
+    class _Module(ManualGANSupportMixin):
+        metric_logging_contract = uniform_metric_logging_contract(
+            "fixture",
+            headline_keys=(
+                "position_error_m",
+                "position_accuracy_0.3m",
+                "endpoint_error_m",
+            ),
+            progress_bar_keys=("position_error_m",),
+        )
+
+        def __init__(self) -> None:
+            self.tracker = _Tracker()
+            self.saved: dict[str, Any] = {}
+            self._test_metric_diagnostic_accumulator = WeightedMetricAccumulator()
+
+        def _metric_tracker_for_stage(self, stage: str) -> _Tracker:
+            assert stage == "test"
+            return self.tracker
+
+        def save_test_predictions(self, **kwargs: Any) -> None:
+            self.saved = kwargs
+
+        def log(self, *args: Any, **kwargs: Any) -> None:
+            pass
+
+    module = _Module()
+    module._test_metric_diagnostic_accumulator.update(
+        {
+            "position_error_m": 0.3,
+            "reference_index_1_position_error_m": 0.25,
+            "loss_position": 0.05,
+        },
+        weight=2,
+    )
+
+    module.on_test_epoch_end()
+
+    assert module.saved["metrics"] == {
+        "position_error_m": 0.2,
+        "position_accuracy_0.3m": 0.8,
+        "endpoint_error_m": 0.4,
+    }
+    assert module.saved["diagnostic_metrics"] == {
+        "x_error_m": 0.1,
+        "reference_index_1_position_error_m": 0.25,
+        "loss_position": 0.05,
+    }
+
+
+def test_epoch_flush_logs_only_the_fixed_headline_contract() -> None:
+    class _Tracker:
+        def compute(self) -> dict[str, float]:
+            return {
+                "position_error_m": 0.2,
+                "position_accuracy_0.3m": 0.8,
+                "endpoint_error_m": 0.4,
+                "x_error_m": 0.1,
+            }
+
+        def reset(self) -> None:
+            pass
+
+    class _Module(ManualGANSupportMixin):
+        metric_logging_contract = uniform_metric_logging_contract(
+            "fixture",
+            headline_keys=(
+                "position_error_m",
+                "position_accuracy_0.3m",
+                "endpoint_error_m",
+            ),
+            progress_bar_keys=("position_error_m",),
+        )
+
+        def __init__(self) -> None:
+            self.tracker = _Tracker()
+            self.names: list[str] = []
+
+        def _metric_tracker_for_stage(self, stage: str) -> _Tracker:
+            assert stage in {"train", "val", "test"}
+            return self.tracker
+
+        def log(self, name: str, value: Any, **kwargs: Any) -> None:
+            del value, kwargs
+            self.names.append(name)
+
+    module = _Module()
+
+    for stage in ("train", "val", "test"):
+        module._flush_stage_metrics(stage)
+        assert module.names == [
+            f"{stage}/position_error_m",
+            f"{stage}/position_accuracy_0.3m",
+            f"{stage}/endpoint_error_m",
+        ]
+        module.names.clear()
 
 
 def test_activate_phase_sets_flags() -> None:
@@ -275,6 +438,7 @@ def test_gan_step_passes_named_padding_mask_to_discriminator() -> None:
     loss, metrics = strategy._gan_step(_Module(), batch=None, stage="train")
 
     assert torch.isfinite(loss)
+    assert "loss_hybrid_total" not in metrics
     assert "loss_gan_generator" in metrics
     assert "loss_gan_discriminator" in metrics
     assert strategy.hybrid_gan_step_count == 1

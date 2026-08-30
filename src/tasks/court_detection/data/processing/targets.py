@@ -46,10 +46,7 @@ class CourtTargetBuilder(Protocol):
 
 class KeypointTargetBuilder:
     def __init__(self, input_spec: CourtInputSpec, *, sigma_ratio: float) -> None:
-        if (
-            input_spec.keypoint_schema is None
-            or not input_spec.keypoint_channel_names
-        ):
+        if input_spec.keypoint_schema is None or not input_spec.keypoint_channel_names:
             raise ValueError("Keypoint target requires an input keypoint schema.")
         self.sigma_ratio = sigma_ratio
         self._spec = CourtTargetSpec(
@@ -73,9 +70,7 @@ class KeypointTargetBuilder:
         if not records:
             raise ValueError("Keypoint target requires a non-empty split.")
 
-    def load_dense(
-        self, raw: CourtRawSample
-    ) -> Mapping[CourtDenseTargetKind, Tensor]:
+    def load_dense(self, raw: CourtRawSample) -> Mapping[CourtDenseTargetKind, Tensor]:
         _ = raw
         return {}
 
@@ -135,9 +130,7 @@ class _PrecomputedDenseTargetBuilder:
                 target_schema=self.spec.schema,
             )
 
-    def load_dense(
-        self, raw: CourtRawSample
-    ) -> Mapping[CourtDenseTargetKind, Tensor]:
+    def load_dense(self, raw: CourtRawSample) -> Mapping[CourtDenseTargetKind, Tensor]:
         try:
             path = raw.dense_target_refs[self.kind]
         except KeyError as error:
@@ -186,7 +179,7 @@ class SegmentationTargetBuilder(_PrecomputedDenseTargetBuilder):
     def _decode(self, array: np.ndarray) -> Tensor:
         if int(array.max(initial=0)) > 6:
             raise ValueError("Court segmentation labels must be in [0,6].")
-        return torch.from_numpy(np.ascontiguousarray(array)).long()
+        return torch.from_numpy(np.ascontiguousarray(array).copy()).long()
 
     def build(self, sample: CourtTransformedSample) -> object:
         mask = sample.dense_targets["seg"].long()
