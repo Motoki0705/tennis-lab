@@ -66,9 +66,7 @@ ALLOWED_ACTIVE_ARCHITECTURE_TOKENS = {
 
 
 def _active_python_files() -> tuple[Path, ...]:
-    roots = (
-        PROJECT_ROOT / "src/synthetic_data_generation",
-    )
+    roots = (PROJECT_ROOT / "src/synthetic_data_generation",)
     return tuple(
         path
         for root in roots
