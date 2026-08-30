@@ -190,8 +190,12 @@ def test_public_sample_zeroes_only_invisible_court_uv_before_model_call() -> Non
         num_joints=17,
         court_keypoint_contract=resolve_court_keypoint_contract("physical_v1"),
     ).build_call(batch)
-    assert call.kwargs["human_kp"].shape == (1, 1, 1, 3, 17, 2)
-    assert call.kwargs["court_kp"].shape == (1, 1, 1, 14, 2)
+    human_kp = call.kwargs["human_kp"]
+    court_kp = call.kwargs["court_kp"]
+    assert isinstance(human_kp, Tensor)
+    assert isinstance(court_kp, Tensor)
+    assert human_kp.shape == (1, 1, 1, 3, 17, 2)
+    assert court_kp.shape == (1, 1, 1, 14, 2)
 
 
 def test_model_visible_tracking_ignores_debug_identity_and_carrier_order() -> None:

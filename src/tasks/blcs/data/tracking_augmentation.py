@@ -36,14 +36,12 @@ class _ProvenanceAwareBallObservationAugmentation(BLCSBallObservationAugmentatio
         dropped_mask: Tensor,
     ) -> tuple[Tensor, Tensor]:
         self.visibility_before_false_positive = ball_vis.bool().clone()
-        return cast(
-            "tuple[Tensor, Tensor]",
-            super()._apply_false_positive(
-                ball_uv,
-                ball_vis,
-                dropped_mask=dropped_mask,
-            ),
+        result: tuple[Tensor, Tensor] = super()._apply_false_positive(
+            ball_uv,
+            ball_vis,
+            dropped_mask=dropped_mask,
         )
+        return result
 
 
 class BLCSTrackingDetectionAugmentation:

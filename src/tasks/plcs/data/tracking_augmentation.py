@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 import torch
 from torch import Tensor
@@ -20,7 +20,7 @@ class _ProvenanceAwareObservationAugmentation(PLCSObservationAugmentation):
 
     def forward(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
         self.human_visibility_before_false_positive = None
-        output = cast("dict[str, Tensor]", super().forward(sample))
+        output: dict[str, Tensor] = super().forward(sample)
         if self.human_visibility_before_false_positive is None:
             self.human_visibility_before_false_positive = sample["human_vis"].clone()
         return output
@@ -35,15 +35,13 @@ class _ProvenanceAwareObservationAugmentation(PLCSObservationAugmentation):
     ) -> tuple[Tensor, Tensor]:
         if entity == "human":
             self.human_visibility_before_false_positive = visibility.clone()
-        return cast(
-            "tuple[Tensor, Tensor]",
-            super()._apply_false_positive(
-                keypoints,
-                visibility,
-                entity=entity,
-                dropped_mask=dropped_mask,
-            ),
+        result: tuple[Tensor, Tensor] = super()._apply_false_positive(
+            keypoints,
+            visibility,
+            entity=entity,
+            dropped_mask=dropped_mask,
         )
+        return result
 
 
 class PLCSTrackingDetectionAugmentation:

@@ -337,8 +337,12 @@ def test_public_sample_zeroes_only_invisible_court_uv_before_model_call() -> Non
         num_queries=2,
         presence_threshold=0.5,
     ).build_call(batch)
-    assert call.kwargs["ball_uv"].shape == (1, 1, 1, 2, 2)
-    assert call.kwargs["court_kp"].shape == (1, 1, 1, 14, 2)
+    ball_uv = call.kwargs["ball_uv"]
+    court_kp = call.kwargs["court_kp"]
+    assert isinstance(ball_uv, torch.Tensor)
+    assert isinstance(court_kp, torch.Tensor)
+    assert ball_uv.shape == (1, 1, 1, 2, 2)
+    assert court_kp.shape == (1, 1, 1, 14, 2)
 
 
 def test_model_visible_tracking_is_independent_of_carrier_and_gt_order() -> None:
