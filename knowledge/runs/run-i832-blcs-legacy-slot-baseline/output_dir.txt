@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-832-legacy-baseline/outputs/blcs/issue-832/legacy-slot-baseline-r4/logs/version_0/checkpoints

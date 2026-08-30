@@ -1,0 +1,22 @@
+{
+  "position_error": 0.4576180705136515,
+  "presence_precision": 0.8085196015264906,
+  "presence_recall": 0.9609743166823751,
+  "birth_frame_error": 53.75423728813559,
+  "death_frame_error": 73.11440677966101,
+  "query_reuse_count": 1.92,
+  "illegal_overlap_count": 0.0,
+  "duplicate_active_tracks": 80.22,
+  "missed_gt_frames": 26.76,
+  "inactive_query_false_positives": 5.46,
+  "x_error_m": 2.272634224006956,
+  "y_error_m": 4.2895109651156185,
+  "z_error_m": 0.9587368106839232,
+  "loss_position": 0.05505251331720501,
+  "loss_position_x": 0.040764692920492965,
+  "loss_position_y": 0.11831697064684704,
+  "loss_position_z": 0.006075874468951952,
+  "loss_presence": 0.12437663525692187,
+  "loss_smoothness": 0.0,
+  "loss_gravity": 0.0
+}
