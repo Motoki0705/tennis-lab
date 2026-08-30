@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import cast
 
 import numpy as np
 import pytest
@@ -10,6 +11,10 @@ from src.tasks.base.data.canonical_tracking import (
     CanonicalTrackingDataset,
     pad_and_stack_tracking_batch,
     validate_lifecycle_capacity,
+)
+from src.utils.configuration import (
+    MissingConfigurationKeyError,
+    UnknownConfigurationKeyError,
 )
 from src.utils.schema.court_normalization import (
     COURT_COORDINATE_NORMALIZATION_KEY,
@@ -45,7 +50,15 @@ def test_dataset_resolves_explicit_scene_split(tmp_path) -> None:
                 "lifecycle": {
                     "pack_to_query_slots": True,
                     "min_reuse_gap_frames": 0,
-                    "randomize_slots_train": False,
+                },
+                "association": {
+                    "max_distance": 0.1,
+                    "max_missed_frames": 2,
+                    "min_reuse_gap_frames": 0,
+                    "use_velocity_prediction": True,
+                    "min_common_keypoints": 1,
+                    "cost_reduction": "mean",
+                    "overflow_policy": "error",
                 },
             },
             "model": {"num_queries": 1},
@@ -53,6 +66,55 @@ def test_dataset_resolves_explicit_scene_split(tmp_path) -> None:
     )
     assert len(dataset) == 1
     assert dataset.scenes == [tmp_path / "scenes" / "scene_a"]
+    assert dataset.observation_tracking_config.max_distance == 0.1
+    assert not hasattr(dataset, "randomize_slots_train")
+
+
+def _minimal_dataset_config() -> dict[str, object]:
+    return {
+        "data": {
+            "seq_len_range": [1, 2],
+            "num_views_range": [1, 1],
+            "camera_mode": "first",
+            "lifecycle": {
+                "pack_to_query_slots": True,
+                "min_reuse_gap_frames": 0,
+            },
+            "association": {
+                "max_distance": 0.1,
+                "max_missed_frames": 2,
+                "min_reuse_gap_frames": 0,
+                "use_velocity_prediction": True,
+                "min_common_keypoints": 1,
+                "cost_reduction": "mean",
+                "overflow_policy": "error",
+            },
+        },
+        "model": {"num_queries": 1},
+    }
+
+
+def test_dataset_rejects_legacy_randomization_and_missing_association(tmp_path) -> None:
+    legacy_config = _minimal_dataset_config()
+    lifecycle = legacy_config["data"]["lifecycle"]  # type: ignore[index]
+    lifecycle["randomize_slots_train"] = True  # type: ignore[index]
+    with pytest.raises(UnknownConfigurationKeyError, match="randomize_slots_train"):
+        CanonicalTrackingDataset(
+            scene_dir=tmp_path,
+            split_file="unused.txt",
+            seed=0,
+            config=legacy_config,
+        )
+
+    missing_config = _minimal_dataset_config()
+    cast("dict[str, object]", missing_config["data"]).pop("association")
+    with pytest.raises(MissingConfigurationKeyError, match="association"):
+        CanonicalTrackingDataset(
+            scene_dir=tmp_path,
+            split_file="unused.txt",
+            seed=0,
+            config=missing_config,
+        )
 
 
 def test_collate_pads_only_declared_time_dimensions() -> None:
@@ -66,6 +128,16 @@ def test_collate_pads_only_declared_time_dimensions() -> None:
     assert collated["frame_mask"].shape == (2, 4)
     assert collated["value"].shape == (2, 1, 4, 3)
     assert not collated["frame_mask"][0, 2:].any()
+
+
+def test_collate_never_pads_an_undeclared_query_axis() -> None:
+    batch = [
+        {"value": torch.ones(1, 2, 2)},
+        {"value": torch.ones(1, 2, 3)},
+    ]
+
+    with pytest.raises(RuntimeError, match="stack"):
+        pad_and_stack_tracking_batch(batch, time_dimensions={"value": 1})
 
 
 def test_lifecycle_capacity_rejects_generation_gap_shorter_than_packing_gap() -> None:

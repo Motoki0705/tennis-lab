@@ -20,6 +20,7 @@ from src.tasks.base.configuration import (
     require_config_mapping,
     require_config_value,
 )
+from src.tasks.base.data.observation_tracking import ObservationTrackingConfig
 from src.tasks.base.generate_dataset import CourtKeypointContract
 from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
 from src.tasks.base.visualization.style import (
@@ -867,7 +868,7 @@ class PLCSDataConfig:
         tracking = model.name in _TRACK_QUERY_MODEL_NAMES
         allowed = set(_DATA_COMMON)
         if tracking:
-            allowed.add("lifecycle")
+            allowed.update({"association", "lifecycle"})
         else:
             allowed.update({"mode", "num_court_kp"})
             if model.input_profile == "multiview":
@@ -991,7 +992,6 @@ class PLCSDataConfig:
             lifecycle_fields = {
                 "pack_to_query_slots",
                 "min_reuse_gap_frames",
-                "randomize_slots_train",
             }
             lifecycle = _exact(
                 mapping["lifecycle"],
@@ -1005,10 +1005,21 @@ class PLCSDataConfig:
                     "PLCS tracking."
                 )
             _integer(lifecycle, "min_reuse_gap_frames", path="data.lifecycle")
-            _boolean(lifecycle, "randomize_slots_train", path="data.lifecycle")
             if _integer(lifecycle, "min_reuse_gap_frames", path="data.lifecycle") < 0:
                 raise SemanticConfigurationError(
                     "data.lifecycle.min_reuse_gap_frames must be non-negative."
+                )
+            association = ObservationTrackingConfig.from_mapping(
+                mapping["association"]
+            )
+            if association.cost_reduction != "median":
+                raise SemanticConfigurationError(
+                    "PLCS data.association.cost_reduction must be 'median'."
+                )
+            if not 4 <= association.min_common_keypoints <= NUM_HUMAN_KP:
+                raise SemanticConfigurationError(
+                    "PLCS data.association.min_common_keypoints must be within "
+                    f"[4, {NUM_HUMAN_KP}]."
                 )
         scene_dir = _string(mapping, "scene_dir", path="data")
         batch_size = _integer(mapping, "batch_size", path="data")

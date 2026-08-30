@@ -34,7 +34,12 @@ def test_decode_person_detections_filters_sorts_and_scales() -> None:
         result.boxes_xyxy,
         np.array([[30, 40, 70, 60], [150, 40, 170, 60]], dtype=np.float32),
     )
+    assert result.boxes_xyxy.shape == (2, 4)
+    assert result.boxes_xyxy.dtype == np.float32
+    assert result.scores.shape == (2,)
+    assert result.scores.dtype == np.float32
     assert result.scores[0] > result.scores[1] > 0.6
+    assert set(vars(result)) == {"boxes_xyxy", "scores"}
 
 
 def test_decode_person_detections_returns_shaped_empty_arrays() -> None:
