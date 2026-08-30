@@ -25,6 +25,10 @@ from src.synthetic_data_generation.alignment.contracts import (
     AlignmentEvidence,
     AlignmentEvidenceDiagnostics,
     AlignmentPartitions,
+    AlignmentTrace,
+    AlignmentTraceCandidateState,
+    AlignmentTracePhase,
+    AlignmentTraceStep,
     CameraLineDiagnostics,
     CameraOwnershipRule,
     CameraSelectionPolicy,
@@ -33,6 +37,7 @@ from src.synthetic_data_generation.alignment.contracts import (
     CorrespondenceSet,
     EvaluatedAlignment,
     FixedCameraSelectionDiagnostics,
+    GroundPlaneFrame,
     LineInferenceDeterminismDiagnostics,
     MeasuredCameraLines,
     MetricSceneAdapter,
@@ -1077,6 +1082,12 @@ def _alignment_evidence() -> AlignmentEvidence:
                     candidate_id=f"candidate-{index}",
                     nht_scene_units_per_metre=1.0,
                     template_score=0.9 - 0.1 * index,
+                    common_scale_refit_template_score=0.9 - 0.1 * index,
+                    common_scale_refit_center_uv_metres=(
+                        (-8.0, 8.0)[index],
+                        0.0,
+                    ),
+                    common_scale_refit_orientation_radians=0.0,
                     common_scale_refit_center_displacement_metres=0.0,
                     maximum_common_scale_refit_center_displacement_metres=(
                         whole_court_settings.maximum_center_refit_displacement_metres
@@ -1085,7 +1096,7 @@ def _alignment_evidence() -> AlignmentEvidence:
                     proposal_orientation_band_maximum_radians=0.5,
                     proposal_residual_point_count_before_suppression=100,
                     proposal_residual_point_count_after_suppression=50,
-                    native_center_uv=(float(index * 30), 0.0),
+                    native_center_uv_metres=((-8.0, 8.0)[index], 0.0),
                     native_orientation_radians=0.0,
                 )
                 for index in range(2)
@@ -1170,6 +1181,14 @@ def _alignment_evidence() -> AlignmentEvidence:
                 selected_native_score_sum=1.7,
             ),
             excluded_cameras=(),
+            ground_plane_frame=GroundPlaneFrame(
+                origin_metric_scene=(0.0, 0.0, 0.0),
+                basis_u_metric_scene=(1.0, 0.0, 0.0),
+                basis_v_metric_scene=(0.0, 1.0, 0.0),
+                normal_metric_scene=(0.0, 0.0, 1.0),
+                bounds_uv_metres=(-10.0, 10.0, -2.0, 2.0),
+            ),
+            alignment_trace=_alignment_trace(),
         ),
         whole_court_settings=whole_court_settings,
     )
@@ -1205,8 +1224,14 @@ def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
         for item in evidence.diagnostics.cameras
     }
     observed = set(selection.observed_camera_ids)
+    measured = {
+        item.camera_id: evidence.ground_plane_frame.to_uv(
+            evidence.metric_adapter.metric_from_nht_points(item.points_nht_scene)
+        )
+        for item in evidence.measured_camera_lines
+    }
     return AlignmentLineHeatmaps(
-        bounds_uv=(-1.0, 1.0, -1.0, 1.0),
+        bounds_uv=evidence.ground_plane_frame.bounds_uv_metres,
         grid_spacing=0.25,
         proximity_scale=0.35,
         proximity_power=2.0,
@@ -1214,9 +1239,7 @@ def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
             AlignmentLineHeatmapView(
                 camera_id=camera_id,
                 probability=np.asarray([[0.0, 0.5], [0.75, 1.0]], dtype=np.float32),
-                points_uv=np.asarray(
-                    ((-0.5, 0.5), (0.5, -0.5)), dtype=np.float64
-                )[: counts[camera_id]],
+                points_uv=measured[camera_id],
                 projected_probabilities=np.full(
                     counts[camera_id], 0.75, dtype=np.float32
                 ),
@@ -1226,6 +1249,37 @@ def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
                 included_in_aggregate=camera_id in observed,
             )
             for camera_id in selection.camera_prefix_ids
+        ),
+    )
+
+
+def _alignment_trace() -> AlignmentTrace:
+    candidate_ids = ("candidate-0", "candidate-1")
+    centers = (-8.0, 8.0)
+    scores = (0.9, 0.8)
+    return AlignmentTrace(
+        final_candidate_ids=candidate_ids,
+        steps=tuple(
+            AlignmentTraceStep(
+                step_index=step_index,
+                phase=phase,
+                candidates=tuple(
+                    AlignmentTraceCandidateState(
+                        candidate_id=candidate_id,
+                        center_uv_metres=(centers[index], 0.0),
+                        orientation_radians=0.0,
+                        nht_scene_units_per_metre=1.0,
+                        template_score=scores[index],
+                        orientation_band_index=0,
+                        center_tile_index=0,
+                        residual_point_count_before_suppression=100,
+                        residual_point_count_after_suppression=50,
+                    )
+                    for index, candidate_id in enumerate(candidate_ids)
+                ),
+                score_sum=sum(scores),
+            )
+            for step_index, phase in enumerate(AlignmentTracePhase)
         ),
     )
 

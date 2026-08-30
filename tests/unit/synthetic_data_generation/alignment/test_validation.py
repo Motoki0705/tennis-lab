@@ -29,6 +29,7 @@ from src.synthetic_data_generation.alignment.heatmaps import (
 from src.synthetic_data_generation.alignment.settings import WholeCourtEvidenceSettings
 from src.synthetic_data_generation.alignment.validation import (
     load_accepted_layout,
+    load_alignment_evidence,
     validate_alignment_outputs,
     validate_court_transform_binding,
     validate_projection_equivalence,
@@ -129,6 +130,83 @@ def test_ground_line_archive_rejects_wrong_dtype(
         validate_alignment_outputs(staging)
 
 
+def test_evaluated_alignment_rejects_heatmap_plane_binding_drift(
+    alignment_evidence: AlignmentEvidence,
+    alignment_policy: AlignmentAcceptancePolicy,
+) -> None:
+    heatmaps = _line_heatmaps(alignment_evidence)
+    drifted = replace(
+        heatmaps,
+        bounds_uv=(
+            heatmaps.bounds_uv[0] - 1.0,
+            heatmaps.bounds_uv[1],
+            heatmaps.bounds_uv[2],
+            heatmaps.bounds_uv[3],
+        ),
+    )
+
+    with pytest.raises(ValueError, match="ground-plane bounds"):
+        EvaluatedAlignment(
+            evidence=alignment_evidence,
+            result=fit_alignment(alignment_evidence, policy=alignment_policy),
+            heatmaps=drifted,
+        )
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    (
+        ("missing-plane", "archive keys do not match"),
+        ("reordered-trace", "reordered"),
+        ("nonorthonormal-plane", "orthonormal"),
+        ("foreign-plane", "disagrees with the metric ground plane"),
+    ),
+)
+def test_ground_line_archive_rejects_missing_or_mismatched_alignment_diagnostics(
+    tmp_path: Path,
+    alignment_evidence: AlignmentEvidence,
+    alignment_policy: AlignmentAcceptancePolicy,
+    mutation: str,
+    message: str,
+) -> None:
+    result = fit_alignment(alignment_evidence, policy=alignment_policy)
+    staging = tmp_path / mutation
+    staging.mkdir()
+    write_alignment_outputs(
+        staging,
+        evidence=alignment_evidence,
+        result=result,
+        heatmaps=_line_heatmaps(alignment_evidence),
+    )
+    archive_path = staging / "ground-line-map.npz"
+    assert load_alignment_evidence(archive_path).alignment_trace == (
+        alignment_evidence.alignment_trace
+    )
+    with np.load(archive_path, allow_pickle=False) as loaded:
+        arrays = {name: np.asarray(loaded[name]) for name in loaded.files}
+    if mutation == "missing-plane":
+        del arrays["ground_plane_frame_json"]
+    elif mutation == "reordered-trace":
+        trace = json.loads(str(arrays["diagnostic_alignment_trace_json"].item()))
+        trace["steps"][1], trace["steps"][2] = trace["steps"][2], trace["steps"][1]
+        arrays["diagnostic_alignment_trace_json"] = np.asarray(
+            json.dumps(trace, sort_keys=True, separators=(",", ":"))
+        )
+    else:
+        plane = json.loads(str(arrays["ground_plane_frame_json"].item()))
+        if mutation == "nonorthonormal-plane":
+            plane["basis_v_metric_scene"] = plane["basis_u_metric_scene"]
+        else:
+            plane["origin_metric_scene"][2] = 1.0
+        arrays["ground_plane_frame_json"] = np.asarray(
+            json.dumps(plane, sort_keys=True, separators=(",", ":"))
+        )
+    np.savez_compressed(archive_path, **arrays)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match=message):
+        validate_alignment_outputs(staging)
+
+
 def test_current_ground_line_archive_requires_whole_court_policy(
     tmp_path: Path,
     alignment_evidence: AlignmentEvidence,
@@ -223,7 +301,7 @@ def test_excluded_camera_diagnostics_round_trip_and_reject_reason_tampering(
     )
 
     assert validated.to_dict() == result.to_dict()
-    assert persisted_evidence["schema"] == "alignment_measured_evidence_v8"
+    assert persisted_evidence["schema"] == "alignment_measured_evidence_v9"
     assert persisted_evidence["excluded_cameras"] == [
         item.to_dict() for item in exclusions
     ]
@@ -674,8 +752,14 @@ def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
         }
     )
     observed = set(selection.observed_camera_ids)
+    measured = {
+        item.camera_id: evidence.ground_plane_frame.to_uv(
+            evidence.metric_adapter.metric_from_nht_points(item.points_nht_scene)
+        )
+        for item in evidence.measured_camera_lines
+    }
     return AlignmentLineHeatmaps(
-        bounds_uv=(-1.0, 1.0, -1.0, 1.0),
+        bounds_uv=evidence.ground_plane_frame.bounds_uv_metres,
         grid_spacing=0.25,
         proximity_scale=0.35,
         proximity_power=2.0,
@@ -686,12 +770,15 @@ def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
                     [[0.0, 0.25], [0.5, 1.0]],
                     dtype=np.float32,
                 ),
-                points_uv=np.column_stack(
-                    (
-                        np.linspace(-0.9, 0.9, projected_counts[camera_id]),
-                        np.linspace(0.9, -0.9, projected_counts[camera_id]),
-                    )
-                ).astype(np.float64),
+                points_uv=measured.get(
+                    camera_id,
+                    np.column_stack(
+                        (
+                            np.linspace(-0.9, 0.9, projected_counts[camera_id]),
+                            np.linspace(0.9, -0.9, projected_counts[camera_id]),
+                        )
+                    ).astype(np.float64),
+                ),
                 projected_probabilities=np.linspace(
                     0.5,
                     1.0,

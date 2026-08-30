@@ -27,6 +27,10 @@ from src.synthetic_data_generation.alignment.contracts import (
     AlignmentEvidence,
     AlignmentEvidenceDiagnostics,
     AlignmentPartitions,
+    AlignmentTrace,
+    AlignmentTraceCandidateState,
+    AlignmentTracePhase,
+    AlignmentTraceStep,
     CameraEvidencePartition,
     CameraExclusionReason,
     CameraLineDiagnostics,
@@ -38,12 +42,16 @@ from src.synthetic_data_generation.alignment.contracts import (
     EvaluatedAlignment,
     ExcludedCameraDiagnostics,
     FixedCameraSelectionDiagnostics,
+    GroundPlaneFrame,
     LineInferenceDeterminismDiagnostics,
     MeasuredCameraLines,
     MetricSceneAdapter,
     ProposalSearchDiagnostics,
 )
-from src.synthetic_data_generation.alignment.fitting import fit_alignment
+from src.synthetic_data_generation.alignment.fitting import (
+    fit_alignment,
+    fit_rigid_transform,
+)
 from src.synthetic_data_generation.alignment.handler import AlignmentStageHandler
 from src.synthetic_data_generation.alignment.heatmaps import (
     AlignmentLineHeatmaps,
@@ -404,6 +412,17 @@ class _CourtHypothesis:
 
 
 @dataclass(frozen=True, slots=True)
+class _CourtFitTrace:
+    """Read-only snapshots collected after selection decisions are complete."""
+
+    selected_proposals: tuple[_CourtHypothesis, ...]
+    native_refined: tuple[_CourtHypothesis, ...]
+    common_scale_refitted: tuple[_CourtHypothesis, ...]
+    orientation_band_indices: tuple[int, ...]
+    center_tile_indices: tuple[int, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class _NativeProposal:
     """One orientation-band optimum over the current residual evidence."""
 
@@ -624,7 +643,8 @@ class MeasuredAlignmentEvidenceSource:
             camera_prefix=selected,
             probabilities=probabilities,
             projected_by_camera=projected_by_camera,
-            plane=plane,
+            metric_adapter=evidence.metric_adapter,
+            ground_plane_frame=evidence.ground_plane_frame,
             settings=self._settings.projection,
             aggregate_camera_ids=selection.observed_camera_ids,
         )
@@ -640,22 +660,26 @@ def _alignment_line_heatmaps(
     camera_prefix: tuple[SceneCamera, ...],
     probabilities: Mapping[str, NDArray[np.float32]],
     projected_by_camera: Mapping[str, _ProjectedLineEvidence],
-    plane: _GroundPlane,
+    metric_adapter: MetricSceneAdapter,
+    ground_plane_frame: GroundPlaneFrame,
     settings: LineProjectionSettings,
     aggregate_camera_ids: tuple[str, ...],
 ) -> AlignmentLineHeatmaps:
     """Bind every selected raw view to its weighted common-ground projection."""
     aggregate_ids = set(aggregate_camera_ids)
+    scale = metric_adapter.nht_scene_units_per_metre
     return AlignmentLineHeatmaps(
-        bounds_uv=_projection_bounds(plane, settings=settings),
-        grid_spacing=settings.grid_spacing,
-        proximity_scale=settings.proximity_scale,
+        bounds_uv=ground_plane_frame.bounds_uv_metres,
+        grid_spacing=settings.grid_spacing / scale,
+        proximity_scale=settings.proximity_scale / scale,
         proximity_power=settings.proximity_power,
         views=tuple(
             AlignmentLineHeatmapView(
                 camera_id=camera.camera_id,
                 probability=probabilities[camera.camera_id],
-                points_uv=projected_by_camera[camera.camera_id].points_uv,
+                points_uv=(
+                    projected_by_camera[camera.camera_id].points_uv / scale
+                ),
                 projected_probabilities=(
                     projected_by_camera[camera.camera_id].probabilities
                 ),
@@ -693,7 +717,7 @@ def _alignment_evidence_for_fixed_selection(
             for camera in fit_cameras
         ]
     )
-    hypotheses, common_scale, maximum_deviation, proposal_search = (
+    hypotheses, common_scale, maximum_deviation, proposal_search, fit_trace = (
         _fit_court_hypotheses(
         fit_points_uv,
         bounds=plane.support_uv_bounds,
@@ -705,6 +729,17 @@ def _alignment_evidence_for_fixed_selection(
     nht_from_metric[:3, :3] *= common_scale
     metric_adapter = MetricSceneAdapter.from_nht_scene_from_metric_scene(
         nht_from_metric
+    )
+    ground_plane_frame = GroundPlaneFrame.from_nht_frame(
+        metric_adapter=metric_adapter,
+        origin_nht_scene=plane.origin,
+        basis_u_nht_scene=plane.basis_u,
+        basis_v_nht_scene=plane.basis_v,
+        normal_nht_scene=plane.normal,
+        bounds_uv_nht_scene=_projection_bounds(
+            plane,
+            settings=settings.projection,
+        ),
     )
     assigned_by_candidate = _assign_candidate_evidence(
         hypotheses,
@@ -724,6 +759,12 @@ def _alignment_evidence_for_fixed_selection(
         )
         for hypothesis in hypotheses
     )
+    alignment_trace = _alignment_trace(
+        fit_trace,
+        candidates=candidates,
+        ground_plane_frame=ground_plane_frame,
+        common_scale=common_scale,
+    )
     diagnostics = AlignmentEvidenceDiagnostics(
         cameras=tuple(
             CameraLineDiagnostics(
@@ -742,6 +783,14 @@ def _alignment_evidence_for_fixed_selection(
                 candidate_id=hypothesis.candidate_id,
                 nht_scene_units_per_metre=(hypothesis.native_nht_scene_units_per_metre),
                 template_score=hypothesis.native_template_score,
+                common_scale_refit_template_score=hypothesis.template_score,
+                common_scale_refit_center_uv_metres=(
+                    hypothesis.center_uv[0] / common_scale,
+                    hypothesis.center_uv[1] / common_scale,
+                ),
+                common_scale_refit_orientation_radians=(
+                    hypothesis.orientation_radians
+                ),
                 common_scale_refit_center_displacement_metres=(
                     hypothesis.common_scale_refit_center_displacement_metres
                 ),
@@ -760,7 +809,10 @@ def _alignment_evidence_for_fixed_selection(
                 proposal_residual_point_count_after_suppression=(
                     hypothesis.proposal_residual_point_count_after_suppression
                 ),
-                native_center_uv=hypothesis.native_center_uv,
+                native_center_uv_metres=(
+                    hypothesis.native_center_uv[0] / common_scale,
+                    hypothesis.native_center_uv[1] / common_scale,
+                ),
                 native_orientation_radians=hypothesis.native_orientation_radians,
             )
             for hypothesis in hypotheses
@@ -783,6 +835,8 @@ def _alignment_evidence_for_fixed_selection(
         determinism=determinism,
         proposal_search=proposal_search,
         excluded_cameras=excluded_cameras,
+        ground_plane_frame=ground_plane_frame,
+        alignment_trace=alignment_trace,
     )
     return AlignmentEvidence(
         partitions=AlignmentPartitions(
@@ -807,6 +861,110 @@ def _alignment_evidence_for_fixed_selection(
             minimum_matches_per_offset_level=(
                 settings.correspondences.minimum_correspondences_per_camera
             )
+        ),
+    )
+
+
+def _alignment_trace(
+    trace: _CourtFitTrace,
+    *,
+    candidates: tuple[CandidateEvidence, ...],
+    ground_plane_frame: GroundPlaneFrame,
+    common_scale: float,
+) -> AlignmentTrace:
+    """Convert optimizer snapshots to metric UV after all ranking is complete."""
+    candidate_ids = tuple(item.candidate_id for item in candidates)
+    if not (
+        len(candidate_ids)
+        == len(trace.selected_proposals)
+        == len(trace.native_refined)
+        == len(trace.common_scale_refitted)
+        == len(trace.orientation_band_indices)
+        == len(trace.center_tile_indices)
+    ):
+        raise RuntimeError("Alignment trace snapshots lost candidate correspondence.")
+
+    def hypothesis_states(
+        hypotheses: tuple[_CourtHypothesis, ...],
+    ) -> tuple[AlignmentTraceCandidateState, ...]:
+        return tuple(
+            AlignmentTraceCandidateState(
+                candidate_id=candidate_id,
+                center_uv_metres=(
+                    hypothesis.center_uv[0] / common_scale,
+                    hypothesis.center_uv[1] / common_scale,
+                ),
+                orientation_radians=hypothesis.orientation_radians,
+                nht_scene_units_per_metre=(
+                    hypothesis.nht_scene_units_per_metre
+                ),
+                template_score=hypothesis.template_score,
+                orientation_band_index=trace.orientation_band_indices[index],
+                center_tile_index=trace.center_tile_indices[index],
+                residual_point_count_before_suppression=(
+                    hypothesis.proposal_residual_point_count_before_suppression
+                ),
+                residual_point_count_after_suppression=(
+                    hypothesis.proposal_residual_point_count_after_suppression
+                ),
+            )
+            for index, (candidate_id, hypothesis) in enumerate(
+                zip(candidate_ids, hypotheses, strict=True)
+            )
+        )
+
+    common_refit_states = hypothesis_states(trace.common_scale_refitted)
+    basis_u = np.asarray(ground_plane_frame.basis_u_metric_scene, dtype=np.float64)
+    basis_v = np.asarray(ground_plane_frame.basis_v_metric_scene, dtype=np.float64)
+    final_states: list[AlignmentTraceCandidateState] = []
+    for index, (candidate, refit_state) in enumerate(
+        zip(candidates, common_refit_states, strict=True)
+    ):
+        final_transform = fit_rigid_transform(candidate.fit).matrix()
+        center_uv = ground_plane_frame.to_uv(final_transform[None, :3, 3])[0]
+        court_x = final_transform[:3, 0]
+        final_states.append(
+            AlignmentTraceCandidateState(
+                candidate_id=candidate.candidate_id,
+                center_uv_metres=(float(center_uv[0]), float(center_uv[1])),
+                orientation_radians=math.atan2(
+                    float(court_x @ basis_v),
+                    float(court_x @ basis_u),
+                ),
+                nht_scene_units_per_metre=common_scale,
+                template_score=refit_state.template_score,
+                orientation_band_index=trace.orientation_band_indices[index],
+                center_tile_index=trace.center_tile_indices[index],
+                residual_point_count_before_suppression=(
+                    refit_state.residual_point_count_before_suppression
+                ),
+                residual_point_count_after_suppression=(
+                    refit_state.residual_point_count_after_suppression
+                ),
+            )
+        )
+    phase_states = (
+        (
+            AlignmentTracePhase.PROPOSAL_SELECTION,
+            hypothesis_states(trace.selected_proposals),
+        ),
+        (
+            AlignmentTracePhase.NATIVE_REFINEMENT,
+            hypothesis_states(trace.native_refined),
+        ),
+        (AlignmentTracePhase.COMMON_SCALE_REFIT, common_refit_states),
+        (AlignmentTracePhase.FINAL_ALIGNMENT, tuple(final_states)),
+    )
+    return AlignmentTrace(
+        final_candidate_ids=candidate_ids,
+        steps=tuple(
+            AlignmentTraceStep(
+                step_index=index,
+                phase=phase,
+                candidates=states,
+                score_sum=math.fsum(item.template_score for item in states),
+            )
+            for index, (phase, states) in enumerate(phase_states)
         ),
     )
 
@@ -1392,7 +1550,13 @@ def _fit_court_hypotheses(
     bounds: tuple[float, float, float, float],
     seed: int,
     settings: CourtCandidateFitSettings,
-) -> tuple[tuple[_CourtHypothesis, ...], float, float, ProposalSearchDiagnostics]:
+) -> tuple[
+    tuple[_CourtHypothesis, ...],
+    float,
+    float,
+    ProposalSearchDiagnostics,
+    _CourtFitTrace,
+]:
     """Exhaust bounded topology-aware residual states, then refit at one scale."""
     points = np.asarray(fit_points_uv, dtype=np.float64)
     if points.ndim != 2 or points.shape[1] != 2 or not np.isfinite(points).all():
@@ -1696,8 +1860,7 @@ def _fit_court_hypotheses(
         explained_count,
         native_score_sum,
     ) = complete_states[0]
-    native_hypotheses = list(
-        _refine_selected_native_hypotheses(
+    native_refined_by_branch = _refine_selected_native_hypotheses(
             selected_state,
             points=points,
             template=template,
@@ -1706,7 +1869,7 @@ def _fit_court_hypotheses(
             seed=seed,
             settings=settings,
         )
-    )
+    native_hypotheses = list(native_refined_by_branch)
     common_scale, maximum_deviation = _resolve_common_scale(
         np.asarray(
             [
@@ -1736,32 +1899,33 @@ def _fit_court_hypotheses(
     native_score_sum = float(
         sum(item.native_template_score for item in native_hypotheses)
     )
-    native_hypotheses = sorted(native_hypotheses, key=_hypothesis_sort_key)
-    native_hypotheses = [
-        _CourtHypothesis(
-            candidate_id=f"candidate-{index:03d}",
-            center_uv=item.center_uv,
-            orientation_radians=item.orientation_radians,
-            nht_scene_units_per_metre=item.nht_scene_units_per_metre,
-            template_score=item.template_score,
-            native_nht_scene_units_per_metre=(item.native_nht_scene_units_per_metre),
-            native_template_score=item.native_template_score,
-            native_center_uv=item.native_center_uv,
-            native_orientation_radians=item.native_orientation_radians,
-            common_scale_refit_center_displacement_metres=0.0,
-            maximum_common_scale_refit_center_displacement_metres=(
-                item.maximum_common_scale_refit_center_displacement_metres
-            ),
-            proposal_orientation_band_radians=(item.proposal_orientation_band_radians),
-            proposal_residual_point_count_before_suppression=(
-                item.proposal_residual_point_count_before_suppression
-            ),
-            proposal_residual_point_count_after_suppression=(
-                item.proposal_residual_point_count_after_suppression
-            ),
+    ordered_branch_indices = tuple(
+        sorted(
+            range(len(native_hypotheses)),
+            key=lambda index: _hypothesis_sort_key(native_hypotheses[index]),
         )
+    )
+    native_hypotheses = [native_hypotheses[index] for index in ordered_branch_indices]
+    native_hypotheses = [
+        _rename_hypothesis(item, candidate_id=f"candidate-{index:03d}")
         for index, item in enumerate(native_hypotheses)
     ]
+    selected_proposals = tuple(
+        _rename_hypothesis(
+            selected_state.selected[branch_index],
+            candidate_id=f"candidate-{index:03d}",
+        )
+        for index, branch_index in enumerate(ordered_branch_indices)
+    )
+    native_refined = tuple(native_hypotheses)
+    selected_orientation_band_indices = tuple(
+        selected_state.orientation_band_indices[index]
+        for index in ordered_branch_indices
+    )
+    selected_center_tile_indices = tuple(
+        selected_state.center_tile_indices[index]
+        for index in ordered_branch_indices
+    )
 
     refitted: list[_CourtHypothesis] = []
     maximum_displacement_metres = settings.maximum_center_refit_displacement_metres()
@@ -1861,16 +2025,21 @@ def _fit_court_hypotheses(
         retained_proposal_count=retained_proposal_count,
         expanded_state_count=expanded_state_count,
         feasible_complete_state_count=len(complete_states),
-        selected_orientation_band_indices=(
-            selected_state.orientation_band_indices
-        ),
-        selected_center_tile_indices=selected_state.center_tile_indices,
+        selected_orientation_band_indices=selected_orientation_band_indices,
+        selected_center_tile_indices=selected_center_tile_indices,
         original_point_count=len(original_points),
         selected_residual_point_count=len(original_points) - explained_count,
         selected_explained_point_count=explained_count,
         selected_native_score_sum=native_score_sum,
     )
-    return tuple(refitted), common_scale, maximum_deviation, proposal_search
+    trace = _CourtFitTrace(
+        selected_proposals=selected_proposals,
+        native_refined=native_refined,
+        common_scale_refitted=tuple(refitted),
+        orientation_band_indices=selected_orientation_band_indices,
+        center_tile_indices=selected_center_tile_indices,
+    )
+    return tuple(refitted), common_scale, maximum_deviation, proposal_search, trace
 
 
 def _refine_selected_native_hypotheses(
@@ -2566,6 +2735,42 @@ def _hypothesis_sort_key(
         hypothesis.native_center_uv[1],
         hypothesis.orientation_radians,
         hypothesis.native_nht_scene_units_per_metre,
+    )
+
+
+def _rename_hypothesis(
+    hypothesis: _CourtHypothesis,
+    *,
+    candidate_id: str,
+) -> _CourtHypothesis:
+    """Attach the final canonical ID without changing optimizer state."""
+    return _CourtHypothesis(
+        candidate_id=candidate_id,
+        center_uv=hypothesis.center_uv,
+        orientation_radians=hypothesis.orientation_radians,
+        nht_scene_units_per_metre=hypothesis.nht_scene_units_per_metre,
+        template_score=hypothesis.template_score,
+        native_nht_scene_units_per_metre=(
+            hypothesis.native_nht_scene_units_per_metre
+        ),
+        native_template_score=hypothesis.native_template_score,
+        native_center_uv=hypothesis.native_center_uv,
+        native_orientation_radians=hypothesis.native_orientation_radians,
+        common_scale_refit_center_displacement_metres=(
+            hypothesis.common_scale_refit_center_displacement_metres
+        ),
+        maximum_common_scale_refit_center_displacement_metres=(
+            hypothesis.maximum_common_scale_refit_center_displacement_metres
+        ),
+        proposal_orientation_band_radians=(
+            hypothesis.proposal_orientation_band_radians
+        ),
+        proposal_residual_point_count_before_suppression=(
+            hypothesis.proposal_residual_point_count_before_suppression
+        ),
+        proposal_residual_point_count_after_suppression=(
+            hypothesis.proposal_residual_point_count_after_suppression
+        ),
     )
 
 
