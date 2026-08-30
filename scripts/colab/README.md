@@ -5,16 +5,16 @@
 対象ブランチをcheckoutしたColabのGPUランタイムで、次の1コマンドを実行する。
 
 ```bash
-!bash scripts/colab/run_b01_b03_alignment.sh
+!bash scripts/colab/train/20260829T150257Z/run_b01_b03_alignment.sh
 ```
 
-`run_b01_b03_alignment.sh`はGoogle Driveのmount、locked依存関係、NHT、DINOv3、入力配置をすべて処理する。GPUでB01→B02→B03の`ingest → reconstruction`を逐次実行し、その裏で直前シーンのラインモデルも同じGPUを共有して推論する。ライン投影後の幾何学的`alignment`はCPU実行する。各シーンはalignmentで終了し、datasetとreportは生成しない。終了時にはraw・視点別weighted・weighted射影のラインヒートマップを本体validatorで再検証する。
+`train/20260829T150257Z/run_b01_b03_alignment.sh`は今回の検証実行を再現するtimestamp固定の入口で、Google Driveのmount、locked依存関係、NHT、DINOv3、入力配置をすべて処理する。GPUでB01→B02→B03の`ingest → reconstruction`を逐次実行し、その裏で直前シーンのラインモデルも同じGPUを共有して推論する。ライン投影後の幾何学的`alignment`はCPU実行する。各シーンはalignmentで終了し、datasetとreportは生成しない。終了時にはraw・視点別weighted・weighted射影のラインヒートマップを本体validatorで再検証する。
 
 入力動画、ライン検出checkpoint、DINOv3 checkpointは`/content/drive/MyDrive/tennis_lab/`配下から読み、固定SHA-256と一致しない入力は実行前に拒否する。学習とatomic publishはColab VMのローカルfilesystemで行う。各GPU学習の完了直後に`reconstruction/`をシーンごとのDrive出力へ確定保存し、検証を通過した`alignment/`を同じ出力へ追記する。
 
 court detectionの生確率マップは`<scene>/court-line-inference/<fingerprint>/`へ視点単位で原子的にキャッシュする。fingerprintはモデル・backbone・前処理・実行deviceだけに依存し、後段の投影、コート数探索、受理閾値を変更しても再推論しない。各NPY、閲覧用PNG、進捗manifestは生成直後にDriveの同名ディレクトリへミラーし、各alignment試行ログも`alignment-attempts/`へ保存する。
 
-Colab実行では固定カメラprefixを72視点（fit 48、holdout 24）へ拡張する。既存prefixと同じnested-uniform順序を保つため、48視点キャッシュがある場合は先頭48視点を再利用し、追加24視点だけを推論する。
+Colab実行では固定カメラprefixを72視点へ拡張する。設定済み48視点をfit 32・holdout 16へ固定分割し、追加24視点は再選択や再fitに使わずholdout tailへ割り当てるため、最終分割はfit 32・holdout 40となる。既存prefixと同じnested-uniform順序を保つため、48視点キャッシュがある場合は先頭48視点を再利用し、追加24視点だけを推論する。
 
 ```text
 /content/drive/MyDrive/tennis_lab/outputs/synthetic_data_generation/
@@ -24,7 +24,7 @@ Colab実行では固定カメラprefixを72視点（fit 48、holdout 24）へ拡
 Drive/GPUを使わずコマンド契約だけ確認する場合は、次を実行する。
 
 ```bash
-!bash scripts/colab/run_b01_b03_alignment.sh --dry-run
+!bash scripts/colab/train/20260829T150257Z/run_b01_b03_alignment.sh --dry-run
 ```
 
 ## Setup modules

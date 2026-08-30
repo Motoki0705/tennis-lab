@@ -83,14 +83,21 @@ def _build_court_handler(
 def _build_blcs_handler(
     runtime: ScenePipelineConfiguration,
 ) -> StageHandler[StageExecutionSummary]:
+    from src.synthetic_data_generation.dataset.blcs.contracts import BLCSBallRendering
     from src.synthetic_data_generation.dataset.blcs.handler import (
         BLCSDatasetStageHandler,
     )
-    from src.synthetic_data_generation.dataset.blcs.rendering import BLCSNHTRenderer
+    from src.synthetic_data_generation.dataset.blcs.rendering import (
+        BLCSMeshNHTRenderer,
+        BLCSNHTRenderer,
+    )
     from src.synthetic_data_generation.dataset.blcs.source import (
         PhysicsBLCSTrajectoryProvider,
     )
-    from src.synthetic_data_generation.rendering.nht import NHTComposedRenderClient
+    from src.synthetic_data_generation.rendering.nht import (
+        NHTComposedRenderClient,
+        NHTRenderClient,
+    )
 
     nht = runtime.nht
     return cast(
@@ -105,14 +112,26 @@ def _build_blcs_handler(
                 generator_config=runtime.blcs.generator,
                 settings=runtime.blcs.trajectory_source,
             ),
-            renderer=BLCSNHTRenderer(
-                assets=runtime.blcs.assets,
-                client=NHTComposedRenderClient(),
-                executable=nht.render_executable,
-                environment=dict(nht.environment),
-                timeout_seconds=runtime.blcs.render_timeout_seconds,
-                execution_device=runtime.blcs.performance.execution_device,
-                maximum_batch_frames=runtime.blcs.performance.maximum_batch_frames,
+            renderer=(
+                BLCSNHTRenderer(
+                    assets=runtime.blcs.assets,
+                    client=NHTComposedRenderClient(),
+                    executable=nht.render_executable,
+                    environment=dict(nht.environment),
+                    timeout_seconds=runtime.blcs.render_timeout_seconds,
+                    execution_device=runtime.blcs.performance.execution_device,
+                    maximum_batch_frames=runtime.blcs.performance.maximum_batch_frames,
+                )
+                if runtime.blcs.assets.rendering is BLCSBallRendering.GAUSSIAN
+                else BLCSMeshNHTRenderer(
+                    assets=runtime.blcs.assets,
+                    client=NHTRenderClient(),
+                    executable=nht.render_executable,
+                    environment=dict(nht.environment),
+                    timeout_seconds=runtime.blcs.render_timeout_seconds,
+                    execution_device=runtime.blcs.performance.execution_device,
+                    maximum_batch_frames=runtime.blcs.performance.maximum_batch_frames,
+                )
             ),
         ),
     )

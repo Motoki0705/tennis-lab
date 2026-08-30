@@ -26,7 +26,7 @@ NHT_TOOL_ENVIRONMENT = "nht"
 NHT_PYTHON_VERSION = "3.11"
 NHT_TORCH_VERSION = "2.9.1"
 NHT_TORCHVISION_VERSION = "0.24.1"
-NHT_TORCH_BACKEND = "cu128"
+NHT_TORCH_BACKEND = "cu130"
 NHT_TINYCUDANN_REQUIREMENT = (
     "tinycudann @ git+https://github.com/NVlabs/tiny-cuda-nn/"
     "@749dd70c5afc5a9dadb85e5652ed65d55e0ba187#subdirectory=bindings/torch"

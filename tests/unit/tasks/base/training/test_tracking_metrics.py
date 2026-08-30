@@ -3,10 +3,15 @@ from __future__ import annotations
 import pytest
 import torch
 
+from src.tasks.base.training.metric_logging import (
+    MetricStatisticsAccumulator,
+    ScalarMetricStatistic,
+)
 from src.tasks.base.training.tracking_metrics import (
     TrackingMetricConfig,
     _gated_one_to_one_assignment,
     common_lifecycle_tracking_metrics,
+    common_lifecycle_tracking_statistics,
 )
 from src.utils.configuration import (
     ConfigurationTypeError,
@@ -100,9 +105,8 @@ def test_metrics_measure_two_segments_as_one_legal_query_reuse() -> None:
 
     assert metrics["birth_frame_error"].item() == 0.0
     assert metrics["death_frame_error"].item() == 0.0
-    assert metrics["lifecycle_presence_f1"].item() == 1.0
+    assert metrics["presence_f1"].item() == 1.0
     assert metrics["query_reuse_count"].item() == 1.0
-    assert metrics["segment_id_switches"].item() == 0.0
     assert metrics["id_switches"].item() == 0.0
     assert metrics["illegal_overlap_count"].item() == 0.0
 
@@ -163,7 +167,6 @@ def test_id_switch_assignment_handles_stability_replacement_and_gate(
     )
 
     assert metrics["id_switches"].item() == expected_switches
-    assert metrics["segment_id_switches"].item() == expected_switches
     assert metrics["query_reuse_count"].item() == 0.0
 
 
@@ -431,7 +434,6 @@ def test_all_additive_counts_are_reported_as_per_sequence_means() -> None:
     expected = {
         "query_reuse_count": 1.0,
         "illegal_overlap_count": 1.0,
-        "segment_id_switches": 1.0,
         "id_switches": 1.0,
         "duplicate_active_tracks": 1.0,
         "missed_gt_frames": 3.0,
@@ -441,7 +443,6 @@ def test_all_additive_counts_are_reported_as_per_sequence_means() -> None:
     for name, expected_value in expected.items():
         assert single[name].item() == expected_value
         torch.testing.assert_close(repeated[name], single[name])
-    assert repeated["id_switches"] is repeated["segment_id_switches"]
 
 
 def test_actual_count_metrics_are_invariant_for_heterogeneous_short_batches() -> None:
@@ -449,7 +450,6 @@ def test_actual_count_metrics_are_invariant_for_heterogeneous_short_batches() ->
     count_keys = (
         "query_reuse_count",
         "illegal_overlap_count",
-        "segment_id_switches",
         "id_switches",
         "duplicate_active_tracks",
         "missed_gt_frames",
@@ -481,14 +481,76 @@ def test_common_metric_key_contract_matches_the_baseline_inventory() -> None:
         "presence_precision",
         "presence_recall",
         "presence_f1",
-        "lifecycle_presence_f1",
         "birth_frame_error",
         "death_frame_error",
         "query_reuse_count",
         "illegal_overlap_count",
-        "segment_id_switches",
         "id_switches",
         "duplicate_active_tracks",
         "missed_gt_frames",
         "inactive_query_false_positives",
     }
+
+
+def _heterogeneous_statistics(
+    indices: list[int],
+) -> dict[str, ScalarMetricStatistic]:
+    target_position = torch.zeros(3, 4, 1, 3)
+    prediction_position = torch.zeros(3, 4, 2, 3)
+    prediction_position[0, :, 0, 0] = 1.0
+    prediction_position[1, 0, 0, 0] = 10.0
+    target_presence = torch.zeros(3, 4, 1, dtype=torch.bool)
+    target_presence[0, :, 0] = True
+    target_presence[1, 0, 0] = True
+    target_instance_id = torch.full((3, 4, 1), -1, dtype=torch.long)
+    target_instance_id[0, :, 0] = 10
+    target_instance_id[1, 0, 0] = 20
+    frame_mask = torch.zeros(3, 4, dtype=torch.bool)
+    frame_mask[0] = True
+    frame_mask[1, 0] = True
+    pred_active = torch.zeros(3, 4, 2, dtype=torch.bool)
+    pred_active[0, 0, 0] = True
+    pred_active[1, 0] = True
+    index = torch.tensor(indices, dtype=torch.long)
+    return common_lifecycle_tracking_statistics(
+        {
+            "position": prediction_position[index],
+            "presence_logits": torch.where(
+                pred_active[index],
+                torch.tensor(20.0),
+                torch.tensor(-20.0),
+            ),
+        },
+        {
+            "target_position": target_position[index],
+            "target_presence": target_presence[index],
+            "target_instance_id": target_instance_id[index],
+            "frame_mask": frame_mask[index],
+        },
+        [(torch.tensor([0]), torch.tensor([0])) for _ in indices],
+        config=TrackingMetricConfig(
+            presence_threshold=0.5,
+            duplicate_distance=0.05,
+            id_switch_distance=0.05,
+        ),
+    )
+
+
+def test_common_statistics_are_partition_and_padding_invariant() -> None:
+    together = MetricStatisticsAccumulator()
+    together.update(_heterogeneous_statistics([0, 1]))
+    split = MetricStatisticsAccumulator()
+    split.update(_heterogeneous_statistics([0]))
+    split.update(_heterogeneous_statistics([1]))
+    with_padding = MetricStatisticsAccumulator()
+    with_padding.update(_heterogeneous_statistics([0, 1, 2]))
+
+    assert split.compute() == pytest.approx(together.compute())
+    assert with_padding.compute() == pytest.approx(together.compute())
+    computed = together.compute()
+    assert computed["position_error"] == pytest.approx(14.0 / 5.0)
+    assert computed["presence_f1"] == pytest.approx(4.0 / 8.0)
+    assert computed["presence_precision"] == pytest.approx(2.0 / 3.0)
+    assert computed["presence_recall"] == pytest.approx(2.0 / 5.0)
+    assert computed["missed_gt_frames"] == pytest.approx(3.0 / 2.0)
+    assert computed["inactive_query_false_positives"] == pytest.approx(1.0 / 2.0)

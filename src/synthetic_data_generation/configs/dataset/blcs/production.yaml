@@ -114,6 +114,14 @@ generator:
     net_post_offset_x_range: [-0.3, 0.914]
 
 assets:
+  rendering: gaussian
+  mesh:
+    # Data-root-relative .glb path. It must remain null unless rendering=mesh.
+    path: null
+    maximum_file_bytes: 33554432
+    maximum_source_vertices: 500000
+    maximum_source_faces: 1000000
+    maximum_faces: 4096
   ball:
     schema: tennis_gaussian_asset_semantic_v1
     asset_id: regulation-tennis-ball

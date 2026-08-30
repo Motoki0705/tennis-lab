@@ -19,7 +19,9 @@ from src.synthetic_data_generation.composition import (
 )
 from src.synthetic_data_generation.dataset.blcs.contracts import (
     BLCS_DATASET_SCHEMA,
+    BLCS_DATASET_SCHEMA_V3,
     BLCS_SAMPLE_SCHEMA,
+    BLCSBallComposition,
     BLCSSampleRecord,
 )
 from src.synthetic_data_generation.dataset.blcs.diagnostics import (
@@ -723,7 +725,11 @@ def validate_blcs_dataset(output_directory: Path) -> BLCSAssemblyResult:
         keys=_DATASET_KEYS,
         name="BLCS dataset",
     )
-    if payload["schema"] != BLCS_DATASET_SCHEMA or payload["domain"] != "blcs":
+    dataset_schema = _string(payload["schema"], name="schema")
+    if (
+        dataset_schema not in {BLCS_DATASET_SCHEMA, BLCS_DATASET_SCHEMA_V3}
+        or payload["domain"] != "blcs"
+    ):
         raise ValueError("Unsupported canonical compact BLCS schema/domain.")
     scene_id = _string(payload["scene_id"], name="scene_id")
     trajectories = tuple(
@@ -831,6 +837,7 @@ def validate_blcs_dataset(output_directory: Path) -> BLCSAssemblyResult:
             )
         _validate_plan_composition(
             plan["composition"],
+            dataset_schema=dataset_schema,
             scene_id=scene_id,
             trajectory_id=trajectory_id,
             track_ids=track_ids,
@@ -1023,7 +1030,7 @@ def validate_blcs_dataset(output_directory: Path) -> BLCSAssemblyResult:
     manifest = DatasetManifest(
         scene_id=scene_id,
         domain=DatasetDomain.BLCS,
-        schema=BLCS_DATASET_SCHEMA,
+        schema=dataset_schema,
         frame_inventory=inventory,
         target_courts=bindings,
         metadata=metadata,
@@ -1058,7 +1065,11 @@ def validate_blcs_dataset_envelope(
         keys=_DATASET_KEYS,
         name="BLCS dataset",
     )
-    if payload["schema"] != BLCS_DATASET_SCHEMA or payload["domain"] != "blcs":
+    dataset_schema = _string(payload["schema"], name="schema")
+    if (
+        dataset_schema not in {BLCS_DATASET_SCHEMA, BLCS_DATASET_SCHEMA_V3}
+        or payload["domain"] != "blcs"
+    ):
         raise ValueError("Unsupported canonical compact BLCS schema/domain.")
     _string(payload["scene_id"], name="scene_id")
     diagnostics = tuple(
@@ -1404,6 +1415,7 @@ def _validated_plan_arrays(
 def _validate_plan_composition(
     value: object,
     *,
+    dataset_schema: str,
     scene_id: str,
     trajectory_id: str,
     track_ids: tuple[str, ...],
@@ -1413,27 +1425,34 @@ def _validate_plan_composition(
     scene_from_court: RigidTransform,
 ) -> None:
     """Bind the published semantic plan to the exact rigid ball trajectory."""
-    composition = GaussianForegroundComposition.from_dict(value)
+    if dataset_schema == BLCS_DATASET_SCHEMA:
+        composition = BLCSBallComposition.from_dict(value)
+    elif dataset_schema == BLCS_DATASET_SCHEMA_V3:
+        composition = GaussianForegroundComposition.from_dict(value)
+        if len(composition.assets) != 1 or composition.assets[0].asset_class != "ball":
+            raise ValueError(
+                "BLCS composition must contain exactly one ball Gaussian asset."
+            )
+    else:
+        raise ValueError("Unsupported canonical compact BLCS schema/domain.")
     if (
         composition.scene_id != scene_id
         or composition.composition_id != f"blcs-{trajectory_id}"
     ):
-        raise ValueError("BLCS Gaussian composition identity is inconsistent.")
-    if len(composition.assets) != 1 or composition.assets[0].asset_class != "ball":
-        raise ValueError("BLCS composition must contain exactly one ball Gaussian asset.")
+        raise ValueError("BLCS ball composition identity is inconsistent.")
     if tuple(item.object_id for item in composition.objects) != track_ids:
-        raise ValueError("BLCS Gaussian objects differ from the trajectory tracks.")
+        raise ValueError("BLCS ball objects differ from the trajectory tracks.")
     if tuple(item.instance_id for item in composition.objects) != tuple(
         range(1, len(track_ids) + 1)
     ):
-        raise ValueError("BLCS Gaussian instance IDs must equal the track order.")
+        raise ValueError("BLCS ball instance IDs must equal the track order.")
     if any(
         item.deformation_kind is not GaussianDeformationKind.RIGID
         for item in composition.objects
     ):
-        raise ValueError("BLCS ball Gaussian objects must use rigid deformation.")
+        raise ValueError("BLCS ball objects must use rigid deformation.")
     if len(composition.frames) != present.shape[0]:
-        raise ValueError("BLCS Gaussian composition frame count is inconsistent.")
+        raise ValueError("BLCS ball composition frame count is inconsistent.")
 
     expected_rotation = scene_from_court.matrix()[:3, :3]
     object_index = {object_id: index for index, object_id in enumerate(track_ids)}
@@ -1445,14 +1464,14 @@ def _validate_plan_composition(
             if bool(present[frame.frame_index, index])
         }
         if set(instances) != expected_ids:
-            raise ValueError("BLCS Gaussian composition presence is inconsistent.")
+            raise ValueError("BLCS ball composition presence is inconsistent.")
         for object_id, instance in instances.items():
             index = object_index[object_id]
             if instance.source_frame_index != track_mappings[index][frame.frame_index]:
-                raise ValueError("BLCS Gaussian source-frame mapping is inconsistent.")
+                raise ValueError("BLCS ball source-frame mapping is inconsistent.")
             transform = instance.scene_from_asset
             if not np.isclose(transform.scale, 1.0, atol=1.0e-12, rtol=0.0):
-                raise ValueError("BLCS ball Gaussian assets must retain metric scale.")
+                raise ValueError("BLCS ball assets must retain metric scale.")
             matrix = transform.rigid.matrix()
             if not np.allclose(
                 matrix[:3, :3], expected_rotation, atol=1.0e-8, rtol=0.0
@@ -1462,7 +1481,9 @@ def _validate_plan_composition(
                 atol=1.0e-8,
                 rtol=0.0,
             ):
-                raise ValueError("BLCS Gaussian rigid placement differs from its trajectory.")
+                raise ValueError(
+                    "BLCS ball rigid placement differs from its trajectory."
+                )
 
 
 def _validate_sample_metadata(

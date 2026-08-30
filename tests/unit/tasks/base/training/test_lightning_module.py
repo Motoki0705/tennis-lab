@@ -8,6 +8,7 @@ smoke suite.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypedDict, cast
@@ -364,14 +365,33 @@ def test_save_test_predictions_preserves_legacy_artifact_location(
     m.collect_test_predictions(None, {"position": torch.zeros(2, 3, 3)})
     m.collect_test_predictions(None, {"position": torch.ones(1, 5, 3)})
 
-    npz_path = m.save_test_predictions(metrics={"mae": 0.1})
+    npz_path = m.save_test_predictions(
+        metrics={"position_error_m": 0.1},
+        diagnostic_metrics={"x_error_m": 0.05, "loss_position": 0.01},
+    )
     assert npz_path is not None
     assert npz_path == tmp_path / "test_predictions" / "pred_test.npz"
     loaded = np.load(npz_path)
     assert loaded["position"].shape == (3, 5, 3)  # batch 2+1, T padded to 5
     assert loaded["scene_ids"].shape == (3,)
-    metrics = (npz_path.parent / "metrics.json").read_text()
-    assert "mae" in metrics
+    metrics = json.loads((npz_path.parent / "metrics.json").read_text())
+    diagnostics = json.loads(
+        (npz_path.parent / "diagnostic_metrics.json").read_text()
+    )
+    assert metrics == {"position_error_m": 0.1}
+    assert diagnostics == {"x_error_m": 0.05, "loss_position": 0.01}
+
+
+def test_save_test_predictions_rejects_headline_diagnostic_overlap(
+    tmp_path: Path,
+) -> None:
+    m = _TinyModule(_config(artifact_root=tmp_path))
+
+    with pytest.raises(ValueError, match="must be disjoint"):
+        m.save_test_predictions(
+            metrics={"position_error_m": 0.1},
+            diagnostic_metrics={"position_error_m": 0.1},
+        )
 
 
 def test_save_test_predictions_isolated_between_queue_repro_dirs(

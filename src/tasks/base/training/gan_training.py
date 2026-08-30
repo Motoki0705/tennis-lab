@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from typing import Any, cast
 
 import torch
@@ -13,6 +14,19 @@ from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 
 from src.tasks.base.configuration import BaseTrainingConfig
 from src.tasks.base.training.gan_loss import LSGANLoss
+from src.tasks.base.training.metric_logging import (
+    MetricLoggingContract,
+    WeightedMetricAccumulator,
+)
+
+
+def loss_component_metrics(losses: Mapping[str, Tensor]) -> dict[str, float]:
+    """Return named component losses without duplicating the aggregate total."""
+    return {
+        f"loss_{name}": float(value.item())
+        for name, value in losses.items()
+        if name != "total"
+    }
 
 
 class ManualGANTrainingStrategy:
@@ -211,7 +225,6 @@ class ManualGANTrainingStrategy:
 
         metrics = {
             **result["metrics"],
-            "loss_hybrid_total": hybrid_loss.detach(),
             "loss_gan_generator": gan_loss.detach(),
             "loss_gan_discriminator": discriminator_loss.detach(),
             "gan_weight": float(self.current_weight),
@@ -246,6 +259,7 @@ class ManualGANSupportMixin:
     optimizers: Any
     lr_schedulers: Any
     _estimate_total_steps: Any
+    metric_logging_contract: MetricLoggingContract
 
     def additional_compilation_targets(self) -> dict[str, nn.Module]:
         """Compile the independently invoked discriminator when GAN is active."""
@@ -277,6 +291,7 @@ class ManualGANSupportMixin:
         )
         self.discriminator = discriminator if self.gan_enabled else None
         self.gan_loss_fn = LSGANLoss() if self.gan_enabled else None
+        self._test_metric_diagnostic_accumulator = WeightedMetricAccumulator()
 
     def activate_gan_phase(self, start_epoch: int) -> None:
         if self.gan_training is None:
@@ -330,9 +345,37 @@ class ManualGANSupportMixin:
         return None
 
     def _epoch_metric_log_name(self, stage: str, name: str) -> str:
-        if stage == "test":
-            return f"test/{name}"
-        return f"{stage}/epoch_{name}"
+        self.metric_logging_contract.for_stage(stage)
+        return f"{stage}/{name}"
+
+    @staticmethod
+    def _metric_batch_size(batch: Any) -> int:
+        if not isinstance(batch, Mapping):
+            raise ValueError("Metric aggregation requires a mapping batch.")
+        for key in ("target_position", "position"):
+            value = batch.get(key)
+            if isinstance(value, Tensor) and value.ndim > 0 and value.shape[0] > 0:
+                return int(value.shape[0])
+        tensors = [
+            value
+            for value in batch.values()
+            if isinstance(value, Tensor) and value.ndim > 0 and value.shape[0] > 0
+        ]
+        if not tensors:
+            raise ValueError(
+                "Metric aggregation requires a non-empty batch-axis tensor."
+            )
+        return int(tensors[0].shape[0])
+
+    def _accumulate_test_diagnostics(
+        self,
+        metrics: dict[str, Any],
+        batch: Any,
+    ) -> None:
+        self._test_metric_diagnostic_accumulator.update(
+            metrics,
+            weight=self._metric_batch_size(batch),
+        )
 
     def _log_gan_metrics(self, stage: str, metrics: dict[str, Any]) -> None:
         """Log GAN-specific training metrics.
@@ -358,8 +401,17 @@ class ManualGANSupportMixin:
             return
 
         metrics = tracker.compute()
-        for name, value in metrics.items():
-            self.log(self._epoch_metric_log_name(stage, name), value)
+        partition = self.metric_logging_contract.partition(stage, metrics)
+        for name, value in partition.headline.items():
+            self.log(
+                self._epoch_metric_log_name(stage, name),
+                value,
+                on_step=False,
+                on_epoch=True,
+                prog_bar=self.metric_logging_contract.is_progress_bar_metric(
+                    stage, name
+                ),
+            )
         tracker.reset()
 
     def training_step(self, batch: Any, batch_idx: int) -> Tensor:
@@ -375,6 +427,10 @@ class ManualGANSupportMixin:
 
     def on_test_epoch_start(self) -> None:
         self._reset_test_prediction_buffer()
+        tracker = self._metric_tracker_for_stage("test")
+        if tracker is not None:
+            tracker.reset()
+        self._test_metric_diagnostic_accumulator.reset()
 
     def test_step(self, batch: Any, batch_idx: int) -> None:
         _ = batch_idx
@@ -382,6 +438,7 @@ class ManualGANSupportMixin:
         # test path used by _shared_stage_step) so we also get the model outputs
         # needed to persist test-split predictions (issue #533).
         result = self._compute_supervised_result(batch, "test")
+        self._accumulate_test_diagnostics(result["metrics"], batch)
         self._log_stage_metrics("test", result["loss"], result["metrics"])
         self.collect_test_predictions(batch, result)
 
@@ -397,10 +454,24 @@ class ManualGANSupportMixin:
         # Persist test-split predictions before flushing/resetting the metric
         # tracker, so metrics.json reflects this epoch's values (issue #533).
         metrics: dict[str, Any] | None = None
+        diagnostic_metrics: dict[str, Any] | None = None
         tracker = self._metric_tracker_for_stage("test")
         if tracker is not None:
-            metrics = {k: float(v) for k, v in tracker.compute().items()}
-        saved = self.save_test_predictions(metrics=metrics)
+            tracker_metrics = tracker.compute()
+            partition = self.metric_logging_contract.partition("test", tracker_metrics)
+            metrics = {k: float(v) for k, v in partition.headline.items()}
+            diagnostic_metrics = {k: float(v) for k, v in partition.diagnostics.items()}
+            diagnostic_metrics.update(
+                {
+                    key: value
+                    for key, value in self._test_metric_diagnostic_accumulator.compute().items()
+                    if key not in tracker_metrics and key not in metrics
+                }
+            )
+        saved = self.save_test_predictions(
+            metrics=metrics,
+            diagnostic_metrics=diagnostic_metrics,
+        )
         if saved is not None:
             print(f"[test] saved test-split predictions -> {saved}")
         self._flush_stage_metrics("test")

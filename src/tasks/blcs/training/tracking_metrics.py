@@ -4,11 +4,6 @@ from __future__ import annotations
 
 import torch
 
-from src.tasks.base.evaluation import (
-    compute_axis_wise_position_error,
-    compute_y_sign_accuracy,
-    stratify_metric_by_reference_view_index,
-)
 from src.tasks.base.generate_dataset import (
     PHYSICAL_V1_SELECTOR,
     CourtKeypointContract,
@@ -18,9 +13,13 @@ from src.tasks.base.generate_dataset import (
     court_vectors_target_to_physical,
     resolve_court_keypoint_contract,
 )
+from src.tasks.base.training.metric_logging import (
+    ScalarMetricStatistic,
+    compute_scalar_metric_statistics,
+)
 from src.tasks.base.training.tracking_metrics import (
     TrackingMetricConfig,
-    common_lifecycle_tracking_metrics,
+    common_lifecycle_tracking_statistics,
 )
 from src.tasks.blcs.model_io import (
     BLCSTrackQueryPrediction,
@@ -64,13 +63,13 @@ def _validate_court_provenance(
             )
 
 
-def _position_metrics_meters(
+def _position_metric_statistics(
     prediction: BLCSTrackQueryPrediction,
     batch: BLCSTrackQueryTrainingBatch,
     assignments: list[Assignment],
     reference_view_index: torch.Tensor | None,
-) -> dict[str, torch.Tensor]:
-    """Return matched physical distance and reference-target-frame diagnostics."""
+) -> dict[str, ScalarMetricStatistic]:
+    """Return additive statistics for matched physical tracking diagnostics."""
     pred_position = prediction.position
     scale = pred_position.new_tensor(COURT_COORD_SCALE_XYZ)
     physical_error_terms: list[torch.Tensor] = []
@@ -88,6 +87,10 @@ def _position_metrics_meters(
         if reference_view_index.device != pred_position.device:
             raise ValueError(
                 "reference_view_index must share the BLCS tracking tensor device."
+            )
+        if (reference_view_index < 0).any().item():
+            raise ValueError(
+                "reference_view_index cannot contain padding or negative values."
             )
     for batch_index, (query_indices, target_indices) in enumerate(assignments):
         for query_index, target_index in zip(
@@ -126,70 +129,77 @@ def _position_metrics_meters(
     if physical_error_terms:
         physical_errors = torch.cat(physical_error_terms)
         physical_axis_errors = torch.cat(physical_axis_terms)
-        aggregate = physical_errors.mean()
-        axes = physical_axis_errors.mean(dim=0)
+        matched_frame_count = zero.new_tensor(float(physical_errors.numel()))
+        position_error_sum = physical_errors.sum()
+        axis_error_sum = physical_axis_errors.sum(dim=0)
     else:
-        aggregate = zero
-        axes = pred_position.new_zeros(3)
-    metrics = {
-        "position_error_m": aggregate,
-        "position_mae_x_m": axes[0],
-        "position_mae_y_m": axes[1],
-        "position_mae_z_m": axes[2],
-        "x_error_m": axes[0],
-        "y_error_m": axes[1],
-        "z_error_m": axes[2],
+        matched_frame_count = zero
+        position_error_sum = zero
+        axis_error_sum = pred_position.new_zeros(3)
+    metrics: dict[str, ScalarMetricStatistic] = {
+        "position_error_m": ScalarMetricStatistic(
+            position_error_sum,
+            matched_frame_count,
+        ),
+        "x_error_m": ScalarMetricStatistic(
+            axis_error_sum[0],
+            matched_frame_count,
+        ),
+        "y_error_m": ScalarMetricStatistic(
+            axis_error_sum[1],
+            matched_frame_count,
+        ),
+        "z_error_m": ScalarMetricStatistic(
+            axis_error_sum[2],
+            matched_frame_count,
+        ),
     }
-    if reference_view_index is not None and reference_predictions:
-        all_reference_predictions = torch.cat(reference_predictions)
-        all_reference_targets = torch.cat(reference_targets)
-        axis_error = compute_axis_wise_position_error(
-            all_reference_predictions,
-            all_reference_targets,
-        )
-        metrics.update(
-            {
-                "position_mae_x_m": zero.new_tensor(axis_error.x),
-                "position_mae_y_m": zero.new_tensor(axis_error.y),
-                "position_mae_z_m": zero.new_tensor(axis_error.z),
-                "x_error_m": zero.new_tensor(axis_error.x),
-                "y_error_m": zero.new_tensor(axis_error.y),
-                "z_error_m": zero.new_tensor(axis_error.z),
-            }
-        )
-        if all_reference_targets[:, 1].ne(0).any().item():
-            metrics["y_sign_accuracy"] = zero.new_tensor(
-                compute_y_sign_accuracy(
-                    all_reference_predictions,
-                    all_reference_targets,
+    if reference_view_index is not None:
+        reference_numerator = zero
+        reference_denominator = zero
+        if reference_predictions:
+            all_reference_predictions = torch.cat(reference_predictions)
+            all_reference_targets = torch.cat(reference_targets)
+            eligible = all_reference_targets[:, 1].ne(0)
+            if eligible.any().item():
+                reference_denominator = eligible.sum().to(dtype=zero.dtype)
+                reference_numerator = torch.sign(
+                    all_reference_predictions[eligible, 1]
+                ).eq(torch.sign(all_reference_targets[eligible, 1])).sum().to(
+                    dtype=zero.dtype
                 )
-            )
-        sample_indices = sorted(per_sample_reference_errors)
-        sample_errors = torch.stack(
-            [
-                torch.cat(per_sample_reference_errors[index]).mean()
-                for index in sample_indices
-            ]
+        metrics["y_sign_accuracy"] = ScalarMetricStatistic(
+            reference_numerator,
+            reference_denominator,
         )
-        sample_index_tensor = torch.tensor(
-            sample_indices,
-            dtype=torch.int64,
-            device=reference_view_index.device,
-        )
-        strata = stratify_metric_by_reference_view_index(
-            sample_errors,
-            reference_view_index[sample_index_tensor],
-        )
-        metrics.update(
+
+        valid_sample_errors: dict[int, torch.Tensor] = {}
+        for sample_index, sample_terms in per_sample_reference_errors.items():
+            valid_sample_errors[sample_index] = torch.cat(sample_terms).mean()
+        for reference_index in sorted(
             {
-                f"reference_index_{index}_position_error_m": zero.new_tensor(value)
-                for index, value in strata.items()
+                int(reference_view_index[sample_index].item())
+                for sample_index in valid_sample_errors
             }
-        )
+        ):
+            sample_errors = torch.stack(
+                [
+                    sample_error
+                    for sample_index, sample_error in valid_sample_errors.items()
+                    if int(reference_view_index[sample_index].item())
+                    == reference_index
+                ]
+            )
+            metrics[
+                f"reference_index_{reference_index}_position_error_m"
+            ] = ScalarMetricStatistic(
+                sample_errors.sum(),
+                zero.new_tensor(float(sample_errors.numel())),
+            )
     return metrics
 
 
-def blcs_tracking_metrics(
+def blcs_tracking_statistics(
     prediction: BLCSTrackQueryPrediction,
     batch: BLCSTrackQueryTrainingBatch,
     assignments: list[Assignment],
@@ -199,8 +209,8 @@ def blcs_tracking_metrics(
         _PHYSICAL_COURT_KEYPOINT_CONTRACT
     ),
     reference_view_index: torch.Tensor | None = None,
-) -> dict[str, torch.Tensor]:
-    """Compute shared lifecycle metrics for BLCS predictions."""
+) -> dict[str, ScalarMetricStatistic]:
+    """Compute additive lifecycle and physical metrics for BLCS predictions."""
     canonical_court_contract = resolve_court_keypoint_contract(
         court_keypoint_contract.selector
     )
@@ -213,7 +223,7 @@ def blcs_tracking_metrics(
         batch_size=int(prediction.position.shape[0]),
         court_keypoint_contract=canonical_court_contract,
     )
-    metrics: dict[str, torch.Tensor] = common_lifecycle_tracking_metrics(
+    metrics = common_lifecycle_tracking_statistics(
         {
             "position": prediction.position,
             "presence_logits": prediction.presence_logits,
@@ -228,7 +238,7 @@ def blcs_tracking_metrics(
         config=config,
     )
     metrics.update(
-        _position_metrics_meters(
+        _position_metric_statistics(
             prediction,
             batch,
             assignments,
@@ -236,3 +246,31 @@ def blcs_tracking_metrics(
         )
     )
     return metrics
+
+
+def blcs_tracking_metrics(
+    prediction: BLCSTrackQueryPrediction,
+    batch: BLCSTrackQueryTrainingBatch,
+    assignments: list[Assignment],
+    *,
+    config: TrackingMetricConfig,
+    court_keypoint_contract: CourtKeypointContract = (
+        _PHYSICAL_COURT_KEYPOINT_CONTRACT
+    ),
+    reference_view_index: torch.Tensor | None = None,
+) -> dict[str, torch.Tensor]:
+    """Compute batch-local BLCS metrics with explicit zero-ratio fallback."""
+    return compute_scalar_metric_statistics(
+        blcs_tracking_statistics(
+            prediction,
+            batch,
+            assignments,
+            config=config,
+            court_keypoint_contract=court_keypoint_contract,
+            reference_view_index=reference_view_index,
+        ),
+        zero_denominator_value=0.0,
+    )
+
+
+__all__ = ["blcs_tracking_metrics", "blcs_tracking_statistics"]

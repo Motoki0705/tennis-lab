@@ -152,7 +152,9 @@ def test_court_contract_is_independent_of_fixed_coordinate_normalization(
     assert result["z_error_m"] == pytest.approx(0.75)
 
 
-def test_reference_metrics_report_target_frame_axes_y_sign_and_local_index_strata() -> None:
+def test_reference_metrics_report_target_frame_axes_y_sign_and_local_index_strata() -> (
+    None
+):
     target_m = torch.tensor(
         [
             [[1.0, 2.0, 0.5], [1.0, -2.0, 0.5]],
@@ -214,3 +216,92 @@ def test_reference_metrics_accept_bfloat16_prediction_and_float32_target() -> No
     assert result["y_error_m"] == pytest.approx(expected_y_error)
     assert result["z_error_m"] == pytest.approx(0.0)
     assert result["y_sign_accuracy"] == pytest.approx(1.0)
+
+
+def test_aggregated_metrics_use_canonical_names_and_decimal_thresholds() -> None:
+    tracker = BLCSMetrics(
+        position_threshold_m=0.4,
+        endpoint_threshold_m=0.5,
+    )
+    tracker.update(
+        normalize_court_position(torch.tensor([[[0.1, 0.0, 0.0]]])),
+        torch.zeros(1, 1, 3),
+    )
+
+    metrics = tracker.compute()
+
+    assert set(metrics) >= {
+        "position_error_m",
+        "x_error_m",
+        "y_error_m",
+        "z_error_m",
+        "endpoint_error_m",
+        "position_accuracy_0.3m",
+        "position_accuracy_0.4m",
+        "endpoint_accuracy_0.5m",
+    }
+    assert not any(name.startswith("mean_") for name in metrics)
+    assert not any("accuracy_0_" in name for name in metrics)
+
+
+def test_configurable_accuracy_threshold_cannot_overwrite_fixed_metric() -> None:
+    tracker = BLCSMetrics(
+        position_threshold_m=0.3004,
+        endpoint_threshold_m=0.5,
+    )
+    prediction_m = torch.tensor([[[0.3002, 0.0, 0.0]]])
+    tracker.update(
+        normalize_court_position(prediction_m),
+        torch.zeros_like(prediction_m),
+    )
+
+    metrics = tracker.compute()
+
+    assert metrics["position_accuracy_0.3m"] == pytest.approx(0.0)
+    assert metrics["position_accuracy_0.3004m"] == pytest.approx(1.0)
+
+
+def test_compute_rejects_an_epoch_without_valid_frames() -> None:
+    tracker = BLCSMetrics(
+        position_threshold_m=0.3,
+        endpoint_threshold_m=0.5,
+    )
+
+    with pytest.raises(RuntimeError, match="requires at least one valid frame"):
+        tracker.compute()
+
+    batch_result = tracker.update(
+        torch.ones(1, 2, 3),
+        torch.zeros(1, 2, 3),
+        mask=torch.zeros(1, 2),
+    )
+    assert batch_result == {}
+
+    with pytest.raises(RuntimeError, match="epoch contained no metric observations"):
+        tracker.compute()
+
+
+def test_mixed_padding_uses_valid_frame_and_endpoint_denominators() -> None:
+    tracker = BLCSMetrics(
+        position_threshold_m=0.3,
+        endpoint_threshold_m=0.5,
+    )
+    prediction_m = torch.tensor(
+        [
+            [[1.0, 0.0, 0.0], [100.0, 0.0, 0.0]],
+            [[100.0, 0.0, 0.0], [100.0, 0.0, 0.0]],
+        ]
+    )
+
+    tracker.update(
+        normalize_court_position(prediction_m),
+        torch.zeros_like(prediction_m),
+        mask=torch.tensor([[True, False], [False, False]]),
+    )
+    result = tracker.compute()
+
+    assert result["position_error_m"] == pytest.approx(1.0)
+    assert result["x_error_m"] == pytest.approx(1.0)
+    assert result["position_accuracy_0.3m"] == pytest.approx(0.0)
+    assert result["endpoint_error_m"] == pytest.approx(1.0)
+    assert result["endpoint_accuracy_0.5m"] == pytest.approx(0.0)
