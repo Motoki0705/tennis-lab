@@ -48,6 +48,10 @@ from src.synthetic_data_generation.dataset.blcs.source import (
 )
 from src.synthetic_data_generation.dataset.camera_profiles import CameraProfileConfig
 from src.synthetic_data_generation.dataset.court.contracts import (
+    LEGACY_ORBIT_CURVE_MODES,
+    LEGACY_ORBIT_SHAPES,
+    LEGACY_ORBIT_STABLE_FIELDS,
+    V4_ORBIT_STABLE_FIELDS,
     OrbitCenterKind,
     OrbitCoverageMode,
     OrbitCoverageObjective,
@@ -55,7 +59,12 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     OrbitSamplingMode,
     OrbitShape,
     OrbitStableField,
+    OrbitStableFieldV4,
     OrbitTargetMode,
+    PathFamilyV4,
+    RequiredTrajectoryCoverage,
+    TrajectorySupportPolicy,
+    VerticalProfileV4,
 )
 from src.synthetic_data_generation.dataset.court.schema import (
     CourtDatasetSchemaVersion,
@@ -127,6 +136,9 @@ _BLCS_METADATA_FIELDS = _COURT_METADATA_FIELDS | frozenset(
 )
 _PLCS_METADATA_FIELDS = _COURT_METADATA_FIELDS | frozenset(
     {"motion_source", "source_frame"}
+)
+_COURT_V4_ONLY_ROOT_KEYS = frozenset(
+    {"support", "benchmark_decision_id", "required_coverage"}
 )
 
 ConfigMapping = Mapping[str, object]
@@ -1114,14 +1126,14 @@ class AlignmentConfiguration:
 class CourtTrajectoryPolicy:
     """Typed trajectory-family policy independent of view and sampling."""
 
-    shapes: tuple[OrbitShape, ...]
+    shapes: tuple[OrbitShape | PathFamilyV4, ...]
     axis_ratios: tuple[float, ...]
     orientations_degrees: tuple[float, ...]
     center_kinds: tuple[OrbitCenterKind, ...]
     captured_offset_scale_range: tuple[float, float]
     base_heights_m: tuple[float, ...]
     vertical_modulations_m: tuple[float, ...]
-    curve_modes: tuple[OrbitCurveMode, ...]
+    curve_modes: tuple[OrbitCurveMode | VerticalProfileV4, ...]
 
     @classmethod
     def from_mapping(cls, value: object) -> CourtTrajectoryPolicy:
@@ -1173,7 +1185,7 @@ class CourtTrajectoryPolicy:
                 enum_type=OrbitCurveMode,
             ),
         )
-        if set(result.shapes) != set(OrbitShape):
+        if set(result.shapes) != LEGACY_ORBIT_SHAPES:
             raise SemanticConfigurationError(
                 "Court trajectory shapes must be circle and ellipse."
             )
@@ -1205,9 +1217,170 @@ class CourtTrajectoryPolicy:
             raise SemanticConfigurationError(
                 "Court vertical modulation requires a positive value."
             )
-        if set(result.curve_modes) != set(OrbitCurveMode):
+        if set(result.curve_modes) != LEGACY_ORBIT_CURVE_MODES:
             raise SemanticConfigurationError(
                 "Court trajectories require a smooth non-planar mode."
+            )
+        return result
+
+
+@dataclass(frozen=True, slots=True)
+class CourtTrajectoryPolicyV4(CourtTrajectoryPolicy):
+    """Strict V4 path inventory with rounded corners and raised phase sets."""
+
+    corner_radius_ratios: tuple[float, ...]
+    vertical_phase_offsets_m: tuple[tuple[float, ...], ...]
+    anchored_half_width_m: float = 0.1
+    anchored_half_height_m: float = 0.1
+    anchored_corner_radius_m: float = 0.04
+    anchored_raised_lift_m: float = 0.25
+    anchored_reference_point_count: int = 32
+
+    @classmethod
+    def from_mapping(cls, value: object) -> CourtTrajectoryPolicyV4:
+        path = "dataset.court.trajectory"
+        raw = _exact(
+            value,
+            path=path,
+            keys={
+                "shapes",
+                "axis_ratios",
+                "orientations_degrees",
+                "center_kinds",
+                "captured_offset_scale_range",
+                "base_heights_m",
+                "vertical_modulations_m",
+                "curve_modes",
+                "corner_radius_ratios",
+                "vertical_phase_offsets_m",
+                "anchored_half_width_m",
+                "anchored_half_height_m",
+                "anchored_corner_radius_m",
+                "anchored_raised_lift_m",
+                "anchored_reference_point_count",
+            },
+        )
+        phase_values = _sequence(
+            _value(raw, "vertical_phase_offsets_m", (list, tuple), path=path),
+            path=f"{path}.vertical_phase_offsets_m",
+        )
+        phase_sets: list[tuple[float, ...]] = []
+        for index, raw_phase in enumerate(phase_values):
+            values = _sequence(
+                raw_phase,
+                path=f"{path}.vertical_phase_offsets_m[{index}]",
+            )
+            if len(values) < 4 or any(
+                type(item) not in (int, float) for item in values
+            ):
+                raise ConfigurationTypeError(
+                    f"{path}.vertical_phase_offsets_m[{index}] must contain at least four numbers."
+                )
+            phase = tuple(float(cast("int | float", item)) for item in values)
+            if any(not math.isfinite(item) or item < 0.0 for item in phase):
+                raise SemanticConfigurationError(
+                    f"{path}.vertical_phase_offsets_m[{index}] must be finite and non-negative."
+                )
+            phase_sets.append(phase)
+        result = cls(
+            shapes=_enum_sequence(raw, "shapes", path=path, enum_type=PathFamilyV4),
+            axis_ratios=_number_sequence(raw, "axis_ratios", path=path),
+            orientations_degrees=_number_sequence(
+                raw, "orientations_degrees", path=path, minimum_length=3
+            ),
+            center_kinds=_enum_sequence(
+                raw, "center_kinds", path=path, enum_type=OrbitCenterKind
+            ),
+            captured_offset_scale_range=_ordered_range(
+                raw, "captured_offset_scale_range", path=path, positive=True
+            ),
+            base_heights_m=_number_sequence(
+                raw, "base_heights_m", path=path, minimum_length=3
+            ),
+            vertical_modulations_m=_number_sequence(
+                raw, "vertical_modulations_m", path=path
+            ),
+            curve_modes=_enum_sequence(
+                raw, "curve_modes", path=path, enum_type=VerticalProfileV4
+            ),
+            corner_radius_ratios=_number_sequence(
+                raw, "corner_radius_ratios", path=path
+            ),
+            vertical_phase_offsets_m=tuple(phase_sets),
+            anchored_half_width_m=_number(
+                raw, "anchored_half_width_m", path=path
+            ),
+            anchored_half_height_m=_number(
+                raw, "anchored_half_height_m", path=path
+            ),
+            anchored_corner_radius_m=_number(
+                raw, "anchored_corner_radius_m", path=path
+            ),
+            anchored_raised_lift_m=_number(
+                raw, "anchored_raised_lift_m", path=path
+            ),
+            anchored_reference_point_count=_integer(
+                raw,
+                "anchored_reference_point_count",
+                path=path,
+                minimum=16,
+            ),
+        )
+        if set(result.shapes) != {
+            PathFamilyV4.CIRCLE,
+            PathFamilyV4.ELLIPSE,
+            PathFamilyV4.ROUNDED_RECTANGLE,
+        }:
+            raise SemanticConfigurationError(
+                "Court V4 shapes must be circle, ellipse, and rounded_rectangle."
+            )
+        if set(result.curve_modes) != {
+            VerticalProfileV4.PLANAR,
+            VerticalProfileV4.SINUSOIDAL_HEIGHT,
+            VerticalProfileV4.RAISED_PHASES,
+        }:
+            raise SemanticConfigurationError(
+                "Court V4 curve modes must include planar, sinusoidal_height, and raised_phases."
+            )
+        if set(result.center_kinds) != set(OrbitCenterKind):
+            raise SemanticConfigurationError(
+                "Court V4 center kinds must be complex and court."
+            )
+        if (
+            1.0 not in result.axis_ratios
+            or not any(ratio <= 0.8 for ratio in result.axis_ratios)
+            or any(not 0.0 < ratio <= 1.0 for ratio in result.axis_ratios)
+        ):
+            raise SemanticConfigurationError("Court V4 axis ratios are invalid.")
+        if any(not 0.0 < ratio < 1.0 for ratio in result.corner_radius_ratios):
+            raise SemanticConfigurationError(
+                "Court V4 corner_radius_ratios must lie in (0, 1)."
+            )
+        if not phase_sets or any(max(phase) <= 0.0 for phase in phase_sets):
+            raise SemanticConfigurationError(
+                "Court V4 requires at least one genuinely raised vertical phase set."
+            )
+        if min(result.base_heights_m) <= 0.0 or len(set(result.base_heights_m)) < 3:
+            raise SemanticConfigurationError(
+                "Court V4 requires three positive height levels."
+            )
+        if (
+            min(result.anchored_half_width_m, result.anchored_half_height_m) <= 0.0
+            or not 0.0
+            < result.anchored_corner_radius_m
+            < min(result.anchored_half_width_m, result.anchored_half_height_m)
+        ):
+            raise SemanticConfigurationError(
+                "Court V4 anchored rounded-rectangle dimensions are invalid."
+            )
+        if not math.isclose(
+            result.anchored_raised_lift_m,
+            0.25,
+            abs_tol=1.0e-12,
+            rel_tol=0.0,
+        ):
+            raise SemanticConfigurationError(
+                "Court V4 anchored_raised_lift_m must be exactly 0.25 m."
             )
         return result
 
@@ -1265,9 +1438,10 @@ class CourtViewPolicy:
         if schema_version in (
             CourtDatasetSchemaVersion.V2,
             CourtDatasetSchemaVersion.V3,
+            CourtDatasetSchemaVersion.V4,
         ) and result.target_modes != (OrbitTargetMode.COURT_CENTER,):
             raise SemanticConfigurationError(
-                "Court v2/v3 target modes must be exactly [court_center]."
+                "Court v2/v3/v4 target modes must be exactly [court_center]."
             )
         if set(result.coverage_modes) != set(OrbitCoverageMode):
             raise SemanticConfigurationError(
@@ -1290,7 +1464,7 @@ class CourtSamplingPolicy:
 
     mode: OrbitSamplingMode
     seed: int
-    stable_field_order: tuple[OrbitStableField, ...]
+    stable_field_order: tuple[OrbitStableField | OrbitStableFieldV4, ...]
     coverage_objective: tuple[OrbitCoverageObjective, ...]
     proposal_budget: int
     minimum_trajectory_groups: int
@@ -1303,7 +1477,12 @@ class CourtSamplingPolicy:
     shard_group_count: int
 
     @classmethod
-    def from_mapping(cls, value: object) -> CourtSamplingPolicy:
+    def from_mapping(
+        cls,
+        value: object,
+        *,
+        schema_version: CourtDatasetSchemaVersion = CourtDatasetSchemaVersion.V1,
+    ) -> CourtSamplingPolicy:
         raw = _exact(
             value,
             path="dataset.court.sampling",
@@ -1336,7 +1515,11 @@ class CourtSamplingPolicy:
                 raw,
                 "stable_field_order",
                 path=path,
-                enum_type=OrbitStableField,
+                enum_type=(
+                    OrbitStableFieldV4
+                    if schema_version is CourtDatasetSchemaVersion.V4
+                    else OrbitStableField
+                ),
             ),
             coverage_objective=_enum_sequence(
                 raw,
@@ -1360,7 +1543,14 @@ class CourtSamplingPolicy:
             test_fraction=_number(raw, "test_fraction", path=path),
             shard_group_count=_integer(raw, "shard_group_count", path=path, minimum=1),
         )
-        if set(result.stable_field_order) != set(OrbitStableField):
+        expected_stable_fields = (
+            V4_ORBIT_STABLE_FIELDS
+            if schema_version is CourtDatasetSchemaVersion.V4
+            else LEGACY_ORBIT_STABLE_FIELDS
+        )
+        if {field.value for field in result.stable_field_order} != {
+            field.value for field in expected_stable_fields
+        }:
             raise SemanticConfigurationError(
                 "Court stable_field_order must list every typed trajectory field exactly once."
             )
@@ -1476,43 +1666,88 @@ class CourtDatasetConfiguration:
     """Complete typed Court dataset policy."""
 
     schema_version: CourtDatasetSchemaVersion
-    trajectory: CourtTrajectoryPolicy
+    trajectory: CourtTrajectoryPolicy | CourtTrajectoryPolicyV4
     view: CourtViewPolicy
     sampling: CourtSamplingPolicy
     performance: DatasetPerformanceBudget
     metadata_fields: tuple[str, ...]
+    support: TrajectorySupportPolicy | None = None
+    benchmark_decision_id: str | None = None
+    required_coverage: RequiredTrajectoryCoverage | None = None
 
     @classmethod
     def from_mapping(cls, value: object) -> CourtDatasetConfiguration:
-        raw = _exact(
-            value,
+        initial = _mapping(value, path="dataset.court")
+        schema_version = _enum_value(
+            initial,
+            "schema_version",
             path="dataset.court",
-            keys={
-                "schema_version",
-                "trajectory",
-                "view",
-                "sampling",
-                "performance",
-                "metadata_fields",
-            },
+            enum_type=CourtDatasetSchemaVersion,
         )
+        keys = {
+            "schema_version",
+            "trajectory",
+            "view",
+            "sampling",
+            "performance",
+            "metadata_fields",
+        }
+        if schema_version is CourtDatasetSchemaVersion.V4:
+            keys.update(_COURT_V4_ONLY_ROOT_KEYS)
+        else:
+            v4_only_keys = sorted(_COURT_V4_ONLY_ROOT_KEYS.intersection(initial))
+            if v4_only_keys:
+                raise SemanticConfigurationError(
+                    f"dataset.court.schema_version={schema_version.value} is incompatible "
+                    "with V4-only configuration key(s): "
+                    + ", ".join(f"dataset.court.{key}" for key in v4_only_keys)
+                    + "."
+                )
+        raw = _exact(value, path="dataset.court", keys=keys)
         metadata = _text_sequence(raw, "metadata_fields", path="dataset.court")
         if not _COURT_METADATA_FIELDS.issubset(metadata):
             raise SemanticConfigurationError(
                 "dataset.court.metadata_fields omits required provenance."
             )
-        schema_version = _enum_value(
-            raw,
-            "schema_version",
-            path="dataset.court",
-            enum_type=CourtDatasetSchemaVersion,
-        )
-        trajectory = CourtTrajectoryPolicy.from_mapping(raw["trajectory"])
+        trajectory: CourtTrajectoryPolicy | CourtTrajectoryPolicyV4
+        support: TrajectorySupportPolicy | None
+        benchmark_decision_id: str | None
+        required_coverage: RequiredTrajectoryCoverage | None
+        if schema_version is CourtDatasetSchemaVersion.V4:
+            trajectory = CourtTrajectoryPolicyV4.from_mapping(raw["trajectory"])
+            try:
+                support = TrajectorySupportPolicy.from_mapping(raw["support"])
+            except (TypeError, ValueError) as error:
+                raise SemanticConfigurationError(
+                    f"dataset.court.support: {error}"
+                ) from error
+            benchmark_decision_id = _text(
+                raw, "benchmark_decision_id", path="dataset.court"
+            )
+            if benchmark_decision_id != support.decision_id:
+                raise SemanticConfigurationError(
+                    "Court V4 benchmark_decision_id must equal support.decision_id."
+                )
+            try:
+                required_coverage = RequiredTrajectoryCoverage.from_mapping(
+                    raw["required_coverage"]
+                )
+            except (TypeError, ValueError) as error:
+                raise SemanticConfigurationError(
+                    f"dataset.court.required_coverage: {error}"
+                ) from error
+        else:
+            trajectory = CourtTrajectoryPolicy.from_mapping(raw["trajectory"])
+            support = None
+            benchmark_decision_id = None
+            required_coverage = None
         view = CourtViewPolicy.from_mapping(
             raw["view"],
             schema_version=schema_version,
         )
-        sampling = CourtSamplingPolicy.from_mapping(raw["sampling"])
+        sampling = CourtSamplingPolicy.from_mapping(
+            raw["sampling"], schema_version=schema_version
+        )
         performance = _performance_budget(
             raw["performance"],
             path="dataset.court.performance",
@@ -1534,6 +1769,9 @@ class CourtDatasetConfiguration:
             sampling=sampling,
             performance=performance,
             metadata_fields=metadata,
+            support=support,
+            benchmark_decision_id=benchmark_decision_id,
+            required_coverage=required_coverage,
         )
 
 

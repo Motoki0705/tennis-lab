@@ -453,7 +453,9 @@ def scene_from_court_from_published_points(
         dtype=np.float64,
     )
     if points_scene.shape != points_court.shape or not np.isfinite(points_scene).all():
-        raise ValueError("Published Court v2 scene points must be finite three-vectors.")
+        raise ValueError(
+            "Published Court v2 scene points must be finite three-vectors."
+        )
 
     court_center = np.mean(points_court, axis=0)
     scene_center = np.mean(points_scene, axis=0)
@@ -521,7 +523,7 @@ def camera_relative_physical_indices(
         raise AmbiguousCameraRelativeNearFarError(court.court_instance_id)
     if local_y < 0.0:
         return tuple(range(NUM_GROUND_COURT_KP))
-    return OPPOSITE_COURT_END_INDEX
+    return tuple(int(value) for value in OPPOSITE_COURT_END_INDEX)
 
 
 def project_court_semantics(
@@ -766,7 +768,10 @@ def project_court_semantics_for_version(
             layout,
             near_plane_m=near_plane_m,
         )
-    if schema_version is CourtDatasetSchemaVersion.V3:
+    if schema_version in (
+        CourtDatasetSchemaVersion.V3,
+        CourtDatasetSchemaVersion.V4,
+    ):
         return project_court_semantics_v3(
             camera,
             layout,

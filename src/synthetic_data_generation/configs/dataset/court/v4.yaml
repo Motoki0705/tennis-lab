@@ -1,0 +1,79 @@
+defaults:
+  - base
+  - _self_
+
+schema_version: v4
+benchmark_decision_id: b00_court_support_pilot_v1
+
+trajectory:
+  shapes: [circle, ellipse, rounded_rectangle]
+  axis_ratios: [1.0, 0.8, 0.65]
+  orientations_degrees: [0.0, 45.0, 90.0]
+  center_kinds: [complex, court]
+  captured_offset_scale_range: [0.85, 1.2]
+  base_heights_m: [1.5, 2.25, 3.0]
+  vertical_modulations_m: [0.0, 0.25, 0.5]
+  curve_modes: [planar, sinusoidal_height, raised_phases]
+  corner_radius_ratios: [0.2, 0.35]
+  vertical_phase_offsets_m:
+    - [0.0, 0.75, 0.75, 0.0]
+    - [0.75, 0.0, 0.0, 0.75]
+  anchored_half_width_m: 0.1
+  anchored_half_height_m: 0.1
+  anchored_corner_radius_m: 0.04
+  anchored_raised_lift_m: 0.25
+  anchored_reference_point_count: 32
+
+view:
+  target_modes: [court_center]
+
+sampling:
+  stable_field_order:
+    - shape
+    - center_kind
+    - radius_scale
+    - axis_ratio
+    - orientation_degrees
+    - base_height_m
+    - vertical_modulation_m
+    - curve_mode
+    - corner_radius_ratio
+    - vertical_phase
+    - constructor
+
+support:
+  decision_id: b00_court_support_pilot_v1
+  support_radius_m: 2.5
+  endpoint_radius_m: 1.5
+  maximum_camera_link_distance_m: 4.0
+  maximum_source_frame_gap: 5
+  occupancy_voxel_size_m: 0.5
+  minimum_points_per_voxel: 3
+  obstacle_inflation_m: 0.5
+  camera_ball_clearance_m: 0.35
+  camera_capsule_clearance_m: 0.25
+  sweep_step_m: 0.25
+  boundary_epsilon_m: 0.000001
+  minimum_captured_cameras: 24
+  minimum_public_points: 1000
+  maximum_capsule_index_cells: 2000000
+  maximum_occupancy_cells: 5000000
+  minimum_cycle_frame_span: 48
+  maximum_cycle_frame_span: 180
+  maximum_cycle_closure_distance_m: 2.5
+  maximum_constructive_cycle_count: 48
+  cycle_smoothing_distance_m: 0.1
+
+required_coverage:
+  constructors: [free_space_cycle, anchored_rounded_rectangle]
+  path_families: [rounded_rectangle]
+  vertical_profiles: [planar, raised_phases]
+  target_modes: [court_center]
+  minimum_total_groups: 24
+  minimum_free_space_cycle_groups: 12
+  minimum_anchored_rounded_rectangle_groups: 6
+  minimum_unique_anchors: 6
+  minimum_anchored_planar_groups: 3
+  minimum_anchored_raised_groups: 3
+  required_raised_lift_m: 0.25
+  minimum_anchored_frame_share: 0.08

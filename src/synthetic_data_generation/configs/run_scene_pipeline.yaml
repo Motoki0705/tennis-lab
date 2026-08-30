@@ -3,7 +3,7 @@ defaults:
   - roots: runtime
   - pipeline: canonical
   - camera: default
-  - dataset/court: train
+  - dataset/court: v4
   - dataset/blcs: production
   - dataset/plcs: production
   - nht: public_cli

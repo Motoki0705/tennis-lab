@@ -83,6 +83,7 @@ def render_court_overlay(
     if frame.schema_version in (
         CourtDatasetSchemaVersion.V2,
         CourtDatasetSchemaVersion.V3,
+        CourtDatasetSchemaVersion.V4,
     ):
         return _render_court_overlay_singleton(frame, trajectory_id=trajectory_id)
     if frame.schema_version is not CourtDatasetSchemaVersion.V1:
@@ -232,7 +233,10 @@ def _render_court_overlay_singleton(
             raise ValueError(
                 f"Court {version} physical point inventory must cover 0..13."
             )
-        if frame.schema_version is CourtDatasetSchemaVersion.V3:
+        if frame.schema_version in (
+            CourtDatasetSchemaVersion.V3,
+            CourtDatasetSchemaVersion.V4,
+        ):
             physical_order = tuple(physical_index_by_class)
             if physical_order not in (tuple(range(14)), CAMERA_VIEW_HALF_TURN_INDEX):
                 raise ValueError(

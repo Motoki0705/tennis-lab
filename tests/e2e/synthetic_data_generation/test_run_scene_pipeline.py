@@ -37,6 +37,13 @@ def test_cli_resolves_one_full_b00_request_without_legacy_pipeline_fields() -> N
     }
     assert payload["pipeline"]["config_schema"] == "canonical_scene_pipeline_v1"
     assert payload["camera"]["expected_camera_count"] == 6
+    assert payload["dataset"]["court"]["schema_version"] == "v4"
+    assert payload["dataset"]["court"]["benchmark_decision_id"] == (
+        "b00_court_support_pilot_v1"
+    )
+    assert payload["dataset"]["court"]["support"]["decision_id"] == (
+        "b00_court_support_pilot_v1"
+    )
     assert payload["dataset"]["court"]["sampling"]["proposal_budget"] == 4800
     assert payload["dataset"]["blcs"]["timeline"]["frame_selection"] == (
         "all_source_frames"
@@ -90,9 +97,9 @@ def test_cli_composes_each_additional_scene_profile_with_matching_source_video(
     }
 
 
-def test_cli_exposes_exact_v1_v2_v3_court_selectors_and_keeps_v1_default() -> None:
+def test_cli_exposes_exact_versioned_court_selectors_and_compatibility_alias() -> None:
     payloads = {}
-    for selector in (None, "v1", "v2", "v3"):
+    for selector in (None, "train", "v1", "v2", "v3", "v4"):
         argv = [
             sys.executable,
             "-m",
@@ -110,9 +117,17 @@ def test_cli_exposes_exact_v1_v2_v3_court_selectors_and_keeps_v1_default() -> No
         )
         payloads[selector] = yaml.safe_load(completed.stdout)["dataset"]["court"]
 
-    assert payloads[None] == payloads["v1"]
-    assert payloads[None]["schema_version"] == "v1"
-    assert payloads[None]["view"]["target_modes"] == [
+    assert payloads[None] == payloads["v4"]
+    assert payloads[None]["schema_version"] == "v4"
+    assert payloads[None]["view"]["target_modes"] == ["court_center"]
+    assert payloads[None]["trajectory"]["shapes"] == [
+        "circle",
+        "ellipse",
+        "rounded_rectangle",
+    ]
+    assert payloads["train"] == payloads["v1"]
+    assert payloads["v1"]["schema_version"] == "v1"
+    assert payloads["v1"]["view"]["target_modes"] == [
         "court_center",
         "complex_center",
         "near_baseline",
@@ -122,6 +137,8 @@ def test_cli_exposes_exact_v1_v2_v3_court_selectors_and_keeps_v1_default() -> No
     assert payloads["v2"]["view"]["target_modes"] == ["court_center"]
     assert payloads["v3"]["schema_version"] == "v3"
     assert payloads["v3"]["view"]["target_modes"] == ["court_center"]
+    assert payloads["v4"]["schema_version"] == "v4"
+    assert payloads["v4"]["view"]["target_modes"] == ["court_center"]
 
 
 def test_court_readme_is_single_linked_and_documents_executable_selectors() -> None:
@@ -132,12 +149,15 @@ def test_court_readme_is_single_linked_and_documents_executable_selectors() -> N
         PROJECT_ROOT / "src/synthetic_data_generation/dataset/court/README.md"
     ).read_text(encoding="utf-8")
 
-    link = "[Court Detection dataset v1/v2/v3 contract](dataset/court/README.md)"
+    link = "[Court Detection dataset v1/v2/v3/v4 contract](dataset/court/README.md)"
     assert parent.count(link) == 1
-    assert parent.count("## Court dataset v1/v2/v3 contract") == 0
+    assert parent.count("## Court dataset v1/v2/v3/v4 contract") == 0
     assert contract.count("dataset/court=v1") >= 1
     assert contract.count("dataset/court=v2") >= 1
     assert contract.count("dataset/court=v3") >= 1
+    assert contract.count("dataset/court=v4") >= 1
+    assert contract.count("dataset/court=train") >= 1
     assert "canonical_court_dataset_v1" in contract
     assert "canonical_court_dataset_v2" in contract
     assert "canonical_court_dataset_v3" in contract
+    assert "canonical_court_dataset_v4" in contract

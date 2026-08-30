@@ -1,0 +1,192 @@
+{
+  "schema": "court_trajectory_safety_evidence_v2",
+  "status": "attempt_2_pending_gpu_pilot_and_blind_annotations",
+  "scene_id": "B00",
+  "attempt": 2,
+  "decision": null,
+  "production_authority": "geometry_only_pending_fresh_evidence",
+  "pilot": {
+    "status": "manifest_frozen_pending_gpu_render",
+    "record_count": 128,
+    "manifest_sha256": "6d65ff89729a866491d97f62dff8c76650d0dff793544baf26533c168a75dffa",
+    "pilot_output_root": "outputs/court_trajectory_safety/B00-required-coverage-pilot",
+    "annotation_root": "outputs/court_trajectory_safety/issue-823-required-coverage-blind"
+  },
+  "geometry_metrics": {
+    "candidate_count": 3913,
+    "safe_candidate_count": 1060,
+    "planned_frame_count": 2016,
+    "projected_semantic_valid_frame_count": 2016,
+    "projected_semantic_rejected_frame_count": 0,
+    "projected_semantic_valid_fraction": 1.0,
+    "trajectory_group_count": 39,
+    "selected_support_violation_count": 0,
+    "legacy_proposal_budget": 4800,
+    "candidate_proposal_budget": 4800,
+    "equal_proposal_budget": true,
+    "required_coverage": {
+      "constructors": [
+        "free_space_cycle",
+        "anchored_rounded_rectangle"
+      ],
+      "path_families": [
+        "rounded_rectangle"
+      ],
+      "vertical_profiles": [
+        "planar",
+        "raised_phases"
+      ],
+      "target_modes": [
+        "court_center"
+      ],
+      "minimum_total_groups": 24,
+      "minimum_free_space_cycle_groups": 12,
+      "minimum_anchored_rounded_rectangle_groups": 6,
+      "minimum_unique_anchors": 6,
+      "minimum_anchored_planar_groups": 3,
+      "minimum_anchored_raised_groups": 3,
+      "required_raised_lift_m": 0.25,
+      "minimum_anchored_frame_share": 0.08
+    },
+    "selected_coverage": {
+      "total_group_count": 39,
+      "total_frame_count": 2016,
+      "constructors": [
+        "anchored_rounded_rectangle",
+        "free_space_cycle"
+      ],
+      "constructor_group_counts": {
+        "anchored_rounded_rectangle": 27,
+        "free_space_cycle": 12
+      },
+      "constructor_frame_counts": {
+        "anchored_rounded_rectangle": 648,
+        "free_space_cycle": 1368
+      },
+      "path_families": [
+        "free_space_cycle",
+        "rounded_rectangle"
+      ],
+      "family_group_counts": {
+        "free_space_cycle": 12,
+        "rounded_rectangle": 27
+      },
+      "family_frame_counts": {
+        "free_space_cycle": 1368,
+        "rounded_rectangle": 648
+      },
+      "vertical_profiles": [
+        "free_space_cycle",
+        "planar",
+        "raised_phases"
+      ],
+      "profile_group_counts": {
+        "free_space_cycle": 12,
+        "planar": 13,
+        "raised_phases": 14
+      },
+      "profile_frame_counts": {
+        "free_space_cycle": 1368,
+        "planar": 312,
+        "raised_phases": 336
+      },
+      "target_modes": [
+        "court_center"
+      ],
+      "target_group_counts": {
+        "court_center": 39
+      },
+      "target_frame_counts": {
+        "court_center": 2016
+      },
+      "anchor_camera_indices": [
+        1,
+        6,
+        9,
+        10,
+        11,
+        12,
+        13,
+        15,
+        16,
+        17,
+        18,
+        20,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        31,
+        80,
+        83,
+        89,
+        94,
+        95,
+        98,
+        101
+      ],
+      "anchor_camera_ids": [
+        "frame_000001",
+        "frame_000006",
+        "frame_000009",
+        "frame_000010",
+        "frame_000011",
+        "frame_000012",
+        "frame_000013",
+        "frame_000015",
+        "frame_000016",
+        "frame_000017",
+        "frame_000018",
+        "frame_000020",
+        "frame_000023",
+        "frame_000024",
+        "frame_000025",
+        "frame_000026",
+        "frame_000027",
+        "frame_000028",
+        "frame_000029",
+        "frame_000031",
+        "frame_000080",
+        "frame_000083",
+        "frame_000089",
+        "frame_000094",
+        "frame_000095",
+        "frame_000098",
+        "frame_000101"
+      ],
+      "unique_anchor_count": 27,
+      "anchored_group_count": 27,
+      "anchored_frame_count": 648,
+      "anchored_frame_share": 0.32142857142857145,
+      "anchored_planar_group_count": 13,
+      "anchored_raised_group_count": 14,
+      "anchored_required_lift_group_count": 14
+    },
+    "required_coverage_shortfall": [],
+    "optional_candidate_coverage_shortfall": [
+      "(<OrbitCoverageObjective.COVERAGE_MODE: 'coverage_mode'>, <OrbitStableField.AXIS_RATIO: 'axis_ratio'>, 0.65)",
+      "(<OrbitCoverageObjective.COVERAGE_MODE: 'coverage_mode'>, <OrbitStableField.AXIS_RATIO: 'axis_ratio'>, 0.8)",
+      "(<OrbitCoverageObjective.COVERAGE_MODE: 'coverage_mode'>, <OrbitStableField.RADIUS_SCALE: 'radius_scale'>, 0.85)",
+      "(<OrbitCoverageObjective.COVERAGE_MODE: 'coverage_mode'>, <OrbitStableField.RADIUS_SCALE: 'radius_scale'>, 1.025)",
+      "(<OrbitCoverageObjective.COVERAGE_MODE: 'coverage_mode'>, <OrbitStableField.RADIUS_SCALE: 'radius_scale'>, 1.2)",
+      "(<OrbitCoverageObjective.COVERAGE_MODE: 'coverage_mode'>, <OrbitStableField.SHAPE: 'shape'>, 'circle')",
+      "(<OrbitCoverageObjective.COVERAGE_MODE: 'coverage_mode'>, <OrbitStableField.SHAPE: 'shape'>, 'ellipse')",
+      "(<OrbitCoverageObjective.COVERAGE_MODE: 'coverage_mode'>, <OrbitStableFieldV4.CORNER_RADIUS_RATIO: 'corner_radius_ratio'>, 0.2)",
+      "(<OrbitCoverageObjective.COVERAGE_MODE: 'coverage_mode'>, <OrbitStableFieldV4.CORNER_RADIUS_RATIO: 'corner_radius_ratio'>, 0.35)",
+      "(<OrbitCoverageObjective.COVERAGE_MODE: 'coverage_mode'>, <OrbitStableFieldV4.CORNER_RADIUS_RATIO: 'corner_radius_ratio'>, None)",
+      "(<OrbitCoverageObjective.TRAJECTORY_GROUP: 'trajectory_group'>, <OrbitStableField.CURVE_MODE: 'curve_mode'>, 'sinusoidal_height')",
+      "(<OrbitCoverageObjective.TRAJECTORY_GROUP: 'trajectory_group'>, <OrbitStableField.VERTICAL_MODULATION_M: 'vertical_modulation_m'>, 0.5)",
+      "(<OrbitCoverageObjective.TRAJECTORY_GROUP: 'trajectory_group'>, <OrbitStableField.VERTICAL_MODULATION_M: 'vertical_modulation_m'>, 0.75)",
+      "(<OrbitCoverageObjective.TRAJECTORY_GROUP: 'trajectory_group'>, <OrbitStableFieldV4.VERTICAL_PHASE: 'vertical_phase'>, (0.0, 0.75, 0.75, 0.0))",
+      "(<OrbitCoverageObjective.TRAJECTORY_GROUP: 'trajectory_group'>, <OrbitStableFieldV4.VERTICAL_PHASE: 'vertical_phase'>, (0.75, 0.0, 0.0, 0.75))"
+    ],
+    "required_release_status": "passed_cpu_plan",
+    "final_release_status": "pending_fresh_gpu_evidence"
+  },
+  "annotations": null,
+  "artifact_comparison": null,
+  "final_dataset": null
+}

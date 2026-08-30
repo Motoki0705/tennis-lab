@@ -64,6 +64,24 @@ ALLOWED_ACTIVE_ARCHITECTURE_TOKENS = {
     ),
 }
 
+COURT_V4_DIGEST_AUTHORITIES = frozenset(
+    {
+        Path("src/synthetic_data_generation/dataset/court/contracts.py"),
+        Path(
+            "src/synthetic_data_generation/dataset/court/components/"
+            "camera_sampling/anchored_paths.py"
+        ),
+        Path(
+            "src/synthetic_data_generation/dataset/court/components/"
+            "camera_sampling/support.py"
+        ),
+        Path("src/synthetic_data_generation/dataset/court/evaluation/quality.py"),
+        Path("src/synthetic_data_generation/dataset/court/semantic_pre_render.py"),
+        Path(
+            "src/synthetic_data_generation/scripts/evaluate_court_trajectory_safety.py"
+        ),
+    }
+)
 
 def _active_python_files() -> tuple[Path, ...]:
     roots = (PROJECT_ROOT / "src/synthetic_data_generation",)
@@ -90,6 +108,7 @@ def test_old_files_and_production_entrypoints_are_deleted() -> None:
     assert scripts == {
         "__init__.py",
         "generate_publication_visualizations.py",
+        "evaluate_court_trajectory_safety.py",
         "run_scene_pipeline.py",
         "visualize_dataset.py",
     }
@@ -150,6 +169,8 @@ def test_no_identity_or_fixed_pose_architecture_remains_in_active_generation() -
         relative = path.relative_to(PROJECT_ROOT)
         text = path.read_text(encoding="utf-8").lower()
         allowed = ALLOWED_ACTIVE_ARCHITECTURE_TOKENS.get(relative, frozenset())
+        if relative in COURT_V4_DIGEST_AUTHORITIES:
+            allowed = allowed | {"sha256", "sha-256"}
         for token in FORBIDDEN_ACTIVE_ARCHITECTURE_TOKENS - allowed:
             if token in text:
                 violations.append(f"{relative}: {token}")

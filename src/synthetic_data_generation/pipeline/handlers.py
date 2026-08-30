@@ -364,6 +364,7 @@ def _court_report_manifest(
     elif version in (
         CourtDatasetSchemaVersion.V2,
         CourtDatasetSchemaVersion.V3,
+        CourtDatasetSchemaVersion.V4,
     ):
         accepted = payload.get("samples")
         rejected = payload.get("rejected_samples")

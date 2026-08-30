@@ -7,12 +7,14 @@ import json
 import math
 import sys
 from collections import Counter, defaultdict
+from dataclasses import replace
 from pathlib import Path
 from typing import cast
 
 import numpy as np
 import pytest
 from hydra import compose, initialize_config_dir
+from numpy.typing import NDArray
 from omegaconf import OmegaConf
 from PIL import Image
 
@@ -26,15 +28,29 @@ from src.synthetic_data_generation.alignment.contracts import (
     PartitionMetrics,
     PartitionThresholds,
 )
-from src.synthetic_data_generation.configuration import CourtDatasetConfiguration
+from src.synthetic_data_generation.configuration import (
+    CourtDatasetConfiguration,
+    CourtTrajectoryPolicyV4,
+)
 from src.synthetic_data_generation.dataset.court import assembler as court_assembler
 from src.synthetic_data_generation.dataset.court.assembler import (
     CourtArrayValidationMode,
     assemble_court_dataset,
     validate_court_dataset,
 )
+from src.synthetic_data_generation.dataset.court.components.camera_sampling import (
+    selection as court_selection,
+)
 from src.synthetic_data_generation.dataset.court.components.camera_sampling.selection import (
     build_court_dataset_plan,
+)
+from src.synthetic_data_generation.dataset.court.components.camera_sampling.support import (
+    TrajectorySupportModel,
+    build_trajectory_support_model,
+)
+from src.synthetic_data_generation.dataset.court.components.camera_sampling.targeting import (
+    resolve_target_court,
+    resolved_court_look_at_scene,
 )
 from src.synthetic_data_generation.dataset.court.components.camera_view import (
     camera_view_canonicalization,
@@ -44,18 +60,36 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     CourtDatasetPlanAny,
     CourtDatasetPlanV2,
     CourtDatasetPlanV3,
+    CourtDatasetPlanV4,
+    OrbitCenter,
+    OrbitCenterKind,
+    OrbitTrajectorySpecV4,
+    PathConstructorV4,
+    PathFamilyV4,
+    PlannedCourtSampleV4,
     TargetCourtResolutionPolicy,
+    TrajectoryGroupPlanV4,
+    VerticalProfileV4,
+    semantic_phase_inventory_digest,
 )
 from src.synthetic_data_generation.dataset.court.performance import (
     CourtPerformanceEvidence,
 )
-from src.synthetic_data_generation.dataset.court.rendering.nht import CourtNHTRenderer
+from src.synthetic_data_generation.dataset.court.rendering.nht import (
+    CourtNHTRenderer,
+    validate_pre_render_plan,
+)
 from src.synthetic_data_generation.dataset.court.schema import (
     COURT_SEMANTIC_CLASS_NAMES_V2,
 )
 from src.synthetic_data_generation.dataset.court.semantic_manifest import (
     COURT_SEMANTIC_MANIFEST_PATH,
     require_equal_court_semantic_manifests,
+)
+from src.synthetic_data_generation.dataset.court.semantic_pre_render import (
+    CourtSemanticFrameDisposition,
+    court_semantic_phase_disposition_digest,
+    evaluate_court_semantic_pre_render,
 )
 from src.synthetic_data_generation.dataset.runtime import PerformanceTimer
 from src.synthetic_data_generation.reconstruction.scene_export import (
@@ -302,10 +336,13 @@ def test_singleton_public_renderer_publishes_exact_targets_labels_and_diagnostic
                 )
                 for value in classes
             )
-            assert canonical_physical_indices == camera_view_canonicalization(
-                camera,
-                layout_by_id[court_id],
-            ).semantic_to_physical
+            assert (
+                canonical_physical_indices
+                == camera_view_canonicalization(
+                    camera,
+                    layout_by_id[court_id],
+                ).semantic_to_physical
+            )
 
     diagnostics = {
         "trajectory-plan.json": f"canonical_court_orbit_plan_{diagnostic_suffix}",
@@ -346,7 +383,7 @@ def test_singleton_public_renderer_publishes_exact_targets_labels_and_diagnostic
     dataset_path = dataset_root / "dataset.json"
     original_dataset_text = dataset_path.read_text(encoding="utf-8")
     unknown_dataset = json.loads(original_dataset_text)
-    unknown_dataset["schema"] = "canonical_court_dataset_v4"
+    unknown_dataset["schema"] = "canonical_court_dataset_v5"
     dataset_path.write_text(json.dumps(unknown_dataset), encoding="utf-8")
     try:
         with pytest.raises(ValueError, match="Unknown Court dataset schema"):
@@ -361,9 +398,7 @@ def test_singleton_public_renderer_publishes_exact_targets_labels_and_diagnostic
     original_label_text = label_path.read_text(encoding="utf-8")
     mixed_label = json.loads(original_label_text)
     mixed_label["schema"] = (
-        "canonical_court_sample_v3"
-        if selector == "v2"
-        else "canonical_court_sample_v2"
+        "canonical_court_sample_v3" if selector == "v2" else "canonical_court_sample_v2"
     )
     label_path.write_text(json.dumps(mixed_label), encoding="utf-8")
     try:
@@ -374,6 +409,319 @@ def test_singleton_public_renderer_publishes_exact_targets_labels_and_diagnostic
             )
     finally:
         label_path.write_text(original_label_text, encoding="utf-8")
+
+
+def test_v4_plan_pre_render_and_assembly_share_semantic_phase_authority(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        court_selection,
+        "generate_trajectory_candidates_v4",
+        _compact_analytic_candidates,
+    )
+    monkeypatch.setattr(
+        court_selection,
+        "generate_free_space_cycle_candidates",
+        _compact_free_space_candidates,
+    )
+    original_anchored = (
+        court_selection.generate_anchored_rounded_rectangle_candidates
+    )
+    monkeypatch.setattr(
+        court_selection,
+        "generate_anchored_rounded_rectangle_candidates",
+        lambda **kwargs: _compact_anchored_candidates(
+            original_anchored(**kwargs)
+        ),
+    )
+    executable = _write_fake_nht_render(tmp_path / "bin/nht-render")
+    plan, _semantic_manifest, dataset_root = _execute_court_render(
+        tmp_path / "v4",
+        executable=executable,
+        rgb_value=0.4,
+        court_selector="v4",
+        render_cameras=_v4_render_cameras(),
+        reject_first_render_per_shard=False,
+        scene_points=np.repeat(
+            np.asarray(((0.0, 0.0, 0.0, 0.5, 0.5, 0.5),), dtype=np.float32),
+            1_000,
+            axis=0,
+        ),
+    )
+
+    assert isinstance(plan, CourtDatasetPlanV4)
+    assert plan.projected_semantic_valid_frame_count >= 2_000
+    assert plan.projected_semantic_valid_fraction >= 0.9
+    assert {
+        group.semantic_phase_evaluation.phase_index for group in plan.groups
+    } == set(range(6))
+    dataset = _json_mapping(load_json(dataset_root / "dataset.json"))
+    metrics = _json_mapping(dataset["metrics"])
+    assert metrics["semantic_phase_inventory_digest"] == (
+        plan.semantic_phase_inventory_digest
+    )
+    safety = _json_mapping(
+        load_json(dataset_root / "diagnostics/trajectory-safety.json")
+    )
+    assert safety["candidate_semantic_phase_evaluations"] == [
+        item.to_dict() for item in plan.candidate_semantic_phase_evaluations
+    ]
+    assert safety["projected_semantic_valid_frame_count"] == (
+        plan.projected_semantic_valid_frame_count
+    )
+    validate_court_dataset(
+        dataset_root,
+        expected_plan=plan,
+        expected_configuration=_configuration("v4"),
+        array_validation=CourtArrayValidationMode.HEADERS_ONLY,
+    )
+
+
+def test_v4_pre_render_rejects_sample_camera_outside_selected_safe_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    alignment, configuration, plan, support_model = (
+        _build_v4_pre_render_binding_fixture(monkeypatch)
+    )
+
+    selected_group = plan.groups[0]
+    selected_samples = tuple(
+        sample
+        for sample in plan.samples
+        if sample.trajectory_group_id == selected_group.trajectory_group_id
+    )
+    replacement_sample = None
+    for sample in selected_samples:
+        center = np.asarray(sample.camera_center_scene_m, dtype=np.float64)
+        horizontal = center.copy()
+        horizontal[2] = 0.0
+        horizontal /= np.linalg.norm(horizontal)
+        for outward_offset_m in (3.0, 4.0, 5.0, 6.0):
+            unsafe_center = center + horizontal * outward_offset_m
+            target_court = resolve_target_court(
+                policy=selected_group.target_court_policy,
+                camera_center_scene_m=unsafe_center,
+                layout=alignment.layout,
+                selection_seed=sample.target_court.binding.selection_seed,
+            )
+            target_scene = resolved_court_look_at_scene(
+                target_court=target_court,
+                layout=alignment.layout,
+                look_at_height_m=selected_group.views[0].look_at_height_m,
+            )
+            camera = replace(
+                sample.camera,
+                camera_to_scene=RigidTransform.from_matrix(
+                    _look_at_matrix(unsafe_center, target_scene)
+                ),
+            )
+            decision = evaluate_court_semantic_pre_render(
+                camera,
+                alignment.layout,
+                schema_version=configuration.schema_version,
+            )
+            _margin, _clearance, supported, _occupied = (
+                support_model.evaluate_point(unsafe_center)
+            )
+            if decision.accepted and not supported:
+                replacement_sample = replace(
+                    sample,
+                    camera_center_scene_m=(
+                        float(unsafe_center[0]),
+                        float(unsafe_center[1]),
+                        float(unsafe_center[2]),
+                    ),
+                    camera=camera,
+                    target_court=target_court,
+                )
+                break
+        if replacement_sample is not None:
+            break
+    assert replacement_sample is not None
+    tampered_plan = _replace_v4_sample_and_recompute_semantic_phase(
+        plan,
+        replacement_sample=replacement_sample,
+        alignment=alignment,
+        configuration=configuration,
+    )
+
+    with pytest.raises(ValueError, match="safety"):
+        validate_pre_render_plan(
+            tampered_plan,
+            alignment=alignment,
+            support_model=support_model,
+        )
+
+
+def test_v4_pre_render_binds_canonical_frames_centres_and_contract_tolerance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    alignment, configuration, plan, support_model = (
+        _build_v4_pre_render_binding_fixture(monkeypatch)
+    )
+    valid_evaluation = validate_pre_render_plan(
+        plan,
+        alignment=alignment,
+        support_model=support_model,
+    )
+    assert valid_evaluation.trajectory_safety_evaluations == tuple(
+        group.safety_evaluation for group in plan.groups
+    )
+
+    anchored_group = next(
+        group
+        for group in plan.groups
+        if group.trajectory.constructor
+        is PathConstructorV4.ANCHORED_ROUNDED_RECTANGLE
+    )
+    anchor = anchored_group.trajectory.anchor_provenance
+    assert anchor is not None
+    tampered_groups: list[TrajectoryGroupPlanV4] = []
+    for group in plan.groups:
+        if (
+            group.trajectory.constructor
+            is not PathConstructorV4.ANCHORED_ROUNDED_RECTANGLE
+        ):
+            tampered_groups.append(group)
+            continue
+        group_anchor = group.trajectory.anchor_provenance
+        assert group_anchor is not None
+        tampered_groups.append(
+            replace(
+                group,
+                trajectory=replace(
+                    group.trajectory,
+                    anchor_provenance=replace(
+                        group_anchor,
+                        camera_inventory_digest="0" * 64,
+                    ),
+                ),
+            )
+        )
+    tampered_plan = replace(plan, groups=tuple(tampered_groups))
+    with pytest.raises(ValueError, match="camera inventory"):
+        validate_pre_render_plan(
+            tampered_plan,
+            alignment=alignment,
+            support_model=support_model,
+        )
+
+    selected_group = plan.groups[0]
+    selected_samples = tuple(
+        sample
+        for sample in plan.samples
+        if sample.trajectory_group_id == selected_group.trajectory_group_id
+    )
+    assert len(selected_samples) >= 2
+    first_sample, second_sample = selected_samples[:2]
+
+    duplicate_frame = replace(
+        second_sample,
+        trajectory_frame_index=first_sample.trajectory_frame_index,
+    )
+    duplicate_frame_samples = tuple(
+        duplicate_frame if sample.sample_id == second_sample.sample_id else sample
+        for sample in plan.samples
+    )
+    with pytest.raises(ValueError, match="camera-centre path|complete camera path"):
+        replace(plan, samples=duplicate_frame_samples)
+
+    contract_mismatch_m = np.asarray((2.0e-9, 0.0, 0.0), dtype=np.float64)
+    first_center = np.asarray(
+        first_sample.camera_center_scene_m,
+        dtype=np.float64,
+    )
+    with pytest.raises(ValueError, match="disagrees with camera_to_scene"):
+        replace(
+            first_sample,
+            camera_center_scene_m=tuple(first_center + contract_mismatch_m),
+        )
+    mismatched_matrix = first_sample.camera.camera_to_scene.matrix()
+    mismatched_matrix[:3, 3] += contract_mismatch_m
+    with pytest.raises(ValueError, match="disagrees with camera_to_scene"):
+        replace(
+            first_sample,
+            camera=replace(
+                first_sample.camera,
+                camera_to_scene=RigidTransform.from_matrix(mismatched_matrix),
+            ),
+        )
+
+    supported_off_path_sample = None
+    for sample in selected_samples:
+        sample_center = np.asarray(sample.camera_center_scene_m, dtype=np.float64)
+        for direction in (
+            np.asarray((1.0, 0.0, 0.0), dtype=np.float64),
+            np.asarray((0.0, 1.0, 0.0), dtype=np.float64),
+            np.asarray((0.0, 0.0, 1.0), dtype=np.float64),
+        ):
+            candidate_center = sample_center + direction * 1.0e-4
+            _margin, _clearance, supported, occupied = support_model.evaluate_point(
+                candidate_center
+            )
+            if supported and not occupied:
+                supported_off_path_sample = _v4_sample_at_center(
+                    sample,
+                    group=selected_group,
+                    center_scene_m=candidate_center,
+                    alignment=alignment,
+                )
+                break
+        if supported_off_path_sample is not None:
+            break
+    assert supported_off_path_sample is not None
+    supported_off_path_plan = _replace_v4_sample_and_recompute_semantic_phase(
+        plan,
+        replacement_sample=supported_off_path_sample,
+        alignment=alignment,
+        configuration=configuration,
+    )
+    with pytest.raises(ValueError, match="safety/path binding"):
+        validate_pre_render_plan(
+            supported_off_path_plan,
+            alignment=alignment,
+            support_model=support_model,
+        )
+
+    below_tolerance_sample = _v4_sample_at_center(
+        first_sample,
+        group=selected_group,
+        center_scene_m=first_center
+        + np.asarray((5.0e-10, 0.0, 0.0), dtype=np.float64),
+        alignment=alignment,
+    )
+    below_tolerance_plan = _replace_v4_sample_and_recompute_semantic_phase(
+        plan,
+        replacement_sample=below_tolerance_sample,
+        alignment=alignment,
+        configuration=configuration,
+    )
+    validate_pre_render_plan(
+        below_tolerance_plan,
+        alignment=alignment,
+        support_model=support_model,
+    )
+
+    above_tolerance_sample = _v4_sample_at_center(
+        first_sample,
+        group=selected_group,
+        center_scene_m=first_center
+        + np.asarray((2.0e-9, 0.0, 0.0), dtype=np.float64),
+        alignment=alignment,
+    )
+    above_tolerance_plan = _replace_v4_sample_and_recompute_semantic_phase(
+        plan,
+        replacement_sample=above_tolerance_sample,
+        alignment=alignment,
+        configuration=configuration,
+    )
+    with pytest.raises(ValueError, match="safety/path binding"):
+        validate_pre_render_plan(
+            above_tolerance_plan,
+            alignment=alignment,
+            support_model=support_model,
+        )
 
 
 def _layout() -> MultiCourtLayout:
@@ -452,14 +800,21 @@ def _execute_court_render(
     rgb_value: float,
     verify_attempt_local_reuse: bool = False,
     court_selector: str = "train",
+    render_cameras: tuple[SceneCamera, ...] | None = None,
+    scene_points: np.ndarray | None = None,
+    reject_first_render_per_shard: bool = True,
 ) -> tuple[CourtDatasetPlanAny, dict[str, object], Path]:
     alignment = _alignment()
-    scene_path = _write_standard_scene(workspace, _render_cameras())
+    scene_path = _write_standard_scene(
+        workspace,
+        _render_cameras() if render_cameras is None else render_cameras,
+        points_scene=scene_points,
+    )
     renderer = CourtNHTRenderer(
         executable=executable,
         client=NHTRenderClient(),
         environment={
-            "FAKE_NHT_REJECT_FIRST": "1",
+            "FAKE_NHT_REJECT_FIRST": str(int(reject_first_render_per_shard)),
             "FAKE_NHT_RGB_VALUE": str(rgb_value),
         },
         timeout_seconds=180.0,
@@ -473,6 +828,9 @@ def _execute_court_render(
         layout=alignment.layout,
         configuration=configuration,
         metric_adapter=alignment.metric_adapter,
+        points_scene=(
+            scene.points_scene if configuration.schema_version.value == "v4" else None
+        ),
     )
     dataset_root = workspace / "datasets/court"
     dataset_root.mkdir(parents=True)
@@ -621,7 +979,322 @@ def _render_cameras() -> tuple[SceneCamera, ...]:
     return tuple(cameras)
 
 
-def _write_standard_scene(workspace: Path, cameras: tuple[SceneCamera, ...]) -> Path:
+def _v4_render_cameras() -> tuple[SceneCamera, ...]:
+    cameras = []
+    for index, angle in enumerate(np.linspace(0.0, 2.0 * math.pi, 64, endpoint=False)):
+        matrix = np.eye(4, dtype=np.float64)
+        matrix[:3, 3] = (
+            30.0 * math.cos(angle),
+            30.0 * math.sin(angle),
+            6.0,
+        )
+        cameras.append(
+            SceneCamera(
+                camera_id=f"captured-{index}",
+                source_frame_index=index,
+                width=16,
+                height=12,
+                intrinsics=(25.0, 0.0, 7.5, 0.0, 25.0, 5.5, 0.0, 0.0, 1.0),
+                camera_to_scene=RigidTransform.from_matrix(matrix),
+                image_path=f"images/{index}.png",
+            )
+        )
+    return tuple(cameras)
+
+
+def _compact_free_space_candidates(
+    *,
+    support_model: TrajectorySupportModel,
+    centers: tuple[OrbitCenter, ...],
+    policy: CourtTrajectoryPolicyV4,
+) -> tuple[OrbitTrajectorySpecV4, ...]:
+    complex_center = next(
+        center for center in centers if center.center_kind is OrbitCenterKind.COMPLEX
+    )
+    base_height = policy.base_heights_m[0]
+    local = complex_center.scene_from_center.inverse().apply(
+        support_model.captured_camera_centers_m
+    )
+    local[:, 2] -= base_height
+    result: list[OrbitTrajectorySpecV4] = []
+    for index in range(12):
+        controls = np.roll(local, -index, axis=0)
+        if index % 2:
+            controls = controls[::-1]
+        result.append(
+            OrbitTrajectorySpecV4(
+                trajectory_id="pending",
+                trajectory_group_id="pending",
+                shape=PathFamilyV4.FREE_SPACE_CYCLE,
+                center_kind=complex_center.center_kind,
+                center_court_instance_id=complex_center.court_instance_id,
+                base_radius_m=complex_center.base_radius_m,
+                radius_scale=1.0,
+                axis_ratio=1.0,
+                orientation_radians=0.0,
+                base_height_m=base_height,
+                vertical_amplitude_m=0.0,
+                vertical_cycles=0,
+                vertical_phase_radians=0.0,
+                curve_mode=VerticalProfileV4.FREE_SPACE_CYCLE,
+                constructor=PathConstructorV4.FREE_SPACE_CYCLE,
+                corner_radius_ratio=None,
+                vertical_phase_offsets_m=(0.0,),
+                control_points_local_m=tuple(
+                    (float(point[0]), float(point[1]), float(point[2]))
+                    for point in controls
+                ),
+            )
+        )
+    return tuple(result)
+
+
+def _compact_analytic_candidates(
+    policy: CourtTrajectoryPolicyV4,
+    centers: tuple[OrbitCenter, ...],
+    **_kwargs: object,
+) -> tuple[OrbitTrajectorySpecV4, ...]:
+    del policy
+    complex_center = next(
+        center for center in centers if center.center_kind is OrbitCenterKind.COMPLEX
+    )
+    return tuple(
+        OrbitTrajectorySpecV4(
+            trajectory_id=f"raw-trajectory-{index:05d}",
+            trajectory_group_id=f"raw-group-{index:05d}",
+            shape=PathFamilyV4.CIRCLE,
+            center_kind=OrbitCenterKind.COMPLEX,
+            center_court_instance_id=None,
+            base_radius_m=complex_center.base_radius_m,
+            radius_scale=1.0,
+            axis_ratio=1.0,
+            orientation_radians=index / 100.0,
+            base_height_m=6.0,
+            vertical_amplitude_m=0.0,
+            vertical_cycles=0,
+            vertical_phase_radians=0.0,
+            curve_mode=VerticalProfileV4.PLANAR,
+            corner_radius_ratio=None,
+            vertical_phase_offsets_m=(0.0,),
+        )
+        for index in range(12)
+    )
+
+
+def _compact_anchored_candidates(
+    candidates: tuple[OrbitTrajectorySpecV4, ...],
+) -> tuple[OrbitTrajectorySpecV4, ...]:
+    by_anchor: dict[int, dict[VerticalProfileV4, OrbitTrajectorySpecV4]] = (
+        defaultdict(dict)
+    )
+    for candidate in candidates:
+        provenance = candidate.anchor_provenance
+        assert provenance is not None
+        assert isinstance(candidate.curve_mode, VerticalProfileV4)
+        by_anchor[provenance.ordered_camera_index][candidate.curve_mode] = candidate
+    result: list[OrbitTrajectorySpecV4] = []
+    for position, anchor_index in enumerate(sorted(by_anchor)[:10]):
+        profile = (
+            VerticalProfileV4.PLANAR
+            if position < 5
+            else VerticalProfileV4.RAISED_PHASES
+        )
+        result.append(by_anchor[anchor_index][profile])
+    assert len(result) == 10
+    return tuple(result)
+
+
+def _look_at_matrix(
+    center_scene: NDArray[np.float64],
+    target_scene: NDArray[np.float64],
+) -> NDArray[np.float64]:
+    forward = np.asarray(target_scene - center_scene, dtype=np.float64)
+    forward /= np.linalg.norm(forward)
+    right = np.cross(forward, np.asarray((0.0, 0.0, 1.0), dtype=np.float64))
+    right /= np.linalg.norm(right)
+    down = np.cross(forward, right)
+    matrix = np.eye(4, dtype=np.float64)
+    matrix[:3, :3] = np.column_stack((right, down, forward))
+    matrix[:3, 3] = center_scene
+    return matrix
+
+
+def _build_v4_pre_render_binding_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[
+    AlignmentResult,
+    CourtDatasetConfiguration,
+    CourtDatasetPlanV4,
+    TrajectorySupportModel,
+]:
+    monkeypatch.setattr(
+        court_selection,
+        "generate_trajectory_candidates_v4",
+        _compact_analytic_candidates,
+    )
+    monkeypatch.setattr(
+        court_selection,
+        "generate_free_space_cycle_candidates",
+        _compact_free_space_candidates,
+    )
+    original_anchored = (
+        court_selection.generate_anchored_rounded_rectangle_candidates
+    )
+    monkeypatch.setattr(
+        court_selection,
+        "generate_anchored_rounded_rectangle_candidates",
+        lambda **kwargs: _compact_anchored_candidates(
+            original_anchored(**kwargs)
+        ),
+    )
+    alignment = _alignment()
+    configuration = _configuration("v4")
+    cameras = _v4_render_cameras()
+    points_scene = np.repeat(
+        np.asarray(((0.0, 0.0, 0.0, 0.5, 0.5, 0.5),), dtype=np.float32),
+        1_000,
+        axis=0,
+    )
+    plan = build_court_dataset_plan(
+        scene_id="B00",
+        profile="train",
+        cameras=cameras,
+        layout=alignment.layout,
+        configuration=configuration,
+        metric_adapter=alignment.metric_adapter,
+        points_scene=points_scene,
+    )
+    assert isinstance(plan, CourtDatasetPlanV4)
+    support_model = build_trajectory_support_model(
+        cameras=cameras,
+        points_scene_m=points_scene,
+        policy=plan.support_policy,
+    )
+    return alignment, configuration, plan, support_model
+
+
+def _v4_sample_at_center(
+    sample: PlannedCourtSampleV4,
+    *,
+    group: TrajectoryGroupPlanV4,
+    center_scene_m: NDArray[np.float64],
+    alignment: AlignmentResult,
+) -> PlannedCourtSampleV4:
+    target_court = resolve_target_court(
+        policy=group.target_court_policy,
+        camera_center_scene_m=center_scene_m,
+        layout=alignment.layout,
+        selection_seed=sample.target_court.binding.selection_seed,
+    )
+    target_scene = resolved_court_look_at_scene(
+        target_court=target_court,
+        layout=alignment.layout,
+        look_at_height_m=group.views[0].look_at_height_m,
+    )
+    camera = replace(
+        sample.camera,
+        camera_to_scene=RigidTransform.from_matrix(
+            _look_at_matrix(center_scene_m, target_scene)
+        ),
+    )
+    return replace(
+        sample,
+        camera_center_scene_m=(
+            float(center_scene_m[0]),
+            float(center_scene_m[1]),
+            float(center_scene_m[2]),
+        ),
+        camera=camera,
+        target_court=target_court,
+    )
+
+
+def _replace_v4_sample_and_recompute_semantic_phase(
+    plan: CourtDatasetPlanV4,
+    *,
+    replacement_sample: PlannedCourtSampleV4,
+    alignment: AlignmentResult,
+    configuration: CourtDatasetConfiguration,
+) -> CourtDatasetPlanV4:
+    selected_group = next(
+        group
+        for group in plan.groups
+        if group.trajectory_group_id == replacement_sample.trajectory_group_id
+    )
+    samples = tuple(
+        replacement_sample if sample.sample_id == replacement_sample.sample_id else sample
+        for sample in plan.samples
+    )
+    dispositions: list[CourtSemanticFrameDisposition] = []
+    rejection_counts: Counter[str] = Counter()
+    valid_count = 0
+    for sample in samples:
+        if sample.trajectory_group_id != selected_group.trajectory_group_id:
+            continue
+        decision = evaluate_court_semantic_pre_render(
+            sample.camera,
+            alignment.layout,
+            schema_version=configuration.schema_version,
+        )
+        valid_count += int(decision.accepted)
+        rejection_counts.update(decision.rejection_reasons)
+        dispositions.append(
+            CourtSemanticFrameDisposition(
+                trajectory_frame_index=sample.trajectory_frame_index,
+                camera=sample.camera,
+                decision=decision,
+            )
+        )
+    original_phase = selected_group.semantic_phase_evaluation
+    changed_phase = replace(
+        original_phase,
+        expected_valid_frame_count=valid_count,
+        semantically_viable=valid_count > 0,
+        rejection_counts=tuple(sorted(rejection_counts.items())),
+        disposition_digest=court_semantic_phase_disposition_digest(
+            dispositions,
+            schema_version=configuration.schema_version,
+            trajectory_group_id=selected_group.trajectory_group_id,
+            phase_index=original_phase.phase_index,
+            phase_count=original_phase.phase_count,
+        ),
+    )
+    groups = tuple(
+        replace(group, semantic_phase_evaluation=changed_phase)
+        if group.trajectory_group_id == selected_group.trajectory_group_id
+        else group
+        for group in plan.groups
+    )
+    candidate_phases = tuple(
+        changed_phase if phase == original_phase else phase
+        for phase in plan.candidate_semantic_phase_evaluations
+    )
+    samples = tuple(
+        replace(
+            sample,
+            semantic_phase_disposition_digest=changed_phase.disposition_digest,
+        )
+        if sample.trajectory_group_id == selected_group.trajectory_group_id
+        else sample
+        for sample in samples
+    )
+    return replace(
+        plan,
+        groups=groups,
+        samples=samples,
+        candidate_semantic_phase_evaluations=candidate_phases,
+        semantic_phase_inventory_digest=semantic_phase_inventory_digest(
+            candidate_phases
+        ),
+    )
+
+
+def _write_standard_scene(
+    workspace: Path,
+    cameras: tuple[SceneCamera, ...],
+    *,
+    points_scene: np.ndarray | None = None,
+) -> Path:
     export_root = workspace / "reconstruction/export"
     image_root = export_root / "images"
     model_root = export_root / "model/ckpts"
@@ -694,10 +1367,12 @@ def _write_standard_scene(workspace: Path, cameras: tuple[SceneCamera, ...]) -> 
         json.dumps(runtime_config), encoding="utf-8"
     )
     (model_root / "model.pt").write_bytes(b"fake-public-model")
-    np.save(
-        export_root / "points_scene.npy",
-        np.asarray([[0.0, 0.0, 0.0, 1.0, 0.5, 0.0]], dtype=np.float32),
+    points = (
+        np.asarray([[0.0, 0.0, 0.0, 1.0, 0.5, 0.0]], dtype=np.float32)
+        if points_scene is None
+        else np.asarray(points_scene, dtype=np.float32)
     )
+    np.save(export_root / "points_scene.npy", points)
     identity = np.eye(4, dtype=np.float64).tolist()
     (export_root / "cameras.json").write_text(
         json.dumps(
@@ -723,7 +1398,7 @@ def _write_standard_scene(workspace: Path, cameras: tuple[SceneCamera, ...]) -> 
         "cameras": "cameras.json",
         "point_cloud": {
             "path": "points_scene.npy",
-            "shape": [1, 6],
+            "shape": list(points.shape),
             "dtype": "float32",
             "columns": ["x", "y", "z", "red", "green", "blue"],
             "color_range": [0.0, 1.0],
