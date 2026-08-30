@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
+from typing import cast
 
 import torch
 import torch.nn.functional as F
@@ -323,16 +324,19 @@ def plcs_tracking_metrics(
     reference_view_index: torch.Tensor | None = None,
 ) -> dict[str, torch.Tensor]:
     """Compute PLCS tracking metrics from their sufficient statistics."""
-    return compute_scalar_metric_statistics(
-        plcs_tracking_statistics(
-            prediction,
-            batch,
-            assignments,
-            config=config,
-            court_reference_provenance=court_reference_provenance,
-            reference_view_index=reference_view_index,
+    return cast(
+        dict[str, torch.Tensor],
+        compute_scalar_metric_statistics(
+            plcs_tracking_statistics(
+                prediction,
+                batch,
+                assignments,
+                config=config,
+                court_reference_provenance=court_reference_provenance,
+                reference_view_index=reference_view_index,
+            ),
+            zero_denominator_value=0.0,
         ),
-        zero_denominator_value=0.0,
     )
 
 
