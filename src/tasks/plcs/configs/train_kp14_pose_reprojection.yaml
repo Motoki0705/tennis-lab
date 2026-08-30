@@ -1,0 +1,54 @@
+# GPU 0 at half memory (selection/fraction cannot be expressed in Hydra YAML):
+# CUDA_VISIBLE_DEVICES=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -c 'import runpy, sys, torch; torch.cuda.set_per_process_memory_fraction(0.5, device=0); sys.argv = ["train", "--config-name", "train_kp14_pose_reprojection"]; runpy.run_module("src.tasks.plcs.scripts.train", run_name="__main__")'
+
+defaults:
+  - court_keypoints: physical_v1
+  - model: multiview_axial_base
+  - data: multiview_sequence
+  - training: default
+  - loss: all_outputs_beta01_reprojection
+  - metrics: default
+  - qualitative: default
+  - run: train
+  - paths: default
+  - _self_
+
+external_assets:
+  smplh_model_path: smplx/smplh
+
+model:
+  predict_canonical_pose: true
+  canonical_pose_readout: direct
+
+data:
+  num_court_kp: 14
+  num_views_range: [3, 3]
+  seq_len_range: [64, 64]
+  batch_size: 1
+
+loss:
+  position_weight: 1.0
+  rotation_weight: 0.05
+  angle_weight: 0.05
+  canonical_pose_weight: 1.0
+  reprojection_weight: 1.0
+
+training:
+  trainer:
+    max_epochs: 100
+    precision: "bf16-mixed"
+    accumulate_grad_batches: 4
+  early_stopping:
+    enabled: false
+
+run:
+  output_dir: plcs/plcs_multiview_axial_kp14_pose_reprojection_w1_rw005_aw005_e100_gpu0_half
+  gpus: 1
+  test_after_fit: true
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
