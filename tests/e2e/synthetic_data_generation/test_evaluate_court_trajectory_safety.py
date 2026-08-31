@@ -3,12 +3,16 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
-from typing import cast
+from typing import Protocol, cast
+from unittest.mock import Mock
 
 import pytest
+from hydra import compose, initialize_config_dir
+from omegaconf import DictConfig
 from PIL import Image
 
 from src.synthetic_data_generation.reconstruction.scene_export import (
@@ -18,6 +22,7 @@ from src.synthetic_data_generation.scripts import (
     evaluate_court_trajectory_safety as benchmark,
 )
 from src.synthetic_data_generation.scripts.evaluate_court_trajectory_safety import (
+    BenchmarkAction,
     BenchmarkConfiguration,
     ObservationLock,
     ValidatedPilotEvidence,
@@ -36,6 +41,16 @@ _STRATA = (
     "support_exterior",
     "safe_v4_candidate",
 )
+_CONFIG_DIR = (
+    Path(__file__).resolve().parents[3]
+    / "src"
+    / "synthetic_data_generation"
+    / "configs"
+)
+
+
+class _WrappedEntrypoint(Protocol):
+    __wrapped__: Callable[[DictConfig], int]
 
 
 def _required_coverage() -> dict[str, object]:
@@ -223,6 +238,124 @@ def _write_manifest(tmp_path: Path, manifest: dict[str, object]) -> Path:
     path = tmp_path / "pilot-manifest.json"
     path.write_text(json.dumps(manifest), encoding="utf-8")
     return path
+
+
+def _unfrozen_authority() -> dict[str, object]:
+    return {
+        "schema": "court_trajectory_safety_frozen_config_v2",
+        "scene_id": "B00",
+        "observation_lock": None,
+        "pilot_seed": 823,
+        "minimum_pilot_views": 128,
+        "required_strata": sorted(_STRATA),
+        "feature_definition_id": "court_public_quality_features_v1",
+        "group_split": {
+            "calibration_fraction": 0.5,
+            "held_out_fraction": 0.5,
+        },
+        "quality_only_thresholds": {
+            "minimum_recall": 0.9,
+            "minimum_precision": 0.8,
+            "maximum_valid_control_false_positive_rate": 0.1,
+            "minimum_positive_labels": 12,
+            "minimum_negative_labels": 12,
+        },
+        "geometry_release_gates": {
+            "minimum_frames": 2_000,
+            "maximum_frames": 5_000,
+            "minimum_accepted_fraction": 0.9,
+            "minimum_trajectory_groups": 24,
+            "maximum_candidate_to_legacy_artifact_rate_ratio": 0.5,
+            "required_selected_support_violations": 0,
+            "require_group_disjoint_splits": True,
+        },
+    }
+
+
+def _entrypoint_config(tmp_path: Path, *, action: str) -> DictConfig:
+    scene_path = tmp_path / "data" / "export" / "scene.json"
+    alignment_path = tmp_path / "alignment.json"
+    frozen_config_path = tmp_path / "frozen-config.json"
+    scene_path.parent.mkdir(parents=True)
+    scene_path.write_text("{}\n", encoding="utf-8")
+    alignment_path.write_text("{}\n", encoding="utf-8")
+    frozen_config_path.write_text(
+        json.dumps(_unfrozen_authority()),
+        encoding="utf-8",
+    )
+    manifest_path = _write_manifest(tmp_path, _manifest())
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        return compose(
+            config_name="evaluate_court_trajectory_safety",
+            overrides=[
+                f"action={action}",
+                f"scene_path={scene_path}",
+                f"alignment_path={alignment_path}",
+                f"pilot_manifest_path={manifest_path}",
+                f"pilot_output_root={tmp_path / 'pilot-output'}",
+                f"final_evidence_root={tmp_path / 'final-output'}",
+                f"annotation_root={tmp_path / 'annotations'}",
+                f"source_video_path={tmp_path / 'B00.mp4'}",
+                f"frozen_config_path={frozen_config_path}",
+            ],
+        )
+
+
+def test_entrypoint_dispatches_unfrozen_pilot_to_renderer_and_binds_manifest(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _entrypoint_config(tmp_path, action="render_frozen_pilot")
+    scene_path = tmp_path / "data" / "export" / "scene.json"
+    scene = cast(
+        StandardSceneExport,
+        SimpleNamespace(scene_id="B00", scene_path=scene_path),
+    )
+    client = Mock()
+    client.validate_scene.return_value = scene
+    client.render.return_value = SimpleNamespace(records=())
+    monkeypatch.setattr(benchmark, "NHTRenderClient", lambda: client)
+    entrypoint = cast(_WrappedEntrypoint, benchmark.main).__wrapped__
+
+    assert entrypoint(config) == 0
+    client.render.assert_called_once()
+    features_path = tmp_path / "pilot-output" / "features.json"
+    features = json.loads(features_path.read_text(encoding="utf-8"))
+    assert features["pilot_manifest_sha256"] == hashlib.sha256(
+        (tmp_path / "pilot-manifest.json").read_bytes()
+    ).hexdigest()
+
+    with pytest.raises(FileExistsError, match="must be a new ordinary directory"):
+        entrypoint(config)
+    assert client.render.call_count == 1
+
+
+def test_entrypoint_consumer_rejects_unfrozen_pilot_observations(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    scene_path = tmp_path / "scene.json"
+    runtime = cast(
+        BenchmarkConfiguration,
+        SimpleNamespace(
+            action=BenchmarkAction.VALIDATE_COMPLETE_EVIDENCE,
+            scene_path=scene_path,
+            frozen_authority=SimpleNamespace(observation_lock=None),
+        ),
+    )
+    scene = cast(StandardSceneExport, SimpleNamespace(scene_id="B00"))
+    client = Mock()
+    client.validate_scene.return_value = scene
+    monkeypatch.setattr(
+        benchmark.BenchmarkConfiguration,
+        "from_config",
+        lambda _config: runtime,
+    )
+    monkeypatch.setattr(benchmark, "NHTRenderClient", lambda: client)
+    entrypoint = cast(_WrappedEntrypoint, benchmark.main).__wrapped__
+
+    with pytest.raises(ValueError, match="Pilot observations are not frozen"):
+        entrypoint(DictConfig({}))
 
 
 def test_frozen_pilot_manifest_preserves_order_strata_and_camera_intrinsics(

@@ -431,7 +431,8 @@ def main(config: DictConfig) -> int:  # pragma: no cover - Hydra CLI boundary
         print(f"rgb_preview_inventory_sha256={lock.rgb_preview_inventory_sha256}")
         print("status=pilot_observations_frozen")
         return 0
-    _require_frozen_pilot_manifest(runtime)
+    if runtime.action is not BenchmarkAction.RENDER_FROZEN_PILOT:
+        _require_frozen_pilot_manifest(runtime)
     if runtime.action is BenchmarkAction.VALIDATE_COMPLETE_EVIDENCE:
         summary = validate_complete_evidence(scene=scene, runtime=runtime)
         print(f"scene={scene.scene_id}")
