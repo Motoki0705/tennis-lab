@@ -15,6 +15,7 @@ rope_theta: 10000.0
 ffn_type: swiglu
 dropout: 0.1
 invisible_init_std: 0.02
+presence_competition: none
 
 target_frame_contract: reference_camera_court_rzpi_v1
 track_query_rope_contract: time_camera_reference_selector_v1

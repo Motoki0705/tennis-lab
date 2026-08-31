@@ -46,7 +46,12 @@ from src.utils.schema.player import NUM_HUMAN_KP
 PLCSValue: TypeAlias = (
     str | int | float | bool | None | tuple[object, ...] | Mapping[str, object]
 )
-PLCSFineTuneMode: TypeAlias = Literal["all", "presence_head"]
+PLCSFineTuneMode: TypeAlias = Literal[
+    "all",
+    "presence_head",
+    "presence_competition",
+]
+PLCSPresenceCompetitionMode: TypeAlias = Literal["none", "deepsets"]
 
 
 def _plain(value: object, *, path: str) -> Mapping[str, object]:
@@ -280,6 +285,7 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "ffn_type",
             "dropout",
             "predict_canonical_pose",
+            "presence_competition",
             "role_rope_enabled",
             "invisible_init_std",
             "mhc",
@@ -300,6 +306,7 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "ffn_type",
             "dropout",
             "predict_canonical_pose",
+            "presence_competition",
             "role_rope_enabled",
             "invisible_init_std",
             "ffn_mode",
@@ -322,6 +329,7 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "ffn_type",
             "dropout",
             "predict_canonical_pose",
+            "presence_competition",
             "invisible_init_std",
             "target_frame_contract",
             "track_query_rope_contract",
@@ -344,6 +352,7 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "ffn_type",
             "dropout",
             "predict_canonical_pose",
+            "presence_competition",
             "invisible_init_std",
             "target_frame_contract",
             "track_query_rope_contract",
@@ -364,7 +373,9 @@ _TRACK_QUERY_MODEL_NAMES = frozenset(
         "plcs_track_query_reference_ablation",
     }
 )
-_TRACK_QUERY_OPTIONAL_MODEL_FIELDS = frozenset({"predict_canonical_pose"})
+_TRACK_QUERY_OPTIONAL_MODEL_FIELDS = frozenset(
+    {"predict_canonical_pose", "presence_competition"}
+)
 _REFERENCE_TRACK_QUERY_MODEL_NAMES = frozenset(
     {
         "plcs_track_query_reference",
@@ -408,6 +419,7 @@ class PLCSModelConfig:
     values: Mapping[str, object]
     track_query_mhc: PLCSTrackQueryMHCConfig | None
     track_query_cswa: PLCSTrackQueryCSWAConfig | None
+    track_query_presence_competition: PLCSPresenceCompetitionMode | None
 
     @classmethod
     def from_mapping(cls, value: object) -> PLCSModelConfig:
@@ -547,7 +559,22 @@ class PLCSModelConfig:
             )
         track_query_mhc: PLCSTrackQueryMHCConfig | None = None
         track_query_cswa: PLCSTrackQueryCSWAConfig | None = None
+        track_query_presence_competition: PLCSPresenceCompetitionMode | None = None
         if name in _TRACK_QUERY_MODEL_NAMES:
+            presence_competition_value = (
+                _string(mapping, "presence_competition", path="model")
+                if "presence_competition" in mapping
+                else "none"
+            )
+            if presence_competition_value not in {"none", "deepsets"}:
+                raise SemanticConfigurationError(
+                    "model.presence_competition must be one of 'none', "
+                    f"'deepsets'; got {presence_competition_value!r}."
+                )
+            track_query_presence_competition = cast(
+                "PLCSPresenceCompetitionMode",
+                presence_competition_value,
+            )
             num_stages = _integer(mapping, "num_stages", path="model")
             if num_stages % 4 != 0:
                 raise SemanticConfigurationError(
@@ -688,6 +715,7 @@ class PLCSModelConfig:
             values=MappingProxyType(dict(mapping)),
             track_query_mhc=track_query_mhc,
             track_query_cswa=track_query_cswa,
+            track_query_presence_competition=track_query_presence_competition,
         )
 
     def integer(self, key: str) -> int:
@@ -1199,9 +1227,14 @@ class PLCSTrainingConfig:
             if "fine_tune_mode" in training_mapping
             else "all"
         )
-        if fine_tune_mode_value not in {"all", "presence_head"}:
+        if fine_tune_mode_value not in {
+            "all",
+            "presence_head",
+            "presence_competition",
+        }:
             raise SemanticConfigurationError(
-                "training.fine_tune_mode must be one of 'all', 'presence_head'; "
+                "training.fine_tune_mode must be one of 'all', 'presence_head', "
+                "'presence_competition'; "
                 f"got {fine_tune_mode_value!r}."
             )
         fine_tune_mode = cast("PLCSFineTuneMode", fine_tune_mode_value)
@@ -1212,6 +1245,22 @@ class PLCSTrainingConfig:
             raise SemanticConfigurationError(
                 "training.fine_tune_mode='presence_head' requires a PLCS "
                 "track-query model with an independent presence_head."
+            )
+        if (
+            fine_tune_mode == "presence_competition"
+            and model.name not in _TRACK_QUERY_MODEL_NAMES
+        ):
+            raise SemanticConfigurationError(
+                "training.fine_tune_mode='presence_competition' requires a "
+                "PLCS track-query model."
+            )
+        if (
+            fine_tune_mode == "presence_competition"
+            and model.track_query_presence_competition != "deepsets"
+        ):
+            raise SemanticConfigurationError(
+                "training.fine_tune_mode='presence_competition' requires "
+                "model.presence_competition='deepsets'."
             )
         gan_fields = {
             "enabled",
@@ -1244,15 +1293,16 @@ class PLCSTrainingConfig:
             allowed=run_fields,
         )
         shared = TrainingRuntimeConfig.from_config(value, repository_root=PROJECT_ROOT)
-        if fine_tune_mode == "presence_head":
+        if fine_tune_mode in {"presence_head", "presence_competition"}:
             if shared.run.resume is not None:
                 raise SemanticConfigurationError(
-                    "training.fine_tune_mode='presence_head' forbids run.resume; "
+                    f"training.fine_tune_mode={fine_tune_mode!r} forbids "
+                    "run.resume; "
                     "use run.init_weights with a fresh optimizer."
                 )
             if shared.run.init_weights is None:
                 raise SemanticConfigurationError(
-                    "training.fine_tune_mode='presence_head' requires "
+                    f"training.fine_tune_mode={fine_tune_mode!r} requires "
                     "run.init_weights."
                 )
         external_assets = _exact(

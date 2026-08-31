@@ -11,9 +11,16 @@ from hydra import compose, initialize_config_dir
 from torch import nn
 from torch.nn import functional as F
 
+from src.tasks.plcs.models.plcs_track_query_reference_ablation_model import (
+    PLCSTrackQueryReferenceAblationModel,
+)
+from src.tasks.plcs.models.plcs_track_query_reference_model import (
+    PLCSTrackQueryReferenceModel,
+)
 from src.tasks.plcs.training.tracking_lightning_module import (
     PLCSTrackingLightningModule,
     _require_independent_presence_head,
+    _require_presence_competition,
 )
 from src.utils.geometry.court_pose import canonical_pose_to_world_pose
 from src.utils.paths import PROJECT_ROOT
@@ -53,6 +60,42 @@ def _all_mode_module() -> PLCSTrackingLightningModule:
                 "model.mhc.coefficient_dim=16",
                 "training.compile.enabled=false",
             ],
+        )
+    return PLCSTrackingLightningModule(config)
+
+
+def _competition_fine_tune_module(
+    *,
+    model_profile: str = "track_query",
+) -> PLCSTrackingLightningModule:
+    config_dir = PROJECT_ROOT / "src/tasks/plcs/configs"
+    overrides = [
+        "run.init_weights=source.ckpt",
+        f"model={model_profile}",
+        "model.hidden_dim=32",
+        "model.num_heads=4",
+        "model.ffn_dim=64",
+        "model.rope_dim=4",
+        "model.mhc.coefficient_dim=16",
+        "training.trainer.max_epochs=2",
+        "training.steps_per_epoch=1",
+        "training.warmup_steps=0",
+        "training.compile.enabled=false",
+    ]
+    if model_profile in {
+        "track_query_reference",
+        "track_query_ablation_d_v2_selector",
+    }:
+        overrides.extend(
+            [
+                "court_keypoints=camera_view_v2",
+                "model.rope_dim=6",
+            ]
+        )
+    with initialize_config_dir(version_base="1.3", config_dir=str(config_dir)):
+        config = compose(
+            config_name="train_tracking_pose_presence_competition",
+            overrides=overrides,
         )
     return PLCSTrackingLightningModule(config)
 
@@ -182,6 +225,159 @@ def test_presence_head_optimizer_step_preserves_pose_weights_outputs_and_buffers
 def test_unsupported_model_without_independent_presence_head_is_rejected() -> None:
     with pytest.raises(ValueError, match="independent registered nn.Module"):
         _require_independent_presence_head(nn.Sequential(nn.Linear(2, 1)))
+
+
+def test_presence_competition_has_exact_trainable_parameter_names() -> None:
+    module = _competition_fine_tune_module()
+    branch = _require_presence_competition(module.model)
+
+    trainable_names = {
+        name for name, parameter in module.named_parameters() if parameter.requires_grad
+    }
+
+    assert trainable_names == {
+        "model.presence_competition.feature_projection.weight",
+        "model.presence_competition.feature_projection.bias",
+        "model.presence_competition.output_projection.weight",
+        "model.presence_competition.output_projection.bias",
+    }
+    assert not module.model.presence_head.weight.requires_grad
+    assert not module.model.presence_head.bias.requires_grad
+    groups = module.optimizer_param_groups()
+    assert groups is not None
+    grouped_parameters = cast("list[nn.Parameter]", groups[0]["params"])
+    assert {id(parameter) for parameter in grouped_parameters} == {
+        id(parameter) for parameter in branch.parameters()
+    }
+
+
+def test_presence_competition_keeps_only_branch_in_train_mode() -> None:
+    module = _competition_fine_tune_module()
+    branch = _require_presence_competition(module.model)
+
+    module.train()
+
+    assert module.training
+    assert not module.model.training
+    assert branch.training
+    branch_modules = set(branch.modules())
+    assert all(
+        not child.training
+        for child in module.model.modules()
+        if child not in branch_modules
+    )
+
+    module.eval()
+
+    assert not module.training
+    assert all(not child.training for child in module.model.modules())
+
+
+def test_presence_competition_step_preserves_legacy_heads_pose_and_buffers() -> None:
+    torch.manual_seed(37)
+    module = _competition_fine_tune_module()
+    module.train()
+    inputs = _model_inputs(module)
+    parameter_before = {
+        name: parameter.detach().clone()
+        for name, parameter in module.named_parameters()
+    }
+    buffer_before = {
+        name: buffer.detach().clone() for name, buffer in module.named_buffers()
+    }
+    output_before = {
+        name: value.detach().clone()
+        for name, value in _model_forward(module, inputs).items()
+    }
+    optimizer_config = cast("dict[str, Any]", module.configure_optimizers())
+    optimizer = cast("torch.optim.Optimizer", optimizer_config["optimizer"])
+
+    optimizer.zero_grad(set_to_none=True)
+    output = _model_forward(module, inputs)
+    loss = F.binary_cross_entropy_with_logits(
+        output["presence_logits"],
+        torch.zeros_like(output["presence_logits"]),
+    )
+    loss.backward()
+    optimizer.step()
+
+    parameter_after = dict(module.named_parameters())
+    branch_prefix = "model.presence_competition."
+    assert any(
+        not torch.equal(parameter_before[name], parameter_after[name])
+        for name in parameter_before
+        if name.startswith(branch_prefix)
+    )
+    for name, before in parameter_before.items():
+        if not name.startswith(branch_prefix):
+            torch.testing.assert_close(
+                parameter_after[name], before, rtol=0.0, atol=0.0
+            )
+            assert parameter_after[name].grad is None
+    for name, before in buffer_before.items():
+        torch.testing.assert_close(
+            dict(module.named_buffers())[name],
+            before,
+            rtol=0.0,
+            atol=0.0,
+        )
+
+    output_after = _model_forward(module, inputs)
+    for name in ("position", "rotation", "canonical_pose"):
+        torch.testing.assert_close(output_after[name], output_before[name])
+    assert not torch.equal(
+        output_after["presence_logits"], output_before["presence_logits"]
+    )
+
+
+def test_presence_competition_rejects_model_without_registered_branch() -> None:
+    with pytest.raises(ValueError, match="DeepSetsPresenceResidual"):
+        _require_presence_competition(nn.Sequential(nn.Linear(2, 1)))
+
+
+@pytest.mark.parametrize(
+    ("model_profile", "expected_model_type"),
+    [
+        ("track_query_reference", PLCSTrackQueryReferenceModel),
+        (
+            "track_query_ablation_d_v2_selector",
+            PLCSTrackQueryReferenceAblationModel,
+        ),
+    ],
+)
+def test_reference_competition_fine_tune_lifecycle_is_branch_only(
+    model_profile: str,
+    expected_model_type: type[nn.Module],
+) -> None:
+    module = _competition_fine_tune_module(model_profile=model_profile)
+    branch = _require_presence_competition(module.model)
+
+    assert type(module.model) is expected_model_type
+    trainable_names = {
+        name for name, parameter in module.named_parameters() if parameter.requires_grad
+    }
+    expected_trainable_names = {
+        f"model.presence_competition.{name}"
+        for name, _parameter in branch.named_parameters()
+    }
+    assert trainable_names == expected_trainable_names
+    groups = module.optimizer_param_groups()
+    assert groups is not None
+    grouped_parameters = cast("list[nn.Parameter]", groups[0]["params"])
+    assert {id(parameter) for parameter in grouped_parameters} == {
+        id(parameter) for parameter in branch.parameters()
+    }
+
+    module.train()
+
+    branch_modules = set(branch.modules())
+    assert not module.model.training
+    assert all(child.training for child in branch_modules)
+    assert all(
+        not child.training
+        for child in module.model.modules()
+        if child not in branch_modules
+    )
 
 
 def test_all_mode_preserves_legacy_train_and_optimizer_behavior() -> None:

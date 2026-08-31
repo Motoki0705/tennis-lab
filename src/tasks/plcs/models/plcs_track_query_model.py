@@ -11,6 +11,11 @@ from torch import Tensor, nn
 from src.tasks.plcs.configuration import PLCSModelConfig
 from src.tasks.plcs.data.tracking_types import PLCSTrackingPrediction
 from src.tasks.plcs.models.components.heads import CanonicalPoseHead
+from src.tasks.plcs.models.components.presence_competition import (
+    DeepSetsPresenceResidual,
+    build_presence_competition,
+    decode_presence_logits,
+)
 from src.utils.models import (
     CSWAConfig,
     RMSNorm,
@@ -139,6 +144,17 @@ class PLCSTrackQueryModel(nn.Module):
             hidden_dim=self.hidden_dim,
             num_joints=self.num_joints,
         )
+        self.presence_competition_mode = config.track_query_presence_competition
+        if self.presence_competition_mode is None:
+            raise ValueError(
+                "PLCS track-query presence competition config must be validated."
+            )
+        presence_competition = build_presence_competition(
+            self.presence_competition_mode,
+            hidden_dim=self.hidden_dim,
+        )
+        if presence_competition is not None:
+            self.presence_competition = presence_competition
         self.register_forward_pre_hook(
             self._validate_forward_inputs,
             with_kwargs=True,
@@ -401,7 +417,16 @@ class PLCSTrackQueryModel(nn.Module):
         position = self.position_head(query_tokens) * output_valid.unsqueeze(-1)
         rotation = F.normalize(self.rotation_head(query_tokens), dim=-1)
         rotation = rotation * output_valid.unsqueeze(-1)
-        presence_logits = self.presence_head(query_tokens).squeeze(-1) * output_valid
+        presence_competition = cast(
+            "DeepSetsPresenceResidual | None",
+            getattr(self, "presence_competition", None),
+        )
+        presence_logits = decode_presence_logits(
+            self.presence_head,
+            presence_competition,
+            query_tokens,
+            frame_valid=masks.frame_valid,
+        )
         canonical_pose = decode_track_query_canonical_pose(
             self.canonical_pose_head,
             query_tokens,

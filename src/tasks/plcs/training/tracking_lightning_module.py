@@ -27,6 +27,9 @@ from src.tasks.plcs.model_io import (
     write_plcs_checkpoint_court_keypoints,
     write_plcs_checkpoint_track_query_reference,
 )
+from src.tasks.plcs.models.components.presence_competition import (
+    DeepSetsPresenceResidual,
+)
 from src.tasks.plcs.training.tracking_losses import PLCSTrackingLoss
 from src.tasks.plcs.training.tracking_metrics import plcs_tracking_statistics
 from src.utils.geometry.court_pose import world_pose_to_canonical_pose
@@ -60,6 +63,27 @@ def _require_independent_presence_head(model: nn.Module) -> nn.Module:
     return presence_head
 
 
+def _require_presence_competition(
+    model: nn.Module,
+) -> DeepSetsPresenceResidual:
+    """Return the explicit competition branch or reject a config/model mismatch."""
+    branch = getattr(model, "presence_competition", None)
+    registered_branch = dict(model.named_children()).get("presence_competition")
+    if not isinstance(branch, DeepSetsPresenceResidual):
+        raise ValueError(
+            "training.fine_tune_mode='presence_competition' requires the "
+            "configured model to expose an independent registered "
+            "DeepSetsPresenceResidual named 'presence_competition'; got "
+            f"{type(model).__name__}."
+        )
+    if registered_branch is not branch:
+        raise ValueError(
+            "training.fine_tune_mode='presence_competition' requires "
+            "'presence_competition' to be a directly registered model child."
+        )
+    return cast(DeepSetsPresenceResidual, branch)
+
+
 class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Any]]):
     """Train and evaluate clip-local player slots."""
 
@@ -91,6 +115,8 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Any]]):
         self.fine_tune_mode = runtime.fine_tune_mode
         if self.fine_tune_mode == "presence_head":
             self._configure_presence_head_fine_tuning()
+        elif self.fine_tune_mode == "presence_competition":
+            self._configure_presence_competition_fine_tuning()
 
     def _configure_presence_head_fine_tuning(self) -> None:
         """Freeze all state except the independently registered presence head."""
@@ -100,13 +126,25 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Any]]):
         self.model.eval()
         presence_head.train()
 
+    def _configure_presence_competition_fine_tuning(self) -> None:
+        """Freeze legacy predictions and train only the query-aware residual."""
+        branch = _require_presence_competition(self.model)
+        self.requires_grad_(False)
+        branch.requires_grad_(True)
+        self.model.eval()
+        branch.train()
+
     def train(self, mode: bool = True) -> Self:
-        """Keep the frozen trunk deterministic while training the presence head."""
+        """Keep the frozen trunk deterministic during presence-only fine-tuning."""
         super().train(mode)
         if self.fine_tune_mode == "presence_head":
             presence_head = _require_independent_presence_head(self.model)
             self.model.eval()
             presence_head.train(mode)
+        elif self.fine_tune_mode == "presence_competition":
+            branch = _require_presence_competition(self.model)
+            self.model.eval()
+            branch.train(mode)
         return self
 
     def optimizer_param_groups(self) -> list[dict[str, Any]] | None:
@@ -118,7 +156,7 @@ class PLCSTrackingLightningModule(TrackingLightningModule[dict[str, Any]]):
         ]
         if not trainable_parameters:
             raise RuntimeError(
-                "presence-head fine-tuning resolved no trainable parameters."
+                f"{self.fine_tune_mode} fine-tuning resolved no trainable parameters."
             )
         return [{"params": trainable_parameters}]
 
