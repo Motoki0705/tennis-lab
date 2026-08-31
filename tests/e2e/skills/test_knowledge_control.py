@@ -20,17 +20,20 @@ def test_register_promotes_headline_and_diagnostic_metric_artifacts(
     repro_dir = tmp_path / "repro" / "job-register-metrics"
     predictions_dir = repro_dir / "predictions"
     predictions_dir.mkdir(parents=True)
+    run_metadata = {
+        "name": "register_metrics",
+        "provider": "codex",
+        "issue": "533",
+        "command": "python -m train model=baseline loss=mse data=fixture",
+        "resource": "half",
+        "logical_gpu_slot": "1",
+    }
     (repro_dir / "run.json").write_text(
-        json.dumps(
-            {
-                "name": "register_metrics",
-                "provider": "codex",
-                "issue": "533",
-                "command": "python -m train model=baseline loss=mse data=fixture",
-            }
-        ),
+        json.dumps(run_metadata),
         encoding="utf-8",
     )
+    repro_script = "export TENNIS_GPU_RESOURCE=half\nexport TENNIS_GPU_SLOT=1\n"
+    (repro_dir / "repro.sh").write_text(repro_script, encoding="utf-8")
     (predictions_dir / "pred_test.npz").write_bytes(b"prediction-fixture")
     headline_metrics = {"position_error_m": 0.25, "angular_error_deg": 4.5}
     diagnostic_metrics = {"x_error_m": 0.1, "loss_position": 0.02}
@@ -61,6 +64,10 @@ def test_register_promotes_headline_and_diagnostic_metric_artifacts(
     )
 
     promoted_dir = knowledge_dir / "runs" / "run-register-metrics"
+    assert json.loads((promoted_dir / "run.json").read_text(encoding="utf-8")) == (
+        run_metadata
+    )
+    assert (promoted_dir / "repro.sh").read_text(encoding="utf-8") == repro_script
     assert (promoted_dir / "pred_test.npz").read_bytes() == b"prediction-fixture"
     assert json.loads((promoted_dir / "metrics.json").read_text(encoding="utf-8")) == (
         headline_metrics

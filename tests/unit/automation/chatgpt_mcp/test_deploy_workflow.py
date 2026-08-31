@@ -66,8 +66,17 @@ def test_trusted_deploy_runner_has_local_authorization_and_service_boundaries() 
     assert "ReadWritePaths=$MCP_CONTROL_DIR" in installer
     assert "ReadWritePaths=$PROJECT_ROOT" in installer
     assert 'GPU_LOCK_FILE="/var/lib/tennis-lab-actions/gpu.lock"' in installer
-    assert "ReadWritePaths=$GPU_LOCK_FILE" in installer
-    assert '[[ ! -w "$GPU_LOCK_FILE" ]]' in installer
+    assert 'GPU_GATE_FILE="${GPU_LOCK_FILE}.gate"' in installer
+    assert 'GPU_SLOT_0_FILE="${GPU_LOCK_FILE}.slot-0"' in installer
+    assert 'GPU_SLOT_1_FILE="${GPU_LOCK_FILE}.slot-1"' in installer
+    for lock_variable in (
+        "$GPU_LOCK_FILE",
+        "$GPU_GATE_FILE",
+        "$GPU_SLOT_0_FILE",
+        "$GPU_SLOT_1_FILE",
+    ):
+        assert f"ReadWritePaths={lock_variable}" in installer
+    assert '[[ ! -w "$gpu_lock_path" ]]' in installer
     assert "ReadOnlyPaths=$runner_env" in installer
     assert "ReadOnlyPaths=$HOOK_PATH" in installer
     assert "ExecStart=/bin/bash $RUNNER_ROOT/run.sh" in installer

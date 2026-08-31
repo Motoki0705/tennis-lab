@@ -17,6 +17,7 @@ readonly INSTALLED_QUEUE="/opt/tennis-lab-actions/bin/training_queue.sh"
 : "${TRAINING_NAME:?TRAINING_NAME is required}"
 
 TRAINING_ISSUE="${TRAINING_ISSUE:-}"
+TRAINING_RESOURCE="${TRAINING_RESOURCE:-all}"
 
 if [ "$GITHUB_REPOSITORY" != "$EXPECTED_REPOSITORY" ]; then
   echo "Refusing repository $GITHUB_REPOSITORY; expected $EXPECTED_REPOSITORY." >&2
@@ -34,6 +35,10 @@ if [ -n "$TRAINING_ISSUE" ] && [[ ! "$TRAINING_ISSUE" =~ ^[0-9]+$ ]]; then
   echo "TRAINING_ISSUE must be empty or a GitHub issue number." >&2
   exit 1
 fi
+case "$TRAINING_RESOURCE" in
+  half|all) ;;
+  *) echo "TRAINING_RESOURCE must be half or all." >&2; exit 1 ;;
+esac
 if [ ! -x "$INSTALLED_QUEUE" ]; then
   echo "Installed training queue is unavailable: $INSTALLED_QUEUE" >&2
   exit 1
@@ -81,6 +86,7 @@ queue_args=(
   --name "$TRAINING_NAME"
   --provider github-actions
   --session "$GITHUB_RUN_ID"
+  --resource "$TRAINING_RESOURCE"
 )
 if [ -n "$TRAINING_ISSUE" ]; then
   queue_args+=(--issue "$TRAINING_ISSUE")
@@ -106,6 +112,7 @@ if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
     echo
     echo "- Queue job: \`$job_file\`"
     echo "- Commit: \`$GITHUB_SHA\`"
+    echo "- Logical GPU resource: \`$TRAINING_RESOURCE\`"
     echo "- Persistent checkout: \`$run_repository\`"
     echo
     echo "The workflow reports queue admission only; training continues in the local systemd queue."
