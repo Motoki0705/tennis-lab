@@ -3,6 +3,7 @@
 from src.synthetic_data_generation.visualization.publication.bundle import (
     generate_publication_bundle,
     validate_publication_bundle,
+    validate_publication_bundle_structure_only,
 )
 from src.synthetic_data_generation.visualization.publication.contracts import (
     PUBLICATION_BUNDLE_SCHEMA,
@@ -28,4 +29,5 @@ __all__ = [
     "PublicationRequest",
     "generate_publication_bundle",
     "validate_publication_bundle",
+    "validate_publication_bundle_structure_only",
 ]

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+import shutil
 from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
 from types import SimpleNamespace
@@ -41,6 +44,7 @@ from src.synthetic_data_generation.scene_contract import (
 from src.synthetic_data_generation.visualization.publication import (
     generate_publication_bundle,
     validate_publication_bundle,
+    validate_publication_bundle_structure_only,
 )
 from src.synthetic_data_generation.visualization.publication.alignment import (
     ALIGNMENT_AGREEMENT_METRIC_SCHEMA,
@@ -449,6 +453,334 @@ def _record_by_name(
 ) -> dict[PublicationArtifactName, PublicationArtifactRecord]:
     manifest = result.manifest
     return {record.file_name: record for record in manifest.artifacts}
+
+
+@pytest.fixture(scope="module")
+def authoritative_bundle_fixture(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Iterator[tuple[Path, PublicationRequest]]:
+    tmp_path = tmp_path_factory.mktemp("authoritative-publication")
+    scene_root = _scene_root(tmp_path)
+    loaded = _loaded_inputs()
+    patch = pytest.MonkeyPatch()
+    patch.setattr(bundle_module, "_load_inputs", lambda _request: loaded)
+    request = _request(scene_root, tmp_path / "publication-authoritative")
+    result = generate_publication_bundle(request)
+    try:
+        yield result.bundle_path, request
+    finally:
+        patch.undo()
+
+
+def _tamper_bundle(
+    source_bundle: Path,
+    destination: Path,
+) -> tuple[Path, dict[str, object]]:
+    bundle = shutil.copytree(source_bundle, destination)
+    manifest_path = bundle / "manifest.json"
+    payload = cast(
+        dict[str, object], json.loads(manifest_path.read_text(encoding="utf-8"))
+    )
+    return bundle, payload
+
+
+def _write_manifest_with_recomputed_media_digests(
+    bundle: Path,
+    payload: dict[str, object],
+) -> None:
+    artifacts = cast(list[dict[str, object]], payload["artifacts"])
+    for artifact in artifacts:
+        path = bundle / cast(str, artifact["file_name"])
+        artifact["byte_size"] = path.stat().st_size
+        artifact["content_digest_blake2b_256"] = hashlib.blake2b(
+            path.read_bytes(), digest_size=32
+        ).hexdigest()
+    (bundle / "manifest.json").write_text(
+        json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _artifact_payload(
+    payload: dict[str, object],
+    file_name: PublicationArtifactName,
+) -> dict[str, object]:
+    return next(
+        artifact
+        for artifact in cast(list[dict[str, object]], payload["artifacts"])
+        if artifact["file_name"] == file_name.value
+    )
+
+
+def test_authoritative_validator_rejects_missing_request_context(
+    authoritative_bundle_fixture: tuple[Path, PublicationRequest],
+) -> None:
+    source_bundle, _request = authoritative_bundle_fixture
+
+    with pytest.raises(TypeError, match="requires expected_request"):
+        validate_publication_bundle(
+            source_bundle,
+            expected_request=cast(PublicationRequest, None),
+        )
+
+
+@pytest.mark.parametrize(
+    ("owner_name", "field", "replacement"),
+    [
+        ("court", "owner_path", "evil"),
+        ("court", "domain", "blcs"),
+        ("court", "schema", "evil-schema"),
+        ("court", "source_fps", 99.0),
+        ("court", "source_size", [1, 1]),
+        ("court", "trajectory_id", "wrong-trajectory"),
+        ("blcs", "owner_path", "evil"),
+        ("blcs", "domain", "court"),
+        ("blcs", "schema", "evil-schema"),
+        ("blcs", "source_fps", 99.0),
+        ("blcs", "source_size", [1, 1]),
+        ("plcs", "owner_path", "evil"),
+        ("plcs", "domain", "court"),
+        ("plcs", "schema", "evil-schema"),
+        ("plcs", "source_fps", 99.0),
+        ("plcs", "source_size", [1, 1]),
+        ("alignment", "owner_path", "evil"),
+        ("alignment", "schema", "evil-schema"),
+    ],
+)
+def test_authoritative_validator_rejects_source_owner_rebinding(
+    authoritative_bundle_fixture: tuple[Path, PublicationRequest],
+    tmp_path: Path,
+    owner_name: str,
+    field: str,
+    replacement: object,
+) -> None:
+    source_bundle, request = authoritative_bundle_fixture
+    bundle, payload = _tamper_bundle(
+        source_bundle, tmp_path / f"{owner_name}-{field}"
+    )
+    source_owners = cast(dict[str, dict[str, object]], payload["source_owners"])
+    source_owners[owner_name][field] = replacement
+    _write_manifest_with_recomputed_media_digests(bundle, payload)
+
+    validate_publication_bundle_structure_only(bundle)
+    with pytest.raises(ValueError, match="validated request sources"):
+        validate_publication_bundle(bundle, expected_request=request)
+
+
+@pytest.mark.parametrize(
+    ("domain", "artifact", "mapping_field", "replacement"),
+    [
+        (
+            "court",
+            PublicationArtifactName.DATASET_COURT,
+            "sample_id",
+            "wrong-sample",
+        ),
+        (
+            "blcs",
+            PublicationArtifactName.DATASET_BLCS,
+            "global_frame_index",
+            999_999,
+        ),
+        (
+            "plcs",
+            PublicationArtifactName.DATASET_PLCS,
+            "frame_index",
+            999_999,
+        ),
+    ],
+)
+def test_authoritative_validator_rejects_dataset_source_record_rebinding(
+    authoritative_bundle_fixture: tuple[Path, PublicationRequest],
+    tmp_path: Path,
+    domain: str,
+    artifact: PublicationArtifactName,
+    mapping_field: str,
+    replacement: object,
+) -> None:
+    source_bundle, request = authoritative_bundle_fixture
+    bundle, payload = _tamper_bundle(source_bundle, tmp_path / domain)
+    mapping = cast(list[dict[str, object]], _artifact_payload(payload, artifact)["mapping"])
+    mapping[-1][mapping_field] = replacement
+    _write_manifest_with_recomputed_media_digests(bundle, payload)
+
+    validate_publication_bundle_structure_only(bundle)
+    with pytest.raises(ValueError, match="validated dataset source"):
+        validate_publication_bundle(bundle, expected_request=request)
+
+
+@pytest.mark.parametrize(
+    ("domain", "artifact"),
+    [
+        ("court", PublicationArtifactName.DATASET_COURT),
+        ("blcs", PublicationArtifactName.DATASET_BLCS),
+        ("plcs", PublicationArtifactName.DATASET_PLCS),
+    ],
+)
+def test_authoritative_validator_rejects_self_consistent_selection_rebinding(
+    authoritative_bundle_fixture: tuple[Path, PublicationRequest],
+    tmp_path: Path,
+    domain: str,
+    artifact: PublicationArtifactName,
+) -> None:
+    source_bundle, request = authoritative_bundle_fixture
+    bundle, payload = _tamper_bundle(source_bundle, tmp_path / domain)
+    source_owners = cast(dict[str, dict[str, object]], payload["source_owners"])
+    owner = source_owners[domain]
+    owner["source_count"] = 2
+    owner["selected_indices"] = [0, 1]
+    mapping = cast(list[dict[str, object]], _artifact_payload(payload, artifact)["mapping"])
+    mapping[-1]["source_index"] = 1
+    _write_manifest_with_recomputed_media_digests(bundle, payload)
+
+    validate_publication_bundle_structure_only(bundle)
+    with pytest.raises(ValueError, match="validated request sources"):
+        validate_publication_bundle(bundle, expected_request=request)
+
+
+@pytest.mark.parametrize(
+    ("domain", "artifact"),
+    [
+        ("blcs", PublicationArtifactName.DATASET_BLCS),
+        ("plcs", PublicationArtifactName.DATASET_PLCS),
+    ],
+)
+def test_authoritative_validator_rejects_gif_camera_rebinding(
+    authoritative_bundle_fixture: tuple[Path, PublicationRequest],
+    tmp_path: Path,
+    domain: str,
+    artifact: PublicationArtifactName,
+) -> None:
+    source_bundle, request = authoritative_bundle_fixture
+    bundle, payload = _tamper_bundle(source_bundle, tmp_path / domain)
+    source_owners = cast(dict[str, dict[str, object]], payload["source_owners"])
+    source_owners[domain]["gif_camera_id"] = "camera-1"
+    mapping = cast(list[dict[str, object]], _artifact_payload(payload, artifact)["mapping"])
+    for record in mapping:
+        record["camera_id"] = "camera-1"
+    _write_manifest_with_recomputed_media_digests(bundle, payload)
+
+    validate_publication_bundle_structure_only(bundle)
+    with pytest.raises(ValueError, match="validated request sources"):
+        validate_publication_bundle(bundle, expected_request=request)
+
+
+@pytest.mark.parametrize(
+    ("domain", "dataset_artifact", "camera_artifact"),
+    [
+        (
+            "blcs",
+            PublicationArtifactName.DATASET_BLCS,
+            PublicationArtifactName.BLCS_CAMERA_LAYOUT,
+        ),
+        (
+            "plcs",
+            PublicationArtifactName.DATASET_PLCS,
+            PublicationArtifactName.PLCS_CAMERA_LAYOUT,
+        ),
+    ],
+)
+def test_authoritative_validator_rejects_logical_scene_rebinding(
+    authoritative_bundle_fixture: tuple[Path, PublicationRequest],
+    tmp_path: Path,
+    domain: str,
+    dataset_artifact: PublicationArtifactName,
+    camera_artifact: PublicationArtifactName,
+) -> None:
+    source_bundle, request = authoritative_bundle_fixture
+    bundle, payload = _tamper_bundle(source_bundle, tmp_path / domain)
+    wrong_logical_scene = "logical-wrong"
+    resolved_config = cast(dict[str, dict[str, object]], payload["resolved_config"])
+    resolved_config[domain]["logical_scene_id"] = wrong_logical_scene
+    source_owners = cast(dict[str, dict[str, object]], payload["source_owners"])
+    source_owners[domain]["logical_scene_id"] = wrong_logical_scene
+
+    dataset_mapping = cast(
+        list[dict[str, object]],
+        _artifact_payload(payload, dataset_artifact)["mapping"],
+    )
+    for record in dataset_mapping:
+        record["logical_scene_id"] = wrong_logical_scene
+
+    camera_mapping = cast(
+        list[dict[str, object]],
+        _artifact_payload(payload, camera_artifact)["mapping"],
+    )
+    for record in camera_mapping:
+        record["logical_scene_id"] = wrong_logical_scene
+
+    comparison = cast(
+        list[dict[str, object]],
+        _artifact_payload(
+            payload, PublicationArtifactName.CAMERA_LAYOUT_COMPARISON
+        )["mapping"],
+    )
+    comparison_start = 1 if domain == "blcs" else 1 + len(_CAMERA_IDS)
+    comparison[comparison_start : comparison_start + len(_CAMERA_IDS)] = [
+        dict(record) for record in camera_mapping[1:]
+    ]
+    _write_manifest_with_recomputed_media_digests(bundle, payload)
+
+    validate_publication_bundle_structure_only(bundle)
+    with pytest.raises(ValueError, match="resolved config differs"):
+        validate_publication_bundle(bundle, expected_request=request)
+
+
+@pytest.mark.parametrize(
+    ("owner_name", "artifact", "field"),
+    [
+        (owner_name, artifact, field)
+        for owner_name, artifact in (
+            ("reconstruction", PublicationArtifactName.CAPTURED_CAMERA_TRAJECTORY),
+            ("blcs", PublicationArtifactName.BLCS_CAMERA_LAYOUT),
+            ("plcs", PublicationArtifactName.PLCS_CAMERA_LAYOUT),
+        )
+        for field in (
+            "source_frame_index",
+            "width",
+            "height",
+            "intrinsics",
+            "image_path",
+        )
+    ],
+)
+def test_authoritative_validator_rejects_camera_source_record_rebinding(
+    authoritative_bundle_fixture: tuple[Path, PublicationRequest],
+    tmp_path: Path,
+    owner_name: str,
+    artifact: PublicationArtifactName,
+    field: str,
+) -> None:
+    source_bundle, request = authoritative_bundle_fixture
+    bundle, payload = _tamper_bundle(
+        source_bundle, tmp_path / f"{owner_name}-{field}"
+    )
+    artifact_mapping = cast(
+        list[dict[str, object]], _artifact_payload(payload, artifact)["mapping"]
+    )
+    pose = artifact_mapping[1]
+    if field == "intrinsics":
+        intrinsics = cast(list[float], pose[field])
+        intrinsics[0] += 1.0
+    elif field == "image_path":
+        pose[field] = "images/wrong.png"
+    else:
+        pose[field] = cast(int, pose[field]) + 1
+
+    if owner_name != "reconstruction":
+        comparison = cast(
+            list[dict[str, object]],
+            _artifact_payload(
+                payload, PublicationArtifactName.CAMERA_LAYOUT_COMPARISON
+            )["mapping"],
+        )
+        comparison_index = 1 if owner_name == "blcs" else 1 + len(_CAMERA_IDS)
+        comparison[comparison_index] = dict(pose)
+    _write_manifest_with_recomputed_media_digests(bundle, payload)
+
+    validate_publication_bundle_structure_only(bundle)
+    with pytest.raises(ValueError, match="validated camera source"):
+        validate_publication_bundle(bundle, expected_request=request)
 
 
 def test_complete_bundle_reopens_with_exact_mappings_and_is_byte_deterministic(
