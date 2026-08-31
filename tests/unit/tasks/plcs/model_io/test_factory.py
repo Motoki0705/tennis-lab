@@ -260,12 +260,17 @@ def test_factory_wires_competition_through_all_track_query_model_families(
     )
     enabled_keys = set(binding.model.state_dict())
     disabled_keys = set(disabled_binding.model.state_dict())
-    assert enabled_keys - disabled_keys == {
+    expected_competition_keys = {
         "presence_competition.feature_projection.weight",
         "presence_competition.feature_projection.bias",
         "presence_competition.output_projection.weight",
-        "presence_competition.output_projection.bias",
     }
+    if presence_competition == "deepsets":
+        expected_competition_keys.add("presence_competition.output_projection.bias")
+        assert binding.model.presence_competition.output_projection.bias is not None
+    else:
+        assert binding.model.presence_competition.output_projection.bias is None
+    assert enabled_keys - disabled_keys == expected_competition_keys
     assert disabled_keys == {
         key for key in enabled_keys if not key.startswith("presence_competition.")
     }

@@ -75,7 +75,6 @@ def test_centered_branch_is_query_permutation_equivariant_after_training() -> No
     branch = DeepSetsPresenceResidual(hidden_dim=6, center_queries=True)
     with torch.no_grad():
         branch.output_projection.weight.normal_()
-        branch.output_projection.bias.normal_()
     query_hidden = torch.randn(2, 3, 5, 6)
     permutation = torch.tensor([3, 0, 4, 1, 2])
 
@@ -100,7 +99,6 @@ def test_centered_branch_has_zero_query_mean_with_dtype_tolerance(
     ).to(dtype=dtype)
     with torch.no_grad():
         branch.output_projection.weight.normal_()
-        branch.output_projection.bias.normal_()
     query_hidden = torch.randn(2, 3, 4, 8, dtype=dtype)
 
     residual = branch(query_hidden)
@@ -119,7 +117,6 @@ def test_centered_single_query_is_strictly_zero_after_training() -> None:
     branch = DeepSetsPresenceResidual(hidden_dim=4, center_queries=True)
     with torch.no_grad():
         branch.output_projection.weight.normal_()
-        branch.output_projection.bias.normal_()
     query_hidden = torch.randn(2, 3, 1, 4)
 
     residual = branch(query_hidden)
@@ -195,6 +192,10 @@ def test_centered_mixed_target_trains_output_then_feature_projection() -> None:
     optimizer = torch.optim.SGD(branch.parameters(), lr=0.1)
     query_hidden = torch.randn(2, 3, 4, 4)
     target = torch.tensor([1.0, 0.0, 1.0, 0.0]).view(1, 1, 4).expand(2, 3, -1)
+    parameters_before = {
+        name: parameter.detach().clone()
+        for name, parameter in branch.named_parameters()
+    }
 
     optimizer.zero_grad(set_to_none=True)
     first_loss = F.binary_cross_entropy_with_logits(branch(query_hidden), target)
@@ -208,6 +209,17 @@ def test_centered_mixed_target_trains_output_then_feature_projection() -> None:
     assert feature_gradient is not None
     assert torch.count_nonzero(feature_gradient) == 0
     optimizer.step()
+
+    parameters_after_first_step = dict(branch.named_parameters())
+    assert not torch.equal(
+        parameters_after_first_step["output_projection.weight"],
+        parameters_before["output_projection.weight"],
+    )
+    for name in (
+        "feature_projection.weight",
+        "feature_projection.bias",
+    ):
+        assert torch.equal(parameters_after_first_step[name], parameters_before[name])
 
     optimizer.zero_grad(set_to_none=True)
     second_loss = F.binary_cross_entropy_with_logits(branch(query_hidden), target)
@@ -231,18 +243,32 @@ def test_centered_uniform_presence_target_cancels_common_gradient(
     loss = F.binary_cross_entropy_with_logits(branch(query_hidden), target)
     loss.backward()
 
-    for parameter in (
-        branch.output_projection.weight,
-        branch.output_projection.bias,
-    ):
-        assert parameter.grad is not None
-        assert torch.isfinite(parameter.grad).all()
-        torch.testing.assert_close(
-            parameter.grad,
-            torch.zeros_like(parameter.grad),
-            rtol=0.0,
-            atol=1.0e-7,
-        )
+    output_gradient = branch.output_projection.weight.grad
+    assert output_gradient is not None
+    assert torch.isfinite(output_gradient).all()
+    torch.testing.assert_close(
+        output_gradient,
+        torch.zeros_like(output_gradient),
+        rtol=0.0,
+        atol=1.0e-7,
+    )
+
+
+def test_centered_projection_structurally_omits_common_mode_bias() -> None:
+    centered = DeepSetsPresenceResidual(hidden_dim=4, center_queries=True)
+    deepsets = DeepSetsPresenceResidual(hidden_dim=4)
+
+    assert centered.output_projection.bias is None
+    assert "output_projection.bias" not in dict(centered.named_parameters())
+    assert "output_projection.bias" not in centered.state_dict()
+    assert set(centered.state_dict()) == {
+        "feature_projection.weight",
+        "feature_projection.bias",
+        "output_projection.weight",
+    }
+    assert deepsets.output_projection.bias is not None
+    assert "output_projection.bias" in dict(deepsets.named_parameters())
+    assert "output_projection.bias" in deepsets.state_dict()
 
 
 def test_builder_registers_only_explicit_deepsets_mode() -> None:
@@ -254,6 +280,7 @@ def test_builder_registers_only_explicit_deepsets_mode() -> None:
     centered = build_presence_competition("deepsets_centered", hidden_dim=4)
     assert isinstance(centered, DeepSetsPresenceResidual)
     assert centered.center_queries
+    assert centered.output_projection.bias is None
 
 
 @pytest.mark.parametrize(
