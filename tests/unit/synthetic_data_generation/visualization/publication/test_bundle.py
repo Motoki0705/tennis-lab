@@ -12,21 +12,21 @@ from numpy.typing import NDArray
 import src.synthetic_data_generation.visualization.publication.bundle as bundle_module
 from src.synthetic_data_generation.scene_contract import RigidTransform
 from src.synthetic_data_generation.visualization.publication.bundle import (
-    validate_publication_bundle,
+    validate_publication_bundle_structure_only,
 )
 
 
-def test_bundle_validator_accepts_complete_fixture(
+def test_structure_only_validator_accepts_complete_fixture(
     valid_publication_bundle: Path,
 ) -> None:
-    manifest = validate_publication_bundle(valid_publication_bundle)
+    manifest = validate_publication_bundle_structure_only(valid_publication_bundle)
 
     assert manifest.scene_id == "scene-0"
     assert len(manifest.artifacts) == 10
 
 
 @pytest.mark.parametrize("mutation", ["missing", "extra"])
-def test_bundle_validator_rejects_missing_or_extra_media(
+def test_structure_only_validator_rejects_missing_or_extra_media(
     valid_publication_bundle: Path,
     mutation: str,
 ) -> None:
@@ -36,10 +36,10 @@ def test_bundle_validator_rejects_missing_or_extra_media(
         (valid_publication_bundle / "foreign-media.bin").write_bytes(b"foreign")
 
     with pytest.raises(ValueError, match="inventory differs"):
-        validate_publication_bundle(valid_publication_bundle)
+        validate_publication_bundle_structure_only(valid_publication_bundle)
 
 
-def test_bundle_validator_rejects_tampered_manifest(
+def test_structure_only_validator_rejects_tampered_manifest(
     valid_publication_bundle: Path,
 ) -> None:
     manifest_path = valid_publication_bundle / "manifest.json"
@@ -48,10 +48,10 @@ def test_bundle_validator_rejects_tampered_manifest(
     manifest_path.write_text(json.dumps(payload), encoding="utf-8")
 
     with pytest.raises(ValueError, match="Every source owner must bind"):
-        validate_publication_bundle(valid_publication_bundle)
+        validate_publication_bundle_structure_only(valid_publication_bundle)
 
 
-def test_bundle_validator_rejects_tampered_media_digest(
+def test_structure_only_validator_rejects_tampered_media_digest(
     valid_publication_bundle: Path,
 ) -> None:
     media_path = valid_publication_bundle / "dataset-court.gif"
@@ -60,10 +60,10 @@ def test_bundle_validator_rejects_tampered_media_digest(
     media_path.write_bytes(data)
 
     with pytest.raises(ValueError, match="content digest changed"):
-        validate_publication_bundle(valid_publication_bundle)
+        validate_publication_bundle_structure_only(valid_publication_bundle)
 
 
-def test_bundle_validator_rejects_tampered_sampled_camera_mapping(
+def test_structure_only_validator_rejects_tampered_sampled_camera_mapping(
     valid_publication_bundle: Path,
 ) -> None:
     manifest_path = valid_publication_bundle / "manifest.json"
@@ -79,7 +79,7 @@ def test_bundle_validator_rejects_tampered_sampled_camera_mapping(
     manifest_path.write_text(json.dumps(payload), encoding="utf-8")
 
     with pytest.raises(ValueError, match="deterministic drawing policy"):
-        validate_publication_bundle(valid_publication_bundle)
+        validate_publication_bundle_structure_only(valid_publication_bundle)
 
 
 def test_publication_matrix_validation_accepts_canonical_valid_numeric_drift() -> None:

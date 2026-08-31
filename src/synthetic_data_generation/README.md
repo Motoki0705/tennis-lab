@@ -219,10 +219,14 @@ owners:
 The fresh output directory contains three annotated dataset GIFs, the persisted
 four-phase alignment progression GIF, a metric ground-plane heatmap/evidence/
 court overlay, captured/BLCS/PLCS camera-frustum figures, their shared-axis
-comparison, a fixed six-panel overview, and `manifest.json`. The separately
-versioned validator reopens every media frame and rejects extra or missing
-files, altered bytes, foreign scenes, schema/order/count disagreement, incomplete
-camera inventories, changed GIF timing, and manifest tampering.
+comparison, a fixed six-panel overview, and `manifest.json`. The authoritative
+`validate_publication_bundle(..., expected_request=request)` API reopens every
+media frame and reloads the request's validated source owners before accepting
+provenance. It rejects extra or missing files, altered bytes, foreign sources,
+schema/order/count disagreement, incomplete camera inventories, changed GIF
+timing, and self-consistent manifest tampering. The separately named
+`validate_publication_bundle_structure_only()` API checks bundle-local structure
+and digests only; it cannot authenticate source provenance.
 
 Alignment agreement metrics use the persisted metric UV plane. The mean and
 median court-line probability sample each accepted court segment at 64 inclusive

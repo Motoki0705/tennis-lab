@@ -59,7 +59,6 @@ from src.synthetic_data_generation.visualization.publication.contracts import (
 )
 from src.synthetic_data_generation.visualization.publication.datasets import (
     GIF_ENCODER,
-    DatasetGifResult,
     render_blcs_dataset_gif,
     render_court_dataset_gif,
     render_plcs_dataset_gif,
@@ -125,9 +124,31 @@ def generate_publication_bundle(request: PublicationRequest) -> PublicationBundl
 def validate_publication_bundle(
     bundle_path: Path,
     *,
-    expected_request: PublicationRequest | None = None,
+    expected_request: PublicationRequest,
 ) -> PublicationManifest:
-    """Reject missing, extra, foreign, mismatched, partial, or tampered bundles."""
+    """Validate a bundle against its request and the current canonical sources."""
+    if not isinstance(expected_request, PublicationRequest):
+        raise TypeError(
+            "validate_publication_bundle requires expected_request=PublicationRequest."
+        )
+    manifest = validate_publication_bundle_structure_only(bundle_path)
+    if manifest.scene_id != expected_request.scene_id:
+        raise ValueError("Manifest scene_id differs from the expected request.")
+    if manifest.resolved_config != expected_request.to_resolved_config():
+        raise ValueError("Manifest resolved config differs from the expected request.")
+    inputs = _load_inputs(expected_request)
+    _validate_authoritative_provenance(
+        manifest,
+        request=expected_request,
+        inputs=inputs,
+    )
+    return manifest
+
+
+def validate_publication_bundle_structure_only(
+    bundle_path: Path,
+) -> PublicationManifest:
+    """Check bundle-local structure without authenticating claimed source provenance."""
     if bundle_path.is_symlink() or not bundle_path.is_dir():
         raise ValueError("Publication bundle must be an ordinary directory.")
     expected_files = {item.value for item in REQUIRED_PUBLICATION_ARTIFACTS} | {
@@ -146,13 +167,6 @@ def validate_publication_bundle(
         (bundle_path / MANIFEST_FILE).read_text(encoding="utf-8")
     )
     manifest = PublicationManifest.from_dict(manifest_payload)
-    if expected_request is not None:
-        if manifest.scene_id != expected_request.scene_id:
-            raise ValueError("Manifest scene_id differs from the expected request.")
-        if manifest.resolved_config != expected_request.to_resolved_config():
-            raise ValueError(
-                "Manifest resolved config differs from the expected request."
-            )
     total_bytes = 0
     for record in manifest.artifacts:
         path = bundle_path / record.file_name.value
@@ -451,16 +465,7 @@ def _render_staging_bundle(
         )
         for artifact in REQUIRED_PUBLICATION_ARTIFACTS
     )
-    source_owners = _source_owner_manifest(
-        request,
-        alignment=alignment,
-        court_gif=court_gif,
-        blcs_gif=blcs_gif,
-        plcs_gif=plcs_gif,
-        captured=inputs.captured_cameras,
-        blcs=inputs.blcs_cameras,
-        plcs=inputs.plcs_cameras,
-    )
+    source_owners = _source_owner_manifest(request, inputs=inputs)
     total_bytes = sum(item.byte_size for item in records)
     manifest = PublicationManifest(
         scene_id=request.scene_id,
@@ -512,57 +517,58 @@ def _render_staging_bundle(
 def _source_owner_manifest(
     request: PublicationRequest,
     *,
-    alignment: AlignmentPublicationData,
-    court_gif: DatasetGifResult,
-    blcs_gif: DatasetGifResult,
-    plcs_gif: DatasetGifResult,
-    captured: PublicationCameraCollection,
-    blcs: PublicationCameraCollection,
-    plcs: PublicationCameraCollection,
+    inputs: _LoadedInputs,
 ) -> Mapping[str, object]:
+    alignment = inputs.alignment
+    court_source = inputs.court_source
+    blcs_source = inputs.blcs_source
+    plcs_source = inputs.plcs_source
+    captured = inputs.captured_cameras
+    blcs = inputs.blcs_cameras
+    plcs = inputs.plcs_cameras
     return {
         "court": {
             "owner_path": "datasets/court",
-            "schema": court_gif.dataset_schema,
-            "scene_id": court_gif.dataset_scene_id,
+            "schema": court_source.dataset_schema,
+            "scene_id": court_source.dataset_scene_id,
             "domain": "court",
             "trajectory_id": request.court_trajectory_id,
-            "source_count": court_gif.source_count,
-            "source_fps": court_gif.source_fps,
-            "source_size": [court_gif.source_width, court_gif.source_height],
-            "output_size": [court_gif.width, court_gif.height],
+            "source_count": court_source.frame_count,
+            "source_fps": None,
+            "source_size": [court_source.width, court_source.height],
+            "output_size": list(request.drawing.dataset_size),
             "resize_filter": "Pillow LANCZOS",
             "selected_indices": list(request.court_frame_indices),
         },
         "blcs": {
             "owner_path": "datasets/blcs",
-            "schema": blcs_gif.dataset_schema,
-            "scene_id": blcs_gif.dataset_scene_id,
+            "schema": blcs_source.dataset_schema,
+            "scene_id": blcs_source.dataset_scene_id,
             "domain": "blcs",
             "logical_scene_id": request.blcs_logical_scene_id,
             "gif_camera_id": request.blcs_camera_id,
             "camera_ids": list(blcs.camera_ids),
             "camera_rendering_semantics": CameraRenderingSemantics.STATIC_RIG.value,
-            "source_count": blcs_gif.source_count,
-            "source_fps": blcs_gif.source_fps,
-            "source_size": [blcs_gif.source_width, blcs_gif.source_height],
-            "output_size": [blcs_gif.width, blcs_gif.height],
+            "source_count": blcs_source.frame_count,
+            "source_fps": blcs_source.source_fps,
+            "source_size": [blcs_source.width, blcs_source.height],
+            "output_size": list(request.drawing.dataset_size),
             "resize_filter": "Pillow LANCZOS",
             "selected_indices": list(request.blcs_frame_indices),
         },
         "plcs": {
             "owner_path": "datasets/plcs",
-            "schema": plcs_gif.dataset_schema,
-            "scene_id": plcs_gif.dataset_scene_id,
+            "schema": plcs_source.dataset_schema,
+            "scene_id": plcs_source.dataset_scene_id,
             "domain": "plcs",
             "logical_scene_id": request.plcs_logical_scene_id,
             "gif_camera_id": request.plcs_camera_id,
             "camera_ids": list(plcs.camera_ids),
             "camera_rendering_semantics": CameraRenderingSemantics.STATIC_RIG.value,
-            "source_count": plcs_gif.source_count,
-            "source_fps": plcs_gif.source_fps,
-            "source_size": [plcs_gif.source_width, plcs_gif.source_height],
-            "output_size": [plcs_gif.width, plcs_gif.height],
+            "source_count": plcs_source.frame_count,
+            "source_fps": None,
+            "source_size": [plcs_source.width, plcs_source.height],
+            "output_size": list(request.drawing.dataset_size),
             "resize_filter": "Pillow LANCZOS",
             "selected_indices": list(request.plcs_frame_indices),
         },
@@ -591,6 +597,94 @@ def _source_owner_manifest(
             "metric_conversion": "MetricSceneAdapter",
         },
     }
+
+
+def _validate_authoritative_provenance(
+    manifest: PublicationManifest,
+    *,
+    request: PublicationRequest,
+    inputs: _LoadedInputs,
+) -> None:
+    expected_owners = _source_owner_manifest(request, inputs=inputs)
+    if manifest.source_owners != expected_owners:
+        raise ValueError(
+            "Manifest source owners differ from the validated request sources."
+        )
+
+    expected_dataset_mappings = {
+        PublicationArtifactName.DATASET_COURT: _dataset_source_mapping(
+            inputs.court_source.frame_order,
+            frame_indices=request.court_frame_indices,
+        ),
+        PublicationArtifactName.DATASET_BLCS: _dataset_source_mapping(
+            inputs.blcs_source.frame_order,
+            frame_indices=request.blcs_frame_indices,
+            identity={
+                "logical_scene_id": request.blcs_logical_scene_id,
+                "camera_id": request.blcs_camera_id,
+            },
+        ),
+        PublicationArtifactName.DATASET_PLCS: _dataset_source_mapping(
+            inputs.plcs_source.frame_order,
+            frame_indices=request.plcs_frame_indices,
+            identity={
+                "logical_scene_id": request.plcs_logical_scene_id,
+                "camera_id": request.plcs_camera_id,
+            },
+        ),
+    }
+    records = {record.file_name: record for record in manifest.artifacts}
+    for artifact, expected_mapping in expected_dataset_mappings.items():
+        if records[artifact].mapping != expected_mapping:
+            raise ValueError(
+                f"{artifact.value} mapping differs from the validated dataset source."
+            )
+
+    camera_sources = {
+        PublicationArtifactName.CAPTURED_CAMERA_TRAJECTORY: (
+            inputs.captured_cameras,
+            CameraRenderingSemantics.CAPTURED_TRAJECTORY,
+            camera_render_indices(
+                len(inputs.captured_cameras.camera_ids),
+                maximum_rendered_cameras=(
+                    request.drawing.maximum_rendered_captured_cameras
+                ),
+            ),
+        ),
+        PublicationArtifactName.BLCS_CAMERA_LAYOUT: (
+            inputs.blcs_cameras,
+            CameraRenderingSemantics.STATIC_RIG,
+            tuple(range(len(inputs.blcs_cameras.camera_ids))),
+        ),
+        PublicationArtifactName.PLCS_CAMERA_LAYOUT: (
+            inputs.plcs_cameras,
+            CameraRenderingSemantics.STATIC_RIG,
+            tuple(range(len(inputs.plcs_cameras.camera_ids))),
+        ),
+    }
+    for artifact, (collection, semantics, rendered_indices) in camera_sources.items():
+        expected_mapping = _camera_mapping(
+            collection,
+            rendering_semantics=semantics,
+            rendered_camera_indices=rendered_indices,
+        )
+        if records[artifact].mapping != expected_mapping:
+            raise ValueError(
+                f"{artifact.value} mapping differs from the validated camera source."
+            )
+
+
+def _dataset_source_mapping(
+    frame_order: tuple[Mapping[str, object], ...],
+    *,
+    frame_indices: tuple[int, ...],
+    identity: Mapping[str, object] | None = None,
+) -> tuple[Mapping[str, object], ...]:
+    suffix = {} if identity is None else dict(identity)
+    return tuple(
+        {"source_index": index, **dict(frame_order[index]), **suffix}
+        for index in frame_indices
+    )
 
 
 def _camera_mapping(
@@ -1498,4 +1592,5 @@ __all__ = [
     "MANIFEST_FILE",
     "generate_publication_bundle",
     "validate_publication_bundle",
+    "validate_publication_bundle_structure_only",
 ]
