@@ -22,6 +22,9 @@ readonly PROJECT_ROOT="$HOME/projects/tennis-lab"
 readonly UV_CACHE_DIR="$HOME/.cache/uv"
 readonly UV_INSTALL_DIR="$HOME/.local/share/uv"
 readonly GPU_LOCK_FILE="/var/lib/tennis-lab-actions/gpu.lock"
+readonly GPU_GATE_FILE="${GPU_LOCK_FILE}.gate"
+readonly GPU_SLOT_0_FILE="${GPU_LOCK_FILE}.slot-0"
+readonly GPU_SLOT_1_FILE="${GPU_LOCK_FILE}.slot-1"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPOSITORY_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -65,11 +68,14 @@ for path in "$SOURCE_HOOK" "$MCP_STATE_DIR" "$MCP_CONTROL_DIR" "$PROJECT_ROOT"; 
     exit 1
   fi
 done
-if [[ ! -w "$GPU_LOCK_FILE" ]]; then
-  echo "Shared GPU lock is not writable by $EXPECTED_USER: $GPU_LOCK_FILE" >&2
-  echo "Run: sudo bash scripts/github_actions/install_self_hosted_runner.sh --configure-gpu-lock-only" >&2
-  exit 1
-fi
+for gpu_lock_path in \
+  "$GPU_LOCK_FILE" "$GPU_GATE_FILE" "$GPU_SLOT_0_FILE" "$GPU_SLOT_1_FILE"; do
+  if [[ ! -w "$gpu_lock_path" ]]; then
+    echo "Shared GPU lock is not writable by $EXPECTED_USER: $gpu_lock_path" >&2
+    echo "Run: sudo bash scripts/github_actions/install_self_hosted_runner.sh --configure-gpu-lock-only" >&2
+    exit 1
+  fi
+done
 if [[ "$REPOSITORY_ROOT" != "$PROJECT_ROOT" ]]; then
   echo "Run this installer from the canonical checkout at $PROJECT_ROOT." >&2
   exit 1
@@ -175,6 +181,9 @@ ReadWritePaths=$SERVICE_DIR
 ReadWritePaths=$UV_CACHE_DIR
 ReadWritePaths=$UV_INSTALL_DIR
 ReadWritePaths=$GPU_LOCK_FILE
+ReadWritePaths=$GPU_GATE_FILE
+ReadWritePaths=$GPU_SLOT_0_FILE
+ReadWritePaths=$GPU_SLOT_1_FILE
 ReadOnlyPaths=$runner_env
 ReadOnlyPaths=$HOOK_PATH
 RestrictSUIDSGID=true

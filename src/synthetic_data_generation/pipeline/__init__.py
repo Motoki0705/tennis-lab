@@ -10,6 +10,7 @@ from src.synthetic_data_generation.pipeline.contracts import (
     StageStatus,
 )
 from src.synthetic_data_generation.pipeline.handlers import (
+    DeferredStageHandler,
     IngestStageHandler,
     ReportStageHandler,
     VideoProperties,
@@ -25,6 +26,7 @@ from src.synthetic_data_generation.pipeline.workspace import SceneWorkspace
 __all__ = [
     "CanonicalStageHandlers",
     "DatasetTarget",
+    "DeferredStageHandler",
     "IngestStageHandler",
     "ReportStageHandler",
     "ScenePipelineRequest",

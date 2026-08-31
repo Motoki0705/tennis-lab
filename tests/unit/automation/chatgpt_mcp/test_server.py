@@ -117,3 +117,9 @@ def test_private_gateway_advertises_flexible_execution_plane_tools(
     start_schema = advertised["start_command"]["inputSchema"]["properties"]
     assert start_schema["execution_root"]["enum"] == ["revision", "project"]
     assert "working_directory" in start_schema
+    training_schema = advertised["enqueue_training"]["inputSchema"]["properties"]
+    assert training_schema["resource"]["enum"] == ["half", "all"]
+    assert training_schema["resource"]["default"] == "all"
+    assert "MIG or VRAM hard cap" in advertised["enqueue_training"]["description"]
+    assert "observably non-running" in advertised["cancel_training_job"]["description"]
+    assert "terminating remains nonterminal" in advertised["get_training_job"]["description"]

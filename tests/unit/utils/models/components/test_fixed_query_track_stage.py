@@ -19,6 +19,7 @@ class _RecordingMHC(nn.Module):
         super().__init__()
         self.events = events
         self.valid_mask: torch.Tensor | None = None
+        self.post_dtypes: list[tuple[torch.dtype, torch.dtype]] = []
 
     def pre(
         self,
@@ -36,8 +37,9 @@ class _RecordingMHC(nn.Module):
         residual: torch.Tensor,
         state: object,
     ) -> torch.Tensor:
-        del update, state
+        del state
         self.events.append("mhc.post")
+        self.post_dtypes.append((update.dtype, residual.dtype))
         return residual
 
 
@@ -53,6 +55,8 @@ class _RecordingBlock(nn.Module):
         self.name = name
         self.events = events
         self.calls: list[dict[str, torch.Tensor | None]] = []
+        self.output_dtype: torch.dtype | None = None
+        self.forward_update_output_dtypes: list[torch.dtype] = []
 
     def _record(
         self,
@@ -85,7 +89,9 @@ class _RecordingBlock(nn.Module):
             attn_mask=attn_mask,
             state_valid=state_valid,
         )
-        return torch.zeros_like(values)
+        update = torch.zeros_like(values, dtype=self.output_dtype)
+        self.forward_update_output_dtypes.append(update.dtype)
+        return update
 
     def forward(
         self,
@@ -215,6 +221,22 @@ def test_global_stage_uses_dense_temporal_keep_masks() -> None:
         "query_temporal_attention_keep_mask"
     ]
     assert query_temporal.calls[0]["state_valid"] is None
+
+
+@pytest.mark.parametrize("temporal_dtype", [torch.bfloat16, torch.float16])
+def test_mhc_writeback_casts_temporal_update_to_object_token_dtype(
+    temporal_dtype: torch.dtype,
+) -> None:
+    stage, mhc, object_temporal, _, _, _ = _stage(0)
+    inputs = _inputs()
+    object_tokens = cast(torch.Tensor, inputs["object_tokens"])
+    object_temporal.output_dtype = temporal_dtype
+
+    stage(**inputs)
+
+    assert object_tokens.dtype is torch.float32
+    assert object_temporal.forward_update_output_dtypes == [temporal_dtype]
+    assert mhc.post_dtypes == [(torch.float32, torch.float32)]
 
 
 @pytest.mark.parametrize(

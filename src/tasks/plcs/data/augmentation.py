@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, Literal, cast
+from typing import Any, Literal, NamedTuple, cast
 
 import torch
 from torch import Tensor
@@ -22,6 +22,13 @@ from src.utils.data.augmentation import (
 from src.utils.tensor_utils import clone_tensor_dict
 
 PLCSSample = dict[str, Tensor]
+
+
+class PLCSObservationTrackingResult(NamedTuple):
+    """Augmented sample plus visibility immediately before human FP injection."""
+
+    sample: PLCSSample
+    human_visibility_before_false_positive: Tensor
 
 
 def _float_object(value: object) -> float:
@@ -102,8 +109,20 @@ class PLCSObservationAugmentation(BaseObservationAugmentation[PLCSSample]):
 
     def forward(self, sample: PLCSSample) -> PLCSSample:
         """Return an augmented PLCS sample."""
+        return self.forward_with_tracking_provenance(sample).sample
+
+    def forward_with_tracking_provenance(
+        self,
+        sample: PLCSSample,
+    ) -> PLCSObservationTrackingResult:
+        """Return the augmented sample and human pre-false-positive visibility."""
         if not self.enabled:
-            return sample
+            return PLCSObservationTrackingResult(
+                sample=sample,
+                human_visibility_before_false_positive=sample["human_vis"]
+                .bool()
+                .clone(),
+            )
 
         out: PLCSSample = clone_tensor_dict(sample)
         human_dropped_mask = torch.zeros_like(out["human_vis"], dtype=torch.bool)
@@ -183,6 +202,7 @@ class PLCSObservationAugmentation(BaseObservationAugmentation[PLCSSample]):
         )
         court_dropped_mask |= (before_court_vis > 0) & (out["court_vis"] <= 0)
 
+        human_visibility_before_false_positive = out["human_vis"].bool().clone()
         out["human_kp"], out["human_vis"] = self._apply_false_positive(
             out["human_kp"],
             out["human_vis"],
@@ -198,7 +218,12 @@ class PLCSObservationAugmentation(BaseObservationAugmentation[PLCSSample]):
 
         out["human_kp"] = _mask_keypoints(out["human_kp"], out["human_vis"])
         out["court_kp"] = _mask_keypoints(out["court_kp"], out["court_vis"])
-        return out
+        return PLCSObservationTrackingResult(
+            sample=out,
+            human_visibility_before_false_positive=(
+                human_visibility_before_false_positive
+            ),
+        )
 
     def _apply_uv_scale(self, sample: PLCSSample) -> None:
         cfg = self.uv_scale_cfg

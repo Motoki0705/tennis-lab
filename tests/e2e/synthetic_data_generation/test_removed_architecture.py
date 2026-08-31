@@ -38,11 +38,35 @@ APPROVED_TASK_BOUNDARIES = frozenset(
     }
 )
 
+FORBIDDEN_ACTIVE_ARCHITECTURE_TOKENS = frozenset(
+    {
+        "artifactref",
+        "fingerprint",
+        "sha256",
+        "sha-256",
+        "content-addressed",
+        "content_addressed",
+        "pose_ids",
+        "pose_indices",
+        "selected_camera",
+        "immutable publication",
+        "overwrite refusal",
+        "overwrite rejection",
+    }
+)
+
+# The court-line cache hashes model inputs and images only to reuse deterministic raw
+# probabilities. It is deliberately separate from the removed artifact publication
+# and scene-identity architecture guarded by this test.
+ALLOWED_ACTIVE_ARCHITECTURE_TOKENS = {
+    Path("src/synthetic_data_generation/alignment/line_inference_cache.py"): frozenset(
+        {"fingerprint", "sha256"}
+    ),
+}
+
 
 def _active_python_files() -> tuple[Path, ...]:
-    roots = (
-        PROJECT_ROOT / "src/synthetic_data_generation",
-    )
+    roots = (PROJECT_ROOT / "src/synthetic_data_generation",)
     return tuple(
         path
         for root in roots
@@ -120,28 +144,32 @@ def test_canonical_production_imports_only_public_task_boundaries() -> None:
 
 
 def test_no_identity_or_fixed_pose_architecture_remains_in_active_generation() -> None:
-    forbidden = {
-        "artifactref",
-        "fingerprint",
-        "sha256",
-        "sha-256",
-        "content-addressed",
-        "content_addressed",
-        "pose_ids",
-        "pose_indices",
-        "selected_camera",
-        "immutable publication",
-        "overwrite refusal",
-        "overwrite rejection",
-    }
     violations: list[str] = []
     for path in _active_python_files():
         relative = path.relative_to(PROJECT_ROOT)
         text = path.read_text(encoding="utf-8").lower()
-        for token in forbidden:
+        allowed = ALLOWED_ACTIVE_ARCHITECTURE_TOKENS.get(relative, frozenset())
+        for token in FORBIDDEN_ACTIVE_ARCHITECTURE_TOKENS - allowed:
             if token in text:
                 violations.append(f"{relative}: {token}")
 
     assert not violations, "prohibited active architecture remains:\n" + "\n".join(
         violations
     )
+
+
+def test_active_architecture_token_exceptions_are_current() -> None:
+    stale: list[str] = []
+    for relative, allowed in ALLOWED_ACTIVE_ARCHITECTURE_TOKENS.items():
+        path = PROJECT_ROOT / relative
+        if not path.is_file():
+            stale.append(f"{relative}: file is absent")
+            continue
+        text = path.read_text(encoding="utf-8").lower()
+        for token in allowed:
+            if token not in FORBIDDEN_ACTIVE_ARCHITECTURE_TOKENS:
+                stale.append(f"{relative}: {token} is not otherwise forbidden")
+            elif token not in text:
+                stale.append(f"{relative}: {token} is no longer present")
+
+    assert not stale, "stale active-architecture token exceptions:\n" + "\n".join(stale)

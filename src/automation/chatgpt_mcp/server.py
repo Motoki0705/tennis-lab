@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import time
 from collections import defaultdict, deque
-from typing import Any, Literal
+from typing import Any, Literal, cast
 from urllib.parse import urlsplit
 
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
@@ -379,7 +379,7 @@ def build_gateway(
         title="Get WSL execution host status",
         description=(
             "Check Docker, NVIDIA GPU, external trusted runtime, Git mirror, and "
-            "serial training queue."
+            "logical two-slot training queue."
         ),
         annotations=_annotations(
             read_only=True, destructive=False, idempotent=True, open_world=False
@@ -463,7 +463,10 @@ def build_gateway(
         meta=security_meta,
     )
     def prepare_revision_workspace(branch: str, expected_sha: str) -> dict[str, str]:
-        return workspaces.prepare_revision(branch=branch, expected_sha=expected_sha)
+        return cast(
+            dict[str, str],
+            workspaces.prepare_revision(branch=branch, expected_sha=expected_sha),
+        )
 
     @server.tool(
         title="Get exact revision status",
@@ -477,7 +480,7 @@ def build_gateway(
         meta=security_meta,
     )
     def get_revision_status(workspace_id: str) -> dict[str, Any]:
-        return workspaces.describe_revision(workspace_id)
+        return cast(dict[str, Any], workspaces.describe_revision(workspace_id))
 
     @server.tool(
         title="Start a flexible isolated CPU command",
@@ -558,7 +561,8 @@ def build_gateway(
         description=(
             "Queue any network-disabled CUDA experiment, local-data validation, "
             "dataset generation, evaluation, or training command through the trusted "
-            "serial queue. Both revision and full-project read-write roots are available."
+            "logical two-slot queue. Resource half is coordination metadata only, not "
+            "a MIG or VRAM hard cap. Both execution roots remain available."
         ),
         annotations=_annotations(
             read_only=False, destructive=True, idempotent=False, open_world=False
@@ -573,6 +577,7 @@ def build_gateway(
         execution_root: Literal["revision", "project"] = "revision",
         working_directory: str = ".",
         issue: int | None = None,
+        resource: Literal["half", "all"] = "all",
         timeout_seconds: int = 86_400,
     ) -> dict[str, Any]:
         return training.enqueue(
@@ -584,11 +589,15 @@ def build_gateway(
             working_directory=working_directory,
             issue=issue,
             timeout_seconds=timeout_seconds,
+            resource=resource,
         )
 
     @server.tool(
         title="Get training job",
-        description="Inspect queue and container status for one GPU or long-running job.",
+        description=(
+            "Inspect queue, owned PGID teardown, and container status for one GPU "
+            "or long-running job; terminating remains nonterminal and capacity-held."
+        ),
         annotations=_annotations(
             read_only=True, destructive=False, idempotent=True, open_world=False
         ),
@@ -599,7 +608,7 @@ def build_gateway(
 
     @server.tool(
         title="List training jobs",
-        description="List recent serial GPU and long-running jobs.",
+        description="List recent logical-capacity GPU and long-running jobs.",
         annotations=_annotations(
             read_only=True, destructive=False, idempotent=True, open_world=False
         ),
@@ -610,7 +619,7 @@ def build_gateway(
 
     @server.tool(
         title="Read training output",
-        description="Read bounded, secret-redacted output from the trusted serial queue.",
+        description="Read bounded, secret-redacted output from the trusted GPU queue.",
         annotations=_annotations(
             read_only=True, destructive=False, idempotent=True, open_world=False
         ),
@@ -622,7 +631,9 @@ def build_gateway(
     @server.tool(
         title="Cancel training job",
         description=(
-            "Cancel a queued job or request termination of its running GPU container."
+            "Cancel a queued job or request verified teardown of its running GPU "
+            "container; acknowledgement requires the deterministic container to be "
+            "observably non-running."
         ),
         annotations=_annotations(
             read_only=False, destructive=True, idempotent=True, open_world=False

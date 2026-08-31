@@ -25,8 +25,8 @@ human UV/visibility には適用しません。
 - **`augmentation.py`**: `PLCSObservationAugmentation`。UVノイズ・時間jitter・可視性dropout等8段のパイプライン。
 - **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
 - **`targets.py`**: `build_coco17_world_targets()`。canonical poseまたはAthletePose3DからCOCO17ワールド座標targetを構築。
-- **`tracking_dataset.py` / `tracking_datamodule.py`**: scene読込後にclip/viewをsampleし、物理trackを固定幅lifecycle observation slotへpackingするDataset/DataModule。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成する。val/testは常に`scene_dir`上の固定splitを使う。
-- **`tracking_augmentation.py`**: object列を並べ替えず、clean GTを保持したまま観測だけへpose noise/dropout/false-positiveを適用するshape adapter。
+- **`tracking_dataset.py` / `tracking_datamodule.py`**: scene読込後にclip/viewをsampleし、pose観測をnoise/dropout/false-positiveで破損してからcamera-local trackingにより固定幅`Q`へ変換するDataset/DataModule。target lifecycle packingは観測associationと独立です。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成します。val/testは常に`scene_dir`上の固定splitを使います。
+- **`tracking_augmentation.py`**: 固定`Q`へ変換する前の物理幅pose detectionへcorruptionを適用し、false-positive provenanceを`-1`にするadapter。synthetic-only carrierの容量制御は[共有tracking contract](../base/README.md)に委譲する。
 - **`types.py`**: `PLCSBatch`/`PLCSSceneMeta` のバッチ・meta契約。
 
 ### models/
@@ -36,7 +36,7 @@ human UV/visibility には適用しません。
 - **`plcs_multiview_axial_model.py`**: `PLCSMultiViewAxialModel`。camera軸/time軸交互self-attention(共有readout)。
 - **`plcs_multiview_axial_split_model.py`**: `PLCSMultiViewAxialSplitModel`(issue #518)。rotation/pose trunkを分離。
 - **`plcs_multiview_axial_camtoken_model.py`**: `PLCSMultiViewAxialCamTokenModel`(issue #576)。head別に別camera tokenを読む。
-- **`plcs_track_query_model.py`**: `PLCSTrackQueryModel`。object ID順のcamera pose観測からclip-localな固定query slotで複数playerの位置・rotation・presenceを推定する。
+- **`plcs_track_query_model.py`**: `PLCSTrackQueryModel`。camera-localにtrackingされた固定幅pose観測からclip-localなqueryで複数playerの位置・rotation・presenceを推定する。
 - **`plcs_track_query_ablation_model.py`**: `PLCSTrackQueryAblationModel`。legacy v1 (`time_camera_role_v1`) の`plcs_track_query_ablation` architectureとして、SwiGLU配置とmHC writeback位置の4条件を同じ5入力・3出力契約で比較する。
 - **`plcs_track_query_reference_model.py` / `plcs_track_query_reference_ablation_model.py`**: camera-view target frame用の明示的v2 family。PLCS固有出力はposition / heading / presenceのままselector条件を追加する。
 - **`components/heads.py`**: `PositionHead`/`RotationHead`/`CanonicalPoseHead`。
@@ -89,9 +89,13 @@ human UV/visibility には適用しません。
 
 ## Multi-person tracking
 
-PLCS固有の5観測tensor shapeは `human_kp (B,V,T,Q,17,2)`、`human_vis (B,V,T,Q,17)`、`court_kp (B,V,T,14,2)`、`court_vis (B,V,T,14)`、`padding_mask (B,V,T)` です。v1 / v2のforward差分、reference field、selector座標、checkpoint・推論指定は共有正本を参照してください。各sceneの物理trackはDatasetで固定幅`Q`のlifecycle slotへpackされるため、観測軸とquery軸は常に`P=Q`です。`human_vis.any(-1)`がfalseの非padding slotはlearned invisible tokenになりますがattentionには参加し、時間・camera文脈から更新されます。debug用の`detection_gt_index`は実object由来なら物理instance ID、不可視またはfalse positiveなら`-1`で、モデルへは渡しません。欠損joint UVは0にします。出力は `position (B,T,Q,3)`、`rotation (B,T,Q,2)`、`presence_logits (B,T,Q)` です。教師は `target_position`、`target_rotation`、`target_presence`、`target_instance_id` で、inactive rotationはidentity、instance IDは`-1`です。重ならないbirth/death区間を同じslotへ詰めるため、同一queryはdeath後に別instanceへ再利用できます。
+共有の2D observation tracking contract、camera-local slotの意味、overflow、および破壊的migrationの正本は [`src/tasks/base/README.md`](../base/README.md) です。PLCS固有の5観測tensor shapeは `human_kp (B,V,T,Q,17,2)`、`human_vis (B,V,T,Q,17)`、`court_kp (B,V,T,14,2)`、`court_vis (B,V,T,14)`、`padding_mask (B,V,T)` です。`human_vis.any(-1)`がfalseの非padding slotはlearned invisible tokenになりますがattentionには参加します。`detection_gt_index`と`clean_human_kp`/`clean_human_vis`は評価・可視化専用fieldで、モデルへは渡しません。
 
-14 court UVは共有Court contractでreference整列した後の先頭14点を使い、`court_vis`で不可視点を0化します。各lifecycle slotのperson keypointsとcourtを連結し、BLCSと同じ`src/utils/models/embeddings/group_tokens.py`の共有`CourtPlayerGroupEmbedding`により1 slot = 1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*Q, D)` です。v1 / v2のM-RoPE座標と第3軸の意味は共有正本を参照してください。
+PLCSの`data.association`は `max_distance=0.08`、`max_missed_frames=8`、`min_reuse_gap_frames=4`、velocity prediction有効、`min_common_keypoints=4`、`cost_reduction=median`、`overflow_policy=error`を初期値とします。Issue #832より前のtracking checkpoint/resultは新しいassociation意味論と互換ではないため、必ず再学習・再評価してください。旧設定とmetricの詳しい移行条件は共有正本を参照してください。
+
+出力は `position (B,T,Q,3)`、`rotation (B,T,Q,2)`、`presence_logits (B,T,Q)` です。教師は独立したtarget lifecycle packingによる `target_position`、`target_rotation`、`target_presence`、`target_instance_id` で、inactive rotationはidentity、instance IDは`-1`です。重ならないbirth/death区間を同じtarget slotへ詰めるため、同一queryはdeath後に別instanceへ再利用できます。
+
+14 court UVは共有Court contractでreference整列した後の先頭14点を使い、`court_vis`で不可視点を0化します。各observation slotのperson keypointsとcourtを連結し、BLCSと同じ`src/utils/models/embeddings/group_tokens.py`の共有`CourtPlayerGroupEmbedding`により1 slot = 1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*Q, D)` です。v1 / v2のM-RoPE座標と第3軸の意味は共有正本を参照してください。
 
 BLCSと共有する各stageは `mHC object temporal -> global spatial(Q+VQ) -> query temporal` の順で更新し、temporal modeを `CSWA, CSWA, CSWA, Global MHA` のcycleへ固定します。`object_state_valid`を含む全state/attention maskは共有`build_fixed_query_padding_masks()`が`padding_mask`だけから生成します。nested `model.mhc` / `model.cswa`はstrictに検証し、旧`spatial_blocks` / `temporal_blocks` checkpointは自動変換せずstrict load errorとします。
 

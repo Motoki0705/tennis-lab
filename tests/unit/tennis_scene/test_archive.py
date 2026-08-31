@@ -75,6 +75,37 @@ def test_archive_round_trip_preserves_every_array_and_metadata(tmp_path: Path) -
     assert path.with_suffix(".metadata.json").is_file()
 
 
+def test_ball_archive_contract_has_camera_time_streams_but_no_ball_ids(
+    tmp_path: Path,
+) -> None:
+    expected = _scene()
+    expected.ball_uv = np.array(
+        [
+            [[0.1, 0.2], [0.0, 0.0], [0.3, 0.4]],
+            [[0.5, 0.6], [0.7, 0.8], [0.0, 0.0]],
+        ],
+        dtype=np.float32,
+    )
+    path = tmp_path / "ball-streams.npz"
+
+    save_scene_result(expected, path)
+    actual = load_scene_result(path)
+
+    assert actual.ball_uv is not None
+    assert actual.ball_vis is not None
+    assert actual.ball_uv.shape == (2, 3, 2)
+    assert actual.ball_vis.shape == (2, 3)
+    assert actual.ball_uv.dtype == np.float32
+    assert actual.ball_vis.dtype == np.bool_
+    assert actual.player_track_ids is not None
+    assert not hasattr(actual, "ball_track_ids")
+    with np.load(path, allow_pickle=False) as archive:
+        assert archive["ball_uv"].shape == (2, 3, 2)
+        assert archive["ball_vis"].shape == (2, 3)
+        assert "player_track_ids" in archive.files
+        assert "ball_track_ids" not in archive.files
+
+
 def test_archive_preserves_absent_optional_arrays(tmp_path: Path) -> None:
     expected = _scene()
     expected.smpl_vertices_local = None

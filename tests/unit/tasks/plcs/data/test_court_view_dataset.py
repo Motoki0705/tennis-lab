@@ -8,7 +8,7 @@ import pytest
 import torch
 from omegaconf import OmegaConf
 
-from src.tasks.base.data import ReferenceViewSelectionError
+from src.tasks.base.data import ObservationTrackingConfig, ReferenceViewSelectionError
 from src.tasks.base.data.scene_dataset import Scene, SceneDatasetConfig
 from src.tasks.base.generate_dataset import (
     DatasetCourtKeypointContract,
@@ -144,7 +144,17 @@ def _tracking_dataset(
     dataset.court_keypoint_validation = standard.court_keypoint_validation
     dataset.num_queries = 1
     dataset.min_reuse_gap_frames = 0
-    dataset.randomize_slots_train = False
+    dataset.observation_tracking_config = ObservationTrackingConfig.from_mapping(
+        {
+            "max_distance": 0.08,
+            "max_missed_frames": 8,
+            "min_reuse_gap_frames": 4,
+            "use_velocity_prediction": True,
+            "min_common_keypoints": 4,
+            "cost_reduction": "median",
+            "overflow_policy": "error",
+        }
+    )
     dataset.config = SceneDatasetConfig(
         scene_dir=Path("/dataset"),
         split_file=Path("train.txt"),
@@ -216,7 +226,7 @@ def test_tracking_aligns_before_first14_and_keeps_canonical_pose_local() -> None
     standard, scene = _dataset_and_scene()
     dataset = _tracking_dataset(standard, augment=False)
 
-    sample = dataset.build_sample(scene)
+    sample = dataset.augment_sample(dataset.build_sample(scene))
     provenance = sample["court_reference_provenance"]
     selection = sample["reference_view_selection"]
     assert selection.provenance is provenance
@@ -301,13 +311,14 @@ def test_tracking_build_augment_collate_preserves_reference_contract() -> None:
     ).augmentation
     augmentation_config.enabled = False
     dataset.tracking_augmentation = PLCSTrackingDetectionAugmentation(
-        augmentation_config
+        augmentation_config,
+        num_slots=1,
     )
 
     sample = dataset.build_sample(scene)
     augmented = dataset.augment_sample(sample)
 
-    assert set(augmented) == set(sample)
+    assert set(augmented) == set(sample) - {"_observation_camera_indices"}
     for key in (
         "reference_view_index",
         "view_camera_ids",

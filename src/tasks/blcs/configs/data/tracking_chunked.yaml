@@ -1,6 +1,7 @@
 defaults:
   - _augmentation
   - _multiview
+  - _observation_tracking
   - _chunked
   - _self_
 
@@ -17,7 +18,6 @@ evaluation_reference_camera_id: cam_1
 lifecycle:
   pack_to_query_slots: true
   min_reuse_gap_frames: 4
-  randomize_slots_train: true
 
 chunk:
   scenes_per_chunk: 1000

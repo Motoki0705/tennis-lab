@@ -232,7 +232,9 @@ class LineProjectionSettings:
 class CourtCandidateFitSettings:
     """Required deterministic regulation-court Sim(3) search settings."""
 
-    candidate_count: int
+    maximum_candidate_count: int
+    maximum_retained_state_count: int
+    minimum_explained_evidence_fraction: float
     samples_per_metre: float
     minimum_nht_scene_units_per_metre: float
     maximum_nht_scene_units_per_metre: float
@@ -257,7 +259,20 @@ class CourtCandidateFitSettings:
     maximum_court_footprint_overlap_fraction: float
 
     def __post_init__(self) -> None:
-        _positive_int(self.candidate_count, name="candidate_count")
+        _positive_int(
+            self.maximum_candidate_count,
+            name="maximum_candidate_count",
+        )
+        _positive_int(
+            self.maximum_retained_state_count,
+            name="maximum_retained_state_count",
+        )
+        _fraction(
+            self.minimum_explained_evidence_fraction,
+            name="minimum_explained_evidence_fraction",
+        )
+        if self.minimum_explained_evidence_fraction >= 1.0:
+            raise ValueError("minimum_explained_evidence_fraction must be below one.")
         for name in (
             "samples_per_metre",
             "minimum_nht_scene_units_per_metre",
@@ -312,11 +327,13 @@ class CourtCandidateFitSettings:
     def whole_court_evidence(
         self,
         *,
+        required_court_count: int,
         minimum_matches_per_offset_level: int,
     ) -> WholeCourtEvidenceSettings:
         """Freeze geometry-derived identifiability and diagnostic policy."""
+        _positive_int(required_court_count, name="required_court_count")
         return WholeCourtEvidenceSettings(
-            required_court_count=self.candidate_count,
+            required_court_count=required_court_count,
             maximum_common_scale_relative_deviation=(
                 self.common_scale_relative_tolerance
             ),
@@ -627,12 +644,19 @@ class AlignmentEvidenceSettings:
                 "Camera-unit partition counts disagree with the "
                 "configured fit/holdout fractions."
             )
-        if self.camera_prefix_count != self.expected_camera_prefix_count():
+        camera_unit = self.minimum_fit_cameras + self.minimum_holdout_cameras
+        if self.camera_prefix_count % camera_unit != 0:
             raise ValueError(
-                "camera_prefix_count must equal candidate_count * orientation "
-                "family count * (minimum_fit_cameras + minimum_holdout_cameras): "
-                f"{self.camera_prefix_count} != "
-                f"{self.expected_camera_prefix_count()}."
+                "camera_prefix_count must be an integer number of immutable "
+                "fit/holdout partition units."
+            )
+        if (
+            self.camera_partition_unit_count()
+            < self.candidate_fit.orientation_family_count()
+        ):
+            raise ValueError(
+                "camera_prefix_count must provide at least one immutable camera "
+                "unit per orientation search family."
             )
         assignment_distance = self.candidate_fit.evidence_assignment_distance_metres
         minimum_assignment_distance = max(
@@ -651,12 +675,10 @@ class AlignmentEvidenceSettings:
                 "minimum distinct regulation-line separation."
             )
 
-    def expected_camera_prefix_count(self) -> int:
-        """Derive the one fixed evidence-independent camera prefix size."""
-        return (
-            self.candidate_fit.candidate_count
-            * self.candidate_fit.orientation_family_count()
-            * (self.minimum_fit_cameras + self.minimum_holdout_cameras)
+    def camera_partition_unit_count(self) -> int:
+        """Return the candidate-count-independent camera partition capacity."""
+        return self.camera_prefix_count // (
+            self.minimum_fit_cameras + self.minimum_holdout_cameras
         )
 
     def require_available_cameras(self, *, available_camera_count: int) -> None:
