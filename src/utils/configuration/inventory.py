@@ -138,6 +138,7 @@ _PATH_AUTHORITY = "src.utils.configuration.paths.PathResolver.resolve"
 
 _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.synthetic_data_generation.scripts.generate_publication_visualizations": "synthetic.publication_visualization",
+    "src.synthetic_data_generation.scripts.evaluate_court_trajectory_safety": "synthetic.court_trajectory_safety",
     "src.synthetic_data_generation.scripts.run_scene_pipeline": "synthetic.scene_pipeline",
     "src.synthetic_data_generation.scripts.visualize_dataset": "synthetic.dataset_visualization",
     "src.tasks.ball_detection.scripts.analyze_web_bbox_ratio": "ball.web_tool",
@@ -198,6 +199,10 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.synthetic_data_generation.scripts.generate_publication_visualizations": (
         "src.synthetic_data_generation.visualization.publication.configuration."
         "validate_publication_boundary"
+    ),
+    "src.synthetic_data_generation.scripts.evaluate_court_trajectory_safety": (
+        "src.synthetic_data_generation.scripts.evaluate_court_trajectory_safety."
+        "_validate_boundary"
     ),
     "src.synthetic_data_generation.scripts.run_scene_pipeline": (
         "src.synthetic_data_generation.configuration.validate_scene_pipeline_boundary"
@@ -331,6 +336,10 @@ _RUNTIME_BOUNDARIES = (
     _runtime_boundary(
         "synthetic_data_generation",
         "src.synthetic_data_generation.scripts.generate_publication_visualizations",
+    ),
+    _runtime_boundary(
+        "synthetic_data_generation",
+        "src.synthetic_data_generation.scripts.evaluate_court_trajectory_safety",
     ),
     _runtime_boundary(
         "synthetic_data_generation",
