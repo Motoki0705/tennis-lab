@@ -605,6 +605,57 @@ def _validate_authoritative_provenance(
     request: PublicationRequest,
     inputs: _LoadedInputs,
 ) -> None:
+    records = {record.file_name: record for record in manifest.artifacts}
+    expected_dimensions = {
+        PublicationArtifactName.DATASET_COURT: (
+            "dataset_size",
+            request.drawing.dataset_size,
+        ),
+        PublicationArtifactName.DATASET_BLCS: (
+            "dataset_size",
+            request.drawing.dataset_size,
+        ),
+        PublicationArtifactName.DATASET_PLCS: (
+            "dataset_size",
+            request.drawing.dataset_size,
+        ),
+        PublicationArtifactName.ALIGNMENT_PROGRESSION: (
+            "alignment_size",
+            request.drawing.alignment_size,
+        ),
+        PublicationArtifactName.ALIGNMENT_HEATMAP_COURT: (
+            "figure_size",
+            request.drawing.figure_size,
+        ),
+        PublicationArtifactName.CAPTURED_CAMERA_TRAJECTORY: (
+            "figure_size",
+            request.drawing.figure_size,
+        ),
+        PublicationArtifactName.BLCS_CAMERA_LAYOUT: (
+            "figure_size",
+            request.drawing.figure_size,
+        ),
+        PublicationArtifactName.PLCS_CAMERA_LAYOUT: (
+            "figure_size",
+            request.drawing.figure_size,
+        ),
+        PublicationArtifactName.CAMERA_LAYOUT_COMPARISON: (
+            "figure_size",
+            request.drawing.figure_size,
+        ),
+        PublicationArtifactName.PUBLICATION_OVERVIEW: (
+            "overview_size",
+            request.drawing.overview_size,
+        ),
+    }
+    for artifact, (drawing_field, expected_size) in expected_dimensions.items():
+        record = records[artifact]
+        if (record.width, record.height) != expected_size:
+            raise ValueError(
+                f"{artifact.value} dimensions differ from resolved drawing dimensions "
+                f"authority PublicationRequest.drawing.{drawing_field}."
+            )
+
     expected_owners = _source_owner_manifest(request, inputs=inputs)
     if manifest.source_owners != expected_owners:
         raise ValueError(
@@ -633,12 +684,44 @@ def _validate_authoritative_provenance(
             },
         ),
     }
-    records = {record.file_name: record for record in manifest.artifacts}
     for artifact, expected_mapping in expected_dataset_mappings.items():
         if records[artifact].mapping != expected_mapping:
             raise ValueError(
                 f"{artifact.value} mapping differs from the validated dataset source."
             )
+
+    manifest_alignment_metrics = _mapping(
+        manifest.metrics.get("alignment"),
+        name="metrics.alignment",
+    )
+    if manifest_alignment_metrics != inputs.alignment.metrics:
+        raise ValueError(
+            "Manifest alignment metrics differ from canonical alignment input "
+            "(missing, extra, or changed metric)."
+        )
+
+    expected_alignment_mapping = tuple(
+        {
+            "step_index": step.step_index,
+            "phase": step.phase.value,
+            "score_sum": step.score_sum,
+            "candidate_ids": [
+                candidate.candidate_id for candidate in step.candidates
+            ],
+            "candidate_scores": [
+                candidate.template_score for candidate in step.candidates
+            ],
+        }
+        for step in inputs.alignment.evidence.alignment_trace.steps
+    )
+    if (
+        records[PublicationArtifactName.ALIGNMENT_PROGRESSION].mapping
+        != expected_alignment_mapping
+    ):
+        raise ValueError(
+            "Manifest alignment progression mapping differs from the canonical "
+            "ordered alignment trace."
+        )
 
     camera_sources = {
         PublicationArtifactName.CAPTURED_CAMERA_TRAJECTORY: (
