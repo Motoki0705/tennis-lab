@@ -32,13 +32,12 @@ human UV/visibility には適用しません。
 ### models/
 - **各model module**: 実装classのcanonical import先。package rootは内部classや旧factoryをre-exportしない。
 - **`plcs_model.py`**: `PLCSModel`。単視点frame向けdecoder-only Transformer(court+playerトークン)。
-- **`plcs_multiview_model.py`**: `PLCSMultiViewModel`。camera×time interleaved RoPEによるmultiview Transformer。
 - **`plcs_multiview_axial_model.py`**: `PLCSMultiViewAxialModel`。camera軸/time軸交互self-attention(共有readout)。
 - **`plcs_multiview_axial_split_model.py`**: `PLCSMultiViewAxialSplitModel`(issue #518)。rotation/pose trunkを分離。
 - **`plcs_multiview_axial_camtoken_model.py`**: `PLCSMultiViewAxialCamTokenModel`(issue #576)。head別に別camera tokenを読む。
 - **`plcs_track_query_model.py`**: `PLCSTrackQueryModel`。camera-localにtrackingされた固定幅pose観測からclip-localなqueryで複数playerの位置・rotation・presenceを推定する。
-- **`plcs_track_query_ablation_model.py`**: `PLCSTrackQueryAblationModel`。legacy v1 (`time_camera_role_v1`) の`plcs_track_query_ablation` architectureとして、SwiGLU配置とmHC writeback位置の4条件を同じ5入力・3出力契約で比較する。
-- **`plcs_track_query_reference_model.py` / `plcs_track_query_reference_ablation_model.py`**: camera-view target frame用の明示的v2 family。PLCS固有出力はposition / heading / presenceのままselector条件を追加する。
+- **`plcs_track_query_ablation_model.py`**: `PLCSTrackQueryAblationModel`。ablation Dで採用した固定architecture（attention blockのFFNなし、`Q+V` spatial attention、stage末尾の共有FFNとmHC writeback）を同じ5入力・3出力契約で実装する。
+- **`plcs_track_query_reference_model.py` / `plcs_track_query_reference_ablation_model.py`**: camera-view target frame用の明示的v2 family。後者も同じ固定compressed-stage architectureを使い、PLCS固有出力はposition / heading / presenceのままselector条件を追加する。
 - **`components/heads.py`**: `PositionHead`/`RotationHead`/`CanonicalPoseHead`。
 - **`discriminators/`**: 共有`TransformerSequenceDiscriminator`を`input_dim=5`で構築するPLCS composition factory。
 
@@ -97,9 +96,9 @@ PLCSの`data.association`は `max_distance=0.08`、`max_missed_frames=8`、`min_
 
 14 court UVは共有Court contractでreference整列した後の先頭14点を使い、`court_vis`で不可視点を0化します。各observation slotのperson keypointsとcourtを連結し、BLCSと同じ`src/utils/models/embeddings/group_tokens.py`の共有`CourtPlayerGroupEmbedding`により1 slot = 1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*Q, D)` です。v1 / v2のM-RoPE座標と第3軸の意味は共有正本を参照してください。
 
-BLCSと共有する各stageは `mHC object temporal -> global spatial(Q+VQ) -> query temporal` の順で更新し、temporal modeを `CSWA, CSWA, CSWA, Global MHA` のcycleへ固定します。`object_state_valid`を含む全state/attention maskは共有`build_fixed_query_padding_masks()`が`padding_mask`だけから生成します。nested `model.mhc` / `model.cswa`はstrictに検証し、旧`spatial_blocks` / `temporal_blocks` checkpointは自動変換せずstrict load errorとします。
+BLCSと共有する各stageは `mHC object temporal -> global spatial(Q+V) -> query temporal` の順で更新し、temporal modeを `CSWA, CSWA, CSWA, Global MHA` のcycleへ固定します。`object_state_valid`を含む全state/attention maskは共有`build_fixed_query_padding_masks()`が`padding_mask`だけから生成します。nested `model.mhc` / `model.cswa`はstrictに検証し、旧`spatial_blocks` / `temporal_blocks` checkpointは自動変換せずstrict load errorとします。
 
-`model=track_query_ablation_{a,b,c,d}`は新しいablation architectureを選びます。A/CはAttentionごとに独立SwiGLUを3回、B/Dは全Attention後にstage共有SwiGLUを1回適用します。A/Bはobject temporal直後にmHCを書き戻してspatial幅を`Q+V×P`にし、C/Dはstage末尾まで圧縮streamを保持して`Q+V`にします。2軸は各configで必須であり、既存`track_query` checkpointとの相互loadはstrict errorです。
+`model=track_query_ablation_d`はablation Dから固定したarchitectureを選びます。object temporalでviewごとに1 tokenへ圧縮し、`Q+V` spatial attentionとquery temporal attentionの後にstage共有SwiGLUを1回適用して、mHCをstage末尾でwritebackします。各attention blockはFFNを持ちません。既存`track_query` checkpointとはarchitectureが異なるためstrict load errorです。
 
 multi-object generatorは1024-frame global timelineに3〜10個のAMASS/SMPL-H source subclipを配置し、query再利用gapを含む同時slot占有数を4以下に保ちます。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
 
@@ -111,7 +110,7 @@ multi-object generatorは1024-frame global timelineに3〜10個のAMASS/SMPL-H s
 # 事前生成データで学習
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking
 
-# 4条件の例（a / b / c / dを明示して選択）
+# 固定D architecture
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking \
   model=track_query_ablation_d
 

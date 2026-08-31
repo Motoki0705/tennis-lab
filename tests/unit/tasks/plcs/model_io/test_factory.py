@@ -57,7 +57,12 @@ _TRACKING_SMALL = (
     [
         (
             "train",
-            ("model=frame", "data=singleview_frame", "loss=no_canonical", *_SMALL_MODEL),
+            (
+                "model=frame",
+                "data=singleview_frame",
+                "loss=no_canonical",
+                *_SMALL_MODEL,
+            ),
             "PLCSModel",
             PLCSInputProfile.FRAME,
         ),
@@ -72,18 +77,6 @@ _TRACKING_SMALL = (
             ),
             "PLCSModel",
             PLCSInputProfile.SEQUENCE,
-        ),
-        (
-            "train",
-            (
-                "model=multiview",
-                "loss=no_canonical",
-                "data.seq_len_range=[1,3]",
-                "model.max_seq_len=3",
-                *_SMALL_MODEL,
-            ),
-            "PLCSMultiViewModel",
-            PLCSInputProfile.MULTIVIEW,
         ),
         (
             "train",
@@ -155,19 +148,16 @@ def test_factory_binds_each_validated_model_profile_once(
     assert type(bound.model) is adapter.model_type
 
 
-def _tracking_config(condition: str) -> object:
+def _tracking_config() -> object:
     with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_DIR)):
         return compose(
             config_name="train_tracking",
-            overrides=[f"model=track_query_ablation_{condition}", *_TRACKING_SMALL],
+            overrides=["model=track_query_ablation_d", *_TRACKING_SMALL],
         )
 
 
-@pytest.mark.parametrize("condition", ["a", "b", "c", "d"])
-def test_factory_binds_every_ablation_config_to_exact_model_and_adapter(
-    condition: str,
-) -> None:
-    runtime = PLCSTrainingConfig.from_config(_tracking_config(condition))
+def test_factory_binds_fixed_experiment_config_to_exact_model_and_adapter() -> None:
+    runtime = PLCSTrainingConfig.from_config(_tracking_config())
 
     binding = build_plcs_model_io(runtime)
 
@@ -180,7 +170,7 @@ def test_factory_binds_every_ablation_config_to_exact_model_and_adapter(
 def test_ablation_uses_tracking_training_composition(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    config = _tracking_config("d")
+    config = _tracking_config()
 
     class _DataModule:
         def __init__(self, received: object) -> None:

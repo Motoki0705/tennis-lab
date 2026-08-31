@@ -140,8 +140,12 @@ def _stage(
 
 def _inputs() -> dict[str, Any]:
     object_state_valid = torch.tensor(
-        [[[[True, True], [False, False], [False, False]],
-          [[False, False], [True, True], [False, False]]]]
+        [
+            [
+                [[True, True], [False, False], [False, False]],
+                [[False, False], [True, True], [False, False]],
+            ]
+        ]
     )
     frame_valid = object_state_valid.any(dim=1).any(dim=-1)
     return {
@@ -151,15 +155,11 @@ def _inputs() -> dict[str, Any]:
         "frame_valid": frame_valid,
         "spatial_attention_keep_mask": torch.ones(3, 6, 6, dtype=torch.bool),
         "object_temporal_state_valid": object_state_valid[..., 0].reshape(2, 3),
-        "object_temporal_attention_keep_mask": torch.ones(
-            2, 3, 3, dtype=torch.bool
-        ),
+        "object_temporal_attention_keep_mask": torch.ones(2, 3, 3, dtype=torch.bool),
         "query_temporal_state_valid": frame_valid[:, None, :]
         .expand(1, 2, 3)
         .reshape(2, 3),
-        "query_temporal_attention_keep_mask": torch.ones(
-            2, 3, 3, dtype=torch.bool
-        ),
+        "query_temporal_attention_keep_mask": torch.ones(2, 3, 3, dtype=torch.bool),
         "spatial_freqs": torch.empty(0),
         "time_freqs": torch.empty(0),
     }
@@ -180,16 +180,14 @@ def test_cswa_stages_use_raw_temporal_state_validity(stage_index: int) -> None:
         "query.forward",
     ]
     assert mhc.valid_mask is inputs["object_state_valid"]
-    assert object_temporal.calls[0]["state_valid"] is inputs[
-        "object_temporal_state_valid"
-    ]
+    assert (
+        object_temporal.calls[0]["state_valid"] is inputs["object_temporal_state_valid"]
+    )
     assert object_temporal.calls[0]["attn_mask"] is None
-    assert spatial.calls[0]["attn_mask"] is inputs[
-        "spatial_attention_keep_mask"
-    ]
-    assert query_temporal.calls[0]["state_valid"] is inputs[
-        "query_temporal_state_valid"
-    ]
+    assert spatial.calls[0]["attn_mask"] is inputs["spatial_attention_keep_mask"]
+    assert (
+        query_temporal.calls[0]["state_valid"] is inputs["query_temporal_state_valid"]
+    )
     assert query_temporal.calls[0]["attn_mask"] is None
     assert not object_output[:, :, -1].any()
     assert not query_output[:, -1].any()
@@ -210,21 +208,21 @@ def test_global_stage_uses_dense_temporal_keep_masks() -> None:
         "spatial.forward",
         "query.forward",
     ]
-    assert object_temporal.calls[0]["attn_mask"] is inputs[
-        "object_temporal_attention_keep_mask"
-    ]
+    assert (
+        object_temporal.calls[0]["attn_mask"]
+        is inputs["object_temporal_attention_keep_mask"]
+    )
     assert object_temporal.calls[0]["state_valid"] is None
-    assert spatial.calls[0]["attn_mask"] is inputs[
-        "spatial_attention_keep_mask"
-    ]
-    assert query_temporal.calls[0]["attn_mask"] is inputs[
-        "query_temporal_attention_keep_mask"
-    ]
+    assert spatial.calls[0]["attn_mask"] is inputs["spatial_attention_keep_mask"]
+    assert (
+        query_temporal.calls[0]["attn_mask"]
+        is inputs["query_temporal_attention_keep_mask"]
+    )
     assert query_temporal.calls[0]["state_valid"] is None
 
 
 @pytest.mark.parametrize("temporal_dtype", [torch.bfloat16, torch.float16])
-def test_mhc_writeback_casts_temporal_update_to_object_token_dtype(
+def test_mhc_post_casts_temporal_update_to_object_token_dtype(
     temporal_dtype: torch.dtype,
 ) -> None:
     stage, mhc, object_temporal, _, _, _ = _stage(0)

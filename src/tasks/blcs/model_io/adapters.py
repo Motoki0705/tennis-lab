@@ -48,7 +48,6 @@ from src.tasks.blcs.model_io.contracts import (
 )
 from src.tasks.blcs.models.blcs_model import BLCSModel
 from src.tasks.blcs.models.blcs_multiview_axial_model import BLCSMultiViewAxialModel
-from src.tasks.blcs.models.blcs_multiview_model import BLCSMultiViewModel
 from src.tasks.blcs.models.blcs_track_query_ablation_model import (
     BLCSTrackQueryAblationModel,
 )
@@ -716,14 +715,6 @@ class _MultiviewTrajectoryModelIOAdapter(TrajectoryModelIOAdapter):
         return result
 
 
-class MultiViewTrajectoryModelIOAdapter(_MultiviewTrajectoryModelIOAdapter):
-    """I/O adapter for the iterative multiview model."""
-
-    @property
-    def model_type(self) -> type[nn.Module]:
-        return cast("type[nn.Module]", BLCSMultiViewModel)
-
-
 class AxialTrajectoryModelIOAdapter(_MultiviewTrajectoryModelIOAdapter):
     """I/O adapter for the axial multiview model."""
 
@@ -1078,9 +1069,7 @@ class TrackQueryReferenceModelIOAdapter(TrackQueryModelIOAdapter):
         return ModelCall(kwargs=kwargs)
 
 
-class TrackQueryReferenceAblationModelIOAdapter(
-    TrackQueryReferenceModelIOAdapter
-):
+class TrackQueryReferenceAblationModelIOAdapter(TrackQueryReferenceModelIOAdapter):
     """Exact six-input adapter for the BLCS reference-v2 ablation family."""
 
     _allows_selector_zero = True
@@ -1092,7 +1081,6 @@ class TrackQueryReferenceAblationModelIOAdapter(
 
 __all__ = [
     "AxialTrajectoryModelIOAdapter",
-    "MultiViewTrajectoryModelIOAdapter",
     "RawBLCSOutput",
     "SingleTrajectoryModelIOAdapter",
     "TrackQueryAblationModelIOAdapter",

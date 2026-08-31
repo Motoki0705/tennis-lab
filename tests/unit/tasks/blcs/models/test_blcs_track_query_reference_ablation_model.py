@@ -1,4 +1,4 @@
-"""BLCS reference-v2 generic ablation model contracts."""
+"""BLCS reference-v2 fixed compressed-stage model contracts."""
 
 from __future__ import annotations
 
@@ -21,7 +21,6 @@ from src.utils.configuration import SemanticConfigurationError
 def _config(
     *,
     selector_mode: str = "reference",
-    mhc_writeback: str = "layer_end",
     rope_dim: int = 6,
 ) -> TrackQueryReferenceAblationModelConfig:
     parsed = parse_model_config(
@@ -40,9 +39,6 @@ def _config(
                 "target_frame_contract": "reference_camera_court_rzpi_v1",
                 "track_query_rope_contract": "time_camera_reference_selector_v1",
                 "reference_selector_mode": selector_mode,
-                "ffn_mode": "shared",
-                "mhc_writeback": mhc_writeback,
-                "query_ffn_after_spatial": False,
                 "mhc": {
                     "coefficient_dim": 8,
                     "sinkhorn_iters": 5,
@@ -83,41 +79,24 @@ def test_ablation_forward_has_exactly_six_required_tensors() -> None:
     )
 
 
-@pytest.mark.parametrize(
-    ("writeback", "width"),
-    [("after_object_temporal", 8), ("layer_end", 5)],
-)
-def test_full_and_compressed_positions_preserve_width_and_per_sample_selector(
-    writeback: str,
-    width: int,
-) -> None:
-    model = BLCSTrackQueryReferenceAblationModel(
-        _config(mhc_writeback=writeback)
-    )
+def test_compressed_positions_preserve_width_and_per_sample_selector() -> None:
+    model = BLCSTrackQueryReferenceAblationModel(_config())
     coordinates = model.build_spatial_coordinates(
         torch.tensor([1, 2], dtype=torch.int64),
         num_frames=2,
         num_views=3,
         num_detections=2,
         num_queries=2,
-        mhc_writeback=model.mhc_writeback,
         selector_mode=ReferenceSelectorMode.REFERENCE,
     )
-    assert coordinates.shape == (4, width, 3)
-    object_width = 2 if writeback == "after_object_temporal" else 1
-    assert coordinates[0, 2:, 2].tolist() == (
-        [1] * object_width + [0] * object_width + [1] * object_width
-    )
-    assert coordinates[2, 2:, 2].tolist() == (
-        [1] * object_width + [1] * object_width + [0] * object_width
-    )
+    assert coordinates.shape == (4, 5, 3)
+    assert coordinates[0, 2:, 2].tolist() == [1, 0, 1]
+    assert coordinates[2, 2:, 2].tolist() == [1, 1, 0]
 
 
 def test_selector_zero_keeps_sixth_input_and_zeroes_only_third_axis() -> None:
     reference = BLCSTrackQueryReferenceAblationModel(_config(selector_mode="reference"))
-    zero = BLCSTrackQueryReferenceAblationModel(
-        _config(selector_mode="selector_zero")
-    )
+    zero = BLCSTrackQueryReferenceAblationModel(_config(selector_mode="selector_zero"))
     index = torch.tensor([1, 2], dtype=torch.int64)
     reference_coordinates = reference.build_spatial_coordinates(
         index,
@@ -125,7 +104,6 @@ def test_selector_zero_keeps_sixth_input_and_zeroes_only_third_axis() -> None:
         num_views=3,
         num_detections=2,
         num_queries=2,
-        mhc_writeback="layer_end",
         selector_mode=reference.reference_selector_mode,
     )
     zero_coordinates = zero.build_spatial_coordinates(
@@ -134,10 +112,11 @@ def test_selector_zero_keeps_sixth_input_and_zeroes_only_third_axis() -> None:
         num_views=3,
         num_detections=2,
         num_queries=2,
-        mhc_writeback="layer_end",
         selector_mode=zero.reference_selector_mode,
     )
-    torch.testing.assert_close(reference_coordinates[..., :2], zero_coordinates[..., :2])
+    torch.testing.assert_close(
+        reference_coordinates[..., :2], zero_coordinates[..., :2]
+    )
     assert not zero_coordinates[..., 2].any()
     with pytest.raises(RuntimeError):
         reference.load_state_dict(zero.state_dict(), strict=True)
@@ -152,7 +131,9 @@ def test_cpu_forward_backward_is_finite(selector_mode: str) -> None:
     ).train()
     inputs = _inputs()
     output = cast("dict[str, Tensor]", model(*inputs))
-    loss = output["position"].square().mean() + output["presence_logits"].square().mean()
+    loss = (
+        output["position"].square().mean() + output["presence_logits"].square().mean()
+    )
     loss.backward()
     assert torch.isfinite(loss)
     assert inputs[0].grad is not None and torch.isfinite(inputs[0].grad).all()

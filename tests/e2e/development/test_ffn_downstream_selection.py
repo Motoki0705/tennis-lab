@@ -21,14 +21,12 @@ _EXPECTED_DIRECT_CONSUMERS = frozenset(
         "src/tasks/ball_detection/models/dinov3_rope.py",
         "src/tasks/blcs/models/blcs_model.py",
         "src/tasks/blcs/models/blcs_multiview_axial_model.py",
-        "src/tasks/blcs/models/blcs_multiview_model.py",
         "src/tasks/blcs/models/blcs_track_query_ablation_model.py",
         "src/tasks/blcs/models/blcs_track_query_model.py",
         "src/tasks/court_detection/models/transformer_encoder.py",
         "src/tasks/plcs/models/plcs_model.py",
         "src/tasks/plcs/models/plcs_multiview_axial_model.py",
         "src/tasks/plcs/models/plcs_multiview_axial_split_model.py",
-        "src/tasks/plcs/models/plcs_multiview_model.py",
         "src/tasks/plcs/models/plcs_track_query_ablation_model.py",
         "src/tasks/plcs/models/plcs_track_query_model.py",
         "src/tasks/slcs/models/slcs_model.py",
@@ -91,8 +89,7 @@ def test_every_task_configuration_uses_the_canonical_ffn_registry() -> None:
     missing = [
         path
         for path in _CONFIGURATION_SURFACES
-        if "SUPPORTED_FFN_TYPES"
-        not in Path(path).read_text(encoding="utf-8")
+        if "SUPPORTED_FFN_TYPES" not in Path(path).read_text(encoding="utf-8")
     ]
     assert missing == []
 

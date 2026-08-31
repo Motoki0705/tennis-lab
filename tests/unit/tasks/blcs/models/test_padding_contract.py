@@ -12,7 +12,6 @@ from torch import Tensor, nn
 
 from src.tasks.blcs.models.blcs_model import BLCSModel
 from src.tasks.blcs.models.blcs_multiview_axial_model import BLCSMultiViewAxialModel
-from src.tasks.blcs.models.blcs_multiview_model import BLCSMultiViewModel
 
 
 def _single_model() -> BLCSModel:
@@ -32,28 +31,6 @@ def _single_model() -> BLCSModel:
         max_seq_len=3,
         invisible_init_std=0.02,
         num_court_tokens=2,
-    )
-
-
-def _multiview_model() -> BLCSMultiViewModel:
-    return BLCSMultiViewModel(
-        hidden_dim=8,
-        num_heads=2,
-        ffn_dim=16,
-        ffn_type="swiglu",
-        dropout=0.0,
-        rope_dim=4,
-        rope_theta=10_000.0,
-        rope_theta_time=10_000.0,
-        rope_theta_camera=1_000.0,
-        rope_theta_type=1_000.0,
-        num_layers=1,
-        predict_velocity=False,
-        max_seq_len=3,
-        max_num_cameras=2,
-        num_court_tokens=2,
-        invisible_init_std=0.02,
-        query_init_std=0.02,
     )
 
 
@@ -106,7 +83,6 @@ def _multiview_inputs() -> dict[str, Tensor]:
     ("build_model", "build_inputs"),
     [
         (_single_model, _single_inputs),
-        (_multiview_model, _multiview_inputs),
         (_axial_model, _multiview_inputs),
     ],
 )
@@ -139,7 +115,6 @@ def test_standard_model_uses_exact_five_tensor_padding_contract(
     ("build_model", "build_inputs"),
     [
         (_single_model, _single_inputs),
-        (_multiview_model, _multiview_inputs),
         (_axial_model, _multiview_inputs),
     ],
 )

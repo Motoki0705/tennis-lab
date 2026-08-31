@@ -1,4 +1,4 @@
-"""Strict FFN/writeback ablation model for fixed-width BLCS track queries."""
+"""Fixed compressed-stage architecture for BLCS track-query experiments."""
 
 from __future__ import annotations
 
@@ -19,9 +19,8 @@ from src.utils.models import (
     TransformerBlock,
     TransformerBlockConfig,
 )
-from src.utils.models.components.fixed_query_track_ablation_stage import (
-    FixedQueryTrackAblationStage,
-    MHCWriteback,
+from src.utils.models.components.fixed_query_track_compressed_stage import (
+    FixedQueryTrackCompressedStage,
 )
 from src.utils.models.components.mhc import (
     ManifoldConstrainedHyperConnection,
@@ -34,22 +33,18 @@ from src.utils.models.multiview_padding import (
 
 
 class BLCSTrackQueryAblationModel(nn.Module):
-    """Predict persistent ball queries under one of the four strict ablations."""
+    """Predict persistent ball queries with the fixed compressed-stage design."""
 
     def __init__(self, config: TrackQueryAblationModelConfig) -> None:
         super().__init__()
         if config.name != "blcs_track_query_ablation":
             raise ValueError(
-                "BLCSTrackQueryAblationModel requires "
-                "blcs_track_query_ablation config."
+                "BLCSTrackQueryAblationModel requires blcs_track_query_ablation config."
             )
         self.hidden_dim = int(config.hidden_dim)
         self.num_heads = int(config.num_heads)
         self.num_queries = int(config.num_queries)
         self.num_stages = int(config.num_stages)
-        self.ffn_mode = config.ffn_mode
-        self.mhc_writeback = config.mhc_writeback
-        self.query_ffn_after_spatial = config.query_ffn_after_spatial
         self.role_rope_scale = int(config.role_rope_enabled)
         # A persistent architecture marker makes baseline/ablation strict loads
         # fail in both directions without runtime key migration.
@@ -138,8 +133,7 @@ class BLCSTrackQueryAblationModel(nn.Module):
         if padding_mask.shape != (batch_size, num_views, num_frames):
             raise ValueError("padding_mask must have shape (B,V,T).")
         if any(
-            tensor.dtype != torch.bool
-            for tensor in (ball_vis, court_vis, padding_mask)
+            tensor.dtype != torch.bool for tensor in (ball_vis, court_vis, padding_mask)
         ):
             raise TypeError("ball_vis, court_vis, and padding_mask must be boolean.")
 
@@ -150,9 +144,7 @@ class BLCSTrackQueryAblationModel(nn.Module):
         head_dim: int,
         temporal_cswa: bool,
     ) -> TransformerBlockConfig:
-        attention_type: Literal["mha", "cswa"] = (
-            "cswa" if temporal_cswa else "mha"
-        )
+        attention_type: Literal["mha", "cswa"] = "cswa" if temporal_cswa else "mha"
         cswa_config = (
             CSWAConfig(
                 dim=self.hidden_dim,
@@ -179,7 +171,7 @@ class BLCSTrackQueryAblationModel(nn.Module):
             rope_base=10000.0,
             ffn_type=config.ffn_type,
             cswa=cswa_config,
-            ffn_enabled=config.ffn_mode == "per_attention",
+            ffn_enabled=False,
         )
 
     def _build_stage(
@@ -188,7 +180,7 @@ class BLCSTrackQueryAblationModel(nn.Module):
         stage_index: int,
         config: TrackQueryAblationModelConfig,
         head_dim: int,
-    ) -> FixedQueryTrackAblationStage:
+    ) -> FixedQueryTrackCompressedStage:
         temporal_cswa = stage_index % 4 < 3
         temporal_config = self._block_config(
             config=config,
@@ -200,7 +192,7 @@ class BLCSTrackQueryAblationModel(nn.Module):
             head_dim=head_dim,
             temporal_cswa=False,
         )
-        return FixedQueryTrackAblationStage(
+        return FixedQueryTrackCompressedStage(
             stage_index=stage_index,
             mhc=ManifoldConstrainedHyperConnection(
                 MHCConfig(
@@ -218,9 +210,6 @@ class BLCSTrackQueryAblationModel(nn.Module):
             query_temporal_block=TransformerBlock(temporal_config),
             hidden_dim=self.hidden_dim,
             num_queries=self.num_queries,
-            ffn_mode=config.ffn_mode,
-            mhc_writeback=config.mhc_writeback,
-            query_ffn_after_spatial=config.query_ffn_after_spatial,
         )
 
     @staticmethod
@@ -231,15 +220,11 @@ class BLCSTrackQueryAblationModel(nn.Module):
         num_views: int,
         num_detections: int,
         num_queries: int,
-        mhc_writeback: MHCWriteback,
         device: torch.device,
     ) -> Tensor:
-        """Return time/camera/role coordinates for ``Q+V*P`` or ``Q+V``."""
+        """Return time/camera/role coordinates for compressed ``Q+V`` tokens."""
         if num_detections != num_queries:
             raise ValueError("num_detections must equal num_queries.")
-        if mhc_writeback not in {"after_object_temporal", "layer_end"}:
-            raise ValueError("mhc_writeback is invalid.")
-        object_width = num_queries if mhc_writeback == "after_object_temporal" else 1
         time = torch.arange(num_frames, device=device).view(1, num_frames, 1)
         slots = torch.zeros(
             batch_size,
@@ -254,7 +239,7 @@ class BLCSTrackQueryAblationModel(nn.Module):
             batch_size,
             num_frames,
             num_views,
-            object_width,
+            1,
             3,
             device=device,
             dtype=torch.long,
@@ -285,7 +270,6 @@ class BLCSTrackQueryAblationModel(nn.Module):
             num_views=num_views,
             num_detections=self.num_queries,
             num_queries=self.num_queries,
-            mhc_writeback=self.mhc_writeback,
             device=ball_uv.device,
         )
         rope_coordinates = coordinates.clone()
@@ -315,14 +299,10 @@ class BLCSTrackQueryAblationModel(nn.Module):
             padding_mask,
             num_queries=self.num_queries,
         )
-        spatial_attention_keep_mask = masks.spatial_attention_keep_mask
-        if self.mhc_writeback == "layer_end":
-            spatial_attention_keep_mask = (
-                build_compressed_spatial_attention_keep_mask(
-                    padding_mask,
-                    num_queries=self.num_queries,
-                )
-            )
+        spatial_attention_keep_mask = build_compressed_spatial_attention_keep_mask(
+            padding_mask,
+            num_queries=self.num_queries,
+        )
 
         context_valid = masks.context_valid
         effective_ball_uv = ball_uv.masked_fill(

@@ -1,6 +1,3 @@
 defaults:
   - _track_query_ablation
   - _self_
-
-ffn_mode: shared
-mhc_writeback: layer_end

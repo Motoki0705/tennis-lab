@@ -1,4 +1,4 @@
-"""Strict FFN/writeback ablation model for fixed-width PLCS track queries."""
+"""Fixed compressed-stage architecture for PLCS track-query experiments."""
 
 from __future__ import annotations
 
@@ -18,10 +18,8 @@ from src.utils.models import (
     TransformerBlockConfig,
 )
 from src.utils.models.components.ffn_layers import FFNType
-from src.utils.models.components.fixed_query_track_ablation_stage import (
-    FFNMode,
-    FixedQueryTrackAblationStage,
-    MHCWriteback,
+from src.utils.models.components.fixed_query_track_compressed_stage import (
+    FixedQueryTrackCompressedStage,
 )
 from src.utils.models.components.mhc import (
     ManifoldConstrainedHyperConnection,
@@ -38,14 +36,13 @@ from src.utils.models.multiview_padding import (
 
 
 class PLCSTrackQueryAblationModel(nn.Module):
-    """Predict persistent player queries under one strict ablation condition."""
+    """Predict persistent player queries with the fixed compressed-stage design."""
 
     def __init__(self, config: PLCSModelConfig) -> None:
         super().__init__()
         if config.name != "plcs_track_query_ablation":
             raise ValueError(
-                "PLCSTrackQueryAblationModel requires "
-                "plcs_track_query_ablation config."
+                "PLCSTrackQueryAblationModel requires plcs_track_query_ablation config."
             )
         mhc_config = config.track_query_mhc
         cswa_config = config.track_query_cswa
@@ -56,11 +53,6 @@ class PLCSTrackQueryAblationModel(nn.Module):
         self.num_queries = config.integer("num_queries")
         self.num_stages = config.integer("num_stages")
         self.num_joints = config.integer("num_joints")
-        self.ffn_mode = cast(FFNMode, config.string("ffn_mode"))
-        self.mhc_writeback = cast(
-            MHCWriteback,
-            config.string("mhc_writeback"),
-        )
         self.role_rope_scale = int(config.boolean("role_rope_enabled"))
         # A persistent architecture marker makes baseline/ablation strict loads
         # fail in both directions without runtime key migration.
@@ -178,9 +170,7 @@ class PLCSTrackQueryAblationModel(nn.Module):
         head_dim: int,
         temporal_cswa: bool,
     ) -> TransformerBlockConfig:
-        attention_type: Literal["mha", "cswa"] = (
-            "cswa" if temporal_cswa else "mha"
-        )
+        attention_type: Literal["mha", "cswa"] = "cswa" if temporal_cswa else "mha"
         track_cswa = config.track_query_cswa
         if track_cswa is None:
             raise ValueError("PLCS track-query cswa config must be validated.")
@@ -210,7 +200,7 @@ class PLCSTrackQueryAblationModel(nn.Module):
             rope_base=config.number("rope_theta"),
             ffn_type=cast(FFNType, config.string("ffn_type")),
             cswa=cswa,
-            ffn_enabled=self.ffn_mode == "per_attention",
+            ffn_enabled=False,
         )
 
     def _build_stage(
@@ -219,7 +209,7 @@ class PLCSTrackQueryAblationModel(nn.Module):
         stage_index: int,
         config: PLCSModelConfig,
         head_dim: int,
-    ) -> FixedQueryTrackAblationStage:
+    ) -> FixedQueryTrackCompressedStage:
         mhc_config = config.track_query_mhc
         if mhc_config is None:
             raise ValueError("PLCS track-query mhc config must be validated.")
@@ -234,7 +224,7 @@ class PLCSTrackQueryAblationModel(nn.Module):
             head_dim=head_dim,
             temporal_cswa=False,
         )
-        return FixedQueryTrackAblationStage(
+        return FixedQueryTrackCompressedStage(
             stage_index=stage_index,
             mhc=ManifoldConstrainedHyperConnection(
                 MHCConfig(
@@ -252,9 +242,6 @@ class PLCSTrackQueryAblationModel(nn.Module):
             query_temporal_block=TransformerBlock(temporal_config),
             hidden_dim=self.hidden_dim,
             num_queries=self.num_queries,
-            ffn_mode=self.ffn_mode,
-            mhc_writeback=self.mhc_writeback,
-            query_ffn_after_spatial=False,
         )
 
     @staticmethod
@@ -265,15 +252,11 @@ class PLCSTrackQueryAblationModel(nn.Module):
         num_views: int,
         num_detections: int,
         num_queries: int,
-        mhc_writeback: MHCWriteback,
         device: torch.device,
     ) -> Tensor:
-        """Return time/camera/role coordinates for ``Q+V*P`` or ``Q+V``."""
+        """Return time/camera/role coordinates for compressed ``Q+V`` tokens."""
         if num_detections != num_queries:
             raise ValueError("num_detections must equal num_queries.")
-        if mhc_writeback not in {"after_object_temporal", "layer_end"}:
-            raise ValueError("mhc_writeback is invalid.")
-        object_width = num_queries if mhc_writeback == "after_object_temporal" else 1
         time = torch.arange(num_frames, device=device).view(1, num_frames, 1)
         slots = torch.zeros(
             batch_size,
@@ -288,7 +271,7 @@ class PLCSTrackQueryAblationModel(nn.Module):
             batch_size,
             num_frames,
             num_views,
-            object_width,
+            1,
             3,
             device=device,
             dtype=torch.long,
@@ -319,7 +302,6 @@ class PLCSTrackQueryAblationModel(nn.Module):
             num_views=num_views,
             num_detections=self.num_queries,
             num_queries=self.num_queries,
-            mhc_writeback=self.mhc_writeback,
             device=human_kp.device,
         )
         rope_coordinates = coordinates.clone()
@@ -349,14 +331,10 @@ class PLCSTrackQueryAblationModel(nn.Module):
             padding_mask,
             num_queries=self.num_queries,
         )
-        spatial_attention_keep_mask = masks.spatial_attention_keep_mask
-        if self.mhc_writeback == "layer_end":
-            spatial_attention_keep_mask = (
-                build_compressed_spatial_attention_keep_mask(
-                    padding_mask,
-                    num_queries=self.num_queries,
-                )
-            )
+        spatial_attention_keep_mask = build_compressed_spatial_attention_keep_mask(
+            padding_mask,
+            num_queries=self.num_queries,
+        )
 
         effective_human_vis = human_vis & masks.context_valid[..., None, None]
         effective_court_vis = court_vis & masks.context_valid[..., None]

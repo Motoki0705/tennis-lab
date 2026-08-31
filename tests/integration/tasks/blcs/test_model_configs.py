@@ -56,9 +56,7 @@ def test_legacy_non_track_training_config_needs_no_reference_only_data_key() -> 
     validate_training_boundary(config)
 
 
-@pytest.mark.parametrize(
-    "config_name", ("train_tracking", "train_tracking_chunked")
-)
+@pytest.mark.parametrize("config_name", ("train_tracking", "train_tracking_chunked"))
 def test_tracking_training_roots_preserve_effective_batch_at_maximum_length(
     config_name: str,
 ) -> None:
@@ -66,9 +64,7 @@ def test_tracking_training_roots_preserve_effective_batch_at_maximum_length(
         config = compose(config_name=config_name)
 
     physical_batch_size = int(config.data.batch_size)
-    accumulate_grad_batches = int(
-        config.training.trainer.accumulate_grad_batches
-    )
+    accumulate_grad_batches = int(config.training.trainer.accumulate_grad_batches)
     assert physical_batch_size == 1
     assert accumulate_grad_batches == 8
     assert physical_batch_size * accumulate_grad_batches == 8
@@ -78,9 +74,7 @@ def test_tracking_training_roots_preserve_effective_batch_at_maximum_length(
     assert isinstance(validate_training_boundary(config), TrackQueryModelConfig)
 
 
-@pytest.mark.parametrize(
-    "config_name", ("train_tracking", "train_tracking_chunked")
-)
+@pytest.mark.parametrize("config_name", ("train_tracking", "train_tracking_chunked"))
 def test_tracking_training_roots_require_query_slot_lifecycle_packing(
     config_name: str,
 ) -> None:
@@ -122,7 +116,9 @@ def test_track_query_size_configs_compose(
     rope_dim: int,
 ) -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
-        config = compose(config_name="train_tracking", overrides=[f"model={model_name}"])
+        config = compose(
+            config_name="train_tracking", overrides=[f"model={model_name}"]
+        )
 
     assert config.model.name == "blcs_track_query"
     assert config.model.hidden_dim == hidden_dim
@@ -175,35 +171,17 @@ def test_track_query_ffn_type_is_required_typed_and_supported(
         parse_model_config(config)
 
 
-@pytest.mark.parametrize(
-    ("condition", "ffn_mode", "mhc_writeback", "query_ffn_after_spatial"),
-    [
-        ("a", "per_attention", "after_object_temporal", False),
-        ("b", "shared", "after_object_temporal", False),
-        ("c", "per_attention", "layer_end", False),
-        ("d", "shared", "layer_end", False),
-        ("e", "shared", "layer_end", True),
-    ],
-)
-def test_all_five_track_query_ablation_configs_compose_and_validate(
-    condition: str,
-    ffn_mode: str,
-    mhc_writeback: str,
-    query_ffn_after_spatial: bool,
-) -> None:
+def test_fixed_track_query_ablation_config_composes_and_validates() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
             config_name="train_tracking",
-            overrides=[f"model=track_query_ablation_{condition}"],
+            overrides=["model=track_query_ablation_d"],
         )
 
     parsed = validate_training_boundary(config)
 
     assert isinstance(parsed, TrackQueryAblationModelConfig)
     assert parsed.name == "blcs_track_query_ablation"
-    assert parsed.ffn_mode == ffn_mode
-    assert parsed.mhc_writeback == mhc_writeback
-    assert parsed.query_ffn_after_spatial is query_ffn_after_spatial
     assert parsed.hidden_dim == 512
     assert parsed.num_heads == 8
     assert parsed.num_stages == 12
@@ -214,51 +192,6 @@ def test_all_five_track_query_ablation_configs_compose_and_validate(
     assert parsed.cswa.compression_ratio == 4
     assert parsed.cswa.window_radius == 4
     assert parsed.cswa.backend == "cuda"
-
-
-@pytest.mark.parametrize(
-    ("violation", "error"),
-    [
-        ("missing_ffn", MissingConfigurationKeyError),
-        ("missing_writeback", MissingConfigurationKeyError),
-        ("missing_query_ffn", MissingConfigurationKeyError),
-        ("unknown", UnknownConfigurationKeyError),
-        ("invalid_ffn", SemanticConfigurationError),
-        ("invalid_writeback", SemanticConfigurationError),
-        ("invalid_query_ffn_type", ConfigurationTypeError),
-        ("invalid_query_ffn_combination", SemanticConfigurationError),
-    ],
-)
-def test_ablation_axes_reject_missing_unknown_and_invalid_values(
-    violation: str,
-    error: type[Exception],
-) -> None:
-    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
-        config = compose(
-            config_name="train_tracking",
-            overrides=["model=track_query_ablation_a"],
-        )
-
-    with open_dict(config.model):
-        if violation == "missing_ffn":
-            del config.model["ffn_mode"]
-        elif violation == "missing_writeback":
-            del config.model["mhc_writeback"]
-        elif violation == "missing_query_ffn":
-            del config.model["query_ffn_after_spatial"]
-        elif violation == "unknown":
-            config.model["legacy_ablation"] = True
-        elif violation == "invalid_ffn":
-            config.model.ffn_mode = "legacy"
-        elif violation == "invalid_writeback":
-            config.model.mhc_writeback = "before_spatial"
-        elif violation == "invalid_query_ffn_type":
-            config.model.query_ffn_after_spatial = "yes"
-        else:
-            config.model.query_ffn_after_spatial = True
-
-    with pytest.raises(error):
-        parse_model_config(config)
 
 
 @pytest.mark.parametrize(

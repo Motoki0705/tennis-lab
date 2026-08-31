@@ -3,5 +3,3 @@ defaults:
   - _self_
 
 reference_selector_mode: reference
-ffn_mode: shared
-mhc_writeback: layer_end

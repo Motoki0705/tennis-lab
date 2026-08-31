@@ -1,8 +1,8 @@
-"""Fixed-query tracking stage with strict FFN and mHC ablation axes."""
+"""Fixed-query tracking stage with compressed spatial tokens and late writeback."""
 
 from __future__ import annotations
 
-from typing import Literal, TypeAlias, cast
+from typing import cast
 
 import torch
 from torch import Tensor, nn
@@ -12,22 +12,15 @@ from src.utils.models.components.ffn_layers import build_ffn
 from src.utils.models.components.mhc import ManifoldConstrainedHyperConnection, MHCState
 from src.utils.models.components.norm import RMSNorm
 
-FFNMode: TypeAlias = Literal["per_attention", "shared"]
-MHCWriteback: TypeAlias = Literal["after_object_temporal", "layer_end"]
 
-_FFN_MODES = frozenset({"per_attention", "shared"})
-_MHC_WRITEBACKS = frozenset({"after_object_temporal", "layer_end"})
+class FixedQueryTrackCompressedStage(nn.Module):
+    """Run one fixed-query stage with a compressed object path.
 
-
-class FixedQueryTrackAblationStage(nn.Module):
-    """Run one strict fixed-query FFN/writeback ablation stage.
-
-    All variants keep the ``C,C,C,G`` temporal cycle. Per-attention
-    stages use three normal Transformer blocks. Shared stages use three
-    attention-only blocks and exactly one stage-owned pre-norm configured-FFN residual
-    over the latest query and object tokens after all attention operations.
-    Variant E additionally inserts a separate query-only pre-norm configured-FFN
-    residual between spatial and query-temporal attention.
+    The stage projects each view's object streams to one temporal token, exposes
+    only ``Q + V`` tokens to spatial attention, runs query-temporal attention,
+    applies one shared stage-end FFN to query and compressed object tokens, and
+    writes the object update back through mHC exactly once at the layer end.
+    Attention blocks are deliberately FFN-free.
     """
 
     def __init__(
@@ -40,9 +33,6 @@ class FixedQueryTrackAblationStage(nn.Module):
         query_temporal_block: TransformerBlock,
         hidden_dim: int,
         num_queries: int,
-        ffn_mode: FFNMode,
-        mhc_writeback: MHCWriteback,
-        query_ffn_after_spatial: bool,
     ) -> None:
         super().__init__()
         if type(stage_index) is not int or stage_index < 0:
@@ -51,32 +41,11 @@ class FixedQueryTrackAblationStage(nn.Module):
             raise TypeError("hidden_dim and num_queries must be exactly int.")
         if hidden_dim <= 0 or num_queries <= 0:
             raise ValueError("hidden_dim and num_queries must be positive.")
-        if ffn_mode not in _FFN_MODES:
-            raise ValueError(
-                "ffn_mode must be exactly 'per_attention' or 'shared'."
-            )
-        if mhc_writeback not in _MHC_WRITEBACKS:
-            raise ValueError(
-                "mhc_writeback must be exactly 'after_object_temporal' or "
-                "'layer_end'."
-            )
-        if type(query_ffn_after_spatial) is not bool:
-            raise TypeError("query_ffn_after_spatial must be exactly bool.")
-        if query_ffn_after_spatial and (
-            ffn_mode != "shared" or mhc_writeback != "layer_end"
-        ):
-            raise ValueError(
-                "query_ffn_after_spatial requires shared FFN mode and "
-                "layer-end mHC writeback."
-            )
 
         self.stage_index = stage_index
         self.is_global = stage_index % 4 == 3
         self.hidden_dim = hidden_dim
         self.num_queries = num_queries
-        self.ffn_mode = ffn_mode
-        self.mhc_writeback = mhc_writeback
-        self.query_ffn_after_spatial_enabled = query_ffn_after_spatial
         self.mhc = mhc
         self.object_temporal_block = object_temporal_block
         self.spatial_block = spatial_block
@@ -104,51 +73,22 @@ class FixedQueryTrackAblationStage(nn.Module):
         ffn_types = {block.cfg.ffn_type for block in blocks}
         if len(ffn_types) != 1:
             raise ValueError("all block FFN types must match.")
-        ffn_type = ffn_types.pop()
         ffn_dims = {block.cfg.ffn_dim for block in blocks}
         if len(ffn_dims) != 1:
             raise ValueError("all block FFN dimensions must match.")
-        ffn_dim = ffn_dims.pop()
-        expected_block_ffn = self.ffn_mode == "per_attention"
-        if any(block.cfg.ffn_enabled is not expected_block_ffn for block in blocks):
-            raise ValueError(
-                "per_attention requires three FFN-enabled blocks and shared "
-                "requires three FFN-disabled blocks."
-            )
+        if any(block.cfg.ffn_enabled for block in blocks):
+            raise ValueError("all attention blocks must be FFN-free.")
 
-        self.query_ffn_after_spatial_norm: RMSNorm | None
-        self.query_ffn_after_spatial: nn.Module | None
-        if self.query_ffn_after_spatial_enabled:
-            self.query_ffn_after_spatial_norm = RMSNorm(hidden_dim)
-            self.query_ffn_after_spatial = build_ffn(
-                ffn_type=ffn_type, dim=hidden_dim, ffn_dim=ffn_dim
-            )
-        else:
-            self.query_ffn_after_spatial_norm = None
-            self.query_ffn_after_spatial = None
-
-        self.shared_ffn_norm: RMSNorm | None
-        self.shared_ffn: nn.Module | None
-        if self.ffn_mode == "shared":
-            self.shared_ffn_norm = RMSNorm(hidden_dim)
-            self.shared_ffn = build_ffn(
-                ffn_type=ffn_type, dim=hidden_dim, ffn_dim=ffn_dim
-            )
-        else:
-            self.shared_ffn_norm = None
-            self.shared_ffn = None
-
+        self.shared_ffn_norm = RMSNorm(hidden_dim)
+        self.shared_ffn = build_ffn(
+            ffn_type=ffn_types.pop(),
+            dim=hidden_dim,
+            ffn_dim=ffn_dims.pop(),
+        )
         self.register_forward_pre_hook(
             self._validate_forward_inputs,
             with_kwargs=True,
         )
-
-    @property
-    def spatial_object_width_per_view(self) -> int:
-        """Return the object width contributed by each view to spatial attention."""
-        if self.mhc_writeback == "after_object_temporal":
-            return self.num_queries
-        return 1
 
     def _validate_forward_inputs(
         self,
@@ -192,9 +132,7 @@ class FixedQueryTrackAblationStage(nn.Module):
             raise ValueError("frame_valid must have shape (B,T).")
         if frame_valid.dtype is not torch.bool:
             raise TypeError("frame_valid must have dtype torch.bool.")
-        spatial_width = self.num_queries + (
-            num_views * self.spatial_object_width_per_view
-        )
+        spatial_width = self.num_queries + num_views
         expected_spatial_shape = (
             batch_size * num_frames,
             spatial_width,
@@ -211,7 +149,7 @@ class FixedQueryTrackAblationStage(nn.Module):
             spatial_width,
         ):
             raise ValueError(
-                "spatial_freqs must align with the selected Q+object width."
+                "spatial_freqs must align with the compressed Q+V width."
             )
 
     def _object_temporal_update(
@@ -309,18 +247,7 @@ class FixedQueryTrackAblationStage(nn.Module):
         ).reshape(batch_size, num_views, num_frames, 1, hidden_dim)
         object_update = object_update * compressed_valid.unsqueeze(-1).unsqueeze(-1)
 
-        if self.mhc_writeback == "after_object_temporal":
-            spatial_objects = self._write_mhc_update(
-                object_update,
-                residual=object_tokens,
-                state=mhc_state,
-            )
-            spatial_objects = spatial_objects * object_state_valid.unsqueeze(-1)
-        else:
-            spatial_objects = object_update
-
-        spatial_object_width = spatial_objects.shape[3]
-        time_major_objects = spatial_objects.permute(0, 2, 1, 3, 4)
+        time_major_objects = object_update.permute(0, 2, 1, 3, 4)
         spatial_values = torch.cat(
             (query_tokens, time_major_objects.flatten(2, 3)),
             dim=2,
@@ -332,27 +259,15 @@ class FixedQueryTrackAblationStage(nn.Module):
         ).reshape(batch_size, num_frames, -1, hidden_dim)
         spatial_queries = spatial_values[:, :, : self.num_queries]
         spatial_queries = spatial_queries * frame_valid[:, :, None, None]
-        if self.query_ffn_after_spatial_enabled:
-            query_ffn = cast(nn.Module, self.query_ffn_after_spatial)
-            query_ffn_norm = cast(RMSNorm, self.query_ffn_after_spatial_norm)
-            spatial_queries = spatial_queries + query_ffn(
-                query_ffn_norm(spatial_queries)
-            )
-            spatial_queries = spatial_queries * frame_valid[:, :, None, None]
         current_objects = spatial_values[:, :, self.num_queries :].reshape(
             batch_size,
             num_frames,
             num_views,
-            spatial_object_width,
+            1,
             hidden_dim,
         )
         current_objects = current_objects.permute(0, 2, 1, 3, 4)
-        if spatial_object_width == self.num_queries:
-            current_objects = current_objects * object_state_valid.unsqueeze(-1)
-        else:
-            current_objects = current_objects * compressed_valid.unsqueeze(-1).unsqueeze(
-                -1
-            )
+        current_objects = current_objects * compressed_valid.unsqueeze(-1).unsqueeze(-1)
 
         query_values = spatial_queries.permute(0, 2, 1, 3).reshape(
             batch_size * self.num_queries,
@@ -373,44 +288,33 @@ class FixedQueryTrackAblationStage(nn.Module):
         ).permute(0, 2, 1, 3)
         query_output = query_output * frame_valid[:, :, None, None]
 
-        if self.ffn_mode == "shared":
-            if self.shared_ffn is None or self.shared_ffn_norm is None:
-                raise RuntimeError("shared FFN modules were not constructed")
-            time_major_objects = current_objects.permute(0, 2, 1, 3, 4)
-            shared_values = torch.cat(
-                (query_output, time_major_objects.flatten(2, 3)),
-                dim=2,
-            )
-            shared_values = shared_values + self.shared_ffn(
-                self.shared_ffn_norm(shared_values)
-            )
-            query_output = shared_values[:, :, : self.num_queries]
-            query_output = query_output * frame_valid[:, :, None, None]
-            current_objects = shared_values[:, :, self.num_queries :].reshape(
-                batch_size,
-                num_frames,
-                num_views,
-                spatial_object_width,
-                hidden_dim,
-            )
-            current_objects = current_objects.permute(0, 2, 1, 3, 4)
-            if spatial_object_width == self.num_queries:
-                current_objects = current_objects * object_state_valid.unsqueeze(-1)
-            else:
-                current_objects = current_objects * compressed_valid.unsqueeze(
-                    -1
-                ).unsqueeze(-1)
+        time_major_objects = current_objects.permute(0, 2, 1, 3, 4)
+        shared_values = torch.cat(
+            (query_output, time_major_objects.flatten(2, 3)),
+            dim=2,
+        )
+        shared_values = shared_values + self.shared_ffn(
+            self.shared_ffn_norm(shared_values)
+        )
+        query_output = shared_values[:, :, : self.num_queries]
+        query_output = query_output * frame_valid[:, :, None, None]
+        current_objects = shared_values[:, :, self.num_queries :].reshape(
+            batch_size,
+            num_frames,
+            num_views,
+            1,
+            hidden_dim,
+        )
+        current_objects = current_objects.permute(0, 2, 1, 3, 4)
+        current_objects = current_objects * compressed_valid.unsqueeze(-1).unsqueeze(-1)
 
-        if self.mhc_writeback == "layer_end":
-            object_output = self._write_mhc_update(
-                current_objects,
-                residual=object_tokens,
-                state=mhc_state,
-            )
-            object_output = object_output * object_state_valid.unsqueeze(-1)
-        else:
-            object_output = current_objects
+        object_output = self._write_mhc_update(
+            current_objects,
+            residual=object_tokens,
+            state=mhc_state,
+        )
+        object_output = object_output * object_state_valid.unsqueeze(-1)
         return object_output, query_output
 
 
-__all__ = ["FFNMode", "FixedQueryTrackAblationStage", "MHCWriteback"]
+__all__ = ["FixedQueryTrackCompressedStage"]

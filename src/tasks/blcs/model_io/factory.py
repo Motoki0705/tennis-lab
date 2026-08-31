@@ -15,7 +15,6 @@ from src.tasks.base.models import resolve_reference_selector_mode
 from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
 from src.tasks.blcs.configuration import (
     AxialModelConfig,
-    MultiViewModelConfig,
     SingleModelConfig,
     TrackQueryAblationModelConfig,
     TrackQueryModelConfig,
@@ -26,7 +25,6 @@ from src.tasks.blcs.configuration import (
 )
 from src.tasks.blcs.model_io.adapters import (
     AxialTrajectoryModelIOAdapter,
-    MultiViewTrajectoryModelIOAdapter,
     RawBLCSOutput,
     SingleTrajectoryModelIOAdapter,
     TrackQueryAblationModelIOAdapter,
@@ -41,7 +39,6 @@ from src.tasks.blcs.model_io.contracts import (
 )
 from src.tasks.blcs.models.blcs_model import BLCSModel
 from src.tasks.blcs.models.blcs_multiview_axial_model import BLCSMultiViewAxialModel
-from src.tasks.blcs.models.blcs_multiview_model import BLCSMultiViewModel
 from src.tasks.blcs.models.blcs_track_query_ablation_model import (
     BLCSTrackQueryAblationModel,
 )
@@ -86,20 +83,6 @@ def compose_blcs_model_io(config: object) -> BLCSBoundModelIO:
         )
         return cast(
             "TrajectoryBoundModelIO", bind_model_io(single_model, single_adapter)
-        )
-    if isinstance(model_config, MultiViewModelConfig):
-        multiview_model = BLCSMultiViewModel.from_config(model_config)
-        multiview_adapter = MultiViewTrajectoryModelIOAdapter(
-            num_court_tokens=model_config.num_court_tokens,
-            max_seq_len=model_config.max_seq_len,
-            predict_velocity=model_config.predict_velocity,
-            input_profile=model_config.input_profile,
-            max_num_cameras=model_config.max_num_cameras,
-            court_keypoint_contract=court_keypoint_contract,
-        )
-        return cast(
-            "TrajectoryBoundModelIO",
-            bind_model_io(multiview_model, multiview_adapter),
         )
     if isinstance(model_config, AxialModelConfig):
         axial_model = BLCSMultiViewAxialModel.from_config(model_config)

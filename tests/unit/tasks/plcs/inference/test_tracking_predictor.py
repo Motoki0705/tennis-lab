@@ -80,9 +80,9 @@ class _FixedReferenceTrackingModel(nn.Module):
         return {
             "position": torch.ones(batch, frames, 2, 3, device=human_kp.device),
             "rotation": rotation.expand(batch, frames, 2, -1),
-            "presence_logits": torch.tensor(
-                [2.0, -2.0], device=human_kp.device
-            ).expand(batch, frames, -1),
+            "presence_logits": torch.tensor([2.0, -2.0], device=human_kp.device).expand(
+                batch, frames, -1
+            ),
         }
 
 
@@ -100,9 +100,7 @@ def _reference_metadata() -> PLCSReferenceMetadata:
             contract=contract,
         ),
     )
-    table = StableCameraIdTable.from_complete_scene_camera_ids(
-        ("camera_0", "camera_1")
-    )
+    table = StableCameraIdTable.from_complete_scene_camera_ids(("camera_0", "camera_1"))
     selection = ReferenceViewSelection.create(
         stable_camera_id_table=table,
         selected_views=views,
@@ -208,9 +206,7 @@ def test_reference_tracking_predictor_requires_and_round_trips_typed_metadata() 
             id_switch_distance=0.05,
         ),
         "denormalize": True,
-        "court_keypoint_metadata": court_keypoint_contract_document(
-            court_contract
-        ),
+        "court_keypoint_metadata": court_keypoint_contract_document(court_contract),
     }
 
     result = predictor.predict(**inputs, reference_metadata=metadata)
@@ -243,7 +239,7 @@ def test_checkpoint_restoration_retains_exact_ablation_model_adapter_pair(
         config = compose(
             config_name="train_tracking",
             overrides=[
-                "model=track_query_ablation_c",
+                "model=track_query_ablation_d",
                 "model.hidden_dim=16",
                 "model.num_heads=4",
                 "model.ffn_dim=32",

@@ -43,12 +43,12 @@ _SMALL = (
 )
 
 
-def _config(condition: str, *, court_keypoints: str = "physical_v1") -> Any:
+def _config(*, court_keypoints: str = "physical_v1") -> Any:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         return compose(
             config_name="train_tracking",
             overrides=[
-                f"model=track_query_ablation_{condition}",
+                "model=track_query_ablation_d",
                 f"court_keypoints={court_keypoints}",
                 *_SMALL,
             ],
@@ -59,11 +59,8 @@ def test_ablation_adapter_is_exported_from_canonical_model_io_api() -> None:
     assert PublicTrackQueryAblationModelIOAdapter is TrackQueryAblationModelIOAdapter
 
 
-@pytest.mark.parametrize("condition", ["a", "b", "c", "d", "e"])
-def test_factory_binds_every_ablation_config_to_exact_model_and_adapter(
-    condition: str,
-) -> None:
-    binding = compose_blcs_track_query_model_io(_config(condition))
+def test_factory_binds_fixed_experiment_config_to_exact_model_and_adapter() -> None:
+    binding = compose_blcs_track_query_model_io(_config())
 
     assert type(binding.model) is BLCSTrackQueryAblationModel
     assert type(binding.adapter) is TrackQueryAblationModelIOAdapter
@@ -95,7 +92,7 @@ def test_reference_factory_injects_exact_camera_view_contract_into_adapter() -> 
 def test_ablation_uses_tracking_training_composition(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    config = _config("d")
+    config = _config()
 
     class _DataModule:
         def __init__(self, received: object) -> None:
@@ -128,8 +125,7 @@ def test_ablation_uses_tracking_training_composition(
     assert composition.lightning_module.received is config
     assert isinstance(composition.lightning_module, _LightningModule)
     assert (
-        type(composition.lightning_module.model_io.model)
-        is BLCSTrackQueryAblationModel
+        type(composition.lightning_module.model_io.model) is BLCSTrackQueryAblationModel
     )
     assert (
         type(composition.lightning_module.model_io.adapter)

@@ -1,10 +1,9 @@
-"""Small CPU forward/backward smoke tests for every PLCS ablation condition."""
+"""CPU smoke test for the fixed PLCS track-query experiment architecture."""
 
 from __future__ import annotations
 
 from typing import cast
 
-import pytest
 import torch
 from torch import Tensor
 
@@ -12,13 +11,9 @@ from src.tasks.plcs.configuration import PLCSModelConfig
 from src.tasks.plcs.models.plcs_track_query_ablation_model import (
     PLCSTrackQueryAblationModel,
 )
-from src.utils.models.components.fixed_query_track_ablation_stage import (
-    FFNMode,
-    MHCWriteback,
-)
 
 
-def _config(ffn_mode: FFNMode, mhc_writeback: MHCWriteback) -> PLCSModelConfig:
+def _config() -> PLCSModelConfig:
     return PLCSModelConfig.from_mapping(
         {
             "name": "plcs_track_query_ablation",
@@ -34,8 +29,6 @@ def _config(ffn_mode: FFNMode, mhc_writeback: MHCWriteback) -> PLCSModelConfig:
             "dropout": 0.0,
             "role_rope_enabled": True,
             "invisible_init_std": 0.02,
-            "ffn_mode": ffn_mode,
-            "mhc_writeback": mhc_writeback,
             "mhc": {
                 "coefficient_dim": 8,
                 "sinkhorn_iters": 5,
@@ -52,23 +45,9 @@ def _config(ffn_mode: FFNMode, mhc_writeback: MHCWriteback) -> PLCSModelConfig:
     )
 
 
-@pytest.mark.parametrize(
-    ("ffn_mode", "mhc_writeback"),
-    [
-        ("per_attention", "after_object_temporal"),
-        ("shared", "after_object_temporal"),
-        ("per_attention", "layer_end"),
-        ("shared", "layer_end"),
-    ],
-)
-def test_cpu_forward_backward_has_finite_outputs_and_gradients(
-    ffn_mode: FFNMode,
-    mhc_writeback: MHCWriteback,
-) -> None:
+def test_cpu_forward_backward_has_finite_outputs_and_gradients() -> None:
     torch.manual_seed(777)
-    model = PLCSTrackQueryAblationModel(
-        _config(ffn_mode, mhc_writeback)
-    ).train()
+    model = PLCSTrackQueryAblationModel(_config()).train()
     human_kp = torch.rand(1, 2, 2, 4, 17, 2, requires_grad=True)
     court_kp = torch.rand(1, 2, 2, 14, 2, requires_grad=True)
     output = cast(
@@ -94,9 +73,7 @@ def test_cpu_forward_backward_has_finite_outputs_and_gradients(
     assert human_kp.grad is not None and torch.isfinite(human_kp.grad).all()
     assert court_kp.grad is not None and torch.isfinite(court_kp.grad).all()
     gradients = [
-        parameter.grad
-        for parameter in model.parameters()
-        if parameter.grad is not None
+        parameter.grad for parameter in model.parameters() if parameter.grad is not None
     ]
     assert gradients
     assert all(torch.isfinite(gradient).all() for gradient in gradients)
