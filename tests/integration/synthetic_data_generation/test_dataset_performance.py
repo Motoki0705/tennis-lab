@@ -14,7 +14,11 @@ from src.synthetic_data_generation.dataset.blcs.handler import BLCSDatasetStageH
 from src.synthetic_data_generation.dataset.court.handler import CourtDatasetStageHandler
 from src.synthetic_data_generation.dataset.plcs.composition import PreparedAvatar
 from src.synthetic_data_generation.dataset.plcs.handler import PLCSStageHandler
-from src.synthetic_data_generation.pipeline import SceneWorkspace, StageName
+from src.synthetic_data_generation.pipeline import (
+    DeferredStageHandler,
+    SceneWorkspace,
+    StageName,
+)
 from src.synthetic_data_generation.pipeline.application import build_stage_registry
 from src.synthetic_data_generation.pipeline.publication import StagePublisher
 from src.synthetic_data_generation.reconstruction import NHTReconstructionHandler
@@ -74,6 +78,12 @@ def test_composition_root_wires_config_owned_cross_domain_budgets(
 
     assert isinstance(reconstruction, NHTReconstructionHandler)
     assert reconstruction.pipeline_config is runtime.nht.pipeline_config
+    assert isinstance(court, DeferredStageHandler)
+    assert isinstance(blcs, DeferredStageHandler)
+    assert isinstance(plcs, DeferredStageHandler)
+    court = court.resolve()
+    blcs = blcs.resolve()
+    plcs = plcs.resolve()
     assert isinstance(court, CourtDatasetStageHandler)
     assert isinstance(blcs, BLCSDatasetStageHandler)
     assert isinstance(plcs, PLCSStageHandler)

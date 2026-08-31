@@ -9,6 +9,7 @@ import pytest
 from src.synthetic_data_generation.pipeline.contracts import (
     DatasetTarget,
     ScenePipelineRequest,
+    StageName,
 )
 from src.synthetic_data_generation.pipeline.run_manifest import MutableRunManifest
 
@@ -20,7 +21,8 @@ def _request(source: Path) -> ScenePipelineRequest:
         scene_id="scene-a",
         source_video=source.resolve(),
         targets=frozenset({DatasetTarget.COURT}),
-        from_stage="court_dataset",
+        from_stage=StageName.COURT_DATASET,
+        through_stage=StageName.REPORT,
         config_schema="canonical_scene_pipeline_v1",
     )
 

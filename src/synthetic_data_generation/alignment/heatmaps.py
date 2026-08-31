@@ -107,7 +107,9 @@ class AlignmentLineHeatmapView:
                 "projected_probabilities must have one value per projected point."
             )
         if proximity_weights.shape != (len(points_uv),):
-            raise ValueError("proximity_weights must have one value per projected point.")
+            raise ValueError(
+                "proximity_weights must have one value per projected point."
+            )
         _require_unit_interval(
             projected_probabilities,
             name="projected_probabilities",
@@ -195,7 +197,7 @@ class AlignmentLineHeatmaps:
 
     @property
     def aggregate_camera_ids(self) -> tuple[str, ...]:
-        """Return selected cameras retained by the alignment evidence gate."""
+        """Return fit cameras used by court-count inference."""
         return tuple(
             view.camera_id for view in self.views if view.included_in_aggregate
         )
@@ -238,18 +240,13 @@ def rasterize_weighted_view(
     if len(view.points_uv) == 0:
         return view_evidence.reshape(height, width), view_weight.reshape(height, width)
     u_min, _, v_min, _ = heatmaps.bounds_uv
-    columns = np.rint(
-        (view.points_uv[:, 0] - u_min) / heatmaps.grid_spacing
-    ).astype(np.int64)
-    rows = np.rint(
-        (view.points_uv[:, 1] - v_min) / heatmaps.grid_spacing
-    ).astype(np.int64)
-    valid = (
-        (columns >= 0)
-        & (columns < width)
-        & (rows >= 0)
-        & (rows < height)
+    columns = np.rint((view.points_uv[:, 0] - u_min) / heatmaps.grid_spacing).astype(
+        np.int64
     )
+    rows = np.rint((view.points_uv[:, 1] - v_min) / heatmaps.grid_spacing).astype(
+        np.int64
+    )
+    valid = (columns >= 0) & (columns < width) & (rows >= 0) & (rows < height)
     flat_indices = rows[valid] * width + columns[valid]
     weighted = (
         view.projected_probabilities[valid].astype(np.float64)
@@ -299,6 +296,27 @@ def aggregate_line_heatmaps(heatmaps: AlignmentLineHeatmaps) -> LineHeatmapRaste
         view_count=view_count,
         mean_probability=mean_probability,
     )
+
+
+def weighted_projection_samples(
+    heatmaps: AlignmentLineHeatmaps,
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Return non-empty common-grid cell centers and weighted fit evidence."""
+    evidence_sum = aggregate_line_heatmaps(heatmaps).evidence_sum
+    rows, columns = np.nonzero(evidence_sum > 0.0)
+    if len(rows) == 0:
+        raise ValueError("Weighted projection contains no positive evidence cells.")
+    u_min, u_max, v_min, v_max = heatmaps.bounds_uv
+    points_uv = np.column_stack(
+        (
+            np.minimum(u_min + columns * heatmaps.grid_spacing, u_max),
+            np.minimum(v_min + rows * heatmaps.grid_spacing, v_max),
+        )
+    ).astype(np.float64, copy=False)
+    evidence_weights = evidence_sum[rows, columns].astype(np.float64)
+    if not np.isfinite(evidence_weights).all() or np.any(evidence_weights <= 0.0):
+        raise ValueError("Weighted projection samples must be positive and finite.")
+    return points_uv, evidence_weights
 
 
 def write_line_heatmaps(
@@ -351,16 +369,16 @@ def validate_line_heatmaps(output_path: Path) -> AlignmentLineHeatmaps:
     }
     actual = {path.name for path in output_path.iterdir()}
     if actual != expected:
-        raise ValueError("Line-heatmap output inventory does not match the fixed schema.")
+        raise ValueError(
+            "Line-heatmap output inventory does not match the fixed schema."
+        )
     views_path = output_path / LINE_HEATMAP_VIEWS_DIRECTORY
     if not views_path.is_dir() or views_path.is_symlink():
         raise ValueError("Line-heatmap views must be an ordinary directory.")
     for name in expected - {LINE_HEATMAP_VIEWS_DIRECTORY}:
         _require_ordinary_file(output_path / name)
 
-    heatmaps, stored_rasters = _load_archive(
-        output_path / LINE_HEATMAP_ARCHIVE_FILE
-    )
+    heatmaps, stored_rasters = _load_archive(output_path / LINE_HEATMAP_ARCHIVE_FILE)
     recomputed = aggregate_line_heatmaps(heatmaps)
     _require_rasters_equal(stored_rasters, recomputed)
     manifest = _load_json_object(output_path / LINE_HEATMAP_MANIFEST_FILE)
@@ -464,7 +482,9 @@ def _load_archive(
     _require_ordinary_file(path)
     with np.load(path, allow_pickle=False) as loaded:
         if set(loaded.files) != _ARCHIVE_KEYS:
-            raise ValueError("Line-heatmap archive keys do not match the strict schema.")
+            raise ValueError(
+                "Line-heatmap archive keys do not match the strict schema."
+            )
         arrays = {name: np.asarray(loaded[name]) for name in loaded.files}
     schema = arrays["schema"]
     if (
@@ -556,9 +576,7 @@ def _load_archive(
                 projected_probabilities=projected_probabilities[
                     projected_start:projected_stop
                 ],
-                proximity_weights=proximity_weights[
-                    projected_start:projected_stop
-                ],
+                proximity_weights=proximity_weights[projected_start:projected_stop],
                 included_in_aggregate=bool(included[index]),
             )
         )
@@ -722,7 +740,9 @@ def _validate_png(path: Path, expected_rgb: NDArray[np.uint8]) -> None:
             raise ValueError(f"Line heatmap must be an RGB PNG: {path}")
         actual = np.asarray(image, dtype=np.uint8)
     if not np.array_equal(actual, expected_rgb):
-        raise ValueError(f"Rendered line heatmap disagrees with numeric evidence: {path}")
+        raise ValueError(
+            f"Rendered line heatmap disagrees with numeric evidence: {path}"
+        )
 
 
 def _view_heatmap_name(index: int) -> str:

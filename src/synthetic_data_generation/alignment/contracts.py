@@ -69,6 +69,7 @@ class CameraOwnershipRule(StrEnum):
     """Versioned slot rule assigning the fixed prefix before measurement."""
 
     FIXED_UNIT_EVEN_HOLDOUT_SLOTS_V1 = "fixed_unit_even_holdout_slots_v1"
+    FIXED_UNIT_EVEN_HOLDOUT_TAIL_V1 = "fixed_unit_even_holdout_tail_v1"
 
 
 class AlignmentEvaluationPolicy(StrEnum):
@@ -92,6 +93,21 @@ class AlignmentTracePhase(StrEnum):
     NATIVE_REFINEMENT = "native_refinement"
     COMMON_SCALE_REFIT = "common_scale_refit"
     FINAL_ALIGNMENT = "final_alignment"
+
+
+class ProposalSearchStopReason(StrEnum):
+    """Auditable reason that fit-only court-count inference terminated."""
+
+    RESIDUAL_EVIDENCE_BELOW_MINIMUM = "residual_evidence_below_minimum"
+    NO_RELIABLE_PROPOSAL = "no_reliable_proposal"
+    MAXIMUM_CANDIDATE_COUNT_REACHED = "maximum_candidate_count_reached"
+    NO_ADDITIONAL_COMPLETE_COURT = "no_additional_complete_court"
+
+
+class ProposalScoreModel(StrEnum):
+    """Versioned objective used by every native and common-scale proposal fit."""
+
+    WEIGHTED_COVERAGE_FLOOR_GAUSSIAN_V1 = "weighted_coverage_floor_gaussian_v1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -585,7 +601,10 @@ class ExcludedCameraDiagnostics:
         if not isinstance(self.reason, CameraExclusionReason):
             raise TypeError("reason must be a CameraExclusionReason.")
         if self.reason is CameraExclusionReason.NO_DETECTED_LINE_PIXELS:
-            if self.selected_line_pixel_count != 0 or self.projected_line_point_count != 0:
+            if (
+                self.selected_line_pixel_count != 0
+                or self.projected_line_point_count != 0
+            ):
                 raise ValueError(
                     "A no-line exclusion must have zero selected and projected points."
                 )
@@ -647,8 +666,7 @@ class FixedCameraSelectionDiagnostics:
     ownership_rule: CameraOwnershipRule
     requested_camera_count: int
     available_camera_count: int
-    candidate_count: int
-    orientation_family_count: int
+    partition_unit_count: int
     fit_cameras_per_unit: int
     holdout_cameras_per_unit: int
     camera_prefix_ids: tuple[str, ...]
@@ -660,10 +678,10 @@ class FixedCameraSelectionDiagnostics:
     def __post_init__(self) -> None:
         if not isinstance(self.policy, CameraSelectionPolicy):
             raise TypeError("policy must be a CameraSelectionPolicy.")
-        if (
-            self.ownership_rule
-            is not CameraOwnershipRule.FIXED_UNIT_EVEN_HOLDOUT_SLOTS_V1
-        ):
+        if self.ownership_rule not in {
+            CameraOwnershipRule.FIXED_UNIT_EVEN_HOLDOUT_SLOTS_V1,
+            CameraOwnershipRule.FIXED_UNIT_EVEN_HOLDOUT_TAIL_V1,
+        }:
             raise ValueError("Unsupported fixed camera ownership rule.")
         requested = _integer(
             self.requested_camera_count,
@@ -675,12 +693,9 @@ class FixedCameraSelectionDiagnostics:
             name="available_camera_count",
             minimum=requested,
         )
-        candidate_count = _integer(
-            self.candidate_count, name="candidate_count", minimum=1
-        )
-        orientation_count = _integer(
-            self.orientation_family_count,
-            name="orientation_family_count",
+        unit_count = _integer(
+            self.partition_unit_count,
+            name="partition_unit_count",
             minimum=1,
         )
         fit_per_unit = _integer(
@@ -693,10 +708,16 @@ class FixedCameraSelectionDiagnostics:
             name="holdout_cameras_per_unit",
             minimum=1,
         )
-        unit_count = candidate_count * orientation_count
-        if requested != unit_count * (fit_per_unit + holdout_per_unit):
+        fixed_prefix_count = unit_count * (fit_per_unit + holdout_per_unit)
+        if self.ownership_rule is CameraOwnershipRule.FIXED_UNIT_EVEN_HOLDOUT_SLOTS_V1:
+            if requested != fixed_prefix_count:
+                raise ValueError(
+                    "Requested camera count disagrees with immutable partition units."
+                )
+        elif requested <= fixed_prefix_count:
             raise ValueError(
-                "Requested camera count disagrees with candidate/orientation units."
+                "Holdout-tail ownership requires cameras beyond the immutable fit "
+                "prefix."
             )
         selected = _camera_ids(
             self.camera_prefix_ids, name="selection camera_prefix_ids"
@@ -710,15 +731,20 @@ class FixedCameraSelectionDiagnostics:
         )
         if len(selected) != requested:
             raise ValueError("Selected camera IDs do not match the requested count.")
+        expected_holdout_count = (
+            unit_count * holdout_per_unit + requested - fixed_prefix_count
+        )
         if len(fit) != unit_count * fit_per_unit or len(holdout) != (
-            unit_count * holdout_per_unit
+            expected_holdout_count
         ):
             raise ValueError("Fit/holdout ownership counts disagree with fixed units.")
         expected_fit, expected_holdout = _fixed_unit_camera_ownership(
-            selected,
+            selected[:fixed_prefix_count],
             fit_cameras_per_unit=fit_per_unit,
             holdout_cameras_per_unit=holdout_per_unit,
         )
+        if self.ownership_rule is CameraOwnershipRule.FIXED_UNIT_EVEN_HOLDOUT_TAIL_V1:
+            expected_holdout = (*expected_holdout, *selected[fixed_prefix_count:])
         if fit != expected_fit or holdout != expected_holdout:
             raise ValueError(
                 "Fixed fit/holdout ownership violates the persisted unit slot rule."
@@ -733,7 +759,9 @@ class FixedCameraSelectionDiagnostics:
             raise ValueError(
                 "Observed and excluded IDs must partition the fixed selection."
             )
-        if observed != tuple(item for item in selected if item not in set(excluded_ids)):
+        if observed != tuple(
+            item for item in selected if item not in set(excluded_ids)
+        ):
             raise ValueError("Observed camera IDs must preserve fixed selection order.")
         ownership = {item: CameraEvidencePartition.FIT for item in fit} | {
             item: CameraEvidencePartition.HOLDOUT for item in holdout
@@ -745,8 +773,7 @@ class FixedCameraSelectionDiagnostics:
             raise ValueError("Exclusion ownership disagrees with fixed partitioning.")
         object.__setattr__(self, "requested_camera_count", requested)
         object.__setattr__(self, "available_camera_count", available)
-        object.__setattr__(self, "candidate_count", candidate_count)
-        object.__setattr__(self, "orientation_family_count", orientation_count)
+        object.__setattr__(self, "partition_unit_count", unit_count)
         object.__setattr__(self, "fit_cameras_per_unit", fit_per_unit)
         object.__setattr__(self, "holdout_cameras_per_unit", holdout_per_unit)
         object.__setattr__(self, "camera_prefix_ids", selected)
@@ -762,8 +789,7 @@ class FixedCameraSelectionDiagnostics:
             "ownership_rule": self.ownership_rule.value,
             "requested_camera_count": self.requested_camera_count,
             "available_camera_count": self.available_camera_count,
-            "candidate_count": self.candidate_count,
-            "orientation_family_count": self.orientation_family_count,
+            "partition_unit_count": self.partition_unit_count,
             "fit_cameras_per_unit": self.fit_cameras_per_unit,
             "holdout_cameras_per_unit": self.holdout_cameras_per_unit,
             "camera_prefix_ids": list(self.camera_prefix_ids),
@@ -781,8 +807,7 @@ class FixedCameraSelectionDiagnostics:
             "ownership_rule",
             "requested_camera_count",
             "available_camera_count",
-            "candidate_count",
-            "orientation_family_count",
+            "partition_unit_count",
             "fit_cameras_per_unit",
             "holdout_cameras_per_unit",
             "camera_prefix_ids",
@@ -804,12 +829,9 @@ class FixedCameraSelectionDiagnostics:
             available_camera_count=_integer(
                 raw["available_camera_count"], name="available_camera_count", minimum=1
             ),
-            candidate_count=_integer(
-                raw["candidate_count"], name="candidate_count", minimum=1
-            ),
-            orientation_family_count=_integer(
-                raw["orientation_family_count"],
-                name="orientation_family_count",
+            partition_unit_count=_integer(
+                raw["partition_unit_count"],
+                name="partition_unit_count",
                 minimum=1,
             ),
             fit_cameras_per_unit=_integer(
@@ -850,7 +872,10 @@ class AlignmentEvaluationDiagnostics:
     outcome: AlignmentEvaluationOutcome
 
     def __post_init__(self) -> None:
-        if self.policy is not AlignmentEvaluationPolicy.FIT_SELECT_ONCE_HOLDOUT_EVALUATE_ONCE_V1:
+        if (
+            self.policy
+            is not AlignmentEvaluationPolicy.FIT_SELECT_ONCE_HOLDOUT_EVALUATE_ONCE_V1
+        ):
             raise ValueError("Unsupported alignment evaluation policy.")
         if _integer(self.evaluation_index, name="evaluation_index", minimum=0) != 0:
             raise ValueError("The one-shot alignment evaluation index must be zero.")
@@ -959,8 +984,14 @@ class LineInferenceDeterminismDiagnostics:
         ):
             if type(getattr(self, name)) is not bool:
                 raise TypeError(f"{name} must be a boolean.")
-        if not self.model_eval or not self.inference_mode or not self.deterministic_algorithms:
-            raise ValueError("Line inference must use eval, inference, and deterministic modes.")
+        if (
+            not self.model_eval
+            or not self.inference_mode
+            or not self.deterministic_algorithms
+        ):
+            raise ValueError(
+                "Line inference must use eval, inference, and deterministic modes."
+            )
         if self.deterministic_warn_only:
             raise ValueError("Nondeterministic operations must fail instead of warn.")
         if self.cudnn_benchmark or not self.cudnn_deterministic:
@@ -969,7 +1000,9 @@ class LineInferenceDeterminismDiagnostics:
             raise ValueError("TF32 must be disabled for deterministic inference.")
         if self.device.startswith("cuda"):
             if self.cublas_workspace_config not in {":4096:8", ":16:8"}:
-                raise ValueError("CUDA determinism requires a supported CUBLAS workspace.")
+                raise ValueError(
+                    "CUDA determinism requires a supported CUBLAS workspace."
+                )
             if self.cuda_version is None:
                 raise ValueError("CUDA inference must record its CUDA version.")
         elif self.cublas_workspace_config is not None or self.cuda_version is not None:
@@ -979,10 +1012,7 @@ class LineInferenceDeterminismDiagnostics:
 
     def to_dict(self) -> dict[str, object]:
         """Return strict determinism diagnostics."""
-        return {
-            name: getattr(self, name)
-            for name in self.__dataclass_fields__
-        }
+        return {name: getattr(self, name) for name in self.__dataclass_fields__}
 
     @classmethod
     def from_dict(cls, value: object) -> Self:
@@ -1013,9 +1043,7 @@ class LineInferenceDeterminismDiagnostics:
             cuda_matmul_allow_tf32=_boolean(
                 raw["cuda_matmul_allow_tf32"], name="cuda_matmul_allow_tf32"
             ),
-            cudnn_allow_tf32=_boolean(
-                raw["cudnn_allow_tf32"], name="cudnn_allow_tf32"
-            ),
+            cudnn_allow_tf32=_boolean(raw["cudnn_allow_tf32"], name="cudnn_allow_tf32"),
             cublas_workspace_config=cublas,
             torch_version=_string(raw["torch_version"], name="torch_version"),
             cuda_version=cuda_version,
@@ -1029,12 +1057,14 @@ class LineInferenceDeterminismDiagnostics:
 
 @dataclass(frozen=True, slots=True)
 class ProposalSearchDiagnostics:
-    """Bounded state-search inventory and selected joint objective."""
+    """Bounded fit-only court-count inference and selected joint objective."""
 
+    score_model: ProposalScoreModel
     orientation_band_count: int
     center_tile_count: int
     maximum_center_tile_width_scene_units: float
-    maximum_complete_branch_count: int
+    maximum_candidate_count: int
+    maximum_retained_state_count: int
     maximum_tile_state_count: int
     maximum_residual_state_count: int
     residual_state_count: int
@@ -1045,16 +1075,37 @@ class ProposalSearchDiagnostics:
     duplicate_proposal_count: int
     retained_proposal_count: int
     expanded_state_count: int
+    pruned_state_count: int
     feasible_complete_state_count: int
+    frontier_state_counts: tuple[int, ...]
+    feasible_complete_state_counts: tuple[int, ...]
+    refinement_attempt_count: int
+    refinement_rejected_state_count: int
+    selected_complete_state_rank: int
+    selected_complete_state_candidate_count: int
+    inferred_candidate_count: int
+    stopping_reason: ProposalSearchStopReason
+    minimum_explained_evidence_fraction: float
     selected_orientation_band_indices: tuple[int, ...]
     selected_center_tile_indices: tuple[int, ...]
+    selected_candidate_explained_evidence_fractions: tuple[float, ...]
     original_point_count: int
     selected_residual_point_count: int
     selected_explained_point_count: int
+    original_evidence_sum: float
+    selected_residual_evidence_sum: float
+    selected_explained_evidence_sum: float
+    selected_explained_evidence_fraction: float
     selected_native_score_sum: float
 
     def __post_init__(self) -> None:
-        bands = _integer(self.orientation_band_count, name="orientation_band_count", minimum=1)
+        if not isinstance(self.score_model, ProposalScoreModel):
+            raise TypeError("score_model must be a ProposalScoreModel.")
+        bands = _integer(
+            self.orientation_band_count,
+            name="orientation_band_count",
+            minimum=1,
+        )
         tiles = _integer(self.center_tile_count, name="center_tile_count", minimum=1)
         tile_width = _finite_float(
             self.maximum_center_tile_width_scene_units,
@@ -1062,9 +1113,14 @@ class ProposalSearchDiagnostics:
         )
         if tile_width <= 0.0:
             raise ValueError("Maximum center tile width must be positive.")
-        maximum = _integer(
-            self.maximum_complete_branch_count,
-            name="maximum_complete_branch_count",
+        maximum_candidates = _integer(
+            self.maximum_candidate_count,
+            name="maximum_candidate_count",
+            minimum=1,
+        )
+        maximum_retained = _integer(
+            self.maximum_retained_state_count,
+            name="maximum_retained_state_count",
             minimum=1,
         )
         maximum_tile_states = _integer(
@@ -1117,16 +1173,137 @@ class ProposalSearchDiagnostics:
             name="expanded_state_count",
             minimum=1,
         )
+        pruned = _integer(
+            self.pruned_state_count,
+            name="pruned_state_count",
+            minimum=0,
+        )
         feasible = _integer(
             self.feasible_complete_state_count,
             name="feasible_complete_state_count",
             minimum=1,
         )
+        frontier_counts = tuple(
+            _integer(item, name="frontier state count", minimum=1)
+            for item in self.frontier_state_counts
+        )
+        complete_counts = tuple(
+            _integer(item, name="feasible complete state count", minimum=0)
+            for item in self.feasible_complete_state_counts
+        )
+        if (
+            not frontier_counts
+            or len(frontier_counts) > maximum_candidates
+            or len(complete_counts) != len(frontier_counts)
+        ):
+            raise ValueError(
+                "Proposal frontier diagnostics must cover each explored candidate count."
+            )
+        if any(item > maximum_retained for item in frontier_counts):
+            raise ValueError("A proposal frontier exceeds the configured beam width.")
+        if any(
+            complete > frontier
+            for complete, frontier in zip(
+                complete_counts,
+                frontier_counts,
+                strict=True,
+            )
+        ):
+            raise ValueError("Feasible complete states exceed their frontier.")
+        if sum(complete_counts) != feasible:
+            raise ValueError(
+                "Per-depth feasible complete states disagree with their total."
+            )
+        if sum(frontier_counts) != expanded - pruned:
+            raise ValueError(
+                "Frontier history disagrees with expanded and pruned state counts."
+            )
+        refinement_attempts = _integer(
+            self.refinement_attempt_count,
+            name="refinement_attempt_count",
+            minimum=1,
+        )
+        refinement_rejections = _integer(
+            self.refinement_rejected_state_count,
+            name="refinement_rejected_state_count",
+            minimum=0,
+        )
+        selected_rank = _integer(
+            self.selected_complete_state_rank,
+            name="selected_complete_state_rank",
+            minimum=0,
+        )
+        if refinement_attempts != refinement_rejections + 1:
+            raise ValueError(
+                "Refinement attempts must equal rejected states plus the selection."
+            )
+        if selected_rank != refinement_rejections:
+            raise ValueError(
+                "Selected complete-state rank must equal prior refinement rejections."
+            )
+        if selected_rank >= feasible:
+            raise ValueError(
+                "Selected complete-state rank exceeds feasible complete states."
+            )
+        selected_candidate_count = _integer(
+            self.selected_complete_state_candidate_count,
+            name="selected_complete_state_candidate_count",
+            minimum=1,
+        )
+        if selected_candidate_count > len(frontier_counts):
+            raise ValueError(
+                "Selected complete-state candidate count was not explored."
+            )
+        if (
+            self.stopping_reason
+            is ProposalSearchStopReason.NO_ADDITIONAL_COMPLETE_COURT
+        ):
+            preceding_complete_states = sum(complete_counts[selected_candidate_count:])
+        else:
+            preceding_complete_states = sum(
+                complete_counts[: selected_candidate_count - 1]
+            )
+        selected_depth_complete_states = complete_counts[selected_candidate_count - 1]
+        if not (
+            preceding_complete_states
+            <= selected_rank
+            < preceding_complete_states + selected_depth_complete_states
+        ):
+            raise ValueError(
+                "Selected complete-state rank disagrees with per-depth ordering."
+            )
+        inferred = _integer(
+            self.inferred_candidate_count,
+            name="inferred_candidate_count",
+            minimum=1,
+        )
+        if inferred > maximum_candidates:
+            raise ValueError("Inferred candidate count exceeds the configured maximum.")
+        if inferred > selected_candidate_count:
+            raise ValueError(
+                "Fit reliability cannot add candidates after complete-state selection."
+            )
+        if not isinstance(self.stopping_reason, ProposalSearchStopReason):
+            raise TypeError("stopping_reason must be a ProposalSearchStopReason.")
+        if (
+            self.stopping_reason
+            is ProposalSearchStopReason.MAXIMUM_CANDIDATE_COUNT_REACHED
+            and len(frontier_counts) != maximum_candidates
+        ):
+            raise ValueError(
+                "Maximum-candidate stop requires a complete bounded frontier history."
+            )
+        minimum_fraction = _finite_float(
+            self.minimum_explained_evidence_fraction,
+            name="minimum_explained_evidence_fraction",
+        )
+        if not 0.0 < minimum_fraction < 1.0:
+            raise ValueError("minimum_explained_evidence_fraction must lie in (0, 1).")
         branch = tuple(
             _integer(item, name="selected orientation band", minimum=0)
             for item in self.selected_orientation_band_indices
         )
-        if not branch or any(item >= bands for item in branch):
+        if len(branch) != inferred or any(item >= bands for item in branch):
             raise ValueError("Selected proposal branch contains an invalid band index.")
         selected_tiles = tuple(
             _integer(item, name="selected center tile", minimum=0)
@@ -1137,26 +1314,21 @@ class ProposalSearchDiagnostics:
         ):
             raise ValueError("Selected proposal branch contains an invalid tile index.")
         branch_factor = bands * tiles
-        if maximum != branch_factor ** len(branch) or feasible > maximum:
-            raise ValueError("Proposal branch bounds disagree with search dimensions.")
-        expected_maximum_tile_states = sum(
-            branch_factor**depth for depth in range(1, len(branch) + 1)
-        )
-        if maximum_tile_states != expected_maximum_tile_states:
-            raise ValueError("Maximum tile/state count disagrees with search dimensions.")
-        expected_maximum_residual_states = sum(
-            branch_factor**depth for depth in range(len(branch))
+        expected_maximum_residual_states = 1 + (
+            (maximum_candidates - 1) * maximum_retained
         )
         if maximum_residual_states != expected_maximum_residual_states:
             raise ValueError(
-                "Maximum residual-state count disagrees with search dimensions."
+                "Maximum residual-state count disagrees with the bounded beam."
+            )
+        if maximum_tile_states != maximum_residual_states * branch_factor:
+            raise ValueError(
+                "Maximum tile/state count disagrees with the bounded beam."
             )
         if residual_states > maximum_residual_states:
             raise ValueError("Residual states exceed their configured resource bound.")
         if residual_tree_builds != residual_states:
             raise ValueError("Residual proposal search must build one tree per state.")
-        if explored + impossible > maximum_tile_states:
-            raise ValueError("Explored/skipped tile states exceed the resource bound.")
         if explored + impossible != residual_states * branch_factor:
             raise ValueError(
                 "Every residual state must classify each orientation/tile branch."
@@ -1165,7 +1337,26 @@ class ProposalSearchDiagnostics:
             raise ValueError("Proposal deduplication counts do not balance.")
         if expanded > retained:
             raise ValueError("Expanded states exceed retained feasible proposals.")
-        original = _integer(self.original_point_count, name="original_point_count", minimum=3)
+        if pruned > expanded:
+            raise ValueError("Pruned states exceed expanded search states.")
+        if feasible > maximum_candidates * maximum_retained:
+            raise ValueError("Complete states exceed the bounded frontier history.")
+        candidate_fractions = tuple(
+            _finite_float(item, name="candidate explained evidence fraction")
+            for item in self.selected_candidate_explained_evidence_fractions
+        )
+        if len(candidate_fractions) != inferred or any(
+            item + 1.0e-12 < minimum_fraction or item > 1.0
+            for item in candidate_fractions
+        ):
+            raise ValueError(
+                "Selected candidates must each satisfy the explained-evidence gate."
+            )
+        original = _integer(
+            self.original_point_count,
+            name="original_point_count",
+            minimum=3,
+        )
         residual = _integer(
             self.selected_residual_point_count,
             name="selected_residual_point_count",
@@ -1177,22 +1368,89 @@ class ProposalSearchDiagnostics:
             minimum=1,
         )
         if residual + explained != original:
-            raise ValueError("Explained and residual points must partition original evidence.")
-        score = _finite_float(self.selected_native_score_sum, name="selected_native_score_sum")
+            raise ValueError(
+                "Explained and residual points must partition original evidence."
+            )
+        original_evidence = _finite_float(
+            self.original_evidence_sum,
+            name="original_evidence_sum",
+        )
+        residual_evidence = _finite_float(
+            self.selected_residual_evidence_sum,
+            name="selected_residual_evidence_sum",
+        )
+        explained_evidence = _finite_float(
+            self.selected_explained_evidence_sum,
+            name="selected_explained_evidence_sum",
+        )
+        explained_fraction = _finite_float(
+            self.selected_explained_evidence_fraction,
+            name="selected_explained_evidence_fraction",
+        )
+        if (
+            original_evidence <= 0.0
+            or residual_evidence < 0.0
+            or explained_evidence <= 0.0
+            or not math.isclose(
+                residual_evidence + explained_evidence,
+                original_evidence,
+                abs_tol=1.0e-8,
+                rel_tol=1.0e-8,
+            )
+        ):
+            raise ValueError(
+                "Explained and residual weighted evidence must partition the original."
+            )
+        measured_fraction = explained_evidence / original_evidence
+        if not math.isclose(
+            explained_fraction,
+            measured_fraction,
+            abs_tol=1.0e-10,
+            rel_tol=1.0e-8,
+        ) or not math.isclose(
+            sum(candidate_fractions),
+            measured_fraction,
+            abs_tol=1.0e-8,
+            rel_tol=1.0e-8,
+        ):
+            raise ValueError("Explained-evidence fractions disagree with the sums.")
+        if (
+            self.stopping_reason
+            in {
+                ProposalSearchStopReason.RESIDUAL_EVIDENCE_BELOW_MINIMUM,
+                ProposalSearchStopReason.MAXIMUM_CANDIDATE_COUNT_REACHED,
+            }
+            and residual_evidence / original_evidence >= minimum_fraction
+        ):
+            raise ValueError(
+                "Residual-evidence stop requires residual evidence below the gate."
+            )
+        score = _finite_float(
+            self.selected_native_score_sum, name="selected_native_score_sum"
+        )
         if score <= 0.0:
             raise ValueError("Selected native score sum must be positive.")
         object.__setattr__(self, "selected_orientation_band_indices", branch)
         object.__setattr__(self, "selected_center_tile_indices", selected_tiles)
+        object.__setattr__(self, "frontier_state_counts", frontier_counts)
+        object.__setattr__(self, "feasible_complete_state_counts", complete_counts)
+        object.__setattr__(
+            self,
+            "selected_candidate_explained_evidence_fractions",
+            candidate_fractions,
+        )
 
     def to_dict(self) -> dict[str, object]:
         """Return strict proposal search diagnostics."""
         return {
+            "score_model": self.score_model.value,
             "orientation_band_count": self.orientation_band_count,
             "center_tile_count": self.center_tile_count,
             "maximum_center_tile_width_scene_units": (
                 self.maximum_center_tile_width_scene_units
             ),
-            "maximum_complete_branch_count": self.maximum_complete_branch_count,
+            "maximum_candidate_count": self.maximum_candidate_count,
+            "maximum_retained_state_count": self.maximum_retained_state_count,
             "maximum_tile_state_count": self.maximum_tile_state_count,
             "maximum_residual_state_count": self.maximum_residual_state_count,
             "residual_state_count": self.residual_state_count,
@@ -1207,14 +1465,37 @@ class ProposalSearchDiagnostics:
             "duplicate_proposal_count": self.duplicate_proposal_count,
             "retained_proposal_count": self.retained_proposal_count,
             "expanded_state_count": self.expanded_state_count,
+            "pruned_state_count": self.pruned_state_count,
             "feasible_complete_state_count": self.feasible_complete_state_count,
+            "frontier_state_counts": list(self.frontier_state_counts),
+            "feasible_complete_state_counts": list(self.feasible_complete_state_counts),
+            "refinement_attempt_count": self.refinement_attempt_count,
+            "refinement_rejected_state_count": (self.refinement_rejected_state_count),
+            "selected_complete_state_rank": self.selected_complete_state_rank,
+            "selected_complete_state_candidate_count": (
+                self.selected_complete_state_candidate_count
+            ),
+            "inferred_candidate_count": self.inferred_candidate_count,
+            "stopping_reason": self.stopping_reason.value,
+            "minimum_explained_evidence_fraction": (
+                self.minimum_explained_evidence_fraction
+            ),
             "selected_orientation_band_indices": list(
                 self.selected_orientation_band_indices
             ),
             "selected_center_tile_indices": list(self.selected_center_tile_indices),
+            "selected_candidate_explained_evidence_fractions": list(
+                self.selected_candidate_explained_evidence_fractions
+            ),
             "original_point_count": self.original_point_count,
             "selected_residual_point_count": self.selected_residual_point_count,
             "selected_explained_point_count": self.selected_explained_point_count,
+            "original_evidence_sum": self.original_evidence_sum,
+            "selected_residual_evidence_sum": self.selected_residual_evidence_sum,
+            "selected_explained_evidence_sum": self.selected_explained_evidence_sum,
+            "selected_explained_evidence_fraction": (
+                self.selected_explained_evidence_fraction
+            ),
             "selected_native_score_sum": self.selected_native_score_sum,
         }
 
@@ -1224,6 +1505,9 @@ class ProposalSearchDiagnostics:
         keys = set(cls.__dataclass_fields__)
         raw = _strict_mapping(value, keys=keys, name="proposal search diagnostics")
         return cls(
+            score_model=ProposalScoreModel(
+                _string(raw["score_model"], name="score_model")
+            ),
             orientation_band_count=_integer(
                 raw["orientation_band_count"], name="orientation_band_count", minimum=1
             ),
@@ -1234,9 +1518,14 @@ class ProposalSearchDiagnostics:
                 raw["maximum_center_tile_width_scene_units"],
                 name="maximum_center_tile_width_scene_units",
             ),
-            maximum_complete_branch_count=_integer(
-                raw["maximum_complete_branch_count"],
-                name="maximum_complete_branch_count",
+            maximum_candidate_count=_integer(
+                raw["maximum_candidate_count"],
+                name="maximum_candidate_count",
+                minimum=1,
+            ),
+            maximum_retained_state_count=_integer(
+                raw["maximum_retained_state_count"],
+                name="maximum_retained_state_count",
                 minimum=1,
             ),
             maximum_tile_state_count=_integer(
@@ -1287,10 +1576,59 @@ class ProposalSearchDiagnostics:
             expanded_state_count=_integer(
                 raw["expanded_state_count"], name="expanded_state_count", minimum=1
             ),
+            pruned_state_count=_integer(
+                raw["pruned_state_count"], name="pruned_state_count", minimum=0
+            ),
             feasible_complete_state_count=_integer(
                 raw["feasible_complete_state_count"],
                 name="feasible_complete_state_count",
                 minimum=1,
+            ),
+            frontier_state_counts=tuple(
+                _integer(item, name="frontier state count", minimum=1)
+                for item in _sequence(
+                    raw["frontier_state_counts"],
+                    name="frontier_state_counts",
+                )
+            ),
+            feasible_complete_state_counts=tuple(
+                _integer(item, name="feasible complete state count", minimum=0)
+                for item in _sequence(
+                    raw["feasible_complete_state_counts"],
+                    name="feasible_complete_state_counts",
+                )
+            ),
+            refinement_attempt_count=_integer(
+                raw["refinement_attempt_count"],
+                name="refinement_attempt_count",
+                minimum=1,
+            ),
+            refinement_rejected_state_count=_integer(
+                raw["refinement_rejected_state_count"],
+                name="refinement_rejected_state_count",
+                minimum=0,
+            ),
+            selected_complete_state_rank=_integer(
+                raw["selected_complete_state_rank"],
+                name="selected_complete_state_rank",
+                minimum=0,
+            ),
+            selected_complete_state_candidate_count=_integer(
+                raw["selected_complete_state_candidate_count"],
+                name="selected_complete_state_candidate_count",
+                minimum=1,
+            ),
+            inferred_candidate_count=_integer(
+                raw["inferred_candidate_count"],
+                name="inferred_candidate_count",
+                minimum=1,
+            ),
+            stopping_reason=ProposalSearchStopReason(
+                _string(raw["stopping_reason"], name="stopping_reason")
+            ),
+            minimum_explained_evidence_fraction=_finite_float(
+                raw["minimum_explained_evidence_fraction"],
+                name="minimum_explained_evidence_fraction",
             ),
             selected_orientation_band_indices=tuple(
                 _integer(item, name="selected orientation band", minimum=0)
@@ -1306,6 +1644,16 @@ class ProposalSearchDiagnostics:
                     name="selected_center_tile_indices",
                 )
             ),
+            selected_candidate_explained_evidence_fractions=tuple(
+                _finite_float(
+                    item,
+                    name="candidate explained evidence fraction",
+                )
+                for item in _sequence(
+                    raw["selected_candidate_explained_evidence_fractions"],
+                    name="selected_candidate_explained_evidence_fractions",
+                )
+            ),
             original_point_count=_integer(
                 raw["original_point_count"], name="original_point_count", minimum=3
             ),
@@ -1319,10 +1667,26 @@ class ProposalSearchDiagnostics:
                 name="selected_explained_point_count",
                 minimum=1,
             ),
+            original_evidence_sum=_finite_float(
+                raw["original_evidence_sum"], name="original_evidence_sum"
+            ),
+            selected_residual_evidence_sum=_finite_float(
+                raw["selected_residual_evidence_sum"],
+                name="selected_residual_evidence_sum",
+            ),
+            selected_explained_evidence_sum=_finite_float(
+                raw["selected_explained_evidence_sum"],
+                name="selected_explained_evidence_sum",
+            ),
+            selected_explained_evidence_fraction=_finite_float(
+                raw["selected_explained_evidence_fraction"],
+                name="selected_explained_evidence_fraction",
+            ),
             selected_native_score_sum=_finite_float(
                 raw["selected_native_score_sum"], name="selected_native_score_sum"
             ),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class AlignmentTraceCandidateState:
@@ -1811,11 +2175,16 @@ class AlignmentEvidenceDiagnostics:
     excluded_cameras: tuple[ExcludedCameraDiagnostics, ...]
     ground_plane_frame: GroundPlaneFrame
     alignment_trace: AlignmentTrace
+    lattice_assisted_candidate_ids: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         cameras = tuple(self.cameras)
         candidate_scales = tuple(self.candidate_scales)
         excluded_cameras = tuple(self.excluded_cameras)
+        lattice_assisted_candidate_ids = _string_tuple(
+            self.lattice_assisted_candidate_ids,
+            name="lattice_assisted_candidate_ids",
+        )
         if not cameras or not candidate_scales:
             raise ValueError(
                 "Evidence diagnostics must include cameras and candidates."
@@ -1826,6 +2195,12 @@ class AlignmentEvidenceDiagnostics:
             raise ValueError("Diagnostic camera IDs must be unique.")
         if len(candidate_ids) != len(set(candidate_ids)):
             raise ValueError("Diagnostic candidate IDs must be unique.")
+        if len(lattice_assisted_candidate_ids) != len(
+            set(lattice_assisted_candidate_ids)
+        ) or not set(lattice_assisted_candidate_ids).issubset(candidate_ids):
+            raise ValueError(
+                "Lattice-assisted candidate IDs must be a unique candidate subset."
+            )
         excluded_camera_ids = [item.camera_id for item in excluded_cameras]
         if len(excluded_camera_ids) != len(set(excluded_camera_ids)):
             raise ValueError("Excluded diagnostic camera IDs must be unique.")
@@ -1844,7 +2219,9 @@ class AlignmentEvidenceDiagnostics:
             item for item in self.selection.fit_camera_ids if item not in excluded_set
         )
         retained_holdout = tuple(
-            item for item in self.selection.holdout_camera_ids if item not in excluded_set
+            item
+            for item in self.selection.holdout_camera_ids
+            if item not in excluded_set
         )
         if self.evaluation.fit_camera_ids != retained_fit or (
             self.evaluation.holdout_camera_ids != retained_holdout
@@ -1853,13 +2230,19 @@ class AlignmentEvidenceDiagnostics:
                 "One-shot evaluation partitions disagree with selection/exclusions."
             )
         if tuple(candidate_ids) != self.evaluation.candidate_ids:
-            raise ValueError("Evaluation candidate IDs disagree with scale diagnostics.")
-        if len(candidate_ids) != self.selection.candidate_count:
-            raise ValueError("Candidate diagnostics disagree with selection derivation.")
+            raise ValueError(
+                "Evaluation candidate IDs disagree with scale diagnostics."
+            )
+        if len(candidate_ids) != self.proposal_search.inferred_candidate_count:
+            raise ValueError(
+                "Candidate diagnostics disagree with the inferred proposal count."
+            )
         if len(self.proposal_search.selected_orientation_band_indices) != len(
             candidate_ids
         ):
-            raise ValueError("Selected proposal branch depth disagrees with candidates.")
+            raise ValueError(
+                "Selected proposal branch depth disagrees with candidates."
+            )
         if not isinstance(self.ground_plane_frame, GroundPlaneFrame):
             raise TypeError("ground_plane_frame must be a GroundPlaneFrame.")
         if not isinstance(self.alignment_trace, AlignmentTrace):
@@ -1992,13 +2375,18 @@ class AlignmentEvidenceDiagnostics:
         object.__setattr__(self, "cameras", cameras)
         object.__setattr__(self, "candidate_scales", candidate_scales)
         object.__setattr__(self, "excluded_cameras", excluded_cameras)
+        object.__setattr__(
+            self,
+            "lattice_assisted_candidate_ids",
+            lattice_assisted_candidate_ids,
+        )
         object.__setattr__(self, "common_nht_scene_units_per_metre", common_scale)
         object.__setattr__(self, "maximum_relative_scale_deviation", maximum_deviation)
 
     def to_dict(self) -> dict[str, object]:
         """Return machine-readable measured evidence diagnostics."""
         return {
-            "schema": "alignment_measured_evidence_v9",
+            "schema": "alignment_measured_evidence_v13",
             "cameras": [item.to_dict() for item in self.cameras],
             "excluded_cameras": [item.to_dict() for item in self.excluded_cameras],
             "selection": self.selection.to_dict(),
@@ -2010,6 +2398,7 @@ class AlignmentEvidenceDiagnostics:
             "candidate_scales": [item.to_dict() for item in self.candidate_scales],
             "common_nht_scene_units_per_metre": self.common_nht_scene_units_per_metre,
             "maximum_relative_scale_deviation": self.maximum_relative_scale_deviation,
+            "lattice_assisted_candidate_ids": list(self.lattice_assisted_candidate_ids),
         }
 
 
@@ -2855,9 +3244,16 @@ class EvaluatedAlignment:
         )
         selection = self.evidence.diagnostics.selection
         if self.heatmaps.camera_ids != selection.camera_prefix_ids:
-            raise ValueError("Evaluated heatmaps disagree with the fixed camera prefix.")
-        if self.heatmaps.aggregate_camera_ids != selection.observed_camera_ids:
-            raise ValueError("Evaluated heatmaps disagree with observable cameras.")
+            raise ValueError(
+                "Evaluated heatmaps disagree with the fixed camera prefix."
+            )
+        if (
+            self.heatmaps.aggregate_camera_ids
+            != self.evidence.diagnostics.evaluation.fit_camera_ids
+        ):
+            raise ValueError(
+                "Evaluated aggregate heatmap disagrees with fit-only count evidence."
+            )
         projected_counts = {
             item.camera_id: item.projected_line_point_count
             for item in self.evidence.diagnostics.cameras
@@ -2869,12 +3265,16 @@ class EvaluatedAlignment:
             }
         )
         if set(projected_counts) != set(selection.camera_prefix_ids):
-            raise ValueError("Evidence diagnostics do not cover the heatmap camera prefix.")
+            raise ValueError(
+                "Evidence diagnostics do not cover the heatmap camera prefix."
+            )
         if any(
             len(view.points_uv) != projected_counts[view.camera_id]
             for view in self.heatmaps.views
         ):
-            raise ValueError("Evaluated heatmap point counts disagree with diagnostics.")
+            raise ValueError(
+                "Evaluated heatmap point counts disagree with diagnostics."
+            )
         if self.heatmaps.bounds_uv != self.evidence.ground_plane_frame.bounds_uv_metres:
             raise ValueError("Evaluated heatmaps disagree with metric ground-plane bounds.")
         measured_by_camera = {
@@ -3115,7 +3515,9 @@ def _fixed_unit_camera_ownership(
     """Recompute the versioned evenly spaced slot ownership from prefix order."""
     unit = fit_cameras_per_unit + holdout_cameras_per_unit
     if len(camera_prefix_ids) % unit != 0:
-        raise ValueError("Fixed camera prefix does not contain complete ownership units.")
+        raise ValueError(
+            "Fixed camera prefix does not contain complete ownership units."
+        )
     holdout_slots = {
         (2 * index + 1) * unit // (2 * holdout_cameras_per_unit)
         for index in range(holdout_cameras_per_unit)
@@ -3283,6 +3685,8 @@ __all__ = [
     "PartitionMetrics",
     "PartitionThresholds",
     "ProposalSearchDiagnostics",
+    "ProposalScoreModel",
+    "ProposalSearchStopReason",
     "build_layout",
     "validate_alignment_trace_final_binding",
 ]
