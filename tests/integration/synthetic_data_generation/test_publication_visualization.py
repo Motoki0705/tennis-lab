@@ -495,6 +495,10 @@ def _write_manifest_with_recomputed_media_digests(
         artifact["content_digest_blake2b_256"] = hashlib.blake2b(
             path.read_bytes(), digest_size=32
         ).hexdigest()
+    asset_policy = cast(dict[str, object], payload["asset_policy"])
+    asset_policy["artifact_bytes"] = sum(
+        cast(int, artifact["byte_size"]) for artifact in artifacts
+    )
     (bundle / "manifest.json").write_text(
         json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
         encoding="utf-8",
@@ -510,6 +514,53 @@ def _artifact_payload(
         for artifact in cast(list[dict[str, object]], payload["artifacts"])
         if artifact["file_name"] == file_name.value
     )
+
+
+def _resize_artifact_and_rebind_record(
+    bundle: Path,
+    payload: dict[str, object],
+    artifact_name: PublicationArtifactName,
+) -> None:
+    artifact = _artifact_payload(payload, artifact_name)
+    target_size = (cast(int, artifact["width"]) + 1, cast(int, artifact["height"]))
+    path = bundle / artifact_name.value
+    with Image.open(path) as image:
+        image_format = image.format
+        duration_ms = image.info.get("duration")
+        frames = []
+        for index in range(image.n_frames):
+            image.seek(index)
+            frames.append(
+                image.convert("RGB").resize(
+                    target_size,
+                    resample=Image.Resampling.NEAREST,
+                )
+            )
+    if image_format == "GIF":
+        frames[0].save(
+            path,
+            format="GIF",
+            save_all=True,
+            append_images=frames[1:],
+            duration=duration_ms,
+            loop=0,
+            disposal=2,
+            optimize=False,
+        )
+    elif image_format == "PNG":
+        frames[0].save(path, format="PNG", optimize=False, compress_level=9)
+    else:
+        raise AssertionError(f"Unexpected publication media format: {image_format}")
+    artifact["width"] = target_size[0]
+    artifact["height"] = target_size[1]
+    dataset_domain = {
+        PublicationArtifactName.DATASET_COURT: "court",
+        PublicationArtifactName.DATASET_BLCS: "blcs",
+        PublicationArtifactName.DATASET_PLCS: "plcs",
+    }.get(artifact_name)
+    if dataset_domain is not None:
+        source_owners = cast(dict[str, dict[str, object]], payload["source_owners"])
+        source_owners[dataset_domain]["output_size"] = list(target_size)
 
 
 def test_authoritative_validator_rejects_missing_request_context(
@@ -780,6 +831,157 @@ def test_authoritative_validator_rejects_camera_source_record_rebinding(
 
     validate_publication_bundle_structure_only(bundle)
     with pytest.raises(ValueError, match="validated camera source"):
+        validate_publication_bundle(bundle, expected_request=request)
+
+
+def test_authoritative_validator_rejects_alignment_metric_rebinding(
+    authoritative_bundle_fixture: tuple[Path, PublicationRequest],
+    tmp_path: Path,
+) -> None:
+    source_bundle, request = authoritative_bundle_fixture
+    bundle, payload = _tamper_bundle(source_bundle, tmp_path / "alignment-metrics")
+    metrics = cast(dict[str, dict[str, object]], payload["metrics"])
+    metrics["alignment"]["court_line_mean_probability"] = 0.01
+    _write_manifest_with_recomputed_media_digests(bundle, payload)
+
+    validate_publication_bundle_structure_only(bundle)
+    with pytest.raises(ValueError, match="alignment metrics"):
+        validate_publication_bundle(bundle, expected_request=request)
+
+
+@pytest.mark.parametrize("mutation", ("missing", "extra"))
+def test_authoritative_validator_rejects_alignment_metric_key_rebinding(
+    authoritative_bundle_fixture: tuple[Path, PublicationRequest],
+    tmp_path: Path,
+    mutation: str,
+) -> None:
+    source_bundle, request = authoritative_bundle_fixture
+    bundle, payload = _tamper_bundle(
+        source_bundle,
+        tmp_path / f"alignment-metrics-{mutation}",
+    )
+    metrics = cast(dict[str, dict[str, object]], payload["metrics"])["alignment"]
+    if mutation == "missing":
+        metrics.pop("court_line_mean_probability")
+    else:
+        metrics["unrecorded_alignment_metric"] = 0.5
+    _write_manifest_with_recomputed_media_digests(bundle, payload)
+
+    validate_publication_bundle_structure_only(bundle)
+    with pytest.raises(ValueError, match="alignment metrics"):
+        validate_publication_bundle(bundle, expected_request=request)
+
+
+def test_authoritative_validator_rejects_alignment_progression_rebinding(
+    authoritative_bundle_fixture: tuple[Path, PublicationRequest],
+    tmp_path: Path,
+) -> None:
+    source_bundle, request = authoritative_bundle_fixture
+    bundle, payload = _tamper_bundle(source_bundle, tmp_path / "alignment-trace")
+    mapping = cast(
+        list[dict[str, object]],
+        _artifact_payload(
+            payload, PublicationArtifactName.ALIGNMENT_PROGRESSION
+        )["mapping"],
+    )
+    mapping[1]["score_sum"] = 123.0
+    mapping[1]["candidate_scores"] = [123.0]
+    _write_manifest_with_recomputed_media_digests(bundle, payload)
+
+    validate_publication_bundle_structure_only(bundle)
+    with pytest.raises(ValueError, match="alignment progression"):
+        validate_publication_bundle(bundle, expected_request=request)
+
+
+@pytest.mark.parametrize(
+    ("field", "rebound_value"),
+    (
+        ("step_index", 99),
+        ("candidate_ids", ["candidate-rebound"]),
+    ),
+)
+def test_authoritative_validator_rejects_alignment_progression_identity_rebinding(
+    authoritative_bundle_fixture: tuple[Path, PublicationRequest],
+    tmp_path: Path,
+    field: str,
+    rebound_value: object,
+) -> None:
+    source_bundle, request = authoritative_bundle_fixture
+    bundle, payload = _tamper_bundle(
+        source_bundle,
+        tmp_path / f"alignment-trace-{field}",
+    )
+    mapping = cast(
+        list[dict[str, object]],
+        _artifact_payload(
+            payload, PublicationArtifactName.ALIGNMENT_PROGRESSION
+        )["mapping"],
+    )
+    mapping[1][field] = rebound_value
+    _write_manifest_with_recomputed_media_digests(bundle, payload)
+
+    validate_publication_bundle_structure_only(bundle)
+    with pytest.raises(ValueError, match="alignment progression"):
+        validate_publication_bundle(bundle, expected_request=request)
+
+
+def test_authoritative_validator_rejects_media_dimensions_rebound_from_config(
+    authoritative_bundle_fixture: tuple[Path, PublicationRequest],
+    tmp_path: Path,
+) -> None:
+    source_bundle, request = authoritative_bundle_fixture
+    bundle, payload = _tamper_bundle(source_bundle, tmp_path / "media-dimensions")
+    overview_path = bundle / PublicationArtifactName.PUBLICATION_OVERVIEW.value
+    with Image.open(overview_path) as image:
+        resized = image.resize((_OVERVIEW_SIZE[0] + 1, _OVERVIEW_SIZE[1]))
+        resized.save(overview_path, format="PNG", optimize=False, compress_level=9)
+    overview = _artifact_payload(payload, PublicationArtifactName.PUBLICATION_OVERVIEW)
+    overview["width"] = _OVERVIEW_SIZE[0] + 1
+    _write_manifest_with_recomputed_media_digests(bundle, payload)
+
+    validate_publication_bundle_structure_only(bundle)
+    with pytest.raises(ValueError, match="resolved drawing dimensions"):
+        validate_publication_bundle(bundle, expected_request=request)
+
+
+@pytest.mark.parametrize(
+    ("artifact_name", "drawing_field"),
+    (
+        (PublicationArtifactName.DATASET_COURT, "dataset_size"),
+        (PublicationArtifactName.DATASET_BLCS, "dataset_size"),
+        (PublicationArtifactName.DATASET_PLCS, "dataset_size"),
+        (PublicationArtifactName.ALIGNMENT_PROGRESSION, "alignment_size"),
+        (PublicationArtifactName.ALIGNMENT_HEATMAP_COURT, "figure_size"),
+        (PublicationArtifactName.CAPTURED_CAMERA_TRAJECTORY, "figure_size"),
+        (PublicationArtifactName.BLCS_CAMERA_LAYOUT, "figure_size"),
+        (PublicationArtifactName.PLCS_CAMERA_LAYOUT, "figure_size"),
+        (PublicationArtifactName.CAMERA_LAYOUT_COMPARISON, "figure_size"),
+        (PublicationArtifactName.PUBLICATION_OVERVIEW, "overview_size"),
+    ),
+    ids=lambda value: value.value if isinstance(value, PublicationArtifactName) else value,
+)
+def test_authoritative_validator_binds_all_artifact_dimension_categories(
+    authoritative_bundle_fixture: tuple[Path, PublicationRequest],
+    tmp_path: Path,
+    artifact_name: PublicationArtifactName,
+    drawing_field: str,
+) -> None:
+    source_bundle, request = authoritative_bundle_fixture
+    bundle, payload = _tamper_bundle(
+        source_bundle,
+        tmp_path / f"dimensions-{artifact_name.value}",
+    )
+    expected_size = cast(tuple[int, int], getattr(request.drawing, drawing_field))
+    artifact = _artifact_payload(payload, artifact_name)
+    assert (artifact["width"], artifact["height"]) == expected_size
+    _resize_artifact_and_rebind_record(bundle, payload, artifact_name)
+    _write_manifest_with_recomputed_media_digests(bundle, payload)
+
+    validate_publication_bundle_structure_only(bundle)
+    with pytest.raises(
+        ValueError,
+        match=rf"PublicationRequest\.drawing\.{drawing_field}",
+    ):
         validate_publication_bundle(bundle, expected_request=request)
 
 
