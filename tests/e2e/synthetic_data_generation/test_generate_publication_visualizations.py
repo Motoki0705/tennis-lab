@@ -45,9 +45,9 @@ def test_cli_composes_one_complete_explicit_publication_request() -> None:
     assert set(payload) == {"roots", "publication"}
     publication = payload["publication"]
     assert publication["scene_id"] == "scene-0"
-    assert publication["scene_root"] == "scenes/scene-0"
+    assert publication["scene_root"] == "synthetic_data_generation/scenes/scene-0"
     assert publication["output_bundle"] == (
-        "synthetic_data_generation/publication/scene-0"
+        "synthetic_data_generation/scenes/scene-0/publication"
     )
     assert publication["artifacts"] == [
         artifact.value for artifact in REQUIRED_PUBLICATION_ARTIFACTS

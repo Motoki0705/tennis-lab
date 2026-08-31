@@ -6,9 +6,9 @@ defaults:
 publication:
   scene_id: B00
   # Data-root-relative canonical scene owner.
-  scene_root: scenes/${publication.scene_id}
-  # Output-root-relative fresh bundle directory.
-  output_bundle: synthetic_data_generation/publication/${publication.scene_id}
+  scene_root: synthetic_data_generation/scenes/${publication.scene_id}
+  # Data-root-relative fresh bundle owned by the selected scene.
+  output_bundle: synthetic_data_generation/scenes/${publication.scene_id}/publication
   # Fixed complete order; omission or reordering is rejected.
   artifacts:
     - dataset-court.gif

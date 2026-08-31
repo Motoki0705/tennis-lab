@@ -53,7 +53,7 @@ from src.synthetic_data_generation.visualization.publication.figures import (
 def publication_config_payload(tmp_path: Path) -> dict[str, object]:
     """Return a complete, explicit configuration against temporary owners."""
     data_root = tmp_path / "runtime-data"
-    scene_root = data_root / "scenes" / "scene-0"
+    scene_root = data_root / "synthetic_data_generation" / "scenes" / "scene-0"
     scene_root.mkdir(parents=True)
     return {
         "roots": {
@@ -67,8 +67,8 @@ def publication_config_payload(tmp_path: Path) -> dict[str, object]:
         },
         "publication": {
             "scene_id": "scene-0",
-            "scene_root": "scenes/scene-0",
-            "output_bundle": "publication/scene-0",
+            "scene_root": "synthetic_data_generation/scenes/scene-0",
+            "output_bundle": ("synthetic_data_generation/scenes/scene-0/publication"),
             "artifacts": [item.value for item in REQUIRED_PUBLICATION_ARTIFACTS],
             "court": {
                 "trajectory_id": "trajectory-0",

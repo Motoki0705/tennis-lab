@@ -203,8 +203,16 @@ class PublicationRequest:
             raise ValueError("scene_root must be an existing ordinary directory.")
         if output_bundle.exists() or output_bundle.is_symlink():
             raise FileExistsError(f"Publication output already exists: {output_bundle}")
-        if output_bundle.resolve(strict=False).is_relative_to(scene_root.resolve()):
-            raise ValueError("Publication output must stay outside the scene owner.")
+        resolved_scene_root = scene_root.resolve()
+        resolved_output_bundle = output_bundle.resolve(strict=False)
+        if (
+            resolved_output_bundle.is_relative_to(resolved_scene_root)
+            and resolved_output_bundle != resolved_scene_root / "publication"
+        ):
+            raise ValueError(
+                "Publication output inside the scene owner must be its fixed "
+                "publication directory."
+            )
         artifacts = tuple(self.artifact_names)
         if artifacts != REQUIRED_PUBLICATION_ARTIFACTS:
             raise ValueError(
