@@ -68,9 +68,7 @@ def test_cli_composes_one_complete_explicit_publication_request() -> None:
         "frame_indices": [0, 2],
         "camera_ids": ["camera-0", "camera-1"],
     }
-    assert publication["captured"] == {
-        "camera_ids": ["camera-0", "camera-1"]
-    }
+    assert publication["captured"] == {"camera_ids": ["camera-0", "camera-1"]}
     assert publication["drawing"] == {
         "dataset_size": [960, 540],
         "alignment_size": [1200, 900],
@@ -81,6 +79,9 @@ def test_cli_composes_one_complete_explicit_publication_request() -> None:
         "line_width": 1.4,
         "font_size": 12,
         "history_frames": 12,
+        "maximum_rendered_captured_cameras": 24,
+        "coincident_centre_tolerance_metres": 1.0e-6,
+        "coincident_forward_angle_tolerance_degrees": 1.0e-6,
         "maximum_artifact_bytes": 12_582_912,
         "maximum_bundle_bytes": 75_497_472,
     }

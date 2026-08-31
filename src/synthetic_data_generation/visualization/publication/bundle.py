@@ -11,6 +11,8 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import cast
 
+import numpy as np
+from numpy.typing import NDArray
 from PIL import Image
 
 from src.synthetic_data_generation.alignment.contracts import (
@@ -23,6 +25,7 @@ from src.synthetic_data_generation.alignment.heatmaps import (
     GROUND_PLANE_UV_COORDINATE_CONVENTION,
 )
 from src.synthetic_data_generation.reconstruction.scene_export import NHT_CAMERAS_SCHEMA
+from src.synthetic_data_generation.scene_contract import RigidTransform
 from src.synthetic_data_generation.visualization.publication.alignment import (
     ALIGNMENT_AGREEMENT_METRIC_SCHEMA,
     AlignmentPublicationData,
@@ -38,14 +41,19 @@ from src.synthetic_data_generation.visualization.publication.cameras import (
     load_plcs_cameras,
 )
 from src.synthetic_data_generation.visualization.publication.contracts import (
+    CAMERA_DRAWING_POLICY_SCHEMA,
+    CAPTURED_CAMERA_SELECTION_POLICY,
     PUBLICATION_BUNDLE_SCHEMA,
     PUBLICATION_COORDINATE_CONTRACT,
     PUBLICATION_MANIFEST_SCHEMA,
     PUBLICATION_REQUEST_SCHEMA,
     REQUIRED_PUBLICATION_ARTIFACTS,
+    STATIC_RIG_SELECTION_POLICY,
+    CameraRenderingSemantics,
     PublicationArtifactName,
     PublicationArtifactRecord,
     PublicationBundleResult,
+    PublicationDrawingSettings,
     PublicationManifest,
     PublicationRequest,
 )
@@ -58,8 +66,11 @@ from src.synthetic_data_generation.visualization.publication.datasets import (
 )
 from src.synthetic_data_generation.visualization.publication.figures import (
     CAMERA_COVERAGE_METRIC_SCHEMA,
+    CAMERA_RIG_COMPARISON_METRIC_SCHEMA,
     OVERVIEW_LAYOUT_SCHEMA,
     camera_collection_metrics,
+    camera_forward_angle_differences_degrees,
+    camera_render_indices,
     render_camera_comparison_figure,
     render_camera_figure,
     render_publication_overview,
@@ -304,6 +315,12 @@ def _render_staging_bundle(
         font_size=drawing.font_size,
     )
     layout = alignment.result.layout
+    captured_render_indices = camera_render_indices(
+        len(inputs.captured_cameras.camera_ids),
+        maximum_rendered_cameras=drawing.maximum_rendered_captured_cameras,
+    )
+    blcs_render_indices = tuple(range(len(inputs.blcs_cameras.camera_ids)))
+    plcs_render_indices = tuple(range(len(inputs.plcs_cameras.camera_ids)))
     render_camera_figure(
         inputs.captured_cameras,
         layout,
@@ -312,6 +329,8 @@ def _render_staging_bundle(
         frustum_depth_metres=drawing.frustum_depth_metres,
         line_width=drawing.line_width,
         font_size=drawing.font_size,
+        rendering_semantics=CameraRenderingSemantics.CAPTURED_TRAJECTORY,
+        rendered_camera_indices=captured_render_indices,
     )
     render_camera_figure(
         inputs.blcs_cameras,
@@ -321,6 +340,8 @@ def _render_staging_bundle(
         frustum_depth_metres=drawing.frustum_depth_metres,
         line_width=drawing.line_width,
         font_size=drawing.font_size,
+        rendering_semantics=CameraRenderingSemantics.STATIC_RIG,
+        rendered_camera_indices=blcs_render_indices,
     )
     render_camera_figure(
         inputs.plcs_cameras,
@@ -330,8 +351,10 @@ def _render_staging_bundle(
         frustum_depth_metres=drawing.frustum_depth_metres,
         line_width=drawing.line_width,
         font_size=drawing.font_size,
+        rendering_semantics=CameraRenderingSemantics.STATIC_RIG,
+        rendered_camera_indices=plcs_render_indices,
     )
-    render_camera_comparison_figure(
+    comparison_metrics = render_camera_comparison_figure(
         inputs.blcs_cameras,
         inputs.plcs_cameras,
         layout,
@@ -340,11 +363,25 @@ def _render_staging_bundle(
         frustum_depth_metres=drawing.frustum_depth_metres,
         line_width=drawing.line_width,
         font_size=drawing.font_size,
+        centre_tolerance_metres=drawing.coincident_centre_tolerance_metres,
+        forward_angle_tolerance_degrees=(
+            drawing.coincident_forward_angle_tolerance_degrees
+        ),
     )
     camera_metrics = {
-        "reconstruction": camera_collection_metrics(inputs.captured_cameras),
-        "blcs": camera_collection_metrics(inputs.blcs_cameras),
-        "plcs": camera_collection_metrics(inputs.plcs_cameras),
+        "reconstruction": camera_collection_metrics(
+            inputs.captured_cameras,
+            rendering_semantics=CameraRenderingSemantics.CAPTURED_TRAJECTORY,
+        ),
+        "blcs": camera_collection_metrics(
+            inputs.blcs_cameras,
+            rendering_semantics=CameraRenderingSemantics.STATIC_RIG,
+        ),
+        "plcs": camera_collection_metrics(
+            inputs.plcs_cameras,
+            rendering_semantics=CameraRenderingSemantics.STATIC_RIG,
+        ),
+        "comparison": comparison_metrics,
     }
     overview_mapping = render_publication_overview(
         staging,
@@ -374,17 +411,32 @@ def _render_staging_bundle(
             },
         ),
         PublicationArtifactName.CAPTURED_CAMERA_TRAJECTORY: _camera_mapping(
-            inputs.captured_cameras
+            inputs.captured_cameras,
+            rendering_semantics=CameraRenderingSemantics.CAPTURED_TRAJECTORY,
+            rendered_camera_indices=captured_render_indices,
         ),
         PublicationArtifactName.BLCS_CAMERA_LAYOUT: _camera_mapping(
-            inputs.blcs_cameras
+            inputs.blcs_cameras,
+            rendering_semantics=CameraRenderingSemantics.STATIC_RIG,
+            rendered_camera_indices=blcs_render_indices,
         ),
         PublicationArtifactName.PLCS_CAMERA_LAYOUT: _camera_mapping(
-            inputs.plcs_cameras
+            inputs.plcs_cameras,
+            rendering_semantics=CameraRenderingSemantics.STATIC_RIG,
+            rendered_camera_indices=plcs_render_indices,
         ),
-        PublicationArtifactName.CAMERA_LAYOUT_COMPARISON: (
-            *(_camera_mapping(inputs.blcs_cameras)),
-            *(_camera_mapping(inputs.plcs_cameras)),
+        PublicationArtifactName.CAMERA_LAYOUT_COMPARISON: _camera_comparison_mapping(
+            blcs_mapping=_camera_mapping(
+                inputs.blcs_cameras,
+                rendering_semantics=CameraRenderingSemantics.STATIC_RIG,
+                rendered_camera_indices=blcs_render_indices,
+            ),
+            plcs_mapping=_camera_mapping(
+                inputs.plcs_cameras,
+                rendering_semantics=CameraRenderingSemantics.STATIC_RIG,
+                rendered_camera_indices=plcs_render_indices,
+            ),
+            comparison_metrics=comparison_metrics,
         ),
         PublicationArtifactName.PUBLICATION_OVERVIEW: overview_mapping,
     }
@@ -425,6 +477,8 @@ def _render_staging_bundle(
             "ground_plane_frame": GROUND_PLANE_FRAME_SCHEMA,
             "alignment_agreement_metrics": ALIGNMENT_AGREEMENT_METRIC_SCHEMA,
             "camera_coverage_metrics": CAMERA_COVERAGE_METRIC_SCHEMA,
+            "camera_rig_comparison_metrics": CAMERA_RIG_COMPARISON_METRIC_SCHEMA,
+            "camera_drawing_policy": CAMERA_DRAWING_POLICY_SCHEMA,
             "overview_layout": OVERVIEW_LAYOUT_SCHEMA,
             "gif_encoder": GIF_ENCODER,
             "camera_coordinate_convention": METRIC_CAMERA_COORDINATE_CONVENTION,
@@ -488,6 +542,7 @@ def _source_owner_manifest(
             "logical_scene_id": request.blcs_logical_scene_id,
             "gif_camera_id": request.blcs_camera_id,
             "camera_ids": list(blcs.camera_ids),
+            "camera_rendering_semantics": CameraRenderingSemantics.STATIC_RIG.value,
             "source_count": blcs_gif.source_count,
             "source_fps": blcs_gif.source_fps,
             "source_size": [blcs_gif.source_width, blcs_gif.source_height],
@@ -503,6 +558,7 @@ def _source_owner_manifest(
             "logical_scene_id": request.plcs_logical_scene_id,
             "gif_camera_id": request.plcs_camera_id,
             "camera_ids": list(plcs.camera_ids),
+            "camera_rendering_semantics": CameraRenderingSemantics.STATIC_RIG.value,
             "source_count": plcs_gif.source_count,
             "source_fps": plcs_gif.source_fps,
             "source_size": [plcs_gif.source_width, plcs_gif.source_height],
@@ -529,6 +585,9 @@ def _source_owner_manifest(
             "schema": NHT_CAMERAS_SCHEMA,
             "scene_id": captured.scene_id,
             "camera_ids": list(captured.camera_ids),
+            "camera_rendering_semantics": (
+                CameraRenderingSemantics.CAPTURED_TRAJECTORY.value
+            ),
             "metric_conversion": "MetricSceneAdapter",
         },
     }
@@ -536,17 +595,71 @@ def _source_owner_manifest(
 
 def _camera_mapping(
     collection: PublicationCameraCollection,
+    *,
+    rendering_semantics: CameraRenderingSemantics,
+    rendered_camera_indices: tuple[int, ...],
 ) -> tuple[Mapping[str, object], ...]:
-    return tuple(
+    rendered_camera_ids = tuple(
+        collection.camera_ids[index] for index in rendered_camera_indices
+    )
+    selection_policy = (
+        CAPTURED_CAMERA_SELECTION_POLICY
+        if rendering_semantics is CameraRenderingSemantics.CAPTURED_TRAJECTORY
+        else STATIC_RIG_SELECTION_POLICY
+    )
+    summary: Mapping[str, object] = {
+        "mapping_type": "camera_rendering_policy",
+        "owner": collection.owner,
+        "logical_scene_id": collection.logical_scene_id,
+        "rendering_semantics": rendering_semantics.value,
+        "drawing_policy_schema": CAMERA_DRAWING_POLICY_SCHEMA,
+        "selection_policy": selection_policy,
+        "camera_count": len(collection.camera_ids),
+        "rendered_camera_count": len(rendered_camera_indices),
+        "rendered_camera_indices": list(rendered_camera_indices),
+        "rendered_camera_ids": list(rendered_camera_ids),
+    }
+    poses = tuple(
         {
+            "mapping_type": "camera_pose",
             "owner": collection.owner,
             "logical_scene_id": collection.logical_scene_id,
+            "camera_index": index,
             "camera_id": camera.camera_id,
             "source_frame_index": camera.source_frame_index,
             "width": camera.width,
             "height": camera.height,
+            "intrinsics": list(camera.intrinsics),
+            "camera_to_metric_scene": [
+                [float(value) for value in row]
+                for row in collection.camera_to_metric_scene[index]
+            ],
+            "image_path": camera.image_path,
         }
-        for camera in collection.cameras
+        for index, camera in enumerate(collection.cameras)
+    )
+    return (summary, *poses)
+
+
+def _camera_comparison_mapping(
+    *,
+    blcs_mapping: tuple[Mapping[str, object], ...],
+    plcs_mapping: tuple[Mapping[str, object], ...],
+    comparison_metrics: Mapping[str, object],
+) -> tuple[Mapping[str, object], ...]:
+    blcs_summary = blcs_mapping[0]
+    plcs_summary = plcs_mapping[0]
+    return (
+        {
+            "mapping_type": "camera_rig_comparison",
+            "rendering_semantics": CameraRenderingSemantics.STATIC_RIG.value,
+            "pose_matching": "strict_ordered_camera_id",
+            "blcs_camera_ids": blcs_summary["rendered_camera_ids"],
+            "plcs_camera_ids": plcs_summary["rendered_camera_ids"],
+            "comparison_metrics": dict(comparison_metrics),
+        },
+        *blcs_mapping[1:],
+        *plcs_mapping[1:],
     )
 
 
@@ -640,6 +753,36 @@ def _validate_semantic_provenance(manifest: PublicationManifest) -> None:
         != tuple(item.value for item in REQUIRED_PUBLICATION_ARTIFACTS)
     ):
         raise ValueError("Resolved config request schema is missing or foreign.")
+    drawing = _drawing_settings_from_manifest(resolved_config["drawing"])
+    configured_cameras = {
+        "reconstruction": _exact_mapping(
+            resolved_config["captured"],
+            name="resolved_config.captured",
+            keys={"scene_json", "camera_ids"},
+        ),
+        "blcs": _exact_mapping(
+            resolved_config["blcs"],
+            name="resolved_config.blcs",
+            keys={
+                "dataset_root",
+                "logical_scene_id",
+                "camera_id",
+                "frame_indices",
+                "camera_ids",
+            },
+        ),
+        "plcs": _exact_mapping(
+            resolved_config["plcs"],
+            name="resolved_config.plcs",
+            keys={
+                "dataset_root",
+                "logical_scene_id",
+                "camera_id",
+                "frame_indices",
+                "camera_ids",
+            },
+        ),
+    }
     owner_keys = {
         "court": {
             "owner_path",
@@ -662,6 +805,7 @@ def _validate_semantic_provenance(manifest: PublicationManifest) -> None:
             "logical_scene_id",
             "gif_camera_id",
             "camera_ids",
+            "camera_rendering_semantics",
             "source_count",
             "source_fps",
             "source_size",
@@ -677,6 +821,7 @@ def _validate_semantic_provenance(manifest: PublicationManifest) -> None:
             "logical_scene_id",
             "gif_camera_id",
             "camera_ids",
+            "camera_rendering_semantics",
             "source_count",
             "source_fps",
             "source_size",
@@ -699,6 +844,7 @@ def _validate_semantic_provenance(manifest: PublicationManifest) -> None:
             "schema",
             "scene_id",
             "camera_ids",
+            "camera_rendering_semantics",
             "metric_conversion",
         },
     }
@@ -708,6 +854,35 @@ def _validate_semantic_provenance(manifest: PublicationManifest) -> None:
         )
         if owner["scene_id"] != manifest.scene_id:
             raise ValueError("Source owner contains a foreign scene identity.")
+    for owner_name, expected_semantics in (
+        ("reconstruction", CameraRenderingSemantics.CAPTURED_TRAJECTORY),
+        ("blcs", CameraRenderingSemantics.STATIC_RIG),
+        ("plcs", CameraRenderingSemantics.STATIC_RIG),
+    ):
+        owner = cast(Mapping[str, object], manifest.source_owners[owner_name])
+        if owner["camera_rendering_semantics"] != expected_semantics.value:
+            raise ValueError(
+                f"{owner_name} camera rendering semantics are missing or incorrect."
+            )
+        if tuple(
+            _sequence(owner["camera_ids"], name=f"{owner_name}.camera_ids")
+        ) != tuple(
+            _sequence(
+                configured_cameras[owner_name]["camera_ids"],
+                name=f"resolved_config.{owner_name}.camera_ids",
+            )
+        ):
+            raise ValueError(
+                f"{owner_name} owner camera IDs differ from resolved configuration."
+            )
+        if (
+            owner_name != "reconstruction"
+            and owner["logical_scene_id"]
+            != (configured_cameras[owner_name]["logical_scene_id"])
+        ):
+            raise ValueError(
+                f"{owner_name} logical scene differs from resolved configuration."
+            )
     for domain, artifact in (
         ("court", PublicationArtifactName.DATASET_COURT),
         ("blcs", PublicationArtifactName.DATASET_BLCS),
@@ -781,33 +956,72 @@ def _validate_semantic_provenance(manifest: PublicationManifest) -> None:
         "blcs": PublicationArtifactName.BLCS_CAMERA_LAYOUT,
         "plcs": PublicationArtifactName.PLCS_CAMERA_LAYOUT,
     }
+    camera_pose_matrices: dict[str, NDArray[np.float64]] = {}
+    camera_pose_mappings: dict[str, tuple[Mapping[str, object], ...]] = {}
+    expected_camera_metrics: dict[str, Mapping[str, object]] = {}
     for owner_name, artifact in camera_artifacts.items():
         owner = cast(Mapping[str, object], manifest.source_owners[owner_name])
-        expected_ids = tuple(
-            _sequence(owner["camera_ids"], name=f"{owner_name}.camera_ids")
-        )
         record = next(item for item in manifest.artifacts if item.file_name is artifact)
-        if tuple(item.get("camera_id") for item in record.mapping) != expected_ids:
-            raise ValueError(
-                "Camera artifact order differs from its exact owner inventory."
-            )
+        semantics = (
+            CameraRenderingSemantics.CAPTURED_TRAJECTORY
+            if owner_name == "reconstruction"
+            else CameraRenderingSemantics.STATIC_RIG
+        )
+        poses, matrices = _validate_camera_artifact_mapping(
+            record.mapping,
+            owner_name=owner_name,
+            owner=owner,
+            rendering_semantics=semantics,
+            maximum_rendered_captured_cameras=(
+                drawing.maximum_rendered_captured_cameras
+            ),
+        )
+        camera_pose_mappings[owner_name] = poses
+        camera_pose_matrices[owner_name] = matrices
+        expected_camera_metrics[owner_name] = _camera_metrics_from_poses(
+            owner_name=owner_name,
+            rendering_semantics=semantics,
+            matrices=matrices,
+        )
     comparison_record = next(
         item
         for item in manifest.artifacts
         if item.file_name is PublicationArtifactName.CAMERA_LAYOUT_COMPARISON
     )
-    expected_comparison = tuple(
-        item
-        for artifact in (
-            PublicationArtifactName.BLCS_CAMERA_LAYOUT,
-            PublicationArtifactName.PLCS_CAMERA_LAYOUT,
+    blcs_ids = tuple(
+        _nonempty_text(value, name="blcs.camera_ids")
+        for value in _sequence(
+            cast(Mapping[str, object], manifest.source_owners["blcs"])["camera_ids"],
+            name="blcs.camera_ids",
         )
-        for record in manifest.artifacts
-        if record.file_name is artifact
-        for item in record.mapping
     )
-    if comparison_record.mapping != expected_comparison:
-        raise ValueError("Camera comparison mapping differs from BLCS/PLCS owners.")
+    plcs_ids = tuple(
+        _nonempty_text(value, name="plcs.camera_ids")
+        for value in _sequence(
+            cast(Mapping[str, object], manifest.source_owners["plcs"])["camera_ids"],
+            name="plcs.camera_ids",
+        )
+    )
+    if blcs_ids != plcs_ids:
+        raise ValueError("BLCS/PLCS comparison requires identical ordered camera IDs.")
+    expected_comparison_metrics = _camera_comparison_metrics_from_poses(
+        camera_ids=blcs_ids,
+        blcs_matrices=camera_pose_matrices["blcs"],
+        plcs_matrices=camera_pose_matrices["plcs"],
+        centre_tolerance_metres=drawing.coincident_centre_tolerance_metres,
+        forward_angle_tolerance_degrees=(
+            drawing.coincident_forward_angle_tolerance_degrees
+        ),
+    )
+    expected_camera_metrics["comparison"] = expected_comparison_metrics
+    _validate_camera_comparison_mapping(
+        comparison_record.mapping,
+        blcs_ids=blcs_ids,
+        plcs_ids=plcs_ids,
+        blcs_poses=camera_pose_mappings["blcs"],
+        plcs_poses=camera_pose_mappings["plcs"],
+        expected_metrics=expected_comparison_metrics,
+    )
     overview_record = next(
         item
         for item in manifest.artifacts
@@ -852,6 +1066,8 @@ def _validate_semantic_provenance(manifest: PublicationManifest) -> None:
             "ground_plane_frame",
             "alignment_agreement_metrics",
             "camera_coverage_metrics",
+            "camera_rig_comparison_metrics",
+            "camera_drawing_policy",
             "overview_layout",
             "gif_encoder",
             "camera_coordinate_convention",
@@ -862,6 +1078,15 @@ def _validate_semantic_provenance(manifest: PublicationManifest) -> None:
         raise ValueError("Manifest alignment trace diagnostic version is missing.")
     if versions.get("ground_plane_frame") != GROUND_PLANE_FRAME_SCHEMA:
         raise ValueError("Manifest ground-plane diagnostic version is missing.")
+    if versions.get("camera_coverage_metrics") != CAMERA_COVERAGE_METRIC_SCHEMA:
+        raise ValueError("Manifest camera coverage diagnostic version is missing.")
+    if (
+        versions.get("camera_rig_comparison_metrics")
+        != CAMERA_RIG_COMPARISON_METRIC_SCHEMA
+    ):
+        raise ValueError("Manifest camera comparison diagnostic version is missing.")
+    if versions.get("camera_drawing_policy") != CAMERA_DRAWING_POLICY_SCHEMA:
+        raise ValueError("Manifest camera drawing policy version is missing.")
     metrics = _exact_mapping(
         manifest.metrics,
         name="metrics",
@@ -870,6 +1095,15 @@ def _validate_semantic_provenance(manifest: PublicationManifest) -> None:
     alignment_metrics = _mapping(metrics.get("alignment"), name="metrics.alignment")
     if alignment_metrics.get("schema") != ALIGNMENT_AGREEMENT_METRIC_SCHEMA:
         raise ValueError("Manifest alignment metric schema is missing or foreign.")
+    cameras_metrics = _exact_mapping(
+        metrics.get("cameras"),
+        name="metrics.cameras",
+        keys={"reconstruction", "blcs", "plcs", "comparison"},
+    )
+    if cameras_metrics != expected_camera_metrics:
+        raise ValueError(
+            "Camera metrics differ from full pose mappings or rendering semantics."
+        )
     if manifest.coordinate_contract != PUBLICATION_COORDINATE_CONTRACT:
         raise ValueError(
             "Manifest coordinate contract differs from publication authority."
@@ -884,6 +1118,346 @@ def _validate_semantic_provenance(manifest: PublicationManifest) -> None:
         != GROUND_PLANE_UV_COORDINATE_CONVENTION
     ):
         raise ValueError("Manifest ground-plane UV convention is missing.")
+
+
+def _drawing_settings_from_manifest(value: object) -> PublicationDrawingSettings:
+    raw = _exact_mapping(
+        value,
+        name="resolved_config.drawing",
+        keys={
+            "dataset_size",
+            "alignment_size",
+            "figure_size",
+            "overview_size",
+            "gif_duration_ms",
+            "frustum_depth_metres",
+            "line_width",
+            "font_size",
+            "history_frames",
+            "maximum_rendered_captured_cameras",
+            "coincident_centre_tolerance_metres",
+            "coincident_forward_angle_tolerance_degrees",
+            "maximum_artifact_bytes",
+            "maximum_bundle_bytes",
+        },
+    )
+    return PublicationDrawingSettings(
+        dataset_size=_integer_pair(raw["dataset_size"], name="drawing.dataset_size"),
+        alignment_size=_integer_pair(
+            raw["alignment_size"], name="drawing.alignment_size"
+        ),
+        figure_size=_integer_pair(raw["figure_size"], name="drawing.figure_size"),
+        overview_size=_integer_pair(raw["overview_size"], name="drawing.overview_size"),
+        gif_duration_ms=_integer_value(
+            raw["gif_duration_ms"], name="drawing.gif_duration_ms"
+        ),
+        frustum_depth_metres=_finite_number(
+            raw["frustum_depth_metres"], name="drawing.frustum_depth_metres"
+        ),
+        line_width=_finite_number(raw["line_width"], name="drawing.line_width"),
+        font_size=_integer_value(raw["font_size"], name="drawing.font_size"),
+        history_frames=_integer_value(
+            raw["history_frames"], name="drawing.history_frames"
+        ),
+        maximum_rendered_captured_cameras=_integer_value(
+            raw["maximum_rendered_captured_cameras"],
+            name="drawing.maximum_rendered_captured_cameras",
+        ),
+        coincident_centre_tolerance_metres=_finite_number(
+            raw["coincident_centre_tolerance_metres"],
+            name="drawing.coincident_centre_tolerance_metres",
+        ),
+        coincident_forward_angle_tolerance_degrees=_finite_number(
+            raw["coincident_forward_angle_tolerance_degrees"],
+            name="drawing.coincident_forward_angle_tolerance_degrees",
+        ),
+        maximum_artifact_bytes=_integer_value(
+            raw["maximum_artifact_bytes"], name="drawing.maximum_artifact_bytes"
+        ),
+        maximum_bundle_bytes=_integer_value(
+            raw["maximum_bundle_bytes"], name="drawing.maximum_bundle_bytes"
+        ),
+    )
+
+
+def _validate_camera_artifact_mapping(
+    mapping: tuple[Mapping[str, object], ...],
+    *,
+    owner_name: str,
+    owner: Mapping[str, object],
+    rendering_semantics: CameraRenderingSemantics,
+    maximum_rendered_captured_cameras: int,
+) -> tuple[tuple[Mapping[str, object], ...], NDArray[np.float64]]:
+    camera_ids = tuple(
+        _nonempty_text(value, name=f"{owner_name}.camera_ids")
+        for value in _sequence(owner["camera_ids"], name=f"{owner_name}.camera_ids")
+    )
+    if len(mapping) != len(camera_ids) + 1:
+        raise ValueError(
+            "Camera artifact mapping must retain one policy and every camera pose."
+        )
+    summary = _exact_mapping(
+        mapping[0],
+        name=f"{owner_name}.camera_rendering_policy",
+        keys={
+            "mapping_type",
+            "owner",
+            "logical_scene_id",
+            "rendering_semantics",
+            "drawing_policy_schema",
+            "selection_policy",
+            "camera_count",
+            "rendered_camera_count",
+            "rendered_camera_indices",
+            "rendered_camera_ids",
+        },
+    )
+    expected_logical_scene_id = owner.get("logical_scene_id")
+    expected_rendered_indices = (
+        camera_render_indices(
+            len(camera_ids),
+            maximum_rendered_cameras=maximum_rendered_captured_cameras,
+        )
+        if rendering_semantics is CameraRenderingSemantics.CAPTURED_TRAJECTORY
+        else tuple(range(len(camera_ids)))
+    )
+    expected_rendered_ids = tuple(
+        camera_ids[index] for index in expected_rendered_indices
+    )
+    expected_selection_policy = (
+        CAPTURED_CAMERA_SELECTION_POLICY
+        if rendering_semantics is CameraRenderingSemantics.CAPTURED_TRAJECTORY
+        else STATIC_RIG_SELECTION_POLICY
+    )
+    rendered_indices = tuple(
+        _nonnegative_integer(value, name="rendered_camera_indices")
+        for value in _sequence(
+            summary["rendered_camera_indices"], name="rendered_camera_indices"
+        )
+    )
+    rendered_ids = tuple(
+        _nonempty_text(value, name="rendered_camera_ids")
+        for value in _sequence(
+            summary["rendered_camera_ids"], name="rendered_camera_ids"
+        )
+    )
+    if (
+        summary["mapping_type"] != "camera_rendering_policy"
+        or summary["owner"] != owner_name
+        or summary["logical_scene_id"] != expected_logical_scene_id
+        or summary["rendering_semantics"] != rendering_semantics.value
+        or summary["drawing_policy_schema"] != CAMERA_DRAWING_POLICY_SCHEMA
+        or summary["selection_policy"] != expected_selection_policy
+        or summary["camera_count"] != len(camera_ids)
+        or summary["rendered_camera_count"] != len(expected_rendered_indices)
+        or rendered_indices != expected_rendered_indices
+        or rendered_ids != expected_rendered_ids
+    ):
+        raise ValueError(
+            "Camera rendered indices/IDs differ from the deterministic drawing policy."
+        )
+    poses = tuple(mapping[1:])
+    matrices: list[NDArray[np.float64]] = []
+    for index, (camera_id, value) in enumerate(zip(camera_ids, poses, strict=True)):
+        pose = _exact_mapping(
+            value,
+            name=f"{owner_name}.camera_pose",
+            keys={
+                "mapping_type",
+                "owner",
+                "logical_scene_id",
+                "camera_index",
+                "camera_id",
+                "source_frame_index",
+                "width",
+                "height",
+                "intrinsics",
+                "camera_to_metric_scene",
+                "image_path",
+            },
+        )
+        if (
+            pose["mapping_type"] != "camera_pose"
+            or pose["owner"] != owner_name
+            or pose["logical_scene_id"] != expected_logical_scene_id
+            or pose["camera_index"] != index
+            or pose["camera_id"] != camera_id
+        ):
+            raise ValueError("Camera pose identity/order differs from its exact owner.")
+        _nonnegative_integer(
+            pose["source_frame_index"], name="camera_pose.source_frame_index"
+        )
+        _positive_integer(pose["width"], name="camera_pose.width")
+        _positive_integer(pose["height"], name="camera_pose.height")
+        intrinsics = tuple(
+            _finite_number(item, name="camera_pose.intrinsics")
+            for item in _sequence(pose["intrinsics"], name="camera_pose.intrinsics")
+        )
+        if len(intrinsics) != 9:
+            raise ValueError("Camera pose intrinsics must contain exactly 9 values.")
+        _nonempty_text(pose["image_path"], name="camera_pose.image_path")
+        matrices.append(
+            _finite_matrix4(
+                pose["camera_to_metric_scene"],
+                name="camera_pose.camera_to_metric_scene",
+            )
+        )
+    return poses, np.stack(matrices)
+
+
+def _camera_metrics_from_poses(
+    *,
+    owner_name: str,
+    rendering_semantics: CameraRenderingSemantics,
+    matrices: NDArray[np.float64],
+) -> Mapping[str, object]:
+    centres = matrices[:, :3, 3]
+    metrics: dict[str, object] = {
+        "schema": CAMERA_COVERAGE_METRIC_SCHEMA,
+        "owner": owner_name,
+        "rendering_semantics": rendering_semantics.value,
+        "camera_count": len(matrices),
+        "centre_bounds_metric_scene": [
+            [float(item) for item in np.min(centres, axis=0)],
+            [float(item) for item in np.max(centres, axis=0)],
+        ],
+    }
+    if rendering_semantics is CameraRenderingSemantics.CAPTURED_TRAJECTORY:
+        displacements = np.linalg.norm(centres[1:] - centres[:-1], axis=1)
+        metrics.update(
+            {
+                "trajectory_segment_count": max(0, len(matrices) - 1),
+                "trajectory_length_metres": float(np.sum(displacements)),
+                "maximum_adjacent_displacement_metres": (
+                    0.0 if len(displacements) == 0 else float(np.max(displacements))
+                ),
+            }
+        )
+    return metrics
+
+
+def _camera_comparison_metrics_from_poses(
+    *,
+    camera_ids: tuple[str, ...],
+    blcs_matrices: NDArray[np.float64],
+    plcs_matrices: NDArray[np.float64],
+    centre_tolerance_metres: float,
+    forward_angle_tolerance_degrees: float,
+) -> Mapping[str, object]:
+    if blcs_matrices.shape != plcs_matrices.shape or len(blcs_matrices) != len(
+        camera_ids
+    ):
+        raise ValueError("BLCS/PLCS pose mappings differ in camera count.")
+    centre_distances = np.linalg.norm(
+        blcs_matrices[:, :3, 3] - plcs_matrices[:, :3, 3], axis=1
+    )
+    blcs_forward = blcs_matrices[:, :3, 2]
+    plcs_forward = plcs_matrices[:, :3, 2]
+    angles = camera_forward_angle_differences_degrees(blcs_forward, plcs_forward)
+    coincident = (centre_distances <= centre_tolerance_metres) & (
+        angles <= forward_angle_tolerance_degrees
+    )
+    coincident_count = int(np.count_nonzero(coincident))
+    return {
+        "schema": CAMERA_RIG_COMPARISON_METRIC_SCHEMA,
+        "pose_matching": "strict_ordered_camera_id",
+        "camera_count": len(camera_ids),
+        "coincident_camera_count": coincident_count,
+        "coincident_camera_fraction": float(coincident_count / len(camera_ids)),
+        "maximum_centre_distance_metres": float(np.max(centre_distances)),
+        "maximum_forward_angle_difference_degrees": float(np.max(angles)),
+        "centre_tolerance_metres": centre_tolerance_metres,
+        "forward_angle_tolerance_degrees": forward_angle_tolerance_degrees,
+    }
+
+
+def _validate_camera_comparison_mapping(
+    mapping: tuple[Mapping[str, object], ...],
+    *,
+    blcs_ids: tuple[str, ...],
+    plcs_ids: tuple[str, ...],
+    blcs_poses: tuple[Mapping[str, object], ...],
+    plcs_poses: tuple[Mapping[str, object], ...],
+    expected_metrics: Mapping[str, object],
+) -> None:
+    expected_poses = (*blcs_poses, *plcs_poses)
+    if len(mapping) != len(expected_poses) + 1:
+        raise ValueError("Camera comparison mapping has incomplete pose provenance.")
+    summary = _exact_mapping(
+        mapping[0],
+        name="camera_comparison.mapping",
+        keys={
+            "mapping_type",
+            "rendering_semantics",
+            "pose_matching",
+            "blcs_camera_ids",
+            "plcs_camera_ids",
+            "comparison_metrics",
+        },
+    )
+    if (
+        summary["mapping_type"] != "camera_rig_comparison"
+        or summary["rendering_semantics"] != CameraRenderingSemantics.STATIC_RIG.value
+        or summary["pose_matching"] != "strict_ordered_camera_id"
+        or tuple(_sequence(summary["blcs_camera_ids"], name="blcs_camera_ids"))
+        != blcs_ids
+        or tuple(_sequence(summary["plcs_camera_ids"], name="plcs_camera_ids"))
+        != plcs_ids
+        or summary["comparison_metrics"] != expected_metrics
+        or tuple(mapping[1:]) != expected_poses
+    ):
+        raise ValueError(
+            "Camera comparison mapping differs from strict ordered static-rig poses."
+        )
+
+
+def _finite_matrix4(value: object, *, name: str) -> NDArray[np.float64]:
+    rows = _sequence(value, name=name)
+    if len(rows) != 4:
+        raise ValueError(f"{name} must contain four rows.")
+    matrix = np.asarray(
+        [
+            [
+                _finite_number(item, name=name)
+                for item in _sequence(row, name=f"{name}.row")
+            ]
+            for row in rows
+        ],
+        dtype=np.float64,
+    )
+    RigidTransform.from_matrix(matrix)
+    return matrix
+
+
+def _integer_pair(value: object, *, name: str) -> tuple[int, int]:
+    result = tuple(
+        _integer_value(item, name=name) for item in _sequence(value, name=name)
+    )
+    if len(result) != 2:
+        raise ValueError(f"{name} must contain exactly two integers.")
+    return result[0], result[1]
+
+
+def _integer_value(value: object, *, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(f"{name} must be an integer.")
+    return value
+
+
+def _finite_number(value: object, *, name: str) -> float:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not np.isfinite(float(value))
+    ):
+        raise TypeError(f"{name} must be a finite number.")
+    return float(value)
+
+
+def _nonempty_text(value: object, *, name: str) -> str:
+    if not isinstance(value, str) or not value or value != value.strip():
+        raise TypeError(f"{name} must be a non-empty trimmed string.")
+    return value
 
 
 def _mapping(value: object, *, name: str) -> Mapping[str, object]:

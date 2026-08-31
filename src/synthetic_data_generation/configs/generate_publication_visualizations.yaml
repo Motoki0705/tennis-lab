@@ -52,6 +52,12 @@ publication:
     line_width: 1.4
     font_size: 12
     history_frames: 12
+    # Captured paths retain every centre/pose, while frusta/directions/labels use
+    # deterministic endpoint-inclusive even spacing bounded by this value.
+    maximum_rendered_captured_cameras: 24
+    # A BLCS/PLCS camera is coincident only when both finite tolerances pass.
+    coincident_centre_tolerance_metres: 0.000001
+    coincident_forward_angle_tolerance_degrees: 0.000001
     # Lightweight PR-embedding policy: 12 MiB each, 72 MiB total media.
     maximum_artifact_bytes: 12582912
     maximum_bundle_bytes: 75497472

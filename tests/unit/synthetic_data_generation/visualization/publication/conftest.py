@@ -26,11 +26,15 @@ from src.synthetic_data_generation.visualization.publication.cameras import (
     METRIC_CAMERA_COORDINATE_CONVENTION,
 )
 from src.synthetic_data_generation.visualization.publication.contracts import (
+    CAMERA_DRAWING_POLICY_SCHEMA,
+    CAPTURED_CAMERA_SELECTION_POLICY,
     PUBLICATION_BUNDLE_SCHEMA,
     PUBLICATION_COORDINATE_CONTRACT,
     PUBLICATION_MANIFEST_SCHEMA,
     PUBLICATION_REQUEST_SCHEMA,
     REQUIRED_PUBLICATION_ARTIFACTS,
+    STATIC_RIG_SELECTION_POLICY,
+    CameraRenderingSemantics,
     PublicationArtifactName,
     PublicationArtifactRecord,
     PublicationDrawingSettings,
@@ -41,6 +45,7 @@ from src.synthetic_data_generation.visualization.publication.datasets import (
 )
 from src.synthetic_data_generation.visualization.publication.figures import (
     CAMERA_COVERAGE_METRIC_SCHEMA,
+    CAMERA_RIG_COMPARISON_METRIC_SCHEMA,
     OVERVIEW_LAYOUT_SCHEMA,
 )
 
@@ -92,6 +97,9 @@ def publication_config_payload(tmp_path: Path) -> dict[str, object]:
                 "line_width": 1.0,
                 "font_size": 10,
                 "history_frames": 2,
+                "maximum_rendered_captured_cameras": 24,
+                "coincident_centre_tolerance_metres": 1.0e-6,
+                "coincident_forward_angle_tolerance_degrees": 1.0e-6,
                 "maximum_artifact_bytes": 1_000_000,
                 "maximum_bundle_bytes": 2_000_000,
             },
@@ -118,6 +126,9 @@ def publication_drawing() -> PublicationDrawingSettings:
         line_width=1.0,
         font_size=10,
         history_frames=2,
+        maximum_rendered_captured_cameras=24,
+        coincident_centre_tolerance_metres=1.0e-6,
+        coincident_forward_angle_tolerance_degrees=1.0e-6,
         maximum_artifact_bytes=1_000_000,
         maximum_bundle_bytes=2_000_000,
     )
@@ -135,6 +146,66 @@ def _write_png(path: Path) -> None:
         optimize=False,
         compress_level=9,
     )
+
+
+def _camera_pose_mapping(
+    *,
+    owner: str,
+    logical_scene_id: str | None,
+    semantics: CameraRenderingSemantics,
+) -> tuple[dict[str, object], ...]:
+    camera_ids = ("cam-0", "cam-1")
+    policy = (
+        CAPTURED_CAMERA_SELECTION_POLICY
+        if semantics is CameraRenderingSemantics.CAPTURED_TRAJECTORY
+        else STATIC_RIG_SELECTION_POLICY
+    )
+    summary: dict[str, object] = {
+        "mapping_type": "camera_rendering_policy",
+        "owner": owner,
+        "logical_scene_id": logical_scene_id,
+        "rendering_semantics": semantics.value,
+        "drawing_policy_schema": CAMERA_DRAWING_POLICY_SCHEMA,
+        "selection_policy": policy,
+        "camera_count": 2,
+        "rendered_camera_count": 2,
+        "rendered_camera_indices": [0, 1],
+        "rendered_camera_ids": list(camera_ids),
+    }
+    poses: list[dict[str, object]] = []
+    for index, camera_id in enumerate(camera_ids):
+        transform = np.eye(4, dtype=np.float64)
+        transform[0, 3] = float(index)
+        poses.append(
+            {
+                "mapping_type": "camera_pose",
+                "owner": owner,
+                "logical_scene_id": logical_scene_id,
+                "camera_index": index,
+                "camera_id": camera_id,
+                "source_frame_index": index,
+                "width": 64,
+                "height": 64,
+                "intrinsics": [50.0, 0.0, 32.0, 0.0, 50.0, 32.0, 0.0, 0.0, 1.0],
+                "camera_to_metric_scene": transform.tolist(),
+                "image_path": f"images/{camera_id}.png",
+            }
+        )
+    return (summary, *poses)
+
+
+def _comparison_metrics() -> dict[str, object]:
+    return {
+        "schema": CAMERA_RIG_COMPARISON_METRIC_SCHEMA,
+        "pose_matching": "strict_ordered_camera_id",
+        "camera_count": 2,
+        "coincident_camera_count": 2,
+        "coincident_camera_fraction": 1.0,
+        "maximum_centre_distance_metres": 0.0,
+        "maximum_forward_angle_difference_degrees": 0.0,
+        "centre_tolerance_metres": 1.0e-6,
+        "forward_angle_tolerance_degrees": 1.0e-6,
+    }
 
 
 def _artifact_mapping(
@@ -170,13 +241,42 @@ def _artifact_mapping(
         PublicationArtifactName.BLCS_CAMERA_LAYOUT,
         PublicationArtifactName.PLCS_CAMERA_LAYOUT,
     }:
-        return ({"camera_id": "cam-0"}, {"camera_id": "cam-1"})
+        if artifact is PublicationArtifactName.CAPTURED_CAMERA_TRAJECTORY:
+            return _camera_pose_mapping(
+                owner="reconstruction",
+                logical_scene_id=None,
+                semantics=CameraRenderingSemantics.CAPTURED_TRAJECTORY,
+            )
+        owner = (
+            "blcs" if artifact is PublicationArtifactName.BLCS_CAMERA_LAYOUT else "plcs"
+        )
+        return _camera_pose_mapping(
+            owner=owner,
+            logical_scene_id="logical-0",
+            semantics=CameraRenderingSemantics.STATIC_RIG,
+        )
     if artifact is PublicationArtifactName.CAMERA_LAYOUT_COMPARISON:
+        blcs = _camera_pose_mapping(
+            owner="blcs",
+            logical_scene_id="logical-0",
+            semantics=CameraRenderingSemantics.STATIC_RIG,
+        )
+        plcs = _camera_pose_mapping(
+            owner="plcs",
+            logical_scene_id="logical-0",
+            semantics=CameraRenderingSemantics.STATIC_RIG,
+        )
         return (
-            {"camera_id": "cam-0"},
-            {"camera_id": "cam-1"},
-            {"camera_id": "cam-0"},
-            {"camera_id": "cam-1"},
+            {
+                "mapping_type": "camera_rig_comparison",
+                "rendering_semantics": CameraRenderingSemantics.STATIC_RIG.value,
+                "pose_matching": "strict_ordered_camera_id",
+                "blcs_camera_ids": ["cam-0", "cam-1"],
+                "plcs_camera_ids": ["cam-0", "cam-1"],
+                "comparison_metrics": _comparison_metrics(),
+            },
+            *blcs[1:],
+            *plcs[1:],
         )
     return tuple(
         {
@@ -221,6 +321,7 @@ def _source_owners() -> dict[str, object]:
             "logical_scene_id": "logical-0",
             "gif_camera_id": "cam-0",
             "camera_ids": ["cam-0", "cam-1"],
+            "camera_rendering_semantics": CameraRenderingSemantics.STATIC_RIG.value,
             "source_count": 3,
             "source_fps": 25.0,
             "source_size": [128, 72],
@@ -236,6 +337,7 @@ def _source_owners() -> dict[str, object]:
             "logical_scene_id": "logical-0",
             "gif_camera_id": "cam-0",
             "camera_ids": ["cam-0", "cam-1"],
+            "camera_rendering_semantics": CameraRenderingSemantics.STATIC_RIG.value,
             "source_count": 3,
             "source_fps": None,
             "source_size": [128, 72],
@@ -258,6 +360,9 @@ def _source_owners() -> dict[str, object]:
             "schema": "nht_standard_cameras_v1",
             "scene_id": "scene-0",
             "camera_ids": ["cam-0", "cam-1"],
+            "camera_rendering_semantics": (
+                CameraRenderingSemantics.CAPTURED_TRAJECTORY.value
+            ),
             "metric_conversion": "MetricSceneAdapter",
         },
     }
@@ -343,6 +448,9 @@ def valid_publication_bundle(tmp_path: Path) -> Path:
                 "line_width": 1.0,
                 "font_size": 10,
                 "history_frames": 2,
+                "maximum_rendered_captured_cameras": 24,
+                "coincident_centre_tolerance_metres": 1.0e-6,
+                "coincident_forward_angle_tolerance_degrees": 1.0e-6,
                 "maximum_artifact_bytes": 1_000_000,
                 "maximum_bundle_bytes": 2_000_000,
             },
@@ -359,6 +467,8 @@ def valid_publication_bundle(tmp_path: Path) -> Path:
             "ground_plane_frame": GROUND_PLANE_FRAME_SCHEMA,
             "alignment_agreement_metrics": ALIGNMENT_AGREEMENT_METRIC_SCHEMA,
             "camera_coverage_metrics": CAMERA_COVERAGE_METRIC_SCHEMA,
+            "camera_rig_comparison_metrics": CAMERA_RIG_COMPARISON_METRIC_SCHEMA,
+            "camera_drawing_policy": CAMERA_DRAWING_POLICY_SCHEMA,
             "overview_layout": OVERVIEW_LAYOUT_SCHEMA,
             "gif_encoder": "pillow-gif-fixed-palette-v1",
             "camera_coordinate_convention": METRIC_CAMERA_COORDINATE_CONVENTION,
@@ -366,7 +476,44 @@ def valid_publication_bundle(tmp_path: Path) -> Path:
         },
         metrics={
             "alignment": {"schema": ALIGNMENT_AGREEMENT_METRIC_SCHEMA},
-            "cameras": {},
+            "cameras": {
+                "reconstruction": {
+                    "schema": CAMERA_COVERAGE_METRIC_SCHEMA,
+                    "owner": "reconstruction",
+                    "rendering_semantics": (
+                        CameraRenderingSemantics.CAPTURED_TRAJECTORY.value
+                    ),
+                    "camera_count": 2,
+                    "centre_bounds_metric_scene": [
+                        [0.0, 0.0, 0.0],
+                        [1.0, 0.0, 0.0],
+                    ],
+                    "trajectory_segment_count": 1,
+                    "trajectory_length_metres": 1.0,
+                    "maximum_adjacent_displacement_metres": 1.0,
+                },
+                "blcs": {
+                    "schema": CAMERA_COVERAGE_METRIC_SCHEMA,
+                    "owner": "blcs",
+                    "rendering_semantics": CameraRenderingSemantics.STATIC_RIG.value,
+                    "camera_count": 2,
+                    "centre_bounds_metric_scene": [
+                        [0.0, 0.0, 0.0],
+                        [1.0, 0.0, 0.0],
+                    ],
+                },
+                "plcs": {
+                    "schema": CAMERA_COVERAGE_METRIC_SCHEMA,
+                    "owner": "plcs",
+                    "rendering_semantics": CameraRenderingSemantics.STATIC_RIG.value,
+                    "camera_count": 2,
+                    "centre_bounds_metric_scene": [
+                        [0.0, 0.0, 0.0],
+                        [1.0, 0.0, 0.0],
+                    ],
+                },
+                "comparison": _comparison_metrics(),
+            },
         },
         asset_policy={
             "maximum_artifact_bytes": 1_000_000,

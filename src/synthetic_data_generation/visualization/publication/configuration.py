@@ -87,6 +87,9 @@ def build_publication_request(config: DictConfig) -> PublicationRequest:
             "line_width",
             "font_size",
             "history_frames",
+            "maximum_rendered_captured_cameras",
+            "coincident_centre_tolerance_metres",
+            "coincident_forward_angle_tolerance_degrees",
             "maximum_artifact_bytes",
             "maximum_bundle_bytes",
         },
@@ -151,6 +154,18 @@ def build_publication_request(config: DictConfig) -> PublicationRequest:
             font_size=_integer(drawing["font_size"], name="drawing.font_size"),
             history_frames=_integer(
                 drawing["history_frames"], name="drawing.history_frames"
+            ),
+            maximum_rendered_captured_cameras=_integer(
+                drawing["maximum_rendered_captured_cameras"],
+                name="drawing.maximum_rendered_captured_cameras",
+            ),
+            coincident_centre_tolerance_metres=_number(
+                drawing["coincident_centre_tolerance_metres"],
+                name="drawing.coincident_centre_tolerance_metres",
+            ),
+            coincident_forward_angle_tolerance_degrees=_number(
+                drawing["coincident_forward_angle_tolerance_degrees"],
+                name="drawing.coincident_forward_angle_tolerance_degrees",
             ),
             maximum_artifact_bytes=_integer(
                 drawing["maximum_artifact_bytes"], name="drawing.maximum_artifact_bytes"
