@@ -31,8 +31,8 @@ reference frame へ position と court-space velocity を同じ proper rotation 
 - **`datamodule.py`**: `BLCSDataModule`。composition rootで選択済みのcollateを受け取り、model variantを認識しない。
 - **`augmentation.py`**: `BLCSBallObservationAugmentation`。detector誤差を模した8段のUVノイズパイプライン。
 - **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
-- **`tracking_dataset.py` / `tracking_datamodule.py`**: scene読込後にclip/viewをsampleし、physical observationとtargetを独立したfixed-Q lifecycle slotへpackingするDataset/DataModule。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成する。val/testは常に`scene_dir`上の固定splitを使う。
-- **`tracking_augmentation.py`**: fixed-Q lifecycle列を並べ替えず、clean GTを保持したまま観測だけへdetector noise/dropout/false-positiveを適用するshape adapter。
+- **`tracking_dataset.py` / `tracking_datamodule.py`**: scene読込後にclip/viewをsampleし、physical-width観測をcorruptしてcamera-local trackingしたfixed-Q入力と、独立にpackingしたtargetを構成するDataset/DataModule。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成する。val/testは常に`scene_dir`上の固定splitを使う。
+- **`tracking_augmentation.py`**: query slotを作る前のphysical detectionへdetector noise/dropout/false-positiveを適用し、debug provenanceを更新するadapter。
 
 ### models/
 - **`blcs_model.py`**: `BLCSModel`。single-view用decoder-only Transformer(court+ballトークン)。
@@ -80,7 +80,13 @@ reference frame へ position と court-space velocity を同じ proper rotation 
 
 ## Multi-ball tracking
 
-tracking modelの観測幅は常に `P=Q=model.num_queries` です。BLCS固有の5観測tensor shapeは `ball_uv (B,V,T,Q,2)`、`ball_vis (B,V,T,Q)`、`court_kp (B,V,T,14,2)`、`court_vis (B,V,T,14)`、`padding_mask (B,V,T)` です。v1 / v2のforward差分、reference field、selector座標、checkpoint・推論指定は共有正本を参照してください。physical scene入力は全viewで同期したlifecycle assignmentによってfixed-Qへpackingします。clip全体のphysical object数はQを超えても構いませんが、同時存在数がQを超える入力は切り捨てずrejectします。target lifecycle assignmentとobservation assignmentは別物であり、trainingではDataLoader workerのTorch RNGから独立にslot permutationをdrawし、evaluationではdeterministicに割り当てます。collateはview/timeだけをpaddingし、Q軸はpaddingしません。
+実観測、noise後association、camera-local slot、capacity error、debug metadata、設定と移行の完全な契約は [`tasks/base/README.md`](../base/README.md) を単一の正本とします。
+
+BLCSでは1 detectionを1個のnormalized UV point（`K=1`）として扱い、`min_common_keypoints=1`、`cost_reduction=mean`を必須とします。pre-Q augmentationには`model.num_queries`をsynthetic false-positive容量として明示的に渡しますが、元からvisibleなcarrierは制限しません。既定の`data.association`は`max_distance=0.04`、`max_missed_frames=2`、`min_reuse_gap_frames=4`、velocity prediction有効、overflow errorです。通常版とchunked版は同じassociation configをcomposeします。完全な容量契約は共有正本を参照してください。
+
+modelへ渡すBLCS固有の5観測tensor shapeは `ball_uv (B,V,T,Q,2)`、`ball_vis (B,V,T,Q)`、`court_kp (B,V,T,14,2)`、`court_vis (B,V,T,14)`、`padding_mask (B,V,T)` のままです。`candidate_gt_index`と`clean_ball_uv/clean_ball_vis`はdebug/evaluation専用tensorで、model入力ではありません。
+
+Issue #832より前のtracking checkpoint/resultは新しいassociation学習契約と意味的に互換ではないため、必ず再学習・再評価してください。旧設定とmetricの詳しい移行条件は共有正本を参照してください。
 
 `ball_vis`は観測tokenとlearned invisible tokenの選択だけに使います。非padding位置では`ball_vis=False`のQ tokenもattentionへ参加します。各stageは `mHC object temporal -> global spatial(Q+VQ) -> query temporal` の順で、temporal modeはconstructor時に `CSWA, CSWA, CSWA, Global` のcycleへ固定されます。nested `model.mhc` / `model.cswa` configはunknown/missing/invalid値をrejectし、`model.cswa.backend=cuda`はextensionが利用不能ならreferenceへfallbackせずconstruction時に失敗します。
 

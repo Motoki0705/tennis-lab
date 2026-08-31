@@ -1,0 +1,8 @@
+association:
+  max_distance: 0.08
+  max_missed_frames: 8
+  min_reuse_gap_frames: 4
+  use_velocity_prediction: true
+  min_common_keypoints: 4
+  cost_reduction: median
+  overflow_policy: error

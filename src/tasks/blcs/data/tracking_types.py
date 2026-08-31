@@ -15,9 +15,9 @@ class BLCSTrackingBatch(TypedDict):
 
     The authoritative shapes and mask semantics are documented in
     ``src/tasks/blcs/README.md``. ``candidate_gt_index`` validates the
-    lifecycle-packed observation axis and must never be passed to the tracking
-    model. Visibility selects observed/invisible embeddings only; padding alone
-    controls attention participation.
+    post-association observation-slot axis and must never be passed to the
+    tracking model. Visibility selects observed/invisible embeddings only;
+    padding alone controls attention participation.
     """
 
     scene_format_version: Tensor

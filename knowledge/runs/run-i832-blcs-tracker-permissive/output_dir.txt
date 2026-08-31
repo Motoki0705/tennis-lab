@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-832-deterministic-2d-tracking/outputs/blcs/issue-832/tracker-permissive-r3/logs/version_0/checkpoints

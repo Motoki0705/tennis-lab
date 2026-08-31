@@ -1,0 +1,14 @@
+{
+  "run_id": "1788045628265599880_1375448_i832_blcs_tracker_conservative_r3",
+  "name": "i832_blcs_tracker_conservative_r3",
+  "command": "test \"$PWD\" = \"/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-832-deterministic-2d-tracking\" || { echo \"wrong CWD: $PWD\" >&2; exit 70; }; /home/kamimura/projects/tennis-lab/.venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking paths.data_root=/home/kamimura/projects/tennis-lab/data run.seed=832 run.output_dir=blcs/issue-832/tracker-conservative-r3 data.augmentation.false_positive.enabled=false training.trainer.max_epochs=100 training.trainer.check_val_every_n_epoch=5 training.early_stopping.enabled=false training.qualitative_logging.enabled=false data.association.max_distance=0.04 data.association.max_missed_frames=2",
+  "provider": "codex",
+  "session": "01a04ddb-48b6-7342-96a7-be95090cc969",
+  "issue": "832",
+  "commit": "01b6cb5f46bb6c7bdd7f4735007f84d93f1689de",
+  "branch": "feat/issue-832-deterministic-2d-tracking",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-832-deterministic-2d-tracking",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-832-deterministic-2d-tracking",
+  "captured_at": "2026-08-30T14:57:25+09:00"
+}

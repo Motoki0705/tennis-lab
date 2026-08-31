@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, cast
+from typing import Any, NamedTuple, cast
 
 import torch
 from torch import Tensor
@@ -28,6 +28,13 @@ from src.utils.data.augmentation import (
     scale_uv_with_visibility,
 )
 from src.utils.tensor_utils import clone_tensor_dict
+
+
+class BLCSBallObservationTrackingResult(NamedTuple):
+    """Augmented sample plus visibility immediately before ball FP injection."""
+
+    sample: BLCSMultiViewSample
+    visibility_before_false_positive: Tensor
 
 
 def _float_value(config: Mapping[str, object], key: str, *, path: str) -> float:
@@ -300,8 +307,18 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation[BLCSMultiViewS
 
     def forward(self, sample: BLCSMultiViewSample) -> BLCSMultiViewSample:
         """Return an augmented BLCS sample."""
+        return self.forward_with_tracking_provenance(sample).sample
+
+    def forward_with_tracking_provenance(
+        self,
+        sample: BLCSMultiViewSample,
+    ) -> BLCSBallObservationTrackingResult:
+        """Return the augmented sample and its pre-false-positive visibility."""
         if not self.enabled:
-            return sample
+            return BLCSBallObservationTrackingResult(
+                sample=sample,
+                visibility_before_false_positive=sample["ball_vis"].bool().clone(),
+            )
 
         out: BLCSMultiViewSample = clone_tensor_dict(sample)
         ball_uv = out["ball_uv"]
@@ -338,6 +355,7 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation[BLCSMultiViewS
         out["ball_vis"] = self._apply_burst_dropout(out["ball_vis"])
         dropped_mask |= (before_vis > 0) & (out["ball_vis"] <= 0)
 
+        visibility_before_false_positive = out["ball_vis"].bool().clone()
         out["ball_uv"], out["ball_vis"] = self._apply_false_positive(
             out["ball_uv"],
             out["ball_vis"],
@@ -346,7 +364,10 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation[BLCSMultiViewS
 
         out["ball_uv"] = out["ball_uv"].clamp(0.0, 1.0)
         out["court_kp"] = out["court_kp"].clamp(0.0, 1.0)
-        return out
+        return BLCSBallObservationTrackingResult(
+            sample=out,
+            visibility_before_false_positive=visibility_before_false_positive,
+        )
 
     def _apply_uv_scale(self, sample: BLCSMultiViewSample) -> None:
         if not self._sample_activation(
@@ -469,4 +490,7 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation[BLCSMultiViewS
         return result
 
 
-__all__ = ["BLCSBallObservationAugmentation"]
+__all__ = [
+    "BLCSBallObservationAugmentation",
+    "BLCSBallObservationTrackingResult",
+]

@@ -14,6 +14,7 @@ from src.tasks.base.data.canonical_tracking import (
     pad_and_stack_tracking_batch,
 )
 from src.tasks.base.data.lifecycle_slots import build_fixed_lifecycle_assignment
+from src.tasks.base.data.observation_tracking import track_multiview_observations
 from src.tasks.base.data.scene_dataset import CameraSelection, Scene
 from src.tasks.base.generate_dataset import (
     CAMERA_VIEW_V2_SELECTOR,
@@ -34,10 +35,12 @@ from src.tasks.blcs.data.court_view import (
     validate_blcs_dataset_court_keypoints,
 )
 from src.tasks.blcs.data.observation_candidates import (
-    pack_observation_candidates,
+    PhysicalObservationCandidates,
+    align_clean_observations_after_tracking,
+    build_physical_observation_candidates,
 )
 from src.tasks.blcs.data.tracking_augmentation import (
-    BLCSTrackingCandidateAugmentation,
+    BLCSTrackingDetectionAugmentation,
 )
 
 BLCS_TRACKING_KEYS = (
@@ -60,7 +63,7 @@ BLCS_TRACKING_KEYS = (
 
 
 class BLCSTrackingDataset(CanonicalTrackingDataset):
-    """Load ID-ordered objects, pack lifecycle slots, and corrupt observations."""
+    """Corrupt physical detections, track per camera, and pack targets separately."""
 
     def __init__(
         self,
@@ -86,16 +89,25 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
         )
         self._court_views_by_scene = court_views_by_scene(court_dataset)
         super().__init__(**kwargs)
-        data_cfg = self._resolve_data_cfg(self.hydra_cfg)
-        self.tracking_augmentation = BLCSTrackingCandidateAugmentation(
-            data_cfg["augmentation"]
-        )
         if self.num_queries is None:
             raise ValueError("BLCS tracking requires model.num_queries.")
         if not self.pack_to_query_slots:
             raise ValueError(
                 "BLCS tracking requires data.lifecycle.pack_to_query_slots=true."
             )
+        if self.observation_tracking_config.min_common_keypoints != 1:
+            raise ValueError(
+                "BLCS point tracking requires data.association.min_common_keypoints=1."
+            )
+        if self.observation_tracking_config.cost_reduction != "mean":
+            raise ValueError(
+                "BLCS point tracking requires data.association.cost_reduction='mean'."
+            )
+        data_cfg = self._resolve_data_cfg(self.hydra_cfg)
+        self.tracking_augmentation = BLCSTrackingDetectionAugmentation(
+            data_cfg["augmentation"],
+            num_slots=self.num_queries,
+        )
 
     def build_sample(self, scene: Scene) -> dict[str, Any]:
         if self.num_queries is None:
@@ -149,13 +161,10 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
             position = court_points_physical_to_target(position, frame.provenance)
             velocity = court_vectors_physical_to_target(velocity, frame.provenance)
         physical_presence = physical_presence[window.sl]
-        randomize_slots = self.augment and self.randomize_slots_train
         target_packing = build_fixed_lifecycle_assignment(
             physical_presence,
             num_slots=num_queries,
             min_reuse_gap_frames=self.min_reuse_gap_frames,
-            randomize_slots=randomize_slots,
-            generator=None,
         )
 
         uv_rows: list[Tensor] = []
@@ -215,18 +224,17 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
 
         physical_uv = torch.stack(uv_rows)
         physical_vis = torch.stack(vis_rows)
-        observations = pack_observation_candidates(
+        observations = build_physical_observation_candidates(
             ball_uv=physical_uv,
             ball_vis=physical_vis,
             physical_presence=physical_presence,
-            num_slots=num_queries,
-            min_reuse_gap_frames=self.min_reuse_gap_frames,
-            randomize_slots=randomize_slots,
         )
         sample = {
             "scene_format_version": torch.tensor(4),
-            "ball_uv": observations.uv,
-            "ball_vis": observations.vis,
+            "_physical_ball_uv": observations.uv,
+            "_physical_ball_vis": observations.vis,
+            "_physical_gt_index": observations.gt_index,
+            "_selected_camera_indices": tuple(int(index) for index in cameras.indices),
             "court_kp": torch.stack(court_rows),
             "court_vis": torch.stack(court_vis_rows),
             "padding_mask": torch.zeros(
@@ -237,9 +245,6 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
             "target_presence": target_packing.target_presence,
             "target_instance_id": target_packing.target_instance_id,
             "target_slot_mask": target_packing.target_presence.any(0),
-            "clean_ball_uv": observations.uv.clone(),
-            "clean_ball_vis": observations.vis.clone(),
-            "candidate_gt_index": observations.gt_index,
             "court_reference_provenance": frame.provenance,
             "selected_camera_ids": tuple(
                 view.camera_id for view in frame.selected_views
@@ -259,16 +264,66 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
         return sample
 
     def augment_sample(self, sample: dict[str, Any]) -> dict[str, Any]:
-        if not self.augment:
-            return sample
-        metadata = {
-            key: value for key, value in sample.items() if not isinstance(value, Tensor)
-        }
-        tensor_sample = {
-            key: value for key, value in sample.items() if isinstance(value, Tensor)
-        }
-        augmented: dict[str, Tensor] = self.tracking_augmentation(tensor_sample)
-        return {**augmented, **metadata}
+        """Apply optional corruption before deterministic camera-local tracking."""
+        if self.num_queries is None:
+            raise RuntimeError("BLCS tracking dataset lost its fixed query width.")
+        court_vis = sample["court_vis"]
+        court_kp = sample["court_kp"].masked_fill(
+            ~court_vis.unsqueeze(-1),
+            0.0,
+        )
+        physical = PhysicalObservationCandidates(
+            uv=sample["_physical_ball_uv"],
+            vis=sample["_physical_ball_vis"],
+            gt_index=sample["_physical_gt_index"],
+        )
+        detections = (
+            self.tracking_augmentation(
+                physical,
+                court_kp=court_kp,
+                court_vis=court_vis,
+            )
+            if self.augment
+            else physical
+        )
+        camera_indices = sample["_selected_camera_indices"]
+        if not isinstance(camera_indices, tuple):
+            raise TypeError("Selected camera indices must be an immutable tuple.")
+        tracked = track_multiview_observations(
+            detections.uv.unsqueeze(-2),
+            detections.vis.unsqueeze(-1),
+            num_slots=self.num_queries,
+            config=self.observation_tracking_config,
+            camera_indices=camera_indices,
+            debug_provenance=detections.gt_index,
+        )
+        if tracked.debug_provenance is None:
+            raise RuntimeError("BLCS observation tracking lost debug provenance.")
+        aligned_debug = align_clean_observations_after_tracking(
+            clean=physical,
+            detection_indices=tracked.detection_indices,
+            candidate_gt_index=tracked.debug_provenance,
+        )
+
+        output = dict(sample)
+        for internal_key in (
+            "_physical_ball_uv",
+            "_physical_ball_vis",
+            "_physical_gt_index",
+            "_selected_camera_indices",
+        ):
+            del output[internal_key]
+        output.update(
+            {
+                "ball_uv": tracked.values[..., 0, :],
+                "ball_vis": tracked.visibility[..., 0],
+                "court_kp": court_kp,
+                "clean_ball_uv": aligned_debug.clean_uv,
+                "clean_ball_vis": aligned_debug.clean_vis,
+                "candidate_gt_index": aligned_debug.gt_index,
+            }
+        )
+        return output
 
 
 def collate_blcs_tracking_batch(
