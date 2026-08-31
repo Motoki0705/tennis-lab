@@ -1,0 +1,14 @@
+{
+  "run_id": "1788143669443712009_3048549_i801_eval_beta005_e69_thr050_currentmetrics",
+  "name": "i801_eval_beta005_e69_thr050_currentmetrics",
+  "command": "CUDA_VISIBLE_DEVICES=0 /home/kamimura/projects/tennis-lab/.venv/bin/python -c 'import torch; import pytorch_lightning as pl; from omegaconf import OmegaConf; from src.tasks.plcs.training.tracking_lightning_module import PLCSTrackingLightningModule as M; from src.tasks.plcs.data.tracking_datamodule import PLCSTrackingDataModule as D; p=\"/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-tracking-pose-beta005/outputs/plcs/i801_dref_pose_beta005_s42_r1/logs/version_0/checkpoints/plcs-epoch=69.ckpt\"; b=torch.load(p,map_location=\"cpu\",weights_only=False); c=b[\"hyper_parameters\"][\"config\"]; c.paths.data_root=\"/home/kamimura/projects/tennis-lab/data\"; c.data.scene_dir=\"plcs/multi_object_camera_view_v2\"; c.data.seq_len_range=[128,128]; c.data.num_views_range=[6,6]; c.data.evaluation_reference_camera_id=\"camera_2\"; c.data.batch_size=8; c.data.num_workers=16; OmegaConf.update(c,\"tracking_metrics.presence_threshold\",0.5,force_add=True); OmegaConf.update(c,\"tracking_metrics.duplicate_distance\",0.05,force_add=True); OmegaConf.update(c,\"tracking_metrics.id_switch_distance\",0.05,force_add=True); m=M.load_from_checkpoint(p,config=c,map_location=\"cpu\",weights_only=False); d=D(c); t=pl.Trainer(accelerator=\"gpu\",devices=1,precision=\"bf16-mixed\",logger=False,enable_checkpointing=False,enable_progress_bar=False,enable_model_summary=False); print(t.test(m,datamodule=d))'",
+  "provider": "codex",
+  "session": "01a04915-27a4-7b62-9f6b-34275561fded",
+  "issue": "801",
+  "commit": "fafff3ae9f950e2bac274aee2b922defe8c59d56",
+  "branch": "experiments/plcs-tracking-pose-beta005",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-tracking-pose-beta005",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-tracking-pose-beta005",
+  "captured_at": "2026-08-31T11:36:51+09:00"
+}
