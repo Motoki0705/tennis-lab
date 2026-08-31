@@ -16,8 +16,8 @@ WSL MCP owns runtime work only:
 - run arbitrary network-disabled shell commands in Docker;
 - expose the complete local `tennis-lab` project read-write for real data,
   generated chunks, outputs, checkpoints, artifacts, caches, and experiments;
-- serialize CUDA and long-running work through the external training queue and
-  the same host GPU lock used by local GitHub Actions;
+- coordinate CUDA and long-running work through a logical two-slot training
+  queue and the same host GPU lock used by local GitHub Actions;
 - return job state and secret-redacted output.
 
 It does not expose MCP tools for source browsing, patching, committing, or
@@ -84,7 +84,17 @@ and one of two roots. `execution_root="revision"` uses exact code with persisten
 project data/output/checkpoint roots linked in. `execution_root="project"` uses
 the complete current local project tree. Direct jobs may run for up to 24 hours;
 at most two run concurrently and each is limited to 24 GiB. GPU or heavier work
-uses `enqueue_training`, is serialized, and receives 48 GiB.
+uses `enqueue_training`, declares `resource="all"` (default) or `"half"`, and
+receives 48 GiB of container memory. `half` is a logical reservation only: it
+does not change CUDA visibility, configure MIG, or enforce a VRAM hard cap.
+`cancel_training_job` delegates queued/waiting cancellation to the trusted queue;
+for a running sandbox it owns the deterministic container name, uses
+`docker stop --time 10` with bounded kill escalation when needed, and verifies
+the container is non-running before atomically acknowledging external teardown.
+Only then may it return `cancellation-requested`. Until both that acknowledgement
+and the queue-owned host PGID teardown are verified, status remains nonterminal
+`terminating` with `wait=external-teardown` and the logical GPU allocation stays
+held. Stop, wait, or acknowledgement failure is reported and fails closed.
 
 Network access is intentionally unavailable. Downloads must use a separately
 reviewed workflow rather than an arbitrary MCP command. The checked-in
@@ -122,6 +132,7 @@ enqueue_training(
   execution_root="revision",
   working_directory=".",
   timeout_seconds=86400,
+  resource="half",
   command="python -m src.tasks.blcs.scripts.train --config-name train_tracking_chunked"
 )
 ```
@@ -133,7 +144,7 @@ It checks out the reviewed `main` revision into the Actions workspace, provision
 a lockfile-keyed venv outside `tennis-lab`, requires an exact clean SHA and fixed
 origin, atomically installs the external runtime, reuses the stored Tunnel ID and
 runtime key, restarts both services, and verifies MCP discovery, real project
-read-write access, host isolation, CPU tests, CUDA, and the serial queue.
+read-write access, host isolation, CPU tests, CUDA, and the logical GPU queue.
 
 Do not run `configure-secure-tunnel --source-root
 /home/kamimura/projects/tennis-lab`; the canonical project is intentionally
