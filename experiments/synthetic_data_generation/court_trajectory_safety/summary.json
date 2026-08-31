@@ -1,6 +1,6 @@
 {
   "schema": "court_trajectory_safety_evidence_v2",
-  "status": "quality_evidence_complete_final_v4_pending",
+  "status": "complete",
   "scene_id": "B00",
   "decision": "quality_only_rejected",
   "production_authority": "geometry_only",
@@ -900,7 +900,8 @@
       "train": 31,
       "validation": 4
     },
-    "final_release_status": "pending_final_gpu_dataset"
+    "final_release_status": "passed",
+    "accepted_frame_count": 2016
   },
   "source_authority": {
     "status": "authoritative_b00_matches_immutable_ingest_copy",
@@ -909,7 +910,25 @@
     "sha256": "6a4387e6061b4d81fabd5e99a6f0814953469138ed52eed7aec665b37c50962c",
     "size_bytes": 1062274272
   },
-  "final_dataset": null,
+  "final_dataset": {
+    "schema": "canonical_court_dataset_v4",
+    "status": "complete",
+    "path": "outputs/court_trajectory_safety/B00-required-coverage-final",
+    "proposal_count": 2016,
+    "accepted_frame_count": 2016,
+    "rejected_frame_count": 0,
+    "accepted_fraction": 1.0,
+    "trajectory_group_count": 39,
+    "resolved_shard_count": 8,
+    "split_leakage_count": 0,
+    "selected_support_violation_count": 0,
+    "group_disjoint_splits": true,
+    "renderer_error_count": 0,
+    "renderer_invocation_count": 8,
+    "dataset_manifest_sha256": "7eb953056cb417671dd9f5d1066aa5b61e13b1e5ecec60953f73553bba193ad1",
+    "compact_evidence_sha256": "72e8417ae2c7621eee01e0b4d2ee8173cc5b26fb4f67cd146428ab744f40882a",
+    "compact_evidence_file_count": 12
+  },
   "representative_contact_sheets": [
     {
       "kind": "consensus_artifact_heavy",
@@ -939,5 +958,5 @@
       "height": 600
     }
   ],
-  "canonical_evidence_sha256": "1dd2481bbb4a2e7e351cc6fd1f6521a90c02b07216f41623193fbfa98c98d623"
+  "canonical_evidence_sha256": "7db8e4c4727f13f65789d288358596dd708f2534931b5b24a69926f330aa97d3"
 }

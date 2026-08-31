@@ -699,9 +699,17 @@ def test_validate_complete_evidence_is_strictly_read_only(
     )
     monkeypatch.setattr(benchmark, "_evidence_report", lambda _summary: "complete\n")
 
-    before = tuple(
-        (path.relative_to(tmp_path).as_posix(), path.is_dir(), path.read_bytes() if path.is_file() else b"")
-        for path in sorted(tmp_path.rglob("*"))
+    before = (
+        tmp_path.stat().st_mtime_ns,
+        tuple(
+            (
+                path.relative_to(tmp_path).as_posix(),
+                path.is_dir(),
+                path.stat().st_mtime_ns,
+                path.read_bytes() if path.is_file() else b"",
+            )
+            for path in sorted(tmp_path.rglob("*"))
+        ),
     )
 
     def forbidden(*_args: object, **_kwargs: object) -> None:
@@ -716,9 +724,17 @@ def test_validate_complete_evidence_is_strictly_read_only(
         scene=cast(StandardSceneExport, object()),
         runtime=runtime,
     )
-    after = tuple(
-        (path.relative_to(tmp_path).as_posix(), path.is_dir(), path.read_bytes() if path.is_file() else b"")
-        for path in sorted(tmp_path.rglob("*"))
+    after = (
+        tmp_path.stat().st_mtime_ns,
+        tuple(
+            (
+                path.relative_to(tmp_path).as_posix(),
+                path.is_dir(),
+                path.stat().st_mtime_ns,
+                path.read_bytes() if path.is_file() else b"",
+            )
+            for path in sorted(tmp_path.rglob("*"))
+        ),
     )
 
     assert result == summary
