@@ -2,17 +2,23 @@ from __future__ import annotations
 
 from inspect import Parameter, signature
 from pathlib import Path
+from typing import cast
 
 import pytest
 import torch
 from omegaconf import DictConfig, OmegaConf
 
+from src.tasks.blcs.data.augmentation import (
+    BLCSBallObservationAugmentation,
+    BLCSBallObservationTrackingResult,
+)
 from src.tasks.blcs.data.observation_candidates import (
     PhysicalObservationCandidates,
 )
 from src.tasks.blcs.data.tracking_augmentation import (
     BLCSTrackingDetectionAugmentation,
 )
+from src.tasks.blcs.data.types import BLCSMultiViewSample
 
 _AUGMENTATION_CONFIG = (
     Path(__file__).resolve().parents[5]
@@ -95,6 +101,45 @@ def _single_frame_detections(
     )
 
 
+def _observation_sample(visibility: torch.Tensor) -> BLCSMultiViewSample:
+    ball_uv = torch.linspace(
+        0.1,
+        0.9,
+        visibility.numel() * 2,
+        dtype=torch.float32,
+    ).reshape(*visibility.shape, 2)
+    ball_uv = torch.where(visibility.unsqueeze(-1), ball_uv, 0.0)
+    views, frames = visibility.shape
+    return cast(
+        "BLCSMultiViewSample",
+        {
+            "ball_uv": ball_uv,
+            "ball_vis": visibility,
+            "court_kp": torch.linspace(
+                0.0,
+                1.0,
+                views * frames * 14 * 2,
+            ).reshape(views, frames, 14, 2),
+            "court_vis": torch.ones(views, frames, 14, dtype=torch.bool),
+        },
+    )
+
+
+def _assert_augmented_samples_equal(
+    left: BLCSMultiViewSample,
+    right: BLCSMultiViewSample,
+) -> None:
+    assert left.keys() == right.keys()
+    torch.testing.assert_close(left["ball_uv"], right["ball_uv"])
+    torch.testing.assert_close(left["ball_vis"], right["ball_vis"])
+    torch.testing.assert_close(left["court_kp"], right["court_kp"])
+    torch.testing.assert_close(left["court_vis"], right["court_vis"])
+    if "ball_uv_target" in left and "ball_uv_target" in right:
+        torch.testing.assert_close(left["ball_uv_target"], right["ball_uv_target"])
+    if "ball_vis_target" in left and "ball_vis_target" in right:
+        torch.testing.assert_close(left["ball_vis_target"], right["ball_vis_target"])
+
+
 def test_num_slots_is_required_and_must_be_a_positive_integer() -> None:
     config = _augmentation_config(enabled=False)
     parameter = signature(BLCSTrackingDetectionAugmentation).parameters["num_slots"]
@@ -107,6 +152,147 @@ def test_num_slots_is_required_and_must_be_a_positive_integer() -> None:
                 config,
                 num_slots=invalid_num_slots,  # type: ignore[arg-type]
             )
+
+
+def test_ordinary_and_tracking_only_augmentation_are_fixed_seed_equivalent() -> None:
+    sample = _observation_sample(
+        torch.tensor(
+            [[True, False, True], [False, True, False]],
+            dtype=torch.bool,
+        )
+    )
+    augmentation = BLCSBallObservationAugmentation(
+        _augmentation_config(
+            enabled=True,
+            gaussian_noise=True,
+            false_positive=True,
+        )
+    )
+
+    torch.manual_seed(832)
+    ordinary = augmentation.forward(sample)
+    ordinary_rng_state = torch.random.get_rng_state().clone()
+    torch.manual_seed(832)
+    tracking = augmentation.forward_with_tracking_provenance(sample)
+    tracking_rng_state = torch.random.get_rng_state().clone()
+
+    _assert_augmented_samples_equal(ordinary, tracking.sample)
+    torch.testing.assert_close(ordinary_rng_state, tracking_rng_state)
+    assert ordinary is not sample
+    assert tracking.sample is not sample
+
+
+def test_tracking_only_capture_handles_disabled_no_activation_dropout_and_active_fp() -> None:
+    visibility = torch.tensor([[True, False], [False, True]], dtype=torch.bool)
+    sample = _observation_sample(visibility)
+    disabled_augmentation = BLCSBallObservationAugmentation(
+        _augmentation_config(enabled=False)
+    )
+    disabled = disabled_augmentation.forward_with_tracking_provenance(sample)
+
+    no_activation_config = _augmentation_config(
+        enabled=True,
+        false_positive=True,
+    )
+    no_activation_config.false_positive.prob = 0.0
+    no_activation = BLCSBallObservationAugmentation(
+        no_activation_config
+    ).forward_with_tracking_provenance(sample)
+
+    dropped_then_replaced = BLCSBallObservationAugmentation(
+        _augmentation_config(
+            enabled=True,
+            visibility_dropout=True,
+            false_positive=True,
+        )
+    ).forward_with_tracking_provenance(sample)
+
+    absent_sample = _observation_sample(torch.zeros_like(visibility))
+    torch.manual_seed(833)
+    active = BLCSBallObservationAugmentation(
+        _augmentation_config(enabled=True, false_positive=True)
+    ).forward_with_tracking_provenance(absent_sample)
+
+    assert disabled.sample is sample
+    assert disabled_augmentation.forward(sample) is sample
+    torch.testing.assert_close(disabled.visibility_before_false_positive, visibility)
+    assert no_activation.sample is not sample
+    torch.testing.assert_close(
+        no_activation.visibility_before_false_positive,
+        visibility,
+    )
+    torch.testing.assert_close(no_activation.sample["ball_vis"], visibility)
+    assert not dropped_then_replaced.visibility_before_false_positive.any()
+    assert dropped_then_replaced.sample["ball_vis"].all()
+    assert not active.visibility_before_false_positive.any()
+    assert active.sample["ball_vis"].all()
+
+
+def test_tracking_provenance_is_local_for_repeated_interleaved_and_reentrant_calls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first_visibility = torch.tensor([[True, False], [False, False]])
+    second_visibility = torch.tensor([[False, True], [True, True]])
+    first_sample = _observation_sample(first_visibility)
+    second_sample = _observation_sample(second_visibility)
+    first_augmentation = BLCSBallObservationAugmentation(
+        _augmentation_config(enabled=True)
+    )
+    second_augmentation = BLCSBallObservationAugmentation(
+        _augmentation_config(enabled=True)
+    )
+
+    first_result = first_augmentation.forward_with_tracking_provenance(first_sample)
+    interleaved_result = second_augmentation.forward_with_tracking_provenance(
+        second_sample
+    )
+    repeated_result = first_augmentation.forward_with_tracking_provenance(second_sample)
+
+    torch.testing.assert_close(
+        first_result.visibility_before_false_positive,
+        first_visibility,
+    )
+    torch.testing.assert_close(
+        interleaved_result.visibility_before_false_positive,
+        second_visibility,
+    )
+    torch.testing.assert_close(
+        repeated_result.visibility_before_false_positive,
+        second_visibility,
+    )
+
+    original_apply = first_augmentation._apply_false_positive
+    nested_visibility: list[torch.Tensor] = []
+    reentering = False
+
+    def reentrant_apply(
+        ball_uv: torch.Tensor,
+        ball_vis: torch.Tensor,
+        *,
+        dropped_mask: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        nonlocal reentering
+        if not reentering:
+            reentering = True
+            nested_result = first_augmentation.forward_with_tracking_provenance(
+                second_sample
+            )
+            nested_visibility.append(
+                nested_result.visibility_before_false_positive
+            )
+            reentering = False
+        return original_apply(ball_uv, ball_vis, dropped_mask=dropped_mask)
+
+    monkeypatch.setattr(first_augmentation, "_apply_false_positive", reentrant_apply)
+    outer_result = first_augmentation.forward_with_tracking_provenance(first_sample)
+
+    torch.testing.assert_close(
+        outer_result.visibility_before_false_positive,
+        first_visibility,
+    )
+    torch.testing.assert_close(nested_visibility[0], second_visibility)
+    assert not hasattr(first_augmentation, "visibility_before_false_positive")
+    assert not hasattr(second_augmentation, "visibility_before_false_positive")
 
 
 def test_disabled_tracking_augmentation_is_identity_on_physical_width() -> None:
@@ -211,17 +397,23 @@ def test_false_positive_capacity_selection_is_deterministic_and_permutation_inva
     class _FixedFalsePositiveObservation:
         def __init__(self, post_false_positive_uv: torch.Tensor) -> None:
             self.post_false_positive_uv = post_false_positive_uv
-            self.visibility_before_false_positive: torch.Tensor | None = None
 
-        def forward(
+        def forward_with_tracking_provenance(
             self, sample: dict[str, torch.Tensor]
-        ) -> dict[str, torch.Tensor]:
-            self.visibility_before_false_positive = sample["ball_vis"].clone()
-            return {
-                **sample,
-                "ball_uv": self.post_false_positive_uv.clone(),
-                "ball_vis": torch.ones_like(sample["ball_vis"], dtype=torch.bool),
-            }
+        ) -> BLCSBallObservationTrackingResult:
+            return BLCSBallObservationTrackingResult(
+                sample=cast(
+                    "BLCSMultiViewSample",
+                    {
+                        **sample,
+                        "ball_uv": self.post_false_positive_uv.clone(),
+                        "ball_vis": torch.ones_like(
+                            sample["ball_vis"], dtype=torch.bool
+                        ),
+                    },
+                ),
+                visibility_before_false_positive=sample["ball_vis"].clone(),
+            )
 
     def run(post_false_positive_uv: torch.Tensor) -> PhysicalObservationCandidates:
         views, frames, carriers, _ = post_false_positive_uv.shape

@@ -16,34 +16,6 @@ from src.tasks.blcs.data.observation_candidates import PhysicalObservationCandid
 from src.tasks.blcs.data.types import BLCSMultiViewSample
 
 
-class _ProvenanceAwareBallObservationAugmentation(BLCSBallObservationAugmentation):
-    """Expose genuine visibility immediately before false-positive injection."""
-
-    visibility_before_false_positive: Tensor | None
-
-    def forward(self, sample: BLCSMultiViewSample) -> BLCSMultiViewSample:
-        self.visibility_before_false_positive = None
-        result = super().forward(sample)
-        if self.visibility_before_false_positive is None:
-            self.visibility_before_false_positive = sample["ball_vis"].bool().clone()
-        return result
-
-    def _apply_false_positive(
-        self,
-        ball_uv: Tensor,
-        ball_vis: Tensor,
-        *,
-        dropped_mask: Tensor,
-    ) -> tuple[Tensor, Tensor]:
-        self.visibility_before_false_positive = ball_vis.bool().clone()
-        result: tuple[Tensor, Tensor] = super()._apply_false_positive(
-            ball_uv,
-            ball_vis,
-            dropped_mask=dropped_mask,
-        )
-        return result
-
-
 class BLCSTrackingDetectionAugmentation:
     """Corrupt ``P`` detection carriers before camera-local Q association."""
 
@@ -54,7 +26,7 @@ class BLCSTrackingDetectionAugmentation:
             raise ValueError("num_slots must be positive.")
         self.config = config
         self.num_slots = num_slots
-        self.observation = _ProvenanceAwareBallObservationAugmentation(self.config)
+        self.observation = BLCSBallObservationAugmentation(self.config)
 
     def forward(
         self,
@@ -75,7 +47,10 @@ class BLCSTrackingDetectionAugmentation:
             "court_kp": court_kp,
             "court_vis": court_vis,
         }
-        augmented = self.observation.forward(cast("BLCSMultiViewSample", adapted))
+        augmentation_result = self.observation.forward_with_tracking_provenance(
+            cast("BLCSMultiViewSample", adapted)
+        )
+        augmented = augmentation_result.sample
         noisy_uv = (
             augmented["ball_uv"].reshape(views, carriers, frames, 2).permute(0, 2, 1, 3)
         )
@@ -86,12 +61,8 @@ class BLCSTrackingDetectionAugmentation:
             .bool()
         )
         visibility_before_false_positive = (
-            self.observation.visibility_before_false_positive
+            augmentation_result.visibility_before_false_positive
         )
-        if visibility_before_false_positive is None:
-            raise RuntimeError(
-                "BLCS corruption did not expose pre-false-positive visibility."
-            )
         visibility_before_false_positive = (
             visibility_before_false_positive.reshape(views, carriers, frames)
             .permute(0, 2, 1)

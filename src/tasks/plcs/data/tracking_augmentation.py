@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, Literal
+from typing import Any
 
 import torch
 from torch import Tensor
@@ -11,37 +11,6 @@ from torch import Tensor
 from src.tasks.base.data import limit_synthetic_false_positive_carriers
 from src.tasks.plcs.data.augmentation import PLCSObservationAugmentation
 from src.utils.tensor_utils import clone_tensor_dict
-
-
-class _ProvenanceAwareObservationAugmentation(PLCSObservationAugmentation):
-    """Expose genuine visibility immediately before false-positive injection."""
-
-    human_visibility_before_false_positive: Tensor | None
-
-    def forward(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
-        self.human_visibility_before_false_positive = None
-        output: dict[str, Tensor] = super().forward(sample)
-        if self.human_visibility_before_false_positive is None:
-            self.human_visibility_before_false_positive = sample["human_vis"].clone()
-        return output
-
-    def _apply_false_positive(
-        self,
-        keypoints: Tensor,
-        visibility: Tensor,
-        *,
-        entity: Literal["human", "court"],
-        dropped_mask: Tensor,
-    ) -> tuple[Tensor, Tensor]:
-        if entity == "human":
-            self.human_visibility_before_false_positive = visibility.clone()
-        result: tuple[Tensor, Tensor] = super()._apply_false_positive(
-            keypoints,
-            visibility,
-            entity=entity,
-            dropped_mask=dropped_mask,
-        )
-        return result
 
 
 class PLCSTrackingDetectionAugmentation:
@@ -62,28 +31,33 @@ class PLCSTrackingDetectionAugmentation:
             raise ValueError("num_slots must be positive.")
         self.config = config
         self.num_slots = num_slots
-        self.observation = _ProvenanceAwareObservationAugmentation(self.config)
+        self.observation = PLCSObservationAugmentation(self.config)
 
-    def forward(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
-        """Corrupt a physical-width ``(V,T,D,17,2)`` detection set."""
-        output: dict[str, Tensor] = clone_tensor_dict(sample)
-        if output["human_kp"].ndim != 5 or output["human_kp"].shape[-1] != 2:
+    @staticmethod
+    def _validate_physical_sample(sample: dict[str, Tensor]) -> None:
+        human_keypoints = sample["human_kp"]
+        if human_keypoints.ndim != 5 or human_keypoints.shape[-1] != 2:
             raise ValueError("human_kp must have shape (V,T,D,17,2).")
-        views, frames, detections, joints, _ = output["human_kp"].shape
+        views, frames, detections, joints, _ = human_keypoints.shape
         if joints != 17:
             raise ValueError(
                 "PLCS tracking corruption requires exactly 17 COCO keypoints."
             )
-        if output["human_vis"].shape != (views, frames, detections, joints):
+        if sample["human_vis"].shape != (views, frames, detections, joints):
             raise ValueError("human_vis must match human_kp without the UV axis.")
-        if output["human_vis"].dtype != torch.bool:
+        if sample["human_vis"].dtype != torch.bool:
             raise TypeError("human_vis must have dtype torch.bool.")
-        if output["detection_gt_index"].shape != (views, frames, detections):
+        if sample["detection_gt_index"].shape != (views, frames, detections):
             raise ValueError(
                 "detection_gt_index must match the physical detection carrier axis."
             )
-        if output["detection_gt_index"].dtype != torch.long:
+        if sample["detection_gt_index"].dtype != torch.long:
             raise TypeError("detection_gt_index must have dtype torch.long.")
+
+    def forward(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
+        """Corrupt a prevalidated physical-width ``(V,T,D,17,2)`` detection set."""
+        output: dict[str, Tensor] = clone_tensor_dict(sample)
+        views, frames, detections, joints, _ = output["human_kp"].shape
         court_keypoints = output["court_kp"].clone()
         court_visible = output["court_vis"].clone()
         adapted = {
@@ -96,21 +70,19 @@ class PLCSTrackingDetectionAugmentation:
             "court_kp": output["court_kp"],
             "court_vis": output["court_vis"],
         }
-        augmented = self.observation.forward(adapted)
-        genuine_visibility = self.observation.human_visibility_before_false_positive
-        if genuine_visibility is None:
-            raise RuntimeError(
-                "PLCS corruption did not expose pre-false-positive visibility."
-            )
+        augmentation_result = self.observation.forward_with_tracking_provenance(adapted)
+        augmented = augmentation_result.sample
         augmented_human_kp = augmented["human_kp"].reshape(
             views, frames, detections, joints, 2
         )
         augmented_human_vis = augmented["human_vis"].reshape(
             views, frames, detections, joints
         ).bool()
-        visibility_before_false_positive = genuine_visibility.reshape(
-            views, frames, detections, joints
-        ).bool()
+        visibility_before_false_positive = (
+            augmentation_result.human_visibility_before_false_positive.reshape(
+                views, frames, detections, joints
+            ).bool()
+        )
         output["human_kp"], output["human_vis"] = (
             limit_synthetic_false_positive_carriers(
                 augmented_human_kp,
@@ -132,7 +104,8 @@ class PLCSTrackingDetectionAugmentation:
         return output
 
     def __call__(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
-        """Delegate callable use to :meth:`forward` with a typed contract."""
+        """Validate the public sample contract, then delegate to :meth:`forward`."""
+        self._validate_physical_sample(sample)
         return self.forward(sample)
 
 
