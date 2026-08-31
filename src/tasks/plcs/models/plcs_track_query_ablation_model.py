@@ -138,12 +138,12 @@ class PLCSTrackQueryAblationModel(nn.Module):
             raise ValueError(
                 "PLCS track-query presence competition config must be validated."
             )
-        presence_competition = build_presence_competition(
-            self.presence_competition_mode,
-            hidden_dim=self.hidden_dim,
+        self.presence_competition: DeepSetsPresenceResidual | None = (
+            build_presence_competition(
+                self.presence_competition_mode,
+                hidden_dim=self.hidden_dim,
+            )
         )
-        if presence_competition is not None:
-            self.presence_competition = presence_competition
         self.register_forward_pre_hook(
             self._validate_forward_inputs,
             with_kwargs=True,
@@ -442,13 +442,9 @@ class PLCSTrackQueryAblationModel(nn.Module):
         position = self.position_head(query_tokens) * output_valid.unsqueeze(-1)
         rotation = F.normalize(self.rotation_head(query_tokens), dim=-1)
         rotation = rotation * output_valid.unsqueeze(-1)
-        presence_competition = cast(
-            "DeepSetsPresenceResidual | None",
-            getattr(self, "presence_competition", None),
-        )
         presence_logits = decode_presence_logits(
             self.presence_head,
-            presence_competition,
+            self.presence_competition,
             query_tokens,
             frame_valid=masks.frame_valid,
         )

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, TypeAlias
+from typing import Literal, TypeAlias, cast
 
 import torch
 from torch import Tensor, nn
@@ -30,6 +30,29 @@ class DeepSetsPresenceResidual(nn.Module):
             else nn.Linear(hidden_dim, 1)
         )
         self.reset_output_projection()
+        self.register_forward_pre_hook(
+            self._validate_forward_input,
+            with_kwargs=True,
+        )
+
+    def _validate_forward_input(
+        self,
+        _module: nn.Module,
+        args: tuple[object, ...],
+        kwargs: dict[str, object],
+    ) -> None:
+        query_hidden = cast(
+            Tensor,
+            args[0] if args else kwargs["query_hidden"],
+        )
+        if query_hidden.ndim != 4:
+            raise ValueError("query_hidden must have shape (B,T,Q,D).")
+        if query_hidden.shape[-1] != self.hidden_dim:
+            raise ValueError(
+                "query_hidden width must equal the configured hidden_dim."
+            )
+        if query_hidden.shape[-2] <= 0:
+            raise ValueError("query_hidden must contain at least one query.")
 
     def reset_output_projection(self) -> None:
         """Restore the exact zero-output residual used for legacy migration."""
@@ -39,14 +62,6 @@ class DeepSetsPresenceResidual(nn.Module):
 
     def forward(self, query_hidden: Tensor) -> Tensor:
         """Return ``(B,T,Q)`` residuals for ``query_hidden[B,T,Q,D]``."""
-        if query_hidden.ndim != 4:
-            raise ValueError("query_hidden must have shape (B,T,Q,D).")
-        if query_hidden.shape[-1] != self.hidden_dim:
-            raise ValueError(
-                "query_hidden width must equal the configured hidden_dim."
-            )
-        if query_hidden.shape[-2] <= 0:
-            raise ValueError("query_hidden must contain at least one query.")
         frame_mean = query_hidden.mean(dim=-2, keepdim=True)
         pooled = frame_mean.expand_as(query_hidden)
         features = torch.cat(

@@ -284,11 +284,18 @@ def test_builder_registers_only_explicit_deepsets_mode() -> None:
 
 
 @pytest.mark.parametrize(
-    "query_hidden",
-    [torch.randn(2, 3, 4), torch.randn(2, 3, 4, 5)],
+    ("query_hidden", "message"),
+    [
+        (torch.randn(2, 3, 4), "shape"),
+        (torch.randn(2, 3, 4, 5), "width"),
+        (torch.randn(2, 3, 0, 4), "at least one query"),
+    ],
 )
-def test_branch_rejects_invalid_input_contract(query_hidden: torch.Tensor) -> None:
+def test_branch_rejects_invalid_input_contract(
+    query_hidden: torch.Tensor,
+    message: str,
+) -> None:
     branch = DeepSetsPresenceResidual(hidden_dim=4)
 
-    with pytest.raises(ValueError, match="query_hidden"):
+    with pytest.raises(ValueError, match=message):
         branch(query_hidden)

@@ -119,6 +119,7 @@ def test_legacy_model_omits_canonical_head_and_output() -> None:
 def test_presence_competition_is_absent_by_default_without_state_dict_changes() -> None:
     model = _model(predict_canonical_pose=False)
 
+    assert model.presence_competition is None
     assert "presence_competition" not in dict(model.named_children())
     assert not any(
         key.startswith("presence_competition.") for key in model.state_dict()
@@ -166,6 +167,7 @@ def test_enabled_zero_residual_is_bitwise_identical_to_legacy_presence_output(
 def test_enabled_checkpoint_roundtrip_is_strict_and_output_preserving() -> None:
     torch.manual_seed(13)
     source = _model(presence_competition="deepsets")
+    assert source.presence_competition is not None
     with torch.no_grad():
         source.presence_competition.output_projection.weight.normal_()
         source.presence_competition.output_projection.bias.normal_()
