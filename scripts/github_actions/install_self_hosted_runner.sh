@@ -10,6 +10,9 @@ readonly RUNNER_ROOT="/opt/actions-runner"
 readonly TOOL_ROOT="/opt/tennis-lab-actions"
 readonly STATE_ROOT="/var/lib/tennis-lab-actions"
 readonly GPU_LOCK_FILE="$STATE_ROOT/gpu.lock"
+readonly GPU_GATE_FILE="${GPU_LOCK_FILE}.gate"
+readonly GPU_SLOT_0_FILE="${GPU_LOCK_FILE}.slot-0"
+readonly GPU_SLOT_1_FILE="${GPU_LOCK_FILE}.slot-1"
 readonly RUNNER_HOME="$STATE_ROOT/home"
 readonly REPOSITORY_URL="https://github.com/Motoki0705/tennis-lab"
 readonly RUNNER_LABELS="local-gpu,cuda,wsl2,tennis-lab"
@@ -59,20 +62,23 @@ configure_shared_gpu_lock() {
   # The MCP user may traverse STATE_ROOT but cannot list it. All other state
   # remains mode 0700 and owned by the isolated GPU runner.
   install -d -o "$RUNNER_USER" -g "$TRUSTED_MCP_GROUP" -m 0710 "$STATE_ROOT"
-  if [ -L "$GPU_LOCK_FILE" ] || { [ -e "$GPU_LOCK_FILE" ] && [ ! -f "$GPU_LOCK_FILE" ]; }; then
-    echo "Shared GPU lock must be a regular file: $GPU_LOCK_FILE" >&2
-    exit 1
-  fi
-  if [ ! -e "$GPU_LOCK_FILE" ]; then
-    install -o "$RUNNER_USER" -g "$TRUSTED_MCP_GROUP" -m 0660 /dev/null \
-      "$GPU_LOCK_FILE"
-  else
-    chown "$RUNNER_USER:$TRUSTED_MCP_GROUP" "$GPU_LOCK_FILE"
-    chmod 0660 "$GPU_LOCK_FILE"
-  fi
-
-  runuser -u "$RUNNER_USER" -- test -w "$GPU_LOCK_FILE"
-  runuser -u "$TRUSTED_MCP_USER" -- test -w "$GPU_LOCK_FILE"
+  local lock_path
+  for lock_path in \
+    "$GPU_LOCK_FILE" "$GPU_GATE_FILE" "$GPU_SLOT_0_FILE" "$GPU_SLOT_1_FILE"; do
+    if [ -L "$lock_path" ] || { [ -e "$lock_path" ] && [ ! -f "$lock_path" ]; }; then
+      echo "Shared GPU lock must be a regular file: $lock_path" >&2
+      exit 1
+    fi
+    if [ ! -e "$lock_path" ]; then
+      install -o "$RUNNER_USER" -g "$TRUSTED_MCP_GROUP" -m 0660 /dev/null \
+        "$lock_path"
+    else
+      chown "$RUNNER_USER:$TRUSTED_MCP_GROUP" "$lock_path"
+      chmod 0660 "$lock_path"
+    fi
+    runuser -u "$RUNNER_USER" -- test -w "$lock_path"
+    runuser -u "$TRUSTED_MCP_USER" -- test -w "$lock_path"
+  done
 }
 
 if [ "$GPU_LOCK_ONLY" = true ]; then
@@ -262,7 +268,7 @@ EOF
 
 install -m 0644 /dev/stdin "$SERVICE_PATH/tennis-lab-training-queue.service" <<EOF
 [Unit]
-Description=tennis-lab serial GPU training queue
+Description=tennis-lab logical two-slot GPU training queue
 Requires=tennis-lab-actions-assets.service
 After=network-online.target tennis-lab-actions-assets.service
 Wants=network-online.target
@@ -277,6 +283,10 @@ Environment=PATH=/usr/local/bin:/usr/bin:/bin:/usr/lib/wsl/lib
 Environment=TRAINING_QUEUE_DIR=$STATE_ROOT/training-queue
 Environment=TRAINING_QUEUE_LOCK_FILE=$GPU_LOCK_FILE
 ExecStart=$TOOL_ROOT/bin/training_queue.sh serve --idle-timeout 2147483647
+KillMode=control-group
+KillSignal=SIGTERM
+SendSIGKILL=no
+TimeoutStopSec=infinity
 Restart=on-failure
 RestartSec=5
 UMask=0077
@@ -286,7 +296,7 @@ ProtectHome=true
 ProtectProc=invisible
 ProtectSystem=strict
 ReadOnlyPaths=$STATE_ROOT/assets
-ReadWritePaths=$RUNNER_HOME $STATE_ROOT/runs $STATE_ROOT/training-queue $GPU_LOCK_FILE
+ReadWritePaths=$RUNNER_HOME $STATE_ROOT/runs $STATE_ROOT/training-queue $GPU_LOCK_FILE $GPU_GATE_FILE $GPU_SLOT_0_FILE $GPU_SLOT_1_FILE
 InaccessiblePaths=$inaccessible_paths
 RestrictSUIDSGID=true
 
@@ -345,7 +355,7 @@ ProtectHome=true
 ProtectProc=invisible
 ProtectSystem=strict
 ReadOnlyPaths=$STATE_ROOT/assets
-ReadWritePaths=$RUNNER_ROOT $RUNNER_HOME $STATE_ROOT/runs $STATE_ROOT/training-queue $GPU_LOCK_FILE
+ReadWritePaths=$RUNNER_ROOT $RUNNER_HOME $STATE_ROOT/runs $STATE_ROOT/training-queue $GPU_LOCK_FILE $GPU_GATE_FILE $GPU_SLOT_0_FILE $GPU_SLOT_1_FILE
 InaccessiblePaths=$inaccessible_paths
 RestrictSUIDSGID=true
 EOF

@@ -102,6 +102,7 @@ _GROUND_LINE_KEYS = {
     "diagnostic_native_candidate_centers_uv_metres",
     "diagnostic_native_candidate_orientations_radians",
     "diagnostic_maximum_relative_scale_deviation",
+    "diagnostic_lattice_assisted_candidate_ids",
     "whole_court_required_court_count",
     "whole_court_maximum_common_scale_relative_deviation",
     "whole_court_maximum_center_refit_displacement_metres",
@@ -225,9 +226,24 @@ def validate_alignment_outputs(output_path: Path) -> AlignmentResult:
     if metrics != _metrics_payload(result, evidence=evidence):
         raise ValueError("Alignment diagnostics disagree with the final result.")
     evidence_diagnostics = _load_json_object(diagnostics / "evidence.json")
-    if evidence_diagnostics != evidence.diagnostics.to_dict():
+    archived_evidence_diagnostics = evidence.diagnostics.to_dict()
+    if evidence_diagnostics != archived_evidence_diagnostics:
+        mismatched_keys = sorted(
+            key
+            for key in evidence_diagnostics.keys()
+            | archived_evidence_diagnostics.keys()
+            if evidence_diagnostics.get(key) != archived_evidence_diagnostics.get(key)
+        )
+        written_mismatches = {
+            key: evidence_diagnostics.get(key) for key in mismatched_keys
+        }
+        archived_mismatches = {
+            key: archived_evidence_diagnostics.get(key) for key in mismatched_keys
+        }
         raise ValueError(
-            "Measured evidence diagnostics disagree with the ground-line archive."
+            "Measured evidence diagnostics disagree with the ground-line archive: "
+            f"mismatched_keys={mismatched_keys},"
+            f"written={written_mismatches},archived={archived_mismatches}."
         )
     if (diagnostics / "summary.txt").read_text(encoding="utf-8") != _human_summary(
         result
@@ -399,7 +415,7 @@ def _evidence_archive(evidence: AlignmentEvidence) -> dict[str, NDArray[Any]]:
     )
     whole_court = evidence.whole_court_settings
     return {
-        "schema": np.asarray("semantic_ground_line_correspondences_v12"),
+        "schema": np.asarray("semantic_ground_line_correspondences_v14"),
         "primary_candidate_id": np.asarray(evidence.primary_candidate_id or ""),
         "candidate_ids": np.asarray(
             [candidate.candidate_id for candidate in evidence.candidates], dtype=np.str_
@@ -602,6 +618,10 @@ def _evidence_archive(evidence: AlignmentEvidence) -> dict[str, NDArray[Any]]:
             evidence.diagnostics.maximum_relative_scale_deviation,
             dtype=np.float64,
         ),
+        "diagnostic_lattice_assisted_candidate_ids": np.asarray(
+            evidence.diagnostics.lattice_assisted_candidate_ids,
+            dtype=np.str_,
+        ),
         "whole_court_required_court_count": np.asarray(
             whole_court.required_court_count,
             dtype=np.int64,
@@ -698,7 +718,7 @@ def _load_evidence_archive(path: Path) -> AlignmentEvidence:
     if (
         schema.ndim != 0
         or schema.dtype.kind != "U"
-        or str(schema.item()) != "semantic_ground_line_correspondences_v12"
+        or str(schema.item()) != "semantic_ground_line_correspondences_v14"
     ):
         raise ValueError("Unsupported ground-line correspondence schema.")
     primary = arrays["primary_candidate_id"]
@@ -946,6 +966,10 @@ def _load_evidence_archive(path: Path) -> AlignmentEvidence:
         excluded_cameras=excluded_cameras,
         ground_plane_frame=ground_plane_frame,
         alignment_trace=alignment_trace,
+        lattice_assisted_candidate_ids=tuple(
+            str(item)
+            for item in arrays["diagnostic_lattice_assisted_candidate_ids"].tolist()
+        ),
     )
     whole_court_settings = _load_whole_court_settings(arrays)
     return AlignmentEvidence(

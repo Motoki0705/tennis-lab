@@ -129,14 +129,27 @@ class StageRegistry:
         self,
         request: ScenePipelineRequest,
     ) -> tuple[StageDefinition[StageExecutionSummary], ...]:
-        """Return infrastructure, explicit targets, and report definitions only."""
-        selected = {
+        """Return only requested definitions in the terminal dependency closure."""
+        requested = {
             StageName.INGEST,
             StageName.RECONSTRUCTION,
             StageName.ALIGNMENT,
             StageName.REPORT,
             *(target.stage for target in request.targets),
         }
+        if request.through_stage not in requested:
+            requested_targets = ", ".join(
+                sorted(target.value for target in request.targets)
+            )
+            raise ValueError(
+                f"through_stage {request.through_stage.value!r} is not selected by "
+                f"request targets {{{requested_targets}}}."
+            )
+        terminal_closure = {
+            request.through_stage,
+            *self._ancestors(request.through_stage),
+        }
+        selected = requested & terminal_closure
         return self.ordered(selected)
 
     def execution_for_request(
@@ -152,7 +165,8 @@ class StageRegistry:
             requested = ", ".join(sorted(target.value for target in request.targets))
             raise ValueError(
                 f"from_stage {request.from_stage.value!r} is not selected by "
-                f"request targets {{{requested}}}."
+                f"request targets {{{requested}}} through "
+                f"{request.through_stage.value!r}."
             )
         reusable_names = set(reusable_stages)
         if not reusable_names <= selected_names:

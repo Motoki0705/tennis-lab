@@ -15,6 +15,7 @@ from src.synthetic_data_generation.alignment.heatmaps import (
     aggregate_line_heatmaps,
     rasterize_weighted_view,
     validate_line_heatmaps,
+    weighted_projection_samples,
     write_line_heatmaps,
 )
 
@@ -35,6 +36,16 @@ def test_weighted_projection_uses_view_cell_max_then_global_sum() -> None:
     assert aggregate.evidence_sum[2, 2] == 0.0
 
 
+def test_weighted_projection_samples_expose_positive_common_grid_evidence() -> None:
+    points_uv, evidence_weights = weighted_projection_samples(_heatmaps())
+
+    np.testing.assert_array_equal(
+        points_uv,
+        np.asarray(((0.0, 0.0), (1.0, 1.0)), dtype=np.float64),
+    )
+    np.testing.assert_allclose(evidence_weights, (0.5, 0.4), atol=1.0e-7)
+
+
 def test_line_heatmaps_round_trip_numeric_and_png_inventory(tmp_path: Path) -> None:
     output = tmp_path / "line-heatmaps"
     source = _heatmaps()
@@ -52,12 +63,8 @@ def test_line_heatmaps_round_trip_numeric_and_png_inventory(tmp_path: Path) -> N
     }
     assert len(tuple((output / "views").iterdir())) == 6
     manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["weight_model"] == (
-        "1/(1+(camera_range/proximity_scale)^power)"
-    )
-    assert manifest["raster_reducer"] == (
-        "per-view cell max then weighted global sum"
-    )
+    assert manifest["weight_model"] == ("1/(1+(camera_range/proximity_scale)^power)")
+    assert manifest["raster_reducer"] == ("per-view cell max then weighted global sum")
     assert manifest["view_count"] == 3
     assert manifest["aggregate_view_count"] == 2
     assert manifest["coordinate_units"] == "metres"
@@ -119,9 +126,7 @@ def _heatmaps() -> AlignmentLineHeatmaps:
                 points_uv=np.asarray(
                     ((0.1, 0.1), (0.2, 0.2), (1.1, 1.1)), dtype=np.float64
                 ),
-                projected_probabilities=np.asarray(
-                    (0.5, 0.9, 0.8), dtype=np.float32
-                ),
+                projected_probabilities=np.asarray((0.5, 0.9, 0.8), dtype=np.float32),
                 proximity_weights=np.asarray((0.5, 0.25, 0.5), dtype=np.float64),
                 included_in_aggregate=True,
             ),
