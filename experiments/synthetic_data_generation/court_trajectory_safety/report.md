@@ -1,6 +1,6 @@
 # B00 Court trajectory safety decision report
 
-Status: **quality_evidence_complete_final_v4_pending**. The quality-only decision is **quality_only_rejected**; geometry remains authoritative.
+Status: **complete**. The quality-only decision is **quality_only_rejected**; geometry remains authoritative.
 
 ## Blind pilot evidence
 
@@ -18,4 +18,4 @@ Held-out safe V4 candidates were 0/9 artifact-heavy; held-out legacy views were 
 
 - Frozen V4 plan: 2016 frames, 39 trajectory groups, 0 support violations, and group-disjoint splits=True.
 - Source authority: `data/synthetic_data_generation/raw/B00.mp4` matches the immutable ingested copy at SHA-256 `6a4387e6061b4d81fabd5e99a6f0814953469138ed52eed7aec665b37c50962c`; the stale recorded `tennis_court.mp4` path is not used.
-- Final V4 dataset: pending the queued GPU generation/render/assembly run.
+- Final V4 dataset: complete, 2016/2016 accepted frames, 39 trajectory groups, 8 shards, 0 split leaks, 0 safety violations, and 0 renderer errors across 8 invocations.

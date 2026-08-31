@@ -15,10 +15,139 @@ from src.synthetic_data_generation.scripts.evaluate_court_trajectory_safety impo
 from src.utils.paths import PROJECT_ROOT
 
 _ROOT = PROJECT_ROOT / "experiments/synthetic_data_generation/court_trajectory_safety"
-_SHA256 = set("0123456789abcdef")
 _MANIFEST_SHA256 = "6d65ff89729a866491d97f62dff8c76650d0dff793544baf26533c168a75dffa"
+_PILOT_FEATURES_SHA256 = (
+    "3d31139f8ea97e90e7d13b659038f466641ab4ebc5360fb12b6c78708d03ea81"
+)
+_BLIND_REVIEW_MANIFEST_SHA256 = (
+    "79c7f35b45be82ceab3b732db53c841078c4393544dab317265a5cdb93140f43"
+)
+_REVIEWER_A_SHA256 = (
+    "4eae289a094586b613fa6d7d29fe09fb8da00b8a14bc5e164c7ed5a072dad079"
+)
+_REVIEWER_B_SHA256 = (
+    "8e774f559ca5bc831a71e26f350af003f38530535ac671c12200a3f612dc54ef"
+)
+_ADJUDICATION_SHA256 = (
+    "5685dc2b0b84cef434bd5a597209e399378facbb9a60f70d1ddd8355eab0d58b"
+)
+_RGB_PREVIEW_INVENTORY_SHA256 = (
+    "7d13309ad19ee31d5e8a3f16889137affbb7275d7e046c70a3f99c455341898d"
+)
+_CONSENSUS_SHA256 = (
+    "feddf40c03de40eabadbcbcbda45ad4a931bd9c34fd5064e3670623e12d44836"
+)
+_QUALITY_DECISION_SHA256 = (
+    "551787b8ffcf78437e21c09cd50b3087f57b6354a5aec518140fdb7e4ddaa776"
+)
 _INVENTORY_SHA256 = "4280156d286359e34f020701ee67df269741c60a91815964378b76f17bd4b839"
 _FINAL_EVIDENCE_ROOT = "outputs/court_trajectory_safety/B00-required-coverage-final"
+_FINAL_DATASET_SHA256 = (
+    "7eb953056cb417671dd9f5d1066aa5b61e13b1e5ecec60953f73553bba193ad1"
+)
+_COMPACT_EVIDENCE_SHA256 = (
+    "72e8417ae2c7621eee01e0b4d2ee8173cc5b26fb4f67cd146428ab744f40882a"
+)
+_CANONICAL_EVIDENCE_SHA256 = (
+    "7db8e4c4727f13f65789d288358596dd708f2534931b5b24a69926f330aa97d3"
+)
+_SUMMARY_FILE_SHA256 = (
+    "da90393ecc454e09afdd0736e1b61c9636fb225611c2f675d75657bd8b39356e"
+)
+_REPORT_FILE_SHA256 = (
+    "18fcb6645e122e1decdd96e02b7f47c2cfac86aa3b2fe6b440cce0af6238149a"
+)
+
+
+def _expected_required_coverage() -> dict[str, object]:
+    return {
+        "constructors": ["free_space_cycle", "anchored_rounded_rectangle"],
+        "path_families": ["rounded_rectangle"],
+        "vertical_profiles": ["planar", "raised_phases"],
+        "target_modes": ["court_center"],
+        "minimum_total_groups": 24,
+        "minimum_free_space_cycle_groups": 12,
+        "minimum_anchored_rounded_rectangle_groups": 6,
+        "minimum_unique_anchors": 6,
+        "minimum_anchored_planar_groups": 3,
+        "minimum_anchored_raised_groups": 3,
+        "required_raised_lift_m": 0.25,
+        "minimum_anchored_frame_share": 0.08,
+    }
+
+
+def _expected_selected_coverage() -> dict[str, object]:
+    anchor_indices = [
+        1,
+        6,
+        9,
+        10,
+        11,
+        12,
+        13,
+        15,
+        16,
+        17,
+        18,
+        20,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        31,
+        80,
+        83,
+        89,
+        94,
+        95,
+        98,
+        101,
+    ]
+    return {
+        "total_group_count": 39,
+        "total_frame_count": 2_016,
+        "constructors": ["anchored_rounded_rectangle", "free_space_cycle"],
+        "constructor_group_counts": {
+            "anchored_rounded_rectangle": 27,
+            "free_space_cycle": 12,
+        },
+        "constructor_frame_counts": {
+            "anchored_rounded_rectangle": 648,
+            "free_space_cycle": 1_368,
+        },
+        "path_families": ["free_space_cycle", "rounded_rectangle"],
+        "family_group_counts": {"free_space_cycle": 12, "rounded_rectangle": 27},
+        "family_frame_counts": {
+            "free_space_cycle": 1_368,
+            "rounded_rectangle": 648,
+        },
+        "vertical_profiles": ["free_space_cycle", "planar", "raised_phases"],
+        "profile_group_counts": {
+            "free_space_cycle": 12,
+            "planar": 13,
+            "raised_phases": 14,
+        },
+        "profile_frame_counts": {
+            "free_space_cycle": 1_368,
+            "planar": 312,
+            "raised_phases": 336,
+        },
+        "target_modes": ["court_center"],
+        "target_group_counts": {"court_center": 39},
+        "target_frame_counts": {"court_center": 2_016},
+        "anchor_camera_indices": anchor_indices,
+        "anchor_camera_ids": [f"frame_{index:06d}" for index in anchor_indices],
+        "unique_anchor_count": 27,
+        "anchored_group_count": 27,
+        "anchored_frame_count": 648,
+        "anchored_frame_share": 648 / 2_016,
+        "anchored_planar_group_count": 13,
+        "anchored_raised_group_count": 14,
+        "anchored_required_lift_group_count": 14,
+    }
 
 
 def _json(path: Path) -> dict[str, object]:
@@ -46,10 +175,6 @@ def _number(value: object, *, name: str) -> float:
     return float(value)
 
 
-def _is_sha256(value: object) -> bool:
-    return isinstance(value, str) and len(value) == 64 and set(value) <= _SHA256
-
-
 def _canonical_sha256(value: object) -> str:
     return hashlib.sha256(
         json.dumps(
@@ -68,7 +193,15 @@ def test_b00_attempt2_cpu_manifest_is_fresh_and_required_coverage_complete() -> 
         frozen_path,
         allow_unfrozen_observation_lock=True,
     )
-    assert authority.observation_lock is None
+    assert authority.observation_lock is not None
+    lock = authority.observation_lock
+    assert lock.pilot_manifest_sha256 == _MANIFEST_SHA256
+    assert lock.pilot_features_sha256 == _PILOT_FEATURES_SHA256
+    assert lock.blind_review_manifest_sha256 == _BLIND_REVIEW_MANIFEST_SHA256
+    assert lock.reviewer_a_sha256 == _REVIEWER_A_SHA256
+    assert lock.reviewer_b_sha256 == _REVIEWER_B_SHA256
+    assert lock.adjudication_sha256 == _ADJUDICATION_SHA256
+    assert lock.rgb_preview_inventory_sha256 == _RGB_PREVIEW_INVENTORY_SHA256
     pilot_path = _ROOT / "pilot-manifest.json"
     assert hashlib.sha256(pilot_path.read_bytes()).hexdigest() == _MANIFEST_SHA256
     entries = _load_pilot_manifest(
@@ -81,6 +214,8 @@ def test_b00_attempt2_cpu_manifest_is_fresh_and_required_coverage_complete() -> 
     inputs = _mapping(pilot["decision_inputs"], name="pilot decision inputs")
     required = _mapping(inputs["required_coverage"], name="required coverage")
     selected = _mapping(inputs["selected_coverage"], name="selected coverage")
+    assert required == _expected_required_coverage()
+    assert selected == _expected_selected_coverage()
     assert len(entries) == 128
     assert inputs["legacy_proposal_budget"] == 4_800
     assert inputs["candidate_proposal_budget"] == 4_800
@@ -108,15 +243,15 @@ def test_b00_attempt2_cpu_manifest_is_fresh_and_required_coverage_complete() -> 
     assert inputs["semantic_phase_inventory_digest"] == _INVENTORY_SHA256
 
     summary = _json(_ROOT / "summary.json")
-    geometry = _mapping(summary["geometry_metrics"], name="pending geometry")
-    assert summary["status"] == "attempt_2_pending_gpu_pilot_and_blind_annotations"
-    assert summary["decision"] is None
-    assert summary["annotations"] is None
-    assert summary["final_dataset"] is None
+    geometry = _mapping(summary["geometry_metrics"], name="geometry metrics")
+    assert summary["status"] == "complete"
+    assert summary["decision"] == "quality_only_rejected"
+    assert summary["production_authority"] == "geometry_only"
     assert geometry["required_coverage"] == required
     assert geometry["selected_coverage"] == selected
     assert geometry["required_coverage_shortfall"] == []
-    assert geometry["final_release_status"] == "pending_fresh_gpu_evidence"
+    assert geometry["final_release_status"] == "passed"
+    assert geometry["accepted_frame_count"] == 2_016
 
 
 def test_b00_complete_evidence_is_hash_locked_and_canonical() -> None:
@@ -135,10 +270,7 @@ def test_b00_complete_evidence_is_hash_locked_and_canonical() -> None:
         frozen_path,
         allow_unfrozen_observation_lock=True,
     )
-    assert authority.observation_lock is not None, (
-        "Attempt-2 complete evidence is blocked pending a fresh GPU pilot, "
-        "blind annotations/adjudication, and final V4 render."
-    )
+    assert authority.observation_lock is not None
     lock = authority.observation_lock
     pilot_path = _ROOT / "pilot-manifest.json"
     assert hashlib.sha256(pilot_path.read_bytes()).hexdigest() == (
@@ -147,6 +279,117 @@ def test_b00_complete_evidence_is_hash_locked_and_canonical() -> None:
     pilot = _json(pilot_path)
     inputs = _mapping(pilot["decision_inputs"], name="pilot decision inputs")
     summary = _json(_ROOT / "summary.json")
+    assert hashlib.sha256((_ROOT / "summary.json").read_bytes()).hexdigest() == (
+        _SUMMARY_FILE_SHA256
+    )
+    assert hashlib.sha256((_ROOT / "report.md").read_bytes()).hexdigest() == (
+        _REPORT_FILE_SHA256
+    )
+    assert summary["schema"] == "court_trajectory_safety_evidence_v2"
+    assert summary["status"] == "complete"
+    assert summary["scene_id"] == "B00"
+    assert summary["decision"] == "quality_only_rejected"
+    assert summary["production_authority"] == "geometry_only"
+
+    pilot_summary = _mapping(summary["pilot"], name="pilot summary")
+    assert pilot_summary["record_count"] == 128
+    assert pilot_summary["manifest_sha256"] == _MANIFEST_SHA256
+    assert pilot_summary["features_sha256"] == _PILOT_FEATURES_SHA256
+    assert (
+        pilot_summary["blind_review_manifest_sha256"]
+        == _BLIND_REVIEW_MANIFEST_SHA256
+    )
+    assert pilot_summary["stratum_counts"] == {
+        "captured_control": 22,
+        "legacy_orbit": 22,
+        "safe_v4_candidate": 21,
+        "support_boundary": 21,
+        "support_exterior": 21,
+        "support_interior": 21,
+    }
+    assert pilot_summary["calibration_record_count"] == 66
+    assert pilot_summary["held_out_record_count"] == 62
+    assert pilot_summary["calibration_group_count"] == 44
+    assert pilot_summary["held_out_group_count"] == 44
+
+    annotations = _mapping(summary["annotations"], name="annotations")
+    assert annotations == {
+        "reviewer_a": {
+            "reviewer_id": "attempt2-reviewer-a",
+            "record_count": 128,
+            "positive_count": 11,
+            "sha256": _REVIEWER_A_SHA256,
+        },
+        "reviewer_b": {
+            "reviewer_id": "attempt2-reviewer-b",
+            "record_count": 128,
+            "positive_count": 3,
+            "sha256": _REVIEWER_B_SHA256,
+        },
+        "adjudication": {
+            "reviewer_id": "attempt2-adjudicator",
+            "record_count": 10,
+            "sha256": _ADJUDICATION_SHA256,
+        },
+        "disagreement_count": 10,
+        "consensus_positive_count": 5,
+        "calibration_positive_count": 2,
+        "held_out_positive_count": 3,
+        "label_inventory": {
+            "calibration": {
+                "positive_count": 2,
+                "negative_count": 64,
+                "record_count": 66,
+            },
+            "held_out": {
+                "positive_count": 3,
+                "negative_count": 59,
+                "record_count": 62,
+            },
+        },
+        "consensus_sha256": _CONSENSUS_SHA256,
+    }
+
+    quality_calibration = _mapping(
+        summary["quality_calibration"], name="quality calibration"
+    )
+    assert quality_calibration == {
+        "selection": "best_frozen_gate_passing_adjacent_midpoint_v1",
+        "status": "no_calibration_threshold_family_passes_frozen_gates",
+        "evaluated_candidate_count": 800,
+        "eligible_feature_names": [],
+        "rule": None,
+        "predictive_metrics": None,
+        "threshold_bounds": None,
+    }
+    quality_decision = _mapping(summary["quality_decision"], name="quality decision")
+    assert quality_decision["schema"] == "court_trajectory_quality_decision_v2"
+    assert quality_decision["feature_definition_id"] == (
+        "court_public_quality_features_v1"
+    )
+    assert quality_decision["thresholds"] == {
+        "minimum_recall": 0.9,
+        "minimum_precision": 0.8,
+        "maximum_valid_control_false_positive_rate": 0.1,
+        "minimum_positive_labels": 12,
+        "minimum_negative_labels": 12,
+    }
+    assert quality_decision["rule"] is None
+    assert quality_decision["predictive_metrics"] is None
+    assert quality_decision["decision"] == "quality_only_rejected"
+    assert quality_decision["failure_reasons"] == [
+        "no_calibration_threshold_family_passes_frozen_gates",
+        "insufficient_held_out_positive_labels",
+    ]
+    assert quality_decision["calibration_group_ids"] == pilot_summary[
+        "calibration_group_ids"
+    ]
+    assert quality_decision["held_out_group_ids"] == pilot_summary[
+        "held_out_group_ids"
+    ]
+    assert quality_decision["production_authority"] == "geometry_only"
+    assert quality_decision["decision_sha256"] == _QUALITY_DECISION_SHA256
+
     geometry = _mapping(summary["geometry_metrics"], name="geometry metrics")
     for key in (
         "legacy_proposal_budget",
@@ -158,15 +401,107 @@ def test_b00_complete_evidence_is_hash_locked_and_canonical() -> None:
         "optional_candidate_coverage_shortfall",
     ):
         assert geometry[key] == inputs[key]
+    assert geometry["required_coverage"] == _expected_required_coverage()
+    assert geometry["selected_coverage"] == _expected_selected_coverage()
+    assert geometry["planned_frame_count"] == 2_016
+    assert geometry["trajectory_group_count"] == 39
+    assert geometry["projected_semantic_valid_frame_count"] == 2_016
+    assert geometry["projected_semantic_rejected_frame_count"] == 0
+    assert geometry["split_group_counts"] == {
+        "test": 4,
+        "train": 31,
+        "validation": 4,
+    }
+    assert geometry["group_disjoint_splits"] is True
+    assert geometry["selected_support_violation_count"] == 0
+    assert geometry["accepted_frame_count"] == 2_016
+
+    assert summary["artifact_comparison"] == {
+        "split": "held_out",
+        "candidate": {
+            "stratum": "safe_v4_candidate",
+            "artifact_heavy_count": 0,
+            "record_count": 9,
+            "artifact_heavy_rate": 0.0,
+        },
+        "legacy": {
+            "stratum": "legacy_orbit",
+            "artifact_heavy_count": 2,
+            "record_count": 12,
+            "artifact_heavy_rate": 2 / 12,
+        },
+        "candidate_to_legacy_rate_ratio": 0.0,
+        "maximum_allowed_ratio": 0.5,
+        "passed": True,
+    }
+
+    final_dataset = _mapping(summary["final_dataset"], name="final dataset")
+    assert final_dataset == {
+        "schema": "canonical_court_dataset_v4",
+        "status": "complete",
+        "path": _FINAL_EVIDENCE_ROOT,
+        "proposal_count": 2_016,
+        "accepted_frame_count": 2_016,
+        "rejected_frame_count": 0,
+        "accepted_fraction": 1.0,
+        "trajectory_group_count": 39,
+        "resolved_shard_count": 8,
+        "split_leakage_count": 0,
+        "selected_support_violation_count": 0,
+        "group_disjoint_splits": True,
+        "renderer_error_count": 0,
+        "renderer_invocation_count": 8,
+        "dataset_manifest_sha256": _FINAL_DATASET_SHA256,
+        "compact_evidence_sha256": _COMPACT_EVIDENCE_SHA256,
+        "compact_evidence_file_count": 12,
+    }
+    assert summary["canonical_evidence_sha256"] == _CANONICAL_EVIDENCE_SHA256
     _validate_complete_evidence(summary, frozen=_json(frozen_path))
     sheets = summary["representative_contact_sheets"]
-    assert isinstance(sheets, list) and sheets
-    assert all(
-        isinstance(sheet, dict)
-        and _is_sha256(sheet.get("sha256"))
-        and _integer(sheet.get("image_count"), name="contact-sheet image count") > 0
-        for sheet in sheets
-    )
+    assert sheets == [
+        {
+            "kind": "consensus_artifact_heavy",
+            "path": (
+                "outputs/court_trajectory_safety/issue-823-required-coverage-blind/"
+                "evidence/contact-sheets/consensus_artifact_heavy.png"
+            ),
+            "sha256": (
+                "74814410a9615e1185f87933a31ede90c0ee404447f49d16c19bbee8adf4092b"
+            ),
+            "image_count": 5,
+            "mode": "RGB",
+            "width": 1_280,
+            "height": 400,
+        },
+        {
+            "kind": "non_artifact_controls",
+            "path": (
+                "outputs/court_trajectory_safety/issue-823-required-coverage-blind/"
+                "evidence/contact-sheets/non_artifact_controls.png"
+            ),
+            "sha256": (
+                "505fcf727fff8551abfd7063242ac82c6993a794d8a7ac1a4c40c168cf966d6e"
+            ),
+            "image_count": 22,
+            "mode": "RGB",
+            "width": 1_280,
+            "height": 1_200,
+        },
+        {
+            "kind": "disagreements_adjudication",
+            "path": (
+                "outputs/court_trajectory_safety/issue-823-required-coverage-blind/"
+                "evidence/contact-sheets/disagreements_adjudication.png"
+            ),
+            "sha256": (
+                "f8fc72b3b7cedb423786ae9534f0b4fb0dad504f474f7f51b8e2d4f4401303d0"
+            ),
+            "image_count": 10,
+            "mode": "RGB",
+            "width": 1_280,
+            "height": 600,
+        },
+    ]
 
 
 def test_tracked_attempt2_evidence_does_not_reuse_prior_observations() -> None:
@@ -190,29 +525,8 @@ def test_tracked_attempt2_evidence_does_not_reuse_prior_observations() -> None:
 
 
 def _complete_summary_fixture() -> dict[str, object]:
-    required = {
-        "minimum_total_groups": 24,
-        "minimum_free_space_cycle_groups": 12,
-        "minimum_anchored_rounded_rectangle_groups": 6,
-        "minimum_unique_anchors": 6,
-        "minimum_anchored_planar_groups": 3,
-        "minimum_anchored_raised_groups": 3,
-        "required_raised_lift_m": 0.25,
-        "minimum_anchored_frame_share": 0.08,
-    }
-    selected = {
-        "total_group_count": 39,
-        "total_frame_count": 2_016,
-        "constructor_group_counts": {
-            "anchored_rounded_rectangle": 27,
-            "free_space_cycle": 12,
-        },
-        "unique_anchor_count": 27,
-        "anchored_planar_group_count": 13,
-        "anchored_raised_group_count": 14,
-        "anchored_required_lift_group_count": 14,
-        "anchored_frame_share": 648 / 2_016,
-    }
+    required = _expected_required_coverage()
+    selected = _expected_selected_coverage()
     summary: dict[str, object] = {
         "status": "complete",
         "geometry_metrics": {
@@ -248,8 +562,8 @@ def _complete_summary_fixture() -> dict[str, object]:
             "group_disjoint_splits": True,
             "renderer_error_count": 0,
             "renderer_invocation_count": 8,
-            "dataset_manifest_sha256": "a" * 64,
-            "compact_evidence_sha256": "b" * 64,
+            "dataset_manifest_sha256": _FINAL_DATASET_SHA256,
+            "compact_evidence_sha256": _COMPACT_EVIDENCE_SHA256,
             "compact_evidence_file_count": 12,
         },
         "artifact_comparison": {
@@ -294,6 +608,8 @@ def _complete_summary_fixture() -> dict[str, object]:
         (("final_dataset", "group_disjoint_splits"), False),
         (("final_dataset", "renderer_error_count"), 1),
         (("final_dataset", "renderer_invocation_count"), 7),
+        (("final_dataset", "dataset_manifest_sha256"), "a" * 64),
+        (("final_dataset", "compact_evidence_sha256"), "b" * 64),
         (("artifact_comparison", "candidate_to_legacy_rate_ratio"), 0.75),
         (("artifact_comparison", "passed"), False),
     ),
@@ -302,8 +618,10 @@ def test_complete_evidence_release_gates_fail_closed_on_tampering(
     path: tuple[str, ...],
     mutated_value: object,
 ) -> None:
-    summary = copy.deepcopy(_complete_summary_fixture())
     frozen = _json(_ROOT / "frozen-config.json")
+    baseline = _complete_summary_fixture()
+    _validate_complete_evidence(baseline, frozen=frozen)
+    summary = copy.deepcopy(baseline)
     cursor = summary
     for key in path[:-1]:
         cursor = _mapping(cursor[key], name="tamper target")
@@ -370,6 +688,8 @@ def _validate_complete_evidence(
     assert geometry["candidate_proposal_budget"] == 4_800
     assert geometry["equal_proposal_budget"] is True
     assert geometry["required_coverage_shortfall"] == []
+    assert required == _expected_required_coverage()
+    assert selected == _expected_selected_coverage()
     assert _integer(selected["total_group_count"], name="selected groups") >= _integer(
         required["minimum_total_groups"], name="minimum total groups"
     )
@@ -451,12 +771,12 @@ def _validate_complete_evidence(
     assert geometry["selected_support_violation_count"] == final_dataset[
         "selected_support_violation_count"
     ]
-    assert _is_sha256(final_dataset["dataset_manifest_sha256"])
-    assert _is_sha256(final_dataset["compact_evidence_sha256"])
+    assert final_dataset["dataset_manifest_sha256"] == _FINAL_DATASET_SHA256
+    assert final_dataset["compact_evidence_sha256"] == _COMPACT_EVIDENCE_SHA256
     assert _integer(
         final_dataset["compact_evidence_file_count"],
         name="compact evidence file count",
-    ) > 0
+    ) == 12
 
     candidate_count = _integer(
         candidate["artifact_heavy_count"], name="candidate artifact count"
