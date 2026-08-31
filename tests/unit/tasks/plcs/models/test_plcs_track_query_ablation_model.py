@@ -198,17 +198,22 @@ def test_four_conditions_build_exact_stage_ffn_ownership_and_parameter_counts() 
     ("condition", "ffn_mode", "mhc_writeback", "spatial_width"),
     _CONDITIONS,
 )
+@pytest.mark.parametrize(
+    "presence_competition",
+    ["deepsets", "deepsets_centered"],
+)
 def test_all_four_ablation_variants_register_explicit_competition_only(
     condition: str,
     ffn_mode: FFNMode,
     mhc_writeback: MHCWriteback,
     spatial_width: int,
+    presence_competition: str,
 ) -> None:
     del condition, spatial_width
     model = _model(
         ffn_mode,
         mhc_writeback,
-        presence_competition="deepsets",
+        presence_competition=presence_competition,
     )
     inputs = _inputs()
 
@@ -216,6 +221,9 @@ def test_all_four_ablation_variants_register_explicit_competition_only(
         output = _forward(model, inputs)
 
     assert isinstance(model.presence_competition, DeepSetsPresenceResidual)
+    assert model.presence_competition.center_queries is (
+        presence_competition == "deepsets_centered"
+    )
     assert output["presence_logits"].shape == (2, 3, 4)
     frame_valid = (~inputs["padding_mask"]).any(dim=1)
     assert not output["presence_logits"][~frame_valid].any()

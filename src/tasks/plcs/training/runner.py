@@ -83,7 +83,8 @@ class PLCSTrainingRunner(BaseTrainingRunner):
                     ),
                 )
             if (
-                runtime.model.track_query_presence_competition == "deepsets"
+                runtime.model.track_query_presence_competition
+                in {"deepsets", "deepsets_centered"}
                 and runtime.fine_tune_mode != "presence_competition"
             ):
                 source_state = checkpoint.get("state_dict")

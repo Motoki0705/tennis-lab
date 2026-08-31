@@ -23,6 +23,7 @@ def _module(
     *,
     fine_tune_mode: Literal["all", "presence_head", "presence_competition"],
     enable_competition: bool | None = None,
+    competition_mode: Literal["none", "deepsets", "deepsets_centered"] | None = None,
 ) -> PLCSTrackingLightningModule:
     config_name = {
         "all": "train_tracking_pose",
@@ -38,7 +39,9 @@ def _module(
         "model.mhc.coefficient_dim=16",
         "training.compile.enabled=false",
     ]
-    if enable_competition is True:
+    if competition_mode is not None:
+        overrides.append(f"model.presence_competition={competition_mode}")
+    elif enable_competition is True:
         overrides.append("model.presence_competition=deepsets")
     elif enable_competition is False:
         overrides.append("model.presence_competition=none")
@@ -130,10 +133,19 @@ def test_all_mode_keeps_legacy_partial_init_behavior(tmp_path: Path) -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "competition_mode",
+    ["deepsets", "deepsets_centered"],
+)
 def test_presence_competition_accepts_only_complete_legacy_branch_omission(
     tmp_path: Path,
+    competition_mode: Literal["deepsets", "deepsets_centered"],
 ) -> None:
-    module = _module(tmp_path, fine_tune_mode="presence_competition")
+    module = _module(
+        tmp_path,
+        fine_tune_mode="presence_competition",
+        competition_mode=competition_mode,
+    )
     branch = module.model.presence_competition
     with torch.no_grad():
         branch.output_projection.weight.fill_(2.0)
@@ -192,15 +204,20 @@ def test_presence_competition_rejects_unexpected_state(tmp_path: Path) -> None:
         (None, "model.legacy_presence_extra"),
     ],
 )
+@pytest.mark.parametrize(
+    "competition_mode",
+    ["deepsets", "deepsets_centered"],
+)
 def test_enabled_branch_outside_explicit_migration_mode_is_strict(
     tmp_path: Path,
     omitted_prefix: str | None,
     unexpected_key: str | None,
+    competition_mode: Literal["deepsets", "deepsets_centered"],
 ) -> None:
     module = _module(
         tmp_path,
         fine_tune_mode="all",
-        enable_competition=True,
+        competition_mode=competition_mode,
     )
     _write_checkpoint(
         module,
@@ -215,10 +232,19 @@ def test_enabled_branch_outside_explicit_migration_mode_is_strict(
         )
 
 
+@pytest.mark.parametrize(
+    "competition_mode",
+    ["deepsets", "deepsets_centered"],
+)
 def test_presence_competition_accepts_strict_enabled_checkpoint_roundtrip(
     tmp_path: Path,
+    competition_mode: Literal["deepsets", "deepsets_centered"],
 ) -> None:
-    module = _module(tmp_path, fine_tune_mode="presence_competition")
+    module = _module(
+        tmp_path,
+        fine_tune_mode="presence_competition",
+        competition_mode=competition_mode,
+    )
     branch = module.model.presence_competition
     with torch.no_grad():
         branch.output_projection.weight.fill_(0.75)

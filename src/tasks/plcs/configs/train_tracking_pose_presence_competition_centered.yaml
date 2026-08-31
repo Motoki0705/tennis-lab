@@ -1,0 +1,11 @@
+# @package _global_
+# Fine-tune zero-mean query competition over converged presence logits.
+defaults:
+  - train_tracking_pose_presence_competition
+  - _self_
+
+model:
+  presence_competition: deepsets_centered
+
+run:
+  output_dir: plcs/${model.name}_tracking_pose_presence_competition_centered
