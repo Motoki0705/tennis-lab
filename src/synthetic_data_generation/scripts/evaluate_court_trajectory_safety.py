@@ -88,7 +88,7 @@ from src.synthetic_data_generation.rendering.nht import (
     NHTRenderRequest,
 )
 from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
-from src.utils.hydra import hydra_main
+from src.utils.hydra import hydra_main, register_boundary_validator
 from src.utils.io import load_json, save_json_atomic
 from src.utils.paths import PROJECT_ROOT
 
@@ -118,6 +118,7 @@ _TRACKED_EVIDENCE_PATH = (
 _FINAL_EVIDENCE_ROOT = (
     "outputs/court_trajectory_safety/B00-required-coverage-final"
 )
+_BOUNDARY = "synthetic.court_trajectory_safety"
 _PILOT_DECISION_INPUT_KEYS = {
     "feature_definition_id",
     "legacy_plan_seed",
@@ -346,6 +347,13 @@ class BenchmarkConfiguration:
         )
 
 
+def _validate_boundary(config: DictConfig) -> None:
+    BenchmarkConfiguration.from_config(config)
+
+
+register_boundary_validator(_BOUNDARY, _validate_boundary)
+
+
 @dataclass(frozen=True, slots=True)
 class PilotEntry:
     opaque_id: str
@@ -407,6 +415,7 @@ class _PilotFeatureRecord:
     config_path="../configs",
     config_name="evaluate_court_trajectory_safety",
     version_base="1.3",
+    validation_boundary=_BOUNDARY,
 )
 def main(config: DictConfig) -> int:  # pragma: no cover - Hydra CLI boundary
     """Render the frozen pilot and publish feature records without human labels."""

@@ -107,7 +107,7 @@ def test_synthetic_schema_cannot_be_omitted_or_guessed() -> None:
     unknown.data.source.schema = "auto"
     with pytest.raises(
         SemanticConfigurationError,
-        match="explicitly 'v1', 'v2', or 'v3'",
+        match=r"data\.source\.schema must be explicitly 'v1', 'v2', 'v3', or 'v4'\.",
     ):
         CourtTrainingConfig.from_config(unknown)
 

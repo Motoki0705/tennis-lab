@@ -98,6 +98,46 @@ def test_adapter_fields_have_truthful_default_precedence_and_absence_policy() ->
                 }
 
 
+def test_court_v4_policy_fields_are_required_composition_authority() -> None:
+    expected_fields = {
+        "src.synthetic_data_generation.configuration.CourtTrajectoryPolicyV4": {
+            "anchored_half_width_m",
+            "anchored_half_height_m",
+            "anchored_corner_radius_m",
+            "anchored_raised_lift_m",
+            "anchored_reference_point_count",
+        },
+        "src.synthetic_data_generation.configuration.CourtDatasetConfiguration": {
+            "support",
+            "benchmark_decision_id",
+            "required_coverage",
+        },
+    }
+
+    for symbol, expected in expected_fields.items():
+        contract = next(
+            candidate
+            for candidate in ADAPTER_CONTRACTS
+            if candidate.adapter_symbol == symbol
+        )
+        fields = {
+            field.path.rpartition(".")[2]: field
+            for field in contract.fields
+            if field.path.rpartition(".")[2] in expected
+        }
+
+        assert set(fields) == expected
+        assert all(field.required for field in fields.values())
+        assert all(
+            field.default_policy is ConfigurationDefaultPolicy.COMPOSITION_OWNED
+            for field in fields.values()
+        )
+        assert all(
+            field.absence_policy is ConfigurationAbsencePolicy.REQUIRED
+            for field in fields.values()
+        )
+
+
 def test_operation_build_json_is_optional_and_absence_maps_to_none() -> None:
     contract = next(
         contract
@@ -165,6 +205,12 @@ def test_synthetic_registry_exposes_only_the_canonical_production_boundaries() -
         if contract.boundary_id
         == "src.synthetic_data_generation.scripts.generate_publication_visualizations:main"
     )
+    benchmark_boundary = next(
+        contract
+        for contract in BOUNDARY_CONTRACTS
+        if contract.boundary_id
+        == "src.synthetic_data_generation.scripts.evaluate_court_trajectory_safety:main"
+    )
     scene_boundary = next(
         contract
         for contract in BOUNDARY_CONTRACTS
@@ -185,9 +231,19 @@ def test_synthetic_registry_exposes_only_the_canonical_production_boundaries() -
     }
     assert synthetic_boundaries == {
         "src.synthetic_data_generation.scripts.generate_publication_visualizations:main",
+        "src.synthetic_data_generation.scripts.evaluate_court_trajectory_safety:main",
         "src.synthetic_data_generation.scripts.run_scene_pipeline:main",
         "src.synthetic_data_generation.scripts.visualize_dataset:main",
     }
+    assert benchmark_boundary.validator_callable == (
+        "src.synthetic_data_generation.scripts."
+        "evaluate_court_trajectory_safety._validate_boundary"
+    )
+    assert (
+        "src.synthetic_data_generation.scripts."
+        "evaluate_court_trajectory_safety.BenchmarkConfiguration"
+        in benchmark_boundary.authority_symbols
+    )
     assert (
         "src.synthetic_data_generation.configuration.ScenePipelineConfiguration"
         in scene_boundary.authority_symbols

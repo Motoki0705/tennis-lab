@@ -82,6 +82,7 @@ def test_catalog_does_not_publish_legacy_synthetic_boundaries() -> None:
 
     assert synthetic == {
         "src.synthetic_data_generation.scripts.generate_publication_visualizations:main",
+        "src.synthetic_data_generation.scripts.evaluate_court_trajectory_safety:main",
         "src.synthetic_data_generation.scripts.run_scene_pipeline:main",
         "src.synthetic_data_generation.scripts.visualize_dataset:main",
     }

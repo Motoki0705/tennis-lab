@@ -98,6 +98,11 @@ def _trajectory_policy() -> CourtTrajectoryPolicyV4:
         ),
         corner_radius_ratios=(0.25,),
         vertical_phase_offsets_m=((0.0, 0.5, 0.5, 0.0),),
+        anchored_half_width_m=0.1,
+        anchored_half_height_m=0.1,
+        anchored_corner_radius_m=0.04,
+        anchored_raised_lift_m=0.25,
+        anchored_reference_point_count=32,
     )
 
 

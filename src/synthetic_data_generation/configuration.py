@@ -1230,11 +1230,11 @@ class CourtTrajectoryPolicyV4(CourtTrajectoryPolicy):
 
     corner_radius_ratios: tuple[float, ...]
     vertical_phase_offsets_m: tuple[tuple[float, ...], ...]
-    anchored_half_width_m: float = 0.1
-    anchored_half_height_m: float = 0.1
-    anchored_corner_radius_m: float = 0.04
-    anchored_raised_lift_m: float = 0.25
-    anchored_reference_point_count: int = 32
+    anchored_half_width_m: float
+    anchored_half_height_m: float
+    anchored_corner_radius_m: float
+    anchored_raised_lift_m: float
+    anchored_reference_point_count: int
 
     @classmethod
     def from_mapping(cls, value: object) -> CourtTrajectoryPolicyV4:
@@ -1671,9 +1671,9 @@ class CourtDatasetConfiguration:
     sampling: CourtSamplingPolicy
     performance: DatasetPerformanceBudget
     metadata_fields: tuple[str, ...]
-    support: TrajectorySupportPolicy | None = None
-    benchmark_decision_id: str | None = None
-    required_coverage: RequiredTrajectoryCoverage | None = None
+    support: TrajectorySupportPolicy | None
+    benchmark_decision_id: str | None
+    required_coverage: RequiredTrajectoryCoverage | None
 
     @classmethod
     def from_mapping(cls, value: object) -> CourtDatasetConfiguration:

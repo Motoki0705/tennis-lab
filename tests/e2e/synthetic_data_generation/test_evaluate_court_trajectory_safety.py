@@ -32,6 +32,7 @@ from src.synthetic_data_generation.scripts.evaluate_court_trajectory_safety impo
     _validate_blind_review_manifest,
     validate_complete_evidence,
 )
+from src.utils.hydra import registered_boundary_validators, validate_boundary
 
 _STRATA = (
     "captured_control",
@@ -299,6 +300,20 @@ def _entrypoint_config(tmp_path: Path, *, action: str) -> DictConfig:
                 f"frozen_config_path={frozen_config_path}",
             ],
         )
+
+
+def test_benchmark_hydra_boundary_is_registered_to_the_strict_composed_validator(
+    tmp_path: Path,
+) -> None:
+    config = _entrypoint_config(tmp_path, action="render_frozen_pilot")
+    binding = registered_boundary_validators()["synthetic.court_trajectory_safety"]
+
+    assert binding.callable_symbol == (
+        "src.synthetic_data_generation.scripts."
+        "evaluate_court_trajectory_safety._validate_boundary"
+    )
+    assert binding.validator is benchmark._validate_boundary
+    assert validate_boundary("synthetic.court_trajectory_safety", config) is None
 
 
 def test_entrypoint_dispatches_unfrozen_pilot_to_renderer_and_binds_manifest(
