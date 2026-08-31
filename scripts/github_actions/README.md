@@ -41,8 +41,11 @@ sudoパスワードの後、別の非表示プロンプトでGitHub登録トー�
 - runnerとtraining queueをsystemd serviceとして有効化する。
 - runnerから通常ユーザーのhome、検出したWindowsドライブ（`/mnt/c` など）、
   WSLg mountを見えなくする。WSLのDNSが参照する `/mnt/wsl` は遮断しない。
-- queue学習とCUDAテストを `/var/lib/tennis-lab-actions/gpu.lock` で直列化する。
-- 共有GPU lockだけを`tennis-actions`と`kamimura`の双方から書き込み可能にする。
+- queue学習とCUDAテストを `/var/lib/tennis-lab-actions/gpu.lock`
+  から導出される2-slot protocolで調停する。CUDA CIは従来どおり
+  main lockをexclusiveに取得し、`all`として動作する。
+- main、`.gate`、`.slot-0`、`.slot-1`の4つのGPU lockだけを
+  `tennis-actions`と`kamimura`の双方から書き込み可能にする。
   親state directoryは`0710`で`kamimura`には通過権限だけを与え、assets、runs、
   training queueの内容は引き続き`tennis-actions`専用とする。
 
@@ -64,12 +67,24 @@ GitHubの **Actions** タブから次を手動実行する。
 - **Local GPU tests**: DINOを初期化してrepositoryのCUDA extensionsをbuildし、
   CUDA preflightの後、`spin test --all --serial -m cuda` を実行する。学習中なら
   GPU lockを取得できず、明示的に失敗する。
-- **Queue local GPU training**: `name`、正確な学習`command`、任意のIssue番号を
-  入力する。task固有のコマンドは各task READMEを正とし、isolated checkout内で
+- **Queue local GPU training**: `name`、正確な学習`command`、任意のIssue番号、
+  `resource` (`all`/`half`、既定`all`)を入力する。task固有のコマンドは各task READMEを正とし、isolated checkout内で
   依存関係を再現できる `uv run --locked ...` 形式を使う。
+
+`half`は同じGPU上の論理slot予約であり、MIG分割やVRAM上限ではない。
+queueは`CUDA_VISIBLE_DEVICES`を変更しないため、2つの`half` jobが同時にGPU全体を
+参照する。各jobが同時実行に収まることを利用者が確認する。
 
 学習Actionのsuccessは「queueへの登録成功」を表す。学習本体は6時間を超えても
 systemd queue内で継続し、状態・ログ・run checkoutは次へ保存される。
+
+queue serviceの停止時、systemdはservice cgroupへSIGTERMを送るが、強制timeoutや
+SIGKILLではwrapperを打ち切らない。各wrapperはqueueが作成・検証したprivate PGIDを
+所有し、15秒のTERM grace後にKILLへescalateして、group不在とleader reapを証明するまで
+`state=terminating`のままGPU lockを保持する。MCP container jobはさらにdeterministic
+containerの停止ackを必要とする。in-groupのuninterruptible processで不在を証明できない
+場合にserviceとcapacityが安全側で停止中のまま残ることは意図した挙動である。
+自己daemon化や`setsid`でqueue PGIDからescapeするhost processはsupport対象外である。
 
 ```text
 /var/lib/tennis-lab-actions/training-queue/

@@ -23,10 +23,10 @@ EXPECTED_LABELS = [
 ]
 
 
-def _load_workflow(name: str) -> tuple[dict[str, Any], str]:
+def _load_workflow(name: str) -> tuple[dict[str | bool, Any], str]:
     path = WORKFLOWS / name
     text = path.read_text(encoding="utf-8")
-    return cast(dict[str, Any], yaml.safe_load(text)), text
+    return cast(dict[str | bool, Any], yaml.safe_load(text)), text
 
 
 def test_local_gpu_workflows_are_manual_owner_gated_and_read_only() -> None:
@@ -74,6 +74,14 @@ def test_training_workflow_passes_dispatch_input_through_environment() -> None:
 
     assert enqueue_step["run"] == "bash scripts/github_actions/enqueue_training.sh"
     assert enqueue_step["env"]["TRAINING_COMMAND"] == "${{ inputs.command }}"
+    assert enqueue_step["env"]["TRAINING_RESOURCE"] == "${{ inputs.resource }}"
+    assert workflow[True]["workflow_dispatch"]["inputs"]["resource"] == {
+        "description": "Logical GPU reservation (half does not enforce a VRAM cap)",
+        "required": False,
+        "default": "all",
+        "type": "choice",
+        "options": ["all", "half"],
+    }
     assert "run: ${{ inputs.command }}" not in text
 
 
@@ -99,13 +107,30 @@ def test_runner_scripts_parse_and_install_security_boundaries() -> None:
     assert "mount --options remount,bind,ro" in installer
     assert "TRAINING_QUEUE_LOCK_FILE=" in installer
     assert '-g "$TRUSTED_MCP_GROUP" -m 0710 "$STATE_ROOT"' in installer
-    assert 'chown "$RUNNER_USER:$TRUSTED_MCP_GROUP" "$GPU_LOCK_FILE"' in installer
-    assert 'chmod 0660 "$GPU_LOCK_FILE"' in installer
-    assert 'runuser -u "$RUNNER_USER" -- test -w "$GPU_LOCK_FILE"' in installer
-    assert 'runuser -u "$TRUSTED_MCP_USER" -- test -w "$GPU_LOCK_FILE"' in installer
+    for suffix in (".gate", ".slot-0", ".slot-1"):
+        assert f'"${{GPU_LOCK_FILE}}{suffix}"' in installer
+    assert 'chown "$RUNNER_USER:$TRUSTED_MCP_GROUP" "$lock_path"' in installer
+    assert 'chmod 0660 "$lock_path"' in installer
+    assert 'runuser -u "$RUNNER_USER" -- test -w "$lock_path"' in installer
+    assert 'runuser -u "$TRUSTED_MCP_USER" -- test -w "$lock_path"' in installer
+    assert (
+        "ReadWritePaths=$RUNNER_HOME $STATE_ROOT/runs $STATE_ROOT/training-queue "
+        "$GPU_LOCK_FILE $GPU_GATE_FILE $GPU_SLOT_0_FILE $GPU_SLOT_1_FILE"
+        in installer
+    )
+    assert "KillMode=control-group" in installer
+    assert "KillSignal=SIGTERM" in installer
+    assert "SendSIGKILL=no" in installer
+    assert "TimeoutStopSec=infinity" in installer
     assert "sha256sum --check --status" in installer
 
     enqueue = (SCRIPTS / "enqueue_training.sh").read_text(encoding="utf-8")
     assert 'TRAINING_QUEUE_DIR="$STATE_ROOT/training-queue"' in enqueue
     assert 'readonly EXPECTED_REPOSITORY="Motoki0705/tennis-lab"' in enqueue
     assert "submodule update --init --recursive --depth 1" in enqueue
+    assert 'TRAINING_RESOURCE="${TRAINING_RESOURCE:-all}"' in enqueue
+    assert 'case "$TRAINING_RESOURCE" in' in enqueue
+    assert "TRAINING_RESOURCE must be half or all." in enqueue
+    assert 'queue_args+=(--issue "$TRAINING_ISSUE")' in enqueue
+    assert '--resource "$TRAINING_RESOURCE"' in enqueue
+    assert '- Logical GPU resource: \`$TRAINING_RESOURCE\`' in enqueue

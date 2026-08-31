@@ -86,7 +86,15 @@ def _tracking_config() -> dict[str, object]:
             "lifecycle": {
                 "pack_to_query_slots": True,
                 "min_reuse_gap_frames": 0,
-                "randomize_slots_train": False,
+            },
+            "association": {
+                "max_distance": 0.04,
+                "max_missed_frames": 2,
+                "min_reuse_gap_frames": 4,
+                "use_velocity_prediction": True,
+                "min_common_keypoints": 1,
+                "cost_reduction": "mean",
+                "overflow_policy": "error",
             },
             "augmentation": OmegaConf.load(_AUGMENTATION_CONFIG).augmentation,
         },
@@ -120,9 +128,9 @@ class _PhysicalSceneStub:
         self.calls += 1
         trajectory = torch.tensor(
             [
-                [-1.0 + offset, -3.0, 1.0],
-                [0.0 + offset, 0.0, 1.5],
-                [1.0 + offset, 3.0, 0.8],
+                [-0.02 + offset, -0.05, 1.00],
+                [0.00 + offset, 0.00, 1.02],
+                [0.02 + offset, 0.05, 0.98],
             ]
         )
         projector = CameraProjector(
@@ -283,18 +291,21 @@ def test_multi_ball_uses_physical_scenes_and_canonical_writer(tmp_path) -> None:
     candidate_ids = sample["candidate_gt_index"]
     assigned = candidate_ids >= 0
     assert candidate_ids.shape == assigned.shape == (6, 12, 2)
-    torch.testing.assert_close(
-        candidate_ids,
-        candidate_ids[:1].expand_as(candidate_ids),
-    )
-    torch.testing.assert_close(
-        assigned,
-        assigned[:1].expand_as(assigned),
-    )
     assert not bool((sample["ball_vis"] & ~assigned).any())
     assert not bool((sample["clean_ball_vis"] & ~assigned).any())
 
     physical_presence = scene.ball_present[:, : scene.num_balls]
+    for view_index, camera in enumerate(scene.cameras):
+        expected_visible = torch.from_numpy(camera.ball_vis)
+        tracked_visible = torch.stack(
+            [
+                (candidate_ids[view_index] == object_id).any(dim=1)
+                for object_id in range(scene.num_balls)
+            ],
+            dim=1,
+        )
+        torch.testing.assert_close(tracked_visible, expected_visible)
+
     view_candidate_ids = candidate_ids[0]
     candidate_physical_presence = torch.stack(
         [

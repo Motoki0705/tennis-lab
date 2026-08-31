@@ -38,14 +38,27 @@ The sole production entrypoint is:
 ```
 
 Hydra composition starts at `configs/run_scene_pipeline.yaml`. The typed path
-roots, requested dataset targets, camera profile, NHT commands, alignment gates,
-and domain policies are all explicit config authority. To rerun a valid
-downstream suffix, set `request.from_stage`, for example:
+roots, requested dataset targets, start/terminal stages, camera profile, NHT
+commands, alignment gates, and domain policies are all explicit config authority.
+To rerun a valid downstream suffix, set `request.from_stage`, for example:
 
 ```bash
 .venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
   request.from_stage=alignment
 ```
+
+To stop after court alignment without constructing or running dataset/report
+handlers, set the explicit terminal stage:
+
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
+  profile=b01 request.from_stage=ingest request.through_stage=alignment
+```
+
+The selected plan is the requested terminal stage and its dependency closure.
+For `through_stage=alignment`, it is exactly `ingest → reconstruction →
+alignment`; any stale dataset/report descendants are unpublished and no new
+`datasets/` or `report/` owner is created.
 
 ## Workspace and stages
 
@@ -84,12 +97,27 @@ tennis-lab still imports no NHT Python internals and fails closed when a public
 command or the dedicated trainer runtime is unavailable.
 
 Alignment uses measured court-line evidence with disjoint fit and holdout
-partitions. Only accepted results publish a `MultiCourtLayout` containing every
-accepted court, reciprocal metric transforms, complex bounds, and fit/holdout
-metrics. The alignment owner also publishes `line-heatmaps/`: raw detector
-heatmaps for every selected view, proximity-weighted ground-plane heatmaps for
-every view, and their weighted aggregate on one common ground grid. The numeric
-archive is the validation authority for the PNG diagnostics.
+partitions. The fixed camera prefix and its immutable partition units are chosen
+without assuming a court count. Fit views alone form a common weighted ground
+grid; bounded residual search adds regulation-court candidates only while each
+one explains the configured minimum fraction of weighted evidence. Every
+proposal and common-scale refinement uses the same probability-and-proximity
+weighted coverage-floor objective, which cannot trade away whole-template
+coverage for a small high-confidence fragment. Bounded beam frontiers are
+retained by candidate count. After search termination they are refined from the
+smallest count upward, and
+the first fully valid frontier whose final weighted residual satisfies the gate
+is selected. A terminal frontier may retain residual clutter only when no
+reliable additional proposal exists. The search fails closed for zero courts or
+an exhausted configured maximum without a valid refined frontier. Holdout views
+are evaluated once after the positive court count is frozen and never drive
+count reselection. Only accepted results publish a `MultiCourtLayout`
+containing every accepted court,
+reciprocal metric transforms, complex bounds, and fit/holdout metrics. The
+alignment owner also publishes `line-heatmaps/`: raw detector heatmaps for every
+selected view, proximity-weighted ground-plane heatmaps for every view, and
+their weighted aggregate on one common ground grid. The numeric archive is the
+validation authority for the PNG diagnostics.
 
 ## Dataset domains
 

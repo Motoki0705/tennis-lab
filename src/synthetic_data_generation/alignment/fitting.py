@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
-from typing import Any
+from collections.abc import Mapping, Sequence
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -19,6 +19,8 @@ from src.synthetic_data_generation.alignment.contracts import (
 )
 from src.synthetic_data_generation.alignment.evaluation import evaluate_partition
 from src.synthetic_data_generation.alignment.whole_court import (
+    CourtIdentifiabilityMetrics,
+    evaluate_boundary_lattice_identifiability,
     evaluate_court_identifiability,
     evaluate_court_topology,
     evaluate_whole_template,
@@ -128,6 +130,7 @@ def whole_court_diagnostics(
         for diagnostic in evidence.diagnostics.candidate_scales
     }
     candidate_payloads: list[dict[str, object]] = []
+    lattice_assisted_ids = set(evidence.diagnostics.lattice_assisted_candidate_ids)
     for candidate in candidate_tuple:
         candidate_evidence = evidence_by_candidate.get(candidate.candidate_id)
         if candidate_evidence is None:
@@ -147,6 +150,24 @@ def whole_court_diagnostics(
         holdout_template = evaluate_whole_template(
             scene_from_court=candidate.scene_from_court,
             measured_points_scene=holdout_points,
+            settings=settings,
+        )
+        fit_identifiability_metrics = evaluate_court_identifiability(
+            candidate_evidence.fit,
+            minimum_camera_count=policy.fit.minimum_camera_count,
+            settings=settings,
+        )
+        holdout_identifiability_metrics = evaluate_court_identifiability(
+            candidate_evidence.holdout,
+            minimum_camera_count=policy.holdout.minimum_camera_count,
+            settings=settings,
+        )
+        fit_identifiability = fit_identifiability_metrics.to_dict(
+            minimum_camera_count=policy.fit.minimum_camera_count,
+            settings=settings,
+        )
+        holdout_identifiability = holdout_identifiability_metrics.to_dict(
+            minimum_camera_count=policy.holdout.minimum_camera_count,
             settings=settings,
         )
         candidate_payloads.append(
@@ -172,26 +193,44 @@ def whole_court_diagnostics(
                     ),
                 },
                 "fit": {
-                    "identifiability": evaluate_court_identifiability(
-                        candidate_evidence.fit,
+                    "identifiability": fit_identifiability,
+                    "identifiability_acceptance": _identifiability_acceptance(
+                        fit_identifiability_metrics,
+                        strict_accepted=fit_identifiability["accepted"] is True,
+                        lattice_assisted=(
+                            candidate.candidate_id in lattice_assisted_ids
+                        ),
+                        lattice_geometry_supported=_lattice_geometry_supported(
+                            candidate,
+                            candidates=candidate_tuple,
+                            lattice_assisted_ids=lattice_assisted_ids,
+                            maximum_error_metres=(
+                                settings.maximum_center_refit_displacement_metres
+                            ),
+                        ),
                         minimum_camera_count=policy.fit.minimum_camera_count,
-                        settings=settings,
-                    ).to_dict(
-                        minimum_camera_count=policy.fit.minimum_camera_count,
-                        settings=settings,
                     ),
                     "whole_template_diagnostic": fit_template.to_dict(
                         settings=settings
                     ),
                 },
                 "holdout": {
-                    "identifiability": evaluate_court_identifiability(
-                        candidate_evidence.holdout,
+                    "identifiability": holdout_identifiability,
+                    "identifiability_acceptance": _identifiability_acceptance(
+                        holdout_identifiability_metrics,
+                        strict_accepted=holdout_identifiability["accepted"] is True,
+                        lattice_assisted=(
+                            candidate.candidate_id in lattice_assisted_ids
+                        ),
+                        lattice_geometry_supported=_lattice_geometry_supported(
+                            candidate,
+                            candidates=candidate_tuple,
+                            lattice_assisted_ids=lattice_assisted_ids,
+                            maximum_error_metres=(
+                                settings.maximum_center_refit_displacement_metres
+                            ),
+                        ),
                         minimum_camera_count=policy.holdout.minimum_camera_count,
-                        settings=settings,
-                    ).to_dict(
-                        minimum_camera_count=policy.holdout.minimum_camera_count,
-                        settings=settings,
                     ),
                     "whole_template_diagnostic": holdout_template.to_dict(
                         settings=settings
@@ -254,10 +293,10 @@ def validate_whole_court_evidence(
         and payload["common_scale_refit"].get("accepted") is True
         and isinstance(payload.get("fit"), dict)
         and isinstance(payload.get("holdout"), dict)
-        and isinstance(payload["fit"].get("identifiability"), dict)
-        and isinstance(payload["holdout"].get("identifiability"), dict)
-        and payload["fit"]["identifiability"].get("accepted") is True
-        and payload["holdout"]["identifiability"].get("accepted") is True
+        and isinstance(payload["fit"].get("identifiability_acceptance"), dict)
+        and isinstance(payload["holdout"].get("identifiability_acceptance"), dict)
+        and payload["fit"]["identifiability_acceptance"].get("accepted") is True
+        and payload["holdout"]["identifiability_acceptance"].get("accepted") is True
         for payload in candidate_payloads
     )
     topology_accepted = all(
@@ -278,6 +317,59 @@ def validate_whole_court_evidence(
             "Whole-court alignment evidence failed acceptance: "
             + json.dumps(diagnostics, sort_keys=True, separators=(",", ":"))
         )
+
+
+def _identifiability_acceptance(
+    metrics: CourtIdentifiabilityMetrics,
+    *,
+    strict_accepted: bool,
+    lattice_assisted: bool,
+    lattice_geometry_supported: bool,
+    minimum_camera_count: int,
+) -> dict[str, object]:
+    """Render the explicit strict or boundary-lattice acceptance authority."""
+    if strict_accepted:
+        return {"mode": "strict_complete_court", "accepted": True}
+    if not lattice_assisted:
+        return {"mode": "strict_complete_court", "accepted": False}
+    assistance = evaluate_boundary_lattice_identifiability(
+        metrics,
+        minimum_camera_count=minimum_camera_count,
+    )
+    checks = dict(cast(Mapping[str, bool], assistance["threshold_checks"]))
+    checks["equal_spacing_from_two_other_courts"] = lattice_geometry_supported
+    return {
+        **assistance,
+        "threshold_checks": checks,
+        "accepted": all(checks.values()),
+    }
+
+
+def _lattice_geometry_supported(
+    candidate: CandidateAlignment,
+    *,
+    candidates: tuple[CandidateAlignment, ...],
+    lattice_assisted_ids: set[str],
+    maximum_error_metres: float,
+) -> bool:
+    """Recompute one persisted assistance claim from final court transforms."""
+    if lattice_assisted_ids != {candidate.candidate_id}:
+        return False
+    candidate_center = candidate.scene_from_court.apply(
+        np.zeros((1, 3), dtype=np.float64)
+    )[0]
+    other_centers = [
+        item.scene_from_court.apply(np.zeros((1, 3), dtype=np.float64))[0]
+        for item in candidates
+        if item.candidate_id != candidate.candidate_id
+    ]
+    return any(
+        float(np.linalg.norm(candidate_center - (2.0 * first - second)))
+        <= maximum_error_metres
+        for first_index, first in enumerate(other_centers)
+        for second_index, second in enumerate(other_centers)
+        if first_index != second_index
+    )
 
 
 def _measured_partition_points(

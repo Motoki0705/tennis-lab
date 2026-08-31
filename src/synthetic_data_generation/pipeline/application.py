@@ -2,27 +2,19 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from src.synthetic_data_generation.alignment import (
     create_production_alignment_handler,
 )
 from src.synthetic_data_generation.configuration import ScenePipelineConfiguration
-from src.synthetic_data_generation.dataset.blcs.contracts import BLCSBallRendering
-from src.synthetic_data_generation.dataset.blcs.handler import BLCSDatasetStageHandler
-from src.synthetic_data_generation.dataset.blcs.rendering import (
-    BLCSMeshNHTRenderer,
-    BLCSNHTRenderer,
+from src.synthetic_data_generation.pipeline.contracts import (
+    DatasetTarget,
+    StageExecutionSummary,
+    StageHandler,
 )
-from src.synthetic_data_generation.dataset.blcs.source import (
-    PhysicsBLCSTrajectoryProvider,
-)
-from src.synthetic_data_generation.dataset.court.handler import (
-    CourtDatasetStageHandler,
-)
-from src.synthetic_data_generation.dataset.court.rendering import CourtNHTRenderer
-from src.synthetic_data_generation.dataset.plcs.handler import PLCSStageHandler
-from src.synthetic_data_generation.dataset.plcs.rendering import NHTPLCSRenderer
-from src.synthetic_data_generation.pipeline.contracts import DatasetTarget
 from src.synthetic_data_generation.pipeline.handlers import (
+    DeferredStageHandler,
     IngestStageHandler,
     ReportStageHandler,
 )
@@ -33,11 +25,6 @@ from src.synthetic_data_generation.pipeline.registry import (
 )
 from src.synthetic_data_generation.pipeline.runner import ScenePipelineRunner
 from src.synthetic_data_generation.reconstruction import NHTReconstructionHandler
-from src.synthetic_data_generation.rendering.nht import (
-    NHTComposedRenderClient,
-    NHTRenderClient,
-)
-from src.tasks.plcs.generate_dataset.sampling.motion_source import ACCADMotionLibrary
 
 
 def build_stage_registry(
@@ -45,72 +32,11 @@ def build_stage_registry(
 ) -> StageRegistry:
     """Bind every modular handler into the exhaustive typed definitions."""
     nht = runtime.nht
-    render_environment = dict(nht.environment)
     alignment = create_production_alignment_handler(
         settings=runtime.alignment.evidence,
         policy=runtime.alignment.acceptance,
         resolver=runtime.resolver,
     )
-    court = CourtDatasetStageHandler(
-        configuration=runtime.court,
-        profile=runtime.profile,
-        renderer=CourtNHTRenderer(
-            executable=nht.render_executable,
-            client=NHTRenderClient(),
-            environment=render_environment,
-            timeout_seconds=nht.render_timeout_seconds,
-        ),
-    )
-    blcs = BLCSDatasetStageHandler(
-        workspace=runtime.workspace,
-        configuration=runtime.blcs,
-        camera_configuration=runtime.camera,
-        seed=runtime.stages.seed,
-        assets=runtime.blcs.assets,
-        trajectory_provider=PhysicsBLCSTrajectoryProvider(
-            generator_config=runtime.blcs.generator,
-            settings=runtime.blcs.trajectory_source,
-        ),
-        renderer=(
-            BLCSNHTRenderer(
-                assets=runtime.blcs.assets,
-                client=NHTComposedRenderClient(),
-                executable=nht.render_executable,
-                environment=render_environment,
-                timeout_seconds=runtime.blcs.render_timeout_seconds,
-                execution_device=runtime.blcs.performance.execution_device,
-                maximum_batch_frames=runtime.blcs.performance.maximum_batch_frames,
-            )
-            if runtime.blcs.assets.rendering is BLCSBallRendering.GAUSSIAN
-            else BLCSMeshNHTRenderer(
-                assets=runtime.blcs.assets,
-                client=NHTRenderClient(),
-                executable=nht.render_executable,
-                environment=render_environment,
-                timeout_seconds=runtime.blcs.render_timeout_seconds,
-                execution_device=runtime.blcs.performance.execution_device,
-                maximum_batch_frames=runtime.blcs.performance.maximum_batch_frames,
-            )
-        ),
-    )
-    plcs = PLCSStageHandler(
-        configuration=runtime.plcs,
-        camera_configuration=runtime.camera,
-        motion_library=ACCADMotionLibrary.from_root(runtime.plcs.accad_root),
-        avatar_appearance_source=runtime.plcs.appearance,
-        renderer=NHTPLCSRenderer(
-            client=NHTRenderClient(),
-            compositor=runtime.plcs.foreground_compositor,
-            executable=nht.render_executable,
-            environment=render_environment,
-            timeout_seconds=runtime.plcs.render_timeout_seconds,
-        ),
-        parameters=runtime.plcs.build_stage_parameters(seed=runtime.stages.seed),
-    )
-    dataset_manifests = {
-        target: runtime.workspace.root / "datasets" / target.value / "dataset.json"
-        for target in DatasetTarget
-    }
     handlers = CanonicalStageHandlers(
         ingest=IngestStageHandler(),
         reconstruction=NHTReconstructionHandler(
@@ -121,15 +47,137 @@ def build_stage_registry(
             timeout_seconds=nht.reconstruction_timeout_seconds,
         ),
         alignment=alignment,
-        court_dataset=court,
-        blcs_dataset=blcs,
-        plcs_dataset=plcs,
-        report=ReportStageHandler(
-            alignment_directory=runtime.workspace.root / "alignment",
-            dataset_manifests=dataset_manifests,
-        ),
+        court_dataset=DeferredStageHandler(lambda: _build_court_handler(runtime)),
+        blcs_dataset=DeferredStageHandler(lambda: _build_blcs_handler(runtime)),
+        plcs_dataset=DeferredStageHandler(lambda: _build_plcs_handler(runtime)),
+        report=DeferredStageHandler(lambda: _build_report_handler(runtime)),
     )
     return canonical_registry(handlers)
+
+
+def _build_court_handler(
+    runtime: ScenePipelineConfiguration,
+) -> StageHandler[StageExecutionSummary]:
+    from src.synthetic_data_generation.dataset.court.handler import (
+        CourtDatasetStageHandler,
+    )
+    from src.synthetic_data_generation.dataset.court.rendering import CourtNHTRenderer
+    from src.synthetic_data_generation.rendering.nht import NHTRenderClient
+
+    nht = runtime.nht
+    return cast(
+        StageHandler[StageExecutionSummary],
+        CourtDatasetStageHandler(
+            configuration=runtime.court,
+            profile=runtime.profile,
+            renderer=CourtNHTRenderer(
+                executable=nht.render_executable,
+                client=NHTRenderClient(),
+                environment=dict(nht.environment),
+                timeout_seconds=nht.render_timeout_seconds,
+            ),
+        ),
+    )
+
+
+def _build_blcs_handler(
+    runtime: ScenePipelineConfiguration,
+) -> StageHandler[StageExecutionSummary]:
+    from src.synthetic_data_generation.dataset.blcs.contracts import BLCSBallRendering
+    from src.synthetic_data_generation.dataset.blcs.handler import (
+        BLCSDatasetStageHandler,
+    )
+    from src.synthetic_data_generation.dataset.blcs.rendering import (
+        BLCSMeshNHTRenderer,
+        BLCSNHTRenderer,
+    )
+    from src.synthetic_data_generation.dataset.blcs.source import (
+        PhysicsBLCSTrajectoryProvider,
+    )
+    from src.synthetic_data_generation.rendering.nht import (
+        NHTComposedRenderClient,
+        NHTRenderClient,
+    )
+
+    nht = runtime.nht
+    return cast(
+        StageHandler[StageExecutionSummary],
+        BLCSDatasetStageHandler(
+            workspace=runtime.workspace,
+            configuration=runtime.blcs,
+            camera_configuration=runtime.camera,
+            seed=runtime.stages.seed,
+            assets=runtime.blcs.assets,
+            trajectory_provider=PhysicsBLCSTrajectoryProvider(
+                generator_config=runtime.blcs.generator,
+                settings=runtime.blcs.trajectory_source,
+            ),
+            renderer=(
+                BLCSNHTRenderer(
+                    assets=runtime.blcs.assets,
+                    client=NHTComposedRenderClient(),
+                    executable=nht.render_executable,
+                    environment=dict(nht.environment),
+                    timeout_seconds=runtime.blcs.render_timeout_seconds,
+                    execution_device=runtime.blcs.performance.execution_device,
+                    maximum_batch_frames=runtime.blcs.performance.maximum_batch_frames,
+                )
+                if runtime.blcs.assets.rendering is BLCSBallRendering.GAUSSIAN
+                else BLCSMeshNHTRenderer(
+                    assets=runtime.blcs.assets,
+                    client=NHTRenderClient(),
+                    executable=nht.render_executable,
+                    environment=dict(nht.environment),
+                    timeout_seconds=runtime.blcs.render_timeout_seconds,
+                    execution_device=runtime.blcs.performance.execution_device,
+                    maximum_batch_frames=runtime.blcs.performance.maximum_batch_frames,
+                )
+            ),
+        ),
+    )
+
+
+def _build_plcs_handler(
+    runtime: ScenePipelineConfiguration,
+) -> StageHandler[StageExecutionSummary]:
+    from src.synthetic_data_generation.dataset.plcs.handler import PLCSStageHandler
+    from src.synthetic_data_generation.dataset.plcs.rendering import NHTPLCSRenderer
+    from src.synthetic_data_generation.rendering.nht import NHTRenderClient
+    from src.tasks.plcs.generate_dataset.sampling.motion_source import (
+        ACCADMotionLibrary,
+    )
+
+    nht = runtime.nht
+    return cast(
+        StageHandler[StageExecutionSummary],
+        PLCSStageHandler(
+            configuration=runtime.plcs,
+            camera_configuration=runtime.camera,
+            motion_library=ACCADMotionLibrary.from_root(runtime.plcs.accad_root),
+            avatar_appearance_source=runtime.plcs.appearance,
+            renderer=NHTPLCSRenderer(
+                client=NHTRenderClient(),
+                compositor=runtime.plcs.foreground_compositor,
+                executable=nht.render_executable,
+                environment=dict(nht.environment),
+                timeout_seconds=runtime.plcs.render_timeout_seconds,
+            ),
+            parameters=runtime.plcs.build_stage_parameters(seed=runtime.stages.seed),
+        ),
+    )
+
+
+def _build_report_handler(
+    runtime: ScenePipelineConfiguration,
+) -> StageHandler[StageExecutionSummary]:
+    dataset_manifests = {
+        target: runtime.workspace.root / "datasets" / target.value / "dataset.json"
+        for target in DatasetTarget
+    }
+    return ReportStageHandler(
+        alignment_directory=runtime.workspace.root / "alignment",
+        dataset_manifests=dataset_manifests,
+    )
 
 
 def build_scene_pipeline_runner(

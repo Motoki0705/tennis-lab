@@ -28,7 +28,9 @@ from src.synthetic_data_generation.alignment.contracts import (
     PartitionAssessment,
     PartitionMetrics,
     PartitionThresholds,
+    ProposalScoreModel,
     ProposalSearchDiagnostics,
+    ProposalSearchStopReason,
 )
 from src.synthetic_data_generation.alignment.evidence_source import (
     LineProbabilityDetector,
@@ -50,6 +52,7 @@ from src.synthetic_data_generation.alignment.heatmaps import (
     aggregate_line_heatmaps,
     rasterize_weighted_view,
     validate_line_heatmaps,
+    weighted_projection_samples,
 )
 from src.synthetic_data_generation.alignment.settings import (
     AlignmentEvidenceSettings,
@@ -120,7 +123,9 @@ __all__ = [
     "PartitionThresholds",
     "ProductionAlignmentEvidenceSource",
     "ProductionCourtLineDetector",
+    "ProposalScoreModel",
     "ProposalSearchDiagnostics",
+    "ProposalSearchStopReason",
     "QualifyingOffsetPairMetrics",
     "SceneExportLoader",
     "WholeCourtEvidenceSettings",
@@ -131,5 +136,6 @@ __all__ = [
     "validate_line_heatmaps",
     "aggregate_line_heatmaps",
     "rasterize_weighted_view",
+    "weighted_projection_samples",
     "create_production_alignment_handler",
 ]

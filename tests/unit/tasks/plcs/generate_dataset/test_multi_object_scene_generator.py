@@ -79,7 +79,15 @@ def _tracking_config() -> dict[str, object]:
             "lifecycle": {
                 "pack_to_query_slots": True,
                 "min_reuse_gap_frames": 0,
-                "randomize_slots_train": False,
+            },
+            "association": {
+                "max_distance": 0.08,
+                "max_missed_frames": 8,
+                "min_reuse_gap_frames": 4,
+                "use_velocity_prediction": True,
+                "min_common_keypoints": 4,
+                "cost_reduction": "median",
+                "overflow_policy": "error",
             },
             "augmentation": OmegaConf.load(_AUGMENTATION_CONFIG).augmentation,
         },
@@ -245,9 +253,9 @@ def test_multi_person_uses_motion_scenes_and_canonical_writer(tmp_path) -> None:
     )
     detection_ids = sample["detection_gt_index"][0]
     target_ids = sample["target_instance_id"]
-    assert bool(((detection_ids == target_ids) | (detection_ids == -1)).all())
     for object_id in range(2):
         assert bool((detection_ids == object_id).any())
+        assert bool((target_ids == object_id).any())
 
 
 def test_invalid_person_cardinality_is_rejected() -> None:

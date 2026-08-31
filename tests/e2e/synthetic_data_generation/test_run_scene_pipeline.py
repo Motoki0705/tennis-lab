@@ -33,6 +33,7 @@ def test_cli_resolves_one_full_b00_request_without_legacy_pipeline_fields() -> N
         "source_video": "synthetic_data_generation/raw/B00.mp4",
         "targets": ["court", "blcs", "plcs"],
         "from_stage": "ingest",
+        "through_stage": "report",
     }
     assert payload["pipeline"]["config_schema"] == "canonical_scene_pipeline_v1"
     assert payload["camera"]["expected_camera_count"] == 6
@@ -85,6 +86,7 @@ def test_cli_composes_each_additional_scene_profile_with_matching_source_video(
         "source_video": f"synthetic_data_generation/raw/{scene_id}.mp4",
         "targets": ["court", "blcs", "plcs"],
         "from_stage": "ingest",
+        "through_stage": "report",
     }
 
 
