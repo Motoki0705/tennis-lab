@@ -53,6 +53,7 @@
 - **`effects.py`**: 3D 描画エフェクト。フェード付きポリライン（軌跡）、地面の擬似影、バウンスリング（経年で拡大・フェードする `render_impact_ring()` 含む）。
 - **`trajectory_analysis.py`**: 軌道からの物理量抽出（純 NumPy）。`compute_speeds()`（フレーム毎速度）と `detect_bounces()`（接地バウンス検出）。
 - **`camera_view.py`**: 3D 視点の単一共有 API。`CameraView3D`・視点プリセット・`CameraController`（static / orbit / keyframes、Hydra mapping からの `from_config()`）と、`ax.clear()` 後に毎フレーム呼ぶ `apply_scene_camera()`（view_init + コート固定 framing + zoom）。#630 の `look_at` / `scene_camera` モードはこのモジュールを拡張して実装する（並行実装を作らない）。
+- **`camera_geometry.py`**: PINHOLE OpenCV（`+x` right / `+y` down / `+z` forward）の純 NumPy 幾何。明示された intrinsics・画像サイズ・camera-to-world/scene SE(3) から、順序固定の frustum corner/segment、camera trajectory、view-direction、複数 camera coverage primitive を生成する。座標変換・単位変換・camera の並べ替えは呼び出し側の責務。
 - **`theme.py`**: `SceneTheme`（light / dark）。figure / axes 背景、テキスト色、axes chrome 非表示、full-bleed レイアウト、テーマに合わせた `CourtStyle`。`resolve_theme()`、`apply_figure_theme()` / `apply_axes_layout_3d()`（figure レベル、作成時のみ）、`apply_axes_theme_3d()`（`ax.clear()` 後に毎フレーム）。
 - **`layers.py`**: 共有 z-order 規約 `SceneLayer`（surface < ground < net < structure < player < ring < trail < marker < ball < overlay）と、mplot3d の深度ソートを無効化する `enable_explicit_layering()`。
 - **`hud.py`**: 汎用 HUD。呼び出し側が組んだテキスト行を `text2D` で描く `render_hud_text()` と、`format_frame_clock()` / `format_speed_kmh()`。Scene 型や「球速」「バウンス」の意味は知らない。

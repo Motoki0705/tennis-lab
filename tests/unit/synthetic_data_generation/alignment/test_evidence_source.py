@@ -834,7 +834,7 @@ def test_spatial_tiles_recover_valid_pair_when_both_band_global_maxima_are_false
         fake_suppress_evidence,
     )
 
-    hypotheses, common_scale, _deviation, search = _fit_court_hypotheses(
+    hypotheses, common_scale, _deviation, search, _trace = _fit_court_hypotheses(
         np.column_stack((np.linspace(-4.0, 4.0, 100), np.zeros(100))),
         evidence_weights=np.ones(100, dtype=np.float64),
         bounds=(-10.0, 10.0, -0.1, 0.1),
@@ -1309,7 +1309,7 @@ def test_one_court_proposal_search_infers_one_and_stops_from_residual(
         one_court_optimum,
     )
 
-    hypotheses, _scale, _deviation, search = _fit_court_hypotheses(
+    hypotheses, _scale, _deviation, search, _trace = _fit_court_hypotheses(
         observed,
         evidence_weights=np.ones(len(observed), dtype=np.float64),
         bounds=(-15.0, 15.0, -15.0, 15.0),
@@ -1341,7 +1341,7 @@ def test_three_court_proposal_search_infers_three_before_no_reliable_stop(
         (np.linspace(-40.0, 40.0, 270), np.linspace(-10.0, 10.0, 270))
     )
 
-    hypotheses, common_scale, maximum_deviation, search = _fit_court_hypotheses(
+    hypotheses, common_scale, maximum_deviation, search, _trace = _fit_court_hypotheses(
         points,
         evidence_weights=np.ones(len(points), dtype=np.float64),
         bounds=(-50.0, 50.0, -20.0, 20.0),
@@ -1449,7 +1449,7 @@ def test_refined_shallow_frontier_wins_before_deeper_proposals(
         (np.linspace(-50.0, 50.0, 100), np.zeros(100, dtype=np.float64))
     )
 
-    hypotheses, _scale, _deviation, search = _fit_court_hypotheses(
+    hypotheses, _scale, _deviation, search, _trace = _fit_court_hypotheses(
         points,
         evidence_weights=np.ones(len(points), dtype=np.float64),
         bounds=(-60.0, 60.0, -5.0, 5.0),
@@ -1570,7 +1570,7 @@ def test_ranked_complete_state_refinement_runs_in_parallel_and_retains_proposal(
         refine,
     )
 
-    hypotheses, _scale, _deviation, search = _fit_court_hypotheses(
+    hypotheses, _scale, _deviation, search, _trace = _fit_court_hypotheses(
         np.column_stack((np.linspace(-10.0, 10.0, 100), np.zeros(100))),
         evidence_weights=np.ones(100, dtype=np.float64),
         bounds=(-10.0, 10.0, -0.1, 0.1),
@@ -1607,7 +1607,7 @@ def test_fit_validator_backtracks_to_next_complete_state(
         if center < 0.0:
             raise ValueError("fit-unreliable complete state")
 
-    hypotheses, _scale, _deviation, search = _fit_court_hypotheses(
+    hypotheses, _scale, _deviation, search, _trace = _fit_court_hypotheses(
         np.column_stack((np.linspace(-10.0, 10.0, 100), np.zeros(100))),
         evidence_weights=np.ones(100, dtype=np.float64),
         bounds=(-10.0, 10.0, -0.1, 0.1),
@@ -1645,7 +1645,7 @@ def test_fit_validator_selects_largest_complete_set_despite_noise_residual(
         if len(hypotheses) != 3:
             raise ValueError("not the largest independently complete court set")
 
-    hypotheses, _scale, _deviation, search = _fit_court_hypotheses(
+    hypotheses, _scale, _deviation, search, _trace = _fit_court_hypotheses(
         np.column_stack((np.linspace(-40.0, 40.0, 270), np.linspace(-10.0, 10.0, 270))),
         evidence_weights=np.ones(270, dtype=np.float64),
         bounds=(-60.0, 60.0, -20.0, 20.0),
@@ -1700,6 +1700,8 @@ def test_one_partial_court_is_repaired_from_two_valid_lattice_centers(
     weights: NDArray[np.float64] = np.ones(len(points), dtype=np.float64)
     state = _RefinedCompleteState(
         hypotheses=hypotheses,
+        selected_proposals=hypotheses,
+        native_refined=hypotheses,
         common_scale=1.0,
         maximum_scale_deviation=0.0,
         explained_evidence_fractions=(0.2, 0.2, 0.2),
@@ -1817,7 +1819,7 @@ def test_candidate_validator_filters_partial_court_before_beam_retention(
         if center < 0.0:
             raise ValueError("partial-court proposal")
 
-    hypotheses, _scale, _deviation, search = _fit_court_hypotheses(
+    hypotheses, _scale, _deviation, search, _trace = _fit_court_hypotheses(
         np.column_stack((np.linspace(-10.0, 10.0, 100), np.zeros(100))),
         evidence_weights=np.ones(100, dtype=np.float64),
         bounds=(-10.0, 10.0, -0.1, 0.1),
@@ -1845,7 +1847,7 @@ def test_candidate_validator_does_not_reject_coarse_residual_proposals(
     )
     validated_centers: list[float] = []
 
-    hypotheses, _scale, _deviation, _search = _fit_court_hypotheses(
+    hypotheses, _scale, _deviation, _search, _trace = _fit_court_hypotheses(
         np.column_stack((np.linspace(-40.0, 40.0, 270), np.linspace(-10.0, 10.0, 270))),
         evidence_weights=np.ones(270, dtype=np.float64),
         bounds=(-50.0, 50.0, -20.0, 20.0),
@@ -1883,7 +1885,7 @@ def test_complete_state_refinement_falls_back_to_valid_ranked_proposal(
     )
     points = np.column_stack((np.linspace(-10.0, 10.0, 100), np.zeros(100)))
 
-    hypotheses, _scale, _deviation, search = _fit_court_hypotheses(
+    hypotheses, _scale, _deviation, search, _trace = _fit_court_hypotheses(
         points,
         evidence_weights=np.ones(len(points), dtype=np.float64),
         bounds=(-10.0, 10.0, -0.1, 0.1),
@@ -2063,12 +2065,14 @@ def test_fit_only_reliability_refits_and_rebuilds_selected_diagnostics(
     points = np.column_stack(
         (np.linspace(-40.0, 40.0, 270), np.linspace(-10.0, 10.0, 270))
     )
-    hypotheses, common_scale, maximum_deviation, search = _fit_court_hypotheses(
-        points,
-        evidence_weights=np.ones(len(points), dtype=np.float64),
-        bounds=(-50.0, 50.0, -20.0, 20.0),
-        seed=42,
-        settings=candidate_settings,
+    hypotheses, common_scale, maximum_deviation, search, fit_trace = (
+        _fit_court_hypotheses(
+            points,
+            evidence_weights=np.ones(len(points), dtype=np.float64),
+            bounds=(-50.0, 50.0, -20.0, 20.0),
+            seed=42,
+            settings=candidate_settings,
+        )
     )
     reliability_counts: list[int] = []
 
@@ -2105,9 +2109,10 @@ def test_fit_only_reliability_refits_and_rebuilds_selected_diagnostics(
         support_uv_bounds=(-50.0, 50.0, -20.0, 20.0),
     )
 
-    retained, retained_scale, retained_deviation, retained_search = (
+    retained, retained_scale, retained_deviation, retained_search, _retained_trace = (
         _retain_fit_reliable_hypotheses(
             hypotheses,
+            fit_trace=fit_trace,
             common_scale=common_scale,
             maximum_deviation=maximum_deviation,
             proposal_search=search,
@@ -2242,7 +2247,7 @@ def test_common_scale_replacement_refits_pose_and_recomputes_score(
         (np.linspace(-10.0, 10.0, 200), np.linspace(-8.0, 8.0, 200))
     )
 
-    hypotheses, common_scale, _deviation, _search = _fit_court_hypotheses(
+    hypotheses, common_scale, _deviation, _search, _trace = _fit_court_hypotheses(
         points,
         evidence_weights=np.ones(len(points), dtype=np.float64),
         bounds=(-12.0, 12.0, -10.0, 10.0),
@@ -2330,7 +2335,7 @@ def test_common_scale_refit_bounds_preserve_parallel_court_identity(
         (np.linspace(-10.0, 10.0, 200), np.linspace(-8.0, 8.0, 200))
     )
 
-    hypotheses, common_scale, _deviation, _search = _fit_court_hypotheses(
+    hypotheses, common_scale, _deviation, _search, _trace = _fit_court_hypotheses(
         points,
         evidence_weights=np.ones(len(points), dtype=np.float64),
         bounds=(-12.0, 12.0, -10.0, 10.0),
@@ -2409,8 +2414,9 @@ def test_two_side_by_side_courts_are_deterministic_under_clutter(
         settings=settings,
     )
 
-    hypotheses, common_scale, maximum_deviation, proposal_search = first_run
+    hypotheses, common_scale, maximum_deviation, proposal_search, trace = first_run
     assert first_run == second_run
+    assert trace.common_scale_refitted == hypotheses
     assert common_scale == pytest.approx(1.0, abs=0.03)
     assert maximum_deviation < settings.common_scale_relative_tolerance
     assert proposal_search.feasible_complete_state_count >= 1
@@ -2593,9 +2599,15 @@ def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
             for item in selection.excluded_cameras
         }
     )
+    measured = {
+        item.camera_id: evidence.ground_plane_frame.to_uv(
+            evidence.metric_adapter.metric_from_nht_points(item.points_nht_scene)
+        )
+        for item in evidence.measured_camera_lines
+    }
     fit_ids = set(evidence.diagnostics.evaluation.fit_camera_ids)
     return AlignmentLineHeatmaps(
-        bounds_uv=(-1.0, 1.0, -1.0, 1.0),
+        bounds_uv=evidence.ground_plane_frame.bounds_uv_metres,
         grid_spacing=0.25,
         proximity_scale=0.35,
         proximity_power=2.0,
@@ -2606,12 +2618,15 @@ def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
                     ((0.0, 0.25), (0.5, 1.0)),
                     dtype=np.float32,
                 ),
-                points_uv=np.column_stack(
-                    (
-                        np.linspace(-0.9, 0.9, projected_counts[camera_id]),
-                        np.linspace(0.9, -0.9, projected_counts[camera_id]),
-                    )
-                ).astype(np.float64),
+                points_uv=measured.get(
+                    camera_id,
+                    np.column_stack(
+                        (
+                            np.linspace(-0.9, 0.9, projected_counts[camera_id]),
+                            np.linspace(0.9, -0.9, projected_counts[camera_id]),
+                        )
+                    ).astype(np.float64),
+                ),
                 projected_probabilities=np.full(
                     projected_counts[camera_id],
                     0.75,

@@ -1,0 +1,70 @@
+# Complete fail-closed publication bundle composition root.
+defaults:
+  - roots: runtime
+  - _self_
+
+publication:
+  scene_id: B00
+  # Data-root-relative canonical scene owner.
+  scene_root: synthetic_data_generation/scenes/${publication.scene_id}
+  # Data-root-relative fresh bundle owned by the selected scene.
+  output_bundle: synthetic_data_generation/scenes/${publication.scene_id}/publication
+  # Fixed complete order; omission or reordering is rejected.
+  artifacts:
+    - dataset-court.gif
+    - dataset-blcs.gif
+    - dataset-plcs.gif
+    - alignment-progression.gif
+    - alignment-heatmap-court.png
+    - captured-camera-trajectory.png
+    - blcs-camera-layout.png
+    - plcs-camera-layout.png
+    - camera-layout-comparison.png
+    - publication-overview.png
+
+  court:
+    trajectory_id: ???
+    # Explicit, strictly increasing, endpoint-inclusive source indices.
+    frame_indices: ???
+  blcs:
+    logical_scene_id: ???
+    camera_id: ???
+    frame_indices: ???
+    # Complete canonical camera order for the selected logical scene.
+    camera_ids: ???
+  plcs:
+    logical_scene_id: ???
+    camera_id: ???
+    frame_indices: ???
+    # Complete canonical camera order for the selected logical scene.
+    camera_ids: ???
+  captured:
+    # Complete reconstruction/export camera order.
+    camera_ids: ???
+
+  drawing:
+    dataset_size: [960, 540]
+    alignment_size: [1200, 900]
+    figure_size: [1800, 1350]
+    overview_size: [2700, 1800]
+    gif_duration_ms: 160
+    frustum_depth_metres: 3.0
+    line_width: 1.4
+    font_size: 12
+    history_frames: 12
+    # Captured paths retain every centre/pose, while frusta/directions/labels use
+    # deterministic endpoint-inclusive even spacing bounded by this value.
+    maximum_rendered_captured_cameras: 24
+    # A BLCS/PLCS camera is coincident only when both finite tolerances pass.
+    coincident_centre_tolerance_metres: 0.000001
+    coincident_forward_angle_tolerance_degrees: 0.000001
+    # Lightweight PR-embedding policy: 12 MiB each, 72 MiB total media.
+    maximum_artifact_bytes: 12582912
+    maximum_bundle_bytes: 75497472
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${roots.output_root},hydra/publication_visualization}
+  output_subdir: null
+  job:
+    chdir: false

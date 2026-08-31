@@ -15,12 +15,15 @@ from src.synthetic_data_generation.alignment.contracts import (
     AlignmentEvidence,
     AlignmentPartitions,
     AlignmentResult,
+    AlignmentTrace,
+    AlignmentTracePhase,
     CameraOwnershipRule,
     CameraSelectionPolicy,
     CandidateEvidence,
     CandidateScaleDiagnostics,
     CorrespondenceSet,
     FixedCameraSelectionDiagnostics,
+    GroundPlaneFrame,
     MeasuredCameraLines,
     MetricSceneAdapter,
 )
@@ -349,19 +352,224 @@ def test_metric_scene_adapter_keeps_nht_similarity_outside_rigid_court_contracts
         MetricSceneAdapter.from_nht_scene_from_metric_scene(non_uniform)
 
 
+def test_metric_ground_plane_frame_round_trip_and_adapter_binding() -> None:
+    nht_from_metric = np.asarray(
+        [
+            [0.0, -0.07, 0.0, 1.0],
+            [0.07, 0.0, 0.0, -2.0],
+            [0.0, 0.0, 0.07, 0.5],
+            [0.0, 0.0, 0.0, 1.0],
+        ],
+        dtype=np.float64,
+    )
+    adapter = MetricSceneAdapter.from_nht_scene_from_metric_scene(nht_from_metric)
+    frame = GroundPlaneFrame.from_nht_frame(
+        metric_adapter=adapter,
+        origin_nht_scene=np.asarray((1.0, -2.0, 0.5), dtype=np.float64),
+        basis_u_nht_scene=np.asarray((1.0, 0.0, 0.0), dtype=np.float64),
+        basis_v_nht_scene=np.asarray((0.0, 1.0, 0.0), dtype=np.float64),
+        normal_nht_scene=np.asarray((0.0, 0.0, 1.0), dtype=np.float64),
+        bounds_uv_nht_scene=np.asarray(
+            (-0.7, 1.4, -0.35, 0.7),
+            dtype=np.float64,
+        ),
+    )
+    uv = np.asarray(((-2.0, 3.0), (5.0, -1.0)), dtype=np.float64)
+
+    np.testing.assert_allclose(frame.to_uv(frame.from_uv(uv)), uv, atol=1.0e-10)
+    assert frame.bounds_uv_metres == pytest.approx((-10.0, 20.0, -5.0, 10.0))
+    assert GroundPlaneFrame.from_dict(frame.to_dict()) == frame
+    basis = np.column_stack(
+        (
+            frame.basis_u_metric_scene,
+            frame.basis_v_metric_scene,
+            frame.normal_metric_scene,
+        )
+    )
+    np.testing.assert_allclose(basis.T @ basis, np.eye(3), atol=1.0e-9)
+    assert np.linalg.det(basis) == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "error", "message"),
+    (
+        (
+            "basis_u_nht_scene",
+            np.asarray(((1.0, 0.0, 0.0),), dtype=np.float64),
+            ValueError,
+            "one-dimensional",
+        ),
+        (
+            "bounds_uv_nht_scene",
+            np.asarray((-1.0, 1.0, -1.0), dtype=np.float64),
+            ValueError,
+            "exactly 4",
+        ),
+        (
+            "basis_v_nht_scene",
+            np.asarray(("x", "y", "z")),
+            TypeError,
+            "real numeric dtype",
+        ),
+        (
+            "normal_nht_scene",
+            np.asarray((0.0, 1.0, object()), dtype=object),
+            TypeError,
+            "real numeric dtype",
+        ),
+        (
+            "origin_nht_scene",
+            np.asarray((0.0, np.nan, 0.0), dtype=np.float64),
+            ValueError,
+            "finite",
+        ),
+        (
+            "bounds_uv_nht_scene",
+            np.asarray((-1.0, 1.0, -np.inf, 1.0), dtype=np.float64),
+            ValueError,
+            "finite",
+        ),
+        (
+            "basis_u_nht_scene",
+            (1.0, [0.0], 0.0),
+            TypeError,
+            "numeric",
+        ),
+    ),
+)
+def test_metric_ground_plane_frame_rejects_invalid_nht_vectors(
+    field: str,
+    value: object,
+    error: type[Exception],
+    message: str,
+) -> None:
+    adapter = MetricSceneAdapter.from_nht_scene_from_metric_scene(
+        np.eye(4, dtype=np.float64)
+    )
+    values: dict[str, object] = {
+        "origin_nht_scene": np.asarray((0.0, 0.0, 0.0), dtype=np.float64),
+        "basis_u_nht_scene": np.asarray((1.0, 0.0, 0.0), dtype=np.float64),
+        "basis_v_nht_scene": np.asarray((0.0, 1.0, 0.0), dtype=np.float64),
+        "normal_nht_scene": np.asarray((0.0, 0.0, 1.0), dtype=np.float64),
+        "bounds_uv_nht_scene": np.asarray(
+            (-1.0, 1.0, -1.0, 1.0),
+            dtype=np.float64,
+        ),
+    }
+    values[field] = value
+
+    with pytest.raises(error, match=message):
+        GroundPlaneFrame.from_nht_frame(
+            metric_adapter=adapter,
+            origin_nht_scene=values["origin_nht_scene"],  # type: ignore[arg-type]
+            basis_u_nht_scene=values["basis_u_nht_scene"],  # type: ignore[arg-type]
+            basis_v_nht_scene=values["basis_v_nht_scene"],  # type: ignore[arg-type]
+            normal_nht_scene=values["normal_nht_scene"],  # type: ignore[arg-type]
+            bounds_uv_nht_scene=values["bounds_uv_nht_scene"],  # type: ignore[arg-type]
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    (
+        ("basis_v_metric_scene", (1.0, 0.0, 0.0), "orthonormal"),
+        ("normal_metric_scene", (0.0, 0.0, -1.0), "right-handed"),
+        ("origin_metric_scene", (0.0, np.nan, 0.0), "finite"),
+        ("bounds_uv_metres", (0.0, 0.0, -1.0, 1.0), "positive area"),
+    ),
+)
+def test_metric_ground_plane_frame_rejects_invalid_geometry(
+    field: str,
+    value: tuple[float, ...],
+    message: str,
+) -> None:
+    payload: dict[str, object] = {
+        "origin_metric_scene": (0.0, 0.0, 0.0),
+        "basis_u_metric_scene": (1.0, 0.0, 0.0),
+        "basis_v_metric_scene": (0.0, 1.0, 0.0),
+        "normal_metric_scene": (0.0, 0.0, 1.0),
+        "bounds_uv_metres": (-1.0, 1.0, -1.0, 1.0),
+    }
+    payload[field] = value
+    with pytest.raises(ValueError, match=message):
+        GroundPlaneFrame(**payload)  # type: ignore[arg-type]
+
+
+def test_alignment_trace_round_trip_rejects_reordering_and_score_mismatch(
+    alignment_evidence: AlignmentEvidence,
+) -> None:
+    payload = alignment_evidence.alignment_trace.to_dict()
+
+    assert AlignmentTrace.from_dict(payload) == alignment_evidence.alignment_trace
+
+    reordered = deepcopy(payload)
+    steps = cast(list[dict[str, object]], reordered["steps"])
+    steps[1], steps[2] = steps[2], steps[1]
+    with pytest.raises(ValueError, match="reordered"):
+        AlignmentTrace.from_dict(reordered)
+
+    mismatched_score = deepcopy(payload)
+    score_steps = cast(list[dict[str, object]], mismatched_score["steps"])
+    score_steps[0]["score_sum"] = 123.0
+    with pytest.raises(ValueError, match="score_sum"):
+        AlignmentTrace.from_dict(mismatched_score)
+
+    non_finite = deepcopy(payload)
+    finite_steps = cast(list[dict[str, Any]], non_finite["steps"])
+    finite_steps[0]["candidates"][0]["template_score"] = float("nan")
+    with pytest.raises(ValueError, match="finite"):
+        AlignmentTrace.from_dict(non_finite)
+
+
+def test_final_trace_is_bound_to_recomputed_alignment(
+    alignment_evidence: AlignmentEvidence,
+    alignment_policy: AlignmentAcceptancePolicy,
+) -> None:
+    final_step = alignment_evidence.alignment_trace.step(
+        AlignmentTracePhase.FINAL_ALIGNMENT
+    )
+    drifted_state = replace(
+        final_step.candidates[0],
+        center_uv_metres=(1.2, 2.0),
+    )
+    drifted_trace = replace(
+        alignment_evidence.alignment_trace,
+        steps=(
+            *alignment_evidence.alignment_trace.steps[:-1],
+            replace(
+                final_step,
+                candidates=(drifted_state, *final_step.candidates[1:]),
+            ),
+        ),
+    )
+    evidence = replace(
+        alignment_evidence,
+        diagnostics=replace(
+            alignment_evidence.diagnostics,
+            alignment_trace=drifted_trace,
+        ),
+    )
+
+    with pytest.raises(ValueError, match="center disagrees with the trace"):
+        fit_alignment(evidence, policy=alignment_policy)
+
+
 def test_common_scale_refit_diagnostics_reject_center_bound_violation() -> None:
     with pytest.raises(ValueError, match="exceeds its derived maximum"):
         CandidateScaleDiagnostics(
             candidate_id="candidate-a",
             nht_scene_units_per_metre=0.07,
             template_score=0.8,
+            common_scale_refit_template_score=0.81,
+            common_scale_refit_center_uv_metres=(0.0, 0.0),
+            common_scale_refit_orientation_radians=0.0,
             common_scale_refit_center_displacement_metres=1.01,
             maximum_common_scale_refit_center_displacement_metres=1.0,
             proposal_orientation_band_minimum_radians=-0.5,
             proposal_orientation_band_maximum_radians=0.5,
             proposal_residual_point_count_before_suppression=100,
             proposal_residual_point_count_after_suppression=50,
-            native_center_uv=(0.0, 0.0),
+            native_center_uv_metres=(0.0, 0.0),
             native_orientation_radians=0.0,
         )
 
@@ -784,6 +992,24 @@ def test_persisted_common_scale_inconsistency_fails_identifiability_gate(
     alignment_policy: AlignmentAcceptancePolicy,
 ) -> None:
     evidence = _with_whole_court_evidence(alignment_evidence)
+    native_step = evidence.alignment_trace.step(
+        AlignmentTracePhase.NATIVE_REFINEMENT
+    )
+    drifted_native_step = replace(
+        native_step,
+        candidates=(
+            replace(native_step.candidates[0], nht_scene_units_per_metre=0.8),
+            replace(native_step.candidates[1], nht_scene_units_per_metre=1.2),
+        ),
+    )
+    drifted_trace = replace(
+        evidence.alignment_trace,
+        steps=(
+            evidence.alignment_trace.steps[0],
+            drifted_native_step,
+            *evidence.alignment_trace.steps[2:],
+        ),
+    )
     diagnostics = replace(
         evidence.diagnostics,
         candidate_scales=(
@@ -797,6 +1023,7 @@ def test_persisted_common_scale_inconsistency_fails_identifiability_gate(
             ),
         ),
         maximum_relative_scale_deviation=0.2,
+        alignment_trace=drifted_trace,
     )
     with pytest.raises(ValueError, match="Native candidate scale deviation"):
         replace(evidence, diagnostics=diagnostics)
@@ -808,7 +1035,7 @@ def test_duplicate_overlap_is_rejected_after_final_kabsch_refit(
 ) -> None:
     first, second = alignment_evidence.candidates
     matrix = np.eye(4, dtype=np.float64)
-    matrix[:3, 3] = (4.0, 2.0, 0.5)
+    matrix[:3, 3] = (4.0, 2.0, 0.0)
     duplicate_transform = RigidTransform.from_matrix(matrix)
     duplicate = CandidateEvidence(
         court_instance_id=second.court_instance_id,
@@ -938,11 +1165,51 @@ def _with_whole_court_evidence(
         )
         for diagnostic in evidence.diagnostics.cameras
     )
+    plane = evidence.ground_plane_frame
+    basis_u = np.asarray(plane.basis_u_metric_scene, dtype=np.float64)
+    basis_v = np.asarray(plane.basis_v_metric_scene, dtype=np.float64)
+    final_step = evidence.alignment_trace.step(AlignmentTracePhase.FINAL_ALIGNMENT)
+    updated_final_step = replace(
+        final_step,
+        candidates=tuple(
+            replace(
+                state,
+                center_uv_metres=cast(
+                    tuple[float, float],
+                    tuple(
+                        float(item)
+                        for item in plane.to_uv(
+                            transform.matrix()[None, :3, 3]
+                        )[0]
+                    ),
+                ),
+                orientation_radians=float(
+                    np.arctan2(
+                        float(transform.matrix()[:3, 0] @ basis_v),
+                        float(transform.matrix()[:3, 0] @ basis_u),
+                    )
+                ),
+            )
+            for state, transform in zip(
+                final_step.candidates,
+                transforms,
+                strict=True,
+            )
+        ),
+    )
+    trace = replace(
+        evidence.alignment_trace,
+        steps=(*evidence.alignment_trace.steps[:-1], updated_final_step),
+    )
     return replace(
         evidence,
         candidates=candidates,
         measured_camera_lines=measured_lines,
-        diagnostics=replace(evidence.diagnostics, cameras=cameras),
+        diagnostics=replace(
+            evidence.diagnostics,
+            cameras=cameras,
+            alignment_trace=trace,
+        ),
         whole_court_settings=settings,
     )
 

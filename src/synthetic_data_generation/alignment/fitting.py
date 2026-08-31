@@ -16,6 +16,7 @@ from src.synthetic_data_generation.alignment.contracts import (
     CandidateAlignment,
     CorrespondenceSet,
     build_layout,
+    validate_alignment_trace_final_binding,
 )
 from src.synthetic_data_generation.alignment.evaluation import evaluate_partition
 from src.synthetic_data_generation.alignment.whole_court import (
@@ -86,6 +87,11 @@ def fit_alignment(
             )
         )
     candidate_tuple = tuple(candidates)
+    validate_alignment_trace_final_binding(
+        evidence.alignment_trace,
+        ground_plane_frame=evidence.ground_plane_frame,
+        candidates=candidate_tuple,
+    )
     validate_whole_court_evidence(
         evidence,
         candidates=candidate_tuple,
