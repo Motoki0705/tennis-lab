@@ -4,16 +4,22 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import torch
 from torch import Tensor
 
+from src.tasks.base.configuration import (
+    exact_config_mapping,
+    require_config_mapping,
+    require_config_value,
+)
 from src.tasks.base.data.lifecycle_slots import (
     LifecycleSlotAssignment,
     pack_lifecycle_slots,
 )
+from src.tasks.base.data.observation_tracking import ObservationTrackingConfig
 from src.tasks.base.data.rng import require_run_seed
 from src.tasks.base.data.scene_dataset import SceneDatasetBase, SceneDatasetConfig
 from src.utils.schema.court_normalization import (
@@ -65,10 +71,31 @@ class CanonicalTrackingDataset(SceneDatasetBase[dict[str, Tensor]]):
         data_cfg = self._resolve_data_cfg(self.hydra_cfg)
         seq_len_range = self._parse_int_range(data_cfg, "seq_len_range")
         num_views_range = self._parse_int_range(data_cfg, "num_views_range")
-        lifecycle_cfg = data_cfg["lifecycle"]
-        self.pack_to_query_slots = bool(lifecycle_cfg["pack_to_query_slots"])
-        self.min_reuse_gap_frames = int(lifecycle_cfg["min_reuse_gap_frames"])
-        self.randomize_slots_train = bool(lifecycle_cfg["randomize_slots_train"])
+        lifecycle_cfg = exact_config_mapping(
+            require_config_mapping(data_cfg, "lifecycle", path="data"),
+            path="data.lifecycle",
+            required_keys=frozenset(
+                {"pack_to_query_slots", "min_reuse_gap_frames"}
+            ),
+        )
+        self.pack_to_query_slots = cast(
+            "bool",
+            require_config_value(
+                lifecycle_cfg, "pack_to_query_slots", bool, path="data.lifecycle"
+            ),
+        )
+        self.min_reuse_gap_frames = cast(
+            "int",
+            require_config_value(
+                lifecycle_cfg,
+                "min_reuse_gap_frames",
+                int,
+                path="data.lifecycle",
+            ),
+        )
+        self.observation_tracking_config = ObservationTrackingConfig.from_mapping(
+            require_config_mapping(data_cfg, "association", path="data")
+        )
         model_cfg = self.hydra_cfg["model"]
         raw_num_queries = model_cfg["num_queries"]
         self.num_queries = int(raw_num_queries) if raw_num_queries is not None else None
@@ -143,8 +170,6 @@ class CanonicalTrackingDataset(SceneDatasetBase[dict[str, Tensor]]):
             physical_presence,
             num_slots=num_slots,
             min_reuse_gap_frames=self.min_reuse_gap_frames,
-            randomize_slots=self.augment and self.randomize_slots_train,
-            rng=self.rng,
         )
 
 
@@ -197,4 +222,8 @@ def pad_and_stack_tracking_batch(
     return collated
 
 
-__all__ = ["CanonicalTrackingDataset", "pad_and_stack_tracking_batch"]
+__all__ = [
+    "CanonicalTrackingDataset",
+    "pad_and_stack_tracking_batch",
+    "validate_lifecycle_capacity",
+]

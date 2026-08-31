@@ -1,0 +1,3 @@
+?? .codex/tasks/
+?? knowledge/nodes/run-i832-blcs-legacy-slot-baseline.md
+?? knowledge/runs/run-i832-blcs-legacy-slot-baseline/

@@ -92,11 +92,13 @@ def _materialize_blcs(root: Path) -> None:
         for index in range(4):
             scene_id = f"scene_{split}_{index:03d}"
             names[split].append(scene_id)
-            frames, objects, cameras = 8, 3, 2
+            frames, objects, cameras = 8, 2, 2
             positions_m = (
                 torch.rand(frames, objects, 3) * 4.0 - 2.0 + split_index / 100.0
             )
             velocities_mps = torch.full_like(positions_m, 3.0)
+            frame_index: np.ndarray = np.arange(frames, dtype=np.float32)[:, None]
+            object_index: np.ndarray = np.arange(objects, dtype=np.float32)[None, :]
             camera_rows = [
                 BLCSCameraData(
                     camera_params={
@@ -108,8 +110,18 @@ def _materialize_blcs(root: Path) -> None:
                         "w": 1,
                         "h": 1,
                     },
-                    ball_uv=np.random.default_rng(index + camera).random(
-                        (frames, objects, 2), dtype=np.float32
+                    ball_uv=np.stack(
+                        (
+                            0.20
+                            + 0.30 * object_index
+                            + (0.0010 + 0.0002 * object_index) * frame_index
+                            + 0.01 * camera,
+                            0.25
+                            + 0.15 * object_index
+                            + (0.0008 + 0.0001 * object_index) * frame_index
+                            - 0.005 * camera,
+                        ),
+                        axis=-1,
                     ),
                     ball_vis=np.ones((frames, objects), dtype=bool),
                     ball_visibility_ratio=1.0,
@@ -162,6 +174,9 @@ def _materialize_plcs(root: Path) -> None:
             )
             rotation: np.ndarray = np.zeros((frames, objects, 2), dtype=np.float32)
             rotation[..., 0] = 1.0
+            frame_index: np.ndarray = np.arange(frames, dtype=np.float32)[:, None, None]
+            object_index: np.ndarray = np.arange(objects, dtype=np.float32)[None, :, None]
+            joint_index: np.ndarray = np.arange(17, dtype=np.float32)[None, None, :]
             camera_rows = [
                 PLCSCameraData(
                     camera_params={
@@ -173,8 +188,20 @@ def _materialize_plcs(root: Path) -> None:
                         "w": 1,
                         "h": 1,
                     },
-                    human_kp_uv=np.random.default_rng(index + camera).random(
-                        (frames, objects, 17, 2), dtype=np.float32
+                    human_kp_uv=np.stack(
+                        (
+                            0.15
+                            + 0.30 * object_index
+                            + 0.008 * np.remainder(joint_index, 5)
+                            + (0.0010 + 0.0003 * object_index) * frame_index
+                            + 0.01 * camera,
+                            0.20
+                            + 0.15 * object_index
+                            + 0.015 * np.floor_divide(joint_index, 5)
+                            + (0.0007 + 0.0002 * object_index) * frame_index
+                            - 0.005 * camera,
+                        ),
+                        axis=-1,
                     ),
                     court_kp_uv=np.zeros((frames, 20, 2), dtype=np.float32),
                     human_kp_vis=np.ones((frames, objects, 17), dtype=bool),

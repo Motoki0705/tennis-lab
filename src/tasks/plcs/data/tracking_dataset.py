@@ -13,6 +13,7 @@ from src.tasks.base.data import (
     ReferenceViewSelection,
     StableCameraIdTable,
     include_evaluation_reference_camera,
+    track_multiview_observations,
     validate_reference_view_batch,
 )
 from src.tasks.base.data.canonical_tracking import (
@@ -64,7 +65,7 @@ PLCS_TRACKING_KEYS = (
 
 
 class PLCSTrackingDataset(CanonicalTrackingDataset):
-    """Load ID-ordered objects, pack lifecycle slots, and corrupt observations."""
+    """Build targets separately from post-corruption camera-local observations."""
 
     def __init__(
         self,
@@ -87,9 +88,18 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
             self.court_keypoint_contract,
         )
         super().__init__(**kwargs)
+        if self.num_queries is None:
+            raise ValueError("PLCS tracking requires model.num_queries.")
+        if self.num_queries <= 0:
+            raise ValueError("PLCS tracking requires positive model.num_queries.")
+        if not self.pack_to_query_slots:
+            raise ValueError(
+                "PLCS tracking requires data.lifecycle.pack_to_query_slots=true."
+            )
         data_cfg = self._resolve_data_cfg(self.hydra_cfg)
         self.tracking_augmentation = PLCSTrackingDetectionAugmentation(
-            data_cfg["augmentation"]
+            data_cfg["augmentation"],
+            num_slots=self.num_queries,
         )
 
     def build_sample(self, scene: Scene) -> dict[str, Any]:
@@ -109,6 +119,8 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
             ).bool()
         else:
             physical_presence = torch.ones((num_frames, num_physical), dtype=torch.bool)
+        if physical_presence.shape != (num_frames, num_physical):
+            raise ValueError("person_present must match the physical (T,P) axes.")
         window = self.select_window(scene, full_len=num_frames)
         cameras = self.select_cameras(scene)
         complete_views = scene_court_views(
@@ -164,12 +176,10 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
         world_joints = world_joints_physical_to_target(world_joints, provenance)
         if self.num_queries is None:
             raise ValueError("PLCS tracking requires model.num_queries.")
-        packing = build_fixed_lifecycle_assignment(
+        target_packing = build_fixed_lifecycle_assignment(
             physical_presence,
             num_slots=self.num_queries,
             min_reuse_gap_frames=self.min_reuse_gap_frames,
-            randomize_slots=self.augment and self.randomize_slots_train,
-            generator=None,
         )
 
         kp_rows: list[Tensor] = []
@@ -191,17 +201,30 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
             if keypoints.ndim == 3:
                 keypoints = keypoints[:, None]
                 visible = visible[:, None]
+            if keypoints.shape != (window.seq_len, num_physical, 17, 2):
+                raise ValueError(
+                    "PLCS tracking human_kp_uv must have shape (T,P,17,2)."
+                )
+            if visible.shape != (window.seq_len, num_physical, 17):
+                raise ValueError(
+                    "PLCS tracking human_kp_vis must have shape (T,P,17)."
+                )
             visible &= physical_presence[..., None]
             keypoints[~visible] = 0.0
-            packed_keypoints = packing.pack_tensor(keypoints, physical_presence)
-            packed_visible = packing.pack_tensor(visible, physical_presence)
-            clean_kp_rows.append(packed_keypoints.clone())
-            clean_visible_rows.append(packed_visible.clone())
+            clean_kp_rows.append(keypoints.clone())
+            clean_visible_rows.append(visible.clone())
+            physical_ids = torch.arange(
+                num_physical,
+                dtype=torch.long,
+                device=keypoints.device,
+            ).view(1, num_physical)
             detection_index = torch.where(
-                packed_visible.any(-1), packing.target_instance_id, -1
+                visible.any(-1),
+                physical_ids.expand(window.seq_len, num_physical),
+                -1,
             )
-            kp_rows.append(packed_keypoints)
-            visible_rows.append(packed_visible)
+            kp_rows.append(keypoints)
+            visible_rows.append(visible)
             index_rows.append(detection_index)
             source_view = views[local_index] if views else None
             court_rows.append(
@@ -253,24 +276,29 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
             "padding_mask": torch.zeros(
                 len(cameras.indices), window.seq_len, dtype=torch.bool
             ),
-            "target_position": packing.pack_tensor(position, physical_presence),
-            "target_rotation": packing.pack_tensor(
+            "target_position": target_packing.pack_tensor(position, physical_presence),
+            "target_rotation": target_packing.pack_tensor(
                 rotation,
                 physical_presence,
                 fill_value=rotation_fill,
             ),
-            "target_canonical_pose_3d": packing.pack_tensor(
+            "target_canonical_pose_3d": target_packing.pack_tensor(
                 canonical_pose, physical_presence
             ),
-            "target_human_kp_3d": packing.pack_tensor(world_joints, physical_presence),
-            "target_presence": packing.target_presence,
-            "target_instance_id": packing.target_instance_id,
-            "target_slot_mask": packing.target_presence.any(0),
+            "target_human_kp_3d": target_packing.pack_tensor(
+                world_joints, physical_presence
+            ),
+            "target_presence": target_packing.target_presence,
+            "target_instance_id": target_packing.target_instance_id,
+            "target_slot_mask": target_packing.target_presence.any(0),
             "clean_human_kp": torch.stack(clean_kp_rows),
             "clean_human_vis": torch.stack(clean_visible_rows),
             "detection_gt_index": torch.stack(index_rows),
             "camera_C": torch.stack(camera_center_rows),
             "camera_R": torch.stack(camera_rotation_rows),
+            # Consumed by ``augment_sample`` so overflow evidence reports the
+            # selected source camera rather than the local view row.
+            "_observation_camera_indices": tuple(int(i) for i in cameras.indices),
         }
         sample["court_keypoint_metadata"] = court_keypoint_contract_document(
             self.court_keypoint_contract
@@ -293,19 +321,109 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
         return sample
 
     def augment_sample(self, sample: dict[str, Any]) -> dict[str, Any]:
-        if not self.augment:
-            return sample
-        metadata_keys = (
-            "court_keypoint_metadata",
-            "court_reference_provenance",
-            "selected_camera_ids",
-        )
-        metadata = {key: sample[key] for key in metadata_keys}
-        tensor_sample: dict[str, Tensor] = {
+        if self.num_queries is None:
+            raise RuntimeError("PLCS tracking dataset lost its fixed query width.")
+        raw_camera_indices = sample.get("_observation_camera_indices")
+        if not isinstance(raw_camera_indices, tuple) or not all(
+            type(index) is int for index in raw_camera_indices
+        ):
+            raise TypeError(
+                "PLCS physical observations require selected camera indices."
+            )
+        camera_indices = tuple(int(index) for index in raw_camera_indices)
+        metadata = {
+            key: value
+            for key, value in sample.items()
+            if not isinstance(value, Tensor) and key != "_observation_camera_indices"
+        }
+        physical_sample: dict[str, Tensor] = {
             key: value for key, value in sample.items() if isinstance(value, Tensor)
         }
-        augmented = self.tracking_augmentation(tensor_sample)
-        return {**augmented, **metadata}
+        physical_sample["court_kp"] = physical_sample["court_kp"].masked_fill(
+            ~physical_sample["court_vis"].unsqueeze(-1),
+            0.0,
+        )
+        corrupted = (
+            self.tracking_augmentation(physical_sample)
+            if self.augment
+            else {key: value.clone() for key, value in physical_sample.items()}
+        )
+        tracked = track_multiview_observations(
+            corrupted["human_kp"],
+            corrupted["human_vis"],
+            num_slots=self.num_queries,
+            config=self.observation_tracking_config,
+            camera_indices=camera_indices,
+            debug_provenance=corrupted["detection_gt_index"],
+        )
+        if tracked.debug_provenance is None:
+            raise RuntimeError("PLCS tracking unexpectedly lost debug provenance.")
+        clean_human_kp, clean_human_vis = _gather_tracked_clean_pose(
+            physical_sample["clean_human_kp"],
+            physical_sample["clean_human_vis"],
+            tracked.detection_indices,
+            tracked.debug_provenance,
+        )
+        corrupted["human_kp"] = tracked.values
+        corrupted["human_vis"] = tracked.visibility
+        corrupted["detection_gt_index"] = tracked.debug_provenance
+        corrupted["clean_human_kp"] = clean_human_kp
+        corrupted["clean_human_vis"] = clean_human_vis
+        return {**corrupted, **metadata}
+
+
+def _gather_tracked_clean_pose(
+    clean_human_kp: Tensor,
+    clean_human_vis: Tensor,
+    detection_indices: Tensor,
+    detection_gt_index: Tensor,
+) -> tuple[Tensor, Tensor]:
+    """Gather clean physical poses strictly after noisy association."""
+    if clean_human_kp.ndim != 5 or clean_human_kp.shape[-2:] != (17, 2):
+        raise ValueError("clean_human_kp must have shape (V,T,D,17,2).")
+    if clean_human_vis.shape != clean_human_kp.shape[:-1]:
+        raise ValueError("clean_human_vis must match clean_human_kp without UV.")
+    if clean_human_vis.dtype != torch.bool:
+        raise TypeError("clean_human_vis must have dtype torch.bool.")
+    if detection_indices.shape != detection_gt_index.shape or detection_indices.ndim != 3:
+        raise ValueError(
+            "Tracked detection indices and provenance must share shape (V,T,Q)."
+        )
+    if detection_indices.dtype != torch.long or detection_gt_index.dtype != torch.long:
+        raise TypeError("Tracked detection indices and provenance must be torch.long.")
+    if clean_human_kp.shape[:2] != detection_indices.shape[:2]:
+        raise ValueError("Clean pose and tracked detection view/time axes must match.")
+
+    views, frames, num_detections, _, _ = clean_human_kp.shape
+    num_queries = detection_indices.shape[2]
+    if num_detections == 0:
+        return (
+            torch.zeros(
+                (views, frames, num_queries, 17, 2),
+                dtype=clean_human_kp.dtype,
+                device=clean_human_kp.device,
+            ),
+            torch.zeros(
+                (views, frames, num_queries, 17),
+                dtype=torch.bool,
+                device=clean_human_vis.device,
+            ),
+        )
+    safe_indices = detection_indices.clamp_min(0)
+    value_indices = safe_indices[..., None, None].expand(-1, -1, -1, 17, 2)
+    visibility_indices = safe_indices[..., None].expand(-1, -1, -1, 17)
+    gathered_values = torch.gather(clean_human_kp, 2, value_indices)
+    gathered_visibility = torch.gather(
+        clean_human_vis, 2, visibility_indices
+    )
+    real_detection = (detection_indices >= 0) & (detection_gt_index >= 0)
+    gathered_visibility &= real_detection[..., None]
+    gathered_values = torch.where(
+        gathered_visibility[..., None],
+        gathered_values,
+        torch.zeros_like(gathered_values),
+    )
+    return gathered_values, gathered_visibility
 
 
 def collate_plcs_tracking_batch(

@@ -1,0 +1,47 @@
+ M src/tasks/base/README.md
+ M src/tasks/base/data/__init__.py
+ M src/tasks/base/data/canonical_tracking.py
+ M src/tasks/base/data/lifecycle_slots.py
+ M src/tasks/blcs/README.md
+ M src/tasks/blcs/configs/data/tracking.yaml
+ M src/tasks/blcs/configs/data/tracking_chunked.yaml
+ M src/tasks/blcs/configuration.py
+ M src/tasks/blcs/data/observation_candidates.py
+ M src/tasks/blcs/data/tracking_augmentation.py
+ M src/tasks/blcs/data/tracking_dataset.py
+ M src/tasks/blcs/data/tracking_types.py
+ M src/tasks/blcs/inference/tracking_predictor.py
+ M src/tasks/plcs/README.md
+ M src/tasks/plcs/configs/data/tracking.yaml
+ M src/tasks/plcs/configs/data/tracking_chunked.yaml
+ M src/tasks/plcs/configuration.py
+ M src/tasks/plcs/data/tracking_augmentation.py
+ M src/tasks/plcs/data/tracking_dataset.py
+ M src/utils/README.md
+ M src/utils/models/components/fixed_query_track_stage.py
+ M src/utils/models/embeddings/group_tokens.py
+ M tests/integration/tasks/tracking/test_training_smoke.py
+ M tests/unit/submodules/models/dino/test_person_detector.py
+ M tests/unit/submodules/models/tracker/test_dino_tracker.py
+ M tests/unit/tasks/base/data/test_canonical_tracking.py
+ M tests/unit/tasks/base/data/test_lifecycle_slots.py
+ M tests/unit/tasks/blcs/data/test_tracking_augmentation.py
+ M tests/unit/tasks/blcs/data/test_tracking_dataset.py
+ M tests/unit/tasks/blcs/generate_dataset/test_multi_object_scene_generator.py
+ M tests/unit/tasks/blcs/model_io/test_adapters.py
+ M tests/unit/tasks/plcs/data/test_court_view_dataset.py
+ M tests/unit/tasks/plcs/data/test_tracking_augmentation.py
+ M tests/unit/tasks/plcs/generate_dataset/test_multi_object_scene_generator.py
+ M tests/unit/tasks/plcs/model_io/test_adapters.py
+ M tests/unit/tennis_scene/pipeline/components/test_ball_detection.py
+ M tests/unit/tennis_scene/test_archive.py
+ M tests/unit/utils/models/components/test_fixed_query_track_stage.py
+ M tests/unit/utils/models/embeddings/test_group_tokens.py
+?? .codex/tasks/
+?? src/tasks/base/data/observation_tracking.py
+?? src/tasks/blcs/configs/data/_observation_tracking.yaml
+?? src/tasks/plcs/configs/data/_observation_tracking.yaml
+?? tests/integration/tasks/tracking/test_observation_association_config.py
+?? tests/unit/submodules/models/vitpose/
+?? tests/unit/tasks/base/data/test_observation_tracking.py
+?? tests/unit/tasks/plcs/data/test_tracking_dataset.py

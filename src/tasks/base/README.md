@@ -47,11 +47,50 @@
 
 PLCS standardでcanonical pose headが有効かつ有効なcanonical pose教師がある場合に限り、全stageの上記headlineへ`canonical_mpjpe_m`（関節距離の平均、低いほど良い）と`canonical_pck_0.1m`（誤差0.1 m以内の関節割合、高いほど良い）を追加する。pose教師がないbatch/epochへ0を補完しない。testの診断値には`canonical_joint_error_median_m`と、17関節それぞれの`canonical_joint_error_<name>_m`を保存する。tracking modelはpose headを持たないため対象外である。PA-MPJPEはProcrustes整列がcanonical poseの回転・scale誤差を消して世界座標再構成の品質を過大評価し得るため、headline/診断値のどちらにも出さない。旧`canonical_mpjpe`はknowledge artifactの読み込み互換だけに使い、新規出力は`canonical_mpjpe_m`へ統一する。
 
-#### Tracking metric migration note (#820)
+## 実2D観測からfixed-Q inputまでの正本契約 (#832)
 
-Trackingのcount系metricは、batch内合計のepoch平均ではなく、評価した全sequenceに対する1 sequence当たり平均として記録する。したがって、旧実装の値（batch内合計の平均、かつ各targetが独立に選んだ最近傍queryによるID switch）とは互換性がなく、過去runと比較またはcheckpointを再選択する場合は新実装で再評価が必要になる。保存済みの過去metricは書き換えない。
+この節を、BLCS/PLCSの観測association、debug metadata、metric、破壊的migrationに関する唯一の完全な正本とする。task固有READMEはentrypointやtask固有shapeだけを記述し、同じ契約を複製しない。
 
-`id_switches`はtarget lifecycle内だけで計測する。直前frameの対応が現在も距離gate内ならその1対1対応を優先し、残りをgate付きの決定的な1対1 Hungarian assignmentで対応する。prediction欠落中も同じlifecycleのlast-valid queryを保持し、再対応先が変わったときだけswitchを1件数え、lifecycle境界でresetする。`id_switch_distance=0.05`は正規化court座標単位（約0.59425 m）の必須設定で、近接重複を測る`duplicate_distance`とは独立である。通常のBLCS/PLCS可視化はこのtracking metric専用assignmentを描画しないため、見た目とmetricは直接対応しない。
+### 実推論wrapperの出力境界
+
+| 観測 | 実wrapperの出力 | IDと欠測の意味 | synthetic pre-Q observationへの対応 |
+|---|---|---|---|
+| ball | `BallDetectionModule`はcameraごとに高々1点を返し、`ball_uv`/`ball_uv_px`は`(N,T,2)`、`visibility`/`score`は`(N,T)`。archive境界は`SceneResult.ball_uv (N,T,2)`と`ball_vis (N,T)`。 | ball tracking IDは存在しない。thresholdまたはtrajectory gateで無効になったframeはvisibilityがfalseで、座標とscoreは0。 | visibleな正規化UVを`K=1`の1 detectionとしてcarrier軸`D`へ入れる。dropout/noise/false positiveはこのpre-Q setに適用し、元の単一streamやGT slotを先に`Q`へ割り当てない。 |
+| person | `DinoPersonDetector`はBGR `uint8 (H,W,3)`の1 frameからpixel `boxes_xyxy (D,4)`と`scores (D)`を返す。`BotSortAssociator`は各frameについてinteger `id`とpixel `bbx_xyxy (4,)`を返し、`DinoPersonTracker`が選択した各trackを`TrackResult.tracks[id] (F,4)`へ完成させる。ViTPoseはその1 trackのpixel `(center_x,center_y,size) (F,3)`を受け、COCO-17 pixel `(x,y,confidence) (F,17,3)`を返す。 | detector出力とViTPose result自体にはIDがない。BoT-SORT IDは1 video/cameraの1 tracker run内だけで有効で、global/canonical player IDではない。`DinoPersonTracker`は欠けたboxを補間して平滑化するため、完成後のboxからraw detector missingnessを復元・仮定してはならない。 | ViTPoseのpixel座標をimage sizeで正規化し、joint visibilityとともに`K=17`のunordered detection carrierへ入れる。BoT-SORT ID、補間boxの見かけ上の連続性、manual canonical IDはtracking costやmodel input slot labelにしない。 |
+
+multi-camera playerのcanonicalizationは、この境界より後段の`PlayerAssociationModule`/`apply_player_association()`がmanualな時間区間mappingとして所有する。これはcamera-local GVHMR軸をcanonical player軸へ並べ替えるscene reconstruction処理であり、pre-Q observation trackingとは別契約である。同じBoT-SORT番号や同じquery番号が別cameraで現れても同一人物を意味しない。
+
+### pre-Q augmentation、camera-local tracking、fixed Q
+
+共通trackerの入力は、cameraごとのunordered carrier `values (T,D,K,2)`と`visibility (T,D,K)`だけである。座標は有限な正規化UV `[0,1]`とし、物理/GT ID、clean slot、target slot、debug provenance、別cameraのstate、RNGをassociation featureへ入れない。処理順序は次で固定する。
+
+1. 物理観測とdebug provenanceをpre-Q carrierとして抽出する。
+2. 設定済みの座標noise、dropout、false positive、時間augmentationをcarrierへ適用する。
+3. false positive有効時は`limit_synthetic_false_positive_carriers()`へnoisyなmodel-visible values/visibilityとfalse-positive適用直前のvisibilityを渡し、新規synthetic-only carrierだけを残り`Q`容量へ制限する。
+4. `track_camera_observations()`、またはviewごとに独立stateを作る`track_multiview_observations()`で、破損後のvisible UVだけをassociationする。
+5. 結果をexact `Q`へ配置し、その後に独立したGT target packingとcollateを行う。
+
+`ObservationTrackingConfig`は`max_distance`、`max_missed_frames`、`min_reuse_gap_frames`、`use_velocity_prediction`、`min_common_keypoints`、`cost_reduction`、literal `overflow_policy: error`をexact keyとして要求する。ball (`K=1`) costは正規化UVのEuclidean distance、pose (`K=17`) costは共通visible jointの距離を設定どおりreduceし、PLCSは最低4 jointのmedianを用いる。gate外または共通joint不足のpairは一致不可である。valid pairから最大cardinality、最小total cost、辞書順 `(slot, canonical_detection_rank)`の順で決定的なone-to-one対応を選ぶ。2観測があればconstant-velocity prediction、なければlast observationをassociation予測に使うが、この予測値はmodel-visible observationを補間しない。
+
+miss中は設定frame数までslot stateを保持し、再出現がgate内なら同じcamera-local slotを再使用する。spare capacityがある通常時は、retire後に`min_reuse_gap_frames`を満たしたslotだけをbirthへ再利用する。現在frameの`visible_count <= Q`なのにbirth用slotが不足するpressure時は、現在matchしたslotを決して奪わず、必要なslot deficitだけを強制再利用する。victimはcooldown/retired slotを`(reusable_after_frame, slot)`順、その後にunmatched retained stateを`(-missed_frames, last_frame, slot)`順で選ぶ。このpressure経路だけは明示的にreuse gapを迂回し、canonical detection順の全birthを、freeと選択済みvictimを合わせた昇順slotへ割り当てる。`TrackingCapacityError`を送出するのは現在frameの`visible_count > Q`だけであり、camera/frame/free-slotを証拠として持つ。切り捨て、暗黙の`Q`拡張、legacy fallbackは行わない。
+
+false-positive容量制限はruntime trackerのoverflow fallbackではなく、augmentationが新しく合成したFP-only carrierだけに適用する明示的なtraining-corruption契約である。false-positive適用直前に1 joint以上visibleだったcarrierはgenuineとして、FP追加後の全model-visible値を変更せず保持する（同一frameのgenuineだけで`Q`を超える場合も保持し、trackerがtyped errorで拒否する）。pre-FP visibilityが全falseで、FP追加後に一部または全部のjointがvisibleになったcarrierだけをsynthetic-onlyと数え、genuine visible carrier後の残り容量まで、noisy visibility maskとvisible UVによるcanonical順で決定的に選ぶ。carrier permutationでcanonicalな選択値は変わらず、rejectしたsynthetic carrierはvaluesを0、visibilityをfalseにする。pre-FP visibilityはこのsynthetic provenance判定専用であり、association cost、gate、slot tie-break、model inputには入れない。
+
+共通の固定幅出力は`TrackedObservations.values (V,T,Q,K,2)`、`visibility (V,T,Q,K)`、`detection_indices (V,T,Q)`である。BLCSは`K=1`を`(V,T,Q,2)/(V,T,Q)`へ、PLCSは`K=17`を`(V,T,Q,17,2)/(V,T,Q,17)`へ渡す。未観測/paddingは0かつvisibility falseで、miss保持中も観測を捏造しない。query番号はcamera-local lifecycle slotであり、別camera、再利用後の別lifecycle、BoT-SORT ID、GT target slotとの恒久的identity対応を持たない。既存head/output rank、mask、V/T collate、prediction-to-target matchingは変更しない。
+
+### debug metadataとpost-#824 metric
+
+`candidate_gt_index`、`detection_gt_index`、`TrackedObservations.detection_indices`/`debug_provenance`、clean observationは評価、renderer、sample inspectionのためだけに保持する。provenanceはassociation後にcarrier indexでgatherし、false positive、dropout、unmatched/paddingを`-1`とする。これらをcost/gate/tie-break、track state、`ModelCall` inputへ渡してはならない。GT target packingもmodel-visible observation packingから独立させる。
+
+input observation trackingとtarget/prediction metric assignmentは別物である。post-#824の`id_switches`はtarget lifecycle内だけで計測し、直前frameの対応が現在も距離gate内ならその1対1対応を優先し、残りをgate付きの決定的な1対1 Hungarian assignmentで対応する。prediction欠落中も同じlifecycleのlast-valid queryを保持し、再対応先が変わったときだけswitchを1件数え、lifecycle境界でresetする。`id_switch_distance=0.05`は正規化court座標単位（約0.59425 m）の必須設定で、近接重複用`duplicate_distance`とは独立である。通常の可視化はmetric専用assignmentを描画しないため、見た目と値は直接対応しない。
+
+#820以後、count系metricはbatch内合計のepoch平均ではなく、評価した全sequenceに対する1 sequence当たり平均で記録する。旧batch集計および各targetが独立に最近傍queryを選んだpre-#824 `id_switches`とは数値互換性がない。保存済みmetricは書き換えず、比較やcheckpoint再選択には現行metricでの再評価が必要である。
+
+### #650系random slotからの破壊的migration
+
+#832は、#650までのGT physical lifecycleを先に`Q`へpackしてからslot randomization/noiseを適用するpipelineを置換する破壊的変更である。`randomize_slots_train`と旧random relabel APIは削除し、`data.association`のexact configだけを受け付ける。旧key、未知key、容量超過を読み替えるcompatibility modeは提供しない。
+
+固定`Q` tensor shapeが同じため旧checkpointが構造上loadできる場合でも、slot identityとaugmentation順序が異なるため、旧checkpointを#832のcontinued trainingや比較へ使用してはならず再学習が必要である。#643/#648/#650のrunは旧associationに加えてpre-#824 metric解釈を含むため、新pipelineの定量baselineとして直接比較しない。同一split、seed、model、学習budgetと現行position/presence/association metricで再実行したrunだけを比較根拠とする。
 
 ## Training model compilation
 

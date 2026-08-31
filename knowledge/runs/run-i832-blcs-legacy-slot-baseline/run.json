@@ -1,0 +1,14 @@
+{
+  "run_id": "1788045628240065708_1375433_i832_blcs_legacy_slot_baseline_r4",
+  "name": "i832_blcs_legacy_slot_baseline_r4",
+  "command": "test \"$PWD\" = \"/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-832-legacy-baseline\" || { echo \"wrong CWD: $PWD\" >&2; exit 70; }; /home/kamimura/projects/tennis-lab/.venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking paths.data_root=/home/kamimura/projects/tennis-lab/data run.seed=832 run.output_dir=blcs/issue-832/legacy-slot-baseline-r4 data.augmentation.false_positive.enabled=false training.trainer.max_epochs=100 training.trainer.check_val_every_n_epoch=5 training.early_stopping.enabled=false training.qualitative_logging.enabled=false",
+  "provider": "codex",
+  "session": "01a04ddb-48b6-7342-96a7-be95090cc969",
+  "issue": "832",
+  "commit": "01b6cb5f46bb6c7bdd7f4735007f84d93f1689de",
+  "branch": "experiments/issue-832-legacy-baseline-boundary",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-832-legacy-baseline",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-832-legacy-baseline",
+  "captured_at": "2026-08-30T08:21:05+09:00"
+}

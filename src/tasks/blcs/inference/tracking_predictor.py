@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, Self, cast
 
 import torch
 from torch import Tensor
@@ -42,7 +42,7 @@ from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 
 class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
-    """Predict fixed lifecycle queries from ID-ordered per-camera observations."""
+    """Predict fixed queries from caller-provided per-camera slot observations."""
 
     def __init__(
         self,
@@ -169,7 +169,8 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
         right: BLCSReferenceMetadata,
     ) -> bool:
         """Compare typed metadata without relying on tensor dataclass equality."""
-        return (
+        return cast(
+            "bool",
             left.selections == right.selections
             and left.stable_camera_id_tables == right.stable_camera_id_tables
             and left.track_query_contract == right.track_query_contract
@@ -183,7 +184,7 @@ class BLCSTrackingPredictor(BasePredictor[BLCSTrackQueryPrediction]):
             and torch.equal(
                 left.physical_from_reference,
                 right.physical_from_reference,
-            )
+            ),
         )
 
     def _resolve_reference_metadata(

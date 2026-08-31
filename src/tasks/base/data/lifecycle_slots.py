@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import numpy as np
 import torch
 from torch import Tensor
 
@@ -89,8 +88,6 @@ def pack_lifecycle_slots(
     *,
     num_slots: int,
     min_reuse_gap_frames: int = 0,
-    randomize_slots: bool = False,
-    rng: np.random.Generator | None = None,
 ) -> LifecycleSlotAssignment:
     """Color physical intervals into reusable slots without illegal overlap."""
     if physical_presence.ndim != 2:
@@ -114,8 +111,6 @@ def pack_lifecycle_slots(
         device=presence.device,
     )
     slot_death = [-min_reuse_gap_frames] * num_slots
-    generator = rng or np.random.default_rng()
-
     for interval in intervals:
         available = [
             slot
@@ -128,10 +123,7 @@ def pack_lifecycle_slots(
                 f"track={interval.track_index}, birth={interval.birth_frame}, "
                 f"num_slots={num_slots}."
             )
-        if randomize_slots:
-            slot_index = int(generator.choice(np.asarray(available)))
-        else:
-            slot_index = available[0]
+        slot_index = available[0]
         track_to_slot[interval.track_index] = slot_index
         target_presence[
             interval.birth_frame : interval.death_frame, slot_index
@@ -153,38 +145,12 @@ def build_fixed_lifecycle_assignment(
     *,
     num_slots: int,
     min_reuse_gap_frames: int,
-    randomize_slots: bool,
-    generator: torch.Generator | None,
 ) -> LifecycleSlotAssignment:
-    """Build an exact-width lifecycle assignment with optional slot relabeling.
-
-    Interval coloring is always deterministic.  When ``randomize_slots`` is
-    enabled, one ``torch.randperm`` draw relabels the complete fixed-width slot
-    axis.  Passing a ``generator`` makes that draw explicit; passing ``None``
-    selects PyTorch's current worker-seeded RNG.
-    """
-    assignment = pack_lifecycle_slots(
+    """Build an exact-width deterministic lifecycle assignment."""
+    return pack_lifecycle_slots(
         physical_presence,
         num_slots=num_slots,
         min_reuse_gap_frames=min_reuse_gap_frames,
-        randomize_slots=False,
-    )
-    if not randomize_slots:
-        return assignment
-
-    permutation = torch.randperm(
-        num_slots,
-        device=physical_presence.device,
-        generator=generator,
-    )
-    track_to_slot = assignment.track_to_slot.clone()
-    assigned = track_to_slot >= 0
-    track_to_slot[assigned] = permutation[track_to_slot[assigned]]
-    inverse_permutation = permutation.argsort()
-    return LifecycleSlotAssignment(
-        track_to_slot=track_to_slot,
-        target_presence=assignment.target_presence[:, inverse_permutation],
-        target_instance_id=assignment.target_instance_id[:, inverse_permutation],
     )
 
 

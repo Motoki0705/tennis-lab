@@ -431,6 +431,28 @@ def test_tracking_boundary_validates_inputs_targets_and_decodes_required_presenc
     assert decoded.presence_logits.shape == (1, 3, 3)
 
 
+def test_tracking_model_call_excludes_association_debug_and_clean_tensors() -> None:
+    batch = _tracking_batch()
+    batch["detection_gt_index"] = torch.full(
+        (1, 2, 3, 3), -1, dtype=torch.long
+    )
+    batch["clean_human_kp"] = batch["human_kp"].clone()
+    batch["clean_human_vis"] = batch["human_vis"].clone()
+
+    call = _tracking_adapter().build_call(batch)
+
+    assert set(call.kwargs) == {
+        "human_kp",
+        "human_vis",
+        "court_kp",
+        "court_vis",
+        "padding_mask",
+    }
+    human_kp = call.kwargs["human_kp"]
+    assert isinstance(human_kp, Tensor)
+    assert human_kp.shape[3] == 3
+
+
 def test_tracking_boundary_rejects_incomplete_court_and_visibility_dtype() -> None:
     adapter = _tracking_adapter()
     batch = _tracking_batch()

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import numpy as np
 import pytest
 import torch
 
@@ -21,7 +20,6 @@ def test_interval_coloring_reuses_slot_after_gap_and_preserves_instance_ids() ->
         presence,
         num_slots=2,
         min_reuse_gap_frames=2,
-        randomize_slots=False,
     )
 
     assert packed.track_to_slot.tolist() == [0, 1, 0, 0]
@@ -36,26 +34,19 @@ def test_interval_coloring_reuses_slot_after_gap_and_preserves_instance_ids() ->
     assert target[10, 0].eq(0).all()
 
 
-def test_train_slot_randomization_is_seeded_and_val_packing_is_deterministic() -> None:
-    presence = torch.zeros(12, 2, dtype=torch.bool)
-    presence[0:3, 0] = True
-    presence[6:9, 1] = True
-    first = pack_lifecycle_slots(
-        presence,
-        num_slots=4,
-        randomize_slots=True,
-        rng=np.random.default_rng(5),
-    )
-    second = pack_lifecycle_slots(
-        presence,
-        num_slots=4,
-        randomize_slots=True,
-        rng=np.random.default_rng(5),
-    )
-    deterministic = pack_lifecycle_slots(presence, num_slots=4)
+def test_interval_coloring_is_replayable_and_ties_use_physical_index_order() -> None:
+    presence = torch.zeros(12, 3, dtype=torch.bool)
+    presence[0:3, 1] = True
+    presence[0:3, 2] = True
+    presence[6:9, 0] = True
 
-    assert torch.equal(first.track_to_slot, second.track_to_slot)
-    assert deterministic.track_to_slot.tolist() == [0, 0]
+    first = pack_lifecycle_slots(presence, num_slots=4)
+    second = pack_lifecycle_slots(presence, num_slots=4)
+
+    assert first.track_to_slot.tolist() == [0, 0, 1]
+    torch.testing.assert_close(first.track_to_slot, second.track_to_slot)
+    torch.testing.assert_close(first.target_presence, second.target_presence)
+    torch.testing.assert_close(first.target_instance_id, second.target_instance_id)
 
 
 def test_disjoint_physical_track_and_insufficient_slots_are_rejected() -> None:
@@ -78,15 +69,11 @@ def test_fixed_assignment_has_exact_width_and_deterministic_interval_packing() -
         presence,
         num_slots=4,
         min_reuse_gap_frames=0,
-        randomize_slots=False,
-        generator=None,
     )
     second = build_fixed_lifecycle_assignment(
         presence,
         num_slots=4,
         min_reuse_gap_frames=0,
-        randomize_slots=False,
-        generator=None,
     )
 
     assert first.track_to_slot.tolist() == [0, 1, 0]
@@ -97,81 +84,22 @@ def test_fixed_assignment_has_exact_width_and_deterministic_interval_packing() -
     torch.testing.assert_close(first.target_instance_id, second.target_instance_id)
 
 
-def test_fixed_assignment_relabels_all_outputs_with_explicit_torch_generator() -> None:
-    presence = torch.ones(3, 3, dtype=torch.bool)
-    deterministic = build_fixed_lifecycle_assignment(
-        presence,
-        num_slots=5,
-        min_reuse_gap_frames=0,
-        randomize_slots=False,
-        generator=None,
-    )
-    expected_permutation = torch.randperm(
-        5,
-        generator=torch.Generator().manual_seed(753),
-    )
+def test_random_relabel_arguments_are_destructively_removed() -> None:
+    presence = torch.ones(2, 1, dtype=torch.bool)
 
-    randomized = build_fixed_lifecycle_assignment(
-        presence,
-        num_slots=5,
-        min_reuse_gap_frames=0,
-        randomize_slots=True,
-        generator=torch.Generator().manual_seed(753),
-    )
-
-    torch.testing.assert_close(
-        randomized.track_to_slot,
-        expected_permutation[deterministic.track_to_slot],
-    )
-    inverse_permutation = expected_permutation.argsort()
-    torch.testing.assert_close(
-        randomized.target_presence,
-        deterministic.target_presence[:, inverse_permutation],
-    )
-    torch.testing.assert_close(
-        randomized.target_instance_id,
-        deterministic.target_instance_id[:, inverse_permutation],
-    )
-
-
-def test_fixed_assignment_uses_current_torch_rng_for_independent_draws() -> None:
-    presence = torch.ones(2, 4, dtype=torch.bool)
-
-    torch.manual_seed(753)
-    first = build_fixed_lifecycle_assignment(
-        presence,
-        num_slots=4,
-        min_reuse_gap_frames=0,
-        randomize_slots=True,
-        generator=None,
-    )
-    second = build_fixed_lifecycle_assignment(
-        presence,
-        num_slots=4,
-        min_reuse_gap_frames=0,
-        randomize_slots=True,
-        generator=None,
-    )
-
-    torch.manual_seed(753)
-    replay_first = build_fixed_lifecycle_assignment(
-        presence,
-        num_slots=4,
-        min_reuse_gap_frames=0,
-        randomize_slots=True,
-        generator=None,
-    )
-    replay_second = build_fixed_lifecycle_assignment(
-        presence,
-        num_slots=4,
-        min_reuse_gap_frames=0,
-        randomize_slots=True,
-        generator=None,
-    )
-
-    torch.testing.assert_close(first.track_to_slot, replay_first.track_to_slot)
-    torch.testing.assert_close(second.track_to_slot, replay_second.track_to_slot)
-    assert not torch.equal(first.track_to_slot, second.track_to_slot)
+    with pytest.raises(TypeError, match="randomize_slots"):
+        pack_lifecycle_slots(
+            presence,
+            num_slots=1,
+            randomize_slots=True,  # type: ignore[call-arg]
+        )
+    with pytest.raises(TypeError, match="generator"):
+        build_fixed_lifecycle_assignment(
+            presence,
+            num_slots=1,
+            min_reuse_gap_frames=0,
+            generator=torch.Generator(),  # type: ignore[call-arg]
+        )
 
 
 def test_fixed_assignment_rejects_capacity_overflow_without_truncation() -> None:
@@ -182,6 +110,26 @@ def test_fixed_assignment_rejects_capacity_overflow_without_truncation() -> None
             presence,
             num_slots=2,
             min_reuse_gap_frames=0,
-            randomize_slots=False,
-            generator=None,
+        )
+
+
+@pytest.mark.parametrize(
+    ("presence", "num_slots", "gap", "message"),
+    [
+        (torch.ones(2, dtype=torch.bool), 1, 0, "shape"),
+        (torch.ones(2, 1, dtype=torch.bool), 0, 0, "positive"),
+        (torch.ones(2, 1, dtype=torch.bool), 1, -1, "non-negative"),
+    ],
+)
+def test_lifecycle_assignment_validates_shape_capacity_and_gap(
+    presence: torch.Tensor,
+    num_slots: int,
+    gap: int,
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        pack_lifecycle_slots(
+            presence,
+            num_slots=num_slots,
+            min_reuse_gap_frames=gap,
         )

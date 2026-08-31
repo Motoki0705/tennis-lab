@@ -16,6 +16,7 @@ from src.tasks.base.configuration import (
     as_config_mapping,
     require_config_mapping,
 )
+from src.tasks.base.data.observation_tracking import ObservationTrackingConfig
 from src.tasks.base.generate_dataset import (
     CourtKeypointContract,
     resolve_court_keypoint_contract,
@@ -2227,12 +2228,17 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
         "augmentation",
     }
     if isinstance(model, _TRACK_QUERY_MODEL_CONFIG_TYPES):
-        data_keys.update({"lifecycle", "evaluation_reference_camera_id"})
+        data_keys.update(
+            {"association", "lifecycle", "evaluation_reference_camera_id"}
+        )
         lifecycle = require_config_mapping(data, "lifecycle", path="data")
         _exact(
             lifecycle,
-            {"pack_to_query_slots", "min_reuse_gap_frames", "randomize_slots_train"},
+            {"pack_to_query_slots", "min_reuse_gap_frames"},
             path="data.lifecycle",
+        )
+        association = ObservationTrackingConfig.from_mapping(
+            require_config_mapping(data, "association", path="data")
         )
     else:
         data_keys.add("num_court_kp")
@@ -2380,7 +2386,6 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             {
                 "pack_to_query_slots": bool,
                 "min_reuse_gap_frames": int,
-                "randomize_slots_train": bool,
             },
             path="data.lifecycle",
         )
@@ -2392,6 +2397,14 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
         if cast("int", lifecycle["min_reuse_gap_frames"]) < 0:
             raise SemanticConfigurationError(
                 "data.lifecycle.min_reuse_gap_frames must be non-negative."
+            )
+        if association.min_common_keypoints != 1:
+            raise SemanticConfigurationError(
+                "BLCS point tracking requires data.association.min_common_keypoints=1."
+            )
+        if association.cost_reduction != "mean":
+            raise SemanticConfigurationError(
+                "BLCS point tracking requires data.association.cost_reduction='mean'."
             )
     else:
         num_court_kp = cast("int", _value(data, "num_court_kp", int, path="data"))

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -94,3 +95,55 @@ def test_predict_video_consumes_typed_task_prediction(
 
     np.testing.assert_allclose(coords, [[0.1, 0.2], [0.3, 0.4]])
     np.testing.assert_allclose(confidence, [0.6, 0.8])
+
+
+def test_process_exposes_one_unidentified_observation_stream_per_camera(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    packets: list[FramePacket] = [
+        FramePacket(
+            index=index,
+            frame=np.zeros((4, 6, 3), dtype=np.uint8),
+            original_size=(6, 4),
+        )
+        for index in range(2)
+    ]
+    monkeypatch.setattr(
+        ball_component,
+        "OpenCVVideoFrameReader",
+        lambda _path, *, max_frames: packets[:max_frames],
+    )
+    monkeypatch.setattr(
+        ball_component,
+        "probe_video_info",
+        lambda _path: SimpleNamespace(width=6, height=4),
+    )
+    base_config = make_ball_config(tmp_path)
+    config = replace(
+        base_config,
+        image_size=(4, 6),
+        score_threshold=0.7,
+        trajectory_gate=replace(base_config.trajectory_gate, enabled=False),
+    )
+    module = BallDetectionModule(config)
+    module._pipeline = _TypedBallPredictor()  # type: ignore[assignment]
+
+    result = module.process(
+        [Path("camera-near.mp4"), Path("camera-far.mp4")],
+        max_frames=2,
+    )
+
+    assert result.ball_uv.shape == (2, 2, 2)
+    assert result.ball_uv_px.shape == (2, 2, 2)
+    assert result.visibility.shape == (2, 2)
+    assert result.score.shape == (2, 2)
+    np.testing.assert_array_equal(
+        result.visibility,
+        np.array([[False, True], [False, True]], dtype=np.bool_),
+    )
+    np.testing.assert_array_equal(result.ball_uv[:, 0], np.zeros((2, 2)))
+    np.testing.assert_allclose(result.ball_uv[:, 1], [[0.3, 0.4], [0.3, 0.4]])
+    np.testing.assert_allclose(result.ball_uv_px[:, 1], [[1.5, 1.2], [1.5, 1.2]])
+    assert set(vars(result)) == {"ball_uv", "ball_uv_px", "visibility", "score"}
+    assert result.validate() == (True, [])
