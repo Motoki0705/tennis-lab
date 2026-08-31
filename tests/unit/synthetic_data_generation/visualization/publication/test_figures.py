@@ -96,9 +96,7 @@ def _translated_matrices(count: int, *, offset: float = 0.0) -> tuple[np.ndarray
 
 
 def _canonical_drift_matrix() -> NDArray[np.float64]:
-    # This direction keeps its normalized self-dot two ULPs below one for both
-    # scalar and BLAS reductions, so the regression does not depend on reduction order.
-    angle = 1.0147749333333334
+    angle = 1.1884684684684685
     forward = np.asarray(
         (0.6 * np.sin(angle), 0.8 * np.sin(angle), np.cos(angle)),
         dtype=np.float64,
@@ -243,9 +241,10 @@ def test_byte_identical_canonical_drift_directions_are_exactly_coincident() -> N
     blcs = _camera_collection("blcs", matrices)
     plcs = _camera_collection("plcs", tuple(matrix.copy() for matrix in matrices))
     forward = matrices[0][:3, 2]
-    normalized = forward / np.linalg.norm(forward)
-    assert np.degrees(np.arccos(np.clip(np.dot(normalized, normalized), -1.0, 1.0))) > (
-        1.0e-6
+    assert np.linalg.norm(forward) > 1.0
+    np.testing.assert_array_equal(
+        blcs.camera_to_metric_scene[:, :3, 2],
+        plcs.camera_to_metric_scene[:, :3, 2],
     )
 
     metrics = camera_rig_comparison_metrics(
