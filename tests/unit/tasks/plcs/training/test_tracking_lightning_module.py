@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import numpy as np
 import pytest
@@ -67,6 +67,7 @@ def _all_mode_module() -> PLCSTrackingLightningModule:
 def _competition_fine_tune_module(
     *,
     model_profile: str = "track_query",
+    competition_mode: Literal["deepsets", "deepsets_centered"] = "deepsets",
 ) -> PLCSTrackingLightningModule:
     config_dir = PROJECT_ROOT / "src/tasks/plcs/configs"
     overrides = [
@@ -94,7 +95,11 @@ def _competition_fine_tune_module(
         )
     with initialize_config_dir(version_base="1.3", config_dir=str(config_dir)):
         config = compose(
-            config_name="train_tracking_pose_presence_competition",
+            config_name=(
+                "train_tracking_pose_presence_competition_centered"
+                if competition_mode == "deepsets_centered"
+                else "train_tracking_pose_presence_competition"
+            ),
             overrides=overrides,
         )
     return PLCSTrackingLightningModule(config)
@@ -248,6 +253,35 @@ def test_presence_competition_has_exact_trainable_parameter_names() -> None:
     grouped_parameters = cast("list[nn.Parameter]", groups[0]["params"])
     assert {id(parameter) for parameter in grouped_parameters} == {
         id(parameter) for parameter in branch.parameters()
+    }
+
+
+def test_centered_presence_competition_has_exact_bias_free_optimizer_state() -> None:
+    module = _competition_fine_tune_module(
+        competition_mode="deepsets_centered",
+    )
+    branch = _require_presence_competition(module.model)
+    trainable_names = {
+        name for name, parameter in module.named_parameters() if parameter.requires_grad
+    }
+
+    assert trainable_names == {
+        "model.presence_competition.feature_projection.weight",
+        "model.presence_competition.feature_projection.bias",
+        "model.presence_competition.output_projection.weight",
+    }
+    assert branch.output_projection.bias is None
+    assert "output_projection.bias" not in dict(branch.named_parameters())
+    assert "output_projection.bias" not in branch.state_dict()
+    groups = module.optimizer_param_groups()
+    assert groups is not None
+    grouped_parameters = cast("list[nn.Parameter]", groups[0]["params"])
+    grouped_ids = {id(parameter) for parameter in grouped_parameters}
+    assert grouped_ids == {id(parameter) for parameter in branch.parameters()}
+    assert grouped_ids == {
+        id(parameter)
+        for name, parameter in module.named_parameters()
+        if name in trainable_names
     }
 
 

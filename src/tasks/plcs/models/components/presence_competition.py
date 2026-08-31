@@ -24,13 +24,18 @@ class DeepSetsPresenceResidual(nn.Module):
         self.hidden_dim = hidden_dim
         self.center_queries = center_queries
         self.feature_projection = nn.Linear(3 * hidden_dim, hidden_dim)
-        self.output_projection = nn.Linear(hidden_dim, 1)
+        self.output_projection = (
+            nn.Linear(hidden_dim, 1, bias=False)
+            if center_queries
+            else nn.Linear(hidden_dim, 1)
+        )
         self.reset_output_projection()
 
     def reset_output_projection(self) -> None:
         """Restore the exact zero-output residual used for legacy migration."""
         nn.init.zeros_(self.output_projection.weight)
-        nn.init.zeros_(self.output_projection.bias)
+        if self.output_projection.bias is not None:
+            nn.init.zeros_(self.output_projection.bias)
 
     def forward(self, query_hidden: Tensor) -> Tensor:
         """Return ``(B,T,Q)`` residuals for ``query_hidden[B,T,Q,D]``."""

@@ -145,12 +145,14 @@ def test_enabled_zero_residual_is_bitwise_identical_to_legacy_presence_output(
         legacy_output = _forward(legacy, inputs)
         enabled_output = _forward(enabled, inputs)
 
-    assert set(result.missing_keys) == {
+    expected_missing_keys = {
         "presence_competition.feature_projection.weight",
         "presence_competition.feature_projection.bias",
         "presence_competition.output_projection.weight",
-        "presence_competition.output_projection.bias",
     }
+    if presence_competition == "deepsets":
+        expected_missing_keys.add("presence_competition.output_projection.bias")
+    assert set(result.missing_keys) == expected_missing_keys
     assert not result.unexpected_keys
     assert isinstance(enabled.presence_competition, DeepSetsPresenceResidual)
     for key in legacy_output:

@@ -149,7 +149,8 @@ def test_presence_competition_accepts_only_complete_legacy_branch_omission(
     branch = module.model.presence_competition
     with torch.no_grad():
         branch.output_projection.weight.fill_(2.0)
-        branch.output_projection.bias.fill_(3.0)
+        if branch.output_projection.bias is not None:
+            branch.output_projection.bias.fill_(3.0)
     _write_checkpoint(
         module,
         omitted_prefix="model.presence_competition.",
@@ -161,7 +162,10 @@ def test_presence_competition_accepts_only_complete_legacy_branch_omission(
     )
 
     assert torch.count_nonzero(branch.output_projection.weight) == 0
-    assert torch.count_nonzero(branch.output_projection.bias) == 0
+    if branch.output_projection.bias is not None:
+        assert torch.count_nonzero(branch.output_projection.bias) == 0
+    else:
+        assert "output_projection.bias" not in branch.state_dict()
 
 
 @pytest.mark.parametrize(
@@ -172,11 +176,20 @@ def test_presence_competition_accepts_only_complete_legacy_branch_omission(
         "model.canonical_pose_head.mlp.8.weight",
     ],
 )
+@pytest.mark.parametrize(
+    "competition_mode",
+    ["deepsets", "deepsets_centered"],
+)
 def test_presence_competition_rejects_partial_or_nonbranch_missing_state(
     tmp_path: Path,
     omitted_key: str,
+    competition_mode: Literal["deepsets", "deepsets_centered"],
 ) -> None:
-    module = _module(tmp_path, fine_tune_mode="presence_competition")
+    module = _module(
+        tmp_path,
+        fine_tune_mode="presence_competition",
+        competition_mode=competition_mode,
+    )
     _write_checkpoint(module, omitted_key=omitted_key)
 
     with pytest.raises(RuntimeError, match="disallowed/partial missing keys"):
@@ -186,9 +199,40 @@ def test_presence_competition_rejects_partial_or_nonbranch_missing_state(
         )
 
 
-def test_presence_competition_rejects_unexpected_state(tmp_path: Path) -> None:
-    module = _module(tmp_path, fine_tune_mode="presence_competition")
+@pytest.mark.parametrize(
+    "competition_mode",
+    ["deepsets", "deepsets_centered"],
+)
+def test_presence_competition_rejects_unexpected_state(
+    tmp_path: Path,
+    competition_mode: Literal["deepsets", "deepsets_centered"],
+) -> None:
+    module = _module(
+        tmp_path,
+        fine_tune_mode="presence_competition",
+        competition_mode=competition_mode,
+    )
     _write_checkpoint(module, unexpected_key="model.legacy_presence_extra")
+
+    with pytest.raises(RuntimeError, match="unexpected state keys"):
+        PLCSTrainingRunner().maybe_load_init_weights(
+            module.plcs_runtime.shared,
+            module,
+        )
+
+
+def test_centered_presence_competition_rejects_legacy_output_bias_key(
+    tmp_path: Path,
+) -> None:
+    module = _module(
+        tmp_path,
+        fine_tune_mode="presence_competition",
+        competition_mode="deepsets_centered",
+    )
+    _write_checkpoint(
+        module,
+        unexpected_key="model.presence_competition.output_projection.bias",
+    )
 
     with pytest.raises(RuntimeError, match="unexpected state keys"):
         PLCSTrainingRunner().maybe_load_init_weights(
@@ -248,7 +292,8 @@ def test_presence_competition_accepts_strict_enabled_checkpoint_roundtrip(
     branch = module.model.presence_competition
     with torch.no_grad():
         branch.output_projection.weight.fill_(0.75)
-        branch.output_projection.bias.fill_(-0.25)
+        if branch.output_projection.bias is not None:
+            branch.output_projection.bias.fill_(-0.25)
     expected = {
         key: value.detach().clone()
         for key, value in branch.state_dict().items()
@@ -256,7 +301,8 @@ def test_presence_competition_accepts_strict_enabled_checkpoint_roundtrip(
     _write_checkpoint(module)
     with torch.no_grad():
         branch.output_projection.weight.zero_()
-        branch.output_projection.bias.zero_()
+        if branch.output_projection.bias is not None:
+            branch.output_projection.bias.zero_()
 
     PLCSTrainingRunner().maybe_load_init_weights(
         module.plcs_runtime.shared,
