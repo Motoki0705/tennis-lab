@@ -1,20 +1,21 @@
-# B00 Court trajectory safety Attempt-2 report
+# B00 Court trajectory safety decision report
 
-Status: **pending fresh GPU pilot, blind review, and final dataset**.
+Status: **quality_evidence_complete_final_v4_pending**. The quality-only decision is **quality_only_rejected**; geometry remains authoritative.
 
-The fresh CPU B00 plan is feasible and frozen in `pilot-manifest.json` at
-SHA-256 `6d65ff89729a866491d97f62dff8c76650d0dff793544baf26533c168a75dffa`.
-It contains 3,913 candidate decisions, 1,060 safe candidates, 39 selected
-groups, and 2,016 projected valid frames with no required coverage shortfall.
-The selection includes 12 free-space-cycle groups and 27 genuine anchored
-rounded rectangles from 27 unique public-camera anchors; 13 are planar and 14
-use the required real 0.25 m lift. Anchored frames account for
-0.32142857142857145 of the plan. Candidate and legacy proposal budgets are both
-4,800.
+## Blind pilot evidence
 
-No prior pilot label, quality decision, adjudication, artifact comparison,
-contact sheet, final dataset count, or release outcome is valid for this changed
-inventory. `frozen-config.json` intentionally has a null observation lock until
-the new 128-view pilot and independent annotations are complete. The new pilot,
-annotation, and final roots named in `README.md` must be used without
-overwriting or copying the superseded semantic-phase evidence.
+- Reviewer A: 128 records, 11 artifact-heavy.
+- Reviewer B: 128 records, 3 artifact-heavy.
+- Disagreements/adjudications: 10; consensus positives: 5 (calibration 2, held-out 3).
+
+## Frozen quality-only result
+
+Calibration evaluated 800 adjacent-midpoint/operator candidates, but no threshold family passed all frozen calibration gates. No rule, threshold, recall, precision, or other predictive metric was selected or reported. The explicit rejection reasons are `no_calibration_threshold_family_passes_frozen_gates, insufficient_held_out_positive_labels`.
+
+Held-out safe V4 candidates were 0/9 artifact-heavy; held-out legacy views were 2/12.
+
+## Geometry and final route
+
+- Frozen V4 plan: 2016 frames, 39 trajectory groups, 0 support violations, and group-disjoint splits=True.
+- Source authority: `data/synthetic_data_generation/raw/B00.mp4` matches the immutable ingested copy at SHA-256 `6a4387e6061b4d81fabd5e99a6f0814953469138ed52eed7aec665b37c50962c`; the stale recorded `tennis_court.mp4` path is not used.
+- Final V4 dataset: pending the queued GPU generation/render/assembly run.
