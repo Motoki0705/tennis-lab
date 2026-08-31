@@ -244,7 +244,9 @@ owners:
   publication.captured.camera_ids='[<complete-export-order>]'
 ```
 
-The fresh output directory contains three annotated dataset GIFs, the persisted
+By default, the fresh output directory is
+`data/synthetic_data_generation/scenes/<scene_id>/publication/`. It contains
+three annotated dataset GIFs, the persisted
 four-phase alignment progression GIF, a metric ground-plane heatmap/evidence/
 court overlay, captured/BLCS/PLCS camera-frustum figures, their shared-axis
 comparison, a fixed six-panel overview, and `manifest.json`. The authoritative

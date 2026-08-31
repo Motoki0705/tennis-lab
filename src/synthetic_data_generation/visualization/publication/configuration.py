@@ -101,7 +101,7 @@ def build_publication_request(config: DictConfig) -> PublicationRequest:
             _text(raw["scene_root"], name="publication.scene_root"),
         ),
         output_bundle=resolver.resolve(
-            PathRole.OUTPUT,
+            PathRole.DATA,
             _text(raw["output_bundle"], name="publication.output_bundle"),
         ),
         artifact_names=tuple(

@@ -31,11 +31,13 @@ def test_request_resolves_the_fixed_inventory_and_semantic_paths(
     assert request.artifact_names == REQUIRED_PUBLICATION_ARTIFACTS
     roots = cast(dict[str, object], publication_config["roots"])
     assert (
-        request.scene_root == Path(cast(str, roots["data_root"])) / "scenes" / "scene-0"
+        request.scene_root
+        == Path(cast(str, roots["data_root"]))
+        / "synthetic_data_generation"
+        / "scenes"
+        / "scene-0"
     )
-    assert request.output_bundle == (
-        Path(cast(str, roots["output_root"])) / "publication" / "scene-0"
-    )
+    assert request.output_bundle == request.scene_root / "publication"
     assert request.dataset_root("court").name == "court"
     assert request.dataset_root("blcs").name == "blcs"
     assert request.reconstruction_scene_json == (
@@ -60,6 +62,18 @@ def test_request_resolves_the_fixed_inventory_and_semantic_paths(
     drawing = cast(dict[str, object], resolved["drawing"])
     assert drawing["maximum_rendered_captured_cameras"] == 24
     assert drawing["coincident_centre_tolerance_metres"] == 1.0e-6
+
+
+def test_request_rejects_noncanonical_output_inside_scene_owner(
+    publication_config: dict[str, object],
+) -> None:
+    publication = cast(dict[str, object], publication_config["publication"])
+    publication["output_bundle"] = (
+        "synthetic_data_generation/scenes/scene-0/alternate-publication"
+    )
+
+    with pytest.raises(ValueError, match="fixed publication directory"):
+        build_publication_request(OmegaConf.create(publication_config))
 
 
 @pytest.mark.parametrize(

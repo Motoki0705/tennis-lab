@@ -992,12 +992,13 @@ def test_complete_bundle_reopens_with_exact_mappings_and_is_byte_deterministic(
     scene_root = _scene_root(tmp_path)
     loaded = _loaded_inputs()
     monkeypatch.setattr(bundle_module, "_load_inputs", lambda _request: loaded)
-    first_request = _request(scene_root, tmp_path / "outputs" / "publication-a")
+    first_request = _request(scene_root, scene_root / "publication")
     second_request = _request(scene_root, tmp_path / "outputs" / "publication-b")
 
     first = generate_publication_bundle(first_request)
     second = generate_publication_bundle(second_request)
 
+    assert first.bundle_path == scene_root / "publication"
     assert (
         validate_publication_bundle(
             first.bundle_path, expected_request=first_request
