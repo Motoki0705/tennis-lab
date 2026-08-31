@@ -1,4 +1,4 @@
-"""PLCS track-query ablation architecture and public-contract tests."""
+"""PLCS fixed track-query architecture and public-contract tests."""
 
 from __future__ import annotations
 
@@ -16,17 +16,8 @@ from src.tasks.plcs.models.plcs_track_query_ablation_model import (
 )
 from src.tasks.plcs.models.plcs_track_query_model import PLCSTrackQueryModel
 from src.utils.models.components.ffn_layers import FFNType, GPTOSSSwiGLU, SwiGLU
-from src.utils.models.components.fixed_query_track_ablation_stage import (
-    FFNMode,
-    FixedQueryTrackAblationStage,
-    MHCWriteback,
-)
-
-_CONDITIONS: tuple[tuple[str, FFNMode, MHCWriteback, int], ...] = (
-    ("A", "per_attention", "after_object_temporal", 16),
-    ("B", "shared", "after_object_temporal", 16),
-    ("C", "per_attention", "layer_end", 7),
-    ("D", "shared", "layer_end", 7),
+from src.utils.models.components.fixed_query_track_compressed_stage import (
+    FixedQueryTrackCompressedStage,
 )
 
 
@@ -45,8 +36,6 @@ def _raw_model() -> dict[str, object]:
         "dropout": 0.0,
         "role_rope_enabled": True,
         "invisible_init_std": 0.02,
-        "ffn_mode": "per_attention",
-        "mhc_writeback": "after_object_temporal",
         "mhc": {
             "coefficient_dim": 8,
             "sinkhorn_iters": 5,
@@ -62,15 +51,8 @@ def _raw_model() -> dict[str, object]:
     }
 
 
-def _config(
-    ffn_mode: FFNMode,
-    mhc_writeback: MHCWriteback,
-    *,
-    ffn_type: FFNType = "swiglu",
-) -> PLCSModelConfig:
+def _config(*, ffn_type: FFNType = "swiglu") -> PLCSModelConfig:
     raw = _raw_model()
-    raw["ffn_mode"] = ffn_mode
-    raw["mhc_writeback"] = mhc_writeback
     raw["ffn_type"] = ffn_type
     return PLCSModelConfig.from_mapping(raw)
 
@@ -78,20 +60,11 @@ def _config(
 def _baseline_config() -> PLCSModelConfig:
     raw = _raw_model()
     raw["name"] = "plcs_track_query"
-    del raw["ffn_mode"]
-    del raw["mhc_writeback"]
     return PLCSModelConfig.from_mapping(raw)
 
 
-def _model(
-    ffn_mode: FFNMode,
-    mhc_writeback: MHCWriteback,
-    *,
-    ffn_type: FFNType = "swiglu",
-) -> PLCSTrackQueryAblationModel:
-    model = PLCSTrackQueryAblationModel(
-        _config(ffn_mode, mhc_writeback, ffn_type=ffn_type)
-    )
+def _model(*, ffn_type: FFNType = "swiglu") -> PLCSTrackQueryAblationModel:
+    model = PLCSTrackQueryAblationModel(_config(ffn_type=ffn_type))
     model.eval()
     return model
 
@@ -127,14 +100,9 @@ def _forward(
     return cast("dict[str, Tensor]", model(**inputs))
 
 
-def test_ablation_model_is_a_distinct_named_public_architecture() -> None:
+def test_model_keeps_public_name_and_five_tensor_contract() -> None:
     assert PLCSTrackQueryAblationModel.__name__ == "PLCSTrackQueryAblationModel"
-    assert PLCSTrackQueryAblationModel.__module__.endswith(
-        ".plcs_track_query_ablation_model"
-    )
-    parameters = list(
-        inspect.signature(PLCSTrackQueryAblationModel.forward).parameters
-    )
+    parameters = list(inspect.signature(PLCSTrackQueryAblationModel.forward).parameters)
     assert parameters == [
         "self",
         "human_kp",
@@ -145,64 +113,29 @@ def test_ablation_model_is_a_distinct_named_public_architecture() -> None:
     ]
 
 
-def test_four_conditions_build_exact_stage_ffn_ownership_and_parameter_counts() -> None:
-    models = {
-        condition: _model(ffn_mode, mhc_writeback)
-        for condition, ffn_mode, mhc_writeback, _ in _CONDITIONS
-    }
+def test_model_builds_only_fixed_compressed_stages() -> None:
+    model = _model()
 
-    for condition, model in models.items():
-        expected_shared = condition in {"B", "D"}
-        assert all(
-            isinstance(stage, FixedQueryTrackAblationStage)
-            for stage in model.stages
-        )
-        for stage in model.stages:
-            block_ffns = (
-                stage.object_temporal_block.ffn,
-                stage.spatial_block.ffn,
-                stage.query_temporal_block.ffn,
-            )
-            if expected_shared:
-                assert block_ffns == (None, None, None)
-                assert isinstance(stage.shared_ffn, SwiGLU)
-            else:
-                assert len({id(module) for module in block_ffns}) == 3
-                assert all(isinstance(module, SwiGLU) for module in block_ffns)
-                assert stage.shared_ffn is None
-
-    parameter_counts = {
-        condition: sum(parameter.numel() for parameter in model.parameters())
-        for condition, model in models.items()
-    }
-    assert parameter_counts["A"] == parameter_counts["C"]
-    assert parameter_counts["B"] == parameter_counts["D"]
-    assert parameter_counts["A"] > parameter_counts["B"]
-
-
-def test_configured_ffn_reaches_shared_stage_ffn() -> None:
-    model = _model(
-        "shared",
-        "layer_end",
-        ffn_type="gpt_oss_swiglu",
+    assert all(
+        isinstance(stage, FixedQueryTrackCompressedStage) for stage in model.stages
     )
+    for module in model.stages:
+        stage = cast(FixedQueryTrackCompressedStage, module)
+        assert stage.object_temporal_block.ffn is None
+        assert stage.spatial_block.ffn is None
+        assert stage.query_temporal_block.ffn is None
+        assert isinstance(stage.shared_ffn, SwiGLU)
+
+
+def test_configured_ffn_type_reaches_stage_end_shared_ffn() -> None:
+    model = _model(ffn_type="gpt_oss_swiglu")
 
     assert all(isinstance(stage.shared_ffn, GPTOSSSwiGLU) for stage in model.stages)
 
 
-@pytest.mark.parametrize(
-    ("condition", "ffn_mode", "mhc_writeback", "spatial_width"),
-    _CONDITIONS,
-)
-def test_four_conditions_preserve_io_padding_visibility_and_rope_contracts(
-    condition: str,
-    ffn_mode: FFNMode,
-    mhc_writeback: MHCWriteback,
-    spatial_width: int,
-) -> None:
-    del condition
+def test_forward_uses_q_plus_v_width_and_ignores_padded_values() -> None:
     torch.manual_seed(777)
-    model = _model(ffn_mode, mhc_writeback)
+    model = _model()
     baseline = _inputs()
     contaminated = {name: value.clone() for name, value in baseline.items()}
     padding_mask = contaminated["padding_mask"]
@@ -246,12 +179,8 @@ def test_four_conditions_preserve_io_padding_visibility_and_rope_contracts(
     assert output["presence_logits"].shape == (2, 3, 4)
     expected_valid = (~padding_mask).unsqueeze(-1).expand(-1, -1, -1, 4)
     assert torch.equal(captured["object_state_valid"], expected_valid)
-    assert captured["spatial_attention_keep_mask"].shape == (
-        6,
-        spatial_width,
-        spatial_width,
-    )
-    assert captured["spatial_freqs"].shape == (6, spatial_width, 1, 2)
+    assert captured["spatial_attention_keep_mask"].shape == (6, 7, 7)
+    assert captured["spatial_freqs"].shape == (6, 7, 1, 2)
     assert captured["object_tokens"][expected_valid].abs().any()
     for key in output:
         assert torch.isfinite(contaminated_output[key]).all()
@@ -270,17 +199,17 @@ def test_four_conditions_preserve_io_padding_visibility_and_rope_contracts(
     assert not output["presence_logits"][1].any()
 
 
-def test_baseline_and_ablation_checkpoints_are_strictly_incompatible_both_ways() -> None:
+def test_baseline_and_fixed_experiment_checkpoints_are_incompatible() -> None:
     baseline = PLCSTrackQueryModel(_baseline_config())
-    ablation = _model("per_attention", "after_object_temporal")
+    experiment = _model()
 
     with pytest.raises(RuntimeError):
-        ablation.load_state_dict(baseline.state_dict(), strict=True)
+        experiment.load_state_dict(baseline.state_dict(), strict=True)
     with pytest.raises(RuntimeError):
-        baseline.load_state_dict(ablation.state_dict(), strict=True)
+        baseline.load_state_dict(experiment.state_dict(), strict=True)
 
 
-def test_legacy_baseline_state_key_inventory_is_preserved() -> None:
+def test_baseline_state_key_inventory_is_preserved() -> None:
     baseline = PLCSTrackQueryModel(_baseline_config())
     serialized_keys = "\n".join(sorted(baseline.state_dict()))
 

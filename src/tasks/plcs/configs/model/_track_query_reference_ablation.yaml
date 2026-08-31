@@ -1,4 +1,4 @@
-# Shared v2 architecture for reference-selector FFN/writeback ablations.
+# Fixed PLCS reference-v2 architecture retained from ablation condition D.
 
 name: plcs_track_query_reference_ablation
 
@@ -18,9 +18,6 @@ invisible_init_std: 0.02
 target_frame_contract: reference_camera_court_rzpi_v1
 track_query_rope_contract: time_camera_reference_selector_v1
 reference_selector_mode: ???
-
-ffn_mode: ???
-mhc_writeback: ???
 
 mhc:
   coefficient_dim: 64

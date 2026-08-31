@@ -1,5 +1,4 @@
-# Shared architecture for the strict PLCS FFN/writeback ablation variants.
-# Concrete A/B/C/D configs must supply both ablation axes explicitly.
+# Fixed PLCS track-query architecture retained from ablation condition D.
 
 name: plcs_track_query_ablation
 
@@ -16,9 +15,6 @@ ffn_type: swiglu
 dropout: 0.0
 role_rope_enabled: true
 invisible_init_std: 0.02
-
-ffn_mode: ???
-mhc_writeback: ???
 
 mhc:
   coefficient_dim: 64

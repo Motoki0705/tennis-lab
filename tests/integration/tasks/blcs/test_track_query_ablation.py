@@ -1,4 +1,4 @@
-"""Small CPU forward/backward smoke tests for every BLCS ablation condition."""
+"""CPU smoke tests for the fixed BLCS track-query experiment architecture."""
 
 from __future__ import annotations
 
@@ -23,19 +23,11 @@ from src.tasks.blcs.model_io import compose_blcs_track_query_model_io
 from src.tasks.blcs.models.blcs_track_query_ablation_model import (
     BLCSTrackQueryAblationModel,
 )
-from src.utils.models.components.fixed_query_track_ablation_stage import (
-    FFNMode,
-    MHCWriteback,
-)
 
 _CONFIG_DIR = Path("src/tasks/blcs/configs").resolve()
 
 
-def _config(
-    ffn_mode: FFNMode,
-    mhc_writeback: MHCWriteback,
-    query_ffn_after_spatial: bool,
-) -> TrackQueryAblationModelConfig:
+def _config() -> TrackQueryAblationModelConfig:
     parsed = parse_model_config(
         {
             "model": {
@@ -50,9 +42,6 @@ def _config(
                 "dropout": 0.0,
                 "role_rope_enabled": True,
                 "invisible_init_std": 0.02,
-                "ffn_mode": ffn_mode,
-                "mhc_writeback": mhc_writeback,
-                "query_ffn_after_spatial": query_ffn_after_spatial,
                 "mhc": {
                     "coefficient_dim": 8,
                     "sinkhorn_iters": 5,
@@ -72,25 +61,9 @@ def _config(
     return parsed
 
 
-@pytest.mark.parametrize(
-    ("ffn_mode", "mhc_writeback", "query_ffn_after_spatial"),
-    [
-        ("per_attention", "after_object_temporal", False),
-        ("shared", "after_object_temporal", False),
-        ("per_attention", "layer_end", False),
-        ("shared", "layer_end", False),
-        ("shared", "layer_end", True),
-    ],
-)
-def test_cpu_forward_backward_has_finite_outputs_and_gradients(
-    ffn_mode: FFNMode,
-    mhc_writeback: MHCWriteback,
-    query_ffn_after_spatial: bool,
-) -> None:
+def test_cpu_forward_backward_has_finite_outputs_and_gradients() -> None:
     torch.manual_seed(777)
-    model = BLCSTrackQueryAblationModel(
-        _config(ffn_mode, mhc_writeback, query_ffn_after_spatial)
-    ).train()
+    model = BLCSTrackQueryAblationModel(_config()).train()
     ball_uv = torch.rand(1, 2, 2, 4, 2, requires_grad=True)
     court_kp = torch.rand(1, 2, 2, 14, 2, requires_grad=True)
     output = cast(
@@ -104,9 +77,9 @@ def test_cpu_forward_backward_has_finite_outputs_and_gradients(
         ),
     )
 
-    loss = output["position"].square().mean() + output[
-        "presence_logits"
-    ].square().mean()
+    loss = (
+        output["position"].square().mean() + output["presence_logits"].square().mean()
+    )
     loss.backward()
 
     assert torch.isfinite(loss)
@@ -114,9 +87,7 @@ def test_cpu_forward_backward_has_finite_outputs_and_gradients(
     assert ball_uv.grad is not None and torch.isfinite(ball_uv.grad).all()
     assert court_kp.grad is not None and torch.isfinite(court_kp.grad).all()
     gradients = [
-        parameter.grad
-        for parameter in model.parameters()
-        if parameter.grad is not None
+        parameter.grad for parameter in model.parameters() if parameter.grad is not None
     ]
     assert gradients
     assert all(torch.isfinite(gradient).all() for gradient in gradients)
@@ -136,7 +107,7 @@ def test_cpu_forward_backward_has_finite_outputs_and_gradients(
         ),
     ],
 )
-def test_reference_v2_d_runs_six_input_cpu_forward_backward(
+def test_reference_fixed_architecture_runs_six_input_cpu_forward_backward(
     profile: str,
     selector_mode: ReferenceSelectorMode,
 ) -> None:
@@ -179,9 +150,9 @@ def test_reference_v2_d_runs_six_input_cpu_forward_backward(
     call = binding.build_call(batch)
     assert len(call.kwargs) == 6
     output = binding.execute_call(call)
-    loss = output["position"].square().mean() + output[
-        "presence_logits"
-    ].square().mean()
+    loss = (
+        output["position"].square().mean() + output["presence_logits"].square().mean()
+    )
     loss.backward()
     assert torch.isfinite(loss)
     assert all(torch.isfinite(value).all() for value in output.values())

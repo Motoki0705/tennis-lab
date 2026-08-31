@@ -258,29 +258,6 @@ class SingleModelConfig:
 
 
 @dataclass(frozen=True, slots=True)
-class MultiViewModelConfig:
-    name: Literal["blcs_multiview"]
-    input_profile: Literal["multiview"]
-    hidden_dim: int
-    num_layers: int
-    num_heads: int
-    ffn_dim: int
-    ffn_type: FFNType
-    dropout: float
-    rope_dim: int
-    rope_theta: float
-    rope_theta_time: float
-    rope_theta_camera: float
-    rope_theta_type: float
-    max_seq_len: int
-    max_num_cameras: int
-    predict_velocity: bool
-    num_court_tokens: int
-    invisible_init_std: float
-    query_init_std: float
-
-
-@dataclass(frozen=True, slots=True)
 class AxialModelConfig:
     name: Literal["blcs_multiview_axial"]
     input_profile: Literal["multiview"]
@@ -352,9 +329,6 @@ class TrackQueryAblationModelConfig:
     dropout: float
     role_rope_enabled: bool
     invisible_init_std: float
-    ffn_mode: Literal["per_attention", "shared"]
-    mhc_writeback: Literal["after_object_temporal", "layer_end"]
-    query_ffn_after_spatial: bool
     mhc: TrackQueryMHCConfig
     cswa: TrackQueryCSWAConfig
 
@@ -382,7 +356,7 @@ class TrackQueryReferenceModelConfig:
 
 @dataclass(frozen=True, slots=True)
 class TrackQueryReferenceAblationModelConfig:
-    """Reference-conditioned v2 FFN/writeback ablation contract."""
+    """Reference-conditioned v2 fixed compressed-stage contract."""
 
     name: Literal["blcs_track_query_reference_ablation"]
     hidden_dim: int
@@ -397,16 +371,12 @@ class TrackQueryReferenceAblationModelConfig:
     target_frame_contract: Literal["reference_camera_court_rzpi_v1"]
     track_query_rope_contract: Literal["time_camera_reference_selector_v1"]
     reference_selector_mode: Literal["reference", "selector_zero"]
-    ffn_mode: Literal["per_attention", "shared"]
-    mhc_writeback: Literal["after_object_temporal", "layer_end"]
-    query_ffn_after_spatial: bool
     mhc: TrackQueryMHCConfig
     cswa: TrackQueryCSWAConfig
 
 
 BLCSModelConfig: TypeAlias = (
     SingleModelConfig
-    | MultiViewModelConfig
     | AxialModelConfig
     | TrackQueryModelConfig
     | TrackQueryAblationModelConfig
@@ -532,108 +502,6 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 "model.max_seq_len and model.num_court_tokens must be positive."
             )
         _non_negative(result.invisible_init_std, path="model.invisible_init_std")
-        for key, value in (
-            ("rope_theta", result.rope_theta),
-            ("rope_theta_time", result.rope_theta_time),
-            ("rope_theta_camera", result.rope_theta_camera),
-            ("rope_theta_type", result.rope_theta_type),
-        ):
-            _positive(value, path=f"model.{key}")
-        return result
-    if name == "blcs_multiview":
-        keys = {
-            "name",
-            "io",
-            "hidden_dim",
-            "num_layers",
-            "num_heads",
-            "ffn_dim",
-            "ffn_type",
-            "dropout",
-            "rope_dim",
-            "rope_theta",
-            "rope_theta_time",
-            "rope_theta_camera",
-            "rope_theta_type",
-            "max_seq_len",
-            "max_num_cameras",
-            "predict_velocity",
-            "num_court_tokens",
-            "invisible_init_std",
-            "query_init_std",
-        }
-        _exact(model, keys, path="model")
-        _validate_types(
-            model,
-            {
-                "name": str,
-                "io": dict,
-                "hidden_dim": int,
-                "num_layers": int,
-                "num_heads": int,
-                "ffn_dim": int,
-                "ffn_type": str,
-                "dropout": (float, int),
-                "rope_dim": int,
-                "rope_theta": (float, int),
-                "rope_theta_time": (float, int),
-                "rope_theta_camera": (float, int),
-                "rope_theta_type": (float, int),
-                "max_seq_len": int,
-                "max_num_cameras": int,
-                "predict_velocity": bool,
-                "num_court_tokens": int,
-                "invisible_init_std": (float, int),
-                "query_init_std": (float, int),
-            },
-            path="model",
-        )
-        if _io(model) != "multiview" or model["ffn_type"] not in SUPPORTED_FFN_TYPES:
-            raise SemanticConfigurationError(
-                "Invalid multiview model profile or ffn_type."
-            )
-        result = MultiViewModelConfig(
-            name="blcs_multiview",
-            input_profile="multiview",
-            hidden_dim=int(model["hidden_dim"]),
-            num_layers=int(model["num_layers"]),
-            num_heads=int(model["num_heads"]),
-            ffn_dim=cast("int", model["ffn_dim"]),
-            ffn_type=cast("FFNType", model["ffn_type"]),
-            dropout=float(model["dropout"]),
-            rope_dim=cast("int", model["rope_dim"]),
-            rope_theta=float(model["rope_theta"]),
-            rope_theta_time=float(model["rope_theta_time"]),
-            rope_theta_camera=float(model["rope_theta_camera"]),
-            rope_theta_type=float(model["rope_theta_type"]),
-            max_seq_len=int(model["max_seq_len"]),
-            max_num_cameras=int(model["max_num_cameras"]),
-            predict_velocity=bool(model["predict_velocity"]),
-            num_court_tokens=int(model["num_court_tokens"]),
-            invisible_init_std=float(model["invisible_init_std"]),
-            query_init_std=float(model["query_init_std"]),
-        )
-        _validate_transformer_dimensions(
-            hidden_dim=result.hidden_dim,
-            num_heads=result.num_heads,
-            ffn_dim=result.ffn_dim,
-            rope_dim=result.rope_dim,
-            dropout=result.dropout,
-            path="model",
-        )
-        if result.num_layers < 0:
-            raise SemanticConfigurationError("model.num_layers must be non-negative.")
-        if result.max_seq_len <= 0 or result.max_num_cameras <= 0:
-            raise SemanticConfigurationError(
-                "model.max_seq_len and model.max_num_cameras must be positive."
-            )
-        if result.num_court_tokens <= 0:
-            raise SemanticConfigurationError("model.num_court_tokens must be positive.")
-        for key, value in (
-            ("invisible_init_std", result.invisible_init_std),
-            ("query_init_std", result.query_init_std),
-        ):
-            _non_negative(value, path=f"model.{key}")
         for key, value in (
             ("rope_theta", result.rope_theta),
             ("rope_theta_time", result.rope_theta_time),
@@ -818,12 +686,6 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             }
         else:
             base_keys.add("role_rope_enabled")
-        if is_ablation:
-            base_keys |= {
-                "ffn_mode",
-                "mhc_writeback",
-                "query_ffn_after_spatial",
-            }
         _exact(model, base_keys, path="model")
         _validate_types(
             model,
@@ -844,8 +706,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
         raw_ffn_type = cast("str", model["ffn_type"])
         if raw_ffn_type not in SUPPORTED_FFN_TYPES:
             raise SemanticConfigurationError(
-                "model.ffn_type must be one of "
-                f"{sorted(SUPPORTED_FFN_TYPES)!r}."
+                f"model.ffn_type must be one of {sorted(SUPPORTED_FFN_TYPES)!r}."
             )
         if is_reference:
             _validate_types(
@@ -857,10 +718,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 },
                 path="model",
             )
-            if (
-                model["target_frame_contract"]
-                != "reference_camera_court_rzpi_v1"
-            ):
+            if model["target_frame_contract"] != "reference_camera_court_rzpi_v1":
                 raise SemanticConfigurationError(
                     "model.target_frame_contract must be "
                     "'reference_camera_court_rzpi_v1' for BLCS reference v2."
@@ -887,36 +745,6 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 {"role_rope_enabled": bool},
                 path="model",
             )
-        if is_ablation:
-            _validate_types(
-                model,
-                {
-                    "ffn_mode": str,
-                    "mhc_writeback": str,
-                    "query_ffn_after_spatial": bool,
-                },
-                path="model",
-            )
-            if model["ffn_mode"] not in {"per_attention", "shared"}:
-                raise SemanticConfigurationError(
-                    "model.ffn_mode must be 'per_attention' or 'shared'."
-                )
-            if model["mhc_writeback"] not in {
-                "after_object_temporal",
-                "layer_end",
-            }:
-                raise SemanticConfigurationError(
-                    "model.mhc_writeback must be 'after_object_temporal' or "
-                    "'layer_end'."
-                )
-            if model["query_ffn_after_spatial"] and (
-                model["ffn_mode"] != "shared"
-                or model["mhc_writeback"] != "layer_end"
-            ):
-                raise SemanticConfigurationError(
-                    "model.query_ffn_after_spatial=true requires "
-                    "ffn_mode='shared' and mhc_writeback='layer_end'."
-                )
         raw_mhc = as_config_mapping(model["mhc"], path="model.mhc")
         mhc_keys = {
             "coefficient_dim",
@@ -1011,16 +839,6 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                     "Literal['reference', 'selector_zero']",
                     model["reference_selector_mode"],
                 ),
-                ffn_mode=cast(
-                    "Literal['per_attention', 'shared']", model["ffn_mode"]
-                ),
-                mhc_writeback=cast(
-                    "Literal['after_object_temporal', 'layer_end']",
-                    model["mhc_writeback"],
-                ),
-                query_ffn_after_spatial=cast(
-                    "bool", model["query_ffn_after_spatial"]
-                ),
                 mhc=mhc,
                 cswa=cswa,
             )
@@ -1063,14 +881,6 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 dropout=float(model["dropout"]),
                 role_rope_enabled=bool(model["role_rope_enabled"]),
                 invisible_init_std=float(model["invisible_init_std"]),
-                ffn_mode=cast("Literal['per_attention', 'shared']", model["ffn_mode"]),
-                mhc_writeback=cast(
-                    "Literal['after_object_temporal', 'layer_end']",
-                    model["mhc_writeback"],
-                ),
-                query_ffn_after_spatial=cast(
-                    "bool", model["query_ffn_after_spatial"]
-                ),
                 mhc=mhc,
                 cswa=cswa,
             )
@@ -2228,9 +2038,7 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
         "augmentation",
     }
     if isinstance(model, _TRACK_QUERY_MODEL_CONFIG_TYPES):
-        data_keys.update(
-            {"association", "lifecycle", "evaluation_reference_camera_id"}
-        )
+        data_keys.update({"association", "lifecycle", "evaluation_reference_camera_id"})
         lifecycle = require_config_mapping(data, "lifecycle", path="data")
         _exact(
             lifecycle,
@@ -2363,14 +2171,14 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             "data.batch_size must be positive and data.num_workers non-negative."
         )
     if (
-        isinstance(model, (SingleModelConfig, MultiViewModelConfig, AxialModelConfig))
+        isinstance(model, (SingleModelConfig, AxialModelConfig))
         and seq_len_range[1] > model.max_seq_len
     ):
         raise SemanticConfigurationError(
             "data.seq_len_range cannot exceed model.max_seq_len."
         )
     if (
-        isinstance(model, (MultiViewModelConfig, AxialModelConfig))
+        isinstance(model, AxialModelConfig)
         and num_views_range[1] > model.max_num_cameras
     ):
         raise SemanticConfigurationError(
@@ -2910,7 +2718,6 @@ __all__ = [
     "AxialModelConfig",
     "BLCSModelConfig",
     "GenerationRunConfig",
-    "MultiViewModelConfig",
     "PreviewConfig",
     "QualitativeRenderingConfig",
     "SingleModelConfig",

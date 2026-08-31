@@ -56,9 +56,7 @@ class _ReferenceTrackingModel(nn.Module):
         }
 
 
-def _model_config(
-    *, selector_mode: str = "reference"
-) -> PLCSModelConfig:
+def _model_config(*, selector_mode: str = "reference") -> PLCSModelConfig:
     name = (
         "plcs_track_query_reference"
         if selector_mode == "reference"
@@ -93,15 +91,10 @@ def _model_config(
             "backend": "reference",
         },
     }
-    if selector_mode != "reference":
-        raw["ffn_mode"] = "shared"
-        raw["mhc_writeback"] = "layer_end"
     return PLCSModelConfig.from_mapping(raw)
 
 
-def _adapter(
-    *, selector_mode: str = "reference"
-) -> PLCSTrackQueryReferenceIOAdapter:
+def _adapter(*, selector_mode: str = "reference") -> PLCSTrackQueryReferenceIOAdapter:
     contract = resolve_court_keypoint_contract("camera_view_v2")
     return PLCSTrackQueryReferenceIOAdapter(
         model_type=_ReferenceTrackingModel,
@@ -152,18 +145,14 @@ def _batch(*, selector_mode: str = "reference") -> dict[str, object]:
             provenance.physical_from_reference,
             dtype=torch.float32,
         ).unsqueeze(0),
-        "court_keypoint_metadata": court_keypoint_contract_document(
-            court_contract
-        ),
+        "court_keypoint_metadata": court_keypoint_contract_document(court_contract),
         "court_reference_provenance": provenance,
         "reference_view_selection": (selection,),
         "stable_camera_id_table": (selection.stable_camera_id_table,),
     }
     write_track_query_reference_contract(
         batch,
-        TrackQueryReferenceContract.reference_v2(
-            ReferenceSelectorMode(selector_mode)
-        ),
+        TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode(selector_mode)),
         location="test batch",
     )
     return batch
@@ -202,9 +191,7 @@ def test_v2_adapter_builds_exact_six_tensor_call() -> None:
             "unmasked reference-view",
         ),
         (
-            lambda batch: cast(
-                Tensor, batch["physical_from_reference"]
-            ).zero_(),
+            lambda batch: cast(Tensor, batch["physical_from_reference"]).zero_(),
             "must equal",
         ),
     ],
@@ -243,9 +230,7 @@ def test_plcs_contract_resolver_matches_model_type_court_target_rope_selector() 
 
 
 def test_checkpoint_metadata_is_exact_and_shape_independent() -> None:
-    selector = TrackQueryReferenceContract.reference_v2(
-        ReferenceSelectorMode.REFERENCE
-    )
+    selector = TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.REFERENCE)
     selector_zero = TrackQueryReferenceContract.reference_v2(
         ReferenceSelectorMode.SELECTOR_ZERO
     )
@@ -265,9 +250,7 @@ def test_metadata_free_checkpoint_is_allowed_only_for_explicit_legacy_v1() -> No
     with pytest.raises(ValueError, match="metadata is absent"):
         validate_plcs_checkpoint_track_query_reference(
             {},
-            TrackQueryReferenceContract.reference_v2(
-                ReferenceSelectorMode.REFERENCE
-            ),
+            TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.REFERENCE),
         )
 
 

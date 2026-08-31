@@ -1,4 +1,4 @@
-"""Reference-conditioned v2 BLCS FFN/writeback ablation model."""
+"""Reference-conditioned v2 BLCS fixed compressed-stage model."""
 
 from __future__ import annotations
 
@@ -12,7 +12,6 @@ from src.tasks.base.models import (
     REFERENCE_SELECTOR_ROPE_CONTRACT,
     ReferenceSelectorMode,
     build_compressed_track_query_spatial_coordinates,
-    build_full_track_query_spatial_coordinates,
     resolve_reference_selector_mode,
     validate_reference_context_mask,
     validate_track_query_rope_dimensions,
@@ -25,13 +24,12 @@ from src.tasks.blcs.data.tracking_types import BLCSTrackingPrediction
 from src.tasks.blcs.models.blcs_track_query_ablation_model import (
     BLCSTrackQueryAblationModel,
 )
-from src.utils.models.components.fixed_query_track_ablation_stage import MHCWriteback
 
 
-def _legacy_architecture_config(
+def _architecture_config(
     config: TrackQueryReferenceAblationModelConfig,
 ) -> TrackQueryAblationModelConfig:
-    """Build only the architecture fields shared with the immutable v1 model."""
+    """Build the fixed architecture fields shared with the base model."""
     return TrackQueryAblationModelConfig(
         name="blcs_track_query_ablation",
         hidden_dim=config.hidden_dim,
@@ -44,9 +42,6 @@ def _legacy_architecture_config(
         dropout=config.dropout,
         role_rope_enabled=False,
         invisible_init_std=config.invisible_init_std,
-        ffn_mode=config.ffn_mode,
-        mhc_writeback=config.mhc_writeback,
-        query_ffn_after_spatial=config.query_ffn_after_spatial,
         mhc=config.mhc,
         cswa=config.cswa,
     )
@@ -61,7 +56,7 @@ class BLCSTrackQueryReferenceAblationModel(BLCSTrackQueryAblationModel):
                 "BLCSTrackQueryReferenceAblationModel requires "
                 "blcs_track_query_reference_ablation config."
             )
-        super().__init__(_legacy_architecture_config(config))
+        super().__init__(_architecture_config(config))
         self.target_frame_contract = config.target_frame_contract
         self.track_query_rope_contract = config.track_query_rope_contract
         self.reference_selector_mode = resolve_reference_selector_mode(
@@ -124,29 +119,18 @@ class BLCSTrackQueryReferenceAblationModel(BLCSTrackQueryAblationModel):
         num_views: int,
         num_detections: int,
         num_queries: int,
-        mhc_writeback: MHCWriteback,
         selector_mode: ReferenceSelectorMode,
     ) -> Tensor:
-        """Return exact v2 full/compressed reference coordinates."""
+        """Return exact v2 compressed reference coordinates."""
         if num_detections != num_queries:
             raise ValueError("num_detections must equal num_queries.")
-        if mhc_writeback == "after_object_temporal":
-            return build_full_track_query_spatial_coordinates(
-                reference_view_index,
-                num_frames=num_frames,
-                num_views=num_views,
-                num_queries=num_queries,
-                selector_mode=selector_mode,
-            )
-        if mhc_writeback == "layer_end":
-            return build_compressed_track_query_spatial_coordinates(
-                reference_view_index,
-                num_frames=num_frames,
-                num_views=num_views,
-                num_queries=num_queries,
-                selector_mode=selector_mode,
-            )
-        raise ValueError("mhc_writeback is invalid.")
+        return build_compressed_track_query_spatial_coordinates(
+            reference_view_index,
+            num_frames=num_frames,
+            num_views=num_views,
+            num_queries=num_queries,
+            selector_mode=selector_mode,
+        )
 
     def forward(  # type: ignore[override]
         self,
@@ -165,7 +149,6 @@ class BLCSTrackQueryReferenceAblationModel(BLCSTrackQueryAblationModel):
             num_views=num_views,
             num_detections=self.num_queries,
             num_queries=self.num_queries,
-            mhc_writeback=self.mhc_writeback,
             selector_mode=self.reference_selector_mode,
         )
         return self._forward_with_spatial_coordinates(

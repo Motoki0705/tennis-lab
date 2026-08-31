@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from src.tasks.blcs.models.blcs_model import BLCSModel
 from src.tasks.blcs.models.blcs_multiview_axial_model import BLCSMultiViewAxialModel
-from src.tasks.blcs.models.blcs_multiview_model import BLCSMultiViewModel
 from src.tasks.blcs.models.blcs_track_query_ablation_model import (
     BLCSTrackQueryAblationModel,
 )
@@ -27,7 +26,6 @@ __all__ = [
     "BLCSTrackQueryModel",
     "BLCSTrackQueryReferenceAblationModel",
     "BLCSTrackQueryReferenceModel",
-    "BLCSMultiViewModel",
     "BLCSMultiViewAxialModel",
     "build_blcs_discriminator",
 ]

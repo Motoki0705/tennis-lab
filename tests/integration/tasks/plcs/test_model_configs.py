@@ -11,12 +11,10 @@ from src.tasks.plcs.models.components.heads import (
     TemporalDecomposedCanonicalPoseHead,
 )
 from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
-from src.tasks.plcs.models.plcs_multiview_model import PLCSMultiViewModel
 from src.tasks.plcs.training.composition import build_plcs_lightning_module
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.tasks.plcs.training.metrics import CANONICAL_POSE_HEADLINE_KEYS
 from src.utils.configuration import (
-    MissingConfigurationKeyError,
     SemanticConfigurationError,
     UnknownConfigurationKeyError,
 )
@@ -24,12 +22,12 @@ from src.utils.configuration import (
 _CONFIG_DIR = Path("src/tasks/plcs/configs").resolve()
 
 
-def test_multiview_all_outputs_beta01_config_composes_and_binds_model() -> None:
+def test_axial_all_outputs_beta01_config_composes_and_binds_model() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
             config_name="train",
             overrides=[
-                "model=multiview_canonical",
+                "model=multiview_axial_base",
                 "loss=all_outputs_beta01",
                 "model.hidden_dim=16",
                 "model.num_heads=4",
@@ -43,9 +41,9 @@ def test_multiview_all_outputs_beta01_config_composes_and_binds_model() -> None:
     module = build_plcs_lightning_module(config)
 
     assert isinstance(module, PLCSLightningModule)
-    assert runtime.model.name == "plcs_multiview"
+    assert runtime.model.name == "plcs_multiview_axial"
     assert runtime.model.boolean("predict_canonical_pose")
-    assert isinstance(module.model, PLCSMultiViewModel)
+    assert isinstance(module.model, PLCSMultiViewAxialModel)
     assert module.model.canonical_pose_head is not None
     assert module.loss_fn.config.position_weight == 1.0
     assert module.loss_fn.config.position_smooth_l1_beta == 0.1
@@ -59,13 +57,14 @@ def test_multiview_all_outputs_beta01_config_composes_and_binds_model() -> None:
     )
 
 
-def test_noncanonical_model_keeps_trajectory_only_metric_contract() -> None:
+def test_noncanonical_axial_model_keeps_trajectory_only_metric_contract() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
             config_name="train",
             overrides=[
-                "model=multiview",
+                "model=multiview_axial_base",
                 "loss=no_canonical",
+                "model.predict_canonical_pose=false",
                 "model.hidden_dim=16",
                 "model.num_heads=4",
                 "model.ffn_dim=32",
@@ -84,12 +83,12 @@ def test_noncanonical_model_keeps_trajectory_only_metric_contract() -> None:
     )
 
 
-def test_multiview_reprojection_config_composes_and_binds_loss() -> None:
+def test_axial_reprojection_config_composes_and_binds_loss() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
             config_name="train",
             overrides=[
-                "model=multiview_canonical",
+                "model=multiview_axial_base",
                 "loss=all_outputs_beta01_reprojection",
                 "model.hidden_dim=16",
                 "model.num_heads=4",
@@ -182,71 +181,17 @@ def test_track_query_size_configs_compose_and_validate(
     assert parsed.integer("num_stages") == num_stages
 
 
-@pytest.mark.parametrize(
-    ("condition", "ffn_mode", "mhc_writeback"),
-    [
-        ("a", "per_attention", "after_object_temporal"),
-        ("b", "shared", "after_object_temporal"),
-        ("c", "per_attention", "layer_end"),
-        ("d", "shared", "layer_end"),
-    ],
-)
-def test_all_four_track_query_ablation_configs_compose_and_validate(
-    condition: str,
-    ffn_mode: str,
-    mhc_writeback: str,
-) -> None:
+def test_fixed_track_query_ablation_config_composes_and_validates() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
             config_name="train_tracking",
-            overrides=[f"model=track_query_ablation_{condition}"],
+            overrides=["model=track_query_ablation_d"],
         )
 
     runtime = PLCSTrainingConfig.from_config(config)
 
     assert runtime.model.name == "plcs_track_query_ablation"
-    assert runtime.model.string("ffn_mode") == ffn_mode
-    assert runtime.model.string("mhc_writeback") == mhc_writeback
     assert runtime.model.integer("num_queries") == 4
-
-
-@pytest.mark.parametrize(
-    ("violation", "error"),
-    [
-        ("missing_ffn", MissingConfigurationKeyError),
-        ("missing_writeback", MissingConfigurationKeyError),
-        ("unknown", UnknownConfigurationKeyError),
-        ("invalid_ffn", SemanticConfigurationError),
-        ("invalid_writeback", SemanticConfigurationError),
-        ("unknown_ffn_type", SemanticConfigurationError),
-    ],
-)
-def test_ablation_axes_reject_missing_unknown_invalid_and_inconsistent_values(
-    violation: str,
-    error: type[Exception],
-) -> None:
-    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
-        config = compose(
-            config_name="train_tracking",
-            overrides=["model=track_query_ablation_a"],
-        )
-
-    with open_dict(config.model):
-        if violation == "missing_ffn":
-            del config.model["ffn_mode"]
-        elif violation == "missing_writeback":
-            del config.model["mhc_writeback"]
-        elif violation == "unknown":
-            config.model["legacy_ablation"] = True
-        elif violation == "invalid_ffn":
-            config.model.ffn_mode = "legacy"
-        elif violation == "invalid_writeback":
-            config.model.mhc_writeback = "before_spatial"
-        else:
-            config.model.ffn_type = "unknown"
-
-    with pytest.raises(error):
-        PLCSModelConfig.from_mapping(config.model)
 
 
 @pytest.mark.parametrize(
