@@ -57,6 +57,9 @@ def test_request_resolves_the_fixed_inventory_and_semantic_paths(
         "scene_json": "reconstruction/export/scene.json",
         "camera_ids": ["cam-0", "cam-1"],
     }
+    drawing = cast(dict[str, object], resolved["drawing"])
+    assert drawing["maximum_rendered_captured_cameras"] == 24
+    assert drawing["coincident_centre_tolerance_metres"] == 1.0e-6
 
 
 @pytest.mark.parametrize(
@@ -95,6 +98,39 @@ def test_request_rejects_noncanonical_artifact_order(
 
     with pytest.raises(ValueError, match="fixed complete publication inventory"):
         build_publication_request(OmegaConf.create(payload))
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("maximum_rendered_captured_cameras", 1, "must lie"),
+        ("maximum_rendered_captured_cameras", 25, "must lie"),
+        ("coincident_centre_tolerance_metres", 0.0, "positive and finite"),
+        (
+            "coincident_centre_tolerance_metres",
+            float("inf"),
+            "positive and finite",
+        ),
+        ("coincident_centre_tolerance_metres", 1.1, "must not exceed"),
+        (
+            "coincident_forward_angle_tolerance_degrees",
+            181.0,
+            "must not exceed",
+        ),
+    ],
+)
+def test_request_rejects_camera_drawing_policy_out_of_bounds(
+    publication_config: dict[str, object],
+    field: str,
+    value: object,
+    message: str,
+) -> None:
+    publication = cast(dict[str, object], publication_config["publication"])
+    drawing = cast(dict[str, object], publication["drawing"])
+    drawing[field] = value
+
+    with pytest.raises(ValueError, match=message):
+        build_publication_request(OmegaConf.create(publication_config))
 
 
 def test_manifest_round_trip_preserves_exact_schema(

@@ -69,6 +69,7 @@ from src.synthetic_data_generation.visualization.sources import (
 _SCENE_ID = "scene-0"
 _LOGICAL_SCENE_ID = "logical-0"
 _CAMERA_IDS = ("camera-0", "camera-1")
+_CAPTURED_CAMERA_IDS = tuple(f"captured-{index:03d}" for index in range(491))
 _FRAME_INDICES = (0, 2)
 _DATASET_SIZE = (240, 135)
 _ALIGNMENT_SIZE = (320, 240)
@@ -363,16 +364,25 @@ def _camera_collection(
     *,
     y_offset: float,
 ) -> PublicationCameraCollection:
+    camera_ids = _CAPTURED_CAMERA_IDS if owner == "reconstruction" else _CAMERA_IDS
     cameras = tuple(
-        _camera(camera_id, x=float(index * 2), y=y_offset + index)
-        for index, camera_id in enumerate(_CAMERA_IDS)
+        _camera(
+            camera_id,
+            x=float(index) * (0.05 if owner == "reconstruction" else 2.0),
+            y=(
+                y_offset + float(np.sin(index / 20.0))
+                if owner == "reconstruction"
+                else y_offset + index
+            ),
+        )
+        for index, camera_id in enumerate(camera_ids)
     )
     return PublicationCameraCollection(
         owner=owner,
         schema=f"{owner}_fixture_v1",
         scene_id=_SCENE_ID,
         logical_scene_id=None if owner == "reconstruction" else _LOGICAL_SCENE_ID,
-        camera_ids=_CAMERA_IDS,
+        camera_ids=camera_ids,
         cameras=cameras,
         camera_to_metric_scene=np.stack(
             [camera.camera_to_scene.matrix() for camera in cameras]
@@ -388,7 +398,7 @@ def _loaded_inputs(*, court_source: object | None = None) -> SimpleNamespace:
         plcs_source=_PLCSSource(),
         captured_cameras=_camera_collection("reconstruction", y_offset=-5.0),
         blcs_cameras=_camera_collection("blcs", y_offset=0.0),
-        plcs_cameras=_camera_collection("plcs", y_offset=5.0),
+        plcs_cameras=_camera_collection("plcs", y_offset=0.0),
     )
 
 
@@ -408,7 +418,7 @@ def _request(scene_root: Path, output: Path) -> PublicationRequest:
         plcs_camera_id="camera-0",
         plcs_frame_indices=_FRAME_INDICES,
         plcs_camera_ids=_CAMERA_IDS,
-        captured_camera_ids=_CAMERA_IDS,
+        captured_camera_ids=_CAPTURED_CAMERA_IDS,
         drawing=PublicationDrawingSettings(
             dataset_size=_DATASET_SIZE,
             alignment_size=_ALIGNMENT_SIZE,
@@ -419,6 +429,9 @@ def _request(scene_root: Path, output: Path) -> PublicationRequest:
             line_width=1.0,
             font_size=8,
             history_frames=2,
+            maximum_rendered_captured_cameras=24,
+            coincident_centre_tolerance_metres=1.0e-6,
+            coincident_forward_angle_tolerance_degrees=1.0e-6,
             maximum_artifact_bytes=5_000_000,
             maximum_bundle_bytes=20_000_000,
         ),
@@ -538,21 +551,63 @@ def test_complete_bundle_reopens_with_exact_mappings_and_is_byte_deterministic(
     assert (
         tuple(
             item["camera_id"]
-            for item in records[PublicationArtifactName.BLCS_CAMERA_LAYOUT].mapping
+            for item in records[PublicationArtifactName.BLCS_CAMERA_LAYOUT].mapping[1:]
         )
         == _CAMERA_IDS
     )
     assert (
         tuple(
             item["camera_id"]
-            for item in records[PublicationArtifactName.PLCS_CAMERA_LAYOUT].mapping
+            for item in records[PublicationArtifactName.PLCS_CAMERA_LAYOUT].mapping[1:]
         )
         == _CAMERA_IDS
     )
-    assert tuple(
-        item["camera_id"]
-        for item in records[PublicationArtifactName.CAMERA_LAYOUT_COMPARISON].mapping
-    ) == (*_CAMERA_IDS, *_CAMERA_IDS)
+    captured_mapping = records[
+        PublicationArtifactName.CAPTURED_CAMERA_TRAJECTORY
+    ].mapping
+    captured_policy = captured_mapping[0]
+    captured_poses = captured_mapping[1:]
+    rendered_indices = cast(Sequence[int], captured_policy["rendered_camera_indices"])
+    assert len(captured_poses) == 491
+    reconstruction_owner = cast(
+        Mapping[str, object], first.manifest.source_owners["reconstruction"]
+    )
+    assert len(cast(Sequence[str], reconstruction_owner["camera_ids"])) == 491
+    assert tuple(item["camera_id"] for item in captured_poses) == _CAPTURED_CAMERA_IDS
+    assert tuple(item["camera_index"] for item in captured_poses) == tuple(range(491))
+    assert len(rendered_indices) == 24
+    assert rendered_indices[0] == 0
+    assert rendered_indices[-1] == 490
+    assert tuple(cast(Sequence[str], captured_policy["rendered_camera_ids"])) == tuple(
+        _CAPTURED_CAMERA_IDS[index] for index in rendered_indices
+    )
+    assert (
+        captured_poses[0]["camera_to_metric_scene"]
+        != captured_poses[-1]["camera_to_metric_scene"]
+    )
+
+    comparison_mapping = records[
+        PublicationArtifactName.CAMERA_LAYOUT_COMPARISON
+    ].mapping
+    comparison_summary = comparison_mapping[0]
+    assert tuple(item["camera_id"] for item in comparison_mapping[1:]) == (
+        *_CAMERA_IDS,
+        *_CAMERA_IDS,
+    )
+    comparison_metrics = cast(
+        Mapping[str, object], comparison_summary["comparison_metrics"]
+    )
+    assert comparison_metrics["coincident_camera_count"] == 2
+    assert comparison_metrics["coincident_camera_fraction"] == 1.0
+    camera_metrics = cast(
+        Mapping[str, Mapping[str, object]], first.manifest.metrics["cameras"]
+    )
+    assert camera_metrics["reconstruction"]["trajectory_segment_count"] == 490
+    assert (
+        camera_metrics["blcs"]
+        .keys()
+        .isdisjoint({"trajectory_segment_count", "trajectory_length_metres"})
+    )
 
     expected_bounds = overview_panel_bounds(_OVERVIEW_SIZE)
     overview_mapping = records[PublicationArtifactName.PUBLICATION_OVERVIEW].mapping

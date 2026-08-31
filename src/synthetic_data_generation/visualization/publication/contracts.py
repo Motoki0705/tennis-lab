@@ -13,6 +13,10 @@ from typing import Self, cast
 PUBLICATION_REQUEST_SCHEMA = "synthetic_publication_request_v1"
 PUBLICATION_MANIFEST_SCHEMA = "synthetic_publication_manifest_v1"
 PUBLICATION_BUNDLE_SCHEMA = "synthetic_publication_bundle_v1"
+CAMERA_DRAWING_POLICY_SCHEMA = "publication_camera_drawing_policy_v1"
+CAPTURED_CAMERA_SELECTION_POLICY = "endpoint_inclusive_evenly_spaced"
+STATIC_RIG_SELECTION_POLICY = "complete_static_rig"
+MAXIMUM_RENDERED_CAPTURED_CAMERAS = 24
 PUBLICATION_COORDINATE_CONTRACT = (
     "camera=opencv(x-right,y-down,z-forward);"
     "scene=right-handed-metric-metres(x-right-sideline,y-far-baseline,z-up);"
@@ -40,6 +44,13 @@ class PublicationArtifactName(StrEnum):
 REQUIRED_PUBLICATION_ARTIFACTS = tuple(PublicationArtifactName)
 
 
+class CameraRenderingSemantics(StrEnum):
+    """Explicitly distinguish temporal capture paths from unordered static rigs."""
+
+    CAPTURED_TRAJECTORY = "captured_temporal_trajectory"
+    STATIC_RIG = "static_rig"
+
+
 @dataclass(frozen=True, slots=True)
 class PublicationDrawingSettings:
     """Explicit media, geometry, and bounded-asset drawing authority."""
@@ -53,6 +64,9 @@ class PublicationDrawingSettings:
     line_width: float
     font_size: int
     history_frames: int
+    maximum_rendered_captured_cameras: int
+    coincident_centre_tolerance_metres: float
+    coincident_forward_angle_tolerance_degrees: float
     maximum_artifact_bytes: int
     maximum_bundle_bytes: int
 
@@ -73,6 +87,11 @@ class PublicationDrawingSettings:
             ("gif_duration_ms", 10, 10_000),
             ("font_size", 6, 96),
             ("history_frames", 0, 120),
+            (
+                "maximum_rendered_captured_cameras",
+                2,
+                MAXIMUM_RENDERED_CAPTURED_CAMERAS,
+            ),
             ("maximum_artifact_bytes", 1_024, 100_000_000),
             ("maximum_bundle_bytes", 10_240, 500_000_000),
         ):
@@ -83,7 +102,12 @@ class PublicationDrawingSettings:
                 or not minimum <= value <= maximum
             ):
                 raise ValueError(f"drawing.{name} must lie in [{minimum}, {maximum}].")
-        for name in ("frustum_depth_metres", "line_width"):
+        for name in (
+            "frustum_depth_metres",
+            "line_width",
+            "coincident_centre_tolerance_metres",
+            "coincident_forward_angle_tolerance_degrees",
+        ):
             value = getattr(self, name)
             if (
                 isinstance(value, bool)
@@ -92,6 +116,15 @@ class PublicationDrawingSettings:
                 or float(value) <= 0.0
             ):
                 raise ValueError(f"drawing.{name} must be positive and finite.")
+        if self.coincident_centre_tolerance_metres > 1.0:
+            raise ValueError(
+                "drawing.coincident_centre_tolerance_metres must not exceed 1 metre."
+            )
+        if self.coincident_forward_angle_tolerance_degrees > 180.0:
+            raise ValueError(
+                "drawing.coincident_forward_angle_tolerance_degrees must not exceed "
+                "180 degrees."
+            )
         if self.maximum_bundle_bytes < self.maximum_artifact_bytes:
             raise ValueError(
                 "drawing.maximum_bundle_bytes must be at least maximum_artifact_bytes."
@@ -100,6 +133,16 @@ class PublicationDrawingSettings:
             self, "frustum_depth_metres", float(self.frustum_depth_metres)
         )
         object.__setattr__(self, "line_width", float(self.line_width))
+        object.__setattr__(
+            self,
+            "coincident_centre_tolerance_metres",
+            float(self.coincident_centre_tolerance_metres),
+        )
+        object.__setattr__(
+            self,
+            "coincident_forward_angle_tolerance_degrees",
+            float(self.coincident_forward_angle_tolerance_degrees),
+        )
 
     def to_dict(self) -> dict[str, object]:
         """Return the exact JSON-safe resolved drawing settings."""
@@ -113,6 +156,15 @@ class PublicationDrawingSettings:
             "line_width": self.line_width,
             "font_size": self.font_size,
             "history_frames": self.history_frames,
+            "maximum_rendered_captured_cameras": (
+                self.maximum_rendered_captured_cameras
+            ),
+            "coincident_centre_tolerance_metres": (
+                self.coincident_centre_tolerance_metres
+            ),
+            "coincident_forward_angle_tolerance_degrees": (
+                self.coincident_forward_angle_tolerance_degrees
+            ),
             "maximum_artifact_bytes": self.maximum_artifact_bytes,
             "maximum_bundle_bytes": self.maximum_bundle_bytes,
         }
@@ -547,10 +599,15 @@ def _json_value(value: object, *, name: str) -> None:
 
 
 __all__ = [
+    "CAMERA_DRAWING_POLICY_SCHEMA",
+    "CAPTURED_CAMERA_SELECTION_POLICY",
+    "MAXIMUM_RENDERED_CAPTURED_CAMERAS",
     "PUBLICATION_BUNDLE_SCHEMA",
     "PUBLICATION_COORDINATE_CONTRACT",
     "PUBLICATION_MANIFEST_SCHEMA",
     "PUBLICATION_REQUEST_SCHEMA",
+    "STATIC_RIG_SELECTION_POLICY",
+    "CameraRenderingSemantics",
     "PublicationArtifactName",
     "PublicationArtifactRecord",
     "PublicationBundleResult",
