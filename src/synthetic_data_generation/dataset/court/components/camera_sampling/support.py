@@ -119,11 +119,11 @@ class TrajectorySupportModel:
         self, point: NDArray[np.float64], *, occupied: bool
     ) -> float:
         if occupied:
-            return -self.policy.boundary_epsilon_m
+            return -float(self.policy.boundary_epsilon_m)
         voxel = self.policy.occupancy_voxel_size_m
         half_voxel = voxel / 2.0
         half_diagonal = math.sqrt(3.0) * half_voxel
-        cap = self.policy.support_radius_m
+        cap = float(self.policy.support_radius_m)
         nearest_distance, nearest_index = self.occupancy_index.query(
             point,
             k=1,
@@ -406,6 +406,16 @@ def evaluate_trajectory_safety(
         if segment_occupied:
             reasons.add(TrajectorySafetyReason.SWEPT_SEGMENT_HITS_INFLATED_OBSTACLE)
             obstacle_clearances.append(-support_model.policy.boundary_epsilon_m)
+        else:
+            obstacle_clearances.append(
+                _segment_obstacle_clearance(
+                    start,
+                    end,
+                    centers=support_model.occupancy_centers_m,
+                    index=support_model.occupancy_index,
+                    policy=support_model.policy,
+                )
+            )
         for offset in range(1, subdivisions + 1):
             point = start + (end - start) * (offset / subdivisions)
             support_margin, supported = support_model._evaluate_support(point)
@@ -490,8 +500,9 @@ def _segment_hits_occupancy(
 ) -> bool:
     voxel = policy.occupancy_voxel_size_m
     epsilon = policy.boundary_epsilon_m
-    lower = np.floor((np.minimum(start, end) - epsilon) / voxel).astype(np.int64)
-    upper = np.floor((np.maximum(start, end) + epsilon) / voxel).astype(np.int64)
+    lower = np.floor((np.minimum(start, end) - epsilon) / voxel)
+    upper = np.floor((np.maximum(start, end) + epsilon) / voxel)
+    _guard_inclusive_occupancy_aabb_work(lower, upper, policy=policy)
     for x in range(int(lower[0]), int(upper[0]) + 1):
         for y in range(int(lower[1]), int(upper[1]) + 1):
             for z in range(int(lower[2]), int(upper[2]) + 1):
@@ -511,6 +522,85 @@ def _segment_hits_occupancy(
     return False
 
 
+def _segment_obstacle_clearance(
+    start: NDArray[np.float64],
+    end: NDArray[np.float64],
+    *,
+    centers: NDArray[np.float64],
+    index: cKDTree,
+    policy: TrajectorySupportPolicy,
+) -> float:
+    """Return exact segment clearance to nearby inflated occupancy, capped."""
+    if len(centers) > policy.maximum_occupancy_cells:
+        raise TrajectorySupportError(
+            TrajectorySafetyReason.EMPTY_SUPPORT_FREE_SPACE,
+            "occupancy clearance scan exceeds maximum_occupancy_cells",
+        )
+    voxel = policy.occupancy_voxel_size_m
+    half_extent = voxel / 2.0
+    half_diagonal = math.sqrt(3.0) * half_extent
+    cap = float(policy.support_radius_m)
+    midpoint = (start + end) / 2.0
+    candidate_radius = float(
+        np.nextafter(
+            float(np.linalg.norm(end - start)) / 2.0 + cap + half_diagonal,
+            math.inf,
+        )
+    )
+    candidate_indices = np.asarray(
+        index.query_ball_point(
+            midpoint,
+            r=candidate_radius,
+            eps=0.0,
+            workers=1,
+        ),
+        dtype=np.int64,
+    )
+    if candidate_indices.size == 0:
+        return cap
+    minimum_squared = min(
+        _segment_clearance_distance_squared(
+            start,
+            end,
+            lower=centers[candidate_index] - half_extent,
+            upper=centers[candidate_index] + half_extent,
+        )
+        for candidate_index in candidate_indices
+    )
+    return min(cap, math.sqrt(max(0.0, minimum_squared)))
+
+
+def _segment_clearance_distance_squared(
+    start: NDArray[np.float64],
+    end: NDArray[np.float64],
+    *,
+    lower: NDArray[np.float64],
+    upper: NDArray[np.float64],
+) -> float:
+    """Retain constant parallel-axis gaps around the shared exact helper."""
+    direction = end - start
+    adjusted_lower = lower.copy()
+    adjusted_upper = upper.copy()
+    constant_squared = 0.0
+    for axis in range(3):
+        if abs(float(direction[axis])) > 1.0e-15:
+            continue
+        gap = max(
+            float(lower[axis] - start[axis]),
+            float(start[axis] - upper[axis]),
+            0.0,
+        )
+        constant_squared += gap * gap
+        adjusted_lower[axis] = min(lower[axis], start[axis])
+        adjusted_upper[axis] = max(upper[axis], start[axis])
+    return constant_squared + _segment_aabb_distance_squared(
+        start,
+        end,
+        lower=adjusted_lower,
+        upper=adjusted_upper,
+    )
+
+
 def _carve_occupancy(
     occupied: frozenset[Cell],
     *,
@@ -525,8 +615,9 @@ def _carve_occupancy(
     for start_raw, end_raw in segments:
         start = np.asarray(start_raw, dtype=np.float64)
         end = np.asarray(end_raw, dtype=np.float64)
-        lower = np.floor((np.minimum(start, end) - radius_m) / voxel).astype(np.int64)
-        upper = np.floor((np.maximum(start, end) + radius_m) / voxel).astype(np.int64)
+        lower = np.floor((np.minimum(start, end) - radius_m) / voxel)
+        upper = np.floor((np.maximum(start, end) + radius_m) / voxel)
+        _guard_inclusive_occupancy_aabb_work(lower, upper, policy=policy)
         for x in range(int(lower[0]), int(upper[0]) + 1):
             for y in range(int(lower[1]), int(upper[1]) + 1):
                 for z in range(int(lower[2]), int(upper[2]) + 1):
@@ -546,6 +637,26 @@ def _carve_occupancy(
                     ):
                         residual.remove(cell)
     return frozenset(residual)
+
+
+def _guard_inclusive_occupancy_aabb_work(
+    lower: NDArray[np.float64],
+    upper: NDArray[np.float64],
+    *,
+    policy: TrajectorySupportPolicy,
+) -> None:
+    """Reject an inclusive occupancy AABB before its bounded cell scan."""
+    cell_count = math.prod(
+        int(upper_value) - int(lower_value) + 1
+        for lower_value, upper_value in zip(lower, upper, strict=True)
+    )
+    if cell_count > policy.maximum_occupancy_cells:
+        raise TrajectorySupportError(
+            TrajectorySafetyReason.EMPTY_SUPPORT_FREE_SPACE,
+            "inclusive occupancy AABB scan "
+            f"requires {cell_count} cells, exceeding maximum_occupancy_cells="
+            f"{policy.maximum_occupancy_cells}",
+        )
 
 
 def _segment_intersects_aabb(

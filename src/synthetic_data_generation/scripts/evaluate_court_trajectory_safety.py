@@ -2261,6 +2261,7 @@ def _load_pilot_manifest(
         or len(selected_phases) != group_count
         or not _valid_selected_semantic_phases(
             selected_phases,
+            selected_trajectory_group_ids=selected_group_ids,
             phase_count=phase_count,
             planned_frame_count=planned_count,
             projected_valid_frame_count=(
@@ -2315,6 +2316,7 @@ def _load_pilot_manifest(
 def _valid_selected_semantic_phases(
     value: Sequence[object],
     *,
+    selected_trajectory_group_ids: Sequence[object],
     phase_count: int,
     planned_frame_count: int,
     projected_valid_frame_count: int,
@@ -2331,6 +2333,7 @@ def _valid_selected_semantic_phases(
         "disposition_digest",
     }
     groups: set[str] = set()
+    ordered_groups: list[str] = []
     coverage_modes: set[str] = set()
     observed_frames = 0
     observed_valid = 0
@@ -2382,6 +2385,7 @@ def _valid_selected_semantic_phases(
         if sum(parsed_rejections.values()) != frame_count - valid_count:
             return False
         groups.add(group_id)
+        ordered_groups.append(group_id)
         coverage_modes.add(str(coverage_mode))
         observed_frames += frame_count
         observed_valid += valid_count
@@ -2389,6 +2393,7 @@ def _valid_selected_semantic_phases(
         coverage_modes == {"full", "near_full", "partial"}
         and observed_frames == planned_frame_count
         and observed_valid == projected_valid_frame_count
+        and tuple(ordered_groups) == tuple(selected_trajectory_group_ids)
     )
 
 

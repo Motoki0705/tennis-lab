@@ -6,6 +6,9 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
+from src.synthetic_data_generation.dataset.court.components.camera_sampling import (
+    support as support_module,
+)
 from src.synthetic_data_generation.dataset.court.components.camera_sampling.support import (
     TrajectorySupportError,
     build_trajectory_support_model,
@@ -84,6 +87,10 @@ def _path(points: np.ndarray) -> OrbitPathSamples:
         adjacent_steps_m=steps,
         total_arc_length_m=float(steps.sum()),
     )
+
+
+def _forbidden_range(*_args: int) -> range:
+    raise AssertionError("oversized occupancy AABB reached nested iteration")
 
 
 def test_closed_sweep_rejects_only_the_unsupported_seam() -> None:
@@ -178,6 +185,42 @@ def test_obstacle_clearance_matches_exact_nearest_inflated_voxel() -> None:
     assert boundary_occupied
 
 
+def test_safety_diagnostic_clearance_includes_safe_swept_segment_interior() -> None:
+    model = build_trajectory_support_model(
+        cameras=_open_loop_cameras(),
+        points_scene_m=np.asarray(((20.0, 20.0, 0.0),), dtype=np.float64),
+        policy=_policy(),
+    )
+    near_miss_cell = (2, 1, 10)
+    occupancy_centers, occupancy_index = support_module._build_occupancy_index(
+        frozenset({near_miss_cell}),
+        policy=model.policy,
+    )
+    model = replace(
+        model,
+        inflated_occupancy=frozenset({near_miss_cell}),
+        occupancy_centers_m=occupancy_centers,
+        occupancy_index=occupancy_index,
+    )
+    points = np.asarray(
+        [camera.camera_to_scene.matrix()[:3, 3] for camera in _open_loop_cameras()],
+        dtype=np.float64,
+    )
+
+    evaluation = evaluate_trajectory_safety(
+        trajectory_id="trajectory-safe-near-miss",
+        trajectory_group_id="group-open-loop",
+        path=_path(points),
+        support_model=model,
+    )
+
+    assert (
+        TrajectorySafetyReason.SWEPT_SEGMENT_HITS_INFLATED_OBSTACLE
+        not in evaluation.reasons
+    )
+    assert evaluation.minimum_obstacle_clearance_m == pytest.approx(0.2, abs=1.0e-12)
+
+
 def test_missing_and_nonfinite_public_support_inputs_have_stable_reasons() -> None:
     with pytest.raises(TrajectorySupportError) as insufficient:
         build_trajectory_support_model(
@@ -250,3 +293,93 @@ def test_exact_segment_authority_rejects_an_inflated_voxel_corner_crossing() -> 
     assert tuple(np.floor(start / voxel).astype(int)) not in model.inflated_occupancy
     assert tuple(np.floor(end / voxel).astype(int)) not in model.inflated_occupancy
     assert not model.segment_is_safe(start, end)
+
+
+def test_segment_occupancy_scan_rejects_pathological_finite_aabb_before_ranges(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(support_module, "range", _forbidden_range, raising=False)
+
+    with pytest.raises(TrajectorySupportError) as raised:
+        support_module._segment_hits_occupancy(
+            np.zeros(3, dtype=np.float64),
+            np.full(3, 1_000.0, dtype=np.float64),
+            inflated=frozenset(),
+            policy=_policy(),
+        )
+
+    assert raised.value.reason is TrajectorySafetyReason.EMPTY_SUPPORT_FREE_SPACE
+    assert "exceeding maximum_occupancy_cells=10000" in str(raised.value)
+
+
+def test_carving_scan_rejects_pathological_finite_aabb_before_ranges(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(support_module, "range", _forbidden_range, raising=False)
+
+    with pytest.raises(TrajectorySupportError) as raised:
+        support_module._carve_occupancy(
+            frozenset({(0, 0, 0)}),
+            segments=(
+                (
+                    np.zeros(3, dtype=np.float64),
+                    np.full(3, 1_000.0, dtype=np.float64),
+                ),
+            ),
+            radius_m=_policy().camera_capsule_clearance_m,
+            policy=_policy(),
+        )
+
+    assert raised.value.reason is TrajectorySafetyReason.EMPTY_SUPPORT_FREE_SPACE
+    assert "exceeding maximum_occupancy_cells=10000" in str(raised.value)
+
+
+def test_scan_work_ceiling_preserves_exact_boundary_collision() -> None:
+    policy = replace(_policy(), maximum_occupancy_cells=8)
+    start = np.asarray((0.1, 0.1, 0.1), dtype=np.float64)
+    end = np.asarray((0.3, 0.3, 0.3), dtype=np.float64)
+
+    assert support_module._segment_hits_occupancy(
+        start,
+        end,
+        inflated=frozenset({(1, 1, 1)}),
+        policy=policy,
+    )
+
+
+def test_public_segment_and_evaluation_reject_pathological_scans_fail_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model = build_trajectory_support_model(
+        cameras=_open_loop_cameras(),
+        points_scene_m=np.asarray(((20.0, 20.0, 0.0),), dtype=np.float64),
+        policy=_policy(),
+    )
+
+    monkeypatch.setattr(support_module, "range", _forbidden_range, raising=False)
+    start = np.asarray((0.0, 0.0, 0.0), dtype=np.float64)
+    end = np.asarray((1_000.0, 1_000.0, 1_000.0), dtype=np.float64)
+
+    with pytest.raises(TrajectorySupportError) as segment_raised:
+        model.segment_is_safe(start, end)
+    assert (
+        segment_raised.value.reason
+        is TrajectorySafetyReason.EMPTY_SUPPORT_FREE_SPACE
+    )
+
+    path_points = np.asarray(
+        [camera.camera_to_scene.matrix()[:3, 3] for camera in _open_loop_cameras()],
+        dtype=np.float64,
+    )
+    path_points[1] = end
+    with pytest.raises(TrajectorySupportError) as evaluation_raised:
+        evaluate_trajectory_safety(
+            trajectory_id="trajectory-pathological-finite-scan",
+            trajectory_group_id="group-open-loop",
+            path=_path(path_points),
+            support_model=model,
+        )
+    assert (
+        evaluation_raised.value.reason
+        is TrajectorySafetyReason.EMPTY_SUPPORT_FREE_SPACE
+    )

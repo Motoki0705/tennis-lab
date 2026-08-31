@@ -422,6 +422,43 @@ def test_frozen_pilot_manifest_rejects_budget_and_required_coverage_tampering(
         )
 
 
+@pytest.mark.parametrize("case", ("unrelated", "order"))
+def test_frozen_pilot_manifest_binds_selected_groups_to_semantic_phases(
+    tmp_path: Path,
+    case: str,
+) -> None:
+    manifest = _manifest()
+    decision_inputs = manifest["decision_inputs"]
+    assert isinstance(decision_inputs, dict)
+    selected_group_ids = decision_inputs["selected_trajectory_group_ids"]
+    selected_phases = decision_inputs["selected_semantic_phases"]
+    assert isinstance(selected_group_ids, list)
+    assert isinstance(selected_phases, list)
+    assert {
+        phase["trajectory_group_id"]
+        for phase in selected_phases
+        if isinstance(phase, dict)
+    } == set(selected_group_ids)
+    if case == "unrelated":
+        selected_group_ids[0] = "group-unrelated-to-selected-phases"
+    elif case == "order":
+        selected_group_ids[0], selected_group_ids[1] = (
+            selected_group_ids[1],
+            selected_group_ids[0],
+        )
+    else:  # pragma: no cover - parametrization is intentionally exhaustive
+        raise AssertionError(case)
+    path = _write_manifest(tmp_path, manifest)
+
+    with pytest.raises(ValueError, match="decision inputs are not feasible"):
+        _load_pilot_manifest(
+            path,
+            expected_scene_id="B00",
+            expected_seed=823,
+            minimum_view_count=128,
+        )
+
+
 @pytest.mark.parametrize(
     ("case", "error", "match"),
     (

@@ -3,9 +3,12 @@
 This directory is the compact tracked evidence boundary for the Attempt-2
 repair of Issue #823. The CPU-generated pilot manifest freezes the required
 constructor, family, profile, target, anchor, frame-share, and equal-budget
-inventories. The fresh GPU pilot, blind annotations, adjudication, final V4
-dataset, and complete summary remain pending until they are produced under the
-new roots below.
+inventories. The fresh 128-view pilot, blind annotations, adjudication, final
+V4 dataset, and complete summary are complete under the Attempt-2 roots below.
+The final V4 release accepted 2,016/2,016 frames across 39 trajectory groups,
+with 0 support violations, group-disjoint splits, 8 shards, 0 split leaks, and
+0 renderer errors. The quality-only decision is `quality_only_rejected`;
+geometry remains authoritative.
 
 The historical `B00-pilot`, `B00-semantic-phase-pilot`,
 `issue-823-blind`, `issue-823-semantic-phase-blind`, `B00-final.staging`, and
@@ -35,11 +38,15 @@ every view. No annotation from another manifest is valid.
 
 ## Attempt-2 status
 
-`pilot-manifest.json` is regenerated from the public B00 export without GPU
-rendering. It is not valid complete evidence until a new 128-view pilot is
-rendered, independently reviewed, frozen, and followed by a new final dataset.
-`frozen-config.json`, `summary.json`, and `report.md` therefore remain explicitly
-pending and contain no reused Attempt-1 observation outcome.
+`pilot-manifest.json` records the frozen 128-view Attempt-2 pilot. Two
+independent 128-record reviews and disagreement-only adjudication are recorded:
+Reviewer A has 11 artifact-heavy labels, Reviewer B has 3, with 10 disagreements
+and 5 consensus positives (2 calibration, 3 held-out). `summary.json` and
+`report.md` are complete. Calibration evaluated 800 candidates without a
+threshold family passing all frozen gates, so the quality-only result is
+`quality_only_rejected`; held-out safe V4 candidates were 0/9 artifact-heavy
+versus 2/12 legacy views. Final evidence is complete under the documented
+Attempt-2 roots.
 
 ## Integrity and immutability
 
