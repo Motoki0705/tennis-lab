@@ -11,6 +11,9 @@ import torch
 from torch import Tensor
 
 from src.tasks.plcs.configuration import PLCSModelConfig
+from src.tasks.plcs.models.components.presence_competition import (
+    DeepSetsPresenceResidual,
+)
 from src.tasks.plcs.models.plcs_track_query_ablation_model import (
     PLCSTrackQueryAblationModel,
 )
@@ -68,11 +71,13 @@ def _config(
     mhc_writeback: MHCWriteback,
     *,
     ffn_type: FFNType = "swiglu",
+    presence_competition: str = "none",
 ) -> PLCSModelConfig:
     raw = _raw_model()
     raw["ffn_mode"] = ffn_mode
     raw["mhc_writeback"] = mhc_writeback
     raw["ffn_type"] = ffn_type
+    raw["presence_competition"] = presence_competition
     return PLCSModelConfig.from_mapping(raw)
 
 
@@ -91,9 +96,15 @@ def _model(
     mhc_writeback: MHCWriteback,
     *,
     ffn_type: FFNType = "swiglu",
+    presence_competition: str = "none",
 ) -> PLCSTrackQueryAblationModel:
     model = PLCSTrackQueryAblationModel(
-        _config(ffn_mode, mhc_writeback, ffn_type=ffn_type)
+        _config(
+            ffn_mode,
+            mhc_writeback,
+            ffn_type=ffn_type,
+            presence_competition=presence_competition,
+        )
     )
     model.eval()
     return model
@@ -181,6 +192,33 @@ def test_four_conditions_build_exact_stage_ffn_ownership_and_parameter_counts() 
     assert parameter_counts["A"] == parameter_counts["C"]
     assert parameter_counts["B"] == parameter_counts["D"]
     assert parameter_counts["A"] > parameter_counts["B"]
+
+
+@pytest.mark.parametrize(
+    ("condition", "ffn_mode", "mhc_writeback", "spatial_width"),
+    _CONDITIONS,
+)
+def test_all_four_ablation_variants_register_explicit_competition_only(
+    condition: str,
+    ffn_mode: FFNMode,
+    mhc_writeback: MHCWriteback,
+    spatial_width: int,
+) -> None:
+    del condition, spatial_width
+    model = _model(
+        ffn_mode,
+        mhc_writeback,
+        presence_competition="deepsets",
+    )
+    inputs = _inputs()
+
+    with torch.no_grad():
+        output = _forward(model, inputs)
+
+    assert isinstance(model.presence_competition, DeepSetsPresenceResidual)
+    assert output["presence_logits"].shape == (2, 3, 4)
+    frame_valid = (~inputs["padding_mask"]).any(dim=1)
+    assert not output["presence_logits"][~frame_valid].any()
 
 
 def test_configured_ffn_reaches_shared_stage_ffn() -> None:

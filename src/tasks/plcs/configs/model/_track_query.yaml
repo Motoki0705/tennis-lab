@@ -17,6 +17,7 @@ ffn_type: swiglu
 dropout: 0.1
 role_rope_enabled: true
 invisible_init_std: 0.02
+presence_competition: none
 
 mhc:
   coefficient_dim: 64

@@ -185,6 +185,27 @@ def test_tracking_pose_presence_head_config_binds_strict_fine_tune_contract() ->
     assert config.training.early_stopping.mode == "max"
 
 
+def test_tracking_pose_presence_competition_config_binds_strict_branch_contract() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_tracking_pose_presence_competition",
+            overrides=["run.init_weights=source.ckpt"],
+        )
+
+    runtime = PLCSTrainingConfig.from_config(config)
+    module = build_plcs_lightning_module(config)
+
+    assert isinstance(module, PLCSTrackingLightningModule)
+    assert runtime.fine_tune_mode == "presence_competition"
+    assert runtime.model.track_query_presence_competition == "deepsets"
+    assert config.loss.match_presence_weight == 0.0
+    assert config.training.checkpoint.monitor == "val/presence_f1"
+    assert config.training.early_stopping.monitor == "val/presence_f1"
+    assert config.run.output_dir == (
+        "plcs/plcs_track_query_tracking_pose_presence_competition"
+    )
+
+
 def test_tracking_pose_config_keeps_head_enabled_for_reference_ablation() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(

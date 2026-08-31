@@ -17,9 +17,13 @@ from src.tasks.plcs.model_io import (
     PLCSTrackQueryReferenceIOAdapter,
     build_plcs_model_io,
 )
+from src.tasks.plcs.models.components.presence_competition import (
+    DeepSetsPresenceResidual,
+)
 from src.tasks.plcs.models.plcs_track_query_ablation_model import (
     PLCSTrackQueryAblationModel,
 )
+from src.tasks.plcs.models.plcs_track_query_model import PLCSTrackQueryModel
 from src.tasks.plcs.models.plcs_track_query_reference_ablation_model import (
     PLCSTrackQueryReferenceAblationModel,
 )
@@ -183,6 +187,80 @@ def test_factory_binds_every_ablation_config_to_exact_model_and_adapter(
     assert not binding.adapter.predict_canonical_pose
     assert not binding.adapter.reprojection_enabled
     assert binding.model.canonical_pose_head is None
+
+
+@pytest.mark.parametrize(
+    ("profile", "court_keypoints", "expected_model_type"),
+    [
+        ("track_query", "physical_v1", PLCSTrackQueryModel),
+        ("track_query_ablation_a", "physical_v1", PLCSTrackQueryAblationModel),
+        (
+            "track_query_reference",
+            "camera_view_v2",
+            PLCSTrackQueryReferenceModel,
+        ),
+        (
+            "track_query_ablation_d_v2_selector",
+            "camera_view_v2",
+            PLCSTrackQueryReferenceAblationModel,
+        ),
+    ],
+)
+def test_factory_wires_competition_through_all_track_query_model_families(
+    profile: str,
+    court_keypoints: str,
+    expected_model_type: type[nn.Module],
+) -> None:
+    overrides = [
+        f"model={profile}",
+        f"court_keypoints={court_keypoints}",
+        "model.presence_competition=deepsets",
+        *_TRACKING_SMALL,
+    ]
+    if "reference" in profile or "v2_selector" in profile:
+        overrides[overrides.index("model.hidden_dim=16")] = "model.hidden_dim=24"
+        overrides[overrides.index("model.ffn_dim=32")] = "model.ffn_dim=48"
+        overrides[overrides.index("model.rope_dim=4")] = "model.rope_dim=6"
+    with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_DIR)):
+        config = compose(config_name="train_tracking", overrides=overrides)
+
+    binding = build_plcs_model_io(PLCSTrainingConfig.from_config(config))
+
+    disabled_overrides = [
+        override
+        if override != "model.presence_competition=deepsets"
+        else "model.presence_competition=none"
+        for override in overrides
+    ]
+    with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_DIR)):
+        disabled_config = compose(
+            config_name="train_tracking",
+            overrides=disabled_overrides,
+        )
+    disabled_binding = build_plcs_model_io(
+        PLCSTrainingConfig.from_config(disabled_config)
+    )
+
+    assert type(binding.model) is expected_model_type
+    assert isinstance(
+        binding.model.presence_competition,
+        DeepSetsPresenceResidual,
+    )
+    assert binding.model.presence_competition_mode == "deepsets"
+    assert "presence_competition" not in dict(
+        disabled_binding.model.named_children()
+    )
+    enabled_keys = set(binding.model.state_dict())
+    disabled_keys = set(disabled_binding.model.state_dict())
+    assert enabled_keys - disabled_keys == {
+        "presence_competition.feature_projection.weight",
+        "presence_competition.feature_projection.bias",
+        "presence_competition.output_projection.weight",
+        "presence_competition.output_projection.bias",
+    }
+    assert disabled_keys == {
+        key for key in enabled_keys if not key.startswith("presence_competition.")
+    }
 
 
 def test_ablation_uses_tracking_training_composition(

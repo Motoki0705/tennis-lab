@@ -16,6 +16,7 @@ ffn_type: swiglu
 dropout: 0.0
 role_rope_enabled: true
 invisible_init_std: 0.02
+presence_competition: none
 
 ffn_mode: ???
 mhc_writeback: ???

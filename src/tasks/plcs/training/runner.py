@@ -20,6 +20,9 @@ from src.tasks.plcs.training.composition import (
     build_plcs_datamodule,
     build_plcs_lightning_module,
 )
+from src.tasks.plcs.training.tracking_lightning_module import (
+    _require_presence_competition,
+)
 from src.utils.schema.court_normalization import validate_court_coordinate_normalization
 
 
@@ -79,6 +82,35 @@ class PLCSTrainingRunner(BaseTrainingRunner):
                         runtime.court_keypoint_contract,
                     ),
                 )
+            if (
+                runtime.model.track_query_presence_competition == "deepsets"
+                and runtime.fine_tune_mode != "presence_competition"
+            ):
+                source_state = checkpoint.get("state_dict")
+                if not isinstance(source_state, Mapping):
+                    raise TypeError(
+                        "Enabled PLCS presence-competition init_weights "
+                        "checkpoint requires a mapping 'state_dict'."
+                    )
+                if any(not isinstance(key, str) for key in source_state):
+                    raise TypeError(
+                        "Enabled PLCS presence-competition init_weights "
+                        "state_dict keys must all be strings."
+                    )
+                target_keys = set(lightning_module.state_dict())
+                source_keys = set(source_state)
+                missing_enabled_keys = target_keys - source_keys
+                unexpected_enabled_keys = source_keys - target_keys
+                if missing_enabled_keys or unexpected_enabled_keys:
+                    raise RuntimeError(
+                        "Enabled PLCS presence-competition init_weights must "
+                        "match exactly outside fine_tune_mode="
+                        "'presence_competition'; "
+                        f"missing={sorted(missing_enabled_keys)[:5]}, "
+                        f"unexpected={sorted(unexpected_enabled_keys)[:5]}."
+                    )
+                lightning_module.load_state_dict(source_state, strict=True)
+                return
             if runtime.fine_tune_mode == "presence_head":
                 source_state = checkpoint.get("state_dict")
                 if not isinstance(source_state, Mapping):
@@ -102,6 +134,65 @@ class PLCSTrainingRunner(BaseTrainingRunner):
                         f"{init_path} is missing {len(missing_keys)} required "
                         f"target key(s): {missing_keys[:5]}."
                     )
+            if runtime.fine_tune_mode == "presence_competition":
+                source_state = checkpoint.get("state_dict")
+                if not isinstance(source_state, Mapping):
+                    raise TypeError(
+                        "PLCS presence-competition init_weights checkpoint "
+                        "requires a mapping 'state_dict'."
+                    )
+                if any(not isinstance(key, str) for key in source_state):
+                    raise TypeError(
+                        "PLCS presence-competition init_weights state_dict keys "
+                        "must all be strings."
+                    )
+                target_state = lightning_module.state_dict()
+                target_keys = set(target_state)
+                source_keys = set(source_state)
+                branch_prefix = "model.presence_competition."
+                branch_keys = {
+                    key for key in target_keys if key.startswith(branch_prefix)
+                }
+                if not branch_keys:
+                    raise RuntimeError(
+                        "PLCS presence-competition fine-tuning resolved no "
+                        "competition state keys."
+                    )
+                competition_missing_keys = target_keys - source_keys
+                competition_unexpected_keys = source_keys - target_keys
+                if competition_missing_keys not in (set(), branch_keys):
+                    disallowed_missing = sorted(
+                        competition_missing_keys - branch_keys
+                    )
+                    raise RuntimeError(
+                        "PLCS presence-competition init_weights may omit exactly "
+                        "all competition branch keys for legacy migration, but "
+                        f"found disallowed/partial missing keys: "
+                        f"{(disallowed_missing or sorted(competition_missing_keys))[:5]}."
+                    )
+                if competition_unexpected_keys:
+                    raise RuntimeError(
+                        "PLCS presence-competition init_weights rejects "
+                        "unexpected state keys: "
+                        f"{sorted(competition_unexpected_keys)[:5]}."
+                    )
+                if competition_missing_keys == branch_keys:
+                    _require_presence_competition(
+                        lightning_module.model
+                    ).reset_output_projection()
+                result = lightning_module.load_state_dict(
+                    source_state,
+                    strict=False,
+                )
+                if (
+                    set(result.missing_keys) != competition_missing_keys
+                    or result.unexpected_keys
+                ):
+                    raise RuntimeError(
+                        "PLCS presence-competition init_weights load result "
+                        "violated the validated key allowlist."
+                    )
+                return
         super().maybe_load_init_weights(config, lightning_module)
 
     def callbacks_extra(

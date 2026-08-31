@@ -9,6 +9,9 @@ import torch
 from hydra import compose, initialize_config_dir
 
 from src.tasks.plcs.configuration import PLCSModelConfig
+from src.tasks.plcs.models.components.presence_competition import (
+    DeepSetsPresenceResidual,
+)
 from src.tasks.plcs.models.plcs_track_query_model import PLCSTrackQueryModel
 from src.utils.models.components.ffn_layers import DeepSeekV4SwiGLU, FFNType
 from src.utils.models.components.fixed_query_track_stage import FixedQueryTrackStage
@@ -22,11 +25,16 @@ def _model(
     backend: str = "reference",
     ffn_type: FFNType = "swiglu",
     predict_canonical_pose: bool = True,
+    presence_competition: str = "none",
 ) -> PLCSTrackQueryModel:
     with initialize_config_dir(
         config_dir=str(MODEL_CONFIG_DIR), version_base="1.3"
     ):
-        overrides = [f"cswa.backend={backend}", f"ffn_type={ffn_type}"]
+        overrides = [
+            f"cswa.backend={backend}",
+            f"ffn_type={ffn_type}",
+            f"presence_competition={presence_competition}",
+        ]
         if predict_canonical_pose:
             overrides.append("+predict_canonical_pose=true")
         raw = compose(config_name="track_query", overrides=overrides)
@@ -106,6 +114,85 @@ def test_legacy_model_omits_canonical_head_and_output() -> None:
 
     assert model.canonical_pose_head is None
     assert set(output) == {"position", "rotation", "presence_logits"}
+
+
+def test_presence_competition_is_absent_by_default_without_state_dict_changes() -> None:
+    model = _model(predict_canonical_pose=False)
+
+    assert "presence_competition" not in dict(model.named_children())
+    assert not any(
+        key.startswith("presence_competition.") for key in model.state_dict()
+    )
+
+
+def test_enabled_zero_residual_is_bitwise_identical_to_legacy_presence_output() -> None:
+    torch.manual_seed(11)
+    legacy = _model(predict_canonical_pose=False)
+    enabled = _model(
+        predict_canonical_pose=False,
+        presence_competition="deepsets",
+    )
+    result = enabled.load_state_dict(legacy.state_dict(), strict=False)
+    inputs = _inputs(legacy)
+
+    with torch.no_grad():
+        legacy_output = _forward(legacy, inputs)
+        enabled_output = _forward(enabled, inputs)
+
+    assert set(result.missing_keys) == {
+        "presence_competition.feature_projection.weight",
+        "presence_competition.feature_projection.bias",
+        "presence_competition.output_projection.weight",
+        "presence_competition.output_projection.bias",
+    }
+    assert not result.unexpected_keys
+    assert isinstance(enabled.presence_competition, DeepSetsPresenceResidual)
+    for key in legacy_output:
+        assert torch.equal(enabled_output[key], legacy_output[key])
+
+
+def test_enabled_checkpoint_roundtrip_is_strict_and_output_preserving() -> None:
+    torch.manual_seed(13)
+    source = _model(presence_competition="deepsets")
+    with torch.no_grad():
+        source.presence_competition.output_projection.weight.normal_()
+        source.presence_competition.output_projection.bias.normal_()
+    target = _model(presence_competition="deepsets")
+    target.load_state_dict(source.state_dict(), strict=True)
+    inputs = _inputs(source)
+
+    with torch.no_grad():
+        source_output = _forward(source, inputs)
+        target_output = _forward(target, inputs)
+
+    for key in source_output:
+        assert torch.equal(target_output[key], source_output[key])
+
+
+def test_enabled_and_disabled_checkpoints_are_strictly_incompatible() -> None:
+    disabled = _model(predict_canonical_pose=False)
+    enabled = _model(
+        predict_canonical_pose=False,
+        presence_competition="deepsets",
+    )
+
+    with pytest.raises(RuntimeError, match="presence_competition"):
+        enabled.load_state_dict(disabled.state_dict(), strict=True)
+    with pytest.raises(RuntimeError, match="presence_competition"):
+        disabled.load_state_dict(enabled.state_dict(), strict=True)
+
+
+def test_enabled_competition_preserves_all_padding_zero_contract() -> None:
+    model = _model(presence_competition="deepsets")
+    inputs = _inputs(model)
+    inputs["padding_mask"][:] = True
+
+    with torch.no_grad():
+        output = _forward(model, inputs)
+
+    for value in output.values():
+        assert torch.isfinite(value).all()
+        assert torch.count_nonzero(value) == 0
 
 
 def test_model_uses_shared_stages_with_fixed_cswa_global_cycle() -> None:

@@ -149,6 +149,28 @@ def test_explicit_all_fine_tune_mode_preserves_default_training() -> None:
 
     assert config.training.fine_tune_mode == "all"
     assert runtime.fine_tune_mode == "all"
+    assert runtime.model.track_query_presence_competition == "none"
+    assert config.model.presence_competition == "none"
+
+
+@pytest.mark.parametrize("value", ["set_transformer", "linear"])
+def test_tracking_rejects_unknown_presence_competition(value: str) -> None:
+    config = deepcopy(_config("train_tracking_pose"))
+    config.model.presence_competition = value
+
+    with pytest.raises(
+        SemanticConfigurationError,
+        match="model.presence_competition must be one of",
+    ):
+        PLCSTrainingConfig.from_config(config)
+
+
+def test_tracking_rejects_wrong_presence_competition_type() -> None:
+    config = deepcopy(_config("train_tracking_pose"))
+    config.model.presence_competition = True
+
+    with pytest.raises(ConfigurationTypeError, match="model.presence_competition"):
+        PLCSTrainingConfig.from_config(config)
 
 
 def test_presence_head_fine_tune_mode_requires_init_weights() -> None:
@@ -194,6 +216,55 @@ def test_presence_head_keeps_resume_and_init_mutually_exclusive() -> None:
     with pytest.raises(
         SemanticConfigurationError,
         match=r"run\.resume and run\.init_weights are mutually exclusive",
+    ):
+        PLCSTrainingConfig.from_config(config)
+
+
+def test_presence_competition_fine_tune_requires_enabled_branch() -> None:
+    config = deepcopy(_config("train_tracking_pose"))
+    config.training.fine_tune_mode = "presence_competition"
+    config.run.init_weights = "source.ckpt"
+
+    with pytest.raises(
+        SemanticConfigurationError,
+        match=r"presence_competition.*model\.presence_competition='deepsets'",
+    ):
+        PLCSTrainingConfig.from_config(config)
+
+
+def test_presence_competition_fine_tune_requires_init_weights() -> None:
+    config = deepcopy(_config("train_tracking_pose"))
+    config.model.presence_competition = "deepsets"
+    config.training.fine_tune_mode = "presence_competition"
+
+    with pytest.raises(
+        SemanticConfigurationError,
+        match=r"presence_competition.*requires run\.init_weights",
+    ):
+        PLCSTrainingConfig.from_config(config)
+
+
+def test_presence_competition_fine_tune_accepts_weight_initialization() -> None:
+    config = deepcopy(_config("train_tracking_pose"))
+    config.model.presence_competition = "deepsets"
+    config.training.fine_tune_mode = "presence_competition"
+    config.run.init_weights = "source.ckpt"
+
+    runtime = PLCSTrainingConfig.from_config(config)
+
+    assert runtime.fine_tune_mode == "presence_competition"
+    assert runtime.model.track_query_presence_competition == "deepsets"
+
+
+def test_presence_competition_fine_tune_rejects_resume() -> None:
+    config = deepcopy(_config("train_tracking_pose"))
+    config.model.presence_competition = "deepsets"
+    config.training.fine_tune_mode = "presence_competition"
+    config.run.resume = "source.ckpt"
+
+    with pytest.raises(
+        SemanticConfigurationError,
+        match=r"presence_competition.*forbids run\.resume",
     ):
         PLCSTrainingConfig.from_config(config)
 

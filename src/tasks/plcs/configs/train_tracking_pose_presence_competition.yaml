@@ -1,0 +1,16 @@
+# @package _global_
+# Fine-tune only query-aware competition over converged presence logits.
+defaults:
+  - train_tracking_pose_presence_head
+  - _self_
+
+model:
+  presence_competition: deepsets
+
+training:
+  fine_tune_mode: presence_competition
+
+run:
+  # Required CLI override; legacy checkpoints may omit only competition keys.
+  init_weights: null
+  output_dir: plcs/${model.name}_tracking_pose_presence_competition
