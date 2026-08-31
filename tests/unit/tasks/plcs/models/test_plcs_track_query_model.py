@@ -125,12 +125,18 @@ def test_presence_competition_is_absent_by_default_without_state_dict_changes() 
     )
 
 
-def test_enabled_zero_residual_is_bitwise_identical_to_legacy_presence_output() -> None:
+@pytest.mark.parametrize(
+    "presence_competition",
+    ["deepsets", "deepsets_centered"],
+)
+def test_enabled_zero_residual_is_bitwise_identical_to_legacy_presence_output(
+    presence_competition: str,
+) -> None:
     torch.manual_seed(11)
     legacy = _model(predict_canonical_pose=False)
     enabled = _model(
         predict_canonical_pose=False,
-        presence_competition="deepsets",
+        presence_competition=presence_competition,
     )
     result = enabled.load_state_dict(legacy.state_dict(), strict=False)
     inputs = _inputs(legacy)
@@ -149,6 +155,10 @@ def test_enabled_zero_residual_is_bitwise_identical_to_legacy_presence_output() 
     assert isinstance(enabled.presence_competition, DeepSetsPresenceResidual)
     for key in legacy_output:
         assert torch.equal(enabled_output[key], legacy_output[key])
+    assert torch.equal(
+        enabled_output["presence_logits"].contiguous().view(torch.int32),
+        legacy_output["presence_logits"].contiguous().view(torch.int32),
+    )
 
 
 def test_enabled_checkpoint_roundtrip_is_strict_and_output_preserving() -> None:
@@ -182,8 +192,14 @@ def test_enabled_and_disabled_checkpoints_are_strictly_incompatible() -> None:
         disabled.load_state_dict(enabled.state_dict(), strict=True)
 
 
-def test_enabled_competition_preserves_all_padding_zero_contract() -> None:
-    model = _model(presence_competition="deepsets")
+@pytest.mark.parametrize(
+    "presence_competition",
+    ["deepsets", "deepsets_centered"],
+)
+def test_enabled_competition_preserves_all_padding_zero_contract(
+    presence_competition: str,
+) -> None:
+    model = _model(presence_competition=presence_competition)
     inputs = _inputs(model)
     inputs["padding_mask"][:] = True
 

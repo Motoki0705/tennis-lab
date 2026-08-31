@@ -51,7 +51,11 @@ PLCSFineTuneMode: TypeAlias = Literal[
     "presence_head",
     "presence_competition",
 ]
-PLCSPresenceCompetitionMode: TypeAlias = Literal["none", "deepsets"]
+PLCSPresenceCompetitionMode: TypeAlias = Literal[
+    "none",
+    "deepsets",
+    "deepsets_centered",
+]
 
 
 def _plain(value: object, *, path: str) -> Mapping[str, object]:
@@ -566,10 +570,15 @@ class PLCSModelConfig:
                 if "presence_competition" in mapping
                 else "none"
             )
-            if presence_competition_value not in {"none", "deepsets"}:
+            if presence_competition_value not in {
+                "none",
+                "deepsets",
+                "deepsets_centered",
+            }:
                 raise SemanticConfigurationError(
                     "model.presence_competition must be one of 'none', "
-                    f"'deepsets'; got {presence_competition_value!r}."
+                    "'deepsets', 'deepsets_centered'; "
+                    f"got {presence_competition_value!r}."
                 )
             track_query_presence_competition = cast(
                 "PLCSPresenceCompetitionMode",
@@ -1256,11 +1265,12 @@ class PLCSTrainingConfig:
             )
         if (
             fine_tune_mode == "presence_competition"
-            and model.track_query_presence_competition != "deepsets"
+            and model.track_query_presence_competition
+            not in {"deepsets", "deepsets_centered"}
         ):
             raise SemanticConfigurationError(
                 "training.fine_tune_mode='presence_competition' requires "
-                "model.presence_competition='deepsets'."
+                "model.presence_competition='deepsets' or 'deepsets_centered'."
             )
         gan_fields = {
             "enabled",

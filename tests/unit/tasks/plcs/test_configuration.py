@@ -256,6 +256,18 @@ def test_presence_competition_fine_tune_accepts_weight_initialization() -> None:
     assert runtime.model.track_query_presence_competition == "deepsets"
 
 
+def test_centered_presence_competition_fine_tune_accepts_weight_initialization() -> None:
+    config = deepcopy(_config("train_tracking_pose"))
+    config.model.presence_competition = "deepsets_centered"
+    config.training.fine_tune_mode = "presence_competition"
+    config.run.init_weights = "source.ckpt"
+
+    runtime = PLCSTrainingConfig.from_config(config)
+
+    assert runtime.fine_tune_mode == "presence_competition"
+    assert runtime.model.track_query_presence_competition == "deepsets_centered"
+
+
 def test_presence_competition_fine_tune_rejects_resume() -> None:
     config = deepcopy(_config("train_tracking_pose"))
     config.model.presence_competition = "deepsets"

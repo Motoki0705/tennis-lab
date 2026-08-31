@@ -198,11 +198,41 @@ def test_tracking_pose_presence_competition_config_binds_strict_branch_contract(
     assert isinstance(module, PLCSTrackingLightningModule)
     assert runtime.fine_tune_mode == "presence_competition"
     assert runtime.model.track_query_presence_competition == "deepsets"
+    assert not module.model.presence_competition.center_queries
     assert config.loss.match_presence_weight == 0.0
     assert config.training.checkpoint.monitor == "val/presence_f1"
     assert config.training.early_stopping.monitor == "val/presence_f1"
     assert config.run.output_dir == (
         "plcs/plcs_track_query_tracking_pose_presence_competition"
+    )
+
+
+def test_centered_presence_competition_config_composes_with_same_branch_state() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_tracking_pose_presence_competition_centered",
+            overrides=["run.init_weights=source.ckpt"],
+        )
+
+    runtime = PLCSTrainingConfig.from_config(config)
+    module = build_plcs_lightning_module(config)
+
+    assert isinstance(module, PLCSTrackingLightningModule)
+    assert runtime.fine_tune_mode == "presence_competition"
+    assert runtime.model.track_query_presence_competition == "deepsets_centered"
+    assert module.model.presence_competition.center_queries
+    assert {
+        key
+        for key in module.model.state_dict()
+        if key.startswith("presence_competition.")
+    } == {
+        "presence_competition.feature_projection.weight",
+        "presence_competition.feature_projection.bias",
+        "presence_competition.output_projection.weight",
+        "presence_competition.output_projection.bias",
+    }
+    assert config.run.output_dir == (
+        "plcs/plcs_track_query_tracking_pose_presence_competition_centered"
     )
 
 

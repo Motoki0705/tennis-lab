@@ -206,15 +206,20 @@ def test_factory_binds_every_ablation_config_to_exact_model_and_adapter(
         ),
     ],
 )
+@pytest.mark.parametrize(
+    "presence_competition",
+    ["deepsets", "deepsets_centered"],
+)
 def test_factory_wires_competition_through_all_track_query_model_families(
     profile: str,
     court_keypoints: str,
     expected_model_type: type[nn.Module],
+    presence_competition: str,
 ) -> None:
     overrides = [
         f"model={profile}",
         f"court_keypoints={court_keypoints}",
-        "model.presence_competition=deepsets",
+        f"model.presence_competition={presence_competition}",
         *_TRACKING_SMALL,
     ]
     if "reference" in profile or "v2_selector" in profile:
@@ -228,7 +233,7 @@ def test_factory_wires_competition_through_all_track_query_model_families(
 
     disabled_overrides = [
         override
-        if override != "model.presence_competition=deepsets"
+        if not override.startswith("model.presence_competition=")
         else "model.presence_competition=none"
         for override in overrides
     ]
@@ -246,7 +251,10 @@ def test_factory_wires_competition_through_all_track_query_model_families(
         binding.model.presence_competition,
         DeepSetsPresenceResidual,
     )
-    assert binding.model.presence_competition_mode == "deepsets"
+    assert binding.model.presence_competition_mode == presence_competition
+    assert binding.model.presence_competition.center_queries is (
+        presence_competition == "deepsets_centered"
+    )
     assert "presence_competition" not in dict(
         disabled_binding.model.named_children()
     )

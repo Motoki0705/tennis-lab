@@ -7,17 +7,22 @@ from typing import Literal, TypeAlias
 import torch
 from torch import Tensor, nn
 
-PresenceCompetitionMode: TypeAlias = Literal["none", "deepsets"]
+PresenceCompetitionMode: TypeAlias = Literal[
+    "none",
+    "deepsets",
+    "deepsets_centered",
+]
 
 
 class DeepSetsPresenceResidual(nn.Module):
     """Predict a per-query residual from query-local and frame-pooled state."""
 
-    def __init__(self, hidden_dim: int) -> None:
+    def __init__(self, hidden_dim: int, center_queries: bool = False) -> None:
         super().__init__()
         if hidden_dim <= 0:
             raise ValueError("hidden_dim must be positive.")
         self.hidden_dim = hidden_dim
+        self.center_queries = center_queries
         self.feature_projection = nn.Linear(3 * hidden_dim, hidden_dim)
         self.output_projection = nn.Linear(hidden_dim, 1)
         self.reset_output_projection()
@@ -44,7 +49,11 @@ class DeepSetsPresenceResidual(nn.Module):
             dim=-1,
         )
         hidden = torch.nn.functional.gelu(self.feature_projection(features))
-        return self.output_projection(hidden).squeeze(-1)
+        residual = self.output_projection(hidden).squeeze(-1)
+        if self.center_queries:
+            query_mean = residual.mean(dim=-1, keepdim=True)
+            residual = residual - query_mean
+        return residual
 
 
 def build_presence_competition(
@@ -57,6 +66,8 @@ def build_presence_competition(
         return None
     if mode == "deepsets":
         return DeepSetsPresenceResidual(hidden_dim)
+    if mode == "deepsets_centered":
+        return DeepSetsPresenceResidual(hidden_dim, center_queries=True)
     raise ValueError(f"Unsupported presence competition mode {mode!r}.")
 
 
