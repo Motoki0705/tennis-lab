@@ -96,7 +96,9 @@ def _translated_matrices(count: int, *, offset: float = 0.0) -> tuple[np.ndarray
 
 
 def _canonical_drift_matrix() -> NDArray[np.float64]:
-    angle = 1.1884684684684685
+    # This direction keeps its normalized self-dot two ULPs below one for both
+    # scalar and BLAS reductions, so the regression does not depend on reduction order.
+    angle = 1.0147749333333334
     forward = np.asarray(
         (0.6 * np.sin(angle), 0.8 * np.sin(angle), np.cos(angle)),
         dtype=np.float64,
