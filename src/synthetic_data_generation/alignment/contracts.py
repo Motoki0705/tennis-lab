@@ -10,12 +10,15 @@ import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Self
+from typing import Any, Self, cast
 
 import numpy as np
 from numpy.typing import NDArray
 
-from src.synthetic_data_generation.alignment.heatmaps import AlignmentLineHeatmaps
+from src.synthetic_data_generation.alignment.heatmaps import (
+    GROUND_PLANE_UV_COORDINATE_CONVENTION,
+    AlignmentLineHeatmaps,
+)
 from src.synthetic_data_generation.alignment.settings import WholeCourtEvidenceSettings
 from src.synthetic_data_generation.scene_contract import (
     COURT_AXES_METRES,
@@ -28,6 +31,8 @@ ALIGNMENT_SCHEMA = "semantic_multi_court_alignment_v2"
 ALIGNMENT_COORDINATE_CONVENTION = (
     f"metric_scene_from_court_column_vectors;{COURT_AXES_METRES}"
 )
+GROUND_PLANE_FRAME_SCHEMA = "metric_ground_plane_frame_v1"
+ALIGNMENT_TRACE_SCHEMA = "ordered_alignment_trace_v1"
 
 _ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 _INVERSE_ATOL = 1.0e-6
@@ -79,6 +84,15 @@ class AlignmentEvaluationOutcome(StrEnum):
     """Persistable terminal outcome for a successfully returned evidence object."""
 
     FULL_VALIDATION_PASS = "full_validation_pass"
+
+
+class AlignmentTracePhase(StrEnum):
+    """Exact optimizer milestones retained without feeding back into fitting."""
+
+    PROPOSAL_SELECTION = "proposal_selection"
+    NATIVE_REFINEMENT = "native_refinement"
+    COMMON_SCALE_REFIT = "common_scale_refit"
+    FINAL_ALIGNMENT = "final_alignment"
 
 
 class ProposalSearchStopReason(StrEnum):
@@ -243,6 +257,286 @@ class MetricSceneAdapter:
                 raw["nht_scene_units_per_metre"],
                 name="nht_scene_units_per_metre",
             ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class GroundPlaneFrame:
+    """Versioned right-handed metric frame underlying every alignment UV value."""
+
+    origin_metric_scene: tuple[float, float, float]
+    basis_u_metric_scene: tuple[float, float, float]
+    basis_v_metric_scene: tuple[float, float, float]
+    normal_metric_scene: tuple[float, float, float]
+    bounds_uv_metres: tuple[float, float, float, float]
+
+    def __post_init__(self) -> None:
+        origin = np.asarray(
+            _finite_tuple(
+                self.origin_metric_scene,
+                size=3,
+                name="ground_plane.origin_metric_scene",
+            ),
+            dtype=np.float64,
+        )
+        basis_u = np.asarray(
+            _finite_tuple(
+                self.basis_u_metric_scene,
+                size=3,
+                name="ground_plane.basis_u_metric_scene",
+            ),
+            dtype=np.float64,
+        )
+        basis_v = np.asarray(
+            _finite_tuple(
+                self.basis_v_metric_scene,
+                size=3,
+                name="ground_plane.basis_v_metric_scene",
+            ),
+            dtype=np.float64,
+        )
+        normal = np.asarray(
+            _finite_tuple(
+                self.normal_metric_scene,
+                size=3,
+                name="ground_plane.normal_metric_scene",
+            ),
+            dtype=np.float64,
+        )
+        basis = np.column_stack((basis_u, basis_v, normal))
+        if not np.allclose(
+            basis.T @ basis,
+            np.eye(3),
+            atol=1.0e-8,
+            rtol=0.0,
+        ):
+            raise ValueError("Ground-plane basis and normal must be orthonormal.")
+        if not np.allclose(
+            np.cross(basis_u, basis_v),
+            normal,
+            atol=1.0e-8,
+            rtol=0.0,
+        ) or not math.isclose(float(np.linalg.det(basis)), 1.0, abs_tol=1.0e-8):
+            raise ValueError("Ground-plane frame must be right-handed.")
+        bounds = _finite_tuple(
+            self.bounds_uv_metres,
+            size=4,
+            name="ground_plane.bounds_uv_metres",
+        )
+        if bounds[0] >= bounds[1] or bounds[2] >= bounds[3]:
+            raise ValueError("Ground-plane UV bounds must have positive area.")
+        object.__setattr__(
+            self,
+            "origin_metric_scene",
+            tuple(float(item) for item in origin),
+        )
+        object.__setattr__(
+            self,
+            "basis_u_metric_scene",
+            tuple(float(item) for item in basis_u),
+        )
+        object.__setattr__(
+            self,
+            "basis_v_metric_scene",
+            tuple(float(item) for item in basis_v),
+        )
+        object.__setattr__(
+            self,
+            "normal_metric_scene",
+            tuple(float(item) for item in normal),
+        )
+        object.__setattr__(self, "bounds_uv_metres", bounds)
+
+    @classmethod
+    def from_nht_frame(
+        cls,
+        *,
+        metric_adapter: MetricSceneAdapter,
+        origin_nht_scene: Sequence[float] | NDArray[np.floating[Any]],
+        basis_u_nht_scene: Sequence[float] | NDArray[np.floating[Any]],
+        basis_v_nht_scene: Sequence[float] | NDArray[np.floating[Any]],
+        normal_nht_scene: Sequence[float] | NDArray[np.floating[Any]],
+        bounds_uv_nht_scene: Sequence[float] | NDArray[np.floating[Any]],
+    ) -> Self:
+        """Convert one validated NHT plane frame through the sole metric adapter."""
+        if not isinstance(metric_adapter, MetricSceneAdapter):
+            raise TypeError("metric_adapter must be a MetricSceneAdapter.")
+        nht_basis = np.column_stack(
+            tuple(
+                np.asarray(
+                    _finite_vector_tuple(value, size=3, name=name),
+                    dtype=np.float64,
+                )
+                for value, name in (
+                    (basis_u_nht_scene, "basis_u_nht_scene"),
+                    (basis_v_nht_scene, "basis_v_nht_scene"),
+                    (normal_nht_scene, "normal_nht_scene"),
+                )
+            )
+        )
+        if not np.allclose(
+            nht_basis.T @ nht_basis,
+            np.eye(3),
+            atol=1.0e-8,
+            rtol=0.0,
+        ) or not np.allclose(
+            np.cross(nht_basis[:, 0], nht_basis[:, 1]),
+            nht_basis[:, 2],
+            atol=1.0e-8,
+            rtol=0.0,
+        ):
+            raise ValueError("Source NHT ground-plane frame must be right-handed orthonormal.")
+        scale = metric_adapter.nht_scene_units_per_metre
+        metric_rotation = metric_adapter.metric_matrix()[:3, :3] * scale
+        metric_basis = metric_rotation @ nht_basis
+        origin = metric_adapter.metric_from_nht_points(
+            np.asarray(
+                _finite_vector_tuple(
+                    origin_nht_scene,
+                    size=3,
+                    name="origin_nht_scene",
+                ),
+                dtype=np.float64,
+            )
+        )
+        bounds_nht = _finite_vector_tuple(
+            bounds_uv_nht_scene,
+            size=4,
+            name="bounds_uv_nht_scene",
+        )
+        return cls(
+            origin_metric_scene=cast(
+                tuple[float, float, float],
+                tuple(float(item) for item in origin),
+            ),
+            basis_u_metric_scene=cast(
+                tuple[float, float, float],
+                tuple(float(item) for item in metric_basis[:, 0]),
+            ),
+            basis_v_metric_scene=cast(
+                tuple[float, float, float],
+                tuple(float(item) for item in metric_basis[:, 1]),
+            ),
+            normal_metric_scene=cast(
+                tuple[float, float, float],
+                tuple(float(item) for item in metric_basis[:, 2]),
+            ),
+            bounds_uv_metres=cast(
+                tuple[float, float, float, float],
+                tuple(float(item / scale) for item in bounds_nht),
+            ),
+        )
+
+    def to_uv(
+        self,
+        points_metric_scene: NDArray[np.floating[Any]],
+    ) -> NDArray[np.float64]:
+        """Project metric-scene points into this plane's metre-valued UV frame."""
+        points = _point_array(
+            points_metric_scene,
+            name="points_metric_scene",
+        )
+        origin = np.asarray(self.origin_metric_scene, dtype=np.float64)
+        basis = np.column_stack(
+            (
+                np.asarray(self.basis_u_metric_scene, dtype=np.float64),
+                np.asarray(self.basis_v_metric_scene, dtype=np.float64),
+            )
+        )
+        return np.asarray((points - origin) @ basis, dtype=np.float64)
+
+    def from_uv(
+        self,
+        points_uv_metres: NDArray[np.floating[Any]],
+    ) -> NDArray[np.float64]:
+        """Lift metre-valued plane coordinates into the metric scene."""
+        points = np.asarray(points_uv_metres)
+        if points.dtype.kind not in {"f", "i", "u"}:
+            raise TypeError("points_uv_metres must have a real numeric dtype.")
+        points = np.asarray(points, dtype=np.float64)
+        if points.ndim != 2 or points.shape[1] != 2 or not np.isfinite(points).all():
+            raise ValueError("points_uv_metres must be a finite (N, 2) array.")
+        basis = np.vstack(
+            (
+                np.asarray(self.basis_u_metric_scene, dtype=np.float64),
+                np.asarray(self.basis_v_metric_scene, dtype=np.float64),
+            )
+        )
+        return np.asarray(
+            points @ basis + np.asarray(self.origin_metric_scene, dtype=np.float64),
+            dtype=np.float64,
+        )
+
+    def signed_distances(
+        self,
+        points_metric_scene: NDArray[np.floating[Any]],
+    ) -> NDArray[np.float64]:
+        """Return signed metric distances from the plane."""
+        points = _point_array(points_metric_scene, name="points_metric_scene")
+        return np.asarray(
+            (points - np.asarray(self.origin_metric_scene, dtype=np.float64))
+            @ np.asarray(self.normal_metric_scene, dtype=np.float64),
+            dtype=np.float64,
+        )
+
+    def to_dict(self) -> dict[str, object]:
+        """Return the exact persisted metric frame."""
+        return {
+            "schema": GROUND_PLANE_FRAME_SCHEMA,
+            "coordinate_convention": GROUND_PLANE_UV_COORDINATE_CONVENTION,
+            "origin_metric_scene": list(self.origin_metric_scene),
+            "basis_u_metric_scene": list(self.basis_u_metric_scene),
+            "basis_v_metric_scene": list(self.basis_v_metric_scene),
+            "normal_metric_scene": list(self.normal_metric_scene),
+            "bounds_uv_metres": list(self.bounds_uv_metres),
+        }
+
+    @classmethod
+    def from_dict(cls, value: object) -> Self:
+        """Parse an exact metric ground-plane frame without inferring fields."""
+        raw = _strict_mapping(
+            value,
+            keys={
+                "schema",
+                "coordinate_convention",
+                "origin_metric_scene",
+                "basis_u_metric_scene",
+                "basis_v_metric_scene",
+                "normal_metric_scene",
+                "bounds_uv_metres",
+            },
+            name="ground plane frame",
+        )
+        if raw["schema"] != GROUND_PLANE_FRAME_SCHEMA:
+            raise ValueError(f"Unsupported ground-plane frame schema: {raw['schema']!r}.")
+        if raw["coordinate_convention"] != GROUND_PLANE_UV_COORDINATE_CONVENTION:
+            raise ValueError("Unsupported ground-plane coordinate convention.")
+        return cls(
+            origin_metric_scene=cast(tuple[float, float, float], _finite_tuple(
+                raw["origin_metric_scene"],
+                size=3,
+                name="origin_metric_scene",
+            )),
+            basis_u_metric_scene=cast(tuple[float, float, float], _finite_tuple(
+                raw["basis_u_metric_scene"],
+                size=3,
+                name="basis_u_metric_scene",
+            )),
+            basis_v_metric_scene=cast(tuple[float, float, float], _finite_tuple(
+                raw["basis_v_metric_scene"],
+                size=3,
+                name="basis_v_metric_scene",
+            )),
+            normal_metric_scene=cast(tuple[float, float, float], _finite_tuple(
+                raw["normal_metric_scene"],
+                size=3,
+                name="normal_metric_scene",
+            )),
+            bounds_uv_metres=cast(tuple[float, float, float, float], _finite_tuple(
+                raw["bounds_uv_metres"],
+                size=4,
+                name="bounds_uv_metres",
+            )),
         )
 
 
@@ -1395,19 +1689,317 @@ class ProposalSearchDiagnostics:
 
 
 @dataclass(frozen=True, slots=True)
+class AlignmentTraceCandidateState:
+    """One candidate pose/score at an exact optimizer milestone."""
+
+    candidate_id: str
+    center_uv_metres: tuple[float, float]
+    orientation_radians: float
+    nht_scene_units_per_metre: float
+    template_score: float
+    orientation_band_index: int
+    center_tile_index: int
+    residual_point_count_before_suppression: int
+    residual_point_count_after_suppression: int
+
+    def __post_init__(self) -> None:
+        _identifier(self.candidate_id, name="trace.candidate_id")
+        center = _finite_tuple(
+            self.center_uv_metres,
+            size=2,
+            name="trace.center_uv_metres",
+        )
+        orientation = _finite_float(
+            self.orientation_radians,
+            name="trace.orientation_radians",
+        )
+        scale = _finite_float(
+            self.nht_scene_units_per_metre,
+            name="trace.nht_scene_units_per_metre",
+        )
+        score = _finite_float(self.template_score, name="trace.template_score")
+        if scale <= 0.0 or score <= 0.0:
+            raise ValueError("Trace candidate scale and score must be positive.")
+        band_index = _integer(
+            self.orientation_band_index,
+            name="trace.orientation_band_index",
+            minimum=0,
+        )
+        tile_index = _integer(
+            self.center_tile_index,
+            name="trace.center_tile_index",
+            minimum=0,
+        )
+        before = _integer(
+            self.residual_point_count_before_suppression,
+            name="trace.residual_point_count_before_suppression",
+            minimum=3,
+        )
+        after = _integer(
+            self.residual_point_count_after_suppression,
+            name="trace.residual_point_count_after_suppression",
+            minimum=0,
+        )
+        if after >= before:
+            raise ValueError("Every trace candidate must suppress residual evidence.")
+        object.__setattr__(self, "center_uv_metres", center)
+        object.__setattr__(self, "orientation_radians", orientation)
+        object.__setattr__(self, "nht_scene_units_per_metre", scale)
+        object.__setattr__(self, "template_score", score)
+        object.__setattr__(self, "orientation_band_index", band_index)
+        object.__setattr__(self, "center_tile_index", tile_index)
+        object.__setattr__(
+            self,
+            "residual_point_count_before_suppression",
+            before,
+        )
+        object.__setattr__(
+            self,
+            "residual_point_count_after_suppression",
+            after,
+        )
+
+    def to_dict(self) -> dict[str, object]:
+        """Return one strict trace candidate state."""
+        return {
+            "candidate_id": self.candidate_id,
+            "center_uv_metres": list(self.center_uv_metres),
+            "orientation_radians": self.orientation_radians,
+            "nht_scene_units_per_metre": self.nht_scene_units_per_metre,
+            "template_score": self.template_score,
+            "orientation_band_index": self.orientation_band_index,
+            "center_tile_index": self.center_tile_index,
+            "residual_point_count_before_suppression": (
+                self.residual_point_count_before_suppression
+            ),
+            "residual_point_count_after_suppression": (
+                self.residual_point_count_after_suppression
+            ),
+        }
+
+    @classmethod
+    def from_dict(cls, value: object) -> Self:
+        """Parse one exact trace candidate state."""
+        keys = set(cls.__dataclass_fields__)
+        raw = _strict_mapping(value, keys=keys, name="alignment trace candidate")
+        return cls(
+            candidate_id=_string(raw["candidate_id"], name="candidate_id"),
+            center_uv_metres=cast(tuple[float, float], _finite_tuple(
+                raw["center_uv_metres"],
+                size=2,
+                name="center_uv_metres",
+            )),
+            orientation_radians=_finite_float(
+                raw["orientation_radians"],
+                name="orientation_radians",
+            ),
+            nht_scene_units_per_metre=_finite_float(
+                raw["nht_scene_units_per_metre"],
+                name="nht_scene_units_per_metre",
+            ),
+            template_score=_finite_float(
+                raw["template_score"],
+                name="template_score",
+            ),
+            orientation_band_index=_integer(
+                raw["orientation_band_index"],
+                name="orientation_band_index",
+                minimum=0,
+            ),
+            center_tile_index=_integer(
+                raw["center_tile_index"],
+                name="center_tile_index",
+                minimum=0,
+            ),
+            residual_point_count_before_suppression=_integer(
+                raw["residual_point_count_before_suppression"],
+                name="residual_point_count_before_suppression",
+                minimum=3,
+            ),
+            residual_point_count_after_suppression=_integer(
+                raw["residual_point_count_after_suppression"],
+                name="residual_point_count_after_suppression",
+                minimum=0,
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class AlignmentTraceStep:
+    """One ordered full-candidate optimizer state and recomputable score sum."""
+
+    step_index: int
+    phase: AlignmentTracePhase
+    candidates: tuple[AlignmentTraceCandidateState, ...]
+    score_sum: float
+
+    def __post_init__(self) -> None:
+        index = _integer(self.step_index, name="trace.step_index", minimum=0)
+        if not isinstance(self.phase, AlignmentTracePhase):
+            raise TypeError("trace.phase must be an AlignmentTracePhase.")
+        candidates = tuple(self.candidates)
+        if not candidates or any(
+            not isinstance(item, AlignmentTraceCandidateState) for item in candidates
+        ):
+            raise TypeError(
+                "Trace steps must contain AlignmentTraceCandidateState values."
+            )
+        candidate_ids = tuple(item.candidate_id for item in candidates)
+        if len(candidate_ids) != len(set(candidate_ids)):
+            raise ValueError("Trace-step candidate IDs must be unique.")
+        score_sum = _finite_float(self.score_sum, name="trace.score_sum")
+        measured_sum = math.fsum(item.template_score for item in candidates)
+        if not math.isclose(score_sum, measured_sum, abs_tol=1.0e-10, rel_tol=1.0e-8):
+            raise ValueError("Trace step score_sum disagrees with candidate scores.")
+        object.__setattr__(self, "step_index", index)
+        object.__setattr__(self, "candidates", candidates)
+        object.__setattr__(self, "score_sum", score_sum)
+
+    def to_dict(self) -> dict[str, object]:
+        """Return one exact ordered trace step."""
+        return {
+            "step_index": self.step_index,
+            "phase": self.phase.value,
+            "candidates": [item.to_dict() for item in self.candidates],
+            "score_sum": self.score_sum,
+        }
+
+    @classmethod
+    def from_dict(cls, value: object) -> Self:
+        """Parse one trace step and recompute its score sum."""
+        raw = _strict_mapping(
+            value,
+            keys={"step_index", "phase", "candidates", "score_sum"},
+            name="alignment trace step",
+        )
+        return cls(
+            step_index=_integer(raw["step_index"], name="step_index", minimum=0),
+            phase=AlignmentTracePhase(_string(raw["phase"], name="phase")),
+            candidates=tuple(
+                AlignmentTraceCandidateState.from_dict(item)
+                for item in _sequence(raw["candidates"], name="candidates")
+            ),
+            score_sum=_finite_float(raw["score_sum"], name="score_sum"),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class AlignmentTrace:
+    """Strict four-milestone trace bound to the final candidate order."""
+
+    final_candidate_ids: tuple[str, ...]
+    steps: tuple[AlignmentTraceStep, ...]
+
+    def __post_init__(self) -> None:
+        candidate_ids = _camera_ids(
+            self.final_candidate_ids,
+            name="trace.final_candidate_ids",
+        )
+        steps = tuple(self.steps)
+        expected_phases = (
+            AlignmentTracePhase.PROPOSAL_SELECTION,
+            AlignmentTracePhase.NATIVE_REFINEMENT,
+            AlignmentTracePhase.COMMON_SCALE_REFIT,
+            AlignmentTracePhase.FINAL_ALIGNMENT,
+        )
+        if tuple(step.step_index for step in steps) != tuple(range(len(expected_phases))):
+            raise ValueError(
+                "Alignment trace steps are missing, reordered, or non-contiguous."
+            )
+        if tuple(step.phase for step in steps) != expected_phases:
+            raise ValueError("Alignment trace phases are missing or reordered.")
+        for step in steps:
+            if tuple(item.candidate_id for item in step.candidates) != candidate_ids:
+                raise ValueError(
+                    "Every alignment trace step must preserve final candidate order."
+                )
+        expected_branches = tuple(
+            (item.orientation_band_index, item.center_tile_index)
+            for item in steps[0].candidates
+        )
+        if any(
+            tuple(
+                (item.orientation_band_index, item.center_tile_index)
+                for item in step.candidates
+            )
+            != expected_branches
+            for step in steps[1:]
+        ):
+            raise ValueError("Alignment trace branch identities changed between steps.")
+        for step in steps[-2:]:
+            common_scales = tuple(
+                item.nht_scene_units_per_metre for item in step.candidates
+            )
+            if any(
+                not math.isclose(
+                    item,
+                    common_scales[0],
+                    abs_tol=1.0e-10,
+                    rel_tol=1.0e-8,
+                )
+                for item in common_scales[1:]
+            ):
+                raise ValueError("Common-scale trace candidates must share one scale.")
+        object.__setattr__(self, "final_candidate_ids", candidate_ids)
+        object.__setattr__(self, "steps", steps)
+
+    def step(self, phase: AlignmentTracePhase) -> AlignmentTraceStep:
+        """Return the one exact step for a required phase."""
+        matching = tuple(item for item in self.steps if item.phase is phase)
+        if len(matching) != 1:
+            raise ValueError(f"Alignment trace has no unique {phase.value!r} step.")
+        return matching[0]
+
+    def to_dict(self) -> dict[str, object]:
+        """Return the exact versioned progression trace."""
+        return {
+            "schema": ALIGNMENT_TRACE_SCHEMA,
+            "coordinate_convention": GROUND_PLANE_UV_COORDINATE_CONVENTION,
+            "final_candidate_ids": list(self.final_candidate_ids),
+            "steps": [item.to_dict() for item in self.steps],
+        }
+
+    @classmethod
+    def from_dict(cls, value: object) -> Self:
+        """Parse an exact trace and reject missing, extra, or reordered states."""
+        raw = _strict_mapping(
+            value,
+            keys={"schema", "coordinate_convention", "final_candidate_ids", "steps"},
+            name="alignment trace",
+        )
+        if raw["schema"] != ALIGNMENT_TRACE_SCHEMA:
+            raise ValueError(f"Unsupported alignment trace schema: {raw['schema']!r}.")
+        if raw["coordinate_convention"] != GROUND_PLANE_UV_COORDINATE_CONVENTION:
+            raise ValueError("Unsupported alignment trace coordinate convention.")
+        return cls(
+            final_candidate_ids=_string_tuple(
+                raw["final_candidate_ids"],
+                name="final_candidate_ids",
+            ),
+            steps=tuple(
+                AlignmentTraceStep.from_dict(item)
+                for item in _sequence(raw["steps"], name="steps")
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class CandidateScaleDiagnostics:
     """Measured Sim(3) scale and image-line score for one fitted court."""
 
     candidate_id: str
     nht_scene_units_per_metre: float
     template_score: float
+    common_scale_refit_template_score: float
+    common_scale_refit_center_uv_metres: tuple[float, float]
+    common_scale_refit_orientation_radians: float
     common_scale_refit_center_displacement_metres: float
     maximum_common_scale_refit_center_displacement_metres: float
     proposal_orientation_band_minimum_radians: float
     proposal_orientation_band_maximum_radians: float
     proposal_residual_point_count_before_suppression: int
     proposal_residual_point_count_after_suppression: int
-    native_center_uv: tuple[float, float]
+    native_center_uv_metres: tuple[float, float]
     native_orientation_radians: float
 
     def __post_init__(self) -> None:
@@ -1417,8 +2009,21 @@ class CandidateScaleDiagnostics:
             name="nht_scene_units_per_metre",
         )
         score = _finite_float(self.template_score, name="template_score")
-        if scale <= 0.0 or score <= 0.0:
+        refit_score = _finite_float(
+            self.common_scale_refit_template_score,
+            name="common_scale_refit_template_score",
+        )
+        if scale <= 0.0 or score <= 0.0 or refit_score <= 0.0:
             raise ValueError("Candidate scale and template score must be positive.")
+        refit_center = _finite_tuple(
+            self.common_scale_refit_center_uv_metres,
+            size=2,
+            name="common_scale_refit_center_uv_metres",
+        )
+        refit_orientation = _finite_float(
+            self.common_scale_refit_orientation_radians,
+            name="common_scale_refit_orientation_radians",
+        )
         displacement = _finite_float(
             self.common_scale_refit_center_displacement_metres,
             name="common_scale_refit_center_displacement_metres",
@@ -1466,11 +2071,11 @@ class CandidateScaleDiagnostics:
                 "Selected proposal must suppress at least one residual point."
             )
         native_center = tuple(
-            _finite_float(item, name="native_center_uv")
-            for item in self.native_center_uv
+            _finite_float(item, name="native_center_uv_metres")
+            for item in self.native_center_uv_metres
         )
         if len(native_center) != 2:
-            raise ValueError("native_center_uv must contain exactly two values.")
+            raise ValueError("native_center_uv_metres must contain exactly two values.")
         native_orientation = _finite_float(
             self.native_orientation_radians,
             name="native_orientation_radians",
@@ -1489,7 +2094,7 @@ class CandidateScaleDiagnostics:
             "proposal_orientation_band_maximum_radians",
             band_maximum,
         )
-        object.__setattr__(self, "native_center_uv", native_center)
+        object.__setattr__(self, "native_center_uv_metres", native_center)
         object.__setattr__(
             self,
             "native_orientation_radians",
@@ -1497,6 +2102,17 @@ class CandidateScaleDiagnostics:
         )
         object.__setattr__(self, "nht_scene_units_per_metre", scale)
         object.__setattr__(self, "template_score", score)
+        object.__setattr__(self, "common_scale_refit_template_score", refit_score)
+        object.__setattr__(
+            self,
+            "common_scale_refit_center_uv_metres",
+            refit_center,
+        )
+        object.__setattr__(
+            self,
+            "common_scale_refit_orientation_radians",
+            refit_orientation,
+        )
         object.__setattr__(
             self,
             "common_scale_refit_center_displacement_metres",
@@ -1514,6 +2130,15 @@ class CandidateScaleDiagnostics:
             "candidate_id": self.candidate_id,
             "nht_scene_units_per_metre": self.nht_scene_units_per_metre,
             "template_score": self.template_score,
+            "common_scale_refit_template_score": (
+                self.common_scale_refit_template_score
+            ),
+            "common_scale_refit_center_uv_metres": list(
+                self.common_scale_refit_center_uv_metres
+            ),
+            "common_scale_refit_orientation_radians": (
+                self.common_scale_refit_orientation_radians
+            ),
             "common_scale_refit_center_displacement_metres": (
                 self.common_scale_refit_center_displacement_metres
             ),
@@ -1530,7 +2155,7 @@ class CandidateScaleDiagnostics:
             "proposal_residual_point_count_after_suppression": (
                 self.proposal_residual_point_count_after_suppression
             ),
-            "native_center_uv": list(self.native_center_uv),
+            "native_center_uv_metres": list(self.native_center_uv_metres),
             "native_orientation_radians": self.native_orientation_radians,
         }
 
@@ -1548,6 +2173,8 @@ class AlignmentEvidenceDiagnostics:
     determinism: LineInferenceDeterminismDiagnostics
     proposal_search: ProposalSearchDiagnostics
     excluded_cameras: tuple[ExcludedCameraDiagnostics, ...]
+    ground_plane_frame: GroundPlaneFrame
+    alignment_trace: AlignmentTrace
     lattice_assisted_candidate_ids: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
@@ -1616,6 +2243,94 @@ class AlignmentEvidenceDiagnostics:
             raise ValueError(
                 "Selected proposal branch depth disagrees with candidates."
             )
+        if not isinstance(self.ground_plane_frame, GroundPlaneFrame):
+            raise TypeError("ground_plane_frame must be a GroundPlaneFrame.")
+        if not isinstance(self.alignment_trace, AlignmentTrace):
+            raise TypeError("alignment_trace must be an AlignmentTrace.")
+        if self.alignment_trace.final_candidate_ids != tuple(candidate_ids):
+            raise ValueError("Alignment trace candidate order disagrees with diagnostics.")
+        proposal_step = self.alignment_trace.step(
+            AlignmentTracePhase.PROPOSAL_SELECTION
+        )
+        native_step = self.alignment_trace.step(AlignmentTracePhase.NATIVE_REFINEMENT)
+        refit_step = self.alignment_trace.step(AlignmentTracePhase.COMMON_SCALE_REFIT)
+        final_step = self.alignment_trace.step(AlignmentTracePhase.FINAL_ALIGNMENT)
+        expected_bands = self.proposal_search.selected_orientation_band_indices
+        expected_tiles = self.proposal_search.selected_center_tile_indices
+        for index, (proposal, native, refit, final, diagnostic) in enumerate(
+            zip(
+                proposal_step.candidates,
+                native_step.candidates,
+                refit_step.candidates,
+                final_step.candidates,
+                candidate_scales,
+                strict=True,
+            )
+        ):
+            expected_branch = (expected_bands[index], expected_tiles[index])
+            if any(
+                (item.orientation_band_index, item.center_tile_index)
+                != expected_branch
+                for item in (proposal, native, refit, final)
+            ):
+                raise ValueError("Alignment trace branch disagrees with proposal search.")
+            _require_trace_float(
+                native.nht_scene_units_per_metre,
+                diagnostic.nht_scene_units_per_metre,
+                name="native trace scale",
+            )
+            _require_trace_float(
+                native.template_score,
+                diagnostic.template_score,
+                name="native trace score",
+            )
+            _require_trace_tuple(
+                native.center_uv_metres,
+                diagnostic.native_center_uv_metres,
+                name="native trace center",
+            )
+            _require_trace_float(
+                native.orientation_radians,
+                diagnostic.native_orientation_radians,
+                name="native trace orientation",
+            )
+            _require_trace_float(
+                refit.template_score,
+                diagnostic.common_scale_refit_template_score,
+                name="refit trace score",
+            )
+            _require_trace_tuple(
+                refit.center_uv_metres,
+                diagnostic.common_scale_refit_center_uv_metres,
+                name="refit trace center",
+            )
+            _require_trace_float(
+                refit.orientation_radians,
+                diagnostic.common_scale_refit_orientation_radians,
+                name="refit trace orientation",
+            )
+            _require_trace_float(
+                final.template_score,
+                diagnostic.common_scale_refit_template_score,
+                name="final trace score",
+            )
+            if (
+                native.residual_point_count_before_suppression
+                != diagnostic.proposal_residual_point_count_before_suppression
+                or native.residual_point_count_after_suppression
+                != diagnostic.proposal_residual_point_count_after_suppression
+                or refit.residual_point_count_before_suppression
+                != diagnostic.proposal_residual_point_count_before_suppression
+                or refit.residual_point_count_after_suppression
+                != diagnostic.proposal_residual_point_count_after_suppression
+                or final.residual_point_count_before_suppression
+                != diagnostic.proposal_residual_point_count_before_suppression
+                or final.residual_point_count_after_suppression
+                != diagnostic.proposal_residual_point_count_after_suppression
+            ):
+                raise ValueError(
+                    "Alignment trace residual counts disagree with candidate diagnostics."
+                )
         common_scale = _finite_float(
             self.common_nht_scene_units_per_metre,
             name="common_nht_scene_units_per_metre",
@@ -1638,6 +2353,25 @@ class AlignmentEvidenceDiagnostics:
             raise ValueError(
                 "Maximum relative scale deviation disagrees with candidates."
             )
+        for step in (refit_step, final_step):
+            for state in step.candidates:
+                _require_trace_float(
+                    state.nht_scene_units_per_metre,
+                    common_scale,
+                    name="common-scale trace scale",
+                )
+        u_min, u_max, v_min, v_max = self.ground_plane_frame.bounds_uv_metres
+        if any(
+            not (
+                u_min - 1.0e-10 <= state.center_uv_metres[0] <= u_max + 1.0e-10
+                and v_min - 1.0e-10
+                <= state.center_uv_metres[1]
+                <= v_max + 1.0e-10
+            )
+            for step in self.alignment_trace.steps
+            for state in step.candidates
+        ):
+            raise ValueError("Alignment trace center lies outside ground-plane bounds.")
         object.__setattr__(self, "cameras", cameras)
         object.__setattr__(self, "candidate_scales", candidate_scales)
         object.__setattr__(self, "excluded_cameras", excluded_cameras)
@@ -1652,13 +2386,15 @@ class AlignmentEvidenceDiagnostics:
     def to_dict(self) -> dict[str, object]:
         """Return machine-readable measured evidence diagnostics."""
         return {
-            "schema": "alignment_measured_evidence_v12",
+            "schema": "alignment_measured_evidence_v13",
             "cameras": [item.to_dict() for item in self.cameras],
             "excluded_cameras": [item.to_dict() for item in self.excluded_cameras],
             "selection": self.selection.to_dict(),
             "evaluation": self.evaluation.to_dict(),
             "determinism": self.determinism.to_dict(),
             "proposal_search": self.proposal_search.to_dict(),
+            "ground_plane_frame": self.ground_plane_frame.to_dict(),
+            "alignment_trace": self.alignment_trace.to_dict(),
             "candidate_scales": [item.to_dict() for item in self.candidate_scales],
             "common_nht_scene_units_per_metre": self.common_nht_scene_units_per_metre,
             "maximum_relative_scale_deviation": self.maximum_relative_scale_deviation,
@@ -2143,6 +2879,38 @@ class AlignmentEvidence:
             raise ValueError(
                 "Metric adapter scale disagrees with measured scale diagnostics."
             )
+        metric_line_points = tuple(
+            self.metric_adapter.metric_from_nht_points(item.points_nht_scene)
+            for item in measured_camera_lines
+        )
+        maximum_plane_error = max(
+            float(
+                np.max(
+                    np.abs(
+                        self.diagnostics.ground_plane_frame.signed_distances(points)
+                    )
+                )
+            )
+            for points in metric_line_points
+        )
+        if maximum_plane_error > 1.0e-6:
+            raise ValueError(
+                "Measured NHT line evidence disagrees with the metric ground plane."
+            )
+        u_min, u_max, v_min, v_max = (
+            self.diagnostics.ground_plane_frame.bounds_uv_metres
+        )
+        for points in metric_line_points:
+            points_uv = self.diagnostics.ground_plane_frame.to_uv(points)
+            if (
+                np.any(points_uv[:, 0] < u_min - 1.0e-9)
+                or np.any(points_uv[:, 0] > u_max + 1.0e-9)
+                or np.any(points_uv[:, 1] < v_min - 1.0e-9)
+                or np.any(points_uv[:, 1] > v_max + 1.0e-9)
+            ):
+                raise ValueError(
+                    "Measured NHT line evidence exceeds metric ground-plane bounds."
+                )
         if not isinstance(
             self.whole_court_settings,
             WholeCourtEvidenceSettings,
@@ -2180,6 +2948,16 @@ class AlignmentEvidence:
         object.__setattr__(self, "candidates", candidates)
         object.__setattr__(self, "measured_camera_lines", measured_camera_lines)
         object.__setattr__(self, "complex_points_scene", complex_points)
+
+    @property
+    def ground_plane_frame(self) -> GroundPlaneFrame:
+        """Return the required public metric plane diagnostic."""
+        return self.diagnostics.ground_plane_frame
+
+    @property
+    def alignment_trace(self) -> AlignmentTrace:
+        """Return the required ordered optimizer trace."""
+        return self.diagnostics.alignment_trace
 
 
 @dataclass(frozen=True, slots=True)
@@ -2459,6 +3237,11 @@ class EvaluatedAlignment:
         )
         if result_ids != evidence_ids:
             raise ValueError("Evaluated result candidates disagree with evidence.")
+        validate_alignment_trace_final_binding(
+            self.evidence.alignment_trace,
+            ground_plane_frame=self.evidence.ground_plane_frame,
+            candidates=self.result.candidates,
+        )
         selection = self.evidence.diagnostics.selection
         if self.heatmaps.camera_ids != selection.camera_prefix_ids:
             raise ValueError(
@@ -2492,6 +3275,59 @@ class EvaluatedAlignment:
             raise ValueError(
                 "Evaluated heatmap point counts disagree with diagnostics."
             )
+        if self.heatmaps.bounds_uv != self.evidence.ground_plane_frame.bounds_uv_metres:
+            raise ValueError("Evaluated heatmaps disagree with metric ground-plane bounds.")
+        measured_by_camera = {
+            item.camera_id: item for item in self.evidence.measured_camera_lines
+        }
+        for view in self.heatmaps.views:
+            measured = measured_by_camera.get(view.camera_id)
+            if measured is None:
+                continue
+            expected_uv = self.evidence.ground_plane_frame.to_uv(
+                self.evidence.metric_adapter.metric_from_nht_points(
+                    measured.points_nht_scene
+                )
+            )
+            if not np.allclose(view.points_uv, expected_uv, atol=1.0e-9, rtol=0.0):
+                raise ValueError(
+                    "Evaluated heatmap UV evidence disagrees with the metric plane frame."
+                )
+
+
+def validate_alignment_trace_final_binding(
+    trace: AlignmentTrace,
+    *,
+    ground_plane_frame: GroundPlaneFrame,
+    candidates: Sequence[CandidateAlignment],
+) -> None:
+    """Bind the final trace step to fitted metric transforms and candidate order."""
+    candidate_tuple = tuple(candidates)
+    if trace.final_candidate_ids != tuple(
+        item.candidate_id for item in candidate_tuple
+    ):
+        raise ValueError("Final alignment candidate order disagrees with the trace.")
+    final_states = trace.step(AlignmentTracePhase.FINAL_ALIGNMENT).candidates
+    basis_u = np.asarray(ground_plane_frame.basis_u_metric_scene, dtype=np.float64)
+    basis_v = np.asarray(ground_plane_frame.basis_v_metric_scene, dtype=np.float64)
+    for candidate, state in zip(candidate_tuple, final_states, strict=True):
+        matrix = candidate.scene_from_court.matrix()
+        center_uv = ground_plane_frame.to_uv(matrix[None, :3, 3])[0]
+        court_x = matrix[:3, 0]
+        orientation = math.atan2(float(court_x @ basis_v), float(court_x @ basis_u))
+        if not np.allclose(
+            center_uv,
+            state.center_uv_metres,
+            atol=1.0e-6,
+            rtol=0.0,
+        ):
+            raise ValueError("Final alignment center disagrees with the trace.")
+        angle_error = abs(
+            (orientation - state.orientation_radians + math.pi) % (2.0 * math.pi)
+            - math.pi
+        )
+        if angle_error > 1.0e-6:
+            raise ValueError("Final alignment orientation disagrees with the trace.")
 
 
 def build_layout(
@@ -2744,6 +3580,26 @@ def _finite_tuple(value: object, *, size: int, name: str) -> tuple[float, ...]:
     return tuple(_finite_float(item, name=name) for item in sequence)
 
 
+def _finite_vector_tuple(
+    value: Sequence[float] | NDArray[np.floating[Any]],
+    *,
+    size: int,
+    name: str,
+) -> tuple[float, ...]:
+    if not isinstance(value, np.ndarray):
+        return _finite_tuple(value, size=size, name=name)
+    if value.dtype.kind not in {"f", "i", "u"}:
+        raise TypeError(f"{name} must have a real numeric dtype.")
+    if value.ndim != 1:
+        raise ValueError(f"{name} must be one-dimensional.")
+    if len(value) != size:
+        raise ValueError(f"{name} must contain exactly {size} values.")
+    result = np.asarray(value, dtype=np.float64)
+    if not np.isfinite(result).all():
+        raise ValueError(f"{name} must contain only finite values.")
+    return tuple(float(item) for item in result)
+
+
 def _transform(value: object, *, name: str) -> RigidTransform:
     return RigidTransform(_finite_tuple(value, size=16, name=name))
 
@@ -2755,6 +3611,21 @@ def _finite_float(value: object, *, name: str) -> float:
     if not math.isfinite(result):
         raise ValueError(f"{name} must be finite.")
     return result
+
+
+def _require_trace_float(observed: float, expected: float, *, name: str) -> None:
+    if not math.isclose(observed, expected, abs_tol=1.0e-10, rel_tol=1.0e-8):
+        raise ValueError(f"{name} disagrees with final diagnostics.")
+
+
+def _require_trace_tuple(
+    observed: tuple[float, float],
+    expected: tuple[float, float],
+    *,
+    name: str,
+) -> None:
+    if not np.allclose(observed, expected, atol=1.0e-10, rtol=1.0e-8):
+        raise ValueError(f"{name} disagrees with final diagnostics.")
 
 
 def _integer(value: object, *, name: str, minimum: int) -> int:
@@ -2778,6 +3649,7 @@ def _string(value: object, *, name: str) -> str:
 __all__ = [
     "ALIGNMENT_COORDINATE_CONVENTION",
     "ALIGNMENT_SCHEMA",
+    "ALIGNMENT_TRACE_SCHEMA",
     "AlignmentAcceptancePolicy",
     "AlignmentEvaluationDiagnostics",
     "AlignmentEvaluationOutcome",
@@ -2787,6 +3659,10 @@ __all__ = [
     "AlignmentPartitions",
     "AlignmentResult",
     "AlignmentStatus",
+    "AlignmentTrace",
+    "AlignmentTraceCandidateState",
+    "AlignmentTracePhase",
+    "AlignmentTraceStep",
     "CandidateAlignment",
     "CandidateEvidence",
     "CandidateScaleDiagnostics",
@@ -2801,6 +3677,9 @@ __all__ = [
     "MeasuredCameraLines",
     "ExcludedCameraDiagnostics",
     "FixedCameraSelectionDiagnostics",
+    "GROUND_PLANE_FRAME_SCHEMA",
+    "GROUND_PLANE_UV_COORDINATE_CONVENTION",
+    "GroundPlaneFrame",
     "LineInferenceDeterminismDiagnostics",
     "PartitionAssessment",
     "PartitionMetrics",
@@ -2809,4 +3688,5 @@ __all__ = [
     "ProposalScoreModel",
     "ProposalSearchStopReason",
     "build_layout",
+    "validate_alignment_trace_final_binding",
 ]

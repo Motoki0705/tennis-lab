@@ -67,6 +67,10 @@ def test_line_heatmaps_round_trip_numeric_and_png_inventory(tmp_path: Path) -> N
     assert manifest["raster_reducer"] == ("per-view cell max then weighted global sum")
     assert manifest["view_count"] == 3
     assert manifest["aggregate_view_count"] == 2
+    assert manifest["coordinate_units"] == "metres"
+    assert manifest["coordinate_convention"].startswith(
+        "right_handed_metric_scene_ground_plane_uv"
+    )
     with Image.open(output / "weighted-projection.png") as image:
         assert image.mode == "RGB"
         assert image.size == (3, 3)
@@ -79,6 +83,21 @@ def test_line_heatmap_validation_rejects_render_tampering(tmp_path: Path) -> Non
     Image.fromarray(np.zeros((3, 3, 3), dtype=np.uint8), mode="RGB").save(tampered)
 
     with pytest.raises(ValueError, match="disagrees with numeric evidence"):
+        validate_line_heatmaps(output)
+
+
+def test_line_heatmap_validation_rejects_foreign_coordinate_frame(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "line-heatmaps"
+    write_line_heatmaps(output, heatmaps=_heatmaps())
+    archive = output / "heatmaps.npz"
+    with np.load(archive, allow_pickle=False) as loaded:
+        arrays = {name: np.asarray(loaded[name]) for name in loaded.files}
+    arrays["coordinate_units"] = np.asarray("normalized_scene_units")
+    np.savez_compressed(archive, **arrays)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="coordinate_units"):
         validate_line_heatmaps(output)
 
 

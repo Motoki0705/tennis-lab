@@ -31,7 +31,7 @@ tool's bin directory and reports the required `PATH` update if they do not.
 
 ## Run
 
-The sole production entrypoint is:
+The scene-pipeline production entrypoint is:
 
 ```bash
 .venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline
@@ -214,3 +214,58 @@ settings. Dataset and video paths are resolved strictly beneath `roots.data_root
 and `roots.output_root`, respectively. IDs are never guessed, camera views are
 never substituted, frame gaps/reordering fail closed, and no compatibility-schema
 fallback exists.
+
+## Generate publication PNG/GIF bundles
+
+`generate_publication_visualizations` is the single publication composition
+root. It validates the current alignment, reconstruction export, and all three
+dataset owners before rendering. Its request names every dataset trajectory or
+logical scene, the GIF camera, the complete BLCS/PLCS/captured camera orders,
+strictly increasing endpoint-inclusive frame indices, media dimensions, GIF
+timing, drawing settings, and per-file/total byte limits. It never selects the
+first or sorted camera and never publishes a subset after a failure.
+
+Use the validated IDs and last frame indices reported by the regenerated scene
+owners:
+
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.generate_publication_visualizations \
+  publication.scene_id=<scene_id> \
+  publication.court.trajectory_id=<court-trajectory-id> \
+  publication.court.frame_indices='[0,<court-last-index>]' \
+  publication.blcs.logical_scene_id=<blcs-logical-scene-id> \
+  publication.blcs.camera_id=<blcs-gif-camera-id> \
+  publication.blcs.frame_indices='[0,<blcs-last-index>]' \
+  publication.blcs.camera_ids='[<complete-owner-order>]' \
+  publication.plcs.logical_scene_id=<plcs-logical-scene-id> \
+  publication.plcs.camera_id=<plcs-gif-camera-id> \
+  publication.plcs.frame_indices='[0,<plcs-last-index>]' \
+  publication.plcs.camera_ids='[<complete-owner-order>]' \
+  publication.captured.camera_ids='[<complete-export-order>]'
+```
+
+By default, the fresh output directory is
+`data/synthetic_data_generation/scenes/<scene_id>/publication/`. It contains
+three annotated dataset GIFs, the persisted
+four-phase alignment progression GIF, a metric ground-plane heatmap/evidence/
+court overlay, captured/BLCS/PLCS camera-frustum figures, their shared-axis
+comparison, a fixed six-panel overview, and `manifest.json`. The authoritative
+`validate_publication_bundle(..., expected_request=request)` API reopens every
+media frame and reloads the request's validated source owners before accepting
+provenance. It rejects extra or missing files, altered bytes, foreign sources,
+schema/order/count disagreement, incomplete camera inventories, changed GIF
+timing, and self-consistent manifest tampering. The separately named
+`validate_publication_bundle_structure_only()` API checks bundle-local structure
+and digests only; it cannot authenticate source provenance.
+
+Alignment agreement metrics use the persisted metric UV plane. The mean and
+median court-line probability sample each accepted court segment at 64 inclusive
+points on the weighted probability raster; coverage is the fraction at or above
+0.5. Projected-evidence mean and q95 distances are Euclidean metre distances to
+the nearest accepted court segment. The ground-plane binding metric is the
+maximum absolute signed metre distance of accepted court points from that plane.
+Camera coverage records the exact camera count, adjacent metric trajectory length,
+maximum adjacent displacement, and metric centre bounds. These definitions and
+their schema versions are retained in the manifest together with source owners,
+IDs, mappings, coordinate declarations, resolved semantic config, and bounded
+asset policy.

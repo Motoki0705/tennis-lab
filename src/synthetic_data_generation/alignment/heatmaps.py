@@ -20,12 +20,19 @@ LINE_HEATMAP_MANIFEST_FILE = "manifest.json"
 WEIGHTED_PROJECTION_HEATMAP_FILE = "weighted-projection.png"
 LINE_HEATMAP_VIEWS_DIRECTORY = "views"
 
-_ARCHIVE_SCHEMA = "alignment_line_heatmaps_v1"
-_MANIFEST_SCHEMA = "alignment_line_heatmap_manifest_v1"
+GROUND_PLANE_UV_COORDINATE_CONVENTION = (
+    "right_handed_metric_scene_ground_plane_uv;units=metres;"
+    "u=dot(metric_point-origin,basis_u);"
+    "v=dot(metric_point-origin,basis_v);normal=cross(basis_u,basis_v)"
+)
+_ARCHIVE_SCHEMA = "alignment_line_heatmaps_v2"
+_MANIFEST_SCHEMA = "alignment_line_heatmap_manifest_v2"
 _WEIGHT_MODEL = "1/(1+(camera_range/proximity_scale)^power)"
 _RASTER_REDUCER = "per-view cell max then weighted global sum"
 _ARCHIVE_KEYS = {
     "schema",
+    "coordinate_convention",
+    "coordinate_units",
     "camera_ids",
     "included_in_aggregate",
     "bounds_uv",
@@ -132,8 +139,14 @@ class AlignmentLineHeatmaps:
     proximity_scale: float
     proximity_power: float
     views: tuple[AlignmentLineHeatmapView, ...]
+    coordinate_convention: str = GROUND_PLANE_UV_COORDINATE_CONVENTION
+    coordinate_units: str = "metres"
 
     def __post_init__(self) -> None:
+        if self.coordinate_convention != GROUND_PLANE_UV_COORDINATE_CONVENTION:
+            raise ValueError("Unsupported line-heatmap coordinate convention.")
+        if self.coordinate_units != "metres":
+            raise ValueError("Line-heatmap UV coordinates must use metres.")
         bounds = tuple(float(value) for value in self.bounds_uv)
         if len(bounds) != 4 or not np.isfinite(bounds).all():
             raise ValueError("bounds_uv must contain four finite values.")
@@ -434,6 +447,8 @@ def _archive_arrays(
     )
     return {
         "schema": np.asarray(_ARCHIVE_SCHEMA),
+        "coordinate_convention": np.asarray(heatmaps.coordinate_convention),
+        "coordinate_units": np.asarray(heatmaps.coordinate_units),
         "camera_ids": np.asarray(heatmaps.camera_ids),
         "included_in_aggregate": np.asarray(
             [view.included_in_aggregate for view in heatmaps.views],
@@ -478,6 +493,13 @@ def _load_archive(
         or str(schema.item()) != _ARCHIVE_SCHEMA
     ):
         raise ValueError("Unsupported line-heatmap archive schema.")
+    for name, expected in (
+        ("coordinate_convention", GROUND_PLANE_UV_COORDINATE_CONVENTION),
+        ("coordinate_units", "metres"),
+    ):
+        value = arrays[name]
+        if value.ndim != 0 or value.dtype.kind != "U" or str(value.item()) != expected:
+            raise ValueError(f"Unsupported line-heatmap {name}.")
     camera_ids = arrays["camera_ids"]
     included = arrays["included_in_aggregate"]
     shapes = arrays["probability_shapes"]
@@ -569,6 +591,8 @@ def _load_archive(
         proximity_scale=float(arrays["proximity_scale"].item()),
         proximity_power=float(arrays["proximity_power"].item()),
         views=tuple(views),
+        coordinate_convention=str(arrays["coordinate_convention"].item()),
+        coordinate_units=str(arrays["coordinate_units"].item()),
     )
     raster_shape = heatmaps.raster_shape
     evidence_sum = _raster_array(
@@ -607,6 +631,8 @@ def _manifest_payload(heatmaps: AlignmentLineHeatmaps) -> dict[str, object]:
     height, width = heatmaps.raster_shape
     return {
         "schema": _MANIFEST_SCHEMA,
+        "coordinate_convention": heatmaps.coordinate_convention,
+        "coordinate_units": heatmaps.coordinate_units,
         "archive": LINE_HEATMAP_ARCHIVE_FILE,
         "weighted_projection_heatmap": WEIGHTED_PROJECTION_HEATMAP_FILE,
         "views_directory": LINE_HEATMAP_VIEWS_DIRECTORY,
@@ -812,6 +838,7 @@ def _require_ordinary_file(path: Path) -> None:
 __all__ = [
     "AlignmentLineHeatmapView",
     "AlignmentLineHeatmaps",
+    "GROUND_PLANE_UV_COORDINATE_CONVENTION",
     "LINE_HEATMAP_ARCHIVE_FILE",
     "LINE_HEATMAP_DIRECTORY",
     "LINE_HEATMAP_MANIFEST_FILE",
