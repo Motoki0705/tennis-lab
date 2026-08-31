@@ -233,7 +233,9 @@ def _text_sequence(
     path: str,
     minimum_length: int = 1,
 ) -> tuple[str, ...]:
-    values = _sequence(_value(mapping, key, (list, tuple), path=path), path=f"{path}.{key}")
+    values = _sequence(
+        _value(mapping, key, (list, tuple), path=path), path=f"{path}.{key}"
+    )
     if len(values) < minimum_length or any(
         type(item) is not str or not item or item != item.strip() for item in values
     ):
@@ -289,8 +291,12 @@ def _number_sequence(
     path: str,
     minimum_length: int = 1,
 ) -> tuple[float, ...]:
-    values = _sequence(_value(mapping, key, (list, tuple), path=path), path=f"{path}.{key}")
-    if len(values) < minimum_length or any(type(item) not in (int, float) for item in values):
+    values = _sequence(
+        _value(mapping, key, (list, tuple), path=path), path=f"{path}.{key}"
+    )
+    if len(values) < minimum_length or any(
+        type(item) not in (int, float) for item in values
+    ):
         raise ConfigurationTypeError(
             f"{path}.{key} must contain at least {minimum_length} numeric values."
         )
@@ -372,7 +378,9 @@ class PipelineStageSettings:
             preflight_before_invalidation=_flag(
                 raw, "preflight_before_invalidation", path="pipeline"
             ),
-            invalidate_descendants=_flag(raw, "invalidate_descendants", path="pipeline"),
+            invalidate_descendants=_flag(
+                raw, "invalidate_descendants", path="pipeline"
+            ),
             atomic_fixed_path_publication=_flag(
                 raw, "atomic_fixed_path_publication", path="pipeline"
             ),
@@ -439,14 +447,17 @@ class NHTCommandPaths:
         training_runtime = _nht_training_runtime(raw, resolver=resolver)
         environment_raw = _mapping(raw["environment"], path="nht.environment")
         unknown_environment = sorted(
-            set(environment_raw) - {"CUDA_VISIBLE_DEVICES"}
+            set(environment_raw)
+            - {
+                "CUDA_VISIBLE_DEVICES",
+                "TENNIS_LAB_NHT_MINIMUM_MEDIAN_TRACK_LENGTH",
+                "TENNIS_LAB_NHT_MINIMUM_SPARSE_POINTS",
+            }
         )
         if unknown_environment:
             raise UnknownConfigurationKeyError(
                 "Unknown NHT public environment key(s): "
-                + ", ".join(
-                    f"nht.environment.{key}" for key in unknown_environment
-                )
+                + ", ".join(f"nht.environment.{key}" for key in unknown_environment)
                 + "."
             )
         environment: dict[str, str] = {}
@@ -469,7 +480,9 @@ class NHTCommandPaths:
         )
         render_timeout = _number(raw, "render_timeout_seconds", path="nht")
         if min(reconstruction_timeout, render_timeout) <= 0.0:
-            raise SemanticConfigurationError("NHT subprocess timeouts must be positive.")
+            raise SemanticConfigurationError(
+                "NHT subprocess timeouts must be positive."
+            )
         return cls(
             reconstruct_executable=reconstruct,
             render_executable=render,
@@ -575,7 +588,9 @@ class AlignmentConfiguration:
         result = cls(
             evidence=evidence,
             acceptance=acceptance,
-            transform_inverse_atol=_number(raw, "transform_inverse_atol", path="alignment"),
+            transform_inverse_atol=_number(
+                raw, "transform_inverse_atol", path="alignment"
+            ),
             projection_atol_px=_number(raw, "projection_atol_px", path="alignment"),
         )
         if min(result.transform_inverse_atol, result.projection_atol_px) <= 0.0:
@@ -657,8 +672,12 @@ class AlignmentConfiguration:
                 f"{architecture_path}.backbone_out_indices must contain four integers."
             )
         architecture = CourtLineArchitectureSettings(
-            backbone_name=_text(architecture_raw, "backbone_name", path=architecture_path),
-            backbone_strict=_flag(architecture_raw, "backbone_strict", path=architecture_path),
+            backbone_name=_text(
+                architecture_raw, "backbone_name", path=architecture_path
+            ),
+            backbone_strict=_flag(
+                architecture_raw, "backbone_strict", path=architecture_path
+            ),
             backbone_train_mode=_text(
                 architecture_raw, "backbone_train_mode", path=architecture_path
             ),
@@ -672,7 +691,9 @@ class AlignmentConfiguration:
             backbone_layer_mode=_text(
                 architecture_raw, "backbone_layer_mode", path=architecture_path
             ),
-            lora_enabled=_flag(architecture_raw, "lora_enabled", path=architecture_path),
+            lora_enabled=_flag(
+                architecture_raw, "lora_enabled", path=architecture_path
+            ),
             lora_rank=_integer(
                 architecture_raw, "lora_rank", path=architecture_path, minimum=1
             ),
@@ -758,7 +779,9 @@ class AlignmentConfiguration:
             },
         )
         ground = GroundPlaneSettings(
-            footprint_quantile=_number(ground_raw, "footprint_quantile", path=ground_path),
+            footprint_quantile=_number(
+                ground_raw, "footprint_quantile", path=ground_path
+            ),
             footprint_margin=_number(ground_raw, "footprint_margin", path=ground_path),
             minimum_camera_height=_number(
                 ground_raw, "minimum_camera_height", path=ground_path
@@ -820,16 +843,16 @@ class AlignmentConfiguration:
             maximum_ray_distance=_number(
                 projection_raw, "maximum_ray_distance", path=projection_path
             ),
-            bounds_margin=_number(projection_raw, "bounds_margin", path=projection_path),
+            bounds_margin=_number(
+                projection_raw, "bounds_margin", path=projection_path
+            ),
             proximity_scale=_number(
                 projection_raw, "proximity_scale", path=projection_path
             ),
             proximity_power=_number(
                 projection_raw, "proximity_power", path=projection_path
             ),
-            grid_spacing=_number(
-                projection_raw, "grid_spacing", path=projection_path
-            ),
+            grid_spacing=_number(projection_raw, "grid_spacing", path=projection_path),
             minimum_projected_points_per_camera=_integer(
                 projection_raw,
                 "minimum_projected_points_per_camera",
@@ -842,7 +865,9 @@ class AlignmentConfiguration:
             raw["candidate_fit"],
             path=candidate_path,
             keys={
-                "candidate_count",
+                "maximum_candidate_count",
+                "maximum_retained_state_count",
+                "minimum_explained_evidence_fraction",
                 "samples_per_metre",
                 "minimum_nht_scene_units_per_metre",
                 "maximum_nht_scene_units_per_metre",
@@ -868,10 +893,26 @@ class AlignmentConfiguration:
             },
         )
         candidate = CourtCandidateFitSettings(
-            candidate_count=_integer(
-                candidate_raw, "candidate_count", path=candidate_path, minimum=1
+            maximum_candidate_count=_integer(
+                candidate_raw,
+                "maximum_candidate_count",
+                path=candidate_path,
+                minimum=1,
             ),
-            samples_per_metre=_number(candidate_raw, "samples_per_metre", path=candidate_path),
+            maximum_retained_state_count=_integer(
+                candidate_raw,
+                "maximum_retained_state_count",
+                path=candidate_path,
+                minimum=1,
+            ),
+            minimum_explained_evidence_fraction=_number(
+                candidate_raw,
+                "minimum_explained_evidence_fraction",
+                path=candidate_path,
+            ),
+            samples_per_metre=_number(
+                candidate_raw, "samples_per_metre", path=candidate_path
+            ),
             minimum_nht_scene_units_per_metre=_number(
                 candidate_raw,
                 "minimum_nht_scene_units_per_metre",
@@ -1049,7 +1090,9 @@ class AlignmentConfiguration:
                     path=path,
                     minimum=3,
                 ),
-                inlier_distance_m=_number(partition_raw, "inlier_distance_m", path=path),
+                inlier_distance_m=_number(
+                    partition_raw, "inlier_distance_m", path=path
+                ),
                 minimum_inlier_fraction=_number(
                     partition_raw, "minimum_inlier_fraction", path=path
                 ),
@@ -1065,6 +1108,7 @@ class AlignmentConfiguration:
             fit=thresholds("fit"),
             holdout=thresholds("holdout"),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class CourtTrajectoryPolicy:
@@ -1116,7 +1160,9 @@ class CourtTrajectoryPolicy:
             captured_offset_scale_range=_ordered_range(
                 raw, "captured_offset_scale_range", path=path, positive=True
             ),
-            base_heights_m=_number_sequence(raw, "base_heights_m", path=path, minimum_length=3),
+            base_heights_m=_number_sequence(
+                raw, "base_heights_m", path=path, minimum_length=3
+            ),
             vertical_modulations_m=_number_sequence(
                 raw, "vertical_modulations_m", path=path
             ),
@@ -1128,25 +1174,41 @@ class CourtTrajectoryPolicy:
             ),
         )
         if set(result.shapes) != set(OrbitShape):
-            raise SemanticConfigurationError("Court trajectory shapes must be circle and ellipse.")
-        if 1.0 not in result.axis_ratios or not any(ratio <= 0.8 for ratio in result.axis_ratios):
+            raise SemanticConfigurationError(
+                "Court trajectory shapes must be circle and ellipse."
+            )
+        if 1.0 not in result.axis_ratios or not any(
+            ratio <= 0.8 for ratio in result.axis_ratios
+        ):
             raise SemanticConfigurationError(
                 "Court trajectory axis ratios require circle=1 and an ellipse <= 0.8."
             )
         if any(not 0.0 < ratio <= 1.0 for ratio in result.axis_ratios):
-            raise SemanticConfigurationError("Court trajectory axis ratios must be within (0, 1].")
+            raise SemanticConfigurationError(
+                "Court trajectory axis ratios must be within (0, 1]."
+            )
         if not {0.0, 45.0, 90.0}.issubset(result.orientations_degrees):
-            raise SemanticConfigurationError("Court orientations must include 0, 45, and 90 degrees.")
+            raise SemanticConfigurationError(
+                "Court orientations must include 0, 45, and 90 degrees."
+            )
         if set(result.center_kinds) != set(OrbitCenterKind):
-            raise SemanticConfigurationError("Court center kinds must be complex and court.")
+            raise SemanticConfigurationError(
+                "Court center kinds must be complex and court."
+            )
         if len(set(result.base_heights_m)) < 3 or min(result.base_heights_m) <= 0.0:
-            raise SemanticConfigurationError("Court base heights require three positive levels.")
+            raise SemanticConfigurationError(
+                "Court base heights require three positive levels."
+            )
         if min(result.vertical_modulations_m) < 0.0 or not any(
             value > 0.0 for value in result.vertical_modulations_m
         ):
-            raise SemanticConfigurationError("Court vertical modulation requires a positive value.")
+            raise SemanticConfigurationError(
+                "Court vertical modulation requires a positive value."
+            )
         if set(result.curve_modes) != set(OrbitCurveMode):
-            raise SemanticConfigurationError("Court trajectories require a smooth non-planar mode.")
+            raise SemanticConfigurationError(
+                "Court trajectories require a smooth non-planar mode."
+            )
         return result
 
 
@@ -1185,25 +1247,25 @@ class CourtViewPolicy:
                 path=path,
                 enum_type=OrbitCoverageMode,
             ),
-            look_at_height_m=_ordered_range(raw, "look_at_height_m", path=path, positive=False),
+            look_at_height_m=_ordered_range(
+                raw, "look_at_height_m", path=path, positive=False
+            ),
             hfov_degrees=_ordered_range(raw, "hfov_degrees", path=path, positive=True),
         )
         if not isinstance(schema_version, CourtDatasetSchemaVersion):
             raise ConfigurationTypeError(
                 "dataset.court.schema_version must be a CourtDatasetSchemaVersion."
             )
-        if (
-            schema_version is CourtDatasetSchemaVersion.V1
-            and set(result.target_modes) != set(OrbitTargetMode)
-        ):
+        if schema_version is CourtDatasetSchemaVersion.V1 and set(
+            result.target_modes
+        ) != set(OrbitTargetMode):
             raise SemanticConfigurationError(
                 "Court v1 target modes must include complex/court center and both baselines."
             )
-        if (
-            schema_version
-            in (CourtDatasetSchemaVersion.V2, CourtDatasetSchemaVersion.V3)
-            and result.target_modes != (OrbitTargetMode.COURT_CENTER,)
-        ):
+        if schema_version in (
+            CourtDatasetSchemaVersion.V2,
+            CourtDatasetSchemaVersion.V3,
+        ) and result.target_modes != (OrbitTargetMode.COURT_CENTER,):
             raise SemanticConfigurationError(
                 "Court v2/v3 target modes must be exactly [court_center]."
             )
@@ -1212,9 +1274,13 @@ class CourtViewPolicy:
                 "Court coverage modes must be full, near_full, and partial."
             )
         if result.look_at_height_m[0] < 0.0:
-            raise SemanticConfigurationError("Court look-at heights must be non-negative.")
+            raise SemanticConfigurationError(
+                "Court look-at heights must be non-negative."
+            )
         if result.hfov_degrees[1] >= 180.0:
-            raise SemanticConfigurationError("Court HFOV range must stay below 180 degrees.")
+            raise SemanticConfigurationError(
+                "Court HFOV range must stay below 180 degrees."
+            )
         return result
 
 
@@ -1286,7 +1352,9 @@ class CourtSamplingPolicy:
                 raw, "minimum_accepted_frames", path=path, minimum=1
             ),
             maximum_adjacent_step_m=_number(raw, "maximum_adjacent_step_m", path=path),
-            minimum_accepted_fraction=_number(raw, "minimum_accepted_fraction", path=path),
+            minimum_accepted_fraction=_number(
+                raw, "minimum_accepted_fraction", path=path
+            ),
             train_fraction=_number(raw, "train_fraction", path=path),
             validation_fraction=_number(raw, "validation_fraction", path=path),
             test_fraction=_number(raw, "test_fraction", path=path),
@@ -1301,18 +1369,36 @@ class CourtSamplingPolicy:
                 "Court coverage_objective must list every objective token family exactly once."
             )
         if result.proposal_budget != 4_800:
-            raise SemanticConfigurationError("B00 Court proposal_budget must be exactly 4,800.")
+            raise SemanticConfigurationError(
+                "B00 Court proposal_budget must be exactly 4,800."
+            )
         if result.minimum_trajectory_groups < 24:
-            raise SemanticConfigurationError("Court production requires at least 24 groups.")
+            raise SemanticConfigurationError(
+                "Court production requires at least 24 groups."
+            )
         if result.minimum_accepted_frames < 2_000:
-            raise SemanticConfigurationError("Court production requires at least 2,000 frames.")
+            raise SemanticConfigurationError(
+                "Court production requires at least 2,000 frames."
+            )
         if not 0.0 < result.maximum_adjacent_step_m <= 1.05:
-            raise SemanticConfigurationError("Court adjacent arc step must be within (0, 1.05].")
+            raise SemanticConfigurationError(
+                "Court adjacent arc step must be within (0, 1.05]."
+            )
         if not 0.9 <= result.minimum_accepted_fraction <= 1.0:
-            raise SemanticConfigurationError("Court accepted fraction must be within [0.9, 1].")
-        fractions = (result.train_fraction, result.validation_fraction, result.test_fraction)
-        if min(fractions) <= 0.0 or not math.isclose(sum(fractions), 1.0, abs_tol=1e-12):
-            raise SemanticConfigurationError("Court split fractions must be positive and sum to 1.")
+            raise SemanticConfigurationError(
+                "Court accepted fraction must be within [0.9, 1]."
+            )
+        fractions = (
+            result.train_fraction,
+            result.validation_fraction,
+            result.test_fraction,
+        )
+        if min(fractions) <= 0.0 or not math.isclose(
+            sum(fractions), 1.0, abs_tol=1e-12
+        ):
+            raise SemanticConfigurationError(
+                "Court split fractions must be positive and sum to 1."
+            )
         if result.shard_group_count > result.minimum_trajectory_groups:
             raise SemanticConfigurationError(
                 "Court shard_group_count cannot exceed minimum trajectory groups."
@@ -1491,7 +1577,9 @@ class FullFrameChunkPolicy:
             discard_shards_on_rerun=_flag(raw, "discard_shards_on_rerun", path=path),
         )
         if result.frame_selection != "all_source_frames":
-            raise SemanticConfigurationError(f"{path}.frame_selection must select all source frames.")
+            raise SemanticConfigurationError(
+                f"{path}.frame_selection must select all source frames."
+            )
         for name in (
             "require_contiguous_frame_indices",
             "require_exact_frame_inventory",
@@ -1654,7 +1742,9 @@ def _gaussian_asset(value: object, *, path: str) -> GaussianAsset:
         )
         unit = GaussianUnit(_text(coordinates_raw, "unit", path=coordinates_path))
     except ValueError as error:
-        raise SemanticConfigurationError(f"{path} contains an unknown Gaussian enum.") from error
+        raise SemanticConfigurationError(
+            f"{path} contains an unknown Gaussian enum."
+        ) from error
     dtype = _text(raw, "floating_dtype", path=path)
     if dtype not in {"float32", "float64"}:
         raise SemanticConfigurationError(f"{path}.floating_dtype is unsupported.")
@@ -1840,7 +1930,9 @@ class BLCSDatasetConfiguration:
         )
         metadata = _text_sequence(raw, "metadata_fields", path="dataset.blcs")
         if not _BLCS_METADATA_FIELDS.issubset(metadata):
-            raise SemanticConfigurationError("dataset.blcs.metadata_fields omits required provenance.")
+            raise SemanticConfigurationError(
+                "dataset.blcs.metadata_fields omits required provenance."
+            )
         source = _blcs_source_settings(raw["trajectory_source"])
         generator = _blcs_generator_config(raw["generator"])
         assets = _blcs_assets(raw["assets"], resolver=resolver)
@@ -1977,11 +2069,15 @@ class LinearRGBPaletteSettings:
             path=f"{path}.colors",
         )
         if not raw_colors:
-            raise SemanticConfigurationError("dataset.plcs.appearance.colors must not be empty.")
+            raise SemanticConfigurationError(
+                "dataset.plcs.appearance.colors must not be empty."
+            )
         colors: list[tuple[float, float, float]] = []
         for index, raw_color in enumerate(raw_colors):
             values = _sequence(raw_color, path=f"{path}.colors[{index}]")
-            if len(values) != 3 or any(type(item) not in (int, float) for item in values):
+            if len(values) != 3 or any(
+                type(item) not in (int, float) for item in values
+            ):
                 raise ConfigurationTypeError(
                     f"{path}.colors[{index}] must contain three numeric values."
                 )
@@ -1989,7 +2085,10 @@ class LinearRGBPaletteSettings:
                 tuple[float, float, float],
                 tuple(float(cast("int | float", item)) for item in values),
             )
-            if any(not math.isfinite(channel) or not 0.0 <= channel <= 1.0 for channel in color):
+            if any(
+                not math.isfinite(channel) or not 0.0 <= channel <= 1.0
+                for channel in color
+            ):
                 raise SemanticConfigurationError(
                     f"{path}.colors[{index}] must contain finite values in [0, 1]."
                 )
@@ -2007,13 +2106,21 @@ class LinearRGBPaletteSettings:
 
     def color_for_object(self, object_index: int) -> tuple[float, float, float]:
         """Return the sole deterministic palette assignment for one object."""
-        if isinstance(object_index, bool) or not isinstance(object_index, int) or object_index < 0:
+        if (
+            isinstance(object_index, bool)
+            or not isinstance(object_index, int)
+            or object_index < 0
+        ):
             raise ValueError("PLCS appearance object_index must be non-negative.")
         return self.colors[object_index % len(self.colors)]
 
     def preflight(self, *, gaussian_count: int) -> None:
         """Validate the explicit uniform palette source before stage mutation."""
-        if isinstance(gaussian_count, bool) or not isinstance(gaussian_count, int) or gaussian_count <= 0:
+        if (
+            isinstance(gaussian_count, bool)
+            or not isinstance(gaussian_count, int)
+            or gaussian_count <= 0
+        ):
             raise ValueError("PLCS appearance gaussian_count must be positive.")
 
     def load_avatar_appearance(
@@ -2041,7 +2148,12 @@ class LinearRGBPaletteSettings:
         if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
             raise ValueError("PLCS appearance seed must be non-negative.")
         prefix, separator, suffix = object_id.rpartition("-")
-        if prefix != "player" or separator != "-" or len(suffix) != 3 or not suffix.isdigit():
+        if (
+            prefix != "player"
+            or separator != "-"
+            or len(suffix) != 3
+            or not suffix.isdigit()
+        ):
             raise ValueError(
                 "PLCS palette source requires the canonical player-NNN object ID."
             )
@@ -2126,10 +2238,16 @@ class PLCSDatasetConfiguration:
         _require_true(articulated, path="dataset.plcs.require_articulated_motion")
         metadata = _text_sequence(raw, "metadata_fields", path="dataset.plcs")
         if not _PLCS_METADATA_FIELDS.issubset(metadata):
-            raise SemanticConfigurationError("dataset.plcs.metadata_fields omits required provenance.")
-        scene_splits_raw = _mapping(raw["scene_splits"], path="dataset.plcs.scene_splits")
+            raise SemanticConfigurationError(
+                "dataset.plcs.metadata_fields omits required provenance."
+            )
+        scene_splits_raw = _mapping(
+            raw["scene_splits"], path="dataset.plcs.scene_splits"
+        )
         if not scene_splits_raw:
-            raise SemanticConfigurationError("dataset.plcs.scene_splits must not be empty.")
+            raise SemanticConfigurationError(
+                "dataset.plcs.scene_splits must not be empty."
+            )
         scene_splits: dict[str, str] = {}
         for scene_id in sorted(scene_splits_raw):
             split_value = scene_splits_raw[scene_id]
@@ -2215,7 +2333,8 @@ class PLCSDatasetConfiguration:
                 path="dataset.plcs",
                 minimum=1,
             )
-            or performance.execution_device != _text(
+            or performance.execution_device
+            != _text(
                 raw,
                 "device",
                 path="dataset.plcs",
@@ -2296,7 +2415,16 @@ class ScenePipelineConfiguration:
         root = _exact(
             value,
             path="configuration",
-            keys={"profile", "roots", "request", "pipeline", "camera", "nht", "alignment", "dataset"},
+            keys={
+                "profile",
+                "roots",
+                "request",
+                "pipeline",
+                "camera",
+                "nht",
+                "alignment",
+                "dataset",
+            },
         )
         roots = RuntimePathRoots.from_mapping(
             _mapping(root["roots"], path="roots"),
@@ -2307,16 +2435,29 @@ class ScenePipelineConfiguration:
         request_raw = _exact(
             root["request"],
             path="request",
-            keys={"scene_id", "source_video", "targets", "from_stage"},
+            keys={
+                "scene_id",
+                "source_video",
+                "targets",
+                "from_stage",
+                "through_stage",
+            },
         )
         target_values = _text_sequence(request_raw, "targets", path="request")
         try:
             targets = tuple(DatasetTarget(item) for item in target_values)
             from_stage = StageName(_text(request_raw, "from_stage", path="request"))
+            through_stage = StageName(
+                _text(request_raw, "through_stage", path="request")
+            )
         except ValueError as error:
-            raise SemanticConfigurationError(f"request contains an unknown target or stage: {error}") from error
+            raise SemanticConfigurationError(
+                f"request contains an unknown target or stage: {error}"
+            ) from error
         if len(targets) != len(set(targets)):
-            raise SemanticConfigurationError("request.targets must not contain duplicates.")
+            raise SemanticConfigurationError(
+                "request.targets must not contain duplicates."
+            )
         source_video = resolver.resolve(
             PathRole.DATA,
             _text(request_raw, "source_video", path="request"),
@@ -2326,16 +2467,22 @@ class ScenePipelineConfiguration:
             source_video=source_video,
             targets=frozenset(targets),
             from_stage=from_stage,
+            through_stage=through_stage,
             config_schema=stages.config_schema,
         )
-        dataset = _exact(root["dataset"], path="dataset", keys={"court", "blcs", "plcs"})
+        dataset = _exact(
+            root["dataset"], path="dataset", keys={"court", "blcs", "plcs"}
+        )
         plcs = PLCSDatasetConfiguration.from_mapping(
             dataset["plcs"],
             resolver=resolver,
         )
         if (
-            request.scene_id not in plcs.scene_splits
-            or plcs.scene_splits[request.scene_id] != plcs.split
+            DatasetTarget.PLCS in request.active_targets
+            and (
+                request.scene_id not in plcs.scene_splits
+                or plcs.scene_splits[request.scene_id] != plcs.split
+            )
         ):
             raise SemanticConfigurationError(
                 "dataset.plcs.scene_splits must explicitly bind request.scene_id "

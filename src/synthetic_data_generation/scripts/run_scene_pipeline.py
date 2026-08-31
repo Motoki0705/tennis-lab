@@ -3,6 +3,7 @@
 Usage:
     python -m src.synthetic_data_generation.scripts.run_scene_pipeline
     python -m src.synthetic_data_generation.scripts.run_scene_pipeline request.from_stage=alignment
+    python -m src.synthetic_data_generation.scripts.run_scene_pipeline request.through_stage=alignment
 
 Notes:
     - Hydra loads all runtime authority from `src/synthetic_data_generation/configs/run_scene_pipeline.yaml`.
@@ -19,7 +20,6 @@ from src.synthetic_data_generation.configuration import (
 from src.synthetic_data_generation.pipeline.application import (
     build_scene_pipeline_runner,
 )
-from src.synthetic_data_generation.pipeline.contracts import StageName
 from src.utils.hydra import hydra_main
 
 
@@ -38,10 +38,13 @@ def main(config: DictConfig) -> int:  # pragma: no cover - Hydra CLI boundary
         resolved_config_yaml=resolved_yaml,
     )
     manifest = runner.run(runtime.request)
+    terminal_stage = runtime.request.through_stage
+    terminal_definition = runner.registry.definition(terminal_stage)
     print(f"scene={runtime.request.scene_id}")
     print(f"run_manifest={runtime.workspace.run_manifest_path}")
-    print(f"report={runtime.workspace.root / 'report' / 'index.html'}")
-    print(f"status={manifest.stages[StageName.REPORT].status.value}")
+    print(f"terminal_stage={terminal_stage.value}")
+    print(f"output={runtime.workspace.owner_path(terminal_definition)}")
+    print(f"status={manifest.stages[terminal_stage].status.value}")
     return 0
 
 

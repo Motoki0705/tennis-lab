@@ -31,6 +31,7 @@ def _authority(
                     "source_video": "synthetic_data_generation/raw/video.mp4",
                     "targets": ["court"],
                     "from_stage": "court_dataset",
+                    "through_stage": "report",
                 },
                 "dataset": {
                     "court": {"schema": court},

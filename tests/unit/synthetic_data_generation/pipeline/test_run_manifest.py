@@ -20,6 +20,7 @@ def _request(tmp_path: Path, *, schema: str = "scene_pipeline_v1") -> ScenePipel
         source_video=source,
         targets=frozenset({DatasetTarget.COURT}),
         from_stage=StageName.INGEST,
+        through_stage=StageName.REPORT,
         config_schema=schema,
     )
 
@@ -50,6 +51,7 @@ def test_manifest_rejects_incompatible_request_before_mutation(tmp_path: Path) -
         source_video=request.source_video,
         targets=request.targets,
         from_stage=request.from_stage,
+        through_stage=request.through_stage,
         config_schema="scene_pipeline_v2",
     )
 

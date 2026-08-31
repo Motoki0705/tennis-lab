@@ -6,3 +6,8 @@ request:
   source_video: synthetic_data_generation/raw/B02.mp4
   targets: [court, blcs, plcs]
   from_stage: ingest
+  through_stage: report
+
+nht:
+  environment:
+    TENNIS_LAB_NHT_MINIMUM_MEDIAN_TRACK_LENGTH: "2.0"

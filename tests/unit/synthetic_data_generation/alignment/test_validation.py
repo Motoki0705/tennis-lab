@@ -190,18 +190,18 @@ def test_excluded_camera_diagnostics_round_trip_and_reject_reason_tampering(
                     "fit-1",
                     no_lines.camera_id,
                 ),
-                    holdout_camera_ids=(
-                        "holdout-0",
-                        excluded.camera_id,
-                        "holdout-1",
-                        no_lines.camera_id,
-                    ),
-                    observed_camera_ids=(
-                        "holdout-0",
-                        "fit-0",
-                        "holdout-1",
-                        "fit-1",
-                    ),
+                holdout_camera_ids=(
+                    "holdout-0",
+                    excluded.camera_id,
+                    "holdout-1",
+                    no_lines.camera_id,
+                ),
+                observed_camera_ids=(
+                    "holdout-0",
+                    "fit-0",
+                    "holdout-1",
+                    "fit-1",
+                ),
                 excluded_cameras=exclusions,
             ),
             excluded_cameras=exclusions,
@@ -223,7 +223,7 @@ def test_excluded_camera_diagnostics_round_trip_and_reject_reason_tampering(
     )
 
     assert validated.to_dict() == result.to_dict()
-    assert persisted_evidence["schema"] == "alignment_measured_evidence_v8"
+    assert persisted_evidence["schema"] == "alignment_measured_evidence_v12"
     assert persisted_evidence["excluded_cameras"] == [
         item.to_dict() for item in exclusions
     ]
@@ -298,6 +298,90 @@ def test_fixed_selection_archive_rejects_contiguous_partition_tampering(
 
     with pytest.raises(ValueError, match="unit slot rule"):
         validate_alignment_outputs(staging)
+
+
+def test_proposal_search_archive_round_trip_rejects_weighted_gate_tampering(
+    tmp_path: Path,
+    alignment_evidence: AlignmentEvidence,
+    alignment_policy: AlignmentAcceptancePolicy,
+) -> None:
+    result = fit_alignment(alignment_evidence, policy=alignment_policy)
+    staging = tmp_path / "alignment"
+    staging.mkdir()
+    write_alignment_outputs(
+        staging,
+        evidence=alignment_evidence,
+        result=result,
+        heatmaps=_line_heatmaps(alignment_evidence),
+    )
+    assert validate_alignment_outputs(staging).to_dict() == result.to_dict()
+
+    archive_path = staging / "ground-line-map.npz"
+    with np.load(archive_path, allow_pickle=False) as loaded:
+        arrays = {name: np.asarray(loaded[name]) for name in loaded.files}
+    payload = json.loads(str(arrays["diagnostic_proposal_search_json"].item()))
+    assert payload == alignment_evidence.diagnostics.proposal_search.to_dict()
+    payload["selected_candidate_explained_evidence_fractions"][0] = 0.01
+    arrays["diagnostic_proposal_search_json"] = np.asarray(
+        json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    )
+    np.savez_compressed(archive_path, **arrays)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="explained-evidence gate"):
+        validate_alignment_outputs(staging)
+
+
+def test_proposal_search_archive_rejects_refinement_rank_tampering(
+    tmp_path: Path,
+    alignment_evidence: AlignmentEvidence,
+    alignment_policy: AlignmentAcceptancePolicy,
+) -> None:
+    result = fit_alignment(alignment_evidence, policy=alignment_policy)
+    staging = tmp_path / "alignment"
+    staging.mkdir()
+    write_alignment_outputs(
+        staging,
+        evidence=alignment_evidence,
+        result=result,
+        heatmaps=_line_heatmaps(alignment_evidence),
+    )
+
+    archive_path = staging / "ground-line-map.npz"
+    with np.load(archive_path, allow_pickle=False) as loaded:
+        arrays = {name: np.asarray(loaded[name]) for name in loaded.files}
+    payload = json.loads(str(arrays["diagnostic_proposal_search_json"].item()))
+    payload["refinement_attempt_count"] = 2
+    arrays["diagnostic_proposal_search_json"] = np.asarray(
+        json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    )
+    np.savez_compressed(archive_path, **arrays)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="attempts must equal rejected states"):
+        validate_alignment_outputs(staging)
+
+
+def test_proposal_search_rejects_inconsistent_frontier_history(
+    alignment_evidence: AlignmentEvidence,
+) -> None:
+    proposal = alignment_evidence.diagnostics.proposal_search
+
+    with pytest.raises(ValueError, match="disagree with their total"):
+        replace(
+            proposal,
+            feasible_complete_state_counts=(1, 1),
+        )
+    with pytest.raises(ValueError, match="rank disagrees with per-depth ordering"):
+        replace(
+            proposal,
+            selected_complete_state_candidate_count=1,
+        )
+    with pytest.raises(ValueError, match="expanded and pruned state counts"):
+        replace(
+            proposal,
+            frontier_state_counts=(1,),
+            feasible_complete_state_counts=(1,),
+            selected_complete_state_candidate_count=1,
+        )
 
 
 def test_whole_court_policy_and_recomputed_metrics_round_trip(
@@ -616,6 +700,7 @@ def _context(tmp_path: Path) -> _Context:
         source_video=video,
         targets=frozenset({DatasetTarget.COURT}),
         from_stage=StageName.ALIGNMENT,
+        through_stage=StageName.ALIGNMENT,
         config_schema="test-v1",
     )
     definition = StageDefinition(
@@ -673,7 +758,7 @@ def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
             for item in selection.excluded_cameras
         }
     )
-    observed = set(selection.observed_camera_ids)
+    fit_ids = set(evidence.diagnostics.evaluation.fit_camera_ids)
     return AlignmentLineHeatmaps(
         bounds_uv=(-1.0, 1.0, -1.0, 1.0),
         grid_spacing=0.25,
@@ -703,7 +788,7 @@ def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
                     0.8,
                     dtype=np.float64,
                 ),
-                included_in_aggregate=camera_id in observed,
+                included_in_aggregate=camera_id in fit_ids,
             )
             for camera_id in selection.camera_prefix_ids
         ),
