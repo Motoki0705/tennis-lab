@@ -66,12 +66,13 @@ class StageInputKind(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class ScenePipelineRequest:
-    """One strict request for a scene and its explicit dataset targets."""
+    """One strict request with explicit start, terminal, and dataset stages."""
 
     scene_id: str
     source_video: Path
     targets: frozenset[DatasetTarget]
     from_stage: StageName
+    through_stage: StageName
     config_schema: str
 
     def __post_init__(self) -> None:
@@ -85,8 +86,34 @@ class ScenePipelineRequest:
             raise ValueError("At least one explicit dataset target is required.")
         if any(not isinstance(target, DatasetTarget) for target in self.targets):
             raise TypeError("targets must contain only DatasetTarget values.")
+        if not isinstance(self.from_stage, StageName):
+            raise TypeError("from_stage must be a StageName value.")
+        if not isinstance(self.through_stage, StageName):
+            raise TypeError("through_stage must be a StageName value.")
+        terminal_target = next(
+            (
+                target
+                for target in DatasetTarget
+                if target.stage is self.through_stage
+            ),
+            None,
+        )
+        if terminal_target is not None and terminal_target not in self.targets:
+            raise ValueError(
+                f"through_stage {self.through_stage.value!r} requires the "
+                f"{terminal_target.value!r} dataset target."
+            )
         if not self.config_schema.strip() or self.config_schema != self.config_schema.strip():
             raise ValueError("config_schema must be a non-empty trimmed identifier.")
+
+    @property
+    def active_targets(self) -> frozenset[DatasetTarget]:
+        """Return dataset targets inside the terminal stage dependency closure."""
+        if self.through_stage is StageName.REPORT:
+            return self.targets
+        return frozenset(
+            target for target in self.targets if target.stage is self.through_stage
+        )
 
     def to_dict(self) -> dict[str, object]:
         """Return stable semantic request fields without an identity digest."""
@@ -95,6 +122,7 @@ class ScenePipelineRequest:
             "source_video": str(self.source_video),
             "targets": sorted(target.value for target in self.targets),
             "from_stage": self.from_stage.value,
+            "through_stage": self.through_stage.value,
             "config_schema": self.config_schema,
         }
 

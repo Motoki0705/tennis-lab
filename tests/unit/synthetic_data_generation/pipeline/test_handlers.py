@@ -17,9 +17,12 @@ from src.synthetic_data_generation.dataset.court.schema import (
 from src.synthetic_data_generation.pipeline.contracts import (
     DatasetTarget,
     ScenePipelineRequest,
+    StageExecutionContext,
+    StageExecutionSummary,
     StageName,
 )
 from src.synthetic_data_generation.pipeline.handlers import (
+    DeferredStageHandler,
     _court_report_manifest,
 )
 
@@ -178,7 +181,46 @@ def test_report_stage_is_a_valid_failure_recovery_cursor(tmp_path: Path) -> None
         source_video=source.resolve(),
         targets=frozenset(DatasetTarget),
         from_stage=StageName.REPORT,
+        through_stage=StageName.REPORT,
         config_schema="canonical_scene_pipeline_v1",
     )
 
     assert request.from_stage is StageName.REPORT
+
+
+def test_deferred_stage_handler_constructs_one_lifecycle_once() -> None:
+    calls: list[str] = []
+
+    class _Lifecycle:
+        def preflight(self, context: StageExecutionContext) -> None:
+            calls.append("preflight")
+
+        def execute(
+            self,
+            context: StageExecutionContext,
+        ) -> StageExecutionSummary:
+            calls.append("execute")
+            return StageExecutionSummary({"deferred": True})
+
+        def validate(self, context: StageExecutionContext) -> None:
+            calls.append("validate")
+
+    factory_calls = 0
+
+    def factory() -> _Lifecycle:
+        nonlocal factory_calls
+        factory_calls += 1
+        return _Lifecycle()
+
+    deferred = DeferredStageHandler(factory)
+    context = cast(StageExecutionContext, object())
+
+    assert factory_calls == 0
+    deferred.preflight(context)
+    assert deferred.execute(context).values == {"deferred": True}
+    deferred.validate(context)
+
+    assert factory_calls == 1
+    assert calls == ["preflight", "execute", "validate"]
+    assert deferred.resolve() is deferred.resolve()
+    assert factory_calls == 1
