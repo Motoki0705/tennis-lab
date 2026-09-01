@@ -12,6 +12,17 @@ from numpy.typing import NDArray
 
 import src.synthetic_data_generation.visualization.sources as sources_module
 from src.synthetic_data_generation.dataset.blcs.contracts import BLCSSampleRecord
+from src.synthetic_data_generation.dataset.court.contracts import (
+    SupportModelSummary,
+    TrajectorySupportPolicy,
+)
+from src.synthetic_data_generation.dataset.court.occupancy_artifact import (
+    COURT_V4_SUPPORT_OCCUPANCY_CELLS_PATH,
+    COURT_V4_SUPPORT_OCCUPANCY_METADATA_PATH,
+    build_court_v4_support_occupancy_snapshot,
+    occupancy_cells_content_digest,
+    write_court_v4_support_occupancy,
+)
 from src.synthetic_data_generation.dataset.plcs.assembler import PLCS_DATASET_SCHEMA
 from src.synthetic_data_generation.dataset.runtime import (
     ChunkWriter,
@@ -19,6 +30,8 @@ from src.synthetic_data_generation.dataset.runtime import (
     ForegroundDeltaBatch,
     RenderSampleKey,
 )
+from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
+from src.synthetic_data_generation.visualization.contracts import CourtOverlayMode
 from src.synthetic_data_generation.visualization.sources import (
     BLCSVisualizationSource,
     CourtVisualizationSource,
@@ -82,6 +95,136 @@ def _write_court_fixture(
         "samples": records,
     }
     (root / "dataset.json").write_text(json.dumps(payload), encoding="utf-8")
+
+
+def _v4_support_policy() -> TrajectorySupportPolicy:
+    return TrajectorySupportPolicy(
+        decision_id="unit-support-v1",
+        support_radius_m=0.8,
+        endpoint_radius_m=0.6,
+        maximum_camera_link_distance_m=1.5,
+        maximum_source_frame_gap=1,
+        occupancy_voxel_size_m=0.5,
+        minimum_points_per_voxel=1,
+        obstacle_inflation_m=0.5,
+        camera_ball_clearance_m=0.05,
+        camera_capsule_clearance_m=0.04,
+        sweep_step_m=0.1,
+        boundary_epsilon_m=1.0e-6,
+        minimum_captured_cameras=2,
+        minimum_public_points=1,
+        maximum_capsule_index_cells=10_000,
+        maximum_occupancy_cells=10_000,
+        minimum_cycle_frame_span=8,
+        maximum_cycle_frame_span=16,
+        maximum_cycle_closure_distance_m=1.1,
+        maximum_constructive_cycle_count=24,
+        cycle_smoothing_distance_m=0.03,
+    )
+
+
+def _write_v4_aabb_fixture(root: Path) -> None:
+    _write_court_fixture(
+        root,
+        indices=(0, 1),
+        dataset_schema="canonical_court_dataset_v4",
+        label_schema="canonical_court_sample_v4",
+    )
+    policy = _v4_support_policy()
+    support_digest = "a" * 64
+    summary = SupportModelSummary(
+        input_digest=support_digest,
+        coordinate_space="metric_scene_metres",
+        captured_camera_count=2,
+        public_point_count=1,
+        density_qualified_voxel_count=1,
+        raw_inflated_occupancy_cell_count=2,
+        inflated_occupancy_cell_count=1,
+        camera_ball_carved_cell_count=1,
+        camera_capsule_carved_cell_count=0,
+        captured_camera_occupied_count=0,
+        endpoint_ball_count=2,
+        capsule_count=1,
+        skipped_gap_link_count=0,
+        skipped_obstacle_link_count=0,
+        capsule_index_cell_count=1,
+    )
+    camera = SceneCamera(
+        camera_id="camera-0",
+        source_frame_index=0,
+        width=48,
+        height=32,
+        intrinsics=(40.0, 0.0, 23.5, 0.0, 40.0, 15.5, 0.0, 0.0, 1.0),
+        camera_to_scene=RigidTransform.from_matrix(np.eye(4, dtype=np.float64)),
+        image_path="request-only",
+    )
+    manifest_path = root / "dataset.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["profile"] = "unit"
+    manifest["metrics"] = {"support_input_digest": support_digest}
+    for record in manifest["samples"]:
+        directory = root / str(record["rgb"]).rsplit("/", 1)[0]
+        alpha: NDArray[np.float32] = np.ones((32, 48, 1), dtype=np.float32)
+        depth: NDArray[np.float32] = np.full(
+            (32, 48, 1),
+            10.0,
+            dtype=np.float32,
+        )
+        np.save(directory / "alpha.npy", alpha, allow_pickle=False)
+        np.save(directory / "depth.npy", depth, allow_pickle=False)
+        record.update(
+            {
+                "alpha": f"{record['rgb'].rsplit('/', 1)[0]}/alpha.npy",
+                "depth": f"{record['rgb'].rsplit('/', 1)[0]}/depth.npy",
+                "depth_coordinate_space": "metric_scene_metres",
+                "camera": camera.to_dict(),
+                "safety_support_input_digest": support_digest,
+            }
+        )
+        label_path = root / str(record["labels"])
+        label = json.loads(label_path.read_text(encoding="utf-8"))
+        label["camera"] = camera.to_dict()
+        label["safety_support_input_digest"] = support_digest
+        label_path.write_text(json.dumps(label), encoding="utf-8")
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    diagnostics = root / "diagnostics"
+    diagnostics.mkdir()
+    snapshot = build_court_v4_support_occupancy_snapshot(
+        np.asarray(((0, 0, 4),), dtype=np.int64),
+        voxel_size_m=policy.occupancy_voxel_size_m,
+        support_input_digest=support_digest,
+        policy_decision_id=policy.decision_id,
+    )
+    (diagnostics / "trajectory-plan.json").write_text(
+        json.dumps(
+            {
+                "schema": "canonical_court_safe_path_plan_v4",
+                "support_policy": policy.to_dict(),
+                "support_summary": summary.to_dict(),
+                "support_occupancy_identity": snapshot.identity.to_dict(),
+                "samples": [
+                    {
+                        "sample_id": record["sample_id"],
+                        "trajectory_id": record["trajectory_id"],
+                        "view_id": record["view_id"],
+                        "trajectory_frame_index": record[
+                            "trajectory_frame_index"
+                        ],
+                        "camera_center_scene_m": [0.0, 0.0, 0.0],
+                        "camera": camera.to_dict(),
+                    }
+                    for record in manifest["samples"]
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    write_court_v4_support_occupancy(
+        diagnostics,
+        snapshot=snapshot,
+        scene_id="scene-0",
+        profile="unit",
+    )
 
 
 def test_court_source_streams_selected_trajectory_in_exact_frame_order(
@@ -155,7 +298,7 @@ def test_court_source_rejects_unknown_dataset_schema_without_shape_fallback(
     _write_court_fixture(
         tmp_path,
         indices=(0, 1),
-        dataset_schema="canonical_court_dataset_v4",
+        dataset_schema="canonical_court_dataset_v5",
         label_schema="canonical_court_sample_v2",
     )
     monkeypatch.setattr(
@@ -164,9 +307,234 @@ def test_court_source_rejects_unknown_dataset_schema_without_shape_fallback(
 
     with pytest.raises(
         ValueError,
-        match=r"^Unknown Court dataset schema: 'canonical_court_dataset_v4'\.$",
+        match=r"^Unknown Court dataset schema: 'canonical_court_dataset_v5'\.$",
     ):
         CourtVisualizationSource(tmp_path, trajectory_id="orbit-0")
+
+
+def test_court_source_dispatches_explicit_v4_sample_schema(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _write_court_fixture(
+        tmp_path,
+        indices=(0, 1),
+        dataset_schema="canonical_court_dataset_v4",
+        label_schema="canonical_court_sample_v4",
+    )
+    monkeypatch.setattr(
+        sources_module, "validate_court_dataset", lambda *args, **kwargs: None
+    )
+
+    source = CourtVisualizationSource(tmp_path, trajectory_id="orbit-0")
+
+    assert tuple(frame.schema_version.value for frame in source.frames()) == (
+        "v4",
+        "v4",
+    )
+
+
+def test_v4_aabb_source_loads_metric_arrays_camera_and_bound_exact_cells(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _write_v4_aabb_fixture(tmp_path)
+    monkeypatch.setattr(
+        sources_module, "validate_court_dataset", lambda *args, **kwargs: None
+    )
+
+    source = CourtVisualizationSource(
+        tmp_path,
+        trajectory_id="orbit-0",
+        overlay_mode=CourtOverlayMode.TRAJECTORY_SUPPORT_AABB,
+        maximum_occupancy_cells=1,
+    )
+    frames = tuple(source.frames())
+
+    assert source.support_occupancy is not None
+    assert source.support_occupancy.cells.tolist() == [[0, 0, 4]]
+    assert source.support_occupancy.support_input_digest == "a" * 64
+    assert source.support_policy == _v4_support_policy()
+    assert source.trajectory_camera_centers_scene_m is not None
+    assert source.trajectory_camera_centers_scene_m.tolist() == [
+        [0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0],
+    ]
+    assert not source.trajectory_camera_centers_scene_m.flags.writeable
+    assert all(frame.camera is not None for frame in frames)
+    assert all(frame.alpha is not None for frame in frames)
+    assert all(frame.depth_metric_m is not None for frame in frames)
+    assert frames[0].depth_metric_m is not None
+    assert float(frames[0].depth_metric_m[0, 0, 0]) == 10.0
+
+
+def test_aabb_source_rejects_non_v4_missing_or_mismatched_authority(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        sources_module, "validate_court_dataset", lambda *args, **kwargs: None
+    )
+    v3_root = tmp_path / "v3"
+    _write_court_fixture(
+        v3_root,
+        indices=(0, 1),
+        dataset_schema="canonical_court_dataset_v3",
+        label_schema="canonical_court_sample_v3",
+    )
+    with pytest.raises(ValueError, match="requires a Court V4 dataset"):
+        CourtVisualizationSource(
+            v3_root,
+            trajectory_id="orbit-0",
+            overlay_mode=CourtOverlayMode.TRAJECTORY_SUPPORT_AABB,
+        )
+
+    missing_root = tmp_path / "missing"
+    _write_court_fixture(
+        missing_root,
+        indices=(0, 1),
+        dataset_schema="canonical_court_dataset_v4",
+        label_schema="canonical_court_sample_v4",
+    )
+    with pytest.raises((FileNotFoundError, ValueError)):
+        CourtVisualizationSource(
+            missing_root,
+            trajectory_id="orbit-0",
+            overlay_mode=CourtOverlayMode.TRAJECTORY_SUPPORT_AABB,
+        )
+
+    mismatched_root = tmp_path / "mismatched"
+    _write_v4_aabb_fixture(mismatched_root)
+    metadata_path = mismatched_root / COURT_V4_SUPPORT_OCCUPANCY_METADATA_PATH
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["support_input_digest"] = "b" * 64
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    with pytest.raises(ValueError, match="support_input_digest binding disagrees"):
+        CourtVisualizationSource(
+            mismatched_root,
+            trajectory_id="orbit-0",
+            overlay_mode=CourtOverlayMode.TRAJECTORY_SUPPORT_AABB,
+        )
+
+
+def test_v4_semantic_source_does_not_require_aabb_payload_arrays(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _write_court_fixture(
+        tmp_path,
+        indices=(0, 1),
+        dataset_schema="canonical_court_dataset_v4",
+        label_schema="canonical_court_sample_v4",
+    )
+    monkeypatch.setattr(
+        sources_module, "validate_court_dataset", lambda *args, **kwargs: None
+    )
+
+    frames = tuple(CourtVisualizationSource(tmp_path, trajectory_id="orbit-0").frames())
+
+    assert all(frame.alpha is None for frame in frames)
+    assert all(frame.depth_metric_m is None for frame in frames)
+    assert all(frame.camera is None for frame in frames)
+
+
+def test_aabb_source_rejects_replaced_cells_with_recomputed_artifact_digest(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _write_v4_aabb_fixture(tmp_path)
+    monkeypatch.setattr(
+        sources_module,
+        "validate_court_dataset",
+        lambda *args, **kwargs: None,
+    )
+    cells_path = tmp_path / COURT_V4_SUPPORT_OCCUPANCY_CELLS_PATH
+    cells = np.load(cells_path, allow_pickle=False)
+    cells[0, 0] -= 1
+    np.save(cells_path, cells, allow_pickle=False)
+    metadata_path = tmp_path / COURT_V4_SUPPORT_OCCUPANCY_METADATA_PATH
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["content_digest"] = occupancy_cells_content_digest(cells)
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="content_digest binding disagrees"):
+        CourtVisualizationSource(
+            tmp_path,
+            trajectory_id="orbit-0",
+            overlay_mode=CourtOverlayMode.TRAJECTORY_SUPPORT_AABB,
+        )
+
+
+def test_aabb_source_rejects_plan_manifest_camera_center_mismatch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _write_v4_aabb_fixture(tmp_path)
+    monkeypatch.setattr(
+        sources_module,
+        "validate_court_dataset",
+        lambda *args, **kwargs: None,
+    )
+    plan_path = tmp_path / "diagnostics" / "trajectory-plan.json"
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    plan["samples"][0]["camera_center_scene_m"] = [1.0, 0.0, 0.0]
+    plan_path.write_text(json.dumps(plan), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="camera center disagrees"):
+        CourtVisualizationSource(
+            tmp_path,
+            trajectory_id="orbit-0",
+            overlay_mode=CourtOverlayMode.TRAJECTORY_SUPPORT_AABB,
+        )
+
+
+def test_bound_trajectory_centers_canonicalizes_matching_multi_view_frames() -> None:
+    plan_samples: list[dict[str, object]] = []
+    records: list[dict[str, object]] = []
+    for view_id in ("view-0", "view-1"):
+        for frame_index, center in enumerate(((0.0, 0.0, 0.0), (2.0, 0.0, 0.0))):
+            transform = np.eye(4, dtype=np.float64)
+            transform[:3, 3] = center
+            camera = SceneCamera(
+                camera_id=view_id,
+                source_frame_index=frame_index,
+                width=16,
+                height=16,
+                intrinsics=(8.0, 0.0, 7.5, 0.0, 8.0, 7.5, 0.0, 0.0, 1.0),
+                camera_to_scene=RigidTransform.from_matrix(transform),
+                image_path="unused.png",
+            )
+            identity = {
+                "sample_id": f"{view_id}-{frame_index}",
+                "trajectory_id": "orbit-0",
+                "view_id": view_id,
+                "trajectory_frame_index": frame_index,
+                "camera": camera.to_dict(),
+            }
+            records.append(dict(identity))
+            plan_samples.append(
+                {**identity, "camera_center_scene_m": list(center)}
+            )
+
+    centers = sources_module._bound_trajectory_centers(
+        tuple(plan_samples),
+        records=tuple(records),
+        trajectory_id="orbit-0",
+        sample_count=2,
+    )
+
+    assert centers.tolist() == [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]]
+    assert not centers.flags.writeable
+
+    inconsistent = [dict(value) for value in plan_samples]
+    inconsistent[3]["camera_center_scene_m"] = [3.0, 0.0, 0.0]
+    with pytest.raises(ValueError, match="camera center disagrees|views disagree"):
+        sources_module._bound_trajectory_centers(
+            tuple(inconsistent),
+            records=tuple(records),
+            trajectory_id="orbit-0",
+            sample_count=2,
+        )
 
 
 def test_blcs_stream_rejects_chunk_replaced_by_a_foreign_attempt(

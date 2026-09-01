@@ -20,7 +20,10 @@ from src.synthetic_data_generation.dataset.court.assembler import (
 from src.synthetic_data_generation.dataset.court.components.camera_sampling.selection import (
     build_court_dataset_plan,
 )
-from src.synthetic_data_generation.dataset.court.contracts import CourtDatasetPlanAny
+from src.synthetic_data_generation.dataset.court.contracts import (
+    CourtDatasetPlanAny,
+    CourtDatasetPlanV4,
+)
 from src.synthetic_data_generation.dataset.court.schema import CourtDatasetSchemaVersion
 from src.synthetic_data_generation.dataset.court.shards import CourtRenderResult
 from src.synthetic_data_generation.dataset.runtime import PerformanceTimer
@@ -86,6 +89,7 @@ class CourtDatasetStageHandler:
             layout=alignment.layout,
             configuration=self.configuration,
             metric_adapter=alignment.metric_adapter,
+            points_scene=scene.points_scene,
         )
         attempt_root = context.staging_path / "_attempt"
         attempt_token = uuid.uuid4().hex
@@ -122,11 +126,22 @@ class CourtDatasetStageHandler:
         elif self.configuration.schema_version in (
             CourtDatasetSchemaVersion.V2,
             CourtDatasetSchemaVersion.V3,
+            CourtDatasetSchemaVersion.V4,
         ):
             count_key = "court_sample_counts"
         else:  # pragma: no cover - typed configuration is exhaustive
             raise TypeError("Unsupported Court dataset schema version.")
         values[count_key] = dict(report.court_group_counts)
+        if isinstance(plan, CourtDatasetPlanV4):
+            values["semantic_phase_inventory_digest"] = (
+                plan.semantic_phase_inventory_digest
+            )
+            values["projected_semantic_valid_frame_count"] = (
+                plan.projected_semantic_valid_frame_count
+            )
+            values["projected_semantic_valid_fraction"] = (
+                plan.projected_semantic_valid_fraction
+            )
         return StageExecutionSummary(values=values)
 
     def validate(self, context: StageExecutionContext) -> None:

@@ -20,6 +20,32 @@ visualization:
   crf: 17
   # Used only by BLCS; retained in deterministic metadata for every domain.
   history_frames: 12
+  court_overlay:
+    # semantic | trajectory_support_aabb (the latter requires a V4 artifact).
+    mode: semantic
+    # wireframe is the safe default; solid explicitly fills exposed voxel faces.
+    render_style: wireframe
+    # boundary suppresses coplanar seams; all_edges preserves the v1 wireframe.
+    wireframe_topology: boundary
+    # local_swept_segments shows only each frame's incoming/outgoing path context.
+    # selected_trajectory preserves the full-loop v3 view; all shows the artifact.
+    trajectory_filter_scope: local_swept_segments
+    # The readability default is an explicit display-only proximity radius.
+    # support_radius remains selectable; all requires mode and radius null.
+    trajectory_filter_radius_mode: explicit_radius
+    trajectory_filter_radius_m: 1.5
+    color_rgb: [255, 96, 32]
+    # Straight background resolved with NHT's premultiplied RGB and alpha.
+    background_color_rgb: [0, 0, 0]
+    opacity: 0.55
+    edge_opacity: 0.40
+    edge_width_px: 1
+    depth_epsilon_m: 0.02
+    near_plane_m: 0.05
+    maximum_cells: 1000000
+    maximum_surface_faces: 4000000
+    maximum_edge_segments: 8000000
+    maximum_projected_pixels: 100000000
 
 hydra:
   run:

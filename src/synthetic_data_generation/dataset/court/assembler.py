@@ -30,27 +30,46 @@ from src.synthetic_data_generation.dataset.court.components.labels import (
     camera_center_court_y,
 )
 from src.synthetic_data_generation.dataset.court.contracts import (
+    LEGACY_ORBIT_STABLE_FIELDS,
+    V4_ORBIT_STABLE_FIELDS,
     CourtDatasetPlanAny,
     CourtDatasetPlanV2,
+    CourtDatasetPlanV4,
     OrbitCenter,
     OrbitCoverageObjective,
     OrbitSamplingPolicy,
-    OrbitStableField,
+    OrbitTargetMode,
     OrbitTrajectorySpec,
+    OrbitTrajectorySpecV4,
     OrbitViewSpec,
     OrbitViewSpecV2,
     PlannedCourtSample,
     PlannedCourtSampleAny,
     PlannedCourtSampleV2,
+    PlannedCourtSampleV4,
+    RequiredTrajectoryCoverage,
     ResolvedTargetCourtV2,
+    SelectedTrajectoryCoverage,
+    SupportModelSummary,
     TargetCourtPolicyV2,
     TrajectoryGroupPlan,
     TrajectoryGroupPlanAny,
     TrajectoryGroupPlanV2,
+    TrajectorySafetyEvaluation,
+    TrajectorySemanticPhaseEvaluation,
+    TrajectorySupportPolicy,
+    build_selected_coverage_from_records,
+    required_coverage_shortfall,
+    semantic_phase_inventory_digest,
 )
 from src.synthetic_data_generation.dataset.court.diagnostics import (
-    DIAGNOSTIC_FILES,
+    DIAGNOSTIC_FILES_V4_WITHOUT_SUPPORT_OCCUPANCY,
+    diagnostic_files_for_version,
     write_court_diagnostics,
+)
+from src.synthetic_data_generation.dataset.court.occupancy_artifact import (
+    CourtV4SupportOccupancyIdentity,
+    load_court_v4_support_occupancy,
 )
 from src.synthetic_data_generation.dataset.court.performance import (
     CourtPerformanceEvidence,
@@ -67,6 +86,7 @@ from src.synthetic_data_generation.dataset.court.semantic_manifest import (
     validate_court_semantic_manifest,
     validate_v2_published_court_geometry,
     validate_v3_published_court_geometry,
+    validate_v4_published_court_geometry,
 )
 from src.synthetic_data_generation.dataset.court.shards import (
     CourtRenderedSample,
@@ -109,6 +129,20 @@ _COURT_METRIC_KEYS_BY_VERSION = {
     | {"court_sample_counts", "split_court_sample_counts"},
     CourtDatasetSchemaVersion.V3: _COMMON_COURT_METRIC_KEYS
     | {"court_sample_counts", "split_court_sample_counts"},
+    CourtDatasetSchemaVersion.V4: _COMMON_COURT_METRIC_KEYS
+    | {
+        "court_sample_counts",
+        "split_court_sample_counts",
+        "support_input_digest",
+        "selected_safety_violation_count",
+        "required_coverage",
+        "selected_coverage",
+        "required_coverage_shortfall",
+        "optional_candidate_coverage_shortfall",
+        "semantic_phase_inventory_digest",
+        "projected_semantic_valid_frame_count",
+        "projected_semantic_valid_fraction",
+    },
 }
 
 
@@ -116,7 +150,11 @@ def _uses_resolved_target_version(version: CourtDatasetSchemaVersion) -> bool:
     """Return the explicitly enumerated V2/V3 target-resolution contract."""
     if version is CourtDatasetSchemaVersion.V1:
         return False
-    if version in (CourtDatasetSchemaVersion.V2, CourtDatasetSchemaVersion.V3):
+    if version in (
+        CourtDatasetSchemaVersion.V2,
+        CourtDatasetSchemaVersion.V3,
+        CourtDatasetSchemaVersion.V4,
+    ):
         return True
     raise TypeError("Unsupported Court dataset schema version.")
 
@@ -265,6 +303,14 @@ def assemble_court_dataset(
         }
         if isinstance(sample, PlannedCourtSampleV2):
             label_payload["target_court"] = sample.target_court.to_dict()
+        if isinstance(sample, PlannedCourtSampleV4):
+            label_payload["safety_support_input_digest"] = (
+                sample.safety_support_input_digest
+            )
+            label_payload["semantic_phase_index"] = sample.semantic_phase_index
+            label_payload["semantic_phase_disposition_digest"] = (
+                sample.semantic_phase_disposition_digest
+            )
         save_json_atomic(label_payload, label_path)
         relative_directory = destination.relative_to(staging_root).as_posix()
         accepted_record: dict[str, object] = {
@@ -292,6 +338,14 @@ def assemble_court_dataset(
         }
         if isinstance(sample, PlannedCourtSampleV2):
             accepted_record["target_court"] = sample.target_court.to_dict()
+        if isinstance(sample, PlannedCourtSampleV4):
+            accepted_record["safety_support_input_digest"] = (
+                sample.safety_support_input_digest
+            )
+            accepted_record["semantic_phase_index"] = sample.semantic_phase_index
+            accepted_record["semantic_phase_disposition_digest"] = (
+                sample.semantic_phase_disposition_digest
+            )
         accepted_records.append(accepted_record)
     accepted = tuple(item for item in evaluated if item.accepted)
     post_render_rejected = tuple(item for item in evaluated if not item.accepted)
@@ -627,6 +681,12 @@ def _rejected_record(
     }
     if isinstance(sample, PlannedCourtSampleV2):
         record["target_court"] = sample.target_court.to_dict()
+    if isinstance(sample, PlannedCourtSampleV4):
+        record["safety_support_input_digest"] = sample.safety_support_input_digest
+        record["semantic_phase_index"] = sample.semantic_phase_index
+        record["semantic_phase_disposition_digest"] = (
+            sample.semantic_phase_disposition_digest
+        )
     return record
 
 
@@ -690,6 +750,28 @@ def _metrics(
             split: dict(sorted(counts.items()))
             for split, counts in sorted(split_court_group_counts.items())
         }
+    if isinstance(plan, CourtDatasetPlanV4):
+        result["support_input_digest"] = plan.support_summary.input_digest
+        result["selected_safety_violation_count"] = sum(
+            len(group.safety_evaluation.violating_point_indices)
+            + len(group.safety_evaluation.violating_segment_indices)
+            for group in plan.groups
+        )
+        result["required_coverage"] = plan.required_coverage.to_dict()
+        result["selected_coverage"] = plan.selected_coverage.to_dict()
+        result["required_coverage_shortfall"] = list(
+            plan.required_coverage_shortfall
+        )
+        result["optional_candidate_coverage_shortfall"] = list(
+            plan.optional_candidate_coverage_shortfall
+        )
+        result["semantic_phase_inventory_digest"] = plan.semantic_phase_inventory_digest
+        result["projected_semantic_valid_frame_count"] = (
+            plan.projected_semantic_valid_frame_count
+        )
+        result["projected_semantic_valid_fraction"] = (
+            plan.projected_semantic_valid_fraction
+        )
     return result
 
 
@@ -805,10 +887,13 @@ def validate_court_dataset(
     expected_plan: CourtDatasetPlanAny | None = None,
     expected_configuration: CourtDatasetConfiguration | None = None,
     array_validation: CourtArrayValidationMode = CourtArrayValidationMode.FULL,
+    require_v4_support_occupancy: bool = True,
 ) -> CourtAssemblyReport:
     """Validate the complete canonical output and reject every inventory mismatch."""
     if not isinstance(array_validation, CourtArrayValidationMode):
         raise TypeError("array_validation must be a CourtArrayValidationMode.")
+    if not isinstance(require_v4_support_occupancy, bool):
+        raise TypeError("require_v4_support_occupancy must be boolean.")
     manifest_path = root / "dataset.json"
     if manifest_path.is_symlink() or not manifest_path.is_file():
         raise FileNotFoundError(f"Court dataset manifest is missing: {manifest_path}")
@@ -845,7 +930,9 @@ def validate_court_dataset(
         raise ValueError(
             "Published Court dataset and expected configuration schemas are mixed."
         )
-    policy = _parse_canonical_sampling_policy(raw["sampling_policy"])
+    policy = _parse_canonical_sampling_policy(
+        raw["sampling_policy"], version=definition.version
+    )
     groups = _mapping_sequence(raw["trajectory_groups"], name="trajectory_groups")
     samples = _mapping_sequence(raw["samples"], name="samples")
     rejected = _mapping_sequence(raw["rejected_samples"], name="rejected_samples")
@@ -855,6 +942,8 @@ def validate_court_dataset(
         published_court_geometry = validate_v2_published_court_geometry(raw)
     elif definition.version is CourtDatasetSchemaVersion.V3:
         published_court_geometry = validate_v3_published_court_geometry(raw)
+    elif definition.version is CourtDatasetSchemaVersion.V4:
+        published_court_geometry = validate_v4_published_court_geometry(raw)
     else:  # pragma: no cover - exact schema registry is exhaustive
         raise TypeError("Unsupported Court dataset schema version.")
     validate_court_semantic_manifest(
@@ -903,6 +992,14 @@ def validate_court_dataset(
     }
     if _uses_resolved_target_version(definition.version):
         rejected_keys.add("target_court")
+    if definition.version is CourtDatasetSchemaVersion.V4:
+        rejected_keys.update(
+            {
+                "safety_support_input_digest",
+                "semantic_phase_index",
+                "semantic_phase_disposition_digest",
+            }
+        )
     for record in rejected:
         if set(record) != rejected_keys or not isinstance(record.get("reasons"), list):
             raise ValueError("Rejected Court sample record schema is invalid.")
@@ -946,6 +1043,14 @@ def validate_court_dataset(
         }
         if _uses_resolved_target_version(definition.version):
             expected_sample_keys.add("target_court")
+        if definition.version is CourtDatasetSchemaVersion.V4:
+            expected_sample_keys.update(
+                {
+                    "safety_support_input_digest",
+                    "semantic_phase_index",
+                    "semantic_phase_disposition_digest",
+                }
+            )
         if set(record) != expected_sample_keys:
             raise ValueError(
                 "Court sample record contains missing or unexpected fields."
@@ -1023,6 +1128,47 @@ def validate_court_dataset(
         raise ValueError("Court maximum adjacent arc-step gate failed.")
     if metrics.get("split_leakage_count") != 0:
         raise ValueError("Court trajectory group split leakage is non-zero.")
+    if definition.version is CourtDatasetSchemaVersion.V4:
+        digest = metrics.get("support_input_digest")
+        phase_digest = metrics.get("semantic_phase_inventory_digest")
+        required_coverage = RequiredTrajectoryCoverage.from_mapping(
+            metrics.get("required_coverage")
+        )
+        selected_coverage = SelectedTrajectoryCoverage.from_mapping(
+            metrics.get("selected_coverage")
+        )
+        recomputed_coverage = _serialized_selected_coverage(
+            groups,
+            required_coverage=required_coverage,
+        )
+        required_shortfall = metrics.get("required_coverage_shortfall")
+        optional_shortfall = metrics.get("optional_candidate_coverage_shortfall")
+        projected_valid_count = metrics.get("projected_semantic_valid_frame_count")
+        projected_valid_fraction = metrics.get("projected_semantic_valid_fraction")
+        if (
+            not isinstance(digest, str)
+            or len(digest) != 64
+            or any(character not in "0123456789abcdef" for character in digest)
+            or not isinstance(phase_digest, str)
+            or len(phase_digest) != 64
+            or any(character not in "0123456789abcdef" for character in phase_digest)
+            or metrics.get("selected_safety_violation_count") != 0
+            or selected_coverage != recomputed_coverage
+            or not isinstance(required_shortfall, list)
+            or required_shortfall
+            or required_shortfall
+            != list(required_coverage_shortfall(required_coverage, recomputed_coverage))
+            or not isinstance(optional_shortfall, list)
+            or optional_shortfall != sorted(set(optional_shortfall))
+            or isinstance(projected_valid_count, bool)
+            or not isinstance(projected_valid_count, int)
+            or projected_valid_count < minimum_frames
+            or isinstance(projected_valid_fraction, bool)
+            or not isinstance(projected_valid_fraction, int | float)
+            or not math.isfinite(float(projected_valid_fraction))
+            or float(projected_valid_fraction) < minimum_fraction
+        ):
+            raise ValueError("Court V4 safety metrics are invalid.")
     coverage = metrics.get("coverage_counts")
     visible = metrics.get("renderer_visible_points_by_class")
     if not isinstance(coverage, Mapping) or not {
@@ -1049,12 +1195,33 @@ def validate_court_dataset(
     if definition.version is CourtDatasetSchemaVersion.V1:
         _validate_court_balance(groups)
     diagnostics = raw["diagnostics"]
-    expected_diagnostics = [f"diagnostics/{name}" for name in DIAGNOSTIC_FILES]
-    if diagnostics != expected_diagnostics:
+    expected_diagnostics = [
+        f"diagnostics/{name}"
+        for name in diagnostic_files_for_version(definition.version)
+    ]
+    legacy_v4_diagnostics = [
+        f"diagnostics/{name}"
+        for name in DIAGNOSTIC_FILES_V4_WITHOUT_SUPPORT_OCCUPANCY
+    ]
+    has_support_occupancy = diagnostics == expected_diagnostics
+    legacy_semantic_v4 = (
+        definition.version is CourtDatasetSchemaVersion.V4
+        and not require_v4_support_occupancy
+        and diagnostics == legacy_v4_diagnostics
+    )
+    if not has_support_occupancy and not legacy_semantic_v4:
         raise ValueError("Court diagnostic inventory is incomplete or unexpected.")
-    for relative in expected_diagnostics:
+    validated_diagnostics = (
+        expected_diagnostics if has_support_occupancy else legacy_v4_diagnostics
+    )
+    for relative in validated_diagnostics:
         _contained_file(root, relative)
-    _validate_diagnostic_schemas(root, definition=definition, dataset=raw)
+    _validate_diagnostic_schemas(
+        root,
+        definition=definition,
+        dataset=raw,
+        validate_support_occupancy=has_support_occupancy,
+    )
     performance = CourtPerformanceEvidence.from_dict(
         load_json(_contained_file(root, "diagnostics/performance.json"))
     )
@@ -1090,6 +1257,28 @@ def validate_court_dataset(
             )
         if policy.to_dict() != expected_plan.policy.to_dict():
             raise ValueError("Published Court sampling policy changed after planning.")
+        if isinstance(expected_plan, CourtDatasetPlanV4) and has_support_occupancy:
+            expected_occupancy = expected_plan.support_occupancy_snapshot
+            published_occupancy = load_court_v4_support_occupancy(
+                root,
+                expected_scene_id=expected_plan.scene_id,
+                expected_profile=expected_plan.profile,
+                expected_policy_decision_id=expected_occupancy.policy_decision_id,
+                expected_support_input_digest=(
+                    expected_occupancy.support_input_digest
+                ),
+                expected_voxel_size_m=expected_occupancy.voxel_size_m,
+                expected_cell_count=expected_occupancy.cell_count,
+                expected_content_digest=expected_occupancy.content_digest,
+                maximum_cells=expected_plan.support_policy.maximum_occupancy_cells,
+            )
+            if (
+                published_occupancy.snapshot.content_digest
+                != expected_occupancy.content_digest
+            ):
+                raise ValueError(
+                    "Published Court V4 occupancy changed after planning."
+                )
         expected_samples = {
             sample.sample_id: sample.to_dict() for sample in expected_plan.samples
         }
@@ -1270,7 +1459,11 @@ def _validate_semantic_sample_record(
         expected_seed = target.get("selection_seed")
     else:
         target = ResolvedTargetCourtV2.from_mapping(record["target_court"])
-        trajectory_spec = OrbitTrajectorySpec.from_mapping(trajectory)
+        trajectory_spec = (
+            OrbitTrajectorySpecV4.from_mapping(trajectory)
+            if definition.version is CourtDatasetSchemaVersion.V4
+            else OrbitTrajectorySpec.from_mapping(trajectory)
+        )
         policy = _validated_v2_target_policy(
             trajectory=trajectory_spec,
             value=group["target_court_policy"],
@@ -1311,6 +1504,21 @@ def _validate_semantic_sample_record(
             target_court=target,
             look_at_height_m=view.look_at_height_m,
         )
+        if definition.version is CourtDatasetSchemaVersion.V4:
+            safety = TrajectorySafetyEvaluation.from_mapping(group["safety_evaluation"])
+            semantic_phase = TrajectorySemanticPhaseEvaluation.from_mapping(
+                group["semantic_phase_evaluation"]
+            )
+            if (
+                record.get("safety_support_input_digest") != safety.support_input_digest
+                or not safety.safe
+                or record.get("semantic_phase_index") != semantic_phase.phase_index
+                or record.get("semantic_phase_disposition_digest")
+                != semantic_phase.disposition_digest
+            ):
+                raise ValueError(
+                    "Court V4 sample safety/semantic-phase authority disagrees with its group."
+                )
     expected_metadata = {
         "target_court": expected_target_court,
         "candidate_id": expected_candidate_id,
@@ -1408,6 +1616,14 @@ def _validate_published_sample(
     }
     if _uses_resolved_target_version(definition.version):
         label_keys.add("target_court")
+    if definition.version is CourtDatasetSchemaVersion.V4:
+        label_keys.update(
+            {
+                "safety_support_input_digest",
+                "semantic_phase_index",
+                "semantic_phase_disposition_digest",
+            }
+        )
     if (
         not isinstance(label_payload, Mapping)
         or set(label_payload) != label_keys
@@ -1432,6 +1648,14 @@ def _validate_published_sample(
         label_payload["target_court"] != record["target_court"]
     ):
         raise ValueError("Court sample labels target_court mismatch.")
+    if definition.version is CourtDatasetSchemaVersion.V4:
+        for field in (
+            "safety_support_input_digest",
+            "semantic_phase_index",
+            "semantic_phase_disposition_digest",
+        ):
+            if label_payload[field] != record[field]:
+                raise ValueError(f"Court V4 sample labels {field} authority mismatch.")
     _require_finite_json(label_payload, name="labels")
     if array_validation is CourtArrayValidationMode.FULL:
         _validate_renderer_visibility_payload(
@@ -1566,9 +1790,15 @@ def _validate_group_record(
         keys.add("target_court")
     else:
         keys.add("target_court_policy")
+    if definition.version is CourtDatasetSchemaVersion.V4:
+        keys.update({"safety_evaluation", "semantic_phase_evaluation"})
     if set(group) != keys:
         raise ValueError("Court trajectory group schema is invalid.")
-    trajectory = OrbitTrajectorySpec.from_mapping(group["trajectory"])
+    trajectory = (
+        OrbitTrajectorySpecV4.from_mapping(group["trajectory"])
+        if definition.version is CourtDatasetSchemaVersion.V4
+        else OrbitTrajectorySpec.from_mapping(group["trajectory"])
+    )
     views = group["views"]
     if not isinstance(views, list) or not views:
         raise TypeError("Court group views must be a non-empty list.")
@@ -1607,6 +1837,25 @@ def _validate_group_record(
             trajectory=trajectory,
             value=group["target_court_policy"],
         )
+        if definition.version is CourtDatasetSchemaVersion.V4:
+            safety = TrajectorySafetyEvaluation.from_mapping(group["safety_evaluation"])
+            semantic_phase = TrajectorySemanticPhaseEvaluation.from_mapping(
+                group["semantic_phase_evaluation"]
+            )
+            if (
+                not safety.safe
+                or safety.trajectory_id != trajectory.trajectory_id
+                or safety.trajectory_group_id != trajectory.trajectory_group_id
+                or semantic_phase.trajectory_id != trajectory.trajectory_id
+                or semantic_phase.trajectory_group_id != trajectory.trajectory_group_id
+                or tuple(OrbitViewSpecV2.from_mapping(view) for view in views)
+                != (semantic_phase.view,)
+                or semantic_phase.expected_frame_count
+                != _mapping_integer(group, "sample_count", minimum=8)
+            ):
+                raise ValueError(
+                    "Court V4 group safety/semantic-phase evaluation is invalid."
+                )
     if group["split"] not in {"train", "validation", "test"}:
         raise ValueError("Court group split is invalid.")
     if not isinstance(group["shard_id"], str) or not group["shard_id"]:
@@ -1614,6 +1863,33 @@ def _validate_group_record(
     _mapping_integer(group, "sample_count", minimum=8)
     _mapping_float(group, "maximum_adjacent_step_m")
     _mapping_float(group, "total_arc_length_m")
+
+
+def _serialized_selected_coverage(
+    groups: Sequence[Mapping[str, object]],
+    *,
+    required_coverage: RequiredTrajectoryCoverage,
+) -> SelectedTrajectoryCoverage:
+    """Recompute selected coverage from the immutable serialized groups."""
+    records: list[tuple[OrbitTrajectorySpecV4, OrbitTargetMode, int]] = []
+    for group in groups:
+        trajectory = OrbitTrajectorySpecV4.from_mapping(group.get("trajectory"))
+        views = group.get("views")
+        if not isinstance(views, list) or len(views) != 1:
+            raise ValueError("V4 selected coverage requires one serialized group view.")
+        view = OrbitViewSpecV2.from_mapping(views[0])
+        sample_count = group.get("sample_count")
+        if (
+            isinstance(sample_count, bool)
+            or not isinstance(sample_count, int)
+            or sample_count < 1
+        ):
+            raise ValueError("V4 selected coverage group sample_count is invalid.")
+        records.append((trajectory, view.target_mode, sample_count))
+    return build_selected_coverage_from_records(
+        records,
+        required_raised_lift_m=required_coverage.required_raised_lift_m,
+    )
 
 
 def _nested_group_id(group: Mapping[str, object]) -> str:
@@ -1631,6 +1907,7 @@ def _validate_diagnostic_schemas(
     *,
     definition: CourtSchemaDefinition,
     dataset: Mapping[str, object],
+    validate_support_occupancy: bool,
 ) -> None:
     """Require every versioned diagnostic to use the selected exact schema."""
     expected = {
@@ -1643,6 +1920,10 @@ def _validate_diagnostic_schemas(
         "semantic-manifest.json": definition.semantic_manifest_schema,
         "performance.json": definition.performance_schema,
     }
+    if definition.version is CourtDatasetSchemaVersion.V4:
+        if definition.safety_diagnostics_schema is None:
+            raise RuntimeError("Court V4 safety diagnostics schema is unavailable.")
+        expected["trajectory-safety.json"] = definition.safety_diagnostics_schema
     payloads: dict[str, object] = {}
     for filename, schema in expected.items():
         payload = load_json(_contained_file(root, f"diagnostics/{filename}"))
@@ -1655,6 +1936,7 @@ def _validate_diagnostic_schemas(
         payloads["trajectory-plan.json"],
         dataset=dataset,
         definition=definition,
+        require_support_occupancy_identity=validate_support_occupancy,
     )
     _validate_acceptance_diagnostic(
         payloads["acceptance.json"],
@@ -1682,6 +1964,42 @@ def _validate_diagnostic_schemas(
         dataset=dataset,
         definition=definition,
     )
+    if definition.version is CourtDatasetSchemaVersion.V4:
+        _validate_safety_diagnostic(
+            payloads["trajectory-safety.json"],
+            dataset=dataset,
+            trajectory_plan=payloads["trajectory-plan.json"],
+            definition=definition,
+        )
+        if validate_support_occupancy:
+            trajectory_plan = cast(
+                Mapping[str, object],
+                payloads["trajectory-plan.json"],
+            )
+            support_policy = TrajectorySupportPolicy.from_mapping(
+                trajectory_plan["support_policy"]
+            )
+            support_summary = SupportModelSummary.from_mapping(
+                trajectory_plan["support_summary"]
+            )
+            occupancy_identity = CourtV4SupportOccupancyIdentity.from_mapping(
+                trajectory_plan["support_occupancy_identity"]
+            )
+            published_occupancy = load_court_v4_support_occupancy(
+                root,
+                expected_scene_id=cast(str, dataset["scene_id"]),
+                expected_profile=cast(str, dataset["profile"]),
+                expected_policy_decision_id=support_policy.decision_id,
+                expected_support_input_digest=support_summary.input_digest,
+                expected_voxel_size_m=support_policy.occupancy_voxel_size_m,
+                expected_cell_count=support_summary.inflated_occupancy_cell_count,
+                expected_content_digest=occupancy_identity.content_digest,
+                maximum_cells=support_policy.maximum_occupancy_cells,
+            )
+            if published_occupancy.snapshot.identity != occupancy_identity:
+                raise ValueError(
+                    "Court V4 occupancy artifact disagrees with plan identity."
+                )
     points_path = _contained_file(root, "diagnostics/sample-points.npy")
     points = np.load(points_path, allow_pickle=False, mmap_mode="r")
     proposal_count = _mapping_integer(
@@ -1806,9 +2124,7 @@ def _validate_split_diagnostic(
             target = group["target_court"]
             if not isinstance(target, Mapping):
                 raise TypeError("Court v1 group target must be a mapping.")
-            expected_group["target_court_instance_id"] = target[
-                "court_instance_id"
-            ]
+            expected_group["target_court_instance_id"] = target["court_instance_id"]
         else:
             policy = TargetCourtPolicyV2.from_mapping(group["target_court_policy"])
             expected_group["target_court_policy"] = policy.to_dict()
@@ -1837,6 +2153,7 @@ def _validate_split_diagnostic(
             dataset=dataset,
             groups=groups,
             trajectory_plan=trajectory_plan,
+            version=definition.version,
         )
 
 
@@ -1846,6 +2163,7 @@ def _validate_v2_target_resolution_diagnostic(
     dataset: Mapping[str, object],
     groups: Sequence[Mapping[str, object]],
     trajectory_plan: object,
+    version: CourtDatasetSchemaVersion,
 ) -> None:
     """Recompute every public v2 target-resolution inventory available in the plan."""
     keys = {
@@ -1872,7 +2190,11 @@ def _validate_v2_target_resolution_diagnostic(
     court_centers = _court_centers_from_published_projection(dataset)
     policy_by_group: dict[str, TargetCourtPolicyV2] = {}
     for group in groups:
-        trajectory = OrbitTrajectorySpec.from_mapping(group["trajectory"])
+        trajectory = (
+            OrbitTrajectorySpecV4.from_mapping(group["trajectory"])
+            if version is CourtDatasetSchemaVersion.V4
+            else OrbitTrajectorySpec.from_mapping(group["trajectory"])
+        )
         policy_by_group[_nested_group_id(group)] = _validated_v2_target_policy(
             trajectory=trajectory,
             value=group["target_court_policy"],
@@ -1913,8 +2235,7 @@ def _validate_v2_target_resolution_diagnostic(
             sorted(
                 candidate_id
                 for candidate_id, distance in distances.items()
-                if distance
-                <= minimum_distance + NEAREST_COURT_TIE_TOLERANCE_M
+                if distance <= minimum_distance + NEAREST_COURT_TIE_TOLERANCE_M
             )
         )
         if policy.centre_court_instance_id is not None:
@@ -2005,7 +2326,9 @@ def _court_centers_from_published_projection(
                 )
                 scene_xyz = point.get("scene_xyz_m")
                 if not isinstance(scene_xyz, list) or len(scene_xyz) != 3:
-                    raise TypeError("Court projected scene point must be a three-vector.")
+                    raise TypeError(
+                        "Court projected scene point must be a three-vector."
+                    )
                 if physical_index in points_by_index:
                     raise ValueError("Court projected physical indices are duplicated.")
                 points_by_index[physical_index] = np.asarray(
@@ -2075,11 +2398,12 @@ def _validate_parameter_table_diagnostic(
             expected_row["target_court_policy"] = policy.to_dict()
         if set(row) != set(expected_row):
             raise ValueError("Court parameter-table row schema is invalid.")
-        trajectory_row = {
-            key: row[key]
-            for key in trajectory
-        }
-        OrbitTrajectorySpec.from_mapping(trajectory_row)
+        trajectory_row = {key: row[key] for key in trajectory}
+        (
+            OrbitTrajectorySpecV4.from_mapping(trajectory_row)
+            if definition.version is CourtDatasetSchemaVersion.V4
+            else OrbitTrajectorySpec.from_mapping(trajectory_row)
+        )
         view_ids = row["view_ids"]
         if not isinstance(view_ids, list) or any(
             not isinstance(view_id, str) for view_id in view_ids
@@ -2165,9 +2489,7 @@ def _validate_acceptance_diagnostic(
     rejected_count = _mapping_integer(value, "rejected_count", minimum=0)
     accepted_fraction = _mapping_float(value, "accepted_fraction")
     accepted = _mapping_sequence(dataset["samples"], name="samples")
-    rejected = _mapping_sequence(
-        dataset["rejected_samples"], name="rejected_samples"
-    )
+    rejected = _mapping_sequence(dataset["rejected_samples"], name="rejected_samples")
     accepted_sample_ids = value["accepted_sample_ids"]
     if not isinstance(accepted_sample_ids, list) or any(
         not isinstance(sample_id, str) for sample_id in accepted_sample_ids
@@ -2182,9 +2504,7 @@ def _validate_acceptance_diagnostic(
         for name, count in metric_coverage.items()
     ):
         raise TypeError("Court metric coverage counts are invalid.")
-    expected_coverage = {
-        name: count for name, count in metric_coverage.items()
-    }
+    expected_coverage = {name: count for name, count in metric_coverage.items()}
     _require_exact_count_mapping(
         value["coverage_counts"],
         expected=expected_coverage,
@@ -2293,12 +2613,16 @@ def _require_exact_count_mapping(
     expected: Mapping[str, int],
     name: str,
 ) -> None:
-    if not isinstance(value, Mapping) or set(value) != set(expected) or any(
-        not isinstance(key, str)
-        or isinstance(count, bool)
-        or not isinstance(count, int)
-        or count < 0
-        for key, count in value.items()
+    if (
+        not isinstance(value, Mapping)
+        or set(value) != set(expected)
+        or any(
+            not isinstance(key, str)
+            or isinstance(count, bool)
+            or not isinstance(count, int)
+            or count < 0
+            for key, count in value.items()
+        )
     ):
         raise ValueError(f"Court {name} metric inventory is invalid.")
     if dict(value) != dict(expected):
@@ -2311,8 +2635,10 @@ def _require_exact_nested_count_mapping(
     expected: Mapping[str, Mapping[str, int]],
     name: str,
 ) -> None:
-    if not isinstance(value, Mapping) or set(value) != set(expected) or any(
-        not isinstance(key, str) for key in value
+    if (
+        not isinstance(value, Mapping)
+        or set(value) != set(expected)
+        or any(not isinstance(key, str) for key in value)
     ):
         raise ValueError(f"Court {name} metric inventory is invalid.")
     for split, expected_counts in expected.items():
@@ -2328,14 +2654,35 @@ def _validate_trajectory_plan_diagnostic(
     *,
     dataset: Mapping[str, object],
     definition: CourtSchemaDefinition,
+    require_support_occupancy_identity: bool,
 ) -> None:
     """Cross-check the exact versioned plan against published dispositions."""
     keys = {"schema", "scene_id", "profile", "policy", "groups", "samples"}
+    if definition.version is CourtDatasetSchemaVersion.V4:
+        keys.update(
+            {
+                "support_policy",
+                "support_summary",
+                "candidate_safety_evaluations",
+                "candidate_semantic_phase_evaluations",
+                "semantic_phase_inventory_digest",
+                "projected_semantic_valid_frame_count",
+                "projected_semantic_valid_fraction",
+                "required_coverage",
+                "selected_coverage",
+                "required_coverage_shortfall",
+                "optional_candidate_coverage_shortfall",
+            }
+        )
+        if require_support_occupancy_identity:
+            keys.add("support_occupancy_identity")
     if not isinstance(value, Mapping) or set(value) != keys:
         raise ValueError("Court trajectory-plan diagnostic schema is invalid.")
-    plan_policy = _parse_canonical_sampling_policy(value["policy"])
+    plan_policy = _parse_canonical_sampling_policy(
+        value["policy"], version=definition.version
+    )
     dataset_policy = _parse_canonical_sampling_policy(
-        dataset["sampling_policy"]
+        dataset["sampling_policy"], version=definition.version
     )
     if (
         value["schema"] != definition.plan_schema
@@ -2345,11 +2692,125 @@ def _validate_trajectory_plan_diagnostic(
         or value["groups"] != dataset["trajectory_groups"]
     ):
         raise ValueError("Court trajectory-plan diagnostic disagrees with dataset.")
+    if definition.version is CourtDatasetSchemaVersion.V4:
+        support_policy = TrajectorySupportPolicy.from_mapping(value["support_policy"])
+        support_summary = SupportModelSummary.from_mapping(value["support_summary"])
+        occupancy_identity = (
+            CourtV4SupportOccupancyIdentity.from_mapping(
+                value["support_occupancy_identity"]
+            )
+            if require_support_occupancy_identity
+            else None
+        )
+        if occupancy_identity is not None and (
+            occupancy_identity.coordinate_space != support_summary.coordinate_space
+            or occupancy_identity.voxel_size_m
+            != support_policy.occupancy_voxel_size_m
+            or occupancy_identity.cell_count
+            != support_summary.inflated_occupancy_cell_count
+            or occupancy_identity.support_input_digest != support_summary.input_digest
+            or occupancy_identity.policy_decision_id != support_policy.decision_id
+        ):
+            raise ValueError(
+                "Court V4 trajectory-plan occupancy identity is inconsistent."
+            )
+        candidates = _mapping_sequence(
+            value["candidate_safety_evaluations"],
+            name="candidate_safety_evaluations",
+        )
+        evaluations = tuple(
+            TrajectorySafetyEvaluation.from_mapping(item) for item in candidates
+        )
+        semantic_candidates = _mapping_sequence(
+            value["candidate_semantic_phase_evaluations"],
+            name="candidate_semantic_phase_evaluations",
+        )
+        semantic_evaluations = tuple(
+            TrajectorySemanticPhaseEvaluation.from_mapping(item)
+            for item in semantic_candidates
+        )
+        id_pairs = tuple(
+            (item.trajectory_id, item.trajectory_group_id) for item in evaluations
+        )
+        expected_pairs = tuple(
+            (f"trajectory-{index:05d}", f"group-{index:05d}")
+            for index in range(len(evaluations))
+        )
+        required_coverage = RequiredTrajectoryCoverage.from_mapping(
+            value["required_coverage"]
+        )
+        selected_coverage = SelectedTrajectoryCoverage.from_mapping(
+            value["selected_coverage"]
+        )
+        groups = _mapping_sequence(value["groups"], name="trajectory groups")
+        recomputed_coverage = _serialized_selected_coverage(
+            groups,
+            required_coverage=required_coverage,
+        )
+        required_shortfall = value["required_coverage_shortfall"]
+        optional_shortfall = value["optional_candidate_coverage_shortfall"]
+        if (
+            support_policy.decision_id == ""
+            or not evaluations
+            or id_pairs != expected_pairs
+            or any(
+                item.support_input_digest != support_summary.input_digest
+                for item in evaluations
+            )
+            or value["semantic_phase_inventory_digest"]
+            != semantic_phase_inventory_digest(semantic_evaluations)
+            or selected_coverage != recomputed_coverage
+            or not isinstance(required_shortfall, list)
+            or required_shortfall
+            or required_shortfall
+            != list(required_coverage_shortfall(required_coverage, recomputed_coverage))
+            or not isinstance(optional_shortfall, list)
+            or optional_shortfall != sorted(set(optional_shortfall))
+        ):
+            raise ValueError("Court V4 trajectory-plan safety authority is invalid.")
+        evaluation_by_group = {item.trajectory_group_id: item for item in evaluations}
+        semantic_evaluation_set = set(semantic_evaluations)
+        projected_valid_count = 0
+        projected_frame_count = 0
+        for group in groups:
+            group_safety = TrajectorySafetyEvaluation.from_mapping(
+                group["safety_evaluation"]
+            )
+            if evaluation_by_group.get(_nested_group_id(group)) != group_safety:
+                raise ValueError(
+                    "Court V4 selected evaluation differs from its candidate record."
+                )
+            group_semantic = TrajectorySemanticPhaseEvaluation.from_mapping(
+                group["semantic_phase_evaluation"]
+            )
+            if group_semantic not in semantic_evaluation_set:
+                raise ValueError(
+                    "Court V4 selected semantic phase differs from its candidate record."
+                )
+            projected_valid_count += group_semantic.expected_valid_frame_count
+            projected_frame_count += group_semantic.expected_frame_count
+        metrics = dataset["metrics"]
+        projected_fraction = projected_valid_count / projected_frame_count
+        if (
+            not isinstance(metrics, Mapping)
+            or metrics.get("support_input_digest") != support_summary.input_digest
+            or value["projected_semantic_valid_frame_count"] != projected_valid_count
+            or value["projected_semantic_valid_fraction"] != projected_fraction
+            or metrics.get("semantic_phase_inventory_digest")
+            != value["semantic_phase_inventory_digest"]
+            or metrics.get("projected_semantic_valid_frame_count")
+            != projected_valid_count
+            or metrics.get("projected_semantic_valid_fraction") != projected_fraction
+            or metrics.get("required_coverage") != required_coverage.to_dict()
+            or metrics.get("selected_coverage") != selected_coverage.to_dict()
+            or metrics.get("required_coverage_shortfall") != required_shortfall
+            or metrics.get("optional_candidate_coverage_shortfall")
+            != optional_shortfall
+        ):
+            raise ValueError("Court V4 plan support digest disagrees with metrics.")
     planned = _mapping_sequence(value["samples"], name="planned samples")
     accepted = _mapping_sequence(dataset["samples"], name="samples")
-    rejected = _mapping_sequence(
-        dataset["rejected_samples"], name="rejected_samples"
-    )
+    rejected = _mapping_sequence(dataset["rejected_samples"], name="rejected_samples")
     records = tuple(
         sorted(
             (*accepted, *rejected),
@@ -2372,6 +2833,14 @@ def _validate_trajectory_plan_diagnostic(
     }
     if _uses_resolved_target_version(definition.version):
         base_keys.add("target_court")
+    if definition.version is CourtDatasetSchemaVersion.V4:
+        base_keys.update(
+            {
+                "safety_support_input_digest",
+                "semantic_phase_index",
+                "semantic_phase_disposition_digest",
+            }
+        )
     for planned_sample, record in zip(planned, records, strict=True):
         if set(planned_sample) != base_keys:
             raise ValueError("Court planned sample schema is invalid.")
@@ -2384,6 +2853,164 @@ def _validate_trajectory_plan_diagnostic(
         ].tolist()
         if dict(planned_sample) != expected:
             raise ValueError("Court planned sample disagrees with published semantics.")
+
+
+def _validate_safety_diagnostic(
+    value: object,
+    *,
+    dataset: Mapping[str, object],
+    trajectory_plan: object,
+    definition: CourtSchemaDefinition,
+) -> None:
+    """Reject missing, unsafe, or tampered V4 safety evidence."""
+    keys = {
+        "schema",
+        "support_policy",
+        "support_summary",
+        "candidate_safety_evaluations",
+        "candidate_semantic_phase_evaluations",
+        "semantic_phase_inventory_digest",
+        "projected_semantic_valid_frame_count",
+        "projected_semantic_valid_fraction",
+        "selected_trajectory_group_ids",
+        "required_coverage",
+        "selected_coverage",
+        "required_coverage_shortfall",
+        "optional_candidate_coverage_shortfall",
+        "selected_point_violation_count",
+        "selected_segment_violation_count",
+        "zero_selected_safety_violations",
+    }
+    if not isinstance(value, Mapping) or set(value) != keys:
+        raise ValueError("Court V4 safety diagnostic schema is invalid.")
+    if value["schema"] != definition.safety_diagnostics_schema:
+        raise ValueError("Court V4 safety diagnostic version is invalid.")
+    support_policy = TrajectorySupportPolicy.from_mapping(value["support_policy"])
+    summary = SupportModelSummary.from_mapping(value["support_summary"])
+    candidates = _mapping_sequence(
+        value["candidate_safety_evaluations"],
+        name="candidate_safety_evaluations",
+    )
+    evaluations = tuple(
+        TrajectorySafetyEvaluation.from_mapping(item) for item in candidates
+    )
+    semantic_candidates = _mapping_sequence(
+        value["candidate_semantic_phase_evaluations"],
+        name="candidate_semantic_phase_evaluations",
+    )
+    semantic_evaluations = tuple(
+        TrajectorySemanticPhaseEvaluation.from_mapping(item)
+        for item in semantic_candidates
+    )
+    if not isinstance(trajectory_plan, Mapping):
+        raise TypeError("Court V4 trajectory plan must be a mapping.")
+    planned_policy = TrajectorySupportPolicy.from_mapping(
+        trajectory_plan["support_policy"]
+    )
+    planned_summary = SupportModelSummary.from_mapping(
+        trajectory_plan["support_summary"]
+    )
+    planned_candidates = _mapping_sequence(
+        trajectory_plan["candidate_safety_evaluations"],
+        name="planned candidate_safety_evaluations",
+    )
+    planned_evaluations = tuple(
+        TrajectorySafetyEvaluation.from_mapping(item) for item in planned_candidates
+    )
+    planned_semantic_candidates = _mapping_sequence(
+        trajectory_plan["candidate_semantic_phase_evaluations"],
+        name="planned candidate_semantic_phase_evaluations",
+    )
+    planned_semantic_evaluations = tuple(
+        TrajectorySemanticPhaseEvaluation.from_mapping(item)
+        for item in planned_semantic_candidates
+    )
+    required_coverage = RequiredTrajectoryCoverage.from_mapping(
+        value["required_coverage"]
+    )
+    selected_coverage = SelectedTrajectoryCoverage.from_mapping(
+        value["selected_coverage"]
+    )
+    if (
+        support_policy != planned_policy
+        or summary != planned_summary
+        or evaluations != planned_evaluations
+        or semantic_evaluations != planned_semantic_evaluations
+        or value["semantic_phase_inventory_digest"]
+        != semantic_phase_inventory_digest(semantic_evaluations)
+        or value["semantic_phase_inventory_digest"]
+        != trajectory_plan["semantic_phase_inventory_digest"]
+        or value["projected_semantic_valid_frame_count"]
+        != trajectory_plan["projected_semantic_valid_frame_count"]
+        or value["projected_semantic_valid_fraction"]
+        != trajectory_plan["projected_semantic_valid_fraction"]
+        or value["required_coverage"] != trajectory_plan["required_coverage"]
+        or value["selected_coverage"] != trajectory_plan["selected_coverage"]
+        or value["required_coverage_shortfall"]
+        != trajectory_plan["required_coverage_shortfall"]
+        or value["optional_candidate_coverage_shortfall"]
+        != trajectory_plan["optional_candidate_coverage_shortfall"]
+        or value["required_coverage_shortfall"] != []
+        or not isinstance(required_coverage, RequiredTrajectoryCoverage)
+        or not isinstance(selected_coverage, SelectedTrajectoryCoverage)
+    ):
+        raise ValueError(
+            "Court V4 safety diagnostic candidate inventory differs from the plan."
+        )
+    evaluation_by_group = {
+        evaluation.trajectory_group_id: evaluation for evaluation in evaluations
+    }
+    if (
+        not evaluations
+        or len(evaluation_by_group) != len(evaluations)
+        or len({item.trajectory_id for item in evaluations}) != len(evaluations)
+    ):
+        raise ValueError("Court V4 candidate safety IDs are duplicated or empty.")
+    groups = _mapping_sequence(dataset["trajectory_groups"], name="trajectory_groups")
+    selected_ids = [_nested_group_id(group) for group in groups]
+    selected_evaluations = [
+        evaluation_by_group.get(group_id) for group_id in selected_ids
+    ]
+    group_evaluations = [
+        TrajectorySafetyEvaluation.from_mapping(group["safety_evaluation"])
+        for group in groups
+    ]
+    semantic_evaluation_set = set(semantic_evaluations)
+    group_semantic_evaluations = [
+        TrajectorySemanticPhaseEvaluation.from_mapping(
+            group["semantic_phase_evaluation"]
+        )
+        for group in groups
+    ]
+    metrics = dataset["metrics"]
+    if (
+        not isinstance(metrics, Mapping)
+        or metrics.get("support_input_digest") != summary.input_digest
+        or value["selected_trajectory_group_ids"] != selected_ids
+        or any(item is None or not item.safe for item in selected_evaluations)
+        or selected_evaluations != group_evaluations
+        or any(
+            item not in semantic_evaluation_set for item in group_semantic_evaluations
+        )
+        or value["selected_point_violation_count"] != 0
+        or value["selected_segment_violation_count"] != 0
+        or value["zero_selected_safety_violations"] is not True
+        or metrics.get("selected_safety_violation_count") != 0
+        or value["required_coverage"] != metrics.get("required_coverage")
+        or value["selected_coverage"] != metrics.get("selected_coverage")
+        or value["required_coverage_shortfall"]
+        != metrics.get("required_coverage_shortfall")
+        or value["required_coverage_shortfall"] != []
+        or value["optional_candidate_coverage_shortfall"]
+        != metrics.get("optional_candidate_coverage_shortfall")
+        or metrics.get("semantic_phase_inventory_digest")
+        != value["semantic_phase_inventory_digest"]
+        or metrics.get("projected_semantic_valid_frame_count")
+        != value["projected_semantic_valid_frame_count"]
+        or metrics.get("projected_semantic_valid_fraction")
+        != value["projected_semantic_valid_fraction"]
+    ):
+        raise ValueError("Court V4 selected safety evidence is inconsistent.")
 
 
 def _contained_file(root: Path, relative_value: str) -> Path:
@@ -2419,10 +3046,21 @@ def _validated_v2_target_policy(
     return persisted
 
 
-def _parse_canonical_sampling_policy(value: object) -> OrbitSamplingPolicy:
+def _parse_canonical_sampling_policy(
+    value: object,
+    *,
+    version: CourtDatasetSchemaVersion,
+) -> OrbitSamplingPolicy:
     """Parse an exact policy and reject non-canonical persisted mappings."""
     policy = OrbitSamplingPolicy.from_mapping(value)
-    if set(policy.stable_field_order) != set(OrbitStableField):
+    expected_stable_fields = (
+        V4_ORBIT_STABLE_FIELDS
+        if version is CourtDatasetSchemaVersion.V4
+        else LEGACY_ORBIT_STABLE_FIELDS
+    )
+    if {field.value for field in policy.stable_field_order} != {
+        field.value for field in expected_stable_fields
+    }:
         raise ValueError(
             "stable_field_order must list every OrbitStableField exactly once."
         )
@@ -2497,9 +3135,7 @@ def _validate_published_ambiguity_reason(
             "A null Court v2/v3 projection requires exactly one ambiguity reason."
         )
     reason = reasons[0]
-    court_id = reason.removeprefix(
-        f"{AMBIGUOUS_CAMERA_RELATIVE_NEAR_FAR_REASON}:"
-    )
+    court_id = reason.removeprefix(f"{AMBIGUOUS_CAMERA_RELATIVE_NEAR_FAR_REASON}:")
     try:
         scene_from_court = published_court_geometry[court_id]
     except KeyError as error:

@@ -1,4 +1,4 @@
-# Court dataset v1/v2/v3 contract
+# Court dataset v1/v2/v3/v4 contract
 
 Status: implemented. This document is the canonical production contract for
 all explicitly selected Court dataset versions. It is also the sole prose
@@ -28,6 +28,15 @@ canonical court frame and near/far by camera distance to the baseline. Its
 camera-side switch is one proper half-turn in court XY, shared by the KP
 permutation and canonical camera transform. V2 artifacts and checkpoints are
 never treated as V3.
+
+Court dataset v4 retains the V3 camera-view KP14 semantics and adds an explicit
+safe-trajectory authority. It consumes only validated public scene-export
+cameras and `points_scene`, converts them to metric scene coordinates, and
+builds density-qualified inflated occupancy plus bounded endpoint-ball and
+captured-camera capsule support. Every selected closed path point and every
+swept edge, including the seam, must lie strictly inside support and outside
+inflated occupancy. Missing, empty, non-finite, boundary-touching, or exhausted
+support fails closed; V4 never falls back to a legacy full orbit.
 
 ## Confirmed v1 behaviour
 
@@ -119,7 +128,7 @@ trajectory path -> camera centre -> target-court resolver
 
 `CourtDatasetConfiguration` gains a required
 `schema_version: CourtDatasetSchemaVersion`, with the only accepted values
-`v1`, `v2`, and `v3`. The version is selected once at the configuration boundary and
+`v1`, `v2`, `v3`, and `v4`. The version is selected once at the configuration boundary and
 is passed explicitly to planning, assembly, diagnostics, validation, and
 visualization. Inferring the version from the shape of a label payload is not
 allowed.
@@ -133,13 +142,19 @@ configs/dataset/court/
 ├── v1.yaml     # alias to base.yaml
 ├── v2.yaml     # composes base and overrides version plus target modes
 ├── v3.yaml     # corrected camera-view KP14 family
+├── v4.yaml     # strict safe paths; scene-pipeline production default
 └── train.yaml  # compatibility alias to base.yaml (therefore v1)
 ```
 
-`run_scene_pipeline.yaml` continues to resolve v1 by default. All versions are
-selectable without editing a file:
+After the complete B00 evidence passed every frozen release gate,
+`run_scene_pipeline.yaml` resolves strict V4 by default. The explicit
+`dataset/court=train` compatibility alias remains exact V1, and every version
+remains selectable without editing a file:
 
 ```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
+  dataset/court=train
+
 .venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
   dataset/court=v1
 
@@ -148,10 +163,14 @@ selectable without editing a file:
 
 .venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
   dataset/court=v3
+
+.venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
+  dataset/court=v4
 ```
 
 Tests and runtime code must use Hydra composition for these files. They must not
-load `base.yaml`, `v1.yaml`, `v2.yaml`, or `v3.yaml` as standalone mappings.
+load `base.yaml`, `v1.yaml`, `v2.yaml`, `v3.yaml`, or `v4.yaml` as standalone
+mappings.
 
 ### Validation rules
 
@@ -172,6 +191,58 @@ The v2 and v3 presets therefore guarantee that every accepted generated camera l
 at the centre of its resolved target court. The existing configurable
 `look_at_height_m` remains the local court Z coordinate; “centre” means local
 `(x, y) = (0, 0)` rather than forcing the look-at height to zero.
+
+### V4 safety and promotion boundary
+
+V4 has separate `PathFamilyV4`, `VerticalProfileV4`, and
+`OrbitStableFieldV4` vocabularies so the exact V1--V3 enums do not change.
+Candidate geometry keeps circles, ellipses, tangent-continuous rounded
+rectangles, sinusoidal height, and periodic raised phases. V4 also constructs
+typed `free_space_cycle` controls from trustworthy short captured-camera edges
+plus an exactly collision-checked spatial closure. Each cycle is rounded only
+inside the configured camera-clearance corridor, resampled uniformly in 3-D,
+and checked again edge-by-edge. Selection evaluates the complete candidate
+inventory, retains only fully safe paths, reports typed rejection reasons and
+coverage shortfall, and raises structured safe-candidate exhaustion instead of
+selecting an unsafe or legacy candidate.
+
+For every geometry-safe candidate, V4 evaluates the complete deterministic
+semantic-view phase period with the same pre-render KP14 oracle used by the
+renderer. Selection jointly freezes one candidate and one explicit phase while
+enforcing typed geometry/view coverage, the proposal budget, at least 2,000
+projected valid frames, and the 0.90 projected accepted fraction. Candidate
+phase records retain the view, expected valid/rejected accounting, exact
+rejection counts, and a frame-disposition digest. The selected group and every
+planned sample carry that phase authority, so neither group sorting nor shard
+order can silently choose a different view phase downstream.
+
+Density-qualified point voxels are inflated first. Separately configured
+camera-centre balls and short temporal camera capsules are then subtracted as
+positive free-space evidence; their radii remain much smaller than the support
+radius and therefore do not erase a wall across the whole support tube.
+Captured controls must have zero residual occupancy. Obstacle authority uses
+exact segment-versus-inflated-voxel AABB intersection, including diagonal and
+corner contact; sweep samples remain the bounded support-containment check.
+
+The support policy and its input digest are persisted in the V4 plan, every
+selected group carries its point-and-swept-edge evaluation, and every sample
+carries the same support digest through rendering, labels, manifests,
+diagnostics, assembly, and Court Detection ingestion. Pre-render validation
+rebuilds the support model from the same public export and rejects any mismatch.
+It also recomputes each selected semantic-phase disposition and rejects any
+phase, count, view, or digest mismatch before invoking NHT.
+
+The tracked benchmark protocol lives in
+`experiments/synthetic_data_generation/court_trajectory_safety/`. A quality-only
+rule is promotable only with a trajectory-group-held-out recall of at least
+0.90, precision of at least 0.80, valid-control false-positive rate at most
+0.10, and at least 12 held-out positive and 12 held-out negative labels. The
+complete B00 pilot, blind review, calibration, and final dataset passed the
+frozen geometry, budget, semantic, renderer, assembler, split, and artifact-rate
+gates, so V4 is now the scene-pipeline production default. Explicit
+`dataset/court=train`, V1, V2, and V3 selectors remain supported with their exact
+legacy semantics. Court Detection publication remains a separate boundary: its
+canonical unsuffixed source stays V3 until a V4 dataset is published there.
 
 ## Per-camera target-court resolution (v2 and v3)
 
@@ -215,10 +286,10 @@ target_scene = resolved_court.scene_from_court(0, 0, look_at_height_m)
 The OpenCV camera forward axis must equal the normalized vector from the camera
 centre to this point, within the existing numerical tolerance.
 
-### v2/v3 typed ownership
+### v2/v3/v4 typed ownership
 
 The group-level v1 binding cannot represent a complex trajectory whose nearest
-court changes partway around the orbit. v2 and v3 therefore use an explicit policy at
+court changes partway around the orbit. v2, v3, and v4 therefore use an explicit policy at
 group level and a resolved binding at sample level:
 
 ```text
@@ -250,13 +321,13 @@ complex-centred view does not carry one static `target_court_instance_id`.
 - target-court diagnostics and validation.
 
 The existing v1 types and serialized fields remain exact. Implementation may
-share primitives, but the public boundary must use explicit v1/v2/v3 plan types or
+share primitives, but the public boundary must use explicit v1/v2/v3/v4 plan types or
 an equally strict discriminated union; it must not make the current group
 binding nullable across versions.
 
 ### Validation and diagnostics
 
-v2 and v3 remove the v1 court-balance release gate. They replace it with a geometric
+v2, v3, and v4 remove the v1 court-balance release gate. They replace it with a geometric
 recomputation over every planned, accepted, and rejected sample:
 
 - court-centred samples reference their trajectory's centre court;
@@ -455,16 +526,17 @@ remains invalid.
 The version registry under the Court dataset package owns all related schema
 identifiers and semantic cardinality:
 
-| Artifact | v1 | v2 legacy | v3 camera-view |
-|---|---|---|---|
-| dataset | `canonical_court_dataset_v1` | `canonical_court_dataset_v2` | `canonical_court_dataset_v3` |
-| orbit plan | `canonical_court_orbit_plan_v1` | `canonical_court_orbit_plan_v2` | `canonical_court_orbit_plan_v3` |
-| sample labels | `canonical_court_sample_v1` | `canonical_court_sample_v2` | `canonical_court_sample_v3` |
-| semantic manifest | `court_renderer_semantic_manifest_v1` | `court_renderer_semantic_manifest_v2` | `court_renderer_semantic_manifest_v3` |
-| performance | `court_dataset_performance_v2` | `court_dataset_performance_v3` | `court_dataset_performance_v4` |
-| shard attempt | `court_render_shard_attempt_v1` | `court_render_shard_attempt_v2` | `court_render_shard_attempt_v3` |
-| acceptance diagnostics | `court_acceptance_diagnostics_v1` | `court_acceptance_diagnostics_v2` | `court_acceptance_diagnostics_v3` |
-| semantic classes | 7 × 2 | 14 × 1 | 14 × 1 |
+| Artifact | v1 | v2 legacy | v3 camera-view | v4 safe path |
+|---|---|---|---|---|
+| dataset | `canonical_court_dataset_v1` | `canonical_court_dataset_v2` | `canonical_court_dataset_v3` | `canonical_court_dataset_v4` |
+| orbit/path plan | `canonical_court_orbit_plan_v1` | `canonical_court_orbit_plan_v2` | `canonical_court_orbit_plan_v3` | `canonical_court_safe_path_plan_v4` |
+| sample labels | `canonical_court_sample_v1` | `canonical_court_sample_v2` | `canonical_court_sample_v3` | `canonical_court_sample_v4` |
+| semantic manifest | `court_renderer_semantic_manifest_v1` | `court_renderer_semantic_manifest_v2` | `court_renderer_semantic_manifest_v3` | `court_renderer_semantic_manifest_v4` |
+| performance | `court_dataset_performance_v2` | `court_dataset_performance_v3` | `court_dataset_performance_v4` | `court_safe_trajectory_performance_v1` |
+| shard attempt | `court_render_shard_attempt_v1` | `court_render_shard_attempt_v2` | `court_render_shard_attempt_v3` | `court_render_shard_attempt_v4` |
+| acceptance diagnostics | `court_acceptance_diagnostics_v1` | `court_acceptance_diagnostics_v2` | `court_acceptance_diagnostics_v3` | `court_acceptance_diagnostics_v4` |
+| final support occupancy | — | — | — | `court_v4_support_occupancy_v1` JSON + little-endian int64 NPY |
+| semantic classes | 7 × 2 | 14 × 1 | 14 × 1 | 14 × 1 |
 
 The performance evidence schema changes with each family because
 `visible_points_by_class` changes cardinality or semantic meaning. Attempt-local
@@ -536,7 +608,7 @@ publication mutation.
 The visualizer first validates and selects the exact dataset schema.
 
 - v1 keeps the current seven-class two-point overlay and legend.
-- v2 and v3 validate fourteen singleton classes, index points by
+- v2, v3, and v4 validate fourteen singleton classes, index points by
   `physical_index`, and draws the ground-court connections from the 0–13 subset
   of `COURT_SKELETON`. V3 validates the shared identity/full-half-turn inventory
   before drawing. Point labels and the legend use the selected version's
@@ -544,11 +616,82 @@ The visualizer first validates and selects the exact dataset schema.
 - No overlay reshapes another schema in memory as a compatibility
   conversion.
 
+The default `visualization.court_overlay.mode=semantic` keeps those overlays.
+V4 additionally publishes `diagnostics/trajectory-support-occupancy.json` and
+the bound `trajectory-support-occupancy.npy`: the lexicographically sorted,
+post-inflation and post-camera-corridor-carve cells captured directly from the
+safety model. The JSON binds the metric-scene coordinate space, voxel size,
+support input and content SHA-256 digests, policy/scene/profile identities,
+dtype, shape, and count. The V4 trajectory plan persists the same cell-free
+identity and expected content digest, so replacing cells and recomputing only
+the artifact metadata is rejected. It never serializes cells, search-index, or
+KD-tree internals into `trajectory-plan.json`.
+
+Select the strict depth-aware AABB overlay through the same entrypoint:
+
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.visualize_dataset \
+  visualization.domain=court \
+  visualization.dataset_root=scenes/<scene_id>/datasets/court \
+  visualization.trajectory_id=<trajectory_id> \
+  visualization.court_overlay.mode=trajectory_support_aabb
+```
+
+This mode accepts only V4 and requires the exact artifact. Before extracting
+faces, the default `trajectory_filter_scope=local_swept_segments` derives a
+display-only cell set independently for every rendered trajectory frame. It
+uses that frame's incoming and outgoing segments in the same closed order as
+the V4 safety path: frame zero includes the last-to-first seam, and the last
+frame includes the same seam as its outgoing segment. One-point paths retain
+one degenerate segment; two-point paths retain both directed segments.
+The default `trajectory_filter_radius_mode=explicit_radius` and
+`trajectory_filter_radius_m=1.5` use a readability-only, display-only proximity
+radius. This 1.5 m value is not a safety, support, or collision threshold and
+never changes collision authority. The cell distance is the exact
+segment-to-closed-AABB distance, not a cell-centre approximation.
+
+Set `trajectory_filter_scope=selected_trajectory` to preserve the full closed
+trajectory display, or set `trajectory_filter_scope=all` with both radius mode
+and radius null to inspect the complete artifact. Non-all scopes may instead
+select `trajectory_filter_radius_mode=support_radius` to resolve the V4 plan's
+`support_radius_m`, or use another positive explicit radius. Missing plan
+samples, manifest/camera binding mismatches, empty trajectories, and any
+per-frame filter that retains no cells fail closed. This derived set never
+changes collision decisions or the occupancy artifact/digest. The v2 sidecar
+records the scope, radius authority, resolved radius, exact distance metric,
+centre/closed-segment counts, and `affects_collision_authority=false`;
+frame-local output additionally records min/max/total cell, face, and edge
+counts plus a deterministic count-sequence digest.
+
+The renderer removes internal six-neighbour faces, canonicalizes and
+deduplicates every exposed-face edge, and by default suppresses only
+incidence-two edges whose outward normals are identical, removing coplanar
+voxel seams while retaining boundary and crease edges.
+`wireframe_topology=all_edges` explicitly preserves the unsuppressed v1
+wireframe. Edge segments are near-plane clipped and rasterized with
+perspective-correct camera-Z and a local z-buffer before composition against
+the already-metric 3DGS depth (valid where alpha and depth are positive).
+`visualization.court_overlay.render_style=solid` explicitly selects the retained
+exposed-face triangle rasterizer; there is no automatic style fallback. NHT RGB
+remains its raw
+premultiplied/coverage-weighted accumulation and is resolved as
+`rgb + background * (1 - alpha)`. Missing/tampered authority and configured
+cell, face, canonical-edge, or projected-pixel limit violations fail without
+fallback or truncation. The artifact's original cell count remains subject to
+`maximum_cells`, and the derived set is never truncated. Style, display filter,
+color, background, solid/edge opacity, edge
+width, near plane, depth epsilon, and limits are Hydra settings recorded with
+geometry counts and aggregate surface/edge pixel counts in the AABB-only v2
+video JSON sidecar. `covered_fragment_count` includes repeated brush fragments;
+`edge_pixel_count` counts the unique finite pixels remaining in the local
+z-buffer. Existing semantic Court, BLCS, and PLCS sidecars retain the unchanged
+v1 schema and key inventory.
+
 ## Implementation ownership
 
 | Area | Responsibility |
 |---|---|
-| `configs/dataset/court/*.yaml` | Shared base plus explicit v1/v2/v3 selection; v2/v3 singleton target presets. |
+| `configs/dataset/court/*.yaml` | Shared base plus explicit v1/v2/v3/v4 selection; V4 is the scene-pipeline default and `train` remains the V1 alias. |
 | `configuration.py` | Parse schema version and enforce version-specific target-mode rules. |
 | `dataset/court/schema.py` (new) | Court dataset version registry, exact schema identifiers, semantic cardinality, and dispatch metadata. |
 | `dataset/court/contracts.py` | Preserve v1/v2 public meanings and give the V3 plan an exact new identity. |
@@ -560,8 +703,8 @@ The visualizer first validates and selects the exact dataset schema.
 | `assembler.py` / `semantic_manifest.py` | Version-specific sample layout, strict visibility/class validation, and manifest construction. |
 | `rendering/nht.py` / `shards.py` | Validate sample bindings against alignment; prevent cross-version shard reuse. |
 | `diagnostics.py` / `performance.py` | Record exact versioned sample geometry and class metrics. |
-| `pipeline/handlers.py` | Aggregate v2/v3 target bindings from samples. |
-| `visualization/sources.py` / `overlays.py` | Exact v1/v2/v3 reader dispatch and version-specific overlays. |
+| `pipeline/handlers.py` | Aggregate v2/v3/v4 target bindings from samples. |
+| `visualization/sources.py` / `overlays.py` / `court_aabb.py` | Exact v1/v2/v3/v4 reader dispatch, semantic overlays, and strict V4 metric-depth AABB rasterization. |
 
 The nearest-court resolver stays task-local because it depends on the synthetic
 scene's `MultiCourtLayout` and singleton planning contracts. Only stable CourtKP
@@ -599,7 +742,7 @@ Tests follow the repository's unit/integration/e2e boundaries.
   - renderer-visible summaries use the selected version's ordered names.
 - existing `test_contracts.py`, `test_assembler.py`,
   `test_semantic_manifest.py`, `test_shards.py`, and `test_performance.py`
-  - exact v1/v2/v3 keys and schemas;
+  - exact v1/v2/v3/v4 keys and schemas;
   - cross-version inputs and mixed artifacts are rejected;
   - sample-level targets and fourteen-class metrics are recomputed rather than
     trusted.
@@ -607,11 +750,12 @@ Tests follow the repository's unit/integration/e2e boundaries.
 ### Integration
 
 - `tests/integration/synthetic_data_generation/test_configuration.py`
-  composes `dataset/court=v1`, `dataset/court=v2`, and `dataset/court=v3`, checks the four-versus-one
+  composes `dataset/court=v1`, `dataset/court=v2`, `dataset/court=v3`, and
+  `dataset/court=v4`, checks the four-versus-one
   target modes, and rejects unknown versions or invalid empty target lists.
 - `tests/integration/synthetic_data_generation/test_court_dataset.py` runs the
   lightweight renderer boundary for the versioned families. v1 keeps the
-  current group balance assertions; v2/v3 check per-sample nearest/fixed
+  current group balance assertions; v2/v3/v4 check per-sample nearest/fixed
   selection, exact 14KP labels, accepted/rejected propagation, and deterministic
   same-seed output. V3 also checks the full-half-turn and finite lateral
   acceptance.

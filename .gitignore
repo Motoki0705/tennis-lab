@@ -60,6 +60,9 @@ annotations/
 *.json
 *.xml
 !.devcontainer/devcontainer.json
+!experiments/synthetic_data_generation/court_trajectory_safety/frozen-config.json
+!experiments/synthetic_data_generation/court_trajectory_safety/pilot-manifest.json
+!experiments/synthetic_data_generation/court_trajectory_safety/summary.json
 
 # Model files and checkpoints
 checkpoints/*

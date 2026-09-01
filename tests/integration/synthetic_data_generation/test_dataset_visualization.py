@@ -25,6 +25,13 @@ from src.synthetic_data_generation.dataset.runtime import (
     RenderSampleKey,
 )
 from src.synthetic_data_generation.visualization import (
+    VISUALIZATION_METADATA_SCHEMA,
+    CourtAABBRenderStyle,
+    CourtAABBTrajectoryFilterRadiusMode,
+    CourtAABBTrajectoryFilterScope,
+    CourtAABBWireframeTopology,
+    CourtOverlayConfiguration,
+    CourtOverlayMode,
     DatasetVisualizationDomain,
     DatasetVisualizationRequest,
     visualize_dataset,
@@ -36,11 +43,56 @@ from src.synthetic_data_generation.visualization.sources import (
 )
 from src.utils.video.reader import probe_video_info
 
+_V1_SIDECAR_KEYS = {
+    "schema",
+    "domain",
+    "dataset_schema",
+    "dataset_scene_id",
+    "selection",
+    "frame_count",
+    "source_frame_order",
+    "source_width",
+    "source_height",
+    "width",
+    "height",
+    "padding",
+    "output_fps",
+    "source_fps",
+    "history_frames",
+    "video",
+}
+
 
 def _root(tmp_path: Path, domain: str) -> Path:
     root = tmp_path / "scenes" / "scene-0" / "datasets" / domain
     root.mkdir(parents=True)
     return root
+
+
+def _semantic_court_overlay() -> CourtOverlayConfiguration:
+    return CourtOverlayConfiguration(
+        mode=CourtOverlayMode.SEMANTIC,
+        render_style=CourtAABBRenderStyle.WIREFRAME,
+        wireframe_topology=CourtAABBWireframeTopology.BOUNDARY,
+        trajectory_filter_scope=(
+            CourtAABBTrajectoryFilterScope.LOCAL_SWEPT_SEGMENTS
+        ),
+        trajectory_filter_radius_mode=(
+            CourtAABBTrajectoryFilterRadiusMode.EXPLICIT_RADIUS
+        ),
+        trajectory_filter_radius_m=1.5,
+        color_rgb=(255, 96, 32),
+        background_color_rgb=(0, 0, 0),
+        opacity=0.55,
+        edge_opacity=0.40,
+        edge_width_px=1,
+        depth_epsilon_m=0.02,
+        near_plane_m=0.05,
+        maximum_cells=1_000_000,
+        maximum_surface_faces=4_000_000,
+        maximum_edge_segments=8_000_000,
+        maximum_projected_pixels=100_000_000,
+    )
 
 
 def _logical_render(frame_index: int) -> LogicalRenderSample:
@@ -340,6 +392,7 @@ def test_court_orbit_streams_exact_manifest_sequence_to_mp4(
         fps=12.0,
         crf=20,
         history_frames=3,
+        court_overlay=_semantic_court_overlay(),
     )
 
     result = visualize_dataset(request)
@@ -348,6 +401,8 @@ def test_court_orbit_streams_exact_manifest_sequence_to_mp4(
     payload = json.loads(result.metadata_path.read_text(encoding="utf-8"))
     assert payload["source_frame_order"] == list(_FakeCourt.frame_order)
     assert payload["selection"]["trajectory_id"] == "orbit-0"
+    assert set(payload) == _V1_SIDECAR_KEYS
+    assert payload["schema"] == VISUALIZATION_METADATA_SCHEMA
 
 
 @pytest.mark.parametrize(
@@ -375,6 +430,7 @@ def test_court_singleton_overlay_streams_to_mp4_without_v1_reshaping(
         fps=12.0,
         crf=20,
         history_frames=3,
+        court_overlay=_semantic_court_overlay(),
     )
 
     result = visualize_dataset(request)
@@ -401,6 +457,7 @@ def test_odd_canonical_dimensions_are_explicitly_padded_for_yuv420(
         fps=12.0,
         crf=20,
         history_frames=3,
+        court_overlay=_semantic_court_overlay(),
     )
 
     result = visualize_dataset(request)
@@ -433,6 +490,7 @@ def test_stream_failure_leaves_no_partial_video_or_metadata(
         fps=12.0,
         crf=20,
         history_frames=3,
+        court_overlay=_semantic_court_overlay(),
     )
 
     with pytest.raises(ValueError, match="corrupt source frame"):
@@ -463,6 +521,7 @@ def test_concurrent_publication_has_one_exclusive_winner(
         fps=12.0,
         crf=20,
         history_frames=3,
+        court_overlay=_semantic_court_overlay(),
     )
 
     with ThreadPoolExecutor(max_workers=2, thread_name_prefix="visualizer") as pool:
@@ -504,6 +563,7 @@ def test_late_racer_is_not_overwritten_or_removed_during_owned_rollback(
         fps=12.0,
         crf=20,
         history_frames=3,
+        court_overlay=_semantic_court_overlay(),
     )
     original_publish = renderer_module._publish_exclusively
 
@@ -544,6 +604,7 @@ def test_video_publication_failure_rolls_back_owned_metadata(
         fps=12.0,
         crf=20,
         history_frames=3,
+        court_overlay=_semantic_court_overlay(),
     )
     original_publish = renderer_module._publish_exclusively
 
@@ -592,6 +653,7 @@ def test_compact_view_streams_three_frames_to_mp4_and_deterministic_metadata(
         fps=12.0,
         crf=20,
         history_frames=3,
+        court_overlay=_semantic_court_overlay(),
     )
 
     result = visualize_dataset(request)
@@ -607,5 +669,7 @@ def test_compact_view_streams_three_frames_to_mp4_and_deterministic_metadata(
         "logical_scene_id": "logical-0",
         "trajectory_id": None,
     }
+    assert set(payload) == _V1_SIDECAR_KEYS
+    assert payload["schema"] == VISUALIZATION_METADATA_SCHEMA
     assert "created_at" not in payload
     assert not tuple(tmp_path.glob(f".{domain.value}.mp4.*.staging*"))

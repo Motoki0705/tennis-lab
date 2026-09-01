@@ -1,0 +1,44 @@
+{
+  "schema": "court_trajectory_safety_frozen_config_v2",
+  "scene_id": "B00",
+  "observation_lock": {
+    "pilot_manifest_sha256": "6d65ff89729a866491d97f62dff8c76650d0dff793544baf26533c168a75dffa",
+    "pilot_features_sha256": "3d31139f8ea97e90e7d13b659038f466641ab4ebc5360fb12b6c78708d03ea81",
+    "blind_review_manifest_sha256": "79c7f35b45be82ceab3b732db53c841078c4393544dab317265a5cdb93140f43",
+    "reviewer_a_sha256": "4eae289a094586b613fa6d7d29fe09fb8da00b8a14bc5e164c7ed5a072dad079",
+    "reviewer_b_sha256": "8e774f559ca5bc831a71e26f350af003f38530535ac671c12200a3f612dc54ef",
+    "adjudication_sha256": "5685dc2b0b84cef434bd5a597209e399378facbb9a60f70d1ddd8355eab0d58b",
+    "rgb_preview_inventory_sha256": "7d13309ad19ee31d5e8a3f16889137affbb7275d7e046c70a3f99c455341898d"
+  },
+  "pilot_seed": 823,
+  "minimum_pilot_views": 128,
+  "required_strata": [
+    "captured_control",
+    "legacy_orbit",
+    "safe_v4_candidate",
+    "support_boundary",
+    "support_exterior",
+    "support_interior"
+  ],
+  "feature_definition_id": "court_public_quality_features_v1",
+  "group_split": {
+    "calibration_fraction": 0.5,
+    "held_out_fraction": 0.5
+  },
+  "quality_only_thresholds": {
+    "minimum_recall": 0.9,
+    "minimum_precision": 0.8,
+    "maximum_valid_control_false_positive_rate": 0.1,
+    "minimum_positive_labels": 12,
+    "minimum_negative_labels": 12
+  },
+  "geometry_release_gates": {
+    "minimum_frames": 2000,
+    "maximum_frames": 5000,
+    "minimum_accepted_fraction": 0.9,
+    "minimum_trajectory_groups": 24,
+    "maximum_candidate_to_legacy_artifact_rate_ratio": 0.5,
+    "required_selected_support_violations": 0,
+    "require_group_disjoint_splits": true
+  }
+}

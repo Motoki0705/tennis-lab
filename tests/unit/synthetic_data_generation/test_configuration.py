@@ -39,6 +39,8 @@ from src.utils.configuration import (
     PathContractError,
     PathResolver,
     RuntimePathRoots,
+    SemanticConfigurationError,
+    UnknownConfigurationKeyError,
 )
 from src.utils.paths import PROJECT_ROOT
 
@@ -201,6 +203,65 @@ def test_explicit_court_schema_compositions_preserve_versioned_target_contract(
     assert court.schema_version is version
     assert frozenset(court.view.target_modes) == target_modes
     assert court.sampling.minimum_accepted_fraction == 0.9
+
+
+@pytest.mark.parametrize(
+    "version",
+    [
+        CourtDatasetSchemaVersion.V1,
+        CourtDatasetSchemaVersion.V2,
+        CourtDatasetSchemaVersion.V3,
+    ],
+)
+@pytest.mark.parametrize(
+    ("v4_only_key", "value"),
+    [
+        ("support", {}),
+        ("benchmark_decision_id", "test-decision"),
+    ],
+)
+def test_legacy_court_schema_rejects_v4_only_root_keys_as_semantic_mismatch(
+    version: CourtDatasetSchemaVersion,
+    v4_only_key: str,
+    value: object,
+) -> None:
+    raw = OmegaConf.to_container(
+        _compose(f"dataset/court={version.value}").dataset.court,
+        resolve=True,
+    )
+    assert isinstance(raw, dict)
+    raw[v4_only_key] = value
+
+    with pytest.raises(
+        SemanticConfigurationError,
+        match=(
+            rf"schema_version={version.value} is incompatible with V4-only "
+            rf"configuration key\(s\): dataset\.court\.{v4_only_key}\."
+        ),
+    ):
+        CourtDatasetConfiguration.from_mapping(raw)
+
+
+@pytest.mark.parametrize(
+    "version",
+    [
+        CourtDatasetSchemaVersion.V1,
+        CourtDatasetSchemaVersion.V2,
+        CourtDatasetSchemaVersion.V3,
+    ],
+)
+def test_legacy_court_schema_preserves_unknown_root_key_error(
+    version: CourtDatasetSchemaVersion,
+) -> None:
+    raw = OmegaConf.to_container(
+        _compose(f"dataset/court={version.value}").dataset.court,
+        resolve=True,
+    )
+    assert isinstance(raw, dict)
+    raw["genuine_unknown"] = True
+
+    with pytest.raises(UnknownConfigurationKeyError, match="genuine_unknown"):
+        CourtDatasetConfiguration.from_mapping(raw)
 
 
 def test_production_alignment_evidence_and_acceptance_are_complete_typed_values(

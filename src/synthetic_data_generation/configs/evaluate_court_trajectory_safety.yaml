@@ -1,0 +1,25 @@
+defaults:
+  - dataset/court@candidate_court: v4
+  - dataset/court@legacy_court: v3
+  - _self_
+
+action: render_frozen_pilot
+scene_path: ???
+alignment_path: ???
+pilot_manifest_path: experiments/synthetic_data_generation/court_trajectory_safety/pilot-manifest.json
+pilot_output_root: outputs/court_trajectory_safety/B00-required-coverage-pilot
+final_evidence_root: outputs/court_trajectory_safety/B00-required-coverage-final
+annotation_root: outputs/court_trajectory_safety/issue-823-required-coverage-blind
+audit_output_root: ${annotation_root}/evidence
+source_video_path: data/synthetic_data_generation/raw/B00.mp4
+frozen_config_path: experiments/synthetic_data_generation/court_trajectory_safety/frozen-config.json
+render_executable: nht-render
+timeout_seconds: 3600.0
+environment:
+  CUDA_VISIBLE_DEVICES: "0"
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,outputs,hydra/court_trajectory_safety}
+  output_subdir: null
+  job:
+    chdir: false

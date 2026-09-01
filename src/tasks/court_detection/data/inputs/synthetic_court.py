@@ -28,8 +28,10 @@ from src.synthetic_data_generation.dataset.court.contracts import (
 from src.synthetic_data_generation.dataset.court.schema import (
     COURT_DATASET_SCHEMA_V2,
     COURT_DATASET_SCHEMA_V3,
+    COURT_DATASET_SCHEMA_V4,
     COURT_SAMPLE_SCHEMA_V2,
     COURT_SAMPLE_SCHEMA_V3,
+    COURT_SAMPLE_SCHEMA_V4,
 )
 from src.synthetic_data_generation.scene_contract import SceneCamera
 from src.tasks.court_detection.configuration import SyntheticCourtSourceConfig
@@ -60,6 +62,8 @@ _V2_KP_SCHEMA = "synthetic_camera_relative_kp14"
 _V2_TARGET_COURT_KP_SCHEMA = "synthetic_camera_relative_kp14_target_court"
 _V3_KP_SCHEMA = "synthetic_camera_view_kp14_v3"
 _V3_TARGET_COURT_KP_SCHEMA = "synthetic_camera_view_kp14_v3_target_court"
+_V4_KP_SCHEMA = "synthetic_camera_view_kp14_v4"
+_V4_TARGET_COURT_KP_SCHEMA = "synthetic_camera_view_kp14_v4_target_court"
 _V1_FLIP_PERMUTATION = (1, 0, 3, 2, 5, 4, 6)
 _V2_FLIP_PERMUTATION = (1, 0, 3, 2, 6, 7, 4, 5, 9, 8, 11, 10, 12, 13)
 _V2_CHANNEL_NAMES = COURT_KP_NAMES[:14]
@@ -180,6 +184,15 @@ class SyntheticCourtInput:
             )
             channel_names = _V2_CHANNEL_NAMES
             flip_permutation = _V2_FLIP_PERMUTATION
+        elif config.schema == "v4":
+            source_schema = COURT_DATASET_SCHEMA_V4
+            keypoint_schema = (
+                _V4_TARGET_COURT_KP_SCHEMA
+                if config.keypoint_court_scope == "target_court"
+                else _V4_KP_SCHEMA
+            )
+            channel_names = _V2_CHANNEL_NAMES
+            flip_permutation = _V2_FLIP_PERMUTATION
         else:  # pragma: no cover - typed configuration is the authority
             raise ValueError(f"Unsupported Synthetic Court schema: {config.schema!r}.")
         self._spec = CourtInputSpec(
@@ -193,7 +206,7 @@ class SyntheticCourtInput:
                     CourtInputCapability.LINE_REFERENCE,
                     *(
                         {CourtInputCapability.V3_TARGET_COURT_POSE}
-                        if config.schema == "v3"
+                        if config.schema in {"v3", "v4"}
                         else set()
                     ),
                 }
@@ -241,7 +254,7 @@ class SyntheticCourtInput:
         source_sample_id = cast(str, record.payload["source_sample_id"])
         scene_id = cast(str, record.payload["scene_id"])
         pose_authority = None
-        if self.config.schema == "v3":
+        if self.config.schema in {"v3", "v4"}:
             target = cast(Mapping[str, object], labels["target_court"])
             camera = SceneCamera.from_dict(labels["camera"])
             binding = self._parse_target_court_binding(target)
@@ -250,7 +263,11 @@ class SyntheticCourtInput:
                     "Synthetic Court V3 pose target court disagrees with its record."
                 )
             pose_authority = CourtPoseAuthority(
-                source_schema="canonical_court_dataset_v3",
+                source_schema=(
+                    "canonical_court_dataset_v4"
+                    if self.config.schema == "v4"
+                    else "canonical_court_dataset_v3"
+                ),
                 camera=camera,
                 target_court=binding,
             )
@@ -270,9 +287,7 @@ class SyntheticCourtInput:
                     "dataset_manifest_sha256": record.payload[
                         "dataset_manifest_sha256"
                     ],
-                    "source_target_sha256": record.payload[
-                        "source_target_sha256"
-                    ],
+                    "source_target_sha256": record.payload["source_target_sha256"],
                     "trajectory_group_id": record.payload["trajectory_group_id"],
                     "trajectory_id": record.payload["trajectory_id"],
                     "view_id": record.payload["view_id"],
@@ -283,7 +298,7 @@ class SyntheticCourtInput:
                     "labels": str(record.annotation_path),
                     **(
                         {"target_court": labels["target_court"]}
-                        if self.config.schema in {"v2", "v3"}
+                        if self.config.schema in {"v2", "v3", "v4"}
                         else {}
                     ),
                 },
@@ -327,7 +342,7 @@ class SyntheticCourtInput:
                 raise ValueError(
                     "Synthetic Court scene_id disagrees with configuration."
                 )
-            if self.config.schema in {"v2", "v3"}:
+            if self.config.schema in {"v2", "v3", "v4"}:
                 self._validate_v2_manifest_envelope(manifest)
             samples = manifest["samples"]
             if not isinstance(samples, list) or not samples:
@@ -341,9 +356,11 @@ class SyntheticCourtInput:
                     manifest_digest=manifest_digest,
                 )
                 if record.sample_id in global_ids:
-                    raise ValueError("Synthetic Court stable sample IDs must be unique.")
+                    raise ValueError(
+                        "Synthetic Court stable sample IDs must be unique."
+                    )
                 global_ids.add(record.sample_id)
-                if self.config.schema in {"v2", "v3"}:
+                if self.config.schema in {"v2", "v3", "v4"}:
                     group_id = cast(str, record.payload["trajectory_group_id"])
                     group_key = (scene_id, group_id)
                     previous = group_splits.setdefault(group_key, record.split)
@@ -353,7 +370,7 @@ class SyntheticCourtInput:
                             f"scene={scene_id!r}, group={group_id!r}."
                         )
                 grouped[record.split].append(record)
-        if self.config.schema in {"v2", "v3"}:
+        if self.config.schema in {"v2", "v3", "v4"}:
             empty = [split for split, records in grouped.items() if not records]
             if empty:
                 raise ValueError(
@@ -404,8 +421,10 @@ class SyntheticCourtInput:
         manifest_digest: str,
     ) -> CourtSampleRecord:
         expected_keys = set(_BASE_SAMPLE_RECORD_KEYS)
-        if self.config.schema in {"v2", "v3"}:
+        if self.config.schema in {"v2", "v3", "v4"}:
             expected_keys.add("target_court")
+        if self.config.schema == "v4":
+            expected_keys.add("safety_support_input_digest")
         if not isinstance(value, Mapping) or set(value) != expected_keys:
             raise ValueError("Synthetic Court accepted sample record fields changed.")
 
@@ -413,9 +432,7 @@ class SyntheticCourtInput:
         trajectory_group_id = self._identifier(
             value["trajectory_group_id"], name="trajectory_group_id"
         )
-        trajectory_id = self._identifier(
-            value["trajectory_id"], name="trajectory_id"
-        )
+        trajectory_id = self._identifier(value["trajectory_id"], name="trajectory_id")
         view_id = self._identifier(value["view_id"], name="view_id")
         self._nonnegative_integer(value["sample_index"], name="sample_index")
         self._nonnegative_integer(
@@ -439,7 +456,7 @@ class SyntheticCourtInput:
             raise TypeError("Synthetic Court projection must be a mapping.")
         if not isinstance(value["metadata"], Mapping):
             raise TypeError("Synthetic Court metadata must be a mapping.")
-        if self.config.schema in {"v2", "v3"}:
+        if self.config.schema in {"v2", "v3", "v4"}:
             camera = SceneCamera.from_dict(value["camera"])
             if (
                 camera.camera_id != source_sample_id
@@ -457,12 +474,12 @@ class SyntheticCourtInput:
         paths: dict[str, Path] = {}
         for field in _PUBLISHED_FILE_FIELDS:
             path = self._resolve_published_path(root, value[field], name=field)
-            if self.config.schema in {"v2", "v3"} and not path.is_file():
+            if self.config.schema in {"v2", "v3", "v4"} and not path.is_file():
                 raise FileNotFoundError(
                     f"Synthetic Court manifest-published {field} is missing: {path}"
                 )
             paths[field] = path
-            if self.config.schema in {"v2", "v3"} and not path.resolve(
+            if self.config.schema in {"v2", "v3", "v4"} and not path.resolve(
                 strict=False
             ).is_relative_to(published_directory.resolve(strict=True)):
                 raise ValueError(
@@ -473,19 +490,24 @@ class SyntheticCourtInput:
             raise FileNotFoundError(
                 "Synthetic Court manifest-published RGB/labels are missing."
             )
-        if self.config.schema in {"v2", "v3"} and value[
+        if self.config.schema in {"v2", "v3", "v4"} and value[
             "depth_coordinate_space"
-        ] != (
-            "metric_scene_metres"
-        ):
+        ] != ("metric_scene_metres"):
             raise ValueError(
                 "Synthetic Court v2 depth_coordinate_space must be "
                 "'metric_scene_metres'."
             )
 
         target_court_id: str | None = None
-        if self.config.schema in {"v2", "v3"}:
+        if self.config.schema in {"v2", "v3", "v4"}:
             target_court_id = self._parse_target_court(value["target_court"])
+        if self.config.schema == "v4":
+            safety_digest = value["safety_support_input_digest"]
+            if (
+                not isinstance(safety_digest, str)
+                or re.fullmatch(r"[0-9a-f]{64}", safety_digest) is None
+            ):
+                raise ValueError("Synthetic Court V4 safety digest is invalid.")
         digest_payload = {
             "source_schema": self.spec.source_schema,
             "source_sample_id": source_sample_id,
@@ -494,7 +516,12 @@ class SyntheticCourtInput:
             "projection": value["projection"],
             **(
                 {"target_court": value["target_court"]}
-                if self.config.schema in {"v2", "v3"}
+                if self.config.schema in {"v2", "v3", "v4"}
+                else {}
+            ),
+            **(
+                {"safety_support_input_digest": value["safety_support_input_digest"]}
+                if self.config.schema == "v4"
                 else {}
             ),
         }
@@ -593,13 +620,15 @@ class SyntheticCourtInput:
         labels = self._read_json(record.annotation_path, name="Synthetic Court labels")
         expected_keys = set(_BASE_LABEL_KEYS)
         expected_schema = COURT_SAMPLE_SCHEMA
-        if self.config.schema in {"v2", "v3"}:
+        if self.config.schema in {"v2", "v3", "v4"}:
             expected_keys.add("target_court")
-            expected_schema = (
-                COURT_SAMPLE_SCHEMA_V2
-                if self.config.schema == "v2"
-                else COURT_SAMPLE_SCHEMA_V3
-            )
+            expected_schema = {
+                "v2": COURT_SAMPLE_SCHEMA_V2,
+                "v3": COURT_SAMPLE_SCHEMA_V3,
+                "v4": COURT_SAMPLE_SCHEMA_V4,
+            }[self.config.schema]
+        if self.config.schema == "v4":
+            expected_keys.add("safety_support_input_digest")
         if set(labels) != expected_keys or labels["schema"] != expected_schema:
             raise ValueError("Synthetic Court labels.json schema/fields changed.")
         manifest_record = cast(Mapping[str, object], record.payload["manifest_record"])
@@ -608,17 +637,22 @@ class SyntheticCourtInput:
                 raise ValueError(
                     f"Synthetic Court labels {field} disagrees with manifest."
                 )
-        if self.config.schema in {"v2", "v3"}:
+        if self.config.schema in {"v2", "v3", "v4"}:
             if labels["target_court"] != manifest_record["target_court"]:
                 raise ValueError(
                     "Synthetic Court labels target_court disagrees with manifest."
                 )
             self._parse_target_court(labels["target_court"])
+        if self.config.schema == "v4" and (
+            labels["safety_support_input_digest"]
+            != manifest_record["safety_support_input_digest"]
+        ):
+            raise ValueError("Synthetic Court V4 labels safety digest mismatch.")
         return labels
 
     def _load_rgb(self, record: CourtSampleRecord) -> Image.Image:
         rgb = np.load(record.image_path, allow_pickle=False)
-        if self.config.schema in {"v2", "v3"}:
+        if self.config.schema in {"v2", "v3", "v4"}:
             expected = (
                 cast(int, record.payload["height"]),
                 cast(int, record.payload["width"]),
@@ -668,7 +702,7 @@ class SyntheticCourtInput:
         )
         if self.config.schema == "v2":
             return self._parse_projection_v2(projection, record=record)
-        if self.config.schema == "v3":
+        if self.config.schema in {"v3", "v4"}:
             return self._parse_projection_v3(projection, record=record)
         if self.config.schema == "v1":
             return self._parse_projection_v1(projection)
@@ -729,7 +763,9 @@ class SyntheticCourtInput:
                         physical_index != expected_indices[point_index]
                         or physical_index in seen_physical
                     ):
-                        raise ValueError("Synthetic Court physical point identity changed.")
+                        raise ValueError(
+                            "Synthetic Court physical point identity changed."
+                        )
                     seen_physical.add(physical_index)
                     uv = point["uv"]
                     instance_points[physical_index] = torch.tensor(uv)
@@ -888,9 +924,12 @@ class SyntheticCourtInput:
                     )
                 point = self._parse_point(points[0])
                 renderer_visible = point["renderer_visible"]
-                if self._boolean(
-                    semantic["renderer_visible"], name="class.renderer_visible"
-                ) != renderer_visible:
+                if (
+                    self._boolean(
+                        semantic["renderer_visible"], name="class.renderer_visible"
+                    )
+                    != renderer_visible
+                ):
                     raise ValueError(
                         "Synthetic Court v2 class renderer visibility disagrees "
                         "with its singleton point."
@@ -998,7 +1037,9 @@ class SyntheticCourtInput:
         points_dtype: torch.dtype,
     ) -> CourtKeypointChannels:
         point_capacity = len(points[0])
-        if point_capacity == 0 or any(len(values) != point_capacity for values in points):
+        if point_capacity == 0 or any(
+            len(values) != point_capacity for values in points
+        ):
             raise ValueError(
                 "Synthetic Court channels require equal non-empty point capacity."
             )
@@ -1030,7 +1071,10 @@ class SyntheticCourtInput:
         }:
             raise ValueError("Synthetic Court v2 target resolution_policy is invalid.")
         distance = target["camera_to_court_center_distance_m"]
-        if not cls._is_finite_number(distance) or float(cast("float | int", distance)) < 0:
+        if (
+            not cls._is_finite_number(distance)
+            or float(cast("float | int", distance)) < 0
+        ):
             raise ValueError(
                 "Synthetic Court v2 target distance must be finite and non-negative."
             )
@@ -1116,7 +1160,11 @@ class SyntheticCourtInput:
 
     @staticmethod
     def _required_sequence(value: object, *, name: str) -> Sequence[object]:
-        if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or not value:
+        if (
+            not isinstance(value, Sequence)
+            or isinstance(value, (str, bytes))
+            or not value
+        ):
             raise ValueError(f"Synthetic Court {name} must be a non-empty sequence.")
         return value
 
@@ -1136,8 +1184,13 @@ class SyntheticCourtInput:
             or len(value) != 2
             or any(not SyntheticCourtInput._is_finite_number(item) for item in value)
         ):
-            raise ValueError("Synthetic Court point.uv must contain two finite numbers.")
-        return (float(cast("float | int", value[0])), float(cast("float | int", value[1])))
+            raise ValueError(
+                "Synthetic Court point.uv must contain two finite numbers."
+            )
+        return (
+            float(cast("float | int", value[0])),
+            float(cast("float | int", value[1])),
+        )
 
     @staticmethod
     def _is_finite_number(value: object) -> bool:
@@ -1172,9 +1225,7 @@ class SyntheticCourtInput:
     @staticmethod
     def _positive_integer(value: object, *, name: str, minimum: int) -> int:
         if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
-            raise ValueError(
-                f"Synthetic Court {name} must be an integer >= {minimum}."
-            )
+            raise ValueError(f"Synthetic Court {name} must be an integer >= {minimum}.")
         return value
 
 

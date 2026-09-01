@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import pytest
 
+from src.synthetic_data_generation.dataset.court import (
+    COURT_SCHEMA_V4 as EXPORTED_COURT_SCHEMA_V4,
+)
 from src.synthetic_data_generation.dataset.court.schema import (
     COURT_SCHEMA_V1,
     COURT_SCHEMA_V2,
     COURT_SCHEMA_V3,
+    COURT_SCHEMA_V4,
     CourtDatasetSchemaVersion,
     court_schema_for_version,
     court_schema_from_dataset_schema,
@@ -20,7 +24,8 @@ from src.synthetic_data_generation.dataset.court.schema import (
 from src.utils.schema.court import COURT_KP_NAMES
 
 
-def test_v1_v2_and_v3_registry_expose_all_exact_boundary_schemas() -> None:
+def test_version_registry_exposes_all_exact_boundary_schemas() -> None:
+    assert EXPORTED_COURT_SCHEMA_V4 is COURT_SCHEMA_V4
     expected = {
         CourtDatasetSchemaVersion.V1: (
             COURT_SCHEMA_V1,
@@ -61,6 +66,19 @@ def test_v1_v2_and_v3_registry_expose_all_exact_boundary_schemas() -> None:
             14,
             1,
         ),
+        CourtDatasetSchemaVersion.V4: (
+            COURT_SCHEMA_V4,
+            (
+                "canonical_court_dataset_v4",
+                "canonical_court_safe_path_plan_v4",
+                "canonical_court_sample_v4",
+                "court_renderer_semantic_manifest_v4",
+                "court_safe_trajectory_performance_v1",
+                "court_render_shard_attempt_v4",
+            ),
+            14,
+            1,
+        ),
     }
     readers = (
         court_schema_from_dataset_schema,
@@ -86,6 +104,12 @@ def test_v1_v2_and_v3_registry_expose_all_exact_boundary_schemas() -> None:
 
     assert COURT_SCHEMA_V2.semantic_class_names == COURT_KP_NAMES[:14]
     assert COURT_SCHEMA_V3.semantic_class_names == COURT_KP_NAMES[:14]
+    assert COURT_SCHEMA_V4.semantic_class_names == COURT_KP_NAMES[:14]
+
+
+def test_v4_registry_does_not_claim_a_legacy_next_version_name() -> None:
+    with pytest.raises(ValueError, match="Unknown Court performance schema"):
+        court_schema_from_performance_schema("court_dataset_performance_v5")
 
 
 @pytest.mark.parametrize(
