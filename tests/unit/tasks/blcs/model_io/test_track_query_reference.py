@@ -9,6 +9,7 @@ import torch
 
 from src.tasks.base.generate_dataset import (
     CourtKeypointContractMismatchError,
+    MissingCourtKeypointMetadataError,
     resolve_court_keypoint_contract,
 )
 from src.tasks.base.model_io import (
@@ -117,15 +118,15 @@ def test_reference_adapter_rejects_missing_metadata_identity_mismatch_and_masked
         adapter.build_call(masked_reference)
 
 
-def test_legacy_adapter_retains_five_inputs_and_rejects_camera_view_semantics() -> None:
-    legacy_batch = _batch()
-    del legacy_batch["reference_view_index"]
-    legacy = TrackQueryModelIOAdapter(
+def test_canonical_adapter_uses_five_inputs_and_rejects_camera_view_semantics() -> None:
+    canonical_batch = _batch()
+    del canonical_batch["reference_view_index"]
+    canonical = TrackQueryModelIOAdapter(
         num_court_tokens=14,
         num_queries=2,
         presence_threshold=0.5,
     )
-    assert len(legacy.build_call(legacy_batch).kwargs) == 5
+    assert len(canonical.build_call(canonical_batch).kwargs) == 5
     with pytest.raises(CourtKeypointContractMismatchError):
         TrackQueryModelIOAdapter(
             num_court_tokens=14,
@@ -142,6 +143,7 @@ def _write_checkpoint(
     metadata_selector_mode: ReferenceSelectorMode | None = (
         ReferenceSelectorMode.REFERENCE
     ),
+    canonical_architecture: bool = True,
 ) -> None:
     config = {
         "court_keypoints": {"selector": "camera_view_v2"},
@@ -162,10 +164,11 @@ def _write_checkpoint(
         resolve_court_keypoint_contract("camera_view_v2"),
     )
     if metadata_selector_mode is not None:
-        write_checkpoint_track_query_reference_contract(
-            checkpoint,
-            TrackQueryReferenceContract.reference_v2(metadata_selector_mode),
-        )
+        contract = TrackQueryReferenceContract.reference_v2(metadata_selector_mode)
+        if canonical_architecture:
+            write_checkpoint_track_query_reference_contract(checkpoint, contract)
+        else:
+            write_track_query_reference_contract(checkpoint, contract)
     torch.save(checkpoint, path)
 
 
@@ -184,8 +187,16 @@ def test_v2_checkpoint_requires_and_exactly_matches_independent_markers(
     with pytest.raises(MissingTrackQueryReferenceMetadataError):
         load_checkpoint_runtime(missing)
 
+    pre_promotion = tmp_path / "pre_promotion.ckpt"
+    _write_checkpoint(pre_promotion, canonical_architecture=False)
+    with pytest.raises(
+        MissingTrackQueryReferenceMetadataError,
+        match="pre-promotion checkpoints are incompatible",
+    ):
+        load_checkpoint_runtime(pre_promotion)
 
-def test_metadata_free_track_query_semantics_are_legacy_v1_only(
+
+def test_canonical_track_query_checkpoint_rejects_missing_metadata(
     tmp_path: Path,
 ) -> None:
     checkpoint: dict[str, object] = {
@@ -198,18 +209,63 @@ def test_metadata_free_track_query_semantics_are_legacy_v1_only(
     }
     add_court_coordinate_normalization(
         checkpoint,
-        artifact="BLCS legacy test checkpoint",
+        artifact="BLCS pre-promotion test checkpoint",
     )
     write_model_artifact_court_keypoint_contract(
         checkpoint,
         resolve_court_keypoint_contract("physical_v1"),
     )
-    path = tmp_path / "legacy_v1.ckpt"
+    path = tmp_path / "metadata_free.ckpt"
     torch.save(checkpoint, path)
-    assert load_checkpoint_runtime(path).track_query_reference_contract == (
-        TrackQueryReferenceContract.legacy_v1()
-    )
+    with pytest.raises(
+        MissingTrackQueryReferenceMetadataError,
+        match="architecture metadata is absent",
+    ):
+        load_checkpoint_runtime(path)
 
+    write_track_query_reference_contract(
+        checkpoint,
+        TrackQueryReferenceContract.physical_v1(),
+    )
+    semantic_only_path = tmp_path / "semantic_only.ckpt"
+    torch.save(checkpoint, semantic_only_path)
+    with pytest.raises(
+        MissingTrackQueryReferenceMetadataError,
+        match="pre-promotion checkpoints are incompatible",
+    ):
+        load_checkpoint_runtime(semantic_only_path)
+
+
+def test_canonical_track_query_never_receives_metadata_free_court_config_overlay(
+    tmp_path: Path,
+) -> None:
+    checkpoint: dict[str, object] = {
+        "hyper_parameters": {
+            "config": {
+                "model": {"name": "blcs_track_query"},
+            }
+        }
+    }
+    add_court_coordinate_normalization(
+        checkpoint,
+        artifact="BLCS metadata-free court test checkpoint",
+    )
+    path = tmp_path / "metadata_free_court.ckpt"
+    torch.save(checkpoint, path)
+
+    with pytest.raises(
+        MissingCourtKeypointMetadataError,
+        match="pre-promotion checkpoints are incompatible",
+    ):
+        load_checkpoint_runtime(
+            path,
+            runtime_court_keypoints="physical_v1",
+        )
+
+
+def test_track_query_checkpoint_rejects_court_semantic_mismatch(
+    tmp_path: Path,
+) -> None:
     mixed: dict[str, object] = {
         "hyper_parameters": {
             "config": {
@@ -230,3 +286,27 @@ def test_metadata_free_track_query_semantics_are_legacy_v1_only(
     torch.save(mixed, mixed_path)
     with pytest.raises(TrackQueryReferenceContractMismatchError):
         load_checkpoint_runtime(mixed_path)
+
+
+def test_checkpoint_rejects_removed_model_names(tmp_path: Path) -> None:
+    checkpoint: dict[str, object] = {
+        "hyper_parameters": {
+            "config": {
+                "court_keypoints": {"selector": "physical_v1"},
+                "model": {"name": "blcs_removed_track_query_variant"},
+            }
+        }
+    }
+    add_court_coordinate_normalization(
+        checkpoint,
+        artifact="BLCS removed-model test checkpoint",
+    )
+    write_model_artifact_court_keypoint_contract(
+        checkpoint,
+        resolve_court_keypoint_contract("physical_v1"),
+    )
+    path = tmp_path / "removed_model.ckpt"
+    torch.save(checkpoint, path)
+
+    with pytest.raises(RuntimeError, match="Unsupported BLCS checkpoint model name"):
+        load_checkpoint_runtime(path)

@@ -7,6 +7,8 @@ from copy import deepcopy
 import pytest
 
 from src.tasks.base.model_io.track_query_reference import (
+    TRACK_QUERY_CHECKPOINT_ARCHITECTURE_ID,
+    TRACK_QUERY_CHECKPOINT_ARCHITECTURE_METADATA_KEY,
     TRACK_QUERY_REFERENCE_METADATA_KEY,
     InvalidTrackQueryReferenceMetadataError,
     MissingTrackQueryReferenceMetadataError,
@@ -28,7 +30,7 @@ from src.tasks.base.models.track_query_reference import (
 @pytest.mark.parametrize(
     "contract",
     [
-        TrackQueryReferenceContract.legacy_v1(),
+        TrackQueryReferenceContract.physical_v1(),
         TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.REFERENCE),
     ],
 )
@@ -43,8 +45,6 @@ def test_independent_metadata_round_trip(
 
     assert result == resolved
     assert result.contract == contract
-    assert result.metadata is not None
-    assert result.legacy_metadata_free is False
     metadata = document[TRACK_QUERY_REFERENCE_METADATA_KEY]
     assert isinstance(metadata, dict)
     assert set(metadata) == {
@@ -56,32 +56,50 @@ def test_independent_metadata_round_trip(
     }
 
 
-def test_metadata_free_requires_explicit_legacy_v1_and_rejects_v2() -> None:
+@pytest.mark.parametrize(
+    "contract",
+    [
+        TrackQueryReferenceContract.physical_v1(),
+        TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.REFERENCE),
+    ],
+)
+def test_metadata_free_artifacts_are_always_rejected(
+    contract: TrackQueryReferenceContract,
+) -> None:
     with pytest.raises(MissingTrackQueryReferenceMetadataError, match="absent"):
         resolve_track_query_reference_contract({})
-    with pytest.raises(MissingTrackQueryReferenceMetadataError, match="legacy v1"):
+    with pytest.raises(MissingTrackQueryReferenceMetadataError, match="never infer"):
         validate_track_query_reference_contract(
             {},
-            TrackQueryReferenceContract.legacy_v1(),
-        )
-    with pytest.raises(MissingTrackQueryReferenceMetadataError, match="never infers"):
-        validate_track_query_reference_contract(
-            {},
-            TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.REFERENCE),
-            explicit_legacy_v1=True,
+            contract,
         )
 
-    legacy = resolve_track_query_reference_contract({}, explicit_legacy_v1=True)
-    assert legacy.contract == TrackQueryReferenceContract.legacy_v1()
-    assert legacy.metadata is None
-    assert legacy.legacy_metadata_free is True
+
+def test_checkpoint_requires_canonical_architecture_marker() -> None:
+    contract = TrackQueryReferenceContract.physical_v1()
+    checkpoint: dict[str, object] = {}
+    write_track_query_reference_contract(checkpoint, contract)
+
+    with pytest.raises(
+        MissingTrackQueryReferenceMetadataError,
+        match="architecture metadata is absent",
+    ):
+        validate_checkpoint_track_query_reference_contract(checkpoint, contract)
+
+    write_checkpoint_track_query_reference_contract(checkpoint, contract)
+    architecture = checkpoint[TRACK_QUERY_CHECKPOINT_ARCHITECTURE_METADATA_KEY]
+    assert architecture == {
+        "schema_version": 1,
+        "architecture": TRACK_QUERY_CHECKPOINT_ARCHITECTURE_ID,
+    }
+    validate_checkpoint_track_query_reference_contract(checkpoint, contract)
 
 
 @pytest.mark.parametrize(
     ("stored", "runtime"),
     [
         (
-            TrackQueryReferenceContract.legacy_v1(),
+            TrackQueryReferenceContract.physical_v1(),
             TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.REFERENCE),
         ),
     ],

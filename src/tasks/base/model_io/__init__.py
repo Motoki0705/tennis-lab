@@ -21,6 +21,9 @@ from src.tasks.base.model_io.court_keypoint_contract import (
 from src.tasks.base.model_io.tensors import TensorSpec, require_tensor
 from src.tasks.base.model_io.track_query_reference import (
     REFERENCE_SELECTOR_NOT_APPLICABLE,
+    TRACK_QUERY_CHECKPOINT_ARCHITECTURE_ID,
+    TRACK_QUERY_CHECKPOINT_ARCHITECTURE_METADATA_KEY,
+    TRACK_QUERY_CHECKPOINT_ARCHITECTURE_SCHEMA_VERSION,
     TRACK_QUERY_REFERENCE_METADATA_KEY,
     TRACK_QUERY_REFERENCE_METADATA_SCHEMA_VERSION,
     InvalidTrackQueryReferenceMetadataError,
@@ -52,6 +55,9 @@ __all__ = [
     "MissingTrackQueryReferenceMetadataError",
     "InvalidTrackQueryReferenceMetadataError",
     "REFERENCE_SELECTOR_NOT_APPLICABLE",
+    "TRACK_QUERY_CHECKPOINT_ARCHITECTURE_ID",
+    "TRACK_QUERY_CHECKPOINT_ARCHITECTURE_METADATA_KEY",
+    "TRACK_QUERY_CHECKPOINT_ARCHITECTURE_SCHEMA_VERSION",
     "TRACK_QUERY_REFERENCE_METADATA_KEY",
     "TRACK_QUERY_REFERENCE_METADATA_SCHEMA_VERSION",
     "TensorSpec",

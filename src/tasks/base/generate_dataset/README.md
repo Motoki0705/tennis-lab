@@ -158,8 +158,10 @@ Integer IDs are collision-free ranks in the complete lexicographically ordered
 scene ID table; `-1` is reserved only for padded `view_camera_ids`. Missing,
 unknown, mixed, out-of-range, padded, or identity/index-inconsistent records are
 errors. Checkpoints persist Court, target-frame, RoPE, and selector markers as
-independent fields. Matching tensor shapes never authorize a v1/v2 or
-reference/selector-zero load.
+independent fields and require the canonical
+`fixed_query_track_compressed_v1` architecture marker. Metadata-free and
+pre-promotion checkpoints are rejected. Matching tensor shapes never authorize
+a semantic or architecture migration.
 
 Training chooses the reference from the selected valid views using the
 caller-owned seeded worker RNG after subset selection; the candidate IDs are
