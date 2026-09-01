@@ -76,6 +76,7 @@ COURT_V4_DIGEST_AUTHORITIES = frozenset(
             "camera_sampling/support.py"
         ),
         Path("src/synthetic_data_generation/dataset/court/evaluation/quality.py"),
+        Path("src/synthetic_data_generation/dataset/court/occupancy_artifact.py"),
         Path("src/synthetic_data_generation/dataset/court/semantic_pre_render.py"),
         Path(
             "src/synthetic_data_generation/scripts/evaluate_court_trajectory_safety.py"

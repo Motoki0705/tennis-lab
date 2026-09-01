@@ -41,6 +41,7 @@ def test_canonical_visualization_has_no_scene_specific_paths() -> None:
         "__init__.py",
         "configuration.py",
         "contracts.py",
+        "court_aabb.py",
         "overlays.py",
         "renderer.py",
         "sources.py",
