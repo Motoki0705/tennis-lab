@@ -64,7 +64,7 @@ def _selections() -> tuple[ReferenceViewSelection, ReferenceViewSelection]:
     )
 
 
-def _reference_fields(selector_mode: str) -> dict[str, object]:
+def _reference_fields() -> dict[str, object]:
     selections = _selections()
     matrices = torch.tensor(
         [selection.provenance.reference_from_physical for selection in selections],
@@ -86,9 +86,7 @@ def _reference_fields(selector_mode: str) -> dict[str, object]:
     }
     write_track_query_reference_contract(
         result,
-        TrackQueryReferenceContract.reference_v2(
-            ReferenceSelectorMode(selector_mode)
-        ),
+        TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.REFERENCE),
     )
     return result
 
@@ -145,23 +143,18 @@ def _plcs_binding(profile: str) -> PLCSTrackingBoundModelIO:
 
 
 @pytest.mark.parametrize(
-    ("task", "profile", "selector_mode"),
+    ("task", "profile"),
     [
-        ("blcs", "track_query_reference", "reference"),
-        ("blcs", "track_query_ablation_d_v2_selector", "reference"),
-        ("blcs", "track_query_ablation_d_v2_selector_zero", "selector_zero"),
-        ("plcs", "track_query_reference", "reference"),
-        ("plcs", "track_query_ablation_d_v2_selector", "reference"),
-        ("plcs", "track_query_ablation_d_v2_selector_zero", "selector_zero"),
+        ("blcs", "tracking_query_reference"),
+        ("plcs", "tracking_query_reference"),
     ],
 )
-def test_v2_normal_and_d_use_exact_six_input_cpu_forward_backward(
+def test_reference_model_uses_exact_six_input_cpu_forward_backward(
     task: str,
     profile: str,
-    selector_mode: str,
 ) -> None:
     torch.manual_seed(801)
-    reference = _reference_fields(selector_mode)
+    reference = _reference_fields()
     binding: TrackQueryBoundModelIO | PLCSTrackingBoundModelIO
     if task == "blcs":
         binding = _blcs_binding(profile)
@@ -182,9 +175,7 @@ def test_v2_normal_and_d_use_exact_six_input_cpu_forward_backward(
             "court_kp": torch.rand(2, 2, 2, 14, 2, requires_grad=True),
             "court_vis": torch.ones(2, 2, 2, 14, dtype=torch.bool),
             "padding_mask": torch.zeros(2, 2, 2, dtype=torch.bool),
-            "court_keypoint_metadata": court_keypoint_contract_document(
-                court_contract
-            ),
+            "court_keypoint_metadata": court_keypoint_contract_document(court_contract),
             **reference,
         }
 

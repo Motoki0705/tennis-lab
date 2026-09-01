@@ -7,7 +7,6 @@ from typing import cast
 
 import pytest
 from hydra import compose, initialize_config_dir
-from torch import nn
 
 from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.model_io import (
@@ -17,12 +16,7 @@ from src.tasks.plcs.model_io import (
     PLCSTrackQueryReferenceIOAdapter,
     build_plcs_model_io,
 )
-from src.tasks.plcs.models.plcs_track_query_ablation_model import (
-    PLCSTrackQueryAblationModel,
-)
-from src.tasks.plcs.models.plcs_track_query_reference_ablation_model import (
-    PLCSTrackQueryReferenceAblationModel,
-)
+from src.tasks.plcs.models.plcs_track_query_model import PLCSTrackQueryModel
 from src.tasks.plcs.models.plcs_track_query_reference_model import (
     PLCSTrackQueryReferenceModel,
 )
@@ -57,7 +51,12 @@ _TRACKING_SMALL = (
     [
         (
             "train",
-            ("model=frame", "data=singleview_frame", "loss=no_canonical", *_SMALL_MODEL),
+            (
+                "model=frame",
+                "data=singleview_frame",
+                "loss=no_canonical",
+                *_SMALL_MODEL,
+            ),
             "PLCSModel",
             PLCSInputProfile.FRAME,
         ),
@@ -72,18 +71,6 @@ _TRACKING_SMALL = (
             ),
             "PLCSModel",
             PLCSInputProfile.SEQUENCE,
-        ),
-        (
-            "train",
-            (
-                "model=multiview",
-                "loss=no_canonical",
-                "data.seq_len_range=[1,3]",
-                "model.max_seq_len=3",
-                *_SMALL_MODEL,
-            ),
-            "PLCSMultiViewModel",
-            PLCSInputProfile.MULTIVIEW,
         ),
         (
             "train",
@@ -155,32 +142,29 @@ def test_factory_binds_each_validated_model_profile_once(
     assert type(bound.model) is adapter.model_type
 
 
-def _tracking_config(condition: str) -> object:
+def _tracking_config() -> object:
     with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_DIR)):
         return compose(
             config_name="train_tracking",
-            overrides=[f"model=track_query_ablation_{condition}", *_TRACKING_SMALL],
+            overrides=["model=tracking_query", *_TRACKING_SMALL],
         )
 
 
-@pytest.mark.parametrize("condition", ["a", "b", "c", "d"])
-def test_factory_binds_every_ablation_config_to_exact_model_and_adapter(
-    condition: str,
-) -> None:
-    runtime = PLCSTrainingConfig.from_config(_tracking_config(condition))
+def test_factory_binds_canonical_config_to_exact_model_and_adapter() -> None:
+    runtime = PLCSTrainingConfig.from_config(_tracking_config())
 
     binding = build_plcs_model_io(runtime)
 
-    assert type(binding.model) is PLCSTrackQueryAblationModel
+    assert type(binding.model) is PLCSTrackQueryModel
     assert type(binding.adapter) is PLCSTrackQueryIOAdapter
-    assert binding.adapter.model_type is PLCSTrackQueryAblationModel
+    assert binding.adapter.model_type is PLCSTrackQueryModel
     assert binding.adapter.profile is PLCSInputProfile.TRACK_QUERY
 
 
-def test_ablation_uses_tracking_training_composition(
+def test_canonical_model_uses_tracking_training_composition(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    config = _tracking_config("d")
+    config = _tracking_config()
 
     class _DataModule:
         def __init__(self, received: object) -> None:
@@ -208,36 +192,12 @@ def test_ablation_uses_tracking_training_composition(
     assert lightning_module.received is config
 
 
-@pytest.mark.parametrize(
-    ("profile", "model_type", "selector_mode"),
-    [
-        (
-            "track_query_reference",
-            PLCSTrackQueryReferenceModel,
-            "reference",
-        ),
-        (
-            "track_query_ablation_d_v2_selector",
-            PLCSTrackQueryReferenceAblationModel,
-            "reference",
-        ),
-        (
-            "track_query_ablation_d_v2_selector_zero",
-            PLCSTrackQueryReferenceAblationModel,
-            "selector_zero",
-        ),
-    ],
-)
-def test_factory_binds_reference_v2_model_and_exact_six_input_adapter(
-    profile: str,
-    model_type: type[nn.Module],
-    selector_mode: str,
-) -> None:
+def test_factory_binds_reference_model_and_exact_six_input_adapter() -> None:
     with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_DIR)):
         config = compose(
             config_name="train_tracking",
             overrides=[
-                f"model={profile}",
+                "model=tracking_query_reference",
                 "court_keypoints=camera_view_v2",
                 "model.hidden_dim=24",
                 "model.num_heads=4",
@@ -252,7 +212,7 @@ def test_factory_binds_reference_v2_model_and_exact_six_input_adapter(
         )
     binding = build_plcs_model_io(PLCSTrainingConfig.from_config(config))
 
-    assert type(binding.model) is model_type
+    assert type(binding.model) is PLCSTrackQueryReferenceModel
     assert type(binding.adapter) is PLCSTrackQueryReferenceIOAdapter
-    assert binding.adapter.model_type is model_type
-    assert binding.adapter.reference_selector_mode.value == selector_mode
+    assert binding.adapter.model_type is PLCSTrackQueryReferenceModel
+    assert binding.adapter.reference_selector_mode.value == "reference"

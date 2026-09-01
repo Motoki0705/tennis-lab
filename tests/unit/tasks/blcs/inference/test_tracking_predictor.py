@@ -18,6 +18,7 @@ from src.tasks.base.model_io import (
     ModelInputContractError,
     TrackQueryReferenceContract,
     bind_model_io,
+    write_checkpoint_track_query_reference_contract,
     write_model_artifact_court_keypoint_contract,
 )
 from src.tasks.base.models import ReferenceSelectorMode
@@ -30,9 +31,7 @@ from src.tasks.blcs.model_io import (
     TrackQueryReferenceModelIOAdapter,
     compose_blcs_track_query_model_io,
 )
-from src.tasks.blcs.model_io.adapters import TrackQueryAblationModelIOAdapter
 from src.tasks.blcs.models import (
-    BLCSTrackQueryAblationModel,
     BLCSTrackQueryModel,
 )
 from src.tasks.blcs.models.blcs_track_query_reference_model import (
@@ -106,9 +105,7 @@ def _reference_metadata() -> BLCSReferenceMetadata:
             contract=contract,
         ),
     )
-    table = StableCameraIdTable.from_complete_scene_camera_ids(
-        ("camera_0", "camera_1")
-    )
+    table = StableCameraIdTable.from_complete_scene_camera_ids(("camera_0", "camera_1"))
     selection = ReferenceViewSelection.create(
         stable_camera_id_table=table,
         selected_views=views,
@@ -304,7 +301,7 @@ def test_predictor_is_the_only_boundary_that_pads_short_candidates() -> None:
         )
 
 
-def test_checkpoint_restoration_dispatches_to_exact_ablation_binding(
+def test_checkpoint_restoration_dispatches_to_exact_canonical_binding(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -313,7 +310,7 @@ def test_checkpoint_restoration_dispatches_to_exact_ablation_binding(
         config = compose(
             config_name="train_tracking",
             overrides=[
-                "model=track_query_ablation_d",
+                "model=tracking_query",
                 "model.hidden_dim=16",
                 "model.num_heads=4",
                 "model.ffn_dim=32",
@@ -327,7 +324,7 @@ def test_checkpoint_restoration_dispatches_to_exact_ablation_binding(
             ],
         )
     binding = compose_blcs_track_query_model_io(config)
-    checkpoint = tmp_path / "ablation.ckpt"
+    checkpoint = tmp_path / "tracking.ckpt"
     checkpoint_payload: dict[str, object] = {
         "hyper_parameters": {"config": config},
         "court_coordinate_normalization": (court_coordinate_normalization_metadata()),
@@ -335,6 +332,10 @@ def test_checkpoint_restoration_dispatches_to_exact_ablation_binding(
     write_model_artifact_court_keypoint_contract(
         checkpoint_payload,
         resolve_court_keypoint_contract("physical_v1"),
+    )
+    write_checkpoint_track_query_reference_contract(
+        checkpoint_payload,
+        TrackQueryReferenceContract.physical_v1(),
     )
     torch.save(checkpoint_payload, checkpoint)
     observed: dict[str, object] = {}
@@ -383,5 +384,9 @@ def test_checkpoint_restoration_dispatches_to_exact_ablation_binding(
         "strict": True,
         "model_io": binding,
     }
-    assert type(predictor.model) is BLCSTrackQueryAblationModel
-    assert type(predictor.model_io.adapter) is TrackQueryAblationModelIOAdapter
+    assert type(predictor.model) is BLCSTrackQueryModel
+    assert type(predictor.model_io.adapter) is TrackQueryModelIOAdapter
+    assert (
+        predictor.model_io.adapter.track_query_reference_contract
+        == TrackQueryReferenceContract.physical_v1()
+    )

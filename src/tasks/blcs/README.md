@@ -36,11 +36,9 @@ reference frame へ position と court-space velocity を同じ proper rotation 
 
 ### models/
 - **`blcs_model.py`**: `BLCSModel`。single-view用decoder-only Transformer(court+ballトークン)。
-- **`blcs_multiview_model.py`**: `BLCSMultiViewModel`。クエリのcross-attention+時間self-attentionによる反復更新モデル。
 - **`blcs_multiview_axial_model.py`**: `BLCSMultiViewAxialModel`(現行デフォルト)。camera軸/time軸交互self-attention。
-- **`blcs_track_query_model.py`**: `BLCSTrackQueryModel`。fixed-Q camera候補へmHC object temporalとhybrid CSWAを適用し、clip-localな固定query slotで複数ボール軌道とpresenceを推定する。
-- **`blcs_track_query_ablation_model.py`**: `BLCSTrackQueryAblationModel`。legacy v1 (`time_camera_role_v1`) の`blcs_track_query_ablation` architectureとして、SwiGLU配置とmHC writeback位置の4条件を同じ5入力・2出力契約で比較する。
-- **`blcs_track_query_reference_model.py` / `blcs_track_query_reference_ablation_model.py`**: camera-view target frame用の明示的v2 family。BLCS固有出力はposition / presenceのままで、selector条件だけを独立contractとして追加する。
+- **`blcs_track_query_model.py`**: `BLCSTrackQueryModel`。object streamをviewごとに1 tokenへ圧縮し、FFN-free attention block、`Q+V` spatial attention、stage末尾の共有FFNとmHC writebackを用いて複数ボール軌道とpresenceを推定する。
+- **`blcs_track_query_reference_model.py`**: 同じarchitectureへcamera-view target frameとreference selectorの6入力contractを追加する。
 - **`components/heads.py`**: constructor時に選択されるposition-only / position+velocity出力module。
 - **`components/padding.py`**: 全BLCS modelの公開`padding_mask=True`から、内部validity・attention keep maskを一意に生成する。
 - **`components/observation_fusion.py`**: track-query用の固定linear観測融合module。
@@ -48,7 +46,7 @@ reference frame へ position と court-space velocity を同じ proper rotation 
 
 ### model_io/
 - **`contracts.py`**: trajectory / track-queryのtyped predictionと、学習に必要な全tensorを持つvalidated batch契約。
-- **`adapters.py`**: single / multiview / axial / track-queryごとの入力検証・versionに対応するmodel call構築・出力decode。v1 / v2のforward契約は共有正本を参照し、attention tensorはadapterで生成しない。
+- **`adapters.py`**: single / axial / track-queryごとの入力検証・versionに対応するmodel call構築・出力decode。v1 / v2のforward契約は共有正本を参照し、attention tensorはadapterで生成しない。
 - **`factory.py`**: modelと対応adapterを同時に構築して一度だけbindingするcomposition root。学習・推論loopはmodel名や出力keyを分岐しない。
 - **`training.py`**: binding、collate、DataModule、LightningModuleを一括構成する学習runtime root。
 
@@ -76,7 +74,7 @@ reference frame へ position と court-space velocity を同じ proper rotation 
 - **`visualize.py`**: 可視化エントリポイント。
 
 ### configs/
-- model(single/multiview/axial・track-queryのサイズ違い)・data(single/multiview/chunked)・training(default/chunked/GAN)・physics/rally/camera/targeted_velocity/generator(データ生成)・metrics・visualization・run の各Hydra設定。
+- track-queryは`model=tracking_query`と`model=tracking_query_reference`の2 profileだけを公開する。その他にmodel(single/multiview/axial)・data(single/multiview/chunked)・training(default/chunked/GAN)・physics/rally/camera/targeted_velocity/generator(データ生成)・metrics・visualization・run の各Hydra設定がある。
 
 ## Multi-ball tracking
 
@@ -88,13 +86,13 @@ modelへ渡すBLCS固有の5観測tensor shapeは `ball_uv (B,V,T,Q,2)`、`ball_
 
 Issue #832より前のtracking checkpoint/resultは新しいassociation学習契約と意味的に互換ではないため、必ず再学習・再評価してください。旧設定とmetricの詳しい移行条件は共有正本を参照してください。
 
-`ball_vis`は観測tokenとlearned invisible tokenの選択だけに使います。非padding位置では`ball_vis=False`のQ tokenもattentionへ参加します。各stageは `mHC object temporal -> global spatial(Q+VQ) -> query temporal` の順で、temporal modeはconstructor時に `CSWA, CSWA, CSWA, Global` のcycleへ固定されます。nested `model.mhc` / `model.cswa` configはunknown/missing/invalid値をrejectし、`model.cswa.backend=cuda`はextensionが利用不能ならreferenceへfallbackせずconstruction時に失敗します。
+`ball_vis`は観測tokenとlearned invisible tokenの選択だけに使います。非padding位置では`ball_vis=False`のQ tokenもattentionへ参加します。各stageは `mHC object temporal -> global spatial(Q+V) -> query temporal` の順で、temporal modeはconstructor時に `CSWA, CSWA, CSWA, Global` のcycleへ固定されます。nested `model.mhc` / `model.cswa` configはunknown/missing/invalid値をrejectし、`model.cswa.backend=cuda`はextensionが利用不能ならreferenceへfallbackせずconstruction時に失敗します。
 
-`model=track_query_ablation_{a,b,c,d,e}`は新しいablation architectureを選びます。A/CはAttentionごとに独立SwiGLUを3回、B/D/Eは全Attention後にstage共有SwiGLUを1回適用します。A/Bはobject temporal直後にmHCを書き戻してspatial幅を`Q+V×P`にし、C/D/Eはstage末尾まで圧縮streamを保持して`Q+V`にします。EはDへ、spatial attention後・query temporal前のquery tokenだけに作用する独立pre-norm SwiGLU residualを追加します。object tokenはこの追加FFNを通りません。既存`track_query` checkpoint、および追加parameterを持たないDとEの相互loadはstrict errorです。
+`model=tracking_query`がこの唯一のcanonical architectureを選びます。各attention block内のFFNとspatial後の追加query-only FFNはありません。旧track-query checkpointはarchitectureが異なるためstrict load errorです。
 
 出力契約は従来どおり `position (B,T,Q,3)` と `presence_logits (B,T,Q)` です。教師は `target_position (B,T,Q,3)`、`target_presence (B,T,Q)`、`target_instance_id (B,T,Q)` で、inactive IDは`-1`です。旧track-query checkpointはarchitectureが異なるためstrict load errorとなり、自動key migrationやmissing parameter補完は行いません。推論のstrict adapterはexact Qを要求し、`BLCSTrackingPredictor.predict()`だけが`P<Q`入力をzero/invisible tokenでQへpadします。`P>Q`はrejectします。
 
-14 court UVはannotation schemaのkeypoint ID順を維持します。固定linear融合は`court_vis`で不可視点を0化し、Q順の各ball UVと連結して共有`CourtBallGroupEmbedding`により1 query = 1 tokenへ写像します。下流の空間self-attention入力はearly mHC writebackで`(B*T, Q + V*Q, D)`、layer-end writebackで`(B*T, Q + V, D)`です。旧`observation_fusion`、`point_fusion`、`mask_invisible_observations`設定は受理しません。
+14 court UVはannotation schemaのkeypoint ID順を維持します。固定linear融合は`court_vis`で不可視点を0化し、Q順の各ball UVと連結して共有`CourtBallGroupEmbedding`により1 query = 1 tokenへ写像します。下流の空間self-attention入力は常に`(B*T, Q + V, D)`です。旧`observation_fusion`、`point_fusion`、`mask_invisible_observations`設定は受理しません。
 
 disk schemaもruntimeと同じ略称に固定し、camera arrayは`cam_{i}_ball_vis.npy`と`cam_{i}_court_kp_vis.npy`を使用します。旧`*_visible.npy`名へのalias/fallbackはありません。観測fieldは`ball_uv`、`ball_vis`、`court_kp`、`court_vis`、`padding_mask`で、`padding_mask=True`だけをpadding極性として使います。version別の追加forward fieldは共有正本を参照してください。内部の`state_valid=True`と`attention_keep_mask=True`はmodel内でのみ導出します。
 
@@ -108,17 +106,14 @@ multi-object generatorは1024-frame global timelineに3〜10個のsource rally s
 # 事前生成データで学習
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking
 
-# 5条件の例（a / b / c / d / eを明示して選択）
+# canonical architecture
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking \
-  model=track_query_ablation_e
+  model=tracking_query
 
-# camera-view v2 D selector / selector-zero（別途生成したopt-inデータ、GPU実行はtraining queue経由）
+# camera-view reference（別途生成したopt-inデータ、GPU実行はtraining queue経由）
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking \
   court_keypoints=camera_view_v2 data.scene_dir=blcs/multi_object_camera_view_v2 \
-  model=track_query_ablation_d_v2_selector
-.venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking \
-  court_keypoints=camera_view_v2 data.scene_dir=blcs/multi_object_camera_view_v2 \
-  model=track_query_ablation_d_v2_selector_zero
+  model=tracking_query_reference
 
 # trainだけon-the-fly chunk生成（val/testは上記の固定データ）
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking_chunked

@@ -1,6 +1,0 @@
-defaults:
-  - _track_query_ablation
-  - _self_
-
-ffn_mode: per_attention
-mhc_writeback: layer_end

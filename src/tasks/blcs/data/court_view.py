@@ -72,10 +72,7 @@ def blcs_track_query_reference_contract_document(
     root = as_config_mapping(value, path="configuration")
     model = require_config_mapping(root, "model", path="configuration")
     model_name = model.get("name")
-    if model_name not in {
-        "blcs_track_query_reference",
-        "blcs_track_query_reference_ablation",
-    }:
+    if model_name != "blcs_track_query_reference":
         return None
     required = (
         "target_frame_contract",
@@ -89,9 +86,7 @@ def blcs_track_query_reference_contract_document(
             f"invalid fields are {invalid!r}."
         )
     runtime = TrackQueryReferenceContract.reference_v2(
-        resolve_reference_selector_mode(
-            cast("str", model["reference_selector_mode"])
-        )
+        resolve_reference_selector_mode(cast("str", model["reference_selector_mode"]))
     )
     actual = (
         contract.contract_id,

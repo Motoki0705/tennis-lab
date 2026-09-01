@@ -1,4 +1,4 @@
-"""Reference-conditioned v2 BLCS track-query model."""
+"""Reference-conditioned canonical BLCS track-query model."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from src.tasks.base.data.track_query_reference import validate_reference_view_in
 from src.tasks.base.models import (
     REFERENCE_SELECTOR_ROPE_CONTRACT,
     ReferenceSelectorMode,
-    build_full_track_query_spatial_coordinates,
+    build_compressed_track_query_spatial_coordinates,
     resolve_reference_selector_mode,
     validate_reference_context_mask,
     validate_track_query_rope_dimensions,
@@ -24,10 +24,10 @@ from src.tasks.blcs.data.tracking_types import BLCSTrackingPrediction
 from src.tasks.blcs.models.blcs_track_query_model import BLCSTrackQueryModel
 
 
-def _legacy_architecture_config(
+def _architecture_config(
     config: TrackQueryReferenceModelConfig,
 ) -> TrackQueryModelConfig:
-    """Build only the architecture fields shared with the immutable v1 model."""
+    """Build the fixed architecture fields shared with the base model."""
     return TrackQueryModelConfig(
         name="blcs_track_query",
         hidden_dim=config.hidden_dim,
@@ -38,7 +38,6 @@ def _legacy_architecture_config(
         num_queries=config.num_queries,
         rope_dim=config.rope_dim,
         dropout=config.dropout,
-        role_rope_enabled=False,
         invisible_init_std=config.invisible_init_std,
         mhc=config.mhc,
         cswa=config.cswa,
@@ -46,7 +45,7 @@ def _legacy_architecture_config(
 
 
 class BLCSTrackQueryReferenceModel(BLCSTrackQueryModel):
-    """Predict ball tracks in the frame selected by one camera per sample."""
+    """Predict BLCS tracks in the selected reference-camera frame."""
 
     def __init__(self, config: TrackQueryReferenceModelConfig) -> None:
         if config.name != "blcs_track_query_reference":
@@ -54,14 +53,14 @@ class BLCSTrackQueryReferenceModel(BLCSTrackQueryModel):
                 "BLCSTrackQueryReferenceModel requires "
                 "blcs_track_query_reference config."
             )
-        super().__init__(_legacy_architecture_config(config))
+        super().__init__(_architecture_config(config))
         self.target_frame_contract = config.target_frame_contract
         self.track_query_rope_contract = config.track_query_rope_contract
         self.reference_selector_mode = resolve_reference_selector_mode(
             config.reference_selector_mode
         )
         if self.reference_selector_mode is not ReferenceSelectorMode.REFERENCE:
-            raise ValueError("The normal reference model requires reference mode.")
+            raise ValueError("BLCS reference track-query requires reference mode.")
         validate_track_query_rope_dimensions(
             contract=REFERENCE_SELECTOR_ROPE_CONTRACT,
             rope_dim=self.rope_dim,
@@ -69,6 +68,10 @@ class BLCSTrackQueryReferenceModel(BLCSTrackQueryModel):
         )
         self.register_buffer(
             "_track_query_reference_architecture_marker",
+            torch.tensor(1, dtype=torch.uint8),
+        )
+        self.register_buffer(
+            "_reference_selector_marker",
             torch.tensor(1, dtype=torch.uint8),
         )
         self.register_forward_pre_hook(
@@ -111,15 +114,14 @@ class BLCSTrackQueryReferenceModel(BLCSTrackQueryModel):
         num_detections: int,
         num_queries: int,
     ) -> Tensor:
-        """Return exact v2 ``(B*T,Q+V*Q,3)`` reference coordinates."""
+        """Return exact v2 compressed reference coordinates."""
         if num_detections != num_queries:
             raise ValueError("num_detections must equal num_queries.")
-        return build_full_track_query_spatial_coordinates(
+        return build_compressed_track_query_spatial_coordinates(
             reference_view_index,
             num_frames=num_frames,
             num_views=num_views,
             num_queries=num_queries,
-            selector_mode=ReferenceSelectorMode.REFERENCE,
         )
 
     def forward(  # type: ignore[override]

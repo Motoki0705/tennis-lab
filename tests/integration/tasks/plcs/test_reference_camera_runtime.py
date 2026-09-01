@@ -15,10 +15,7 @@ from src.tasks.base.generate_dataset import (
     build_court_view_record,
     resolve_court_keypoint_contract,
 )
-from src.tasks.base.model_io import (
-    TrackQueryReferenceContract,
-    TrackQueryReferenceContractMismatchError,
-)
+from src.tasks.base.model_io import TrackQueryReferenceContract
 from src.tasks.base.models import ReferenceSelectorMode
 from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.court_keypoint_contract import court_keypoint_contract_document
@@ -36,7 +33,7 @@ from src.tasks.plcs.training.tracking_lightning_module import (
 _CONFIG_DIR = Path("src/tasks/plcs/configs").resolve()
 
 
-def _config(profile: str = "track_query_ablation_d_v2_selector") -> Any:
+def _config(profile: str = "tracking_query_reference") -> Any:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         return compose(
             config_name="train_tracking",
@@ -73,9 +70,7 @@ def _selection() -> ReferenceViewSelection:
             contract=court_contract,
         ),
     )
-    table = StableCameraIdTable.from_complete_scene_camera_ids(
-        ("camera_0", "camera_1")
-    )
+    table = StableCameraIdTable.from_complete_scene_camera_ids(("camera_0", "camera_1"))
     return ReferenceViewSelection.create(
         stable_camera_id_table=table,
         selected_views=views,
@@ -155,49 +150,29 @@ def test_datamodule_passes_eval_reference_but_training_keeps_seeded_selection(
 
     assert received[0]["reference_camera_id"] is None
     assert received[1]["reference_camera_id"] == "camera_1"
-    assert received[0]["seed"] == datamodule._dataset_seed(
-        Path("dataset"), "train.txt"
-    )
-    assert received[1]["seed"] == datamodule._dataset_seed(
-        Path("dataset"), "val.txt"
-    )
-
-    selector_zero = PLCSTrackingDataModule(
-        _config("track_query_ablation_d_v2_selector_zero")
-    )
-    selector_zero._build_dataset(Path("dataset"), "train.txt", True)
-    assert received[2]["seed"] == received[0]["seed"]
+    assert received[0]["seed"] == datamodule._dataset_seed(Path("dataset"), "train.txt")
+    assert received[1]["seed"] == datamodule._dataset_seed(Path("dataset"), "val.txt")
 
 
-def test_checkpoint_and_prediction_metadata_round_trip_and_reject_selector_mismatch() -> None:
-    selector = cast(
+def test_checkpoint_and_prediction_metadata_round_trip() -> None:
+    module = cast(
         PLCSTrackingLightningModule,
         build_plcs_lightning_module(_config()),
     )
-    selector_zero = cast(
-        PLCSTrackingLightningModule,
-        build_plcs_lightning_module(
-            _config("track_query_ablation_d_v2_selector_zero")
-        ),
-    )
     checkpoint: dict[str, object] = {"state_dict": {}}
 
-    selector.on_save_checkpoint(checkpoint)
-    selector.on_load_checkpoint(checkpoint)
-    with pytest.raises(TrackQueryReferenceContractMismatchError):
-        selector_zero.on_load_checkpoint(checkpoint)
+    module.on_save_checkpoint(checkpoint)
+    module.on_load_checkpoint(checkpoint)
 
-    step = selector.compute_tracking_step(
+    step = module.compute_tracking_step(
         cast("dict[str, torch.Tensor]", _batch()),
         compute_metrics=False,
     )
     metadata = step.prediction["reference_metadata"]
     assert isinstance(metadata, PLCSReferenceMetadata)
     assert metadata.reference_camera_ids == ("camera_1",)
-    payload = selector.test_prediction_payload(_batch(), step.prediction)
-    assert np.asarray(payload["reference_camera_id_string"]).tolist() == [
-        "camera_1"
-    ]
+    payload = module.test_prediction_payload(_batch(), step.prediction)
+    assert np.asarray(payload["reference_camera_id_string"]).tolist() == ["camera_1"]
     assert np.asarray(payload["reference_view_index"]).tolist() == [1]
 
 

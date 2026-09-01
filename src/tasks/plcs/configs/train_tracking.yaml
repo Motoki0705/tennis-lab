@@ -1,6 +1,6 @@
 defaults:
   - court_keypoints: physical_v1
-  - model: track_query
+  - model: tracking_query
   - data: tracking
   - training: default
   - loss: tracking

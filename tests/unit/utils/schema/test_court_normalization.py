@@ -16,6 +16,9 @@ from src.tasks.base.generate_dataset import (
     resolve_court_keypoint_contract,
 )
 from src.tasks.base.model_io import (
+    TRACK_QUERY_CHECKPOINT_ARCHITECTURE_ID,
+    TRACK_QUERY_CHECKPOINT_ARCHITECTURE_METADATA_KEY,
+    TRACK_QUERY_CHECKPOINT_ARCHITECTURE_SCHEMA_VERSION,
     TRACK_QUERY_REFERENCE_METADATA_KEY,
     TrackQueryReferenceContract,
     TrackQueryReferenceContractMetadata,
@@ -61,7 +64,7 @@ def _container() -> dict[str, object]:
 _PHYSICAL_V1_COURT_KEYPOINT_CONTRACT = resolve_court_keypoint_contract(
     "physical_v1"
 )
-_LEGACY_TRACK_QUERY_REFERENCE_CONTRACT = TrackQueryReferenceContract.legacy_v1()
+_CANONICAL_TRACK_QUERY_REFERENCE_CONTRACT = TrackQueryReferenceContract.physical_v1()
 
 
 def _checkpoint_container() -> dict[str, object]:
@@ -81,9 +84,13 @@ def _tracking_checkpoint_container() -> dict[str, object]:
         **_checkpoint_container(),
         TRACK_QUERY_REFERENCE_METADATA_KEY: (
             TrackQueryReferenceContractMetadata.from_contract(
-                _LEGACY_TRACK_QUERY_REFERENCE_CONTRACT
+                _CANONICAL_TRACK_QUERY_REFERENCE_CONTRACT
             ).to_dict()
         ),
+        TRACK_QUERY_CHECKPOINT_ARCHITECTURE_METADATA_KEY: {
+            "schema_version": TRACK_QUERY_CHECKPOINT_ARCHITECTURE_SCHEMA_VERSION,
+            "architecture": TRACK_QUERY_CHECKPOINT_ARCHITECTURE_ID,
+        },
     }
 
 
@@ -283,7 +290,7 @@ def test_raw_checkpoint_validation_happens_without_inference(
             SimpleNamespace(
                 court_keypoint_contract=_PHYSICAL_V1_COURT_KEYPOINT_CONTRACT,
                 track_query_reference_contract=(
-                    _LEGACY_TRACK_QUERY_REFERENCE_CONTRACT
+                    _CANONICAL_TRACK_QUERY_REFERENCE_CONTRACT
                 ),
             ),
             _tracking_checkpoint_container(),
@@ -304,7 +311,7 @@ def test_raw_checkpoint_validation_happens_without_inference(
                     court_keypoint_contract=_PHYSICAL_V1_COURT_KEYPOINT_CONTRACT
                 ),
                 track_query_reference_contract=(
-                    _LEGACY_TRACK_QUERY_REFERENCE_CONTRACT
+                    _CANONICAL_TRACK_QUERY_REFERENCE_CONTRACT
                 ),
             ),
             _tracking_checkpoint_container(),

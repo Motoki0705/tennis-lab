@@ -33,14 +33,7 @@ from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialM
 from src.tasks.plcs.models.plcs_multiview_axial_split_model import (
     PLCSMultiViewAxialSplitModel,
 )
-from src.tasks.plcs.models.plcs_multiview_model import PLCSMultiViewModel
-from src.tasks.plcs.models.plcs_track_query_ablation_model import (
-    PLCSTrackQueryAblationModel,
-)
 from src.tasks.plcs.models.plcs_track_query_model import PLCSTrackQueryModel
-from src.tasks.plcs.models.plcs_track_query_reference_ablation_model import (
-    PLCSTrackQueryReferenceAblationModel,
-)
 from src.tasks.plcs.models.plcs_track_query_reference_model import (
     PLCSTrackQueryReferenceModel,
 )
@@ -82,10 +75,7 @@ def bind_plcs_model_io(
             f"{expected.__module__}.{expected.__qualname__}, got "
             f"{type(model).__module__}.{type(model).__qualname__}."
         )
-    if adapter.model_type in {
-        PLCSTrackQueryReferenceModel,
-        PLCSTrackQueryReferenceAblationModel,
-    }:
+    if adapter.model_type is PLCSTrackQueryReferenceModel:
         actual_semantics = (
             getattr(model, "target_frame_contract", None),
             getattr(model, "track_query_rope_contract", None),
@@ -133,9 +123,7 @@ def _standard_adapter(
             runtime.model.integer("max_views") if "max_views" in values else None
         ),
         max_sequence_length=(
-            runtime.model.integer("max_seq_len")
-            if "max_seq_len" in values
-            else None
+            runtime.model.integer("max_seq_len") if "max_seq_len" in values else None
         ),
         min_views=min_views,
         court_keypoint_contract=runtime.court_keypoint_contract,
@@ -165,18 +153,6 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
             model_type=PLCSModel,
             profile=profile,
             output_rank=2,
-        )
-    elif model_name == "plcs_multiview":
-        if num_court_tokens is None:
-            raise ValueError("PLCS multiview models require data.num_court_kp.")
-        model = PLCSMultiViewModel.from_config(
-            model_cfg, num_court_tokens=num_court_tokens
-        )
-        adapter = _standard_adapter(
-            runtime,
-            model_type=PLCSMultiViewModel,
-            profile=PLCSInputProfile.MULTIVIEW,
-            output_rank=3,
         )
     elif model_name == "plcs_multiview_axial":
         if num_court_tokens is None:
@@ -224,15 +200,6 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
             num_joints=model_cfg.integer("num_joints"),
             court_keypoint_contract=runtime.court_keypoint_contract,
         )
-    elif model_name == "plcs_track_query_ablation":
-        model = PLCSTrackQueryAblationModel(model_cfg)
-        adapter = PLCSTrackQueryIOAdapter(
-            model_type=PLCSTrackQueryAblationModel,
-            num_queries=model_cfg.integer("num_queries"),
-            num_court_tokens=14,
-            num_joints=model_cfg.integer("num_joints"),
-            court_keypoint_contract=runtime.court_keypoint_contract,
-        )
     elif model_name == "plcs_track_query_reference":
         model = PLCSTrackQueryReferenceModel(model_cfg)
         adapter = PLCSTrackQueryReferenceIOAdapter(
@@ -242,23 +209,7 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
             num_joints=model_cfg.integer("num_joints"),
             court_keypoint_contract=runtime.court_keypoint_contract,
             target_frame_contract=model_cfg.string("target_frame_contract"),
-            track_query_rope_contract=model_cfg.string(
-                "track_query_rope_contract"
-            ),
-            reference_selector_mode=model_cfg.string("reference_selector_mode"),
-        )
-    elif model_name == "plcs_track_query_reference_ablation":
-        model = PLCSTrackQueryReferenceAblationModel(model_cfg)
-        adapter = PLCSTrackQueryReferenceIOAdapter(
-            model_type=PLCSTrackQueryReferenceAblationModel,
-            num_queries=model_cfg.integer("num_queries"),
-            num_court_tokens=14,
-            num_joints=model_cfg.integer("num_joints"),
-            court_keypoint_contract=runtime.court_keypoint_contract,
-            target_frame_contract=model_cfg.string("target_frame_contract"),
-            track_query_rope_contract=model_cfg.string(
-                "track_query_rope_contract"
-            ),
+            track_query_rope_contract=model_cfg.string("track_query_rope_contract"),
             reference_selector_mode=model_cfg.string("reference_selector_mode"),
         )
     else:

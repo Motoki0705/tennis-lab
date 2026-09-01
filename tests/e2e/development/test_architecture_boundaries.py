@@ -28,6 +28,7 @@ REMOVED_MODULES = (
     "src.tasks.blcs.models.components.court_ball_point_fusion",
     "src.tasks.blcs.models.components.differentiable_projection",
     "src.tasks.blcs.models.discriminators.trajectory_discriminator",
+    "src.tasks.blcs.models.blcs_multiview_model",
     "src.tasks.blcs.validation",
     "src.tasks.blcs.visualization.adapters",
     "src.tasks.blcs.visualization.adapters.predict_inputs",
@@ -38,6 +39,7 @@ REMOVED_MODULES = (
     "src.tasks.court_detection.data.court_seg_dataset",
     "src.tasks.plcs.utils",
     "src.tasks.plcs.utils.pose_geometry",
+    "src.tasks.plcs.models.plcs_multiview_model",
     "src.tasks.plcs.models.discriminators.pose_sequence_discriminator",
     "src.tasks.plcs.validation_matrix",
     "src.tasks.plcs.visualization.adapters.predict_inputs",
@@ -84,9 +86,7 @@ PROHIBITED_SYMBOLS = frozenset(
         "_sort_tracks",
     }
 )
-ISSUE_695_REMOVAL_PREFIXES = (
-    "src.synthetic_data_generation.",
-)
+ISSUE_695_REMOVAL_PREFIXES = ("src.synthetic_data_generation.",)
 SUPPORTED_TASK_LOCAL_MODULES = frozenset(
     {
         "src.tasks.base.data.chunk_manager",
@@ -122,13 +122,11 @@ EXPECTED_DIRECT_FORWARD_VALIDATION_BOUNDARIES = {
         "Python raise",
     ): 1,
     (
-        "src.tasks.court_detection.models.pose_head."
-        "CourtPose10DHead.forward",
+        "src.tasks.court_detection.models.pose_head.CourtPose10DHead.forward",
         "Python raise",
     ): 1,
     (
-        "src.tasks.court_detection.models.pose_head."
-        "CourtPose10DHead.forward",
+        "src.tasks.court_detection.models.pose_head.CourtPose10DHead.forward",
         "Python shape/value validation branch",
     ): 1,
     (
@@ -182,15 +180,10 @@ EXPECTED_DIRECT_FORWARD_VALIDATION_BOUNDARIES = {
         "Python raise",
     ): 1,
     (
-        "src.tasks.blcs.models.blcs_track_query_ablation_model."
-        "BLCSTrackQueryAblationModel.build_spatial_coordinates",
+        "src.tasks.blcs.models.blcs_track_query_model."
+        "BLCSTrackQueryModel.build_spatial_coordinates",
         "Python raise",
-    ): 2,
-    (
-        "src.tasks.plcs.models.plcs_track_query_ablation_model."
-        "PLCSTrackQueryAblationModel.build_spatial_coordinates",
-        "Python raise",
-    ): 2,
+    ): 1,
     (
         "src.tasks.plcs.models.plcs_track_query_model."
         "PLCSTrackQueryModel.build_spatial_coordinates",
@@ -202,11 +195,6 @@ EXPECTED_DIRECT_FORWARD_VALIDATION_BOUNDARIES = {
         "Python raise",
     ): 1,
     (
-        "src.tasks.blcs.models.blcs_track_query_reference_ablation_model."
-        "BLCSTrackQueryReferenceAblationModel.build_spatial_coordinates",
-        "Python raise",
-    ): 2,
-    (
         "src.tasks.plcs.models.plcs_track_query_reference_model."
         "PLCSTrackQueryReferenceModel.build_spatial_coordinates",
         "Python raise",
@@ -214,16 +202,6 @@ EXPECTED_DIRECT_FORWARD_VALIDATION_BOUNDARIES = {
     (
         "src.tasks.plcs.models.plcs_track_query_reference_model."
         "PLCSTrackQueryReferenceModel.forward",
-        "forward validation helper validate_reference_context_mask",
-    ): 1,
-    (
-        "src.tasks.plcs.models.plcs_track_query_reference_ablation_model."
-        "PLCSTrackQueryReferenceAblationModel.build_spatial_coordinates",
-        "Python raise",
-    ): 2,
-    (
-        "src.tasks.plcs.models.plcs_track_query_reference_ablation_model."
-        "PLCSTrackQueryReferenceAblationModel.forward",
         "forward validation helper validate_reference_context_mask",
     ): 1,
     (
@@ -241,11 +219,6 @@ EXPECTED_DIRECT_FORWARD_VALIDATION_BOUNDARIES = {
         "TransformerSequenceDiscriminator.forward",
         "runtime implementation/type selection via isinstance",
     ): 2,
-    (
-        "src.utils.models.components.fixed_query_track_ablation_stage."
-        "FixedQueryTrackAblationStage.forward",
-        "Python raise",
-    ): 1,
 }
 BLCS_SINGLE_VIEW_MASK_PATH = (
     "src.tasks.blcs.models.blcs_model.BLCSModel.forward",
@@ -264,8 +237,7 @@ BLCS_SINGLE_VIEW_OUTPUT_MASK_PATH = (
     "src.tasks.blcs.models.components.padding.mask_trajectory_outputs",
 )
 BLCS_AXIAL_MASK_PATH = (
-    "src.tasks.blcs.models.blcs_multiview_axial_model."
-    "BLCSMultiViewAxialModel.forward",
+    "src.tasks.blcs.models.blcs_multiview_axial_model.BLCSMultiViewAxialModel.forward",
     "src.tasks.blcs.models.components.padding.build_axial_padding_masks",
 )
 BLCS_AXIAL_PADDING_VALIDATION_PATH = (
@@ -273,24 +245,7 @@ BLCS_AXIAL_PADDING_VALIDATION_PATH = (
     "src.tasks.blcs.models.components.padding._validate_padding_mask",
 )
 BLCS_AXIAL_OUTPUT_MASK_PATH = (
-    "src.tasks.blcs.models.blcs_multiview_axial_model."
-    "BLCSMultiViewAxialModel.forward",
-    "src.tasks.blcs.models.components.padding.mask_trajectory_outputs",
-)
-BLCS_MULTIVIEW_MASK_PATH = (
-    "src.tasks.blcs.models.blcs_multiview_model.BLCSMultiViewModel.forward",
-    "src.tasks.blcs.models.components.padding.build_multiview_padding_masks",
-)
-BLCS_MULTIVIEW_COURT_COUNT_VALIDATION_PATH = (
-    *BLCS_MULTIVIEW_MASK_PATH,
-    "src.tasks.blcs.models.components.padding._validate_num_court_tokens",
-)
-BLCS_MULTIVIEW_PADDING_VALIDATION_PATH = (
-    *BLCS_MULTIVIEW_MASK_PATH,
-    "src.tasks.blcs.models.components.padding._validate_padding_mask",
-)
-BLCS_MULTIVIEW_OUTPUT_MASK_PATH = (
-    "src.tasks.blcs.models.blcs_multiview_model.BLCSMultiViewModel.forward",
+    "src.tasks.blcs.models.blcs_multiview_axial_model.BLCSMultiViewAxialModel.forward",
     "src.tasks.blcs.models.components.padding.mask_trajectory_outputs",
 )
 BLCS_FIXED_QUERY_MASK_PATH = (
@@ -299,27 +254,16 @@ BLCS_FIXED_QUERY_MASK_PATH = (
     "BLCSTrackQueryModel._forward_with_spatial_coordinates",
     "src.utils.models.multiview_padding.build_fixed_query_padding_masks",
 )
-BLCS_ABLATION_FORWARD = (
-    "src.tasks.blcs.models.blcs_track_query_ablation_model."
-    "BLCSTrackQueryAblationModel.forward"
+BLCS_SPATIAL_COORDINATE_VALIDATION_PATH = (
+    "src.tasks.blcs.models.blcs_track_query_model.BLCSTrackQueryModel.forward",
+    "src.tasks.blcs.models.blcs_track_query_model."
+    "BLCSTrackQueryModel.build_spatial_coordinates",
 )
-BLCS_ABLATION_SPATIAL_COORDINATE_VALIDATION_PATH = (
-    BLCS_ABLATION_FORWARD,
-    "src.tasks.blcs.models.blcs_track_query_ablation_model."
-    "BLCSTrackQueryAblationModel.build_spatial_coordinates",
-)
-BLCS_ABLATION_COMPRESSED_SPATIAL_MASK_PATH = (
-    BLCS_ABLATION_FORWARD,
-    "src.tasks.blcs.models.blcs_track_query_ablation_model."
-    "BLCSTrackQueryAblationModel._forward_with_spatial_coordinates",
-    "src.utils.models.multiview_padding."
-    "build_compressed_spatial_attention_keep_mask",
-)
-BLCS_ABLATION_FIXED_QUERY_MASK_PATH = (
-    BLCS_ABLATION_FORWARD,
-    "src.tasks.blcs.models.blcs_track_query_ablation_model."
-    "BLCSTrackQueryAblationModel._forward_with_spatial_coordinates",
-    "src.utils.models.multiview_padding.build_fixed_query_padding_masks",
+BLCS_COMPRESSED_SPATIAL_MASK_PATH = (
+    "src.tasks.blcs.models.blcs_track_query_model.BLCSTrackQueryModel.forward",
+    "src.tasks.blcs.models.blcs_track_query_model."
+    "BLCSTrackQueryModel._forward_with_spatial_coordinates",
+    "src.utils.models.multiview_padding.build_compressed_spatial_attention_keep_mask",
 )
 PLCS_SPATIAL_COORDINATE_VALIDATION_PATH = (
     "src.tasks.plcs.models.plcs_track_query_model.PLCSTrackQueryModel.forward",
@@ -332,33 +276,16 @@ PLCS_FIXED_QUERY_MASK_PATH = (
     "PLCSTrackQueryModel._forward_with_spatial_coordinates",
     "src.utils.models.multiview_padding.build_fixed_query_padding_masks",
 )
-PLCS_ABLATION_FORWARD = (
-    "src.tasks.plcs.models.plcs_track_query_ablation_model."
-    "PLCSTrackQueryAblationModel.forward"
+PLCS_COMPRESSED_SPATIAL_MASK_PATH = (
+    "src.tasks.plcs.models.plcs_track_query_model.PLCSTrackQueryModel.forward",
+    "src.tasks.plcs.models.plcs_track_query_model."
+    "PLCSTrackQueryModel._forward_with_spatial_coordinates",
+    "src.utils.models.multiview_padding.build_compressed_spatial_attention_keep_mask",
 )
-PLCS_ABLATION_SPATIAL_COORDINATE_VALIDATION_PATH = (
-    PLCS_ABLATION_FORWARD,
-    "src.tasks.plcs.models.plcs_track_query_ablation_model."
-    "PLCSTrackQueryAblationModel.build_spatial_coordinates",
-)
-PLCS_ABLATION_COMPRESSED_SPATIAL_MASK_PATH = (
-    PLCS_ABLATION_FORWARD,
-    "src.tasks.plcs.models.plcs_track_query_ablation_model."
-    "PLCSTrackQueryAblationModel._forward_with_spatial_coordinates",
-    "src.utils.models.multiview_padding."
-    "build_compressed_spatial_attention_keep_mask",
-)
-PLCS_ABLATION_FIXED_QUERY_MASK_PATH = (
-    PLCS_ABLATION_FORWARD,
-    "src.tasks.plcs.models.plcs_track_query_ablation_model."
-    "PLCSTrackQueryAblationModel._forward_with_spatial_coordinates",
-    "src.utils.models.multiview_padding.build_fixed_query_padding_masks",
-)
-REFERENCE_COORDINATE_BUILDER_SUFFIX = (
+REFERENCE_COMPRESSED_COORDINATE_BUILDER_SUFFIX = (
     "src.tasks.base.models.track_query_reference."
-    "build_full_track_query_spatial_coordinates",
-    "src.tasks.base.models.track_query_reference."
-    "build_track_query_spatial_coordinates",
+    "build_compressed_track_query_spatial_coordinates",
+    "src.tasks.base.models.track_query_reference._build_track_query_spatial_coordinates",
 )
 REFERENCE_INDEX_VALIDATION = (
     "src.tasks.base.data.track_query_reference.validate_reference_view_index"
@@ -380,20 +307,7 @@ BLCS_REFERENCE_SPATIAL_PATH = (
 )
 BLCS_REFERENCE_BUILDER_PATH = (
     *BLCS_REFERENCE_SPATIAL_PATH,
-    *REFERENCE_COORDINATE_BUILDER_SUFFIX,
-)
-BLCS_REFERENCE_ABLATION_FORWARD = (
-    "src.tasks.blcs.models.blcs_track_query_reference_ablation_model."
-    "BLCSTrackQueryReferenceAblationModel.forward"
-)
-BLCS_REFERENCE_ABLATION_SPATIAL_PATH = (
-    BLCS_REFERENCE_ABLATION_FORWARD,
-    "src.tasks.blcs.models.blcs_track_query_reference_ablation_model."
-    "BLCSTrackQueryReferenceAblationModel.build_spatial_coordinates",
-)
-BLCS_REFERENCE_ABLATION_BUILDER_PATH = (
-    *BLCS_REFERENCE_ABLATION_SPATIAL_PATH,
-    *REFERENCE_COORDINATE_BUILDER_SUFFIX,
+    *REFERENCE_COMPRESSED_COORDINATE_BUILDER_SUFFIX,
 )
 PLCS_REFERENCE_FORWARD = (
     "src.tasks.plcs.models.plcs_track_query_reference_model."
@@ -410,24 +324,7 @@ PLCS_REFERENCE_SPATIAL_PATH = (
 )
 PLCS_REFERENCE_BUILDER_PATH = (
     *PLCS_REFERENCE_SPATIAL_PATH,
-    *REFERENCE_COORDINATE_BUILDER_SUFFIX,
-)
-PLCS_REFERENCE_ABLATION_FORWARD = (
-    "src.tasks.plcs.models.plcs_track_query_reference_ablation_model."
-    "PLCSTrackQueryReferenceAblationModel.forward"
-)
-PLCS_REFERENCE_ABLATION_CONTEXT_PATH = (
-    PLCS_REFERENCE_ABLATION_FORWARD,
-    REFERENCE_CONTEXT_VALIDATION,
-)
-PLCS_REFERENCE_ABLATION_SPATIAL_PATH = (
-    PLCS_REFERENCE_ABLATION_FORWARD,
-    "src.tasks.plcs.models.plcs_track_query_reference_ablation_model."
-    "PLCSTrackQueryReferenceAblationModel.build_spatial_coordinates",
-)
-PLCS_REFERENCE_ABLATION_BUILDER_PATH = (
-    *PLCS_REFERENCE_ABLATION_SPATIAL_PATH,
-    *REFERENCE_COORDINATE_BUILDER_SUFFIX,
+    *REFERENCE_COMPRESSED_COORDINATE_BUILDER_SUFFIX,
 )
 SLCS_MASK_PATH = (
     "src.tasks.slcs.models.slcs_model.SLCSFusionModel.forward",
@@ -466,10 +363,6 @@ COURT_TRANSFORMER_PATCH_POSITIONS_PATH = (
     *COURT_TRANSFORMER_PATH,
     "src.tasks.court_detection.models.transformer_encoder.build_patch_positions",
 )
-FIXED_QUERY_TRACK_ABLATION_STAGE_PATH = (
-    "src.utils.models.components.fixed_query_track_ablation_stage."
-    "FixedQueryTrackAblationStage.forward",
-)
 EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES_BY_PATH = {
     BLCS_SINGLE_VIEW_MASK_PATH: {
         "forward validation helper _validate_num_court_tokens": 1,
@@ -504,40 +397,16 @@ EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES_BY_PATH = {
         "Python raise": 1,
         "Python shape/value validation branch": 1,
     },
-    BLCS_MULTIVIEW_MASK_PATH: {
-        "forward validation helper _validate_num_court_tokens": 1,
-        "forward validation helper _validate_padding_mask": 1,
-    },
-    BLCS_MULTIVIEW_COURT_COUNT_VALIDATION_PATH: {
-        "Python raise": 2,
-        "Python shape/value validation branch": 1,
-        "runtime implementation/type selection via type": 1,
-    },
-    BLCS_MULTIVIEW_PADDING_VALIDATION_PATH: {
-        "Python raise": 4,
-        "Python shape/value validation branch": 3,
-        "runtime implementation/type selection via isinstance": 1,
-    },
-    BLCS_MULTIVIEW_OUTPUT_MASK_PATH: {
-        "Python raise": 1,
-        "Python shape/value validation branch": 1,
-    },
     BLCS_FIXED_QUERY_MASK_PATH: {
         "Python raise": 6,
         "Python shape/value validation branch": 4,
         "runtime implementation/type selection via isinstance": 1,
         "runtime implementation/type selection via type": 1,
     },
-    BLCS_ABLATION_SPATIAL_COORDINATE_VALIDATION_PATH: {"Python raise": 2},
-    BLCS_ABLATION_COMPRESSED_SPATIAL_MASK_PATH: {
+    BLCS_SPATIAL_COORDINATE_VALIDATION_PATH: {"Python raise": 1},
+    BLCS_COMPRESSED_SPATIAL_MASK_PATH: {
         "Python raise": 1,
         "Python shape/value validation branch": 1,
-    },
-    BLCS_ABLATION_FIXED_QUERY_MASK_PATH: {
-        "Python raise": 6,
-        "Python shape/value validation branch": 4,
-        "runtime implementation/type selection via isinstance": 1,
-        "runtime implementation/type selection via type": 1,
     },
     PLCS_SPATIAL_COORDINATE_VALIDATION_PATH: {"Python raise": 1},
     PLCS_FIXED_QUERY_MASK_PATH: {
@@ -546,24 +415,17 @@ EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES_BY_PATH = {
         "runtime implementation/type selection via isinstance": 1,
         "runtime implementation/type selection via type": 1,
     },
-    PLCS_ABLATION_SPATIAL_COORDINATE_VALIDATION_PATH: {"Python raise": 2},
-    PLCS_ABLATION_COMPRESSED_SPATIAL_MASK_PATH: {
+    PLCS_COMPRESSED_SPATIAL_MASK_PATH: {
         "Python raise": 1,
         "Python shape/value validation branch": 1,
     },
-    PLCS_ABLATION_FIXED_QUERY_MASK_PATH: {
-        "Python raise": 6,
-        "Python shape/value validation branch": 4,
-        "runtime implementation/type selection via isinstance": 1,
-        "runtime implementation/type selection via type": 1,
-    },
     BLCS_REFERENCE_SPATIAL_PATH: {"Python raise": 1},
     BLCS_REFERENCE_BUILDER_PATH: {
-        "Python raise": 4,
-        "Python shape/value validation branch": 3,
+        "Python raise": 3,
+        "Python shape/value validation branch": 2,
         "forward validation helper _require_positive_int": 2,
         "forward validation helper validate_reference_view_index": 1,
-        "runtime implementation/type selection via isinstance": 2,
+        "runtime implementation/type selection via isinstance": 1,
     },
     (*BLCS_REFERENCE_BUILDER_PATH, REFERENCE_INDEX_VALIDATION): {
         "Python raise": 6,
@@ -571,27 +433,6 @@ EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES_BY_PATH = {
         "runtime implementation/type selection via isinstance": 1,
     },
     (*BLCS_REFERENCE_BUILDER_PATH, REFERENCE_POSITIVE_INT_VALIDATION): {
-        "Python raise": 1,
-        "Python shape/value validation branch": 1,
-        "runtime implementation/type selection via type": 1,
-    },
-    BLCS_REFERENCE_ABLATION_SPATIAL_PATH: {"Python raise": 2},
-    BLCS_REFERENCE_ABLATION_BUILDER_PATH: {
-        "Python raise": 4,
-        "Python shape/value validation branch": 3,
-        "forward validation helper _require_positive_int": 2,
-        "forward validation helper validate_reference_view_index": 1,
-        "runtime implementation/type selection via isinstance": 2,
-    },
-    (*BLCS_REFERENCE_ABLATION_BUILDER_PATH, REFERENCE_INDEX_VALIDATION): {
-        "Python raise": 6,
-        "Python shape/value validation branch": 2,
-        "runtime implementation/type selection via isinstance": 1,
-    },
-    (
-        *BLCS_REFERENCE_ABLATION_BUILDER_PATH,
-        REFERENCE_POSITIVE_INT_VALIDATION,
-    ): {
         "Python raise": 1,
         "Python shape/value validation branch": 1,
         "runtime implementation/type selection via type": 1,
@@ -612,43 +453,13 @@ EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES_BY_PATH = {
     },
     PLCS_REFERENCE_SPATIAL_PATH: {"Python raise": 1},
     PLCS_REFERENCE_BUILDER_PATH: {
-        "Python raise": 4,
-        "Python shape/value validation branch": 3,
+        "Python raise": 3,
+        "Python shape/value validation branch": 2,
         "forward validation helper _require_positive_int": 2,
         "forward validation helper validate_reference_view_index": 1,
-        "runtime implementation/type selection via isinstance": 2,
-    },
-    (*PLCS_REFERENCE_BUILDER_PATH, REFERENCE_POSITIVE_INT_VALIDATION): {
-        "Python raise": 1,
-        "Python shape/value validation branch": 1,
-        "runtime implementation/type selection via type": 1,
-    },
-    (PLCS_REFERENCE_ABLATION_FORWARD,): {
-        "forward validation helper validate_reference_context_mask": 1,
-    },
-    PLCS_REFERENCE_ABLATION_CONTEXT_PATH: {
-        "Python raise": 9,
-        "Python shape/value validation branch": 4,
-        "forward validation helper validate_reference_view_index": 1,
-        "runtime implementation/type selection via isinstance": 2,
-    },
-    (*PLCS_REFERENCE_ABLATION_CONTEXT_PATH, REFERENCE_INDEX_VALIDATION): {
-        "Python raise": 6,
-        "Python shape/value validation branch": 2,
         "runtime implementation/type selection via isinstance": 1,
     },
-    PLCS_REFERENCE_ABLATION_SPATIAL_PATH: {"Python raise": 2},
-    PLCS_REFERENCE_ABLATION_BUILDER_PATH: {
-        "Python raise": 4,
-        "Python shape/value validation branch": 3,
-        "forward validation helper _require_positive_int": 2,
-        "forward validation helper validate_reference_view_index": 1,
-        "runtime implementation/type selection via isinstance": 2,
-    },
-    (
-        *PLCS_REFERENCE_ABLATION_BUILDER_PATH,
-        REFERENCE_POSITIVE_INT_VALIDATION,
-    ): {
+    (*PLCS_REFERENCE_BUILDER_PATH, REFERENCE_POSITIVE_INT_VALIDATION): {
         "Python raise": 1,
         "Python shape/value validation branch": 1,
         "runtime implementation/type selection via type": 1,
@@ -692,7 +503,6 @@ EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES_BY_PATH = {
         "Python shape/value validation branch": 1,
         "runtime implementation/type selection via type": 2,
     },
-    FIXED_QUERY_TRACK_ABLATION_STAGE_PATH: {"Python raise": 1},
 }
 EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES = {
     (call_path, violation): count
@@ -780,9 +590,7 @@ def _repository_consumer_files() -> tuple[Path, ...]:
 
 
 def _repository_consumer_python_files() -> tuple[Path, ...]:
-    return tuple(
-        path for path in _repository_consumer_files() if path.suffix == ".py"
-    )
+    return tuple(path for path in _repository_consumer_files() if path.suffix == ".py")
 
 
 def _repository_reference_python_files() -> tuple[Path, ...]:
@@ -828,9 +636,7 @@ def _deleted_repository_modules() -> frozenset[str]:
         "src",
     )
     modules = frozenset(
-        _module_name_from_source_path(path)
-        for path in paths
-        if path.endswith(".py")
+        _module_name_from_source_path(path) for path in paths if path.endswith(".py")
     )
     return frozenset(module for module in modules if _module_path(module) is None)
 
@@ -856,9 +662,10 @@ def _declaration_retains_compatibility(
     node: ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef,
 ) -> bool:
     docstring = ast.get_docstring(node, clean=False)
-    return docstring is not None and COMPATIBILITY_RETENTION_PATTERN.search(
-        docstring
-    ) is not None
+    return (
+        docstring is not None
+        and COMPATIBILITY_RETENTION_PATTERN.search(docstring) is not None
+    )
 
 
 def _function_parameters(
@@ -905,8 +712,7 @@ def _is_delegating_call(
     return all(
         _is_passthrough_argument(argument, parameters) for argument in node.args
     ) and all(
-        _is_passthrough_argument(keyword.value, parameters)
-        for keyword in node.keywords
+        _is_passthrough_argument(keyword.value, parameters) for keyword in node.keywords
     )
 
 
@@ -942,9 +748,7 @@ def _assigned_names(node: ast.expr) -> frozenset[str]:
         return frozenset({node.id})
     if isinstance(node, (ast.Tuple, ast.List)):
         return frozenset(
-            name
-            for element in node.elts
-            for name in _assigned_names(element)
+            name for element in node.elts for name in _assigned_names(element)
         )
     return frozenset()
 
@@ -962,9 +766,7 @@ def _is_binding_projection(node: ast.expr, bindings: frozenset[str]) -> bool:
 
 
 def _is_private_non_dunder(name: str) -> bool:
-    return name.startswith("_") and not (
-        name.startswith("__") and name.endswith("__")
-    )
+    return name.startswith("_") and not (name.startswith("__") and name.endswith("__"))
 
 
 def _is_pure_forwarding_member(
@@ -1063,9 +865,7 @@ def _module_path(module: str) -> Path | None:
 
 
 def _changed_or_untracked_paths(scope: str) -> set[str]:
-    changed = set(
-        _git_paths("diff", "--name-only", BASE_REVISION, "--", scope)
-    )
+    changed = set(_git_paths("diff", "--name-only", BASE_REVISION, "--", scope))
     changed.update(
         _git_paths("ls-files", "--others", "--exclude-standard", "--", scope)
     )
@@ -1090,8 +890,7 @@ def test_reserved_vendor_scope_contains_only_the_public_nht_gitlink() -> None:
 
 def test_court_line_preprocessing_size_has_one_public_surface() -> None:
     predictor_path = (
-        REPOSITORY_ROOT
-        / "src/tasks/court_detection/inference/mask_predictor.py"
+        REPOSITORY_ROOT / "src/tasks/court_detection/inference/mask_predictor.py"
     )
     predictor_tree = ast.parse(
         predictor_path.read_text(encoding="utf-8"),
@@ -1108,9 +907,10 @@ def test_court_line_preprocessing_size_has_one_public_surface() -> None:
         for node in predictor_class.body
     ), "CourtLinePredictor.short_side must not be restored as a compatibility shim"
 
-    for relative, (canonical_surface, stale_surface) in (
-        COURT_LINE_PREPROCESSING_CONSUMERS.items()
-    ):
+    for relative, (
+        canonical_surface,
+        stale_surface,
+    ) in COURT_LINE_PREPROCESSING_CONSUMERS.items():
         path = REPOSITORY_ROOT / relative
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         attribute_names = {
@@ -1175,7 +975,7 @@ def _reachable_forward_functions(
                 elif "." not in call:
                     target = module_functions.get(call)
                 if target is not None:
-                        pending.append(target)
+                    pending.append(target)
 
 
 def _absolute_import_module(
@@ -1189,9 +989,7 @@ def _absolute_import_module(
         return imported_module or ""
     current_parts = current_module.split(".")
     package_parts = (
-        current_parts
-        if current_path.name == "__init__.py"
-        else current_parts[:-1]
+        current_parts if current_path.name == "__init__.py" else current_parts[:-1]
     )
     keep = len(package_parts) - (level - 1)
     if keep < 0:
@@ -1304,9 +1102,9 @@ def _transitive_forward_functions() -> Iterable[
         module, class_name, _ = root
         if class_name is None:
             continue
-        pending: deque[
-            tuple[tuple[str, str | None, str], tuple[str, ...]]
-        ] = deque([(root, (f"{module}.{class_name}.forward",))])
+        pending: deque[tuple[tuple[str, str | None, str], tuple[str, ...]]] = deque(
+            [(root, (f"{module}.{class_name}.forward",))]
+        )
         visited: set[tuple[str, str | None, str]] = set()
         while pending:
             identity, call_path = pending.popleft()
@@ -1351,9 +1149,7 @@ def _transitive_forward_functions() -> Iterable[
                             imports=imports,
                         )
                 if target is not None:
-                    target_name = ".".join(
-                        part for part in target if part is not None
-                    )
+                    target_name = ".".join(part for part in target if part is not None)
                     pending.append((target, (*call_path, target_name)))
 
 
@@ -1375,9 +1171,9 @@ def _forward_violation(node: ast.AST) -> str | None:
         return "Python assert"
     if isinstance(node, ast.Raise):
         return "Python raise"
-    if isinstance(node, (ast.If, ast.IfExp, ast.While)) and _condition_uses_python_validation(
-        node.test
-    ):
+    if isinstance(
+        node, (ast.If, ast.IfExp, ast.While)
+    ) and _condition_uses_python_validation(node.test):
         return "Python shape/value validation branch"
     if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
         targets: list[ast.expr] = (
@@ -1396,9 +1192,9 @@ def _forward_violation(node: ast.AST) -> str | None:
     leaf = call.rsplit(".", maxsplit=1)[-1]
     if call in {"callable", "getattr", "hasattr", "isinstance", "setattr", "type"}:
         return f"runtime implementation/type selection via {call}"
-    if leaf.startswith(("check_", "ensure_", "require_", "validate_")) or leaf.startswith(
-        ("_check", "_ensure", "_require", "_validate")
-    ):
+    if leaf.startswith(
+        ("check_", "ensure_", "require_", "validate_")
+    ) or leaf.startswith(("_check", "_ensure", "_require", "_validate")):
         return f"forward validation helper {call}"
     if call in {
         "open",
@@ -1477,9 +1273,7 @@ def test_forward_validation_boundary_controls_freeze_paths_and_counts() -> None:
         "src.example.Model.forward",
         "src.example.validate_input",
     )
-    expected: dict[tuple[tuple[str, ...], str], int] = {
-        (expected_path, reason): 1
-    }
+    expected: dict[tuple[tuple[str, ...], str], int] = {(expected_path, reason): 1}
     mutations: tuple[Counter[tuple[tuple[str, ...], str]], ...] = (
         Counter(
             {
@@ -1518,9 +1312,7 @@ def test_forward_validation_boundary_controls_freeze_paths_and_counts() -> None:
 
 
 def test_transitive_forward_inventory_keeps_shared_helper_roots_distinct() -> None:
-    shared_helper = (
-        "src.utils.models.multiview_padding.build_fixed_query_padding_masks"
-    )
+    shared_helper = "src.utils.models.multiview_padding.build_fixed_query_padding_masks"
     discovered = {
         call_path
         for _, _, call_path in _transitive_forward_functions()
@@ -1528,17 +1320,13 @@ def test_transitive_forward_inventory_keeps_shared_helper_roots_distinct() -> No
     }
 
     assert discovered == {
-        BLCS_ABLATION_FIXED_QUERY_MASK_PATH,
         BLCS_FIXED_QUERY_MASK_PATH,
-        PLCS_ABLATION_FIXED_QUERY_MASK_PATH,
         PLCS_FIXED_QUERY_MASK_PATH,
     }
 
 
 def test_transitive_forward_inventory_crosses_repository_modules() -> None:
-    call_paths = {
-        call_path for _, _, call_path in _transitive_forward_functions()
-    }
+    call_paths = {call_path for _, _, call_path in _transitive_forward_functions()}
     expected_cross_module_paths = {
         (
             "src.tasks.ball_detection.models.conv_next_unet.StemLayer.forward",
@@ -1581,7 +1369,9 @@ def test_removed_modules_have_no_forwarding_path_or_owned_reference() -> None:
 
 def test_task_local_generation_and_chunk_consumers_remain_supported() -> None:
     missing = sorted(
-        module for module in SUPPORTED_TASK_LOCAL_MODULES if _module_path(module) is None
+        module
+        for module in SUPPORTED_TASK_LOCAL_MODULES
+        if _module_path(module) is None
     )
 
     assert not missing, "supported task-local modules are missing:\n" + "\n".join(
@@ -1614,9 +1404,7 @@ def test_court_view_geometry_and_transform_authorities_are_centralized() -> None
         for symbol, expected in COURT_VIEW_SYMBOL_AUTHORITIES.items()
         if definitions[symbol] != {expected}
     ]
-    assert not violations, "Court-view authority violations:\n" + "\n".join(
-        violations
-    )
+    assert not violations, "Court-view authority violations:\n" + "\n".join(violations)
 
 
 def test_compatibility_symbols_are_not_defined_or_reexported() -> None:
@@ -1628,9 +1416,14 @@ def test_compatibility_symbols_are_not_defined_or_reexported() -> None:
             if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
                 bindings.add(node.name)
             elif isinstance(node, (ast.Import, ast.ImportFrom)):
-                bindings.update(alias.asname or alias.name.rsplit(".", maxsplit=1)[-1] for alias in node.names)
+                bindings.update(
+                    alias.asname or alias.name.rsplit(".", maxsplit=1)[-1]
+                    for alias in node.names
+                )
             elif isinstance(node, ast.Assign):
-                bindings.update(target.id for target in node.targets if isinstance(target, ast.Name))
+                bindings.update(
+                    target.id for target in node.targets if isinstance(target, ast.Name)
+                )
             elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
                 bindings.add(node.target.id)
             for binding in bindings & PROHIBITED_SYMBOLS:
@@ -1756,9 +1549,7 @@ def test_repository_cli_and_dynamic_target_modules_exist() -> None:
                 module = match.group(1)
                 discovered.append((path, module))
                 if _module_path(module) is None:
-                    missing.append(
-                        f"{path.relative_to(REPOSITORY_ROOT)}: {module}"
-                    )
+                    missing.append(f"{path.relative_to(REPOSITORY_ROOT)}: {module}")
 
     assert discovered, "consumer scan found no CLI or dynamic-target modules"
     assert not missing, "unresolved CLI/dynamic modules:\n" + "\n".join(missing)

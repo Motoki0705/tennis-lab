@@ -11,12 +11,10 @@ from src.tasks.plcs.models.components.heads import (
     TemporalDecomposedCanonicalPoseHead,
 )
 from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
-from src.tasks.plcs.models.plcs_multiview_model import PLCSMultiViewModel
 from src.tasks.plcs.training.composition import build_plcs_lightning_module
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.tasks.plcs.training.metrics import CANONICAL_POSE_HEADLINE_KEYS
 from src.utils.configuration import (
-    MissingConfigurationKeyError,
     SemanticConfigurationError,
     UnknownConfigurationKeyError,
 )
@@ -24,12 +22,12 @@ from src.utils.configuration import (
 _CONFIG_DIR = Path("src/tasks/plcs/configs").resolve()
 
 
-def test_multiview_all_outputs_beta01_config_composes_and_binds_model() -> None:
+def test_axial_all_outputs_beta01_config_composes_and_binds_model() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
             config_name="train",
             overrides=[
-                "model=multiview_canonical",
+                "model=multiview_axial_base",
                 "loss=all_outputs_beta01",
                 "model.hidden_dim=16",
                 "model.num_heads=4",
@@ -43,9 +41,9 @@ def test_multiview_all_outputs_beta01_config_composes_and_binds_model() -> None:
     module = build_plcs_lightning_module(config)
 
     assert isinstance(module, PLCSLightningModule)
-    assert runtime.model.name == "plcs_multiview"
+    assert runtime.model.name == "plcs_multiview_axial"
     assert runtime.model.boolean("predict_canonical_pose")
-    assert isinstance(module.model, PLCSMultiViewModel)
+    assert isinstance(module.model, PLCSMultiViewAxialModel)
     assert module.model.canonical_pose_head is not None
     assert module.loss_fn.config.position_weight == 1.0
     assert module.loss_fn.config.position_smooth_l1_beta == 0.1
@@ -59,13 +57,14 @@ def test_multiview_all_outputs_beta01_config_composes_and_binds_model() -> None:
     )
 
 
-def test_noncanonical_model_keeps_trajectory_only_metric_contract() -> None:
+def test_noncanonical_axial_model_keeps_trajectory_only_metric_contract() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
             config_name="train",
             overrides=[
-                "model=multiview",
+                "model=multiview_axial_base",
                 "loss=no_canonical",
+                "model.predict_canonical_pose=false",
                 "model.hidden_dim=16",
                 "model.num_heads=4",
                 "model.ffn_dim=32",
@@ -84,12 +83,12 @@ def test_noncanonical_model_keeps_trajectory_only_metric_contract() -> None:
     )
 
 
-def test_multiview_reprojection_config_composes_and_binds_loss() -> None:
+def test_axial_reprojection_config_composes_and_binds_loss() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
             config_name="train",
             overrides=[
-                "model=multiview_canonical",
+                "model=multiview_axial_base",
                 "loss=all_outputs_beta01_reprojection",
                 "model.hidden_dim=16",
                 "model.num_heads=4",
@@ -136,177 +135,59 @@ def test_temporal_canonical_pose_model_config_composes_and_binds_head() -> None:
     )
 
 
-@pytest.mark.parametrize(
-    (
-        "model_name",
-        "hidden_dim",
-        "num_heads",
-        "num_stages",
-        "ffn_dim",
-        "rope_dim",
-        "dropout",
-    ),
-    [
-        ("track_query", 64, 4, 4, 128, 16, 0.0),
-        ("track_query_base", 512, 8, 8, 1408, 64, 0.1),
-    ],
-)
-def test_track_query_size_configs_compose_and_validate(
-    model_name: str,
-    hidden_dim: int,
-    num_heads: int,
-    num_stages: int,
-    ffn_dim: int,
-    rope_dim: int,
-    dropout: float,
-) -> None:
+def test_tracking_query_profile_composes_and_validates() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
             config_name="train_tracking_chunked",
-            overrides=[f"model={model_name}"],
+            overrides=["model=tracking_query"],
         )
 
     assert config.model.name == "plcs_track_query"
-    assert config.model.hidden_dim == hidden_dim
-    assert config.model.num_heads == num_heads
-    assert config.model.num_stages == num_stages
-    assert config.model.ffn_dim == ffn_dim
-    assert config.model.rope_dim == rope_dim
-    assert config.model.dropout == dropout
+    assert config.model.hidden_dim == 64
+    assert config.model.num_heads == 4
+    assert config.model.num_stages == 4
+    assert config.model.ffn_dim == 128
+    assert config.model.rope_dim == 16
+    assert config.model.dropout == 0.0
     assert config.model.mhc.coefficient_dim == 64
     assert config.model.cswa.compression_ratio == 4
 
     parsed = PLCSModelConfig.from_mapping(config.model)
     assert parsed.name == "plcs_track_query"
-    assert parsed.integer("hidden_dim") == hidden_dim
-    assert parsed.integer("num_stages") == num_stages
+    assert parsed.integer("hidden_dim") == 64
+    assert parsed.integer("num_stages") == 4
 
 
-@pytest.mark.parametrize(
-    ("condition", "ffn_mode", "mhc_writeback"),
-    [
-        ("a", "per_attention", "after_object_temporal"),
-        ("b", "shared", "after_object_temporal"),
-        ("c", "per_attention", "layer_end"),
-        ("d", "shared", "layer_end"),
-    ],
-)
-def test_all_four_track_query_ablation_configs_compose_and_validate(
-    condition: str,
-    ffn_mode: str,
-    mhc_writeback: str,
-) -> None:
-    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
-        config = compose(
-            config_name="train_tracking",
-            overrides=[f"model=track_query_ablation_{condition}"],
-        )
-
-    runtime = PLCSTrainingConfig.from_config(config)
-
-    assert runtime.model.name == "plcs_track_query_ablation"
-    assert runtime.model.string("ffn_mode") == ffn_mode
-    assert runtime.model.string("mhc_writeback") == mhc_writeback
-    assert runtime.model.integer("num_queries") == 4
-
-
-@pytest.mark.parametrize(
-    ("violation", "error"),
-    [
-        ("missing_ffn", MissingConfigurationKeyError),
-        ("missing_writeback", MissingConfigurationKeyError),
-        ("unknown", UnknownConfigurationKeyError),
-        ("invalid_ffn", SemanticConfigurationError),
-        ("invalid_writeback", SemanticConfigurationError),
-        ("unknown_ffn_type", SemanticConfigurationError),
-    ],
-)
-def test_ablation_axes_reject_missing_unknown_invalid_and_inconsistent_values(
-    violation: str,
-    error: type[Exception],
-) -> None:
-    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
-        config = compose(
-            config_name="train_tracking",
-            overrides=["model=track_query_ablation_a"],
-        )
-
-    with open_dict(config.model):
-        if violation == "missing_ffn":
-            del config.model["ffn_mode"]
-        elif violation == "missing_writeback":
-            del config.model["mhc_writeback"]
-        elif violation == "unknown":
-            config.model["legacy_ablation"] = True
-        elif violation == "invalid_ffn":
-            config.model.ffn_mode = "legacy"
-        elif violation == "invalid_writeback":
-            config.model.mhc_writeback = "before_spatial"
-        else:
-            config.model.ffn_type = "unknown"
-
-    with pytest.raises(error):
-        PLCSModelConfig.from_mapping(config.model)
-
-
-@pytest.mark.parametrize(
-    ("profile", "model_name", "selector_mode"),
-    [
-        (
-            "track_query_reference",
-            "plcs_track_query_reference",
-            "reference",
-        ),
-        (
-            "track_query_ablation_d_v2_selector",
-            "plcs_track_query_reference_ablation",
-            "reference",
-        ),
-        (
-            "track_query_ablation_d_v2_selector_zero",
-            "plcs_track_query_reference_ablation",
-            "selector_zero",
-        ),
-    ],
-)
-def test_reference_v2_profiles_compose_with_explicit_independent_contracts(
-    profile: str,
-    model_name: str,
-    selector_mode: str,
-) -> None:
+def test_reference_profile_composes_from_canonical_architecture() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
             config_name="train_tracking",
             overrides=[
-                f"model={profile}",
+                "model=tracking_query_reference",
                 "court_keypoints=camera_view_v2",
             ],
         )
 
     runtime = PLCSTrainingConfig.from_config(config)
-    assert runtime.model.name == model_name
+    assert runtime.model.name == "plcs_track_query_reference"
     assert runtime.model.string("target_frame_contract") == (
         "reference_camera_court_rzpi_v1"
     )
     assert runtime.model.string("track_query_rope_contract") == (
         "time_camera_reference_selector_v1"
     )
-    assert runtime.model.string("reference_selector_mode") == selector_mode
+    assert runtime.model.string("reference_selector_mode") == "reference"
+    assert runtime.model.integer("hidden_dim") == 64
+    assert runtime.model.integer("num_stages") == 4
     assert "role_rope_enabled" not in runtime.model.values
 
 
-@pytest.mark.parametrize(
-    "profile",
-    ["track_query_reference", "track_query_ablation_d_v2_selector"],
-)
-def test_reference_v2_rejects_rope_dim_four_and_accepts_dim_six(
-    profile: str,
-) -> None:
+def test_reference_rejects_rope_dim_four_and_accepts_dim_six() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
             config_name="train_tracking",
             overrides=[
-                f"model={profile}",
+                "model=tracking_query_reference",
                 "court_keypoints=camera_view_v2",
                 "model.hidden_dim=24",
                 "model.num_heads=4",
@@ -324,8 +205,8 @@ def test_reference_v2_rejects_rope_dim_four_and_accepts_dim_six(
 @pytest.mark.parametrize(
     ("model_profile", "court_profile"),
     [
-        ("track_query_reference", "physical_v1"),
-        ("track_query", "camera_view_v2"),
+        ("tracking_query_reference", "physical_v1"),
+        ("tracking_query", "camera_view_v2"),
     ],
 )
 def test_track_query_runtime_rejects_mixed_v1_v2_contracts(
@@ -349,7 +230,7 @@ def test_reference_v2_does_not_reinterpret_role_rope_enabled() -> None:
         config = compose(
             config_name="train_tracking",
             overrides=[
-                "model=track_query_reference",
+                "model=tracking_query_reference",
                 "court_keypoints=camera_view_v2",
                 "+model.role_rope_enabled=true",
             ],
@@ -375,7 +256,7 @@ def test_reference_v2_rejects_unknown_or_mixed_semantic_markers(
         config = compose(
             config_name="train_tracking",
             overrides=[
-                "model=track_query_ablation_d_v2_selector",
+                "model=tracking_query_reference",
                 "court_keypoints=camera_view_v2",
             ],
         )

@@ -147,12 +147,9 @@ combinations are valid:
 
 The v2 selector is clip-level and is repeated over every time and object token;
 it does not depend on visibility. Query-first flattening, time order, local
-camera coordinate `v+1`, and ordinary/compressed spatial widths are unchanged.
+camera coordinate `v+1`, and the compressed spatial width are unchanged.
 `rope_dim` must be even and at least 6 so the generic round-robin allocator
-assigns a pair to time, camera, and selector. `selector_zero` is an explicit
-ablation contract: it retains the sixth input and changes only selector-axis
-coordinates to zero. `role_rope_enabled` remains a v1 setting and never means
-reference selection.
+assigns a pair to time, camera, and selector.
 
 Each v2 sample carries one typed selection with canonical string IDs,
 `reference_view_index`, `view_camera_ids`, `reference_camera_id`,
@@ -161,8 +158,10 @@ Integer IDs are collision-free ranks in the complete lexicographically ordered
 scene ID table; `-1` is reserved only for padded `view_camera_ids`. Missing,
 unknown, mixed, out-of-range, padded, or identity/index-inconsistent records are
 errors. Checkpoints persist Court, target-frame, RoPE, and selector markers as
-independent fields. Matching tensor shapes never authorize a v1/v2 or
-reference/selector-zero load.
+independent fields and require the canonical
+`fixed_query_track_compressed_v1` architecture marker. Metadata-free and
+pre-promotion checkpoints are rejected. Matching tensor shapes never authorize
+a semantic or architecture migration.
 
 Training chooses the reference from the selected valid views using the
 caller-owned seeded worker RNG after subset selection; the candidate IDs are

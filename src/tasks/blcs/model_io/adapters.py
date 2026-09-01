@@ -48,14 +48,7 @@ from src.tasks.blcs.model_io.contracts import (
 )
 from src.tasks.blcs.models.blcs_model import BLCSModel
 from src.tasks.blcs.models.blcs_multiview_axial_model import BLCSMultiViewAxialModel
-from src.tasks.blcs.models.blcs_multiview_model import BLCSMultiViewModel
-from src.tasks.blcs.models.blcs_track_query_ablation_model import (
-    BLCSTrackQueryAblationModel,
-)
 from src.tasks.blcs.models.blcs_track_query_model import BLCSTrackQueryModel
-from src.tasks.blcs.models.blcs_track_query_reference_ablation_model import (
-    BLCSTrackQueryReferenceAblationModel,
-)
 from src.tasks.blcs.models.blcs_track_query_reference_model import (
     BLCSTrackQueryReferenceModel,
 )
@@ -716,14 +709,6 @@ class _MultiviewTrajectoryModelIOAdapter(TrajectoryModelIOAdapter):
         return result
 
 
-class MultiViewTrajectoryModelIOAdapter(_MultiviewTrajectoryModelIOAdapter):
-    """I/O adapter for the iterative multiview model."""
-
-    @property
-    def model_type(self) -> type[nn.Module]:
-        return cast("type[nn.Module]", BLCSMultiViewModel)
-
-
 class AxialTrajectoryModelIOAdapter(_MultiviewTrajectoryModelIOAdapter):
     """I/O adapter for the axial multiview model."""
 
@@ -736,7 +721,7 @@ class TrackQueryModelIOAdapter:
     """Boundary adapter for lifecycle-query BLCS batches and outputs."""
 
     input_profile: Literal["tracking"] = "tracking"
-    _requires_legacy_contract = True
+    _requires_physical_contract = True
 
     def __init__(
         self,
@@ -759,19 +744,19 @@ class TrackQueryModelIOAdapter:
                 "BLCS tracking adapter CourtKP20 contract must be canonical."
             )
         self.court_keypoint_contract = canonical_contract
-        if self._requires_legacy_contract:
-            legacy_contract = TrackQueryReferenceContract.legacy_v1()
+        if self._requires_physical_contract:
+            physical_contract = TrackQueryReferenceContract.physical_v1()
             if (
                 canonical_contract.contract_id
-                != legacy_contract.court_keypoint_contract
+                != physical_contract.court_keypoint_contract
                 or canonical_contract.target_frame_id
-                != legacy_contract.target_frame_contract
+                != physical_contract.target_frame_contract
             ):
                 raise CourtKeypointContractMismatchError(
-                    "Legacy BLCS tracking adapters require exact physical CourtKP20, "
+                    "Canonical BLCS tracking adapters require physical CourtKP20, "
                     "physical target-frame, and role-RoPE semantics."
                 )
-            self.track_query_reference_contract = legacy_contract
+            self.track_query_reference_contract = physical_contract
 
     @property
     def model_type(self) -> type[nn.Module]:
@@ -947,19 +932,10 @@ class TrackQueryModelIOAdapter:
         )
 
 
-class TrackQueryAblationModelIOAdapter(TrackQueryModelIOAdapter):
-    """Exact BLCS adapter binding for the ablation architecture family."""
-
-    @property
-    def model_type(self) -> type[nn.Module]:
-        return cast("type[nn.Module]", BLCSTrackQueryAblationModel)
-
-
 class TrackQueryReferenceModelIOAdapter(TrackQueryModelIOAdapter):
     """Exact six-input adapter for the normal BLCS reference-v2 model."""
 
-    _allows_selector_zero = False
-    _requires_legacy_contract = False
+    _requires_physical_contract = False
 
     def __init__(
         self,
@@ -981,13 +957,8 @@ class TrackQueryReferenceModelIOAdapter(TrackQueryModelIOAdapter):
             raise ValueError(
                 "BLCS reference adapter requires an explicit selector mode."
             )
-        if (
-            selector_mode is ReferenceSelectorMode.SELECTOR_ZERO
-            and not self._allows_selector_zero
-        ):
-            raise ValueError(
-                "The normal BLCS reference adapter does not allow selector_zero."
-            )
+        if selector_mode is not ReferenceSelectorMode.REFERENCE:
+            raise ValueError("BLCS reference adapter requires reference mode.")
         expected = TrackQueryReferenceContract.reference_v2(selector_mode)
         if track_query_reference_contract != expected:
             raise ValueError(
@@ -1078,26 +1049,11 @@ class TrackQueryReferenceModelIOAdapter(TrackQueryModelIOAdapter):
         return ModelCall(kwargs=kwargs)
 
 
-class TrackQueryReferenceAblationModelIOAdapter(
-    TrackQueryReferenceModelIOAdapter
-):
-    """Exact six-input adapter for the BLCS reference-v2 ablation family."""
-
-    _allows_selector_zero = True
-
-    @property
-    def model_type(self) -> type[nn.Module]:
-        return cast("type[nn.Module]", BLCSTrackQueryReferenceAblationModel)
-
-
 __all__ = [
     "AxialTrajectoryModelIOAdapter",
-    "MultiViewTrajectoryModelIOAdapter",
     "RawBLCSOutput",
     "SingleTrajectoryModelIOAdapter",
-    "TrackQueryAblationModelIOAdapter",
     "TrackQueryModelIOAdapter",
-    "TrackQueryReferenceAblationModelIOAdapter",
     "TrackQueryReferenceModelIOAdapter",
     "TrajectoryModelIOAdapter",
 ]

@@ -1,4 +1,4 @@
-"""CPU integration tests for fixed-width hybrid-CSWA BLCS track queries."""
+"""CPU integration tests for canonical BLCS tracking queries."""
 
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ def _reference_config() -> object:
         return compose(
             config_name="train_tracking",
             overrides=[
-                "model=track_query_reference",
+                "model=tracking_query_reference",
                 "court_keypoints=camera_view_v2",
                 "model.hidden_dim=24",
                 "model.num_heads=4",
@@ -97,7 +97,7 @@ def _reference_batch() -> dict[str, object]:
     return result
 
 
-def test_hybrid_candidate_runs_cpu_forward_backward_and_preserves_outputs() -> None:
+def test_tracking_query_runs_cpu_forward_backward_and_preserves_outputs() -> None:
     binding = compose_blcs_track_query_model_io(_config())
     call = binding.build_call(_batch())
     raw = binding.execute_call(call)
@@ -118,7 +118,7 @@ def test_hybrid_candidate_runs_cpu_forward_backward_and_preserves_outputs() -> N
     assert all(torch.isfinite(gradient).all() for gradient in gradients)
 
 
-def test_reference_v2_normal_runs_six_input_cpu_forward_backward() -> None:
+def test_reference_tracking_query_runs_six_input_cpu_forward_backward() -> None:
     binding = compose_blcs_track_query_model_io(_reference_config())
     call = binding.build_call(_reference_batch())
     assert len(call.kwargs) == 6
@@ -212,7 +212,7 @@ def test_old_track_query_state_dict_is_intentionally_strictly_incompatible() -> 
         model.load_state_dict(old_state, strict=True)
 
 
-def test_hybrid_candidate_state_dict_round_trip_preserves_outputs() -> None:
+def test_tracking_query_state_dict_round_trip_preserves_outputs() -> None:
     source = compose_blcs_track_query_model_io(_config())
     clone = compose_blcs_track_query_model_io(_config())
     clone.model.load_state_dict(source.model.state_dict(), strict=True)

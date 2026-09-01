@@ -113,10 +113,7 @@ def track_query_reference_contract_document(
     root = as_config_mapping(value, path="configuration")
     model = require_config_mapping(root, "model", path="configuration")
     model_name = model.get("name")
-    if model_name not in {
-        "plcs_track_query_reference",
-        "plcs_track_query_reference_ablation",
-    }:
+    if model_name != "plcs_track_query_reference":
         return None
     for key in (
         "target_frame_contract",
@@ -226,7 +223,9 @@ def validate_plcs_court_keypoint_headers(
     """Cross-check Court records against PLCS scene/scalar camera headers."""
     if validation.legacy_metadata_free:
         return
-    records_by_scene = {scene.scene_id: scene.court_views for scene in validation.scenes}
+    records_by_scene = {
+        scene.scene_id: scene.court_views for scene in validation.scenes
+    }
     for scene_path in scene_paths:
         views = records_by_scene[scene_path.name]
         meta_path = scene_path / "meta.json"
@@ -246,9 +245,7 @@ def validate_plcs_court_keypoint_headers(
             f"cam_{camera_index}_params" for camera_index in range(len(views))
         }
         actual_parameter_slots = {
-            key
-            for key in scalars
-            if key.startswith("cam_") and key.endswith("_params")
+            key for key in scalars if key.startswith("cam_") and key.endswith("_params")
         }
         if actual_parameter_slots != expected_parameter_slots:
             raise CourtKeypointContractMismatchError(
