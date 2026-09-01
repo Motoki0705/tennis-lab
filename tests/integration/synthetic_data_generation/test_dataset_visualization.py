@@ -26,6 +26,10 @@ from src.synthetic_data_generation.dataset.runtime import (
 )
 from src.synthetic_data_generation.visualization import (
     VISUALIZATION_METADATA_SCHEMA,
+    CourtAABBRenderStyle,
+    CourtAABBTrajectoryFilterRadiusMode,
+    CourtAABBTrajectoryFilterScope,
+    CourtAABBWireframeTopology,
     CourtOverlayConfiguration,
     CourtOverlayMode,
     DatasetVisualizationDomain,
@@ -68,13 +72,25 @@ def _root(tmp_path: Path, domain: str) -> Path:
 def _semantic_court_overlay() -> CourtOverlayConfiguration:
     return CourtOverlayConfiguration(
         mode=CourtOverlayMode.SEMANTIC,
+        render_style=CourtAABBRenderStyle.WIREFRAME,
+        wireframe_topology=CourtAABBWireframeTopology.BOUNDARY,
+        trajectory_filter_scope=(
+            CourtAABBTrajectoryFilterScope.LOCAL_SWEPT_SEGMENTS
+        ),
+        trajectory_filter_radius_mode=(
+            CourtAABBTrajectoryFilterRadiusMode.EXPLICIT_RADIUS
+        ),
+        trajectory_filter_radius_m=1.5,
         color_rgb=(255, 96, 32),
         background_color_rgb=(0, 0, 0),
         opacity=0.55,
+        edge_opacity=0.40,
+        edge_width_px=1,
         depth_epsilon_m=0.02,
         near_plane_m=0.05,
         maximum_cells=1_000_000,
         maximum_surface_faces=4_000_000,
+        maximum_edge_segments=8_000_000,
         maximum_projected_pixels=100_000_000,
     )
 

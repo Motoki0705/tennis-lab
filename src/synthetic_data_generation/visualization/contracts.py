@@ -27,23 +27,108 @@ class CourtOverlayMode(StrEnum):
     TRAJECTORY_SUPPORT_AABB = "trajectory_support_aabb"
 
 
+class CourtAABBRenderStyle(StrEnum):
+    """Explicit rasterization style for the exact Court support occupancy."""
+
+    WIREFRAME = "wireframe"
+    SOLID = "solid"
+
+
+class CourtAABBWireframeTopology(StrEnum):
+    """Explicit edge-selection policy for Court AABB wireframes."""
+
+    BOUNDARY = "boundary"
+    ALL_EDGES = "all_edges"
+
+
+class CourtAABBTrajectoryFilterScope(StrEnum):
+    """Display-only occupancy scope around the selected closed trajectory."""
+
+    LOCAL_SWEPT_SEGMENTS = "local_swept_segments"
+    SELECTED_TRAJECTORY = "selected_trajectory"
+    ALL = "all"
+
+
+class CourtAABBTrajectoryFilterRadiusMode(StrEnum):
+    """Authority used to resolve a non-all trajectory filter radius."""
+
+    SUPPORT_RADIUS = "support_radius"
+    EXPLICIT_RADIUS = "explicit_radius"
+
+
 @dataclass(frozen=True, slots=True)
 class CourtOverlayConfiguration:
     """Rendering and fail-closed resource policy for Court overlays."""
 
     mode: CourtOverlayMode
+    render_style: CourtAABBRenderStyle
+    wireframe_topology: CourtAABBWireframeTopology
+    trajectory_filter_scope: CourtAABBTrajectoryFilterScope
+    trajectory_filter_radius_mode: CourtAABBTrajectoryFilterRadiusMode | None
+    trajectory_filter_radius_m: float | None
     color_rgb: tuple[int, int, int]
     background_color_rgb: tuple[int, int, int]
     opacity: float
+    edge_opacity: float
+    edge_width_px: int
     depth_epsilon_m: float
     near_plane_m: float
     maximum_cells: int
     maximum_surface_faces: int
+    maximum_edge_segments: int
     maximum_projected_pixels: int
 
     def __post_init__(self) -> None:
         if not isinstance(self.mode, CourtOverlayMode):
             raise TypeError("Court overlay mode must be CourtOverlayMode.")
+        if not isinstance(self.render_style, CourtAABBRenderStyle):
+            raise TypeError("Court AABB render_style must be CourtAABBRenderStyle.")
+        if not isinstance(self.wireframe_topology, CourtAABBWireframeTopology):
+            raise TypeError(
+                "Court AABB wireframe_topology must be CourtAABBWireframeTopology."
+            )
+        if not isinstance(self.trajectory_filter_scope, CourtAABBTrajectoryFilterScope):
+            raise TypeError(
+                "Court AABB trajectory_filter_scope must be "
+                "CourtAABBTrajectoryFilterScope."
+            )
+        radius_mode = self.trajectory_filter_radius_mode
+        if radius_mode is not None and not isinstance(
+            radius_mode,
+            CourtAABBTrajectoryFilterRadiusMode,
+        ):
+            raise TypeError(
+                "Court AABB trajectory_filter_radius_mode must be "
+                "CourtAABBTrajectoryFilterRadiusMode or None."
+            )
+        filter_radius: float | None
+        if self.trajectory_filter_radius_m is None:
+            filter_radius = None
+        else:
+            filter_radius = _finite_number(
+                self.trajectory_filter_radius_m,
+                name="Court AABB trajectory_filter_radius_m",
+            )
+        if self.trajectory_filter_scope is CourtAABBTrajectoryFilterScope.ALL:
+            if radius_mode is not None or filter_radius is not None:
+                raise ValueError(
+                    "Court AABB all filter requires radius_mode and radius to be None."
+                )
+        elif radius_mode is None:
+            raise ValueError(
+                "Court AABB non-all filter requires trajectory_filter_radius_mode."
+            )
+        elif radius_mode is CourtAABBTrajectoryFilterRadiusMode.EXPLICIT_RADIUS:
+            if filter_radius is None or filter_radius <= 0.0:
+                raise ValueError(
+                    "Court AABB explicit_radius filter requires a positive finite "
+                    "trajectory_filter_radius_m."
+                )
+        elif filter_radius is not None:
+            raise ValueError(
+                "Court AABB support_radius filter requires "
+                "trajectory_filter_radius_m=None."
+            )
         color = _rgb_bytes(self.color_rgb, name="color_rgb")
         background_color = _rgb_bytes(
             self.background_color_rgb,
@@ -52,6 +137,18 @@ class CourtOverlayConfiguration:
         opacity = _finite_number(self.opacity, name="Court overlay opacity")
         if not 0.0 < opacity <= 1.0:
             raise ValueError("Court overlay opacity must lie in (0, 1].")
+        edge_opacity = _finite_number(
+            self.edge_opacity,
+            name="Court overlay edge_opacity",
+        )
+        if not 0.0 < edge_opacity <= 1.0:
+            raise ValueError("Court overlay edge_opacity must lie in (0, 1].")
+        if (
+            isinstance(self.edge_width_px, bool)
+            or not isinstance(self.edge_width_px, int)
+            or not 1 <= self.edge_width_px <= 64
+        ):
+            raise ValueError("Court overlay edge_width_px must lie in [1, 64].")
         depth_epsilon = _finite_number(
             self.depth_epsilon_m,
             name="Court overlay depth_epsilon_m",
@@ -67,6 +164,7 @@ class CourtOverlayConfiguration:
         for name in (
             "maximum_cells",
             "maximum_surface_faces",
+            "maximum_edge_segments",
             "maximum_projected_pixels",
         ):
             value = getattr(self, name)
@@ -75,6 +173,8 @@ class CourtOverlayConfiguration:
         object.__setattr__(self, "color_rgb", color)
         object.__setattr__(self, "background_color_rgb", background_color)
         object.__setattr__(self, "opacity", opacity)
+        object.__setattr__(self, "edge_opacity", edge_opacity)
+        object.__setattr__(self, "trajectory_filter_radius_m", filter_radius)
         object.__setattr__(self, "depth_epsilon_m", depth_epsilon)
         object.__setattr__(self, "near_plane_m", near_plane)
 
@@ -82,13 +182,25 @@ class CourtOverlayConfiguration:
         """Return deterministic sidecar/config evidence."""
         return {
             "mode": self.mode.value,
+            "render_style": self.render_style.value,
+            "wireframe_topology": self.wireframe_topology.value,
+            "trajectory_filter_scope": self.trajectory_filter_scope.value,
+            "trajectory_filter_radius_mode": (
+                None
+                if self.trajectory_filter_radius_mode is None
+                else self.trajectory_filter_radius_mode.value
+            ),
+            "trajectory_filter_radius_m": self.trajectory_filter_radius_m,
             "color_rgb": list(self.color_rgb),
             "background_color_rgb": list(self.background_color_rgb),
             "opacity": self.opacity,
+            "edge_opacity": self.edge_opacity,
+            "edge_width_px": self.edge_width_px,
             "depth_epsilon_m": self.depth_epsilon_m,
             "near_plane_m": self.near_plane_m,
             "maximum_cells": self.maximum_cells,
             "maximum_surface_faces": self.maximum_surface_faces,
+            "maximum_edge_segments": self.maximum_edge_segments,
             "maximum_projected_pixels": self.maximum_projected_pixels,
         }
 
@@ -115,13 +227,21 @@ def _rgb_bytes(value: object, *, name: str) -> tuple[int, int, int]:
 
 DEFAULT_COURT_OVERLAY_CONFIGURATION = CourtOverlayConfiguration(
     mode=CourtOverlayMode.SEMANTIC,
+    render_style=CourtAABBRenderStyle.WIREFRAME,
+    wireframe_topology=CourtAABBWireframeTopology.BOUNDARY,
+    trajectory_filter_scope=CourtAABBTrajectoryFilterScope.LOCAL_SWEPT_SEGMENTS,
+    trajectory_filter_radius_mode=CourtAABBTrajectoryFilterRadiusMode.EXPLICIT_RADIUS,
+    trajectory_filter_radius_m=1.5,
     color_rgb=(255, 96, 32),
     background_color_rgb=(0, 0, 0),
     opacity=0.55,
+    edge_opacity=0.40,
+    edge_width_px=1,
     depth_epsilon_m=0.02,
     near_plane_m=0.05,
     maximum_cells=1_000_000,
     maximum_surface_faces=4_000_000,
+    maximum_edge_segments=8_000_000,
     maximum_projected_pixels=100_000_000,
 )
 
@@ -291,4 +411,8 @@ __all__ = [
     "VISUALIZATION_METADATA_SCHEMA_V2",
     "CourtOverlayConfiguration",
     "CourtOverlayMode",
+    "CourtAABBRenderStyle",
+    "CourtAABBWireframeTopology",
+    "CourtAABBTrajectoryFilterRadiusMode",
+    "CourtAABBTrajectoryFilterScope",
 ]

@@ -202,6 +202,19 @@ def _write_v4_aabb_fixture(root: Path) -> None:
                 "support_policy": policy.to_dict(),
                 "support_summary": summary.to_dict(),
                 "support_occupancy_identity": snapshot.identity.to_dict(),
+                "samples": [
+                    {
+                        "sample_id": record["sample_id"],
+                        "trajectory_id": record["trajectory_id"],
+                        "view_id": record["view_id"],
+                        "trajectory_frame_index": record[
+                            "trajectory_frame_index"
+                        ],
+                        "camera_center_scene_m": [0.0, 0.0, 0.0],
+                        "camera": camera.to_dict(),
+                    }
+                    for record in manifest["samples"]
+                ],
             }
         ),
         encoding="utf-8",
@@ -341,6 +354,13 @@ def test_v4_aabb_source_loads_metric_arrays_camera_and_bound_exact_cells(
     assert source.support_occupancy is not None
     assert source.support_occupancy.cells.tolist() == [[0, 0, 4]]
     assert source.support_occupancy.support_input_digest == "a" * 64
+    assert source.support_policy == _v4_support_policy()
+    assert source.trajectory_camera_centers_scene_m is not None
+    assert source.trajectory_camera_centers_scene_m.tolist() == [
+        [0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0],
+    ]
+    assert not source.trajectory_camera_centers_scene_m.flags.writeable
     assert all(frame.camera is not None for frame in frames)
     assert all(frame.alpha is not None for frame in frames)
     assert all(frame.depth_metric_m is not None for frame in frames)
@@ -442,6 +462,78 @@ def test_aabb_source_rejects_replaced_cells_with_recomputed_artifact_digest(
             tmp_path,
             trajectory_id="orbit-0",
             overlay_mode=CourtOverlayMode.TRAJECTORY_SUPPORT_AABB,
+        )
+
+
+def test_aabb_source_rejects_plan_manifest_camera_center_mismatch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _write_v4_aabb_fixture(tmp_path)
+    monkeypatch.setattr(
+        sources_module,
+        "validate_court_dataset",
+        lambda *args, **kwargs: None,
+    )
+    plan_path = tmp_path / "diagnostics" / "trajectory-plan.json"
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    plan["samples"][0]["camera_center_scene_m"] = [1.0, 0.0, 0.0]
+    plan_path.write_text(json.dumps(plan), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="camera center disagrees"):
+        CourtVisualizationSource(
+            tmp_path,
+            trajectory_id="orbit-0",
+            overlay_mode=CourtOverlayMode.TRAJECTORY_SUPPORT_AABB,
+        )
+
+
+def test_bound_trajectory_centers_canonicalizes_matching_multi_view_frames() -> None:
+    plan_samples: list[dict[str, object]] = []
+    records: list[dict[str, object]] = []
+    for view_id in ("view-0", "view-1"):
+        for frame_index, center in enumerate(((0.0, 0.0, 0.0), (2.0, 0.0, 0.0))):
+            transform = np.eye(4, dtype=np.float64)
+            transform[:3, 3] = center
+            camera = SceneCamera(
+                camera_id=view_id,
+                source_frame_index=frame_index,
+                width=16,
+                height=16,
+                intrinsics=(8.0, 0.0, 7.5, 0.0, 8.0, 7.5, 0.0, 0.0, 1.0),
+                camera_to_scene=RigidTransform.from_matrix(transform),
+                image_path="unused.png",
+            )
+            identity = {
+                "sample_id": f"{view_id}-{frame_index}",
+                "trajectory_id": "orbit-0",
+                "view_id": view_id,
+                "trajectory_frame_index": frame_index,
+                "camera": camera.to_dict(),
+            }
+            records.append(dict(identity))
+            plan_samples.append(
+                {**identity, "camera_center_scene_m": list(center)}
+            )
+
+    centers = sources_module._bound_trajectory_centers(
+        tuple(plan_samples),
+        records=tuple(records),
+        trajectory_id="orbit-0",
+        sample_count=2,
+    )
+
+    assert centers.tolist() == [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]]
+    assert not centers.flags.writeable
+
+    inconsistent = [dict(value) for value in plan_samples]
+    inconsistent[3]["camera_center_scene_m"] = [3.0, 0.0, 0.0]
+    with pytest.raises(ValueError, match="camera center disagrees|views disagree"):
+        sources_module._bound_trajectory_centers(
+            tuple(inconsistent),
+            records=tuple(records),
+            trajectory_id="orbit-0",
+            sample_count=2,
         )
 
 

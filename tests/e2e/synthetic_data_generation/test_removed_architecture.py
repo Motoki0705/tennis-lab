@@ -84,6 +84,12 @@ COURT_V4_DIGEST_AUTHORITIES = frozenset(
     }
 )
 
+VISUALIZATION_SIDECAR_DIGEST_AUTHORITIES = frozenset(
+    {
+        Path("src/synthetic_data_generation/visualization/renderer.py"),
+    }
+)
+
 def _active_python_files() -> tuple[Path, ...]:
     roots = (PROJECT_ROOT / "src/synthetic_data_generation",)
     return tuple(
@@ -170,7 +176,9 @@ def test_no_identity_or_fixed_pose_architecture_remains_in_active_generation() -
         relative = path.relative_to(PROJECT_ROOT)
         text = path.read_text(encoding="utf-8").lower()
         allowed = ALLOWED_ACTIVE_ARCHITECTURE_TOKENS.get(relative, frozenset())
-        if relative in COURT_V4_DIGEST_AUTHORITIES:
+        if relative in (
+            COURT_V4_DIGEST_AUTHORITIES | VISUALIZATION_SIDECAR_DIGEST_AUTHORITIES
+        ):
             allowed = allowed | {"sha256", "sha-256"}
         for token in FORBIDDEN_ACTIVE_ARCHITECTURE_TOKENS - allowed:
             if token in text:
