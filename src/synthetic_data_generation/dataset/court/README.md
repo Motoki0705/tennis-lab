@@ -627,7 +627,7 @@ identity and expected content digest, so replacing cells and recomputing only
 the artifact metadata is rejected. It never serializes cells, search-index, or
 KD-tree internals into `trajectory-plan.json`.
 
-Select the strict depth-aware surface overlay through the same entrypoint:
+Select the strict depth-aware AABB overlay through the same entrypoint:
 
 ```bash
 .venv/bin/python -m src.synthetic_data_generation.scripts.visualize_dataset \
@@ -637,17 +637,55 @@ Select the strict depth-aware surface overlay through the same entrypoint:
   visualization.court_overlay.mode=trajectory_support_aabb
 ```
 
-This mode accepts only V4 and requires the exact artifact. It removes internal
-six-neighbour faces, near-plane clips and triangle-rasterizes camera-Z with a
-local z-buffer, then composites against the already-metric 3DGS depth (valid
-where alpha and depth are positive). NHT RGB remains its raw
+This mode accepts only V4 and requires the exact artifact. Before extracting
+faces, the default `trajectory_filter_scope=local_swept_segments` derives a
+display-only cell set independently for every rendered trajectory frame. It
+uses that frame's incoming and outgoing segments in the same closed order as
+the V4 safety path: frame zero includes the last-to-first seam, and the last
+frame includes the same seam as its outgoing segment. One-point paths retain
+one degenerate segment; two-point paths retain both directed segments.
+The default `trajectory_filter_radius_mode=explicit_radius` and
+`trajectory_filter_radius_m=1.5` use a readability-only, display-only proximity
+radius. This 1.5 m value is not a safety, support, or collision threshold and
+never changes collision authority. The cell distance is the exact
+segment-to-closed-AABB distance, not a cell-centre approximation.
+
+Set `trajectory_filter_scope=selected_trajectory` to preserve the full closed
+trajectory display, or set `trajectory_filter_scope=all` with both radius mode
+and radius null to inspect the complete artifact. Non-all scopes may instead
+select `trajectory_filter_radius_mode=support_radius` to resolve the V4 plan's
+`support_radius_m`, or use another positive explicit radius. Missing plan
+samples, manifest/camera binding mismatches, empty trajectories, and any
+per-frame filter that retains no cells fail closed. This derived set never
+changes collision decisions or the occupancy artifact/digest. The v2 sidecar
+records the scope, radius authority, resolved radius, exact distance metric,
+centre/closed-segment counts, and `affects_collision_authority=false`;
+frame-local output additionally records min/max/total cell, face, and edge
+counts plus a deterministic count-sequence digest.
+
+The renderer removes internal six-neighbour faces, canonicalizes and
+deduplicates every exposed-face edge, and by default suppresses only
+incidence-two edges whose outward normals are identical, removing coplanar
+voxel seams while retaining boundary and crease edges.
+`wireframe_topology=all_edges` explicitly preserves the unsuppressed v1
+wireframe. Edge segments are near-plane clipped and rasterized with
+perspective-correct camera-Z and a local z-buffer before composition against
+the already-metric 3DGS depth (valid where alpha and depth are positive).
+`visualization.court_overlay.render_style=solid` explicitly selects the retained
+exposed-face triangle rasterizer; there is no automatic style fallback. NHT RGB
+remains its raw
 premultiplied/coverage-weighted accumulation and is resolved as
 `rgb + background * (1 - alpha)`. Missing/tampered authority and configured
-cell, face, or projected-pixel limit violations fail without fallback or
-truncation. Color, background, opacity, near plane, depth epsilon, and limits
-are Hydra settings recorded with aggregate drawing counts in the AABB-only v2
-video JSON sidecar. Existing semantic Court, BLCS, and PLCS sidecars retain the
-unchanged v1 schema and key inventory.
+cell, face, canonical-edge, or projected-pixel limit violations fail without
+fallback or truncation. The artifact's original cell count remains subject to
+`maximum_cells`, and the derived set is never truncated. Style, display filter,
+color, background, solid/edge opacity, edge
+width, near plane, depth epsilon, and limits are Hydra settings recorded with
+geometry counts and aggregate surface/edge pixel counts in the AABB-only v2
+video JSON sidecar. `covered_fragment_count` includes repeated brush fragments;
+`edge_pixel_count` counts the unique finite pixels remaining in the local
+z-buffer. Existing semantic Court, BLCS, and PLCS sidecars retain the unchanged
+v1 schema and key inventory.
 
 ## Implementation ownership
 

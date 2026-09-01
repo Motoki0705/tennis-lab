@@ -130,6 +130,9 @@ class CourtVisualizationSource:
         self.dataset_scene_id = _text(manifest.get("scene_id"), name="Court scene_id")
         self.overlay_mode = overlay_mode
         self.support_occupancy: CourtV4SupportOccupancySnapshot | None = None
+        self.support_policy: TrajectorySupportPolicy | None = None
+        self.trajectory_camera_centers_scene_m: NDArray[np.float64] | None = None
+        plan_samples: tuple[Mapping[str, object], ...] = ()
         if overlay_mode is CourtOverlayMode.TRAJECTORY_SUPPORT_AABB:
             if self.schema_definition.version is not CourtDatasetSchemaVersion.V4:
                 raise ValueError(
@@ -143,6 +146,14 @@ class CourtVisualizationSource:
                 raise ValueError("Court V4 trajectory plan schema is invalid.")
             support_policy = TrajectorySupportPolicy.from_mapping(
                 plan.get("support_policy")
+            )
+            self.support_policy = support_policy
+            plan_samples = tuple(
+                _object(value, name="Court V4 planned sample")
+                for value in _array(
+                    plan.get("samples"),
+                    name="Court V4 planned samples",
+                )
             )
             support_summary = SupportModelSummary.from_mapping(
                 plan.get("support_summary")
@@ -247,6 +258,13 @@ class CourtVisualizationSource:
                 )
             if indices[-1] >= sample_count:
                 raise ValueError("Court frame index exceeds its trajectory inventory.")
+        if overlay_mode is CourtOverlayMode.TRAJECTORY_SUPPORT_AABB:
+            self.trajectory_camera_centers_scene_m = _bound_trajectory_centers(
+                plan_samples,
+                records=records,
+                trajectory_id=trajectory_id,
+                sample_count=sample_count,
+            )
         dimensions = {
             (
                 _positive_integer(record.get("width"), name="Court width"),
@@ -1272,6 +1290,111 @@ def _positive_number(value: object, *, name: str) -> float:
     result = float(value)
     if not math.isfinite(result) or result <= 0.0:
         raise ValueError(f"{name} must be positive and finite.")
+    return result
+
+
+def _bound_trajectory_centers(
+    plan_samples: tuple[Mapping[str, object], ...],
+    *,
+    records: tuple[Mapping[str, object], ...],
+    trajectory_id: str,
+    sample_count: int,
+) -> NDArray[np.float64]:
+    """Bind selected manifest records to their ordered V4 plan camera centres."""
+    selected_plan_samples = tuple(
+        value for value in plan_samples if value.get("trajectory_id") == trajectory_id
+    )
+    if not selected_plan_samples:
+        raise ValueError("Selected Court trajectory has no V4 planned samples.")
+
+    def identity(
+        value: Mapping[str, object],
+        *,
+        name: str,
+    ) -> tuple[str, str, str, int]:
+        return (
+            _text(value.get("sample_id"), name=f"{name} sample_id"),
+            _text(value.get("trajectory_id"), name=f"{name} trajectory_id"),
+            _text(value.get("view_id"), name=f"{name} view_id"),
+            _nonnegative_integer(
+                value.get("trajectory_frame_index"),
+                name=f"{name} trajectory_frame_index",
+            ),
+        )
+
+    plan_identities = tuple(
+        identity(value, name="Court V4 planned sample")
+        for value in selected_plan_samples
+    )
+    manifest_identities = tuple(
+        identity(value, name="Court manifest sample") for value in records
+    )
+    if len(set(plan_identities)) != len(plan_identities):
+        raise ValueError("Court V4 planned sample identities are not unique.")
+    if plan_identities != manifest_identities:
+        raise ValueError(
+            "Selected Court manifest samples disagree with the ordered V4 plan."
+        )
+
+    centers_by_frame_index: dict[int, NDArray[np.float64]] = {}
+    for plan_sample, manifest_record in zip(
+        selected_plan_samples,
+        records,
+        strict=True,
+    ):
+        raw_center = _array(
+            plan_sample.get("camera_center_scene_m"),
+            name="Court V4 planned camera_center_scene_m",
+        )
+        if len(raw_center) != 3:
+            raise ValueError(
+                "Court V4 planned camera_center_scene_m must contain three values."
+            )
+        if any(
+            isinstance(value, bool) or not isinstance(value, (int, float))
+            for value in raw_center
+        ):
+            raise TypeError(
+                "Court V4 planned camera_center_scene_m values must be numeric."
+            )
+        center = np.asarray(raw_center, dtype=np.float64)
+        if center.shape != (3,) or not np.isfinite(center).all():
+            raise ValueError(
+                "Court V4 planned camera_center_scene_m must be one finite 3-vector."
+            )
+        plan_camera = SceneCamera.from_dict(plan_sample.get("camera"))
+        manifest_camera = SceneCamera.from_dict(manifest_record.get("camera"))
+        plan_camera_center = plan_camera.camera_to_scene.matrix()[:3, 3]
+        manifest_camera_center = manifest_camera.camera_to_scene.matrix()[:3, 3]
+        if not np.array_equal(center, plan_camera_center) or not np.array_equal(
+            center,
+            manifest_camera_center,
+        ):
+            raise ValueError(
+                "Court V4 planned camera center disagrees with bound camera records."
+            )
+        frame_index = _nonnegative_integer(
+            plan_sample.get("trajectory_frame_index"),
+            name="Court V4 planned trajectory_frame_index",
+        )
+        previous = centers_by_frame_index.get(frame_index)
+        if previous is not None and not np.array_equal(previous, center):
+            raise ValueError(
+                "Court V4 views disagree on one trajectory-frame camera center."
+            )
+        centers_by_frame_index[frame_index] = center
+    if tuple(sorted(centers_by_frame_index)) != tuple(range(sample_count)):
+        raise ValueError(
+            "Court V4 planned camera centers do not cover the canonical trajectory."
+        )
+    result = np.ascontiguousarray(
+        np.stack(
+            tuple(centers_by_frame_index[index] for index in range(sample_count)),
+            axis=0,
+        ),
+        dtype=np.float64,
+    )
+    result.setflags(write=False)
     return result
 
 

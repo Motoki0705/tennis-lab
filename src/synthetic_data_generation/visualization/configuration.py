@@ -9,6 +9,10 @@ from omegaconf import DictConfig, OmegaConf
 
 from src.synthetic_data_generation.visualization.contracts import (
     DEFAULT_COURT_OVERLAY_CONFIGURATION,
+    CourtAABBRenderStyle,
+    CourtAABBTrajectoryFilterRadiusMode,
+    CourtAABBTrajectoryFilterScope,
+    CourtAABBWireframeTopology,
     CourtOverlayConfiguration,
     CourtOverlayMode,
     DatasetVisualizationDomain,
@@ -147,13 +151,21 @@ def _court_overlay_configuration(value: object) -> CourtOverlayConfiguration:
         name="visualization.court_overlay",
         keys={
             "mode",
+            "render_style",
+            "wireframe_topology",
+            "trajectory_filter_scope",
+            "trajectory_filter_radius_mode",
+            "trajectory_filter_radius_m",
             "color_rgb",
             "background_color_rgb",
             "opacity",
+            "edge_opacity",
+            "edge_width_px",
             "depth_epsilon_m",
             "near_plane_m",
             "maximum_cells",
             "maximum_surface_faces",
+            "maximum_edge_segments",
             "maximum_projected_pixels",
         },
     )
@@ -168,6 +180,66 @@ def _court_overlay_configuration(value: object) -> CourtOverlayConfiguration:
             "visualization.court_overlay.mode must be semantic or "
             "trajectory_support_aabb."
         ) from error
+    render_style_text = _required_text(
+        raw["render_style"],
+        name="visualization.court_overlay.render_style",
+    )
+    try:
+        render_style = CourtAABBRenderStyle(render_style_text)
+    except ValueError as error:
+        raise ValueError(
+            "visualization.court_overlay.render_style must be wireframe or solid."
+        ) from error
+    wireframe_topology_text = _required_text(
+        raw["wireframe_topology"],
+        name="visualization.court_overlay.wireframe_topology",
+    )
+    try:
+        wireframe_topology = CourtAABBWireframeTopology(wireframe_topology_text)
+    except ValueError as error:
+        raise ValueError(
+            "visualization.court_overlay.wireframe_topology must be boundary or "
+            "all_edges."
+        ) from error
+    trajectory_filter_scope_text = _required_text(
+        raw["trajectory_filter_scope"],
+        name="visualization.court_overlay.trajectory_filter_scope",
+    )
+    try:
+        trajectory_filter_scope = CourtAABBTrajectoryFilterScope(
+            trajectory_filter_scope_text
+        )
+    except ValueError as error:
+        raise ValueError(
+            "visualization.court_overlay.trajectory_filter_scope must be "
+            "local_swept_segments, selected_trajectory, or all."
+        ) from error
+    trajectory_filter_radius_mode_raw = raw["trajectory_filter_radius_mode"]
+    if trajectory_filter_radius_mode_raw is None:
+        trajectory_filter_radius_mode = None
+    else:
+        trajectory_filter_radius_mode_text = _required_text(
+            trajectory_filter_radius_mode_raw,
+            name="visualization.court_overlay.trajectory_filter_radius_mode",
+        )
+        try:
+            trajectory_filter_radius_mode = CourtAABBTrajectoryFilterRadiusMode(
+                trajectory_filter_radius_mode_text
+            )
+        except ValueError as error:
+            raise ValueError(
+                "visualization.court_overlay.trajectory_filter_radius_mode must be "
+                "support_radius, explicit_radius, or null."
+            ) from error
+    trajectory_filter_radius_raw = raw["trajectory_filter_radius_m"]
+    trajectory_filter_radius = (
+        None
+        if trajectory_filter_radius_raw is None
+        else _numeric(
+            trajectory_filter_radius_raw,
+            name="visualization.court_overlay.trajectory_filter_radius_m",
+        )
+    )
     color_values = _color_values(raw["color_rgb"], name="color_rgb")
     background_values = _color_values(
         raw["background_color_rgb"],
@@ -175,8 +247,10 @@ def _court_overlay_configuration(value: object) -> CourtOverlayConfiguration:
     )
     integer_fields: dict[str, int] = {}
     for name in (
+        "edge_width_px",
         "maximum_cells",
         "maximum_surface_faces",
+        "maximum_edge_segments",
         "maximum_projected_pixels",
     ):
         raw_value = raw[name]
@@ -185,6 +259,11 @@ def _court_overlay_configuration(value: object) -> CourtOverlayConfiguration:
         integer_fields[name] = raw_value
     return CourtOverlayConfiguration(
         mode=mode,
+        render_style=render_style,
+        wireframe_topology=wireframe_topology,
+        trajectory_filter_scope=trajectory_filter_scope,
+        trajectory_filter_radius_mode=trajectory_filter_radius_mode,
+        trajectory_filter_radius_m=trajectory_filter_radius,
         color_rgb=(
             cast(int, color_values[0]),
             cast(int, color_values[1]),
@@ -199,6 +278,11 @@ def _court_overlay_configuration(value: object) -> CourtOverlayConfiguration:
             raw["opacity"],
             name="visualization.court_overlay.opacity",
         ),
+        edge_opacity=_numeric(
+            raw["edge_opacity"],
+            name="visualization.court_overlay.edge_opacity",
+        ),
+        edge_width_px=integer_fields["edge_width_px"],
         depth_epsilon_m=_numeric(
             raw["depth_epsilon_m"],
             name="visualization.court_overlay.depth_epsilon_m",
@@ -209,6 +293,7 @@ def _court_overlay_configuration(value: object) -> CourtOverlayConfiguration:
         ),
         maximum_cells=integer_fields["maximum_cells"],
         maximum_surface_faces=integer_fields["maximum_surface_faces"],
+        maximum_edge_segments=integer_fields["maximum_edge_segments"],
         maximum_projected_pixels=integer_fields["maximum_projected_pixels"],
     )
 

@@ -11,6 +11,10 @@ from src.synthetic_data_generation.visualization.configuration import (
     build_visualization_request,
 )
 from src.synthetic_data_generation.visualization.contracts import (
+    CourtAABBRenderStyle,
+    CourtAABBTrajectoryFilterRadiusMode,
+    CourtAABBTrajectoryFilterScope,
+    CourtAABBWireframeTopology,
     CourtOverlayConfiguration,
     CourtOverlayMode,
     DatasetVisualizationDomain,
@@ -29,13 +33,21 @@ def _dataset_root(tmp_path: Path, domain: str) -> Path:
 def _court_overlay_config(*, mode: str = "semantic") -> dict[str, object]:
     return {
         "mode": mode,
+        "render_style": "wireframe",
+        "wireframe_topology": "boundary",
+        "trajectory_filter_scope": "local_swept_segments",
+        "trajectory_filter_radius_mode": "explicit_radius",
+        "trajectory_filter_radius_m": 1.5,
         "color_rgb": [255, 96, 32],
         "background_color_rgb": [0, 0, 0],
         "opacity": 0.55,
+        "edge_opacity": 0.40,
+        "edge_width_px": 1,
         "depth_epsilon_m": 0.02,
         "near_plane_m": 0.05,
         "maximum_cells": 1_000_000,
         "maximum_surface_faces": 4_000_000,
+        "maximum_edge_segments": 8_000_000,
         "maximum_projected_pixels": 100_000_000,
     }
 
@@ -43,16 +55,35 @@ def _court_overlay_config(*, mode: str = "semantic") -> dict[str, object]:
 def _court_overlay_contract(
     *,
     mode: CourtOverlayMode = CourtOverlayMode.SEMANTIC,
+    render_style: CourtAABBRenderStyle = CourtAABBRenderStyle.WIREFRAME,
+    wireframe_topology: CourtAABBWireframeTopology = (
+        CourtAABBWireframeTopology.BOUNDARY
+    ),
+    trajectory_filter_scope: CourtAABBTrajectoryFilterScope = (
+        CourtAABBTrajectoryFilterScope.LOCAL_SWEPT_SEGMENTS
+    ),
+    trajectory_filter_radius_mode: CourtAABBTrajectoryFilterRadiusMode | None = (
+        CourtAABBTrajectoryFilterRadiusMode.EXPLICIT_RADIUS
+    ),
+    trajectory_filter_radius_m: float | None = 1.5,
 ) -> CourtOverlayConfiguration:
     return CourtOverlayConfiguration(
         mode=mode,
+        render_style=render_style,
+        wireframe_topology=wireframe_topology,
+        trajectory_filter_scope=trajectory_filter_scope,
+        trajectory_filter_radius_mode=trajectory_filter_radius_mode,
+        trajectory_filter_radius_m=trajectory_filter_radius_m,
         color_rgb=(255, 96, 32),
         background_color_rgb=(0, 0, 0),
         opacity=0.55,
+        edge_opacity=0.40,
+        edge_width_px=1,
         depth_epsilon_m=0.02,
         near_plane_m=0.05,
         maximum_cells=1_000_000,
         maximum_surface_faces=4_000_000,
+        maximum_edge_segments=8_000_000,
         maximum_projected_pixels=100_000_000,
     )
 
@@ -72,6 +103,20 @@ def test_court_request_requires_only_explicit_trajectory_id(tmp_path: Path) -> N
 
     assert request.metadata_path == tmp_path / "court.json"
     assert request.court_overlay.mode is CourtOverlayMode.SEMANTIC
+    assert request.court_overlay.render_style is CourtAABBRenderStyle.WIREFRAME
+    assert (
+        request.court_overlay.wireframe_topology
+        is CourtAABBWireframeTopology.BOUNDARY
+    )
+    assert (
+        request.court_overlay.trajectory_filter_scope
+        is CourtAABBTrajectoryFilterScope.LOCAL_SWEPT_SEGMENTS
+    )
+    assert (
+        request.court_overlay.trajectory_filter_radius_mode
+        is CourtAABBTrajectoryFilterRadiusMode.EXPLICIT_RADIUS
+    )
+    assert request.court_overlay.trajectory_filter_radius_m == 1.5
 
     with pytest.raises(ValueError, match="does not accept"):
         DatasetVisualizationRequest(
@@ -266,6 +311,127 @@ def test_hydra_boundary_selects_aabb_mode_and_rejects_it_for_other_domains(
         mode=CourtOverlayMode.TRAJECTORY_SUPPORT_AABB
     )
 
+    solid_overlay = _court_overlay_config(mode="trajectory_support_aabb")
+    solid_overlay["render_style"] = "solid"
+    solid_request = build_visualization_request(
+        OmegaConf.create(
+            {
+                "roots": roots,
+                "visualization": {**visualization, "court_overlay": solid_overlay},
+            }
+        )
+    )
+    assert solid_request.court_overlay.render_style is CourtAABBRenderStyle.SOLID
+
+    all_edges_overlay = _court_overlay_config(mode="trajectory_support_aabb")
+    all_edges_overlay["wireframe_topology"] = "all_edges"
+    all_edges_request = build_visualization_request(
+        OmegaConf.create(
+            {
+                "roots": roots,
+                "visualization": {
+                    **visualization,
+                    "court_overlay": all_edges_overlay,
+                },
+            }
+        )
+    )
+    assert (
+        all_edges_request.court_overlay.wireframe_topology
+        is CourtAABBWireframeTopology.ALL_EDGES
+    )
+
+    explicit_filter_overlay = _court_overlay_config(
+        mode="trajectory_support_aabb"
+    )
+    explicit_filter_overlay["trajectory_filter_radius_mode"] = "explicit_radius"
+    explicit_filter_overlay["trajectory_filter_radius_m"] = 1.25
+    explicit_filter_request = build_visualization_request(
+        OmegaConf.create(
+            {
+                "roots": roots,
+                "visualization": {
+                    **visualization,
+                    "court_overlay": explicit_filter_overlay,
+                },
+            }
+        )
+    )
+    assert (
+        explicit_filter_request.court_overlay.trajectory_filter_radius_mode
+        is CourtAABBTrajectoryFilterRadiusMode.EXPLICIT_RADIUS
+    )
+    assert explicit_filter_request.court_overlay.trajectory_filter_radius_m == 1.25
+
+    all_filter_overlay = _court_overlay_config(mode="trajectory_support_aabb")
+    all_filter_overlay["trajectory_filter_scope"] = "all"
+    all_filter_overlay["trajectory_filter_radius_mode"] = None
+    all_filter_overlay["trajectory_filter_radius_m"] = None
+    all_filter_request = build_visualization_request(
+        OmegaConf.create(
+            {
+                "roots": roots,
+                "visualization": {
+                    **visualization,
+                    "court_overlay": all_filter_overlay,
+                },
+            }
+        )
+    )
+    assert (
+        all_filter_request.court_overlay.trajectory_filter_scope
+        is CourtAABBTrajectoryFilterScope.ALL
+    )
+    assert all_filter_request.court_overlay.trajectory_filter_radius_mode is None
+
+    invalid_overlay = dict(solid_overlay)
+    invalid_overlay["render_style"] = "filled"
+    with pytest.raises(ValueError, match="render_style must be wireframe or solid"):
+        build_visualization_request(
+            OmegaConf.create(
+                {
+                    "roots": roots,
+                    "visualization": {
+                        **visualization,
+                        "court_overlay": invalid_overlay,
+                    },
+                }
+            )
+        )
+
+    invalid_topology_overlay = dict(solid_overlay)
+    invalid_topology_overlay["wireframe_topology"] = "seams"
+    with pytest.raises(
+        ValueError,
+        match="wireframe_topology must be boundary or all_edges",
+    ):
+        build_visualization_request(
+            OmegaConf.create(
+                {
+                    "roots": roots,
+                    "visualization": {
+                        **visualization,
+                        "court_overlay": invalid_topology_overlay,
+                    },
+                }
+            )
+        )
+
+    invalid_filter_overlay = dict(solid_overlay)
+    invalid_filter_overlay["trajectory_filter_scope"] = "nearest_camera"
+    with pytest.raises(ValueError, match="trajectory_filter_scope must be"):
+        build_visualization_request(
+            OmegaConf.create(
+                {
+                    "roots": roots,
+                    "visualization": {
+                        **visualization,
+                        "court_overlay": invalid_filter_overlay,
+                    },
+                }
+            )
+        )
+
     plcs_root = _dataset_root(data_root, "plcs")
     assert plcs_root.is_dir()
     visualization.update(
@@ -281,6 +447,102 @@ def test_hydra_boundary_selects_aabb_mode_and_rejects_it_for_other_domains(
         build_visualization_request(
             OmegaConf.create({"roots": roots, "visualization": visualization})
         )
+
+
+@pytest.mark.parametrize(
+    ("changes", "match"),
+    (
+        ({"edge_opacity": 0.0}, "edge_opacity"),
+        ({"edge_width_px": 0}, "edge_width_px"),
+        ({"edge_width_px": 65}, "edge_width_px"),
+        ({"maximum_edge_segments": 0}, "maximum_edge_segments"),
+        (
+            {
+                "trajectory_filter_radius_mode": (
+                    CourtAABBTrajectoryFilterRadiusMode.EXPLICIT_RADIUS
+                ),
+                "trajectory_filter_radius_m": None,
+            },
+            "explicit_radius",
+        ),
+        (
+            {
+                "trajectory_filter_scope": CourtAABBTrajectoryFilterScope.ALL,
+                "trajectory_filter_radius_mode": None,
+                "trajectory_filter_radius_m": 1.0,
+            },
+            "require.*None",
+        ),
+        (
+            {
+                "trajectory_filter_scope": CourtAABBTrajectoryFilterScope.ALL,
+                "trajectory_filter_radius_mode": (
+                    CourtAABBTrajectoryFilterRadiusMode.SUPPORT_RADIUS
+                ),
+            },
+            "require.*None",
+        ),
+        (
+            {"trajectory_filter_radius_mode": None},
+            "requires trajectory_filter_radius_mode",
+        ),
+        (
+            {
+                "trajectory_filter_radius_mode": (
+                    CourtAABBTrajectoryFilterRadiusMode.SUPPORT_RADIUS
+                ),
+                "trajectory_filter_radius_m": 1.0,
+            },
+            "support_radius.*None",
+        ),
+        (
+            {
+                "trajectory_filter_radius_mode": "support_radius",
+            },
+            "CourtAABBTrajectoryFilterRadiusMode",
+        ),
+        (
+            {"trajectory_filter_scope": "local_swept_segments"},
+            "CourtAABBTrajectoryFilterScope",
+        ),
+        ({"render_style": "wireframe"}, "CourtAABBRenderStyle"),
+        (
+            {"wireframe_topology": "boundary"},
+            "CourtAABBWireframeTopology",
+        ),
+    ),
+)
+def test_court_overlay_contract_rejects_invalid_wireframe_policy(
+    changes: dict[str, object],
+    match: str,
+) -> None:
+    values: dict[str, object] = {
+        "mode": CourtOverlayMode.TRAJECTORY_SUPPORT_AABB,
+        "render_style": CourtAABBRenderStyle.WIREFRAME,
+        "wireframe_topology": CourtAABBWireframeTopology.BOUNDARY,
+        "trajectory_filter_scope": (
+            CourtAABBTrajectoryFilterScope.LOCAL_SWEPT_SEGMENTS
+        ),
+        "trajectory_filter_radius_mode": (
+            CourtAABBTrajectoryFilterRadiusMode.EXPLICIT_RADIUS
+        ),
+        "trajectory_filter_radius_m": 1.5,
+        "color_rgb": (255, 96, 32),
+        "background_color_rgb": (0, 0, 0),
+        "opacity": 0.55,
+        "edge_opacity": 0.40,
+        "edge_width_px": 1,
+        "depth_epsilon_m": 0.02,
+        "near_plane_m": 0.05,
+        "maximum_cells": 1_000_000,
+        "maximum_surface_faces": 4_000_000,
+        "maximum_edge_segments": 8_000_000,
+        "maximum_projected_pixels": 100_000_000,
+    }
+    values.update(changes)
+
+    with pytest.raises((TypeError, ValueError), match=match):
+        CourtOverlayConfiguration(**values)  # type: ignore[arg-type]
 
 
 def test_catalog_exposes_visualization_fields_and_path_roles() -> None:
