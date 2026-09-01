@@ -84,6 +84,21 @@ class CourtInstanceBatch:
             raise ValueError("instance centers_px must have shape (N,2).")
         if self.valid.dtype != torch.bool:
             raise TypeError("instance valid must have boolean dtype.")
+        for name, value in (
+            ("keypoints_px", self.keypoints_px),
+            ("scores", self.scores),
+            ("centers_px", self.centers_px),
+        ):
+            if not value.is_floating_point():
+                raise TypeError(f"instance {name} must be floating point.")
+            if not bool(torch.isfinite(value).all()):
+                raise ValueError(f"instance {name} must contain only finite values.")
+        if (
+            self.scores.device != self.keypoints_px.device
+            or self.valid.device != self.keypoints_px.device
+            or self.centers_px.device != self.keypoints_px.device
+        ):
+            raise ValueError("instance tensors must share a device.")
 
     @property
     def num_instances(self) -> int:
@@ -100,6 +115,12 @@ class CourtInstances:
 
     samples: tuple[CourtInstanceBatch, ...]
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.samples, tuple) or any(
+            not isinstance(sample, CourtInstanceBatch) for sample in self.samples
+        ):
+            raise TypeError("samples must be a tuple of CourtInstanceBatch values.")
+
     def __len__(self) -> int:
         return len(self.samples)
 
@@ -113,7 +134,12 @@ class CourtInstances:
 
     @property
     def num_instances(self) -> Tensor:
-        return torch.tensor([sample.num_instances for sample in self.samples], dtype=torch.long)
+        device = self.samples[0].keypoints_px.device if self.samples else None
+        return torch.tensor(
+            [sample.num_instances for sample in self.samples],
+            dtype=torch.long,
+            device=device,
+        )
 
 
 @dataclass(slots=True)
