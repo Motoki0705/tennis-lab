@@ -63,8 +63,13 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     semantic_phase_inventory_digest,
 )
 from src.synthetic_data_generation.dataset.court.diagnostics import (
+    DIAGNOSTIC_FILES_V4_WITHOUT_SUPPORT_OCCUPANCY,
     diagnostic_files_for_version,
     write_court_diagnostics,
+)
+from src.synthetic_data_generation.dataset.court.occupancy_artifact import (
+    CourtV4SupportOccupancyIdentity,
+    load_court_v4_support_occupancy,
 )
 from src.synthetic_data_generation.dataset.court.performance import (
     CourtPerformanceEvidence,
@@ -882,10 +887,13 @@ def validate_court_dataset(
     expected_plan: CourtDatasetPlanAny | None = None,
     expected_configuration: CourtDatasetConfiguration | None = None,
     array_validation: CourtArrayValidationMode = CourtArrayValidationMode.FULL,
+    require_v4_support_occupancy: bool = True,
 ) -> CourtAssemblyReport:
     """Validate the complete canonical output and reject every inventory mismatch."""
     if not isinstance(array_validation, CourtArrayValidationMode):
         raise TypeError("array_validation must be a CourtArrayValidationMode.")
+    if not isinstance(require_v4_support_occupancy, bool):
+        raise TypeError("require_v4_support_occupancy must be boolean.")
     manifest_path = root / "dataset.json"
     if manifest_path.is_symlink() or not manifest_path.is_file():
         raise FileNotFoundError(f"Court dataset manifest is missing: {manifest_path}")
@@ -1191,11 +1199,29 @@ def validate_court_dataset(
         f"diagnostics/{name}"
         for name in diagnostic_files_for_version(definition.version)
     ]
-    if diagnostics != expected_diagnostics:
+    legacy_v4_diagnostics = [
+        f"diagnostics/{name}"
+        for name in DIAGNOSTIC_FILES_V4_WITHOUT_SUPPORT_OCCUPANCY
+    ]
+    has_support_occupancy = diagnostics == expected_diagnostics
+    legacy_semantic_v4 = (
+        definition.version is CourtDatasetSchemaVersion.V4
+        and not require_v4_support_occupancy
+        and diagnostics == legacy_v4_diagnostics
+    )
+    if not has_support_occupancy and not legacy_semantic_v4:
         raise ValueError("Court diagnostic inventory is incomplete or unexpected.")
-    for relative in expected_diagnostics:
+    validated_diagnostics = (
+        expected_diagnostics if has_support_occupancy else legacy_v4_diagnostics
+    )
+    for relative in validated_diagnostics:
         _contained_file(root, relative)
-    _validate_diagnostic_schemas(root, definition=definition, dataset=raw)
+    _validate_diagnostic_schemas(
+        root,
+        definition=definition,
+        dataset=raw,
+        validate_support_occupancy=has_support_occupancy,
+    )
     performance = CourtPerformanceEvidence.from_dict(
         load_json(_contained_file(root, "diagnostics/performance.json"))
     )
@@ -1231,6 +1257,28 @@ def validate_court_dataset(
             )
         if policy.to_dict() != expected_plan.policy.to_dict():
             raise ValueError("Published Court sampling policy changed after planning.")
+        if isinstance(expected_plan, CourtDatasetPlanV4) and has_support_occupancy:
+            expected_occupancy = expected_plan.support_occupancy_snapshot
+            published_occupancy = load_court_v4_support_occupancy(
+                root,
+                expected_scene_id=expected_plan.scene_id,
+                expected_profile=expected_plan.profile,
+                expected_policy_decision_id=expected_occupancy.policy_decision_id,
+                expected_support_input_digest=(
+                    expected_occupancy.support_input_digest
+                ),
+                expected_voxel_size_m=expected_occupancy.voxel_size_m,
+                expected_cell_count=expected_occupancy.cell_count,
+                expected_content_digest=expected_occupancy.content_digest,
+                maximum_cells=expected_plan.support_policy.maximum_occupancy_cells,
+            )
+            if (
+                published_occupancy.snapshot.content_digest
+                != expected_occupancy.content_digest
+            ):
+                raise ValueError(
+                    "Published Court V4 occupancy changed after planning."
+                )
         expected_samples = {
             sample.sample_id: sample.to_dict() for sample in expected_plan.samples
         }
@@ -1859,6 +1907,7 @@ def _validate_diagnostic_schemas(
     *,
     definition: CourtSchemaDefinition,
     dataset: Mapping[str, object],
+    validate_support_occupancy: bool,
 ) -> None:
     """Require every versioned diagnostic to use the selected exact schema."""
     expected = {
@@ -1887,6 +1936,7 @@ def _validate_diagnostic_schemas(
         payloads["trajectory-plan.json"],
         dataset=dataset,
         definition=definition,
+        require_support_occupancy_identity=validate_support_occupancy,
     )
     _validate_acceptance_diagnostic(
         payloads["acceptance.json"],
@@ -1921,6 +1971,35 @@ def _validate_diagnostic_schemas(
             trajectory_plan=payloads["trajectory-plan.json"],
             definition=definition,
         )
+        if validate_support_occupancy:
+            trajectory_plan = cast(
+                Mapping[str, object],
+                payloads["trajectory-plan.json"],
+            )
+            support_policy = TrajectorySupportPolicy.from_mapping(
+                trajectory_plan["support_policy"]
+            )
+            support_summary = SupportModelSummary.from_mapping(
+                trajectory_plan["support_summary"]
+            )
+            occupancy_identity = CourtV4SupportOccupancyIdentity.from_mapping(
+                trajectory_plan["support_occupancy_identity"]
+            )
+            published_occupancy = load_court_v4_support_occupancy(
+                root,
+                expected_scene_id=cast(str, dataset["scene_id"]),
+                expected_profile=cast(str, dataset["profile"]),
+                expected_policy_decision_id=support_policy.decision_id,
+                expected_support_input_digest=support_summary.input_digest,
+                expected_voxel_size_m=support_policy.occupancy_voxel_size_m,
+                expected_cell_count=support_summary.inflated_occupancy_cell_count,
+                expected_content_digest=occupancy_identity.content_digest,
+                maximum_cells=support_policy.maximum_occupancy_cells,
+            )
+            if published_occupancy.snapshot.identity != occupancy_identity:
+                raise ValueError(
+                    "Court V4 occupancy artifact disagrees with plan identity."
+                )
     points_path = _contained_file(root, "diagnostics/sample-points.npy")
     points = np.load(points_path, allow_pickle=False, mmap_mode="r")
     proposal_count = _mapping_integer(
@@ -2575,6 +2654,7 @@ def _validate_trajectory_plan_diagnostic(
     *,
     dataset: Mapping[str, object],
     definition: CourtSchemaDefinition,
+    require_support_occupancy_identity: bool,
 ) -> None:
     """Cross-check the exact versioned plan against published dispositions."""
     keys = {"schema", "scene_id", "profile", "policy", "groups", "samples"}
@@ -2594,6 +2674,8 @@ def _validate_trajectory_plan_diagnostic(
                 "optional_candidate_coverage_shortfall",
             }
         )
+        if require_support_occupancy_identity:
+            keys.add("support_occupancy_identity")
     if not isinstance(value, Mapping) or set(value) != keys:
         raise ValueError("Court trajectory-plan diagnostic schema is invalid.")
     plan_policy = _parse_canonical_sampling_policy(
@@ -2613,6 +2695,25 @@ def _validate_trajectory_plan_diagnostic(
     if definition.version is CourtDatasetSchemaVersion.V4:
         support_policy = TrajectorySupportPolicy.from_mapping(value["support_policy"])
         support_summary = SupportModelSummary.from_mapping(value["support_summary"])
+        occupancy_identity = (
+            CourtV4SupportOccupancyIdentity.from_mapping(
+                value["support_occupancy_identity"]
+            )
+            if require_support_occupancy_identity
+            else None
+        )
+        if occupancy_identity is not None and (
+            occupancy_identity.coordinate_space != support_summary.coordinate_space
+            or occupancy_identity.voxel_size_m
+            != support_policy.occupancy_voxel_size_m
+            or occupancy_identity.cell_count
+            != support_summary.inflated_occupancy_cell_count
+            or occupancy_identity.support_input_digest != support_summary.input_digest
+            or occupancy_identity.policy_decision_id != support_policy.decision_id
+        ):
+            raise ValueError(
+                "Court V4 trajectory-plan occupancy identity is inconsistent."
+            )
         candidates = _mapping_sequence(
             value["candidate_safety_evaluations"],
             name="candidate_safety_evaluations",

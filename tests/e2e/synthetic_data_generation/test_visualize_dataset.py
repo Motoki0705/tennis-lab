@@ -37,4 +37,40 @@ def test_cli_composes_strict_production_visualization_config() -> None:
         "fps": 30.0,
         "crf": 17,
         "history_frames": 12,
+        "court_overlay": {
+            "mode": "semantic",
+            "color_rgb": [255, 96, 32],
+            "background_color_rgb": [0, 0, 0],
+            "opacity": 0.55,
+            "depth_epsilon_m": 0.02,
+            "near_plane_m": 0.05,
+            "maximum_cells": 1_000_000,
+            "maximum_surface_faces": 4_000_000,
+            "maximum_projected_pixels": 100_000_000,
+        },
     }
+
+
+def test_cli_hydra_override_selects_strict_court_v4_aabb_mode() -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "src.synthetic_data_generation.scripts.visualize_dataset",
+            "--cfg",
+            "job",
+            "--resolve",
+            "visualization.court_overlay.mode=trajectory_support_aabb",
+        ],
+        cwd=PROJECT_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    payload = yaml.safe_load(completed.stdout)
+
+    assert (
+        payload["visualization"]["court_overlay"]["mode"]
+        == "trajectory_support_aabb"
+    )

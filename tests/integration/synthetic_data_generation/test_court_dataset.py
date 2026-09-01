@@ -72,6 +72,15 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     VerticalProfileV4,
     semantic_phase_inventory_digest,
 )
+from src.synthetic_data_generation.dataset.court.diagnostics import (
+    DIAGNOSTIC_FILES_V4_WITHOUT_SUPPORT_OCCUPANCY,
+)
+from src.synthetic_data_generation.dataset.court.occupancy_artifact import (
+    COURT_V4_SUPPORT_OCCUPANCY_CELLS_PATH,
+    COURT_V4_SUPPORT_OCCUPANCY_METADATA_PATH,
+    load_court_v4_support_occupancy,
+    occupancy_cells_content_digest,
+)
 from src.synthetic_data_generation.dataset.court.performance import (
     CourtPerformanceEvidence,
 )
@@ -470,11 +479,91 @@ def test_v4_plan_pre_render_and_assembly_share_semantic_phase_authority(
     assert safety["projected_semantic_valid_frame_count"] == (
         plan.projected_semantic_valid_frame_count
     )
+    trajectory_plan_path = dataset_root / "diagnostics/trajectory-plan.json"
+    trajectory_plan = _json_mapping(load_json(trajectory_plan_path))
+    assert trajectory_plan["support_occupancy_identity"] == (
+        plan.support_occupancy_snapshot.identity.to_dict()
+    )
+    published_occupancy = load_court_v4_support_occupancy(
+        dataset_root,
+        expected_scene_id=plan.scene_id,
+        expected_profile=plan.profile,
+        expected_policy_decision_id=plan.support_policy.decision_id,
+        expected_support_input_digest=plan.support_summary.input_digest,
+        expected_voxel_size_m=plan.support_policy.occupancy_voxel_size_m,
+        expected_cell_count=plan.support_summary.inflated_occupancy_cell_count,
+        expected_content_digest=plan.support_occupancy_snapshot.content_digest,
+    )
+    assert np.array_equal(
+        published_occupancy.snapshot.cells,
+        plan.support_occupancy_snapshot.cells,
+    )
+    diagnostics = dataset["diagnostics"]
+    assert isinstance(diagnostics, list)
+    assert COURT_V4_SUPPORT_OCCUPANCY_METADATA_PATH in diagnostics
+    assert COURT_V4_SUPPORT_OCCUPANCY_CELLS_PATH in diagnostics
     validate_court_dataset(
         dataset_root,
         expected_plan=plan,
         expected_configuration=_configuration("v4"),
         array_validation=CourtArrayValidationMode.HEADERS_ONLY,
+    )
+
+    cells_path = dataset_root / COURT_V4_SUPPORT_OCCUPANCY_CELLS_PATH
+    metadata_path = dataset_root / COURT_V4_SUPPORT_OCCUPANCY_METADATA_PATH
+    original_cells = np.load(cells_path, allow_pickle=False)
+    replacement_cells = original_cells.copy()
+    replacement_cells[0, 0] -= 1
+    np.save(cells_path, replacement_cells, allow_pickle=False)
+    original_metadata_text = metadata_path.read_text(encoding="utf-8")
+    replacement_digest = occupancy_cells_content_digest(replacement_cells)
+    metadata = _json_mapping(json.loads(original_metadata_text))
+    original_digest = cast(str, metadata["content_digest"])
+    metadata_path.write_text(
+        original_metadata_text.replace(original_digest, replacement_digest),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="content_digest binding disagrees"):
+        validate_court_dataset(
+            dataset_root,
+            array_validation=CourtArrayValidationMode.HEADERS_ONLY,
+        )
+    np.save(cells_path, original_cells, allow_pickle=False)
+    metadata_path.write_text(original_metadata_text, encoding="utf-8")
+
+    def write_same_size_json(path: Path, payload: object) -> None:
+        original_size = path.stat().st_size
+        encoded = json.dumps(
+            payload,
+            sort_keys=False,
+            ensure_ascii=False,
+            allow_nan=False,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        assert len(encoded) <= original_size
+        path.write_bytes(encoded + b" " * (original_size - len(encoded)))
+
+    legacy_dataset = dict(dataset)
+    legacy_dataset["diagnostics"] = [
+        f"diagnostics/{name}"
+        for name in DIAGNOSTIC_FILES_V4_WITHOUT_SUPPORT_OCCUPANCY
+    ]
+    write_same_size_json(dataset_root / "dataset.json", legacy_dataset)
+    legacy_plan = dict(trajectory_plan)
+    legacy_plan.pop("support_occupancy_identity")
+    write_same_size_json(trajectory_plan_path, legacy_plan)
+    removed_artifact_bytes = cells_path.stat().st_size + metadata_path.stat().st_size
+    cells_path.unlink()
+    metadata_path.unlink()
+    summary_path = dataset_root / "diagnostics/summary.txt"
+    with summary_path.open("ab") as handle:
+        handle.write(b" " * removed_artifact_bytes)
+    validate_court_dataset(
+        dataset_root,
+        expected_plan=plan,
+        expected_configuration=_configuration("v4"),
+        array_validation=CourtArrayValidationMode.HEADERS_ONLY,
+        require_v4_support_occupancy=False,
     )
 
 

@@ -286,6 +286,8 @@ def validate_pre_render_plan(
         if (
             support_model.policy != plan.support_policy
             or support_model.summary != plan.support_summary
+            or support_model.occupancy_snapshot.content_digest
+            != plan.support_occupancy_snapshot.content_digest
         ):
             raise ValueError("V4 pre-render support authority disagrees with the plan.")
         selected_coverage = build_selected_trajectory_coverage(

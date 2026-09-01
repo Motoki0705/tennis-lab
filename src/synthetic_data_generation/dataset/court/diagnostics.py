@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -22,6 +24,11 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     CourtDatasetPlanV4,
     PlannedCourtSampleV2,
 )
+from src.synthetic_data_generation.dataset.court.occupancy_artifact import (
+    COURT_V4_SUPPORT_OCCUPANCY_CELLS_FILE,
+    COURT_V4_SUPPORT_OCCUPANCY_METADATA_FILE,
+    write_court_v4_support_occupancy,
+)
 from src.synthetic_data_generation.dataset.court.schema import (
     CourtDatasetSchemaVersion,
     court_schema_for_version,
@@ -41,10 +48,16 @@ DIAGNOSTIC_FILES: tuple[str, ...] = (
     "performance.json",
     "summary.txt",
 )
-DIAGNOSTIC_FILES_V4: tuple[str, ...] = (
+DIAGNOSTIC_FILES_V4_WITHOUT_SUPPORT_OCCUPANCY: tuple[str, ...] = (
     *DIAGNOSTIC_FILES[:-1],
     "trajectory-safety.json",
     DIAGNOSTIC_FILES[-1],
+)
+DIAGNOSTIC_FILES_V4: tuple[str, ...] = (
+    *DIAGNOSTIC_FILES_V4_WITHOUT_SUPPORT_OCCUPANCY[:-1],
+    COURT_V4_SUPPORT_OCCUPANCY_METADATA_FILE,
+    COURT_V4_SUPPORT_OCCUPANCY_CELLS_FILE,
+    DIAGNOSTIC_FILES_V4_WITHOUT_SUPPORT_OCCUPANCY[-1],
 )
 
 
@@ -73,7 +86,46 @@ def write_court_diagnostics(
     visible_by_class: Mapping[str, int],
     layout: MultiCourtLayout | None = None,
 ) -> tuple[str, ...]:
-    """Persist the complete required diagnostic inventory at fixed names."""
+    """Publish one complete diagnostic directory without exposing partial files."""
+    if not isinstance(root, Path) or not root.is_absolute():
+        raise ValueError("Court diagnostics root must be an absolute pathlib.Path.")
+    if root.exists() or root.is_symlink():
+        raise FileExistsError(f"Court diagnostics already exist: {root}")
+    root.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(
+        prefix=f".{root.name}.",
+        suffix=".staging",
+        dir=root.parent,
+    ) as temporary_parent:
+        staged_root = Path(temporary_parent) / root.name
+        result = _write_court_diagnostics_contents(
+            staged_root,
+            plan=plan,
+            accepted_sample_ids=accepted_sample_ids,
+            rejected=rejected,
+            coverage_counts=coverage_counts,
+            visible_by_class=visible_by_class,
+            layout=layout,
+        )
+        if root.exists() or root.is_symlink():
+            raise FileExistsError(
+                f"Court diagnostics appeared during publication: {root}"
+            )
+        os.rename(staged_root, root)
+        return result
+
+
+def _write_court_diagnostics_contents(
+    root: Path,
+    *,
+    plan: CourtDatasetPlanAny,
+    accepted_sample_ids: Sequence[str],
+    rejected: Sequence[Mapping[str, object]],
+    coverage_counts: Mapping[str, int],
+    visible_by_class: Mapping[str, int],
+    layout: MultiCourtLayout | None = None,
+) -> tuple[str, ...]:
+    """Write a complete inventory into one invocation-owned staging root."""
     accepted = tuple(accepted_sample_ids)
     rejected_tuple = tuple(dict(value) for value in rejected)
     _validate_acceptance_inventory(
@@ -259,6 +311,12 @@ def write_court_diagnostics(
                 "zero_selected_safety_violations": True,
             },
             root / "trajectory-safety.json",
+        )
+        write_court_v4_support_occupancy(
+            root,
+            snapshot=plan.support_occupancy_snapshot,
+            scene_id=plan.scene_id,
+            profile=plan.profile,
         )
     summary = (
         "Canonical Court dataset diagnostics\n"
@@ -483,6 +541,7 @@ def _quantiles(values: NDArray[np.float64]) -> dict[str, float]:
 __all__ = [
     "DIAGNOSTIC_FILES",
     "DIAGNOSTIC_FILES_V4",
+    "DIAGNOSTIC_FILES_V4_WITHOUT_SUPPORT_OCCUPANCY",
     "diagnostic_files_for_version",
     "write_court_diagnostics",
 ]
