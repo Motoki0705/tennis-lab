@@ -13,15 +13,8 @@ from src.tasks.base.model_io import (
 from src.tasks.base.models import resolve_reference_selector_mode
 from src.tasks.plcs.configuration import PLCSModelConfig
 
-_LEGACY_MODEL_NAMES = frozenset(
-    {"plcs_track_query", "plcs_track_query_ablation"}
-)
-_REFERENCE_MODEL_NAMES = frozenset(
-    {
-        "plcs_track_query_reference",
-        "plcs_track_query_reference_ablation",
-    }
-)
+_TRACK_QUERY_MODEL_NAME = "plcs_track_query"
+_REFERENCE_MODEL_NAME = "plcs_track_query_reference"
 
 
 def resolve_plcs_track_query_reference_contract(
@@ -29,26 +22,20 @@ def resolve_plcs_track_query_reference_contract(
     court_keypoints: CourtKeypointContract,
 ) -> TrackQueryReferenceContract:
     """Resolve exact PLCS model type and independent semantic markers."""
-    if model.name in _LEGACY_MODEL_NAMES:
-        contract = TrackQueryReferenceContract.legacy_v1()
-    elif model.name in _REFERENCE_MODEL_NAMES:
+    if model.name == _TRACK_QUERY_MODEL_NAME:
+        contract = TrackQueryReferenceContract.physical_v1()
+    elif model.name == _REFERENCE_MODEL_NAME:
         contract = TrackQueryReferenceContract.reference_v2(
-            resolve_reference_selector_mode(
-                model.string("reference_selector_mode")
-            )
+            resolve_reference_selector_mode(model.string("reference_selector_mode"))
         )
-        if model.string("target_frame_contract") != (
-            contract.target_frame_contract
-        ):
+        if model.string("target_frame_contract") != (contract.target_frame_contract):
             raise ValueError(
                 "PLCS model target-frame marker does not match reference-v2."
             )
         if model.string("track_query_rope_contract") != (
             contract.track_query_rope_contract.value
         ):
-            raise ValueError(
-                "PLCS model RoPE marker does not match reference-v2."
-            )
+            raise ValueError("PLCS model RoPE marker does not match reference-v2.")
     else:
         raise ValueError(
             f"PLCS model {model.name!r} is not a track-query architecture."
@@ -81,7 +68,6 @@ def validate_plcs_checkpoint_track_query_reference(
     validate_checkpoint_track_query_reference_contract(
         checkpoint,
         contract,
-        explicit_legacy_v1=(contract == TrackQueryReferenceContract.legacy_v1()),
         location="PLCS checkpoint",
     )
 

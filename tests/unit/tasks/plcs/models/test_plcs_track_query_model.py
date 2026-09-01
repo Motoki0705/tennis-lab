@@ -1,85 +1,93 @@
+"""PLCS fixed track-query architecture and public-contract tests."""
+
 from __future__ import annotations
 
 import inspect
-from pathlib import Path
 from typing import cast
 
-import pytest
 import torch
-from hydra import compose, initialize_config_dir
+from torch import Tensor
 
 from src.tasks.plcs.configuration import PLCSModelConfig
 from src.tasks.plcs.models.plcs_track_query_model import PLCSTrackQueryModel
-from src.utils.models.components.ffn_layers import DeepSeekV4SwiGLU, FFNType
+from src.utils.models.components.ffn_layers import FFNType, GPTOSSSwiGLU, SwiGLU
 from src.utils.models.components.fixed_query_track_stage import FixedQueryTrackStage
-from src.utils.models.embeddings import CourtPlayerGroupEmbedding
-
-MODEL_CONFIG_DIR = Path(__file__).parents[5] / "src/tasks/plcs/configs/model"
 
 
-def _model(
-    *,
-    backend: str = "reference",
-    ffn_type: FFNType = "swiglu",
-) -> PLCSTrackQueryModel:
-    with initialize_config_dir(
-        config_dir=str(MODEL_CONFIG_DIR), version_base="1.3"
-    ):
-        raw = compose(
-            config_name="track_query",
-            overrides=[f"cswa.backend={backend}", f"ffn_type={ffn_type}"],
-        )
-    config = PLCSModelConfig.from_mapping(raw)
-    model = PLCSTrackQueryModel(config)
+def _raw_model() -> dict[str, object]:
+    return {
+        "name": "plcs_track_query",
+        "hidden_dim": 16,
+        "num_heads": 4,
+        "ffn_dim": 32,
+        "num_queries": 4,
+        "num_stages": 4,
+        "num_joints": 17,
+        "rope_dim": 4,
+        "rope_theta": 10_000.0,
+        "ffn_type": "swiglu",
+        "dropout": 0.0,
+        "invisible_init_std": 0.02,
+        "mhc": {
+            "coefficient_dim": 8,
+            "sinkhorn_iters": 5,
+            "eps": 1.0e-6,
+            "residual_identity_bias": 4.0,
+            "update_scale_init": 0.0,
+        },
+        "cswa": {
+            "compression_ratio": 2,
+            "window_radius": 1,
+            "backend": "reference",
+        },
+    }
+
+
+def _config(*, ffn_type: FFNType = "swiglu") -> PLCSModelConfig:
+    raw = _raw_model()
+    raw["ffn_type"] = ffn_type
+    return PLCSModelConfig.from_mapping(raw)
+
+
+def _model(*, ffn_type: FFNType = "swiglu") -> PLCSTrackQueryModel:
+    model = PLCSTrackQueryModel(_config(ffn_type=ffn_type))
     model.eval()
     return model
 
 
-def _inputs(model: PLCSTrackQueryModel) -> dict[str, torch.Tensor]:
-    prefix = (1, 2, 3)
+def _inputs() -> dict[str, Tensor]:
+    padding_mask = torch.tensor(
+        [
+            [
+                [False, True, True],
+                [True, False, True],
+                [True, True, True],
+            ],
+            [
+                [True, True, True],
+                [True, True, True],
+                [True, True, True],
+            ],
+        ]
+    )
     return {
-        "human_kp": torch.rand(*prefix, model.num_queries, 17, 2),
-        "human_vis": torch.ones(
-            *prefix, model.num_queries, 17, dtype=torch.bool
-        ),
-        "court_kp": torch.rand(*prefix, 14, 2),
-        "court_vis": torch.ones(*prefix, 14, dtype=torch.bool),
-        "padding_mask": torch.zeros(*prefix, dtype=torch.bool),
+        "human_kp": torch.rand(2, 3, 3, 4, 17, 2),
+        "human_vis": torch.zeros(2, 3, 3, 4, 17, dtype=torch.bool),
+        "court_kp": torch.rand(2, 3, 3, 14, 2),
+        "court_vis": torch.zeros(2, 3, 3, 14, dtype=torch.bool),
+        "padding_mask": padding_mask,
     }
 
 
 def _forward(
-    model: PLCSTrackQueryModel, inputs: dict[str, torch.Tensor]
-) -> dict[str, torch.Tensor]:
-    return cast("dict[str, torch.Tensor]", model(**inputs))
+    model: PLCSTrackQueryModel,
+    inputs: dict[str, Tensor],
+) -> dict[str, Tensor]:
+    return cast("dict[str, Tensor]", model(**inputs))
 
 
-def test_player_role_coordinates_share_role_within_fixed_query_axis() -> None:
-    coordinates = PLCSTrackQueryModel.build_spatial_coordinates(
-        batch_size=1,
-        num_frames=1,
-        num_views=2,
-        num_detections=3,
-        num_queries=3,
-        device=torch.device("cpu"),
-    )
-    assert torch.equal(coordinates[0, :3], torch.zeros(3, 3, dtype=torch.long))
-    assert torch.equal(
-        coordinates[0, 3:],
-        torch.tensor(
-            [
-                [0, 1, 1],
-                [0, 1, 1],
-                [0, 1, 1],
-                [0, 2, 1],
-                [0, 2, 1],
-                [0, 2, 1],
-            ]
-        ),
-    )
-
-
-def test_forward_public_contract_has_exactly_five_tensors() -> None:
+def test_model_keeps_public_name_and_five_tensor_contract() -> None:
+    assert PLCSTrackQueryModel.__name__ == "PLCSTrackQueryModel"
     parameters = list(inspect.signature(PLCSTrackQueryModel.forward).parameters)
     assert parameters == [
         "self",
@@ -91,212 +99,85 @@ def test_forward_public_contract_has_exactly_five_tensors() -> None:
     ]
 
 
-def test_model_uses_shared_court_player_group_embedding() -> None:
-    assert isinstance(_model().group_embed, CourtPlayerGroupEmbedding)
-
-
-def test_model_uses_shared_stages_with_fixed_cswa_global_cycle() -> None:
+def test_model_builds_only_fixed_compressed_stages() -> None:
     model = _model()
 
     assert all(isinstance(stage, FixedQueryTrackStage) for stage in model.stages)
-    assert [stage.is_global for stage in model.stages] == [False, False, False, True]
-    assert [
-        stage.object_temporal_block.cfg.attention_type for stage in model.stages
-    ] == [
-        "cswa",
-        "cswa",
-        "cswa",
-        "mha",
-    ]
-    assert [
-        stage.query_temporal_block.cfg.attention_type for stage in model.stages
-    ] == [
-        "cswa",
-        "cswa",
-        "cswa",
-        "mha",
-    ]
+    for module in model.stages:
+        stage = cast(FixedQueryTrackStage, module)
+        assert stage.object_temporal_block.ffn is None
+        assert stage.spatial_block.ffn is None
+        assert stage.query_temporal_block.ffn is None
+        assert isinstance(stage.shared_ffn, SwiGLU)
 
 
-def test_configured_ffn_reaches_every_track_query_block() -> None:
-    model = _model(ffn_type="deepseek_v4_swiglu")
-    blocks = [
-        block
-        for stage in model.stages
-        for block in (
-            stage.object_temporal_block,
-            stage.spatial_block,
-            stage.query_temporal_block,
-        )
-    ]
+def test_configured_ffn_type_reaches_stage_end_shared_ffn() -> None:
+    model = _model(ffn_type="gpt_oss_swiglu")
 
-    assert blocks
-    assert all(isinstance(block.ffn, DeepSeekV4SwiGLU) for block in blocks)
+    assert all(isinstance(stage.shared_ffn, GPTOSSSwiGLU) for stage in model.stages)
 
 
-def test_invisible_joint_coordinates_do_not_affect_predictions() -> None:
-    torch.manual_seed(9)
+def test_forward_uses_q_plus_v_width_and_ignores_padded_values() -> None:
+    torch.manual_seed(777)
     model = _model()
-    inputs = _inputs(model)
-    inputs["human_vis"][:, 1, :, 1] = False
-    changed = {key: value.clone() for key, value in inputs.items()}
-    changed["human_kp"][:, 1, :, 1] = torch.nan
+    baseline = _inputs()
+    contaminated = {name: value.clone() for name, value in baseline.items()}
+    padding_mask = contaminated["padding_mask"]
+    contaminated["human_kp"][padding_mask] = torch.nan
+    contaminated["court_kp"][padding_mask] = torch.nan
+    contaminated["human_vis"][padding_mask] = True
+    contaminated["court_vis"][padding_mask] = True
+    captured: dict[str, Tensor] = {}
 
-    with torch.no_grad():
-        output = _forward(model, inputs)
-        changed_output = _forward(model, changed)
-
-    for key in output:
-        torch.testing.assert_close(output[key], changed_output[key])
-
-
-def test_nonpadding_invisible_tokens_receive_gradient() -> None:
-    torch.manual_seed(12)
-    model = _model()
-    model.train()
-    inputs = _inputs(model)
-    inputs["human_vis"][:] = False
-    output = _forward(model, inputs)
-    sum(value.square().sum() for value in output.values()).backward()
-
-    gradient = model.invisible_token.token.grad
-    assert gradient is not None
-    assert bool(gradient.abs().sum() > 0)
-
-
-def test_visibility_never_changes_object_attention_participation() -> None:
-    model = _model()
-    inputs = _inputs(model)
-    inputs["human_vis"].zero_()
-    observed: dict[str, torch.Tensor] = {}
-
-    def capture_state(
+    def capture_stage_inputs(
         _module: torch.nn.Module,
         args: tuple[object, ...],
         kwargs: dict[str, object],
     ) -> None:
+        for key in (
+            "object_state_valid",
+            "spatial_attention_keep_mask",
+            "spatial_freqs",
+        ):
+            value = kwargs[key]
+            assert isinstance(value, Tensor)
+            captured[key] = value
         object_tokens = args[0]
-        object_valid = kwargs["object_state_valid"]
-        assert isinstance(object_tokens, torch.Tensor)
-        assert isinstance(object_valid, torch.Tensor)
-        observed["tokens"] = object_tokens
-        observed["valid"] = object_valid
+        assert isinstance(object_tokens, Tensor)
+        captured["object_tokens"] = object_tokens
 
-    hook = model.stages[0].register_forward_pre_hook(capture_state, with_kwargs=True)
+    hook = model.stages[0].register_forward_pre_hook(
+        capture_stage_inputs,
+        with_kwargs=True,
+    )
     try:
         with torch.no_grad():
-            _forward(model, inputs)
+            output = _forward(model, baseline)
+            contaminated_output = _forward(model, contaminated)
     finally:
         hook.remove()
 
-    assert observed["tokens"].shape == (1, 2, 3, model.num_queries, model.hidden_dim)
-    assert observed["valid"].all()
-
-
-def test_nonrectangular_padding_is_forwarded_as_object_state_validity() -> None:
-    model = _model()
-    inputs = _inputs(model)
-    inputs["padding_mask"] = torch.tensor(
-        [[[False, True, True], [True, False, True]]]
-    )
-    observed: dict[str, torch.Tensor] = {}
-
-    def capture_state(
-        _module: torch.nn.Module,
-        _args: tuple[object, ...],
-        kwargs: dict[str, object],
-    ) -> None:
-        object_valid = kwargs["object_state_valid"]
-        assert isinstance(object_valid, torch.Tensor)
-        observed["valid"] = object_valid
-
-    hook = model.stages[0].register_forward_pre_hook(capture_state, with_kwargs=True)
-    try:
-        with torch.no_grad():
-            _forward(model, inputs)
-    finally:
-        hook.remove()
-
-    expected = (~inputs["padding_mask"]).unsqueeze(-1).expand(
-        -1, -1, -1, model.num_queries
-    )
-    torch.testing.assert_close(observed["valid"], expected)
-
-
-def test_padded_values_cannot_change_valid_outputs() -> None:
-    torch.manual_seed(15)
-    model = _model()
-    inputs = _inputs(model)
-    inputs["padding_mask"][:, 1] = True
-    changed = {key: value.clone() for key, value in inputs.items()}
-    changed["human_kp"][:, 1] = torch.nan
-    changed["court_kp"][:, 1] = torch.nan
-
-    with torch.no_grad():
-        output = _forward(model, inputs)
-        changed_output = _forward(model, changed)
-
+    assert set(output) == {"position", "rotation", "presence_logits"}
+    assert output["position"].shape == (2, 3, 4, 3)
+    assert output["rotation"].shape == (2, 3, 4, 2)
+    assert output["presence_logits"].shape == (2, 3, 4)
+    expected_valid = (~padding_mask).unsqueeze(-1).expand(-1, -1, -1, 4)
+    assert torch.equal(captured["object_state_valid"], expected_valid)
+    assert captured["spatial_attention_keep_mask"].shape == (6, 7, 7)
+    assert captured["spatial_freqs"].shape == (6, 7, 1, 2)
+    assert captured["object_tokens"][expected_valid].abs().any()
     for key in output:
-        torch.testing.assert_close(output[key], changed_output[key])
-
-
-def test_all_padding_outputs_are_finite_and_zero() -> None:
-    model = _model()
-    inputs = _inputs(model)
-    inputs["padding_mask"][:] = True
-
-    with torch.no_grad():
-        output = _forward(model, inputs)
-
-    for value in output.values():
-        assert torch.isfinite(value).all()
-        assert torch.count_nonzero(value) == 0
-
-
-def test_prediction_is_invariant_to_batch_composition() -> None:
-    torch.manual_seed(18)
-    model = _model()
-    inputs = _inputs(model)
-    companion = _inputs(model)
-    batched = {
-        key: torch.cat((value, companion[key]), dim=0)
-        for key, value in inputs.items()
-    }
-
-    with torch.no_grad():
-        single = _forward(model, inputs)
-        composed = _forward(model, batched)
-
-    for key in single:
-        torch.testing.assert_close(single[key], composed[key][:1])
-
-
-def test_old_track_query_state_dict_is_intentionally_strictly_incompatible() -> None:
-    model = _model()
-    old_state = {
-        "slot_embeddings": model.slot_embeddings.detach().clone(),
-        "spatial_blocks.0.attn_norm.weight": torch.ones(model.hidden_dim),
-    }
-
-    with pytest.raises(RuntimeError, match="spatial_blocks"):
-        model.load_state_dict(old_state, strict=True)
-
-
-def test_requested_unavailable_cuda_backend_does_not_fall_back(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    def unavailable(*args: object, **kwargs: object) -> object:
-        del args, kwargs
-        raise RuntimeError("requested CUDA backend is unavailable")
-
-    monkeypatch.setattr(
-        "src.utils.models.components.compressor.resolve_token_compressor_pool",
-        lambda *args, **kwargs: object(),
+        assert torch.isfinite(contaminated_output[key]).all()
+        torch.testing.assert_close(output[key], contaminated_output[key])
+    frame_valid = (~padding_mask).any(dim=1)
+    valid_rotation = output["rotation"][frame_valid]
+    torch.testing.assert_close(
+        torch.linalg.vector_norm(valid_rotation, dim=-1),
+        torch.ones_like(valid_rotation[..., 0]),
     )
-    monkeypatch.setattr(
-        "src.utils.models.components.cswa.resolve_compressed_time_local_attention",
-        unavailable,
-    )
-
-    with pytest.raises(RuntimeError, match="requested CUDA backend is unavailable"):
-        _model(backend="cuda")
+    assert not output["position"][:, 2].any()
+    assert not output["rotation"][:, 2].any()
+    assert not output["presence_logits"][:, 2].any()
+    assert not output["position"][1].any()
+    assert not output["rotation"][1].any()
+    assert not output["presence_logits"][1].any()

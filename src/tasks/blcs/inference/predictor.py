@@ -44,9 +44,8 @@ from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
     """Unified BLCS model inference predictor.
 
-    Supports:
-    - `blcs` (single-view)
-    - `blcs_multiview` (multi-view)
+    Supports the standard BLCS trajectory model profiles exposed by the model-I/O
+    factory.
 
     Attributes:
         model: The BLCS model.
@@ -176,8 +175,7 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
                 selection.provenance for selection in reference_metadata.selections
             )
             if raw is not None and (
-                not isinstance(raw, (tuple, list))
-                or tuple(raw) != metadata_provenance
+                not isinstance(raw, (tuple, list)) or tuple(raw) != metadata_provenance
             ):
                 raise ModelInputContractError(
                     "BLCS prediction provenance and typed reference metadata do "
@@ -196,8 +194,7 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
             )
         records = tuple(raw)
         if any(
-            not isinstance(record, CourtReferenceFrameProvenance)
-            for record in records
+            not isinstance(record, CourtReferenceFrameProvenance) for record in records
         ):
             raise TypeError("Prediction provenance entries must be validated records.")
         typed = records
@@ -216,7 +213,7 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
         right: BLCSReferenceMetadata,
     ) -> bool:
         """Compare typed metadata without tensor truth-value coercion."""
-        return (
+        return bool(
             left.selections == right.selections
             and left.stable_camera_id_tables == right.stable_camera_id_tables
             and left.track_query_contract == right.track_query_contract
@@ -239,9 +236,13 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
         explicit: BLCSReferenceMetadata | None,
     ) -> BLCSReferenceMetadata | None:
         parsed = blcs_reference_metadata_from_batch(batch)
-        if explicit is not None and parsed is not None and not self._same_reference_metadata(
-            explicit,
-            parsed,
+        if (
+            explicit is not None
+            and parsed is not None
+            and not self._same_reference_metadata(
+                explicit,
+                parsed,
+            )
         ):
             raise ModelInputContractError(
                 "Explicit BLCS reference metadata does not match the batch."
@@ -274,9 +275,7 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
         batch: Mapping[str, object],
         *,
         denormalize: bool,
-        court_reference_provenance: tuple[
-            CourtReferenceFrameProvenance, ...
-        ]
+        court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...]
         | None = None,
         reference_metadata: BLCSReferenceMetadata | None = None,
     ) -> BLCSTrajectoryPrediction:
@@ -320,9 +319,7 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
         court_vis: NDArray[np.bool_] | NDArray[np.float32],
         denormalize: bool,
         court_keypoint_document: Mapping[str, object] | None = None,
-        court_reference_provenance: tuple[
-            CourtReferenceFrameProvenance, ...
-        ]
+        court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...]
         | None = None,
         reference_metadata: BLCSReferenceMetadata | None = None,
     ) -> BLCSTrajectoryPrediction:
@@ -381,9 +378,7 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
             if not isinstance(raw_cameras, list):
                 raise ValueError("scene.cameras must be a list.")
             complete_views = tuple(
-                camera.get("court_view")
-                if isinstance(camera, Mapping)
-                else None
+                camera.get("court_view") if isinstance(camera, Mapping) else None
                 for camera in raw_cameras
             )
             if any(not isinstance(view, CourtViewRecord) for view in complete_views):
@@ -458,9 +453,7 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
         court_vis: Tensor,
         denormalize: bool = True,
         court_keypoint_document: Mapping[str, object] | None = None,
-        court_reference_provenance: tuple[
-            CourtReferenceFrameProvenance, ...
-        ]
+        court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...]
         | None = None,
         reference_metadata: BLCSReferenceMetadata | None = None,
     ) -> BLCSTrajectoryPrediction:

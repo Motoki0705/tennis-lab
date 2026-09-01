@@ -2,11 +2,8 @@
 
 from src.tasks.blcs.model_io.adapters import (
     AxialTrajectoryModelIOAdapter,
-    MultiViewTrajectoryModelIOAdapter,
     SingleTrajectoryModelIOAdapter,
-    TrackQueryAblationModelIOAdapter,
     TrackQueryModelIOAdapter,
-    TrackQueryReferenceAblationModelIOAdapter,
     TrackQueryReferenceModelIOAdapter,
     TrajectoryModelIOAdapter,
 )
@@ -45,12 +42,9 @@ __all__ = [
     "blcs_reference_metadata_from_batch",
     "blcs_track_query_prediction_to_physical",
     "blcs_trajectory_prediction_to_physical",
-    "MultiViewTrajectoryModelIOAdapter",
     "SingleTrajectoryModelIOAdapter",
-    "TrackQueryAblationModelIOAdapter",
     "TrackQueryBoundModelIO",
     "TrackQueryModelIOAdapter",
-    "TrackQueryReferenceAblationModelIOAdapter",
     "TrackQueryReferenceModelIOAdapter",
     "TrajectoryBoundModelIO",
     "TrajectoryModelIOAdapter",

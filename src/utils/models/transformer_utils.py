@@ -1,7 +1,7 @@
 """Shared transformer utility functions for multi-view models.
 
 Provides standalone helpers that were previously duplicated as static methods
-across ``BLCSMultiViewModel``, ``BLCSMultiViewAxialModel``, and
+across the BLCS and PLCS Transformer architectures, including
 ``PLCSMultiViewAxialModel``.
 """
 

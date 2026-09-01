@@ -1,4 +1,4 @@
-"""Fixed-width mHC and hybrid-CSWA PLCS track-query model."""
+"""Canonical fixed-query PLCS tracking architecture."""
 
 from __future__ import annotations
 
@@ -27,11 +27,14 @@ from src.utils.models.embeddings import (
     CourtPlayerGroupEmbedding,
     InvisibleTokenEmbedding,
 )
-from src.utils.models.multiview_padding import build_fixed_query_padding_masks
+from src.utils.models.multiview_padding import (
+    build_compressed_spatial_attention_keep_mask,
+    build_fixed_query_padding_masks,
+)
 
 
 class PLCSTrackQueryModel(nn.Module):
-    """Predict persistent player queries with a fixed ``C,C,C,G`` cycle."""
+    """Predict persistent player queries with the fixed compressed-stage design."""
 
     def __init__(self, config: PLCSModelConfig) -> None:
         super().__init__()
@@ -41,13 +44,11 @@ class PLCSTrackQueryModel(nn.Module):
         cswa_config = config.track_query_cswa
         if mhc_config is None or cswa_config is None:
             raise ValueError("PLCS track-query mhc and cswa config must be validated.")
-
         self.hidden_dim = config.integer("hidden_dim")
         self.num_heads = config.integer("num_heads")
         self.num_queries = config.integer("num_queries")
         self.num_stages = config.integer("num_stages")
         self.num_joints = config.integer("num_joints")
-        self.role_rope_scale = int(config.boolean("role_rope_enabled"))
         if self.num_stages <= 0 or self.num_stages % 4 != 0:
             raise ValueError("num_stages must be a positive multiple of 4.")
         if self.num_queries <= 0:
@@ -118,7 +119,8 @@ class PLCSTrackQueryModel(nn.Module):
         court_kp = cast(Tensor, args[2] if len(args) > 2 else kwargs["court_kp"])
         court_vis = cast(Tensor, args[3] if len(args) > 3 else kwargs["court_vis"])
         padding_mask = cast(
-            Tensor, args[4] if len(args) > 4 else kwargs["padding_mask"]
+            Tensor,
+            args[4] if len(args) > 4 else kwargs["padding_mask"],
         )
         if human_kp.ndim != 6:
             raise ValueError("human_kp must have shape (B,V,T,Q,J,2).")
@@ -187,6 +189,7 @@ class PLCSTrackQueryModel(nn.Module):
             rope_base=config.number("rope_theta"),
             ffn_type=cast(FFNType, config.string("ffn_type")),
             cswa=cswa,
+            ffn_enabled=False,
         )
 
     def _build_stage(
@@ -240,26 +243,34 @@ class PLCSTrackQueryModel(nn.Module):
         num_queries: int,
         device: torch.device,
     ) -> Tensor:
-        """Return ``(B*T,Q+V*Q,3)`` time/camera/role coordinates."""
+        """Return time/camera/role coordinates for compressed ``Q+V`` tokens."""
         if num_detections != num_queries:
             raise ValueError("num_detections must equal num_queries.")
         time = torch.arange(num_frames, device=device).view(1, num_frames, 1)
         slots = torch.zeros(
-            batch_size, num_frames, num_queries, 3, device=device, dtype=torch.long
+            batch_size,
+            num_frames,
+            num_queries,
+            3,
+            device=device,
+            dtype=torch.long,
         )
         slots[..., 0] = time
         objects = torch.zeros(
             batch_size,
             num_frames,
             num_views,
-            num_queries,
+            1,
             3,
             device=device,
             dtype=torch.long,
         )
         objects[..., 0] = time.view(1, num_frames, 1, 1)
         objects[..., 1] = torch.arange(1, num_views + 1, device=device).view(
-            1, 1, num_views, 1
+            1,
+            1,
+            num_views,
+            1,
         )
         objects[..., 2] = 1
         return torch.cat((slots, objects.flatten(2, 3)), dim=2).flatten(0, 1)
@@ -282,15 +293,13 @@ class PLCSTrackQueryModel(nn.Module):
             num_queries=self.num_queries,
             device=human_kp.device,
         )
-        rope_coordinates = coordinates.clone()
-        rope_coordinates[..., 2] *= self.role_rope_scale
         return self._forward_with_spatial_coordinates(
             human_kp,
             human_vis,
             court_kp,
             court_vis,
             padding_mask,
-            spatial_coordinates=rope_coordinates,
+            spatial_coordinates=coordinates,
         )
 
     def _forward_with_spatial_coordinates(
@@ -303,9 +312,13 @@ class PLCSTrackQueryModel(nn.Module):
         *,
         spatial_coordinates: Tensor,
     ) -> PLCSTrackingPrediction:
-        """Execute the shared architecture with already validated coordinates."""
+        """Execute the canonical architecture with validated spatial coordinates."""
         batch_size, _num_views, num_frames = human_kp.shape[:3]
         masks = build_fixed_query_padding_masks(
+            padding_mask,
+            num_queries=self.num_queries,
+        )
+        spatial_attention_keep_mask = build_compressed_spatial_attention_keep_mask(
             padding_mask,
             num_queries=self.num_queries,
         )
@@ -315,7 +328,12 @@ class PLCSTrackQueryModel(nn.Module):
         observation_visible = effective_human_vis.any(dim=-1)
         masked_court = court_kp.masked_fill(~effective_court_vis.unsqueeze(-1), 0.0)
         court_for_queries = masked_court.unsqueeze(3).expand(
-            -1, -1, -1, self.num_queries, -1, -1
+            -1,
+            -1,
+            -1,
+            self.num_queries,
+            -1,
+            -1,
         )
         masked_human = human_kp.masked_fill(
             ~effective_human_vis.unsqueeze(-1),
@@ -329,7 +347,10 @@ class PLCSTrackQueryModel(nn.Module):
         object_tokens = object_tokens * masks.object_state_valid.unsqueeze(-1)
 
         query_tokens = self.slot_embeddings.view(
-            1, 1, self.num_queries, self.hidden_dim
+            1,
+            1,
+            self.num_queries,
+            self.hidden_dim,
         ).expand(batch_size, num_frames, -1, -1)
         query_tokens = query_tokens * masks.frame_valid[:, :, None, None]
         spatial_freqs = self.spatial_frequency_computer(spatial_coordinates)
@@ -343,7 +364,7 @@ class PLCSTrackQueryModel(nn.Module):
                 query_tokens,
                 object_state_valid=masks.object_state_valid,
                 frame_valid=masks.frame_valid,
-                spatial_attention_keep_mask=masks.spatial_attention_keep_mask,
+                spatial_attention_keep_mask=spatial_attention_keep_mask,
                 object_temporal_state_valid=masks.object_temporal_state_valid,
                 object_temporal_attention_keep_mask=(
                     masks.object_temporal_attention_keep_mask

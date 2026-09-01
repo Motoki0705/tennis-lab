@@ -27,7 +27,7 @@ from src.tasks.base.generate_dataset import (
     resolve_court_keypoint_contract,
 )
 from src.tasks.blcs.configuration import (
-    TrackQueryReferenceAblationModelConfig,
+    TrackQueryReferenceModelConfig,
     parse_model_config,
 )
 from src.tasks.blcs.data.dataset import (
@@ -46,8 +46,8 @@ from src.tasks.blcs.model_io import (
     blcs_trajectory_prediction_to_physical,
     compose_blcs_trajectory_model_io,
 )
-from src.tasks.blcs.models.blcs_track_query_reference_ablation_model import (
-    BLCSTrackQueryReferenceAblationModel,
+from src.tasks.blcs.models.blcs_track_query_reference_model import (
+    BLCSTrackQueryReferenceModel,
 )
 from src.tasks.blcs.training.lightning_module import BLCSLightningModule
 from src.tasks.plcs.configuration import PLCSModelConfig
@@ -62,8 +62,8 @@ from src.tasks.plcs.generate_dataset.scene_generator import (
 )
 from src.tasks.plcs.generate_dataset.scene_generator import SceneData as PLCSSceneData
 from src.tasks.plcs.model_io import PLCSDecodedPrediction, PLCSPhysicalPrediction
-from src.tasks.plcs.models.plcs_track_query_reference_ablation_model import (
-    PLCSTrackQueryReferenceAblationModel,
+from src.tasks.plcs.models.plcs_track_query_reference_model import (
+    PLCSTrackQueryReferenceModel,
 )
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.tennis_scene.pipeline.components.blcs import BLCSModule
@@ -294,7 +294,7 @@ def _blcs_config(selector: str) -> DictConfig:
 def _plcs_config(selector: str) -> DictConfig:
     overrides = [
         f"court_keypoints={selector}",
-        "model=multiview",
+        "model=multiview_axial_base",
         "loss=no_canonical",
         "model.hidden_dim=16",
         "model.num_layers=1",
@@ -375,14 +375,20 @@ def test_standard_datasets_models_losses_metrics_and_physical_predictions(
     reference_sign = torch.tensor(
         [-1.0, -1.0, 1.0] if selector == "camera_view_v2" else [1.0, 1.0, 1.0]
     )
-    expected_blcs_position = torch.tensor(
-        [[1.0, 2.0, 0.5], [1.5, 2.5, 0.75]],
-        dtype=torch.float32,
-    ) * reference_sign
-    expected_blcs_velocity = torch.tensor(
-        [[0.5, 1.0, 0.25], [0.75, 1.25, 0.0]],
-        dtype=torch.float32,
-    ) * reference_sign
+    expected_blcs_position = (
+        torch.tensor(
+            [[1.0, 2.0, 0.5], [1.5, 2.5, 0.75]],
+            dtype=torch.float32,
+        )
+        * reference_sign
+    )
+    expected_blcs_velocity = (
+        torch.tensor(
+            [[0.5, 1.0, 0.25], [0.75, 1.25, 0.0]],
+            dtype=torch.float32,
+        )
+        * reference_sign
+    )
     torch.testing.assert_close(
         blcs_sample["position_3d"],
         normalize_court_position(expected_blcs_position),
@@ -431,9 +437,7 @@ def test_standard_datasets_models_losses_metrics_and_physical_predictions(
         split_file="test.txt",
         config=plcs_config,
         augment=False,
-        reference_camera_id=(
-            "camera_0" if selector == "camera_view_v2" else None
-        ),
+        reference_camera_id=("camera_0" if selector == "camera_view_v2" else None),
     )
     plcs_sample = plcs_dataset[0]
     plcs_provenance = cast(
@@ -522,9 +526,7 @@ def test_single_view_uses_selected_camera_as_the_complete_reference_frame(
     assert blcs_sample["court_kp"].shape == (1, 2, 20, 2)
     torch.testing.assert_close(
         blcs_sample["court_kp"][0, 0],
-        torch.from_numpy(
-            _PHYSICAL_COURT_UV[np.asarray(COURT_KP20_HALF_TURN_INDEX)]
-        ),
+        torch.from_numpy(_PHYSICAL_COURT_UV[np.asarray(COURT_KP20_HALF_TURN_INDEX)]),
     )
     torch.testing.assert_close(blcs_sample["position_3d"], expected_position)
     torch.testing.assert_close(blcs_sample["camera_C"][0], expected_center)
@@ -550,9 +552,7 @@ def test_single_view_uses_selected_camera_as_the_complete_reference_frame(
     assert plcs_sample["court_kp"].shape == (1, 2, 20, 2)
     torch.testing.assert_close(
         plcs_sample["court_kp"][0, 0],
-        torch.from_numpy(
-            _PHYSICAL_COURT_UV[np.asarray(COURT_KP20_HALF_TURN_INDEX)]
-        ),
+        torch.from_numpy(_PHYSICAL_COURT_UV[np.asarray(COURT_KP20_HALF_TURN_INDEX)]),
     )
     torch.testing.assert_close(plcs_sample["position"], expected_position)
     torch.testing.assert_close(
@@ -571,11 +571,11 @@ def test_single_view_uses_selected_camera_as_the_complete_reference_frame(
     torch.testing.assert_close(plcs_sample["camera_R"][0], half_turn)
 
 
-def _blcs_tracking_model() -> BLCSTrackQueryReferenceAblationModel:
+def _blcs_tracking_model() -> BLCSTrackQueryReferenceModel:
     config = parse_model_config(
         {
             "model": {
-                "name": "blcs_track_query_reference_ablation",
+                "name": "blcs_track_query_reference",
                 "hidden_dim": 24,
                 "num_heads": 4,
                 "num_stages": 4,
@@ -588,9 +588,6 @@ def _blcs_tracking_model() -> BLCSTrackQueryReferenceAblationModel:
                 "target_frame_contract": "reference_camera_court_rzpi_v1",
                 "track_query_rope_contract": "time_camera_reference_selector_v1",
                 "reference_selector_mode": "reference",
-                "ffn_mode": "shared",
-                "mhc_writeback": "layer_end",
-                "query_ffn_after_spatial": False,
                 "mhc": {
                     "coefficient_dim": 8,
                     "sinkhorn_iters": 2,
@@ -606,16 +603,16 @@ def _blcs_tracking_model() -> BLCSTrackQueryReferenceAblationModel:
             }
         }
     )
-    assert isinstance(config, TrackQueryReferenceAblationModelConfig)
-    model = BLCSTrackQueryReferenceAblationModel(config)
+    assert isinstance(config, TrackQueryReferenceModelConfig)
+    model = BLCSTrackQueryReferenceModel(config)
     model.eval()
     return model
 
 
-def _plcs_tracking_model() -> PLCSTrackQueryReferenceAblationModel:
+def _plcs_tracking_model() -> PLCSTrackQueryReferenceModel:
     config = PLCSModelConfig.from_mapping(
         {
-            "name": "plcs_track_query_reference_ablation",
+            "name": "plcs_track_query_reference",
             "hidden_dim": 24,
             "num_heads": 4,
             "ffn_dim": 32,
@@ -630,8 +627,6 @@ def _plcs_tracking_model() -> PLCSTrackQueryReferenceAblationModel:
             "target_frame_contract": "reference_camera_court_rzpi_v1",
             "track_query_rope_contract": "time_camera_reference_selector_v1",
             "reference_selector_mode": "reference",
-            "ffn_mode": "shared",
-            "mhc_writeback": "layer_end",
             "mhc": {
                 "coefficient_dim": 8,
                 "sinkhorn_iters": 2,
@@ -646,7 +641,7 @@ def _plcs_tracking_model() -> PLCSTrackQueryReferenceAblationModel:
             },
         }
     )
-    model = PLCSTrackQueryReferenceAblationModel(config)
+    model = PLCSTrackQueryReferenceModel(config)
     model.eval()
     return model
 

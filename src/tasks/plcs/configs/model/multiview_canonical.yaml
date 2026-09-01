@@ -1,6 +1,0 @@
-defaults:
-  - multiview
-  - _self_
-
-# Enable all three PLCS outputs on the interleaved multi-view transformer.
-predict_canonical_pose: true

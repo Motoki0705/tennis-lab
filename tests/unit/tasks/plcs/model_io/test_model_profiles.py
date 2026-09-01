@@ -15,7 +15,6 @@ from src.tasks.plcs.models.plcs_model import PLCSModel
 from src.tasks.plcs.models.plcs_multiview_axial_split_model import (
     PLCSMultiViewAxialSplitModel,
 )
-from src.tasks.plcs.models.plcs_multiview_model import PLCSMultiViewModel
 from src.utils.models.components.ffn_layers import DeepSeekV4SwiGLU
 
 
@@ -80,47 +79,6 @@ def test_frame_model_runs_only_through_its_bound_profile() -> None:
     )
     assert decoded.position.shape == (2, 3)
     assert decoded.rotation.shape == (2, 2)
-
-
-def test_interleaved_multiview_model_runs_through_multiview_profile() -> None:
-    model = PLCSMultiViewModel(
-        hidden_dim=16,
-        num_layers=1,
-        num_heads=4,
-        ffn_dim=32,
-        dropout=0.0,
-        rope_dim=4,
-        rope_theta=10000.0,
-        rope_theta_time=10000.0,
-        rope_theta_camera=10000.0,
-        rope_theta_type=10000.0,
-        ffn_type="swiglu",
-        predict_canonical_pose=False,
-        max_views=2,
-        max_seq_len=3,
-        invisible_init_std=0.02,
-        num_court_tokens=20,
-    ).eval()
-    bound = bind_plcs_model_io(
-        model,
-        _adapter(
-            PLCSMultiViewModel,
-            profile=PLCSInputProfile.MULTIVIEW,
-            output_rank=3,
-        ),
-    )
-    prefix = (1, 2, 3)
-    decoded = bound.run(
-        {
-            "human_kp": torch.rand(*prefix, 17, 2),
-            "court_kp": torch.rand(*prefix, 20, 2),
-            "human_vis": torch.ones(*prefix, 17, dtype=torch.bool),
-            "padding_mask": torch.zeros(*prefix, dtype=torch.bool),
-            "court_vis": torch.ones(*prefix, 20, dtype=torch.bool),
-        }
-    )
-    assert decoded.position.shape == (1, 3, 3)
-    assert decoded.rotation.shape == (1, 3, 2)
 
 
 def test_split_model_output_strategy_matches_bound_adapter() -> None:

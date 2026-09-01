@@ -1,66 +1,93 @@
+"""BLCS fixed track-query architecture and public-contract tests."""
+
 from __future__ import annotations
 
 import inspect
+from typing import cast
 
-import pytest
 import torch
+from torch import Tensor
 
 from src.tasks.blcs.configuration import TrackQueryModelConfig, parse_model_config
-from src.tasks.blcs.models import BLCSTrackQueryModel
-from src.utils.models.components.ffn_layers import DeepSeekV4SwiGLU, FFNType
+from src.tasks.blcs.models.blcs_track_query_model import BLCSTrackQueryModel
+from src.utils.models.components.ffn_layers import FFNType, GPTOSSSwiGLU, SwiGLU
+from src.utils.models.components.fixed_query_track_stage import FixedQueryTrackStage
 
 
-def _config(ffn_type: FFNType = "swiglu") -> TrackQueryModelConfig:
-    parsed = parse_model_config(
-        {
-            "model": {
-                "name": "blcs_track_query",
-                "hidden_dim": 16,
-                "num_heads": 4,
-                "num_stages": 4,
-                "ffn_dim": 32,
-                "ffn_type": ffn_type,
-                "num_queries": 4,
-                "rope_dim": 4,
-                "dropout": 0.0,
-                "role_rope_enabled": True,
-                "invisible_init_std": 0.02,
-                "mhc": {
-                    "coefficient_dim": 8,
-                    "sinkhorn_iters": 5,
-                    "eps": 1.0e-6,
-                    "residual_identity_bias": 4.0,
-                    "update_scale_init": 0.0,
-                },
-                "cswa": {
-                    "compression_ratio": 2,
-                    "window_radius": 1,
-                    "backend": "reference",
-                },
-            }
-        }
-    )
+def _raw_model() -> dict[str, object]:
+    return {
+        "name": "blcs_track_query",
+        "hidden_dim": 16,
+        "num_heads": 4,
+        "num_stages": 4,
+        "ffn_dim": 32,
+        "ffn_type": "swiglu",
+        "num_queries": 4,
+        "rope_dim": 4,
+        "dropout": 0.0,
+        "invisible_init_std": 0.02,
+        "mhc": {
+            "coefficient_dim": 8,
+            "sinkhorn_iters": 5,
+            "eps": 1.0e-6,
+            "residual_identity_bias": 4.0,
+            "update_scale_init": 0.0,
+        },
+        "cswa": {
+            "compression_ratio": 2,
+            "window_radius": 1,
+            "backend": "reference",
+        },
+    }
+
+
+def _config(*, ffn_type: FFNType = "swiglu") -> TrackQueryModelConfig:
+    raw = _raw_model()
+    raw["ffn_type"] = ffn_type
+    parsed = parse_model_config({"model": raw})
     assert isinstance(parsed, TrackQueryModelConfig)
     return parsed
 
 
-def _model(ffn_type: FFNType = "swiglu") -> BLCSTrackQueryModel:
-    model = BLCSTrackQueryModel(_config(ffn_type))
+def _model(*, ffn_type: FFNType = "swiglu") -> BLCSTrackQueryModel:
+    model = BLCSTrackQueryModel(_config(ffn_type=ffn_type))
     model.eval()
     return model
 
 
-def _inputs(*, views: int = 2, frames: int = 3) -> dict[str, torch.Tensor]:
+def _inputs() -> dict[str, Tensor]:
+    padding_mask = torch.tensor(
+        [
+            [
+                [False, True, True],
+                [True, False, True],
+                [True, True, True],
+            ],
+            [
+                [True, True, True],
+                [True, True, True],
+                [True, True, True],
+            ],
+        ]
+    )
     return {
-        "ball_uv": torch.rand(1, views, frames, 4, 2),
-        "ball_vis": torch.ones(1, views, frames, 4, dtype=torch.bool),
-        "court_kp": torch.rand(1, views, frames, 14, 2),
-        "court_vis": torch.ones(1, views, frames, 14, dtype=torch.bool),
-        "padding_mask": torch.zeros(1, views, frames, dtype=torch.bool),
+        "ball_uv": torch.rand(2, 3, 3, 4, 2),
+        "ball_vis": torch.zeros(2, 3, 3, 4, dtype=torch.bool),
+        "court_kp": torch.rand(2, 3, 3, 14, 2),
+        "court_vis": torch.zeros(2, 3, 3, 14, dtype=torch.bool),
+        "padding_mask": padding_mask,
     }
 
 
-def test_forward_public_contract_has_exactly_five_tensors() -> None:
+def _forward(
+    model: BLCSTrackQueryModel,
+    inputs: dict[str, Tensor],
+) -> dict[str, Tensor]:
+    return cast("dict[str, Tensor]", model(**inputs))
+
+
+def test_model_keeps_public_name_and_five_tensor_contract() -> None:
+    assert BLCSTrackQueryModel.__name__ == "BLCSTrackQueryModel"
     parameters = list(inspect.signature(BLCSTrackQueryModel.forward).parameters)
     assert parameters == [
         "self",
@@ -72,134 +99,76 @@ def test_forward_public_contract_has_exactly_five_tensors() -> None:
     ]
 
 
-def test_configured_ffn_reaches_every_track_query_block() -> None:
-    model = _model("deepseek_v4_swiglu")
-    blocks = [
-        block
-        for stage in model.stages
-        for block in (
-            stage.object_temporal_block,
-            stage.spatial_block,
-            stage.query_temporal_block,
-        )
-    ]
-
-    assert blocks
-    assert all(isinstance(block.ffn, DeepSeekV4SwiGLU) for block in blocks)
-
-
-def test_forward_returns_fixed_query_outputs() -> None:
-    with torch.no_grad():
-        output = _model()(**_inputs())
-    assert output["position"].shape == (1, 3, 4, 3)
-    assert output["presence_logits"].shape == (1, 3, 4)
-
-
-def test_nonpadding_invisible_queries_use_learned_token_and_receive_gradient() -> None:
+def test_model_builds_only_fixed_compressed_stages() -> None:
     model = _model()
-    inputs = _inputs(views=1, frames=2)
-    inputs["ball_vis"].zero_()
 
-    output = model(**inputs)
-    output["position"].sum().backward()
+    assert all(isinstance(stage, FixedQueryTrackStage) for stage in model.stages)
+    for module in model.stages:
+        stage = cast(FixedQueryTrackStage, module)
+        assert stage.object_temporal_block.ffn is None
+        assert stage.spatial_block.ffn is None
+        assert stage.query_temporal_block.ffn is None
+        assert isinstance(stage.shared_ffn, SwiGLU)
 
-    gradient = model.observation_encoder.invisible_token.token.grad
-    assert gradient is not None
-    assert bool((gradient.abs() > 0).any())
+
+def test_configured_ffn_type_reaches_stage_end_shared_ffn() -> None:
+    model = _model(ffn_type="gpt_oss_swiglu")
+
+    assert all(isinstance(stage.shared_ffn, GPTOSSSwiGLU) for stage in model.stages)
 
 
-def test_visibility_never_changes_attention_participation() -> None:
+def test_forward_uses_q_plus_v_width_and_ignores_padded_values() -> None:
+    torch.manual_seed(777)
     model = _model()
-    inputs = _inputs(views=1, frames=2)
-    inputs["ball_vis"].zero_()
-    observed: dict[str, torch.Tensor] = {}
+    baseline = _inputs()
+    contaminated = {name: value.clone() for name, value in baseline.items()}
+    padding_mask = contaminated["padding_mask"]
+    contaminated["ball_uv"][padding_mask] = torch.nan
+    contaminated["court_kp"][padding_mask] = torch.nan
+    contaminated["ball_vis"][padding_mask] = True
+    contaminated["court_vis"][padding_mask] = True
+    captured: dict[str, Tensor] = {}
 
-    def capture_state(
+    def capture_stage_inputs(
         _module: torch.nn.Module,
         args: tuple[object, ...],
         kwargs: dict[str, object],
     ) -> None:
-        del args
-        value = kwargs["object_state_valid"]
-        assert isinstance(value, torch.Tensor)
-        observed["valid"] = value
+        for key in (
+            "object_state_valid",
+            "spatial_attention_keep_mask",
+            "spatial_freqs",
+        ):
+            value = kwargs[key]
+            assert isinstance(value, Tensor)
+            captured[key] = value
+        object_tokens = args[0]
+        assert isinstance(object_tokens, Tensor)
+        captured["object_tokens"] = object_tokens
 
-    hook = model.stages[0].register_forward_pre_hook(capture_state, with_kwargs=True)
+    hook = model.stages[0].register_forward_pre_hook(
+        capture_stage_inputs,
+        with_kwargs=True,
+    )
     try:
         with torch.no_grad():
-            model(**inputs)
+            output = _forward(model, baseline)
+            contaminated_output = _forward(model, contaminated)
     finally:
         hook.remove()
 
-    assert observed["valid"].all()
-
-
-def test_padding_isolates_values_and_zeroes_padded_frame_outputs() -> None:
-    model = _model()
-    baseline = _inputs(views=2, frames=3)
-    baseline["padding_mask"][:, 0, 1] = True
-    baseline["padding_mask"][:, :, -1] = True
-    contaminated = {key: value.clone() for key, value in baseline.items()}
-    contaminated["ball_uv"][:, 0, 1:] = torch.nan
-    contaminated["ball_uv"][:, 1, -1] = 1.0e30
-    contaminated["court_kp"][:, 0, 1:] = torch.nan
-    contaminated["court_kp"][:, 1, -1] = -1.0e30
-    captured: dict[str, torch.Tensor] = {}
-
-    def capture_effective_observation_inputs(
-        _module: torch.nn.Module,
-        args: tuple[object, ...],
-    ) -> None:
-        names = ("court_kp", "court_vis", "ball_uv", "ball_vis")
-        for name, value in zip(names, args, strict=True):
-            assert isinstance(value, torch.Tensor)
-            captured[name] = value
-
-    hook = model.observation_encoder.register_forward_pre_hook(
-        capture_effective_observation_inputs
-    )
-
-    try:
-        with torch.no_grad():
-            output_baseline = model(**baseline)
-            output_contaminated = model(**contaminated)
-    finally:
-        hook.remove()
-
-    padding_mask = contaminated["padding_mask"]
-    assert not captured["ball_uv"][padding_mask].any()
-    assert not captured["court_kp"][padding_mask].any()
-    assert not captured["ball_vis"][padding_mask].any()
-    assert not captured["court_vis"][padding_mask].any()
-    for name in ("position", "presence_logits"):
-        assert torch.isfinite(output_contaminated[name]).all()
-        torch.testing.assert_close(output_baseline[name], output_contaminated[name])
-        assert not output_contaminated[name][:, -1].any()
-
-
-def test_nonrectangular_and_all_padding_inputs_remain_finite() -> None:
-    model = _model()
-    nonrectangular = _inputs(views=2, frames=3)
-    nonrectangular["padding_mask"] = torch.tensor(
-        [[[False, True, True], [True, False, True]]]
-    )
-    all_padding = _inputs(views=1, frames=2)
-    all_padding["padding_mask"].fill_(True)
-
-    with torch.no_grad():
-        outputs = (model(**nonrectangular), model(**all_padding))
-
-    for output in outputs:
-        assert torch.isfinite(output["position"]).all()
-        assert torch.isfinite(output["presence_logits"]).all()
-    assert not outputs[1]["position"].any()
-    assert not outputs[1]["presence_logits"].any()
-
-
-@pytest.mark.parametrize("width", [3, 5])
-def test_forward_rejects_nonexact_query_width(width: int) -> None:
-    inputs = _inputs()
-    inputs["ball_uv"] = torch.rand(1, 2, 3, width, 2)
-    inputs["ball_vis"] = torch.ones(1, 2, 3, width, dtype=torch.bool)
-    with pytest.raises(ValueError, match="model.num_queries"):
-        _model()(**inputs)
+    assert set(output) == {"position", "presence_logits"}
+    assert output["position"].shape == (2, 3, 4, 3)
+    assert output["presence_logits"].shape == (2, 3, 4)
+    expected_valid = (~padding_mask).unsqueeze(-1).expand(-1, -1, -1, 4)
+    assert torch.equal(captured["object_state_valid"], expected_valid)
+    assert captured["spatial_attention_keep_mask"].shape == (6, 7, 7)
+    assert captured["spatial_freqs"].shape == (6, 7, 1, 2)
+    assert captured["object_tokens"][expected_valid].abs().any()
+    for key in output:
+        assert torch.isfinite(contaminated_output[key]).all()
+        torch.testing.assert_close(output[key], contaminated_output[key])
+    assert not output["position"][:, 2].any()
+    assert not output["presence_logits"][:, 2].any()
+    assert not output["position"][1].any()
+    assert not output["presence_logits"][1].any()

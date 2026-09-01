@@ -31,6 +31,11 @@ from src.tasks.base.models.track_query_reference import (
 
 TRACK_QUERY_REFERENCE_METADATA_KEY: Final = "track_query_reference"
 TRACK_QUERY_REFERENCE_METADATA_SCHEMA_VERSION: Final = 1
+TRACK_QUERY_CHECKPOINT_ARCHITECTURE_METADATA_KEY: Final = (
+    "track_query_checkpoint_architecture"
+)
+TRACK_QUERY_CHECKPOINT_ARCHITECTURE_SCHEMA_VERSION: Final = 1
+TRACK_QUERY_CHECKPOINT_ARCHITECTURE_ID: Final = "fixed_query_track_compressed_v1"
 REFERENCE_SELECTOR_NOT_APPLICABLE: Final = "not_applicable"
 
 _METADATA_FIELDS = frozenset(
@@ -41,6 +46,9 @@ _METADATA_FIELDS = frozenset(
         "track_query_rope_contract",
         "reference_selector_mode",
     }
+)
+_CHECKPOINT_ARCHITECTURE_METADATA_FIELDS = frozenset(
+    {"schema_version", "architecture"}
 )
 
 
@@ -88,8 +96,7 @@ class TrackQueryReferenceContract:
         elif self.track_query_rope_contract is REFERENCE_SELECTOR_ROPE_CONTRACT:
             if not isinstance(self.reference_selector_mode, ReferenceSelectorMode):
                 raise TrackQueryReferenceContractError(
-                    "Reference-selector v2 requires an explicit reference or "
-                    "selector_zero mode."
+                    "Reference-selector v2 requires explicit reference mode."
                 )
             expected = (
                 CAMERA_VIEW_COURTKP20_RZPI_CONTRACT_ID,
@@ -112,8 +119,8 @@ class TrackQueryReferenceContract:
             )
 
     @classmethod
-    def legacy_v1(cls) -> TrackQueryReferenceContract:
-        """Return immutable v1 role-axis and five-input semantics."""
+    def physical_v1(cls) -> TrackQueryReferenceContract:
+        """Return canonical physical-court role-axis and five-input semantics."""
         return cls(
             court_keypoint_contract=PHYSICAL_COURTKP20_CONTRACT_ID,
             target_frame_contract=PHYSICAL_COURT_TARGET_FRAME_ID,
@@ -246,8 +253,7 @@ class ModelArtifactTrackQueryReferenceContract:
     """Successful runtime/direct/checkpoint compatibility result."""
 
     contract: TrackQueryReferenceContract
-    metadata: TrackQueryReferenceContractMetadata | None
-    legacy_metadata_free: bool
+    metadata: TrackQueryReferenceContractMetadata
 
 
 def extract_track_query_reference_contract_metadata(
@@ -268,7 +274,6 @@ def validate_track_query_reference_contract(
     document: Mapping[str, object],
     runtime_contract: TrackQueryReferenceContract,
     *,
-    explicit_legacy_v1: bool = False,
     location: str = "model artifact",
 ) -> ModelArtifactTrackQueryReferenceContract:
     """Validate exact runtime/artifact semantics before state or tensors load."""
@@ -278,19 +283,10 @@ def validate_track_query_reference_contract(
         location=location,
     )
     if metadata is None:
-        if (
-            not explicit_legacy_v1
-            or runtime_contract != TrackQueryReferenceContract.legacy_v1()
-        ):
-            raise MissingTrackQueryReferenceMetadataError(
-                f"{location}: track-query semantic metadata is absent. "
-                "Metadata-free artifacts require an explicitly selected legacy "
-                "v1 runtime; reference-selector v2 never infers from weight shape."
-            )
-        return ModelArtifactTrackQueryReferenceContract(
-            contract=runtime_contract,
-            metadata=None,
-            legacy_metadata_free=True,
+        raise MissingTrackQueryReferenceMetadataError(
+            f"{location}: track-query semantic metadata is absent. Canonical "
+            "track-query artifacts never infer semantics from config or weight "
+            "shape."
         )
     if metadata != expected:
         raise TrackQueryReferenceContractMismatchError(
@@ -300,38 +296,73 @@ def validate_track_query_reference_contract(
     return ModelArtifactTrackQueryReferenceContract(
         contract=runtime_contract,
         metadata=metadata,
-        legacy_metadata_free=False,
     )
 
 
 def resolve_track_query_reference_contract(
     document: Mapping[str, object],
     *,
-    explicit_legacy_v1: bool = False,
     location: str = "model artifact",
 ) -> ModelArtifactTrackQueryReferenceContract:
-    """Resolve recorded markers, or an explicitly requested metadata-free v1."""
+    """Resolve recorded markers without inferring absent semantics."""
     metadata = extract_track_query_reference_contract_metadata(
         document,
         location=location,
     )
-    if metadata is not None:
-        return ModelArtifactTrackQueryReferenceContract(
-            contract=metadata.contract,
-            metadata=metadata,
-            legacy_metadata_free=False,
-        )
-    if not explicit_legacy_v1:
+    if metadata is None:
         raise MissingTrackQueryReferenceMetadataError(
             f"{location}: cannot resolve track-query semantics because metadata "
-            "is absent. Explicitly request known legacy v1 semantics."
+            "is absent."
         )
-    return validate_track_query_reference_contract(
-        document,
-        TrackQueryReferenceContract.legacy_v1(),
-        explicit_legacy_v1=True,
-        location=location,
+    return ModelArtifactTrackQueryReferenceContract(
+        contract=metadata.contract,
+        metadata=metadata,
     )
+
+
+def _checkpoint_architecture_metadata() -> dict[str, object]:
+    return {
+        "schema_version": TRACK_QUERY_CHECKPOINT_ARCHITECTURE_SCHEMA_VERSION,
+        "architecture": TRACK_QUERY_CHECKPOINT_ARCHITECTURE_ID,
+    }
+
+
+def _validate_checkpoint_architecture_metadata(
+    checkpoint: Mapping[str, object],
+    *,
+    location: str,
+) -> None:
+    if TRACK_QUERY_CHECKPOINT_ARCHITECTURE_METADATA_KEY not in checkpoint:
+        raise MissingTrackQueryReferenceMetadataError(
+            f"{location}: canonical track-query checkpoint architecture metadata "
+            "is absent; pre-promotion checkpoints are incompatible."
+        )
+    value = checkpoint[TRACK_QUERY_CHECKPOINT_ARCHITECTURE_METADATA_KEY]
+    if not isinstance(value, Mapping):
+        raise InvalidTrackQueryReferenceMetadataError(
+            f"{location}.{TRACK_QUERY_CHECKPOINT_ARCHITECTURE_METADATA_KEY}: "
+            "expected a metadata mapping."
+        )
+    mapping = cast("Mapping[object, object]", value)
+    if set(mapping) != _CHECKPOINT_ARCHITECTURE_METADATA_FIELDS:
+        missing = sorted(
+            str(field)
+            for field in _CHECKPOINT_ARCHITECTURE_METADATA_FIELDS - set(mapping)
+        )
+        unknown = sorted(
+            str(field)
+            for field in set(mapping) - _CHECKPOINT_ARCHITECTURE_METADATA_FIELDS
+        )
+        raise InvalidTrackQueryReferenceMetadataError(
+            f"{location}.{TRACK_QUERY_CHECKPOINT_ARCHITECTURE_METADATA_KEY}: "
+            f"invalid metadata fields; missing={missing!r}, unknown={unknown!r}."
+        )
+    expected = _checkpoint_architecture_metadata()
+    if dict(mapping) != expected:
+        raise TrackQueryReferenceContractMismatchError(
+            f"{location}: stored track-query checkpoint architecture "
+            f"{dict(mapping)!r} does not exactly match runtime {expected!r}."
+        )
 
 
 def write_track_query_reference_contract(
@@ -358,14 +389,13 @@ def validate_checkpoint_track_query_reference_contract(
     checkpoint: Mapping[str, object],
     runtime_contract: TrackQueryReferenceContract,
     *,
-    explicit_legacy_v1: bool = False,
     location: str = "checkpoint",
 ) -> ModelArtifactTrackQueryReferenceContract:
-    """Checkpoint-named alias for the shared model-artifact validator."""
+    """Require the canonical architecture and exact semantic marker tuple."""
+    _validate_checkpoint_architecture_metadata(checkpoint, location=location)
     return validate_track_query_reference_contract(
         checkpoint,
         runtime_contract,
-        explicit_legacy_v1=explicit_legacy_v1,
         location=location,
     )
 
@@ -376,16 +406,24 @@ def write_checkpoint_track_query_reference_contract(
     *,
     location: str = "checkpoint",
 ) -> None:
-    """Checkpoint-named alias for exact marker persistence."""
+    """Persist the canonical architecture and exact semantic marker tuple."""
+    if TRACK_QUERY_CHECKPOINT_ARCHITECTURE_METADATA_KEY in checkpoint:
+        _validate_checkpoint_architecture_metadata(checkpoint, location=location)
     write_track_query_reference_contract(
         checkpoint,
         contract,
         location=location,
     )
+    checkpoint[TRACK_QUERY_CHECKPOINT_ARCHITECTURE_METADATA_KEY] = (
+        _checkpoint_architecture_metadata()
+    )
 
 
 __all__ = [
     "REFERENCE_SELECTOR_NOT_APPLICABLE",
+    "TRACK_QUERY_CHECKPOINT_ARCHITECTURE_ID",
+    "TRACK_QUERY_CHECKPOINT_ARCHITECTURE_METADATA_KEY",
+    "TRACK_QUERY_CHECKPOINT_ARCHITECTURE_SCHEMA_VERSION",
     "TRACK_QUERY_REFERENCE_METADATA_KEY",
     "TRACK_QUERY_REFERENCE_METADATA_SCHEMA_VERSION",
     "InvalidTrackQueryReferenceMetadataError",

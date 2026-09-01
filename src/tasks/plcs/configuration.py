@@ -204,20 +204,6 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "predict_canonical_pose",
         }
     ),
-    "plcs_multiview": frozenset(
-        _MODEL_COMMON
-        | {
-            "io",
-            "max_views",
-            "max_seq_len",
-            "rope_dim",
-            "rope_theta",
-            "rope_theta_time",
-            "rope_theta_camera",
-            "rope_theta_type",
-            "predict_canonical_pose",
-        }
-    ),
     "plcs_multiview_axial": frozenset(
         _MODEL_COMMON
         | {
@@ -276,29 +262,7 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "rope_theta",
             "ffn_type",
             "dropout",
-            "role_rope_enabled",
             "invisible_init_std",
-            "mhc",
-            "cswa",
-        }
-    ),
-    "plcs_track_query_ablation": frozenset(
-        {
-            "name",
-            "hidden_dim",
-            "num_heads",
-            "ffn_dim",
-            "num_queries",
-            "num_stages",
-            "num_joints",
-            "rope_dim",
-            "rope_theta",
-            "ffn_type",
-            "dropout",
-            "role_rope_enabled",
-            "invisible_init_std",
-            "ffn_mode",
-            "mhc_writeback",
             "mhc",
             "cswa",
         }
@@ -324,49 +288,17 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "cswa",
         }
     ),
-    "plcs_track_query_reference_ablation": frozenset(
-        {
-            "name",
-            "hidden_dim",
-            "num_heads",
-            "ffn_dim",
-            "num_queries",
-            "num_stages",
-            "num_joints",
-            "rope_dim",
-            "rope_theta",
-            "ffn_type",
-            "dropout",
-            "invisible_init_std",
-            "target_frame_contract",
-            "track_query_rope_contract",
-            "reference_selector_mode",
-            "ffn_mode",
-            "mhc_writeback",
-            "mhc",
-            "cswa",
-        }
-    ),
 }
 
 _TRACK_QUERY_MODEL_NAMES = frozenset(
     {
         "plcs_track_query",
-        "plcs_track_query_ablation",
         "plcs_track_query_reference",
-        "plcs_track_query_reference_ablation",
     }
 )
 _REFERENCE_TRACK_QUERY_MODEL_NAMES = frozenset(
     {
         "plcs_track_query_reference",
-        "plcs_track_query_reference_ablation",
-    }
-)
-_TRACK_QUERY_ABLATION_MODEL_NAMES = frozenset(
-    {
-        "plcs_track_query_ablation",
-        "plcs_track_query_reference_ablation",
     }
 )
 
@@ -432,14 +364,11 @@ class PLCSModelConfig:
                 )
         expected_profile = {
             "plcs": "frame",
-            "plcs_multiview": "multiview",
             "plcs_multiview_axial": "multiview",
             "plcs_multiview_axial_split": "multiview",
             "plcs_multiview_axial_camtoken": "multiview",
             "plcs_track_query": None,
-            "plcs_track_query_ablation": None,
             "plcs_track_query_reference": None,
-            "plcs_track_query_reference_ablation": None,
         }[name]
         if input_profile != expected_profile:
             raise SemanticConfigurationError(
@@ -499,15 +428,13 @@ class PLCSModelConfig:
             "canonical_on_rotation_branch",
             "aux_position_on_rotation_branch",
             "detach_pose_branch",
-            "role_rope_enabled",
         } & set(mapping):
             _boolean(mapping, key, path="model")
         if "ffn_type" in mapping:
             ffn_type = _string(mapping, "ffn_type", path="model")
             if ffn_type not in SUPPORTED_FFN_TYPES:
                 raise SemanticConfigurationError(
-                    "model.ffn_type must be one of "
-                    f"{sorted(SUPPORTED_FFN_TYPES)!r}."
+                    f"model.ffn_type must be one of {sorted(SUPPORTED_FFN_TYPES)!r}."
                 )
         if "canonical_pose_readout" in mapping:
             canonical_pose_readout = _string(
@@ -623,10 +550,7 @@ class PLCSModelConfig:
                 track_query_rope_contract = _string(
                     mapping, "track_query_rope_contract", path="model"
                 )
-                if (
-                    track_query_rope_contract
-                    != "time_camera_reference_selector_v1"
-                ):
+                if track_query_rope_contract != "time_camera_reference_selector_v1":
                     raise SemanticConfigurationError(
                         "model.track_query_rope_contract must be "
                         "'time_camera_reference_selector_v1' for reference "
@@ -635,39 +559,14 @@ class PLCSModelConfig:
                 selector_mode = _string(
                     mapping, "reference_selector_mode", path="model"
                 )
-                if selector_mode not in {"reference", "selector_zero"}:
+                if selector_mode != "reference":
                     raise SemanticConfigurationError(
-                        "model.reference_selector_mode must be 'reference' or "
-                        "'selector_zero'."
+                        "model.reference_selector_mode must be 'reference'."
                     )
                 if rope_dim < 6:
                     raise SemanticConfigurationError(
                         "Reference track-query model.rope_dim must be at least 6 "
                         "so every spatial axis receives a rotary pair."
-                    )
-                if (
-                    name == "plcs_track_query_reference"
-                    and selector_mode != "reference"
-                ):
-                    raise SemanticConfigurationError(
-                        "The normal reference track-query model requires "
-                        "model.reference_selector_mode='reference'."
-                    )
-            if name in _TRACK_QUERY_ABLATION_MODEL_NAMES:
-                if _string(mapping, "ffn_mode", path="model") not in {
-                    "per_attention",
-                    "shared",
-                }:
-                    raise SemanticConfigurationError(
-                        "model.ffn_mode must be 'per_attention' or 'shared'."
-                    )
-                if _string(mapping, "mhc_writeback", path="model") not in {
-                    "after_object_temporal",
-                    "layer_end",
-                }:
-                    raise SemanticConfigurationError(
-                        "model.mhc_writeback must be 'after_object_temporal' or "
-                        "'layer_end'."
                     )
         return cls(
             name=name,
@@ -1009,9 +908,7 @@ class PLCSDataConfig:
                 raise SemanticConfigurationError(
                     "data.lifecycle.min_reuse_gap_frames must be non-negative."
                 )
-            association = ObservationTrackingConfig.from_mapping(
-                mapping["association"]
-            )
+            association = ObservationTrackingConfig.from_mapping(mapping["association"])
             if association.cost_reduction != "median":
                 raise SemanticConfigurationError(
                     "PLCS data.association.cost_reduction must be 'median'."
@@ -1118,9 +1015,9 @@ class PLCSTrainingConfig:
         model = PLCSModelConfig.from_mapping(
             require_config_mapping(root, "model", path="configuration")
         )
-        court_keypoint_contract = (
-            PLCSCourtKeypointRuntimeConfig.from_config(value).contract
-        )
+        court_keypoint_contract = PLCSCourtKeypointRuntimeConfig.from_config(
+            value
+        ).contract
         if model.name in _REFERENCE_TRACK_QUERY_MODEL_NAMES:
             if court_keypoint_contract.selector != "camera_view_v2":
                 raise SemanticConfigurationError(
@@ -1132,7 +1029,7 @@ class PLCSTrainingConfig:
             and court_keypoint_contract.selector != "physical_v1"
         ):
             raise SemanticConfigurationError(
-                "Legacy track-query models require "
+                "Canonical track-query models require "
                 "court_keypoints.selector='physical_v1'; select an explicit "
                 "reference model for camera_view_v2."
             )
@@ -1151,9 +1048,7 @@ class PLCSTrainingConfig:
             "paths",
             "external_assets",
             "qualitative",
-            "tracking_metrics"
-            if model.name in _TRACK_QUERY_MODEL_NAMES
-            else "metrics",
+            "tracking_metrics" if model.name in _TRACK_QUERY_MODEL_NAMES else "metrics",
         }
         if data.backend == "chunked":
             exact_root_fields.update({"camera", "motion_sources", "generation"})
@@ -1413,9 +1308,10 @@ class PLCSTrainingConfig:
                     "training.gan.discriminator.rope_dim must be non-negative, "
                     "even, and no larger than the attention head dimension."
                 )
-            if _string(
-                discriminator, "ffn_type", path="training.gan.discriminator"
-) not in SUPPORTED_FFN_TYPES:
+            if (
+                _string(discriminator, "ffn_type", path="training.gan.discriminator")
+                not in SUPPORTED_FFN_TYPES
+            ):
                 raise SemanticConfigurationError(
                     "training.gan.discriminator.ffn_type must be one of "
                     f"{sorted(SUPPORTED_FFN_TYPES)!r}."
@@ -1447,10 +1343,7 @@ class PLCSTrainingConfig:
                 raise SemanticConfigurationError(
                     "training.gan.discriminator.max_seq_len must be positive."
                 )
-        if (
-            model.name in _TRACK_QUERY_MODEL_NAMES
-            and model.input_profile is not None
-        ):
+        if model.name in _TRACK_QUERY_MODEL_NAMES and model.input_profile is not None:
             raise SemanticConfigurationError(
                 "Tracking models must not define model.io."
             )

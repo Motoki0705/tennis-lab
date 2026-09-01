@@ -30,9 +30,7 @@ from src.tasks.plcs.model_io import (
     PLCSTrackQueryReferenceIOAdapter,
     build_plcs_model_io,
 )
-from src.tasks.plcs.models.plcs_track_query_ablation_model import (
-    PLCSTrackQueryAblationModel,
-)
+from src.tasks.plcs.models.plcs_track_query_model import PLCSTrackQueryModel
 from src.utils.configuration import PathResolver
 
 
@@ -80,9 +78,9 @@ class _FixedReferenceTrackingModel(nn.Module):
         return {
             "position": torch.ones(batch, frames, 2, 3, device=human_kp.device),
             "rotation": rotation.expand(batch, frames, 2, -1),
-            "presence_logits": torch.tensor(
-                [2.0, -2.0], device=human_kp.device
-            ).expand(batch, frames, -1),
+            "presence_logits": torch.tensor([2.0, -2.0], device=human_kp.device).expand(
+                batch, frames, -1
+            ),
         }
 
 
@@ -100,9 +98,7 @@ def _reference_metadata() -> PLCSReferenceMetadata:
             contract=contract,
         ),
     )
-    table = StableCameraIdTable.from_complete_scene_camera_ids(
-        ("camera_0", "camera_1")
-    )
+    table = StableCameraIdTable.from_complete_scene_camera_ids(("camera_0", "camera_1"))
     selection = ReferenceViewSelection.create(
         stable_camera_id_table=table,
         selected_views=views,
@@ -208,9 +204,7 @@ def test_reference_tracking_predictor_requires_and_round_trips_typed_metadata() 
             id_switch_distance=0.05,
         ),
         "denormalize": True,
-        "court_keypoint_metadata": court_keypoint_contract_document(
-            court_contract
-        ),
+        "court_keypoint_metadata": court_keypoint_contract_document(court_contract),
     }
 
     result = predictor.predict(**inputs, reference_metadata=metadata)
@@ -234,7 +228,7 @@ def test_reference_tracking_predictor_requires_and_round_trips_typed_metadata() 
         predictor.predict(**inputs)
 
 
-def test_checkpoint_restoration_retains_exact_ablation_model_adapter_pair(
+def test_checkpoint_restoration_retains_exact_canonical_model_adapter_pair(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -243,7 +237,7 @@ def test_checkpoint_restoration_retains_exact_ablation_model_adapter_pair(
         config = compose(
             config_name="train_tracking",
             overrides=[
-                "model=track_query_ablation_c",
+                "model=tracking_query",
                 "model.hidden_dim=16",
                 "model.num_heads=4",
                 "model.ffn_dim=32",
@@ -257,7 +251,7 @@ def test_checkpoint_restoration_retains_exact_ablation_model_adapter_pair(
         )
     binding = build_plcs_model_io(PLCSTrainingConfig.from_config(config))
     assert isinstance(binding.adapter, PLCSTrackQueryIOAdapter)
-    checkpoint = tmp_path / "ablation.ckpt"
+    checkpoint = tmp_path / "tracking.ckpt"
     document: dict[str, object] = {"hyper_parameters": {"config": config}}
     physical_v1 = resolve_court_keypoint_contract("physical_v1")
     write_model_artifact_court_keypoint_contract(document, physical_v1)
@@ -305,9 +299,9 @@ def test_checkpoint_restoration_retains_exact_ablation_model_adapter_pair(
         "strict": True,
         "weights_only": False,
     }
-    assert type(predictor.model) is PLCSTrackQueryAblationModel
+    assert type(predictor.model) is PLCSTrackQueryModel
     assert predictor.io_adapter is binding.adapter
-    assert predictor.io_adapter.model_type is PLCSTrackQueryAblationModel
+    assert predictor.io_adapter.model_type is PLCSTrackQueryModel
 
 
 def test_tracking_checkpoint_factory_rejects_mismatched_contract(

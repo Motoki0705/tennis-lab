@@ -23,7 +23,7 @@ from src.tasks.base.model_io import (
 from src.tasks.base.models import ReferenceSelectorMode
 from src.tasks.blcs.configuration import parse_model_config
 from src.tasks.blcs.model_io import (
-    MultiViewTrajectoryModelIOAdapter,
+    AxialTrajectoryModelIOAdapter,
     SingleTrajectoryModelIOAdapter,
     TrackQueryModelIOAdapter,
     TrackQueryReferenceModelIOAdapter,
@@ -149,7 +149,7 @@ def test_standard_adapters_reject_removed_ball_mask_key() -> None:
 
 
 def test_multiview_adapter_builds_exact_five_tensor_all_padding_call() -> None:
-    adapter = MultiViewTrajectoryModelIOAdapter(
+    adapter = AxialTrajectoryModelIOAdapter(
         num_court_tokens=14,
         max_seq_len=8,
         predict_velocity=False,
@@ -221,9 +221,7 @@ def test_tracking_training_batch_derives_frame_valid_from_padding() -> None:
     prepared = _tracking_adapter().build_training_batch(batch)
 
     assert prepared.frame_valid.tolist() == [[True, True, False]]
-    assert prepared.court_reference_provenance == (
-        build_physical_court_provenance(),
-    )
+    assert prepared.court_reference_provenance == (build_physical_court_provenance(),)
 
 
 @pytest.mark.parametrize("missing_value", [None, ()])
@@ -269,7 +267,6 @@ def test_track_query_config_rejects_removed_fusion_keys(removed_key: str) -> Non
         "num_queries": 2,
         "rope_dim": 4,
         "dropout": 0.0,
-        "role_rope_enabled": True,
         "invisible_init_std": 0.02,
         "mhc": {
             "coefficient_dim": 8,

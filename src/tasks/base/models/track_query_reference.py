@@ -34,10 +34,9 @@ class TrackQueryRopeContract(StrEnum):
 
 
 class ReferenceSelectorMode(StrEnum):
-    """Explicit v2 selector-axis behavior for production and its ablation."""
+    """Canonical reference-selector behavior."""
 
     REFERENCE = "reference"
-    SELECTOR_ZERO = "selector_zero"
 
 
 ROLE_ROPE_CONTRACT: Final = TrackQueryRopeContract.TIME_CAMERA_ROLE_V1
@@ -58,7 +57,7 @@ def resolve_track_query_rope_contract(value: str) -> TrackQueryRopeContract:
 
 
 def resolve_reference_selector_mode(value: str) -> ReferenceSelectorMode:
-    """Resolve explicit v2 production/zero semantics without a default."""
+    """Resolve the canonical reference-selector mode without a default."""
     try:
         return ReferenceSelectorMode(value)
     except ValueError as error:
@@ -110,14 +109,13 @@ def _require_positive_int(value: int, *, name: str) -> None:
         )
 
 
-def build_track_query_spatial_coordinates(
+def _build_track_query_spatial_coordinates(
     reference_view_index: Tensor,
     *,
     num_frames: int,
     num_views: int,
     num_queries: int,
     object_tokens_per_view: int,
-    selector_mode: ReferenceSelectorMode,
     batch_size: int | None = None,
     device: torch.device | str | None = None,
 ) -> Tensor:
@@ -134,8 +132,6 @@ def build_track_query_spatial_coordinates(
         ("object_tokens_per_view", object_tokens_per_view),
     ):
         _require_positive_int(value, name=name)
-    if not isinstance(selector_mode, ReferenceSelectorMode):
-        raise TypeError("selector_mode must be ReferenceSelectorMode.")
     if not isinstance(reference_view_index, Tensor):
         raise TypeError("reference_view_index must be a torch.Tensor.")
     inferred_batch_size = (
@@ -188,35 +184,15 @@ def build_track_query_spatial_coordinates(
         dtype=torch.int64,
         device=coordinate_device,
     ).view(1, 1, num_views, 1)
-    if selector_mode is ReferenceSelectorMode.REFERENCE:
-        selector = torch.ones(
-            batch_size,
-            num_views,
-            dtype=torch.int64,
-            device=coordinate_device,
-        )
-        selector.scatter_(1, reference_view_index[:, None], 0)
-        objects[..., 2] = selector[:, None, :, None]
-    return torch.cat((queries, objects.flatten(2, 3)), dim=2).flatten(0, 1)
-
-
-def build_full_track_query_spatial_coordinates(
-    reference_view_index: Tensor,
-    *,
-    num_frames: int,
-    num_views: int,
-    num_queries: int,
-    selector_mode: ReferenceSelectorMode,
-) -> Tensor:
-    """Build the ordinary/after-object-temporal ``Q+V*Q`` width."""
-    return build_track_query_spatial_coordinates(
-        reference_view_index,
-        num_frames=num_frames,
-        num_views=num_views,
-        num_queries=num_queries,
-        object_tokens_per_view=num_queries,
-        selector_mode=selector_mode,
+    selector = torch.ones(
+        batch_size,
+        num_views,
+        dtype=torch.int64,
+        device=coordinate_device,
     )
+    selector.scatter_(1, reference_view_index[:, None], 0)
+    objects[..., 2] = selector[:, None, :, None]
+    return torch.cat((queries, objects.flatten(2, 3)), dim=2).flatten(0, 1)
 
 
 def build_compressed_track_query_spatial_coordinates(
@@ -225,16 +201,14 @@ def build_compressed_track_query_spatial_coordinates(
     num_frames: int,
     num_views: int,
     num_queries: int,
-    selector_mode: ReferenceSelectorMode,
 ) -> Tensor:
     """Build the layer-end compressed ``Q+V`` spatial width."""
-    return build_track_query_spatial_coordinates(
+    return _build_track_query_spatial_coordinates(
         reference_view_index,
         num_frames=num_frames,
         num_views=num_views,
         num_queries=num_queries,
         object_tokens_per_view=1,
-        selector_mode=selector_mode,
     )
 
 
@@ -309,8 +283,6 @@ __all__ = [
     "TrackQueryRopeContract",
     "TrackQueryRopeDimensionError",
     "build_compressed_track_query_spatial_coordinates",
-    "build_full_track_query_spatial_coordinates",
-    "build_track_query_spatial_coordinates",
     "resolve_reference_selector_mode",
     "resolve_track_query_rope_contract",
     "validate_reference_context_mask",

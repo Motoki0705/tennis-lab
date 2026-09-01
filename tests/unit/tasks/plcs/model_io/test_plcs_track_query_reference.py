@@ -14,8 +14,7 @@ from src.tasks.base.generate_dataset import (
     resolve_court_keypoint_contract,
 )
 from src.tasks.base.model_io import (
-    ModelAdapterMismatchError,
-    ModelInputContractError,
+    MissingTrackQueryReferenceMetadataError,
     TrackQueryReferenceContract,
     TrackQueryReferenceContractMismatchError,
     write_track_query_reference_contract,
@@ -25,7 +24,6 @@ from src.tasks.plcs.configuration import PLCSModelConfig
 from src.tasks.plcs.court_keypoint_contract import court_keypoint_contract_document
 from src.tasks.plcs.model_io import (
     PLCSTrackQueryReferenceIOAdapter,
-    bind_plcs_model_io,
     resolve_plcs_track_query_reference_contract,
     validate_plcs_checkpoint_track_query_reference,
     write_plcs_checkpoint_track_query_reference,
@@ -56,16 +54,9 @@ class _ReferenceTrackingModel(nn.Module):
         }
 
 
-def _model_config(
-    *, selector_mode: str = "reference"
-) -> PLCSModelConfig:
-    name = (
-        "plcs_track_query_reference"
-        if selector_mode == "reference"
-        else "plcs_track_query_reference_ablation"
-    )
+def _model_config() -> PLCSModelConfig:
     raw: dict[str, object] = {
-        "name": name,
+        "name": "plcs_track_query_reference",
         "hidden_dim": 24,
         "num_heads": 4,
         "ffn_dim": 48,
@@ -79,7 +70,7 @@ def _model_config(
         "invisible_init_std": 0.02,
         "target_frame_contract": "reference_camera_court_rzpi_v1",
         "track_query_rope_contract": "time_camera_reference_selector_v1",
-        "reference_selector_mode": selector_mode,
+        "reference_selector_mode": "reference",
         "mhc": {
             "coefficient_dim": 8,
             "sinkhorn_iters": 5,
@@ -93,15 +84,10 @@ def _model_config(
             "backend": "reference",
         },
     }
-    if selector_mode != "reference":
-        raw["ffn_mode"] = "shared"
-        raw["mhc_writeback"] = "layer_end"
     return PLCSModelConfig.from_mapping(raw)
 
 
-def _adapter(
-    *, selector_mode: str = "reference"
-) -> PLCSTrackQueryReferenceIOAdapter:
+def _adapter() -> PLCSTrackQueryReferenceIOAdapter:
     contract = resolve_court_keypoint_contract("camera_view_v2")
     return PLCSTrackQueryReferenceIOAdapter(
         model_type=_ReferenceTrackingModel,
@@ -111,11 +97,11 @@ def _adapter(
         court_keypoint_contract=contract,
         target_frame_contract="reference_camera_court_rzpi_v1",
         track_query_rope_contract="time_camera_reference_selector_v1",
-        reference_selector_mode=selector_mode,
+        reference_selector_mode="reference",
     )
 
 
-def _batch(*, selector_mode: str = "reference") -> dict[str, object]:
+def _batch() -> dict[str, object]:
     court_contract = resolve_court_keypoint_contract("camera_view_v2")
     negative = build_court_view_record(
         camera_id="camera_0",
@@ -152,18 +138,14 @@ def _batch(*, selector_mode: str = "reference") -> dict[str, object]:
             provenance.physical_from_reference,
             dtype=torch.float32,
         ).unsqueeze(0),
-        "court_keypoint_metadata": court_keypoint_contract_document(
-            court_contract
-        ),
+        "court_keypoint_metadata": court_keypoint_contract_document(court_contract),
         "court_reference_provenance": provenance,
         "reference_view_selection": (selection,),
         "stable_camera_id_table": (selection.stable_camera_id_table,),
     }
     write_track_query_reference_contract(
         batch,
-        TrackQueryReferenceContract.reference_v2(
-            ReferenceSelectorMode(selector_mode)
-        ),
+        TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.REFERENCE),
         location="test batch",
     )
     return batch
@@ -202,9 +184,7 @@ def test_v2_adapter_builds_exact_six_tensor_call() -> None:
             "unmasked reference-view",
         ),
         (
-            lambda batch: cast(
-                Tensor, batch["physical_from_reference"]
-            ).zero_(),
+            lambda batch: cast(Tensor, batch["physical_from_reference"]).zero_(),
             "must equal",
         ),
     ],
@@ -218,11 +198,6 @@ def test_v2_adapter_rejects_missing_identity_mismatch_and_padded_reference(
     mutation(batch)
     with pytest.raises(ValueError, match=message):
         _adapter().build_call(batch)
-
-
-def test_v2_adapter_rejects_selector_metadata_mismatch_before_call() -> None:
-    with pytest.raises(ModelInputContractError, match="does not exactly match"):
-        _adapter(selector_mode="selector_zero").build_call(_batch())
 
 
 def test_plcs_contract_resolver_matches_model_type_court_target_rope_selector() -> None:
@@ -242,54 +217,71 @@ def test_plcs_contract_resolver_matches_model_type_court_target_rope_selector() 
         )
 
 
+def test_plcs_contract_resolver_accepts_only_canonical_model_names() -> None:
+    physical = resolve_court_keypoint_contract("physical_v1")
+    canonical = PLCSModelConfig(
+        name="plcs_track_query",
+        input_profile=None,
+        values={},
+        track_query_mhc=None,
+        track_query_cswa=None,
+    )
+    assert resolve_plcs_track_query_reference_contract(
+        canonical,
+        physical,
+    ) == TrackQueryReferenceContract.physical_v1()
+
+    removed = PLCSModelConfig(
+        name="plcs_removed_track_query_variant",
+        input_profile=None,
+        values={},
+        track_query_mhc=None,
+        track_query_cswa=None,
+    )
+    with pytest.raises(ValueError, match="not a track-query architecture"):
+        resolve_plcs_track_query_reference_contract(removed, physical)
+
+
 def test_checkpoint_metadata_is_exact_and_shape_independent() -> None:
-    selector = TrackQueryReferenceContract.reference_v2(
-        ReferenceSelectorMode.REFERENCE
-    )
-    selector_zero = TrackQueryReferenceContract.reference_v2(
-        ReferenceSelectorMode.SELECTOR_ZERO
-    )
+    selector = TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.REFERENCE)
+    canonical = TrackQueryReferenceContract.physical_v1()
     checkpoint: dict[str, object] = {"state_dict": {"same.shape": torch.ones(1)}}
     write_plcs_checkpoint_track_query_reference(checkpoint, selector)
     validate_plcs_checkpoint_track_query_reference(checkpoint, selector)
 
     with pytest.raises(TrackQueryReferenceContractMismatchError):
-        validate_plcs_checkpoint_track_query_reference(checkpoint, selector_zero)
+        validate_plcs_checkpoint_track_query_reference(checkpoint, canonical)
 
 
-def test_metadata_free_checkpoint_is_allowed_only_for_explicit_legacy_v1() -> None:
-    validate_plcs_checkpoint_track_query_reference(
-        {},
-        TrackQueryReferenceContract.legacy_v1(),
-    )
-    with pytest.raises(ValueError, match="metadata is absent"):
+@pytest.mark.parametrize(
+    "contract",
+    [
+        TrackQueryReferenceContract.physical_v1(),
+        TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.REFERENCE),
+    ],
+)
+def test_canonical_checkpoint_rejects_metadata_free_and_pre_promotion_artifacts(
+    contract: TrackQueryReferenceContract,
+) -> None:
+    with pytest.raises(
+        MissingTrackQueryReferenceMetadataError,
+        match="architecture metadata is absent",
+    ):
         validate_plcs_checkpoint_track_query_reference(
             {},
-            TrackQueryReferenceContract.reference_v2(
-                ReferenceSelectorMode.REFERENCE
-            ),
+            contract,
         )
+
+    semantic_only: dict[str, object] = {}
+    write_track_query_reference_contract(semantic_only, contract)
+    with pytest.raises(
+        MissingTrackQueryReferenceMetadataError,
+        match="pre-promotion checkpoints are incompatible",
+    ):
+        validate_plcs_checkpoint_track_query_reference(semantic_only, contract)
 
 
 def test_factory_model_type_remains_exact_for_reference_class() -> None:
     config = _model_config()
     model = PLCSTrackQueryReferenceModel(config)
     assert type(model) is PLCSTrackQueryReferenceModel
-
-
-def test_binding_rejects_shape_compatible_model_adapter_selector_mismatch() -> None:
-    model = PLCSTrackQueryReferenceModel(_model_config())
-    court = resolve_court_keypoint_contract("camera_view_v2")
-    mismatched = PLCSTrackQueryReferenceIOAdapter(
-        model_type=PLCSTrackQueryReferenceModel,
-        num_queries=2,
-        num_court_tokens=14,
-        num_joints=17,
-        court_keypoint_contract=court,
-        target_frame_contract="reference_camera_court_rzpi_v1",
-        track_query_rope_contract="time_camera_reference_selector_v1",
-        reference_selector_mode="selector_zero",
-    )
-
-    with pytest.raises(ModelAdapterMismatchError, match="do not match exactly"):
-        bind_plcs_model_io(model, mismatched)
