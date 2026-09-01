@@ -15,6 +15,9 @@ import numpy as np
 from numpy.typing import NDArray
 
 from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
+from src.synthetic_data_generation.dataset.court.occupancy_artifact import (
+    CourtV4SupportOccupancySnapshot,
+)
 from src.synthetic_data_generation.dataset.court.schema import (
     COURT_DATASET_SCHEMA_V1,
     COURT_DATASET_SCHEMA_V2,
@@ -3941,6 +3944,7 @@ class CourtDatasetPlanV4(CourtDatasetPlanV2):
     samples: tuple[PlannedCourtSampleV4, ...]
     support_policy: TrajectorySupportPolicy
     support_summary: SupportModelSummary
+    support_occupancy_snapshot: CourtV4SupportOccupancySnapshot
     candidate_safety_evaluations: tuple[TrajectorySafetyEvaluation, ...]
     candidate_semantic_phase_evaluations: tuple[TrajectorySemanticPhaseEvaluation, ...]
     semantic_phase_inventory_digest: str
@@ -3955,6 +3959,23 @@ class CourtDatasetPlanV4(CourtDatasetPlanV2):
             raise TypeError("V4 plan support_policy is invalid.")
         if not isinstance(self.support_summary, SupportModelSummary):
             raise TypeError("V4 plan support_summary is invalid.")
+        if not isinstance(
+            self.support_occupancy_snapshot,
+            CourtV4SupportOccupancySnapshot,
+        ):
+            raise TypeError("V4 plan support_occupancy_snapshot is invalid.")
+        occupancy = self.support_occupancy_snapshot
+        if (
+            occupancy.coordinate_space != self.support_summary.coordinate_space
+            or occupancy.voxel_size_m != self.support_policy.occupancy_voxel_size_m
+            or occupancy.support_input_digest != self.support_summary.input_digest
+            or occupancy.policy_decision_id != self.support_policy.decision_id
+            or occupancy.cell_count
+            != self.support_summary.inflated_occupancy_cell_count
+        ):
+            raise ValueError(
+                "V4 support occupancy snapshot disagrees with its support authority."
+            )
         evaluations = tuple(self.candidate_safety_evaluations)
         if not evaluations or any(
             not isinstance(item, TrajectorySafetyEvaluation) for item in evaluations
@@ -4152,6 +4173,9 @@ class CourtDatasetPlanV4(CourtDatasetPlanV2):
             "policy": self.policy.to_dict(),
             "support_policy": self.support_policy.to_dict(),
             "support_summary": self.support_summary.to_dict(),
+            "support_occupancy_identity": (
+                self.support_occupancy_snapshot.identity.to_dict()
+            ),
             "candidate_safety_evaluations": [
                 item.to_dict() for item in self.candidate_safety_evaluations
             ],

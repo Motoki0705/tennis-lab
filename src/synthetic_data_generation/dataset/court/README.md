@@ -535,6 +535,7 @@ identifiers and semantic cardinality:
 | performance | `court_dataset_performance_v2` | `court_dataset_performance_v3` | `court_dataset_performance_v4` | `court_safe_trajectory_performance_v1` |
 | shard attempt | `court_render_shard_attempt_v1` | `court_render_shard_attempt_v2` | `court_render_shard_attempt_v3` | `court_render_shard_attempt_v4` |
 | acceptance diagnostics | `court_acceptance_diagnostics_v1` | `court_acceptance_diagnostics_v2` | `court_acceptance_diagnostics_v3` | `court_acceptance_diagnostics_v4` |
+| final support occupancy | — | — | — | `court_v4_support_occupancy_v1` JSON + little-endian int64 NPY |
 | semantic classes | 7 × 2 | 14 × 1 | 14 × 1 | 14 × 1 |
 
 The performance evidence schema changes with each family because
@@ -615,6 +616,39 @@ The visualizer first validates and selects the exact dataset schema.
 - No overlay reshapes another schema in memory as a compatibility
   conversion.
 
+The default `visualization.court_overlay.mode=semantic` keeps those overlays.
+V4 additionally publishes `diagnostics/trajectory-support-occupancy.json` and
+the bound `trajectory-support-occupancy.npy`: the lexicographically sorted,
+post-inflation and post-camera-corridor-carve cells captured directly from the
+safety model. The JSON binds the metric-scene coordinate space, voxel size,
+support input and content SHA-256 digests, policy/scene/profile identities,
+dtype, shape, and count. The V4 trajectory plan persists the same cell-free
+identity and expected content digest, so replacing cells and recomputing only
+the artifact metadata is rejected. It never serializes cells, search-index, or
+KD-tree internals into `trajectory-plan.json`.
+
+Select the strict depth-aware surface overlay through the same entrypoint:
+
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.visualize_dataset \
+  visualization.domain=court \
+  visualization.dataset_root=scenes/<scene_id>/datasets/court \
+  visualization.trajectory_id=<trajectory_id> \
+  visualization.court_overlay.mode=trajectory_support_aabb
+```
+
+This mode accepts only V4 and requires the exact artifact. It removes internal
+six-neighbour faces, near-plane clips and triangle-rasterizes camera-Z with a
+local z-buffer, then composites against the already-metric 3DGS depth (valid
+where alpha and depth are positive). NHT RGB remains its raw
+premultiplied/coverage-weighted accumulation and is resolved as
+`rgb + background * (1 - alpha)`. Missing/tampered authority and configured
+cell, face, or projected-pixel limit violations fail without fallback or
+truncation. Color, background, opacity, near plane, depth epsilon, and limits
+are Hydra settings recorded with aggregate drawing counts in the AABB-only v2
+video JSON sidecar. Existing semantic Court, BLCS, and PLCS sidecars retain the
+unchanged v1 schema and key inventory.
+
 ## Implementation ownership
 
 | Area | Responsibility |
@@ -632,7 +666,7 @@ The visualizer first validates and selects the exact dataset schema.
 | `rendering/nht.py` / `shards.py` | Validate sample bindings against alignment; prevent cross-version shard reuse. |
 | `diagnostics.py` / `performance.py` | Record exact versioned sample geometry and class metrics. |
 | `pipeline/handlers.py` | Aggregate v2/v3/v4 target bindings from samples. |
-| `visualization/sources.py` / `overlays.py` | Exact v1/v2/v3/v4 reader dispatch and version-specific overlays. |
+| `visualization/sources.py` / `overlays.py` / `court_aabb.py` | Exact v1/v2/v3/v4 reader dispatch, semantic overlays, and strict V4 metric-depth AABB rasterization. |
 
 The nearest-court resolver stays task-local because it depends on the synthetic
 scene's `MultiCourtLayout` and singleton planning contracts. Only stable CourtKP

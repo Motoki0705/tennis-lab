@@ -20,6 +20,10 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     TrajectorySafetyReason,
     TrajectorySupportPolicy,
 )
+from src.synthetic_data_generation.dataset.court.occupancy_artifact import (
+    CourtV4SupportOccupancySnapshot,
+    build_court_v4_support_occupancy_snapshot,
+)
 from src.synthetic_data_generation.scene_contract import SceneCamera
 
 Cell = tuple[int, int, int]
@@ -49,6 +53,7 @@ class TrajectorySupportModel:
     primitives: tuple[_SupportPrimitive, ...]
     support_index: Mapping[Cell, tuple[int, ...]]
     inflated_occupancy: frozenset[Cell]
+    occupancy_snapshot: CourtV4SupportOccupancySnapshot
     occupancy_centers_m: NDArray[np.float64]
     occupancy_index: cKDTree
     captured_cameras: tuple[SceneCamera, ...]
@@ -307,6 +312,14 @@ def build_trajectory_support_model(
         skipped_obstacle_link_count=skipped_obstacle,
         capsule_index_cell_count=len(support_index),
     )
+    occupancy_cells = np.asarray(sorted(inflated), dtype="<i8")
+    occupancy_cells.setflags(write=False)
+    occupancy_snapshot = build_court_v4_support_occupancy_snapshot(
+        occupancy_cells,
+        voxel_size_m=policy.occupancy_voxel_size_m,
+        support_input_digest=digest,
+        policy_decision_id=policy.decision_id,
+    )
     occupancy_centers, occupancy_index = _build_occupancy_index(
         inflated,
         policy=policy,
@@ -317,6 +330,7 @@ def build_trajectory_support_model(
         primitives=primitives,
         support_index=support_index,
         inflated_occupancy=inflated,
+        occupancy_snapshot=occupancy_snapshot,
         occupancy_centers_m=occupancy_centers,
         occupancy_index=occupancy_index,
         captured_cameras=camera_tuple,
@@ -776,8 +790,9 @@ def _build_occupancy_index(
     occupied: frozenset[Cell], *, policy: TrajectorySupportPolicy
 ) -> tuple[NDArray[np.float64], cKDTree]:
     """Build a deterministic exact-nearest index over inflated voxel centres."""
-    voxel = policy.occupancy_voxel_size_m
-    centers = (np.asarray(sorted(occupied), dtype=np.float64) + 0.5) * voxel
+    centers = (
+        np.asarray(sorted(occupied), dtype=np.float64) + 0.5
+    ) * policy.occupancy_voxel_size_m
     index = cKDTree(
         centers,
         compact_nodes=True,

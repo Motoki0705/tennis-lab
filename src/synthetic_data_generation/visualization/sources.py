@@ -25,6 +25,15 @@ from src.synthetic_data_generation.dataset.court.assembler import (
     CourtArrayValidationMode,
     validate_court_dataset,
 )
+from src.synthetic_data_generation.dataset.court.contracts import (
+    SupportModelSummary,
+    TrajectorySupportPolicy,
+)
+from src.synthetic_data_generation.dataset.court.occupancy_artifact import (
+    CourtV4SupportOccupancyIdentity,
+    CourtV4SupportOccupancySnapshot,
+    load_court_v4_support_occupancy,
+)
 from src.synthetic_data_generation.dataset.court.schema import (
     CourtDatasetSchemaVersion,
     court_schema_from_dataset_schema,
@@ -47,6 +56,7 @@ from src.synthetic_data_generation.dataset.runtime import (
     materialize_logical_sample,
 )
 from src.synthetic_data_generation.scene_contract import SceneCamera
+from src.synthetic_data_generation.visualization.contracts import CourtOverlayMode
 from src.utils.schema.court_normalization import (
     validate_court_coordinate_normalization,
 )
@@ -62,6 +72,9 @@ class CourtSourceFrame:
     trajectory_frame_index: int
     projection: Mapping[str, object]
     schema_version: CourtDatasetSchemaVersion = CourtDatasetSchemaVersion.V1
+    alpha: NDArray[np.float32] | None = None
+    depth_metric_m: NDArray[np.float32] | None = None
+    camera: SceneCamera | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,10 +104,22 @@ class PLCSSourceFrame:
 class CourtVisualizationSource:
     """Validated Court trajectory reader preserving canonical manifest order."""
 
-    def __init__(self, root: Path, *, trajectory_id: str) -> None:
+    def __init__(
+        self,
+        root: Path,
+        *,
+        trajectory_id: str,
+        overlay_mode: CourtOverlayMode = CourtOverlayMode.SEMANTIC,
+        maximum_occupancy_cells: int | None = None,
+    ) -> None:
+        if not isinstance(overlay_mode, CourtOverlayMode):
+            raise TypeError("Court overlay_mode must be CourtOverlayMode.")
         validate_court_dataset(
             root,
             array_validation=CourtArrayValidationMode.FULL,
+            require_v4_support_occupancy=(
+                overlay_mode is CourtOverlayMode.TRAJECTORY_SUPPORT_AABB
+            ),
         )
         manifest = _object(
             _load_json(_contained_file(root, "dataset.json")),
@@ -103,6 +128,64 @@ class CourtVisualizationSource:
         self.dataset_schema = _text(manifest.get("schema"), name="Court schema")
         self.schema_definition = court_schema_from_dataset_schema(self.dataset_schema)
         self.dataset_scene_id = _text(manifest.get("scene_id"), name="Court scene_id")
+        self.overlay_mode = overlay_mode
+        self.support_occupancy: CourtV4SupportOccupancySnapshot | None = None
+        if overlay_mode is CourtOverlayMode.TRAJECTORY_SUPPORT_AABB:
+            if self.schema_definition.version is not CourtDatasetSchemaVersion.V4:
+                raise ValueError(
+                    "trajectory_support_aabb overlay requires a Court V4 dataset."
+                )
+            plan = _object(
+                _load_json(_contained_file(root, "diagnostics/trajectory-plan.json")),
+                name="Court V4 trajectory plan",
+            )
+            if plan.get("schema") != self.schema_definition.plan_schema:
+                raise ValueError("Court V4 trajectory plan schema is invalid.")
+            support_policy = TrajectorySupportPolicy.from_mapping(
+                plan.get("support_policy")
+            )
+            support_summary = SupportModelSummary.from_mapping(
+                plan.get("support_summary")
+            )
+            occupancy_identity = CourtV4SupportOccupancyIdentity.from_mapping(
+                plan.get("support_occupancy_identity")
+            )
+            if (
+                occupancy_identity.coordinate_space
+                != support_summary.coordinate_space
+                or occupancy_identity.voxel_size_m
+                != support_policy.occupancy_voxel_size_m
+                or occupancy_identity.cell_count
+                != support_summary.inflated_occupancy_cell_count
+                or occupancy_identity.support_input_digest
+                != support_summary.input_digest
+                or occupancy_identity.policy_decision_id
+                != support_policy.decision_id
+            ):
+                raise ValueError(
+                    "Court V4 occupancy identity disagrees with support authority."
+                )
+            published = load_court_v4_support_occupancy(
+                root,
+                expected_scene_id=self.dataset_scene_id,
+                expected_profile=_text(manifest.get("profile"), name="Court profile"),
+                expected_policy_decision_id=support_policy.decision_id,
+                expected_support_input_digest=support_summary.input_digest,
+                expected_voxel_size_m=support_policy.occupancy_voxel_size_m,
+                expected_cell_count=support_summary.inflated_occupancy_cell_count,
+                expected_content_digest=occupancy_identity.content_digest,
+                maximum_cells=maximum_occupancy_cells,
+            )
+            metrics = _object(manifest.get("metrics"), name="Court metrics")
+            if metrics.get("support_input_digest") != support_summary.input_digest:
+                raise ValueError(
+                    "Court V4 occupancy authority disagrees with dataset metrics."
+                )
+            if published.snapshot.identity != occupancy_identity:
+                raise ValueError(
+                    "Court V4 occupancy artifact disagrees with plan identity."
+                )
+            self.support_occupancy = published.snapshot
         groups = tuple(
             _object(value, name="Court trajectory group")
             for value in _array(
@@ -240,7 +323,71 @@ class CourtVisualizationSource:
                 ),
                 projection=_object(label["projection"], name="Court projection"),
                 schema_version=self.schema_definition.version,
+                alpha=self._frame_alpha(record),
+                depth_metric_m=self._frame_depth(record),
+                camera=self._frame_camera(record, label=label),
             )
+
+    def _frame_alpha(
+        self,
+        record: Mapping[str, object],
+    ) -> NDArray[np.float32] | None:
+        if self.overlay_mode is CourtOverlayMode.SEMANTIC:
+            return None
+        return _float32_scalar_image(
+            _contained_file(
+                self.root,
+                _text(record.get("alpha"), name="Court alpha path"),
+            ),
+            width=self.width,
+            height=self.height,
+            name="Court alpha",
+            unit_range=True,
+        )
+
+    def _frame_depth(
+        self,
+        record: Mapping[str, object],
+    ) -> NDArray[np.float32] | None:
+        if self.overlay_mode is CourtOverlayMode.SEMANTIC:
+            return None
+        if record.get("depth_coordinate_space") != "metric_scene_metres":
+            raise ValueError("Court AABB depth must already use metric scene metres.")
+        return _float32_scalar_image(
+            _contained_file(
+                self.root,
+                _text(record.get("depth"), name="Court depth path"),
+            ),
+            width=self.width,
+            height=self.height,
+            name="Court metric depth",
+            nonnegative=True,
+        )
+
+    def _frame_camera(
+        self,
+        record: Mapping[str, object],
+        *,
+        label: Mapping[str, object],
+    ) -> SceneCamera | None:
+        if self.overlay_mode is CourtOverlayMode.SEMANTIC:
+            return None
+        raw_camera = record.get("camera")
+        if label.get("camera") != raw_camera:
+            raise ValueError("Court label/manifest cameras disagree.")
+        camera = SceneCamera.from_dict(raw_camera)
+        if camera.width != self.width or camera.height != self.height:
+            raise ValueError("Court camera dimensions disagree with its render arrays.")
+        occupancy = self.support_occupancy
+        if occupancy is None:  # pragma: no cover - constructor establishes the mode
+            raise RuntimeError("Court AABB occupancy was not initialized.")
+        expected_digest = occupancy.support_input_digest
+        if (
+            record.get("safety_support_input_digest") != expected_digest
+            or label.get("safety_support_input_digest") != expected_digest
+        ):
+            raise ValueError("Court frame occupancy authority digest disagrees.")
+        return camera
 
 
 class BLCSVisualizationSource:
@@ -1196,6 +1343,28 @@ def _float32_rgb(path: Path, *, width: int, height: int) -> NDArray[np.float32]:
         raise ValueError(f"NHT RGB frame has an invalid contract: {path}")
     if not np.isfinite(value).all() or np.any(value < 0.0) or np.any(value > 1.0):
         raise ValueError(f"NHT RGB frame is non-finite or outside [0,1]: {path}")
+    return cast(NDArray[np.float32], value)
+
+
+def _float32_scalar_image(
+    path: Path,
+    *,
+    width: int,
+    height: int,
+    name: str,
+    unit_range: bool = False,
+    nonnegative: bool = False,
+) -> NDArray[np.float32]:
+    value = np.load(path, allow_pickle=False)
+    if value.dtype != np.float32 or value.shape != (height, width, 1):
+        raise ValueError(f"{name} has an invalid shape/dtype contract: {path}")
+    if not np.isfinite(value).all():
+        raise ValueError(f"{name} contains non-finite values: {path}")
+    if unit_range and (np.any(value < 0.0) or np.any(value > 1.0)):
+        raise ValueError(f"{name} lies outside [0,1]: {path}")
+    if nonnegative and np.any(value < 0.0):
+        raise ValueError(f"{name} contains negative metric depth: {path}")
+    value.setflags(write=False)
     return cast(NDArray[np.float32], value)
 
 

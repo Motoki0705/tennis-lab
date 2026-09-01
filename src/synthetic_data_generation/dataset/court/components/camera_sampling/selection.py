@@ -508,6 +508,7 @@ def _build_v4_plan(
         samples=samples,
         support_policy=configuration.support,
         support_summary=support_model.summary,
+        support_occupancy_snapshot=support_model.occupancy_snapshot,
         candidate_safety_evaluations=safe_result.evaluations,
         candidate_semantic_phase_evaluations=(safe_result.semantic_phase_evaluations),
         semantic_phase_inventory_digest=semantic_phase_inventory_digest(

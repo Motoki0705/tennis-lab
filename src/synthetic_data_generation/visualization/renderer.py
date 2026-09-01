@@ -6,18 +6,35 @@ import json
 import os
 import tempfile
 from collections.abc import Iterator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from pathlib import Path
 from typing import cast
 
 import numpy as np
 from numpy.typing import NDArray
 
+from src.synthetic_data_generation.dataset.court.occupancy_artifact import (
+    COURT_V4_SUPPORT_OCCUPANCY_COORDINATE_SPACE,
+    COURT_V4_SUPPORT_OCCUPANCY_SCHEMA,
+    CourtV4SupportOccupancySnapshot,
+)
+from src.synthetic_data_generation.dataset.court.schema import (
+    COURT_DATASET_SCHEMA_V4,
+    COURT_PLAN_SCHEMA_V4,
+)
 from src.synthetic_data_generation.visualization.contracts import (
     VISUALIZATION_METADATA_SCHEMA,
+    VISUALIZATION_METADATA_SCHEMA_V2,
+    CourtOverlayMode,
     DatasetVisualizationDomain,
     DatasetVisualizationRequest,
     DatasetVisualizationResult,
+)
+from src.synthetic_data_generation.visualization.court_aabb import (
+    CourtAABBRenderConfig,
+    CourtAABBRenderStats,
+    prepare_court_obstacle_aabbs,
+    render_prepared_court_obstacle_aabbs,
 )
 from src.synthetic_data_generation.visualization.overlays import (
     new_ball_history,
@@ -40,20 +57,46 @@ def visualize_dataset(
     if not isinstance(request, DatasetVisualizationRequest):
         raise TypeError("visualize_dataset requires DatasetVisualizationRequest.")
     frame_order: tuple[Mapping[str, object], ...]
+    frame_iterator: Iterator[NDArray[np.uint8]]
+    aabb_snapshot: CourtV4SupportOccupancySnapshot | None = None
+    aabb_statistics: _CourtAABBAggregateStatistics | None = None
     if request.domain is DatasetVisualizationDomain.COURT:
         assert request.trajectory_id is not None
-        source = CourtVisualizationSource(
-            request.dataset_root,
-            trajectory_id=request.trajectory_id,
-        )
+        if request.court_overlay.mode is CourtOverlayMode.SEMANTIC:
+            source = CourtVisualizationSource(
+                request.dataset_root,
+                trajectory_id=request.trajectory_id,
+            )
+        else:
+            source = CourtVisualizationSource(
+                request.dataset_root,
+                trajectory_id=request.trajectory_id,
+                overlay_mode=request.court_overlay.mode,
+                maximum_occupancy_cells=request.court_overlay.maximum_cells,
+            )
         dataset_schema = source.dataset_schema
         dataset_scene_id = source.dataset_scene_id
         source_width, source_height = source.width, source.height
 
-        frame_iterator = (
-            render_court_overlay(frame, trajectory_id=request.trajectory_id)
-            for frame in source.frames()
-        )
+        if request.court_overlay.mode is CourtOverlayMode.SEMANTIC:
+            frame_iterator = (
+                render_court_overlay(frame, trajectory_id=request.trajectory_id)
+                for frame in source.frames()
+            )
+        else:
+            aabb_snapshot = source.support_occupancy
+            if aabb_snapshot is None:
+                raise RuntimeError("Court AABB source did not expose occupancy authority.")
+            aabb_statistics = _CourtAABBAggregateStatistics()
+            frame_iterator = _court_aabb_frames(
+                source,
+                snapshot=aabb_snapshot,
+                config=_court_aabb_config(
+                    request,
+                    voxel_size_m=aabb_snapshot.voxel_size_m,
+                ),
+                aggregate=aabb_statistics,
+            )
         frame_order = source.frame_order
         selection: dict[str, object] = {
             "trajectory_id": request.trajectory_id,
@@ -154,24 +197,24 @@ def visualize_dataset(
     temporary_metadata: _OwnedStagingFile | None = None
     encoded_count = 0
     try:
-        typed_frames = cast(
-            Iterator[NDArray[np.uint8]],
-            frame_iterator,
-        )
         with VideoWriter(
             temporary_video.path,
             fps=request.fps,
             crf=request.crf,
         ) as writer:
-            for value in typed_frames:
+            for value in frame_iterator:
                 writer.write_frame(value)
                 encoded_count += 1
         if encoded_count != len(frame_order):
             raise ValueError(
                 "Encoded frame count differs from the canonical selected inventory."
             )
-        metadata: Mapping[str, object] = {
-            "schema": VISUALIZATION_METADATA_SCHEMA,
+        metadata: dict[str, object] = {
+            "schema": (
+                VISUALIZATION_METADATA_SCHEMA_V2
+                if aabb_snapshot is not None
+                else VISUALIZATION_METADATA_SCHEMA
+            ),
             "domain": request.domain.value,
             "dataset_schema": dataset_schema,
             "dataset_scene_id": dataset_scene_id,
@@ -196,6 +239,12 @@ def visualize_dataset(
                 "crf": request.crf,
             },
         }
+        if aabb_snapshot is not None:
+            metadata["court_overlay"] = _court_overlay_metadata(
+                request,
+                snapshot=aabb_snapshot,
+                aggregate=aabb_statistics,
+            )
         temporary_metadata = _new_staging_file(output, suffix=".json")
         temporary_metadata.path.write_text(
             json.dumps(
@@ -225,6 +274,154 @@ def visualize_dataset(
         width=width,
         height=height,
     )
+
+
+_AABB_GEOMETRY_STAT_FIELDS = (
+    "cell_count",
+    "surface_face_count",
+    "source_triangle_count",
+)
+
+
+@dataclass(slots=True)
+class _CourtAABBAggregateStatistics:
+    """Bounded aggregate counters retained while frames stream to the encoder."""
+
+    frame_count: int = 0
+    cell_count: int | None = None
+    surface_face_count: int | None = None
+    source_triangle_count: int | None = None
+    totals: dict[str, int] | None = None
+
+    def observe(self, stats: CourtAABBRenderStats) -> None:
+        """Accumulate one complete frame and reject changing source geometry."""
+        if not isinstance(stats, CourtAABBRenderStats):
+            raise TypeError("Court AABB aggregate requires CourtAABBRenderStats.")
+        if self.totals is None:
+            self.totals = {
+                item.name: 0
+                for item in fields(stats)
+                if item.name not in _AABB_GEOMETRY_STAT_FIELDS
+            }
+            self.cell_count = stats.cell_count
+            self.surface_face_count = stats.surface_face_count
+            self.source_triangle_count = stats.source_triangle_count
+        elif (
+            self.cell_count != stats.cell_count
+            or self.surface_face_count != stats.surface_face_count
+            or self.source_triangle_count != stats.source_triangle_count
+        ):
+            raise ValueError("Court AABB geometry counts changed between frames.")
+        assert self.totals is not None
+        for name in self.totals:
+            self.totals[name] += cast(int, getattr(stats, name))
+        self.frame_count += 1
+
+    def to_dict(self) -> dict[str, object]:
+        """Return exact per-output sums and invariant geometry counts."""
+        if (
+            self.frame_count <= 0
+            or self.cell_count is None
+            or self.surface_face_count is None
+            or self.source_triangle_count is None
+            or self.totals is None
+        ):
+            raise ValueError("Court AABB rendering produced no aggregate statistics.")
+        return {
+            "frame_count": self.frame_count,
+            "geometry": {
+                "cell_count": self.cell_count,
+                "surface_face_count": self.surface_face_count,
+                "source_triangle_count": self.source_triangle_count,
+            },
+            "totals": dict(self.totals),
+        }
+
+
+def _court_aabb_config(
+    request: DatasetVisualizationRequest,
+    *,
+    voxel_size_m: float,
+) -> CourtAABBRenderConfig:
+    overlay = request.court_overlay
+    return CourtAABBRenderConfig(
+        voxel_size_m=voxel_size_m,
+        near_plane_m=overlay.near_plane_m,
+        depth_epsilon_m=overlay.depth_epsilon_m,
+        surface_color_rgb=(
+            overlay.color_rgb[0] / 255.0,
+            overlay.color_rgb[1] / 255.0,
+            overlay.color_rgb[2] / 255.0,
+        ),
+        surface_opacity=overlay.opacity,
+        background_color_rgb=(
+            overlay.background_color_rgb[0] / 255.0,
+            overlay.background_color_rgb[1] / 255.0,
+            overlay.background_color_rgb[2] / 255.0,
+        ),
+        maximum_cells=overlay.maximum_cells,
+        maximum_surface_faces=overlay.maximum_surface_faces,
+        maximum_projected_pixels=overlay.maximum_projected_pixels,
+    )
+
+
+def _court_aabb_frames(
+    source: CourtVisualizationSource,
+    *,
+    snapshot: CourtV4SupportOccupancySnapshot,
+    config: CourtAABBRenderConfig,
+    aggregate: _CourtAABBAggregateStatistics,
+) -> Iterator[NDArray[np.uint8]]:
+    """Render exact metric occupancy while retaining only aggregate counters."""
+    if config.voxel_size_m != snapshot.voxel_size_m:
+        raise ValueError("Court AABB render config changed the artifact voxel size.")
+    geometry = prepare_court_obstacle_aabbs(snapshot.cells, config=config)
+    for frame in source.frames():
+        if frame.alpha is None or frame.depth_metric_m is None or frame.camera is None:
+            raise ValueError("Court AABB frame lacks alpha, metric depth, or camera.")
+        result = render_prepared_court_obstacle_aabbs(
+            rgb=frame.rgb,
+            alpha=frame.alpha,
+            metric_depth=frame.depth_metric_m,
+            camera=frame.camera,
+            geometry=geometry,
+            config=config,
+        )
+        aggregate.observe(result.stats)
+        yield result.rgb
+
+
+def _court_overlay_metadata(
+    request: DatasetVisualizationRequest,
+    *,
+    snapshot: CourtV4SupportOccupancySnapshot | None,
+    aggregate: _CourtAABBAggregateStatistics | None,
+) -> Mapping[str, object]:
+    if (
+        request.domain is not DatasetVisualizationDomain.COURT
+        or request.court_overlay.mode is not CourtOverlayMode.TRAJECTORY_SUPPORT_AABB
+    ):
+        raise ValueError("Court AABB metadata requires the explicit AABB mode.")
+    if snapshot is None or aggregate is None:
+        raise RuntimeError("Court AABB metadata authority is unavailable.")
+    if snapshot.coordinate_space != COURT_V4_SUPPORT_OCCUPANCY_COORDINATE_SPACE:
+        raise ValueError("Court AABB occupancy coordinate space changed during render.")
+    return {
+        "mode": CourtOverlayMode.TRAJECTORY_SUPPORT_AABB.value,
+        "artifact": {
+            "schema": COURT_V4_SUPPORT_OCCUPANCY_SCHEMA,
+            "dataset_schema": COURT_DATASET_SCHEMA_V4,
+            "plan_schema": COURT_PLAN_SCHEMA_V4,
+            "coordinate_space": snapshot.coordinate_space,
+            "voxel_size_m": snapshot.voxel_size_m,
+            "policy_decision_id": snapshot.policy_decision_id,
+            "support_input_digest": snapshot.support_input_digest,
+            "cell_count": snapshot.cell_count,
+            "content_digest": snapshot.content_digest,
+        },
+        "config": request.court_overlay.to_dict(),
+        "drawing_statistics": aggregate.to_dict(),
+    }
 
 
 @dataclass(frozen=True, slots=True)

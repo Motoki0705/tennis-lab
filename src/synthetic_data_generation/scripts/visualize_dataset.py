@@ -2,10 +2,12 @@
 
 Usage:
     python -m src.synthetic_data_generation.scripts.visualize_dataset visualization.domain=court visualization.dataset_root=scenes/scene-000/datasets/court visualization.trajectory_id=orbit-000
+    python -m src.synthetic_data_generation.scripts.visualize_dataset visualization.domain=court visualization.dataset_root=scenes/scene-000/datasets/court visualization.trajectory_id=orbit-000 visualization.court_overlay.mode=trajectory_support_aabb
 
 Notes:
     - Hydra loads configuration from `src/synthetic_data_generation/configs/visualize_dataset.yaml`.
     - Court requires `trajectory_id`; BLCS and PLCS require `logical_scene_id` and `camera_id`.
+    - The depth-aware trajectory-support AABB overlay is strict Court V4 only.
 """
 
 from __future__ import annotations

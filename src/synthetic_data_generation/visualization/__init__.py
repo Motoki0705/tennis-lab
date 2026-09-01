@@ -1,7 +1,11 @@
 """Canonical 3DGS-backed generated-dataset visualization API."""
 
 from src.synthetic_data_generation.visualization.contracts import (
+    DEFAULT_COURT_OVERLAY_CONFIGURATION,
     VISUALIZATION_METADATA_SCHEMA,
+    VISUALIZATION_METADATA_SCHEMA_V2,
+    CourtOverlayConfiguration,
+    CourtOverlayMode,
     DatasetVisualizationDomain,
     DatasetVisualizationRequest,
     DatasetVisualizationResult,
@@ -12,6 +16,10 @@ __all__ = [
     "DatasetVisualizationDomain",
     "DatasetVisualizationRequest",
     "DatasetVisualizationResult",
+    "DEFAULT_COURT_OVERLAY_CONFIGURATION",
     "VISUALIZATION_METADATA_SCHEMA",
+    "VISUALIZATION_METADATA_SCHEMA_V2",
+    "CourtOverlayConfiguration",
+    "CourtOverlayMode",
     "visualize_dataset",
 ]
