@@ -3,9 +3,7 @@
 from src.tasks.blcs.model_io.adapters import (
     AxialTrajectoryModelIOAdapter,
     SingleTrajectoryModelIOAdapter,
-    TrackQueryAblationModelIOAdapter,
     TrackQueryModelIOAdapter,
-    TrackQueryReferenceAblationModelIOAdapter,
     TrackQueryReferenceModelIOAdapter,
     TrajectoryModelIOAdapter,
 )
@@ -45,10 +43,8 @@ __all__ = [
     "blcs_track_query_prediction_to_physical",
     "blcs_trajectory_prediction_to_physical",
     "SingleTrajectoryModelIOAdapter",
-    "TrackQueryAblationModelIOAdapter",
     "TrackQueryBoundModelIO",
     "TrackQueryModelIOAdapter",
-    "TrackQueryReferenceAblationModelIOAdapter",
     "TrackQueryReferenceModelIOAdapter",
     "TrajectoryBoundModelIO",
     "TrajectoryModelIOAdapter",

@@ -1,0 +1,8 @@
+defaults:
+  - tracking_query
+  - _self_
+
+name: blcs_track_query_reference
+target_frame_contract: reference_camera_court_rzpi_v1
+track_query_rope_contract: time_camera_reference_selector_v1
+reference_selector_mode: reference

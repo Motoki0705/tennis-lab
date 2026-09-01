@@ -27,7 +27,7 @@ from src.tasks.base.generate_dataset import (
     resolve_court_keypoint_contract,
 )
 from src.tasks.blcs.configuration import (
-    TrackQueryReferenceAblationModelConfig,
+    TrackQueryReferenceModelConfig,
     parse_model_config,
 )
 from src.tasks.blcs.data.dataset import (
@@ -46,8 +46,8 @@ from src.tasks.blcs.model_io import (
     blcs_trajectory_prediction_to_physical,
     compose_blcs_trajectory_model_io,
 )
-from src.tasks.blcs.models.blcs_track_query_reference_ablation_model import (
-    BLCSTrackQueryReferenceAblationModel,
+from src.tasks.blcs.models.blcs_track_query_reference_model import (
+    BLCSTrackQueryReferenceModel,
 )
 from src.tasks.blcs.training.lightning_module import BLCSLightningModule
 from src.tasks.plcs.configuration import PLCSModelConfig
@@ -62,8 +62,8 @@ from src.tasks.plcs.generate_dataset.scene_generator import (
 )
 from src.tasks.plcs.generate_dataset.scene_generator import SceneData as PLCSSceneData
 from src.tasks.plcs.model_io import PLCSDecodedPrediction, PLCSPhysicalPrediction
-from src.tasks.plcs.models.plcs_track_query_reference_ablation_model import (
-    PLCSTrackQueryReferenceAblationModel,
+from src.tasks.plcs.models.plcs_track_query_reference_model import (
+    PLCSTrackQueryReferenceModel,
 )
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.tennis_scene.pipeline.components.blcs import BLCSModule
@@ -571,11 +571,11 @@ def test_single_view_uses_selected_camera_as_the_complete_reference_frame(
     torch.testing.assert_close(plcs_sample["camera_R"][0], half_turn)
 
 
-def _blcs_tracking_model() -> BLCSTrackQueryReferenceAblationModel:
+def _blcs_tracking_model() -> BLCSTrackQueryReferenceModel:
     config = parse_model_config(
         {
             "model": {
-                "name": "blcs_track_query_reference_ablation",
+                "name": "blcs_track_query_reference",
                 "hidden_dim": 24,
                 "num_heads": 4,
                 "num_stages": 4,
@@ -603,16 +603,16 @@ def _blcs_tracking_model() -> BLCSTrackQueryReferenceAblationModel:
             }
         }
     )
-    assert isinstance(config, TrackQueryReferenceAblationModelConfig)
-    model = BLCSTrackQueryReferenceAblationModel(config)
+    assert isinstance(config, TrackQueryReferenceModelConfig)
+    model = BLCSTrackQueryReferenceModel(config)
     model.eval()
     return model
 
 
-def _plcs_tracking_model() -> PLCSTrackQueryReferenceAblationModel:
+def _plcs_tracking_model() -> PLCSTrackQueryReferenceModel:
     config = PLCSModelConfig.from_mapping(
         {
-            "name": "plcs_track_query_reference_ablation",
+            "name": "plcs_track_query_reference",
             "hidden_dim": 24,
             "num_heads": 4,
             "ffn_dim": 32,
@@ -641,7 +641,7 @@ def _plcs_tracking_model() -> PLCSTrackQueryReferenceAblationModel:
             },
         }
     )
-    model = PLCSTrackQueryReferenceAblationModel(config)
+    model = PLCSTrackQueryReferenceModel(config)
     model.eval()
     return model
 

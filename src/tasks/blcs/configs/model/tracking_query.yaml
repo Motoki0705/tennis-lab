@@ -1,6 +1,6 @@
-# Fixed BLCS track-query architecture retained from ablation condition D.
+# Canonical BLCS track-query architecture.
 
-name: blcs_track_query_ablation
+name: blcs_track_query
 
 hidden_dim: 512
 num_heads: 8
@@ -10,7 +10,6 @@ ffn_type: swiglu
 num_queries: 4
 rope_dim: 64
 dropout: 0.0
-role_rope_enabled: true
 invisible_init_std: 0.02
 
 mhc:

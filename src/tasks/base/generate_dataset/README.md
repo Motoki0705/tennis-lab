@@ -147,12 +147,9 @@ combinations are valid:
 
 The v2 selector is clip-level and is repeated over every time and object token;
 it does not depend on visibility. Query-first flattening, time order, local
-camera coordinate `v+1`, and ordinary/compressed spatial widths are unchanged.
+camera coordinate `v+1`, and the compressed spatial width are unchanged.
 `rope_dim` must be even and at least 6 so the generic round-robin allocator
-assigns a pair to time, camera, and selector. `selector_zero` is an explicit
-ablation contract: it retains the sixth input and changes only selector-axis
-coordinates to zero. `role_rope_enabled` remains a v1 setting and never means
-reference selection.
+assigns a pair to time, camera, and selector.
 
 Each v2 sample carries one typed selection with canonical string IDs,
 `reference_view_index`, `view_camera_ids`, `reference_camera_id`,

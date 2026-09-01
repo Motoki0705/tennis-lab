@@ -1,4 +1,4 @@
-"""Reference-camera-conditioned v2 PLCS track-query model."""
+"""Reference-camera-conditioned canonical PLCS track-query model."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from torch import Tensor
 from src.tasks.base.models import (
     REFERENCE_SELECTOR_ROPE_CONTRACT,
     ReferenceSelectorMode,
-    build_full_track_query_spatial_coordinates,
+    build_compressed_track_query_spatial_coordinates,
     resolve_reference_selector_mode,
     resolve_track_query_rope_contract,
     validate_reference_context_mask,
@@ -19,11 +19,10 @@ from src.tasks.plcs.data.tracking_types import PLCSTrackingPrediction
 from src.tasks.plcs.models.plcs_track_query_model import PLCSTrackQueryModel
 
 
-def _legacy_architecture_config(config: PLCSModelConfig) -> PLCSModelConfig:
-    """Project v2 onto only the immutable v1 architecture parameters."""
+def _architecture_config(config: PLCSModelConfig) -> PLCSModelConfig:
+    """Project the reference contract onto the fixed base architecture."""
     values = dict(config.values)
     values["name"] = "plcs_track_query"
-    values["role_rope_enabled"] = False
     for key in (
         "target_frame_contract",
         "track_query_rope_contract",
@@ -34,7 +33,7 @@ def _legacy_architecture_config(config: PLCSModelConfig) -> PLCSModelConfig:
 
 
 class PLCSTrackQueryReferenceModel(PLCSTrackQueryModel):
-    """Predict tracks in an explicit reference-camera target frame."""
+    """Predict PLCS tracks in the selected reference-camera frame."""
 
     def __init__(self, config: PLCSModelConfig) -> None:
         if config.name != "plcs_track_query_reference":
@@ -42,23 +41,21 @@ class PLCSTrackQueryReferenceModel(PLCSTrackQueryModel):
                 "PLCSTrackQueryReferenceModel requires "
                 "plcs_track_query_reference config."
             )
-        super().__init__(_legacy_architecture_config(config))
+        super().__init__(_architecture_config(config))
         self.target_frame_contract = config.string("target_frame_contract")
         self.track_query_rope_contract = resolve_track_query_rope_contract(
             config.string("track_query_rope_contract")
         )
         if self.track_query_rope_contract is not REFERENCE_SELECTOR_ROPE_CONTRACT:
             raise ValueError(
-                "PLCSTrackQueryReferenceModel requires the reference-selector "
-                "RoPE contract."
+                "PLCSTrackQueryReferenceModel requires the "
+                "reference-selector RoPE contract."
             )
         self.reference_selector_mode = resolve_reference_selector_mode(
             config.string("reference_selector_mode")
         )
         if self.reference_selector_mode is not ReferenceSelectorMode.REFERENCE:
-            raise ValueError(
-                "PLCSTrackQueryReferenceModel requires reference selector mode."
-            )
+            raise ValueError("PLCS reference track-query requires reference mode.")
         validate_track_query_rope_dimensions(
             contract=self.track_query_rope_contract,
             rope_dim=self.rope_dim,
@@ -69,8 +66,7 @@ class PLCSTrackQueryReferenceModel(PLCSTrackQueryModel):
             torch.tensor(1, dtype=torch.uint8),
         )
         self.register_buffer(
-            "_reference_selector_mode_marker",
-            torch.tensor(1, dtype=torch.uint8),
+            "_reference_selector_mode_marker", torch.tensor(1, dtype=torch.uint8)
         )
 
     @staticmethod
@@ -81,17 +77,15 @@ class PLCSTrackQueryReferenceModel(PLCSTrackQueryModel):
         num_views: int,
         num_detections: int,
         num_queries: int,
-        selector_mode: ReferenceSelectorMode,
     ) -> Tensor:
-        """Return exact v2 ``(B*T,Q+V*Q,3)`` selector coordinates."""
+        """Return exact v2 compressed selector coordinates."""
         if num_detections != num_queries:
             raise ValueError("num_detections must equal num_queries.")
-        return build_full_track_query_spatial_coordinates(
+        return build_compressed_track_query_spatial_coordinates(
             reference_view_index,
             num_frames=num_frames,
             num_views=num_views,
             num_queries=num_queries,
-            selector_mode=selector_mode,
         )
 
     def forward(  # type: ignore[override]
@@ -115,7 +109,6 @@ class PLCSTrackQueryReferenceModel(PLCSTrackQueryModel):
             num_views=num_views,
             num_detections=self.num_queries,
             num_queries=self.num_queries,
-            selector_mode=self.reference_selector_mode,
         )
         return self._forward_with_spatial_coordinates(
             human_kp,

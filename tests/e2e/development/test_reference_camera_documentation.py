@@ -99,8 +99,6 @@ def test_shared_readme_owns_reference_camera_artifact_and_runtime_semantics() ->
         "reference objects `(t,v+1,0)`",
         "other objects `(t,v+1,1)`",
         "required `reference_view_index: int64[B]`",
-        "selector_zero",
-        "role_rope_enabled",
         "rope_dim",
         "lexicographically ordered",
         "`-1` is reserved only for padded",
@@ -145,7 +143,9 @@ def test_shared_readme_owns_reference_camera_artifact_and_runtime_semantics() ->
     ) in shared
 
 
-def test_task_readmes_link_to_shared_authority_without_copying_common_formulas() -> None:
+def test_task_readmes_link_to_shared_authority_without_copying_common_formulas() -> (
+    None
+):
     prohibited_duplicates = (
         "point_ref   = S_r point_phys",
         "vector_ref  = S_r vector_phys",
@@ -157,12 +157,12 @@ def test_task_readmes_link_to_shared_authority_without_copying_common_formulas()
         "blcs": (
             "blcs_track_query_reference",
             "ball_uv (B,V,T,Q,2)",
-            "track_query_ablation_d_v2_selector_zero",
+            "model=tracking_query_reference",
         ),
         "plcs": (
             "plcs_track_query_reference",
             "human_kp (B,V,T,Q,17,2)",
-            "track_query_ablation_d_v2_selector_zero",
+            "model=tracking_query_reference",
         ),
     }
     for readme in TASK_READMES:
@@ -195,7 +195,9 @@ def test_unqualified_task_contract_oracle_catches_equivalent_restatements() -> N
         assert _find_unqualified_task_contract_claims(claim), claim
 
 
-def test_unqualified_task_contract_oracle_allows_v1_scope_and_observation_shapes() -> None:
+def test_unqualified_task_contract_oracle_allows_v1_scope_and_observation_shapes() -> (
+    None
+):
     allowed_task_details = (
         "Legacy v1 uses a five tensor forward signature.",
         "`time_camera_role_v1` ablations use the same five inputs under one contract.",

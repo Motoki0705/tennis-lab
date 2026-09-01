@@ -88,8 +88,7 @@ class TrackQueryReferenceContract:
         elif self.track_query_rope_contract is REFERENCE_SELECTOR_ROPE_CONTRACT:
             if not isinstance(self.reference_selector_mode, ReferenceSelectorMode):
                 raise TrackQueryReferenceContractError(
-                    "Reference-selector v2 requires an explicit reference or "
-                    "selector_zero mode."
+                    "Reference-selector v2 requires explicit reference mode."
                 )
             expected = (
                 CAMERA_VIEW_COURTKP20_RZPI_CONTRACT_ID,

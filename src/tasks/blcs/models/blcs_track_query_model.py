@@ -1,4 +1,4 @@
-"""Fixed-width mHC and hybrid-CSWA BLCS track-query model."""
+"""Canonical fixed-query BLCS tracking architecture."""
 
 from __future__ import annotations
 
@@ -14,29 +14,33 @@ from src.tasks.blcs.models.components.observation_fusion import (
 )
 from src.utils.models import (
     CSWAConfig,
-    FixedQueryTrackStage,
     RMSNorm,
     RotaryFrequencyComputer,
     TransformerBlock,
     TransformerBlockConfig,
 )
+from src.utils.models.components.fixed_query_track_stage import FixedQueryTrackStage
 from src.utils.models.components.mhc import (
     ManifoldConstrainedHyperConnection,
     MHCConfig,
 )
-from src.utils.models.multiview_padding import build_fixed_query_padding_masks
+from src.utils.models.multiview_padding import (
+    build_compressed_spatial_attention_keep_mask,
+    build_fixed_query_padding_masks,
+)
 
 
 class BLCSTrackQueryModel(nn.Module):
-    """Predict persistent queries with a constructor-fixed ``C,C,C,G`` cycle."""
+    """Predict persistent ball queries with the fixed compressed-stage design."""
 
     def __init__(self, config: TrackQueryModelConfig) -> None:
         super().__init__()
+        if config.name != "blcs_track_query":
+            raise ValueError("BLCSTrackQueryModel requires blcs_track_query config.")
         self.hidden_dim = int(config.hidden_dim)
         self.num_heads = int(config.num_heads)
         self.num_queries = int(config.num_queries)
         self.num_stages = int(config.num_stages)
-        self.role_rope_scale = int(config.role_rope_enabled)
         if self.num_stages <= 0 or self.num_stages % 4 != 0:
             raise ValueError("num_stages must be a positive multiple of 4.")
         if self.num_queries <= 0:
@@ -56,7 +60,6 @@ class BLCSTrackQueryModel(nn.Module):
             num_court_tokens=self.num_court_tokens,
             invisible_init_std=config.invisible_init_std,
         )
-
         self.slot_embeddings = nn.Parameter(
             torch.randn(self.num_queries, self.hidden_dim) * 0.02
         )
@@ -102,7 +105,8 @@ class BLCSTrackQueryModel(nn.Module):
         court_kp = cast(Tensor, args[2] if len(args) > 2 else kwargs["court_kp"])
         court_vis = cast(Tensor, args[3] if len(args) > 3 else kwargs["court_vis"])
         padding_mask = cast(
-            Tensor, args[4] if len(args) > 4 else kwargs["padding_mask"]
+            Tensor,
+            args[4] if len(args) > 4 else kwargs["padding_mask"],
         )
         if ball_uv.ndim != 5:
             raise ValueError("ball_uv must have shape (B,V,T,Q,2).")
@@ -156,6 +160,7 @@ class BLCSTrackQueryModel(nn.Module):
             rope_base=10000.0,
             ffn_type=config.ffn_type,
             cswa=cswa_config,
+            ffn_enabled=False,
         )
 
     def _build_stage(
@@ -206,46 +211,37 @@ class BLCSTrackQueryModel(nn.Module):
         num_queries: int,
         device: torch.device,
     ) -> Tensor:
-        """Return ``(B*T,Q+V*Q,3)`` time/camera/role coordinates."""
+        """Return time/camera/role coordinates for compressed ``Q+V`` tokens."""
         if num_detections != num_queries:
             raise ValueError("num_detections must equal num_queries.")
-        return BLCSTrackQueryModel._build_spatial_coordinates(
-            batch_size=batch_size,
-            num_frames=num_frames,
-            num_views=num_views,
-            num_queries=num_queries,
-            device=device,
-        )
-
-    @staticmethod
-    def _build_spatial_coordinates(
-        *,
-        batch_size: int,
-        num_frames: int,
-        num_views: int,
-        num_queries: int,
-        device: torch.device,
-    ) -> Tensor:
-        """Compute validated ``(B*T,Q+V*Q,3)`` spatial coordinates."""
         time = torch.arange(num_frames, device=device).view(1, num_frames, 1)
-        slot = torch.zeros(
-            batch_size, num_frames, num_queries, 3, device=device, dtype=torch.long
-        )
-        slot[..., 0] = time
-        camera_tokens = torch.zeros(
+        slots = torch.zeros(
             batch_size,
             num_frames,
-            num_views,
             num_queries,
             3,
             device=device,
             dtype=torch.long,
         )
-        camera_tokens[..., 0] = time.view(1, num_frames, 1, 1)
-        camera = torch.arange(1, num_views + 1, device=device).view(1, 1, num_views, 1)
-        camera_tokens[..., 1] = camera
-        camera_tokens[..., 2] = 1
-        return torch.cat([slot, camera_tokens.flatten(2, 3)], dim=2).flatten(0, 1)
+        slots[..., 0] = time
+        objects = torch.zeros(
+            batch_size,
+            num_frames,
+            num_views,
+            1,
+            3,
+            device=device,
+            dtype=torch.long,
+        )
+        objects[..., 0] = time.view(1, num_frames, 1, 1)
+        objects[..., 1] = torch.arange(1, num_views + 1, device=device).view(
+            1,
+            1,
+            num_views,
+            1,
+        )
+        objects[..., 2] = 1
+        return torch.cat((slots, objects.flatten(2, 3)), dim=2).flatten(0, 1)
 
     def forward(
         self,
@@ -257,22 +253,21 @@ class BLCSTrackQueryModel(nn.Module):
     ) -> BLCSTrackingPrediction:
         """Predict fixed-width tracks; only padding controls attention validity."""
         batch_size, num_views, num_frames, _, _ = ball_uv.shape
-        coordinates = self._build_spatial_coordinates(
+        coordinates = self.build_spatial_coordinates(
             batch_size=batch_size,
             num_frames=num_frames,
             num_views=num_views,
+            num_detections=self.num_queries,
             num_queries=self.num_queries,
             device=ball_uv.device,
         )
-        rope_coordinates = coordinates.clone()
-        rope_coordinates[..., 2] *= self.role_rope_scale
         return self._forward_with_spatial_coordinates(
             ball_uv,
             ball_vis,
             court_kp,
             court_vis,
             padding_mask,
-            spatial_coordinates=rope_coordinates,
+            spatial_coordinates=coordinates,
         )
 
     def _forward_with_spatial_coordinates(
@@ -285,12 +280,17 @@ class BLCSTrackQueryModel(nn.Module):
         *,
         spatial_coordinates: Tensor,
     ) -> BLCSTrackingPrediction:
-        """Execute the shared architecture with validated spatial coordinates."""
+        """Execute the canonical architecture with validated spatial coordinates."""
         batch_size, _num_views, num_frames, _, _ = ball_uv.shape
         masks = build_fixed_query_padding_masks(
             padding_mask,
             num_queries=self.num_queries,
         )
+        spatial_attention_keep_mask = build_compressed_spatial_attention_keep_mask(
+            padding_mask,
+            num_queries=self.num_queries,
+        )
+
         context_valid = masks.context_valid
         effective_ball_uv = ball_uv.masked_fill(
             ~context_valid.unsqueeze(-1).unsqueeze(-1),
@@ -313,7 +313,10 @@ class BLCSTrackQueryModel(nn.Module):
         camera_tokens = camera_tokens * masks.object_state_valid.unsqueeze(-1)
 
         slots = self.slot_embeddings.view(
-            1, 1, self.num_queries, self.hidden_dim
+            1,
+            1,
+            self.num_queries,
+            self.hidden_dim,
         ).expand(batch_size, num_frames, -1, -1)
         slots = slots * masks.frame_valid[:, :, None, None]
         spatial_freqs = self.spatial_frequency_computer(spatial_coordinates)
@@ -327,7 +330,7 @@ class BLCSTrackQueryModel(nn.Module):
                 slots,
                 object_state_valid=masks.object_state_valid,
                 frame_valid=masks.frame_valid,
-                spatial_attention_keep_mask=masks.spatial_attention_keep_mask,
+                spatial_attention_keep_mask=spatial_attention_keep_mask,
                 object_temporal_state_valid=masks.object_temporal_state_valid,
                 object_temporal_attention_keep_mask=(
                     masks.object_temporal_attention_keep_mask

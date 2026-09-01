@@ -13,8 +13,6 @@ from src.tasks.base.models.track_query_reference import (
     TrackQueryReferenceModelError,
     TrackQueryRopeDimensionError,
     build_compressed_track_query_spatial_coordinates,
-    build_full_track_query_spatial_coordinates,
-    build_track_query_spatial_coordinates,
     resolve_reference_selector_mode,
     resolve_track_query_rope_contract,
     validate_reference_context_mask,
@@ -23,61 +21,18 @@ from src.tasks.base.models.track_query_reference import (
 from src.utils.models.components.rope import RotaryFrequencyComputer
 
 
-def test_full_coordinates_expand_different_references_across_all_times() -> None:
-    reference = torch.tensor([1, 2], dtype=torch.int64)
-    coordinates = build_full_track_query_spatial_coordinates(
-        reference,
-        num_frames=2,
-        num_views=3,
-        num_queries=2,
-        selector_mode=ReferenceSelectorMode.REFERENCE,
-    )
-
-    assert coordinates.shape == (4, 8, 3)
-    assert coordinates.dtype == torch.int64
-    assert coordinates[0, :2].tolist() == [[0, 0, 0], [0, 0, 0]]
-    assert coordinates[1, :2].tolist() == [[1, 0, 0], [1, 0, 0]]
-    assert coordinates[0, 2:].tolist() == [
-        [0, 1, 1],
-        [0, 1, 1],
-        [0, 2, 0],
-        [0, 2, 0],
-        [0, 3, 1],
-        [0, 3, 1],
-    ]
-    assert coordinates[2, 2:].tolist() == [
-        [0, 1, 1],
-        [0, 1, 1],
-        [0, 2, 1],
-        [0, 2, 1],
-        [0, 3, 0],
-        [0, 3, 0],
-    ]
-
-
-def test_compressed_and_selector_zero_keep_width_order_and_sixth_input() -> None:
+def test_compressed_coordinates_keep_width_order_and_reference_identity() -> None:
     reference = torch.tensor([2], dtype=torch.int64)
     compressed = build_compressed_track_query_spatial_coordinates(
         reference,
         num_frames=1,
         num_views=3,
         num_queries=2,
-        selector_mode=ReferenceSelectorMode.REFERENCE,
-    )
-    zero = build_track_query_spatial_coordinates(
-        reference,
-        num_frames=1,
-        num_views=3,
-        num_queries=2,
-        object_tokens_per_view=1,
-        selector_mode=ReferenceSelectorMode.SELECTOR_ZERO,
     )
 
     assert compressed.tolist() == [
         [[0, 0, 0], [0, 0, 0], [0, 1, 1], [0, 2, 1], [0, 3, 0]]
     ]
-    assert zero[..., :2].equal(compressed[..., :2])
-    assert zero[..., 2].eq(0).all()
 
 
 def test_coordinates_drive_expected_round_robin_selector_frequencies() -> None:
@@ -87,7 +42,6 @@ def test_coordinates_drive_expected_round_robin_selector_frequencies() -> None:
         num_frames=1,
         num_views=2,
         num_queries=1,
-        selector_mode=ReferenceSelectorMode.REFERENCE,
     )
     computer = RotaryFrequencyComputer(dim=6, base=10000.0, n_axes=3)
     frequencies = computer(positions)
@@ -136,8 +90,8 @@ def test_contract_and_selector_resolvers_are_exact_and_non_inferred() -> None:
         resolve_track_query_rope_contract("time_camera_reference_selector_v1")
         is REFERENCE_SELECTOR_ROPE_CONTRACT
     )
-    assert resolve_reference_selector_mode("selector_zero") is (
-        ReferenceSelectorMode.SELECTOR_ZERO
+    assert (
+        resolve_reference_selector_mode("reference") is ReferenceSelectorMode.REFERENCE
     )
     with pytest.raises(TrackQueryReferenceModelError, match="Unknown"):
         resolve_track_query_rope_contract("v2")
@@ -187,10 +141,9 @@ def test_coordinate_builder_rejects_dtype_padding_and_range(
     reference: torch.Tensor,
 ) -> None:
     with pytest.raises(TrackQueryReferenceModelError):
-        build_full_track_query_spatial_coordinates(
+        build_compressed_track_query_spatial_coordinates(
             reference,
             num_frames=1,
             num_views=2,
             num_queries=1,
-            selector_mode=ReferenceSelectorMode.REFERENCE,
         )

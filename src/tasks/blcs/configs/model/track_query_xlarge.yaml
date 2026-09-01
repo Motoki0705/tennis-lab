@@ -1,9 +1,0 @@
-defaults:
-  - _track_query
-  - _self_
-
-hidden_dim: 1024
-num_heads: 8
-num_stages: 12
-ffn_dim: 2752
-rope_dim: 128

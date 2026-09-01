@@ -9,7 +9,6 @@ import pytest
 import torch
 from torch import Tensor
 
-from src.tasks.base.models import ReferenceSelectorMode
 from src.tasks.plcs.configuration import PLCSModelConfig
 from src.tasks.plcs.models.plcs_track_query_model import PLCSTrackQueryModel
 from src.tasks.plcs.models.plcs_track_query_reference_model import (
@@ -50,9 +49,7 @@ def _raw_config(*, rope_dim: int = 6) -> dict[str, object]:
 
 
 def _model() -> PLCSTrackQueryReferenceModel:
-    model = PLCSTrackQueryReferenceModel(
-        PLCSModelConfig.from_mapping(_raw_config())
-    )
+    model = PLCSTrackQueryReferenceModel(PLCSModelConfig.from_mapping(_raw_config()))
     model.eval()
     return model
 
@@ -70,9 +67,7 @@ def _inputs() -> dict[str, Tensor]:
 
 
 def test_public_forward_has_exact_required_sixth_tensor() -> None:
-    assert list(
-        inspect.signature(PLCSTrackQueryReferenceModel.forward).parameters
-    ) == [
+    assert list(inspect.signature(PLCSTrackQueryReferenceModel.forward).parameters) == [
         "self",
         "human_kp",
         "human_vis",
@@ -99,20 +94,19 @@ def test_coordinates_expand_distinct_batch_references_across_all_time() -> None:
         num_views=3,
         num_detections=2,
         num_queries=2,
-        selector_mode=ReferenceSelectorMode.REFERENCE,
-    ).reshape(2, 2, 8, 3)
+    ).reshape(2, 2, 5, 3)
 
-    expected_camera = torch.tensor([0, 0, 1, 1, 2, 2, 3, 3])
+    expected_camera = torch.tensor([0, 0, 1, 2, 3])
     assert torch.equal(coordinates[:, :, :, 1], expected_camera.expand(2, 2, -1))
-    assert torch.equal(coordinates[:, 0, :, 0], torch.zeros(2, 8, dtype=torch.int64))
-    assert torch.equal(coordinates[:, 1, :, 0], torch.ones(2, 8, dtype=torch.int64))
+    assert torch.equal(coordinates[:, 0, :, 0], torch.zeros(2, 5, dtype=torch.int64))
+    assert torch.equal(coordinates[:, 1, :, 0], torch.ones(2, 5, dtype=torch.int64))
     assert torch.equal(
         coordinates[0, :, :, 2],
-        torch.tensor([0, 0, 1, 1, 0, 0, 1, 1]).expand(2, -1),
+        torch.tensor([0, 0, 1, 0, 1]).expand(2, -1),
     )
     assert torch.equal(
         coordinates[1, :, :, 2],
-        torch.tensor([0, 0, 1, 1, 1, 1, 0, 0]).expand(2, -1),
+        torch.tensor([0, 0, 1, 1, 0]).expand(2, -1),
     )
 
 
@@ -143,7 +137,6 @@ def test_forward_uses_exact_shared_coordinates_and_frequencies() -> None:
         num_views=3,
         num_detections=2,
         num_queries=2,
-        selector_mode=ReferenceSelectorMode.REFERENCE,
     )
     torch.testing.assert_close(
         captured["spatial_freqs"],
@@ -171,9 +164,7 @@ def test_forward_uses_exact_shared_coordinates_and_frequencies() -> None:
             "\[0, 3\)",
         ),
         (
-            lambda inputs: inputs["padding_mask"].__setitem__(
-                (0, 1, 0), True
-            ),
+            lambda inputs: inputs["padding_mask"].__setitem__((0, 1, 0), True),
             "unmasked reference context",
         ),
     ],
@@ -204,7 +195,6 @@ def test_empty_visibility_keeps_reference_context_and_backward_is_finite() -> No
 def test_v1_and_v2_state_dicts_are_strictly_incompatible() -> None:
     raw_v1 = _raw_config()
     raw_v1["name"] = "plcs_track_query"
-    raw_v1["role_rope_enabled"] = True
     del raw_v1["target_frame_contract"]
     del raw_v1["track_query_rope_contract"]
     del raw_v1["reference_selector_mode"]

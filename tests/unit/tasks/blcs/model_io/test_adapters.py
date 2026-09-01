@@ -267,7 +267,6 @@ def test_track_query_config_rejects_removed_fusion_keys(removed_key: str) -> Non
         "num_queries": 2,
         "rope_dim": 4,
         "dropout": 0.0,
-        "role_rope_enabled": True,
         "invisible_init_std": 0.02,
         "mhc": {
             "coefficient_dim": 8,
