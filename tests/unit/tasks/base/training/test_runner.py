@@ -42,7 +42,7 @@ def test_run_compiles_after_init_weights_and_before_trainer_construction(
     make_training_config: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    config = OmegaConf.create(make_training_config())
+    config = OmegaConf.create(make_training_config(run={"test_after_fit": True}))
     runner = BaseTrainingRunner()
     runtime = runner.validate_runtime_config(config)
     events: list[str] = []
@@ -53,6 +53,11 @@ def test_run_compiles_after_init_weights_and_before_trainer_construction(
         def fit(self, *args: object, **kwargs: object) -> None:
             del args, kwargs
             events.append("fit")
+
+        def test(self, *args: object, **kwargs: object) -> None:
+            del args
+            assert kwargs["ckpt_path"] is None
+            events.append("test")
 
     monkeypatch.setattr(runner, "prepare_config", lambda _: None)
     monkeypatch.setattr(runner, "seed_everything", lambda _: None)
@@ -68,6 +73,7 @@ def test_run_compiles_after_init_weights_and_before_trainer_construction(
         "maybe_load_init_weights",
         lambda *_: events.append("init_weights"),
     )
+
     def compile_models(*args: object) -> tuple[str, ...]:
         del args
         events.append("compile")
@@ -88,7 +94,7 @@ def test_run_compiles_after_init_weights_and_before_trainer_construction(
     runner.run(config)
 
     assert runtime.training.compile.enabled is True
-    assert events == ["init_weights", "compile", "trainer", "fit"]
+    assert events == ["init_weights", "compile", "trainer", "fit", "test"]
 
 
 def test_maybe_compile_models_is_noop_when_disabled(
@@ -116,6 +122,43 @@ def test_maybe_compile_models_is_noop_when_disabled(
         )
         == ()
     )
+
+
+@pytest.mark.parametrize(
+    ("compile_result", "message"),
+    [
+        (["model"], "must return a tuple"),
+        (("model", 1), "non-string target name"),
+    ],
+)
+def test_maybe_compile_models_validates_compile_hook_return_contract(
+    make_training_config: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    compile_result: object,
+    message: str,
+) -> None:
+    runtime = BaseTrainingRunner().validate_runtime_config(
+        OmegaConf.create(make_training_config())
+    )
+
+    class _CompileCapableModule:
+        def compilation_targets(self) -> dict[str, object]:
+            return {}
+
+    monkeypatch.setattr(
+        "src.tasks.base.training.runner.BaseLightningModule",
+        _CompileCapableModule,
+    )
+    monkeypatch.setattr(
+        "src.tasks.base.training.runner.compile_modules",
+        lambda *_: compile_result,
+    )
+
+    with pytest.raises(TypeError, match=message):
+        BaseTrainingRunner().maybe_compile_models(
+            runtime,
+            cast(Any, _CompileCapableModule()),
+        )
 
 
 def test_select_devices_rejects_unavailable_positive_gpu_request(

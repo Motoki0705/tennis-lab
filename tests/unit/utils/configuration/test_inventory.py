@@ -108,6 +108,27 @@ def test_mixed_court_training_boundary_remains_explicitly_registered() -> None:
     assert boundary.executable_module
 
 
+def test_court_alignment_train_and_evaluate_boundaries_are_registered() -> None:
+    boundaries = {
+        boundary.module: boundary
+        for boundary in EXPECTED_RUNTIME_BOUNDARIES
+        if boundary.domain == "court_alignment"
+    }
+    assert {
+        module: (boundary.validator_key, boundary.validator_callable)
+        for module, boundary in boundaries.items()
+    } == {
+        "src.tasks.court_alignment.scripts.train": (
+            "court_alignment.train",
+            "src.tasks.court_alignment.configuration.validate_training_boundary",
+        ),
+        "src.tasks.court_alignment.scripts.evaluate": (
+            "court_alignment.evaluate",
+            "src.tasks.court_alignment.configuration.validate_evaluation_boundary",
+        ),
+    }
+
+
 def test_default_inventory_contains_only_current_policy() -> None:
     assert DEFAULT_AUDIT_INVENTORY.rules == tuple(AuditRule)
     assert DEFAULT_AUDIT_INVENTORY.boundaries == EXPECTED_RUNTIME_BOUNDARIES

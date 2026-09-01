@@ -1,0 +1,6 @@
+_target_: src.tasks.court_alignment.training.losses.CourtAlignmentLoss
+heatmap_weight: 1.0
+center_vote_weight: 0.05
+focal_alpha: 2.0
+focal_beta: 4.0
+vote_beta: 1.0

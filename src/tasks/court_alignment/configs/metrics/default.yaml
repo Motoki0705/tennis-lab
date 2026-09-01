@@ -1,0 +1,9 @@
+_target_: src.tasks.court_alignment.training.metrics.CourtAlignmentMetrics
+threshold: ${decoder.threshold}
+nms_kernel: ${decoder.nms_kernel}
+max_peaks: ${decoder.max_peaks}
+match_max_error_px: 8.0
+minimum_common_keypoints: 4
+minimum_visible_keypoints: 4
+minimum_visible_fraction: 0.5
+minimum_sim2_keypoints: 4

@@ -1062,6 +1062,73 @@ def _module_path(module: str) -> Path | None:
     return None
 
 
+def _module_or_target_path(
+    reference: str,
+    *,
+    allow_target_symbol: bool = True,
+) -> Path | None:
+    """Resolve an exact module or a Hydra ``module.Symbol`` target.
+
+    ``python -m`` references must use the exact module path, while Hydra
+    targets may append one top-level symbol to the longest existing module
+    prefix.  Keeping the distinction at the call site prevents a typo in a
+    CLI module from being accepted merely because it happens to look like a
+    valid symbol.
+    """
+    direct = _module_path(reference)
+    if direct is not None:
+        return direct
+    if not allow_target_symbol:
+        return None
+
+    parts = reference.split(".")
+    for split_at in range(len(parts) - 1, 0, -1):
+        module = ".".join(parts[:split_at])
+        remaining = parts[split_at:]
+        if len(remaining) != 1:
+            continue
+        resolved = _module_path(module)
+        if resolved is None:
+            continue
+
+        tree = ast.parse(
+            resolved.read_text(encoding="utf-8"),
+            filename=str(resolved),
+        )
+        symbols: set[str] = set()
+        for node in tree.body:
+            if isinstance(
+                node,
+                (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef),
+            ):
+                symbols.add(node.name)
+            elif isinstance(node, ast.Import):
+                symbols.update(
+                    alias.asname or alias.name.split(".", maxsplit=1)[0]
+                    for alias in node.names
+                )
+            elif isinstance(node, ast.ImportFrom):
+                symbols.update(
+                    alias.asname or alias.name
+                    for alias in node.names
+                    if alias.name != "*"
+                )
+            elif isinstance(node, ast.Assign):
+                symbols.update(
+                    target.id
+                    for target in node.targets
+                    if isinstance(target, ast.Name)
+                )
+            elif isinstance(node, ast.AnnAssign) and isinstance(
+                node.target, ast.Name
+            ):
+                symbols.add(node.target.id)
+
+        if remaining[0] in symbols:
+            return resolved
+    return None
+
+
 def _changed_or_untracked_paths(scope: str) -> set[str]:
     changed = set(
         _git_paths("diff", "--name-only", BASE_REVISION, "--", scope)
@@ -1744,21 +1811,48 @@ def test_static_src_import_modules_exist() -> None:
 
 def test_repository_cli_and_dynamic_target_modules_exist() -> None:
     patterns = (
-        re.compile(r"\bpython(?:3)?\s+-m\s+(src(?:\.[A-Za-z_]\w*)+)"),
-        re.compile(r"(?m)^\s*_target_:\s*['\"]?(src(?:\.[A-Za-z_]\w*)+)"),
+        (
+            False,
+            re.compile(r"\bpython(?:3)?\s+-m\s+(src(?:\.[A-Za-z_]\w*)+)"),
+        ),
+        (
+            True,
+            re.compile(
+                r"(?m)^\s*_target_:\s*['\"]?(src(?:\.[A-Za-z_]\w*)+)"
+            ),
+        ),
     )
     discovered: list[tuple[Path, str]] = []
     missing: list[str] = []
     for path in _repository_consumer_files():
         text = path.read_text(encoding="utf-8", errors="replace")
-        for pattern in patterns:
+        for allow_target_symbol, pattern in patterns:
             for match in pattern.finditer(text):
                 module = match.group(1)
                 discovered.append((path, module))
-                if _module_path(module) is None:
+                if (
+                    _module_or_target_path(
+                        module,
+                        allow_target_symbol=allow_target_symbol,
+                    )
+                    is None
+                ):
                     missing.append(
                         f"{path.relative_to(REPOSITORY_ROOT)}: {module}"
                     )
 
     assert discovered, "consumer scan found no CLI or dynamic-target modules"
     assert not missing, "unresolved CLI/dynamic modules:\n" + "\n".join(missing)
+
+
+def test_dynamic_target_resolution_rejects_symbol_and_module_typos() -> None:
+    assert _module_or_target_path(
+        "src.tasks.court_alignment.models.cnn.CourtAlignmentCNN",
+    ) is not None
+    assert _module_or_target_path(
+        "src.tasks.court_alignment.models.cnn.CourtAlignmentCNN_SYMBOL_TYPO",
+    ) is None
+    assert _module_or_target_path(
+        "src.tasks.court_alignment.scripts.train.EXTRA_NOT_A_MODULE",
+        allow_target_symbol=False,
+    ) is None

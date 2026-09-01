@@ -12,7 +12,7 @@ import types
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import pytorch_lightning as pl
 import torch
@@ -85,7 +85,13 @@ class BaseTrainingRunner:
             )
 
         if not self.skip_test(config):
-            trainer.test(lightning_module, datamodule=datamodule)
+            test_ckpt = self.test_checkpoint_path(config, trainer)
+            with self.resume_checkpoint_load_env(test_ckpt):
+                trainer.test(
+                    lightning_module,
+                    datamodule=datamodule,
+                    ckpt_path=test_ckpt,
+                )
 
         print(f"Training complete. Outputs saved to {output_dir}")
 
@@ -127,6 +133,11 @@ class BaseTrainingRunner:
         all shared values must be explicit and valid at the entry boundary.
         """
         _ = config
+        return None
+
+    def test_checkpoint_path(self, config: Any, trainer: pl.Trainer) -> str | None:
+        """Select the checkpoint used by the optional post-fit test phase."""
+        del config, trainer
         return None
 
     def resolve_resume(
@@ -191,13 +202,23 @@ class BaseTrainingRunner:
                 "training.compile.enabled=true requires a BaseLightningModule "
                 "with explicit compilation_targets()."
             )
-        return cast(
-            tuple[str, ...],
-            compile_modules(
-                lightning_module.compilation_targets(),
-                compile_config,
-            ),
+        compiled = compile_modules(
+            lightning_module.compilation_targets(),
+            compile_config,
         )
+        if not isinstance(compiled, tuple):
+            raise TypeError(
+                "compile_modules() must return a tuple of compiled target names."
+            )
+        compiled_names: list[str] = []
+        for index, name in enumerate(compiled):
+            if not isinstance(name, str):
+                raise TypeError(
+                    "compile_modules() returned a non-string target name at "
+                    f"index {index}: {type(name).__name__}."
+                )
+            compiled_names.append(name)
+        return tuple(compiled_names)
 
     @contextmanager
     def resume_checkpoint_load_env(self, resume_ckpt: str | None) -> Iterator[None]:

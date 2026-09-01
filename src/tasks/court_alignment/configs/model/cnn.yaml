@@ -1,0 +1,5 @@
+_target_: src.tasks.court_alignment.models.cnn.CourtAlignmentCNN
+base_channels: 24
+group_norm_groups: 8
+num_keypoints: 14
+heatmap_prior_probability: 0.1

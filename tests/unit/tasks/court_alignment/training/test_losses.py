@@ -6,8 +6,11 @@ import pytest
 import torch
 
 from src.tasks.court_alignment.training.losses import (
+    CenterNetFocalLoss,
+    CourtAlignmentLoss,
     center_vote_loss,
     centernet_focal_loss,
+    validate_center_vote_inputs,
 )
 
 
@@ -43,7 +46,7 @@ def test_focal_loss_requires_a_lattice_positive_unless_explicitly_allowed() -> N
     logits = torch.zeros(1, 14, 8, 8)
     target = torch.zeros_like(logits)
     with pytest.raises(ValueError, match="no exact positive"):
-        centernet_focal_loss(logits, target)
+        CenterNetFocalLoss().validate_inputs(logits, target)
     assert torch.isfinite(
         centernet_focal_loss(logits, target, allow_no_positive=True)
     )
@@ -53,4 +56,47 @@ def test_focal_loss_requires_a_lattice_positive_unless_explicitly_allowed() -> N
 def test_center_vote_mask_shape_and_dtype_are_strict(bad_mask: torch.Tensor) -> None:
     prediction = torch.zeros(1, 2, 8, 8)
     with pytest.raises((ValueError, TypeError)):
-        center_vote_loss(prediction, prediction, bad_mask)
+        validate_center_vote_inputs(prediction, prediction, bad_mask)
+
+
+def test_module_runtime_validation_normalizes_mask_outside_forward() -> None:
+    loss = CourtAlignmentLoss()
+    heatmap_logits = torch.zeros((1, 14, 8, 8))
+    target_heatmaps = torch.zeros_like(heatmap_logits)
+    target_heatmaps[:, :, 3, 4] = 1.0
+    center_votes = torch.zeros((1, 2, 8, 8))
+    target_center_votes = torch.zeros_like(center_votes)
+    mask = torch.zeros((1, 8, 8), dtype=torch.bool)
+
+    normalized_mask = loss.validate_inputs(
+        heatmap_logits,
+        target_heatmaps,
+        center_votes,
+        target_center_votes,
+        mask,
+    )
+
+    assert normalized_mask.shape == (1, 1, 8, 8)
+    output = loss(
+        heatmap_logits,
+        target_heatmaps,
+        center_votes,
+        target_center_votes,
+        normalized_mask,
+    )
+    assert torch.isfinite(output.total)
+
+
+def test_module_runtime_validation_rejects_missing_focal_positive() -> None:
+    loss = CourtAlignmentLoss()
+    heatmap_logits = torch.zeros((1, 14, 8, 8))
+    center_votes = torch.zeros((1, 2, 8, 8))
+
+    with pytest.raises(ValueError, match="no exact positive"):
+        loss.validate_inputs(
+            heatmap_logits,
+            torch.zeros_like(heatmap_logits),
+            center_votes,
+            torch.zeros_like(center_votes),
+            torch.zeros((1, 8, 8), dtype=torch.bool),
+        )

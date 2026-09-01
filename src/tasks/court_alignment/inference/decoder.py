@@ -8,7 +8,9 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor
 
+from src.tasks.court_alignment.geometry.court import canonical_court_keypoints
 from src.utils.data.heatmaps import heatmaps_to_peaks, refine_peaks_log_parabolic
+from src.utils.schema.court import CAMERA_VIEW_HALF_TURN_INDEX
 
 NUM_KEYPOINTS = 14
 
@@ -74,6 +76,9 @@ class CourtInstanceBatch:
     scores: Tensor  # (N,14)
     valid: Tensor  # (N,14)
     centers_px: Tensor  # (N,2)
+    semantic_count: Tensor | None = None  # (N,)
+    aggregate_confidence: Tensor | None = None  # (N,)
+    geometry_residual_px: Tensor | None = None  # (N,)
 
     def __post_init__(self) -> None:
         if self.keypoints_px.ndim != 3 or self.keypoints_px.shape[1:] != (NUM_KEYPOINTS, 2):
@@ -99,6 +104,31 @@ class CourtInstanceBatch:
             or self.centers_px.device != self.keypoints_px.device
         ):
             raise ValueError("instance tensors must share a device.")
+        optional_fields = (
+            ("semantic_count", self.semantic_count),
+            ("aggregate_confidence", self.aggregate_confidence),
+            ("geometry_residual_px", self.geometry_residual_px),
+        )
+        for optional_name, optional_value in optional_fields:
+            if optional_value is None:
+                continue
+            if optional_value.shape != (self.keypoints_px.shape[0],):
+                raise ValueError(
+                    f"instance {optional_name} must have shape (N,)."
+                )
+            if optional_value.device != self.keypoints_px.device:
+                raise ValueError(
+                    f"instance {optional_name} must share the keypoint device."
+                )
+            if optional_name == "semantic_count":
+                if optional_value.dtype not in {torch.int32, torch.int64}:
+                    raise TypeError("instance semantic_count must have integer dtype.")
+            elif not optional_value.is_floating_point() or not bool(
+                torch.isfinite(optional_value).all()
+            ):
+                raise ValueError(
+                    f"instance {optional_name} must be finite floating point."
+                )
 
     @property
     def num_instances(self) -> int:
@@ -147,6 +177,134 @@ class _Cluster:
     center: Tensor
     points: list[tuple[int, Tensor, Tensor]]
     vote_centers: list[Tensor]
+
+
+@dataclass(frozen=True, slots=True)
+class _RankedCluster:
+    keypoints_px: Tensor
+    scores: Tensor
+    valid: Tensor
+    center_px: Tensor
+    semantic_count: Tensor
+    aggregate_confidence: Tensor
+    geometry_residual_px: Tensor
+    original_index: int
+
+
+@dataclass(frozen=True, slots=True)
+class SimilarityFit2D:
+    """Least-squares 2-D similarity fit for court-geometry diagnostics."""
+
+    translation_px: Tensor
+    rotation_rad: Tensor
+    scale_px_per_metre: Tensor
+    residual_px: Tensor
+
+
+def fit_similarity_2d(source_xy: Tensor, target_xy: Tensor) -> SimilarityFit2D:
+    """Fit ``target = scale * R(rotation) * source + translation``.
+
+    At least two distinct source points and non-zero target spread are
+    required. Degenerate inputs fail explicitly because treating an
+    underdetermined fit as geometrically consistent would let collapsed
+    false-positive clusters outrank courts.
+    """
+
+    if source_xy.ndim != 2 or source_xy.shape[-1] != 2:
+        raise ValueError("source_xy must have shape (N,2).")
+    if target_xy.shape != source_xy.shape:
+        raise ValueError("target_xy must have the same shape as source_xy.")
+    if source_xy.shape[0] < 2:
+        raise ValueError("A 2-D similarity fit requires at least two points.")
+    if not source_xy.is_floating_point() or not target_xy.is_floating_point():
+        raise TypeError("Similarity-fit coordinates must be floating point.")
+    if source_xy.device != target_xy.device:
+        raise ValueError("Similarity-fit coordinates must share a device.")
+    if not bool(torch.isfinite(source_xy).all()) or not bool(
+        torch.isfinite(target_xy).all()
+    ):
+        raise ValueError("Similarity-fit coordinates must be finite.")
+
+    source_center = source_xy.mean(dim=0)
+    target_center = target_xy.mean(dim=0)
+    source = source_xy - source_center
+    target = target_xy - target_center
+    denominator = source.square().sum()
+    if float(denominator) <= torch.finfo(source_xy.dtype).eps:
+        raise ValueError("Similarity-fit source points must be distinct.")
+    a = (source * target).sum() / denominator
+    b = (source[:, 0] * target[:, 1] - source[:, 1] * target[:, 0]).sum()
+    b = b / denominator
+    rotation = torch.stack((torch.stack((a, -b)), torch.stack((b, a))))
+    translation = target_center - source_center @ rotation.T
+    fitted = source_xy @ rotation.T + translation
+    residual = torch.linalg.vector_norm(fitted - target_xy, dim=-1).mean()
+    scale = torch.sqrt(a.square() + b.square())
+    if float(scale) <= torch.finfo(source_xy.dtype).eps:
+        raise ValueError("Similarity-fit target points must have non-zero spread.")
+    return SimilarityFit2D(
+        translation_px=translation,
+        rotation_rad=torch.atan2(b, a),
+        scale_px_per_metre=scale,
+        residual_px=residual,
+    )
+
+
+def _geometry_residual(keypoints_px: Tensor, valid: Tensor) -> Tensor:
+    indices = torch.nonzero(valid, as_tuple=False).flatten()
+    if indices.numel() < 2:
+        return keypoints_px.new_tensor(torch.finfo(keypoints_px.dtype).max)
+    canonical = canonical_court_keypoints(
+        dtype=keypoints_px.dtype,
+        device=keypoints_px.device,
+    )
+    half_turn = torch.as_tensor(
+        CAMERA_VIEW_HALF_TURN_INDEX,
+        dtype=torch.long,
+        device=keypoints_px.device,
+    )
+    try:
+        direct = fit_similarity_2d(canonical[indices], keypoints_px[indices])
+        flipped = fit_similarity_2d(
+            canonical[half_turn[indices]],
+            keypoints_px[indices],
+        )
+    except ValueError:
+        return keypoints_px.new_tensor(torch.finfo(keypoints_px.dtype).max)
+    return torch.minimum(direct.residual_px, flipped.residual_px)
+
+
+def _materialize_cluster(
+    cluster: _Cluster,
+    *,
+    original_index: int,
+    template_points: Tensor,
+    template_scores: Tensor,
+) -> _RankedCluster:
+    keypoints = template_points.new_zeros((NUM_KEYPOINTS, 2))
+    scores = template_scores.new_zeros((NUM_KEYPOINTS,))
+    valid = torch.zeros(
+        (NUM_KEYPOINTS,),
+        dtype=torch.bool,
+        device=template_points.device,
+    )
+    for channel, point, score in cluster.points:
+        if not bool(valid[channel]) or score > scores[channel]:
+            keypoints[channel] = point
+            scores[channel] = score
+            valid[channel] = True
+    semantic_count = valid.sum(dtype=torch.long)
+    aggregate_confidence = scores[valid].sum()
+    return _RankedCluster(
+        keypoints_px=keypoints,
+        scores=scores,
+        valid=valid,
+        center_px=cluster.center,
+        semantic_count=semantic_count,
+        aggregate_confidence=aggregate_confidence,
+        geometry_residual_px=_geometry_residual(keypoints, valid),
+        original_index=original_index,
+    )
 
 
 def _validate_decoder_inputs(heatmap_logits: Tensor, center_votes: Tensor) -> None:
@@ -309,23 +467,66 @@ def group_peak_votes(
                         vote_centers=[vote_center.clone()],
                     )
                 )
-        clusters.sort(key=lambda cluster: (float(cluster.center[1]), float(cluster.center[0])))
+        ranked = [
+            _materialize_cluster(
+                cluster,
+                original_index=cluster_index,
+                template_points=sample_kp,
+                template_scores=sample_scores,
+            )
+            for cluster_index, cluster in enumerate(clusters)
+        ]
+        ranked.sort(
+            key=lambda cluster: (
+                -int(cluster.semantic_count),
+                -float(cluster.aggregate_confidence),
+                float(cluster.geometry_residual_px),
+                float(cluster.center_px[1]),
+                float(cluster.center_px[0]),
+                cluster.original_index,
+            )
+        )
         if max_instances is not None:
-            clusters = clusters[:max_instances]
-        count = len(clusters)
-        instance_kp = sample_kp.new_zeros((count, NUM_KEYPOINTS, 2))
-        instance_scores = sample_scores.new_zeros((count, NUM_KEYPOINTS))
-        instance_valid = torch.zeros((count, NUM_KEYPOINTS), dtype=torch.bool, device=sample_kp.device)
-        instance_centers = sample_kp.new_zeros((count, 2))
-        for instance_index, cluster in enumerate(clusters):
-            entries = cluster.points
-            instance_centers[instance_index] = cluster.center
-            for channel, point, score in entries:
-                if not bool(instance_valid[instance_index, channel]) or score > instance_scores[instance_index, channel]:
-                    instance_kp[instance_index, channel] = point
-                    instance_scores[instance_index, channel] = score
-                    instance_valid[instance_index, channel] = True
-        outputs.append(CourtInstanceBatch(instance_kp, instance_scores, instance_valid, instance_centers))
+            ranked = ranked[:max_instances]
+        if ranked:
+            instance_kp = torch.stack([cluster.keypoints_px for cluster in ranked])
+            instance_scores = torch.stack([cluster.scores for cluster in ranked])
+            instance_valid = torch.stack([cluster.valid for cluster in ranked])
+            instance_centers = torch.stack([cluster.center_px for cluster in ranked])
+            semantic_count = torch.stack(
+                [cluster.semantic_count for cluster in ranked]
+            )
+            aggregate_confidence = torch.stack(
+                [cluster.aggregate_confidence for cluster in ranked]
+            )
+            geometry_residual = torch.stack(
+                [cluster.geometry_residual_px for cluster in ranked]
+            )
+        else:
+            instance_kp = sample_kp.new_zeros((0, NUM_KEYPOINTS, 2))
+            instance_scores = sample_scores.new_zeros((0, NUM_KEYPOINTS))
+            instance_valid = torch.zeros(
+                (0, NUM_KEYPOINTS),
+                dtype=torch.bool,
+                device=sample_kp.device,
+            )
+            instance_centers = sample_kp.new_zeros((0, 2))
+            semantic_count = torch.zeros(
+                (0,), dtype=torch.long, device=sample_kp.device
+            )
+            aggregate_confidence = sample_scores.new_zeros((0,))
+            geometry_residual = sample_kp.new_zeros((0,))
+        outputs.append(
+            CourtInstanceBatch(
+                instance_kp,
+                instance_scores,
+                instance_valid,
+                instance_centers,
+                semantic_count,
+                aggregate_confidence,
+                geometry_residual,
+            )
+        )
     result = CourtInstances(tuple(outputs))
     return result[0] if squeezed else result
 
@@ -373,10 +574,12 @@ __all__ = [
     "CourtInstanceBatch",
     "CourtInstances",
     "CourtPeakDetections",
+    "SimilarityFit2D",
     "decode_court_instances",
     "decode_keypoint_peaks",
     "decode_multi_peak_keypoints",
     "extract_keypoint_peaks",
+    "fit_similarity_2d",
     "group_center_votes",
     "group_peak_votes",
 ]
