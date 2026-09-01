@@ -1,0 +1,16 @@
+{
+  "run_id": "1788249772365915349_604689_court-align-kp14-pilot-sigma-1-r1",
+  "name": "court-align-kp14-pilot-sigma-1-r1",
+  "command": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.venv/bin/python -m src.tasks.court_alignment.scripts.train data.train_samples=128 data.val_samples=32 data.test_samples=32 data.batch_size=4 data.num_workers=4 training.steps_per_epoch=32 training.trainer.max_epochs=20 training.trainer.log_every_n_steps=8 run.output_dir=court_alignment/pilot_sigma_1_r1",
+  "provider": "codex",
+  "session": "01a05a02-ad55-76c0-9fcb-f250929e59a7",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "456a6b19e6ffbf73b9645b76f860dde14ae37906",
+  "branch": "feat/court-alignment-kp14-pipeline",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-alignment-kp14",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-alignment-kp14",
+  "captured_at": "2026-09-01T17:02:52+09:00"
+}
