@@ -721,7 +721,7 @@ class TrackQueryModelIOAdapter:
     """Boundary adapter for lifecycle-query BLCS batches and outputs."""
 
     input_profile: Literal["tracking"] = "tracking"
-    _requires_legacy_contract = True
+    _requires_physical_contract = True
 
     def __init__(
         self,
@@ -744,19 +744,19 @@ class TrackQueryModelIOAdapter:
                 "BLCS tracking adapter CourtKP20 contract must be canonical."
             )
         self.court_keypoint_contract = canonical_contract
-        if self._requires_legacy_contract:
-            legacy_contract = TrackQueryReferenceContract.legacy_v1()
+        if self._requires_physical_contract:
+            physical_contract = TrackQueryReferenceContract.physical_v1()
             if (
                 canonical_contract.contract_id
-                != legacy_contract.court_keypoint_contract
+                != physical_contract.court_keypoint_contract
                 or canonical_contract.target_frame_id
-                != legacy_contract.target_frame_contract
+                != physical_contract.target_frame_contract
             ):
                 raise CourtKeypointContractMismatchError(
-                    "Legacy BLCS tracking adapters require exact physical CourtKP20, "
+                    "Canonical BLCS tracking adapters require physical CourtKP20, "
                     "physical target-frame, and role-RoPE semantics."
                 )
-            self.track_query_reference_contract = legacy_contract
+            self.track_query_reference_contract = physical_contract
 
     @property
     def model_type(self) -> type[nn.Module]:
@@ -935,7 +935,7 @@ class TrackQueryModelIOAdapter:
 class TrackQueryReferenceModelIOAdapter(TrackQueryModelIOAdapter):
     """Exact six-input adapter for the normal BLCS reference-v2 model."""
 
-    _requires_legacy_contract = False
+    _requires_physical_contract = False
 
     def __init__(
         self,

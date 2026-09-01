@@ -1911,7 +1911,7 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
     elif isinstance(model, TrackQueryModelConfig):
         if court_keypoint_contract.selector != "physical_v1":
             raise SemanticConfigurationError(
-                "Legacy BLCS track-query models require "
+                "Canonical BLCS track-query models require "
                 "court_keypoints.selector='physical_v1'; select an explicit "
                 "reference-v2 model for camera_view_v2."
             )

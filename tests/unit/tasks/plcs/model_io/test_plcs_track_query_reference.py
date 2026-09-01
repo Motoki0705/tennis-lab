@@ -14,6 +14,7 @@ from src.tasks.base.generate_dataset import (
     resolve_court_keypoint_contract,
 )
 from src.tasks.base.model_io import (
+    MissingTrackQueryReferenceMetadataError,
     TrackQueryReferenceContract,
     TrackQueryReferenceContractMismatchError,
     write_track_query_reference_contract,
@@ -216,27 +217,68 @@ def test_plcs_contract_resolver_matches_model_type_court_target_rope_selector() 
         )
 
 
+def test_plcs_contract_resolver_accepts_only_canonical_model_names() -> None:
+    physical = resolve_court_keypoint_contract("physical_v1")
+    canonical = PLCSModelConfig(
+        name="plcs_track_query",
+        input_profile=None,
+        values={},
+        track_query_mhc=None,
+        track_query_cswa=None,
+    )
+    assert resolve_plcs_track_query_reference_contract(
+        canonical,
+        physical,
+    ) == TrackQueryReferenceContract.physical_v1()
+
+    removed = PLCSModelConfig(
+        name="plcs_removed_track_query_variant",
+        input_profile=None,
+        values={},
+        track_query_mhc=None,
+        track_query_cswa=None,
+    )
+    with pytest.raises(ValueError, match="not a track-query architecture"):
+        resolve_plcs_track_query_reference_contract(removed, physical)
+
+
 def test_checkpoint_metadata_is_exact_and_shape_independent() -> None:
     selector = TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.REFERENCE)
-    legacy = TrackQueryReferenceContract.legacy_v1()
+    canonical = TrackQueryReferenceContract.physical_v1()
     checkpoint: dict[str, object] = {"state_dict": {"same.shape": torch.ones(1)}}
     write_plcs_checkpoint_track_query_reference(checkpoint, selector)
     validate_plcs_checkpoint_track_query_reference(checkpoint, selector)
 
     with pytest.raises(TrackQueryReferenceContractMismatchError):
-        validate_plcs_checkpoint_track_query_reference(checkpoint, legacy)
+        validate_plcs_checkpoint_track_query_reference(checkpoint, canonical)
 
 
-def test_metadata_free_checkpoint_is_allowed_only_for_explicit_legacy_v1() -> None:
-    validate_plcs_checkpoint_track_query_reference(
-        {},
-        TrackQueryReferenceContract.legacy_v1(),
-    )
-    with pytest.raises(ValueError, match="metadata is absent"):
+@pytest.mark.parametrize(
+    "contract",
+    [
+        TrackQueryReferenceContract.physical_v1(),
+        TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.REFERENCE),
+    ],
+)
+def test_canonical_checkpoint_rejects_metadata_free_and_pre_promotion_artifacts(
+    contract: TrackQueryReferenceContract,
+) -> None:
+    with pytest.raises(
+        MissingTrackQueryReferenceMetadataError,
+        match="architecture metadata is absent",
+    ):
         validate_plcs_checkpoint_track_query_reference(
             {},
-            TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.REFERENCE),
+            contract,
         )
+
+    semantic_only: dict[str, object] = {}
+    write_track_query_reference_contract(semantic_only, contract)
+    with pytest.raises(
+        MissingTrackQueryReferenceMetadataError,
+        match="pre-promotion checkpoints are incompatible",
+    ):
+        validate_plcs_checkpoint_track_query_reference(semantic_only, contract)
 
 
 def test_factory_model_type_remains_exact_for_reference_class() -> None:

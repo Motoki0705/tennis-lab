@@ -13,6 +13,7 @@ from omegaconf import DictConfig, open_dict
 from src.tasks.base.generate_dataset import (
     CourtKeypointContract,
     CourtKeypointContractMismatchError,
+    MissingCourtKeypointMetadataError,
     resolve_court_keypoint_contract,
 )
 from src.tasks.base.model_io import (
@@ -58,8 +59,8 @@ def _checkpoint_config(checkpoint: Mapping[str, Any]) -> Any:
     return hyper_parameters["config"]
 
 
-def _overlay_legacy_physical_config(config: Any) -> Any:
-    """Qualify an explicitly selected metadata-free checkpoint as physical v1."""
+def _qualify_metadata_free_non_tracking_config(config: Any) -> Any:
+    """Add explicit physical-v1 config only for non-tracking checkpoints."""
     copied = deepcopy(config)
     if isinstance(copied, DictConfig):
         with open_dict(copied):
@@ -92,9 +93,11 @@ def resolve_config_track_query_reference_contract(
         raise RuntimeError("BLCS checkpoint config.model must be a mapping.")
     name = raw_model.get("name")
     if name == "blcs_track_query":
-        return TrackQueryReferenceContract.legacy_v1()
-    if name != "blcs_track_query_reference":
+        return TrackQueryReferenceContract.physical_v1()
+    if name in {None, "blcs", "blcs_multiview_axial"}:
         return None
+    if name != "blcs_track_query_reference":
+        raise RuntimeError(f"Unsupported BLCS checkpoint model name {name!r}.")
     required = {
         "target_frame_contract",
         "track_query_rope_contract",
@@ -168,7 +171,6 @@ def validate_blcs_checkpoint_track_query_reference(
     validate_checkpoint_track_query_reference_contract(
         checkpoint,
         contract,
-        explicit_legacy_v1=(contract == TrackQueryReferenceContract.legacy_v1()),
         location="BLCS checkpoint",
     )
 
@@ -208,8 +210,15 @@ def load_checkpoint_runtime(
         )
 
     config = _checkpoint_config(checkpoint)
+    config_track_query_contract = resolve_config_track_query_reference_contract(config)
     if checkpoint_contract.legacy_metadata_free:
-        config = _overlay_legacy_physical_config(config)
+        if config_track_query_contract is not None:
+            raise MissingCourtKeypointMetadataError(
+                f"{path}: canonical BLCS track-query checkpoints require explicit "
+                "CourtKP20 metadata; metadata-free pre-promotion checkpoints are "
+                "incompatible."
+            )
+        config = _qualify_metadata_free_non_tracking_config(config)
     elif not _has_court_keypoint_section(config):
         raise RuntimeError(
             f"{path}: metadata-bearing BLCS checkpoint config must include "
@@ -222,7 +231,6 @@ def load_checkpoint_runtime(
             f"{config_contract.contract_id!r} does not match checkpoint/runtime "
             f"{checkpoint_contract.contract.contract_id!r}."
         )
-    config_track_query_contract = resolve_config_track_query_reference_contract(config)
     stored_track_query_metadata = extract_track_query_reference_contract_metadata(
         checkpoint,
         location=str(path),
@@ -264,10 +272,6 @@ def load_checkpoint_runtime(
         compatibility = validate_checkpoint_track_query_reference_contract(
             checkpoint,
             requested_track_query_contract,
-            explicit_legacy_v1=(
-                requested_track_query_contract
-                == TrackQueryReferenceContract.legacy_v1()
-            ),
             location=str(path),
         )
         resolved_track_query_contract = compatibility.contract

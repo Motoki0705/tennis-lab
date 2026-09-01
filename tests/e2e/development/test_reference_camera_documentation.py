@@ -106,6 +106,8 @@ def test_shared_readme_owns_reference_camera_artifact_and_runtime_semantics() ->
         "Validation and test use",
         "Direct inference and prediction visualization require",
         "Matching tensor shapes never authorize",
+        "fixed_query_track_compressed_v1",
+        "pre-promotion checkpoints are rejected",
         "Object UV/visibility",
         "player-local `canonical_pose_3d`",
         "not change. `CourtReferenceFrameProvenance`",
@@ -185,8 +187,8 @@ def test_unqualified_task_contract_oracle_catches_equivalent_restatements() -> N
         "The adapter builds a 5 tensor model call.",
         "single / multiview / track-queryの全modelは公開入力を5 tensorに統一します。",
         "modelの公開入力は5つです。",
-        "Ablations use the same five inputs under one contract.",
-        "各ablationは同じ5入力・3出力契約で比較します。",
+        "Track-query variants use the same five inputs under one contract.",
+        "各track-query variantは同じ5入力・3出力契約で比較します。",
         "M-RoPE (time,camera,role) assigns query=0 and object=1.",
         "The role axis uses query 0 and player groups 1.",
         "role軸はquery=0、court-player group=1です。",
@@ -200,7 +202,7 @@ def test_unqualified_task_contract_oracle_allows_v1_scope_and_observation_shapes
 ):
     allowed_task_details = (
         "Legacy v1 uses a five tensor forward signature.",
-        "`time_camera_role_v1` ablations use the same five inputs under one contract.",
+        "`time_camera_role_v1` track-query variants use the same five inputs under one contract.",
         "v1のrole軸はquery=0、court-player group=1です。",
         "BLCS固有の5観測tensor shapeは ball_uv、ball_vis、court_kp、court_vis、padding_maskです。",
         "PLCS has five observation tensors; v2 also requires its reference field.",

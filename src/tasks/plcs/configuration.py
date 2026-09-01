@@ -1029,7 +1029,7 @@ class PLCSTrainingConfig:
             and court_keypoint_contract.selector != "physical_v1"
         ):
             raise SemanticConfigurationError(
-                "Legacy track-query models require "
+                "Canonical track-query models require "
                 "court_keypoints.selector='physical_v1'; select an explicit "
                 "reference model for camera_view_v2."
             )
