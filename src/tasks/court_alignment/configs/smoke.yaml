@@ -1,0 +1,48 @@
+defaults:
+  - train
+  - _self_
+
+data:
+  image_size: 64
+  train_samples: 4
+  val_samples: 2
+  test_samples: 2
+  batch_size: 2
+  num_workers: 0
+  pin_memory: false
+  min_courts: 1
+  max_courts: 1
+  min_scale_px_per_metre: 1.2
+  max_scale_px_per_metre: 1.5
+  court_margin_px: 2.0
+
+model:
+  base_channels: 4
+  group_norm_groups: 2
+
+training:
+  trainer:
+    max_epochs: 1
+    deterministic: true
+    precision: 32-true
+    log_every_n_steps: 1
+    enable_progress_bar: false
+    enable_model_summary: false
+  learning_rate: 1.0e-3
+  warmup_steps: 0
+  steps_per_epoch: 2
+  compile:
+    enabled: false
+  checkpoint:
+    enabled: true
+  early_stopping:
+    enabled: false
+  lr_monitor:
+    enabled: false
+  qualitative_logging:
+    enabled: false
+
+run:
+  output_dir: court_alignment/smoke
+  gpus: 0
+  test_after_fit: true

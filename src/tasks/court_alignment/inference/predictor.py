@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
 
 import torch
 from torch import Tensor, nn
@@ -14,7 +13,10 @@ from src.tasks.court_alignment.inference.decoder import (
     decode_court_instances,
     decode_keypoint_peaks,
 )
-from src.tasks.court_alignment.models.cnn import CourtAlignmentModelOutput
+from src.tasks.court_alignment.models.cnn import (
+    validate_court_alignment_input,
+    validate_court_alignment_output,
+)
 
 
 class CourtAlignmentPredictor:
@@ -83,23 +85,19 @@ class CourtAlignmentPredictor:
             raise TypeError("Court alignment image must be floating point.")
         if not bool(torch.isfinite(image).all()):
             raise ValueError("Court alignment image must contain only finite values.")
+        if bool(torch.any((image < 0.0) | (image > 1.0))):
+            raise ValueError("Court alignment image values must lie in [0,1].")
 
     def predict(self, image: Tensor) -> CourtInstances:
         """Return grouped court instances for every input sample."""
         self._validate_image(image)
+        expected_dtype = next(self.model.parameters(), torch.empty(0)).dtype
+        validate_court_alignment_input(image, expected_dtype=expected_dtype)
         self.model.eval()
         with torch.no_grad():
             output = self.model(image.to(self.device))
-        if isinstance(output, CourtAlignmentModelOutput):
-            heatmap_logits, center_votes = output.heatmap_logits, output.center_votes
-        elif isinstance(output, Mapping):
-            try:
-                heatmap_logits = output["heatmap_logits"]
-                center_votes = output["center_votes"]
-            except KeyError as exc:
-                raise ValueError("Model mapping must contain heatmap_logits and center_votes.") from exc
-        else:
-            raise TypeError("Model must return CourtAlignmentModelOutput or a mapping.")
+        output = validate_court_alignment_output(output)
+        heatmap_logits, center_votes = output.heatmap_logits, output.center_votes
         return decode_court_instances(
             heatmap_logits,
             center_votes,

@@ -1,0 +1,8 @@
+output_dir: court_alignment/kp14_sigma_${data.sigma_px}
+seed: 42
+gpus: 1
+resume: null
+init_weights: null
+fast_dev_run: false
+dry_run: false
+test_after_fit: true

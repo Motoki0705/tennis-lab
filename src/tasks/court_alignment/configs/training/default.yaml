@@ -1,0 +1,70 @@
+trainer:
+  max_epochs: 50
+  gradient_clip_val: 1.0
+  deterministic: warn
+  precision: bf16-mixed
+  log_every_n_steps: 25
+  check_val_every_n_epoch: 1
+  accumulate_grad_batches: 1
+  reload_dataloaders_every_n_epochs: 0
+  enable_progress_bar: true
+  enable_model_summary: true
+  benchmark: false
+
+learning_rate: 1.0e-3
+weight_decay: 1.0e-4
+warmup_epochs: null
+warmup_steps: 256
+min_lr: 1.0e-6
+steps_per_epoch: 256
+
+optimizer:
+  betas: [0.9, 0.999]
+
+compile:
+  enabled: true
+  backend: inductor
+  mode: default
+  fullgraph: false
+  dynamic: false
+
+matmul_precision: high
+allow_tf32: true
+
+checkpoint:
+  enabled: true
+  filename: "court-alignment-{epoch:03d}"
+  monitor: val/loss
+  mode: min
+  save_top_k: 2
+  save_last: true
+
+early_stopping:
+  # The sigma ablation compares a fixed training budget.  Do not select a
+  # different epoch per run based on validation noise.
+  enabled: false
+  monitor: val/loss
+  mode: min
+  patience: 10
+  min_delta: 1.0e-5
+  check_on_train_epoch_end: false
+
+lr_monitor:
+  enabled: true
+  interval: step
+
+qualitative_logging:
+  enabled: false
+  every_n_epochs: 1
+  num_samples: 4
+  selection_mode: random
+  selected_indices: null
+
+gan:
+  enabled: false
+  target_weight: 0.0
+  warmup_epochs: 1
+  generator_gradient_clip_val: null
+  discriminator_gradient_clip_val: null
+  transition:
+    start_epoch: 0

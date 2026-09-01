@@ -1,0 +1,6 @@
+threshold: 0.25
+nms_kernel: 3
+max_peaks: 4
+subpixel_refine: true
+cluster_distance_px: 8.0
+max_instances: 2

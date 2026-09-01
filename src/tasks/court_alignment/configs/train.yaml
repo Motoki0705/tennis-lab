@@ -1,0 +1,17 @@
+defaults:
+  - paths: default
+  - data: default
+  - model: cnn
+  - loss: default
+  - decoder: default
+  - metrics: default
+  - training: default
+  - run: train
+  - _self_
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
