@@ -8,9 +8,7 @@ from omegaconf import open_dict
 
 from src.tasks.blcs.configuration import (
     AxialModelConfig,
-    TrackQueryAblationModelConfig,
     TrackQueryModelConfig,
-    TrackQueryReferenceAblationModelConfig,
     TrackQueryReferenceModelConfig,
     parse_model_config,
     validate_training_boundary,
@@ -91,41 +89,18 @@ def test_tracking_training_roots_require_query_slot_lifecycle_packing(
         validate_training_boundary(config)
 
 
-@pytest.mark.parametrize(
-    (
-        "model_name",
-        "hidden_dim",
-        "num_heads",
-        "num_stages",
-        "ffn_dim",
-        "rope_dim",
-    ),
-    [
-        ("track_query_small", 256, 4, 8, 704, 64),
-        ("track_query_base", 512, 8, 8, 1408, 64),
-        ("track_query_large", 512, 8, 12, 1408, 64),
-        ("track_query_xlarge", 1024, 8, 12, 2752, 128),
-    ],
-)
-def test_track_query_size_configs_compose(
-    model_name: str,
-    hidden_dim: int,
-    num_heads: int,
-    num_stages: int,
-    ffn_dim: int,
-    rope_dim: int,
-) -> None:
+def test_tracking_query_profile_composes_canonical_architecture() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
-            config_name="train_tracking", overrides=[f"model={model_name}"]
+            config_name="train_tracking", overrides=["model=tracking_query"]
         )
 
     assert config.model.name == "blcs_track_query"
-    assert config.model.hidden_dim == hidden_dim
-    assert config.model.num_heads == num_heads
-    assert config.model.num_stages == num_stages
-    assert config.model.ffn_dim == ffn_dim
-    assert config.model.rope_dim == rope_dim
+    assert config.model.hidden_dim == 512
+    assert config.model.num_heads == 8
+    assert config.model.num_stages == 12
+    assert config.model.ffn_dim == 1408
+    assert config.model.rope_dim == 64
     assert config.model.mhc.coefficient_dim == 64
     assert config.model.cswa.compression_ratio == 4
     parsed = parse_model_config(config)
@@ -138,10 +113,10 @@ def test_default_track_query_config_completes_one_cccg_cycle() -> None:
 
     parsed = parse_model_config(config)
     assert isinstance(parsed, TrackQueryModelConfig)
-    assert parsed.num_stages == 4
+    assert parsed.num_stages == 12
     assert parsed.ffn_type == "swiglu"
     assert parsed.mhc.sinkhorn_iters == 20
-    assert parsed.cswa.backend == "reference"
+    assert parsed.cswa.backend == "cuda"
 
 
 @pytest.mark.parametrize(
@@ -169,29 +144,6 @@ def test_track_query_ffn_type_is_required_typed_and_supported(
 
     with pytest.raises(error, match="ffn_type"):
         parse_model_config(config)
-
-
-def test_fixed_track_query_ablation_config_composes_and_validates() -> None:
-    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
-        config = compose(
-            config_name="train_tracking",
-            overrides=["model=track_query_ablation_d"],
-        )
-
-    parsed = validate_training_boundary(config)
-
-    assert isinstance(parsed, TrackQueryAblationModelConfig)
-    assert parsed.name == "blcs_track_query_ablation"
-    assert parsed.hidden_dim == 512
-    assert parsed.num_heads == 8
-    assert parsed.num_stages == 12
-    assert parsed.ffn_dim == 1408
-    assert parsed.num_queries == 4
-    assert parsed.rope_dim == 64
-    assert parsed.dropout == 0.0
-    assert parsed.cswa.compression_ratio == 4
-    assert parsed.cswa.window_radius == 4
-    assert parsed.cswa.backend == "cuda"
 
 
 @pytest.mark.parametrize(
@@ -228,59 +180,34 @@ def test_track_query_nested_contract_rejects_missing_unknown_and_invalid_values(
         parse_model_config(config)
 
 
-@pytest.mark.parametrize(
-    ("profile", "expected_type", "selector_mode"),
-    [
-        ("track_query_reference", TrackQueryReferenceModelConfig, "reference"),
-        (
-            "track_query_ablation_d_v2_selector",
-            TrackQueryReferenceAblationModelConfig,
-            "reference",
-        ),
-        (
-            "track_query_ablation_d_v2_selector_zero",
-            TrackQueryReferenceAblationModelConfig,
-            "selector_zero",
-        ),
-    ],
-)
-def test_reference_v2_profiles_compose_with_explicit_independent_contracts(
-    profile: str,
-    expected_type: type[object],
-    selector_mode: str,
-) -> None:
+def test_reference_profile_composes_from_canonical_architecture() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
             config_name="train_tracking",
             overrides=[
-                f"model={profile}",
+                "model=tracking_query_reference",
                 "court_keypoints=camera_view_v2",
             ],
         )
 
     parsed = validate_training_boundary(config)
-    assert isinstance(parsed, expected_type)
-    assert isinstance(
-        parsed,
-        (TrackQueryReferenceModelConfig, TrackQueryReferenceAblationModelConfig),
-    )
+    assert isinstance(parsed, TrackQueryReferenceModelConfig)
     assert parsed.target_frame_contract == "reference_camera_court_rzpi_v1"
     assert parsed.track_query_rope_contract == "time_camera_reference_selector_v1"
-    assert parsed.reference_selector_mode == selector_mode
+    assert parsed.reference_selector_mode == "reference"
+    assert parsed.hidden_dim == 512
+    assert parsed.num_stages == 12
     assert "role_rope_enabled" not in config.model
 
 
-@pytest.mark.parametrize(
-    "profile",
-    ["track_query_reference", "track_query_ablation_d_v2_selector"],
-)
-def test_reference_v2_rejects_dim4_role_reinterpretation_and_physical_court(
-    profile: str,
-) -> None:
+def test_reference_rejects_dim4_role_reinterpretation_and_physical_court() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
             config_name="train_tracking",
-            overrides=[f"model={profile}", "court_keypoints=camera_view_v2"],
+            overrides=[
+                "model=tracking_query_reference",
+                "court_keypoints=camera_view_v2",
+            ],
         )
     config.model.rope_dim = 4
     with pytest.raises(SemanticConfigurationError, match="at least 6"):
@@ -295,7 +222,7 @@ def test_reference_v2_rejects_dim4_role_reinterpretation_and_physical_court(
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         physical = compose(
             config_name="train_tracking",
-            overrides=[f"model={profile}"],
+            overrides=["model=tracking_query_reference"],
         )
     with pytest.raises(SemanticConfigurationError, match="camera_view_v2"):
         validate_training_boundary(physical)

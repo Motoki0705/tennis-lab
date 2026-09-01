@@ -15,9 +15,7 @@ def build_plcs_datamodule(config: Any) -> pl.LightningDataModule:
     backend = runtime.data.backend
     if runtime.model.name in {
         "plcs_track_query",
-        "plcs_track_query_ablation",
         "plcs_track_query_reference",
-        "plcs_track_query_reference_ablation",
     }:
         from src.tasks.plcs.data.tracking_datamodule import (
             ChunkedPLCSTrackingDataModule,
@@ -51,9 +49,7 @@ def build_plcs_lightning_module(config: Any) -> pl.LightningModule:
     runtime = PLCSTrainingConfig.from_config(config)
     if runtime.model.name in {
         "plcs_track_query",
-        "plcs_track_query_ablation",
         "plcs_track_query_reference",
-        "plcs_track_query_reference_ablation",
     }:
         from src.tasks.plcs.training.tracking_lightning_module import (
             PLCSTrackingLightningModule,

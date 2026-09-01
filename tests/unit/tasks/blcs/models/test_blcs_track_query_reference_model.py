@@ -60,7 +60,6 @@ def _config(*, rope_dim: int = 6) -> TrackQueryReferenceModelConfig:
 def _legacy_config() -> TrackQueryModelConfig:
     raw = _raw_model()
     raw["name"] = "blcs_track_query"
-    raw["role_rope_enabled"] = True
     del raw["target_frame_contract"]
     del raw["track_query_rope_contract"]
     del raw["reference_selector_mode"]
@@ -107,12 +106,12 @@ def test_coordinates_and_frequencies_expand_distinct_references_over_time() -> N
         num_detections=2,
         num_queries=2,
     )
-    assert expected.shape == (4, 8, 3)
+    assert expected.shape == (4, 5, 3)
     assert torch.equal(expected[:, :2, 2], torch.zeros(4, 2, dtype=torch.int64))
-    assert expected[0, 2:, 2].tolist() == [1, 1, 0, 0, 1, 1]
-    assert expected[1, 2:, 2].tolist() == [1, 1, 0, 0, 1, 1]
-    assert expected[2, 2:, 2].tolist() == [1, 1, 1, 1, 0, 0]
-    assert expected[3, 2:, 2].tolist() == [1, 1, 1, 1, 0, 0]
+    assert expected[0, 2:, 2].tolist() == [1, 0, 1]
+    assert expected[1, 2:, 2].tolist() == [1, 0, 1]
+    assert expected[2, 2:, 2].tolist() == [1, 1, 0]
+    assert expected[3, 2:, 2].tolist() == [1, 1, 0]
     captured: dict[str, Tensor] = {}
 
     def capture(
@@ -143,7 +142,9 @@ def test_forward_backward_keeps_reference_context_when_observations_are_empty() 
     inputs["padding_mask"][1, 0] = True
     inputs["padding_mask"][1, 1] = True
     output = cast("dict[str, Tensor]", model(**inputs))
-    loss = output["position"].square().mean() + output["presence_logits"].square().mean()
+    loss = (
+        output["position"].square().mean() + output["presence_logits"].square().mean()
+    )
     loss.backward()
     assert torch.isfinite(loss)
     assert all(torch.isfinite(value).all() for value in output.values())
@@ -178,7 +179,7 @@ def test_forward_rejects_masked_reference_at_a_supervised_time() -> None:
         BLCSTrackQueryReferenceModel(_config())(**inputs)
 
 
-def test_v2_rejects_dim4_and_is_state_incompatible_with_same_shape_v1() -> None:
+def test_reference_rejects_dim4_and_is_strictly_incompatible_with_base() -> None:
     with pytest.raises(SemanticConfigurationError, match="at least 6"):
         _config(rope_dim=4)
     reference = BLCSTrackQueryReferenceModel(_config())

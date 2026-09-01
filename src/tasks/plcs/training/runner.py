@@ -67,9 +67,7 @@ class PLCSTrainingRunner(BaseTrainingRunner):
             )
             if runtime.model.name in {
                 "plcs_track_query",
-                "plcs_track_query_ablation",
                 "plcs_track_query_reference",
-                "plcs_track_query_reference_ablation",
             }:
                 validate_plcs_checkpoint_track_query_reference(
                     checkpoint,

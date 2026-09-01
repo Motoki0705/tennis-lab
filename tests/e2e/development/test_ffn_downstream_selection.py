@@ -21,13 +21,11 @@ _EXPECTED_DIRECT_CONSUMERS = frozenset(
         "src/tasks/ball_detection/models/dinov3_rope.py",
         "src/tasks/blcs/models/blcs_model.py",
         "src/tasks/blcs/models/blcs_multiview_axial_model.py",
-        "src/tasks/blcs/models/blcs_track_query_ablation_model.py",
         "src/tasks/blcs/models/blcs_track_query_model.py",
         "src/tasks/court_detection/models/transformer_encoder.py",
         "src/tasks/plcs/models/plcs_model.py",
         "src/tasks/plcs/models/plcs_multiview_axial_model.py",
         "src/tasks/plcs/models/plcs_multiview_axial_split_model.py",
-        "src/tasks/plcs/models/plcs_track_query_ablation_model.py",
         "src/tasks/plcs/models/plcs_track_query_model.py",
         "src/tasks/slcs/models/slcs_model.py",
         "src/utils/models/architectures/transformer_sequence_discriminator.py",
@@ -41,12 +39,7 @@ _CONFIGURATION_SURFACES = (
     "src/tasks/slcs/configuration.py",
     "src/utils/models/architectures/transformer_sequence_discriminator.py",
 )
-_BLCS_TRACK_QUERY_PROFILES = (
-    "src/tasks/blcs/configs/model/_track_query.yaml",
-    "src/tasks/blcs/configs/model/_track_query_ablation.yaml",
-    "src/tasks/blcs/configs/model/_track_query_reference.yaml",
-    "src/tasks/blcs/configs/model/_track_query_reference_ablation.yaml",
-)
+_BLCS_TRACK_QUERY_PROFILES = ("src/tasks/blcs/configs/model/tracking_query.yaml",)
 
 
 def _call_name(call: ast.Call) -> str | None:

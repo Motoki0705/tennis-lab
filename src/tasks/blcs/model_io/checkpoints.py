@@ -91,12 +91,9 @@ def resolve_config_track_query_reference_contract(
     if not isinstance(raw_model, (DictConfig, Mapping)):
         raise RuntimeError("BLCS checkpoint config.model must be a mapping.")
     name = raw_model.get("name")
-    if name in {"blcs_track_query", "blcs_track_query_ablation"}:
+    if name == "blcs_track_query":
         return TrackQueryReferenceContract.legacy_v1()
-    if name not in {
-        "blcs_track_query_reference",
-        "blcs_track_query_reference_ablation",
-    }:
+    if name != "blcs_track_query_reference":
         return None
     required = {
         "target_frame_contract",

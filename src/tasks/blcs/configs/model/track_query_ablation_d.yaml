@@ -1,3 +1,0 @@
-defaults:
-  - _track_query_ablation
-  - _self_

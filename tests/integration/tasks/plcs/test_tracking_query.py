@@ -1,4 +1,4 @@
-"""CPU smoke test for the fixed PLCS track-query experiment architecture."""
+"""CPU smoke test for the canonical PLCS track-query architecture."""
 
 from __future__ import annotations
 
@@ -8,15 +8,13 @@ import torch
 from torch import Tensor
 
 from src.tasks.plcs.configuration import PLCSModelConfig
-from src.tasks.plcs.models.plcs_track_query_ablation_model import (
-    PLCSTrackQueryAblationModel,
-)
+from src.tasks.plcs.models.plcs_track_query_model import PLCSTrackQueryModel
 
 
 def _config() -> PLCSModelConfig:
     return PLCSModelConfig.from_mapping(
         {
-            "name": "plcs_track_query_ablation",
+            "name": "plcs_track_query",
             "hidden_dim": 16,
             "num_heads": 4,
             "ffn_dim": 32,
@@ -27,7 +25,6 @@ def _config() -> PLCSModelConfig:
             "rope_theta": 10_000.0,
             "ffn_type": "swiglu",
             "dropout": 0.0,
-            "role_rope_enabled": True,
             "invisible_init_std": 0.02,
             "mhc": {
                 "coefficient_dim": 8,
@@ -47,7 +44,7 @@ def _config() -> PLCSModelConfig:
 
 def test_cpu_forward_backward_has_finite_outputs_and_gradients() -> None:
     torch.manual_seed(777)
-    model = PLCSTrackQueryAblationModel(_config()).train()
+    model = PLCSTrackQueryModel(_config()).train()
     human_kp = torch.rand(1, 2, 2, 4, 17, 2, requires_grad=True)
     court_kp = torch.rand(1, 2, 2, 14, 2, requires_grad=True)
     output = cast(

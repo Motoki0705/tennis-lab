@@ -7,11 +7,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytorch_lightning as pl
 
-from src.tasks.blcs.configuration import (
-    TrackQueryAblationModelConfig,
-    TrackQueryModelConfig,
-    parse_model_config,
-)
+from src.tasks.blcs.configuration import TrackQueryModelConfig, parse_model_config
 from src.tasks.blcs.data.datamodule import BLCSDataModule
 from src.tasks.blcs.model_io.adapters import (
     TrackQueryModelIOAdapter,
@@ -44,7 +40,7 @@ def optional_standard_generator_config(config: Any) -> GeneratorConfig | None:
     model = parse_model_config(config)
     if str(config.data.backend) == "chunked" and not isinstance(
         model,
-        (TrackQueryModelConfig, TrackQueryAblationModelConfig),
+        TrackQueryModelConfig,
     ):
         from src.tasks.blcs.generate_dataset.config import build_generator_config
 

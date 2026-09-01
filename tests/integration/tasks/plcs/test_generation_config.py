@@ -138,7 +138,7 @@ def test_training_composes_court_keypoint_contract(
 ) -> None:
     overrides = [f"court_keypoints={court_selector}"]
     if config_name == "train_tracking" and court_selector == "camera_view_v2":
-        overrides.append("model=track_query_reference")
+        overrides.append("model=tracking_query_reference")
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
             config_name=config_name,

@@ -1,5 +1,0 @@
-defaults:
-  - _track_query_reference_ablation
-  - _self_
-
-reference_selector_mode: reference

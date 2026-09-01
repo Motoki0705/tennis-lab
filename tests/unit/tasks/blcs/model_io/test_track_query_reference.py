@@ -23,37 +23,25 @@ from src.tasks.base.model_io import (
 from src.tasks.base.models import ReferenceSelectorMode
 from src.tasks.blcs.model_io.adapters import (
     TrackQueryModelIOAdapter,
-    TrackQueryReferenceAblationModelIOAdapter,
     TrackQueryReferenceModelIOAdapter,
 )
 from src.tasks.blcs.model_io.checkpoints import load_checkpoint_runtime
 from src.utils.schema.court_normalization import add_court_coordinate_normalization
 
 
-def _reference_adapter(
-    *,
-    selector_mode: ReferenceSelectorMode = ReferenceSelectorMode.REFERENCE,
-    ablation: bool = False,
-) -> TrackQueryReferenceModelIOAdapter:
-    adapter_type = (
-        TrackQueryReferenceAblationModelIOAdapter
-        if ablation
-        else TrackQueryReferenceModelIOAdapter
-    )
-    return adapter_type(
+def _reference_adapter() -> TrackQueryReferenceModelIOAdapter:
+    return TrackQueryReferenceModelIOAdapter(
         num_court_tokens=14,
         num_queries=2,
         presence_threshold=0.5,
         court_keypoint_contract=resolve_court_keypoint_contract("camera_view_v2"),
         track_query_reference_contract=TrackQueryReferenceContract.reference_v2(
-            selector_mode
+            ReferenceSelectorMode.REFERENCE
         ),
     )
 
 
-def _batch(
-    selector_mode: ReferenceSelectorMode = ReferenceSelectorMode.REFERENCE,
-) -> dict[str, object]:
+def _batch() -> dict[str, object]:
     result: dict[str, object] = {
         "ball_uv": torch.zeros(2, 3, 2, 2, 2),
         "ball_vis": torch.zeros(2, 3, 2, 2, dtype=torch.bool),
@@ -67,7 +55,7 @@ def _batch(
     }
     write_track_query_reference_contract(
         result,
-        TrackQueryReferenceContract.reference_v2(selector_mode),
+        TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.REFERENCE),
     )
     return result
 
@@ -107,18 +95,9 @@ def test_reference_adapter_rejects_missing_or_invalid_sixth_tensor(
         _reference_adapter().build_call(batch)
 
 
-def test_selector_zero_is_explicit_ablation_only_and_keeps_six_inputs() -> None:
-    with pytest.raises(ValueError, match="does not allow selector_zero"):
-        _reference_adapter(selector_mode=ReferenceSelectorMode.SELECTOR_ZERO)
-    adapter = _reference_adapter(
-        selector_mode=ReferenceSelectorMode.SELECTOR_ZERO,
-        ablation=True,
-    )
-    batch = _batch(ReferenceSelectorMode.SELECTOR_ZERO)
-    assert len(adapter.build_call(batch).kwargs) == 6
-
-
-def test_reference_adapter_rejects_missing_metadata_identity_mismatch_and_masked_reference() -> None:
+def test_reference_adapter_rejects_missing_metadata_identity_mismatch_and_masked_reference() -> (
+    None
+):
     adapter = _reference_adapter()
     missing_metadata = _batch()
     del missing_metadata[TRACK_QUERY_REFERENCE_METADATA_KEY]
@@ -152,9 +131,7 @@ def test_legacy_adapter_retains_five_inputs_and_rejects_camera_view_semantics() 
             num_court_tokens=14,
             num_queries=2,
             presence_threshold=0.5,
-            court_keypoint_contract=resolve_court_keypoint_contract(
-                "camera_view_v2"
-            ),
+            court_keypoint_contract=resolve_court_keypoint_contract("camera_view_v2"),
         )
 
 
@@ -169,7 +146,7 @@ def _write_checkpoint(
     config = {
         "court_keypoints": {"selector": "camera_view_v2"},
         "model": {
-            "name": "blcs_track_query_reference_ablation",
+            "name": "blcs_track_query_reference",
             "target_frame_contract": "reference_camera_court_rzpi_v1",
             "track_query_rope_contract": "time_camera_reference_selector_v1",
             "reference_selector_mode": config_selector_mode,
@@ -206,14 +183,6 @@ def test_v2_checkpoint_requires_and_exactly_matches_independent_markers(
     _write_checkpoint(missing, metadata_selector_mode=None)
     with pytest.raises(MissingTrackQueryReferenceMetadataError):
         load_checkpoint_runtime(missing)
-
-    mismatched = tmp_path / "mismatched.ckpt"
-    _write_checkpoint(
-        mismatched,
-        metadata_selector_mode=ReferenceSelectorMode.SELECTOR_ZERO,
-    )
-    with pytest.raises(TrackQueryReferenceContractMismatchError):
-        load_checkpoint_runtime(mismatched)
 
 
 def test_metadata_free_track_query_semantics_are_legacy_v1_only(

@@ -35,9 +35,8 @@ human UV/visibility には適用しません。
 - **`plcs_multiview_axial_model.py`**: `PLCSMultiViewAxialModel`。camera軸/time軸交互self-attention(共有readout)。
 - **`plcs_multiview_axial_split_model.py`**: `PLCSMultiViewAxialSplitModel`(issue #518)。rotation/pose trunkを分離。
 - **`plcs_multiview_axial_camtoken_model.py`**: `PLCSMultiViewAxialCamTokenModel`(issue #576)。head別に別camera tokenを読む。
-- **`plcs_track_query_model.py`**: `PLCSTrackQueryModel`。camera-localにtrackingされた固定幅pose観測からclip-localなqueryで複数playerの位置・rotation・presenceを推定する。
-- **`plcs_track_query_ablation_model.py`**: `PLCSTrackQueryAblationModel`。ablation Dで採用した固定architecture（attention blockのFFNなし、`Q+V` spatial attention、stage末尾の共有FFNとmHC writeback）を同じ5入力・3出力契約で実装する。
-- **`plcs_track_query_reference_model.py` / `plcs_track_query_reference_ablation_model.py`**: camera-view target frame用の明示的v2 family。後者も同じ固定compressed-stage architectureを使い、PLCS固有出力はposition / heading / presenceのままselector条件を追加する。
+- **`plcs_track_query_model.py`**: `PLCSTrackQueryModel`。object streamをviewごとに1 tokenへ圧縮し、FFN-free attention block、`Q+V` spatial attention、stage末尾の共有FFNとmHC writebackを用いて複数playerの位置・rotation・presenceを推定する。
+- **`plcs_track_query_reference_model.py`**: 同じarchitectureへcamera-view target frameとreference selectorの6入力contractを追加する。
 - **`components/heads.py`**: `PositionHead`/`RotationHead`/`CanonicalPoseHead`。
 - **`discriminators/`**: 共有`TransformerSequenceDiscriminator`を`input_dim=5`で構築するPLCS composition factory。
 
@@ -84,7 +83,7 @@ human UV/visibility には適用しません。
 - **`analysis/*.py`**: データセット分布・角速度統計・loss dominance・回転誤差サンプル抽出の分析スクリプト群。
 
 ### configs/
-- model(frame/multiview/axial系サイズ違い)・data(singleview/multiview/chunked)・loss(canonical段階別)・training(default/GAN/MCMC)・metrics・motion_sources・simulation/camera/paths(生成用)・visualization・run・analysis の各Hydra設定。
+- track-queryは`model=tracking_query`と`model=tracking_query_reference`の2 profileだけを公開する。その他にmodel(frame/multiview/axial系)・data(singleview/multiview/chunked)・loss(canonical段階別)・training(default/GAN/MCMC)・metrics・motion_sources・simulation/camera/paths(生成用)・visualization・run・analysis の各Hydra設定がある。
 
 ## Multi-person tracking
 
@@ -94,11 +93,11 @@ PLCSの`data.association`は `max_distance=0.08`、`max_missed_frames=8`、`min_
 
 出力は `position (B,T,Q,3)`、`rotation (B,T,Q,2)`、`presence_logits (B,T,Q)` です。教師は独立したtarget lifecycle packingによる `target_position`、`target_rotation`、`target_presence`、`target_instance_id` で、inactive rotationはidentity、instance IDは`-1`です。重ならないbirth/death区間を同じtarget slotへ詰めるため、同一queryはdeath後に別instanceへ再利用できます。
 
-14 court UVは共有Court contractでreference整列した後の先頭14点を使い、`court_vis`で不可視点を0化します。各observation slotのperson keypointsとcourtを連結し、BLCSと同じ`src/utils/models/embeddings/group_tokens.py`の共有`CourtPlayerGroupEmbedding`により1 slot = 1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*Q, D)` です。v1 / v2のM-RoPE座標と第3軸の意味は共有正本を参照してください。
+14 court UVは共有Court contractでreference整列した後の先頭14点を使い、`court_vis`で不可視点を0化します。各observation slotのperson keypointsとcourtを連結し、BLCSと同じ`src/utils/models/embeddings/group_tokens.py`の共有`CourtPlayerGroupEmbedding`により1 slot = 1 tokenへ写像します。object temporal後の空間self-attention入力は `(B*T, Q + V, D)` です。M-RoPE座標と第3軸の意味は共有正本を参照してください。
 
 BLCSと共有する各stageは `mHC object temporal -> global spatial(Q+V) -> query temporal` の順で更新し、temporal modeを `CSWA, CSWA, CSWA, Global MHA` のcycleへ固定します。`object_state_valid`を含む全state/attention maskは共有`build_fixed_query_padding_masks()`が`padding_mask`だけから生成します。nested `model.mhc` / `model.cswa`はstrictに検証し、旧`spatial_blocks` / `temporal_blocks` checkpointは自動変換せずstrict load errorとします。
 
-`model=track_query_ablation_d`はablation Dから固定したarchitectureを選びます。object temporalでviewごとに1 tokenへ圧縮し、`Q+V` spatial attentionとquery temporal attentionの後にstage共有SwiGLUを1回適用して、mHCをstage末尾でwritebackします。各attention blockはFFNを持ちません。既存`track_query` checkpointとはarchitectureが異なるためstrict load errorです。
+`model=tracking_query`がこの唯一のcanonical architectureを選びます。各attention blockはFFNを持ちません。旧track-query checkpointはarchitectureが異なるためstrict load errorです。
 
 multi-object generatorは1024-frame global timelineに3〜10個のAMASS/SMPL-H source subclipを配置し、query再利用gapを含む同時slot占有数を4以下に保ちます。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
 
@@ -110,17 +109,14 @@ multi-object generatorは1024-frame global timelineに3〜10個のAMASS/SMPL-H s
 # 事前生成データで学習
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking
 
-# 固定D architecture
+# canonical architecture
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking \
-  model=track_query_ablation_d
+  model=tracking_query
 
-# camera-view v2 D selector / selector-zero（別途生成したopt-inデータ、CPU functional evidence、GPUならqueue経由）
+# camera-view reference（別途生成したopt-inデータ、GPUならqueue経由）
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking \
   court_keypoints=camera_view_v2 data.scene_dir=plcs/multi_object_camera_view_v2 \
-  model=track_query_ablation_d_v2_selector
-.venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking \
-  court_keypoints=camera_view_v2 data.scene_dir=plcs/multi_object_camera_view_v2 \
-  model=track_query_ablation_d_v2_selector_zero
+  model=tracking_query_reference
 
 # trainだけon-the-fly chunk生成（val/testは上記の固定データ）
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking_chunked

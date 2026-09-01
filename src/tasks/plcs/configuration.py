@@ -262,26 +262,6 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "rope_theta",
             "ffn_type",
             "dropout",
-            "role_rope_enabled",
-            "invisible_init_std",
-            "mhc",
-            "cswa",
-        }
-    ),
-    "plcs_track_query_ablation": frozenset(
-        {
-            "name",
-            "hidden_dim",
-            "num_heads",
-            "ffn_dim",
-            "num_queries",
-            "num_stages",
-            "num_joints",
-            "rope_dim",
-            "rope_theta",
-            "ffn_type",
-            "dropout",
-            "role_rope_enabled",
             "invisible_init_std",
             "mhc",
             "cswa",
@@ -308,41 +288,17 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "cswa",
         }
     ),
-    "plcs_track_query_reference_ablation": frozenset(
-        {
-            "name",
-            "hidden_dim",
-            "num_heads",
-            "ffn_dim",
-            "num_queries",
-            "num_stages",
-            "num_joints",
-            "rope_dim",
-            "rope_theta",
-            "ffn_type",
-            "dropout",
-            "invisible_init_std",
-            "target_frame_contract",
-            "track_query_rope_contract",
-            "reference_selector_mode",
-            "mhc",
-            "cswa",
-        }
-    ),
 }
 
 _TRACK_QUERY_MODEL_NAMES = frozenset(
     {
         "plcs_track_query",
-        "plcs_track_query_ablation",
         "plcs_track_query_reference",
-        "plcs_track_query_reference_ablation",
     }
 )
 _REFERENCE_TRACK_QUERY_MODEL_NAMES = frozenset(
     {
         "plcs_track_query_reference",
-        "plcs_track_query_reference_ablation",
     }
 )
 
@@ -412,9 +368,7 @@ class PLCSModelConfig:
             "plcs_multiview_axial_split": "multiview",
             "plcs_multiview_axial_camtoken": "multiview",
             "plcs_track_query": None,
-            "plcs_track_query_ablation": None,
             "plcs_track_query_reference": None,
-            "plcs_track_query_reference_ablation": None,
         }[name]
         if input_profile != expected_profile:
             raise SemanticConfigurationError(
@@ -474,7 +428,6 @@ class PLCSModelConfig:
             "canonical_on_rotation_branch",
             "aux_position_on_rotation_branch",
             "detach_pose_branch",
-            "role_rope_enabled",
         } & set(mapping):
             _boolean(mapping, key, path="model")
         if "ffn_type" in mapping:
@@ -606,23 +559,14 @@ class PLCSModelConfig:
                 selector_mode = _string(
                     mapping, "reference_selector_mode", path="model"
                 )
-                if selector_mode not in {"reference", "selector_zero"}:
+                if selector_mode != "reference":
                     raise SemanticConfigurationError(
-                        "model.reference_selector_mode must be 'reference' or "
-                        "'selector_zero'."
+                        "model.reference_selector_mode must be 'reference'."
                     )
                 if rope_dim < 6:
                     raise SemanticConfigurationError(
                         "Reference track-query model.rope_dim must be at least 6 "
                         "so every spatial axis receives a rotary pair."
-                    )
-                if (
-                    name == "plcs_track_query_reference"
-                    and selector_mode != "reference"
-                ):
-                    raise SemanticConfigurationError(
-                        "The normal reference track-query model requires "
-                        "model.reference_selector_mode='reference'."
                     )
         return cls(
             name=name,

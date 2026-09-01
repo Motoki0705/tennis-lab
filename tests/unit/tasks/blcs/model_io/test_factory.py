@@ -1,4 +1,4 @@
-"""BLCS ablation model, adapter, and training composition tests."""
+"""BLCS canonical model, adapter, and training composition tests."""
 
 from __future__ import annotations
 
@@ -9,23 +9,18 @@ import pytest
 from hydra import compose, initialize_config_dir
 
 from src.tasks.base.generate_dataset import resolve_court_keypoint_contract
-from src.tasks.blcs.model_io import (
-    TrackQueryAblationModelIOAdapter as PublicTrackQueryAblationModelIOAdapter,
-)
 from src.tasks.blcs.model_io.adapters import (
-    TrackQueryAblationModelIOAdapter,
-    TrackQueryReferenceAblationModelIOAdapter,
+    TrackQueryModelIOAdapter,
+    TrackQueryReferenceModelIOAdapter,
 )
 from src.tasks.blcs.model_io.factory import (
     TrackQueryBoundModelIO,
     compose_blcs_track_query_model_io,
 )
 from src.tasks.blcs.model_io.training import compose_blcs_training
-from src.tasks.blcs.models.blcs_track_query_ablation_model import (
-    BLCSTrackQueryAblationModel,
-)
-from src.tasks.blcs.models.blcs_track_query_reference_ablation_model import (
-    BLCSTrackQueryReferenceAblationModel,
+from src.tasks.blcs.models.blcs_track_query_model import BLCSTrackQueryModel
+from src.tasks.blcs.models.blcs_track_query_reference_model import (
+    BLCSTrackQueryReferenceModel,
 )
 
 _CONFIG_DIR = Path("src/tasks/blcs/configs").resolve()
@@ -48,23 +43,19 @@ def _config(*, court_keypoints: str = "physical_v1") -> Any:
         return compose(
             config_name="train_tracking",
             overrides=[
-                "model=track_query_ablation_d",
+                "model=tracking_query",
                 f"court_keypoints={court_keypoints}",
                 *_SMALL,
             ],
         )
 
 
-def test_ablation_adapter_is_exported_from_canonical_model_io_api() -> None:
-    assert PublicTrackQueryAblationModelIOAdapter is TrackQueryAblationModelIOAdapter
-
-
-def test_factory_binds_fixed_experiment_config_to_exact_model_and_adapter() -> None:
+def test_factory_binds_canonical_config_to_exact_model_and_adapter() -> None:
     binding = compose_blcs_track_query_model_io(_config())
 
-    assert type(binding.model) is BLCSTrackQueryAblationModel
-    assert type(binding.adapter) is TrackQueryAblationModelIOAdapter
-    assert binding.adapter.model_type is BLCSTrackQueryAblationModel
+    assert type(binding.model) is BLCSTrackQueryModel
+    assert type(binding.adapter) is TrackQueryModelIOAdapter
+    assert binding.adapter.model_type is BLCSTrackQueryModel
     assert binding.adapter.num_queries == 4
 
 
@@ -73,7 +64,7 @@ def test_reference_factory_injects_exact_camera_view_contract_into_adapter() -> 
         config = compose(
             config_name="train_tracking",
             overrides=[
-                "model=track_query_ablation_d_v2_selector",
+                "model=tracking_query_reference",
                 "court_keypoints=camera_view_v2",
                 *_SMALL,
                 "model.hidden_dim=24",
@@ -82,14 +73,14 @@ def test_reference_factory_injects_exact_camera_view_contract_into_adapter() -> 
         )
     binding = compose_blcs_track_query_model_io(config)
 
-    assert type(binding.model) is BLCSTrackQueryReferenceAblationModel
-    assert type(binding.adapter) is TrackQueryReferenceAblationModelIOAdapter
+    assert type(binding.model) is BLCSTrackQueryReferenceModel
+    assert type(binding.adapter) is TrackQueryReferenceModelIOAdapter
     assert binding.adapter.court_keypoint_contract == resolve_court_keypoint_contract(
         "camera_view_v2"
     )
 
 
-def test_ablation_uses_tracking_training_composition(
+def test_canonical_model_uses_tracking_training_composition(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config = _config()
@@ -124,10 +115,7 @@ def test_ablation_uses_tracking_training_composition(
     assert composition.datamodule.received is config
     assert composition.lightning_module.received is config
     assert isinstance(composition.lightning_module, _LightningModule)
+    assert type(composition.lightning_module.model_io.model) is BLCSTrackQueryModel
     assert (
-        type(composition.lightning_module.model_io.model) is BLCSTrackQueryAblationModel
-    )
-    assert (
-        type(composition.lightning_module.model_io.adapter)
-        is TrackQueryAblationModelIOAdapter
+        type(composition.lightning_module.model_io.adapter) is TrackQueryModelIOAdapter
     )

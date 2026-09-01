@@ -30,7 +30,6 @@ from src.tasks.base.models.track_query_reference import (
     [
         TrackQueryReferenceContract.legacy_v1(),
         TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.REFERENCE),
-        TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.SELECTOR_ZERO),
     ],
 )
 def test_independent_metadata_round_trip(
@@ -85,12 +84,6 @@ def test_metadata_free_requires_explicit_legacy_v1_and_rejects_v2() -> None:
             TrackQueryReferenceContract.legacy_v1(),
             TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.REFERENCE),
         ),
-        (
-            TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.REFERENCE),
-            TrackQueryReferenceContract.reference_v2(
-                ReferenceSelectorMode.SELECTOR_ZERO
-            ),
-        ),
     ],
 )
 def test_shape_compatible_semantic_mismatch_is_rejected(
@@ -138,19 +131,4 @@ def test_runtime_contract_rejects_mixed_tuple_before_checkpoint_load() -> None:
             target_frame_contract="physical_court_v1",
             track_query_rope_contract=REFERENCE_SELECTOR_ROPE_CONTRACT,
             reference_selector_mode=ReferenceSelectorMode.REFERENCE,
-        )
-
-
-def test_write_refuses_to_replace_an_existing_selector_mode() -> None:
-    document: dict[str, object] = {}
-    write_track_query_reference_contract(
-        document,
-        TrackQueryReferenceContract.reference_v2(ReferenceSelectorMode.REFERENCE),
-    )
-    with pytest.raises(TrackQueryReferenceContractMismatchError, match="refusing"):
-        write_track_query_reference_contract(
-            document,
-            TrackQueryReferenceContract.reference_v2(
-                ReferenceSelectorMode.SELECTOR_ZERO
-            ),
         )

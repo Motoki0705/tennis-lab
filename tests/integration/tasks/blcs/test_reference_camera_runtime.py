@@ -15,16 +15,11 @@ from src.tasks.base.generate_dataset import (
     build_court_view_record,
     resolve_court_keypoint_contract,
 )
-from src.tasks.base.model_io import (
-    TrackQueryReferenceContract,
-    TrackQueryReferenceContractMismatchError,
-)
+from src.tasks.base.model_io import TrackQueryReferenceContract
 from src.tasks.base.models import ReferenceSelectorMode
 from src.tasks.blcs.data.tracking_datamodule import BLCSTrackingDataModule
 from src.tasks.blcs.model_io import BLCSReferenceMetadata
-from src.tasks.blcs.model_io.adapters import (
-    TrackQueryReferenceAblationModelIOAdapter,
-)
+from src.tasks.blcs.model_io.adapters import TrackQueryReferenceModelIOAdapter
 from src.tasks.blcs.model_io.training import compose_blcs_training
 from src.tasks.blcs.training.tracking_lightning_module import (
     BLCSTrackingLightningModule,
@@ -33,7 +28,7 @@ from src.tasks.blcs.training.tracking_lightning_module import (
 _CONFIG_DIR = Path("src/tasks/blcs/configs").resolve()
 
 
-def _config(profile: str = "track_query_ablation_d_v2_selector") -> Any:
+def _config(profile: str = "tracking_query_reference") -> Any:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         return compose(
             config_name="train_tracking",
@@ -120,7 +115,7 @@ def test_v2_composition_binds_tracking_runtime_and_reference_adapter() -> None:
     assert isinstance(composition.lightning_module, BLCSTrackingLightningModule)
     assert isinstance(
         composition.lightning_module.io_adapter,
-        TrackQueryReferenceAblationModelIOAdapter,
+        TrackQueryReferenceModelIOAdapter,
     )
 
 
@@ -144,46 +139,27 @@ def test_datamodule_passes_eval_reference_but_training_keeps_seeded_selection(
 
     assert received[0]["reference_camera_id"] is None
     assert received[1]["reference_camera_id"] == "cam_1"
-    assert received[0]["seed"] == datamodule._dataset_seed(
-        Path("dataset"), "train.txt"
-    )
-    assert received[1]["seed"] == datamodule._dataset_seed(
-        Path("dataset"), "val.txt"
-    )
-
-    selector_zero = BLCSTrackingDataModule(
-        _config("track_query_ablation_d_v2_selector_zero")
-    )
-    selector_zero._build_dataset(Path("dataset"), "train.txt", True)
-    assert received[2]["seed"] == received[0]["seed"]
+    assert received[0]["seed"] == datamodule._dataset_seed(Path("dataset"), "train.txt")
+    assert received[1]["seed"] == datamodule._dataset_seed(Path("dataset"), "val.txt")
 
 
-def test_checkpoint_and_prediction_metadata_round_trip_and_reject_selector_mismatch() -> None:
-    selector = cast(
+def test_checkpoint_and_prediction_metadata_round_trip() -> None:
+    module = cast(
         BLCSTrackingLightningModule,
         compose_blcs_training(_config(), generator_config=None).lightning_module,
     )
-    selector_zero = cast(
-        BLCSTrackingLightningModule,
-        compose_blcs_training(
-            _config("track_query_ablation_d_v2_selector_zero"),
-            generator_config=None,
-        ).lightning_module,
-    )
     checkpoint: dict[str, object] = {"state_dict": {}}
 
-    selector.on_save_checkpoint(checkpoint)
-    selector.on_load_checkpoint(checkpoint)
-    with pytest.raises(TrackQueryReferenceContractMismatchError):
-        selector_zero.on_load_checkpoint(checkpoint)
+    module.on_save_checkpoint(checkpoint)
+    module.on_load_checkpoint(checkpoint)
 
-    step = selector.compute_tracking_step(
+    step = module.compute_tracking_step(
         cast("dict[str, torch.Tensor]", _batch()),
         compute_metrics=False,
     )
     assert step.prediction.reference_metadata is not None
     assert step.prediction.reference_metadata.reference_camera_ids == ("cam_1",)
-    payload = selector.test_prediction_payload(
+    payload = module.test_prediction_payload(
         _batch(),
         {"prediction": step.prediction},
     )

@@ -48,13 +48,7 @@ from src.tasks.blcs.model_io.contracts import (
 )
 from src.tasks.blcs.models.blcs_model import BLCSModel
 from src.tasks.blcs.models.blcs_multiview_axial_model import BLCSMultiViewAxialModel
-from src.tasks.blcs.models.blcs_track_query_ablation_model import (
-    BLCSTrackQueryAblationModel,
-)
 from src.tasks.blcs.models.blcs_track_query_model import BLCSTrackQueryModel
-from src.tasks.blcs.models.blcs_track_query_reference_ablation_model import (
-    BLCSTrackQueryReferenceAblationModel,
-)
 from src.tasks.blcs.models.blcs_track_query_reference_model import (
     BLCSTrackQueryReferenceModel,
 )
@@ -938,18 +932,9 @@ class TrackQueryModelIOAdapter:
         )
 
 
-class TrackQueryAblationModelIOAdapter(TrackQueryModelIOAdapter):
-    """Exact BLCS adapter binding for the ablation architecture family."""
-
-    @property
-    def model_type(self) -> type[nn.Module]:
-        return cast("type[nn.Module]", BLCSTrackQueryAblationModel)
-
-
 class TrackQueryReferenceModelIOAdapter(TrackQueryModelIOAdapter):
     """Exact six-input adapter for the normal BLCS reference-v2 model."""
 
-    _allows_selector_zero = False
     _requires_legacy_contract = False
 
     def __init__(
@@ -972,13 +957,8 @@ class TrackQueryReferenceModelIOAdapter(TrackQueryModelIOAdapter):
             raise ValueError(
                 "BLCS reference adapter requires an explicit selector mode."
             )
-        if (
-            selector_mode is ReferenceSelectorMode.SELECTOR_ZERO
-            and not self._allows_selector_zero
-        ):
-            raise ValueError(
-                "The normal BLCS reference adapter does not allow selector_zero."
-            )
+        if selector_mode is not ReferenceSelectorMode.REFERENCE:
+            raise ValueError("BLCS reference adapter requires reference mode.")
         expected = TrackQueryReferenceContract.reference_v2(selector_mode)
         if track_query_reference_contract != expected:
             raise ValueError(
@@ -1069,23 +1049,11 @@ class TrackQueryReferenceModelIOAdapter(TrackQueryModelIOAdapter):
         return ModelCall(kwargs=kwargs)
 
 
-class TrackQueryReferenceAblationModelIOAdapter(TrackQueryReferenceModelIOAdapter):
-    """Exact six-input adapter for the BLCS reference-v2 ablation family."""
-
-    _allows_selector_zero = True
-
-    @property
-    def model_type(self) -> type[nn.Module]:
-        return cast("type[nn.Module]", BLCSTrackQueryReferenceAblationModel)
-
-
 __all__ = [
     "AxialTrajectoryModelIOAdapter",
     "RawBLCSOutput",
     "SingleTrajectoryModelIOAdapter",
-    "TrackQueryAblationModelIOAdapter",
     "TrackQueryModelIOAdapter",
-    "TrackQueryReferenceAblationModelIOAdapter",
     "TrackQueryReferenceModelIOAdapter",
     "TrajectoryModelIOAdapter",
 ]
