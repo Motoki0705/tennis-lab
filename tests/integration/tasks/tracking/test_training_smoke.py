@@ -297,6 +297,7 @@ def test_tracking_task_runs_one_training_and_validation_step(
     config.data.num_views_range = [2, 2]
     config.data.camera_mode = "first"
     config.training.warmup_steps = 0
+    config.model.cswa.backend = "reference"
     datamodule = datamodule_class(config)
     datamodule.setup("fit")
     first_val = datamodule.val_dataset[0]
