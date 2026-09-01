@@ -18,6 +18,7 @@ from src.tasks.base.model_io import (
     ModelInputContractError,
     TrackQueryReferenceContract,
     bind_model_io,
+    write_checkpoint_track_query_reference_contract,
     write_model_artifact_court_keypoint_contract,
 )
 from src.tasks.base.models import ReferenceSelectorMode
@@ -332,6 +333,10 @@ def test_checkpoint_restoration_dispatches_to_exact_canonical_binding(
         checkpoint_payload,
         resolve_court_keypoint_contract("physical_v1"),
     )
+    write_checkpoint_track_query_reference_contract(
+        checkpoint_payload,
+        TrackQueryReferenceContract.physical_v1(),
+    )
     torch.save(checkpoint_payload, checkpoint)
     observed: dict[str, object] = {}
 
@@ -381,3 +386,7 @@ def test_checkpoint_restoration_dispatches_to_exact_canonical_binding(
     }
     assert type(predictor.model) is BLCSTrackQueryModel
     assert type(predictor.model_io.adapter) is TrackQueryModelIOAdapter
+    assert (
+        predictor.model_io.adapter.track_query_reference_contract
+        == TrackQueryReferenceContract.physical_v1()
+    )
