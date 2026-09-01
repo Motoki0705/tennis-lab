@@ -1,0 +1,16 @@
+{
+  "run_id": "1788250299591070475_662456_court-align-kp14-ablation-sigma-200",
+  "name": "court-align-kp14-ablation-sigma-200",
+  "command": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.venv/bin/python -m src.tasks.court_alignment.scripts.train data.sigma_px=2.0 run.output_dir=court_alignment/ablation_sigma_200",
+  "provider": "codex",
+  "session": "01a05a02-ad55-76c0-9fcb-f250929e59a7",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "456a6b19e6ffbf73b9645b76f860dde14ae37906",
+  "branch": "feat/court-alignment-kp14-pipeline",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-alignment-kp14",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-alignment-kp14",
+  "captured_at": "2026-09-01T22:59:46+09:00"
+}

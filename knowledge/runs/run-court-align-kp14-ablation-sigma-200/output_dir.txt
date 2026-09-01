@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/court-alignment-kp14/outputs/court_alignment/ablation_sigma_200/logs/version_0/checkpoints

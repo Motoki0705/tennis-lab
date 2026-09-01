@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/court-alignment-kp14/outputs/court_alignment/pilot_sigma_1_r1/logs/version_0/checkpoints
