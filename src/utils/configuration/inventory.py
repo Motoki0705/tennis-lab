@@ -166,6 +166,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.court_detection.scripts.visualize": "court_detection.visualize",
     "src.tasks.court_alignment.scripts.train": "court_alignment.train",
     "src.tasks.court_alignment.scripts.evaluate": "court_alignment.evaluate",
+    "src.tasks.court_alignment.scripts.evaluate_real_heatmap": "court_alignment.evaluate_real_heatmap",
     "src.tasks.blcs.generate_dataset.api_server.__main__": "blcs.api_server",
     "src.tasks.blcs.scripts.generate_dataset": "blcs.generate_dataset",
     "src.tasks.blcs.scripts.generate_dataset_samples": "blcs.generate_dataset_samples",
@@ -234,6 +235,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.court_detection.scripts.visualize": "src.tasks.court_detection.scripts.visualize._validate_boundary",
     "src.tasks.court_alignment.scripts.train": "src.tasks.court_alignment.configuration.validate_training_boundary",
     "src.tasks.court_alignment.scripts.evaluate": "src.tasks.court_alignment.configuration.validate_evaluation_boundary",
+    "src.tasks.court_alignment.scripts.evaluate_real_heatmap": "src.tasks.court_alignment.configuration.validate_real_heatmap_evaluation_boundary",
     "src.tasks.blcs.generate_dataset.api_server.__main__": "src.tasks.blcs.configuration.validate_api_boundary",
     "src.tasks.blcs.scripts.generate_dataset": "src.tasks.blcs.configuration.validate_generation_boundary",
     "src.tasks.blcs.scripts.generate_dataset_samples": "src.tasks.blcs.generate_dataset.samples.validate_dataset_samples_boundary",
@@ -421,6 +423,9 @@ _RUNTIME_BOUNDARIES = (
     _runtime_boundary("court_detection", "src.tasks.court_detection.scripts.visualize"),
     _runtime_boundary("court_alignment", "src.tasks.court_alignment.scripts.train"),
     _runtime_boundary("court_alignment", "src.tasks.court_alignment.scripts.evaluate"),
+    _runtime_boundary(
+        "court_alignment", "src.tasks.court_alignment.scripts.evaluate_real_heatmap"
+    ),
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.analysis.analyze_angle_velocity"),
     _runtime_boundary(
         "plcs", "src.tasks.plcs.scripts.analysis.analyze_dataset_distribution"

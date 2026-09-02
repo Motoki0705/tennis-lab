@@ -1,0 +1,421 @@
+diff --git a/src/tasks/court_alignment/configuration.py b/src/tasks/court_alignment/configuration.py
+index 81904471..47688d87 100644
+--- a/src/tasks/court_alignment/configuration.py
++++ b/src/tasks/court_alignment/configuration.py
+@@ -16,6 +16,12 @@ from src.tasks.base.configuration import (
+     exact_config_mapping,
+     require_config_mapping,
+ )
++from src.tasks.court_alignment.evaluation.real_heatmap import (
++    DecoderOptions,
++    MetricOptions,
++    PreprocessOptions,
++    RealHeatmapEvaluationRequest,
++)
+ from src.utils.configuration import (
+     ConfigField,
+     ConfigurationTypeError,
+@@ -388,6 +394,29 @@ COURT_ALIGNMENT_EVALUATION_SCHEMA = _schema(
+     "evaluation", {"checkpoint_path": ConfigField.of(str, type(None))}
+ )
+ 
++_REAL_HEATMAP_PREPROCESS_SCHEMA = _schema(
++    "real_evaluation.preprocess",
++    {
++        "method": ConfigField.of(str),
++        "output_size": ConfigField.of(list, tuple),
++        "padding_value": _number(),
++        "content_fraction": _number(),
++    },
++)
++COURT_ALIGNMENT_REAL_HEATMAP_SCHEMA = _schema(
++    "real_evaluation",
++    {
++        "archive_path": ConfigField.of(str, type(None)),
++        "manifest_path": ConfigField.of(str, type(None)),
++        "alignment_path": ConfigField.of(str, type(None)),
++        "checkpoint_path": ConfigField.of(str, type(None)),
++        "output_dir": ConfigField.of(str),
++        "device": ConfigField.of(str),
++        "preprocess": ConfigField.mapping(_REAL_HEATMAP_PREPROCESS_SCHEMA),
++        "training_scale_range_px_per_metre": ConfigField.of(list, tuple),
++    },
++)
++
+ 
+ @dataclass(frozen=True, slots=True)
+ class CourtAlignmentRuntimeConfig:
+@@ -516,6 +545,198 @@ class CourtAlignmentRuntimeConfig:
+         return cls(runtime=runtime, sections=sections, evaluation_checkpoint=checkpoint)
+ 
+ 
++def _resolve_explicit_path(
++    resolver: PathResolver,
++    *,
++    role: PathRole,
++    value: str,
++    name: str,
++) -> Path:
++    if not value.strip() or value != value.strip():
++        raise SemanticConfigurationError(f"{name} must be a non-empty trimmed path.")
++    candidate = Path(value).expanduser()
++    return cast(
++        Path,
++        resolver.validate(role, candidate)
++        if candidate.is_absolute()
++        else resolver.resolve(role, value),
++    )
++
++
++@dataclass(frozen=True, slots=True)
++class CourtAlignmentRealHeatmapRuntimeConfig:
++    """Typed boundary for measured line-heatmap checkpoint evaluation."""
++
++    sections: Mapping[str, Mapping[str, object]]
++    request: RealHeatmapEvaluationRequest | None
++
++    @classmethod
++    def from_config(
++        cls, config: DictConfig | Mapping[str, object]
++    ) -> CourtAlignmentRealHeatmapRuntimeConfig:
++        resolved = as_config_mapping(config, path="configuration")
++        root = exact_config_mapping(
++            resolved,
++            path="configuration",
++            required_keys={"paths", "model", "decoder", "metrics", "real_evaluation"},
++        )
++        paths = COURT_ALIGNMENT_PATHS_SCHEMA.validate(
++            require_config_mapping(root, "paths", path="configuration"),
++            path="paths",
++        )
++        sections: dict[str, Mapping[str, object]] = {}
++        for name, schema in (
++            ("model", COURT_ALIGNMENT_MODEL_SCHEMA),
++            ("decoder", COURT_ALIGNMENT_DECODER_SCHEMA),
++            ("metrics", COURT_ALIGNMENT_METRICS_SCHEMA),
++            ("real_evaluation", COURT_ALIGNMENT_REAL_HEATMAP_SCHEMA),
++        ):
++            sections[name] = schema.validate(
++                require_config_mapping(root, name, path="configuration"), path=name
++            )
++        if cast(int, sections["model"]["num_keypoints"]) != 14:
++            raise SemanticConfigurationError(
++                "model.num_keypoints must preserve the KP14 contract."
++            )
++        decoder_mapping = sections["decoder"]
++        decoder = DecoderOptions(
++            threshold=float(cast(int | float, decoder_mapping["threshold"])),
++            nms_kernel=cast(int, decoder_mapping["nms_kernel"]),
++            max_peaks=cast(int, decoder_mapping["max_peaks"]),
++            subpixel_refine=cast(bool, decoder_mapping["subpixel_refine"]),
++            cluster_distance_px=float(
++                cast(int | float, decoder_mapping["cluster_distance_px"])
++            ),
++            max_instances=cast(int, decoder_mapping["max_instances"]),
++        )
++        metrics_mapping = sections["metrics"]
++        if (
++            float(cast(int | float, metrics_mapping["threshold"])) != decoder.threshold
++            or cast(int, metrics_mapping["nms_kernel"]) != decoder.nms_kernel
++            or cast(int, metrics_mapping["max_peaks"]) != decoder.max_peaks
++        ):
++            raise SemanticConfigurationError(
++                "metrics decoder fields must resolve to decoder.threshold/nms_kernel/max_peaks."
++            )
++        metrics = MetricOptions(
++            match_max_error_px=float(
++                cast(int | float, metrics_mapping["match_max_error_px"])
++            ),
++            minimum_common_keypoints=cast(
++                int, metrics_mapping["minimum_common_keypoints"]
++            ),
++            minimum_visible_keypoints=cast(
++                int, metrics_mapping["minimum_visible_keypoints"]
++            ),
++            minimum_visible_fraction=float(
++                cast(int | float, metrics_mapping["minimum_visible_fraction"])
++            ),
++            minimum_sim2_keypoints=cast(int, metrics_mapping["minimum_sim2_keypoints"]),
++        )
++        evaluation = sections["real_evaluation"]
++        preprocess_value = evaluation["preprocess"]
++        if not isinstance(preprocess_value, Mapping):
++            raise ConfigurationTypeError(
++                "real_evaluation.preprocess must be a mapping."
++            )
++        preprocess_mapping = cast(Mapping[str, object], preprocess_value)
++        output_size_raw = cast(Sequence[object], preprocess_mapping["output_size"])
++        if len(output_size_raw) != 2 or any(
++            type(item) is not int for item in output_size_raw
++        ):
++            raise SemanticConfigurationError(
++                "real_evaluation.preprocess.output_size must contain two integers."
++            )
++        preprocess = PreprocessOptions(
++            method=cast(str, preprocess_mapping["method"]),
++            output_size=(cast(int, output_size_raw[0]), cast(int, output_size_raw[1])),
++            padding_value=float(cast(int | float, preprocess_mapping["padding_value"])),
++            content_fraction=float(
++                cast(int | float, preprocess_mapping["content_fraction"])
++            ),
++        )
++        if preprocess.output_size != (256, 256):
++            raise SemanticConfigurationError(
++                "real_evaluation.preprocess.output_size must be [256,256]."
++            )
++        scale_range_raw = cast(
++            Sequence[object], evaluation["training_scale_range_px_per_metre"]
++        )
++        if len(scale_range_raw) != 2 or any(
++            type(item) not in {float, int} for item in scale_range_raw
++        ):
++            raise SemanticConfigurationError(
++                "real_evaluation.training_scale_range_px_per_metre must contain two numbers."
++            )
++        scale_range = (
++            float(cast(float | int, scale_range_raw[0])),
++            float(cast(float | int, scale_range_raw[1])),
++        )
++        path_keys = (
++            "archive_path",
++            "manifest_path",
++            "alignment_path",
++            "checkpoint_path",
++        )
++        raw_paths = [evaluation[key] for key in path_keys]
++        if any(value is None for value in raw_paths):
++            if not all(value is None for value in raw_paths):
++                raise SemanticConfigurationError(
++                    "real_evaluation input paths are all-or-none explicit values."
++                )
++            return cls(sections=sections, request=None)
++        roots = RuntimePathRoots.from_mapping(paths, repository_root=PROJECT_ROOT)
++        resolver = PathResolver(roots)
++        output_text = cast(str, evaluation["output_dir"])
++        output_path = _resolve_explicit_path(
++            resolver,
++            role=PathRole.OUTPUT,
++            value=output_text,
++            name="real_evaluation.output_dir",
++        )
++        request = RealHeatmapEvaluationRequest(
++            archive_path=_resolve_explicit_path(
++                resolver,
++                role=PathRole.DATA,
++                value=cast(str, evaluation["archive_path"]),
++                name="real_evaluation.archive_path",
++            ),
++            manifest_path=_resolve_explicit_path(
++                resolver,
++                role=PathRole.DATA,
++                value=cast(str, evaluation["manifest_path"]),
++                name="real_evaluation.manifest_path",
++            ),
++            alignment_path=_resolve_explicit_path(
++                resolver,
++                role=PathRole.DATA,
++                value=cast(str, evaluation["alignment_path"]),
++                name="real_evaluation.alignment_path",
++            ),
++            checkpoint_path=_resolve_explicit_path(
++                resolver,
++                role=PathRole.CHECKPOINT,
++                value=cast(str, evaluation["checkpoint_path"]),
++                name="real_evaluation.checkpoint_path",
++            ),
++            output_dir=output_path,
++            device=cast(str, evaluation["device"]),
++            preprocess=preprocess,
++            decoder=decoder,
++            metrics=metrics,
++            training_scale_range_px_per_metre=scale_range,
++        )
++        return cls(sections=sections, request=request)
++
++    def require_request(self) -> RealHeatmapEvaluationRequest:
++        """Return execution paths or fail before any filesystem/model side effect."""
++        if self.request is None:
++            raise ValueError(
++                "Measured evaluation requires archive, manifest, alignment, and checkpoint paths."
++            )
++        return self.request
++
++
+ def validate_training_boundary(config: DictConfig) -> None:
+     """Validate composed Court Alignment training config before side effects."""
+     CourtAlignmentRuntimeConfig.from_config(config)
+@@ -526,8 +747,16 @@ def validate_evaluation_boundary(config: DictConfig) -> None:
+     CourtAlignmentRuntimeConfig.from_config(config, evaluation=True)
+ 
+ 
++def validate_real_heatmap_evaluation_boundary(config: DictConfig) -> None:
++    """Validate the measured line-heatmap evaluation boundary."""
++    CourtAlignmentRealHeatmapRuntimeConfig.from_config(config)
++
++
+ register_boundary_validator("court_alignment.train", validate_training_boundary)
+ register_boundary_validator("court_alignment.evaluate", validate_evaluation_boundary)
++register_boundary_validator(
++    "court_alignment.evaluate_real_heatmap", validate_real_heatmap_evaluation_boundary
++)
+ 
+ 
+ __all__ = [
+@@ -538,9 +767,12 @@ __all__ = [
+     "COURT_ALIGNMENT_METRICS_SCHEMA",
+     "COURT_ALIGNMENT_MODEL_SCHEMA",
+     "COURT_ALIGNMENT_PATHS_SCHEMA",
++    "COURT_ALIGNMENT_REAL_HEATMAP_SCHEMA",
+     "COURT_ALIGNMENT_RUN_SCHEMA",
+     "COURT_ALIGNMENT_TRAINING_SCHEMA",
+     "CourtAlignmentRuntimeConfig",
++    "CourtAlignmentRealHeatmapRuntimeConfig",
+     "validate_evaluation_boundary",
++    "validate_real_heatmap_evaluation_boundary",
+     "validate_training_boundary",
+ ]
+diff --git a/src/utils/configuration/inventory.py b/src/utils/configuration/inventory.py
+index 8554fded..75a44e6c 100644
+--- a/src/utils/configuration/inventory.py
++++ b/src/utils/configuration/inventory.py
+@@ -166,6 +166,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
+     "src.tasks.court_detection.scripts.visualize": "court_detection.visualize",
+     "src.tasks.court_alignment.scripts.train": "court_alignment.train",
+     "src.tasks.court_alignment.scripts.evaluate": "court_alignment.evaluate",
++    "src.tasks.court_alignment.scripts.evaluate_real_heatmap": "court_alignment.evaluate_real_heatmap",
+     "src.tasks.blcs.generate_dataset.api_server.__main__": "blcs.api_server",
+     "src.tasks.blcs.scripts.generate_dataset": "blcs.generate_dataset",
+     "src.tasks.blcs.scripts.generate_dataset_samples": "blcs.generate_dataset_samples",
+@@ -234,6 +235,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
+     "src.tasks.court_detection.scripts.visualize": "src.tasks.court_detection.scripts.visualize._validate_boundary",
+     "src.tasks.court_alignment.scripts.train": "src.tasks.court_alignment.configuration.validate_training_boundary",
+     "src.tasks.court_alignment.scripts.evaluate": "src.tasks.court_alignment.configuration.validate_evaluation_boundary",
++    "src.tasks.court_alignment.scripts.evaluate_real_heatmap": "src.tasks.court_alignment.configuration.validate_real_heatmap_evaluation_boundary",
+     "src.tasks.blcs.generate_dataset.api_server.__main__": "src.tasks.blcs.configuration.validate_api_boundary",
+     "src.tasks.blcs.scripts.generate_dataset": "src.tasks.blcs.configuration.validate_generation_boundary",
+     "src.tasks.blcs.scripts.generate_dataset_samples": "src.tasks.blcs.generate_dataset.samples.validate_dataset_samples_boundary",
+@@ -421,6 +423,9 @@ _RUNTIME_BOUNDARIES = (
+     _runtime_boundary("court_detection", "src.tasks.court_detection.scripts.visualize"),
+     _runtime_boundary("court_alignment", "src.tasks.court_alignment.scripts.train"),
+     _runtime_boundary("court_alignment", "src.tasks.court_alignment.scripts.evaluate"),
++    _runtime_boundary(
++        "court_alignment", "src.tasks.court_alignment.scripts.evaluate_real_heatmap"
++    ),
+     _runtime_boundary("plcs", "src.tasks.plcs.scripts.analysis.analyze_angle_velocity"),
+     _runtime_boundary(
+         "plcs", "src.tasks.plcs.scripts.analysis.analyze_dataset_distribution"
+diff --git a/tests/e2e/tasks/court_alignment/test_cli_config.py b/tests/e2e/tasks/court_alignment/test_cli_config.py
+index 469c3368..aad2b122 100644
+--- a/tests/e2e/tasks/court_alignment/test_cli_config.py
++++ b/tests/e2e/tasks/court_alignment/test_cli_config.py
+@@ -35,7 +35,10 @@ def test_train_cli_publishes_sigma_override(sigma_px: float) -> None:
+     assert result.returncode == 0, result.stderr
+     assert f"sigma_px: {sigma_px}" in result.stdout
+     assert "augmentations:" in result.stdout
+-    assert "_target_: src.tasks.court_alignment.models.cnn.CourtAlignmentCNN" in result.stdout
++    assert (
++        "_target_: src.tasks.court_alignment.models.cnn.CourtAlignmentCNN"
++        in result.stdout
++    )
+ 
+ 
+ def test_evaluate_cli_publishes_explicit_checkpoint_contract() -> None:
+@@ -44,3 +47,19 @@ def test_evaluate_cli_publishes_explicit_checkpoint_contract() -> None:
+     assert result.returncode == 0, result.stderr
+     assert "evaluation:" in result.stdout
+     assert "checkpoint_path: null" in result.stdout
++
++
++def test_real_heatmap_cli_publishes_preprocess_and_decoder_ablation_contracts() -> None:
++    result = _run_module(
++        "src.tasks.court_alignment.scripts.evaluate_real_heatmap",
++        "real_evaluation.preprocess.method=area",
++        "real_evaluation.preprocess.content_fraction=0.8372",
++        "decoder.threshold=0.35",
++    )
++
++    assert result.returncode == 0, result.stderr
++    assert "archive_path: null" in result.stdout
++    assert "method: area" in result.stdout
++    assert "content_fraction: 0.8372" in result.stdout
++    assert "threshold: 0.35" in result.stdout
++    assert "training_scale_range_px_per_metre:" in result.stdout
+diff --git a/tests/integration/tasks/court_alignment/test_config_compose.py b/tests/integration/tasks/court_alignment/test_config_compose.py
+index 99761f0d..c46b12ab 100644
+--- a/tests/integration/tasks/court_alignment/test_config_compose.py
++++ b/tests/integration/tasks/court_alignment/test_config_compose.py
+@@ -12,8 +12,10 @@ from hydra.utils import instantiate
+ from omegaconf import DictConfig
+ 
+ from src.tasks.court_alignment.configuration import (
++    CourtAlignmentRealHeatmapRuntimeConfig,
+     CourtAlignmentRuntimeConfig,
+     validate_evaluation_boundary,
++    validate_real_heatmap_evaluation_boundary,
+     validate_training_boundary,
+ )
+ from src.tasks.court_alignment.models.cnn import CourtAlignmentCNN
+@@ -91,6 +93,63 @@ def test_hydra_boundaries_validate_resolved_train_and_evaluate_contracts() -> No
+     )
+ 
+ 
++def test_real_heatmap_config_composes_explicit_ablation_boundaries(
++    tmp_path: Path,
++) -> None:
++    data_root = tmp_path / "data-root"
++    checkpoint_root = tmp_path / "checkpoint-root"
++    output_root = tmp_path / "output-root"
++    cfg = _compose(
++        "evaluate_real_heatmap",
++        [
++            f"paths.data_root={data_root}",
++            f"paths.checkpoint_root={checkpoint_root}",
++            f"paths.output_root={output_root}",
++            "real_evaluation.archive_path=b00/heatmaps.npz",
++            "real_evaluation.manifest_path=b00/manifest.json",
++            "real_evaluation.alignment_path=b00/alignment.json",
++            "real_evaluation.checkpoint_path=sigma-200/best.ckpt",
++            "real_evaluation.output_dir=b00-sigma-200-max",
++            "real_evaluation.preprocess.method=max",
++            "real_evaluation.preprocess.content_fraction=0.8372",
++            "decoder.threshold=0.3",
++        ],
++    )
++
++    validate_real_heatmap_evaluation_boundary(cfg)
++    request = CourtAlignmentRealHeatmapRuntimeConfig.from_config(cfg).require_request()
++
++    assert request.archive_path == (data_root / "b00" / "heatmaps.npz").resolve()
++    assert (
++        request.checkpoint_path
++        == (checkpoint_root / "sigma-200" / "best.ckpt").resolve()
++    )
++    assert request.output_dir == (output_root / "b00-sigma-200-max").resolve()
++    assert request.preprocess.method == "max"
++    assert request.preprocess.content_fraction == pytest.approx(0.8372)
++    assert request.decoder.threshold == pytest.approx(0.3)
++
++
++def test_real_heatmap_config_rejects_unknown_preprocess() -> None:
++    cfg = _compose(
++        "evaluate_real_heatmap",
++        ["real_evaluation.preprocess.method=not-registered"],
++    )
++
++    with pytest.raises(ValueError, match="Unknown real-heatmap preprocess"):
++        validate_real_heatmap_evaluation_boundary(cfg)
++
++
++def test_real_heatmap_config_rejects_invalid_content_fraction() -> None:
++    cfg = _compose(
++        "evaluate_real_heatmap",
++        ["real_evaluation.preprocess.content_fraction=0.0"],
++    )
++
++    with pytest.raises(ValueError, match="content_fraction"):
++        validate_real_heatmap_evaluation_boundary(cfg)
++
++
+ def test_hydra_boundary_rejects_unknown_model_key() -> None:
+     cfg = _compose("train", ["+model.unexpected=true"])
+     with pytest.raises(UnknownConfigurationKeyError, match=r"model\.unexpected"):
