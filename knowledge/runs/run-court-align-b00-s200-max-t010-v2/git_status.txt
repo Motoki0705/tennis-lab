@@ -1,0 +1,8 @@
+ M src/tasks/court_alignment/configuration.py
+ M src/utils/configuration/inventory.py
+ M tests/e2e/tasks/court_alignment/test_cli_config.py
+ M tests/integration/tasks/court_alignment/test_config_compose.py
+?? src/tasks/court_alignment/configs/evaluate_real_heatmap.yaml
+?? src/tasks/court_alignment/evaluation/
+?? src/tasks/court_alignment/scripts/evaluate_real_heatmap.py
+?? tests/unit/tasks/court_alignment/evaluation/

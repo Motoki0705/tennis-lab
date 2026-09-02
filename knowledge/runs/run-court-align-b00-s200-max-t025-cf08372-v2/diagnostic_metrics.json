@@ -1,0 +1,285 @@
+{
+  "archive": {
+    "aggregate_view_count": 32,
+    "authority_array": "mean_probability",
+    "bounds_uv_m": [
+      -12.96850649929605,
+      19.483096992069786,
+      -20.456252675462295,
+      15.261910034114774
+    ],
+    "grid_spacing_m": 0.035797075930546006,
+    "manifest_path": "/home/kamimura/projects/tennis-lab/.tmp/b00-alignment-eval/synthetic_data_generation/scenes/B00/alignment/line-heatmaps/manifest.json",
+    "path": "/home/kamimura/projects/tennis-lab/.tmp/b00-alignment-eval/synthetic_data_generation/scenes/B00/alignment/line-heatmaps/heatmaps.npz",
+    "raster_shape_hw": [
+      999,
+      908
+    ]
+  },
+  "checkpoint": {
+    "checkpoint_path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-alignment-kp14/outputs/court_alignment/ablation_sigma_200/logs/version_0/checkpoints/court-alignment-epoch=047.ckpt",
+    "epoch": 47,
+    "global_step": 12288,
+    "pytorch-lightning_version": "2.6.5",
+    "state_dict_key_count": 71
+  },
+  "decoder": {
+    "cluster_distance_px": 8.0,
+    "max_instances": 2,
+    "max_peaks": 4,
+    "nms_kernel": 3,
+    "subpixel_refine": true,
+    "threshold": 0.25
+  },
+  "ground_plane": {
+    "basis_u_scene": [
+      0.9978425874236557,
+      0.0018791055486509758,
+      0.06562499284572215
+    ],
+    "basis_v_scene": [
+      -2.168404344971009e-19,
+      0.9995902991584141,
+      -0.02862226106358664
+    ],
+    "coordinate_convention": "right_handed_metric_scene_ground_plane_uv;units=metres;u=dot(metric_point-origin,basis_u);v=dot(metric_point-origin,basis_v);normal=cross(basis_u,basis_v)",
+    "normal_scene": [
+      -0.06565189048050372,
+      0.028560511037604645,
+      0.997433770475818
+    ],
+    "origin_scene_m": [
+      0.17803897244479425,
+      -0.07745221044538489,
+      -2.704904341330231
+    ]
+  },
+  "input_stats": {
+    "dtype": "torch.float32",
+    "maximum": 0.9996877312660217,
+    "mean": 0.07240163534879684,
+    "minimum": 0.0,
+    "nonzero_fraction": 0.081268310546875,
+    "shape": [
+      1,
+      1,
+      256,
+      256
+    ]
+  },
+  "metrics_options": {
+    "match_max_error_px": 8.0,
+    "minimum_common_keypoints": 4,
+    "minimum_sim2_keypoints": 4,
+    "minimum_visible_fraction": 0.5,
+    "minimum_visible_keypoints": 4
+  },
+  "predicted_instance_count": 2,
+  "predicted_poses": [
+    {
+      "aggregate_score": 7.114123344421387,
+      "center_px": [
+        95.05878448486328,
+        25.945993423461914
+      ],
+      "center_uv_m": [
+        -2.058681910102303,
+        14.377054325969091
+      ],
+      "prediction_index": 0,
+      "semantic_count": 9,
+      "similarity_fit": {
+        "residual_px": 0.13768260180950165,
+        "rotation_deg": -79.7916290917338,
+        "scale_px_per_metre": 0.012062103487551212,
+        "status": "available",
+        "translation_px": [
+          111.30659484863281,
+          51.685794830322266
+        ]
+      }
+    },
+    {
+      "aggregate_score": 5.499077796936035,
+      "center_px": [
+        104.42387390136719,
+        51.785587310791016
+      ],
+      "center_uv_m": [
+        -0.4976538189199431,
+        10.059031323656974
+      ],
+      "prediction_index": 1,
+      "semantic_count": 7,
+      "similarity_fit": {
+        "residual_px": 0.23114913702011108,
+        "rotation_deg": -114.79755753153223,
+        "scale_px_per_metre": 0.023044493049383163,
+        "status": "available",
+        "translation_px": [
+          111.80702209472656,
+          59.46070861816406
+        ]
+      }
+    }
+  ],
+  "preprocess": {
+    "content_fraction": 0.8372,
+    "method": "max",
+    "output_size": [
+      256,
+      256
+    ],
+    "padding_value": 0.0
+  },
+  "raw_existing_metrics": {
+    "coverage_gate_evaluated_count": 4.0,
+    "coverage_gate_insufficient_count": 0.0,
+    "coverage_gate_pass_count": 4.0,
+    "coverage_gate_pass_rate": 1.0,
+    "false_positive_count": 2.0,
+    "instance_center_mean_error_px": 360.62445068359375,
+    "instance_count_accuracy": 1.0,
+    "instance_count_mae": 0.0,
+    "instance_f1": 0.0,
+    "instance_fn": 2.0,
+    "instance_fp": 2.0,
+    "instance_kp_mean_error_px": 360.62445068359375,
+    "instance_kp_pck_2px": 0.0,
+    "instance_kp_pck_4px": 0.0,
+    "instance_precision": 0.0,
+    "instance_recall": 0.0,
+    "instance_tp": 0.0,
+    "insufficient_coverage_count": 0.0,
+    "kp_mean_distance_px": 360.62445068359375,
+    "matched_center_mean_error_px": 360.62445068359375,
+    "matched_instance_count": 0.0,
+    "peak_mean_error_px": 360.62445068359375,
+    "predicted_instance_count": 2.0,
+    "recall_2px": 0.0,
+    "recall_4px": 0.0,
+    "recall_at_2px": 0.0,
+    "recall_at_4px": 0.0,
+    "sim2_evaluation_count": 2.0,
+    "sim2_pair_count": 0.0,
+    "sim2_rotation_error_deg": 180.0,
+    "sim2_scale_relative_error": 1.0,
+    "sim2_translation_error_px": 360.62445068359375,
+    "sim2_unavailable_count": 2.0,
+    "target_instance_count": 2.0,
+    "visible_kp_coverage": 0.0,
+    "visible_kp_gt": 28.0,
+    "visible_kp_gt_count": 28.0,
+    "visible_kp_matched": 0.0,
+    "visible_kp_matched_count": 0.0
+  },
+  "reference": {
+    "candidate_ids": [
+      "candidate-000",
+      "candidate-001"
+    ],
+    "court_instance_ids": [
+      "court-000",
+      "court-001"
+    ],
+    "is_independent_ground_truth": false,
+    "limitation": "System-relative comparison against the accepted alignment; this is not independent ground truth.",
+    "poses": [
+      {
+        "candidate_id": "candidate-000",
+        "center_px": [
+          122.6733627319336,
+          172.8258056640625
+        ],
+        "center_uv_m": [
+          2.544278005452552,
+          -10.16785158734296
+        ],
+        "court_instance_id": "court-000",
+        "residual_px": 0.056555695831775665,
+        "rotation_deg": 83.03637192865088,
+        "scale_px_per_metre": 5.9967756271362305,
+        "translation_px": [
+          122.67335510253906,
+          172.8258056640625
+        ],
+        "visible_keypoint_count": 14
+      },
+      {
+        "candidate_id": "candidate-001",
+        "center_px": [
+          111.90816497802734,
+          84.55155944824219
+        ],
+        "center_uv_m": [
+          0.749871837499014,
+          4.583549139353691
+        ],
+        "court_instance_id": "court-001",
+        "residual_px": 0.056558527052402496,
+        "rotation_deg": 82.7328383219355,
+        "scale_px_per_metre": 5.996762275695801,
+        "translation_px": [
+          111.90816497802734,
+          84.55156707763672
+        ],
+        "visible_keypoint_count": 14
+      }
+    ],
+    "semantic_projection": "model y-down KP14; physical scene_from_court local y equals negative model-canonical y",
+    "type": "accepted_alignment"
+  },
+  "scale_domain": {
+    "any_reference_instance_ood": false,
+    "raster_effective_pixels_per_metre": 5.991712563355974,
+    "reference_instance_ood_flags": [
+      false,
+      false
+    ],
+    "reference_scale_px_per_metre": [
+      5.9967756271362305,
+      5.996762275695801
+    ],
+    "training_range_px_per_metre": [
+      3.0,
+      6.0
+    ]
+  },
+  "schema": "court_alignment_real_heatmap_diagnostics_v1",
+  "transform": {
+    "bounds_uv_m": [
+      -12.96850649929605,
+      19.483096992069786,
+      -20.456252675462295,
+      15.261910034114774
+    ],
+    "content_shape_hw": [
+      214,
+      195
+    ],
+    "grid_spacing_m": 0.035797075930546006,
+    "metres_per_pixel_xy": [
+      0.16668587151249115,
+      0.16710877969446478
+    ],
+    "output_shape_hw": [
+      256,
+      256
+    ],
+    "padding_xy": [
+      30,
+      21
+    ],
+    "pixel_convention": "x_right_y_down; interpolate_half_pixel_centres",
+    "pixels_per_metre": 5.991712563355974,
+    "resize_scale_xy": [
+      0.21475770925110133,
+      0.21421421421421422
+    ],
+    "source_shape_hw": [
+      999,
+      908
+    ],
+    "vertical_flip": true
+  }
+}

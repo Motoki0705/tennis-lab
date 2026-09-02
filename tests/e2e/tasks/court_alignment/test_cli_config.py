@@ -35,7 +35,10 @@ def test_train_cli_publishes_sigma_override(sigma_px: float) -> None:
     assert result.returncode == 0, result.stderr
     assert f"sigma_px: {sigma_px}" in result.stdout
     assert "augmentations:" in result.stdout
-    assert "_target_: src.tasks.court_alignment.models.cnn.CourtAlignmentCNN" in result.stdout
+    assert (
+        "_target_: src.tasks.court_alignment.models.cnn.CourtAlignmentCNN"
+        in result.stdout
+    )
 
 
 def test_evaluate_cli_publishes_explicit_checkpoint_contract() -> None:
@@ -44,3 +47,19 @@ def test_evaluate_cli_publishes_explicit_checkpoint_contract() -> None:
     assert result.returncode == 0, result.stderr
     assert "evaluation:" in result.stdout
     assert "checkpoint_path: null" in result.stdout
+
+
+def test_real_heatmap_cli_publishes_preprocess_and_decoder_ablation_contracts() -> None:
+    result = _run_module(
+        "src.tasks.court_alignment.scripts.evaluate_real_heatmap",
+        "real_evaluation.preprocess.method=area",
+        "real_evaluation.preprocess.content_fraction=0.8372",
+        "decoder.threshold=0.35",
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "archive_path: null" in result.stdout
+    assert "method: area" in result.stdout
+    assert "content_fraction: 0.8372" in result.stdout
+    assert "threshold: 0.35" in result.stdout
+    assert "training_scale_range_px_per_metre:" in result.stdout

@@ -16,6 +16,12 @@ from src.tasks.base.configuration import (
     exact_config_mapping,
     require_config_mapping,
 )
+from src.tasks.court_alignment.evaluation.real_heatmap import (
+    DecoderOptions,
+    MetricOptions,
+    PreprocessOptions,
+    RealHeatmapEvaluationRequest,
+)
 from src.utils.configuration import (
     ConfigField,
     ConfigurationTypeError,
@@ -388,6 +394,29 @@ COURT_ALIGNMENT_EVALUATION_SCHEMA = _schema(
     "evaluation", {"checkpoint_path": ConfigField.of(str, type(None))}
 )
 
+_REAL_HEATMAP_PREPROCESS_SCHEMA = _schema(
+    "real_evaluation.preprocess",
+    {
+        "method": ConfigField.of(str),
+        "output_size": ConfigField.of(list, tuple),
+        "padding_value": _number(),
+        "content_fraction": _number(),
+    },
+)
+COURT_ALIGNMENT_REAL_HEATMAP_SCHEMA = _schema(
+    "real_evaluation",
+    {
+        "archive_path": ConfigField.of(str, type(None)),
+        "manifest_path": ConfigField.of(str, type(None)),
+        "alignment_path": ConfigField.of(str, type(None)),
+        "checkpoint_path": ConfigField.of(str, type(None)),
+        "output_dir": ConfigField.of(str),
+        "device": ConfigField.of(str),
+        "preprocess": ConfigField.mapping(_REAL_HEATMAP_PREPROCESS_SCHEMA),
+        "training_scale_range_px_per_metre": ConfigField.of(list, tuple),
+    },
+)
+
 
 @dataclass(frozen=True, slots=True)
 class CourtAlignmentRuntimeConfig:
@@ -516,6 +545,198 @@ class CourtAlignmentRuntimeConfig:
         return cls(runtime=runtime, sections=sections, evaluation_checkpoint=checkpoint)
 
 
+def _resolve_explicit_path(
+    resolver: PathResolver,
+    *,
+    role: PathRole,
+    value: str,
+    name: str,
+) -> Path:
+    if not value.strip() or value != value.strip():
+        raise SemanticConfigurationError(f"{name} must be a non-empty trimmed path.")
+    candidate = Path(value).expanduser()
+    return cast(
+        Path,
+        resolver.validate(role, candidate)
+        if candidate.is_absolute()
+        else resolver.resolve(role, value),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class CourtAlignmentRealHeatmapRuntimeConfig:
+    """Typed boundary for measured line-heatmap checkpoint evaluation."""
+
+    sections: Mapping[str, Mapping[str, object]]
+    request: RealHeatmapEvaluationRequest | None
+
+    @classmethod
+    def from_config(
+        cls, config: DictConfig | Mapping[str, object]
+    ) -> CourtAlignmentRealHeatmapRuntimeConfig:
+        resolved = as_config_mapping(config, path="configuration")
+        root = exact_config_mapping(
+            resolved,
+            path="configuration",
+            required_keys={"paths", "model", "decoder", "metrics", "real_evaluation"},
+        )
+        paths = COURT_ALIGNMENT_PATHS_SCHEMA.validate(
+            require_config_mapping(root, "paths", path="configuration"),
+            path="paths",
+        )
+        sections: dict[str, Mapping[str, object]] = {}
+        for name, schema in (
+            ("model", COURT_ALIGNMENT_MODEL_SCHEMA),
+            ("decoder", COURT_ALIGNMENT_DECODER_SCHEMA),
+            ("metrics", COURT_ALIGNMENT_METRICS_SCHEMA),
+            ("real_evaluation", COURT_ALIGNMENT_REAL_HEATMAP_SCHEMA),
+        ):
+            sections[name] = schema.validate(
+                require_config_mapping(root, name, path="configuration"), path=name
+            )
+        if cast(int, sections["model"]["num_keypoints"]) != 14:
+            raise SemanticConfigurationError(
+                "model.num_keypoints must preserve the KP14 contract."
+            )
+        decoder_mapping = sections["decoder"]
+        decoder = DecoderOptions(
+            threshold=float(cast(int | float, decoder_mapping["threshold"])),
+            nms_kernel=cast(int, decoder_mapping["nms_kernel"]),
+            max_peaks=cast(int, decoder_mapping["max_peaks"]),
+            subpixel_refine=cast(bool, decoder_mapping["subpixel_refine"]),
+            cluster_distance_px=float(
+                cast(int | float, decoder_mapping["cluster_distance_px"])
+            ),
+            max_instances=cast(int, decoder_mapping["max_instances"]),
+        )
+        metrics_mapping = sections["metrics"]
+        if (
+            float(cast(int | float, metrics_mapping["threshold"])) != decoder.threshold
+            or cast(int, metrics_mapping["nms_kernel"]) != decoder.nms_kernel
+            or cast(int, metrics_mapping["max_peaks"]) != decoder.max_peaks
+        ):
+            raise SemanticConfigurationError(
+                "metrics decoder fields must resolve to decoder.threshold/nms_kernel/max_peaks."
+            )
+        metrics = MetricOptions(
+            match_max_error_px=float(
+                cast(int | float, metrics_mapping["match_max_error_px"])
+            ),
+            minimum_common_keypoints=cast(
+                int, metrics_mapping["minimum_common_keypoints"]
+            ),
+            minimum_visible_keypoints=cast(
+                int, metrics_mapping["minimum_visible_keypoints"]
+            ),
+            minimum_visible_fraction=float(
+                cast(int | float, metrics_mapping["minimum_visible_fraction"])
+            ),
+            minimum_sim2_keypoints=cast(int, metrics_mapping["minimum_sim2_keypoints"]),
+        )
+        evaluation = sections["real_evaluation"]
+        preprocess_value = evaluation["preprocess"]
+        if not isinstance(preprocess_value, Mapping):
+            raise ConfigurationTypeError(
+                "real_evaluation.preprocess must be a mapping."
+            )
+        preprocess_mapping = cast(Mapping[str, object], preprocess_value)
+        output_size_raw = cast(Sequence[object], preprocess_mapping["output_size"])
+        if len(output_size_raw) != 2 or any(
+            type(item) is not int for item in output_size_raw
+        ):
+            raise SemanticConfigurationError(
+                "real_evaluation.preprocess.output_size must contain two integers."
+            )
+        preprocess = PreprocessOptions(
+            method=cast(str, preprocess_mapping["method"]),
+            output_size=(cast(int, output_size_raw[0]), cast(int, output_size_raw[1])),
+            padding_value=float(cast(int | float, preprocess_mapping["padding_value"])),
+            content_fraction=float(
+                cast(int | float, preprocess_mapping["content_fraction"])
+            ),
+        )
+        if preprocess.output_size != (256, 256):
+            raise SemanticConfigurationError(
+                "real_evaluation.preprocess.output_size must be [256,256]."
+            )
+        scale_range_raw = cast(
+            Sequence[object], evaluation["training_scale_range_px_per_metre"]
+        )
+        if len(scale_range_raw) != 2 or any(
+            type(item) not in {float, int} for item in scale_range_raw
+        ):
+            raise SemanticConfigurationError(
+                "real_evaluation.training_scale_range_px_per_metre must contain two numbers."
+            )
+        scale_range = (
+            float(cast(float | int, scale_range_raw[0])),
+            float(cast(float | int, scale_range_raw[1])),
+        )
+        path_keys = (
+            "archive_path",
+            "manifest_path",
+            "alignment_path",
+            "checkpoint_path",
+        )
+        raw_paths = [evaluation[key] for key in path_keys]
+        if any(value is None for value in raw_paths):
+            if not all(value is None for value in raw_paths):
+                raise SemanticConfigurationError(
+                    "real_evaluation input paths are all-or-none explicit values."
+                )
+            return cls(sections=sections, request=None)
+        roots = RuntimePathRoots.from_mapping(paths, repository_root=PROJECT_ROOT)
+        resolver = PathResolver(roots)
+        output_text = cast(str, evaluation["output_dir"])
+        output_path = _resolve_explicit_path(
+            resolver,
+            role=PathRole.OUTPUT,
+            value=output_text,
+            name="real_evaluation.output_dir",
+        )
+        request = RealHeatmapEvaluationRequest(
+            archive_path=_resolve_explicit_path(
+                resolver,
+                role=PathRole.DATA,
+                value=cast(str, evaluation["archive_path"]),
+                name="real_evaluation.archive_path",
+            ),
+            manifest_path=_resolve_explicit_path(
+                resolver,
+                role=PathRole.DATA,
+                value=cast(str, evaluation["manifest_path"]),
+                name="real_evaluation.manifest_path",
+            ),
+            alignment_path=_resolve_explicit_path(
+                resolver,
+                role=PathRole.DATA,
+                value=cast(str, evaluation["alignment_path"]),
+                name="real_evaluation.alignment_path",
+            ),
+            checkpoint_path=_resolve_explicit_path(
+                resolver,
+                role=PathRole.CHECKPOINT,
+                value=cast(str, evaluation["checkpoint_path"]),
+                name="real_evaluation.checkpoint_path",
+            ),
+            output_dir=output_path,
+            device=cast(str, evaluation["device"]),
+            preprocess=preprocess,
+            decoder=decoder,
+            metrics=metrics,
+            training_scale_range_px_per_metre=scale_range,
+        )
+        return cls(sections=sections, request=request)
+
+    def require_request(self) -> RealHeatmapEvaluationRequest:
+        """Return execution paths or fail before any filesystem/model side effect."""
+        if self.request is None:
+            raise ValueError(
+                "Measured evaluation requires archive, manifest, alignment, and checkpoint paths."
+            )
+        return self.request
+
+
 def validate_training_boundary(config: DictConfig) -> None:
     """Validate composed Court Alignment training config before side effects."""
     CourtAlignmentRuntimeConfig.from_config(config)
@@ -526,8 +747,16 @@ def validate_evaluation_boundary(config: DictConfig) -> None:
     CourtAlignmentRuntimeConfig.from_config(config, evaluation=True)
 
 
+def validate_real_heatmap_evaluation_boundary(config: DictConfig) -> None:
+    """Validate the measured line-heatmap evaluation boundary."""
+    CourtAlignmentRealHeatmapRuntimeConfig.from_config(config)
+
+
 register_boundary_validator("court_alignment.train", validate_training_boundary)
 register_boundary_validator("court_alignment.evaluate", validate_evaluation_boundary)
+register_boundary_validator(
+    "court_alignment.evaluate_real_heatmap", validate_real_heatmap_evaluation_boundary
+)
 
 
 __all__ = [
@@ -538,9 +767,12 @@ __all__ = [
     "COURT_ALIGNMENT_METRICS_SCHEMA",
     "COURT_ALIGNMENT_MODEL_SCHEMA",
     "COURT_ALIGNMENT_PATHS_SCHEMA",
+    "COURT_ALIGNMENT_REAL_HEATMAP_SCHEMA",
     "COURT_ALIGNMENT_RUN_SCHEMA",
     "COURT_ALIGNMENT_TRAINING_SCHEMA",
     "CourtAlignmentRuntimeConfig",
+    "CourtAlignmentRealHeatmapRuntimeConfig",
     "validate_evaluation_boundary",
+    "validate_real_heatmap_evaluation_boundary",
     "validate_training_boundary",
 ]

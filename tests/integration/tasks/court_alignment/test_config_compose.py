@@ -12,8 +12,10 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig
 
 from src.tasks.court_alignment.configuration import (
+    CourtAlignmentRealHeatmapRuntimeConfig,
     CourtAlignmentRuntimeConfig,
     validate_evaluation_boundary,
+    validate_real_heatmap_evaluation_boundary,
     validate_training_boundary,
 )
 from src.tasks.court_alignment.models.cnn import CourtAlignmentCNN
@@ -89,6 +91,63 @@ def test_hydra_boundaries_validate_resolved_train_and_evaluate_contracts() -> No
     assert (
         CourtAlignmentRuntimeConfig.from_config(train_cfg).evaluation_checkpoint is None
     )
+
+
+def test_real_heatmap_config_composes_explicit_ablation_boundaries(
+    tmp_path: Path,
+) -> None:
+    data_root = tmp_path / "data-root"
+    checkpoint_root = tmp_path / "checkpoint-root"
+    output_root = tmp_path / "output-root"
+    cfg = _compose(
+        "evaluate_real_heatmap",
+        [
+            f"paths.data_root={data_root}",
+            f"paths.checkpoint_root={checkpoint_root}",
+            f"paths.output_root={output_root}",
+            "real_evaluation.archive_path=b00/heatmaps.npz",
+            "real_evaluation.manifest_path=b00/manifest.json",
+            "real_evaluation.alignment_path=b00/alignment.json",
+            "real_evaluation.checkpoint_path=sigma-200/best.ckpt",
+            "real_evaluation.output_dir=b00-sigma-200-max",
+            "real_evaluation.preprocess.method=max",
+            "real_evaluation.preprocess.content_fraction=0.8372",
+            "decoder.threshold=0.3",
+        ],
+    )
+
+    validate_real_heatmap_evaluation_boundary(cfg)
+    request = CourtAlignmentRealHeatmapRuntimeConfig.from_config(cfg).require_request()
+
+    assert request.archive_path == (data_root / "b00" / "heatmaps.npz").resolve()
+    assert (
+        request.checkpoint_path
+        == (checkpoint_root / "sigma-200" / "best.ckpt").resolve()
+    )
+    assert request.output_dir == (output_root / "b00-sigma-200-max").resolve()
+    assert request.preprocess.method == "max"
+    assert request.preprocess.content_fraction == pytest.approx(0.8372)
+    assert request.decoder.threshold == pytest.approx(0.3)
+
+
+def test_real_heatmap_config_rejects_unknown_preprocess() -> None:
+    cfg = _compose(
+        "evaluate_real_heatmap",
+        ["real_evaluation.preprocess.method=not-registered"],
+    )
+
+    with pytest.raises(ValueError, match="Unknown real-heatmap preprocess"):
+        validate_real_heatmap_evaluation_boundary(cfg)
+
+
+def test_real_heatmap_config_rejects_invalid_content_fraction() -> None:
+    cfg = _compose(
+        "evaluate_real_heatmap",
+        ["real_evaluation.preprocess.content_fraction=0.0"],
+    )
+
+    with pytest.raises(ValueError, match="content_fraction"):
+        validate_real_heatmap_evaluation_boundary(cfg)
 
 
 def test_hydra_boundary_rejects_unknown_model_key() -> None:

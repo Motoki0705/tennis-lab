@@ -1,0 +1,27 @@
+defaults:
+  - paths: default
+  - model: cnn
+  - decoder: default
+  - metrics: default
+  - _self_
+
+real_evaluation:
+  archive_path: null
+  manifest_path: null
+  alignment_path: null
+  checkpoint_path: null
+  output_dir: court_alignment/real_heatmap/b00
+  device: cpu
+  preprocess:
+    method: max
+    output_size: [256, 256]
+    padding_value: 0.0
+    content_fraction: 1.0
+  training_scale_range_px_per_metre: [3.0, 6.0]
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${real_evaluation.output_dir}}
+  output_subdir: null
+  job:
+    chdir: false
