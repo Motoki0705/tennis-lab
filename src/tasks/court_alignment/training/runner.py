@@ -9,14 +9,19 @@ import pytorch_lightning as pl
 from hydra.utils import instantiate
 from omegaconf import DictConfig
 from pytorch_lightning.callbacks import ModelCheckpoint
+from torch import nn
 
 from src.tasks.base.configuration import TrainingRuntimeConfig
 from src.tasks.base.training.repro import resolve_queue_repro_dir
 from src.tasks.base.training.runner import BaseTrainingRunner
 from src.tasks.court_alignment.configuration import CourtAlignmentRuntimeConfig
+from src.tasks.court_alignment.models.checkpoint import (
+    load_court_alignment_model_checkpoint,
+)
 from src.tasks.court_alignment.training.lightning_module import (
     CourtAlignmentLightningModule,
 )
+from src.utils.configuration import PathRole
 
 
 class CourtAlignmentTrainingRunner(BaseTrainingRunner):
@@ -47,6 +52,30 @@ class CourtAlignmentTrainingRunner(BaseTrainingRunner):
                 "data._target_ must construct a pytorch_lightning.LightningDataModule."
             )
         return datamodule
+
+    def maybe_load_init_weights(
+        self,
+        config: TrainingRuntimeConfig,
+        lightning_module: pl.LightningModule,
+    ) -> None:
+        """Strictly warm-start the task CNN from a historical Lightning payload."""
+
+        init_path = config.run.init_weights
+        if init_path is None:
+            return
+        checkpoint_path = config.resolver.validate(PathRole.CHECKPOINT, init_path)
+        model = getattr(lightning_module, "model", None)
+        if not isinstance(model, nn.Module):
+            raise TypeError(
+                "Court-alignment init_weights requires lightning_module.model "
+                "to be a torch module."
+            )
+        metadata = load_court_alignment_model_checkpoint(model, checkpoint_path)
+        print(
+            "[init_weights] strict-loaded "
+            f"{metadata['state_dict_key_count']} model tensors from {checkpoint_path}; "
+            "optimizer, scheduler, loop, and epoch state were not loaded."
+        )
 
     def test_checkpoint_path(self, config: Any, trainer: pl.Trainer) -> str:
         """Require and select the same validation-best checkpoint for testing."""
@@ -94,6 +123,10 @@ class CourtAlignmentTrainingRunner(BaseTrainingRunner):
             raise ValueError(
                 "evaluation.checkpoint_path must be set to an existing checkpoint."
             )
+        checkpoint_path = runtime.resolver.validate(
+            PathRole.CHECKPOINT,
+            checkpoint_path,
+        )
         if not checkpoint_path.is_file():
             raise FileNotFoundError(
                 f"Court-alignment checkpoint does not exist: {checkpoint_path}"
@@ -120,7 +153,12 @@ class CourtAlignmentTrainingRunner(BaseTrainingRunner):
             enable_progress_bar=trainer_cfg.enable_progress_bar,
             enable_model_summary=trainer_cfg.enable_model_summary,
         )
-        trainer.test(module, datamodule=datamodule, ckpt_path=str(checkpoint_path))
+        trainer.test(
+            module,
+            datamodule=datamodule,
+            ckpt_path=str(checkpoint_path),
+            weights_only=False,
+        )
 
         repro_dir = resolve_queue_repro_dir()
         if repro_dir is not None:

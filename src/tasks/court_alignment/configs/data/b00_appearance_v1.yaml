@@ -1,0 +1,25 @@
+# @package data
+defaults:
+  - b00_scale_v1
+  - _self_
+
+# B00 pilot factor: line width/blur and confidence calibration.
+augmentations:
+  - name: random_line_morphology
+    params:
+      probability: 0.7
+      dilate_probability: 0.85
+      kernel_size_choices: [3]
+      iterations: 1
+  - name: random_heatmap_blur
+    params:
+      probability: 0.7
+      sigma_range: [0.0, 1.5]
+  - name: random_probability_noise
+    params:
+      probability: 0.8
+      foreground_amplitude_range: [0.55, 1.0]
+      gamma_range: [0.7, 1.5]
+      speckle_fraction_range: [0.001, 0.008]
+      speckle_amplitude_range: [0.2, 0.9]
+      additive_std: 0.0

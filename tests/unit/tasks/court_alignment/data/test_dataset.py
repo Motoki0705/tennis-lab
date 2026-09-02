@@ -7,12 +7,19 @@ import pytest
 import torch
 from torch.utils.data import DataLoader
 
+from src.tasks.court_alignment.data.augmentation import (
+    IdentityAugmentation,
+    build_augmentation,
+)
 from src.tasks.court_alignment.data.dataset import (
     GroundCourtDataset,
     GroundCourtDatasetConfig,
     build_ground_court_datasets,
 )
-from src.tasks.court_alignment.data.splits import GroundCourtSplitConfig
+from src.tasks.court_alignment.data.splits import (
+    GroundCourtSplit,
+    GroundCourtSplitConfig,
+)
 from src.tasks.court_alignment.geometry.court import (
     doubles_footprints_overlap,
 )
@@ -56,15 +63,78 @@ def test_splits_use_stable_disjoint_seeds() -> None:
     datasets = build_ground_court_datasets(_config())
     assert tuple(datasets) == ("train", "val", "test")
     assert datasets["train"][0]["sample_id"] != datasets["val"][0]["sample_id"]
-    assert not torch.equal(datasets["train"][0]["image"], datasets["val"][0]["image"])
+    assert not torch.equal(
+        cast(torch.Tensor, datasets["train"][0]["image"]),
+        cast(torch.Tensor, datasets["val"][0]["image"]),
+    )
+
+
+@pytest.mark.parametrize("split", ("val", "test"))
+def test_direct_evaluation_dataset_ignores_configured_train_augmentation(
+    split: str,
+) -> None:
+    split_config = GroundCourtSplitConfig(
+        train_size=1,
+        val_size=1,
+        test_size=1,
+        seed=29,
+    )
+    augmented_config = GroundCourtDatasetConfig(
+        image_size=64,
+        max_courts=1,
+        min_courts=1,
+        scale_px_per_metre_range=(1.0, 1.0),
+        split=split_config,
+        augmentations=(
+            {
+                "name": "random_heatmap_blur",
+                "params": {"probability": 1.0, "sigma_range": [1.0, 1.0]},
+            },
+        ),
+    )
+    clean_config = GroundCourtDatasetConfig(
+        image_size=64,
+        max_courts=1,
+        min_courts=1,
+        scale_px_per_metre_range=(1.0, 1.0),
+        split=split_config,
+    )
+
+    evaluation = GroundCourtDataset(
+        augmented_config, split=cast(GroundCourtSplit, split)
+    )
+    clean = GroundCourtDataset(clean_config, split=cast(GroundCourtSplit, split))
+
+    assert isinstance(evaluation.augmentation, IdentityAugmentation)
+    torch.testing.assert_close(
+        cast(torch.Tensor, evaluation[0]["image"]),
+        cast(torch.Tensor, clean[0]["image"]),
+    )
+
+
+@pytest.mark.parametrize("split", ("val", "test"))
+def test_evaluation_dataset_rejects_explicit_nonidentity_augmentation(
+    split: str,
+) -> None:
+    transform = build_augmentation(
+        {
+            "name": "random_heatmap_blur",
+            "params": {"probability": 1.0, "sigma_range": [1.0, 1.0]},
+        }
+    )
+
+    with pytest.raises(ValueError, match="train-only"):
+        GroundCourtDataset(
+            _config(),
+            split=cast(GroundCourtSplit, split),
+            augmentation=transform,
+        )
 
 
 def test_non_integer_keypoint_gets_exact_positive_at_nearest_lattice_pixel() -> None:
     points = torch.full((1, 14, 2), 10.4, dtype=torch.float32)
     visibility = torch.ones((1, 14), dtype=torch.bool)
-    heatmaps = render_keypoint_heatmaps(
-        (24, 24), points, visibility, sigma_px=0.75
-    )
+    heatmaps = render_keypoint_heatmaps((24, 24), points, visibility, sigma_px=0.75)
     assert float(heatmaps[0, 10, 10]) == 1.0
 
 
@@ -108,7 +178,8 @@ def test_vote_mask_is_identical_across_sigma_ablation() -> None:
         samples.append(GroundCourtDataset(config)[0])
     for sample in samples[1:]:
         assert torch.equal(
-            sample["target_center_vote_mask"], samples[0]["target_center_vote_mask"]
+            cast(torch.Tensor, sample["target_center_vote_mask"]),
+            cast(torch.Tensor, samples[0]["target_center_vote_mask"]),
         )
 
 
@@ -139,7 +210,9 @@ def test_generated_multiple_courts_have_non_overlapping_footprints() -> None:
         sample = dataset[index]
         points = cast(torch.Tensor, sample["keypoints"])[:2]
         footprints = [
-            points[item].index_select(0, points.new_tensor((0, 1, 3, 2), dtype=torch.long))
+            points[item].index_select(
+                0, points.new_tensor((0, 1, 3, 2), dtype=torch.long)
+            )
             for item in range(2)
         ]
         assert not doubles_footprints_overlap(footprints[0], footprints[1])

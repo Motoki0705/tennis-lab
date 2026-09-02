@@ -33,9 +33,8 @@ def _size_tuple(image_size: int | Sequence[int]) -> tuple[int, int]:
 
 
 def _configs(
-    augmentations: Sequence[
-        GroundCourtAugmentationConfig | Mapping[str, object] | str
-    ] | None,
+    augmentations: Sequence[GroundCourtAugmentationConfig | Mapping[str, object] | str]
+    | None,
 ) -> tuple[GroundCourtAugmentationConfig, ...]:
     if augmentations is None:
         return ()
@@ -48,7 +47,9 @@ def _configs(
         elif isinstance(item, str):
             result.append(GroundCourtAugmentationConfig(name=item))
         else:
-            raise TypeError("Each augmentation must be a typed config, mapping, or name.")
+            raise TypeError(
+                "Each augmentation must be a typed config, mapping, or name."
+            )
     return tuple(result)
 
 
@@ -85,10 +86,14 @@ class GroundCourtDataModule(pl.LightningDataModule):
         max_sampling_attempts: int = 64,
         court_margin_px: float = 0.0,
         seed: int = 42,
-        augmentation: GroundCourtAugmentationConfig | Mapping[str, object] | str | None = None,
+        augmentation: GroundCourtAugmentationConfig
+        | Mapping[str, object]
+        | str
+        | None = None,
         augmentations: Sequence[
             GroundCourtAugmentationConfig | Mapping[str, object] | str
-        ] | None = None,
+        ]
+        | None = None,
     ) -> None:
         super().__init__()
         if type(batch_size) is not int or batch_size <= 0:

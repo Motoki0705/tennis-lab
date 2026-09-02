@@ -1,0 +1,9 @@
+ M src/tasks/court_alignment/data/augmentation.py
+ M src/tasks/court_alignment/data/datamodule.py
+ M src/tasks/court_alignment/data/dataset.py
+ M tests/integration/tasks/court_alignment/test_config_compose.py
+ M tests/unit/tasks/court_alignment/data/test_augmentation.py
+?? src/tasks/court_alignment/configs/data/b00_appearance_v1.yaml
+?? src/tasks/court_alignment/configs/data/b00_scale_v1.yaml
+?? src/tasks/court_alignment/configs/data/b00_structure_v1.yaml
+?? src/tasks/court_alignment/configs/data/b00_v1.yaml

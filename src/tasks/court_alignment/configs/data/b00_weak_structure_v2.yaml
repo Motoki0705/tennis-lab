@@ -1,0 +1,41 @@
+# @package data
+defaults:
+  - b00_scale_v1
+  - _self_
+
+# B00 round-2 profile: appearance-v1 plus deliberately weak structural noise.
+augmentations:
+  - name: random_line_morphology
+    params:
+      probability: 0.7
+      dilate_probability: 0.85
+      kernel_size_choices: [3]
+      iterations: 1
+  - name: random_heatmap_blur
+    params:
+      probability: 0.7
+      sigma_range: [0.0, 1.5]
+  - name: random_line_dropout
+    params:
+      probability: 0.08
+      gap_count_range: [1, 2]
+      gap_length_px_range: [2.0, 8.0]
+      gap_width_px_range: [1.0, 3.0]
+  - name: random_ghost_lines
+    params:
+      probability: 0.18
+      copy_count_range: [1, 1]
+      offset_px_range: [3, 10]
+      amplitude_range: [0.35, 0.70]
+      long_line_count_range: [0, 1]
+      long_line_length_px_range: [48.0, 180.0]
+      long_line_width_px_range: [1.0, 3.0]
+      long_line_amplitude_range: [0.35, 0.70]
+  - name: random_probability_noise
+    params:
+      probability: 0.8
+      foreground_amplitude_range: [0.55, 1.0]
+      gamma_range: [0.7, 1.5]
+      speckle_fraction_range: [0.001, 0.008]
+      speckle_amplitude_range: [0.2, 0.9]
+      additive_std: 0.0

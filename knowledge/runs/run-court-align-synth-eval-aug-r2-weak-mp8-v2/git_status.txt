@@ -1,0 +1,33 @@
+ M src/tasks/court_alignment/data/augmentation.py
+ M src/tasks/court_alignment/data/datamodule.py
+ M src/tasks/court_alignment/data/dataset.py
+ M src/tasks/court_alignment/evaluation/real_heatmap.py
+ M src/tasks/court_alignment/training/runner.py
+ M tests/integration/tasks/court_alignment/test_config_compose.py
+ M tests/unit/tasks/court_alignment/data/test_augmentation.py
+ M tests/unit/tasks/court_alignment/data/test_dataset.py
+ M tests/unit/tasks/court_alignment/training/test_runner.py
+?? knowledge/nodes/group-court-align-b00-augmentation-pilot.md
+?? knowledge/nodes/run-court-align-aug-pilot-appearance-v1.md
+?? knowledge/nodes/run-court-align-aug-pilot-combined-v1.md
+?? knowledge/nodes/run-court-align-aug-pilot-scale-v1.md
+?? knowledge/nodes/run-court-align-aug-pilot-structure-v1.md
+?? knowledge/nodes/run-court-align-b00-eval-aug-pilot-appearance-v1.md
+?? knowledge/nodes/run-court-align-b00-eval-aug-pilot-combined-v1.md
+?? knowledge/nodes/run-court-align-b00-eval-aug-pilot-scale-v1.md
+?? knowledge/nodes/run-court-align-b00-eval-aug-pilot-structure-v1.md
+?? knowledge/runs/run-court-align-aug-pilot-appearance-v1/
+?? knowledge/runs/run-court-align-aug-pilot-combined-v1/
+?? knowledge/runs/run-court-align-aug-pilot-scale-v1/
+?? knowledge/runs/run-court-align-aug-pilot-structure-v1/
+?? knowledge/runs/run-court-align-b00-eval-aug-pilot-appearance-v1/
+?? knowledge/runs/run-court-align-b00-eval-aug-pilot-combined-v1/
+?? knowledge/runs/run-court-align-b00-eval-aug-pilot-scale-v1/
+?? knowledge/runs/run-court-align-b00-eval-aug-pilot-structure-v1/
+?? src/tasks/court_alignment/configs/data/b00_appearance_v1.yaml
+?? src/tasks/court_alignment/configs/data/b00_scale_v1.yaml
+?? src/tasks/court_alignment/configs/data/b00_structure_v1.yaml
+?? src/tasks/court_alignment/configs/data/b00_v1.yaml
+?? src/tasks/court_alignment/configs/data/b00_weak_structure_v2.yaml
+?? src/tasks/court_alignment/models/checkpoint.py
+?? tests/unit/tasks/court_alignment/models/test_checkpoint.py

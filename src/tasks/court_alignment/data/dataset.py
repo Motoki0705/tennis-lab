@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from typing import TypeAlias
 
 import numpy as np
 import torch
@@ -15,6 +16,7 @@ from src.tasks.court_alignment.data.augmentation import (
     AugmentableGroundCourtSample,
     GroundCourtAugmentation,
     GroundCourtAugmentationConfig,
+    IdentityAugmentation,
     build_augmentation,
     build_augmentations,
 )
@@ -36,7 +38,7 @@ from src.tasks.court_alignment.geometry.rasterization import (
     render_keypoint_heatmaps,
 )
 
-GroundCourtAugmentationSpec = (
+GroundCourtAugmentationSpec: TypeAlias = (
     GroundCourtAugmentationConfig | Mapping[str, object] | str
 )
 
@@ -80,9 +82,7 @@ class GroundCourtDatasetConfig:
         _validate_positive(self.sigma_px, "sigma_px")
         _validate_positive(self.line_width_px, "line_width_px")
         _validate_positive(self.vote_radius_px, "vote_radius_px")
-        _validate_positive(
-            self.rotation_seam_margin_rad, "rotation_seam_margin_rad"
-        )
+        _validate_positive(self.rotation_seam_margin_rad, "rotation_seam_margin_rad")
         if not math.isfinite(float(self.court_margin_px)) or self.court_margin_px < 0.0:
             raise ValueError("court_margin_px must be finite and non-negative.")
         _validate_range(
@@ -94,7 +94,10 @@ class GroundCourtDatasetConfig:
             self.rotation_rad_range,
             seam_margin_rad=self.rotation_seam_margin_rad,
         )
-        if not math.isfinite(float(self.min_center_distance_px)) or self.min_center_distance_px < 0.0:
+        if (
+            not math.isfinite(float(self.min_center_distance_px))
+            or self.min_center_distance_px < 0.0
+        ):
             raise ValueError("min_center_distance_px must be finite and non-negative.")
         if (
             not math.isfinite(float(self.footprint_overlap_tolerance_px))
@@ -250,8 +253,12 @@ def _pad_geometry(
     max_courts: int,
 ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     count = points.shape[0]
-    padded_points = torch.zeros((max_courts, GROUND_COURT_KP14_COUNT, 2), dtype=torch.float32)
-    padded_visibility = torch.zeros((max_courts, GROUND_COURT_KP14_COUNT), dtype=torch.bool)
+    padded_points = torch.zeros(
+        (max_courts, GROUND_COURT_KP14_COUNT, 2), dtype=torch.float32
+    )
+    padded_visibility = torch.zeros(
+        (max_courts, GROUND_COURT_KP14_COUNT), dtype=torch.bool
+    )
     padded_centers = torch.zeros((max_courts, 2), dtype=torch.float32)
     padded_ids = torch.full((max_courts,), -1, dtype=torch.long)
     padded_points[:count] = points
@@ -277,17 +284,30 @@ class GroundCourtDataset(Dataset[dict[str, object]]):
         if split not in {"train", "val", "test"}:
             raise ValueError(f"Unknown ground-court split: {split!r}.")
         self.split: GroundCourtSplit = split
-        if augmentation is not None:
-            self.augmentation = augmentation
+        resolved_augmentation: GroundCourtAugmentation
+        if split != "train":
+            if augmentation is not None and not isinstance(
+                augmentation, IdentityAugmentation
+            ):
+                raise ValueError(
+                    "Validation and test ground-court datasets only accept "
+                    "IdentityAugmentation; augmentation is train-only."
+                )
+            resolved_augmentation = IdentityAugmentation()
+        elif augmentation is not None:
+            resolved_augmentation = augmentation
         elif self.config.augmentations:
-            self.augmentation = build_augmentations(tuple(self.config.augmentations))
+            resolved_augmentation = build_augmentations(
+                tuple(self.config.augmentations)
+            )
         else:
-            self.augmentation = build_augmentation(self.config.augmentation)
+            resolved_augmentation = build_augmentation(self.config.augmentation)
+        self.augmentation = resolved_augmentation
         if not callable(self.augmentation):
             raise TypeError("augmentation must be callable.")
 
     def __len__(self) -> int:
-        return self.config.split.size(self.split)
+        return int(self.config.split.size(self.split))
 
     def __getitem__(self, index: int) -> dict[str, object]:
         if isinstance(index, bool) or not isinstance(index, int):
@@ -301,8 +321,12 @@ class GroundCourtDataset(Dataset[dict[str, object]]):
         instances = _sample_instances(self.config, rng)
         image_size = _size_tuple(self.config.image_size)
         points = torch.stack([court_keypoints_for_instance(item) for item in instances])
-        centers = torch.tensor([item.center_xy_px for item in instances], dtype=torch.float32)
-        instance_ids = torch.tensor([item.instance_id for item in instances], dtype=torch.long)
+        centers = torch.tensor(
+            [item.center_xy_px for item in instances], dtype=torch.float32
+        )
+        instance_ids = torch.tensor(
+            [item.instance_id for item in instances], dtype=torch.long
+        )
         visibility = self._visibility(points)
         image = render_court_line_mask(
             image_size,
@@ -320,12 +344,16 @@ class GroundCourtDataset(Dataset[dict[str, object]]):
         if not isinstance(augmented, AugmentableGroundCourtSample):
             raise TypeError("augmentation must return AugmentableGroundCourtSample.")
         if augmented.keypoints.shape[0] != len(instances):
-            raise ValueError("Augmentation cannot change the number of court instances.")
+            raise ValueError(
+                "Augmentation cannot change the number of court instances."
+            )
         if augmented.keypoints.shape[0] > self.config.max_courts:
             raise ValueError("Augmentation returned more courts than max_courts.")
         if augmented.image.shape != (1, *image_size):
             raise ValueError("Augmentation must preserve the configured image shape.")
-        if not augmented.image.is_floating_point() or not bool(torch.isfinite(augmented.image).all()):
+        if not augmented.image.is_floating_point() or not bool(
+            torch.isfinite(augmented.image).all()
+        ):
             raise ValueError("Augmented image must be finite floating point.")
         if bool(torch.any((augmented.image < 0.0) | (augmented.image > 1.0))):
             raise ValueError("Augmented image values must remain in [0,1].")
@@ -379,11 +407,15 @@ def build_ground_court_datasets(
     """Construct all deterministic splits from one shared configuration."""
 
     resolved = GroundCourtDatasetConfig() if config is None else config
-    return {
-        split: GroundCourtDataset(resolved, split=split)
-        for split in ("train", "val", "test")
-        if resolved.split.size(split) > 0
-    }
+    datasets: dict[GroundCourtSplit, GroundCourtDataset] = {}
+    for split in ("train", "val", "test"):
+        if resolved.split.size(split) <= 0:
+            continue
+        datasets[split] = GroundCourtDataset(
+            resolved,
+            split=split,
+        )
+    return datasets
 
 
 __all__ = [
